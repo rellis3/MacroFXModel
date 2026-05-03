@@ -36,7 +36,7 @@ export async function loadCached(key, fetchFn, maxAge) {
   }
 
   const kvObj = await kvGet(key);
-  if (kvObj && kvObj.data !== undefined) {
+  if (kvObj && kvObj.data != null && kvObj.timestamp) {
     if (Date.now() - kvObj.timestamp < maxAge) {
       try { localStorage.setItem(key, JSON.stringify(kvObj)); } catch(e) {}
       return kvObj.data;
