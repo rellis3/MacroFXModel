@@ -1,0 +1,183 @@
+import { S } from './state.js';
+
+// ── KV cache helpers ─────────────────────────────────────────────────────────
+
+export async function kvGet(key) {
+  try {
+    const res = await fetch(`/api/kv/get?key=${encodeURIComponent(key)}`);
+    if (!res.ok) return null;
+    const obj = await res.json();
+    if (obj.miss) return null;
+    return obj; // { data, timestamp }
+  } catch(e) {
+    return null;
+  }
+}
+
+export async function kvSet(key, data) {
+  try {
+    await fetch('/api/kv/set', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, data, timestamp: Date.now() })
+    });
+  } catch(e) {
+    console.warn('KV write failed for', key, e.message);
+  }
+}
+
+export async function loadCached(key, fetchFn, maxAge) {
+  const localRaw = localStorage.getItem(key);
+  if (localRaw) {
+    try {
+      const { data, timestamp } = JSON.parse(localRaw);
+      if (Date.now() - timestamp < maxAge) return data;
+    } catch(e) {}
+  }
+
+  const kvObj = await kvGet(key);
+  if (kvObj && kvObj.data !== undefined) {
+    if (Date.now() - kvObj.timestamp < maxAge) {
+      try { localStorage.setItem(key, JSON.stringify(kvObj)); } catch(e) {}
+      return kvObj.data;
+    }
+  }
+
+  const data = await fetchFn();
+
+  const entry = { data, timestamp: Date.now() };
+  try { localStorage.setItem(key, JSON.stringify(entry)); } catch(e) {}
+  kvSet(key, data);
+
+  return data;
+}
+
+export function cleanupStaleSessionCaches() {
+  const today = londonSessionDay();
+  const datedPattern = /^(ohlc5m|ohlc30m)_.+_(\d{4}-\d{2}-\d{2})$/;
+  const toDrop = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k) continue;
+    const m = k.match(datedPattern);
+    if (m && m[2] !== today) toDrop.push(k);
+  }
+  toDrop.forEach(k => localStorage.removeItem(k));
+}
+
+export async function fetchAPI(path) {
+  const response = await fetch(path);
+  const text = await response.text();
+  if (!response.ok) {
+    let msg = `API error: ${response.status}`;
+    try { const j = JSON.parse(text); if (j.error) msg = j.error; } catch (e) {}
+    throw new Error(msg);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const snippet = text.slice(0, 80).replace(/\s+/g, ' ');
+    throw new Error(`Bad response from ${path} (not JSON): ${snippet}…`);
+  }
+}
+
+export function updateStatus(type, text) {
+  document.getElementById('statusDot').className = `sdot ${type}`;
+  document.getElementById('statusText').textContent = text;
+}
+
+export function updatePill(id, status) {
+  document.getElementById(id).className = `dpill ${status}`;
+}
+
+// ── Session-day anchoring ────────────────────────────────────────────────────
+// Before 06:00 London → still belongs to yesterday's session day.
+
+export function londonSessionDay() {
+  const nowLondon = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/London' }));
+  if (nowLondon.getHours() < 6) {
+    nowLondon.setDate(nowLondon.getDate() - 1);
+  }
+  return nowLondon.toISOString().split('T')[0];
+}
+
+// ── Bar timestamp helpers ────────────────────────────────────────────────────
+// Twelve Data sends London-local clock strings with no zone marker; appending
+// 'Z' anchors them to UTC so getUTCHours/getUTCDay work regardless of browser TZ.
+
+export function barLondonHour(bar) {
+  const d = new Date(bar.datetime.replace(' ', 'T') + 'Z');
+  return d.getUTCHours();
+}
+
+export function barLondonDay(bar) {
+  const d = new Date(bar.datetime.replace(' ', 'T') + 'Z');
+  return d.getUTCDay();
+}
+
+// ── Pip / digit helpers ──────────────────────────────────────────────────────
+
+export function getPipSize(symbol) {
+  if (symbol.includes('JPY')) return 0.01;
+  if (symbol.includes('XAU') || symbol.includes('GOLD')) return 0.1;
+  return 0.0001;
+}
+
+export function getDigits(symbol) {
+  if (symbol.includes('JPY')) return 3;
+  if (symbol.includes('XAU') || symbol.includes('GOLD')) return 2;
+  return 5;
+}
+
+export function getConfluenceThreshold(symbol) {
+  if (symbol.includes('XAU') || symbol.includes('GOLD')) return 200;
+  return 2;
+}
+
+export function pipsBetween(p1, p2, symbol) {
+  return Math.abs(p1 - p2) / getPipSize(symbol);
+}
+
+// ── FRED / formatting ────────────────────────────────────────────────────────
+
+export function fred(key) {
+  const obj = S.fredData?.[key];
+  return obj?.value ?? null;
+}
+
+export function fmt(value, decimals = 2, suffix = '', fallback = '—') {
+  if (value == null || isNaN(value)) return fallback;
+  return value.toFixed(decimals) + suffix;
+}
+
+// ── Math helpers ─────────────────────────────────────────────────────────────
+
+export function ema(values, period) {
+  const k = 2 / (period + 1);
+  const result = [values[0]];
+  for (let i = 1; i < values.length; i++) {
+    result.push(values[i] * k + result[i - 1] * (1 - k));
+  }
+  return result;
+}
+
+export function calcRSI(values, period) {
+  const result = [];
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const change = values[i] - values[i - 1];
+    if (change > 0) gains += change; else losses -= change;
+  }
+  let avgGain = gains / period, avgLoss = losses / period;
+  result.push(100 - 100 / (1 + avgGain / (avgLoss || 0.0001)));
+  for (let i = period + 1; i < values.length; i++) {
+    const change = values[i] - values[i - 1];
+    const gain = change > 0 ? change : 0;
+    const loss = change < 0 ? -change : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    result.push(100 - 100 / (1 + avgGain / (avgLoss || 0.0001)));
+  }
+  while (result.length < values.length) result.unshift(50);
+  return result;
+}
