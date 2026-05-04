@@ -130,15 +130,11 @@ export function compassCompute(sym, hist, cfg) {
 
   const spread2yFilled = forwardFill(spread2y, us10y.map(p => p.date));
 
-  const dxyHist   = hist.dxy || [];
-  const dxyMap    = toMap(dxyHist);
-  const spreadDxy = [];
-  us10y.forEach(p => {
-    const d = p.date;
-    const dv = dxyMap[d];
-    if (dv != null) spreadDxy.push({ date: d, value: dv });
-  });
-  const spreadDxyFilled = forwardFill(spreadDxy, us10y.map(p => p.date));
+  // DXY is a weekly series (DTWEXBGS); us10y is monthly — dates never coincide
+  // so aligning to us10y via forwardFill always produces empty results.
+  // Use the DXY weekly series directly instead.
+  const dxyHist = hist.dxy || [];
+  const spreadDxyFilled = dxyHist.slice(-90);
 
   const latest2y  = spread2yFilled.length ? spread2yFilled[spread2yFilled.length-1].value : null;
   const latest10y = spread10y.length ? spread10y[spread10y.length-1].value : null;
