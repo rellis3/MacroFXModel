@@ -102,17 +102,24 @@ export function londonSessionDay() {
 }
 
 // ── Bar timestamp helpers ────────────────────────────────────────────────────
-// Twelve Data sends London-local clock strings with no zone marker; appending
-// 'Z' anchors them to UTC so getUTCHours/getUTCDay work regardless of browser TZ.
+// TwelveData sends London-local strings with no zone marker.
+// Intraday bars: "2026-05-04 09:30:00" — replace space with T, append Z.
+// Daily bars:    "2026-05-04"           — date-only; "2026-05-04Z" is Invalid Date,
+// so we must append "T00:00:00Z" for those to get a parseable UTC timestamp.
+
+function barToUTC(bar) {
+  const dt = bar.datetime;
+  return dt.length === 10
+    ? new Date(dt + 'T00:00:00Z')
+    : new Date(dt.replace(' ', 'T') + 'Z');
+}
 
 export function barLondonHour(bar) {
-  const d = new Date(bar.datetime.replace(' ', 'T') + 'Z');
-  return d.getUTCHours();
+  return barToUTC(bar).getUTCHours();
 }
 
 export function barLondonDay(bar) {
-  const d = new Date(bar.datetime.replace(' ', 'T') + 'Z');
-  return d.getUTCDay();
+  return barToUTC(bar).getUTCDay();
 }
 
 // Strip Saturday (6) and Sunday (0) bars — TwelveData can include a thin Sunday

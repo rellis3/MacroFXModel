@@ -202,7 +202,7 @@ export default {
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=5min&outputsize=800&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
+        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=5min&outputsize=1500&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
         const res = await fetch(tdUrl);
         const data = await res.json();
 
