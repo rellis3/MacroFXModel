@@ -146,16 +146,11 @@ export function detectConfluences(todayLevels, yesterdayLevels, symbol, source, 
   const pipSize   = getPipSize(symbol);
   const calcDistance = getConfluenceThreshold(symbol) * pipSize;
 
-  // Layer 2: dynamic threshold — never exceed half the tightest gap between any two fib levels.
-  // This prevents "everything is confluence" when fibs are densely packed.
-  const allPrices = [...todayLevels, ...yesterdayLevels].map(l => l.price).sort((a, b) => a - b);
-  let minFibGap = Infinity;
-  for (let i = 1; i < allPrices.length; i++) {
-    const gap = allPrices[i] - allPrices[i - 1];
-    if (gap > 0) minFibGap = Math.min(minFibGap, gap);
-  }
-  const fibCap = minFibGap < Infinity ? minFibGap * 0.5 : calcDistance;
-  const normalDistance = Math.min(calcDistance, fibCap);
+  // With 45 fib levels (-10.5 to +10.5) the combined sorted price list always contains
+  // cross-session pairs within a fraction of a pip, making the old fibCap collapse to
+  // near-zero and blocking all confluences. The pip-based calcDistance + Layer 3
+  // clustering are sufficient guards — no dynamic cap needed.
+  const normalDistance = calcDistance;
   const tightDistance  = calcDistance * 0.10;
 
   // Layer 1: collect ALL qualifying pairs (no dedup yet — we need density counts).
