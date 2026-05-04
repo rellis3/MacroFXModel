@@ -85,6 +85,17 @@ STRATEGY = {
     'confluence_threshold_pips':  5,
     'confluence_min_levels':      2,    # minimum fib levels in a cluster to count
 
+    # Pivot levels: if True, daily classic pivots are added as an extra confluence source.
+    # Pivots come from the prior day H/L/C — no lookahead.
+    'use_pivot_confluence': False,
+
+    # EMA trend filter: if True, only take entries aligned with the slow EMA trend.
+    # EMA is computed on 5m bars and sampled at the London open each day.
+    'ema_filter':      False,
+    'ema_fast_period': 50,     # fast EMA period (5m bars)
+    'ema_slow_period': 200,    # slow EMA period (5m bars) — primary trend reference
+    'ema_require_both': False, # if True, both EMAs must agree (stricter)
+
     # Maximum one trade per day per direction
     'max_trades_per_day': 1,
 }
