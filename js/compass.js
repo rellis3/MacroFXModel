@@ -16,7 +16,10 @@ async function compassLoadCache(sym) {
     if (raw) {
       const obj = JSON.parse(raw);
       if (obj && Date.now() - obj.ts <= COMPASS_TTL) {
-        if (sym === 'XAU/USD' && (!obj.spreadDxy || obj.spreadDxy.length === 0)) { /* fall through */ }
+        if (sym === 'XAU/USD' && (
+          !obj.spreadDxy  || obj.spreadDxy.length  === 0 ||
+          !obj.spread10y  || obj.spread10y.length  === 0
+        )) { /* fall through */ }
         else if ((obj._v || 1) >= COMPASS_CACHE_VERSION) return obj;
       }
     }
@@ -25,7 +28,10 @@ async function compassLoadCache(sym) {
   if (kvObj && kvObj.data && kvObj.timestamp) {
     if (Date.now() - kvObj.timestamp <= COMPASS_TTL) {
       const obj = { ts: kvObj.timestamp, ...kvObj.data };
-      if (sym === 'XAU/USD' && (!obj.spreadDxy || obj.spreadDxy.length === 0)) return null;
+      if (sym === 'XAU/USD' && (
+        !obj.spreadDxy || obj.spreadDxy.length === 0 ||
+        !obj.spread10y || obj.spread10y.length === 0
+      )) return null;
       if ((obj._v || 1) < COMPASS_CACHE_VERSION) return null;
       try { localStorage.setItem(key, JSON.stringify(obj)); } catch(e) {}
       return obj;
@@ -45,7 +51,10 @@ function compassSaveCache(sym, payload) {
 
 export async function loadCompassData(sym) {
   if (S.compassData[sym] && (Date.now() - S.compassData[sym].ts) < COMPASS_TTL) {
-    if (sym === 'XAU/USD' && (!S.compassData[sym].spreadDxy || S.compassData[sym].spreadDxy.length === 0)) {
+    if (sym === 'XAU/USD' && (
+      !S.compassData[sym].spreadDxy || S.compassData[sym].spreadDxy.length === 0 ||
+      !S.compassData[sym].spread10y || S.compassData[sym].spread10y.length === 0
+    )) {
       delete S.compassData[sym];
     } else {
       return S.compassData[sym];

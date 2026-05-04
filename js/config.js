@@ -34,7 +34,7 @@ export const COMPASS_CONFIG = {
 
 export const COMPASS_TTL = 6 * 60 * 60 * 1000;
 // Increment when cached data structure changes to force re-fetch.
-export const COMPASS_CACHE_VERSION = 2;
+export const COMPASS_CACHE_VERSION = 3;
 
 export const CAP_DEFAULTS = {
   fx: {
