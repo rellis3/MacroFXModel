@@ -14,6 +14,8 @@ export function calculateAsiaRanges(symbol) {
     const hour = barLondonHour(bar);
     if (hour >= 0 && hour < 6) {
       const dateKey = bar.datetime.split(' ')[0];
+      const dow = new Date(dateKey + 'T12:00:00Z').getUTCDay(); // 0=Sun,6=Sat
+      if (dow === 0 || dow === 6) return;
       if (!sessionsByDate[dateKey]) sessionsByDate[dateKey] = [];
       sessionsByDate[dateKey].push(bar);
     }
