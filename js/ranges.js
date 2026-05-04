@@ -21,31 +21,33 @@ export function calculateAsiaRanges(symbol) {
     }
   });
 
+  // A session is usable if it has any bars reaching hour 5 (covers the full window).
+  // Minimum 12 bars (1 hour) to guard against empty/stub entries.
   function isCompleteSession(sessionBars) {
-    if (!sessionBars || sessionBars.length < 60) return false;
-    let maxHour = -1;
+    if (!sessionBars || sessionBars.length < 12) return false;
     for (const b of sessionBars) {
-      const h = barLondonHour(b);
-      if (h > maxHour) maxHour = h;
+      if (barLondonHour(b) >= 5) return true;
     }
-    return maxHour >= 5;
+    return false;
   }
 
   const sortedDates = Object.keys(sessionsByDate).sort().reverse()
     .filter(d => isCompleteSession(sessionsByDate[d]));
-  if (sortedDates.length < 2) {
+  if (sortedDates.length < 1) {
     S.asiaRangeData[symbol] = { today: null, yesterday: null, todayLevels: [], yesterdayLevels: [], confluences: [] };
     return;
   }
 
-  const today = computeBodyRange(sessionsByDate[sortedDates[0]]);
-  const yesterday = computeBodyRange(sessionsByDate[sortedDates[1]]);
-  if (today) today.date = sortedDates[0];
+  const today     = computeBodyRange(sessionsByDate[sortedDates[0]]);
+  const yesterday = sortedDates.length >= 2 ? computeBodyRange(sessionsByDate[sortedDates[1]]) : null;
+  if (today)     today.date     = sortedDates[0];
   if (yesterday) yesterday.date = sortedDates[1];
 
-  const todayLevels = projectFibLevels(today);
+  const todayLevels     = projectFibLevels(today);
   const yesterdayLevels = projectFibLevels(yesterday);
-  const confluences = detectConfluences(todayLevels, yesterdayLevels, symbol, 'asia', today.range);
+  const confluences = today && yesterday
+    ? detectConfluences(todayLevels, yesterdayLevels, symbol, 'asia', today.range)
+    : [];
 
   S.asiaRangeData[symbol] = { today, yesterday, todayLevels, yesterdayLevels, confluences };
 }
@@ -77,30 +79,29 @@ export function calculateMondayRanges(symbol) {
     }
   });
 
+  // A Monday is usable if it has any bars reaching hour 22 (full day captured).
+  // Minimum 10 bars to guard against stub entries.
   function isCompleteMonday(sessionBars) {
-    if (!sessionBars || sessionBars.length < 30) return false;
-    let maxHour = -1;
+    if (!sessionBars || sessionBars.length < 10) return false;
     for (const b of sessionBars) {
-      const h = barLondonHour(b);
-      if (h > maxHour) maxHour = h;
+      if (barLondonHour(b) >= 22) return true;
     }
-    return maxHour >= 22;
+    return false;
   }
 
   const sortedMondays = Object.keys(weekData).sort().reverse()
     .filter(d => isCompleteMonday(weekData[d]));
-  if (sortedMondays.length < 2) {
+  if (sortedMondays.length < 1) {
     S.mondayRangeData[symbol] = { current: null, previous: null, currentLevels: [], previousLevels: [], confluences: [] };
     return;
   }
 
   const today = new Date();
   const isMonday = today.getDay() === 1;
-  let effIdx = isMonday ? 1 : 0;
-  let prevIdx = effIdx + 1;
-  if (prevIdx >= sortedMondays.length) prevIdx = sortedMondays.length - 1;
+  const effIdx  = (isMonday && sortedMondays.length >= 2) ? 1 : 0;
+  const prevIdx = effIdx + 1;
 
-  const current = computeBodyRange(weekData[sortedMondays[effIdx]]);
+  const current  = computeBodyRange(weekData[sortedMondays[effIdx]]);
   const previous = prevIdx < sortedMondays.length ? computeBodyRange(weekData[sortedMondays[prevIdx]]) : null;
   if (current) current.date = sortedMondays[effIdx];
   if (previous) previous.date = sortedMondays[prevIdx];
@@ -149,38 +150,79 @@ export function directionFromPrice(levelPrice, anchorPrice, symbol) {
 }
 
 export function detectConfluences(todayLevels, yesterdayLevels, symbol, source, bodyRange) {
-  const pipSize = getPipSize(symbol);
-  const normalPips = getConfluenceThreshold(symbol);
-  const calcDistance = normalPips * pipSize;
+  const pipSize   = getPipSize(symbol);
+  const calcDistance = getConfluenceThreshold(symbol) * pipSize;
 
-  const maxAllow = (bodyRange || 0) * 0.25 * 0.5;
-  const normalDistance = (bodyRange && bodyRange > 0)
-    ? Math.min(calcDistance, maxAllow)
-    : calcDistance;
-  const tightDistance = calcDistance * 0.10;
+  // Layer 2: dynamic threshold — never exceed half the tightest gap between any two fib levels.
+  // This prevents "everything is confluence" when fibs are densely packed.
+  const allPrices = [...todayLevels, ...yesterdayLevels].map(l => l.price).sort((a, b) => a - b);
+  let minFibGap = Infinity;
+  for (let i = 1; i < allPrices.length; i++) {
+    const gap = allPrices[i] - allPrices[i - 1];
+    if (gap > 0) minFibGap = Math.min(minFibGap, gap);
+  }
+  const fibCap = minFibGap < Infinity ? minFibGap * 0.5 : calcDistance;
+  const normalDistance = Math.min(calcDistance, fibCap);
+  const tightDistance  = calcDistance * 0.10;
 
-  const confluences = [];
-  const seen = new Set();
-
+  // Layer 1: collect ALL qualifying pairs (no dedup yet — we need density counts).
+  // Use midpoint as the representative price rather than always picking the lower.
+  const rawPairs = [];
   todayLevels.forEach(today => {
     yesterdayLevels.forEach(yesterday => {
       const diff = Math.abs(today.price - yesterday.price);
       if (diff <= normalDistance) {
-        const price = Math.min(today.price, yesterday.price);
-        const priceKey = price.toFixed(getDigits(symbol));
-        if (!seen.has(priceKey)) {
-          seen.add(priceKey);
-          confluences.push({
-            price,
-            todayFib: today.fib,
-            yesterdayFib: yesterday.fib,
-            pipDiff: diff / pipSize,
-            isTight: diff <= tightDistance,
-            source
-          });
-        }
+        rawPairs.push({
+          price:         (today.price + yesterday.price) / 2,
+          todayFib:      today.fib,
+          yesterdayFib:  yesterday.fib,
+          pipDiff:       diff / pipSize,
+          isTight:       diff <= tightDistance,
+          source,
+        });
       }
     });
+  });
+
+  if (!rawPairs.length) return [];
+
+  // Layer 3: cluster merge — group rawPairs whose midpoints are within tightDistance
+  // of the running cluster centre. Each cluster becomes one final confluence level.
+  // Density = how many raw pairs collapsed into that level.
+  rawPairs.sort((a, b) => a.price - b.price);
+
+  const clusters = [];
+  let bucket = [rawPairs[0]];
+
+  for (let i = 1; i < rawPairs.length; i++) {
+    const centre = bucket.reduce((s, p) => s + p.price, 0) / bucket.length;
+    if (rawPairs[i].price - centre <= tightDistance) {
+      bucket.push(rawPairs[i]);
+    } else {
+      clusters.push(bucket);
+      bucket = [rawPairs[i]];
+    }
+  }
+  clusters.push(bucket);
+
+  const confluences = clusters.map(cluster => {
+    const price        = cluster.reduce((s, p) => s + p.price, 0) / cluster.length;
+    const density      = cluster.length;
+    const pipDiff      = Math.min(...cluster.map(p => p.pipDiff));
+    const isTight      = cluster.some(p => p.isTight);
+    const todayFibs    = [...new Set(cluster.map(p => p.todayFib))];
+    const yesterdayFibs= [...new Set(cluster.map(p => p.yesterdayFib))];
+    return {
+      price,
+      todayFib:      todayFibs[0],
+      yesterdayFib:  yesterdayFibs[0],
+      todayFibs,
+      yesterdayFibs,
+      pipDiff,
+      isTight,
+      source,
+      density,       // # of raw fib-pair overlaps that collapsed into this zone
+    };
   });
 
   return confluences.sort((a, b) => {

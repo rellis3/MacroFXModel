@@ -649,3 +649,6 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 .cot-modal-status.ok{color:var(--green)}
 .cot-modal-status.err{color:var(--red)}
 .cot-report-date{font-size:11px;color:var(--text3);margin-top:6px}
+
+/* Density cluster badge on confluence cards */
+.ci-density{color:var(--purple);font-weight:600;font-size:10px}

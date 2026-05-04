@@ -45,9 +45,10 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     });
 
     let stars = 1;
-    if (c.isTight) stars++;
-    if (aligned) stars++;
-    if (pivotMatch) stars++;
+    if (c.isTight)             stars++;
+    if (aligned)               stars++;
+    if (pivotMatch)            stars++;
+    if ((c.density || 1) >= 2) stars++;  // density bonus: 2+ fib pairs collapsed here
 
     const baseSize = calcPositionSize(macroScore, volRegime);
     const sizeAdj = aligned ? 1 : 0.5;

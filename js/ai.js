@@ -109,6 +109,7 @@ export function aiCollectSnapshot() {
       price:     c.price.toFixed(digits),
       stars:     c.stars,
       tight:     c.isTight,
+      density:   c.density || 1,
       distPips:  c.distance.toFixed(1),
       sources:   `${c.source === 'asia' ? 'Asia' : 'Monday'} SD${c.todayFib}/${c.yesterdayFib}`,
       direction: c.direction,

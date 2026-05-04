@@ -561,11 +561,11 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
     <div class="ci-quality">
       <div class="ci-q-icon">${c.isTight ? '🟢' : '🟠'}</div>
       <div class="ci-stars">${stars}</div>
-      <div class="ci-q-text">${c.stars}/4</div>
+      <div class="ci-q-text">${c.stars}/5</div>
     </div>
     <div class="ci-price-block">
       <div class="ci-price">${c.price.toFixed(digits)}</div>
-      <div class="ci-meta">${c.pipDiff.toFixed(2)}p apart · SD ${c.todayFib} / ${c.yesterdayFib}</div>
+      <div class="ci-meta">${c.pipDiff.toFixed(2)}p apart · SD ${c.todayFib} / ${c.yesterdayFib}${(c.density||1) >= 2 ? ` · <span class="ci-density">${c.density}× cluster</span>` : ''}</div>
     </div>
     <div class="ci-dir ${dirClass}">${dirIcon} ${dirText}</div>
     <div class="ci-source ${c.source}">${c.source === 'asia' ? '📍 Asia' : '🗓️ Monday'}</div>
