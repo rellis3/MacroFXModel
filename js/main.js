@@ -13,6 +13,9 @@ import { renderARMAAndTransition } from './arma.js';
 import { renderAll } from './render.js';
 import { triggerAIAnalysis } from './ai.js';
 import { loadCOT, openCOTModal, closeCOTModal, saveCOTUrlFromModal } from './cot.js';
+import { detectSession } from './session.js';
+import { loadEventData } from './events.js';
+import { computeDollarRegime } from './macro.js';
 
 // ── Wire window globals for HTML onclick handlers and circular-dep breakers ──
 window.renderAll              = renderAll;
@@ -105,12 +108,15 @@ window.forceRefresh = async function() {
   ];
   Promise.all(kvKeysToEvict.map(k => kvSet(k, null).catch(() => {})));
 
-  S.fredData = null;
-  S.ohlcData = {};
-  S.ohlc5m = {};
-  S.ohlc30m = {};
+  S.fredData      = null;
+  S.ohlcData      = {};
+  S.ohlc5m        = {};
+  S.ohlc30m       = {};
   S.asiaRangeData = {};
   S.mondayRangeData = {};
+  S.dollarRegime  = null;
+  S.eventRisk     = null;
+  S.surpriseIndex = null;
 
   updateStatus('spin', `Refreshing ${S.currentPair.name}...`);
   loadAll();
@@ -130,12 +136,21 @@ async function loadAll() {
       S.fredData = await loadCached('fred', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED);
       updatePill('pillFred', 'ok');
     }
+    S.dollarRegime = computeDollarRegime();
 
+    // Update session badge immediately (no network needed)
+    S.sessionData = detectSession();
+
+    let hasFinnhub = false;
     try {
       const cfg = await fetch('/api/config').then(r => r.json());
-      if (cfg.hasAnt) updatePill('pillAnt', 'ant');
-      if (cfg.hasKV)  updatePill('pillKV',  'ok');
+      if (cfg.hasAnt)     updatePill('pillAnt', 'ant');
+      if (cfg.hasKV)      updatePill('pillKV',  'ok');
+      if (cfg.hasFinnhub) hasFinnhub = true;
     } catch(e) {}
+
+    // Load events in background — non-blocking, updates S.eventRisk + S.surpriseIndex
+    loadEventData(hasFinnhub).catch(() => {});
 
     const symKey = S.currentPair.symbol.replace('/', '');
 

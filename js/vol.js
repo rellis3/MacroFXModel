@@ -10,7 +10,8 @@ export function calculateVolRegime() {
     sizeMult: 1, stopMult: 1.0, stopDist: 0, tpMult: 1.5,
     remainingRange: 0, remainingPips: 0, dailyCap: 0, dailyCapPips: 0,
     usedRange: 0, usedRangePips: 0, usedPct: 0,
-    garch: null, ci68: null, ci95: null, volCluster: false };
+    garch: null, ci68: null, ci95: null, volCluster: false,
+    volImpulse: null, volBias: 'stable', volImpulsePct: 0 };
   if (!bars || bars.length < 20) return NULL_VOL;
 
   const sym   = S.currentPair.symbol;
@@ -30,6 +31,18 @@ export function calculateVolRegime() {
   }
 
   if (!trueRanges.length) return NULL_VOL;
+
+  // Vol Impulse: last 5 bars vs prior 5 bars — detects accelerating/decelerating vol
+  let volImpulse = null, volBias = 'stable', volImpulsePct = 0;
+  if (trueRanges.length >= 10) {
+    const last5      = trueRanges.slice(-5);
+    const prior5     = trueRanges.slice(-10, -5);
+    const last5Avg   = last5.reduce((a, b) => a + b, 0) / last5.length;
+    const prior5Avg  = prior5.reduce((a, b) => a + b, 0) / prior5.length;
+    volImpulsePct    = prior5Avg > 0 ? ((last5Avg / prior5Avg) - 1) * 100 : 0;
+    volBias          = volImpulsePct > 15 ? 'expanding' : volImpulsePct < -15 ? 'contracting' : 'stable';
+    volImpulse       = { last5Avg, prior5Avg, pct: volImpulsePct, bias: volBias };
+  }
 
   const ATR_ALPHA = 0.15;
   let emaATR = trueRanges[0];
@@ -124,6 +137,9 @@ export function calculateVolRegime() {
     usedPct,
     todayHigh,
     todayLow,
+    volImpulse,
+    volBias,
+    volImpulsePct,
   };
 }
 

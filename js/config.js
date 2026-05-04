@@ -15,11 +15,13 @@ export const FIB_LEVELS = [
 ];
 
 export const CACHE_DURATION = {
-  FRED:   12 * 60 * 60 * 1000,
-  OHLC:   23 * 60 * 60 * 1000,
-  OHLC5M: 18 * 60 * 60 * 1000,
-  OHLC30M:23 * 60 * 60 * 1000,
-  QUOTE:   5 * 60 * 1000
+  FRED:     12 * 60 * 60 * 1000,
+  OHLC:     23 * 60 * 60 * 1000,
+  OHLC5M:   18 * 60 * 60 * 1000,
+  OHLC30M:  23 * 60 * 60 * 1000,
+  QUOTE:     5 * 60 * 1000,
+  EVENTS:    4 * 60 * 60 * 1000,  // Finnhub economic calendar — refresh every 4h
+  SURPRISE: 24 * 60 * 60 * 1000,  // Macro surprise index — daily
 };
 
 // Per-pair config for Macro Compass yield spread chart.

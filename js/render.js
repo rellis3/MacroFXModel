@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTradingDays } from './utils.js';
-import { calculateTierScores } from './macro.js';
+import { calculateTierScores, computeDollarRegime } from './macro.js';
 import { calculateVolRegime, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
 import { computeRegimeTransition, renderARMAAndTransition } from './arma.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
@@ -9,6 +9,8 @@ import { loadAndRenderCompass } from './compass.js';
 import { renderSignalAndEntries } from './signal.js';
 import { aiRenderCardOnUpdate } from './ai.js';
 import { renderCOTCard, renderCOTCrossPair } from './cot.js';
+import { sessionBadgeHTML } from './session.js';
+import { eventRiskBadgeHTML, surpriseIndexHTML, getPairSurpriseScore } from './events.js';
 
 export function renderAll() {
   try {
@@ -177,7 +179,32 @@ function renderAllInner() {
   const digits = getDigits(S.currentPair.symbol);
   const pipSize = getPipSize(S.currentPair.symbol);
 
+  // New feature data
+  const dollarRegime  = S.dollarRegime || computeDollarRegime();
+  const pairSurprise  = getPairSurpriseScore();
+  const sessionBadge  = sessionBadgeHTML(S.sessionData);
+  const eventBadge    = eventRiskBadgeHTML(S.eventRisk);
+  const surpriseBadge = (S.surpriseIndex && Object.keys(S.surpriseIndex).length > 0)
+    ? surpriseIndexHTML(S.surpriseIndex, pairSurprise) : '';
+
+  // Vol impulse pill for display in header
+  const volImpulsePill = (() => {
+    const vi = volRegime.volImpulse;
+    if (!vi) return '';
+    const col = vi.bias === 'expanding' ? 'var(--red)' : vi.bias === 'contracting' ? 'var(--blue)' : 'var(--text3)';
+    const icon = vi.bias === 'expanding' ? '↑' : vi.bias === 'contracting' ? '↓' : '→';
+    return ` · Vol Impulse ${icon} ${vi.bias} (${vi.pct >= 0 ? '+' : ''}${vi.pct.toFixed(0)}%)`;
+  })();
+
+  // Dollar regime pill
+  const dregPill = dollarRegime
+    ? ` · DXY ${dollarRegime.label}`
+    : '';
+
   const html = `
+<!-- SESSION BADGE -->
+${sessionBadge}
+
 <!-- RISK SENTIMENT TRAFFIC LIGHT -->
 <div class="risk-bar">
   <div class="risk-card ${sentiment.audjpy.status}">
@@ -234,7 +261,7 @@ ${calendarCtx.warnings.length > 0 ? `
       <div class="hd-top">
         <div>
           <div class="pair-title">${S.currentPair.symbol.split('/')[0]}<span class="q">/</span>${S.currentPair.symbol.split('/')[1] || ''}</div>
-          <div class="pair-meta">Vol: ${volRegime.regime} (${volRegime.percentile}th pct) · ATR ${volRegime.atrPips.toFixed(0)}p${volRegime.garch ? ' · GARCH ' + volRegime.garch.pips.toFixed(0) + 'p [68%: ' + volRegime.ci68Pips.toFixed(0) + 'p]' : ''} · ${tierData.agreeCount}/7 tiers agree</div>
+          <div class="pair-meta">Vol: ${volRegime.regime} (${volRegime.percentile}th pct) · ATR ${volRegime.atrPips.toFixed(0)}p${volRegime.garch ? ' · GARCH ' + volRegime.garch.pips.toFixed(0) + 'p [68%: ' + volRegime.ci68Pips.toFixed(0) + 'p]' : ''}${volImpulsePill}${dregPill} · ${tierData.agreeCount}/7 tiers agree</div>
           <div class="bias-badge ${biasClass}">${biasText}${macroBias} · ${Math.abs(tierData.totalScore) >= 9 ? 'HIGH' : Math.abs(tierData.totalScore) >= 5 ? 'MED' : 'LOW'} CONVICTION</div>
         </div>
         <div class="hd-right">
@@ -299,6 +326,31 @@ ${calendarCtx.warnings.length > 0 ? `
         </div>
       `).join('')}
     </div>
+
+    <!-- DOLLAR REGIME + EVENT RISK + SURPRISE INDEX -->
+    ${dollarRegime || S.eventRisk || surpriseBadge ? `
+    <div class="sec-lbl">
+      Market Context
+      <span class="sec-badge">INTELLIGENCE</span>
+    </div>
+    ${dollarRegime ? `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--s2);border:1px solid var(--border);border-radius:7px;margin-bottom:8px">
+      <div style="font-size:18px;line-height:1">💵</div>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:700;color:${dollarRegime.trend === 'strengthening' ? 'var(--red)' : dollarRegime.trend === 'weakening' ? 'var(--green)' : 'var(--text2)'}">
+          ${dollarRegime.label}
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:1px">
+          DXY ${dollarRegime.dxy} · ${dollarRegime.change >= 0 ? '+' : ''}${dollarRegime.change}% vs prev · Strength: ${dollarRegime.strength}
+          ${S.currentPair?.isGold ? ' · Gold inversely correlated — USD strength = gold headwind' :
+            S.currentPair?.isUsdBase ? ' · USD-base pair: USD strength = bullish' :
+            ' · USD-quote pair: USD strength = bearish'}
+        </div>
+      </div>
+    </div>` : ''}
+    ${eventBadge}
+    ${surpriseBadge}
+    ` : ''}
 
     <!-- MACRO COMPASS -->
     <div class="sec-lbl">

@@ -1,8 +1,9 @@
 import { S } from './state.js';
 import { AI_CACHE_PREFIX, AI_CACHE_TTL } from './config.js';
 import { kvGet, kvSet, getPipSize, getDigits, filterTradingDays } from './utils.js';
-import { calculateTierScores } from './macro.js';
+import { calculateTierScores, computeDollarRegime } from './macro.js';
 import { calculateVolRegime, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots } from './vol.js';
+import { getPairSurpriseScore } from './events.js';
 import { computeARMAForecast, computeRegimeTransition } from './arma.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
 import { runSignalEngine, runEntryScanner } from './signal.js';
@@ -294,6 +295,58 @@ export function aiCollectSnapshot() {
     if (cot) s.cot = cot;
   } catch(e) {}
 
+  // Session Intelligence
+  if (S.sessionData) {
+    s.session = {
+      name:       S.sessionData.name,
+      londonTime: S.sessionData.londonTime,
+      confidence: S.sessionData.confidence,
+      desc:       S.sessionData.desc,
+    };
+  }
+
+  // Vol Impulse
+  try {
+    const vol = calculateVolRegime();
+    if (vol.volImpulse) {
+      s.volImpulse = {
+        bias: vol.volBias,
+        pct:  vol.volImpulsePct,
+      };
+    }
+  } catch(e) {}
+
+  // Dollar Regime
+  if (S.dollarRegime) {
+    s.dollarRegime = S.dollarRegime;
+  } else {
+    try { s.dollarRegime = computeDollarRegime(); } catch(e) {}
+  }
+
+  // Economic Event Risk
+  if (S.eventRisk && !S.eventRisk.unavailable) {
+    s.eventRisk = {
+      level:        S.eventRisk.level,
+      sizeMult:     S.eventRisk.sizeMult,
+      currencyRisk: S.eventRisk.currencyRisk,
+      inNext4h:     (S.eventRisk.inNext4h || []).map(e => ({
+        time:    e.time,
+        country: e.country,
+        event:   e.event,
+        impact:  e.impact,
+      })),
+    };
+  }
+
+  // Macro Surprise Index
+  if (S.surpriseIndex && Object.keys(S.surpriseIndex).length > 0) {
+    s.surpriseIndex = S.surpriseIndex;
+    try {
+      const ps = getPairSurpriseScore();
+      if (ps) s.pairSurprise = ps.net;
+    } catch(e) {}
+  }
+
   return s;
 }
 
@@ -433,6 +486,22 @@ export async function aiRenderCard(state, payload, generatedAt) {
         ${a.cotRead ? `<div class="ai-section">
           <div class="ai-section-label">📋 COT Positioning</div>
           <div class="ai-section-text">${a.cotRead}</div>
+        </div>` : ''}
+        ${a.sessionRead ? `<div class="ai-section">
+          <div class="ai-section-label">🕐 Session Intelligence</div>
+          <div class="ai-section-text">${a.sessionRead}</div>
+        </div>` : ''}
+        ${a.dollarRegimeRead ? `<div class="ai-section">
+          <div class="ai-section-label">💵 Dollar Regime</div>
+          <div class="ai-section-text">${a.dollarRegimeRead}</div>
+        </div>` : ''}
+        ${a.eventRiskRead ? `<div class="ai-section">
+          <div class="ai-section-label">📅 Event Risk</div>
+          <div class="ai-section-text">${a.eventRiskRead}</div>
+        </div>` : ''}
+        ${a.surpriseRead ? `<div class="ai-section">
+          <div class="ai-section-label">📊 Macro Surprise</div>
+          <div class="ai-section-text">${a.surpriseRead}</div>
         </div>` : ''}
       </div>
 

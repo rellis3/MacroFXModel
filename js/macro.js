@@ -1,4 +1,5 @@
 import { S } from './state.js';
+import { COMPASS_CONFIG } from './config.js';
 import { ema, calcRSI, filterTradingDays } from './utils.js';
 
 export function calculateTierScores() {
@@ -96,7 +97,19 @@ function computeT1() {
     score2 = (diff2 >= 0 ? 1 : -1) * abs2 * (bullishWhenPositive ? 1 : -1);
   }
 
-  const score = Math.max(-3, Math.min(3, Math.round(score10 + score2)));
+  // Yield-spread momentum bonus: Macro Compass 10Y momentum confirms/contradicts T1 (+1/-1)
+  const compassData = S.compassData?.[S.currentPair.symbol];
+  const mom10y      = compassData?.momentum10y ?? null;
+  const fxSign      = COMPASS_CONFIG[S.currentPair.symbol]?.fxSign ?? 1;
+  let momentumBonus = 0;
+  if (mom10y != null && Math.abs(mom10y) > 0.05) {
+    // mom10yBull: is momentum pushing the pair upward?
+    const mom10yBull = fxSign > 0 ? mom10y > 0 : mom10y < 0;
+    const rawScore   = score10 + score2;
+    momentumBonus    = mom10yBull === (rawScore >= 0) ? 1 : -1;
+  }
+
+  const score = Math.max(-3, Math.min(3, Math.round(score10 + score2 + momentumBonus)));
   const has2Y = diff2Bp != null;
   const valStr = has2Y
     ? `10Y ${diff10Bp >= 0 ? '+' : ''}${diff10Bp.toFixed(0)}bp · 2Y ${diff2Bp >= 0 ? '+' : ''}${diff2Bp.toFixed(0)}bp`
@@ -108,7 +121,8 @@ function computeT1() {
     reading: Math.abs(diff10Bp) < 20 ? 'Tight spread, neutral' :
              score > 0 ? 'Yield differential supports pair' : 'Yield differential drags pair',
     source: has2Y ? '10Y + 2Y spreads' : '10Y vs counterpart',
-    isMonthly: !has2Y
+    isMonthly: !has2Y,
+    momentumBonus,
   };
 }
 
@@ -316,4 +330,34 @@ function computeT7() {
 
 function tierUnavailable(tier, name, val, max) {
   return { tier, name, max, score: 0, val: '—', reading: 'Data unavailable', source: '—', isMonthly: false, na: true };
+}
+
+// Dollar Regime — combines FRED DXY level change + Compass DXY momentum
+export function computeDollarRegime() {
+  const dxy     = S.fredData?.dxy?.value;
+  const dxyPrev = S.fredData?.dxy?.prev;
+  if (dxy == null) return null;
+
+  const fredChange = dxyPrev ? ((dxy / dxyPrev) - 1) * 100 : 0;
+  const absChg     = Math.abs(fredChange);
+
+  // Cross-reference with XAU Compass DXY momentum if loaded (fxSign=-1 means DXY up → gold bearish)
+  const xauCompass = S.compassData?.['XAU/USD'];
+  const dxyMomCross = xauCompass?.momentumDxy ?? null;
+
+  let trend, strength;
+  if      (fredChange >  0.3) { trend = 'strengthening'; strength = absChg > 0.7 ? 'strong' : 'moderate'; }
+  else if (fredChange < -0.3) { trend = 'weakening';     strength = absChg > 0.7 ? 'strong' : 'moderate'; }
+  else                        { trend = 'stable';         strength = 'weak'; }
+
+  // If compass momentum contradicts FRED, downgrade to moderate
+  if (dxyMomCross != null && strength === 'strong') {
+    const compStrengthen = dxyMomCross < 0; // XAU fxSign=-1: negative mom → DXY strengthening
+    if ((trend === 'strengthening') !== compStrengthen) strength = 'moderate';
+  }
+
+  const arrow = trend === 'strengthening' ? '↑' : trend === 'weakening' ? '↓' : '→';
+  const label = `${arrow} USD ${strength !== 'weak' ? strength + ' ' : ''}${trend}`;
+
+  return { trend, strength, dxy: dxy.toFixed(2), change: fredChange.toFixed(2), label };
 }

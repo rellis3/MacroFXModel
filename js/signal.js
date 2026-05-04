@@ -196,6 +196,11 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
   const oiStore = (() => { try { return JSON.parse(localStorage.getItem('oi_store') || '{}'); } catch(e) { return {}; } })();
   const oi = oiStore[sym] || null;
 
+  // Composite size multiplier: event risk × session confidence (capped ≥10% to avoid zeroing)
+  const eventMult   = S.eventRisk?.sizeMult   ?? 1.0;
+  const sessionConf = S.sessionData?.confidence ?? 1.0;
+  const sizeMult    = Math.max(0.10, eventMult * sessionConf);
+
   const candidates = enhanced.map(c => {
     let layerScore = c.stars;
     const layers   = [];
@@ -319,8 +324,23 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
     const slPips  = c.sl != null ? Math.abs(c.sl - c.price) / pipSz : null;
     const rrRatio = (tpPips && slPips && slPips > 0) ? (tpPips / slPips).toFixed(1) : null;
 
+    // Apply session confidence + event risk to recommended size
+    const adjSize = Math.max(10, Math.round((c.size || 50) * sizeMult));
+
+    // Add session tag if confidence is meaningfully reduced
+    if (sessionConf < 0.85 && S.sessionData) {
+      tags.push({ cls: 'range', label: `${S.sessionData.name} (${Math.round(sessionConf*100)}%)`, key: 'session' });
+    }
+    // Add event risk warning tag
+    if (S.eventRisk?.level === 'high') {
+      tags.push({ cls: 'warn', label: 'Event ⚠ -50%', key: 'event' });
+    } else if (S.eventRisk?.level === 'medium') {
+      tags.push({ cls: 'warn', label: 'Event ⚡ -25%', key: 'event' });
+    }
+
     return {
       ...c,
+      size: adjSize,
       totalStars: Math.min(7, Math.round(layerScore)),
       layers,
       tags,

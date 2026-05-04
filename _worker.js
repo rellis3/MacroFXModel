@@ -25,8 +25,8 @@ function err(msg, status = 500) {
 // via /api/kv/get and /api/kv/set. The 'caps' key is excluded here because
 // it has its own dedicated /api/config/caps route with stricter validation.
 function isAllowedKVKey(key) {
-  const EXACT = new Set(['fred', 'oi_store', 'journal_store', 'cot_data']);
-  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_'];
+  const EXACT = new Set(['fred', 'oi_store', 'journal_store', 'cot_data', 'surprise_index', 'events_today']);
+  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
 }
@@ -151,10 +151,11 @@ export default {
       // -- /api/config -----------------------------------------
       if (path === '/api/config') {
         return json({
-          hasFred:   !!env.FRED_KEY,
-          hasTwelve: !!env.TWELVE_KEY,
-          hasAnt:    !!env.ANT_KEY,
-          hasKV:     !!env.FX_SCORES,
+          hasFred:     !!env.FRED_KEY,
+          hasTwelve:   !!env.TWELVE_KEY,
+          hasAnt:      !!env.ANT_KEY,
+          hasKV:       !!env.FX_SCORES,
+          hasFinnhub:  !!env.FINNHUB_KEY,
         });
       }
 
@@ -443,6 +444,64 @@ export default {
         return json(Object.fromEntries(results));
       }
 
+      // -- /api/events ------------------------------------------
+      // Finnhub economic calendar for next 3 days.
+      // Returns flat array of event objects: { time, country, event, impact, estimate, actual, prev }
+      if (path === '/api/events') {
+        if (!env.FINNHUB_KEY) return json({ ok: false, reason: 'FINNHUB_KEY not configured', events: [] });
+        try {
+          const today  = new Date();
+          const from   = today.toISOString().split('T')[0];
+          const to     = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          const url    = `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${env.FINNHUB_KEY}`;
+          const res    = await fetch(url, { headers: { 'User-Agent': 'MacroFXDashboard/1.0' } });
+          if (!res.ok) return json({ ok: false, reason: `Finnhub ${res.status}`, events: [] });
+          const data   = await res.json();
+          const events = (data.economicCalendar || []).map(e => ({
+            time:    e.time,
+            country: e.country,
+            event:   e.event,
+            impact:  e.impact,
+            unit:    e.unit || null,
+            estimate:e.estimate,
+            actual:  e.actual,
+            prev:    e.prev,
+          }));
+          return json(events);
+        } catch(e) {
+          return json({ ok: false, reason: e.message, events: [] });
+        }
+      }
+
+      // -- /api/surprise ----------------------------------------
+      // Finnhub economic calendar for past 30 days — only events with actual + estimate.
+      // Used to compute the Macro Surprise Index per currency.
+      if (path === '/api/surprise') {
+        if (!env.FINNHUB_KEY) return json([]);
+        try {
+          const to   = new Date();
+          const from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+          const url  = `https://finnhub.io/api/v1/calendar/economic?from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}&token=${env.FINNHUB_KEY}`;
+          const res  = await fetch(url, { headers: { 'User-Agent': 'MacroFXDashboard/1.0' } });
+          if (!res.ok) return json([]);
+          const data = await res.json();
+          const obs  = (data.economicCalendar || [])
+            .filter(e => e.actual != null && e.actual !== '' && e.estimate != null && e.estimate !== '')
+            .map(e => ({
+              time:     e.time,
+              country:  e.country,
+              event:    e.event,
+              impact:   e.impact,
+              actual:   e.actual,
+              estimate: e.estimate,
+              prev:     e.prev,
+            }));
+          return json(obs);
+        } catch(e) {
+          return json([]);
+        }
+      }
+
       // -- /api/analysis ----------------------------------------
       // Receives a full dashboard snapshot and returns a Claude-generated
       // trading intelligence brief as structured JSON.
@@ -540,11 +599,39 @@ ${s.topEntries && s.topEntries.length > 0
   ? s.topEntries.map(e => `  ${e.stars}* ${e.direction.toUpperCase()} @ ${e.price}  Tags: ${e.tags}  SL: ${e.sl} (${e.slPips}p)  TP: ${e.tp} (${e.tpNote}${e.tpCapped ? ' - vol capped' : ''}, ${e.tpPips}p)  R:R 1:${e.rr}  Size: ${e.size}%`).join('\n')
   : '  No high-confluence entries detected'}
 
+SESSION INTELLIGENCE
+Current session: ${s.session?.name ?? 'N/A'}  |  London time: ${s.session?.londonTime ?? 'N/A'}  |  Confidence multiplier: ${s.session?.confidence ?? 'N/A'}x
+Context: ${s.session?.desc ?? 'N/A'}
+
+VOLATILITY IMPULSE (5-bar momentum)
+${s.volImpulse ? `Bias: ${s.volImpulse.bias.toUpperCase()}  |  Last 5 bars avg TR vs prior 5: ${s.volImpulse.pct >= 0 ? '+' : ''}${s.volImpulse.pct.toFixed(1)}%
+${s.volImpulse.bias === 'expanding' ? '→ Vol accelerating — widen stops, beware stop-hunts' : s.volImpulse.bias === 'contracting' ? '→ Vol contracting — tighter stops possible, range trades favoured' : '→ Vol stable — no regime shift signal'}` : '  Not available (< 10 daily bars)'}
+
+DOLLAR REGIME (DXY)
+${s.dollarRegime ? `${s.dollarRegime.label}  |  DXY: ${s.dollarRegime.dxy}  |  Change: ${s.dollarRegime.change >= 0 ? '+' : ''}${s.dollarRegime.change}%  |  Strength: ${s.dollarRegime.strength}` : '  DXY data not available'}
+
+ECONOMIC EVENT RISK
+${s.eventRisk && !s.eventRisk.unavailable
+  ? `Risk level: ${s.eventRisk.level.toUpperCase()}  |  Size multiplier: ${s.eventRisk.sizeMult}x
+${s.eventRisk.inNext4h && s.eventRisk.inNext4h.length > 0
+    ? 'Events next 4h: ' + s.eventRisk.inNext4h.map(e => `${e.country} ${e.impact?.toUpperCase()||'?'} "${e.event||'—'}" ${e.time ? new Date(e.time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}) : ''}`).join(' | ')
+    : 'No events in next 4 hours'}
+${Object.keys(s.eventRisk.currencyRisk||{}).length > 0
+    ? 'Currency risk: ' + Object.entries(s.eventRisk.currencyRisk).map(([c,r]) => `${c}: ${r.high}H/${r.medium}M`).join(', ')
+    : ''}`
+  : '  Economic calendar unavailable (FINNHUB_KEY not configured)'}
+
+MACRO SURPRISE INDEX (30-day actual vs forecast)
+${s.surpriseIndex && Object.keys(s.surpriseIndex).length > 0
+  ? Object.entries(s.surpriseIndex).sort((a,b) => Math.abs(b[1])-Math.abs(a[1])).map(([c,v]) => `${c}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}`).join('  |  ') +
+    (s.pairSurprise != null ? `\nPair net surprise: ${s.pairSurprise >= 0 ? '+' : ''}${s.pairSurprise.toFixed(2)} (positive = bullish base ccy)` : '')
+  : '  Surprise index unavailable (Finnhub not configured or no data with estimates)'}
+
 === END SNAPSHOT ===
 
 Respond with a single valid JSON object. No markdown. No text outside the JSON. Keep all string values SHORT (1-2 sentences max). Max 3 items per array.
 
-{"overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":0,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""]}`;
+{"overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":0,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""]}`;
 
           const antRes = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',

@@ -14,4 +14,8 @@ export const S = {
   compassMode:     'both', // '2y' | '10y' | 'both'
   _caps:           null,   // proximity caps loaded from KV
   cotData:         null,   // parsed CFTC COT data keyed by pair
+  sessionData:     null,   // detectSession() result — current trading session
+  dollarRegime:    null,   // computeDollarRegime() result — USD trend + strength
+  eventRisk:       null,   // { level, sizeMult, events, currencyRisk } — Finnhub events
+  surpriseIndex:   null,   // { [currency]: score } — macro surprise per currency
 };
