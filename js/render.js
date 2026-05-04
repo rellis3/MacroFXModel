@@ -8,6 +8,7 @@ import { renderOISidebar } from './oi.js';
 import { loadAndRenderCompass } from './compass.js';
 import { renderSignalAndEntries } from './signal.js';
 import { aiRenderCardOnUpdate } from './ai.js';
+import { renderCOTCard, renderCOTCrossPair } from './cot.js';
 
 export function renderAll() {
   try {
@@ -518,6 +519,12 @@ ${calendarCtx.warnings.length > 0 ? `
         `;
       })()}
     </div>
+
+    <!-- COT POSITIONING -->
+    <div class="sec-lbl">COT Positioning <span class="sec-badge purple">CFTC</span></div>
+    <div class="card" style="margin-bottom:8px">${renderCOTCard(S.currentPair.symbol)}</div>
+    <div class="sec-lbl">Cross-Pair COT <span class="sec-badge">SPECS</span></div>
+    <div class="card" style="margin-bottom:16px">${renderCOTCrossPair()}</div>
 
     <!-- AI ANALYSIS -->
     <div class="sec-lbl">AI Analysis <span class="sec-badge purple">CLAUDE</span></div>

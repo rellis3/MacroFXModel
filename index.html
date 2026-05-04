@@ -20,6 +20,7 @@
   <div class="spacer"></div>
   <button class="dark-btn" onclick="forceRefresh()" title="Clear all caches and reload data"><span>🔄</span><span>Refresh</span></button>
   <button class="dark-btn" onclick="openOIModal()" title="Open Interest Analyser"><span>📊</span><span>OI</span></button>
+  <button class="dark-btn" onclick="openCOTModal()" id="cotBtn" title="COT — CFTC Commitment of Traders"><span>📋</span><span>COT</span></button>
   <button class="ai-analyse-btn" onclick="triggerAIAnalysis()" id="aiAnalysisBtn" title="AI trading analysis — reads all dashboard data"><span>🧠</span><span>Analyse</span></button>
   <button class="dark-btn" onclick="toggleDark()"><span id="d-icon">🌙</span><span id="d-lbl">Dark</span></button>
   <button class="dark-btn" onclick="openCfgModal()" id="cfgBtn" title="Confluence proximity config"><span>⚙</span><span>Caps</span></button>
@@ -270,6 +271,37 @@ Example:
       <button class="cfg-reset-btn" onclick="resetCaps()">↩ Reset defaults</button>
       <span class="cfg-status" id="cfgSaveStatus"></span>
       <span class="cfg-updated" id="cfgUpdatedAt"></span>
+    </div>
+  </div>
+</div>
+
+<!-- COT URL CONFIG MODAL -->
+<div class="cot-modal-overlay" id="cotModalOverlay" onclick="if(event.target===this)closeCOTModal()">
+  <div class="cot-modal">
+    <div class="cot-modal-hd">
+      <div>
+        <div class="cot-modal-title">📋 COT — CFTC Report URL</div>
+        <div class="cot-modal-sub">Paste this week's CFTC Financial Futures report URL. Updated each Friday.</div>
+      </div>
+      <button class="cot-modal-close" onclick="closeCOTModal()">✕</button>
+    </div>
+
+    <label class="cot-field-lbl" for="cotUrlInput">CFTC Report URL</label>
+    <input class="cot-url-input" type="url" id="cotUrlInput"
+      placeholder="https://www.cftc.gov/sites/default/files/files/dea/cotarchives/2026/options/financial_lof042526.htm">
+    <div id="cotReportDate" class="cot-report-date"></div>
+
+    <div class="cot-hint-box">
+      <strong>How to find this week's URL:</strong><br>
+      1. Go to <strong>cftc.gov → Market Reports → Commitments of Traders → Financial Traders (Combined)</strong><br>
+      2. Right-click the most recent <em>Long Format</em> link → Copy link address<br>
+      3. Paste above. URL pattern: <code>financial_lof[MMDDYY].htm</code>
+    </div>
+
+    <div class="cot-modal-footer">
+      <button class="cot-save-btn" id="cotSaveBtn" onclick="saveCOTUrlFromModal()">💾 Save &amp; Load</button>
+      <button class="cot-cancel-btn" onclick="closeCOTModal()">Cancel</button>
+      <span class="cot-modal-status" id="cotModalStatus"></span>
     </div>
   </div>
 </div>

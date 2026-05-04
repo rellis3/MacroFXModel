@@ -13,4 +13,5 @@ export const S = {
   compassData:     {},
   compassMode:     'both', // '2y' | '10y' | 'both'
   _caps:           null,   // proximity caps loaded from KV
+  cotData:         null,   // parsed CFTC COT data keyed by pair
 };

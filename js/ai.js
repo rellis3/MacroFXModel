@@ -7,6 +7,7 @@ import { computeARMAForecast, computeRegimeTransition } from './arma.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
 import { runSignalEngine, runEntryScanner } from './signal.js';
 import { oiFmtStrike, oiFmtOI, oiFmtChg } from './oi.js';
+import { cotSnapshotForAI } from './cot.js';
 
 export async function aiLoadCache(sym) {
   const key = AI_CACHE_PREFIX + sym.replace('/', '');
@@ -287,6 +288,11 @@ export function aiCollectSnapshot() {
     }
   } catch(e) {}
 
+  try {
+    const cot = cotSnapshotForAI(sym);
+    if (cot) s.cot = cot;
+  } catch(e) {}
+
   return s;
 }
 
@@ -422,6 +428,10 @@ export async function aiRenderCard(state, payload, generatedAt) {
         ${a.spreadSignalRead ? `<div class="ai-section">
           <div class="ai-section-label">📡 Spread Signal</div>
           <div class="ai-section-text">${a.spreadSignalRead}</div>
+        </div>` : ''}
+        ${a.cotRead ? `<div class="ai-section">
+          <div class="ai-section-label">📋 COT Positioning</div>
+          <div class="ai-section-text">${a.cotRead}</div>
         </div>` : ''}
       </div>
 

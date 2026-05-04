@@ -25,10 +25,116 @@ function err(msg, status = 500) {
 // via /api/kv/get and /api/kv/set. The 'caps' key is excluded here because
 // it has its own dedicated /api/config/caps route with stricter validation.
 function isAllowedKVKey(key) {
-  const EXACT = new Set(['fred', 'oi_store', 'journal_store']);
+  const EXACT = new Set(['fred', 'oi_store', 'journal_store', 'cot_data']);
   const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
+}
+
+// ── CFTC COT file parser ──────────────────────────────────────────────────────
+// Parses the CFTC Traders in Financial Futures (TFF) combined options report.
+// Returns an object keyed by dashboard pair symbol with position data.
+function parseCFTCFile(text) {
+  // Strip HTML tags (the .htm files embed plain text in HTML scaffolding)
+  const plain = text.replace(/<[^>]+>/g, '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+  const lines = plain.split(/\r?\n/);
+
+  // TFF column order (14 cols): DealerL, DealerS, DealerSp, AML, AMS, AMSp, LevL, LevS, LevSp, OthL, OthS, OthSp, NRL, NRS
+  // flip=true: futures quote the foreign currency, so net sign is inverted for the USD-base dashboard pair
+  const FX_MAP = [
+    { name: 'EURO FX',            pair: 'EUR/USD', flip: false },
+    { name: 'BRITISH POUND',      pair: 'GBP/USD', flip: false },
+    { name: 'JAPANESE YEN',       pair: 'USD/JPY', flip: true  },
+    { name: 'AUSTRALIAN DOLLAR',  pair: 'AUD/USD', flip: false },
+    { name: 'NEW ZEALAND DOLLAR', pair: 'NZD/USD', flip: false },
+    { name: 'SWISS FRANC',        pair: 'USD/CHF', flip: true  },
+    { name: 'CANADIAN DOLLAR',    pair: 'USD/CAD', flip: true  },
+  ];
+
+  const parseNums = line =>
+    line.replace(/,/g, '').trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && isFinite(n));
+
+  const result = {};
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = FX_MAP.find(m => lines[i].includes(m.name));
+    if (!match) continue;
+
+    let openInterest = null;
+    for (let j = i; j < Math.min(i + 6, lines.length); j++) {
+      const m = lines[j].match(/Open Interest is\s+([\d,]+)/i);
+      if (m) { openInterest = parseInt(m[1].replace(/,/g, '')); break; }
+    }
+
+    let positions = null, changes = null, traders = null, changeDate = null;
+
+    for (let j = i + 1; j < Math.min(i + 35, lines.length); j++) {
+      const l = lines[j].trim();
+      if (!l) continue;
+
+      const tryNums = (start) => {
+        for (let k = start + 1; k < start + 4; k++) {
+          const nums = parseNums(lines[k] || '');
+          if (nums.length >= 12) return nums;
+        }
+        return null;
+      };
+
+      if (l === 'Positions') {
+        positions = tryNums(j);
+      } else if (l.startsWith('Changes from:')) {
+        const dm = l.match(/Changes from:\s+(.+?)(?:\s{3,}|$)/);
+        if (dm) changeDate = dm[1].trim();
+        changes = tryNums(j);
+      } else if (l.startsWith('Number of Traders')) {
+        traders = tryNums(j);
+        break;
+      }
+    }
+
+    if (!positions || positions.length < 14) continue;
+
+    const p = positions;
+    const c = changes || new Array(14).fill(0);
+    const t = traders || [];
+
+    let [dealerL, dealerS] = [p[0], p[1]];
+    let [amL,     amS    ] = [p[3], p[4]];
+    let [levL,    levS   ] = [p[6], p[7]];
+
+    let dealerNetChg = (c[0]||0) - (c[1]||0);
+    let amNetChg     = (c[3]||0) - (c[4]||0);
+    let levNetChg    = (c[6]||0) - (c[7]||0);
+
+    let numLevL = t[6] || 0, numLevS = t[7] || 0;
+
+    if (match.flip) {
+      [dealerL, dealerS] = [dealerS, dealerL];
+      [amL,     amS    ] = [amS,     amL    ];
+      [levL,    levS   ] = [levS,    levL   ];
+      dealerNetChg *= -1; amNetChg *= -1; levNetChg *= -1;
+      [numLevL, numLevS] = [numLevS, numLevL];
+    }
+
+    const levNet    = levL - levS;
+    const amNet     = amL  - amS;
+    const dealerNet = dealerL - dealerS;
+    const levPct    = openInterest ? Math.round(levNet / openInterest * 1000) / 10 : null;
+    const grossRatio    = levS > 0 ? Math.round(levL / levS * 100) / 100 : null;
+    const avgLevContracts = numLevL > 0 ? Math.round(levL / numLevL) : null;
+    const crowdingPct   = openInterest ? Math.round(Math.abs(levNet) / openInterest * 100) : null;
+
+    result[match.pair] = {
+      openInterest, changeDate,
+      levLong: levL, levShort: levS, levNet, levNetChg, levPct,
+      numLevLong: numLevL, numLevShort: numLevS, avgLevContracts,
+      amLong: amL,     amShort: amS,     amNet,     amNetChg,
+      dealerLong: dealerL, dealerShort: dealerS, dealerNet, dealerNetChg,
+      grossRatio, crowdingPct,
+    };
+  }
+
+  return result;
 }
 
 export default {
@@ -422,6 +528,13 @@ ${s.spreadSignal ? `Bias: ${s.spreadSignal.bias}  |  Type: ${s.spreadSignal.type
 Fair value gap: ${s.spreadSignal.fvPips ?? 'N/A'} pips ${s.spreadSignal.fvBull ? '(undervalued  -  buy bias)' : '(overvalued  -  sell bias)'}
 ${s.spreadSignal.lagDetected ? '! LAG DETECTED  -  spread moved ahead of price, catch-up move likely' : ''}` : '  Signal engine not available'}
 
+COT POSITIONING (CFTC Traders in Financial Futures — Leveraged Funds / Managed Money)
+${s.cot ? `Report date: ${s.cot.reportDate ?? 'N/A'}  |  Open Interest: ${s.cot.openInterest ?? 'N/A'}
+Leveraged funds net: ${s.cot.levNet ?? 'N/A'} (${s.cot.levNetChg != null ? (s.cot.levNetChg >= 0 ? '+' : '') + s.cot.levNetChg : 'N/A'} wk)  |  Net % of OI: ${s.cot.levPct != null ? s.cot.levPct.toFixed(1) + '%' : 'N/A'}
+Spec traders: ${s.cot.numLevLong ?? 'N/A'} long · ${s.cot.numLevShort ?? 'N/A'} short  |  Avg size: ${s.cot.avgContracts ?? 'N/A'} contracts
+Asset Mgr net: ${s.cot.amNet ?? 'N/A'} (${s.cot.amNetChg != null ? (s.cot.amNetChg >= 0 ? '+' : '') + s.cot.amNetChg : 'N/A'} wk)  |  Dealer net: ${s.cot.dealerNet ?? 'N/A'}
+Gross L/S ratio: ${s.cot.grossRatio ?? 'N/A'}  |  Crowding: ${s.cot.crowdingPct != null ? s.cot.crowdingPct.toFixed(1) + '% of OI' : 'N/A'}${s.cot.crowdingPct >= 20 ? ' — EXTREME (unwind risk elevated)' : s.cot.crowdingPct >= 10 ? ' — ELEVATED' : ''}` : '  COT data not available (set CFTC URL via COT toolbar button)'}
+
 HIGH CONFLUENCE ENTRIES (from multi-layer scanner)
 ${s.topEntries && s.topEntries.length > 0
   ? s.topEntries.map(e => `  ${e.stars}* ${e.direction.toUpperCase()} @ ${e.price}  Tags: ${e.tags}  SL: ${e.sl} (${e.slPips}p)  TP: ${e.tp} (${e.tpNote}${e.tpCapped ? ' - vol capped' : ''}, ${e.tpPips}p)  R:R 1:${e.rr}  Size: ${e.size}%`).join('\n')
@@ -431,7 +544,7 @@ ${s.topEntries && s.topEntries.length > 0
 
 Respond with a single valid JSON object. No markdown. No text outside the JSON. Keep all string values SHORT (1-2 sentences max). Max 3 items per array.
 
-{"overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":0,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""]}`;
+{"overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":0,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""]}`;
 
           const antRes = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -475,6 +588,44 @@ Respond with a single valid JSON object. No markdown. No text outside the JSON. 
 
         } catch(e) {
           return err('Analysis route error: ' + e.message);
+        }
+      }
+
+      // -- /api/cot/url GET -------------------------------------
+      // Returns the stored CFTC report URL.
+      if (path === '/api/cot/url' && request.method === 'GET') {
+        if (!env.FX_SCORES) return json({ url: null });
+        const raw = await env.FX_SCORES.get('cot_url').catch(() => null);
+        return json({ url: raw ? JSON.parse(raw) : null });
+      }
+
+      // -- /api/cot/url PUT -------------------------------------
+      // Saves a new CFTC report URL. Must be a cftc.gov URL.
+      if (path === '/api/cot/url' && request.method === 'PUT') {
+        if (!env.FX_SCORES) return err('KV not bound — add FX_SCORES namespace in Cloudflare Pages settings', 503);
+        const body = await request.json().catch(() => ({}));
+        if (!body.url || !body.url.includes('cftc.gov')) return err('Invalid CFTC URL — must contain cftc.gov', 400);
+        await env.FX_SCORES.put('cot_url', JSON.stringify(body.url));
+        return json({ ok: true });
+      }
+
+      // -- /api/cot ---------------------------------------------
+      // Fetches and parses the weekly CFTC COT report.
+      // URL is configurable per user and stored in KV as 'cot_url'.
+      if (path === '/api/cot') {
+        const cotUrlRaw = env.FX_SCORES ? await env.FX_SCORES.get('cot_url').catch(() => null) : null;
+        const cotUrl = cotUrlRaw ? JSON.parse(cotUrlRaw) : null;
+        if (!cotUrl) return json({ ok: false, reason: 'cot_url not configured — set it via the COT toolbar button' });
+        try {
+          const res = await fetch(cotUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroRangeDashboard)' } });
+          if (!res.ok) return err(`CFTC fetch failed: ${res.status} ${res.statusText}`, 502);
+          const text = await res.text();
+          const data = parseCFTCFile(text);
+          const pairsFound = Object.keys(data).length;
+          if (pairsFound === 0) return err('Parsed 0 FX pairs — check the CFTC URL is a Financial futures report (financial_lof*.htm)', 422);
+          return json({ ok: true, data, pairsFound, reportDate: data['EUR/USD']?.changeDate || null });
+        } catch(e) {
+          return err('COT fetch error: ' + e.message);
         }
       }
 

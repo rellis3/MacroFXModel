@@ -12,6 +12,7 @@ import { fvGapToPips, runSignalEngine, runEntryScanner, renderSignalAndEntries }
 import { renderARMAAndTransition } from './arma.js';
 import { renderAll } from './render.js';
 import { triggerAIAnalysis } from './ai.js';
+import { loadCOT, openCOTModal, closeCOTModal, saveCOTUrlFromModal } from './cot.js';
 
 // ── Wire window globals for HTML onclick handlers and circular-dep breakers ──
 window.renderAll              = renderAll;
@@ -28,6 +29,9 @@ window.saveCaps               = saveCaps;
 window.resetCaps              = resetCaps;
 window.setCompassMode         = setCompassMode;
 window.triggerAIAnalysis      = triggerAIAnalysis;
+window.openCOTModal           = openCOTModal;
+window.closeCOTModal          = closeCOTModal;
+window.saveCOTUrlFromModal    = saveCOTUrlFromModal;
 
 // ── Initialise state ─────────────────────────────────────────────────────────
 S.currentPair = PAIRS[0];
@@ -119,6 +123,7 @@ async function loadAll() {
     updateStatus('spin', `Loading ${S.currentPair.name}...`);
 
     oiLoadStoreFromKV().catch(() => {});
+    loadCOT().catch(() => {});       // non-blocking — renders when ready
     cleanupStaleSessionCaches();
 
     if (!S.fredData) {
