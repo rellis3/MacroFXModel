@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { AI_CACHE_PREFIX, AI_CACHE_TTL } from './config.js';
-import { kvGet, kvSet, getPipSize, getDigits } from './utils.js';
+import { kvGet, kvSet, getPipSize, getDigits, filterTradingDays } from './utils.js';
 import { calculateTierScores } from './macro.js';
 import { calculateVolRegime, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots } from './vol.js';
 import { computeARMAForecast, computeRegimeTransition } from './arma.js';
@@ -205,7 +205,7 @@ export function aiCollectSnapshot() {
         remaining:  vol.remainingPips.toFixed(0) + ' pips remaining today',
       };
     }
-    const bars = S.ohlcData[sym]?.values;
+    const bars = filterTradingDays(S.ohlcData[sym]?.values);
     if (bars && bars.length >= 30) {
       const barsChron = [...bars].reverse();
       const trs = [];

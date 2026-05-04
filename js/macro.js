@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { ema, calcRSI } from './utils.js';
+import { ema, calcRSI, filterTradingDays } from './utils.js';
 
 export function calculateTierScores() {
   const tiers = [];
@@ -281,7 +281,7 @@ function computeT6() {
 }
 
 function computeT7() {
-  const bars = S.ohlcData[S.currentPair.symbol]?.values;
+  const bars = filterTradingDays(S.ohlcData[S.currentPair.symbol]?.values);
   if (!bars || bars.length < 50) return tierUnavailable('T7', 'Momentum', 'EMA/RSI', 2);
 
   const closes = bars.slice(0, 100).map(b => parseFloat(b.close)).reverse();

@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { COMPASS_CONFIG } from './config.js';
-import { getPipSize } from './utils.js';
+import { getPipSize, filterTradingDays } from './utils.js';
 
 // ARMA(1,1) on first differences of yield spread.
 // Model: Δspread_t = μ + φ·Δspread_{t-1} + θ·ε_{t-1} + ε_t
@@ -366,7 +366,7 @@ export function renderARMAAndTransition(data) {
   const arma = data ? computeARMAForecast(data) : null;
   armaEl.innerHTML = renderARMACard(arma, data || { sym: S.currentPair.symbol });
 
-  const bars = S.ohlcData[S.currentPair.symbol]?.values;
+  const bars = filterTradingDays(S.ohlcData[S.currentPair.symbol]?.values);
   let rt = null;
   if (bars && bars.length >= 30) {
     const barsChron = [...bars].reverse();

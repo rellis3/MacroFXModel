@@ -1,11 +1,11 @@
 import { S } from './state.js';
-import { getPipSize, fred } from './utils.js';
+import { getPipSize, fred, filterTradingDays } from './utils.js';
 
 // GARCH(1,1) + EMA-ATR vol engine
 // σ²_t = ω + α·ε²_{t-1} + β·σ²_{t-1}
 // Fixed FX params: ω=1e-7, α=0.10, β=0.85 (α+β=0.95, high persistence)
 export function calculateVolRegime() {
-  const bars  = S.ohlcData[S.currentPair.symbol]?.values;
+  const bars  = filterTradingDays(S.ohlcData[S.currentPair.symbol]?.values);
   const NULL_VOL = { regime: 'NORMAL', percentile: 50, atr: 0, atrPips: 0,
     sizeMult: 1, stopMult: 1.0, stopDist: 0, tpMult: 1.5,
     remainingRange: 0, remainingPips: 0, dailyCap: 0, dailyCapPips: 0,
@@ -196,7 +196,7 @@ export function calculateRiskSentiment() {
 }
 
 export function calculateDivergence(macroScore, volRegime) {
-  const bars = S.ohlcData[S.currentPair.symbol]?.values;
+  const bars = filterTradingDays(S.ohlcData[S.currentPair.symbol]?.values);
   if (!bars || bars.length < 5) return null;
 
   const now = parseFloat(bars[0].close);
@@ -262,7 +262,7 @@ export function buildCurve(name, flag, short, long, monthly) {
 }
 
 export function calculatePivots() {
-  const bars = S.ohlcData[S.currentPair.symbol]?.values;
+  const bars = filterTradingDays(S.ohlcData[S.currentPair.symbol]?.values);
   if (!bars || bars.length < 2) {
     return { pp: 0, r1: 0, r2: 0, r3: 0, s1: 0, s2: 0, s3: 0 };
   }

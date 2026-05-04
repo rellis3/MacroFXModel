@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt } from './utils.js';
+import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTradingDays } from './utils.js';
 import { calculateTierScores } from './macro.js';
 import { calculateVolRegime, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
 import { computeRegimeTransition, renderARMAAndTransition } from './arma.js';
@@ -30,7 +30,7 @@ export function renderAll() {
 }
 
 function getYesterdayLevels() {
-  const bars = S.ohlcData[S.currentPair.symbol]?.values;
+  const bars = filterTradingDays(S.ohlcData[S.currentPair.symbol]?.values);
   if (!bars || bars.length < 2) return { high: null, low: null };
   return {
     high:  parseFloat(bars[1].high),
@@ -140,7 +140,7 @@ function renderAllInner() {
   const curves = getForeignCurves();
 
   let transitionRisk = null;
-  const _trBars = S.ohlcData[S.currentPair.symbol]?.values;
+  const _trBars = filterTradingDays(S.ohlcData[S.currentPair.symbol]?.values);
   if (_trBars && _trBars.length >= 30) {
     const _trChron = [..._trBars].reverse();
     const _trTRs = [];

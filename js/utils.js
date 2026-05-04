@@ -115,6 +115,13 @@ export function barLondonDay(bar) {
   return d.getUTCDay();
 }
 
+// Strip Saturday (6) and Sunday (0) bars — TwelveData can include a thin Sunday
+// bar when the FX week opens ~22:00 London Sunday, which pollutes pivot/ATR calcs.
+export function filterTradingDays(bars) {
+  if (!bars) return [];
+  return bars.filter(bar => { const d = barLondonDay(bar); return d >= 1 && d <= 5; });
+}
+
 // ── Pip / digit helpers ──────────────────────────────────────────────────────
 
 export function getPipSize(symbol) {
