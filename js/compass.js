@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { COMPASS_CONFIG, COMPASS_TTL, COMPASS_CACHE_VERSION } from './config.js';
-import { kvGet, kvSet, getDigits, getPipSize } from './utils.js';
+import { kvGet, kvSet, getDigits, getPipSize, filterTradingDays } from './utils.js';
 import { calculateVolRegime, calculatePivots } from './vol.js';
 import { calculateTierScores } from './macro.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
@@ -313,23 +313,39 @@ export function renderCompassCard(data, quote) {
   const showS2  = S.compassMode === '2y'   || S.compassMode === 'both';
   const showS10 = S.compassMode === '10y'  || S.compassMode === 'both';
   const showDxy = isGoldChart && (S.compassMode === '2y' || S.compassMode === 'both');
+  const showFX  = S.compassShowFX;
+
+  // Build FX normalized line from daily OHLC (last 90 bars)
+  let zFX = [];
+  if (showFX) {
+    const fxBars = filterTradingDays(S.ohlcData[data.sym]?.values);
+    if (fxBars && fxBars.length >= 10) {
+      const chron = [...fxBars].reverse().slice(-90);
+      const fxPts = chron.map(b => ({ date: b.datetime.split(' ')[0], value: parseFloat(b.close) }));
+      zFX = zScore(fxPts);
+    }
+  }
 
   const allPoints = [
     ...(showS10 ? z10  : []),
     ...(showS2  ? (isGoldChart ? zDxy : z2) : []),
+    ...(showFX  ? zFX : []),
   ];
   const yVals = allPoints.map(p => p.value);
   const yMin  = yVals.length ? Math.min(...yVals) - 0.3 : -2;
   const yMax  = yVals.length ? Math.max(...yVals) + 0.3 :  2;
   const yRange = [yMin, yMax];
 
-  const nPts   = Math.max(z10.length, z2.length, 1);
+  const nPts   = Math.max(z10.length, z2.length, zFX.length, 1);
   const W      = 600;
   const H      = 90;
   const xScale = W / Math.max(nPts - 1, 1);
 
+  const fxScale = zFX.length > 1 ? W / Math.max(zFX.length - 1, 1) : xScale;
+
   const path10y = showS10 ? buildSVGPath(z10,  xScale, null, H, yRange) : '';
   const path2y  = showS2  ? buildSVGPath(isGoldChart ? zDxy : z2, xScale, null, H, yRange) : '';
+  const pathFX  = showFX && zFX.length > 1 ? buildSVGPath(zFX, fxScale, null, H, yRange) : '';
 
   const ySpan    = yMax - yMin;
   const zeroY    = H - ((0 - yMin) / ySpan) * H;
@@ -351,6 +367,7 @@ export function renderCompassCard(data, quote) {
         <button class="ctog s2y ${S.compassMode==='2y'||S.compassMode==='both'?'active':''}" onclick="setCompassMode('2y')">${isGoldChart ? 'DXY' : '2Y'}</button>
         <button class="ctog s10y ${S.compassMode==='10y'||S.compassMode==='both'?'active':''}" onclick="setCompassMode('10y')">${isGoldChart ? '10Y Yield' : '10Y'}</button>
         <button class="ctog ${S.compassMode==='both'?'active':''}" onclick="setCompassMode('both')">Both</button>
+        <button class="ctog ${S.compassShowFX?'active':''}" onclick="toggleCompassFX()" style="border-color:var(--blue-bd);${S.compassShowFX?'background:var(--blue-bg);color:var(--blue)':''}">FX Rate</button>
       </div>
     </div>
 
@@ -359,6 +376,7 @@ export function renderCompassCard(data, quote) {
       ${showS2  ? (isGoldChart
         ? '<div class="cl-item"><div class="cl-line" style="background:var(--amber)"></div><span>DXY (z, inverted — up = weak dollar)</span></div>'
         : '<div class="cl-item"><div class="cl-line" style="background:var(--green)"></div><span>2Y spread (z-score)</span></div>') : ''}
+      ${showFX  ? '<div class="cl-item"><div class="cl-line" style="background:transparent;border-top:2px dashed var(--blue);height:0;margin-top:5px"></div><span>FX rate (z-score, 90d daily)</span></div>' : ''}
       <div class="cl-item"><div class="cl-line" style="background:var(--border2);height:1px"></div><span>Neutral</span></div>
     </div>
 
@@ -374,6 +392,14 @@ export function renderCompassCard(data, quote) {
         ${showS2 && path2y ? `
           <path d="${path2y}" stroke="${isGoldChart ? 'var(--amber)' : 'var(--green)'}" stroke-width="1.5" fill="none" stroke-linejoin="round" stroke-dasharray="5,3"/>
         ` : ''}
+        ${showFX && pathFX ? `
+          <path d="${pathFX}" stroke="var(--blue)" stroke-width="1.5" fill="none" stroke-linejoin="round" stroke-dasharray="3,2"/>
+        ` : ''}
+        ${showFX && zFX.length ? (() => {
+          const lx = ((zFX.length-1)*fxScale).toFixed(1);
+          const ly = Math.max(0,Math.min(H, H - ((zFX[zFX.length-1].value - yMin)/ySpan)*H)).toFixed(1);
+          return `<circle cx="${lx}" cy="${ly}" r="3" fill="var(--blue)"/>`;
+        })() : ''}
         ${showS10 && z10.length ? (() => {
           const lx = ((z10.length-1)*xScale).toFixed(1);
           const ly = Math.max(0,Math.min(H, H - ((z10[z10.length-1].value - yMin)/ySpan)*H)).toFixed(1);
@@ -523,6 +549,13 @@ export function renderCompassCard(data, quote) {
 // ── Mode toggle ──────────────────────────────────────────────────────────────
 // Breaks circular dep: calls window.renderSignalAndEntries / window.renderARMAAndTransition
 // which are assigned in main.js after all modules load.
+
+export function toggleCompassFX() {
+  S.compassShowFX = !S.compassShowFX;
+  const data = S.compassData[S.currentPair.symbol];
+  renderCompassCard(data, window._latestQuote);
+  if (window.renderARMAAndTransition) window.renderARMAAndTransition(data);
+}
 
 export function setCompassMode(mode) {
   if (mode === 'both') {
