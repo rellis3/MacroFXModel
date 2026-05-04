@@ -21,14 +21,11 @@ export function calculateAsiaRanges(symbol) {
     }
   });
 
-  // A session is usable if it has any bars reaching hour 5 (covers the full window).
-  // Minimum 12 bars (1 hour) to guard against empty/stub entries.
+  // A session is usable if it has enough bars to produce a meaningful range.
+  // 36 bars = 3 hours of 5m data — enough for a body range, handles holidays
+  // where data may end early. No hour-ceiling check so truncated sessions pass.
   function isCompleteSession(sessionBars) {
-    if (!sessionBars || sessionBars.length < 12) return false;
-    for (const b of sessionBars) {
-      if (barLondonHour(b) >= 5) return true;
-    }
-    return false;
+    return !!(sessionBars && sessionBars.length >= 36);
   }
 
   const sortedDates = Object.keys(sessionsByDate).sort().reverse()
@@ -79,14 +76,10 @@ export function calculateMondayRanges(symbol) {
     }
   });
 
-  // A Monday is usable if it has any bars reaching hour 22 (full day captured).
-  // Minimum 10 bars to guard against stub entries.
+  // A Monday is usable if it has enough bars to produce a meaningful range.
+  // 60 bars = 2 hours of 30m data (full Mon needs ~44 bars). Handles thin holidays.
   function isCompleteMonday(sessionBars) {
-    if (!sessionBars || sessionBars.length < 10) return false;
-    for (const b of sessionBars) {
-      if (barLondonHour(b) >= 22) return true;
-    }
-    return false;
+    return !!(sessionBars && sessionBars.length >= 20);
   }
 
   const sortedMondays = Object.keys(weekData).sort().reverse()
