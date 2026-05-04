@@ -15,7 +15,7 @@ import { triggerAIAnalysis } from './ai.js';
 import { loadCOT, openCOTModal, closeCOTModal, saveCOTUrlFromModal } from './cot.js';
 import { detectSession } from './session.js';
 import { loadEventData } from './events.js';
-import { computeDollarRegime } from './macro.js';
+import { computeDollarRegime, computeUSDStrength } from './macro.js';
 
 // ── Wire window globals for HTML onclick handlers and circular-dep breakers ──
 window.renderAll              = renderAll;
@@ -114,6 +114,7 @@ window.forceRefresh = async function() {
   S.ohlc30m       = {};
   S.asiaRangeData = {};
   S.mondayRangeData = {};
+  S.usdStrength   = null;
   S.dollarRegime  = null;
   S.eventRisk     = null;
   S.surpriseIndex = null;
@@ -136,7 +137,6 @@ async function loadAll() {
       S.fredData = await loadCached('fred', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED);
       updatePill('pillFred', 'ok');
     }
-    S.dollarRegime = computeDollarRegime();
 
     // Update session badge immediately (no network needed)
     S.sessionData = detectSession();
@@ -185,6 +185,28 @@ async function loadAll() {
     calculateAsiaRanges(S.currentPair.symbol);
     calculateMondayRanges(S.currentPair.symbol);
     window._latestQuote = quote;
+
+    // Background-load daily OHLC for the 4 USD-index pairs (cached 23h — no extra API cost
+    // after first load). Each arrival updates S.usdStrength so the composite improves live.
+    const USD_INDEX_PAIRS = ['EUR/USD', 'GBP/USD', 'AUD/USD', 'USD/JPY'];
+    USD_INDEX_PAIRS.forEach(sym => {
+      if (!S.ohlcData[sym]) {
+        const sk = sym.replace('/', '');
+        loadCached(`ohlc_${sk}`,
+          () => fetchAPI(`/api/ohlc?symbol=${encodeURIComponent(sym)}`),
+          CACHE_DURATION.OHLC
+        ).then(data => {
+          if (data) {
+            S.ohlcData[sym] = data;
+            S.usdStrength   = computeUSDStrength();
+            S.dollarRegime  = computeDollarRegime();
+          }
+        }).catch(() => {});
+      }
+    });
+    // Initial computation from whatever's already in state
+    S.usdStrength  = computeUSDStrength();
+    S.dollarRegime = computeDollarRegime();
 
     renderAll();
     updateStatus('ok', `${S.currentPair.name} loaded · ${S.asiaRangeData[S.currentPair.symbol].confluences.length + S.mondayRangeData[S.currentPair.symbol].confluences.length} total confluences`);

@@ -4,6 +4,8 @@ import { getPipSize, getDigits } from './utils.js';
 import { compassFairValue, zScore } from './compass.js';
 import { getCaps } from './caps.js';
 import { oiFmtStrike } from './oi.js';
+import { getPairSurpriseScore } from './events.js';
+import { detectCrossConflict } from './macro.js';
 
 // ── FV gap → pips ────────────────────────────────────────────────────────────
 // 1 z-unit ≈ 0.5 ATR (conservative — spread z-score is smoother than price)
@@ -116,8 +118,42 @@ export function runSignalEngine(compassData, volRegime) {
     type = 'neutral';
   }
 
-  return { bias, type, score, maxScore: 9, reasons, fvPips, fvGap, fvBull,
-           mom10Bull, mom2Bull, sp10Bull, lagDetected };
+  // ── Macro Surprise Index modifier (Gap 1 fix) ───────────────────────────────
+  // Uses actual-vs-forecast Finnhub data. Positive net = base ccy beat = bullish pair.
+  let surpriseMod = null;
+  try {
+    const ps = getPairSurpriseScore();
+    if (ps != null && Math.abs(ps.net) > 0.8 && bias !== 'NEUTRAL') {
+      const surpriseBull  = ps.net > 0;
+      const signalBull    = bias === 'LONG';
+      const confirms      = surpriseBull === signalBull;
+      const pts           = Math.abs(ps.net) > 1.5 ? 2 : 1;
+      score              += pts;  // confirms adds pts; conflicting surprises could be modelled later
+      surpriseMod         = { net: ps.net, confirms, pts };
+      reasons.push({
+        icon:  confirms ? '🟢' : '🔴',
+        label: 'Macro Surprise',
+        val:   `${ps.net >= 0 ? '+' : ''}${ps.net.toFixed(2)} net ${confirms ? '✓ confirms' : '✗ conflicts'}`,
+        pts:   confirms ? pts : 0,
+      });
+    }
+  } catch(e) {}
+
+  // ── Cross-Pair USD Strength conflict detection ───────────────────────────────
+  const crossConflict = detectCrossConflict(S.usdStrength, bias, S.currentPair);
+  if (crossConflict) {
+    const pts = crossConflict.type === 'confirmed' ? (crossConflict.severity === 'strong' ? 2 : 1) : 0;
+    score    += pts;
+    reasons.push({
+      icon:  crossConflict.type === 'confirmed' ? '🟢' : '🔴',
+      label: 'Cross-Pair USD',
+      val:   crossConflict.message,
+      pts,
+    });
+  }
+
+  return { bias, type, score, maxScore: 11, reasons, fvPips, fvGap, fvBull,
+           mom10Bull, mom2Bull, sp10Bull, lagDetected, surpriseMod, crossConflict };
 }
 
 // ── Render signal card ────────────────────────────────────────────────────────
@@ -196,10 +232,11 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
   const oiStore = (() => { try { return JSON.parse(localStorage.getItem('oi_store') || '{}'); } catch(e) { return {}; } })();
   const oi = oiStore[sym] || null;
 
-  // Composite size multiplier: event risk × session confidence (capped ≥10% to avoid zeroing)
-  const eventMult   = S.eventRisk?.sizeMult   ?? 1.0;
-  const sessionConf = S.sessionData?.confidence ?? 1.0;
-  const sizeMult    = Math.max(0.10, eventMult * sessionConf);
+  // Composite size multiplier: event risk × session confidence × cross-pair conflict
+  const eventMult    = S.eventRisk?.sizeMult         ?? 1.0;
+  const sessionConf  = S.sessionData?.confidence      ?? 1.0;
+  const crossMult    = signal.crossConflict?.sizeMult ?? 1.0;
+  const sizeMult     = Math.max(0.10, eventMult * sessionConf * crossMult);
 
   const candidates = enhanced.map(c => {
     let layerScore = c.stars;
@@ -336,6 +373,12 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       tags.push({ cls: 'warn', label: 'Event ⚠ -50%', key: 'event' });
     } else if (S.eventRisk?.level === 'medium') {
       tags.push({ cls: 'warn', label: 'Event ⚡ -25%', key: 'event' });
+    }
+    // Cross-pair USD conflict / confirmation tag
+    if (signal.crossConflict?.type === 'conflict' && signal.crossConflict.severity === 'strong') {
+      tags.push({ cls: 'warn', label: 'USD conflict ⚠', key: 'cross' });
+    } else if (signal.crossConflict?.type === 'confirmed' && signal.crossConflict.severity === 'strong') {
+      tags.push({ cls: 'gex', label: 'USD confirmed ✓', key: 'cross' });
     }
 
     return {

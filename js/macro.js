@@ -332,32 +332,150 @@ function tierUnavailable(tier, name, val, max) {
   return { tier, name, max, score: 0, val: '—', reading: 'Data unavailable', source: '—', isMonthly: false, na: true };
 }
 
-// Dollar Regime — combines FRED DXY level change + Compass DXY momentum
-export function computeDollarRegime() {
-  const dxy     = S.fredData?.dxy?.value;
-  const dxyPrev = S.fredData?.dxy?.prev;
-  if (dxy == null) return null;
+// ── USD Strength Composite ────────────────────────────────────────────────────
+// Built from the 4 USD pairs in S.ohlcData (whatever is currently loaded).
+// Each pair's 5-day return is z-scored against its own 20-period distribution,
+// then sign-adjusted so that a positive contribution always means "USD stronger".
+// Falls back gracefully when fewer than 2 pairs are available.
+export function computeUSDStrength() {
+  const USD_PAIRS = [
+    { sym: 'EUR/USD', sign: -1 },  // EURUSD down = USD up
+    { sym: 'GBP/USD', sign: -1 },
+    { sym: 'AUD/USD', sign: -1 },
+    { sym: 'USD/JPY', sign: +1 },  // USDJPY up = USD up
+  ];
 
-  const fredChange = dxyPrev ? ((dxy / dxyPrev) - 1) * 100 : 0;
-  const absChg     = Math.abs(fredChange);
+  const LOOKBACK  = 5;  // 5-day return window
+  const NORM_WIN  = 20; // z-score distribution window
 
-  // Cross-reference with XAU Compass DXY momentum if loaded (fxSign=-1 means DXY up → gold bearish)
-  const xauCompass = S.compassData?.['XAU/USD'];
-  const dxyMomCross = xauCompass?.momentumDxy ?? null;
+  const contributions = [];
 
-  let trend, strength;
-  if      (fredChange >  0.3) { trend = 'strengthening'; strength = absChg > 0.7 ? 'strong' : 'moderate'; }
-  else if (fredChange < -0.3) { trend = 'weakening';     strength = absChg > 0.7 ? 'strong' : 'moderate'; }
-  else                        { trend = 'stable';         strength = 'weak'; }
+  for (const { sym, sign } of USD_PAIRS) {
+    const bars = filterTradingDays(S.ohlcData[sym]?.values);
+    if (!bars || bars.length < NORM_WIN + LOOKBACK) continue;
 
-  // If compass momentum contradicts FRED, downgrade to moderate
-  if (dxyMomCross != null && strength === 'strong') {
-    const compStrengthen = dxyMomCross < 0; // XAU fxSign=-1: negative mom → DXY strengthening
-    if ((trend === 'strengthening') !== compStrengthen) strength = 'moderate';
+    const barsChron = [...bars].reverse();
+
+    // Rolling LOOKBACK-day sign-adjusted returns
+    const rets = [];
+    for (let i = LOOKBACK; i < barsChron.length; i++) {
+      const ret = (parseFloat(barsChron[i].close) / parseFloat(barsChron[i - LOOKBACK].close) - 1) * sign;
+      rets.push(ret);
+    }
+
+    // Z-score latest return within its own history
+    const win    = rets.slice(-NORM_WIN);
+    const mean   = win.reduce((a, b) => a + b, 0) / win.length;
+    const std    = Math.sqrt(win.reduce((a, b) => a + (b - mean) ** 2, 0) / win.length);
+    const latest = rets[rets.length - 1];
+    const z      = std > 0 ? (latest - mean) / std : 0;
+
+    contributions.push({ sym, sign, z, ret: latest });
   }
 
-  const arrow = trend === 'strengthening' ? '↑' : trend === 'weakening' ? '↓' : '→';
-  const label = `${arrow} USD ${strength !== 'weak' ? strength + ' ' : ''}${trend}`;
+  if (contributions.length < 2) return null; // need at least 2 pairs for a composite
 
-  return { trend, strength, dxy: dxy.toFixed(2), change: fredChange.toFixed(2), label };
+  const compositeZ = contributions.reduce((s, c) => s + c.z, 0) / contributions.length;
+  const clamped    = Math.max(-3, Math.min(3, compositeZ));
+
+  let trend, strength;
+  if      (clamped >  1.0) { trend = 'strengthening'; strength = clamped > 2.0 ? 'strong' : 'moderate'; }
+  else if (clamped < -1.0) { trend = 'weakening';     strength = clamped < -2.0 ? 'strong' : 'moderate'; }
+  else                      { trend = 'stable';         strength = 'weak'; }
+
+  const arrow = trend === 'strengthening' ? '↑' : trend === 'weakening' ? '↓' : '→';
+
+  // Cross-validate with FRED DXY (weekly — lower frequency, secondary signal)
+  const fredDxy     = S.fredData?.dxy?.value;
+  const fredDxyPrev = S.fredData?.dxy?.prev;
+  const fredDxyChg  = fredDxy && fredDxyPrev ? ((fredDxy / fredDxyPrev) - 1) * 100 : null;
+  // If FRED DXY contradicts the composite, note divergence
+  let fredConflict = false;
+  if (fredDxyChg != null && Math.abs(clamped) > 1.0) {
+    const fredBull = fredDxyChg > 0;
+    const compBull = trend === 'strengthening';
+    fredConflict   = fredBull !== compBull;
+  }
+
+  return {
+    score:        clamped,
+    trend,
+    strength,
+    pairsUsed:    contributions.length,
+    contributions,
+    fredDxy:      fredDxy ? fredDxy.toFixed(2) : null,
+    fredDxyChg:   fredDxyChg ? fredDxyChg.toFixed(2) : null,
+    fredConflict,
+    label: `${arrow} USD ${strength !== 'weak' ? strength + ' ' : ''}${trend} (${contributions.length}/4 pairs)`,
+  };
+}
+
+// Dollar Regime — wraps computeUSDStrength with FRED DXY level context.
+// This is the public function stored in S.dollarRegime.
+export function computeDollarRegime() {
+  const usd = S.usdStrength || computeUSDStrength();
+  if (!usd) {
+    // Fallback: FRED DXY only (no price bar data)
+    const dxy     = S.fredData?.dxy?.value;
+    const dxyPrev = S.fredData?.dxy?.prev;
+    if (dxy == null) return null;
+    const chg = dxyPrev ? ((dxy / dxyPrev) - 1) * 100 : 0;
+    const trend = chg > 0.3 ? 'strengthening' : chg < -0.3 ? 'weakening' : 'stable';
+    const arrow = trend === 'strengthening' ? '↑' : trend === 'weakening' ? '↓' : '→';
+    return {
+      trend, strength: 'weak', dxy: dxy.toFixed(2), change: chg.toFixed(2),
+      label: `${arrow} USD ${trend} (FRED only — load pairs for composite)`,
+      fredOnly: true,
+    };
+  }
+  return {
+    trend:    usd.trend,
+    strength: usd.strength,
+    score:    usd.score,
+    dxy:      usd.fredDxy,
+    change:   usd.fredDxyChg,
+    label:    usd.label,
+    pairsUsed:usd.pairsUsed,
+    fredConflict: usd.fredConflict,
+  };
+}
+
+// ── Cross-Pair Conflict Detection ─────────────────────────────────────────────
+// Checks whether the current pair's signal direction agrees with the composite
+// USD strength index. Returns null if no clear conflict/confirmation exists.
+export function detectCrossConflict(usdStrength, signalBias, pair) {
+  if (!usdStrength || Math.abs(usdStrength.score) < 1.0) return null;
+  if (!signalBias || signalBias === 'NEUTRAL') return null;
+
+  // Does the signal imply USD bullish or bearish?
+  let signalImpliesUsdBull;
+  if (pair.isGold) {
+    signalImpliesUsdBull = signalBias === 'SHORT'; // gold short = bearish gold = USD bullish
+  } else if (pair.isUsdBase) {
+    signalImpliesUsdBull = signalBias === 'LONG';  // USDJPY long = USD bullish
+  } else {
+    signalImpliesUsdBull = signalBias === 'SHORT'; // EURUSD/GBPUSD/AUDUSD short = USD bullish
+  }
+
+  const usdBull = usdStrength.trend === 'strengthening';
+  const usdBear = usdStrength.trend === 'weakening';
+
+  const confirms = (signalImpliesUsdBull && usdBull) || (!signalImpliesUsdBull && usdBear);
+  const isStrong = usdStrength.strength === 'strong';
+
+  if (confirms) {
+    return {
+      type:    'confirmed',
+      severity: usdStrength.strength,
+      sizeMult: isStrong ? 1.15 : 1.05,
+      message: `Cross-pair USD index confirms — ${usdStrength.label}`,
+    };
+  } else {
+    return {
+      type:    'conflict',
+      severity: usdStrength.strength,
+      sizeMult: isStrong ? 0.65 : 0.80,
+      message: `Cross-pair USD conflict — index says ${usdStrength.label} but signal implies USD ${signalImpliesUsdBull ? 'bullish' : 'bearish'}`,
+    };
+  }
 }

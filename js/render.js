@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTradingDays } from './utils.js';
-import { calculateTierScores, computeDollarRegime } from './macro.js';
+import { calculateTierScores, computeDollarRegime, computeUSDStrength } from './macro.js';
 import { calculateVolRegime, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
 import { computeRegimeTransition, renderARMAAndTransition } from './arma.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
@@ -161,7 +161,10 @@ function renderAllInner() {
   const calendarCtx    = getCalendarContext();
 
   const macroBias = tierData.totalScore > 4 ? 'LONG' : tierData.totalScore < -4 ? 'SHORT' : 'NEUTRAL';
-  const positionSize = calcPositionSize(tierData.totalScore, volRegime, transitionRisk);
+  const _rawSize      = calcPositionSize(tierData.totalScore, volRegime, transitionRisk);
+  const _sessionConf  = S.sessionData?.confidence ?? 1.0;
+  const _eventMult    = S.eventRisk?.sizeMult ?? 1.0;
+  const positionSize  = Math.max(10, Math.round(_rawSize * _sessionConf * _eventMult));
 
   const allConfluences = [
     ...(asia.confluences || []).map(c => ({...c, source: 'asia'})),
@@ -180,6 +183,7 @@ function renderAllInner() {
   const pipSize = getPipSize(S.currentPair.symbol);
 
   // New feature data
+  const usdStrength   = S.usdStrength  || computeUSDStrength();
   const dollarRegime  = S.dollarRegime || computeDollarRegime();
   const pairSurprise  = getPairSurpriseScore();
   const sessionBadge  = sessionBadgeHTML(S.sessionData);
@@ -292,6 +296,8 @@ ${calendarCtx.warnings.length > 0 ? `
             tierData.totalScore <= -9 ? 'High conviction (short) — strong setup' :
             'Medium conviction (short) — moderate size'}
           ${volRegime.regime === 'HIGH' ? ' · Vol HIGH → reduced 40%' : volRegime.regime === 'LOW' ? ' · Vol LOW' : ' · Vol normal'}
+          ${_sessionConf < 0.85 ? ` · ${S.sessionData?.name ?? 'Session'} → ${Math.round(_sessionConf*100)}% conf` : ''}
+          ${_eventMult < 1.0 ? ` · Event risk → ${Math.round(_eventMult*100)}%` : ''}
         </div>
       </div>
 
@@ -322,6 +328,7 @@ ${calendarCtx.warnings.length > 0 ? `
           </div>
           <div class="tc-val ${t.score > 0 ? 'up' : t.score < 0 ? 'dn' : t.na ? 'na' : 'neu'}">${t.val}</div>
           <div class="tc-read">${t.reading}</div>
+          ${t.momentumBonus && t.momentumBonus !== 0 ? `<div style="font-size:9px;color:${t.momentumBonus > 0 ? 'var(--green)' : 'var(--amber)'};margin-top:2px;font-weight:600">Compass mom ${t.momentumBonus > 0 ? '+1 confirms' : '−1 conflicts'}</div>` : ''}
           <div class="tc-src">${t.source}${t.isMonthly ? '<span class="tc-monthly">MONTHLY</span>' : ''}</div>
         </div>
       `).join('')}
@@ -333,21 +340,37 @@ ${calendarCtx.warnings.length > 0 ? `
       Market Context
       <span class="sec-badge">INTELLIGENCE</span>
     </div>
-    ${dollarRegime ? `
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--s2);border:1px solid var(--border);border-radius:7px;margin-bottom:8px">
-      <div style="font-size:18px;line-height:1">💵</div>
-      <div style="flex:1">
-        <div style="font-size:11px;font-weight:700;color:${dollarRegime.trend === 'strengthening' ? 'var(--red)' : dollarRegime.trend === 'weakening' ? 'var(--green)' : 'var(--text2)'}">
-          ${dollarRegime.label}
-        </div>
-        <div style="font-size:10px;color:var(--text3);margin-top:1px">
-          DXY ${dollarRegime.dxy} · ${dollarRegime.change >= 0 ? '+' : ''}${dollarRegime.change}% vs prev · Strength: ${dollarRegime.strength}
-          ${S.currentPair?.isGold ? ' · Gold inversely correlated — USD strength = gold headwind' :
-            S.currentPair?.isUsdBase ? ' · USD-base pair: USD strength = bullish' :
-            ' · USD-quote pair: USD strength = bearish'}
-        </div>
+    ${usdStrength || dollarRegime ? (() => {
+      const usd  = usdStrength;
+      const dr   = dollarRegime;
+      const col  = (usd?.trend || dr?.trend) === 'strengthening' ? 'var(--red)'
+                 : (usd?.trend || dr?.trend) === 'weakening'     ? 'var(--green)'
+                 : 'var(--text2)';
+      const lbl  = usd?.label || dr?.label || '—';
+      const bars = usd?.contributions || [];
+      return `
+    <div style="padding:9px 12px;background:var(--s2);border:1px solid var(--border);border-radius:7px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:${bars.length ? 6 : 0}px">
+        <span style="font-size:15px">💵</span>
+        <span style="font-size:11px;font-weight:700;color:${col};flex:1">${lbl}</span>
+        ${dr?.dxy ? `<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">DXY ${dr.dxy} ${dr.change >= 0 ? '+' : ''}${dr.change}%</span>` : ''}
+        ${usd?.fredConflict ? `<span style="font-size:9px;color:var(--amber);font-weight:700;padding:1px 5px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:4px">FRED diverges</span>` : ''}
       </div>
-    </div>` : ''}
+      ${bars.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${bars.map(c => {
+          const cCol = c.z > 0.3 ? 'var(--red)' : c.z < -0.3 ? 'var(--green)' : 'var(--text3)';
+          const pair = c.sym.split('/').join('');
+          return `<span style="font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;background:${cCol}18;border:1px solid ${cCol}44;border-radius:4px;color:${cCol}">${pair} z:${c.z >= 0 ? '+' : ''}${c.z.toFixed(2)}</span>`;
+        }).join('')}
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">
+        ${S.currentPair?.isGold ? 'Gold: USD strength = headwind for gold' :
+          S.currentPair?.isUsdBase ? 'USD-base pair: USD strength = bullish' :
+          'USD-quote pair: USD strength = bearish'}
+        ${usd?.pairsUsed < 4 ? ` · Load more pairs for full ${usd?.pairsUsed}/4 composite` : ''}
+      </div>` : '<div style="font-size:10px;color:var(--text3)">Load daily bars for 2+ USD pairs to compute composite</div>'}
+    </div>`;
+    })() : ''}
     ${eventBadge}
     ${surpriseBadge}
     ` : ''}

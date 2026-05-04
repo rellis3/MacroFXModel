@@ -607,8 +607,16 @@ VOLATILITY IMPULSE (5-bar momentum)
 ${s.volImpulse ? `Bias: ${s.volImpulse.bias.toUpperCase()}  |  Last 5 bars avg TR vs prior 5: ${s.volImpulse.pct >= 0 ? '+' : ''}${s.volImpulse.pct.toFixed(1)}%
 ${s.volImpulse.bias === 'expanding' ? '→ Vol accelerating — widen stops, beware stop-hunts' : s.volImpulse.bias === 'contracting' ? '→ Vol contracting — tighter stops possible, range trades favoured' : '→ Vol stable — no regime shift signal'}` : '  Not available (< 10 daily bars)'}
 
+USD STRENGTH COMPOSITE (cross-pair normalised)
+${s.usdStrength
+  ? `${s.usdStrength.label}  |  Score: ${s.usdStrength.score}  |  Pairs: ${s.usdStrength.pairsUsed}/4
+Per-pair z-scores: ${s.usdStrength.perPair || 'N/A'}
+${s.usdStrength.fredConflict ? '⚠ FRED DXY disagrees with price-based composite — treat composite as primary signal' : 'FRED DXY consistent with composite'}
+${s.crossConflict ? `CROSS-PAIR CONFLICT: ${s.crossConflict.type.toUpperCase()} (${s.crossConflict.severity}) — ${s.crossConflict.message}  |  Size adj: ×${s.crossConflict.sizeMult}` : 'No cross-pair conflict with current signal'}`
+  : '  Insufficient pair data for composite (need 2+ USD pairs loaded)'}
+
 DOLLAR REGIME (DXY)
-${s.dollarRegime ? `${s.dollarRegime.label}  |  DXY: ${s.dollarRegime.dxy}  |  Change: ${s.dollarRegime.change >= 0 ? '+' : ''}${s.dollarRegime.change}%  |  Strength: ${s.dollarRegime.strength}` : '  DXY data not available'}
+${s.dollarRegime ? `${s.dollarRegime.label}  |  DXY: ${s.dollarRegime.dxy ?? 'N/A'}  |  Change: ${s.dollarRegime.change != null ? (s.dollarRegime.change >= 0 ? '+' : '') + s.dollarRegime.change + '%' : 'N/A'}  |  Strength: ${s.dollarRegime.strength}` : '  DXY data not available'}
 
 ECONOMIC EVENT RISK
 ${s.eventRisk && !s.eventRisk.unavailable

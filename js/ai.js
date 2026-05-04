@@ -1,7 +1,7 @@
 import { S } from './state.js';
 import { AI_CACHE_PREFIX, AI_CACHE_TTL } from './config.js';
 import { kvGet, kvSet, getPipSize, getDigits, filterTradingDays } from './utils.js';
-import { calculateTierScores, computeDollarRegime } from './macro.js';
+import { calculateTierScores, computeDollarRegime, computeUSDStrength, detectCrossConflict } from './macro.js';
 import { calculateVolRegime, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots } from './vol.js';
 import { getPairSurpriseScore } from './events.js';
 import { computeARMAForecast, computeRegimeTransition } from './arma.js';
@@ -315,6 +315,26 @@ export function aiCollectSnapshot() {
       };
     }
   } catch(e) {}
+
+  // USD Strength Composite (cross-pair)
+  const _usd = S.usdStrength || computeUSDStrength();
+  if (_usd) {
+    s.usdStrength = {
+      score:      _usd.score?.toFixed(2),
+      trend:      _usd.trend,
+      strength:   _usd.strength,
+      pairsUsed:  _usd.pairsUsed,
+      label:      _usd.label,
+      fredConflict: _usd.fredConflict,
+      perPair:    (_usd.contributions || []).map(c => `${c.sym.replace('/','')} z:${c.z >= 0 ? '+' : ''}${c.z.toFixed(2)}`).join(' | '),
+    };
+    // Cross-pair conflict against current signal bias
+    try {
+      const _signal = runSignalEngine(S.compassData, calculateVolRegime());
+      const _conflict = detectCrossConflict(_usd, _signal.bias, S.currentPair);
+      if (_conflict) s.crossConflict = _conflict;
+    } catch(e) {}
+  }
 
   // Dollar Regime
   if (S.dollarRegime) {
