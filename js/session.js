@@ -43,6 +43,23 @@ export function detectSession() {
   };
 }
 
+// Find yesterday's 23:00 London bar — the FX daily candle open price.
+// Above = bullish daily bias, below = bearish. bars5m newest-first.
+export function computeDailyOpen(bars5m) {
+  if (!bars5m || !bars5m.length) return null;
+  const nowLondon = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/London' }));
+  const yd = new Date(nowLondon);
+  yd.setDate(yd.getDate() - 1);
+  const yesterdayStr = yd.toLocaleDateString('en-CA'); // YYYY-MM-DD
+  for (const bar of bars5m) {
+    const barDate = bar.datetime.substring(0, 10);
+    if (barDate < yesterdayStr) break;
+    if (barDate === yesterdayStr && bar.datetime.substring(11, 16) === '23:00')
+      return parseFloat(bar.open);
+  }
+  return null;
+}
+
 // Extract London open (08:00) and NY open (13:00) prices from today's 5m bars.
 // bars5m is the .values array from TwelveData, ordered newest-first.
 export function computeSessionOpens(bars5m) {
@@ -65,7 +82,7 @@ export function computeSessionOpens(bars5m) {
   return { londonOpenPrice, nyOpenPrice };
 }
 
-export function sessionBadgeHTML(session) {
+export function sessionBadgeHTML(session, currentPrice) {
   if (!session) return '';
   const confPct   = Math.round(session.confidence * 100);
   const confColor = session.confidence >= 1.0  ? 'var(--green)'
@@ -74,6 +91,18 @@ export function sessionBadgeHTML(session) {
   const confLabel = session.confidence >= 1.0  ? 'High confidence'
                   : session.confidence >= 0.80  ? 'Moderate confidence'
                   : 'Low confidence — reduce size';
+
+  let dailyOpenLine = '';
+  if (session.dailyOpenPrice != null && currentPrice != null) {
+    const above    = currentPrice > session.dailyOpenPrice;
+    const doColor  = above ? 'var(--green)' : 'var(--red)';
+    const doArrow  = above ? '↑' : '↓';
+    const doPips   = Math.abs(currentPrice - session.dailyOpenPrice);
+    dailyOpenLine  = `<div style="font-size:10px;margin-top:3px;color:var(--text3)">
+      Daily open <span style="font-family:'DM Mono',monospace;color:var(--text2)">${session.dailyOpenPrice}</span>
+      <span style="color:${doColor};font-weight:600;margin-left:4px">${doArrow} ${above ? 'above' : 'below'} · ${doColor === 'var(--green)' ? 'bullish' : 'bearish'} daily bias</span>
+    </div>`;
+  }
 
   return `
 <div style="display:flex;align-items:flex-start;gap:10px;padding:9px 12px;background:var(--s2);border:1px solid var(--border);border-radius:7px;margin-bottom:10px">
@@ -85,6 +114,7 @@ export function sessionBadgeHTML(session) {
       <span style="font-size:10px;font-weight:600;color:${confColor};padding:1px 6px;border-radius:6px;background:${confColor}18;border:1px solid ${confColor}44">${confPct}% · ${confLabel}</span>
     </div>
     <div style="font-size:10px;color:var(--text3);margin-top:2px;line-height:1.4">${session.desc}</div>
+    ${dailyOpenLine}
   </div>
 </div>`;
 }

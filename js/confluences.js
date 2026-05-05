@@ -25,7 +25,9 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
   const _oiPipMult = _oiIsGold ? 1.0 : pipSize;
   const oiCapDist  = Math.min(atr * _oiCaps.oiAtrFrac,  _oiCaps.oiPipCap  * _oiPipMult);
   const gexCapDist = Math.min(atr * _oiCaps.gexAtrFrac, _oiCaps.gexPipCap * _oiPipMult);
-  const _oiData    = oiLoadStore()[symbol] || null;
+  const rngCapDist = Math.min(atr * _oiCaps.rngAtrFrac, _oiCaps.rngPipCap * _oiPipMult);
+  const _oiData       = oiLoadStore()[symbol] || null;
+  const _dailyOpenPx  = S.sessionData?.dailyOpenPrice ?? null;
 
   return confluences.map(c => {
     const direction = directionFromPrice(c.price, anchorPrice, symbol);
@@ -70,11 +72,14 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       }
     }
 
+    const nearDailyOpen = _dailyOpenPx != null && Math.abs(c.price - _dailyOpenPx) <= rngCapDist;
+
     let stars = 1;
     if (c.isTight)             stars++;
     if (aligned)               stars++;
     if (pivotMatch)            stars++;
     if (oiMatch)               stars++;  // Phase 3: OI wall / gamma flip confluence
+    if (nearDailyOpen)         stars++;  // Fib near daily open (23:00 candle)
     if ((c.density || 1) >= 2) stars++;  // density bonus: 2+ fib pairs collapsed here
 
     const baseSize = calcPositionSize(macroScore, volRegime);
@@ -132,6 +137,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       aligned,
       pivotMatch,
       oiMatch,
+      nearDailyOpen,
       stars,
       size: finalSize,
       sl: direction === 'long'  ? c.price - stopDist :

@@ -186,7 +186,7 @@ function renderAllInner() {
   const usdStrength   = S.usdStrength  || computeUSDStrength();
   const dollarRegime  = S.dollarRegime || computeDollarRegime();
   const pairSurprise  = getPairSurpriseScore();
-  const sessionBadge  = sessionBadgeHTML(S.sessionData);
+  const sessionBadge  = sessionBadgeHTML(S.sessionData, quote.price);
   const eventBadge    = eventRiskBadgeHTML(S.eventRisk);
   const surpriseBadge = (S.surpriseIndex && Object.keys(S.surpriseIndex).length > 0)
     ? surpriseIndexHTML(S.surpriseIndex, pairSurprise) : '';

@@ -356,6 +356,14 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       }
     }
 
+    if (S.sessionData?.dailyOpenPrice) {
+      const _doDist = Math.abs(c.price - S.sessionData.dailyOpenPrice);
+      if (_doDist <= rangeProx) {
+        layerScore += 0.5;
+        tags.push({ cls: 'range', label: `Daily Open (${Math.round(_doDist / pipSz)}p)`, key: 'dayopen' });
+        layers.push('Daily open level');
+      }
+    }
     if (S.sessionData?.londonOpenPrice) {
       const _lopDist = Math.abs(c.price - S.sessionData.londonOpenPrice);
       if (_lopDist <= rangeProx) {

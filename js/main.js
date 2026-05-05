@@ -13,7 +13,7 @@ import { renderARMAAndTransition } from './arma.js';
 import { renderAll } from './render.js';
 import { triggerAIAnalysis, copyAIAnalysis } from './ai.js';
 import { loadCOT, openCOTModal, closeCOTModal, saveCOTUrlFromModal } from './cot.js';
-import { detectSession, computeSessionOpens } from './session.js';
+import { detectSession, computeSessionOpens, computeDailyOpen } from './session.js';
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 
@@ -170,11 +170,13 @@ async function loadAll() {
         CACHE_DURATION.OHLC5M);
       updatePill('pill5m', 'ok');
     }
-    // Merge London/NY open prices into session data from today's 5m bars
-    const _opens = computeSessionOpens(S.ohlc5m[S.currentPair.symbol]?.values || []);
+    // Merge session open prices and daily open into session data from today's 5m bars
+    const _bars5m = S.ohlc5m[S.currentPair.symbol]?.values || [];
+    const _opens  = computeSessionOpens(_bars5m);
     if (S.sessionData) {
       S.sessionData.londonOpenPrice = _opens.londonOpenPrice;
       S.sessionData.nyOpenPrice     = _opens.nyOpenPrice;
+      S.sessionData.dailyOpenPrice  = computeDailyOpen(_bars5m);
     }
 
     if (!S.ohlc30m[S.currentPair.symbol]) {
