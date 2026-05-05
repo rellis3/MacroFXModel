@@ -10,6 +10,9 @@ import { runSignalEngine, runEntryScanner } from './signal.js';
 import { oiFmtStrike, oiFmtOI, oiFmtChg } from './oi.js';
 import { cotSnapshotForAI } from './cot.js';
 
+// Last rendered analysis — used by copyAIAnalysis()
+let _lastAnalysis = null;
+
 export async function aiLoadCache(sym) {
   const key = AI_CACHE_PREFIX + sym.replace('/', '');
   try {
@@ -440,6 +443,7 @@ export async function aiRenderCard(state, payload, generatedAt) {
   }
   else if (state === 'data' && payload) {
     const a = payload;
+    _lastAnalysis = { a, pair: S.currentPair?.symbol ?? '', stamp: stampStr };
     const biasClass = a.overallBias === 'LONG' ? 'long' : a.overallBias === 'SHORT' ? 'short' : 'neutral';
     const convClass = (a.conviction || 'MEDIUM').toUpperCase();
     const regimeKey = 'regime-' + (a.regime?.label || 'CHOPPY').replace(/[\s/]+/g, '-').toUpperCase();
@@ -460,7 +464,7 @@ export async function aiRenderCard(state, payload, generatedAt) {
     bodyHtml = `
       <div class="ai-verdict ${biasClass}">
         <div class="ai-verdict-bias">${a.overallBias || '—'}</div>
-        <div class="ai-verdict-score"><span>${a.convictionScore ?? '—'}</span>/10</div>
+        <div class="ai-verdict-score"><span>${a.convictionScore != null ? Math.min(10, Math.max(0, Math.round(a.convictionScore))) : '—'}</span>/10</div>
         <div class="ai-verdict-headline">${a.headline || ''}</div>
         <div class="ai-conviction ${convClass}">${convClass}</div>
       </div>
@@ -588,6 +592,7 @@ export async function aiRenderCard(state, payload, generatedAt) {
       <div class="ai-card-header" onclick="document.getElementById('aiAnalysisCard').classList.toggle('open')">
         <span class="ai-card-title">🧠 AI Market Intelligence</span>
         ${stampStr ? `<span class="ai-card-stamp">${stampStr}</span>` : ''}
+        ${state === 'data' ? `<button id="aiCopyBtn" onclick="event.stopPropagation();copyAIAnalysis()" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);cursor:pointer;font-weight:500;margin-left:auto;margin-right:6px;flex-shrink:0" title="Copy analysis to clipboard">Copy</button>` : ''}
         <span class="ai-card-chevron">▼</span>
       </div>
       <div class="ai-card-body">${bodyHtml}</div>
@@ -599,4 +604,120 @@ export function aiRenderCardOnUpdate() {
   const existing = document.getElementById('aiAnalysisCard');
   if (existing && existing.classList.contains('has-data')) return;
   aiRenderCard();
+}
+
+export async function copyAIAnalysis() {
+  if (!_lastAnalysis) return;
+  const { a, pair, stamp } = _lastAnalysis;
+  const score = a.convictionScore != null
+    ? Math.min(10, Math.max(0, Math.round(a.convictionScore)))
+    : '—';
+
+  const section = (label, value) =>
+    value ? `\n${label.toUpperCase()}\n${value}\n` : '';
+
+  const list = (items) =>
+    (items || []).map(x => `  • ${x}`).join('\n');
+
+  // Plain text — readable in any editor
+  const plain = [
+    `${pair} — AI Market Analysis  ${stamp ? '(' + stamp + ')' : ''}`,
+    '═'.repeat(52),
+    `${a.overallBias}  ${score}/10  ${a.conviction} CONVICTION`,
+    a.headline,
+    '',
+    section('Regime', `${a.regime?.label}${a.regime?.detail ? ' — ' + a.regime.detail : ''}`),
+    section('Macro Read', a.macroRead),
+    section('Yield Curve', a.yieldCurveRead),
+    section('OI / GEX', a.oiRead),
+    section('Sentiment', a.sentimentPositioning),
+    section('Reflexivity', a.reflexivity),
+    a.garchRead   ? section('GARCH Vol', a.garchRead)         : '',
+    a.armaRead    ? section('ARMA Spread', a.armaRead)        : '',
+    a.spreadSignalRead ? section('Spread Signal', a.spreadSignalRead) : '',
+    a.cotRead     ? section('COT Positioning', a.cotRead)     : '',
+    a.sessionRead ? section('Session', a.sessionRead)         : '',
+    a.dollarRegimeRead ? section('Dollar Regime', a.dollarRegimeRead) : '',
+    a.eventRiskRead    ? section('Event Risk', a.eventRiskRead)       : '',
+    a.surpriseRead     ? section('Macro Surprise', a.surpriseRead)    : '',
+    section('Trading Framework', a.tradingFramework),
+    a.keyLevels?.length ? '\nKEY LEVELS\n' + a.keyLevels.map(l =>
+      `  ${l.price}  [${l.type}]  ${l.significance}`).join('\n') + '\n' : '',
+    section('Breakout Trigger', a.breakoutTrigger),
+    section('Reversion Trigger', a.reversionTrigger),
+    `\nCLEAN BREAK POTENTIAL: ${a.cleanBreakPotential}`,
+    a.cleanBreakRationale ? `${a.cleanBreakRationale}\n` : '',
+    a.goodToDoNow?.length ? `\nGOOD TO DO NOW\n${list(a.goodToDoNow)}\n` : '',
+    a.avoidNow?.length    ? `\nAVOID NOW\n${list(a.avoidNow)}\n`         : '',
+    a.riskWarnings?.length ? `\nRISK WARNINGS\n${list(a.riskWarnings)}\n` : '',
+  ].join('');
+
+  // HTML — preserves formatting when pasting into Word, Notion, email etc.
+  const biasColor = a.overallBias === 'LONG' ? '#16a34a' : a.overallBias === 'SHORT' ? '#dc2626' : '#d97706';
+  const row = (label, value) => value
+    ? `<tr><td style="font-weight:600;padding:4px 10px 4px 0;color:#6b7280;white-space:nowrap;vertical-align:top">${label}</td><td style="padding:4px 0">${value}</td></tr>`
+    : '';
+  const levelRows = (a.keyLevels || []).map(l =>
+    `<tr><td style="padding:3px 10px 3px 0;font-family:monospace">${l.price}</td><td style="padding:3px 10px 3px 0;color:#7c3aed;font-weight:600">${l.type}</td><td style="padding:3px 0;color:#6b7280">${l.significance}</td></tr>`
+  ).join('');
+
+  const html = `
+<div style="font-family:system-ui,sans-serif;font-size:13px;line-height:1.5;max-width:700px;color:#111">
+  <div style="background:#f9f9f9;border-left:4px solid ${biasColor};padding:12px 16px;margin-bottom:12px;border-radius:4px">
+    <div style="font-size:20px;font-weight:700;color:${biasColor}">${a.overallBias} <span style="font-size:14px">${score}/10 · ${a.conviction}</span></div>
+    <div style="margin-top:4px;color:#374151">${a.headline || ''}</div>
+    ${stamp ? `<div style="font-size:11px;color:#9ca3af;margin-top:4px">${pair} · ${stamp}</div>` : ''}
+  </div>
+  <table style="border-collapse:collapse;width:100%;margin-bottom:12px">
+    ${row('Regime',         `<strong>${a.regime?.label || ''}</strong>${a.regime?.detail ? ' — ' + a.regime.detail : ''}`)}
+    ${row('Macro Read',     a.macroRead)}
+    ${row('Yield Curve',    a.yieldCurveRead)}
+    ${row('OI / GEX',       a.oiRead)}
+    ${row('Sentiment',      a.sentimentPositioning)}
+    ${row('Reflexivity',    a.reflexivity)}
+    ${a.garchRead        ? row('GARCH Vol',      a.garchRead)        : ''}
+    ${a.armaRead         ? row('ARMA Spread',    a.armaRead)         : ''}
+    ${a.spreadSignalRead ? row('Spread Signal',  a.spreadSignalRead) : ''}
+    ${a.cotRead          ? row('COT',            a.cotRead)          : ''}
+    ${a.sessionRead      ? row('Session',        a.sessionRead)      : ''}
+    ${a.dollarRegimeRead ? row('Dollar Regime',  a.dollarRegimeRead) : ''}
+    ${a.eventRiskRead    ? row('Event Risk',     a.eventRiskRead)    : ''}
+    ${a.surpriseRead     ? row('Macro Surprise', a.surpriseRead)     : ''}
+    ${row('Framework',      a.tradingFramework)}
+  </table>
+  ${levelRows ? `<div style="font-weight:600;margin-bottom:4px;color:#6b7280">KEY LEVELS</div><table style="border-collapse:collapse;margin-bottom:12px">${levelRows}</table>` : ''}
+  <table style="border-collapse:collapse;width:100%;margin-bottom:12px">
+    ${row('Breakout trigger',  a.breakoutTrigger)}
+    ${row('Reversion trigger', a.reversionTrigger)}
+    ${row('Clean break',       `<strong>${a.cleanBreakPotential || ''}</strong>${a.cleanBreakRationale ? ' — ' + a.cleanBreakRationale : ''}`)}
+  </table>
+  ${a.goodToDoNow?.length ? `<div style="font-weight:600;color:#16a34a;margin-bottom:2px">✓ Good to do now</div><ul style="margin:0 0 10px;padding-left:18px">${a.goodToDoNow.map(x=>`<li>${x}</li>`).join('')}</ul>` : ''}
+  ${a.avoidNow?.length    ? `<div style="font-weight:600;color:#dc2626;margin-bottom:2px">✕ Avoid now</div><ul style="margin:0 0 10px;padding-left:18px">${a.avoidNow.map(x=>`<li>${x}</li>`).join('')}</ul>` : ''}
+  ${a.riskWarnings?.length ? `<div style="font-weight:600;color:#d97706;margin-bottom:2px">⚠ Risk warnings</div><ul style="margin:0 0 10px;padding-left:18px">${a.riskWarnings.map(x=>`<li>${x}</li>`).join('')}</ul>` : ''}
+</div>`;
+
+  try {
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/plain': new Blob([plain], { type: 'text/plain' }),
+        'text/html':  new Blob([html],  { type: 'text/html'  }),
+      }),
+    ]);
+  } catch {
+    // Fallback for browsers that don't support ClipboardItem
+    await navigator.clipboard.writeText(plain).catch(() => {});
+  }
+
+  const btn = document.getElementById('aiCopyBtn');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    btn.style.color      = 'var(--green)';
+    btn.style.borderColor= 'var(--green-bd)';
+    setTimeout(() => {
+      btn.textContent      = orig;
+      btn.style.color      = '';
+      btn.style.borderColor= '';
+    }, 2000);
+  }
 }
