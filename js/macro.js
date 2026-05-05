@@ -74,6 +74,29 @@ function computeT1() {
   } else if (S.currentPair.symbol === 'AUD/USD') {
     diff10 = foreign10y - us10y; bullishWhenPositive = true;
     diff2  = (us2y != null && foreign2y != null) ? foreign2y - us2y : null;
+  } else if (S.currentPair.symbol === 'EUR/GBP') {
+    // Cross pair: GBP vs EUR yield. Higher GB yield → GBP strong → EUR/GBP falls (bearish)
+    const de10yV = fredData.de10y?.value;
+    const deShortV = fredData.de_short?.value;
+    const gbShortV = fredData.gb_short?.value;
+    if (de10yV == null) return tierUnavailable('T1', 'Rate Differential', '10Y Spread', 3);
+    diff10 = foreign10y - de10yV; bullishWhenPositive = false;
+    diff2  = (gbShortV != null && deShortV != null) ? gbShortV - deShortV : null;
+  } else if (S.currentPair.symbol === 'USD/CAD') {
+    diff10 = us10y - foreign10y; bullishWhenPositive = true;
+    diff2  = (us2y != null && foreign2y != null) ? us2y - foreign2y : null;
+  } else if (S.currentPair.symbol === 'USD/CHF') {
+    diff10 = us10y - foreign10y; bullishWhenPositive = true;
+    diff2  = (us2y != null && foreign2y != null) ? us2y - foreign2y : null;
+  } else if (S.currentPair.symbol === 'GBP/JPY') {
+    // Cross pair: GBP vs JPY yield. Higher GB yield → GBP strong → GBP/JPY rises (bullish)
+    const gb10yV  = fredData.gb10y?.value;
+    const jp10yV  = fredData.jp10y?.value;
+    const gbShortV = fredData.gb_short?.value;
+    const jpShortV = fredData.jp_short?.value;
+    if (gb10yV == null || jp10yV == null) return tierUnavailable('T1', 'Rate Differential', '10Y Spread', 3);
+    diff10 = gb10yV - jp10yV; bullishWhenPositive = true;
+    diff2  = (gbShortV != null && jpShortV != null) ? gbShortV - jpShortV : null;
   } else {
     diff10 = us10y - foreign10y; bullishWhenPositive = false;
     diff2  = null;

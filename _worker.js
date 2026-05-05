@@ -249,10 +249,14 @@ export default {
           gb10y:    'IRLTLT01GBM156N',
           jp10y:    'IRLTLT01JPM156N',
           au10y:    'IRLTLT01AUM156N',
+          ca10y:    'IRLTLT01CAM156N',
+          ch10y:    'IRLTLT01CHM156N',
           de_short: 'IRSTCI01DEM156N',
           gb_short: 'IR3TIB01GBM156N',
           jp_short: 'IRSTCI01JPM156N',
           au_short: 'IR3TIB01AUM156N',
+          ca_short: 'IRSTCI01CAM156N',
+          ch_short: 'IRSTCI01CHM156N',
         };
 
         const fetches = Object.entries(SERIES).map(async ([key, id]) => {
@@ -415,10 +419,14 @@ export default {
           gb10y:    'IRLTLT01GBM156N',
           jp10y:    'IRLTLT01JPM156N',
           au10y:    'IRLTLT01AUM156N',
+          ca10y:    'IRLTLT01CAM156N',
+          ch10y:    'IRLTLT01CHM156N',
           de_short: 'IRSTCI01DEM156N',
           gb_short: 'IR3TIB01GBM156N',
           jp_short: 'IRSTCI01JPM156N',
           au_short: 'IR3TIB01AUM156N',
+          ca_short: 'IRSTCI01CAM156N',
+          ch_short: 'IRSTCI01CHM156N',
         };
 
         const keysParam = url.searchParams.get('keys') || 'us2y,us10y,de10y,de_short';

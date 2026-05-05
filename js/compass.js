@@ -70,6 +70,8 @@ export async function loadCompassData(sym) {
   const keys = ['us2y', 'us10y'];
   if (cfg.short) keys.push(cfg.short);
   if (cfg.long && cfg.long !== 'us10y') keys.push(cfg.long);
+  if (cfg.crossBase) keys.push(cfg.crossBase);
+  if (cfg.crossBaseShort) keys.push(cfg.crossBaseShort);
   if (cfg.dxy) keys.push('dxy');
 
   try {
@@ -92,6 +94,9 @@ export function compassCompute(sym, hist, cfg) {
   const us10y = hist.us10y || [];
   const fgnS  = cfg.short ? (hist[cfg.short] || []) : [];
   const fgnL  = hist[cfg.long] || [];
+  // Cross pairs iterate over their crossBase series instead of us10y
+  const baseL = cfg.crossBase ? (hist[cfg.crossBase] || []) : us10y;
+  const baseS = cfg.crossBaseShort ? (hist[cfg.crossBaseShort] || []) : us2y;
 
   function toMap(arr) {
     const m = {};
@@ -100,35 +105,50 @@ export function compassCompute(sym, hist, cfg) {
   }
 
   const us2Map  = toMap(us2y);
-  const us10Map = toMap(us10y);
+  const baseLMap = toMap(baseL);
+  const baseSMap = toMap(baseS);
   const fgnSMap = toMap(fgnS);
   const fgnLMap = toMap(fgnL);
 
   const spread2y  = [];
   const spread10y = [];
 
-  us10y.forEach(p => {
+  baseL.forEach(p => {
     const d = p.date;
     const fL = fgnLMap[d];
     if (fL != null) {
-      const sp10 = sym === 'EUR/USD' ? p.value - fL :
-                   sym === 'XAU/USD' ? p.value :
-                   fL - p.value;
+      let sp10;
+      if (sym === 'XAU/USD') {
+        sp10 = p.value;
+      } else if (cfg.crossBase) {
+        sp10 = fL - p.value; // fgnL - crossBase (e.g. gb10y - de10y for EUR/GBP)
+      } else if (sym === 'EUR/USD') {
+        sp10 = p.value - fL; // us10y - de10y
+      } else {
+        sp10 = fL - p.value; // fgnL - us10y
+      }
       spread10y.push({ date: d, value: sp10 });
     }
 
     if (cfg.short) {
       const fS = fgnSMap[d];
       if (fS != null) {
-        const sp2 = sym === 'EUR/USD' ? us2Map[d] - fS :
-                    sym === 'XAU/USD' ? us2Map[d] || 0 :
-                    fS - (us2Map[d] || 0);
+        let sp2;
+        if (sym === 'XAU/USD') {
+          sp2 = us2Map[d] || 0;
+        } else if (cfg.crossBase) {
+          sp2 = fS - (baseSMap[d] || 0); // fgnS - crossBaseShort
+        } else if (sym === 'EUR/USD') {
+          sp2 = (baseSMap[d] || 0) - fS;
+        } else {
+          sp2 = fS - (baseSMap[d] || 0);
+        }
         if (!isNaN(sp2)) spread2y.push({ date: d, value: sp2 });
       }
     }
   });
 
-  const spread2yFilled = forwardFill(spread2y, us10y.map(p => p.date));
+  const spread2yFilled = forwardFill(spread2y, baseL.map(p => p.date));
 
   // DXY is a weekly series (DTWEXBGS); us10y is monthly — dates never coincide
   // so aligning to us10y via forwardFill always produces empty results.

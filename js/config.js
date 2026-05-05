@@ -3,7 +3,11 @@ export const PAIRS = [
   { symbol: 'GBP/USD', code: 'gu', shortCode: 'gb', name: 'GBP/USD' },
   { symbol: 'USD/JPY', code: 'uj', shortCode: 'jp', name: 'USD/JPY', isSafeHaven: true, isUsdBase: true },
   { symbol: 'AUD/USD', code: 'au', shortCode: 'au', name: 'AUD/USD' },
-  { symbol: 'XAU/USD', code: 'xu', shortCode: 'xau', name: 'Gold', isGold: true }
+  { symbol: 'XAU/USD', code: 'xu', shortCode: 'xau', name: 'Gold', isGold: true },
+  { symbol: 'EUR/GBP', code: 'eg', shortCode: 'gb', name: 'EUR/GBP', isPairCross: true },
+  { symbol: 'USD/CAD', code: 'uc', shortCode: 'ca', name: 'USD/CAD', isUsdBase: true },
+  { symbol: 'USD/CHF', code: 'uf', shortCode: 'ch', name: 'USD/CHF', isUsdBase: true, isSafeHaven: true },
+  { symbol: 'GBP/JPY', code: 'gj', shortCode: 'jp', name: 'GBP/JPY', isPairCross: true, isSafeHaven: true },
 ];
 
 // 45 Fib levels matching Pine Script backtester exactly.
@@ -32,11 +36,15 @@ export const COMPASS_CONFIG = {
   'USD/JPY': { short: 'jp_short', long: 'jp10y',  label: 'US–JP',  fxSign: +1 },
   'AUD/USD': { short: 'au_short', long: 'au10y',  label: 'AU–US',  fxSign: +1 },
   'XAU/USD': { short: null,       long: 'us10y',  label: 'US10Y',  fxSign: -1, dxy: true },
+  'EUR/GBP': { short: 'gb_short', long: 'gb10y',  label: 'GB–DE',  fxSign: -1, crossBase: 'de10y', crossBaseShort: 'de_short' },
+  'USD/CAD': { short: 'ca_short', long: 'ca10y',  label: 'US–CA',  fxSign: +1 },
+  'USD/CHF': { short: 'ch_short', long: 'ch10y',  label: 'US–CH',  fxSign: +1 },
+  'GBP/JPY': { short: 'gb_short', long: 'gb10y',  label: 'GB–JP',  fxSign: +1, crossBase: 'jp10y', crossBaseShort: 'jp_short' },
 };
 
 export const COMPASS_TTL = 6 * 60 * 60 * 1000;
 // Increment when cached data structure changes to force re-fetch.
-export const COMPASS_CACHE_VERSION = 3;
+export const COMPASS_CACHE_VERSION = 4;
 
 export const CAP_DEFAULTS = {
   fx: {
