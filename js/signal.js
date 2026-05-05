@@ -6,6 +6,7 @@ import { getCaps } from './caps.js';
 import { oiFmtStrike } from './oi.js';
 import { getPairSurpriseScore } from './events.js';
 import { detectCrossConflict } from './macro.js';
+import { computeARMAForecast } from './arma.js';
 
 // ── FV gap → pips ────────────────────────────────────────────────────────────
 // 1 z-unit ≈ 0.5 ATR (conservative — spread z-score is smoother than price)
@@ -152,8 +153,28 @@ export function runSignalEngine(compassData, volRegime) {
     });
   }
 
-  return { bias, type, score, maxScore: 11, reasons, fvPips, fvGap, fvBull,
-           mom10Bull, mom2Bull, sp10Bull, lagDetected, surpriseMod, crossConflict };
+  // ── ARMA spread forecast modifier ────────────────────────────────────────────
+  // +1 when ARMA(1,1) forecast direction (HIGH/MEDIUM confidence, skill≥5%) confirms bias.
+  let armaMod = null;
+  try {
+    const arma = computeARMAForecast(data);
+    if (arma && arma.confidence !== 'LOW' && arma.avgSkill >= 5 && arma.direction !== 'MIXED') {
+      const armaBull = arma.direction === 'BULLISH';
+      const confirms = bias !== 'NEUTRAL' && armaBull === (bias === 'LONG');
+      const pts      = confirms ? 1 : 0;
+      score         += pts;
+      armaMod        = { direction: arma.direction, confidence: arma.confidence, skill: arma.avgSkill, confirms, pts };
+      reasons.push({
+        icon:  confirms ? '🟢' : bias === 'NEUTRAL' ? '⚪' : '🔴',
+        label: 'ARMA spread forecast',
+        val:   `${arma.direction} · ${arma.confidence} · ${arma.avgSkill >= 0 ? '+' : ''}${arma.avgSkill}% vs RW`,
+        pts,
+      });
+    }
+  } catch(e) {}
+
+  return { bias, type, score, maxScore: 12, reasons, fvPips, fvGap, fvBull,
+           mom10Bull, mom2Bull, sp10Bull, lagDetected, surpriseMod, crossConflict, armaMod };
 }
 
 // ── Render signal card ────────────────────────────────────────────────────────
@@ -332,6 +353,23 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
         const _monld = Math.round(Math.abs(c.price - monday.current.low) / pipSz);
         tags.push({ cls: 'range', label: `Mon Low (${_monld}p)`, key: 'monl' });
         layers.push('Monday range low');
+      }
+    }
+
+    if (S.sessionData?.londonOpenPrice) {
+      const _lopDist = Math.abs(c.price - S.sessionData.londonOpenPrice);
+      if (_lopDist <= rangeProx) {
+        layerScore += 0.5;
+        tags.push({ cls: 'range', label: `London Open (${Math.round(_lopDist / pipSz)}p)`, key: 'lopen' });
+        layers.push('London open level');
+      }
+    }
+    if (S.sessionData?.nyOpenPrice) {
+      const _nyopDist = Math.abs(c.price - S.sessionData.nyOpenPrice);
+      if (_nyopDist <= rangeProx) {
+        layerScore += 0.5;
+        tags.push({ cls: 'range', label: `NY Open (${Math.round(_nyopDist / pipSz)}p)`, key: 'nyopen' });
+        layers.push('NY open level');
       }
     }
 

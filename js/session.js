@@ -43,6 +43,28 @@ export function detectSession() {
   };
 }
 
+// Extract London open (08:00) and NY open (13:00) prices from today's 5m bars.
+// bars5m is the .values array from TwelveData, ordered newest-first.
+export function computeSessionOpens(bars5m) {
+  if (!bars5m || !bars5m.length) return { londonOpenPrice: null, nyOpenPrice: null };
+
+  const todayLondon = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+  let londonOpenPrice = null;
+  let nyOpenPrice     = null;
+
+  for (const bar of bars5m) {
+    const barDate = bar.datetime.substring(0, 10);
+    if (barDate < todayLondon) break; // gone past today (bars are newest-first)
+    if (barDate !== todayLondon) continue;
+    const hhmm = bar.datetime.substring(11, 16);
+    if (!nyOpenPrice     && hhmm >= '13:00' && hhmm < '13:10') nyOpenPrice     = parseFloat(bar.open);
+    if (!londonOpenPrice && hhmm >= '08:00' && hhmm < '08:10') londonOpenPrice = parseFloat(bar.open);
+    if (londonOpenPrice && nyOpenPrice) break;
+  }
+
+  return { londonOpenPrice, nyOpenPrice };
+}
+
 export function sessionBadgeHTML(session) {
   if (!session) return '';
   const confPct   = Math.round(session.confidence * 100);

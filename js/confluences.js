@@ -3,6 +3,7 @@ import { getPipSize, pipsBetween } from './utils.js';
 import { getAnchorPrice, directionFromPrice } from './ranges.js';
 import { getCaps } from './caps.js';
 import { calcPositionSize } from './vol.js';
+import { oiLoadStore } from './oi.js';
 
 export function filterConfluences(confluences) {
   if (S.currentMode === 'strongest') return confluences.filter(c => c.isTight);
@@ -17,6 +18,14 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
   const anchorPrice = getAnchorPrice(symbol);
 
   const sortedByPrice = [...confluences].sort((a, b) => a.price - b.price);
+
+  // Phase 3: OI proximity caps — same formula as entry scanner
+  const _oiCaps    = getCaps(symbol);
+  const _oiIsGold  = pipSize >= 0.1 && symbol.includes('XAU');
+  const _oiPipMult = _oiIsGold ? 1.0 : pipSize;
+  const oiCapDist  = Math.min(atr * _oiCaps.oiAtrFrac,  _oiCaps.oiPipCap  * _oiPipMult);
+  const gexCapDist = Math.min(atr * _oiCaps.gexAtrFrac, _oiCaps.gexPipCap * _oiPipMult);
+  const _oiData    = oiLoadStore()[symbol] || null;
 
   return confluences.map(c => {
     const direction = directionFromPrice(c.price, anchorPrice, symbol);
@@ -44,10 +53,28 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       }
     });
 
+    // Phase 3: OI level within proximity boosts star rating
+    let oiMatch = null;
+    if (_oiData) {
+      if (Math.abs(c.price - _oiData.callWall) <= oiCapDist) oiMatch = 'Call Wall';
+      else if (Math.abs(c.price - _oiData.putWall) <= oiCapDist) oiMatch = 'Put Wall';
+      else if (Math.abs(c.price - _oiData.maxPain) <= oiCapDist) oiMatch = 'Max Pain';
+      if (!oiMatch && _oiData.gexProfile && _oiData.gexProfile.length > 1) {
+        for (let i = 1; i < _oiData.gexProfile.length; i++) {
+          if (Math.sign(_oiData.gexProfile[i].netGex) !== Math.sign(_oiData.gexProfile[i-1].netGex)) {
+            if (Math.abs(c.price - _oiData.gexProfile[i].strike) <= gexCapDist) {
+              oiMatch = 'Gamma Flip'; break;
+            }
+          }
+        }
+      }
+    }
+
     let stars = 1;
     if (c.isTight)             stars++;
     if (aligned)               stars++;
     if (pivotMatch)            stars++;
+    if (oiMatch)               stars++;  // Phase 3: OI wall / gamma flip confluence
     if ((c.density || 1) >= 2) stars++;  // density bonus: 2+ fib pairs collapsed here
 
     const baseSize = calcPositionSize(macroScore, volRegime);
@@ -104,6 +131,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       distance,
       aligned,
       pivotMatch,
+      oiMatch,
       stars,
       size: finalSize,
       sl: direction === 'long'  ? c.price - stopDist :
