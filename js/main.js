@@ -13,7 +13,7 @@ import { renderARMAAndTransition } from './arma.js';
 import { renderAll } from './render.js';
 import { triggerAIAnalysis, copyAIAnalysis } from './ai.js';
 import { loadCOT, openCOTModal, closeCOTModal, saveCOTUrlFromModal } from './cot.js';
-import { detectSession, computeSessionOpens, computeDailyOpen } from './session.js';
+import { detectSession, computeSessionOpens, computeDailyOpens } from './session.js';
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 
@@ -170,13 +170,15 @@ async function loadAll() {
         CACHE_DURATION.OHLC5M);
       updatePill('pill5m', 'ok');
     }
-    // Merge session open prices and daily open into session data from today's 5m bars
-    const _bars5m = S.ohlc5m[S.currentPair.symbol]?.values || [];
-    const _opens  = computeSessionOpens(_bars5m);
+    // Merge session open prices and daily opens history into session data
+    const _bars5m     = S.ohlc5m[S.currentPair.symbol]?.values || [];
+    const _opens      = computeSessionOpens(_bars5m);
+    const _dailyOpens = computeDailyOpens(S.ohlcData[S.currentPair.symbol]?.values || [], 30);
     if (S.sessionData) {
       S.sessionData.londonOpenPrice = _opens.londonOpenPrice;
       S.sessionData.nyOpenPrice     = _opens.nyOpenPrice;
-      S.sessionData.dailyOpenPrice  = computeDailyOpen(_bars5m);
+      S.sessionData.dailyOpens      = _dailyOpens;
+      S.sessionData.dailyOpenPrice  = _dailyOpens[0]?.price ?? null; // most recent, for badge
     }
 
     if (!S.ohlc30m[S.currentPair.symbol]) {
@@ -337,22 +339,35 @@ window.saveToJournal = function() {
       return;
     }
 
-    const snapshot = {
-      pair: sym,
-      date,
-      capturedAt: new Date().toISOString(),
-      macro: {
-        bias:      macroBias,
-        score:     tierData.totalScore,
-        maxScore:  tierData.maxScore,
-        volRegime: volRegime.regime,
-        atrPips:   volRegime.atrPips,
-        garchPips: volRegime.garch ? volRegime.garch.pips : null,
-      },
-      levels,
+    const macro = {
+      bias:      macroBias,
+      score:     tierData.totalScore,
+      maxScore:  tierData.maxScore,
+      volRegime: volRegime.regime,
+      atrPips:   volRegime.atrPips,
+      garchPips: volRegime.garch ? volRegime.garch.pips : null,
     };
 
-    localStorage.setItem('journal_pending', JSON.stringify(snapshot));
+    // Write directly to journal_store — merge preserving existing trade status/notes
+    const JKEY = 'journal_store';
+    let jData = {};
+    try { const raw = localStorage.getItem(JKEY); if (raw) jData = JSON.parse(raw) || {}; } catch(e) {}
+    if (!jData[date]) jData[date] = {};
+    const existing    = jData[date][sym] || { levels: [], macro: {} };
+    const existingMap = {};
+    (existing.levels || []).forEach(l => { existingMap[l.price + '_' + l.direction] = l; });
+    const merged = levels.map(l => {
+      const ex = existingMap[l.price + '_' + l.direction];
+      return ex ? { ...l, trade: ex.trade, outcome: ex.outcome, notes: ex.notes, slOverride: ex.slOverride, tpOverride: ex.tpOverride } : l;
+    });
+    jData[date][sym] = { levels: merged, macro, savedAt: new Date().toISOString() };
+    try { localStorage.setItem(JKEY, JSON.stringify(jData)); } catch(storageErr) {
+      alert('Storage error — journal not saved: ' + storageErr.message); return;
+    }
+    // Best-effort KV sync so journal is available across devices
+    kvSet(JKEY, jData).catch(() => {});
+    // Remove any stale pending key from old workflow
+    localStorage.removeItem('journal_pending');
 
     const btn = document.getElementById('journalBtn');
     if (btn) {
@@ -370,7 +385,7 @@ window.saveToJournal = function() {
       }, 2000);
     }
 
-    console.log('Journal: snapshot written — ' + levels.length + ' levels for ' + sym + ' on ' + date);
+    console.log('Journal: saved ' + merged.length + ' levels for ' + sym + ' on ' + date);
   } catch(e) {
     console.error('saveToJournal error:', e);
     alert('Error saving to journal: ' + e.message);

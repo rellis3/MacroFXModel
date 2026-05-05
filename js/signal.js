@@ -356,12 +356,13 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       }
     }
 
-    if (S.sessionData?.dailyOpenPrice) {
-      const _doDist = Math.abs(c.price - S.sessionData.dailyOpenPrice);
+    for (const dop of (S.sessionData?.dailyOpens || [])) {
+      const _doDist = Math.abs(c.price - dop.price);
       if (_doDist <= rangeProx) {
         layerScore += 0.5;
-        tags.push({ cls: 'range', label: `Daily Open (${Math.round(_doDist / pipSz)}p)`, key: 'dayopen' });
-        layers.push('Daily open level');
+        tags.push({ cls: 'range', label: `DO ${dop.label} (${Math.round(_doDist / pipSz)}p)`, key: 'dayopen' });
+        layers.push(`Daily open ${dop.label}`);
+        break; // tag the most recent matching day only
       }
     }
     if (S.sessionData?.londonOpenPrice) {

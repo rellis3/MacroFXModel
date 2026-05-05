@@ -1,5 +1,5 @@
 const JOURNAL_KEY = 'journal_store';
-const PAIRS_ALL   = ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD'];
+const PAIRS_ALL   = ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD','EUR/GBP','USD/CAD','USD/CHF','GBP/JPY'];
 let journalData  = {};
 let filterPair   = 'all';
 let selectedDate = null;
@@ -65,29 +65,6 @@ async function init(){
   renderPairNav();renderCalendar();renderQuickStats();renderMain();
 }
 
-function savePending(){
-  const raw=localStorage.getItem('journal_pending');
-  if(!raw){showToast('No pending data','err');return;}
-  try{
-    const snap=JSON.parse(raw);
-    const{date,pair,levels,macro}=snap;
-    if(!journalData[date])journalData[date]={};
-    const existing=journalData[date][pair]||{levels:[],macro:{}};
-    const existingMap={};
-    (existing.levels||[]).forEach(l=>{existingMap[l.price+'_'+l.direction]=l;});
-    const merged=levels.map(l=>{
-      const key=l.price+'_'+l.direction;
-      const ex=existingMap[key];
-      return ex?{...l,trade:ex.trade,outcome:ex.outcome,notes:ex.notes,slOverride:ex.slOverride,tpOverride:ex.tpOverride}:l;
-    });
-    journalData[date][pair]={levels:merged,macro,savedAt:new Date().toISOString()};
-    saveJournal();
-    localStorage.removeItem('journal_pending');
-    selectedDate=date;
-    renderPairNav();renderCalendar();renderQuickStats();renderMain();
-    showToast('Saved '+merged.length+' levels for '+pair,'ok');
-  }catch(e){showToast('Error: '+e.message,'err');}
-}
 
 function renderPairNav(){
   const counts={all:0};
@@ -166,14 +143,11 @@ function renderMain(){
 }
 
 function renderDayView(){
-  const pending=localStorage.getItem('journal_pending');
-  let banner='';
-  if(pending){try{const snap=JSON.parse(pending);banner=`<div class="save-banner"><div><div class="save-banner-text">Dashboard data ready to save</div><div class="save-banner-meta">${snap.pair} &middot; ${snap.levels.length} levels &middot; ${new Date(snap.capturedAt).toLocaleTimeString()}</div></div><button class="save-btn" onclick="savePending()">Save to Journal</button></div>`;}catch(e){}}
   const dayObj=journalData[selectedDate];
   const fmt=new Date(selectedDate+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const pairs=dayObj?Object.keys(dayObj).filter(p=>filterPair==='all'||p===filterPair):[];
-  if(pairs.length===0)return banner+`<div class="empty-state"><div class="em-icon">&#128197;</div><h3>${fmt}</h3><p>No levels saved for this day${filterPair!=='all'?' for '+filterPair:''}.<br>Open the dashboard and click <strong>Journal</strong>.</p></div>`;
-  let html=banner+`<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap"><div style="font-size:16px;font-weight:700">${fmt}</div><div style="font-size:11px;color:var(--text3)">${pairs.length} pair${pairs.length>1?'s':''}</div></div>`;
+  if(pairs.length===0)return`<div class="empty-state"><div class="em-icon">&#128197;</div><h3>${fmt}</h3><p>No levels saved for this day${filterPair!=='all'?' for '+filterPair:''}.<br>Open the dashboard and click <strong>Journal</strong>.</p></div>`;
+  let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap"><div style="font-size:16px;font-weight:700">${fmt}</div><div style="font-size:11px;color:var(--text3)">${pairs.length} pair${pairs.length>1?'s':''}</div></div>`;
   pairs.forEach(pair=>{
     const levels=dayObj[pair].levels||[];
     const macro=dayObj[pair].macro||{};

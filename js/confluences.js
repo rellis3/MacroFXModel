@@ -26,8 +26,8 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
   const oiCapDist  = Math.min(atr * _oiCaps.oiAtrFrac,  _oiCaps.oiPipCap  * _oiPipMult);
   const gexCapDist = Math.min(atr * _oiCaps.gexAtrFrac, _oiCaps.gexPipCap * _oiPipMult);
   const rngCapDist = Math.min(atr * _oiCaps.rngAtrFrac, _oiCaps.rngPipCap * _oiPipMult);
-  const _oiData       = oiLoadStore()[symbol] || null;
-  const _dailyOpenPx  = S.sessionData?.dailyOpenPrice ?? null;
+  const _oiData    = oiLoadStore()[symbol] || null;
+  const _dailyOpens = S.sessionData?.dailyOpens || [];
 
   return confluences.map(c => {
     const direction = directionFromPrice(c.price, anchorPrice, symbol);
@@ -72,15 +72,18 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       }
     }
 
-    const nearDailyOpen = _dailyOpenPx != null && Math.abs(c.price - _dailyOpenPx) <= rngCapDist;
+    // Find all daily opens within proximity — newest-first, take first as label
+    const matchingOpens = _dailyOpens.filter(d => Math.abs(c.price - d.price) <= rngCapDist);
+    const nearDailyOpen = matchingOpens.length > 0 ? matchingOpens[0] : null;
 
     let stars = 1;
-    if (c.isTight)             stars++;
-    if (aligned)               stars++;
-    if (pivotMatch)            stars++;
-    if (oiMatch)               stars++;  // Phase 3: OI wall / gamma flip confluence
-    if (nearDailyOpen)         stars++;  // Fib near daily open (23:00 candle)
-    if ((c.density || 1) >= 2) stars++;  // density bonus: 2+ fib pairs collapsed here
+    if (c.isTight)                stars++;
+    if (aligned)                  stars++;
+    if (pivotMatch)               stars++;
+    if (oiMatch)                  stars++;  // Phase 3: OI wall / gamma flip confluence
+    if (nearDailyOpen)            stars++;  // Fib aligns with a prior daily open
+    if (matchingOpens.length >= 3) stars++; // 3+ daily opens cluster here — very strong level
+    if ((c.density || 1) >= 2)    stars++;  // density bonus: 2+ fib pairs collapsed here
 
     const baseSize = calcPositionSize(macroScore, volRegime);
     const sizeAdj = aligned ? 1 : 0.5;
@@ -137,7 +140,8 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       aligned,
       pivotMatch,
       oiMatch,
-      nearDailyOpen,
+      nearDailyOpen,      // { date, price, label } of most recent matching daily open, or null
+      dailyOpenCount: matchingOpens.length,
       stars,
       size: finalSize,
       sl: direction === 'long'  ? c.price - stopDist :

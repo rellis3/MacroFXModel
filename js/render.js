@@ -393,7 +393,7 @@ ${calendarCtx.warnings.length > 0 ? `
 
     <!-- ENTRY SCANNER -->
     <div class="sec-lbl">
-      High Confluence Entries
+      Trade Setups
       <span class="sec-badge green">MULTI-LAYER</span>
       <span id="entryScannerCount" class="count-badge" style="display:none"></span>
     </div>
@@ -404,7 +404,7 @@ ${calendarCtx.warnings.length > 0 ? `
 
     <!-- CONFLUENCES -->
     <div class="sec-lbl">
-      Fib Confluences
+      Level Map
       <span class="sec-badge purple">TIER 2</span>
       <span class="count-badge">${enhanced.length}</span>
     </div>

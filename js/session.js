@@ -43,21 +43,22 @@ export function detectSession() {
   };
 }
 
-// Find yesterday's 23:00 London bar — the FX daily candle open price.
-// Above = bullish daily bias, below = bearish. bars5m newest-first.
-export function computeDailyOpen(bars5m) {
-  if (!bars5m || !bars5m.length) return null;
-  const nowLondon = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/London' }));
-  const yd = new Date(nowLondon);
-  yd.setDate(yd.getDate() - 1);
-  const yesterdayStr = yd.toLocaleDateString('en-CA'); // YYYY-MM-DD
-  for (const bar of bars5m) {
-    const barDate = bar.datetime.substring(0, 10);
-    if (barDate < yesterdayStr) break;
-    if (barDate === yesterdayStr && bar.datetime.substring(11, 16) === '23:00')
-      return parseFloat(bar.open);
+// Build an array of daily opens from daily OHLC bars (newest-first).
+// Each daily bar's open = the 23:00 candle open for that trading day.
+// Returns [{ date, price, label }] newest-first, up to `days` entries.
+export function computeDailyOpens(ohlcBars, days = 30) {
+  if (!ohlcBars || !ohlcBars.length) return [];
+  const result = [];
+  for (const bar of ohlcBars) {
+    if (result.length >= days) break;
+    const price = parseFloat(bar.open);
+    if (isNaN(price)) continue;
+    const date  = bar.datetime.substring(0, 10); // YYYY-MM-DD
+    const d     = new Date(date + 'T12:00:00Z');  // noon UTC avoids DST boundary issues
+    const label = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+    result.push({ date, price, label });
   }
-  return null;
+  return result;
 }
 
 // Extract London open (08:00) and NY open (13:00) prices from today's 5m bars.
