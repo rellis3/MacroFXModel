@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { AI_CACHE_PREFIX, AI_CACHE_TTL } from './config.js';
+import { AI_CACHE_PREFIX } from './config.js';
 import { kvGet, kvSet, getPipSize, getDigits, filterTradingDays } from './utils.js';
 import { calculateTierScores, computeDollarRegime, computeUSDStrength, detectCrossConflict } from './macro.js';
 import { calculateVolRegime, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots } from './vol.js';
@@ -15,19 +15,18 @@ let _lastAnalysis = null;
 
 export async function aiLoadCache(sym) {
   const key = AI_CACHE_PREFIX + sym.replace('/', '');
+  // No TTL check — analysis persists until user explicitly clicks Analyse
   try {
     const raw = localStorage.getItem('ai_analysis_' + sym.replace('/', ''));
     if (raw) {
       const obj = JSON.parse(raw);
-      if (obj && obj.ts && Date.now() - obj.ts <= AI_CACHE_TTL) return obj;
+      if (obj && obj.analysis) return obj;
     }
   } catch(e) {}
   const kvObj = await kvGet(key);
-  if (kvObj && kvObj.data && kvObj.timestamp) {
-    if (Date.now() - kvObj.timestamp <= AI_CACHE_TTL) {
-      try { localStorage.setItem('ai_analysis_' + sym.replace('/', ''), JSON.stringify({ ts: kvObj.timestamp, ...kvObj.data })); } catch(e) {}
-      return { ts: kvObj.timestamp, ...kvObj.data };
-    }
+  if (kvObj && kvObj.data && kvObj.data.analysis) {
+    try { localStorage.setItem('ai_analysis_' + sym.replace('/', ''), JSON.stringify({ ts: kvObj.timestamp, ...kvObj.data })); } catch(e) {}
+    return { ts: kvObj.timestamp, ...kvObj.data };
   }
   return null;
 }
@@ -580,8 +579,8 @@ export async function aiRenderCard(state, payload, generatedAt) {
       </div>` : ''}
 
       <div style="text-align:right;margin-top:8px">
-        <span style="font-size:10px;color:var(--text3)">Cached 1h · </span>
-        <a href="#" onclick="window.triggerAIAnalysis();return false;" style="font-size:10px;color:var(--purple);text-decoration:none">↻ Refresh analysis</a>
+        <span style="font-size:10px;color:var(--text3)">Cached · persists until refreshed · </span>
+        <a href="#" onclick="window.triggerAIAnalysis();return false;" style="font-size:10px;color:var(--purple);text-decoration:none">↻ Refresh</a>
       </div>
     `;
   }
