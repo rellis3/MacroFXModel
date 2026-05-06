@@ -144,8 +144,13 @@ export function getDigits(symbol) {
 }
 
 export function getConfluenceThreshold(symbol) {
-  if (symbol.includes('XAU') || symbol.includes('GOLD')) return 200;
-  return 2;
+  if (symbol.includes('XAU') || symbol.includes('GOLD')) return S._caps?.gold?.confluencePips ?? 200;
+  return S._caps?.fx?.confluencePips ?? 2;
+}
+
+export function getMergeFactor(symbol) {
+  if (symbol.includes('XAU') || symbol.includes('GOLD')) return S._caps?.gold?.mergeFactor ?? 0.30;
+  return S._caps?.fx?.mergeFactor ?? 0.30;
 }
 
 export function pipsBetween(p1, p2, symbol) {

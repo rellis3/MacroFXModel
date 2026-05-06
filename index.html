@@ -171,6 +171,19 @@ Example:
         </div>
         <div class="cfg-grid">
           <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Confluence pips</span><span class="cfg-label-type">pips</span></div>
+            <input class="cfg-input" type="number" id="fx_confluencePips" step="0.5" min="0.5" max="20" placeholder="2">
+            <div class="cfg-hint">Max pip distance between today's and yesterday's Fib for a confluence to exist. Wider = more levels.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Cluster merge factor</span><span class="cfg-label-type">0–1</span></div>
+            <input class="cfg-input" type="number" id="fx_mergeFactor" step="0.05" min="0.10" max="0.80" placeholder="0.30">
+            <div class="cfg-hint">Fraction of confluence pips used to merge nearby levels into one. Higher = fewer, broader clusters.</div>
+          </div>
+        </div>
+        <div class="cfg-divider" style="margin:8px 0 10px"></div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
             <div class="cfg-label"><span class="cfg-label-main">OI Wall ATR fraction</span><span class="cfg-label-type">fraction</span></div>
             <input class="cfg-input" type="number" id="fx_oiAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.12">
             <div class="cfg-hint">Fraction of ATR as proximity zone. Higher = wider OI wall catch radius.</div>
@@ -222,6 +235,19 @@ Example:
         <div class="cfg-section-title">
           Gold <span class="cfg-section-badge">XAU/USD — wider pip values</span>
         </div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Confluence pips</span><span class="cfg-label-type">pips</span></div>
+            <input class="cfg-input" type="number" id="gold_confluencePips" step="10" min="10" max="500" placeholder="200">
+            <div class="cfg-hint">Gold pips ($0.10 each). Default 200 = $20 max distance. Lower = fewer but tighter confluences.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Cluster merge factor</span><span class="cfg-label-type">0–1</span></div>
+            <input class="cfg-input" type="number" id="gold_mergeFactor" step="0.05" min="0.10" max="0.80" placeholder="0.30">
+            <div class="cfg-hint">Default 0.30 = $6 merge radius at 200 pip threshold. Increase to collapse more nearby levels.</div>
+          </div>
+        </div>
+        <div class="cfg-divider" style="margin:8px 0 10px"></div>
         <div class="cfg-grid">
           <div class="cfg-field">
             <div class="cfg-label"><span class="cfg-label-main">OI Wall ATR fraction</span><span class="cfg-label-type">fraction</span></div>

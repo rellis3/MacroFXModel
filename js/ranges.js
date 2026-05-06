@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { FIB_LEVELS } from './config.js';
-import { barLondonHour, barLondonDay, getPipSize, getDigits, getConfluenceThreshold } from './utils.js';
+import { barLondonHour, barLondonDay, getPipSize, getDigits, getConfluenceThreshold, getMergeFactor } from './utils.js';
 
 export function calculateAsiaRanges(symbol) {
   const bars = S.ohlc5m[symbol]?.values;
@@ -151,7 +151,8 @@ export function detectConfluences(todayLevels, yesterdayLevels, symbol, source, 
   // near-zero and blocking all confluences. The pip-based calcDistance + Layer 3
   // clustering are sufficient guards — no dynamic cap needed.
   const normalDistance = calcDistance;
-  const tightDistance  = calcDistance * 0.10;
+  const tightDistance  = calcDistance * 0.10;                   // isTight flag — very precise level
+  const mergeDistance  = calcDistance * getMergeFactor(symbol); // cluster merge — from caps, default 0.30
 
   // Layer 1: collect ALL qualifying pairs (no dedup yet — we need density counts).
   // Use midpoint as the representative price rather than always picking the lower.
@@ -174,9 +175,12 @@ export function detectConfluences(todayLevels, yesterdayLevels, symbol, source, 
 
   if (!rawPairs.length) return [];
 
-  // Layer 3: cluster merge — group rawPairs whose midpoints are within tightDistance
+  // Layer 3: cluster merge — group rawPairs whose midpoints are within mergeDistance
   // of the running cluster centre. Each cluster becomes one final confluence level.
-  // Density = how many raw pairs collapsed into that level.
+  // mergeDistance (30% of normal) is intentionally wider than tightDistance (10%)
+  // so nearby Fib pairs collapse into one level rather than producing near-duplicates.
+  // Gold example: normalDistance=$20 → mergeDistance=$6, so five levels spanning $10
+  // become one cluster instead of five separate entries.
   rawPairs.sort((a, b) => a.price - b.price);
 
   const clusters = [];
@@ -184,7 +188,7 @@ export function detectConfluences(todayLevels, yesterdayLevels, symbol, source, 
 
   for (let i = 1; i < rawPairs.length; i++) {
     const centre = bucket.reduce((s, p) => s + p.price, 0) / bucket.length;
-    if (rawPairs[i].price - centre <= tightDistance) {
+    if (rawPairs[i].price - centre <= mergeDistance) {
       bucket.push(rawPairs[i]);
     } else {
       clusters.push(bucket);
