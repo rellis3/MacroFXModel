@@ -227,6 +227,54 @@ export default {
         return json(data);
       }
 
+      // -- /api/oanda_ohlc5m  &  /api/oanda_ohlc30m -----------
+      // Oanda mid-price bars for Asia session + Monday range detection.
+      // Replaces TwelveData 5m/30m — more accurate FX prices from a primary market maker.
+      // Env vars: OANDA_KEY (required), OANDA_ENV ('practice' | 'live', default 'live')
+      if (path === '/api/oanda_ohlc5m' || path === '/api/oanda_ohlc30m') {
+        if (!env.OANDA_KEY) return err('OANDA_KEY not configured — add it in Cloudflare Pages → Settings → Environment Variables', 503);
+
+        const symbol = url.searchParams.get('symbol');
+        if (!symbol) return err('symbol param required', 400);
+
+        const instrument  = symbol.replace('/', '_');  // EUR/USD → EUR_USD
+        const granularity = path === '/api/oanda_ohlc5m' ? 'M5' : 'M30';
+        const count       = path === '/api/oanda_ohlc5m' ? 1500 : 700;
+        const oandaBase   = env.OANDA_ENV === 'practice'
+          ? 'https://api-fxpractice.oanda.com'
+          : 'https://api-fxtrade.oanda.com';
+
+        const oandaUrl = `${oandaBase}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${granularity}&count=${count}&price=M`;
+        const res = await fetch(oandaUrl, {
+          headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` },
+        });
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => 'Oanda error');
+          return err(`Oanda ${granularity} fetch failed (${res.status}): ${errText.slice(0, 300)}`, 502);
+        }
+
+        const data = await res.json();
+        if (!data.candles) return err('Oanda returned no candles', 502);
+
+        // Normalize to TwelveData-compatible format: { values: [{ datetime, open, high, low, close }] }
+        // Convert UTC timestamps → London local time so barLondonHour() works correctly during BST.
+        // Filter to complete candles only (excludes the still-open current bar).
+        // Reverse so newest bar is first (TwelveData convention).
+        const values = data.candles
+          .filter(c => c.complete && c.mid)
+          .map(c => ({
+            datetime: new Date(c.time).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).substring(0, 19),
+            open:  c.mid.o,
+            high:  c.mid.h,
+            low:   c.mid.l,
+            close: c.mid.c,
+          }))
+          .reverse();
+
+        return json({ values, meta: { symbol, source: 'oanda', granularity } });
+      }
+
       // -- /api/fred --------------------------------------------
       // Returns { vix: { value, prev }, us10y: { value, prev }, ... }
       // Each series transformed from raw FRED observations array into

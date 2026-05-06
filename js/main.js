@@ -166,7 +166,7 @@ async function loadAll() {
     if (!S.ohlc5m[S.currentPair.symbol]) {
       const sessionDay = londonSessionDay();
       S.ohlc5m[S.currentPair.symbol] = await loadCached(`ohlc5m_${symKey}_${sessionDay}`,
-        () => fetchAPI(`/api/ohlc5m?symbol=${encodeURIComponent(S.currentPair.symbol)}`),
+        () => fetchAPI(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(S.currentPair.symbol)}`),
         CACHE_DURATION.OHLC5M);
       updatePill('pill5m', 'ok');
     }
@@ -184,7 +184,7 @@ async function loadAll() {
     if (!S.ohlc30m[S.currentPair.symbol]) {
       const sessionDay = londonSessionDay();
       S.ohlc30m[S.currentPair.symbol] = await loadCached(`ohlc30m_${symKey}_${sessionDay}`,
-        () => fetchAPI(`/api/ohlc30m?symbol=${encodeURIComponent(S.currentPair.symbol)}`),
+        () => fetchAPI(`/api/oanda_ohlc30m?symbol=${encodeURIComponent(S.currentPair.symbol)}`),
         CACHE_DURATION.OHLC30M);
       updatePill('pill30m', 'ok');
     }
@@ -243,7 +243,7 @@ async function refreshQuote() {
         ? new Date(bars[0].datetime.replace(' ', 'T') + 'Z').getTime()
         : 0;
       if (Date.now() - latestOpenMs > 10 * 60 * 1000) {
-        const fresh = await fetchAPI(`/api/ohlc5m?symbol=${encodeURIComponent(S.currentPair.symbol)}`);
+        const fresh = await fetchAPI(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(S.currentPair.symbol)}`);
         if (fresh && fresh.values && fresh.values.length) {
           S.ohlc5m[S.currentPair.symbol] = fresh;
           calculateAsiaRanges(S.currentPair.symbol);
