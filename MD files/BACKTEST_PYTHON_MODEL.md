@@ -221,42 +221,63 @@ def project_fibs(session_range):
         levels.append({'fib': fib, 'price': price})
     return levels
 
-def detect_confluences(today_fibs, yesterday_fibs, pip_size, confluence_pips=5):
+def detect_confluences(today_fibs, yesterday_fibs, pip_size, confluence_pips=2, merge_factor=0.30):
     """
     Find price levels where today's and yesterday's Fib projections overlap.
-    Returns list of confluence dicts with price, pip_diff, is_tight.
-    """
-    threshold = confluence_pips * pip_size
-    tight_threshold = threshold * 0.10
+    Mirrors the 3-layer pipeline in ranges.js detectConfluences().
 
+    Layer 1 — Raw pair collection:
+        Gate = confluence_pips × pip_size. Every pair of (today_fib, yest_fib)
+        whose prices fall within that distance is collected as a raw pair.
+        Midpoint is the representative price rather than always the lower level.
+
+    Layer 2 — Cluster merge:
+        Sort raw pairs by price. Walk with a running bucket; merge the next pair
+        into the bucket if its price is within merge_threshold of the bucket centre.
+        merge_threshold = gate × merge_factor (default 30% of gate).
+        This collapses near-duplicate pairs (e.g. 5 levels spanning $10 on gold)
+        into a single zone rather than producing near-duplicate entries.
+
+    Layer 3 — Bucket → single confluence:
+        Each bucket becomes one output level. Price = mean of bucket prices.
+        is_tight = any pair within 10% of gate. density = number of raw pairs merged.
+
+    Returns list of confluence dicts with price, pip_diff, is_tight, density.
+    """
+    threshold       = confluence_pips * pip_size
+    tight_threshold = threshold * 0.10             # is_tight flag — very precise overlap
+    merge_threshold = threshold * merge_factor     # cluster merge radius
+
+    # Layer 1: collect all qualifying raw pairs
     raw_pairs = []
     for t in today_fibs:
         for y in yesterday_fibs:
             diff = abs(t['price'] - y['price'])
             if diff <= threshold:
                 raw_pairs.append({
-                    'price':    (t['price'] + y['price']) / 2,
-                    'today_fib':    t['fib'],
-                    'yest_fib':     y['fib'],
-                    'pip_diff':     diff / pip_size,
-                    'is_tight':     diff <= tight_threshold,
+                    'price':     (t['price'] + y['price']) / 2,
+                    'today_fib': t['fib'],
+                    'yest_fib':  y['fib'],
+                    'pip_diff':  diff / pip_size,
+                    'is_tight':  diff <= tight_threshold,
                 })
 
     if not raw_pairs:
         return []
 
-    # Cluster merge (mirrors Layer 3 in ranges.js)
+    # Layer 2: cluster merge — group nearby raw pairs into buckets
     raw_pairs.sort(key=lambda x: x['price'])
     clusters, bucket = [], [raw_pairs[0]]
     for pair in raw_pairs[1:]:
         centre = sum(p['price'] for p in bucket) / len(bucket)
-        if pair['price'] - centre <= tight_threshold:
+        if pair['price'] - centre <= merge_threshold:
             bucket.append(pair)
         else:
             clusters.append(bucket)
             bucket = [pair]
     clusters.append(bucket)
 
+    # Layer 3: each bucket → single confluence level
     confluences = []
     for cluster in clusters:
         confluences.append({
@@ -465,7 +486,8 @@ def run_backtest(pair, df_5m, df_30m, df_daily, fred_df, config):
         # Detect confluences
         today_fibs = project_fibs(today_asia)
         yest_fibs  = project_fibs(yest_asia)
-        confluences = detect_confluences(today_fibs, yest_fibs, pip_size, config['confluence_pips'])
+        conf_pips = config['confluence_pips'].get(pair, config['confluence_pips']) if isinstance(config['confluence_pips'], dict) else config['confluence_pips']
+        confluences = detect_confluences(today_fibs, yest_fibs, pip_size, conf_pips, config.get('merge_factor', 0.30))
 
         # Filter + rate
         pivot_levels = compute_pivots(df_daily.iloc[:i])
@@ -622,22 +644,39 @@ def walk_forward(pair, df_5m, df_30m, df_daily, fred_df, config,
 ```python
 # Base config — test each parameter independently first
 BASE_CONFIG = {
-    'pip_size':          {'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01, 'AUD/USD': 0.0001, 'XAU/USD': 0.1},
-    'confluence_pips':   5,       # proximity threshold for confluence detection
+    'pip_size': {
+        'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
+        'AUD/USD': 0.0001, 'EUR/GBP': 0.0001, 'USD/CAD': 0.0001,
+        'USD/CHF': 0.0001, 'GBP/JPY': 0.01,   'XAU/USD': 0.1,
+    },
+    # Gate controlling max pip distance for two Fibs to qualify as confluence.
+    # Per-instrument dict: FX = 2 pips, Gold = 200 pips ($20).
+    # Pass a scalar to apply uniformly (not recommended for multi-pair runs).
+    'confluence_pips': {
+        'EUR/USD': 2, 'GBP/USD': 2, 'USD/JPY': 2,
+        'AUD/USD': 2, 'EUR/GBP': 2, 'USD/CAD': 2,
+        'USD/CHF': 2, 'GBP/JPY': 2, 'XAU/USD': 200,
+    },
+    # Fraction of confluence gate used as cluster merge radius.
+    # 0.30 = 30% → FX: 0.6 pip merge radius, Gold: $6 merge radius.
+    # Increase to merge more aggressively; decrease to keep more distinct levels.
+    'merge_factor':      0.30,
     'min_stars':         3,       # minimum star rating to trade
     'skip_extreme_vol':  True,    # skip HIGH vol regime sessions
     'session_filter':   'london', # 'london', 'london+ny', 'all'
     'rr_min':            1.5,     # minimum R:R required (tp_mult)
 }
 
-# Variants to test
+# Variants to test — each overrides one key from BASE_CONFIG.
+# The 8 variants shown in the comparison table:
 VARIANTS = [
     {'min_stars': 2},
-    {'min_stars': 3},  # base
+    {'min_stars': 3},              # base
     {'min_stars': 4},
-    {'confluence_pips': 3},
-    {'confluence_pips': 5},   # base
-    {'confluence_pips': 8},
+    {'confluence_pips': {**BASE_CONFIG['confluence_pips'], **{'XAU/USD': 100}}},   # tighter gold
+    {'confluence_pips': {**BASE_CONFIG['confluence_pips'], **{'XAU/USD': 300}}},   # looser gold
+    {'merge_factor': 0.15},        # tight clusters — more distinct levels
+    {'merge_factor': 0.50},        # loose clusters — fewer, broader zones
     {'skip_extreme_vol': False},
     {'session_filter': 'london+ny'},
 ]

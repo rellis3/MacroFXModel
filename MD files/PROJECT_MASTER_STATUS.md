@@ -202,6 +202,27 @@ Total range: **-16 to +16** (±1 coherence bonus if 6+ tiers agree).
 `-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0`
 (both Asia and Monday, today vs yesterday for each)
 
+### How clustering works (3-layer pipeline)
+
+**Layer 1 — Raw pair collection (the gate)**
+Every today Fib is compared against every yesterday Fib: 14 × 14 = 196 combinations per session. Any pair within `confluencePips × pipSize` of each other becomes a raw pair. Each raw pair stores its midpoint price, pip diff, and an `isTight` flag (diff ≤ 10% of threshold = very precise overlap).
+
+**Layer 2 — Cluster merge (the deduplicator)**
+Raw pairs are sorted by price and walked left-to-right. A running bucket accumulates pairs whose midpoint is within `mergeDistance = confluencePips × pipSize × mergeFactor` of the current bucket centre. When a pair falls outside that radius, the bucket closes as one cluster and a new one starts. This is what prevents five separate levels spanning $10 on gold all appearing as distinct entries.
+
+**Layer 3 — Cluster → confluence**
+Each closed bucket becomes one confluence level: price = mean of all raw pair midpoints, density = count of raw pairs in the bucket, isTight = true if any pair was tight, pipDiff = minimum pip diff in the bucket. Density ≥ 2 earns +1 star via the density bonus.
+
+**The two configurable knobs (⚙ Caps modal, saved to KV):**
+
+| Setting | Default FX | Default Gold | Effect |
+|---|---|---|---|
+| `confluencePips` | 2 pips | 200 pips ($20) | Gate — wider = more raw pairs = more potential confluences |
+| `mergeFactor` | 0.30 | 0.30 | Deduplicator — 30% of gate distance as cluster merge radius. Higher = fewer broader clusters |
+
+Gold example at defaults: `mergeDistance = $20 × 0.30 = $6`. Five raw pairs spanning $10 all fall within $6 of a running centre → one cluster with density 5.
+FX example at defaults: `mergeDistance = 2 pips × 0.30 = 0.6 pips` — still very tight, no over-merging risk.
+
 ### Star rating system (updated May 2026 — max 7 stars)
 
 | Condition | Stars |
