@@ -648,7 +648,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
     ${c.aligned ? '<div class="ci-aligned">✓ Aligned</div>' : ''}
     ${c.pivotMatch ? `<div class="ci-pivot">📍 ${c.pivotMatch}</div>` : ''}
     ${c.dailyFib ? `<div class="ci-dfib dfib-${c.dailyFib.strength}" title="Daily Fib retracement">📊 ${c.dailyFib.label} ${c.dailyFib.direction}</div>` : ''}
-    ${c.structuralFib ? `<div class="ci-sfib sfib-${c.structuralFib.passType === 'range' ? 'range' : 'swing'}" title="${c.structuralFib.timeLabel}">📐 ${c.structuralFib.label} ${c.structuralFib.direction}${c.structuralFib.count >= 3 ? ` ×${c.structuralFib.count}` : ''}</div>` : ''}
+    ${c.structuralFib ? `<div class="ci-dfib dfib-${c.structuralFib.strength}" title="Structural fib · ${c.structuralFib.timeLabel}">📐 ${c.structuralFib.label} ${c.structuralFib.direction}${c.structuralFib.count >= 3 ? ` ×${c.structuralFib.count}` : ''}</div>` : ''}
     <div class="ci-size">${c.size}%</div>
   </div>
   ${c.direction ? `<div class="ci-trade-row">

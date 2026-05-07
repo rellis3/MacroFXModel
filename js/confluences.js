@@ -106,9 +106,13 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     // Density ≥ 3 = three independent anchor pairs agree on this price = extra star.
     let structuralFib = null;
     if (_structLevels.length > 0) {
-      const sfMatches = _structLevels.filter(sf => Math.abs(sf.price - c.price) <= _dfibThreshold);
+      const sfMatches = _structLevels.filter(sf =>
+        sf.isZone
+          ? c.price >= sf.priceMin && c.price <= sf.priceMax
+          : Math.abs(sf.price - c.price) <= _dfibThreshold
+      );
       if (sfMatches.length > 0) {
-        sfMatches.sort((a, b) => b.fibLevel - a.fibLevel); // highest fib ordinal = strongest level
+        sfMatches.sort((a, b) => (_DFIB_STRENGTH[b.strength] || 0) - (_DFIB_STRENGTH[a.strength] || 0));
         structuralFib = { ...sfMatches[0], count: sfMatches.length };
       }
     }

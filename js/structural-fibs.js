@@ -1,7 +1,12 @@
 import { S } from './state.js';
 import { getPipSize } from './utils.js';
 
-const STRUCT_FIBS = [0.236, 0.382, 0.5, 0.618, 0.786, 0.886];
+const POINT_FIBS = [
+  { level: 0.382, label: '0.382', strength: 'bronze' },
+  { level: 0.5,   label: '0.5',   strength: 'bronze' },
+  { level: 0.786, label: '0.786', strength: 'silver' },
+  { level: 0.886, label: '0.886', strength: 'silver' },
+];
 
 function fmtTime(dt) {
   if (!dt) return '—';
@@ -78,14 +83,34 @@ export function calculateStructuralFibs(symbol) {
     const range = anchorHigh.price - anchorLow.price;
     if (range <= 0) return;
     const timeLabel = `${fmtTime(anchorHigh.time)} → ${fmtTime(anchorLow.time)}`;
-    STRUCT_FIBS.forEach(fib => {
-      const base = {
-        fibLevel: fib, label: String(fib), passType, timeLabel,
-        anchorHigh: anchorHigh.price, anchorHighTime: anchorHigh.time,
-        anchorLow: anchorLow.price,   anchorLowTime:  anchorLow.time,
-      };
-      levels.push({ ...base, price: anchorHigh.price - range * fib, direction: 'H→L' });
-      levels.push({ ...base, price: anchorLow.price  + range * fib, direction: 'L→H' });
+    const meta = {
+      passType, timeLabel, isZone: false,
+      anchorHigh: anchorHigh.price, anchorHighTime: anchorHigh.time,
+      anchorLow:  anchorLow.price,  anchorLowTime:  anchorLow.time,
+    };
+
+    // Point levels: 0.382, 0.5, 0.786, 0.886
+    POINT_FIBS.forEach(f => {
+      const base = { ...meta, fibLevel: f.level, label: f.label, strength: f.strength };
+      levels.push({ ...base, price: anchorHigh.price - range * f.level, direction: 'H→L' });
+      levels.push({ ...base, price: anchorLow.price  + range * f.level, direction: 'L→H' });
+    });
+
+    // GP zone (0.618–0.65) — stored as a zone, matched with containment not proximity
+    const gpBase = { ...meta, fibLevel: 'GP', label: 'GP', strength: 'gold', isZone: true };
+    levels.push({
+      ...gpBase,
+      direction: 'L→H',
+      priceMin: anchorLow.price  + range * 0.618,
+      priceMax: anchorLow.price  + range * 0.65,
+      price:    anchorLow.price  + range * 0.634,
+    });
+    levels.push({
+      ...gpBase,
+      direction: 'H→L',
+      priceMin: anchorHigh.price - range * 0.65,
+      priceMax: anchorHigh.price - range * 0.618,
+      price:    anchorHigh.price - range * 0.634,
     });
   }
 
