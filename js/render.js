@@ -648,6 +648,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
     ${c.aligned ? '<div class="ci-aligned">✓ Aligned</div>' : ''}
     ${c.pivotMatch ? `<div class="ci-pivot">📍 ${c.pivotMatch}</div>` : ''}
     ${c.dailyFib ? `<div class="ci-dfib dfib-${c.dailyFib.strength}" title="Daily Fib retracement">📊 ${c.dailyFib.label} ${c.dailyFib.direction}</div>` : ''}
+    ${c.structuralFib ? `<div class="ci-sfib sfib-${c.structuralFib.passType === 'range' ? 'range' : 'swing'}" title="${c.structuralFib.timeLabel}">📐 ${c.structuralFib.label} ${c.structuralFib.direction}${c.structuralFib.count >= 3 ? ` ×${c.structuralFib.count}` : ''}</div>` : ''}
     <div class="ci-size">${c.size}%</div>
   </div>
   ${c.direction ? `<div class="ci-trade-row">
@@ -655,7 +656,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
     <span><strong>SL:</strong> ${c.sl.toFixed(digits)} (${c.stopPips.toFixed(0)}p)</span>
     <span><strong>TP:</strong> ${c.tp.toFixed(digits)} (${c.tpPips.toFixed(0)}p${c.tpSource ? ' · ' + c.tpSource : ''})</span>
     <span><strong>R:R:</strong> 1:${c.rrRaw || '—'}${c.poorRR ? ' ⚠' : ''}</span>
-  </div>` : `<div class="ci-trade-row" style="opacity:.6">
+  </div>${c.tpFibRisk ? `<div class="ci-tp-risk">⚠ Structural fib ${c.tpFibRisk.label} at ${c.tpFibRisk.price.toFixed(digits)} sits in TP path — may stall here</div>` : ''}` : `<div class="ci-trade-row" style="opacity:.6">
     <span><em>Price sitting on level — wait for break above (BUY zone) or below (SELL zone)</em></span>
   </div>`}
 </div>`;

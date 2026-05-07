@@ -37,6 +37,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
   const _asiaMinPips = getAsiaMinPips(symbol);
   const _dfibThreshold = getConfluenceThreshold(symbol) * pipSize;
   const _dailyFibs = _asiaPips >= _asiaMinPips ? getDailyFibLevels(symbol) : [];
+  const _structLevels = S.structuralFibData[symbol]?.levels || [];
 
   return confluences.map(c => {
     const direction = directionFromPrice(c.price, anchorPrice, symbol);
@@ -101,6 +102,17 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       }
     }
 
+    // Structural fib matching — count how many of the multi-pass fib levels land within threshold.
+    // Density ≥ 3 = three independent anchor pairs agree on this price = extra star.
+    let structuralFib = null;
+    if (_structLevels.length > 0) {
+      const sfMatches = _structLevels.filter(sf => Math.abs(sf.price - c.price) <= _dfibThreshold);
+      if (sfMatches.length > 0) {
+        sfMatches.sort((a, b) => b.fibLevel - a.fibLevel); // highest fib ordinal = strongest level
+        structuralFib = { ...sfMatches[0], count: sfMatches.length };
+      }
+    }
+
     let stars = 1;
     if (c.isTight)                stars++;
     if (aligned)                  stars++;
@@ -110,6 +122,8 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     if (matchingOpens.length >= 3) stars++; // 3+ daily opens cluster here — very strong level
     if ((c.density || 1) >= 2)    stars++;  // density bonus: 2+ fib pairs collapsed here
     if (dailyFib)                 stars++;  // Daily Fib retracement confluence
+    if (structuralFib)            stars++;  // Structural fib (multi-pass swing sweep) confluence
+    if ((structuralFib?.count ?? 0) >= 3) stars++; // 3+ independent passes agree on this price
 
     const baseSize = calcPositionSize(macroScore, volRegime);
     const sizeAdj = aligned ? 1 : 0.5;
@@ -159,6 +173,22 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     const rrRaw  = stopDist > 0 && tpDist != null ? (tpDist / stopDist) : 0;
     const poorRR = rrRaw < 1.0;
 
+    // TP path risk — warn if a structural fib sits between entry and TP.
+    // Buffer of 15% of stopDist on each end avoids flagging levels right at entry or TP.
+    let tpFibRisk = null;
+    if (direction && tp != null && _structLevels.length > 0) {
+      const buf = stopDist * 0.15;
+      const inPath = _structLevels.filter(sf =>
+        direction === 'long'
+          ? sf.price > c.price + buf && sf.price < tp - buf
+          : sf.price < c.price - buf && sf.price > tp + buf
+      );
+      if (inPath.length > 0) {
+        inPath.sort((a, b) => direction === 'long' ? a.price - b.price : b.price - a.price);
+        tpFibRisk = inPath[0];
+      }
+    }
+
     return {
       ...c,
       direction,
@@ -167,6 +197,8 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       pivotMatch,
       oiMatch,
       dailyFib,           // { label, direction, strength } of matching daily Fib level, or null
+      structuralFib,      // { label, direction, passType, timeLabel, count } or null
+      tpFibRisk,          // nearest structural fib sitting in TP path, or null (warn only)
       nearDailyOpen,      // { date, price, label } of most recent matching daily open, or null
       dailyOpenCount: matchingOpens.length,
       stars,

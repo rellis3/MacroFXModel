@@ -184,6 +184,13 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .dark .dfib-gold{background:#451a03;color:#fde68a;border-color:#b45309}
 .dark .dfib-silver{background:#1e293b;color:#cbd5e1;border-color:#64748b}
 .dark .dfib-bronze{background:#431407;color:#fed7aa;border-color:#c2410c}
+.ci-sfib{flex-shrink:0;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;white-space:nowrap}
+.sfib-range{background:#ede9fe;color:#5b21b6;border:1px solid #8b5cf6}
+.sfib-swing{background:#ecfdf5;color:#065f46;border:1px solid #34d399}
+.dark .sfib-range{background:#2e1065;color:#c4b5fd;border-color:#7c3aed}
+.dark .sfib-swing{background:#022c22;color:#6ee7b7;border-color:#059669}
+.ci-tp-risk{font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;padding:4px 10px;margin-top:4px;font-weight:600}
+.dark .ci-tp-risk{color:#fde68a;background:#451a03;border-color:#b45309}
 .ci-size{flex-shrink:0;font-size:10px;padding:2px 7px;border-radius:8px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd);font-weight:600;font-family:'DM Mono',monospace}
 .ci-trade-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font-size:10.5px;font-family:'DM Mono',monospace;color:var(--text2)}
 .ci-trade-row strong{color:var(--text);font-weight:600}

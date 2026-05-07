@@ -2,6 +2,7 @@ import { S } from './state.js';
 import { PAIRS, CACHE_DURATION } from './config.js';
 import { kvSet, loadCached, cleanupStaleSessionCaches, fetchAPI, updateStatus, updatePill, londonSessionDay, getDigits } from './utils.js';
 import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
+import { calculateStructuralFibs } from './structural-fibs.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
 import { calculateTierScores } from './macro.js';
 import { calculateVolRegime, calculatePivots } from './vol.js';
@@ -197,6 +198,7 @@ async function loadAll() {
 
     calculateAsiaRanges(S.currentPair.symbol);
     calculateMondayRanges(S.currentPair.symbol);
+    calculateStructuralFibs(S.currentPair.symbol);
     window._latestQuote = quote;
 
     // Background-load daily OHLC for the 4 USD-index pairs (cached 23h — no extra API cost

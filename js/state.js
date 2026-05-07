@@ -8,8 +8,9 @@ export const S = {
   ohlcData:        {},
   ohlc5m:          {},
   ohlc30m:         {},
-  asiaRangeData:   {},
-  mondayRangeData: {},
+  asiaRangeData:      {},
+  mondayRangeData:    {},
+  structuralFibData:  {},
   compassData:     {},
   compassMode:     'both', // '2y' | '10y' | 'both'
   compassShowFX:   false,  // overlay normalized FX rate on compass chart

@@ -185,6 +185,16 @@ Example:
             <input class="cfg-input" type="number" id="fx_asiaMinPips" step="1" min="5" max="100" placeholder="15">
             <div class="cfg-hint">Min Asia session range (pips) before daily Fib retracements are matched against confluences. Below this Asia is too compressed.</div>
           </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib lookback (days)</span><span class="cfg-label-type">days</span></div>
+            <input class="cfg-input" type="number" id="fx_structuralLookbackDays" step="1" min="5" max="90" placeholder="30">
+            <div class="cfg-hint">How many days of 30m bars to search for the structural range high/low and swing pivots. Default 30.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib pivot N</span><span class="cfg-label-type">bars</span></div>
+            <input class="cfg-input" type="number" id="fx_structuralPivotN" step="1" min="2" max="20" placeholder="5">
+            <div class="cfg-hint">A bar is a swing high/low if its extreme dominates N bars on each side. Higher N = only major pivots. Default 5.</div>
+          </div>
         </div>
         <div class="cfg-divider" style="margin:8px 0 10px"></div>
         <div class="cfg-grid">
@@ -255,6 +265,16 @@ Example:
             <div class="cfg-label"><span class="cfg-label-main">Asia min pips (daily Fib)</span><span class="cfg-label-type">pips</span></div>
             <input class="cfg-input" type="number" id="gold_asiaMinPips" step="10" min="50" max="500" placeholder="150">
             <div class="cfg-hint">Gold pips ($0.10 each). Default 150 = $15 min Asia range before daily Fib matching is enabled.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib lookback (days)</span><span class="cfg-label-type">days</span></div>
+            <input class="cfg-input" type="number" id="gold_structuralLookbackDays" step="1" min="5" max="90" placeholder="30">
+            <div class="cfg-hint">Days of 30m bars for structural range/swing sweep. Default 30.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib pivot N</span><span class="cfg-label-type">bars</span></div>
+            <input class="cfg-input" type="number" id="gold_structuralPivotN" step="1" min="2" max="20" placeholder="5">
+            <div class="cfg-hint">N-bar dominance required to qualify as a swing pivot. Higher N = fewer, larger pivots. Default 5.</div>
           </div>
         </div>
         <div class="cfg-divider" style="margin:8px 0 10px"></div>
