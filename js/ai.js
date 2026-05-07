@@ -588,16 +588,27 @@ export async function aiRenderCard(state, payload, generatedAt) {
   const isOpen = state === 'data' || state === 'loading';
 
   // TLDR panel — only shown when analysis data is available
-  const tldrHtml = (state === 'data' && payload?.tldr) ? `
-    <div class="ai-tldr-card" id="aiTldrCard">
-      <div class="ai-tldr-header">
-        <span class="ai-tldr-title">📋 TLDR</span>
-        <span class="ai-tldr-hint">copy-ready brief</span>
-        <button id="aiTldrCopyBtn" onclick="copyAITldr()" class="ai-tldr-copy-btn" title="Copy TLDR to clipboard">Copy</button>
+  const tldrHtml = (state === 'data' && payload?.tldr) ? (() => {
+    const a = payload;
+    const biasClass = (a.overallBias === 'LONG' ? 'long' : a.overallBias === 'SHORT' ? 'short' : 'neutral');
+    const convClass = (a.conviction || 'MEDIUM').toUpperCase();
+    const score = a.convictionScore != null ? Math.min(10, Math.max(0, Math.round(a.convictionScore))) : '—';
+    return `
+    <div class="ai-tldr-card ${biasClass}" id="aiTldrCard">
+      <div class="ai-tldr-left">
+        <div class="ai-tldr-bias">${a.overallBias || '—'}</div>
+        <div class="ai-tldr-score"><span>${score}</span>/10</div>
+        <div class="ai-conviction ${convClass}" style="margin-top:4px">${convClass}</div>
       </div>
-      <pre class="ai-tldr-body">${payload.tldr.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
-    </div>
-  ` : '';
+      <div class="ai-tldr-right">
+        <div class="ai-tldr-right-header">
+          <span class="ai-tldr-label">📋 TLDR</span>
+          <button id="aiTldrCopyBtn" onclick="copyAITldr()" class="ai-tldr-copy-btn" title="Copy TLDR to clipboard">Copy</button>
+        </div>
+        <pre class="ai-tldr-body">${a.tldr.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+      </div>
+    </div>`;
+  })() : '';
 
   el.innerHTML = `
     ${tldrHtml}

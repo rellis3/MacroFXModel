@@ -393,14 +393,27 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 .ai-spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spn .8s linear infinite}
 .ai-error{padding:10px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:6px;color:var(--red);font-size:11px;line-height:1.5}
 .ai-empty{padding:14px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6}
-.ai-tldr-card{background:var(--s1);border:1.5px solid var(--purple-bd);border-radius:var(--rl);overflow:hidden;margin-bottom:8px}
-.ai-tldr-header{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--purple-bg);border-bottom:1px solid var(--purple-bd)}
-.ai-tldr-title{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--purple);text-transform:uppercase;flex:1}
-.ai-tldr-hint{font-size:9px;color:var(--text3);font-style:italic}
-.ai-tldr-copy-btn{font-size:10px;padding:2px 10px;border-radius:6px;border:1px solid var(--purple-bd);background:var(--s1);color:var(--purple);cursor:pointer;font-weight:600;flex-shrink:0;transition:all .15s}
-.ai-tldr-copy-btn:hover{background:var(--purple);color:#fff}
+.ai-tldr-card{display:flex;border-radius:var(--rl);overflow:hidden;margin-bottom:8px;border:1.5px solid var(--border)}
+.ai-tldr-card.long{border-color:var(--green-bd)}
+.ai-tldr-card.short{border-color:var(--red-bd)}
+.ai-tldr-card.neutral{border-color:var(--amber-bd)}
+.ai-tldr-left{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 14px;gap:3px;min-width:72px;flex-shrink:0}
+.ai-tldr-card.long .ai-tldr-left{background:var(--green-bg)}
+.ai-tldr-card.short .ai-tldr-left{background:var(--red-bg)}
+.ai-tldr-card.neutral .ai-tldr-left{background:var(--amber-bg)}
+.ai-tldr-bias{font-size:13px;font-weight:800;letter-spacing:.08em}
+.ai-tldr-card.long .ai-tldr-bias{color:var(--green)}
+.ai-tldr-card.short .ai-tldr-bias{color:var(--red)}
+.ai-tldr-card.neutral .ai-tldr-bias{color:var(--amber)}
+.ai-tldr-score{font-size:10px;color:var(--text3);text-align:center}
+.ai-tldr-score span{display:block;font-size:20px;font-weight:700;color:var(--text);font-family:'DM Mono',monospace;line-height:1}
+.ai-tldr-right{display:flex;flex-direction:column;flex:1;min-width:0;border-left:1px solid var(--border)}
+.ai-tldr-right-header{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--s2);border-bottom:1px solid var(--border)}
+.ai-tldr-label{font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;flex:1}
+.ai-tldr-copy-btn{font-size:10px;padding:2px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--s1);color:var(--text2);cursor:pointer;font-weight:600;flex-shrink:0;transition:all .15s}
+.ai-tldr-copy-btn:hover{border-color:var(--purple-bd);color:var(--purple)}
 .ai-tldr-copy-btn.copied{color:var(--green);border-color:var(--green-bd)}
-.ai-tldr-body{margin:0;padding:12px 14px;font-family:'DM Mono',monospace;font-size:11px;line-height:1.65;color:var(--text);white-space:pre-wrap;word-break:break-word;background:var(--s1)}
+.ai-tldr-body{margin:0;padding:10px 12px;font-family:'DM Mono',monospace;font-size:10.5px;line-height:1.65;color:var(--text);white-space:pre-wrap;word-break:break-word;background:var(--s1);flex:1}
 .dpill.ant{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-bd)}
 
 /* MACRO COMPASS — Yield Spread vs FX Chart */
