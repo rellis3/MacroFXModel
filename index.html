@@ -180,6 +180,11 @@ Example:
             <input class="cfg-input" type="number" id="fx_mergeFactor" step="0.05" min="0.10" max="0.80" placeholder="0.30">
             <div class="cfg-hint">Fraction of confluence pips used to merge nearby levels into one. Higher = fewer, broader clusters.</div>
           </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Asia min pips (daily Fib)</span><span class="cfg-label-type">pips</span></div>
+            <input class="cfg-input" type="number" id="fx_asiaMinPips" step="1" min="5" max="100" placeholder="15">
+            <div class="cfg-hint">Min Asia session range (pips) before daily Fib retracements are matched against confluences. Below this Asia is too compressed.</div>
+          </div>
         </div>
         <div class="cfg-divider" style="margin:8px 0 10px"></div>
         <div class="cfg-grid">
@@ -245,6 +250,11 @@ Example:
             <div class="cfg-label"><span class="cfg-label-main">Cluster merge factor</span><span class="cfg-label-type">0–1</span></div>
             <input class="cfg-input" type="number" id="gold_mergeFactor" step="0.05" min="0.10" max="0.80" placeholder="0.30">
             <div class="cfg-hint">Default 0.30 = $6 merge radius at 200 pip threshold. Increase to collapse more nearby levels.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Asia min pips (daily Fib)</span><span class="cfg-label-type">pips</span></div>
+            <input class="cfg-input" type="number" id="gold_asiaMinPips" step="10" min="50" max="500" placeholder="150">
+            <div class="cfg-hint">Gold pips ($0.10 each). Default 150 = $15 min Asia range before daily Fib matching is enabled.</div>
           </div>
         </div>
         <div class="cfg-divider" style="margin:8px 0 10px"></div>

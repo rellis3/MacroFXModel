@@ -50,6 +50,7 @@ export const CAP_DEFAULTS = {
   fx: {
     confluencePips: 2,    // max pip distance for two Fibs to count as a confluence
     mergeFactor:    0.30, // fraction of confluencePips used to cluster nearby raw pairs
+    asiaMinPips:    15,   // min Asia range in pips to enable daily Fib retracement matching
     oiAtrFrac: 0.12, oiPipCap: 10,
     pivAtrFrac: 0.10, pivPipCap: 8,
     rngAtrFrac: 0.08, rngPipCap: 6,
@@ -59,6 +60,7 @@ export const CAP_DEFAULTS = {
   gold: {
     confluencePips: 200,  // gold pips ($0.10 each) — 200 pips = $20
     mergeFactor:    0.30, // 30% of $20 = $6 merge radius — collapses near-duplicate levels
+    asiaMinPips:    150,  // gold pips — 150 = $15 min Asia range
     // Dollar caps for gold — not pip units (gold pip=$0.10 makes pip caps too tight)
     oiAtrFrac: 0.12, oiPipCap: 8,
     pivAtrFrac: 0.10, pivPipCap: 6,

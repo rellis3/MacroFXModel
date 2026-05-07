@@ -1,9 +1,11 @@
 import { S } from './state.js';
-import { getPipSize, pipsBetween } from './utils.js';
-import { getAnchorPrice, directionFromPrice } from './ranges.js';
+import { getPipSize, pipsBetween, getConfluenceThreshold, getAsiaMinPips } from './utils.js';
+import { getAnchorPrice, directionFromPrice, getDailyFibLevels } from './ranges.js';
 import { getCaps } from './caps.js';
 import { calcPositionSize } from './vol.js';
 import { oiLoadStore } from './oi.js';
+
+const _DFIB_STRENGTH = { gold: 3, silver: 2, bronze: 1 };
 
 export function filterConfluences(confluences) {
   if (S.currentMode === 'strongest') return confluences.filter(c => c.isTight);
@@ -28,6 +30,13 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
   const rngCapDist = Math.min(atr * _oiCaps.rngAtrFrac, _oiCaps.rngPipCap * _oiPipMult);
   const _oiData    = oiLoadStore()[symbol] || null;
   const _dailyOpens = S.sessionData?.dailyOpens || [];
+
+  // Daily Fib retracement matching — only when Asia range is wide enough
+  const _asiaRange  = S.asiaRangeData[symbol]?.today?.range ?? 0;
+  const _asiaPips   = _asiaRange / pipSize;
+  const _asiaMinPips = getAsiaMinPips(symbol);
+  const _dfibThreshold = getConfluenceThreshold(symbol) * pipSize;
+  const _dailyFibs = _asiaPips >= _asiaMinPips ? getDailyFibLevels(symbol) : [];
 
   return confluences.map(c => {
     const direction = directionFromPrice(c.price, anchorPrice, symbol);
@@ -76,6 +85,22 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     const matchingOpens = _dailyOpens.filter(d => Math.abs(c.price - d.price) <= rngCapDist);
     const nearDailyOpen = matchingOpens.length > 0 ? matchingOpens[0] : null;
 
+    // Daily Fib retracement match — pick strongest matching level at this price.
+    // Zone entries (GP): confluence must fall INSIDE priceMin–priceMax.
+    // Point entries: confluence must be within _dfibThreshold of the level price.
+    let dailyFib = null;
+    if (_dailyFibs.length > 0) {
+      const matches = _dailyFibs.filter(f =>
+        f.isZone
+          ? c.price >= f.priceMin && c.price <= f.priceMax
+          : Math.abs(c.price - f.price) <= _dfibThreshold
+      );
+      if (matches.length > 0) {
+        matches.sort((a, b) => (_DFIB_STRENGTH[b.strength] || 0) - (_DFIB_STRENGTH[a.strength] || 0));
+        dailyFib = matches[0];
+      }
+    }
+
     let stars = 1;
     if (c.isTight)                stars++;
     if (aligned)                  stars++;
@@ -84,6 +109,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     if (nearDailyOpen)            stars++;  // Fib aligns with a prior daily open
     if (matchingOpens.length >= 3) stars++; // 3+ daily opens cluster here — very strong level
     if ((c.density || 1) >= 2)    stars++;  // density bonus: 2+ fib pairs collapsed here
+    if (dailyFib)                 stars++;  // Daily Fib retracement confluence
 
     const baseSize = calcPositionSize(macroScore, volRegime);
     const sizeAdj = aligned ? 1 : 0.5;
@@ -140,6 +166,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       aligned,
       pivotMatch,
       oiMatch,
+      dailyFib,           // { label, direction, strength } of matching daily Fib level, or null
       nearDailyOpen,      // { date, price, label } of most recent matching daily open, or null
       dailyOpenCount: matchingOpens.length,
       stars,

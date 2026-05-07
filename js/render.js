@@ -647,6 +647,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
     <div class="ci-distance ${isClose ? 'close' : ''}">${above ? '↑' : '↓'} ${c.distance.toFixed(0)}p</div>
     ${c.aligned ? '<div class="ci-aligned">✓ Aligned</div>' : ''}
     ${c.pivotMatch ? `<div class="ci-pivot">📍 ${c.pivotMatch}</div>` : ''}
+    ${c.dailyFib ? `<div class="ci-dfib dfib-${c.dailyFib.strength}" title="Daily Fib retracement">📊 ${c.dailyFib.label} ${c.dailyFib.direction}</div>` : ''}
     <div class="ci-size">${c.size}%</div>
   </div>
   ${c.direction ? `<div class="ci-trade-row">

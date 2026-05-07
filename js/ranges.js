@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { FIB_LEVELS } from './config.js';
-import { barLondonHour, barLondonDay, getPipSize, getDigits, getConfluenceThreshold, getMergeFactor } from './utils.js';
+import { barLondonHour, barLondonDay, getPipSize, getDigits, getConfluenceThreshold, getMergeFactor, filterTradingDays } from './utils.js';
 
 export function calculateAsiaRanges(symbol) {
   const bars = S.ohlc5m[symbol]?.values;
@@ -222,4 +222,57 @@ export function detectConfluences(todayLevels, yesterdayLevels, symbol, source, 
     if (!a.isTight && b.isTight) return 1;
     return a.price - b.price;
   });
+}
+
+// Point Fib levels for daily range retracement matching.
+// GP (0.618-0.65) is handled separately as a zone, not a point.
+// Strength: 'silver' = 0.786/0.886, 'bronze' = 0.382/0.5
+const _DAILY_FIBS = [
+  { level: 0.382, label: '0.382', strength: 'bronze' },
+  { level: 0.5,   label: '0.5',   strength: 'bronze' },
+  { level: 0.786, label: '0.786', strength: 'silver' },
+  { level: 0.886, label: '0.886', strength: 'silver' },
+];
+
+// Returns all daily Fib retracement levels from both directions of the most recent daily bar.
+// GP is returned as a zone entry { isZone:true, priceMin, priceMax } — the matching logic
+// checks whether a confluence price falls INSIDE the zone, not just near a point.
+export function getDailyFibLevels(symbol) {
+  const bars = filterTradingDays(S.ohlcData[symbol]?.values);
+  if (!bars?.length) return [];
+  const bar = bars[0];  // newest first from TwelveData
+  const high = parseFloat(bar.high);
+  const low  = parseFloat(bar.low);
+  const range = high - low;
+  if (range <= 0) return [];
+
+  const levels = [];
+
+  // Point levels — matched within confluence threshold
+  _DAILY_FIBS.forEach(f => {
+    levels.push({ price: low + range * f.level,  fibLevel: f.level, label: f.label, direction: 'L→H', strength: f.strength, isZone: false });
+    levels.push({ price: high - range * f.level, fibLevel: f.level, label: f.label, direction: 'H→L', strength: f.strength, isZone: false });
+  });
+
+  // GP zone — 0.618 to 0.65 from each direction.
+  // L→H: zone between (low + 0.618×range) and (low + 0.65×range)
+  // H→L: zone between (high - 0.65×range) and (high - 0.618×range)
+  const gpDefs = [
+    { direction: 'L→H', priceMin: low + range * 0.618, priceMax: low + range * 0.65  },
+    { direction: 'H→L', priceMin: high - range * 0.65,  priceMax: high - range * 0.618 },
+  ];
+  gpDefs.forEach(({ direction, priceMin, priceMax }) => {
+    levels.push({
+      price:    (priceMin + priceMax) / 2,
+      priceMin,
+      priceMax,
+      fibLevel: 'GP',
+      label:    'GP zone',
+      direction,
+      strength: 'gold',
+      isZone:   true,
+    });
+  });
+
+  return levels;
 }

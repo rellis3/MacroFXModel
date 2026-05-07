@@ -58,6 +58,7 @@ function populateCfgForm(caps) {
   const gold = caps.gold || CAP_DEFAULTS.gold;
   fill('fx_confluencePips',  fx.confluencePips);
   fill('fx_mergeFactor',     fx.mergeFactor);
+  fill('fx_asiaMinPips',     fx.asiaMinPips);
   fill('fx_oiAtrFrac',     fx.oiAtrFrac);
   fill('fx_oiPipCap',      fx.oiPipCap);
   fill('fx_pivAtrFrac',    fx.pivAtrFrac);
@@ -70,6 +71,7 @@ function populateCfgForm(caps) {
   fill('fx_enhPivPipCap',  fx.enhPivPipCap);
   fill('gold_confluencePips',  gold.confluencePips);
   fill('gold_mergeFactor',     gold.mergeFactor);
+  fill('gold_asiaMinPips',     gold.asiaMinPips);
   fill('gold_oiAtrFrac',     gold.oiAtrFrac);
   fill('gold_oiPipCap',      gold.oiPipCap);
   fill('gold_pivAtrFrac',    gold.pivAtrFrac);
@@ -88,6 +90,7 @@ function readCfgForm() {
     fx: {
       confluencePips: num('fx_confluencePips'),
       mergeFactor:    num('fx_mergeFactor'),
+      asiaMinPips:   num('fx_asiaMinPips'),
       oiAtrFrac:     num('fx_oiAtrFrac'),
       oiPipCap:      num('fx_oiPipCap'),
       pivAtrFrac:    num('fx_pivAtrFrac'),
@@ -102,6 +105,7 @@ function readCfgForm() {
     gold: {
       confluencePips: num('gold_confluencePips'),
       mergeFactor:    num('gold_mergeFactor'),
+      asiaMinPips:   num('gold_asiaMinPips'),
       oiAtrFrac:     num('gold_oiAtrFrac'),
       oiPipCap:      num('gold_oiPipCap'),
       pivAtrFrac:    num('gold_pivAtrFrac'),

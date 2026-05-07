@@ -153,6 +153,11 @@ export function getMergeFactor(symbol) {
   return S._caps?.fx?.mergeFactor ?? 0.30;
 }
 
+export function getAsiaMinPips(symbol) {
+  if (symbol.includes('XAU') || symbol.includes('GOLD')) return S._caps?.gold?.asiaMinPips ?? 150;
+  return S._caps?.fx?.asiaMinPips ?? 15;
+}
+
 export function pipsBetween(p1, p2, symbol) {
   return Math.abs(p1 - p2) / getPipSize(symbol);
 }
