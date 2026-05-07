@@ -618,7 +618,7 @@ ${calendarCtx.warnings.length > 0 ? `
 }
 
 export function renderConfluences(confluences, currentPrice, pipSize, digits) {
-  return `<div class="conf-list">${confluences.slice(0, 12).map(c => {
+  return `<div class="conf-list">${confluences.slice(0, 20).map(c => {
     const above = currentPrice < c.price;
     const isClose = c.distance < 30;
     const dirIcon = c.direction === 'long'  ? '↓ BUY @' :

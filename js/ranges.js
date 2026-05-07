@@ -161,12 +161,14 @@ export function detectConfluences(todayLevels, yesterdayLevels, symbol, source, 
     yesterdayLevels.forEach(yesterday => {
       const diff = Math.abs(today.price - yesterday.price);
       if (diff <= normalDistance) {
+        // Same fib ordinal from independent sessions = structurally strong regardless of pip gap
+        const sameFib = today.fib === yesterday.fib;
         rawPairs.push({
           price:         (today.price + yesterday.price) / 2,
           todayFib:      today.fib,
           yesterdayFib:  yesterday.fib,
           pipDiff:       diff / pipSize,
-          isTight:       diff <= tightDistance,
+          isTight:       diff <= tightDistance || sameFib,
           source,
         });
       }

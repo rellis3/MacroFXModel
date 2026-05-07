@@ -326,12 +326,22 @@ function populateExportSelects(){
 function getLevelsForExport(){
   const pair=document.getElementById('exportPairSelect').value;
   const date=document.getElementById('exportDateSelect').value;
-  const filter=document.getElementById('exportFilterSelect').value;
   const dayObj=journalData[date];
   if(!dayObj||!dayObj[pair])return{pair,date,levels:[],macro:{}};
   let levels=dayObj[pair].levels||[];
-  if(filter==='taken')levels=levels.filter(l=>l.trade==='long'||l.trade==='short');
-  if(filter==='3plus')levels=levels.filter(l=>(l.stars||1)>=3);
+
+  // Star filter — collect checked values; if none checked, show all
+  const checkedStars=[...document.querySelectorAll('.star-cb:checked')].map(el=>parseInt(el.value,10));
+  if(checkedStars.length>0)levels=levels.filter(l=>checkedStars.includes(l.stars||1));
+
+  // Taken-only filter
+  if(document.getElementById('exportTakenOnly')?.checked)
+    levels=levels.filter(l=>l.trade==='long'||l.trade==='short');
+
+  // Max rows cap
+  const maxVal=parseInt(document.getElementById('exportMaxRows')?.value,10);
+  if(!isNaN(maxVal)&&maxVal>0)levels=levels.slice(0,maxVal);
+
   return{pair,date,levels,macro:dayObj[pair].macro||{}};
 }
 
