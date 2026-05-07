@@ -586,12 +586,26 @@ export async function aiRenderCard(state, payload, generatedAt) {
   }
 
   const isOpen = state === 'data' || state === 'loading';
+
+  // TLDR panel — only shown when analysis data is available
+  const tldrHtml = (state === 'data' && payload?.tldr) ? `
+    <div class="ai-tldr-card" id="aiTldrCard">
+      <div class="ai-tldr-header">
+        <span class="ai-tldr-title">📋 TLDR</span>
+        <span class="ai-tldr-hint">copy-ready brief</span>
+        <button id="aiTldrCopyBtn" onclick="copyAITldr()" class="ai-tldr-copy-btn" title="Copy TLDR to clipboard">Copy</button>
+      </div>
+      <pre class="ai-tldr-body">${payload.tldr.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+    </div>
+  ` : '';
+
   el.innerHTML = `
+    ${tldrHtml}
     <div class="ai-card ${isOpen ? 'open' : ''} ${state === 'data' ? 'has-data' : ''}" id="aiAnalysisCard">
       <div class="ai-card-header" onclick="document.getElementById('aiAnalysisCard').classList.toggle('open')">
         <span class="ai-card-title">🧠 AI Market Intelligence</span>
         ${stampStr ? `<span class="ai-card-stamp">${stampStr}</span>` : ''}
-        ${state === 'data' ? `<button id="aiCopyBtn" onclick="event.stopPropagation();copyAIAnalysis()" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);cursor:pointer;font-weight:500;margin-left:auto;margin-right:6px;flex-shrink:0" title="Copy analysis to clipboard">Copy</button>` : ''}
+        ${state === 'data' ? `<button id="aiCopyBtn" onclick="event.stopPropagation();copyAIAnalysis()" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);cursor:pointer;font-weight:500;margin-left:auto;margin-right:6px;flex-shrink:0" title="Copy full analysis to clipboard">Copy full</button>` : ''}
         <span class="ai-card-chevron">▼</span>
       </div>
       <div class="ai-card-body">${bodyHtml}</div>
@@ -717,6 +731,36 @@ export async function copyAIAnalysis() {
       btn.textContent      = orig;
       btn.style.color      = '';
       btn.style.borderColor= '';
+    }, 2000);
+  }
+}
+
+export async function copyAITldr() {
+  if (!_lastAnalysis?.a?.tldr) return;
+  const text = _lastAnalysis.a.tldr;
+
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // fallback — write to a temp textarea
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+
+  const btn = document.getElementById('aiTldrCopyBtn');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.classList.remove('copied');
     }, 2000);
   }
 }

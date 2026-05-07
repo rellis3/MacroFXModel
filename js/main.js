@@ -11,7 +11,7 @@ import { setCompassMode, toggleCompassFX, loadAndRenderCompass } from './compass
 import { fvGapToPips, runSignalEngine, runEntryScanner, renderSignalAndEntries } from './signal.js';
 import { renderARMAAndTransition } from './arma.js';
 import { renderAll } from './render.js';
-import { triggerAIAnalysis, copyAIAnalysis } from './ai.js';
+import { triggerAIAnalysis, copyAIAnalysis, copyAITldr } from './ai.js';
 import { loadCOT, openCOTModal, closeCOTModal, saveCOTUrlFromModal } from './cot.js';
 import { detectSession, computeSessionOpens, computeDailyOpens } from './session.js';
 import { loadEventData } from './events.js';
@@ -34,6 +34,7 @@ window.setCompassMode         = setCompassMode;
 window.toggleCompassFX        = toggleCompassFX;
 window.triggerAIAnalysis      = triggerAIAnalysis;
 window.copyAIAnalysis         = copyAIAnalysis;
+window.copyAITldr             = copyAITldr;
 window.openCOTModal           = openCOTModal;
 window.closeCOTModal          = closeCOTModal;
 window.saveCOTUrlFromModal    = saveCOTUrlFromModal;
