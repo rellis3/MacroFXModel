@@ -723,7 +723,10 @@ function renderEquityRiskGauge() {
 
     <div style="font-size:9px;color:var(--text3);text-align:right;margin-top:4px">
       ${live.length}/${factors.length} factors live · FRED data
-    </div>`;
+    </div>
+
+    <div id="compassARMA"></div>
+    <div id="compassTransition"></div>`;
 }
 
 // ── Load + render orchestration ──────────────────────────────────────────────
@@ -752,6 +755,7 @@ export async function loadAndRenderCompass() {
     }
 
     el.innerHTML = renderEquityRiskGauge();
+    if (window.renderARMAAndTransition) window.renderARMAAndTransition(null);
 
     const q   = window._latestQuote;
     const vol = calculateVolRegime();
