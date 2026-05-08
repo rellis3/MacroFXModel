@@ -417,22 +417,38 @@ Example:
   <div class="cot-modal">
     <div class="cot-modal-hd">
       <div>
-        <div class="cot-modal-title">📋 COT — CFTC Report URL</div>
-        <div class="cot-modal-sub">Paste this week's CFTC Financial Futures report URL. Updated each Friday.</div>
+        <div class="cot-modal-title">📋 COT — CFTC Report URLs</div>
+        <div class="cot-modal-sub">Configure weekly CFTC report URLs by asset class. Updated each Friday.</div>
       </div>
       <button class="cot-modal-close" onclick="closeCOTModal()">✕</button>
     </div>
 
-    <label class="cot-field-lbl" for="cotUrlInput">CFTC Report URL</label>
-    <input class="cot-url-input" type="url" id="cotUrlInput"
+    <!-- FX + Equities — TFF (Financial Futures) report -->
+    <label class="cot-field-lbl" for="cotUrlFx">FX Pairs + Equities &mdash; Financial Futures (TFF)</label>
+    <input class="cot-url-input" type="url" id="cotUrlFx"
       placeholder="https://www.cftc.gov/sites/default/files/files/dea/cotarchives/2026/options/financial_lof042526.htm">
-    <div id="cotReportDate" class="cot-report-date"></div>
+    <div id="cotReportDateFx" class="cot-report-date"></div>
+    <div class="cot-hint-inline">Covers EUR, GBP, JPY, AUD, CAD, CHF, NZD &amp; NAS100 (NQ E-mini) &middot; Pattern: <code>financial_lof[MMDDYY].htm</code></div>
 
-    <div class="cot-hint-box">
-      <strong>How to find this week's URL:</strong><br>
-      1. Go to <strong>cftc.gov → Market Reports → Commitments of Traders → Financial Traders (Combined)</strong><br>
-      2. Right-click the most recent <em>Long Format</em> link → Copy link address<br>
-      3. Paste above. URL pattern: <code>financial_lof[MMDDYY].htm</code>
+    <!-- Gold — Disaggregated report -->
+    <label class="cot-field-lbl" for="cotUrlGold" style="margin-top:14px">Gold &mdash; Disaggregated Futures</label>
+    <input class="cot-url-input" type="url" id="cotUrlGold"
+      placeholder="https://www.cftc.gov/sites/default/files/files/dea/cotarchives/2026/options/disaggregated_lof042526.htm">
+    <div id="cotReportDateGold" class="cot-report-date"></div>
+    <div class="cot-hint-inline">Covers XAU/USD (COMEX Gold, GC futures) &middot; Pattern: <code>disaggregated_lof[MMDDYY].htm</code></div>
+
+    <!-- Equity (separate URL if different from FX — usually same TFF file) -->
+    <label class="cot-field-lbl" for="cotUrlEquity" style="margin-top:14px">Equities &mdash; Override URL <span style="font-weight:400;font-size:10px">(optional — leave blank if same as FX above)</span></label>
+    <input class="cot-url-input" type="url" id="cotUrlEquity"
+      placeholder="Leave blank to use the FX/TFF URL above for NAS100">
+    <div id="cotReportDateEquity" class="cot-report-date"></div>
+
+    <div class="cot-hint-box" style="margin-top:14px">
+      <strong>How to find this week's URLs:</strong><br>
+      Go to <strong>cftc.gov → Market Reports → Commitments of Traders</strong>, then:<br>
+      &bull; <em>Financial Traders (Combined) → Long Format</em> &rarr; FX + Equities URL<br>
+      &bull; <em>Disaggregated Traders (Combined) → Long Format</em> &rarr; Gold URL<br>
+      Right-click the link → Copy link address, paste above.
     </div>
 
     <div class="cot-modal-footer">

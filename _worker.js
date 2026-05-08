@@ -36,9 +36,9 @@ function isAllowedKVKey(key) {
 // fetched entirely from OANDA (daily D candles for ohlc; M1 for quote).
 const OANDA_EQUITY_SYMBOLS = new Set(['NAS100_USD']);
 
-// ── CFTC COT file parser ──────────────────────────────────────────────────────
-// Parses the CFTC Traders in Financial Futures (TFF) combined options report.
-// Returns an object keyed by dashboard pair symbol with position data.
+// ── CFTC COT parsers ─────────────────────────────────────────────────────────
+// parseCFTCFile    → TFF (Financial Futures) — FX pairs + NQ equity index
+// parseCFTCDisaggFile → Disaggregated — physical commodities incl. Gold
 function parseCFTCFile(text) {
   // Strip HTML tags (the .htm files embed plain text in HTML scaffolding)
   const plain = text.replace(/<[^>]+>/g, '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
@@ -137,6 +137,97 @@ function parseCFTCFile(text) {
       amLong: amL,     amShort: amS,     amNet,     amNetChg,
       dealerLong: dealerL, dealerShort: dealerS, dealerNet, dealerNetChg,
       grossRatio, crowdingPct,
+    };
+  }
+
+  return result;
+}
+
+// Parses the CFTC Disaggregated Futures report (physical commodities — Gold, Silver, Oil…).
+// Column order: ProducerL, ProducerS, ProducerSp, SwapL, SwapS, SwapSp, MML, MMS, MMSp, OthL, OthS, OthSp, NRL, NRS
+// Output uses the same field names as parseCFTCFile so renderCOTCard works unchanged.
+// _report:'disagg' tag lets the UI swap category labels (Managed Money / Swap / Producer).
+function parseCFTCDisaggFile(text) {
+  const plain = text.replace(/<[^>]+>/g, '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+  const lines = plain.split(/\r?\n/);
+
+  const DISAGG_MAP = [
+    { name: 'GOLD', pair: 'XAU/USD', flip: false },
+  ];
+
+  const parseNums = line =>
+    line.replace(/,/g, '').trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && isFinite(n));
+
+  const result = {};
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = DISAGG_MAP.find(m => lines[i].includes(m.name));
+    if (!match) continue;
+
+    let openInterest = null;
+    for (let j = i; j < Math.min(i + 6, lines.length); j++) {
+      const m = lines[j].match(/Open Interest is\s+([\d,]+)/i);
+      if (m) { openInterest = parseInt(m[1].replace(/,/g, '')); break; }
+    }
+
+    let positions = null, changes = null, traders = null, changeDate = null;
+
+    for (let j = i + 1; j < Math.min(i + 35, lines.length); j++) {
+      const l = lines[j].trim();
+      if (!l) continue;
+
+      const tryNums = (start) => {
+        for (let k = start + 1; k < start + 4; k++) {
+          const nums = parseNums(lines[k] || '');
+          if (nums.length >= 12) return nums;
+        }
+        return null;
+      };
+
+      if (l === 'Positions') {
+        positions = tryNums(j);
+      } else if (l.startsWith('Changes from:')) {
+        const dm = l.match(/Changes from:\s+(.+?)(?:\s{3,}|$)/);
+        if (dm) changeDate = dm[1].trim();
+        changes = tryNums(j);
+      } else if (l.startsWith('Number of Traders')) {
+        traders = tryNums(j);
+        break;
+      }
+    }
+
+    if (!positions || positions.length < 12) continue;
+
+    const p = positions;
+    const c = changes || new Array(14).fill(0);
+    const t = traders || [];
+
+    // Disaggregated cols: Producer[0,1], Swap[3,4], ManagedMoney[6,7], Other[9,10]
+    const producerL = p[0], producerS = p[1];
+    const swapL = p[3], swapS = p[4];
+    const mmL = p[6], mmS = p[7];
+
+    const mmNetChg      = (c[6]||0) - (c[7]||0);
+    const swapNetChg    = (c[3]||0) - (c[4]||0);
+    const producerNetChg = (c[0]||0) - (c[1]||0);
+    const numMML = t[6] || 0, numMMS = t[7] || 0;
+
+    const levNet    = mmL - mmS;
+    const amNet     = swapL - swapS;
+    const dealerNet = producerL - producerS;
+    const levPct    = openInterest ? Math.round(levNet / openInterest * 1000) / 10 : null;
+    const grossRatio = mmS > 0 ? Math.round(mmL / mmS * 100) / 100 : null;
+    const avgLevContracts = numMML > 0 ? Math.round(mmL / numMML) : null;
+    const crowdingPct = openInterest ? Math.round(Math.abs(levNet) / openInterest * 100) : null;
+
+    result[match.pair] = {
+      openInterest, changeDate,
+      levLong: mmL, levShort: mmS, levNet, levNetChg: mmNetChg, levPct,
+      numLevLong: numMML, numLevShort: numMMS, avgLevContracts,
+      amLong: swapL,     amShort: swapS,     amNet,     amNetChg: swapNetChg,
+      dealerLong: producerL, dealerShort: producerS, dealerNet, dealerNetChg: producerNetChg,
+      grossRatio, crowdingPct,
+      _report: 'disagg',
     };
   }
 
@@ -810,42 +901,93 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         }
       }
 
-      // -- /api/cot/url GET -------------------------------------
-      // Returns the stored CFTC report URL.
-      if (path === '/api/cot/url' && request.method === 'GET') {
-        if (!env.FX_SCORES) return json({ url: null });
-        const raw = await env.FX_SCORES.get('cot_url').catch(() => null);
-        return json({ url: raw ? JSON.parse(raw) : null });
+      // -- /api/cot/urls GET ------------------------------------
+      // Returns stored CFTC report URLs for each asset class.
+      // Migrates legacy single cot_url key transparently.
+      if (path === '/api/cot/urls' && request.method === 'GET') {
+        if (!env.FX_SCORES) return json({ urls: { fx: null, gold: null, equity: null } });
+        const raw = await env.FX_SCORES.get('cot_urls').catch(() => null);
+        if (raw) return json({ urls: JSON.parse(raw) });
+        // Migrate old single-URL key
+        const oldRaw = await env.FX_SCORES.get('cot_url').catch(() => null);
+        const oldUrl = oldRaw ? JSON.parse(oldRaw) : null;
+        return json({ urls: { fx: oldUrl, gold: null, equity: null } });
       }
 
-      // -- /api/cot/url PUT -------------------------------------
-      // Saves a new CFTC report URL. Must be a cftc.gov URL.
-      if (path === '/api/cot/url' && request.method === 'PUT') {
+      // -- /api/cot/urls PUT ------------------------------------
+      // Saves CFTC report URLs. Body: { fx, gold, equity } — any can be null.
+      if (path === '/api/cot/urls' && request.method === 'PUT') {
         if (!env.FX_SCORES) return err('KV not bound — add FX_SCORES namespace in Cloudflare Pages settings', 503);
         const body = await request.json().catch(() => ({}));
-        if (!body.url || !body.url.includes('cftc.gov')) return err('Invalid CFTC URL — must contain cftc.gov', 400);
-        await env.FX_SCORES.put('cot_url', JSON.stringify(body.url));
+        const urls = { fx: body.fx || null, gold: body.gold || null, equity: body.equity || null };
+        for (const [key, u] of Object.entries(urls)) {
+          if (u && !u.includes('cftc.gov')) return err(`Invalid ${key} URL — must contain cftc.gov`, 400);
+        }
+        await env.FX_SCORES.put('cot_urls', JSON.stringify(urls));
         return json({ ok: true });
       }
 
       // -- /api/cot ---------------------------------------------
-      // Fetches and parses the weekly CFTC COT report.
-      // URL is configurable per user and stored in KV as 'cot_url'.
+      // Fetches and parses CFTC COT reports for all configured URL types.
+      // FX + equity → TFF parser; gold → Disaggregated parser.
+      // Results are merged into a single object keyed by pair symbol.
       if (path === '/api/cot') {
-        const cotUrlRaw = env.FX_SCORES ? await env.FX_SCORES.get('cot_url').catch(() => null) : null;
-        const cotUrl = cotUrlRaw ? JSON.parse(cotUrlRaw) : null;
-        if (!cotUrl) return json({ ok: false, reason: 'cot_url not configured — set it via the COT toolbar button' });
-        try {
-          const res = await fetch(cotUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroRangeDashboard)' } });
-          if (!res.ok) return err(`CFTC fetch failed: ${res.status} ${res.statusText}`, 502);
-          const text = await res.text();
-          const data = parseCFTCFile(text);
-          const pairsFound = Object.keys(data).length;
-          if (pairsFound === 0) return err('Parsed 0 FX pairs — check the CFTC URL is a Financial futures report (financial_lof*.htm)', 422);
-          return json({ ok: true, data, pairsFound, reportDate: data['EUR/USD']?.changeDate || null });
-        } catch(e) {
-          return err('COT fetch error: ' + e.message);
+        if (!env.FX_SCORES) return json({ ok: false, reason: 'KV not bound' });
+
+        // Load stored URLs, falling back to legacy key
+        let urls = { fx: null, gold: null, equity: null };
+        const storedRaw = await env.FX_SCORES.get('cot_urls').catch(() => null);
+        if (storedRaw) {
+          urls = JSON.parse(storedRaw);
+        } else {
+          const oldRaw = await env.FX_SCORES.get('cot_url').catch(() => null);
+          if (oldRaw) urls.fx = JSON.parse(oldRaw);
         }
+
+        if (!urls.fx && !urls.gold && !urls.equity) {
+          return json({ ok: false, reason: 'No COT URLs configured — set them via the COT toolbar button' });
+        }
+
+        const UA = { 'User-Agent': 'Mozilla/5.0 (compatible; MacroRangeDashboard)' };
+        const merged = {};
+        const errors = [];
+
+        // FX (TFF report — also covers NAS100 if equity URL not separate)
+        if (urls.fx) {
+          try {
+            const res = await fetch(urls.fx, { headers: UA });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            Object.assign(merged, parseCFTCFile(await res.text()));
+          } catch(e) { errors.push(`FX: ${e.message}`); }
+        }
+
+        // Equity (TFF report — only fetch separately if URL differs from fx)
+        if (urls.equity && urls.equity !== urls.fx) {
+          try {
+            const res = await fetch(urls.equity, { headers: UA });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const eqData = parseCFTCFile(await res.text());
+            // Merge only equity symbols to avoid overwriting FX data
+            if (eqData['NAS100_USD']) merged['NAS100_USD'] = eqData['NAS100_USD'];
+          } catch(e) { errors.push(`Equity: ${e.message}`); }
+        }
+
+        // Gold (Disaggregated report)
+        if (urls.gold) {
+          try {
+            const res = await fetch(urls.gold, { headers: UA });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            Object.assign(merged, parseCFTCDisaggFile(await res.text()));
+          } catch(e) { errors.push(`Gold: ${e.message}`); }
+        }
+
+        const pairsFound = Object.keys(merged).length;
+        if (pairsFound === 0) {
+          return err(`Parsed 0 pairs.${errors.length ? ' Errors: ' + errors.join('; ') : ' Check URLs are correct CFTC report types.'}`, 422);
+        }
+
+        const reportDate = merged['EUR/USD']?.changeDate || merged['XAU/USD']?.changeDate || merged['NAS100_USD']?.changeDate || null;
+        return json({ ok: true, data: merged, pairsFound, reportDate, errors: errors.length ? errors : undefined });
       }
 
       // -- Serve index.html for all other routes ----------------

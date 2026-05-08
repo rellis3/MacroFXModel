@@ -22,25 +22,24 @@ export async function loadCOT() {
   }
 }
 
-export async function loadCOTUrl() {
+export async function loadCOTUrls() {
   try {
-    const res = await fetch('/api/cot/url');
+    const res = await fetch('/api/cot/urls');
     const j = await res.json();
-    return j.url || null;
+    return j.urls || { fx: null, gold: null, equity: null };
   } catch(e) {
-    return null;
+    return { fx: null, gold: null, equity: null };
   }
 }
 
-export async function saveCOTUrl(url) {
-  const res = await fetch('/api/cot/url', {
+export async function saveCOTUrls(urls) {
+  const res = await fetch('/api/cot/urls', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify(urls),
   });
   const j = await res.json();
   if (j.ok) {
-    // Invalidate cache so next loadCOT() hits the new URL
     try { localStorage.removeItem('cot_data'); } catch(e) {}
     kvSet('cot_data', null);
   }
@@ -93,11 +92,16 @@ export function renderCOTCard(sym) {
   const longPct  = total > 0 ? Math.round(d.levLong / total * 100) : 50;
   const shortPct = 100 - longPct;
   const crowded  = d.crowdingPct != null && d.crowdingPct >= 10;
+  const isDisagg = d._report === 'disagg';
+  const specLabel    = isDisagg ? 'Managed Money' : 'Leveraged Funds';
+  const specSub      = isDisagg ? '(hedge funds / CTAs)' : '(specs / CTAs)';
+  const amLabel      = isDisagg ? 'Swap Dealers' : 'Asset Mgr / Institutional';
+  const dealerLabel  = isDisagg ? 'Producer / Merchant' : 'Dealer Intermediary';
 
   return `
 <div class="cot-card">
   <div class="cot-spec-row">
-    <span class="cot-spec-lbl">Leveraged Funds <span style="font-weight:400;font-size:10px">(specs / CTAs)</span></span>
+    <span class="cot-spec-lbl">${specLabel} <span style="font-weight:400;font-size:10px">${specSub}</span></span>
     <span class="cot-dir ${levDir}">${levLabel}</span>
   </div>
 
@@ -117,11 +121,11 @@ export function renderCOTCard(sym) {
   <div class="cot-divider"></div>
 
   <div class="cot-cat-row">
-    <span class="cot-cat-lbl">Asset Mgr / Institutional</span>
+    <span class="cot-cat-lbl">${amLabel}</span>
     <span class="cot-cat-net ${d.amNet > 0 ? 'long' : 'short'}">${fmtChg(d.amNet)} <span style="font-size:10px;color:var(--text3)">(${fmtChg(d.amNetChg)} wk)</span></span>
   </div>
   <div class="cot-cat-row">
-    <span class="cot-cat-lbl">Dealer Intermediary</span>
+    <span class="cot-cat-lbl">${dealerLabel}</span>
     <span class="cot-cat-net ${d.dealerNet > 0 ? 'long' : 'short'}">${fmtChg(d.dealerNet)} <span style="font-size:10px;color:var(--text3)">(${fmtChg(d.dealerNetChg)} wk)</span></span>
   </div>
 
@@ -191,18 +195,26 @@ export async function openCOTModal() {
   if (!overlay) return;
   overlay.classList.add('open');
 
-  const urlEl     = document.getElementById('cotUrlInput');
-  const statusEl  = document.getElementById('cotModalStatus');
-  const reportEl  = document.getElementById('cotReportDate');
-  if (statusEl)  statusEl.textContent = '';
-  if (reportEl)  reportEl.textContent = '';
+  const statusEl = document.getElementById('cotModalStatus');
+  if (statusEl) statusEl.textContent = '';
 
-  const currentUrl = await loadCOTUrl();
-  if (urlEl && currentUrl) urlEl.value = currentUrl;
+  const urls = await loadCOTUrls();
+  const fxEl     = document.getElementById('cotUrlFx');
+  const goldEl   = document.getElementById('cotUrlGold');
+  const equityEl = document.getElementById('cotUrlEquity');
+  if (fxEl     && urls.fx)     fxEl.value     = urls.fx;
+  if (goldEl   && urls.gold)   goldEl.value   = urls.gold;
+  if (equityEl && urls.equity) equityEl.value = urls.equity;
 
   if (S.cotData) {
     const dates = Object.values(S.cotData).map(d => d.changeDate).filter(Boolean);
-    if (dates.length && reportEl) reportEl.textContent = 'Loaded: ' + dates[0];
+    const dateStr = dates[0] ? 'Loaded: ' + dates[0] : '';
+    const fxDate     = document.getElementById('cotReportDateFx');
+    const goldDate   = document.getElementById('cotReportDateGold');
+    const equityDate = document.getElementById('cotReportDateEquity');
+    if (fxDate     && S.cotData['EUR/USD'])     fxDate.textContent     = dateStr;
+    if (goldDate   && S.cotData['XAU/USD'])     goldDate.textContent   = 'Loaded: ' + (S.cotData['XAU/USD'].changeDate || '');
+    if (equityDate && S.cotData['NAS100_USD'])  equityDate.textContent = 'Loaded: ' + (S.cotData['NAS100_USD'].changeDate || '');
   }
 }
 
@@ -211,18 +223,28 @@ export function closeCOTModal() {
 }
 
 export async function saveCOTUrlFromModal() {
-  const urlEl    = document.getElementById('cotUrlInput');
   const statusEl = document.getElementById('cotModalStatus');
   const btn      = document.getElementById('cotSaveBtn');
 
-  const url = urlEl?.value?.trim();
-  if (!url) { if (statusEl) { statusEl.textContent = '⚠ Enter a URL'; statusEl.className = 'cot-modal-status err'; } return; }
-  if (!url.includes('cftc.gov')) { if (statusEl) { statusEl.textContent = '⚠ URL must be from cftc.gov'; statusEl.className = 'cot-modal-status err'; } return; }
+  const fx     = document.getElementById('cotUrlFx')?.value?.trim()     || null;
+  const gold   = document.getElementById('cotUrlGold')?.value?.trim()   || null;
+  const equity = document.getElementById('cotUrlEquity')?.value?.trim() || null;
+
+  for (const [label, u] of [['FX', fx], ['Gold', gold], ['Equity', equity]]) {
+    if (u && !u.includes('cftc.gov')) {
+      if (statusEl) { statusEl.textContent = `⚠ ${label} URL must be from cftc.gov`; statusEl.className = 'cot-modal-status err'; }
+      return;
+    }
+  }
+  if (!fx && !gold && !equity) {
+    if (statusEl) { statusEl.textContent = '⚠ Enter at least one URL'; statusEl.className = 'cot-modal-status err'; }
+    return;
+  }
 
   if (btn) btn.disabled = true;
   if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.className = 'cot-modal-status'; }
 
-  const res = await saveCOTUrl(url);
+  const res = await saveCOTUrls({ fx, gold, equity });
   if (!res.ok) {
     if (statusEl) { statusEl.textContent = '⚠ ' + (res.error || 'Save failed'); statusEl.className = 'cot-modal-status err'; }
     if (btn) btn.disabled = false;
@@ -233,8 +255,8 @@ export async function saveCOTUrlFromModal() {
   await loadCOT();
 
   if (statusEl) {
-    const dates = S.cotData ? Object.values(S.cotData).map(d => d.changeDate).filter(Boolean) : [];
-    const pairs = S.cotData ? Object.keys(S.cotData).length : 0;
+    const dates  = S.cotData ? Object.values(S.cotData).map(d => d.changeDate).filter(Boolean) : [];
+    const pairs  = S.cotData ? Object.keys(S.cotData).length : 0;
     statusEl.textContent = S.cotData
       ? `✓ Loaded ${pairs} pairs · ${dates[0] || ''}` : '⚠ Fetch succeeded but 0 pairs parsed';
     statusEl.className = S.cotData ? 'cot-modal-status ok' : 'cot-modal-status err';
