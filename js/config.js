@@ -1,13 +1,14 @@
 export const PAIRS = [
-  { symbol: 'EUR/USD', code: 'eu', shortCode: 'de', name: 'EUR/USD' },
-  { symbol: 'GBP/USD', code: 'gu', shortCode: 'gb', name: 'GBP/USD' },
-  { symbol: 'USD/JPY', code: 'uj', shortCode: 'jp', name: 'USD/JPY', isSafeHaven: true, isUsdBase: true },
-  { symbol: 'AUD/USD', code: 'au', shortCode: 'au', name: 'AUD/USD' },
-  { symbol: 'XAU/USD', code: 'xu', shortCode: 'xau', name: 'Gold', isGold: true },
-  { symbol: 'EUR/GBP', code: 'eg', shortCode: 'gb', name: 'EUR/GBP', isPairCross: true },
-  { symbol: 'USD/CAD', code: 'uc', shortCode: 'ca', name: 'USD/CAD', isUsdBase: true },
-  { symbol: 'USD/CHF', code: 'uf', shortCode: 'ch', name: 'USD/CHF', isUsdBase: true, isSafeHaven: true },
-  { symbol: 'GBP/JPY', code: 'gj', shortCode: 'jp', name: 'GBP/JPY', isPairCross: true, isSafeHaven: true },
+  { symbol: 'EUR/USD',    code: 'eu',  shortCode: 'de',  name: 'EUR/USD' },
+  { symbol: 'GBP/USD',    code: 'gu',  shortCode: 'gb',  name: 'GBP/USD' },
+  { symbol: 'USD/JPY',    code: 'uj',  shortCode: 'jp',  name: 'USD/JPY', isSafeHaven: true, isUsdBase: true },
+  { symbol: 'AUD/USD',    code: 'au',  shortCode: 'au',  name: 'AUD/USD' },
+  { symbol: 'XAU/USD',    code: 'xu',  shortCode: 'xau', name: 'Gold', isGold: true },
+  { symbol: 'EUR/GBP',    code: 'eg',  shortCode: 'gb',  name: 'EUR/GBP', isPairCross: true },
+  { symbol: 'USD/CAD',    code: 'uc',  shortCode: 'ca',  name: 'USD/CAD', isUsdBase: true },
+  { symbol: 'USD/CHF',    code: 'uf',  shortCode: 'ch',  name: 'USD/CHF', isUsdBase: true, isSafeHaven: true },
+  { symbol: 'GBP/JPY',    code: 'gj',  shortCode: 'jp',  name: 'GBP/JPY', isPairCross: true, isSafeHaven: true },
+  { symbol: 'NAS100_USD', code: 'nas', shortCode: 'nas', name: 'NAS100', isEquity: true },
 ];
 
 // 45 Fib levels matching Pine Script backtester exactly.
@@ -39,7 +40,8 @@ export const COMPASS_CONFIG = {
   'EUR/GBP': { short: 'gb_short', long: 'gb10y',  label: 'GB–DE',  fxSign: -1, crossBase: 'de10y', crossBaseShort: 'de_short' },
   'USD/CAD': { short: 'ca_short', long: 'ca10y',  label: 'US–CA',  fxSign: +1 },
   'USD/CHF': { short: 'ch_short', long: 'ch10y',  label: 'US–CH',  fxSign: +1 },
-  'GBP/JPY': { short: 'gb_short', long: 'gb10y',  label: 'GB–JP',  fxSign: +1, crossBase: 'jp10y', crossBaseShort: 'jp_short' },
+  'GBP/JPY':    { short: 'gb_short', long: 'gb10y',  label: 'GB–JP',  fxSign: +1, crossBase: 'jp10y', crossBaseShort: 'jp_short' },
+  'NAS100_USD': { short: null, long: null, label: 'Equity', isEquity: true },
 };
 
 export const COMPASS_TTL = 6 * 60 * 60 * 1000;
@@ -71,6 +73,18 @@ export const CAP_DEFAULTS = {
     rngAtrFrac: 0.08, rngPipCap: 5,
     gexAtrFrac: 0.15, gexPipCap: 10,
     enhPivAtrFrac: 0.10, enhPivPipCap: 6,
+  },
+  nas100: {
+    confluencePips: 100,  // 100 points threshold (~0.5% at 20000)
+    mergeFactor:    0.30, // 30% of 100 = 30 point merge radius
+    asiaMinPips:           50,   // 50 points min overnight range
+    structuralLookbackDays: 30,
+    structuralPivotN:       5,
+    oiAtrFrac: 0.12, oiPipCap: 200,
+    pivAtrFrac: 0.10, pivPipCap: 150,
+    rngAtrFrac: 0.08, rngPipCap: 100,
+    gexAtrFrac: 0.15, gexPipCap: 250,
+    enhPivAtrFrac: 0.10, enhPivPipCap: 150,
   },
   updatedAt: null,
 };

@@ -134,27 +134,32 @@ export function filterTradingDays(bars) {
 export function getPipSize(symbol) {
   if (symbol.includes('JPY')) return 0.01;
   if (symbol.includes('XAU') || symbol.includes('GOLD')) return 0.1;
+  if (symbol === 'NAS100_USD') return 1.0;
   return 0.0001;
 }
 
 export function getDigits(symbol) {
   if (symbol.includes('JPY')) return 3;
   if (symbol.includes('XAU') || symbol.includes('GOLD')) return 2;
+  if (symbol === 'NAS100_USD') return 1;
   return 5;
 }
 
 export function getConfluenceThreshold(symbol) {
   if (symbol.includes('XAU') || symbol.includes('GOLD')) return S._caps?.gold?.confluencePips ?? 200;
+  if (symbol === 'NAS100_USD') return S._caps?.nas100?.confluencePips ?? 100;
   return S._caps?.fx?.confluencePips ?? 2;
 }
 
 export function getMergeFactor(symbol) {
   if (symbol.includes('XAU') || symbol.includes('GOLD')) return S._caps?.gold?.mergeFactor ?? 0.30;
+  if (symbol === 'NAS100_USD') return S._caps?.nas100?.mergeFactor ?? 0.30;
   return S._caps?.fx?.mergeFactor ?? 0.30;
 }
 
 export function getAsiaMinPips(symbol) {
   if (symbol.includes('XAU') || symbol.includes('GOLD')) return S._caps?.gold?.asiaMinPips ?? 150;
+  if (symbol === 'NAS100_USD') return S._caps?.nas100?.asiaMinPips ?? 50;
   return S._caps?.fx?.asiaMinPips ?? 15;
 }
 

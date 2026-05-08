@@ -1,5 +1,5 @@
 const JOURNAL_KEY = 'journal_store';
-const PAIRS_ALL   = ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD','EUR/GBP','USD/CAD','USD/CHF','GBP/JPY'];
+const PAIRS_ALL   = ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD','EUR/GBP','USD/CAD','USD/CHF','GBP/JPY','NAS100_USD'];
 let journalData  = {};
 let filterPair   = 'all';
 let selectedDate = null;

@@ -598,6 +598,27 @@ export async function loadAndRenderCompass() {
   const el = document.getElementById('compassCard');
   if (!el) return;
 
+  if (S.currentPair.isEquity) {
+    el.innerHTML = `<div class="compass-loading" style="color:var(--text2);padding:20px 0">
+      📊 <strong>NAS100</strong> uses an equity risk-appetite model instead of yield spreads.<br>
+      <span style="font-size:11px;color:var(--text3)">See the Signal Engine below for VIX · HY · TIPS · NFCI factors.</span>
+    </div>`;
+    const q   = window._latestQuote;
+    const vol = calculateVolRegime();
+    const piv = calculatePivots();
+    const as  = S.asiaRangeData[S.currentPair.symbol] || { today:null, yesterday:null, confluences:[] };
+    const mo  = S.mondayRangeData[S.currentPair.symbol] || { current:null, previous:null, confluences:[] };
+    if (q && S.fredData) {
+      const td   = calculateTierScores();
+      const bias = td.totalScore > 4 ? 'LONG' : td.totalScore < -4 ? 'SHORT' : 'NEUTRAL';
+      const all  = [...(as.confluences||[]).map(c=>({...c,source:'asia'})), ...(mo.confluences||[]).map(c=>({...c,source:'monday'}))];
+      const filt = filterConfluences(all);
+      const enh  = enhanceConfluences(filt, q.price, bias, piv, vol, td.totalScore);
+      if (window.renderSignalAndEntries) window.renderSignalAndEntries(enh, piv, as, mo, q, vol);
+    }
+    return;
+  }
+
   if (!S.compassData[S.currentPair.symbol]) {
     el.innerHTML = '<div class="compass-loading">⏳ Loading yield spread history…</div>';
   } else {

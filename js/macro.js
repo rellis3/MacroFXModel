@@ -31,6 +31,9 @@ export function calculateTierScores() {
 
 function computeT1() {
   const fredData = S.fredData;
+  if (S.currentPair.isEquity) {
+    return tierUnavailable('T1', 'Rate Differential', 'N/A — equity model', 3);
+  }
   if (S.currentPair.isGold) {
     const tips = fredData.tips?.value;
     if (tips == null) return tierUnavailable('T1', 'Rate Differential', 'TIPS Real Yield', 3);

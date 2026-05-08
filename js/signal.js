@@ -15,10 +15,91 @@ export function fvGapToPips(fvGap, atr, pipSize) {
   return (fvGap * atr * 0.5) / pipSize;
 }
 
+// ── Equity signal engine (NAS100) ────────────────────────────────────────────
+// Uses macro risk appetite indicators instead of yield spread data.
+// VIX level (0-3) + HY spread (0-2) + TIPS real yield (0-2, -1) + NFCI (0-2) + DXY (0-1) = max 10
+
+function runEquitySignalEngine() {
+  const vix  = S.fredData?.vix?.value  ?? null;
+  const hy   = S.fredData?.hy?.value   ?? null;
+  const tips = S.fredData?.tips?.value ?? null;
+  const nfci = S.fredData?.nfci?.value ?? null;
+  const dxy  = S.fredData?.dxy?.value  ?? null;
+
+  let score = 0;
+  const reasons = [];
+
+  // VIX level — lower VIX = risk-on = equity bullish
+  if (vix != null) {
+    if (vix < 15)      { score += 3; reasons.push({ icon: '🟢', label: 'VIX', val: `${vix.toFixed(1)} — complacent, strong risk-on`, pts: 3 }); }
+    else if (vix < 20) { score += 2; reasons.push({ icon: '🟢', label: 'VIX', val: `${vix.toFixed(1)} — low, risk appetite firm`, pts: 2 }); }
+    else if (vix < 25) { score += 1; reasons.push({ icon: '🟡', label: 'VIX', val: `${vix.toFixed(1)} — elevated, caution warranted`, pts: 1 }); }
+    else if (vix < 35) { score += 0; reasons.push({ icon: '🔴', label: 'VIX', val: `${vix.toFixed(1)} — high, risk-off environment`, pts: 0 }); }
+    else               { score += 0; reasons.push({ icon: '🔴', label: 'VIX', val: `${vix.toFixed(1)} — extreme fear`, pts: 0 }); }
+  } else {
+    reasons.push({ icon: '⚪', label: 'VIX', val: 'No data', pts: 0 });
+  }
+
+  // HY credit spread — tighter spreads = risk appetite = equity bullish
+  if (hy != null) {
+    if (hy < 300)      { score += 2; reasons.push({ icon: '🟢', label: 'HY Spread', val: `${hy.toFixed(0)}bps — tight, credit supportive`, pts: 2 }); }
+    else if (hy < 400) { score += 1; reasons.push({ icon: '🟡', label: 'HY Spread', val: `${hy.toFixed(0)}bps — moderate, some stress forming`, pts: 1 }); }
+    else               { score += 0; reasons.push({ icon: '🔴', label: 'HY Spread', val: `${hy.toFixed(0)}bps — wide, credit deteriorating`, pts: 0 }); }
+  } else {
+    reasons.push({ icon: '⚪', label: 'HY Spread', val: 'No data', pts: 0 });
+  }
+
+  // Real yield (TIPS) — negative real yield = equity friendly; high real yield = headwind
+  if (tips != null) {
+    if (tips < 0)        { score += 2; reasons.push({ icon: '🟢', label: 'Real Yield (TIPS)', val: `${tips.toFixed(2)}% — negative, equity-friendly`, pts: 2 }); }
+    else if (tips < 1.5) { score += 1; reasons.push({ icon: '🟡', label: 'Real Yield (TIPS)', val: `${tips.toFixed(2)}% — modest, neutral`, pts: 1 }); }
+    else if (tips < 2.5) { score += 0; reasons.push({ icon: '🟡', label: 'Real Yield (TIPS)', val: `${tips.toFixed(2)}% — elevated, competing with equity returns`, pts: 0 }); }
+    else                 { score = Math.max(0, score - 1); reasons.push({ icon: '🔴', label: 'Real Yield (TIPS)', val: `${tips.toFixed(2)}% — high, equity headwind`, pts: -1 }); }
+  } else {
+    reasons.push({ icon: '⚪', label: 'Real Yield (TIPS)', val: 'No data', pts: 0 });
+  }
+
+  // NFCI — below 0 = accommodative financial conditions = equity bullish
+  if (nfci != null) {
+    if (nfci < -0.5)  { score += 2; reasons.push({ icon: '🟢', label: 'NFCI', val: `${nfci.toFixed(2)} — very accommodative`, pts: 2 }); }
+    else if (nfci < 0) { score += 1; reasons.push({ icon: '🟡', label: 'NFCI', val: `${nfci.toFixed(2)} — accommodative`, pts: 1 }); }
+    else               { score += 0; reasons.push({ icon: '🔴', label: 'NFCI', val: `${nfci.toFixed(2)} — restrictive financial conditions`, pts: 0 }); }
+  } else {
+    reasons.push({ icon: '⚪', label: 'NFCI', val: 'No data', pts: 0 });
+  }
+
+  // DXY — weaker USD generally supportive for US equities priced globally
+  if (dxy != null) {
+    if (dxy < 100)      { score += 1; reasons.push({ icon: '🟢', label: 'DXY', val: `${dxy.toFixed(1)} — weak USD, equity supportive`, pts: 1 }); }
+    else if (dxy < 105) { score += 0; reasons.push({ icon: '🟡', label: 'DXY', val: `${dxy.toFixed(1)} — neutral USD`, pts: 0 }); }
+    else                { score += 0; reasons.push({ icon: '🔴', label: 'DXY', val: `${dxy.toFixed(1)} — strong USD, equity headwind`, pts: 0 }); }
+  } else {
+    reasons.push({ icon: '⚪', label: 'DXY', val: 'No data', pts: 0 });
+  }
+
+  const maxScore = 10;
+  let bias, type;
+  if      (score >= 7) { bias = 'LONG';    type = 'trend'; }
+  else if (score >= 5) { bias = 'LONG';    type = 'reversion'; }
+  else if (score <= 3) { bias = 'SHORT';   type = 'trend'; }
+  else                 { bias = 'NEUTRAL'; type = 'neutral'; }
+
+  return {
+    bias, type, score, maxScore, reasons,
+    fvPips: null, fvGap: null, fvBull: null,
+    mom10Bull: null, mom2Bull: null, sp10Bull: null, lagDetected: false,
+    surpriseMod: null, crossConflict: null, armaMod: null, realYieldMod: null,
+    isEquity: true,
+  };
+}
+
 // ── Signal engine ────────────────────────────────────────────────────────────
 
 export function runSignalEngine(compassData, volRegime) {
   const sym    = S.currentPair.symbol;
+
+  if (sym === 'NAS100_USD') return runEquitySignalEngine();
+
   const data   = compassData[sym];
   const cfg    = COMPASS_CONFIG[sym] || null;
   const atr    = volRegime?.atr || 0;
@@ -238,6 +319,21 @@ export function renderSignalCard(signal, volRegime) {
       <span class="sig-row-pts ${r.pts > 0 ? 'pos' : r.pts < 0 ? 'neg' : 'zero'}">${r.pts > 0 ? '+' : ''}${r.pts}</span>
     </div>`).join('');
 
+  const fvRow = signal.isEquity
+    ? `<div class="sig-fv-pip">
+        <span class="sfv-lbl">Model</span>
+        <span class="sfv-val" style="color:var(--text2)">Equity Risk Appetite (VIX · HY · TIPS · NFCI · DXY)</span>
+      </div>`
+    : `<div class="sig-fv-pip">
+        <span class="sfv-lbl">FV Gap (pips)</span>
+        <span class="sfv-val" style="color:${signal.fvBull ? 'var(--green)' : signal.fvBull === false ? 'var(--red)' : 'var(--text3)'}">${fvPipStr}</span>
+        <span class="sfv-sub">ATR-scaled estimate</span>
+      </div>`;
+
+  const disclaimer = signal.isEquity
+    ? `⚠ Equity signal uses macro risk-appetite data (1-day FRED lag). Use as probabilistic bias — confirm with price action at key levels.`
+    : `⚠ Signal engine uses rate spread data (1-day FRED lag). Use as probabilistic bias — not a mechanical entry trigger. Confirm with price action at key levels below.`;
+
   return `
     <div class="signal-card ${cls}">
       <div class="sig-hd">
@@ -251,16 +347,12 @@ export function renderSignalCard(signal, volRegime) {
         </div>
       </div>
 
-      <div class="sig-fv-pip">
-        <span class="sfv-lbl">FV Gap (pips)</span>
-        <span class="sfv-val" style="color:${signal.fvBull ? 'var(--green)' : signal.fvBull === false ? 'var(--red)' : 'var(--text3)'}">${fvPipStr}</span>
-        <span class="sfv-sub">ATR-scaled estimate</span>
-      </div>
+      ${fvRow}
 
       <div class="sig-rows">${rowsHtml}</div>
 
       <div style="font-size:9.5px;color:var(--text3);line-height:1.5;padding-top:6px;border-top:1px solid var(--border)">
-        ⚠ Signal engine uses rate spread data (1-day FRED lag). Use as probabilistic bias — not a mechanical entry trigger. Confirm with price action at key levels below.
+        ${disclaimer}
       </div>
     </div>`;
 }
@@ -276,6 +368,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
   const price  = quote.price;
 
   const caps       = getCaps(sym);
+  const unit       = sym === 'NAS100_USD' ? 'pts' : 'p';
   const isGoldScan = pipSz >= 0.1 && sym.includes('XAU');
   const _pipMult   = isGoldScan ? 1.0 : pipSz;
   const oiProx     = Math.min(atr * caps.oiAtrFrac,  caps.oiPipCap  * _pipMult);
@@ -314,20 +407,20 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
         const above = c.direction === 'short';
         layerScore += above ? 1.5 : 0.5;
         const cwDist = Math.round(Math.abs(c.price - oi.callWall) / pipSz);
-        oiTag = { cls: 'oi', label: `Call Wall ${oiFmtStrike(oi.callWall, sym)} (${cwDist}p)`, key: 'callwall' };
+        oiTag = { cls: 'oi', label: `Call Wall ${oiFmtStrike(oi.callWall, sym)} (${cwDist}${unit})`, key: 'callwall' };
         layers.push('Near call wall');
       }
       if (Math.abs(c.price - oi.putWall) <= oiProx) {
         const below = c.direction === 'long';
         layerScore += below ? 1.5 : 0.5;
         const pwDist = Math.round(Math.abs(c.price - oi.putWall) / pipSz);
-        oiTag = { cls: 'oi', label: `Put Wall ${oiFmtStrike(oi.putWall, sym)} (${pwDist}p)`, key: 'putwall' };
+        oiTag = { cls: 'oi', label: `Put Wall ${oiFmtStrike(oi.putWall, sym)} (${pwDist}${unit})`, key: 'putwall' };
         layers.push('Near put wall');
       }
       if (Math.abs(c.price - oi.maxPain) <= oiProx) {
         layerScore += 0.5;
         const mpDist = Math.round(Math.abs(c.price - oi.maxPain) / pipSz);
-        oiTag = oiTag || { cls: 'oi', label: `Max Pain ${oiFmtStrike(oi.maxPain, sym)} (${mpDist}p)`, key: 'maxpain' };
+        oiTag = oiTag || { cls: 'oi', label: `Max Pain ${oiFmtStrike(oi.maxPain, sym)} (${mpDist}${unit})`, key: 'maxpain' };
         layers.push('Near max pain');
       }
       if (oiTag) tags.push(oiTag);
@@ -342,7 +435,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
         if (flipStrike && Math.abs(c.price - flipStrike) <= gexProx) {
           layerScore += 1;
           const gfDist = Math.round(Math.abs(c.price - flipStrike) / pipSz);
-          tags.push({ cls: 'gex', label: `Gamma Flip ${oiFmtStrike(flipStrike, sym)} (${gfDist}p)`, key: 'gammaflip' });
+          tags.push({ cls: 'gex', label: `Gamma Flip ${oiFmtStrike(flipStrike, sym)} (${gfDist}${unit})`, key: 'gammaflip' });
           layers.push('Near gamma flip');
         }
       }
@@ -354,7 +447,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       const _pivRawDist = _pivVal != null ? Math.abs(c.price - _pivVal) : null;
       const _isGoldTag = pipSz >= 0.1 && sym.includes('XAU');
       const pivDist = _pivRawDist != null
-        ? (_isGoldTag ? _pivRawDist.toFixed(2) + '$' : Math.round(_pivRawDist / pipSz) + 'p')
+        ? (_isGoldTag ? _pivRawDist.toFixed(2) + '$' : Math.round(_pivRawDist / pipSz) + unit)
         : null;
       tags.push({ cls: 'pivot', label: c.pivotMatch + (pivDist != null ? ` (${pivDist})` : ''), key: 'pivot' });
       layers.push('Pivot ' + c.pivotMatch);
@@ -364,13 +457,13 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       if (Math.abs(c.price - asia.today.high) <= rangeProx) {
         layerScore += 0.5;
         const _asiahd = Math.round(Math.abs(c.price - asia.today.high) / pipSz);
-        tags.push({ cls: 'range', label: `Asia High (${_asiahd}p)`, key: 'asiah' });
+        tags.push({ cls: 'range', label: `Asia High (${_asiahd}${unit})`, key: 'asiah' });
         layers.push('Asia range high');
       }
       if (Math.abs(c.price - asia.today.low) <= rangeProx) {
         layerScore += 0.5;
         const _asiald = Math.round(Math.abs(c.price - asia.today.low) / pipSz);
-        tags.push({ cls: 'range', label: `Asia Low (${_asiald}p)`, key: 'asial' });
+        tags.push({ cls: 'range', label: `Asia Low (${_asiald}${unit})`, key: 'asial' });
         layers.push('Asia range low');
       }
     }
@@ -378,13 +471,13 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       if (Math.abs(c.price - monday.current.high) <= rangeProx) {
         layerScore += 0.5;
         const _monhd = Math.round(Math.abs(c.price - monday.current.high) / pipSz);
-        tags.push({ cls: 'range', label: `Mon High (${_monhd}p)`, key: 'monh' });
+        tags.push({ cls: 'range', label: `Mon High (${_monhd}${unit})`, key: 'monh' });
         layers.push('Monday range high');
       }
       if (Math.abs(c.price - monday.current.low) <= rangeProx) {
         layerScore += 0.5;
         const _monld = Math.round(Math.abs(c.price - monday.current.low) / pipSz);
-        tags.push({ cls: 'range', label: `Mon Low (${_monld}p)`, key: 'monl' });
+        tags.push({ cls: 'range', label: `Mon Low (${_monld}${unit})`, key: 'monl' });
         layers.push('Monday range low');
       }
     }
@@ -393,7 +486,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       const _doDist = Math.abs(c.price - dop.price);
       if (_doDist <= rangeProx) {
         layerScore += 0.5;
-        tags.push({ cls: 'range', label: `DO ${dop.label} (${Math.round(_doDist / pipSz)}p)`, key: 'dayopen' });
+        tags.push({ cls: 'range', label: `DO ${dop.label} (${Math.round(_doDist / pipSz)}${unit})`, key: 'dayopen' });
         layers.push(`Daily open ${dop.label}`);
         break; // tag the most recent matching day only
       }
@@ -402,7 +495,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       const _lopDist = Math.abs(c.price - S.sessionData.londonOpenPrice);
       if (_lopDist <= rangeProx) {
         layerScore += 0.5;
-        tags.push({ cls: 'range', label: `London Open (${Math.round(_lopDist / pipSz)}p)`, key: 'lopen' });
+        tags.push({ cls: 'range', label: `London Open (${Math.round(_lopDist / pipSz)}${unit})`, key: 'lopen' });
         layers.push('London open level');
       }
     }
@@ -410,7 +503,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       const _nyopDist = Math.abs(c.price - S.sessionData.nyOpenPrice);
       if (_nyopDist <= rangeProx) {
         layerScore += 0.5;
-        tags.push({ cls: 'range', label: `NY Open (${Math.round(_nyopDist / pipSz)}p)`, key: 'nyopen' });
+        tags.push({ cls: 'range', label: `NY Open (${Math.round(_nyopDist / pipSz)}${unit})`, key: 'nyopen' });
         layers.push('NY open level');
       }
     }
@@ -487,8 +580,10 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
 // ── Render entry scanner ──────────────────────────────────────────────────────
 
 export function renderEntryScanner(entries, quote, signal, volRegime) {
-  const digits = getDigits(S.currentPair.symbol);
-  const pipSz  = getPipSize(S.currentPair.symbol);
+  const sym    = S.currentPair.symbol;
+  const digits = getDigits(sym);
+  const pipSz  = getPipSize(sym);
+  const unit   = sym === 'NAS100_USD' ? 'pts' : 'p';
 
   const volCtx = volRegime && volRegime.dailyCapPips > 0 ? (() => {
     const usedPct  = Math.min(100, volRegime.usedPct);
@@ -505,7 +600,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime) {
         <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Daily Vol Budget</span>
         <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;background:${regCol}22;color:${regCol};border:1px solid ${regCol}44">${volRegime.regime} · ${volRegime.percentile}th pct</span>
         ${g ? `<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd);font-weight:600">GARCH ${g.cluster}</span>` : ''}
-        <span style="margin-left:auto;font-size:10px;font-family:'DM Mono',monospace;color:var(--text2)">${usedPips}p / <strong>${capPips}p</strong> cap</span>
+        <span style="margin-left:auto;font-size:10px;font-family:'DM Mono',monospace;color:var(--text2)">${usedPips}${unit} / <strong>${capPips}${unit}</strong> cap</span>
       </div>
       ${g ? `
       <div style="position:relative;height:16px;border-radius:4px;overflow:hidden;margin-bottom:4px;background:rgba(139,92,246,0.1);border:1px solid var(--purple-bd)">
@@ -514,19 +609,19 @@ export function renderEntryScanner(entries, quote, signal, volRegime) {
         <div style="position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--purple);opacity:0.5"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:9px;font-family:'DM Mono',monospace;margin-bottom:5px">
-        <span style="color:var(--purple)">95%: ${g.ci95Pips.toFixed(0)}p</span>
-        <span style="color:var(--purple);font-weight:600">GARCH ${g.pips.toFixed(0)}p · 68%CI ${g.ci68Pips.toFixed(0)}p</span>
-        <span style="color:var(--text3)">EMA ${atrPips}p</span>
+        <span style="color:var(--purple)">95%: ${g.ci95Pips.toFixed(0)}${unit}</span>
+        <span style="color:var(--purple);font-weight:600">GARCH ${g.pips.toFixed(0)}${unit} · 68%CI ${g.ci68Pips.toFixed(0)}${unit}</span>
+        <span style="color:var(--text3)">EMA ${atrPips}${unit}</span>
       </div>` : `
       <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:5px">
         <div style="height:100%;width:${usedPct}%;background:${barCol};border-radius:3px"></div>
       </div>`}
       <div style="display:flex;justify-content:space-between;font-size:10px;font-family:'DM Mono',monospace">
         <span style="color:var(--text3)">${usedPct}% of 68% CI used</span>
-        <span style="color:${usedPct > 80 ? 'var(--red)' : 'var(--text2)'}">~<strong>${remPips}p</strong> remaining</span>
+        <span style="color:${usedPct > 80 ? 'var(--red)' : 'var(--text2)'}">~<strong>${remPips}${unit}</strong> remaining</span>
       </div>
-      ${usedPct > 80 ? '<div style="font-size:10px;color:var(--red);margin-top:5px">⚠ 68% CI consumed — fade only, GARCH says breakout unlikely today</div>' :
-        usedPct > 55 ? '<div style="font-size:10px;color:var(--amber);margin-top:5px">⚡ Past halfway through expected range — size down, favour mean-reversion</div>' : ''}
+      ${usedPct > 80 ? `<div style="font-size:10px;color:var(--red);margin-top:5px">⚠ 68% CI consumed — fade only, GARCH says breakout unlikely today</div>` :
+        usedPct > 55 ? `<div style="font-size:10px;color:var(--amber);margin-top:5px">⚡ Past halfway through expected range — size down, favour mean-reversion</div>` : ''}
     </div>`;
   })() : '';
 
@@ -546,12 +641,12 @@ export function renderEntryScanner(entries, quote, signal, volRegime) {
 
     const rrCol = e.rrRatio && parseFloat(e.rrRatio) >= 1.5 ? 'var(--green)' :
                   e.rrRatio && parseFloat(e.rrRatio) >= 1.0 ? 'var(--amber)' : 'var(--red)';
-    const tpCapNote = e.tpCapped ? `<span style="color:var(--amber);font-size:9px" title="TP capped to today's remaining daily range (${volRegime.remainingPips?.toFixed(0)}p remaining)">⚡ vol-capped</span>` : '';
+    const tpCapNote = e.tpCapped ? `<span style="color:var(--amber);font-size:9px" title="TP capped to today's remaining daily range (${volRegime.remainingPips?.toFixed(0)}${unit} remaining)">⚡ vol-capped</span>` : '';
 
     const tradeHtml = e.sl != null ? `
       <span><strong>Entry</strong> ${e.price.toFixed(digits)}</span>
-      <span><strong>SL</strong> ${e.sl.toFixed(digits)} (${e.slPips?.toFixed(0)}p)</span>
-      <span><strong>TP</strong> ${e.tp != null ? e.tp.toFixed(digits) : '—'} (${e.tpNote}${e.tpPips ? ' · ' + e.tpPips.toFixed(0) + 'p' : ''}) ${tpCapNote}</span>
+      <span><strong>SL</strong> ${e.sl.toFixed(digits)} (${e.slPips?.toFixed(0)}${unit})</span>
+      <span><strong>TP</strong> ${e.tp != null ? e.tp.toFixed(digits) : '—'} (${e.tpNote}${e.tpPips ? ' · ' + e.tpPips.toFixed(0) + unit : ''}) ${tpCapNote}</span>
       ${e.rrRatio ? `<span><strong style="color:${rrCol}">R:R 1:${e.rrRatio}</strong></span>` : ''}
       <span><strong>Size</strong> ${e.size}%</span>
     ` : `<span style="opacity:.6"><em>Price at level — wait for directional close</em></span>`;
@@ -562,7 +657,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime) {
         <span class="ec-stars">${starStr}</span>
         <span class="ec-price">${e.price.toFixed(digits)}</span>
         <span class="ec-dir ${e.direction}">${e.direction === 'long' ? '↑ BUY' : '↓ SELL'}</span>
-        <span class="ec-dist">${above ? '↑' : '↓'} ${e.distance.toFixed(0)}p</span>
+        <span class="ec-dist">${above ? '↑' : '↓'} ${e.distance.toFixed(0)}${unit}</span>
       </div>
       <div class="ec-layers">${tagsHtml}</div>
       <div class="ec-trade">${tradeHtml}</div>

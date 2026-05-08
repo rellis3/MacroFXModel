@@ -42,13 +42,14 @@ function parseCFTCFile(text) {
   // TFF column order (14 cols): DealerL, DealerS, DealerSp, AML, AMS, AMSp, LevL, LevS, LevSp, OthL, OthS, OthSp, NRL, NRS
   // flip=true: futures quote the foreign currency, so net sign is inverted for the USD-base dashboard pair
   const FX_MAP = [
-    { name: 'EURO FX',            pair: 'EUR/USD', flip: false },
-    { name: 'BRITISH POUND',      pair: 'GBP/USD', flip: false },
-    { name: 'JAPANESE YEN',       pair: 'USD/JPY', flip: true  },
-    { name: 'AUSTRALIAN DOLLAR',  pair: 'AUD/USD', flip: false },
-    { name: 'NEW ZEALAND DOLLAR', pair: 'NZD/USD', flip: false },
-    { name: 'SWISS FRANC',        pair: 'USD/CHF', flip: true  },
-    { name: 'CANADIAN DOLLAR',    pair: 'USD/CAD', flip: true  },
+    { name: 'EURO FX',            pair: 'EUR/USD',    flip: false },
+    { name: 'BRITISH POUND',      pair: 'GBP/USD',    flip: false },
+    { name: 'JAPANESE YEN',       pair: 'USD/JPY',    flip: true  },
+    { name: 'AUSTRALIAN DOLLAR',  pair: 'AUD/USD',    flip: false },
+    { name: 'NEW ZEALAND DOLLAR', pair: 'NZD/USD',    flip: false },
+    { name: 'SWISS FRANC',        pair: 'USD/CHF',    flip: true  },
+    { name: 'CANADIAN DOLLAR',    pair: 'USD/CAD',    flip: true  },
+    { name: 'NASDAQ MINI',        pair: 'NAS100_USD', flip: false },
   ];
 
   const parseNums = line =>
@@ -362,6 +363,19 @@ export default {
             enhPivAtrFrac:0.10,
             enhPivPipCap: 6,    // $6
           },
+          // NAS100 caps (NAS100_USD  -  points, not pips)
+          nas100: {
+            oiAtrFrac:    0.12,
+            oiPipCap:     200,  // 200 points cap
+            pivAtrFrac:   0.10,
+            pivPipCap:    150,
+            rngAtrFrac:   0.08,
+            rngPipCap:    100,
+            gexAtrFrac:   0.15,
+            gexPipCap:    250,
+            enhPivAtrFrac:0.10,
+            enhPivPipCap: 150,
+          },
           updatedAt: null,
         };
 
@@ -372,8 +386,9 @@ export default {
           const parsed = JSON.parse(stored);
           // Merge with defaults so new fields added in future are always present
           return json({
-            fx:   { ...DEFAULTS.fx,   ...(parsed.fx   || {}) },
-            gold: { ...DEFAULTS.gold, ...(parsed.gold || {}) },
+            fx:     { ...DEFAULTS.fx,     ...(parsed.fx     || {}) },
+            gold:   { ...DEFAULTS.gold,   ...(parsed.gold   || {}) },
+            nas100: { ...DEFAULTS.nas100, ...(parsed.nas100 || {}) },
             updatedAt: parsed.updatedAt || null,
           });
         } catch(e) {
@@ -387,10 +402,10 @@ export default {
         if (!env.FX_SCORES) return err('FX_SCORES KV namespace not bound. Add it in Cloudflare Pages -> Settings -> Functions -> KV namespace bindings, variable name: FX_SCORES', 503);
         try {
           const body = await request.json();
-          if (!body.fx || !body.gold) return err('Missing fx or gold config', 400);
+          if (!body.fx || !body.gold || !body.nas100) return err('Missing fx, gold or nas100 config', 400);
 
           // Validate all values are positive numbers
-          const allVals = [...Object.values(body.fx), ...Object.values(body.gold)];
+          const allVals = [...Object.values(body.fx), ...Object.values(body.gold), ...Object.values(body.nas100)];
           if (allVals.some(v => typeof v !== 'number' || v <= 0)) {
             return err('All cap values must be positive numbers', 400);
           }
@@ -398,6 +413,7 @@ export default {
           const payload = {
             fx:        body.fx,
             gold:      body.gold,
+            nas100:    body.nas100,
             updatedAt: new Date().toISOString(),
           };
 

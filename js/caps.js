@@ -14,7 +14,9 @@ export async function loadCaps() {
 
 export function getCaps(sym) {
   const cfg = S._caps || CAP_DEFAULTS;
-  return sym && sym.includes('XAU') ? cfg.gold : cfg.fx;
+  if (sym && sym.includes('XAU')) return cfg.gold;
+  if (sym === 'NAS100_USD') return cfg.nas100 || CAP_DEFAULTS.nas100;
+  return cfg.fx;
 }
 
 export async function openCfgModal() {
@@ -86,6 +88,22 @@ function populateCfgForm(caps) {
   fill('gold_gexPipCap',     gold.gexPipCap);
   fill('gold_enhPivAtrFrac', gold.enhPivAtrFrac);
   fill('gold_enhPivPipCap',  gold.enhPivPipCap);
+  const nas100 = caps.nas100 || CAP_DEFAULTS.nas100;
+  fill('nas100_confluencePips',  nas100.confluencePips);
+  fill('nas100_mergeFactor',     nas100.mergeFactor);
+  fill('nas100_asiaMinPips',     nas100.asiaMinPips);
+  fill('nas100_structuralLookbackDays', nas100.structuralLookbackDays);
+  fill('nas100_structuralPivotN',       nas100.structuralPivotN);
+  fill('nas100_oiAtrFrac',     nas100.oiAtrFrac);
+  fill('nas100_oiPipCap',      nas100.oiPipCap);
+  fill('nas100_pivAtrFrac',    nas100.pivAtrFrac);
+  fill('nas100_pivPipCap',     nas100.pivPipCap);
+  fill('nas100_rngAtrFrac',    nas100.rngAtrFrac);
+  fill('nas100_rngPipCap',     nas100.rngPipCap);
+  fill('nas100_gexAtrFrac',    nas100.gexAtrFrac);
+  fill('nas100_gexPipCap',     nas100.gexPipCap);
+  fill('nas100_enhPivAtrFrac', nas100.enhPivAtrFrac);
+  fill('nas100_enhPivPipCap',  nas100.enhPivPipCap);
 }
 
 function readCfgForm() {
@@ -125,6 +143,23 @@ function readCfgForm() {
       enhPivAtrFrac: num('gold_enhPivAtrFrac'),
       enhPivPipCap:  num('gold_enhPivPipCap'),
     },
+    nas100: {
+      confluencePips: num('nas100_confluencePips'),
+      mergeFactor:    num('nas100_mergeFactor'),
+      asiaMinPips:            num('nas100_asiaMinPips'),
+      structuralLookbackDays: num('nas100_structuralLookbackDays'),
+      structuralPivotN:       num('nas100_structuralPivotN'),
+      oiAtrFrac:     num('nas100_oiAtrFrac'),
+      oiPipCap:      num('nas100_oiPipCap'),
+      pivAtrFrac:    num('nas100_pivAtrFrac'),
+      pivPipCap:     num('nas100_pivPipCap'),
+      rngAtrFrac:    num('nas100_rngAtrFrac'),
+      rngPipCap:     num('nas100_rngPipCap'),
+      gexAtrFrac:    num('nas100_gexAtrFrac'),
+      gexPipCap:     num('nas100_gexPipCap'),
+      enhPivAtrFrac: num('nas100_enhPivAtrFrac'),
+      enhPivPipCap:  num('nas100_enhPivPipCap'),
+    },
   };
 }
 
@@ -137,7 +172,7 @@ export async function saveCaps() {
 
   const payload = readCfgForm();
 
-  const allVals = [...Object.values(payload.fx), ...Object.values(payload.gold)];
+  const allVals = [...Object.values(payload.fx), ...Object.values(payload.gold), ...Object.values(payload.nas100)];
   if (allVals.some(v => !v || v <= 0)) {
     status.textContent = '⚠ All values must be positive numbers';
     status.className = 'cfg-status err';

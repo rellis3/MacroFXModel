@@ -75,13 +75,15 @@ function getPrevWeekLevels() {
 function getRoundNumberLevels(price, symbol) {
   if (!price) return [];
   const pipSize = getPipSize(symbol);
-  const isGold  = symbol.includes('XAU');
-  const isJPY   = symbol.includes('JPY');
-  const spacing = isGold ? 5.0 : isJPY ? 0.5 : 0.005;
+  const isGold   = symbol.includes('XAU');
+  const isJPY    = symbol.includes('JPY');
+  const isEquity = symbol === 'NAS100_USD';
+  const spacing  = isGold ? 5.0 : isEquity ? 50.0 : isJPY ? 0.5 : 0.005;
+  const decPlcs  = isGold || isEquity ? 0 : isJPY ? 2 : 4;
   const base = Math.floor(price / spacing) * spacing;
   const levels = [];
   for (let i = -3; i <= 3; i++) {
-    const lvl = parseFloat((base + i * spacing).toFixed(isGold ? 0 : isJPY ? 2 : 4));
+    const lvl = parseFloat((base + i * spacing).toFixed(decPlcs));
     if (Math.abs(lvl - price) > 0.0001) levels.push(lvl);
   }
   return levels;
@@ -264,8 +266,8 @@ ${calendarCtx.warnings.length > 0 ? `
     <div class="card card-lg">
       <div class="hd-top">
         <div>
-          <div class="pair-title">${S.currentPair.symbol.split('/')[0]}<span class="q">/</span>${S.currentPair.symbol.split('/')[1] || ''}</div>
-          <div class="pair-meta">Vol: ${volRegime.regime} (${volRegime.percentile}th pct) · ATR ${volRegime.atrPips.toFixed(0)}p${volRegime.garch ? ' · GARCH ' + volRegime.garch.pips.toFixed(0) + 'p [68%: ' + volRegime.ci68Pips.toFixed(0) + 'p]' : ''}${volImpulsePill}${dregPill} · ${tierData.agreeCount}/7 tiers agree</div>
+          <div class="pair-title">${S.currentPair.isEquity ? S.currentPair.name : S.currentPair.symbol.split('/')[0] + '<span class="q">/</span>' + (S.currentPair.symbol.split('/')[1] || '')}</div>
+          <div class="pair-meta">Vol: ${volRegime.regime} (${volRegime.percentile}th pct) · ATR ${volRegime.atrPips.toFixed(0)}${S.currentPair.isEquity ? 'pts' : 'p'}${volRegime.garch ? ' · GARCH ' + volRegime.garch.pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ' [68%: ' + volRegime.ci68Pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ']' : ''}${volImpulsePill}${dregPill} · ${tierData.agreeCount}/7 tiers agree</div>
           <div class="bias-badge ${biasClass}">${biasText}${macroBias} · ${Math.abs(tierData.totalScore) >= 9 ? 'HIGH' : Math.abs(tierData.totalScore) >= 5 ? 'MED' : 'LOW'} CONVICTION</div>
         </div>
         <div class="hd-right">
@@ -365,6 +367,7 @@ ${calendarCtx.warnings.length > 0 ? `
       </div>
       <div style="font-size:10px;color:var(--text3);margin-top:4px">
         ${S.currentPair?.isGold ? 'Gold: USD strength = headwind for gold' :
+          S.currentPair?.isEquity ? 'Equity: USD strength = mild headwind for global risk' :
           S.currentPair?.isUsdBase ? 'USD-base pair: USD strength = bullish' :
           'USD-quote pair: USD strength = bearish'}
         ${usd?.pairsUsed < 4 ? ` · Load more pairs for full ${usd?.pairsUsed}/4 composite` : ''}
@@ -414,8 +417,8 @@ ${calendarCtx.warnings.length > 0 ? `
     </div>
 
     <div class="legend">
-      <div class="lg-item"><div class="lg-bar green"></div>Tight (<${(getConfluenceThreshold(S.currentPair.symbol) * 0.1).toFixed(1)} pips)</div>
-      <div class="lg-item"><div class="lg-bar orange"></div>Normal (<${getConfluenceThreshold(S.currentPair.symbol)} pips)</div>
+      <div class="lg-item"><div class="lg-bar green"></div>Tight (<${(getConfluenceThreshold(S.currentPair.symbol) * 0.1).toFixed(1)} ${S.currentPair.isEquity ? 'pts' : 'pips'})</div>
+      <div class="lg-item"><div class="lg-bar orange"></div>Normal (<${getConfluenceThreshold(S.currentPair.symbol)} ${S.currentPair.isEquity ? 'pts' : 'pips'})</div>
       <div class="lg-item">📍 Asia · 🗓️ Monday</div>
     </div>
 
