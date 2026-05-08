@@ -256,6 +256,25 @@ async function refreshQuote() {
       console.warn('5m anchor refresh skipped:', e.message);
     }
 
+    // 30m refresh — a new bar closes every 30 min; fetch when latest bar is >35 min old.
+    // Recalculates Monday range and structural fibs once per new bar, not every 5 min tick.
+    try {
+      const bars30 = S.ohlc30m[S.currentPair.symbol]?.values;
+      const latest30Ms = bars30 && bars30.length
+        ? new Date(bars30[0].datetime.replace(' ', 'T') + 'Z').getTime()
+        : 0;
+      if (Date.now() - latest30Ms > 35 * 60 * 1000) {
+        const fresh30 = await fetchAPI(`/api/oanda_ohlc30m?symbol=${encodeURIComponent(S.currentPair.symbol)}`);
+        if (fresh30 && fresh30.values && fresh30.values.length) {
+          S.ohlc30m[S.currentPair.symbol] = fresh30;
+          calculateMondayRanges(S.currentPair.symbol);
+          calculateStructuralFibs(S.currentPair.symbol);
+        }
+      }
+    } catch (e) {
+      console.warn('30m refresh skipped:', e.message);
+    }
+
     renderAll();
     document.getElementById('upd').textContent = new Date().toLocaleTimeString();
   } catch (error) {
@@ -400,6 +419,13 @@ async function init() {
   renderPairTabs();
   await loadAll();
   setInterval(() => refreshQuote(), 5 * 60 * 1000);
+
+  // Toggle .pinned shadow on sticky header when page scrolls past natural position
+  const sentinel = document.getElementById('stickysentinel');
+  const header   = document.querySelector('.sticky-header');
+  if (sentinel && header) {
+    new IntersectionObserver(([e]) => header.classList.toggle('pinned', !e.isIntersecting)).observe(sentinel);
+  }
 }
 
 init();

@@ -23,7 +23,10 @@ body.dark{
   --card-dim:#14161e;
 }
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5}
-#app{padding:18px 20px;max-width:1400px;margin:0 auto}
+#app{padding:0 20px 18px 20px;max-width:1400px;margin:0 auto}
+.sticky-header{position:sticky;top:0;z-index:200;background:var(--bg);padding-top:18px;box-shadow:0 2px 12px rgba(0,0,0,0);transition:box-shadow .2s}
+.sticky-header.pinned{box-shadow:0 2px 12px rgba(0,0,0,0.10)}
+.dark .sticky-header.pinned{box-shadow:0 2px 12px rgba(0,0,0,0.35)}
 
 /* TOPBAR */
 .topbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1.5px solid var(--border);flex-wrap:wrap}
