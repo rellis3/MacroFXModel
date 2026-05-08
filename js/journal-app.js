@@ -316,33 +316,36 @@ function populateExportSelects(){
   Object.entries(journalData).forEach(([date,dayObj])=>{Object.keys(dayObj).forEach(pair=>{pairSet.add(pair);dateSet.add(date);});});
   const pairs=[...pairSet].sort(),dates=[...dateSet].sort().reverse();
   const pairSel=document.getElementById('exportPairSelect');
-  pairSel.innerHTML=pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
+  pairSel.innerHTML=`<option value="__all__">All Pairs</option>`+pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
   if(filterPair!=='all'&&pairs.includes(filterPair))pairSel.value=filterPair;
   const dateSel=document.getElementById('exportDateSelect');
   dateSel.innerHTML=dates.map(d=>`<option value="${d}">${d}</option>`).join('');
   if(selectedDate&&dates.includes(selectedDate))dateSel.value=selectedDate;
 }
 
-function getLevelsForExport(){
-  const pair=document.getElementById('exportPairSelect').value;
-  const date=document.getElementById('exportDateSelect').value;
+// Shared filter logic — applies star, taken-only, and max-rows filters for one pair/date.
+function getFilteredLevels(pair,date){
   const dayObj=journalData[date];
-  if(!dayObj||!dayObj[pair])return{pair,date,levels:[],macro:{}};
+  if(!dayObj||!dayObj[pair])return{levels:[],macro:{}};
   let levels=dayObj[pair].levels||[];
 
-  // Star filter — collect checked values; if none checked, show all
   const checkedStars=[...document.querySelectorAll('.star-cb:checked')].map(el=>parseInt(el.value,10));
   if(checkedStars.length>0)levels=levels.filter(l=>checkedStars.includes(l.stars||1));
 
-  // Taken-only filter
   if(document.getElementById('exportTakenOnly')?.checked)
     levels=levels.filter(l=>l.trade==='long'||l.trade==='short');
 
-  // Max rows cap
   const maxVal=parseInt(document.getElementById('exportMaxRows')?.value,10);
   if(!isNaN(maxVal)&&maxVal>0)levels=levels.slice(0,maxVal);
 
-  return{pair,date,levels,macro:dayObj[pair].macro||{}};
+  return{levels,macro:dayObj[pair].macro||{}};
+}
+
+function getLevelsForExport(){
+  const pair=document.getElementById('exportPairSelect').value;
+  const date=document.getElementById('exportDateSelect').value;
+  const{levels,macro}=getFilteredLevels(pair,date);
+  return{pair,date,levels,macro};
 }
 
 // ============================================================
@@ -350,8 +353,22 @@ function getLevelsForExport(){
 // Format per row: entry,dir(1/-1),sl,tp,stars,label
 // ============================================================
 function generateCSV(){
-  const{pair,date,levels,macro}=getLevelsForExport();
+  const pair=document.getElementById('exportPairSelect').value;
+  const date=document.getElementById('exportDateSelect').value;
   const el=document.getElementById('csvOutput');
+
+  if(pair==='__all__'){
+    const dayObj=journalData[date];
+    if(!dayObj){el.textContent='-- No data for selected date --';return;}
+    const blocks=Object.keys(dayObj).sort().map(p=>{
+      const{levels,macro}=getFilteredLevels(p,date);
+      return levels.length>0?buildCSV(p,date,levels,macro):null;
+    }).filter(Boolean);
+    el.textContent=blocks.length>0?blocks.join('\n\n'):'-- No levels match the current filter --';
+    return;
+  }
+
+  const{levels,macro}=getFilteredLevels(pair,date);
   if(levels.length===0){el.textContent='-- No levels match the current filter --';return;}
   el.textContent=buildCSV(pair,date,levels,macro);
 }
