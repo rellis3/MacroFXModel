@@ -173,8 +173,41 @@ export function runSignalEngine(compassData, volRegime) {
     }
   } catch(e) {}
 
+  // ── Real Yield (TIPS) modifier ───────────────────────────────────────────────
+  // High real yield is a headwind for risk/carry pairs (AUD, NZD) and reinforces
+  // USD carry advantage for USD-base pairs (JPY, CHF, CAD). Max impact: ±1 point.
+  // Skipped for XAU/USD (handled in T1) and EUR/USD, GBP/USD (relative real yield
+  // is already embedded in the T1 rate differential for those pairs).
+  let realYieldMod = null;
+  try {
+    const tipsVal = S.fredData?.tips?.value ?? null;
+    const _rySkip = ['XAU/USD', 'EUR/USD', 'GBP/USD'].includes(sym);
+    if (tipsVal != null && !_rySkip) {
+      const riskPairs    = ['AUD/USD', 'NZD/USD'];
+      const usdBasePairs = ['USD/JPY', 'USD/CHF', 'USD/CAD'];
+      const highReal = tipsVal > 2.0;
+      const lowReal  = tipsVal < 0.5;
+
+      if (riskPairs.includes(sym)) {
+        if (highReal) {
+          score = Math.max(0, score - 1);
+          realYieldMod = { val: tipsVal, dir: 'headwind', pts: -1 };
+          reasons.push({ icon: '🔴', label: 'Real Yield (TIPS)', val: `${tipsVal.toFixed(2)}% — headwind for ${sym.split('/')[0]} carry`, pts: -1 });
+        } else if (lowReal) {
+          score = Math.min(12, score + 1);
+          realYieldMod = { val: tipsVal, dir: 'tailwind', pts: 1 };
+          reasons.push({ icon: '🟢', label: 'Real Yield (TIPS)', val: `${tipsVal.toFixed(2)}% — carry environment supportive`, pts: 1 });
+        }
+      } else if (usdBasePairs.includes(sym) && highReal) {
+        score = Math.min(12, score + 1);
+        realYieldMod = { val: tipsVal, dir: 'usd-tailwind', pts: 1 };
+        reasons.push({ icon: '🟢', label: 'Real Yield (TIPS)', val: `${tipsVal.toFixed(2)}% — reinforces USD carry advantage`, pts: 1 });
+      }
+    }
+  } catch(e) {}
+
   return { bias, type, score, maxScore: 12, reasons, fvPips, fvGap, fvBull,
-           mom10Bull, mom2Bull, sp10Bull, lagDetected, surpriseMod, crossConflict, armaMod };
+           mom10Bull, mom2Bull, sp10Bull, lagDetected, surpriseMod, crossConflict, armaMod, realYieldMod };
 }
 
 // ── Render signal card ────────────────────────────────────────────────────────
@@ -202,7 +235,7 @@ export function renderSignalCard(signal, volRegime) {
       <span class="sig-row-icon">${r.icon}</span>
       <span class="sig-row-label">${r.label}</span>
       <span class="sig-row-val">${r.val}</span>
-      <span class="sig-row-pts ${r.pts > 0 ? 'pos' : 'zero'}">+${r.pts}</span>
+      <span class="sig-row-pts ${r.pts > 0 ? 'pos' : r.pts < 0 ? 'neg' : 'zero'}">${r.pts > 0 ? '+' : ''}${r.pts}</span>
     </div>`).join('');
 
   return `
