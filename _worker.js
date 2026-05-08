@@ -31,6 +31,12 @@ function isAllowedKVKey(key) {
   return PREFIXES.some(p => key.startsWith(p));
 }
 
+// ── TwelveData symbol mapping ─────────────────────────────────────────────────
+// OANDA uses instrument codes like NAS100_USD; TwelveData uses exchange symbols.
+const TWELVE_SYMBOL_MAP = {
+  'NAS100_USD': 'NDX',   // Nasdaq-100 cash index
+};
+
 // ── CFTC COT file parser ──────────────────────────────────────────────────────
 // Parses the CFTC Traders in Financial Futures (TFF) combined options report.
 // Returns an object keyed by dashboard pair symbol with position data.
@@ -168,7 +174,8 @@ export default {
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        const tdUrl = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbol)}&apikey=${env.TWELVE_KEY}`;
+        const tdSymbol = TWELVE_SYMBOL_MAP[symbol] || symbol;
+        const tdUrl = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(tdSymbol)}&apikey=${env.TWELVE_KEY}`;
         const res = await fetch(tdUrl);
         const data = await res.json();
 
@@ -188,7 +195,8 @@ export default {
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=100&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
+        const tdSymbol = TWELVE_SYMBOL_MAP[symbol] || symbol;
+        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=1day&outputsize=100&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
         const res = await fetch(tdUrl);
         const data = await res.json();
 
@@ -204,7 +212,8 @@ export default {
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=5min&outputsize=1500&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
+        const tdSymbol = TWELVE_SYMBOL_MAP[symbol] || symbol;
+        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=5min&outputsize=1500&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
         const res = await fetch(tdUrl);
         const data = await res.json();
 
@@ -220,7 +229,8 @@ export default {
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=30min&outputsize=700&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
+        const tdSymbol = TWELVE_SYMBOL_MAP[symbol] || symbol;
+        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=30min&outputsize=700&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
         const res = await fetch(tdUrl);
         const data = await res.json();
 
