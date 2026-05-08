@@ -592,6 +592,140 @@ export function setCompassMode(mode) {
   if (window.renderARMAAndTransition) window.renderARMAAndTransition(data);
 }
 
+// ── Equity Risk Appetite Gauge ───────────────────────────────────────────────
+
+function renderEquityRiskGauge() {
+  const f     = S.fredData || {};
+  const vix   = f.vix?.value   ?? null;
+  const hy    = f.hy?.value    ?? null;
+  const tips  = f.tips?.value  ?? null;
+  const nfci  = f.nfci?.value  ?? null;
+  const us10y = f.us10y?.value ?? null;
+  const us2y  = f.us2y?.value  ?? null;
+
+  const factors = [];
+
+  // VIX
+  if (vix != null) {
+    let pct, col;
+    if      (vix < 15) { pct = 95; col = 'var(--green)'; }
+    else if (vix < 20) { pct = 75; col = 'var(--green)'; }
+    else if (vix < 25) { pct = 50; col = 'var(--amber)'; }
+    else if (vix < 35) { pct = 25; col = 'var(--red)'; }
+    else               { pct = 5;  col = 'var(--red)'; }
+    factors.push({ label: 'VIX', val: vix.toFixed(1), pct, col, src: 'VIXCLS' });
+  } else {
+    factors.push({ label: 'VIX', val: 'No data', pct: null, col: 'var(--text3)', src: 'VIXCLS' });
+  }
+
+  // HY credit spread
+  if (hy != null) {
+    let pct, col;
+    if      (hy < 300) { pct = 90; col = 'var(--green)'; }
+    else if (hy < 400) { pct = 65; col = 'var(--amber)'; }
+    else if (hy < 500) { pct = 35; col = 'var(--amber)'; }
+    else               { pct = 10; col = 'var(--red)'; }
+    factors.push({ label: 'HY Spread', val: `${hy.toFixed(0)}bps`, pct, col, src: 'OAS' });
+  } else {
+    factors.push({ label: 'HY Spread', val: 'No data', pct: null, col: 'var(--text3)', src: 'OAS' });
+  }
+
+  // Real yield (TIPS)
+  if (tips != null) {
+    let pct, col;
+    if      (tips < 0)   { pct = 90; col = 'var(--green)'; }
+    else if (tips < 1.5) { pct = 60; col = 'var(--amber)'; }
+    else if (tips < 2.5) { pct = 30; col = 'var(--amber)'; }
+    else                 { pct = 5;  col = 'var(--red)'; }
+    factors.push({ label: 'Real Yield', val: `${tips.toFixed(2)}%`, pct, col, src: 'DFII10' });
+  } else {
+    factors.push({ label: 'Real Yield', val: 'No data', pct: null, col: 'var(--text3)', src: 'DFII10' });
+  }
+
+  // NFCI
+  if (nfci != null) {
+    let pct, col;
+    if      (nfci < -0.5) { pct = 90; col = 'var(--green)'; }
+    else if (nfci < 0)    { pct = 65; col = 'var(--amber)'; }
+    else if (nfci < 0.5)  { pct = 35; col = 'var(--amber)'; }
+    else                  { pct = 10; col = 'var(--red)'; }
+    factors.push({ label: 'NFCI', val: nfci.toFixed(2), pct, col, src: 'NFCI' });
+  } else {
+    factors.push({ label: 'NFCI', val: 'No data', pct: null, col: 'var(--text3)', src: 'NFCI' });
+  }
+
+  // Yield curve (10Y − 2Y)
+  if (us10y != null && us2y != null) {
+    const curve = us10y - us2y;
+    let pct, col;
+    if      (curve >  1.0) { pct = 95; col = 'var(--green)'; }
+    else if (curve >  0.5) { pct = 75; col = 'var(--green)'; }
+    else if (curve >  0.0) { pct = 55; col = 'var(--amber)'; }
+    else if (curve > -0.5) { pct = 30; col = 'var(--amber)'; }
+    else                   { pct = 10; col = 'var(--red)'; }
+    const sign = curve >= 0 ? '+' : '';
+    factors.push({ label: 'Yield Curve', val: `${sign}${curve.toFixed(2)}%`, pct, col, src: 'GS10−GS2' });
+  } else {
+    factors.push({ label: 'Yield Curve', val: 'No data', pct: null, col: 'var(--text3)', src: 'GS10−GS2' });
+  }
+
+  const live = factors.filter(x => x.pct != null);
+  const composite = live.length ? Math.round(live.reduce((s, x) => s + x.pct, 0) / live.length) : null;
+
+  const gaugeLabel = composite == null ? 'NO DATA' :
+    composite >= 80 ? 'GREED' :
+    composite >= 60 ? 'RISK-ON' :
+    composite >= 40 ? 'NEUTRAL' :
+    composite >= 20 ? 'CAUTION' : 'FEAR';
+
+  const gaugeCol = composite == null ? 'var(--text3)' :
+    composite >= 60 ? 'var(--green)' :
+    composite >= 40 ? 'var(--amber)' : 'var(--red)';
+
+  const factorRows = factors.map(x => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <div style="width:76px;font-size:10px;font-weight:600;color:var(--text2);flex-shrink:0">${x.label}</div>
+      <div style="flex:1;background:var(--border);border-radius:3px;height:5px;overflow:hidden">
+        ${x.pct != null
+          ? `<div style="width:${x.pct}%;height:100%;background:${x.col};border-radius:3px;transition:width .5s"></div>`
+          : `<div style="width:100%;height:100%;background:repeating-linear-gradient(90deg,var(--border2) 0,var(--border2) 4px,transparent 4px,transparent 8px)"></div>`}
+      </div>
+      <div style="width:68px;text-align:right;font-size:10px;color:${x.pct != null ? 'var(--text)' : 'var(--text3)'}">${x.val}</div>
+      <div style="width:48px;text-align:right;font-size:9px;color:var(--text3);font-family:'DM Mono',monospace">${x.src}</div>
+    </div>`).join('');
+
+  return `
+    <div class="compass-hd">
+      <div class="compass-title">📡 Risk Appetite Gauge
+        <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">NAS100</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="position:relative;height:20px;border-radius:10px;overflow:hidden;
+                  background:linear-gradient(90deg,#c0392b 0%,#e67e22 25%,#f39c12 45%,#27ae60 75%,#1a6b3a 100%)">
+        ${composite != null ? `<div style="position:absolute;top:0;left:${composite}%;transform:translateX(-50%);
+            width:3px;height:100%;background:#fff;box-shadow:0 0 5px rgba(0,0,0,.6)"></div>` : ''}
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:3px;padding:0 2px">
+        <span>FEAR</span><span>CAUTION</span><span>NEUTRAL</span><span>RISK-ON</span><span>GREED</span>
+      </div>
+      <div style="text-align:center;margin-top:8px">
+        <span style="font-size:22px;font-weight:700;color:${gaugeCol};line-height:1">${composite != null ? composite : '—'}</span>
+        <span style="font-size:11px;color:var(--text3)"> / 100</span>
+        <span style="margin-left:10px;font-size:13px;font-weight:700;color:${gaugeCol}">${gaugeLabel}</span>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:10px">
+      ${factorRows}
+    </div>
+
+    <div style="font-size:9px;color:var(--text3);text-align:right;margin-top:4px">
+      ${live.length}/${factors.length} factors live · FRED data
+    </div>`;
+}
+
 // ── Load + render orchestration ──────────────────────────────────────────────
 
 export async function loadAndRenderCompass() {
@@ -599,10 +733,26 @@ export async function loadAndRenderCompass() {
   if (!el) return;
 
   if (S.currentPair.isEquity) {
-    el.innerHTML = `<div class="compass-loading" style="color:var(--text2);padding:20px 0">
-      📊 <strong>NAS100</strong> uses an equity risk-appetite model instead of yield spreads.<br>
-      <span style="font-size:11px;color:var(--text3)">See the Signal Engine below for VIX · HY · TIPS · NFCI factors.</span>
-    </div>`;
+    // Patch fredData with yield curve from fredhistory if the batch fetch came back null
+    if (S.fredData && (S.fredData.us10y?.value == null || S.fredData.us2y?.value == null)) {
+      try {
+        const r = await fetch('/api/fredhistory?keys=us2y,us10y');
+        if (r.ok) {
+          const h = await r.json();
+          if (h.us10y?.length) {
+            const pts = h.us10y;
+            S.fredData.us10y = { value: pts[pts.length - 1].value, prev: pts[pts.length - 2]?.value ?? null };
+          }
+          if (h.us2y?.length) {
+            const pts = h.us2y;
+            S.fredData.us2y = { value: pts[pts.length - 1].value, prev: pts[pts.length - 2]?.value ?? null };
+          }
+        }
+      } catch(e) {}
+    }
+
+    el.innerHTML = renderEquityRiskGauge();
+
     const q   = window._latestQuote;
     const vol = calculateVolRegime();
     const piv = calculatePivots();

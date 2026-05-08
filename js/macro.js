@@ -32,7 +32,28 @@ export function calculateTierScores() {
 function computeT1() {
   const fredData = S.fredData;
   if (S.currentPair.isEquity) {
-    return tierUnavailable('T1', 'Rate Differential', 'N/A — equity model', 3);
+    // Yield curve steepness as equity T1: steep curve = growth priced in = bullish equities
+    const us10y = fredData.us10y?.value;
+    const us2y  = fredData.us2y?.value;
+    if (us10y == null || us2y == null) return tierUnavailable('T1', 'Yield Curve (10Y−2Y)', '10Y−2Y Spread', 3);
+    const curve = us10y - us2y;
+    let score = 0;
+    if      (curve >  1.0) score =  3;
+    else if (curve >  0.5) score =  2;
+    else if (curve >  0.0) score =  1;
+    else if (curve > -0.5) score = -1;
+    else if (curve > -1.0) score = -2;
+    else                   score = -3;
+    return {
+      tier: 'T1', name: 'Yield Curve (10Y−2Y)', max: 3, score,
+      val: `${curve >= 0 ? '+' : ''}${curve.toFixed(2)}%`,
+      reading: curve >  0.5 ? 'Steep — market pricing growth, equity bullish' :
+               curve >  0.0 ? 'Mildly positive — neutral to constructive' :
+               curve > -0.5 ? 'Flat/inverted — growth concerns emerging' :
+                              'Deeply inverted — recession risk elevated',
+      source: 'GS10 − GS2',
+      isMonthly: false,
+    };
   }
   if (S.currentPair.isGold) {
     const tips = fredData.tips?.value;
@@ -191,23 +212,47 @@ function computeT2() {
 
 function computeT3() {
   const fredData = S.fredData;
+  const usdBase     = S.currentPair.isUsdBase;
+  const amplifier   = S.currentPair.isGold ? 1.5 : 1;
+
+  // Primary: live composite USD strength from price bars (avoids FRED DTWEXBGS lag)
+  const usd = S.usdStrength || computeUSDStrength();
+
+  if (usd && usd.pairsUsed >= 2) {
+    // usd.score is in [-3, +3]: positive = USD strengthening
+    // Apply same directional logic as the FRED-based version
+    let raw = usd.score;
+    let score;
+    if (S.currentPair.isGold)     score = Math.max(-2, Math.min(2, Math.round(-raw * amplifier * 0.67)));
+    else if (S.currentPair.isEquity) score = Math.max(-2, Math.min(2, Math.round(-raw * 0.67)));
+    else if (usdBase)             score = Math.max(-2, Math.min(2, Math.round( raw * 0.67)));
+    else                          score = Math.max(-2, Math.min(2, Math.round(-raw * 0.67)));
+
+    return {
+      tier: 'T3', name: 'DXY Direction', max: 2, score,
+      val: usd.label,
+      reading: Math.abs(usd.score) < 1.0 ? 'USD range-bound' :
+               score > 0 ? 'USD move supports pair' : 'USD move drags pair',
+      source: `Composite (${usd.pairsUsed}/4 pairs)`,
+      isMonthly: false,
+    };
+  }
+
+  // Fallback: FRED DTWEXBGS (weekly release, significant lag)
   const dxy = fredData.dxy?.value;
   const dxyPrev = fredData.dxy?.prev;
   if (dxy == null) return tierUnavailable('T3', 'DXY Direction', 'Dollar Index', 2);
 
   const change = dxyPrev ? ((dxy / dxyPrev) - 1) * 100 : 0;
-  const amplifier = S.currentPair.isGold ? 1.5 : 1;
-  const usdBase = S.currentPair.isUsdBase;
-
   let absScore = 0;
   if (Math.abs(change) > 0.5) absScore = 2;
   else if (Math.abs(change) > 0.2) absScore = 1;
 
   const sign = change > 0 ? 1 : -1;
   let score = sign * absScore;
-
-  if (S.currentPair.isGold) score = -score * 1;
-  else if (!usdBase) score = -score;
+  if (S.currentPair.isGold)       score = -score;
+  else if (S.currentPair.isEquity) score = -score;
+  else if (!usdBase)               score = -score;
 
   score = Math.max(-2, Math.min(2, Math.round(score * amplifier)));
 
@@ -216,8 +261,8 @@ function computeT3() {
     val: `${dxy.toFixed(2)} ${change >= 0 ? '+' : ''}${change.toFixed(2)}%`,
     reading: Math.abs(change) < 0.2 ? 'DXY range-bound' :
              score > 0 ? 'USD move supports pair' : 'USD move drags pair',
-    source: 'DXY (DTWEXBGS)',
-    isMonthly: false
+    source: 'DXY (FRED fallback)',
+    isMonthly: false,
   };
 }
 
@@ -259,7 +304,43 @@ function computeT4() {
 }
 
 function computeT5() {
-  const fredData = S.fredData;
+  const fredData   = S.fredData;
+  const isInverted = S.currentPair.isSafeHaven || S.currentPair.isGold;
+
+  // Primary: compute AUD/JPY from daily OHLC bars already loaded in state.
+  // These are always current (23h cache, refreshed on pair load) vs FRED H.10
+  // which lags by up to 7 days and fires requests in parallel risking rate-limit nulls.
+  const audBars = filterTradingDays(S.ohlcData['AUD/USD']?.values);
+  const jpyBars = filterTradingDays(S.ohlcData['USD/JPY']?.values);
+
+  if (audBars?.length >= 2 && jpyBars?.length >= 2) {
+    const audNow = parseFloat(audBars[0].close);
+    const audPrv = parseFloat(audBars[1].close);
+    const jpyNow = parseFloat(jpyBars[0].close);
+    const jpyPrv = parseFloat(jpyBars[1].close);
+    const audjpy     = audNow * jpyNow;
+    const audjpyPrev = audPrv * jpyPrv;
+    const change     = audjpyPrev ? ((audjpy / audjpyPrev) - 1) * 100 : 0;
+
+    let absScore = 0;
+    if (Math.abs(change) > 0.5) absScore = 2;
+    else if (Math.abs(change) > 0.2) absScore = 1;
+
+    let score = (change > 0 ? 1 : -1) * absScore;
+    if (isInverted) score = -score;
+    score = Math.max(-2, Math.min(2, score));
+
+    return {
+      tier: 'T5', name: 'AUD/JPY Carry', max: 2, score,
+      val: `${audjpy.toFixed(2)} ${change >= 0 ? '+' : ''}${change.toFixed(2)}%`,
+      reading: change > 0.2 ? (isInverted ? 'Risk-on hurts safe haven' : 'Carry on, risk-on') :
+               change < -0.2 ? (isInverted ? 'Carry unwind benefits safe haven' : 'Carry off, risk-off') : 'Carry stable',
+      source: 'AUD/USD × USD/JPY (live bars)',
+      isMonthly: false,
+    };
+  }
+
+  // Fallback: FRED H.10 exchange rates (weekly lag, may be null under rate-limiting)
   const aud = fredData.aud_usd?.value;
   const audPrev = fredData.aud_usd?.prev;
   const jpy = fredData.usd_jpy?.value;
@@ -269,8 +350,6 @@ function computeT5() {
   const audjpy = aud * jpy;
   const audjpyPrev = (audPrev && jpyPrev) ? audPrev * jpyPrev : null;
   const change = audjpyPrev ? ((audjpy / audjpyPrev) - 1) * 100 : 0;
-
-  const isInverted = S.currentPair.isSafeHaven || S.currentPair.isGold;
 
   let absScore = 0;
   if (Math.abs(change) > 0.5) absScore = 2;
@@ -285,8 +364,8 @@ function computeT5() {
     val: `${audjpy.toFixed(2)} ${change >= 0 ? '+' : ''}${change.toFixed(2)}%`,
     reading: change > 0.2 ? (isInverted ? 'Risk-on hurts safe haven' : 'Carry on, risk-on') :
              change < -0.2 ? (isInverted ? 'Carry unwind benefits safe haven' : 'Carry off, risk-off') : 'Carry stable',
-    source: 'AUD×USDJPY',
-    isMonthly: false
+    source: 'AUD×USDJPY (FRED fallback)',
+    isMonthly: false,
   };
 }
 

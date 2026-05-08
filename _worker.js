@@ -31,11 +31,10 @@ function isAllowedKVKey(key) {
   return PREFIXES.some(p => key.startsWith(p));
 }
 
-// ── TwelveData symbol mapping ─────────────────────────────────────────────────
-// OANDA uses instrument codes like NAS100_USD; TwelveData uses exchange symbols.
-const TWELVE_SYMBOL_MAP = {
-  'NAS100_USD': 'NDX',   // Nasdaq-100 cash index
-};
+// ── Equity symbols sourced from OANDA (not TwelveData) ───────────────────────
+// TwelveData free/grow plan doesn't include equity indices. These symbols are
+// fetched entirely from OANDA (daily D candles for ohlc; M1 for quote).
+const OANDA_EQUITY_SYMBOLS = new Set(['NAS100_USD']);
 
 // ── CFTC COT file parser ──────────────────────────────────────────────────────
 // Parses the CFTC Traders in Financial Futures (TFF) combined options report.
@@ -174,8 +173,24 @@ export default {
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        const tdSymbol = TWELVE_SYMBOL_MAP[symbol] || symbol;
-        const tdUrl = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(tdSymbol)}&apikey=${env.TWELVE_KEY}`;
+        // Equity symbols (NAS100_USD etc.) — use OANDA M1 for latest price
+        if (OANDA_EQUITY_SYMBOLS.has(symbol)) {
+          if (!env.OANDA_KEY) return err('OANDA_KEY not configured', 503);
+          const oandaBase = env.OANDA_ENV === 'practice'
+            ? 'https://api-fxpractice.oanda.com'
+            : 'https://api-fxtrade.oanda.com';
+          const oRes = await fetch(
+            `${oandaBase}/v3/instruments/${encodeURIComponent(symbol)}/candles?granularity=M1&count=2&price=M`,
+            { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` } }
+          );
+          if (!oRes.ok) return err(`OANDA quote failed (${oRes.status})`, 502);
+          const oData = await oRes.json();
+          const last = oData.candles?.slice(-1)[0];
+          if (!last?.mid?.c) return err('No OANDA candle data for quote', 502);
+          return json({ price: parseFloat(last.mid.c) });
+        }
+
+        const tdUrl = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbol)}&apikey=${env.TWELVE_KEY}`;
         const res = await fetch(tdUrl);
         const data = await res.json();
 
@@ -195,8 +210,34 @@ export default {
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        const tdSymbol = TWELVE_SYMBOL_MAP[symbol] || symbol;
-        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=1day&outputsize=100&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
+        // Equity symbols — use OANDA daily candles instead of TwelveData
+        if (OANDA_EQUITY_SYMBOLS.has(symbol)) {
+          if (!env.OANDA_KEY) return err('OANDA_KEY not configured', 503);
+          const oandaBase = env.OANDA_ENV === 'practice'
+            ? 'https://api-fxpractice.oanda.com'
+            : 'https://api-fxtrade.oanda.com';
+          const oRes = await fetch(
+            `${oandaBase}/v3/instruments/${encodeURIComponent(symbol)}/candles?granularity=D&count=120&price=M`,
+            { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` } }
+          );
+          if (!oRes.ok) return err(`OANDA daily candles failed (${oRes.status})`, 502);
+          const oData = await oRes.json();
+          if (!oData.candles?.length) return err('No OANDA daily candle data', 502);
+          // Convert to TwelveData-compatible format, newest first
+          const values = oData.candles
+            .filter(c => c.complete && c.mid)
+            .map(c => ({
+              datetime: c.time.substring(0, 10),  // "2024-01-15T..." → "2024-01-15"
+              open:  c.mid.o,
+              high:  c.mid.h,
+              low:   c.mid.l,
+              close: c.mid.c,
+            }))
+            .reverse();
+          return json({ values, meta: { symbol, source: 'oanda', interval: '1day' } });
+        }
+
+        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=100&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
         const res = await fetch(tdUrl);
         const data = await res.json();
 
@@ -212,8 +253,7 @@ export default {
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        const tdSymbol = TWELVE_SYMBOL_MAP[symbol] || symbol;
-        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=5min&outputsize=1500&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
+        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=5min&outputsize=1500&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
         const res = await fetch(tdUrl);
         const data = await res.json();
 
@@ -229,8 +269,7 @@ export default {
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        const tdSymbol = TWELVE_SYMBOL_MAP[symbol] || symbol;
-        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=30min&outputsize=700&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
+        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=30min&outputsize=700&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
         const res = await fetch(tdUrl);
         const data = await res.json();
 
