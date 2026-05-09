@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Backtest — MacroFXModel</title>
+  <link rel="stylesheet" href="./css/index.css"/>
+  <style>
+    /* ── Layout ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { font-family: 'Inter', system-ui, sans-serif; font-size: 13px;
+           background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+    #app { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+    /* ── Sidebar ────────────────────────────────────────────── */
+    #sidebar { width: 300px; flex-shrink: 0; border-right: 1px solid var(--border);
+               overflow-y: auto; padding: 16px 14px; display: flex; flex-direction: column; gap: 14px; }
+
+    .sb-title { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .sb-subtitle { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+    .sb-section { display: flex; flex-direction: column; gap: 6px; }
+    .sb-section-label { font-size: 10px; font-weight: 600; text-transform: uppercase;
+                        letter-spacing: 0.6px; color: var(--text3); }
+
+    select, input[type="number"], input[type="text"] {
+      width: 100%; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--s1); color: var(--text); font-size: 12px;
+    }
+    select:focus, input:focus { outline: 2px solid var(--blue); }
+
+    .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .cfg-item { display: flex; flex-direction: column; gap: 3px; }
+    .cfg-item label { font-size: 10px; color: var(--text2); }
+
+    /* ── File zones ─────────────────────────────────────────── */
+    .file-zones { display: flex; flex-direction: column; gap: 6px; }
+    .file-zone { border: 1.5px dashed var(--border); border-radius: 8px;
+                 padding: 10px 12px; cursor: pointer; transition: border-color 0.15s; }
+    .file-zone:hover, .file-zone.drag { border-color: var(--blue); }
+    .file-zone label { cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    .file-zone input[type="file"] { display: none; }
+    .file-zone-tf { font-size: 10px; font-weight: 700; color: var(--text3);
+                    background: var(--s2); border-radius: 4px; padding: 2px 6px; }
+    .file-zone-lbl { font-size: 11px; color: var(--text2); }
+    .file-zone-lbl.parsed { color: var(--green); }
+
+    /* ── Feature list ────────────────────────────────────────── */
+    #feature-list { display: flex; flex-direction: column; gap: 4px; }
+    .feat-row { display: flex; align-items: center; gap: 8px; cursor: pointer;
+                padding: 3px 0; font-size: 12px; color: var(--text2); }
+    .feat-row:hover { color: var(--text); }
+    .feat-row input { cursor: pointer; }
+
+    /* ── Buttons ─────────────────────────────────────────────── */
+    #run-btn { padding: 10px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600;
+               background: var(--blue); color: #fff; cursor: pointer; transition: opacity 0.15s; }
+    #run-btn:disabled { opacity: 0.45; cursor: default; }
+    #run-btn:hover:not(:disabled) { opacity: 0.88; }
+
+    .row-btns { display: flex; gap: 8px; }
+    #theme-btn { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+                 background: var(--s1); color: var(--text2); font-size: 11px; cursor: pointer; }
+    #theme-btn:hover { background: var(--s2); }
+
+    /* ── Progress ────────────────────────────────────────────── */
+    .progress-wrap { background: var(--s1); border-radius: 6px; overflow: hidden; height: 4px; }
+    #progress-bar  { height: 100%; width: 0%; background: var(--blue); transition: width 0.3s; }
+    #progress-status { font-size: 10px; color: var(--text3); min-height: 14px; }
+
+    /* ── Main content ────────────────────────────────────────── */
+    #main { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+
+    /* ── Placeholder ─────────────────────────────────────────── */
+    #placeholder { flex: 1; display: flex; flex-direction: column; align-items: center;
+                   justify-content: center; gap: 10px; color: var(--text3); }
+    #placeholder svg { opacity: 0.3; }
+    #placeholder p   { font-size: 13px; }
+
+    /* ── Results panel ───────────────────────────────────────── */
+    #results-panel { display: none; flex-direction: column; gap: 20px; }
+
+    /* ── Section headers ─────────────────────────────────────── */
+    .section-hdr { font-size: 12px; font-weight: 600; color: var(--text3);
+                   text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
+
+    /* ── Stats grid ──────────────────────────────────────────── */
+    #stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+    .stat-tile { background: var(--s1); border: 1px solid var(--border); border-radius: 10px;
+                 padding: 12px 10px; }
+    .stat-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; }
+    .stat-val   { font-size: 18px; font-weight: 700; }
+    .stat-val.pos { color: var(--green); }
+    .stat-val.neg { color: var(--red); }
+
+    /* ── Kelly note ──────────────────────────────────────────── */
+    #kelly-note { font-size: 11px; color: var(--text2); background: var(--s1);
+                  border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
+
+    /* ── Charts ──────────────────────────────────────────────── */
+    .chart-wrap { background: var(--s1); border: 1px solid var(--border); border-radius: 10px;
+                  padding: 14px; }
+    .chart-title { font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 8px; }
+    #equity-svg, #mc-svg { width: 100%; height: 200px; display: block; }
+
+    #mc-stats { display: flex; flex-direction: column; gap: 2px;
+                font-size: 11px; color: var(--text2); margin-top: 8px; }
+    #mc-stats b { color: var(--text); }
+
+    /* ── Bayesian table ──────────────────────────────────────── */
+    #bayesian-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    #bayesian-table th { font-size: 10px; font-weight: 600; text-transform: uppercase;
+                         letter-spacing: 0.4px; color: var(--text3); padding: 4px 8px;
+                         border-bottom: 1px solid var(--border); text-align: left; }
+    #bayesian-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); color: var(--text2); }
+    .wr-bar { height: 4px; background: var(--s2); border-radius: 2px; margin-top: 3px; overflow: hidden; }
+    .wr-bar div { height: 100%; border-radius: 2px; }
+
+    /* ── Trade log ───────────────────────────────────────────── */
+    #trade-log { max-height: 340px; overflow-y: auto; }
+    #trade-log table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    #trade-log th { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;
+                    color: var(--text3); padding: 4px 8px; border-bottom: 1px solid var(--border);
+                    text-align: left; position: sticky; top: 0; background: var(--s1); }
+    #trade-log th.sortable { cursor: pointer; }
+    #trade-log th.sortable:hover { color: var(--text); }
+    #trade-log td { padding: 4px 8px; border-bottom: 1px solid var(--border); color: var(--text2); }
+    #trade-log tr:hover td { background: var(--s2); }
+
+    /* ── Shared helpers ──────────────────────────────────────── */
+    .pos { color: var(--green) !important; }
+    .neg { color: var(--red) !important; }
+    .empty { color: var(--text3); font-size: 12px; padding: 12px 0; }
+
+    /* ── Header bar ──────────────────────────────────────────── */
+    #topbar { height: 44px; border-bottom: 1px solid var(--border); display: flex;
+              align-items: center; padding: 0 18px; gap: 12px; background: var(--bg); flex-shrink: 0; }
+    #topbar a { font-size: 12px; color: var(--text3); text-decoration: none; }
+    #topbar a:hover { color: var(--text); }
+    #topbar .sep { color: var(--border); }
+    #topbar .page-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  </style>
+</head>
+<body class="dark">
+
+<!-- Top bar -->
+<div id="topbar">
+  <a href="/">← Dashboard</a>
+  <span class="sep">|</span>
+  <span class="page-name">Backtest Engine</span>
+</div>
+
+<div id="app">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+  <aside id="sidebar">
+
+    <div>
+      <div class="sb-title">Backtest</div>
+      <div class="sb-subtitle">Asia Range Fib · 11 features · M1 exit precision</div>
+    </div>
+
+    <!-- Symbol -->
+    <div class="sb-section">
+      <div class="sb-section-label">Symbol</div>
+      <select id="symbol-select">
+        <option value="EURUSD">EUR/USD</option>
+        <option value="GBPUSD">GBP/USD</option>
+        <option value="USDJPY">USD/JPY</option>
+        <option value="XAUUSD">XAU/USD (Gold)</option>
+      </select>
+    </div>
+
+    <!-- Files -->
+    <div class="sb-section">
+      <div class="sb-section-label">Load CSV Data</div>
+      <div class="file-zones">
+
+        <div class="file-zone">
+          <label>
+            <input type="file" id="file-m30" accept=".csv"/>
+            <span class="file-zone-tf">M30</span>
+            <span class="file-zone-lbl" id="lbl-m30">Drop or click to load</span>
+          </label>
+        </div>
+
+        <div class="file-zone">
+          <label>
+            <input type="file" id="file-m5" accept=".csv"/>
+            <span class="file-zone-tf">M5</span>
+            <span class="file-zone-lbl" id="lbl-m5">Drop or click to load</span>
+          </label>
+        </div>
+
+        <div class="file-zone">
+          <label>
+            <input type="file" id="file-m1" accept=".csv"/>
+            <span class="file-zone-tf">M1</span>
+            <span class="file-zone-lbl" id="lbl-m1">Drop or click (optional for fast exit)</span>
+          </label>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Parameters -->
+    <div class="sb-section">
+      <div class="sb-section-label">Parameters</div>
+      <div class="cfg-grid">
+        <div class="cfg-item">
+          <label for="cfg-rr">R:R Ratio</label>
+          <input type="number" id="cfg-rr" value="2.2" min="0.5" max="10" step="0.1"/>
+        </div>
+        <div class="cfg-item">
+          <label for="cfg-sl">SL / Asia Range</label>
+          <input type="number" id="cfg-sl" value="0.35" min="0.1" max="1" step="0.05"/>
+        </div>
+        <div class="cfg-item">
+          <label for="cfg-conv">Min Conviction</label>
+          <input type="number" id="cfg-conv" value="0" min="-1" max="1" step="0.05"/>
+        </div>
+        <div class="cfg-item">
+          <label for="cfg-conf">Min Confirms</label>
+          <input type="number" id="cfg-conf" value="2" min="0" max="11" step="1"/>
+        </div>
+        <div class="cfg-item">
+          <label for="cfg-prox">Entry Prox ATR ×</label>
+          <input type="number" id="cfg-prox" value="0.30" min="0.05" max="1" step="0.05"/>
+        </div>
+        <div class="cfg-item">
+          <label for="cfg-warmup">Warmup Days</label>
+          <input type="number" id="cfg-warmup" value="100" min="20" max="500" step="10"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <div class="sb-section">
+      <div class="sb-section-label">Features</div>
+      <div id="feature-list"></div>
+    </div>
+
+    <!-- Progress -->
+    <div class="sb-section">
+      <div class="progress-wrap"><div id="progress-bar"></div></div>
+      <div id="progress-status">Ready.</div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="row-btns">
+      <button id="theme-btn">🌙 Theme</button>
+      <button id="run-btn" disabled style="flex:2">▶ Run Backtest</button>
+    </div>
+
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────── -->
+  <main id="main">
+
+    <!-- Placeholder -->
+    <div id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+      <p>Load M5 + M30 CSV files and press Run Backtest.</p>
+      <p style="font-size:11px">M1 optional — used for TP/SL exit precision.</p>
+    </div>
+
+    <!-- Results -->
+    <div id="results-panel">
+
+      <!-- Stats -->
+      <div>
+        <div class="section-hdr">Summary Statistics</div>
+        <div id="stats-grid"></div>
+      </div>
+
+      <!-- Kelly note -->
+      <div id="kelly-note"></div>
+
+      <!-- Equity curve -->
+      <div class="chart-wrap">
+        <div class="chart-title">Equity Curve (cumulative R, 1% risk per trade)</div>
+        <div id="equity-svg"></div>
+      </div>
+
+      <!-- Monte Carlo -->
+      <div class="chart-wrap">
+        <div class="chart-title">Monte Carlo — 1,000 path resamples (P5 / P25 / P50 / P75 / P95)</div>
+        <div id="mc-svg"></div>
+        <div id="mc-stats"></div>
+      </div>
+
+      <!-- Bayesian -->
+      <div class="chart-wrap">
+        <div class="chart-title">Bayesian Feature Accuracy</div>
+        <div id="bayesian-table"></div>
+      </div>
+
+      <!-- Trade log -->
+      <div class="chart-wrap">
+        <div class="chart-title">Trade Log (last 200 trades)</div>
+        <div id="trade-log"></div>
+      </div>
+
+    </div><!-- /results-panel -->
+
+  </main><!-- /main -->
+
+</div><!-- /app -->
+
+<script type="module" src="./js/backtest.js"></script>
+</body>
+</html>
