@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { COMPASS_CONFIG, FIB_LEVELS } from './config.js';
-import { getPipSize, getDigits } from './utils.js';
+import { getPipSize, getDigits, londonSessionDay } from './utils.js';
 import { compassFairValue, zScore } from './compass.js';
 import { getCaps } from './caps.js';
 import { oiFmtStrike } from './oi.js';
@@ -1043,7 +1043,17 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
        </div>`
     : '';
 
-  return volCtx + candleBlock + otcCard + sessionWarn + rbSettingsBtn + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
+  // Day-of-week seasonality context (London session day)
+  const _dow = new Date(londonSessionDay() + 'T12:00:00Z').getUTCDay();
+  const dowCtx = _dow === 1
+    ? `<div style="font-size:10px;color:var(--amber);background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:5px;padding:5px 10px;margin-bottom:6px">📅 Monday — Asia continuation likely; thin NY open; range setups improve mid-session</div>`
+    : _dow === 5
+    ? `<div style="font-size:10px;color:var(--blue);background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:5px;padding:5px 10px;margin-bottom:6px">📅 Friday — position-squaring session; fade extremes historically reliable; avoid holding into NY close</div>`
+    : (_dow === 2 || _dow === 3)
+    ? `<div style="font-size:10px;color:var(--green);background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:5px;padding:5px 10px;margin-bottom:6px">📅 ${_dow === 2 ? 'Tuesday' : 'Wednesday'} — highest-vol day of week; full ATR participation likely; optimal for range fades</div>`
+    : '';
+
+  return volCtx + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
     const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 7 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';
