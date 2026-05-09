@@ -3,7 +3,8 @@
 // ── Default config ─────────────────────────────────────────────────────────────
 
 const DEFAULT_FEATURES = {
-  chochBos:      { enabled: true,  weight: 1, label: 'CHoCH / BOS' },
+  rangePosition: { enabled: true,  weight: 1, label: 'Range Position' },
+  chochBos:      { enabled: true,  weight: 2, label: 'CHoCH / BOS' },
   wickRejection: { enabled: true,  weight: 1, label: 'Wick Rejection' },
   rsiDivergence: { enabled: true,  weight: 1, label: 'RSI Divergence' },
   orderBlock:    { enabled: true,  weight: 1, label: 'Order Block' },

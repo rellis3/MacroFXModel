@@ -309,6 +309,24 @@ function ichimokuMid(bars, period, endIdx) {
 // bars30m   = oldest-first M30 array
 // dailyBars = oldest-first derived daily bars
 
+function featureRangePosition(price, asiaRange, mondayRange, atr) {
+  const sources = [];
+  if (asiaRange?.range   > 0) sources.push({ src: 'Asia',   ...asiaRange });
+  if (mondayRange?.range > 0) sources.push({ src: 'Monday', ...mondayRange });
+  if (!sources.length) return { signal: null, val: 'No range data' };
+  let best = null, bestDist = Infinity;
+  for (const r of sources) {
+    const dist = Math.min(Math.abs(price - r.low), Math.abs(price - r.high));
+    if (dist < bestDist) { bestDist = dist; best = r; }
+  }
+  if (bestDist > atr * 0.22) return { signal: null, val: 'Not at range boundary' };
+  const pos = (price - best.low) / best.range;
+  const pct = (pos * 100).toFixed(0);
+  if (pos <= 0.20) return { signal: 'long',  val: `${best.src} bottom ${pct}% — long zone` };
+  if (pos >= 0.80) return { signal: 'short', val: `${best.src} top ${pct}% — short zone` };
+  return { signal: null, val: `${best.src} mid ${pct}% — no edge` };
+}
+
 function featureChochBos(bars30m) {
   if (!bars30m || bars30m.length < 25) return { signal: null, val: 'Need 25+ 30m bars' };
   const sorted = bars30m.slice(-80);
@@ -584,6 +602,7 @@ function featureIchimokuCloud(dailyBars, entryDir, price, symbol) {
 
 export function computeSignal({ bars5mRev, bars30m, dailyBars, asiaRange, mondayRange, atr, symbol, entryDir, price, todayDate, featureCfg }) {
   const FEATURE_FNS = {
+    rangePosition: () => featureRangePosition(price, asiaRange, mondayRange, atr),
     chochBos:      () => featureChochBos(bars30m),
     wickRejection: () => featureWickRejection(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
     rsiDivergence: () => featureRsiDivergence(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
