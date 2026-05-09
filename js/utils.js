@@ -94,11 +94,23 @@ export function updatePill(id, status) {
 // Before 06:00 London → still belongs to yesterday's session day.
 
 export function londonSessionDay() {
-  const nowLondon = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/London' }));
-  if (nowLondon.getHours() < 6) {
-    nowLondon.setDate(nowLondon.getDate() - 1);
+  // Use Intl.DateTimeFormat to extract London date parts directly — avoids
+  // locale-dependent parsing failures on mobile / non-English locales.
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/London',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit',
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date());
+  const get = type => parts.find(p => p.type === type)?.value ?? '00';
+  const year = get('year'), month = get('month'), day = get('day');
+  const hour = parseInt(get('hour'), 10);
+  if (hour < 6) {
+    const d = new Date(`${year}-${month}-${day}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().split('T')[0];
   }
-  return nowLondon.toISOString().split('T')[0];
+  return `${year}-${month}-${day}`;
 }
 
 // ── Bar timestamp helpers ────────────────────────────────────────────────────
@@ -115,11 +127,18 @@ function barToUTC(bar) {
 }
 
 export function barLondonHour(bar) {
+  // datetime is London-local: "YYYY-MM-DD HH:MM:SS" — extract HH directly
+  // to avoid BST errors from treating local time as UTC.
+  const dt = bar.datetime;
+  if (dt.length >= 13) return parseInt(dt.substring(11, 13), 10);
   return barToUTC(bar).getUTCHours();
 }
 
 export function barLondonDay(bar) {
-  return barToUTC(bar).getUTCDay();
+  // Extract date part and parse as noon UTC for stable day-of-week regardless of DST.
+  const dt = bar.datetime;
+  const datePart = dt.length >= 10 ? dt.substring(0, 10) : dt;
+  return new Date(datePart + 'T12:00:00Z').getUTCDay();
 }
 
 // Strip Saturday (6) and Sunday (0) bars — TwelveData can include a thin Sunday

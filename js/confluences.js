@@ -117,17 +117,22 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       }
     }
 
-    let stars = 1;
-    if (c.isTight)                stars++;
-    if (aligned)                  stars++;
-    if (pivotMatch)               stars++;
-    if (oiMatch)                  stars++;  // Phase 3: OI wall / gamma flip confluence
-    if (nearDailyOpen)            stars++;  // Fib aligns with a prior daily open
-    if (matchingOpens.length >= 3) stars++; // 3+ daily opens cluster here — very strong level
-    if ((c.density || 1) >= 2)    stars++;  // density bonus: 2+ fib pairs collapsed here
-    if (dailyFib)                 stars++;  // Daily Fib retracement confluence
-    if (structuralFib)            stars++;  // Structural fib (multi-pass swing sweep) confluence
-    if ((structuralFib?.count ?? 0) >= 3) stars++; // 3+ independent passes agree on this price
+    // Fix 8: track structural stars (level quality) separately from alignment stars
+    let structuralStars = 1;
+    if (c.isTight)                 structuralStars++;
+    if (pivotMatch)                structuralStars++;
+    if (oiMatch)                   structuralStars++;
+    if (nearDailyOpen)             structuralStars++;
+    if (matchingOpens.length >= 3) structuralStars++;
+    if ((c.density || 1) >= 2)     structuralStars++;
+    if (dailyFib)                  structuralStars++;
+    if (structuralFib)             structuralStars++;
+    if ((structuralFib?.count ?? 0) >= 3) structuralStars++;
+
+    let confirmationStars = 0;
+    if (aligned) confirmationStars++;
+
+    let stars = structuralStars + confirmationStars;
 
     const baseSize = calcPositionSize(macroScore, volRegime);
     const sizeAdj = aligned ? 1 : 0.5;
@@ -167,10 +172,13 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     }
 
     if (tp == null && direction != null) {
-      const tpRaw = stopDist * (volRegime.tpMult || 1.5);
+      // Use 2.2R for session-sourced confluences (Asia/Monday) — validated in backtest.
+      const isSessionLevel = (c.source === 'asia' || c.source === 'monday');
+      const targetMult = isSessionLevel ? 2.2 : (volRegime.tpMult || 1.5);
+      const tpRaw = stopDist * targetMult;
       tpDist  = Math.min(tpRaw, tpCap);
       tpCapped = tpDist < tpRaw;
-      tpSource = tpCapped ? 'Vol cap' : 'ATR';
+      tpSource = tpCapped ? 'Vol cap' : (isSessionLevel ? '2.2R' : 'ATR');
       tp = direction === 'long' ? c.price + tpDist : c.price - tpDist;
     }
 
@@ -206,6 +214,8 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       nearDailyOpen,      // { date, price, label } of most recent matching daily open, or null
       dailyOpenCount: matchingOpens.length,
       stars,
+      structuralStars,    // Fix 8: level quality stars (isTight, pivots, OI, fib clusters)
+      confirmationStars,  // Fix 8: directional alignment stars
       size: finalSize,
       sl: direction === 'long'  ? c.price - stopDist :
           direction === 'short' ? c.price + stopDist : null,

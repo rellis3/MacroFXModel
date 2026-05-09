@@ -89,9 +89,13 @@ export function calculateMondayRanges(symbol) {
     return;
   }
 
-  const today = new Date();
-  const isMonday = today.getDay() === 1;
-  const effIdx  = (isMonday && sortedMondays.length >= 2) ? 1 : 0;
+  // Use London local time — not browser timezone — to detect Monday.
+  const _londonParts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London', weekday: 'short'
+  }).formatToParts(new Date());
+  const _londonWeekday = _londonParts.find(p => p.type === 'weekday')?.value;
+  const isMonday = _londonWeekday === 'Mon';
+  const effIdx   = (isMonday && sortedMondays.length >= 2) ? 1 : 0;
   const prevIdx = effIdx + 1;
 
   const current  = computeBodyRange(weekData[sortedMondays[effIdx]]);

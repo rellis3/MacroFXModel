@@ -66,8 +66,8 @@ export function fitARMA(arr) {
 
   let armaErr = 0, naiveErr = 0;
   for (let i = 1; i < diff.length; i++) {
-    const armaPred  = mu + phi * demeaned[i-1];
-    armaErr  += Math.abs(diff[i] - (armaPred + mu));
+    const armaPred = mu + phi * demeaned[i-1]; // already includes mu — do not add again
+    armaErr  += Math.abs(diff[i] - armaPred);
     naiveErr += Math.abs(diff[i] - mu);
   }
   const mae      = armaErr  / (diff.length - 1);

@@ -143,6 +143,82 @@ export function calculateVolRegime() {
   };
 }
 
+export function calculateOTCForecast(bars, volRegime, macroScore, sym) {
+  if (!bars || bars.length < 30) return null;
+
+  const pipSz     = getPipSize(sym);
+  const barsChron = [...bars].reverse();                    // newest-first → chronological
+  const completed = barsChron.slice(0, barsChron.length - 1); // drop today's forming bar
+
+  const history = completed.map(bar => {
+    const o = parseFloat(bar.open), c = parseFloat(bar.close);
+    const h = parseFloat(bar.high), l = parseFloat(bar.low);
+    const range = h - l;
+    return {
+      otcPct:     (c - o) / o * 100,
+      rangePct:   range / o * 100,
+      otcToRange: range > 0 ? Math.abs(c - o) / range : 0,
+    };
+  });
+
+  const currentRegime = volRegime.regime;
+  const sortedRange   = [...history.map(b => b.rangePct)].sort((a, b) => a - b);
+  const rp25 = sortedRange[Math.floor(sortedRange.length * 0.25)];
+  const rp75 = sortedRange[Math.floor(sortedRange.length * 0.75)];
+
+  const regimeMatched = history.filter(b => {
+    if (currentRegime === 'LOW')  return b.rangePct <= rp25;
+    if (currentRegime === 'HIGH') return b.rangePct >= rp75;
+    return b.rangePct > rp25 && b.rangePct < rp75;
+  });
+  const sample = regimeMatched.length >= 15 ? regimeMatched : history;
+
+  const otcVals = sample.map(b => b.otcPct).sort((a, b) => a - b);
+  const pctAt   = (arr, p) => arr[Math.max(0, Math.min(arr.length - 1, Math.floor(arr.length * p / 100)))];
+
+  const median     = pctAt(otcVals, 50);
+  const p25val     = pctAt(otcVals, 25);
+  const p75val     = pctAt(otcVals, 75);
+  const p10val     = pctAt(otcVals, 10);
+  const p90val     = pctAt(otcVals, 90);
+  const meanAbsOtc = sample.reduce((s, b) => s + Math.abs(b.otcPct), 0) / sample.length;
+  const bullFrac   = sample.filter(b => b.otcPct > 0).length / sample.length;
+  const meanDir    = sample.reduce((s, b) => s + b.otcToRange, 0) / sample.length;
+
+  const latestClose = parseFloat(barsChron[barsChron.length - 1].close);
+  const pip = v => Math.abs(v / 100 * latestClose) / pipSz;
+
+  let sessionChar, sessionCharDetail;
+  if (meanDir < 0.30) {
+    sessionChar       = 'CHOPPY';
+    sessionCharDetail = 'Sessions in this regime historically close near open — mean-reverting. Wide stops rarely filled at TP.';
+  } else if (meanDir < 0.55) {
+    sessionChar       = 'MIXED';
+    sessionCharDetail = 'Sessions show moderate directionality — some trend but frequent intraday reversals.';
+  } else {
+    sessionChar       = 'TRENDING';
+    sessionCharDetail = 'Sessions in this regime historically make clean directional moves — trend-following has edge.';
+  }
+
+  const macroBull = macroScore > 2, macroBear = macroScore < -2;
+  const coherence = (macroBull && bullFrac > 0.55) || (macroBear && bullFrac < 0.45)
+    ? 'CONFIRMING'
+    : (!macroBull && !macroBear) ? 'NEUTRAL' : 'DIVERGING';
+
+  return {
+    median, p25: p25val, p75: p75val, p10: p10val, p90: p90val, meanAbsOtc,
+    bullFrac, meanDirectionality: meanDir,
+    medianPips:  pip(median),
+    p25Pips:     pip(p25val),
+    p75Pips:     pip(p75val),
+    meanAbsPips: pip(meanAbsOtc),
+    sessionChar, sessionCharDetail, coherence,
+    sampleSize: sample.length,
+    regimeMatched: regimeMatched.length >= 15,
+    currentRegime,
+  };
+}
+
 export function calcPositionSize(score, volRegime, transitionRisk) {
   const abs = Math.abs(score);
   let baseSize;

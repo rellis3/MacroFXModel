@@ -16,7 +16,11 @@ export function calculateTierScores() {
 
   const totalScore = tiers.reduce((sum, t) => sum + t.score, 0);
 
-  const agreeCount = tiers.filter(t => Math.sign(t.score) === Math.sign(totalScore) && t.score !== 0).length;
+  // Only count tiers with a meaningful directional view (|score| >= 1) —
+  // a marginal +1 from RSI at 51 should not tip the coherence gate.
+  const agreeCount = tiers.filter(t =>
+    Math.abs(t.score) >= 1 && Math.sign(t.score) === Math.sign(totalScore)
+  ).length;
   const coherenceBonus = agreeCount >= 5 ? Math.sign(totalScore) : 0;
 
   return {
@@ -549,6 +553,8 @@ export function computeDollarRegime() {
 // Checks whether the current pair's signal direction agrees with the composite
 // USD strength index. Returns null if no clear conflict/confirmation exists.
 export function detectCrossConflict(usdStrength, signalBias, pair) {
+  // Cross pairs (EUR/GBP, GBP/JPY) are not USD-driven — USD strength is irrelevant.
+  if (pair?.isPairCross) return null;
   if (!usdStrength || Math.abs(usdStrength.score) < 1.0) return null;
   if (!signalBias || signalBias === 'NEUTRAL') return null;
 
@@ -583,4 +589,137 @@ export function detectCrossConflict(usdStrength, signalBias, pair) {
       message: `Cross-pair USD conflict — index says ${usdStrength.label} but signal implies USD ${signalImpliesUsdBull ? 'bullish' : 'bearish'}`,
     };
   }
+}
+
+// ── Macro Quadrant Regime ─────────────────────────────────────────────────────
+// Classifies the macro environment into one of four quadrants using available
+// FRED data as growth and inflation proxies. No ISM or CPI required.
+//
+// Growth proxies:  yield curve slope, VIX level+trend, HY spread level+trend, NFCI
+// Inflation proxies: BEI level+trend, TIPS real yield, 2Y yield level
+//
+// Returns { regime, growthBull, inflationBull, growthScore, inflationScore,
+//           growthFactors, inflationFactors, strategyType, confidence }
+export function computeMacroRegime() {
+  const f = S.fredData;
+  if (!f) return null;
+
+  const vix   = f.vix?.value   ?? null;
+  const vixP  = f.vix?.prev    ?? null;
+  const hy    = f.hy?.value    ?? null;     // raw fraction — multiply by 100 for bps
+  const hyP   = f.hy?.prev     ?? null;
+  const nfci  = f.nfci?.value  ?? null;
+  const bei   = f.bei?.value   ?? null;     // 10Y breakeven inflation %
+  const beiP  = f.bei?.prev    ?? null;
+  const tips  = f.tips?.value  ?? null;    // 10Y real yield %
+  const us2y  = f.us2y?.value  ?? null;
+  const us10y = f.us10y?.value ?? null;
+  const curve = (us10y != null && us2y != null) ? us10y - us2y : null;
+
+  let growthScore = 0, inflationScore = 0;
+  const growthFactors = [], inflationFactors = [];
+
+  // Growth: yield curve slope
+  if (curve != null) {
+    if      (curve >  1.0) { growthScore += 2; growthFactors.push('Curve steep'); }
+    else if (curve >  0.2) { growthScore += 1; growthFactors.push('Curve positive'); }
+    else if (curve < -0.5) { growthScore -= 2; growthFactors.push('Curve inverted'); }
+    else if (curve <  0.0) { growthScore -= 1; growthFactors.push('Curve flat/inv'); }
+  }
+
+  // Growth: VIX level (low = risk-on = growth positive)
+  if (vix != null) {
+    if      (vix < 15) { growthScore += 2; growthFactors.push(`VIX ${vix.toFixed(0)} low`); }
+    else if (vix < 20) { growthScore += 1; growthFactors.push(`VIX ${vix.toFixed(0)} firm`); }
+    else if (vix > 30) { growthScore -= 2; growthFactors.push(`VIX ${vix.toFixed(0)} high`); }
+    else if (vix > 25) { growthScore -= 1; growthFactors.push(`VIX ${vix.toFixed(0)} elev.`); }
+    // VIX trend
+    if (vixP != null) {
+      if      (vix < vixP * 0.92) { growthScore += 1; growthFactors.push('VIX falling'); }
+      else if (vix > vixP * 1.08) { growthScore -= 1; growthFactors.push('VIX rising'); }
+    }
+  }
+
+  // Growth: HY spread (tight = credit supportive = growth positive)
+  if (hy != null) {
+    const hyBps = hy * 100;
+    if      (hyBps < 300) { growthScore += 2; growthFactors.push(`HY ${hyBps.toFixed(0)}bps tight`); }
+    else if (hyBps < 400) { growthScore += 1; growthFactors.push(`HY ${hyBps.toFixed(0)}bps OK`); }
+    else if (hyBps > 600) { growthScore -= 2; growthFactors.push(`HY ${hyBps.toFixed(0)}bps wide`); }
+    else if (hyBps > 500) { growthScore -= 1; growthFactors.push(`HY ${hyBps.toFixed(0)}bps stress`); }
+    // HY trend
+    if (hyP != null) {
+      const hyBpsP = hyP * 100;
+      if      (hyBps < hyBpsP * 0.95) { growthScore += 1; growthFactors.push('HY tightening'); }
+      else if (hyBps > hyBpsP * 1.05) { growthScore -= 1; growthFactors.push('HY widening'); }
+    }
+  }
+
+  // Growth: NFCI (below 0 = accommodative financial conditions)
+  if (nfci != null) {
+    if      (nfci < -0.5) { growthScore += 1; growthFactors.push('NFCI accom.'); }
+    else if (nfci <  0.0) { growthScore += 0; } // neutral — no factor
+    else if (nfci >  0.5) { growthScore -= 2; growthFactors.push('NFCI tight'); }
+    else if (nfci >  0.0) { growthScore -= 1; growthFactors.push('NFCI firm'); }
+  }
+
+  // Inflation: BEI (10Y breakeven inflation expectations)
+  if (bei != null) {
+    if      (bei > 3.0) { inflationScore += 3; inflationFactors.push(`BEI ${bei.toFixed(2)}% high`); }
+    else if (bei > 2.5) { inflationScore += 2; inflationFactors.push(`BEI ${bei.toFixed(2)}% elev.`); }
+    else if (bei > 2.0) { inflationScore += 1; inflationFactors.push(`BEI ${bei.toFixed(2)}%`); }
+    else                { inflationScore -= 1; inflationFactors.push(`BEI ${bei.toFixed(2)}% low`); }
+    // BEI trend
+    if (beiP != null) {
+      if      (bei > beiP + 0.05) { inflationScore += 1; inflationFactors.push('BEI rising'); }
+      else if (bei < beiP - 0.05) { inflationScore -= 1; inflationFactors.push('BEI falling'); }
+    }
+  }
+
+  // Inflation: TIPS real yield (negative real yield = inflation not yet beaten)
+  if (tips != null) {
+    if      (tips < 0.0) { inflationScore += 2; inflationFactors.push(`TIPS ${tips.toFixed(2)}% neg.`); }
+    else if (tips < 0.5) { inflationScore += 1; inflationFactors.push(`TIPS ${tips.toFixed(2)}% low`); }
+    else if (tips > 2.0) { inflationScore -= 1; inflationFactors.push(`TIPS ${tips.toFixed(2)}% high`); }
+  }
+
+  // Inflation: 2Y yield level (encodes how much Fed has tightened for inflation)
+  if (us2y != null) {
+    if      (us2y > 4.5) { inflationScore += 1; inflationFactors.push(`2Y ${us2y.toFixed(2)}% high`); }
+    else if (us2y < 2.0) { inflationScore -= 1; inflationFactors.push(`2Y ${us2y.toFixed(2)}% low`); }
+  }
+
+  const growthBull    = growthScore > 0;
+  const inflationBull = inflationScore > 0;
+
+  let regime, color, strategyType, strategyDetail;
+  if      ( growthBull && !inflationBull) {
+    regime = 'GOLDILOCKS'; color = 'green';
+    strategyType   = 'Trend + Momentum';
+    strategyDetail = 'Risk-on. Equities & carry trades preferred. Trend-following has edge.';
+  } else if ( growthBull &&  inflationBull) {
+    regime = 'REFLATION';  color = 'amber';
+    strategyType   = 'Value + Commodities';
+    strategyDetail = 'Expansion with inflation building. Rotate to real assets, value over growth.';
+  } else if (!growthBull &&  inflationBull) {
+    regime = 'STAGFLATION'; color = 'red';
+    strategyType   = 'Defensives + Gold';
+    strategyDetail = 'Worst macro backdrop. Reduce equity beta. Gold, energy, cash.';
+  } else {
+    regime = 'DEFLATION';  color = 'blue';
+    strategyType   = 'Duration + Quality';
+    strategyDetail = 'Risk-off. Flight to safety. Bonds, USD, quality over junk.';
+  }
+
+  // Confidence: how many indicators fed each axis
+  const gFactors = growthFactors.length, iFactors = inflationFactors.length;
+  const confidence = (gFactors >= 3 && iFactors >= 2) ? 'HIGH' :
+                     (gFactors >= 2 || iFactors >= 2)  ? 'MEDIUM' : 'LOW';
+
+  return {
+    regime, color, growthBull, inflationBull,
+    growthScore, inflationScore,
+    growthFactors, inflationFactors,
+    strategyType, strategyDetail, confidence,
+  };
 }

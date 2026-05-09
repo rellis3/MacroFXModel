@@ -369,6 +369,37 @@ export function aiCollectSnapshot() {
     } catch(e) {}
   }
 
+  // Macro Quadrant Regime
+  if (S.macroQuadrant) {
+    const mq = S.macroQuadrant;
+    s.macroRegime = {
+      regime:          mq.regime,
+      growthBull:      mq.growthBull,
+      inflationBull:   mq.inflationBull,
+      strategyType:    mq.strategyType,
+      strategyDetail:  mq.strategyDetail,
+      confidence:      mq.confidence,
+      growthFactors:   mq.growthFactors.join(', '),
+      inflationFactors: mq.inflationFactors.join(', '),
+    };
+  }
+
+  // O-to-C Forecast
+  if (S.otcForecast) {
+    const f = S.otcForecast;
+    s.otcForecast = {
+      median:       f.median.toFixed(2),
+      medianPips:   f.medianPips.toFixed(0),
+      p25Pips:      f.p25Pips.toFixed(0),
+      p75Pips:      f.p75Pips.toFixed(0),
+      bullFrac:     (f.bullFrac * 100).toFixed(0) + '%',
+      sessionChar:  f.sessionChar,
+      coherence:    f.coherence,
+      sampleSize:   f.sampleSize,
+      regimeMatch:  f.regimeMatched,
+    };
+  }
+
   return s;
 }
 

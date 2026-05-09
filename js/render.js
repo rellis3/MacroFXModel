@@ -1,7 +1,7 @@
 import { S } from './state.js';
 import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTradingDays } from './utils.js';
-import { calculateTierScores, computeDollarRegime, computeUSDStrength } from './macro.js';
-import { calculateVolRegime, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
+import { calculateTierScores, computeDollarRegime, computeMacroRegime } from './macro.js';
+import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
 import { computeRegimeTransition, renderARMAAndTransition } from './arma.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
 import { renderOISidebar } from './oi.js';
@@ -137,6 +137,11 @@ function renderAllInner() {
 
   const tierData = calculateTierScores();
   const volRegime = calculateVolRegime();
+  const otcForecast = calculateOTCForecast(
+    filterTradingDays(S.ohlcData[S.currentPair.symbol]?.values),
+    volRegime, tierData.totalScore, S.currentPair.symbol
+  );
+  S.otcForecast = otcForecast;
   const pivots = calculatePivots();
   const asia = S.asiaRangeData[S.currentPair.symbol] || { today: null, yesterday: null, confluences: [] };
   const monday = S.mondayRangeData[S.currentPair.symbol] || { current: null, previous: null, confluences: [] };
@@ -185,7 +190,7 @@ function renderAllInner() {
   const pipSize = getPipSize(S.currentPair.symbol);
 
   // New feature data
-  const usdStrength   = S.usdStrength  || computeUSDStrength();
+  const usdStrength   = S.usdStrength ?? null;
   const dollarRegime  = S.dollarRegime || computeDollarRegime();
   const pairSurprise  = getPairSurpriseScore();
   const sessionBadge  = sessionBadgeHTML(S.sessionData, quote.price);
@@ -206,6 +211,10 @@ function renderAllInner() {
   const dregPill = dollarRegime
     ? ` · DXY ${dollarRegime.label}`
     : '';
+
+  // Macro quadrant regime (Goldilocks / Reflation / Stagflation / Deflation)
+  const macroQuadrant = computeMacroRegime();
+  S.macroQuadrant = macroQuadrant;
 
   const html = `
 <!-- SESSION BADGE -->
@@ -269,6 +278,21 @@ ${calendarCtx.warnings.length > 0 ? `
           <div class="pair-title">${S.currentPair.isEquity ? S.currentPair.name : S.currentPair.symbol.split('/')[0] + '<span class="q">/</span>' + (S.currentPair.symbol.split('/')[1] || '')}</div>
           <div class="pair-meta">Vol: ${volRegime.regime} (${volRegime.percentile}th pct) · ATR ${volRegime.atrPips.toFixed(0)}${S.currentPair.isEquity ? 'pts' : 'p'}${volRegime.garch ? ' · GARCH ' + volRegime.garch.pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ' [68%: ' + volRegime.ci68Pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ']' : ''}${volImpulsePill}${dregPill} · ${tierData.agreeCount}/7 tiers agree</div>
           <div class="bias-badge ${biasClass}">${biasText}${macroBias} · ${Math.abs(tierData.totalScore) >= 9 ? 'HIGH' : Math.abs(tierData.totalScore) >= 5 ? 'MED' : 'LOW'} CONVICTION</div>
+          ${macroQuadrant ? (() => {
+            const mq = macroQuadrant;
+            const qCol  = mq.color === 'green' ? 'var(--green)'  : mq.color === 'amber' ? 'var(--amber)'  : mq.color === 'red' ? 'var(--red)'  : 'var(--blue)';
+            const qBg   = mq.color === 'green' ? 'var(--green-bg)' : mq.color === 'amber' ? 'var(--amber-bg)' : mq.color === 'red' ? 'var(--red-bg)' : 'var(--blue-bg)';
+            const qBd   = mq.color === 'green' ? 'var(--green-bd)' : mq.color === 'amber' ? 'var(--amber-bd)' : mq.color === 'red' ? 'var(--red-bd)' : 'var(--blue-bd)';
+            const confCol = mq.confidence === 'HIGH' ? 'var(--green)' : mq.confidence === 'LOW' ? 'var(--text3)' : 'var(--amber)';
+            const arrow = mq.growthBull ? '↑G' : '↓G';
+            const infArrow = mq.inflationBull ? '↑π' : '↓π';
+            return `<div style="display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap">
+              <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:8px;background:${qBg};color:${qCol};border:1px solid ${qBd};letter-spacing:.04em">${mq.regime}</span>
+              <span style="font-size:9.5px;color:var(--text3);font-family:'DM Mono',monospace">${arrow} ${infArrow}</span>
+              <span style="font-size:9.5px;color:var(--text2)">${mq.strategyType}</span>
+              <span style="font-size:8.5px;padding:1px 5px;border-radius:5px;background:var(--s2);border:1px solid var(--border);color:${confCol}">${mq.confidence}</span>
+            </div>`;
+          })() : ''}
         </div>
         <div class="hd-right">
           <div class="score-num" style="color:${tierData.totalScore > 0 ? 'var(--green)' : tierData.totalScore < 0 ? 'var(--red)' : 'var(--amber)'}">
@@ -617,7 +641,7 @@ ${calendarCtx.warnings.length > 0 ? `
   aiRenderCardOnUpdate();
   loadAndRenderCompass();
   renderARMAAndTransition(S.compassData[S.currentPair.symbol] || null);
-  renderSignalAndEntries(enhanced, pivots, asia, monday, quote, volRegime);
+  renderSignalAndEntries(enhanced, pivots, asia, monday, quote, volRegime, otcForecast);
 }
 
 export function renderConfluences(confluences, currentPrice, pipSize, digits) {

@@ -18,6 +18,16 @@ import { detectSession, computeSessionOpens, computeDailyOpens } from './session
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 
+// ── Debounced renderAll ───────────────────────────────────────────────────────
+// Prevents concurrent DOM mutations when async compass resolve + quote refresh
+// both fire renderAll in the same tick.
+let _renderTimer = null;
+const renderAllDebounced = () => {
+  if (_renderTimer) clearTimeout(_renderTimer);
+  _renderTimer = setTimeout(() => { _renderTimer = null; renderAll(); }, 80);
+};
+window.renderAllDebounced = renderAllDebounced;
+
 // ── Wire window globals for HTML onclick handlers and circular-dep breakers ──
 window.renderAll              = renderAll;
 window.renderSignalAndEntries = renderSignalAndEntries;
@@ -112,16 +122,19 @@ window.forceRefresh = async function() {
   ];
   Promise.all(kvKeysToEvict.map(k => kvSet(k, null).catch(() => {})));
 
-  S.fredData      = null;
-  S.ohlcData      = {};
-  S.ohlc5m        = {};
-  S.ohlc30m       = {};
-  S.asiaRangeData = {};
-  S.mondayRangeData = {};
-  S.usdStrength   = null;
-  S.dollarRegime  = null;
-  S.eventRisk     = null;
-  S.surpriseIndex = null;
+  S.fredData          = null;
+  S.ohlcData          = {};
+  S.ohlc5m            = {};
+  S.ohlc30m           = {};
+  S.asiaRangeData     = {};
+  S.mondayRangeData   = {};
+  S.compassData       = {};   // reset so signal engine doesn't read stale compass during refresh
+  S.usdStrength       = null;
+  S.dollarRegime      = null;
+  S.eventRisk         = null;
+  S.surpriseIndex     = null;
+  S.otcForecast       = null;
+  S.macroQuadrant     = null;
 
   updateStatus('spin', `Refreshing ${S.currentPair.name}...`);
   loadAll();
@@ -275,7 +288,7 @@ async function refreshQuote() {
       console.warn('30m refresh skipped:', e.message);
     }
 
-    renderAll();
+    renderAllDebounced();
     document.getElementById('upd').textContent = new Date().toLocaleTimeString();
   } catch (error) {
     console.error('Quote refresh failed:', error);

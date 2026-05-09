@@ -6,7 +6,7 @@ import { getCaps } from './caps.js';
 import { oiFmtStrike } from './oi.js';
 import { getPairSurpriseScore } from './events.js';
 import { detectCrossConflict } from './macro.js';
-import { computeARMAForecast } from './arma.js';
+import { computeARMAForecast, computeRegimeTransition } from './arma.js';
 
 // ── FV gap → pips ────────────────────────────────────────────────────────────
 // 1 z-unit ≈ 0.5 ATR (conservative — spread z-score is smoother than price)
@@ -206,17 +206,19 @@ export function runSignalEngine(compassData, volRegime) {
   try {
     const ps = getPairSurpriseScore();
     if (ps != null && Math.abs(ps.net) > 0.8 && bias !== 'NEUTRAL') {
-      const surpriseBull  = ps.net > 0;
-      const signalBull    = bias === 'LONG';
-      const confirms      = surpriseBull === signalBull;
-      const pts           = Math.abs(ps.net) > 1.5 ? 2 : 1;
-      score              += pts;  // confirms adds pts; conflicting surprises could be modelled later
-      surpriseMod         = { net: ps.net, confirms, pts };
+      const surpriseBull = ps.net > 0;
+      const signalBull   = bias === 'LONG';
+      const confirms     = surpriseBull === signalBull;
+      const magnitude    = Math.abs(ps.net) > 1.5 ? 2 : 1;
+      // Confirming surprise adds points; conflicting surprise DEDUCTS points
+      const pts          = confirms ? magnitude : -magnitude;
+      score             += pts;
+      surpriseMod        = { net: ps.net, confirms, pts };
       reasons.push({
-        icon:  confirms ? '🟢' : '🔴',
+        icon:  confirms ? '\u{1F7E2}' : '\u{1F534}',
         label: 'Macro Surprise',
         val:   `${ps.net >= 0 ? '+' : ''}${ps.net.toFixed(2)} net ${confirms ? '✓ confirms' : '✗ conflicts'}`,
-        pts:   confirms ? pts : 0,
+        pts,
       });
     }
   } catch(e) {}
@@ -242,13 +244,16 @@ export function runSignalEngine(compassData, volRegime) {
     if (arma && arma.confidence !== 'LOW' && arma.avgSkill >= 5 && arma.direction !== 'MIXED') {
       const armaBull = arma.direction === 'BULLISH';
       const confirms = bias !== 'NEUTRAL' && armaBull === (bias === 'LONG');
-      const pts      = confirms ? 1 : 0;
-      score         += pts;
-      armaMod        = { direction: arma.direction, confidence: arma.confidence, skill: arma.avgSkill, confirms, pts };
+      // Confirming: +1. Conflicting with HIGH confidence: -1. Conflicting MEDIUM: 0.
+      const pts = confirms
+        ? 1
+        : (bias !== 'NEUTRAL' && arma.confidence === 'HIGH') ? -1 : 0;
+      score += pts;
+      armaMod = { direction: arma.direction, confidence: arma.confidence, skill: arma.avgSkill, confirms, pts };
       reasons.push({
-        icon:  confirms ? '🟢' : bias === 'NEUTRAL' ? '⚪' : '🔴',
+        icon:  confirms ? '\u{1F7E2}' : pts < 0 ? '\u{1F534}' : '⚪',
         label: 'ARMA spread forecast',
-        val:   `${arma.direction} · ${arma.confidence} · ${arma.avgSkill >= 0 ? '+' : ''}${arma.avgSkill}% vs RW`,
+        val:   `${arma.direction} · ${arma.confidence} · ${arma.avgSkill >= 0 ? '+' : ''}${arma.avgSkill}% vs RW ${!confirms && bias !== 'NEUTRAL' ? '✗ conflicts' : confirms ? '✓ confirms' : ''}`,
         pts,
       });
     }
@@ -287,13 +292,40 @@ export function runSignalEngine(compassData, volRegime) {
     }
   } catch(e) {}
 
+  // ── Vol impulse modifier ─────────────────────────────────────────────────────
+  // Penalise reversion/catchup signals during expanding vol (breakout conditions).
+  // Reward them during contracting vol (mean-reversion conditions improve).
+  let volBiasMod = null;
+  try {
+    const vb = volRegime?.volBias;
+    if (vb === 'expanding' && (type === 'reversion' || type === 'catchup')) {
+      score = Math.max(0, score - 1);
+      volBiasMod = { bias: 'expanding', pts: -1 };
+      reasons.push({
+        icon:  '\u{1F7E1}',
+        label: 'Vol Expanding',
+        val:   `+${volRegime.volImpulsePct?.toFixed(0) ?? '?'}% impulse — reversion risk elevated`,
+        pts:   -1,
+      });
+    } else if (vb === 'contracting' && (type === 'reversion' || type === 'catchup')) {
+      score = Math.min(12, score + 1);
+      volBiasMod = { bias: 'contracting', pts: 1 };
+      reasons.push({
+        icon:  '\u{1F7E2}',
+        label: 'Vol Contracting',
+        val:   `${volRegime.volImpulsePct?.toFixed(0) ?? '?'}% impulse — mean-reversion conditions improving`,
+        pts:   1,
+      });
+    }
+  } catch(e) {}
+
   return { bias, type, score, maxScore: 12, reasons, fvPips, fvGap, fvBull,
-           mom10Bull, mom2Bull, sp10Bull, lagDetected, surpriseMod, crossConflict, armaMod, realYieldMod };
+           mom10Bull, mom2Bull, sp10Bull, lagDetected, surpriseMod, crossConflict, armaMod, realYieldMod, volBiasMod };
 }
 
 // ── Render signal card ────────────────────────────────────────────────────────
 
-export function renderSignalCard(signal, volRegime) {
+export function renderSignalCard(signal, volRegime, otcForecast) {
   if (signal.noData) {
     return `<div class="sig-no-data">📡 Yield spread data loading…<br><span style="font-size:10px">Macro Compass must load first</span></div>`;
   }
@@ -334,8 +366,20 @@ export function renderSignalCard(signal, volRegime) {
     ? `⚠ Equity signal uses macro risk-appetite data (1-day FRED lag). Use as probabilistic bias — confirm with price action at key levels.`
     : `⚠ Signal engine uses rate spread data (1-day FRED lag). Use as probabilistic bias — not a mechanical entry trigger. Confirm with price action at key levels below.`;
 
+  const crossWarn = (signal.crossConflict?.type === 'conflict' && signal.crossConflict?.sizeMult <= 0.75)
+    ? `<div style="font-size:11px;color:#ef4444;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:7px 10px;margin-bottom:8px;line-height:1.5">
+        ⚠ <strong>Cross-pair USD conflict</strong> — USD composite strength contradicts this signal direction.
+        Position size reduced to ${Math.round((signal.crossConflict.sizeMult ?? 1) * 100)}%. Treat with caution or stand aside.
+       </div>`
+    : (signal.crossConflict?.type === 'confirmed' && signal.crossConflict?.severity === 'strong')
+    ? `<div style="font-size:11px;color:var(--green);background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:7px 10px;margin-bottom:8px;line-height:1.5">
+        ✔ <strong>Cross-pair USD confirmed</strong> — USD composite strength aligns with signal direction.
+       </div>`
+    : '';
+
   return `
     <div class="signal-card ${cls}">
+      ${crossWarn}
       <div class="sig-hd">
         <div>
           <div class="sig-bias">${signal.bias === 'NEUTRAL' ? '— NEUTRAL' : (signal.bias === 'LONG' ? '↑ LONG' : '↓ SHORT')}</div>
@@ -350,6 +394,20 @@ export function renderSignalCard(signal, volRegime) {
       ${fvRow}
 
       <div class="sig-rows">${rowsHtml}</div>
+
+      ${otcForecast ? (() => {
+        const otcIcon  = otcForecast.sessionChar === 'TRENDING' ? '🟢' :
+                         otcForecast.sessionChar === 'CHOPPY'   ? '🔴' : '🟡';
+        const otcLabel = `O-to-C character`;
+        const otcVal   = `${otcForecast.sessionChar} · ${Math.round(otcForecast.bullFrac * 100)}% bull sessions · median ${otcForecast.medianPips.toFixed(0)}p`;
+        const otcPts   = otcForecast.sessionChar === 'TRENDING' ? 0 : 0;
+        return `<div class="sig-row">
+          <span class="sig-row-icon">${otcIcon}</span>
+          <span class="sig-row-label">${otcLabel}</span>
+          <span class="sig-row-val">${otcVal}</span>
+          <span class="sig-row-pts zero">—</span>
+        </div>`;
+      })() : ''}
 
       <div style="font-size:9.5px;color:var(--text3);line-height:1.5;padding-top:6px;border-top:1px solid var(--border)">
         ${disclaimer}
@@ -554,6 +612,44 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       tags.push({ cls: 'gex', label: 'USD confirmed ✓', key: 'cross' });
     }
 
+    // Fix 3: EMA21 alignment on 5m bars
+    const _bars5m  = S.ohlc5m?.[sym] || null;
+    const _emaRes  = get5mEMAAlignment(_bars5m, c.direction);
+    let emaAligned = null, emaValue = null;
+    if (_emaRes) {
+      emaAligned = _emaRes.aligned;
+      emaValue   = _emaRes.ema;
+      if (emaAligned) {
+        layerScore += 0.5;
+        tags.push({ cls: 'signal', label: 'EMA21 ✓', key: 'ema' });
+      } else {
+        layerScore -= 0.5;
+        tags.push({ cls: 'warn', label: 'EMA21 ✗', key: 'ema' });
+      }
+    }
+
+    // Fix 4: 5m candle directional confirmation
+    const _candleRes = get5mCandleConfirmation(_bars5m, c.direction);
+    const candleConfirmed = _candleRes?.confirmed ?? null;
+    const candleReason    = _candleRes?.reason    ?? null;
+
+    // Fix 20: Regime shock risk tag
+    let regimeShockRisk = null;
+    try {
+      const _trs = (S.ohlc5m?.[sym] || []).map(b => {
+        const h = b.high ?? b.mid?.h ?? b.h ?? 0;
+        const l = b.low  ?? b.mid?.l ?? b.l ?? 0;
+        return h - l;
+      }).filter(v => v > 0);
+      if (_trs.length >= 30) {
+        const rt = computeRegimeTransition(_trs.slice().reverse());
+        if (rt && rt.riskScore > 70) {
+          regimeShockRisk = rt;
+          tags.push({ cls: 'warn', label: `Vol shock ⚡ ${rt.riskScore}`, key: 'regshock' });
+        }
+      }
+    } catch(e) {}
+
     return {
       ...c,
       size: adjSize,
@@ -566,11 +662,25 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       slPips,
       rrRatio,
       signalAligned,
+      emaAligned,
+      emaValue,
+      candleConfirmed,
+      candleReason,
+      regimeShockRisk,
     };
   });
 
   return candidates
     .filter(c => c.totalStars >= 2 && c.direction != null)
+    // Suppress entries with R:R below 0.8 — negative EV regardless of win rate.
+    .filter(c => !c.rrRatio || parseFloat(c.rrRatio) >= 0.8)
+    .map(c => {
+      // Hard-cap size to 25% for sub-1.0R trades even if they pass the 0.8 floor.
+      if (c.rrRatio && parseFloat(c.rrRatio) < 1.0) {
+        return { ...c, size: Math.min(c.size, 25), poorRR: true };
+      }
+      return c;
+    })
     .sort((a, b) => {
       if (b.totalStars !== a.totalStars) return b.totalStars - a.totalStars;
       return a.distance - b.distance;
@@ -578,6 +688,30 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
 }
 
 // ── Render entry scanner ──────────────────────────────────────────────────────
+
+// Fix 3: 21-period EMA on the last N 5m bars. Returns { ema, last, aligned } or null.
+function get5mEMAAlignment(bars5m, direction) {
+  if (!bars5m || bars5m.length < 22) return null;
+  const closes = bars5m.map(b => b.close ?? b.mid?.c ?? b.c).filter(v => v != null);
+  if (closes.length < 22) return null;
+  const k = 2 / 22;
+  let ema = closes[0];
+  for (let i = 1; i < closes.length; i++) ema = closes[i] * k + ema * (1 - k);
+  const last = closes[closes.length - 1];
+  return { ema, last, aligned: direction === 'long' ? last > ema : last < ema };
+}
+
+// Fix 4: Check last 2 closed 5m candles for directional close confirmation.
+function get5mCandleConfirmation(bars5m, direction) {
+  if (!bars5m || bars5m.length < 3) return null;
+  const recent = bars5m.slice(-3, -1); // exclude forming bar
+  if (recent.length < 2) return null;
+  const isBull = b => (b.close ?? b.mid?.c ?? b.c) > (b.open ?? b.mid?.o ?? b.o);
+  const confirmed = direction === 'long' ? recent.every(isBull) : recent.every(b => !isBull(b));
+  return { confirmed, reason: confirmed
+    ? `2 consecutive ${direction === 'long' ? 'bullish' : 'bearish'} 5m closes`
+    : 'Mixed 5m closes — no directional confirmation' };
+}
 
 // Returns { sd, nearest, close } where sd is raw fib position and nearest is
 // the nearest FIB_LEVEL. close = within 8% of range from that level.
@@ -596,7 +730,7 @@ function fmtSD(sd) {
   return label;
 }
 
-export function renderEntryScanner(entries, quote, signal, volRegime, asia, monday) {
+export function renderEntryScanner(entries, quote, signal, volRegime, asia, monday, otcForecast) {
   const sym    = S.currentPair.symbol;
   const digits = getDigits(sym);
   const pipSz  = getPipSize(sym);
@@ -649,7 +783,84 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
     </div>`;
   }
 
-  return volCtx + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
+  // O-to-C Forecast card — rendered below GARCH CI section
+  const otcCard = (() => {
+    if (!otcForecast) return `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Insufficient history for O-to-C forecast — need 30+ daily bars</div>`;
+    const f = otcForecast;
+    const charCol  = f.sessionChar === 'TRENDING' ? 'var(--green)'  : f.sessionChar === 'CHOPPY' ? 'var(--red)'  : 'var(--blue)';
+    const charBg   = f.sessionChar === 'TRENDING' ? 'var(--green-bg)' : f.sessionChar === 'CHOPPY' ? 'var(--red-bg)' : 'var(--blue-bg)';
+    const charBd   = f.sessionChar === 'TRENDING' ? 'var(--green-bd)' : f.sessionChar === 'CHOPPY' ? 'var(--red-bd)' : 'var(--blue-bd)';
+    const cohCol   = f.coherence === 'CONFIRMING' ? 'var(--green)'  : f.coherence === 'DIVERGING' ? 'var(--red)' : 'var(--text3)';
+    const cohBg    = f.coherence === 'CONFIRMING' ? 'var(--green-bg)' : f.coherence === 'DIVERGING' ? 'var(--red-bg)' : 'var(--s2)';
+    const cohBd    = f.coherence === 'CONFIRMING' ? 'var(--green-bd)' : f.coherence === 'DIVERGING' ? 'var(--red-bd)' : 'var(--border)';
+
+    const sign = v => v >= 0 ? `+${v.toFixed(0)}` : `${v.toFixed(0)}`;
+    // Bar: p10→p90 is full width; p25→p75 is the IQR band; median is centre tick
+    const p10v = f.p10, p90v = f.p90, span = Math.max(0.0001, p90v - p10v);
+    const iqrLeft  = ((f.p25 - p10v) / span * 100).toFixed(1);
+    const iqrRight = ((p90v - f.p75) / span * 100).toFixed(1);
+    const medPct   = ((f.median - p10v) / span * 100).toFixed(1);
+
+    const cohText = f.coherence === 'CONFIRMING'
+      ? 'Historical session distribution aligns with macro bias — signal coherent'
+      : f.coherence === 'DIVERGING'
+      ? 'Session history diverges from macro bias — treat direction signal with caution'
+      : 'Macro bias neutral — session direction distribution guides';
+
+    return `
+    <div style="background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">O-to-C Forecast</span>
+        <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd)">REGIME-CONDITIONAL</span>
+        <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;background:${charBg};color:${charCol};border:1px solid ${charBd}">${f.sessionChar}</span>
+        <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;background:${cohBg};color:${cohCol};border:1px solid ${cohBd}">${f.coherence}</span>
+      </div>
+
+      <!-- Distribution bar -->
+      <div style="position:relative;height:18px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:4px">
+        <div style="position:absolute;top:0;bottom:0;left:${iqrLeft}%;right:${iqrRight}%;background:var(--amber);opacity:0.35"></div>
+        <div style="position:absolute;top:0;bottom:0;left:${medPct}%;width:2px;background:var(--amber);opacity:0.9"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px">
+        <span>${sign(f.p10)}${unit}</span>
+        <span style="color:var(--amber);font-weight:600">median ${f.median >= 0 ? '+' : ''}${f.medianPips.toFixed(0)}${unit}</span>
+        <span>${sign(f.p90)}${unit}</span>
+      </div>
+
+      <!-- Stat tiles -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:5px 8px;text-align:center">
+          <div style="font-size:12px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber)">${f.median >= 0 ? '+' : ''}${f.medianPips.toFixed(0)}${unit}</div>
+          <div style="font-size:8.5px;color:var(--text3)">Median O→C</div>
+          <div style="font-size:8px;color:var(--text3)">directional</div>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:5px 8px;text-align:center">
+          <div style="font-size:12px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text2)">${f.meanAbsPips.toFixed(0)}${unit}</div>
+          <div style="font-size:8.5px;color:var(--text3)">Mean Abs</div>
+          <div style="font-size:8px;color:var(--text3)">magnitude</div>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:5px 8px;text-align:center">
+          <div style="font-size:12px;font-weight:700;font-family:'DM Mono',monospace;color:${f.bullFrac > 0.55 ? 'var(--green)' : f.bullFrac < 0.45 ? 'var(--red)' : 'var(--text2)'}">${Math.round(f.bullFrac * 100)}%</div>
+          <div style="font-size:8.5px;color:var(--text3)">Bull sessions</div>
+          <div style="font-size:8px;color:var(--text3)">of matched days</div>
+        </div>
+      </div>
+
+      <!-- Coherence line -->
+      <div style="font-size:10px;color:${cohCol};font-style:italic;margin-bottom:4px">${cohText}</div>
+      <div style="font-size:9px;color:var(--text3)">${f.regimeMatched ? `Based on ${f.sampleSize} regime-matched sessions` : `${f.sampleSize} sessions (full history — regime sample too small)`}</div>
+    </div>`;
+  })();
+
+  // Fix 5: Session confidence warning banner
+  const sessionConf2 = S.sessionData?.confidence ?? 1.0;
+  const sessionWarn  = sessionConf2 < 0.80
+    ? `<div style="font-size:11px;color:var(--amber);background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:7px 10px;margin-bottom:8px;line-height:1.5">
+        ⚡ <strong>Session confidence ${Math.round(sessionConf2 * 100)}%</strong> — ${S.sessionData?.name ?? 'Current session'} overlap reduced. Position sizing already reduced proportionally.
+       </div>`
+    : '';
+
+  return volCtx + otcCard + sessionWarn + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
     const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 7 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';
@@ -673,6 +884,19 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       </div>`;
     })();
 
+    const otcLine = (() => {
+      if (!otcForecast) return '';
+      const f = otcForecast;
+      if (f.sessionChar === 'TRENDING' && f.coherence === 'CONFIRMING') {
+        const side = e.direction === 'long' ? '+' : '−';
+        return `<div style="font-size:9.5px;color:var(--green);margin-top:4px;font-family:'DM Mono',monospace">O-C forecast: median ${side}${f.medianPips.toFixed(0)}${unit} | IQR ${f.p25Pips.toFixed(0)}–${f.p75Pips.toFixed(0)}${unit} — supports TP reach</div>`;
+      }
+      if (f.sessionChar === 'CHOPPY') {
+        return `<div style="font-size:9.5px;color:var(--amber);margin-top:4px;font-family:'DM Mono',monospace">O-C forecast: choppy session — TP beyond ${f.meanAbsPips.toFixed(0)}${unit} historically rarely filled</div>`;
+      }
+      return `<div style="font-size:9.5px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace">O-C forecast: mixed session · median ${f.medianPips.toFixed(0)}${unit} directional</div>`;
+    })();
+
     const tradeHtml = e.sl != null ? `
       <span><strong>Entry</strong> ${e.price.toFixed(digits)}</span>
       <span><strong>SL</strong> ${e.sl.toFixed(digits)} (${e.slPips?.toFixed(0)}${unit})</span>
@@ -680,16 +904,37 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       ${e.rrRatio ? `<span><strong style="color:${rrCol}">R:R 1:${e.rrRatio}</strong></span>` : ''}
       <span><strong>Size</strong> ${e.size}%</span>
       ${sdLines}
-    ` : `<span style="opacity:.6"><em>Price at level — wait for directional close</em></span>${sdLines}`;
+      ${otcLine}
+    ` : `<span style="opacity:.6"><em>Price at level — wait for directional close</em></span>${sdLines}${otcLine}`;
+
+    // Fix 8: structural vs confirmation star split
+    // structuralStars = level quality from enhanceConfluences; delta = layers added by runEntryScanner
+    const _structStars = e.structuralStars ?? Math.round(e.stars ?? 0);
+    const _confStars   = Math.max(0, e.totalStars - _structStars);
+    const starSplit    = (_structStars > 0 || _confStars > 0)
+      ? `<span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:4px">${_structStars}S+${_confStars}C</span>`
+      : '';
+
+    // Fix 4: candle confirmation banner
+    const confirmBanner = e.candleConfirmed != null
+      ? `<div style="font-size:10px;padding:4px 8px;border-radius:5px;margin-bottom:4px;${
+          e.candleConfirmed
+            ? 'background:rgba(34,197,94,0.08);color:var(--green);border:1px solid rgba(34,197,94,0.25)'
+            : 'background:rgba(245,158,11,0.07);color:var(--amber);border:1px solid rgba(245,158,11,0.25)'
+        }">
+          ${e.candleConfirmed ? '✔' : '⚡'} <strong>5m:</strong> ${e.candleReason}
+        </div>`
+      : '';
 
     return `
     <div class="entry-card ${cls}">
       <div class="ec-top">
-        <span class="ec-stars">${starStr}</span>
+        <span class="ec-stars">${starStr}${starSplit}</span>
         <span class="ec-price">${e.price.toFixed(digits)}</span>
         <span class="ec-dir ${e.direction}">${e.direction === 'long' ? '↑ BUY' : '↓ SELL'}</span>
         <span class="ec-dist">${above ? '↑' : '↓'} ${e.distance.toFixed(0)}${unit}</span>
       </div>
+      ${confirmBanner}
       <div class="ec-layers">${tagsHtml}</div>
       <div class="ec-trade">${tradeHtml}</div>
     </div>`;
@@ -698,7 +943,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
 
 // ── Combined render ───────────────────────────────────────────────────────────
 
-export function renderSignalAndEntries(enhanced, pivots, asia, monday, quote, volRegime) {
+export function renderSignalAndEntries(enhanced, pivots, asia, monday, quote, volRegime, otcForecast) {
   const sigEl   = document.getElementById('signalEngineCard');
   const entrEl  = document.getElementById('entryScannerCard');
   const cntEl   = document.getElementById('entryScannerCount');
@@ -707,8 +952,8 @@ export function renderSignalAndEntries(enhanced, pivots, asia, monday, quote, vo
   const signal  = runSignalEngine(S.compassData, volRegime);
   const entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
 
-  sigEl.innerHTML  = renderSignalCard(signal, volRegime);
-  entrEl.innerHTML = renderEntryScanner(entries, quote, signal, volRegime, asia, monday);
+  sigEl.innerHTML  = renderSignalCard(signal, volRegime, otcForecast);
+  entrEl.innerHTML = renderEntryScanner(entries, quote, signal, volRegime, asia, monday, otcForecast);
 
   if (cntEl) {
     cntEl.textContent = entries.length;
