@@ -75,6 +75,11 @@ const FEATURE_DEFS = {
     desc:  'Commodity-FX: falling WTI = USD/CAD bullish, AUD/USD bearish; rising = reverse (USD/CAD, AUD/USD, NZD/USD only)',
     weight: 1,
   },
+  ichimokuCloud: {
+    label: 'Ichimoku Cloud',
+    desc:  'Daily Ichimoku (9/26/52): price above cloud = bullish structure, below = bearish; TK cross and Chikou span add confluence',
+    weight: 1,
+  },
 };
 
 export function loadRangeBiasCfg() {
@@ -817,6 +822,67 @@ function featureWtiCorrelation(symbol, entryDir) {
   };
 }
 
+// ── Ichimoku helpers ──────────────────────────────────────────────────────────
+
+function ichimokuMid(bars, period, endIdx) {
+  const slice = bars.slice(Math.max(0, endIdx - period + 1), endIdx + 1);
+  if (!slice.length) return null;
+  const h = Math.max(...slice.map(b => bH(b)));
+  const l = Math.min(...slice.map(b => bL(b)));
+  return (h + l) / 2;
+}
+
+// ── Feature 15: Ichimoku Cloud ────────────────────────────────────────────────
+// Daily Ichimoku (Tenkan 9, Kijun 26, Senkou B 52, displacement 26).
+// Cloud at current price = SpanA/SpanB calculated 26 bars ago and projected forward.
+// Price above cloud = bullish structure → confirms long entries; below = confirms short.
+
+function featureIchimokuCloud(symbol, entryDir, price) {
+  const bars = S.ohlcData?.[symbol]?.values;
+  if (!bars || bars.length < 78) return { signal: null, val: 'Need 78+ daily bars' };
+
+  const sorted   = [...bars].reverse(); // oldest → newest
+  const last     = sorted.length - 1;
+  const cloudIdx = last - 26;
+  if (cloudIdx < 51) return { signal: null, val: 'Need 78+ bars for cloud' };
+
+  const tenkan = ichimokuMid(sorted, 9,  last);
+  const kijun  = ichimokuMid(sorted, 26, last);
+
+  // Cloud currently shown at price = SpanA/B calculated at cloudIdx and displaced forward 26
+  const t26 = ichimokuMid(sorted, 9,  cloudIdx);
+  const k26 = ichimokuMid(sorted, 26, cloudIdx);
+  const spanA = t26 != null && k26 != null ? (t26 + k26) / 2 : null;
+  const spanB = ichimokuMid(sorted, 52, cloudIdx);
+
+  if (spanA == null || spanB == null || tenkan == null || kijun == null) {
+    return { signal: null, val: 'Ichimoku: insufficient data' };
+  }
+
+  const cloudTop = Math.max(spanA, spanB);
+  const cloudBot = Math.min(spanA, spanB);
+  const pip      = getPipSize(symbol);
+
+  let cloudSig, cloudPos;
+  if (price > cloudTop)      { cloudSig = 'long';  cloudPos = 'above cloud'; }
+  else if (price < cloudBot) { cloudSig = 'short'; cloudPos = 'below cloud'; }
+  else                       { cloudSig = null;    cloudPos = 'inside cloud'; }
+
+  const tkBull      = tenkan > kijun;
+  const tkLabel     = tkBull ? 'TK bull ↑' : tenkan < kijun ? 'TK bear ↓' : 'TK flat';
+  const chikouClose = parseFloat(sorted[last]?.close ?? sorted[last]?.mid?.c ?? 0);
+  const priorClose  = parseFloat(sorted[last - 26]?.close ?? sorted[last - 26]?.mid?.c ?? 0);
+  const chikouBull  = priorClose > 0 && chikouClose > priorClose;
+  const chikouLabel = chikouBull ? 'Chikou ↑' : 'Chikou ↓';
+  const cloudThick  = Math.round(Math.abs(spanA - spanB) / pip);
+  const cloudColour = spanA >= spanB ? 'green' : 'red';
+
+  return {
+    signal: cloudSig,
+    val:    `${cloudPos} (${cloudThick}p ${cloudColour}) · ${tkLabel} · ${chikouLabel}`,
+  };
+}
+
 // ── Main computation ──────────────────────────────────────────────────────────
 
 export function computeRangeBias(symbol, entryDir, price, asia, monday, volRegime) {
@@ -838,6 +904,7 @@ export function computeRangeBias(symbol, entryDir, price, asia, monday, volRegim
     { key: 'hurstRegime',      fn: () => featureHurstRegime(symbol, entryDir) },
     { key: 'fvgBias',          fn: () => featureFvgBias(symbol, entryDir, price, atr) },
     { key: 'wtiCorrelation',   fn: () => featureWtiCorrelation(symbol, entryDir) },
+    { key: 'ichimokuCloud',    fn: () => featureIchimokuCloud(symbol, entryDir, price) },
   ];
 
   let confirmCount = 0, conflictCount = 0, neutralCount = 0;
@@ -927,6 +994,7 @@ function renderRangeBiasModal() {
     hurstRegime:     'Daily closes → R/S Hurst',
     fvgBias:         '5m bars → FVG scanner',
     wtiCorrelation:  'FRED WTI crude (daily)',
+    ichimokuCloud:   'Daily bars → Ichimoku 9/26/52',
   };
 
   body.innerHTML = Object.entries(FEATURE_DEFS).map(([key, def]) => {
