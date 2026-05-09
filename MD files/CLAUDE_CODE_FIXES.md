@@ -1396,7 +1396,7 @@ window.selectPair = async function(index) {
 
 ---
 
-## Fix 24 — Candle Pattern Recognition + SVG Mini-Chart
+#c
 
 ### Part A — Add `detectCandlePatterns()` to `js/signal.js`
 

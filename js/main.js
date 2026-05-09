@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { PAIRS, CACHE_DURATION } from './config.js';
-import { kvSet, loadCached, cleanupStaleSessionCaches, fetchAPI, updateStatus, updatePill, londonSessionDay, getDigits } from './utils.js';
+import { kvSet, loadCached, cleanupStaleSessionCaches, fetchAPI, updateStatus, updatePill, londonSessionDay, getDigits, getPipSize } from './utils.js';
 import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
 import { calculateStructuralFibs } from './structural-fibs.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
@@ -9,7 +9,7 @@ import { calculateVolRegime, calculatePivots } from './vol.js';
 import { loadCaps, openCfgModal, closeCfgModal, saveCaps, resetCaps } from './caps.js';
 import { oiLoadStoreFromKV, openOIModal, closeOIModal, processOIData, removeOIInstrument } from './oi.js';
 import { setCompassMode, toggleCompassFX, loadAndRenderCompass } from './compass.js';
-import { fvGapToPips, runSignalEngine, runEntryScanner, renderSignalAndEntries } from './signal.js';
+import { fvGapToPips, runSignalEngine, runEntryScanner, renderSignalAndEntries, detectCandlePatterns } from './signal.js';
 import { renderARMAAndTransition } from './arma.js';
 import { renderAll } from './render.js';
 import { triggerAIAnalysis, copyAIAnalysis, copyAITldr } from './ai.js';
@@ -43,6 +43,7 @@ window.saveCaps               = saveCaps;
 window.resetCaps              = resetCaps;
 window.setCompassMode         = setCompassMode;
 window.toggleCompassFX        = toggleCompassFX;
+window.detectCandlePatterns   = detectCandlePatterns;
 window.triggerAIAnalysis      = triggerAIAnalysis;
 window.copyAIAnalysis         = copyAIAnalysis;
 window.copyAITldr             = copyAITldr;
@@ -66,7 +67,10 @@ window.selectPair = async function(index) {
   document.querySelectorAll('.ptab').forEach((btn, i) => {
     btn.classList.toggle('active', i === index);
   });
+  window._lastEntries = null;          // clear stale proximity targets before new pair loads
+  dismissProxAlert();
   await loadAll();
+  startLiveStream();                   // restart SSE for new pair
 };
 
 window.setMode = function(mode) {
@@ -135,10 +139,97 @@ window.forceRefresh = async function() {
   S.surpriseIndex     = null;
   S.otcForecast       = null;
   S.macroQuadrant     = null;
+  S.ecbData           = null;
 
   updateStatus('spin', `Refreshing ${S.currentPair.name}...`);
   loadAll();
 };
+
+// ── Fix 25: Header price + proximity alert ────────────────────────────────────
+
+function updateHeaderPrice(quote) {
+  if (!quote || quote.price == null) return;
+  const sym    = S.currentPair.symbol;
+  const digits = getDigits(sym);
+  const el  = document.getElementById('hdrPrice');
+  const pEl = document.getElementById('hdrPairPrice');
+  const nEl = document.getElementById('hdrPairName');
+  if (!el) return;
+  if (nEl) nEl.textContent = S.currentPair.name;
+  if (pEl) pEl.textContent = quote.price.toFixed(digits);
+  el.style.display = 'flex';
+}
+
+// Proximity thresholds (pips / points from the level)
+const _PROX_PIPS = { 'NAS100_USD': 20, 'XAU/USD': 5 };
+
+function checkProximityAlerts() {
+  const entries = window._lastEntries;
+  if (!entries || !entries.length || !window._latestQuote) return;
+  const sym     = S.currentPair.symbol;
+  const price   = window._latestQuote.price;
+  const pipSz   = getPipSize(sym);
+  const proxPips = _PROX_PIPS[sym] ?? 3;
+  const proxDist = proxPips * pipSz;
+
+  const nearby = entries
+    .filter(e => Math.abs(e.price - price) <= proxDist)
+    .sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price));
+
+  const alertEl = document.getElementById('proxAlert');
+  if (!alertEl) return;
+
+  if (!nearby.length) { alertEl.style.display = 'none'; return; }
+
+  const e      = nearby[0];
+  const digits = getDigits(sym);
+  const unit   = sym === 'NAS100_USD' ? 'pts' : 'p';
+  const dist   = Math.round(Math.abs(e.price - price) / pipSz);
+  const urgency = dist <= 1 ? 'red' : dist <= 2 ? 'amber' : 'green';
+
+  alertEl.style.display = 'flex';
+  alertEl.className = `prox-alert ${urgency}`;
+  alertEl.innerHTML = `
+    <span class="pa-icon">${urgency === 'red' ? '🔴' : urgency === 'amber' ? '🟡' : '🟢'}</span>
+    <span class="pa-main">${dist <= 0 ? 'AT' : dist + unit + ' from'} <strong>${e.price.toFixed(digits)}</strong> ${e.direction === 'long' ? '↑ BUY' : '↓ SELL'} · ${'⭐'.repeat(e.totalStars || 0)}</span>
+    ${e.candleConfirmed === true ? '<span class="pa-confirm">5m ✔</span>' : ''}
+    <button class="pa-close" onclick="dismissProxAlert()">✕</button>
+  `;
+}
+
+function dismissProxAlert() {
+  const el = document.getElementById('proxAlert');
+  if (el) el.style.display = 'none';
+}
+window.dismissProxAlert = dismissProxAlert;
+
+// ── Fix 23: SSE live stream ───────────────────────────────────────────────────
+
+let _sseSource = null;
+
+function startLiveStream() {
+  if (_sseSource) { try { _sseSource.close(); } catch(e) {} _sseSource = null; }
+  const sym = encodeURIComponent(S.currentPair.symbol);
+  try {
+    const src = new EventSource(`/api/oanda_stream?symbol=${sym}`);
+    src.onmessage = evt => {
+      try {
+        const d = JSON.parse(evt.data);
+        if (d.price != null) {
+          window._latestQuote = { ...(window._latestQuote || {}), price: d.price, bid: d.bid, ask: d.ask };
+          updateHeaderPrice(window._latestQuote);
+          checkProximityAlerts();
+          renderAllDebounced();
+          const updEl = document.getElementById('upd');
+          if (updEl) updEl.textContent = new Date().toLocaleTimeString();
+        }
+      } catch(e) {}
+    };
+    src.onerror = () => { try { src.close(); } catch(e) {} if (_sseSource === src) _sseSource = null; };
+    _sseSource = src;
+  } catch(e) { _sseSource = null; }
+}
+window.startLiveStream = startLiveStream;
 
 // ── Data loading ─────────────────────────────────────────────────────────────
 async function loadAll() {
@@ -153,6 +244,14 @@ async function loadAll() {
     if (!S.fredData) {
       S.fredData = await loadCached('fred', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED);
       updatePill('pillFred', 'ok');
+    }
+
+    // Fix 9: ECB SDW daily rates (ESTR + DE 10Y Bund) — no key required, 12h KV cache
+    if (!S.ecbData) {
+      try {
+        const ecbRes = await fetch('/api/ecbsdw');
+        if (ecbRes.ok) S.ecbData = await ecbRes.json();
+      } catch(e) { S.ecbData = null; }
     }
 
     // Update session badge immediately (no network needed)
@@ -213,6 +312,7 @@ async function loadAll() {
     calculateMondayRanges(S.currentPair.symbol);
     calculateStructuralFibs(S.currentPair.symbol);
     window._latestQuote = quote;
+    updateHeaderPrice(quote);
 
     // Background-load daily OHLC for the 4 USD-index pairs (cached 23h — no extra API cost
     // after first load). Each arrival updates S.usdStrength so the composite improves live.
@@ -288,6 +388,8 @@ async function refreshQuote() {
       console.warn('30m refresh skipped:', e.message);
     }
 
+    updateHeaderPrice(window._latestQuote);
+    checkProximityAlerts();
     renderAllDebounced();
     document.getElementById('upd').textContent = new Date().toLocaleTimeString();
   } catch (error) {
@@ -431,7 +533,8 @@ window.saveToJournal = function() {
 async function init() {
   renderPairTabs();
   await loadAll();
-  setInterval(() => refreshQuote(), 5 * 60 * 1000);
+  startLiveStream();           // Fix 23: live SSE stream; falls back silently if Oanda unavailable
+  setInterval(() => refreshQuote(), 5 * 60 * 1000); // polling fallback / 5m candle refresh
 
   // Toggle .pinned shadow on sticky header when page scrolls past natural position
   const sentinel = document.getElementById('stickysentinel');

@@ -687,3 +687,20 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 
 /* Density cluster badge on confluence cards */
 .ci-density{color:var(--purple);font-weight:600;font-size:10px}
+
+/* Fix 25: Header live price block */
+.hdr-price{display:flex;flex-direction:column;align-items:flex-end;gap:1px;padding:0 10px;border-right:1px solid var(--border);margin-right:4px}
+.hdr-price span:first-child{font-size:10px;color:var(--text3);font-weight:500;line-height:1.1}
+.hdr-price span:last-child{font-size:14px;font-weight:700;color:var(--text);font-family:'DM Mono',monospace;line-height:1.1}
+
+/* Fix 25: Proximity alert bar */
+.prox-alert{display:flex;align-items:center;gap:8px;padding:5px 14px;font-size:11.5px;border-top:1px solid var(--border);animation:proxSlideIn .18s ease}
+.prox-alert.red{background:rgba(239,68,68,0.10);color:var(--red)}
+.prox-alert.amber{background:rgba(245,158,11,0.10);color:var(--amber)}
+.prox-alert.green{background:rgba(34,197,94,0.08);color:var(--green)}
+.pa-icon{font-size:13px;flex-shrink:0}
+.pa-main{flex:1;font-size:11.5px}.pa-main strong{font-family:'DM Mono',monospace}
+.pa-confirm{font-size:10px;padding:1px 7px;border-radius:8px;background:rgba(34,197,94,0.15);color:var(--green);font-weight:600;flex-shrink:0}
+.pa-close{background:none;border:none;cursor:pointer;font-size:14px;color:inherit;opacity:.6;padding:2px 6px;flex-shrink:0;margin-left:4px}
+.pa-close:hover{opacity:1}
+@keyframes proxSlideIn{from{transform:translateY(-6px);opacity:0}to{transform:translateY(0);opacity:1}}

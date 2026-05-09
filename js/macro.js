@@ -86,12 +86,19 @@ function computeT1() {
   const us2y = fredData.us2y?.value;
   const foreign2y = fredData[`${S.currentPair.shortCode}_short`]?.value;
 
-  if (us10y == null || foreign10y == null) return tierUnavailable('T1', 'Rate Differential', '10Y Spread', 3);
+  // For EUR pairs: prefer ECB daily de10y over FRED monthly proxy when available
+  const ecbData   = S.ecbData ?? null;
+  const de10y_ecb = ecbData?.de10y_ecb?.value ?? null;
+  const de10yEffective = (S.currentPair.symbol === 'EUR/USD' || S.currentPair.symbol === 'EUR/GBP')
+    ? (de10y_ecb ?? fredData?.de10y?.value ?? foreign10y)
+    : foreign10y;
+
+  if (us10y == null || (de10yEffective == null && foreign10y == null)) return tierUnavailable('T1', 'Rate Differential', '10Y Spread', 3);
 
   let diff10, diff2, bullishWhenPositive;
 
   if (S.currentPair.symbol === 'EUR/USD') {
-    diff10 = us10y - foreign10y; bullishWhenPositive = false;
+    diff10 = us10y - (de10yEffective ?? foreign10y); bullishWhenPositive = false;
     diff2  = (us2y != null && foreign2y != null) ? us2y - foreign2y : null;
   } else if (S.currentPair.symbol === 'GBP/USD') {
     diff10 = foreign10y - us10y; bullishWhenPositive = true;

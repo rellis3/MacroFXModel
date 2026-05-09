@@ -416,6 +416,85 @@ export default {
         return json({ values, meta: { symbol, source: 'oanda', granularity } });
       }
 
+      // -- /api/oanda_stream ------------------------------------
+      // SSE live price feed. Browser opens EventSource('/api/oanda_stream?symbol=EUR_USD').
+      // Worker proxies Oanda pricing stream as text/event-stream.
+      // Requires: OANDA_KEY, OANDA_ACCOUNT_ID, OANDA_ENV
+      if (path === '/api/oanda_stream') {
+        if (!env.OANDA_KEY)        return err('OANDA_KEY not configured', 503);
+        if (!env.OANDA_ACCOUNT_ID) return err('OANDA_ACCOUNT_ID not configured', 503);
+
+        const streamSym = url.searchParams.get('symbol');
+        if (!streamSym) return err('symbol param required', 400);
+
+        const streamInstrument = streamSym.replace('/', '_');
+        const streamBase = env.OANDA_ENV === 'practice'
+          ? 'https://stream-fxpractice.oanda.com'
+          : 'https://stream-fxtrade.oanda.com';
+
+        const streamUrl = `${streamBase}/v3/accounts/${env.OANDA_ACCOUNT_ID}/pricing/stream?instruments=${encodeURIComponent(streamInstrument)}`;
+
+        let oandaStream;
+        try {
+          oandaStream = await fetch(streamUrl, {
+            headers: { 'Authorization': `Bearer ${env.OANDA_KEY}`, 'Accept-Datetime-Format': 'RFC3339' },
+          });
+        } catch(e) {
+          return err('Oanda stream connect failed: ' + e.message, 502);
+        }
+
+        if (!oandaStream.ok || !oandaStream.body) return err('Oanda stream error (' + oandaStream.status + ')', 502);
+
+        const { readable, writable } = new TransformStream();
+        const writer  = writable.getWriter();
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+
+        const pump = async () => {
+          const reader = oandaStream.body.getReader();
+          let buf = '';
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf += decoder.decode(value, { stream: true });
+              const lines = buf.split('\n');
+              buf = lines.pop();
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                try {
+                  const tick = JSON.parse(trimmed);
+                  if (tick.type === 'PRICE' && tick.bids?.[0] && tick.asks?.[0]) {
+                    const bid = parseFloat(tick.bids[0].price);
+                    const ask = parseFloat(tick.asks[0].price);
+                    const mid = (bid + ask) / 2;
+                    const payload = JSON.stringify({ price: mid, bid, ask, time: tick.time });
+                    await writer.write(encoder.encode('data: ' + payload + '\n\n'));
+                  } else if (tick.type === 'HEARTBEAT') {
+                    await writer.write(encoder.encode(': heartbeat\n\n'));
+                  }
+                } catch(e) {}
+              }
+            }
+          } catch(e) {
+          } finally {
+            writer.close().catch(() => {});
+          }
+        };
+
+        pump();
+
+        return new Response(readable, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
+      }
+
       // -- /api/fred --------------------------------------------
       // Returns { vix: { value, prev }, us10y: { value, prev }, ... }
       // Each series transformed from raw FRED observations array into
@@ -472,6 +551,39 @@ export default {
         const results = await Promise.all(fetches);
         const out = Object.fromEntries(results);
         return json(out);
+      }
+
+      // -- /api/ecbsdw ------------------------------------------
+      // ECB SDW daily EUR rates. No API key required.
+      // Returns { estr: {value, prev}, de10y_ecb: {value, prev} }
+      if (path === '/api/ecbsdw') {
+        const cacheKey = 'ecbsdw_daily';
+        const cached = await env.FX_SCORES?.get(cacheKey);
+        if (cached) return json(JSON.parse(cached));
+
+        async function fetchECBSeries(seriesKey) {
+          const ecbUrl = `https://data-api.ecb.europa.eu/service/data/${seriesKey}?lastNObservations=5&format=jsondata`;
+          const r = await fetch(ecbUrl, { headers: { Accept: 'application/json' } });
+          if (!r.ok) return null;
+          const d = await r.json();
+          const obs = d?.dataSets?.[0]?.series?.['0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0']?.observations
+                   ?? d?.dataSets?.[0]?.series?.['0:0:0:0:0:0:0:0:0']?.observations
+                   ?? null;
+          if (!obs) return null;
+          const keys = Object.keys(obs).map(Number).sort((a, b) => a - b);
+          if (keys.length < 2) return null;
+          return { value: obs[keys[keys.length - 1]][0], prev: obs[keys[keys.length - 2]][0] };
+        }
+
+        try {
+          const estr      = await fetchECBSeries('EST/B.EU000A2X2A25.WT');
+          const de10y_ecb = await fetchECBSeries('YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y');
+          const result = { estr: estr ?? null, de10y_ecb: de10y_ecb ?? null };
+          await env.FX_SCORES?.put(cacheKey, JSON.stringify(result), { expirationTtl: 43200 });
+          return json(result);
+        } catch(e) {
+          return json({ estr: null, de10y_ecb: null, error: e.message });
+        }
       }
 
       // -- /api/config/caps GET ---------------------------------

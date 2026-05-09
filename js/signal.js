@@ -709,16 +709,154 @@ function get5mEMAAlignment(bars5m, direction) {
   return { ema, last, aligned: direction === 'long' ? last > ema : last < ema };
 }
 
-// Fix 4: Check last 2 closed 5m candles for directional close confirmation.
+// Fix 4: Check last 2 closed 5m candles — bullish/bearish body OR pin bar rejection.
+// bars5m is newest-first: [0]=forming, [1]=last closed, [2]=second closed.
 function get5mCandleConfirmation(bars5m, direction) {
   if (!bars5m || bars5m.length < 3) return null;
-  const recent = bars5m.slice(-3, -1); // exclude forming bar
-  if (recent.length < 2) return null;
-  const isBull = b => (b.close ?? b.mid?.c ?? b.c) > (b.open ?? b.mid?.o ?? b.o);
-  const confirmed = direction === 'long' ? recent.every(isBull) : recent.every(b => !isBull(b));
-  return { confirmed, reason: confirmed
-    ? `2 consecutive ${direction === 'long' ? 'bullish' : 'bearish'} 5m closes`
-    : 'Mixed 5m closes — no directional confirmation' };
+  const b1 = bars5m[1]; // most recent closed
+  const b2 = bars5m[2]; // second most recent closed
+  if (!b1 || !b2) return null;
+
+  function score(bar, dir) {
+    const o = parseFloat(bar.open  ?? bar.mid?.o ?? bar.o);
+    const c = parseFloat(bar.close ?? bar.mid?.c ?? bar.c);
+    const h = parseFloat(bar.high  ?? bar.mid?.h ?? bar.h);
+    const l = parseFloat(bar.low   ?? bar.mid?.l ?? bar.l);
+    if (isNaN(o) || isNaN(c) || isNaN(h) || isNaN(l)) return 0;
+    const range = h - l;
+    if (range === 0) return 0;
+    if (dir === 'long') {
+      const lowerWick = Math.min(o, c) - l;
+      return (c > o || lowerWick / range >= 0.30) ? 1 : 0;
+    } else {
+      const upperWick = h - Math.max(o, c);
+      return (c < o || upperWick / range >= 0.30) ? 1 : 0;
+    }
+  }
+
+  const s1 = score(b1, direction);
+  const s2 = score(b2, direction);
+  const confirmed  = s1 === 1;
+  const supporting = s2 === 1;
+  const reason = confirmed
+    ? (supporting ? 'Both recent 5m bars confirm' : 'Most recent 5m bar confirms')
+    : (supporting ? '5m: prior bar confirms but latest does not — wait' : 'No 5m confirmation — wait for close');
+  return { confirmed, supporting, reason };
+}
+
+// ── Fix 24: Candle pattern detection ─────────────────────────────────────────
+// Reads last 5 closed 5m bars (bars5m newest-first: [0]=forming, [1..5]=closed).
+// Returns { pattern, bias, bars } where bars[] are 0-based indices into the
+// 5-closed slice (0 = most recent closed), or null if no pattern found.
+export function detectCandlePatterns(symbol) {
+  const raw5m = S.ohlc5m?.[symbol]?.values;
+  if (!raw5m || raw5m.length < 6) return null;
+
+  const candles = raw5m.slice(1, 6).map(b => ({
+    o: parseFloat(b.open  ?? b.mid?.o ?? b.o),
+    c: parseFloat(b.close ?? b.mid?.c ?? b.c),
+    h: parseFloat(b.high  ?? b.mid?.h ?? b.h),
+    l: parseFloat(b.low   ?? b.mid?.l ?? b.l),
+  })).filter(b => !isNaN(b.o) && !isNaN(b.c) && !isNaN(b.h) && !isNaN(b.l));
+
+  if (candles.length < 2) return null;
+  const b0 = candles[0], b1 = candles[1], b2 = candles[2];
+
+  const range0 = b0.h - b0.l; const body0 = Math.abs(b0.c - b0.o);
+  const bull0 = b0.c > b0.o;  const bear0 = b0.c < b0.o;
+  const range1 = b1 ? b1.h - b1.l : 0;
+  const bull1  = b1 && b1.c > b1.o; const bear1 = b1 && b1.c < b1.o;
+
+  // Doji — body < 10% of range
+  if (range0 > 0 && body0 / range0 < 0.10)
+    return { pattern: 'Doji', bias: 'neutral', bars: [0] };
+
+  // Hammer / Shooting Star
+  if (range0 > 0) {
+    const lw = Math.min(b0.o, b0.c) - b0.l;
+    const uw = b0.h - Math.max(b0.o, b0.c);
+    if (lw >= 0.6 * range0 && body0 <= 0.3 * range0 && uw <= 0.1 * range0)
+      return { pattern: 'Hammer', bias: 'long', bars: [0] };
+    if (uw >= 0.6 * range0 && body0 <= 0.3 * range0 && lw <= 0.1 * range0)
+      return { pattern: 'Shooting Star', bias: 'short', bars: [0] };
+  }
+
+  if (!b1) return null;
+
+  // Engulfing
+  if (bear1 && bull0 && b0.o <= b1.c && b0.c >= b1.o)
+    return { pattern: 'Bullish Engulfing', bias: 'long', bars: [1, 0] };
+  if (bull1 && bear0 && b0.o >= b1.c && b0.c <= b1.o)
+    return { pattern: 'Bearish Engulfing', bias: 'short', bars: [1, 0] };
+
+  // Inside Bar
+  if (b0.h <= b1.h && b0.l >= b1.l)
+    return { pattern: 'Inside Bar', bias: 'neutral', bars: [1, 0] };
+
+  // Tweezer
+  const denom = Math.max(range0, range1, 0.0001);
+  if (Math.abs(b0.h - b1.h) / denom < 0.05 && bear0)
+    return { pattern: 'Tweezer Top', bias: 'short', bars: [1, 0] };
+  if (Math.abs(b0.l - b1.l) / denom < 0.05 && bull0)
+    return { pattern: 'Tweezer Bottom', bias: 'long', bars: [1, 0] };
+
+  if (!b2) return null;
+  const bull2 = b2.c > b2.o; const bear2 = b2.c < b2.o;
+  const body2 = Math.abs(b2.c - b2.o);
+
+  // Morning / Evening Star
+  if (bear2 && Math.abs(b1.c - b1.o) < 0.3 * (b2.h - b2.l) && bull0 && b0.c > (b2.o + b2.c) / 2)
+    return { pattern: 'Morning Star', bias: 'long', bars: [2, 1, 0] };
+  if (bull2 && Math.abs(b1.c - b1.o) < 0.3 * (b2.h - b2.l) && bear0 && b0.c < (b2.o + b2.c) / 2)
+    return { pattern: 'Evening Star', bias: 'short', bars: [2, 1, 0] };
+
+  // Three White Soldiers / Three Black Crows
+  const [c0, c1, c2] = candles;
+  if ([c0, c1, c2].every(c => c.c > c.o && (c.h - c.c) < 0.2 * (c.h - c.l)) && c0.c > c1.c && c1.c > c2.c)
+    return { pattern: 'Three White Soldiers', bias: 'long', bars: [2, 1, 0] };
+  if ([c0, c1, c2].every(c => c.c < c.o && (c.c - c.l) < 0.2 * (c.h - c.l)) && c0.c < c1.c && c1.c < c2.c)
+    return { pattern: 'Three Black Crows', bias: 'short', bars: [2, 1, 0] };
+
+  return null;
+}
+
+// 80×40 inline SVG of the last 5 closed bars. highlightBars = indices into the
+// 5-closed slice (0=most recent), matching detectCandlePatterns output.
+function renderCandleSVG(symbol, highlightBars) {
+  const raw5m = S.ohlc5m?.[symbol]?.values;
+  if (!raw5m || raw5m.length < 6) return '';
+  const candles = raw5m.slice(1, 6).map(b => ({
+    o: parseFloat(b.open  ?? b.mid?.o ?? b.o),
+    c: parseFloat(b.close ?? b.mid?.c ?? b.c),
+    h: parseFloat(b.high  ?? b.mid?.h ?? b.h),
+    l: parseFloat(b.low   ?? b.mid?.l ?? b.l),
+  })).filter(b => !isNaN(b.o));
+  if (candles.length < 2) return '';
+
+  // Render oldest→newest (left→right); candles[0] is most recent, so reverse
+  const ordered = [...candles].reverse();
+  const n = ordered.length;
+  const W = 80, H = 40, pad = 3;
+  const allH = Math.max(...ordered.map(c => c.h));
+  const allL = Math.min(...ordered.map(c => c.l));
+  const span = allH - allL || 0.0001;
+  const cw = (W - 2 * pad) / n;
+  const toY = p => pad + (1 - (p - allL) / span) * (H - 2 * pad);
+  // Map highlight indices (0=most recent) to ordered array positions
+  const hlSet = new Set((highlightBars || []).map(i => n - 1 - i));
+
+  const els = ordered.map((c, i) => {
+    const bull = c.c >= c.o;
+    const mx   = pad + i * cw + cw / 2;
+    const bTop = toY(Math.max(c.o, c.c));
+    const bBot = toY(Math.min(c.o, c.c));
+    const bH   = Math.max(1, bBot - bTop);
+    const col  = bull ? 'var(--green)' : 'var(--red)';
+    const op   = hlSet.has(i) ? '1' : '0.35';
+    return `<line x1="${mx.toFixed(1)}" y1="${toY(c.h).toFixed(1)}" x2="${mx.toFixed(1)}" y2="${toY(c.l).toFixed(1)}" stroke="${col}" stroke-width="1" opacity="${op}"/><rect x="${(pad + i * cw + 1).toFixed(1)}" y="${bTop.toFixed(1)}" width="${Math.max(1, cw - 2).toFixed(1)}" height="${bH.toFixed(1)}" fill="${col}" opacity="${op}" rx="0.5"/>`;
+  }).join('');
+
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg">${els}</svg>`;
 }
 
 // Returns { sd, nearest, close } where sd is raw fib position and nearest is
@@ -790,6 +928,19 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       <span style="font-size:10px">Requires Fib confluence + at least one of: OI wall, pivot, range boundary, signal alignment</span>
     </div>`;
   }
+
+  // Fix 24: 5m candle pattern block above entry cards
+  const _cp = detectCandlePatterns(sym);
+  const candleBlock = _cp ? (() => {
+    const biasCol = _cp.bias === 'long' ? 'var(--green)' : _cp.bias === 'short' ? 'var(--red)' : 'var(--text2)';
+    return `<div style="display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:8px">
+      ${renderCandleSVG(sym, _cp.bars)}
+      <div>
+        <div style="font-size:10.5px;font-weight:700;color:${biasCol}">${_cp.pattern}</div>
+        <div style="font-size:9px;color:var(--text3)">5m pattern · last 5 closed bars · bias: ${_cp.bias}</div>
+      </div>
+    </div>`;
+  })() : '';
 
   // O-to-C Forecast card — rendered below GARCH CI section
   const otcCard = (() => {
@@ -868,7 +1019,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
        </div>`
     : '';
 
-  return volCtx + otcCard + sessionWarn + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
+  return volCtx + candleBlock + otcCard + sessionWarn + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
     const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 7 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';
@@ -960,6 +1111,7 @@ export function renderSignalAndEntries(enhanced, pivots, asia, monday, quote, vo
   const signal  = runSignalEngine(S.compassData, volRegime);
   const entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
 
+  window._lastEntries = entries;
   sigEl.innerHTML  = renderSignalCard(signal, volRegime, otcForecast);
   entrEl.innerHTML = renderEntryScanner(entries, quote, signal, volRegime, asia, monday, otcForecast);
 

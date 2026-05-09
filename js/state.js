@@ -21,4 +21,5 @@ export const S = {
   usdStrength:     null,   // computeUSDStrength() — composite z-score from 4 USD pairs
   eventRisk:       null,   // { level, sizeMult, events, currencyRisk } — Finnhub events
   surpriseIndex:   null,   // { [currency]: score } — macro surprise per currency
+  ecbData:         null,   // ECB SDW daily rates { estr, de10y_ecb }
 };
