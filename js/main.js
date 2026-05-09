@@ -9,7 +9,7 @@ import { calculateVolRegime, calculatePivots } from './vol.js';
 import { loadCaps, openCfgModal, closeCfgModal, saveCaps, resetCaps } from './caps.js';
 import { oiLoadStoreFromKV, openOIModal, closeOIModal, processOIData, removeOIInstrument } from './oi.js';
 import { setCompassMode, toggleCompassFX, loadAndRenderCompass } from './compass.js';
-import { fvGapToPips, runSignalEngine, runEntryScanner, renderSignalAndEntries, detectCandlePatterns } from './signal.js';
+import { fvGapToPips, runSignalEngine, runEntryScanner, renderSignalAndEntries, detectCandlePatterns, openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal } from './signal.js';
 import { renderARMAAndTransition } from './arma.js';
 import { renderAll } from './render.js';
 import { triggerAIAnalysis, copyAIAnalysis, copyAITldr } from './ai.js';
@@ -50,6 +50,9 @@ window.copyAITldr             = copyAITldr;
 window.openCOTModal           = openCOTModal;
 window.closeCOTModal          = closeCOTModal;
 window.saveCOTUrlFromModal    = saveCOTUrlFromModal;
+window.openRangeBiasModal     = openRangeBiasModal;
+window.closeRangeBiasModal    = closeRangeBiasModal;
+window.saveRangeBiasModal     = saveRangeBiasModal;
 
 // ── Initialise state ─────────────────────────────────────────────────────────
 S.currentPair = PAIRS[0];

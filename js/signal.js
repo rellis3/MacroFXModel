@@ -7,6 +7,9 @@ import { oiFmtStrike } from './oi.js';
 import { getPairSurpriseScore } from './events.js';
 import { detectCrossConflict } from './macro.js';
 import { computeARMAForecast, computeRegimeTransition } from './arma.js';
+import { computeRangeBias, openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal } from './range-bias.js';
+
+export { openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal };
 
 // ── FV gap → pips ────────────────────────────────────────────────────────────
 // 1 z-unit ≈ 0.5 ATR (conservative — spread z-score is smoother than price)
@@ -658,6 +661,19 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       }
     } catch(e) {}
 
+    // Range bias composite — 7 configurable features
+    let rangeBias = null;
+    if (c.direction != null) {
+      try {
+        rangeBias = computeRangeBias(sym, c.direction, c.price, asia, monday, volRegime);
+        // Boost entry star score: +0.5 if ≥3 features confirm, +1 if ≥5 confirm
+        if (rangeBias.confirmCount >= 5) layerScore += 1;
+        else if (rangeBias.confirmCount >= 3) layerScore += 0.5;
+        // Penalty: -0.5 if more features conflict than confirm
+        if (rangeBias.conflictCount > rangeBias.confirmCount) layerScore -= 0.5;
+      } catch(e) {}
+    }
+
     return {
       ...c,
       size: adjSize,
@@ -675,6 +691,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       candleConfirmed,
       candleReason,
       regimeShockRisk,
+      rangeBias,
     };
   });
 
@@ -922,8 +939,15 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
     </div>`;
   })() : '';
 
+  // Range bias settings button
+  const rbSettingsBtn = `<div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+    <button onclick="openRangeBiasModal()" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:var(--s2);color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:4px">
+      ⚙ Range Bias Settings
+    </button>
+  </div>`;
+
   if (!entries || entries.length === 0) {
-    return `<div class="ec-no-entries">
+    return rbSettingsBtn + `<div class="ec-no-entries">
       🎯 No high-confluence entries found<br>
       <span style="font-size:10px">Requires Fib confluence + at least one of: OI wall, pivot, range boundary, signal alignment</span>
     </div>`;
@@ -1019,7 +1043,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
        </div>`
     : '';
 
-  return volCtx + candleBlock + otcCard + sessionWarn + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
+  return volCtx + candleBlock + otcCard + sessionWarn + rbSettingsBtn + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
     const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 7 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';
@@ -1085,6 +1109,43 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
         </div>`
       : '';
 
+    // Range bias panel
+    const rbHtml = (() => {
+      const rb = e.rangeBias;
+      if (!rb || rb.maxPts === 0) return '';
+      const enabledRows = rb.results.filter(r => r.enabled);
+      if (!enabledRows.length) return '';
+
+      const pct    = Math.round(rb.conviction * 100);
+      const barCol = rb.conviction > 0.4 ? 'var(--green)' : rb.conviction < -0.2 ? 'var(--red)' : 'var(--amber)';
+      const label  = rb.confirmCount >= 5 ? 'Strong confirm' :
+                     rb.confirmCount >= 3 ? 'Confirms'       :
+                     rb.conflictCount > rb.confirmCount ? 'Conflicts' : 'Weak / neutral';
+      const hdrCol = rb.confirmCount >= 3 ? 'var(--green)' :
+                     rb.conflictCount > rb.confirmCount ? 'var(--red)' : 'var(--text3)';
+
+      const rows = enabledRows.map(r => `
+        <div style="display:flex;align-items:baseline;gap:6px;padding:2px 0">
+          <span style="font-size:11px;flex-shrink:0">${r.icon}</span>
+          <span style="font-size:10px;font-weight:600;color:var(--text2);min-width:110px;flex-shrink:0">${r.label}${r.type ? ` <em style="font-weight:400;font-size:9px">${r.type}</em>` : ''}</span>
+          <span style="font-size:9.5px;color:var(--text3);line-height:1.3">${r.val}</span>
+          <span style="margin-left:auto;font-size:9px;font-family:'DM Mono',monospace;font-weight:600;color:${r.pts > 0 ? 'var(--green)' : r.pts < 0 ? 'var(--red)' : 'var(--text3)'};flex-shrink:0">${r.pts > 0 ? '+' : ''}${r.pts}</span>
+        </div>`).join('');
+
+      return `
+      <details class="rb-panel" ${rb.confirmCount >= 3 || rb.conflictCount > 2 ? 'open' : ''}>
+        <summary style="display:flex;align-items:center;gap:6px;cursor:pointer;list-style:none;padding:5px 0;border-top:1px solid var(--border)">
+          <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Range Bias</span>
+          <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin:0 4px">
+            <div style="height:100%;width:${Math.abs(pct)}%;background:${barCol};border-radius:2px;${pct < 0 ? 'margin-left:auto' : ''}"></div>
+          </div>
+          <span style="font-size:10px;font-weight:600;color:${hdrCol}">${rb.confirmCount}✓ ${rb.conflictCount}✗ · ${label}</span>
+          <span style="font-size:9px;color:var(--text3);margin-left:2px">▾</span>
+        </summary>
+        <div style="padding:4px 0 2px 0">${rows}</div>
+      </details>`;
+    })();
+
     return `
     <div class="entry-card ${cls}">
       <div class="ec-top">
@@ -1096,6 +1157,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       ${confirmBanner}
       <div class="ec-layers">${tagsHtml}</div>
       <div class="ec-trade">${tradeHtml}</div>
+      ${rbHtml}
     </div>`;
   }).join('')}</div>`;
 }
