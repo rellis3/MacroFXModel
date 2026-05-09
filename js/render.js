@@ -286,10 +286,16 @@ ${calendarCtx.warnings.length > 0 ? `
             const confCol = mq.confidence === 'HIGH' ? 'var(--green)' : mq.confidence === 'LOW' ? 'var(--text3)' : 'var(--amber)';
             const arrow = mq.growthBull ? '↑G' : '↓G';
             const infArrow = mq.inflationBull ? '↑π' : '↓π';
+            const bflyStr = mq.butterfly != null
+              ? ` · fly ${mq.butterfly >= 0 ? '+' : ''}${mq.butterfly.toFixed(2)}%`
+              : '';
+            const bflyCol = mq.butterfly == null ? 'var(--text3)'
+              : mq.butterfly < -0.1 ? 'var(--red)' : mq.butterfly > 0.1 ? 'var(--green)' : 'var(--text3)';
             return `<div style="display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap">
               <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:8px;background:${qBg};color:${qCol};border:1px solid ${qBd};letter-spacing:.04em">${mq.regime}</span>
               <span style="font-size:9.5px;color:var(--text3);font-family:'DM Mono',monospace">${arrow} ${infArrow}</span>
               <span style="font-size:9.5px;color:var(--text2)">${mq.strategyType}</span>
+              ${mq.butterfly != null ? `<span style="font-size:9px;font-family:'DM Mono',monospace;color:${bflyCol}" title="Yield butterfly: 2×5Y − 2Y − 10Y. Negative = flight-to-safety stress.">fly${bflyStr.replace(' · fly','')}</span>` : ''}
               <span style="font-size:8.5px;padding:1px 5px;border-radius:5px;background:var(--s2);border:1px solid var(--border);color:${confCol}">${mq.confidence}</span>
             </div>`;
           })() : ''}
@@ -410,6 +416,7 @@ ${calendarCtx.warnings.length > 0 ? `
     <div class="compass-card">
       <div id="compassCard"><div class="compass-loading">⏳ Loading…</div></div>
     </div>
+    <div id="yieldPulseCard"></div>
 
     <!-- SIGNAL ENGINE -->
     <div class="sec-lbl">

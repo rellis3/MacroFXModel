@@ -373,14 +373,18 @@ export function aiCollectSnapshot() {
   if (S.macroQuadrant) {
     const mq = S.macroQuadrant;
     s.macroRegime = {
-      regime:          mq.regime,
-      growthBull:      mq.growthBull,
-      inflationBull:   mq.inflationBull,
-      strategyType:    mq.strategyType,
-      strategyDetail:  mq.strategyDetail,
-      confidence:      mq.confidence,
-      growthFactors:   mq.growthFactors.join(', '),
+      regime:           mq.regime,
+      growthBull:       mq.growthBull,
+      inflationBull:    mq.inflationBull,
+      strategyType:     mq.strategyType,
+      strategyDetail:   mq.strategyDetail,
+      confidence:       mq.confidence,
+      growthFactors:    mq.growthFactors.join(', '),
       inflationFactors: mq.inflationFactors.join(', '),
+      butterfly:        mq.butterfly?.toFixed(3),
+      frontSlope:       mq.frontSlope?.toFixed(3),
+      us5y:             mq.us5y?.toFixed(2),
+      tips5:            mq.tips5?.toFixed(2),
     };
   }
 

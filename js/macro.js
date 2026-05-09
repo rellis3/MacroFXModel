@@ -612,9 +612,15 @@ export function computeMacroRegime() {
   const bei   = f.bei?.value   ?? null;     // 10Y breakeven inflation %
   const beiP  = f.bei?.prev    ?? null;
   const tips  = f.tips?.value  ?? null;    // 10Y real yield %
+  const tips5 = f.tips5?.value ?? null;    // 5Y real yield — more reactive to near-term policy
   const us2y  = f.us2y?.value  ?? null;
+  const us5y  = f.us5y?.value  ?? null;
   const us10y = f.us10y?.value ?? null;
   const curve = (us10y != null && us2y != null) ? us10y - us2y : null;
+  // Butterfly: 2×5Y − 2Y − 10Y. Negative = belly cheapening = flight-to-safety = risk-off.
+  const butterfly  = (us5y != null && us2y != null && us10y != null) ? 2 * us5y - us2y - us10y : null;
+  // Front slope: 5Y − 2Y. Inversion here signals market pricing Fed cuts = policy pivot.
+  const frontSlope = (us5y != null && us2y != null) ? us5y - us2y : null;
 
   let growthScore = 0, inflationScore = 0;
   const growthFactors = [], inflationFactors = [];
@@ -663,6 +669,23 @@ export function computeMacroRegime() {
     else if (nfci >  0.0) { growthScore -= 1; growthFactors.push('NFCI firm'); }
   }
 
+  // Growth: yield curve butterfly (2×5Y − 2Y − 10Y)
+  // Negative belly = safe-haven demand crushing 5Y = risk-off / stress signal.
+  // Positive belly = normal liquidity, no flight-to-safety distortion.
+  if (butterfly != null) {
+    if      (butterfly < -0.30) { growthScore -= 2; growthFactors.push(`Butterfly ${butterfly.toFixed(2)}% inv.`); }
+    else if (butterfly < -0.10) { growthScore -= 1; growthFactors.push(`Butterfly ${butterfly.toFixed(2)}%`); }
+    else if (butterfly >  0.10) { growthScore += 1; growthFactors.push(`Butterfly ${butterfly.toFixed(2)}% pos.`); }
+  }
+
+  // Growth: front slope (5Y − 2Y)
+  // Inverted front = market pricing imminent cuts = policy restrictive now; easing signals ahead.
+  // Steep front = policy has room or pivot expected = modest growth positive.
+  if (frontSlope != null) {
+    if      (frontSlope < -0.30) { growthScore -= 1; growthFactors.push(`Front ${frontSlope.toFixed(2)}% inv.`); }
+    else if (frontSlope >  0.50) { growthScore += 1; growthFactors.push(`Front ${frontSlope.toFixed(2)}% steep`); }
+  }
+
   // Inflation: BEI (10Y breakeven inflation expectations)
   if (bei != null) {
     if      (bei > 3.0) { inflationScore += 3; inflationFactors.push(`BEI ${bei.toFixed(2)}% high`); }
@@ -676,11 +699,19 @@ export function computeMacroRegime() {
     }
   }
 
-  // Inflation: TIPS real yield (negative real yield = inflation not yet beaten)
+  // Inflation: 10Y TIPS real yield
   if (tips != null) {
-    if      (tips < 0.0) { inflationScore += 2; inflationFactors.push(`TIPS ${tips.toFixed(2)}% neg.`); }
-    else if (tips < 0.5) { inflationScore += 1; inflationFactors.push(`TIPS ${tips.toFixed(2)}% low`); }
-    else if (tips > 2.0) { inflationScore -= 1; inflationFactors.push(`TIPS ${tips.toFixed(2)}% high`); }
+    if      (tips < 0.0) { inflationScore += 2; inflationFactors.push(`10Y TIPS ${tips.toFixed(2)}% neg.`); }
+    else if (tips < 0.5) { inflationScore += 1; inflationFactors.push(`10Y TIPS ${tips.toFixed(2)}% low`); }
+    else if (tips > 2.0) { inflationScore -= 1; inflationFactors.push(`10Y TIPS ${tips.toFixed(2)}% rest.`); }
+  }
+
+  // Inflation: 5Y TIPS real yield — more reactive to near-term inflation expectations than 10Y.
+  // Equity multiples price against 5Y real rates; negative = financial conditions still easy.
+  if (tips5 != null) {
+    if      (tips5 < 0.0) { inflationScore += 2; inflationFactors.push(`5Y TIPS ${tips5.toFixed(2)}% neg.`); }
+    else if (tips5 < 1.0) { inflationScore += 1; inflationFactors.push(`5Y TIPS ${tips5.toFixed(2)}% low`); }
+    else if (tips5 > 2.5) { inflationScore -= 1; inflationFactors.push(`5Y TIPS ${tips5.toFixed(2)}% rest.`); }
   }
 
   // Inflation: 2Y yield level (encodes how much Fed has tightened for inflation)
@@ -721,5 +752,6 @@ export function computeMacroRegime() {
     growthScore, inflationScore,
     growthFactors, inflationFactors,
     strategyType, strategyDetail, confidence,
+    butterfly, frontSlope, us5y, tips5,
   };
 }

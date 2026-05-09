@@ -165,6 +165,23 @@ export function compassCompute(sym, hist, cfg) {
   const momentum2y  = computeMomentum(spread2yFilled, 5);
   const momentumDxy = computeMomentum(spreadDxyFilled, 5);
 
+  // Snapshot each raw yield series (last 2 values) for the Yield Pulse card.
+  const rawYields = {};
+  const snapYield = (key, arr) => {
+    if (!arr?.length) return;
+    rawYields[key] = {
+      latest: arr[arr.length - 1].value,
+      prev:   arr.length > 1 ? arr[arr.length - 2].value : null,
+      date:   arr[arr.length - 1].date,
+    };
+  };
+  snapYield('us10y', us10y);
+  snapYield('us2y',  us2y);
+  if (cfg.long  && cfg.long  !== 'us10y') snapYield(cfg.long,  fgnL);
+  if (cfg.short)                           snapYield(cfg.short, fgnS);
+  if (cfg.crossBase)                       snapYield(cfg.crossBase,      baseL);
+  if (cfg.crossBaseShort)                  snapYield(cfg.crossBaseShort, baseS);
+
   return {
     ts: Date.now(),
     sym,
@@ -178,6 +195,7 @@ export function compassCompute(sym, hist, cfg) {
     momentum10y,
     momentum2y,
     momentumDxy,
+    rawYields,
   };
 }
 
@@ -566,6 +584,105 @@ export function renderCompassCard(data, quote) {
   `;
 }
 
+// ── Yield Pulse ──────────────────────────────────────────────────────────────
+
+// Which two yield legs to display per pair, and which direction spread widening favours.
+// fxSign: +1 = legA-legB spread widening is bullish for pair, -1 = bearish.
+const YIELD_DISPLAY = {
+  'EUR/USD':    { legA: 'us10y', legB: 'de10y', aLbl: 'US 10Y', bLbl: 'DE 10Y', fxSign: -1 },
+  'GBP/USD':    { legA: 'gb10y', legB: 'us10y', aLbl: 'GB 10Y', bLbl: 'US 10Y', fxSign: +1 },
+  'USD/JPY':    { legA: 'us10y', legB: 'jp10y', aLbl: 'US 10Y', bLbl: 'JP 10Y', fxSign: +1 },
+  'AUD/USD':    { legA: 'au10y', legB: 'us10y', aLbl: 'AU 10Y', bLbl: 'US 10Y', fxSign: +1 },
+  'USD/CAD':    { legA: 'us10y', legB: 'ca10y', aLbl: 'US 10Y', bLbl: 'CA 10Y', fxSign: +1 },
+  'USD/CHF':    { legA: 'us10y', legB: 'ch10y', aLbl: 'US 10Y', bLbl: 'CH 10Y', fxSign: +1 },
+  'EUR/GBP':    { legA: 'gb10y', legB: 'de10y', aLbl: 'GB 10Y', bLbl: 'DE 10Y', fxSign: -1 },
+  'GBP/JPY':    { legA: 'gb10y', legB: 'jp10y', aLbl: 'GB 10Y', bLbl: 'JP 10Y', fxSign: +1 },
+  'XAU/USD':    { legA: 'us10y', legB: 'us2y',  aLbl: 'US 10Y', bLbl: 'US 2Y',  fxSign: -1 },
+  'NAS100_USD': { legA: 'us10y', legB: 'us2y',  aLbl: 'US 10Y', bLbl: 'US 2Y',  fxSign: -1 },
+};
+
+export function renderYieldPulse(sym) {
+  const el = document.getElementById('yieldPulseCard');
+  if (!el) return;
+
+  const cfg = YIELD_DISPLAY[sym];
+  if (!cfg) { el.innerHTML = ''; return; }
+
+  const raw = S.compassData[sym]?.rawYields;
+
+  // For the equity branch rawYields is absent — fall back to S.fredData scalars
+  const getYield = (key) => {
+    if (raw?.[key]) return raw[key];
+    const fd = S.fredData?.[key];
+    if (fd?.value != null) return { latest: fd.value, prev: fd.prev ?? null, date: null };
+    return null;
+  };
+
+  const legA = getYield(cfg.legA);
+  const legB = getYield(cfg.legB);
+  if (!legA || !legB) { el.innerHTML = ''; return; }
+
+  const aVal = legA.latest;
+  const bVal = legB.latest;
+  const spread    = aVal - bVal;
+  const aChg      = legA.prev != null ? (aVal - legA.prev) * 100 : null;
+  const bChg      = legB.prev != null ? (bVal - legB.prev) * 100 : null;
+  const spreadChg = (aChg != null && bChg != null) ? aChg - bChg : null;
+
+  // Positive spreadChg bullish when fxSign > 0, bearish when fxSign < 0
+  const spreadBull = spreadChg != null ? (cfg.fxSign > 0 ? spreadChg > 0 : spreadChg < 0) : null;
+
+  const fmtBps = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1) + ' bps';
+  const fmtPct = v => v == null ? '—' : v.toFixed(2) + '%';
+  const bpsColor = (v, positiveIsGood) => {
+    if (v == null) return 'var(--text3)';
+    return (v > 0) === positiveIsGood ? 'var(--green)' : 'var(--red)';
+  };
+
+  const spreadColor = spreadBull == null ? 'var(--text3)' : spreadBull ? 'var(--green)' : 'var(--red)';
+  const spreadIcon  = spreadBull == null ? '▸' : spreadBull ? '▲' : '▼';
+  const baseCcy     = sym.split('/')[0];
+  const interpText  = spreadBull == null
+    ? 'Spread direction unclear — insufficient history'
+    : spreadBull
+    ? `Spread shifting in favour of ${baseCcy} — yield tailwind`
+    : `Spread shifting against ${baseCcy} — yield headwind`;
+
+  const dateNote = legA.date ? `FRED · last obs ${legA.date}` : 'FRED data';
+
+  el.innerHTML = `
+    <div style="padding:12px 14px 10px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)">📈 Yield Pulse</span>
+        <span style="font-size:9px;padding:1px 7px;border-radius:8px;background:var(--s2);color:var(--text3);border:1px solid var(--border)">${sym}</span>
+        <span style="font-size:9px;color:var(--text3);margin-left:auto">Daily obs · not real-time</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+        <div style="background:var(--s2);border-radius:7px;padding:8px 10px;border:1px solid var(--border)">
+          <div style="font-size:8.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">${cfg.aLbl}</div>
+          <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text)">${fmtPct(aVal)}</div>
+          <div style="font-size:10px;font-weight:600;color:${bpsColor(aChg, cfg.fxSign > 0)}">${fmtBps(aChg)}</div>
+        </div>
+        <div style="background:var(--s2);border-radius:7px;padding:8px 10px;border:1px solid var(--border)">
+          <div style="font-size:8.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">${cfg.bLbl}</div>
+          <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text)">${fmtPct(bVal)}</div>
+          <div style="font-size:10px;font-weight:600;color:${bpsColor(bChg, cfg.fxSign < 0)}">${fmtBps(bChg)}</div>
+        </div>
+        <div style="background:var(--s2);border-radius:7px;padding:8px 10px;border:1px solid var(--border);${spreadBull != null ? 'border-color:' + spreadColor : ''}">
+          <div style="font-size:8.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Spread</div>
+          <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:${spreadColor}">${spreadIcon} ${Math.abs(spread).toFixed(2)}%</div>
+          <div style="font-size:10px;font-weight:600;color:${spreadColor}">${fmtBps(spreadChg)}</div>
+        </div>
+      </div>
+
+      <div style="font-size:10.5px;color:${spreadColor};line-height:1.4;padding:6px 8px;background:var(--s2);border-radius:6px;border-left:3px solid ${spreadColor}">
+        ${interpText}
+      </div>
+      <div style="font-size:8.5px;color:var(--text3);margin-top:5px;text-align:right">${dateNote}</div>
+    </div>`;
+}
+
 // ── Mode toggle ──────────────────────────────────────────────────────────────
 // Breaks circular dep: calls window.renderSignalAndEntries / window.renderARMAAndTransition
 // which are assigned in main.js after all modules load.
@@ -768,6 +885,7 @@ export async function loadAndRenderCompass() {
     }
 
     el.innerHTML = renderEquityRiskGauge();
+    renderYieldPulse('NAS100_USD');
     if (window.renderARMAAndTransition) window.renderARMAAndTransition(S.compassData['NAS100_USD'] || null);
 
     const q   = window._latestQuote;
@@ -794,6 +912,7 @@ export async function loadAndRenderCompass() {
 
   const data = await loadCompassData(S.currentPair.symbol);
   renderCompassCard(data, window._latestQuote);
+  renderYieldPulse(S.currentPair.symbol);
   if (window.renderARMAAndTransition) window.renderARMAAndTransition(data);
 
   const q   = window._latestQuote;

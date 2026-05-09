@@ -426,11 +426,13 @@ export default {
         const SERIES = {
           vix:      'VIXCLS',
           us2y:     'GS2',
+          us5y:     'GS5',
           us10y:    'GS10',
           dxy:      'DTWEXBGS',
           hy:       'BAMLH0A0HYM2',
           nfci:     'NFCI',
           tips:     'DFII10',
+          tips5:    'DFII5',
           bei:      'T10YIE',
           aud_usd:  'DEXUSAL',
           usd_jpy:  'DEXJPUS',
