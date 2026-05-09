@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { getPipSize, calcRSI, ema } from './utils.js';
+import { getPipSize, calcRSI, ema, sma } from './utils.js';
 import { getCOTForPair } from './cot.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -26,8 +26,8 @@ const FEATURE_DEFS = {
     weight: 1,
   },
   rsiDivergence: {
-    label: 'RSI Divergence',
-    desc:  'Price/RSI divergence at range high or low (bullish at support, bearish at resistance)',
+    label: 'Wave Trend + MF Divergence',
+    desc:  'VuManChu Cipher B: WTO + Money Flow + RSI-14 at range extreme — signal when 2/3 agree',
     weight: 1,
   },
   orderBlock: {
@@ -205,16 +205,92 @@ function featureWickRejection(symbol, price, asia, monday, atr) {
   return { signal, wickCount, val: `${wickCount} wick${wickCount !== 1 ? 's' : ''} at ${src} — ${strength}` };
 }
 
-// ── Feature 5: RSI Divergence ─────────────────────────────────────────────────
-// Bearish divergence (price HH, RSI LH) at resistance → short.
-// Bullish divergence (price LL, RSI HL) at support → long.
-// Splits last 40 closed bars into two halves and compares extremes.
+// ── VuManChu helpers ──────────────────────────────────────────────────────────
+
+// Wave Trend Oscillator — standard Cipher B params (n1=10, n2=21).
+// Returns { wt1, wt2 } as oldest-first arrays aligned to input bars.
+function computeWaveTrend(bars, n1 = 10, n2 = 21) {
+  const hlc3 = bars.map(b => (bH(b) + bL(b) + bC(b)) / 3);
+  const esa   = ema(hlc3, n1);
+  const d     = ema(hlc3.map((v, i) => Math.abs(v - esa[i])), n1);
+  const ci    = hlc3.map((v, i) => d[i] > 0 ? (v - esa[i]) / (0.015 * d[i]) : 0);
+  const wt1   = ema(ci, n2);
+  const wt2   = sma(wt1, 4);
+  return { wt1, wt2 };
+}
+
+// Money Flow — volume-approximated using direction × (high−low) as tick-volume proxy.
+// Returns values centred at 0 (range ≈ −1 to +1).
+function computeMoneyFlow(bars, period = 14) {
+  const mfRaw = bars.map(b => {
+    const dir   = bC(b) >= bO(b) ? 1 : -1;
+    const range = Math.max(0, bH(b) - bL(b));
+    return dir * range;
+  });
+  const mfRsi = calcRSI(mfRaw, period);
+  return mfRsi.map(v => (v - 50) / 50);
+}
+
+// N-bar swing pivot detection on an arbitrary values array (oldest-first).
+// Returns { highs, lows } each as [{ val, i }, ...] sorted by index.
+function findSwingPivots(values, N = 5) {
+  const highs = [], lows = [];
+  for (let i = N; i < values.length - N; i++) {
+    let isH = true, isL = true;
+    for (let j = i - N; j <= i + N; j++) {
+      if (j === i) continue;
+      if (values[j] >= values[i]) isH = false;
+      if (values[j] <= values[i]) isL = false;
+    }
+    if (isH) highs.push({ val: values[i], i });
+    if (isL) lows.push({ val: values[i], i });
+  }
+  return { highs, lows };
+}
+
+// Find the pivot in `pivots` whose index is nearest to `targetIdx`, within `maxDist`.
+function nearestPivot(pivots, targetIdx, maxDist) {
+  let best = null, bestDist = Infinity;
+  for (const p of pivots) {
+    const dist = Math.abs(p.i - targetIdx);
+    if (dist <= maxDist && dist < bestDist) { bestDist = dist; best = p; }
+  }
+  return best;
+}
+
+// Divergence check for one oscillator against price.
+// side: 'high' → look for bearish div (price HH, osc LH) → 'short'
+//       'low'  → look for bullish div (price LL, osc HL) → 'long'
+function oscDivergence(closes, oscValues, side, N = 5) {
+  const pricePivots = findSwingPivots(closes, N);
+  const oscPivots   = findSwingPivots(oscValues, N);
+  const maxDist     = N * 3;
+
+  if (side === 'high') {
+    const pH = pricePivots.highs.slice(-2);
+    if (pH.length < 2 || pH[1].val <= pH[0].val) return null; // no price HH
+    const oh1 = nearestPivot(oscPivots.highs, pH[0].i, maxDist);
+    const oh2 = nearestPivot(oscPivots.highs, pH[1].i, maxDist);
+    if (oh1 && oh2 && oh2.val < oh1.val) return 'short'; // osc LH = bearish div
+  } else {
+    const pL = pricePivots.lows.slice(-2);
+    if (pL.length < 2 || pL[1].val >= pL[0].val) return null; // no price LL
+    const ol1 = nearestPivot(oscPivots.lows, pL[0].i, maxDist);
+    const ol2 = nearestPivot(oscPivots.lows, pL[1].i, maxDist);
+    if (ol1 && ol2 && ol2.val > ol1.val) return 'long'; // osc HL = bullish div
+  }
+  return null;
+}
+
+// ── Feature 5: VuManChu Cipher B Divergence ───────────────────────────────────
+// Runs Wave Trend (WTO), Money Flow (MF), and RSI-14 divergence checks.
+// Signals when 2 of 3 oscillators agree on the same divergence direction.
 
 function featureRsiDivergence(symbol, price, asia, monday, atr) {
   const bars = S.ohlc5m?.[symbol]?.values;
-  if (!bars || bars.length < 50) return { signal: null, val: 'Need 50+ 5m bars' };
+  if (!bars || bars.length < 60) return { signal: null, val: 'Need 60+ 5m bars' };
 
-  // Determine side
+  // Determine which range boundary price is near
   let side = null;
   for (const s of [
     { lvl: asia?.today?.high,     side: 'high' },
@@ -226,30 +302,42 @@ function featureRsiDivergence(symbol, price, asia, monday, atr) {
   }
   if (!side) return { signal: null, val: 'Not near range extreme' };
 
-  const closed = toOldestFirst(bars.slice(1, 70));
-  const closes = closed.map(b => bC(b)).filter(v => !isNaN(v));
-  if (closes.length < 30) return { signal: null, val: 'Insufficient closes' };
+  // Use last 100 closed bars oldest-first for warm-up stability
+  const closed = toOldestFirst(bars.slice(1, 101));
+  if (closed.length < 50) return { signal: null, val: 'Insufficient bars' };
 
-  const rsi  = calcRSI(closes, 14);
-  const half = Math.floor(closes.length / 2);
-  const p1c  = closes.slice(0, half), p2c = closes.slice(half);
-  const p1r  = rsi.slice(0, half),    p2r = rsi.slice(half);
+  const closes = closed.map(b => bC(b));
 
-  if (side === 'high') {
-    const maxPriceIdx1 = p1c.indexOf(Math.max(...p1c));
-    const maxPriceIdx2 = p2c.indexOf(Math.max(...p2c));
-    const priceHH = p2c[maxPriceIdx2] > p1c[maxPriceIdx1];
-    const rsiLH   = p2r[maxPriceIdx2] < p1r[maxPriceIdx1];
-    if (priceHH && rsiLH) return { signal: 'short', val: 'Bearish RSI div — price HH, RSI LH at resistance' };
-    return { signal: null, val: 'No bearish RSI divergence' };
-  } else {
-    const minPriceIdx1 = p1c.indexOf(Math.min(...p1c));
-    const minPriceIdx2 = p2c.indexOf(Math.min(...p2c));
-    const priceLL = p2c[minPriceIdx2] < p1c[minPriceIdx1];
-    const rsiHL   = p2r[minPriceIdx2] > p1r[minPriceIdx1];
-    if (priceLL && rsiHL) return { signal: 'long', val: 'Bullish RSI div — price LL, RSI HL at support' };
-    return { signal: null, val: 'No bullish RSI divergence' };
+  // Compute all three oscillators
+  const { wt1 }  = computeWaveTrend(closed);
+  const mf       = computeMoneyFlow(closed);
+  const rsi      = calcRSI(closes, 14).map(v => (v - 50) / 50); // centre at 0
+
+  // Check divergence on each oscillator independently
+  const wt1Sig = oscDivergence(closes, wt1, side);
+  const mfSig  = oscDivergence(closes, mf,  side);
+  const rsiSig = oscDivergence(closes, rsi, side);
+
+  const components = [
+    wt1Sig && { name: 'WTO', sig: wt1Sig },
+    mfSig  && { name: 'MF',  sig: mfSig  },
+    rsiSig && { name: 'RSI', sig: rsiSig },
+  ].filter(Boolean);
+
+  const longVotes  = components.filter(c => c.sig === 'long').length;
+  const shortVotes = components.filter(c => c.sig === 'short').length;
+
+  if (longVotes >= 2) {
+    const names = components.filter(c => c.sig === 'long').map(c => c.name).join(' + ');
+    return { signal: 'long',  val: `Bullish div 2/3: ${names} at support` };
   }
+  if (shortVotes >= 2) {
+    const names = components.filter(c => c.sig === 'short').map(c => c.name).join(' + ');
+    return { signal: 'short', val: `Bearish div 2/3: ${names} at resistance` };
+  }
+
+  const fired = components.map(c => `${c.name}(${c.sig ?? '—'})`).join(' ');
+  return { signal: null, val: fired ? `1/3 only — ${fired}` : 'No divergence' };
 }
 
 // ── Feature 6: Order Block ────────────────────────────────────────────────────
