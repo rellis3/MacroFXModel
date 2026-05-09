@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { getPipSize, calcRSI, ema, sma } from './utils.js';
+import { getPipSize, getDigits, calcRSI, ema, sma, barLondonHour } from './utils.js';
 import { getCOTForPair } from './cot.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -38,6 +38,11 @@ const FEATURE_DEFS = {
   htfEma: {
     label: 'H1 EMA Alignment',
     desc:  'Price above/below H1 EMA21 & EMA50 confirms or conflicts with entry direction',
+    weight: 1,
+  },
+  vwapSlope: {
+    label: 'Session TWAP Slope',
+    desc:  'Price vs session TWAP (anchored London 08:00) — declining TWAP at resistance or rising at support confirms the fade',
     weight: 1,
   },
 };
@@ -423,6 +428,79 @@ function featureHtfEma(symbol) {
   return { signal, val: `H1 EMA21 ${abv21 ? 'above' : 'below'}${e50str}`, ema21: e21, ema50: e50 };
 }
 
+// ── Feature 8: Session TWAP Slope ─────────────────────────────────────────────
+// Anchored TWAP: cumulative average of HLC3 from London 08:00 each session.
+// Uses all available 5m bars as a rolling 50-bar fallback before 08:00.
+// Signal: price above TWAP + slope declining → short; price below + slope rising → long.
+
+function featureVwapSlope(symbol, entryDir, price) {
+  const bars = S.ohlc5m?.[symbol]?.values;
+  if (!bars || bars.length < 12) return { signal: null, val: 'Need 12+ 5m bars' };
+
+  const sorted = toOldestFirst(bars.slice(1)); // skip forming bar, oldest-first
+
+  // Find today's date from the newest closed bar
+  const newestDt = bars[1]?.datetime ?? '';
+  const todayDate = newestDt.slice(0, 10); // "YYYY-MM-DD"
+
+  // Session bars: London 08:00 onward, today only
+  const sessionBars = sorted.filter(b => {
+    const dt = b.datetime ?? '';
+    return dt.slice(0, 10) === todayDate && barLondonHour(b) >= 8;
+  });
+
+  // Fallback: if fewer than 12 session bars (pre-London or early session), use
+  // the most recent 50 bars as a rolling TWAP
+  const barsForTwap = sessionBars.length >= 12 ? sessionBars : sorted.slice(-50);
+  if (barsForTwap.length < 6) return { signal: null, val: 'Insufficient session data' };
+
+  const warmingUp = sessionBars.length < 12;
+
+  // Compute cumulative TWAP (running average of HLC3)
+  const twap = [];
+  let cumSum = 0;
+  for (let i = 0; i < barsForTwap.length; i++) {
+    const b = barsForTwap[i];
+    const hlc3 = (bH(b) + bL(b) + bC(b)) / 3;
+    cumSum += hlc3;
+    twap.push(cumSum / (i + 1));
+  }
+
+  const currentTwap = twap[twap.length - 1];
+
+  // Slope: change in TWAP over last 8 bars (40 minutes), scaled to pips
+  const slopeWindow = Math.min(8, twap.length - 1);
+  const slope = slopeWindow > 0
+    ? (twap[twap.length - 1] - twap[twap.length - 1 - slopeWindow])
+    : 0;
+
+  const pip     = getPipSize(symbol);
+  const digits  = getDigits(symbol);
+  const above   = price > currentTwap;
+  const slopePips = (slope / pip).toFixed(1);
+  const slopeDir  = slope > 0 ? `rising ${slopePips > 0 ? '+' : ''}${slopePips}p` : `declining ${slopePips}p`;
+  const twapStr   = currentTwap.toFixed(digits);
+  const posStr    = above ? 'above' : 'below';
+
+  let signal = null, strength = null;
+
+  if (entryDir === 'short') {
+    if (above && slope < 0) { signal = 'short'; strength = 'strong'; }
+    else if (above)          { signal = 'short'; strength = 'mild'; }
+    else                     { signal = 'long'; } // price below TWAP conflicts with short
+  } else {
+    if (!above && slope > 0) { signal = 'long'; strength = 'strong'; }
+    else if (!above)          { signal = 'long'; strength = 'mild'; }
+    else                      { signal = 'short'; } // price above TWAP conflicts with long
+  }
+
+  const strengthStr = strength === 'strong' ? ' ✓ strong' : strength === 'mild' ? ' · mild' : ' · conflicts';
+  const warmStr     = warmingUp ? ' (rolling)' : '';
+  const val = `TWAP ${twapStr}${warmStr} ${slopeDir} · price ${posStr}${strengthStr}`;
+
+  return { signal, strength, slope, twap: currentTwap, val };
+}
+
 // ── Main computation ──────────────────────────────────────────────────────────
 
 export function computeRangeBias(symbol, entryDir, price, asia, monday, volRegime) {
@@ -437,6 +515,7 @@ export function computeRangeBias(symbol, entryDir, price, asia, monday, volRegim
     { key: 'rsiDivergence', fn: () => featureRsiDivergence(symbol, price, asia, monday, atr) },
     { key: 'orderBlock',    fn: () => featureOrderBlock(symbol, price, asia, monday, atr) },
     { key: 'htfEma',        fn: () => featureHtfEma(symbol) },
+    { key: 'vwapSlope',    fn: () => featureVwapSlope(symbol, entryDir, price) },
   ];
 
   let confirmCount = 0, conflictCount = 0, neutralCount = 0;
