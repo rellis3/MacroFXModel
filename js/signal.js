@@ -613,7 +613,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
     }
 
     // Fix 3: EMA21 alignment on 5m bars
-    const _bars5m  = S.ohlc5m?.[sym] || null;
+    const _bars5m  = S.ohlc5m?.[sym]?.values || null;
     const _emaRes  = get5mEMAAlignment(_bars5m, c.direction);
     let emaAligned = null, emaValue = null;
     if (_emaRes) {
@@ -636,7 +636,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
     // Fix 20: Regime shock risk tag
     let regimeShockRisk = null;
     try {
-      const _trs = (S.ohlc5m?.[sym] || []).map(b => {
+      const _trs = (S.ohlc5m?.[sym]?.values || []).map(b => {
         const h = b.high ?? b.mid?.h ?? b.h ?? 0;
         const l = b.low  ?? b.mid?.l ?? b.l ?? 0;
         return h - l;
