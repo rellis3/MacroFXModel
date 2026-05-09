@@ -3,7 +3,7 @@ import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTrading
 import { calculateTierScores, computeDollarRegime, computeMacroRegime } from './macro.js';
 import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
 import { computeRegimeTransition, renderARMAAndTransition } from './arma.js';
-import { filterConfluences, enhanceConfluences } from './confluences.js';
+import { filterConfluences, enhanceConfluences, detectCrossSessionClusters } from './confluences.js';
 import { renderOISidebar } from './oi.js';
 import { loadAndRenderCompass } from './compass.js';
 import { renderSignalAndEntries } from './signal.js';
@@ -173,10 +173,10 @@ function renderAllInner() {
   const _eventMult    = S.eventRisk?.sizeMult ?? 1.0;
   const positionSize  = Math.max(10, Math.round(_rawSize * _sessionConf * _eventMult));
 
-  const allConfluences = [
-    ...(asia.confluences || []).map(c => ({...c, source: 'asia'})),
-    ...(monday.confluences || []).map(c => ({...c, source: 'monday'}))
-  ];
+  const _asiaConfs   = (asia.confluences   || []).map(c => ({...c, source: 'asia'}));
+  const _mondayConfs = (monday.confluences || []).map(c => ({...c, source: 'monday'}));
+  detectCrossSessionClusters(_asiaConfs, _mondayConfs, S.currentPair.symbol);
+  const allConfluences = [..._asiaConfs, ..._mondayConfs];
   const filtered = filterConfluences(allConfluences);
   const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, tierData.totalScore);
   enhanced.sort((a, b) => {

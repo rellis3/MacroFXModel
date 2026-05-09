@@ -7,6 +7,25 @@ import { oiLoadStore } from './oi.js';
 
 const _DFIB_STRENGTH = { gold: 3, silver: 2, bronze: 1 };
 
+// Cross-session cluster detection — marks Asia and Monday confluences that land
+// within the confluence threshold of each other. Run on the raw arrays before merge.
+export function detectCrossSessionClusters(asiaConfs, mondayConfs, symbol) {
+  const pipSize   = getPipSize(symbol);
+  const threshold = getConfluenceThreshold(symbol) * pipSize;
+
+  asiaConfs.forEach(ac => {
+    mondayConfs.forEach(mc => {
+      const diff = Math.abs(ac.price - mc.price);
+      if (diff <= threshold) {
+        ac.crossSessionMatch = true;
+        mc.crossSessionMatch = true;
+        ac.crossSessionGap   = diff / pipSize;
+        mc.crossSessionGap   = diff / pipSize;
+      }
+    });
+  });
+}
+
 export function filterConfluences(confluences) {
   if (S.currentMode === 'strongest') return confluences.filter(c => c.isTight);
   return confluences;
@@ -128,6 +147,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     if (dailyFib)                  structuralStars++;
     if (structuralFib)             structuralStars++;
     if ((structuralFib?.count ?? 0) >= 3) structuralStars++;
+    if (c.crossSessionMatch)       structuralStars++; // Asia + Monday fibs agree on this price
 
     let confirmationStars = 0;
     if (aligned) confirmationStars++;

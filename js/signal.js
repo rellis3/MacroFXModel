@@ -540,6 +540,14 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       }
     }
 
+    // Cross-session cluster: Asia and Monday fibs agree on this price
+    if (c.crossSessionMatch) {
+      layerScore += 1;
+      const gapStr = c.crossSessionGap != null ? ` ${c.crossSessionGap.toFixed(1)}${unit} apart` : '';
+      tags.push({ cls: 'pivot', label: `📐 Asia × Mon${gapStr}`, key: 'xsession' });
+      layers.push('Cross-session cluster');
+    }
+
     for (const dop of (S.sessionData?.dailyOpens || [])) {
       const _doDist = Math.abs(c.price - dop.price);
       if (_doDist <= rangeProx) {
