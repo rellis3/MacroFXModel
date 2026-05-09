@@ -317,6 +317,17 @@ async function loadAll() {
     window._latestQuote = quote;
     updateHeaderPrice(quote);
 
+    // Oanda position book for retail sentiment range-bias feature (non-blocking, ~20min data)
+    fetch(`/api/oanda_book?symbol=${encodeURIComponent(S.currentPair.symbol)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data && !data.miss) {
+          S.oandaBook[S.currentPair.symbol] = data;
+          renderAllDebounced();
+        }
+      })
+      .catch(() => {});
+
     // Background-load daily OHLC for the 4 USD-index pairs (cached 23h — no extra API cost
     // after first load). Each arrival updates S.usdStrength so the composite improves live.
     const USD_INDEX_PAIRS = ['EUR/USD', 'GBP/USD', 'AUD/USD', 'USD/JPY'];

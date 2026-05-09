@@ -45,6 +45,36 @@ const FEATURE_DEFS = {
     desc:  'Price vs session TWAP (anchored London 08:00) — declining TWAP at resistance or rising at support confirms the fade',
     weight: 1,
   },
+  retailSentiment: {
+    label: 'Retail Sentiment (Oanda)',
+    desc:  'Contrarian signal: >60% retail long at resistance → fade, >60% retail short at support → fade',
+    weight: 1,
+  },
+  weeklyPivot: {
+    label: 'Weekly Pivot Levels',
+    desc:  'Prior week PP/R1/R2/S1/S2 — price near R-levels confirms short, near S-levels confirms long',
+    weight: 1,
+  },
+  adxFilter: {
+    label: 'ADX Regime Filter',
+    desc:  'ADX<20 = range-bound (confirms fade), ADX>28 = trending (range likely to break)',
+    weight: 1,
+  },
+  hurstRegime: {
+    label: 'Hurst Exponent',
+    desc:  'R/S analysis of daily closes: H<0.45 = mean-reverting (fade favoured), H>0.55 = trending (fade at risk)',
+    weight: 1,
+  },
+  fvgBias: {
+    label: 'Fair Value Gap',
+    desc:  '3-bar imbalance gap on 5m bars — price inside/near an unfilled FVG confirms the directional bias',
+    weight: 1,
+  },
+  wtiCorrelation: {
+    label: 'WTI Crude Correlation',
+    desc:  'Commodity-FX: falling WTI = USD/CAD bullish, AUD/USD bearish; rising = reverse (USD/CAD, AUD/USD, NZD/USD only)',
+    weight: 1,
+  },
 };
 
 export function loadRangeBiasCfg() {
@@ -501,6 +531,292 @@ function featureVwapSlope(symbol, entryDir, price) {
   return { signal, strength, slope, twap: currentTwap, val };
 }
 
+// ── Feature 9: Retail Sentiment (Oanda position book) ────────────────────────
+// Contrarian: >60% retail longs at resistance → fade short; >60% shorts at support → fade long.
+
+function featureRetailSentiment(symbol, entryDir) {
+  const book = S.oandaBook?.[symbol];
+  if (!book) return { signal: null, val: 'Book loading…' };
+  const { longPct, shortPct } = book;
+  const retailLong = longPct > 60, retailShort = shortPct > 60;
+  if (entryDir === 'short') {
+    if (retailLong)  return { signal: 'short', val: `${longPct}% retail long → crowded, contrarian short` };
+    if (retailShort) return { signal: 'long',  val: `${shortPct}% retail short → potential squeeze, conflicts` };
+    return { signal: null, val: `Retail ${longPct}% long / ${shortPct}% short — neutral` };
+  } else {
+    if (retailShort) return { signal: 'long',  val: `${shortPct}% retail short → crowded, contrarian long` };
+    if (retailLong)  return { signal: 'short', val: `${longPct}% retail long → potential squeeze, conflicts` };
+    return { signal: null, val: `Retail ${longPct}% long / ${shortPct}% short — neutral` };
+  }
+}
+
+// ── Feature 10: Weekly Pivot Levels ──────────────────────────────────────────
+// Computes PP/R1/R2/S1/S2 from the prior complete week's OHLC.
+// Price near R-levels → short signal; near S-levels → long signal.
+
+function featureWeeklyPivot(symbol, price, atr) {
+  const bars = S.ohlcData?.[symbol]?.values;
+  if (!bars || bars.length < 8) return { signal: null, val: 'Need 8+ daily bars' };
+
+  // Group daily bars (newest-first) by ISO week (Mon start)
+  const weekOf = dt => {
+    const d = new Date(dt.slice(0, 10) + 'T12:00:00Z');
+    const day = d.getUTCDay();
+    d.setUTCDate(d.getUTCDate() + (day === 0 ? -6 : 1 - day));
+    return d.toISOString().slice(0, 10);
+  };
+  const weekMap = new Map();
+  for (const b of [...bars].reverse()) {
+    const wk = weekOf(b.datetime);
+    if (!weekMap.has(wk)) weekMap.set(wk, []);
+    weekMap.get(wk).push(b);
+  }
+  const weeks = [...weekMap.keys()].sort();
+  if (weeks.length < 2) return { signal: null, val: 'Not enough weekly bars' };
+
+  const wb = weekMap.get(weeks[weeks.length - 2]);
+  const H  = Math.max(...wb.map(b => parseFloat(b.high)));
+  const L  = Math.min(...wb.map(b => parseFloat(b.low)));
+  const C  = parseFloat(wb[wb.length - 1].close);
+  const PP = (H + L + C) / 3;
+  const R1 = 2 * PP - L, R2 = PP + (H - L);
+  const S1 = 2 * PP - H, S2 = PP - (H - L);
+
+  const digits = getDigits(symbol);
+  const pip    = getPipSize(symbol);
+  const prox   = atr * 0.22;
+  const levels = [
+    { name: 'WR2', lvl: R2, sig: 'short' },
+    { name: 'WR1', lvl: R1, sig: 'short' },
+    { name: 'WPP', lvl: PP, sig: null   },
+    { name: 'WS1', lvl: S1, sig: 'long' },
+    { name: 'WS2', lvl: S2, sig: 'long' },
+  ];
+
+  let best = null, bestDist = Infinity;
+  for (const lvl of levels) {
+    const d = Math.abs(price - lvl.lvl);
+    if (d < bestDist) { bestDist = d; best = lvl; }
+  }
+  if (bestDist > prox) {
+    return { signal: null, val: `Nearest ${best?.name} ${(bestDist / pip).toFixed(0)}p away` };
+  }
+  const distPips = Math.round(bestDist / pip);
+  return {
+    signal: best.sig,
+    val: `Near ${best.name} ${best.lvl.toFixed(digits)} (${distPips}p)${best.sig ? ' — ' + best.sig + ' zone' : ' — neutral'}`,
+  };
+}
+
+// ── ADX helper ────────────────────────────────────────────────────────────────
+
+function computeADX(sortedBars, period = 14) {
+  if (sortedBars.length < period + 2) return null;
+  const tr = [], pDM = [], mDM = [];
+  for (let i = 1; i < sortedBars.length; i++) {
+    const h = bH(sortedBars[i]), l = bL(sortedBars[i]), pc = bC(sortedBars[i - 1]);
+    const ph = bH(sortedBars[i - 1]), pl = bL(sortedBars[i - 1]);
+    tr.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)));
+    const up = h - ph, dn = pl - l;
+    pDM.push(up > dn && up > 0 ? up : 0);
+    mDM.push(dn > up && dn > 0 ? dn : 0);
+  }
+  // Wilder smoothing
+  const wilder = (arr, p) => {
+    let s = arr.slice(0, p).reduce((a, b) => a + b, 0);
+    const r = [s];
+    for (let i = p; i < arr.length; i++) { s = s - s / p + arr[i]; r.push(s); }
+    return r;
+  };
+  const aTR  = wilder(tr, period);
+  const sPDM = wilder(pDM, period);
+  const sMDM = wilder(mDM, period);
+  const plusDI  = sPDM.map((v, i) => aTR[i] > 0 ? 100 * v / aTR[i] : 0);
+  const minusDI = sMDM.map((v, i) => aTR[i] > 0 ? 100 * v / aTR[i] : 0);
+  const dx = plusDI.map((p, i) => {
+    const s = p + minusDI[i];
+    return s > 0 ? 100 * Math.abs(p - minusDI[i]) / s : 0;
+  });
+  let adx = dx.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < dx.length; i++) adx = (adx * (period - 1) + dx[i]) / period;
+  return { adx, plusDI: plusDI[plusDI.length - 1], minusDI: minusDI[minusDI.length - 1] };
+}
+
+// ── Feature 11: ADX Regime Filter ────────────────────────────────────────────
+// ADX<20 = range-bound → confirms fade. ADX>28 = trending → conflicts.
+// Uses 30m bars for medium-term regime (covers ~1 session).
+
+function featureAdxFilter(symbol, entryDir) {
+  const bars = S.ohlc30m?.[symbol]?.values;
+  if (!bars || bars.length < 40) return { signal: null, val: 'Need 40+ 30m bars' };
+
+  const sorted   = toOldestFirst(bars.slice(0, 200));
+  const result   = computeADX(sorted, 14);
+  if (!result)   return { signal: null, val: 'ADX: insufficient data' };
+
+  const { adx, plusDI, minusDI } = result;
+  const trendUp  = plusDI > minusDI;
+  const opposite = entryDir === 'long' ? 'short' : 'long';
+
+  if (adx < 20) return { signal: entryDir, val: `ADX ${adx.toFixed(1)} — range-bound, fade conditions confirmed` };
+  if (adx > 28) return { signal: opposite, val: `ADX ${adx.toFixed(1)} — trending ${trendUp ? '↑' : '↓'}, range likely to break` };
+
+  const diAligned = (entryDir === 'long' && trendUp) || (entryDir === 'short' && !trendUp);
+  return {
+    signal: diAligned ? entryDir : null,
+    val:    `ADX ${adx.toFixed(1)} · ${trendUp ? '+DI' : '-DI'} dominant — ${diAligned ? 'direction aligned' : 'neutral'}`,
+  };
+}
+
+// ── Hurst exponent helper (R/S analysis) ──────────────────────────────────────
+
+function computeHurst(closes) {
+  const n = closes.length;
+  if (n < 16) return 0.5;
+  const logP  = closes.map(c => Math.log(Math.max(c, 1e-10)));
+  const scales = [4, 8, 16, 32].filter(s => s * 3 <= n);
+  const logN  = [], logRS = [];
+
+  for (const scale of scales) {
+    const rsList = [];
+    for (let start = 0; start + scale <= n; start += scale) {
+      const seg = logP.slice(start, start + scale);
+      const rets = seg.slice(1).map((v, i) => v - seg[i]);
+      if (!rets.length) continue;
+      const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
+      let cum = 0;
+      const cumDev = rets.map(x => { cum += x - mean; return cum; });
+      const R = Math.max(...cumDev) - Math.min(...cumDev);
+      const S = Math.sqrt(rets.reduce((a, x) => a + (x - mean) ** 2, 0) / rets.length);
+      if (S > 0 && R > 0) rsList.push(R / S);
+    }
+    if (rsList.length > 0) {
+      logN.push(Math.log(scale));
+      logRS.push(Math.log(rsList.reduce((a, b) => a + b, 0) / rsList.length));
+    }
+  }
+  if (logN.length < 2) return 0.5;
+  const n2   = logN.length;
+  const mX   = logN.reduce((a, b)  => a + b, 0) / n2;
+  const mY   = logRS.reduce((a, b) => a + b, 0) / n2;
+  const num  = logN.reduce((s, x, i) => s + (x - mX) * (logRS[i] - mY), 0);
+  const den  = logN.reduce((s, x)    => s + (x - mX) ** 2, 0);
+  return den > 0 ? Math.min(1, Math.max(0, num / den)) : 0.5;
+}
+
+// ── Feature 12: Hurst Exponent Regime ────────────────────────────────────────
+// H<0.45 → mean-reverting → confirms fade. H>0.55 → trending → fade at risk.
+
+function featureHurstRegime(symbol, entryDir) {
+  const bars = S.ohlcData?.[symbol]?.values;
+  if (!bars || bars.length < 30) return { signal: null, val: 'Need 30+ daily bars' };
+
+  const closes = [...bars].slice(0, 80).reverse().map(b => parseFloat(b.close)).filter(v => !isNaN(v));
+  if (closes.length < 16) return { signal: null, val: 'Insufficient close data' };
+
+  const H        = computeHurst(closes);
+  const hStr     = H.toFixed(2);
+  const opposite = entryDir === 'long' ? 'short' : 'long';
+
+  if (H < 0.45) return { signal: entryDir,  val: `Hurst ${hStr} — mean-reverting, range fade favoured` };
+  if (H > 0.55) return { signal: opposite,  val: `Hurst ${hStr} — trending, range-fade elevated risk` };
+  return { signal: null, val: `Hurst ${hStr} — random walk, neutral regime` };
+}
+
+// ── Feature 13: Fair Value Gap (FVG) Scanner ─────────────────────────────────
+// 3-bar imbalance on 5m bars. Price inside/near an unfilled FVG confirms entry direction.
+
+function featureFvgBias(symbol, entryDir, price, atr) {
+  const bars = S.ohlc5m?.[symbol]?.values;
+  if (!bars || bars.length < 20) return { signal: null, val: 'Need 20+ 5m bars' };
+
+  const sorted = toOldestFirst(bars.slice(1, 101));
+  const fvgs   = [];
+
+  for (let i = 1; i < sorted.length - 1; i++) {
+    const prevH = bH(sorted[i - 1]), prevL = bL(sorted[i - 1]);
+    const nextH = bH(sorted[i + 1]), nextL = bL(sorted[i + 1]);
+    if (prevH < nextL) fvgs.push({ type: 'bullish', top: nextL, bottom: prevH, barIdx: i });
+    if (nextH < prevL) fvgs.push({ type: 'bearish', top: prevL, bottom: nextH, barIdx: i });
+  }
+
+  // Mark filled: subsequent bar's range passes through the gap
+  const unfilled = fvgs.filter(fvg => {
+    for (let i = fvg.barIdx + 2; i < sorted.length; i++) {
+      const h = bH(sorted[i]), l = bL(sorted[i]);
+      if (fvg.type === 'bullish' && l <= fvg.bottom) return false;
+      if (fvg.type === 'bearish' && h >= fvg.top)    return false;
+    }
+    return true;
+  });
+
+  if (!unfilled.length) return { signal: null, val: 'No unfilled FVGs' };
+
+  const pip  = getPipSize(symbol);
+
+  // Price inside an FVG?
+  for (const fvg of unfilled) {
+    if (price >= fvg.bottom && price <= fvg.top) {
+      const gapPips  = ((fvg.top - fvg.bottom) / pip).toFixed(0);
+      const aligned  = (fvg.type === 'bullish' && entryDir === 'long') ||
+                       (fvg.type === 'bearish' && entryDir === 'short');
+      const sig      = fvg.type === 'bullish' ? 'long' : 'short';
+      return { signal: sig, val: `Inside ${fvg.type} FVG (${gapPips}p) — imbalance zone ${aligned ? 'confirms' : 'conflicts'}` };
+    }
+  }
+
+  // Nearest unfilled FVG within 0.5 ATR?
+  const atrProx = atr * 0.5;
+  const nearby = unfilled
+    .map(fvg => ({ ...fvg, mid: (fvg.top + fvg.bottom) / 2 }))
+    .filter(fvg => Math.abs(fvg.mid - price) <= atrProx)
+    .sort((a, b) => Math.abs(a.mid - price) - Math.abs(b.mid - price));
+
+  if (nearby.length) {
+    const fvg      = nearby[0];
+    const dist     = Math.round(Math.abs(fvg.mid - price) / pip);
+    const dir      = fvg.mid > price ? 'above' : 'below';
+    const sig      = fvg.type === 'bullish' ? 'long' : 'short';
+    const aligned  = (fvg.type === 'bullish' && entryDir === 'long') ||
+                     (fvg.type === 'bearish' && entryDir === 'short');
+    return { signal: sig, val: `Unfilled ${fvg.type} FVG ${dist}p ${dir} — ${aligned ? 'confirms' : 'conflicts'}` };
+  }
+
+  return { signal: null, val: `${unfilled.length} unfilled FVGs — none within range` };
+}
+
+// ── Feature 14: WTI Crude Oil Correlation ────────────────────────────────────
+// Commodity-FX pairs only. Falling WTI = CAD headwind (USD/CAD bullish), AUD headwind.
+// Rising WTI = CAD tailwind (USD/CAD bearish), AUD tailwind.
+
+const _WTI_CORR = {
+  'USD/CAD': false, // rising WTI = CAD strong = USD/CAD bearish
+  'AUD/USD': true,  // rising WTI = AUD strong = AUD/USD bullish
+  'NZD/USD': true,  // similar to AUD
+};
+
+function featureWtiCorrelation(symbol, entryDir) {
+  const wtiLong = _WTI_CORR[symbol];
+  if (wtiLong === undefined) return { signal: null, val: 'No WTI correlation for this pair' };
+
+  const wti = S.fredData?.wti;
+  if (!wti?.value || wti.prev == null) return { signal: null, val: 'WTI data unavailable' };
+
+  const chgPct = (wti.value / wti.prev - 1) * 100;
+  if (Math.abs(chgPct) < 0.5) return { signal: null, val: `WTI ${wti.value.toFixed(1)} — flat (${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(1)}%), no directional signal` };
+
+  const wtiRising   = wti.value > wti.prev;
+  const pairBullish = wtiRising ? wtiLong : !wtiLong;
+  const wtiDir      = wtiRising ? '↑' : '↓';
+  const baseCcy     = symbol.split('/')[0];
+  const sig         = pairBullish ? 'long' : 'short';
+
+  return {
+    signal: sig,
+    val: `WTI ${wtiDir} ${wti.value.toFixed(1)} (${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(1)}%) → ${baseCcy} ${pairBullish ? 'tailwind' : 'headwind'}`,
+  };
+}
+
 // ── Main computation ──────────────────────────────────────────────────────────
 
 export function computeRangeBias(symbol, entryDir, price, asia, monday, volRegime) {
@@ -515,7 +831,13 @@ export function computeRangeBias(symbol, entryDir, price, asia, monday, volRegim
     { key: 'rsiDivergence', fn: () => featureRsiDivergence(symbol, price, asia, monday, atr) },
     { key: 'orderBlock',    fn: () => featureOrderBlock(symbol, price, asia, monday, atr) },
     { key: 'htfEma',        fn: () => featureHtfEma(symbol) },
-    { key: 'vwapSlope',    fn: () => featureVwapSlope(symbol, entryDir, price) },
+    { key: 'vwapSlope',        fn: () => featureVwapSlope(symbol, entryDir, price) },
+    { key: 'retailSentiment',  fn: () => featureRetailSentiment(symbol, entryDir) },
+    { key: 'weeklyPivot',      fn: () => featureWeeklyPivot(symbol, price, atr) },
+    { key: 'adxFilter',        fn: () => featureAdxFilter(symbol, entryDir) },
+    { key: 'hurstRegime',      fn: () => featureHurstRegime(symbol, entryDir) },
+    { key: 'fvgBias',          fn: () => featureFvgBias(symbol, entryDir, price, atr) },
+    { key: 'wtiCorrelation',   fn: () => featureWtiCorrelation(symbol, entryDir) },
   ];
 
   let confirmCount = 0, conflictCount = 0, neutralCount = 0;
@@ -591,13 +913,20 @@ function renderRangeBiasModal() {
   const cfg = loadRangeBiasCfg();
 
   const dataLabels = {
-    rangePosition: '5m bars + range data',
-    chochBos:      '30m OHLC bars',
-    cotBias:       'CFTC COT report',
-    wickRejection: '5m OHLC bars',
-    rsiDivergence: '5m closes → RSI-14',
-    orderBlock:    '5m OHLC bars',
-    htfEma:        '5m bars → H1 EMA21/50',
+    rangePosition:   '5m bars + range data',
+    chochBos:        '30m OHLC bars',
+    cotBias:         'CFTC COT report',
+    wickRejection:   '5m OHLC bars',
+    rsiDivergence:   '5m closes → RSI-14',
+    orderBlock:      '5m OHLC bars',
+    htfEma:          '5m bars → H1 EMA21/50',
+    vwapSlope:       '5m bars → anchored TWAP',
+    retailSentiment: 'Oanda position book (live)',
+    weeklyPivot:     'Daily bars → weekly pivots',
+    adxFilter:       '30m bars → ADX-14',
+    hurstRegime:     'Daily closes → R/S Hurst',
+    fvgBias:         '5m bars → FVG scanner',
+    wtiCorrelation:  'FRED WTI crude (daily)',
   };
 
   body.innerHTML = Object.entries(FEATURE_DEFS).map(([key, def]) => {

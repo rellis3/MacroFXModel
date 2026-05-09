@@ -22,4 +22,5 @@ export const S = {
   eventRisk:       null,   // { level, sizeMult, events, currencyRisk } — Finnhub events
   surpriseIndex:   null,   // { [currency]: score } — macro surprise per currency
   ecbData:         null,   // ECB SDW daily rates { estr, de10y_ecb }
+  oandaBook:       {},     // Oanda positionBook sentiment per symbol { longPct, shortPct, sentiment }
 };
