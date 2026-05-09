@@ -209,6 +209,13 @@ export function ema(values, period) {
   return result;
 }
 
+export function sma(values, period) {
+  return values.map((_, i) => {
+    const slice = values.slice(Math.max(0, i - period + 1), i + 1);
+    return slice.reduce((s, v) => s + v, 0) / slice.length;
+  });
+}
+
 export function calcRSI(values, period) {
   const result = [];
   let gains = 0, losses = 0;

@@ -463,5 +463,36 @@ Example:
     </div>
   </div>
 </div>
+<!-- RANGE BIAS SETTINGS MODAL -->
+<div class="cot-modal-overlay" id="rangeBiasModalOverlay" onclick="if(event.target===this)closeRangeBiasModal()">
+  <div class="cot-modal" style="max-width:560px">
+    <div class="cot-modal-hd">
+      <div>
+        <div class="cot-modal-title">⚙ Range Bias — Feature Settings</div>
+        <div class="cot-modal-sub">Enable / disable each feature and set its scoring weight. Saved to localStorage.</div>
+      </div>
+      <button class="cot-modal-close" onclick="closeRangeBiasModal()">✕</button>
+    </div>
+    <div id="rangeBiasModalBody" style="max-height:60vh;overflow-y:auto;padding:0 4px"></div>
+    <div class="cot-modal-footer" style="margin-top:12px">
+      <button class="cot-save-btn" onclick="saveRangeBiasModal()">💾 Save &amp; Apply</button>
+      <button class="cot-cancel-btn" onclick="closeRangeBiasModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Range-bias toggle switch */
+.rb-toggle{position:relative;display:inline-flex;align-items:center;flex-shrink:0;width:36px;height:20px;cursor:pointer;margin-top:2px}
+.rb-toggle input{opacity:0;width:0;height:0}
+.rb-slider{position:absolute;inset:0;background:var(--border);border-radius:20px;transition:.2s}
+.rb-slider::before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.rb-toggle input:checked+.rb-slider{background:var(--green)}
+.rb-toggle input:checked+.rb-slider::before{transform:translateX(16px)}
+/* Range bias weight select */
+.rb-wt-sel{background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-size:10px;padding:2px 4px;cursor:pointer}
+/* Range bias details/summary arrow */
+.rb-panel>summary::-webkit-details-marker{display:none}
+</style>
 </body>
 </html>
