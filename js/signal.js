@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { COMPASS_CONFIG } from './config.js';
+import { COMPASS_CONFIG, FIB_LEVELS } from './config.js';
 import { getPipSize, getDigits } from './utils.js';
 import { compassFairValue, zScore } from './compass.js';
 import { getCaps } from './caps.js';
@@ -579,7 +579,24 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
 
 // ── Render entry scanner ──────────────────────────────────────────────────────
 
-export function renderEntryScanner(entries, quote, signal, volRegime) {
+// Returns { sd, nearest, close } where sd is raw fib position and nearest is
+// the nearest FIB_LEVEL. close = within 8% of range from that level.
+function rangeSDLevel(price, rangeLow, rangeSize) {
+  if (!rangeSize || rangeSize === 0) return null;
+  const sd      = (price - rangeLow) / rangeSize;
+  const nearest = FIB_LEVELS.reduce((a, b) => Math.abs(b - sd) < Math.abs(a - sd) ? b : a);
+  const close   = Math.abs(sd - nearest) < 0.08;
+  return { sd, nearest, close };
+}
+
+function fmtSD(sd) {
+  if (sd == null) return null;
+  const n     = sd.close ? sd.nearest : sd.sd;
+  const label = Number.isInteger(n) ? n.toFixed(0) : parseFloat(n.toFixed(2)).toString();
+  return label;
+}
+
+export function renderEntryScanner(entries, quote, signal, volRegime, asia, monday) {
   const sym    = S.currentPair.symbol;
   const digits = getDigits(sym);
   const pipSz  = getPipSize(sym);
@@ -643,13 +660,27 @@ export function renderEntryScanner(entries, quote, signal, volRegime) {
                   e.rrRatio && parseFloat(e.rrRatio) >= 1.0 ? 'var(--amber)' : 'var(--red)';
     const tpCapNote = e.tpCapped ? `<span style="color:var(--amber);font-size:9px" title="TP capped to today's remaining daily range (${volRegime.remainingPips?.toFixed(0)}${unit} remaining)">⚡ vol-capped</span>` : '';
 
+    const asiaSD   = asia?.today    ? rangeSDLevel(e.price, asia.today.low,    asia.today.range)    : null;
+    const mondaySD = monday?.current ? rangeSDLevel(e.price, monday.current.low, monday.current.range) : null;
+
+    const sdLines = (() => {
+      const parts = [];
+      if (asiaSD)   parts.push(`Asia SD <strong>${fmtSD(asiaSD)}</strong>${asiaSD.close   ? '' : ' <em style="font-weight:400">(~approx)</em>'}`);
+      if (mondaySD) parts.push(`Mon SD <strong>${fmtSD(mondaySD)}</strong>${mondaySD.close ? '' : ' <em style="font-weight:400">(~approx)</em>'}`);
+      if (!parts.length) return '';
+      return `<div style="display:flex;gap:16px;margin-top:5px;padding-top:5px;border-top:1px dashed var(--border)">
+        ${parts.map(p => `<span style="font-size:9.5px;color:var(--text3);font-family:'DM Mono',monospace">${p}</span>`).join('')}
+      </div>`;
+    })();
+
     const tradeHtml = e.sl != null ? `
       <span><strong>Entry</strong> ${e.price.toFixed(digits)}</span>
       <span><strong>SL</strong> ${e.sl.toFixed(digits)} (${e.slPips?.toFixed(0)}${unit})</span>
       <span><strong>TP</strong> ${e.tp != null ? e.tp.toFixed(digits) : '—'} (${e.tpNote}${e.tpPips ? ' · ' + e.tpPips.toFixed(0) + unit : ''}) ${tpCapNote}</span>
       ${e.rrRatio ? `<span><strong style="color:${rrCol}">R:R 1:${e.rrRatio}</strong></span>` : ''}
       <span><strong>Size</strong> ${e.size}%</span>
-    ` : `<span style="opacity:.6"><em>Price at level — wait for directional close</em></span>`;
+      ${sdLines}
+    ` : `<span style="opacity:.6"><em>Price at level — wait for directional close</em></span>${sdLines}`;
 
     return `
     <div class="entry-card ${cls}">
@@ -677,7 +708,7 @@ export function renderSignalAndEntries(enhanced, pivots, asia, monday, quote, vo
   const entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
 
   sigEl.innerHTML  = renderSignalCard(signal, volRegime);
-  entrEl.innerHTML = renderEntryScanner(entries, quote, signal, volRegime);
+  entrEl.innerHTML = renderEntryScanner(entries, quote, signal, volRegime, asia, monday);
 
   if (cntEl) {
     cntEl.textContent = entries.length;

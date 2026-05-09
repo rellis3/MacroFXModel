@@ -41,7 +41,7 @@ export const COMPASS_CONFIG = {
   'USD/CAD': { short: 'ca_short', long: 'ca10y',  label: 'US–CA',  fxSign: +1 },
   'USD/CHF': { short: 'ch_short', long: 'ch10y',  label: 'US–CH',  fxSign: +1 },
   'GBP/JPY':    { short: 'gb_short', long: 'gb10y',  label: 'GB–JP',  fxSign: +1, crossBase: 'jp10y', crossBaseShort: 'jp_short' },
-  'NAS100_USD': { short: null, long: null, label: 'Equity', isEquity: true },
+  'NAS100_USD': { short: null, long: null, label: 'Yield Curve', fxSign: 1, isEquity: true },
 };
 
 export const COMPASS_TTL = 6 * 60 * 60 * 1000;

@@ -246,6 +246,8 @@ export function renderARMACard(arma, data) {
   }
 
   const cfg       = COMPASS_CONFIG[data.sym];
+  const isEquity  = data.sym === 'NAS100_USD';
+  const isGold    = data.sym === 'XAU/USD';
   const sigCls    = arma.direction === 'BULLISH' ? 'bull' : arma.direction === 'BEARISH' ? 'bear' : 'flat';
   const sigIcon   = arma.direction === 'BULLISH' ? '📈' : arma.direction === 'BEARISH' ? '📉' : '↔';
   const confCol   = arma.confidence === 'HIGH' ? 'var(--green)' : arma.confidence === 'MEDIUM' ? 'var(--amber)' : 'var(--text3)';
@@ -267,35 +269,47 @@ export function renderARMACard(arma, data) {
   const theta10 = arma.arma10?.theta ?? '—';
   const f5dStr  = arma.f10_5d != null ? (arma.f10_5d >= 0 ? '+' : '') + (arma.f10_5d).toFixed(3) + '% (5d)' : '—';
 
+  const badgeLabel  = isGold ? '10Y Yield + DXY' : isEquity ? '10Y − 2Y Curve' : '10Y ' + cfg.label;
+  const dirLabel    = isGold ? arma.direction + ' DRIVERS (5d)' : isEquity ? arma.direction + ' CURVE (5d)' : arma.direction + ' SPREAD (5d)';
+  const rowLabel    = isGold ? '10Y Yield daily change forecast' : isEquity ? 'Yield curve daily change forecast' : '10Y Spread daily change forecast';
+  const f5dLabel    = isGold ? '5d 10Y yield' : isEquity ? '5d curve Δ' : '5d 10Y spread';
+
+  const signalText = (() => {
+    if (isGold) {
+      if (arma.direction === 'BULLISH') return 'Yield + DXY both forecast to fall -- dual bullish signal for Gold';
+      if (arma.direction === 'BEARISH') return 'Yield or DXY forecast to rise -- bearish pressure building on Gold';
+      return 'Yield and DXY signals disagree -- Gold driver divergence, lower edge';
+    }
+    if (isEquity) {
+      if (arma.direction === 'BULLISH') return 'Yield curve forecast to steepen -- growth expectations rising, bullish for NAS100';
+      if (arma.direction === 'BEARISH') return 'Yield curve forecast to flatten/invert -- growth concern building, bearish for NAS100';
+      return 'Curve direction unclear -- mixed growth signals, reduce directional conviction';
+    }
+    if (arma.direction === 'BULLISH') return `Spread forecast to ${cfg.fxSign > 0 ? 'rise - bullish' : 'fall - bullish'} for ${data.sym.split('/')[0]} over 5 days`;
+    if (arma.direction === 'BEARISH') return `Spread forecast to ${cfg.fxSign > 0 ? 'fall - bearish' : 'rise - bearish'} for ${data.sym.split('/')[0]} over 5 days`;
+    return '10Y and 2Y spread forecasts disagree - directional edge unclear';
+  })();
+
+  const agreeNote = isEquity ? '' :
+    arma.agree === false ? (isGold ? ' - DXY/yield diverging' : ' - 2Y/10Y diverging') :
+    arma.agree === true  ? (isGold ? ' - DXY confirms yield'  : ' - 2Y confirms')      : '';
+
   return `<div class="arma-card">
     <div class="arma-hd">
-      <span class="arma-title">📐 ARMA(1,1) Spread Forecast</span>
-      <span class="arma-badge" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)">${data.sym === 'XAU/USD' ? '10Y Yield + DXY' : '10Y ' + cfg.label}</span>
+      <span class="arma-title">📐 ARMA(1,1) ${isEquity ? 'Curve' : 'Spread'} Forecast</span>
+      <span class="arma-badge" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)">${badgeLabel}</span>
       <span class="arma-badge" style="background:${confCol}22;color:${confCol};border-color:${confCol}44">${arma.confidence}</span>
     </div>
 
     <div class="arma-signal ${sigCls}" style="margin-bottom:10px">
       <span class="arma-signal-icon">${sigIcon}</span>
       <div>
-        <div class="arma-signal-dir">${data.sym === 'XAU/USD' ? arma.direction + ' DRIVERS (5d)' : arma.direction + ' SPREAD (5d)'}</div>
-        <div class="arma-signal-text">
-          ${arma.direction === 'BULLISH'
-            ? (data.sym === 'XAU/USD'
-              ? 'Yield + DXY both forecast to fall -- dual bullish signal for Gold'
-              : `Spread forecast to ${cfg.fxSign > 0 ? 'rise - bullish' : 'fall - bullish'} for ${data.sym.split('/')[0]} over 5 days`)
-            : arma.direction === 'BEARISH'
-            ? (data.sym === 'XAU/USD'
-              ? 'Yield or DXY forecast to rise -- bearish pressure building on Gold'
-              : `Spread forecast to ${cfg.fxSign > 0 ? 'fall - bearish' : 'rise - bearish'} for ${data.sym.split('/')[0]} over 5 days`)
-            : (data.sym === 'XAU/USD'
-              ? 'Yield and DXY signals disagree -- Gold driver divergence, lower edge'
-              : '10Y and 2Y spread forecasts disagree - directional edge unclear')}
-          ${arma.agree === false ? (data.sym === 'XAU/USD' ? ' - DXY/yield diverging' : ' - 2Y/10Y diverging') : arma.agree === true ? (data.sym === 'XAU/USD' ? ' - DXY confirms yield' : ' - 2Y confirms') : ''}
-        </div>
+        <div class="arma-signal-dir">${dirLabel}</div>
+        <div class="arma-signal-text">${signalText}${agreeNote}</div>
       </div>
     </div>
 
-    <div style="font-size:9px;color:var(--text3);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">${data.sym === 'XAU/USD' ? '10Y Yield daily change forecast' : '10Y Spread daily change forecast'}</div>
+    <div style="font-size:9px;color:var(--text3);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">${rowLabel}</div>
     <div class="arma-forecast-row">${forecastBars || '<div style="padding:8px;color:var(--text3);font-size:11px">No 10Y data</div>'}</div>
 
     <div class="arma-stats" style="margin-top:8px">
@@ -317,7 +331,7 @@ export function renderARMACard(arma, data) {
     </div>
 
     <div style="font-size:9.5px;color:var(--text3);line-height:1.5;padding:6px 8px;background:var(--s1);border-radius:5px;border:1px solid var(--border)">
-      5d 10Y spread: <strong>${f5dStr}</strong> ·
+      ${f5dLabel}: <strong>${f5dStr}</strong> ·
       Model: Δspread_t = ${arma.arma10?.mu > 0 ? '+' : ''}${((arma.arma10?.mu || 0)*100).toFixed(2)}bp + ${phi10}·Δs_{t-1} + ${theta10}·ε_{t-1}
       ${arma.avgSkill < 5 ? ' · ⚠ Low skill — treat directional signal as weak' : ''}
     </div>

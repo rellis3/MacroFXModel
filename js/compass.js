@@ -736,26 +736,39 @@ export async function loadAndRenderCompass() {
   if (!el) return;
 
   if (S.currentPair.isEquity) {
-    // Patch fredData with yield curve from fredhistory if the batch fetch came back null
-    if (S.fredData && (S.fredData.us10y?.value == null || S.fredData.us2y?.value == null)) {
+    // Load yield curve history for gauge scalars + ARMA model.
+    // GS10/GS2 are monthly series so 90 obs ≈ 7 years — enough for ARMA.
+    const eqCached = S.compassData['NAS100_USD'];
+    const needsFetch = !eqCached || (Date.now() - eqCached.ts) > COMPASS_TTL;
+    const needsScalars = S.fredData && (S.fredData.us10y?.value == null || S.fredData.us2y?.value == null);
+
+    if (needsFetch || needsScalars) {
       try {
         const r = await fetch('/api/fredhistory?keys=us2y,us10y');
         if (r.ok) {
           const h = await r.json();
-          if (h.us10y?.length) {
-            const pts = h.us10y;
-            S.fredData.us10y = { value: pts[pts.length - 1].value, prev: pts[pts.length - 2]?.value ?? null };
+          if (S.fredData) {
+            if (h.us10y?.length) { const pts = h.us10y; S.fredData.us10y = { value: pts[pts.length-1].value, prev: pts[pts.length-2]?.value ?? null }; }
+            if (h.us2y?.length)  { const pts = h.us2y;  S.fredData.us2y  = { value: pts[pts.length-1].value, prev: pts[pts.length-2]?.value ?? null }; }
           }
-          if (h.us2y?.length) {
-            const pts = h.us2y;
-            S.fredData.us2y = { value: pts[pts.length - 1].value, prev: pts[pts.length - 2]?.value ?? null };
+          if (needsFetch && h.us10y?.length && h.us2y?.length) {
+            const us2Map = {};
+            h.us2y.forEach(p => { us2Map[p.date] = p.value; });
+            const curve = h.us10y.filter(p => us2Map[p.date] != null).map(p => ({ date: p.date, value: p.value - us2Map[p.date] }));
+            const n = curve.length;
+            S.compassData['NAS100_USD'] = {
+              ts: Date.now(), sym: 'NAS100_USD',
+              spread10y: curve, spread2y: [], spreadDxy: [],
+              latest10y: n ? curve[n-1].value : null, latest2y: null, latestDxy: null,
+              momentum10y: n >= 6 ? curve[n-1].value - curve[n-6].value : null, momentum2y: null, momentumDxy: null,
+            };
           }
         }
       } catch(e) {}
     }
 
     el.innerHTML = renderEquityRiskGauge();
-    if (window.renderARMAAndTransition) window.renderARMAAndTransition(null);
+    if (window.renderARMAAndTransition) window.renderARMAAndTransition(S.compassData['NAS100_USD'] || null);
 
     const q   = window._latestQuote;
     const vol = calculateVolRegime();
