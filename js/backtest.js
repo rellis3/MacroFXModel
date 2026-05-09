@@ -1,6 +1,79 @@
 // backtest.js — Backtest page controller
 
-// ── Default config ─────────────────────────────────────────────────────────────
+// ── R2 config ──────────────────────────────────────────────────────────────────
+
+const R2_BASE = 'https://pub-1d8354116ae54e158e7010f0deb8f6e6.r2.dev';
+
+// Builds the R2 URL for a given symbol + timeframe.
+// Default pattern: EURUSD/m1.csv — edit r2-path-tpl in the sidebar to override.
+function r2Url(symbol, tf) {
+  const tpl = document.getElementById('r2-path-tpl')?.value?.trim() || '{symbol}/m{tf}.csv';
+  return R2_BASE + '/' + tpl.replace('{symbol}', symbol).replace('{tf}', tf);
+}
+
+// Streams a file from R2 with download progress, then sends to worker for parsing.
+async function fetchFromR2(symbol, tf) {
+  const url = r2Url(symbol, tf);
+  updateR2Status(tf, 'downloading…');
+  setProgress(`Downloading ${symbol} ${tf.toUpperCase()}…`, 5);
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const msg = `HTTP ${res.status} from ${url}`;
+      updateR2Status(tf, '✗ ' + res.status);
+      throw new Error(msg);
+    }
+
+    const total = parseInt(res.headers.get('Content-Length') || '0', 10);
+    const reader = res.body.getReader();
+    const chunks = [];
+    let received = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      const mb = (received / 1048576).toFixed(1);
+      if (total > 0) {
+        setProgress(`Downloading ${tf.toUpperCase()}… ${mb} MB`, Math.round(100 * received / total));
+      } else {
+        setProgress(`Downloading ${tf.toUpperCase()}… ${mb} MB`, 0);
+      }
+    }
+
+    updateR2Status(tf, 'parsing…');
+    const text = await new Blob(chunks).text();
+    getWorker().postMessage({ type: 'parse', payload: { symbol, tf, text } });
+  } catch (err) {
+    throw err; // re-throw so loadAllFromR2 can show combined error
+  }
+}
+
+async function loadAllFromR2() {
+  const symbol = getSymbol();
+  document.getElementById('r2-load-btn').disabled = true;
+  setProgress('Connecting to R2…', 2);
+
+  try {
+    // M30 first (smallest, needed for precompute)
+    await fetchFromR2(symbol, 'm30');
+    // M5 (medium)
+    await fetchFromR2(symbol, 'm5');
+    // M1 (largest — optional but fetched if available)
+    try { await fetchFromR2(symbol, 'm1'); } catch { updateR2Status('m1', 'skipped (not found)'); }
+  } catch (err) {
+    showError(err.message + ' — check the path template below.');
+  } finally {
+    document.getElementById('r2-load-btn').disabled = false;
+  }
+}
+
+function updateR2Status(tf, msg) {
+  const el = document.getElementById(`r2-status-${tf}`);
+  if (el) el.textContent = msg;
+}
 
 const DEFAULT_FEATURES = {
   rangePosition: { enabled: true,  weight: 1, label: 'Range Position' },
@@ -70,11 +143,13 @@ function handleProgress({ status, pct, symbol, tf, rows, total }) {
 function handleParsed({ symbol, tf, count }) {
   if (!parsedFiles[symbol]) parsedFiles[symbol] = {};
   parsedFiles[symbol][tf] = count;
+  const kbars = `${(count/1000).toFixed(0)}k bars ✓`;
+  // Update both R2 status and file upload label
+  updateR2Status(tf, kbars);
   const lbl = document.getElementById(`lbl-${tf}`);
-  if (lbl) lbl.textContent = `${(count/1000).toFixed(0)}k bars ✓`;
-  lbl?.classList.add('parsed');
+  if (lbl) { lbl.textContent = kbars; lbl.classList.add('parsed'); }
   checkRunReady();
-  setProgress('File loaded.', 0);
+  setProgress(`${tf.toUpperCase()} loaded (${count.toLocaleString()} bars).`, 100);
 }
 
 // ── File handling ──────────────────────────────────────────────────────────────
@@ -427,7 +502,12 @@ function renderFeatureList() {
 }
 
 function bindEvents() {
-  document.getElementById('symbol-select')?.addEventListener('change', checkRunReady);
+  document.getElementById('symbol-select')?.addEventListener('change', () => {
+    checkRunReady();
+    updateR2PreviewUrls();
+  });
+  document.getElementById('r2-load-btn')?.addEventListener('click', loadAllFromR2);
+  document.getElementById('r2-path-tpl')?.addEventListener('input', updateR2PreviewUrls);
   document.getElementById('run-btn')?.addEventListener('click', runBacktest);
   document.getElementById('theme-btn')?.addEventListener('click', () => {
     const dark = document.body.classList.toggle('dark');
@@ -436,6 +516,16 @@ function bindEvents() {
   bindFileInput('file-m1', 'm1');
   bindFileInput('file-m5', 'm5');
   bindFileInput('file-m30', 'm30');
+  updateR2PreviewUrls();
+}
+
+function updateR2PreviewUrls() {
+  const sym = getSymbol();
+  const el = document.getElementById('r2-url-preview');
+  if (!el) return;
+  el.innerHTML = ['m30', 'm5', 'm1'].map(tf =>
+    `<span class="r2-url">${r2Url(sym, tf)}</span>`
+  ).join('');
 }
 
 function saveSettings() {

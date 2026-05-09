@@ -35,10 +35,33 @@
     .cfg-item { display: flex; flex-direction: column; gap: 3px; }
     .cfg-item label { font-size: 10px; color: var(--text2); }
 
-    /* ── File zones ─────────────────────────────────────────── */
-    .file-zones { display: flex; flex-direction: column; gap: 6px; }
+    /* ── R2 loader ──────────────────────────────────────────── */
+    .r2-box { background: var(--s1); border: 1px solid var(--border); border-radius: 8px;
+              padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+    #r2-load-btn { padding: 8px; border-radius: 6px; border: 1px solid var(--blue);
+                   background: transparent; color: var(--blue); font-size: 12px;
+                   font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    #r2-load-btn:hover:not(:disabled) { background: var(--blue); color: #fff; }
+    #r2-load-btn:disabled { opacity: 0.45; cursor: default; }
+    .r2-status-row { display: grid; grid-template-columns: 36px 1fr; gap: 6px;
+                     font-size: 11px; align-items: center; }
+    .r2-tf  { font-weight: 700; color: var(--text3); background: var(--s2);
+              border-radius: 4px; padding: 1px 5px; text-align: center; }
+    .r2-val { color: var(--text2); }
+    .r2-val.ok  { color: var(--green); }
+    #r2-url-preview { display: flex; flex-direction: column; gap: 2px; }
+    .r2-url { font-size: 9px; color: var(--text3); font-family: monospace;
+              word-break: break-all; line-height: 1.4; }
+    /* ── File zones (fallback) ─────────────────────────────── */
+    details.file-fallback { border: 1px solid var(--border); border-radius: 8px;
+                            overflow: hidden; }
+    details.file-fallback summary { padding: 8px 12px; font-size: 11px; color: var(--text3);
+                                    cursor: pointer; list-style: none; }
+    details.file-fallback summary::before { content: '▸ '; }
+    details.file-fallback[open] summary::before { content: '▾ '; }
+    .file-zones { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; }
     .file-zone { border: 1.5px dashed var(--border); border-radius: 8px;
-                 padding: 10px 12px; cursor: pointer; transition: border-color 0.15s; }
+                 padding: 8px 10px; cursor: pointer; transition: border-color 0.15s; }
     .file-zone:hover, .file-zone.drag { border-color: var(--blue); }
     .file-zone label { cursor: pointer; display: flex; align-items: center; gap: 8px; }
     .file-zone input[type="file"] { display: none; }
@@ -173,37 +196,65 @@
       </select>
     </div>
 
-    <!-- Files -->
+    <!-- R2 Loader -->
     <div class="sb-section">
-      <div class="sb-section-label">Load CSV Data</div>
-      <div class="file-zones">
+      <div class="sb-section-label">Load Data from R2</div>
+      <div class="r2-box">
 
+        <!-- Status rows -->
+        <div class="r2-status-row">
+          <span class="r2-tf">M30</span>
+          <span class="r2-val" id="r2-status-m30">—</span>
+        </div>
+        <div class="r2-status-row">
+          <span class="r2-tf">M5</span>
+          <span class="r2-val" id="r2-status-m5">—</span>
+        </div>
+        <div class="r2-status-row">
+          <span class="r2-tf">M1</span>
+          <span class="r2-val" id="r2-status-m1">—</span>
+        </div>
+
+        <button id="r2-load-btn">⬇ Load all from R2</button>
+
+        <!-- Path template -->
+        <div class="cfg-item">
+          <label for="r2-path-tpl" style="font-size:10px;color:var(--text3)">Path template ({symbol} / {tf})</label>
+          <input type="text" id="r2-path-tpl" value="{symbol}/m{tf}.csv" spellcheck="false"/>
+        </div>
+
+        <!-- Live URL preview -->
+        <div id="r2-url-preview"></div>
+      </div>
+    </div>
+
+    <!-- Manual upload (fallback) -->
+    <details class="file-fallback">
+      <summary>Manual CSV upload (fallback)</summary>
+      <div class="file-zones">
         <div class="file-zone">
           <label>
             <input type="file" id="file-m30" accept=".csv"/>
             <span class="file-zone-tf">M30</span>
-            <span class="file-zone-lbl" id="lbl-m30">Drop or click to load</span>
+            <span class="file-zone-lbl" id="lbl-m30">Drop or click</span>
           </label>
         </div>
-
         <div class="file-zone">
           <label>
             <input type="file" id="file-m5" accept=".csv"/>
             <span class="file-zone-tf">M5</span>
-            <span class="file-zone-lbl" id="lbl-m5">Drop or click to load</span>
+            <span class="file-zone-lbl" id="lbl-m5">Drop or click</span>
           </label>
         </div>
-
         <div class="file-zone">
           <label>
             <input type="file" id="file-m1" accept=".csv"/>
             <span class="file-zone-tf">M1</span>
-            <span class="file-zone-lbl" id="lbl-m1">Drop or click (optional for fast exit)</span>
+            <span class="file-zone-lbl" id="lbl-m1">Drop or click (optional)</span>
           </label>
         </div>
-
       </div>
-    </div>
+    </details>
 
     <!-- Parameters -->
     <div class="sb-section">
@@ -264,8 +315,8 @@
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
       </svg>
-      <p>Load M5 + M30 CSV files and press Run Backtest.</p>
-      <p style="font-size:11px">M1 optional — used for TP/SL exit precision.</p>
+      <p>Click "Load all from R2" then press Run Backtest.</p>
+      <p style="font-size:11px">M5 + M30 required · M1 optional (TP/SL exit precision)</p>
     </div>
 
     <!-- Results -->
