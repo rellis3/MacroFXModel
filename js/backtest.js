@@ -20,6 +20,15 @@ const BEST_CONFIG_V1 = {
     killDaily: 2,
     killWeekly: 5,
     killMonthly: 10,
+    startDate: '2020-01-01',
+    endDate: '2025-12-31',
+    method: 'asia',
+    signalFilter: 'all_conf',
+    confTolPips: 2,
+    entryWindowStart: 8,
+    entryWindowEnd: 16,
+    levelReentry: 1,
+    enabledFibs: null,
     features: {
       rangePosition: { enabled: true,  weight: 1, label: 'Range Position' },
       chochBos:      { enabled: true,  weight: 2, label: 'CHoCH / BOS' },
@@ -77,11 +86,25 @@ function loadConfig(id) {
   sv('cfg-conf',         cfg.minConfirms);
   sv('cfg-prox',         cfg.entryProximityATR);
   sv('cfg-warmup',       cfg.warmupDays);
-  sv('cfg-spread',       cfg.spread);
-  sv('cfg-slippage',     cfg.slippage);
-  sv('cfg-kill-daily',   cfg.killDaily);
-  sv('cfg-kill-weekly',  cfg.killWeekly);
-  sv('cfg-kill-monthly', cfg.killMonthly);
+  sv('cfg-spread',         cfg.spread);
+  sv('cfg-slippage',       cfg.slippage);
+  sv('cfg-kill-daily',     cfg.killDaily);
+  sv('cfg-kill-weekly',    cfg.killWeekly);
+  sv('cfg-kill-monthly',   cfg.killMonthly);
+  sv('cfg-start-date',     cfg.startDate);
+  sv('cfg-end-date',       cfg.endDate);
+  sv('cfg-method',         cfg.method);
+  sv('cfg-signal-filter',  cfg.signalFilter);
+  sv('cfg-conf-tol',       cfg.confTolPips);
+  sv('cfg-ew-start',       cfg.entryWindowStart);
+  sv('cfg-ew-end',         cfg.entryWindowEnd);
+  sv('cfg-reentry',        cfg.levelReentry);
+  if (cfg.enabledFibs) {
+    const fibSet = new Set(cfg.enabledFibs.map(String));
+    document.querySelectorAll('.fib-chk').forEach(chk => {
+      chk.checked = fibSet.has(chk.dataset.fib);
+    });
+  }
   if (cfg.features) {
     for (const [key, feat] of Object.entries(cfg.features)) {
       const chk = document.getElementById('feat-' + key);
@@ -211,6 +234,52 @@ const DEFAULT_FEATURES = {
   ichimokuCloud: { enabled: true,  weight: 1, label: 'Ichimoku Cloud' },
 };
 
+// ── SD Level (fib) filter ──────────────────────────────────────────────────────
+
+const FIB_SELL = [1.5, 2, 2.5, 3, 3.5, 4, 5, 6];
+const FIB_MID  = [0, 0.25, 0.5, 0.75, 1];
+const FIB_BUY  = [-0.25, -0.5, -0.75, -1, -1.5, -2, -3, -4];
+
+function initFibCheckboxes() {
+  _renderFibGroup('fib-chk-sell', FIB_SELL);
+  _renderFibGroup('fib-chk-mid',  FIB_MID);
+  _renderFibGroup('fib-chk-buy',  FIB_BUY);
+}
+
+function _renderFibGroup(elId, fibs) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = fibs.map(f => `
+    <label class="fib-chk-item">
+      <input type="checkbox" class="fib-chk" data-fib="${f}" checked/>
+      <span>${f > 0 ? '+' : ''}${f}</span>
+    </label>`).join('');
+}
+
+function fibSelectAll(checked) {
+  document.querySelectorAll('.fib-chk').forEach(chk => { chk.checked = checked; });
+}
+
+function fibSelectPreset(preset) {
+  const sell = new Set(FIB_SELL.map(String));
+  const mid  = new Set(FIB_MID.map(String));
+  const buy  = new Set(FIB_BUY.map(String));
+  document.querySelectorAll('.fib-chk').forEach(chk => {
+    const f = chk.dataset.fib;
+    if (preset === 'sell')      chk.checked = sell.has(f);
+    else if (preset === 'mid')  chk.checked = mid.has(f);
+    else if (preset === 'buy')  chk.checked = buy.has(f);
+  });
+}
+
+function getEnabledFibs() {
+  const out = [];
+  document.querySelectorAll('.fib-chk').forEach(chk => {
+    if (chk.checked) out.push(parseFloat(chk.dataset.fib));
+  });
+  return out;
+}
+
 const parsedFiles = {}; // symbol → {m1,m5,m30}: true when parsed
 let worker = null;
 let isRunning = false;
@@ -218,6 +287,7 @@ let isRunning = false;
 // ── Init ───────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  initFibCheckboxes();
   renderFeatureList();
   bindEvents();
   restoreSettings();
@@ -340,6 +410,15 @@ function buildCfg() {
     killDaily:         parseFloat(g('cfg-kill-daily'))   || 0,
     killWeekly:        parseFloat(g('cfg-kill-weekly'))  || 0,
     killMonthly:       parseFloat(g('cfg-kill-monthly')) || 0,
+    startDate:         g('cfg-start-date')               || '2020-01-01',
+    endDate:           g('cfg-end-date')                 || '2025-12-31',
+    method:            g('cfg-method')                   || 'asia',
+    signalFilter:      g('cfg-signal-filter')            || 'all_conf',
+    confTolPips:       parseFloat(g('cfg-conf-tol'))     || 2,
+    entryWindowStart:  parseInt(g('cfg-ew-start'))       || 8,
+    entryWindowEnd:    parseInt(g('cfg-ew-end'))         || 16,
+    levelReentry:      parseInt(g('cfg-reentry'))        || 1,
+    enabledFibs:       getEnabledFibs(),
     features,
   };
 }
@@ -850,11 +929,25 @@ function restoreSettings() {
     s('cfg-conf',   cfg.minConfirms);
     s('cfg-prox',   cfg.entryProximityATR);
     s('cfg-warmup', cfg.warmupDays);
-    s('cfg-spread',       cfg.spread);
-    s('cfg-slippage',     cfg.slippage);
-    s('cfg-kill-daily',   cfg.killDaily);
-    s('cfg-kill-weekly',  cfg.killWeekly);
-    s('cfg-kill-monthly', cfg.killMonthly);
+    s('cfg-spread',         cfg.spread);
+    s('cfg-slippage',       cfg.slippage);
+    s('cfg-kill-daily',     cfg.killDaily);
+    s('cfg-kill-weekly',    cfg.killWeekly);
+    s('cfg-kill-monthly',   cfg.killMonthly);
+    s('cfg-start-date',     cfg.startDate);
+    s('cfg-end-date',       cfg.endDate);
+    s('cfg-method',         cfg.method);
+    s('cfg-signal-filter',  cfg.signalFilter);
+    s('cfg-conf-tol',       cfg.confTolPips);
+    s('cfg-ew-start',       cfg.entryWindowStart);
+    s('cfg-ew-end',         cfg.entryWindowEnd);
+    s('cfg-reentry',        cfg.levelReentry);
+    if (cfg.enabledFibs) {
+      const fibSet = new Set(cfg.enabledFibs.map(String));
+      document.querySelectorAll('.fib-chk').forEach(chk => {
+        chk.checked = fibSet.has(chk.dataset.fib);
+      });
+    }
     if (cfg.features) {
       for (const [key, feat] of Object.entries(cfg.features)) {
         const chk = document.getElementById('feat-' + key);

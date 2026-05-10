@@ -113,9 +113,9 @@ export function projectFibLevels(range) {
   return FIB_LEVELS.map(fib => ({ fib, price: range.low + range.range * fib }));
 }
 
-export function detectConfluences(todayLvls, yestLvls, symbol) {
+export function detectConfluences(todayLvls, yestLvls, symbol, tolPips) {
   const pipSize = getPipSize(symbol);
-  const dist    = getPipTol(symbol) * pipSize;
+  const dist    = (tolPips != null ? tolPips : getPipTol(symbol)) * pipSize;
   const merge   = dist * 0.30;
   const pairs   = [];
 
