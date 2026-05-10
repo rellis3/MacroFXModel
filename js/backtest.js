@@ -1,5 +1,126 @@
 // backtest.js — Backtest page controller
 
+// ── Saved configs ──────────────────────────────────────────────────────────────
+
+const SAVED_CFGS_KEY = 'bt-saved-cfgs';
+
+const BEST_CONFIG_V1 = {
+  id: 'best_v1',
+  name: 'Best Config #1 — PF 2.1 · Sharpe 9.89',
+  date: '28 Apr 2025',
+  cfg: {
+    rrRatio: 2.5,
+    slFraction: 0.30,
+    minConviction: 0.20,
+    minConfirms: 3,
+    entryProximityATR: 0.25,
+    warmupDays: 120,
+    spread: 0.8,
+    slippage: 0.3,
+    killDaily: 2,
+    killWeekly: 5,
+    killMonthly: 10,
+    features: {
+      rangePosition: { enabled: true,  weight: 1, label: 'Range Position' },
+      chochBos:      { enabled: true,  weight: 2, label: 'CHoCH / BOS' },
+      wickRejection: { enabled: true,  weight: 1, label: 'Wick Rejection' },
+      rsiDivergence: { enabled: true,  weight: 1, label: 'RSI Divergence' },
+      orderBlock:    { enabled: true,  weight: 1, label: 'Order Block' },
+      htfEma:        { enabled: true,  weight: 1, label: 'HTF EMA 21/50' },
+      vwapSlope:     { enabled: true,  weight: 1, label: 'TWAP Slope' },
+      adxFilter:     { enabled: true,  weight: 1, label: 'ADX Filter' },
+      hurstRegime:   { enabled: true,  weight: 1, label: 'Hurst Regime' },
+      fvgBias:       { enabled: true,  weight: 1, label: 'FVG Bias' },
+      weeklyPivot:   { enabled: false, weight: 1, label: 'Weekly Pivot' },
+      ichimokuCloud: { enabled: false, weight: 1, label: 'Ichimoku Cloud' },
+    },
+  },
+};
+
+function initSavedConfigs() {
+  try {
+    const raw = localStorage.getItem(SAVED_CFGS_KEY);
+    let configs = raw ? JSON.parse(raw) : [];
+    if (!configs.find(c => c.id === BEST_CONFIG_V1.id)) {
+      configs.unshift(BEST_CONFIG_V1);
+      localStorage.setItem(SAVED_CFGS_KEY, JSON.stringify(configs));
+    }
+  } catch {}
+  renderConfigList();
+}
+
+function getSavedConfigs() {
+  try { return JSON.parse(localStorage.getItem(SAVED_CFGS_KEY) || '[]'); } catch { return []; }
+}
+
+function saveCurrentConfig() {
+  const nameEl = document.getElementById('cfg-save-name');
+  const name = nameEl?.value?.trim();
+  if (!name) { nameEl?.focus(); return; }
+  const configs = getSavedConfigs();
+  const id = 'cfg_' + Date.now();
+  const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  configs.push({ id, name, date, cfg: buildCfg() });
+  localStorage.setItem(SAVED_CFGS_KEY, JSON.stringify(configs));
+  if (nameEl) nameEl.value = '';
+  renderConfigList();
+}
+
+function loadConfig(id) {
+  const entry = getSavedConfigs().find(c => c.id === id);
+  if (!entry) return;
+  const { cfg } = entry;
+  const sv = (elId, v) => { const el = document.getElementById(elId); if (el && v != null) el.value = v; };
+  sv('cfg-rr',           cfg.rrRatio);
+  sv('cfg-sl',           cfg.slFraction);
+  sv('cfg-conv',         cfg.minConviction);
+  sv('cfg-conf',         cfg.minConfirms);
+  sv('cfg-prox',         cfg.entryProximityATR);
+  sv('cfg-warmup',       cfg.warmupDays);
+  sv('cfg-spread',       cfg.spread);
+  sv('cfg-slippage',     cfg.slippage);
+  sv('cfg-kill-daily',   cfg.killDaily);
+  sv('cfg-kill-weekly',  cfg.killWeekly);
+  sv('cfg-kill-monthly', cfg.killMonthly);
+  if (cfg.features) {
+    for (const [key, feat] of Object.entries(cfg.features)) {
+      const chk = document.getElementById('feat-' + key);
+      if (chk) chk.checked = !!feat.enabled;
+    }
+  }
+  const row = document.querySelector(`[data-cfg-id="${id}"]`);
+  if (row) {
+    row.style.background = 'var(--blue-bg)';
+    setTimeout(() => { row.style.background = ''; }, 700);
+  }
+}
+
+function deleteConfig(id) {
+  if (id === BEST_CONFIG_V1.id) return;
+  const configs = getSavedConfigs().filter(c => c.id !== id);
+  localStorage.setItem(SAVED_CFGS_KEY, JSON.stringify(configs));
+  renderConfigList();
+}
+
+function renderConfigList() {
+  const el = document.getElementById('cfg-list');
+  if (!el) return;
+  const configs = getSavedConfigs();
+  if (!configs.length) {
+    el.innerHTML = '<div style="font-size:10px;color:var(--text3);">No saved configs yet.</div>';
+    return;
+  }
+  el.innerHTML = configs.map(c => `
+    <div class="saved-cfg-row" data-cfg-id="${c.id}">
+      ${c.id === BEST_CONFIG_V1.id ? '<span class="saved-cfg-star">★</span>' : ''}
+      <span class="saved-cfg-name" onclick="loadConfig('${c.id}')" title="Click to load: ${c.name}">${c.name}</span>
+      <span class="saved-cfg-date">${c.date || ''}</span>
+      ${c.id !== BEST_CONFIG_V1.id
+        ? `<button class="saved-cfg-del" onclick="deleteConfig('${c.id}')" title="Delete">✕</button>`
+        : ''}
+    </div>`).join('');
+}
+
 // ── R2 config ──────────────────────────────────────────────────────────────────
 
 const R2_BASE = 'https://pub-1d8354116ae54e158e7010f0deb8f6e6.r2.dev';
@@ -100,6 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderFeatureList();
   bindEvents();
   restoreSettings();
+  initSavedConfigs();
 
   // Dark mode
   const saved = localStorage.getItem('bt-theme');
@@ -207,12 +329,17 @@ function buildCfg() {
     features[key] = { ...def, enabled: chk ? chk.checked : def.enabled };
   }
   return {
-    rrRatio:           parseFloat(g('cfg-rr'))   || 2.2,
-    slFraction:        parseFloat(g('cfg-sl'))   || 0.35,
-    minConviction:     parseFloat(g('cfg-conv')) || 0,
-    minConfirms:       parseInt(g('cfg-conf'))   || 2,
-    entryProximityATR: parseFloat(g('cfg-prox')) || 0.30,
-    warmupDays:        parseInt(g('cfg-warmup')) || 100,
+    rrRatio:           parseFloat(g('cfg-rr'))           || 2.2,
+    slFraction:        parseFloat(g('cfg-sl'))           || 0.35,
+    minConviction:     parseFloat(g('cfg-conv'))         || 0,
+    minConfirms:       parseInt(g('cfg-conf'))           || 2,
+    entryProximityATR: parseFloat(g('cfg-prox'))         || 0.30,
+    warmupDays:        parseInt(g('cfg-warmup'))         || 100,
+    spread:            parseFloat(g('cfg-spread'))       || 0,
+    slippage:          parseFloat(g('cfg-slippage'))     || 0,
+    killDaily:         parseFloat(g('cfg-kill-daily'))   || 0,
+    killWeekly:        parseFloat(g('cfg-kill-weekly'))  || 0,
+    killMonthly:       parseFloat(g('cfg-kill-monthly')) || 0,
     features,
   };
 }
@@ -225,6 +352,17 @@ function handleResult(payload) {
   setProgress('Done!', 100);
   renderResults(payload);
   saveSettings();
+}
+
+// ── Chart tab switching ────────────────────────────────────────────────────────
+
+function switchChartTab(tab, btn) {
+  document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('on'));
+  btn.classList.add('on');
+  ['equity', 'drawdown', 'monthly'].forEach(id => {
+    const el = document.getElementById('chart-' + id);
+    if (el) el.style.display = id === tab ? 'block' : 'none';
+  });
 }
 
 function renderResults(d) {
@@ -275,8 +413,22 @@ function renderResults(d) {
       <span>P5 ${pct(md.p5)} · P50 ${pct(md.p50)} · P95 ${pct(md.p95)}</span>`;
   }
 
+  // ── Cost banner ───────────────────────────────────────────────────────────
+  const costBanner = document.getElementById('cost-banner');
+  if (costBanner) {
+    const costPips = (d.costsPips || 0);
+    if (costPips > 0) {
+      costBanner.style.display = 'block';
+      costBanner.textContent = `💰 Transaction costs applied: ${costPips.toFixed(1)} pip/trade (spread + slippage) · deducted from every trade R`;
+    } else {
+      costBanner.style.display = 'none';
+    }
+  }
+
   // ── Charts ───────────────────────────────────────────────────────────────
   renderEquityCurve(d.equityCurve, d.dateRange);
+  renderDrawdownChart(d.drawdownCurve);
+  renderMonthlyPnL(d.monthly);
   if (mc) renderMonteCarlo(mc, d.totalTrades);
 
   // ── Bayesian table ───────────────────────────────────────────────────────
@@ -284,6 +436,11 @@ function renderResults(d) {
 
   // ── Trade log ────────────────────────────────────────────────────────────
   renderTradeLog(d.tradeSample);
+
+  // ── Year / Month breakdown ────────────────────────────────────────────────
+  const ymWrap = document.getElementById('yearmonth-wrap');
+  if (ymWrap) ymWrap.style.display = d.monthly?.length ? 'block' : 'none';
+  renderYearMonth(d.monthly);
 }
 
 // ── Equity Curve SVG ───────────────────────────────────────────────────────────
@@ -331,6 +488,150 @@ function renderEquityCurve(curve, dateRange) {
         ${dateRange ? dateRange.first + ' → ' + dateRange.last : ''}
       </text>
     </svg>`;
+}
+
+// ── Drawdown Chart SVG ────────────────────────────────────────────────────────
+
+function renderDrawdownChart(curve) {
+  const el = document.getElementById('drawdown-svg');
+  if (!el || !curve?.length) return;
+
+  const W = el.clientWidth || 680, H = 200;
+  const PAD = { t: 12, r: 16, b: 24, l: 52 };
+  const iW = W - PAD.l - PAD.r, iH = H - PAD.t - PAD.b;
+
+  const ys = curve.map(p => p.y);
+  const yMin = Math.min(...ys, -0.001), yMax = 0;
+  const yRange = yMax - yMin || 1;
+
+  const n = curve[curve.length - 1].x || 1;
+  const sx = p => PAD.l + (p.x / n) * iW;
+  const sy = y => PAD.t + iH - ((y - yMin) / yRange) * iH;
+
+  const pts = curve.map(p => `${sx(p)},${sy(p.y)}`).join(' ');
+  const zero = sy(0);
+  const fillPts = `${sx(curve[0])},${zero} ${pts} ${sx(curve[curve.length - 1])},${zero}`;
+
+  const yTicks = 4;
+  const yTickHtml = Array.from({ length: yTicks + 1 }, (_, i) => {
+    const v = yMin + (yRange * i / yTicks);
+    const y = sy(v);
+    return `<line x1="${PAD.l - 4}" y1="${y}" x2="${W - PAD.r}" y2="${y}" stroke="var(--border)" stroke-width="0.5"/>
+            <text x="${PAD.l - 6}" y="${y + 4}" text-anchor="end" font-size="9" fill="var(--text3)">${(v * 100).toFixed(0)}%</text>`;
+  }).join('');
+
+  el.innerHTML = `
+    <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      ${yTickHtml}
+      <line x1="${PAD.l}" y1="${zero}" x2="${W - PAD.r}" y2="${zero}" stroke="var(--text3)" stroke-width="0.8" stroke-dasharray="3,3"/>
+      <polyline points="${fillPts}" fill="var(--red)" fill-opacity="0.12" stroke="none"/>
+      <polyline points="${pts}" fill="none" stroke="var(--red)" stroke-width="1.4"/>
+    </svg>`;
+}
+
+// ── Monthly P&L Bar Chart SVG ─────────────────────────────────────────────────
+
+function renderMonthlyPnL(monthly) {
+  const el = document.getElementById('monthly-svg');
+  if (!el || !monthly?.length) return;
+
+  const W = el.clientWidth || 680, H = 200;
+  const PAD = { t: 14, r: 16, b: 32, l: 52 };
+  const iW = W - PAD.l - PAD.r, iH = H - PAD.t - PAD.b;
+
+  const vals = monthly.map(m => m.totalR);
+  const vMax = Math.max(...vals, 0.01);
+  const vMin = Math.min(...vals, -0.01);
+  const vRange = vMax - vMin || 1;
+
+  const n = monthly.length;
+  const barW = Math.max(2, (iW / n) - 1.5);
+  const zero = PAD.t + iH - ((0 - vMin) / vRange) * iH;
+
+  const bars = monthly.map((m, i) => {
+    const x = PAD.l + (i / n) * iW;
+    const y1 = PAD.t + iH - ((m.totalR - vMin) / vRange) * iH;
+    const top = Math.min(zero, y1);
+    const h   = Math.max(1, Math.abs(zero - y1));
+    const col = m.totalR >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<rect x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${col}" fill-opacity="0.85"/>`;
+  }).join('');
+
+  const xLabels = monthly.map((m, i) => {
+    if (i > 0 && m.yearMonth.slice(0, 4) === monthly[i - 1].yearMonth.slice(0, 4)) return '';
+    const x = PAD.l + (i / n) * iW;
+    return `<text x="${x.toFixed(1)}" y="${H - 4}" font-size="8" fill="var(--text3)">${m.yearMonth.slice(0, 4)}</text>`;
+  }).join('');
+
+  const yTicks = 4;
+  const yTickHtml = Array.from({ length: yTicks + 1 }, (_, i) => {
+    const v = vMin + (vRange * i / yTicks);
+    const y = PAD.t + iH - ((v - vMin) / vRange) * iH;
+    return `<line x1="${PAD.l - 4}" y1="${y.toFixed(1)}" x2="${W - PAD.r}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="0.5"/>
+            <text x="${PAD.l - 6}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text3)">${v.toFixed(1)}R</text>`;
+  }).join('');
+
+  el.innerHTML = `
+    <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      ${yTickHtml}
+      <line x1="${PAD.l}" y1="${zero.toFixed(1)}" x2="${W - PAD.r}" y2="${zero.toFixed(1)}" stroke="var(--text3)" stroke-width="0.8" stroke-dasharray="3,3"/>
+      ${bars}
+      ${xLabels}
+    </svg>`;
+}
+
+// ── Year / Month Accordion ────────────────────────────────────────────────────
+
+function renderYearMonth(monthly) {
+  const el = document.getElementById('yearmonth-container');
+  if (!el || !monthly?.length) return;
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const byYear = {};
+  for (const m of monthly) {
+    const yr = m.yearMonth.slice(0, 4);
+    if (!byYear[yr]) byYear[yr] = [];
+    byYear[yr].push(m);
+  }
+
+  el.innerHTML = Object.keys(byYear).sort().reverse().map(yr => {
+    const months  = byYear[yr];
+    const totR    = months.reduce((s, m) => s + m.totalR, 0);
+    const totT    = months.reduce((s, m) => s + m.trades, 0);
+    const totW    = months.reduce((s, m) => s + m.wins, 0);
+    const wr      = totT > 0 ? (totW / totT * 100).toFixed(0) : '—';
+    const rSign   = totR >= 0 ? '+' : '';
+    const rColor  = totR >= 0 ? 'var(--green)' : 'var(--red)';
+    const id      = 'ym-' + yr;
+
+    const monthCards = months.map(m => {
+      const mo    = parseInt(m.yearMonth.slice(5)) - 1;
+      const mName = MONTHS[mo] ?? m.yearMonth.slice(5);
+      const mWr   = m.trades > 0 ? (m.wins / m.trades * 100).toFixed(0) : '—';
+      const mSign = m.totalR >= 0 ? '+' : '';
+      const mCol  = m.totalR >= 0 ? 'var(--green)' : 'var(--red)';
+      return `<div class="ym-month">
+        <div class="ym-month-name">${mName}</div>
+        <div class="ym-month-row"><span style="color:var(--text3)">Trades</span><span class="ym-month-val">${m.trades}</span></div>
+        <div class="ym-month-row"><span style="color:var(--text3)">Win %</span><span class="ym-month-val">${mWr}%</span></div>
+        <div class="ym-month-row"><span style="color:var(--text3)">P&amp;L</span><span class="ym-month-val" style="color:${mCol}">${mSign}${m.totalR.toFixed(1)}R</span></div>
+      </div>`;
+    }).join('');
+
+    return `<div class="ym-year">
+      <div class="ym-year-hdr" onclick="this.classList.toggle('open');document.getElementById('${id}').classList.toggle('open');">
+        <span class="ym-chevron">▶</span>
+        <span class="ym-year-title">${yr}</span>
+        <div style="flex:1"></div>
+        <div class="ym-year-stats">
+          <span>${totT} trades · ${wr}% WR</span>
+          <span style="font-family:'DM Mono',monospace;font-weight:700;color:${rColor}">${rSign}${totR.toFixed(1)}R</span>
+        </div>
+      </div>
+      <div class="ym-months" id="${id}">${monthCards}</div>
+    </div>`;
+  }).join('');
 }
 
 // ── Monte Carlo SVG ────────────────────────────────────────────────────────────
@@ -513,6 +814,10 @@ function bindEvents() {
     const dark = document.body.classList.toggle('dark');
     localStorage.setItem('bt-theme', dark ? 'dark' : 'light');
   });
+  document.getElementById('cfg-save-btn')?.addEventListener('click', saveCurrentConfig);
+  document.getElementById('cfg-save-name')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveCurrentConfig();
+  });
   bindFileInput('file-m1', 'm1');
   bindFileInput('file-m5', 'm5');
   bindFileInput('file-m30', 'm30');
@@ -545,6 +850,11 @@ function restoreSettings() {
     s('cfg-conf',   cfg.minConfirms);
     s('cfg-prox',   cfg.entryProximityATR);
     s('cfg-warmup', cfg.warmupDays);
+    s('cfg-spread',       cfg.spread);
+    s('cfg-slippage',     cfg.slippage);
+    s('cfg-kill-daily',   cfg.killDaily);
+    s('cfg-kill-weekly',  cfg.killWeekly);
+    s('cfg-kill-monthly', cfg.killMonthly);
     if (cfg.features) {
       for (const [key, feat] of Object.entries(cfg.features)) {
         const chk = document.getElementById('feat-' + key);
