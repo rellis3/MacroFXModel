@@ -59,9 +59,12 @@ async function init(){
   applyDark();
   // Render with localStorage data immediately, then re-render after KV merge
   try{const raw=localStorage.getItem(JOURNAL_KEY);if(raw)journalData=JSON.parse(raw)||{};}catch(e){}
+  // Load cached replay results so level cards show colours on first render
+  try{const raw=localStorage.getItem(REPLAY_KV_KEY);if(raw)Object.assign(_replayResults,JSON.parse(raw));}catch(e){}
   selectedDate=todayStr();renderPairNav();renderCalendar();renderQuickStats();renderMain();
   // Now load+merge from KV and re-render if anything changed
   await loadJournal();
+  await loadReplayResults();
   renderPairNav();renderCalendar();renderQuickStats();renderMain();
 }
 
@@ -321,6 +324,151 @@ function renderAllView(){
   return html||`<div class="empty-state"><div class="em-icon">&#128237;</div><h3>No matching data</h3></div>`;
 }
 
+// ── Aggregate all saved replay results respecting the current filterPair ──────
+function collectReplayStats() {
+  const agg = { days: 0, total: 0, touched: 0, traded: 0, wins: 0, losses: 0, eods: 0, totalR: 0, byFib: {}, byStar: {}, byPair: {}, byDate: [] };
+
+  for (const [key, payload] of Object.entries(_replayResults)) {
+    const [pair, date] = key.split('::');
+    if (filterPair !== 'all' && pair !== filterPair) continue;
+    if (!payload?.stats) continue;
+
+    agg.days++;
+    agg.total   += payload.stats.total;
+    agg.touched += payload.stats.touched;
+    agg.traded  += payload.stats.traded;
+    agg.wins    += payload.stats.wins;
+    agg.losses  += payload.stats.losses;
+    agg.eods    += (payload.stats.eods || 0);
+    agg.totalR  += payload.stats.totalR;
+
+    // By pair
+    if (!agg.byPair[pair]) agg.byPair[pair] = { days: 0, touched: 0, traded: 0, wins: 0, losses: 0, eods: 0, r: 0 };
+    agg.byPair[pair].days++;
+    agg.byPair[pair].touched += payload.stats.touched;
+    agg.byPair[pair].traded  += payload.stats.traded;
+    agg.byPair[pair].wins    += payload.stats.wins;
+    agg.byPair[pair].losses  += payload.stats.losses;
+    agg.byPair[pair].eods    += (payload.stats.eods || 0);
+    agg.byPair[pair].r       += payload.stats.totalR;
+
+    // By fib (merge across days)
+    for (const [fib, s] of Object.entries(payload.byFib || {})) {
+      if (!agg.byFib[fib]) agg.byFib[fib] = { touched: 0, tp: 0, sl: 0, eod: 0, r: 0 };
+      agg.byFib[fib].touched += s.touched;
+      agg.byFib[fib].tp      += s.tp;
+      agg.byFib[fib].sl      += s.sl;
+      agg.byFib[fib].eod     += s.eod;
+      agg.byFib[fib].r       += s.r;
+    }
+
+    // By star (merge across days)
+    for (const [star, s] of Object.entries(payload.byStar || {})) {
+      if (!agg.byStar[star]) agg.byStar[star] = { touched: 0, tp: 0, sl: 0, r: 0 };
+      agg.byStar[star].touched += s.touched;
+      agg.byStar[star].tp      += s.tp;
+      agg.byStar[star].sl      += s.sl;
+      agg.byStar[star].r       += s.r;
+    }
+
+    agg.byDate.push({ date, pair, r: payload.stats.totalR, wins: payload.stats.wins, losses: payload.stats.losses, winRate: payload.stats.winRate });
+  }
+
+  agg.totalR  = +agg.totalR.toFixed(2);
+  agg.winRate = agg.traded > 0 ? Math.round(agg.wins / agg.traded * 100) : null;
+  // Sort byDate descending
+  agg.byDate.sort((a, b) => (b.date + b.pair).localeCompare(a.date + a.pair));
+  return agg;
+}
+
+function renderReplayStatsPanel() {
+  const d = collectReplayStats();
+  if (d.days === 0) return `<div class="rp-inline-panel" style="margin-bottom:20px;padding:14px;text-align:center;color:var(--text3);font-size:12px">No replay data yet — open a day and click <strong>▶ Run Day</strong> to record results.</div>`;
+
+  const rc  = d.totalR >= 0 ? 'var(--green)' : 'var(--red)';
+  const wrc = d.winRate >= 60 ? 'var(--green)' : d.winRate >= 45 ? 'var(--amber)' : d.traded > 0 ? 'var(--red)' : 'var(--text)';
+
+  // Top stats grid
+  let html = `<div class="stats-grid" style="margin-bottom:16px">
+    <div class="stat-card"><div class="stat-card-lbl">Days Replayed</div><div class="stat-card-val">${d.days}</div><div class="stat-card-sub">${d.total} levels across ${d.days} day${d.days!==1?'s':''}</div></div>
+    <div class="stat-card"><div class="stat-card-lbl">Levels Touched</div><div class="stat-card-val">${d.touched}</div><div class="stat-card-sub">${d.total > 0 ? Math.round(d.touched/d.total*100) : 0}% touch rate</div></div>
+    <div class="stat-card"><div class="stat-card-lbl">Win Rate</div><div class="stat-card-val" style="color:${wrc}">${d.winRate !== null ? d.winRate + '%' : '—'}</div><div class="stat-card-sub">${d.wins}W · ${d.losses}L · ${d.eods}EOD</div></div>
+    <div class="stat-card"><div class="stat-card-lbl">Total R</div><div class="stat-card-val" style="color:${rc}">${d.totalR >= 0 ? '+' : ''}${d.totalR}R</div><div class="stat-card-sub">${d.traded} traded levels</div></div>
+  </div>`;
+
+  // By Pair table (only shown when viewing all pairs)
+  if (filterPair === 'all' && Object.keys(d.byPair).length > 0) {
+    const pairRows = Object.entries(d.byPair)
+      .sort((a, b) => b[1].r - a[1].r)
+      .map(([p, s]) => {
+        const wr = s.traded > 0 ? Math.round(s.wins / s.traded * 100) : null;
+        const wc = wr >= 60 ? 'var(--green)' : wr >= 45 ? 'var(--amber)' : s.traded > 0 ? 'var(--red)' : 'var(--text3)';
+        const rc2 = s.r >= 0 ? 'var(--green)' : 'var(--red)';
+        return `<tr><td>${p}</td><td>${s.days}</td><td>${s.touched}</td><td>${s.traded}</td>`
+          + `<td style="color:var(--green)">${s.wins}</td><td style="color:var(--red)">${s.losses}</td><td style="color:var(--amber)">${s.eods}</td>`
+          + `<td style="color:${wc}">${wr !== null ? wr + '%' : '—'}</td>`
+          + `<td style="color:${rc2};font-family:'DM Mono',monospace">${s.r >= 0 ? '+' : ''}${s.r.toFixed(2)}R</td></tr>`;
+      }).join('');
+    html += `<div class="sec-lbl" style="margin-bottom:8px">By Pair <span class="sec-badge">REPLAY</span></div>
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px">
+      <table class="breakdown-table"><thead><tr><th>Pair</th><th>Days</th><th>Touched</th><th>Traded</th><th>W</th><th>L</th><th>EOD</th><th>Win%</th><th>R</th></tr></thead><tbody>${pairRows}</tbody></table></div>`;
+  }
+
+  // By SD/Fib table
+  if (Object.keys(d.byFib).length > 0) {
+    const fibRows = Object.entries(d.byFib)
+      .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
+      .map(([fib, s]) => {
+        const traded = s.tp + s.sl + s.eod;
+        const wr = traded > 0 ? Math.round(s.tp / traded * 100) : null;
+        const wc = wr >= 60 ? 'vu' : wr >= 45 ? 'vn' : traded > 0 ? 'vd' : '';
+        const rc2 = s.r >= 0 ? 'vu' : 'vd';
+        return `<tr><td>${fib === 'other' ? 'Other' : 'SD' + fib}</td><td>${s.touched}</td>`
+          + `<td class="vu">${s.tp}</td><td class="vd">${s.sl}</td><td class="vn">${s.eod}</td>`
+          + `<td class="mono ${rc2}">${s.r >= 0 ? '+' : ''}${s.r.toFixed(2)}R</td><td class="${wc}">${wr !== null ? wr + '%' : '—'}</td></tr>`;
+      }).join('');
+    html += `<div class="sec-lbl" style="margin-bottom:8px">By SD Level <span class="sec-badge purple">REPLAY</span></div>
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px">
+      <table class="breakdown-table"><thead><tr><th>SD</th><th>Touched</th><th>TP</th><th>SL</th><th>EOD</th><th>R</th><th>Win%</th></tr></thead><tbody>${fibRows}</tbody></table></div>`;
+  }
+
+  // By Star table
+  if (Object.keys(d.byStar).length > 0) {
+    const starRows = Object.entries(d.byStar)
+      .sort((a, b) => +b[0] - +a[0])
+      .map(([star, s]) => {
+        const traded = s.tp + s.sl;
+        const wr = traded > 0 ? Math.round(s.tp / traded * 100) : null;
+        const wc = wr >= 60 ? 'vu' : wr >= 45 ? 'vn' : traded > 0 ? 'vd' : '';
+        const rc2 = s.r >= 0 ? 'vu' : 'vd';
+        return `<tr><td><span style="color:var(--amber)">${'★'.repeat(Math.min(+star,5))}</span> ${star}★</td>`
+          + `<td>${s.touched}</td><td class="vu">${s.tp}</td><td class="vd">${s.sl}</td>`
+          + `<td class="mono ${rc2}">${s.r >= 0 ? '+' : ''}${s.r.toFixed(2)}R</td><td class="${wc}">${wr !== null ? wr + '%' : '—'}</td></tr>`;
+      }).join('');
+    html += `<div class="sec-lbl" style="margin-bottom:8px">By Star Rating <span class="sec-badge">REPLAY</span></div>
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px">
+      <table class="breakdown-table"><thead><tr><th>Stars</th><th>Touched</th><th>TP</th><th>SL</th><th>R</th><th>Win%</th></tr></thead><tbody>${starRows}</tbody></table></div>`;
+  }
+
+  // Recent days log
+  if (d.byDate.length > 0) {
+    const dateRows = d.byDate.slice(0, 20).map(({ date, pair, r, wins, losses, winRate }) => {
+      const rc2 = r >= 0 ? 'var(--green)' : 'var(--red)';
+      const wc  = winRate >= 60 ? 'var(--green)' : winRate >= 45 ? 'var(--amber)' : winRate !== null ? 'var(--red)' : 'var(--text3)';
+      return `<tr><td>${date}</td><td>${pair}</td>`
+        + `<td style="color:var(--green)">${wins}</td><td style="color:var(--red)">${losses}</td>`
+        + `<td style="color:${wc}">${winRate !== null ? winRate + '%' : '—'}</td>`
+        + `<td style="color:${rc2};font-family:'DM Mono',monospace">${r >= 0 ? '+' : ''}${r}R</td>`
+        + `<td><button class="dark-btn" style="padding:2px 8px;font-size:10px" onclick="selectDate('${date}');setPairFilter('${pair}');setView('day')">View</button></td></tr>`;
+    }).join('');
+    html += `<div class="sec-lbl" style="margin-bottom:8px">Replayed Days <span class="sec-badge">LOG</span></div>
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:4px">
+      <table class="breakdown-table"><thead><tr><th>Date</th><th>Pair</th><th>W</th><th>L</th><th>Win%</th><th>R</th><th></th></tr></thead><tbody>${dateRows}</tbody></table></div>`;
+  }
+
+  return html;
+}
+
 function renderStatsView(){
   const d=collectStats();
   const wr=d.taken>0?(d.wins/d.taken*100).toFixed(0):0;
@@ -347,7 +495,9 @@ function renderStatsView(){
     <div class="sec-lbl" style="margin-bottom:10px">By Pair <span class="sec-badge">BREAKDOWN</span></div>
     <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:20px"><table class="breakdown-table"><thead><tr><th>Pair</th><th>Levels</th><th>Taken</th><th>W</th><th>L</th><th>BE</th><th>Win%</th></tr></thead><tbody>${pairRows||'<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:16px">No data yet</td></tr>'}</tbody></table></div>
     <div class="sec-lbl" style="margin-bottom:10px">By Star Rating <span class="sec-badge purple">QUALITY</span></div>
-    <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden"><table class="breakdown-table"><thead><tr><th>Stars</th><th>Levels</th><th>Taken</th><th>W</th><th>L</th><th>Win%</th></tr></thead><tbody>${starRows||'<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:16px">No data yet</td></tr>'}</tbody></table></div>`;
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:24px"><table class="breakdown-table"><thead><tr><th>Stars</th><th>Levels</th><th>Taken</th><th>W</th><th>L</th><th>Win%</th></tr></thead><tbody>${starRows||'<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:16px">No data yet</td></tr>'}</tbody></table></div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px;padding-top:4px;border-top:1px solid var(--border)">Replay Performance${filterPair!=='all'?`<span style="font-size:12px;color:var(--text3);font-weight:400;margin-left:8px">${filterPair}</span>`:''} <span class="sec-badge purple" style="vertical-align:middle;font-size:10px">BACKTESTED</span></div>
+    ${renderReplayStatsPanel()}`;
 }
 
 function collectStats(){
@@ -517,163 +667,244 @@ function copyCSV(){
 function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(type||'');setTimeout(()=>t.classList.remove('show'),2800);}
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// REPLAY ENGINE
+// REPLAY ENGINE  — runs on main thread (no Worker) for reliability
 // ═══════════════════════════════════════════════════════════════════════════════
 
-let _replayWorker = null;
-const _replayResults = {};  // key: `${pair}::${date}`
+const REPLAY_KV_KEY = 'journal_replay_store';
+const _replayResults = {};   // key: `${pair}::${date}` → payload (in-memory cache)
 
-function getReplayWorker() {
-  if (!_replayWorker) {
-    _replayWorker = new Worker('./js/journal-replay-worker.js');
-    _replayWorker.onmessage = (e) => {
-      const { type, payload } = e.data;
-      if (type === 'fetched')  onM1Fetched(payload);
-      if (type === 'parsed')   onM1CsvParsed(payload);
-      if (type === 'result')   onReplayResult(payload);
-      if (type === 'error')    onReplayError(payload);
-      if (type === 'progress') onReplayProgress(payload);
-    };
-  }
-  return _replayWorker;
+// Load saved replay results from KV/localStorage on startup
+async function loadReplayResults() {
+  try {
+    const raw = localStorage.getItem(REPLAY_KV_KEY);
+    if (raw) Object.assign(_replayResults, JSON.parse(raw));
+  } catch(e) {}
+  try {
+    const kv = await kvGet(REPLAY_KV_KEY);
+    if (kv?.data) Object.assign(_replayResults, kv.data);
+  } catch(e) {}
 }
 
-// ── M1 data store (symbol+date → loaded flag) ────────────────────────────────
-const _m1Loaded = {};   // `${symbol}::${date}` → true
-
-function openReplayModal(pair, date) {
-  const symbol = pairToSymbol(pair);
-  document.getElementById('rp-pair-title').textContent = pair + ' · ' + date;
-  document.getElementById('rp-symbol').textContent = symbol;
-  document.getElementById('replayModal').classList.add('open');
-  document.getElementById('replayModal').dataset.pair = pair;
-  document.getElementById('replayModal').dataset.date = date;
-  // Reset fetch status label
-  const key = symbol + '::' + date;
-  const loaded = !!_m1Loaded[key];
-  document.getElementById('rp-fetch-status').textContent = loaded
-    ? `M1 data loaded (${symbol} ${date})`
-    : `Ready to fetch ${symbol} M1 from Oanda`;
-  document.getElementById('rp-fetch-status').className = loaded ? 'rp-fetch-ok' : 'rp-fetch-idle';
-  document.getElementById('rp-fetch-btn').disabled = false;
-  // Show existing result immediately if cached
-  const rKey = pair + '::' + date;
-  if (_replayResults[rKey]) renderReplayInModal(_replayResults[rKey]);
-  else document.getElementById('rp-result-area').innerHTML = '';
-}
-function closeReplayModal() { document.getElementById('replayModal').classList.remove('open'); }
-
-function pairToSymbol(pair) {
-  // EUR/USD → EURUSD, XAU/USD → XAUUSD — matches Oanda instrument without underscore
-  // The API endpoint accepts the slash version and converts internally
-  return pair;   // pass as-is; worker.js API route handles the / → _ conversion
-}
-
-function fetchAndReplay() {
-  const modal  = document.getElementById('replayModal');
-  const pair   = modal.dataset.pair;
-  const date   = modal.dataset.date;
-  const symbol = pairToSymbol(pair);
-
-  const statusEl = document.getElementById('rp-fetch-status');
-  const btn      = document.getElementById('rp-fetch-btn');
-  btn.disabled   = true;
-  statusEl.textContent = `Fetching ${pair} M1 from Oanda…`;
-  statusEl.className   = 'rp-fetch-loading';
-  document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Fetching M1 bars from Oanda…</div>';
-
-  // Pass pair through so callbacks don't rely on modal state when they fire
-  getReplayWorker().postMessage({ type: 'fetch', payload: { symbol, date, pair } });
-}
-
-function onM1Fetched({ symbol, date, pair, count }) {
-  const key = symbol + '::' + date;
-  _m1Loaded[key] = true;
-  // Only update modal UI if it's still showing this pair+date
-  const modal = document.getElementById('replayModal');
-  if (modal?.dataset.pair === pair && modal?.dataset.date === date) {
-    const statusEl = document.getElementById('rp-fetch-status');
-    if (statusEl) { statusEl.textContent = `${count} bars loaded — running replay…`; statusEl.className = 'rp-fetch-ok'; }
-    if (document.getElementById('rp-fetch-btn')) document.getElementById('rp-fetch-btn').disabled = false;
-  }
-  _triggerReplay(symbol, date, pair);
-}
-
-function onM1CsvParsed({ symbol, count, dates }) {
-  const modal = document.getElementById('replayModal');
-  const date  = modal?.dataset.date;
-  const pair  = modal?.dataset.pair || symbol;
-  if (date) _m1Loaded[symbol + '::' + date] = true;
-  const statusEl = document.getElementById('rp-fetch-status');
-  if (statusEl) {
-    statusEl.textContent = `${count.toLocaleString()} bars loaded from CSV (${dates} days)`;
-    statusEl.className   = 'rp-fetch-ok';
-  }
-  if (document.getElementById('rp-fetch-btn')) document.getElementById('rp-fetch-btn').disabled = false;
-  if (date) _triggerReplay(symbol, date, pair);
-}
-
-function _triggerReplay(symbol, date, pair) {
-  const dayObj = journalData[date]?.[pair];
-  if (!dayObj) { showToast('No levels for this pair/date', 'err'); return; }
-  const levels = dayObj.levels || [];
-  if (!levels.length) { showToast('No levels to replay', 'err'); return; }
-
-  document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Running replay…</div>';
-  const pip = getPipSz(pair);
-  // Embed pair in payload so onReplayResult doesn't rely on modal state
-  getReplayWorker().postMessage({
-    type: 'replay',
-    payload: { symbol, date, pair, levels, rrRatio: 2.2, pipSize: pip },
-  });
-}
-
-function runReplay() {
-  const modal  = document.getElementById('replayModal');
-  const pair   = modal.dataset.pair;
-  const date   = modal.dataset.date;
-  const symbol = pairToSymbol(pair);
-  const key    = symbol + '::' + date;
-  if (!_m1Loaded[key]) { fetchAndReplay(); return; }
-  _triggerReplay(symbol, date, pair);
-}
-
-function onReplayProgress({ msg }) {
-  const el = document.getElementById('rp-result-area');
-  if (el) el.innerHTML = `<div class="rp-loading">${msg}</div>`;
-}
-
-function onReplayError(msg) {
-  const el = document.getElementById('rp-result-area');
-  if (el) el.innerHTML = `<div class="rp-error">${msg}</div>`;
-  const statusEl = document.getElementById('rp-fetch-status');
-  if (statusEl) { statusEl.textContent = msg; statusEl.className = 'rp-fetch-err'; }
-  const btn = document.getElementById('rp-fetch-btn');
-  if (btn) btn.disabled = false;
-  showToast(msg, 'err');
-}
-
-function onReplayResult(payload) {
-  const { date, pair } = payload;   // pair embedded by _triggerReplay
-  const key = pair + '::' + date;
-  _replayResults[key] = payload;
-  // Only render into the modal if it is currently showing this same pair+date
-  const modal = document.getElementById('replayModal');
-  if (modal?.dataset.pair === pair && modal?.dataset.date === date) {
-    renderReplayInModal(payload);
-  }
-  // Update inline panel and re-render level cards with replay colouring
-  updateInlineDayPanel(pair, date, payload);
-  if (currentView === 'day' && selectedDate === date) renderMain();
-}
-
-function renderReplayInModal(payload) {
-  const el = document.getElementById('rp-result-area');
-  if (!el) return;
-  el.innerHTML = buildReplayHTML(payload);
+function saveReplayResults() {
+  try { localStorage.setItem(REPLAY_KV_KEY, JSON.stringify(_replayResults)); } catch(e) {}
+  kvSet(REPLAY_KV_KEY, _replayResults);
 }
 
 function safePairId(pair) { return pair.replace(/\//g, '-').replace(/_/g, '-'); }
+
+// ── Modal open/close ──────────────────────────────────────────────────────────
+
+function openReplayModal(pair, date) {
+  document.getElementById('rp-pair-title').textContent = pair + ' · ' + date;
+  document.getElementById('rp-symbol').textContent = pair;
+  document.getElementById('replayModal').dataset.pair = pair;
+  document.getElementById('replayModal').dataset.date = date;
+  document.getElementById('replayModal').classList.add('open');
+
+  const key    = pair + '::' + date;
+  const cached = _replayResults[key];
+  const btn    = document.getElementById('rp-fetch-btn');
+  btn.disabled = false;
+  btn.textContent = '▶ Fetch & Run';
+
+  if (cached) {
+    setReplayStatus(`Cached — ${cached.stats.touched}/${cached.stats.total} touched`, 'rp-fetch-ok');
+    renderReplayInModal(cached);
+  } else {
+    setReplayStatus(`Ready — will fetch ${pair} M1 from Oanda`, 'rp-fetch-idle');
+    document.getElementById('rp-result-area').innerHTML = '';
+  }
+}
+
+function closeReplayModal() { document.getElementById('replayModal').classList.remove('open'); }
+
+function setReplayStatus(msg, cls) {
+  const el = document.getElementById('rp-fetch-status');
+  if (el) { el.textContent = msg; el.className = cls; }
+}
+
+// ── Main entry point — fetch M1 then replay, all on main thread ───────────────
+
+async function fetchAndReplay() {
+  const modal = document.getElementById('replayModal');
+  const pair  = modal.dataset.pair;
+  const date  = modal.dataset.date;
+
+  const btn = document.getElementById('rp-fetch-btn');
+  btn.disabled = true;
+  btn.textContent = '…';
+  setReplayStatus(`Fetching ${pair} M1 from Oanda…`, 'rp-fetch-loading');
+  document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Fetching M1 bars from Oanda…</div>';
+
+  // ── 1. Fetch M1 bars ──────────────────────────────────────────────────────
+  let bars;
+  try {
+    const url = `/api/oanda_ohlc1m?symbol=${encodeURIComponent(pair)}&date=${encodeURIComponent(date)}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    if (!data.values?.length) throw new Error(`No M1 bars for ${pair} on ${date} — market may have been closed.`);
+    bars = data.values.map(v => {
+      const dt   = v.datetime || '';
+      const hour = parseInt(dt.slice(11, 13), 10);
+      const min  = parseInt(dt.slice(14, 16), 10);
+      return { h: +v.high, l: +v.low, o: +v.open, c: +v.close, hour, min };
+    });
+  } catch(e) {
+    setReplayStatus(e.message, 'rp-fetch-err');
+    document.getElementById('rp-result-area').innerHTML = `<div class="rp-error">${e.message}</div>`;
+    btn.disabled = false; btn.textContent = '▶ Fetch & Run';
+    return;
+  }
+
+  setReplayStatus(`${bars.length} bars — running replay…`, 'rp-fetch-ok');
+  document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Running replay…</div>';
+
+  // ── 2. Run replay synchronously ───────────────────────────────────────────
+  const dayObj = journalData[date]?.[pair];
+  if (!dayObj?.levels?.length) {
+    document.getElementById('rp-result-area').innerHTML = '<div class="rp-error">No levels to replay for this pair/date.</div>';
+    btn.disabled = false; btn.textContent = '▶ Fetch & Run';
+    return;
+  }
+
+  const payload = runReplayEngine(pair, date, bars, dayObj.levels);
+
+  // ── 3. Cache + persist ────────────────────────────────────────────────────
+  const key = pair + '::' + date;
+  _replayResults[key] = payload;
+  saveReplayResults();
+
+  // ── 4. Render ─────────────────────────────────────────────────────────────
+  setReplayStatus(`Done — ${payload.stats.touched}/${payload.stats.total} touched · ${payload.stats.totalR >= 0 ? '+' : ''}${payload.stats.totalR}R`, 'rp-fetch-ok');
+  renderReplayInModal(payload);
+  updateInlineDayPanel(pair, date, payload);
+  if (currentView === 'day' && selectedDate === date) renderMain();
+
+  btn.disabled = false; btn.textContent = '▶ Fetch & Run';
+}
+
+function runReplay() { fetchAndReplay(); }   // Re-run button calls same path
+
+// ── Replay computation (pure — no I/O) ────────────────────────────────────────
+
+function runReplayEngine(pair, date, allBars, levels) {
+  const pip = getPipSz(pair);
+  const windowBars = allBars.filter(b => b.hour * 60 + b.min >= 480 && b.hour * 60 + b.min < 1260);
+
+  const results = [];
+  let runningR = 0;
+  const equity = [{ label: 'Start', r: 0, cumR: 0 }];
+
+  for (let li = 0; li < levels.length; li++) {
+    const level      = levels[li];
+    const entryPrice = level.price;
+    const dir        = level.direction;
+    const sl         = level.slOverride ?? level.sl;
+    const tp         = level.tpOverride ?? level.tp;
+    const stars      = level.stars || 1;
+
+    if (!entryPrice || !dir || !sl || !tp) {
+      results.push({ level, touched: false, result: 'no-data', r: null, touchTime: null, exitTime: null, maxFav: null, maxAdv: null, chartBars: null, entryPrice, sl, tp, dir });
+      continue;
+    }
+    const slDist = Math.abs(entryPrice - sl);
+    const tpDist = Math.abs(entryPrice - tp);
+    if (slDist <= 0) {
+      results.push({ level, touched: false, result: 'no-sl', r: null, touchTime: null, exitTime: null, maxFav: null, maxAdv: null, chartBars: null, entryPrice, sl, tp, dir });
+      continue;
+    }
+
+    let touched = false, touchTime = null, result = 'untouched', r = null;
+    let exitTime = null, maxFav = 0, maxAdv = 0, inTrade = false;
+    let touchBarIdx = -1, exitBarIdx = -1;
+
+    for (let bi = 0; bi < windowBars.length; bi++) {
+      const bar     = windowBars[bi];
+      const barMins = bar.hour * 60 + bar.min;
+
+      if (!inTrade && bar.l <= entryPrice + pip * 0.5 && bar.h >= entryPrice - pip * 0.5) {
+        touched = true; inTrade = true; touchBarIdx = bi;
+        touchTime = hhmm(bar);
+      }
+      if (inTrade) {
+        const fav = dir === 'long' ? (bar.h - entryPrice) / pip : (entryPrice - bar.l) / pip;
+        const adv = dir === 'long' ? (entryPrice - bar.l) / pip : (bar.h - entryPrice) / pip;
+        if (fav > maxFav) maxFav = fav;
+        if (adv > maxAdv) maxAdv = adv;
+
+        if (dir === 'long') {
+          if (bar.l <= sl) { result = 'sl'; r = -1; exitTime = hhmm(bar); exitBarIdx = bi; break; }
+          if (bar.h >= tp) { result = 'tp'; r = tpDist / slDist; exitTime = hhmm(bar); exitBarIdx = bi; break; }
+        } else {
+          if (bar.h >= sl) { result = 'sl'; r = -1; exitTime = hhmm(bar); exitBarIdx = bi; break; }
+          if (bar.l <= tp) { result = 'tp'; r = tpDist / slDist; exitTime = hhmm(bar); exitBarIdx = bi; break; }
+        }
+        if (barMins >= 1259) {
+          const eodPnl = dir === 'long' ? bar.c - entryPrice : entryPrice - bar.c;
+          r = Math.max(-1, Math.min(tpDist / slDist, eodPnl / slDist));
+          result = 'eod'; exitTime = '21:00'; exitBarIdx = bi; break;
+        }
+      }
+    }
+
+    if (inTrade && result === 'untouched') result = 'open';
+    if (!touched) { result = 'untouched'; r = null; }
+
+    // Slice chart bars: 12 before touch → exit + 8 after
+    let chartBars = null;
+    if (touchBarIdx >= 0) {
+      const from = Math.max(0, touchBarIdx - 12);
+      const to   = Math.min(windowBars.length, (exitBarIdx >= 0 ? exitBarIdx : touchBarIdx + 30) + 8);
+      chartBars = windowBars.slice(from, to).map((b, i) => ({
+        ...b,
+        isTouchBar: (from + i) === touchBarIdx,
+        isExitBar:  exitBarIdx >= 0 && (from + i) === exitBarIdx,
+      }));
+    }
+
+    if (r !== null) {
+      runningR += r;
+      equity.push({ label: `${stars}★ ${level.todayFib != null ? 'SD' + level.todayFib : ''}`, r: +r.toFixed(2), cumR: +runningR.toFixed(2), result, touchTime });
+    }
+
+    results.push({ level, touched, result, r: r !== null ? +r.toFixed(2) : null, touchTime, exitTime, maxFav: maxFav > 0 ? +maxFav.toFixed(1) : null, maxAdv: maxAdv > 0 ? +maxAdv.toFixed(1) : null, chartBars, entryPrice, sl, tp, dir });
+  }
+
+  const traded  = results.filter(r => r.result === 'tp' || r.result === 'sl' || r.result === 'eod');
+  const wins    = traded.filter(r => r.result === 'tp');
+  const losses  = traded.filter(r => r.result === 'sl');
+  const eods    = traded.filter(r => r.result === 'eod');
+  const touched = results.filter(r => r.touched);
+  const totalR  = +traded.reduce((s, r) => s + (r.r || 0), 0).toFixed(2);
+
+  const byFib = {}, byStar = {};
+  for (const res of results) {
+    const fib = res.level.todayFib != null ? String(res.level.todayFib) : 'other';
+    if (!byFib[fib]) byFib[fib] = { touched: 0, tp: 0, sl: 0, eod: 0, r: 0 };
+    if (res.touched) byFib[fib].touched++;
+    if (res.result === 'tp')  { byFib[fib].tp++;  byFib[fib].r += res.r; }
+    if (res.result === 'sl')  { byFib[fib].sl++;  byFib[fib].r -= 1; }
+    if (res.result === 'eod') { byFib[fib].eod++; byFib[fib].r += res.r; }
+    const s = String(res.level.stars || 1);
+    if (!byStar[s]) byStar[s] = { touched: 0, tp: 0, sl: 0, r: 0 };
+    if (res.touched) byStar[s].touched++;
+    if (res.result === 'tp')  { byStar[s].tp++; byStar[s].r += res.r; }
+    if (res.result === 'sl')  { byStar[s].sl++; byStar[s].r -= 1; }
+  }
+
+  return { pair, date, results, equity, byFib, byStar, stats: { total: results.length, touched: touched.length, traded: traded.length, wins: wins.length, losses: losses.length, eods: eods.length, totalR, winRate: traded.length > 0 ? Math.round(wins.length / traded.length * 100) : null } };
+}
+
+function hhmm(bar) { return `${String(bar.hour).padStart(2,'0')}:${String(bar.min).padStart(2,'0')}`; }
+
+function renderReplayInModal(payload) {
+  const el = document.getElementById('rp-result-area');
+  if (el) el.innerHTML = buildReplayHTML(payload);
+}
 
 function updateInlineDayPanel(pair, date, payload) {
   const panelEl = document.getElementById(`rp-inline-${safePairId(pair)}-${date}`);
