@@ -239,9 +239,9 @@
         <button id="r2-load-btn">⬇ Load all from R2</button>
         <div class="cfg-cell">
           <label class="cfg-cell" style="flex-direction:row;gap:0">
-            <span style="font-size:10px;color:var(--text3)">Path template ({symbol} / {tf})</span>
+            <span style="font-size:10px;color:var(--text3)">Path override (tokens: {symbol} {symbol_lower} {tf})</span>
           </label>
-          <input type="text" id="r2-path-tpl" class="bt-input" value="{symbol}/m{tf}.csv" spellcheck="false"/>
+          <input type="text" id="r2-path-tpl" class="bt-input" placeholder="{symbol}/{symbol_lower}-m{tf}-bid.csv (leave blank for default)" spellcheck="false"/>
         </div>
         <div id="r2-url-preview" class="r2-url-list"></div>
       </div>

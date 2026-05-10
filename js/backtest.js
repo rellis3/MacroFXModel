@@ -149,11 +149,18 @@ function renderConfigList() {
 
 const R2_BASE = 'https://pub-1d8354116ae54e158e7010f0deb8f6e6.r2.dev';
 
-// Builds the R2 URL for a given symbol + timeframe.
-// Default pattern: EURUSD/m1.csv — edit r2-path-tpl in the sidebar to override.
+// URL pattern: {SYMBOL}/{symbol_lower}-m{tf}-bid.csv
+// e.g. EURUSD/eurusd-m30-bid.csv
 function r2Url(symbol, tf) {
-  const tpl = document.getElementById('r2-path-tpl')?.value?.trim() || '{symbol}/m{tf}.csv';
-  return R2_BASE + '/' + tpl.replace('{symbol}', symbol).replace('{tf}', tf);
+  const tplEl = document.getElementById('r2-path-tpl');
+  if (tplEl?.value?.trim()) {
+    const tpl = tplEl.value.trim();
+    return R2_BASE + '/' + tpl
+      .replace('{symbol}', symbol)
+      .replace('{symbol_lower}', symbol.toLowerCase())
+      .replace('{tf}', tf.replace('m', ''));
+  }
+  return `${R2_BASE}/${symbol}/${symbol.toLowerCase()}-${tf}-bid.csv`;
 }
 
 // Streams a file from R2 with download progress, then sends to worker for parsing.
@@ -998,6 +1005,16 @@ function saveSettings() {
   const cfg = buildCfg();
   try { localStorage.setItem('bt-cfg', JSON.stringify(cfg)); } catch {}
 }
+
+// Expose functions called from inline HTML onclick handlers (module scope workaround)
+window.loadConfig        = loadConfig;
+window.deleteConfig      = deleteConfig;
+window.fibSelectAll      = fibSelectAll;
+window.fibSelectPreset   = fibSelectPreset;
+window.applyIsOosSplit   = applyIsOosSplit;
+window.applyOosOnly      = applyOosOnly;
+window.resetDateRange    = resetDateRange;
+window.switchChartTab    = switchChartTab;
 
 function restoreSettings() {
   try {
