@@ -476,7 +476,7 @@ function featureHtfEma(bars5mRev) {
   return { signal, val: `H1 EMA21 ${abv21 ? 'above' : 'below'}${e50 != null ? ` · EMA50 ${abv50 ? 'above' : 'below'}` : ''}` };
 }
 
-function featureVwapSlope(bars5mRev, entryDir, price, symbol, todayDate) {
+function featureVwapSlope(bars5mRev, price, symbol, todayDate) {
   if (!bars5mRev || bars5mRev.length < 12) return { signal: null, val: 'Need 12+ 5m bars' };
   const sessionBars = bars5mRev.filter(b => b.lDate === todayDate && b.lHour >= 8).reverse();
   const barsForTwap = sessionBars.length >= 12 ? sessionBars : bars5mRev.slice(-50).reverse();
@@ -492,45 +492,48 @@ function featureVwapSlope(bars5mRev, entryDir, price, symbol, todayDate) {
   const slope = sw > 0 ? twap[twap.length - 1] - twap[twap.length - 1 - sw] : 0;
   const pip   = getPipSize(symbol);
   const above = price > currentTwap;
+  // Absolute signal: price below TWAP with rising slope → expect mean-reversion long
+  //                  price above TWAP with falling slope → expect mean-reversion short
   let signal = null, strength = null;
-  if (entryDir === 'short') {
-    if (above && slope < 0) { signal = 'short'; strength = 'strong'; }
-    else if (above)          { signal = 'short'; strength = 'mild'; }
-    else                     { signal = 'long'; }
-  } else {
-    if (!above && slope > 0) { signal = 'long'; strength = 'strong'; }
-    else if (!above)          { signal = 'long'; strength = 'mild'; }
-    else                      { signal = 'short'; }
-  }
+  if (!above && slope > 0) { signal = 'long';  strength = 'strong'; }
+  else if (!above)          { signal = 'long';  strength = 'mild'; }
+  else if (above && slope < 0) { signal = 'short'; strength = 'strong'; }
+  else if (above)           { signal = 'short'; strength = 'mild'; }
   const sDir = slope > 0 ? `rising +${(slope/pip).toFixed(1)}p` : `declining ${(slope/pip).toFixed(1)}p`;
   return { signal, val: `TWAP ${currentTwap.toFixed(getDigits(symbol))} ${sDir} · price ${above ? 'above' : 'below'}${strength ? ' ' + strength : ''}` };
 }
 
-function featureAdxFilter(bars30m, entryDir) {
+function featureAdxFilter(bars30m) {
   if (!bars30m || bars30m.length < 40) return { signal: null, val: 'Need 40+ 30m bars' };
   const result = computeADX(bars30m.slice(-200), 14);
   if (!result) return { signal: null, val: 'ADX: insufficient data' };
   const { adx, plusDI, minusDI } = result;
   const trendUp = plusDI > minusDI;
-  const opp     = entryDir === 'long' ? 'short' : 'long';
-  if (adx < 20) return { signal: entryDir, val: `ADX ${adx.toFixed(1)} — range-bound` };
-  if (adx > 28) return { signal: opp,      val: `ADX ${adx.toFixed(1)} — trending ${trendUp ? '↑' : '↓'}` };
-  const aligned = (entryDir === 'long' && trendUp) || (entryDir === 'short' && !trendUp);
-  return { signal: aligned ? entryDir : null, val: `ADX ${adx.toFixed(1)} · ${trendUp ? '+DI' : '-DI'} dominant` };
+  // Range-bound market: mean-reversion favoured — no directional bias from ADX alone
+  if (adx < 20) return { signal: null, val: `ADX ${adx.toFixed(1)} — range-bound` };
+  // Strong trend: momentum direction — counter-trend trades are risky
+  if (adx > 28) return { signal: trendUp ? 'long' : 'short', val: `ADX ${adx.toFixed(1)} — trending ${trendUp ? '↑' : '↓'}` };
+  // Moderate trend: directional bias from DI crossover
+  return { signal: trendUp ? 'long' : 'short', val: `ADX ${adx.toFixed(1)} · ${trendUp ? '+DI' : '-DI'} dominant` };
 }
 
-function featureHurstRegime(dailyBars, entryDir) {
+function featureHurstRegime(dailyBars) {
   if (!dailyBars || dailyBars.length < 30) return { signal: null, val: 'Need 30+ daily bars' };
   const closes = dailyBars.slice(-80).map(bC).filter(v => !isNaN(v));
   if (closes.length < 16) return { signal: null, val: 'Insufficient close data' };
-  const H   = computeHurst(closes);
-  const opp = entryDir === 'long' ? 'short' : 'long';
-  if (H < 0.45) return { signal: entryDir, val: `Hurst ${H.toFixed(2)} — mean-reverting` };
-  if (H > 0.55) return { signal: opp,      val: `Hurst ${H.toFixed(2)} — trending` };
+  const H = computeHurst(closes);
+  // Mean-reverting regime (H < 0.45): strategy premise is valid → no direction veto (null = neutral)
+  // Trending regime (H > 0.55): momentum in play → use recent price direction as signal
+  // Random walk: abstain
+  if (H < 0.45) return { signal: null, val: `Hurst ${H.toFixed(2)} — mean-reverting (good)` };
+  if (H > 0.55) {
+    const recentDir = closes[closes.length - 1] > closes[closes.length - 5] ? 'long' : 'short';
+    return { signal: recentDir, val: `Hurst ${H.toFixed(2)} — trending ${recentDir}` };
+  }
   return { signal: null, val: `Hurst ${H.toFixed(2)} — random walk` };
 }
 
-function featureFvgBias(bars5mRev, entryDir, price, atr, symbol) {
+function featureFvgBias(bars5mRev, price, atr, symbol) {
   if (!bars5mRev || bars5mRev.length < 20) return { signal: null, val: 'Need 20+ 5m bars' };
   const sorted = bars5mRev.slice(1, 101).reverse();
   const fvgs   = [];
@@ -593,7 +596,7 @@ function featureWeeklyPivot(dailyBars, price, atr, symbol) {
   return { signal: best.sig, val: `Near ${best.name} ${best.lvl.toFixed(getDigits(symbol))} (${Math.round(bestDist/pip)}p)` };
 }
 
-function featureIchimokuCloud(dailyBars, entryDir, price, symbol) {
+function featureIchimokuCloud(dailyBars, price, symbol) {
   if (!dailyBars || dailyBars.length < 78) return { signal: null, val: 'Need 78+ daily bars' };
   const last     = dailyBars.length - 1;
   const cloudIdx = last - 26;
@@ -620,24 +623,97 @@ function featureIchimokuCloud(dailyBars, entryDir, price, symbol) {
 
 // ── MACD ──────────────────────────────────────────────────────────────────────
 
-function featureMacdSignal(bars5mRev, entryDir) {
-  // Need enough bars for EMA(26) + EMA(9) signal = 35 minimum
+function featureMacdSignal(bars5mRev) {
   if (!bars5mRev || bars5mRev.length < 35) return { signal: null, val: 'n/a' };
   const closes = bars5mRev.map(b => bC(b)).reverse(); // oldest first
   const e12    = ema(closes, 12);
   const e26    = ema(closes, 26);
   const macdLine = e12.map((v, i) => v - e26[i]);
-  // EMA(9) of macdLine from bar 26 onward
   const sigLine = ema(macdLine.slice(26), 9);
   const last  = macdLine[macdLine.length - 1];
   const lSig  = sigLine[sigLine.length - 1];
   const above = last > lSig;   // MACD above signal → bullish momentum
   const bias  = above ? 'long' : 'short';
-  return { signal: bias === entryDir ? entryDir : (entryDir === 'long' ? 'short' : 'long'), val: `MACD ${last > 0 ? '+' : ''}${(last / 0.0001).toFixed(1)}p` };
+  return { signal: bias, val: `MACD ${last > 0 ? '+' : ''}${(last / 0.0001).toFixed(1)}p` };
 }
 
 // ── Main signal dispatch ──────────────────────────────────────────────────────
 
+// Direction-independent feature runner — all features return an absolute
+// long/short/null signal without requiring a pre-baked entryDir.
+function _runFeatures(args) {
+  const { bars5mRev, bars30m, dailyBars, asiaRange, mondayRange, atr, symbol, price, todayDate, featureCfg } = args;
+
+  const featureFns = {
+    rangePosition: () => featureRangePosition(price, asiaRange, mondayRange, atr),
+    chochBos:      () => featureChochBos(bars30m),
+    wickRejection: () => featureWickRejection(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
+    rsiDivergence: () => featureRsiDivergence(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
+    orderBlock:    () => featureOrderBlock(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
+    htfEma:        () => featureHtfEma(bars5mRev),
+    weeklyPivot:   () => featureWeeklyPivot(dailyBars, price, atr, symbol),
+    vwapSlope:     () => featureVwapSlope(bars5mRev, price, symbol, todayDate),
+    adxFilter:     () => featureAdxFilter(bars30m),
+    hurstRegime:   () => featureHurstRegime(dailyBars),
+    fvgBias:       () => featureFvgBias(bars5mRev, price, atr, symbol),
+    ichimokuCloud: () => featureIchimokuCloud(dailyBars, price, symbol),
+    macdSignal:    () => featureMacdSignal(bars5mRev),
+  };
+
+  const results = [];
+
+  for (const [key, fn] of Object.entries(featureFns)) {
+    const cfg = featureCfg[key];
+    if (!cfg?.enabled) continue;
+    let out;
+    try { out = fn(); } catch { out = { signal: null, val: 'Error' }; }
+    results.push({ key, label: cfg.label || key, signal: out.signal, val: out.val, weight: cfg.weight || 1 });
+  }
+
+  return results;
+}
+
+// Determine direction from feature votes, then score conviction for that direction.
+// Returns { entryDir, conviction, confirmCount, conflictCount, totalPts, maxPts, results }
+export function computeDirection(args) {
+  const { featureCfg } = args;
+  const rawResults = _runFeatures(args);
+
+  // Tally weighted votes
+  let longPts = 0, shortPts = 0, maxPts = 0;
+  for (const r of rawResults) {
+    const w = r.weight;
+    maxPts += w;
+    if (r.signal === 'long')  longPts  += w;
+    if (r.signal === 'short') shortPts += w;
+  }
+
+  // Winning direction from feature majority
+  // Fall back to null if no features fired at all
+  let entryDir = null;
+  if (longPts > shortPts)       entryDir = 'long';
+  else if (shortPts > longPts)  entryDir = 'short';
+  // exact tie → no trade (caller will use price-relative default if desired)
+
+  if (!entryDir) return { entryDir: null, conviction: 0, confirmCount: 0, conflictCount: 0, totalPts: 0, maxPts, results: rawResults };
+
+  // Score conviction for the winning direction
+  let confirmCount = 0, conflictCount = 0, totalPts = 0;
+  const scoredResults = rawResults.map(r => {
+    const confirms  = r.signal === entryDir;
+    const conflicts = r.signal !== null && r.signal !== entryDir;
+    const pts = confirms ? r.weight : conflicts ? -r.weight : 0;
+    if (confirms)  confirmCount++;
+    if (conflicts) conflictCount++;
+    totalPts += pts;
+    return { ...r, pts, icon: confirms ? '🟢' : conflicts ? '🔴' : '⚪' };
+  });
+
+  const conviction = maxPts > 0 ? totalPts / maxPts : 0;
+  return { entryDir, conviction, confirmCount, conflictCount, totalPts, maxPts, results: scoredResults };
+}
+
+// Legacy per-direction scorer — kept for any caller that already knows direction.
 export function computeSignal({ bars5mRev, bars30m, dailyBars, asiaRange, mondayRange, atr, symbol, entryDir, price, todayDate, featureCfg }) {
   const FEATURE_FNS = {
     rangePosition: () => featureRangePosition(price, asiaRange, mondayRange, atr),
@@ -646,13 +722,13 @@ export function computeSignal({ bars5mRev, bars30m, dailyBars, asiaRange, monday
     rsiDivergence: () => featureRsiDivergence(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
     orderBlock:    () => featureOrderBlock(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
     htfEma:        () => featureHtfEma(bars5mRev),
-    vwapSlope:     () => featureVwapSlope(bars5mRev, entryDir, price, symbol, todayDate),
-    adxFilter:     () => featureAdxFilter(bars30m, entryDir),
-    hurstRegime:   () => featureHurstRegime(dailyBars, entryDir),
-    fvgBias:       () => featureFvgBias(bars5mRev, entryDir, price, atr, symbol),
+    vwapSlope:     () => featureVwapSlope(bars5mRev, price, symbol, todayDate),
+    adxFilter:     () => featureAdxFilter(bars30m),
+    hurstRegime:   () => featureHurstRegime(dailyBars),
+    fvgBias:       () => featureFvgBias(bars5mRev, price, atr, symbol),
     weeklyPivot:   () => featureWeeklyPivot(dailyBars, price, atr, symbol),
-    ichimokuCloud: () => featureIchimokuCloud(dailyBars, entryDir, price, symbol),
-    macdSignal:    () => featureMacdSignal(bars5mRev, entryDir),
+    ichimokuCloud: () => featureIchimokuCloud(dailyBars, price, symbol),
+    macdSignal:    () => featureMacdSignal(bars5mRev),
   };
   let confirmCount = 0, conflictCount = 0, totalPts = 0, maxPts = 0;
   const results = [];
@@ -661,12 +737,12 @@ export function computeSignal({ bars5mRev, bars30m, dailyBars, asiaRange, monday
     if (!cfg?.enabled) continue;
     let out;
     try { out = fn(); } catch { out = { signal: null, val: 'Error' }; }
-    const weight   = cfg.weight || 1;
-    const confirms = out.signal === entryDir;
+    const weight    = cfg.weight || 1;
+    const confirms  = out.signal === entryDir;
     const conflicts = out.signal != null && out.signal !== entryDir;
     const pts = confirms ? weight : conflicts ? -weight : 0;
-    if (confirms) confirmCount++;
-    else if (conflicts) conflictCount++;
+    if (confirms)  confirmCount++;
+    if (conflicts) conflictCount++;
     maxPts   += weight;
     totalPts += pts;
     results.push({ key, label: cfg.label || key, signal: out.signal, val: out.val, pts, icon: confirms ? '🟢' : conflicts ? '🔴' : '⚪' });

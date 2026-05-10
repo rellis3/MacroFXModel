@@ -10,13 +10,29 @@ const BEST_CONFIG_V1 = {
   date: '28 Apr 2025',
   cfg: {
     rrRatio: 2.5,
+    slMode: 'range',
     slFraction: 0.30,
+    slMult: 1.5,
+    minSlPips: 5,
+    tpMode: 'fixedR',
+    tpBuf: 5,
+    tpAtrFallback: 5,
+    tpVolLo: 2.0,
+    tpVolMed: 3.0,
+    tpVolHi: 5.0,
+    reEnterTp: true,
+    flipOnSL: false,
     minConviction: 0.20,
     minConfirms: 3,
     entryProximityATR: 0.25,
     warmupDays: 120,
+    atrPeriod: 14,
     spread: 0.8,
     slippage: 0.3,
+    commission: 0,
+    posMode: 'fixed',
+    fixedSize: 10,
+    riskPct: 1.0,
     killDaily: 2,
     killWeekly: 5,
     killMonthly: 10,
@@ -25,9 +41,9 @@ const BEST_CONFIG_V1 = {
     method: 'asia',
     signalFilter: 'all_conf',
     confTolPips: 2,
-    entryWindowStart: 8,
-    entryWindowEnd: 16,
-    levelReentry: 1,
+    tightPct: 50,
+    entryWindow: 800,
+    levelReentry: 2,
     enabledFibs: null,
     features: {
       rangePosition: { enabled: true,  weight: 1, label: 'Range Position' },
@@ -81,25 +97,42 @@ function loadConfig(id) {
   if (!entry) return;
   const { cfg } = entry;
   const sv = (elId, v) => { const el = document.getElementById(elId); if (el && v != null) el.value = v; };
-  sv('cfg-rr',           cfg.rrRatio);
-  sv('cfg-sl',           cfg.slFraction);
-  sv('cfg-conv',         cfg.minConviction);
-  sv('cfg-conf',         cfg.minConfirms);
-  sv('cfg-prox',         cfg.entryProximityATR);
-  sv('cfg-warmup',       cfg.warmupDays);
-  sv('cfg-spread',         cfg.spread);
-  sv('cfg-slippage',       cfg.slippage);
-  sv('cfg-kill-daily',     cfg.killDaily);
-  sv('cfg-kill-weekly',    cfg.killWeekly);
-  sv('cfg-kill-monthly',   cfg.killMonthly);
-  sv('cfg-start-date',     cfg.startDate);
-  sv('cfg-end-date',       cfg.endDate);
-  sv('cfg-method',         cfg.method);
-  sv('cfg-signal-filter',  cfg.signalFilter);
-  sv('cfg-conf-tol',       cfg.confTolPips);
-  sv('cfg-ew-start',       cfg.entryWindowStart);
-  sv('cfg-ew-end',         cfg.entryWindowEnd);
-  sv('cfg-reentry',        cfg.levelReentry);
+  const sc = (elId, v) => { const el = document.getElementById(elId); if (el && v != null) el.checked = !!v; };
+  sv('cfg-rr',              cfg.rrRatio);
+  sv('cfg-sl-mode',         cfg.slMode);
+  sv('cfg-sl',              cfg.slFraction);
+  sv('cfg-sl-mult',         cfg.slMult);
+  sv('cfg-min-sl',          cfg.minSlPips);
+  sv('cfg-tp-mode',         cfg.tpMode);
+  sv('cfg-tp-buf',          cfg.tpBuf);
+  sv('cfg-tp-atr-fallback', cfg.tpAtrFallback);
+  sv('cfg-tp-vol-lo',       cfg.tpVolLo);
+  sv('cfg-tp-vol-med',      cfg.tpVolMed);
+  sv('cfg-tp-vol-hi',       cfg.tpVolHi);
+  sc('cfg-reenter-tp',      cfg.reEnterTp);
+  sc('cfg-flip-on-sl',      cfg.flipOnSL);
+  sv('cfg-conv',            cfg.minConviction);
+  sv('cfg-conf',            cfg.minConfirms);
+  sv('cfg-prox',            cfg.entryProximityATR);
+  sv('cfg-warmup',          cfg.warmupDays);
+  sv('cfg-atr-period',      cfg.atrPeriod);
+  sv('cfg-spread',          cfg.spread);
+  sv('cfg-slippage',        cfg.slippage);
+  sv('cfg-commission',      cfg.commission);
+  sv('cfg-pos-mode',        cfg.posMode);
+  sv('cfg-fixed-size',      cfg.fixedSize);
+  sv('cfg-risk-pct',        cfg.riskPct);
+  sv('cfg-kill-daily',      cfg.killDaily);
+  sv('cfg-kill-weekly',     cfg.killWeekly);
+  sv('cfg-kill-monthly',    cfg.killMonthly);
+  sv('cfg-start-date',      cfg.startDate);
+  sv('cfg-end-date',        cfg.endDate);
+  sv('cfg-method',          cfg.method);
+  sv('cfg-signal-filter',   cfg.signalFilter);
+  sv('cfg-conf-tol',        cfg.confTolPips);
+  sv('cfg-tight-pct',       cfg.tightPct);
+  sv('cfg-ew',              cfg.entryWindow);
+  sv('cfg-reentry',         cfg.levelReentry);
   if (cfg.enabledFibs) {
     const fibSet = new Set(cfg.enabledFibs.map(String));
     document.querySelectorAll('.fib-chk').forEach(chk => {
@@ -112,6 +145,9 @@ function loadConfig(id) {
       if (chk) chk.checked = !!feat.enabled;
     }
   }
+  onSlModeChange();
+  onTpModeChange();
+  onPosModeChange();
   const row = document.querySelector(`[data-cfg-id="${id}"]`);
   if (row) {
     row.style.background = 'var(--blue-bg)';
@@ -300,6 +336,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderFeatureList();
   bindEvents();
   restoreSettings();
+  onSlModeChange();
+  onTpModeChange();
+  onPosModeChange();
   initSavedConfigs();
 
   // Dark mode
@@ -401,32 +440,56 @@ function runBacktest() {
 }
 
 function buildCfg() {
-  const g = (id) => document.getElementById(id)?.value;
+  const g  = (id) => document.getElementById(id)?.value;
+  const gb = (id) => document.getElementById(id)?.checked ?? false;
   const features = {};
   for (const [key, def] of Object.entries(DEFAULT_FEATURES)) {
     const chk = document.getElementById('feat-' + key);
     features[key] = { ...def, enabled: chk ? chk.checked : def.enabled };
   }
   return {
-    rrRatio:           parseFloat(g('cfg-rr'))           || 2.2,
-    slFraction:        parseFloat(g('cfg-sl'))           || 0.35,
-    minConviction:     parseFloat(g('cfg-conv'))         || 0,
-    minConfirms:       parseInt(g('cfg-conf'))           || 2,
-    entryProximityATR: parseFloat(g('cfg-prox'))         || 0.30,
-    warmupDays:        parseInt(g('cfg-warmup'))         || 100,
-    spread:            parseFloat(g('cfg-spread'))       || 0,
-    slippage:          parseFloat(g('cfg-slippage'))     || 0,
+    // SL
+    slMode:            g('cfg-sl-mode')              || 'range',
+    slFraction:        parseFloat(g('cfg-sl'))        || 0.35,
+    slMult:            parseFloat(g('cfg-sl-mult'))   || 1.5,
+    minSlPips:         parseFloat(g('cfg-min-sl'))    || 5,
+    // TP
+    tpMode:            g('cfg-tp-mode')               || 'fixedR',
+    rrRatio:           parseFloat(g('cfg-rr'))        || 2.2,
+    tpBuf:             parseFloat(g('cfg-tp-buf'))    || 5,
+    tpAtrFallback:     parseFloat(g('cfg-tp-atr-fallback')) || 5,
+    tpVolLo:           parseFloat(g('cfg-tp-vol-lo')) || 2.0,
+    tpVolMed:          parseFloat(g('cfg-tp-vol-med'))|| 3.0,
+    tpVolHi:           parseFloat(g('cfg-tp-vol-hi')) || 5.0,
+    reEnterTp:         gb('cfg-reenter-tp'),
+    flipOnSL:          gb('cfg-flip-on-sl'),
+    // Entry
+    minConviction:     parseFloat(g('cfg-conv'))      || 0,
+    minConfirms:       parseInt(g('cfg-conf'))        || 2,
+    entryProximityATR: parseFloat(g('cfg-prox'))      || 0.30,
+    warmupDays:        parseInt(g('cfg-warmup'))      || 100,
+    atrPeriod:         parseInt(g('cfg-atr-period'))  || 14,
+    // Costs
+    spread:            parseFloat(g('cfg-spread'))    || 0,
+    slippage:          parseFloat(g('cfg-slippage'))  || 0,
+    commission:        parseFloat(g('cfg-commission'))|| 0,
+    // Position sizing
+    posMode:           g('cfg-pos-mode')              || 'fixed',
+    fixedSize:         parseFloat(g('cfg-fixed-size'))|| 10,
+    riskPct:           parseFloat(g('cfg-risk-pct'))  || 1.0,
+    // Kill switches
     killDaily:         parseFloat(g('cfg-kill-daily'))   || 0,
     killWeekly:        parseFloat(g('cfg-kill-weekly'))  || 0,
     killMonthly:       parseFloat(g('cfg-kill-monthly')) || 0,
-    startDate:         g('cfg-start-date')               || '2020-01-01',
-    endDate:           g('cfg-end-date')                 || '2025-12-31',
-    method:            g('cfg-method')                   || 'asia',
-    signalFilter:      g('cfg-signal-filter')            || 'all_conf',
-    confTolPips:       parseFloat(g('cfg-conf-tol'))     || 2,
-    entryWindowStart:  parseInt(g('cfg-ew-start'))       || 8,
-    entryWindowEnd:    parseInt(g('cfg-ew-end'))         || 16,
-    levelReentry:      parseInt(g('cfg-reentry'))        || 1,
+    // Dates / method
+    startDate:         g('cfg-start-date')            || '2020-01-01',
+    endDate:           g('cfg-end-date')              || '2025-12-31',
+    method:            g('cfg-method')                || 'asia',
+    signalFilter:      g('cfg-signal-filter')         || 'all_conf',
+    confTolPips:       parseFloat(g('cfg-conf-tol'))  || 2,
+    tightPct:          parseFloat(g('cfg-tight-pct')) || 50,
+    entryWindow:       parseInt(g('cfg-ew'))          || 800,
+    levelReentry:      parseInt(g('cfg-reentry'))     || 2,
     enabledFibs:       getEnabledFibs(),
     features,
   };
@@ -547,10 +610,14 @@ function renderResults(d) {
   // ── Cost banner ───────────────────────────────────────────────────────────
   const costBanner = document.getElementById('cost-banner');
   if (costBanner) {
-    const costPips = (d.costsPips || 0);
-    if (costPips > 0) {
+    const costPips   = d.costsPips  || 0;
+    const commision  = d.commission || 0;
+    if (costPips > 0 || commision > 0) {
       costBanner.style.display = 'block';
-      costBanner.textContent = `💰 Transaction costs applied: ${costPips.toFixed(1)} pip/trade (spread + slippage) · deducted from every trade R`;
+      const parts = [];
+      if (costPips > 0)  parts.push(`${costPips.toFixed(1)} pip/trade (spread + slippage)`);
+      if (commision > 0) parts.push(`£${commision}/lot commission`);
+      costBanner.textContent = `💰 Transaction costs: ${parts.join(' · ')}`;
     } else {
       costBanner.style.display = 'none';
     }
@@ -904,6 +971,7 @@ function renderTradeLog(trades) {
         ${['date','dir','entry','exit','result','r'].map(k =>
           `<th class="sortable" data-k="${k}">${k.toUpperCase()} ${tradeSort.key===k?(tradeSort.asc?'↑':'↓'):''}</th>`
         ).join('')}
+        <th>TAG</th>
       </tr></thead>
       <tbody>${sorted.map(t => `<tr>
         <td>${t.date}</td>
@@ -912,6 +980,7 @@ function renderTradeLog(trades) {
         <td>${t.exit}</td>
         <td class="${t.result==='tp'?'pos':t.result==='sl'?'neg':''}">${t.result.toUpperCase()}</td>
         <td class="${t.r>0?'pos':t.r<0?'neg':''}">${t.r > 0 ? '+' : ''}${t.r}R</td>
+        <td style="color:var(--text3)">${t.tag || ''}</td>
       </tr>`).join('')}</tbody>
     </table>`;
 
@@ -1006,6 +1075,33 @@ function saveSettings() {
   try { localStorage.setItem('bt-cfg', JSON.stringify(cfg)); } catch {}
 }
 
+// ── Conditional sub-row visibility ────────────────────────────────────────────
+
+function onSlModeChange() {
+  const mode = document.getElementById('cfg-sl-mode')?.value || 'range';
+  const show = (id, vis) => { const el = document.getElementById(id); if (el) el.classList.toggle('visible', vis); };
+  show('sl-atr-row',   mode === 'atr' || mode === 'atr30m');
+  show('sl-range-row', mode === 'range');
+}
+
+function onTpModeChange() {
+  const mode = document.getElementById('cfg-tp-mode')?.value || 'fixedR';
+  const show = (id, vis) => { const el = document.getElementById(id); if (el) el.classList.toggle('visible', vis); };
+  show('tp-fixedr-row',   mode === 'fixedR');
+  show('tp-buf-row',      mode === 'structural');
+  show('tp-vol-lo-row',   mode === 'volScaledR');
+  show('tp-vol-med-row',  mode === 'volScaledR');
+  show('tp-vol-hi-row',   mode === 'volScaledR');
+  show('tp-fallback-row', mode === 'structural' || mode === 'volScaledR');
+}
+
+function onPosModeChange() {
+  const mode = document.getElementById('cfg-pos-mode')?.value || 'fixed';
+  const show = (id, vis) => { const el = document.getElementById(id); if (el) el.classList.toggle('visible', vis); };
+  show('pos-fixed-row', mode === 'fixed');
+  show('pos-pct-row',   mode === 'percent');
+}
+
 // Expose functions called from inline HTML onclick handlers (module scope workaround)
 window.loadConfig        = loadConfig;
 window.deleteConfig      = deleteConfig;
@@ -1015,32 +1111,52 @@ window.applyIsOosSplit   = applyIsOosSplit;
 window.applyOosOnly      = applyOosOnly;
 window.resetDateRange    = resetDateRange;
 window.switchChartTab    = switchChartTab;
+window.onSlModeChange    = onSlModeChange;
+window.onTpModeChange    = onTpModeChange;
+window.onPosModeChange   = onPosModeChange;
 
 function restoreSettings() {
   try {
     const raw = localStorage.getItem('bt-cfg');
     if (!raw) return;
     const cfg = JSON.parse(raw);
-    const s = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
-    s('cfg-rr',     cfg.rrRatio);
-    s('cfg-sl',     cfg.slFraction);
-    s('cfg-conv',   cfg.minConviction);
-    s('cfg-conf',   cfg.minConfirms);
-    s('cfg-prox',   cfg.entryProximityATR);
-    s('cfg-warmup', cfg.warmupDays);
-    s('cfg-spread',         cfg.spread);
-    s('cfg-slippage',       cfg.slippage);
-    s('cfg-kill-daily',     cfg.killDaily);
-    s('cfg-kill-weekly',    cfg.killWeekly);
-    s('cfg-kill-monthly',   cfg.killMonthly);
-    s('cfg-start-date',     cfg.startDate);
-    s('cfg-end-date',       cfg.endDate);
-    s('cfg-method',         cfg.method);
-    s('cfg-signal-filter',  cfg.signalFilter);
-    s('cfg-conf-tol',       cfg.confTolPips);
-    s('cfg-ew-start',       cfg.entryWindowStart);
-    s('cfg-ew-end',         cfg.entryWindowEnd);
-    s('cfg-reentry',        cfg.levelReentry);
+    const s  = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+    const sc = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.checked = !!v; };
+    s('cfg-sl-mode',         cfg.slMode);
+    s('cfg-sl',              cfg.slFraction);
+    s('cfg-sl-mult',         cfg.slMult);
+    s('cfg-min-sl',          cfg.minSlPips);
+    s('cfg-tp-mode',         cfg.tpMode);
+    s('cfg-rr',              cfg.rrRatio);
+    s('cfg-tp-buf',          cfg.tpBuf);
+    s('cfg-tp-atr-fallback', cfg.tpAtrFallback);
+    s('cfg-tp-vol-lo',       cfg.tpVolLo);
+    s('cfg-tp-vol-med',      cfg.tpVolMed);
+    s('cfg-tp-vol-hi',       cfg.tpVolHi);
+    sc('cfg-reenter-tp',     cfg.reEnterTp);
+    sc('cfg-flip-on-sl',     cfg.flipOnSL);
+    s('cfg-conv',            cfg.minConviction);
+    s('cfg-conf',            cfg.minConfirms);
+    s('cfg-prox',            cfg.entryProximityATR);
+    s('cfg-warmup',          cfg.warmupDays);
+    s('cfg-atr-period',      cfg.atrPeriod);
+    s('cfg-spread',          cfg.spread);
+    s('cfg-slippage',        cfg.slippage);
+    s('cfg-commission',      cfg.commission);
+    s('cfg-pos-mode',        cfg.posMode);
+    s('cfg-fixed-size',      cfg.fixedSize);
+    s('cfg-risk-pct',        cfg.riskPct);
+    s('cfg-kill-daily',      cfg.killDaily);
+    s('cfg-kill-weekly',     cfg.killWeekly);
+    s('cfg-kill-monthly',    cfg.killMonthly);
+    s('cfg-start-date',      cfg.startDate);
+    s('cfg-end-date',        cfg.endDate);
+    s('cfg-method',          cfg.method);
+    s('cfg-signal-filter',   cfg.signalFilter);
+    s('cfg-conf-tol',        cfg.confTolPips);
+    s('cfg-tight-pct',       cfg.tightPct);
+    s('cfg-ew',              cfg.entryWindow);
+    s('cfg-reentry',         cfg.levelReentry);
     if (cfg.enabledFibs) {
       const fibSet = new Set(cfg.enabledFibs.map(String));
       document.querySelectorAll('.fib-chk').forEach(chk => {
@@ -1053,5 +1169,8 @@ function restoreSettings() {
         if (chk) chk.checked = !!feat.enabled;
       }
     }
+    onSlModeChange();
+    onTpModeChange();
+    onPosModeChange();
   } catch {}
 }

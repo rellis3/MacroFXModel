@@ -24,7 +24,7 @@
     #bt-app { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 
     /* ── Sidebar ─────────────────────────────────────────────────────────────── */
-    #bt-sidebar { width: 290px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 12px; scrollbar-width: thin; }
+    #bt-sidebar { width: 296px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 12px; scrollbar-width: thin; }
 
     .sb-group { display: flex; flex-direction: column; gap: 6px; }
     .sb-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
@@ -71,6 +71,11 @@
     .chip { padding: 3px 9px; font-size: 10px; font-weight: 600; cursor: pointer; border-radius: 5px; border: 1px solid var(--border); background: var(--s2); color: var(--text2); transition: all .15s; font-family: 'DM Sans', sans-serif; }
     .chip:hover { border-color: var(--blue); color: var(--blue); }
 
+    /* ── Toggle checkboxes ───────────────────────────────────────────────────── */
+    .toggle-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; color: var(--text2); }
+    .toggle-row input { cursor: pointer; accent-color: var(--blue); flex-shrink: 0; }
+    .toggle-row .toggle-hint { font-size: 10px; color: var(--text3); margin-top: 1px; display: block; }
+
     /* ── Fib level filter ────────────────────────────────────────────────────── */
     .fib-section { background: var(--s1); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
     .fib-grp-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); margin-bottom: 3px; }
@@ -95,13 +100,13 @@
     .cfg-save-btn-sm { padding: 5px 10px; border-radius: 6px; border: 1px solid var(--blue); background: transparent; color: var(--blue); font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all .15s; font-family: 'DM Sans', sans-serif; }
     .cfg-save-btn-sm:hover { background: var(--blue); color: #fff; }
 
-    .saved-row { display: flex; align-items: center; gap: 5px; padding: 5px 7px; background: var(--s1); border: 1px solid var(--border); border-radius: 6px; }
-    .saved-name { flex: 1; font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; min-width: 0; }
-    .saved-name:hover { color: var(--text); }
-    .saved-date { font-size: 9px; color: var(--text3); white-space: nowrap; flex-shrink: 0; }
-    .saved-del { font-size: 12px; color: var(--text3); background: none; border: none; cursor: pointer; padding: 0 2px; line-height: 1; }
-    .saved-del:hover { color: var(--red); }
-    .saved-star { font-size: 9px; padding: 1px 5px; border-radius: 8px; background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bd); font-weight: 700; flex-shrink: 0; }
+    .saved-cfg-row { display: flex; align-items: center; gap: 5px; padding: 5px 7px; background: var(--s1); border: 1px solid var(--border); border-radius: 6px; }
+    .saved-cfg-name { flex: 1; font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; min-width: 0; }
+    .saved-cfg-name:hover { color: var(--text); }
+    .saved-cfg-date { font-size: 9px; color: var(--text3); white-space: nowrap; flex-shrink: 0; }
+    .saved-cfg-del { font-size: 12px; color: var(--text3); background: none; border: none; cursor: pointer; padding: 0 2px; line-height: 1; }
+    .saved-cfg-del:hover { color: var(--red); }
+    .saved-cfg-star { font-size: 9px; padding: 1px 5px; border-radius: 8px; background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bd); font-weight: 700; flex-shrink: 0; }
 
     /* ── Progress ────────────────────────────────────────────────────────────── */
     .prog-wrap { background: var(--s2); border-radius: 4px; overflow: hidden; height: 3px; }
@@ -195,6 +200,10 @@
     .pos { color: var(--green) !important; }
     .neg { color: var(--red) !important; }
     .empty { color: var(--text3); font-size: 12px; padding: 12px 0; }
+
+    /* ── Conditional sub-rows ────────────────────────────────────────────────── */
+    .sub-row { display: none; }
+    .sub-row.visible { display: contents; }
   </style>
 </head>
 <body class="dark">
@@ -300,50 +309,10 @@
       </div>
     </div>
 
-    <!-- Parameters -->
+    <!-- Strategy -->
     <div class="sb-group">
-      <div class="sb-lbl">Parameters</div>
+      <div class="sb-lbl">Strategy</div>
       <div class="cfg-grid">
-        <div class="cfg-cell">
-          <label>R:R Ratio</label>
-          <input type="number" id="cfg-rr" class="bt-input" value="2.2" min="0.5" max="10" step="0.1"/>
-        </div>
-        <div class="cfg-cell">
-          <label>SL / Asia Range</label>
-          <input type="number" id="cfg-sl" class="bt-input" value="0.35" min="0.1" max="1" step="0.05"/>
-        </div>
-        <div class="cfg-cell">
-          <label>Min Conviction</label>
-          <input type="number" id="cfg-conv" class="bt-input" value="0" min="-1" max="1" step="0.05"/>
-        </div>
-        <div class="cfg-cell">
-          <label>Min Confirms</label>
-          <input type="number" id="cfg-conf" class="bt-input" value="2" min="0" max="11" step="1"/>
-        </div>
-        <div class="cfg-cell">
-          <label>Entry Prox ATR ×</label>
-          <input type="number" id="cfg-prox" class="bt-input" value="0.30" min="0.05" max="1" step="0.05"/>
-        </div>
-        <div class="cfg-cell">
-          <label>Warmup Days</label>
-          <input type="number" id="cfg-warmup" class="bt-input" value="100" min="20" max="500" step="10"/>
-        </div>
-        <div class="cfg-cell">
-          <label>Conf. Tol (pips)</label>
-          <input type="number" id="cfg-conf-tol" class="bt-input" value="2" min="0.5" max="20" step="0.5"/>
-        </div>
-        <div class="cfg-cell">
-          <label>Level Re-entry</label>
-          <input type="number" id="cfg-reentry" class="bt-input" value="1" min="1" max="5" step="1"/>
-        </div>
-        <div class="cfg-cell">
-          <label>Entry Window Start</label>
-          <input type="number" id="cfg-ew-start" class="bt-input" value="8" min="0" max="23" step="1"/>
-        </div>
-        <div class="cfg-cell">
-          <label>Entry Window End</label>
-          <input type="number" id="cfg-ew-end" class="bt-input" value="16" min="1" max="24" step="1"/>
-        </div>
         <div class="cfg-cell full">
           <label>Confluence Method</label>
           <select id="cfg-method" class="bt-select">
@@ -359,6 +328,136 @@
             <option value="tight_only">Tight only (≤10% tol)</option>
             <option value="all_levels">All levels (no conf. req.)</option>
           </select>
+        </div>
+        <div class="cfg-cell">
+          <label>Conf. Tol (pips)</label>
+          <input type="number" id="cfg-conf-tol" class="bt-input" value="2" min="0.5" max="20" step="0.5"/>
+        </div>
+        <div class="cfg-cell">
+          <label>Tight tol % of main</label>
+          <input type="number" id="cfg-tight-pct" class="bt-input" value="50" min="5" max="100" step="5" title="A level is 'tight' if its tolerance is less than this % of main tolerance"/>
+        </div>
+        <div class="cfg-cell">
+          <label>Min ATR dist from open</label>
+          <input type="number" id="cfg-prox" class="bt-input" value="0.30" min="0.05" max="1" step="0.05"/>
+        </div>
+        <div class="cfg-cell">
+          <label>Warmup Days</label>
+          <input type="number" id="cfg-warmup" class="bt-input" value="100" min="20" max="500" step="10"/>
+        </div>
+        <div class="cfg-cell">
+          <label>Min Conviction</label>
+          <input type="number" id="cfg-conv" class="bt-input" value="0" min="-1" max="1" step="0.05"/>
+        </div>
+        <div class="cfg-cell">
+          <label>Min Confirms</label>
+          <input type="number" id="cfg-conf" class="bt-input" value="2" min="0" max="11" step="1"/>
+        </div>
+        <div class="cfg-cell full">
+          <label>Entry Window (London)</label>
+          <select id="cfg-ew" class="bt-select">
+            <option value="600">06:00 – 20:00</option>
+            <option value="700">07:00 – 20:00</option>
+            <option value="715">07:15 – 20:00</option>
+            <option value="800" selected>08:00 – 20:00</option>
+            <option value="900">09:00 – 20:00</option>
+          </select>
+        </div>
+        <div class="cfg-cell">
+          <label>Level re-entry</label>
+          <select id="cfg-reentry" class="bt-select">
+            <option value="1">Once only</option>
+            <option value="2" selected>Twice (1 re-entry)</option>
+            <option value="99">Unlimited</option>
+          </select>
+        </div>
+        <div class="cfg-cell">
+          <label>ATR period (bars)</label>
+          <input type="number" id="cfg-atr-period" class="bt-input" value="14" min="5" max="50" step="1"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- SL Settings -->
+    <div class="sb-group">
+      <div class="sb-lbl">Stop Loss</div>
+      <div class="cfg-grid">
+        <div class="cfg-cell full">
+          <label>SL Calculation Mode</label>
+          <select id="cfg-sl-mode" class="bt-select" onchange="onSlModeChange()">
+            <option value="atr">5m ATR (tight, reactive)</option>
+            <option value="atr30m">30m ATR (wider, more room)</option>
+            <option value="range" selected>Range-based (structural)</option>
+          </select>
+        </div>
+        <!-- shown for atr / atr30m -->
+        <div class="cfg-cell sub-row" id="sl-atr-row">
+          <label>SL multiplier (× ATR)</label>
+          <input type="number" id="cfg-sl-mult" class="bt-input" value="1.5" min="0.5" max="4" step="0.25"/>
+        </div>
+        <!-- shown for range -->
+        <div class="cfg-cell sub-row" id="sl-range-row">
+          <label>SL mult (× Range)</label>
+          <input type="number" id="cfg-sl" class="bt-input" value="0.35" min="0.05" max="1" step="0.05"/>
+        </div>
+        <div class="cfg-cell">
+          <label>Min SL floor (pips)</label>
+          <input type="number" id="cfg-min-sl" class="bt-input" value="5" min="1" max="30" step="0.5"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- TP Settings -->
+    <div class="sb-group">
+      <div class="sb-lbl">Take Profit</div>
+      <div class="cfg-grid">
+        <div class="cfg-cell full">
+          <label>TP Calculation Mode</label>
+          <select id="cfg-tp-mode" class="bt-select" onchange="onTpModeChange()">
+            <option value="fixedR" selected>Fixed R-multiple</option>
+            <option value="structural">Structural (next confluence)</option>
+            <option value="volScaledR">Vol-Scaled R (low/med/high)</option>
+          </select>
+        </div>
+        <!-- fixedR -->
+        <div class="cfg-cell sub-row" id="tp-fixedr-row">
+          <label>R-multiple</label>
+          <input type="number" id="cfg-rr" class="bt-input" value="2.2" min="0.5" max="10" step="0.1"/>
+        </div>
+        <!-- structural -->
+        <div class="cfg-cell sub-row" id="tp-buf-row">
+          <label>TP buffer (pips before level)</label>
+          <input type="number" id="cfg-tp-buf" class="bt-input" value="5" min="0" max="20" step="1"/>
+        </div>
+        <!-- volScaledR -->
+        <div class="cfg-cell sub-row" id="tp-vol-lo-row">
+          <label>Low vol R-target</label>
+          <input type="number" id="cfg-tp-vol-lo" class="bt-input" value="2.0" min="0.5" max="10" step="0.5"/>
+        </div>
+        <div class="cfg-cell sub-row" id="tp-vol-med-row">
+          <label>Med vol R-target</label>
+          <input type="number" id="cfg-tp-vol-med" class="bt-input" value="3.0" min="0.5" max="10" step="0.5"/>
+        </div>
+        <div class="cfg-cell sub-row" id="tp-vol-hi-row">
+          <label>High vol R-target</label>
+          <input type="number" id="cfg-tp-vol-hi" class="bt-input" value="5.0" min="0.5" max="10" step="0.5"/>
+        </div>
+        <!-- always shown for structural + volScaled -->
+        <div class="cfg-cell sub-row" id="tp-fallback-row">
+          <label>TP fallback (× ATR) if no level</label>
+          <input type="number" id="cfg-tp-atr-fallback" class="bt-input" value="5" min="1" max="15" step="0.5"/>
+        </div>
+        <div class="cfg-cell full">
+          <label class="toggle-row">
+            <input type="checkbox" id="cfg-reenter-tp" checked/>
+            <span>Re-enter at confluence after TP<span class="toggle-hint">Pre-clears TP target level — next bar can enter immediately</span></span>
+          </label>
+        </div>
+        <div class="cfg-cell full">
+          <label class="toggle-row">
+            <input type="checkbox" id="cfg-flip-on-sl"/>
+            <span>⚡ Flip trade on SL (breakout)<span class="toggle-hint">Failed fade → confirmed breakout. Opens opposite direction at same level</span></span>
+          </label>
         </div>
       </div>
     </div>
@@ -389,7 +488,29 @@
       <div id="feature-list"></div>
     </div>
 
-    <!-- Transaction costs -->
+    <!-- Position Sizing -->
+    <div class="sb-group">
+      <div class="sb-lbl">Position Sizing</div>
+      <div class="cfg-grid">
+        <div class="cfg-cell full">
+          <label>Sizing Mode</label>
+          <select id="cfg-pos-mode" class="bt-select" onchange="onPosModeChange()">
+            <option value="fixed">Fixed (£/pip)</option>
+            <option value="percent">% Risk (compound)</option>
+          </select>
+        </div>
+        <div class="cfg-cell sub-row" id="pos-fixed-row">
+          <label>Fixed £ per pip</label>
+          <input type="number" id="cfg-fixed-size" class="bt-input" value="10" min="1" max="1000" step="1"/>
+        </div>
+        <div class="cfg-cell sub-row" id="pos-pct-row">
+          <label>Risk per trade (%)</label>
+          <input type="number" id="cfg-risk-pct" class="bt-input" value="1.0" min="0.1" max="5" step="0.1"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transaction Costs -->
     <div class="sb-group">
       <div class="sb-lbl">Transaction Costs</div>
       <div class="cfg-grid">
@@ -401,6 +522,10 @@
           <label>Slippage (pips)</label>
           <input type="number" id="cfg-slippage" class="bt-input" value="0" min="0" max="5" step="0.1"/>
         </div>
+        <div class="cfg-cell full">
+          <label>Commission (£/lot)</label>
+          <input type="number" id="cfg-commission" class="bt-input" value="0" min="0" max="20" step="0.5"/>
+        </div>
       </div>
     </div>
 
@@ -410,19 +535,19 @@
       <div class="kill-box">
         <div class="cfg-grid">
           <div class="cfg-cell">
-            <label>Daily max loss %</label>
+            <label>Daily max loss (R)</label>
             <input type="number" id="cfg-kill-daily" class="bt-input" value="0" min="0" max="20" step="0.5"/>
           </div>
           <div class="cfg-cell">
-            <label>Weekly max loss %</label>
+            <label>Weekly max loss (R)</label>
             <input type="number" id="cfg-kill-weekly" class="bt-input" value="0" min="0" max="30" step="1"/>
           </div>
           <div class="cfg-cell full">
-            <label>Monthly max loss %</label>
+            <label>Monthly max loss (R)</label>
             <input type="number" id="cfg-kill-monthly" class="bt-input" value="0" min="0" max="50" step="1"/>
           </div>
         </div>
-        <div class="kill-hint">0 = disabled · at 1% risk per trade, 2% = stop after −2R that period</div>
+        <div class="kill-hint">0 = disabled · e.g. 2 = stop after −2R that period</div>
       </div>
     </div>
 

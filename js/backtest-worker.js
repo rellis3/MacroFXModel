@@ -3,7 +3,7 @@
 
 import {
   FIB_LEVELS, tsToLondon, computeBodyRange, projectFibLevels, detectConfluences,
-  computeATR, computeSignal, getPipSize, getDigits,
+  computeATR, computeDirection, getPipSize, getDigits,
 } from './backtest-engine.js';
 
 // ── Storage ────────────────────────────────────────────────────────────────────
@@ -92,33 +92,52 @@ function handleRun({ symbol, cfg }) {
 
   // ── Config ────────────────────────────────────────────────────────────────
   const rrRatio       = cfg.rrRatio       ?? 2.2;
+  const slMode        = cfg.slMode        ?? 'range';
   const slFraction    = cfg.slFraction    ?? 0.35;
+  const slMult        = cfg.slMult        ?? 1.5;
+  const minSlPips     = cfg.minSlPips     ?? 5;
+  const tpMode        = cfg.tpMode        ?? 'fixedR';
+  const tpBuf         = cfg.tpBuf         ?? 5;
+  const tpAtrFallback = cfg.tpAtrFallback ?? 5;
+  const tpVolLo       = cfg.tpVolLo       ?? 2.0;
+  const tpVolMed      = cfg.tpVolMed      ?? 3.0;
+  const tpVolHi       = cfg.tpVolHi       ?? 5.0;
+  const reEnterTp     = cfg.reEnterTp     ?? true;
+  const flipOnSL      = cfg.flipOnSL      ?? false;
   const minConviction = cfg.minConviction ?? 0.0;
   const minConfirms   = cfg.minConfirms   ?? 2;
   const proxATR       = cfg.entryProximityATR ?? 0.30;
   const warmupDays    = cfg.warmupDays    ?? 100;
+  const atrPeriod     = cfg.atrPeriod     ?? 14;
   const features      = cfg.features;
-
-  // ── New config params ─────────────────────────────────────────────────────
   const method        = cfg.method        ?? 'asia';
   const signalFilter  = cfg.signalFilter  ?? 'all_conf';
   const confTolPips   = cfg.confTolPips   ?? null;
-  const ewStart       = cfg.entryWindowStart ?? 8;
-  const ewEnd         = cfg.entryWindowEnd   ?? 16;
-  const levelReentry  = Math.max(1, cfg.levelReentry ?? 1);
+  const entryWindow   = cfg.entryWindow   ?? 800;  // HHMM int e.g. 800 = 08:00
+  const levelReentry  = Math.max(1, cfg.levelReentry ?? 2);
   const enabledFibSet = cfg.enabledFibs?.length
     ? new Set(cfg.enabledFibs.map(f => +f))
-    : null; // null = all levels enabled
+    : null;
 
   // ── Transaction cost config ────────────────────────────────────────────────
-  const spreadPips   = cfg.spread   ?? 0;
-  const slippagePips = cfg.slippage ?? 0;
+  const spreadPips    = cfg.spread      ?? 0;
+  const slippagePips  = cfg.slippage    ?? 0;
+  const commission    = cfg.commission  ?? 0;  // £/lot
   const totalCostPips = spreadPips + slippagePips;
+  const posMode       = cfg.posMode     ?? 'fixed';
+  const fixedSize     = cfg.fixedSize   ?? 10;   // £/pip
+  const riskPct       = (cfg.riskPct    ?? 1.0) / 100;  // convert % → fraction
 
-  // ── Kill switch config (in R, at 1% risk 1R = 1%) ─────────────────────────
+  // ── Kill switch config (in R) ──────────────────────────────────────────────
   const killDailyR   = cfg.killDaily   > 0 ? -(cfg.killDaily)   : null;
   const killWeeklyR  = cfg.killWeekly  > 0 ? -(cfg.killWeekly)  : null;
   const killMonthlyR = cfg.killMonthly > 0 ? -(cfg.killMonthly) : null;
+
+  // ── Entry window from HHMM int ────────────────────────────────────────────
+  const ewStartH = Math.floor(entryWindow / 100);
+  const ewStartM = entryWindow % 100;
+  const ewStartMins = ewStartH * 60 + ewStartM;  // minutes since midnight London
+  const ewEndMins   = 20 * 60;  // always close by 20:00 London
 
   // ── State ─────────────────────────────────────────────────────────────────
   const trades     = [];
@@ -212,62 +231,63 @@ function handleRun({ symbol, cfg }) {
     // ── Per-day level touch counter (for re-entry limit) ─────────────────
     const dayLevelTouches = new Map();
 
-    // ── Interleaved M30 pointer (look-ahead free) ─────────────────────────
+    // ── Interleaved pointers ───────────────────────────────────────────────
     let m30Ptr = 0;
-    let m1Ptr  = 0;
+    let m5Ptr  = 0;  // tracks how far into m5Today we've ingested for windows
 
-    // ── M5 bar loop ───────────────────────────────────────────────────────
-    for (const m5 of m5Today) {
-      // Advance M30 window to bars before this M5 bar
-      while (m30Ptr < m30Today.length && m30Today[m30Ptr].ts < m5.ts) {
+    // ── M1 bar loop (primary entry + exit loop) ───────────────────────────
+    // M5 bars are used only for: ATR computation, feature windows, EOD exit,
+    // and as wick-fallback exit when M1 is absent. All entry detection and
+    // exit precision runs on M1 bars.
+    // If M1 data is absent for this day, fall back to M5 as the entry loop.
+    const entryBars = m1Today.length >= 200 ? m1Today : m5Today;
+    const barDurMs  = m1Today.length >= 200 ? 60000   : 300000;
+
+    for (const bar of entryBars) {
+      const barCloseTs = bar.ts + barDurMs;
+
+      // ── Advance M30 window up to this bar ─────────────────────────────
+      while (m30Ptr < m30Today.length && m30Today[m30Ptr].ts < bar.ts) {
         bar30mWin.push(m30Today[m30Ptr++]);
         if (bar30mWin.length > 350) bar30mWin.shift();
       }
 
-      // Advance M5 window (newest-first)
-      bar5mWin.unshift(m5);
-      if (bar5mWin.length > 350) bar5mWin.pop();
+      // ── Advance M5 window up to this bar (newest-first) ───────────────
+      while (m5Ptr < m5Today.length && m5Today[m5Ptr].ts < bar.ts) {
+        bar5mWin.unshift(m5Today[m5Ptr++]);
+        if (bar5mWin.length > 350) bar5mWin.pop();
+      }
 
-      const m5CloseTs = m5.ts + 5 * 60 * 1000;
-
-      // ── Scan M1 bars for open trade exit ──────────────────────────────
-      if (openTrade) {
-        while (m1Ptr < m1Today.length && m1Today[m1Ptr].ts < m5CloseTs) {
-          const m1 = m1Today[m1Ptr++];
-          if (m1.ts < openTrade.entryTs) continue;
-          const ex = checkExit(m1, openTrade);
-          if (ex) {
-            const pip = getPipSize(symbol);
-            const costR = openTrade.slDist > 0 ? totalCostPips * pip / openTrade.slDist : 0;
-            const closed = recordClose(openTrade, ex.price, ex.result, m1.ts, trades, bayesian, costR);
-            dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
-            openTrade = null;
-            break;
+      // ── Exit check for open trade ──────────────────────────────────────
+      if (openTrade && bar.ts >= openTrade.entryTs) {
+        const ex = checkExit(bar, openTrade);
+        if (ex) {
+          const pip   = getPipSize(symbol);
+          const costR = openTrade.slDist > 0 ? totalCostPips * pip / openTrade.slDist : 0;
+          const closed = recordClose(openTrade, ex.price, ex.result, barCloseTs, trades, bayesian, costR);
+          dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
+          const closedTrade = openTrade;
+          openTrade = null;
+          // ── Re-enter at TP level ───────────────────────────────────
+          if (ex.result === 'tp' && reEnterTp && closedTrade.confKey) {
+            const st = dayLevelTouches.get(closedTrade.confKey);
+            if (st) { st.clearedSince = true; dayLevelTouches.set(closedTrade.confKey, st); }
+          }
+          // ── Flip on SL ─────────────────────────────────────────────
+          if (ex.result === 'sl' && flipOnSL && bar.lHour < 20) {
+            openTrade = buildFlipTrade(closedTrade, barCloseTs, date, confluences, getPipSize(symbol), slMode, slMult, slFraction, minSlPips, tpMode, tpBuf, tpAtrFallback, tpVolLo, tpVolMed, tpVolHi, rrRatio, asiaRange);
           }
         }
       }
 
-      // ── M5 wick exit fallback (when M1 absent or gaps) ────────────────
-      if (openTrade && m5.ts >= openTrade.entryTs) {
-        const ex = checkExit(m5, openTrade);
-        if (ex) {
-          const pip = getPipSize(symbol);
-          const costR = openTrade.slDist > 0 ? totalCostPips * pip / openTrade.slDist : 0;
-          const closed = recordClose(openTrade, ex.price, ex.result, m5CloseTs, trades, bayesian, costR);
-          dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
-          openTrade = null;
-        }
-      }
-
       // ── EOD exit ──────────────────────────────────────────────────────
-      if (openTrade && m5.lHour >= 21) {
-        const pip = getPipSize(symbol);
+      if (openTrade && bar.lHour >= 21) {
+        const pip   = getPipSize(symbol);
         const costR = openTrade.slDist > 0 ? totalCostPips * pip / openTrade.slDist : 0;
-        // Clamp EOD close price within SL..TP so R never exceeds the trade bounds
         const eodPrice = openTrade.dir === 'long'
-          ? Math.max(openTrade.sl, Math.min(openTrade.tp, m5.c))
-          : Math.min(openTrade.sl, Math.max(openTrade.tp, m5.c));
-        const closed = recordClose(openTrade, eodPrice, 'eod', m5CloseTs, trades, bayesian, costR);
+          ? Math.max(openTrade.sl, Math.min(openTrade.tp, bar.c))
+          : Math.min(openTrade.sl, Math.max(openTrade.tp, bar.c));
+        const closed = recordClose(openTrade, eodPrice, 'eod', barCloseTs, trades, bayesian, costR);
         dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
         openTrade = null;
         continue;
@@ -279,51 +299,125 @@ function handleRun({ symbol, cfg }) {
                       || (killMonthlyR !== null && monthlyR <= killMonthlyR);
 
       // ── Entry check ───────────────────────────────────────────────────
-      if (!openTrade && !killActive && m5.lHour >= ewStart && m5.lHour < ewEnd) {
-        const price = m5.c;
-        // Need at least 20 bars in window for ATR
+      const barMins = bar.lHour * 60 + bar.lMin;
+      if (!openTrade && !killActive && barMins >= ewStartMins && barMins < ewEndMins) {
         if (bar5mWin.length < 20) continue;
-        const atr = computeATR(bar5mWin.slice(0, 50).reverse(), 14);
+        const atr = computeATR(bar5mWin.slice(0, 50).reverse(), atrPeriod);
         if (atr <= 0) continue;
+        const pip  = getPipSize(symbol);
         const prox = atr * proxATR;
 
         for (const conf of confluences) {
-          if (Math.abs(price - conf.price) > prox) continue;
+          // ── Level proximity check ───────────────────────────────────
+          // Use bar high/low wick to detect a touch of the level,
+          // not just close price — catches intra-bar level touches
+          const touched = bar.l <= conf.price + prox && bar.h >= conf.price - prox;
+          if (!touched) continue;
 
-          // ── Level re-entry guard ────────────────────────────────────────
+          // ── Level re-entry guard ────────────────────────────────────
           const confKey = conf.price.toFixed(5);
-          if ((dayLevelTouches.get(confKey) || 0) >= levelReentry) continue;
+          const touches = dayLevelTouches.get(confKey) || { count: 0, clearedSince: true };
+          if (touches.count >= levelReentry) continue;
+          if (touches.count > 0 && !touches.clearedSince) {
+            // Use the bar's full wick range for the cleared-distance check
+            const clearDist = Math.max(Math.abs(bar.h - conf.price), Math.abs(bar.l - conf.price));
+            if (clearDist >= atr * 0.5) {
+              touches.clearedSince = true;
+              dayLevelTouches.set(confKey, touches);
+            } else {
+              continue;
+            }
+          }
 
-          const entryDir = conf.price > price ? 'short' : 'long';
-
-          const rb = computeSignal({
-            bars5mRev: bar5mWin,
-            bars30m:   bar30mWin,
-            dailyBars: dailyBarWin,
+          // ── Direction from feature votes ────────────────────────────
+          // computeDirection tallies weighted long/short votes from all features
+          // and returns the winning side. Tie → null (skip trade).
+          const rb = computeDirection({
+            bars5mRev: bar5mWin, bars30m: bar30mWin, dailyBars: dailyBarWin,
             asiaRange, mondayRange, atr, symbol,
-            entryDir, price,
-            todayDate: date,
-            featureCfg: features,
+            price: bar.c, todayDate: date, featureCfg: features,
           });
 
-          if (rb.conviction >= minConviction && rb.confirmCount >= minConfirms) {
-            const slDist = Math.max(asiaRange.range * slFraction, getPipSize(symbol) * 5);
-            dayLevelTouches.set(confKey, (dayLevelTouches.get(confKey) || 0) + 1);
-            openTrade = {
-              dir:      entryDir,
-              entry:    price,
-              sl:       entryDir === 'long' ? price - slDist : price + slDist,
-              tp:       entryDir === 'long' ? price + slDist * rrRatio : price - slDist * rrRatio,
-              slDist,
-              entryTs:  m5CloseTs,
-              date,
-              conf:     conf.price,
-              rb,
-            };
-            break;
+          // No feature majority → skip (don't fall back to price-vs-level default)
+          if (!rb.entryDir) continue;
+          const entryDir = rb.entryDir;
+
+          if (rb.conviction < minConviction || rb.confirmCount < minConfirms) continue;
+
+          // ── Mean-reversion guard ────────────────────────────────────
+          // Only trade toward the range midpoint. If features say 'long' but
+          // price is below the level (meaning we'd be buying into a resistance),
+          // that's a breakout trade — skip it.
+          const rangeMid = asiaRange.high - asiaRange.range / 2;
+          const mrDir    = bar.c > rangeMid ? 'short' : 'long';
+          if (entryDir !== mrDir) continue;
+
+          // ── SL calculation (from conf.price, not bar.c) ────────────
+          let slDist;
+          if (slMode === 'atr') {
+            slDist = Math.max(slMult * atr, minSlPips * pip);
+          } else if (slMode === 'atr30m') {
+            const atr30 = bar30mWin.length >= 15 ? computeATR(bar30mWin.slice(-50), atrPeriod) : atr;
+            slDist = Math.max(slMult * atr30, minSlPips * pip);
+          } else {
+            slDist = Math.max(asiaRange.range * slFraction, minSlPips * pip);
           }
+
+          // ── TP calculation (from conf.price) ───────────────────────
+          const entryPrice = conf.price;
+          let tpDist;
+          if (tpMode === 'structural') {
+            const bufDist = tpBuf * pip;
+            let tpPrice = null;
+            const sortedConfs = [...confluences].sort((a, b) => a.price - b.price);
+            if (entryDir === 'long') {
+              const cands = sortedConfs.filter(l => l.price > entryPrice + pip * 0.5);
+              if (cands.length) tpPrice = cands[0].price - bufDist;
+            } else {
+              const cands = sortedConfs.filter(l => l.price < entryPrice - pip * 0.5).reverse();
+              if (cands.length) tpPrice = cands[0].price + bufDist;
+            }
+            tpDist = tpPrice !== null ? Math.abs(tpPrice - entryPrice) : tpAtrFallback * atr;
+          } else if (tpMode === 'volScaledR') {
+            const rangePips = asiaRange.range / pip;
+            const regime = rangePips > 50 ? 'high' : rangePips > 25 ? 'med' : 'low';
+            const volR   = regime === 'high' ? tpVolHi : regime === 'med' ? tpVolMed : tpVolLo;
+            tpDist = slDist * volR;
+          } else {
+            tpDist = slDist * rrRatio;
+          }
+
+          if (tpDist <= 0) continue;
+
+          const slPrice = entryDir === 'long' ? entryPrice - slDist : entryPrice + slDist;
+          const tpPrice = entryDir === 'long' ? entryPrice + tpDist : entryPrice - tpDist;
+
+          touches.count++;
+          touches.clearedSince = false;
+          dayLevelTouches.set(confKey, touches);
+
+          openTrade = {
+            dir:      entryDir,
+            entry:    entryPrice,
+            sl:       slPrice,
+            tp:       tpPrice,
+            slDist,
+            tpDist,
+            entryTs:  barCloseTs,
+            date,
+            conf:     conf.price,
+            confKey,
+            rb,
+          };
+          break;
         }
       }
+    }
+
+    // ── Ingest any remaining M5 bars into windows ──────────────────────────
+    while (m5Ptr < m5Today.length) {
+      bar5mWin.unshift(m5Today[m5Ptr++]);
+      if (bar5mWin.length > 350) bar5mWin.pop();
     }
 
     // ── Drain remaining M30 bars ──────────────────────────────────────────
@@ -332,34 +426,20 @@ function handleRun({ symbol, cfg }) {
       if (bar30mWin.length > 350) bar30mWin.shift();
     }
 
-    // ── End-of-day: drain remaining M1 and force-close ───────────────────
+    // ── EOD force-close: any trade still open after the bar loop ─────────
+    // The bar loop already handles the 21:00 exit via the EOD block.
+    // This catches trades entered on the very last bar of the day.
     if (openTrade) {
-      const pip = getPipSize(symbol);
+      const pip   = getPipSize(symbol);
       const costR = openTrade.slDist > 0 ? totalCostPips * pip / openTrade.slDist : 0;
-      let eodClosed = false;
-      while (m1Ptr < m1Today.length) {
-        const m1 = m1Today[m1Ptr++];
-        if (m1.ts < openTrade.entryTs) continue;
-        const ex = checkExit(m1, openTrade);
-        if (ex) {
-          const closed = recordClose(openTrade, ex.price, ex.result, m1.ts, trades, bayesian, costR);
-          dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
-          openTrade = null;
-          eodClosed = true;
-          break;
-        }
-      }
-      if (!eodClosed) {
-        const lb = m1Today[m1Today.length - 1] ?? m5Today[m5Today.length - 1];
-        const rawClose = lb?.c ?? openTrade.entry;
-        // Clamp within SL..TP so EOD R is always bounded
-        const eodPrice = openTrade.dir === 'long'
-          ? Math.max(openTrade.sl, Math.min(openTrade.tp, rawClose))
-          : Math.min(openTrade.sl, Math.max(openTrade.tp, rawClose));
-        const closed = recordClose(openTrade, eodPrice, 'eod', lb?.ts ?? openTrade.entryTs, trades, bayesian, costR);
-        dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
-        openTrade = null;
-      }
+      const lb    = entryBars[entryBars.length - 1];
+      const rawClose = lb?.c ?? openTrade.entry;
+      const eodPrice = openTrade.dir === 'long'
+        ? Math.max(openTrade.sl, Math.min(openTrade.tp, rawClose))
+        : Math.min(openTrade.sl, Math.max(openTrade.tp, rawClose));
+      const closed = recordClose(openTrade, eodPrice, 'eod', lb?.ts ?? openTrade.entryTs, trades, bayesian, costR);
+      dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
+      openTrade = null;
     }
 
     // ── Add today's completed daily bar to window ─────────────────────────
@@ -380,7 +460,49 @@ function handleRun({ symbol, cfg }) {
     ? +(result.meanR * avgSlDist / pip).toFixed(2)
     : 0;
 
-  post('result', { ...result, symbol, costsPips: totalCostPips });
+  post('result', { ...result, symbol, costsPips: totalCostPips, posMode, commission });
+}
+
+// ── Flip trade builder ─────────────────────────────────────────────────────────
+
+function buildFlipTrade(original, entryTs, date, confluences, pip, slMode, slMult, slFraction, minSlPips, tpMode, tpBuf, tpAtrFallback, tpVolLo, tpVolMed, tpVolHi, rrRatio, asiaRange) {
+  const flipDir = original.dir === 'long' ? 'short' : 'long';
+  const price   = original.entry;
+
+  // Same SL distance as original
+  const slDist = original.slDist;
+  const slPrice = flipDir === 'long' ? price - slDist : price + slDist;
+
+  // TP: next confluence in breakout direction — skip flip if none exists
+  const bufDist = tpBuf * pip;
+  const sortedConfs = [...confluences].sort((a, b) => a.price - b.price);
+  let tpPrice = null;
+  if (flipDir === 'long') {
+    const cands = sortedConfs.filter(l => l.price > price + pip * 0.5);
+    if (cands.length) tpPrice = cands[0].price - bufDist;
+  } else {
+    const cands = sortedConfs.filter(l => l.price < price - pip * 0.5).reverse();
+    if (cands.length) tpPrice = cands[0].price + bufDist;
+  }
+  // No structural target → skip flip trade rather than using an arbitrary ATR fallback
+  if (tpPrice === null) return null;
+  const tpDist = Math.abs(tpPrice - price);
+  if (tpDist <= 0) return null;
+
+  return {
+    dir:     flipDir,
+    entry:   price,
+    sl:      slPrice,
+    tp:      flipDir === 'long' ? price + tpDist : price - tpDist,
+    slDist,
+    tpDist,
+    entryTs,
+    date,
+    conf:    original.conf,
+    confKey: null,
+    rb:      original.rb,
+    tag:     '⚡flip',
+  };
 }
 
 // ── Exit check ─────────────────────────────────────────────────────────────────
@@ -403,7 +525,8 @@ function recordClose(trade, exitPrice, result, exitTs, trades, bayesian, costR =
   const t = {
     dir: trade.dir, entry: trade.entry, exit: exitPrice, sl: trade.sl, tp: trade.tp,
     result, r, date: trade.date, entryTs: trade.entryTs, exitTs,
-    rb: trade.rb, conf: trade.conf,
+    rb: trade.rb, conf: trade.conf, slDist: trade.slDist,
+    tag: trade.tag || '',
   };
   trades.push(t);
   const isWin = r > 0;
@@ -604,7 +727,7 @@ function computeStats(trades, rrRatio, bayesian) {
   // Last 200 trades
   const tradeSample = trades.slice(-200).map(t => ({
     dir: t.dir, date: t.date, entry: t.entry, exit: t.exit,
-    result: t.result, r: +t.r.toFixed(3), conf: t.conf,
+    result: t.result, r: +t.r.toFixed(3), conf: t.conf, tag: t.tag || '',
   }));
 
   return {
