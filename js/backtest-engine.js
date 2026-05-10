@@ -95,6 +95,21 @@ function getPipTol(symbol) {
   return 2;
 }
 
+// Round number grid: the pip-interval between major psychological levels
+function getRoundNumStep(symbol) {
+  if (symbol.includes('JPY')) return 1.0;
+  if (symbol.includes('XAU') || symbol.includes('GOLD')) return 10.0;
+  return 0.01; // 100-pip grid for major FX (1.1000, 1.1100…)
+}
+
+function isNearRoundNumber(price, symbol) {
+  const step    = getRoundNumStep(symbol);
+  const pipSize = getPipSize(symbol);
+  const mod     = ((price % step) + step) % step;
+  const dist    = Math.min(mod, step - mod);
+  return dist <= 3 * pipSize; // within 3 pips
+}
+
 // ── Range computation ─────────────────────────────────────────────────────────
 
 export function computeBodyRange(bars) {
@@ -149,12 +164,17 @@ export function detectConfluences(todayLvls, yestLvls, symbol, tolPips) {
   }
   clusters.push(bucket);
 
-  return clusters.map(cl => ({
-    price:    cl.reduce((s, p) => s + p.price, 0) / cl.length,
-    todayFib: cl[0].todayFib,
-    isTight:  cl.some(p => p.isTight),
-    density:  cl.length,
-  }));
+  return clusters.map(cl => {
+    const price       = cl.reduce((s, p) => s + p.price, 0) / cl.length;
+    const roundNum    = isNearRoundNumber(price, symbol);
+    return {
+      price,
+      todayFib:      cl[0].todayFib,
+      isTight:       cl.some(p => p.isTight) || roundNum,
+      isRoundNumber: roundNum,
+      density:       cl.length,
+    };
+  });
 }
 
 // ── ATR ───────────────────────────────────────────────────────────────────────
@@ -598,6 +618,24 @@ function featureIchimokuCloud(dailyBars, entryDir, price, symbol) {
   return { signal: cloudSig, val: `${cloudPos} (${thick}p ${spanA >= spanB ? 'green' : 'red'}) · ${tkLabel} · ${chLabel}` };
 }
 
+// ── MACD ──────────────────────────────────────────────────────────────────────
+
+function featureMacdSignal(bars5mRev, entryDir) {
+  // Need enough bars for EMA(26) + EMA(9) signal = 35 minimum
+  if (!bars5mRev || bars5mRev.length < 35) return { signal: null, val: 'n/a' };
+  const closes = bars5mRev.map(b => bC(b)).reverse(); // oldest first
+  const e12    = ema(closes, 12);
+  const e26    = ema(closes, 26);
+  const macdLine = e12.map((v, i) => v - e26[i]);
+  // EMA(9) of macdLine from bar 26 onward
+  const sigLine = ema(macdLine.slice(26), 9);
+  const last  = macdLine[macdLine.length - 1];
+  const lSig  = sigLine[sigLine.length - 1];
+  const above = last > lSig;   // MACD above signal → bullish momentum
+  const bias  = above ? 'long' : 'short';
+  return { signal: bias === entryDir ? entryDir : (entryDir === 'long' ? 'short' : 'long'), val: `MACD ${last > 0 ? '+' : ''}${(last / 0.0001).toFixed(1)}p` };
+}
+
 // ── Main signal dispatch ──────────────────────────────────────────────────────
 
 export function computeSignal({ bars5mRev, bars30m, dailyBars, asiaRange, mondayRange, atr, symbol, entryDir, price, todayDate, featureCfg }) {
@@ -614,6 +652,7 @@ export function computeSignal({ bars5mRev, bars30m, dailyBars, asiaRange, monday
     fvgBias:       () => featureFvgBias(bars5mRev, entryDir, price, atr, symbol),
     weeklyPivot:   () => featureWeeklyPivot(dailyBars, price, atr, symbol),
     ichimokuCloud: () => featureIchimokuCloud(dailyBars, entryDir, price, symbol),
+    macdSignal:    () => featureMacdSignal(bars5mRev, entryDir),
   };
   let confirmCount = 0, conflictCount = 0, totalPts = 0, maxPts = 0;
   const results = [];

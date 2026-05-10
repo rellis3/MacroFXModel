@@ -342,6 +342,16 @@
           <label for="cfg-end-date">To</label>
           <input type="date" id="cfg-end-date" value="2025-12-31"/>
         </div>
+        <div class="cfg-item" style="grid-column:1/-1">
+          <label style="color:var(--text3)">IS / OOS Split</label>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="fib-preset" onclick="applyIsOosSplit(0.7)" title="View in-sample (first 70%)">IS 70%</button>
+            <button class="fib-preset" onclick="applyOosOnly(0.7)" title="View out-of-sample (last 30%)">OOS 30%</button>
+            <button class="fib-preset" onclick="applyIsOosSplit(0.5)" title="View in-sample (first 50%)">IS 50%</button>
+            <button class="fib-preset" onclick="applyOosOnly(0.5)" title="View out-of-sample (last 50%)">OOS 50%</button>
+            <button class="fib-preset" onclick="resetDateRange()" title="Restore full date range">Reset</button>
+          </div>
+        </div>
       </div>
     </div>
 

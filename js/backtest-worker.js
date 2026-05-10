@@ -349,6 +349,16 @@ function handleRun({ symbol, cfg }) {
   // ── Stats ─────────────────────────────────────────────────────────────────
   post('progress', { status: 'Computing statistics…', pct: 96 });
   const result = computeStats(trades, rrRatio, bayesian);
+
+  // Break-even cost: max pip cost/trade before strategy goes flat
+  const pip = getPipSize(symbol);
+  const avgSlDist = trades.length
+    ? trades.reduce((s, t) => s + t.slDist, 0) / trades.length
+    : 0;
+  result.breakEvenCostPips = result.meanR > 0 && avgSlDist > 0
+    ? +(result.meanR * avgSlDist / pip).toFixed(2)
+    : 0;
+
   post('result', { ...result, symbol, costsPips: totalCostPips });
 }
 
