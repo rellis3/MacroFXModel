@@ -119,6 +119,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .level-card.outcome-loss{border-left:4px solid var(--red);background:linear-gradient(to right,var(--red-bg),var(--s1) 30%)}
 .level-card.outcome-be{border-left:4px solid var(--amber);background:linear-gradient(to right,var(--amber-bg),var(--s1) 30%)}
 .level-card.trade-watching{border-color:var(--blue-bd)}
+/* Replay-only tints — applied when no manual outcome has been set */
+.level-card.replay-tp{border-left:4px solid var(--green);background:linear-gradient(to right,rgba(10,138,92,0.07),var(--s1) 28%)}
+.level-card.replay-sl{border-left:4px solid var(--red);background:linear-gradient(to right,rgba(200,34,42,0.07),var(--s1) 28%)}
+.level-card.replay-eod{border-left:4px solid var(--amber);background:linear-gradient(to right,rgba(180,83,9,0.07),var(--s1) 28%)}
 .level-top{display:flex;align-items:center;gap:10px;padding:11px 14px 8px;flex-wrap:wrap}
 .level-stars{font-size:12px;letter-spacing:1px;flex-shrink:0;min-width:56px}
 .level-price{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.02em;line-height:1;flex:1}

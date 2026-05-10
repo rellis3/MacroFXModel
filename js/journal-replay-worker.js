@@ -17,7 +17,7 @@ function post(type, payload) { self.postMessage({ type, payload }); }
 
 // ── Fetch M1 from Oanda via worker.js API proxy ───────────────────────────────
 
-async function handleFetch({ symbol, date }) {
+async function handleFetch({ symbol, date, pair }) {
   post('progress', { msg: `Fetching ${symbol} M1 for ${date}…` });
   try {
     const url = `/api/oanda_ohlc1m?symbol=${encodeURIComponent(symbol)}&date=${encodeURIComponent(date)}`;
@@ -32,11 +32,10 @@ async function handleFetch({ symbol, date }) {
       post('error', `No M1 bars returned for ${symbol} on ${date} — market may have been closed.`);
       return;
     }
-    // Store bars as { ts, o, h, l, c, date, hour, min }
     const bars = data.values.map(v => parseDatetime(v));
     if (!_m1[symbol]) _m1[symbol] = {};
     _m1[symbol][date] = bars;
-    post('fetched', { symbol, date, count: bars.length });
+    post('fetched', { symbol, date, pair, count: bars.length });
   } catch (e) {
     post('error', `Fetch error: ${e.message}`);
   }
@@ -97,7 +96,7 @@ function londonDate(ts) {
 
 // ── Replay ────────────────────────────────────────────────────────────────────
 
-function handleReplay({ symbol, date, levels, rrRatio, pipSize }) {
+function handleReplay({ symbol, date, pair, levels, rrRatio, pipSize }) {
   const dateBars = (_m1[symbol] || {})[date];
   if (!dateBars || !dateBars.length) {
     post('error', `No M1 data loaded for ${symbol} on ${date}.`);
@@ -259,7 +258,7 @@ function handleReplay({ symbol, date, levels, rrRatio, pipSize }) {
   }
 
   post('result', {
-    symbol, date, results, equity,
+    symbol, date, pair, results, equity,
     stats: {
       total:   results.length,
       touched: touched.length,

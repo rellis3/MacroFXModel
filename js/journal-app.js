@@ -192,6 +192,23 @@ function renderLevelCard(level,idx,date,pair){
   if(outcome==='loss')borderCls='outcome-loss';
   if(outcome==='be')borderCls='outcome-be';
   if(trade==='watching'&&!outcome)borderCls='trade-watching';
+  // Overlay replay result as a secondary tint (doesn't override manual outcome colour)
+  const replayKey=pair+'::'+date;
+  const replayPayload=_replayResults[replayKey];
+  const replayRes=replayPayload?.results?.[idx];
+  let replayBadge='';
+  if(replayRes&&replayRes.touched){
+    if(!borderCls){
+      if(replayRes.result==='tp')borderCls='replay-tp';
+      else if(replayRes.result==='sl')borderCls='replay-sl';
+      else if(replayRes.result==='eod')borderCls='replay-eod';
+    }
+    const rVal=replayRes.r!==null?`${replayRes.r>=0?'+':''}${replayRes.r}R`:'';
+    const badgeCls=replayRes.result==='tp'?'rp-badge tp':replayRes.result==='sl'?'rp-badge sl':'rp-badge eod';
+    replayBadge=`<span class="${badgeCls}" style="font-size:9px;margin-left:6px">${replayRes.touchTime||''} ${rVal}</span>`;
+  } else if(replayPayload&&!replayRes?.touched){
+    replayBadge=`<span class="rp-badge untouched" style="font-size:9px;margin-left:6px">missed</span>`;
+  }
   const stars=level.stars||1;
   const starsHtml='<span style="color:var(--amber)">'+'&#9733;'.repeat(Math.min(stars,7))+'</span><span style="color:var(--border2)">'+'&#9734;'.repeat(Math.max(0,4-stars))+'</span>';
   const dirCls=level.direction==='long'?'long':'short';
@@ -208,7 +225,7 @@ function renderLevelCard(level,idx,date,pair){
   return `<div class="level-card ${borderCls}">
     <div class="level-top">
       <span class="level-stars">${starsHtml}</span>
-      <span class="level-price">${priceStr}</span>
+      <span class="level-price">${priceStr}${replayBadge}</span>
       <span class="level-dir ${dirCls}">${dirLabel}</span>
       <div class="level-sltp">
         <div class="sltp-item"><span class="sltp-lbl">SL</span><span class="sltp-val sl">${slStr||'&mdash;'}</span></div>
@@ -557,35 +574,35 @@ function fetchAndReplay() {
   const pair   = modal.dataset.pair;
   const date   = modal.dataset.date;
   const symbol = pairToSymbol(pair);
-  const key    = symbol + '::' + date;
 
   const statusEl = document.getElementById('rp-fetch-status');
   const btn      = document.getElementById('rp-fetch-btn');
   btn.disabled   = true;
-  statusEl.textContent = `Fetching ${symbol} M1 from Oanda…`;
+  statusEl.textContent = `Fetching ${pair} M1 from Oanda…`;
   statusEl.className   = 'rp-fetch-loading';
   document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Fetching M1 bars from Oanda…</div>';
 
-  getReplayWorker().postMessage({ type: 'fetch', payload: { symbol, date } });
+  // Pass pair through so callbacks don't rely on modal state when they fire
+  getReplayWorker().postMessage({ type: 'fetch', payload: { symbol, date, pair } });
 }
 
-function onM1Fetched({ symbol, date, count }) {
+function onM1Fetched({ symbol, date, pair, count }) {
   const key = symbol + '::' + date;
   _m1Loaded[key] = true;
-  const statusEl = document.getElementById('rp-fetch-status');
-  if (statusEl) {
-    statusEl.textContent = `${count} M1 bars loaded — running replay…`;
-    statusEl.className   = 'rp-fetch-ok';
+  // Only update modal UI if it's still showing this pair+date
+  const modal = document.getElementById('replayModal');
+  if (modal?.dataset.pair === pair && modal?.dataset.date === date) {
+    const statusEl = document.getElementById('rp-fetch-status');
+    if (statusEl) { statusEl.textContent = `${count} bars loaded — running replay…`; statusEl.className = 'rp-fetch-ok'; }
+    if (document.getElementById('rp-fetch-btn')) document.getElementById('rp-fetch-btn').disabled = false;
   }
-  document.getElementById('rp-fetch-btn').disabled = false;
-  // Immediately run replay after successful fetch
-  _triggerReplay(symbol, date);
+  _triggerReplay(symbol, date, pair);
 }
 
 function onM1CsvParsed({ symbol, count, dates }) {
-  // dates is a count number from the worker; mark the modal's current date as loaded
   const modal = document.getElementById('replayModal');
   const date  = modal?.dataset.date;
+  const pair  = modal?.dataset.pair || symbol;
   if (date) _m1Loaded[symbol + '::' + date] = true;
   const statusEl = document.getElementById('rp-fetch-status');
   if (statusEl) {
@@ -593,13 +610,10 @@ function onM1CsvParsed({ symbol, count, dates }) {
     statusEl.className   = 'rp-fetch-ok';
   }
   if (document.getElementById('rp-fetch-btn')) document.getElementById('rp-fetch-btn').disabled = false;
-  if (date) _triggerReplay(symbol, date);
+  if (date) _triggerReplay(symbol, date, pair);
 }
 
-function _triggerReplay(symbol, date) {
-  // Find pair from the modal (it stores pair)
-  const modal = document.getElementById('replayModal');
-  const pair  = modal.dataset.pair;
+function _triggerReplay(symbol, date, pair) {
   const dayObj = journalData[date]?.[pair];
   if (!dayObj) { showToast('No levels for this pair/date', 'err'); return; }
   const levels = dayObj.levels || [];
@@ -607,21 +621,21 @@ function _triggerReplay(symbol, date) {
 
   document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Running replay…</div>';
   const pip = getPipSz(pair);
+  // Embed pair in payload so onReplayResult doesn't rely on modal state
   getReplayWorker().postMessage({
     type: 'replay',
-    payload: { symbol, date, levels, rrRatio: 2.2, pipSize: pip },
+    payload: { symbol, date, pair, levels, rrRatio: 2.2, pipSize: pip },
   });
 }
 
 function runReplay() {
-  // Re-run replay with existing loaded data (button in modal)
   const modal  = document.getElementById('replayModal');
   const pair   = modal.dataset.pair;
   const date   = modal.dataset.date;
   const symbol = pairToSymbol(pair);
   const key    = symbol + '::' + date;
   if (!_m1Loaded[key]) { fetchAndReplay(); return; }
-  _triggerReplay(symbol, date);
+  _triggerReplay(symbol, date, pair);
 }
 
 function onReplayProgress({ msg }) {
@@ -640,15 +654,17 @@ function onReplayError(msg) {
 }
 
 function onReplayResult(payload) {
-  const { symbol, date } = payload;
-  // Find pair from symbol
-  const modal = document.getElementById('replayModal');
-  const pair  = modal.dataset.pair;
-  const key   = pair + '::' + date;
+  const { date, pair } = payload;   // pair embedded by _triggerReplay
+  const key = pair + '::' + date;
   _replayResults[key] = payload;
-  renderReplayInModal(payload);
-  // Also update the inline panel in day view if visible
+  // Only render into the modal if it is currently showing this same pair+date
+  const modal = document.getElementById('replayModal');
+  if (modal?.dataset.pair === pair && modal?.dataset.date === date) {
+    renderReplayInModal(payload);
+  }
+  // Update inline panel and re-render level cards with replay colouring
   updateInlineDayPanel(pair, date, payload);
+  if (currentView === 'day' && selectedDate === date) renderMain();
 }
 
 function renderReplayInModal(payload) {
@@ -682,18 +698,30 @@ function buildCandleChart(res) {
   const dir        = res.dir;
   const result     = res.result;
 
+  // Hardcoded colours — CSS custom properties don't work in SVG fill/stroke attributes
+  const isDark   = document.body.classList.contains('dark');
+  const C = {
+    green:   '#0a8a5c',
+    red:     '#c8222a',
+    blue:    '#1847c2',
+    amber:   '#b45309',
+    grey:    isDark ? '#2a2f45' : '#dde3ee',
+    text3:   isDark ? '#5a6380' : '#8fa0b8',
+    bg:      isDark ? '#0f1117' : '#f4f6fb',
+    canvBg:  isDark ? '#1a1d27' : '#ffffff',
+  };
+
   // Chart dimensions
-  const W = 600, H = 160;
-  const padL = 8, padR = 52, padT = 14, padB = 20;
+  const W = 600, H = 170;
+  const padL = 8, padR = 56, padT = 14, padB = 22;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
-  // Price range — include SL, TP, entry and all bar wicks
+  // Price range — include SL, TP, entry and all bar wicks with 10% padding
   const allPrices = bars.flatMap(b => [b.h, b.l]);
   allPrices.push(entryPrice, sl, tp);
   let priceMin = Math.min(...allPrices);
   let priceMax = Math.max(...allPrices);
-  // Add 10% padding above and below
   const priceRange = priceMax - priceMin || entryPrice * 0.001;
   priceMin -= priceRange * 0.10;
   priceMax += priceRange * 0.10;
@@ -701,107 +729,81 @@ function buildCandleChart(res) {
 
   const px = (i) => padL + (i + 0.5) * (chartW / bars.length);
   const py = (p) => padT + chartH - (p - priceMin) / priceSpan * chartH;
-
   const candleW = Math.max(1.5, Math.min(9, chartW / bars.length * 0.65));
-
-  // Build candles
-  let candleSvg = '';
-  for (let i = 0; i < bars.length; i++) {
-    const b   = bars[i];
-    const x   = px(i);
-    const isUp = b.c >= b.o;
-    const col  = isUp ? 'var(--green)' : 'var(--red)';
-    const bodyT = py(Math.max(b.o, b.c));
-    const bodyB = py(Math.min(b.o, b.c));
-    const bodyH = Math.max(1, bodyB - bodyT);
-    const wickT = py(b.h);
-    const wickB = py(b.l);
-
-    // Highlight touch bar with a subtle background glow
-    if (b.isTouchBar) {
-      candleSvg += `<rect x="${x - candleW * 1.2}" y="${padT}" width="${candleW * 2.4}" height="${chartH}" fill="var(--blue)" opacity="0.08" rx="2"/>`;
-    }
-    if (b.isExitBar) {
-      const exitCol = result === 'tp' ? 'var(--green)' : result === 'sl' ? 'var(--red)' : 'var(--amber)';
-      candleSvg += `<rect x="${x - candleW * 1.2}" y="${padT}" width="${candleW * 2.4}" height="${chartH}" fill="${exitCol}" opacity="0.10" rx="2"/>`;
-    }
-
-    // Wick
-    candleSvg += `<line x1="${x}" y1="${wickT}" x2="${x}" y2="${wickB}" stroke="${col}" stroke-width="1"/>`;
-    // Body
-    candleSvg += `<rect x="${x - candleW / 2}" y="${bodyT}" width="${candleW}" height="${bodyH}" fill="${col}" rx="0.5"/>`;
-  }
-
-  // Horizontal price lines
-  const entryY  = py(entryPrice);
-  const slY     = py(sl);
-  const tpY     = py(tp);
-  const rightX  = padL + chartW;
-
   const digits  = entryPrice > 20 ? 2 : 5;
   const fmt     = (p) => p.toFixed(digits);
 
-  // Entry line (dashed blue)
-  const entryLine = `<line x1="${padL}" y1="${entryY}" x2="${rightX}" y2="${entryY}" stroke="var(--blue)" stroke-width="1" stroke-dasharray="4,3"/>
-    <text x="${rightX + 3}" y="${entryY + 4}" font-size="8" fill="var(--blue)" font-family="DM Mono,monospace">${fmt(entryPrice)}</text>`;
+  // Background
+  let svg = `<rect width="${W}" height="${H}" fill="${C.canvBg}" rx="4"/>`;
 
-  // SL line (red dashed)
-  const slLine = `<line x1="${padL}" y1="${slY}" x2="${rightX}" y2="${slY}" stroke="var(--red)" stroke-width="1" stroke-dasharray="3,3"/>
-    <text x="${rightX + 3}" y="${slY + 4}" font-size="8" fill="var(--red)" font-family="DM Mono,monospace">SL ${fmt(sl)}</text>`;
+  // Shaded zones
+  const entryY = py(entryPrice);
+  const slY    = py(sl);
+  const tpY    = py(tp);
+  svg += `<rect x="${padL}" y="${Math.min(entryY,slY)}" width="${chartW}" height="${Math.abs(slY-entryY)}" fill="${C.red}" opacity="0.06"/>`;
+  svg += `<rect x="${padL}" y="${Math.min(entryY,tpY)}" width="${chartW}" height="${Math.abs(tpY-entryY)}" fill="${C.green}" opacity="0.06"/>`;
 
-  // TP line (green dashed)
-  const tpLine = `<line x1="${padL}" y1="${tpY}" x2="${rightX}" y2="${tpY}" stroke="var(--green)" stroke-width="1" stroke-dasharray="3,3"/>
-    <text x="${rightX + 3}" y="${tpY + 4}" font-size="8" fill="var(--green)" font-family="DM Mono,monospace">TP ${fmt(tp)}</text>`;
+  // Candles
+  for (let i = 0; i < bars.length; i++) {
+    const b    = bars[i];
+    const x    = px(i);
+    const isUp = b.c >= b.o;
+    const col  = isUp ? C.green : C.red;
+    const bodyT = py(Math.max(b.o, b.c));
+    const bodyB = py(Math.min(b.o, b.c));
+    const bodyH = Math.max(1, bodyB - bodyT);
 
-  // Shaded SL zone (below entry for long, above for short)
-  const slZoneTop  = dir === 'long' ? slY : Math.min(entryY, slY);
-  const slZoneBot  = dir === 'long' ? Math.max(entryY, slY) : slY;
-  const slZone = `<rect x="${padL}" y="${slZoneTop}" width="${chartW}" height="${Math.abs(slY - entryY)}" fill="var(--red)" opacity="0.05"/>`;
+    if (b.isTouchBar) {
+      svg += `<rect x="${x - candleW * 1.5}" y="${padT}" width="${candleW * 3}" height="${chartH}" fill="${C.blue}" opacity="0.09" rx="2"/>`;
+    }
+    if (b.isExitBar) {
+      const ec = result === 'tp' ? C.green : result === 'sl' ? C.red : C.amber;
+      svg += `<rect x="${x - candleW * 1.5}" y="${padT}" width="${candleW * 3}" height="${chartH}" fill="${ec}" opacity="0.12" rx="2"/>`;
+    }
 
-  // Shaded TP zone (above entry for long, below for short)
-  const tpZone = `<rect x="${padL}" y="${Math.min(entryY, tpY)}" width="${chartW}" height="${Math.abs(tpY - entryY)}" fill="var(--green)" opacity="0.05"/>`;
+    svg += `<line x1="${x}" y1="${py(b.h)}" x2="${x}" y2="${py(b.l)}" stroke="${col}" stroke-width="1"/>`;
+    svg += `<rect x="${x - candleW/2}" y="${bodyT}" width="${candleW}" height="${bodyH}" fill="${col}" rx="0.5"/>`;
+  }
 
-  // Entry arrow marker at touch
-  const touchBar = bars.findIndex(b => b.isTouchBar);
-  let entryArrow = '';
-  if (touchBar >= 0) {
-    const ax = px(touchBar);
+  // Price lines
+  const rightX = padL + chartW;
+  svg += `<line x1="${padL}" y1="${entryY}" x2="${rightX}" y2="${entryY}" stroke="${C.blue}" stroke-width="1.2" stroke-dasharray="5,3"/>`;
+  svg += `<text x="${rightX+3}" y="${entryY+4}" font-size="8" fill="${C.blue}" font-family="DM Mono,monospace">${fmt(entryPrice)}</text>`;
+  svg += `<line x1="${padL}" y1="${slY}" x2="${rightX}" y2="${slY}" stroke="${C.red}" stroke-width="1.2" stroke-dasharray="3,3"/>`;
+  svg += `<text x="${rightX+3}" y="${slY+4}" font-size="8" fill="${C.red}" font-family="DM Mono,monospace">SL ${fmt(sl)}</text>`;
+  svg += `<line x1="${padL}" y1="${tpY}" x2="${rightX}" y2="${tpY}" stroke="${C.green}" stroke-width="1.2" stroke-dasharray="3,3"/>`;
+  svg += `<text x="${rightX+3}" y="${tpY+4}" font-size="8" fill="${C.green}" font-family="DM Mono,monospace">TP ${fmt(tp)}</text>`;
+
+  // Entry arrow at touch bar
+  const touchIdx = bars.findIndex(b => b.isTouchBar);
+  if (touchIdx >= 0) {
+    const ax = px(touchIdx);
     if (dir === 'long') {
-      const ay = py(sl) + 10;
-      entryArrow = `<polygon points="${ax},${ay - 8} ${ax - 5},${ay} ${ax + 5},${ay}" fill="var(--blue)" opacity="0.9"/>`;
+      const ay = Math.min(py(sl) + 12, padT + chartH - 2);
+      svg += `<polygon points="${ax},${ay-9} ${ax-5},${ay} ${ax+5},${ay}" fill="${C.blue}"/>`;
     } else {
-      const ay = py(sl) - 10;
-      entryArrow = `<polygon points="${ax},${ay + 8} ${ax - 5},${ay} ${ax + 5},${ay}" fill="var(--blue)" opacity="0.9"/>`;
+      const ay = Math.max(py(sl) - 12, padT + 2);
+      svg += `<polygon points="${ax},${ay+9} ${ax-5},${ay} ${ax+5},${ay}" fill="${C.blue}"/>`;
     }
   }
 
-  // Time axis labels — show every ~10 bars
-  let timeLabels = '';
+  // Exit badge
+  const exitIdx = bars.findIndex(b => b.isExitBar);
+  if (exitIdx >= 0) {
+    const ex  = px(exitIdx);
+    const ec  = result === 'tp' ? C.green : result === 'sl' ? C.red : C.amber;
+    const ey  = result === 'tp' ? tpY - 6 : result === 'sl' ? slY + 15 : entryY - 6;
+    svg += `<rect x="${ex-11}" y="${ey-9}" width="22" height="12" rx="3" fill="${ec}"/>`;
+    svg += `<text x="${ex}" y="${ey}" font-size="8" fill="white" text-anchor="middle" font-weight="bold" font-family="DM Sans,sans-serif">${result.toUpperCase()}</text>`;
+  }
+
+  // Time axis
   const step = Math.max(1, Math.round(bars.length / 8));
   for (let i = 0; i < bars.length; i += step) {
-    const x = px(i);
-    timeLabels += `<text x="${x}" y="${H - 4}" font-size="7.5" fill="var(--text3)" text-anchor="middle" font-family="DM Mono,monospace">${bars[i].t}</text>`;
+    svg += `<text x="${px(i)}" y="${H-5}" font-size="7.5" fill="${C.text3}" text-anchor="middle" font-family="DM Mono,monospace">${bars[i].t}</text>`;
   }
 
-  // Result label at exit bar
-  const exitBar = bars.findIndex(b => b.isExitBar);
-  let exitLabel = '';
-  if (exitBar >= 0) {
-    const ex = px(exitBar);
-    const ey = result === 'tp' ? tpY - 5 : result === 'sl' ? slY + 14 : entryY;
-    const ecol = result === 'tp' ? 'var(--green)' : result === 'sl' ? 'var(--red)' : 'var(--amber)';
-    const etxt = result.toUpperCase();
-    exitLabel = `<rect x="${ex - 10}" y="${ey - 9}" width="20" height="11" rx="3" fill="${ecol}" opacity="0.9"/>
-      <text x="${ex}" y="${ey}" font-size="7.5" fill="white" text-anchor="middle" font-weight="bold" font-family="DM Sans,sans-serif">${etxt}</text>`;
-  }
-
-  return `<svg class="rp-candle-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-    ${slZone}${tpZone}
-    ${candleSvg}
-    ${entryLine}${slLine}${tpLine}
-    ${entryArrow}${exitLabel}
-    ${timeLabels}
-  </svg>`;
+  return `<svg class="rp-candle-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
 }
 
 function buildReplayHTML(payload) {
