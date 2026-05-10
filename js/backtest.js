@@ -133,6 +133,11 @@ function loadConfig(id) {
   sv('cfg-tight-pct',       cfg.tightPct);
   sv('cfg-ew',              cfg.entryWindow);
   sv('cfg-reentry',         cfg.levelReentry);
+  sv('cfg-candle-n',        cfg.candleConfirmN);
+  sv('cfg-candle-pct',      cfg.candleConfirmPct);
+  sc('cfg-require-sweep',   cfg.requireSweep);
+  sv('cfg-sweep-pips',      cfg.sweepPips);
+  sc('cfg-second-touch',    cfg.secondTouchOnly);
   if (cfg.enabledFibs) {
     const fibSet = new Set(cfg.enabledFibs.map(String));
     document.querySelectorAll('.fib-chk').forEach(chk => {
@@ -148,6 +153,7 @@ function loadConfig(id) {
   onSlModeChange();
   onTpModeChange();
   onPosModeChange();
+  onSweepChange();
   const row = document.querySelector(`[data-cfg-id="${id}"]`);
   if (row) {
     row.style.background = 'var(--blue-bg)';
@@ -339,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
   onSlModeChange();
   onTpModeChange();
   onPosModeChange();
+  onSweepChange();
   initSavedConfigs();
 
   // Dark mode
@@ -490,6 +497,12 @@ function buildCfg() {
     tightPct:          parseFloat(g('cfg-tight-pct')) || 50,
     entryWindow:       parseInt(g('cfg-ew'))          || 800,
     levelReentry:      parseInt(g('cfg-reentry'))     || 2,
+    // Entry quality filters
+    candleConfirmN:    parseInt(g('cfg-candle-n'))    || 0,
+    candleConfirmPct:  parseFloat(g('cfg-candle-pct'))|| 0.6,
+    requireSweep:      gb('cfg-require-sweep'),
+    sweepPips:         parseFloat(g('cfg-sweep-pips'))|| 2,
+    secondTouchOnly:   gb('cfg-second-touch'),
     enabledFibs:       getEnabledFibs(),
     features,
   };
@@ -965,23 +978,65 @@ function renderTradeLog(trades) {
     });
   }
 
+  const sortTh = (k, label) =>
+    `<th class="sortable" data-k="${k}">${label} ${tradeSort.key===k?(tradeSort.asc?'↑':'↓'):''}</th>`;
+
+  const rows = sorted.map((t, i) => {
+    const dirCls  = t.dir === 'long' ? 'pos' : 'neg';
+    const resCls  = t.result === 'tp' ? 'pos' : t.result === 'sl' ? 'neg' : '';
+    const rCls    = t.r > 0 ? 'pos' : t.r < 0 ? 'neg' : '';
+    const sdLabel = t.todayFib != null
+      ? `<span class="tl-sd">SD${t.todayFib}${t.yestFib != null ? `<span class="tl-sd-y">↔${t.yestFib}</span>` : ''}</span>`
+      : '<span style="color:var(--text3)">—</span>';
+
+    // Feature vote pills
+    const hasFeat = t.features?.length > 0;
+    const detailId = `tl-feat-${i}`;
+    const chevron  = hasFeat
+      ? `<button class="tl-expand-btn" onclick="tlToggle('${detailId}')">▶</button>`
+      : '';
+
+    let featRow = '';
+    if (hasFeat) {
+      const pills = t.features.map(f => {
+        const sc = f.signal === 'long'  ? 'tl-feat-long'
+                 : f.signal === 'short' ? 'tl-feat-short'
+                 :                        'tl-feat-null';
+        const arrow = f.signal === 'long' ? '↑' : f.signal === 'short' ? '↓' : '—';
+        const ptsTxt = f.pts > 0 ? `+${f.pts}` : f.pts < 0 ? `${f.pts}` : '0';
+        const ptsC   = f.pts > 0 ? 'tl-pts-pos' : f.pts < 0 ? 'tl-pts-neg' : 'tl-pts-nil';
+        return `<span class="tl-feat-pill ${sc}" title="${f.val}">${f.icon || ''} ${f.label} <span class="tl-feat-arrow">${arrow}</span> <span class="${ptsC}">${ptsTxt}</span></span>`;
+      }).join('');
+      featRow = `<tr id="${detailId}" class="tl-feat-row" style="display:none">
+        <td colspan="8"><div class="tl-feat-wrap">${pills}</div></td>
+      </tr>`;
+    }
+
+    return `<tr class="tl-main-row">
+      <td class="tl-chevron-cell">${chevron}</td>
+      <td>${t.date}</td>
+      <td class="${dirCls}">${t.dir === 'long' ? '↑ Long' : '↓ Short'}</td>
+      <td class="mono">${t.entry}</td>
+      <td class="mono">${t.exit}</td>
+      <td>${sdLabel}</td>
+      <td class="${resCls}">${t.result.toUpperCase()}</td>
+      <td class="${rCls} mono">${t.r > 0 ? '+' : ''}${t.r}R${t.tag ? ` <span style="color:var(--text3);font-size:9px">${t.tag}</span>` : ''}</td>
+    </tr>${featRow}`;
+  }).join('');
+
   el.innerHTML = `
-    <table>
+    <table class="tl-table">
       <thead><tr>
-        ${['date','dir','entry','exit','result','r'].map(k =>
-          `<th class="sortable" data-k="${k}">${k.toUpperCase()} ${tradeSort.key===k?(tradeSort.asc?'↑':'↓'):''}</th>`
-        ).join('')}
-        <th>TAG</th>
+        <th style="width:18px"></th>
+        ${sortTh('date','Date')}
+        ${sortTh('dir','Dir')}
+        ${sortTh('entry','Entry')}
+        ${sortTh('exit','Exit')}
+        <th>SD Level</th>
+        ${sortTh('result','Result')}
+        ${sortTh('r','R')}
       </tr></thead>
-      <tbody>${sorted.map(t => `<tr>
-        <td>${t.date}</td>
-        <td class="${t.dir==='long'?'pos':'neg'}">${t.dir}</td>
-        <td>${t.entry}</td>
-        <td>${t.exit}</td>
-        <td class="${t.result==='tp'?'pos':t.result==='sl'?'neg':''}">${t.result.toUpperCase()}</td>
-        <td class="${t.r>0?'pos':t.r<0?'neg':''}">${t.r > 0 ? '+' : ''}${t.r}R</td>
-        <td style="color:var(--text3)">${t.tag || ''}</td>
-      </tr>`).join('')}</tbody>
+      <tbody>${rows}</tbody>
     </table>`;
 
   el.querySelectorAll('th.sortable').forEach(th => {
@@ -992,6 +1047,15 @@ function renderTradeLog(trades) {
       renderTradeLog(trades);
     });
   });
+}
+
+function tlToggle(id) {
+  const row = document.getElementById(id);
+  if (!row) return;
+  const open = row.style.display !== 'none';
+  row.style.display = open ? 'none' : 'table-row';
+  const btn = row.previousElementSibling?.querySelector('.tl-expand-btn');
+  if (btn) btn.textContent = open ? '▶' : '▼';
 }
 
 // ── UI helpers ─────────────────────────────────────────────────────────────────
@@ -1095,6 +1159,12 @@ function onTpModeChange() {
   show('tp-fallback-row', mode === 'structural' || mode === 'volScaledR');
 }
 
+function onSweepChange() {
+  const on = document.getElementById('cfg-require-sweep')?.checked;
+  const row = document.getElementById('sweep-pips-row');
+  if (row) row.style.display = on ? '' : 'none';
+}
+
 function onPosModeChange() {
   const mode = document.getElementById('cfg-pos-mode')?.value || 'fixed';
   const show = (id, vis) => { const el = document.getElementById(id); if (el) el.classList.toggle('visible', vis); };
@@ -1114,6 +1184,8 @@ window.switchChartTab    = switchChartTab;
 window.onSlModeChange    = onSlModeChange;
 window.onTpModeChange    = onTpModeChange;
 window.onPosModeChange   = onPosModeChange;
+window.onSweepChange     = onSweepChange;
+window.tlToggle          = tlToggle;
 
 function restoreSettings() {
   try {
@@ -1157,6 +1229,11 @@ function restoreSettings() {
     s('cfg-tight-pct',       cfg.tightPct);
     s('cfg-ew',              cfg.entryWindow);
     s('cfg-reentry',         cfg.levelReentry);
+    s('cfg-candle-n',        cfg.candleConfirmN);
+    s('cfg-candle-pct',      cfg.candleConfirmPct);
+    sc('cfg-require-sweep',  cfg.requireSweep);
+    s('cfg-sweep-pips',      cfg.sweepPips);
+    sc('cfg-second-touch',   cfg.secondTouchOnly);
     if (cfg.enabledFibs) {
       const fibSet = new Set(cfg.enabledFibs.map(String));
       document.querySelectorAll('.fib-chk').forEach(chk => {

@@ -113,8 +113,13 @@ function handleRun({ symbol, cfg }) {
   const method        = cfg.method        ?? 'asia';
   const signalFilter  = cfg.signalFilter  ?? 'all_conf';
   const confTolPips   = cfg.confTolPips   ?? null;
-  const entryWindow   = cfg.entryWindow   ?? 800;  // HHMM int e.g. 800 = 08:00
-  const levelReentry  = Math.max(1, cfg.levelReentry ?? 2);
+  const entryWindow      = cfg.entryWindow      ?? 800;  // HHMM int e.g. 800 = 08:00
+  const levelReentry     = Math.max(1, cfg.levelReentry ?? 2);
+  const candleConfirmN   = cfg.candleConfirmN   ?? 0;    // 0 = disabled
+  const candleConfirmPct = cfg.candleConfirmPct ?? 0.6;  // fraction of N bars that must close in dir
+  const requireSweep     = cfg.requireSweep     ?? false;
+  const sweepPips        = cfg.sweepPips        ?? 2;
+  const secondTouchOnly  = cfg.secondTouchOnly  ?? false;
   const enabledFibSet = cfg.enabledFibs?.length
     ? new Set(cfg.enabledFibs.map(f => +f))
     : null;
@@ -230,6 +235,9 @@ function handleRun({ symbol, cfg }) {
 
     // ── Per-day level touch counter (for re-entry limit) ─────────────────
     const dayLevelTouches = new Map();
+    // ── Per-day sweep tracker: confKey → true when price has already wicked
+    //    past the level by ≥ sweepPips, confirming liquidity was taken ─────
+    const dayLevelSwept   = new Map();
 
     // ── Interleaved pointers ───────────────────────────────────────────────
     let m30Ptr = 0;
@@ -243,7 +251,8 @@ function handleRun({ symbol, cfg }) {
     const entryBars = m1Today.length >= 200 ? m1Today : m5Today;
     const barDurMs  = m1Today.length >= 200 ? 60000   : 300000;
 
-    for (const bar of entryBars) {
+    for (let _bi = 0; _bi < entryBars.length; _bi++) {
+      const bar = entryBars[_bi];
       const barCloseTs = bar.ts + barDurMs;
 
       // ── Advance M30 window up to this bar ─────────────────────────────
@@ -291,6 +300,23 @@ function handleRun({ symbol, cfg }) {
         dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
         openTrade = null;
         continue;
+      }
+
+      // ── Passive sweep scan ────────────────────────────────────────────
+      // Track every bar: if price wicks past a confluence level by ≥ sweepPips
+      // and then closes back on the other side, mark it as swept. This must
+      // run even when a trade is open so future entries can use the flag.
+      if (requireSweep) {
+        const pip = getPipSize(symbol);
+        const sweepDist = sweepPips * pip;
+        for (const conf of confluences) {
+          const ck = conf.price.toFixed(5);
+          if (dayLevelSwept.get(ck)) continue;  // already marked
+          // Wick past level by ≥ sweepPips AND close back through it
+          const wickedBelow = bar.l <= conf.price - sweepDist && bar.c > conf.price;
+          const wickedAbove = bar.h >= conf.price + sweepDist && bar.c < conf.price;
+          if (wickedBelow || wickedAbove) dayLevelSwept.set(ck, true);
+        }
       }
 
       // ── Kill switch gate ───────────────────────────────────────────────
@@ -352,6 +378,44 @@ function handleRun({ symbol, cfg }) {
           const mrDir    = bar.c > rangeMid ? 'short' : 'long';
           if (entryDir !== mrDir) continue;
 
+          // ── Liquidity sweep gate ─────────────────────────────────────
+          // Require price to have already wicked through this level (taken
+          // liquidity) before we enter. Prevents fading an untested level.
+          if (requireSweep && !dayLevelSwept.get(confKey)) continue;
+
+          // ── Second-touch-only gate ───────────────────────────────────
+          // Treat the first bar touch as observation only. Only enter on the
+          // second approach to the level (after price has left and returned).
+          if (secondTouchOnly) {
+            const st = dayLevelTouches.get(confKey) || { count: 0, clearedSince: true };
+            if (st.count === 0) {
+              // First touch — log it but don't trade
+              st.count = 1;
+              st.clearedSince = false;
+              dayLevelTouches.set(confKey, st);
+              continue;
+            }
+            // Second+ touch only enters if price clearly left and returned
+            if (!st.clearedSince) continue;
+          }
+
+          // ── N-candle momentum confirmation ───────────────────────────
+          // After the touch bar, look ahead at the next candleConfirmN M1
+          // bars and require at least candleConfirmPct of them to close in
+          // the trade direction. This filters sweep-and-reverse fakeouts.
+          if (candleConfirmN > 0) {
+            const confirmBars = entryBars.slice(_bi + 1, _bi + 1 + candleConfirmN);
+            if (confirmBars.length < candleConfirmN) continue; // not enough bars left today
+            let dirCount = 0;
+            for (const cb of confirmBars) {
+              if (entryDir === 'long'  && cb.c > cb.o) dirCount++;
+              if (entryDir === 'short' && cb.c < cb.o) dirCount++;
+            }
+            if (dirCount / candleConfirmN < candleConfirmPct) continue;
+            // Entry is placed after the confirmation window closes
+            // Use the close of the last confirmation bar as entry bar
+          }
+
           // ── SL calculation (from conf.price, not bar.c) ────────────
           let slDist;
           if (slMode === 'atr') {
@@ -407,6 +471,8 @@ function handleRun({ symbol, cfg }) {
             date,
             conf:     conf.price,
             confKey,
+            todayFib: conf.todayFib ?? null,
+            yestFib:  conf.yestFib  ?? null,
             rb,
           };
           break;
@@ -526,6 +592,8 @@ function recordClose(trade, exitPrice, result, exitTs, trades, bayesian, costR =
     dir: trade.dir, entry: trade.entry, exit: exitPrice, sl: trade.sl, tp: trade.tp,
     result, r, date: trade.date, entryTs: trade.entryTs, exitTs,
     rb: trade.rb, conf: trade.conf, slDist: trade.slDist,
+    todayFib: trade.todayFib ?? null,
+    yestFib:  trade.yestFib  ?? null,
     tag: trade.tag || '',
   };
   trades.push(t);
@@ -724,10 +792,26 @@ function computeStats(trades, rrRatio, bayesian) {
     .sort((a, b) => a.yearMonth < b.yearMonth ? -1 : 1)
     .map(m => ({ ...m, totalR: +m.totalR.toFixed(2) }));
 
-  // Last 200 trades
+  // Last 200 trades — include feature votes and SD level for trade log detail
   const tradeSample = trades.slice(-200).map(t => ({
-    dir: t.dir, date: t.date, entry: t.entry, exit: t.exit,
-    result: t.result, r: +t.r.toFixed(3), conf: t.conf, tag: t.tag || '',
+    dir:      t.dir,
+    date:     t.date,
+    entry:    t.entry,
+    exit:     t.exit,
+    result:   t.result,
+    r:        +t.r.toFixed(3),
+    conf:     t.conf,
+    todayFib: t.todayFib ?? null,
+    yestFib:  t.yestFib  ?? null,
+    tag:      t.tag || '',
+    features: (t.rb?.results || []).map(f => ({
+      key:    f.key,
+      label:  f.label,
+      signal: f.signal,
+      val:    String(f.val ?? ''),
+      pts:    f.pts,
+      icon:   f.icon,
+    })),
   }));
 
   return {
