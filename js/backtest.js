@@ -487,7 +487,9 @@ function switchChartTab(tab, btn) {
 }
 
 function renderResults(d) {
-  document.getElementById('results-panel').style.display = 'block';
+  document.getElementById('results-panel').style.display = 'flex';
+  const ph = document.getElementById('bt-placeholder');
+  if (ph) ph.style.display = 'none';
 
   // ── Stats tiles ─────────────────────────────────────────────────────────
   const mc = d.monteCarlo;
@@ -937,6 +939,8 @@ function showError(msg) {
 function clearResults() {
   const el = document.getElementById('results-panel');
   if (el) el.style.display = 'none';
+  const ph = document.getElementById('bt-placeholder');
+  if (ph) ph.style.display = 'flex';
 }
 
 function checkRunReady() {

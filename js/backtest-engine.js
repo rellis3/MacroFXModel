@@ -116,8 +116,8 @@ export function computeBodyRange(bars) {
   if (!bars || !bars.length) return null;
   let high = -Infinity, low = Infinity;
   for (const b of bars) {
-    high = Math.max(high, bO(b), bC(b));
-    low  = Math.min(low,  bO(b), bC(b));
+    high = Math.max(high, bH(b), bC(b));
+    low  = Math.min(low,  bL(b), bO(b));
   }
   if (!isFinite(high) || !isFinite(low)) return null;
   return { high, low, range: high - low };

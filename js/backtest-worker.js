@@ -247,11 +247,27 @@ function handleRun({ symbol, cfg }) {
         }
       }
 
+      // ── M5 wick exit fallback (when M1 absent or gaps) ────────────────
+      if (openTrade && m5.ts >= openTrade.entryTs) {
+        const ex = checkExit(m5, openTrade);
+        if (ex) {
+          const pip = getPipSize(symbol);
+          const costR = openTrade.slDist > 0 ? totalCostPips * pip / openTrade.slDist : 0;
+          const closed = recordClose(openTrade, ex.price, ex.result, m5CloseTs, trades, bayesian, costR);
+          dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
+          openTrade = null;
+        }
+      }
+
       // ── EOD exit ──────────────────────────────────────────────────────
       if (openTrade && m5.lHour >= 21) {
         const pip = getPipSize(symbol);
         const costR = openTrade.slDist > 0 ? totalCostPips * pip / openTrade.slDist : 0;
-        const closed = recordClose(openTrade, m5.c, 'eod', m5CloseTs, trades, bayesian, costR);
+        // Clamp EOD close price within SL..TP so R never exceeds the trade bounds
+        const eodPrice = openTrade.dir === 'long'
+          ? Math.max(openTrade.sl, Math.min(openTrade.tp, m5.c))
+          : Math.min(openTrade.sl, Math.max(openTrade.tp, m5.c));
+        const closed = recordClose(openTrade, eodPrice, 'eod', m5CloseTs, trades, bayesian, costR);
         dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
         openTrade = null;
         continue;
@@ -335,7 +351,12 @@ function handleRun({ symbol, cfg }) {
       }
       if (!eodClosed) {
         const lb = m1Today[m1Today.length - 1] ?? m5Today[m5Today.length - 1];
-        const closed = recordClose(openTrade, lb?.c ?? openTrade.entry, 'eod', lb?.ts ?? openTrade.entryTs, trades, bayesian, costR);
+        const rawClose = lb?.c ?? openTrade.entry;
+        // Clamp within SL..TP so EOD R is always bounded
+        const eodPrice = openTrade.dir === 'long'
+          ? Math.max(openTrade.sl, Math.min(openTrade.tp, rawClose))
+          : Math.min(openTrade.sl, Math.max(openTrade.tp, rawClose));
+        const closed = recordClose(openTrade, eodPrice, 'eod', lb?.ts ?? openTrade.entryTs, trades, bayesian, costR);
         dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
         openTrade = null;
       }

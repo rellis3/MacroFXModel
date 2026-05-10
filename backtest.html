@@ -3,266 +3,225 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Backtest — MacroFXModel</title>
+  <title>Backtest Engine — MacroFXModel</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/index.css"/>
   <style>
-    /* ── Layout ─────────────────────────────────────────────── */
+    /* ── Page layout ─────────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; }
-    body { font-family: 'Inter', system-ui, sans-serif; font-size: 13px;
-           background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: 'DM Sans', sans-serif; font-size: 13px; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
 
-    #app { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+    /* ── Topbar ──────────────────────────────────────────────────────────────── */
+    .bt-topbar { height: 48px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 18px; gap: 12px; background: var(--bg); flex-shrink: 0; }
+    .bt-logo { width: 28px; height: 28px; background: var(--blue); border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .bt-logo svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .bt-title { font-size: 14px; font-weight: 700; letter-spacing: -0.2px; }
+    .bt-sub { font-size: 10px; color: var(--text3); letter-spacing: .6px; text-transform: uppercase; margin-top: 1px; }
+    .bt-spacer { flex: 1; }
 
-    /* ── Sidebar ────────────────────────────────────────────── */
-    #sidebar { width: 300px; flex-shrink: 0; border-right: 1px solid var(--border);
-               overflow-y: auto; padding: 16px 14px; display: flex; flex-direction: column; gap: 14px; }
+    /* ── Body split ──────────────────────────────────────────────────────────── */
+    #bt-app { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 
-    .sb-title { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
-    .sb-subtitle { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+    #bt-sidebar { width: 290px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 12px; scrollbar-width: thin; }
 
-    .sb-section { display: flex; flex-direction: column; gap: 6px; }
-    .sb-section-label { font-size: 10px; font-weight: 600; text-transform: uppercase;
-                        letter-spacing: 0.6px; color: var(--text3); }
+    .sb-group { display: flex; flex-direction: column; gap: 6px; }
+    .sb-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+    .sb-lbl::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-    select, input[type="number"], input[type="text"] {
-      width: 100%; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border);
-      background: var(--s1); color: var(--text); font-size: 12px;
-    }
-    select:focus, input:focus { outline: 2px solid var(--blue); }
+    /* ── Form controls ───────────────────────────────────────────────────────── */
+    .bt-select, .bt-input { width: 100%; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--s1); color: var(--text); font-size: 12px; font-family: 'DM Sans', sans-serif; }
+    .bt-select:focus, .bt-input:focus { outline: 2px solid var(--blue); border-color: transparent; }
+    input[type="date"].bt-input { font-family: 'DM Mono', monospace; }
 
-    .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .cfg-item { display: flex; flex-direction: column; gap: 3px; }
-    .cfg-item label { font-size: 10px; color: var(--text2); }
+    .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    .cfg-cell { display: flex; flex-direction: column; gap: 2px; }
+    .cfg-cell label { font-size: 10px; color: var(--text3); }
+    .cfg-cell.full { grid-column: 1 / -1; }
 
-    /* ── R2 loader ──────────────────────────────────────────── */
-    .r2-box { background: var(--s1); border: 1px solid var(--border); border-radius: 8px;
-              padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
-    #r2-load-btn { padding: 8px; border-radius: 6px; border: 1px solid var(--blue);
-                   background: transparent; color: var(--blue); font-size: 12px;
-                   font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    /* ── R2 box ──────────────────────────────────────────────────────────────── */
+    .r2-box { background: var(--s1); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+    .r2-row { display: grid; grid-template-columns: 32px 1fr; gap: 5px; align-items: center; font-size: 11px; }
+    .r2-tf { font-weight: 700; color: var(--text3); background: var(--s2); border-radius: 4px; padding: 1px 5px; text-align: center; font-family: 'DM Mono', monospace; font-size: 10px; }
+    .r2-val { color: var(--text3); }
+    .r2-val.ok { color: var(--green); }
+    .r2-url-list { display: flex; flex-direction: column; gap: 2px; }
+    .r2-url { font-size: 9px; color: var(--text3); font-family: 'DM Mono', monospace; word-break: break-all; line-height: 1.4; }
+    #r2-load-btn { padding: 7px 10px; border-radius: 6px; border: 1px solid var(--blue); background: transparent; color: var(--blue); font-size: 12px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; font-family: 'DM Sans', sans-serif; }
     #r2-load-btn:hover:not(:disabled) { background: var(--blue); color: #fff; }
-    #r2-load-btn:disabled { opacity: 0.45; cursor: default; }
-    .r2-status-row { display: grid; grid-template-columns: 36px 1fr; gap: 6px;
-                     font-size: 11px; align-items: center; }
-    .r2-tf  { font-weight: 700; color: var(--text3); background: var(--s2);
-              border-radius: 4px; padding: 1px 5px; text-align: center; }
-    .r2-val { color: var(--text2); }
-    .r2-val.ok  { color: var(--green); }
-    #r2-url-preview { display: flex; flex-direction: column; gap: 2px; }
-    .r2-url { font-size: 9px; color: var(--text3); font-family: monospace;
-              word-break: break-all; line-height: 1.4; }
-    /* ── File zones (fallback) ─────────────────────────────── */
-    details.file-fallback { border: 1px solid var(--border); border-radius: 8px;
-                            overflow: hidden; }
-    details.file-fallback summary { padding: 8px 12px; font-size: 11px; color: var(--text3);
-                                    cursor: pointer; list-style: none; }
+    #r2-load-btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── File fallback ───────────────────────────────────────────────────────── */
+    details.file-fallback { border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+    details.file-fallback summary { padding: 7px 11px; font-size: 11px; color: var(--text3); cursor: pointer; list-style: none; }
     details.file-fallback summary::before { content: '▸ '; }
     details.file-fallback[open] summary::before { content: '▾ '; }
-    .file-zones { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; }
-    .file-zone { border: 1.5px dashed var(--border); border-radius: 8px;
-                 padding: 8px 10px; cursor: pointer; transition: border-color 0.15s; }
+    .file-zones { display: flex; flex-direction: column; gap: 5px; padding: 7px 11px; }
+    .file-zone { border: 1.5px dashed var(--border); border-radius: 7px; padding: 7px 10px; cursor: pointer; transition: border-color .15s; }
     .file-zone:hover, .file-zone.drag { border-color: var(--blue); }
     .file-zone label { cursor: pointer; display: flex; align-items: center; gap: 8px; }
     .file-zone input[type="file"] { display: none; }
-    .file-zone-tf { font-size: 10px; font-weight: 700; color: var(--text3);
-                    background: var(--s2); border-radius: 4px; padding: 2px 6px; }
-    .file-zone-lbl { font-size: 11px; color: var(--text2); }
-    .file-zone-lbl.parsed { color: var(--green); }
+    .fz-tf { font-size: 10px; font-weight: 700; color: var(--text3); background: var(--s2); border-radius: 4px; padding: 2px 6px; font-family: 'DM Mono', monospace; }
+    .fz-lbl { font-size: 11px; color: var(--text2); }
+    .fz-lbl.parsed { color: var(--green); }
 
-    /* ── Feature list ────────────────────────────────────────── */
-    #feature-list { display: flex; flex-direction: column; gap: 4px; }
-    .feat-row { display: flex; align-items: center; gap: 8px; cursor: pointer;
-                padding: 3px 0; font-size: 12px; color: var(--text2); }
+    /* ── IS/OOS preset chips ─────────────────────────────────────────────────── */
+    .chip-row { display: flex; gap: 5px; flex-wrap: wrap; }
+    .chip { padding: 3px 9px; font-size: 10px; font-weight: 600; cursor: pointer; border-radius: 5px; border: 1px solid var(--border); background: var(--s2); color: var(--text2); transition: all .15s; font-family: 'DM Sans', sans-serif; }
+    .chip:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* ── Fib level filter ────────────────────────────────────────────────────── */
+    .fib-section { background: var(--s1); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+    .fib-grp-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); margin-bottom: 3px; }
+    .fib-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px 5px; margin-bottom: 7px; }
+    .fib-item { display: flex; align-items: center; gap: 3px; cursor: pointer; }
+    .fib-item input { cursor: pointer; flex-shrink: 0; accent-color: var(--blue); }
+    .fib-item span { font-size: 10px; color: var(--text2); font-family: 'DM Mono', monospace; }
+
+    /* ── Feature list ────────────────────────────────────────────────────────── */
+    .feat-row { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 3px 0; font-size: 12px; color: var(--text2); }
     .feat-row:hover { color: var(--text); }
-    .feat-row input { cursor: pointer; }
+    .feat-row input { cursor: pointer; accent-color: var(--blue); }
 
-    /* ── Buttons ─────────────────────────────────────────────── */
-    #run-btn { padding: 10px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600;
-               background: var(--blue); color: #fff; cursor: pointer; transition: opacity 0.15s; }
-    #run-btn:disabled { opacity: 0.45; cursor: default; }
-    #run-btn:hover:not(:disabled) { opacity: 0.88; }
+    /* ── Kill switches ───────────────────────────────────────────────────────── */
+    .kill-box { background: var(--red-bg); border: 1px solid var(--red-bd); border-radius: 8px; padding: 9px 11px; }
+    .kill-lbl { font-size: 10px; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+    .kill-hint { font-size: 10px; color: var(--text3); margin-top: 5px; }
 
-    .row-btns { display: flex; gap: 8px; }
-    #theme-btn { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
-                 background: var(--s1); color: var(--text2); font-size: 11px; cursor: pointer; }
+    /* ── Saved configs ───────────────────────────────────────────────────────── */
+    .cfg-save-row { display: flex; gap: 6px; }
+    .cfg-save-row input { flex: 1; font-size: 11px; }
+    .cfg-save-btn-sm { padding: 5px 10px; border-radius: 6px; border: 1px solid var(--blue); background: transparent; color: var(--blue); font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all .15s; font-family: 'DM Sans', sans-serif; }
+    .cfg-save-btn-sm:hover { background: var(--blue); color: #fff; }
+
+    .saved-row { display: flex; align-items: center; gap: 5px; padding: 5px 7px; background: var(--s1); border: 1px solid var(--border); border-radius: 6px; }
+    .saved-name { flex: 1; font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; min-width: 0; }
+    .saved-name:hover { color: var(--text); }
+    .saved-date { font-size: 9px; color: var(--text3); white-space: nowrap; flex-shrink: 0; }
+    .saved-del { font-size: 12px; color: var(--text3); background: none; border: none; cursor: pointer; padding: 0 2px; line-height: 1; }
+    .saved-del:hover { color: var(--red); }
+    .saved-star { font-size: 9px; padding: 1px 5px; border-radius: 8px; background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bd); font-weight: 700; flex-shrink: 0; }
+
+    /* ── Progress ────────────────────────────────────────────────────────────── */
+    .prog-wrap { background: var(--s2); border-radius: 4px; overflow: hidden; height: 3px; }
+    #progress-bar { height: 100%; width: 0%; background: var(--blue); transition: width .3s; }
+    #progress-status { font-size: 10px; color: var(--text3); min-height: 14px; font-family: 'DM Mono', monospace; }
+
+    /* ── Run button ──────────────────────────────────────────────────────────── */
+    #run-btn { padding: 10px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; background: var(--blue); color: #fff; cursor: pointer; transition: opacity .15s; font-family: 'DM Sans', sans-serif; }
+    #run-btn:disabled { opacity: 0.4; cursor: default; }
+    #run-btn:hover:not(:disabled) { opacity: 0.85; }
+
+    .btn-row { display: flex; gap: 7px; }
+    #theme-btn { flex: 0 0 auto; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--s1); color: var(--text2); font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
     #theme-btn:hover { background: var(--s2); }
 
-    /* ── Progress ────────────────────────────────────────────── */
-    .progress-wrap { background: var(--s1); border-radius: 6px; overflow: hidden; height: 4px; }
-    #progress-bar  { height: 100%; width: 0%; background: var(--blue); transition: width 0.3s; }
-    #progress-status { font-size: 10px; color: var(--text3); min-height: 14px; }
+    /* ── Main content ────────────────────────────────────────────────────────── */
+    #bt-main { flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 18px; scrollbar-width: thin; }
 
-    /* ── Main content ────────────────────────────────────────── */
-    #main { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+    /* ── Placeholder ─────────────────────────────────────────────────────────── */
+    #bt-placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text3); }
+    #bt-placeholder svg { opacity: 0.25; }
+    #bt-placeholder p { font-size: 13px; }
 
-    /* ── Placeholder ─────────────────────────────────────────── */
-    #placeholder { flex: 1; display: flex; flex-direction: column; align-items: center;
-                   justify-content: center; gap: 10px; color: var(--text3); }
-    #placeholder svg { opacity: 0.3; }
-    #placeholder p   { font-size: 13px; }
+    /* ── Section header ──────────────────────────────────────────────────────── */
+    .res-hdr { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 5px; }
 
-    /* ── Results panel ───────────────────────────────────────── */
-    #results-panel { display: none; flex-direction: column; gap: 20px; }
+    /* ── Results panel ───────────────────────────────────────────────────────── */
+    #results-panel { display: none; flex-direction: column; gap: 18px; }
 
-    /* ── Section headers ─────────────────────────────────────── */
-    .section-hdr { font-size: 12px; font-weight: 600; color: var(--text3);
-                   text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
-
-    /* ── Stats grid ──────────────────────────────────────────── */
-    #stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
-    .stat-tile { background: var(--s1); border: 1px solid var(--border); border-radius: 10px;
-                 padding: 12px 10px; }
-    .stat-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; }
-    .stat-val   { font-size: 18px; font-weight: 700; }
+    /* ── Stats grid ──────────────────────────────────────────────────────────── */
+    #stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 8px; }
+    .stat-tile { background: var(--s1); border: 1px solid var(--border); border-radius: 10px; padding: 12px 11px; }
+    .stat-label { font-size: 10px; color: var(--text3); margin-bottom: 3px; }
+    .stat-val { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; }
     .stat-val.pos { color: var(--green); }
     .stat-val.neg { color: var(--red); }
 
-    /* ── Kelly note ──────────────────────────────────────────── */
-    #kelly-note { font-size: 11px; color: var(--text2); background: var(--s1);
-                  border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
+    /* ── Info box (kelly / cost) ─────────────────────────────────────────────── */
+    .info-box { font-size: 11px; color: var(--text2); background: var(--s1); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
+    .info-box.amber { background: var(--amber-bg); border-color: var(--amber-bd); color: var(--amber); font-family: 'DM Mono', monospace; }
+    #cost-banner { display: none; }
 
-    /* ── Charts ──────────────────────────────────────────────── */
-    .chart-wrap { background: var(--s1); border: 1px solid var(--border); border-radius: 10px;
-                  padding: 14px; }
+    /* ── Chart panels ────────────────────────────────────────────────────────── */
+    .chart-card { background: var(--s1); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
     .chart-title { font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 8px; }
-    #equity-svg, #mc-svg { width: 100%; height: 200px; display: block; }
 
-    #mc-stats { display: flex; flex-direction: column; gap: 2px;
-                font-size: 11px; color: var(--text2); margin-top: 8px; }
+    /* ── Chart tab bar ───────────────────────────────────────────────────────── */
+    .chart-tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+    .chart-tab { padding: 5px 14px; font-size: 11px; font-weight: 500; cursor: pointer; border: none; background: none; color: var(--text3); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; font-family: 'DM Sans', sans-serif; }
+    .chart-tab:hover { color: var(--text2); }
+    .chart-tab.on { color: var(--blue); border-bottom-color: var(--blue); }
+
+    /* ── Chart SVG containers ────────────────────────────────────────────────── */
+    #equity-svg, #drawdown-svg, #monthly-svg, #mc-svg { width: 100%; height: 200px; display: block; }
+
+    #mc-stats { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--text2); margin-top: 8px; }
     #mc-stats b { color: var(--text); }
 
-    /* ── Bayesian table ──────────────────────────────────────── */
+    /* ── Bayesian table ──────────────────────────────────────────────────────── */
     #bayesian-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    #bayesian-table th { font-size: 10px; font-weight: 600; text-transform: uppercase;
-                         letter-spacing: 0.4px; color: var(--text3); padding: 4px 8px;
-                         border-bottom: 1px solid var(--border); text-align: left; }
+    #bayesian-table th { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--text3); padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; }
     #bayesian-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); color: var(--text2); }
     .wr-bar { height: 4px; background: var(--s2); border-radius: 2px; margin-top: 3px; overflow: hidden; }
     .wr-bar div { height: 100%; border-radius: 2px; }
 
-    /* ── Trade log ───────────────────────────────────────────── */
+    /* ── Trade log ───────────────────────────────────────────────────────────── */
     #trade-log { max-height: 340px; overflow-y: auto; }
     #trade-log table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    #trade-log th { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;
-                    color: var(--text3); padding: 4px 8px; border-bottom: 1px solid var(--border);
-                    text-align: left; position: sticky; top: 0; background: var(--s1); }
+    #trade-log th { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--text3); padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; position: sticky; top: 0; background: var(--s1); }
     #trade-log th.sortable { cursor: pointer; }
     #trade-log th.sortable:hover { color: var(--text); }
-    #trade-log td { padding: 4px 8px; border-bottom: 1px solid var(--border); color: var(--text2); }
+    #trade-log td { padding: 4px 8px; border-bottom: 1px solid var(--border); color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px; }
     #trade-log tr:hover td { background: var(--s2); }
 
-    /* ── Shared helpers ──────────────────────────────────────── */
-    .pos { color: var(--green) !important; }
-    .neg { color: var(--red) !important; }
-    .empty { color: var(--text3); font-size: 12px; padding: 12px 0; }
-
-    /* ── Header bar ──────────────────────────────────────────── */
-    #topbar { height: 44px; border-bottom: 1px solid var(--border); display: flex;
-              align-items: center; padding: 0 18px; gap: 12px; background: var(--bg); flex-shrink: 0; }
-    #topbar a { font-size: 12px; color: var(--text3); text-decoration: none; }
-    #topbar a:hover { color: var(--text); }
-    #topbar .sep { color: var(--border); }
-    #topbar .page-name { font-size: 13px; font-weight: 600; color: var(--text); }
-
-    /* ── Chart tabs ──────────────────────────────────────────────────── */
-    .chart-tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
-    .chart-tab { padding: 5px 14px; font-size: 11px; font-weight: 500; cursor: pointer; border: none;
-      background: none; color: var(--text3); border-bottom: 2px solid transparent;
-      margin-bottom: -1px; transition: all .15s; }
-    .chart-tab:hover { color: var(--text2); }
-    .chart-tab.on { color: var(--blue); border-bottom-color: var(--blue); }
-
-    /* ── Kill switch section ─────────────────────────────────────────── */
-    .kill-section { background: var(--red-bg); border: 1px solid var(--red-bd);
-      border-radius: 8px; padding: 10px 12px; }
-    .kill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .kill-grid .cfg-item:last-child { grid-column: 1 / -1; }
-
-    /* ── Saved configs ───────────────────────────────────────────────── */
-    .saved-cfg-row { display: flex; align-items: center; gap: 6px; padding: 5px 8px;
-      background: var(--s1); border: 1px solid var(--border); border-radius: 6px;
-      transition: background .15s; }
-    .saved-cfg-name { flex: 1; font-size: 11px; color: var(--text2); white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis; cursor: pointer; min-width: 0; }
-    .saved-cfg-name:hover { color: var(--text); }
-    .saved-cfg-date { font-size: 9px; color: var(--text3); white-space: nowrap; flex-shrink: 0; }
-    .saved-cfg-del { font-size: 12px; color: var(--text3); background: none; border: none;
-      cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; }
-    .saved-cfg-del:hover { color: var(--red); }
-    .saved-cfg-star { font-size: 9px; padding: 1px 5px; border-radius: 8px; flex-shrink: 0;
-      background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bd);
-      font-weight: 700; }
-
-    /* ── Year/month accordion ────────────────────────────────────────── */
-    .ym-year { background: var(--s1); border: 1px solid var(--border); border-radius: 8px;
-      overflow: hidden; margin-bottom: 6px; }
-    .ym-year-hdr { display: flex; align-items: center; gap: 8px; padding: 9px 12px;
-      cursor: pointer; transition: background .15s; user-select: none; }
+    /* ── Year/month accordion ────────────────────────────────────────────────── */
+    .ym-year { background: var(--s1); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 5px; }
+    .ym-year-hdr { display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer; transition: background .15s; user-select: none; }
     .ym-year-hdr:hover { background: var(--s2); }
-    .ym-year-title { font-size: 13px; font-weight: 700; min-width: 48px; }
+    .ym-year-title { font-size: 13px; font-weight: 700; min-width: 44px; }
     .ym-year-stats { display: flex; gap: 14px; font-size: 11px; color: var(--text2); }
     .ym-chevron { font-size: 9px; color: var(--text3); transition: transform .2s; }
     .ym-year-hdr.open .ym-chevron { transform: rotate(90deg); }
-    .ym-months { display: none; padding: 8px; background: var(--bg);
-      border-top: 1px solid var(--border); }
-    .ym-months.open { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
-    .ym-month { background: var(--s1); border: 1px solid var(--border); border-radius: 6px;
-      padding: 8px 10px; }
-    .ym-month-name { font-size: 11px; font-weight: 700; color: var(--text2); margin-bottom: 5px; }
+    .ym-months { display: none; padding: 8px; background: var(--bg); border-top: 1px solid var(--border); }
+    .ym-months.open { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; }
+    .ym-month { background: var(--s1); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+    .ym-month-name { font-size: 11px; font-weight: 700; color: var(--text2); margin-bottom: 4px; }
     .ym-month-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 2px; }
     .ym-month-val { font-family: 'DM Mono', monospace; font-weight: 600; }
 
-    /* ── Cost banner ─────────────────────────────────────────────────── */
-    #cost-banner { display: none; background: var(--amber-bg); border: 1px solid var(--amber-bd);
-      border-radius: 8px; padding: 8px 12px; font-size: 11px; color: var(--amber);
-      font-family: 'DM Mono', monospace; }
-
-    /* ── Date range inputs ───────────────────────────────────────────── */
-    input[type="date"] { width: 100%; padding: 5px 8px; border-radius: 6px;
-      border: 1px solid var(--border); background: var(--s1); color: var(--text);
-      font-size: 12px; }
-    input[type="date"]:focus { outline: 2px solid var(--blue); }
-
-    /* ── SD level filter ─────────────────────────────────────────────── */
-    .fib-filter-section { background: var(--s1); border: 1px solid var(--border);
-      border-radius: 8px; padding: 10px 12px; }
-    .fib-preset-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-    .fib-preset { padding: 3px 9px; font-size: 10px; font-weight: 600; cursor: pointer;
-      border-radius: 5px; border: 1px solid var(--border); background: var(--s2);
-      color: var(--text2); transition: all .15s; }
-    .fib-preset:hover { border-color: var(--blue); color: var(--blue); }
-    .fib-group-hdr { font-size: 10px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.5px; color: var(--text3); margin-bottom: 4px; }
-    .fib-check-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px 6px; margin-bottom: 8px; }
-    .fib-chk-item { display: flex; align-items: center; gap: 4px; cursor: pointer; }
-    .fib-chk-item input { cursor: pointer; flex-shrink: 0; }
-    .fib-chk-item span { font-size: 10px; color: var(--text2); font-family: 'DM Mono', monospace; }
+    /* ── Shared helpers ──────────────────────────────────────────────────────── */
+    .pos { color: var(--green) !important; }
+    .neg { color: var(--red) !important; }
+    .empty { color: var(--text3); font-size: 12px; padding: 12px 0; }
   </style>
 </head>
 <body class="dark">
 
-<!-- Top bar -->
-<div id="topbar">
-  <a href="/">← Dashboard</a>
-  <span class="sep">|</span>
-  <span class="page-name">Backtest Engine</span>
+<!-- ── Topbar ───────────────────────────────────────────────────────────────── -->
+<div class="bt-topbar">
+  <div class="bt-logo">
+    <svg viewBox="0 0 17 17"><polyline points="1,13 5,8 9,11 16,3"/><line x1="12" y1="3" x2="16" y2="3"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
+  </div>
+  <div>
+    <div class="bt-title">Backtest Engine</div>
+    <div class="bt-sub">Asia Range Fib · 11 features · M1 exit precision</div>
+  </div>
+  <div class="bt-spacer"></div>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn"><span>←</span><span>Dashboard</span></button></a>
 </div>
 
-<div id="app">
+<!-- ── App body ─────────────────────────────────────────────────────────────── -->
+<div id="bt-app">
 
-  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
-  <aside id="sidebar">
-
-    <div>
-      <div class="sb-title">Backtest</div>
-      <div class="sb-subtitle">Asia Range Fib · 11 features · M1 exit precision</div>
-    </div>
+  <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+  <aside id="bt-sidebar">
 
     <!-- Symbol -->
-    <div class="sb-section">
-      <div class="sb-section-label">Symbol</div>
-      <select id="symbol-select">
+    <div class="sb-group">
+      <div class="sb-lbl">Symbol</div>
+      <select id="symbol-select" class="bt-select">
         <option value="EURUSD">EUR/USD</option>
         <option value="GBPUSD">GBP/USD</option>
         <option value="USDJPY">USD/JPY</option>
@@ -270,270 +229,256 @@
       </select>
     </div>
 
-    <!-- R2 Loader -->
-    <div class="sb-section">
-      <div class="sb-section-label">Load Data from R2</div>
+    <!-- R2 data loader -->
+    <div class="sb-group">
+      <div class="sb-lbl">Load Data from R2</div>
       <div class="r2-box">
-
-        <!-- Status rows -->
-        <div class="r2-status-row">
-          <span class="r2-tf">M30</span>
-          <span class="r2-val" id="r2-status-m30">—</span>
-        </div>
-        <div class="r2-status-row">
-          <span class="r2-tf">M5</span>
-          <span class="r2-val" id="r2-status-m5">—</span>
-        </div>
-        <div class="r2-status-row">
-          <span class="r2-tf">M1</span>
-          <span class="r2-val" id="r2-status-m1">—</span>
-        </div>
-
+        <div class="r2-row"><span class="r2-tf">M30</span><span class="r2-val" id="r2-status-m30">—</span></div>
+        <div class="r2-row"><span class="r2-tf">M5</span><span class="r2-val" id="r2-status-m5">—</span></div>
+        <div class="r2-row"><span class="r2-tf">M1</span><span class="r2-val" id="r2-status-m1">—</span></div>
         <button id="r2-load-btn">⬇ Load all from R2</button>
-
-        <!-- Path template -->
-        <div class="cfg-item">
-          <label for="r2-path-tpl" style="font-size:10px;color:var(--text3)">Path template ({symbol} / {tf})</label>
-          <input type="text" id="r2-path-tpl" value="{symbol}/m{tf}.csv" spellcheck="false"/>
+        <div class="cfg-cell">
+          <label class="cfg-cell" style="flex-direction:row;gap:0">
+            <span style="font-size:10px;color:var(--text3)">Path template ({symbol} / {tf})</span>
+          </label>
+          <input type="text" id="r2-path-tpl" class="bt-input" value="{symbol}/m{tf}.csv" spellcheck="false"/>
         </div>
-
-        <!-- Live URL preview -->
-        <div id="r2-url-preview"></div>
+        <div id="r2-url-preview" class="r2-url-list"></div>
       </div>
     </div>
 
-    <!-- Manual upload (fallback) -->
+    <!-- Manual upload fallback -->
     <details class="file-fallback">
       <summary>Manual CSV upload (fallback)</summary>
       <div class="file-zones">
         <div class="file-zone">
           <label>
             <input type="file" id="file-m30" accept=".csv"/>
-            <span class="file-zone-tf">M30</span>
-            <span class="file-zone-lbl" id="lbl-m30">Drop or click</span>
+            <span class="fz-tf">M30</span>
+            <span class="fz-lbl" id="lbl-m30">Drop or click</span>
           </label>
         </div>
         <div class="file-zone">
           <label>
             <input type="file" id="file-m5" accept=".csv"/>
-            <span class="file-zone-tf">M5</span>
-            <span class="file-zone-lbl" id="lbl-m5">Drop or click</span>
+            <span class="fz-tf">M5</span>
+            <span class="fz-lbl" id="lbl-m5">Drop or click</span>
           </label>
         </div>
         <div class="file-zone">
           <label>
             <input type="file" id="file-m1" accept=".csv"/>
-            <span class="file-zone-tf">M1</span>
-            <span class="file-zone-lbl" id="lbl-m1">Drop or click (optional)</span>
+            <span class="fz-tf">M1</span>
+            <span class="fz-lbl" id="lbl-m1">Drop or click (optional)</span>
           </label>
         </div>
       </div>
     </details>
 
-    <!-- Date Range -->
-    <div class="sb-section">
-      <div class="sb-section-label">Date Range</div>
+    <!-- Date range -->
+    <div class="sb-group">
+      <div class="sb-lbl">Date Range</div>
       <div class="cfg-grid">
-        <div class="cfg-item">
-          <label for="cfg-start-date">From</label>
-          <input type="date" id="cfg-start-date" value="2020-01-01"/>
+        <div class="cfg-cell">
+          <label>From</label>
+          <input type="date" id="cfg-start-date" class="bt-input" value="2020-01-01"/>
         </div>
-        <div class="cfg-item">
-          <label for="cfg-end-date">To</label>
-          <input type="date" id="cfg-end-date" value="2025-12-31"/>
+        <div class="cfg-cell">
+          <label>To</label>
+          <input type="date" id="cfg-end-date" class="bt-input" value="2025-12-31"/>
         </div>
-        <div class="cfg-item" style="grid-column:1/-1">
-          <label style="color:var(--text3)">IS / OOS Split</label>
-          <div style="display:flex;gap:5px;flex-wrap:wrap">
-            <button class="fib-preset" onclick="applyIsOosSplit(0.7)" title="View in-sample (first 70%)">IS 70%</button>
-            <button class="fib-preset" onclick="applyOosOnly(0.7)" title="View out-of-sample (last 30%)">OOS 30%</button>
-            <button class="fib-preset" onclick="applyIsOosSplit(0.5)" title="View in-sample (first 50%)">IS 50%</button>
-            <button class="fib-preset" onclick="applyOosOnly(0.5)" title="View out-of-sample (last 50%)">OOS 50%</button>
-            <button class="fib-preset" onclick="resetDateRange()" title="Restore full date range">Reset</button>
+        <div class="cfg-cell full">
+          <label>IS / OOS Split</label>
+          <div class="chip-row">
+            <button class="chip" onclick="applyIsOosSplit(0.7)">IS 70%</button>
+            <button class="chip" onclick="applyOosOnly(0.7)">OOS 30%</button>
+            <button class="chip" onclick="applyIsOosSplit(0.5)">IS 50%</button>
+            <button class="chip" onclick="applyOosOnly(0.5)">OOS 50%</button>
+            <button class="chip" onclick="resetDateRange()">Reset</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Parameters -->
-    <div class="sb-section">
-      <div class="sb-section-label">Parameters</div>
+    <div class="sb-group">
+      <div class="sb-lbl">Parameters</div>
       <div class="cfg-grid">
-        <div class="cfg-item">
-          <label for="cfg-rr">R:R Ratio</label>
-          <input type="number" id="cfg-rr" value="2.2" min="0.5" max="10" step="0.1"/>
+        <div class="cfg-cell">
+          <label>R:R Ratio</label>
+          <input type="number" id="cfg-rr" class="bt-input" value="2.2" min="0.5" max="10" step="0.1"/>
         </div>
-        <div class="cfg-item">
-          <label for="cfg-sl">SL / Asia Range</label>
-          <input type="number" id="cfg-sl" value="0.35" min="0.1" max="1" step="0.05"/>
+        <div class="cfg-cell">
+          <label>SL / Asia Range</label>
+          <input type="number" id="cfg-sl" class="bt-input" value="0.35" min="0.1" max="1" step="0.05"/>
         </div>
-        <div class="cfg-item">
-          <label for="cfg-conv">Min Conviction</label>
-          <input type="number" id="cfg-conv" value="0" min="-1" max="1" step="0.05"/>
+        <div class="cfg-cell">
+          <label>Min Conviction</label>
+          <input type="number" id="cfg-conv" class="bt-input" value="0" min="-1" max="1" step="0.05"/>
         </div>
-        <div class="cfg-item">
-          <label for="cfg-conf">Min Confirms</label>
-          <input type="number" id="cfg-conf" value="2" min="0" max="11" step="1"/>
+        <div class="cfg-cell">
+          <label>Min Confirms</label>
+          <input type="number" id="cfg-conf" class="bt-input" value="2" min="0" max="11" step="1"/>
         </div>
-        <div class="cfg-item">
-          <label for="cfg-prox">Entry Prox ATR ×</label>
-          <input type="number" id="cfg-prox" value="0.30" min="0.05" max="1" step="0.05"/>
+        <div class="cfg-cell">
+          <label>Entry Prox ATR ×</label>
+          <input type="number" id="cfg-prox" class="bt-input" value="0.30" min="0.05" max="1" step="0.05"/>
         </div>
-        <div class="cfg-item">
-          <label for="cfg-warmup">Warmup Days</label>
-          <input type="number" id="cfg-warmup" value="100" min="20" max="500" step="10"/>
+        <div class="cfg-cell">
+          <label>Warmup Days</label>
+          <input type="number" id="cfg-warmup" class="bt-input" value="100" min="20" max="500" step="10"/>
         </div>
-        <div class="cfg-item">
-          <label for="cfg-conf-tol">Conf. Tol (pips)</label>
-          <input type="number" id="cfg-conf-tol" value="2" min="0.5" max="20" step="0.5"/>
+        <div class="cfg-cell">
+          <label>Conf. Tol (pips)</label>
+          <input type="number" id="cfg-conf-tol" class="bt-input" value="2" min="0.5" max="20" step="0.5"/>
         </div>
-        <div class="cfg-item">
-          <label for="cfg-reentry">Level Re-entry</label>
-          <input type="number" id="cfg-reentry" value="1" min="1" max="5" step="1"/>
+        <div class="cfg-cell">
+          <label>Level Re-entry</label>
+          <input type="number" id="cfg-reentry" class="bt-input" value="1" min="1" max="5" step="1"/>
         </div>
-        <div class="cfg-item" style="grid-column:1/-1">
-          <label for="cfg-method">Confluence Method</label>
-          <select id="cfg-method">
+        <div class="cfg-cell">
+          <label>Entry Window Start</label>
+          <input type="number" id="cfg-ew-start" class="bt-input" value="8" min="0" max="23" step="1"/>
+        </div>
+        <div class="cfg-cell">
+          <label>Entry Window End</label>
+          <input type="number" id="cfg-ew-end" class="bt-input" value="16" min="1" max="24" step="1"/>
+        </div>
+        <div class="cfg-cell full">
+          <label>Confluence Method</label>
+          <select id="cfg-method" class="bt-select">
             <option value="asia">Asia only</option>
             <option value="monday">Monday only</option>
             <option value="both">Asia + Monday</option>
           </select>
         </div>
-        <div class="cfg-item" style="grid-column:1/-1">
-          <label for="cfg-signal-filter">Signal Filter</label>
-          <select id="cfg-signal-filter">
+        <div class="cfg-cell full">
+          <label>Signal Filter</label>
+          <select id="cfg-signal-filter" class="bt-select">
             <option value="all_conf">All confluences</option>
             <option value="tight_only">Tight only (≤10% tol)</option>
             <option value="all_levels">All levels (no conf. req.)</option>
           </select>
         </div>
-        <div class="cfg-item">
-          <label for="cfg-ew-start">Entry Window Start</label>
-          <input type="number" id="cfg-ew-start" value="8" min="0" max="23" step="1"/>
-        </div>
-        <div class="cfg-item">
-          <label for="cfg-ew-end">Entry Window End</label>
-          <input type="number" id="cfg-ew-end" value="16" min="1" max="24" step="1"/>
-        </div>
       </div>
     </div>
 
     <!-- SD Level Filter -->
-    <div class="sb-section">
-      <div class="sb-section-label">SD Level Filter</div>
-      <div class="fib-filter-section">
-        <div class="fib-preset-row">
-          <button class="fib-preset" onclick="fibSelectAll(true)">All</button>
-          <button class="fib-preset" onclick="fibSelectAll(false)">None</button>
-          <button class="fib-preset" onclick="fibSelectPreset('sell')">Sell-side</button>
-          <button class="fib-preset" onclick="fibSelectPreset('mid')">Mid-range</button>
-          <button class="fib-preset" onclick="fibSelectPreset('buy')">Buy-side</button>
+    <div class="sb-group">
+      <div class="sb-lbl">SD Level Filter</div>
+      <div class="fib-section">
+        <div class="chip-row" style="margin-bottom:8px">
+          <button class="chip" onclick="fibSelectAll(true)">All</button>
+          <button class="chip" onclick="fibSelectAll(false)">None</button>
+          <button class="chip" onclick="fibSelectPreset('sell')">Sell-side</button>
+          <button class="chip" onclick="fibSelectPreset('mid')">Mid</button>
+          <button class="chip" onclick="fibSelectPreset('buy')">Buy-side</button>
         </div>
-        <div class="fib-group-hdr">Extensions above range (sell-side)</div>
-        <div class="fib-check-grid" id="fib-chk-sell"></div>
-        <div class="fib-group-hdr">Within range (mid)</div>
-        <div class="fib-check-grid" id="fib-chk-mid"></div>
-        <div class="fib-group-hdr">Extensions below range (buy-side)</div>
-        <div class="fib-check-grid" id="fib-chk-buy"></div>
+        <div class="fib-grp-lbl">Above range (sell-side)</div>
+        <div class="fib-grid" id="fib-chk-sell"></div>
+        <div class="fib-grp-lbl">Within range (mid)</div>
+        <div class="fib-grid" id="fib-chk-mid"></div>
+        <div class="fib-grp-lbl">Below range (buy-side)</div>
+        <div class="fib-grid" id="fib-chk-buy"></div>
       </div>
     </div>
 
     <!-- Features -->
-    <div class="sb-section">
-      <div class="sb-section-label">Features</div>
+    <div class="sb-group">
+      <div class="sb-lbl">Features</div>
       <div id="feature-list"></div>
     </div>
 
-    <!-- Transaction Costs -->
-    <div class="sb-section">
-      <div class="sb-section-label">Transaction Costs</div>
+    <!-- Transaction costs -->
+    <div class="sb-group">
+      <div class="sb-lbl">Transaction Costs</div>
       <div class="cfg-grid">
-        <div class="cfg-item">
-          <label for="cfg-spread">Spread (pips)</label>
-          <input type="number" id="cfg-spread" value="0" min="0" max="5" step="0.1"/>
+        <div class="cfg-cell">
+          <label>Spread (pips)</label>
+          <input type="number" id="cfg-spread" class="bt-input" value="0" min="0" max="5" step="0.1"/>
         </div>
-        <div class="cfg-item">
-          <label for="cfg-slippage">Slippage (pips)</label>
-          <input type="number" id="cfg-slippage" value="0" min="0" max="5" step="0.1"/>
+        <div class="cfg-cell">
+          <label>Slippage (pips)</label>
+          <input type="number" id="cfg-slippage" class="bt-input" value="0" min="0" max="5" step="0.1"/>
         </div>
       </div>
     </div>
 
-    <!-- Kill Switches -->
-    <div class="sb-section">
-      <div class="sb-section-label" style="color:var(--red)">Kill Switches</div>
-      <div class="kill-section">
-        <div class="kill-grid">
-          <div class="cfg-item">
-            <label for="cfg-kill-daily">Daily max loss %</label>
-            <input type="number" id="cfg-kill-daily" value="0" min="0" max="20" step="0.5"/>
+    <!-- Kill switches -->
+    <div class="sb-group">
+      <div class="sb-lbl" style="color:var(--red)">Kill Switches</div>
+      <div class="kill-box">
+        <div class="cfg-grid">
+          <div class="cfg-cell">
+            <label>Daily max loss %</label>
+            <input type="number" id="cfg-kill-daily" class="bt-input" value="0" min="0" max="20" step="0.5"/>
           </div>
-          <div class="cfg-item">
-            <label for="cfg-kill-weekly">Weekly max loss %</label>
-            <input type="number" id="cfg-kill-weekly" value="0" min="0" max="30" step="1"/>
+          <div class="cfg-cell">
+            <label>Weekly max loss %</label>
+            <input type="number" id="cfg-kill-weekly" class="bt-input" value="0" min="0" max="30" step="1"/>
           </div>
-          <div class="cfg-item">
-            <label for="cfg-kill-monthly">Monthly max loss %</label>
-            <input type="number" id="cfg-kill-monthly" value="0" min="0" max="50" step="1"/>
+          <div class="cfg-cell full">
+            <label>Monthly max loss %</label>
+            <input type="number" id="cfg-kill-monthly" class="bt-input" value="0" min="0" max="50" step="1"/>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--text3);margin-top:6px;">0 = disabled · at 1% risk per trade, 2% = stop after −2R that period</div>
+        <div class="kill-hint">0 = disabled · at 1% risk per trade, 2% = stop after −2R that period</div>
       </div>
     </div>
 
-    <!-- Saved Configs -->
-    <div class="sb-section">
-      <div class="sb-section-label">Saved Configs</div>
-      <div style="display:flex;gap:6px;">
-        <input id="cfg-save-name" type="text" placeholder="Name this config…" style="flex:1;font-size:11px;"/>
-        <button id="cfg-save-btn" style="padding:5px 10px;border-radius:6px;border:1px solid var(--blue);background:transparent;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;">Save</button>
+    <!-- Saved configs -->
+    <div class="sb-group">
+      <div class="sb-lbl">Saved Configs</div>
+      <div class="cfg-save-row">
+        <input id="cfg-save-name" type="text" class="bt-input" placeholder="Name this config…"/>
+        <button id="cfg-save-btn" class="cfg-save-btn-sm">Save</button>
       </div>
-      <div id="cfg-list" style="display:flex;flex-direction:column;gap:4px;margin-top:8px;"></div>
+      <div id="cfg-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px;"></div>
     </div>
 
     <!-- Progress -->
-    <div class="sb-section">
-      <div class="progress-wrap"><div id="progress-bar"></div></div>
+    <div class="sb-group">
+      <div class="prog-wrap"><div id="progress-bar"></div></div>
       <div id="progress-status">Ready.</div>
     </div>
 
     <!-- Buttons -->
-    <div class="row-btns">
+    <div class="btn-row">
       <button id="theme-btn">🌙 Theme</button>
-      <button id="run-btn" disabled style="flex:2">▶ Run Backtest</button>
+      <button id="run-btn" disabled style="flex:1">▶ Run Backtest</button>
     </div>
 
   </aside>
 
-  <!-- ── Main ─────────────────────────────────────────────────────── -->
-  <main id="main">
+  <!-- ── Main content ────────────────────────────────────────────────────── -->
+  <main id="bt-main">
 
     <!-- Placeholder -->
-    <div id="placeholder">
-      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+    <div id="bt-placeholder">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
       </svg>
       <p>Click "Load all from R2" then press Run Backtest.</p>
-      <p style="font-size:11px">M5 + M30 required · M1 optional (TP/SL exit precision)</p>
+      <p style="font-size:11px;margin-top:2px">M5 + M30 required · M1 optional (TP/SL exit precision)</p>
     </div>
 
     <!-- Results -->
     <div id="results-panel">
 
-      <!-- Stats -->
+      <!-- Summary stats -->
       <div>
-        <div class="section-hdr">Summary Statistics</div>
+        <div class="res-hdr">Summary Statistics</div>
         <div id="stats-grid"></div>
       </div>
 
       <!-- Kelly note -->
-      <div id="kelly-note"></div>
+      <div class="info-box" id="kelly-note"></div>
 
       <!-- Cost banner -->
-      <div id="cost-banner"></div>
+      <div class="info-box amber" id="cost-banner"></div>
 
-      <!-- Charts (tabbed: Equity / Drawdown / Monthly P&L) -->
-      <div class="chart-wrap" id="chart-panel">
+      <!-- Charts: equity / drawdown / monthly -->
+      <div class="chart-card" id="chart-panel">
         <div class="chart-tab-bar">
           <button class="chart-tab on" onclick="switchChartTab('equity',this)">Equity</button>
           <button class="chart-tab" onclick="switchChartTab('drawdown',this)">Drawdown</button>
@@ -541,51 +486,51 @@
         </div>
         <div id="chart-equity">
           <div class="chart-title">Equity Curve (cumulative R, 1% risk per trade)</div>
-          <div id="equity-svg" style="width:100%;height:200px;display:block;"></div>
+          <div id="equity-svg"></div>
         </div>
-        <div id="chart-drawdown" style="display:none;">
+        <div id="chart-drawdown" style="display:none">
           <div class="chart-title">Drawdown from Equity Peak</div>
-          <div id="drawdown-svg" style="width:100%;height:200px;display:block;"></div>
+          <div id="drawdown-svg"></div>
         </div>
-        <div id="chart-monthly" style="display:none;">
+        <div id="chart-monthly" style="display:none">
           <div class="chart-title">Monthly P&amp;L (R, 1% risk per trade)</div>
-          <div id="monthly-svg" style="width:100%;height:200px;display:block;"></div>
+          <div id="monthly-svg"></div>
         </div>
       </div>
 
       <!-- Monte Carlo -->
-      <div class="chart-wrap">
+      <div class="chart-card">
         <div class="chart-title">Monte Carlo — 1,000 path resamples (P5 / P25 / P50 / P75 / P95)</div>
         <div id="mc-svg"></div>
         <div id="mc-stats"></div>
       </div>
 
-      <!-- Bayesian -->
-      <div class="chart-wrap">
+      <!-- Bayesian feature accuracy -->
+      <div class="chart-card">
         <div class="chart-title">Bayesian Feature Accuracy</div>
         <div id="bayesian-table"></div>
       </div>
 
       <!-- Trade log -->
-      <div class="chart-wrap">
+      <div class="chart-card">
         <div class="chart-title">Trade Log (last 200 trades)</div>
         <div id="trade-log"></div>
       </div>
 
-      <!-- Year / Month Breakdown -->
-      <div class="chart-wrap" id="yearmonth-wrap" style="display:none;">
-        <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;">
+      <!-- Year / Month breakdown -->
+      <div class="chart-card" id="yearmonth-wrap" style="display:none">
+        <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between">
           <span>Profitability by Year &amp; Month</span>
-          <span style="font-size:10px;color:var(--text3);">click year to expand</span>
+          <span style="font-size:10px;color:var(--text3)">click year to expand</span>
         </div>
         <div id="yearmonth-container"></div>
       </div>
 
     </div><!-- /results-panel -->
 
-  </main><!-- /main -->
+  </main>
 
-</div><!-- /app -->
+</div><!-- /bt-app -->
 
 <script type="module" src="./js/backtest.js"></script>
 </body>
