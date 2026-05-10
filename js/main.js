@@ -13,7 +13,7 @@ import { fvGapToPips, runSignalEngine, runEntryScanner, renderSignalAndEntries, 
 import { renderARMAAndTransition } from './arma.js';
 import { renderAll } from './render.js';
 import { triggerAIAnalysis, copyAIAnalysis, copyAITldr } from './ai.js';
-import { loadCOT, openCOTModal, closeCOTModal, saveCOTUrlFromModal } from './cot.js';
+import { loadCOT, openCOTModal, closeCOTModal, saveCOTUrlFromModal, refreshCOT } from './cot.js';
 import { detectSession, computeSessionOpens, computeDailyOpens } from './session.js';
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
@@ -50,6 +50,7 @@ window.copyAITldr             = copyAITldr;
 window.openCOTModal           = openCOTModal;
 window.closeCOTModal          = closeCOTModal;
 window.saveCOTUrlFromModal    = saveCOTUrlFromModal;
+window.refreshCOT             = refreshCOT;
 window.openRangeBiasModal     = openRangeBiasModal;
 window.closeRangeBiasModal    = closeRangeBiasModal;
 window.saveRangeBiasModal     = saveRangeBiasModal;

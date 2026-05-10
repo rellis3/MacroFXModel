@@ -222,6 +222,32 @@ export function closeCOTModal() {
   document.getElementById('cotModalOverlay')?.classList.remove('open');
 }
 
+export async function refreshCOT() {
+  const statusEl = document.getElementById('cotModalStatus');
+  const btn      = document.getElementById('cotRefreshBtn');
+  if (btn) btn.disabled = true;
+  if (statusEl) { statusEl.textContent = 'Clearing cache…'; statusEl.className = 'cot-modal-status'; }
+
+  // Bust both localStorage and KV cache so loadCached skips them and re-fetches
+  try { localStorage.removeItem('cot_data'); } catch(e) {}
+  await kvSet('cot_data', null);
+
+  if (statusEl) { statusEl.textContent = 'Fetching fresh COT data…'; statusEl.className = 'cot-modal-status'; }
+  await loadCOT();
+
+  if (btn) btn.disabled = false;
+  if (statusEl) {
+    const dates = S.cotData ? Object.values(S.cotData).map(d => d.changeDate).filter(Boolean) : [];
+    const pairs = S.cotData ? Object.keys(S.cotData).length : 0;
+    statusEl.textContent = S.cotData
+      ? `✓ Refreshed — ${pairs} pairs · ${dates[0] || ''}`
+      : '⚠ Fetch succeeded but no pairs parsed';
+    statusEl.className = S.cotData ? 'cot-modal-status ok' : 'cot-modal-status err';
+  }
+
+  if (S.cotData) window.renderAll?.();
+}
+
 export async function saveCOTUrlFromModal() {
   const statusEl = document.getElementById('cotModalStatus');
   const btn      = document.getElementById('cotSaveBtn');
