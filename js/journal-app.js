@@ -695,24 +695,30 @@ function safePairId(pair) { return pair.replace(/\//g, '-').replace(/_/g, '-'); 
 // ── Modal open/close ──────────────────────────────────────────────────────────
 
 function openReplayModal(pair, date) {
-  document.getElementById('rp-pair-title').textContent = pair + ' · ' + date;
-  document.getElementById('rp-symbol').textContent = pair;
-  document.getElementById('replayModal').dataset.pair = pair;
-  document.getElementById('replayModal').dataset.date = date;
-  document.getElementById('replayModal').classList.add('open');
+  const modal = document.getElementById('replayModal');
+  if (!modal) { alert('Replay modal missing from page — please hard-refresh (Ctrl+Shift+R)'); return; }
+
+  const titleEl = document.getElementById('rp-pair-title');
+  const symbolEl = document.getElementById('rp-symbol');
+  if (titleEl)  titleEl.textContent  = pair + ' · ' + date;
+  if (symbolEl) symbolEl.textContent = pair;
+
+  modal.dataset.pair = pair;
+  modal.dataset.date = date;
+  modal.classList.add('open');
 
   const key    = pair + '::' + date;
   const cached = _replayResults[key];
   const btn    = document.getElementById('rp-fetch-btn');
-  btn.disabled = false;
-  btn.textContent = '▶ Fetch & Run';
+  if (btn) { btn.disabled = false; btn.textContent = '▶ Fetch & Run'; }
 
   if (cached) {
     setReplayStatus(`Cached — ${cached.stats.touched}/${cached.stats.total} touched`, 'rp-fetch-ok');
     renderReplayInModal(cached);
   } else {
     setReplayStatus(`Ready — will fetch ${pair} M1 from Oanda`, 'rp-fetch-idle');
-    document.getElementById('rp-result-area').innerHTML = '';
+    const ra = document.getElementById('rp-result-area');
+    if (ra) ra.innerHTML = '';
   }
 }
 
