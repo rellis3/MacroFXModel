@@ -164,6 +164,59 @@
     #topbar a:hover { color: var(--text); }
     #topbar .sep { color: var(--border); }
     #topbar .page-name { font-size: 13px; font-weight: 600; color: var(--text); }
+
+    /* ── Chart tabs ──────────────────────────────────────────────────── */
+    .chart-tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+    .chart-tab { padding: 5px 14px; font-size: 11px; font-weight: 500; cursor: pointer; border: none;
+      background: none; color: var(--text3); border-bottom: 2px solid transparent;
+      margin-bottom: -1px; transition: all .15s; }
+    .chart-tab:hover { color: var(--text2); }
+    .chart-tab.on { color: var(--blue); border-bottom-color: var(--blue); }
+
+    /* ── Kill switch section ─────────────────────────────────────────── */
+    .kill-section { background: var(--red-bg); border: 1px solid var(--red-bd);
+      border-radius: 8px; padding: 10px 12px; }
+    .kill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .kill-grid .cfg-item:last-child { grid-column: 1 / -1; }
+
+    /* ── Saved configs ───────────────────────────────────────────────── */
+    .saved-cfg-row { display: flex; align-items: center; gap: 6px; padding: 5px 8px;
+      background: var(--s1); border: 1px solid var(--border); border-radius: 6px;
+      transition: background .15s; }
+    .saved-cfg-name { flex: 1; font-size: 11px; color: var(--text2); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; cursor: pointer; min-width: 0; }
+    .saved-cfg-name:hover { color: var(--text); }
+    .saved-cfg-date { font-size: 9px; color: var(--text3); white-space: nowrap; flex-shrink: 0; }
+    .saved-cfg-del { font-size: 12px; color: var(--text3); background: none; border: none;
+      cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; }
+    .saved-cfg-del:hover { color: var(--red); }
+    .saved-cfg-star { font-size: 9px; padding: 1px 5px; border-radius: 8px; flex-shrink: 0;
+      background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bd);
+      font-weight: 700; }
+
+    /* ── Year/month accordion ────────────────────────────────────────── */
+    .ym-year { background: var(--s1); border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden; margin-bottom: 6px; }
+    .ym-year-hdr { display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+      cursor: pointer; transition: background .15s; user-select: none; }
+    .ym-year-hdr:hover { background: var(--s2); }
+    .ym-year-title { font-size: 13px; font-weight: 700; min-width: 48px; }
+    .ym-year-stats { display: flex; gap: 14px; font-size: 11px; color: var(--text2); }
+    .ym-chevron { font-size: 9px; color: var(--text3); transition: transform .2s; }
+    .ym-year-hdr.open .ym-chevron { transform: rotate(90deg); }
+    .ym-months { display: none; padding: 8px; background: var(--bg);
+      border-top: 1px solid var(--border); }
+    .ym-months.open { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+    .ym-month { background: var(--s1); border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 10px; }
+    .ym-month-name { font-size: 11px; font-weight: 700; color: var(--text2); margin-bottom: 5px; }
+    .ym-month-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 2px; }
+    .ym-month-val { font-family: 'DM Mono', monospace; font-weight: 600; }
+
+    /* ── Cost banner ─────────────────────────────────────────────────── */
+    #cost-banner { display: none; background: var(--amber-bg); border: 1px solid var(--amber-bd);
+      border-radius: 8px; padding: 8px 12px; font-size: 11px; color: var(--amber);
+      font-family: 'DM Mono', monospace; }
   </style>
 </head>
 <body class="dark">
@@ -293,6 +346,53 @@
       <div id="feature-list"></div>
     </div>
 
+    <!-- Transaction Costs -->
+    <div class="sb-section">
+      <div class="sb-section-label">Transaction Costs</div>
+      <div class="cfg-grid">
+        <div class="cfg-item">
+          <label for="cfg-spread">Spread (pips)</label>
+          <input type="number" id="cfg-spread" value="0" min="0" max="5" step="0.1"/>
+        </div>
+        <div class="cfg-item">
+          <label for="cfg-slippage">Slippage (pips)</label>
+          <input type="number" id="cfg-slippage" value="0" min="0" max="5" step="0.1"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kill Switches -->
+    <div class="sb-section">
+      <div class="sb-section-label" style="color:var(--red)">Kill Switches</div>
+      <div class="kill-section">
+        <div class="kill-grid">
+          <div class="cfg-item">
+            <label for="cfg-kill-daily">Daily max loss %</label>
+            <input type="number" id="cfg-kill-daily" value="0" min="0" max="20" step="0.5"/>
+          </div>
+          <div class="cfg-item">
+            <label for="cfg-kill-weekly">Weekly max loss %</label>
+            <input type="number" id="cfg-kill-weekly" value="0" min="0" max="30" step="1"/>
+          </div>
+          <div class="cfg-item">
+            <label for="cfg-kill-monthly">Monthly max loss %</label>
+            <input type="number" id="cfg-kill-monthly" value="0" min="0" max="50" step="1"/>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px;">0 = disabled · at 1% risk per trade, 2% = stop after −2R that period</div>
+      </div>
+    </div>
+
+    <!-- Saved Configs -->
+    <div class="sb-section">
+      <div class="sb-section-label">Saved Configs</div>
+      <div style="display:flex;gap:6px;">
+        <input id="cfg-save-name" type="text" placeholder="Name this config…" style="flex:1;font-size:11px;"/>
+        <button id="cfg-save-btn" style="padding:5px 10px;border-radius:6px;border:1px solid var(--blue);background:transparent;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;">Save</button>
+      </div>
+      <div id="cfg-list" style="display:flex;flex-direction:column;gap:4px;margin-top:8px;"></div>
+    </div>
+
     <!-- Progress -->
     <div class="sb-section">
       <div class="progress-wrap"><div id="progress-bar"></div></div>
@@ -331,10 +431,28 @@
       <!-- Kelly note -->
       <div id="kelly-note"></div>
 
-      <!-- Equity curve -->
-      <div class="chart-wrap">
-        <div class="chart-title">Equity Curve (cumulative R, 1% risk per trade)</div>
-        <div id="equity-svg"></div>
+      <!-- Cost banner -->
+      <div id="cost-banner"></div>
+
+      <!-- Charts (tabbed: Equity / Drawdown / Monthly P&L) -->
+      <div class="chart-wrap" id="chart-panel">
+        <div class="chart-tab-bar">
+          <button class="chart-tab on" onclick="switchChartTab('equity',this)">Equity</button>
+          <button class="chart-tab" onclick="switchChartTab('drawdown',this)">Drawdown</button>
+          <button class="chart-tab" onclick="switchChartTab('monthly',this)">Monthly P&amp;L</button>
+        </div>
+        <div id="chart-equity">
+          <div class="chart-title">Equity Curve (cumulative R, 1% risk per trade)</div>
+          <div id="equity-svg" style="width:100%;height:200px;display:block;"></div>
+        </div>
+        <div id="chart-drawdown" style="display:none;">
+          <div class="chart-title">Drawdown from Equity Peak</div>
+          <div id="drawdown-svg" style="width:100%;height:200px;display:block;"></div>
+        </div>
+        <div id="chart-monthly" style="display:none;">
+          <div class="chart-title">Monthly P&amp;L (R, 1% risk per trade)</div>
+          <div id="monthly-svg" style="width:100%;height:200px;display:block;"></div>
+        </div>
       </div>
 
       <!-- Monte Carlo -->
@@ -354,6 +472,15 @@
       <div class="chart-wrap">
         <div class="chart-title">Trade Log (last 200 trades)</div>
         <div id="trade-log"></div>
+      </div>
+
+      <!-- Year / Month Breakdown -->
+      <div class="chart-wrap" id="yearmonth-wrap" style="display:none;">
+        <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Profitability by Year &amp; Month</span>
+          <span style="font-size:10px;color:var(--text3);">click year to expand</span>
+        </div>
+        <div id="yearmonth-container"></div>
       </div>
 
     </div><!-- /results-panel -->

@@ -94,10 +94,25 @@ function handleRun({ symbol, cfg }) {
   const warmupDays    = cfg.warmupDays    ?? 100;
   const features      = cfg.features;
 
+  // ── Transaction cost config ────────────────────────────────────────────────
+  const spreadPips   = cfg.spread   ?? 0;
+  const slippagePips = cfg.slippage ?? 0;
+  const totalCostPips = spreadPips + slippagePips;
+
+  // ── Kill switch config (in R, at 1% risk 1R = 1%) ─────────────────────────
+  const killDailyR   = cfg.killDaily   > 0 ? -(cfg.killDaily)   : null;
+  const killWeeklyR  = cfg.killWeekly  > 0 ? -(cfg.killWeekly)  : null;
+  const killMonthlyR = cfg.killMonthly > 0 ? -(cfg.killMonthly) : null;
+
   // ── State ─────────────────────────────────────────────────────────────────
   const trades     = [];
   const bayesian   = {};
   for (const key of Object.keys(features)) bayesian[key] = { fires: 0, wins: 0 };
+
+  // Kill switch tracking
+  let dailyR = 0,   lastDayKey   = '';
+  let weeklyR = 0,  lastWeekKey  = '';
+  let monthlyR = 0, lastMonthKey = '';
 
   let openTrade      = null;
   let bar5mWin       = []; // newest first, max 350
@@ -149,6 +164,14 @@ function handleRun({ symbol, cfg }) {
 
     const mondayRange = mondayLookup.get(date) || null;
 
+    // ── Kill switch period resets ──────────────────────────────────────────
+    const dayKey   = date;
+    const weekKey  = getWeekKey(date);
+    const monthKey = date.slice(0, 7);
+    if (dayKey   !== lastDayKey)   { dailyR   = 0; lastDayKey   = dayKey;   }
+    if (weekKey  !== lastWeekKey)  { weeklyR  = 0; lastWeekKey  = weekKey;  }
+    if (monthKey !== lastMonthKey) { monthlyR = 0; lastMonthKey = monthKey; }
+
     // ── Interleaved M30 pointer (look-ahead free) ─────────────────────────
     let m30Ptr = 0;
     let m1Ptr  = 0;
@@ -174,7 +197,10 @@ function handleRun({ symbol, cfg }) {
           if (m1.ts < openTrade.entryTs) continue;
           const ex = checkExit(m1, openTrade);
           if (ex) {
-            recordClose(openTrade, ex.price, ex.result, m1.ts, trades, bayesian);
+            const pip = getPipSize(symbol);
+            const costR = openTrade.slDist > 0 ? totalCostPips * pip / openTrade.slDist : 0;
+            const closed = recordClose(openTrade, ex.price, ex.result, m1.ts, trades, bayesian, costR);
+            dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
             openTrade = null;
             break;
           }
@@ -183,13 +209,21 @@ function handleRun({ symbol, cfg }) {
 
       // ── EOD exit ──────────────────────────────────────────────────────
       if (openTrade && m5.lHour >= 21) {
-        recordClose(openTrade, m5.c, 'eod', m5CloseTs, trades, bayesian);
+        const pip = getPipSize(symbol);
+        const costR = openTrade.slDist > 0 ? totalCostPips * pip / openTrade.slDist : 0;
+        const closed = recordClose(openTrade, m5.c, 'eod', m5CloseTs, trades, bayesian, costR);
+        dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
         openTrade = null;
         continue;
       }
 
+      // ── Kill switch gate ───────────────────────────────────────────────
+      const killActive = (killDailyR   !== null && dailyR   <= killDailyR)
+                      || (killWeeklyR  !== null && weeklyR  <= killWeeklyR)
+                      || (killMonthlyR !== null && monthlyR <= killMonthlyR);
+
       // ── Entry check ───────────────────────────────────────────────────
-      if (!openTrade && m5.lHour >= 8 && m5.lHour <= 16) {
+      if (!openTrade && !killActive && m5.lHour >= 8 && m5.lHour <= 16) {
         const price = m5.c;
         // Need at least 20 bars in window for ATR
         if (bar5mWin.length < 20) continue;
@@ -238,21 +272,25 @@ function handleRun({ symbol, cfg }) {
 
     // ── End-of-day: drain remaining M1 and force-close ───────────────────
     if (openTrade) {
-      let closed = false;
+      const pip = getPipSize(symbol);
+      const costR = openTrade.slDist > 0 ? totalCostPips * pip / openTrade.slDist : 0;
+      let eodClosed = false;
       while (m1Ptr < m1Today.length) {
         const m1 = m1Today[m1Ptr++];
         if (m1.ts < openTrade.entryTs) continue;
         const ex = checkExit(m1, openTrade);
         if (ex) {
-          recordClose(openTrade, ex.price, ex.result, m1.ts, trades, bayesian);
+          const closed = recordClose(openTrade, ex.price, ex.result, m1.ts, trades, bayesian, costR);
+          dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
           openTrade = null;
-          closed = true;
+          eodClosed = true;
           break;
         }
       }
-      if (!closed) {
+      if (!eodClosed) {
         const lb = m1Today[m1Today.length - 1] ?? m5Today[m5Today.length - 1];
-        recordClose(openTrade, lb?.c ?? openTrade.entry, 'eod', lb?.ts ?? openTrade.entryTs, trades, bayesian);
+        const closed = recordClose(openTrade, lb?.c ?? openTrade.entry, 'eod', lb?.ts ?? openTrade.entryTs, trades, bayesian, costR);
+        dailyR += closed.r; weeklyR += closed.r; monthlyR += closed.r;
         openTrade = null;
       }
     }
@@ -265,7 +303,7 @@ function handleRun({ symbol, cfg }) {
   // ── Stats ─────────────────────────────────────────────────────────────────
   post('progress', { status: 'Computing statistics…', pct: 96 });
   const result = computeStats(trades, rrRatio, bayesian);
-  post('result', { ...result, symbol });
+  post('result', { ...result, symbol, costsPips: totalCostPips });
 }
 
 // ── Exit check ─────────────────────────────────────────────────────────────────
@@ -281,19 +319,22 @@ function checkExit(bar, trade) {
   return null;
 }
 
-function recordClose(trade, exitPrice, result, exitTs, trades, bayesian) {
-  const sign = trade.dir === 'long' ? 1 : -1;
-  const r    = (exitPrice - trade.entry) * sign / trade.slDist;
-  trades.push({
+function recordClose(trade, exitPrice, result, exitTs, trades, bayesian, costR = 0) {
+  const sign  = trade.dir === 'long' ? 1 : -1;
+  const rawR  = (exitPrice - trade.entry) * sign / trade.slDist;
+  const r     = rawR - costR;
+  const t = {
     dir: trade.dir, entry: trade.entry, exit: exitPrice, sl: trade.sl, tp: trade.tp,
     result, r, date: trade.date, entryTs: trade.entryTs, exitTs,
     rb: trade.rb, conf: trade.conf,
-  });
+  };
+  trades.push(t);
   const isWin = r > 0;
   for (const res of (trade.rb?.results || [])) {
     if (!bayesian[res.key]) continue;
     if (res.signal !== null) { bayesian[res.key].fires++; if (isWin) bayesian[res.key].wins++; }
   }
+  return t;
 }
 
 // ── Window helpers ─────────────────────────────────────────────────────────────
@@ -312,6 +353,15 @@ function indexByDate(bars) {
     map.get(b.lDate).push(b);
   }
   return map;
+}
+
+// ── Week key helper ───────────────────────────────────────────────────────────
+
+function getWeekKey(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  const day = d.getUTCDay();
+  d.setUTCDate(d.getUTCDate() - (day === 0 ? 6 : day - 1));
+  return d.toISOString().slice(0, 10);
 }
 
 // ── Precompute helpers ─────────────────────────────────────────────────────────
@@ -406,10 +456,11 @@ function computeStats(trades, rrRatio, bayesian) {
   const tpy   = trades.length / years;
   const sharpe = stdR > 0 ? (meanR / stdR) * Math.sqrt(tpy) : 0;
 
-  // Equity curve (cumulative R, 1% risk)
+  // Equity curve + drawdown curve (cumulative R, 1% risk)
   const riskPct = 0.01;
   let cumR = 0, equity = 1, peak = 1, maxDD = 0;
-  const equityCurve = [{ x: 0, y: 0 }];
+  const equityCurve    = [{ x: 0, y: 0 }];
+  const drawdownCurve  = [{ x: 0, y: 0 }];
   for (let i = 0; i < rVals.length; i++) {
     cumR += rVals[i];
     equity = 1 + cumR * riskPct;
@@ -417,6 +468,7 @@ function computeStats(trades, rrRatio, bayesian) {
     const dd = peak > 0 ? (peak - equity) / peak : 0;
     if (dd > maxDD) maxDD = dd;
     equityCurve.push({ x: i + 1, y: cumR });
+    drawdownCurve.push({ x: i + 1, y: -dd });
   }
 
   const finalEq = 1 + cumR * riskPct;
@@ -433,9 +485,23 @@ function computeStats(trades, rrRatio, bayesian) {
   // Monte Carlo
   const monteCarlo = runMonteCarlo(rVals, riskPct);
 
-  // Sample equity curve ≤500 pts
-  const step = Math.max(1, Math.floor(equityCurve.length / 500));
+  // Sample equity + drawdown curves ≤500 pts
+  const step  = Math.max(1, Math.floor(equityCurve.length / 500));
   const curve = equityCurve.filter((_, i) => i % step === 0 || i === equityCurve.length - 1);
+  const ddCurve = drawdownCurve.filter((_, i) => i % step === 0 || i === drawdownCurve.length - 1);
+
+  // Monthly breakdown
+  const monthlyMap = {};
+  for (const t of trades) {
+    const key = t.date.slice(0, 7);
+    if (!monthlyMap[key]) monthlyMap[key] = { yearMonth: key, trades: 0, wins: 0, totalR: 0 };
+    monthlyMap[key].trades++;
+    if (t.r > 0) monthlyMap[key].wins++;
+    monthlyMap[key].totalR += t.r;
+  }
+  const monthly = Object.values(monthlyMap)
+    .sort((a, b) => a.yearMonth < b.yearMonth ? -1 : 1)
+    .map(m => ({ ...m, totalR: +m.totalR.toFixed(2) }));
 
   // Last 200 trades
   const tradeSample = trades.slice(-200).map(t => ({
@@ -446,7 +512,8 @@ function computeStats(trades, rrRatio, bayesian) {
   return {
     totalTrades: trades.length, wins, losses, winRate,
     profitFactor, meanR, stdR, sharpe, calmar, kelly, cagr, maxDrawdown: maxDD,
-    equityCurve: curve, monteCarlo, bayesian, tradeSample,
+    equityCurve: curve, drawdownCurve: ddCurve, monthly,
+    monteCarlo, bayesian, tradeSample,
     dateRange: { first: firstDate, last: lastDate, years: +years.toFixed(1) },
   };
 }
