@@ -79,7 +79,24 @@ function renderPairNav(){
   const mk=(key,label)=>`<div class="pair-pill ${filterPair===key?'active':''}" onclick="setPairFilter('${key}')">${label}<span class="pair-pill-count">${counts[key]||0}</span></div>`;
   document.getElementById('pairNav').innerHTML=mk('all','All Pairs')+PAIRS_ALL.map(p=>mk(p,p)).join('');
 }
-function setPairFilter(p){filterPair=p;renderPairNav();renderMain();renderCalendar();}
+function setPairFilter(p){
+  filterPair=p;
+  // If selectedDate has no data for the new pair, snap to the nearest date that does
+  if(p!=='all'){
+    const hasCurrent=journalData[selectedDate]&&journalData[selectedDate][p]&&(journalData[selectedDate][p].levels||[]).length>0;
+    if(!hasCurrent){
+      const dates=Object.keys(journalData)
+        .filter(d=>journalData[d]&&journalData[d][p]&&(journalData[d][p].levels||[]).length>0)
+        .sort().reverse();
+      if(dates.length>0){
+        selectedDate=dates[0];
+        const nd=new Date(selectedDate+'T12:00:00');
+        calViewYear=nd.getFullYear();calViewMonth=nd.getMonth();
+      }
+    }
+  }
+  renderPairNav();renderMain();renderCalendar();
+}
 
 function renderCalendar(){
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -309,19 +326,53 @@ function collectStats(){
 
 function openExportModal(){document.getElementById('exportModal').classList.add('open');populateExportSelects();generateCSV();}
 function closeExportModal(){document.getElementById('exportModal').classList.remove('open');}
-function exportPairDate(pair,date){openExportModal();setTimeout(()=>{document.getElementById('exportPairSelect').value=pair;document.getElementById('exportDateSelect').value=date;generateCSV();},50);}
+function exportPairDate(pair,date){
+  openExportModal();
+  setTimeout(()=>{
+    const pairSel=document.getElementById('exportPairSelect');
+    pairSel.value=pair;
+    _refreshExportDates(pair);               // re-filter dates for this pair before setting
+    const dateSel=document.getElementById('exportDateSelect');
+    if([...dateSel.options].some(o=>o.value===date))dateSel.value=date;
+    generateCSV();
+  },50);
+}
 
 function populateExportSelects(){
   const pairSet=new Set(),dateSet=new Set();
   Object.entries(journalData).forEach(([date,dayObj])=>{Object.keys(dayObj).forEach(pair=>{pairSet.add(pair);dateSet.add(date);});});
-  const pairs=[...pairSet].sort(),dates=[...dateSet].sort().reverse();
+  const pairs=[...pairSet].sort();
   const pairSel=document.getElementById('exportPairSelect');
   pairSel.innerHTML=`<option value="__all__">All Pairs</option>`+pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
   if(filterPair!=='all'&&pairs.includes(filterPair))pairSel.value=filterPair;
-  const dateSel=document.getElementById('exportDateSelect');
-  dateSel.innerHTML=dates.map(d=>`<option value="${d}">${d}</option>`).join('');
-  if(selectedDate&&dates.includes(selectedDate))dateSel.value=selectedDate;
+  // Populate dates filtered to the current pair selection
+  _refreshExportDates(pairSel.value);
 }
+
+// Re-populates the date dropdown filtered to only dates where the selected pair has levels.
+// Called on initial populate and whenever the pair select changes.
+function _refreshExportDates(pair){
+  const dateSel=document.getElementById('exportDateSelect');
+  const current=dateSel.value;
+  let dates;
+  if(pair==='__all__'){
+    const dateSet=new Set();
+    Object.keys(journalData).forEach(d=>{if(journalData[d])dateSet.add(d);});
+    dates=[...dateSet].sort().reverse();
+  }else{
+    dates=Object.keys(journalData)
+      .filter(d=>journalData[d]&&journalData[d][pair]&&(journalData[d][pair].levels||[]).length>0)
+      .sort().reverse();
+  }
+  dateSel.innerHTML=dates.length
+    ? dates.map(d=>`<option value="${d}">${d}</option>`).join('')
+    : `<option value="">-- No data for this pair --</option>`;
+  // Restore previous selection if still valid, otherwise fall back to most recent
+  if(current&&dates.includes(current))dateSel.value=current;
+  else if(selectedDate&&dates.includes(selectedDate))dateSel.value=selectedDate;
+}
+
+function onExportPairChange(){_refreshExportDates(document.getElementById('exportPairSelect').value);generateCSV();}
 
 // Shared filter logic — applies star, taken-only, and max-rows filters for one pair/date.
 function getFilteredLevels(pair,date){
