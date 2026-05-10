@@ -495,6 +495,47 @@ export default {
         });
       }
 
+      // -- /api/oanda_book --------------------------------------
+      // Oanda positionBook — retail long/short distribution per symbol.
+      // Returns { currentPrice, longPct, shortPct, sentiment } or { miss, reason }.
+      // longPct = % of price-level buckets dominated by long positions (proxy for net long sentiment).
+      if (path === '/api/oanda_book') {
+        if (!env.OANDA_KEY) return json({ miss: true, reason: 'OANDA_KEY not set' });
+        const bookSym = url.searchParams.get('symbol');
+        if (!bookSym) return err('symbol param required', 400);
+        const bookInstrument = bookSym.replace('/', '_');
+        const bookBase = env.OANDA_ENV === 'practice'
+          ? 'https://api-fxpractice.oanda.com'
+          : 'https://api-fxtrade.oanda.com';
+        try {
+          const bookRes = await fetch(
+            `${bookBase}/v3/instruments/${encodeURIComponent(bookInstrument)}/positionBook`,
+            { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` } }
+          );
+          if (!bookRes.ok) return json({ miss: true, reason: `Oanda ${bookRes.status}` });
+          const bookData = await bookRes.json();
+          const pb = bookData.positionBook;
+          if (!pb?.buckets?.length) return json({ miss: true, reason: 'No buckets' });
+          const currentPrice = parseFloat(pb.price);
+          let longDom = 0, shortDom = 0;
+          for (const b of pb.buckets) {
+            const lp = parseFloat(b.longCountPercent)  || 0;
+            const sp = parseFloat(b.shortCountPercent) || 0;
+            if (lp > sp + 0.1) longDom++;
+            else if (sp > lp + 0.1) shortDom++;
+          }
+          const total = longDom + shortDom || 1;
+          const longPct  = Math.round(longDom  / total * 100);
+          const shortPct = 100 - longPct;
+          return json({
+            currentPrice, longPct, shortPct,
+            sentiment: longPct > 60 ? 'bullish' : shortPct > 60 ? 'bearish' : 'neutral',
+          });
+        } catch(e) {
+          return json({ miss: true, reason: e.message });
+        }
+      }
+
       // -- /api/fred --------------------------------------------
       // Returns { vix: { value, prev }, us10y: { value, prev }, ... }
       // Each series transformed from raw FRED observations array into
@@ -527,6 +568,7 @@ export default {
           au_short: 'IR3TIB01AUM156N',
           ca_short: 'IRSTCI01CAM156N',
           ch_short: 'IRSTCI01CHM156N',
+          wti:      'DCOILWTICO',
         };
 
         const fetches = Object.entries(SERIES).map(async ([key, id]) => {
