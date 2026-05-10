@@ -217,6 +217,27 @@
     #cost-banner { display: none; background: var(--amber-bg); border: 1px solid var(--amber-bd);
       border-radius: 8px; padding: 8px 12px; font-size: 11px; color: var(--amber);
       font-family: 'DM Mono', monospace; }
+
+    /* ── Date range inputs ───────────────────────────────────────────── */
+    input[type="date"] { width: 100%; padding: 5px 8px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--s1); color: var(--text);
+      font-size: 12px; }
+    input[type="date"]:focus { outline: 2px solid var(--blue); }
+
+    /* ── SD level filter ─────────────────────────────────────────────── */
+    .fib-filter-section { background: var(--s1); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px; }
+    .fib-preset-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .fib-preset { padding: 3px 9px; font-size: 10px; font-weight: 600; cursor: pointer;
+      border-radius: 5px; border: 1px solid var(--border); background: var(--s2);
+      color: var(--text2); transition: all .15s; }
+    .fib-preset:hover { border-color: var(--blue); color: var(--blue); }
+    .fib-group-hdr { font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text3); margin-bottom: 4px; }
+    .fib-check-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px 6px; margin-bottom: 8px; }
+    .fib-chk-item { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+    .fib-chk-item input { cursor: pointer; flex-shrink: 0; }
+    .fib-chk-item span { font-size: 10px; color: var(--text2); font-family: 'DM Mono', monospace; }
   </style>
 </head>
 <body class="dark">
@@ -309,6 +330,31 @@
       </div>
     </details>
 
+    <!-- Date Range -->
+    <div class="sb-section">
+      <div class="sb-section-label">Date Range</div>
+      <div class="cfg-grid">
+        <div class="cfg-item">
+          <label for="cfg-start-date">From</label>
+          <input type="date" id="cfg-start-date" value="2020-01-01"/>
+        </div>
+        <div class="cfg-item">
+          <label for="cfg-end-date">To</label>
+          <input type="date" id="cfg-end-date" value="2025-12-31"/>
+        </div>
+        <div class="cfg-item" style="grid-column:1/-1">
+          <label style="color:var(--text3)">IS / OOS Split</label>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="fib-preset" onclick="applyIsOosSplit(0.7)" title="View in-sample (first 70%)">IS 70%</button>
+            <button class="fib-preset" onclick="applyOosOnly(0.7)" title="View out-of-sample (last 30%)">OOS 30%</button>
+            <button class="fib-preset" onclick="applyIsOosSplit(0.5)" title="View in-sample (first 50%)">IS 50%</button>
+            <button class="fib-preset" onclick="applyOosOnly(0.5)" title="View out-of-sample (last 50%)">OOS 50%</button>
+            <button class="fib-preset" onclick="resetDateRange()" title="Restore full date range">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Parameters -->
     <div class="sb-section">
       <div class="sb-section-label">Parameters</div>
@@ -337,6 +383,58 @@
           <label for="cfg-warmup">Warmup Days</label>
           <input type="number" id="cfg-warmup" value="100" min="20" max="500" step="10"/>
         </div>
+        <div class="cfg-item">
+          <label for="cfg-conf-tol">Conf. Tol (pips)</label>
+          <input type="number" id="cfg-conf-tol" value="2" min="0.5" max="20" step="0.5"/>
+        </div>
+        <div class="cfg-item">
+          <label for="cfg-reentry">Level Re-entry</label>
+          <input type="number" id="cfg-reentry" value="1" min="1" max="5" step="1"/>
+        </div>
+        <div class="cfg-item" style="grid-column:1/-1">
+          <label for="cfg-method">Confluence Method</label>
+          <select id="cfg-method">
+            <option value="asia">Asia only</option>
+            <option value="monday">Monday only</option>
+            <option value="both">Asia + Monday</option>
+          </select>
+        </div>
+        <div class="cfg-item" style="grid-column:1/-1">
+          <label for="cfg-signal-filter">Signal Filter</label>
+          <select id="cfg-signal-filter">
+            <option value="all_conf">All confluences</option>
+            <option value="tight_only">Tight only (≤10% tol)</option>
+            <option value="all_levels">All levels (no conf. req.)</option>
+          </select>
+        </div>
+        <div class="cfg-item">
+          <label for="cfg-ew-start">Entry Window Start</label>
+          <input type="number" id="cfg-ew-start" value="8" min="0" max="23" step="1"/>
+        </div>
+        <div class="cfg-item">
+          <label for="cfg-ew-end">Entry Window End</label>
+          <input type="number" id="cfg-ew-end" value="16" min="1" max="24" step="1"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- SD Level Filter -->
+    <div class="sb-section">
+      <div class="sb-section-label">SD Level Filter</div>
+      <div class="fib-filter-section">
+        <div class="fib-preset-row">
+          <button class="fib-preset" onclick="fibSelectAll(true)">All</button>
+          <button class="fib-preset" onclick="fibSelectAll(false)">None</button>
+          <button class="fib-preset" onclick="fibSelectPreset('sell')">Sell-side</button>
+          <button class="fib-preset" onclick="fibSelectPreset('mid')">Mid-range</button>
+          <button class="fib-preset" onclick="fibSelectPreset('buy')">Buy-side</button>
+        </div>
+        <div class="fib-group-hdr">Extensions above range (sell-side)</div>
+        <div class="fib-check-grid" id="fib-chk-sell"></div>
+        <div class="fib-group-hdr">Within range (mid)</div>
+        <div class="fib-check-grid" id="fib-chk-mid"></div>
+        <div class="fib-group-hdr">Extensions below range (buy-side)</div>
+        <div class="fib-check-grid" id="fib-chk-buy"></div>
       </div>
     </div>
 

@@ -20,6 +20,15 @@ const BEST_CONFIG_V1 = {
     killDaily: 2,
     killWeekly: 5,
     killMonthly: 10,
+    startDate: '2020-01-01',
+    endDate: '2025-12-31',
+    method: 'asia',
+    signalFilter: 'all_conf',
+    confTolPips: 2,
+    entryWindowStart: 8,
+    entryWindowEnd: 16,
+    levelReentry: 1,
+    enabledFibs: null,
     features: {
       rangePosition: { enabled: true,  weight: 1, label: 'Range Position' },
       chochBos:      { enabled: true,  weight: 2, label: 'CHoCH / BOS' },
@@ -33,6 +42,7 @@ const BEST_CONFIG_V1 = {
       fvgBias:       { enabled: true,  weight: 1, label: 'FVG Bias' },
       weeklyPivot:   { enabled: false, weight: 1, label: 'Weekly Pivot' },
       ichimokuCloud: { enabled: false, weight: 1, label: 'Ichimoku Cloud' },
+      macdSignal:    { enabled: false, weight: 1, label: 'MACD (12/26/9)' },
     },
   },
 };
@@ -77,11 +87,25 @@ function loadConfig(id) {
   sv('cfg-conf',         cfg.minConfirms);
   sv('cfg-prox',         cfg.entryProximityATR);
   sv('cfg-warmup',       cfg.warmupDays);
-  sv('cfg-spread',       cfg.spread);
-  sv('cfg-slippage',     cfg.slippage);
-  sv('cfg-kill-daily',   cfg.killDaily);
-  sv('cfg-kill-weekly',  cfg.killWeekly);
-  sv('cfg-kill-monthly', cfg.killMonthly);
+  sv('cfg-spread',         cfg.spread);
+  sv('cfg-slippage',       cfg.slippage);
+  sv('cfg-kill-daily',     cfg.killDaily);
+  sv('cfg-kill-weekly',    cfg.killWeekly);
+  sv('cfg-kill-monthly',   cfg.killMonthly);
+  sv('cfg-start-date',     cfg.startDate);
+  sv('cfg-end-date',       cfg.endDate);
+  sv('cfg-method',         cfg.method);
+  sv('cfg-signal-filter',  cfg.signalFilter);
+  sv('cfg-conf-tol',       cfg.confTolPips);
+  sv('cfg-ew-start',       cfg.entryWindowStart);
+  sv('cfg-ew-end',         cfg.entryWindowEnd);
+  sv('cfg-reentry',        cfg.levelReentry);
+  if (cfg.enabledFibs) {
+    const fibSet = new Set(cfg.enabledFibs.map(String));
+    document.querySelectorAll('.fib-chk').forEach(chk => {
+      chk.checked = fibSet.has(chk.dataset.fib);
+    });
+  }
   if (cfg.features) {
     for (const [key, feat] of Object.entries(cfg.features)) {
       const chk = document.getElementById('feat-' + key);
@@ -209,7 +233,54 @@ const DEFAULT_FEATURES = {
   fvgBias:       { enabled: true,  weight: 1, label: 'FVG Bias' },
   weeklyPivot:   { enabled: true,  weight: 1, label: 'Weekly Pivot' },
   ichimokuCloud: { enabled: true,  weight: 1, label: 'Ichimoku Cloud' },
+  macdSignal:    { enabled: false, weight: 1, label: 'MACD (12/26/9)' },
 };
+
+// ── SD Level (fib) filter ──────────────────────────────────────────────────────
+
+const FIB_SELL = [1.5, 2, 2.5, 3, 3.5, 4, 5, 6];
+const FIB_MID  = [0, 0.25, 0.5, 0.75, 1];
+const FIB_BUY  = [-0.25, -0.5, -0.75, -1, -1.5, -2, -3, -4];
+
+function initFibCheckboxes() {
+  _renderFibGroup('fib-chk-sell', FIB_SELL);
+  _renderFibGroup('fib-chk-mid',  FIB_MID);
+  _renderFibGroup('fib-chk-buy',  FIB_BUY);
+}
+
+function _renderFibGroup(elId, fibs) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = fibs.map(f => `
+    <label class="fib-chk-item">
+      <input type="checkbox" class="fib-chk" data-fib="${f}" checked/>
+      <span>${f > 0 ? '+' : ''}${f}</span>
+    </label>`).join('');
+}
+
+function fibSelectAll(checked) {
+  document.querySelectorAll('.fib-chk').forEach(chk => { chk.checked = checked; });
+}
+
+function fibSelectPreset(preset) {
+  const sell = new Set(FIB_SELL.map(String));
+  const mid  = new Set(FIB_MID.map(String));
+  const buy  = new Set(FIB_BUY.map(String));
+  document.querySelectorAll('.fib-chk').forEach(chk => {
+    const f = chk.dataset.fib;
+    if (preset === 'sell')      chk.checked = sell.has(f);
+    else if (preset === 'mid')  chk.checked = mid.has(f);
+    else if (preset === 'buy')  chk.checked = buy.has(f);
+  });
+}
+
+function getEnabledFibs() {
+  const out = [];
+  document.querySelectorAll('.fib-chk').forEach(chk => {
+    if (chk.checked) out.push(parseFloat(chk.dataset.fib));
+  });
+  return out;
+}
 
 const parsedFiles = {}; // symbol → {m1,m5,m30}: true when parsed
 let worker = null;
@@ -218,6 +289,7 @@ let isRunning = false;
 // ── Init ───────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  initFibCheckboxes();
   renderFeatureList();
   bindEvents();
   restoreSettings();
@@ -340,6 +412,15 @@ function buildCfg() {
     killDaily:         parseFloat(g('cfg-kill-daily'))   || 0,
     killWeekly:        parseFloat(g('cfg-kill-weekly'))  || 0,
     killMonthly:       parseFloat(g('cfg-kill-monthly')) || 0,
+    startDate:         g('cfg-start-date')               || '2020-01-01',
+    endDate:           g('cfg-end-date')                 || '2025-12-31',
+    method:            g('cfg-method')                   || 'asia',
+    signalFilter:      g('cfg-signal-filter')            || 'all_conf',
+    confTolPips:       parseFloat(g('cfg-conf-tol'))     || 2,
+    entryWindowStart:  parseInt(g('cfg-ew-start'))       || 8,
+    entryWindowEnd:    parseInt(g('cfg-ew-end'))         || 16,
+    levelReentry:      parseInt(g('cfg-reentry'))        || 1,
+    enabledFibs:       getEnabledFibs(),
     features,
   };
 }
@@ -352,6 +433,46 @@ function handleResult(payload) {
   setProgress('Done!', 100);
   renderResults(payload);
   saveSettings();
+}
+
+// ── IS / OOS date split ────────────────────────────────────────────────────────
+
+function applyIsOosSplit(fraction) {
+  const startEl = document.getElementById('cfg-start-date');
+  const endEl   = document.getElementById('cfg-end-date');
+  if (!startEl || !endEl) return;
+  const startMs = new Date(startEl.value || '2020-01-01').getTime();
+  const endMs   = new Date(endEl.value   || '2025-12-31').getTime();
+  if (endMs <= startMs) return;
+  const splitMs  = startMs + (endMs - startMs) * fraction;
+  const splitStr = new Date(splitMs).toISOString().slice(0, 10);
+  // Store full range so we can toggle OOS
+  if (!document._isOosRange) {
+    document._isOosRange = { start: startEl.value, end: endEl.value };
+  }
+  endEl.value = splitStr;
+  setProgress(`IS period: ${startEl.value} → ${splitStr}`, 0);
+}
+
+function applyOosOnly(fraction) {
+  const base = document._isOosRange;
+  if (!base) { setProgress('Set IS first', 0); return; }
+  const startMs  = new Date(base.start).getTime();
+  const endMs    = new Date(base.end).getTime();
+  const splitMs  = startMs + (endMs - startMs) * fraction;
+  const splitStr = new Date(splitMs).toISOString().slice(0, 10);
+  document.getElementById('cfg-start-date').value = splitStr;
+  document.getElementById('cfg-end-date').value   = base.end;
+  setProgress(`OOS period: ${splitStr} → ${base.end}`, 0);
+}
+
+function resetDateRange() {
+  const base = document._isOosRange;
+  if (!base) return;
+  document.getElementById('cfg-start-date').value = base.start;
+  document.getElementById('cfg-end-date').value   = base.end;
+  document._isOosRange = null;
+  setProgress('Full date range restored', 0);
 }
 
 // ── Chart tab switching ────────────────────────────────────────────────────────
@@ -379,10 +500,11 @@ function renderResults(d) {
     { id: 'stat-calmar',  label: 'Calmar',         val: d.calmar,         fmt: v => v.toFixed(2) },
     { id: 'stat-cagr',    label: 'CAGR (1% risk)', val: d.cagr,           fmt: v => pct(v) },
     { id: 'stat-dd',      label: 'Max Drawdown',   val: d.maxDrawdown,    fmt: v => pct(v) },
-    { id: 'stat-kelly',   label: 'Kelly %',        val: d.kelly,          fmt: v => pct(v) },
-    { id: 'stat-wins',    label: 'Wins',           val: d.wins,           fmt: v => v },
-    { id: 'stat-losses',  label: 'Losses',         val: d.losses,         fmt: v => v },
-    { id: 'stat-years',   label: 'Period',         val: d.dateRange?.years, fmt: v => (v || '—') + ' yr' },
+    { id: 'stat-kelly',   label: 'Kelly %',        val: d.kelly,              fmt: v => pct(v) },
+    { id: 'stat-wins',    label: 'Wins',           val: d.wins,               fmt: v => v },
+    { id: 'stat-losses',  label: 'Losses',         val: d.losses,             fmt: v => v },
+    { id: 'stat-years',   label: 'Period',         val: d.dateRange?.years,   fmt: v => (v || '—') + ' yr' },
+    { id: 'stat-becost',  label: 'Max Cost (pip)', val: d.breakEvenCostPips,  fmt: v => v > 0 ? v.toFixed(2) + 'p' : '—' },
   ];
 
   const grid = document.getElementById('stats-grid');
@@ -536,7 +658,7 @@ function renderMonthlyPnL(monthly) {
   if (!el || !monthly?.length) return;
 
   const W = el.clientWidth || 680, H = 200;
-  const PAD = { t: 14, r: 16, b: 32, l: 52 };
+  const PAD = { t: 14, r: 72, b: 32, l: 52 }; // extra right margin for Sharpe axis
   const iW = W - PAD.l - PAD.r, iH = H - PAD.t - PAD.b;
 
   const vals = monthly.map(m => m.totalR);
@@ -549,13 +671,46 @@ function renderMonthlyPnL(monthly) {
   const zero = PAD.t + iH - ((0 - vMin) / vRange) * iH;
 
   const bars = monthly.map((m, i) => {
-    const x = PAD.l + (i / n) * iW;
+    const x  = PAD.l + (i / n) * iW;
     const y1 = PAD.t + iH - ((m.totalR - vMin) / vRange) * iH;
     const top = Math.min(zero, y1);
     const h   = Math.max(1, Math.abs(zero - y1));
     const col = m.totalR >= 0 ? 'var(--green)' : 'var(--red)';
     return `<rect x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${col}" fill-opacity="0.85"/>`;
   }).join('');
+
+  // ── Rolling 12-month Sharpe overlay ──────────────────────────────────────
+  const sharpeWindow = 12;
+  const sharpeVals = monthly.map((_, i) => {
+    if (i < sharpeWindow - 1) return null;
+    const slice = monthly.slice(i - sharpeWindow + 1, i + 1).map(m => m.totalR);
+    const mean  = slice.reduce((a, b) => a + b, 0) / sharpeWindow;
+    const std   = Math.sqrt(slice.reduce((a, v) => a + (v - mean) ** 2, 0) / sharpeWindow);
+    return std > 0 ? (mean / std) * Math.sqrt(12) : 0; // annualised
+  });
+
+  const validSharpes = sharpeVals.filter(v => v !== null);
+  const sMax = validSharpes.length ? Math.max(...validSharpes,  5) :  5;
+  const sMin = validSharpes.length ? Math.min(...validSharpes, -3) : -3;
+  const sRange = sMax - sMin || 1;
+  const sy = v => PAD.t + iH - ((v - sMin) / sRange) * iH;
+
+  const sharpePts = sharpeVals
+    .map((v, i) => v === null ? null : `${(PAD.l + (i / n) * iW + barW / 2).toFixed(1)},${sy(v).toFixed(1)}`)
+    .filter(Boolean);
+
+  const sharpePolyline = sharpePts.length > 1
+    ? `<polyline points="${sharpePts.join(' ')}" fill="none" stroke="var(--blue)" stroke-width="1.5" stroke-opacity="0.8" stroke-dasharray="0"/>`
+    : '';
+
+  // Sharpe = 0 line on right axis
+  const s0y = sy(0);
+  const sharpeAxis = `
+    <line x1="${W - PAD.r + 4}" y1="${PAD.t.toFixed(1)}" x2="${W - PAD.r + 4}" y2="${(PAD.t + iH).toFixed(1)}" stroke="var(--blue)" stroke-width="0.5" stroke-opacity="0.4"/>
+    <text x="${W - PAD.r + 6}" y="${(PAD.t + 8).toFixed(1)}" font-size="8" fill="var(--blue)" fill-opacity="0.7">S:${sMax.toFixed(1)}</text>
+    <text x="${W - PAD.r + 6}" y="${(s0y + 3).toFixed(1)}" font-size="8" fill="var(--blue)" fill-opacity="0.7">0</text>
+    <text x="${W - PAD.r + 6}" y="${(PAD.t + iH).toFixed(1)}" font-size="8" fill="var(--blue)" fill-opacity="0.7">${sMin.toFixed(1)}</text>
+    <text x="${W - PAD.r + 2}" y="${(PAD.t + iH / 2).toFixed(1)}" font-size="7" fill="var(--blue)" fill-opacity="0.6" writing-mode="tb">12m Sharpe</text>`;
 
   const xLabels = monthly.map((m, i) => {
     if (i > 0 && m.yearMonth.slice(0, 4) === monthly[i - 1].yearMonth.slice(0, 4)) return '';
@@ -576,6 +731,8 @@ function renderMonthlyPnL(monthly) {
       ${yTickHtml}
       <line x1="${PAD.l}" y1="${zero.toFixed(1)}" x2="${W - PAD.r}" y2="${zero.toFixed(1)}" stroke="var(--text3)" stroke-width="0.8" stroke-dasharray="3,3"/>
       ${bars}
+      ${sharpePolyline}
+      ${sharpeAxis}
       ${xLabels}
     </svg>`;
 }
@@ -850,11 +1007,25 @@ function restoreSettings() {
     s('cfg-conf',   cfg.minConfirms);
     s('cfg-prox',   cfg.entryProximityATR);
     s('cfg-warmup', cfg.warmupDays);
-    s('cfg-spread',       cfg.spread);
-    s('cfg-slippage',     cfg.slippage);
-    s('cfg-kill-daily',   cfg.killDaily);
-    s('cfg-kill-weekly',  cfg.killWeekly);
-    s('cfg-kill-monthly', cfg.killMonthly);
+    s('cfg-spread',         cfg.spread);
+    s('cfg-slippage',       cfg.slippage);
+    s('cfg-kill-daily',     cfg.killDaily);
+    s('cfg-kill-weekly',    cfg.killWeekly);
+    s('cfg-kill-monthly',   cfg.killMonthly);
+    s('cfg-start-date',     cfg.startDate);
+    s('cfg-end-date',       cfg.endDate);
+    s('cfg-method',         cfg.method);
+    s('cfg-signal-filter',  cfg.signalFilter);
+    s('cfg-conf-tol',       cfg.confTolPips);
+    s('cfg-ew-start',       cfg.entryWindowStart);
+    s('cfg-ew-end',         cfg.entryWindowEnd);
+    s('cfg-reentry',        cfg.levelReentry);
+    if (cfg.enabledFibs) {
+      const fibSet = new Set(cfg.enabledFibs.map(String));
+      document.querySelectorAll('.fib-chk').forEach(chk => {
+        chk.checked = fibSet.has(chk.dataset.fib);
+      });
+    }
     if (cfg.features) {
       for (const [key, feat] of Object.entries(cfg.features)) {
         const chk = document.getElementById('feat-' + key);

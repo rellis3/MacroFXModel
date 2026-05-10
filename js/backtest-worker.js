@@ -70,15 +70,20 @@ function handleRun({ symbol, cfg }) {
   // 3. Monday range map: date → {high,low,range}
   const mondayRangeMap = buildMondayRangeMap(m30);
 
-  // 4. Sorted trading dates
+  // 4. Sorted trading dates (filtered by configured date range)
   const tradingDateSet = new Set();
   for (const b of m5) { if (b.lDay !== 0 && b.lDay !== 6) tradingDateSet.add(b.lDate); }
-  const tradingDates = [...tradingDateSet].sort();
+  const _allDates = [...tradingDateSet].sort();
+  const _sd = cfg.startDate || null;
+  const _ed = cfg.endDate   || null;
+  const tradingDates = _allDates.filter(d => (!_sd || d >= _sd) && (!_ed || d <= _ed));
 
-  // 5. Monday range per trading date (rolling)
-  const mondayLookup = buildMondayLookup(tradingDates, mondayRangeMap);
+  // 5. Monday range per trading date (rolling) — build over all dates so
+  //    lookups are correct even when start date cuts off early Mondays
+  const mondayLookup     = buildMondayLookup(_allDates, mondayRangeMap);
+  const prevMondayLookup = buildPrevMondayLookup(_allDates, mondayRangeMap);
 
-  // 6. Bar indices by date
+  // 7. Bar indices by date
   const m5ByDate  = indexByDate(m5);
   const m30ByDate = indexByDate(m30);
   const m1ByDate  = m1?.length ? indexByDate(m1) : new Map();
@@ -93,6 +98,17 @@ function handleRun({ symbol, cfg }) {
   const proxATR       = cfg.entryProximityATR ?? 0.30;
   const warmupDays    = cfg.warmupDays    ?? 100;
   const features      = cfg.features;
+
+  // ── New config params ─────────────────────────────────────────────────────
+  const method        = cfg.method        ?? 'asia';
+  const signalFilter  = cfg.signalFilter  ?? 'all_conf';
+  const confTolPips   = cfg.confTolPips   ?? null;
+  const ewStart       = cfg.entryWindowStart ?? 8;
+  const ewEnd         = cfg.entryWindowEnd   ?? 16;
+  const levelReentry  = Math.max(1, cfg.levelReentry ?? 1);
+  const enabledFibSet = cfg.enabledFibs?.length
+    ? new Set(cfg.enabledFibs.map(f => +f))
+    : null; // null = all levels enabled
 
   // ── Transaction cost config ────────────────────────────────────────────────
   const spreadPips   = cfg.spread   ?? 0;
@@ -154,15 +170,36 @@ function handleRun({ symbol, cfg }) {
       continue;
     }
 
-    const confluences = detectConfluences(
-      projectFibLevels(asiaRange), projectFibLevels(prevAsia), symbol
-    );
+    // ── Fib level filtering ───────────────────────────────────────────────
+    const todayFibs = filterFibs(projectFibLevels(asiaRange), enabledFibSet);
+    const prevFibs  = filterFibs(projectFibLevels(prevAsia),  enabledFibSet);
+
+    const mondayRange     = mondayLookup.get(date)     || null;
+    const prevMondayRange = prevMondayLookup.get(date) || null;
+
+    // ── Confluence computation (method-aware) ─────────────────────────────
+    let confluences = [];
+    if (method === 'asia' || method === 'both') {
+      confluences.push(...detectConfluences(todayFibs, prevFibs, symbol, confTolPips));
+    }
+    if ((method === 'monday' || method === 'both') && mondayRange && prevMondayRange) {
+      const mFibs  = filterFibs(projectFibLevels(mondayRange),     enabledFibSet);
+      const pmFibs = filterFibs(projectFibLevels(prevMondayRange),  enabledFibSet);
+      confluences.push(...detectConfluences(mFibs, pmFibs, symbol, confTolPips));
+    }
+
+    // ── Signal filter ─────────────────────────────────────────────────────
+    if (signalFilter === 'tight_only') {
+      confluences = confluences.filter(c => c.isTight);
+    } else if (signalFilter === 'all_levels') {
+      // Trade at every enabled fib level — confluences not required
+      confluences = todayFibs.map(f => ({ price: f.price, todayFib: f.fib, isTight: false, density: 1 }));
+    }
+
     if (!confluences.length) {
       updateWindows(m5Today, m30Today, date, dailyBarMap, bar5mWin, bar30mWin, dailyBarWin);
       continue;
     }
-
-    const mondayRange = mondayLookup.get(date) || null;
 
     // ── Kill switch period resets ──────────────────────────────────────────
     const dayKey   = date;
@@ -171,6 +208,9 @@ function handleRun({ symbol, cfg }) {
     if (dayKey   !== lastDayKey)   { dailyR   = 0; lastDayKey   = dayKey;   }
     if (weekKey  !== lastWeekKey)  { weeklyR  = 0; lastWeekKey  = weekKey;  }
     if (monthKey !== lastMonthKey) { monthlyR = 0; lastMonthKey = monthKey; }
+
+    // ── Per-day level touch counter (for re-entry limit) ─────────────────
+    const dayLevelTouches = new Map();
 
     // ── Interleaved M30 pointer (look-ahead free) ─────────────────────────
     let m30Ptr = 0;
@@ -223,7 +263,7 @@ function handleRun({ symbol, cfg }) {
                       || (killMonthlyR !== null && monthlyR <= killMonthlyR);
 
       // ── Entry check ───────────────────────────────────────────────────
-      if (!openTrade && !killActive && m5.lHour >= 8 && m5.lHour <= 16) {
+      if (!openTrade && !killActive && m5.lHour >= ewStart && m5.lHour < ewEnd) {
         const price = m5.c;
         // Need at least 20 bars in window for ATR
         if (bar5mWin.length < 20) continue;
@@ -233,6 +273,11 @@ function handleRun({ symbol, cfg }) {
 
         for (const conf of confluences) {
           if (Math.abs(price - conf.price) > prox) continue;
+
+          // ── Level re-entry guard ────────────────────────────────────────
+          const confKey = conf.price.toFixed(5);
+          if ((dayLevelTouches.get(confKey) || 0) >= levelReentry) continue;
+
           const entryDir = conf.price > price ? 'short' : 'long';
 
           const rb = computeSignal({
@@ -247,6 +292,7 @@ function handleRun({ symbol, cfg }) {
 
           if (rb.conviction >= minConviction && rb.confirmCount >= minConfirms) {
             const slDist = Math.max(asiaRange.range * slFraction, getPipSize(symbol) * 5);
+            dayLevelTouches.set(confKey, (dayLevelTouches.get(confKey) || 0) + 1);
             openTrade = {
               dir:      entryDir,
               entry:    price,
@@ -303,6 +349,16 @@ function handleRun({ symbol, cfg }) {
   // ── Stats ─────────────────────────────────────────────────────────────────
   post('progress', { status: 'Computing statistics…', pct: 96 });
   const result = computeStats(trades, rrRatio, bayesian);
+
+  // Break-even cost: max pip cost/trade before strategy goes flat
+  const pip = getPipSize(symbol);
+  const avgSlDist = trades.length
+    ? trades.reduce((s, t) => s + t.slDist, 0) / trades.length
+    : 0;
+  result.breakEvenCostPips = result.meanR > 0 && avgSlDist > 0
+    ? +(result.meanR * avgSlDist / pip).toFixed(2)
+    : 0;
+
   post('result', { ...result, symbol, costsPips: totalCostPips });
 }
 
@@ -353,6 +409,13 @@ function indexByDate(bars) {
     map.get(b.lDate).push(b);
   }
   return map;
+}
+
+// ── Fib level filter ──────────────────────────────────────────────────────────
+
+function filterFibs(lvls, enabledFibSet) {
+  if (!enabledFibSet) return lvls;
+  return lvls.filter(l => enabledFibSet.has(l.fib));
 }
 
 // ── Week key helper ───────────────────────────────────────────────────────────
@@ -422,6 +485,20 @@ function buildMondayLookup(tradingDates, mondayRangeMap) {
   for (const date of tradingDates) {
     if (mondayRangeMap.has(date)) current = date;
     lookup.set(date, current ? mondayRangeMap.get(current) : null);
+  }
+  return lookup;
+}
+
+function buildPrevMondayLookup(tradingDates, mondayRangeMap) {
+  // Returns the Monday range from the week BEFORE the current week
+  const lookup = new Map();
+  let prev = null, current = null;
+  for (const date of tradingDates) {
+    if (mondayRangeMap.has(date)) {
+      prev = current;
+      current = date;
+    }
+    lookup.set(date, prev ? mondayRangeMap.get(prev) : null);
   }
   return lookup;
 }

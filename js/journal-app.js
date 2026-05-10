@@ -212,6 +212,7 @@ function renderLevelCard(level,idx,date,pair){
     ocBtns=`<div class="trade-outcome">`+[{key:'win',label:'Win',cls:'active-win'},{key:'loss',label:'Loss',cls:'active-loss'},{key:'be',label:'BE',cls:'active-be'}]
       .map(o=>`<button class="outcome-btn ${outcome===o.key?o.cls:''}" onclick="setOutcome('${date}','${pair}',${idx},'${o.key}')">${o.label}</button>`).join('')+'</div>';
   }
+  const narrative = levelNarrative(level, pair);
   return `<div class="level-card ${borderCls}">
     <div class="level-top">
       <span class="level-stars">${starsHtml}</span>
@@ -223,6 +224,7 @@ function renderLevelCard(level,idx,date,pair){
       </div>
     </div>
     ${tags?`<div class="level-tags">${tags}</div>`:''}
+    ${narrative}
     <div class="level-trade">
       <div class="trade-status-btns">${tBtns}</div>${ocBtns}
       <div class="sltp-inputs">
@@ -236,6 +238,46 @@ function renderLevelCard(level,idx,date,pair){
 
 function getDigits(pair){if(pair.includes('JPY'))return 3;if(pair.includes('XAU'))return 2;return 5;}
 function getStep(pair){if(pair.includes('JPY'))return '0.001';if(pair.includes('XAU'))return '0.01';return '0.00001';}
+function getPipSz(pair){if(pair.includes('JPY'))return 0.01;if(pair.includes('XAU'))return 0.1;return 0.0001;}
+
+function levelNarrative(level, pair) {
+  const pipSize = getPipSz(pair);
+  const slPx    = level.slOverride ?? level.sl;
+  const tpPx    = level.tpOverride ?? level.tp;
+  if (!slPx || !tpPx || !level.price) return '';
+
+  const slPips = Math.abs(level.price - slPx) / pipSize;
+  const tpPips = Math.abs(level.price - tpPx) / pipSize;
+  const rr     = slPips > 0 ? (tpPips / slPips).toFixed(1) : '—';
+
+  // Level name: prefer SD fib number, then first tag, then fallback
+  const sdLabel = level.todayFib != null
+    ? `SD ${+level.todayFib % 1 === 0 ? level.todayFib.toFixed(1) : level.todayFib}`
+    : null;
+  const tagLabel = level.tags?.[0]?.label || null;
+  const name = sdLabel || tagLabel || 'Level';
+  const roundBadge = level.isRoundNumber
+    ? '<span style="color:var(--amber);font-size:9px;margin-left:4px">⊙ Round</span>' : '';
+
+  const dirArrow = level.direction === 'long' ? '↑' : '↓';
+  const risk  = `${slPips.toFixed(0)}p risk → ${tpPips.toFixed(0)}p reward (${rr}R)`;
+
+  let outcome = '';
+  if (level.trade === 'long' || level.trade === 'short') {
+    if (level.outcome === 'win')
+      outcome = `<span class="lnr-win">✓ Ran to full TP +${tpPips.toFixed(0)}p / +${rr}R</span>`;
+    else if (level.outcome === 'loss')
+      outcome = `<span class="lnr-loss">✗ SL hit −${slPips.toFixed(0)}p / −1R</span>`;
+    else if (level.outcome === 'be')
+      outcome = `<span class="lnr-be">~ Break even 0R</span>`;
+    else
+      outcome = `<span class="lnr-open">▷ Pending · TP ${tpPips.toFixed(0)}p away</span>`;
+  } else {
+    outcome = `<span class="lnr-skip">Not taken · TP was ${tpPips.toFixed(0)}p</span>`;
+  }
+
+  return `<div class="level-narrative"><span class="lnr-name">${name}${roundBadge}</span><span class="lnr-sep">·</span><span class="lnr-dir">${dirArrow}</span><span class="lnr-risk">${risk}</span><span class="lnr-sep">·</span>${outcome}</div>`;
+}
 
 function ensurePath(date,pair,idx){
   if(!journalData[date])journalData[date]={};
