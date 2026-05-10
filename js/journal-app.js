@@ -168,15 +168,7 @@ function renderDayView(){
   pairs.forEach(pair=>{
     const levels=dayObj[pair].levels||[];
     const macro=dayObj[pair].macro||{};
-    html+=`<div class="day-group">
-      <div class="day-group-header">
-        <span class="day-group-date">${pair}</span>
-        <span class="day-group-meta">Macro ${macro.bias||'&mdash;'} ${macro.score!==undefined?(macro.score>0?'+':'')+macro.score:''} &middot; Vol ${macro.volRegime||'&mdash;'}</span>
-        <div class="day-group-pills">${summaryPills(levels)}</div>
-        <button class="export-day-btn" onclick="exportPairDate('${pair}','${selectedDate}')">Export</button>
-      </div>
-      <div class="levels-grid">${levels.map((l,i)=>renderLevelCard(l,i,selectedDate,pair)).join('')}</div>
-    </div>`;
+    html+=renderDayGroup(pair,selectedDate,levels,macro);
   });
   return html;
 }
@@ -506,5 +498,292 @@ function copyCSV(){
 }
 
 function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(type||'');setTimeout(()=>t.classList.remove('show'),2800);}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REPLAY ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let _replayWorker = null;
+const _replayResults = {};  // key: `${pair}::${date}`
+
+function getReplayWorker() {
+  if (!_replayWorker) {
+    _replayWorker = new Worker('./js/journal-replay-worker.js');
+    _replayWorker.onmessage = (e) => {
+      const { type, payload } = e.data;
+      if (type === 'parsed')   onReplayParsed(payload);
+      if (type === 'result')   onReplayResult(payload);
+      if (type === 'error')    onReplayError(payload);
+      if (type === 'progress') onReplayProgress(payload);
+    };
+  }
+  return _replayWorker;
+}
+
+// ── M1 data store (symbol → loaded flag) ─────────────────────────────────────
+const _m1Loaded = {};   // symbol → true
+const _m1Pending = [];  // queue of {symbol, date, pair} waiting for parse
+
+function openReplayModal(pair, date) {
+  const symbol = pairToSymbol(pair);
+  document.getElementById('rp-pair-title').textContent = pair + ' · ' + date;
+  document.getElementById('rp-symbol').textContent = symbol;
+  document.getElementById('replayModal').classList.add('open');
+  // Show/hide upload vs run sections
+  const needUpload = !_m1Loaded[symbol];
+  document.getElementById('rp-upload-section').style.display = needUpload ? 'block' : 'none';
+  document.getElementById('rp-run-section').style.display = !needUpload ? 'block' : 'none';
+  // Store current target
+  document.getElementById('replayModal').dataset.pair = pair;
+  document.getElementById('replayModal').dataset.date = date;
+  // If already have a result for this pair+date, show it immediately
+  const key = pair + '::' + date;
+  if (_replayResults[key]) renderReplayInModal(_replayResults[key]);
+}
+function closeReplayModal() { document.getElementById('replayModal').classList.remove('open'); }
+
+function pairToSymbol(pair) {
+  return pair.replace('/', '').replace('XAU', 'XAUUSD').replace('NAS100_USD', 'NAS100');
+}
+
+function onM1FileSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const modal = document.getElementById('replayModal');
+  const pair  = modal.dataset.pair;
+  const symbol = pairToSymbol(pair);
+  const lbl   = document.getElementById('rp-file-lbl');
+  lbl.textContent = 'Parsing…';
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    getReplayWorker().postMessage({ type: 'parse', payload: { symbol, text: ev.target.result } });
+  };
+  reader.readAsText(file);
+}
+
+function onReplayParsed({ symbol, count }) {
+  _m1Loaded[symbol] = true;
+  showToast(`${symbol} M1: ${count.toLocaleString()} bars loaded`, 'ok');
+  document.getElementById('rp-upload-section').style.display = 'none';
+  document.getElementById('rp-run-section').style.display = 'block';
+  document.getElementById('rp-file-lbl').textContent = `${count.toLocaleString()} bars`;
+}
+
+function runReplay() {
+  const modal  = document.getElementById('replayModal');
+  const pair   = modal.dataset.pair;
+  const date   = modal.dataset.date;
+  const symbol = pairToSymbol(pair);
+  const dayObj = journalData[date]?.[pair];
+  if (!dayObj) { showToast('No levels for this pair/date', 'err'); return; }
+  const levels = dayObj.levels || [];
+  if (!levels.length) { showToast('No levels to replay', 'err'); return; }
+
+  document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Running replay…</div>';
+
+  const pip = getPipSz(pair);
+  getReplayWorker().postMessage({
+    type: 'replay',
+    payload: { symbol, date, levels, rrRatio: 2.2, pipSize: pip },
+  });
+}
+
+function onReplayProgress({ msg }) {
+  const el = document.getElementById('rp-result-area');
+  if (el) el.innerHTML = `<div class="rp-loading">${msg}</div>`;
+}
+
+function onReplayError(msg) {
+  const el = document.getElementById('rp-result-area');
+  if (el) el.innerHTML = `<div class="rp-error">${msg}</div>`;
+  showToast(msg, 'err');
+}
+
+function onReplayResult(payload) {
+  const { symbol, date } = payload;
+  // Find pair from symbol
+  const modal = document.getElementById('replayModal');
+  const pair  = modal.dataset.pair;
+  const key   = pair + '::' + date;
+  _replayResults[key] = payload;
+  renderReplayInModal(payload);
+  // Also update the inline panel in day view if visible
+  updateInlineDayPanel(pair, date, payload);
+}
+
+function renderReplayInModal(payload) {
+  const el = document.getElementById('rp-result-area');
+  if (!el) return;
+  el.innerHTML = buildReplayHTML(payload);
+}
+
+function safePairId(pair) { return pair.replace(/\//g, '-').replace(/_/g, '-'); }
+
+function updateInlineDayPanel(pair, date, payload) {
+  const panelEl = document.getElementById(`rp-inline-${safePairId(pair)}-${date}`);
+  if (panelEl) panelEl.outerHTML = buildInlineReplayPanel(pair, date, payload);
+}
+
+function buildReplayHTML(payload) {
+  const { results, equity, stats, byFib, byStar } = payload;
+
+  // ── Summary bar ──
+  const wrc = stats.winRate >= 60 ? 'vu' : stats.winRate >= 45 ? 'vn' : stats.traded > 0 ? 'vd' : 'vp';
+  const rc  = stats.totalR >= 0 ? 'vu' : 'vd';
+  let summaryHtml = `<div class="rp-summary">
+    <div class="rp-stat"><span class="rp-stat-lbl">Levels</span><span class="rp-stat-val">${stats.total}</span></div>
+    <div class="rp-stat"><span class="rp-stat-lbl">Touched</span><span class="rp-stat-val">${stats.touched}</span></div>
+    <div class="rp-stat"><span class="rp-stat-lbl">TP</span><span class="rp-stat-val vu">${stats.wins}</span></div>
+    <div class="rp-stat"><span class="rp-stat-lbl">SL</span><span class="rp-stat-val vd">${stats.losses}</span></div>
+    <div class="rp-stat"><span class="rp-stat-lbl">EOD</span><span class="rp-stat-val vn">${stats.eods}</span></div>
+    <div class="rp-stat"><span class="rp-stat-lbl">Win%</span><span class="rp-stat-val ${wrc}">${stats.winRate !== null ? stats.winRate + '%' : '—'}</span></div>
+    <div class="rp-stat"><span class="rp-stat-lbl">Total R</span><span class="rp-stat-val ${rc}">${stats.totalR > 0 ? '+' : ''}${stats.totalR}R</span></div>
+  </div>`;
+
+  // ── Equity curve (CSS-only sparkline) ──
+  let equityHtml = '';
+  if (equity.length > 1) {
+    const vals = equity.map(e => e.cumR);
+    const mn   = Math.min(...vals), mx = Math.max(...vals);
+    const range = mx - mn || 1;
+    const pts   = equity.map((e, i) => {
+      const x = Math.round(i / (equity.length - 1) * 280);
+      const y = Math.round(80 - (e.cumR - mn) / range * 70);
+      return `${x},${y}`;
+    }).join(' ');
+    const zeroY  = Math.round(80 - (0 - mn) / range * 70);
+    const lineCol = stats.totalR >= 0 ? 'var(--green)' : 'var(--red)';
+    equityHtml = `<div class="rp-equity-wrap">
+      <div class="rp-sec-lbl">Running R</div>
+      <svg class="rp-equity-svg" viewBox="0 0 280 90" preserveAspectRatio="none">
+        <line x1="0" y1="${zeroY}" x2="280" y2="${zeroY}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>
+        <polyline points="${pts}" fill="none" stroke="${lineCol}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        ${equity.map((e, i) => {
+          if (!e.result) return '';
+          const x = Math.round(i / Math.max(equity.length - 1, 1) * 280);
+          const y = Math.round(80 - (e.cumR - mn) / range * 70);
+          const col = e.result === 'tp' ? 'var(--green)' : e.result === 'sl' ? 'var(--red)' : 'var(--amber)';
+          return `<circle cx="${x}" cy="${y}" r="3" fill="${col}"/>`;
+        }).join('')}
+      </svg>
+      <div class="rp-equity-labels">
+        <span class="vd">Low ${mn.toFixed(1)}R</span>
+        <span style="font-size:9px;color:var(--text3)">${equity.length - 1} trades</span>
+        <span class="vu">High ${mx.toFixed(1)}R</span>
+      </div>
+    </div>`;
+  }
+
+  // ── Level replay table ──
+  let tableHtml = `<div class="rp-sec-lbl" style="margin-top:14px">Level by Level</div>
+    <div class="rp-table-wrap"><table class="rp-table">
+    <thead><tr><th>SD</th><th>Price</th><th>Dir</th><th>Stars</th><th>Touch</th><th>Exit</th><th>Result</th><th>R</th><th>MaxFav</th><th>MaxAdv</th></tr></thead><tbody>`;
+
+  for (const res of results) {
+    const l   = res.level;
+    const dig = 5;
+    const priceStr = typeof l.price === 'number' ? l.price.toFixed(dig) : (l.price || '—');
+    const sd   = l.todayFib != null ? 'SD' + l.todayFib : '—';
+    const dir  = l.direction === 'long' ? '<span class="rp-long">↑L</span>' : '<span class="rp-short">↓S</span>';
+    const stars = '★'.repeat(Math.min(l.stars || 1, 5));
+    const touch = res.touchTime || '—';
+    const exit  = res.exitTime || '—';
+    let resultBadge = '<span class="rp-badge untouched">—</span>';
+    if (res.result === 'tp')        resultBadge = '<span class="rp-badge tp">TP</span>';
+    else if (res.result === 'sl')   resultBadge = '<span class="rp-badge sl">SL</span>';
+    else if (res.result === 'eod')  resultBadge = '<span class="rp-badge eod">EOD</span>';
+    else if (res.result === 'open') resultBadge = '<span class="rp-badge open">Open</span>';
+    const rStr   = res.r !== null ? `<span class="${res.r >= 0 ? 'vu' : 'vd'}">${res.r > 0 ? '+' : ''}${res.r}R</span>` : '—';
+    const favStr = res.maxFav !== null ? `+${res.maxFav}p` : '—';
+    const advStr = res.maxAdv !== null ? `<span class="vd">${res.maxAdv}p</span>` : '—';
+    tableHtml += `<tr class="${res.result === 'tp' ? 'rp-row-win' : res.result === 'sl' ? 'rp-row-loss' : ''}">`
+      + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${dir}</td><td class="rp-stars">${stars}</td>`
+      + `<td class="mono">${touch}</td><td class="mono">${exit}</td><td>${resultBadge}</td>`
+      + `<td class="mono">${rStr}</td><td class="mono vn">${favStr}</td><td class="mono">${advStr}</td></tr>`;
+  }
+  tableHtml += '</tbody></table></div>';
+
+  // ── By Fib/SD breakdown ──
+  let fibHtml = `<div class="rp-sec-lbl" style="margin-top:14px">By SD Level</div>
+    <div class="rp-table-wrap"><table class="rp-table">
+    <thead><tr><th>SD</th><th>Touched</th><th>TP</th><th>SL</th><th>EOD</th><th>R</th><th>Win%</th></tr></thead><tbody>`;
+
+  const fibEntries = Object.entries(byFib).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
+  for (const [fib, s] of fibEntries) {
+    const traded = s.tp + s.sl + s.eod;
+    const wr = traded > 0 ? Math.round(s.tp / traded * 100) + '%' : '—';
+    const rc2 = s.r >= 0 ? 'vu' : 'vd';
+    const wc  = traded > 0 && s.tp / traded >= 0.6 ? 'vu' : traded > 0 && s.tp / traded >= 0.45 ? 'vn' : traded > 0 ? 'vd' : '';
+    fibHtml += `<tr><td>SD${fib}</td><td>${s.touched}</td><td class="vu">${s.tp}</td><td class="vd">${s.sl}</td><td class="vn">${s.eod}</td><td class="mono ${rc2}">${s.r >= 0 ? '+' : ''}${s.r.toFixed(1)}R</td><td class="${wc}">${wr}</td></tr>`;
+  }
+  fibHtml += '</tbody></table></div>';
+
+  // ── By Star breakdown ──
+  let starHtml = `<div class="rp-sec-lbl" style="margin-top:14px">By Star Rating</div>
+    <div class="rp-table-wrap"><table class="rp-table">
+    <thead><tr><th>Stars</th><th>Touched</th><th>TP</th><th>SL</th><th>R</th><th>Win%</th></tr></thead><tbody>`;
+
+  const starEntries = Object.entries(byStar).sort((a, b) => +b[0] - +a[0]);
+  for (const [star, s] of starEntries) {
+    const traded = s.tp + s.sl;
+    const wr = traded > 0 ? Math.round(s.tp / traded * 100) + '%' : '—';
+    const rc2 = s.r >= 0 ? 'vu' : 'vd';
+    const wc  = traded > 0 && s.tp / traded >= 0.6 ? 'vu' : traded > 0 && s.tp / traded >= 0.45 ? 'vn' : traded > 0 ? 'vd' : '';
+    starHtml += `<tr><td><span style="color:var(--amber)">${'★'.repeat(Math.min(+star, 5))}</span> ${star}★</td><td>${s.touched}</td><td class="vu">${s.tp}</td><td class="vd">${s.sl}</td><td class="mono ${rc2}">${s.r >= 0 ? '+' : ''}${s.r.toFixed(1)}R</td><td class="${wc}">${wr}</td></tr>`;
+  }
+  starHtml += '</tbody></table></div>';
+
+  return summaryHtml + equityHtml + tableHtml + fibHtml + starHtml;
+}
+
+function symbolToPair(symbol) {
+  // Reverse of pairToSymbol — approximate
+  if (symbol.includes('JPY')) return symbol.slice(0, 3) + '/' + symbol.slice(3);
+  if (symbol === 'XAUUSD') return 'XAU/USD';
+  if (symbol === 'NAS100') return 'NAS100_USD';
+  return symbol.slice(0, 3) + '/' + symbol.slice(3);
+}
+
+// Inline panel rendered inside day view (collapsed by default)
+function buildInlineReplayPanel(pair, date, payload) {
+  const pid = safePairId(pair);
+  if (!payload) return `<div id="rp-inline-${pid}-${date}"></div>`;
+  const { stats } = payload;
+  const rc = stats.totalR >= 0 ? 'vu' : 'vd';
+  const wrc = stats.winRate >= 60 ? 'vu' : stats.winRate >= 45 ? 'vn' : stats.traded > 0 ? 'vd' : '';
+  return `<div id="rp-inline-${pid}-${date}" class="rp-inline-panel">
+    <div class="rp-inline-summary">
+      <span class="rp-inline-badge">Replay</span>
+      <span>${stats.touched}/${stats.total} touched</span>
+      <span class="vu">${stats.wins}TP</span>
+      <span class="vd">${stats.losses}SL</span>
+      <span class="vn">${stats.eods}EOD</span>
+      <span class="${wrc}">${stats.winRate !== null ? stats.winRate + '%' : '—'}</span>
+      <span class="${rc} mono">${stats.totalR >= 0 ? '+' : ''}${stats.totalR}R</span>
+      <button class="rp-detail-btn" onclick="openReplayModal('${pair}','${date}')">Details &rarr;</button>
+    </div>
+  </div>`;
+}
+
+// ── Inject replay button into day group header ───────────────────────────────
+// Called from renderDayView — we override the pair group render to add the button + inline panel
+
+function renderDayGroup(pair, date, levels, macro) {
+  const key    = pair + '::' + date;
+  const result = _replayResults[key];
+  const inlinePanel = buildInlineReplayPanel(pair, date, result || null);
+
+  return `<div class="day-group">
+    <div class="day-group-header">
+      <span class="day-group-date">${pair}</span>
+      <span class="day-group-meta">Macro ${macro.bias||'&mdash;'} ${macro.score!==undefined?(macro.score>0?'+':'')+macro.score:''} &middot; Vol ${macro.volRegime||'&mdash;'}</span>
+      <div class="day-group-pills">${summaryPills(levels)}</div>
+      <button class="rp-run-btn" onclick="openReplayModal('${pair}','${date}')">&#9654; Run Day</button>
+      <button class="export-day-btn" onclick="exportPairDate('${pair}','${date}')">Export</button>
+    </div>
+    ${inlinePanel}
+    <div class="levels-grid">${levels.map((l, i) => renderLevelCard(l, i, date, pair)).join('')}</div>
+  </div>`;
+}
 
 init();

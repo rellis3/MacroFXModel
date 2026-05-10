@@ -112,6 +112,43 @@
   </div>
 </div>
 
+<!-- REPLAY MODAL -->
+<div class="modal-overlay" id="replayModal" onclick="if(event.target===this)closeReplayModal()">
+  <div class="modal" style="max-width:900px">
+    <div class="modal-hd">
+      <div class="modal-title">&#9654; Day Replay — <span id="rp-pair-title"></span></div>
+      <button class="modal-close" onclick="closeReplayModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Upload section (shown when M1 not yet loaded) -->
+      <div id="rp-upload-section">
+        <div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:var(--r);padding:11px 14px;font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:14px">
+          <strong style="color:var(--blue)">Load M1 data for <span id="rp-symbol"></span></strong><br>
+          Drop or select your M1 CSV (same format as backtest — timestamp,O,H,L,C). Once loaded it stays in memory for the session.
+        </div>
+        <label class="rp-file-label">
+          <span id="rp-file-lbl">&#128193; Choose M1 CSV…</span>
+          <input type="file" accept=".csv,.txt" style="display:none" onchange="onM1FileSelected(this)">
+        </label>
+      </div>
+
+      <!-- Run section (shown once M1 loaded) -->
+      <div id="rp-run-section" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="save-btn" style="padding:7px 22px;font-size:12px" onclick="runReplay()">&#9654; Run Replay</button>
+          <button class="dark-btn" style="font-size:11px" onclick="document.getElementById('rp-upload-section').style.display='block';document.getElementById('rp-run-section').style.display='none'">&#8635; Reload CSV</button>
+          <span style="font-size:11px;color:var(--text3)">Replays each level against M1 bars (08:00–21:00 London)</span>
+        </div>
+      </div>
+
+      <!-- Results area -->
+      <div id="rp-result-area"></div>
+
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="./js/journal-app.js"></script>
