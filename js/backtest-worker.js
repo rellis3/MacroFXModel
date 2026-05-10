@@ -120,6 +120,7 @@ function handleRun({ symbol, cfg }) {
   const requireSweep     = cfg.requireSweep     ?? false;
   const sweepPips        = cfg.sweepPips        ?? 2;
   const secondTouchOnly  = cfg.secondTouchOnly  ?? false;
+  const useM1Features    = cfg.useM1Features    ?? false;
   const enabledFibSet = cfg.enabledFibs?.length
     ? new Set(cfg.enabledFibs.map(f => +f))
     : null;
@@ -156,6 +157,7 @@ function handleRun({ symbol, cfg }) {
 
   let openTrade      = null;
   let bar5mWin       = []; // newest first, max 350
+  let bar1mWin       = []; // newest first, max 600 — only populated when useM1Features=true
   let bar30mWin      = []; // oldest first, max 350
   let dailyBarWin    = []; // oldest first, max 150
 
@@ -176,6 +178,9 @@ function handleRun({ symbol, cfg }) {
       // Still build windows so features are warm when we start trading
       for (const b of m30Today) { bar30mWin.push(b); if (bar30mWin.length > 350) bar30mWin.shift(); }
       for (const b of m5Today)  { bar5mWin.unshift(b); if (bar5mWin.length > 350) bar5mWin.pop(); }
+      if (useM1Features) {
+        for (const b of m1Today) { bar1mWin.unshift(b); if (bar1mWin.length > 600) bar1mWin.pop(); }
+      }
       const db = dailyBarMap.get(date);
       if (db) { dailyBarWin.push(db); if (dailyBarWin.length > 150) dailyBarWin.shift(); }
       continue;
@@ -242,6 +247,7 @@ function handleRun({ symbol, cfg }) {
     // ── Interleaved pointers ───────────────────────────────────────────────
     let m30Ptr = 0;
     let m5Ptr  = 0;  // tracks how far into m5Today we've ingested for windows
+    let m1Ptr  = 0;  // tracks how far into m1Today we've ingested for bar1mWin
 
     // ── M1 bar loop (primary entry + exit loop) ───────────────────────────
     // M5 bars are used only for: ATR computation, feature windows, EOD exit,
@@ -265,6 +271,16 @@ function handleRun({ symbol, cfg }) {
       while (m5Ptr < m5Today.length && m5Today[m5Ptr].ts < bar.ts) {
         bar5mWin.unshift(m5Today[m5Ptr++]);
         if (bar5mWin.length > 350) bar5mWin.pop();
+      }
+
+      // ── Advance M1 window up to this bar (newest-first) ───────────────
+      // Only maintained when useM1Features=true to avoid the O(n) cost otherwise.
+      // When entryBars IS m1Today this lags one bar behind (uses closed M1 bars only).
+      if (useM1Features && m1Today.length > 0) {
+        while (m1Ptr < m1Today.length && m1Today[m1Ptr].ts < bar.ts) {
+          bar1mWin.unshift(m1Today[m1Ptr++]);
+          if (bar1mWin.length > 600) bar1mWin.pop();
+        }
       }
 
       // ── Exit check for open trade ──────────────────────────────────────
@@ -359,9 +375,9 @@ function handleRun({ symbol, cfg }) {
           // computeDirection tallies weighted long/short votes from all features
           // and returns the winning side. Tie → null (skip trade).
           const rb = computeDirection({
-            bars5mRev: bar5mWin, bars30m: bar30mWin, dailyBars: dailyBarWin,
+            bars5mRev: bar5mWin, bars1mRev: bar1mWin, bars30m: bar30mWin, dailyBars: dailyBarWin,
             asiaRange, mondayRange, atr, symbol,
-            price: bar.c, todayDate: date, featureCfg: features,
+            price: bar.c, todayDate: date, featureCfg: features, useM1Features,
           });
 
           // No feature majority → skip (don't fall back to price-vs-level default)
@@ -490,6 +506,14 @@ function handleRun({ symbol, cfg }) {
     while (m30Ptr < m30Today.length) {
       bar30mWin.push(m30Today[m30Ptr++]);
       if (bar30mWin.length > 350) bar30mWin.shift();
+    }
+
+    // ── Drain remaining M1 bars ───────────────────────────────────────────
+    if (useM1Features) {
+      while (m1Ptr < m1Today.length) {
+        bar1mWin.unshift(m1Today[m1Ptr++]);
+        if (bar1mWin.length > 600) bar1mWin.pop();
+      }
     }
 
     // ── EOD force-close: any trade still open after the bar loop ─────────

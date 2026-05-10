@@ -326,8 +326,15 @@ function ichimokuMid(bars, period, endIdx) {
 
 // ── Feature functions ─────────────────────────────────────────────────────────
 // bars5mRev = newest-first M5 array (with lDate, lHour on each bar)
+// bars1mRev = newest-first M1 array (optional — used when useM1Features=true)
 // bars30m   = oldest-first M30 array
 // dailyBars = oldest-first derived daily bars
+//
+// When useM1Features=true and bars1mRev is supplied, intraday features that
+// benefit from higher precision (wick rejection, RSI divergence, order block,
+// FVG bias, VWAP slope, MACD) switch to M1 data. Structural features that
+// require meaningful swing structure (CHoCH/BOS, ADX, Hurst, Ichimoku,
+// HTF EMA, Weekly Pivot) always use M5/M30/daily — they are too noisy on M1.
 
 function featureRangePosition(price, asiaRange, mondayRange, atr) {
   const sources = [];
@@ -642,22 +649,26 @@ function featureMacdSignal(bars5mRev) {
 // Direction-independent feature runner — all features return an absolute
 // long/short/null signal without requiring a pre-baked entryDir.
 function _runFeatures(args) {
-  const { bars5mRev, bars30m, dailyBars, asiaRange, mondayRange, atr, symbol, price, todayDate, featureCfg } = args;
+  const { bars5mRev, bars1mRev, bars30m, dailyBars, asiaRange, mondayRange, atr, symbol, price, todayDate, featureCfg, useM1Features } = args;
+
+  // When M1 mode is enabled and M1 bars are available, intraday precision
+  // features use M1. Structural features always keep M5/M30/daily.
+  const intradayBars = (useM1Features && bars1mRev?.length >= 20) ? bars1mRev : bars5mRev;
 
   const featureFns = {
     rangePosition: () => featureRangePosition(price, asiaRange, mondayRange, atr),
-    chochBos:      () => featureChochBos(bars30m),
-    wickRejection: () => featureWickRejection(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
-    rsiDivergence: () => featureRsiDivergence(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
-    orderBlock:    () => featureOrderBlock(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
-    htfEma:        () => featureHtfEma(bars5mRev),
-    weeklyPivot:   () => featureWeeklyPivot(dailyBars, price, atr, symbol),
-    vwapSlope:     () => featureVwapSlope(bars5mRev, price, symbol, todayDate),
-    adxFilter:     () => featureAdxFilter(bars30m),
-    hurstRegime:   () => featureHurstRegime(dailyBars),
-    fvgBias:       () => featureFvgBias(bars5mRev, price, atr, symbol),
-    ichimokuCloud: () => featureIchimokuCloud(dailyBars, price, symbol),
-    macdSignal:    () => featureMacdSignal(bars5mRev),
+    chochBos:      () => featureChochBos(bars30m),                                                    // structural — M30 always
+    wickRejection: () => featureWickRejection(intradayBars, price, asiaRange, mondayRange, atr, symbol),
+    rsiDivergence: () => featureRsiDivergence(intradayBars, price, asiaRange, mondayRange, atr, symbol),
+    orderBlock:    () => featureOrderBlock(intradayBars, price, asiaRange, mondayRange, atr, symbol),
+    htfEma:        () => featureHtfEma(bars5mRev),                                                    // structural — M5→H1 always
+    weeklyPivot:   () => featureWeeklyPivot(dailyBars, price, atr, symbol),                           // daily always
+    vwapSlope:     () => featureVwapSlope(intradayBars, price, symbol, todayDate),
+    adxFilter:     () => featureAdxFilter(bars30m),                                                   // structural — M30 always
+    hurstRegime:   () => featureHurstRegime(dailyBars),                                               // daily always
+    fvgBias:       () => featureFvgBias(intradayBars, price, atr, symbol),
+    ichimokuCloud: () => featureIchimokuCloud(dailyBars, price, symbol),                              // daily always
+    macdSignal:    () => featureMacdSignal(intradayBars),
   };
 
   const results = [];
@@ -675,6 +686,7 @@ function _runFeatures(args) {
 
 // Determine direction from feature votes, then score conviction for that direction.
 // Returns { entryDir, conviction, confirmCount, conflictCount, totalPts, maxPts, results }
+// args may include bars1mRev and useM1Features for M1-precision intraday features.
 export function computeDirection(args) {
   const { featureCfg } = args;
   const rawResults = _runFeatures(args);
@@ -714,21 +726,22 @@ export function computeDirection(args) {
 }
 
 // Legacy per-direction scorer — kept for any caller that already knows direction.
-export function computeSignal({ bars5mRev, bars30m, dailyBars, asiaRange, mondayRange, atr, symbol, entryDir, price, todayDate, featureCfg }) {
+export function computeSignal({ bars5mRev, bars1mRev, bars30m, dailyBars, asiaRange, mondayRange, atr, symbol, entryDir, price, todayDate, featureCfg, useM1Features }) {
+  const intradayBars = (useM1Features && bars1mRev?.length >= 20) ? bars1mRev : bars5mRev;
   const FEATURE_FNS = {
     rangePosition: () => featureRangePosition(price, asiaRange, mondayRange, atr),
     chochBos:      () => featureChochBos(bars30m),
-    wickRejection: () => featureWickRejection(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
-    rsiDivergence: () => featureRsiDivergence(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
-    orderBlock:    () => featureOrderBlock(bars5mRev, price, asiaRange, mondayRange, atr, symbol),
+    wickRejection: () => featureWickRejection(intradayBars, price, asiaRange, mondayRange, atr, symbol),
+    rsiDivergence: () => featureRsiDivergence(intradayBars, price, asiaRange, mondayRange, atr, symbol),
+    orderBlock:    () => featureOrderBlock(intradayBars, price, asiaRange, mondayRange, atr, symbol),
     htfEma:        () => featureHtfEma(bars5mRev),
-    vwapSlope:     () => featureVwapSlope(bars5mRev, price, symbol, todayDate),
+    vwapSlope:     () => featureVwapSlope(intradayBars, price, symbol, todayDate),
     adxFilter:     () => featureAdxFilter(bars30m),
     hurstRegime:   () => featureHurstRegime(dailyBars),
-    fvgBias:       () => featureFvgBias(bars5mRev, price, atr, symbol),
+    fvgBias:       () => featureFvgBias(intradayBars, price, atr, symbol),
     weeklyPivot:   () => featureWeeklyPivot(dailyBars, price, atr, symbol),
     ichimokuCloud: () => featureIchimokuCloud(dailyBars, price, symbol),
-    macdSignal:    () => featureMacdSignal(bars5mRev),
+    macdSignal:    () => featureMacdSignal(intradayBars),
   };
   let confirmCount = 0, conflictCount = 0, totalPts = 0, maxPts = 0;
   const results = [];

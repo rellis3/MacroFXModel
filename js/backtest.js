@@ -138,6 +138,7 @@ function loadConfig(id) {
   sc('cfg-require-sweep',   cfg.requireSweep);
   sv('cfg-sweep-pips',      cfg.sweepPips);
   sc('cfg-second-touch',    cfg.secondTouchOnly);
+  sc('cfg-use-m1-features', cfg.useM1Features);
   if (cfg.enabledFibs) {
     const fibSet = new Set(cfg.enabledFibs.map(String));
     document.querySelectorAll('.fib-chk').forEach(chk => {
@@ -503,6 +504,7 @@ function buildCfg() {
     requireSweep:      gb('cfg-require-sweep'),
     sweepPips:         parseFloat(g('cfg-sweep-pips'))|| 2,
     secondTouchOnly:   gb('cfg-second-touch'),
+    useM1Features:     gb('cfg-use-m1-features'),
     enabledFibs:       getEnabledFibs(),
     features,
   };
@@ -1234,6 +1236,7 @@ function restoreSettings() {
     sc('cfg-require-sweep',  cfg.requireSweep);
     s('cfg-sweep-pips',      cfg.sweepPips);
     sc('cfg-second-touch',   cfg.secondTouchOnly);
+    sc('cfg-use-m1-features',cfg.useM1Features);
     if (cfg.enabledFibs) {
       const fibSet = new Set(cfg.enabledFibs.map(String));
       document.querySelectorAll('.fib-chk').forEach(chk => {

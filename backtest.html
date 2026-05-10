@@ -489,6 +489,10 @@
         <p><span class="hr">Trade-off:</span> entry is later, so price may have already moved. Works best at high-conviction levels where the reversal is decisive.</p>
         <h4>Confirm Threshold (%)</h4>
         <p>The fraction of the N confirmation bars that must close in the trade direction. <code>0.6</code> = 60% (3 of 5). <code>1.0</code> = every bar must confirm — very strict. <code>0.5</code> = simple majority.</p>
+        <h4>M1 Precision Features</h4>
+        <p>By default, intraday features (Wick Rejection, RSI Divergence, Order Block, FVG Bias, TWAP Slope, MACD) compute off the M5 bar window. Enabling this toggle switches those 7 features to use M1 bars instead, giving higher precision at each entry without needing a separate M1 data file — as long as M1 data is loaded.</p>
+        <p><span class="hg">Why it reduces bias:</span> M5 bars used at 09:05 contain data from 09:00–09:05, which isn't look-ahead. But the subtle issue is that the M5 window contains earlier bars whose <em>structure</em> was formed in hindsight relative to intraday decisions. M1 bars give the engine the exact same view of price that a live trader would have at that moment — each bar is the most recent closed M1 candle only.</p>
+        <p><span class="hr">Trade-off:</span> Structural features (CHoCH/BOS, ADX, Hurst, Ichimoku, HTF EMA, Weekly Pivot) deliberately stay on M5/M30/daily — M1 swings are too noisy to define meaningful structure. M1 mode gives more entry-precision but can also amplify M1-level noise in the intraday signals. A/B test both and compare Bayesian accuracy per feature.</p>
       </div>
       <div class="cfg-grid">
         <div class="cfg-cell full">
@@ -514,6 +518,12 @@
         <div class="cfg-cell">
           <label>Confirm threshold (%)</label>
           <input type="number" id="cfg-candle-pct" class="bt-input" value="0.6" min="0.5" max="1.0" step="0.05" title="Fraction of N confirm bars that must close in the trade direction (e.g. 0.6 = 3 of 5)"/>
+        </div>
+        <div class="cfg-cell full">
+          <label class="toggle-row">
+            <input type="checkbox" id="cfg-use-m1-features"/>
+            <span>M1 precision features<span class="toggle-hint">When enabled and M1 data is loaded, intraday features (Wick Rejection, RSI Divergence, Order Block, FVG Bias, TWAP Slope, MACD) compute off M1 bars instead of M5. Reduces look-ahead bias from higher timeframes. Structural features (CHoCH/BOS, ADX, Hurst, Ichimoku, HTF EMA, Weekly Pivot) always use M5/M30/daily.</span></span>
+          </label>
         </div>
       </div>
     </div>
