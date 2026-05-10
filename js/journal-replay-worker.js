@@ -135,25 +135,29 @@ function handleReplay({ symbol, date, levels, rrRatio, pipSize }) {
       return mins >= 8 * 60 && mins < 21 * 60;
     });
 
-    let touched   = false;
-    let touchTime = null;
-    let result    = 'untouched';
-    let r         = null;
-    let exitTime  = null;
-    let maxFav    = 0;
-    let maxAdv    = 0;
-    let inTrade   = false;
+    let touched      = false;
+    let touchTime    = null;
+    let result       = 'untouched';
+    let r            = null;
+    let exitTime     = null;
+    let maxFav       = 0;
+    let maxAdv       = 0;
+    let inTrade      = false;
+    let touchBarIdx  = -1;   // index into windowBars where touch first occurred
+    let exitBarIdx   = -1;
 
-    for (const bar of windowBars) {
+    for (let bi = 0; bi < windowBars.length; bi++) {
+      const bar     = windowBars[bi];
       const barMins = bar.hour * 60 + bar.min;
 
       if (!inTrade) {
         // Touch = wick overlaps level within 0.5 pip
         const prox = pip * 0.5;
         if (bar.l <= entryPrice + prox && bar.h >= entryPrice - prox) {
-          touched   = true;
-          touchTime = hhmm(bar);
-          inTrade   = true;
+          touched      = true;
+          touchTime    = hhmm(bar);
+          inTrade      = true;
+          touchBarIdx  = bi;
         }
       }
 
@@ -163,24 +167,42 @@ function handleReplay({ symbol, date, levels, rrRatio, pipSize }) {
           const adv = (entryPrice - bar.l) / pip;
           if (fav > maxFav) maxFav = fav;
           if (adv > maxAdv) maxAdv = adv;
-          if (bar.l <= sl) { result = 'sl'; r = -1; exitTime = hhmm(bar); break; }
-          if (bar.h >= tp) { result = 'tp'; r = tpDist / slDist; exitTime = hhmm(bar); break; }
+          if (bar.l <= sl) { result = 'sl'; r = -1; exitTime = hhmm(bar); exitBarIdx = bi; break; }
+          if (bar.h >= tp) { result = 'tp'; r = tpDist / slDist; exitTime = hhmm(bar); exitBarIdx = bi; break; }
         } else {
           const fav = (entryPrice - bar.l) / pip;
           const adv = (bar.h - entryPrice) / pip;
           if (fav > maxFav) maxFav = fav;
           if (adv > maxAdv) maxAdv = adv;
-          if (bar.h >= sl) { result = 'sl'; r = -1; exitTime = hhmm(bar); break; }
-          if (bar.l <= tp) { result = 'tp'; r = tpDist / slDist; exitTime = hhmm(bar); break; }
+          if (bar.h >= sl) { result = 'sl'; r = -1; exitTime = hhmm(bar); exitBarIdx = bi; break; }
+          if (bar.l <= tp) { result = 'tp'; r = tpDist / slDist; exitTime = hhmm(bar); exitBarIdx = bi; break; }
         }
         if (barMins >= 21 * 60 - 1) {
           const eodPnl = dir === 'long' ? bar.c - entryPrice : entryPrice - bar.c;
           r = Math.max(-1, Math.min(tpDist / slDist, eodPnl / slDist));
           result   = 'eod';
           exitTime = '21:00';
+          exitBarIdx = bi;
           break;
         }
       }
+    }
+
+    // Slice bars for the chart: 12 before touch → exit + 8 after
+    let chartBars = null;
+    if (touchBarIdx >= 0) {
+      const pre  = 12;
+      const post = exitBarIdx >= 0 ? 8 : 30;  // if no exit yet, show 30 more bars
+      const from = Math.max(0, touchBarIdx - pre);
+      const to   = exitBarIdx >= 0
+        ? Math.min(windowBars.length, exitBarIdx + post + 1)
+        : Math.min(windowBars.length, touchBarIdx + 60);
+      chartBars = windowBars.slice(from, to).map(b => ({
+        h: b.h, l: b.l, o: b.o, c: b.c,
+        t: hhmm(b),
+        isTouchBar: hhmm(b) === touchTime,
+        isExitBar:  exitBarIdx >= 0 && hhmm(b) === exitTime,
+      }));
     }
 
     if (inTrade && result === 'untouched') result = 'open';
@@ -201,11 +223,14 @@ function handleReplay({ symbol, date, levels, rrRatio, pipSize }) {
       level,
       touched,
       result,
-      r:       r !== null ? +r.toFixed(2) : null,
+      r:        r !== null ? +r.toFixed(2) : null,
       touchTime,
       exitTime,
-      maxFav:  maxFav > 0 ? +maxFav.toFixed(1) : null,
-      maxAdv:  maxAdv > 0 ? +maxAdv.toFixed(1) : null,
+      maxFav:   maxFav > 0 ? +maxFav.toFixed(1) : null,
+      maxAdv:   maxAdv > 0 ? +maxAdv.toFixed(1) : null,
+      chartBars,   // null when untouched, array of {h,l,o,c,t,isTouchBar,isExitBar} otherwise
+      entryPrice,
+      sl, tp, dir,
     });
   }
 

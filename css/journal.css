@@ -281,6 +281,15 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .rp-stars{color:var(--amber)}
 .mono{font-family:'DM Mono',monospace}
 
+/* ── CANDLESTICK CHART ROWS ──────────────────────────────────────────────────── */
+.rp-chevron-cell{width:22px;padding:4px 4px 4px 8px !important}
+.rp-chevron{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:9px;cursor:pointer;padding:1px 4px;line-height:1.4;transition:all .15s;font-family:'DM Mono',monospace}
+.rp-chevron:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg)}
+.rp-chevron-ph{display:inline-block;width:18px}
+.rp-chart-row td{padding:0 !important;border-bottom:2px solid var(--border2) !important}
+.rp-chart-cell{background:var(--bg) !important}
+.rp-candle-svg{display:block;width:100%;max-width:100%;height:auto;background:var(--s1);border-radius:0;padding:4px 0}
+
 /* LEVEL NARRATIVE STRIP */
 .level-narrative{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:10px;padding:5px 10px;background:var(--s2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:0 -1px;line-height:1.4}
 .lnr-name{font-weight:700;color:var(--text2);font-family:'DM Mono',monospace}

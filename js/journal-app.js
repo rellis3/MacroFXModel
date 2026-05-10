@@ -664,6 +664,146 @@ function updateInlineDayPanel(pair, date, payload) {
   if (panelEl) panelEl.outerHTML = buildInlineReplayPanel(pair, date, payload);
 }
 
+function rpToggleChart(id) {
+  const row = document.getElementById(id);
+  if (!row) return;
+  const open = row.style.display !== 'none';
+  row.style.display = open ? 'none' : 'table-row';
+  // Rotate chevron button
+  const btn = row.previousElementSibling?.querySelector('.rp-chevron');
+  if (btn) btn.textContent = open ? '▶' : '▼';
+}
+
+function buildCandleChart(res) {
+  const bars       = res.chartBars;
+  const entryPrice = res.entryPrice;
+  const sl         = res.sl;
+  const tp         = res.tp;
+  const dir        = res.dir;
+  const result     = res.result;
+
+  // Chart dimensions
+  const W = 600, H = 160;
+  const padL = 8, padR = 52, padT = 14, padB = 20;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+
+  // Price range — include SL, TP, entry and all bar wicks
+  const allPrices = bars.flatMap(b => [b.h, b.l]);
+  allPrices.push(entryPrice, sl, tp);
+  let priceMin = Math.min(...allPrices);
+  let priceMax = Math.max(...allPrices);
+  // Add 10% padding above and below
+  const priceRange = priceMax - priceMin || entryPrice * 0.001;
+  priceMin -= priceRange * 0.10;
+  priceMax += priceRange * 0.10;
+  const priceSpan = priceMax - priceMin;
+
+  const px = (i) => padL + (i + 0.5) * (chartW / bars.length);
+  const py = (p) => padT + chartH - (p - priceMin) / priceSpan * chartH;
+
+  const candleW = Math.max(1.5, Math.min(9, chartW / bars.length * 0.65));
+
+  // Build candles
+  let candleSvg = '';
+  for (let i = 0; i < bars.length; i++) {
+    const b   = bars[i];
+    const x   = px(i);
+    const isUp = b.c >= b.o;
+    const col  = isUp ? 'var(--green)' : 'var(--red)';
+    const bodyT = py(Math.max(b.o, b.c));
+    const bodyB = py(Math.min(b.o, b.c));
+    const bodyH = Math.max(1, bodyB - bodyT);
+    const wickT = py(b.h);
+    const wickB = py(b.l);
+
+    // Highlight touch bar with a subtle background glow
+    if (b.isTouchBar) {
+      candleSvg += `<rect x="${x - candleW * 1.2}" y="${padT}" width="${candleW * 2.4}" height="${chartH}" fill="var(--blue)" opacity="0.08" rx="2"/>`;
+    }
+    if (b.isExitBar) {
+      const exitCol = result === 'tp' ? 'var(--green)' : result === 'sl' ? 'var(--red)' : 'var(--amber)';
+      candleSvg += `<rect x="${x - candleW * 1.2}" y="${padT}" width="${candleW * 2.4}" height="${chartH}" fill="${exitCol}" opacity="0.10" rx="2"/>`;
+    }
+
+    // Wick
+    candleSvg += `<line x1="${x}" y1="${wickT}" x2="${x}" y2="${wickB}" stroke="${col}" stroke-width="1"/>`;
+    // Body
+    candleSvg += `<rect x="${x - candleW / 2}" y="${bodyT}" width="${candleW}" height="${bodyH}" fill="${col}" rx="0.5"/>`;
+  }
+
+  // Horizontal price lines
+  const entryY  = py(entryPrice);
+  const slY     = py(sl);
+  const tpY     = py(tp);
+  const rightX  = padL + chartW;
+
+  const digits  = entryPrice > 20 ? 2 : 5;
+  const fmt     = (p) => p.toFixed(digits);
+
+  // Entry line (dashed blue)
+  const entryLine = `<line x1="${padL}" y1="${entryY}" x2="${rightX}" y2="${entryY}" stroke="var(--blue)" stroke-width="1" stroke-dasharray="4,3"/>
+    <text x="${rightX + 3}" y="${entryY + 4}" font-size="8" fill="var(--blue)" font-family="DM Mono,monospace">${fmt(entryPrice)}</text>`;
+
+  // SL line (red dashed)
+  const slLine = `<line x1="${padL}" y1="${slY}" x2="${rightX}" y2="${slY}" stroke="var(--red)" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="${rightX + 3}" y="${slY + 4}" font-size="8" fill="var(--red)" font-family="DM Mono,monospace">SL ${fmt(sl)}</text>`;
+
+  // TP line (green dashed)
+  const tpLine = `<line x1="${padL}" y1="${tpY}" x2="${rightX}" y2="${tpY}" stroke="var(--green)" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="${rightX + 3}" y="${tpY + 4}" font-size="8" fill="var(--green)" font-family="DM Mono,monospace">TP ${fmt(tp)}</text>`;
+
+  // Shaded SL zone (below entry for long, above for short)
+  const slZoneTop  = dir === 'long' ? slY : Math.min(entryY, slY);
+  const slZoneBot  = dir === 'long' ? Math.max(entryY, slY) : slY;
+  const slZone = `<rect x="${padL}" y="${slZoneTop}" width="${chartW}" height="${Math.abs(slY - entryY)}" fill="var(--red)" opacity="0.05"/>`;
+
+  // Shaded TP zone (above entry for long, below for short)
+  const tpZone = `<rect x="${padL}" y="${Math.min(entryY, tpY)}" width="${chartW}" height="${Math.abs(tpY - entryY)}" fill="var(--green)" opacity="0.05"/>`;
+
+  // Entry arrow marker at touch
+  const touchBar = bars.findIndex(b => b.isTouchBar);
+  let entryArrow = '';
+  if (touchBar >= 0) {
+    const ax = px(touchBar);
+    if (dir === 'long') {
+      const ay = py(sl) + 10;
+      entryArrow = `<polygon points="${ax},${ay - 8} ${ax - 5},${ay} ${ax + 5},${ay}" fill="var(--blue)" opacity="0.9"/>`;
+    } else {
+      const ay = py(sl) - 10;
+      entryArrow = `<polygon points="${ax},${ay + 8} ${ax - 5},${ay} ${ax + 5},${ay}" fill="var(--blue)" opacity="0.9"/>`;
+    }
+  }
+
+  // Time axis labels — show every ~10 bars
+  let timeLabels = '';
+  const step = Math.max(1, Math.round(bars.length / 8));
+  for (let i = 0; i < bars.length; i += step) {
+    const x = px(i);
+    timeLabels += `<text x="${x}" y="${H - 4}" font-size="7.5" fill="var(--text3)" text-anchor="middle" font-family="DM Mono,monospace">${bars[i].t}</text>`;
+  }
+
+  // Result label at exit bar
+  const exitBar = bars.findIndex(b => b.isExitBar);
+  let exitLabel = '';
+  if (exitBar >= 0) {
+    const ex = px(exitBar);
+    const ey = result === 'tp' ? tpY - 5 : result === 'sl' ? slY + 14 : entryY;
+    const ecol = result === 'tp' ? 'var(--green)' : result === 'sl' ? 'var(--red)' : 'var(--amber)';
+    const etxt = result.toUpperCase();
+    exitLabel = `<rect x="${ex - 10}" y="${ey - 9}" width="20" height="11" rx="3" fill="${ecol}" opacity="0.9"/>
+      <text x="${ex}" y="${ey}" font-size="7.5" fill="white" text-anchor="middle" font-weight="bold" font-family="DM Sans,sans-serif">${etxt}</text>`;
+  }
+
+  return `<svg class="rp-candle-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    ${slZone}${tpZone}
+    ${candleSvg}
+    ${entryLine}${slLine}${tpLine}
+    ${entryArrow}${exitLabel}
+    ${timeLabels}
+  </svg>`;
+}
+
 function buildReplayHTML(payload) {
   const { results, equity, stats, byFib, byStar } = payload;
 
@@ -717,17 +857,18 @@ function buildReplayHTML(payload) {
   // ── Level replay table ──
   let tableHtml = `<div class="rp-sec-lbl" style="margin-top:14px">Level by Level</div>
     <div class="rp-table-wrap"><table class="rp-table">
-    <thead><tr><th>SD</th><th>Price</th><th>Dir</th><th>Stars</th><th>Touch</th><th>Exit</th><th>Result</th><th>R</th><th>MaxFav</th><th>MaxAdv</th></tr></thead><tbody>`;
+    <thead><tr><th></th><th>SD</th><th>Price</th><th>Dir</th><th>Stars</th><th>Touch</th><th>Exit</th><th>Result</th><th>R</th><th>MaxFav</th><th>MaxAdv</th></tr></thead><tbody>`;
 
-  for (const res of results) {
+  for (let ri = 0; ri < results.length; ri++) {
+    const res = results[ri];
     const l   = res.level;
     const dig = 5;
     const priceStr = typeof l.price === 'number' ? l.price.toFixed(dig) : (l.price || '—');
-    const sd   = l.todayFib != null ? 'SD' + l.todayFib : '—';
-    const dir  = l.direction === 'long' ? '<span class="rp-long">↑L</span>' : '<span class="rp-short">↓S</span>';
-    const stars = '★'.repeat(Math.min(l.stars || 1, 5));
-    const touch = res.touchTime || '—';
-    const exit  = res.exitTime || '—';
+    const sd    = l.todayFib != null ? 'SD' + l.todayFib : '—';
+    const dir   = l.direction === 'long' ? '<span class="rp-long">↑L</span>' : '<span class="rp-short">↓S</span>';
+    const stars  = '★'.repeat(Math.min(l.stars || 1, 5));
+    const touch  = res.touchTime || '—';
+    const exit   = res.exitTime  || '—';
     let resultBadge = '<span class="rp-badge untouched">—</span>';
     if (res.result === 'tp')        resultBadge = '<span class="rp-badge tp">TP</span>';
     else if (res.result === 'sl')   resultBadge = '<span class="rp-badge sl">SL</span>';
@@ -736,10 +877,23 @@ function buildReplayHTML(payload) {
     const rStr   = res.r !== null ? `<span class="${res.r >= 0 ? 'vu' : 'vd'}">${res.r > 0 ? '+' : ''}${res.r}R</span>` : '—';
     const favStr = res.maxFav !== null ? `+${res.maxFav}p` : '—';
     const advStr = res.maxAdv !== null ? `<span class="vd">${res.maxAdv}p</span>` : '—';
-    tableHtml += `<tr class="${res.result === 'tp' ? 'rp-row-win' : res.result === 'sl' ? 'rp-row-loss' : ''}">`
+    const rowCls = res.result === 'tp' ? 'rp-row-win' : res.result === 'sl' ? 'rp-row-loss' : '';
+    const chartId = `rp-chart-${ri}`;
+    const canExpand = !!res.chartBars;
+    const chevron = canExpand
+      ? `<button class="rp-chevron" onclick="rpToggleChart('${chartId}')" aria-label="Toggle chart">▶</button>`
+      : `<span class="rp-chevron-ph"></span>`;
+
+    tableHtml += `<tr class="${rowCls}">`
+      + `<td class="rp-chevron-cell">${chevron}</td>`
       + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${dir}</td><td class="rp-stars">${stars}</td>`
       + `<td class="mono">${touch}</td><td class="mono">${exit}</td><td>${resultBadge}</td>`
       + `<td class="mono">${rStr}</td><td class="mono vn">${favStr}</td><td class="mono">${advStr}</td></tr>`;
+
+    if (canExpand) {
+      tableHtml += `<tr id="${chartId}" class="rp-chart-row" style="display:none">`
+        + `<td colspan="11" class="rp-chart-cell">${buildCandleChart(res)}</td></tr>`;
+    }
   }
   tableHtml += '</tbody></table></div>';
 
