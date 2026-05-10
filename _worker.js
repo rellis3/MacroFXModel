@@ -416,6 +416,62 @@ export default {
         return json({ values, meta: { symbol, source: 'oanda', granularity } });
       }
 
+      // -- /api/oanda_ohlc1m  ----------------------------------
+      // M1 bars for a specific trading date — used by journal day replay.
+      // ?symbol=EUR/USD&date=2025-05-09
+      // Returns { values: [{ datetime, open, high, low, close }] } oldest-first.
+      // Fetches the full 24h UTC window for the given London date so we capture
+      // the 00:00-23:59 London session including any DST offset.
+      if (path === '/api/oanda_ohlc1m') {
+        if (!env.OANDA_KEY) return err('OANDA_KEY not configured', 503);
+
+        const symbol = url.searchParams.get('symbol');
+        const date   = url.searchParams.get('date');   // YYYY-MM-DD London date
+        if (!symbol) return err('symbol param required', 400);
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return err('date param required (YYYY-MM-DD)', 400);
+
+        const instrument = symbol.replace('/', '_');
+        const oandaBase  = env.OANDA_ENV === 'practice'
+          ? 'https://api-fxpractice.oanda.com'
+          : 'https://api-fxtrade.oanda.com';
+
+        // Fetch a 26-hour UTC window: date-1T22:00Z → date+1T00:00Z covers London 00:00-23:59
+        // even accounting for BST (+1h) and any overnight gap.
+        const [yr, mo, dy] = date.split('-').map(Number);
+        const fromDate = new Date(Date.UTC(yr, mo - 1, dy - 1, 22, 0, 0));
+        const toDate   = new Date(Date.UTC(yr, mo - 1, dy + 1, 0, 0, 0));
+        const fromRFC  = fromDate.toISOString();
+        const toRFC    = toDate.toISOString();
+
+        const oandaUrl = `${oandaBase}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+          + `?granularity=M1&from=${encodeURIComponent(fromRFC)}&to=${encodeURIComponent(toRFC)}&price=M`;
+
+        const res = await fetch(oandaUrl, {
+          headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` },
+        });
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => 'Oanda error');
+          return err(`Oanda M1 fetch failed (${res.status}): ${errText.slice(0, 300)}`, 502);
+        }
+
+        const data = await res.json();
+        if (!data.candles) return err('Oanda returned no candles', 502);
+
+        // Convert UTC → London local datetime, filter complete candles, keep oldest-first for replay.
+        const values = data.candles
+          .filter(c => c.complete && c.mid)
+          .map(c => ({
+            datetime: new Date(c.time).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).substring(0, 19),
+            open:  c.mid.o,
+            high:  c.mid.h,
+            low:   c.mid.l,
+            close: c.mid.c,
+          }));
+
+        return json({ values, meta: { symbol, date, source: 'oanda', granularity: 'M1', count: values.length } });
+      }
+
       // -- /api/oanda_stream ------------------------------------
       // SSE live price feed. Browser opens EventSource('/api/oanda_stream?symbol=EUR_USD').
       // Worker proxies Oanda pricing stream as text/event-stream.

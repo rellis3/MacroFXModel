@@ -511,7 +511,8 @@ function getReplayWorker() {
     _replayWorker = new Worker('./js/journal-replay-worker.js');
     _replayWorker.onmessage = (e) => {
       const { type, payload } = e.data;
-      if (type === 'parsed')   onReplayParsed(payload);
+      if (type === 'fetched')  onM1Fetched(payload);
+      if (type === 'parsed')   onM1CsvParsed(payload);
       if (type === 'result')   onReplayResult(payload);
       if (type === 'error')    onReplayError(payload);
       if (type === 'progress') onReplayProgress(payload);
@@ -520,72 +521,107 @@ function getReplayWorker() {
   return _replayWorker;
 }
 
-// ── M1 data store (symbol → loaded flag) ─────────────────────────────────────
-const _m1Loaded = {};   // symbol → true
-const _m1Pending = [];  // queue of {symbol, date, pair} waiting for parse
+// ── M1 data store (symbol+date → loaded flag) ────────────────────────────────
+const _m1Loaded = {};   // `${symbol}::${date}` → true
 
 function openReplayModal(pair, date) {
   const symbol = pairToSymbol(pair);
   document.getElementById('rp-pair-title').textContent = pair + ' · ' + date;
   document.getElementById('rp-symbol').textContent = symbol;
   document.getElementById('replayModal').classList.add('open');
-  // Show/hide upload vs run sections
-  const needUpload = !_m1Loaded[symbol];
-  document.getElementById('rp-upload-section').style.display = needUpload ? 'block' : 'none';
-  document.getElementById('rp-run-section').style.display = !needUpload ? 'block' : 'none';
-  // Store current target
   document.getElementById('replayModal').dataset.pair = pair;
   document.getElementById('replayModal').dataset.date = date;
-  // If already have a result for this pair+date, show it immediately
-  const key = pair + '::' + date;
-  if (_replayResults[key]) renderReplayInModal(_replayResults[key]);
+  // Reset fetch status label
+  const key = symbol + '::' + date;
+  const loaded = !!_m1Loaded[key];
+  document.getElementById('rp-fetch-status').textContent = loaded
+    ? `M1 data loaded (${symbol} ${date})`
+    : `Ready to fetch ${symbol} M1 from Oanda`;
+  document.getElementById('rp-fetch-status').className = loaded ? 'rp-fetch-ok' : 'rp-fetch-idle';
+  document.getElementById('rp-fetch-btn').disabled = false;
+  // Show existing result immediately if cached
+  const rKey = pair + '::' + date;
+  if (_replayResults[rKey]) renderReplayInModal(_replayResults[rKey]);
+  else document.getElementById('rp-result-area').innerHTML = '';
 }
 function closeReplayModal() { document.getElementById('replayModal').classList.remove('open'); }
 
 function pairToSymbol(pair) {
-  return pair.replace('/', '').replace('XAU', 'XAUUSD').replace('NAS100_USD', 'NAS100');
+  // EUR/USD → EURUSD, XAU/USD → XAUUSD — matches Oanda instrument without underscore
+  // The API endpoint accepts the slash version and converts internally
+  return pair;   // pass as-is; worker.js API route handles the / → _ conversion
 }
 
-function onM1FileSelected(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const modal = document.getElementById('replayModal');
-  const pair  = modal.dataset.pair;
-  const symbol = pairToSymbol(pair);
-  const lbl   = document.getElementById('rp-file-lbl');
-  lbl.textContent = 'Parsing…';
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    getReplayWorker().postMessage({ type: 'parse', payload: { symbol, text: ev.target.result } });
-  };
-  reader.readAsText(file);
-}
-
-function onReplayParsed({ symbol, count }) {
-  _m1Loaded[symbol] = true;
-  showToast(`${symbol} M1: ${count.toLocaleString()} bars loaded`, 'ok');
-  document.getElementById('rp-upload-section').style.display = 'none';
-  document.getElementById('rp-run-section').style.display = 'block';
-  document.getElementById('rp-file-lbl').textContent = `${count.toLocaleString()} bars`;
-}
-
-function runReplay() {
+function fetchAndReplay() {
   const modal  = document.getElementById('replayModal');
   const pair   = modal.dataset.pair;
   const date   = modal.dataset.date;
   const symbol = pairToSymbol(pair);
+  const key    = symbol + '::' + date;
+
+  const statusEl = document.getElementById('rp-fetch-status');
+  const btn      = document.getElementById('rp-fetch-btn');
+  btn.disabled   = true;
+  statusEl.textContent = `Fetching ${symbol} M1 from Oanda…`;
+  statusEl.className   = 'rp-fetch-loading';
+  document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Fetching M1 bars from Oanda…</div>';
+
+  getReplayWorker().postMessage({ type: 'fetch', payload: { symbol, date } });
+}
+
+function onM1Fetched({ symbol, date, count }) {
+  const key = symbol + '::' + date;
+  _m1Loaded[key] = true;
+  const statusEl = document.getElementById('rp-fetch-status');
+  if (statusEl) {
+    statusEl.textContent = `${count} M1 bars loaded — running replay…`;
+    statusEl.className   = 'rp-fetch-ok';
+  }
+  document.getElementById('rp-fetch-btn').disabled = false;
+  // Immediately run replay after successful fetch
+  _triggerReplay(symbol, date);
+}
+
+function onM1CsvParsed({ symbol, count, dates }) {
+  // dates is a count number from the worker; mark the modal's current date as loaded
+  const modal = document.getElementById('replayModal');
+  const date  = modal?.dataset.date;
+  if (date) _m1Loaded[symbol + '::' + date] = true;
+  const statusEl = document.getElementById('rp-fetch-status');
+  if (statusEl) {
+    statusEl.textContent = `${count.toLocaleString()} bars loaded from CSV (${dates} days)`;
+    statusEl.className   = 'rp-fetch-ok';
+  }
+  if (document.getElementById('rp-fetch-btn')) document.getElementById('rp-fetch-btn').disabled = false;
+  if (date) _triggerReplay(symbol, date);
+}
+
+function _triggerReplay(symbol, date) {
+  // Find pair from the modal (it stores pair)
+  const modal = document.getElementById('replayModal');
+  const pair  = modal.dataset.pair;
   const dayObj = journalData[date]?.[pair];
   if (!dayObj) { showToast('No levels for this pair/date', 'err'); return; }
   const levels = dayObj.levels || [];
   if (!levels.length) { showToast('No levels to replay', 'err'); return; }
 
   document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Running replay…</div>';
-
   const pip = getPipSz(pair);
   getReplayWorker().postMessage({
     type: 'replay',
     payload: { symbol, date, levels, rrRatio: 2.2, pipSize: pip },
   });
+}
+
+function runReplay() {
+  // Re-run replay with existing loaded data (button in modal)
+  const modal  = document.getElementById('replayModal');
+  const pair   = modal.dataset.pair;
+  const date   = modal.dataset.date;
+  const symbol = pairToSymbol(pair);
+  const key    = symbol + '::' + date;
+  if (!_m1Loaded[key]) { fetchAndReplay(); return; }
+  _triggerReplay(symbol, date);
 }
 
 function onReplayProgress({ msg }) {
@@ -596,6 +632,10 @@ function onReplayProgress({ msg }) {
 function onReplayError(msg) {
   const el = document.getElementById('rp-result-area');
   if (el) el.innerHTML = `<div class="rp-error">${msg}</div>`;
+  const statusEl = document.getElementById('rp-fetch-status');
+  if (statusEl) { statusEl.textContent = msg; statusEl.className = 'rp-fetch-err'; }
+  const btn = document.getElementById('rp-fetch-btn');
+  if (btn) btn.disabled = false;
   showToast(msg, 'err');
 }
 
