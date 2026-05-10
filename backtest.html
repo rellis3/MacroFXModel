@@ -224,6 +224,22 @@
     /* ── Conditional sub-rows ────────────────────────────────────────────────── */
     .sub-row { display: none; }
     .sub-row.visible { display: contents; }
+
+    /* ── Help system ─────────────────────────────────────────────────────────── */
+    .help-btn { margin-left:4px; width:15px; height:15px; border-radius:50%; border:1px solid var(--border); background:var(--s2); color:var(--text3); font-size:9px; font-weight:700; cursor:pointer; line-height:15px; text-align:center; flex-shrink:0; transition:all .15s; font-family:'DM Sans',sans-serif; padding:0; }
+    .help-btn:hover, .help-btn.open { background:var(--blue); border-color:var(--blue); color:#fff; }
+    .help-panel { display:none; background:var(--s1); border:1px solid var(--blue-bd); border-radius:8px; padding:11px 13px; font-size:11px; color:var(--text2); line-height:1.65; }
+    .help-panel.open { display:block; }
+    .help-panel h4 { font-size:11px; font-weight:700; color:var(--text); margin:8px 0 3px; }
+    .help-panel h4:first-child { margin-top:0; }
+    .help-panel p { margin-bottom:6px; }
+    .help-panel ul { padding-left:14px; margin-bottom:6px; }
+    .help-panel li { margin-bottom:3px; }
+    .help-panel code { font-family:'DM Mono',monospace; font-size:10px; background:var(--s2); padding:1px 4px; border-radius:3px; color:var(--text); }
+    .help-panel .hg { color:var(--green); font-weight:600; }
+    .help-panel .hr { color:var(--red); font-weight:600; }
+    .help-panel .ha { color:var(--amber); font-weight:600; }
+    .help-panel .hb { color:var(--blue); font-weight:600; }
   </style>
 </head>
 <body class="dark">
@@ -306,7 +322,19 @@
 
     <!-- Date range -->
     <div class="sb-group">
-      <div class="sb-lbl">Date Range</div>
+      <div class="sb-lbl">Date Range <button class="help-btn" onclick="toggleHelp('h-dates')">?</button></div>
+      <div class="help-panel" id="h-dates">
+        <h4>From / To</h4>
+        <p>The calendar window of price data the backtest will trade. Only bars within this range generate trades — bars outside it are still used to warm up indicators.</p>
+        <h4>IS / OOS Split</h4>
+        <p><span class="hb">In-Sample (IS)</span> is the period you optimise settings on. <span class="ha">Out-of-Sample (OOS)</span> is the period you validate on — it should never be touched during optimisation.</p>
+        <ul>
+          <li><code>IS 70%</code> — sets the end date to 70% through the full range. Use this to optimise settings.</li>
+          <li><code>OOS 30%</code> — sets the start date to the IS cut-off. Run this after optimising to validate.</li>
+          <li><code>Reset</code> — restores the original full date range.</li>
+        </ul>
+        <p><span class="hg">Good practice:</span> optimise on IS, lock settings, then run OOS once. If OOS metrics are similar to IS the strategy is robust. A large gap means over-fitting.</p>
+      </div>
       <div class="cfg-grid">
         <div class="cfg-cell">
           <label>From</label>
@@ -331,7 +359,50 @@
 
     <!-- Strategy -->
     <div class="sb-group">
-      <div class="sb-lbl">Strategy</div>
+      <div class="sb-lbl">Strategy <button class="help-btn" onclick="toggleHelp('h-strategy')">?</button></div>
+      <div class="help-panel" id="h-strategy">
+        <h4>Confluence Method</h4>
+        <p>The model projects Fibonacci levels from the <span class="hb">Asia session range</span> (00:00–06:00 London) and from the prior day's range. A <em>confluence</em> is where today's fib and yesterday's fib land within the tolerance of each other — a structurally significant price cluster.</p>
+        <ul>
+          <li><code>Asia only</code> — uses today's Asia range fibs vs yesterday's.</li>
+          <li><code>Monday only</code> — uses the current week's Monday range vs last week's Monday range. Longer-term structural levels.</li>
+          <li><code>Asia + Monday</code> — merges both sets. More potential trades but also more noise.</li>
+        </ul>
+        <h4>Signal Filter</h4>
+        <ul>
+          <li><code>All confluences</code> — trade any level where today's and yesterday's fibs overlap.</li>
+          <li><code>Tight only</code> — only trade confluences where the two fibs are very close together (≤ tight-tol % of the main tolerance). Higher conviction, fewer trades.</li>
+          <li><code>All levels</code> — ignore confluences entirely, trade at every enabled fib level. Maximum trades, least selectivity.</li>
+        </ul>
+        <h4>Confluence Tolerance (pips)</h4>
+        <p>Maximum pip distance between today's fib and yesterday's fib for them to be counted as a confluence. Wider = more confluences found; tighter = only very precise overlaps.</p>
+        <h4>Tight Tol %</h4>
+        <p>A confluence is labelled "tight" if its actual fib distance is less than this percentage of the main tolerance. Used by the <em>Tight only</em> filter.</p>
+        <h4>Min ATR dist from open</h4>
+        <p>Entry only triggers when the confluence level is at least this many ATR multiples away from the daily open price. Prevents entering levels that are already at the open — those tend to be noise rather than clean S/D zones.</p>
+        <h4>Warmup Days</h4>
+        <p>Number of trading days at the start of the dataset that are used to prime the indicator windows (ATR, EMA, RSI etc.) but do <em>not</em> generate any trades. <span class="ha">Set too low</span> and early trades use poorly initialised indicators. <span class="hg">100–150 days</span> is typical for M5 data.</p>
+        <h4>Min Conviction</h4>
+        <p>A score from <code>-1</code> to <code>+1</code> representing how strongly the enabled features agree on direction. Calculated as weighted votes: each feature that agrees with the chosen direction adds its weight; each that disagrees subtracts it. Score is then normalised by the total possible weight.</p>
+        <ul>
+          <li><code>0</code> — take any trade where features are net positive (default).</li>
+          <li><code>0.3</code> — require 30% net agreement. Cuts marginal trades.</li>
+          <li><code>0.5+</code> — strong conviction required. Fewer but higher-quality entries.</li>
+        </ul>
+        <h4>Min Confirms</h4>
+        <p>Minimum number of individual features (regardless of weight) that must vote in the same direction. Prevents a single high-weight feature dominating. E.g. <code>3</code> means at least 3 separate features must agree.</p>
+        <h4>Entry Window (London)</h4>
+        <p>The time window in which new entries are allowed. All times are London local. Entries after 20:00 are always blocked to avoid holding through the US close. <span class="hg">08:00–20:00</span> captures the full London + New York overlap. <span class="hb">09:30</span> avoids the London open sweep but misses early moves.</p>
+        <h4>Level Re-entry</h4>
+        <p>How many times the engine can enter at the same confluence level on the same day.</p>
+        <ul>
+          <li><code>Once only</code> — one trade per level per day. Most conservative.</li>
+          <li><code>Twice</code> — allows one re-entry after price leaves the level by ≥ 0.5 ATR and returns. Captures the "second touch" pattern.</li>
+          <li><code>Unlimited</code> — re-enter any time price returns. Risk of repeated SL hits at the same level.</li>
+        </ul>
+        <h4>ATR Period</h4>
+        <p>Number of bars used to compute the Average True Range. ATR is used for entry proximity, SL sizing (ATR mode), and the re-entry cleared-distance check. <code>14</code> is standard; shorter = more reactive, longer = smoother.</p>
+      </div>
       <div class="cfg-grid">
         <div class="cfg-cell full">
           <label>Confluence Method</label>
@@ -401,7 +472,24 @@
 
     <!-- Entry Quality Filters -->
     <div class="sb-group">
-      <div class="sb-lbl">Entry Quality Filters</div>
+      <div class="sb-lbl">Entry Quality Filters <button class="help-btn" onclick="toggleHelp('h-eqf')">?</button></div>
+      <div class="help-panel" id="h-eqf">
+        <h4>2nd-Touch Only</h4>
+        <p>When enabled, the <em>first</em> bar that tags a confluence level is skipped — it is logged internally but no trade is placed. A trade is only entered on the second approach to the same level, after price has clearly left (moved ≥ 0.5 ATR away) and returned.</p>
+        <p><span class="hg">Why it helps:</span> first touches often represent the initial liquidity sweep where weak longs/shorts are stopped out. The second touch tends to be a cleaner, higher-probability reversal because liquidity has already been taken.</p>
+        <p><span class="hr">Trade-off:</span> significantly fewer trades — many days only produce one touch per level.</p>
+        <h4>Require Liquidity Sweep</h4>
+        <p>Before any entry at a level is allowed, the engine must have seen price wick <em>through</em> the level by at least the Sweep Depth amount and then close back on the other side on the same bar.</p>
+        <p><span class="hg">Why it helps:</span> confirms that the stop-hunt / liquidity grab has already happened. You are entering the reversal after the sweep, not into it.</p>
+        <h4>Sweep Depth (pips)</h4>
+        <p>How far price must pierce through the level (in pips) for the bar to count as a sweep. <code>2 pips</code> is a minimal pierce; <code>5+</code> requires a more aggressive stop-hunt. Too large and very few sweeps will qualify.</p>
+        <h4>Candle Confirm (N bars)</h4>
+        <p>After price touches the level, the engine waits for the next <code>N</code> M1 bars to close before deciding whether to enter. <code>0</code> disables this check entirely (immediate entry).</p>
+        <p><span class="hg">Example:</span> set N=3 and threshold=0.6 → after the touch bar, 3 M1 bars must close: if at least 2 of 3 close bullish (for a long) entry triggers on bar 4. This is your M1 candle confirmation gate.</p>
+        <p><span class="hr">Trade-off:</span> entry is later, so price may have already moved. Works best at high-conviction levels where the reversal is decisive.</p>
+        <h4>Confirm Threshold (%)</h4>
+        <p>The fraction of the N confirmation bars that must close in the trade direction. <code>0.6</code> = 60% (3 of 5). <code>1.0</code> = every bar must confirm — very strict. <code>0.5</code> = simple majority.</p>
+      </div>
       <div class="cfg-grid">
         <div class="cfg-cell full">
           <label class="toggle-row">
@@ -432,7 +520,22 @@
 
     <!-- SL Settings -->
     <div class="sb-group">
-      <div class="sb-lbl">Stop Loss</div>
+      <div class="sb-lbl">Stop Loss <button class="help-btn" onclick="toggleHelp('h-sl')">?</button></div>
+      <div class="help-panel" id="h-sl">
+        <h4>SL Calculation Mode</h4>
+        <ul>
+          <li><code>5m ATR</code> — stop distance = ATR multiplier × current 5m ATR. Tight and reactive to current volatility. Good for fast-moving pairs (GBP/USD, XAU).</li>
+          <li><code>30m ATR</code> — same but uses the 30m ATR, which is wider and smoother. Gives trades more breathing room at the cost of a worse R-ratio.</li>
+          <li><code>Range-based</code> — stop distance = a fraction of today's Asia range. Structurally anchored: if the range was 40 pips and fraction is 0.35, SL is 14 pips. More consistent across market conditions.</li>
+        </ul>
+        <h4>SL Multiplier (ATR modes)</h4>
+        <p>How many ATR multiples wide the stop is. <code>1.0</code> = exactly 1 ATR. <code>1.5</code> gives extra room for typical intra-bar noise. Increase if you get stopped out on valid setups before the move continues.</p>
+        <h4>SL Fraction (Range mode)</h4>
+        <p>Fraction of the Asia range used as the stop distance. <code>0.35</code> = 35% of the range. The range is a natural volatility proxy for the day — this keeps stops proportional to the day's expected movement.</p>
+        <h4>Min SL Floor (pips)</h4>
+        <p>The absolute minimum stop distance regardless of ATR or range. Prevents absurdly tight stops on very quiet days when ATR or range is near zero. <code>5 pips</code> on EUR/USD is typical; use <code>20–30</code> for Gold.</p>
+        <p><span class="ha">Note:</span> all SL distances are calculated from the <em>confluence level price</em>, not from the current bar close. Entry is assumed at the exact level.</p>
+      </div>
       <div class="cfg-grid">
         <div class="cfg-cell full">
           <label>SL Calculation Mode</label>
@@ -461,7 +564,29 @@
 
     <!-- TP Settings -->
     <div class="sb-group">
-      <div class="sb-lbl">Take Profit</div>
+      <div class="sb-lbl">Take Profit <button class="help-btn" onclick="toggleHelp('h-tp')">?</button></div>
+      <div class="help-panel" id="h-tp">
+        <h4>TP Calculation Mode</h4>
+        <ul>
+          <li><code>Fixed R-multiple</code> — TP is placed at exactly <code>R × SL distance</code> from entry. Simple, consistent. Use 2.0R minimum to maintain a positive expectancy with a 40%+ win rate.</li>
+          <li><code>Structural</code> — TP is placed just before the next confluence level in the trade direction (minus the buffer). Targets a real support/resistance cluster rather than an arbitrary distance. Better than fixed R when levels are clearly spaced.</li>
+          <li><code>Vol-Scaled R</code> — TP target adjusts based on the day's volatility regime. Low-vol days get a tighter target (less follow-through); high-vol days get a larger target. Regime is determined by the Asia range pip size.</li>
+        </ul>
+        <h4>R-Multiple (Fixed R)</h4>
+        <p>The reward-to-risk ratio. <code>2.2</code> means TP is 2.2× the SL distance. With a 35% win rate, 2.2R is approximately breakeven after costs. You need ~40% to be profitable at 2.2R.</p>
+        <h4>TP Buffer (Structural mode)</h4>
+        <p>Pips subtracted from the next confluence level to avoid placing TP exactly on a level where price might stall. <code>5 pips</code> gives a cushion so the order fills before price rejects at the level.</p>
+        <h4>Vol-Scaled R targets</h4>
+        <p>The R-multiples for each volatility regime. Asia range determines regime: <span class="hg">High vol</span> &gt;50 pips, <span class="ha">Med vol</span> 25–50 pips, <span class="hr">Low vol</span> &lt;25 pips. Set high-vol target larger since trending conditions support more follow-through.</p>
+        <h4>TP Fallback (× ATR)</h4>
+        <p>Used in Structural mode when no confluence exists in the trade direction. Falls back to ATR × this multiplier as the TP distance. Prevents trades with no TP from being placed.</p>
+        <h4>Re-enter at Confluence after TP</h4>
+        <p>When price hits TP at a structural confluence level, that level is immediately flagged as "cleared" — so if price pulls back to it the same day, the engine can re-enter without waiting for the normal cleared-distance check.</p>
+        <h4>⚡ Flip Trade on SL</h4>
+        <p>When a trade hits SL, the engine immediately opens the <em>opposite</em> direction at the same level. The logic: if your fade (mean-reversion) was stopped out, price has broken through — treat it as a confirmed breakout and trade in the breakout direction.</p>
+        <p><span class="hg">When it works well:</span> strong trend days where the initial reversal trade was wrong but the breakout follow-through is significant.</p>
+        <p><span class="hr">Risk:</span> if price whipsaws around the level, you take two losses. The flip trade has no feature-vote filter — it is directional only. Disable in ranging/choppy market regimes.</p>
+      </div>
       <div class="cfg-grid">
         <div class="cfg-cell full">
           <label>TP Calculation Mode</label>
@@ -516,7 +641,23 @@
 
     <!-- SD Level Filter -->
     <div class="sb-group">
-      <div class="sb-lbl">SD Level Filter</div>
+      <div class="sb-lbl">SD Level Filter <button class="help-btn" onclick="toggleHelp('h-sd')">?</button></div>
+      <div class="help-panel" id="h-sd">
+        <p>SD (Supply/Demand) levels are the Fibonacci projections of the Asia range. Each fib number represents a structural price zone relative to the range.</p>
+        <h4>Above range — Sell-side</h4>
+        <p>Levels projected above the Asia range high. Price entering this zone is entering potential supply. These are <span class="hr">short</span> bias levels — fading a move above range back toward the range.</p>
+        <h4>Within range — Mid</h4>
+        <p>Levels inside the Asia range (0.0 to 1.0 fibs). These are mean-reversion levels within the established range. Lower signal quality on average since price is less committed to a direction.</p>
+        <h4>Below range — Buy-side</h4>
+        <p>Levels projected below the Asia range low. Price entering this zone is entering potential demand. These are <span class="hg">long</span> bias levels — fading a move below range back toward the range.</p>
+        <h4>Preset chips</h4>
+        <ul>
+          <li><code>Sell-side</code> — enable only above-range levels. Best in bearish macro environments.</li>
+          <li><code>Buy-side</code> — enable only below-range levels. Best in bullish macro environments.</li>
+          <li><code>Mid</code> — enable only within-range levels. Useful for range-bound days.</li>
+        </ul>
+        <p><span class="hg">Tip:</span> start with All enabled, run the Bayesian Feature Accuracy table, then check which specific SD levels have the highest win rates and enable only those.</p>
+      </div>
       <div class="fib-section">
         <div class="chip-row" style="margin-bottom:8px">
           <button class="chip" onclick="fibSelectAll(true)">All</button>
@@ -536,13 +677,50 @@
 
     <!-- Features -->
     <div class="sb-group">
-      <div class="sb-lbl">Features</div>
+      <div class="sb-lbl">Features <button class="help-btn" onclick="toggleHelp('h-feat')">?</button></div>
+      <div class="help-panel" id="h-feat">
+        <p>Features are technical signals that <em>vote</em> on trade direction. Each enabled feature returns <span class="hg">long</span>, <span class="hr">short</span>, or <em>abstain</em>. Votes are weighted and summed to produce a conviction score and direction. A feature that abstains does not penalise conviction — only active disagreement does.</p>
+        <h4>Range Position</h4>
+        <p>Is price currently above or below the Asia range midpoint? Above mid → short bias (expect return to range); below mid → long bias. A simple but powerful mean-reversion signal.</p>
+        <h4>CHoCH / BOS</h4>
+        <p><em>Change of Character / Break of Structure.</em> Looks at recent M5 swing highs and lows. A CHoCH is a reversal signal (price fails to continue the prior swing direction). A BOS is a continuation/breakout signal. Weighted at 2 by default — it has high structural significance.</p>
+        <h4>Wick Rejection</h4>
+        <p>Examines the most recent M5 bar. A long lower wick (body near the top of the bar) signals buying pressure; a long upper wick signals selling pressure. Fires when the wick is ≥ 60% of the bar's total range.</p>
+        <h4>RSI Divergence</h4>
+        <p>Compares price action to RSI on M5. If price makes a lower low but RSI makes a higher low → bullish divergence (long signal). If price makes a higher high but RSI makes a lower high → bearish divergence (short signal). Divergence often precedes reversals at key levels.</p>
+        <h4>Order Block</h4>
+        <p>Identifies the last M5 bar that moved aggressively in one direction before a significant counter-move. That bar's body becomes an "order block" — institutional buy/sell zone. Vote is based on whether current price is testing a bullish or bearish order block.</p>
+        <h4>HTF EMA 21/50</h4>
+        <p>Uses 21-period and 50-period EMAs on M30 bars. If EMA21 &gt; EMA50 → bullish trend context (long bias). If EMA21 &lt; EMA50 → bearish (short bias). Aligns entries with the higher-timeframe trend direction.</p>
+        <h4>TWAP Slope</h4>
+        <p>Time-Weighted Average Price computed on the M5 bars since the open. Measures the slope over the last N bars. Rising TWAP → price is spending more time above average (long bias). Falling TWAP → short bias. Filters entries that are fighting the intraday trend.</p>
+        <h4>ADX Filter</h4>
+        <p>Average Directional Index on M30. If ADX &lt; 20 → market is ranging, abstain (no directional signal). If ADX ≥ 20 → trending: uses DI+ vs DI− crossover to determine direction. Prevents trend-following in choppy conditions.</p>
+        <h4>Hurst Regime</h4>
+        <p>Estimates the Hurst exponent from daily closes. H &lt; 0.45 → mean-reverting regime (good for this strategy, abstains to avoid conflicting). H &gt; 0.55 → trending regime, votes in the direction of recent price momentum. H near 0.5 → random walk, abstains.</p>
+        <h4>FVG Bias</h4>
+        <p><em>Fair Value Gap.</em> Identifies M5 bars where price gapped between the prior bar's high/low and the next bar's low/high. Price tends to return to fill these gaps. Vote direction is based on whether current price is below an unfilled bearish FVG (short) or above an unfilled bullish FVG (long).</p>
+        <h4>Weekly Pivot</h4>
+        <p>Classic pivot point calculated from last week's OHLC. Price above weekly pivot → long bias; below → short bias. Adds a swing-trading context to intraday entries.</p>
+        <h4>Ichimoku Cloud</h4>
+        <p>Uses the Ichimoku Cloud (Tenkan/Kijun/Senkou) on daily bars. Price above the cloud → bullish; below → bearish; inside the cloud → abstain. A broad trend-bias filter.</p>
+        <h4>MACD (12/26/9)</h4>
+        <p>Standard MACD on M5. Signal line crossover determines direction: MACD above signal → long; below → short. Captures momentum shifts but can lag at turning points.</p>
+        <p style="margin-top:8px;color:var(--text3);font-size:10px">💡 Check the Bayesian Feature Accuracy table after a run to see each feature's real win rate on your data. Disable features with win rates below 45% — they are adding noise rather than signal.</p>
+      </div>
       <div id="feature-list"></div>
     </div>
 
     <!-- Position Sizing -->
     <div class="sb-group">
-      <div class="sb-lbl">Position Sizing</div>
+      <div class="sb-lbl">Position Sizing <button class="help-btn" onclick="toggleHelp('h-pos')">?</button></div>
+      <div class="help-panel" id="h-pos">
+        <h4>Fixed (£/pip)</h4>
+        <p>Every trade uses the same £-per-pip value regardless of stop size. Simple but does not compound — a wider stop loses more £ for the same R. Good for comparing strategies on a level playing field. The equity curve shows cumulative R only, so sizing doesn't affect the R-based statistics.</p>
+        <h4>% Risk (compound)</h4>
+        <p>Each trade risks a fixed percentage of the current account equity. Position size is adjusted so that if SL hits, you lose exactly <code>Risk %</code> of the account. Profits compound: winning periods grow position sizes, losing periods shrink them. This is the realistic live-trading approach.</p>
+        <p><span class="ha">Note:</span> compounding amplifies both winning and losing streaks. A 10-trade losing run at 1% risk costs ~9.6% of account. At 2% risk it costs ~18.3%.</p>
+      </div>
       <div class="cfg-grid">
         <div class="cfg-cell full">
           <label>Sizing Mode</label>
@@ -564,7 +742,18 @@
 
     <!-- Transaction Costs -->
     <div class="sb-group">
-      <div class="sb-lbl">Transaction Costs</div>
+      <div class="sb-lbl">Transaction Costs <button class="help-btn" onclick="toggleHelp('h-costs')">?</button></div>
+      <div class="help-panel" id="h-costs">
+        <p>Transaction costs are deducted from each trade's R value after the raw result is calculated. They are expressed in pips and converted to R-fraction using the trade's SL distance.</p>
+        <h4>Spread (pips)</h4>
+        <p>The bid-ask spread paid on entry. Typical values: EUR/USD <code>0.8</code>, GBP/USD <code>1.0</code>, XAU/USD <code>25</code> (in price, not pips — check your broker). This is the most significant cost on short-hold intraday trades.</p>
+        <h4>Slippage (pips)</h4>
+        <p>Extra cost from imperfect fills — the difference between the signal price and actual execution price. At liquid London hours this is usually &lt;0.5 pips for FX majors. Higher during news events. Simulates real execution quality.</p>
+        <h4>Commission (£/lot)</h4>
+        <p>Round-trip broker commission per standard lot (100,000 units). Set to <code>0</code> if your broker uses spread-only pricing. Typical ECN commission: £3–7 per lot per side (£6–14 round trip). For a 10-pip SL with £10/pip, one lot loses £100 → £7 commission is 7% of the risk.</p>
+        <h4>Break-even Cost</h4>
+        <p>After the run, the results panel shows the maximum total cost (spread + slippage) that the strategy can absorb before going flat. If your real costs exceed this number, the strategy is not viable at that cost level.</p>
+      </div>
       <div class="cfg-grid">
         <div class="cfg-cell">
           <label>Spread (pips)</label>
@@ -583,7 +772,18 @@
 
     <!-- Kill switches -->
     <div class="sb-group">
-      <div class="sb-lbl" style="color:var(--red)">Kill Switches</div>
+      <div class="sb-lbl" style="color:var(--red)">Kill Switches <button class="help-btn" onclick="toggleHelp('h-kill')">?</button></div>
+      <div class="help-panel" id="h-kill">
+        <p>Kill switches stop all new entries for the remainder of a period once cumulative losses reach the threshold. They simulate the risk management discipline of a real trader stopping out for the day/week/month.</p>
+        <h4>Daily max loss (R)</h4>
+        <p>If cumulative R on the current day falls to <code>−N</code>, no more entries are taken for the rest of that day. <span class="hg">Example:</span> set to <code>2</code> → after losing 2R in a day, trading stops. Prevents catastrophic drawdown days.</p>
+        <h4>Weekly max loss (R)</h4>
+        <p>Same logic but accumulates across the week (Mon–Fri). Resets every Monday. Use to simulate a "rule" like "never lose more than 5R in a week."</p>
+        <h4>Monthly max loss (R)</h4>
+        <p>Accumulates across the calendar month. Resets on the 1st. A monthly drawdown limit of 10R is common in prop firm rules.</p>
+        <p><span class="ha">Setting to 0 disables that kill switch.</span> Start by testing <em>without</em> kill switches to see the raw strategy performance. Then add them to see their impact — they typically reduce both the worst drawdowns and total returns.</p>
+        <p><span class="hg">Optimal values</span> can be found by testing: if the strategy has a max single-day loss of 3R historically, a daily kill at 2.5R prevents the worst outlier days without triggering too often.</p>
+      </div>
       <div class="kill-box">
         <div class="cfg-grid">
           <div class="cfg-cell">
@@ -644,7 +844,27 @@
 
       <!-- Summary stats -->
       <div>
-        <div class="res-hdr">Summary Statistics</div>
+        <div class="res-hdr" style="display:flex;align-items:center;gap:6px">Summary Statistics <button class="help-btn" onclick="toggleHelp('h-stats')">?</button></div>
+        <div class="help-panel" id="h-stats" style="margin-bottom:10px">
+          <h4>Trades / Wins / Losses</h4>
+          <p>Raw trade counts. A healthy backtest needs at least 200+ trades for statistical significance. Below 100 trades, any win rate figure is mostly noise.</p>
+          <h4>Win Rate</h4>
+          <p>Percentage of trades that closed at TP (positive R). At a 2.2R target you need ~32% to break even, ~40%+ to be profitable after costs. Win rate alone is meaningless — it must be interpreted alongside the R-multiple.</p>
+          <h4>Profit Factor</h4>
+          <p>Total gross profit ÷ total gross loss. <span class="hg">&gt;1.5</span> is good, <span class="hg">&gt;2.0</span> is excellent. Values below <span class="hr">1.0</span> mean the strategy loses money overall. Unlike win rate, PF captures both the frequency and magnitude of wins/losses.</p>
+          <h4>Mean R</h4>
+          <p>Average R per trade (net of costs). <span class="hg">Positive mean R</span> is the core requirement. Multiply by expected trades per year to estimate annual R return. E.g. 0.15R mean × 250 trades = ~37R/year.</p>
+          <h4>Sharpe Ratio</h4>
+          <p>Mean R ÷ standard deviation of R, annualised. Measures return per unit of risk. <span class="hg">&gt;1</span> is acceptable, <span class="hg">&gt;2</span> is strong, <span class="hg">&gt;3</span> is exceptional. High Sharpe means consistent returns without wild swings.</p>
+          <h4>Calmar Ratio</h4>
+          <p>Annualised return ÷ maximum drawdown. <span class="hg">&gt;1</span> means you earn back your max drawdown every year. Higher is better. Low Calmar with high Sharpe suggests a slow grind; high Calmar suggests efficient use of risk.</p>
+          <h4>Max Drawdown</h4>
+          <p>Largest peak-to-trough decline in the equity curve (as a % of peak equity at 1% risk per trade). This is the number that determines whether you can psychologically and financially survive the strategy's worst losing run. <span class="hg">&lt;15%</span> is manageable; <span class="hr">&gt;30%</span> is very hard to trade live.</p>
+          <h4>Kelly %</h4>
+          <p>The theoretically optimal fraction of account to risk per trade to maximise geometric growth. In practice use <em>half Kelly</em> or less. If Kelly is &lt;1% or negative, the strategy's edge is marginal or negative.</p>
+          <h4>CAGR</h4>
+          <p>Compound Annual Growth Rate at 1% risk per trade on a £1 starting account. A normalised measure of annual return that accounts for compounding. Use this to compare strategies across different test lengths.</p>
+        </div>
         <div id="stats-grid"></div>
       </div>
 
@@ -677,20 +897,69 @@
 
       <!-- Monte Carlo -->
       <div class="chart-card">
-        <div class="chart-title">Monte Carlo — 1,000 path resamples (P5 / P25 / P50 / P75 / P95)</div>
+        <div class="chart-title" style="display:flex;align-items:center;gap:6px">Monte Carlo — 1,000 path resamples (P5 / P25 / P50 / P75 / P95) <button class="help-btn" onclick="toggleHelp('h-mc')">?</button></div>
+        <div class="help-panel" id="h-mc" style="margin-bottom:10px">
+          <p>Monte Carlo simulation randomly reorders the actual trade outcomes 1,000 times to show the range of possible equity paths the strategy could produce. It answers: "if the trades happened in a different sequence, how different would the outcome be?"</p>
+          <h4>Bands (P5 to P95)</h4>
+          <ul>
+            <li><span class="hg">P50</span> — median path. Half of all simulations did better, half worse.</li>
+            <li><span class="hg">P75/P95</span> — lucky sequences. Shows upside if you hit a good run of trades.</li>
+            <li><span class="hr">P25/P5</span> — unlucky sequences. <span class="hr">P5 is the worst 5% of paths</span> — this is what you plan for.</li>
+          </ul>
+          <h4>What to look for</h4>
+          <ul>
+            <li>If <span class="hr">P5 final equity</span> is still positive, the strategy survives its worst realistic sequence.</li>
+            <li>A wide band between P5 and P95 means outcome is highly sequence-dependent — consider reducing position size.</li>
+            <li>A narrow band means the edge is consistent and sequence risk is low.</li>
+          </ul>
+          <h4>Max drawdown distribution</h4>
+          <p>The table below the chart shows the simulated max drawdown percentiles. The <span class="hr">P95 max drawdown</span> is your "plan for this" number — size your account so you can absorb it without blowing up.</p>
+        </div>
         <div id="mc-svg"></div>
         <div id="mc-stats"></div>
       </div>
 
       <!-- Bayesian feature accuracy -->
       <div class="chart-card">
-        <div class="chart-title">Bayesian Feature Accuracy</div>
+        <div class="chart-title" style="display:flex;align-items:center;gap:6px">Bayesian Feature Accuracy <button class="help-btn" onclick="toggleHelp('h-bayes')">?</button></div>
+        <div class="help-panel" id="h-bayes" style="margin-bottom:10px">
+          <p>For each feature, this table tracks every trade where that feature fired (voted non-null) and whether the trade was a winner. This is the <em>empirical win rate conditional on that feature agreeing with the direction taken</em>.</p>
+          <h4>Fires</h4>
+          <p>Number of trades where this feature cast a vote (long or short — not abstained). A feature with very few fires may not have enough data to be reliable.</p>
+          <h4>Win Rate</h4>
+          <p>% of fired trades that were winners. <span class="hg">&gt;55%</span> suggests the feature genuinely improves signal quality. <span class="hr">&lt;45%</span> suggests it is adding noise — consider disabling it. Close to 50% means it has no predictive edge.</p>
+          <h4>How to use this</h4>
+          <ul>
+            <li>Disable features with win rates consistently below 45% across multiple runs.</li>
+            <li>Increase the weight of features with win rates above 60% — they deserve more influence on the conviction score.</li>
+            <li>If a feature has &lt;50 fires, its win rate is too noisy to trust — enable more data or a longer date range first.</li>
+            <li>Re-run after changing weights and compare: if overall win rate and PF improve, the weight change was beneficial.</li>
+          </ul>
+          <p style="color:var(--text3);font-size:10px">Note: win rate here counts the trade outcome (TP vs SL), not whether the feature itself was "right" about direction. A feature that fires correctly but entry timing was poor may still show low win rate.</p>
+        </div>
         <div id="bayesian-table"></div>
       </div>
 
       <!-- Trade log -->
       <div class="chart-card">
-        <div class="chart-title">Trade Log (last 200 trades)</div>
+        <div class="chart-title" style="display:flex;align-items:center;gap:6px">Trade Log (last 200 trades) <button class="help-btn" onclick="toggleHelp('h-tlog')">?</button></div>
+        <div class="help-panel" id="h-tlog" style="margin-bottom:10px">
+          <p>Shows the most recent 200 trades in chronological order. Click any column header to sort. Click <strong>▶</strong> on a row to expand its feature vote breakdown.</p>
+          <h4>Columns</h4>
+          <ul>
+            <li><strong>Date</strong> — London date the trade was entered.</li>
+            <li><strong>Dir</strong> — trade direction: ↑ Long (buying) or ↓ Short (selling).</li>
+            <li><strong>Entry / Exit</strong> — exact price at entry (confluence level) and at close (TP, SL, or EOD price).</li>
+            <li><strong>SD Level</strong> — the Fibonacci SD level where entry occurred (e.g. SD1.5 = 150% fib above range). ↔ shows yesterday's fib if different from today's.</li>
+            <li><strong>Result</strong> — <span class="hg">TP</span> hit take profit · <span class="hr">SL</span> hit stop loss · <span class="ha">EOD</span> closed at market at 21:00.</li>
+            <li><strong>R</strong> — profit/loss in R-multiples. +2.2R means you made 2.2× your risk. −1R means you lost your full stop.</li>
+          </ul>
+          <h4>Feature vote pills (expanded row)</h4>
+          <p>Each pill shows one feature's vote for that trade: <span class="hg">green = agreed with direction taken</span>, <span class="hr">red = disagreed</span>, faded = abstained. The number at the right of each pill (+1, −1, 0) is the weighted contribution to the conviction score.</p>
+          <p>Use this to understand <em>why</em> a trade was taken and <em>which features were wrong</em> on losing trades — this is the key to refining feature weights.</p>
+          <h4>⚡ tag</h4>
+          <p>Trades tagged <code>⚡flip</code> were opened by the Flip on SL feature — the original trade hit SL and was immediately reversed. Compare flip trade win rates to initial trade win rates to see if flipping adds value.</p>
+        </div>
         <div id="trade-log"></div>
       </div>
 
@@ -710,5 +979,16 @@
 </div><!-- /bt-app -->
 
 <script type="module" src="./js/backtest.js"></script>
+<script>
+function toggleHelp(id) {
+  const panel = document.getElementById(id);
+  if (!panel) return;
+  const isOpen = panel.classList.toggle('open');
+  // Toggle the ? button's active state
+  const btn = panel.previousElementSibling?.querySelector?.('.help-btn')
+           ?? panel.parentElement?.querySelector?.('.help-btn');
+  if (btn) btn.classList.toggle('open', isOpen);
+}
+</script>
 </body>
 </html>
