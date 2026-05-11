@@ -139,6 +139,9 @@ function loadConfig(id) {
   sv('cfg-sweep-pips',      cfg.sweepPips);
   sc('cfg-second-touch',    cfg.secondTouchOnly);
   sc('cfg-use-m1-features', cfg.useM1Features);
+  sc('cfg-rejection-bar',   cfg.rejectionBar);
+  sv('cfg-rej-wick-pct',    cfg.rejWickPct);
+  sv('cfg-rej-min-atr-pct', cfg.rejMinAtrPct);
   if (cfg.enabledFibs) {
     const fibSet = new Set(cfg.enabledFibs.map(String));
     document.querySelectorAll('.fib-chk').forEach(chk => {
@@ -162,6 +165,7 @@ function loadConfig(id) {
   onTpModeChange();
   onPosModeChange();
   onSweepChange();
+  onRejectionBarChange();
   const row = document.querySelector(`[data-cfg-id="${id}"]`);
   if (row) {
     row.style.background = 'var(--blue-bg)';
@@ -355,6 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
   onTpModeChange();
   onPosModeChange();
   onSweepChange();
+  onRejectionBarChange();
   initSavedConfigs();
 
   // Dark mode
@@ -517,6 +522,9 @@ function buildCfg() {
     sweepPips:         parseFloat(g('cfg-sweep-pips'))|| 2,
     secondTouchOnly:   gb('cfg-second-touch'),
     useM1Features:     gb('cfg-use-m1-features'),
+    rejectionBar:      gb('cfg-rejection-bar'),
+    rejWickPct:        parseFloat(g('cfg-rej-wick-pct'))    || 0.40,
+    rejMinAtrPct:      parseFloat(g('cfg-rej-min-atr-pct')) || 0.30,
     enabledFibs:       getEnabledFibs(),
     features,
   };
@@ -1343,6 +1351,12 @@ function onSweepChange() {
   if (row) row.style.display = on ? '' : 'none';
 }
 
+function onRejectionBarChange() {
+  const on  = document.getElementById('cfg-rejection-bar')?.checked;
+  const row = document.getElementById('rej-params-row');
+  if (row) row.style.display = on ? '' : 'none';
+}
+
 function onPosModeChange() {
   const mode = document.getElementById('cfg-pos-mode')?.value || 'fixed';
   const show = (id, vis) => { const el = document.getElementById(id); if (el) el.classList.toggle('visible', vis); };
@@ -1362,8 +1376,9 @@ window.switchChartTab    = switchChartTab;
 window.onSlModeChange    = onSlModeChange;
 window.onTpModeChange    = onTpModeChange;
 window.onPosModeChange   = onPosModeChange;
-window.onSweepChange     = onSweepChange;
-window.tlToggle          = tlToggle;
+window.onSweepChange          = onSweepChange;
+window.onRejectionBarChange   = onRejectionBarChange;
+window.tlToggle               = tlToggle;
 
 function restoreSettings() {
   try {
@@ -1413,6 +1428,9 @@ function restoreSettings() {
     s('cfg-sweep-pips',      cfg.sweepPips);
     sc('cfg-second-touch',   cfg.secondTouchOnly);
     sc('cfg-use-m1-features',cfg.useM1Features);
+    sc('cfg-rejection-bar',  cfg.rejectionBar);
+    s('cfg-rej-wick-pct',    cfg.rejWickPct);
+    s('cfg-rej-min-atr-pct', cfg.rejMinAtrPct);
     if (cfg.enabledFibs) {
       const fibSet = new Set(cfg.enabledFibs.map(String));
       document.querySelectorAll('.fib-chk').forEach(chk => {
@@ -1435,5 +1453,6 @@ function restoreSettings() {
     onSlModeChange();
     onTpModeChange();
     onPosModeChange();
+    onRejectionBarChange();
   } catch {}
 }

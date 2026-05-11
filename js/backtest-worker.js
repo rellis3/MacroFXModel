@@ -121,6 +121,9 @@ function handleRun({ symbol, cfg }) {
   const sweepPips        = cfg.sweepPips        ?? 2;
   const secondTouchOnly  = cfg.secondTouchOnly  ?? false;
   const useM1Features    = cfg.useM1Features    ?? false;
+  const rejectionBar     = cfg.rejectionBar     ?? false;  // same-bar wick rejection filter
+  const rejWickPct       = cfg.rejWickPct       ?? 0.40;  // wick must be ≥ X of bar range
+  const rejMinAtrPct     = cfg.rejMinAtrPct     ?? 0.30;  // bar range must be ≥ X of ATR
   const enabledFibSet = cfg.enabledFibs?.length
     ? new Set(cfg.enabledFibs.map(f => +f))
     : null;
@@ -393,6 +396,28 @@ function handleRun({ symbol, cfg }) {
           const rangeMid = asiaRange.high - asiaRange.range / 2;
           const mrDir    = bar.c > rangeMid ? 'short' : 'long';
           if (entryDir !== mrDir) continue;
+
+          // ── Rejection bar filter ─────────────────────────────────────
+          // Confirm quality on the TOUCH BAR ITSELF — no look-ahead, no R cost.
+          // Three checks run simultaneously:
+          //   1. Bar range ≥ rejMinAtrPct × ATR  (not a doji/flat bar)
+          //   2. Close is on the correct side of the confluence level
+          //      (long: bar.c > conf.price  |  short: bar.c < conf.price)
+          //   3. Wick toward the level is ≥ rejWickPct of the bar's total range
+          //      (long: lower wick = min(o,c) - low  |  short: high - max(o,c))
+          if (rejectionBar) {
+            const barRange = bar.h - bar.l;
+            // 1. Not a doji
+            if (barRange < atr * rejMinAtrPct) continue;
+            // 2. Close must be back on the entry side of the level
+            if (entryDir === 'long'  && bar.c <= conf.price) continue;
+            if (entryDir === 'short' && bar.c >= conf.price) continue;
+            // 3. Wick toward level must be meaningful
+            const lowerWick = Math.min(bar.o, bar.c) - bar.l;
+            const upperWick = bar.h - Math.max(bar.o, bar.c);
+            const wick = entryDir === 'long' ? lowerWick : upperWick;
+            if (wick / barRange < rejWickPct) continue;
+          }
 
           // ── Liquidity sweep gate ─────────────────────────────────────
           // Require price to have already wicked through this level (taken

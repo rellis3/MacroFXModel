@@ -549,6 +549,24 @@
             <span>M1 precision features<span class="toggle-hint">When enabled and M1 data is loaded, intraday features (Wick Rejection, RSI Divergence, Order Block, FVG Bias, TWAP Slope, MACD) compute off M1 bars instead of M5. Reduces look-ahead bias from higher timeframes. Structural features (CHoCH/BOS, ADX, Hurst, Ichimoku, HTF EMA, Weekly Pivot) always use M5/M30/daily.</span></span>
           </label>
         </div>
+        <div class="cfg-cell full">
+          <label class="toggle-row">
+            <input type="checkbox" id="cfg-rejection-bar" onchange="onRejectionBarChange()"/>
+            <span>Rejection bar required<span class="toggle-hint">Confirm entry on the touch bar itself — no waiting, no R cost. Requires: (1) bar range ≥ Min ATR%, (2) close back on the correct side of the level, (3) wick toward the level ≥ Wick %. Filters doji touches and close-through fakeouts instantly.</span></span>
+          </label>
+        </div>
+        <div id="rej-params-row" style="display:none; width:100%">
+          <div class="cfg-grid" style="padding:0">
+            <div class="cfg-cell">
+              <label>Wick % of range</label>
+              <input type="number" id="cfg-rej-wick-pct" class="bt-input" value="0.40" min="0.10" max="0.90" step="0.05" title="The touch-side wick must be at least this fraction of the bar's total range. 0.40 = wick must be ≥ 40% of high-low. Higher = stricter rejection required."/>
+            </div>
+            <div class="cfg-cell">
+              <label>Min bar size (ATR%)</label>
+              <input type="number" id="cfg-rej-min-atr-pct" class="bt-input" value="0.30" min="0.05" max="1.00" step="0.05" title="Bar range must be at least this fraction of ATR. 0.30 = bar must be ≥ 30% of ATR. Filters doji and flat bars that have no rejection conviction."/>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
