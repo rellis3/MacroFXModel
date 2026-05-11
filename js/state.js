@@ -23,4 +23,8 @@ export const S = {
   surpriseIndex:   null,   // { [currency]: score } — macro surprise per currency
   ecbData:         null,   // ECB SDW daily rates { estr, de10y_ecb }
   oandaBook:       {},     // Oanda positionBook sentiment per symbol { longPct, shortPct, sentiment }
+  spreadData:      {},     // OANDA live spread per symbol { spreadPips, classification, bid, ask, timestamp }
+  myfxSentiment:   {},     // Myfxbook community outlook per symbol (EURUSD key format)
+  hasOanda:        false,  // true when OANDA_KEY is configured server-side
+  hasMyfxbook:     false,  // true when MYFXBOOK_SESSION is configured server-side
 };

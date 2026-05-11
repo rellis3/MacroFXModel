@@ -91,3 +91,17 @@ export const CAP_DEFAULTS = {
 
 export const AI_CACHE_PREFIX = 'ai_';
 export const AI_CACHE_TTL = 60 * 60 * 1000;
+
+// Typical bid/ask spreads in pips for session quality classification.
+// XAU/USD unit is dollars (pip size = 1.0 in the spread endpoint).
+export const TYPICAL_SPREADS = {
+  'EUR/USD': 0.4,
+  'GBP/USD': 0.6,
+  'USD/JPY': 0.5,
+  'AUD/USD': 0.6,
+  'XAU/USD': 0.25,
+  'EUR/GBP': 0.5,
+  'USD/CAD': 0.6,
+  'USD/CHF': 0.6,
+  'GBP/JPY': 0.9,
+};

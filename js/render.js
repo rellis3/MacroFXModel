@@ -1,5 +1,6 @@
 import { S } from './state.js';
-import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTradingDays } from './utils.js';
+import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTradingDays, toMyfxbSym } from './utils.js';
+import { TYPICAL_SPREADS } from './config.js';
 import { calculateTierScores, computeDollarRegime, computeMacroRegime } from './macro.js';
 import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
 import { computeRegimeTransition, renderARMAAndTransition } from './arma.js';
@@ -278,6 +279,53 @@ ${calendarCtx.warnings.length > 0 ? `
           <div class="pair-title">${S.currentPair.isEquity ? S.currentPair.name : S.currentPair.symbol.split('/')[0] + '<span class="q">/</span>' + (S.currentPair.symbol.split('/')[1] || '')}</div>
           <div class="pair-meta">Vol: ${volRegime.regime} (${volRegime.percentile}th pct) · ATR ${volRegime.atrPips.toFixed(0)}${S.currentPair.isEquity ? 'pts' : 'p'}${volRegime.garch ? ' · GARCH ' + volRegime.garch.pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ' [68%: ' + volRegime.ci68Pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ']' : ''}${volImpulsePill}${dregPill} · ${tierData.agreeCount}/7 tiers agree</div>
           <div class="bias-badge ${biasClass}">${biasText}${macroBias} · ${Math.abs(tierData.totalScore) >= 9 ? 'HIGH' : Math.abs(tierData.totalScore) >= 5 ? 'MED' : 'LOW'} CONVICTION</div>
+          ${(() => {
+            const sym = S.currentPair.symbol;
+            const rows = [];
+
+            // SESSION QUALITY — OANDA live spread
+            if (S.hasOanda) {
+              const sd = S.spreadData[sym];
+              if (sd && !sd.error && sd.spreadPips != null) {
+                const cls = sd.classification;
+                const dotCol = cls === 'EXTREME' ? 'var(--red)' : cls === 'WIDE' ? 'var(--amber)' : 'var(--green)';
+                const note   = cls === 'EXTREME' ? ' — Do not enter, spread extreme'
+                             : cls === 'WIDE'    ? ' — Spread elevated, consider waiting' : '';
+                rows.push(`<div style="display:flex;align-items:center;gap:5px;margin-top:5px;flex-wrap:wrap">
+                  <span style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.06em">SESSION</span>
+                  <span style="font-size:8px;color:${dotCol}">&#9679;</span>
+                  <span style="font-size:10.5px;font-weight:700;color:${dotCol}">${cls}</span>
+                  <span style="font-size:10px;color:var(--text3)">${sd.spreadPips.toFixed(1)} pip</span>
+                  ${note ? `<span style="font-size:10px;color:${dotCol}">${note}</span>` : ''}
+                </div>`);
+              }
+            }
+
+            // RETAIL CROWD — Myfxbook sentiment
+            if (S.hasMyfxbook) {
+              const mfxKey = toMyfxbSym(sym);
+              const sent   = S.myfxSentiment[mfxKey];
+              if (sent && !sent.error) {
+                const isContrarian = (macroBias === 'LONG'  && sent.sentiment === 'SHORT_HEAVY') ||
+                                     (macroBias === 'SHORT' && sent.sentiment === 'LONG_HEAVY');
+                const sigLabel = isContrarian
+                  ? 'CONTRARIAN ' + macroBias + ' SIGNAL'
+                  : sent.sentiment === 'BALANCED' ? 'CROWD BALANCED' : 'CROWD ALIGNED';
+                const sigCol   = isContrarian ? 'var(--green)'
+                               : sent.sentiment === 'BALANCED' ? 'var(--text3)' : 'var(--amber)';
+                const extremeTag = sent.crowding === 'EXTREME'
+                  ? `<span style="font-size:9px;color:var(--red);padding:1px 4px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:3px;font-weight:700">EXTREME CROWD</span>` : '';
+                rows.push(`<div style="display:flex;align-items:center;gap:5px;margin-top:3px;flex-wrap:wrap">
+                  <span style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.06em">RETAIL</span>
+                  <span style="font-size:10px;color:var(--text2)">${sent.longPct}% long / ${sent.shortPct}% short</span>
+                  <span style="font-size:10.5px;font-weight:700;color:${sigCol}">${sigLabel}</span>
+                  ${extremeTag}
+                </div>`);
+              }
+            }
+
+            return rows.length ? rows.join('') : '';
+          })()}
           ${macroQuadrant ? (() => {
             const mq = macroQuadrant;
             const qCol  = mq.color === 'green' ? 'var(--green)'  : mq.color === 'amber' ? 'var(--amber)'  : mq.color === 'red' ? 'var(--red)'  : 'var(--blue)';
@@ -683,6 +731,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
     ${c.pivotMatch ? `<div class="ci-pivot">📍 ${c.pivotMatch}</div>` : ''}
     ${c.dailyFib ? `<div class="ci-dfib dfib-${c.dailyFib.strength}" title="Daily Fib retracement">📊 ${c.dailyFib.label} ${c.dailyFib.direction}</div>` : ''}
     ${c.structuralFib ? `<div class="ci-dfib dfib-${c.structuralFib.strength}" title="Structural fib · ${c.structuralFib.timeLabel}">📐 ${c.structuralFib.label} ${c.structuralFib.direction}${c.structuralFib.count >= 3 ? ` ×${c.structuralFib.count}` : ''}</div>` : ''}
+    ${c.retailCluster ? `<div class="ci-dfib dfib-silver" title="Retail positioning cluster (Myfxbook avg price)">👥 ${c.retailCluster.label}</div>` : ''}
     <div class="ci-size">${c.size}%</div>
   </div>
   ${c.direction ? `<div class="ci-trade-row">

@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { getPipSize, pipsBetween, getConfluenceThreshold, getAsiaMinPips } from './utils.js';
+import { getPipSize, pipsBetween, getConfluenceThreshold, getAsiaMinPips, toMyfxbSym } from './utils.js';
 import { getAnchorPrice, directionFromPrice, getDailyFibLevels } from './ranges.js';
 import { getCaps } from './caps.js';
 import { calcPositionSize } from './vol.js';
@@ -101,6 +101,18 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       }
     }
 
+    // Retail cluster proximity (Myfxbook avgLongPrice / avgShortPrice)
+    // Uses same oiCapDist threshold as OI walls — both are positioning clusters.
+    let retailCluster = null;
+    const _mfxSent = S.myfxSentiment[toMyfxbSym(symbol)];
+    if (_mfxSent && _mfxSent.avgLongPrice && _mfxSent.avgShortPrice) {
+      const retailLevels = [
+        { price: _mfxSent.avgLongPrice,  label: 'Retail Long Cluster',  side: 'long'  },
+        { price: _mfxSent.avgShortPrice, label: 'Retail Short Cluster', side: 'short' },
+      ].filter(l => l.price && Math.abs(l.price - c.price) <= oiCapDist);
+      if (retailLevels.length > 0) retailCluster = retailLevels[0];
+    }
+
     // Find all daily opens within proximity — newest-first, take first as label
     const matchingOpens = _dailyOpens.filter(d => Math.abs(c.price - d.price) <= rngCapDist);
     const nearDailyOpen = matchingOpens.length > 0 ? matchingOpens[0] : null;
@@ -148,11 +160,24 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     if (structuralFib)             structuralStars++;
     if ((structuralFib?.count ?? 0) >= 3) structuralStars++;
     if (c.crossSessionMatch)       structuralStars++; // Asia + Monday fibs agree on this price
+    if (retailCluster)             structuralStars += 0.5; // retail positioning cluster nearby
 
     let confirmationStars = 0;
     if (aligned) confirmationStars++;
 
-    let stars = structuralStars + confirmationStars;
+    // Crowding bonus/penalty based on Myfxbook sentiment vs macro bias
+    let crowdingAdj = 0;
+    if (_mfxSent) {
+      const crowdOpposesBias = (bias === 'LONG'  && _mfxSent.sentiment === 'SHORT_HEAVY') ||
+                               (bias === 'SHORT' && _mfxSent.sentiment === 'LONG_HEAVY');
+      const crowdAgreesBias  = (bias === 'LONG'  && _mfxSent.sentiment === 'LONG_HEAVY') ||
+                               (bias === 'SHORT' && _mfxSent.sentiment === 'SHORT_HEAVY');
+      if (crowdOpposesBias && _mfxSent.crowding === 'EXTREME') crowdingAdj =  1.0;  // squeeze fuel
+      else if (crowdOpposesBias && _mfxSent.crowding === 'STRONG')   crowdingAdj =  0.5;
+      else if (crowdAgreesBias  && _mfxSent.crowding === 'EXTREME')  crowdingAdj = -0.5; // crowded trade
+    }
+
+    let stars = structuralStars + confirmationStars + crowdingAdj;
 
     const baseSize = calcPositionSize(macroScore, volRegime);
     const sizeAdj = aligned ? 1 : 0.5;
@@ -253,6 +278,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       structuralFib,      // { label, direction, passType, timeLabel, count } or null
       tpFibRisk,          // nearest structural fib sitting in TP path, or null (warn only)
       nearDailyOpen,      // { date, price, label } of most recent matching daily open, or null
+      retailCluster,      // { price, label, side } of nearby Myfxbook avg price cluster, or null
       dailyOpenCount: matchingOpens.length,
       stars,
       structuralStars,    // Fix 8: level quality stars (isTight, pivots, OI, fib clusters)

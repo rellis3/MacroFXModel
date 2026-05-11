@@ -25,7 +25,7 @@ function err(msg, status = 500) {
 // via /api/kv/get and /api/kv/set. The 'caps' key is excluded here because
 // it has its own dedicated /api/config/caps route with stricter validation.
 function isAllowedKVKey(key) {
-  const EXACT = new Set(['fred', 'oi_store', 'journal_store', 'cot_data', 'surprise_index', 'events_today']);
+  const EXACT = new Set(['fred', 'oi_store', 'journal_store', 'cot_data', 'surprise_index', 'events_today', 'sentiment']);
   const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
@@ -295,6 +295,8 @@ export default {
           hasAnt:      !!env.ANT_KEY,
           hasKV:       !!env.FX_SCORES,
           hasFinnhub:  !!env.FINNHUB_KEY,
+          hasOanda:    !!env.OANDA_KEY,
+          hasMyfxbook: !!env.MYFXBOOK_SESSION,
         });
       }
 
@@ -1031,6 +1033,15 @@ Cross-asset risk sentiment: ${s.riskSentiment ?? 'N/A'}
 
 Foreign curves: ${s.foreignCurves ?? 'N/A'}
 
+EXECUTION QUALITY (OANDA live spread)
+Spread right now: ${s.spreadPips ?? 'N/A'} pips  |  Typical: ${s.typicalSpreadPips ?? 'N/A'} pips  |  Classification: ${s.spreadClassification ?? 'N/A'}
+${s.spreadClassification === 'EXTREME' ? 'WARNING: spread is extreme - do not enter, market is illiquid or pre-event' : s.spreadClassification === 'WIDE' ? 'NOTE: spread is elevated - entry cost is high, wait for normalisation or widen stop to account for it' : ''}
+
+RETAIL CROWD POSITIONING (Myfxbook community)
+Retail long: ${s.retailLongPct ?? 'N/A'}%  |  Short: ${s.retailShortPct ?? 'N/A'}%  |  Crowding: ${s.retailCrowding ?? 'N/A'}
+Avg price of retail longs: ${s.avgLongPrice ?? 'N/A'}  |  Avg price of retail shorts: ${s.avgShortPrice ?? 'N/A'}
+Contrarian signal vs macro bias: ${s.retailContrarian ? 'YES - retail crowd opposes macro direction (supportive for trade)' : s.retailSentiment === 'BALANCED' ? 'Crowd is balanced - neutral' : 'NO - retail crowd agrees with macro direction (crowding risk)'}
+
 GARCH VOLATILITY FORECAST
 ${s.garch ? `GARCH(1,1) daily range forecast: ${s.garch.forecast}  |  68% CI: ${s.garch.ci68}  |  95% CI: ${s.garch.ci95}
 Vol clustering: ${s.garch.cluster}  -  ${s.garch.clusterMsg}
@@ -1103,7 +1114,21 @@ ${s.surpriseIndex && Object.keys(s.surpriseIndex).length > 0
 
 === END SNAPSHOT ===
 
-Respond with a single valid JSON object. No markdown. No text outside the JSON. Keep all string values SHORT (1-2 sentences max) EXCEPT tldr. Max 3 items per array.
+You are a professional FX/futures prop desk analyst. Your job is to give a SPECIFIC, CALIBRATED trading brief - not generic observations.
+
+Rules for your response:
+1. Every level you mention must be a specific price, not a description. Say "1.0847" not "near resistance".
+2. Every vol / spread observation must reference the actual numbers. Say "GARCH forecasts 42 pips today, 28 used, 14 remaining" not "volatility is moderate".
+3. Retail crowd data is contrarian. If 70% of retail are long and macro says short, that is a TAILWIND (squeeze fuel), say so explicitly.
+4. Spread classification gates entry quality. If spread is WIDE or EXTREME, say "do not enter now, wait for spread < X pips" with the actual X.
+5. avgLongPrice and avgShortPrice are real liquidity clusters. If price is approaching avgShortPrice from below, that is a resistance cluster with real stops above it. Say so.
+6. The headline must be one sentence a trader can act on. Not "mixed signals suggest caution." Something like "Fade the 1.0847 Fib/retail-cluster confluence short, target 1.0812, stop 1.0858, wait for spread to normalise below 0.6 pips."
+7. goodToDoNow must be specific actions, not attitudes. "Wait for price to reach 1.0847 then look for 5m bearish engulf" not "be patient".
+8. avoidNow must also be specific. "Do not chase the move if price is already below 1.0830" not "avoid chasing".
+9. riskWarnings must reference actual values from the snapshot. "VIX at 24 (prev 19) - rising fear, USD bid likely to persist" not "volatility risk".
+10. If retailCrowding is EXTREME and retailContrarian is true, call out the squeeze setup explicitly in the headline or tradingFramework.
+
+Respond with a single valid JSON object. No markdown. No text outside the JSON. All string values 1-2 sentences max. Max 3 items per arrays.
 convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderate, 10=maximum). Do not use any other scale.
 tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newlines with \\n):
 "[PAIR] [BIAS] [SCORE]/10 | [REGIME]\\n[1-2 sentence market read]\\nWatch: [up to 3 key levels with price and type]\\nDo: [specific action]. Avoid: [what to avoid]. Risk: [main risk or event]"
@@ -1242,6 +1267,143 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
 
         const reportDate = merged['EUR/USD']?.changeDate || merged['XAU/USD']?.changeDate || merged['NAS100_USD']?.changeDate || null;
         return json({ ok: true, data: merged, pairsFound, reportDate, errors: errors.length ? errors : undefined });
+      }
+
+      // -- /api/spread ------------------------------------------
+      // Live bid/ask spread from OANDA pricing endpoint.
+      // Query: ?symbol=EUR_USD  (underscore format)
+      // Returns { symbol, bid, ask, spread, spreadPips, timestamp }
+      // No caching - always fetched live for session quality gating.
+      // Requires: OANDA_KEY, OANDA_ACCOUNT_ID, OANDA_ENV env vars.
+      if (path === '/api/spread') {
+        if (!env.OANDA_KEY)        return json({ error: 'spread_unavailable', reason: 'OANDA_KEY not set' });
+        if (!env.OANDA_ACCOUNT_ID) return json({ error: 'spread_unavailable', reason: 'OANDA_ACCOUNT_ID not set' });
+
+        const spreadSym = url.searchParams.get('symbol'); // EUR_USD format
+        if (!spreadSym) return err('symbol param required', 400);
+
+        // Pip size per symbol for spread conversion.
+        // XAU_USD uses raw dollar value (1.0) so spreadPips = dollar spread.
+        const SPREAD_PIP_SIZES = {
+          'EUR_USD': 0.0001,
+          'GBP_USD': 0.0001,
+          'USD_JPY': 0.01,
+          'AUD_USD': 0.0001,
+          'XAU_USD': 1.0,
+          'EUR_GBP': 0.0001,
+          'USD_CAD': 0.0001,
+          'USD_CHF': 0.0001,
+          'GBP_JPY': 0.01,
+        };
+        const spreadPipSize = SPREAD_PIP_SIZES[spreadSym] || 0.0001;
+
+        const spreadBase = env.OANDA_ENV === 'practice'
+          ? 'https://api-fxpractice.oanda.com'
+          : 'https://api-fxtrade.oanda.com';
+
+        try {
+          const spreadRes = await fetch(
+            `${spreadBase}/v3/accounts/${env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(spreadSym)}`,
+            { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` } }
+          );
+          if (!spreadRes.ok) return json({ error: 'spread_unavailable', reason: `OANDA ${spreadRes.status}` });
+          const spreadData = await spreadRes.json();
+          const priceEntry = spreadData.prices?.[0];
+          if (!priceEntry) return json({ error: 'spread_unavailable', reason: 'No price data' });
+
+          const bid = parseFloat(priceEntry.bids?.[0]?.price ?? 0);
+          const ask = parseFloat(priceEntry.asks?.[0]?.price ?? 0);
+          const rawSpread = ask - bid;
+          const spreadPips = parseFloat((rawSpread / spreadPipSize).toFixed(2));
+
+          return json({
+            symbol:     spreadSym,
+            bid,
+            ask,
+            spread:     rawSpread,
+            spreadPips,
+            timestamp:  priceEntry.time || new Date().toISOString(),
+          });
+        } catch(e) {
+          return json({ error: 'spread_unavailable', reason: e.message });
+        }
+      }
+
+      // -- /api/sentiment ---------------------------------------
+      // Myfxbook community outlook - retail long/short positioning.
+      // Returns all 5 main pairs in one call. Cached in KV for 30 min.
+      // Requires: MYFXBOOK_SESSION env var (refresh monthly via browser login).
+      if (path === '/api/sentiment') {
+        if (!env.MYFXBOOK_SESSION) return json({ error: 'sentiment_unavailable', reason: 'MYFXBOOK_SESSION not set' });
+
+        const SENTIMENT_TTL_MS = 30 * 60 * 1000; // 30 min
+
+        // Check KV cache first
+        if (env.FX_SCORES) {
+          try {
+            const cached = await env.FX_SCORES.get('sentiment');
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (parsed.savedAt && (Date.now() - parsed.savedAt) < SENTIMENT_TTL_MS) {
+                return json(parsed);
+              }
+            }
+          } catch(e) {}
+        }
+
+        const MYFXB_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD'];
+
+        try {
+          const mfxRes = await fetch(
+            `https://www.myfxbook.com/api/get-community-outlook.json?session=${encodeURIComponent(env.MYFXBOOK_SESSION)}`,
+            { headers: { 'User-Agent': 'MacroFXDashboard/1.0' } }
+          );
+          if (!mfxRes.ok) return json({ error: 'sentiment_unavailable', reason: `Myfxbook ${mfxRes.status}` });
+          const mfxData = await mfxRes.json();
+
+          if (mfxData.error === true || mfxData.error === 'true') {
+            return json({ error: 'sentiment_unavailable', reason: mfxData.message || 'Session error - refresh MYFXBOOK_SESSION' });
+          }
+
+          const symbols = mfxData.symbols?.symbol || [];
+          const result = {};
+
+          for (const sym of symbols) {
+            const name = sym.name;
+            if (!MYFXB_PAIRS.includes(name)) continue;
+
+            const longPct  = parseFloat(sym.longPercentage  || sym.longsPercent  || 0) || 0;
+            const shortPct = parseFloat(sym.shortPercentage || sym.shortsPercent || 0) || 0;
+            const longVol  = parseFloat(sym.longVolume  || 0) || 0;
+            const shortVol = parseFloat(sym.shortVolume || 0) || 0;
+            const longPos  = parseInt(sym.longPositions  || 0) || 0;
+            const shortPos = parseInt(sym.shortPositions || 0) || 0;
+            const avgLongPrice  = parseFloat(sym.avgLongPrice  || 0) || null;
+            const avgShortPrice = parseFloat(sym.avgShortPrice || 0) || null;
+
+            const domPct   = Math.max(longPct, shortPct);
+            const sentiment = longPct >= 65 ? 'LONG_HEAVY' : shortPct >= 65 ? 'SHORT_HEAVY' : 'BALANCED';
+            const crowding  = domPct >= 75 ? 'EXTREME' : domPct >= 65 ? 'STRONG' : domPct >= 55 ? 'MODERATE' : 'BALANCED';
+
+            result[name] = {
+              longPct, shortPct,
+              longVolume: longVol, shortVolume: shortVol,
+              longPositions: longPos, shortPositions: shortPos,
+              avgLongPrice, avgShortPrice,
+              sentiment, crowding,
+            };
+          }
+
+          const payload = { ...result, savedAt: Date.now() };
+
+          if (env.FX_SCORES) {
+            env.FX_SCORES.put('sentiment', JSON.stringify(payload), { expirationTtl: 3600 }).catch(() => {});
+          }
+
+          return json(payload);
+        } catch(e) {
+          return json({ error: 'sentiment_unavailable', reason: e.message });
+        }
       }
 
       // -- Serve index.html for all other routes ----------------

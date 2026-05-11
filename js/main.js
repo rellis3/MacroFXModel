@@ -1,6 +1,7 @@
 import { S } from './state.js';
 import { PAIRS, CACHE_DURATION } from './config.js';
-import { kvSet, loadCached, cleanupStaleSessionCaches, fetchAPI, updateStatus, updatePill, londonSessionDay, getDigits, getPipSize } from './utils.js';
+import { kvSet, loadCached, cleanupStaleSessionCaches, fetchAPI, updateStatus, updatePill, londonSessionDay, getDigits, getPipSize, toOandaSym, classifySpread } from './utils.js';
+import { TYPICAL_SPREADS } from './config.js';
 import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
 import { calculateStructuralFibs } from './structural-fibs.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
@@ -242,6 +243,47 @@ function startLiveStream() {
 }
 window.startLiveStream = startLiveStream;
 
+// ── Spread + Sentiment loaders ────────────────────────────────────────────────
+
+async function loadSpreadData() {
+  if (!S.hasOanda) return;
+  const sym = S.currentPair?.symbol;
+  if (!sym) return;
+  const oandaSym = toOandaSym(sym);
+  try {
+    const res = await fetch(`/api/spread?symbol=${encodeURIComponent(oandaSym)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.error) return;
+    const typical = TYPICAL_SPREADS[sym] ?? null;
+    S.spreadData[sym] = {
+      spreadPips:     data.spreadPips,
+      classification: classifySpread(data.spreadPips, typical),
+      bid:            data.bid,
+      ask:            data.ask,
+      timestamp:      data.timestamp,
+    };
+    renderAllDebounced();
+  } catch(e) {
+    // Non-critical — spread row hidden if no data
+  }
+}
+
+async function loadSentimentData() {
+  if (!S.hasMyfxbook) return;
+  try {
+    const res = await fetch('/api/sentiment');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.error) return;
+    // Store keyed by EURUSD-style symbol (savedAt is metadata, not a pair key)
+    S.myfxSentiment = data;
+    renderAllDebounced();
+  } catch(e) {
+    // Non-critical — sentiment row hidden if no data
+  }
+}
+
 // ── Data loading ─────────────────────────────────────────────────────────────
 async function loadAll() {
   if (!S._caps) await loadCaps();
@@ -274,10 +316,16 @@ async function loadAll() {
       if (cfg.hasAnt)     updatePill('pillAnt', 'ant');
       if (cfg.hasKV)      updatePill('pillKV',  'ok');
       if (cfg.hasFinnhub) hasFinnhub = true;
+      S.hasOanda    = !!cfg.hasOanda;
+      S.hasMyfxbook = !!cfg.hasMyfxbook;
     } catch(e) {}
 
     // Load events in background — non-blocking, updates S.eventRisk + S.surpriseIndex
     loadEventData(hasFinnhub).catch(() => {});
+
+    // Load spread (live, no cache) and sentiment (cached 30m in KV) — non-blocking
+    loadSpreadData().catch(() => {});
+    loadSentimentData().catch(() => {});
 
     const symKey = S.currentPair.symbol.replace('/', '');
 
@@ -560,7 +608,9 @@ async function init() {
   renderPairTabs();
   await loadAll();
   startLiveStream();           // Fix 23: live SSE stream; falls back silently if Oanda unavailable
-  setInterval(() => refreshQuote(), 5 * 60 * 1000); // polling fallback / 5m candle refresh
+  setInterval(() => refreshQuote(), 5 * 60 * 1000);       // polling fallback / 5m candle refresh
+  setInterval(() => loadSpreadData().catch(() => {}), 60 * 1000);         // live spread, every 60s
+  setInterval(() => loadSentimentData().catch(() => {}), 30 * 60 * 1000); // sentiment, every 30m
 
   // Toggle .pinned shadow on sticky header when page scrolls past natural position
   const sentinel = document.getElementById('stickysentinel');

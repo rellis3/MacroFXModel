@@ -198,6 +198,23 @@ export function fmt(value, decimals = 2, suffix = '', fallback = '—') {
   return value.toFixed(decimals) + suffix;
 }
 
+// ── Symbol format converters ─────────────────────────────────────────────────
+
+// EUR/USD -> EUR_USD  (OANDA instruments format)
+export function toOandaSym(sym) { return sym.replace('/', '_'); }
+
+// EUR/USD -> EURUSD   (Myfxbook symbols format)
+export function toMyfxbSym(sym) { return sym.replace('/', ''); }
+
+// Classify a live spread vs typical spread for the pair.
+// Returns 'NORMAL', 'WIDE', or 'EXTREME'.
+export function classifySpread(spreadPips, typicalPips) {
+  if (spreadPips == null || typicalPips == null) return null;
+  if (spreadPips > typicalPips * 3.0) return 'EXTREME';
+  if (spreadPips > typicalPips * 1.5) return 'WIDE';
+  return 'NORMAL';
+}
+
 // ── Math helpers ─────────────────────────────────────────────────────────────
 
 export function ema(values, period) {
