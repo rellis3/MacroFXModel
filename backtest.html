@@ -85,9 +85,12 @@
     .fib-item span { font-size: 10px; color: var(--text2); font-family: 'DM Mono', monospace; }
 
     /* ── Feature list ────────────────────────────────────────────────────────── */
-    .feat-row { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 3px 0; font-size: 12px; color: var(--text2); }
+    .feat-row { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 3px 0; font-size: 12px; color: var(--text2); flex-wrap: wrap; }
     .feat-row:hover { color: var(--text); }
-    .feat-row input { cursor: pointer; accent-color: var(--blue); }
+    .feat-row input[type="checkbox"] { cursor: pointer; accent-color: var(--blue); }
+    .feat-params { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: 4px; }
+    .feat-params label { font-size: 10px; color: var(--text3); display: flex; align-items: center; gap: 4px; cursor: default; }
+    .feat-param-input { width: 52px; padding: 2px 4px; font-size: 10px; font-family: 'DM Mono', monospace; background: var(--s2); border: 1px solid var(--border); border-radius: 4px; color: var(--text1); text-align: center; }
 
     /* ── Kill switches ───────────────────────────────────────────────────────── */
     .kill-box { background: var(--red-bg); border: 1px solid var(--red-bd); border-radius: 8px; padding: 9px 11px; }
@@ -135,6 +138,27 @@
 
     /* ── Results panel ───────────────────────────────────────────────────────── */
     #results-panel { display: none; flex-direction: column; gap: 18px; }
+
+    /* ── IS/OOS panel ────────────────────────────────────────────────────────── */
+    #is-oos-panel { background: var(--s1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .oos-title { font-size: 12px; font-weight: 700; color: var(--text1); margin-bottom: 10px; }
+    .oos-sub { font-size: 10px; font-weight: 400; color: var(--text3); margin-left: 8px; }
+    .oos-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .oos-table th { font-size: 10px; font-weight: 600; color: var(--text3); text-align: left; padding: 3px 8px 6px; text-transform: uppercase; letter-spacing: .4px; }
+    .oos-table td { padding: 5px 8px; border-top: 1px solid var(--border); }
+    .oos-metric { color: var(--text2); font-weight: 500; }
+    .oos-is  { font-family: 'DM Mono', monospace; color: var(--text1); }
+    .oos-oos { font-family: 'DM Mono', monospace; }
+    .oos-delta { font-size: 10px; }
+    .oos-ok     { color: var(--text1); }
+    .oos-better { color: var(--green); }
+    .oos-warn   { color: var(--amber, #e8a838); font-weight: 600; }
+    .oos-pending { color: var(--text3); font-style: italic; font-size: 10px; }
+    .oos-verdict { margin-top: 10px; padding: 8px 12px; border-radius: 7px; font-size: 11px; font-weight: 600; }
+    .oos-verdict.pass { background: rgba(34,197,94,.12); color: var(--green); }
+    .oos-verdict.warn { background: rgba(232,168,56,.12); color: var(--amber, #e8a838); }
+    .oos-verdict.fail { background: rgba(239,68,68,.12);  color: var(--red); }
+    .oos-hint { margin-top: 8px; font-size: 10px; color: var(--text3); }
 
     /* ── Stats grid ──────────────────────────────────────────────────────────── */
     #stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 8px; }
@@ -345,13 +369,13 @@
           <input type="date" id="cfg-end-date" class="bt-input" value="2025-12-31"/>
         </div>
         <div class="cfg-cell full">
-          <label>IS / OOS Split</label>
+          <label>IS / OOS Split <span style="font-size:9px;color:var(--text3);font-weight:400">① set IS → Run → ② set OOS → Run</span></label>
           <div class="chip-row">
-            <button class="chip" onclick="applyIsOosSplit(0.7)">IS 70%</button>
-            <button class="chip" onclick="applyOosOnly(0.7)">OOS 30%</button>
-            <button class="chip" onclick="applyIsOosSplit(0.5)">IS 50%</button>
-            <button class="chip" onclick="applyOosOnly(0.5)">OOS 50%</button>
-            <button class="chip" onclick="resetDateRange()">Reset</button>
+            <button class="chip" onclick="applyIsOosSplit(0.7)" title="Set date range to first 70% — train here">① IS 70%</button>
+            <button class="chip" onclick="applyOosOnly(0.7)"   title="Set date range to last 30% — validate here">② OOS 30%</button>
+            <button class="chip" onclick="applyIsOosSplit(0.5)" title="Set date range to first 50%">① IS 50%</button>
+            <button class="chip" onclick="applyOosOnly(0.5)"   title="Set date range to last 50%">② OOS 50%</button>
+            <button class="chip" onclick="resetDateRange()"     title="Restore full date range">Reset</button>
           </div>
         </div>
       </div>
@@ -716,6 +740,14 @@
         <p>Uses the Ichimoku Cloud (Tenkan/Kijun/Senkou) on daily bars. Price above the cloud → bullish; below → bearish; inside the cloud → abstain. A broad trend-bias filter.</p>
         <h4>MACD (12/26/9)</h4>
         <p>Standard MACD on M5. Signal line crossover determines direction: MACD above signal → long; below → short. Captures momentum shifts but can lag at turning points.</p>
+        <h4>Z-Score</h4>
+        <p>Mirrors the VanHe1sing Pine Script indicator exactly: <code>zscore = (close − SMA(close, N)) / StdDev(close, N)</code>. Measures how many standard deviations price is from its rolling mean.</p>
+        <ul>
+          <li><strong>Long Z ≤</strong> threshold (e.g. −2.0): price is 2σ <em>below</em> the mean → statistically oversold → vote <span class="hg">long</span></li>
+          <li><strong>Short Z ≥</strong> threshold (e.g. +2.0): price is 2σ <em>above</em> the mean → statistically overbought → vote <span class="hr">short</span></li>
+          <li>Between the two thresholds → abstain (no directional edge)</li>
+        </ul>
+        <p><span class="hg">Best use:</span> combine with Range Position and Wick Rejection for a high-conviction mean-reversion entry. Tighten thresholds (±1.5) for more trades, widen (±2.5) for fewer but higher-probability signals. Runs on M1 when M1 precision mode is on.</p>
         <p style="margin-top:8px;color:var(--text3);font-size:10px">💡 Check the Bayesian Feature Accuracy table after a run to see each feature's real win rate on your data. Disable features with win rates below 45% — they are adding noise rather than signal.</p>
       </div>
       <div id="feature-list"></div>
@@ -851,6 +883,9 @@
 
     <!-- Results -->
     <div id="results-panel">
+
+      <!-- IS/OOS comparison panel (shown when a split is active) -->
+      <div id="is-oos-panel" style="display:none"></div>
 
       <!-- Summary stats -->
       <div>

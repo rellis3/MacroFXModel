@@ -150,6 +150,13 @@ function loadConfig(id) {
       const chk = document.getElementById('feat-' + key);
       if (chk) chk.checked = !!feat.enabled;
     }
+    const zf = cfg.features.zScore;
+    if (zf) {
+      const sv = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+      sv('feat-zscore-len',   zf.length);
+      sv('feat-zscore-long',  zf.zLong);
+      sv('feat-zscore-short', zf.zShort);
+    }
   }
   onSlModeChange();
   onTpModeChange();
@@ -284,6 +291,7 @@ const DEFAULT_FEATURES = {
   weeklyPivot:   { enabled: true,  weight: 1, label: 'Weekly Pivot' },
   ichimokuCloud: { enabled: true,  weight: 1, label: 'Ichimoku Cloud' },
   macdSignal:    { enabled: false, weight: 1, label: 'MACD (12/26/9)' },
+  zScore:        { enabled: false, weight: 1, label: 'Z-Score', length: 20, zLong: -2.0, zShort: 2.0 },
 };
 
 // ── SD Level (fib) filter ──────────────────────────────────────────────────────
@@ -455,6 +463,10 @@ function buildCfg() {
     const chk = document.getElementById('feat-' + key);
     features[key] = { ...def, enabled: chk ? chk.checked : def.enabled };
   }
+  // Z-Score specific params (inline inputs rendered by renderFeatureList)
+  features.zScore.length  = parseInt(g('feat-zscore-len'))   || 20;
+  features.zScore.zLong   = parseFloat(g('feat-zscore-long'))  ?? -2.0;
+  features.zScore.zShort  = parseFloat(g('feat-zscore-short')) ??  2.0;
   return {
     // SL
     slMode:            g('cfg-sl-mode')              || 'range',
@@ -521,42 +533,86 @@ function handleResult(payload) {
 }
 
 // ── IS / OOS date split ────────────────────────────────────────────────────────
+// Full range is persisted in localStorage so OOS chip works across page reloads
+// and doesn't depend on the user clicking IS first.
+
+const IS_OOS_KEY = 'bt-is-oos-range';
+
+function _getFullRange() {
+  // Prefer the stored full range (set the first time a chip is clicked)
+  try {
+    const raw = localStorage.getItem(IS_OOS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function _storeFullRange(start, end) {
+  try { localStorage.setItem(IS_OOS_KEY, JSON.stringify({ start, end })); } catch {}
+}
 
 function applyIsOosSplit(fraction) {
   const startEl = document.getElementById('cfg-start-date');
   const endEl   = document.getElementById('cfg-end-date');
   if (!startEl || !endEl) return;
-  const startMs = new Date(startEl.value || '2020-01-01').getTime();
-  const endMs   = new Date(endEl.value   || '2025-12-31').getTime();
+
+  // Always snapshot the current full range before narrowing it,
+  // but only if we're not already in a split view (i.e. full range not stored yet,
+  // or the current range is wider than what's stored).
+  const stored = _getFullRange();
+  const curStart = startEl.value || '2020-01-01';
+  const curEnd   = endEl.value   || '2025-12-31';
+  const base = stored ?? { start: curStart, end: curEnd };
+
+  // Always re-snapshot from the widest range seen
+  if (!stored || curStart < base.start || curEnd > base.end) {
+    _storeFullRange(curStart, curEnd);
+    base.start = curStart;
+    base.end   = curEnd;
+  }
+
+  const startMs  = new Date(base.start).getTime();
+  const endMs    = new Date(base.end).getTime();
   if (endMs <= startMs) return;
   const splitMs  = startMs + (endMs - startMs) * fraction;
   const splitStr = new Date(splitMs).toISOString().slice(0, 10);
-  // Store full range so we can toggle OOS
-  if (!document._isOosRange) {
-    document._isOosRange = { start: startEl.value, end: endEl.value };
-  }
-  endEl.value = splitStr;
-  setProgress(`IS period: ${startEl.value} → ${splitStr}`, 0);
+
+  startEl.value = base.start;
+  endEl.value   = splitStr;
+  setProgress(`IS: ${base.start} → ${splitStr} · Run, then click OOS ${Math.round((1 - fraction) * 100)}% to validate`, 0);
 }
 
 function applyOosOnly(fraction) {
-  const base = document._isOosRange;
-  if (!base) { setProgress('Set IS first', 0); return; }
+  const startEl = document.getElementById('cfg-start-date');
+  const endEl   = document.getElementById('cfg-end-date');
+  if (!startEl || !endEl) return;
+
+  const stored   = _getFullRange();
+  const curStart = startEl.value || '2020-01-01';
+  const curEnd   = endEl.value   || '2025-12-31';
+  const base     = stored ?? { start: curStart, end: curEnd };
+
   const startMs  = new Date(base.start).getTime();
   const endMs    = new Date(base.end).getTime();
+  if (endMs <= startMs) return;
   const splitMs  = startMs + (endMs - startMs) * fraction;
   const splitStr = new Date(splitMs).toISOString().slice(0, 10);
-  document.getElementById('cfg-start-date').value = splitStr;
-  document.getElementById('cfg-end-date').value   = base.end;
-  setProgress(`OOS period: ${splitStr} → ${base.end}`, 0);
+
+  startEl.value = splitStr;
+  endEl.value   = base.end;
+  setProgress(`OOS: ${splitStr} → ${base.end} · Results here are unbiased — the strategy never saw this data`, 0);
 }
 
 function resetDateRange() {
-  const base = document._isOosRange;
-  if (!base) return;
-  document.getElementById('cfg-start-date').value = base.start;
-  document.getElementById('cfg-end-date').value   = base.end;
-  document._isOosRange = null;
+  const startEl = document.getElementById('cfg-start-date');
+  const endEl   = document.getElementById('cfg-end-date');
+  if (!startEl || !endEl) return;
+  const stored = _getFullRange();
+  if (stored) {
+    startEl.value = stored.start;
+    endEl.value   = stored.end;
+    try { localStorage.removeItem(IS_OOS_KEY); } catch {}
+  }
   setProgress('Full date range restored', 0);
 }
 
@@ -571,10 +627,40 @@ function switchChartTab(tab, btn) {
   });
 }
 
+// ── IS/OOS result store ────────────────────────────────────────────────────────
+// Stores the last IS run so OOS can be compared against it.
+
+let _isResult  = null;  // last result tagged as IS
+let _oosResult = null;  // last result tagged as OOS
+
+function _tagCurrentPeriod() {
+  const startEl = document.getElementById('cfg-start-date');
+  const endEl   = document.getElementById('cfg-end-date');
+  const stored  = _getFullRange();
+  if (!stored) return null; // no split active — can't tag
+  const start = startEl?.value, end = endEl?.value;
+  if (!start || !end) return null;
+  // If end date matches the split point it's IS; if start date matches it's OOS
+  const startMs = new Date(stored.start).getTime();
+  const endMs   = new Date(stored.end).getTime();
+  const curEnd  = new Date(end).getTime();
+  const curStart= new Date(start).getTime();
+  const midMs   = startMs + (endMs - startMs) * 0.5; // rough midpoint
+  if (curEnd   < endMs   - 86400000 && curStart <= startMs + 86400000) return 'is';
+  if (curStart > startMs + 86400000 && curEnd   >= endMs   - 86400000) return 'oos';
+  return null;
+}
+
 function renderResults(d) {
   document.getElementById('results-panel').style.display = 'flex';
   const ph = document.getElementById('bt-placeholder');
   if (ph) ph.style.display = 'none';
+
+  // Tag and store result for IS/OOS comparison
+  const tag = _tagCurrentPeriod();
+  if (tag === 'is')  { _isResult  = d; _oosResult = null; }
+  if (tag === 'oos') { _oosResult = d; }
+  renderIsOosComparison();
 
   // ── Stats tiles ─────────────────────────────────────────────────────────
   const mc = d.monteCarlo;
@@ -654,6 +740,85 @@ function renderResults(d) {
   const ymWrap = document.getElementById('yearmonth-wrap');
   if (ymWrap) ymWrap.style.display = d.monthly?.length ? 'block' : 'none';
   renderYearMonth(d.monthly);
+}
+
+// ── IS/OOS comparison panel ────────────────────────────────────────────────────
+
+function renderIsOosComparison() {
+  const el = document.getElementById('is-oos-panel');
+  if (!el) return;
+
+  if (!_isResult) { el.style.display = 'none'; return; }
+
+  const is  = _isResult;
+  const oos = _oosResult;
+
+  const fmt = (v, fn) => v != null ? fn(v) : '—';
+  const pctFmt = v => (v * 100).toFixed(1) + '%';
+  const rfmt   = v => v.toFixed(3) + 'R';
+
+  // Degradation thresholds: warn if OOS metric falls below IS by these fractions
+  const metrics = [
+    { key: 'winRate',      label: 'Win Rate',      fmt: pctFmt, warnDrop: 0.05 },
+    { key: 'profitFactor', label: 'Profit Factor', fmt: v => v === Infinity ? '∞' : v.toFixed(2), warnDrop: 0.30 },
+    { key: 'meanR',        label: 'Avg R',         fmt: rfmt,   warnDrop: 0.25 },
+    { key: 'sharpe',       label: 'Sharpe',        fmt: v => v.toFixed(2), warnDrop: 0.30 },
+    { key: 'maxDrawdown',  label: 'Max DD',        fmt: pctFmt, warnDrop: null, higherIsBad: true },
+    { key: 'totalTrades',  label: 'Trades',        fmt: v => v, warnDrop: null },
+  ];
+
+  const rows = metrics.map(m => {
+    const isVal  = is[m.key];
+    const oosVal = oos?.[m.key];
+
+    let degradeClass = '';
+    let degradeNote  = '';
+    if (oos && isVal != null && oosVal != null && m.warnDrop != null && isVal !== 0) {
+      const drop = m.higherIsBad
+        ? (oosVal - isVal) / Math.abs(isVal)
+        : (isVal  - oosVal) / Math.abs(isVal);
+      if (drop > m.warnDrop) {
+        degradeClass = 'oos-warn';
+        degradeNote  = `▼ ${(drop * 100).toFixed(0)}%`;
+      } else if (drop > 0) {
+        degradeClass = 'oos-ok';
+        degradeNote  = `▼ ${(drop * 100).toFixed(0)}%`;
+      } else {
+        degradeClass = 'oos-better';
+        degradeNote  = `▲ ${(Math.abs(drop) * 100).toFixed(0)}%`;
+      }
+    }
+
+    return `<tr>
+      <td class="oos-metric">${m.label}</td>
+      <td class="oos-is">${fmt(isVal, m.fmt)}</td>
+      <td class="oos-oos ${degradeClass}">${oos ? fmt(oosVal, m.fmt) : '<span class="oos-pending">Run OOS →</span>'}</td>
+      <td class="oos-delta">${degradeNote}</td>
+    </tr>`;
+  }).join('');
+
+  const verdict = oos ? (() => {
+    const pfDrop  = is.profitFactor > 0 ? (is.profitFactor - oos.profitFactor) / is.profitFactor : 0;
+    const wrDrop  = is.winRate      > 0 ? (is.winRate      - oos.winRate)      / is.winRate      : 0;
+    if (pfDrop > 0.40 || wrDrop > 0.10) return `<div class="oos-verdict fail">⚠ Significant degradation — strategy may be overfit to IS data. Reduce complexity or widen OOS period.</div>`;
+    if (pfDrop > 0.20 || wrDrop > 0.05) return `<div class="oos-verdict warn">△ Moderate degradation — acceptable for live trading but monitor closely.</div>`;
+    return `<div class="oos-verdict pass">✓ Results hold in OOS — strategy shows genuine edge.</div>`;
+  })() : '';
+
+  const isRange  = is.dateRange  ? `${is.dateRange.first}  → ${is.dateRange.last}`  : '';
+  const oosRange = oos?.dateRange ? `${oos.dateRange.first} → ${oos.dateRange.last}` : '';
+
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="oos-title">IS / OOS Validation
+      <span class="oos-sub">${isRange ? 'IS: ' + isRange : ''} ${oosRange ? ' · OOS: ' + oosRange : ''}</span>
+    </div>
+    <table class="oos-table">
+      <thead><tr><th></th><th>In-Sample</th><th>Out-of-Sample</th><th>Δ</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${verdict}
+    ${!oos ? '<div class="oos-hint">Click <strong>OOS 30%</strong> (or 50%) then Run to populate the OOS column.</div>' : ''}`;
 }
 
 // ── Equity Curve SVG ───────────────────────────────────────────────────────────
@@ -1098,11 +1263,18 @@ function getSymbol() {
 function renderFeatureList() {
   const el = document.getElementById('feature-list');
   if (!el) return;
-  el.innerHTML = Object.entries(DEFAULT_FEATURES).map(([key, def]) => `
-    <label class="feat-row">
+  el.innerHTML = Object.entries(DEFAULT_FEATURES).map(([key, def]) => {
+    const extras = key === 'zScore' ? `
+      <span class="feat-params">
+        <label>Len <input type="number" id="feat-zscore-len"   class="feat-param-input" value="${def.length}"  min="5"    max="200"  step="1"   title="Lookback period for SMA and StdDev (Pine: Length=20)"/></label>
+        <label>Long Z ≤ <input type="number" id="feat-zscore-long"  class="feat-param-input" value="${def.zLong}"   min="-5.0" max="0"     step="0.1" title="Enter LONG when Z-Score falls to or below this threshold (e.g. -2.0 = 2σ below mean)"/></label>
+        <label>Short Z ≥ <input type="number" id="feat-zscore-short" class="feat-param-input" value="${def.zShort}"  min="0"    max="5.0"  step="0.1" title="Enter SHORT when Z-Score rises to or above this threshold (e.g. 2.0 = 2σ above mean)"/></label>
+      </span>` : '';
+    return `<label class="feat-row">
       <input type="checkbox" id="feat-${key}" ${def.enabled ? 'checked' : ''}/>
-      <span>${def.label}</span>
-    </label>`).join('');
+      <span>${def.label}</span>${extras}
+    </label>`;
+  }).join('');
 }
 
 function bindEvents() {
@@ -1138,6 +1310,10 @@ function updateR2PreviewUrls() {
 
 function saveSettings() {
   const cfg = buildCfg();
+  // Never persist the date range — IS/OOS runs would overwrite it with a
+  // truncated range and corrupt the next page-load restore.
+  delete cfg.startDate;
+  delete cfg.endDate;
   try { localStorage.setItem('bt-cfg', JSON.stringify(cfg)); } catch {}
 }
 
@@ -1247,6 +1423,13 @@ function restoreSettings() {
       for (const [key, feat] of Object.entries(cfg.features)) {
         const chk = document.getElementById('feat-' + key);
         if (chk) chk.checked = !!feat.enabled;
+      }
+      const zf = cfg.features.zScore;
+      if (zf) {
+        const sv2 = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+        sv2('feat-zscore-len',   zf.length);
+        sv2('feat-zscore-long',  zf.zLong);
+        sv2('feat-zscore-short', zf.zShort);
       }
     }
     onSlModeChange();
