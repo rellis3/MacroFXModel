@@ -44,6 +44,14 @@ function parseCFTCFile(text) {
   const plain = text.replace(/<[^>]+>/g, '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
   const lines = plain.split(/\r?\n/);
 
+  // Extract the report date from the file header (e.g. "...Options and Futures Combined, May 05, 2026")
+  // This is the actual report date — "Changes from:" contains the PRIOR week's date.
+  let reportDate = null;
+  for (let i = 0; i < Math.min(lines.length, 20); i++) {
+    const m = lines[i].match(/,\s*([A-Z][a-z]+ \d{1,2},\s*\d{4})\s*$/);
+    if (m) { reportDate = m[1].trim(); break; }
+  }
+
   // TFF column order (14 cols): DealerL, DealerS, DealerSp, AML, AMS, AMSp, LevL, LevS, LevSp, OthL, OthS, OthSp, NRL, NRS
   // flip=true: futures quote the foreign currency, so net sign is inverted for the USD-base dashboard pair
   const FX_MAP = [
@@ -72,7 +80,7 @@ function parseCFTCFile(text) {
       if (m) { openInterest = parseInt(m[1].replace(/,/g, '')); break; }
     }
 
-    let positions = null, changes = null, traders = null, changeDate = null;
+    let positions = null, changes = null, traders = null, changeDate = reportDate;
 
     for (let j = i + 1; j < Math.min(i + 35, lines.length); j++) {
       const l = lines[j].trim();
@@ -89,8 +97,6 @@ function parseCFTCFile(text) {
       if (l === 'Positions') {
         positions = tryNums(j);
       } else if (l.startsWith('Changes from:')) {
-        const dm = l.match(/Changes from:\s+(.+?)(?:\s{3,}|$)/);
-        if (dm) changeDate = dm[1].trim();
         changes = tryNums(j);
       } else if (l.startsWith('Number of Traders')) {
         traders = tryNums(j);
@@ -151,6 +157,13 @@ function parseCFTCDisaggFile(text) {
   const plain = text.replace(/<[^>]+>/g, '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
   const lines = plain.split(/\r?\n/);
 
+  // Extract the report date from the file header
+  let reportDate = null;
+  for (let i = 0; i < Math.min(lines.length, 20); i++) {
+    const m = lines[i].match(/,\s*([A-Z][a-z]+ \d{1,2},\s*\d{4})\s*$/);
+    if (m) { reportDate = m[1].trim(); break; }
+  }
+
   const DISAGG_MAP = [
     { name: 'GOLD', pair: 'XAU/USD', flip: false },
   ];
@@ -170,7 +183,7 @@ function parseCFTCDisaggFile(text) {
       if (m) { openInterest = parseInt(m[1].replace(/,/g, '')); break; }
     }
 
-    let positions = null, changes = null, traders = null, changeDate = null;
+    let positions = null, changes = null, traders = null, changeDate = reportDate;
 
     for (let j = i + 1; j < Math.min(i + 35, lines.length); j++) {
       const l = lines[j].trim();
@@ -187,8 +200,6 @@ function parseCFTCDisaggFile(text) {
       if (l === 'Positions') {
         positions = tryNums(j);
       } else if (l.startsWith('Changes from:')) {
-        const dm = l.match(/Changes from:\s+(.+?)(?:\s{3,}|$)/);
-        if (dm) changeDate = dm[1].trim();
         changes = tryNums(j);
       } else if (l.startsWith('Number of Traders')) {
         traders = tryNums(j);
@@ -1160,14 +1171,14 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           return json({ ok: false, reason: 'No COT URLs configured — set them via the COT toolbar button' });
         }
 
-        const UA = { 'User-Agent': 'Mozilla/5.0 (compatible; MacroRangeDashboard)' };
+        const UA = { 'User-Agent': 'Mozilla/5.0 (compatible; MacroRangeDashboard)', cache: 'no-store' };
         const merged = {};
         const errors = [];
 
         // FX (TFF report — also covers NAS100 if equity URL not separate)
         if (urls.fx) {
           try {
-            const res = await fetch(urls.fx, { headers: UA });
+            const res = await fetch(urls.fx, { headers: { 'User-Agent': UA['User-Agent'] }, cache: 'no-store' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             Object.assign(merged, parseCFTCFile(await res.text()));
           } catch(e) { errors.push(`FX: ${e.message}`); }
@@ -1176,7 +1187,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         // Equity (TFF report — only fetch separately if URL differs from fx)
         if (urls.equity && urls.equity !== urls.fx) {
           try {
-            const res = await fetch(urls.equity, { headers: UA });
+            const res = await fetch(urls.equity, { headers: { 'User-Agent': UA['User-Agent'] }, cache: 'no-store' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const eqData = parseCFTCFile(await res.text());
             // Merge only equity symbols to avoid overwriting FX data
@@ -1187,7 +1198,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         // Gold (Disaggregated report)
         if (urls.gold) {
           try {
-            const res = await fetch(urls.gold, { headers: UA });
+            const res = await fetch(urls.gold, { headers: { 'User-Agent': UA['User-Agent'] }, cache: 'no-store' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             Object.assign(merged, parseCFTCDisaggFile(await res.text()));
           } catch(e) { errors.push(`Gold: ${e.message}`); }

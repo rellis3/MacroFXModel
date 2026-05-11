@@ -226,25 +226,37 @@ export async function refreshCOT() {
   const statusEl = document.getElementById('cotModalStatus');
   const btn      = document.getElementById('cotRefreshBtn');
   if (btn) btn.disabled = true;
-  if (statusEl) { statusEl.textContent = 'Clearing cache…'; statusEl.className = 'cot-modal-status'; }
-
-  // Bust both localStorage and KV cache so loadCached skips them and re-fetches
-  try { localStorage.removeItem('cot_data'); } catch(e) {}
-  await kvSet('cot_data', null);
-
   if (statusEl) { statusEl.textContent = 'Fetching fresh COT data…'; statusEl.className = 'cot-modal-status'; }
-  await loadCOT();
 
-  if (btn) btn.disabled = false;
-  if (statusEl) {
-    const dates = S.cotData ? Object.values(S.cotData).map(d => d.changeDate).filter(Boolean) : [];
-    const pairs = S.cotData ? Object.keys(S.cotData).length : 0;
-    statusEl.textContent = S.cotData
-      ? `✓ Refreshed — ${pairs} pairs · ${dates[0] || ''}`
-      : '⚠ Fetch succeeded but no pairs parsed';
-    statusEl.className = S.cotData ? 'cot-modal-status ok' : 'cot-modal-status err';
+  // Bypass loadCached entirely — fetch directly from /api/cot so stale KV cannot intercept.
+  // Then write the fresh result into both caches explicitly.
+  try {
+    const res = await fetch('/api/cot');
+    const j   = await res.json();
+    if (!j.ok) throw new Error(j.reason || 'COT fetch failed');
+
+    S.cotData = j.data;
+
+    // Overwrite both caches with fresh data + current timestamp
+    const entry = { data: j.data, timestamp: Date.now() };
+    try { localStorage.setItem('cot_data', JSON.stringify(entry)); } catch(e) {}
+    await kvSet('cot_data', j.data);
+
+    const dates = Object.values(j.data).map(d => d.changeDate).filter(Boolean);
+    const pairs = Object.keys(j.data).length;
+    if (statusEl) {
+      statusEl.textContent = `✓ Refreshed — ${pairs} pairs · ${dates[0] || ''}`;
+      statusEl.className = 'cot-modal-status ok';
+    }
+  } catch(e) {
+    S.cotData = null;
+    if (statusEl) {
+      statusEl.textContent = `⚠ ${e.message}`;
+      statusEl.className = 'cot-modal-status err';
+    }
   }
 
+  if (btn) btn.disabled = false;
   if (S.cotData) window.renderAll?.();
 }
 
