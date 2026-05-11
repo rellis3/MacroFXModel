@@ -149,9 +149,10 @@ function parseCFTCFile(text) {
   return result;
 }
 
-// Parses the CFTC Disaggregated Futures report (physical commodities — Gold, Silver, Oil…).
-// Column order: ProducerL, ProducerS, ProducerSp, SwapL, SwapS, SwapSp, MML, MMS, MMSp, OthL, OthS, OthSp, NRL, NRS
-// Output uses the same field names as parseCFTCFile so renderCOTCard works unchanged.
+// Parses the CFTC Disaggregated Futures report (other_lof.htm — physical commodities incl. Gold).
+// Format: colon-delimited rows.  "All  :   526,987:    18,823     41,173  ..."
+// Columns after OI: ProducerL, ProducerS, ProducerSp, SwapL, SwapS, SwapSp, MML, MMS, MMSp, OthL, OthS, OthSp, NrL, NrS
+// Output uses same field names as parseCFTCFile so renderCOTCard works unchanged.
 // _report:'disagg' tag lets the UI swap category labels (Managed Money / Swap / Producer).
 function parseCFTCDisaggFile(text) {
   const plain = text.replace(/<[^>]+>/g, '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
@@ -164,46 +165,78 @@ function parseCFTCDisaggFile(text) {
     if (m) { reportDate = m[1].trim(); break; }
   }
 
-  const DISAGG_MAP = [
-    { name: 'GOLD', pair: 'XAU/USD', flip: false },
-  ];
+  // Parse a colon-delimited data row: "All  :   526,987:    18,823     41,173 ..."
+  // Returns the numeric values as an array, ignoring the leading label and OI column.
+  const parseColonRow = line => {
+    const parts = line.split(':');
+    if (parts.length < 3) return null;
+    // parts[1] = open interest, parts[2] = position data
+    const oi  = parseInt((parts[1] || '').replace(/,/g, '').trim()) || null;
+    const nums = (parts[2] || '').replace(/,/g, '').trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && isFinite(n));
+    return { oi, nums };
+  };
 
-  const parseNums = line =>
-    line.replace(/,/g, '').trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && isFinite(n));
+  // Markers: CFTC uses the exchange name line then "Code-NNNNNN" for each commodity
+  // Gold = COMMODITY EXCHANGE INC., Code-088691
+  const DISAGG_MAP = [
+    { name: 'COMMODITY EXCHANGE INC', code: '088691', pair: 'XAU/USD' },
+  ];
 
   const result = {};
 
   for (let i = 0; i < lines.length; i++) {
-    const match = DISAGG_MAP.find(m => lines[i].includes(m.name));
+    const match = DISAGG_MAP.find(m => lines[i].includes(m.name) || lines[i].includes(m.code));
     if (!match) continue;
 
-    let openInterest = null;
-    for (let j = i; j < Math.min(i + 6, lines.length); j++) {
-      const m = lines[j].match(/Open Interest is\s+([\d,]+)/i);
-      if (m) { openInterest = parseInt(m[1].replace(/,/g, '')); break; }
-    }
+    let openInterest = null, positions = null, changes = null, numMML = 0, numMMS = 0;
+    let posRowFound = false, chgRowFound = false, trdRowFound = false;
 
-    let positions = null, changes = null, traders = null, changeDate = reportDate;
+    for (let j = i; j < Math.min(i + 60, lines.length); j++) {
+      const l = lines[j];
+      const lt = l.trim();
+      if (!lt) continue;
 
-    for (let j = i + 1; j < Math.min(i + 35, lines.length); j++) {
-      const l = lines[j].trim();
-      if (!l) continue;
-
-      const tryNums = (start) => {
-        for (let k = start + 1; k < start + 4; k++) {
-          const nums = parseNums(lines[k] || '');
-          if (nums.length >= 12) return nums;
+      // The "All" positions row — first one after the header dashes
+      if (!posRowFound && /^All\s*:/.test(lt)) {
+        const parsed = parseColonRow(lt);
+        if (parsed && parsed.nums.length >= 12) {
+          openInterest = parsed.oi;
+          positions    = parsed.nums;
+          posRowFound  = true;
         }
-        return null;
-      };
+        continue;
+      }
 
-      if (l === 'Positions') {
-        positions = tryNums(j);
-      } else if (l.startsWith('Changes from:')) {
-        changes = tryNums(j);
-      } else if (l.startsWith('Number of Traders')) {
-        traders = tryNums(j);
-        break;
+      // Changes row — the numeric row immediately after "Changes in Commitments from:"
+      if (!chgRowFound && lt.includes('Changes in Commitments from:')) {
+        // Next non-empty line with numbers is the changes row
+        for (let k = j + 1; k < j + 5; k++) {
+          const cl = (lines[k] || '').trim();
+          if (!cl) continue;
+          // Changes row starts with spaces/colon, no "All"/"Old" label
+          const nums = cl.replace(/,/g, '').split(/\s+/).map(Number).filter(n => !isNaN(n) && isFinite(n));
+          if (nums.length >= 12) { changes = nums; chgRowFound = true; break; }
+        }
+        continue;
+      }
+
+      // Traders row — "All" row under "Number of Traders in Each Category"
+      if (!trdRowFound && lt.includes('Number of Traders')) {
+        for (let k = j + 1; k < j + 5; k++) {
+          const tl = (lines[k] || '').trim();
+          if (!tl) continue;
+          if (/^All\s*:/.test(tl)) {
+            const parsed = parseColonRow(tl);
+            if (parsed && parsed.nums.length >= 6) {
+              // Trader cols after OI: ProdL,ProdS,SwapL,SwapS,SwapSp,MML,MMS,...
+              numMML = parsed.nums[5] || 0;
+              numMMS = parsed.nums[6] || 0;
+              trdRowFound = true;
+            }
+            break;
+          }
+        }
+        if (trdRowFound) break;
       }
     }
 
@@ -211,17 +244,15 @@ function parseCFTCDisaggFile(text) {
 
     const p = positions;
     const c = changes || new Array(14).fill(0);
-    const t = traders || [];
 
-    // Disaggregated cols: Producer[0,1], Swap[3,4], ManagedMoney[6,7], Other[9,10]
+    // Disaggregated cols (after OI stripped): ProducerL[0],ProducerS[1],ProducerSp[2],SwapL[3],SwapS[4],SwapSp[5],MML[6],MMS[7],MMSp[8],...
     const producerL = p[0], producerS = p[1];
     const swapL = p[3], swapS = p[4];
     const mmL = p[6], mmS = p[7];
 
-    const mmNetChg      = (c[6]||0) - (c[7]||0);
-    const swapNetChg    = (c[3]||0) - (c[4]||0);
+    const mmNetChg       = (c[6]||0) - (c[7]||0);
+    const swapNetChg     = (c[3]||0) - (c[4]||0);
     const producerNetChg = (c[0]||0) - (c[1]||0);
-    const numMML = t[6] || 0, numMMS = t[7] || 0;
 
     const levNet    = mmL - mmS;
     const amNet     = swapL - swapS;
@@ -232,7 +263,7 @@ function parseCFTCDisaggFile(text) {
     const crowdingPct = openInterest ? Math.round(Math.abs(levNet) / openInterest * 100) : null;
 
     result[match.pair] = {
-      openInterest, changeDate,
+      openInterest, changeDate: reportDate,
       levLong: mmL, levShort: mmS, levNet, levNetChg: mmNetChg, levPct,
       numLevLong: numMML, numLevShort: numMMS, avgLevContracts,
       amLong: swapL,     amShort: swapS,     amNet,     amNetChg: swapNetChg,

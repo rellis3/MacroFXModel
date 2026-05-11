@@ -148,6 +148,87 @@ export function oiCalcExposures(strikes, calls, puts, spot, pair) {
   return { gex, dex };
 }
 
+// ── Gravity + PIN/BREAKOUT regime ────────────────────────────────────────────
+//
+// gravityScore = totalOI at nearest strike / (ATR in pips)
+//   High gravity (>2) → market is pinned — price attracted to the heavy OI strike.
+//   Low gravity (<0.5) → thin OI, price free to run — breakout conditions.
+//
+// Session regime:
+//   PIN      → positive net GEX (dealers long gamma → pin) OR high gravity + H<0.45
+//   BREAKOUT → negative net GEX (dealers short gamma → amplify moves) AND gravity<1
+//   NEUTRAL  → otherwise
+//
+// Returns: { regime, gravityScore, nearestStrike, nearestOI, flipStrike,
+//            gexSign, totalNetGex, confidence }
+
+export function computeGravityRegime(oi, atr, pipSize) {
+  if (!oi || !atr || !pipSize || atr <= 0) return null;
+
+  const spot = oi.spot;
+  if (!spot || spot <= 0) return null;
+
+  // Find gamma flip point from gexProfile (sorted by strike)
+  let flipStrike = null;
+  const gp = oi.gexProfile || [];
+  for (let i = 1; i < gp.length; i++) {
+    if (Math.sign(gp[i].netGex) !== Math.sign(gp[i-1].netGex)) {
+      flipStrike = Math.abs(gp[i].netGex) < Math.abs(gp[i-1].netGex)
+        ? gp[i].strike : gp[i-1].strike;
+      break;
+    }
+  }
+
+  // Find nearest strike in topLevels to current spot
+  const topLevels = oi.topLevels || [];
+  let nearestStrike = null, nearestOI = 0, nearestDist = Infinity;
+  for (const lv of topLevels) {
+    const d = Math.abs(lv.strike - spot);
+    if (d < nearestDist) {
+      nearestDist = d;
+      nearestStrike = lv.strike;
+      nearestOI = lv.totalOI ?? 0;
+    }
+  }
+
+  const atrPips = atr / pipSize;
+  const gravityScore = atrPips > 0 ? nearestOI / atrPips : 0;
+
+  const totalNetGex = oi.exposures?.gex ?? 0;
+  const gexSign = totalNetGex > 0 ? 'positive' : totalNetGex < 0 ? 'negative' : 'zero';
+
+  // PIN: positive GEX (dealers long gamma, dampening moves) AND gravity moderate-to-high
+  // BREAKOUT: negative GEX (dealers short gamma, amplifying moves) AND gravity low
+  let regime, confidence;
+  if (totalNetGex > 0 && gravityScore > 1.0) {
+    regime = 'PIN';
+    confidence = gravityScore > 3 ? 'HIGH' : 'MEDIUM';
+  } else if (totalNetGex < 0 && gravityScore < 1.5) {
+    regime = 'BREAKOUT';
+    confidence = gravityScore < 0.5 ? 'HIGH' : 'MEDIUM';
+  } else if (totalNetGex > 0) {
+    regime = 'PIN';
+    confidence = 'LOW';
+  } else if (totalNetGex < 0) {
+    regime = 'BREAKOUT';
+    confidence = 'LOW';
+  } else {
+    regime = 'NEUTRAL';
+    confidence = 'LOW';
+  }
+
+  return {
+    regime,
+    confidence,
+    gravityScore: parseFloat(gravityScore.toFixed(2)),
+    nearestStrike,
+    nearestOI,
+    flipStrike,
+    gexSign,
+    totalNetGex,
+  };
+}
+
 // ── Formatters ───────────────────────────────────────────────────────────────
 
 export function oiFmtStrike(val, pair) {

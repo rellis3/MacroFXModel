@@ -3,7 +3,7 @@ import { COMPASS_CONFIG, FIB_LEVELS } from './config.js';
 import { getPipSize, getDigits, londonSessionDay } from './utils.js';
 import { compassFairValue, zScore } from './compass.js';
 import { getCaps } from './caps.js';
-import { oiFmtStrike } from './oi.js';
+import { oiFmtStrike, computeGravityRegime } from './oi.js';
 import { getPairSurpriseScore } from './events.js';
 import { detectCrossConflict } from './macro.js';
 import { computeARMAForecast, computeRegimeTransition } from './arma.js';
@@ -440,6 +440,9 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
   const oiStore = (() => { try { return JSON.parse(localStorage.getItem('oi_store') || '{}'); } catch(e) { return {}; } })();
   const oi = oiStore[sym] || null;
 
+  // OI Gravity + PIN/BREAKOUT session regime
+  const gravityRegime = oi ? computeGravityRegime(oi, atr, pipSz) : null;
+
   // Composite size multiplier: event risk × session confidence × cross-pair conflict
   const eventMult    = S.eventRisk?.sizeMult         ?? 1.0;
   const sessionConf  = S.sessionData?.confidence      ?? 1.0;
@@ -543,6 +546,30 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       }
     }
 
+    // OI Gravity: tag when nearest OI strike is within 1 ATR of this confluence level.
+    // In PIN regime: levels near the gravity strike are high-quality reversal setups.
+    // In BREAKOUT regime: flag that OI gravity is low — market may run through the level.
+    if (gravityRegime && gravityRegime.nearestStrike != null) {
+      const gravDist = Math.abs(c.price - gravityRegime.nearestStrike);
+      if (gravDist <= atr) {
+        if (gravityRegime.regime === 'PIN') {
+          layerScore += 0.5;
+          const gStr = gravityRegime.gravityScore.toFixed(1);
+          tags.push({ cls: 'oi', label: `⚓ Gravity ${gStr} (PIN)`, key: 'gravity' });
+          layers.push('OI gravity — pin regime');
+        } else if (gravityRegime.regime === 'BREAKOUT') {
+          tags.push({ cls: 'warn', label: `⚡ Gravity ${gravityRegime.gravityScore.toFixed(1)} (BREAK)`, key: 'gravity' });
+          layers.push('OI gravity — breakout regime');
+        }
+      }
+    }
+
+    // Gamma flip proximity: rate this separately from the existing gexProx check above
+    // (already handled in the oi.gexProfile block); just add gravity regime context to flip tag.
+    if (gravityRegime?.flipStrike != null && Math.abs(c.price - gravityRegime.flipStrike) <= gexProx) {
+      // Already tagged as 'Gamma Flip' above — no double-tag, gravity context is in the regime badge
+    }
+
     // Cross-session cluster: Asia and Monday fibs agree on this price
     if (c.crossSessionMatch) {
       layerScore += 1;
@@ -597,6 +624,30 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
     } else if (oi && c.direction === 'short' && oi.maxPain < c.price) {
       const mpDist = c.price - oi.maxPain;
       if (mpDist <= tpCap) { tp = oi.maxPain; tpNote = 'Max pain'; }
+    }
+
+    // PIN regime: cap TP at nearest OI gravity wall if not already capped by OI walls above.
+    // BREAKOUT regime: allow TP to extend to next OI wall beyond the current target.
+    if (gravityRegime && c.direction != null) {
+      if (gravityRegime.regime === 'PIN' && tpNote === 'ATR' && oi) {
+        // In pin regime, clamp TP to maxPain as the gravitational attractor if closer
+        if (c.direction === 'long' && oi.maxPain > c.price && oi.maxPain < (tp ?? Infinity)) {
+          const mpd = oi.maxPain - c.price;
+          if (mpd <= tpCap) { tp = oi.maxPain; tpNote = 'Max pain (PIN)'; }
+        } else if (c.direction === 'short' && oi.maxPain < c.price && oi.maxPain > (tp ?? -Infinity)) {
+          const mpd = c.price - oi.maxPain;
+          if (mpd <= tpCap) { tp = oi.maxPain; tpNote = 'Max pain (PIN)'; }
+        }
+      } else if (gravityRegime.regime === 'BREAKOUT' && oi && tpNote !== 'Call wall' && tpNote !== 'Put wall') {
+        // In breakout regime, extend TP toward next OI wall beyond current TP
+        if (c.direction === 'long' && oi.callWall > (tp ?? c.price)) {
+          const wallDist = oi.callWall - c.price;
+          if (wallDist <= tpCap * 1.25) { tp = oi.callWall; tpNote = 'Call wall (BREAK)'; }
+        } else if (c.direction === 'short' && oi.putWall < (tp ?? c.price)) {
+          const wallDist = c.price - oi.putWall;
+          if (wallDist <= tpCap * 1.25) { tp = oi.putWall; tpNote = 'Put wall (BREAK)'; }
+        }
+      }
     }
 
     const tpPips  = tp != null ? Math.abs(tp - c.price) / pipSz : null;
@@ -692,6 +743,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       candleReason,
       regimeShockRisk,
       rangeBias,
+      gravityRegime,
     };
   });
 
@@ -899,6 +951,21 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
   const pipSz  = getPipSize(sym);
   const unit   = sym === 'NAS100_USD' ? 'pts' : 'p';
 
+  // Compute gravity regime for the badge (independent of per-entry computation in runEntryScanner)
+  const _oiStoreRender = (() => { try { return JSON.parse(localStorage.getItem('oi_store') || '{}'); } catch(e) { return {}; } })();
+  const _oiRender      = _oiStoreRender[sym] || null;
+  const _atrRender     = volRegime?.atr || 0;
+  const _gravityBadge  = (_oiRender && _atrRender > 0) ? computeGravityRegime(_oiRender, _atrRender, pipSz) : null;
+
+  function gravityBadgeHtml(gr) {
+    if (!gr) return '';
+    const col = gr.regime === 'PIN' ? 'var(--blue)' : gr.regime === 'BREAKOUT' ? 'var(--amber)' : 'var(--text3)';
+    const bg  = gr.regime === 'PIN' ? 'var(--blue-bg)' : gr.regime === 'BREAKOUT' ? 'rgba(245,158,11,0.1)' : 'var(--s2)';
+    const bd  = gr.regime === 'PIN' ? 'var(--blue-bd)' : gr.regime === 'BREAKOUT' ? 'rgba(245,158,11,0.3)' : 'var(--border)';
+    const icon = gr.regime === 'PIN' ? '⚓' : gr.regime === 'BREAKOUT' ? '⚡' : '〰';
+    return `<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:${bg};color:${col};border:1px solid ${bd}" title="GEX: ${gr.gexSign} · gravity ${gr.gravityScore} · flip at ${gr.flipStrike ?? '—'} · ${gr.confidence} confidence">${icon} ${gr.regime} · g=${gr.gravityScore}</span>`;
+  }
+
   const volCtx = volRegime && volRegime.dailyCapPips > 0 ? (() => {
     const usedPct  = Math.min(100, volRegime.usedPct);
     const remPips  = volRegime.remainingPips?.toFixed(0) ?? '—';
@@ -914,6 +981,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
         <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Daily Vol Budget</span>
         <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;background:${regCol}22;color:${regCol};border:1px solid ${regCol}44">${volRegime.regime} · ${volRegime.percentile}th pct</span>
         ${g ? `<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd);font-weight:600">GARCH ${g.cluster}</span>` : ''}
+        ${gravityBadgeHtml(_gravityBadge)}
         <span style="margin-left:auto;font-size:10px;font-family:'DM Mono',monospace;color:var(--text2)">${usedPips}${unit} / <strong>${capPips}${unit}</strong> cap</span>
       </div>
       ${g ? `
@@ -936,6 +1004,14 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       </div>
       ${usedPct > 80 ? `<div style="font-size:10px;color:var(--red);margin-top:5px">⚠ 68% CI consumed — fade only, GARCH says breakout unlikely today</div>` :
         usedPct > 55 ? `<div style="font-size:10px;color:var(--amber);margin-top:5px">⚡ Past halfway through expected range — size down, favour mean-reversion</div>` : ''}
+      ${_gravityBadge ? (() => {
+        const gr = _gravityBadge;
+        if (gr.regime === 'PIN' && gr.confidence !== 'LOW')
+          return `<div style="font-size:10px;color:var(--blue);margin-top:5px">⚓ <strong>PIN regime</strong> — positive GEX dampens moves; price likely attracted to ${gr.nearestStrike != null ? gr.nearestStrike.toFixed(pipSz < 0.01 ? 5 : 2) : '—'}. TP at OI walls; fade extremes.</div>`;
+        if (gr.regime === 'BREAKOUT' && gr.confidence !== 'LOW')
+          return `<div style="font-size:10px;color:var(--amber);margin-top:5px">⚡ <strong>BREAKOUT regime</strong> — negative GEX amplifies moves; dealers chase price. Extend TP to OI walls; avoid tight fades.</div>`;
+        return '';
+      })() : ''}
     </div>`;
   })() : '';
 
@@ -1053,7 +1129,21 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
     ? `<div style="font-size:10px;color:var(--green);background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:5px;padding:5px 10px;margin-bottom:6px">📅 ${_dow === 2 ? 'Tuesday' : 'Wednesday'} — highest-vol day of week; full ATR participation likely; optimal for range fades</div>`
     : '';
 
-  return volCtx + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
+  // Gravity regime banner when no volCtx but OI data exists
+  const gravityBanner = (!volCtx && _gravityBadge && _gravityBadge.regime !== 'NEUTRAL' && _gravityBadge.confidence !== 'LOW')
+    ? (() => {
+        const gr = _gravityBadge;
+        const col = gr.regime === 'PIN' ? 'var(--blue)' : 'var(--amber)';
+        const bg  = gr.regime === 'PIN' ? 'rgba(59,130,246,0.06)' : 'rgba(245,158,11,0.06)';
+        const bd  = gr.regime === 'PIN' ? 'rgba(59,130,246,0.2)' : 'rgba(245,158,11,0.2)';
+        const msg = gr.regime === 'PIN'
+          ? `⚓ <strong>PIN regime</strong> (GEX ${gr.gexSign}, g=${gr.gravityScore}) — dampened vol; TP to OI walls; fade range extremes`
+          : `⚡ <strong>BREAKOUT regime</strong> (GEX ${gr.gexSign}, g=${gr.gravityScore}) — amplified moves; extend TP; avoid tight fades`;
+        return `<div style="font-size:10px;color:${col};background:${bg};border:1px solid ${bd};border-radius:6px;padding:6px 10px;margin-bottom:6px">${msg}</div>`;
+      })()
+    : '';
+
+  return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
     const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 7 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';
