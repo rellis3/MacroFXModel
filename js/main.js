@@ -210,6 +210,8 @@ window.dismissProxAlert = dismissProxAlert;
 // ── Fix 23: SSE live stream ───────────────────────────────────────────────────
 
 let _sseSource = null;
+let _lastFullRender = 0;
+const STREAM_RENDER_INTERVAL = 30_000; // full re-render at most every 30s from stream ticks
 
 function startLiveStream() {
   if (_sseSource) { try { _sseSource.close(); } catch(e) {} _sseSource = null; }
@@ -223,9 +225,14 @@ function startLiveStream() {
           window._latestQuote = { ...(window._latestQuote || {}), price: d.price, bid: d.bid, ask: d.ask };
           updateHeaderPrice(window._latestQuote);
           checkProximityAlerts();
-          renderAllDebounced();
           const updEl = document.getElementById('upd');
           if (updEl) updEl.textContent = new Date().toLocaleTimeString();
+          // Throttle full re-render to avoid flickering on every tick
+          const now = Date.now();
+          if (now - _lastFullRender >= STREAM_RENDER_INTERVAL) {
+            _lastFullRender = now;
+            renderAllDebounced();
+          }
         }
       } catch(e) {}
     };

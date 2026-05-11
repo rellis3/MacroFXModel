@@ -4,7 +4,6 @@ import { getAnchorPrice, directionFromPrice, getDailyFibLevels } from './ranges.
 import { getCaps } from './caps.js';
 import { calcPositionSize } from './vol.js';
 import { oiLoadStore } from './oi.js';
-import { loadRangeBiasOpts } from './range-bias.js';
 
 const _DFIB_STRENGTH = { gold: 3, silver: 2, bronze: 1 };
 
@@ -162,23 +161,25 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     const stopDist = volRegime.stopDist || atr * 1.0;
 
     // ATR-based SL using 30m bars × user-configured multiplier
-    const _rbOpts     = loadRangeBiasOpts();
-    const _slAtrMult  = _rbOpts.slAtrMult ?? 1.5;
-    const _bars30m    = S.ohlc30m?.[symbol]?.values;
-    let atr30 = atr; // fallback to daily ATR
-    if (_bars30m && _bars30m.length >= 15) {
-      const _ATR_A = 0.15;
-      const _barsChron = [..._bars30m].reverse();
-      let _ema = Math.abs(parseFloat(_barsChron[1].high) - parseFloat(_barsChron[1].low));
-      for (let _i = 2; _i < Math.min(_barsChron.length, 60); _i++) {
-        const _h = parseFloat(_barsChron[_i].high), _l = parseFloat(_barsChron[_i].low);
-        const _pc = parseFloat(_barsChron[_i - 1].close);
-        const _tr = Math.max(_h - _l, Math.abs(_h - _pc), Math.abs(_l - _pc));
-        _ema = _ATR_A * _tr + (1 - _ATR_A) * _ema;
+    let slAtrDist = stopDist; // safe fallback — same as primary SL
+    try {
+      const _rbOpts    = (() => { try { return JSON.parse(localStorage.getItem('range_bias_opts') || '{}'); } catch(e) { return {}; } })();
+      const _slAtrMult = _rbOpts.slAtrMult ?? 1.5;
+      const _bars30m   = S.ohlc30m?.[symbol]?.values;
+      if (_bars30m && _bars30m.length >= 15) {
+        const _ATR_A     = 0.15;
+        const _barsChron = [..._bars30m].reverse(); // oldest-first
+        let _ema = Math.abs(parseFloat(_barsChron[1].high) - parseFloat(_barsChron[1].low));
+        for (let _i = 2; _i < Math.min(_barsChron.length, 60); _i++) {
+          const _h  = parseFloat(_barsChron[_i].high);
+          const _l  = parseFloat(_barsChron[_i].low);
+          const _pc = parseFloat(_barsChron[_i - 1].close);
+          const _tr = Math.max(_h - _l, Math.abs(_h - _pc), Math.abs(_l - _pc));
+          if (isFinite(_tr) && _tr > 0) _ema = _ATR_A * _tr + (1 - _ATR_A) * _ema;
+        }
+        if (isFinite(_ema) && _ema > 0) slAtrDist = _ema * _slAtrMult;
       }
-      atr30 = _ema;
-    }
-    const slAtrDist = atr30 * _slAtrMult;
+    } catch(e) {}
 
     const remaining = volRegime.remainingRange || atr;
     const tpCap     = remaining * 0.85;

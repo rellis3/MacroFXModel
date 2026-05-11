@@ -697,8 +697,8 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
 
   return candidates
     .filter(c => c.totalStars >= 2 && c.direction != null)
-    // Suppress entries with R:R below 0.8 — negative EV regardless of win rate.
-    .filter(c => !c.rrRatio || parseFloat(c.rrRatio) >= 0.8)
+    // Suppress entries with R:R below 0.8 — unless the TP was vol-capped (RR is artificially low in that case).
+    .filter(c => c.tpCapped || !c.rrRatio || parseFloat(c.rrRatio) >= 0.8)
     .map(c => {
       // Hard-cap size to 25% for sub-1.0R trades even if they pass the 0.8 floor.
       if (c.rrRatio && parseFloat(c.rrRatio) < 1.0) {
