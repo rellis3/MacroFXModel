@@ -105,6 +105,18 @@ export function saveRangeBiasCfg(cfg) {
   try { localStorage.setItem('range_bias_cfg', JSON.stringify(slim)); } catch(e) {}
 }
 
+export function loadRangeBiasOpts() {
+  try {
+    const raw = localStorage.getItem('range_bias_opts');
+    if (raw) return { slAtrMult: 1.5, ...JSON.parse(raw) };
+  } catch(e) {}
+  return { slAtrMult: 1.5 };
+}
+
+export function saveRangeBiasOpts(opts) {
+  try { localStorage.setItem('range_bias_opts', JSON.stringify(opts)); } catch(e) {}
+}
+
 export function getFeatureDefs() { return FEATURE_DEFS; }
 
 // ── Bar field accessors (Oanda mid or OHLC) ───────────────────────────────────
@@ -970,6 +982,8 @@ export function saveRangeBiasModal() {
     if (wtEl) cfg[key].weight  = Math.max(1, Math.min(3, parseInt(wtEl.value, 10) || 1));
   }
   saveRangeBiasCfg(cfg);
+  const multEl = document.getElementById('rb_sl_atr_mult');
+  if (multEl) saveRangeBiasOpts({ slAtrMult: Math.max(0.5, Math.min(5, parseFloat(multEl.value) || 1.5)) });
   closeRangeBiasModal();
   window.renderAll?.();
 }
@@ -977,7 +991,8 @@ export function saveRangeBiasModal() {
 function renderRangeBiasModal() {
   const body = document.getElementById('rangeBiasModalBody');
   if (!body) return;
-  const cfg = loadRangeBiasCfg();
+  const cfg  = loadRangeBiasCfg();
+  const opts = loadRangeBiasOpts();
 
   const dataLabels = {
     rangePosition:   '5m bars + range data',
@@ -997,7 +1012,18 @@ function renderRangeBiasModal() {
     ichimokuCloud:   'Daily bars → Ichimoku 9/26/52',
   };
 
-  body.innerHTML = Object.entries(FEATURE_DEFS).map(([key, def]) => {
+  const optsHtml = `
+    <div style="padding:10px 0 14px;border-bottom:2px solid var(--border);margin-bottom:4px">
+      <div style="font-size:11px;font-weight:700;color:var(--text1);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Trade Setup Options</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="font-size:11px;color:var(--text2);white-space:nowrap">SL (ATR 30m) multiplier</label>
+        <input id="rb_sl_atr_mult" type="number" min="0.5" max="5" step="0.1" value="${opts.slAtrMult}"
+          style="width:64px;padding:3px 6px;border-radius:5px;border:1px solid var(--border);background:var(--s2);color:var(--text1);font-size:12px;font-family:'DM Mono',monospace">
+        <span style="font-size:10px;color:var(--text3)">× 30m ATR — shown alongside main SL on each trade card for comparison</span>
+      </div>
+    </div>`;
+
+  body.innerHTML = optsHtml + Object.entries(FEATURE_DEFS).map(([key, def]) => {
     const c = cfg[key];
     return `
     <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">

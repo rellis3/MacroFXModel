@@ -1090,9 +1090,14 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       return `<div style="font-size:9.5px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace">O-C forecast: mixed session · median ${f.medianPips.toFixed(0)}${unit} directional</div>`;
     })();
 
+    const slAtrLine = e.slAtr != null
+      ? `<span style="color:var(--text3)"><strong style="color:var(--text2)">SL(ATR)</strong> ${e.slAtr.toFixed(digits)} <span style="font-size:10px">(${e.slAtrPips?.toFixed(0)}${unit})</span></span>`
+      : '';
+
     const tradeHtml = e.sl != null ? `
       <span><strong>Entry</strong> ${e.price.toFixed(digits)}</span>
       <span><strong>SL</strong> ${e.sl.toFixed(digits)} (${e.slPips?.toFixed(0)}${unit})</span>
+      ${slAtrLine}
       <span><strong>TP</strong> ${e.tp != null ? e.tp.toFixed(digits) : '—'} (${e.tpNote}${e.tpPips ? ' · ' + e.tpPips.toFixed(0) + unit : ''}) ${tpCapNote}</span>
       ${e.rrRatio ? `<span><strong style="color:${rrCol}">R:R 1:${e.rrRatio}</strong></span>` : ''}
       <span><strong>Size</strong> ${e.size}%</span>
