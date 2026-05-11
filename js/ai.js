@@ -1,6 +1,6 @@
 import { S } from './state.js';
-import { AI_CACHE_PREFIX } from './config.js';
-import { kvGet, kvSet, getPipSize, getDigits, filterTradingDays } from './utils.js';
+import { AI_CACHE_PREFIX, TYPICAL_SPREADS } from './config.js';
+import { kvGet, kvSet, getPipSize, getDigits, filterTradingDays, toMyfxbSym } from './utils.js';
 import { calculateTierScores, computeDollarRegime, computeUSDStrength, detectCrossConflict } from './macro.js';
 import { calculateVolRegime, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots } from './vol.js';
 import { getPairSurpriseScore } from './events.js';
@@ -403,6 +403,35 @@ export function aiCollectSnapshot() {
       regimeMatch:  f.regimeMatched,
     };
   }
+
+  // OANDA live spread
+  try {
+    const spreadEntry = sym ? S.spreadData[sym] : null;
+    if (spreadEntry && !spreadEntry.error) {
+      s.spreadPips           = spreadEntry.spreadPips;
+      s.spreadClassification = spreadEntry.classification;
+      s.typicalSpreadPips    = sym ? (TYPICAL_SPREADS[sym] ?? null) : null;
+    }
+  } catch(e) {}
+
+  // Myfxbook retail sentiment
+  try {
+    if (sym) {
+      const mfxKey  = toMyfxbSym(sym);
+      const mfxSent = S.myfxSentiment[mfxKey];
+      if (mfxSent && !mfxSent.error) {
+        s.retailLongPct   = mfxSent.longPct;
+        s.retailShortPct  = mfxSent.shortPct;
+        s.retailSentiment = mfxSent.sentiment;
+        s.retailCrowding  = mfxSent.crowding;
+        s.avgLongPrice    = mfxSent.avgLongPrice;
+        s.avgShortPrice   = mfxSent.avgShortPrice;
+        const macroBias   = s.macroBias ?? null;
+        s.retailContrarian = (macroBias === 'LONG'  && mfxSent.sentiment === 'SHORT_HEAVY') ||
+                             (macroBias === 'SHORT' && mfxSent.sentiment === 'LONG_HEAVY');
+      }
+    }
+  } catch(e) {}
 
   return s;
 }
