@@ -215,27 +215,40 @@ function dismissProxAlert() {
 window.dismissProxAlert = dismissProxAlert;
 
 // ── Fix 23: SSE live stream ───────────────────────────────────────────────────
+// _latestQuotes[sym] stores the freshest tick per symbol.
+// _latestQuote is a live reference to the active pair's quote — all existing
+// code that reads window._latestQuote continues to work without changes.
 
-let _sseSource = null;
+window._latestQuotes = window._latestQuotes || {};
+
+let _sseSource  = null;                  // active-pair stream
+let _bgSseSrcs  = {};                    // background streams keyed by symbol
 let _lastFullRender = 0;
-const STREAM_RENDER_INTERVAL = 30_000; // full re-render at most every 30s from stream ticks
+const STREAM_RENDER_INTERVAL = 30_000;
+
+function _storeQuote(sym, d) {
+  window._latestQuotes[sym] = { price: d.price, bid: d.bid, ask: d.ask };
+  // Keep the legacy single-quote reference pointing at the active pair
+  if (sym === S.currentPair?.symbol) {
+    window._latestQuote = window._latestQuotes[sym];
+  }
+}
 
 function startLiveStream() {
   if (_sseSource) { try { _sseSource.close(); } catch(e) {} _sseSource = null; }
-  const sym = encodeURIComponent(S.currentPair.symbol);
+  const sym = S.currentPair.symbol;
   try {
-    const src = new EventSource(`/api/oanda_stream?symbol=${sym}`);
+    const src = new EventSource(`/api/oanda_stream?symbol=${encodeURIComponent(sym)}`);
     src.onmessage = evt => {
       try {
         const d = JSON.parse(evt.data);
         if (d.price != null) {
-          window._latestQuote = { ...(window._latestQuote || {}), price: d.price, bid: d.bid, ask: d.ask };
+          _storeQuote(sym, d);
           updateHeaderPrice(window._latestQuote);
           checkProximityAlerts();
-          checkAndSendAlerts(window._latestQuote);
+          checkAndSendAlerts();
           const updEl = document.getElementById('upd');
           if (updEl) updEl.textContent = new Date().toLocaleTimeString();
-          // Throttle full re-render to avoid flickering on every tick
           const now = Date.now();
           if (now - _lastFullRender >= STREAM_RENDER_INTERVAL) {
             _lastFullRender = now;
@@ -247,8 +260,58 @@ function startLiveStream() {
     src.onerror = () => { try { src.close(); } catch(e) {} if (_sseSource === src) _sseSource = null; };
     _sseSource = src;
   } catch(e) { _sseSource = null; }
+
+  // Restart background streams whenever the active pair changes
+  startBackgroundStreams();
 }
 window.startLiveStream = startLiveStream;
+
+// Open one SSE stream per alert-watch pair that isn't the active pair.
+// Ticks only update _latestQuotes[sym] — no DOM changes.
+function startBackgroundStreams() {
+  const cfg = (() => { try { return JSON.parse(localStorage.getItem('tg_alert_cfg') || '{}'); } catch(e) { return {}; } })();
+  if (!cfg.enabled) { _closeBackgroundStreams(); return; }
+
+  const watchPairs = cfg.pairs && cfg.pairs.length > 0
+    ? cfg.pairs
+    : PAIRS.map(p => p.symbol);          // all pairs if no filter set
+
+  const activeSym = S.currentPair?.symbol;
+
+  // Close streams for pairs no longer watched
+  for (const [sym, src] of Object.entries(_bgSseSrcs)) {
+    if (!watchPairs.includes(sym) || sym === activeSym) {
+      try { src.close(); } catch(e) {}
+      delete _bgSseSrcs[sym];
+    }
+  }
+
+  // Open streams for new watch pairs (skip active — already has _sseSource)
+  for (const sym of watchPairs) {
+    if (sym === activeSym) continue;
+    if (_bgSseSrcs[sym]) continue;       // already streaming
+    try {
+      const src = new EventSource(`/api/oanda_stream?symbol=${encodeURIComponent(sym)}`);
+      src.onmessage = evt => {
+        try {
+          const d = JSON.parse(evt.data);
+          if (d.price != null) {
+            _storeQuote(sym, d);
+            checkAndSendAlerts();        // check all pairs on every tick
+          }
+        } catch(e) {}
+      };
+      src.onerror = () => { try { src.close(); } catch(e) {} delete _bgSseSrcs[sym]; };
+      _bgSseSrcs[sym] = src;
+    } catch(e) {}
+  }
+}
+
+function _closeBackgroundStreams() {
+  for (const src of Object.values(_bgSseSrcs)) { try { src.close(); } catch(e) {} }
+  _bgSseSrcs = {};
+}
+window.startBackgroundStreams = startBackgroundStreams;
 
 // ── Spread + Sentiment loaders ────────────────────────────────────────────────
 
@@ -377,7 +440,7 @@ async function loadAll() {
     calculateAsiaRanges(S.currentPair.symbol);
     calculateMondayRanges(S.currentPair.symbol);
     calculateStructuralFibs(S.currentPair.symbol);
-    window._latestQuote = quote;
+    _storeQuote(S.currentPair.symbol, quote);
     updateHeaderPrice(quote);
 
     // Oanda position book for retail sentiment range-bias feature (non-blocking, ~20min data)
@@ -428,7 +491,7 @@ async function refreshQuote() {
     const symKey = S.currentPair.symbol.replace('/', '');
     const quote = await fetchAPI(`/api/quote?symbol=${encodeURIComponent(S.currentPair.symbol)}`);
     localStorage.setItem(`quote_${symKey}`, JSON.stringify({ data: quote, timestamp: Date.now() }));
-    window._latestQuote = quote;
+    _storeQuote(S.currentPair.symbol, quote);
 
     try {
       const bars = S.ohlc5m[S.currentPair.symbol]?.values;
@@ -465,8 +528,9 @@ async function refreshQuote() {
       console.warn('30m refresh skipped:', e.message);
     }
 
-    updateHeaderPrice(window._latestQuote);
+    updateHeaderPrice(window._latestQuotes[S.currentPair.symbol]);
     checkProximityAlerts();
+    checkAndSendAlerts();
     renderAllDebounced();
     document.getElementById('upd').textContent = new Date().toLocaleTimeString();
   } catch (error) {

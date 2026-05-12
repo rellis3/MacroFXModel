@@ -8,6 +8,10 @@
 
 import { getPipSize, getDigits } from './utils.js';
 import { S } from './state.js';
+import { PAIRS } from './config.js';
+import { filterConfluences, enhanceConfluences } from './confluences.js';
+import { runSignalEngine, runEntryScanner } from './signal.js';
+import { calculateVolRegime, calculatePivots } from './vol.js';
 
 const STORAGE_KEY = 'tg_alert_cfg';
 const COOLDOWN_KEY = 'tg_alert_cooldowns';
@@ -61,56 +65,95 @@ function cooldownKey(sym, price, direction, digits) {
   return `${sym.replace('/', '')}_${price.toFixed(digits)}_${direction}`;
 }
 
-// ── Main check — called on every price tick ───────────────────────────────────
+// ── Main check — called on every price tick (any pair) ───────────────────────
+// Iterates all watch-pairs independently. Each pair uses its own stored data
+// from S (asia/monday ranges, ohlc bars, compassData) and its own live quote
+// from window._latestQuotes[sym]. The active pair tab does not matter.
 
 let _alertsInFlight = new Set(); // prevent double-firing same alert concurrently
 
-export function checkAndSendAlerts(quote) {
+export function checkAndSendAlerts() {
   const cfg = loadAlertCfg();
   if (!cfg.enabled) return;
 
-  const entries = window._lastEntries;
-  if (!entries || !entries.length || !quote?.price) return;
-
-  const sym    = S.currentPair?.symbol;
-  if (!sym) return;
-
-  // Pair filter — skip if this pair is not in the watch list
-  if (cfg.pairs.length > 0 && !cfg.pairs.includes(sym)) return;
-
-  const pipSz  = getPipSize(sym);
-  const digits = getDigits(sym);
-  const price  = quote.price;
-  const proxPips = cfg.proxPips?.[sym] ?? cfg.proxPips?.default ?? 5;
-  const proxDist = proxPips * pipSz;
+  const watchSyms = cfg.pairs && cfg.pairs.length > 0
+    ? cfg.pairs
+    : PAIRS.map(p => p.symbol);
 
   const now = Date.now();
   let cooldowns = pruneCooldowns(loadCooldowns());
   let cooldownsDirty = false;
 
-  for (const e of entries) {
-    if ((e.totalStars ?? 0) < cfg.minStars) continue;
-    if (cfg.onlyAligned && !e.signalAligned) continue;
-    if (e.direction == null) continue;
+  for (const sym of watchSyms) {
+    const quote = window._latestQuotes?.[sym];
+    if (!quote?.price) continue;
 
-    const dist = Math.abs(e.price - price);
-    if (dist > proxDist) continue;
+    // Need range data loaded for this pair
+    const asia    = S.asiaRangeData?.[sym];
+    const monday  = S.mondayRangeData?.[sym];
+    if (!asia || !monday) continue;
 
-    const ck = cooldownKey(sym, e.price, e.direction, digits);
-    if (_alertsInFlight.has(ck)) continue;
+    const allConfs = [
+      ...(asia.confluences   || []).map(c => ({ ...c, source: 'asia'   })),
+      ...(monday.confluences || []).map(c => ({ ...c, source: 'monday' })),
+    ];
+    if (!allConfs.length) continue;
 
-    const lastSent = cooldowns[ck] ?? 0;
-    if (now - lastSent < cfg.cooldownMin * 60 * 1000) continue;
+    // Temporarily override currentPair so vol/pivot helpers use the right symbol
+    const _savedPair = S.currentPair;
+    S.currentPair = PAIRS.find(p => p.symbol === sym) || _savedPair;
 
-    // Fire
-    cooldowns[ck] = now;
-    cooldownsDirty = true;
-    _alertsInFlight.add(ck);
+    let entries;
+    try {
+      const volRegime  = calculateVolRegime();
+      const pivots     = calculatePivots();
+      const macroBias  = (() => {
+        try {
+          const sig = runSignalEngine(S.compassData, volRegime);
+          return sig.bias;
+        } catch(e) { return 'NEUTRAL'; }
+      })();
+      const filtered  = filterConfluences(allConfs);
+      const enhanced  = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, 0);
+      const signal    = runSignalEngine(S.compassData, volRegime);
+      entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
+    } catch(e) {
+      S.currentPair = _savedPair;
+      continue;
+    }
+    S.currentPair = _savedPair;
 
-    const distPips = Math.round(dist / pipSz);
-    sendTelegramAlert(sym, e, price, distPips, digits).finally(() => {
-      _alertsInFlight.delete(ck);
-    });
+    if (!entries?.length) continue;
+
+    const pipSz   = getPipSize(sym);
+    const digits  = getDigits(sym);
+    const price   = quote.price;
+    const proxPips = cfg.proxPips?.[sym] ?? cfg.proxPips?.default ?? 5;
+    const proxDist = proxPips * pipSz;
+
+    for (const e of entries) {
+      if ((e.totalStars ?? 0) < cfg.minStars) continue;
+      if (cfg.onlyAligned && !e.signalAligned) continue;
+      if (e.direction == null) continue;
+
+      const dist = Math.abs(e.price - price);
+      if (dist > proxDist) continue;
+
+      const ck = cooldownKey(sym, e.price, e.direction, digits);
+      if (_alertsInFlight.has(ck)) continue;
+
+      const lastSent = cooldowns[ck] ?? 0;
+      if (now - lastSent < cfg.cooldownMin * 60 * 1000) continue;
+
+      cooldowns[ck] = now;
+      cooldownsDirty = true;
+      _alertsInFlight.add(ck);
+
+      const distPips = Math.round(dist / pipSz);
+      sendTelegramAlert(sym, e, price, distPips, digits).finally(() => {
+        _alertsInFlight.delete(ck);
+      });
+    }
   }
 
   if (cooldownsDirty) saveCooldowns(cooldowns);
