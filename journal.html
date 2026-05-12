@@ -126,7 +126,18 @@
         <button class="rp-run-btn" id="rp-fetch-btn" style="font-size:12px;padding:6px 18px;border-radius:8px" onclick="fetchAndReplay()">&#9654; Fetch &amp; Run</button>
         <button class="dark-btn" style="font-size:11px" onclick="runReplay()">&#8635; Re-run</button>
         <span id="rp-fetch-status" class="rp-fetch-idle">Ready — will fetch <span id="rp-symbol"></span> M1 from Oanda</span>
-        <span style="font-size:10px;color:var(--text3);margin-left:auto">08:00–21:00 London</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:6px">
+          <label style="font-size:10px;color:var(--text3)">Min stars</label>
+          <select id="rp-min-stars" style="font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px" onchange="rpApplyStarFilter()">
+            <option value="1">All</option>
+            <option value="2">2+</option>
+            <option value="3">3+</option>
+            <option value="4">4+</option>
+            <option value="5">5+</option>
+            <option value="6">6+</option>
+            <option value="7">7</option>
+          </select>
+        </span>
       </div>
 
       <!-- Results area -->

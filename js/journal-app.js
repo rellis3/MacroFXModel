@@ -498,13 +498,14 @@ function renderReplayStatsPanel() {
   // By SD/Fib table
   if (Object.keys(d.byFib).length > 0) {
     const fibRows = Object.entries(d.byFib)
-      .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
+      .sort((a, b) => { const na=parseFloat(a[0]),nb=parseFloat(b[0]); if(!isNaN(na)&&!isNaN(nb))return na-nb; return a[0].localeCompare(b[0]); })
       .map(([fib, s]) => {
         const traded = s.tp + s.sl + s.eod;
         const wr = traded > 0 ? Math.round(s.tp / traded * 100) : null;
         const wc = wr >= 60 ? 'vu' : wr >= 45 ? 'vn' : traded > 0 ? 'vd' : '';
         const rc2 = s.r >= 0 ? 'vu' : 'vd';
-        return `<tr><td>${fib === 'other' ? 'Other' : 'SD' + fib}</td><td>${s.touched}</td>`
+        const fibLabel = fib==='asia'?'Asia Fib':fib==='monday'?'Mon Fib':fib==='other'?'Other':'SD'+fib;
+        return `<tr><td>${fibLabel}</td><td>${s.touched}</td>`
           + `<td class="vu">${s.tp}</td><td class="vd">${s.sl}</td><td class="vn">${s.eod}</td>`
           + `<td class="mono ${rc2}">${s.r >= 0 ? '+' : ''}${s.r.toFixed(2)}R</td><td class="${wc}">${wr !== null ? wr + '%' : '—'}</td></tr>`;
       }).join('');
@@ -788,6 +789,11 @@ function openReplayModal(pair, date) {
   modal.dataset.date = date;
   modal.classList.add('open');
 
+  // Reset star filter to "All" for each new open
+  const starSel = document.getElementById('rp-min-stars');
+  if (starSel) starSel.value = '1';
+  _lastReplayPayload = null;
+
   const key    = pair + '::' + date;
   const cached = _replayResults[key];
   const btn    = document.getElementById('rp-fetch-btn');
@@ -971,7 +977,20 @@ function runReplayEngine(pair, date, allBars, levels) {
 
   const byFib = {}, byStar = {};
   for (const res of results) {
-    const fib = res.level.todayFib != null ? String(res.level.todayFib) : 'other';
+    // Use todayFib (the SD number) if available; fall back to 'asia'/'monday' source label
+    // so levels don't all collapse into a meaningless 'other' bucket.
+    let fib;
+    if (res.level.todayFib != null) {
+      fib = String(res.level.todayFib);
+    } else if (res.level.source === 'asia' || res.level.source === 'monday') {
+      fib = res.level.source;
+    } else {
+      // Try to infer from tags
+      const tagLabels = (res.level.tags || []).map(t => (t.label || '').toLowerCase());
+      if (tagLabels.some(l => l.includes('asia')))   fib = 'asia';
+      else if (tagLabels.some(l => l.includes('mon'))) fib = 'monday';
+      else fib = 'other';
+    }
     if (!byFib[fib]) byFib[fib] = { touched: 0, tp: 0, sl: 0, eod: 0, r: 0 };
     if (res.touched) byFib[fib].touched++;
     if (res.result === 'tp')  { byFib[fib].tp++;  byFib[fib].r += res.r; }
@@ -989,9 +1008,75 @@ function runReplayEngine(pair, date, allBars, levels) {
 
 function hhmm(bar) { return `${String(bar.hour).padStart(2,'0')}:${String(bar.min).padStart(2,'0')}`; }
 
-function renderReplayInModal(payload) {
+let _lastReplayPayload = null; // for star filter re-render
+
+function rpApplyStarFilter() {
+  if (!_lastReplayPayload) return;
+  const minStars = parseInt(document.getElementById('rp-min-stars')?.value || '1', 10);
+  renderReplayInModal(_lastReplayPayload, minStars);
+}
+
+function renderReplayInModal(payload, minStars) {
+  _lastReplayPayload = payload;
+  const min = minStars ?? parseInt(document.getElementById('rp-min-stars')?.value || '1', 10);
   const el = document.getElementById('rp-result-area');
-  if (el) el.innerHTML = buildReplayHTML(payload);
+  if (!el) return;
+
+  if (min <= 1) {
+    el.innerHTML = buildReplayHTML(payload);
+    return;
+  }
+
+  // Filter results to only levels meeting the star threshold, recompute breakdown tables
+  const filteredResults = payload.results.filter(r => (r.level.stars || 1) >= min);
+  const traded  = filteredResults.filter(r => r.result === 'tp' || r.result === 'sl' || r.result === 'eod');
+  const wins    = traded.filter(r => r.result === 'tp');
+  const losses  = traded.filter(r => r.result === 'sl');
+  const eods    = traded.filter(r => r.result === 'eod');
+  const touched = filteredResults.filter(r => r.touched);
+  const totalR  = +traded.reduce((s, r) => s + (r.r || 0), 0).toFixed(2);
+
+  // Rebuild byFib + byStar from filtered set
+  const byFib = {}, byStar = {};
+  for (const res of filteredResults) {
+    let fib;
+    if (res.level.todayFib != null) fib = String(res.level.todayFib);
+    else if (res.level.source === 'asia' || res.level.source === 'monday') fib = res.level.source;
+    else {
+      const tl = (res.level.tags || []).map(t => (t.label || '').toLowerCase());
+      fib = tl.some(l => l.includes('asia')) ? 'asia' : tl.some(l => l.includes('mon')) ? 'monday' : 'other';
+    }
+    if (!byFib[fib]) byFib[fib] = { touched: 0, tp: 0, sl: 0, eod: 0, r: 0 };
+    if (res.touched) byFib[fib].touched++;
+    if (res.result === 'tp')  { byFib[fib].tp++;  byFib[fib].r += res.r; }
+    if (res.result === 'sl')  { byFib[fib].sl++;  byFib[fib].r -= 1; }
+    if (res.result === 'eod') { byFib[fib].eod++; byFib[fib].r += res.r; }
+    const s = String(res.level.stars || 1);
+    if (!byStar[s]) byStar[s] = { touched: 0, tp: 0, sl: 0, r: 0 };
+    if (res.touched) byStar[s].touched++;
+    if (res.result === 'tp')  { byStar[s].tp++; byStar[s].r += res.r; }
+    if (res.result === 'sl')  { byStar[s].sl++; byStar[s].r -= 1; }
+  }
+
+  // Rebuild equity curve for filtered set
+  let running = 0;
+  const equity = [{ label: 'Start', r: 0, cumR: 0 }];
+  for (const res of filteredResults) {
+    if (res.result === 'tp' || res.result === 'sl' || res.result === 'eod') {
+      running += res.r || 0;
+      equity.push({ label: '', r: res.r || 0, cumR: +running.toFixed(2), result: res.result });
+    }
+  }
+
+  const filteredPayload = {
+    ...payload,
+    results: filteredResults,
+    equity,
+    byFib,
+    byStar,
+    stats: { total: filteredResults.length, touched: touched.length, traded: traded.length, wins: wins.length, losses: losses.length, eods: eods.length, totalR, winRate: traded.length > 0 ? Math.round(wins.length / traded.length * 100) : null },
+  };
+  el.innerHTML = buildReplayHTML(filteredPayload);
 }
 
 function updateInlineDayPanel(pair, date, payload) {
@@ -1223,13 +1308,18 @@ function buildReplayHTML(payload) {
     <div class="rp-table-wrap"><table class="rp-table">
     <thead><tr><th>SD</th><th>Touched</th><th>TP</th><th>SL</th><th>EOD</th><th>R</th><th>Win%</th></tr></thead><tbody>`;
 
-  const fibEntries = Object.entries(byFib).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
+  const fibEntries = Object.entries(byFib).sort((a, b) => {
+    const na = parseFloat(a[0]), nb = parseFloat(b[0]);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    return a[0].localeCompare(b[0]);
+  });
   for (const [fib, s] of fibEntries) {
     const traded = s.tp + s.sl + s.eod;
     const wr = traded > 0 ? Math.round(s.tp / traded * 100) + '%' : '—';
     const rc2 = s.r >= 0 ? 'vu' : 'vd';
     const wc  = traded > 0 && s.tp / traded >= 0.6 ? 'vu' : traded > 0 && s.tp / traded >= 0.45 ? 'vn' : traded > 0 ? 'vd' : '';
-    fibHtml += `<tr><td>SD${fib}</td><td>${s.touched}</td><td class="vu">${s.tp}</td><td class="vd">${s.sl}</td><td class="vn">${s.eod}</td><td class="mono ${rc2}">${s.r >= 0 ? '+' : ''}${s.r.toFixed(1)}R</td><td class="${wc}">${wr}</td></tr>`;
+    const fibLabel = fib === 'asia' ? 'Asia Fib' : fib === 'monday' ? 'Mon Fib' : fib === 'other' ? 'Other' : 'SD' + fib;
+    fibHtml += `<tr><td>${fibLabel}</td><td>${s.touched}</td><td class="vu">${s.tp}</td><td class="vd">${s.sl}</td><td class="vn">${s.eod}</td><td class="mono ${rc2}">${s.r >= 0 ? '+' : ''}${s.r.toFixed(1)}R</td><td class="${wc}">${wr}</td></tr>`;
   }
   fibHtml += '</tbody></table></div>';
 

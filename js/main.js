@@ -234,15 +234,44 @@ function _storeQuote(sym, d) {
   }
 }
 
+// Reconnect state for the active stream
+let _sseReconnectTimer = null;
+let _sseReconnectDelay = 3000;   // starts at 3s, backs off to 30s max
+const SSE_MAX_DELAY = 30_000;
+
+function _clearReconnectTimer() {
+  if (_sseReconnectTimer) { clearTimeout(_sseReconnectTimer); _sseReconnectTimer = null; }
+}
+
 function startLiveStream() {
+  _clearReconnectTimer();
   if (_sseSource) { try { _sseSource.close(); } catch(e) {} _sseSource = null; }
   const sym = S.currentPair.symbol;
+
+  // Reset backoff when manually starting a new stream (pair change / page load)
+  _sseReconnectDelay = 3000;
+
+  _openSseForSym(sym);
+
+  // Restart background streams whenever the active pair changes
+  startBackgroundStreams();
+}
+window.startLiveStream = startLiveStream;
+
+function _openSseForSym(sym) {
+  // Guard: don't open if the pair has changed since this reconnect was scheduled
+  if (sym !== S.currentPair?.symbol) return;
+
   try {
     const src = new EventSource(`/api/oanda_stream?symbol=${encodeURIComponent(sym)}`);
+    let receivedTick = false;
+
     src.onmessage = evt => {
       try {
         const d = JSON.parse(evt.data);
         if (d.price != null) {
+          receivedTick = true;
+          _sseReconnectDelay = 3000; // reset backoff on successful tick
           _storeQuote(sym, d);
           updateHeaderPrice(window._latestQuote);
           checkProximityAlerts();
@@ -257,14 +286,36 @@ function startLiveStream() {
         }
       } catch(e) {}
     };
-    src.onerror = () => { try { src.close(); } catch(e) {} if (_sseSource === src) _sseSource = null; };
-    _sseSource = src;
-  } catch(e) { _sseSource = null; }
 
-  // Restart background streams whenever the active pair changes
-  startBackgroundStreams();
+    src.onerror = () => {
+      try { src.close(); } catch(e) {}
+      if (_sseSource !== src) return; // already superseded by a pair change
+      _sseSource = null;
+
+      // Show reconnecting state in header
+      const updEl = document.getElementById('upd');
+      if (updEl) updEl.textContent = 'reconnecting…';
+
+      // Exponential backoff: 3s → 6s → 12s → 24s → 30s max
+      _sseReconnectDelay = Math.min(_sseReconnectDelay * 2, SSE_MAX_DELAY);
+      _clearReconnectTimer();
+      _sseReconnectTimer = setTimeout(() => {
+        _sseReconnectTimer = null;
+        _openSseForSym(sym);
+      }, _sseReconnectDelay);
+    };
+
+    _sseSource = src;
+  } catch(e) {
+    _sseSource = null;
+    // Retry after backoff even on synchronous throw
+    _sseReconnectDelay = Math.min(_sseReconnectDelay * 2, SSE_MAX_DELAY);
+    _sseReconnectTimer = setTimeout(() => {
+      _sseReconnectTimer = null;
+      _openSseForSym(sym);
+    }, _sseReconnectDelay);
+  }
 }
-window.startLiveStream = startLiveStream;
 
 // Open one SSE stream per alert-watch pair that isn't the active pair.
 // Ticks only update _latestQuotes[sym] — no DOM changes.
@@ -290,28 +341,63 @@ function startBackgroundStreams() {
   for (const sym of watchPairs) {
     if (sym === activeSym) continue;
     if (_bgSseSrcs[sym]) continue;       // already streaming
-    try {
-      const src = new EventSource(`/api/oanda_stream?symbol=${encodeURIComponent(sym)}`);
-      src.onmessage = evt => {
-        try {
-          const d = JSON.parse(evt.data);
-          if (d.price != null) {
-            _storeQuote(sym, d);
-            checkAndSendAlerts();        // check all pairs on every tick
-          }
-        } catch(e) {}
-      };
-      src.onerror = () => { try { src.close(); } catch(e) {} delete _bgSseSrcs[sym]; };
-      _bgSseSrcs[sym] = src;
-    } catch(e) {}
+    _openBgSseForSym(sym);
   }
 }
 
 function _closeBackgroundStreams() {
   for (const src of Object.values(_bgSseSrcs)) { try { src.close(); } catch(e) {} }
   _bgSseSrcs = {};
+  for (const t of Object.values(_bgReconnectTimers)) clearTimeout(t);
+  for (const k of Object.keys(_bgReconnectTimers)) delete _bgReconnectTimers[k];
 }
 window.startBackgroundStreams = startBackgroundStreams;
+
+// Per-symbol reconnect delays for background streams
+const _bgReconnectDelays = {};
+const _bgReconnectTimers = {};
+
+function _openBgSseForSym(sym) {
+  // Don't reconnect if this sym is now the active pair or no longer watched
+  if (sym === S.currentPair?.symbol) return;
+  if (_bgSseSrcs[sym]) return; // already has a live handle
+
+  if (!_bgReconnectDelays[sym]) _bgReconnectDelays[sym] = 3000;
+
+  try {
+    const src = new EventSource(`/api/oanda_stream?symbol=${encodeURIComponent(sym)}`);
+    src.onmessage = evt => {
+      try {
+        const d = JSON.parse(evt.data);
+        if (d.price != null) {
+          _bgReconnectDelays[sym] = 3000; // reset backoff on good tick
+          _storeQuote(sym, d);
+          checkAndSendAlerts();
+        }
+      } catch(e) {}
+    };
+    src.onerror = () => {
+      try { src.close(); } catch(e) {}
+      // Only reconnect if still a background sym (not taken over by pair switch)
+      if (_bgSseSrcs[sym] !== src) return;
+      delete _bgSseSrcs[sym];
+      if (_bgReconnectTimers[sym]) return; // already scheduled
+      _bgReconnectDelays[sym] = Math.min((_bgReconnectDelays[sym] || 3000) * 2, SSE_MAX_DELAY);
+      _bgReconnectTimers[sym] = setTimeout(() => {
+        delete _bgReconnectTimers[sym];
+        _openBgSseForSym(sym);
+      }, _bgReconnectDelays[sym]);
+    };
+    _bgSseSrcs[sym] = src;
+  } catch(e) {
+    delete _bgSseSrcs[sym];
+    _bgReconnectDelays[sym] = Math.min((_bgReconnectDelays[sym] || 3000) * 2, SSE_MAX_DELAY);
+    _bgReconnectTimers[sym] = setTimeout(() => {
+      delete _bgReconnectTimers[sym];
+      _openBgSseForSym(sym);
+    }, _bgReconnectDelays[sym]);
+  }
+}
 
 // ── Spread + Sentiment loaders ────────────────────────────────────────────────
 
