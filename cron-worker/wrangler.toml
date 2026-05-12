@@ -1,0 +1,26 @@
+name = "macrofx-cron"
+main = "cron-worker.js"
+compatibility_date = "2025-01-01"
+
+# ── KV namespace ──────────────────────────────────────────────────────────────
+# Use the SAME namespace ID as your Pages project's FX_SCORES binding.
+# Find it: Cloudflare dashboard → Workers & Pages → KV → click FX_SCORES → copy ID.
+[[kv_namespaces]]
+binding = "FX_SCORES"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# ── Cron schedule ─────────────────────────────────────────────────────────────
+# Runs every 1 minute — the minimum Cloudflare allows.
+# Free tier: 100,000 invocations/day. Every-minute = 1,440/day. Plenty of headroom.
+# Format: standard cron — minute hour day month weekday
+[triggers]
+crons = ["* * * * *"]
+
+# ── Environment variables ─────────────────────────────────────────────────────
+# Set these as Worker secrets so they never appear in source:
+#   cd cron-worker
+#   wrangler secret put OANDA_KEY
+#   wrangler secret put OANDA_ENV          (value: "live" or "practice")
+#   wrangler secret put OANDA_ACCOUNT_ID   (optional — enables more real-time pricing)
+#
+# OR set them in Cloudflare dashboard → Workers → macrofx-cron → Settings → Variables
