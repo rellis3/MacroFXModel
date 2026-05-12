@@ -142,11 +142,92 @@ function renderQuickStats(){
   });
   const wr=taken>0?Math.round(wins/taken*100):0;
   const wrc=wr>=60?'vu':wr>=45?'vn':taken>0?'vd':'vp';
+
+  // ── Replay cumulative stats ──────────────────────────────────────────────────
+  let rpDays=0,rpTp=0,rpSl=0,rpEod=0,rpMissed=0,rpTotal=0,rpR=0;
+  const rpByFib={};  // SD → { tp, sl, eod, missed }
+  const rpByPairFib={}; // pair → { fib → { tp, sl, eod, missed } }
+  for(const [key,payload] of Object.entries(_replayResults)){
+    const [pair]=key.split('::');
+    if(filterPair!=='all'&&pair!==filterPair)continue;
+    if(!payload?.stats)continue;
+    rpDays++;
+    rpTotal+=payload.stats.total;
+    rpTp    +=payload.stats.wins;
+    rpSl    +=payload.stats.losses;
+    rpEod   +=(payload.stats.eods||0);
+    rpMissed+=(payload.stats.total-payload.stats.touched);
+    rpR     +=payload.stats.totalR;
+    // Fib breakdown
+    for(const [fib,s] of Object.entries(payload.byFib||{})){
+      if(!rpByFib[fib])rpByFib[fib]={tp:0,sl:0,eod:0,missed:0};
+      rpByFib[fib].tp    +=s.tp;
+      rpByFib[fib].sl    +=s.sl;
+      rpByFib[fib].eod   +=s.eod;
+      rpByFib[fib].missed+=(s.touched-(s.tp+s.sl+s.eod));
+      // Per-pair fib
+      if(filterPair==='all'){
+        if(!rpByPairFib[pair])rpByPairFib[pair]={};
+        if(!rpByPairFib[pair][fib])rpByPairFib[pair][fib]={tp:0,sl:0,eod:0};
+        rpByPairFib[pair][fib].tp  +=s.tp;
+        rpByPairFib[pair][fib].sl  +=s.sl;
+        rpByPairFib[pair][fib].eod +=s.eod;
+      }
+    }
+  }
+  rpR=+rpR.toFixed(2);
+  const rpTraded=rpTp+rpSl;
+  const rpWr=rpTraded>0?Math.round(rpTp/rpTraded*100):null;
+  const rpWrc=rpWr>=60?'vu':rpWr>=45?'vn':rpTraded>0?'vd':'vp';
+  const rpRc=rpR>=0?'vu':'vd';
+
+  // Build compact SD table rows (top 6 by volume)
+  const fibEntries=Object.entries(rpByFib)
+    .sort((a,b)=>(b[1].tp+b[1].sl)-(a[1].tp+a[1].sl))
+    .slice(0,6);
+  const fibRows=fibEntries.map(([fib,s])=>{
+    const traded=s.tp+s.sl;
+    const wr2=traded>0?Math.round(s.tp/traded*100):null;
+    const wc2=wr2>=60?'vu':wr2>=45?'vn':traded>0?'vd':'vp';
+    const label=fib==='other'?'Other':'SD'+fib;
+    return`<tr><td style="color:var(--text2)">${label}</td><td class="vu">${s.tp}</td><td class="vd">${s.sl}</td><td class="vn">${s.eod}</td><td class="${wc2}">${wr2!==null?wr2+'%':'—'}</td></tr>`;
+  }).join('');
+
+  // Per-pair SD breakdown (compact, only when viewing all pairs and data exists)
+  let pairFibHtml='';
+  if(filterPair==='all'&&Object.keys(rpByPairFib).length>0){
+    pairFibHtml=Object.entries(rpByPairFib).map(([pair,fibs])=>{
+      const rows=Object.entries(fibs)
+        .filter(([,s])=>s.tp+s.sl>0)
+        .sort((a,b)=>(b[1].tp+b[1].sl)-(a[1].tp+a[1].sl))
+        .slice(0,4)
+        .map(([fib,s])=>{
+          const t=s.tp+s.sl;
+          const w=t>0?Math.round(s.tp/t*100):null;
+          const wc2=w>=60?'vu':w>=45?'vn':t>0?'vd':'vp';
+          return`<tr><td style="color:var(--text3);font-size:9px">SD${fib}</td><td class="vu" style="font-size:9px">${s.tp}W</td><td class="vd" style="font-size:9px">${s.sl}L</td><td class="${wc2}" style="font-size:9px">${w!==null?w+'%':'—'}</td></tr>`;
+        }).join('');
+      if(!rows)return'';
+      return`<div style="margin-top:4px"><div style="font-size:9px;color:var(--text3);font-weight:600;margin-bottom:2px">${pair}</div><table style="width:100%;border-collapse:collapse">${rows}</table></div>`;
+    }).filter(Boolean).join('');
+  }
+
+  const rpSection=rpDays>0?`
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+      <div style="font-size:9px;font-weight:600;color:var(--text3);letter-spacing:.05em;margin-bottom:6px">RUN DAY · ${rpDays} day${rpDays!==1?'s':''} replayed</div>
+      <div class="mrow"><span class="mrow-n">W / L / EOD / Miss</span><span class="mrow-v"><span class="vu">${rpTp}</span> / <span class="vd">${rpSl}</span> / <span class="vn">${rpEod}</span> / <span style="color:var(--text3)">${rpMissed}</span></span></div>
+      <div class="mrow"><span class="mrow-n">Win rate (traded)</span><span class="mrow-v ${rpWrc}">${rpWr!==null?rpWr+'%':'—'}</span></div>
+      <div class="mrow"><span class="mrow-n">Total R</span><span class="mrow-v ${rpRc}">${rpR>=0?'+':''}${rpR}R</span></div>
+      ${fibRows?`<div style="margin-top:6px"><div style="font-size:9px;color:var(--text3);font-weight:600;margin-bottom:3px">BY SD LEVEL</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="font-size:9px;color:var(--text3);font-weight:400;text-align:left">SD</th><th style="font-size:9px;color:var(--text3);font-weight:400">TP</th><th style="font-size:9px;color:var(--text3);font-weight:400">SL</th><th style="font-size:9px;color:var(--text3);font-weight:400">EOD</th><th style="font-size:9px;color:var(--text3);font-weight:400">W%</th></tr></thead><tbody>${fibRows}</tbody></table></div>`:''}
+      ${pairFibHtml?`<div style="margin-top:6px"><div style="font-size:9px;color:var(--text3);font-weight:600;margin-bottom:3px">BY PAIR · SD</div>${pairFibHtml}</div>`:''}
+    </div>`:'';
+
   document.getElementById('quickStats').innerHTML=`
     <div class="mrow"><span class="mrow-n">Levels saved</span><span class="mrow-v vp">${total}</span></div>
     <div class="mrow"><span class="mrow-n">Trades taken</span><span class="mrow-v vp">${taken}</span></div>
     <div class="mrow"><span class="mrow-n">Win rate</span><span class="mrow-v ${wrc}">${wr}%</span></div>
-    <div class="mrow"><span class="mrow-n">W / L / BE</span><span class="mrow-v"><span class="vu">${wins}</span> / <span class="vd">${losses}</span> / <span class="vn">${bes}</span></span></div>`;
+    <div class="mrow"><span class="mrow-n">W / L / BE</span><span class="mrow-v"><span class="vu">${wins}</span> / <span class="vd">${losses}</span> / <span class="vn">${bes}</span></span></div>
+    ${rpSection}`;
 }
 
 function setView(v){
@@ -783,6 +864,7 @@ async function fetchAndReplay() {
   const key = pair + '::' + date;
   _replayResults[key] = payload;
   saveReplayResults();
+  renderQuickStats();
 
   // ── 4. Render ─────────────────────────────────────────────────────────────
   setReplayStatus(`Done — ${payload.stats.touched}/${payload.stats.total} touched · ${payload.stats.totalR >= 0 ? '+' : ''}${payload.stats.totalR}R`, 'rp-fetch-ok');
