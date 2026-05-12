@@ -13,8 +13,12 @@ import { filterConfluences, enhanceConfluences } from './confluences.js';
 import { runSignalEngine, runEntryScanner } from './signal.js';
 import { calculateVolRegime, calculatePivots } from './vol.js';
 
-const STORAGE_KEY = 'tg_alert_cfg';
+const STORAGE_KEY  = 'tg_alert_cfg';
 const COOLDOWN_KEY = 'tg_alert_cooldowns';
+
+// Throttle KV entry syncs — at most once per 5 min per pair.
+// This prevents flooding KV on every SSE price tick.
+const _kvEntrySyncTimes = new Map();
 
 // Default config
 const DEFAULT_CFG = {
@@ -40,6 +44,12 @@ export function loadAlertCfg() {
 
 export function saveAlertCfg(cfg) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)); } catch(e) {}
+  // Sync to KV so the cron worker can read alert preferences server-side
+  fetch('/api/kv/set', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ key: 'ai_alert_cfg', data: cfg, timestamp: Date.now() }),
+  }).catch(() => {});
 }
 
 function loadCooldowns() {
@@ -74,14 +84,17 @@ let _alertsInFlight = new Set(); // prevent double-firing same alert concurrentl
 
 export function checkAndSendAlerts() {
   const cfg = loadAlertCfg();
-  if (!cfg.enabled) return;
 
+  // Always iterate pairs to sync entries to KV for the cron worker,
+  // even when browser alerts are disabled. Browser alerts are gated
+  // below by cfg.enabled. KV sync is gated by having entries at all.
   const watchSyms = cfg.pairs && cfg.pairs.length > 0
     ? cfg.pairs
     : PAIRS.map(p => p.symbol);
 
   const now = Date.now();
-  let cooldowns = pruneCooldowns(loadCooldowns());
+  // Only load cooldowns when browser alerts are on (saves a localStorage read otherwise)
+  let cooldowns      = cfg.enabled ? pruneCooldowns(loadCooldowns()) : null;
   let cooldownsDirty = false;
 
   for (const sym of watchSyms) {
@@ -89,8 +102,8 @@ export function checkAndSendAlerts() {
     if (!quote?.price) continue;
 
     // Need range data loaded for this pair
-    const asia    = S.asiaRangeData?.[sym];
-    const monday  = S.mondayRangeData?.[sym];
+    const asia   = S.asiaRangeData?.[sym];
+    const monday = S.mondayRangeData?.[sym];
     if (!asia || !monday) continue;
 
     const allConfs = [
@@ -105,17 +118,15 @@ export function checkAndSendAlerts() {
 
     let entries;
     try {
-      const volRegime  = calculateVolRegime();
-      const pivots     = calculatePivots();
-      const macroBias  = (() => {
-        try {
-          const sig = runSignalEngine(S.compassData, volRegime);
-          return sig.bias;
-        } catch(e) { return 'NEUTRAL'; }
+      const volRegime = calculateVolRegime();
+      const pivots    = calculatePivots();
+      const macroBias = (() => {
+        try { return runSignalEngine(S.compassData, volRegime).bias; }
+        catch(e) { return 'NEUTRAL'; }
       })();
-      const filtered  = filterConfluences(allConfs);
-      const enhanced  = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, 0);
-      const signal    = runSignalEngine(S.compassData, volRegime);
+      const filtered = filterConfluences(allConfs);
+      const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, 0);
+      const signal   = runSignalEngine(S.compassData, volRegime);
       entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
     } catch(e) {
       S.currentPair = _savedPair;
@@ -123,11 +134,39 @@ export function checkAndSendAlerts() {
     }
     S.currentPair = _savedPair;
 
+    // ── KV sync for cron worker ───────────────────────────────────────────────
+    // Throttled to once per 5 min per pair to avoid flooding KV on every tick.
+    // Cron worker reads these to know which levels to watch while browser is closed.
+    if (entries?.length) {
+      const lastSync = _kvEntrySyncTimes.get(sym) ?? 0;
+      if (now - lastSync > 5 * 60 * 1000) {
+        _kvEntrySyncTimes.set(sym, now);
+        const payload = entries.map(e => ({
+          price:         e.price,
+          direction:     e.direction,
+          totalStars:    e.totalStars   ?? 0,
+          sl:            e.sl           ?? null,
+          tp:            e.tp           ?? null,
+          tpNote:        e.tpNote       ?? null,
+          rrRatio:       e.rrRatio      ?? null,
+          tags:          (e.tags ?? []).slice(0, 4).map(t => t.label),
+          signalAligned: e.signalAligned ?? false,
+        }));
+        fetch('/api/kv/set', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ key: `ai_entries_${sym.replace('/', '')}`, data: payload, timestamp: now }),
+        }).catch(() => {});
+      }
+    }
+
+    // ── Browser alerts ────────────────────────────────────────────────────────
+    if (!cfg.enabled) continue;
     if (!entries?.length) continue;
 
-    const pipSz   = getPipSize(sym);
-    const digits  = getDigits(sym);
-    const price   = quote.price;
+    const pipSz    = getPipSize(sym);
+    const digits   = getDigits(sym);
+    const price    = quote.price;
     const proxPips = cfg.proxPips?.[sym] ?? cfg.proxPips?.default ?? 5;
     const proxDist = proxPips * pipSz;
 
