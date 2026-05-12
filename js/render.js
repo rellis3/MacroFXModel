@@ -301,7 +301,7 @@ ${calendarCtx.warnings.length > 0 ? `
               }
             }
 
-            // RETAIL CROWD — Myfxbook sentiment
+            // RETAIL CROWD — OANDA position book (already loaded, no extra key needed)
             if (S.hasMyfxbook) {
               const mfxKey = toMyfxbSym(sym);
               const sent   = S.myfxSentiment[mfxKey];
@@ -318,6 +318,30 @@ ${calendarCtx.warnings.length > 0 ? `
                 rows.push(`<div style="display:flex;align-items:center;gap:5px;margin-top:3px;flex-wrap:wrap">
                   <span style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.06em">RETAIL</span>
                   <span style="font-size:10px;color:var(--text2)">${sent.longPct}% long / ${sent.shortPct}% short</span>
+                  <span style="font-size:10.5px;font-weight:700;color:${sigCol}">${sigLabel}</span>
+                  ${extremeTag}
+                </div>`);
+              }
+            } else {
+              // Fallback: OANDA position book (already loaded, no extra key needed)
+              const oBook = S.oandaBook[sym];
+              if (oBook && !oBook.miss && oBook.longPct != null) {
+                const shortPct = oBook.shortPct ?? (100 - oBook.longPct);
+                const domPct   = Math.max(oBook.longPct, shortPct);
+                const oSentiment = oBook.longPct >= 65 ? 'LONG_HEAVY' : shortPct >= 65 ? 'SHORT_HEAVY' : 'BALANCED';
+                const crowding   = domPct >= 75 ? 'EXTREME' : domPct >= 65 ? 'STRONG' : 'MODERATE';
+                const isContrarian = (macroBias === 'LONG'  && oSentiment === 'SHORT_HEAVY') ||
+                                     (macroBias === 'SHORT' && oSentiment === 'LONG_HEAVY');
+                const sigLabel = isContrarian
+                  ? 'CONTRARIAN ' + macroBias + ' SIGNAL'
+                  : oSentiment === 'BALANCED' ? 'CROWD BALANCED' : 'CROWD ALIGNED';
+                const sigCol = isContrarian ? 'var(--green)'
+                             : oSentiment  === 'BALANCED' ? 'var(--text3)' : 'var(--amber)';
+                const extremeTag = crowding === 'EXTREME'
+                  ? `<span style="font-size:9px;color:var(--red);padding:1px 4px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:3px;font-weight:700">EXTREME CROWD</span>` : '';
+                rows.push(`<div style="display:flex;align-items:center;gap:5px;margin-top:3px;flex-wrap:wrap">
+                  <span style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.06em">RETAIL</span>
+                  <span style="font-size:10px;color:var(--text2)">${oBook.longPct}% long / ${shortPct}% short</span>
                   <span style="font-size:10.5px;font-weight:700;color:${sigCol}">${sigLabel}</span>
                   ${extremeTag}
                 </div>`);

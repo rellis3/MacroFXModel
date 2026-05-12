@@ -165,16 +165,29 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     let confirmationStars = 0;
     if (aligned) confirmationStars++;
 
-    // Crowding bonus/penalty based on Myfxbook sentiment vs macro bias
+    // Crowding bonus/penalty — Myfxbook primary, OANDA position book fallback
     let crowdingAdj = 0;
+    let _crowdSentiment = null, _crowdCrowding = null;
     if (_mfxSent) {
-      const crowdOpposesBias = (bias === 'LONG'  && _mfxSent.sentiment === 'SHORT_HEAVY') ||
-                               (bias === 'SHORT' && _mfxSent.sentiment === 'LONG_HEAVY');
-      const crowdAgreesBias  = (bias === 'LONG'  && _mfxSent.sentiment === 'LONG_HEAVY') ||
-                               (bias === 'SHORT' && _mfxSent.sentiment === 'SHORT_HEAVY');
-      if (crowdOpposesBias && _mfxSent.crowding === 'EXTREME') crowdingAdj =  1.0;  // squeeze fuel
-      else if (crowdOpposesBias && _mfxSent.crowding === 'STRONG')   crowdingAdj =  0.5;
-      else if (crowdAgreesBias  && _mfxSent.crowding === 'EXTREME')  crowdingAdj = -0.5; // crowded trade
+      _crowdSentiment = _mfxSent.sentiment;
+      _crowdCrowding  = _mfxSent.crowding;
+    } else {
+      const _oBook = S.oandaBook?.[symbol];
+      if (_oBook && !_oBook.miss && _oBook.longPct != null) {
+        const _sp = _oBook.shortPct ?? (100 - _oBook.longPct);
+        const _dp = Math.max(_oBook.longPct, _sp);
+        _crowdSentiment = _oBook.longPct >= 65 ? 'LONG_HEAVY' : _sp >= 65 ? 'SHORT_HEAVY' : 'BALANCED';
+        _crowdCrowding  = _dp >= 75 ? 'EXTREME' : _dp >= 65 ? 'STRONG' : 'MODERATE';
+      }
+    }
+    if (_crowdSentiment) {
+      const crowdOpposesBias = (bias === 'LONG'  && _crowdSentiment === 'SHORT_HEAVY') ||
+                               (bias === 'SHORT' && _crowdSentiment === 'LONG_HEAVY');
+      const crowdAgreesBias  = (bias === 'LONG'  && _crowdSentiment === 'LONG_HEAVY') ||
+                               (bias === 'SHORT' && _crowdSentiment === 'SHORT_HEAVY');
+      if (crowdOpposesBias && _crowdCrowding === 'EXTREME') crowdingAdj =  1.0;  // squeeze fuel
+      else if (crowdOpposesBias && _crowdCrowding === 'STRONG')  crowdingAdj =  0.5;
+      else if (crowdAgreesBias  && _crowdCrowding === 'EXTREME') crowdingAdj = -0.5; // crowded trade
     }
 
     let stars = structuralStars + confirmationStars + crowdingAdj;

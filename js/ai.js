@@ -414,7 +414,7 @@ export function aiCollectSnapshot() {
     }
   } catch(e) {}
 
-  // Myfxbook retail sentiment
+  // Retail sentiment — Myfxbook primary, OANDA position book fallback
   try {
     if (sym) {
       const mfxKey  = toMyfxbSym(sym);
@@ -429,6 +429,21 @@ export function aiCollectSnapshot() {
         const macroBias   = s.macroBias ?? null;
         s.retailContrarian = (macroBias === 'LONG'  && mfxSent.sentiment === 'SHORT_HEAVY') ||
                              (macroBias === 'SHORT' && mfxSent.sentiment === 'LONG_HEAVY');
+      } else {
+        const oBook = S.oandaBook?.[sym];
+        if (oBook && !oBook.miss && oBook.longPct != null) {
+          const shortPct = oBook.shortPct ?? (100 - oBook.longPct);
+          const domPct   = Math.max(oBook.longPct, shortPct);
+          const oSentiment = oBook.longPct >= 65 ? 'LONG_HEAVY' : shortPct >= 65 ? 'SHORT_HEAVY' : 'BALANCED';
+          const crowding   = domPct >= 75 ? 'EXTREME' : domPct >= 65 ? 'STRONG' : 'MODERATE';
+          s.retailLongPct   = oBook.longPct;
+          s.retailShortPct  = shortPct;
+          s.retailSentiment = oSentiment;
+          s.retailCrowding  = crowding;
+          const macroBias   = s.macroBias ?? null;
+          s.retailContrarian = (macroBias === 'LONG'  && oSentiment === 'SHORT_HEAVY') ||
+                               (macroBias === 'SHORT' && oSentiment === 'LONG_HEAVY');
+        }
       }
     }
   } catch(e) {}
