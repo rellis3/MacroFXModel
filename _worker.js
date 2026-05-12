@@ -1180,6 +1180,74 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         }
       }
 
+      // -- /api/telegram/config GET -----------------------------
+      // Returns whether Telegram bot credentials are stored.
+      // Never returns the token itself — only chatId and configured flag.
+      if (path === '/api/telegram/config' && request.method === 'GET') {
+        if (!env.FX_SCORES) return json({ configured: false, reason: 'KV not bound' });
+        try {
+          const raw = await env.FX_SCORES.get('tg_config');
+          if (!raw) return json({ configured: false });
+          const cfg = JSON.parse(raw);
+          return json({ configured: !!(cfg.token && cfg.chatId), chatId: cfg.chatId ?? null });
+        } catch(e) {
+          return json({ configured: false, reason: e.message });
+        }
+      }
+
+      // -- /api/telegram/config PUT -----------------------------
+      // Saves Telegram bot token + chat ID to KV.
+      // Body: { token, chatId }
+      if (path === '/api/telegram/config' && request.method === 'PUT') {
+        if (!env.FX_SCORES) return err('KV not bound', 503);
+        try {
+          const body = await request.json();
+          if (!body.token || !body.chatId) return err('token and chatId required', 400);
+          await env.FX_SCORES.put('tg_config', JSON.stringify({
+            token:  body.token.trim(),
+            chatId: body.chatId.trim(),
+          }));
+          return json({ ok: true });
+        } catch(e) {
+          return err('Failed to save Telegram config: ' + e.message);
+        }
+      }
+
+      // -- /api/telegram POST -----------------------------------
+      // Sends a message via the configured Telegram bot.
+      // Body: { message, parseMode? }
+      // Reads bot token + chat ID from KV — never exposed to the browser.
+      if (path === '/api/telegram' && request.method === 'POST') {
+        if (!env.FX_SCORES) return err('KV not bound', 503);
+        try {
+          const raw = await env.FX_SCORES.get('tg_config');
+          if (!raw) return json({ ok: false, error: 'Telegram not configured — add bot token and chat ID via the alert settings modal' });
+          const cfg = JSON.parse(raw);
+          if (!cfg.token || !cfg.chatId) return json({ ok: false, error: 'Telegram config incomplete' });
+
+          const body = await request.json();
+          const message   = body.message ?? '';
+          const parseMode = body.parseMode ?? 'HTML';
+
+          if (!message) return err('message required', 400);
+
+          const tgRes = await fetch(`https://api.telegram.org/bot${cfg.token}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id:    cfg.chatId,
+              text:       message,
+              parse_mode: parseMode,
+            }),
+          });
+          const tgData = await tgRes.json();
+          if (!tgData.ok) return json({ ok: false, error: tgData.description ?? 'Telegram API error' });
+          return json({ ok: true });
+        } catch(e) {
+          return err('Telegram send error: ' + e.message);
+        }
+      }
+
       // -- /api/cot/urls GET ------------------------------------
       // Returns stored CFTC report URLs for each asset class.
       // Migrates legacy single cot_url key transparently.

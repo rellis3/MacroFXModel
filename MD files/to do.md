@@ -35,3 +35,6 @@ The candle close + EMA pair is the most actionable because it's real-time and al
 Vix trend help the Forex pairs?
 
 can we do session Volume and see VAH/L and POC?  how?
+
+
+Add the Run Day process to allow to filter by starts like export so can see the benefits of which stars get good results

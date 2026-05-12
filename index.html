@@ -28,6 +28,7 @@
   <button class="dark-btn" onclick="openOIModal()" title="Open Interest Analyser"><span>📊</span><span>OI</span></button>
   <button class="dark-btn" onclick="openCOTModal()" id="cotBtn" title="COT — CFTC Commitment of Traders"><span>📋</span><span>COT</span></button>
   <button class="ai-analyse-btn" onclick="triggerAIAnalysis()" id="aiAnalysisBtn" title="AI trading analysis — reads all dashboard data"><span>🧠</span><span>Analyse</span></button>
+  <button class="dark-btn" onclick="openAlertModal()" id="alertBtn" title="Telegram alerts (OFF)"><span>🔔</span><span>Alerts</span></button>
   <button class="dark-btn" onclick="toggleDark()"><span id="d-icon">🌙</span><span id="d-lbl">Dark</span></button>
   <button class="dark-btn" onclick="openCfgModal()" id="cfgBtn" title="Confluence proximity config"><span>⚙</span><span>Caps</span></button>
   <button class="dark-btn" onclick="saveToJournal()" id="journalBtn" title="Save today's levels to Trade Journal" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>Journal</span></button>
@@ -159,6 +160,103 @@ Example:
 </div>
 
 <script type="module" src="./js/main.js"></script>
+
+<!-- TELEGRAM ALERT MODAL -->
+<div class="oi-modal-overlay" id="alertModalOverlay" onclick="if(event.target===this)closeAlertModal()">
+  <div class="oi-modal" style="max-width:520px">
+    <div class="oi-modal-hd">
+      <div>
+        <div class="oi-modal-title">🔔 Telegram Level Alerts</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">Alerts fire when price hits a confluence level matching your filters. Browser tab must be open.</div>
+      </div>
+      <button class="oi-btn" onclick="closeAlertModal()">✕ Close</button>
+    </div>
+
+    <!-- Bot status -->
+    <div id="alertBotStatus" class="alert-bot-status" style="margin-bottom:14px;font-size:11px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--s2)">Checking bot status…</div>
+
+    <!-- Credentials -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px">Telegram Bot Credentials <span style="font-weight:400;color:var(--text3)">(stored in Cloudflare KV — never sent to browser)</span></div>
+      <div class="oi-form-row" style="gap:8px;margin-bottom:6px">
+        <div style="flex:1">
+          <label class="oi-lbl">Bot Token</label>
+          <input class="oi-input" type="password" id="alertBotToken" placeholder="123456:ABCdef...">
+          <div class="oi-hint">From @BotFather → /newbot</div>
+        </div>
+        <div style="flex:1">
+          <label class="oi-lbl">Chat ID</label>
+          <input class="oi-input" type="text" id="alertChatId" placeholder="-100123456 or your user ID">
+          <div class="oi-hint">Use @userinfobot to find your chat ID</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="oi-btn oi-btn-primary" onclick="saveTelegramCreds()">Save Credentials</button>
+        <button class="oi-btn" onclick="sendTestAlert()">Send Test Message</button>
+      </div>
+    </div>
+
+    <div class="oi-modal-divider" style="margin:14px 0"></div>
+
+    <!-- Alert config -->
+    <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:10px">Alert Filters</div>
+
+    <div class="oi-form-row" style="gap:10px;margin-bottom:10px;align-items:center">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600">
+        <input type="checkbox" id="alertEnabled" style="width:16px;height:16px;cursor:pointer">
+        Alerts enabled
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="alertOnlyAligned" style="width:14px;height:14px;cursor:pointer">
+        Only signal-aligned entries
+      </label>
+    </div>
+
+    <div class="oi-form-row" style="gap:10px;margin-bottom:10px">
+      <div>
+        <label class="oi-lbl">Minimum Stars</label>
+        <input class="oi-input" type="number" id="alertMinStars" value="4" min="1" max="7" step="1">
+        <div class="oi-hint">1–7 · only alert if entry has at least this many stars</div>
+      </div>
+      <div>
+        <label class="oi-lbl">Cooldown (minutes)</label>
+        <input class="oi-input" type="number" id="alertCooldown" value="60" min="5" max="480" step="5">
+        <div class="oi-hint">Min wait before re-alerting the same level</div>
+      </div>
+    </div>
+
+    <div class="oi-form-row" style="gap:10px;margin-bottom:10px">
+      <div>
+        <label class="oi-lbl">FX proximity (pips)</label>
+        <input class="oi-input" type="number" id="alertProxDefault" value="5" min="1" max="30" step="0.5">
+        <div class="oi-hint">Distance from level to trigger — FX pairs</div>
+      </div>
+      <div>
+        <label class="oi-lbl">Gold proximity (pts)</label>
+        <input class="oi-input" type="number" id="alertProxGold" value="8" min="1" max="50" step="1">
+        <div class="oi-hint">XAU/USD · dollar distance from level</div>
+      </div>
+      <div>
+        <label class="oi-lbl">NAS100 proximity (pts)</label>
+        <input class="oi-input" type="number" id="alertProxNas" value="30" min="5" max="200" step="5">
+        <div class="oi-hint">NAS100_USD · points from level</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <label class="oi-lbl">Pairs to watch <span style="font-weight:400;color:var(--text3)">(leave blank for all active pairs)</span></label>
+      <input class="oi-input" type="text" id="alertPairs" placeholder="EUR/USD, XAU/USD, NAS100_USD" style="width:100%;box-sizing:border-box">
+      <div class="oi-hint">Comma-separated pair names. Leave empty to alert on whichever pair tab is active.</div>
+    </div>
+
+    <div id="alertModalStatus" class="cot-modal-status" style="min-height:18px;margin-bottom:8px"></div>
+
+    <div class="oi-actions">
+      <button class="oi-btn" onclick="closeAlertModal()">Close</button>
+      <button class="oi-btn oi-btn-primary" onclick="saveAlertModal();updateAlertBtn()">Save Alert Config</button>
+    </div>
+  </div>
+</div>
 
 <!-- CONFLUENCE CONFIG MODAL -->
 <div class="cfg-overlay" id="cfgOverlay" onclick="if(event.target===this)closeCfgModal()">

@@ -18,6 +18,7 @@ import { loadCOT, openCOTModal, closeCOTModal, saveCOTUrlFromModal, refreshCOT }
 import { detectSession, computeSessionOpens, computeDailyOpens } from './session.js';
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
+import { checkAndSendAlerts, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, loadAlertCfg } from './alerts.js';
 
 // ── Debounced renderAll ───────────────────────────────────────────────────────
 // Prevents concurrent DOM mutations when async compass resolve + quote refresh
@@ -55,6 +56,11 @@ window.refreshCOT             = refreshCOT;
 window.openRangeBiasModal     = openRangeBiasModal;
 window.closeRangeBiasModal    = closeRangeBiasModal;
 window.saveRangeBiasModal     = saveRangeBiasModal;
+window.openAlertModal         = openAlertModal;
+window.closeAlertModal        = closeAlertModal;
+window.saveAlertModal         = saveAlertModal;
+window.saveTelegramCreds      = saveTelegramCreds;
+window.sendTestAlert          = sendTestAlert;
 
 // ── Initialise state ─────────────────────────────────────────────────────────
 S.currentPair = PAIRS[0];
@@ -226,6 +232,7 @@ function startLiveStream() {
           window._latestQuote = { ...(window._latestQuote || {}), price: d.price, bid: d.bid, ask: d.ask };
           updateHeaderPrice(window._latestQuote);
           checkProximityAlerts();
+          checkAndSendAlerts(window._latestQuote);
           const updEl = document.getElementById('upd');
           if (updEl) updEl.textContent = new Date().toLocaleTimeString();
           // Throttle full re-render to avoid flickering on every tick
@@ -603,11 +610,29 @@ window.saveToJournal = function() {
   }
 };
 
+// ── Alert button state ────────────────────────────────────────────────────────
+export function updateAlertBtn() {
+  const btn = document.getElementById('alertBtn');
+  if (!btn) return;
+  const cfg = loadAlertCfg();
+  if (cfg.enabled) {
+    btn.style.borderColor = 'var(--green-bd)';
+    btn.style.color       = 'var(--green)';
+    btn.title             = `Telegram alerts ON · min ${cfg.minStars}★`;
+  } else {
+    btn.style.borderColor = '';
+    btn.style.color       = '';
+    btn.title             = 'Telegram alerts (OFF)';
+  }
+}
+window.updateAlertBtn = updateAlertBtn;
+
 // ── Boot ─────────────────────────────────────────────────────────────────────
 async function init() {
   renderPairTabs();
   await loadAll();
   startLiveStream();           // Fix 23: live SSE stream; falls back silently if Oanda unavailable
+  updateAlertBtn();
   setInterval(() => refreshQuote(), 5 * 60 * 1000);       // polling fallback / 5m candle refresh
   setInterval(() => loadSpreadData().catch(() => {}), 60 * 1000);         // live spread, every 60s
   setInterval(() => loadSentimentData().catch(() => {}), 30 * 60 * 1000); // sentiment, every 30m
