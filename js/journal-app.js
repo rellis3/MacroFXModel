@@ -6,6 +6,7 @@ let selectedDate = null;
 let calViewYear  = new Date().getFullYear();
 let calViewMonth = new Date().getMonth();
 let currentView  = 'day';
+let levelSortOrder = 'default'; // 'default'|'price-asc'|'price-desc'|'stars-asc'|'stars-desc'|'sd-asc'|'sd-desc'
 
 // ── KV helpers ──────────────────────────────────────────────────────────────
 async function kvGet(key){
@@ -248,7 +249,7 @@ function renderDayView(){
   const fmt=new Date(selectedDate+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const pairs=dayObj?Object.keys(dayObj).filter(p=>filterPair==='all'||p===filterPair):[];
   if(pairs.length===0)return`<div class="empty-state"><div class="em-icon">&#128197;</div><h3>${fmt}</h3><p>No levels saved for this day${filterPair!=='all'?' for '+filterPair:''}.<br>Open the dashboard and click <strong>Journal</strong>.</p></div>`;
-  let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap"><div style="font-size:16px;font-weight:700">${fmt}</div><div style="font-size:11px;color:var(--text3)">${pairs.length} pair${pairs.length>1?'s':''}</div></div>`;
+  let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap"><div style="font-size:16px;font-weight:700">${fmt}</div><div style="font-size:11px;color:var(--text3)">${pairs.length} pair${pairs.length>1?'s':''}</div>${renderSortBar()}</div>`;
   pairs.forEach(pair=>{
     const levels=dayObj[pair].levels||[];
     const macro=dayObj[pair].macro||{};
@@ -381,10 +382,48 @@ function setOutcome(date,pair,idx,oc){ensurePath(date,pair,idx);const l=journalD
 function setSLTP(date,pair,idx,field,val){ensurePath(date,pair,idx);const l=journalData[date][pair].levels[idx];if(field==='sl')l.slOverride=parseFloat(val);if(field==='tp')l.tpOverride=parseFloat(val);saveJournal();}
 function setNotes(date,pair,idx,val){ensurePath(date,pair,idx);journalData[date][pair].levels[idx].notes=val;saveJournal();}
 
+// ── Level sort helpers ───────────────────────────────────────────────────────
+
+function setLevelSort(order) {
+  levelSortOrder = order;
+  renderMain();
+}
+
+// Returns [{l, i}] where i is the original stored index (safe to use for mutations)
+function sortedIndexed(levels) {
+  const arr = levels.map((l, i) => ({ l, i }));
+  switch (levelSortOrder) {
+    case 'price-asc':  arr.sort((a, b) => (a.l.price || 0) - (b.l.price || 0)); break;
+    case 'price-desc': arr.sort((a, b) => (b.l.price || 0) - (a.l.price || 0)); break;
+    case 'stars-asc':  arr.sort((a, b) => (a.l.stars || 1) - (b.l.stars || 1)); break;
+    case 'stars-desc': arr.sort((a, b) => (b.l.stars || 1) - (a.l.stars || 1)); break;
+    case 'sd-asc':     arr.sort((a, b) => { const fa = a.l.todayFib != null ? +a.l.todayFib : 999; const fb = b.l.todayFib != null ? +b.l.todayFib : 999; return fa - fb; }); break;
+    case 'sd-desc':    arr.sort((a, b) => { const fa = a.l.todayFib != null ? +a.l.todayFib : -1;  const fb = b.l.todayFib != null ? +b.l.todayFib : -1;  return fb - fa; }); break;
+  }
+  return arr;
+}
+
+function renderSortBar() {
+  const OPTS = [
+    { key: 'price', label: 'Price',    asc: 'price-asc',  desc: 'price-desc' },
+    { key: 'stars', label: 'Stars',    asc: 'stars-asc',  desc: 'stars-desc' },
+    { key: 'sd',    label: 'SD Level', asc: 'sd-asc',     desc: 'sd-desc'    },
+  ];
+  const btns = OPTS.map(o => {
+    let arrow = '⇅', active = '';
+    let next;
+    if (levelSortOrder === o.asc)       { arrow = '↑'; active = ' active'; next = o.desc; }
+    else if (levelSortOrder === o.desc) { arrow = '↓'; active = ' active'; next = 'default'; }
+    else                                { next = o.asc; }
+    return `<button class="sort-btn${active}" onclick="setLevelSort('${next}')">${o.label} ${arrow}</button>`;
+  }).join('');
+  return `<div class="sort-bar"><span class="sort-lbl">Sort</span>${btns}</div>`;
+}
+
 function renderAllView(){
   const dates=Object.keys(journalData).sort().reverse();
   if(dates.length===0)return`<div class="empty-state"><div class="em-icon">&#128237;</div><h3>No data yet</h3><p>Save levels from the dashboard to begin.</p></div>`;
-  let html='';
+  let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">${renderSortBar()}</div>`;
   dates.forEach(date=>{
     const dayObj=journalData[date];
     const pairs=Object.keys(dayObj).filter(p=>filterPair==='all'||p===filterPair);
@@ -398,7 +437,7 @@ function renderAllView(){
     </div>`;
     pairs.forEach(pair=>{
       const levels=dayObj[pair].levels||[];const macro=dayObj[pair].macro||{};
-      html+=`<div class="day-pair-section"><div class="day-pair-lbl">${pair} <span style="font-weight:400;color:var(--text3)">Macro ${macro.bias||'&mdash;'} ${macro.score!==undefined?(macro.score>0?'+':'')+macro.score:''} &middot; Vol ${macro.volRegime||'&mdash;'}</span></div><div class="levels-grid">${levels.map((l,i)=>renderLevelCard(l,i,date,pair)).join('')}</div></div>`;
+      html+=`<div class="day-pair-section"><div class="day-pair-lbl">${pair} <span style="font-weight:400;color:var(--text3)">Macro ${macro.bias||'&mdash;'} ${macro.score!==undefined?(macro.score>0?'+':'')+macro.score:''} &middot; Vol ${macro.volRegime||'&mdash;'}</span></div><div class="levels-grid">${sortedIndexed(levels).map(({l,i})=>renderLevelCard(l,i,date,pair)).join('')}</div></div>`;
     });
     html+=`</div>`;
   });
@@ -1387,7 +1426,7 @@ function renderDayGroup(pair, date, levels, macro) {
       <button class="export-day-btn" onclick="exportPairDate('${pair}','${date}')">Export</button>
     </div>
     ${inlinePanel}
-    <div class="levels-grid">${levels.map((l, i) => renderLevelCard(l, i, date, pair)).join('')}</div>
+    <div class="levels-grid">${sortedIndexed(levels).map(({l, i}) => renderLevelCard(l, i, date, pair)).join('')}</div>
   </div>`;
 }
 

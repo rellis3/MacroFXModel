@@ -305,3 +305,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .lnr-be{color:var(--amber);font-weight:600}
 .lnr-open{color:var(--blue)}
 .lnr-skip{color:var(--text3)}
+
+
+/* ── SORT BAR ────────────────────────────────────────────────────────────────── */
+.sort-bar{display:flex;align-items:center;gap:5px;margin-left:auto}
+.sort-lbl{font-size:10px;color:var(--text3);font-weight:500;white-space:nowrap}
+.sort-btn{background:none;border:1.5px solid var(--border);border-radius:14px;padding:3px 9px;cursor:pointer;font-size:10px;font-weight:500;color:var(--text3);font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.sort-btn:hover{border-color:var(--border2);color:var(--text2)}
+.sort-btn.active{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)}
