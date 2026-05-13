@@ -98,6 +98,7 @@ const state = {
   levelsLoadedAt:      0,
   levelsRefreshAt:     0,    // last time refreshAllPairs() completed
   levelsRefreshRunning: false,
+  lastSummaryAt:       0,    // last time per-pair monitor summary was logged
 };
 
 // ── Monitoring helpers ────────────────────────────────────────────────────────
@@ -111,8 +112,16 @@ async function reloadConfig() {
     ? { ...DEFAULT_CFG, ...(JSON.parse(cfgRaw).data ?? {}) }
     : { ...DEFAULT_CFG };
 
-  const cdRaw   = await kv.get('ai_cron_cooldowns');
-  state.cooldowns = cdRaw ? JSON.parse(cdRaw) : {};
+  // Merge KV cooldowns into in-memory state — never replace, only fill gaps.
+  // Replacing would wipe cooldowns set since the last KV write (every 60 s reload
+  // would reset all in-memory cooldowns, causing repeat alerts on the same level).
+  const cdRaw = await kv.get('ai_cron_cooldowns');
+  if (cdRaw) {
+    const loaded = JSON.parse(cdRaw);
+    for (const [k, v] of Object.entries(loaded)) {
+      if ((state.cooldowns[k] ?? 0) < v) state.cooldowns[k] = v;
+    }
+  }
 
   // Prune cooldowns older than 24 h
   const cutoff = Date.now() - 86_400_000;
@@ -239,15 +248,20 @@ async function monitorTick() {
 
     if (!state.cfg?.enabled || !state.tg?.token || !state.tg?.chatId) return;
 
-    const pairs    = state.cfg.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
-    let   cdDirty  = false;
+    const pairs       = state.cfg.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+    const doSummary   = now - (state.lastSummaryAt ?? 0) > 60_000; // throttle to once/min
+    let   cdDirty     = false;
+    const summaryLines = [];
 
     for (const sym of pairs) {
       const bucket = state.levels[sym];
       if (!bucket?.data?.length) continue;
 
       const price = await fetchPrice(sym);
-      if (price == null) continue;
+      if (price == null) {
+        if (doSummary) summaryLines.push(`${sym}: no price (market closed?)`);
+        continue;
+      }
 
       const pipSz    = PIP_SIZE[sym]     ?? 0.0001;
       const digits   = PRICE_DIGITS[sym] ?? 5;
@@ -280,11 +294,15 @@ async function monitorTick() {
         console.log(`[MONITOR] ${sym} ${entry.direction} @ ${entry.price.toFixed(digits)} (${distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
       }
 
-      // Per-pair summary every tick — shows why entries are being skipped
-      if (bucket.data.length > 0) {
+      if (doSummary && bucket.data.length > 0) {
         const maxStars = Math.max(...bucket.data.map(e => e.totalStars ?? 0));
-        console.log(`[MONITOR] ${sym}: ${bucket.data.length} entries (max ${maxStars}★, need ${state.cfg.minStars ?? 4}★) — skip: ${skipStars} stars / ${skipDir} dir / ${skipProx} prox / ${skipCooldown} cooldown`);
+        summaryLines.push(`${sym}: ${bucket.data.length} entries max=${maxStars}★ skip=${skipStars}⭐/${skipDir}dir/${skipProx}prox/${skipCooldown}cd`);
       }
+    }
+
+    if (doSummary && summaryLines.length) {
+      console.log('[MONITOR]', summaryLines.join(' | '));
+      state.lastSummaryAt = now;
     }
 
     if (cdDirty) await kv.put('ai_cron_cooldowns', JSON.stringify(state.cooldowns));
