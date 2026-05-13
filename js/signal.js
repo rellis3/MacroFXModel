@@ -456,6 +456,14 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
 
     tags.push({ cls: 'fib', label: c.isTight ? 'Tight Fib' : 'Fib', key: 'fib' });
 
+    // Divergence tags from enhanceConfluences (already factored into c.stars)
+    if (c.divTags?.length) {
+      for (const dt of c.divTags) {
+        tags.push({ cls: 'div', label: dt.label, key: 'div' });
+        layers.push(dt.label);
+      }
+    }
+
     const signalAligned = signal.bias !== 'NEUTRAL' && c.direction != null &&
       ((signal.bias === 'LONG' && c.direction === 'long') ||
        (signal.bias === 'SHORT' && c.direction === 'short'));
@@ -728,7 +736,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
     return {
       ...c,
       size: adjSize,
-      totalStars: Math.min(7, Math.round(layerScore)),
+      totalStars: Math.min(9, Math.round(layerScore)),
       layers,
       tags,
       tp,
@@ -1145,7 +1153,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
 
   return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
-    const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 7 - e.totalStars));
+    const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 9 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';
 
     const tagsHtml = e.tags.map(t => `<span class="ec-tag ${t.cls}">${t.label}</span>`).join('');

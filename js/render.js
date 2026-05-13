@@ -619,7 +619,7 @@ ${calendarCtx.warnings.length > 0 ? `
     </div>
 
     <div class="hint">
-      <strong>How stars work:</strong> ⭐ = Confluence detected · ⭐⭐ = Tight (within 0.2 pips) · ⭐⭐⭐ = Direction matches macro bias · ⭐⭐⭐⭐ = Also near a daily pivot. Trade ⭐⭐⭐+ setups for highest probability. Position size auto-adjusts: ${positionSize}% base, ×0.5 if not aligned.
+      <strong>How stars work:</strong> ⭐ Fib confluence · +⭐ tight · +⭐ macro bias · +⭐ pivot/OI · +⭐ daily Fib · +⭐ structural Fib · +⭐ Asia×Mon cluster · +⭐ RSI divergence · +⭐ WT divergence. Max 9⭐. Divergence tags (📊) added when oscillator momentum diverges from price at the level.
     </div>
 
     <div class="legend">
@@ -877,6 +877,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits, ti
     ${c.dailyFib ? `<div class="ci-dfib dfib-${c.dailyFib.strength}" title="Daily Fib retracement">📊 ${c.dailyFib.label} ${c.dailyFib.direction}</div>` : ''}
     ${c.structuralFib ? `<div class="ci-dfib dfib-${c.structuralFib.strength}" title="Structural fib · ${c.structuralFib.timeLabel}">📐 ${c.structuralFib.label} ${c.structuralFib.direction}${c.structuralFib.count >= 3 ? ` ×${c.structuralFib.count}` : ''}</div>` : ''}
     ${c.retailCluster ? `<div class="ci-dfib dfib-silver" title="Retail positioning cluster (Myfxbook avg price)">👥 ${c.retailCluster.label}</div>` : ''}
+    ${(c.divTags ?? []).map(d => `<div class="ci-dfib dfib-div" title="${d.tooltip}">📊 ${d.label}</div>`).join('')}
     <div class="ci-size">${c.size}%</div>
   </div>
   ${c.direction ? `<div class="ci-trade-row">
