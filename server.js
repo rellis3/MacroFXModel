@@ -10,15 +10,17 @@
 // Required env vars: OANDA_KEY  (+ same vars as _worker.js)
 // Optional:         MONITOR_MS  (default 3000), DATA_DIR, PORT
 
-import express          from 'express';
-import path             from 'path';
+import express           from 'express';
+import path              from 'path';
 import { fileURLToPath } from 'url';
-import * as kv          from './kv.js';
-import worker           from './_worker.js';
+import * as kv           from './kv.js';
+import worker            from './_worker.js';
+import { refreshAllPairs } from './levels.js';
 
-const __dirname  = path.dirname(fileURLToPath(import.meta.url));
-const PORT       = parseInt(process.env.PORT       || '3000');
-const MONITOR_MS = parseInt(process.env.MONITOR_MS || '3000');
+const __dirname         = path.dirname(fileURLToPath(import.meta.url));
+const PORT              = parseInt(process.env.PORT              || '3000');
+const MONITOR_MS        = parseInt(process.env.MONITOR_MS        || '3000');
+const REFRESH_LEVELS_MS = parseInt(process.env.REFRESH_LEVELS_MS || String(30 * 60 * 1000));
 
 // ── Cloudflare env-compatible object ─────────────────────────────────────────
 // Exposes process.env vars and wraps kv.js so _worker.js runs unchanged.
@@ -82,21 +84,20 @@ const DEFAULT_CFG = {
 // ── In-memory monitoring state ────────────────────────────────────────────────
 
 const state = {
-  // Key difference from cron-worker: levels never expire on the server.
-  // Browser pushes fresh entries to KV whenever the dashboard is open;
-  // the server uses the last known entries indefinitely (no 12h decay).
-  levels:         {},   // { 'EUR/USD': { data: [...], timestamp: ms } }
-  cooldowns:      {},   // { 'EURUSD_1.0847_long': lastSentMs }
-  prices:         {},   // { 'EUR/USD': { price: n, at: ms } }
-  cfg:            null,
-  tg:             null,
-  lastRun:        null,
-  lastAlert:      null,
-  alertCount:     0,
-  errors:         [],
-  running:        false,
-  cfgLoadedAt:    0,
-  levelsLoadedAt: 0,
+  levels:              {},   // { 'EUR/USD': { data: [...], timestamp: ms } }
+  cooldowns:           {},   // { 'EURUSD_1.0847_long': lastSentMs }
+  prices:              {},   // { 'EUR/USD': { price: n, at: ms } }
+  cfg:                 null,
+  tg:                  null,
+  lastRun:             null,
+  lastAlert:           null,
+  alertCount:          0,
+  errors:              [],
+  running:             false,
+  cfgLoadedAt:         0,
+  levelsLoadedAt:      0,
+  levelsRefreshAt:     0,    // last time refreshAllPairs() completed
+  levelsRefreshRunning: false,
 };
 
 // ── Monitoring helpers ────────────────────────────────────────────────────────
@@ -291,23 +292,26 @@ async function monitorTick() {
 const app = express();
 app.use(express.json({ limit: '5mb' }));
 
-// New: real-time monitoring status for the dashboard or ops checks
+// Real-time monitoring + level-refresh status
 app.get('/api/monitor/status', (_req, res) => {
   res.json({
-    intervalMs:   MONITOR_MS,
-    lastRun:      state.lastRun,
-    lastAlert:    state.lastAlert,
-    alertCount:   state.alertCount,
-    enabled:      state.cfg?.enabled ?? false,
-    telegramOK:   !!(state.tg?.token && state.tg?.chatId),
-    levelCounts:  Object.fromEntries(DEFAULT_PAIRS.map(p => [p, state.levels[p]?.data?.length ?? 0])),
-    lastPrices:   Object.fromEntries(
+    intervalMs:          MONITOR_MS,
+    refreshLevelsMs:     REFRESH_LEVELS_MS,
+    lastRun:             state.lastRun,
+    lastAlert:           state.lastAlert,
+    alertCount:          state.alertCount,
+    enabled:             state.cfg?.enabled ?? false,
+    telegramOK:          !!(state.tg?.token && state.tg?.chatId),
+    levelsRefreshAt:     state.levelsRefreshAt ? new Date(state.levelsRefreshAt).toISOString() : null,
+    levelsRefreshRunning:state.levelsRefreshRunning,
+    levelCounts:         Object.fromEntries(DEFAULT_PAIRS.map(p => [p, state.levels[p]?.data?.length ?? 0])),
+    lastPrices:          Object.fromEntries(
       Object.entries(state.prices).map(([p, v]) => [p, {
         price: v.price,
         ageS:  Math.round((Date.now() - v.at) / 1_000),
       }])
     ),
-    recentErrors: state.errors.slice(-5),
+    recentErrors:        state.errors.slice(-5),
   });
 });
 
@@ -371,6 +375,24 @@ app.get('*', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
+// ── Level refresh loop ────────────────────────────────────────────────────────
+
+async function runLevelsRefresh() {
+  if (state.levelsRefreshRunning || !process.env.OANDA_KEY) return;
+  state.levelsRefreshRunning = true;
+  try {
+    const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+    await refreshAllPairs(pairs);
+    state.levelsRefreshAt = Date.now();
+    // Reload in-memory levels so the monitor tick picks up the new entries immediately
+    await reloadLevels();
+  } catch (e) {
+    console.error('[LEVELS] Refresh error:', e.message);
+  } finally {
+    state.levelsRefreshRunning = false;
+  }
+}
+
 await kv.load();
 await reloadConfig();
 await reloadLevels();
@@ -378,11 +400,18 @@ await reloadLevels();
 setInterval(monitorTick, MONITOR_MS);
 monitorTick().catch(console.error);
 
+// Run an initial level refresh on boot, then every REFRESH_LEVELS_MS (default 30 min)
+setInterval(runLevelsRefresh, REFRESH_LEVELS_MS);
+runLevelsRefresh().catch(console.error);
+
 app.listen(PORT, () => {
-  const oanda  = process.env.OANDA_KEY        ? '✓' : '✗ missing';
-  const alerts = state.cfg?.enabled ? 'ON' : 'OFF (enable in Alerts modal)';
+  const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';
+  const cfKv    = process.env.CF_ACCOUNT_ID ? '✓ CF REST API' : '✗ file only (set CF_ACCOUNT_ID + CF_API_TOKEN)';
+  const alerts  = state.cfg?.enabled ? 'ON' : 'OFF (enable in Alerts modal)';
   console.log(`MacroFX Server   http://localhost:${PORT}`);
   console.log(`Monitoring       every ${MONITOR_MS} ms | ${DEFAULT_PAIRS.length} pairs | alerts ${alerts}`);
+  console.log(`Level refresh    every ${REFRESH_LEVELS_MS / 60_000} min`);
   console.log(`OANDA_KEY        ${oanda}`);
+  console.log(`KV persistence   ${cfKv}`);
   console.log(`Data dir         ${process.env.DATA_DIR || path.join(__dirname, 'data')}`);
 });
