@@ -168,6 +168,17 @@ function renderAllInner() {
   const roundNums      = getRoundNumberLevels(quote.price, S.currentPair.symbol);
   const calendarCtx    = getCalendarContext();
 
+  // Approach direction from recent 5m bars (newest-first; index 0 = forming, 1 = last closed).
+  const approachArrow = (() => {
+    const bars = S.ohlc5m?.[S.currentPair.symbol]?.values;
+    if (!bars || bars.length < 6) return '→';
+    const gc = b => parseFloat(b.close ?? b.mid?.c ?? b.c);
+    const r = gc(bars[1]);
+    const o = gc(bars[Math.min(5, bars.length - 1)]);
+    if (isNaN(r) || isNaN(o)) return '→';
+    return r > o ? '↗' : r < o ? '↘' : '→';
+  })();
+
   const macroBias = tierData.totalScore > 4 ? 'LONG' : tierData.totalScore < -4 ? 'SHORT' : 'NEUTRAL';
   const _rawSize      = calcPositionSize(tierData.totalScore, volRegime, transitionRisk);
   const _sessionConf  = S.sessionData?.confidence ?? 1.0;
@@ -590,7 +601,7 @@ ${calendarCtx.warnings.length > 0 ? `
     </div>
 
     <div class="card">
-      ${enhanced.length > 0 ? renderConfluences(enhanced, quote.price, pipSize, digits) :
+      ${enhanced.length > 0 ? renderConfluences(enhanced, quote.price, pipSize, digits, tierData, approachArrow) :
         `<div class="empty-state">
           <div class="em-icon">🎯</div>
           <div>No ${S.currentMode === 'strongest' ? 'tight' : ''} confluences detected.</div>
@@ -787,7 +798,7 @@ ${calendarCtx.warnings.length > 0 ? `
   renderSignalAndEntries(enhanced, pivots, asia, monday, quote, volRegime, otcForecast);
 }
 
-export function renderConfluences(confluences, currentPrice, pipSize, digits) {
+export function renderConfluences(confluences, currentPrice, pipSize, digits, tierData, approachArrow) {
   return `<div class="conf-list">${confluences.slice(0, 20).map(c => {
     const above = currentPrice < c.price;
     const isClose = c.distance < 30;
@@ -799,6 +810,23 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
                                               'AT';
     const dirClass = c.direction || 'neutral';
     const stars = '⭐'.repeat(c.stars);
+
+    // Tier regime agreement for this entry direction
+    const regimeRow = (() => {
+      if (!tierData || !c.direction) return '';
+      const tiers = tierData.tiers;
+      const isLong = c.direction === 'long';
+      const agree    = tiers.filter(t => !t.na && (isLong ? t.score > 0 : t.score < 0)).length;
+      const disagree = tiers.filter(t => !t.na && (isLong ? t.score < 0 : t.score > 0)).length;
+      const na       = tiers.filter(t =>  t.na || t.score === 0).length;
+      return `<div class="ci-regime-row">
+        <span class="ci-regime-agree">${agree} agree</span>
+        <span class="ci-regime-sep">·</span>
+        <span class="ci-regime-disagree">${disagree} don't</span>
+        <span class="ci-regime-sep">·</span>
+        <span class="ci-regime-na">${na} N/A</span>
+      </div>`;
+    })();
 
     return `
 <div class="conf-item ${c.isTight ? 'tight' : 'normal'}">
@@ -812,6 +840,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
       <div class="ci-price">${c.price.toFixed(digits)}</div>
       <div class="ci-meta">${c.pipDiff.toFixed(2)}p apart · SD ${c.todayFib} / ${c.yesterdayFib}${(c.density||1) >= 2 ? ` · <span class="ci-density">${c.density}× cluster</span>` : ''}</div>
     </div>
+    ${approachArrow ? `<div class="ci-approach" title="Recent 5m price direction">${approachArrow}</div>` : ''}
     <div class="ci-dir ${dirClass}">${dirIcon} ${dirText}</div>
     <div class="ci-source ${c.source}">${c.source === 'asia' ? '📍 Asia' : '🗓️ Monday'}</div>
     <div class="ci-distance ${isClose ? 'close' : ''}">${above ? '↑' : '↓'} ${c.distance.toFixed(0)}p</div>
@@ -827,7 +856,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
     <span><strong>SL:</strong> ${c.sl.toFixed(digits)} (${c.stopPips.toFixed(0)}p)</span>
     <span><strong>TP:</strong> ${c.tp.toFixed(digits)} (${c.tpPips.toFixed(0)}p${c.tpSource ? ' · ' + c.tpSource : ''})</span>
     <span><strong>R:R:</strong> 1:${c.rrRaw || '—'}${c.poorRR ? ' ⚠' : ''}</span>
-  </div>${c.tpFibRisk ? `<div class="ci-tp-risk">⚠ Structural fib ${c.tpFibRisk.label} at ${c.tpFibRisk.price.toFixed(digits)} sits in TP path — may stall here</div>` : ''}` : `<div class="ci-trade-row" style="opacity:.6">
+  </div>${regimeRow}${c.tpFibRisk ? `<div class="ci-tp-risk">⚠ Structural fib ${c.tpFibRisk.label} at ${c.tpFibRisk.price.toFixed(digits)} sits in TP path — may stall here</div>` : ''}` : `<div class="ci-trade-row" style="opacity:.6">
     <span><em>Price sitting on level — wait for break above (BUY zone) or below (SELL zone)</em></span>
   </div>`}
 </div>`;

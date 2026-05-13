@@ -758,4 +758,17 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 .pa-confirm{font-size:10px;padding:1px 7px;border-radius:8px;background:rgba(34,197,94,0.15);color:var(--green);font-weight:600;flex-shrink:0}
 .pa-close{background:none;border:none;cursor:pointer;font-size:14px;color:inherit;opacity:.6;padding:2px 6px;flex-shrink:0;margin-left:4px}
 .pa-close:hover{opacity:1}
+
+/* ── APPROACH ARROW + TIER AGREEMENT ────────────────────────────────────────── */
+.ci-approach{font-size:14px;font-weight:700;flex-shrink:0;line-height:1;color:var(--text2)}
+.ci-regime-row{display:flex;align-items:center;gap:6px;margin-top:5px;padding-top:5px;border-top:1px dashed var(--border);flex-wrap:wrap}
+.ci-regime-agree{font-size:9.5px;font-weight:700;color:var(--green)}
+.ci-regime-disagree{font-size:9.5px;font-weight:700;color:var(--red)}
+.ci-regime-na{font-size:9.5px;color:var(--text3)}
+.ci-regime-sep{font-size:9.5px;color:var(--border2)}
+.ec-approach{font-size:13px;font-weight:700;line-height:1;color:var(--text2);flex-shrink:0}
+.ec-regime-row{display:flex;align-items:center;gap:5px;margin-top:4px;font-size:9.5px;flex-wrap:wrap}
+.ec-regime-agree{font-weight:700;color:var(--green)}
+.ec-regime-disagree{font-weight:700;color:var(--red)}
+.ec-regime-na{color:var(--text3)}
 @keyframes proxSlideIn{from{transform:translateY(-6px);opacity:0}to{transform:translateY(0);opacity:1}}
