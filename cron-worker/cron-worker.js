@@ -149,23 +149,41 @@ function formatAlert(sym, entry, currentPrice, distPips) {
 
 // ── Main scheduled handler ────────────────────────────────────────────────────
 
+const DIAG_KEY = 'ai_cron_diag'; // KV key for last-run diagnostics
+
 export default {
   async scheduled(event, env, ctx) {
-    if (!env.FX_SCORES || !env.OANDA_KEY) return;
+    const runAt  = new Date().toISOString();
+    const log    = [];   // human-readable trace written to KV after every run
+    const alerts = [];   // alerts fired this run
+
+    const note = (msg) => log.push(msg);
+
+    if (!env.FX_SCORES) { note('ERROR: FX_SCORES KV not bound'); await _saveLog(env, runAt, log, alerts); return; }
+    if (!env.OANDA_KEY)  { note('ERROR: OANDA_KEY secret not set'); await _saveLog(env, runAt, log, alerts); return; }
+
+    note('Cron fired at ' + runAt);
 
     // Load Telegram credentials
     const tgRaw = await env.FX_SCORES.get('tg_config').catch(() => null);
-    if (!tgRaw) return;
+    if (!tgRaw) { note('SKIP: tg_config not in KV — save Bot Token + Chat ID in Alerts modal'); await _saveLog(env, runAt, log, alerts); return; }
     const tg = JSON.parse(tgRaw);
-    if (!tg?.token || !tg?.chatId) return;
+    if (!tg?.token || !tg?.chatId) { note('SKIP: tg_config missing token or chatId'); await _saveLog(env, runAt, log, alerts); return; }
+    note('Telegram config OK — chatId ' + tg.chatId);
 
-    // Load alert config (synced from browser; falls back to defaults if not yet saved)
+    // Load alert config
     const cfgRaw = await env.FX_SCORES.get('ai_alert_cfg').catch(() => null);
     const cfg = cfgRaw
       ? { ...DEFAULT_CFG, ...(JSON.parse(cfgRaw).data ?? {}) }
       : { ...DEFAULT_CFG };
 
-    if (!cfg.enabled) return;
+    note('Alert config: enabled=' + cfg.enabled + ', minStars=' + cfg.minStars + ', cooldown=' + cfg.cooldownMin + 'min');
+
+    if (!cfg.enabled) {
+      note('SKIP: alerts disabled in config — toggle Enabled in the Alerts modal');
+      await _saveLog(env, runAt, log, alerts);
+      return;
+    }
 
     // Load and prune cooldowns
     const cdRaw = await env.FX_SCORES.get('ai_cron_cooldowns').catch(() => null);
@@ -176,60 +194,115 @@ export default {
       if (cooldowns[k] < cutoff) delete cooldowns[k];
     }
     let cdDirty = false;
+    note('Cooldowns loaded: ' + Object.keys(cooldowns).length + ' active');
 
     const watchPairs = cfg.pairs?.length ? cfg.pairs : DEFAULT_PAIRS;
+    note('Watching ' + watchPairs.length + ' pairs: ' + watchPairs.join(', '));
 
     for (const sym of watchPairs) {
       // Load entries saved by the browser dashboard
       const entRaw = await env.FX_SCORES.get(toKVKey(sym)).catch(() => null);
-      if (!entRaw) continue;
+      if (!entRaw) { note(sym + ': no KV entries — open dashboard with alerts enabled to sync'); continue; }
 
       let parsed;
-      try { parsed = JSON.parse(entRaw); } catch (_) { continue; }
+      try { parsed = JSON.parse(entRaw); } catch (_) { note(sym + ': KV entries corrupt'); continue; }
 
-      // Skip if entries are stale (browser hasn't been open recently)
-      if (!parsed.timestamp || now - parsed.timestamp > ENTRIES_MAX_AGE_MS) continue;
+      const ageMin = parsed.timestamp ? Math.round((now - parsed.timestamp) / 60000) : null;
+      if (!parsed.timestamp || now - parsed.timestamp > ENTRIES_MAX_AGE_MS) {
+        note(sym + ': entries stale (' + (ageMin ?? '?') + 'min old, max 720min) — open dashboard to refresh');
+        continue;
+      }
 
       const entries = parsed.data;
-      if (!entries?.length) continue;
+      if (!entries?.length) { note(sym + ': 0 entries in KV'); continue; }
+      note(sym + ': ' + entries.length + ' entries (' + ageMin + 'min old)');
 
       // Fetch live price
       const price = await fetchPrice(sym, env);
-      if (price == null) continue;
+      if (price == null) { note(sym + ': OANDA price fetch failed'); continue; }
 
       const pipSz    = getPipSize(sym);
       const digits   = getDigits(sym);
       const proxPips = cfg.proxPips?.[sym] ?? cfg.proxPips?.default ?? 5;
       const proxDist = proxPips * pipSz;
 
+      note(sym + ': price=' + price.toFixed(digits) + ', proximity=' + proxPips + 'p');
+
+      let pairAlerts = 0;
       for (const entry of entries) {
         if ((entry.totalStars ?? 0) < (cfg.minStars ?? 4)) continue;
         if (cfg.onlyAligned && !entry.signalAligned) continue;
         if (!entry.direction) continue;
 
         const dist = Math.abs(entry.price - price);
-        if (dist > proxDist) continue;
+        const distPips = Math.round(dist / pipSz);
+
+        if (dist > proxDist) {
+          note(`  Level ${entry.price.toFixed(digits)} ${entry.direction} ${entry.totalStars}★ — ${distPips}p away (outside ${proxPips}p window)`);
+          continue;
+        }
 
         const ck = cooldownKey(sym, entry.price, entry.direction, digits);
         const lastSent = cooldowns[ck] ?? 0;
-        if (now - lastSent < (cfg.cooldownMin ?? 60) * 60 * 1000) continue;
+        const cooldownLeft = Math.round(((cfg.cooldownMin ?? 60) * 60000 - (now - lastSent)) / 60000);
+        if (now - lastSent < (cfg.cooldownMin ?? 60) * 60 * 1000) {
+          note(`  Level ${entry.price.toFixed(digits)} ${entry.direction} ${entry.totalStars}★ — ${distPips}p away, IN COOLDOWN (${cooldownLeft}min left)`);
+          continue;
+        }
 
         cooldowns[ck] = now;
         cdDirty = true;
+        pairAlerts++;
 
-        const distPips = Math.round(dist / pipSz);
         const msg = formatAlert(sym, entry, price, distPips);
-        await sendTelegram(tg.token, tg.chatId, msg);
+        const sent = await sendTelegram(tg.token, tg.chatId, msg);
+        note(`  🔔 ALERT FIRED: ${entry.price.toFixed(digits)} ${entry.direction} ${entry.totalStars}★ — ${distPips}p away — Telegram ${sent ? 'OK' : 'FAILED'}`);
+        alerts.push({ sym, price: entry.price, direction: entry.direction, stars: entry.totalStars, distPips, sent });
       }
+
+      if (pairAlerts === 0) note(sym + ': no alerts triggered');
     }
 
     if (cdDirty) {
       await env.FX_SCORES.put('ai_cron_cooldowns', JSON.stringify(cooldowns));
     }
+
+    note('Run complete — ' + alerts.length + ' alert(s) fired');
+    await _saveLog(env, runAt, log, alerts);
   },
 
-  // Dummy fetch handler so wrangler doesn't complain — cron-only worker
+  // GET /diag — returns the last cron run log as JSON or plain text
   async fetch(request) {
-    return new Response('macrofx-cron: cron-only worker', { status: 200 });
+    const url = new URL(request.url);
+    if (url.pathname === '/diag') {
+      if (!this._env?.FX_SCORES) {
+        // Can't access env in fetch; return instructions
+        return new Response(
+          'macrofx-cron diagnostics\n\n' +
+          'To read the last run log, check KV key "ai_cron_diag" in your Cloudflare dashboard:\n' +
+          'Workers & Pages → KV → FX_SCORES → filter "ai_cron_diag"\n\n' +
+          'Or add ?kv=true and bind FX_SCORES in the fetch handler.',
+          { status: 200, headers: { 'Content-Type': 'text/plain' } }
+        );
+      }
+    }
+    return new Response(
+      'macrofx-cron — cron-only worker\n' +
+      'Last run log: check KV key "ai_cron_diag" in Cloudflare dashboard\n' +
+      '  Workers & Pages → KV → FX_SCORES → search "ai_cron_diag"',
+      { status: 200, headers: { 'Content-Type': 'text/plain' } }
+    );
   },
 };
+
+async function _saveLog(env, runAt, log, alerts) {
+  if (!env?.FX_SCORES) return;
+  try {
+    await env.FX_SCORES.put(DIAG_KEY, JSON.stringify({
+      runAt,
+      log,
+      alerts,
+      alertCount: alerts.length,
+    }), { expirationTtl: 7200 }); // 2h TTL
+  } catch(_) {}
+}

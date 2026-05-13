@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { AI_CACHE_PREFIX, TYPICAL_SPREADS } from './config.js';
+import { AI_CACHE_PREFIX, TYPICAL_SPREADS, PAIRS } from './config.js';
 import { kvGet, kvSet, getPipSize, getDigits, filterTradingDays, toMyfxbSym } from './utils.js';
 import { calculateTierScores, computeDollarRegime, computeUSDStrength, detectCrossConflict } from './macro.js';
 import { calculateVolRegime, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots } from './vol.js';
@@ -838,4 +838,103 @@ export async function copyAITldr() {
       btn.classList.remove('copied');
     }, 2000);
   }
+}
+
+// ── Analyse All Pairs ─────────────────────────────────────────────────────────
+// Cycles through every pair in the background, collects a snapshot for each,
+// calls /api/analysis, saves the result to cache, and marks the pair tab with a
+// coloured dot. The active pair's DOM is never disrupted.
+
+let _analyseAllRunning = false;
+
+export async function analyseAllPairs() {
+  if (_analyseAllRunning) return;
+  _analyseAllRunning = true;
+
+  const btn = document.getElementById('analyseAllBtn');
+  const setBtn = (text, cls) => {
+    if (!btn) return;
+    btn.querySelector('span:last-child').textContent = text;
+    btn.className = 'ai-analyse-btn ' + (cls || '');
+  };
+
+  // Reset any previous dots and button state
+  const pairCount = PAIRS.length;
+  document.querySelectorAll('.ptab-dot').forEach(d => d.remove());
+  PAIRS.forEach((p, i) => _setTabDot(i, 'pending'));
+
+  setBtn(`0 / ${pairCount}`, 'loading');
+
+  const savedPair = S.currentPair;
+  let doneCount = 0;
+
+  for (let i = 0; i < PAIRS.length; i++) {
+    const pair = PAIRS[i];
+    const sym  = pair.symbol;
+
+    _setTabDot(i, 'running');
+
+    try {
+      // Load data for this pair without switching the visible tab
+      await window.loadPairDataForAnalysis(sym);
+
+      // Temporarily swap S.currentPair so all snapshot helpers read the right data
+      S.currentPair = pair;
+      const quote = window._latestQuotes?.[sym];
+      // Point the legacy single-quote at this pair for snapshot
+      const _savedQuote = window._latestQuote;
+      if (quote) window._latestQuote = quote;
+
+      const snapshot = aiCollectSnapshot();
+
+      // Restore immediately — we have the snapshot
+      S.currentPair = savedPair;
+      window._latestQuote = _savedQuote;
+
+      const res = await fetch('/api/analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pair: sym, snapshot }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data.ok || !data.analysis) throw new Error(data.error || 'Empty response');
+
+      aiSaveCache(sym, data.analysis, data.generatedAt);
+      _setTabDot(i, 'done');
+
+    } catch(e) {
+      S.currentPair = savedPair; // always restore on error
+      _setTabDot(i, 'error');
+      console.warn(`Analyse All: ${sym} failed —`, e.message);
+    }
+
+    doneCount++;
+    setBtn(`${doneCount} / ${pairCount}`, 'loading');
+  }
+
+  // Restore active pair state fully
+  S.currentPair = savedPair;
+  _analyseAllRunning = false;
+
+  const allDone   = document.querySelectorAll('.ptab-dot.done').length;
+  const hadErrors = document.querySelectorAll('.ptab-dot.error').length > 0;
+  setBtn(hadErrors ? `Done (${allDone}✓)` : 'All Done ✓', 'done');
+
+  // Refresh the AI card if the current pair was analysed
+  aiRenderCard();
+}
+
+function _setTabDot(tabIndex, state) {
+  const tab = document.querySelectorAll('.ptab')[tabIndex];
+  if (!tab) return;
+  let dot = tab.querySelector('.ptab-dot');
+  if (!dot) {
+    dot = document.createElement('span');
+    dot.className = 'ptab-dot';
+    tab.appendChild(dot);
+  }
+  dot.className = `ptab-dot ${state}`;
+  dot.title = state === 'done' ? 'Analysis ready' : state === 'error' ? 'Analysis failed' : state === 'running' ? 'Analysing…' : 'Queued';
 }
