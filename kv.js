@@ -5,8 +5,16 @@
 //   CF_API_TOKEN        API token with KV:Edit permission on the namespace
 //   CF_KV_NAMESPACE_ID  KV namespace ID (defaults to the existing Pages namespace)
 //
-// Fallback: data/kv.json on disk (ephemeral on Railway unless a persistent volume
-// is mounted at DATA_DIR — suitable for local dev only).
+// KEY ROUTING — only truly persistent keys go to CF KV REST API.
+// Ephemeral market-data caches (ohlc, quote, compass, fredhistory) are stored
+// in the local file store only; they are rebuilt automatically on next page load
+// and do not need to survive redeploys. This keeps CF KV writes well within the
+// free-plan limit of 1,000/day.
+//
+// Persistent (→ CF KV):   ai_*, tg_config, journal_*, oi_store, cot_data,
+//                          surprise_index, events_today, sentiment
+// Ephemeral (→ file only): ohlc_*, ohlc5m_*, ohlc30m_*, quote_*, compass_*,
+//                          fredhistory_*, and anything else not listed above
 
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
@@ -15,6 +23,13 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR  = process.env.DATA_DIR || path.join(__dirname, 'data');
 const KV_FILE   = path.join(DATA_DIR, 'kv.json');
+
+// Keys that must survive redeploys and are routed to CF KV when configured.
+const _CF_EXACT    = new Set(['oi_store', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'fred']);
+const _CF_PREFIXES = ['ai_', 'tg_', 'journal_'];
+function isCfKey(key) {
+  return _CF_EXACT.has(key) || _CF_PREFIXES.some(p => key.startsWith(p));
+}
 
 // ── Cloudflare KV REST API backend ───────────────────────────────────────────
 
@@ -148,7 +163,7 @@ export async function load() {
 }
 
 export async function get(key) {
-  if (USE_CF) {
+  if (USE_CF && isCfKey(key)) {
     try   { return await cfGet(key); }
     catch (e) { console.error(`[KV] CF get failed (${key}):`, e.message); return null; }
   }
@@ -160,7 +175,7 @@ export async function get(key) {
 }
 
 export async function put(key, value, opts = {}) {
-  if (USE_CF) {
+  if (USE_CF && isCfKey(key)) {
     try   { await cfPut(key, value, opts); return; }
     catch (e) { console.error(`[KV] CF put failed (${key}):`, e.message); }
   }
@@ -170,7 +185,7 @@ export async function put(key, value, opts = {}) {
 }
 
 export async function del(key) {
-  if (USE_CF) {
+  if (USE_CF && isCfKey(key)) {
     try   { await cfDel(key); return; }
     catch (e) { console.error(`[KV] CF del failed (${key}):`, e.message); }
   }

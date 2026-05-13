@@ -139,7 +139,7 @@ export function checkAndSendAlerts() {
     // Cron worker reads these to know which levels to watch while browser is closed.
     if (entries?.length) {
       const lastSync = _kvEntrySyncTimes.get(sym) ?? 0;
-      if (now - lastSync > 5 * 60 * 1000) {
+      if (now - lastSync > 30 * 60 * 1000) {
         _kvEntrySyncTimes.set(sym, now);
         const payload = entries.map(e => ({
           price:         e.price,
