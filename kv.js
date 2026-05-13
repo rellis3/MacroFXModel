@@ -24,11 +24,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR  = process.env.DATA_DIR || path.join(__dirname, 'data');
 const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 
-// Keys that must survive redeploys and are routed to CF KV when configured.
-const _CF_EXACT    = new Set(['oi_store', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'fred']);
-const _CF_PREFIXES = ['ai_', 'tg_', 'journal_'];
+// Only keys that are irreplaceable if the server restarts go to CF KV.
+// Everything else — market-data caches, computed entries, cooldowns — is stored
+// locally and rebuilt automatically. This keeps CF KV writes under ~20/day,
+// well within the free-plan limit of 1,000/day.
+//
+//  CF KV (→ survives redeploys):
+//    journal_store, journal_replay_store  — user's trade journal
+//    tg_config                            — Telegram bot credentials
+//    ai_alert_cfg                         — alert thresholds/pairs
+//
+//  Local file only (→ rebuilds on restart, no CF quota used):
+//    ai_entries_*  recomputed by levels.js within 30 min of startup
+//    ai_cron_cooldowns  acceptable to lose on redeploy (first alert re-fires once)
+//    ohlc_*, ohlc5m_*, ohlc30m_*, quote_*, compass_*, fredhistory_*  ephemeral caches
+//    oi_store, cot_data, surprise_index, events_*  re-fetched from upstream APIs
+const _CF_EXACT = new Set(['tg_config', 'ai_alert_cfg', 'journal_store', 'journal_replay_store']);
 function isCfKey(key) {
-  return _CF_EXACT.has(key) || _CF_PREFIXES.some(p => key.startsWith(p));
+  return _CF_EXACT.has(key) || key.startsWith('journal_');
 }
 
 // ── Cloudflare KV REST API backend ───────────────────────────────────────────
