@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { CAP_DEFAULTS } from './config.js';
+import { CAP_DEFAULTS, ZSCORE5M_DEFAULTS } from './config.js';
 
 export async function loadCaps() {
   try {
@@ -104,6 +104,11 @@ function populateCfgForm(caps) {
   fill('nas100_gexPipCap',     nas100.gexPipCap);
   fill('nas100_enhPivAtrFrac', nas100.enhPivAtrFrac);
   fill('nas100_enhPivPipCap',  nas100.enhPivPipCap);
+  const z5 = caps.zscore5m || ZSCORE5M_DEFAULTS;
+  fill('zscore5m_lookback',    z5.lookback);
+  fill('zscore5m_threshold',   z5.threshold);
+  fill('zscore5m_longScore',   z5.longScore);
+  fill('zscore5m_shortScore',  z5.shortScore);
 }
 
 function readCfgForm() {
@@ -160,6 +165,12 @@ function readCfgForm() {
       enhPivAtrFrac: num('nas100_enhPivAtrFrac'),
       enhPivPipCap:  num('nas100_enhPivPipCap'),
     },
+    zscore5m: {
+      lookback:    num('zscore5m_lookback'),
+      threshold:   num('zscore5m_threshold'),
+      longScore:   num('zscore5m_longScore'),
+      shortScore:  num('zscore5m_shortScore'),
+    },
   };
 }
 
@@ -172,7 +183,12 @@ export async function saveCaps() {
 
   const payload = readCfgForm();
 
-  const allVals = [...Object.values(payload.fx), ...Object.values(payload.gold), ...Object.values(payload.nas100)];
+  const allVals = [
+    ...Object.values(payload.fx),
+    ...Object.values(payload.gold),
+    ...Object.values(payload.nas100),
+    ...Object.values(payload.zscore5m),
+  ];
   if (allVals.some(v => !v || v <= 0)) {
     status.textContent = '⚠ All values must be positive numbers';
     status.className = 'cfg-status err';

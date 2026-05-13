@@ -505,6 +505,40 @@ Example:
           </div>
         </div>
       </div>
+
+      <!-- 5M Z-SCORE REGIME BIAS (T8) -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">
+          5m Z-Score Regime Bias <span class="cfg-section-badge">T8 · Intraday</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.6">
+          Adds a short-term mean-reversion tilt to the macro score using the 5-minute close z-score.
+          When price is <strong>below the rolling mean by &gt; threshold σ</strong> the long score is added (oversold → long bias).
+          When price is <strong>above by &gt; threshold σ</strong> the short score is subtracted (overbought → short bias).
+        </div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Lookback bars</span><span class="cfg-label-type">5m bars</span></div>
+            <input class="cfg-input" type="number" id="zscore5m_lookback" step="1" min="5" max="200" placeholder="20">
+            <div class="cfg-hint">Number of closed 5m bars for the rolling mean and σ. 20 bars ≈ 1h40m. More bars = slower signal.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Threshold (σ)</span><span class="cfg-label-type">z-score</span></div>
+            <input class="cfg-input" type="number" id="zscore5m_threshold" step="0.1" min="0.1" max="5" placeholder="1.0">
+            <div class="cfg-hint">Absolute z-score that triggers a signal. 1.0 = 1 standard deviation from mean (fires often). 1.5 = more selective.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Long score weight</span><span class="cfg-label-type">score pts</span></div>
+            <input class="cfg-input" type="number" id="zscore5m_longScore" step="1" min="1" max="3" placeholder="1">
+            <div class="cfg-hint">Score added to the macro total when z &lt; −threshold (oversold). Default 1.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Short score weight</span><span class="cfg-label-type">score pts</span></div>
+            <input class="cfg-input" type="number" id="zscore5m_shortScore" step="1" min="1" max="3" placeholder="1">
+            <div class="cfg-hint">Score subtracted from the macro total when z &gt; +threshold (overbought). Default 1.</div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="cfg-footer">
       <button class="cfg-save-btn" onclick="saveCaps()" id="cfgSaveBtn">💾 Save to KV</button>
