@@ -908,9 +908,13 @@ async function fetchAndReplay() {
   document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Fetching M1 bars from Oanda…</div>';
 
   // ── 1. Fetch M1 bars ──────────────────────────────────────────────────────
+  const noEod = document.getElementById('rp-no-eod')?.checked ?? false;
   let bars;
   try {
-    const url = `/api/oanda_ohlc1m?symbol=${encodeURIComponent(pair)}&date=${encodeURIComponent(date)}`;
+    // When running to SL/TP, fetch 7 days forward so trades can resolve across sessions.
+    // OANDA caps at ~5000 bars (≈3.5 days of M1), which covers most trades.
+    const days = noEod ? 7 : 1;
+    const url = `/api/oanda_ohlc1m?symbol=${encodeURIComponent(pair)}&date=${encodeURIComponent(date)}&days=${days}`;
     const res = await fetch(url);
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
@@ -922,7 +926,7 @@ async function fetchAndReplay() {
       const dt   = v.datetime || '';
       const hour = parseInt(dt.slice(11, 13), 10);
       const min  = parseInt(dt.slice(14, 16), 10);
-      return { h: +v.high, l: +v.low, o: +v.open, c: +v.close, hour, min };
+      return { h: +v.high, l: +v.low, o: +v.open, c: +v.close, hour, min, date: dt.slice(0, 10) };
     });
   } catch(e) {
     setReplayStatus(e.message, 'rp-fetch-err');
@@ -942,7 +946,6 @@ async function fetchAndReplay() {
     return;
   }
 
-  const noEod   = document.getElementById('rp-no-eod')?.checked ?? false;
   const payload = runReplayEngine(pair, date, bars, dayObj.levels, { noEod });
 
   // ── 3. Cache + persist ────────────────────────────────────────────────────
@@ -965,10 +968,25 @@ function runReplay() { fetchAndReplay(); }   // Re-run button calls same path
 // ── Replay computation (pure — no I/O) ────────────────────────────────────────
 
 function runReplayEngine(pair, date, allBars, levels, opts = {}) {
-  const pip    = getPipSz(pair);
-  const noEod  = opts.noEod ?? false;
-  // When noEod is true, extend the window to end of available data so the trade can run past 21:00
-  const windowBars = allBars.filter(b => b.hour * 60 + b.min >= 480 && (noEod || b.hour * 60 + b.min < 1260));
+  const pip   = getPipSz(pair);
+  const noEod = opts.noEod ?? false;
+
+  // Normal: one session window (08:00–21:00 London on the target date)
+  // noEod:  from 08:00 on the target date through all subsequent bars (multi-day)
+  const windowBars = noEod
+    ? allBars.filter(b => {
+        if (!b.date || b.date < date) return false;
+        if (b.date === date) return b.hour * 60 + b.min >= 480;
+        return true;
+      })
+    : allBars.filter(b => b.hour * 60 + b.min >= 480 && b.hour * 60 + b.min < 1260);
+
+  // Format exit time — shows date prefix for multi-day exits when in noEod mode
+  const fmtExitTime = (bar) => {
+    const hm = hhmm(bar);
+    if (noEod && bar.date && bar.date !== date) return `${bar.date.slice(5)} ${hm}`;
+    return hm;
+  };
 
   const results = [];
   let runningR = 0;
@@ -1012,11 +1030,11 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
         if (adv > maxAdv) maxAdv = adv;
 
         if (dir === 'long') {
-          if (bar.l <= sl) { result = 'sl'; r = -1; exitTime = hhmm(bar); exitBarIdx = bi; break; }
-          if (bar.h >= tp) { result = 'tp'; r = tpDist / slDist; exitTime = hhmm(bar); exitBarIdx = bi; break; }
+          if (bar.l <= sl) { result = 'sl'; r = -1; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
+          if (bar.h >= tp) { result = 'tp'; r = tpDist / slDist; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
         } else {
-          if (bar.h >= sl) { result = 'sl'; r = -1; exitTime = hhmm(bar); exitBarIdx = bi; break; }
-          if (bar.l <= tp) { result = 'tp'; r = tpDist / slDist; exitTime = hhmm(bar); exitBarIdx = bi; break; }
+          if (bar.h >= sl) { result = 'sl'; r = -1; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
+          if (bar.l <= tp) { result = 'tp'; r = tpDist / slDist; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
         }
         if (!noEod && barMins >= 1259) {
           const eodPnl = dir === 'long' ? bar.c - entryPrice : entryPrice - bar.c;
