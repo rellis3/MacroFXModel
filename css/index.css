@@ -772,3 +772,15 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 .ec-regime-disagree{font-weight:700;color:var(--red)}
 .ec-regime-na{color:var(--text3)}
 @keyframes proxSlideIn{from{transform:translateY(-6px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ── BAYESIAN PROBABILITY BANNER ─────────────────────────────────────────────── */
+.bayes-banner{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:var(--r);margin-bottom:10px;border-width:1.5px;border-style:solid}
+.bayes-left{flex-shrink:0;min-width:90px}
+.bayes-pct{font-size:26px;font-weight:800;line-height:1;font-family:'DM Mono',monospace}
+.bayes-label{font-size:12px;font-weight:700;margin-top:2px}
+.bayes-sub{font-size:9.5px;color:var(--text3);margin-top:1px}
+.bayes-bar-wrap{flex:1}
+.bayes-bar-track{position:relative;height:8px;background:var(--s2);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+.bayes-bar-fill{height:100%;border-radius:4px;transition:width .4s ease}
+.bayes-bar-midline{position:absolute;left:50%;top:0;width:1px;height:100%;background:var(--border2);z-index:1}
+.bayes-bar-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace}

@@ -8,11 +8,11 @@
 
 import { getPipSize, getDigits } from './utils.js';
 import { S } from './state.js';
-import { PAIRS, ZSCORE5M_DEFAULTS } from './config.js';
+import { PAIRS } from './config.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
 import { runSignalEngine, runEntryScanner } from './signal.js';
 import { calculateVolRegime, calculatePivots } from './vol.js';
-import { calculateTierScores } from './macro.js';
+import { calculateTierScores, compute5mKalmanDev, computeBayesianScore } from './macro.js';
 
 const STORAGE_KEY  = 'tg_alert_cfg';
 const COOLDOWN_KEY = 'tg_alert_cooldowns';
@@ -117,7 +117,7 @@ export function checkAndSendAlerts() {
     const _savedPair = S.currentPair;
     S.currentPair = PAIRS.find(p => p.symbol === sym) || _savedPair;
 
-    let entries, alertTierData, alertApproachArrow, alertZScore;
+    let entries, alertTierData, alertApproachArrow, alertKalmanDev;
     try {
       const volRegime = calculateVolRegime();
       const pivots    = calculatePivots();
@@ -142,18 +142,8 @@ export function checkAndSendAlerts() {
         return (!isNaN(r) && !isNaN(o)) ? (r > o ? '↗' : r < o ? '↘' : '→') : null;
       })();
 
-      // Current 5m z-score
-      alertZScore = (() => {
-        const zCfg = S._caps?.zscore5m ?? ZSCORE5M_DEFAULTS;
-        const bars = S.ohlc5m?.[sym]?.values;
-        if (!bars || bars.length < 6) return null;
-        const window = bars.slice(1, (zCfg.lookback ?? 20) + 2);
-        const closes = window.map(b => parseFloat(b.close ?? b.mid?.c ?? b.c)).filter(v => !isNaN(v));
-        if (closes.length < 5) return null;
-        const mean = closes.reduce((a, b) => a + b, 0) / closes.length;
-        const std  = Math.sqrt(closes.reduce((a, b) => a + (b - mean) ** 2, 0) / closes.length);
-        return std > 0 ? (closes[0] - mean) / std : null;
-      })();
+      // Kalman-filtered 5m deviation (σ units)
+      alertKalmanDev = (() => { try { return compute5mKalmanDev(sym); } catch(e) { return null; } })();
     } catch(e) {
       S.currentPair = _savedPair;
       continue;
@@ -215,7 +205,7 @@ export function checkAndSendAlerts() {
       _alertsInFlight.add(ck);
 
       const distPips = Math.round(dist / pipSz);
-      sendTelegramAlert(sym, e, price, distPips, digits, alertApproachArrow, alertZScore, alertTierData).finally(() => {
+      sendTelegramAlert(sym, e, price, distPips, digits, alertApproachArrow, alertKalmanDev, alertTierData).finally(() => {
         _alertsInFlight.delete(ck);
       });
     }
@@ -226,18 +216,28 @@ export function checkAndSendAlerts() {
 
 // ── Format + dispatch ─────────────────────────────────────────────────────────
 
-async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, approachArrow, zScore, tierData) {
-  const unit    = sym === 'NAS100_USD' ? 'pts' : 'p';
+async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, approachArrow, kalmanDev, tierData) {
+  const unit     = sym === 'NAS100_USD' ? 'pts' : 'p';
   const arrowStr = approachArrow ?? '';
-  const dir     = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
-  const stars   = '⭐'.repeat(entry.totalStars ?? 0);
-  const rrStr   = entry.rrRatio ? `R:R 1:${entry.rrRatio}` : '';
-  const slStr   = entry.sl != null ? `SL ${entry.sl.toFixed(digits)}` : '';
-  const tpStr   = entry.tp != null ? `TP ${entry.tp.toFixed(digits)} (${entry.tpNote ?? ''})` : '';
-  const atStr   = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
+  const dir      = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
+  const stars    = '⭐'.repeat(entry.totalStars ?? 0);
+  const rrStr    = entry.rrRatio ? `R:R 1:${entry.rrRatio}` : '';
+  const slStr    = entry.sl != null ? `SL ${entry.sl.toFixed(digits)}` : '';
+  const tpStr    = entry.tp != null ? `TP ${entry.tp.toFixed(digits)} (${entry.tpNote ?? ''})` : '';
+  const atStr    = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
 
   // Top tags (first 4 to keep message short)
   const tagStr = (entry.tags ?? []).slice(0, 4).map(t => t.label).join(' · ');
+
+  // Bayesian continuation probability
+  const bayesStr = (() => {
+    if (!tierData) return null;
+    const bayes = computeBayesianScore(tierData.tiers);
+    if (!bayes) return null;
+    const emj = bayes.dir === 'long' ? '📈' : bayes.dir === 'short' ? '📉' : '↔️';
+    const lbl = bayes.dir === 'long' ? 'Long' : bayes.dir === 'short' ? 'Short' : 'Mixed';
+    return `${emj} Bayesian: <b>${bayes.pct}%</b> ${lbl} Continuation`;
+  })();
 
   // Tier regime agreement
   const regimeStr = (() => {
@@ -249,9 +249,9 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
     return `Regime: ${agree} agree · ${disagree} don't · ${na} N/A`;
   })();
 
-  // 5m z-score line
-  const zStr = zScore != null
-    ? `5m z-score: ${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)}σ`
+  // 5m Kalman deviation
+  const kalmanStr = kalmanDev != null
+    ? `5m Kalman: ${kalmanDev >= 0 ? '+' : ''}${kalmanDev.toFixed(2)}σ`
     : null;
 
   const lines = [
@@ -261,8 +261,9 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
     tagStr ? `Tags: ${tagStr}` : null,
     slStr || tpStr ? [slStr, tpStr].filter(Boolean).join(' · ') : null,
     rrStr ? rrStr : null,
+    bayesStr,
     regimeStr,
-    zStr,
+    kalmanStr,
     entry.rangeBias ? `Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗` : null,
   ].filter(Boolean).join('\n');
 

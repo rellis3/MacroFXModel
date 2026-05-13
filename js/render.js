@@ -1,7 +1,7 @@
 import { S } from './state.js';
 import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTradingDays, toMyfxbSym } from './utils.js';
 import { TYPICAL_SPREADS } from './config.js';
-import { calculateTierScores, computeDollarRegime, computeMacroRegime } from './macro.js';
+import { calculateTierScores, computeDollarRegime, computeMacroRegime, computeBayesianScore } from './macro.js';
 import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
 import { computeRegimeTransition, renderARMAAndTransition } from './arma.js';
 import { filterConfluences, enhanceConfluences, detectCrossSessionClusters } from './confluences.js';
@@ -418,6 +418,34 @@ ${calendarCtx.warnings.length > 0 ? `
         <div class="coh-note">${tierData.agreeCount}/7 ${tierData.coherenceBonus !== 0 ? '(+1 bonus)' : ''}</div>
       </div>
     </div>
+
+    <!-- BAYESIAN PROBABILITY BANNER -->
+    ${(() => {
+      const bayes = computeBayesianScore(tierData.tiers);
+      if (!bayes) return '';
+      const col = bayes.dir === 'long' ? 'var(--green)' : bayes.dir === 'short' ? 'var(--red)' : 'var(--amber)';
+      const bg  = bayes.dir === 'long' ? 'var(--green-bg)' : bayes.dir === 'short' ? 'var(--red-bg)' : 'var(--amber-bg)';
+      const bd  = bayes.dir === 'long' ? 'var(--green-bd)' : bayes.dir === 'short' ? 'var(--red-bd)' : 'var(--amber-bd)';
+      const dirLabel = bayes.dir === 'long' ? 'Long Continuation' : bayes.dir === 'short' ? 'Short Continuation' : 'Mixed Regime';
+      return `<div class="bayes-banner" style="background:${bg};border-color:${bd}">
+        <div class="bayes-left">
+          <div class="bayes-pct" style="color:${col}">${bayes.pct}%</div>
+          <div class="bayes-label" style="color:${col}">${dirLabel}</div>
+          <div class="bayes-sub">Bayesian · T1–T8 evidence</div>
+        </div>
+        <div class="bayes-bar-wrap">
+          <div class="bayes-bar-track">
+            <div class="bayes-bar-fill" style="width:${bayes.pct}%;background:${col}"></div>
+            <div class="bayes-bar-midline"></div>
+          </div>
+          <div class="bayes-bar-labels">
+            <span style="color:var(--red)">0% Short</span>
+            <span>50%</span>
+            <span style="color:var(--green)">100% Long</span>
+          </div>
+        </div>
+      </div>`;
+    })()}
 
     <!-- KEY INDICATOR SUMMARY ROW -->
     ${(() => {
