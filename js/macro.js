@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { COMPASS_CONFIG, ZSCORE5M_DEFAULTS } from './config.js';
+import { COMPASS_CONFIG, KALMAN5M_DEFAULTS } from './config.js';
 import { ema, calcRSI, filterTradingDays } from './utils.js';
 
 export function calculateTierScores() {
@@ -446,53 +446,125 @@ function computeT7() {
 }
 
 function computeT8() {
-  const cfg       = (S._caps?.zscore5m) ?? ZSCORE5M_DEFAULTS;
-  const lookback  = Math.max(5, Math.round(cfg.lookback   ?? ZSCORE5M_DEFAULTS.lookback));
-  const threshold = cfg.threshold  ?? ZSCORE5M_DEFAULTS.threshold;
-  const longScore  = cfg.longScore  ?? ZSCORE5M_DEFAULTS.longScore;
-  const shortScore = cfg.shortScore ?? ZSCORE5M_DEFAULTS.shortScore;
-  const maxPts    = Math.max(longScore, shortScore);
+  const cfg        = S._caps?.kalman5m ?? KALMAN5M_DEFAULTS;
+  const lookback   = Math.max(10, Math.round(cfg.lookback      ?? KALMAN5M_DEFAULTS.lookback));
+  const pNoise     = cfg.processNoise  ?? KALMAN5M_DEFAULTS.processNoise;
+  const oNoise     = cfg.observNoise   ?? KALMAN5M_DEFAULTS.observNoise;
+  const threshold  = cfg.threshold     ?? KALMAN5M_DEFAULTS.threshold;
+  const longScore  = cfg.longScore     ?? KALMAN5M_DEFAULTS.longScore;
+  const shortScore = cfg.shortScore    ?? KALMAN5M_DEFAULTS.shortScore;
+  const maxPts     = Math.max(longScore, shortScore);
 
   const bars = S.ohlc5m?.[S.currentPair.symbol]?.values;
-  if (!bars || bars.length < 6) return tierUnavailable('T8', '5m Regime Bias', 'No 5m data', maxPts);
+  if (!bars || bars.length < 6) return tierUnavailable('T8', '5m Kalman Bias', 'No 5m data', maxPts);
 
-  // bars5m is newest-first; index 0 = forming bar, index 1 = most recent closed bar.
-  // Take up to lookback+1 closed bars starting at index 1.
-  const window = bars.slice(1, lookback + 2);
-  const closes = window
-    .map(b => parseFloat(b.close ?? b.mid?.c ?? b.c))
-    .filter(v => !isNaN(v));
+  const win    = bars.slice(1, lookback + 2);
+  const closes = win.map(b => parseFloat(b.close ?? b.mid?.c ?? b.c)).filter(v => !isNaN(v));
+  if (closes.length < 5) return tierUnavailable('T8', '5m Kalman Bias', 'Insufficient 5m bars', maxPts);
 
-  if (closes.length < 5) return tierUnavailable('T8', '5m Regime Bias', 'Insufficient 5m bars', maxPts);
+  const n        = closes.length;
+  const mean     = closes.reduce((a, b) => a + b, 0) / n;
+  const variance = closes.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
+  if (variance === 0) return tierUnavailable('T8', '5m Kalman Bias', 'No 5m variance', maxPts);
 
-  const n    = closes.length;
-  const mean = closes.reduce((a, b) => a + b, 0) / n;
-  const std  = Math.sqrt(closes.reduce((a, b) => a + (b - mean) ** 2, 0) / n);
+  const Q = pNoise * variance;
+  const R = oNoise * variance;
 
-  if (std === 0) return tierUnavailable('T8', '5m Regime Bias', 'No 5m variance', maxPts);
+  // closes is newest-first; reverse to process oldest→newest
+  const chron = [...closes].reverse();
+  let x = chron[0];
+  let P = R;
+  for (let i = 1; i < chron.length - 1; i++) {
+    const Pp = P + Q;
+    const K  = Pp / (Pp + R);
+    x = x + K * (chron[i] - x);
+    P = (1 - K) * Pp;
+  }
+  // Predict one step forward without incorporating the most recent close
+  P = P + Q;
 
-  const z = (closes[0] - mean) / std;
+  const sigma   = Math.sqrt(P + R);
+  const normDev = sigma > 0 ? (chron[chron.length - 1] - x) / sigma : 0;
 
   let score = 0;
-  if      (z < -threshold) score =  longScore;
-  else if (z >  threshold) score = -shortScore;
+  if      (normDev < -threshold) score =  longScore;
+  else if (normDev >  threshold) score = -shortScore;
 
-  const reading = z < -threshold
-    ? `${Math.abs(z).toFixed(2)}σ below mean — oversold, long bias`
-    : z > threshold
-    ? `${z.toFixed(2)}σ above mean — overbought, short bias`
-    : `Within ±${threshold}σ band — no intraday tilt`;
+  const reading = normDev < -threshold
+    ? `${Math.abs(normDev).toFixed(2)}σ below Kalman — mean-reversion long bias`
+    : normDev > threshold
+    ? `${normDev.toFixed(2)}σ above Kalman — mean-reversion short bias`
+    : `Within ±${threshold}σ Kalman band — no intraday bias`;
 
   return {
     tier: 'T8',
-    name: '5m Regime Bias',
-    max: maxPts,
+    name: '5m Kalman Bias',
+    max:  maxPts,
     score,
-    val: `z=${z >= 0 ? '+' : ''}${z.toFixed(2)} (${n}×5m)`,
+    val:  `Δ=${normDev >= 0 ? '+' : ''}${normDev.toFixed(2)}σ (${n}×5m)`,
     reading,
-    source: `5m Z-score · ${lookback}-bar window`,
+    source: `5m Kalman Filter · ${lookback}-bar window`,
     isMonthly: false,
   };
+}
+
+// ── Bayesian Probability Score ────────────────────────────────────────────────
+// Treats each tier as independent evidence updating a 50/50 prior on long vs short.
+// Likelihood ratio per tier: LR = 1 + (|score|/max) × 0.5  → range [1.0, 1.5]
+// Returns { prob, pct, dir, label } where prob ∈ [0,1], pct = Math.round(prob*100).
+export function computeBayesianScore(tiers) {
+  if (!tiers || !tiers.length) return null;
+  let logOdds = 0;
+  for (const t of tiers) {
+    if (t.na || t.score === 0) continue;
+    const strength = Math.min(Math.abs(t.score) / Math.max(t.max, 1), 1);
+    const lr = 1 + strength * 0.5;
+    logOdds += t.score > 0 ? Math.log(lr) : -Math.log(lr);
+  }
+  const prob = 1 / (1 + Math.exp(-logOdds));
+  const pct  = Math.round(prob * 100);
+  const dir  = prob > 0.55 ? 'long' : prob < 0.45 ? 'short' : 'neutral';
+  const label = `${pct}% ${dir === 'long' ? 'Long Continuation' : dir === 'short' ? 'Short Continuation' : 'Mixed Regime'}`;
+  return { prob, pct, dir, label };
+}
+
+// ── 5m Kalman Deviation Helper ────────────────────────────────────────────────
+// Same computation as T8 but callable with an explicit symbol for use in alerts.
+// Returns the normalised deviation (σ units) or null if data is unavailable.
+export function compute5mKalmanDev(sym) {
+  const symbol = sym ?? S.currentPair?.symbol;
+  const cfg      = S._caps?.kalman5m ?? KALMAN5M_DEFAULTS;
+  const lookback = Math.max(10, Math.round(cfg.lookback      ?? KALMAN5M_DEFAULTS.lookback));
+  const pNoise   = cfg.processNoise  ?? KALMAN5M_DEFAULTS.processNoise;
+  const oNoise   = cfg.observNoise   ?? KALMAN5M_DEFAULTS.observNoise;
+
+  const bars = S.ohlc5m?.[symbol]?.values;
+  if (!bars || bars.length < 6) return null;
+
+  const win    = bars.slice(1, lookback + 2);
+  const closes = win.map(b => parseFloat(b.close ?? b.mid?.c ?? b.c)).filter(v => !isNaN(v));
+  if (closes.length < 5) return null;
+
+  const n        = closes.length;
+  const mean     = closes.reduce((a, b) => a + b, 0) / n;
+  const variance = closes.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
+  if (variance === 0) return null;
+
+  const Q = pNoise * variance;
+  const R = oNoise * variance;
+
+  const chron = [...closes].reverse();
+  let x = chron[0];
+  let P = R;
+  for (let i = 1; i < chron.length - 1; i++) {
+    const Pp = P + Q;
+    const K  = Pp / (Pp + R);
+    x = x + K * (chron[i] - x);
+    P = (1 - K) * Pp;
+  }
+  P = P + Q;
+  const sigma = Math.sqrt(P + R);
+  return sigma > 0 ? (chron[chron.length - 1] - x) / sigma : null;
 }
 
 function tierUnavailable(tier, name, val, max) {
