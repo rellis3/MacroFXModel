@@ -7,7 +7,7 @@ compatibility_date = "2025-01-01"
 # Find it: Cloudflare dashboard → Workers & Pages → KV → click FX_SCORES → copy ID.
 [[kv_namespaces]]
 binding = "FX_SCORES"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "37e632371b754333bcbb33093f33b3bb"
 
 # ── Cron schedule ─────────────────────────────────────────────────────────────
 # Runs every 1 minute — the minimum Cloudflare allows.
