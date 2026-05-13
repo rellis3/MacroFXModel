@@ -37,7 +37,10 @@ async function loadJournal(){
   }catch(e){}
 }
 function saveJournal(){
-  try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journalData));}catch(e){showToast('Storage error','err');}
+  try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journalData));}catch(e){
+    // localStorage full — KV is the authoritative store so data is not lost
+    console.warn('journal localStorage full, relying on KV only',e);
+  }
   kvSet(JOURNAL_KEY,journalData);}
 function todayStr(){return new Date().toISOString().split('T')[0];}
 
@@ -806,9 +809,43 @@ async function loadReplayResults() {
   } catch(e) {}
 }
 
+function _slimReplayResults() {
+  const slim = {};
+  for (const [key, payload] of Object.entries(_replayResults)) {
+    slim[key] = {
+      ...payload,
+      results: (payload.results || []).map(r => {
+        const { chartBars, level, ...rest } = r;
+        return {
+          ...rest,
+          level: level ? {
+            price: level.price, direction: level.direction,
+            stars: level.stars, todayFib: level.todayFib,
+            source: level.source, tags: level.tags,
+            sl: level.sl, tp: level.tp,
+          } : null,
+        };
+      }),
+    };
+  }
+  return slim;
+}
+
 function saveReplayResults() {
-  try { localStorage.setItem(REPLAY_KV_KEY, JSON.stringify(_replayResults)); } catch(e) {}
-  kvSet(REPLAY_KV_KEY, _replayResults);
+  // Prune entries older than 60 days to prevent unbounded growth
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 60);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  for (const key of Object.keys(_replayResults)) {
+    const datePart = key.split('::')[1];
+    if (datePart && datePart < cutoffStr) delete _replayResults[key];
+  }
+
+  const slim = _slimReplayResults();
+  try { localStorage.setItem(REPLAY_KV_KEY, JSON.stringify(slim)); } catch(e) {
+    console.warn('saveReplayResults: localStorage write failed', e);
+  }
+  kvSet(REPLAY_KV_KEY, slim);
 }
 
 function safePairId(pair) { return pair.replace(/\//g, '-').replace(/_/g, '-'); }
