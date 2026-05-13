@@ -89,6 +89,18 @@ export const CAP_DEFAULTS = {
   updatedAt: null,
 };
 
+// 5-minute z-score regime bias tier (T8) configuration.
+// longScore:  score added to bias when z-score < -threshold (oversold → long weight)
+// shortScore: score subtracted when z-score > +threshold (overbought → short weight)
+// lookback:   number of closed 5m bars used for mean/σ (20 bars ≈ 1h40m)
+// threshold:  absolute z-score needed to trigger a signal (default ±1.0σ)
+export const ZSCORE5M_DEFAULTS = {
+  lookback:    20,
+  threshold:   1.0,
+  longScore:   1,
+  shortScore:  1,
+};
+
 export const AI_CACHE_PREFIX = 'ai_';
 export const AI_CACHE_TTL = 60 * 60 * 1000;
 

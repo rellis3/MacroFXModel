@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { COMPASS_CONFIG } from './config.js';
+import { COMPASS_CONFIG, ZSCORE5M_DEFAULTS } from './config.js';
 import { ema, calcRSI, filterTradingDays } from './utils.js';
 
 export function calculateTierScores() {
@@ -13,6 +13,7 @@ export function calculateTierScores() {
   tiers.push(computeT5());
   tiers.push(computeT6());
   tiers.push(computeT7());
+  tiers.push(computeT8());
 
   const totalScore = tiers.reduce((sum, t) => sum + t.score, 0);
 
@@ -29,7 +30,7 @@ export function calculateTierScores() {
     rawScore: totalScore,
     coherenceBonus,
     agreeCount,
-    maxScore: 17
+    maxScore: 18
   };
 }
 
@@ -441,6 +442,56 @@ function computeT7() {
              ema20Now < ema50Now && rsiNow < 50 ? 'Trend down, momentum bearish' : 'Mixed signals',
     source: 'EMA(20/50), RSI(14)',
     isMonthly: false
+  };
+}
+
+function computeT8() {
+  const cfg       = (S._caps?.zscore5m) ?? ZSCORE5M_DEFAULTS;
+  const lookback  = Math.max(5, Math.round(cfg.lookback   ?? ZSCORE5M_DEFAULTS.lookback));
+  const threshold = cfg.threshold  ?? ZSCORE5M_DEFAULTS.threshold;
+  const longScore  = cfg.longScore  ?? ZSCORE5M_DEFAULTS.longScore;
+  const shortScore = cfg.shortScore ?? ZSCORE5M_DEFAULTS.shortScore;
+  const maxPts    = Math.max(longScore, shortScore);
+
+  const bars = S.ohlc5m?.[S.currentPair.symbol]?.values;
+  if (!bars || bars.length < 6) return tierUnavailable('T8', '5m Regime Bias', 'No 5m data', maxPts);
+
+  // bars5m is newest-first; index 0 = forming bar, index 1 = most recent closed bar.
+  // Take up to lookback+1 closed bars starting at index 1.
+  const window = bars.slice(1, lookback + 2);
+  const closes = window
+    .map(b => parseFloat(b.close ?? b.mid?.c ?? b.c))
+    .filter(v => !isNaN(v));
+
+  if (closes.length < 5) return tierUnavailable('T8', '5m Regime Bias', 'Insufficient 5m bars', maxPts);
+
+  const n    = closes.length;
+  const mean = closes.reduce((a, b) => a + b, 0) / n;
+  const std  = Math.sqrt(closes.reduce((a, b) => a + (b - mean) ** 2, 0) / n);
+
+  if (std === 0) return tierUnavailable('T8', '5m Regime Bias', 'No 5m variance', maxPts);
+
+  const z = (closes[0] - mean) / std;
+
+  let score = 0;
+  if      (z < -threshold) score =  longScore;
+  else if (z >  threshold) score = -shortScore;
+
+  const reading = z < -threshold
+    ? `${Math.abs(z).toFixed(2)}σ below mean — oversold, long bias`
+    : z > threshold
+    ? `${z.toFixed(2)}σ above mean — overbought, short bias`
+    : `Within ±${threshold}σ band — no intraday tilt`;
+
+  return {
+    tier: 'T8',
+    name: '5m Regime Bias',
+    max: maxPts,
+    score,
+    val: `z=${z >= 0 ? '+' : ''}${z.toFixed(2)} (${n}×5m)`,
+    reading,
+    source: `5m Z-score · ${lookback}-bar window`,
+    isMonthly: false,
   };
 }
 

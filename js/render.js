@@ -168,6 +168,17 @@ function renderAllInner() {
   const roundNums      = getRoundNumberLevels(quote.price, S.currentPair.symbol);
   const calendarCtx    = getCalendarContext();
 
+  // Approach direction from recent 5m bars (newest-first; index 0 = forming, 1 = last closed).
+  const approachArrow = (() => {
+    const bars = S.ohlc5m?.[S.currentPair.symbol]?.values;
+    if (!bars || bars.length < 6) return '→';
+    const gc = b => parseFloat(b.close ?? b.mid?.c ?? b.c);
+    const r = gc(bars[1]);
+    const o = gc(bars[Math.min(5, bars.length - 1)]);
+    if (isNaN(r) || isNaN(o)) return '→';
+    return r > o ? '↗' : r < o ? '↘' : '→';
+  })();
+
   const macroBias = tierData.totalScore > 4 ? 'LONG' : tierData.totalScore < -4 ? 'SHORT' : 'NEUTRAL';
   const _rawSize      = calcPositionSize(tierData.totalScore, volRegime, transitionRisk);
   const _sessionConf  = S.sessionData?.confidence ?? 1.0;
@@ -349,10 +360,27 @@ ${calendarCtx.warnings.length > 0 ? `
           })() : ''}
         </div>
         <div class="hd-right">
-          <div class="score-num" style="color:${tierData.totalScore > 0 ? 'var(--green)' : tierData.totalScore < 0 ? 'var(--red)' : 'var(--amber)'}">
-            ${tierData.totalScore > 0 ? '+' : ''}${tierData.totalScore}
-          </div>
-          <div class="score-sub">out of ±${tierData.maxScore}</div>
+          ${(() => {
+            const sc = tierData.totalScore;
+            const mx = tierData.maxScore;
+            const col = sc > 0 ? 'var(--green)' : sc < 0 ? 'var(--red)' : 'var(--amber)';
+            const markerPct = Math.round((sc + mx) / (2 * mx) * 100);
+            const tailwind = sc >= 9 ? 'Strong tailwind' : sc >= 5 ? 'Moderate tailwind' :
+              sc >= 1 ? 'Mild tailwind' : sc === 0 ? 'Neutral' :
+              sc >= -4 ? 'Mild headwind' : sc >= -8 ? 'Moderate headwind' : 'Strong headwind';
+            return `<div class="score-gauge-wrap">
+              <div class="score-gauge-header">
+                <span class="score-gauge-bear">Bear</span>
+                <span class="score-gauge-num" style="color:${col}">${sc > 0 ? '+' : ''}${sc}</span>
+                <span class="score-gauge-bull">Bull</span>
+              </div>
+              <div class="score-gauge-track">
+                <div class="score-gauge-marker" style="left:${markerPct}%"></div>
+              </div>
+              <div class="score-gauge-label" style="color:${col}">${tailwind}</div>
+              <div class="score-sub">out of ±${mx}</div>
+            </div>`;
+          })()}
           <div class="live-lbl">Live Price</div>
           <div class="price-num">${quote.price.toFixed(digits)}</div>
         </div>
@@ -391,11 +419,57 @@ ${calendarCtx.warnings.length > 0 ? `
       </div>
     </div>
 
+    <!-- KEY INDICATOR SUMMARY ROW -->
+    ${(() => {
+      const tips  = fred('tips');
+      const dxy   = fred('dxy');
+      const bei   = fred('bei');
+      const vix   = fred('vix');
+      const dxyPrev = S.fredData?.dxy?.prev ?? null;
+      const dxyDelta = dxy != null && dxyPrev != null ? dxy - dxyPrev : null;
+      const beiPrev  = S.fredData?.bei?.prev  ?? null;
+      const beiDelta = bei != null && beiPrev  != null ? bei - beiPrev : null;
+      const kpis = [
+        { lbl: '10Y TIPS', val: tips != null ? tips.toFixed(2) + '%' : '—', delta: null, col: tips != null ? (tips < 1 ? 'var(--green)' : tips > 2 ? 'var(--red)' : 'var(--text)') : 'var(--text3)' },
+        { lbl: 'DXY', val: dxy != null ? dxy.toFixed(2) : '—', delta: dxyDelta != null ? (dxyDelta >= 0 ? '+' : '') + dxyDelta.toFixed(2) : null, col: 'var(--text)' },
+        { lbl: 'Breakeven', val: bei != null ? bei.toFixed(2) + '%' : '—', delta: beiDelta != null ? (beiDelta >= 0 ? '+' : '') + beiDelta.toFixed(2) : null, col: bei != null ? (bei > 2.5 ? 'var(--amber)' : 'var(--text)') : 'var(--text3)' },
+        { lbl: 'VIX', val: vix != null ? vix.toFixed(1) : '—', delta: null, col: vix != null ? (vix > 25 ? 'var(--red)' : vix < 15 ? 'var(--green)' : 'var(--text)') : 'var(--text3)' },
+      ];
+      return `<div class="kpi-row">${kpis.map(k => `
+        <div class="kpi-cell">
+          <div class="kpi-lbl">${k.lbl}</div>
+          <div class="kpi-val" style="color:${k.col}">${k.val}</div>
+          ${k.delta != null ? `<div class="kpi-delta" style="color:${k.delta.startsWith('+') ? 'var(--green)' : 'var(--red)'}">${k.delta}</div>` : ''}
+        </div>`).join('')}
+      </div>`;
+    })()}
+
     <!-- 7-TIER BREAKDOWN -->
     <div class="sec-lbl">
       Macro Score Breakdown
       <span class="sec-badge">7 TIERS</span>
     </div>
+
+    <!-- FACTOR BAR CHART -->
+    <div class="card" style="margin-bottom:8px">
+      <div class="factor-chart">
+        ${tierData.tiers.map(t => {
+          const pct = t.max > 0 ? Math.abs(t.score) / t.max * 50 : 0;
+          const col = t.score > 0 ? 'var(--green)' : t.score < 0 ? 'var(--red)' : 'var(--text3)';
+          return `<div class="fc-row">
+            <div class="fc-name" title="${t.name}">${t.name}</div>
+            <div class="fc-bar-wrap">
+              <div class="fc-midline"></div>
+              ${t.score < 0 ? `<div class="fc-bar fc-bar-bear" style="width:${pct.toFixed(1)}%"></div>` : ''}
+              ${t.score > 0 ? `<div class="fc-bar fc-bar-bull" style="width:${pct.toFixed(1)}%"></div>` : ''}
+            </div>
+            <div class="fc-score" style="color:${col}">${t.score >= 0 ? '+' : ''}${t.score}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- TIER DETAIL CARDS -->
     <div class="tier-grid">
       ${tierData.tiers.map(t => `
         <div class="tc ${t.score > 0 ? 'bull' : t.score < 0 ? 'bear' : 'neu'}">
@@ -413,6 +487,31 @@ ${calendarCtx.warnings.length > 0 ? `
         </div>
       `).join('')}
     </div>
+
+    <!-- DRIVER HIERARCHY -->
+    ${(() => {
+      const sorted = [...tierData.tiers].sort((a, b) => {
+        if (b.max !== a.max) return b.max - a.max;
+        return Math.abs(b.score) - Math.abs(a.score);
+      });
+      const groups = [
+        { rank: 'primary',   label: 'Primary Driver',    tiers: sorted.slice(0, 1) },
+        { rank: 'secondary', label: 'Secondary Drivers',  tiers: sorted.slice(1, 3) },
+        { rank: 'tertiary',  label: 'Tertiary Drivers',   tiers: sorted.slice(3, 5) },
+      ];
+      return `
+      <div class="sec-lbl">Driver Hierarchy <span class="sec-badge">SIGNAL WEIGHT</span></div>
+      <div class="driver-grid">
+        ${groups.map(g => `<div class="driver-card ${g.rank}">
+          <div class="driver-rank">${g.label}</div>
+          ${g.tiers.map(t => `
+            <div class="driver-tier-name">${t.name}</div>
+            <div class="driver-signal">${t.reading}</div>
+            <div class="driver-score-badge ${t.score > 0 ? 'bull' : t.score < 0 ? 'bear' : 'neu'}">${t.tier} ${t.score >= 0 ? '+' : ''}${t.score} / ±${t.max}</div>
+          `).join('<div style="margin-top:7px;border-top:1px solid var(--border);padding-top:7px"></div>')}
+        </div>`).join('')}
+      </div>`;
+    })()}
 
     <!-- DOLLAR REGIME + EVENT RISK + SURPRISE INDEX -->
     ${dollarRegime || S.eventRisk || surpriseBadge ? `
@@ -502,7 +601,7 @@ ${calendarCtx.warnings.length > 0 ? `
     </div>
 
     <div class="card">
-      ${enhanced.length > 0 ? renderConfluences(enhanced, quote.price, pipSize, digits) :
+      ${enhanced.length > 0 ? renderConfluences(enhanced, quote.price, pipSize, digits, tierData, approachArrow) :
         `<div class="empty-state">
           <div class="em-icon">🎯</div>
           <div>No ${S.currentMode === 'strongest' ? 'tight' : ''} confluences detected.</div>
@@ -699,7 +798,7 @@ ${calendarCtx.warnings.length > 0 ? `
   renderSignalAndEntries(enhanced, pivots, asia, monday, quote, volRegime, otcForecast);
 }
 
-export function renderConfluences(confluences, currentPrice, pipSize, digits) {
+export function renderConfluences(confluences, currentPrice, pipSize, digits, tierData, approachArrow) {
   return `<div class="conf-list">${confluences.slice(0, 20).map(c => {
     const above = currentPrice < c.price;
     const isClose = c.distance < 30;
@@ -711,6 +810,23 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
                                               'AT';
     const dirClass = c.direction || 'neutral';
     const stars = '⭐'.repeat(c.stars);
+
+    // Tier regime agreement for this entry direction
+    const regimeRow = (() => {
+      if (!tierData || !c.direction) return '';
+      const tiers = tierData.tiers;
+      const isLong = c.direction === 'long';
+      const agree    = tiers.filter(t => !t.na && (isLong ? t.score > 0 : t.score < 0)).length;
+      const disagree = tiers.filter(t => !t.na && (isLong ? t.score < 0 : t.score > 0)).length;
+      const na       = tiers.filter(t =>  t.na || t.score === 0).length;
+      return `<div class="ci-regime-row">
+        <span class="ci-regime-agree">${agree} agree</span>
+        <span class="ci-regime-sep">·</span>
+        <span class="ci-regime-disagree">${disagree} don't</span>
+        <span class="ci-regime-sep">·</span>
+        <span class="ci-regime-na">${na} N/A</span>
+      </div>`;
+    })();
 
     return `
 <div class="conf-item ${c.isTight ? 'tight' : 'normal'}">
@@ -724,6 +840,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
       <div class="ci-price">${c.price.toFixed(digits)}</div>
       <div class="ci-meta">${c.pipDiff.toFixed(2)}p apart · SD ${c.todayFib} / ${c.yesterdayFib}${(c.density||1) >= 2 ? ` · <span class="ci-density">${c.density}× cluster</span>` : ''}</div>
     </div>
+    ${approachArrow ? `<div class="ci-approach" title="Recent 5m price direction">${approachArrow}</div>` : ''}
     <div class="ci-dir ${dirClass}">${dirIcon} ${dirText}</div>
     <div class="ci-source ${c.source}">${c.source === 'asia' ? '📍 Asia' : '🗓️ Monday'}</div>
     <div class="ci-distance ${isClose ? 'close' : ''}">${above ? '↑' : '↓'} ${c.distance.toFixed(0)}p</div>
@@ -739,7 +856,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits) {
     <span><strong>SL:</strong> ${c.sl.toFixed(digits)} (${c.stopPips.toFixed(0)}p)</span>
     <span><strong>TP:</strong> ${c.tp.toFixed(digits)} (${c.tpPips.toFixed(0)}p${c.tpSource ? ' · ' + c.tpSource : ''})</span>
     <span><strong>R:R:</strong> 1:${c.rrRaw || '—'}${c.poorRR ? ' ⚠' : ''}</span>
-  </div>${c.tpFibRisk ? `<div class="ci-tp-risk">⚠ Structural fib ${c.tpFibRisk.label} at ${c.tpFibRisk.price.toFixed(digits)} sits in TP path — may stall here</div>` : ''}` : `<div class="ci-trade-row" style="opacity:.6">
+  </div>${regimeRow}${c.tpFibRisk ? `<div class="ci-tp-risk">⚠ Structural fib ${c.tpFibRisk.label} at ${c.tpFibRisk.price.toFixed(digits)} sits in TP path — may stall here</div>` : ''}` : `<div class="ci-trade-row" style="opacity:.6">
     <span><em>Price sitting on level — wait for break above (BUY zone) or below (SELL zone)</em></span>
   </div>`}
 </div>`;

@@ -5,7 +5,7 @@ import { compassFairValue, zScore } from './compass.js';
 import { getCaps } from './caps.js';
 import { oiFmtStrike, computeGravityRegime } from './oi.js';
 import { getPairSurpriseScore } from './events.js';
-import { detectCrossConflict } from './macro.js';
+import { detectCrossConflict, calculateTierScores } from './macro.js';
 import { computeARMAForecast, computeRegimeTransition } from './arma.js';
 import { computeRangeBias, openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal } from './range-bias.js';
 
@@ -945,7 +945,7 @@ function fmtSD(sd) {
   return label;
 }
 
-export function renderEntryScanner(entries, quote, signal, volRegime, asia, monday, otcForecast) {
+export function renderEntryScanner(entries, quote, signal, volRegime, asia, monday, otcForecast, tierData, approachArrow) {
   const sym    = S.currentPair.symbol;
   const digits = getDigits(sym);
   const pipSz  = getPipSize(sym);
@@ -1251,15 +1251,33 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       </details>`;
     })();
 
+    // Tier regime agreement for this entry direction
+    const ecRegimeRow = (() => {
+      if (!tierData) return '';
+      const isLong   = e.direction === 'long';
+      const agree    = tierData.tiers.filter(t => !t.na && (isLong ? t.score > 0 : t.score < 0)).length;
+      const disagree = tierData.tiers.filter(t => !t.na && (isLong ? t.score < 0 : t.score > 0)).length;
+      const na       = tierData.tiers.filter(t =>  t.na || t.score === 0).length;
+      return `<div class="ec-regime-row">
+        <span class="ec-regime-agree">${agree} agree</span>
+        <span style="color:var(--border2)">·</span>
+        <span class="ec-regime-disagree">${disagree} don't</span>
+        <span style="color:var(--border2)">·</span>
+        <span class="ec-regime-na">${na} N/A</span>
+      </div>`;
+    })();
+
     return `
     <div class="entry-card ${cls}">
       <div class="ec-top">
         <span class="ec-stars">${starStr}${starSplit}</span>
         <span class="ec-price">${e.price.toFixed(digits)}</span>
+        ${approachArrow ? `<span class="ec-approach" title="Recent 5m price direction">${approachArrow}</span>` : ''}
         <span class="ec-dir ${e.direction}">${e.direction === 'long' ? '↑ BUY' : '↓ SELL'}</span>
         <span class="ec-dist">${above ? '↑' : '↓'} ${e.distance.toFixed(0)}${unit}</span>
       </div>
       ${confirmBanner}
+      ${ecRegimeRow}
       <div class="ec-layers">${tagsHtml}</div>
       <div class="ec-trade">${tradeHtml}</div>
       ${rbHtml}
@@ -1275,12 +1293,23 @@ export function renderSignalAndEntries(enhanced, pivots, asia, monday, quote, vo
   const cntEl   = document.getElementById('entryScannerCount');
   if (!sigEl || !entrEl) return;
 
-  const signal  = runSignalEngine(S.compassData, volRegime);
-  const entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
+  const signal   = runSignalEngine(S.compassData, volRegime);
+  const entries  = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
+  const tierData = (() => { try { return calculateTierScores(); } catch(e) { return null; } })();
+
+  // Recent 5m approach direction (newest-first; index 0 = forming bar)
+  const approachArrow = (() => {
+    const bars = S.ohlc5m?.[S.currentPair.symbol]?.values;
+    if (!bars || bars.length < 6) return null;
+    const gc = b => parseFloat(b.close ?? b.mid?.c ?? b.c);
+    const r = gc(bars[1]), o = gc(bars[Math.min(5, bars.length - 1)]);
+    if (isNaN(r) || isNaN(o)) return null;
+    return r > o ? '↗' : r < o ? '↘' : '→';
+  })();
 
   window._lastEntries = entries;
   sigEl.innerHTML  = renderSignalCard(signal, volRegime, otcForecast);
-  entrEl.innerHTML = renderEntryScanner(entries, quote, signal, volRegime, asia, monday, otcForecast);
+  entrEl.innerHTML = renderEntryScanner(entries, quote, signal, volRegime, asia, monday, otcForecast, tierData, approachArrow);
 
   if (cntEl) {
     cntEl.textContent = entries.length;
