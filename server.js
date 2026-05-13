@@ -98,6 +98,7 @@ const state = {
   levelsLoadedAt:      0,
   levelsRefreshAt:     0,    // last time refreshAllPairs() completed
   levelsRefreshRunning: false,
+  lastSummaryAt:       0,    // last time per-pair monitor summary was logged
 };
 
 // ── Monitoring helpers ────────────────────────────────────────────────────────
@@ -111,8 +112,16 @@ async function reloadConfig() {
     ? { ...DEFAULT_CFG, ...(JSON.parse(cfgRaw).data ?? {}) }
     : { ...DEFAULT_CFG };
 
-  const cdRaw   = await kv.get('ai_cron_cooldowns');
-  state.cooldowns = cdRaw ? JSON.parse(cdRaw) : {};
+  // Merge KV cooldowns into in-memory state — never replace, only fill gaps.
+  // Replacing would wipe cooldowns set since the last KV write (every 60 s reload
+  // would reset all in-memory cooldowns, causing repeat alerts on the same level).
+  const cdRaw = await kv.get('ai_cron_cooldowns');
+  if (cdRaw) {
+    const loaded = JSON.parse(cdRaw);
+    for (const [k, v] of Object.entries(loaded)) {
+      if ((state.cooldowns[k] ?? 0) < v) state.cooldowns[k] = v;
+    }
+  }
 
   // Prune cooldowns older than 24 h
   const cutoff = Date.now() - 86_400_000;
@@ -195,25 +204,28 @@ function formatAlert(sym, entry, price, distPips) {
   const digits = PRICE_DIGITS[sym] ?? 5;
   const unit   = sym === 'NAS100_USD' ? 'pts' : 'p';
   const dir    = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
-  const stars  = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 5));
+  const stars  = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 7));
   const at     = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
 
   const parts = [
     `🎯 <b>${sym} ${dir}</b> ${stars}`,
-    `Level: <b>${entry.price.toFixed(digits)}</b> · ${at}`,
+    `Price: <b>${entry.price.toFixed(digits)}</b> · ${at}`,
     `Current: ${price.toFixed(digits)}`,
   ];
 
   if (entry.tags?.length) parts.push(`Tags: ${entry.tags.slice(0, 4).join(' · ')}`);
 
   const sltp = [
-    entry.sl != null ? `SL ${entry.sl.toFixed(digits)}`                                                 : null,
+    entry.sl != null ? `SL ${entry.sl.toFixed(digits)}`                                               : null,
     entry.tp != null ? `TP ${entry.tp.toFixed(digits)}${entry.tpNote ? ` (${entry.tpNote})` : ''}` : null,
   ].filter(Boolean).join(' · ');
   if (sltp) parts.push(sltp);
 
   if (entry.rrRatio) parts.push(`R:R 1:${entry.rrRatio}`);
-  parts.push('<i>🤖 Server alert</i>');
+  if (entry.rangeBias) {
+    parts.push(`Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗`);
+  }
+  parts.push('<i>🤖 MacroFX Server</i>');
 
   return parts.join('\n');
 }
@@ -236,32 +248,39 @@ async function monitorTick() {
 
     if (!state.cfg?.enabled || !state.tg?.token || !state.tg?.chatId) return;
 
-    const pairs    = state.cfg.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
-    let   cdDirty  = false;
+    const pairs       = state.cfg.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+    const doSummary   = now - (state.lastSummaryAt ?? 0) > 60_000; // throttle to once/min
+    let   cdDirty     = false;
+    const summaryLines = [];
 
     for (const sym of pairs) {
       const bucket = state.levels[sym];
       if (!bucket?.data?.length) continue;
 
       const price = await fetchPrice(sym);
-      if (price == null) continue;
+      if (price == null) {
+        if (doSummary) summaryLines.push(`${sym}: no price (market closed?)`);
+        continue;
+      }
 
       const pipSz    = PIP_SIZE[sym]     ?? 0.0001;
       const digits   = PRICE_DIGITS[sym] ?? 5;
       const proxPips = state.cfg.proxPips?.[sym] ?? state.cfg.proxPips?.default ?? 5;
       const proxDist = proxPips * pipSz;
 
+      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0;
+
       for (const entry of bucket.data) {
-        if ((entry.totalStars ?? 0) < (state.cfg.minStars ?? 4)) continue;
-        if (state.cfg.onlyAligned && !entry.signalAligned)        continue;
-        if (!entry.direction)                                      continue;
+        if ((entry.totalStars ?? 0) < (state.cfg.minStars ?? 4)) { skipStars++;    continue; }
+        if (!entry.direction)                                      { skipDir++;      continue; }
+        if (state.cfg.onlyAligned && !entry.signalAligned)        { skipDir++;      continue; }
 
         const dist = Math.abs(entry.price - price);
-        if (dist > proxDist) continue;
+        if (dist > proxDist)                                       { skipProx++;     continue; }
 
         const ck       = `${sym.replace('/', '')}_${entry.price.toFixed(digits)}_${entry.direction}`;
         const lastSent = state.cooldowns[ck] ?? 0;
-        if (now - lastSent < (state.cfg.cooldownMin ?? 60) * 60_000) continue;
+        if (now - lastSent < (state.cfg.cooldownMin ?? 60) * 60_000) { skipCooldown++; continue; }
 
         state.cooldowns[ck] = now;
         cdDirty = true;
@@ -274,6 +293,16 @@ async function monitorTick() {
 
         console.log(`[MONITOR] ${sym} ${entry.direction} @ ${entry.price.toFixed(digits)} (${distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
       }
+
+      if (doSummary && bucket.data.length > 0) {
+        const maxStars = Math.max(...bucket.data.map(e => e.totalStars ?? 0));
+        summaryLines.push(`${sym}: ${bucket.data.length} entries max=${maxStars}★ skip=${skipStars}⭐/${skipDir}dir/${skipProx}prox/${skipCooldown}cd`);
+      }
+    }
+
+    if (doSummary && summaryLines.length) {
+      console.log('[MONITOR]', summaryLines.join(' | '));
+      state.lastSummaryAt = now;
     }
 
     if (cdDirty) await kv.put('ai_cron_cooldowns', JSON.stringify(state.cooldowns));
