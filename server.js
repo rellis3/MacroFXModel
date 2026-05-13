@@ -195,25 +195,28 @@ function formatAlert(sym, entry, price, distPips) {
   const digits = PRICE_DIGITS[sym] ?? 5;
   const unit   = sym === 'NAS100_USD' ? 'pts' : 'p';
   const dir    = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
-  const stars  = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 5));
+  const stars  = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 7));
   const at     = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
 
   const parts = [
     `🎯 <b>${sym} ${dir}</b> ${stars}`,
-    `Level: <b>${entry.price.toFixed(digits)}</b> · ${at}`,
+    `Price: <b>${entry.price.toFixed(digits)}</b> · ${at}`,
     `Current: ${price.toFixed(digits)}`,
   ];
 
   if (entry.tags?.length) parts.push(`Tags: ${entry.tags.slice(0, 4).join(' · ')}`);
 
   const sltp = [
-    entry.sl != null ? `SL ${entry.sl.toFixed(digits)}`                                                 : null,
+    entry.sl != null ? `SL ${entry.sl.toFixed(digits)}`                                               : null,
     entry.tp != null ? `TP ${entry.tp.toFixed(digits)}${entry.tpNote ? ` (${entry.tpNote})` : ''}` : null,
   ].filter(Boolean).join(' · ');
   if (sltp) parts.push(sltp);
 
   if (entry.rrRatio) parts.push(`R:R 1:${entry.rrRatio}`);
-  parts.push('<i>🤖 Server alert</i>');
+  if (entry.rangeBias) {
+    parts.push(`Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗`);
+  }
+  parts.push('<i>🤖 MacroFX Server</i>');
 
   return parts.join('\n');
 }
@@ -251,17 +254,19 @@ async function monitorTick() {
       const proxPips = state.cfg.proxPips?.[sym] ?? state.cfg.proxPips?.default ?? 5;
       const proxDist = proxPips * pipSz;
 
+      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0;
+
       for (const entry of bucket.data) {
-        if ((entry.totalStars ?? 0) < (state.cfg.minStars ?? 4)) continue;
-        if (state.cfg.onlyAligned && !entry.signalAligned)        continue;
-        if (!entry.direction)                                      continue;
+        if ((entry.totalStars ?? 0) < (state.cfg.minStars ?? 4)) { skipStars++;    continue; }
+        if (!entry.direction)                                      { skipDir++;      continue; }
+        if (state.cfg.onlyAligned && !entry.signalAligned)        { skipDir++;      continue; }
 
         const dist = Math.abs(entry.price - price);
-        if (dist > proxDist) continue;
+        if (dist > proxDist)                                       { skipProx++;     continue; }
 
         const ck       = `${sym.replace('/', '')}_${entry.price.toFixed(digits)}_${entry.direction}`;
         const lastSent = state.cooldowns[ck] ?? 0;
-        if (now - lastSent < (state.cfg.cooldownMin ?? 60) * 60_000) continue;
+        if (now - lastSent < (state.cfg.cooldownMin ?? 60) * 60_000) { skipCooldown++; continue; }
 
         state.cooldowns[ck] = now;
         cdDirty = true;
@@ -273,6 +278,12 @@ async function monitorTick() {
         if (sent) { state.lastAlert = new Date().toISOString(); state.alertCount++; }
 
         console.log(`[MONITOR] ${sym} ${entry.direction} @ ${entry.price.toFixed(digits)} (${distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
+      }
+
+      // Per-pair summary every tick — shows why entries are being skipped
+      if (bucket.data.length > 0) {
+        const maxStars = Math.max(...bucket.data.map(e => e.totalStars ?? 0));
+        console.log(`[MONITOR] ${sym}: ${bucket.data.length} entries (max ${maxStars}★, need ${state.cfg.minStars ?? 4}★) — skip: ${skipStars} stars / ${skipDir} dir / ${skipProx} prox / ${skipCooldown} cooldown`);
       }
     }
 

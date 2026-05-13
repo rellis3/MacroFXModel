@@ -151,6 +151,9 @@ export function checkAndSendAlerts() {
           rrRatio:       e.rrRatio      ?? null,
           tags:          (e.tags ?? []).slice(0, 4).map(t => t.label),
           signalAligned: e.signalAligned ?? false,
+          rangeBias:     e.rangeBias
+            ? { confirmCount: e.rangeBias.confirmCount, conflictCount: e.rangeBias.conflictCount }
+            : null,
         }));
         fetch('/api/kv/set', {
           method:  'POST',
