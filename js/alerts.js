@@ -8,10 +8,11 @@
 
 import { getPipSize, getDigits } from './utils.js';
 import { S } from './state.js';
-import { PAIRS } from './config.js';
+import { PAIRS, ZSCORE5M_DEFAULTS } from './config.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
 import { runSignalEngine, runEntryScanner } from './signal.js';
 import { calculateVolRegime, calculatePivots } from './vol.js';
+import { calculateTierScores } from './macro.js';
 
 const STORAGE_KEY  = 'tg_alert_cfg';
 const COOLDOWN_KEY = 'tg_alert_cooldowns';
@@ -116,7 +117,7 @@ export function checkAndSendAlerts() {
     const _savedPair = S.currentPair;
     S.currentPair = PAIRS.find(p => p.symbol === sym) || _savedPair;
 
-    let entries;
+    let entries, alertTierData, alertApproachArrow, alertZScore;
     try {
       const volRegime = calculateVolRegime();
       const pivots    = calculatePivots();
@@ -128,6 +129,31 @@ export function checkAndSendAlerts() {
       const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, 0);
       const signal   = runSignalEngine(S.compassData, volRegime);
       entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
+
+      // Tier agreement counts (T1–T8)
+      alertTierData = (() => { try { return calculateTierScores(); } catch(e) { return null; } })();
+
+      // Recent 5m approach direction
+      alertApproachArrow = (() => {
+        const bars = S.ohlc5m?.[sym]?.values;
+        if (!bars || bars.length < 6) return null;
+        const gc = b => parseFloat(b.close ?? b.mid?.c ?? b.c);
+        const r = gc(bars[1]), o = gc(bars[Math.min(5, bars.length - 1)]);
+        return (!isNaN(r) && !isNaN(o)) ? (r > o ? '↗' : r < o ? '↘' : '→') : null;
+      })();
+
+      // Current 5m z-score
+      alertZScore = (() => {
+        const zCfg = S._caps?.zscore5m ?? ZSCORE5M_DEFAULTS;
+        const bars = S.ohlc5m?.[sym]?.values;
+        if (!bars || bars.length < 6) return null;
+        const window = bars.slice(1, (zCfg.lookback ?? 20) + 2);
+        const closes = window.map(b => parseFloat(b.close ?? b.mid?.c ?? b.c)).filter(v => !isNaN(v));
+        if (closes.length < 5) return null;
+        const mean = closes.reduce((a, b) => a + b, 0) / closes.length;
+        const std  = Math.sqrt(closes.reduce((a, b) => a + (b - mean) ** 2, 0) / closes.length);
+        return std > 0 ? (closes[0] - mean) / std : null;
+      })();
     } catch(e) {
       S.currentPair = _savedPair;
       continue;
@@ -192,7 +218,7 @@ export function checkAndSendAlerts() {
       _alertsInFlight.add(ck);
 
       const distPips = Math.round(dist / pipSz);
-      sendTelegramAlert(sym, e, price, distPips, digits).finally(() => {
+      sendTelegramAlert(sym, e, price, distPips, digits, alertApproachArrow, alertZScore, alertTierData).finally(() => {
         _alertsInFlight.delete(ck);
       });
     }
@@ -203,8 +229,9 @@ export function checkAndSendAlerts() {
 
 // ── Format + dispatch ─────────────────────────────────────────────────────────
 
-async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits) {
+async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, approachArrow, zScore, tierData) {
   const unit    = sym === 'NAS100_USD' ? 'pts' : 'p';
+  const arrowStr = approachArrow ?? '';
   const dir     = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
   const stars   = '⭐'.repeat(entry.totalStars ?? 0);
   const rrStr   = entry.rrRatio ? `R:R 1:${entry.rrRatio}` : '';
@@ -215,13 +242,30 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits) {
   // Top tags (first 4 to keep message short)
   const tagStr = (entry.tags ?? []).slice(0, 4).map(t => t.label).join(' · ');
 
+  // Tier regime agreement
+  const regimeStr = (() => {
+    if (!tierData || !entry.direction) return null;
+    const isLong   = entry.direction === 'long';
+    const agree    = tierData.tiers.filter(t => !t.na && (isLong ? t.score > 0 : t.score < 0)).length;
+    const disagree = tierData.tiers.filter(t => !t.na && (isLong ? t.score < 0 : t.score > 0)).length;
+    const na       = tierData.tiers.filter(t =>  t.na || t.score === 0).length;
+    return `Regime: ${agree} agree · ${disagree} don't · ${na} N/A`;
+  })();
+
+  // 5m z-score line
+  const zStr = zScore != null
+    ? `5m z-score: ${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)}σ`
+    : null;
+
   const lines = [
-    `🎯 <b>${sym} ${dir}</b> ${stars}`,
+    `🎯 <b>${sym} ${arrowStr} ${dir}</b> ${stars}`,
     `Price: <b>${entry.price.toFixed(digits)}</b> · ${atStr}`,
     `Current: ${currentPrice.toFixed(digits)}`,
     tagStr ? `Tags: ${tagStr}` : null,
     slStr || tpStr ? [slStr, tpStr].filter(Boolean).join(' · ') : null,
     rrStr ? rrStr : null,
+    regimeStr,
+    zStr,
     entry.rangeBias ? `Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗` : null,
   ].filter(Boolean).join('\n');
 
