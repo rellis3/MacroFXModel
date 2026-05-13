@@ -294,20 +294,78 @@ export function renderARMACard(arma, data) {
     arma.agree === false ? (isGold ? ' - DXY/yield diverging' : ' - 2Y/10Y diverging') :
     arma.agree === true  ? (isGold ? ' - DXY confirms yield'  : ' - 2Y confirms')      : '';
 
+  // SVG spread forecast chart — history + 5d forecast with 68% CI band
+  const spreadChart = (() => {
+    const series = data?.spread10y;
+    const fc10   = arma.arma10?.forecasts;
+    if (!series?.length || !fc10?.length) return '';
+
+    const history = [...series].reverse().slice(-20);
+    const allVals = [
+      ...history.map(d => d.value),
+      ...fc10.flatMap(f => [f.level, f.ci68Up, f.ci68Dn]),
+    ];
+    const yMin = Math.min(...allVals);
+    const yMax = Math.max(...allVals);
+    const yRng = yMax - yMin || 0.01;
+
+    const W = 400, H = 72, pt = 8, pr = 8, pb = 18, pl = 34;
+    const cw = W - pl - pr, ch = H - pt - pb;
+    const nPts = history.length + fc10.length;
+    const sx = i => pl + (i / (nPts - 1)) * cw;
+    const sy = v => pt + (1 - (v - yMin) / yRng) * ch;
+
+    const lastX = sx(history.length - 1);
+    const lastY = sy(history[history.length - 1].value);
+
+    const histLine = history.map((d, i) => `${sx(i).toFixed(1)},${sy(d.value).toFixed(1)}`).join(' ');
+    const fcLine   = `${lastX.toFixed(1)},${lastY.toFixed(1)} ` +
+      fc10.map((f, i) => `${sx(history.length + i).toFixed(1)},${sy(f.level).toFixed(1)}`).join(' ');
+    const ciPoly   = `${lastX.toFixed(1)},${lastY.toFixed(1)} ` +
+      fc10.map((f, i) => `${sx(history.length + i).toFixed(1)},${sy(f.ci68Up).toFixed(1)}`).join(' ') + ' ' +
+      [...fc10].reverse().map((f, i) => `${sx(history.length + fc10.length - 1 - i).toFixed(1)},${sy(f.ci68Dn).toFixed(1)}`).join(' ');
+
+    const yTicks = [yMin, (yMin + yMax) / 2, yMax].map(v => ({
+      y: sy(v).toFixed(1),
+      lbl: (v * 100).toFixed(0) + 'bp',
+    }));
+
+    const fcCol = arma.direction === 'BULLISH' ? 'var(--green)' : arma.direction === 'BEARISH' ? 'var(--red)' : 'var(--amber)';
+
+    return `<div style="margin-bottom:10px">
+      <div style="font-size:9px;color:var(--text3);margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Spread — recent history + 5d forecast (68% CI)</div>
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block;overflow:visible">
+        ${yTicks.map(t => `
+          <line x1="${pl}" y1="${t.y}" x2="${W - pr}" y2="${t.y}" style="stroke:var(--border);stroke-width:0.5;stroke-dasharray:3,3"/>
+          <text x="${pl - 3}" y="${parseFloat(t.y) + 3.5}" style="font-size:7px;fill:var(--text3);font-family:DM Mono,monospace" text-anchor="end">${t.lbl}</text>
+        `).join('')}
+        <line x1="${lastX.toFixed(1)}" y1="${pt}" x2="${lastX.toFixed(1)}" y2="${pt + ch}" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:4,2"/>
+        <polygon points="${ciPoly}" style="fill:${fcCol};opacity:0.13"/>
+        <polyline points="${histLine}" style="fill:none;stroke:var(--text2);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round"/>
+        <polyline points="${fcLine}"  style="fill:none;stroke:${fcCol};stroke-width:1.5;stroke-dasharray:4,2;stroke-linejoin:round;stroke-linecap:round"/>
+        <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3" style="fill:var(--text);stroke:var(--s1);stroke-width:1.5"/>
+      </svg>
+    </div>`;
+  })();
+
   return `<div class="arma-card">
     <div class="arma-hd">
       <span class="arma-title">📐 ARMA(1,1) ${isEquity ? 'Curve' : 'Spread'} Forecast</span>
       <span class="arma-badge" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)">${badgeLabel}</span>
       <span class="arma-badge" style="background:${confCol}22;color:${confCol};border-color:${confCol}44">${arma.confidence}</span>
+      <span class="arma-badge" style="background:${skillCol}22;color:${skillCol};border-color:${skillCol}44" title="Model accuracy vs random walk">${arma.avgSkill > 0 ? '+' : ''}${arma.avgSkill}% accuracy</span>
     </div>
 
     <div class="arma-signal ${sigCls}" style="margin-bottom:10px">
       <span class="arma-signal-icon">${sigIcon}</span>
-      <div>
+      <div style="flex:1">
         <div class="arma-signal-dir">${dirLabel}</div>
         <div class="arma-signal-text">${signalText}${agreeNote}</div>
+        ${arma.avgSkill < 5 ? `<div style="font-size:9.5px;color:var(--amber);font-weight:600;margin-top:3px">⚠ Low model skill — treat as weak signal</div>` : ''}
       </div>
     </div>
+
+    ${spreadChart}
 
     <div style="font-size:9px;color:var(--text3);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">${rowLabel}</div>
     <div class="arma-forecast-row">${forecastBars || '<div style="padding:8px;color:var(--text3);font-size:11px">No 10Y data</div>'}</div>
@@ -324,16 +382,14 @@ export function renderARMACard(arma, data) {
         <div class="arma-stat-sub">shock absorption</div>
       </div>
       <div class="arma-stat">
-        <div class="arma-stat-lbl">Skill vs RW</div>
-        <div class="arma-stat-val" style="color:${skillCol}">${arma.avgSkill > 0 ? '+' : ''}${arma.avgSkill}%</div>
-        <div class="arma-stat-sub">beats naive</div>
+        <div class="arma-stat-lbl">5d ${isGold ? 'Yield Δ' : 'Spread Δ'}</div>
+        <div class="arma-stat-val" style="font-size:11px">${f5dStr}</div>
+        <div class="arma-stat-sub">${isGold ? '10Y yield' : '10Y spread'}</div>
       </div>
     </div>
 
     <div style="font-size:9.5px;color:var(--text3);line-height:1.5;padding:6px 8px;background:var(--s1);border-radius:5px;border:1px solid var(--border)">
-      ${f5dLabel}: <strong>${f5dStr}</strong> ·
       Model: Δspread_t = ${arma.arma10?.mu > 0 ? '+' : ''}${((arma.arma10?.mu || 0)*100).toFixed(2)}bp + ${phi10}·Δs_{t-1} + ${theta10}·ε_{t-1}
-      ${arma.avgSkill < 5 ? ' · ⚠ Low skill — treat directional signal as weak' : ''}
     </div>
   </div>`;
 }
