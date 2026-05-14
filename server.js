@@ -220,6 +220,61 @@ async function sendTelegram(token, chatId, text) {
   } catch { return false; }
 }
 
+function _gradeColor(grade) {
+  return grade === 'A+' ? '#22c55e' : grade === 'A' ? '#4ade80' : grade === 'B' ? '#f59e0b' : grade === 'C' ? '#94a3b8' : '#ef4444';
+}
+
+function computeGrade(entry, hmmData) {
+  // Use browser-computed grade from KV payload when available
+  if (entry.grade) {
+    return { grade: entry.grade, verdict: entry.verdict ?? 'WATCH', reasons: entry.reasons ?? [], warnings: entry.warnings ?? [] };
+  }
+  // Server-side fallback when browser hasn't pushed grade yet
+  const score      = entry.signalScore ?? 0;
+  const rb         = entry.rangeBias;
+  const total      = rb ? (rb.confirmCount + rb.conflictCount) : 0;
+  const conviction = total > 0 ? (rb.confirmCount - rb.conflictCount) / total : 0;
+
+  const reasons  = [];
+  const warnings = [];
+  let   hardStop = false;
+
+  if (hmmData?.regime) {
+    const isLong    = entry.direction === 'long';
+    const withTrend = (isLong && hmmData.trendDir === 'BULL') || (!isLong && hmmData.trendDir === 'BEAR');
+    if (hmmData.regime === 'RANGE') {
+      reasons.push(`Range ${Math.round((hmmData.rangeProb ?? 0) * 100)}%`);
+    } else if (hmmData.regime === 'TREND') {
+      const pct = Math.round((hmmData.trendProb ?? 0) * 100);
+      if (!withTrend) {
+        warnings.push(`${hmmData.trendDir} opposing (${pct}%)`);
+        if ((hmmData.trendProb ?? 0) > 0.82) hardStop = true;
+      } else {
+        reasons.push(`Trend ${hmmData.trendDir} ${pct}%`);
+      }
+    }
+  }
+
+  if      (score >= 70) reasons.push(`Signal ${score}%`);
+  else if (score <  38) warnings.push(`Weak signal ${score}%`);
+  if (total > 0 && conviction >  0.30) reasons.push(`RB ${rb.confirmCount}✓ ${rb.conflictCount}✗`);
+  if (total > 0 && conviction < -0.25) warnings.push(`RB conflict ${rb.confirmCount}✓ ${rb.conflictCount}✗`);
+
+  let grade;
+  if (hardStop || score < 30)                                          grade = 'SKIP';
+  else if (score >= 72 && conviction >= 0.10 && warnings.length === 0) grade = 'A+';
+  else if (score >= 60 && warnings.length <= 1)                        grade = 'A';
+  else if (score >= 46)                                                 grade = 'B';
+  else                                                                  grade = 'C';
+
+  const verdict = grade === 'SKIP'                    ? 'SKIP'
+                : (grade === 'A+' || grade === 'A')   ? 'TAKE'
+                : grade === 'B'                       ? 'WATCH'
+                :                                       'CAUTION';
+
+  return { grade, verdict, reasons: reasons.slice(0, 3), warnings: warnings.slice(0, 2) };
+}
+
 function formatAlert(sym, entry, price, distPips) {
   const digits = PRICE_DIGITS[sym] ?? 5;
   const unit   = sym === 'NAS100_USD' ? 'pts' : 'p';
@@ -227,42 +282,42 @@ function formatAlert(sym, entry, price, distPips) {
   const stars  = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 9));
   const at     = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
 
+  const hmm = state.hmmRegimes[sym];
+  const g   = computeGrade(entry, hmm);
+  const vi  = g.verdict === 'TAKE' ? '✅' : g.verdict === 'WATCH' ? '👁' : g.verdict === 'CAUTION' ? '⚠️' : '🚫';
+
   const parts = [
     `🎯 <b>${sym} ${dir}</b> ${stars}`,
-    `Price: <b>${entry.price.toFixed(digits)}</b> · ${at}`,
-    `Current: ${price.toFixed(digits)}`,
+    `<b>[${g.grade}] ${vi} ${g.verdict}</b>`,
   ];
 
-  if (entry.tags?.length) parts.push(`Tags: ${entry.tags.slice(0, 4).join(' · ')}`);
+  if (g.reasons.length)  parts.push(`✅ ${g.reasons.join(' · ')}`);
+  if (g.warnings.length) parts.push(`⚠ ${g.warnings.join(' · ')}`);
+
+  parts.push('');
+  parts.push(`Level: <b>${entry.price.toFixed(digits)}</b> · ${at}`);
+  parts.push(`Current: ${price.toFixed(digits)}`);
+
+  if (entry.tags?.length) parts.push(`Tags: ${entry.tags.slice(0, 3).join(' · ')}`);
 
   const sltp = [
-    entry.sl != null ? `SL ${entry.sl.toFixed(digits)}`                                               : null,
+    entry.sl != null ? `SL ${entry.sl.toFixed(digits)}` : null,
     entry.tp != null ? `TP ${entry.tp.toFixed(digits)}${entry.tpNote ? ` (${entry.tpNote})` : ''}` : null,
   ].filter(Boolean).join(' · ');
   if (sltp) parts.push(sltp);
-
   if (entry.rrRatio) parts.push(`R:R 1:${entry.rrRatio}`);
 
-  if (entry.signalScore != null) {
-    const tier = entry.signalScore >= 65 ? 'Strong' : entry.signalScore >= 50 ? 'Moderate' : 'Weak';
-    parts.push(`📊 Signal: <b>${entry.signalScore}%</b> · ${tier}`);
-  }
-
-  if (entry.rangeBias) {
-    parts.push(`Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗`);
-  }
-
-  const hmm = state.hmmRegimes[sym];
-  if (hmm) {
-    const hmmLine = hmm.regime === 'RANGE'
-      ? `📊 HMM: Range (${Math.round(hmm.rangeProb * 100)}% prob) — fade supported`
-      : `📊 HMM: Trend ${hmm.trendDir ?? ''} (${Math.round(hmm.trendProb * 100)}% prob)`;
-    parts.push(hmmLine);
-  }
+  const scorePart = entry.signalScore != null ? `Signal ${entry.signalScore}%` : null;
+  const hmmPart   = hmm
+    ? (hmm.regime === 'RANGE' ? `HMM Range ${Math.round(hmm.rangeProb * 100)}%` : `HMM Trend ${hmm.trendDir ?? ''} ${Math.round(hmm.trendProb * 100)}%`)
+    : null;
+  const rbPart = entry.rangeBias ? `RB ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗` : null;
+  const infoLine = [scorePart, hmmPart, rbPart].filter(Boolean).join(' · ');
+  if (infoLine) parts.push(infoLine);
 
   parts.push('<i>🚂 MacroFX Railway</i>');
 
-  return parts.join('\n');
+  return parts.filter(p => p !== undefined).join('\n');
 }
 
 // ── Daily watchlist (Phase 1) ─────────────────────────────────────────────────

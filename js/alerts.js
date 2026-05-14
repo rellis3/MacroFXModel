@@ -10,9 +10,10 @@ import { getPipSize, getDigits } from './utils.js';
 import { S } from './state.js';
 import { PAIRS } from './config.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
-import { runSignalEngine, runEntryScanner } from './signal.js';
+import { runSignalEngine, runEntryScanner, computeSignalScore } from './signal.js';
 import { calculateVolRegime, calculatePivots } from './vol.js';
 import { calculateTierScores, compute5mKalmanDev, computeBayesianScore } from './macro.js';
+import { gradeEntry } from './trade-grade.js';
 
 const STORAGE_KEY  = 'tg_alert_cfg';
 const COOLDOWN_KEY = 'tg_alert_cooldowns';
@@ -157,21 +158,31 @@ export function checkAndSendAlerts() {
       const lastSync = _kvEntrySyncTimes.get(sym) ?? 0;
       if (now - lastSync > 30 * 60 * 1000) {
         _kvEntrySyncTimes.set(sym, now);
-        const payload = entries.map(e => ({
-          price:         e.price,
-          direction:     e.direction,
-          totalStars:    e.totalStars   ?? 0,
-          signalScore:   e.signalScore  ?? null,
-          sl:            e.sl           ?? null,
-          tp:            e.tp           ?? null,
-          tpNote:        e.tpNote       ?? null,
-          rrRatio:       e.rrRatio      ?? null,
-          tags:          (e.tags ?? []).slice(0, 4).map(t => t.label),
-          signalAligned: e.signalAligned ?? false,
-          rangeBias:     e.rangeBias
-            ? { confirmCount: e.rangeBias.confirmCount, conflictCount: e.rangeBias.conflictCount }
-            : null,
-        }));
+        const hmmData = S.hmmRegimes?.[sym] ?? null;
+        const payload = entries.map(e => {
+          const score = alertTierData ? (computeSignalScore(e, alertTierData, hmmData) ?? null) : null;
+          const entryWithScore = { ...e, signalScore: score };
+          const g = gradeEntry(entryWithScore, hmmData);
+          return {
+            price:         e.price,
+            direction:     e.direction,
+            totalStars:    e.totalStars   ?? 0,
+            signalScore:   score,
+            grade:         g.grade,
+            verdict:       g.verdict,
+            reasons:       g.reasons,
+            warnings:      g.warnings,
+            sl:            e.sl           ?? null,
+            tp:            e.tp           ?? null,
+            tpNote:        e.tpNote       ?? null,
+            rrRatio:       e.rrRatio      ?? null,
+            tags:          (e.tags ?? []).slice(0, 4).map(t => t.label ?? t),
+            signalAligned: e.signalAligned ?? false,
+            rangeBias:     e.rangeBias
+              ? { confirmCount: e.rangeBias.confirmCount, conflictCount: e.rangeBias.conflictCount }
+              : null,
+          };
+        });
 
         // Pair-level macro metadata for cron worker to reproduce full message format
         const meta = { approachArrow: alertApproachArrow ?? null };
