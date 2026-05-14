@@ -1144,7 +1144,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               'anthropic-version': '2023-06-01'
             },
             body: JSON.stringify({
-              model: 'claude-sonnet-4-5',
+              model: 'claude-sonnet-4-6',
               max_tokens: 4000,
               system: 'You are a professional FX/futures desk analyst. You ALWAYS respond with valid complete JSON only  -  no markdown, no backticks, no text before or after the JSON object. Keep each string value to 1-2 sentences max. Arrays max 3 items. JSON must be fully closed.',
               messages: [{ role: 'user', content: prompt }]
