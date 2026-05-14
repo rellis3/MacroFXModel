@@ -5,7 +5,7 @@ import { compassFairValue, zScore } from './compass.js';
 import { getCaps } from './caps.js';
 import { oiFmtStrike, computeGravityRegime } from './oi.js';
 import { getPairSurpriseScore } from './events.js';
-import { detectCrossConflict, calculateTierScores } from './macro.js';
+import { detectCrossConflict, calculateTierScores, computeBayesianScore } from './macro.js';
 import { computeARMAForecast, computeRegimeTransition } from './arma.js';
 import { computeRangeBias, openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal } from './range-bias.js';
 
@@ -416,6 +416,55 @@ export function renderSignalCard(signal, volRegime, otcForecast) {
         ${disclaimer}
       </div>
     </div>`;
+}
+
+// ── Signal quality score ──────────────────────────────────────────────────────
+// Composite 0–100% score combining Bayesian bounce probability, macro regime
+// alignment, range bias conviction, and structural level quality.
+// Weights: Bayesian 35% · Regime 30% · Range conviction 20% · Structure 15%
+export function computeSignalScore(entry, tierData) {
+  if (!entry?.direction || !tierData?.tiers) return null;
+  const isLong = entry.direction === 'long';
+  const tiers  = tierData.tiers;
+
+  // 1. Bayesian bounce probability (35%)
+  // prob measures continuation in bayes.dir — for a reversion entry, we want
+  // the bounce direction to match, so flip when the Bayesian direction conflicts.
+  const bayes = computeBayesianScore(tiers);
+  let bayesScore = 0.5;
+  if (bayes && bayes.dir !== 'neutral') {
+    bayesScore = bayes.dir === entry.direction ? bayes.prob : 1 - bayes.prob;
+  }
+
+  // 2. Macro regime tier alignment (30%)
+  // Count tiers that support the bounce direction (not na).
+  const activeTiers = tiers.filter(t => !t.na);
+  const agreeTiers  = activeTiers.filter(t => isLong ? t.score > 0 : t.score < 0).length;
+  const regimeScore = activeTiers.length > 0 ? agreeTiers / activeTiers.length : 0.5;
+
+  // 3. Range bias conviction (20%)
+  // conviction is totalPts/maxPts and can be slightly negative — map [-1,1] → [0,1].
+  const conviction = entry.rangeBias?.conviction ?? 0;
+  const rangeScore = Math.max(0, Math.min(1, (conviction + 1) / 2));
+
+  // 4. Structural level quality (15%)
+  const density     = Math.min(entry.density ?? 1, 3);
+  const structScore = Math.min(1,
+    (density / 3) * 0.60 +
+    (entry.isTight           ? 0.15 : 0) +
+    (entry.crossSessionMatch ? 0.15 : 0) +
+    (entry.pivotMatch        ? 0.07 : 0) +
+    (entry.oiMatch           ? 0.03 : 0),
+  );
+
+  return Math.round((bayesScore * 0.35 + regimeScore * 0.30 + rangeScore * 0.20 + structScore * 0.15) * 100);
+}
+
+export function signalScoreTier(score) {
+  if (score == null) return 'unknown';
+  if (score >= 65)   return 'strong';
+  if (score >= 50)   return 'moderate';
+  return 'weak';
 }
 
 // ── Entry scanner ─────────────────────────────────────────────────────────────
@@ -1151,7 +1200,26 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       })()
     : '';
 
-  return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
+  // Per-pair average signal quality banner
+  const pairScoreBanner = (() => {
+    const scored = entries.filter(e => e.signalScore != null);
+    if (!scored.length) return '';
+    const avg  = Math.round(scored.reduce((s, e) => s + e.signalScore, 0) / scored.length);
+    const tier = signalScoreTier(avg);
+    const col  = tier === 'strong' ? 'var(--green)' : tier === 'moderate' ? 'var(--amber)' : 'var(--text3)';
+    const bg   = tier === 'strong' ? 'rgba(34,197,94,0.06)' : tier === 'moderate' ? 'rgba(245,158,11,0.06)' : 'var(--s2)';
+    const bd   = tier === 'strong' ? 'rgba(34,197,94,0.20)' : tier === 'moderate' ? 'rgba(245,158,11,0.20)' : 'var(--border)';
+    const best = scored.reduce((a, e) => e.signalScore > a.signalScore ? e : a, scored[0]);
+    return `<div style="font-size:10px;color:${col};background:${bg};border:1px solid ${bd};border-radius:6px;padding:5px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+      <span style="font-weight:700">${avg}% avg</span>
+      <span style="color:var(--border2)">·</span>
+      <span>${scored.length} level${scored.length !== 1 ? 's' : ''} · ${tier}</span>
+      <span style="color:var(--border2)">·</span>
+      <span>best ${best.price.toFixed(getDigits(sym))} ${best.direction === 'long' ? '↑' : '↓'} @ ${best.signalScore}%</span>
+    </div>`;
+  })();
+
+  return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + pairScoreBanner + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
     const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 9 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';
@@ -1275,10 +1343,20 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       </div>`;
     })();
 
+    const _scoreBadge = (() => {
+      const s = e.signalScore;
+      if (s == null) return '';
+      const tier = signalScoreTier(s);
+      const col = tier === 'strong' ? 'var(--green)' : tier === 'moderate' ? 'var(--amber)' : 'var(--text3)';
+      const bg  = tier === 'strong' ? 'rgba(34,197,94,0.10)' : tier === 'moderate' ? 'rgba(245,158,11,0.10)' : 'var(--s2)';
+      const bd  = tier === 'strong' ? 'rgba(34,197,94,0.30)' : tier === 'moderate' ? 'rgba(245,158,11,0.30)' : 'var(--border)';
+      return `<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;background:${bg};color:${col};border:1px solid ${bd};margin-left:4px" title="Signal quality: Bayesian 35% · Regime 30% · Range bias 20% · Structure 15%">${s}%</span>`;
+    })();
+
     return `
     <div class="entry-card ${cls}">
       <div class="ec-top">
-        <span class="ec-stars">${starStr}${starSplit}</span>
+        <span class="ec-stars">${starStr}${starSplit}${_scoreBadge}</span>
         <span class="ec-price">${e.price.toFixed(digits)}</span>
         ${approachArrow ? `<span class="ec-approach" title="Recent 5m price direction">${approachArrow}</span>` : ''}
         <span class="ec-dir ${e.direction}">${e.direction === 'long' ? '↑ BUY' : '↓ SELL'}</span>
@@ -1302,8 +1380,9 @@ export function renderSignalAndEntries(enhanced, pivots, asia, monday, quote, vo
   if (!sigEl || !entrEl) return;
 
   const signal   = runSignalEngine(S.compassData, volRegime);
-  const entries  = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
   const tierData = (() => { try { return calculateTierScores(); } catch(e) { return null; } })();
+  const entries  = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime)
+    .map(e => ({ ...e, signalScore: tierData ? computeSignalScore(e, tierData) : null }));
 
   // Recent 5m approach direction (newest-first; index 0 = forming bar)
   const approachArrow = (() => {

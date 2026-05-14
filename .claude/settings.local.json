@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:www.cftc.gov)"
+      "WebFetch(domain:www.cftc.gov)",
+      "Bash(wrangler deploy *)"
     ]
   }
 }

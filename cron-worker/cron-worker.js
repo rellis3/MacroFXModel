@@ -142,6 +142,12 @@ function formatAlert(sym, entry, currentPrice, distPips, meta) {
 
   if (entry.rrRatio) parts.push(`R:R 1:${entry.rrRatio}`);
 
+  // Signal quality score
+  if (entry.signalScore != null) {
+    const tier = entry.signalScore >= 65 ? 'Strong' : entry.signalScore >= 50 ? 'Moderate' : 'Weak';
+    parts.push(`📊 Signal: <b>${entry.signalScore}%</b> · ${tier}`);
+  }
+
   if (meta?.bayesStr)  parts.push(meta.bayesStr);
 
   if (meta?.tiersPos != null) {
@@ -313,8 +319,7 @@ export default {
 };
 
 async function _saveLog(env, runAt, log, alerts) {
-  console.log('[diag]', JSON.stringify({ runAt, log, alertCount: alerts.length }));
-  if (!env?.FX_SCORES) { console.error('[diag] FX_SCORES not bound — cannot write'); return; }
+  if (!env?.FX_SCORES) return;
   try {
     await env.FX_SCORES.put(DIAG_KEY, JSON.stringify({
       runAt,
@@ -322,6 +327,5 @@ async function _saveLog(env, runAt, log, alerts) {
       alerts,
       alertCount: alerts.length,
     }), { expirationTtl: 7200 });
-    console.log('[diag] KV write OK');
-  } catch(e) { console.error('[diag] KV write failed:', e?.message); }
+  } catch(_) {}
 }

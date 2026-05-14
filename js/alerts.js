@@ -161,6 +161,7 @@ export function checkAndSendAlerts() {
           price:         e.price,
           direction:     e.direction,
           totalStars:    e.totalStars   ?? 0,
+          signalScore:   e.signalScore  ?? null,
           sl:            e.sl           ?? null,
           tp:            e.tp           ?? null,
           tpNote:        e.tpNote       ?? null,
