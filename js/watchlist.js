@@ -1,7 +1,7 @@
 // watchlist.js — Phase 2 live scoring and rendering for the daily watchlist
 
 import { S } from './state.js';
-import { getPipSize } from './utils.js';
+import { getPipSize, getDigits } from './utils.js';
 import { TYPICAL_SPREADS } from './config.js';
 
 // ── Phase 2 live scoring (0–60 pts) ──────────────────────────────────────────
@@ -106,6 +106,36 @@ export function renderWatchlistCard(entry, pair, quote, spreadData, sessionData,
 </div>`;
 }
 
+// ── CSV export — same format as journal indicator (entry,dir,sl,tp,stars,label) ─
+
+export function exportWatchlistCSV(pair, topN = null) {
+  const all = S.dailyWatchlist[pair];
+  if (!all?.length) return null;
+
+  const levels = topN != null ? all.slice(0, topN) : all;
+  const digits = getDigits(pair);
+  const fmt    = v => (typeof v === 'number' ? v.toFixed(digits) : (v ?? ''));
+
+  const header = [
+    '# MacroFX Daily Watchlist — ' + pair + ' — ' + (S.watchlistDate ?? new Date().toISOString().slice(0, 10)),
+    '# Phase 1 structural scores · top ' + levels.length + ' levels',
+    '# entry,dir,sl,tp,stars,label',
+  ].join('\n');
+
+  const rows = levels.map(e => {
+    const entry  = fmt(e.price);
+    const dir    = e.direction === 'long' ? 1 : -1;
+    const sl     = fmt(e.sl);
+    const tp     = fmt(e.tp);
+    const stars  = e.totalStars ?? 1;
+    const tagStr = (e.tags ?? []).map(t => typeof t === 'string' ? t : (t.label ?? '')).join('+') || 'Fib';
+    const label  = `${stars}* ${tagStr} [P1:${e.phase1Score ?? 0}]`;
+    return `${entry},${dir},${sl},${tp},${stars},"${label}"`;
+  });
+
+  return header + '\n' + rows.join('\n');
+}
+
 // ── Render the full watchlist panel for the current pair ──────────────────────
 
 export function renderWatchlistPanel(pair, quote, spreadData, sessionData, eventRisk) {
@@ -121,6 +151,7 @@ export function renderWatchlistPanel(pair, quote, spreadData, sessionData, event
   const activeCount = price != null
     ? levels.filter(e => Math.abs(price - e.price) / pip <= proxMax).length
     : 0;
+  const pairJson   = JSON.stringify(pair);
 
   return `<div style="margin-bottom:12px;">
   <div class="sec-lbl">Daily Watchlist
@@ -128,6 +159,12 @@ export function renderWatchlistPanel(pair, quote, spreadData, sessionData, event
     ${activeCount ? `<span class="sec-badge" style="background:#22c55e22;color:#22c55e;border-color:#22c55e44;">${activeCount} in range</span>` : ''}
   </div>
   ${cards}
-  <div style="font-size:9px;color:#475569;text-align:right;margin-top:2px;">Score = P1 structural + P2 live · <button onclick="window._manualWatchlist && window._manualWatchlist()" style="background:none;border:none;color:#6366f1;cursor:pointer;font-size:9px;padding:0;">↺ recompute</button></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+    <div style="font-size:9px;color:#475569;">Score = P1 structural + P2 live · <button onclick="window._manualWatchlist && window._manualWatchlist()" style="background:none;border:none;color:#6366f1;cursor:pointer;font-size:9px;padding:0;">↺ recompute</button></div>
+    <div style="display:flex;gap:6px;">
+      <button onclick="window._exportWatchlist && window._exportWatchlist(${pairJson}, 5, this)" style="font-size:9px;padding:2px 8px;border-radius:4px;border:1px solid #6366f144;background:#6366f111;color:#a5b4fc;cursor:pointer;">📋 Top 5 for TV</button>
+      <button onclick="window._exportWatchlist && window._exportWatchlist(${pairJson}, null, this)" style="font-size:9px;padding:2px 8px;border-radius:4px;border:1px solid #334155;background:transparent;color:#64748b;cursor:pointer;">📋 All levels</button>
+    </div>
+  </div>
 </div>`;
 }

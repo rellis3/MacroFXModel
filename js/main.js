@@ -18,6 +18,7 @@ import { loadCOT, openCOTModal, closeCOTModal, saveCOTUrlFromModal, refreshCOT }
 import { detectSession, computeSessionOpens, computeDailyOpens } from './session.js';
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
+import { exportWatchlistCSV } from './watchlist.js';
 import { checkAndSendAlerts, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, loadAlertCfg } from './alerts.js';
 
 // ── Debounced renderAll ───────────────────────────────────────────────────────
@@ -598,6 +599,30 @@ async function loadAll() {
           }
         })
         .catch(e => console.warn('[watchlist] manual recompute failed:', e.message));
+    };
+
+    window._exportWatchlist = (pair, topN, btn) => {
+      const csv = exportWatchlistCSV(pair, topN);
+      if (!csv) { console.warn('[watchlist] no levels to export for', pair); return; }
+      navigator.clipboard.writeText(csv).then(() => {
+        if (btn) {
+          const orig = btn.textContent;
+          btn.textContent = '✓ Copied!';
+          btn.style.color = '#22c55e';
+          setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1800);
+        }
+      }).catch(() => {
+        // Fallback for browsers that block clipboard without user gesture
+        const ta = document.createElement('textarea');
+        ta.value = csv;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = topN != null ? '📋 Top 5 for TV' : '📋 All levels'; }, 1800); }
+      });
     };
 
     renderAll();
