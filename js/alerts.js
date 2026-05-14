@@ -171,10 +171,28 @@ export function checkAndSendAlerts() {
             ? { confirmCount: e.rangeBias.confirmCount, conflictCount: e.rangeBias.conflictCount }
             : null,
         }));
+
+        // Pair-level macro metadata for cron worker to reproduce full message format
+        const meta = { approachArrow: alertApproachArrow ?? null };
+        if (alertKalmanDev != null) {
+          meta.kalmanStr = `5m Kalman: ${alertKalmanDev >= 0 ? '+' : ''}${alertKalmanDev.toFixed(2)}σ`;
+        }
+        if (alertTierData) {
+          const bayes = computeBayesianScore(alertTierData.tiers);
+          if (bayes) {
+            const emj = bayes.dir === 'long' ? '📈' : bayes.dir === 'short' ? '📉' : '↔️';
+            const lbl = bayes.dir === 'long' ? 'Long' : bayes.dir === 'short' ? 'Short' : 'Mixed';
+            meta.bayesStr = `${emj} Bayesian: <b>${bayes.pct}%</b> ${lbl} Continuation`;
+          }
+          meta.tiersPos = alertTierData.tiers.filter(t => !t.na && t.score > 0).length;
+          meta.tiersNeg = alertTierData.tiers.filter(t => !t.na && t.score < 0).length;
+          meta.tiersNa  = alertTierData.tiers.filter(t =>  t.na || t.score === 0).length;
+        }
+
         fetch('/api/kv/set', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ key: `ai_entries_${sym.replace('/', '')}`, data: payload, timestamp: now }),
+          body:    JSON.stringify({ key: `ai_entries_${sym.replace('/', '')}`, data: { entries: payload, meta }, timestamp: now }),
         }).catch(() => {});
       }
     }
