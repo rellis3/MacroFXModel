@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTradingDays, toMyfxbSym } from './utils.js';
-import { TYPICAL_SPREADS } from './config.js';
+import { TYPICAL_SPREADS, PAIRS } from './config.js';
 import { calculateTierScores, computeDollarRegime, computeMacroRegime, computeBayesianScore } from './macro.js';
 import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
 import { computeRegimeTransition, renderARMAAndTransition } from './arma.js';
@@ -640,6 +640,51 @@ ${calendarCtx.warnings.length > 0 ? `
 
   <!-- RIGHT SIDEBAR -->
   <div>
+    <!-- HMM ALL-PAIRS REGIME GRID (Option C) -->
+    ${(() => {
+      const regimes = S.hmmRegimes;
+      if (!regimes || !Object.keys(regimes).length) return '';
+      const cells = PAIRS.map(p => {
+        const r = regimes[p.symbol];
+        if (!r) {
+          return `<div style="padding:6px 8px;background:var(--s2);border:1px solid var(--border);border-radius:6px;text-align:center">
+            <div style="font-size:9px;color:var(--text3);font-weight:600;margin-bottom:3px">${p.name}</div>
+            <div style="font-size:9px;color:var(--text3)">—</div>
+          </div>`;
+        }
+        if (r.regime === 'RANGE') {
+          const pct = Math.round(r.rangeProb * 100);
+          return `<div style="padding:6px 8px;background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.25);border-radius:6px;text-align:center;cursor:default" title="σ ratio: ${r.sigmaRatio?.toFixed(2) ?? '?'} · computed ${r.computedAt ? new Date(r.computedAt).toLocaleTimeString() : '?'}">
+            <div style="font-size:9px;color:var(--text3);font-weight:600;margin-bottom:3px">${p.name}</div>
+            <div style="font-size:10px;color:var(--blue);font-weight:700">🔄 RANGE</div>
+            <div style="font-size:9px;color:var(--blue);opacity:.8">${pct}%</div>
+          </div>`;
+        }
+        const icon = r.trendDir === 'BULL' ? '📈' : '📉';
+        const col  = r.trendDir === 'BULL' ? 'var(--green)' : 'var(--red)';
+        const bg   = r.trendDir === 'BULL' ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)';
+        const bd   = r.trendDir === 'BULL' ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)';
+        const pct  = Math.round(r.trendProb * 100);
+        return `<div style="padding:6px 8px;background:${bg};border:1px solid ${bd};border-radius:6px;text-align:center;cursor:default" title="σ ratio: ${r.sigmaRatio?.toFixed(2) ?? '?'} · computed ${r.computedAt ? new Date(r.computedAt).toLocaleTimeString() : '?'}">
+          <div style="font-size:9px;color:var(--text3);font-weight:600;margin-bottom:3px">${p.name}</div>
+          <div style="font-size:10px;color:${col};font-weight:700">${icon} ${r.trendDir}</div>
+          <div style="font-size:9px;color:${col};opacity:.8">${pct}%</div>
+        </div>`;
+      });
+      const rangeCount = PAIRS.filter(p => regimes[p.symbol]?.regime === 'RANGE').length;
+      const trendCount = PAIRS.filter(p => regimes[p.symbol]?.regime === 'TREND').length;
+      return `
+      <div class="sec-lbl">HMM Regimes <span class="sec-badge purple">ALL PAIRS</span></div>
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:10px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:7px">
+          ${cells.join('')}
+        </div>
+        <div style="font-size:9px;color:var(--text3);text-align:center">
+          🔄 ${rangeCount} ranging · 📈📉 ${trendCount} trending · HMM updates ~30 min
+        </div>
+      </div>`;
+    })()}
+
     <!-- ASIA RANGE -->
     <div class="sec-lbl">
       Asia Session

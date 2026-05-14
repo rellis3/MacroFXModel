@@ -361,6 +361,165 @@ async function monitorTick() {
   }
 }
 
+// ── Analysis prompt builder ───────────────────────────────────────────────────
+// Mirrors the prompt in _worker.js so both Cloudflare and Railway produce identical briefs.
+
+function buildAnalysisPrompt(pair, s) {
+  return `You are a professional FX/futures desk analyst. Analyse the following real-time dashboard snapshot for ${pair} and produce a structured trading intelligence brief. Be direct, specific, and actionable. Think like a prop trader who needs to make a decision in the next 30 minutes.
+
+=== DASHBOARD SNAPSHOT: ${pair} ===
+
+MACRO SCORE & TIER BREAKDOWN
+Score: ${s.macroScore ?? 'N/A'} / 16  (${s.macroBias ?? 'N/A'})
+Coherence: ${s.agreeCount ?? '?'}/7 tiers agree   Coherence bonus: ${s.coherenceBonus ?? 0}
+Tier breakdown:
+${s.tiers ? s.tiers.map(t => `  ${t.name}: ${t.score >= 0 ? '+' : ''}${t.score}  -  ${t.reading} (${t.val})`).join('\n') : '  Not available'}
+
+VOLATILITY REGIME
+Vol regime: ${s.volRegime ?? 'N/A'}  |  ATR percentile: ${s.atrPct ?? 'N/A'}th  |  ATR: ${s.atr ?? 'N/A'}
+Recommended position size: ${s.positionSize ?? 'N/A'}%
+
+PRICE & RANGE DATA
+Current price: ${s.price ?? 'N/A'}
+Asia range: ${s.asiaHigh ?? 'N/A'} - ${s.asiaLow ?? 'N/A'}  (${s.asiaRangePips ?? 'N/A'} pips)  *  ${s.priceVsAsia ?? 'N/A'}
+Asia yesterday: ${s.asiaYestHigh ?? 'N/A'} - ${s.asiaYestLow ?? 'N/A'}
+Monday range: ${s.mondayHigh ?? 'N/A'} - ${s.mondayLow ?? 'N/A'}  (${s.mondayRangePips ?? 'N/A'} pips)  *  ${s.priceVsMonday ?? 'N/A'}
+
+DAILY PIVOTS
+R3: ${s.r3 ?? 'N/A'}  |  R2: ${s.r2 ?? 'N/A'}  |  R1: ${s.r1 ?? 'N/A'}  |  PP: ${s.pp ?? 'N/A'}
+S1: ${s.s1 ?? 'N/A'}  |  S2: ${s.s2 ?? 'N/A'}  |  S3: ${s.s3 ?? 'N/A'}
+
+FIB CONFLUENCES DETECTED (${s.confluenceCount ?? 0} total shown)
+${s.confluences && s.confluences.length > 0
+  ? s.confluences.map(c => `  ${c.stars}* @ ${c.price}  [${c.sources}]  ${c.tight ? 'TIGHT' : 'NORMAL'}${(c.density || 1) >= 2 ? ` CLUSTER×${c.density}` : ''}  dist: ${c.distPips}p  dir: ${c.direction ?? 'AT LEVEL'}  ${c.aligned ? 'v bias-aligned' : ''}  ${c.pivotMatch ? ` near ${c.pivotMatch}` : ''}`).join('\n')
+  : '  None detected in current display mode'}
+
+CME OI / OPTIONS POSITIONING
+${s.oi ? `Max Pain: ${s.oi.maxPain}  |  Call Wall: ${s.oi.callWall} (${s.oi.callWallOI} OI)  |  Put Wall: ${s.oi.putWall} (${s.oi.putWallOI} OI)
+P/C Ratio: ${s.oi.pcRatio}  ->  ${s.oi.pcBias}
+Total Call OI: ${s.oi.totalCallOI}  |  Total Put OI: ${s.oi.totalPutOI}
+OI Flow  -  calls: ${s.oi.totalCallChg ?? 'N/A'}  puts: ${s.oi.totalPutChg ?? 'N/A'}
+Aggregate GEX: ${s.oi.gex ?? 'N/A'}  |  DEX: ${s.oi.dex ?? 'N/A'}  ->  ${s.oi.gexRead ?? 'N/A'}
+Gamma flip level: ${s.oi.gammaFlip ?? 'N/A'}
+Top strikes (strike | callOI/putOI | type):
+${s.oi.topLevels ? s.oi.topLevels.slice(0, 6).map(l => `  ${l.strike}  C:${l.callOI} / P:${l.putOI}  ${l.strike > s.price ? 'RESISTANCE' : 'SUPPORT'}`).join('\n') : '  N/A'}`
+  : '  No OI data loaded for this pair  -  paste via OI button'}
+
+YIELD CURVE & MACRO SNAPSHOT
+US 2s10s spread: ${s.us2s10s ?? 'N/A'} bp  ->  ${s.curveShape ?? 'N/A'}
+VIX: ${s.vix ?? 'N/A'}  (prev: ${s.vixPrev ?? 'N/A'})  ${s.vix && s.vixPrev ? (s.vix > s.vixPrev ? '^ rising fear' : 'v falling fear') : ''}
+HY credit spread: ${s.hy ?? 'N/A'} bp  (prev: ${s.hyPrev ?? 'N/A'} bp)
+DXY: ${s.dxy ?? 'N/A'}  (prev: ${s.dxyPrev ?? 'N/A'})
+AUD/JPY carry: ${s.audjpy ?? 'N/A'}  (prev: ${s.audjpyPrev ?? 'N/A'})
+NFCI: ${s.nfci ?? 'N/A'}
+10Y TIPS real yield: ${s.tips ?? 'N/A'}%  |  Breakeven inflation: ${s.bei ?? 'N/A'}%
+Cross-asset risk sentiment: ${s.riskSentiment ?? 'N/A'}
+
+Foreign curves: ${s.foreignCurves ?? 'N/A'}
+
+EXECUTION QUALITY (OANDA live spread)
+Spread right now: ${s.spreadPips ?? 'N/A'} pips  |  Typical: ${s.typicalSpreadPips ?? 'N/A'} pips  |  Classification: ${s.spreadClassification ?? 'N/A'}
+${s.spreadClassification === 'EXTREME' ? 'WARNING: spread is extreme - do not enter, market is illiquid or pre-event' : s.spreadClassification === 'WIDE' ? 'NOTE: spread is elevated - entry cost is high, wait for normalisation or widen stop to account for it' : ''}
+
+RETAIL CROWD POSITIONING (Myfxbook community)
+Retail long: ${s.retailLongPct ?? 'N/A'}%  |  Short: ${s.retailShortPct ?? 'N/A'}%  |  Crowding: ${s.retailCrowding ?? 'N/A'}
+Avg price of retail longs: ${s.avgLongPrice ?? 'N/A'}  |  Avg price of retail shorts: ${s.avgShortPrice ?? 'N/A'}
+Contrarian signal vs macro bias: ${s.retailContrarian ? 'YES - retail crowd opposes macro direction (supportive for trade)' : s.retailSentiment === 'BALANCED' ? 'Crowd is balanced - neutral' : 'NO - retail crowd agrees with macro direction (crowding risk)'}
+
+GARCH VOLATILITY FORECAST
+${s.garch ? `GARCH(1,1) daily range forecast: ${s.garch.forecast}  |  68% CI: ${s.garch.ci68}  |  95% CI: ${s.garch.ci95}
+Vol clustering: ${s.garch.cluster}  -  ${s.garch.clusterMsg}
+Annualised sigma: ${s.garch.sigmaAnn}  |  Used today: ${s.garch.usedToday}  |  ${s.garch.remaining}` : '  GARCH not available (insufficient bar history)'}
+
+REGIME TRANSITION RISK
+${s.regimeTransition ? `Risk level: ${s.regimeTransition.risk} (score ${s.regimeTransition.score}/100)
+${s.regimeTransition.consecutiveDays} consecutive days in ${s.regimeTransition.regime} vol${s.regimeTransition.compressing ? '  -  ATR compressing (pre-shock risk building)' : s.regimeTransition.expanding ? '  -  ATR expanding' : ''}
+${s.regimeTransition.summary}
+${s.regimeTransition.detail}` : '  Not available'}
+
+ARMA(1,1) SPREAD FORECAST (10Y rate differential, 5-day)
+${s.armaForecast ? `Direction: ${s.armaForecast.direction}  |  Confidence: ${s.armaForecast.confidence}  |  Model skill: ${s.armaForecast.skill}
+1-day spread change: ${s.armaForecast.f1d ?? 'N/A'}  |  5-day spread change: ${s.armaForecast.f5d ?? 'N/A'}
+Pair implication: ${s.armaForecast.pairBias}
+AR(?): ${s.armaForecast.phi}  MA(?): ${s.armaForecast.theta}` : '  ARMA not available (compass data not loaded)'}
+
+SPREAD SIGNAL ENGINE
+${s.spreadSignal ? `Bias: ${s.spreadSignal.bias}  |  Type: ${s.spreadSignal.type}  |  Score: ${s.spreadSignal.score}
+Fair value gap: ${s.spreadSignal.fvPips ?? 'N/A'} pips ${s.spreadSignal.fvBull ? '(undervalued - buy bias)' : '(overvalued - sell bias)'}
+${s.spreadSignal.lagDetected ? '! LAG DETECTED  -  spread moved ahead of price, catch-up move likely' : ''}` : '  Signal engine not available'}
+
+COT POSITIONING (CFTC Traders in Financial Futures — Leveraged Funds / Managed Money)
+${s.cot ? `Report date: ${s.cot.reportDate ?? 'N/A'}  |  Open Interest: ${s.cot.openInterest ?? 'N/A'}
+Leveraged funds net: ${s.cot.levNet ?? 'N/A'} (${s.cot.levNetChg != null ? (s.cot.levNetChg >= 0 ? '+' : '') + s.cot.levNetChg : 'N/A'} wk)  |  Net % of OI: ${s.cot.levPct != null ? s.cot.levPct.toFixed(1) + '%' : 'N/A'}
+Spec traders: ${s.cot.numLevLong ?? 'N/A'} long · ${s.cot.numLevShort ?? 'N/A'} short  |  Avg size: ${s.cot.avgContracts ?? 'N/A'} contracts
+Asset Mgr net: ${s.cot.amNet ?? 'N/A'} (${s.cot.amNetChg != null ? (s.cot.amNetChg >= 0 ? '+' : '') + s.cot.amNetChg : 'N/A'} wk)  |  Dealer net: ${s.cot.dealerNet ?? 'N/A'}
+Gross L/S ratio: ${s.cot.grossRatio ?? 'N/A'}  |  Crowding: ${s.cot.crowdingPct != null ? s.cot.crowdingPct.toFixed(1) + '% of OI' : 'N/A'}${s.cot.crowdingPct >= 20 ? ' — EXTREME (unwind risk elevated)' : s.cot.crowdingPct >= 10 ? ' — ELEVATED' : ''}` : '  COT data not available (set CFTC URL via COT toolbar button)'}
+
+HIGH CONFLUENCE ENTRIES (from multi-layer scanner)
+${s.topEntries && s.topEntries.length > 0
+  ? s.topEntries.map(e => `  ${e.stars}* ${e.direction.toUpperCase()} @ ${e.price}  Tags: ${e.tags}  SL: ${e.sl} (${e.slPips}p)  TP: ${e.tp} (${e.tpNote}${e.tpCapped ? ' - vol capped' : ''}, ${e.tpPips}p)  R:R 1:${e.rr}  Size: ${e.size}%`).join('\n')
+  : '  No high-confluence entries detected'}
+
+SESSION INTELLIGENCE
+Current session: ${s.session?.name ?? 'N/A'}  |  London time: ${s.session?.londonTime ?? 'N/A'}  |  Confidence multiplier: ${s.session?.confidence ?? 'N/A'}x
+Context: ${s.session?.desc ?? 'N/A'}
+
+VOLATILITY IMPULSE (5-bar momentum)
+${s.volImpulse ? `Bias: ${s.volImpulse.bias.toUpperCase()}  |  Last 5 bars avg TR vs prior 5: ${s.volImpulse.pct >= 0 ? '+' : ''}${s.volImpulse.pct.toFixed(1)}%
+${s.volImpulse.bias === 'expanding' ? '→ Vol accelerating — widen stops, beware stop-hunts' : s.volImpulse.bias === 'contracting' ? '→ Vol contracting — tighter stops possible, range trades favoured' : '→ Vol stable — no regime shift signal'}` : '  Not available (< 10 daily bars)'}
+
+USD STRENGTH COMPOSITE (cross-pair normalised)
+${s.usdStrength
+  ? `${s.usdStrength.label}  |  Score: ${s.usdStrength.score}  |  Pairs: ${s.usdStrength.pairsUsed}/4
+Per-pair z-scores: ${s.usdStrength.perPair || 'N/A'}
+${s.usdStrength.fredConflict ? '⚠ FRED DXY disagrees with price-based composite — treat composite as primary signal' : 'FRED DXY consistent with composite'}
+${s.crossConflict ? `CROSS-PAIR CONFLICT: ${s.crossConflict.type.toUpperCase()} (${s.crossConflict.severity}) — ${s.crossConflict.message}  |  Size adj: ×${s.crossConflict.sizeMult}` : 'No cross-pair conflict with current signal'}`
+  : '  Insufficient pair data for composite (need 2+ USD pairs loaded)'}
+
+DOLLAR REGIME (DXY)
+${s.dollarRegime ? `${s.dollarRegime.label}  |  DXY: ${s.dollarRegime.dxy ?? 'N/A'}  |  Change: ${s.dollarRegime.change != null ? (s.dollarRegime.change >= 0 ? '+' : '') + s.dollarRegime.change + '%' : 'N/A'}  |  Strength: ${s.dollarRegime.strength}` : '  DXY data not available'}
+
+ECONOMIC EVENT RISK
+${s.eventRisk && !s.eventRisk.unavailable
+  ? `Risk level: ${s.eventRisk.level.toUpperCase()}  |  Size multiplier: ${s.eventRisk.sizeMult}x
+${s.eventRisk.inNext4h && s.eventRisk.inNext4h.length > 0
+    ? 'Events next 4h: ' + s.eventRisk.inNext4h.map(e => `${e.country} ${e.impact?.toUpperCase() || '?'} "${e.event || '—'}" ${e.time ? new Date(e.time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : ''}`).join(' | ')
+    : 'No events in next 4 hours'}
+${Object.keys(s.eventRisk.currencyRisk || {}).length > 0
+    ? 'Currency risk: ' + Object.entries(s.eventRisk.currencyRisk).map(([c, r]) => `${c}: ${r.high}H/${r.medium}M`).join(', ')
+    : ''}`
+  : '  Economic calendar unavailable (FINNHUB_KEY not configured)'}
+
+MACRO SURPRISE INDEX (30-day actual vs forecast)
+${s.surpriseIndex && Object.keys(s.surpriseIndex).length > 0
+  ? Object.entries(s.surpriseIndex).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([c, v]) => `${c}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}`).join('  |  ') +
+    (s.pairSurprise != null ? `\nPair net surprise: ${s.pairSurprise >= 0 ? '+' : ''}${s.pairSurprise.toFixed(2)} (positive = bullish base ccy)` : '')
+  : '  Surprise index unavailable (Finnhub not configured or no data with estimates)'}
+
+=== END SNAPSHOT ===
+
+You are a professional FX/futures prop desk analyst. Your job is to give a SPECIFIC, CALIBRATED trading brief - not generic observations.
+
+Rules for your response:
+1. Every level you mention must be a specific price, not a description. Say "1.0847" not "near resistance".
+2. Every vol / spread observation must reference the actual numbers. Say "GARCH forecasts 42 pips today, 28 used, 14 remaining" not "volatility is moderate".
+3. Retail crowd data is contrarian. If 70% of retail are long and macro says short, that is a TAILWIND (squeeze fuel), say so explicitly.
+4. Spread classification gates entry quality. If spread is WIDE or EXTREME, say "do not enter now, wait for spread < X pips" with the actual X.
+5. avgLongPrice and avgShortPrice are real liquidity clusters. If price is approaching avgShortPrice from below, that is a resistance cluster with real stops above it. Say so.
+6. The headline must be one sentence a trader can act on. Not "mixed signals suggest caution." Something like "Fade the 1.0847 Fib/retail-cluster confluence short, target 1.0812, stop 1.0858, wait for spread to normalise below 0.6 pips."
+7. goodToDoNow must be specific actions, not attitudes. "Wait for price to reach 1.0847 then look for 5m bearish engulf" not "be patient".
+8. avoidNow must also be specific. "Do not chase the move if price is already below 1.0830" not "avoid chasing".
+9. riskWarnings must reference actual values from the snapshot. "VIX at 24 (prev 19) - rising fear, USD bid likely to persist" not "volatility risk".
+10. If retailCrowding is EXTREME and retailContrarian is true, call out the squeeze setup explicitly in the headline or tradingFramework.
+
+Respond with a single valid JSON object. No markdown. No text outside the JSON. All string values 1-2 sentences max. Max 3 items per arrays.
+convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderate, 10=maximum). Do not use any other scale.
+tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newlines with \\n):
+"[PAIR] [BIAS] [SCORE]/10 | [REGIME]\\n[1-2 sentence market read]\\nWatch: [up to 3 key levels with price and type]\\nDo: [specific action]. Avoid: [what to avoid]. Risk: [main risk or event]"
+
+{"overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":""}`;
+}
+
 // ── Express app ───────────────────────────────────────────────────────────────
 
 const app = express();
@@ -392,6 +551,61 @@ app.get('/api/monitor/status', (_req, res) => {
 // HMM regime data for all pairs
 app.get('/api/hmm/regimes', (_req, res) => {
   res.json(state.hmmRegimes);
+});
+
+// Claude AI analysis — handled natively in Node rather than via callWorker
+// so the Anthropic fetch runs in the Railway process and benefits from env vars directly.
+app.post('/api/analysis', async (req, res) => {
+  const key = process.env.ANT_KEY;
+  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured — add it in Railway → Variables' });
+
+  try {
+    const { pair, snapshot: s } = req.body ?? {};
+    if (!pair || !s) return res.status(400).json({ error: 'Missing pair or snapshot' });
+
+    const prompt = buildAnalysisPrompt(pair, s);
+
+    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 4000,
+        system: 'You are a professional FX/futures desk analyst. You ALWAYS respond with valid complete JSON only — no markdown, no backticks, no text before or after the JSON object. Keep each string value to 1-2 sentences max. Arrays max 3 items. JSON must be fully closed.',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    if (!antRes.ok) {
+      const errTxt = await antRes.text();
+      return res.status(502).json({ error: `Anthropic API error ${antRes.status}: ${errTxt.slice(0, 300)}` });
+    }
+
+    const antData = await antRes.json();
+
+    if (antData.stop_reason === 'max_tokens') {
+      return res.status(502).json({ error: 'Response truncated (hit token limit) — please try again' });
+    }
+
+    const rawText = antData.content?.[0]?.text ?? '';
+    const clean   = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(clean);
+    } catch (e) {
+      return res.status(502).json({ error: `JSON parse failed (stop=${antData.stop_reason}): ${clean.slice(0, 300)}` });
+    }
+
+    res.json({ ok: true, analysis: parsed, generatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('[analysis]', e.message);
+    res.status(500).json({ error: 'Analysis error: ' + e.message });
+  }
 });
 
 // SSE live price stream — must be handled before the generic /api/* catch-all

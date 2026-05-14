@@ -1014,7 +1014,7 @@ function fmtSD(sd) {
   return label;
 }
 
-export function renderEntryScanner(entries, quote, signal, volRegime, asia, monday, otcForecast, tierData, approachArrow) {
+export function renderEntryScanner(entries, quote, signal, volRegime, asia, monday, otcForecast, tierData, approachArrow, hmmData = null) {
   const sym    = S.currentPair.symbol;
   const digits = getDigits(sym);
   const pipSz  = getPipSize(sym);
@@ -1212,6 +1212,37 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       })()
     : '';
 
+  // Option B: Pair-level HMM regime banner
+  const hmmBanner = (() => {
+    if (!hmmData) return '';
+    const r = hmmData;
+    if (r.regime === 'RANGE') {
+      const pct = Math.round(r.rangeProb * 100);
+      const sep = r.sigmaRatio != null ? ` · σ ratio ${r.sigmaRatio.toFixed(2)}` : '';
+      return `<div style="font-size:10px;color:var(--blue);background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.22);border-radius:6px;padding:5px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+        <span>🔄</span>
+        <span style="font-weight:700">${sym} · RANGE regime</span>
+        <span style="color:var(--border2)">·</span>
+        <span>${pct}% prob${sep}</span>
+        <span style="color:var(--border2)">·</span>
+        <span style="color:rgba(59,130,246,0.6)">supports fades</span>
+      </div>`;
+    }
+    const icon   = r.trendDir === 'BULL' ? '📈' : '📉';
+    const col    = r.trendDir === 'BULL' ? 'var(--green)' : 'var(--red)';
+    const bg     = r.trendDir === 'BULL' ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)';
+    const bd     = r.trendDir === 'BULL' ? 'rgba(34,197,94,0.20)' : 'rgba(239,68,68,0.20)';
+    const tPct   = Math.round(r.trendProb * 100);
+    return `<div style="font-size:10px;color:${col};background:${bg};border:1px solid ${bd};border-radius:6px;padding:5px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+      <span>${icon}</span>
+      <span style="font-weight:700">${sym} · TREND ${r.trendDir}</span>
+      <span style="color:var(--border2)">·</span>
+      <span>${tPct}% prob</span>
+      <span style="color:var(--border2)">·</span>
+      <span style="color:${col};opacity:.7">fade trades carry higher risk</span>
+    </div>`;
+  })();
+
   // Per-pair average signal quality banner
   const pairScoreBanner = (() => {
     const scored = entries.filter(e => e.signalScore != null);
@@ -1231,7 +1262,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
     </div>`;
   })();
 
-  return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + pairScoreBanner + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
+  return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + hmmBanner + pairScoreBanner + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
     const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 9 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';
@@ -1346,12 +1377,33 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       const agree    = tierData.tiers.filter(t => !t.na && (isLong ? t.score > 0 : t.score < 0)).length;
       const disagree = tierData.tiers.filter(t => !t.na && (isLong ? t.score < 0 : t.score > 0)).length;
       const na       = tierData.tiers.filter(t =>  t.na || t.score === 0).length;
-      return `<div class="ec-regime-row">
+
+      // Option A: HMM regime chip inline with tier agreement row
+      const hmmChip = (() => {
+        if (!hmmData) return '';
+        const r = hmmData;
+        if (r.regime === 'RANGE') {
+          const pct = Math.round(r.rangeProb * 100);
+          return `<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:rgba(59,130,246,0.10);color:var(--blue);border:1px solid rgba(59,130,246,0.28);font-weight:600;white-space:nowrap">🔄 RANGE ${pct}%</span>`;
+        }
+        const isLongEntry  = e.direction === 'long';
+        const isBull       = r.trendDir === 'BULL';
+        const withTrend    = (isLongEntry && isBull) || (!isLongEntry && !isBull);
+        const icon         = isBull ? '📈' : '📉';
+        const col          = withTrend ? 'var(--green)' : 'var(--red)';
+        const bg           = withTrend ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)';
+        const bd           = withTrend ? 'rgba(34,197,94,0.28)' : 'rgba(239,68,68,0.28)';
+        const note         = withTrend ? '✓' : '✗';
+        return `<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:${bg};color:${col};border:1px solid ${bd};font-weight:600;white-space:nowrap" title="HMM: TREND ${r.trendDir} — trade is ${withTrend ? 'with' : 'against'} trend">${icon} TREND ${r.trendDir} ${note}</span>`;
+      })();
+
+      return `<div class="ec-regime-row" style="flex-wrap:wrap;gap:4px">
         <span class="ec-regime-agree">${agree} agree</span>
         <span style="color:var(--border2)">·</span>
         <span class="ec-regime-disagree">${disagree} don't</span>
         <span style="color:var(--border2)">·</span>
         <span class="ec-regime-na">${na} N/A</span>
+        ${hmmChip ? `<span style="color:var(--border2)">·</span>${hmmChip}` : ''}
       </div>`;
     })();
 
@@ -1419,7 +1471,7 @@ export function renderSignalAndEntries(enhanced, pivots, asia, monday, quote, vo
 
   window._lastEntries = entries;
   sigEl.innerHTML  = renderSignalCard(signal, volRegime, otcForecast);
-  entrEl.innerHTML = renderEntryScanner(entries, quote, signal, volRegime, asia, monday, otcForecast, tierData, approachArrow);
+  entrEl.innerHTML = renderEntryScanner(entries, quote, signal, volRegime, asia, monday, otcForecast, tierData, approachArrow, hmmData);
 
   if (cntEl) {
     cntEl.textContent = entries.length;
