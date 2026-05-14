@@ -274,6 +274,35 @@ Example:
 
       <div class="cfg-section">
         <div class="cfg-section-title">
+          Confluence Mode <span class="cfg-section-badge">Global — all instruments · dashboard · backtest · alerts</span>
+        </div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Price selection</span><span class="cfg-label-type">mode</span></div>
+            <select class="cfg-input" id="conf_priceMode">
+              <option value="midpoint">Midpoint (dashboard default)</option>
+              <option value="lowest">Lowest (Pine Script default)</option>
+              <option value="highest">Highest</option>
+            </select>
+            <div class="cfg-hint">Where to draw a confluence line when two Fibs overlap. Midpoint = average of the two prices. Lowest/Highest matches the Pine Script indicator.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Cluster merge</span><span class="cfg-label-type">mode</span></div>
+            <select class="cfg-input" id="conf_clusterMerge">
+              <option value="true">On — collapse nearby pairs into one level (dashboard default)</option>
+              <option value="false">Off — one line per qualifying pair (Pine Script mode)</option>
+            </select>
+            <div class="cfg-hint">On: nearby Fib pairs within the merge radius are averaged into a single level. Off: every qualifying pair gets its own line, matching the Pine Script indicator exactly.</div>
+          </div>
+        </div>
+        <div class="cfg-mode-note">
+          <strong>To match the Pine Script indicator exactly:</strong> set <code>Price selection → Lowest</code> and <code>Cluster merge → Off</code>, then hit Save to KV. All consumers — dashboard, backtest, and Telegram alerts — update immediately.<br><br>
+          <strong>Default (Midpoint + On)</strong> keeps the current dashboard behaviour: nearby Fib pairs are averaged into one level, which gives fewer, smoother lines. Switch to Pine Script mode when you want the dashboard grey lines to sit at the same price as the orange indicator lines on your chart.
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-section-title">
           FX Pairs <span class="cfg-section-badge">EUR/USD · GBP/USD · USD/JPY · AUD/USD</span>
         </div>
         <div class="cfg-grid">

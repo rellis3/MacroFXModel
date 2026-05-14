@@ -113,6 +113,8 @@ function handleRun({ symbol, cfg }) {
   const method        = cfg.method        ?? 'asia';
   const signalFilter  = cfg.signalFilter  ?? 'all_conf';
   const confTolPips   = cfg.confTolPips   ?? null;
+  const confPriceMode  = cfg.priceMode    ?? 'midpoint';
+  const confClusterMerge = cfg.clusterMerge ?? true;
   const entryWindow      = cfg.entryWindow      ?? 800;  // HHMM int e.g. 800 = 08:00
   const levelReentry     = Math.max(1, cfg.levelReentry ?? 2);
   const candleConfirmN   = cfg.candleConfirmN   ?? 0;    // 0 = disabled
@@ -212,12 +214,12 @@ function handleRun({ symbol, cfg }) {
     // ── Confluence computation (method-aware) ─────────────────────────────
     let confluences = [];
     if (method === 'asia' || method === 'both') {
-      confluences.push(...detectConfluences(todayFibs, prevFibs, symbol, confTolPips));
+      confluences.push(...detectConfluences(todayFibs, prevFibs, symbol, confTolPips, { priceMode: confPriceMode, clusterMerge: confClusterMerge }));
     }
     if ((method === 'monday' || method === 'both') && mondayRange && prevMondayRange) {
       const mFibs  = filterFibs(projectFibLevels(mondayRange),     enabledFibSet);
       const pmFibs = filterFibs(projectFibLevels(prevMondayRange),  enabledFibSet);
-      confluences.push(...detectConfluences(mFibs, pmFibs, symbol, confTolPips));
+      confluences.push(...detectConfluences(mFibs, pmFibs, symbol, confTolPips, { priceMode: confPriceMode, clusterMerge: confClusterMerge }));
     }
 
     // ── Signal filter ─────────────────────────────────────────────────────

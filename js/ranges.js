@@ -1,6 +1,7 @@
 import { S } from './state.js';
-import { FIB_LEVELS } from './config.js';
+import { FIB_LEVELS, CAP_DEFAULTS } from './config.js';
 import { barLondonHour, barLondonDay, getPipSize, getDigits, getConfluenceThreshold, getMergeFactor, filterTradingDays } from './utils.js';
+import { detectConfluencesCore } from './confluence-core.js';
 
 export function calculateAsiaRanges(symbol) {
   const bars = S.ohlc5m[symbol]?.values;
@@ -147,83 +148,20 @@ export function directionFromPrice(levelPrice, anchorPrice, symbol) {
 }
 
 export function detectConfluences(todayLevels, yesterdayLevels, symbol, source, bodyRange) {
-  const pipSize   = getPipSize(symbol);
-  const calcDistance = getConfluenceThreshold(symbol) * pipSize;
+  const pipSize        = getPipSize(symbol);
+  const normalDistance = getConfluenceThreshold(symbol) * pipSize;
+  const tightDistance  = normalDistance * 0.10;
+  const mergeDistance  = normalDistance * getMergeFactor(symbol);
+  const caps           = S._caps ?? CAP_DEFAULTS;
+  const priceMode      = caps.confluencePriceMode ?? CAP_DEFAULTS.confluencePriceMode;
+  const clusterMerge   = caps.clusterMerge        ?? CAP_DEFAULTS.clusterMerge;
 
-  // With 45 fib levels (-10.5 to +10.5) the combined sorted price list always contains
-  // cross-session pairs within a fraction of a pip, making the old fibCap collapse to
-  // near-zero and blocking all confluences. The pip-based calcDistance + Layer 3
-  // clustering are sufficient guards — no dynamic cap needed.
-  const normalDistance = calcDistance;
-  const tightDistance  = calcDistance * 0.10;                   // isTight flag — very precise level
-  const mergeDistance  = calcDistance * getMergeFactor(symbol); // cluster merge — from caps, default 0.30
-
-  // Layer 1: collect ALL qualifying pairs (no dedup yet — we need density counts).
-  // Use midpoint as the representative price rather than always picking the lower.
-  const rawPairs = [];
-  todayLevels.forEach(today => {
-    yesterdayLevels.forEach(yesterday => {
-      const diff = Math.abs(today.price - yesterday.price);
-      if (diff <= normalDistance) {
-        // Same fib ordinal from independent sessions = structurally strong regardless of pip gap
-        const sameFib = today.fib === yesterday.fib;
-        rawPairs.push({
-          price:         (today.price + yesterday.price) / 2,
-          todayFib:      today.fib,
-          yesterdayFib:  yesterday.fib,
-          pipDiff:       diff / pipSize,
-          isTight:       diff <= tightDistance || sameFib,
-          source,
-        });
-      }
-    });
+  const results = detectConfluencesCore(todayLevels, yesterdayLevels, {
+    pipSize, normalDistance, tightDistance, mergeDistance,
+    priceMode, clusterMerge, source,
   });
 
-  if (!rawPairs.length) return [];
-
-  // Layer 3: cluster merge — group rawPairs whose midpoints are within mergeDistance
-  // of the running cluster centre. Each cluster becomes one final confluence level.
-  // mergeDistance (30% of normal) is intentionally wider than tightDistance (10%)
-  // so nearby Fib pairs collapse into one level rather than producing near-duplicates.
-  // Gold example: normalDistance=$20 → mergeDistance=$6, so five levels spanning $10
-  // become one cluster instead of five separate entries.
-  rawPairs.sort((a, b) => a.price - b.price);
-
-  const clusters = [];
-  let bucket = [rawPairs[0]];
-
-  for (let i = 1; i < rawPairs.length; i++) {
-    const centre = bucket.reduce((s, p) => s + p.price, 0) / bucket.length;
-    if (rawPairs[i].price - centre <= mergeDistance) {
-      bucket.push(rawPairs[i]);
-    } else {
-      clusters.push(bucket);
-      bucket = [rawPairs[i]];
-    }
-  }
-  clusters.push(bucket);
-
-  const confluences = clusters.map(cluster => {
-    const price        = cluster.reduce((s, p) => s + p.price, 0) / cluster.length;
-    const density      = cluster.length;
-    const pipDiff      = Math.min(...cluster.map(p => p.pipDiff));
-    const isTight      = cluster.some(p => p.isTight);
-    const todayFibs    = [...new Set(cluster.map(p => p.todayFib))];
-    const yesterdayFibs= [...new Set(cluster.map(p => p.yesterdayFib))];
-    return {
-      price,
-      todayFib:      todayFibs[0],
-      yesterdayFib:  yesterdayFibs[0],
-      todayFibs,
-      yesterdayFibs,
-      pipDiff,
-      isTight,
-      source,
-      density,       // # of raw fib-pair overlaps that collapsed into this zone
-    };
-  });
-
-  return confluences.sort((a, b) => {
+  return results.sort((a, b) => {
     if (a.isTight && !b.isTight) return -1;
     if (!a.isTight && b.isTight) return 1;
     return a.price - b.price;
