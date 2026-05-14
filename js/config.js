@@ -49,6 +49,15 @@ export const COMPASS_TTL = 6 * 60 * 60 * 1000;
 export const COMPASS_CACHE_VERSION = 4;
 
 export const CAP_DEFAULTS = {
+  // Global confluence mode — applies to all instruments and all consumers
+  // (dashboard, backtest, telegram alerts).
+  // confluencePriceMode: where to draw when two fibs are confluent
+  //   'midpoint' = average (current default), 'lowest' = Pine Script default, 'highest'
+  // clusterMerge: true = collapse nearby pairs into one level (current default)
+  //               false = Pine Script mode, one line per qualifying pair
+  confluencePriceMode: 'midpoint',
+  clusterMerge: true,
+
   fx: {
     confluencePips: 2,    // max pip distance for two Fibs to count as a confluence
     mergeFactor:    0.30, // fraction of confluencePips used to cluster nearby raw pairs

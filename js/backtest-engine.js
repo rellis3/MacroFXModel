@@ -1,4 +1,5 @@
-// backtest-engine.js — Pure signal computation, no imports, no DOM
+// backtest-engine.js — Pure signal computation, no DOM
+import { detectConfluencesCore } from './confluence-core.js';
 
 export const FIB_LEVELS = [
   -10.5,-10,-9.5,-9,-8.5,-8,-7.5,-7,-6.5,-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,
@@ -128,51 +129,30 @@ export function projectFibLevels(range) {
   return FIB_LEVELS.map(fib => ({ fib, price: range.low + range.range * fib }));
 }
 
-export function detectConfluences(todayLvls, yestLvls, symbol, tolPips) {
-  const pipSize = getPipSize(symbol);
-  const dist    = (tolPips != null ? tolPips : getPipTol(symbol)) * pipSize;
-  const merge   = dist * 0.30;
-  const pairs   = [];
+// opts: { priceMode, clusterMerge } — defaults match CAP_DEFAULTS if omitted.
+// Accepts yesterdayFib as yestFib on returned objects for backtest compatibility.
+export function detectConfluences(todayLvls, yestLvls, symbol, tolPips, opts = {}) {
+  const pipSize        = getPipSize(symbol);
+  const normalDistance = (tolPips != null ? tolPips : getPipTol(symbol)) * pipSize;
+  const mergeDistance  = normalDistance * 0.30;
+  const priceMode      = opts.priceMode    ?? 'midpoint';
+  const clusterMerge   = opts.clusterMerge ?? true;
 
-  for (const t of todayLvls) {
-    for (const y of yestLvls) {
-      const diff = Math.abs(t.price - y.price);
-      if (diff <= dist) {
-        pairs.push({
-          price:    (t.price + y.price) / 2,
-          todayFib: t.fib,
-          yestFib:  y.fib,
-          isTight:  diff <= dist * 0.10 || t.fib === y.fib,
-          pipDiff:  diff / pipSize,
-        });
-      }
-    }
-  }
-  if (!pairs.length) return [];
+  const results = detectConfluencesCore(todayLvls, yestLvls, {
+    pipSize,
+    normalDistance,
+    tightDistance: normalDistance * 0.10,
+    mergeDistance,
+    priceMode,
+    clusterMerge,
+  });
 
-  pairs.sort((a, b) => a.price - b.price);
-  const clusters = [];
-  let bucket = [pairs[0]];
-  for (let i = 1; i < pairs.length; i++) {
-    const centre = bucket.reduce((s, p) => s + p.price, 0) / bucket.length;
-    if (pairs[i].price - centre <= merge) {
-      bucket.push(pairs[i]);
-    } else {
-      clusters.push(bucket);
-      bucket = [pairs[i]];
-    }
-  }
-  clusters.push(bucket);
-
-  return clusters.map(cl => {
-    const price       = cl.reduce((s, p) => s + p.price, 0) / cl.length;
-    const roundNum    = isNearRoundNumber(price, symbol);
+  return results.map(c => {
+    const roundNum = isNearRoundNumber(c.price, symbol);
     return {
-      price,
-      todayFib:      cl[0].todayFib,
-      isTight:       cl.some(p => p.isTight) || roundNum,
+      ...c,
+      isTight:       c.isTight || roundNum,
       isRoundNumber: roundNum,
-      density:       cl.length,
     };
   });
 }

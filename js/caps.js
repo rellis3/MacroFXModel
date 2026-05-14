@@ -111,11 +111,20 @@ function populateCfgForm(caps) {
   fill('kalman5m_threshold',     k5.threshold);
   fill('kalman5m_longScore',     k5.longScore);
   fill('kalman5m_shortScore',    k5.shortScore);
+
+  // Global confluence mode
+  const modeEl = document.getElementById('conf_priceMode');
+  if (modeEl) modeEl.value = caps.confluencePriceMode ?? 'midpoint';
+  const mergeEl = document.getElementById('conf_clusterMerge');
+  if (mergeEl) mergeEl.value = String(caps.clusterMerge ?? true);
 }
 
 function readCfgForm() {
   const num = id => parseFloat(document.getElementById(id)?.value) || null;
+  const str = id => document.getElementById(id)?.value ?? null;
   return {
+    confluencePriceMode: str('conf_priceMode')    ?? 'midpoint',
+    clusterMerge:        str('conf_clusterMerge') !== 'false',
     fx: {
       confluencePips: num('fx_confluencePips'),
       mergeFactor:    num('fx_mergeFactor'),
@@ -193,7 +202,7 @@ export async function saveCaps() {
     ...Object.values(payload.nas100),
     ...Object.values(payload.kalman5m),
   ];
-  if (allVals.some(v => !v || v <= 0)) {
+  if (allVals.some(v => v == null || (typeof v === 'number' && v <= 0))) {
     status.textContent = '⚠ All values must be positive numbers';
     status.className = 'cfg-status err';
     btn.disabled = false;
