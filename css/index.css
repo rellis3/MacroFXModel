@@ -342,7 +342,17 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 /* AI ANALYSIS CARD */
 .ai-analyse-btn{background:var(--purple-bg);border:1.5px solid var(--purple-bd);color:var(--purple);border-radius:20px;padding:4px 12px;cursor:pointer;font-size:11px;font-weight:500;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px;transition:all .2s}
 .ai-analyse-btn:hover{background:var(--purple);color:#fff;border-color:var(--purple)}
-.ai-analyse-btn.loading{opacity:0.6;pointer-events:none}
+.ai-analyse-btn.loading{opacity:0.7;pointer-events:none;animation:ai-pulse 1.4s ease-in-out infinite}
+.ai-analyse-btn.done{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}
+.ai-analyse-btn.done:hover{background:var(--green);color:#fff;border-color:var(--green)}
+@keyframes ai-pulse{0%,100%{opacity:.7}50%{opacity:1}}
+/* Pair tab analysis dots */
+.ptab{position:relative}
+.ptab-dot{display:inline-block;width:5px;height:5px;border-radius:50%;margin-left:4px;vertical-align:middle;transition:background .3s}
+.ptab-dot.pending{background:var(--border2)}
+.ptab-dot.running{background:var(--amber);animation:ai-pulse 0.8s ease-in-out infinite}
+.ptab-dot.done{background:var(--green)}
+.ptab-dot.error{background:var(--red)}
 .ai-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:0;transition:border-color .2s}
 .ai-card.has-data{border-color:var(--purple-bd)}
 .ai-card-header{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;user-select:none;background:var(--s2);border-bottom:1px solid var(--border)}

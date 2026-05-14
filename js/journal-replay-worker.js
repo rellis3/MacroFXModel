@@ -96,7 +96,7 @@ function londonDate(ts) {
 
 // ── Replay ────────────────────────────────────────────────────────────────────
 
-function handleReplay({ symbol, date, pair, levels, rrRatio, pipSize }) {
+function handleReplay({ symbol, date, pair, levels, rrRatio, pipSize, noEod = false }) {
   const dateBars = (_m1[symbol] || {})[date];
   if (!dateBars || !dateBars.length) {
     post('error', `No M1 data loaded for ${symbol} on ${date}.`);
@@ -128,10 +128,10 @@ function handleReplay({ symbol, date, pair, levels, rrRatio, pipSize }) {
       continue;
     }
 
-    // Scan the 08:00–21:00 London window
+    // Scan the 08:00–21:00 London window (or full day when noEod is set)
     const windowBars = dateBars.filter(b => {
       const mins = b.hour * 60 + b.min;
-      return mins >= 8 * 60 && mins < 21 * 60;
+      return mins >= 8 * 60 && (noEod || mins < 21 * 60);
     });
 
     let touched      = false;
@@ -176,7 +176,7 @@ function handleReplay({ symbol, date, pair, levels, rrRatio, pipSize }) {
           if (bar.h >= sl) { result = 'sl'; r = -1; exitTime = hhmm(bar); exitBarIdx = bi; break; }
           if (bar.l <= tp) { result = 'tp'; r = tpDist / slDist; exitTime = hhmm(bar); exitBarIdx = bi; break; }
         }
-        if (barMins >= 21 * 60 - 1) {
+        if (!noEod && barMins >= 21 * 60 - 1) {
           const eodPnl = dir === 'long' ? bar.c - entryPrice : entryPrice - bar.c;
           r = Math.max(-1, Math.min(tpDist / slDist, eodPnl / slDist));
           result   = 'eod';

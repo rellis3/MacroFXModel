@@ -462,15 +462,16 @@ export default {
 
       // -- /api/oanda_ohlc1m  ----------------------------------
       // M1 bars for a specific trading date — used by journal day replay.
-      // ?symbol=EUR/USD&date=2025-05-09
+      // ?symbol=EUR/USD&date=2025-05-09[&days=1]
+      // days defaults to 1 (single session). Pass days=7 for "run to SL/TP"
+      // mode so subsequent sessions are included (OANDA caps at 5000 bars ≈ 3.5 days).
       // Returns { values: [{ datetime, open, high, low, close }] } oldest-first.
-      // Fetches the full 24h UTC window for the given London date so we capture
-      // the 00:00-23:59 London session including any DST offset.
       if (path === '/api/oanda_ohlc1m') {
         if (!env.OANDA_KEY) return err('OANDA_KEY not configured', 503);
 
         const symbol = url.searchParams.get('symbol');
         const date   = url.searchParams.get('date');   // YYYY-MM-DD London date
+        const days   = Math.min(14, Math.max(1, parseInt(url.searchParams.get('days') || '1', 10)));
         if (!symbol) return err('symbol param required', 400);
         if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return err('date param required (YYYY-MM-DD)', 400);
 
@@ -479,11 +480,11 @@ export default {
           ? 'https://api-fxpractice.oanda.com'
           : 'https://api-fxtrade.oanda.com';
 
-        // Fetch a 26-hour UTC window: date-1T22:00Z → date+1T00:00Z covers London 00:00-23:59
-        // even accounting for BST (+1h) and any overnight gap.
+        // from: date-1T22:00Z covers London 00:00 even in BST
+        // to:   date+days T00:00Z — extended when days>1 for run-to-SL/TP mode
         const [yr, mo, dy] = date.split('-').map(Number);
         const fromDate = new Date(Date.UTC(yr, mo - 1, dy - 1, 22, 0, 0));
-        const toDate   = new Date(Date.UTC(yr, mo - 1, dy + 1, 0, 0, 0));
+        const toDate   = new Date(Date.UTC(yr, mo - 1, dy + days, 0, 0, 0));
         const fromRFC  = fromDate.toISOString();
         const toRFC    = toDate.toISOString();
 
@@ -513,7 +514,7 @@ export default {
             close: c.mid.c,
           }));
 
-        return json({ values, meta: { symbol, date, source: 'oanda', granularity: 'M1', count: values.length } });
+        return json({ values, meta: { symbol, date, days, source: 'oanda', granularity: 'M1', count: values.length } });
       }
 
       // -- /api/oanda_stream ------------------------------------

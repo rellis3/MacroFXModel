@@ -13,7 +13,7 @@ import { setCompassMode, toggleCompassFX, loadAndRenderCompass } from './compass
 import { fvGapToPips, runSignalEngine, runEntryScanner, renderSignalAndEntries, detectCandlePatterns, openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal } from './signal.js';
 import { renderARMAAndTransition } from './arma.js';
 import { renderAll } from './render.js';
-import { triggerAIAnalysis, copyAIAnalysis, copyAITldr } from './ai.js';
+import { triggerAIAnalysis, copyAIAnalysis, copyAITldr, analyseAllPairs } from './ai.js';
 import { loadCOT, openCOTModal, closeCOTModal, saveCOTUrlFromModal, refreshCOT } from './cot.js';
 import { detectSession, computeSessionOpens, computeDailyOpens } from './session.js';
 import { loadEventData } from './events.js';
@@ -49,6 +49,7 @@ window.detectCandlePatterns   = detectCandlePatterns;
 window.triggerAIAnalysis      = triggerAIAnalysis;
 window.copyAIAnalysis         = copyAIAnalysis;
 window.copyAITldr             = copyAITldr;
+window.analyseAllPairs        = analyseAllPairs;
 window.openCOTModal           = openCOTModal;
 window.closeCOTModal          = closeCOTModal;
 window.saveCOTUrlFromModal    = saveCOTUrlFromModal;
@@ -759,6 +760,47 @@ window.saveToJournal = function() {
     alert('Error saving to journal: ' + e.message);
   }
 };
+
+// ── Lightweight data loader for Analyse All ───────────────────────────────────
+// Loads only what aiCollectSnapshot() needs for a given symbol without touching
+// the active pair's DOM or triggering a full renderAll.
+export async function loadPairDataForAnalysis(sym) {
+  const symKey = sym.replace('/', '');
+  const sessionDay = londonSessionDay();
+
+  if (!S.ohlcData[sym]) {
+    try {
+      S.ohlcData[sym] = await loadCached(`ohlc_${symKey}`,
+        () => fetchAPI(`/api/ohlc?symbol=${encodeURIComponent(sym)}`),
+        CACHE_DURATION.OHLC);
+    } catch(e) {}
+  }
+  if (!S.ohlc5m[sym]) {
+    try {
+      S.ohlc5m[sym] = await loadCached(`ohlc5m_${symKey}_${sessionDay}`,
+        () => fetchAPI(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`),
+        CACHE_DURATION.OHLC5M);
+    } catch(e) {}
+  }
+  if (!S.ohlc30m[sym]) {
+    try {
+      S.ohlc30m[sym] = await loadCached(`ohlc30m_${symKey}_${sessionDay}`,
+        () => fetchAPI(`/api/oanda_ohlc30m?symbol=${encodeURIComponent(sym)}`),
+        CACHE_DURATION.OHLC30M);
+    } catch(e) {}
+  }
+  // Compute ranges so snapshot has Asia/Monday data
+  calculateAsiaRanges(sym);
+  calculateMondayRanges(sym);
+  // Store quote for this pair if we have one cached
+  try {
+    const q = await loadCached(`quote_${symKey}`,
+      () => fetchAPI(`/api/quote?symbol=${encodeURIComponent(sym)}`),
+      CACHE_DURATION.QUOTE);
+    if (q?.price) window._latestQuotes[sym] = { price: q.price, bid: q.bid, ask: q.ask };
+  } catch(e) {}
+}
+window.loadPairDataForAnalysis = loadPairDataForAnalysis;
 
 // ── Alert button state ────────────────────────────────────────────────────────
 export function updateAlertBtn() {

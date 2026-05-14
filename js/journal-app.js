@@ -37,7 +37,10 @@ async function loadJournal(){
   }catch(e){}
 }
 function saveJournal(){
-  try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journalData));}catch(e){showToast('Storage error','err');}
+  try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journalData));}catch(e){
+    // localStorage full — KV is the authoritative store so data is not lost
+    console.warn('journal localStorage full, relying on KV only',e);
+  }
   kvSet(JOURNAL_KEY,journalData);}
 function todayStr(){return new Date().toISOString().split('T')[0];}
 
@@ -806,9 +809,43 @@ async function loadReplayResults() {
   } catch(e) {}
 }
 
+function _slimReplayResults() {
+  const slim = {};
+  for (const [key, payload] of Object.entries(_replayResults)) {
+    slim[key] = {
+      ...payload,
+      results: (payload.results || []).map(r => {
+        const { chartBars, level, ...rest } = r;
+        return {
+          ...rest,
+          level: level ? {
+            price: level.price, direction: level.direction,
+            stars: level.stars, todayFib: level.todayFib,
+            source: level.source, tags: level.tags,
+            sl: level.sl, tp: level.tp,
+          } : null,
+        };
+      }),
+    };
+  }
+  return slim;
+}
+
 function saveReplayResults() {
-  try { localStorage.setItem(REPLAY_KV_KEY, JSON.stringify(_replayResults)); } catch(e) {}
-  kvSet(REPLAY_KV_KEY, _replayResults);
+  // Prune entries older than 60 days to prevent unbounded growth
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 60);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  for (const key of Object.keys(_replayResults)) {
+    const datePart = key.split('::')[1];
+    if (datePart && datePart < cutoffStr) delete _replayResults[key];
+  }
+
+  const slim = _slimReplayResults();
+  try { localStorage.setItem(REPLAY_KV_KEY, JSON.stringify(slim)); } catch(e) {
+    console.warn('saveReplayResults: localStorage write failed', e);
+  }
+  kvSet(REPLAY_KV_KEY, slim);
 }
 
 function safePairId(pair) { return pair.replace(/\//g, '-').replace(/_/g, '-'); }
@@ -828,9 +865,11 @@ function openReplayModal(pair, date) {
   modal.dataset.date = date;
   modal.classList.add('open');
 
-  // Reset star filter to "All" for each new open
-  const starSel = document.getElementById('rp-min-stars');
+  // Reset controls to defaults for each new open
+  const starSel  = document.getElementById('rp-min-stars');
   if (starSel) starSel.value = '1';
+  const noEodCb  = document.getElementById('rp-no-eod');
+  if (noEodCb) noEodCb.checked = false;
   _lastReplayPayload = null;
 
   const key    = pair + '::' + date;
@@ -869,9 +908,13 @@ async function fetchAndReplay() {
   document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Fetching M1 bars from Oanda…</div>';
 
   // ── 1. Fetch M1 bars ──────────────────────────────────────────────────────
+  const noEod = document.getElementById('rp-no-eod')?.checked ?? false;
   let bars;
   try {
-    const url = `/api/oanda_ohlc1m?symbol=${encodeURIComponent(pair)}&date=${encodeURIComponent(date)}`;
+    // When running to SL/TP, fetch 7 days forward so trades can resolve across sessions.
+    // OANDA caps at ~5000 bars (≈3.5 days of M1), which covers most trades.
+    const days = noEod ? 7 : 1;
+    const url = `/api/oanda_ohlc1m?symbol=${encodeURIComponent(pair)}&date=${encodeURIComponent(date)}&days=${days}`;
     const res = await fetch(url);
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
@@ -883,7 +926,7 @@ async function fetchAndReplay() {
       const dt   = v.datetime || '';
       const hour = parseInt(dt.slice(11, 13), 10);
       const min  = parseInt(dt.slice(14, 16), 10);
-      return { h: +v.high, l: +v.low, o: +v.open, c: +v.close, hour, min };
+      return { h: +v.high, l: +v.low, o: +v.open, c: +v.close, hour, min, date: dt.slice(0, 10) };
     });
   } catch(e) {
     setReplayStatus(e.message, 'rp-fetch-err');
@@ -903,10 +946,10 @@ async function fetchAndReplay() {
     return;
   }
 
-  const payload = runReplayEngine(pair, date, bars, dayObj.levels);
+  const payload = runReplayEngine(pair, date, bars, dayObj.levels, { noEod });
 
   // ── 3. Cache + persist ────────────────────────────────────────────────────
-  const key = pair + '::' + date;
+  const key = pair + '::' + date + (noEod ? '::noeod' : '');
   _replayResults[key] = payload;
   saveReplayResults();
   renderQuickStats();
@@ -924,9 +967,26 @@ function runReplay() { fetchAndReplay(); }   // Re-run button calls same path
 
 // ── Replay computation (pure — no I/O) ────────────────────────────────────────
 
-function runReplayEngine(pair, date, allBars, levels) {
-  const pip = getPipSz(pair);
-  const windowBars = allBars.filter(b => b.hour * 60 + b.min >= 480 && b.hour * 60 + b.min < 1260);
+function runReplayEngine(pair, date, allBars, levels, opts = {}) {
+  const pip   = getPipSz(pair);
+  const noEod = opts.noEod ?? false;
+
+  // Normal: one session window (08:00–21:00 London on the target date)
+  // noEod:  from 08:00 on the target date through all subsequent bars (multi-day)
+  const windowBars = noEod
+    ? allBars.filter(b => {
+        if (!b.date || b.date < date) return false;
+        if (b.date === date) return b.hour * 60 + b.min >= 480;
+        return true;
+      })
+    : allBars.filter(b => b.hour * 60 + b.min >= 480 && b.hour * 60 + b.min < 1260);
+
+  // Format exit time — shows date prefix for multi-day exits when in noEod mode
+  const fmtExitTime = (bar) => {
+    const hm = hhmm(bar);
+    if (noEod && bar.date && bar.date !== date) return `${bar.date.slice(5)} ${hm}`;
+    return hm;
+  };
 
   const results = [];
   let runningR = 0;
@@ -970,13 +1030,13 @@ function runReplayEngine(pair, date, allBars, levels) {
         if (adv > maxAdv) maxAdv = adv;
 
         if (dir === 'long') {
-          if (bar.l <= sl) { result = 'sl'; r = -1; exitTime = hhmm(bar); exitBarIdx = bi; break; }
-          if (bar.h >= tp) { result = 'tp'; r = tpDist / slDist; exitTime = hhmm(bar); exitBarIdx = bi; break; }
+          if (bar.l <= sl) { result = 'sl'; r = -1; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
+          if (bar.h >= tp) { result = 'tp'; r = tpDist / slDist; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
         } else {
-          if (bar.h >= sl) { result = 'sl'; r = -1; exitTime = hhmm(bar); exitBarIdx = bi; break; }
-          if (bar.l <= tp) { result = 'tp'; r = tpDist / slDist; exitTime = hhmm(bar); exitBarIdx = bi; break; }
+          if (bar.h >= sl) { result = 'sl'; r = -1; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
+          if (bar.l <= tp) { result = 'tp'; r = tpDist / slDist; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
         }
-        if (barMins >= 1259) {
+        if (!noEod && barMins >= 1259) {
           const eodPnl = dir === 'long' ? bar.c - entryPrice : entryPrice - bar.c;
           r = Math.max(-1, Math.min(tpDist / slDist, eodPnl / slDist));
           result = 'eod'; exitTime = '21:00'; exitBarIdx = bi; break;
@@ -1053,6 +1113,21 @@ function rpApplyStarFilter() {
   if (!_lastReplayPayload) return;
   const minStars = parseInt(document.getElementById('rp-min-stars')?.value || '1', 10);
   renderReplayInModal(_lastReplayPayload, minStars);
+}
+
+function rpNoEodChanged() {
+  // EOD option changes results — clear cache for the current pair/date so re-run fetches fresh
+  const modal = document.getElementById('replayModal');
+  if (!modal) return;
+  const noEod = document.getElementById('rp-no-eod')?.checked ?? false;
+  const baseKey  = modal.dataset.pair + '::' + modal.dataset.date;
+  const otherKey = noEod ? baseKey : baseKey + '::noeod';
+  delete _replayResults[otherKey];
+  saveReplayResults();
+  _lastReplayPayload = null;
+  const ra = document.getElementById('rp-result-area');
+  if (ra) ra.innerHTML = '';
+  setReplayStatus(`Option changed — click Fetch & Run to re-run`, 'rp-fetch-idle');
 }
 
 function renderReplayInModal(payload, minStars) {
