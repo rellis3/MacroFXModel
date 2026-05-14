@@ -12,6 +12,7 @@ import { PAIRS } from './config.js';
 import { filterConfluences, enhanceConfluences } from './confluences.js';
 import { runSignalEngine, runEntryScanner } from './signal.js';
 import { calculateVolRegime, calculatePivots } from './vol.js';
+import { calculateTierScores, compute5mKalmanDev, computeBayesianScore } from './macro.js';
 
 const STORAGE_KEY  = 'tg_alert_cfg';
 const COOLDOWN_KEY = 'tg_alert_cooldowns';
@@ -116,7 +117,7 @@ export function checkAndSendAlerts() {
     const _savedPair = S.currentPair;
     S.currentPair = PAIRS.find(p => p.symbol === sym) || _savedPair;
 
-    let entries;
+    let entries, alertTierData, alertApproachArrow, alertKalmanDev;
     try {
       const volRegime = calculateVolRegime();
       const pivots    = calculatePivots();
@@ -128,6 +129,21 @@ export function checkAndSendAlerts() {
       const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, 0);
       const signal   = runSignalEngine(S.compassData, volRegime);
       entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
+
+      // Tier agreement counts (T1–T8)
+      alertTierData = (() => { try { return calculateTierScores(); } catch(e) { return null; } })();
+
+      // Recent 5m approach direction
+      alertApproachArrow = (() => {
+        const bars = S.ohlc5m?.[sym]?.values;
+        if (!bars || bars.length < 6) return null;
+        const gc = b => parseFloat(b.close ?? b.mid?.c ?? b.c);
+        const r = gc(bars[1]), o = gc(bars[Math.min(5, bars.length - 1)]);
+        return (!isNaN(r) && !isNaN(o)) ? (r > o ? '↗' : r < o ? '↘' : '→') : null;
+      })();
+
+      // Kalman-filtered 5m deviation (σ units)
+      alertKalmanDev = (() => { try { return compute5mKalmanDev(sym); } catch(e) { return null; } })();
     } catch(e) {
       S.currentPair = _savedPair;
       continue;
@@ -139,7 +155,7 @@ export function checkAndSendAlerts() {
     // Cron worker reads these to know which levels to watch while browser is closed.
     if (entries?.length) {
       const lastSync = _kvEntrySyncTimes.get(sym) ?? 0;
-      if (now - lastSync > 5 * 60 * 1000) {
+      if (now - lastSync > 30 * 60 * 1000) {
         _kvEntrySyncTimes.set(sym, now);
         const payload = entries.map(e => ({
           price:         e.price,
@@ -151,11 +167,32 @@ export function checkAndSendAlerts() {
           rrRatio:       e.rrRatio      ?? null,
           tags:          (e.tags ?? []).slice(0, 4).map(t => t.label),
           signalAligned: e.signalAligned ?? false,
+          rangeBias:     e.rangeBias
+            ? { confirmCount: e.rangeBias.confirmCount, conflictCount: e.rangeBias.conflictCount }
+            : null,
         }));
+
+        // Pair-level macro metadata for cron worker to reproduce full message format
+        const meta = { approachArrow: alertApproachArrow ?? null };
+        if (alertKalmanDev != null) {
+          meta.kalmanStr = `5m Kalman: ${alertKalmanDev >= 0 ? '+' : ''}${alertKalmanDev.toFixed(2)}σ`;
+        }
+        if (alertTierData) {
+          const bayes = computeBayesianScore(alertTierData.tiers);
+          if (bayes) {
+            const emj = bayes.dir === 'long' ? '📈' : bayes.dir === 'short' ? '📉' : '↔️';
+            const lbl = bayes.dir === 'long' ? 'Long' : bayes.dir === 'short' ? 'Short' : 'Mixed';
+            meta.bayesStr = `${emj} Bayesian: <b>${bayes.pct}%</b> ${lbl} Continuation`;
+          }
+          meta.tiersPos = alertTierData.tiers.filter(t => !t.na && t.score > 0).length;
+          meta.tiersNeg = alertTierData.tiers.filter(t => !t.na && t.score < 0).length;
+          meta.tiersNa  = alertTierData.tiers.filter(t =>  t.na || t.score === 0).length;
+        }
+
         fetch('/api/kv/set', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ key: `ai_entries_${sym.replace('/', '')}`, data: payload, timestamp: now }),
+          body:    JSON.stringify({ key: `ai_entries_${sym.replace('/', '')}`, data: { entries: payload, meta }, timestamp: now }),
         }).catch(() => {});
       }
     }
@@ -189,7 +226,7 @@ export function checkAndSendAlerts() {
       _alertsInFlight.add(ck);
 
       const distPips = Math.round(dist / pipSz);
-      sendTelegramAlert(sym, e, price, distPips, digits).finally(() => {
+      sendTelegramAlert(sym, e, price, distPips, digits, alertApproachArrow, alertKalmanDev, alertTierData).finally(() => {
         _alertsInFlight.delete(ck);
       });
     }
@@ -200,25 +237,54 @@ export function checkAndSendAlerts() {
 
 // ── Format + dispatch ─────────────────────────────────────────────────────────
 
-async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits) {
-  const unit    = sym === 'NAS100_USD' ? 'pts' : 'p';
-  const dir     = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
-  const stars   = '⭐'.repeat(entry.totalStars ?? 0);
-  const rrStr   = entry.rrRatio ? `R:R 1:${entry.rrRatio}` : '';
-  const slStr   = entry.sl != null ? `SL ${entry.sl.toFixed(digits)}` : '';
-  const tpStr   = entry.tp != null ? `TP ${entry.tp.toFixed(digits)} (${entry.tpNote ?? ''})` : '';
-  const atStr   = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
+async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, approachArrow, kalmanDev, tierData) {
+  const unit     = sym === 'NAS100_USD' ? 'pts' : 'p';
+  const arrowStr = approachArrow ?? '';
+  const dir      = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
+  const stars    = '⭐'.repeat(entry.totalStars ?? 0);
+  const rrStr    = entry.rrRatio ? `R:R 1:${entry.rrRatio}` : '';
+  const slStr    = entry.sl != null ? `SL ${entry.sl.toFixed(digits)}` : '';
+  const tpStr    = entry.tp != null ? `TP ${entry.tp.toFixed(digits)} (${entry.tpNote ?? ''})` : '';
+  const atStr    = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
 
   // Top tags (first 4 to keep message short)
   const tagStr = (entry.tags ?? []).slice(0, 4).map(t => t.label).join(' · ');
 
+  // Bayesian continuation probability
+  const bayesStr = (() => {
+    if (!tierData) return null;
+    const bayes = computeBayesianScore(tierData.tiers);
+    if (!bayes) return null;
+    const emj = bayes.dir === 'long' ? '📈' : bayes.dir === 'short' ? '📉' : '↔️';
+    const lbl = bayes.dir === 'long' ? 'Long' : bayes.dir === 'short' ? 'Short' : 'Mixed';
+    return `${emj} Bayesian: <b>${bayes.pct}%</b> ${lbl} Continuation`;
+  })();
+
+  // Tier regime agreement
+  const regimeStr = (() => {
+    if (!tierData || !entry.direction) return null;
+    const isLong   = entry.direction === 'long';
+    const agree    = tierData.tiers.filter(t => !t.na && (isLong ? t.score > 0 : t.score < 0)).length;
+    const disagree = tierData.tiers.filter(t => !t.na && (isLong ? t.score < 0 : t.score > 0)).length;
+    const na       = tierData.tiers.filter(t =>  t.na || t.score === 0).length;
+    return `Regime: ${agree} agree · ${disagree} don't · ${na} N/A`;
+  })();
+
+  // 5m Kalman deviation
+  const kalmanStr = kalmanDev != null
+    ? `5m Kalman: ${kalmanDev >= 0 ? '+' : ''}${kalmanDev.toFixed(2)}σ`
+    : null;
+
   const lines = [
-    `🎯 <b>${sym} ${dir}</b> ${stars}`,
+    `🎯 <b>${sym} ${arrowStr} ${dir}</b> ${stars}`,
     `Price: <b>${entry.price.toFixed(digits)}</b> · ${atStr}`,
     `Current: ${currentPrice.toFixed(digits)}`,
     tagStr ? `Tags: ${tagStr}` : null,
     slStr || tpStr ? [slStr, tpStr].filter(Boolean).join(' · ') : null,
     rrStr ? rrStr : null,
+    bayesStr,
+    regimeStr,
+    kalmanStr,
     entry.rangeBias ? `Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗` : null,
   ].filter(Boolean).join('\n');
 

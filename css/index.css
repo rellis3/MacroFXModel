@@ -187,6 +187,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .dark .dfib-gold{background:#451a03;color:#fde68a;border-color:#b45309}
 .dark .dfib-silver{background:#1e293b;color:#cbd5e1;border-color:#64748b}
 .dark .dfib-bronze{background:#431407;color:#fed7aa;border-color:#c2410c}
+.dfib-div{background:#ecfeff;color:#0e7490;border:1px solid #22d3ee}
+.dark .dfib-div{background:#083344;color:#67e8f9;border-color:#0891b2}
 .ci-tp-risk{font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;padding:4px 10px;margin-top:4px;font-weight:600}
 .dark .ci-tp-risk{color:#fde68a;background:#451a03;border-color:#b45309}
 .ci-size{flex-shrink:0;font-size:10px;padding:2px 7px;border-radius:8px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd);font-weight:600;font-family:'DM Mono',monospace}
@@ -531,6 +533,8 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 .ec-tag.gex{background:var(--green-bg);color:var(--green);border-color:var(--green-bd)}
 .ec-tag.signal{background:var(--s2);color:var(--text2);border-color:var(--border2)}
 .ec-tag.warn{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)}
+.ec-tag.div{background:#ecfeff;color:#0e7490;border-color:#22d3ee}
+.dark .ec-tag.div{background:#083344;color:#67e8f9;border-color:#0891b2}
 .ec-trade{display:flex;gap:8px;flex-wrap:wrap;font-size:10.5px;font-family:'DM Mono',monospace;color:var(--text2);padding-top:8px;border-top:1px dashed var(--border)}
 .ec-trade strong{color:var(--text);font-weight:600}
 .ec-no-entries{text-align:center;padding:20px;color:var(--text3);font-size:12px;line-height:1.6}
@@ -707,6 +711,57 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 .hdr-price span:first-child{font-size:10px;color:var(--text3);font-weight:500;line-height:1.1}
 .hdr-price span:last-child{font-size:14px;font-weight:700;color:var(--text);font-family:'DM Mono',monospace;line-height:1.1}
 
+/* ── SCORE GAUGE (replaces plain score-num) ─────────────────────────────────── */
+.score-gauge-wrap{text-align:center;min-width:140px}
+.score-gauge-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.score-gauge-bear{font-size:9px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.07em}
+.score-gauge-bull{font-size:9px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.07em}
+.score-gauge-num{font-size:24px;font-weight:700;font-family:'DM Mono',monospace;line-height:1}
+.score-gauge-track{position:relative;height:8px;border-radius:4px;background:linear-gradient(to right,var(--red),var(--s3) 50%,var(--green));margin:0 0 5px}
+.score-gauge-marker{position:absolute;top:50%;width:14px;height:14px;background:var(--text);border:2px solid var(--s1);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 1px 4px rgba(0,0,0,.25);transition:left .3s}
+.score-gauge-label{font-size:10px;font-weight:600;margin-bottom:2px}
+.dark .score-gauge-marker{border-color:var(--s1)}
+
+/* ── FACTOR BAR CHART ────────────────────────────────────────────────────────── */
+.factor-chart{padding:4px 0 8px}
+.fc-row{display:grid;grid-template-columns:115px 1fr 30px;gap:6px;align-items:center;padding:2px 0}
+.fc-name{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc-bar-wrap{position:relative;height:10px;background:var(--s3);border-radius:5px;overflow:hidden}
+.fc-midline{position:absolute;left:50%;top:0;width:1.5px;height:100%;background:var(--border2);z-index:1}
+.fc-bar{position:absolute;top:0;height:100%}
+.fc-bar-bull{background:var(--green);left:50%;border-radius:0 2px 2px 0}
+.fc-bar-bear{background:var(--red);right:50%;border-radius:2px 0 0 2px}
+.fc-score{font-size:10px;font-weight:700;font-family:'DM Mono',monospace;text-align:right;white-space:nowrap}
+
+/* ── KEY INDICATOR SUMMARY ROW ───────────────────────────────────────────────── */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+@media(max-width:650px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+.kpi-cell{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:7px 8px;text-align:center}
+.kpi-lbl{font-size:8.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+.kpi-val{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text)}
+.kpi-delta{font-size:8.5px;font-family:'DM Mono',monospace;margin-top:1px}
+
+/* ── DRIVER HIERARCHY ────────────────────────────────────────────────────────── */
+.driver-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+@media(max-width:650px){.driver-grid{grid-template-columns:1fr}}
+.driver-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;border-top:3px solid var(--border2)}
+.driver-card.primary{border-top-color:var(--blue)}
+.driver-card.secondary{border-top-color:var(--amber)}
+.driver-card.tertiary{border-top-color:var(--border2)}
+.driver-rank{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.driver-card.primary .driver-rank{color:var(--blue)}
+.driver-card.secondary .driver-rank{color:var(--amber)}
+.driver-card.tertiary .driver-rank{color:var(--text3)}
+.driver-tier-name{font-size:11px;font-weight:600;color:var(--text);margin-bottom:3px}
+.driver-signal{font-size:9.5px;color:var(--text2);line-height:1.4}
+.driver-score-badge{display:inline-block;font-size:9px;font-weight:700;font-family:'DM Mono',monospace;padding:1px 5px;border-radius:4px;margin-top:5px}
+.driver-score-badge.bull{background:var(--green-bg);color:var(--green)}
+.driver-score-badge.bear{background:var(--red-bg);color:var(--red)}
+.driver-score-badge.neu{background:var(--amber-bg);color:var(--amber)}
+
+/* ── COT CROSS-PAIR — stronger zero line ─────────────────────────────────────── */
+.cot-cross-midline{position:absolute;left:50%;top:0;width:2px;height:100%;background:var(--border2);z-index:1;opacity:0.8}
+
 /* Fix 25: Proximity alert bar */
 .prox-alert{display:flex;align-items:center;gap:8px;padding:5px 14px;font-size:11.5px;border-top:1px solid var(--border);animation:proxSlideIn .18s ease}
 .prox-alert.red{background:rgba(239,68,68,0.10);color:var(--red)}
@@ -717,4 +772,29 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 .pa-confirm{font-size:10px;padding:1px 7px;border-radius:8px;background:rgba(34,197,94,0.15);color:var(--green);font-weight:600;flex-shrink:0}
 .pa-close{background:none;border:none;cursor:pointer;font-size:14px;color:inherit;opacity:.6;padding:2px 6px;flex-shrink:0;margin-left:4px}
 .pa-close:hover{opacity:1}
+
+/* ── APPROACH ARROW + TIER AGREEMENT ────────────────────────────────────────── */
+.ci-approach{font-size:14px;font-weight:700;flex-shrink:0;line-height:1;color:var(--text2)}
+.ci-regime-row{display:flex;align-items:center;gap:6px;margin-top:5px;padding-top:5px;border-top:1px dashed var(--border);flex-wrap:wrap}
+.ci-regime-agree{font-size:9.5px;font-weight:700;color:var(--green)}
+.ci-regime-disagree{font-size:9.5px;font-weight:700;color:var(--red)}
+.ci-regime-na{font-size:9.5px;color:var(--text3)}
+.ci-regime-sep{font-size:9.5px;color:var(--border2)}
+.ec-approach{font-size:13px;font-weight:700;line-height:1;color:var(--text2);flex-shrink:0}
+.ec-regime-row{display:flex;align-items:center;gap:5px;margin-top:4px;font-size:9.5px;flex-wrap:wrap}
+.ec-regime-agree{font-weight:700;color:var(--green)}
+.ec-regime-disagree{font-weight:700;color:var(--red)}
+.ec-regime-na{color:var(--text3)}
 @keyframes proxSlideIn{from{transform:translateY(-6px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ── BAYESIAN PROBABILITY BANNER ─────────────────────────────────────────────── */
+.bayes-banner{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:var(--r);margin-bottom:10px;border-width:1.5px;border-style:solid}
+.bayes-left{flex-shrink:0;min-width:90px}
+.bayes-pct{font-size:26px;font-weight:800;line-height:1;font-family:'DM Mono',monospace}
+.bayes-label{font-size:12px;font-weight:700;margin-top:2px}
+.bayes-sub{font-size:9.5px;color:var(--text3);margin-top:1px}
+.bayes-bar-wrap{flex:1}
+.bayes-bar-track{position:relative;height:8px;background:var(--s2);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+.bayes-bar-fill{height:100%;border-radius:4px;transition:width .4s ease}
+.bayes-bar-midline{position:absolute;left:50%;top:0;width:1px;height:100%;background:var(--border2);z-index:1}
+.bayes-bar-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace}

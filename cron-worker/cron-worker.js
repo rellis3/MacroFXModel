@@ -116,17 +116,17 @@ async function sendTelegram(token, chatId, text) {
 
 // ── Format alert message (mirrors browser alerts.js format) ──────────────────
 
-function formatAlert(sym, entry, currentPrice, distPips) {
+function formatAlert(sym, entry, currentPrice, distPips, meta) {
   const digits  = getDigits(sym);
-  const pipSz   = getPipSize(sym);
   const unit    = sym === 'NAS100_USD' ? 'pts' : 'p';
+  const arrow   = meta?.approachArrow ? `${meta.approachArrow} ` : '';
   const dir     = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
-  const stars   = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 5));
+  const stars   = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 9));
   const atStr   = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
 
   const parts = [
-    `🎯 <b>${sym} ${dir}</b> ${stars}`,
-    `Level: <b>${entry.price.toFixed(digits)}</b> · ${atStr}`,
+    `🎯 <b>${sym} ${arrow}${dir}</b> ${stars}`,
+    `Price: <b>${entry.price.toFixed(digits)}</b> · ${atStr}`,
     `Current: ${currentPrice.toFixed(digits)}`,
   ];
 
@@ -141,6 +141,21 @@ function formatAlert(sym, entry, currentPrice, distPips) {
   if (slTp) parts.push(slTp);
 
   if (entry.rrRatio) parts.push(`R:R 1:${entry.rrRatio}`);
+
+  if (meta?.bayesStr)  parts.push(meta.bayesStr);
+
+  if (meta?.tiersPos != null) {
+    const isLong   = entry.direction === 'long';
+    const agree    = isLong ? meta.tiersPos : meta.tiersNeg;
+    const disagree = isLong ? meta.tiersNeg : meta.tiersPos;
+    parts.push(`Regime: ${agree} agree · ${disagree} don't · ${meta.tiersNa} N/A`);
+  }
+
+  if (meta?.kalmanStr) parts.push(meta.kalmanStr);
+
+  if (entry.rangeBias) {
+    parts.push(`Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗`);
+  }
 
   parts.push('<i>🤖 Server alert</i>');
 
@@ -213,9 +228,11 @@ export default {
         continue;
       }
 
-      const entries = parsed.data;
+      // Support both legacy array format and new { entries, meta } format
+      const entries = Array.isArray(parsed.data) ? parsed.data : (parsed.data?.entries ?? []);
+      const meta    = Array.isArray(parsed.data) ? null         :  parsed.data?.meta ?? null;
       if (!entries?.length) { note(sym + ': 0 entries in KV'); continue; }
-      note(sym + ': ' + entries.length + ' entries (' + ageMin + 'min old)');
+      note(sym + ': ' + entries.length + ' entries (' + ageMin + 'min old)' + (meta ? ' + meta' : ''));
 
       // Fetch live price
       const price = await fetchPrice(sym, env);
@@ -254,7 +271,7 @@ export default {
         cdDirty = true;
         pairAlerts++;
 
-        const msg = formatAlert(sym, entry, price, distPips);
+        const msg = formatAlert(sym, entry, price, distPips, meta);
         const sent = await sendTelegram(tg.token, tg.chatId, msg);
         note(`  🔔 ALERT FIRED: ${entry.price.toFixed(digits)} ${entry.direction} ${entry.totalStars}★ — ${distPips}p away — Telegram ${sent ? 'OK' : 'FAILED'}`);
         alerts.push({ sym, price: entry.price, direction: entry.direction, stars: entry.totalStars, distPips, sent });

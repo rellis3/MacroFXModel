@@ -89,6 +89,31 @@ export const CAP_DEFAULTS = {
   updatedAt: null,
 };
 
+// 5-minute z-score regime bias tier (T8) configuration.
+// longScore:  score added to bias when z-score < -threshold (oversold → long weight)
+// shortScore: score subtracted when z-score > +threshold (overbought → short weight)
+// lookback:   number of closed 5m bars used for mean/σ (20 bars ≈ 1h40m)
+// threshold:  absolute z-score needed to trigger a signal (default ±1.0σ)
+export const ZSCORE5M_DEFAULTS = {
+  lookback:    20,
+  threshold:   1.0,
+  longScore:   1,
+  shortScore:  1,
+};
+
+// Kalman filter deviation bias tier (T8) — replaces raw z-score.
+// processNoise (Q) and observNoise (R) are expressed as fractions of the
+// data variance so the filter is scale-independent across instruments.
+// Lower Q → slower state evolution (smoother).  Higher R → trust filter more.
+export const KALMAN5M_DEFAULTS = {
+  lookback:     40,   // closed 5m bars to run the filter over
+  processNoise: 0.01, // Q fraction of variance — lower = smoother tracking
+  observNoise:  0.10, // R fraction of variance — higher = trust filtered state
+  threshold:    1.5,  // normalised deviation σ that triggers a score
+  longScore:    1,
+  shortScore:   1,
+};
+
 export const AI_CACHE_PREFIX = 'ai_';
 export const AI_CACHE_TTL = 60 * 60 * 1000;
 

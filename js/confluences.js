@@ -4,6 +4,7 @@ import { getAnchorPrice, directionFromPrice, getDailyFibLevels } from './ranges.
 import { getCaps } from './caps.js';
 import { calcPositionSize } from './vol.js';
 import { oiLoadStore } from './oi.js';
+import { computeDivergences } from './divergence.js';
 
 const _DFIB_STRENGTH = { gold: 3, silver: 2, bronze: 1 };
 
@@ -35,6 +36,9 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
   const symbol = S.currentPair.symbol;
   const pipSize = getPipSize(symbol);
   const atr = volRegime.atr;
+
+  // Compute oscillator divergences once for the whole symbol — applied per-level by direction
+  const divs = (() => { try { return computeDivergences(symbol); } catch(e) { return { rsi: {}, wt5m: {} }; } })();
 
   const anchorPrice = getAnchorPrice(symbol);
 
@@ -177,7 +181,43 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       else if (crowdAgreesBias  && _mfxSent.crowding === 'EXTREME')  crowdingAdj = -0.5; // crowded trade
     }
 
-    let stars = structuralStars + confirmationStars + crowdingAdj;
+    // Divergence tags — RSI (daily) and WaveTrend (5m), matched to level direction
+    const divTags = [];
+    let divStars = 0;
+
+    if (direction === 'long') {
+      if (divs.rsi.bullDiv) {
+        divTags.push({
+          label:   `RSI Div ↑ (${divs.rsi.bullDiv.barsAgo}d ago)`,
+          tooltip: `Daily RSI bullish divergence: price made lower low but RSI made higher low — momentum reversing up`,
+        });
+        divStars += 1;
+      }
+      if (divs.wt5m.bullDiv) {
+        divTags.push({
+          label:   `WT Div ↗ (${divs.wt5m.bullDiv.barsAgo}×5m)`,
+          tooltip: `5m WaveTrend bullish divergence: price lower low, WT higher low — intraday momentum turning`,
+        });
+        divStars += 1;
+      }
+    } else if (direction === 'short') {
+      if (divs.rsi.bearDiv) {
+        divTags.push({
+          label:   `RSI Div ↓ (${divs.rsi.bearDiv.barsAgo}d ago)`,
+          tooltip: `Daily RSI bearish divergence: price made higher high but RSI made lower high — momentum fading`,
+        });
+        divStars += 1;
+      }
+      if (divs.wt5m.bearDiv) {
+        divTags.push({
+          label:   `WT Div ↘ (${divs.wt5m.bearDiv.barsAgo}×5m)`,
+          tooltip: `5m WaveTrend bearish divergence: price higher high, WT lower high — intraday momentum topping`,
+        });
+        divStars += 1;
+      }
+    }
+
+    let stars = structuralStars + confirmationStars + crowdingAdj + divStars;
 
     const baseSize = calcPositionSize(macroScore, volRegime);
     const sizeAdj = aligned ? 1 : 0.5;
@@ -280,6 +320,8 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       nearDailyOpen,      // { date, price, label } of most recent matching daily open, or null
       retailCluster,      // { price, label, side } of nearby Myfxbook avg price cluster, or null
       dailyOpenCount: matchingOpens.length,
+      divTags,            // [ { label, tooltip } ] divergence signals aligned with level direction
+      divStars,           // 0–2 extra stars from RSI/WT divergence confirmation
       stars,
       structuralStars,    // Fix 8: level quality stars (isTight, pivots, OI, fib clusters)
       confirmationStars,  // Fix 8: directional alignment stars

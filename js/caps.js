@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { CAP_DEFAULTS } from './config.js';
+import { CAP_DEFAULTS, KALMAN5M_DEFAULTS } from './config.js';
 
 export async function loadCaps() {
   try {
@@ -104,6 +104,13 @@ function populateCfgForm(caps) {
   fill('nas100_gexPipCap',     nas100.gexPipCap);
   fill('nas100_enhPivAtrFrac', nas100.enhPivAtrFrac);
   fill('nas100_enhPivPipCap',  nas100.enhPivPipCap);
+  const k5 = caps.kalman5m || KALMAN5M_DEFAULTS;
+  fill('kalman5m_lookback',      k5.lookback);
+  fill('kalman5m_processNoise',  k5.processNoise);
+  fill('kalman5m_observNoise',   k5.observNoise);
+  fill('kalman5m_threshold',     k5.threshold);
+  fill('kalman5m_longScore',     k5.longScore);
+  fill('kalman5m_shortScore',    k5.shortScore);
 }
 
 function readCfgForm() {
@@ -160,6 +167,14 @@ function readCfgForm() {
       enhPivAtrFrac: num('nas100_enhPivAtrFrac'),
       enhPivPipCap:  num('nas100_enhPivPipCap'),
     },
+    kalman5m: {
+      lookback:     num('kalman5m_lookback'),
+      processNoise: num('kalman5m_processNoise'),
+      observNoise:  num('kalman5m_observNoise'),
+      threshold:    num('kalman5m_threshold'),
+      longScore:    num('kalman5m_longScore'),
+      shortScore:   num('kalman5m_shortScore'),
+    },
   };
 }
 
@@ -172,7 +187,12 @@ export async function saveCaps() {
 
   const payload = readCfgForm();
 
-  const allVals = [...Object.values(payload.fx), ...Object.values(payload.gold), ...Object.values(payload.nas100)];
+  const allVals = [
+    ...Object.values(payload.fx),
+    ...Object.values(payload.gold),
+    ...Object.values(payload.nas100),
+    ...Object.values(payload.kalman5m),
+  ];
   if (allVals.some(v => !v || v <= 0)) {
     status.textContent = '⚠ All values must be positive numbers';
     status.className = 'cfg-status err';
