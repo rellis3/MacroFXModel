@@ -1382,7 +1382,17 @@ export function renderSignalAndEntries(enhanced, pivots, asia, monday, quote, vo
   const signal   = runSignalEngine(S.compassData, volRegime);
   const tierData = (() => { try { return calculateTierScores(); } catch(e) { return null; } })();
   const entries  = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime)
-    .map(e => ({ ...e, signalScore: tierData ? computeSignalScore(e, tierData) : null }));
+    .map(e => ({ ...e, signalScore: tierData ? computeSignalScore(e, tierData) : null }))
+    .sort((a, b) => {
+      // Primary: signalScore descending (nulls sort last)
+      const sa = a.signalScore ?? -1;
+      const sb = b.signalScore ?? -1;
+      if (sb !== sa) return sb - sa;
+      // Secondary: totalStars descending
+      if (b.totalStars !== a.totalStars) return b.totalStars - a.totalStars;
+      // Tertiary: distance ascending
+      return a.distance - b.distance;
+    });
 
   // Recent 5m approach direction (newest-first; index 0 = forming bar)
   const approachArrow = (() => {
