@@ -33,13 +33,24 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    journal_store, journal_replay_store  — user's trade journal
 //    tg_config                            — Telegram bot credentials
 //    ai_alert_cfg                         — alert thresholds/pairs
+//    oi_store                             — user-pasted CME OI data (cannot auto-rebuild)
+//    cot_data, cot_urls, cot_url          — CFTC COT data + user-set report URLs
+//    caps                                 — user-configured proximity caps
 //
 //  Local file only (→ rebuilds on restart, no CF quota used):
 //    ai_entries_*  recomputed by levels.js within 30 min of startup
 //    ai_cron_cooldowns  acceptable to lose on redeploy (first alert re-fires once)
 //    ohlc_*, ohlc5m_*, ohlc30m_*, quote_*, compass_*, fredhistory_*  ephemeral caches
-//    oi_store, cot_data, surprise_index, events_*  re-fetched from upstream APIs
-const _CF_EXACT = new Set(['tg_config', 'ai_alert_cfg', 'journal_store', 'journal_replay_store']);
+//    surprise_index, events_*  re-fetched from Finnhub on next page load
+const _CF_EXACT = new Set([
+  'tg_config', 'ai_alert_cfg',
+  'journal_store', 'journal_replay_store',
+  'oi_store',               // user-pasted CME OI data — cannot be auto-rebuilt
+  'cot_data',               // parsed CFTC COT — requires user-set URL to rebuild
+  'cot_urls',               // user-configured CFTC report URLs (multi-asset)
+  'cot_url',                // legacy single CFTC URL key
+  'caps',                   // user-configured proximity caps
+]);
 function isCfKey(key) {
   return _CF_EXACT.has(key) || key.startsWith('journal_');
 }
