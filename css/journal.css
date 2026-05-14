@@ -58,6 +58,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .pair-pill-count{font-size:10px;padding:0 6px;border-radius:10px;font-family:'DM Mono',monospace}
 .pair-pill.active .pair-pill-count{background:rgba(255,255,255,.2)}
 .pair-pill:not(.active) .pair-pill-count{background:var(--s2);color:var(--text3)}
+#wlFilterBtn.active{background:rgba(99,102,241,0.15);color:#a5b4fc;border-color:rgba(99,102,241,0.4)}
 
 /* CALENDAR */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}

@@ -41,6 +41,11 @@
     <div class="sidebar-card">
       <div class="sec-lbl">Filter <span class="sec-badge">PAIR</span></div>
       <div id="pairNav"></div>
+      <div style="margin-top:8px">
+        <button id="wlFilterBtn" onclick="setWatchlistFilter(!filterWatchlist)" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--s2);color:var(--text3);cursor:pointer;font-size:11px;font-weight:500;text-align:left;display:flex;align-items:center;gap:6px;transition:all .15s">
+          <span>⭐</span><span>Watchlist levels only</span>
+        </button>
+      </div>
     </div>
     <div class="sidebar-card">
       <div class="cal-nav">
@@ -98,6 +103,9 @@
         </div>
         <div class="export-filter-group">
           <label class="star-cb-label"><input type="checkbox" id="exportTakenOnly" onchange="generateCSV()"><span>Taken trades only</span></label>
+        </div>
+        <div class="export-filter-group">
+          <label class="star-cb-label"><input type="checkbox" id="exportWatchlistOnly" onchange="generateCSV()"><span>⭐ Watchlist only</span></label>
         </div>
         <div class="export-filter-group">
           <span class="export-label">Max rows</span>

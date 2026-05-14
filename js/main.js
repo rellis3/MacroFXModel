@@ -715,6 +715,11 @@ window.saveToJournal = function() {
     const signal  = runSignalEngine(S.compassData, volRegime);
     const entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
 
+    // Build price lookup for watchlist levels so we can tag them on save
+    const watchlistPriceKeys = new Set(
+      (S.dailyWatchlist[sym] ?? []).map(w => w.price.toFixed(getDigits(sym)))
+    );
+
     const seenPrices = new Set();
     const levels = [];
 
@@ -741,7 +746,8 @@ window.saveToJournal = function() {
         pivotMatch:    c.pivotMatch || null,
         distance:      c.distance,
         tags,
-        source: 'fib',
+        source:    'fib',
+        watchlist: watchlistPriceKeys.has(c.price.toFixed(getDigits(sym))),
       });
     });
 
@@ -762,6 +768,7 @@ window.saveToJournal = function() {
         distance:      e.distance,
         tags:          (e.tags || []).map(t => ({ label: t.label, cls: t.cls || 'range' })),
         source:        'scanner',
+        watchlist:     watchlistPriceKeys.has(e.price.toFixed(getDigits(sym))),
       });
     });
 
@@ -789,7 +796,8 @@ window.saveToJournal = function() {
     (existing.levels || []).forEach(l => { existingMap[l.price + '_' + l.direction] = l; });
     const merged = levels.map(l => {
       const ex = existingMap[l.price + '_' + l.direction];
-      return ex ? { ...l, trade: ex.trade, outcome: ex.outcome, notes: ex.notes, slOverride: ex.slOverride, tpOverride: ex.tpOverride } : l;
+      // Preserve user-entered fields; let new save win on watchlist (it reflects today's computed list)
+      return ex ? { ...l, trade: ex.trade, outcome: ex.outcome, notes: ex.notes, slOverride: ex.slOverride, tpOverride: ex.tpOverride, watchlist: l.watchlist || ex.watchlist } : l;
     });
     jData[date][sym] = { levels: merged, macro, savedAt: new Date().toISOString() };
     try { localStorage.setItem(JKEY, JSON.stringify(jData)); } catch(storageErr) {

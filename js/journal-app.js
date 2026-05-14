@@ -7,6 +7,7 @@ let calViewYear  = new Date().getFullYear();
 let calViewMonth = new Date().getMonth();
 let currentView  = 'day';
 let levelSortOrder = 'default'; // 'default'|'price-asc'|'price-desc'|'stars-asc'|'stars-desc'|'sd-asc'|'sd-desc'
+let filterWatchlist = false;
 
 // ── KV helpers ──────────────────────────────────────────────────────────────
 async function kvGet(key){
@@ -309,11 +310,14 @@ function renderLevelCard(level,idx,date,pair){
     ocBtns=`<div class="trade-outcome">`+[{key:'win',label:'Win',cls:'active-win'},{key:'loss',label:'Loss',cls:'active-loss'},{key:'be',label:'BE',cls:'active-be'}]
       .map(o=>`<button class="outcome-btn ${outcome===o.key?o.cls:''}" onclick="setOutcome('${date}','${pair}',${idx},'${o.key}')">${o.label}</button>`).join('')+'</div>';
   }
+  const isWl    = !!level.watchlist;
+  const wlBadge = isWl ? `<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.35);margin-left:4px">⭐ Watchlist</span>` : '';
+  const wlBtn   = `<button title="${isWl?'Remove from watchlist':'Mark as watchlist level'}" onclick="toggleWatchlistLevel('${date}','${pair}',${idx})" style="background:none;border:1px solid ${isWl?'rgba(99,102,241,0.4)':'var(--border)'};border-radius:5px;padding:1px 7px;cursor:pointer;font-size:10px;color:${isWl?'#a5b4fc':'var(--text3)'};margin-left:auto">${isWl?'★ WL':'☆ WL'}</button>`;
   const narrative = levelNarrative(level, pair);
   return `<div class="level-card ${borderCls}">
     <div class="level-top">
       <span class="level-stars">${starsHtml}</span>
-      <span class="level-price">${priceStr}${replayBadge}</span>
+      <span class="level-price">${priceStr}${wlBadge}${replayBadge}</span>
       <span class="level-dir ${dirCls}">${dirLabel}</span>
       <div class="level-sltp">
         <div class="sltp-item"><span class="sltp-lbl">SL</span><span class="sltp-val sl">${slStr||'&mdash;'}</span></div>
@@ -323,7 +327,7 @@ function renderLevelCard(level,idx,date,pair){
     ${tags?`<div class="level-tags">${tags}</div>`:''}
     ${narrative}
     <div class="level-trade">
-      <div class="trade-status-btns">${tBtns}</div>${ocBtns}
+      <div class="trade-status-btns">${tBtns}${wlBtn}</div>${ocBtns}
       <div class="sltp-inputs">
         <div class="sltp-input-group"><span class="sltp-input-lbl">SL Price</span><input class="sltp-input" type="number" step="${getStep(pair)}" value="${slStr}" placeholder="${slStr||'0'}" onchange="setSLTP('${date}','${pair}',${idx},'sl',this.value)"></div>
         <div class="sltp-input-group"><span class="sltp-input-lbl">TP Price</span><input class="sltp-input" type="number" step="${getStep(pair)}" value="${tpStr}" placeholder="${tpStr||'0'}" onchange="setSLTP('${date}','${pair}',${idx},'tp',this.value)"></div>
@@ -384,6 +388,38 @@ function setTrade(date,pair,idx,status){ensurePath(date,pair,idx);const l=journa
 function setOutcome(date,pair,idx,oc){ensurePath(date,pair,idx);const l=journalData[date][pair].levels[idx];l.outcome=l.outcome===oc?'':oc;saveJournal();renderMain();renderQuickStats();}
 function setSLTP(date,pair,idx,field,val){ensurePath(date,pair,idx);const l=journalData[date][pair].levels[idx];if(field==='sl')l.slOverride=parseFloat(val);if(field==='tp')l.tpOverride=parseFloat(val);saveJournal();}
 function setNotes(date,pair,idx,val){ensurePath(date,pair,idx);journalData[date][pair].levels[idx].notes=val;saveJournal();}
+function toggleWatchlistLevel(date,pair,idx){ensurePath(date,pair,idx);const l=journalData[date][pair].levels[idx];l.watchlist=!l.watchlist;saveJournal();renderMain();renderQuickStats();}
+
+function setWatchlistFilter(v){
+  filterWatchlist=v;
+  document.getElementById('wlFilterBtn').classList.toggle('active',v);
+  renderPairNav();renderMain();renderCalendar();renderQuickStats();
+}
+
+// Recompute replay stats from a (potentially filtered) results array
+function computeReplayStatsFromResults(results){
+  const stats={total:0,touched:0,traded:0,wins:0,losses:0,eods:0,totalR:0};
+  const byFib={},byStar={};
+  for(const r of results){
+    stats.total++;
+    if(!r.touched)continue;
+    stats.touched++;
+    if(r.result==='tp'||r.result==='sl'||r.result==='eod')stats.traded++;
+    if(r.result==='tp')stats.wins++;
+    if(r.result==='sl')stats.losses++;
+    if(r.result==='eod')stats.eods++;
+    if(r.r!==null)stats.totalR+=r.r;
+    const fib=String(r.level?.todayFib??'other');
+    if(!byFib[fib])byFib[fib]={touched:0,tp:0,sl:0,eod:0,r:0};
+    byFib[fib].touched++;if(r.result==='tp')byFib[fib].tp++;if(r.result==='sl')byFib[fib].sl++;if(r.result==='eod')byFib[fib].eod++;if(r.r!==null)byFib[fib].r+=r.r;
+    const star=String(r.level?.stars??1);
+    if(!byStar[star])byStar[star]={touched:0,tp:0,sl:0,r:0};
+    byStar[star].touched++;if(r.result==='tp')byStar[star].tp++;if(r.result==='sl')byStar[star].sl++;if(r.r!==null)byStar[star].r+=r.r;
+  }
+  stats.totalR=+stats.totalR.toFixed(2);
+  stats.winRate=stats.traded>0?Math.round(stats.wins/stats.traded*100):null;
+  return{stats,byFib,byStar};
+}
 
 // ── Level sort helpers ───────────────────────────────────────────────────────
 
@@ -456,45 +492,43 @@ function collectReplayStats() {
     if (filterPair !== 'all' && pair !== filterPair) continue;
     if (!payload?.stats) continue;
 
-    agg.days++;
-    agg.total   += payload.stats.total;
-    agg.touched += payload.stats.touched;
-    agg.traded  += payload.stats.traded;
-    agg.wins    += payload.stats.wins;
-    agg.losses  += payload.stats.losses;
-    agg.eods    += (payload.stats.eods || 0);
-    agg.totalR  += payload.stats.totalR;
+    // When watchlist filter is on, recompute stats from per-level results filtered to watchlist only
+    let stats = payload.stats, byFib = payload.byFib || {}, byStar = payload.byStar || {};
+    if (filterWatchlist) {
+      const wlResults = (payload.results || []).filter(r => r.level?.watchlist);
+      if (!wlResults.length) continue;
+      ({ stats, byFib, byStar } = computeReplayStatsFromResults(wlResults));
+    }
 
-    // By pair
+    agg.days++;
+    agg.total   += stats.total;
+    agg.touched += stats.touched;
+    agg.traded  += stats.traded;
+    agg.wins    += stats.wins;
+    agg.losses  += stats.losses;
+    agg.eods    += (stats.eods || 0);
+    agg.totalR  += stats.totalR;
+
     if (!agg.byPair[pair]) agg.byPair[pair] = { days: 0, touched: 0, traded: 0, wins: 0, losses: 0, eods: 0, r: 0 };
     agg.byPair[pair].days++;
-    agg.byPair[pair].touched += payload.stats.touched;
-    agg.byPair[pair].traded  += payload.stats.traded;
-    agg.byPair[pair].wins    += payload.stats.wins;
-    agg.byPair[pair].losses  += payload.stats.losses;
-    agg.byPair[pair].eods    += (payload.stats.eods || 0);
-    agg.byPair[pair].r       += payload.stats.totalR;
+    agg.byPair[pair].touched += stats.touched;
+    agg.byPair[pair].traded  += stats.traded;
+    agg.byPair[pair].wins    += stats.wins;
+    agg.byPair[pair].losses  += stats.losses;
+    agg.byPair[pair].eods    += (stats.eods || 0);
+    agg.byPair[pair].r       += stats.totalR;
 
-    // By fib (merge across days)
-    for (const [fib, s] of Object.entries(payload.byFib || {})) {
+    for (const [fib, s] of Object.entries(byFib)) {
       if (!agg.byFib[fib]) agg.byFib[fib] = { touched: 0, tp: 0, sl: 0, eod: 0, r: 0 };
-      agg.byFib[fib].touched += s.touched;
-      agg.byFib[fib].tp      += s.tp;
-      agg.byFib[fib].sl      += s.sl;
-      agg.byFib[fib].eod     += s.eod;
-      agg.byFib[fib].r       += s.r;
+      agg.byFib[fib].touched += s.touched; agg.byFib[fib].tp += s.tp; agg.byFib[fib].sl += s.sl; agg.byFib[fib].eod += s.eod; agg.byFib[fib].r += s.r;
     }
 
-    // By star (merge across days)
-    for (const [star, s] of Object.entries(payload.byStar || {})) {
+    for (const [star, s] of Object.entries(byStar)) {
       if (!agg.byStar[star]) agg.byStar[star] = { touched: 0, tp: 0, sl: 0, r: 0 };
-      agg.byStar[star].touched += s.touched;
-      agg.byStar[star].tp      += s.tp;
-      agg.byStar[star].sl      += s.sl;
-      agg.byStar[star].r       += s.r;
+      agg.byStar[star].touched += s.touched; agg.byStar[star].tp += s.tp; agg.byStar[star].sl += s.sl; agg.byStar[star].r += s.r;
     }
 
-    agg.byDate.push({ date, pair, r: payload.stats.totalR, wins: payload.stats.wins, losses: payload.stats.losses, winRate: payload.stats.winRate });
+    agg.byDate.push({ date, pair, r: stats.totalR, wins: stats.wins, losses: stats.losses, winRate: stats.winRate });
   }
 
   agg.totalR  = +agg.totalR.toFixed(2);
@@ -634,6 +668,7 @@ function collectStats(){
       if(filterPair!=='all'&&pair!==filterPair)return;
       days.add(date);
       (v.levels||[]).forEach(l=>{
+        if(filterWatchlist&&!l.watchlist)return;
         total++;if(byPair[pair])byPair[pair].levels++;
         const s=Math.min(l.stars||1,7);if(byStar[s])byStar[s].levels++;
         if(l.trade==='long'||l.trade==='short'){
@@ -699,11 +734,14 @@ function _refreshExportDates(pair){
 
 function onExportPairChange(){_refreshExportDates(document.getElementById('exportPairSelect').value);generateCSV();}
 
-// Shared filter logic — applies star, taken-only, and max-rows filters for one pair/date.
+// Shared filter logic — applies star, taken-only, watchlist, and max-rows filters for one pair/date.
 function getFilteredLevels(pair,date){
   const dayObj=journalData[date];
   if(!dayObj||!dayObj[pair])return{levels:[],macro:{}};
   let levels=dayObj[pair].levels||[];
+
+  if(filterWatchlist||document.getElementById('exportWatchlistOnly')?.checked)
+    levels=levels.filter(l=>l.watchlist);
 
   const checkedStars=[...document.querySelectorAll('.star-cb:checked')].map(el=>parseInt(el.value,10));
   if(checkedStars.length>0)levels=levels.filter(l=>checkedStars.includes(l.stars||1));
