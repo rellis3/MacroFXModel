@@ -612,6 +612,9 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 .cfg-input:focus{outline:none;border-color:var(--blue)}
 .cfg-input:invalid{border-color:var(--red)}
 .cfg-hint{font-size:9.5px;color:var(--text3);line-height:1.4}
+.cfg-mode-note{margin-top:12px;padding:10px 13px;background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:var(--r);font-size:11px;color:var(--text2);line-height:1.55}
+.cfg-mode-note strong{color:var(--blue);font-weight:600}
+.cfg-mode-note code{font-family:'DM Mono',monospace;font-size:10.5px;background:var(--s2);padding:1px 5px;border-radius:4px;color:var(--text)}
 .cfg-divider{height:1px;background:var(--border);margin:14px 0}
 .cfg-footer{display:flex;align-items:center;gap:10px;padding:14px 20px;border-top:1px solid var(--border);background:var(--s2);border-radius:0 0 12px 12px;flex-wrap:wrap}
 .cfg-save-btn{background:var(--blue);border:none;border-radius:8px;color:#fff;padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s}

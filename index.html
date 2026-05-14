@@ -295,6 +295,10 @@ Example:
             <div class="cfg-hint">On: nearby Fib pairs within the merge radius are averaged into a single level. Off: every qualifying pair gets its own line, matching the Pine Script indicator exactly.</div>
           </div>
         </div>
+        <div class="cfg-mode-note">
+          <strong>To match the Pine Script indicator exactly:</strong> set <code>Price selection → Lowest</code> and <code>Cluster merge → Off</code>, then hit Save to KV. All consumers — dashboard, backtest, and Telegram alerts — update immediately.<br><br>
+          <strong>Default (Midpoint + On)</strong> keeps the current dashboard behaviour: nearby Fib pairs are averaged into one level, which gives fewer, smoother lines. Switch to Pine Script mode when you want the dashboard grey lines to sit at the same price as the orange indicator lines on your chart.
+        </div>
       </div>
 
       <div class="cfg-section">
