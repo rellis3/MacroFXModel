@@ -252,6 +252,11 @@ Example:
 
     <div id="alertModalStatus" class="cot-modal-status" style="min-height:18px;margin-bottom:8px"></div>
 
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:10px 12px;background:var(--bg3,#1e2130);border-radius:8px;border:1px solid var(--border,#2a2d3e)">
+      <button id="alertPushBtn" class="oi-btn" onclick="window._forceKVSync()" style="min-width:130px">🔄 Push to Bot</button>
+      <span id="alertPushStatus" style="font-size:12px;color:var(--text3,#6b7280)">Force-syncs entry data to Railway bot immediately (bypasses 30-min throttle)</span>
+    </div>
+
     <div class="oi-actions">
       <button class="oi-btn" onclick="closeAlertModal()">Close</button>
       <button class="oi-btn oi-btn-primary" onclick="saveAlertModal();updateAlertBtn();startBackgroundStreams()">Save Alert Config</button>

@@ -10,6 +10,7 @@ import { hmmSignalScore } from '../hmm.js';
 import { computeARMAForecast, computeRegimeTransition } from './arma.js';
 import { computeRangeBias, openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal } from './range-bias.js';
 import { renderWatchlistPanel } from './watchlist.js';
+import { gradeEntry } from './trade-grade.js';
 
 export { openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal };
 
@@ -1420,6 +1421,20 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       return `<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;background:${bg};color:${col};border:1px solid ${bd};margin-left:4px" title="Signal quality: HMM regime 20% · Bayesian 30% · Macro tiers 25% · Range bias 15% · Structure 10%">${s}%</span>`;
     })();
 
+    const _gradeBanner = (() => {
+      if (e.signalScore == null) return '';
+      const g = gradeEntry(e, hmmData);
+      const vi = g.verdict === 'TAKE' ? '✅' : g.verdict === 'WATCH' ? '👁' : g.verdict === 'CAUTION' ? '⚠️' : '🚫';
+      const reasonStr  = g.reasons.slice(0, 2).join(' · ');
+      const warningStr = g.warnings.slice(0, 1)[0] ?? '';
+      return `<div style="display:flex;align-items:center;gap:6px;padding:3px 6px 3px 0;border-bottom:1px solid var(--border);margin-bottom:2px">
+        <span style="font-size:9.5px;font-weight:800;padding:1px 6px;border-radius:8px;background:${g.color}20;color:${g.color};border:1px solid ${g.color}44;letter-spacing:.05em;flex-shrink:0">${g.grade}</span>
+        <span style="font-size:9.5px;font-weight:700;color:${g.color};flex-shrink:0">${vi} ${g.verdict}</span>
+        ${reasonStr ? `<span style="font-size:9px;color:var(--text3);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${g.reasons.join(' · ')}">${reasonStr}</span>` : ''}
+        ${warningStr ? `<span style="font-size:9px;color:#f59e0b;flex-shrink:0" title="${g.warnings.join(' · ')}">⚠ ${warningStr}</span>` : ''}
+      </div>`;
+    })();
+
     return `
     <div class="entry-card ${cls}">
       <div class="ec-top">
@@ -1429,6 +1444,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
         <span class="ec-dir ${e.direction}">${e.direction === 'long' ? '↑ BUY' : '↓ SELL'}</span>
         <span class="ec-dist">${above ? '↑' : '↓'} ${e.distance.toFixed(0)}${unit}</span>
       </div>
+      ${_gradeBanner}
       ${confirmBanner}
       ${ecRegimeRow}
       <div class="ec-layers">${tagsHtml}</div>
