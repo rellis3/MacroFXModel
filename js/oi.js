@@ -330,6 +330,9 @@ export function processOIData() {
   closeOIModal();
   window.renderAll();
   oiToast(`${pair} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}`);
+
+  // Push updated entry data to Railway bot immediately so OI levels are reflected
+  window._forceKVSync?.().catch(() => {});
 }
 
 export function removeOIInstrument(pair) {

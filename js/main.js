@@ -19,7 +19,7 @@ import { detectSession, computeSessionOpens, computeDailyOpens } from './session
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 import { exportWatchlistCSV } from './watchlist.js';
-import { checkAndSendAlerts, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, loadAlertCfg } from './alerts.js';
+import { checkAndSendAlerts, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, loadAlertCfg, forceKVSync } from './alerts.js';
 
 // ── Debounced renderAll ───────────────────────────────────────────────────────
 // Prevents concurrent DOM mutations when async compass resolve + quote refresh
@@ -63,6 +63,15 @@ window.closeAlertModal        = closeAlertModal;
 window.saveAlertModal         = saveAlertModal;
 window.saveTelegramCreds      = saveTelegramCreds;
 window.sendTestAlert          = sendTestAlert;
+window._forceKVSync           = async function() {
+  const btn = document.getElementById('alertPushBtn');
+  const lbl = document.getElementById('alertPushStatus');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing…'; }
+  if (lbl) lbl.textContent = '';
+  const result = await forceKVSync();
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Push to Bot'; }
+  if (lbl) lbl.textContent = result.ok ? '✓ Pushed to Railway bot' : `✗ ${result.error ?? 'failed'}`;
+};
 
 // ── Initialise state ─────────────────────────────────────────────────────────
 S.currentPair = PAIRS[0];

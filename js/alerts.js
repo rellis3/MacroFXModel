@@ -426,3 +426,18 @@ async function loadBotStatus() {
     statusEl.className   = 'alert-bot-status';
   }
 }
+
+// ── Force KV sync ─────────────────────────────────────────────────────────────
+// Clears per-pair throttle timers so next checkAndSendAlerts() call immediately
+// re-pushes all entry data to KV. Used after OI update or manual button press.
+export async function forceKVSync() {
+  for (const p of PAIRS) {
+    _kvEntrySyncTimes.set(p.symbol, 0);
+  }
+  try {
+    await checkAndSendAlerts();
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
