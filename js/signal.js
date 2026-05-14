@@ -1092,8 +1092,10 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
     </button>
   </div>`;
 
+  const watchlistPanel = renderWatchlistPanel(sym, quote, S.spreadData[sym], S.sessionData, S.eventRisk);
+
   if (!entries || entries.length === 0) {
-    return rbSettingsBtn + `<div class="ec-no-entries">
+    return watchlistPanel + rbSettingsBtn + `<div class="ec-no-entries">
       🎯 No high-confluence entries found<br>
       <span style="font-size:10px">Requires Fib confluence + at least one of: OI wall, pivot, range boundary, signal alignment</span>
     </div>`;
@@ -1114,7 +1116,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
 
   // O-to-C Forecast card — rendered below GARCH CI section
   const otcCard = (() => {
-    if (!otcForecast) return `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Insufficient history for O-to-C forecast — need 30+ daily bars</div>`;
+    if (!otcForecast) return '';
     const f = otcForecast;
     const charCol  = f.sessionChar === 'TRENDING' ? 'var(--green)'  : f.sessionChar === 'CHOPPY' ? 'var(--red)'  : 'var(--blue)';
     const charBg   = f.sessionChar === 'TRENDING' ? 'var(--green-bg)' : f.sessionChar === 'CHOPPY' ? 'var(--red-bg)' : 'var(--blue-bg)';
@@ -1262,8 +1264,6 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       <span>best ${best.price.toFixed(getDigits(sym))} ${best.direction === 'long' ? '↑' : '↓'} @ ${best.signalScore}%</span>
     </div>`;
   })();
-
-  const watchlistPanel = renderWatchlistPanel(sym, quote, S.spreadData[sym], S.sessionData, S.eventRisk);
 
   return watchlistPanel + volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + hmmBanner + pairScoreBanner + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
