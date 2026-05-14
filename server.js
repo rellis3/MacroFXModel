@@ -301,16 +301,18 @@ async function monitorTick() {
       const proxPips = state.cfg.proxPips?.[sym] ?? state.cfg.proxPips?.default ?? 5;
       const proxDist = proxPips * pipSz;
 
-      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0, skipScore = 0;
+      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0, skipScore = 0, skipAligned = 0;
 
       // Sort entries by signalScore desc so highest quality alerts fire first
       const sortedEntries = [...bucket.data].sort((a, b) => (b.signalScore ?? -1) - (a.signalScore ?? -1));
 
       for (const entry of sortedEntries) {
-        if ((entry.totalStars ?? 0) < (state.cfg.minStars ?? 4))                          { skipStars++; continue; }
-        if (!entry.direction)                                                               { skipDir++;   continue; }
-        if (state.cfg.onlyAligned && !entry.signalAligned)                                { skipDir++;   continue; }
-        if (state.cfg.minSignalScore && (entry.signalScore ?? 0) < state.cfg.minSignalScore) { skipScore++; continue; }
+        if ((entry.totalStars ?? 0) < (state.cfg.minStars ?? 4))                               { skipStars++;   continue; }
+        if (!entry.direction)                                                                    { skipDir++;     continue; }
+        // onlyAligned: only filter when signalAligned is explicitly false (browser-evaluated).
+        // Server-side entries omit the field entirely — treat as "unknown", let through.
+        if (state.cfg.onlyAligned && entry.signalAligned === false)                            { skipAligned++; continue; }
+        if (state.cfg.minSignalScore && (entry.signalScore ?? 0) < state.cfg.minSignalScore)   { skipScore++;   continue; }
         // Skip counter-trend fades when HMM shows strong trend opposing direction
         const _hmm = state.hmmRegimes[sym];
         if (_hmm?.regime === 'TREND' && _hmm.trendProb > 0.75) {
@@ -341,7 +343,7 @@ async function monitorTick() {
       if (doSummary && bucket.data.length > 0) {
         const maxStars = Math.max(...bucket.data.map(e => e.totalStars ?? 0));
         const maxScore = Math.max(...bucket.data.map(e => e.signalScore ?? 0));
-        summaryLines.push(`${sym}: ${bucket.data.length} entries max=${maxStars}★ score=${maxScore}% skip=${skipStars}⭐/${skipScore}score/${skipDir}dir/${skipProx}prox/${skipCooldown}cd`);
+        summaryLines.push(`${sym}: ${bucket.data.length} entries max=${maxStars}★ score=${maxScore}% skip=${skipStars}⭐/${skipScore}score/${skipDir}dir/${skipAligned}align/${skipProx}prox/${skipCooldown}cd`);
       }
     }
 

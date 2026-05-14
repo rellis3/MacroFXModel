@@ -304,15 +304,16 @@ function buildEntries(allConfs, currentPrice, atr, sym) {
     if ((c.density || 1) >= 3)  tags.push('Dense Zone');
 
     return {
-      price:         parseFloat(c.price.toFixed(digits)),
+      price:      parseFloat(c.price.toFixed(digits)),
       direction,
-      totalStars:    stars,
-      sl:            sl != null ? parseFloat(sl.toFixed(digits)) : null,
-      tp:            tp != null ? parseFloat(tp.toFixed(digits)) : null,
+      totalStars: stars,
+      sl:         sl != null ? parseFloat(sl.toFixed(digits)) : null,
+      tp:         tp != null ? parseFloat(tp.toFixed(digits)) : null,
       tpNote,
       rrRatio,
       tags,
-      signalAligned: false, // no macro bias on server; browser re-enhances on load
+      // signalAligned intentionally omitted — no macro bias available server-side.
+      // monitorTick treats absent/null as "not evaluated" and skips the onlyAligned filter.
     };
   }).filter(e => e.direction != null);
 }

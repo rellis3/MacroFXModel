@@ -496,7 +496,7 @@ export async function aiRenderCard(state, payload, generatedAt) {
   }
   else if (state === 'error') {
     bodyHtml = `<div class="ai-error">⚠ Analysis failed: ${payload || 'Unknown error'}<br><br>
-      Ensure <strong>ANT_KEY</strong> is set in Cloudflare Pages → Settings → Environment Variables (both Production &amp; Preview scopes).</div>`;
+      Ensure <strong>ANT_KEY</strong> is set in Railway → Variables, and that your Anthropic account has credits at console.anthropic.com → Plans &amp; Billing.</div>`;
   }
   else if (state === 'empty') {
     bodyHtml = `<div class="ai-empty">
