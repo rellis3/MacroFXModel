@@ -571,6 +571,35 @@ async function loadAll() {
         .catch(() => {});
     }
 
+    // Daily watchlist — Phase 1 scores from server; refresh if date changed
+    fetch('/api/daily/watchlist')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.watchlist && Object.keys(data.watchlist).length) {
+          S.dailyWatchlist = data.watchlist;
+          S.watchlistDate  = data.date;
+          renderAllDebounced();
+        }
+      })
+      .catch(() => {});
+
+    window._manualWatchlist = () => {
+      fetch('/api/daily/watchlist/run', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+          if (d.ok) return fetch('/api/daily/watchlist').then(r => r.json());
+          throw new Error(d.error ?? 'recompute failed');
+        })
+        .then(data => {
+          if (data?.watchlist) {
+            S.dailyWatchlist = data.watchlist;
+            S.watchlistDate  = data.date;
+            renderAllDebounced();
+          }
+        })
+        .catch(e => console.warn('[watchlist] manual recompute failed:', e.message));
+    };
+
     renderAll();
     updateStatus('ok', `${S.currentPair.name} loaded · ${S.asiaRangeData[S.currentPair.symbol].confluences.length + S.mondayRangeData[S.currentPair.symbol].confluences.length} total confluences`);
   } catch (error) {

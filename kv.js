@@ -50,6 +50,7 @@ const _CF_EXACT = new Set([
   'cot_urls',               // user-configured CFTC report URLs (multi-asset)
   'cot_url',                // legacy single CFTC URL key
   'caps',                   // user-configured proximity caps
+  'daily_watchlist',        // top-6 levels per pair, computed at 06:05 London — persists within trading day
 ]);
 function isCfKey(key) {
   return _CF_EXACT.has(key) || key.startsWith('journal_');

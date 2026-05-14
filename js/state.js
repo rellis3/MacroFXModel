@@ -28,4 +28,6 @@ export const S = {
   hasOanda:        false,  // true when OANDA_KEY is configured server-side
   hasMyfxbook:     false,  // true when MYFXBOOK_SESSION is configured server-side
   hmmRegimes:      {},     // { 'EUR/USD': { regime, trendDir, rangeProb, trendProb, computedAt } }
+  dailyWatchlist:  {},     // { 'EUR/USD': [{...entry, phase1Score}] } — top 6 levels, set at 06:05 London
+  watchlistDate:   null,   // 'YYYY-MM-DD' London date of last watchlist computation
 };

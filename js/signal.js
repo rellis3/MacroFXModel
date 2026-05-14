@@ -9,6 +9,7 @@ import { detectCrossConflict, calculateTierScores, computeBayesianScore } from '
 import { hmmSignalScore } from '../hmm.js';
 import { computeARMAForecast, computeRegimeTransition } from './arma.js';
 import { computeRangeBias, openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal } from './range-bias.js';
+import { renderWatchlistPanel } from './watchlist.js';
 
 export { openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal };
 
@@ -1262,7 +1263,9 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
     </div>`;
   })();
 
-  return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + hmmBanner + pairScoreBanner + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
+  const watchlistPanel = renderWatchlistPanel(sym, quote, S.spreadData[sym], S.sessionData, S.eventRisk);
+
+  return watchlistPanel + volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + hmmBanner + pairScoreBanner + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
     const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 9 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';

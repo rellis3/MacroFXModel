@@ -89,6 +89,8 @@ const state = {
   cooldowns:           {},   // { 'EURUSD_1.0847_long': lastSentMs }
   prices:              {},   // { 'EUR/USD': { price: n, at: ms } }
   hmmRegimes:          {},   // { 'EUR/USD': { regime, trendDir, rangeProb, ... } }
+  dailyWatchlist:      {},   // { 'EUR/USD': [{...entry, phase1Score}] } — top 6 per pair, set at 06:05 London
+  watchlistDate:       null, // 'YYYY-MM-DD' London date of last watchlist run
   cfg:                 null,
   tg:                  null,
   lastRun:             null,
@@ -263,6 +265,65 @@ function formatAlert(sym, entry, price, distPips) {
   return parts.join('\n');
 }
 
+// ── Daily watchlist (Phase 1) ─────────────────────────────────────────────────
+
+function scorePhase1(entry, hmm) {
+  let score = 0;
+  score += Math.min((entry.totalStars ?? 0) * 3, 15);
+  const tags = (entry.tags ?? []).join(' ');
+  if (tags.includes('Cross-Session')) score += 12;
+  if (tags.includes('Dense Zone'))    score += 6;
+  if (tags.includes('Tight'))         score += 4;
+  if (hmm?.regime === 'RANGE') {
+    score += Math.round((hmm.rangeProb ?? 0.5) * 8);
+  } else if (hmm?.regime === 'TREND') {
+    const withTrend = (entry.direction === 'long' && hmm.trendDir === 'BULL')
+                   || (entry.direction === 'short' && hmm.trendDir === 'BEAR');
+    if (withTrend) score += 5;
+  }
+  return Math.min(score, 40);
+}
+
+function computeDailyWatchlist(pairs, cfg) {
+  const result = {};
+  const minStars   = cfg?.watchlist?.minStars   ?? 2;
+  const topN       = cfg?.watchlist?.topN        ?? 6;
+  const minPhase1  = cfg?.watchlist?.minPhase1   ?? 0;
+
+  for (const sym of pairs) {
+    const bucket = state.levels[sym];
+    if (!bucket?.data?.length) continue;
+    const hmm = state.hmmRegimes[sym] ?? null;
+
+    const scored = bucket.data
+      .filter(e => (e.totalStars ?? 0) >= minStars && e.direction)
+      .map(e => ({ ...e, phase1Score: scorePhase1(e, hmm) }))
+      .filter(e => e.phase1Score >= minPhase1)
+      .sort((a, b) => b.phase1Score - a.phase1Score)
+      .slice(0, topN);
+
+    if (scored.length) result[sym] = scored;
+  }
+  return result;
+}
+
+async function runDailyWatchlist() {
+  const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+  const watchlist = computeDailyWatchlist(pairs, state.cfg);
+  const dateStr   = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); // YYYY-MM-DD
+
+  state.dailyWatchlist = watchlist;
+  state.watchlistDate  = dateStr;
+
+  await kv.put('daily_watchlist', JSON.stringify({ date: dateStr, watchlist }));
+
+  const totalLevels = Object.values(watchlist).reduce((s, a) => s + a.length, 0);
+  console.log(`[WATCHLIST] Phase 1 computed for ${dateStr} — ${Object.keys(watchlist).length} pairs, ${totalLevels} levels`);
+  for (const [sym, levels] of Object.entries(watchlist)) {
+    console.log(`  ${sym}: ${levels.map(l => `${l.price}(${l.phase1Score}pt)`).join(', ')}`);
+  }
+}
+
 // ── Main monitoring tick ──────────────────────────────────────────────────────
 
 async function monitorTick() {
@@ -275,6 +336,16 @@ async function monitorTick() {
 
     // Reload Telegram + alert config from KV every 60 s
     if (now - state.cfgLoadedAt > 60_000) await reloadConfig();
+
+    // Daily watchlist Phase 1 — runs once at 06:05 London (Asia close + 5 min buffer)
+    {
+      const ldn = new Date().toLocaleString('en-US', { timeZone: 'Europe/London', hour12: false, hour: '2-digit', minute: '2-digit' });
+      const [lh, lm] = ldn.split(':').map(Number);
+      const todayLdn = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+      if (lh === 6 && lm >= 5 && lm <= 9 && state.watchlistDate !== todayLdn) {
+        runDailyWatchlist().catch(e => console.error('[WATCHLIST] Error:', e.message));
+      }
+    }
 
     // Reload entry levels from KV every 5 min
     if (now - state.levelsLoadedAt > 300_000) await reloadLevels();
@@ -555,6 +626,21 @@ app.get('/api/hmm/regimes', (_req, res) => {
   res.json(state.hmmRegimes);
 });
 
+// Daily watchlist — Phase 1 scored levels
+app.get('/api/daily/watchlist', (_req, res) => {
+  res.json({ date: state.watchlistDate, watchlist: state.dailyWatchlist });
+});
+
+// Manually trigger a watchlist recompute (ignores date guard)
+app.post('/api/daily/watchlist/run', async (_req, res) => {
+  try {
+    await runDailyWatchlist();
+    res.json({ ok: true, date: state.watchlistDate, pairs: Object.keys(state.dailyWatchlist).length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Claude AI analysis — handled natively in Node rather than via callWorker
 // so the Anthropic fetch runs in the Railway process and benefits from env vars directly.
 app.post('/api/analysis', async (req, res) => {
@@ -710,6 +796,19 @@ async function runLevelsRefresh() {
 await kv.load();
 await reloadConfig();
 await reloadLevels();
+
+// Restore daily watchlist from KV so a Railway restart doesn't clear the day's levels
+{
+  const saved = await kv.get('daily_watchlist');
+  if (saved) {
+    try {
+      const { date, watchlist } = JSON.parse(saved);
+      state.dailyWatchlist = watchlist ?? {};
+      state.watchlistDate  = date ?? null;
+      if (date) console.log(`[WATCHLIST] Restored from KV — ${date}, ${Object.keys(watchlist ?? {}).length} pairs`);
+    } catch { /* ignore corrupt data */ }
+  }
+}
 
 setInterval(monitorTick, MONITOR_MS);
 monitorTick().catch(console.error);
