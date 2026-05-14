@@ -6,6 +6,7 @@ import { getCaps } from './caps.js';
 import { oiFmtStrike, computeGravityRegime } from './oi.js';
 import { getPairSurpriseScore } from './events.js';
 import { detectCrossConflict, calculateTierScores, computeBayesianScore } from './macro.js';
+import { hmmSignalScore } from '../hmm.js';
 import { computeARMAForecast, computeRegimeTransition } from './arma.js';
 import { computeRangeBias, openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal } from './range-bias.js';
 
@@ -419,35 +420,40 @@ export function renderSignalCard(signal, volRegime, otcForecast) {
 }
 
 // ── Signal quality score ──────────────────────────────────────────────────────
-// Composite 0–100% score combining Bayesian bounce probability, macro regime
-// alignment, range bias conviction, and structural level quality.
-// Weights: Bayesian 35% · Regime 30% · Range conviction 20% · Structure 15%
-export function computeSignalScore(entry, tierData) {
+// Composite 0–100% score across 5 factors:
+//   HMM regime alignment  20% — is market ranging (ideal for fades) or trending?
+//   Bayesian bounce prob  30% — macro tier evidence for bounce direction
+//   Regime tier alignment 25% — T1-T8 tiers supporting the trade direction
+//   Range bias conviction 15% — 15 range features confirming the fade
+//   Structural quality    10% — level density, tight fib, cross-session, pivots
+export function computeSignalScore(entry, tierData, hmmData = null) {
   if (!entry?.direction || !tierData?.tiers) return null;
   const isLong = entry.direction === 'long';
   const tiers  = tierData.tiers;
 
-  // 1. Bayesian bounce probability (35%)
-  // prob measures continuation in bayes.dir — for a reversion entry, we want
-  // the bounce direction to match, so flip when the Bayesian direction conflicts.
+  // 1. HMM regime alignment (20%)
+  // RANGE regime = ideal for fades. TREND opposing direction = risky.
+  const hmmScore = hmmSignalScore(entry.direction, hmmData);
+
+  // 2. Bayesian bounce probability (30%)
+  // prob measures continuation in bayes.dir — flip when direction conflicts.
   const bayes = computeBayesianScore(tiers);
   let bayesScore = 0.5;
   if (bayes && bayes.dir !== 'neutral') {
     bayesScore = bayes.dir === entry.direction ? bayes.prob : 1 - bayes.prob;
   }
 
-  // 2. Macro regime tier alignment (30%)
-  // Count tiers that support the bounce direction (not na).
+  // 3. Macro regime tier alignment (25%)
   const activeTiers = tiers.filter(t => !t.na);
   const agreeTiers  = activeTiers.filter(t => isLong ? t.score > 0 : t.score < 0).length;
   const regimeScore = activeTiers.length > 0 ? agreeTiers / activeTiers.length : 0.5;
 
-  // 3. Range bias conviction (20%)
-  // conviction is totalPts/maxPts and can be slightly negative — map [-1,1] → [0,1].
+  // 4. Range bias conviction (15%)
+  // conviction is totalPts/maxPts — map [-1,1] → [0,1].
   const conviction = entry.rangeBias?.conviction ?? 0;
   const rangeScore = Math.max(0, Math.min(1, (conviction + 1) / 2));
 
-  // 4. Structural level quality (15%)
+  // 5. Structural level quality (10%)
   const density     = Math.min(entry.density ?? 1, 3);
   const structScore = Math.min(1,
     (density / 3) * 0.60 +
@@ -457,7 +463,13 @@ export function computeSignalScore(entry, tierData) {
     (entry.oiMatch           ? 0.03 : 0),
   );
 
-  return Math.round((bayesScore * 0.35 + regimeScore * 0.30 + rangeScore * 0.20 + structScore * 0.15) * 100);
+  return Math.round((
+    hmmScore    * 0.20 +
+    bayesScore  * 0.30 +
+    regimeScore * 0.25 +
+    rangeScore  * 0.15 +
+    structScore * 0.10
+  ) * 100);
 }
 
 export function signalScoreTier(score) {
@@ -1350,7 +1362,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       const col = tier === 'strong' ? 'var(--green)' : tier === 'moderate' ? 'var(--amber)' : 'var(--text3)';
       const bg  = tier === 'strong' ? 'rgba(34,197,94,0.10)' : tier === 'moderate' ? 'rgba(245,158,11,0.10)' : 'var(--s2)';
       const bd  = tier === 'strong' ? 'rgba(34,197,94,0.30)' : tier === 'moderate' ? 'rgba(245,158,11,0.30)' : 'var(--border)';
-      return `<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;background:${bg};color:${col};border:1px solid ${bd};margin-left:4px" title="Signal quality: Bayesian 35% · Regime 30% · Range bias 20% · Structure 15%">${s}%</span>`;
+      return `<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;background:${bg};color:${col};border:1px solid ${bd};margin-left:4px" title="Signal quality: HMM regime 20% · Bayesian 30% · Macro tiers 25% · Range bias 15% · Structure 10%">${s}%</span>`;
     })();
 
     return `
@@ -1381,8 +1393,9 @@ export function renderSignalAndEntries(enhanced, pivots, asia, monday, quote, vo
 
   const signal   = runSignalEngine(S.compassData, volRegime);
   const tierData = (() => { try { return calculateTierScores(); } catch(e) { return null; } })();
+  const hmmData  = S.hmmRegimes?.[S.currentPair?.symbol] ?? null;
   const entries  = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime)
-    .map(e => ({ ...e, signalScore: tierData ? computeSignalScore(e, tierData) : null }))
+    .map(e => ({ ...e, signalScore: tierData ? computeSignalScore(e, tierData, hmmData) : null }))
     .sort((a, b) => {
       // Primary: signalScore descending (nulls sort last)
       const sa = a.signalScore ?? -1;

@@ -27,4 +27,5 @@ export const S = {
   myfxSentiment:   {},     // Myfxbook community outlook per symbol (EURUSD key format)
   hasOanda:        false,  // true when OANDA_KEY is configured server-side
   hasMyfxbook:     false,  // true when MYFXBOOK_SESSION is configured server-side
+  hmmRegimes:      {},     // { 'EUR/USD': { regime, trendDir, rangeProb, trendProb, computedAt } }
 };

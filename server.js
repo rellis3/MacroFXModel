@@ -16,6 +16,7 @@ import { fileURLToPath } from 'url';
 import * as kv           from './kv.js';
 import worker            from './_worker.js';
 import { refreshAllPairs } from './levels.js';
+import { fitHMM, hmmSignalScore } from './hmm.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -87,6 +88,7 @@ const state = {
   levels:              {},   // { 'EUR/USD': { data: [...], timestamp: ms } }
   cooldowns:           {},   // { 'EURUSD_1.0847_long': lastSentMs }
   prices:              {},   // { 'EUR/USD': { price: n, at: ms } }
+  hmmRegimes:          {},   // { 'EUR/USD': { regime, trendDir, rangeProb, ... } }
   cfg:                 null,
   tg:                  null,
   lastRun:             null,
@@ -189,6 +191,22 @@ async function fetchPrice(sym) {
   }
 }
 
+async function fetchDailyCandles(sym, count = 60) {
+  const instrument = sym.replace('/', '_');
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+  try {
+    const r = await fetch(
+      `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=D&count=${count}&price=M`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` } }
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.candles?.filter(c => c.complete && c.mid).map(c => parseFloat(c.mid.c)) ?? null;
+  } catch { return null; }
+}
+
 async function sendTelegram(token, chatId, text) {
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -204,7 +222,7 @@ function formatAlert(sym, entry, price, distPips) {
   const digits = PRICE_DIGITS[sym] ?? 5;
   const unit   = sym === 'NAS100_USD' ? 'pts' : 'p';
   const dir    = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
-  const stars  = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 7));
+  const stars  = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 9));
   const at     = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
 
   const parts = [
@@ -222,10 +240,25 @@ function formatAlert(sym, entry, price, distPips) {
   if (sltp) parts.push(sltp);
 
   if (entry.rrRatio) parts.push(`R:R 1:${entry.rrRatio}`);
+
+  if (entry.signalScore != null) {
+    const tier = entry.signalScore >= 65 ? 'Strong' : entry.signalScore >= 50 ? 'Moderate' : 'Weak';
+    parts.push(`📊 Signal: <b>${entry.signalScore}%</b> · ${tier}`);
+  }
+
   if (entry.rangeBias) {
     parts.push(`Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗`);
   }
-  parts.push('<i>🤖 MacroFX Server</i>');
+
+  const hmm = state.hmmRegimes[sym];
+  if (hmm) {
+    const hmmLine = hmm.regime === 'RANGE'
+      ? `📊 HMM: Range (${Math.round(hmm.rangeProb * 100)}% prob) — fade supported`
+      : `📊 HMM: Trend ${hmm.trendDir ?? ''} (${Math.round(hmm.trendProb * 100)}% prob)`;
+    parts.push(hmmLine);
+  }
+
+  parts.push('<i>🚂 MacroFX Railway</i>');
 
   return parts.join('\n');
 }
@@ -268,12 +301,23 @@ async function monitorTick() {
       const proxPips = state.cfg.proxPips?.[sym] ?? state.cfg.proxPips?.default ?? 5;
       const proxDist = proxPips * pipSz;
 
-      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0;
+      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0, skipScore = 0;
 
-      for (const entry of bucket.data) {
-        if ((entry.totalStars ?? 0) < (state.cfg.minStars ?? 4)) { skipStars++;    continue; }
-        if (!entry.direction)                                      { skipDir++;      continue; }
-        if (state.cfg.onlyAligned && !entry.signalAligned)        { skipDir++;      continue; }
+      // Sort entries by signalScore desc so highest quality alerts fire first
+      const sortedEntries = [...bucket.data].sort((a, b) => (b.signalScore ?? -1) - (a.signalScore ?? -1));
+
+      for (const entry of sortedEntries) {
+        if ((entry.totalStars ?? 0) < (state.cfg.minStars ?? 4))                          { skipStars++; continue; }
+        if (!entry.direction)                                                               { skipDir++;   continue; }
+        if (state.cfg.onlyAligned && !entry.signalAligned)                                { skipDir++;   continue; }
+        if (state.cfg.minSignalScore && (entry.signalScore ?? 0) < state.cfg.minSignalScore) { skipScore++; continue; }
+        // Skip counter-trend fades when HMM shows strong trend opposing direction
+        const _hmm = state.hmmRegimes[sym];
+        if (_hmm?.regime === 'TREND' && _hmm.trendProb > 0.75) {
+          const isLong = entry.direction === 'long';
+          const withTrend = (isLong && _hmm.trendDir === 'BULL') || (!isLong && _hmm.trendDir === 'BEAR');
+          if (!withTrend) { skipScore++; continue; }
+        }
 
         const dist = Math.abs(entry.price - price);
         if (dist > proxDist)                                       { skipProx++;     continue; }
@@ -296,7 +340,8 @@ async function monitorTick() {
 
       if (doSummary && bucket.data.length > 0) {
         const maxStars = Math.max(...bucket.data.map(e => e.totalStars ?? 0));
-        summaryLines.push(`${sym}: ${bucket.data.length} entries max=${maxStars}★ skip=${skipStars}⭐/${skipDir}dir/${skipProx}prox/${skipCooldown}cd`);
+        const maxScore = Math.max(...bucket.data.map(e => e.signalScore ?? 0));
+        summaryLines.push(`${sym}: ${bucket.data.length} entries max=${maxStars}★ score=${maxScore}% skip=${skipStars}⭐/${skipScore}score/${skipDir}dir/${skipProx}prox/${skipCooldown}cd`);
       }
     }
 
@@ -342,6 +387,11 @@ app.get('/api/monitor/status', (_req, res) => {
     ),
     recentErrors:        state.errors.slice(-5),
   });
+});
+
+// HMM regime data for all pairs
+app.get('/api/hmm/regimes', (_req, res) => {
+  res.json(state.hmmRegimes);
 });
 
 // SSE live price stream — must be handled before the generic /api/* catch-all
@@ -413,8 +463,26 @@ async function runLevelsRefresh() {
     const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
     await refreshAllPairs(pairs);
     state.levelsRefreshAt = Date.now();
-    // Reload in-memory levels so the monitor tick picks up the new entries immediately
     await reloadLevels();
+
+    // Compute HMM regime for each pair using last 60 daily closes
+    const hmmResults = [];
+    for (const sym of pairs) {
+      const closes = await fetchDailyCandles(sym, 61);
+      if (closes && closes.length >= 20) {
+        const returns = [];
+        for (let i = 1; i < closes.length; i++) {
+          returns.push(Math.log(closes[i] / closes[i - 1]));
+        }
+        const result = fitHMM(returns);
+        if (result) {
+          state.hmmRegimes[sym] = result;
+          hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range`);
+        }
+      }
+    }
+    if (hmmResults.length) console.log('[HMM]', hmmResults.join(' | '));
+
   } catch (e) {
     console.error('[LEVELS] Refresh error:', e.message);
   } finally {

@@ -563,6 +563,14 @@ async function loadAll() {
     S.usdStrength  = computeUSDStrength();
     S.dollarRegime = computeDollarRegime();
 
+    // HMM regimes — computed server-side every 30 min, fetch once per session
+    if (!Object.keys(S.hmmRegimes).length) {
+      fetch('/api/hmm/regimes')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) { S.hmmRegimes = data; renderAllDebounced(); } })
+        .catch(() => {});
+    }
+
     renderAll();
     updateStatus('ok', `${S.currentPair.name} loaded · ${S.asiaRangeData[S.currentPair.symbol].confluences.length + S.mondayRangeData[S.currentPair.symbol].confluences.length} total confluences`);
   } catch (error) {

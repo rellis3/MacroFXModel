@@ -163,7 +163,7 @@ function formatAlert(sym, entry, currentPrice, distPips, meta) {
     parts.push(`Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗`);
   }
 
-  parts.push('<i>🤖 Server alert</i>');
+  parts.push('<i>🤖 Cloudflare</i>');
 
   return parts.join('\n');
 }
