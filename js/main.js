@@ -19,7 +19,7 @@ import { detectSession, computeSessionOpens, computeDailyOpens } from './session
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 import { exportWatchlistCSV } from './watchlist.js';
-import { checkAndSendAlerts, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, loadAlertCfg, forceKVSync } from './alerts.js';
+import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, loadAlertCfg, forceKVSync } from './alerts.js';
 
 // ── Debounced renderAll ───────────────────────────────────────────────────────
 // Prevents concurrent DOM mutations when async compass resolve + quote refresh
@@ -27,7 +27,7 @@ import { checkAndSendAlerts, openAlertModal, closeAlertModal, saveAlertModal, sa
 let _renderTimer = null;
 const renderAllDebounced = () => {
   if (_renderTimer) clearTimeout(_renderTimer);
-  _renderTimer = setTimeout(() => { _renderTimer = null; renderAll(); }, 80);
+  _renderTimer = setTimeout(() => { _renderTimer = null; renderAll(); }, 300);
 };
 window.renderAllDebounced = renderAllDebounced;
 
@@ -114,7 +114,7 @@ window.setMode = function(mode) {
     all: 'All confluences + key levels (0.25, 0.5, 0.75, 1.0)'
   };
   document.getElementById('modeDesc').textContent = desc[mode];
-  if (S.asiaRangeData[S.currentPair.symbol]) renderAll();
+  if (S.asiaRangeData[S.currentPair.symbol]) renderAllDebounced();
 };
 
 window.toggleDark = function() {
@@ -386,7 +386,8 @@ function _openBgSseForSym(sym) {
         if (d.price != null) {
           _bgReconnectDelays[sym] = 3000; // reset backoff on good tick
           _storeQuote(sym, d);
-          checkAndSendAlerts();
+          // No alert check here — background pairs have no range data loaded so
+          // checkAndSendAlerts() would skip them immediately. Railway bot monitors all pairs.
         }
       } catch(e) {}
     };
@@ -426,6 +427,7 @@ async function loadSpreadData() {
     const data = await res.json();
     if (data.error) return;
     const typical = TYPICAL_SPREADS[sym] ?? null;
+    const prev = S.spreadData[sym];
     S.spreadData[sym] = {
       spreadPips:     data.spreadPips,
       classification: classifySpread(data.spreadPips, typical),
@@ -433,7 +435,8 @@ async function loadSpreadData() {
       ask:            data.ask,
       timestamp:      data.timestamp,
     };
-    renderAllDebounced();
+    // Only re-render if the spread classification changed — avoids a render every 60s
+    if (!prev || prev.classification !== S.spreadData[sym].classification) renderAllDebounced();
   } catch(e) {
     // Non-critical — spread row hidden if no data
   }
@@ -640,6 +643,7 @@ async function refreshQuote() {
         if (fresh && fresh.values && fresh.values.length) {
           S.ohlc5m[S.currentPair.symbol] = fresh;
           calculateAsiaRanges(S.currentPair.symbol);
+          invalidateAlertCache(S.currentPair.symbol); // force entry recompute on next alert check
         }
       }
     } catch (e) {

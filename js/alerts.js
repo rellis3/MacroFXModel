@@ -84,18 +84,21 @@ function cooldownKey(sym, price, direction, digits) {
 
 let _alertsInFlight = new Set(); // prevent double-firing same alert concurrently
 
+// Global rate-limit — at most once per 5s regardless of how many SSE ticks arrive
+let _alertsLastRun = 0;
+const ALERTS_THROTTLE_MS = 5_000;
+
+// Per-symbol entry cache — recomputed at most every 5 min (bars don't change faster)
+const _entryCache = new Map(); // sym → { entries, tierData, approachArrow, kalmanDev, at }
+const ENTRY_CACHE_TTL = 5 * 60 * 1_000;
+
 export function checkAndSendAlerts() {
-  const cfg = loadAlertCfg();
-
-  // Always iterate pairs to sync entries to KV for the cron worker,
-  // even when browser alerts are disabled. Browser alerts are gated
-  // below by cfg.enabled. KV sync is gated by having entries at all.
-  const watchSyms = cfg.pairs && cfg.pairs.length > 0
-    ? cfg.pairs
-    : PAIRS.map(p => p.symbol);
-
   const now = Date.now();
-  // Only load cooldowns when browser alerts are on (saves a localStorage read otherwise)
+  if (now - _alertsLastRun < ALERTS_THROTTLE_MS) return;
+  _alertsLastRun = now;
+
+  const cfg = loadAlertCfg();
+  const watchSyms = cfg.pairs?.length ? cfg.pairs : PAIRS.map(p => p.symbol);
   let cooldowns      = cfg.enabled ? pruneCooldowns(loadCooldowns()) : null;
   let cooldownsDirty = false;
 
@@ -103,7 +106,6 @@ export function checkAndSendAlerts() {
     const quote = window._latestQuotes?.[sym];
     if (!quote?.price) continue;
 
-    // Need range data loaded for this pair
     const asia   = S.asiaRangeData?.[sym];
     const monday = S.mondayRangeData?.[sym];
     if (!asia || !monday) continue;
@@ -114,104 +116,95 @@ export function checkAndSendAlerts() {
     ];
     if (!allConfs.length) continue;
 
-    // Temporarily override currentPair so vol/pivot helpers use the right symbol
-    const _savedPair = S.currentPair;
-    S.currentPair = PAIRS.find(p => p.symbol === sym) || _savedPair;
-
-    let entries, alertTierData, alertApproachArrow, alertKalmanDev;
-    try {
-      const volRegime = calculateVolRegime();
-      const pivots    = calculatePivots();
-      const macroBias = (() => {
-        try { return runSignalEngine(S.compassData, volRegime).bias; }
-        catch(e) { return 'NEUTRAL'; }
-      })();
-      const filtered = filterConfluences(allConfs);
-      const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, 0);
-      const signal   = runSignalEngine(S.compassData, volRegime);
-      entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
-
-      // Tier agreement counts (T1–T8)
-      alertTierData = (() => { try { return calculateTierScores(); } catch(e) { return null; } })();
-
-      // Recent 5m approach direction
-      alertApproachArrow = (() => {
-        const bars = S.ohlc5m?.[sym]?.values;
-        if (!bars || bars.length < 6) return null;
-        const gc = b => parseFloat(b.close ?? b.mid?.c ?? b.c);
-        const r = gc(bars[1]), o = gc(bars[Math.min(5, bars.length - 1)]);
-        return (!isNaN(r) && !isNaN(o)) ? (r > o ? '↗' : r < o ? '↘' : '→') : null;
-      })();
-
-      // Kalman-filtered 5m deviation (σ units)
-      alertKalmanDev = (() => { try { return compute5mKalmanDev(sym); } catch(e) { return null; } })();
-    } catch(e) {
+    // Refresh entry cache every 5 min — expensive computation, bars don't change faster
+    let cached = _entryCache.get(sym);
+    if (!cached || now - cached.at > ENTRY_CACHE_TTL) {
+      const _savedPair = S.currentPair;
+      S.currentPair = PAIRS.find(p => p.symbol === sym) || _savedPair;
+      let entries = [], alertTierData = null, alertApproachArrow = null, alertKalmanDev = null;
+      try {
+        const volRegime = calculateVolRegime();
+        const pivots    = calculatePivots();
+        const macroBias = (() => {
+          try { return runSignalEngine(S.compassData, volRegime).bias; }
+          catch(e) { return 'NEUTRAL'; }
+        })();
+        const filtered = filterConfluences(allConfs);
+        const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, 0);
+        const signal   = runSignalEngine(S.compassData, volRegime);
+        entries        = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime) ?? [];
+        alertTierData  = (() => { try { return calculateTierScores(); } catch(e) { return null; } })();
+        alertApproachArrow = (() => {
+          const bars = S.ohlc5m?.[sym]?.values;
+          if (!bars || bars.length < 6) return null;
+          const gc = b => parseFloat(b.close ?? b.mid?.c ?? b.c);
+          const r = gc(bars[1]), o = gc(bars[Math.min(5, bars.length - 1)]);
+          return (!isNaN(r) && !isNaN(o)) ? (r > o ? '↗' : r < o ? '↘' : '→') : null;
+        })();
+        alertKalmanDev = (() => { try { return compute5mKalmanDev(sym); } catch(e) { return null; } })();
+      } catch(e) {
+        S.currentPair = _savedPair;
+        continue;
+      }
       S.currentPair = _savedPair;
-      continue;
-    }
-    S.currentPair = _savedPair;
 
-    // ── KV sync for cron worker ───────────────────────────────────────────────
-    // Throttled to once per 5 min per pair to avoid flooding KV on every tick.
-    // Cron worker reads these to know which levels to watch while browser is closed.
-    if (entries?.length) {
-      const lastSync = _kvEntrySyncTimes.get(sym) ?? 0;
-      if (now - lastSync > 30 * 60 * 1000) {
-        _kvEntrySyncTimes.set(sym, now);
-        const hmmData = S.hmmRegimes?.[sym] ?? null;
-        const payload = entries.map(e => {
-          const score = alertTierData ? (computeSignalScore(e, alertTierData, hmmData) ?? null) : null;
-          const entryWithScore = { ...e, signalScore: score };
-          const g = gradeEntry(entryWithScore, hmmData);
-          return {
-            price:         e.price,
-            direction:     e.direction,
-            totalStars:    e.totalStars   ?? 0,
-            signalScore:   score,
-            grade:         g.grade,
-            verdict:       g.verdict,
-            reasons:       g.reasons,
-            warnings:      g.warnings,
-            sl:            e.sl           ?? null,
-            tp:            e.tp           ?? null,
-            tpNote:        e.tpNote       ?? null,
-            rrRatio:       e.rrRatio      ?? null,
-            tags:          (e.tags ?? []).slice(0, 4).map(t => t.label ?? t),
-            signalAligned: e.signalAligned ?? false,
-            rangeBias:     e.rangeBias
-              ? { confirmCount: e.rangeBias.confirmCount, conflictCount: e.rangeBias.conflictCount }
-              : null,
-          };
-        });
+      cached = { entries, tierData: alertTierData, approachArrow: alertApproachArrow, kalmanDev: alertKalmanDev, at: now };
+      _entryCache.set(sym, cached);
 
-        // Pair-level macro metadata for cron worker to reproduce full message format
-        const meta = { approachArrow: alertApproachArrow ?? null };
-        if (alertKalmanDev != null) {
-          meta.kalmanStr = `5m Kalman: ${alertKalmanDev >= 0 ? '+' : ''}${alertKalmanDev.toFixed(2)}σ`;
-        }
-        if (alertTierData) {
-          const bayes = computeBayesianScore(alertTierData.tiers);
-          if (bayes) {
-            const emj = bayes.dir === 'long' ? '📈' : bayes.dir === 'short' ? '📉' : '↔️';
-            const lbl = bayes.dir === 'long' ? 'Long' : bayes.dir === 'short' ? 'Short' : 'Mixed';
-            meta.bayesStr = `${emj} Bayesian: <b>${bayes.pct}%</b> ${lbl} Continuation`;
+      // KV sync for Railway bot — throttled to once per 30 min per pair
+      if (entries.length) {
+        const lastSync = _kvEntrySyncTimes.get(sym) ?? 0;
+        if (now - lastSync > 30 * 60 * 1000) {
+          _kvEntrySyncTimes.set(sym, now);
+          const hmmData = S.hmmRegimes?.[sym] ?? null;
+          const payload = entries.map(e => {
+            const score = alertTierData ? (computeSignalScore(e, alertTierData, hmmData) ?? null) : null;
+            const entryWithScore = { ...e, signalScore: score };
+            const g = gradeEntry(entryWithScore, hmmData);
+            return {
+              price:         e.price,
+              direction:     e.direction,
+              totalStars:    e.totalStars   ?? 0,
+              signalScore:   score,
+              grade:         g.grade,
+              verdict:       g.verdict,
+              reasons:       g.reasons,
+              warnings:      g.warnings,
+              sl:            e.sl           ?? null,
+              tp:            e.tp           ?? null,
+              tpNote:        e.tpNote       ?? null,
+              rrRatio:       e.rrRatio      ?? null,
+              tags:          (e.tags ?? []).slice(0, 4).map(t => t.label ?? t),
+              signalAligned: e.signalAligned ?? false,
+              rangeBias:     e.rangeBias
+                ? { confirmCount: e.rangeBias.confirmCount, conflictCount: e.rangeBias.conflictCount }
+                : null,
+            };
+          });
+          const meta = { approachArrow: alertApproachArrow ?? null };
+          if (alertKalmanDev != null) meta.kalmanStr = `5m Kalman: ${alertKalmanDev >= 0 ? '+' : ''}${alertKalmanDev.toFixed(2)}σ`;
+          if (alertTierData) {
+            const bayes = computeBayesianScore(alertTierData.tiers);
+            if (bayes) {
+              const emj = bayes.dir === 'long' ? '📈' : bayes.dir === 'short' ? '📉' : '↔️';
+              const lbl = bayes.dir === 'long' ? 'Long' : bayes.dir === 'short' ? 'Short' : 'Mixed';
+              meta.bayesStr = `${emj} Bayesian: <b>${bayes.pct}%</b> ${lbl} Continuation`;
+            }
+            meta.tiersPos = alertTierData.tiers.filter(t => !t.na && t.score > 0).length;
+            meta.tiersNeg = alertTierData.tiers.filter(t => !t.na && t.score < 0).length;
+            meta.tiersNa  = alertTierData.tiers.filter(t =>  t.na || t.score === 0).length;
           }
-          meta.tiersPos = alertTierData.tiers.filter(t => !t.na && t.score > 0).length;
-          meta.tiersNeg = alertTierData.tiers.filter(t => !t.na && t.score < 0).length;
-          meta.tiersNa  = alertTierData.tiers.filter(t =>  t.na || t.score === 0).length;
+          fetch('/api/kv/set', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ key: `ai_entries_${sym.replace('/', '')}`, data: { entries: payload, meta }, timestamp: now }),
+          }).catch(() => {});
         }
-
-        fetch('/api/kv/set', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ key: `ai_entries_${sym.replace('/', '')}`, data: { entries: payload, meta }, timestamp: now }),
-        }).catch(() => {});
       }
     }
 
-    // ── Browser alerts ────────────────────────────────────────────────────────
-    if (!cfg.enabled) continue;
-    if (!entries?.length) continue;
+    // ── Browser proximity check against cached entries (fast path) ────────────
+    if (!cfg.enabled || !cached.entries?.length) continue;
 
     const pipSz    = getPipSize(sym);
     const digits   = getDigits(sym);
@@ -219,7 +212,7 @@ export function checkAndSendAlerts() {
     const proxPips = cfg.proxPips?.[sym] ?? cfg.proxPips?.default ?? 5;
     const proxDist = proxPips * pipSz;
 
-    for (const e of entries) {
+    for (const e of cached.entries) {
       if ((e.totalStars ?? 0) < cfg.minStars) continue;
       if (cfg.onlyAligned && !e.signalAligned) continue;
       if (e.direction == null) continue;
@@ -238,13 +231,18 @@ export function checkAndSendAlerts() {
       _alertsInFlight.add(ck);
 
       const distPips = Math.round(dist / pipSz);
-      sendTelegramAlert(sym, e, price, distPips, digits, alertApproachArrow, alertKalmanDev, alertTierData).finally(() => {
+      sendTelegramAlert(sym, e, price, distPips, digits, cached.approachArrow, cached.kalmanDev, cached.tierData).finally(() => {
         _alertsInFlight.delete(ck);
       });
     }
   }
 
   if (cooldownsDirty) saveCooldowns(cooldowns);
+}
+
+// Invalidate the entry cache for a symbol when its bars are refreshed
+export function invalidateAlertCache(sym) {
+  _entryCache.delete(sym ?? S.currentPair?.symbol);
 }
 
 // ── Format + dispatch ─────────────────────────────────────────────────────────
