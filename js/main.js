@@ -724,11 +724,6 @@ window.saveToJournal = function() {
     const signal  = runSignalEngine(S.compassData, volRegime);
     const entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
 
-    // Build price lookup for watchlist levels so we can tag them on save
-    const watchlistPriceKeys = new Set(
-      (S.dailyWatchlist[sym] ?? []).map(w => w.price.toFixed(getDigits(sym)))
-    );
-
     const seenPrices = new Set();
     const levels = [];
 
@@ -756,7 +751,7 @@ window.saveToJournal = function() {
         distance:      c.distance,
         tags,
         source:    'fib',
-        watchlist: watchlistPriceKeys.has(c.price.toFixed(getDigits(sym))),
+        watchlist: (c.totalStars ?? 0) >= 4,
       });
     });
 
@@ -777,7 +772,7 @@ window.saveToJournal = function() {
         distance:      e.distance,
         tags:          (e.tags || []).map(t => ({ label: t.label, cls: t.cls || 'range' })),
         source:        'scanner',
-        watchlist:     watchlistPriceKeys.has(e.price.toFixed(getDigits(sym))),
+        watchlist:     (e.totalStars ?? 0) >= 4,
       });
     });
 

@@ -320,44 +320,28 @@ function formatAlert(sym, entry, price, distPips) {
   return parts.filter(p => p !== undefined).join('\n');
 }
 
-// ── Daily watchlist (Phase 1) ─────────────────────────────────────────────────
-
-function scorePhase1(entry, hmm) {
-  let score = 0;
-  score += Math.min((entry.totalStars ?? 0) * 3, 15);
-  const tags = (entry.tags ?? []).join(' ');
-  if (tags.includes('Cross-Session')) score += 12;
-  if (tags.includes('Dense Zone'))    score += 6;
-  if (tags.includes('Tight'))         score += 4;
-  if (hmm?.regime === 'RANGE') {
-    score += Math.round((hmm.rangeProb ?? 0.5) * 8);
-  } else if (hmm?.regime === 'TREND') {
-    const withTrend = (entry.direction === 'long' && hmm.trendDir === 'BULL')
-                   || (entry.direction === 'short' && hmm.trendDir === 'BEAR');
-    if (withTrend) score += 5;
-  }
-  return Math.min(score, 40);
-}
+// ── Daily watchlist — star-based level selection ──────────────────────────────
+// Picks the top-starred levels per pair (≥4★ = strong, ≥5★ = prime).
+// No separate scoring layer — the star count IS the quality signal.
 
 function computeDailyWatchlist(pairs, cfg) {
-  const result = {};
-  const minStars   = cfg?.watchlist?.minStars   ?? 2;
-  const topN       = cfg?.watchlist?.topN        ?? 6;
-  const minPhase1  = cfg?.watchlist?.minPhase1   ?? 0;
+  const result   = {};
+  const minStars = cfg?.watchlist?.minStars ?? 4;
+  const topN     = cfg?.watchlist?.topN     ?? 6;
 
   for (const sym of pairs) {
     const bucket = state.levels[sym];
     if (!bucket?.data?.length) continue;
-    const hmm = state.hmmRegimes[sym] ?? null;
 
-    const scored = bucket.data
+    const top = bucket.data
       .filter(e => (e.totalStars ?? 0) >= minStars && e.direction)
-      .map(e => ({ ...e, phase1Score: scorePhase1(e, hmm) }))
-      .filter(e => e.phase1Score >= minPhase1)
-      .sort((a, b) => b.phase1Score - a.phase1Score)
+      .sort((a, b) =>
+        (b.totalStars ?? 0) - (a.totalStars ?? 0) ||
+        (b.signalScore ?? 0) - (a.signalScore ?? 0)
+      )
       .slice(0, topN);
 
-    if (scored.length) result[sym] = scored;
+    if (top.length) result[sym] = top;
   }
   return result;
 }
