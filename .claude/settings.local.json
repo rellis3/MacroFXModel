@@ -4,7 +4,8 @@
       "WebFetch(domain:www.cftc.gov)",
       "Bash(wrangler deploy *)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\relli\\\\OneDrive\\\\Documents\\\\Programming\\\\Trading\\\\v2 trading model\\\\MacroFXModel\" -Recurse -Filter \"*.js\" -o Name)",
-      "Bash(Select-String -Pattern \"\\(journal|signal|render\\)\")"
+      "Bash(Select-String -Pattern \"\\(journal|signal|render\\)\")",
+      "Bash(node --input-type=module)"
     ]
   }
 }
