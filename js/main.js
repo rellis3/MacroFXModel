@@ -461,86 +461,65 @@ async function loadAll() {
     updateStatus('spin', `Loading ${S.currentPair.name}...`);
 
     oiLoadStoreFromKV().catch(() => {});
-    loadCOT().catch(() => {});       // non-blocking — renders when ready
+    loadCOT().catch(() => {});
     cleanupStaleSessionCaches();
 
-    if (!S.fredData) {
-      S.fredData = await loadCached('fred', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED);
-      updatePill('pillFred', 'ok');
-    }
+    const sym        = S.currentPair.symbol;
+    const symKey     = sym.replace('/', '');
+    const sessionDay = londonSessionDay();
 
-    // Fix 9: ECB SDW daily rates (ESTR + DE 10Y Bund) — no key required, 12h KV cache
-    if (!S.ecbData) {
-      try {
-        const ecbRes = await fetch('/api/ecbsdw');
-        if (ecbRes.ok) S.ecbData = await ecbRes.json();
-      } catch(e) { S.ecbData = null; }
-    }
+    // Fire all independent fetches in parallel — cached values resolve instantly
+    const [fredData, ecbData, cfg, ohlcData, ohlc5mData, ohlc30mData, quote] =
+      await Promise.all([
+        S.fredData ? Promise.resolve(S.fredData) :
+          loadCached('fred', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED),
+        S.ecbData ? Promise.resolve(S.ecbData) :
+          fetch('/api/ecbsdw').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch('/api/config').then(r => r.json()).catch(() => ({})),
+        S.ohlcData[sym] ? Promise.resolve(S.ohlcData[sym]) :
+          loadCached(`ohlc_${symKey}`, () => fetchAPI(`/api/ohlc?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.OHLC),
+        S.ohlc5m[sym] ? Promise.resolve(S.ohlc5m[sym]) :
+          loadCached(`ohlc5m_${symKey}_${sessionDay}`, () => fetchAPI(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.OHLC5M),
+        S.ohlc30m[sym] ? Promise.resolve(S.ohlc30m[sym]) :
+          loadCached(`ohlc30m_${symKey}_${sessionDay}`, () => fetchAPI(`/api/oanda_ohlc30m?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.OHLC30M),
+        loadCached(`quote_${symKey}`, () => fetchAPI(`/api/quote?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.QUOTE),
+      ]);
 
-    // Update session badge immediately (no network needed)
-    S.sessionData = detectSession();
+    // Apply global results
+    if (!S.fredData) { S.fredData = fredData; updatePill('pillFred', 'ok'); }
+    if (!S.ecbData)    S.ecbData  = ecbData;
+    if (cfg.hasAnt)    updatePill('pillAnt', 'ant');
+    if (cfg.hasKV)     updatePill('pillKV',  'ok');
+    S.hasOanda    = !!cfg.hasOanda;
+    S.hasMyfxbook = !!cfg.hasMyfxbook;
 
-    let hasFinnhub = false;
-    try {
-      const cfg = await fetch('/api/config').then(r => r.json());
-      if (cfg.hasAnt)     updatePill('pillAnt', 'ant');
-      if (cfg.hasKV)      updatePill('pillKV',  'ok');
-      if (cfg.hasFinnhub) hasFinnhub = true;
-      S.hasOanda    = !!cfg.hasOanda;
-      S.hasMyfxbook = !!cfg.hasMyfxbook;
-    } catch(e) {}
-
-    // Load events in background — non-blocking, updates S.eventRisk + S.surpriseIndex
-    loadEventData(hasFinnhub).catch(() => {});
-
-    // Load spread (live, no cache) and sentiment (cached 30m in KV) — non-blocking
+    // Non-blocking background tasks (need cfg first for hasFinnhub)
+    loadEventData(!!cfg.hasFinnhub).catch(() => {});
     loadSpreadData().catch(() => {});
     loadSentimentData().catch(() => {});
 
-    const symKey = S.currentPair.symbol.replace('/', '');
+    // Apply pair OHLC results
+    S.ohlcData[sym] = ohlcData;  updatePill('pillOhlc', 'ok');
+    S.ohlc5m[sym]   = ohlc5mData; updatePill('pill5m', 'ok');
+    S.ohlc30m[sym]  = ohlc30mData; updatePill('pill30m', 'ok');
+    updatePill('pillQuote', 'ok');
 
-    if (!S.ohlcData[S.currentPair.symbol]) {
-      S.ohlcData[S.currentPair.symbol] = await loadCached(`ohlc_${symKey}`,
-        () => fetchAPI(`/api/ohlc?symbol=${encodeURIComponent(S.currentPair.symbol)}`),
-        CACHE_DURATION.OHLC);
-      updatePill('pillOhlc', 'ok');
-    }
-
-    if (!S.ohlc5m[S.currentPair.symbol]) {
-      const sessionDay = londonSessionDay();
-      S.ohlc5m[S.currentPair.symbol] = await loadCached(`ohlc5m_${symKey}_${sessionDay}`,
-        () => fetchAPI(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(S.currentPair.symbol)}`),
-        CACHE_DURATION.OHLC5M);
-      updatePill('pill5m', 'ok');
-    }
-    // Merge session open prices and daily opens history into session data
-    const _bars5m     = S.ohlc5m[S.currentPair.symbol]?.values || [];
+    // Session data (no network — instant)
+    S.sessionData = detectSession();
+    const _bars5m     = S.ohlc5m[sym]?.values || [];
     const _opens      = computeSessionOpens(_bars5m);
-    const _dailyOpens = computeDailyOpens(S.ohlcData[S.currentPair.symbol]?.values || [], 30);
+    const _dailyOpens = computeDailyOpens(S.ohlcData[sym]?.values || [], 30);
     if (S.sessionData) {
       S.sessionData.londonOpenPrice = _opens.londonOpenPrice;
       S.sessionData.nyOpenPrice     = _opens.nyOpenPrice;
       S.sessionData.dailyOpens      = _dailyOpens;
-      S.sessionData.dailyOpenPrice  = _dailyOpens[0]?.price ?? null; // most recent, for badge
+      S.sessionData.dailyOpenPrice  = _dailyOpens[0]?.price ?? null;
     }
 
-    if (!S.ohlc30m[S.currentPair.symbol]) {
-      const sessionDay = londonSessionDay();
-      S.ohlc30m[S.currentPair.symbol] = await loadCached(`ohlc30m_${symKey}_${sessionDay}`,
-        () => fetchAPI(`/api/oanda_ohlc30m?symbol=${encodeURIComponent(S.currentPair.symbol)}`),
-        CACHE_DURATION.OHLC30M);
-      updatePill('pill30m', 'ok');
-    }
-
-    const quote = await loadCached(`quote_${symKey}`,
-      () => fetchAPI(`/api/quote?symbol=${encodeURIComponent(S.currentPair.symbol)}`),
-      CACHE_DURATION.QUOTE);
-    updatePill('pillQuote', 'ok');
-
-    calculateAsiaRanges(S.currentPair.symbol);
-    calculateMondayRanges(S.currentPair.symbol);
-    calculateStructuralFibs(S.currentPair.symbol);
-    _storeQuote(S.currentPair.symbol, quote);
+    calculateAsiaRanges(sym);
+    calculateMondayRanges(sym);
+    calculateStructuralFibs(sym);
+    _storeQuote(sym, quote);
     updateHeaderPrice(quote);
 
     // Oanda position book for retail sentiment range-bias feature (non-blocking, ~20min data)
