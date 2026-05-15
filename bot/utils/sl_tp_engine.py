@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 _PIP_SIZES = {
@@ -19,19 +19,26 @@ _PIP_VALUES = {
 @dataclass
 class SLTPResult:
     sl: float
-    tp: float
+    tp: float                           # TP2 / final target
     sl_method: str
     tp_method: str
     rr_ratio: float
     sl_capped: bool = False
     tp_capped: bool = False
-    tp2: Optional[float] = None
+    tp1: Optional[float] = None         # first partial-close target (tp1r × R)
     tp1_close_pct: Optional[float] = None
+    tp2: Optional[float] = None         # alias for tp (kept for compatibility)
+    trailoffset_dist: Optional[float] = None  # trailing-stop distance after TP1 hit
 
 
 class SLTPEngine:
     def __init__(self, config: dict):
         self.sl_tp = config.get('sl_tp') or {}
+        ec = config.get('execution') or {}
+        # Ladder exit ratios — settable via /tp1r, /tp2r, /trailoffset commands
+        self.tp1r        = ec.get('tp1r',        self.sl_tp.get('tp1r',        0.3))
+        self.tp2r        = ec.get('tp2r',         self.sl_tp.get('tp2r',         1.0))
+        self.trailoffset = ec.get('trailoffset',  self.sl_tp.get('trailoffset',  0.7))
 
     def pip_size(self, pair: str) -> float:
         return _PIP_SIZES.get(pair, 0.0001)
@@ -41,9 +48,9 @@ class SLTPEngine:
 
     def calculate(self, entry: dict, pair: str, pair_data: dict,
                   direction: str, price: float) -> SLTPResult:
-        sl_method = self.sl_tp.get('sl_method', 'structure')
-        tp_method = self.sl_tp.get('tp_method', 'confluence')
-        pip = self.pip_size(pair)
+        sl_method   = self.sl_tp.get('sl_method', 'structure')
+        tp_method   = self.sl_tp.get('tp_method', 'confluence')
+        pip         = self.pip_size(pair)
         max_sl_pips = self.sl_tp.get('max_sl_pips', 50)
         max_tp_pips = self.sl_tp.get('max_tp_pips', 100)
 
@@ -52,42 +59,49 @@ class SLTPEngine:
 
         # Hard pip caps (non-negotiable)
         sl_capped = tp_capped = False
-        sl_dist_pips = abs(price - sl) / pip
-        tp_dist_pips = abs(tp - price) / pip
-
-        if sl_dist_pips > max_sl_pips:
+        if abs(price - sl) / pip > max_sl_pips:
             sl = (price + max_sl_pips * pip) if direction == 'short' else (price - max_sl_pips * pip)
             sl_capped = True
 
-        if tp_dist_pips > max_tp_pips:
+        if abs(tp - price) / pip > max_tp_pips:
             tp = (price - max_tp_pips * pip) if direction == 'short' else (price + max_tp_pips * pip)
             tp_capped = True
 
         sl_dist = abs(price - sl)
         rr = round(abs(tp - price) / sl_dist, 2) if sl_dist > 0 else 0.0
 
-        # Partial close TP2
-        tp2 = tp1_close_pct = None
-        if tp_method == 'partial':
-            tp1_close_pct = self.sl_tp.get('tp1_close_pct', 50)
-            vol = pair_data.get('vol') or {}
-            ci68_pips = vol.get('ci68_pips') or 0
-            if ci68_pips > 0:
-                tp2 = (price + ci68_pips * pip) if direction == 'long' else (price - ci68_pips * pip)
+        # ── Ladder exits (tp1r / tp2r / trailoffset) ──────────────────────────
+        tp1 = tp1_close_pct = trailoffset_dist = None
+        if sl_dist > 0:
+            sign = 1 if direction == 'long' else -1
+            tp1  = round(price + sign * sl_dist * self.tp1r, 5)
+
+            # tp2r overrides the dashboard/ATR tp if it would be a tighter target
+            tp2_calc = round(price + sign * sl_dist * self.tp2r, 5)
+            if abs(tp2_calc - price) > abs(tp - price):
+                pass  # dashboard tp already further — keep it
+            else:
+                tp = tp2_calc
+
+            tp1_close_pct    = self.sl_tp.get('tp1_close_pct', 50)
+            trailoffset_dist = round(sl_dist * self.trailoffset, 5)
+
+        # re-compute rr after possible tp2r override
+        rr = round(abs(tp - price) / sl_dist, 2) if sl_dist > 0 else 0.0
 
         return SLTPResult(
             sl=round(sl, 5), tp=round(tp, 5),
             sl_method=sl_used, tp_method=tp_used, rr_ratio=rr,
             sl_capped=sl_capped, tp_capped=tp_capped,
-            tp2=round(tp2, 5) if tp2 else None,
-            tp1_close_pct=tp1_close_pct,
+            tp1=tp1, tp1_close_pct=tp1_close_pct,
+            tp2=round(tp, 5),  # alias
+            trailoffset_dist=trailoffset_dist,
         )
 
     def _calc_sl(self, entry, pair, pair_data, direction, price, pip, method, max_sl_pips):
         oi = pair_data.get('oi') or {}
 
         if method == 'structure':
-            # Priority 1: OI wall behind entry (dashboard-computed)
             if direction == 'long':
                 pw = oi.get('putWall') or 0
                 if pw and pw < price and (price - pw) / pip <= max_sl_pips * 1.2:
@@ -97,15 +111,14 @@ class SLTPEngine:
                 if cw and cw > price and (cw - price) / pip <= max_sl_pips * 1.2:
                     return cw + pip * 2, 'structure_oi_call_wall'
 
-            # Priority 2: dashboard's own SL (already structure-based from signal engine)
             if entry.get('sl'):
                 return float(entry['sl']), 'structure_dashboard'
 
         # ATR fallback
-        sl_mult = self.sl_tp.get('sl_atr_mult', 1.5)
+        sl_mult  = self.sl_tp.get('sl_atr_mult', 1.5)
         atr_pips = (pair_data.get('vol') or {}).get('atr_pips') or 15
-        dist = atr_pips * pip * sl_mult
-        sl = (price - dist) if direction == 'long' else (price + dist)
+        dist     = atr_pips * pip * sl_mult
+        sl       = (price - dist) if direction == 'long' else (price + dist)
         return sl, 'atr'
 
     def _calc_tp(self, entry, pair, pair_data, direction, price, pip, method, sl):
@@ -115,17 +128,17 @@ class SLTPEngine:
             if entry.get('tp'):
                 return float(entry['tp']), f'{method}_dashboard'
 
-        # Fixed R:R fallback
-        tp_rr = self.sl_tp.get('tp1_rr', 1.5)
-        dist = sl_dist * tp_rr
-        tp = (price + dist) if direction == 'long' else (price - dist)
+        # Fixed R:R fallback — tp2r takes precedence over legacy tp1_rr
+        tp_rr = self.tp2r if self.tp2r != 1.0 else self.sl_tp.get('tp1_rr', 1.5)
+        dist  = sl_dist * tp_rr
+        tp    = (price + dist) if direction == 'long' else (price - dist)
         return tp, 'fixed_rr'
 
     def position_size(self, balance: float, risk_pct: float,
                       sl_dist_price: float, pair: str, size_mult: float = 1.0) -> float:
-        pip = self.pip_size(pair)
-        pv  = self.pip_value(pair)
-        sl_pips = sl_dist_price / pip
+        pip         = self.pip_size(pair)
+        pv          = self.pip_value(pair)
+        sl_pips     = sl_dist_price / pip
         risk_amount = balance * (risk_pct / 100)
         if sl_pips <= 0 or pv <= 0:
             return 0.01

@@ -82,6 +82,21 @@ _PIP_SIZES = {
     'NAS100_USD': 1.0,
 }
 
+# Named strictness tiers → minimum confluence star count
+_TIER_MIN_STARS = {
+    'strict':     4,
+    'balanced':   3,
+    'loose':      2,
+    'aggressive': 1,
+}
+
+
+def _resolve_min_stars(exec_cfg: dict) -> int:
+    tier = (exec_cfg.get('tier') or 'balanced').lower()
+    if tier == 'auto':
+        return exec_cfg.get('min_stars', 3)
+    return _TIER_MIN_STARS.get(tier, exec_cfg.get('min_stars', 3))
+
 
 # ── Live price (fast path) ────────────────────────────────────────────────────
 
@@ -144,7 +159,9 @@ def pre_screen(state: dict, pair: str, config: dict, live_price: float) -> tuple
     pair_data = (snap.get('pairs') or {}).get(pair) or {}
     entries   = pair_data.get('entries') or []
     exec_cfg  = config.get('execution') or {}
-    min_stars = exec_cfg.get('min_stars', 3)
+    min_stars = _resolve_min_stars(exec_cfg)
+    bardir    = (exec_cfg.get('bardir') or 'auto').lower()
+    wt_thresh = exec_cfg.get('wtthreshold', 35)
     pip_size  = _PIP_SIZES.get(pair, 0.0001)
 
     # Dynamic ATR tolerance from MT5 5m bars; falls back to config when unavailable
@@ -170,25 +187,32 @@ def pre_screen(state: dict, pair: str, config: dict, live_price: float) -> tuple
     score = 1
 
     # Condition 2: WT1 direction aligns with a near entry
+    # bardir='off' → skip check entirely
+    # bardir='auto' → only filter when abs(WT1) >= wtthreshold (significant momentum)
+    # bardir='on'  → always filter
     wt1 = compute_wt1(bars) if bars is not None else float('nan')
 
-    if math.isnan(wt1):
-        # No bars (paper mode or MT5 unavailable) — treat as passing so signals still fire
+    if bardir == 'off' or math.isnan(wt1):
+        # WT1 check disabled, or no bars (paper mode) — auto-pass
         score = 2
     else:
-        entry_dirs: set[str] = set()
-        for e in near_entries:
-            d = (e.get('direction') or e.get('signalAligned') or '').lower()
-            if d in ('buy', 'long'):
-                entry_dirs.add('LONG')
-            elif d in ('sell', 'short'):
-                entry_dirs.add('SHORT')
+        wt1_significant = abs(wt1) >= wt_thresh
+        if bardir == 'auto' and not wt1_significant:
+            # WT1 is in neutral zone — no conviction either way, let through
+            score = 2
+        else:
+            entry_dirs: set[str] = set()
+            for e in near_entries:
+                d = (e.get('direction') or e.get('signalAligned') or '').lower()
+                if d in ('buy', 'long'):
+                    entry_dirs.add('LONG')
+                elif d in ('sell', 'short'):
+                    entry_dirs.add('SHORT')
 
-        if not entry_dirs:
-            # Direction unknown — can't filter on WT1, let it through
-            score = 2
-        elif ('LONG' in entry_dirs and wt1 > 0) or ('SHORT' in entry_dirs and wt1 < 0):
-            score = 2
+            if not entry_dirs:
+                score = 2
+            elif ('LONG' in entry_dirs and wt1 > 0) or ('SHORT' in entry_dirs and wt1 < 0):
+                score = 2
 
     return score, tol_pips, wt1
 
@@ -265,6 +289,70 @@ def within_trade_window(config: dict) -> bool:
     return s.get('trade_window_start', '07:00') <= now <= s.get('trade_window_end', '20:00')
 
 
+class RiskGuard:
+    """
+    Enforces per-session risk limits drawn from bot_config execution settings.
+
+    ddlimit    — max daily drawdown % before lockout
+    monthlydd  — max monthly drawdown % before lockout
+    lockout    — hours to lock after a DD breach
+    cooldown   — minutes between trades (same pair or any pair)
+    sizing     — position size multiplier applied on top of vol_gate size_mult
+    """
+
+    def __init__(self, config: dict):
+        ec = config.get('execution') or {}
+        self.dd_limit_pct   = ec.get('ddlimit', 3)
+        self.monthly_dd_pct = ec.get('monthlydd', 5)
+        self.lockout_hours  = ec.get('lockout', 3)
+        self.cooldown_secs  = ec.get('cooldown', 60) * 60  # config in minutes
+        self.sizing_mult    = ec.get('sizing', 1.0)
+
+        self._day_start_bal:   float | None = None
+        self._month_start_bal: float | None = None
+        self._locked_until:    float = 0.0
+        self._last_trade_at:   float = 0.0
+
+    def update_balance(self, balance: float) -> None:
+        if self._day_start_bal is None:
+            self._day_start_bal = balance
+        if self._month_start_bal is None:
+            self._month_start_bal = balance
+
+    def reset_daily(self, balance: float) -> None:
+        self._day_start_bal = balance
+
+    def record_trade(self) -> None:
+        self._last_trade_at = time.time()
+
+    def block_reason(self, balance: float) -> str | None:
+        now = time.time()
+
+        if now < self._locked_until:
+            remaining_m = (self._locked_until - now) / 60
+            return f'Locked out — {remaining_m:.0f}m remaining'
+
+        if self._last_trade_at and now - self._last_trade_at < self.cooldown_secs:
+            remaining_s = self.cooldown_secs - (now - self._last_trade_at)
+            return f'Cooldown — {remaining_s / 60:.1f}m remaining'
+
+        if self._day_start_bal:
+            dd_pct = (self._day_start_bal - balance) / self._day_start_bal * 100
+            if dd_pct >= self.dd_limit_pct:
+                self._locked_until = now + self.lockout_hours * 3600
+                return (f'Daily DD {dd_pct:.1f}% ≥ limit {self.dd_limit_pct}%'
+                        f' — locked {self.lockout_hours}h')
+
+        if self._month_start_bal:
+            mdd_pct = (self._month_start_bal - balance) / self._month_start_bal * 100
+            if mdd_pct >= self.monthly_dd_pct:
+                self._locked_until = now + self.lockout_hours * 3600
+                return (f'Monthly DD {mdd_pct:.1f}% ≥ limit {self.monthly_dd_pct}%'
+                        f' — locked {self.lockout_hours}h')
+
+        return None
+
+
 # ── MT5 ───────────────────────────────────────────────────────────────────────
 
 def mt5_connect() -> bool:
@@ -314,7 +402,7 @@ def _mt5_close_all() -> None:
         px   = tick.bid if pos.type == mt5.ORDER_TYPE_BUY else tick.ask
         mt5.order_send({'action': mt5.TRADE_ACTION_DEAL, 'symbol': pos.symbol,
                         'volume': pos.volume, 'type': t, 'position': pos.ticket,
-                        'price': px, 'deviation': 10, 'magic': 20260001,
+                        'price': px, 'deviation': 20, 'magic': 20260001,
                         'comment': 'MacroFX emergency close'})
         log.info(f'Emergency close: ticket {pos.ticket}')
 
@@ -365,7 +453,7 @@ def execute_trade(pair: str, direction: str, entry: dict,
         'price':        exec_price,
         'sl':           sl_tp.sl,
         'tp':           sl_tp.tp,
-        'deviation':    10,
+        'deviation':    20,
         'magic':        20260001,
         'comment':      f'MacroFX {direction[0]} {entry.get("totalStars", 0)}★',
         'type_time':    mt5.ORDER_TIME_GTC,
@@ -383,7 +471,8 @@ def execute_trade(pair: str, direction: str, entry: dict,
 # ── Pair evaluation (full pipeline, only called when price is near a level) ───
 
 def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
-                  sl_tp_engine: SLTPEngine, paper_mode: bool) -> dict:
+                  sl_tp_engine: SLTPEngine, paper_mode: bool,
+                  sizing_mult: float = 1.0) -> dict:
     """
     Runs all modules and executes if the composite score clears the threshold.
     Returns a pair_status dict for the status report.
@@ -440,7 +529,7 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
         balance = acct.balance if acct else 10_000
 
     sl_dist = abs(live_price - sl_tp.sl)
-    size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, 1.0)
+    size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, sizing_mult)
 
     log.info(
         f'  [{pair}] ENTRY {direction} {entry.get("totalStars", 0)}★  '
@@ -486,6 +575,8 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
     last_state_refresh: float = 0.0
     last_status_push:   float = 0.0
     status: dict = {'loop_at': '', 'paper': paper_mode, 'pairs_evaluated': [], 'errors': []}
+    risk_guard: RiskGuard | None = None
+    _last_risk_config_hash: int = 0
 
     # ── Two-speed loop ────────────────────────────────────────────────────────
     while True:
@@ -508,6 +599,22 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         snap           = cached_state.get('regime_snapshot') or {}
         enabled_pairs  = config.get('enabled_pairs') or []
         exec_cfg       = config.get('execution') or {}
+
+        # Re-create RiskGuard whenever execution config changes (picks up /tier, /sizing etc.)
+        risk_cfg_hash = hash(str(exec_cfg))
+        if risk_guard is None or risk_cfg_hash != _last_risk_config_hash:
+            prev = risk_guard
+            risk_guard = RiskGuard(config)
+            if prev is not None:
+                # Carry over the day/month baseline so a config change doesn't reset DD tracking
+                risk_guard._day_start_bal   = prev._day_start_bal
+                risk_guard._month_start_bal = prev._month_start_bal
+                risk_guard._locked_until    = prev._locked_until
+                risk_guard._last_trade_at   = prev._last_trade_at
+                log.info(f'RiskGuard updated — tier={exec_cfg.get("tier","balanced")}  '
+                         f'sizing={risk_guard.sizing_mult}  cooldown={exec_cfg.get("cooldown",60)}m  '
+                         f'ddlimit={risk_guard.dd_limit_pct}%')
+            _last_risk_config_hash = risk_cfg_hash
 
         # ── Kill switch (checked every tick so it takes effect fast) ──────────
         if config.get('kill_switch', False):
@@ -581,6 +688,20 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         trades_this_tick = 0
         tick_evaluated  = []
 
+        # Fetch balance once per tick for risk guard (live only; paper uses placeholder)
+        live_balance = 10_000.0
+        if HAS_MT5 and not paper_mode:
+            acct = mt5.account_info()
+            if acct:
+                live_balance = acct.balance
+        risk_guard.update_balance(live_balance)
+
+        # Check session-level risk block before entering the evaluation loop
+        rg_block = risk_guard.block_reason(live_balance)
+        if rg_block:
+            log.warning(f'RiskGuard BLOCK: {rg_block}')
+            near_level = {}
+
         for pair, live_price in near_level.items():
             if trades_this_tick >= max_trades:
                 break
@@ -588,7 +709,8 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
             log.info(f'--- {pair}  live={live_price} ---')
             try:
                 pair_status = evaluate_pair(
-                    cached_state, pair, config, live_price, sl_tp_engine, paper_mode
+                    cached_state, pair, config, live_price, sl_tp_engine, paper_mode,
+                    sizing_mult=risk_guard.sizing_mult,
                 )
             except Exception as exc:
                 log.error(f'evaluate_pair [{pair}]: {exc}', exc_info=True)
@@ -597,15 +719,25 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
             tick_evaluated.append(pair_status)
             if pair_status.get('executed'):
                 trades_this_tick += 1
+                risk_guard.record_trade()
 
         # ── Status report pushed on slow cadence (not every tick) ─────────────
         if tick_evaluated or tick_start - last_status_push >= state_interval:
             status = {
-                'loop_at':        datetime.now(timezone.utc).isoformat(),
-                'paper':          paper_mode,
+                'loop_at':         datetime.now(timezone.utc).isoformat(),
+                'paper':           paper_mode,
                 'pairs_evaluated': tick_evaluated,
-                'pairs_near':     list(near_level.keys()),
-                'errors':         [],
+                'pairs_near':      list(near_level.keys()),
+                'tier':            exec_cfg.get('tier', 'balanced'),
+                'min_stars':       _resolve_min_stars(exec_cfg),
+                'bardir':          exec_cfg.get('bardir', 'auto'),
+                'wtthreshold':     exec_cfg.get('wtthreshold', 35),
+                'sizing':          risk_guard.sizing_mult,
+                'ddlimit':         risk_guard.dd_limit_pct,
+                'monthlydd':       risk_guard.monthly_dd_pct,
+                'cooldown_min':    exec_cfg.get('cooldown', 60),
+                'balance':         live_balance,
+                'errors':          [],
             }
             push_bot_status(status, base_url)
             last_status_push = tick_start
