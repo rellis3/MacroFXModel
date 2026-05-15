@@ -133,8 +133,7 @@ function getCalendarContext() {
 
 function renderAllInner() {
   const quote = window._latestQuote;
-  if (!quote) throw new Error('Quote not loaded');
-  if (!S.fredData) throw new Error('FRED data not loaded');
+  if (!quote || !S.fredData) return; // not ready yet — another render fires once data arrives
 
   const tierData = calculateTierScores();
   const volRegime = calculateVolRegime();
