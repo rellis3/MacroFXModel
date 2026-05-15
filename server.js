@@ -147,6 +147,10 @@ async function reloadLevels() {
           parsed.data = parsed.data.entries;
         }
         state.levels[sym] = parsed;
+        // Merge intraday30m into hmmRegimes when present (set by levels.js refreshPair)
+        if (parsed.intraday30m) {
+          state.hmmRegimes[sym] = { ...(state.hmmRegimes[sym] ?? {}), intraday30m: parsed.intraday30m };
+        }
       } catch {}
     }
   }
@@ -231,7 +235,7 @@ function _gradeColor(grade) {
   return grade === 'A+' ? '#22c55e' : grade === 'A' ? '#4ade80' : grade === 'B' ? '#f59e0b' : grade === 'C' ? '#94a3b8' : '#ef4444';
 }
 
-function computeGrade(entry, hmmData) {
+function computeGrade(entry, hmmData, swing30m = null) {
   // Use browser-computed grade from KV payload when available
   if (entry.grade) {
     return { grade: entry.grade, verdict: entry.verdict ?? 'WATCH', reasons: entry.reasons ?? [], warnings: entry.warnings ?? [] };
@@ -262,6 +266,13 @@ function computeGrade(entry, hmmData) {
     }
   }
 
+  if (swing30m?.regime === 'TREND') {
+    const isLong       = entry.direction === 'long';
+    const swingAligned = (isLong && swing30m.dir === 'BULL') || (!isLong && swing30m.dir === 'BEAR');
+    if (!swingAligned) warnings.push(`30m BOS ${swing30m.dir} opposing`);
+    else if (reasons.length < 3) reasons.push(`30m BOS ${swing30m.dir}`);
+  }
+
   if      (score >= 70) reasons.push(`Signal ${score}%`);
   else if (score <  38) warnings.push(`Weak signal ${score}%`);
   if (total > 0 && conviction >  0.30) reasons.push(`RB ${rb.confirmCount}✓ ${rb.conflictCount}✗`);
@@ -289,9 +300,10 @@ function formatAlert(sym, entry, price, distPips) {
   const stars  = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 9));
   const at     = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
 
-  const hmm = state.hmmRegimes[sym];
-  const g   = computeGrade(entry, hmm);
-  const vi  = g.verdict === 'TAKE' ? '✅' : g.verdict === 'WATCH' ? '👁' : g.verdict === 'CAUTION' ? '⚠️' : '🚫';
+  const hmm   = state.hmmRegimes[sym];
+  const swing = hmm?.intraday30m ?? null;
+  const g     = computeGrade(entry, hmm, swing);
+  const vi    = g.verdict === 'TAKE' ? '✅' : g.verdict === 'WATCH' ? '👁' : g.verdict === 'CAUTION' ? '⚠️' : '🚫';
 
   const parts = [
     `🎯 <b>${sym} ${dir}</b> ${stars}`,
@@ -318,8 +330,11 @@ function formatAlert(sym, entry, price, distPips) {
   const hmmPart   = hmm
     ? (hmm.regime === 'RANGE' ? `HMM Range ${Math.round(hmm.rangeProb * 100)}%` : `HMM Trend ${hmm.trendDir ?? ''} ${Math.round(hmm.trendProb * 100)}%`)
     : null;
+  const swingPart = swing
+    ? (swing.regime === 'TREND' ? `30m BOS ${swing.dir ?? ''}` : `30m CHoCH`)
+    : null;
   const rbPart = entry.rangeBias ? `RB ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗` : null;
-  const infoLine = [scorePart, hmmPart, rbPart].filter(Boolean).join(' · ');
+  const infoLine = [scorePart, hmmPart, swingPart, rbPart].filter(Boolean).join(' · ');
   if (infoLine) parts.push(infoLine);
 
   parts.push('<i>🚂 MacroFX Railway</i>');

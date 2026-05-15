@@ -5,8 +5,10 @@
 //   { direction, signalScore, rangeBias: {confirmCount,conflictCount}, tags, totalStars }
 // hmmData shape (optional):
 //   { regime: 'RANGE'|'TREND', trendDir: 'BULL'|'BEAR'|null, trendProb, rangeProb }
+// intraday30m shape (optional):
+//   { regime: 'TREND'|'RANGE', dir: 'BULL'|'BEAR'|null, label }
 
-export function gradeEntry(entry, hmmData = null) {
+export function gradeEntry(entry, hmmData = null, intraday30m = null) {
   const score      = entry.signalScore ?? 0;
   const rb         = entry.rangeBias;
   const total      = rb ? (rb.confirmCount + rb.conflictCount) : 0;
@@ -36,6 +38,14 @@ export function gradeEntry(entry, hmmData = null) {
         reasons.push(`Trend ${hmmData.trendDir} aligned ${pct}%`);
       }
     }
+  }
+
+  // ── 30m intraday swing regime ────────────────────────────────────────────
+  if (intraday30m?.regime === 'TREND') {
+    const isLong       = entry.direction === 'long';
+    const swingAligned = (isLong && intraday30m.dir === 'BULL') || (!isLong && intraday30m.dir === 'BEAR');
+    if (!swingAligned) warnings.push(`30m BOS ${intraday30m.dir} opposing`);
+    else if (reasons.length < 3) reasons.push(`30m BOS ${intraday30m.dir}`);
   }
 
   // ── Signal score ──────────────────────────────────────────────────────────

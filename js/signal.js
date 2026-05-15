@@ -1420,7 +1420,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
 
     const _gradeBanner = (() => {
       if (e.signalScore == null) return '';
-      const g = gradeEntry(e, hmmData);
+      const g = gradeEntry(e, hmmData, hmmData?.intraday30m ?? null);
       const vi = g.verdict === 'TAKE' ? '✅' : g.verdict === 'WATCH' ? '👁' : g.verdict === 'CAUTION' ? '⚠️' : '🚫';
       const reasonStr  = g.reasons.slice(0, 2).join(' · ');
       const warningStr = g.warnings.slice(0, 1)[0] ?? '';

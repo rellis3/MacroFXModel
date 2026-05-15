@@ -156,11 +156,12 @@ export function checkAndSendAlerts() {
         const lastSync = _kvEntrySyncTimes.get(sym) ?? 0;
         if (now - lastSync > 30 * 60 * 1000) {
           _kvEntrySyncTimes.set(sym, now);
-          const hmmData = S.hmmRegimes?.[sym] ?? null;
+          const hmmData     = S.hmmRegimes?.[sym] ?? null;
+          const intraday30m = hmmData?.intraday30m ?? null;
           const payload = entries.map(e => {
             const score = alertTierData ? (computeSignalScore(e, alertTierData, hmmData) ?? null) : null;
             const entryWithScore = { ...e, signalScore: score };
-            const g = gradeEntry(entryWithScore, hmmData);
+            const g = gradeEntry(entryWithScore, hmmData, intraday30m);
             return {
               price:         e.price,
               direction:     e.direction,

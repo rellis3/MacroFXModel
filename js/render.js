@@ -651,12 +651,19 @@ ${calendarCtx.warnings.length > 0 ? `
             <div style="font-size:9px;color:var(--text3)">—</div>
           </div>`;
         }
+        const sw = r.intraday30m;
+        const swingLine = sw
+          ? (sw.regime === 'TREND'
+              ? `<div style="font-size:8px;color:${sw.dir === 'BULL' ? 'var(--green)' : 'var(--red)'};opacity:.85;margin-top:2px">${sw.dir === 'BULL' ? '▲' : '▼'} 30m BOS</div>`
+              : `<div style="font-size:8px;color:var(--text3);opacity:.75;margin-top:2px">↕ 30m CHoCH</div>`)
+          : '';
         if (r.regime === 'RANGE') {
           const pct = Math.round(r.rangeProb * 100);
-          return `<div style="padding:6px 8px;background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.25);border-radius:6px;text-align:center;cursor:default" title="σ ratio: ${r.sigmaRatio?.toFixed(2) ?? '?'} · computed ${r.computedAt ? new Date(r.computedAt).toLocaleTimeString() : '?'}">
+          return `<div style="padding:6px 8px;background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.25);border-radius:6px;text-align:center;cursor:default" title="σ ratio: ${r.sigmaRatio?.toFixed(2) ?? '?'} · 30m: ${sw?.label ?? 'n/a'} · computed ${r.computedAt ? new Date(r.computedAt).toLocaleTimeString() : '?'}">
             <div style="font-size:9px;color:var(--text3);font-weight:600;margin-bottom:3px">${p.name}</div>
             <div style="font-size:10px;color:var(--blue);font-weight:700">🔄 RANGE</div>
             <div style="font-size:9px;color:var(--blue);opacity:.8">${pct}%</div>
+            ${swingLine}
           </div>`;
         }
         const icon = r.trendDir === 'BULL' ? '📈' : '📉';
@@ -664,10 +671,11 @@ ${calendarCtx.warnings.length > 0 ? `
         const bg   = r.trendDir === 'BULL' ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)';
         const bd   = r.trendDir === 'BULL' ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)';
         const pct  = Math.round(r.trendProb * 100);
-        return `<div style="padding:6px 8px;background:${bg};border:1px solid ${bd};border-radius:6px;text-align:center;cursor:default" title="σ ratio: ${r.sigmaRatio?.toFixed(2) ?? '?'} · computed ${r.computedAt ? new Date(r.computedAt).toLocaleTimeString() : '?'}">
+        return `<div style="padding:6px 8px;background:${bg};border:1px solid ${bd};border-radius:6px;text-align:center;cursor:default" title="σ ratio: ${r.sigmaRatio?.toFixed(2) ?? '?'} · 30m: ${sw?.label ?? 'n/a'} · computed ${r.computedAt ? new Date(r.computedAt).toLocaleTimeString() : '?'}">
           <div style="font-size:9px;color:var(--text3);font-weight:600;margin-bottom:3px">${p.name}</div>
           <div style="font-size:10px;color:${col};font-weight:700">${icon} ${r.trendDir}</div>
           <div style="font-size:9px;color:${col};opacity:.8">${pct}%</div>
+          ${swingLine}
         </div>`;
       });
       const rangeCount = PAIRS.filter(p => regimes[p.symbol]?.regime === 'RANGE').length;
@@ -679,7 +687,7 @@ ${calendarCtx.warnings.length > 0 ? `
           ${cells.join('')}
         </div>
         <div style="font-size:9px;color:var(--text3);text-align:center">
-          🔄 ${rangeCount} ranging · 📈📉 ${trendCount} trending · HMM updates ~30 min
+          🔄 ${rangeCount} ranging · 📈📉 ${trendCount} trending · HMM + 30m swing · updates ~30 min
         </div>
       </div>`;
     })()}

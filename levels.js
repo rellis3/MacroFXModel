@@ -20,7 +20,7 @@
 // Env vars optional: FRED_KEY   (enables macro tier enrichment)
 
 import * as kv from './kv.js';
-import { fitHMM, hmmSignalScore } from './hmm.js';
+import { fitHMM, hmmSignalScore, compute30mSwingRegime } from './hmm.js';
 import { gradeEntry } from './js/trade-grade.js';
 import { detectConfluencesCore } from './js/confluence-core.js';
 
@@ -675,7 +675,7 @@ export async function refreshPair(sym, globalData = {}) {
       fetchOandaBars(sym, 'D',   100).catch(() => []),
     ]);
 
-    // 2. Compute HMM from daily log-returns
+    // 2. Compute HMM from daily log-returns + 30m swing regime
     let hmmData = null;
     if (barsDaily.length >= 21) {
       const closes  = barsDaily.map(bC).filter(v => v > 0);
@@ -686,6 +686,7 @@ export async function refreshPair(sym, globalData = {}) {
       }
       if (returns.length >= 20) hmmData = fitHMM(returns);
     }
+    const intraday30m = compute30mSwingRegime(bars30m);
 
     // 3. Extract sessions
     const asiaSessions   = extractAsiaSessions(bars5m);
@@ -735,12 +736,13 @@ export async function refreshPair(sym, globalData = {}) {
       return null;
     }
 
-    await kv.put(`ai_entries_${sym.replace('/', '')}`, JSON.stringify({ data: entries, timestamp: Date.now(), source: 'server' }));
+    await kv.put(`ai_entries_${sym.replace('/', '')}`, JSON.stringify({ data: entries, timestamp: Date.now(), source: 'server', intraday30m }));
 
-    const ms      = Date.now() - t0;
+    const ms       = Date.now() - t0;
     const avgScore = entries.length ? Math.round(entries.reduce((s, e) => s + (e.signalScore ?? 0), 0) / entries.length) : 0;
-    const hmmStr  = hmmData ? `${hmmData.regime}${hmmData.trendDir ? `(${hmmData.trendDir})` : ''}` : 'no-HMM';
-    console.log(`[LEVELS] ${sym}: ${entries.length} entries, avgScore=${avgScore}%, hmm=${hmmStr}, ${ms}ms`);
+    const hmmStr   = hmmData ? `${hmmData.regime}${hmmData.trendDir ? `(${hmmData.trendDir})` : ''}` : 'no-HMM';
+    const swingStr = intraday30m ? `${intraday30m.regime}${intraday30m.dir ? `(${intraday30m.dir})` : ''}` : 'no-swing';
+    console.log(`[LEVELS] ${sym}: ${entries.length} entries, avgScore=${avgScore}%, hmm=${hmmStr}, swing=${swingStr}, ${ms}ms`);
     return entries.length;
 
   } catch (e) {

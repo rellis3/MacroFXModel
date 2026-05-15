@@ -263,3 +263,34 @@ export function hmmSignalScore(direction, hmmResult) {
 
   return tradingWithTrend ? 0.55 : 0.25;
 }
+
+/**
+ * Detect intraday swing structure (BOS / CHoCH) from 30m bars.
+ * Uses N=3 pivot detection on the last 60 bars (~30 hours).
+ * Returns { regime: 'TREND'|'RANGE', dir: 'BULL'|'BEAR'|null, label }
+ */
+export function compute30mSwingRegime(bars30m) {
+  if (!bars30m || bars30m.length < 20) return null;
+  const recent = bars30m.slice(-60);
+  const N = 3;
+  const highs = [], lows = [];
+  for (let i = N; i < recent.length - N; i++) {
+    const h = parseFloat(recent[i].high), l = parseFloat(recent[i].low);
+    let isH = true, isL = true;
+    for (let j = i - N; j <= i + N; j++) {
+      if (j !== i && parseFloat(recent[j].high) >= h) isH = false;
+      if (j !== i && parseFloat(recent[j].low)  <= l) isL = false;
+    }
+    if (isH) highs.push(h);
+    if (isL) lows.push(l);
+  }
+  if (highs.length < 2 || lows.length < 2)
+    return { regime: 'RANGE', dir: null, label: 'Insufficient swings' };
+  const hh = highs[highs.length - 1] > highs[highs.length - 2];
+  const hl = lows[lows.length - 1]   > lows[lows.length - 2];
+  const lh = highs[highs.length - 1] < highs[highs.length - 2];
+  const ll = lows[lows.length - 1]   < lows[lows.length - 2];
+  if (hh && hl) return { regime: 'TREND', dir: 'BULL', label: 'BOS Bullish HH+HL' };
+  if (lh && ll) return { regime: 'TREND', dir: 'BEAR', label: 'BOS Bearish LH+LL' };
+  return { regime: 'RANGE', dir: null, label: 'CHoCH / mixed structure' };
+}
