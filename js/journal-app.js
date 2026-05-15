@@ -287,14 +287,24 @@ function renderLevelCard(level,idx,date,pair){
   const replayRes=replayPayload?.results?.[idx];
   let replayBadge='';
   if(replayRes&&replayRes.touched){
+    const passes=replayRes.passes&&replayRes.passes.length>0?replayRes.passes
+      :[{touchTime:replayRes.touchTime,result:replayRes.result,r:replayRes.r}];
     if(!borderCls){
-      if(replayRes.result==='tp')borderCls='replay-tp';
-      else if(replayRes.result==='sl')borderCls='replay-sl';
-      else if(replayRes.result==='eod')borderCls='replay-eod';
+      const hasSl=passes.some(p=>p.result==='sl');
+      const allTp=passes.every(p=>p.result==='tp');
+      if(hasSl)borderCls='replay-sl';
+      else if(allTp)borderCls='replay-tp';
+      else borderCls='replay-eod';
     }
-    const rVal=replayRes.r!==null?`${replayRes.r>=0?'+':''}${replayRes.r}R`:'';
-    const badgeCls=replayRes.result==='tp'?'rp-badge tp':replayRes.result==='sl'?'rp-badge sl':'rp-badge eod';
-    replayBadge=`<span class="${badgeCls}" style="font-size:9px;margin-left:6px">${replayRes.touchTime||''} ${rVal}</span>`;
+    replayBadge=passes.map(p=>{
+      const cls=p.result==='tp'?'rp-badge tp':p.result==='sl'?'rp-badge sl':'rp-badge eod';
+      const rStr=p.r!==null?` ${p.r>=0?'+':''}${p.r}R`:'';
+      return`<span class="${cls}" style="font-size:9px;margin-left:4px">${p.touchTime||''}${rStr}</span>`;
+    }).join('');
+    if(passes.length>1){
+      const tot=passes.reduce((s,p)=>s+(p.r||0),0);
+      replayBadge+=`<span style="font-size:9px;margin-left:4px;color:var(--text3)">= ${tot>=0?'+':''}${tot.toFixed(2)}R</span>`;
+    }
   } else if(replayPayload&&!replayRes?.touched){
     replayBadge=`<span class="rp-badge untouched" style="font-size:9px;margin-left:6px">missed</span>`;
   }
@@ -404,17 +414,30 @@ function computeReplayStatsFromResults(results){
     stats.total++;
     if(!r.touched)continue;
     stats.touched++;
-    if(r.result==='tp'||r.result==='sl'||r.result==='eod')stats.traded++;
-    if(r.result==='tp')stats.wins++;
-    if(r.result==='sl')stats.losses++;
-    if(r.result==='eod')stats.eods++;
-    if(r.r!==null)stats.totalR+=r.r;
+    // Count each pass as a separate trade instance
+    const passes=r.passes&&r.passes.length>0?r.passes:[{result:r.result,r:r.r}];
+    for(const p of passes){
+      if(p.result==='tp'||p.result==='sl'||p.result==='eod')stats.traded++;
+      if(p.result==='tp')stats.wins++;
+      if(p.result==='sl')stats.losses++;
+      if(p.result==='eod')stats.eods++;
+      if(p.r!=null)stats.totalR+=p.r;
+    }
     const fib=String(r.level?.todayFib??'other');
     if(!byFib[fib])byFib[fib]={touched:0,tp:0,sl:0,eod:0,r:0};
-    byFib[fib].touched++;if(r.result==='tp')byFib[fib].tp++;if(r.result==='sl')byFib[fib].sl++;if(r.result==='eod')byFib[fib].eod++;if(r.r!==null)byFib[fib].r+=r.r;
+    byFib[fib].touched++;
+    for(const p of passes){
+      if(p.result==='tp'){byFib[fib].tp++;if(p.r!=null)byFib[fib].r+=p.r;}
+      if(p.result==='sl'){byFib[fib].sl++;byFib[fib].r-=1;}
+      if(p.result==='eod'){byFib[fib].eod++;if(p.r!=null)byFib[fib].r+=p.r;}
+    }
     const star=String(r.level?.stars??1);
     if(!byStar[star])byStar[star]={touched:0,tp:0,sl:0,r:0};
-    byStar[star].touched++;if(r.result==='tp')byStar[star].tp++;if(r.result==='sl')byStar[star].sl++;if(r.r!==null)byStar[star].r+=r.r;
+    byStar[star].touched++;
+    for(const p of passes){
+      if(p.result==='tp'){byStar[star].tp++;if(p.r!=null)byStar[star].r+=p.r;}
+      if(p.result==='sl'){byStar[star].sl++;byStar[star].r-=1;}
+    }
   }
   stats.totalR=+stats.totalR.toFixed(2);
   stats.winRate=stats.traded>0?Math.round(stats.wins/stats.traded*100):null;
@@ -550,7 +573,7 @@ function renderReplayStatsPanel() {
     <div class="stat-card"><div class="stat-card-lbl">Days Replayed</div><div class="stat-card-val">${d.days}</div><div class="stat-card-sub">${d.total} levels across ${d.days} day${d.days!==1?'s':''}</div></div>
     <div class="stat-card"><div class="stat-card-lbl">Levels Touched</div><div class="stat-card-val">${d.touched}</div><div class="stat-card-sub">${d.total > 0 ? Math.round(d.touched/d.total*100) : 0}% touch rate</div></div>
     <div class="stat-card"><div class="stat-card-lbl">Win Rate</div><div class="stat-card-val" style="color:${wrc}">${d.winRate !== null ? d.winRate + '%' : '—'}</div><div class="stat-card-sub">${d.wins}W · ${d.losses}L · ${d.eods}EOD</div></div>
-    <div class="stat-card"><div class="stat-card-lbl">Total R</div><div class="stat-card-val" style="color:${rc}">${d.totalR >= 0 ? '+' : ''}${d.totalR}R</div><div class="stat-card-sub">${d.traded} traded levels</div></div>
+    <div class="stat-card"><div class="stat-card-lbl">Total R</div><div class="stat-card-val" style="color:${rc}">${d.totalR >= 0 ? '+' : ''}${d.totalR}R</div><div class="stat-card-sub">${d.traded} traded passes</div></div>
   </div>`;
 
   // By Pair table (only shown when viewing all pairs)
@@ -853,9 +876,10 @@ function _slimReplayResults() {
     slim[key] = {
       ...payload,
       results: (payload.results || []).map(r => {
-        const { chartBars, level, ...rest } = r;
+        const { chartBars, level, passes, ...rest } = r;
         return {
           ...rest,
+          passes: (passes || []).map(({ chartBars: _cb, ...p }) => p),
           level: level ? {
             price: level.price, direction: level.direction,
             stars: level.stars, todayFib: level.todayFib,
@@ -1039,108 +1063,138 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
     const stars      = level.stars || 1;
 
     if (!entryPrice || !dir || !sl || !tp) {
-      results.push({ level, touched: false, result: 'no-data', r: null, touchTime: null, exitTime: null, maxFav: null, maxAdv: null, chartBars: null, entryPrice, sl, tp, dir });
+      results.push({ level, passes: [], touched: false, result: 'no-data', r: null, touchTime: null, exitTime: null, maxFav: null, maxAdv: null, chartBars: null, entryPrice, sl, tp, dir });
       continue;
     }
     const slDist = Math.abs(entryPrice - sl);
     const tpDist = Math.abs(entryPrice - tp);
     if (slDist <= 0) {
-      results.push({ level, touched: false, result: 'no-sl', r: null, touchTime: null, exitTime: null, maxFav: null, maxAdv: null, chartBars: null, entryPrice, sl, tp, dir });
+      results.push({ level, passes: [], touched: false, result: 'no-sl', r: null, touchTime: null, exitTime: null, maxFav: null, maxAdv: null, chartBars: null, entryPrice, sl, tp, dir });
       continue;
     }
 
-    let touched = false, touchTime = null, result = 'untouched', r = null;
-    let exitTime = null, maxFav = 0, maxAdv = 0, inTrade = false;
-    let touchBarIdx = -1, exitBarIdx = -1;
+    // Multi-pass: keep scanning after each SL/TP exit until no more touches found
+    const passes = [];
+    let scanFrom = 0;
 
-    for (let bi = 0; bi < windowBars.length; bi++) {
-      const bar     = windowBars[bi];
-      const barMins = bar.hour * 60 + bar.min;
+    while (scanFrom < windowBars.length) {
+      let inTrade = false, touchBarIdx = -1, exitBarIdx = -1;
+      let pTouchTime = null, pExitTime = null, pResult = 'untouched', pR = null;
+      let pMaxFav = 0, pMaxAdv = 0, nextScan = windowBars.length;
 
-      if (!inTrade && bar.l <= entryPrice + pip * 0.5 && bar.h >= entryPrice - pip * 0.5) {
-        touched = true; inTrade = true; touchBarIdx = bi;
-        touchTime = hhmm(bar);
-      }
-      if (inTrade) {
-        const fav = dir === 'long' ? (bar.h - entryPrice) / pip : (entryPrice - bar.l) / pip;
-        const adv = dir === 'long' ? (entryPrice - bar.l) / pip : (bar.h - entryPrice) / pip;
-        if (fav > maxFav) maxFav = fav;
-        if (adv > maxAdv) maxAdv = adv;
+      for (let bi = scanFrom; bi < windowBars.length; bi++) {
+        const bar     = windowBars[bi];
+        const barMins = bar.hour * 60 + bar.min;
 
-        if (dir === 'long') {
-          if (bar.l <= sl) { result = 'sl'; r = -1; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
-          if (bar.h >= tp) { result = 'tp'; r = tpDist / slDist; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
-        } else {
-          if (bar.h >= sl) { result = 'sl'; r = -1; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
-          if (bar.l <= tp) { result = 'tp'; r = tpDist / slDist; exitTime = fmtExitTime(bar); exitBarIdx = bi; break; }
+        if (!inTrade && bar.l <= entryPrice + pip * 0.5 && bar.h >= entryPrice - pip * 0.5) {
+          inTrade = true; touchBarIdx = bi; pTouchTime = hhmm(bar);
         }
-        if (!noEod && barMins >= 1259) {
-          const eodPnl = dir === 'long' ? bar.c - entryPrice : entryPrice - bar.c;
-          r = Math.max(-1, Math.min(tpDist / slDist, eodPnl / slDist));
-          result = 'eod'; exitTime = '21:00'; exitBarIdx = bi; break;
+        if (inTrade) {
+          const fav = dir === 'long' ? (bar.h - entryPrice) / pip : (entryPrice - bar.l) / pip;
+          const adv = dir === 'long' ? (entryPrice - bar.l) / pip : (bar.h - entryPrice) / pip;
+          if (fav > pMaxFav) pMaxFav = fav;
+          if (adv > pMaxAdv) pMaxAdv = adv;
+
+          if (dir === 'long') {
+            if (bar.l <= sl) { pResult = 'sl'; pR = -1; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
+            if (bar.h >= tp) { pResult = 'tp'; pR = tpDist / slDist; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
+          } else {
+            if (bar.h >= sl) { pResult = 'sl'; pR = -1; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
+            if (bar.l <= tp) { pResult = 'tp'; pR = tpDist / slDist; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
+          }
+          if (!noEod && barMins >= 1259) {
+            const eodPnl = dir === 'long' ? bar.c - entryPrice : entryPrice - bar.c;
+            pR = Math.max(-1, Math.min(tpDist / slDist, eodPnl / slDist));
+            pResult = 'eod'; pExitTime = '21:00'; exitBarIdx = bi; break;
+          }
         }
       }
-    }
 
-    if (inTrade && result === 'untouched') result = 'open';
-    if (!touched) { result = 'untouched'; r = null; }
+      if (!inTrade) break; // no touch found from scanFrom — done with this level
+      if (pResult === 'untouched') pResult = 'open';
 
-    // Slice chart bars: 12 before touch → exit + 8 after
-    let chartBars = null;
-    if (touchBarIdx >= 0) {
       const from = Math.max(0, touchBarIdx - 12);
       const to   = Math.min(windowBars.length, (exitBarIdx >= 0 ? exitBarIdx : touchBarIdx + 30) + 8);
-      chartBars = windowBars.slice(from, to).map((b, i) => ({
-        ...b,
-        isTouchBar: (from + i) === touchBarIdx,
-        isExitBar:  exitBarIdx >= 0 && (from + i) === exitBarIdx,
+      const chartBarsPass = windowBars.slice(from, to).map((b, i2) => ({
+        ...b, t: hhmm(b),
+        isTouchBar: (from + i2) === touchBarIdx,
+        isExitBar:  exitBarIdx >= 0 && (from + i2) === exitBarIdx,
       }));
+
+      passes.push({
+        touchTime: pTouchTime, exitTime: pExitTime, result: pResult,
+        r: pR !== null ? +pR.toFixed(2) : null,
+        maxFav: pMaxFav > 0 ? +pMaxFav.toFixed(1) : null,
+        maxAdv: pMaxAdv > 0 ? +pMaxAdv.toFixed(1) : null,
+        chartBars: chartBarsPass,
+      });
+
+      // EOD or open (still in trade) stops scanning; SL/TP continue from nextScan
+      if (pResult === 'eod' || pResult === 'open') break;
+      scanFrom = nextScan;
     }
 
-    if (r !== null) {
-      runningR += r;
-      equity.push({ label: `${stars}★ ${level.todayFib != null ? 'SD' + level.todayFib : ''}`, r: +r.toFixed(2), cumR: +runningR.toFixed(2), result, touchTime });
+    // Derive level-level fields from passes (backward-compat)
+    const touched    = passes.length > 0;
+    const touchTime  = passes[0]?.touchTime ?? null;
+    const exitTime   = passes[passes.length - 1]?.exitTime ?? null;
+    const chartBars  = passes[0]?.chartBars ?? null;
+    const result     = touched ? passes[passes.length - 1].result : 'untouched';
+    const rSum       = passes.reduce((s, p) => s + (p.r ?? 0), 0);
+    const r          = touched ? +rSum.toFixed(2) : null;
+    const maxFav     = passes.length > 0 ? Math.max(...passes.map(p => p.maxFav || 0)) : null;
+    const maxAdv     = passes.length > 0 ? Math.max(...passes.map(p => p.maxAdv || 0)) : null;
+
+    // Equity: one point per closed pass
+    for (const pass of passes) {
+      if (pass.result === 'tp' || pass.result === 'sl' || pass.result === 'eod') {
+        runningR += pass.r || 0;
+        equity.push({ label: `${stars}★ ${level.todayFib != null ? 'SD' + level.todayFib : ''}`, r: +(pass.r || 0).toFixed(2), cumR: +runningR.toFixed(2), result: pass.result, touchTime: pass.touchTime });
+      }
     }
 
-    results.push({ level, touched, result, r: r !== null ? +r.toFixed(2) : null, touchTime, exitTime, maxFav: maxFav > 0 ? +maxFav.toFixed(1) : null, maxAdv: maxAdv > 0 ? +maxAdv.toFixed(1) : null, chartBars, entryPrice, sl, tp, dir });
+    results.push({ level, touched, passes, result, r, touchTime, exitTime, maxFav: maxFav !== null && maxFav > 0 ? maxFav : null, maxAdv: maxAdv !== null && maxAdv > 0 ? maxAdv : null, chartBars, entryPrice, sl, tp, dir });
   }
 
-  const traded  = results.filter(r => r.result === 'tp' || r.result === 'sl' || r.result === 'eod');
-  const wins    = traded.filter(r => r.result === 'tp');
-  const losses  = traded.filter(r => r.result === 'sl');
-  const eods    = traded.filter(r => r.result === 'eod');
-  const touched = results.filter(r => r.touched);
-  const totalR  = +traded.reduce((s, r) => s + (r.r || 0), 0).toFixed(2);
+  // Count all passes (not levels) for P&L stats
+  const allPasses    = results.flatMap(r => r.passes || []);
+  const tradedPasses = allPasses.filter(p => p.result === 'tp' || p.result === 'sl' || p.result === 'eod');
+  const winPasses    = tradedPasses.filter(p => p.result === 'tp');
+  const lossPasses   = tradedPasses.filter(p => p.result === 'sl');
+  const eodPasses    = tradedPasses.filter(p => p.result === 'eod');
+  const touchedLevels = results.filter(r => r.touched);
+  const totalR       = +tradedPasses.reduce((s, p) => s + (p.r || 0), 0).toFixed(2);
 
   const byFib = {}, byStar = {};
   for (const res of results) {
-    // Use todayFib (the SD number) if available; fall back to 'asia'/'monday' source label
-    // so levels don't all collapse into a meaningless 'other' bucket.
     let fib;
     if (res.level.todayFib != null) {
       fib = String(res.level.todayFib);
     } else if (res.level.source === 'asia' || res.level.source === 'monday') {
       fib = res.level.source;
     } else {
-      // Try to infer from tags
       const tagLabels = (res.level.tags || []).map(t => (t.label || '').toLowerCase());
-      if (tagLabels.some(l => l.includes('asia')))   fib = 'asia';
+      if (tagLabels.some(l => l.includes('asia')))    fib = 'asia';
       else if (tagLabels.some(l => l.includes('mon'))) fib = 'monday';
       else fib = 'other';
     }
     if (!byFib[fib]) byFib[fib] = { touched: 0, tp: 0, sl: 0, eod: 0, r: 0 };
     if (res.touched) byFib[fib].touched++;
-    if (res.result === 'tp')  { byFib[fib].tp++;  byFib[fib].r += res.r; }
-    if (res.result === 'sl')  { byFib[fib].sl++;  byFib[fib].r -= 1; }
-    if (res.result === 'eod') { byFib[fib].eod++; byFib[fib].r += res.r; }
+    for (const p of (res.passes || [])) {
+      if (p.result === 'tp')  { byFib[fib].tp++;  byFib[fib].r += p.r || 0; }
+      if (p.result === 'sl')  { byFib[fib].sl++;  byFib[fib].r -= 1; }
+      if (p.result === 'eod') { byFib[fib].eod++; byFib[fib].r += p.r || 0; }
+    }
     const s = String(res.level.stars || 1);
     if (!byStar[s]) byStar[s] = { touched: 0, tp: 0, sl: 0, r: 0 };
     if (res.touched) byStar[s].touched++;
-    if (res.result === 'tp')  { byStar[s].tp++; byStar[s].r += res.r; }
-    if (res.result === 'sl')  { byStar[s].sl++; byStar[s].r -= 1; }
+    for (const p of (res.passes || [])) {
+      if (p.result === 'tp')  { byStar[s].tp++; byStar[s].r += p.r || 0; }
+      if (p.result === 'sl')  { byStar[s].sl++; byStar[s].r -= 1; }
+    }
   }
 
-  return { pair, date, results, equity, byFib, byStar, stats: { total: results.length, touched: touched.length, traded: traded.length, wins: wins.length, losses: losses.length, eods: eods.length, totalR, winRate: traded.length > 0 ? Math.round(wins.length / traded.length * 100) : null } };
+  return { pair, date, results, equity, byFib, byStar, stats: { total: results.length, touched: touchedLevels.length, traded: tradedPasses.length, wins: winPasses.length, losses: lossPasses.length, eods: eodPasses.length, totalR, winRate: tradedPasses.length > 0 ? Math.round(winPasses.length / tradedPasses.length * 100) : null } };
 }
 
 function hhmm(bar) { return `${String(bar.hour).padStart(2,'0')}:${String(bar.min).padStart(2,'0')}`; }
@@ -1181,14 +1235,15 @@ function renderReplayInModal(payload, minStars) {
 
   // Filter results to only levels meeting the star threshold, recompute breakdown tables
   const filteredResults = payload.results.filter(r => (r.level.stars || 1) >= min);
-  const traded  = filteredResults.filter(r => r.result === 'tp' || r.result === 'sl' || r.result === 'eod');
-  const wins    = traded.filter(r => r.result === 'tp');
-  const losses  = traded.filter(r => r.result === 'sl');
-  const eods    = traded.filter(r => r.result === 'eod');
+  const filteredPasses  = filteredResults.flatMap(r => r.passes || []);
+  const tradedPasses    = filteredPasses.filter(p => p.result === 'tp' || p.result === 'sl' || p.result === 'eod');
+  const wins    = tradedPasses.filter(p => p.result === 'tp');
+  const losses  = tradedPasses.filter(p => p.result === 'sl');
+  const eods    = tradedPasses.filter(p => p.result === 'eod');
   const touched = filteredResults.filter(r => r.touched);
-  const totalR  = +traded.reduce((s, r) => s + (r.r || 0), 0).toFixed(2);
+  const totalR  = +tradedPasses.reduce((s, p) => s + (p.r || 0), 0).toFixed(2);
 
-  // Rebuild byFib + byStar from filtered set
+  // Rebuild byFib + byStar from filtered set (pass-counting)
   const byFib = {}, byStar = {};
   for (const res of filteredResults) {
     let fib;
@@ -1200,23 +1255,29 @@ function renderReplayInModal(payload, minStars) {
     }
     if (!byFib[fib]) byFib[fib] = { touched: 0, tp: 0, sl: 0, eod: 0, r: 0 };
     if (res.touched) byFib[fib].touched++;
-    if (res.result === 'tp')  { byFib[fib].tp++;  byFib[fib].r += res.r; }
-    if (res.result === 'sl')  { byFib[fib].sl++;  byFib[fib].r -= 1; }
-    if (res.result === 'eod') { byFib[fib].eod++; byFib[fib].r += res.r; }
+    for (const p of (res.passes || [])) {
+      if (p.result === 'tp')  { byFib[fib].tp++;  byFib[fib].r += p.r || 0; }
+      if (p.result === 'sl')  { byFib[fib].sl++;  byFib[fib].r -= 1; }
+      if (p.result === 'eod') { byFib[fib].eod++; byFib[fib].r += p.r || 0; }
+    }
     const s = String(res.level.stars || 1);
     if (!byStar[s]) byStar[s] = { touched: 0, tp: 0, sl: 0, r: 0 };
     if (res.touched) byStar[s].touched++;
-    if (res.result === 'tp')  { byStar[s].tp++; byStar[s].r += res.r; }
-    if (res.result === 'sl')  { byStar[s].sl++; byStar[s].r -= 1; }
+    for (const p of (res.passes || [])) {
+      if (p.result === 'tp')  { byStar[s].tp++; byStar[s].r += p.r || 0; }
+      if (p.result === 'sl')  { byStar[s].sl++; byStar[s].r -= 1; }
+    }
   }
 
-  // Rebuild equity curve for filtered set
+  // Rebuild equity curve for filtered set (one point per pass)
   let running = 0;
   const equity = [{ label: 'Start', r: 0, cumR: 0 }];
   for (const res of filteredResults) {
-    if (res.result === 'tp' || res.result === 'sl' || res.result === 'eod') {
-      running += res.r || 0;
-      equity.push({ label: '', r: res.r || 0, cumR: +running.toFixed(2), result: res.result });
+    for (const p of (res.passes || [])) {
+      if (p.result === 'tp' || p.result === 'sl' || p.result === 'eod') {
+        running += p.r || 0;
+        equity.push({ label: '', r: p.r || 0, cumR: +running.toFixed(2), result: p.result });
+      }
     }
   }
 
@@ -1226,7 +1287,7 @@ function renderReplayInModal(payload, minStars) {
     equity,
     byFib,
     byStar,
-    stats: { total: filteredResults.length, touched: touched.length, traded: traded.length, wins: wins.length, losses: losses.length, eods: eods.length, totalR, winRate: traded.length > 0 ? Math.round(wins.length / traded.length * 100) : null },
+    stats: { total: filteredResults.length, touched: touched.length, traded: tradedPasses.length, wins: wins.length, losses: losses.length, eods: eods.length, totalR, winRate: tradedPasses.length > 0 ? Math.round(wins.length / tradedPasses.length * 100) : null },
   };
   el.innerHTML = buildReplayHTML(filteredPayload);
 }
@@ -1423,34 +1484,100 @@ function buildReplayHTML(payload) {
     const dig = 5;
     const priceStr = typeof l.price === 'number' ? l.price.toFixed(dig) : (l.price || '—');
     const sd    = l.todayFib != null ? 'SD' + l.todayFib : '—';
-    const dir   = l.direction === 'long' ? '<span class="rp-long">↑L</span>' : '<span class="rp-short">↓S</span>';
+    const dirHtml = l.direction === 'long' ? '<span class="rp-long">↑L</span>' : '<span class="rp-short">↓S</span>';
     const stars  = '★'.repeat(Math.min(l.stars || 1, 5));
-    const touch  = res.touchTime || '—';
-    const exit   = res.exitTime  || '—';
-    let resultBadge = '<span class="rp-badge untouched">—</span>';
-    if (res.result === 'tp')        resultBadge = '<span class="rp-badge tp">TP</span>';
-    else if (res.result === 'sl')   resultBadge = '<span class="rp-badge sl">SL</span>';
-    else if (res.result === 'eod')  resultBadge = '<span class="rp-badge eod">EOD</span>';
-    else if (res.result === 'open') resultBadge = '<span class="rp-badge open">Open</span>';
-    const rStr   = res.r !== null ? `<span class="${res.r >= 0 ? 'vu' : 'vd'}">${res.r > 0 ? '+' : ''}${res.r}R</span>` : '—';
-    const favStr = res.maxFav !== null ? `+${res.maxFav}p` : '—';
-    const advStr = res.maxAdv !== null ? `<span class="vd">${res.maxAdv}p</span>` : '—';
-    const rowCls = res.result === 'tp' ? 'rp-row-win' : res.result === 'sl' ? 'rp-row-loss' : '';
-    const chartId = `rp-chart-${ri}`;
-    const canExpand = !!res.chartBars;
-    const chevron = canExpand
-      ? `<button class="rp-chevron" onclick="rpToggleChart('${chartId}')" aria-label="Toggle chart">▶</button>`
-      : `<span class="rp-chevron-ph"></span>`;
 
-    tableHtml += `<tr class="${rowCls}">`
-      + `<td class="rp-chevron-cell">${chevron}</td>`
-      + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${dir}</td><td class="rp-stars">${stars}</td>`
-      + `<td class="mono">${touch}</td><td class="mono">${exit}</td><td>${resultBadge}</td>`
-      + `<td class="mono">${rStr}</td><td class="mono vn">${favStr}</td><td class="mono">${advStr}</td></tr>`;
+    const passes = res.passes && res.passes.length > 0 ? res.passes : null;
 
-    if (canExpand) {
-      tableHtml += `<tr id="${chartId}" class="rp-chart-row" style="display:none">`
-        + `<td colspan="11" class="rp-chart-cell">${buildCandleChart(res)}</td></tr>`;
+    if (!passes) {
+      // Untouched or old cached result without passes
+      const touch  = res.touchTime || '—';
+      const exit   = res.exitTime  || '—';
+      let resultBadge = '<span class="rp-badge untouched">—</span>';
+      if (res.result === 'tp')        resultBadge = '<span class="rp-badge tp">TP</span>';
+      else if (res.result === 'sl')   resultBadge = '<span class="rp-badge sl">SL</span>';
+      else if (res.result === 'eod')  resultBadge = '<span class="rp-badge eod">EOD</span>';
+      else if (res.result === 'open') resultBadge = '<span class="rp-badge open">OPEN</span>';
+      const rStr   = res.r !== null ? `<span class="${res.r >= 0 ? 'vu' : 'vd'}">${res.r > 0 ? '+' : ''}${res.r}R</span>` : '—';
+      const favStr = res.maxFav !== null ? `+${res.maxFav}p` : '—';
+      const advStr = res.maxAdv !== null ? `<span class="vd">${res.maxAdv}p</span>` : '—';
+      const rowCls = res.result === 'tp' ? 'rp-row-win' : res.result === 'sl' ? 'rp-row-loss' : '';
+      const chartId = `rp-chart-${ri}-0`;
+      const canExpand = !!res.chartBars;
+      const chevron = canExpand
+        ? `<button class="rp-chevron" onclick="rpToggleChart('${chartId}')" aria-label="Toggle chart">▶</button>`
+        : `<span class="rp-chevron-ph"></span>`;
+      tableHtml += `<tr class="${rowCls}"><td class="rp-chevron-cell">${chevron}</td>`
+        + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${dirHtml}</td><td class="rp-stars">${stars}</td>`
+        + `<td class="mono">${touch}</td><td class="mono">${exit}</td><td>${resultBadge}</td>`
+        + `<td class="mono">${rStr}</td><td class="mono vn">${favStr}</td><td class="mono">${advStr}</td></tr>`;
+      if (canExpand) {
+        tableHtml += `<tr id="${chartId}" class="rp-chart-row" style="display:none">`
+          + `<td colspan="11" class="rp-chart-cell">${buildCandleChart(res)}</td></tr>`;
+      }
+    } else if (passes.length === 1) {
+      // Single pass — standard row
+      const p = passes[0];
+      const resultBadge = p.result === 'tp' ? '<span class="rp-badge tp">TP</span>'
+        : p.result === 'sl'  ? '<span class="rp-badge sl">SL</span>'
+        : p.result === 'eod' ? '<span class="rp-badge eod">EOD</span>'
+        : `<span class="rp-badge open">${p.result.toUpperCase()}</span>`;
+      const rStr   = p.r !== null ? `<span class="${p.r >= 0 ? 'vu' : 'vd'}">${p.r > 0 ? '+' : ''}${p.r}R</span>` : '—';
+      const favStr = p.maxFav !== null ? `+${p.maxFav}p` : '—';
+      const advStr = p.maxAdv !== null ? `<span class="vd">${p.maxAdv}p</span>` : '—';
+      const rowCls = p.result === 'tp' ? 'rp-row-win' : p.result === 'sl' ? 'rp-row-loss' : '';
+      const chartId = `rp-chart-${ri}-0`;
+      const canExpand = !!p.chartBars;
+      const chevron = canExpand
+        ? `<button class="rp-chevron" onclick="rpToggleChart('${chartId}')" aria-label="Toggle chart">▶</button>`
+        : `<span class="rp-chevron-ph"></span>`;
+      tableHtml += `<tr class="${rowCls}"><td class="rp-chevron-cell">${chevron}</td>`
+        + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${dirHtml}</td><td class="rp-stars">${stars}</td>`
+        + `<td class="mono">${p.touchTime || '—'}</td><td class="mono">${p.exitTime || '—'}</td><td>${resultBadge}</td>`
+        + `<td class="mono">${rStr}</td><td class="mono vn">${favStr}</td><td class="mono">${advStr}</td></tr>`;
+      if (canExpand) {
+        tableHtml += `<tr id="${chartId}" class="rp-chart-row" style="display:none">`
+          + `<td colspan="11" class="rp-chart-cell">${buildCandleChart({ ...p, entryPrice: res.entryPrice, sl: res.sl, tp: res.tp, dir: res.dir })}</td></tr>`;
+      }
+    } else {
+      // Multi-pass: header row + sub-rows per pass
+      const totalR    = passes.reduce((s, p) => s + (p.r || 0), 0);
+      const hasSl     = passes.some(p => p.result === 'sl');
+      const allTp     = passes.every(p => p.result === 'tp');
+      const rowCls    = hasSl ? 'rp-row-loss' : allTp ? 'rp-row-win' : '';
+      const rStr      = `<span class="${totalR >= 0 ? 'vu' : 'vd'}">${totalR > 0 ? '+' : ''}${totalR.toFixed(2)}R</span>`;
+      const passBadges = passes.map(p => `<span class="rp-badge ${p.result === 'tp' ? 'tp' : p.result === 'sl' ? 'sl' : 'eod'}">${p.touchTime || ''} ${p.result.toUpperCase()}</span>`).join(' ');
+      tableHtml += `<tr class="${rowCls}"><td class="rp-chevron-cell"><span class="rp-chevron-ph"></span></td>`
+        + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${dirHtml}</td><td class="rp-stars">${stars}</td>`
+        + `<td class="mono">${passes[0].touchTime || '—'}</td>`
+        + `<td style="font-size:10px;color:var(--text3)">${passes.length} passes</td>`
+        + `<td colspan="2">${passBadges}&nbsp;${rStr}</td>`
+        + `<td colspan="2"></td></tr>`;
+      for (let pi = 0; pi < passes.length; pi++) {
+        const p = passes[pi];
+        const chartId = `rp-chart-${ri}-${pi}`;
+        const canExpand = !!p.chartBars;
+        const chevron = canExpand
+          ? `<button class="rp-chevron" onclick="rpToggleChart('${chartId}')" aria-label="Toggle chart">▶</button>`
+          : `<span class="rp-chevron-ph"></span>`;
+        const resultBadge = p.result === 'tp' ? '<span class="rp-badge tp">TP</span>'
+          : p.result === 'sl'  ? '<span class="rp-badge sl">SL</span>'
+          : p.result === 'eod' ? '<span class="rp-badge eod">EOD</span>'
+          : `<span class="rp-badge open">${p.result.toUpperCase()}</span>`;
+        const rp      = p.r !== null ? `<span class="${p.r >= 0 ? 'vu' : 'vd'}">${p.r > 0 ? '+' : ''}${p.r}R</span>` : '—';
+        const subCls  = p.result === 'tp' ? 'rp-row-win' : p.result === 'sl' ? 'rp-row-loss' : '';
+        tableHtml += `<tr class="${subCls}" style="opacity:0.88"><td class="rp-chevron-cell">${chevron}</td>`
+          + `<td style="padding-left:18px;color:var(--text3);font-size:10px">↳ #${pi + 1}</td>`
+          + `<td colspan="3"></td>`
+          + `<td class="mono">${p.touchTime || '—'}</td><td class="mono">${p.exitTime || '—'}</td>`
+          + `<td>${resultBadge}</td><td class="mono">${rp}</td>`
+          + `<td class="mono vn">${p.maxFav ? '+' + p.maxFav + 'p' : '—'}</td>`
+          + `<td class="mono">${p.maxAdv ? `<span class="vd">${p.maxAdv}p</span>` : '—'}</td></tr>`;
+        if (canExpand) {
+          tableHtml += `<tr id="${chartId}" class="rp-chart-row" style="display:none">`
+            + `<td colspan="11" class="rp-chart-cell">${buildCandleChart({ ...p, entryPrice: res.entryPrice, sl: res.sl, tp: res.tp, dir: res.dir })}</td></tr>`;
+        }
+      }
     }
   }
   tableHtml += '</tbody></table></div>';
