@@ -665,7 +665,23 @@ app.get('/api/hmm/regimes', (_req, res) => {
   res.json(state.hmmRegimes);
 });
 
-// Daily watchlist — Phase 1 scored levels
+// All loaded levels — debug view of what the bot has in memory
+app.get('/api/levels', (_req, res) => {
+  const out = {};
+  for (const [sym, bucket] of Object.entries(state.levels)) {
+    if (!bucket?.data?.length) continue;
+    out[sym] = bucket.data.map(e => ({
+      price:       e.price,
+      direction:   e.direction ?? null,
+      stars:       e.totalStars ?? 0,
+      signal:      e.signalScore ?? null,
+      tags:        (e.tags ?? []).slice(0, 4).join(', '),
+    })).sort((a, b) => b.stars - a.stars || (b.signal ?? 0) - (a.signal ?? 0));
+  }
+  res.json({ loadedAt: state.levelsLoadedAt ? new Date(state.levelsLoadedAt).toISOString() : null, pairs: out });
+});
+
+// Daily watchlist — top-starred levels selected at London open
 app.get('/api/daily/watchlist', (_req, res) => {
   res.json({ date: state.watchlistDate, watchlist: state.dailyWatchlist });
 });
