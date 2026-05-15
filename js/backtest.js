@@ -741,6 +741,9 @@ function renderResults(d) {
   // ── Bayesian table ───────────────────────────────────────────────────────
   renderBayesianTable(d.bayesian);
 
+  // ── SD level breakdown ───────────────────────────────────────────────────
+  renderFibLevelStats(d.fibLevelStats);
+
   // ── Trade log ────────────────────────────────────────────────────────────
   renderTradeLog(d.tradeSample);
 
@@ -1135,6 +1138,76 @@ function renderBayesianTable(bayesian) {
       }).join('')}</tbody>
     </table>`;
 }
+
+// ── SD Level Breakdown ────────────────────────────────────────────────────────
+
+let _fibStats = [];
+let _fibSort  = { key: 'fib', asc: true };
+
+function renderFibLevelStats(stats) {
+  const card = document.getElementById('fib-level-stats-card');
+  const el   = document.getElementById('fib-level-stats');
+  if (!el || !card) return;
+
+  if (!stats?.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  _fibStats = stats;
+  _renderFibTable();
+}
+
+function _renderFibTable() {
+  const el = document.getElementById('fib-level-stats');
+  if (!el) return;
+
+  const sorted = [..._fibStats].sort((a, b) => {
+    const va = a[_fibSort.key], vb = b[_fibSort.key];
+    const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+    return _fibSort.asc ? cmp : -cmp;
+  });
+
+  const overallWR = _fibStats.reduce((s, f) => s + f.wins, 0) / Math.max(1, _fibStats.reduce((s, f) => s + f.trades, 0));
+  const sortArrow = k => _fibSort.key === k ? (_fibSort.asc ? ' ↑' : ' ↓') : '';
+  const th = (k, label, title = '') =>
+    `<th onclick="fibSortBy('${k}')" title="${title}">${label}${sortArrow(k)}</th>`;
+
+  el.innerHTML = `
+    <table>
+      <thead><tr>
+        ${th('fib',     'SD Level', 'Fibonacci projection from the session range')}
+        ${th('trades',  'Trades',   'Total entries at this level')}
+        ${th('wins',    'W',        'Winning trades (hit TP)')}
+        ${th('losses',  'L',        'Losing trades (hit SL or EOD)')}
+        ${th('winRate', 'Win Rate', 'Wins ÷ total trades')}
+        ${th('totalR',  'Total R',  'Net R earned at this level across all trades')}
+        ${th('avgR',    'Avg R',    'Average R per trade at this level')}
+      </tr></thead>
+      <tbody>${sorted.map(f => {
+        const wrPct    = (f.winRate * 100).toFixed(1);
+        const wrColor  = f.winRate > overallWR + 0.03 ? 'var(--green)' : f.winRate < overallWR - 0.03 ? 'var(--red)' : 'var(--text2)';
+        const rColor   = f.totalR > 0 ? 'pos' : f.totalR < 0 ? 'neg' : '';
+        const avgColor = f.avgR   > 0 ? 'pos' : f.avgR   < 0 ? 'neg' : '';
+        const bar = `<div class="wr-bar"><div style="width:${(f.winRate*100).toFixed(0)}%;background:${f.winRate>=0.5?'var(--green)':'var(--red)'}"></div></div>`;
+        const badge = f.fib >= 0
+          ? `<span class="fib-badge" style="background:rgba(99,102,241,0.12);color:#818cf8;border:1px solid rgba(99,102,241,0.25)">SD${f.fib}</span>`
+          : `<span class="fib-badge" style="background:rgba(239,68,68,0.10);color:var(--red);border:1px solid rgba(239,68,68,0.22)">SD${f.fib}</span>`;
+        return `<tr>
+          <td>${badge}</td>
+          <td class="mono">${f.trades}</td>
+          <td class="mono pos">${f.wins}</td>
+          <td class="mono neg">${f.losses}</td>
+          <td><span style="color:${wrColor};font-weight:600">${wrPct}%</span>${bar}</td>
+          <td class="mono ${rColor}">${f.totalR > 0 ? '+' : ''}${f.totalR}</td>
+          <td class="mono ${avgColor}">${f.avgR > 0 ? '+' : ''}${f.avgR}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+}
+
+window.fibSortBy = function(key) {
+  if (_fibSort.key === key) _fibSort.asc = !_fibSort.asc;
+  else { _fibSort.key = key; _fibSort.asc = key === 'fib'; }
+  _renderFibTable();
+};
 
 // ── Trade Log ─────────────────────────────────────────────────────────────────
 

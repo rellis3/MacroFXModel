@@ -196,6 +196,14 @@
     .wr-bar { height: 4px; background: var(--s2); border-radius: 2px; margin-top: 3px; overflow: hidden; }
     .wr-bar div { height: 100%; border-radius: 2px; }
 
+    /* ── SD level stats table ──────────────────────────────────────────────── */
+    #fib-level-stats table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    #fib-level-stats th { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--text3); padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; cursor: pointer; user-select: none; }
+    #fib-level-stats th:hover { color: var(--text); }
+    #fib-level-stats td { padding: 5px 8px; border-bottom: 1px solid var(--border); color: var(--text2); font-size: 11px; }
+    #fib-level-stats td.mono { font-family: 'DM Mono', monospace; }
+    .fib-badge { display: inline-block; font-size: 9.5px; font-weight: 700; padding: 1px 7px; border-radius: 5px; font-family: 'DM Mono', monospace; letter-spacing: .03em; }
+
     /* ── Trade log ───────────────────────────────────────────────────────────── */
     #trade-log { max-height: 480px; overflow-y: auto; }
     #trade-log table { width: 100%; border-collapse: collapse; font-size: 11px; }
@@ -1001,6 +1009,20 @@
           <p style="color:var(--text3);font-size:10px">Note: win rate here counts the trade outcome (TP vs SL), not whether the feature itself was "right" about direction. A feature that fires correctly but entry timing was poor may still show low win rate.</p>
         </div>
         <div id="bayesian-table"></div>
+      </div>
+
+      <!-- SD Level stats -->
+      <div class="chart-card" id="fib-level-stats-card" style="display:none">
+        <div class="chart-title" style="display:flex;align-items:center;gap:6px">SD Level Breakdown <button class="help-btn" onclick="toggleHelp('h-fib')">?</button></div>
+        <div class="help-panel" id="h-fib" style="margin-bottom:10px">
+          <p>Aggregates every trade across the full run by the Fibonacci SD level where entry occurred. Use this to find which levels have the highest win rate and best R expectancy — and which to filter out.</p>
+          <ul>
+            <li><strong>SD Level</strong> — Fibonacci projection from the Asia session range. SD0 = range low, SD1 = range high, SD±0.5 = midpoints inside, SD2+ = outside the range (extension zones).</li>
+            <li><strong>Win Rate</strong> — % of trades at that level that hit TP. Higher is better. Levels below 40% consistently are candidates for disabling via the Fib filter.</li>
+            <li><strong>Total R / Avg R</strong> — net R earned at this level across all trades. A high win rate with negative total R means winners are smaller than losers — check the R:R setting.</li>
+          </ul>
+        </div>
+        <div id="fib-level-stats"></div>
       </div>
 
       <!-- Trade log -->

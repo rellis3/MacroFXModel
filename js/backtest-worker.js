@@ -843,6 +843,28 @@ function computeStats(trades, rrRatio, bayesian) {
     .sort((a, b) => a.yearMonth < b.yearMonth ? -1 : 1)
     .map(m => ({ ...m, totalR: +m.totalR.toFixed(2) }));
 
+  // SD level stats — aggregate every trade by todayFib across the full run
+  const fibMap = {};
+  for (const t of trades) {
+    if (t.todayFib == null) continue;
+    const key = String(t.todayFib);
+    if (!fibMap[key]) fibMap[key] = { fib: t.todayFib, trades: 0, wins: 0, totalR: 0 };
+    fibMap[key].trades++;
+    if (t.r > 0) fibMap[key].wins++;
+    fibMap[key].totalR += t.r;
+  }
+  const fibLevelStats = Object.values(fibMap)
+    .sort((a, b) => a.fib - b.fib)
+    .map(f => ({
+      fib:     f.fib,
+      trades:  f.trades,
+      wins:    f.wins,
+      losses:  f.trades - f.wins,
+      winRate: f.trades > 0 ? +(f.wins / f.trades).toFixed(4) : 0,
+      totalR:  +f.totalR.toFixed(2),
+      avgR:    +((f.totalR / f.trades).toFixed(3)),
+    }));
+
   // Last 200 trades — include feature votes and SD level for trade log detail
   const tradeSample = trades.slice(-200).map(t => ({
     dir:      t.dir,
@@ -869,7 +891,7 @@ function computeStats(trades, rrRatio, bayesian) {
     totalTrades: trades.length, wins, losses, winRate,
     profitFactor, meanR, stdR, sharpe, calmar, kelly, cagr, maxDrawdown: maxDD,
     equityCurve: curve, drawdownCurve: ddCurve, monthly,
-    monteCarlo, bayesian, tradeSample,
+    monteCarlo, bayesian, tradeSample, fibLevelStats,
     dateRange: { first: firstDate, last: lastDate, years: +years.toFixed(1) },
   };
 }
