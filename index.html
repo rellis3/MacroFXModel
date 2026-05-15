@@ -264,12 +264,58 @@ Example:
       <span id="alertPushStatus" style="font-size:12px;color:var(--text3,#6b7280)">Force-syncs entry data to Railway bot immediately (bypasses 30-min throttle)</span>
     </div>
 
+    <div class="oi-modal-divider" style="margin:14px 0"></div>
+
+    <!-- Railway API commands reference -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px">Railway API Commands</div>
+      <div style="display:flex;flex-direction:column;gap:5px;" id="railwayApiCmds">
+        <div class="oi-hint" style="font-family:monospace;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:5px 8px;display:flex;justify-content:space-between;align-items:center;">
+          <span id="apiCmd1" style="color:var(--text2);font-size:10px"></span>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('apiCmd1').textContent)" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0 0 0 6px;flex-shrink:0">📋</button>
+        </div>
+        <div class="oi-hint" style="font-family:monospace;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:5px 8px;display:flex;justify-content:space-between;align-items:center;">
+          <span id="apiCmd2" style="color:var(--text2);font-size:10px"></span>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('apiCmd2').textContent)" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0 0 0 6px;flex-shrink:0">📋</button>
+        </div>
+        <div class="oi-hint" style="font-family:monospace;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:5px 8px;display:flex;justify-content:space-between;align-items:center;">
+          <span id="apiCmd3" style="color:var(--text2);font-size:10px"></span>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('apiCmd3').textContent)" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0 0 0 6px;flex-shrink:0">📋</button>
+        </div>
+        <div class="oi-hint" style="font-family:monospace;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:5px 8px;display:flex;justify-content:space-between;align-items:center;">
+          <span id="apiCmd4" style="color:var(--text2);font-size:10px"></span>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('apiCmd4').textContent)" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0 0 0 6px;flex-shrink:0">📋</button>
+        </div>
+        <div class="oi-hint" style="font-family:monospace;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:5px 8px;display:flex;justify-content:space-between;align-items:center;">
+          <span id="apiCmd5" style="color:var(--text2);font-size:10px"></span>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('apiCmd5').textContent)" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0 0 0 6px;flex-shrink:0">📋</button>
+        </div>
+      </div>
+    </div>
+
     <div class="oi-actions">
       <button class="oi-btn" onclick="closeAlertModal()">Close</button>
       <button class="oi-btn oi-btn-primary" onclick="saveAlertModal();updateAlertBtn();startBackgroundStreams()">Save Alert Config</button>
     </div>
   </div>
 </div>
+
+<script>
+(function() {
+  var base = window.location.origin;
+  var cmds = [
+    base + '/api/levels              — all loaded levels with stars & signal score',
+    base + '/api/daily/watchlist     — today\'s selected top setups (≥4★)',
+    base + '/api/monitor/status      — bot status, level counts, last alert',
+    base + '/api/hmm/regimes         — HMM regime state per pair',
+    'curl -X POST ' + base + '/api/daily/watchlist/run   — recompute top setups now',
+  ];
+  cmds.forEach(function(cmd, i) {
+    var el = document.getElementById('apiCmd' + (i + 1));
+    if (el) el.textContent = cmd;
+  });
+})();
+</script>
 
 <!-- CONFLUENCE CONFIG MODAL -->
 <div class="cfg-overlay" id="cfgOverlay" onclick="if(event.target===this)closeCfgModal()">
