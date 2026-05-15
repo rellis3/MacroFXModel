@@ -25,7 +25,7 @@ function err(msg, status = 500) {
 // via /api/kv/get and /api/kv/set. The 'caps' key is excluded here because
 // it has its own dedicated /api/config/caps route with stricter validation.
 function isAllowedKVKey(key) {
-  const EXACT = new Set(['fred', 'oi_store', 'journal_store', 'journal_replay_store', 'cot_data', 'surprise_index', 'events_today', 'sentiment']);
+  const EXACT = new Set(['fred', 'oi_store', 'journal_store', 'journal_replay_store', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status']);
   const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
@@ -1396,6 +1396,87 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         } catch(e) {
           return json({ error: 'spread_unavailable', reason: e.message });
         }
+      }
+
+      // -- /api/state -------------------------------------------
+      // Aggregates bot_config + regime_snapshot from KV for the Python bot.
+      // GET returns { bot_config, regime_snapshot: { pushed_at, fred, pairs } }
+      if (path === '/api/state' && method === 'GET') {
+        if (!env.FX_SCORES) return json({ error: 'KV not configured' }, 500);
+
+        const ALL_PAIRS = [
+          'EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD',
+          'EUR/GBP','USD/CAD','USD/CHF','GBP/JPY','NAS100_USD',
+        ];
+        const BOT_CONFIG_DEFAULT = {
+          kill_switch: false,
+          enabled_pairs: ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD'],
+          modules: { macro_regime:true, vol_gate:true, confluence:true, oi_walls:true, cot_filter:false, news_risk:false },
+          execution: { min_macro_score:5, min_stars:3, min_agree:3, max_trades:2, composite_threshold:0.60 },
+          position: { risk_pct:1.0, vol_high_mult:0.5, vol_low_mult:1.2 },
+          sl_tp: { sl_method:'structure', tp_method:'confluence', sl_atr_mult:1.5, tp1_rr:1.0, tp1_close_pct:50, tp2_method:'garch_68', max_sl_pips:50, max_tp_pips:100 },
+          safety: { max_daily_loss_pct:3.0, trade_window_start:'07:00', trade_window_end:'20:00' },
+        };
+
+        const safeParse = raw => { try { return raw ? JSON.parse(raw) : null; } catch(e) { return null; } };
+
+        const [botConfigRaw, fredRaw, cotRaw, oiRaw, sentRaw] = await Promise.all([
+          env.FX_SCORES.get('bot_config').catch(() => null),
+          env.FX_SCORES.get('fred').catch(() => null),
+          env.FX_SCORES.get('cot_data').catch(() => null),
+          env.FX_SCORES.get('oi_store').catch(() => null),
+          env.FX_SCORES.get('sentiment').catch(() => null),
+        ]);
+
+        const botConfig  = safeParse(botConfigRaw) ?? BOT_CONFIG_DEFAULT;
+        const fredData   = safeParse(fredRaw);
+        const cotData    = safeParse(cotRaw);
+        const oiStore    = safeParse(oiRaw);
+        const sentData   = safeParse(sentRaw);
+
+        const enabledPairs = botConfig.enabled_pairs ?? ALL_PAIRS;
+        const entryFetches = await Promise.all(
+          enabledPairs.map(async pair => {
+            const raw = await env.FX_SCORES.get(`ai_entries_${pair.replace('/','')}`).catch(() => null);
+            return [pair, safeParse(raw)];
+          })
+        );
+
+        let pushedAt = null;
+        const pairSnapshots = {};
+        for (const [pair, entryData] of entryFetches) {
+          const pairKey = pair.replace('/','');
+          const ts = entryData?.timestamp ?? null;
+          if (ts && (!pushedAt || ts > pushedAt)) pushedAt = ts;
+          pairSnapshots[pair] = {
+            entries_pushed_at: ts ? new Date(ts).toISOString() : null,
+            entries:      entryData?.data?.entries ?? [],
+            entries_meta: entryData?.data?.meta    ?? {},
+            cot:          cotData?.data?.[pair]    ?? null,
+            oi:           oiStore?.[pair]           ?? null,
+            sentiment:    sentData?.[pairKey]       ?? null,
+          };
+        }
+
+        return json({
+          bot_config: botConfig,
+          regime_snapshot: {
+            pushed_at: pushedAt ? new Date(pushedAt).toISOString() : null,
+            fred:  fredData?.data ?? null,
+            pairs: pairSnapshots,
+          },
+        });
+      }
+
+      // -- /api/bot/status -------------------------------------
+      // Python bot reports runtime status back to the dashboard (5-min TTL).
+      // PUT { loop_at, paper, pairs_evaluated, errors }
+      if (path === '/api/bot/status' && method === 'PUT') {
+        if (!env.FX_SCORES) return json({ error: 'KV not configured' }, 500);
+        let body;
+        try { body = await req.json(); } catch(e) { return err('Invalid JSON body', 400); }
+        await env.FX_SCORES.put('bot_status', JSON.stringify({ data: body, timestamp: Date.now() }), { expirationTtl: 300 });
+        return json({ ok: true });
       }
 
       // -- /api/sentiment ---------------------------------------
