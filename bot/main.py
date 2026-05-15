@@ -1,18 +1,27 @@
 """
-MacroFX Trading Bot  —  orchestrator
-Polls /api/state from the dashboard, runs pluggable analysis modules,
-executes via MetaTrader5 (or logs in paper mode).
+MacroFX Trading Bot  —  two-speed orchestrator
+
+State refresh  (default 120s): re-reads dashboard KV — config, entries, regime,
+               COT, OI. Dashboard data changes slowly; no need to hit the API
+               every few seconds.
+
+Price tick     (default 3s): fetches live price for each pair and checks it
+               against the already-loaded entry levels. On MT5 this is a local
+               memory call (microseconds). Full module evaluation only runs when
+               price actually enters proximity of a level — otherwise the tight
+               loop is just cheap math.
 
 Usage:
-  python main.py            # paper mode (safe default)
-  python main.py --live     # send real orders to MT5
-  python main.py --once     # single loop then exit (testing)
-  python main.py --interval 60   # override poll interval in seconds
+  python main.py                             # paper, 3s tick, 120s refresh
+  python main.py --live                      # send real orders to MT5
+  python main.py --price-interval 5          # slower tick
+  python main.py --state-interval 60         # faster state refresh
+  python main.py --once                      # single state + price cycle then exit
 
-Environment variables (copy .env.example to .env and set values):
+Environment variables (copy bot/.env.example → bot/.env):
   MT5_ACCOUNT    integer account number
   MT5_PASSWORD   account password
-  MT5_SERVER     broker server name  e.g. ICMarkets-Demo01
+  MT5_SERVER     broker server e.g. ICMarkets-Demo01
   MT5_PATH       optional full path to terminal64.exe
   DASHBOARD_URL  override dashboard base URL
 """
@@ -52,7 +61,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # ── Module registry ────────────────────────────────────────────────────────────
-# Order matters — hard-blocking modules run first.
+
 MODULE_ORDER = ['vol_gate', 'macro_regime', 'confluence', 'oi_walls', 'cot_filter', 'news_risk']
 
 MODULE_REGISTRY = {
@@ -72,34 +81,58 @@ _PIP_SIZES = {
 }
 
 
-# ── Live price fetcher ────────────────────────────────────────────────────────
+# ── Live price (fast path) ────────────────────────────────────────────────────
 
 def fetch_current_price(pair: str, base_url: str) -> float | None:
     """
-    Fetches the current mid price.
-    Priority 1: MT5 tick (real-time, zero latency when MT5 is connected).
-    Priority 2: Dashboard /api/quote (cached ~60s, works in paper mode).
+    Priority 1 — MT5 tick: local memory call, sub-millisecond, no network.
+    Priority 2 — Dashboard /api/quote: ~100ms network round-trip, used in
+                 paper mode or when MT5 isn't available.
     """
     if HAS_MT5:
         try:
-            mt5_sym = pair.replace('/', '')
-            tick = mt5.symbol_info_tick(mt5_sym)
+            tick = mt5.symbol_info_tick(pair.replace('/', ''))
             if tick and tick.bid > 0:
                 return round((tick.bid + tick.ask) / 2, 6)
         except Exception:
             pass
-
-    # Fallback — dashboard quote API
     return fetch_quote(pair, base_url)
 
 
-# ── Module runner ─────────────────────────────────────────────────────────────
+# ── Cheap proximity pre-screen (runs every price tick) ───────────────────────
+
+def _prox_pips(pair: str, exec_cfg: dict) -> float:
+    cfg = exec_cfg.get('prox_pips', 8)
+    if isinstance(cfg, dict):
+        return cfg.get(pair) or cfg.get('default', 8)
+    return cfg
+
+
+def any_entry_in_range(state: dict, pair: str, config: dict, live_price: float) -> bool:
+    """
+    Fast O(n) check — no module evaluation, just distance math.
+    Returns True only if at least one qualifying entry is within prox_pips.
+    Called on every price tick; kept deliberately cheap.
+    """
+    snap       = state.get('regime_snapshot') or {}
+    pair_data  = (snap.get('pairs') or {}).get(pair) or {}
+    entries    = pair_data.get('entries') or []
+    exec_cfg   = config.get('execution') or {}
+    min_stars  = exec_cfg.get('min_stars', 3)
+    pip_size   = _PIP_SIZES.get(pair, 0.0001)
+    prox_dist  = _prox_pips(pair, exec_cfg) * pip_size
+
+    return any(
+        (e.get('totalStars') or 0) >= min_stars
+        and abs((e.get('price') or 0) - live_price) <= prox_dist
+        for e in entries
+    )
+
+
+# ── Full module evaluation (runs only when price is near a level) ─────────────
 
 def run_modules(state: dict, pair: str, config: dict) -> tuple:
-    """
-    Returns (results_dict, ctx_dict).
-    ctx_dict is None if a hard-blocking module fired.
-    """
+    """Returns (results_dict, ctx_dict). ctx is None on hard block."""
     enabled = config.get('modules') or {}
     modules = [
         MODULE_REGISTRY[name]()
@@ -119,7 +152,6 @@ def run_modules(state: dict, pair: str, config: dict) -> tuple:
 
         results[module.name] = result
         ctx[module.name] = result
-
         status = 'PASS' if result.passed else 'BLOCK'
         log.info(f'  [{pair}] {module.name:14s} {status:5s} {result.signal:7s} {result.confidence:6s} {result.reason}')
 
@@ -130,64 +162,49 @@ def run_modules(state: dict, pair: str, config: dict) -> tuple:
     return results, ctx
 
 
-# ── Composite decision ────────────────────────────────────────────────────────
-
 def composite_decision(results: dict) -> tuple:
-    passing = {k: v for k, v in results.items() if v and v.passed}
-    if not passing:
-        return None, 0.0, 'No modules passed'
-
+    passing     = {k: v for k, v in results.items() if v and v.passed}
     long_scores  = [v.score for v in passing.values() if v.signal == 'LONG']
     short_scores = [v.score for v in passing.values() if v.signal == 'SHORT']
 
+    if not passing:
+        return None, 0.0, 'No modules passed'
     if long_scores and short_scores:
-        return None, 0.0, 'Mixed signals — LONG and SHORT both present'
-
+        return None, 0.0, 'Mixed LONG + SHORT signals — no trade'
     if long_scores:
         avg = sum(long_scores) / len(long_scores)
-        return 'LONG', avg, f'LONG composite {avg:.2f} from {len(long_scores)} module(s)'
+        return 'LONG', avg, f'LONG {avg:.2f} composite ({len(long_scores)} modules)'
     if short_scores:
         avg = sum(short_scores) / len(short_scores)
-        return 'SHORT', avg, f'SHORT composite {avg:.2f} from {len(short_scores)} module(s)'
+        return 'SHORT', avg, f'SHORT {avg:.2f} composite ({len(short_scores)} modules)'
+    return None, 0.0, 'All passing modules NEUTRAL'
 
-    return None, 0.0, 'Passing modules all NEUTRAL — no directional signal'
-
-
-# ── Action handler ────────────────────────────────────────────────────────────
 
 def handle_actions(results: dict, paper_mode: bool) -> None:
     for name, result in results.items():
         if not result or not result.action:
             continue
-        log.info(f'Action triggered by {name}: {result.action}')
+        log.info(f'Action from {name}: {result.action}')
         if paper_mode:
-            log.info(f'[PAPER] Would execute action: {result.action}')
-            continue
+            return
         if result.action == 'move_sl_to_breakeven':
             _mt5_move_sl_to_be()
         elif result.action == 'close_all':
             _mt5_close_all()
 
 
-# ── Trade window check ────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def within_trade_window(config: dict) -> bool:
-    safety = config.get('safety') or {}
-    start  = safety.get('trade_window_start', '07:00')
-    end    = safety.get('trade_window_end', '20:00')
-    now    = datetime.now(timezone.utc).strftime('%H:%M')
-    return start <= now <= end
+    s   = config.get('safety') or {}
+    now = datetime.now(timezone.utc).strftime('%H:%M')
+    return s.get('trade_window_start', '07:00') <= now <= s.get('trade_window_end', '20:00')
 
 
-# ── MT5 connect ───────────────────────────────────────────────────────────────
+# ── MT5 ───────────────────────────────────────────────────────────────────────
 
 def mt5_connect() -> bool:
-    """
-    Initialises MT5 terminal and logs in using environment variables.
-    Returns True if connected (or already logged in without explicit creds).
-    """
-    mt5_path = os.environ.get('MT5_PATH') or None
-
+    mt5_path    = os.environ.get('MT5_PATH') or None
     initialized = mt5.initialize(path=mt5_path) if mt5_path else mt5.initialize()
     if not initialized:
         log.error(f'MT5 initialize() failed: {mt5.last_error()}')
@@ -199,65 +216,42 @@ def mt5_connect() -> bool:
 
     if account and password and server:
         try:
-            logged_in = mt5.login(
-                login=int(account),
-                password=password,
-                server=server,
-            )
+            ok = mt5.login(login=int(account), password=password, server=server)
         except Exception as exc:
             log.error(f'MT5 login() raised: {exc}')
             return False
-
-        if not logged_in:
+        if not ok:
             log.error(f'MT5 login failed: {mt5.last_error()}')
             return False
 
     info = mt5.account_info()
     if info:
         log.info(
-            f'MT5 connected: account={info.login}  balance={info.balance:.2f} {info.currency}'
+            f'MT5 connected  account={info.login}  balance={info.balance:.2f} {info.currency}'
             f'  server={info.server}  leverage=1:{info.leverage}'
         )
     else:
-        log.warning('MT5 connected but account_info() returned None — check terminal login')
-
+        log.warning('MT5 connected but account_info() returned None')
     return True
 
 
-# ── MT5 helpers ───────────────────────────────────────────────────────────────
-
 def _mt5_move_sl_to_be() -> None:
-    if not HAS_MT5:
-        return
     for pos in mt5.positions_get() or []:
         if pos.sl != pos.price_open:
-            mt5.order_send({
-                'action':   mt5.TRADE_ACTION_SLTP,
-                'position': pos.ticket,
-                'sl':       pos.price_open,
-                'tp':       pos.tp,
-            })
-            log.info(f'Moved SL to breakeven: ticket {pos.ticket}')
+            mt5.order_send({'action': mt5.TRADE_ACTION_SLTP, 'position': pos.ticket,
+                            'sl': pos.price_open, 'tp': pos.tp})
+            log.info(f'SL → breakeven: ticket {pos.ticket}')
 
 
 def _mt5_close_all() -> None:
-    if not HAS_MT5:
-        return
     for pos in mt5.positions_get() or []:
-        order_type = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
-        tick  = mt5.symbol_info_tick(pos.symbol)
-        price = tick.bid if pos.type == mt5.ORDER_TYPE_BUY else tick.ask
-        mt5.order_send({
-            'action':    mt5.TRADE_ACTION_DEAL,
-            'symbol':    pos.symbol,
-            'volume':    pos.volume,
-            'type':      order_type,
-            'position':  pos.ticket,
-            'price':     price,
-            'deviation': 10,
-            'magic':     20260001,
-            'comment':   'MacroFX emergency close',
-        })
+        t    = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+        tick = mt5.symbol_info_tick(pos.symbol)
+        px   = tick.bid if pos.type == mt5.ORDER_TYPE_BUY else tick.ask
+        mt5.order_send({'action': mt5.TRADE_ACTION_DEAL, 'symbol': pos.symbol,
+                        'volume': pos.volume, 'type': t, 'position': pos.ticket,
+                        'price': px, 'deviation': 10, 'magic': 20260001,
+                        'comment': 'MacroFX emergency close'})
         log.info(f'Emergency close: ticket {pos.ticket}')
 
 
@@ -270,37 +264,36 @@ def execute_trade(pair: str, direction: str, entry: dict,
     dist_pips   = abs(live_price - level_price) / pip_size
 
     log.info(
-        f'TRADE {pair} {direction}  '
-        f'level={level_price}  live={live_price}  dist={dist_pips:.1f}pips  '
-        f'SL={sl_tp.sl}  TP={sl_tp.tp}  R:R={sl_tp.rr_ratio}  '
-        f'lot={size}  sl_method={sl_tp.sl_method}  tp_method={sl_tp.tp_method}'
+        f'TRADE {pair} {direction}  level={level_price}  live={live_price}  '
+        f'dist={dist_pips:.1f}pips  SL={sl_tp.sl}  TP={sl_tp.tp}  '
+        f'R:R={sl_tp.rr_ratio}  lot={size}'
         + ('  [SL CAPPED]' if sl_tp.sl_capped else '')
         + ('  [TP CAPPED]' if sl_tp.tp_capped else '')
     )
 
     if sl_tp.sl_capped:
-        log.warning(f'SL was capped at max_sl_pips — verify entry quality for {pair}')
+        log.warning(f'SL capped at max_sl_pips — verify entry quality for {pair}')
     if sl_tp.tp_capped:
-        log.warning(f'TP was capped at max_tp_pips — verify entry quality for {pair}')
+        log.warning(f'TP capped at max_tp_pips — verify entry quality for {pair}')
 
     if paper_mode:
-        log.info(f'[PAPER] Signal logged — no MT5 order sent')
+        log.info('[PAPER] Signal logged — no order sent')
         return True
 
     if not HAS_MT5:
-        log.error('MetaTrader5 package not installed and --live mode is on')
+        log.error('MetaTrader5 not installed and --live mode is on')
         return False
 
-    mt5_sym  = pair.replace('/', '')
-    tick     = mt5.symbol_info_tick(mt5_sym)
-    if tick is None:
-        log.error(f'MT5: no tick data for {mt5_sym}')
+    mt5_sym = pair.replace('/', '')
+    tick    = mt5.symbol_info_tick(mt5_sym)
+    if not tick:
+        log.error(f'MT5: no tick for {mt5_sym}')
         return False
 
     order_type = mt5.ORDER_TYPE_BUY if direction == 'LONG' else mt5.ORDER_TYPE_SELL
     exec_price = tick.ask if direction == 'LONG' else tick.bid
 
-    request = {
+    res = mt5.order_send({
         'action':       mt5.TRADE_ACTION_DEAL,
         'symbol':       mt5_sym,
         'volume':       size,
@@ -313,9 +306,8 @@ def execute_trade(pair: str, direction: str, entry: dict,
         'comment':      f'MacroFX {direction[0]} {entry.get("totalStars", 0)}★',
         'type_time':    mt5.ORDER_TIME_GTC,
         'type_filling': mt5.ORDER_FILLING_IOC,
-    }
+    })
 
-    res = mt5.order_send(request)
     if res.retcode != mt5.TRADE_RETCODE_DONE:
         log.error(f'MT5 order failed: retcode={res.retcode}  {res.comment}')
         return False
@@ -324,11 +316,96 @@ def execute_trade(pair: str, direction: str, entry: dict,
     return True
 
 
-# ── Main loop ─────────────────────────────────────────────────────────────────
+# ── Pair evaluation (full pipeline, only called when price is near a level) ───
 
-def main_loop(paper_mode: bool, poll_interval: int, run_once: bool = False) -> None:
+def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
+                  sl_tp_engine: SLTPEngine, paper_mode: bool) -> dict:
+    """
+    Runs all modules and executes if the composite score clears the threshold.
+    Returns a pair_status dict for the status report.
+    """
+    snap = state.get('regime_snapshot') or {}
+    exec_cfg       = config.get('execution') or {}
+    comp_threshold = exec_cfg.get('composite_threshold', 0.60)
+    min_agree      = exec_cfg.get('min_agree', 3)
+    pair_status    = {'pair': pair, 'action': 'skip', 'live_price': live_price, 'reason': ''}
+
+    results, ctx = run_modules(state, pair, config)
+    handle_actions(results, paper_mode)
+
+    if ctx is None:
+        pair_status['reason'] = 'hard block'
+        return pair_status
+
+    direction, comp_score, comp_reason = composite_decision(results)
+    log.info(f'  [{pair}] Composite: {comp_reason}')
+
+    if direction is None or comp_score < comp_threshold:
+        pair_status['reason'] = comp_reason
+        return pair_status
+
+    passing_dir = sum(1 for v in results.values() if v and v.passed and v.signal == direction)
+    if passing_dir < min_agree:
+        pair_status['reason'] = f'Only {passing_dir}/{min_agree} modules agree on {direction}'
+        log.info(f'  [{pair}] {pair_status["reason"]}')
+        return pair_status
+
+    conf_result = results.get('confluence')
+    if not conf_result or not conf_result.metadata.get('entry'):
+        pair_status['reason'] = 'No entry from confluence module'
+        return pair_status
+
+    entry       = conf_result.metadata['entry']
+    level_price = float(entry.get('price') or 0)
+    pair_snap   = (snap.get('pairs') or {}).get(pair) or {}
+    pip_size    = _PIP_SIZES.get(pair, 0.0001)
+    dist_pips   = abs(live_price - level_price) / pip_size
+
+    sl_tp = sl_tp_engine.calculate(
+        entry=entry, pair=pair, pair_data=pair_snap,
+        direction=direction.lower(), price=live_price,
+    )
+
+    vol_result = results.get('vol_gate')
+    vol_mult   = vol_result.metadata.get('size_mult', 1.0) if vol_result else 1.0
+    risk_pct   = (config.get('position') or {}).get('risk_pct', 1.0) * vol_mult
+
+    balance = 10_000
+    if HAS_MT5 and not paper_mode:
+        acct    = mt5.account_info()
+        balance = acct.balance if acct else 10_000
+
+    sl_dist = abs(live_price - sl_tp.sl)
+    size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, 1.0)
+
+    log.info(
+        f'  [{pair}] ENTRY {direction} {entry.get("totalStars", 0)}★  '
+        f'level={level_price}  live={live_price}  dist={dist_pips:.1f}pips  '
+        f'SL={sl_tp.sl}  TP={sl_tp.tp}  R:R={sl_tp.rr_ratio}  lot={size}  score={comp_score:.2f}'
+    )
+
+    ok = execute_trade(pair, direction, entry, sl_tp, size, live_price, paper_mode)
+
+    pair_status.update({
+        'action': 'trade', 'direction': direction, 'score': round(comp_score, 2),
+        'stars': entry.get('totalStars'), 'level': level_price, 'live': live_price,
+        'dist_pips': round(dist_pips, 1), 'sl': sl_tp.sl, 'tp': sl_tp.tp,
+        'rr': sl_tp.rr_ratio, 'lot': size, 'executed': ok,
+    })
+    return pair_status
+
+
+# ── Main loop — two-speed ─────────────────────────────────────────────────────
+
+def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
+              run_once: bool = False) -> None:
     base_url = os.environ.get('DASHBOARD_URL', 'https://macrofxmodel-production.up.railway.app')
-    log.info(f'MacroFX Bot  paper={paper_mode}  interval={poll_interval}s  dashboard={base_url}')
+
+    log.info(
+        f'MacroFX Bot  paper={paper_mode}  '
+        f'state_refresh={state_interval}s  price_tick={price_interval}s  '
+        f'dashboard={base_url}'
+    )
 
     # ── MT5 startup ───────────────────────────────────────────────────────────
     if not paper_mode:
@@ -340,195 +417,132 @@ def main_loop(paper_mode: bool, poll_interval: int, run_once: bool = False) -> N
             log.error('MetaTrader5 package not installed — falling back to paper mode')
             paper_mode = True
 
-    # ── Poll loop ─────────────────────────────────────────────────────────────
+    # ── State cache ───────────────────────────────────────────────────────────
+    cached_state: dict | None = None
+    last_state_refresh: float = 0.0
+    last_status_push:   float = 0.0
+    status: dict = {'loop_at': '', 'paper': paper_mode, 'pairs_evaluated': [], 'errors': []}
+
+    # ── Two-speed loop ────────────────────────────────────────────────────────
     while True:
-        loop_start = time.time()
-        status: dict = {
-            'loop_at': datetime.now(timezone.utc).isoformat(),
-            'paper':   paper_mode,
-            'pairs_evaluated': [],
-            'errors':  [],
+        tick_start = time.time()
+
+        # ── Slow path: refresh dashboard state ────────────────────────────────
+        if tick_start - last_state_refresh >= state_interval or cached_state is None:
+            try:
+                cached_state = fetch_state(base_url)
+                last_state_refresh = tick_start
+                log.info('State refreshed from dashboard KV')
+            except Exception as exc:
+                log.error(f'State refresh failed: {exc}')
+                if cached_state is None:
+                    # No state at all yet — wait before retrying
+                    time.sleep(min(price_interval * 5, 30))
+                    continue
+
+        config         = cached_state.get('bot_config') or {}
+        snap           = cached_state.get('regime_snapshot') or {}
+        enabled_pairs  = config.get('enabled_pairs') or []
+        exec_cfg       = config.get('execution') or {}
+
+        # ── Kill switch (checked every tick so it takes effect fast) ──────────
+        if config.get('kill_switch', False):
+            if tick_start - last_status_push >= 30:
+                log.warning('KILL SWITCH ACTIVE')
+                push_bot_status({'loop_at': datetime.now(timezone.utc).isoformat(),
+                                 'paper': paper_mode, 'kill_switch': True,
+                                 'pairs_evaluated': [], 'errors': []}, base_url)
+                last_status_push = tick_start
+            if run_once:
+                break
+            time.sleep(price_interval)
+            continue
+
+        # ── Trade window ──────────────────────────────────────────────────────
+        if not within_trade_window(config):
+            if run_once:
+                break
+            time.sleep(price_interval)
+            continue
+
+        # ── Staleness gate ────────────────────────────────────────────────────
+        try:
+            check_staleness(snap)
+        except StaleDataError as exc:
+            if tick_start - last_status_push >= 60:
+                log.warning(f'STALE: {exc}')
+                push_bot_status({'loop_at': datetime.now(timezone.utc).isoformat(),
+                                 'paper': paper_mode, 'errors': [str(exc)],
+                                 'pairs_evaluated': []}, base_url)
+                last_status_push = tick_start
+            if run_once:
+                break
+            time.sleep(price_interval)
+            continue
+
+        # ── Fast path: fetch live prices (MT5 tick = sub-ms, no network) ─────
+        live_prices: dict = {}
+        for pair in enabled_pairs:
+            price = fetch_current_price(pair, base_url)
+            if price:
+                live_prices[pair] = price
+
+        # Attach to state so confluence module can read them
+        cached_state['_live_prices'] = live_prices
+
+        # ── Proximity pre-screen (cheap math — runs every price tick) ─────────
+        near_level = {
+            pair: live_prices[pair]
+            for pair in enabled_pairs
+            if pair in live_prices and any_entry_in_range(cached_state, pair, config, live_prices[pair])
         }
 
-        try:
-            # 1. Fetch state (config + snapshot in one call) ─────────────────
-            state  = fetch_state(base_url)
-            config = state.get('bot_config') or {}
+        if near_level:
+            log.info(f'Near level: {", ".join(f"{p} @ {v}" for p, v in near_level.items())}')
+        else:
+            log.debug('No pair near a level this tick — monitoring')
 
-            # 2. Kill switch — re-read every loop, takes effect immediately ───
-            if config.get('kill_switch', False):
-                log.warning('KILL SWITCH ACTIVE — skipping evaluation this loop')
-                status['kill_switch'] = True
-                push_bot_status(status, base_url)
-                if run_once:
-                    break
-                time.sleep(poll_interval)
-                continue
+        # ── Full evaluation only for pairs where price is at a level ──────────
+        max_trades      = exec_cfg.get('max_trades', 2)
+        sl_tp_engine    = SLTPEngine(config)
+        trades_this_tick = 0
+        tick_evaluated  = []
 
-            # 3. Trade window ─────────────────────────────────────────────────
-            if not within_trade_window(config):
-                s = config.get('safety') or {}
-                log.info(f'Outside window {s.get("trade_window_start")}–{s.get("trade_window_end")} UTC')
-                push_bot_status(status, base_url)
-                if run_once:
-                    break
-                time.sleep(poll_interval)
-                continue
+        for pair, live_price in near_level.items():
+            if trades_this_tick >= max_trades:
+                break
 
-            # 4. Staleness gate ────────────────────────────────────────────────
-            snap = state.get('regime_snapshot') or {}
+            log.info(f'--- {pair}  live={live_price} ---')
             try:
-                age_s = check_staleness(snap)
-                log.info(f'Dashboard data age: {age_s / 60:.1f} min')
-            except StaleDataError as exc:
-                log.warning(f'STALE: {exc}')
-                status['errors'].append(str(exc))
-                push_bot_status(status, base_url)
-                if run_once:
-                    break
-                time.sleep(poll_interval)
-                continue
-
-            exec_cfg        = config.get('execution') or {}
-            enabled_pairs   = config.get('enabled_pairs') or []
-            comp_threshold  = exec_cfg.get('composite_threshold', 0.60)
-            min_agree       = exec_cfg.get('min_agree', 3)
-            max_trades      = exec_cfg.get('max_trades', 2)
-            sl_tp_engine    = SLTPEngine(config)
-
-            # 5. Fetch live prices for all enabled pairs ───────────────────────
-            # This runs before module evaluation so confluence can do proximity
-            # checks and execution uses the real fill price, not the level price.
-            live_prices: dict = {}
-            for pair in enabled_pairs:
-                price = fetch_current_price(pair, base_url)
-                if price:
-                    live_prices[pair] = price
-                else:
-                    log.warning(f'[{pair}] live price unavailable — skipping this loop')
-
-            # Attach prices to state so confluence module can read them
-            state['_live_prices'] = live_prices
-
-            # 6. Evaluate each enabled pair ───────────────────────────────────
-            trades_this_loop = 0
-
-            for pair in enabled_pairs:
-                if trades_this_loop >= max_trades:
-                    log.info(f'Max trades ({max_trades}) reached — skipping remaining pairs')
-                    break
-
-                live_price = live_prices.get(pair)
-                if not live_price:
-                    continue  # already warned above
-
-                log.info(f'--- {pair}  live={live_price} ---')
-                pair_status: dict = {'pair': pair, 'action': 'skip', 'live_price': live_price, 'reason': ''}
-
-                results, ctx = run_modules(state, pair, config)
-                handle_actions(results, paper_mode)
-
-                if ctx is None:
-                    pair_status['reason'] = 'hard block'
-                    status['pairs_evaluated'].append(pair_status)
-                    continue
-
-                direction, comp_score, comp_reason = composite_decision(results)
-                log.info(f'  [{pair}] Composite: {comp_reason}')
-
-                if direction is None or comp_score < comp_threshold:
-                    pair_status['reason'] = comp_reason
-                    status['pairs_evaluated'].append(pair_status)
-                    continue
-
-                # Directional agreement count
-                passing_dir = sum(
-                    1 for v in results.values()
-                    if v and v.passed and v.signal == direction
+                pair_status = evaluate_pair(
+                    cached_state, pair, config, live_price, sl_tp_engine, paper_mode
                 )
-                if passing_dir < min_agree:
-                    pair_status['reason'] = f'Only {passing_dir}/{min_agree} modules agree on {direction}'
-                    log.info(f'  [{pair}] Insufficient agreement: {pair_status["reason"]}')
-                    status['pairs_evaluated'].append(pair_status)
-                    continue
+            except Exception as exc:
+                log.error(f'evaluate_pair [{pair}]: {exc}', exc_info=True)
+                pair_status = {'pair': pair, 'action': 'error', 'reason': str(exc)}
 
-                # Entry selected by confluence module (already proximity-filtered)
-                conf_result = results.get('confluence')
-                if not conf_result or not conf_result.metadata.get('entry'):
-                    pair_status['reason'] = 'No entry from confluence module'
-                    status['pairs_evaluated'].append(pair_status)
-                    continue
+            tick_evaluated.append(pair_status)
+            if pair_status.get('executed'):
+                trades_this_tick += 1
 
-                entry       = conf_result.metadata['entry']
-                level_price = float(entry.get('price') or 0)
-                pair_snap   = (snap.get('pairs') or {}).get(pair) or {}
-                pip_size    = _PIP_SIZES.get(pair, 0.0001)
-                dist_pips   = abs(live_price - level_price) / pip_size
-
-                log.info(
-                    f'  [{pair}] level={level_price}  live={live_price}  '
-                    f'dist={dist_pips:.1f}pips  stars={entry.get("totalStars")}  dir={direction}'
-                )
-
-                # SL/TP from live execution price (not the level reference price)
-                sl_tp = sl_tp_engine.calculate(
-                    entry=entry, pair=pair, pair_data=pair_snap,
-                    direction=direction.lower(), price=live_price,
-                )
-
-                # Position sizing from live account balance
-                vol_result = results.get('vol_gate')
-                vol_mult   = vol_result.metadata.get('size_mult', 1.0) if vol_result else 1.0
-                risk_pct   = (config.get('position') or {}).get('risk_pct', 1.0) * vol_mult
-
-                if HAS_MT5 and not paper_mode:
-                    acct    = mt5.account_info()
-                    balance = acct.balance if acct else 10_000
-                else:
-                    balance = 10_000  # paper dummy
-
-                sl_dist = abs(live_price - sl_tp.sl)
-                size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, 1.0)
-
-                log.info(
-                    f'  [{pair}] ENTRY {direction} {entry.get("totalStars", 0)}★  '
-                    f'live={live_price}  SL={sl_tp.sl}  TP={sl_tp.tp}  '
-                    f'R:R={sl_tp.rr_ratio}  lot={size}  score={comp_score:.2f}'
-                )
-
-                ok = execute_trade(pair, direction, entry, sl_tp, size, live_price, paper_mode)
-                if ok:
-                    trades_this_loop += 1
-
-                pair_status.update({
-                    'action':    'trade',
-                    'direction': direction,
-                    'score':     round(comp_score, 2),
-                    'stars':     entry.get('totalStars'),
-                    'level':     level_price,
-                    'live':      live_price,
-                    'dist_pips': round(dist_pips, 1),
-                    'sl':        sl_tp.sl,
-                    'tp':        sl_tp.tp,
-                    'rr':        sl_tp.rr_ratio,
-                    'lot':       size,
-                    'executed':  ok,
-                })
-                status['pairs_evaluated'].append(pair_status)
-
-        except Exception as exc:
-            log.error(f'Loop error: {exc}', exc_info=True)
-            status['errors'].append(str(exc))
-
-        push_bot_status(status, base_url)
-        elapsed = time.time() - loop_start
-        log.info(f'Loop done in {elapsed:.1f}s')
+        # ── Status report pushed on slow cadence (not every tick) ─────────────
+        if tick_evaluated or tick_start - last_status_push >= state_interval:
+            status = {
+                'loop_at':        datetime.now(timezone.utc).isoformat(),
+                'paper':          paper_mode,
+                'pairs_evaluated': tick_evaluated,
+                'pairs_near':     list(near_level.keys()),
+                'errors':         [],
+            }
+            push_bot_status(status, base_url)
+            last_status_push = tick_start
 
         if run_once:
             break
 
-        sleep_s = max(0, poll_interval - elapsed)
-        log.info(f'Sleeping {sleep_s:.0f}s')
+        elapsed  = time.time() - tick_start
+        sleep_s  = max(0, price_interval - elapsed)
+        log.debug(f'Tick done in {elapsed*1000:.0f}ms  sleeping {sleep_s:.1f}s')
         time.sleep(sleep_s)
 
 
@@ -536,14 +550,23 @@ def main_loop(paper_mode: bool, poll_interval: int, run_once: bool = False) -> N
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='MacroFX Trading Bot')
-    ap.add_argument('--live',     action='store_true', help='Send real orders to MT5 (default: paper)')
-    ap.add_argument('--paper',    action='store_true', help='Paper mode — log signals only')
-    ap.add_argument('--once',     action='store_true', help='Run one evaluation loop then exit')
-    ap.add_argument('--interval', type=int, default=60,
-                    help='Poll interval in seconds (default: 60)')
+    ap.add_argument('--live',           action='store_true',
+                    help='Send real orders to MT5 (default: paper mode)')
+    ap.add_argument('--paper',          action='store_true',
+                    help='Paper mode — log signals only')
+    ap.add_argument('--once',           action='store_true',
+                    help='Single evaluation cycle then exit')
+    ap.add_argument('--price-interval', type=int, default=3,
+                    help='Price tick interval in seconds (default: 3)')
+    ap.add_argument('--state-interval', type=int, default=120,
+                    help='Dashboard state refresh interval in seconds (default: 120)')
     args = ap.parse_args()
 
-    # Safe default: paper unless --live is explicitly passed
     paper = not args.live or args.paper
 
-    main_loop(paper_mode=paper, poll_interval=args.interval, run_once=args.once)
+    main_loop(
+        paper_mode     = paper,
+        state_interval = args.state_interval,
+        price_interval = args.price_interval,
+        run_once       = args.once,
+    )
