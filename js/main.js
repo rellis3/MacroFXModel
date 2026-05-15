@@ -272,6 +272,15 @@ function startLiveStream() {
 }
 window.startLiveStream = startLiveStream;
 
+// Reconnect immediately when tab becomes visible again (phone call end, app switch, etc.)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && S.currentPair && (!_sseSource || _sseSource.readyState === EventSource.CLOSED)) {
+    _sseReconnectDelay = 3000;
+    _clearReconnectTimer();
+    startLiveStream();
+  }
+});
+
 function _openSseForSym(sym) {
   // Guard: don't open if the pair has changed since this reconnect was scheduled
   if (sym !== S.currentPair?.symbol) return;
@@ -283,9 +292,9 @@ function _openSseForSym(sym) {
     src.onmessage = evt => {
       try {
         const d = JSON.parse(evt.data);
+        _sseReconnectDelay = 3000; // reset backoff on any valid message (price or heartbeat)
         if (d.price != null) {
           receivedTick = true;
-          _sseReconnectDelay = 3000; // reset backoff on successful tick
           _storeQuote(sym, d);
           updateHeaderPrice(window._latestQuote);
           checkProximityAlerts();

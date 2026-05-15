@@ -77,7 +77,7 @@ const DEFAULT_CFG = {
   enabled:     false,
   minStars:    4,
   pairs:       [],
-  proxPips:    { default: 5, 'XAU/USD': 8, 'NAS100_USD': 30 },
+  proxPips:    { default: 5, 'XAU/USD': 15, 'NAS100_USD': 30 },
   cooldownMin: 60,
   onlyAligned: false,
 };
@@ -159,51 +159,65 @@ async function reloadLevels() {
   state.levelsLoadedAt = Date.now();
 }
 
-async function fetchPrice(sym) {
-  // Per-pair price cache — avoids hammering OANDA on every 3-second tick
-  const cached = state.prices[sym];
-  if (cached && Date.now() - cached.at < 30_000) return cached.price;
-
-  const instrument = sym.replace('/', '_');
+// Batch-fetch all monitored-pair prices in one OANDA call.
+// Called at the start of every monitorTick so price is never more than ~3s stale.
+// Falls back to per-pair M1 candle for any pair not returned by the pricing endpoint.
+async function fetchAllPrices(pairs) {
   const base = (process.env.OANDA_ENV || 'live') === 'practice'
     ? 'https://api-fxpractice.oanda.com'
     : 'https://api-fxtrade.oanda.com';
   const auth = { Authorization: `Bearer ${process.env.OANDA_KEY}` };
+  const now  = Date.now();
 
-  // Preferred: real-time bid/ask via account pricing endpoint
   if (process.env.OANDA_ACCOUNT_ID) {
     try {
+      const instruments = pairs.map(s => s.replace('/', '_')).join('%2C');
       const r = await fetch(
-        `${base}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(instrument)}`,
+        `${base}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${instruments}`,
         { headers: auth, signal: AbortSignal.timeout(8_000) }
       );
       if (r.ok) {
         const d = await r.json();
-        const p = d.prices?.[0];
-        if (p?.bids?.[0] && p?.asks?.[0]) {
-          const price = (parseFloat(p.bids[0].price) + parseFloat(p.asks[0].price)) / 2;
-          state.prices[sym] = { price, at: Date.now() };
-          return price;
+        const fetched = new Set();
+        for (const p of (d.prices ?? [])) {
+          if (p.bids?.[0] && p.asks?.[0]) {
+            const sym   = p.instrument.replace('_', '/');
+            const price = (parseFloat(p.bids[0].price) + parseFloat(p.asks[0].price)) / 2;
+            state.prices[sym] = { price, at: now };
+            fetched.add(sym);
+          }
         }
+        // Per-pair M1 fallback for any pair the endpoint didn't return
+        for (const sym of pairs) {
+          if (!fetched.has(sym)) await fetchPriceFallback(sym, base, auth, now);
+        }
+        return;
       }
     } catch {}
   }
 
-  // Fallback: last completed M1 candle
+  // No account ID — fetch each pair individually via M1 candle
+  for (const sym of pairs) await fetchPriceFallback(sym, base, auth, now);
+}
+
+async function fetchPriceFallback(sym, base, auth, now) {
   try {
+    const instrument = sym.replace('/', '_');
     const r = await fetch(
       `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?count=2&granularity=M1&price=M`,
       { headers: auth, signal: AbortSignal.timeout(8_000) }
     );
-    if (!r.ok) return null;
+    if (!r.ok) return;
     const d     = await r.json();
     const last  = d.candles?.slice(-1)[0];
     const price = last?.mid?.c ? parseFloat(last.mid.c) : null;
-    if (price != null) state.prices[sym] = { price, at: Date.now() };
-    return price;
-  } catch {
-    return null;
-  }
+    if (price != null) state.prices[sym] = { price, at: now };
+  } catch {}
+}
+
+function fetchPrice(sym) {
+  // After fetchAllPrices() runs, cache is always fresh — just read it
+  return state.prices[sym]?.price ?? null;
 }
 
 async function fetchDailyCandles(sym, count = 60) {
@@ -423,6 +437,10 @@ async function monitorTick() {
     if (!state.cfg?.enabled || !state.tg?.token || !state.tg?.chatId) return;
 
     const pairs       = state.cfg.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+
+    // Fetch all prices in one OANDA batch call — eliminates 30s cache lag
+    await fetchAllPrices(pairs);
+
     const doSummary   = now - (state.lastSummaryAt ?? 0) > 60_000; // throttle to once/min
     let   cdDirty     = false;
     const summaryLines = [];
@@ -431,7 +449,7 @@ async function monitorTick() {
       const bucket = state.levels[sym];
       if (!bucket?.data?.length) continue;
 
-      const price = await fetchPrice(sym);
+      const price = fetchPrice(sym);
       if (price == null) {
         if (doSummary) summaryLines.push(`${sym}: no price (market closed?)`);
         continue;
