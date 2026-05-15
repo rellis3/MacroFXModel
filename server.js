@@ -103,6 +103,7 @@ const state = {
   levelsRefreshAt:     0,    // last time refreshAllPairs() completed
   levelsRefreshRunning: false,
   lastSummaryAt:       0,    // last time per-pair monitor summary was logged
+  skipCounts:          {},   // { 'EUR/USD': { stars, score, prox, cooldown } } — last tick counts
 };
 
 // ── Monitoring helpers ────────────────────────────────────────────────────────
@@ -472,6 +473,8 @@ async function monitorTick() {
         console.log(`[MONITOR] ${sym} ${entry.direction} @ ${entry.price.toFixed(digits)} (${distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
       }
 
+      state.skipCounts[sym] = { stars: skipStars, score: skipScore, dir: skipDir, aligned: skipAligned, prox: skipProx, cooldown: skipCooldown };
+
       if (doSummary && bucket.data.length > 0) {
         const maxStars = Math.max(...bucket.data.map(e => e.totalStars ?? 0));
         const maxScore = Math.max(...bucket.data.map(e => e.signalScore ?? 0));
@@ -679,6 +682,7 @@ app.get('/api/monitor/status', (_req, res) => {
       }])
     ),
     recentErrors:        state.errors.slice(-5),
+    skipCounts:          state.skipCounts,
   });
 });
 
@@ -856,7 +860,8 @@ async function runLevelsRefresh() {
         }
         const result = fitHMM(returns);
         if (result) {
-          state.hmmRegimes[sym] = result;
+          // Preserve intraday30m set by reloadLevels() — don't clobber it
+          state.hmmRegimes[sym] = { ...result, intraday30m: state.hmmRegimes[sym]?.intraday30m };
           hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range`);
         }
       }
