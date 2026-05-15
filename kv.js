@@ -53,7 +53,9 @@ const _CF_EXACT = new Set([
   'daily_watchlist',        // top-6 levels per pair, computed at 06:05 London — persists within trading day
 ]);
 function isCfKey(key) {
-  return _CF_EXACT.has(key) || key.startsWith('journal_');
+  // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart
+  if (key.startsWith('ai_entries_') || key.startsWith('ai_cron_')) return false;
+  return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 
 // ── Cloudflare KV REST API backend ───────────────────────────────────────────

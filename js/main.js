@@ -599,12 +599,9 @@ async function loadAll() {
     window._manualWatchlist = () => {
       fetch('/api/daily/watchlist/run', { method: 'POST' })
         .then(r => r.json())
-        .then(d => {
-          if (d.ok) return fetch('/api/daily/watchlist').then(r => r.json());
-          throw new Error(d.error ?? 'recompute failed');
-        })
         .then(data => {
-          if (data?.watchlist) {
+          if (!data.ok) throw new Error(data.error ?? 'recompute failed');
+          if (data.watchlist && Object.keys(data.watchlist).length) {
             S.dailyWatchlist = data.watchlist;
             S.watchlistDate  = data.date;
             renderAllDebounced();

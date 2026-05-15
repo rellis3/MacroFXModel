@@ -690,7 +690,7 @@ app.get('/api/daily/watchlist', (_req, res) => {
 app.post('/api/daily/watchlist/run', async (_req, res) => {
   try {
     await runDailyWatchlist();
-    res.json({ ok: true, date: state.watchlistDate, pairs: Object.keys(state.dailyWatchlist).length });
+    res.json({ ok: true, date: state.watchlistDate, watchlist: state.dailyWatchlist });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
