@@ -140,7 +140,14 @@ async function reloadLevels() {
   for (const sym of DEFAULT_PAIRS) {
     const raw = await kv.get(`ai_entries_${sym.replace('/', '')}`);
     if (raw) {
-      try { state.levels[sym] = JSON.parse(raw); } catch {}
+      try {
+        const parsed = JSON.parse(raw);
+        // Normalize: server writes { data: entries[] }, browser writes { data: { entries, meta } }
+        if (!Array.isArray(parsed.data) && Array.isArray(parsed.data?.entries)) {
+          parsed.data = parsed.data.entries;
+        }
+        state.levels[sym] = parsed;
+      } catch {}
     }
   }
   state.levelsLoadedAt = Date.now();
