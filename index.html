@@ -110,15 +110,22 @@
         <div class="oi-hint">Locked to the active pair tab. Switch pair first, then open OI config.</div>
       </div>
       <div>
-        <label class="oi-lbl">Spot / Futures Price</label>
-        <input class="oi-input" type="number" id="oiSpotPrice" placeholder="e.g. 1.1748" step="0.0001">
-        <div class="oi-hint">Leave blank to use current live price for this pair.</div>
+        <label class="oi-lbl">CME Futures Price <span style="color:var(--text3);font-weight:400">(6E / 6B / 6J etc.)</span></label>
+        <input class="oi-input" type="number" id="oiFuturesPrice" placeholder="e.g. 1.1768" step="0.0001" oninput="updateOIBasis()">
+        <div style="display:flex;gap:6px;align-items:flex-end;margin-top:6px">
+          <div style="flex:1">
+            <label class="oi-lbl">Spot Price <span style="color:var(--text3);font-weight:400">(OANDA — auto-filled)</span></label>
+            <input class="oi-input" type="number" id="oiSpotPrice" placeholder="auto" step="0.0001" oninput="updateOIBasis()">
+          </div>
+          <button class="oi-btn" onclick="calcOISpot()" title="Estimate ATM from OI put/call balance when CME futures price is unavailable" style="white-space:nowrap;height:32px">Calc from OI</button>
+        </div>
+        <div id="oiBasisDisplay" class="oi-hint" style="margin-top:4px">Enter CME futures price above — basis will be auto-calculated and applied to all strikes on save</div>
       </div>
     </div>
 
     <div style="margin-bottom:14px">
       <label class="oi-lbl">CME OI Data — Calls &amp; Puts <span>*</span></label>
-      <textarea class="oi-textarea" id="oiRawData" placeholder="Paste raw CME OI table here. Headers, DTE rows, and blank lines are stripped automatically.
+      <textarea class="oi-textarea" id="oiRawData" oninput="autoEstimateBasis()" placeholder="Paste raw CME OI table here. Headers, DTE rows, and blank lines are stripped automatically.
 
 Expected format per data row (first C/P pair used):
   Strike  C  P  C  P  C  P ...

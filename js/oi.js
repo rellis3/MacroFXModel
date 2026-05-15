@@ -36,11 +36,23 @@ export function openOIModal() {
   if (lbl) lbl.textContent = sym;
   const store = oiLoadStore();
   const existing = store[sym];
-  document.getElementById('oiSpotPrice').value  = existing ? (existing.spot   || '') : '';
+  // Auto-fill spot: prefer live OANDA quote (always fresh), fall back to saved value
+  const livePrice = window._latestQuote?.price ?? window._latestQuote?.mid ?? null;
+  const pair = sym;
+  const digits = pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : 5;
+  document.getElementById('oiSpotPrice').value = livePrice
+    ? livePrice.toFixed(digits)
+    : (existing?.spot ?? '');
+  const futEl = document.getElementById('oiFuturesPrice');
+  futEl.value = existing?.futures ?? '';
+  futEl.style.opacity = '';
+  futEl.dataset.manual = '0';
+  futEl.dataset.estimated = '0';
   document.getElementById('oiNumLevels').value  = existing ? (existing.numLevels || 8)  : 8;
   document.getElementById('oiMinOI').value      = existing ? (existing.minOI     || 20) : 20;
   document.getElementById('oiRawData').value    = existing ? (existing.rawOI  || '') : '';
   document.getElementById('oiChangeData').value = existing ? (existing.rawChg || '') : '';
+  updateOIBasis();
   document.getElementById('oiModalOverlay').classList.add('open');
 }
 
@@ -55,6 +67,109 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === this) closeOIModal();
   });
 });
+
+// ── Spot / futures price estimation from OI data ─────────────────────────────
+// For CME FX options the strikes are in futures price terms, not spot.
+// We estimate the current futures price from the OI distribution by finding
+// the strike where cumulative put OI from below ≈ cumulative call OI from above.
+// At that crossing point, equal premium has been sold on each side — that's ATM.
+
+export function estimateSpotFromOI(strikes, calls, puts) {
+  if (!strikes || strikes.length < 3) return null;
+
+  const items = strikes
+    .map((s, i) => ({ s, c: calls[i] || 0, p: puts[i] || 0 }))
+    .sort((a, b) => a.s - b.s);
+
+  // Method 1: balance point — find strike where cumPutsBelow ≈ cumCallsAbove
+  const totalCalls = items.reduce((a, x) => a + x.c, 0);
+  let cumPutBelow = 0, cumCallAbove = totalCalls;
+  let minGap = Infinity, balanceStrike = items[Math.floor(items.length / 2)].s;
+
+  for (const item of items) {
+    cumCallAbove -= item.c;
+    const gap = Math.abs(cumPutBelow - cumCallAbove);
+    if (gap < minGap) { minGap = gap; balanceStrike = item.s; }
+    cumPutBelow += item.p;
+  }
+
+  // Method 2: OI-weighted midpoint (skewed toward high-OI strikes, usually near ATM)
+  const totalOI = items.reduce((a, x) => a + x.c + x.p, 0);
+  const weightedMid = totalOI > 0
+    ? items.reduce((a, x) => a + x.s * (x.c + x.p), 0) / totalOI
+    : balanceStrike;
+
+  // Average the two methods — they should converge near the true ATM
+  return (balanceStrike + weightedMid) / 2;
+}
+
+// Called from modal "Calc from OI" button — parses current textarea and fills spot field
+export function calcOISpot() {
+  const raw = document.getElementById('oiRawData').value;
+  if (!raw.trim()) { oiToast('Paste OI data first, then click Calc', true); return; }
+  const parsed = oiParseTable(raw);
+  if (!parsed || parsed.strikes.length < 3) { oiToast('Could not parse OI data', true); return; }
+  const est = estimateSpotFromOI(parsed.strikes, parsed.calls, parsed.puts);
+  if (est == null) { oiToast('Could not estimate spot from OI data', true); return; }
+
+  const pair = S.currentPair?.symbol ?? 'EUR/USD';
+  const digits = pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : 5;
+  document.getElementById('oiSpotPrice').value = est.toFixed(digits);
+  oiToast(`Spot estimated from OI balance: ${est.toFixed(digits)}`);
+}
+
+// Debounced auto-estimate — fires when user pastes into the OI textarea
+let _autoEstTimer = null;
+export function autoEstimateBasis() {
+  clearTimeout(_autoEstTimer);
+  _autoEstTimer = setTimeout(() => {
+    const raw = document.getElementById('oiRawData')?.value;
+    if (!raw?.trim()) return;
+    const parsed = oiParseTable(raw);
+    if (!parsed || parsed.strikes.length < 3) return;
+    const est = estimateSpotFromOI(parsed.strikes, parsed.calls, parsed.puts);
+    if (est == null) return;
+    const futEl = document.getElementById('oiFuturesPrice');
+    if (!futEl || futEl.dataset.manual === '1') return; // don't overwrite user's entry
+    const pair = S.currentPair?.symbol ?? 'EUR/USD';
+    const isJpy = pair === 'USD/JPY' || pair.includes('JPY');
+    const digits = isJpy ? 6 : pair.includes('XAU') ? 2 : 5;
+    futEl.value = est.toFixed(digits);
+    futEl.dataset.estimated = '1';
+    futEl.style.opacity = '0.65';
+    updateOIBasis();
+  }, 350);
+}
+
+// Live basis display — called oninput from either price field
+export function updateOIBasis() {
+  const pair = S.currentPair?.symbol ?? 'EUR/USD';
+  const isJpy = pair === 'USD/JPY' || pair.includes('JPY');
+  const futEl  = document.getElementById('oiFuturesPrice');
+  const futuresRaw = parseFloat(futEl?.value);
+  const spotRaw    = parseFloat(document.getElementById('oiSpotPrice')?.value);
+  const el = document.getElementById('oiBasisDisplay');
+  if (!el) return;
+  // Mark as manually edited (stops auto-estimate from overwriting)
+  if (futEl && futEl === document.activeElement && futEl.dataset.estimated === '1') {
+    futEl.dataset.estimated = '0';
+    futEl.dataset.manual = '1';
+    futEl.style.opacity = '';
+  }
+  if (isNaN(futuresRaw) || isNaN(spotRaw)) {
+    el.textContent = 'Paste OI data — basis is auto-estimated from put/call balance (or enter CME futures price to override)';
+    el.style.color = '';
+    return;
+  }
+  let futuresSpot = futuresRaw;
+  if (isJpy && futuresRaw < 1) futuresSpot = 1 / futuresRaw;
+  const basis = futuresSpot - spotRaw;
+  const digits = isJpy ? 2 : pair.includes('XAU') ? 2 : 5;
+  const basisSign = basis >= 0 ? '+' : '';
+  const source = futEl?.dataset.estimated === '1' ? ' (OI estimate)' : '';
+  el.textContent = `Basis: ${basisSign}${basis.toFixed(digits)}${source} · strikes shifted by ${(basis >= 0 ? '−' : '+') + Math.abs(basis).toFixed(digits)} → spot-equivalent levels`;
+  el.style.color = 'var(--blue)';
+}
 
 // ── Parser ───────────────────────────────────────────────────────────────────
 
@@ -254,7 +369,8 @@ export function processOIData() {
   const pair = S.currentPair ? S.currentPair.symbol : document.getElementById('oiPairSelect').value;
   const rawOI = document.getElementById('oiRawData').value;
   const rawChg = document.getElementById('oiChangeData').value;
-  const spotRaw = parseFloat(document.getElementById('oiSpotPrice').value);
+  const spotRaw    = parseFloat(document.getElementById('oiSpotPrice').value);
+  const futuresRaw = parseFloat(document.getElementById('oiFuturesPrice')?.value);
   const numLevels = parseInt(document.getElementById('oiNumLevels').value) || 8;
   const minOI = parseInt(document.getElementById('oiMinOI').value) || 20;
 
@@ -268,9 +384,43 @@ export function processOIData() {
     if (chg) { parsed.callChg = chg.callChg; parsed.putChg = chg.putChg; }
   }
 
+  // Resolve OANDA spot (reference for Greeks and basis calculation)
   let spot = isNaN(spotRaw) ? null : spotRaw;
-  if (!spot && window._latestQuote && S.currentPair && S.currentPair.symbol === pair) spot = window._latestQuote.price;
-  if (!spot) spot = parsed.strikes[Math.floor(parsed.strikes.length/2)];
+  if (!spot && window._latestQuote && S.currentPair && S.currentPair.symbol === pair)
+    spot = window._latestQuote.price ?? window._latestQuote.mid;
+
+  // ── Basis conversion: Spot Level = CME Strike − Basis  (Basis = Futures − Spot) ──
+  // CME strikes are in futures price terms. We shift them to spot-equivalent levels.
+  // If the user entered a CME futures price, use it. Otherwise auto-estimate ATM
+  // from the OI put/call balance distribution (same method as estimateSpotFromOI).
+  // JPY exception: CME 6J quotes JPY/USD (e.g. 0.006700) — invert before basis calc.
+  let basis = 0;
+  let futuresUsed = null;
+  const isJpy = pair === 'USD/JPY' || (pair.includes('JPY') && !pair.startsWith('JPY'));
+
+  if (!isNaN(futuresRaw) && spot) {
+    // Manual: user entered the current CME futures price
+    const futuresSpot = (isJpy && futuresRaw < 1) ? 1 / futuresRaw : futuresRaw;
+    basis = futuresSpot - spot;
+    futuresUsed = futuresRaw;
+  } else if (spot && parsed.strikes.length >= 3) {
+    // Auto: estimate ATM from OI put/call balance, derive basis from that
+    const oiAtm = estimateSpotFromOI(parsed.strikes, parsed.calls, parsed.puts);
+    if (oiAtm != null) {
+      const atmSpot = (isJpy && oiAtm < 1) ? 1 / oiAtm : oiAtm;
+      basis = atmSpot - spot;
+    }
+  }
+
+  // Apply basis shift to all strikes (converts futures strikes → spot-equivalent prices)
+  if (basis !== 0) {
+    parsed.strikes = isJpy
+      ? parsed.strikes.map(s => s < 1 ? (1 / s) - basis : s - basis)
+      : parsed.strikes.map(s => s - basis);
+  }
+
+  // Fallback spot for Greeks if OANDA price unavailable
+  if (!spot) spot = parsed.strikes[Math.floor(parsed.strikes.length / 2)];
 
   const maxPain = oiCalcMaxPain(parsed.strikes, parsed.calls, parsed.puts);
   const exposures = oiCalcExposures(parsed.strikes, parsed.calls, parsed.puts, spot, pair);
@@ -309,7 +459,8 @@ export function processOIData() {
   const totalPutChg  = parsed.putChg.reduce((a,b)=>a+b,0);
 
   const inst = {
-    pair, spot, maxPain, exposures, topLevels, gexProfile,
+    pair, spot, futures: futuresUsed, basis: basis || null,
+    maxPain, exposures, topLevels, gexProfile,
     callWall: parsed.strikes[callWallIdx], putWall: parsed.strikes[putWallIdx],
     callWallOI: parsed.calls[callWallIdx], putWallOI: parsed.puts[putWallIdx],
     totalCallOI, totalPutOI, pcRatio, totalCallChg, totalPutChg,
@@ -326,10 +477,15 @@ export function processOIData() {
   document.getElementById('oiRawData').value='';
   document.getElementById('oiChangeData').value='';
   document.getElementById('oiSpotPrice').value='';
+  const futEl = document.getElementById('oiFuturesPrice');
+  if (futEl) futEl.value='';
+  const basisEl = document.getElementById('oiBasisDisplay');
+  if (basisEl) { basisEl.textContent = 'Enter CME futures price above — basis will be auto-calculated and applied to all strikes on save'; basisEl.style.color=''; }
 
   closeOIModal();
   window.renderAll();
-  oiToast(`${pair} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}`);
+  const basisNote = basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : 5)}` : '';
+  oiToast(`${pair} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${basisNote}`);
 
   // Push updated entry data to Railway bot immediately so OI levels are reflected
   window._forceKVSync?.().catch(() => {});
