@@ -98,6 +98,7 @@ const state = {
   alertCount:          0,
   errors:              [],
   running:             false,
+  runningAt:           0,    // timestamp when state.running was set — for watchdog
   cfgLoadedAt:         0,
   levelsLoadedAt:      0,
   levelsRefreshAt:     0,    // last time refreshAllPairs() completed
@@ -174,7 +175,7 @@ async function fetchPrice(sym) {
     try {
       const r = await fetch(
         `${base}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(instrument)}`,
-        { headers: auth }
+        { headers: auth, signal: AbortSignal.timeout(8_000) }
       );
       if (r.ok) {
         const d = await r.json();
@@ -192,7 +193,7 @@ async function fetchPrice(sym) {
   try {
     const r = await fetch(
       `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?count=2&granularity=M1&price=M`,
-      { headers: auth }
+      { headers: auth, signal: AbortSignal.timeout(8_000) }
     );
     if (!r.ok) return null;
     const d     = await r.json();
@@ -227,6 +228,7 @@ async function sendTelegram(token, chatId, text) {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+      signal:  AbortSignal.timeout(10_000),
     });
     return (await r.json()).ok === true;
   } catch { return false; }
@@ -389,9 +391,15 @@ async function runDailyWatchlist() {
 // ── Main monitoring tick ──────────────────────────────────────────────────────
 
 async function monitorTick() {
+  // Watchdog: if a previous tick hung for >60 s, force-release the lock
+  if (state.running && Date.now() - state.runningAt > 60_000) {
+    console.warn('[MONITOR] Watchdog: releasing stuck running lock (hung >60s)');
+    state.running = false;
+  }
   if (state.running || !process.env.OANDA_KEY) return;
-  state.running = true;
-  state.lastRun = new Date().toISOString();
+  state.running  = true;
+  state.runningAt = Date.now();
+  state.lastRun  = new Date().toISOString();
 
   try {
     const now = Date.now();
@@ -671,6 +679,8 @@ app.get('/api/monitor/status', (_req, res) => {
     lastAlert:           state.lastAlert,
     alertCount:          state.alertCount,
     enabled:             state.cfg?.enabled ?? false,
+    running:             state.running,
+    runningAgeS:         state.running ? Math.round((Date.now() - state.runningAt) / 1000) : null,
     telegramOK:          !!(state.tg?.token && state.tg?.chatId),
     levelsRefreshAt:     state.levelsRefreshAt ? new Date(state.levelsRefreshAt).toISOString() : null,
     levelsRefreshRunning:state.levelsRefreshRunning,
