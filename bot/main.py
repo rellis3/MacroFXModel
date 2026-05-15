@@ -28,12 +28,14 @@ Environment variables (copy bot/.env.example → bot/.env):
 
 import argparse
 import logging
+import math
 import os
 import time
 from datetime import datetime, timezone
 
 from utils.state_reader import fetch_state, fetch_quote, check_staleness, push_bot_status, StaleDataError
 from utils.sl_tp_engine import SLTPEngine
+from utils.indicators import compute_atr, compute_wt1, atr_to_tol_pips
 from modules.vol_gate import VolGateModule
 from modules.macro_regime import MacroRegimeModule
 from modules.confluence import ConfluenceModule
@@ -99,7 +101,23 @@ def fetch_current_price(pair: str, base_url: str) -> float | None:
     return fetch_quote(pair, base_url)
 
 
-# ── Cheap proximity pre-screen (runs every price tick) ───────────────────────
+def fetch_bars(pair: str, count: int = 30):
+    """
+    Fetches recent 5m bars from MT5 (local memory, no network).
+    Returns the numpy structured array or None if MT5 unavailable.
+    """
+    if not HAS_MT5:
+        return None
+    try:
+        bars = mt5.copy_rates_from_pos(pair.replace('/', ''), mt5.TIMEFRAME_M5, 0, count)
+        if bars is not None and len(bars) >= 2:
+            return bars
+    except Exception:
+        pass
+    return None
+
+
+# ── Pre-screen: dynamic ATR tolerance + WT1 direction filter ─────────────────
 
 def _prox_pips(pair: str, exec_cfg: dict) -> float:
     cfg = exec_cfg.get('prox_pips', 8)
@@ -108,25 +126,71 @@ def _prox_pips(pair: str, exec_cfg: dict) -> float:
     return cfg
 
 
-def any_entry_in_range(state: dict, pair: str, config: dict, live_price: float) -> bool:
+def pre_screen(state: dict, pair: str, config: dict, live_price: float) -> tuple[int, float, float]:
     """
-    Fast O(n) check — no module evaluation, just distance math.
-    Returns True only if at least one qualifying entry is within prox_pips.
-    Called on every price tick; kept deliberately cheap.
-    """
-    snap       = state.get('regime_snapshot') or {}
-    pair_data  = (snap.get('pairs') or {}).get(pair) or {}
-    entries    = pair_data.get('entries') or []
-    exec_cfg   = config.get('execution') or {}
-    min_stars  = exec_cfg.get('min_stars', 3)
-    pip_size   = _PIP_SIZES.get(pair, 0.0001)
-    prox_dist  = _prox_pips(pair, exec_cfg) * pip_size
+    Two-condition pre-screen, runs every price tick (cheap — just math + local MT5 calls).
 
-    return any(
-        (e.get('totalStars') or 0) >= min_stars
-        and abs((e.get('price') or 0) - live_price) <= prox_dist
-        for e in entries
-    )
+    Condition 1  (+1): any qualifying entry is within the dynamic ATR tolerance.
+                       ATR is fetched from MT5 5m bars; falls back to config prox_pips
+                       if bars are unavailable (paper mode).
+
+    Condition 2  (+1): WT1 momentum direction aligns with the qualifying entry direction.
+                       Skipped (auto-pass) when bars are unavailable so paper mode still works.
+
+    Returns (score 0-2, tol_pips used, wt1 value).
+    Full module evaluation only runs when score == 2.
+    """
+    snap      = state.get('regime_snapshot') or {}
+    pair_data = (snap.get('pairs') or {}).get(pair) or {}
+    entries   = pair_data.get('entries') or []
+    exec_cfg  = config.get('execution') or {}
+    min_stars = exec_cfg.get('min_stars', 3)
+    pip_size  = _PIP_SIZES.get(pair, 0.0001)
+
+    # Dynamic ATR tolerance from MT5 5m bars; falls back to config when unavailable
+    bars = fetch_bars(pair)
+    if bars is not None:
+        atr      = compute_atr(bars)
+        tol_pips = atr_to_tol_pips(atr, pip_size)
+    else:
+        tol_pips = _prox_pips(pair, exec_cfg)
+
+    tol_dist = tol_pips * pip_size
+
+    # Condition 1: any qualifying entry within ATR tolerance
+    near_entries = [
+        e for e in entries
+        if (e.get('totalStars') or 0) >= min_stars
+        and abs((e.get('price') or 0) - live_price) <= tol_dist
+    ]
+
+    if not near_entries:
+        return 0, tol_pips, float('nan')
+
+    score = 1
+
+    # Condition 2: WT1 direction aligns with a near entry
+    wt1 = compute_wt1(bars) if bars is not None else float('nan')
+
+    if math.isnan(wt1):
+        # No bars (paper mode or MT5 unavailable) — treat as passing so signals still fire
+        score = 2
+    else:
+        entry_dirs: set[str] = set()
+        for e in near_entries:
+            d = (e.get('direction') or e.get('signalAligned') or '').lower()
+            if d in ('buy', 'long'):
+                entry_dirs.add('LONG')
+            elif d in ('sell', 'short'):
+                entry_dirs.add('SHORT')
+
+        if not entry_dirs:
+            # Direction unknown — can't filter on WT1, let it through
+            score = 2
+        elif ('LONG' in entry_dirs and wt1 > 0) or ('SHORT' in entry_dirs and wt1 < 0):
+            score = 2
+
+    return score, tol_pips, wt1
 
 
 # ── Full module evaluation (runs only when price is near a level) ─────────────
@@ -490,17 +554,26 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         # Attach to state so confluence module can read them
         cached_state['_live_prices'] = live_prices
 
-        # ── Proximity pre-screen (cheap math — runs every price tick) ─────────
-        near_level = {
-            pair: live_prices[pair]
-            for pair in enabled_pairs
-            if pair in live_prices and any_entry_in_range(cached_state, pair, config, live_prices[pair])
-        }
+        # ── Pre-screen: ATR proximity + WT1 direction (cheap, runs every tick) ──
+        near_level: dict = {}
+        for pair in enabled_pairs:
+            if pair not in live_prices:
+                continue
+            live_price = live_prices[pair]
+            score, tol_pips, wt1 = pre_screen(cached_state, pair, config, live_price)
+            if score > 0:
+                wt1_str = f'{wt1:.2f}' if not math.isnan(wt1) else 'n/a'
+                log.info(
+                    f'[{pair}] pre_screen {score}/2  tol={tol_pips:.2f}pips'
+                    f'  WT1={wt1_str}  live={live_price}'
+                )
+            if score >= 2:
+                near_level[pair] = live_price
 
         if near_level:
-            log.info(f'Near level: {", ".join(f"{p} @ {v}" for p, v in near_level.items())}')
+            log.info(f'Near level (2/2): {", ".join(near_level)}')
         else:
-            log.debug('No pair near a level this tick — monitoring')
+            log.debug('No pair at pre_screen 2/2 this tick — monitoring')
 
         # ── Full evaluation only for pairs where price is at a level ──────────
         max_trades      = exec_cfg.get('max_trades', 2)
