@@ -36,6 +36,20 @@ def check_staleness(regime_snapshot: dict) -> float:
     return age_s
 
 
+def fetch_quote(pair: str, base_url: str = DASHBOARD_URL, timeout: int = 5) -> float | None:
+    """Fetches current price from dashboard /api/quote. Used as MT5-less fallback."""
+    try:
+        resp = requests.get(
+            f'{base_url}/api/quote?symbol={pair}',
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        price = float(resp.json().get('price') or 0)
+        return price if price > 0 else None
+    except Exception:
+        return None
+
+
 def push_bot_status(status: dict, base_url: str = DASHBOARD_URL, timeout: int = 5) -> None:
     """Non-critical — swallows all errors so status reporting never kills the bot."""
     try:

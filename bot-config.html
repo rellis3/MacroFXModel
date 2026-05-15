@@ -224,6 +224,10 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <span class="form-lbl">Max trades per loop</span>
           <input type="number" id="ex_max_trades" min="1" max="10" step="1">
         </div>
+        <div class="form-row">
+          <span class="form-lbl">Proximity pips <small>how close price must be to a level · Gold/NAS in pts</small></span>
+          <input type="number" id="ex_prox_pips" min="1" max="100" step="1">
+        </div>
       </div>
 
       <!-- Position sizing -->
@@ -277,6 +281,22 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       <label class="pair-chk"><input type="checkbox" id="pair_USDCHF"> USD/CHF</label>
       <label class="pair-chk"><input type="checkbox" id="pair_GBPJPY"> GBP/JPY</label>
       <label class="pair-chk"><input type="checkbox" id="pair_NAS100_USD"> NAS100</label>
+    </div>
+  </div>
+
+  <!-- MT5 setup note -->
+  <div class="card" style="border-color:var(--amber-bd);background:var(--amber-bg)">
+    <div class="card-title" style="color:var(--amber)">MT5 Credentials — set as environment variables on the Python machine</div>
+    <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;line-height:1.9">
+      <strong>MT5_ACCOUNT</strong> &nbsp;— integer account number (File → Login to Trade Account)<br>
+      <strong>MT5_PASSWORD</strong> — account password<br>
+      <strong>MT5_SERVER</strong> &nbsp;— broker server e.g. <em>ICMarkets-Demo01</em><br>
+      <strong>MT5_PATH</strong> &nbsp;&nbsp;&nbsp;— optional path to terminal64.exe<br>
+      <strong>DASHBOARD_URL</strong> — override if self-hosting
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">
+      Copy <code>bot/.env.example</code> → <code>bot/.env</code> and fill in values.
+      Never commit <code>.env</code>. Run bot with <code>python main.py --live</code>.
     </div>
   </div>
 

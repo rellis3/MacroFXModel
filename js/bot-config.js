@@ -18,6 +18,7 @@ const DEFAULTS = {
     min_agree:          3,
     max_trades:         2,
     composite_threshold: 0.60,
+    prox_pips:          8,
   },
   position: {
     risk_pct:      1.0,
@@ -131,6 +132,7 @@ function readForm() {
   _cfg.execution.min_agree          = num('ex_min_agree', 3);
   _cfg.execution.max_trades         = num('ex_max_trades', 2);
   _cfg.execution.composite_threshold = num('ex_threshold', 0.60);
+  _cfg.execution.prox_pips           = num('ex_prox_pips', 8);
   // Position
   _cfg.position.risk_pct      = num('pos_risk', 1.0);
   _cfg.position.vol_high_mult = num('pos_hi_mult', 0.5);
@@ -174,6 +176,7 @@ function renderForm() {
   setVal('ex_min_agree',  _cfg.execution?.min_agree          ?? 3);
   setVal('ex_max_trades', _cfg.execution?.max_trades         ?? 2);
   setVal('ex_threshold',  _cfg.execution?.composite_threshold ?? 0.60);
+  setVal('ex_prox_pips',  _cfg.execution?.prox_pips          ?? 8);
   // Position
   setVal('pos_risk',     _cfg.position?.risk_pct      ?? 1.0);
   setVal('pos_hi_mult',  _cfg.position?.vol_high_mult ?? 0.5);
