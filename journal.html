@@ -125,14 +125,14 @@
   <div class="modal" style="max-width:900px" onclick="event.stopPropagation()">
     <div class="modal-hd">
       <div class="modal-title">&#9654; Day Replay — <span id="rp-pair-title"></span></div>
-      <button class="modal-close" onclick="closeReplayModal()">&#10005;</button>
+      <button type="button" class="modal-close" onclick="closeReplayModal()">&#10005;</button>
     </div>
     <div class="modal-body">
 
       <!-- Fetch + run controls -->
       <div class="rp-controls">
-        <button class="rp-run-btn" id="rp-fetch-btn" style="font-size:12px;padding:6px 18px;border-radius:8px" onclick="fetchAndReplay()">&#9654; Fetch &amp; Run</button>
-        <button class="dark-btn" style="font-size:11px" onclick="runReplay()">&#8635; Re-run</button>
+        <button type="button" class="rp-run-btn" id="rp-fetch-btn" style="font-size:12px;padding:6px 18px;border-radius:8px" onclick="fetchAndReplay()">&#9654; Fetch &amp; Run</button>
+        <button type="button" class="dark-btn" style="font-size:11px" onclick="runReplay()">&#8635; Re-run</button>
         <span id="rp-fetch-status" class="rp-fetch-idle">Ready — will fetch <span id="rp-symbol"></span> M1 from Oanda</span>
         <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
           <label style="font-size:10px;color:var(--text3)">Min stars</label>
@@ -148,7 +148,7 @@
           <label style="font-size:10px;color:var(--text3);white-space:nowrap">SL pips</label>
           <input type="number" id="rp-sl-pips" placeholder="default" min="0.1" max="500" step="0.1"
             style="width:68px;font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px;font-family:'DM Mono',monospace;text-align:right"
-            title="Override SL for all levels — pips from entry (blank = use level default)" onchange="rpOptionsChanged()">
+            title="Override SL for all levels — pips from entry (blank = use level default)" oninput="rpOptionsChanged()">
           <label style="font-size:10px;color:var(--text3);white-space:nowrap">Run until</label>
           <input type="datetime-local" id="rp-end-dt"
             style="font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px"
