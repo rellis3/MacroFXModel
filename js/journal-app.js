@@ -928,10 +928,12 @@ function openReplayModal(pair, date) {
   modal.classList.add('open');
 
   // Reset controls to defaults for each new open
-  const starSel  = document.getElementById('rp-min-stars');
+  const starSel = document.getElementById('rp-min-stars');
   if (starSel) starSel.value = '1';
-  const noEodCb  = document.getElementById('rp-no-eod');
-  if (noEodCb) noEodCb.checked = false;
+  const endDtEl = document.getElementById('rp-end-dt');
+  if (endDtEl) { endDtEl.value = ''; endDtEl.max = new Date().toISOString().slice(0, 16); }
+  const slPipsEl = document.getElementById('rp-sl-pips');
+  if (slPipsEl) slPipsEl.value = '';
   _lastReplayPayload = null;
 
   const key    = pair + '::' + date;
@@ -969,13 +971,24 @@ async function fetchAndReplay() {
   setReplayStatus(`Fetching ${pair} M1 from Oanda…`, 'rp-fetch-loading');
   document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Fetching M1 bars from Oanda…</div>';
 
-  // ── 1. Fetch M1 bars ──────────────────────────────────────────────────────
-  const noEod = document.getElementById('rp-no-eod')?.checked ?? false;
+  // ── 1. Parse options ──────────────────────────────────────────────────────
+  const endDtVal  = document.getElementById('rp-end-dt')?.value || '';
+  const slPipsRaw = parseFloat(document.getElementById('rp-sl-pips')?.value || '');
+  const slPips    = !isNaN(slPipsRaw) && slPipsRaw > 0 ? slPipsRaw : null;
+
+  let endDt = null; // { dateStr, mins }
+  let days  = 1;
+  if (endDtVal) {
+    const [endDateStr, endTimeStr] = endDtVal.split('T');
+    const [endH, endM] = (endTimeStr || '21:00').split(':').map(Number);
+    endDt = { dateStr: endDateStr, mins: endH * 60 + (endM || 0) };
+    const diff = (new Date(endDateStr + 'T00:00:00') - new Date(date + 'T00:00:00')) / 86400000;
+    days = Math.min(7, Math.max(1, Math.ceil(diff) + 1));
+  }
+
+  // ── 2. Fetch M1 bars ──────────────────────────────────────────────────────
   let bars;
   try {
-    // When running to SL/TP, fetch 7 days forward so trades can resolve across sessions.
-    // OANDA caps at ~5000 bars (≈3.5 days of M1), which covers most trades.
-    const days = noEod ? 7 : 1;
     const url = `/api/oanda_ohlc1m?symbol=${encodeURIComponent(pair)}&date=${encodeURIComponent(date)}&days=${days}`;
     const res = await fetch(url);
     if (!res.ok) {
@@ -1000,7 +1013,7 @@ async function fetchAndReplay() {
   setReplayStatus(`${bars.length} bars — running replay…`, 'rp-fetch-ok');
   document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Running replay…</div>';
 
-  // ── 2. Run replay synchronously ───────────────────────────────────────────
+  // ── 3. Run replay synchronously ───────────────────────────────────────────
   const dayObj = journalData[date]?.[pair];
   if (!dayObj?.levels?.length) {
     document.getElementById('rp-result-area').innerHTML = '<div class="rp-error">No levels to replay for this pair/date.</div>';
@@ -1008,10 +1021,11 @@ async function fetchAndReplay() {
     return;
   }
 
-  const payload = runReplayEngine(pair, date, bars, dayObj.levels, { noEod });
+  const payload = runReplayEngine(pair, date, bars, dayObj.levels, { endDt, slPips });
 
   // ── 3. Cache + persist ────────────────────────────────────────────────────
-  const key = pair + '::' + date + (noEod ? '::noeod' : '');
+  const isCustom = !!(endDtVal || slPips);
+  const key = pair + '::' + date + (isCustom ? '::custom' : '');
   _replayResults[key] = payload;
   saveReplayResults();
   renderQuickStats();
@@ -1030,23 +1044,29 @@ function runReplay() { fetchAndReplay(); }   // Re-run button calls same path
 // ── Replay computation (pure — no I/O) ────────────────────────────────────────
 
 function runReplayEngine(pair, date, allBars, levels, opts = {}) {
-  const pip   = getPipSz(pair);
-  const noEod = opts.noEod ?? false;
+  const pip    = getPipSz(pair);
+  const endDt  = opts.endDt  ?? null;  // { dateStr, mins } or null = 21:00 EOD
+  const slPips = opts.slPips ?? null;  // global SL pips override or null
 
-  // Normal: one session window (08:00–21:00 London on the target date)
-  // noEod:  from 08:00 on the target date through all subsequent bars (multi-day)
-  const windowBars = noEod
-    ? allBars.filter(b => {
-        if (!b.date || b.date < date) return false;
-        if (b.date === date) return b.hour * 60 + b.min >= 480;
-        return true;
-      })
-    : allBars.filter(b => b.hour * 60 + b.min >= 480 && b.hour * 60 + b.min < 1260);
+  // Window: 08:00 on target date → endDt (or 21:00 on target date)
+  const windowBars = allBars.filter(b => {
+    if (!b.date || b.date < date) return false;
+    const mins = b.hour * 60 + b.min;
+    if (b.date === date && mins < 480) return false;
+    if (endDt) {
+      if (b.date > endDt.dateStr) return false;
+      if (b.date === endDt.dateStr && mins > endDt.mins) return false;
+    } else {
+      if (b.date !== date) return false;
+      if (mins >= 1260) return false;
+    }
+    return true;
+  });
 
-  // Format exit time — shows date prefix for multi-day exits when in noEod mode
+  // Format exit time — include date prefix for multi-day windows
   const fmtExitTime = (bar) => {
     const hm = hhmm(bar);
-    if (noEod && bar.date && bar.date !== date) return `${bar.date.slice(5)} ${hm}`;
+    if (endDt && bar.date && bar.date !== date) return `${bar.date.slice(5)} ${hm}`;
     return hm;
   };
 
@@ -1058,9 +1078,14 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
     const level      = levels[li];
     const entryPrice = level.price;
     const dir        = level.direction;
-    const sl         = level.slOverride ?? level.sl;
-    const tp         = level.tpOverride ?? level.tp;
     const stars      = level.stars || 1;
+
+    // SL: use global pips override if set, otherwise level default
+    let sl = level.slOverride ?? level.sl;
+    const tp = level.tpOverride ?? level.tp;
+    if (slPips && slPips > 0 && entryPrice && dir) {
+      sl = dir === 'long' ? entryPrice - slPips * pip : entryPrice + slPips * pip;
+    }
 
     if (!entryPrice || !dir || !sl || !tp) {
       results.push({ level, passes: [], touched: false, result: 'no-data', r: null, touchTime: null, exitTime: null, maxFav: null, maxAdv: null, chartBars: null, entryPrice, sl, tp, dir });
@@ -1102,10 +1127,13 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
             if (bar.h >= sl) { pResult = 'sl'; pR = -1; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
             if (bar.l <= tp) { pResult = 'tp'; pR = tpDist / slDist; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
           }
-          if (!noEod && barMins >= 1259) {
+          if (bi === windowBars.length - 1) {
+            // Last bar in window (21:00 EOD or custom end datetime)
             const eodPnl = dir === 'long' ? bar.c - entryPrice : entryPrice - bar.c;
             pR = Math.max(-1, Math.min(tpDist / slDist, eodPnl / slDist));
-            pResult = 'eod'; pExitTime = '21:00'; exitBarIdx = bi; break;
+            pResult = 'eod';
+            pExitTime = endDt ? fmtExitTime(bar) : '21:00';
+            exitBarIdx = bi; break;
           }
         }
       }
@@ -1207,19 +1235,17 @@ function rpApplyStarFilter() {
   renderReplayInModal(_lastReplayPayload, minStars);
 }
 
-function rpNoEodChanged() {
-  // EOD option changes results — clear cache for the current pair/date so re-run fetches fresh
+function rpOptionsChanged() {
+  // Options changed — clear custom cache and prompt re-run
   const modal = document.getElementById('replayModal');
   if (!modal) return;
-  const noEod = document.getElementById('rp-no-eod')?.checked ?? false;
-  const baseKey  = modal.dataset.pair + '::' + modal.dataset.date;
-  const otherKey = noEod ? baseKey : baseKey + '::noeod';
-  delete _replayResults[otherKey];
+  const baseKey = modal.dataset.pair + '::' + modal.dataset.date;
+  delete _replayResults[baseKey + '::custom'];
   saveReplayResults();
   _lastReplayPayload = null;
   const ra = document.getElementById('rp-result-area');
   if (ra) ra.innerHTML = '';
-  setReplayStatus(`Option changed — click Fetch & Run to re-run`, 'rp-fetch-idle');
+  setReplayStatus('Option changed — click Fetch & Run to re-run', 'rp-fetch-idle');
 }
 
 function renderReplayInModal(payload, minStars) {
