@@ -155,7 +155,7 @@
         <div style="width:100%;display:flex;align-items:center;gap:8px;padding-top:6px;border-top:1px solid var(--border);flex-wrap:wrap">
           <span style="font-size:10px;font-weight:600;color:var(--text3);white-space:nowrap">Override</span>
           <label style="font-size:10px;color:var(--text3);white-space:nowrap">SL</label>
-          <select id="rp-sl-mode" style="font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 5px" onchange="rpOptionsChanged()">
+          <select id="rp-sl-mode" style="font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 5px" onchange="rpSlModeChanged()">
             <option value="">level default</option>
             <option value="pips">Pips</option>
             <option value="atr">ATR ×</option>
@@ -165,7 +165,7 @@
             title="SL: pips from entry OR ATR multiplier (e.g. 1.5 = 1.5× 30M ATR). Blank = use level default." oninput="rpOptionsChanged()">
           <span style="color:var(--border2);padding:0 4px">·</span>
           <label style="font-size:10px;color:var(--text3);white-space:nowrap">TP</label>
-          <select id="rp-tp-mode" style="font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 5px" onchange="rpOptionsChanged()">
+          <select id="rp-tp-mode" style="font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 5px" onchange="rpTpModeChanged()">
             <option value="">level default</option>
             <option value="pips">Pips</option>
             <option value="atr">ATR ×</option>
