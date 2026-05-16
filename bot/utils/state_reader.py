@@ -11,9 +11,18 @@ class StaleDataError(Exception):
 
 
 def fetch_state(base_url: str = DASHBOARD_URL, timeout: int = 30) -> dict:
-    resp = requests.get(f'{base_url}/api/state', timeout=timeout)
-    resp.raise_for_status()
-    return resp.json()
+    # On Windows, the first HTTPS connection triggers a slow CA-bundle load that
+    # can receive a spurious KeyboardInterrupt from the terminal. Retry once.
+    for attempt in range(2):
+        try:
+            resp = requests.get(f'{base_url}/api/state', timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except KeyboardInterrupt:
+            if attempt == 0:
+                time.sleep(0.5)
+                continue
+            raise
 
 
 def check_staleness(regime_snapshot: dict) -> float:
