@@ -48,11 +48,14 @@ a:hover { color: var(--text); }
 #saveStatus.loading { color: var(--text3); }
 
 /* Bot status strip */
-.bs-strip { background: var(--s2); border: 1px solid var(--border); border-radius: var(--rl); padding: 9px 14px; margin-bottom: 20px; font-size: 11px; font-family: 'DM Mono', monospace; }
-.bs-strip label { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--text3); display: block; margin-bottom: 4px; }
+.bs-strip { background: var(--s2); border: 1px solid var(--border); border-radius: var(--rl); padding: 12px 16px; margin-bottom: 20px; font-size: 11px; font-family: 'DM Mono', monospace; }
+.bs-strip .bs-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.bs-strip .bs-rows { display: flex; flex-direction: column; gap: 3px; }
+.bs-lbl   { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--text3); }
 .bs-dim   { color: var(--text3); }
 .bs-green { color: var(--green); }
 .bs-red   { color: var(--red); }
+.bs-amber { color: var(--amber); }
 
 /* Grid */
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -83,6 +86,13 @@ input[type=number], input[type=time], input[type=text] {
 input[type=time] { width: 90px; text-align: left; }
 input[type=number]:focus, input[type=time]:focus { outline: none; border-color: var(--blue); }
 
+select {
+  background: var(--s2); border: 1px solid var(--border2); border-radius: 6px;
+  color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px;
+  padding: 5px 8px; cursor: pointer;
+}
+select:focus { outline: none; border-color: var(--blue); }
+
 /* Toggle checkboxes */
 .toggle-wrap { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
 .toggle-wrap label { font-size: 12.5px; color: var(--text2); flex: 1; cursor: pointer; }
@@ -107,7 +117,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .btn-reset:hover { color: var(--text); border-color: var(--border2); }
 
 /* Section label */
-.sec { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin: 16px 0 8px; }
+.sec { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin: 16px 0 8px; padding-top: 8px; border-top: 1px solid var(--border); }
 
 /* Dark toggle */
 .dark-btn { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 4px 12px; cursor: pointer; font-size: 11px; color: var(--text2); }
@@ -133,8 +143,20 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
   <!-- Live bot status -->
   <div class="bs-strip">
-    <label>Bot Runtime Status</label>
-    <div id="botStatus"><span class="bs-dim">Checking…</span></div>
+    <div class="bs-head">
+      <span class="bs-lbl">Bot Runtime</span>
+      <span id="bsAge" class="bs-dim">Checking…</span>
+      <span id="bsPaper" class="bs-dim"></span>
+      <span id="bsTier" class="bs-dim"></span>
+      <span id="bsBalance" class="bs-dim"></span>
+    </div>
+    <div class="bs-rows">
+      <div id="bsPairs"></div>
+      <div id="bsBlocked"></div>
+      <div id="bsOpen"></div>
+      <div id="bsMgmt"></div>
+      <div id="bsErrors"></div>
+    </div>
   </div>
 
   <!-- Kill switch -->
@@ -158,7 +180,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         <div class="toggle-wrap"><input type="checkbox" id="mod_confluence"><label for="mod_confluence">Confluence <small>Min-star Fib entry selector</small></label></div>
         <div class="toggle-wrap"><input type="checkbox" id="mod_oi_walls"><label for="mod_oi_walls">OI Walls <small>Block entries into call/put walls</small></label></div>
         <div class="toggle-wrap"><input type="checkbox" id="mod_cot_filter"><label for="mod_cot_filter">COT Filter <small>CFTC leveraged-fund positioning</small></label></div>
-        <div class="toggle-wrap"><input type="checkbox" id="mod_news_risk"><label for="mod_news_risk">News Risk <small>Stub — wire calendar here later</small></label></div>
+        <div class="toggle-wrap"><input type="checkbox" id="mod_news_risk"><label for="mod_news_risk">News Risk <small>HIGH impact event blackout window</small></label></div>
       </div>
 
       <!-- SL/TP -->
@@ -185,16 +207,26 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <label><input type="radio" name="tp_method" value="fixed_rr"> Fixed R:R</label>
         </div>
         <div class="form-row">
-          <span class="form-lbl">TP1 R:R <small>for fixed R:R or partial first target</small></span>
-          <input type="number" id="tp1_rr" min="0.5" max="10" step="0.1">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Close at TP1 <small>% of position (partial mode)</small></span>
+          <span class="form-lbl">Close at TP1 % <small>% of position closed at TP1</small></span>
           <input type="number" id="tp1_close_pct" min="10" max="100" step="5">
         </div>
         <div class="form-row">
           <span class="form-lbl">Max TP pips <small>hard cap</small></span>
           <input type="number" id="max_tp_pips" min="5" max="500" step="1">
+        </div>
+
+        <div class="sec">Ladder Exits (R multiples)</div>
+        <div class="form-row">
+          <span class="form-lbl">TP1 R multiple <small>partial close at entry + tp1r × R</small></span>
+          <input type="number" id="ec_tp1r" min="0.1" max="3" step="0.1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">TP2 R multiple <small>runner / final target exit</small></span>
+          <input type="number" id="ec_tp2r" min="0.5" max="10" step="0.1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Trail offset ×R <small>trailing stop distance after TP1 hit</small></span>
+          <input type="number" id="ec_trailoffset" min="0.1" max="2" step="0.05">
         </div>
       </div>
     </div>
@@ -204,20 +236,41 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       <!-- Execution thresholds -->
       <div class="card">
         <div class="card-title">Execution Thresholds</div>
+
+        <div class="sec" style="margin-top:0;padding-top:0;border-top:none">Quality Filter</div>
+        <div class="form-row">
+          <span class="form-lbl">Tier <small>strict=4★ · balanced=3★ · loose=2★ · aggressive=1★</small></span>
+          <select id="ex_tier">
+            <option value="strict">Strict (4★)</option>
+            <option value="balanced">Balanced (3★)</option>
+            <option value="loose">Loose (2★)</option>
+            <option value="aggressive">Aggressive (1★)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">WT1 bar direction <small>multi-timeframe WaveTrend filter</small></span>
+          <select id="ex_bardir">
+            <option value="off">Off — skip WT1 direction check</option>
+            <option value="auto">Auto — filter when |WT1| ≥ threshold</option>
+            <option value="on">On — strict 5m + 1H agreement</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">WT1 threshold <small>auto mode triggers above this value</small></span>
+          <input type="number" id="ex_wtthreshold" min="10" max="80" step="1">
+        </div>
+
+        <div class="sec">Score Gates</div>
         <div class="form-row">
           <span class="form-lbl">Min macro score <small>dashboard signal score 0–12</small></span>
           <input type="number" id="ex_min_score" min="0" max="12" step="1">
         </div>
         <div class="form-row">
-          <span class="form-lbl">Min stars <small>confluence entry minimum</small></span>
-          <input type="number" id="ex_min_stars" min="1" max="5" step="1">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Min modules agree <small>directional consensus</small></span>
+          <span class="form-lbl">Min modules agree <small>directional consensus count</small></span>
           <input type="number" id="ex_min_agree" min="1" max="6" step="1">
         </div>
         <div class="form-row">
-          <span class="form-lbl">Composite score threshold <small>0–1 avg of passing module scores</small></span>
+          <span class="form-lbl">Composite threshold <small>0–1 average of passing module scores</small></span>
           <input type="number" id="ex_threshold" min="0" max="1" step="0.05">
         </div>
         <div class="form-row">
@@ -225,7 +278,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <input type="number" id="ex_max_trades" min="1" max="10" step="1">
         </div>
         <div class="form-row">
-          <span class="form-lbl">Proximity pips <small>how close price must be to a level · Gold/NAS in pts</small></span>
+          <span class="form-lbl">Proximity pips <small>price distance to level · Gold/NAS in pts</small></span>
           <input type="number" id="ex_prox_pips" min="1" max="100" step="1">
         </div>
       </div>
@@ -238,6 +291,14 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <input type="number" id="pos_risk" min="0.1" max="5" step="0.1">
         </div>
         <div class="form-row">
+          <span class="form-lbl">Sizing multiplier <small>manual override on top of vol sizing</small></span>
+          <input type="number" id="pos_sizing" min="0.1" max="5" step="0.1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max lot ceiling <small>hard cap regardless of risk calc</small></span>
+          <input type="number" id="pos_max_lot" min="0.01" max="50" step="0.01">
+        </div>
+        <div class="form-row">
           <span class="form-lbl">HIGH vol size mult <small>multiplied on VIX &gt; 20</small></span>
           <input type="number" id="pos_hi_mult" min="0.1" max="2" step="0.1">
         </div>
@@ -247,12 +308,24 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         </div>
       </div>
 
-      <!-- Safety -->
+      <!-- Risk Guard -->
       <div class="card">
-        <div class="card-title">Safety</div>
+        <div class="card-title">Risk Guard</div>
         <div class="form-row">
-          <span class="form-lbl">Max daily loss % <small>halt all trading if breached</small></span>
-          <input type="number" id="max_dd" min="0.5" max="10" step="0.5">
+          <span class="form-lbl">Daily DD limit % <small>halt all trading if breached</small></span>
+          <input type="number" id="ec_ddlimit" min="0.5" max="10" step="0.5">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Monthly DD limit % <small>longer-term circuit breaker</small></span>
+          <input type="number" id="ec_monthlydd" min="1" max="20" step="0.5">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Lockout (hours) <small>pause after DD limit breach</small></span>
+          <input type="number" id="ec_lockout" min="1" max="72" step="1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Cooldown (min/pair) <small>per-pair pause after a trade executes</small></span>
+          <input type="number" id="ec_cooldown" min="5" max="480" step="5">
         </div>
         <div class="form-row">
           <span class="form-lbl">Trade window start <small>UTC</small></span>
@@ -266,6 +339,25 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     </div>
 
   </div><!-- /grid -->
+
+  <!-- Filters card (full width) -->
+  <div class="card">
+    <div class="card-title">Filters</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 32px">
+      <div>
+        <div class="form-row">
+          <span class="form-lbl">Max spread (pips) <small>reject trade if bid-ask spread exceeds this</small></span>
+          <input type="number" id="ex_max_spread" min="0.5" max="20" step="0.5">
+        </div>
+      </div>
+      <div>
+        <div class="form-row">
+          <span class="form-lbl">OI wall proximity (pips) <small>block entry if call/put wall within N pips</small></span>
+          <input type="number" id="oi_wall_pips" min="5" max="100" step="1">
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Enabled pairs -->
   <div class="card">

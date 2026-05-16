@@ -13,12 +13,29 @@ const DEFAULTS = {
     news_risk:    false,
   },
   execution: {
-    min_macro_score:    5,
-    min_stars:          3,
-    min_agree:          3,
-    max_trades:         2,
+    // Quality filter
+    tier:                'balanced',  // strict=4★ balanced=3★ loose=2★ aggressive=1★
+    bardir:              'auto',      // off | auto | on (MTF WT1 filter mode)
+    wtthreshold:         35,          // WT1 magnitude threshold for auto mode
+    // Score gates
+    min_macro_score:     5,
+    min_stars:           3,
+    min_agree:           3,
+    max_trades:          2,
     composite_threshold: 0.60,
-    prox_pips:          8,
+    prox_pips:           8,
+    // Ladder exits (R multiples)
+    tp1r:                0.3,
+    tp2r:                1.0,
+    trailoffset:         0.7,
+    // Spread gate
+    max_spread_pips:     3.0,
+    // Risk Guard
+    ddlimit:             3,    // daily DD % before lockout
+    monthlydd:           5,    // monthly DD % before lockout
+    lockout:             3,    // hours locked after DD breach
+    cooldown:            60,   // minutes between trades, per pair
+    sizing:              1.0,  // manual sizing multiplier
   },
   position: {
     risk_pct:      1.0,
@@ -29,16 +46,17 @@ const DEFAULTS = {
     sl_method:      'structure',
     tp_method:      'confluence',
     sl_atr_mult:    1.5,
-    tp1_rr:         1.0,
     tp1_close_pct:  50,
-    tp2_method:     'garch_68',
     max_sl_pips:    50,
     max_tp_pips:    100,
+    max_lot:        5.0,
   },
   safety: {
-    max_daily_loss_pct: 3.0,
     trade_window_start: '07:00',
     trade_window_end:   '20:00',
+  },
+  oi_walls: {
+    oi_wall_pips: 15,
   },
 };
 
@@ -72,7 +90,19 @@ async function loadConfig() {
   setStatus('loading', 'Loading config…');
   try {
     const stored = await kvGet('bot_config');
-    _cfg = stored ? { ...JSON.parse(JSON.stringify(DEFAULTS)), ...stored } : JSON.parse(JSON.stringify(DEFAULTS));
+    // Deep-merge stored over defaults so new fields always appear
+    if (stored) {
+      _cfg = JSON.parse(JSON.stringify(DEFAULTS));
+      for (const [k, v] of Object.entries(stored)) {
+        if (v && typeof v === 'object' && !Array.isArray(v) && _cfg[k]) {
+          Object.assign(_cfg[k], v);
+        } else {
+          _cfg[k] = v;
+        }
+      }
+    } else {
+      _cfg = JSON.parse(JSON.stringify(DEFAULTS));
+    }
     renderForm();
     setStatus('ok', 'Config loaded from KV');
   } catch (e) {
@@ -126,29 +156,57 @@ function readForm() {
     const el = document.getElementById(`pair_${p.replace('/', '')}`);
     return el && el.checked;
   });
-  // Execution
-  _cfg.execution.min_macro_score    = num('ex_min_score', 5);
-  _cfg.execution.min_stars          = num('ex_min_stars', 3);
-  _cfg.execution.min_agree          = num('ex_min_agree', 3);
-  _cfg.execution.max_trades         = num('ex_max_trades', 2);
-  _cfg.execution.composite_threshold = num('ex_threshold', 0.60);
-  _cfg.execution.prox_pips           = num('ex_prox_pips', 8);
+
+  _cfg.execution = _cfg.execution || {};
+
+  // Execution — quality filter
+  _cfg.execution.tier             = str('ex_tier',          'balanced');
+  _cfg.execution.bardir           = str('ex_bardir',        'auto');
+  _cfg.execution.wtthreshold      = num('ex_wtthreshold',   35);
+  // Execution — score gates
+  _cfg.execution.min_macro_score  = num('ex_min_score',     5);
+  _cfg.execution.min_stars        = num('ex_min_stars',     3);
+  _cfg.execution.min_agree        = num('ex_min_agree',     3);
+  _cfg.execution.max_trades       = num('ex_max_trades',    2);
+  _cfg.execution.composite_threshold = num('ex_threshold',  0.60);
+  _cfg.execution.prox_pips        = num('ex_prox_pips',     8);
+  // Execution — ladder exits
+  _cfg.execution.tp1r             = num('ec_tp1r',          0.3);
+  _cfg.execution.tp2r             = num('ec_tp2r',          1.0);
+  _cfg.execution.trailoffset      = num('ec_trailoffset',   0.7);
+  // Execution — spread gate
+  _cfg.execution.max_spread_pips  = num('ex_max_spread',    3.0);
+  // Execution — risk guard
+  _cfg.execution.ddlimit          = num('ec_ddlimit',       3);
+  _cfg.execution.monthlydd        = num('ec_monthlydd',     5);
+  _cfg.execution.lockout          = num('ec_lockout',       3);
+  _cfg.execution.cooldown         = num('ec_cooldown',      60);
+  _cfg.execution.sizing           = num('pos_sizing',       1.0);
+
   // Position
-  _cfg.position.risk_pct      = num('pos_risk', 1.0);
-  _cfg.position.vol_high_mult = num('pos_hi_mult', 0.5);
-  _cfg.position.vol_low_mult  = num('pos_lo_mult', 1.2);
+  _cfg.position = _cfg.position || {};
+  _cfg.position.risk_pct      = num('pos_risk',     1.0);
+  _cfg.position.vol_high_mult = num('pos_hi_mult',  0.5);
+  _cfg.position.vol_low_mult  = num('pos_lo_mult',  1.2);
+
   // SL/TP
-  _cfg.sl_tp.sl_method    = radio('sl_method', 'structure');
-  _cfg.sl_tp.tp_method    = radio('tp_method', 'confluence');
-  _cfg.sl_tp.sl_atr_mult  = num('sl_atr_mult', 1.5);
-  _cfg.sl_tp.tp1_rr       = num('tp1_rr', 1.0);
+  _cfg.sl_tp = _cfg.sl_tp || {};
+  _cfg.sl_tp.sl_method     = radio('sl_method',  'structure');
+  _cfg.sl_tp.tp_method     = radio('tp_method',  'confluence');
+  _cfg.sl_tp.sl_atr_mult   = num('sl_atr_mult',  1.5);
   _cfg.sl_tp.tp1_close_pct = num('tp1_close_pct', 50);
-  _cfg.sl_tp.max_sl_pips  = num('max_sl_pips', 50);
-  _cfg.sl_tp.max_tp_pips  = num('max_tp_pips', 100);
+  _cfg.sl_tp.max_sl_pips   = num('max_sl_pips',  50);
+  _cfg.sl_tp.max_tp_pips   = num('max_tp_pips',  100);
+  _cfg.sl_tp.max_lot       = num('pos_max_lot',  5.0);
+
   // Safety
-  _cfg.safety.max_daily_loss_pct = num('max_dd', 3.0);
+  _cfg.safety = _cfg.safety || {};
   _cfg.safety.trade_window_start = str('tw_start', '07:00');
-  _cfg.safety.trade_window_end   = str('tw_end', '20:00');
+  _cfg.safety.trade_window_end   = str('tw_end',   '20:00');
+
+  // OI Walls
+  _cfg.oi_walls = _cfg.oi_walls || {};
+  _cfg.oi_walls.oi_wall_pips = num('oi_wall_pips', 15);
 }
 
 // ── _cfg → form ───────────────────────────────────────────────────────────────
@@ -170,29 +228,53 @@ function renderForm() {
     const el = document.getElementById(`pair_${p.replace('/', '')}`);
     if (el) el.checked = (_cfg.enabled_pairs || []).includes(p);
   }
-  // Execution
-  setVal('ex_min_score',  _cfg.execution?.min_macro_score    ?? 5);
-  setVal('ex_min_stars',  _cfg.execution?.min_stars          ?? 3);
-  setVal('ex_min_agree',  _cfg.execution?.min_agree          ?? 3);
-  setVal('ex_max_trades', _cfg.execution?.max_trades         ?? 2);
-  setVal('ex_threshold',  _cfg.execution?.composite_threshold ?? 0.60);
-  setVal('ex_prox_pips',  _cfg.execution?.prox_pips          ?? 8);
+
+  const ec = _cfg.execution || {};
+
+  // Execution — quality filter
+  setVal('ex_tier',        ec.tier              ?? 'balanced');
+  setVal('ex_bardir',      ec.bardir            ?? 'auto');
+  setVal('ex_wtthreshold', ec.wtthreshold       ?? 35);
+  // Execution — score gates
+  setVal('ex_min_score',  ec.min_macro_score    ?? 5);
+  setVal('ex_min_stars',  ec.min_stars          ?? 3);
+  setVal('ex_min_agree',  ec.min_agree          ?? 3);
+  setVal('ex_max_trades', ec.max_trades         ?? 2);
+  setVal('ex_threshold',  ec.composite_threshold ?? 0.60);
+  setVal('ex_prox_pips',  ec.prox_pips          ?? 8);
+  // Execution — ladder exits
+  setVal('ec_tp1r',        ec.tp1r              ?? 0.3);
+  setVal('ec_tp2r',        ec.tp2r              ?? 1.0);
+  setVal('ec_trailoffset', ec.trailoffset       ?? 0.7);
+  // Execution — spread gate
+  setVal('ex_max_spread',  ec.max_spread_pips   ?? 3.0);
+  // Execution — risk guard
+  setVal('ec_ddlimit',     ec.ddlimit           ?? 3);
+  setVal('ec_monthlydd',   ec.monthlydd         ?? 5);
+  setVal('ec_lockout',     ec.lockout           ?? 3);
+  setVal('ec_cooldown',    ec.cooldown          ?? 60);
+  setVal('pos_sizing',     ec.sizing            ?? 1.0);
+
   // Position
-  setVal('pos_risk',     _cfg.position?.risk_pct      ?? 1.0);
-  setVal('pos_hi_mult',  _cfg.position?.vol_high_mult ?? 0.5);
-  setVal('pos_lo_mult',  _cfg.position?.vol_low_mult  ?? 1.2);
+  setVal('pos_risk',    _cfg.position?.risk_pct      ?? 1.0);
+  setVal('pos_hi_mult', _cfg.position?.vol_high_mult ?? 0.5);
+  setVal('pos_lo_mult', _cfg.position?.vol_low_mult  ?? 1.2);
+
   // SL/TP
   setRadio('sl_method', _cfg.sl_tp?.sl_method ?? 'structure');
   setRadio('tp_method', _cfg.sl_tp?.tp_method ?? 'confluence');
   setVal('sl_atr_mult',    _cfg.sl_tp?.sl_atr_mult    ?? 1.5);
-  setVal('tp1_rr',         _cfg.sl_tp?.tp1_rr         ?? 1.0);
   setVal('tp1_close_pct',  _cfg.sl_tp?.tp1_close_pct  ?? 50);
   setVal('max_sl_pips',    _cfg.sl_tp?.max_sl_pips    ?? 50);
   setVal('max_tp_pips',    _cfg.sl_tp?.max_tp_pips    ?? 100);
+  setVal('pos_max_lot',    _cfg.sl_tp?.max_lot        ?? 5.0);
+
   // Safety
-  setVal('max_dd',    _cfg.safety?.max_daily_loss_pct ?? 3.0);
-  setVal('tw_start',  _cfg.safety?.trade_window_start ?? '07:00');
-  setVal('tw_end',    _cfg.safety?.trade_window_end   ?? '20:00');
+  setVal('tw_start', _cfg.safety?.trade_window_start ?? '07:00');
+  setVal('tw_end',   _cfg.safety?.trade_window_end   ?? '20:00');
+
+  // OI Walls
+  setVal('oi_wall_pips', _cfg.oi_walls?.oi_wall_pips ?? 15);
 }
 
 // ── Bot status polling ────────────────────────────────────────────────────────
@@ -200,19 +282,58 @@ function renderForm() {
 async function loadBotStatus() {
   try {
     const data = await kvGet('bot_status');
-    const el   = document.getElementById('botStatus');
-    if (!el) return;
-    if (!data) { el.innerHTML = '<span class="bs-dim">No status yet — bot may not have run</span>'; return; }
+    if (!data) {
+      setText('bsAge', 'No status yet — bot may not have run');
+      return;
+    }
 
-    const age  = Math.round((Date.now() - (data.timestamp ?? 0)) / 1000 / 60);
+    const age = Math.round((Date.now() - (data.timestamp ?? 0)) / 1000 / 60);
+    setText('bsAge',     `Last loop ${age}m ago`);
+    setText('bsPaper',   data.paper ? '· paper' : '· LIVE');
+    setText('bsTier',    data.tier   ? `· ${data.tier}` : '');
+    setText('bsBalance', data.balance ? `· $${(+data.balance).toLocaleString('en-US', {maximumFractionDigits: 0})}` : '');
+
+    // Pairs evaluated
     const pairs = (data.pairs_evaluated || []).map(p => {
       const col = p.action === 'trade' ? 'bs-green' : 'bs-dim';
-      return `<span class="${col}">${p.pair} → ${p.action}${p.direction ? ' ' + p.direction : ''}${p.stars != null ? ' ' + p.stars + '★' : ''}</span>`;
+      return `<span class="${col}">${p.pair}→${p.action}${p.direction ? ' ' + p.direction : ''}${p.stars != null ? ' ' + p.stars + '★' : ''}</span>`;
     }).join('  ');
-    const errs = (data.errors || []).length
-      ? `<br><span class="bs-red">Errors: ${data.errors.join('; ')}</span>` : '';
-    el.innerHTML =
-      `<span class="bs-dim">Last loop ${age}m ago · paper=${data.paper}</span>&nbsp;&nbsp;${pairs}${errs}`;
+    document.getElementById('bsPairs').innerHTML = pairs || '<span class="bs-dim">No pairs evaluated</span>';
+
+    // Blocked pairs
+    const blocked = (data.pairs_blocked || []);
+    if (blocked.length) {
+      document.getElementById('bsBlocked').innerHTML =
+        `<span class="bs-amber">Blocked: ${blocked.join('  ')}</span>`;
+    } else {
+      document.getElementById('bsBlocked').innerHTML = '';
+    }
+
+    // Open positions
+    const open = (data.open_positions || []);
+    if (open.length) {
+      const pos = open.map(p =>
+        `<span class="bs-green">${p.pair} ${p.type} ${p.volume}L @${p.price_open}</span>`
+      ).join('  ');
+      document.getElementById('bsOpen').innerHTML = `Open: ${pos}`;
+    } else {
+      document.getElementById('bsOpen').innerHTML = '<span class="bs-dim">No open positions</span>';
+    }
+
+    // Management actions
+    const mgmt = (data.mgmt_actions || []);
+    if (mgmt.length) {
+      document.getElementById('bsMgmt').innerHTML =
+        `<span class="bs-dim">Actions: ${mgmt.slice(-3).join('  ')}</span>`;
+    } else {
+      document.getElementById('bsMgmt').innerHTML = '';
+    }
+
+    // Errors
+    const errs = (data.errors || []);
+    document.getElementById('bsErrors').innerHTML = errs.length
+      ? `<span class="bs-red">Errors: ${errs.join(' · ')}</span>` : '';
+
   } catch (e) {
     // non-critical
   }
@@ -221,12 +342,13 @@ async function loadBotStatus() {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function num(id, def) { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? def : v; }
-function str(id, def) { return document.getElementById(id)?.value ?? def; }
+function str(id, def) { return document.getElementById(id)?.value || def; }
 function radio(name, def) {
   const el = document.querySelector(`input[name="${name}"]:checked`);
   return el ? el.value : def;
 }
 function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
+function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
 function setRadio(name, v) {
   const el = document.querySelector(`input[name="${name}"][value="${v}"]`);
   if (el) el.checked = true;
@@ -240,8 +362,8 @@ function setStatus(type, msg) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-window.saveConfig      = saveConfig;
-window.resetDefaults   = resetDefaults;
+window.saveConfig       = saveConfig;
+window.resetDefaults    = resetDefaults;
 window.toggleKillSwitch = toggleKillSwitch;
 
 loadConfig();
