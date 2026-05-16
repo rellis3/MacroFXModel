@@ -805,6 +805,63 @@ app.post('/api/analysis', async (req, res) => {
   }
 });
 
+// ── Historical analysis synthesis — sends statistical summary to Claude ────────
+app.post('/api/analysis-historical', async (req, res) => {
+  const key = process.env.ANT_KEY;
+  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
+
+  const { summary } = req.body ?? {};
+  if (!summary) return res.status(400).json({ error: 'Missing summary' });
+
+  const prompt = `You are a professional quantitative FX analyst reviewing the results of a 5-year statistical backtest of an Asia-range / Monday-range Fibonacci confluence trading model.
+
+The model identifies daily Fibonacci extension levels from the Asia session range (00:00–06:00 London) and looks for confluences between today's and yesterday's projections. Trades are taken when price touches a confluence level during the London/NY session.
+
+Below is a structured statistical summary of every confluence touch detected across the full date range, broken down by 15+ features. Win rate and avg R are the key metrics. Baseline (all trades combined) is provided for comparison.
+
+STATISTICAL SUMMARY:
+${JSON.stringify(summary, null, 2)}
+
+Analyse this data and return a JSON object with these exact keys:
+{
+  "key_findings": ["finding 1 (feature, evidence, magnitude)", "finding 2", "finding 3", "finding 4", "finding 5"],
+  "structural_edges": ["edge that appears theoretically sound and consistent across years"],
+  "data_artefact_warnings": ["any result that looks like overfitting or regime-specific, not durable"],
+  "regime_insights": ["any year-specific or market-condition patterns worth noting"],
+  "filter_recommendations": ["specific filter to add — e.g. only trade London Open kill zone"],
+  "setups_to_avoid": ["specific combination to avoid based on worst combos"],
+  "edge_durability": "1–2 sentences on whether the overall edge appears durable or regime-dependent",
+  "suggested_rules": ["concrete rule 1 for the trading plan", "concrete rule 2", "concrete rule 3"]
+}
+
+Respond with valid JSON only. No markdown, no explanation outside the JSON.`;
+
+  try {
+    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!antRes.ok) {
+      const err = await antRes.text();
+      return res.status(502).json({ error: `Anthropic error ${antRes.status}: ${err.slice(0, 300)}` });
+    }
+    const antData = await antRes.json();
+    const raw   = antData.content?.[0]?.text ?? '';
+    const clean = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+    let parsed;
+    try { parsed = JSON.parse(clean); } catch { parsed = { raw_text: clean }; }
+    res.json({ ok: true, analysis: parsed });
+  } catch (e) {
+    console.error('[analysis-historical]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // SSE live price stream — must be handled before the generic /api/* catch-all
 // because it returns an infinite ReadableStream, not a text body.
 app.get('/api/oanda_stream', async (req, res) => {

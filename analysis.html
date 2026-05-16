@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Analysis Engine — MacroFXModel</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+
+/* ── Topbar ─────────────────────────────────────────────────────────────────── */
+.an-topbar{height:48px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:12px;background:var(--bg);flex-shrink:0}
+.an-logo{width:28px;height:28px;background:var(--blue);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.an-logo svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.an-title{font-size:14px;font-weight:700;letter-spacing:-0.2px}
+.an-sub{font-size:10px;color:var(--text3);letter-spacing:.6px;text-transform:uppercase;margin-top:1px}
+.spacer{flex:1}
+.nav-link{font-size:11px;color:var(--text3);text-decoration:none;padding:4px 8px;border-radius:5px;transition:color .15s}
+.nav-link:hover{color:var(--text)}
+
+/* ── Layout ─────────────────────────────────────────────────────────────────── */
+#an-app{display:flex;flex:1;min-height:0;overflow:hidden}
+#an-sidebar{width:300px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin}
+#an-main{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:16px}
+
+/* ── Sidebar components ─────────────────────────────────────────────────────── */
+.sb-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.sb-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+.sb-group{display:flex;flex-direction:column;gap:5px}
+.cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.cfg-cell{display:flex;flex-direction:column;gap:2px}
+.cfg-cell label{font-size:10px;color:var(--text3)}
+.cfg-cell.full{grid-column:1/-1}
+.bt-input,.bt-select{width:100%;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif}
+.bt-input:focus,.bt-select:focus{outline:2px solid var(--blue);border-color:transparent}
+input[type="date"].bt-input{font-family:'DM Mono',monospace}
+
+/* ── Pair checkboxes ────────────────────────────────────────────────────────── */
+.pair-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.pair-cb{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);padding:3px 0;cursor:pointer}
+.pair-cb input{accent-color:var(--blue);cursor:pointer}
+
+/* ── R2 status ──────────────────────────────────────────────────────────────── */
+.r2-box{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+.r2-row{display:flex;align-items:center;justify-content:space-between;font-size:11px}
+.r2-pair{font-weight:600;color:var(--text2);font-family:'DM Mono',monospace;font-size:10px}
+.r2-tfs{display:flex;gap:4px}
+.r2-chip{font-size:9px;padding:1px 5px;border-radius:4px;font-family:'DM Mono',monospace;background:var(--s2);color:var(--text3)}
+.r2-chip.ok{background:rgba(52,199,89,.15);color:var(--green)}
+.r2-chip.err{background:rgba(255,59,48,.12);color:var(--red)}
+
+/* ── Buttons ────────────────────────────────────────────────────────────────── */
+.btn-run{width:100%;padding:9px;border-radius:7px;border:none;background:var(--blue);color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s;font-family:'DM Sans',sans-serif}
+.btn-run:disabled{opacity:.4;cursor:default}
+.btn-secondary{padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text2);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:border-color .15s}
+.btn-secondary:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── Progress ───────────────────────────────────────────────────────────────── */
+#progress-wrap{display:none;flex-direction:column;gap:6px}
+.prog-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;width:0%;background:var(--blue);transition:width .3s;border-radius:2px}
+.prog-label{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace}
+
+/* ── Tab bar ────────────────────────────────────────────────────────────────── */
+.tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0}
+.tab-btn{padding:7px 16px;font-size:11px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.tab-btn:hover{color:var(--text2)}
+.tab-btn.on{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-panel{display:none}
+.tab-panel.on{display:block}
+
+/* ── Cards / sections ───────────────────────────────────────────────────────── */
+.an-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.an-card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:10px}
+.an-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+
+/* ── Stat pill ──────────────────────────────────────────────────────────────── */
+.stat-pill{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.sp-val{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;line-height:1}
+.sp-lbl{font-size:10px;color:var(--text3);margin-top:3px}
+.sp-sub{font-size:10px;color:var(--text3);margin-top:2px}
+
+/* ── Feature table ──────────────────────────────────────────────────────────── */
+.feat-table{width:100%;border-collapse:collapse;font-size:12px}
+.feat-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:4px 8px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+.feat-table td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2)}
+.feat-table tr:last-child td{border-bottom:none}
+.feat-table tr:hover td{background:var(--s2)}
+.delta-pos{color:var(--green);font-weight:600}
+.delta-neg{color:var(--red);font-weight:600}
+.delta-neu{color:var(--text3)}
+.mono{font-family:'DM Mono',monospace}
+
+/* ── Heatmap ────────────────────────────────────────────────────────────────── */
+.heatmap-wrap{overflow-x:auto}
+.heatmap{border-collapse:collapse;font-size:11px}
+.heatmap th{font-size:10px;color:var(--text3);font-weight:400;padding:3px 6px;white-space:nowrap}
+.heatmap td{width:52px;height:32px;text-align:center;border:1px solid var(--border);font-size:10px;font-family:'DM Mono',monospace;vertical-align:middle}
+
+/* ── Combo table ────────────────────────────────────────────────────────────── */
+.combo-badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:4px;background:var(--s2);color:var(--text3);margin:1px}
+
+/* ── Claude synthesis ───────────────────────────────────────────────────────── */
+#synthesis-out{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:12px;line-height:1.65;color:var(--text2);white-space:pre-wrap;display:none}
+.syn-section{margin-bottom:12px}
+.syn-section h4{font-size:11px;font-weight:700;color:var(--text);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+.syn-finding{padding:4px 0;border-bottom:1px solid var(--border)}
+.syn-finding:last-child{border-bottom:none}
+
+/* ── Empty / placeholder ────────────────────────────────────────────────────── */
+.empty-msg{text-align:center;padding:48px 20px;color:var(--text3);font-size:13px}
+.empty-msg svg{width:40px;height:40px;stroke:var(--border);fill:none;stroke-width:1.5;margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="an-topbar">
+  <div class="an-logo">
+    <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+  </div>
+  <div>
+    <div class="an-title">Analysis Engine</div>
+    <div class="an-sub">5-Year Pattern Discovery</div>
+  </div>
+  <div class="spacer"></div>
+  <a href="./journal.html"  class="nav-link">Journal</a>
+  <a href="./backtest.html" class="nav-link">Backtest</a>
+  <a href="./index.html"    class="nav-link">Dashboard</a>
+</div>
+
+<div id="an-app">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+  <div id="an-sidebar">
+
+    <!-- Pairs -->
+    <div class="sb-group">
+      <div class="sb-lbl">Pairs to Analyse</div>
+      <div class="pair-grid" id="pair-grid">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- Date range -->
+    <div class="sb-group">
+      <div class="sb-lbl">Date Range</div>
+      <div class="cfg-grid">
+        <div class="cfg-cell">
+          <label>From</label>
+          <input type="date" id="cfg-start" class="bt-input" value="2020-01-01">
+        </div>
+        <div class="cfg-cell">
+          <label>To</label>
+          <input type="date" id="cfg-end" class="bt-input" value="2025-12-31">
+        </div>
+      </div>
+    </div>
+
+    <!-- Strategy params -->
+    <div class="sb-group">
+      <div class="sb-lbl">Strategy Params</div>
+      <div class="cfg-grid">
+        <div class="cfg-cell">
+          <label>SL (× ATR)</label>
+          <input type="number" id="cfg-sl" class="bt-input" value="1.5" step="0.1" min="0.3" max="4">
+        </div>
+        <div class="cfg-cell">
+          <label>TP (R ratio)</label>
+          <input type="number" id="cfg-tp" class="bt-input" value="2.0" step="0.1" min="0.5" max="6">
+        </div>
+        <div class="cfg-cell">
+          <label>Conf tolerance (p)</label>
+          <input type="number" id="cfg-tol" class="bt-input" value="2" step="0.5" min="0.5" max="10">
+        </div>
+        <div class="cfg-cell">
+          <label>Min ATR warmup (d)</label>
+          <input type="number" id="cfg-warmup" class="bt-input" value="14" step="1" min="5" max="90">
+        </div>
+      </div>
+    </div>
+
+    <!-- R2 status -->
+    <div class="sb-group">
+      <div class="sb-lbl">Data Status</div>
+      <div class="r2-box" id="r2-status-box">
+        <!-- filled by JS -->
+      </div>
+      <button id="btn-load-r2" class="btn-secondary">↓ Load from R2</button>
+    </div>
+
+    <!-- Progress -->
+    <div id="progress-wrap">
+      <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+      <div class="prog-label" id="prog-label">Initialising…</div>
+    </div>
+
+    <!-- Run -->
+    <button id="btn-run" class="btn-run" disabled>▶ Run Analysis</button>
+
+    <div style="font-size:10px;color:var(--text3);line-height:1.5;padding:4px 0">
+      Load M5 + M30 data for each pair first, then run. Analysis sweeps every confluence level touch across the date range and records 15+ features per trade to identify what actually drives edge.
+    </div>
+  </div>
+
+  <!-- ── Main content ──────────────────────────────────────────────────────── -->
+  <div id="an-main">
+
+    <div id="pre-run" class="empty-msg">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <div>Load data and run the analysis engine to begin.</div>
+      <div style="font-size:11px;margin-top:6px">Processes each confluence level touch across the full date range,<br>records kill zone, ATR regime, approach direction, Judas sweep, SMT divergence and more.</div>
+    </div>
+
+    <div id="results-wrap" style="display:none;flex-direction:column;gap:14px">
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button class="tab-btn on" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="timing">Timing</button>
+        <button class="tab-btn" data-tab="levels">Level Quality</button>
+        <button class="tab-btn" data-tab="regime">Market Context</button>
+        <button class="tab-btn" data-tab="approach">Approach</button>
+        <button class="tab-btn" data-tab="decay">Year / Pair</button>
+        <button class="tab-btn" data-tab="combos">Top Combos</button>
+        <button class="tab-btn" data-tab="claude">Claude Synthesis</button>
+      </div>
+
+      <!-- ── Overview ─────────────────────────────────────────────────────── -->
+      <div class="tab-panel on" id="tab-overview"></div>
+
+      <!-- ── Timing ───────────────────────────────────────────────────────── -->
+      <div class="tab-panel" id="tab-timing"></div>
+
+      <!-- ── Level Quality ────────────────────────────────────────────────── -->
+      <div class="tab-panel" id="tab-levels"></div>
+
+      <!-- ── Market Context ───────────────────────────────────────────────── -->
+      <div class="tab-panel" id="tab-regime"></div>
+
+      <!-- ── Approach ─────────────────────────────────────────────────────── -->
+      <div class="tab-panel" id="tab-approach"></div>
+
+      <!-- ── Year / Pair ──────────────────────────────────────────────────── -->
+      <div class="tab-panel" id="tab-decay"></div>
+
+      <!-- ── Top Combinations ─────────────────────────────────────────────── -->
+      <div class="tab-panel" id="tab-combos"></div>
+
+      <!-- ── Claude Synthesis ─────────────────────────────────────────────── -->
+      <div class="tab-panel" id="tab-claude">
+        <div class="an-card">
+          <div class="an-card-title">Claude Synthesis</div>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+            Sends a structured statistical summary (~4K tokens) to the Claude API.
+            Returns a narrative analysis: which features are structurally sound,
+            which look like data artefacts, regime warnings, and specific trading rules.
+          </p>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="btn-claude" class="btn-secondary" style="padding:7px 16px;font-size:12px;border-color:var(--blue);color:var(--blue)">
+              Ask Claude →
+            </button>
+            <span id="claude-status" style="font-size:11px;color:var(--text3)"></span>
+          </div>
+          <div id="synthesis-out" style="margin-top:14px"></div>
+        </div>
+      </div>
+
+    </div><!-- /results-wrap -->
+  </div><!-- /an-main -->
+</div><!-- /an-app -->
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════════════════════
+const R2_BASE = 'https://pub-1d8354116ae54e158e7010f0deb8f6e6.r2.dev';
+const PAIRS = ['EURUSD','GBPUSD','USDJPY','XAUUSD','AUDUSD','GBPJPY','USDCAD','NZDUSD'];
+const TFS   = ['m5','m30'];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const loaded  = {}; // { [sym]: { m5: bool, m30: bool } }
+let   _stats  = null;
+let   _worker = null;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════════════════
+function init() {
+  // Build pair checkboxes
+  const grid = document.getElementById('pair-grid');
+  for (const p of PAIRS) {
+    loaded[p] = { m5: false, m30: false };
+    const label = document.createElement('label');
+    label.className = 'pair-cb';
+    label.innerHTML = `<input type="checkbox" class="pair-cb-input" value="${p}" checked> ${p}`;
+    grid.appendChild(label);
+  }
+  renderR2Status();
+
+  document.getElementById('btn-load-r2').addEventListener('click', loadAllFromR2);
+  document.getElementById('btn-run').addEventListener('click', runAnalysis);
+  document.getElementById('btn-claude').addEventListener('click', askClaude);
+
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('on'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('on'));
+      btn.classList.add('on');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('on');
+    });
+  });
+
+  spawnWorker();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// WEB WORKER
+// ══════════════════════════════════════════════════════════════════════════════
+function spawnWorker() {
+  if (_worker) _worker.terminate();
+  _worker = new Worker('./js/analysis-worker.js');
+  _worker.onmessage = ({ data }) => {
+    if (data.type === 'parsed') {
+      loaded[data.symbol][data.tf] = data.count;
+      renderR2Status();
+      checkRunnable();
+    }
+    if (data.type === 'progress') {
+      document.getElementById('prog-fill').style.width = data.pct + '%';
+      document.getElementById('prog-label').textContent = data.label || '';
+    }
+    if (data.type === 'done') {
+      _stats = data.stats;
+      document.getElementById('progress-wrap').style.display = 'none';
+      document.getElementById('btn-run').disabled = false;
+      document.getElementById('btn-run').textContent = '▶ Re-run Analysis';
+      renderResults(_stats);
+    }
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// R2 LOADING
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadAllFromR2() {
+  const pairs = selectedPairs();
+  if (!pairs.length) return;
+  document.getElementById('btn-load-r2').disabled = true;
+  document.getElementById('btn-load-r2').textContent = 'Loading…';
+  const tasks = [];
+  for (const sym of pairs) {
+    for (const tf of TFS) {
+      tasks.push(loadCsv(sym, tf));
+    }
+  }
+  await Promise.allSettled(tasks);
+  document.getElementById('btn-load-r2').disabled = false;
+  document.getElementById('btn-load-r2').textContent = '↓ Load from R2';
+  checkRunnable();
+}
+
+async function loadCsv(sym, tf) {
+  const url = `${R2_BASE}/${sym}/${sym.toLowerCase()}-${tf}-bid.csv`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(res.status);
+    const text = await res.text();
+    _worker.postMessage({ type: 'parse', payload: { symbol: sym, tf, text } });
+  } catch (e) {
+    loaded[sym][tf] = false;
+    renderR2Status();
+  }
+}
+
+function renderR2Status() {
+  const box = document.getElementById('r2-status-box');
+  box.innerHTML = PAIRS.map(p => {
+    const tfs = TFS.map(tf => {
+      const ok = loaded[p]?.[tf];
+      const cls = ok ? 'ok' : 'err';
+      const lbl = ok ? `${tf} ${(ok/1000).toFixed(0)}k` : `${tf} —`;
+      return `<span class="r2-chip ${cls}">${lbl}</span>`;
+    }).join('');
+    return `<div class="r2-row"><span class="r2-pair">${p}</span><span class="r2-tfs">${tfs}</span></div>`;
+  }).join('');
+}
+
+function checkRunnable() {
+  const pairs = selectedPairs();
+  const anyLoaded = pairs.some(p => loaded[p]?.m5 && loaded[p]?.m30);
+  document.getElementById('btn-run').disabled = !anyLoaded;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RUN ANALYSIS
+// ══════════════════════════════════════════════════════════════════════════════
+function runAnalysis() {
+  const symbols = selectedPairs().filter(p => loaded[p]?.m5 && loaded[p]?.m30);
+  if (!symbols.length) return;
+  document.getElementById('pre-run').style.display = 'none';
+  document.getElementById('results-wrap').style.display = 'flex';
+  document.getElementById('progress-wrap').style.display = 'flex';
+  document.getElementById('prog-fill').style.width = '0%';
+  document.getElementById('btn-run').disabled = true;
+
+  _worker.postMessage({ type: 'run', payload: {
+    symbols,
+    cfg: {
+      startDate:   document.getElementById('cfg-start').value,
+      endDate:     document.getElementById('cfg-end').value,
+      slMult:      +document.getElementById('cfg-sl').value,
+      rrRatio:     +document.getElementById('cfg-tp').value,
+      confTolPips: +document.getElementById('cfg-tol').value,
+    }
+  }});
+}
+
+function selectedPairs() {
+  return [...document.querySelectorAll('.pair-cb-input:checked')].map(el => el.value);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RESULTS RENDERING
+// ══════════════════════════════════════════════════════════════════════════════
+function renderResults(s) {
+  if (s.empty) { alert('No touches found — check date range and data.'); return; }
+  renderOverview(s);
+  renderTiming(s);
+  renderLevels(s);
+  renderRegime(s);
+  renderApproach(s);
+  renderDecay(s);
+  renderCombos(s);
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const fmtR   = v => (v >= 0 ? '+' : '') + v.toFixed(2) + 'R';
+const fmtPct = v => (v * 100).toFixed(1) + '%';
+const fmtN   = v => v.toLocaleString();
+const deltaClass = v => v > 0.02 ? 'delta-pos' : v < -0.02 ? 'delta-neg' : 'delta-neu';
+
+function statRow(label, s, baseline) {
+  const delta = s.avgR - baseline.avgR;
+  const dc = deltaClass(delta);
+  return `<tr>
+    <td>${label}</td>
+    <td class="mono">${fmtN(s.n)}</td>
+    <td class="mono">${fmtPct(s.winRate)}</td>
+    <td class="mono">${fmtR(s.avgR)}</td>
+    <td class="mono ${dc}">${delta >= 0 ? '+' : ''}${delta.toFixed(2)}R</td>
+    <td class="mono" style="color:var(--text3)">${s.avgMfe?.toFixed(1) ?? '—'}p / ${s.avgMae?.toFixed(1) ?? '—'}p</td>
+  </tr>`;
+}
+
+function featureTable(title, buckets, baseline, sortKey='avgR') {
+  const rows = Object.entries(buckets)
+    .filter(([, s]) => s.n >= 5)
+    .sort((a, b) => b[1][sortKey] - a[1][sortKey]);
+  return `<div class="an-card" style="margin-bottom:10px">
+    <div class="an-card-title">${title}</div>
+    <table class="feat-table">
+      <thead><tr>
+        <th>Group</th><th>Trades</th><th>Win%</th><th>Avg R</th><th>vs Baseline</th><th>MFE / MAE</th>
+      </tr></thead>
+      <tbody>${rows.map(([k, s]) => statRow(k, s, baseline)).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+// ─── Overview ─────────────────────────────────────────────────────────────────
+function renderOverview(s) {
+  const b = s.baseline;
+  const pairRows = Object.entries(s.bySymbol)
+    .sort((a, b2) => b2[1].avgR - a[1].avgR)
+    .map(([sym, d]) => `<tr>
+      <td style="font-weight:600">${sym}</td>
+      <td class="mono">${fmtN(d.n)}</td>
+      <td class="mono">${fmtPct(d.winRate)}</td>
+      <td class="mono ${d.avgR >= 0 ? 'delta-pos' : 'delta-neg'}">${fmtR(d.avgR)}</td>
+      <td class="mono">${fmtR(d.totalR)}</td>
+      <td class="mono" style="color:var(--text3)">${d.avgMfe?.toFixed(1)}p</td>
+    </tr>`).join('');
+
+  document.getElementById('tab-overview').innerHTML = `
+    <div class="an-grid" style="margin-bottom:14px">
+      ${pill(fmtN(b.n), 'Total Touches')}
+      ${pill(fmtPct(b.winRate), 'Win Rate', b.winRate > 0.5 ? 'var(--green)' : 'var(--red)')}
+      ${pill(fmtR(b.avgR), 'Avg R/Trade', b.avgR >= 0 ? 'var(--green)' : 'var(--red)')}
+      ${pill(fmtR(b.totalR), 'Total R', b.totalR >= 0 ? 'var(--green)' : 'var(--red)')}
+      ${pill(b.avgMfe?.toFixed(1) + 'p', 'Avg MFE')}
+      ${pill(b.avgMae?.toFixed(1) + 'p', 'Avg MAE')}
+    </div>
+    <div class="an-card">
+      <div class="an-card-title">Per Pair Breakdown</div>
+      <table class="feat-table">
+        <thead><tr><th>Pair</th><th>Touches</th><th>Win%</th><th>Avg R</th><th>Total R</th><th>MFE</th></tr></thead>
+        <tbody>${pairRows}</tbody>
+      </table>
+    </div>`;
+}
+
+function pill(val, label, color) {
+  return `<div class="stat-pill">
+    <div class="sp-val" style="color:${color || 'var(--text)'}">${val}</div>
+    <div class="sp-lbl">${label}</div>
+  </div>`;
+}
+
+// ─── Timing ───────────────────────────────────────────────────────────────────
+function renderTiming(s) {
+  const kzOrder = ['asia_close','london_open','london_mid','ny_open','ny_mid','off_peak'];
+  const kzLabels = {
+    asia_close:'Asia Close\n05–07', london_open:'London Open\n07–10',
+    london_mid:'London Mid\n10–13', ny_open:'NY Open\n13–16',
+    ny_mid:'NY Mid\n16–20', off_peak:'Off-Peak'
+  };
+  const dowOrder = ['Mon','Tue','Wed','Thu','Fri'];
+
+  const kzRows = kzOrder.filter(k => s.byKz[k]?.n >= 5)
+    .map(k => statRow(kzLabels[k].replace('\n',' '), s.byKz[k] || {n:0,winRate:0,avgR:0,avgMfe:0,avgMae:0}, s.baseline));
+  const dowRows = dowOrder.filter(k => s.byDow[k]?.n >= 5)
+    .map(k => statRow(k, s.byDow[k], s.baseline));
+
+  // Hour heat map
+  const hours = Array.from({length:12}, (_, i) => i + 8);
+  const maxAbs = Math.max(...hours.map(h => Math.abs(s.byHour[h]?.avgR ?? 0)), 0.01);
+  const hmCells = hours.map(h => {
+    const d = s.byHour[h];
+    if (!d || d.n < 3) return `<td style="color:var(--text3);font-size:9px">—</td>`;
+    const intensity = Math.min(1, Math.abs(d.avgR) / maxAbs);
+    const bg = d.avgR >= 0
+      ? `rgba(52,199,89,${0.1 + intensity * 0.5})`
+      : `rgba(255,59,48,${0.1 + intensity * 0.5})`;
+    return `<td style="background:${bg};color:var(--text)" title="${h}:00 — ${fmtN(d.n)} trades, ${fmtPct(d.winRate)} WR, ${fmtR(d.avgR)}">${fmtR(d.avgR).replace('R','')}</td>`;
+  }).join('');
+
+  document.getElementById('tab-timing').innerHTML = `
+    <div class="an-card" style="margin-bottom:10px">
+      <div class="an-card-title">Hour of Day Heat Map (London time)</div>
+      <div class="heatmap-wrap">
+        <table class="heatmap">
+          <thead><tr>${hours.map(h => `<th>${h}h</th>`).join('')}</tr></thead>
+          <tbody><tr>${hmCells}</tr></tbody>
+        </table>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:6px">Green = positive avg R · Red = negative avg R · Darker = stronger signal</div>
+    </div>
+    <div class="an-card" style="margin-bottom:10px">
+      <div class="an-card-title">Kill Zone Performance</div>
+      <table class="feat-table">
+        <thead><tr><th>Session Window</th><th>Trades</th><th>Win%</th><th>Avg R</th><th>vs Baseline</th><th>MFE / MAE</th></tr></thead>
+        <tbody>${kzRows.join('')}</tbody>
+      </table>
+    </div>
+    <div class="an-card">
+      <div class="an-card-title">Day of Week</div>
+      <table class="feat-table">
+        <thead><tr><th>Day</th><th>Trades</th><th>Win%</th><th>Avg R</th><th>vs Baseline</th><th>MFE / MAE</th></tr></thead>
+        <tbody>${dowRows.join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+// ─── Level Quality ────────────────────────────────────────────────────────────
+function renderLevels(s) {
+  document.getElementById('tab-levels').innerHTML =
+    featureTable('Confluence Tightness', {
+      'Tight (same Fib or <0.2× tol)': s.byTight[true]  || {n:0},
+      'Normal (within tolerance)':      s.byTight[false] || {n:0},
+    }, s.baseline) +
+    featureTable('Confluence Density (overlapping Fibs)', s.byDensity, s.baseline) +
+    featureTable('Fib Level Type', s.byFib, s.baseline) +
+    featureTable('Round Number Proximity', {
+      'Near round (00 or 50)': s.byRound[true]  || {n:0},
+      'Not near round':        s.byRound[false] || {n:0},
+    }, s.baseline) +
+    featureTable('Previous Session Extreme Match', {
+      'Near prev day H/L': s.byPrevMatch[true]  || {n:0},
+      'No match':          s.byPrevMatch[false] || {n:0},
+    }, s.baseline) +
+    featureTable('Level Freshness (days since last test)', s.byFreshness, s.baseline);
+}
+
+// ─── Market Context ───────────────────────────────────────────────────────────
+function renderRegime(s) {
+  document.getElementById('tab-regime').innerHTML =
+    featureTable('ATR Regime (14-day rolling percentile)', {
+      'Low vol (<33rd pct)':  s.byAtrRegime.low || {n:0},
+      'Mid vol (33–67th)':    s.byAtrRegime.mid || {n:0},
+      'High vol (>67th pct)': s.byAtrRegime.high || {n:0},
+    }, s.baseline) +
+    featureTable('ATR Sequence (3-day trend)', {
+      'Expanding (today > 3d ago)':   s.byAtrSeq.expanding  || {n:0},
+      'Contracting (today < 3d ago)': s.byAtrSeq.contracting || {n:0},
+      'Neutral':                      s.byAtrSeq.neutral     || {n:0},
+    }, s.baseline) +
+    featureTable('Asia Range Size (90-day percentile)', {
+      'Tight (<33rd pct — coiling)': s.byAsiaSize.tight  || {n:0},
+      'Normal (33–67th)':            s.byAsiaSize.normal || {n:0},
+      'Wide (>67th pct)':            s.byAsiaSize.wide   || {n:0},
+    }, s.baseline) +
+    featureTable('SMT Divergence (correlated pair)', {
+      'Confirmed divergence': s.bySmt.confirmed || {n:0},
+      'Absent':               s.bySmt.absent    || {n:0},
+      'No correlated pair':   s.bySmt.na        || {n:0},
+    }, s.baseline);
+}
+
+// ─── Approach ─────────────────────────────────────────────────────────────────
+function renderApproach(s) {
+  document.getElementById('tab-approach').innerHTML =
+    featureTable('Approach Direction', {
+      'Correct (resistance from below / support from above)': s.byApproach.correct || {n:0},
+      'Counter (wrong-side approach)':                        s.byApproach.counter || {n:0},
+    }, s.baseline) +
+    featureTable('Premium / Discount (vs weekly open)', {
+      'Premium (price > weekly open)': s.byPremDisc.premium  || {n:0},
+      'Discount (price < weekly open)': s.byPremDisc.discount || {n:0},
+    }, s.baseline) +
+    featureTable('Approach + Bias Aligned', {
+      'Aligned (direction matches premium/discount)': s.byBiasOk[true]  || {n:0},
+      'Counter-bias entry':                           s.byBiasOk[false] || {n:0},
+    }, s.baseline) +
+    featureTable('Monthly Open Bias', {
+      'Aligned (short in premium / long in discount)': s.byMonthBias.aligned || {n:0},
+      'Counter-month bias':                            s.byMonthBias.counter || {n:0},
+    }, s.baseline) +
+    featureTable('Judas Swing (session extreme swept before touch)', {
+      'Judas sweep detected': s.byJudas[true]  || {n:0},
+      'Direct touch (no sweep first)': s.byJudas[false] || {n:0},
+    }, s.baseline);
+}
+
+// ─── Year / Pair decay ────────────────────────────────────────────────────────
+function renderDecay(s) {
+  const years = Object.keys(s.byYear).sort();
+  const yRows = years.filter(y => s.byYear[y].n >= 10).map(y => {
+    const d = s.byYear[y];
+    return `<tr>
+      <td style="font-weight:600">${y}</td>
+      <td class="mono">${fmtN(d.n)}</td>
+      <td class="mono">${fmtPct(d.winRate)}</td>
+      <td class="mono ${d.avgR >= 0 ? 'delta-pos' : 'delta-neg'}">${fmtR(d.avgR)}</td>
+      <td class="mono">${fmtR(d.totalR)}</td>
+      <td class="mono" style="color:var(--text3)">${d.wins}W / ${d.losses}L / ${d.eods}E</td>
+    </tr>`;
+  }).join('');
+
+  const qtrs = Object.keys(s.byQuarter).sort();
+  const qRows = qtrs.filter(q => s.byQuarter[q].n >= 5).map(q => {
+    const d = s.byQuarter[q];
+    return `<tr>
+      <td>${q}</td>
+      <td class="mono">${fmtN(d.n)}</td>
+      <td class="mono">${fmtPct(d.winRate)}</td>
+      <td class="mono ${d.avgR >= 0 ? 'delta-pos' : 'delta-neg'}">${fmtR(d.avgR)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tab-decay').innerHTML = `
+    <div class="an-card" style="margin-bottom:10px">
+      <div class="an-card-title">Year-over-Year Edge</div>
+      <table class="feat-table">
+        <thead><tr><th>Year</th><th>Touches</th><th>Win%</th><th>Avg R</th><th>Total R</th><th>Breakdown</th></tr></thead>
+        <tbody>${yRows}</tbody>
+      </table>
+    </div>
+    <div class="an-card">
+      <div class="an-card-title">Quarterly Breakdown</div>
+      <table class="feat-table">
+        <thead><tr><th>Quarter</th><th>Touches</th><th>Win%</th><th>Avg R</th></tr></thead>
+        <tbody>${qRows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ─── Top Combinations ─────────────────────────────────────────────────────────
+function renderCombos(s) {
+  const KZ_LABELS = { london_open:'London Open', ny_open:'NY Open', london_mid:'London Mid', ny_mid:'NY Mid', asia_close:'Asia Close', off_peak:'Off-Peak' };
+  function comboRow(c, i) {
+    const [kz, tight, approach, prem, atr] = c.parts;
+    const badges = [
+      `<span class="combo-badge">${KZ_LABELS[kz] ?? kz}</span>`,
+      `<span class="combo-badge">${tight}</span>`,
+      `<span class="combo-badge">${approach}</span>`,
+      `<span class="combo-badge">${prem}</span>`,
+      `<span class="combo-badge">${atr} vol</span>`,
+    ].join('');
+    return `<tr>
+      <td style="font-size:10px;color:var(--text3)">#${i+1}</td>
+      <td>${badges}</td>
+      <td class="mono">${fmtN(c.n)}</td>
+      <td class="mono">${fmtPct(c.winRate)}</td>
+      <td class="mono delta-pos">${fmtR(c.avgR)}</td>
+      <td class="mono">${fmtR(c.totalR)}</td>
+    </tr>`;
+  }
+  function worstRow(c, i) {
+    const [kz, tight, approach, prem, atr] = c.parts;
+    const badges = [
+      `<span class="combo-badge">${KZ_LABELS[kz] ?? kz}</span>`,
+      `<span class="combo-badge">${tight}</span>`,
+      `<span class="combo-badge">${approach}</span>`,
+      `<span class="combo-badge">${prem}</span>`,
+      `<span class="combo-badge">${atr} vol</span>`,
+    ].join('');
+    return `<tr>
+      <td style="font-size:10px;color:var(--text3)">#${i+1}</td>
+      <td>${badges}</td>
+      <td class="mono">${fmtN(c.n)}</td>
+      <td class="mono">${fmtPct(c.winRate)}</td>
+      <td class="mono delta-neg">${fmtR(c.avgR)}</td>
+      <td class="mono">${fmtR(c.totalR)}</td>
+    </tr>`;
+  }
+
+  const goodRows  = (s.topCombos  || []).map((c, i) => comboRow(c, i)).join('');
+  const badRows   = (s.worstCombos || []).slice(0, 10).map((c, i) => worstRow(c, i)).join('');
+
+  document.getElementById('tab-combos').innerHTML = `
+    <div class="an-card" style="margin-bottom:10px">
+      <div class="an-card-title">Top 20 Feature Combinations (min 10 trades, highest avg R)</div>
+      <table class="feat-table">
+        <thead><tr><th>#</th><th>Features</th><th>Trades</th><th>Win%</th><th>Avg R</th><th>Total R</th></tr></thead>
+        <tbody>${goodRows || '<tr><td colspan="6" style="color:var(--text3)">Not enough data</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div class="an-card">
+      <div class="an-card-title">Setups to Avoid (worst avg R, min 10 trades)</div>
+      <table class="feat-table">
+        <thead><tr><th>#</th><th>Features</th><th>Trades</th><th>Win%</th><th>Avg R</th><th>Total R</th></tr></thead>
+        <tbody>${badRows || '<tr><td colspan="6" style="color:var(--text3)">Not enough data</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CLAUDE SYNTHESIS
+// ══════════════════════════════════════════════════════════════════════════════
+async function askClaude() {
+  if (!_stats) return;
+  const btn = document.getElementById('btn-claude');
+  const status = document.getElementById('claude-status');
+  const out = document.getElementById('synthesis-out');
+  btn.disabled = true;
+  status.textContent = 'Sending to Claude…';
+  out.style.display = 'none';
+
+  // Build a compact summary for the prompt (avoid huge token counts)
+  const summary = buildSummaryForClaude(_stats);
+
+  try {
+    const res = await fetch('/api/analysis-historical', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    renderSynthesis(data.analysis);
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function buildSummaryForClaude(s) {
+  // Compact representation — keep under ~4K tokens
+  const fmt = (d, label) => ({ label, n: d.n, winRate: +(d.winRate*100).toFixed(1), avgR: +d.avgR.toFixed(3) });
+  return {
+    baseline: fmt(s.baseline, 'All trades'),
+    byKillZone:  Object.fromEntries(Object.entries(s.byKz   || {}).filter(([,d]) => d.n>=5).map(([k,d]) => [k, fmt(d,k)])),
+    byDow:       Object.fromEntries(Object.entries(s.byDow  || {}).filter(([,d]) => d.n>=5).map(([k,d]) => [k, fmt(d,k)])),
+    byFib:       Object.fromEntries(Object.entries(s.byFib  || {}).filter(([,d]) => d.n>=5).map(([k,d]) => [k, fmt(d,k)])),
+    byAtrRegime: Object.fromEntries(Object.entries(s.byAtrRegime || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byAsiaSize:  Object.fromEntries(Object.entries(s.byAsiaSize  || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byApproach:  Object.fromEntries(Object.entries(s.byApproach  || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byPremDisc:  Object.fromEntries(Object.entries(s.byPremDisc  || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byBiasOk:    Object.fromEntries(Object.entries(s.byBiasOk    || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byJudas:     Object.fromEntries(Object.entries(s.byJudas     || {}).map(([k,d]) => [k, fmt(d,k)])),
+    bySmt:       Object.fromEntries(Object.entries(s.bySmt       || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byFreshness: Object.fromEntries(Object.entries(s.byFreshness || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byAtrSeq:    Object.fromEntries(Object.entries(s.byAtrSeq    || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byYear:      Object.fromEntries(Object.entries(s.byYear      || {}).filter(([,d]) => d.n>=10).map(([k,d]) => [k, fmt(d,k)])),
+    bySymbol:    Object.fromEntries(Object.entries(s.bySymbol    || {}).map(([k,d]) => [k, fmt(d,k)])),
+    topCombos:   (s.topCombos   || []).slice(0, 10).map(c => ({ combo: c.combo, ...fmt(c, c.combo) })),
+    worstCombos: (s.worstCombos || []).slice(0,  5).map(c => ({ combo: c.combo, ...fmt(c, c.combo) })),
+  };
+}
+
+function renderSynthesis(analysis) {
+  const out = document.getElementById('synthesis-out');
+  document.getElementById('claude-status').textContent = 'Done';
+  if (typeof analysis === 'string') {
+    out.textContent = analysis;
+  } else {
+    // Structured JSON from Claude
+    let html = '';
+    for (const [key, val] of Object.entries(analysis)) {
+      const title = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      if (Array.isArray(val)) {
+        html += `<div class="syn-section">
+          <h4>${title}</h4>
+          ${val.map(v => `<div class="syn-finding">${v}</div>`).join('')}
+        </div>`;
+      } else {
+        html += `<div class="syn-section"><h4>${title}</h4><div>${val}</div></div>`;
+      }
+    }
+    out.innerHTML = html;
+  }
+  out.style.display = 'block';
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
