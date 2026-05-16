@@ -1,5 +1,28 @@
 const JOURNAL_KEY = 'journal_store';
 const PAIRS_ALL   = ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD','EUR/GBP','USD/CAD','USD/CHF','GBP/JPY','NAS100_USD'];
+
+// Pip value per standard lot in USD — JPY pairs are approximate at ~110 rate
+const PIP_VALUE_PER_LOT = {
+  'EUR/USD':10,'GBP/USD':10,'AUD/USD':10,'EUR/GBP':10,
+  'USD/CAD':10,'USD/CHF':10,
+  'USD/JPY':9, 'GBP/JPY':9,
+  'XAU/USD':10,'NAS100_USD':1,
+};
+
+// Realistic ECN broker defaults per pair: spread + round-trip slippage in pips, commission $/lot RT
+const COST_DEFAULTS = {
+  'EUR/USD':    { spread:1.0, slip:0.3, comm:7.0, lots:1 },
+  'GBP/USD':    { spread:1.2, slip:0.3, comm:7.0, lots:1 },
+  'USD/JPY':    { spread:1.0, slip:0.3, comm:7.0, lots:1 },
+  'AUD/USD':    { spread:1.3, slip:0.3, comm:7.0, lots:1 },
+  'EUR/GBP':    { spread:1.2, slip:0.3, comm:7.0, lots:1 },
+  'USD/CAD':    { spread:1.5, slip:0.3, comm:7.0, lots:1 },
+  'USD/CHF':    { spread:1.5, slip:0.3, comm:7.0, lots:1 },
+  'GBP/JPY':    { spread:2.0, slip:0.5, comm:7.0, lots:1 },
+  'XAU/USD':    { spread:3.0, slip:1.0, comm:7.0, lots:1 }, // pip=0.1 so 3p=$0.30 spread
+  'NAS100_USD': { spread:2.0, slip:0.5, comm:2.0, lots:1 },
+};
+
 let journalData  = {};
 let filterPair   = 'all';
 let selectedDate = null;
@@ -1108,6 +1131,13 @@ function openReplayModal(pair, date) {
   const tpModeEl = document.getElementById('rp-tp-mode'); if (tpModeEl) tpModeEl.value = '';
   const tpValEl  = document.getElementById('rp-tp-val');  if (tpValEl)  tpValEl.value  = '';
   const atrInfo  = document.getElementById('rp-atr-info'); if (atrInfo) atrInfo.textContent = '';
+  // Restore persisted cost settings for this pair, falling back to per-pair defaults
+  const savedCosts = (runningTotalsConfig.costSettings || {})[pair];
+  const pairCs = savedCosts || COST_DEFAULTS[pair] || { spread:1.2, slip:0.3, comm:7.0, lots:1 };
+  const spreadEl=document.getElementById('rp-spread'); if(spreadEl) spreadEl.value=pairCs.spread;
+  const slipEl  =document.getElementById('rp-slip');   if(slipEl)   slipEl.value  =pairCs.slip;
+  const commEl  =document.getElementById('rp-comm');   if(commEl)   commEl.value  =pairCs.comm;
+  const lotsEl  =document.getElementById('rp-lots');   if(lotsEl)   lotsEl.value  =pairCs.lots;
   _lastReplayPayload = null;
 
   const key    = pair + '::' + date;
@@ -1490,6 +1520,19 @@ function rpOptionsChanged() {
   setReplayStatus('Option changed — click Fetch & Run to re-run', 'rp-fetch-idle');
 }
 
+// Save cost settings per-pair and re-render results with updated costs
+function rpCostChanged() {
+  const pair   = document.getElementById('replayModal')?.dataset.pair || '';
+  const spread = parseFloat(document.getElementById('rp-spread')?.value || '') || 0;
+  const slip   = parseFloat(document.getElementById('rp-slip')?.value   || '') || 0;
+  const comm   = parseFloat(document.getElementById('rp-comm')?.value   || '') || 0;
+  const lots   = parseFloat(document.getElementById('rp-lots')?.value   || '') || 1;
+  if (!runningTotalsConfig.costSettings) runningTotalsConfig.costSettings = {};
+  runningTotalsConfig.costSettings[pair] = { spread, slip, comm, lots };
+  saveRunningTotals();
+  if (_lastReplayPayload) renderReplayInModal(_lastReplayPayload);
+}
+
 // Auto-fill ATR defaults when mode switches to ATR
 function rpSlModeChanged() {
   const mode = document.getElementById('rp-sl-mode').value;
@@ -1719,6 +1762,51 @@ function buildReplayHTML(payload) {
     return `<span style="font-size:9px;color:${v >= 0 ? 'var(--green)' : 'var(--red)'}"> ${v >= 0 ? '+' : ''}$${Math.abs(v).toFixed(0)}</span>`;
   };
 
+  // ── Transaction cost helpers ──
+  const _spread = parseFloat(document.getElementById('rp-spread')?.value || '') || 0;
+  const _slip   = parseFloat(document.getElementById('rp-slip')?.value   || '') || 0;
+  const _comm   = parseFloat(document.getElementById('rp-comm')?.value   || '') || 0;
+  const _lots   = parseFloat(document.getElementById('rp-lots')?.value   || '') || 1;
+  const hasCosts = _spread > 0 || _slip > 0 || _comm > 0;
+  const pip      = getPipSz(payload.pair);
+  const pipVal   = PIP_VALUE_PER_LOT[payload.pair] || 10;
+  // Commission expressed as equivalent pips (so it can be divided by SL pips to get R)
+  const commPips     = _comm / pipVal;
+  const totalCostPips = _spread + _slip + commPips;
+
+  // Cost in R for one trade — lot-size cancels for R, only matters for $ display
+  const costRForTrade = (entryPrice, sl) => {
+    if (!hasCosts || !entryPrice || !sl) return 0;
+    const slPips = Math.abs(entryPrice - sl) / pip;
+    return slPips > 0 ? +(totalCostPips / slPips).toFixed(3) : 0;
+  };
+  // Cost in $ for one trade (needs lot size)
+  const costDollarForTrade = () => hasCosts ? +(_lots * totalCostPips * pipVal).toFixed(2) : 0;
+
+  // Sum cost R across all traded passes
+  let totalCostR = 0;
+  for (const res of results) {
+    if (!res.touched) continue;
+    const cR = costRForTrade(res.entryPrice, res.sl);
+    for (const p of (res.passes || [])) {
+      if (p.result === 'tp' || p.result === 'sl' || p.result === 'eod') totalCostR += cR;
+    }
+  }
+  totalCostR = +totalCostR.toFixed(2);
+  const netR  = +(stats.totalR - totalCostR).toFixed(2);
+  const netRc = netR >= 0 ? 'vu' : 'vd';
+
+  // Build per-trade R cell: shows gross R + "net X.XXR" annotation when costs active
+  const mkRCell = (grossR, entryPrice, sl, traded) => {
+    if (grossR === null) return '—';
+    if (!hasCosts || !traded) return `<span class="${grossR >= 0 ? 'vu' : 'vd'}">${grossR > 0 ? '+' : ''}${grossR}R</span>${fmtPnl(grossR)}`;
+    const cR  = costRForTrade(entryPrice, sl);
+    const nR  = +(grossR - cR).toFixed(2);
+    const nCol = nR >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<span class="${grossR >= 0 ? 'vu' : 'vd'}">${grossR > 0 ? '+' : ''}${grossR}R</span>`
+      + ` <span style="font-size:9px;color:${nCol}">→${nR >= 0 ? '+' : ''}${nR}</span>${fmtPnl(nR)}`;
+  };
+
   // ── Summary bar ──
   const wrc = stats.winRate >= 60 ? 'vu' : stats.winRate >= 45 ? 'vn' : stats.traded > 0 ? 'vd' : 'vp';
   const rc  = stats.totalR >= 0 ? 'vu' : 'vd';
@@ -1729,8 +1817,20 @@ function buildReplayHTML(payload) {
     <div class="rp-stat"><span class="rp-stat-lbl">SL</span><span class="rp-stat-val vd">${stats.losses}</span></div>
     <div class="rp-stat"><span class="rp-stat-lbl">EOD</span><span class="rp-stat-val vn">${stats.eods}</span></div>
     <div class="rp-stat"><span class="rp-stat-lbl">Win%</span><span class="rp-stat-val ${wrc}">${stats.winRate !== null ? stats.winRate + '%' : '—'}</span></div>
-    <div class="rp-stat"><span class="rp-stat-lbl">Total R</span><span class="rp-stat-val ${rc}">${stats.totalR > 0 ? '+' : ''}${stats.totalR}R</span></div>
-    ${showPnl ? `<div class="rp-stat" style="border-left:1px solid var(--border);padding-left:10px;margin-left:2px"><span class="rp-stat-lbl">Day P&amp;L</span><span class="rp-stat-val ${stats.totalR >= 0 ? 'vu' : 'vd'}">${stats.totalR >= 0 ? '+' : ''}$${Math.abs(stats.totalR * riskAmt).toFixed(0)}</span></div>` : ''}
+    <div class="rp-stat"><span class="rp-stat-lbl">Gross R</span><span class="rp-stat-val ${rc}">${stats.totalR > 0 ? '+' : ''}${stats.totalR}R</span></div>
+    ${hasCosts ? `
+    <div class="rp-stat" style="border-left:1px solid var(--border);padding-left:10px;margin-left:2px">
+      <span class="rp-stat-lbl">Costs</span>
+      <span class="rp-stat-val vd" title="${_spread}p spread + ${_slip}p slip + $${_comm} comm = ${totalCostPips.toFixed(1)}p/trade">-${totalCostR}R${hasCosts&&_lots!==1?` <span style="font-size:9px">($${(costDollarForTrade()).toFixed(0)}/trade × ${_lots}L)</span>`:''}</span>
+    </div>
+    <div class="rp-stat">
+      <span class="rp-stat-lbl">Net R</span>
+      <span class="rp-stat-val ${netRc}">${netR >= 0 ? '+' : ''}${netR}R${fmtPnl(netR)}</span>
+    </div>` : showPnl ? `
+    <div class="rp-stat" style="border-left:1px solid var(--border);padding-left:10px;margin-left:2px">
+      <span class="rp-stat-lbl">Day P&amp;L</span>
+      <span class="rp-stat-val ${stats.totalR >= 0 ? 'vu' : 'vd'}">${stats.totalR >= 0 ? '+' : ''}$${Math.abs(stats.totalR * riskAmt).toFixed(0)}</span>
+    </div>` : ''}
     ${stats.atr30Pips ? `<div class="rp-stat" style="border-left:1px solid var(--border);padding-left:10px;margin-left:2px"><span class="rp-stat-lbl">30M ATR</span><span class="rp-stat-val" style="font-size:14px;color:var(--purple)">${stats.atr30Pips}p</span></div>` : ''}
   </div>`;
 
@@ -1793,7 +1893,7 @@ function buildReplayHTML(payload) {
       else if (res.result === 'sl')   resultBadge = '<span class="rp-badge sl">SL</span>';
       else if (res.result === 'eod')  resultBadge = '<span class="rp-badge eod">EOD</span>';
       else if (res.result === 'open') resultBadge = '<span class="rp-badge open">OPEN</span>';
-      const rStr   = res.r !== null ? `<span class="${res.r >= 0 ? 'vu' : 'vd'}">${res.r > 0 ? '+' : ''}${res.r}R</span>${fmtPnl(res.r)}` : '—';
+      const rStr   = mkRCell(res.r, res.entryPrice, res.sl, res.result === 'tp' || res.result === 'sl' || res.result === 'eod');
       const favStr = res.maxFav !== null ? `+${res.maxFav}p` : '—';
       const advStr = res.maxAdv !== null ? `<span class="vd">${res.maxAdv}p</span>` : '—';
       const rowCls = res.result === 'tp' ? 'rp-row-win' : res.result === 'sl' ? 'rp-row-loss' : '';
@@ -1817,7 +1917,7 @@ function buildReplayHTML(payload) {
         : p.result === 'sl'  ? '<span class="rp-badge sl">SL</span>'
         : p.result === 'eod' ? '<span class="rp-badge eod">EOD</span>'
         : `<span class="rp-badge open">${p.result.toUpperCase()}</span>`;
-      const rStr   = p.r !== null ? `<span class="${p.r >= 0 ? 'vu' : 'vd'}">${p.r > 0 ? '+' : ''}${p.r}R</span>${fmtPnl(p.r)}` : '—';
+      const rStr   = mkRCell(p.r, res.entryPrice, res.sl, p.result === 'tp' || p.result === 'sl' || p.result === 'eod');
       const favStr = p.maxFav !== null ? `+${p.maxFav}p` : '—';
       const advStr = p.maxAdv !== null ? `<span class="vd">${p.maxAdv}p</span>` : '—';
       const rowCls = p.result === 'tp' ? 'rp-row-win' : p.result === 'sl' ? 'rp-row-loss' : '';
@@ -1841,7 +1941,11 @@ function buildReplayHTML(payload) {
       const hasSl     = passes.some(p => p.result === 'sl');
       const allTp     = passes.every(p => p.result === 'tp');
       const rowCls    = hasSl ? 'rp-row-loss' : allTp ? 'rp-row-win' : '';
-      const rStr      = `<span class="${totalR >= 0 ? 'vu' : 'vd'}">${totalR > 0 ? '+' : ''}${totalR.toFixed(2)}R</span>${fmtPnl(totalR)}`;
+      const totalCostRMulti = hasCosts ? +(passes.filter(p=>p.result==='tp'||p.result==='sl'||p.result==='eod').length * costRForTrade(res.entryPrice, res.sl)).toFixed(2) : 0;
+      const netTotalR = +(totalR - totalCostRMulti).toFixed(2);
+      const rStr      = hasCosts
+        ? `<span class="${totalR >= 0 ? 'vu' : 'vd'}">${totalR > 0 ? '+' : ''}${totalR.toFixed(2)}R</span> <span style="font-size:9px;color:${netTotalR>=0?'var(--green)':'var(--red)'}">→${netTotalR>=0?'+':''}${netTotalR}</span>${fmtPnl(netTotalR)}`
+        : `<span class="${totalR >= 0 ? 'vu' : 'vd'}">${totalR > 0 ? '+' : ''}${totalR.toFixed(2)}R</span>${fmtPnl(totalR)}`;
       const passBadges = passes.map(p => `<span class="rp-badge ${p.result === 'tp' ? 'tp' : p.result === 'sl' ? 'sl' : 'eod'}">${p.touchTime || ''} ${p.result.toUpperCase()}</span>`).join(' ');
       tableHtml += `<tr class="${rowCls}"><td class="rp-chevron-cell"><span class="rp-chevron-ph"></span></td>`
         + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${dirHtml}</td><td class="rp-stars">${stars}</td>`
@@ -1860,7 +1964,7 @@ function buildReplayHTML(payload) {
           : p.result === 'sl'  ? '<span class="rp-badge sl">SL</span>'
           : p.result === 'eod' ? '<span class="rp-badge eod">EOD</span>'
           : `<span class="rp-badge open">${p.result.toUpperCase()}</span>`;
-        const rp      = p.r !== null ? `<span class="${p.r >= 0 ? 'vu' : 'vd'}">${p.r > 0 ? '+' : ''}${p.r}R</span>${fmtPnl(p.r)}` : '—';
+        const rp      = mkRCell(p.r, res.entryPrice, res.sl, p.result === 'tp' || p.result === 'sl' || p.result === 'eod');
         const subCls  = p.result === 'tp' ? 'rp-row-win' : p.result === 'sl' ? 'rp-row-loss' : '';
         const subDur = p.duration ? `<span style="font-size:10px;color:var(--text3)">${p.duration}</span>` : '—';
         tableHtml += `<tr class="${subCls}" style="opacity:0.88"><td class="rp-chevron-cell">${chevron}</td>`
