@@ -142,5 +142,6 @@ class SLTPEngine:
         risk_amount = balance * (risk_pct / 100)
         if sl_pips <= 0 or pv <= 0:
             return 0.01
-        lots = (risk_amount / (sl_pips * pv)) * size_mult
-        return max(0.01, round(lots, 2))
+        lots    = (risk_amount / (sl_pips * pv)) * size_mult
+        max_lot = self.sl_tp.get('max_lot', 5.0)
+        return max(0.01, min(round(lots, 2), max_lot))

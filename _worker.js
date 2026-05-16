@@ -1412,20 +1412,28 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           kill_switch: false,
           enabled_pairs: ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD'],
           modules: { macro_regime:true, vol_gate:true, confluence:true, oi_walls:true, cot_filter:false, news_risk:false },
-          execution: { min_macro_score:5, min_stars:3, min_agree:3, max_trades:2, composite_threshold:0.60 },
+          execution: {
+            tier:'balanced', bardir:'auto', wtthreshold:35,
+            min_macro_score:5, min_stars:3, min_agree:3, max_trades:2, composite_threshold:0.60, prox_pips:8,
+            tp1r:0.3, tp2r:1.0, trailoffset:0.7,
+            max_spread_pips:3.0,
+            ddlimit:3, monthlydd:5, lockout:3, cooldown:60, sizing:1.0,
+          },
           position: { risk_pct:1.0, vol_high_mult:0.5, vol_low_mult:1.2 },
-          sl_tp: { sl_method:'structure', tp_method:'confluence', sl_atr_mult:1.5, tp1_rr:1.0, tp1_close_pct:50, tp2_method:'garch_68', max_sl_pips:50, max_tp_pips:100 },
-          safety: { max_daily_loss_pct:3.0, trade_window_start:'07:00', trade_window_end:'20:00' },
+          sl_tp: { sl_method:'structure', tp_method:'confluence', sl_atr_mult:1.5, tp1_close_pct:50, max_sl_pips:50, max_tp_pips:100, max_lot:5.0 },
+          safety: { trade_window_start:'07:00', trade_window_end:'20:00' },
+          oi_walls: { oi_wall_pips:15 },
         };
 
         const safeParse = raw => { try { return raw ? JSON.parse(raw) : null; } catch(e) { return null; } };
 
-        const [botConfigRaw, fredRaw, cotRaw, oiRaw, sentRaw] = await Promise.all([
+        const [botConfigRaw, fredRaw, cotRaw, oiRaw, sentRaw, eventsRaw] = await Promise.all([
           env.FX_SCORES.get('bot_config').catch(() => null),
           env.FX_SCORES.get('fred').catch(() => null),
           env.FX_SCORES.get('cot_data').catch(() => null),
           env.FX_SCORES.get('oi_store').catch(() => null),
           env.FX_SCORES.get('sentiment').catch(() => null),
+          env.FX_SCORES.get('events_today').catch(() => null),
         ]);
 
         const botConfig  = safeParse(botConfigRaw) ?? BOT_CONFIG_DEFAULT;
@@ -1460,6 +1468,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
 
         return json({
           bot_config: botConfig,
+          events_today: safeParse(eventsRaw) ?? [],
           regime_snapshot: {
             pushed_at: pushedAt ? new Date(pushedAt).toISOString() : null,
             fred:  fredData?.data ?? null,

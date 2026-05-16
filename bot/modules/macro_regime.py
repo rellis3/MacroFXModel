@@ -4,18 +4,17 @@ from .base import BaseModule, ModuleResult
 class MacroRegimeModule(BaseModule):
     """
     Reads signal score and alignment from the dashboard's processed ai_entries.
-    The dashboard's signal engine (signal.js) already computed a 0–12 score
-    and an alignment flag for each entry. This module treats that as the
-    pair-level macro verdict — the bot does not recompute it.
+    Takes the MAXIMUM signalScore across all entries (not first), and determines
+    direction from the majority of signalAligned entries.
     """
 
     name = 'macro_regime'
 
     def evaluate(self, state: dict, pair: str, config: dict, ctx: dict = None) -> ModuleResult:
-        snap = state.get('regime_snapshot') or {}
+        snap      = state.get('regime_snapshot') or {}
         pair_data = (snap.get('pairs') or {}).get(pair) or {}
-        entries = pair_data.get('entries') or []
-        exec_cfg = config.get('execution') or {}
+        entries   = pair_data.get('entries') or []
+        exec_cfg  = config.get('execution') or {}
         min_score = exec_cfg.get('min_macro_score', 5)
 
         if not entries:
@@ -24,17 +23,19 @@ class MacroRegimeModule(BaseModule):
                 reason='No dashboard entries — dashboard may not have loaded this pair',
             )
 
-        # signalScore is pair-level; take from the first available entry
-        signal_score = entries[0].get('signalScore') or 0
+        # Take max signalScore across all entries (not just first)
+        signal_score = max((e.get('signalScore') or 0) for e in entries)
 
-        # Determine macro direction from entries with signalAligned=True
-        aligned_longs  = [e for e in entries if e.get('signalAligned') and e.get('direction') == 'long']
-        aligned_shorts = [e for e in entries if e.get('signalAligned') and e.get('direction') == 'short']
+        # Direction from count of aligned entries
+        aligned_longs  = sum(1 for e in entries if e.get('signalAligned') and e.get('direction') == 'long')
+        aligned_shorts = sum(1 for e in entries if e.get('signalAligned') and e.get('direction') == 'short')
 
-        if aligned_longs:
+        if aligned_longs > aligned_shorts:
             direction = 'LONG'
-        elif aligned_shorts:
+        elif aligned_shorts > aligned_longs:
             direction = 'SHORT'
+        elif aligned_longs == aligned_shorts and aligned_longs > 0:
+            direction = 'NEUTRAL'  # tied — mixed market
         else:
             direction = 'NEUTRAL'
 
@@ -49,12 +50,13 @@ class MacroRegimeModule(BaseModule):
             return ModuleResult(
                 passed=False, signal='NEUTRAL', score=signal_score / 12,
                 confidence='MEDIUM',
-                reason=f'Score {signal_score}/12 but no aligned entries — mixed/flat market',
+                reason=f'Score {signal_score}/12 but no clear aligned direction — mixed market',
             )
 
         conf = 'HIGH' if signal_score >= 8 else 'MEDIUM' if signal_score >= 5 else 'LOW'
         return ModuleResult(
             passed=True, signal=direction, score=signal_score / 12, confidence=conf,
-            reason=f'Macro {direction} · signal score {signal_score}/12',
-            metadata={'signal_score': signal_score, 'direction': direction},
+            reason=f'Macro {direction} · score {signal_score}/12 · {aligned_longs}L/{aligned_shorts}S aligned',
+            metadata={'signal_score': signal_score, 'direction': direction,
+                      'aligned_longs': aligned_longs, 'aligned_shorts': aligned_shorts},
         )

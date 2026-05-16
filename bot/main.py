@@ -31,11 +31,14 @@ import logging
 import math
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date as date_type
 
 from utils.state_reader import fetch_state, fetch_quote, check_staleness, push_bot_status, StaleDataError
 from utils.sl_tp_engine import SLTPEngine
 from utils.indicators import compute_atr, compute_wt1, atr_to_tol_pips
+from utils.config_helpers import resolve_min_stars, session_threshold_mult
+from utils.persistence import load_bot_state, save_bot_state
+from position_manager import manage_positions, MAGIC
 from modules.vol_gate import VolGateModule
 from modules.macro_regime import MacroRegimeModule
 from modules.confluence import ConfluenceModule
@@ -82,20 +85,7 @@ _PIP_SIZES = {
     'NAS100_USD': 1.0,
 }
 
-# Named strictness tiers → minimum confluence star count
-_TIER_MIN_STARS = {
-    'strict':     4,
-    'balanced':   3,
-    'loose':      2,
-    'aggressive': 1,
-}
-
-
-def _resolve_min_stars(exec_cfg: dict) -> int:
-    tier = (exec_cfg.get('tier') or 'balanced').lower()
-    if tier == 'auto':
-        return exec_cfg.get('min_stars', 3)
-    return _TIER_MIN_STARS.get(tier, exec_cfg.get('min_stars', 3))
+# resolve_min_stars and session_threshold_mult live in utils/config_helpers.py
 
 
 # ── Live price (fast path) ────────────────────────────────────────────────────
@@ -116,15 +106,17 @@ def fetch_current_price(pair: str, base_url: str) -> float | None:
     return fetch_quote(pair, base_url)
 
 
-def fetch_bars(pair: str, count: int = 30):
+def fetch_bars(pair: str, count: int = 30, timeframe=None):
     """
-    Fetches recent 5m bars from MT5 (local memory, no network).
+    Fetches recent bars from MT5 (local memory, no network).
+    Defaults to TIMEFRAME_M5. Pass timeframe=mt5.TIMEFRAME_H1 etc. for MTF.
     Returns the numpy structured array or None if MT5 unavailable.
     """
     if not HAS_MT5:
         return None
     try:
-        bars = mt5.copy_rates_from_pos(pair.replace('/', ''), mt5.TIMEFRAME_M5, 0, count)
+        tf   = timeframe if timeframe is not None else mt5.TIMEFRAME_M5
+        bars = mt5.copy_rates_from_pos(pair.replace('/', ''), tf, 0, count)
         if bars is not None and len(bars) >= 2:
             return bars
     except Exception:
@@ -159,18 +151,23 @@ def pre_screen(state: dict, pair: str, config: dict, live_price: float) -> tuple
     pair_data = (snap.get('pairs') or {}).get(pair) or {}
     entries   = pair_data.get('entries') or []
     exec_cfg  = config.get('execution') or {}
-    min_stars = _resolve_min_stars(exec_cfg)
+    min_stars = resolve_min_stars(exec_cfg)
     bardir    = (exec_cfg.get('bardir') or 'auto').lower()
     wt_thresh = exec_cfg.get('wtthreshold', 35)
     pip_size  = _PIP_SIZES.get(pair, 0.0001)
 
     # Dynamic ATR tolerance from MT5 5m bars; falls back to config when unavailable
-    bars = fetch_bars(pair)
-    if bars is not None:
-        atr      = compute_atr(bars)
+    bars_5m = fetch_bars(pair, count=30)
+    if bars_5m is not None:
+        atr      = compute_atr(bars_5m)
         tol_pips = atr_to_tol_pips(atr, pip_size)
     else:
         tol_pips = _prox_pips(pair, exec_cfg)
+
+    # Publish tol_pips so confluence module uses the same ATR-derived value
+    if '_tol_pips' not in state:
+        state['_tol_pips'] = {}
+    state['_tol_pips'][pair] = tol_pips
 
     tol_dist = tol_pips * pip_size
 
@@ -186,19 +183,20 @@ def pre_screen(state: dict, pair: str, config: dict, live_price: float) -> tuple
 
     score = 1
 
-    # Condition 2: WT1 direction aligns with a near entry
-    # bardir='off' → skip check entirely
-    # bardir='auto' → only filter when abs(WT1) >= wtthreshold (significant momentum)
-    # bardir='on'  → always filter
-    wt1 = compute_wt1(bars) if bars is not None else float('nan')
+    # Condition 2: WT1 direction aligns with near entries
+    # Multi-timeframe: 5m + 1H must both agree when bardir='on'
+    # bardir='off'  → skip entirely
+    # bardir='auto' → only filter when abs(WT1_5m) >= wt_thresh
+    # bardir='on'   → always filter; require 5m + 1H agreement
+    wt1_5m = compute_wt1(bars_5m) if bars_5m is not None else float('nan')
+    bars_1h = fetch_bars(pair, count=50, timeframe=mt5.TIMEFRAME_H1) if HAS_MT5 else None
+    wt1_1h  = compute_wt1(bars_1h) if bars_1h is not None else float('nan')
 
-    if bardir == 'off' or math.isnan(wt1):
-        # WT1 check disabled, or no bars (paper mode) — auto-pass
+    if bardir == 'off' or math.isnan(wt1_5m):
         score = 2
     else:
-        wt1_significant = abs(wt1) >= wt_thresh
+        wt1_significant = abs(wt1_5m) >= wt_thresh
         if bardir == 'auto' and not wt1_significant:
-            # WT1 is in neutral zone — no conviction either way, let through
             score = 2
         else:
             entry_dirs: set[str] = set()
@@ -211,10 +209,20 @@ def pre_screen(state: dict, pair: str, config: dict, live_price: float) -> tuple
 
             if not entry_dirs:
                 score = 2
-            elif ('LONG' in entry_dirs and wt1 > 0) or ('SHORT' in entry_dirs and wt1 < 0):
-                score = 2
+            else:
+                dir_ok_5m = (('LONG' in entry_dirs and wt1_5m > 0) or
+                             ('SHORT' in entry_dirs and wt1_5m < 0))
 
-    return score, tol_pips, wt1
+                if bardir == 'on' and not math.isnan(wt1_1h):
+                    # Require 5m + 1H to agree
+                    dir_ok_1h = (('LONG' in entry_dirs and wt1_1h > 0) or
+                                 ('SHORT' in entry_dirs and wt1_1h < 0))
+                    if dir_ok_5m and dir_ok_1h:
+                        score = 2
+                elif dir_ok_5m:
+                    score = 2
+
+    return score, tol_pips, wt1_5m
 
 
 # ── Full module evaluation (runs only when price is near a level) ─────────────
@@ -296,8 +304,10 @@ class RiskGuard:
     ddlimit    — max daily drawdown % before lockout
     monthlydd  — max monthly drawdown % before lockout
     lockout    — hours to lock after a DD breach
-    cooldown   — minutes between trades (same pair or any pair)
+    cooldown   — minutes between trades, tracked per-pair independently
     sizing     — position size multiplier applied on top of vol_gate size_mult
+
+    State is persisted to disk so restarts don't reset DD tracking or cooldowns.
     """
 
     def __init__(self, config: dict):
@@ -311,30 +321,43 @@ class RiskGuard:
         self._day_start_bal:   float | None = None
         self._month_start_bal: float | None = None
         self._locked_until:    float = 0.0
-        self._last_trade_at:   float = 0.0
+        self._last_trade_by_pair: dict[str, float] = {}  # pair → unix timestamp
+        self._last_reset_date:   date_type | None = None
 
     def update_balance(self, balance: float) -> None:
+        today = datetime.now(timezone.utc).date()
         if self._day_start_bal is None:
             self._day_start_bal = balance
+            self._last_reset_date = today
         if self._month_start_bal is None:
             self._month_start_bal = balance
 
+        # Midnight daily reset
+        if self._last_reset_date and today > self._last_reset_date:
+            log.info(f'Midnight reset: day_start_bal {self._day_start_bal:.2f} → {balance:.2f}')
+            self._day_start_bal   = balance
+            self._last_reset_date = today
+
     def reset_daily(self, balance: float) -> None:
-        self._day_start_bal = balance
+        self._day_start_bal   = balance
+        self._last_reset_date = datetime.now(timezone.utc).date()
 
-    def record_trade(self) -> None:
-        self._last_trade_at = time.time()
+    def record_trade(self, pair: str) -> None:
+        self._last_trade_by_pair[pair] = time.time()
 
-    def block_reason(self, balance: float) -> str | None:
+    def block_reason(self, balance: float, pair: str = '') -> str | None:
         now = time.time()
 
         if now < self._locked_until:
             remaining_m = (self._locked_until - now) / 60
             return f'Locked out — {remaining_m:.0f}m remaining'
 
-        if self._last_trade_at and now - self._last_trade_at < self.cooldown_secs:
-            remaining_s = self.cooldown_secs - (now - self._last_trade_at)
-            return f'Cooldown — {remaining_s / 60:.1f}m remaining'
+        # Per-pair cooldown
+        if pair and pair in self._last_trade_by_pair:
+            elapsed = now - self._last_trade_by_pair[pair]
+            if elapsed < self.cooldown_secs:
+                remaining_m = (self.cooldown_secs - elapsed) / 60
+                return f'[{pair}] Cooldown — {remaining_m:.1f}m remaining'
 
         if self._day_start_bal:
             dd_pct = (self._day_start_bal - balance) / self._day_start_bal * 100
@@ -351,6 +374,27 @@ class RiskGuard:
                         f' — locked {self.lockout_hours}h')
 
         return None
+
+    def to_dict(self) -> dict:
+        return {
+            'day_start_bal':      self._day_start_bal,
+            'month_start_bal':    self._month_start_bal,
+            'locked_until':       self._locked_until,
+            'last_trade_by_pair': self._last_trade_by_pair,
+            'last_reset_date':    self._last_reset_date.isoformat() if self._last_reset_date else None,
+        }
+
+    def restore_from_dict(self, d: dict) -> None:
+        self._day_start_bal        = d.get('day_start_bal')
+        self._month_start_bal      = d.get('month_start_bal')
+        self._locked_until         = d.get('locked_until') or 0.0
+        self._last_trade_by_pair   = d.get('last_trade_by_pair') or {}
+        raw_date = d.get('last_reset_date')
+        if raw_date:
+            try:
+                self._last_reset_date = date_type.fromisoformat(raw_date)
+            except (ValueError, TypeError):
+                self._last_reset_date = None
 
 
 # ── MT5 ───────────────────────────────────────────────────────────────────────
@@ -410,7 +454,8 @@ def _mt5_close_all() -> None:
 # ── Trade execution ───────────────────────────────────────────────────────────
 
 def execute_trade(pair: str, direction: str, entry: dict,
-                  sl_tp, size: float, live_price: float, paper_mode: bool) -> bool:
+                  sl_tp, size: float, live_price: float, paper_mode: bool,
+                  config: dict | None = None) -> bool:
     level_price = entry.get('price', 0)
     pip_size    = _PIP_SIZES.get(pair, 0.0001)
     dist_pips   = abs(live_price - level_price) / pip_size
@@ -442,6 +487,21 @@ def execute_trade(pair: str, direction: str, entry: dict,
         log.error(f'MT5: no tick for {mt5_sym}')
         return False
 
+    # Spread gate — reject when spread is excessive (illiquid / pre-event)
+    pip_size    = _PIP_SIZES.get(pair, 0.0001)
+    spread_pips = (tick.ask - tick.bid) / pip_size
+    max_spread  = (config.get('execution') or {}).get('max_spread_pips', 3.0)
+    if spread_pips > max_spread:
+        log.warning(f'SPREAD BLOCK {pair}: {spread_pips:.1f}p > max {max_spread}p — skipping')
+        return False
+
+    # Duplicate position guard — never open a second position on the same pair
+    existing = [p for p in (mt5.positions_get() or [])
+                if p.symbol == mt5_sym and p.magic == MAGIC]
+    if existing:
+        log.warning(f'DUPLICATE BLOCK {pair}: open position {existing[0].ticket} already exists')
+        return False
+
     order_type = mt5.ORDER_TYPE_BUY if direction == 'LONG' else mt5.ORDER_TYPE_SELL
     exec_price = tick.ask if direction == 'LONG' else tick.bid
 
@@ -465,7 +525,7 @@ def execute_trade(pair: str, direction: str, entry: dict,
         return False
 
     log.info(f'MT5 order placed: ticket={res.order}  exec_price={exec_price}')
-    return True
+    return res.order  # return ticket int (truthy) so caller can store position meta
 
 
 # ── Pair evaluation (full pipeline, only called when price is near a level) ───
@@ -479,7 +539,8 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
     """
     snap = state.get('regime_snapshot') or {}
     exec_cfg       = config.get('execution') or {}
-    comp_threshold = exec_cfg.get('composite_threshold', 0.60)
+    base_threshold = exec_cfg.get('composite_threshold', 0.60)
+    comp_threshold = base_threshold * session_threshold_mult()
     min_agree      = exec_cfg.get('min_agree', 3)
     pair_status    = {'pair': pair, 'action': 'skip', 'live_price': live_price, 'reason': ''}
 
@@ -537,13 +598,17 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
         f'SL={sl_tp.sl}  TP={sl_tp.tp}  R:R={sl_tp.rr_ratio}  lot={size}  score={comp_score:.2f}'
     )
 
-    ok = execute_trade(pair, direction, entry, sl_tp, size, live_price, paper_mode)
+    ticket = execute_trade(pair, direction, entry, sl_tp, size, live_price,
+                           paper_mode, config=config)
 
     pair_status.update({
-        'action': 'trade', 'direction': direction, 'score': round(comp_score, 2),
-        'stars': entry.get('totalStars'), 'level': level_price, 'live': live_price,
-        'dist_pips': round(dist_pips, 1), 'sl': sl_tp.sl, 'tp': sl_tp.tp,
-        'rr': sl_tp.rr_ratio, 'lot': size, 'executed': ok,
+        'action':   'trade',      'direction': direction,  'score': round(comp_score, 2),
+        'stars':    entry.get('totalStars'), 'level': level_price, 'live': live_price,
+        'dist_pips': round(dist_pips, 1),  'sl': sl_tp.sl, 'tp': sl_tp.tp,
+        'tp1':      sl_tp.tp1,    'tp1_close_pct': sl_tp.tp1_close_pct,
+        'trailoffset_dist': sl_tp.trailoffset_dist,
+        'rr':       sl_tp.rr_ratio, 'lot': size, 'executed': bool(ticket),
+        'ticket':   ticket if isinstance(ticket, int) else None,
     })
     return pair_status
 
@@ -570,13 +635,26 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
             log.error('MetaTrader5 package not installed — falling back to paper mode')
             paper_mode = True
 
+    # ── Restore persisted state (survives restarts) ───────────────────────────
+    persisted = load_bot_state()
+    log.info(f'Loaded persisted state: {list(persisted.keys())}')
+
     # ── State cache ───────────────────────────────────────────────────────────
     cached_state: dict | None = None
     last_state_refresh: float = 0.0
     last_status_push:   float = 0.0
+    last_state_save:    float = 0.0
     status: dict = {'loop_at': '', 'paper': paper_mode, 'pairs_evaluated': [], 'errors': []}
     risk_guard: RiskGuard | None = None
     _last_risk_config_hash: int = 0
+
+    # Position metadata — keyed by MT5 ticket int, holds TP1/trail state
+    position_meta: dict[int, dict] = {
+        int(k): v for k, v in (persisted.get('position_meta') or {}).items()
+    }
+
+    # State save interval (every 60s to avoid disk churn)
+    STATE_SAVE_INTERVAL = 60
 
     # ── Two-speed loop ────────────────────────────────────────────────────────
     while True:
@@ -586,6 +664,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         if tick_start - last_state_refresh >= state_interval or cached_state is None:
             try:
                 cached_state = fetch_state(base_url)
+                # events_today is now included in the /api/state response
                 last_state_refresh = tick_start
                 log.info('State refreshed from dashboard KV')
             except Exception as exc:
@@ -605,15 +684,18 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         if risk_guard is None or risk_cfg_hash != _last_risk_config_hash:
             prev = risk_guard
             risk_guard = RiskGuard(config)
-            if prev is not None:
-                # Carry over the day/month baseline so a config change doesn't reset DD tracking
-                risk_guard._day_start_bal   = prev._day_start_bal
-                risk_guard._month_start_bal = prev._month_start_bal
-                risk_guard._locked_until    = prev._locked_until
-                risk_guard._last_trade_at   = prev._last_trade_at
+
+            # First creation: restore from persisted state
+            if prev is None and persisted.get('risk_guard'):
+                risk_guard.restore_from_dict(persisted['risk_guard'])
+                log.info('RiskGuard restored from disk')
+            elif prev is not None:
+                # Config changed mid-session: carry forward DD tracking
+                risk_guard.restore_from_dict(prev.to_dict())
                 log.info(f'RiskGuard updated — tier={exec_cfg.get("tier","balanced")}  '
                          f'sizing={risk_guard.sizing_mult}  cooldown={exec_cfg.get("cooldown",60)}m  '
                          f'ddlimit={risk_guard.dd_limit_pct}%')
+
             _last_risk_config_hash = risk_cfg_hash
 
         # ── Kill switch (checked every tick so it takes effect fast) ──────────
@@ -661,6 +743,11 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         # Attach to state so confluence module can read them
         cached_state['_live_prices'] = live_prices
 
+        # ── Position management (runs every tick, before new entries) ─────────
+        mgmt_actions = manage_positions(position_meta, paper_mode)
+        if mgmt_actions:
+            log.info(f'Position actions this tick: {mgmt_actions}')
+
         # ── Pre-screen: ATR proximity + WT1 direction (cheap, runs every tick) ──
         near_level: dict = {}
         for pair in enabled_pairs:
@@ -696,10 +783,19 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                 live_balance = acct.balance
         risk_guard.update_balance(live_balance)
 
-        # Check session-level risk block before entering the evaluation loop
-        rg_block = risk_guard.block_reason(live_balance)
-        if rg_block:
-            log.warning(f'RiskGuard BLOCK: {rg_block}')
+        # Per-pair risk check — filter near_level to only unblocked pairs
+        blocked_pairs: list[str] = []
+        for pair in list(near_level.keys()):
+            block = risk_guard.block_reason(live_balance, pair=pair)
+            if block:
+                log.warning(f'RiskGuard [{pair}]: {block}')
+                blocked_pairs.append(pair)
+                del near_level[pair]
+
+        # Session-level checks (lockout, DD) — clear everything if triggered
+        session_block = risk_guard.block_reason(live_balance, pair='')
+        if session_block and not blocked_pairs:
+            log.warning(f'RiskGuard SESSION: {session_block}')
             near_level = {}
 
         for pair, live_price in near_level.items():
@@ -719,28 +815,52 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
             tick_evaluated.append(pair_status)
             if pair_status.get('executed'):
                 trades_this_tick += 1
-                risk_guard.record_trade()
+                risk_guard.record_trade(pair)
+                # Register position meta so position_manager can manage it
+                ticket = pair_status.get('ticket')
+                if ticket:
+                    position_meta[ticket] = {
+                        'tp1':              pair_status.get('tp1'),
+                        'tp1_close_pct':    pair_status.get('tp1_close_pct') or 50,
+                        'trailoffset_dist': pair_status.get('trailoffset_dist'),
+                        'tp1_hit':          False,
+                        'trail_active':     False,
+                        'trail_sl':         None,
+                    }
+                    log.info(f'Position meta registered: ticket={ticket}  '
+                             f'tp1={pair_status.get("tp1")}  trailoffset={pair_status.get("trailoffset_dist")}')
 
         # ── Status report pushed on slow cadence (not every tick) ─────────────
-        if tick_evaluated or tick_start - last_status_push >= state_interval:
+        if tick_evaluated or mgmt_actions or tick_start - last_status_push >= state_interval:
             status = {
-                'loop_at':         datetime.now(timezone.utc).isoformat(),
-                'paper':           paper_mode,
-                'pairs_evaluated': tick_evaluated,
-                'pairs_near':      list(near_level.keys()),
-                'tier':            exec_cfg.get('tier', 'balanced'),
-                'min_stars':       _resolve_min_stars(exec_cfg),
-                'bardir':          exec_cfg.get('bardir', 'auto'),
-                'wtthreshold':     exec_cfg.get('wtthreshold', 35),
-                'sizing':          risk_guard.sizing_mult,
-                'ddlimit':         risk_guard.dd_limit_pct,
-                'monthlydd':       risk_guard.monthly_dd_pct,
-                'cooldown_min':    exec_cfg.get('cooldown', 60),
-                'balance':         live_balance,
-                'errors':          [],
+                'loop_at':           datetime.now(timezone.utc).isoformat(),
+                'paper':             paper_mode,
+                'pairs_evaluated':   tick_evaluated,
+                'pairs_near':        list(near_level.keys()),
+                'pairs_blocked':     blocked_pairs,
+                'mgmt_actions':      mgmt_actions,
+                'open_positions':    len(position_meta),
+                'tier':              exec_cfg.get('tier', 'balanced'),
+                'min_stars':         resolve_min_stars(exec_cfg),
+                'bardir':            exec_cfg.get('bardir', 'auto'),
+                'wtthreshold':       exec_cfg.get('wtthreshold', 35),
+                'sizing':            risk_guard.sizing_mult,
+                'ddlimit':           risk_guard.dd_limit_pct,
+                'monthlydd':         risk_guard.monthly_dd_pct,
+                'cooldown_min':      exec_cfg.get('cooldown', 60),
+                'balance':           live_balance,
+                'errors':            [],
             }
             push_bot_status(status, base_url)
             last_status_push = tick_start
+
+        # ── Periodic state persistence (every 60s) ────────────────────────────
+        if tick_start - last_state_save >= STATE_SAVE_INTERVAL:
+            save_bot_state({
+                'risk_guard':    risk_guard.to_dict() if risk_guard else {},
+                'position_meta': {str(k): v for k, v in position_meta.items()},
+            })
+            last_state_save = tick_start
 
         if run_once:
             break
