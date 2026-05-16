@@ -1253,6 +1253,11 @@ function rpApplyStarFilter() {
   renderReplayInModal(_lastReplayPayload, minStars);
 }
 
+function rpPnlChanged() {
+  // Account/risk% changed — just re-render with new P&L values, no re-fetch needed
+  if (_lastReplayPayload) renderReplayInModal(_lastReplayPayload);
+}
+
 function rpOptionsChanged() {
   // Options changed — clear custom cache and prompt re-run
   const modal = document.getElementById('replayModal');
@@ -1470,6 +1475,17 @@ function buildCandleChart(res) {
 function buildReplayHTML(payload) {
   const { results, equity, stats, byFib, byStar } = payload;
 
+  // ── P&L helpers — active only when account + risk% are both set ──
+  const _acct   = parseFloat(document.getElementById('rp-account')?.value   || '');
+  const _rpct   = parseFloat(document.getElementById('rp-risk-pct')?.value  || '');
+  const showPnl = !isNaN(_acct) && _acct > 0 && !isNaN(_rpct) && _rpct > 0;
+  const riskAmt = showPnl ? _acct * (_rpct / 100) : 0;
+  const fmtPnl  = (r) => {
+    if (!showPnl || r === null) return '';
+    const v = r * riskAmt;
+    return `<span style="font-size:9px;color:${v >= 0 ? 'var(--green)' : 'var(--red)'}"> ${v >= 0 ? '+' : ''}$${Math.abs(v).toFixed(0)}</span>`;
+  };
+
   // ── Summary bar ──
   const wrc = stats.winRate >= 60 ? 'vu' : stats.winRate >= 45 ? 'vn' : stats.traded > 0 ? 'vd' : 'vp';
   const rc  = stats.totalR >= 0 ? 'vu' : 'vd';
@@ -1481,6 +1497,7 @@ function buildReplayHTML(payload) {
     <div class="rp-stat"><span class="rp-stat-lbl">EOD</span><span class="rp-stat-val vn">${stats.eods}</span></div>
     <div class="rp-stat"><span class="rp-stat-lbl">Win%</span><span class="rp-stat-val ${wrc}">${stats.winRate !== null ? stats.winRate + '%' : '—'}</span></div>
     <div class="rp-stat"><span class="rp-stat-lbl">Total R</span><span class="rp-stat-val ${rc}">${stats.totalR > 0 ? '+' : ''}${stats.totalR}R</span></div>
+    ${showPnl ? `<div class="rp-stat" style="border-left:1px solid var(--border);padding-left:10px;margin-left:2px"><span class="rp-stat-lbl">Day P&amp;L</span><span class="rp-stat-val ${stats.totalR >= 0 ? 'vu' : 'vd'}">${stats.totalR >= 0 ? '+' : ''}$${Math.abs(stats.totalR * riskAmt).toFixed(0)}</span></div>` : ''}
   </div>`;
 
   // ── Equity curve (CSS-only sparkline) ──
@@ -1542,7 +1559,7 @@ function buildReplayHTML(payload) {
       else if (res.result === 'sl')   resultBadge = '<span class="rp-badge sl">SL</span>';
       else if (res.result === 'eod')  resultBadge = '<span class="rp-badge eod">EOD</span>';
       else if (res.result === 'open') resultBadge = '<span class="rp-badge open">OPEN</span>';
-      const rStr   = res.r !== null ? `<span class="${res.r >= 0 ? 'vu' : 'vd'}">${res.r > 0 ? '+' : ''}${res.r}R</span>` : '—';
+      const rStr   = res.r !== null ? `<span class="${res.r >= 0 ? 'vu' : 'vd'}">${res.r > 0 ? '+' : ''}${res.r}R</span>${fmtPnl(res.r)}` : '—';
       const favStr = res.maxFav !== null ? `+${res.maxFav}p` : '—';
       const advStr = res.maxAdv !== null ? `<span class="vd">${res.maxAdv}p</span>` : '—';
       const rowCls = res.result === 'tp' ? 'rp-row-win' : res.result === 'sl' ? 'rp-row-loss' : '';
@@ -1566,7 +1583,7 @@ function buildReplayHTML(payload) {
         : p.result === 'sl'  ? '<span class="rp-badge sl">SL</span>'
         : p.result === 'eod' ? '<span class="rp-badge eod">EOD</span>'
         : `<span class="rp-badge open">${p.result.toUpperCase()}</span>`;
-      const rStr   = p.r !== null ? `<span class="${p.r >= 0 ? 'vu' : 'vd'}">${p.r > 0 ? '+' : ''}${p.r}R</span>` : '—';
+      const rStr   = p.r !== null ? `<span class="${p.r >= 0 ? 'vu' : 'vd'}">${p.r > 0 ? '+' : ''}${p.r}R</span>${fmtPnl(p.r)}` : '—';
       const favStr = p.maxFav !== null ? `+${p.maxFav}p` : '—';
       const advStr = p.maxAdv !== null ? `<span class="vd">${p.maxAdv}p</span>` : '—';
       const rowCls = p.result === 'tp' ? 'rp-row-win' : p.result === 'sl' ? 'rp-row-loss' : '';
@@ -1590,7 +1607,7 @@ function buildReplayHTML(payload) {
       const hasSl     = passes.some(p => p.result === 'sl');
       const allTp     = passes.every(p => p.result === 'tp');
       const rowCls    = hasSl ? 'rp-row-loss' : allTp ? 'rp-row-win' : '';
-      const rStr      = `<span class="${totalR >= 0 ? 'vu' : 'vd'}">${totalR > 0 ? '+' : ''}${totalR.toFixed(2)}R</span>`;
+      const rStr      = `<span class="${totalR >= 0 ? 'vu' : 'vd'}">${totalR > 0 ? '+' : ''}${totalR.toFixed(2)}R</span>${fmtPnl(totalR)}`;
       const passBadges = passes.map(p => `<span class="rp-badge ${p.result === 'tp' ? 'tp' : p.result === 'sl' ? 'sl' : 'eod'}">${p.touchTime || ''} ${p.result.toUpperCase()}</span>`).join(' ');
       tableHtml += `<tr class="${rowCls}"><td class="rp-chevron-cell"><span class="rp-chevron-ph"></span></td>`
         + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${dirHtml}</td><td class="rp-stars">${stars}</td>`
@@ -1609,7 +1626,7 @@ function buildReplayHTML(payload) {
           : p.result === 'sl'  ? '<span class="rp-badge sl">SL</span>'
           : p.result === 'eod' ? '<span class="rp-badge eod">EOD</span>'
           : `<span class="rp-badge open">${p.result.toUpperCase()}</span>`;
-        const rp      = p.r !== null ? `<span class="${p.r >= 0 ? 'vu' : 'vd'}">${p.r > 0 ? '+' : ''}${p.r}R</span>` : '—';
+        const rp      = p.r !== null ? `<span class="${p.r >= 0 ? 'vu' : 'vd'}">${p.r > 0 ? '+' : ''}${p.r}R</span>${fmtPnl(p.r)}` : '—';
         const subCls  = p.result === 'tp' ? 'rp-row-win' : p.result === 'sl' ? 'rp-row-loss' : '';
         const subDur = p.duration ? `<span style="font-size:10px;color:var(--text3)">${p.duration}</span>` : '—';
         tableHtml += `<tr class="${subCls}" style="opacity:0.88"><td class="rp-chevron-cell">${chevron}</td>`

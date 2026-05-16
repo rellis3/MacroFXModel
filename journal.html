@@ -154,6 +154,14 @@
             style="font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px"
             title="Run replay up to this datetime — blank = 21:00 EOD on the selected day" onchange="rpOptionsChanged()">
           <span style="font-size:9px;color:var(--text3);white-space:nowrap">blank = 21:00 EOD</span>
+          <label style="font-size:10px;color:var(--text3);white-space:nowrap;margin-left:6px">Account $</label>
+          <input type="number" id="rp-account" placeholder="10000" min="100" max="9999999" step="1000"
+            style="width:76px;font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px;font-family:'DM Mono',monospace;text-align:right"
+            title="Account size — used to calculate $ P&amp;L per trade" oninput="rpPnlChanged()">
+          <label style="font-size:10px;color:var(--text3);white-space:nowrap">Risk %</label>
+          <input type="number" id="rp-risk-pct" placeholder="1" min="0.1" max="10" step="0.1"
+            style="width:52px;font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px;font-family:'DM Mono',monospace;text-align:right"
+            title="% of account risked per trade (based on the SL distance)" oninput="rpPnlChanged()">
         </span>
       </div>
 
