@@ -145,24 +145,49 @@
             <option value="6">6+</option>
             <option value="7">7</option>
           </select>
-          <label style="font-size:10px;color:var(--text3);white-space:nowrap">SL pips</label>
-          <input type="number" id="rp-sl-pips" placeholder="default" min="0.1" max="500" step="0.1"
-            style="width:68px;font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px;font-family:'DM Mono',monospace;text-align:right"
-            title="Override SL for all levels — pips from entry (blank = use level default)" oninput="rpOptionsChanged()">
           <label style="font-size:10px;color:var(--text3);white-space:nowrap">Run until</label>
           <input type="datetime-local" id="rp-end-dt"
             style="font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px"
             title="Run replay up to this datetime — blank = 21:00 EOD on the selected day" onchange="rpOptionsChanged()">
           <span style="font-size:9px;color:var(--text3);white-space:nowrap">blank = 21:00 EOD</span>
-          <label style="font-size:10px;color:var(--text3);white-space:nowrap;margin-left:6px">Account $</label>
-          <input type="number" id="rp-account" placeholder="10000" min="100" max="9999999" step="1000"
-            style="width:76px;font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px;font-family:'DM Mono',monospace;text-align:right"
-            title="Account size — used to calculate $ P&amp;L per trade" oninput="rpPnlChanged()">
-          <label style="font-size:10px;color:var(--text3);white-space:nowrap">Risk %</label>
-          <input type="number" id="rp-risk-pct" placeholder="1" min="0.1" max="10" step="0.1"
-            style="width:52px;font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px;font-family:'DM Mono',monospace;text-align:right"
-            title="% of account risked per trade (based on the SL distance)" oninput="rpPnlChanged()">
         </span>
+        <!-- SL / TP override row -->
+        <div style="width:100%;display:flex;align-items:center;gap:8px;padding-top:6px;border-top:1px solid var(--border);flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:600;color:var(--text3);white-space:nowrap">Override</span>
+          <label style="font-size:10px;color:var(--text3);white-space:nowrap">SL</label>
+          <select id="rp-sl-mode" style="font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 5px" onchange="rpOptionsChanged()">
+            <option value="">level default</option>
+            <option value="pips">Pips</option>
+            <option value="atr">ATR ×</option>
+          </select>
+          <input type="number" id="rp-sl-val" placeholder="—" min="0.1" max="500" step="0.1"
+            style="width:56px;font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px;font-family:'DM Mono',monospace;text-align:right"
+            title="SL: pips from entry OR ATR multiplier (e.g. 1.5 = 1.5× 30M ATR). Blank = use level default." oninput="rpOptionsChanged()">
+          <span style="color:var(--border2);padding:0 4px">·</span>
+          <label style="font-size:10px;color:var(--text3);white-space:nowrap">TP</label>
+          <select id="rp-tp-mode" style="font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 5px" onchange="rpOptionsChanged()">
+            <option value="">level default</option>
+            <option value="pips">Pips</option>
+            <option value="atr">ATR ×</option>
+          </select>
+          <input type="number" id="rp-tp-val" placeholder="—" min="0.1" max="500" step="0.1"
+            style="width:56px;font-size:11px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px;font-family:'DM Mono',monospace;text-align:right"
+            title="TP: pips from entry OR ATR multiplier (e.g. 2 = 2× 30M ATR). Blank = use level default." oninput="rpOptionsChanged()">
+          <span id="rp-atr-info" style="font-size:9px;color:var(--purple);margin-left:4px"></span>
+        </div>
+        <!-- P&L row — full-width second row so it's always visible -->
+        <div style="width:100%;display:flex;align-items:center;gap:10px;padding-top:8px;border-top:1px solid var(--border);margin-top:2px">
+          <span style="font-size:10px;font-weight:600;color:var(--purple);white-space:nowrap">&#36; P&amp;L</span>
+          <label style="font-size:10px;color:var(--text3);white-space:nowrap">Account size</label>
+          <input type="number" id="rp-account" placeholder="e.g. 10000" min="100" max="9999999" step="1000"
+            style="width:100px;font-size:11px;background:var(--s1);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 8px;font-family:'DM Mono',monospace;text-align:right"
+            title="Your account size — combined with Risk % to calculate $ won/lost per trade" oninput="rpPnlChanged()">
+          <label style="font-size:10px;color:var(--text3);white-space:nowrap">Risk % per trade</label>
+          <input type="number" id="rp-risk-pct" placeholder="e.g. 1" min="0.1" max="10" step="0.1"
+            style="width:72px;font-size:11px;background:var(--s1);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 8px;font-family:'DM Mono',monospace;text-align:right"
+            title="% of account risked per trade (based on the SL distance)" oninput="rpPnlChanged()">
+          <span style="font-size:9px;color:var(--text3)">risk per trade = account × risk% &nbsp;·&nbsp; P&amp;L per trade = R × risk amount &nbsp;·&nbsp; per-pair per-day only</span>
+        </div>
       </div>
 
       <!-- Results area -->

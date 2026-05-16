@@ -933,8 +933,11 @@ function openReplayModal(pair, date) {
   if (starSel) starSel.value = '1';
   const endDtEl = document.getElementById('rp-end-dt');
   if (endDtEl) { endDtEl.value = ''; endDtEl.max = new Date().toISOString().slice(0, 16); }
-  const slPipsEl = document.getElementById('rp-sl-pips');
-  if (slPipsEl) slPipsEl.value = '';
+  const slModeEl = document.getElementById('rp-sl-mode'); if (slModeEl) slModeEl.value = '';
+  const slValEl  = document.getElementById('rp-sl-val');  if (slValEl)  slValEl.value  = '';
+  const tpModeEl = document.getElementById('rp-tp-mode'); if (tpModeEl) tpModeEl.value = '';
+  const tpValEl  = document.getElementById('rp-tp-val');  if (tpValEl)  tpValEl.value  = '';
+  const atrInfo  = document.getElementById('rp-atr-info'); if (atrInfo) atrInfo.textContent = '';
   _lastReplayPayload = null;
 
   const key    = pair + '::' + date;
@@ -973,9 +976,13 @@ async function fetchAndReplay() {
   document.getElementById('rp-result-area').innerHTML = '<div class="rp-loading">Fetching M1 bars from Oanda…</div>';
 
   // ── 1. Parse options ──────────────────────────────────────────────────────
-  const endDtVal  = document.getElementById('rp-end-dt')?.value || '';
-  const slPipsRaw = parseFloat(document.getElementById('rp-sl-pips')?.value || '');
-  const slPips    = !isNaN(slPipsRaw) && slPipsRaw > 0 ? slPipsRaw : null;
+  const endDtVal = document.getElementById('rp-end-dt')?.value || '';
+  const slMode   = document.getElementById('rp-sl-mode')?.value || '';
+  const slValRaw = parseFloat(document.getElementById('rp-sl-val')?.value  || '');
+  const slVal    = !isNaN(slValRaw) && slValRaw > 0 ? slValRaw : null;
+  const tpMode   = document.getElementById('rp-tp-mode')?.value || '';
+  const tpValRaw = parseFloat(document.getElementById('rp-tp-val')?.value  || '');
+  const tpVal    = !isNaN(tpValRaw) && tpValRaw > 0 ? tpValRaw : null;
 
   let endDt = null; // { dateStr, mins }
   let days  = 1;
@@ -1022,17 +1029,20 @@ async function fetchAndReplay() {
     return;
   }
 
-  const payload = runReplayEngine(pair, date, bars, dayObj.levels, { endDt, slPips });
+  const payload = runReplayEngine(pair, date, bars, dayObj.levels, { endDt, slMode: slMode || null, slVal, tpMode: tpMode || null, tpVal });
 
   // ── 3. Cache + persist ────────────────────────────────────────────────────
-  const isCustom = !!(endDtVal || slPips);
+  const isCustom = !!(endDtVal || (slMode && slVal) || (tpMode && tpVal));
   const key = pair + '::' + date + (isCustom ? '::custom' : '');
   _replayResults[key] = payload;
   saveReplayResults();
   renderQuickStats();
 
   // ── 4. Render ─────────────────────────────────────────────────────────────
-  setReplayStatus(`Done — ${payload.stats.touched}/${payload.stats.total} touched · ${payload.stats.totalR >= 0 ? '+' : ''}${payload.stats.totalR}R`, 'rp-fetch-ok');
+  const atrInfoEl = document.getElementById('rp-atr-info');
+  if (atrInfoEl) atrInfoEl.textContent = payload.stats.atr30Pips ? `30M ATR: ${payload.stats.atr30Pips.toFixed(1)}p` : '';
+  const atrNote = payload.stats.atr30Pips ? ` · 30M ATR ${payload.stats.atr30Pips.toFixed(1)}p` : '';
+  setReplayStatus(`Done — ${payload.stats.touched}/${payload.stats.total} touched · ${payload.stats.totalR >= 0 ? '+' : ''}${payload.stats.totalR}R${atrNote}`, 'rp-fetch-ok');
   renderReplayInModal(payload);
   updateInlineDayPanel(pair, date, payload);
   if (currentView === 'day' && selectedDate === date) renderMain();
@@ -1046,8 +1056,13 @@ function runReplay() { fetchAndReplay(); }   // Re-run button calls same path
 
 function runReplayEngine(pair, date, allBars, levels, opts = {}) {
   const pip    = getPipSz(pair);
-  const endDt  = opts.endDt  ?? null;  // { dateStr, mins } or null = 21:00 EOD
-  const slPips = opts.slPips ?? null;  // global SL pips override or null
+  const endDt  = opts.endDt  ?? null;
+  const slMode = opts.slMode ?? null;  // 'pips' | 'atr' | null
+  const slVal  = opts.slVal  ?? null;
+  const tpMode = opts.tpMode ?? null;  // 'pips' | 'atr' | null
+  const tpVal  = opts.tpVal  ?? null;
+  // Compute 30M ATR once for the whole run if either override uses it
+  const atr30Pips = (slMode === 'atr' || tpMode === 'atr') ? compute30mATR(allBars, pip) : null;
 
   // Window: 08:00 on target date → endDt (or 21:00 on target date)
   const windowBars = allBars.filter(b => {
@@ -1081,11 +1096,20 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
     const dir        = level.direction;
     const stars      = level.stars || 1;
 
-    // SL: use global pips override if set, otherwise level default
+    // SL / TP overrides — pips from entry, or ATR multiplier, or level default
     let sl = level.slOverride ?? level.sl;
-    const tp = level.tpOverride ?? level.tp;
-    if (slPips && slPips > 0 && entryPrice && dir) {
-      sl = dir === 'long' ? entryPrice - slPips * pip : entryPrice + slPips * pip;
+    let tp = level.tpOverride ?? level.tp;
+    if (entryPrice && dir) {
+      if (slMode === 'pips' && slVal > 0) {
+        sl = dir === 'long' ? entryPrice - slVal * pip : entryPrice + slVal * pip;
+      } else if (slMode === 'atr' && slVal > 0 && atr30Pips) {
+        sl = dir === 'long' ? entryPrice - slVal * atr30Pips * pip : entryPrice + slVal * atr30Pips * pip;
+      }
+      if (tpMode === 'pips' && tpVal > 0) {
+        tp = dir === 'long' ? entryPrice + tpVal * pip : entryPrice - tpVal * pip;
+      } else if (tpMode === 'atr' && tpVal > 0 && atr30Pips) {
+        tp = dir === 'long' ? entryPrice + tpVal * atr30Pips * pip : entryPrice - tpVal * atr30Pips * pip;
+      }
     }
 
     if (!entryPrice || !dir || !sl || !tp) {
@@ -1228,13 +1252,38 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
     }
   }
 
-  return { pair, date, results, equity, byFib, byStar, stats: { total: results.length, touched: touchedLevels.length, traded: tradedPasses.length, wins: winPasses.length, losses: lossPasses.length, eods: eodPasses.length, totalR, winRate: tradedPasses.length > 0 ? Math.round(winPasses.length / tradedPasses.length * 100) : null } };
+  return { pair, date, results, equity, byFib, byStar, stats: { total: results.length, touched: touchedLevels.length, traded: tradedPasses.length, wins: winPasses.length, losses: lossPasses.length, eods: eodPasses.length, totalR, winRate: tradedPasses.length > 0 ? Math.round(winPasses.length / tradedPasses.length * 100) : null, atr30Pips: atr30Pips ? +atr30Pips.toFixed(1) : null } };
 }
 
 function hhmm(bar) { return `${String(bar.hour).padStart(2,'0')}:${String(bar.min).padStart(2,'0')}`; }
 
 function barToMs(bar) {
   return new Date(`${bar.date}T${hhmm(bar)}:00Z`).getTime();
+}
+
+function compute30mATR(bars, pip) {
+  // Aggregate M1 bars into 30-min candles, return average TR in pips
+  const candles = [];
+  let slot = -1, grpH = 0, grpL = Infinity, grpC = 0, hasGrp = false;
+  for (const b of bars) {
+    const s = Math.floor((b.hour * 60 + b.min) / 30);
+    if (s !== slot) {
+      if (hasGrp) candles.push({ h: grpH, l: grpL, c: grpC });
+      slot = s; grpH = b.h; grpL = b.l; grpC = b.c; hasGrp = true;
+    } else {
+      if (b.h > grpH) grpH = b.h;
+      if (b.l < grpL) grpL = b.l;
+      grpC = b.c;
+    }
+  }
+  if (hasGrp) candles.push({ h: grpH, l: grpL, c: grpC });
+  if (candles.length < 2) return null;
+  let trSum = 0;
+  for (let i = 1; i < candles.length; i++) {
+    const c = candles[i], pc = candles[i - 1].c;
+    trSum += Math.max(c.h - c.l, Math.abs(c.h - pc), Math.abs(c.l - pc));
+  }
+  return (trSum / (candles.length - 1)) / pip;
 }
 function formatDuration(ms) {
   const mins = Math.round(ms / 60000);
@@ -1336,7 +1385,7 @@ function renderReplayInModal(payload, minStars) {
     equity,
     byFib,
     byStar,
-    stats: { total: filteredResults.length, touched: touched.length, traded: tradedPasses.length, wins: wins.length, losses: losses.length, eods: eods.length, totalR, winRate: tradedPasses.length > 0 ? Math.round(wins.length / tradedPasses.length * 100) : null },
+    stats: { total: filteredResults.length, touched: touched.length, traded: tradedPasses.length, wins: wins.length, losses: losses.length, eods: eods.length, totalR, winRate: tradedPasses.length > 0 ? Math.round(wins.length / tradedPasses.length * 100) : null, atr30Pips: payload.stats.atr30Pips ?? null },
   };
   el.innerHTML = buildReplayHTML(filteredPayload);
 }
@@ -1498,6 +1547,7 @@ function buildReplayHTML(payload) {
     <div class="rp-stat"><span class="rp-stat-lbl">Win%</span><span class="rp-stat-val ${wrc}">${stats.winRate !== null ? stats.winRate + '%' : '—'}</span></div>
     <div class="rp-stat"><span class="rp-stat-lbl">Total R</span><span class="rp-stat-val ${rc}">${stats.totalR > 0 ? '+' : ''}${stats.totalR}R</span></div>
     ${showPnl ? `<div class="rp-stat" style="border-left:1px solid var(--border);padding-left:10px;margin-left:2px"><span class="rp-stat-lbl">Day P&amp;L</span><span class="rp-stat-val ${stats.totalR >= 0 ? 'vu' : 'vd'}">${stats.totalR >= 0 ? '+' : ''}$${Math.abs(stats.totalR * riskAmt).toFixed(0)}</span></div>` : ''}
+    ${stats.atr30Pips ? `<div class="rp-stat" style="border-left:1px solid var(--border);padding-left:10px;margin-left:2px"><span class="rp-stat-lbl">30M ATR</span><span class="rp-stat-val" style="font-size:14px;color:var(--purple)">${stats.atr30Pips}p</span></div>` : ''}
   </div>`;
 
   // ── Equity curve (CSS-only sparkline) ──
