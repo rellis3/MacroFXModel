@@ -321,6 +321,93 @@ function resetReplayAll(){
   saveRunningTotals();renderQuickStats();
 }
 
+// ── SL/TP Sweep Analysis ──────────────────────────────────────────────────────
+const SWEEP_SL_FRACS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5];
+const SWEEP_TP_MULTS = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
+
+function sweepAnalysis() {
+  const tradesByPair = {};
+  for (const [key, payload] of Object.entries(_replayResults)) {
+    const [pair] = key.split('::');
+    const pip = getPipSz(pair);
+    const cs = (runningTotalsConfig.costSettings || {})[pair] || COST_DEFAULTS[pair] || {};
+    const totalCostPips = (cs.spread || 0) + (cs.slip || 0) + (cs.comm || 0) / (PIP_VALUE_PER_LOT[pair] || 10);
+    if (!tradesByPair[pair]) tradesByPair[pair] = { trades: [], costPips: totalCostPips };
+    for (const res of (payload.results || [])) {
+      if (!res.touched || !res.entryPrice || !res.sl) continue;
+      const slDistPips = Math.abs(res.entryPrice - res.sl) / pip;
+      if (slDistPips <= 0) continue;
+      for (const pass of (res.passes || [])) {
+        const r = pass.result;
+        if (!r || r === 'untouched' || r === 'open') continue;
+        tradesByPair[pair].trades.push({
+          slDistPips,
+          maxFav: pass.maxFav || 0,
+          maxAdv: pass.maxAdv || 0,
+          origR: pass.r || 0,
+          result: r,
+        });
+      }
+    }
+  }
+
+  const results = {};
+  for (const [pair, { trades, costPips }] of Object.entries(tradesByPair)) {
+    if (trades.length === 0) continue;
+    let bestNetR = -Infinity, bestSlFrac = 1.0, bestTpMult = 1.5;
+    let bestWins = 0, bestLosses = 0;
+    const grid = {};
+
+    for (const slFrac of SWEEP_SL_FRACS) {
+      for (const tpMult of SWEEP_TP_MULTS) {
+        let totalNetR = 0, wins = 0, losses = 0, eods = 0;
+        for (const t of trades) {
+          const newSlPips = slFrac * t.slDistPips;
+          const newTpPips = tpMult * newSlPips;
+          const costR = newSlPips > 0 ? costPips / newSlPips : 0;
+          let grossR;
+          if (t.maxAdv > newSlPips) {
+            grossR = -1; losses++;
+          } else if (t.maxFav >= newTpPips) {
+            grossR = tpMult; wins++;
+          } else {
+            // EOD: actual close P&L doesn't change, but SL distance does
+            grossR = t.origR / slFrac; eods++;
+          }
+          totalNetR += grossR - costR;
+        }
+        const netR = +totalNetR.toFixed(2);
+        grid[`${slFrac}:${tpMult}`] = { netR, wins, losses, eods };
+        if (netR > bestNetR) {
+          bestNetR = netR; bestSlFrac = slFrac; bestTpMult = tpMult;
+          bestWins = wins; bestLosses = losses;
+        }
+      }
+    }
+
+    // Best net R achievable keeping SL at 1.0× (TP sweep only) — for comparison
+    let baselineNetR = -Infinity;
+    for (const tpMult of SWEEP_TP_MULTS) {
+      const cell = grid[`1:${tpMult}`];
+      if (cell && cell.netR > baselineNetR) baselineNetR = cell.netR;
+    }
+
+    results[pair] = { bestSlFrac, bestTpMult, bestNetR, bestWins, bestLosses, baselineNetR, trades: trades.length, grid };
+  }
+  return results;
+}
+
+function runAndLogSweep() {
+  const results = sweepAnalysis();
+  if (Object.keys(results).length === 0) { alert('No replay data to sweep — run the replay modal on at least one day first.'); return; }
+  if (!runningTotalsConfig.sweepLog) runningTotalsConfig.sweepLog = [];
+  const ts = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  runningTotalsConfig.sweepLog.unshift({ ts, results });
+  if (runningTotalsConfig.sweepLog.length > 20) runningTotalsConfig.sweepLog.length = 20;
+  saveRunningTotals();
+  renderQuickStats();
+}
+
 function toggleDark(){
   document.body.classList.toggle('dark');
   const d=document.body.classList.contains('dark');
@@ -627,12 +714,82 @@ function renderQuickStats(){
     </div>`;
   }
 
+  // ── SL/TP sweep section ──────────────────────────────────────────────────────
+  const sweepLog = runningTotalsConfig.sweepLog || [];
+  const latestSweep = sweepLog[0];
+  const btnSweepStyle = `font-size:8px;background:none;border:1px solid var(--blue,#4a9eff);color:var(--blue,#4a9eff);border-radius:3px;padding:0 6px;cursor:pointer;line-height:1.6`;
+  let sweepContent = `<div style="font-size:8px;color:var(--text3)">Analyses price action stored from replays to find optimal SL×TP per pair. Run after replaying days.</div>`;
+  if (latestSweep) {
+    const sweepEntries = Object.entries(latestSweep.results)
+      .filter(([p]) => filterPair === 'all' || p === filterPair)
+      .sort((a, b) => b[1].bestNetR - a[1].bestNetR);
+    if (sweepEntries.length > 0) {
+      const sRows = sweepEntries.map(([pair, d]) => {
+        const slTight = d.bestSlFrac < 1.0;
+        const slWide  = d.bestSlFrac > 1.0;
+        const slColor = slTight ? 'var(--amber)' : slWide ? 'var(--text3)' : 'var(--text2)';
+        const slLabel = `<span style="color:${slColor}">${d.bestSlFrac}×</span>`;
+        const netCls  = d.bestNetR >= 0 ? 'vu' : 'vd';
+        const vs      = +(d.bestNetR - d.baselineNetR).toFixed(1);
+        const vsLabel = vs > 0.05 ? `<span style="font-size:7px;color:var(--green)"> ↑${vs}</span>` :
+                        vs < -0.05 ? `<span style="font-size:7px;color:var(--red)"> ↓${Math.abs(vs)}</span>` : '';
+        const wl = d.bestWins + d.bestLosses > 0
+          ? `<span style="font-size:7px;color:var(--text3)">${Math.round(d.bestWins/(d.bestWins+d.bestLosses)*100)}%wr</span>`
+          : '';
+        return `<tr>
+          <td style="font-size:9px;color:var(--text2);padding:2px 0;white-space:nowrap">${pair}</td>
+          <td style="font-size:9px;text-align:center">${slLabel}</td>
+          <td style="font-size:9px;text-align:center">${d.bestTpMult}R</td>
+          <td class="mono ${netCls}" style="font-size:9px;text-align:right;white-space:nowrap">${d.bestNetR >= 0 ? '+' : ''}${d.bestNetR}R${vsLabel}</td>
+          <td style="font-size:8px;color:var(--text3);padding-left:2px">${wl}</td>
+        </tr>`;
+      }).join('');
+
+      // History summary: previous runs listed compactly
+      let histHtml = '';
+      if (sweepLog.length > 1) {
+        const prevRows = sweepLog.slice(1, 4).map(run => {
+          const pairsSnap = Object.entries(run.results)
+            .filter(([p]) => filterPair === 'all' || p === filterPair)
+            .map(([p, d]) => `${p} ${d.bestSlFrac}×/${d.bestTpMult}R`)
+            .join(', ');
+          return `<div style="font-size:7px;color:var(--text3);margin-top:2px">${run.ts}: ${pairsSnap}</div>`;
+        }).join('');
+        histHtml = `<details style="margin-top:4px"><summary style="font-size:7px;color:var(--text3);cursor:pointer">▸ ${sweepLog.length - 1} previous run${sweepLog.length > 2 ? 's' : ''}</summary>${prevRows}</details>`;
+      }
+
+      sweepContent = `
+        <table style="width:100%;border-collapse:collapse;margin-top:2px">
+          <thead><tr>
+            <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:left;padding-bottom:2px">Pair</th>
+            <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:center">SL</th>
+            <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:center">TP</th>
+            <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:right">Net R</th>
+            <th></th>
+          </tr></thead>
+          <tbody>${sRows}</tbody>
+        </table>
+        <div style="font-size:7px;color:var(--text3);margin-top:3px">
+          Last: ${latestSweep.ts} · SL amber = tighten, ↑ = better than 1.0×SL baseline
+        </div>
+        ${histHtml}`;
+    }
+  }
+  const sweepSection = `
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <div style="font-size:9px;font-weight:600;color:var(--text3);letter-spacing:.05em">SL/TP SWEEP${latestSweep ? ' ✓' : ''}</div>
+        <button onclick="runAndLogSweep()" style="${btnSweepStyle}">▶ Run</button>
+      </div>
+      ${sweepContent}
+    </div>`;
+
   document.getElementById('quickStats').innerHTML=`
     <div class="mrow"><span class="mrow-n">Levels saved</span><span class="mrow-v vp">${total}</span></div>
     <div class="mrow"><span class="mrow-n">Trades taken</span><span class="mrow-v vp">${taken}</span></div>
     <div class="mrow"><span class="mrow-n">Win rate</span><span class="mrow-v ${wrc}">${wr}%</span></div>
     <div class="mrow"><span class="mrow-n">W / L / BE</span><span class="mrow-v"><span class="vu">${wins}</span> / <span class="vd">${losses}</span> / <span class="vn">${bes}</span></span></div>
-    ${rpSection}${pairSection}${daySection}`;
+    ${rpSection}${pairSection}${daySection}${sweepSection}`;
 }
 
 function setView(v){
