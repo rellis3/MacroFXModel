@@ -25,7 +25,7 @@ function err(msg, status = 500) {
 // via /api/kv/get and /api/kv/set. The 'caps' key is excluded here because
 // it has its own dedicated /api/config/caps route with stricter validation.
 function isAllowedKVKey(key) {
-  const EXACT = new Set(['fred', 'oi_store', 'journal_store', 'journal_replay_store', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status']);
+  const EXACT = new Set(['fred', 'oi_store', 'journal_store', 'journal_replay_store', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials']);
   const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
@@ -1401,7 +1401,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
       // -- /api/state -------------------------------------------
       // Aggregates bot_config + regime_snapshot from KV for the Python bot.
       // GET returns { bot_config, regime_snapshot: { pushed_at, fred, pairs } }
-      if (path === '/api/state' && method === 'GET') {
+      if (path === '/api/state' && request.method === 'GET') {
         if (!env.FX_SCORES) return json({ error: 'KV not configured' }, 500);
 
         const ALL_PAIRS = [

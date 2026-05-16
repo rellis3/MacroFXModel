@@ -1,0 +1,23 @@
+[2026-05-16 10:13:37] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-16 10:13:39] [INFO] Loaded persisted state: []
+[2026-05-16 10:13:41] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:13:57] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:14:14] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:14:30] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:14:47] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:15:02] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:15:18] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:15:34] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:15:50] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:16:06] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:16:22] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:16:38] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:16:54] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:17:10] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:17:26] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:17:42] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:17:58] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:18:14] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:18:30] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:18:47] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
+[2026-05-16 10:19:03] [ERROR] State refresh failed: 500 Server Error: Internal Server Error for url: https://macrofxmodel-production.up.railway.app/api/state
