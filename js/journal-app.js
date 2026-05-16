@@ -243,16 +243,20 @@ function computeNetRFromResults(pair, results){
   const spread=cs.spread||0,slip=cs.slip||0,comm=cs.comm||0;
   const pip=getPipSz(pair),pipVal=PIP_VALUE_PER_LOT[pair]||10;
   const totalCostPips=spread+slip+comm/pipVal;
-  let grossR=0,costR=0;
+  let grossR=0,costR=0,winsR=0,lossesR=0;
   for(const res of results){
     if(!res.touched)continue;
     const slPips=(res.entryPrice&&res.sl)?Math.abs(res.entryPrice-res.sl)/pip:0;
     const cR=slPips>0?totalCostPips/slPips:0;
     for(const p of(res.passes||[])){
-      if(p.result==='tp'||p.result==='sl'||p.result==='eod'){grossR+=p.r||0;costR+=cR;}
+      if(p.result==='tp'||p.result==='sl'||p.result==='eod'){
+        const r=p.r||0;
+        grossR+=r;costR+=cR;
+        if(r>0)winsR+=r; else if(r<0)lossesR+=r;
+      }
     }
   }
-  return{grossR:+grossR.toFixed(2),costR:+costR.toFixed(2),netR:+(grossR-costR).toFixed(2)};
+  return{grossR:+grossR.toFixed(2),costR:+costR.toFixed(2),netR:+(grossR-costR).toFixed(2),winsR:+winsR.toFixed(2),lossesR:+lossesR.toFixed(2)};
 }
 
 // For each pair::date, prefer ::custom over standard so ATR/pip override runs win
@@ -280,8 +284,8 @@ function aggregateReplayByPair(){
   }
   const out={};
   for(const[pair,d]of Object.entries(byPair)){
-    const{grossR,costR,netR}=computeNetRFromResults(pair,d.allResults);
-    out[pair]={days:d.days,wins:d.wins,losses:d.losses,eods:d.eods,traded:d.traded,grossR,costR,netR};
+    const{grossR,costR,netR,winsR,lossesR}=computeNetRFromResults(pair,d.allResults);
+    out[pair]={days:d.days,wins:d.wins,losses:d.losses,eods:d.eods,traded:d.traded,grossR,costR,netR,winsR,lossesR};
   }
   return out;
 }
@@ -291,8 +295,8 @@ function aggregateReplayByDay(date){
   const byPair={};
   for(const{pair,date:d,payload}of Object.values(getLatestResultsMap())){
     if(d!==date||!payload?.stats)continue;
-    const{grossR,costR,netR}=computeNetRFromResults(pair,payload.results||[]);
-    byPair[pair]={wins:payload.stats.wins,losses:payload.stats.losses,eods:payload.stats.eods||0,traded:payload.stats.traded,grossR,costR,netR};
+    const{grossR,costR,netR,winsR,lossesR}=computeNetRFromResults(pair,payload.results||[]);
+    byPair[pair]={wins:payload.stats.wins,losses:payload.stats.losses,eods:payload.stats.eods||0,traded:payload.stats.traded,grossR,costR,netR,winsR,lossesR};
   }
   return byPair;
 }
@@ -507,6 +511,8 @@ function renderQuickStats(){
     .filter(([p])=>filterPair==='all'||p===filterPair)
     .sort((a,b)=>b[1].netR-a[1].netR);
   const hasCostData=pairEntries.some(([p])=>{const cs=(runningTotalsConfig.costSettings||{})[p]||{};return(cs.spread||0)+(cs.slip||0)+(cs.comm||0)>0;});
+  const riskAmt=(runningTotalsConfig.accountSize||0)*(runningTotalsConfig.riskPct||1)/100;
+  const showDollar=riskAmt>0;
 
   let pairSection='';
   if(pairEntries.length>0){
@@ -517,11 +523,15 @@ function renderQuickStats(){
       const rc=dispR>=0?'vu':'vd';
       const wasReset=offset!==0;
       const wrc2=d.traded>0?Math.round(d.wins/d.traded*100)+'%':'—';
+      const wDollar=showDollar?`<br><span style="font-size:7px;color:var(--green)">+${Math.round(d.winsR*riskAmt)}</span>`:'';
+      const lDollar=showDollar?`<br><span style="font-size:7px;color:var(--red)">-${Math.abs(Math.round(d.lossesR*riskAmt))}</span>`:'';
+      const netDollar=showDollar?`<br><span style="font-size:7px;color:${dispR>=0?'var(--green)':'var(--red)'}">${dispR>=0?'+':''}${Math.round(dispR*riskAmt)}</span>`:'';
+      const costDollar=showDollar&&d.costR>0?`<span style="font-size:7px;color:var(--text3)">-${Math.round(d.costR*riskAmt)}c</span>`:'';
       return`<tr>
         <td style="color:var(--text2);font-size:9px;padding:2px 0;white-space:nowrap">${pair}</td>
-        <td style="text-align:center;font-size:9px"><span class="vu">${d.wins}</span>/<span class="vd">${d.losses}</span></td>
+        <td style="text-align:center;font-size:9px"><span class="vu">${d.wins}${wDollar}</span> / <span class="vd">${d.losses}${lDollar}</span></td>
         <td style="text-align:center;font-size:9px;color:var(--text3)">${wrc2}</td>
-        <td class="mono ${rc}" style="font-size:9px;text-align:right;white-space:nowrap">${dispR>=0?'+':''}${dispR}R${wasReset?`<span style="color:var(--amber);font-size:7px;margin-left:1px">↺</span>`:''}${hasCostData&&d.costR>0?`<br><span style="font-size:8px;color:var(--text3)">-${d.costR.toFixed(1)}c</span>`:''}</td>
+        <td class="mono ${rc}" style="font-size:9px;text-align:right;white-space:nowrap">${dispR>=0?'+':''}${dispR}R${wasReset?`<span style="color:var(--amber);font-size:7px;margin-left:1px">↺</span>`:''}${netDollar}${hasCostData&&d.costR>0?`<br>${costDollar}`:''}</td>
         <td style="padding-left:3px"><button onclick="resetReplayPair('${pair}')" title="Reset ${pair} to zero — use to baseline before switching ATR/pip"
           style="font-size:8px;color:${wasReset?'var(--amber)':'var(--text3)'};background:none;border:1px solid ${wasReset?'var(--amber)':'var(--border)'};border-radius:3px;padding:0 4px;cursor:pointer;line-height:1.6">↺</button></td>
       </tr>`;
@@ -533,6 +543,11 @@ function renderQuickStats(){
     const dispTot=+(totNetR-totOffset).toFixed(2);
     const totTrad=pairEntries.reduce((s,[,d])=>s+d.traded,0);
     const totWr=totTrad>0?Math.round(totW/totTrad*100)+'%':'—';
+    const totWinsR=pairEntries.reduce((s,[,d])=>s+d.winsR,0);
+    const totLossesR=pairEntries.reduce((s,[,d])=>s+d.lossesR,0);
+    const totWDollar=showDollar?`<br><span style="font-size:7px;color:var(--green)">+${Math.round(totWinsR*riskAmt)}</span>`:'';
+    const totLDollar=showDollar?`<br><span style="font-size:7px;color:var(--red)">-${Math.abs(Math.round(totLossesR*riskAmt))}</span>`:'';
+    const totNetDollar=showDollar?`<br><span style="font-size:7px;color:${dispTot>=0?'var(--green)':'var(--red)'}">${dispTot>=0?'+':''}${Math.round(dispTot*riskAmt)}</span>`:'';
     pairSection=`
     <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
@@ -551,9 +566,9 @@ function renderQuickStats(){
         <tbody>${pRows}</tbody>
         <tfoot><tr style="border-top:1px solid var(--border)">
           <td style="font-size:9px;font-weight:600;color:var(--text2);padding-top:3px">Total</td>
-          <td style="text-align:center;font-size:9px;padding-top:3px"><span class="vu">${totW}</span>/<span class="vd">${totL}</span></td>
+          <td style="text-align:center;font-size:9px;padding-top:3px"><span class="vu">${totW}${totWDollar}</span> / <span class="vd">${totL}${totLDollar}</span></td>
           <td style="text-align:center;font-size:9px;color:var(--text3);padding-top:3px">${totWr}</td>
-          <td class="mono ${dispTot>=0?'vu':'vd'}" style="font-size:9px;text-align:right;font-weight:700;padding-top:3px">${dispTot>=0?'+':''}${dispTot}R</td>
+          <td class="mono ${dispTot>=0?'vu':'vd'}" style="font-size:9px;text-align:right;font-weight:700;padding-top:3px">${dispTot>=0?'+':''}${dispTot}R${totNetDollar}</td>
           <td></td>
         </tr></tfoot>
       </table>
@@ -570,11 +585,15 @@ function renderQuickStats(){
     const dRows=dayEntries.map(([pair,d])=>{
       const rc=d.netR>=0?'vu':'vd';
       const wrc2=d.traded>0?Math.round(d.wins/d.traded*100)+'%':'—';
+      const dwDollar=showDollar?`<br><span style="font-size:7px;color:var(--green)">+${Math.round(d.winsR*riskAmt)}</span>`:'';
+      const dlDollar=showDollar?`<br><span style="font-size:7px;color:var(--red)">-${Math.abs(Math.round(d.lossesR*riskAmt))}</span>`:'';
+      const dnetDollar=showDollar?`<br><span style="font-size:7px;color:${d.netR>=0?'var(--green)':'var(--red)'}">${d.netR>=0?'+':''}${Math.round(d.netR*riskAmt)}</span>`:'';
+      const dcostDollar=showDollar&&d.costR>0?`<br><span style="font-size:7px;color:var(--text3)">-${Math.round(d.costR*riskAmt)}c</span>`:'';
       return`<tr>
         <td style="color:var(--text2);font-size:9px;padding:2px 0;white-space:nowrap">${pair}</td>
-        <td style="text-align:center;font-size:9px"><span class="vu">${d.wins}</span>/<span class="vd">${d.losses}</span></td>
+        <td style="text-align:center;font-size:9px"><span class="vu">${d.wins}${dwDollar}</span> / <span class="vd">${d.losses}${dlDollar}</span></td>
         <td style="text-align:center;font-size:9px;color:var(--text3)">${wrc2}</td>
-        <td class="mono ${rc}" style="font-size:9px;text-align:right;white-space:nowrap">${d.netR>=0?'+':''}${d.netR}R</td>
+        <td class="mono ${rc}" style="font-size:9px;text-align:right;white-space:nowrap">${d.netR>=0?'+':''}${d.netR}R${dnetDollar}${dcostDollar}</td>
       </tr>`;
     }).join('');
     const dTotW=dayEntries.reduce((s,[,d])=>s+d.wins,0);
@@ -582,6 +601,11 @@ function renderQuickStats(){
     const dTotR=+(dayEntries.reduce((s,[,d])=>s+d.netR,0)).toFixed(2);
     const dTotTrad=dayEntries.reduce((s,[,d])=>s+d.traded,0);
     const dTotWr=dTotTrad>0?Math.round(dTotW/dTotTrad*100)+'%':'—';
+    const dTotWinsR=dayEntries.reduce((s,[,d])=>s+d.winsR,0);
+    const dTotLossesR=dayEntries.reduce((s,[,d])=>s+d.lossesR,0);
+    const dtWDollar=showDollar?`<br><span style="font-size:7px;color:var(--green)">+${Math.round(dTotWinsR*riskAmt)}</span>`:'';
+    const dtLDollar=showDollar?`<br><span style="font-size:7px;color:var(--red)">-${Math.abs(Math.round(dTotLossesR*riskAmt))}</span>`:'';
+    const dtNetDollar=showDollar?`<br><span style="font-size:7px;color:${dTotR>=0?'var(--green)':'var(--red)'}">${dTotR>=0?'+':''}${Math.round(dTotR*riskAmt)}</span>`:'';
     daySection=`
     <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
       <div style="font-size:9px;font-weight:600;color:var(--text3);letter-spacing:.05em;margin-bottom:5px">DAY · ${dow} ${selectedDate}</div>
@@ -595,9 +619,9 @@ function renderQuickStats(){
         <tbody>${dRows}</tbody>
         <tfoot><tr style="border-top:1px solid var(--border)">
           <td style="font-size:9px;font-weight:600;color:var(--text2);padding-top:3px">Total</td>
-          <td style="text-align:center;font-size:9px;padding-top:3px"><span class="vu">${dTotW}</span>/<span class="vd">${dTotL}</span></td>
+          <td style="text-align:center;font-size:9px;padding-top:3px"><span class="vu">${dTotW}${dtWDollar}</span> / <span class="vd">${dTotL}${dtLDollar}</span></td>
           <td style="text-align:center;font-size:9px;color:var(--text3);padding-top:3px">${dTotWr}</td>
-          <td class="mono ${dTotR>=0?'vu':'vd'}" style="font-size:9px;text-align:right;font-weight:700;padding-top:3px">${dTotR>=0?'+':''}${dTotR}R</td>
+          <td class="mono ${dTotR>=0?'vu':'vd'}" style="font-size:9px;text-align:right;font-weight:700;padding-top:3px">${dTotR>=0?'+':''}${dTotR}R${dtNetDollar}</td>
         </tr></tfoot>
       </table>
     </div>`;
