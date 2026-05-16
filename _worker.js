@@ -1420,12 +1420,13 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
 
         const safeParse = raw => { try { return raw ? JSON.parse(raw) : null; } catch(e) { return null; } };
 
-        const [botConfigRaw, fredRaw, cotRaw, oiRaw, sentRaw] = await Promise.all([
+        const [botConfigRaw, fredRaw, cotRaw, oiRaw, sentRaw, eventsRaw] = await Promise.all([
           env.FX_SCORES.get('bot_config').catch(() => null),
           env.FX_SCORES.get('fred').catch(() => null),
           env.FX_SCORES.get('cot_data').catch(() => null),
           env.FX_SCORES.get('oi_store').catch(() => null),
           env.FX_SCORES.get('sentiment').catch(() => null),
+          env.FX_SCORES.get('events_today').catch(() => null),
         ]);
 
         const botConfig  = safeParse(botConfigRaw) ?? BOT_CONFIG_DEFAULT;
@@ -1460,6 +1461,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
 
         return json({
           bot_config: botConfig,
+          events_today: safeParse(eventsRaw) ?? [],
           regime_snapshot: {
             pushed_at: pushedAt ? new Date(pushedAt).toISOString() : null,
             fred:  fredData?.data ?? null,
