@@ -299,7 +299,8 @@ function renderLevelCard(level,idx,date,pair){
     replayBadge=passes.map(p=>{
       const cls=p.result==='tp'?'rp-badge tp':p.result==='sl'?'rp-badge sl':'rp-badge eod';
       const rStr=p.r!==null?` ${p.r>=0?'+':''}${p.r}R`:'';
-      return`<span class="${cls}" style="font-size:9px;margin-left:4px">${p.touchTime||''}${rStr}</span>`;
+      const durStr=p.duration?` · ${p.duration}`:'';
+      return`<span class="${cls}" style="font-size:9px;margin-left:4px">${p.touchTime||''}${rStr}${durStr}</span>`;
     }).join('');
     if(passes.length>1){
       const tot=passes.reduce((s,p)=>s+(p.r||0),0);
@@ -1149,9 +1150,14 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
         isExitBar:  exitBarIdx >= 0 && (from + i2) === exitBarIdx,
       }));
 
+      const touchBar = touchBarIdx >= 0 ? windowBars[touchBarIdx] : null;
+      const exitBar  = exitBarIdx  >= 0 ? windowBars[exitBarIdx]  : null;
+      const durationMs = (touchBar && exitBar) ? barToMs(exitBar) - barToMs(touchBar) : null;
+
       passes.push({
         touchTime: pTouchTime, exitTime: pExitTime, result: pResult,
         r: pR !== null ? +pR.toFixed(2) : null,
+        duration: durationMs !== null ? formatDuration(durationMs) : null,
         maxFav: pMaxFav > 0 ? +pMaxFav.toFixed(1) : null,
         maxAdv: pMaxAdv > 0 ? +pMaxAdv.toFixed(1) : null,
         chartBars: chartBarsPass,
@@ -1226,6 +1232,18 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
 }
 
 function hhmm(bar) { return `${String(bar.hour).padStart(2,'0')}:${String(bar.min).padStart(2,'0')}`; }
+
+function barToMs(bar) {
+  return new Date(`${bar.date}T${hhmm(bar)}:00Z`).getTime();
+}
+function formatDuration(ms) {
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  if (h < 24) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  const d = Math.floor(h / 24), rh = h % 24;
+  return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
+}
 
 let _lastReplayPayload = null; // for star filter re-render
 
@@ -1502,7 +1520,7 @@ function buildReplayHTML(payload) {
   // ── Level replay table ──
   let tableHtml = `<div class="rp-sec-lbl" style="margin-top:14px">Level by Level</div>
     <div class="rp-table-wrap"><table class="rp-table">
-    <thead><tr><th></th><th>SD</th><th>Price</th><th>Dir</th><th>Stars</th><th>Touch</th><th>Exit</th><th>Result</th><th>R</th><th>MaxFav</th><th>MaxAdv</th></tr></thead><tbody>`;
+    <thead><tr><th></th><th>SD</th><th>Price</th><th>Dir</th><th>Stars</th><th>Touch</th><th>Exit</th><th>Open</th><th>Result</th><th>R</th><th>MaxFav</th><th>MaxAdv</th></tr></thead><tbody>`;
 
   for (let ri = 0; ri < results.length; ri++) {
     const res = results[ri];
@@ -1557,9 +1575,10 @@ function buildReplayHTML(payload) {
       const chevron = canExpand
         ? `<button class="rp-chevron" onclick="rpToggleChart('${chartId}')" aria-label="Toggle chart">▶</button>`
         : `<span class="rp-chevron-ph"></span>`;
+      const durCell = p.duration ? `<span style="font-size:10px;color:var(--text3)">${p.duration}</span>` : '—';
       tableHtml += `<tr class="${rowCls}"><td class="rp-chevron-cell">${chevron}</td>`
         + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${dirHtml}</td><td class="rp-stars">${stars}</td>`
-        + `<td class="mono">${p.touchTime || '—'}</td><td class="mono">${p.exitTime || '—'}</td><td>${resultBadge}</td>`
+        + `<td class="mono">${p.touchTime || '—'}</td><td class="mono">${p.exitTime || '—'}</td><td>${durCell}</td><td>${resultBadge}</td>`
         + `<td class="mono">${rStr}</td><td class="mono vn">${favStr}</td><td class="mono">${advStr}</td></tr>`;
       if (canExpand) {
         tableHtml += `<tr id="${chartId}" class="rp-chart-row" style="display:none">`
@@ -1577,7 +1596,7 @@ function buildReplayHTML(payload) {
         + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${dirHtml}</td><td class="rp-stars">${stars}</td>`
         + `<td class="mono">${passes[0].touchTime || '—'}</td>`
         + `<td style="font-size:10px;color:var(--text3)">${passes.length} passes</td>`
-        + `<td colspan="2">${passBadges}&nbsp;${rStr}</td>`
+        + `<td colspan="3">${passBadges}&nbsp;${rStr}</td>`
         + `<td colspan="2"></td></tr>`;
       for (let pi = 0; pi < passes.length; pi++) {
         const p = passes[pi];
@@ -1592,11 +1611,12 @@ function buildReplayHTML(payload) {
           : `<span class="rp-badge open">${p.result.toUpperCase()}</span>`;
         const rp      = p.r !== null ? `<span class="${p.r >= 0 ? 'vu' : 'vd'}">${p.r > 0 ? '+' : ''}${p.r}R</span>` : '—';
         const subCls  = p.result === 'tp' ? 'rp-row-win' : p.result === 'sl' ? 'rp-row-loss' : '';
+        const subDur = p.duration ? `<span style="font-size:10px;color:var(--text3)">${p.duration}</span>` : '—';
         tableHtml += `<tr class="${subCls}" style="opacity:0.88"><td class="rp-chevron-cell">${chevron}</td>`
           + `<td style="padding-left:18px;color:var(--text3);font-size:10px">↳ #${pi + 1}</td>`
           + `<td colspan="3"></td>`
           + `<td class="mono">${p.touchTime || '—'}</td><td class="mono">${p.exitTime || '—'}</td>`
-          + `<td>${resultBadge}</td><td class="mono">${rp}</td>`
+          + `<td>${subDur}</td><td>${resultBadge}</td><td class="mono">${rp}</td>`
           + `<td class="mono vn">${p.maxFav ? '+' + p.maxFav + 'p' : '—'}</td>`
           + `<td class="mono">${p.maxAdv ? `<span class="vd">${p.maxAdv}p</span>` : '—'}</td></tr>`;
         if (canExpand) {

@@ -256,3 +256,30 @@
 [2026-05-16 14:18:13] [INFO] Monitoring 5 pairs — no level approach  [no prices]
 [2026-05-16 14:18:19] [INFO] State refreshed from dashboard KV
 [2026-05-16 14:19:31] [WARNING] STALE DATA: Dashboard data is 12.0 min old (limit 12 min) — open the dashboard to refresh
+[2026-05-16 14:20:21] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:22:22] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:23:22] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.16252  GBP/USD=1.33242  USD/JPY=158.776  AUD/USD=0.71482  XAU/USD=4540.645]
+[2026-05-16 14:24:27] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:26:28] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:28:23] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.16252  GBP/USD=1.33242  USD/JPY=158.776  AUD/USD=0.71482  XAU/USD=4540.645]
+[2026-05-16 14:28:30] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:30:32] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:32:33] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:33:27] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.16252  GBP/USD=1.33242  USD/JPY=158.776  AUD/USD=0.71482  XAU/USD=4540.645]
+[2026-05-16 14:34:36] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:35:04] [WARNING] STALE DATA: Dashboard data is 12.1 min old (limit 12 min) — open the dashboard to refresh
+[2026-05-16 14:36:40] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:38:41] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:38:46] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.16252  GBP/USD=1.33242  USD/JPY=158.776  AUD/USD=0.71482  XAU/USD=4540.645]
+[2026-05-16 14:40:41] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:42:43] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:43:47] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.16252  GBP/USD=1.33242  USD/JPY=158.776  AUD/USD=0.71482  XAU/USD=4540.645]
+[2026-05-16 14:44:47] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:46:50] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:48:48] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.16252  GBP/USD=1.33242  USD/JPY=158.776  AUD/USD=0.71482  XAU/USD=4540.645]
+[2026-05-16 14:48:54] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:50:57] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:53:01] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:53:49] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.16252  GBP/USD=1.33242  USD/JPY=158.776  AUD/USD=0.71482  XAU/USD=4540.645]
+[2026-05-16 14:55:05] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:57:07] [INFO] State refreshed from dashboard KV

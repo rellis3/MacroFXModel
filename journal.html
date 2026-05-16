@@ -122,7 +122,7 @@
 
 <!-- REPLAY MODAL -->
 <div class="modal-overlay" id="replayModal" onclick="if(event.target===this)closeReplayModal()">
-  <div class="modal" style="max-width:900px">
+  <div class="modal" style="max-width:900px" onclick="event.stopPropagation()">
     <div class="modal-hd">
       <div class="modal-title">&#9654; Day Replay — <span id="rp-pair-title"></span></div>
       <button class="modal-close" onclick="closeReplayModal()">&#10005;</button>
