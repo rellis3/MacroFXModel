@@ -9,6 +9,9 @@ let currentView  = 'day';
 let levelSortOrder = 'default'; // 'default'|'price-asc'|'price-desc'|'stars-asc'|'stars-desc'|'sd-asc'|'sd-desc'
 let filterWatchlist = false;
 
+const RUNNING_TOTALS_KEY = 'journal_running_totals';
+let runningTotalsConfig = { accountSize: 0, riskPct: 1, dayResets: {}, overallOffsets: {} };
+
 // ── KV helpers ──────────────────────────────────────────────────────────────
 async function kvGet(key){
   try{const res=await fetch('/api/kv/get?key='+encodeURIComponent(key));
@@ -45,6 +48,170 @@ function saveJournal(){
   kvSet(JOURNAL_KEY,journalData);}
 function todayStr(){return new Date().toISOString().split('T')[0];}
 
+// ── Running Totals persistence ────────────────────────────────────────────────
+function loadRunningTotalsLocal(){
+  try{const raw=localStorage.getItem(RUNNING_TOTALS_KEY);if(raw)Object.assign(runningTotalsConfig,JSON.parse(raw));}catch(e){}
+}
+async function loadRunningTotals(){
+  loadRunningTotalsLocal();
+  try{const kv=await kvGet(RUNNING_TOTALS_KEY);if(kv?.data)Object.assign(runningTotalsConfig,kv.data);}catch(e){}
+}
+function saveRunningTotals(){
+  try{localStorage.setItem(RUNNING_TOTALS_KEY,JSON.stringify(runningTotalsConfig));}catch(e){}
+  kvSet(RUNNING_TOTALS_KEY,runningTotalsConfig);
+}
+
+// Compute R earned/lost for a single level
+function computeLevelR(level,pair){
+  if(!level.price||(level.trade!=='long'&&level.trade!=='short'))return null;
+  const sl=level.slOverride??level.sl;const tp=level.tpOverride??level.tp;
+  if(!sl||!tp)return null;
+  const slDist=Math.abs(level.price-sl);if(slDist<=0)return null;
+  const tpDist=Math.abs(level.price-tp);
+  if(level.outcome==='win')return+(tpDist/slDist).toFixed(2);
+  if(level.outcome==='loss')return-1;
+  if(level.outcome==='be')return 0;
+  return null; // taken but no outcome
+}
+
+// Aggregate daily trade P&L respecting current filterPair
+function computeDayTotals(date){
+  const dayObj=journalData[date];
+  if(!dayObj)return{r:0,wins:0,losses:0,bes:0,pending:0};
+  let r=0,wins=0,losses=0,bes=0,pending=0;
+  for(const[pair,v]of Object.entries(dayObj)){
+    if(filterPair!=='all'&&pair!==filterPair)continue;
+    for(const level of(v.levels||[])){
+      if(level.trade!=='long'&&level.trade!=='short')continue;
+      if(level.outcome==='win'){wins++;r+=computeLevelR(level,pair)||0;}
+      else if(level.outcome==='loss'){losses++;r-=1;}
+      else if(level.outcome==='be'){bes++;}
+      else{pending++;}
+    }
+  }
+  return{r:+r.toFixed(2),wins,losses,bes,pending};
+}
+
+// Reset a single day's counter (stores the current R as an offset so display shows 0)
+function resetDayTotal(date){
+  const totals=computeDayTotals(date);
+  const key=date+'::'+filterPair;
+  if(!runningTotalsConfig.dayResets)runningTotalsConfig.dayResets={};
+  runningTotalsConfig.dayResets[key]=totals.r;
+  saveRunningTotals();renderMain();
+}
+
+// Reset the combined running total (stores current cumulative as offset)
+function resetOverallTotal(){
+  const dates=Object.keys(journalData).sort();
+  let cumR=0;
+  for(const date of dates)cumR+=computeDayTotals(date).r;
+  if(!runningTotalsConfig.overallOffsets)runningTotalsConfig.overallOffsets={};
+  runningTotalsConfig.overallOffsets[filterPair]=+cumR.toFixed(2);
+  saveRunningTotals();renderMain();
+}
+
+// Called when account/risk inputs change in the Stats view
+function rtUpdateSettings(){
+  const acct=parseFloat(document.getElementById('rt-account')?.value||'');
+  const rpct=parseFloat(document.getElementById('rt-risk-pct')?.value||'');
+  if(!isNaN(acct))runningTotalsConfig.accountSize=acct>0?acct:0;
+  if(!isNaN(rpct))runningTotalsConfig.riskPct=rpct>0?rpct:0;
+  saveRunningTotals();renderMain();
+}
+
+function renderRunningTotalsSection(){
+  const acct=runningTotalsConfig.accountSize||0;
+  const rpct=runningTotalsConfig.riskPct||0;
+  const showPnl=acct>0&&rpct>0;
+  const riskAmt=showPnl?acct*(rpct/100):0;
+  const fmtPnl=(r)=>{
+    if(!showPnl)return'';
+    const v=r*riskAmt;const col=v>=0?'var(--green)':'var(--red)';
+    return` <span style="color:${col};font-family:'DM Mono',monospace">${v>=0?'+':''}$${Math.abs(v).toFixed(0)}</span>`;
+  };
+
+  // Compute per-day data in date order
+  const allDates=Object.keys(journalData).sort();
+  let cumR=0;
+  const days=[];
+  const overallOffset=(runningTotalsConfig.overallOffsets||{})[filterPair]||0;
+  for(const date of allDates){
+    const totals=computeDayTotals(date);
+    if(totals.wins+totals.losses+totals.bes+totals.pending===0)continue;
+    cumR+=totals.r;
+    const dayKey=date+'::'+filterPair;
+    const dayOffset=(runningTotalsConfig.dayResets||{})[dayKey]||0;
+    const displayDayR=+(totals.r-dayOffset).toFixed(2);
+    const displayCumR=+(cumR-overallOffset).toFixed(2);
+    days.push({date,totals,displayDayR,displayCumR,wasReset:dayOffset!==0});
+  }
+
+  const overallR=days.length>0?days[days.length-1].displayCumR:0;
+  const overallRc=overallR>=0?'var(--green)':'var(--red)';
+
+  const settingsHtml=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <span style="font-size:10px;font-weight:600;color:var(--purple)">$ P&L</span>
+      <label style="font-size:10px;color:var(--text3)">Account</label>
+      <input type="number" id="rt-account" value="${acct||''}" placeholder="e.g. 10000" min="100" step="1000"
+        style="width:90px;font-size:11px;background:var(--s1);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 7px;font-family:'DM Mono',monospace;text-align:right"
+        oninput="rtUpdateSettings()">
+      <label style="font-size:10px;color:var(--text3)">Risk %</label>
+      <input type="number" id="rt-risk-pct" value="${rpct||''}" placeholder="1" min="0.1" max="10" step="0.1"
+        style="width:60px;font-size:11px;background:var(--s1);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 7px;font-family:'DM Mono',monospace;text-align:right"
+        oninput="rtUpdateSettings()">
+      ${showPnl?`<span style="font-size:10px;color:var(--text3)">risk/trade = <strong style="color:var(--text)">$${riskAmt.toFixed(0)}</strong></span>`:`<span style="font-size:10px;color:var(--text3);font-style:italic">enter account + risk% to see $ P&L</span>`}
+    </div>`;
+
+  const overallHtml=`
+    <div style="display:flex;align-items:center;gap:16px;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:14px 18px;margin-bottom:16px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.07em;margin-bottom:4px;text-transform:uppercase">Combined Running Total</div>
+        <div style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:${overallRc}">${overallR>=0?'+':''}${overallR}R${fmtPnl(overallR)}</div>
+        ${days.length>0?`<div style="font-size:9px;color:var(--text3);margin-top:2px">${days.length} day${days.length!==1?'s':''} tracked${overallOffset!==0?' · reset active':''}</div>`:''}
+      </div>
+      <div style="margin-left:auto">
+        <button class="dark-btn" style="font-size:10px;padding:4px 12px;border-color:var(--red);color:var(--red)" onclick="resetOverallTotal()">&#8635; Reset All</button>
+      </div>
+    </div>`;
+
+  if(days.length===0){
+    return`<div class="sec-lbl" style="margin-top:20px;margin-bottom:10px">Running Totals <span class="sec-badge purple">LIVE</span></div>
+      ${settingsHtml}${overallHtml}
+      <div style="text-align:center;color:var(--text3);font-size:12px;padding:12px">Mark trade outcomes in the Day view to see running totals here.</div>`;
+  }
+
+  const tableRows=[...days].reverse().map(({date,totals,displayDayR,displayCumR,wasReset})=>{
+    const drRc=displayDayR>=0?'vu':'vd';
+    const cumRc=displayCumR>=0?'vu':'vd';
+    const wld=[
+      totals.wins>0?`<span class="vu">${totals.wins}W</span>`:'',
+      totals.losses>0?`<span class="vd">${totals.losses}L</span>`:'',
+      totals.bes>0?`<span class="vn">${totals.bes}BE</span>`:'',
+      totals.pending>0?`<span style="color:var(--text3)">${totals.pending}?</span>`:'',
+    ].filter(Boolean).join(' ');
+    const resetNote=wasReset?`<span style="font-size:8px;color:var(--amber);margin-left:3px">↺</span>`:'';
+    return`<tr>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${date}</td>
+      <td>${wld}</td>
+      <td class="mono ${drRc}">${displayDayR>=0?'+':''}${displayDayR}R${fmtPnl(displayDayR)}${resetNote}</td>
+      <td class="mono ${cumRc}">${displayCumR>=0?'+':''}${displayCumR}R</td>
+      <td style="text-align:right"><button class="dark-btn" style="font-size:9px;padding:1px 8px;border-color:${wasReset?'var(--amber)':'var(--border)'};color:${wasReset?'var(--amber)':'var(--text3)'}" onclick="resetDayTotal('${date}')" title="Reset this day to zero">&#8635;</button></td>
+    </tr>`;
+  }).join('');
+
+  return`<div class="sec-lbl" style="margin-top:20px;margin-bottom:10px">Running Totals <span class="sec-badge purple">LIVE</span></div>
+    ${settingsHtml}
+    ${overallHtml}
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:20px">
+      <table class="breakdown-table">
+        <thead><tr><th>Date</th><th>W / L / BE</th><th>Day R</th><th>Running Total</th><th></th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+}
+
 function toggleDark(){
   document.body.classList.toggle('dark');
   const d=document.body.classList.contains('dark');
@@ -66,10 +233,12 @@ async function init(){
   try{const raw=localStorage.getItem(JOURNAL_KEY);if(raw)journalData=JSON.parse(raw)||{};}catch(e){}
   // Load cached replay results so level cards show colours on first render
   try{const raw=localStorage.getItem(REPLAY_KV_KEY);if(raw)Object.assign(_replayResults,JSON.parse(raw));}catch(e){}
+  loadRunningTotalsLocal();
   selectedDate=todayStr();renderPairNav();renderCalendar();renderQuickStats();renderMain();
   // Now load+merge from KV and re-render if anything changed
   await loadJournal();
   await loadReplayResults();
+  await loadRunningTotals();
   renderPairNav();renderCalendar();renderQuickStats();renderMain();
 }
 
@@ -678,6 +847,7 @@ function renderStatsView(){
     <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:20px"><table class="breakdown-table"><thead><tr><th>Pair</th><th>Levels</th><th>Taken</th><th>W</th><th>L</th><th>BE</th><th>Win%</th></tr></thead><tbody>${pairRows||'<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:16px">No data yet</td></tr>'}</tbody></table></div>
     <div class="sec-lbl" style="margin-bottom:10px">By Star Rating <span class="sec-badge purple">QUALITY</span></div>
     <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:24px"><table class="breakdown-table"><thead><tr><th>Stars</th><th>Levels</th><th>Taken</th><th>W</th><th>L</th><th>Win%</th></tr></thead><tbody>${starRows||'<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:16px">No data yet</td></tr>'}</tbody></table></div>
+    ${renderRunningTotalsSection()}
     <div style="font-size:15px;font-weight:700;margin-bottom:12px;padding-top:4px;border-top:1px solid var(--border)">Replay Performance${filterPair!=='all'?`<span style="font-size:12px;color:var(--text3);font-weight:400;margin-left:8px">${filterPair}</span>`:''} <span class="sec-badge purple" style="vertical-align:middle;font-size:10px">BACKTESTED</span></div>
     ${renderReplayStatsPanel()}`;
 }
@@ -1318,6 +1488,20 @@ function rpOptionsChanged() {
   const ra = document.getElementById('rp-result-area');
   if (ra) ra.innerHTML = '';
   setReplayStatus('Option changed — click Fetch & Run to re-run', 'rp-fetch-idle');
+}
+
+// Auto-fill ATR defaults when mode switches to ATR
+function rpSlModeChanged() {
+  const mode = document.getElementById('rp-sl-mode').value;
+  const valEl = document.getElementById('rp-sl-val');
+  if (mode === 'atr' && !valEl.value) valEl.value = '0.5';
+  rpOptionsChanged();
+}
+function rpTpModeChanged() {
+  const mode = document.getElementById('rp-tp-mode').value;
+  const valEl = document.getElementById('rp-tp-val');
+  if (mode === 'atr' && !valEl.value) valEl.value = '1.5';
+  rpOptionsChanged();
 }
 
 function renderReplayInModal(payload, minStars) {
