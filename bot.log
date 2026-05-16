@@ -70,3 +70,19 @@
 [2026-05-16 10:41:48] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
 [2026-05-16 10:41:49] [INFO] MT5 credentials loaded from KV
 [2026-05-16 10:41:49] [INFO] Loaded persisted state: ['risk_guard', 'position_meta']
+[2026-05-16 10:53:23] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-16 10:53:25] [INFO] MT5 credentials loaded from KV
+[2026-05-16 10:53:25] [INFO] Loaded persisted state: ['risk_guard', 'position_meta']
+[2026-05-16 10:53:27] [INFO] State refreshed from dashboard KV
+[2026-05-16 10:53:27] [INFO] RiskGuard restored from disk
+[2026-05-16 10:53:27] [WARNING] STALE: Dashboard data is 20.6 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 10:53:40] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-16 10:53:41] [INFO] Loaded persisted state: ['risk_guard', 'position_meta']
+[2026-05-16 10:53:42] [INFO] State refreshed from dashboard KV
+[2026-05-16 10:53:42] [INFO] RiskGuard restored from disk
+[2026-05-16 10:55:43] [INFO] State refreshed from dashboard KV
+[2026-05-16 10:57:46] [INFO] State refreshed from dashboard KV
+[2026-05-16 10:59:47] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:01:48] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:03:52] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:05:55] [INFO] State refreshed from dashboard KV

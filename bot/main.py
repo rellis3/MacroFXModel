@@ -683,6 +683,11 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
     # State save interval (every 60s to avoid disk churn)
     STATE_SAVE_INTERVAL = 60
 
+    last_window_warn:  float = 0.0
+    last_stale_warn:   float = 0.0
+    last_heartbeat:    float = 0.0
+    HEARTBEAT_INTERVAL = 5 * 60  # log alive message every 5 min when monitoring quietly
+
     # ── Two-speed loop ────────────────────────────────────────────────────────
     while True:
         tick_start = time.time()
@@ -728,7 +733,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         # ── Kill switch (checked every tick so it takes effect fast) ──────────
         if config.get('kill_switch', False):
             if tick_start - last_status_push >= 30:
-                log.warning('KILL SWITCH ACTIVE')
+                log.warning('KILL SWITCH ACTIVE — no trades will be placed')
                 push_bot_status({'loop_at': datetime.now(timezone.utc).isoformat(),
                                  'paper': paper_mode, 'kill_switch': True,
                                  'pairs_evaluated': [], 'errors': []}, base_url)
@@ -740,6 +745,16 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
 
         # ── Trade window ──────────────────────────────────────────────────────
         if not within_trade_window(config):
+            if tick_start - last_window_warn >= 30 * 60:
+                s = config.get('safety') or {}
+                win_start = s.get('trade_window_start', '07:00')
+                win_end   = s.get('trade_window_end',   '20:00')
+                now_utc   = datetime.now(timezone.utc).strftime('%H:%M')
+                log.info(
+                    f'Market hours: outside trade window {win_start}–{win_end} UTC '
+                    f'(now {now_utc} UTC) — monitoring, no trades'
+                )
+                last_window_warn = tick_start
             if run_once:
                 break
             time.sleep(price_interval)
@@ -749,11 +764,12 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         try:
             check_staleness(snap)
         except StaleDataError as exc:
-            if tick_start - last_status_push >= 60:
-                log.warning(f'STALE: {exc}')
+            if tick_start - last_stale_warn >= 5 * 60:
+                log.warning(f'STALE DATA: {exc}')
                 push_bot_status({'loop_at': datetime.now(timezone.utc).isoformat(),
                                  'paper': paper_mode, 'errors': [str(exc)],
                                  'pairs_evaluated': []}, base_url)
+                last_stale_warn = tick_start
                 last_status_push = tick_start
             if run_once:
                 break
@@ -794,7 +810,10 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         if near_level:
             log.info(f'Near level (2/2): {", ".join(near_level)}')
         else:
-            log.debug('No pair at pre_screen 2/2 this tick — monitoring')
+            if tick_start - last_heartbeat >= HEARTBEAT_INTERVAL:
+                prices_str = '  '.join(f'{p}={v}' for p, v in live_prices.items()) or 'no prices'
+                log.info(f'Monitoring {len(enabled_pairs)} pairs — no level approach  [{prices_str}]')
+                last_heartbeat = tick_start
 
         # ── Full evaluation only for pairs where price is at a level ──────────
         max_trades      = exec_cfg.get('max_trades', 2)

@@ -154,7 +154,7 @@ export function checkAndSendAlerts() {
       // KV sync for Railway bot — throttled to once per 30 min per pair
       if (entries.length) {
         const lastSync = _kvEntrySyncTimes.get(sym) ?? 0;
-        if (now - lastSync > 30 * 60 * 1000) {
+        if (now - lastSync > 5 * 60 * 1000) {
           _kvEntrySyncTimes.set(sym, now);
           const hmmData     = S.hmmRegimes?.[sym] ?? null;
           const intraday30m = hmmData?.intraday30m ?? null;
