@@ -360,12 +360,63 @@ function setStatus(type, msg) {
   el.className = `save-status ${type}`;
 }
 
+// ── MT5 Credentials (separate KV key: bot_credentials) ───────────────────────
+
+async function loadCreds() {
+  try {
+    const stored = await kvGet('bot_credentials');
+    if (!stored) return;
+    setVal('mt5_account',  stored.mt5_account  ?? '');
+    setVal('mt5_server',   stored.mt5_server   ?? '');
+    setVal('mt5_path',     stored.mt5_path     ?? '');
+    // Don't pre-fill password — leave blank so it isn't visibly in the field on load
+    // The field only sends a new value when the user types something
+    document.getElementById('mt5_password')._hasStored = !!stored.mt5_password;
+    const pwEl = document.getElementById('mt5_password');
+    if (pwEl && stored.mt5_password) pwEl.placeholder = '(saved — leave blank to keep)';
+  } catch(e) {}
+}
+
+async function saveCreds() {
+  const pwEl  = document.getElementById('mt5_password');
+  const pwVal = pwEl?.value || '';
+
+  // If user left password blank, reload existing value from KV rather than overwriting with ''
+  let finalPw = pwVal;
+  if (!pwVal) {
+    try {
+      const existing = await kvGet('bot_credentials');
+      finalPw = existing?.mt5_password ?? '';
+    } catch(e) {}
+  }
+
+  const creds = {
+    mt5_account:  document.getElementById('mt5_account')?.value?.trim() ?? '',
+    mt5_password: finalPw,
+    mt5_server:   document.getElementById('mt5_server')?.value?.trim()  ?? '',
+    mt5_path:     document.getElementById('mt5_path')?.value?.trim()    ?? '',
+  };
+
+  const statusEl = document.getElementById('credsStatus');
+  if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('bot_credentials', creds);
+    if (pwEl) { pwEl.value = ''; pwEl.placeholder = '(saved — leave blank to keep)'; }
+    if (statusEl) { statusEl.textContent = 'Saved ✓'; statusEl.style.color = 'var(--green)'; }
+    setTimeout(() => { if (statusEl) { statusEl.textContent = ''; } }, 3000);
+  } catch(e) {
+    if (statusEl) { statusEl.textContent = `Error: ${e.message}`; statusEl.style.color = 'var(--red)'; }
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 window.saveConfig       = saveConfig;
 window.resetDefaults    = resetDefaults;
 window.toggleKillSwitch = toggleKillSwitch;
+window.saveCreds        = saveCreds;
 
 loadConfig();
+loadCreds();
 loadBotStatus();
 setInterval(loadBotStatus, 60_000);  // refresh status every 60s

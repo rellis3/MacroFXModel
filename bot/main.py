@@ -397,6 +397,32 @@ class RiskGuard:
                 self._last_reset_date = None
 
 
+# ── Credentials from KV ───────────────────────────────────────────────────────
+
+def load_credentials_from_kv(base_url: str) -> None:
+    """Pull MT5 credentials from dashboard KV, falling back to env vars silently."""
+    import requests as _req
+    try:
+        resp = _req.get(f'{base_url}/api/kv/get?key=bot_credentials', timeout=10)
+        if resp.status_code != 200:
+            return
+        j = resp.json()
+        if j.get('miss') or not j.get('data'):
+            return
+        creds = j['data']
+        if creds.get('mt5_account'):
+            os.environ['MT5_ACCOUNT'] = str(creds['mt5_account'])
+        if creds.get('mt5_password'):
+            os.environ['MT5_PASSWORD'] = creds['mt5_password']
+        if creds.get('mt5_server'):
+            os.environ['MT5_SERVER'] = creds['mt5_server']
+        if creds.get('mt5_path'):
+            os.environ['MT5_PATH'] = creds['mt5_path']
+        log.info('MT5 credentials loaded from KV')
+    except Exception as exc:
+        log.warning(f'Could not load credentials from KV ({exc}) — using env vars')
+
+
 # ── MT5 ───────────────────────────────────────────────────────────────────────
 
 def mt5_connect() -> bool:
@@ -626,6 +652,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
     )
 
     # ── MT5 startup ───────────────────────────────────────────────────────────
+    load_credentials_from_kv(base_url)  # overlay KV creds onto env vars
     if not paper_mode:
         if HAS_MT5:
             if not mt5_connect():
