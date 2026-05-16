@@ -235,6 +235,88 @@ function renderRunningTotalsSection(){
     </div>`;
 }
 
+// ── Replay cost + aggregation helpers (used by quick stats sidebar) ───────────
+
+// Compute net R from a results array using per-pair cost settings
+function computeNetRFromResults(pair, results){
+  const cs=(runningTotalsConfig.costSettings||{})[pair]||COST_DEFAULTS[pair]||{};
+  const spread=cs.spread||0,slip=cs.slip||0,comm=cs.comm||0;
+  const pip=getPipSz(pair),pipVal=PIP_VALUE_PER_LOT[pair]||10;
+  const totalCostPips=spread+slip+comm/pipVal;
+  let grossR=0,costR=0;
+  for(const res of results){
+    if(!res.touched)continue;
+    const slPips=(res.entryPrice&&res.sl)?Math.abs(res.entryPrice-res.sl)/pip:0;
+    const cR=slPips>0?totalCostPips/slPips:0;
+    for(const p of(res.passes||[])){
+      if(p.result==='tp'||p.result==='sl'||p.result==='eod'){grossR+=p.r||0;costR+=cR;}
+    }
+  }
+  return{grossR:+grossR.toFixed(2),costR:+costR.toFixed(2),netR:+(grossR-costR).toFixed(2)};
+}
+
+// For each pair::date, prefer ::custom over standard so ATR/pip override runs win
+function getLatestResultsMap(){
+  const map={};
+  for(const[key,payload]of Object.entries(_replayResults)){
+    const parts=key.split('::');
+    const pairDate=parts[0]+'::'+parts[1];
+    const isCustom=parts.length>2;
+    if(isCustom||!map[pairDate])map[pairDate]={pair:parts[0],date:parts[1],payload,isCustom};
+  }
+  return map;
+}
+
+// Aggregate across ALL days per pair (for cumulative sidebar table)
+function aggregateReplayByPair(){
+  const byPair={};
+  for(const{pair,payload}of Object.values(getLatestResultsMap())){
+    if(!payload?.stats)continue;
+    if(!byPair[pair])byPair[pair]={days:0,wins:0,losses:0,eods:0,traded:0,allResults:[]};
+    const d=byPair[pair];
+    d.days++;d.wins+=payload.stats.wins;d.losses+=payload.stats.losses;
+    d.eods+=(payload.stats.eods||0);d.traded+=payload.stats.traded;
+    d.allResults.push(...(payload.results||[]));
+  }
+  const out={};
+  for(const[pair,d]of Object.entries(byPair)){
+    const{grossR,costR,netR}=computeNetRFromResults(pair,d.allResults);
+    out[pair]={days:d.days,wins:d.wins,losses:d.losses,eods:d.eods,traded:d.traded,grossR,costR,netR};
+  }
+  return out;
+}
+
+// Aggregate for one specific date (for the selected-day sidebar table)
+function aggregateReplayByDay(date){
+  const byPair={};
+  for(const{pair,date:d,payload}of Object.values(getLatestResultsMap())){
+    if(d!==date||!payload?.stats)continue;
+    const{grossR,costR,netR}=computeNetRFromResults(pair,payload.results||[]);
+    byPair[pair]={wins:payload.stats.wins,losses:payload.stats.losses,eods:payload.stats.eods||0,traded:payload.stats.traded,grossR,costR,netR};
+  }
+  return byPair;
+}
+
+// Reset cumulative display for one pair (stores current net R as offset)
+function resetReplayPair(pair){
+  const byPair=aggregateReplayByPair();
+  if(!byPair[pair])return;
+  if(!runningTotalsConfig.replayOffsets)runningTotalsConfig.replayOffsets={pairR:{}};
+  if(!runningTotalsConfig.replayOffsets.pairR)runningTotalsConfig.replayOffsets.pairR={};
+  runningTotalsConfig.replayOffsets.pairR[pair]=byPair[pair].netR;
+  saveRunningTotals();renderQuickStats();
+}
+
+// Reset all pairs at once (good for comparing ATR vs pip runs)
+function resetReplayAll(){
+  const byPair=aggregateReplayByPair();
+  const offsets={};
+  for(const[pair,d]of Object.entries(byPair))offsets[pair]=d.netR;
+  if(!runningTotalsConfig.replayOffsets)runningTotalsConfig.replayOffsets={pairR:{}};
+  runningTotalsConfig.replayOffsets.pairR=offsets;
+  saveRunningTotals();renderQuickStats();
+}
+
 function toggleDark(){
   document.body.classList.toggle('dark');
   const d=document.body.classList.contains('dark');
@@ -419,12 +501,114 @@ function renderQuickStats(){
       ${pairFibHtml?`<div style="margin-top:6px"><div style="font-size:9px;color:var(--text3);font-weight:600;margin-bottom:3px">BY PAIR · SD</div>${pairFibHtml}</div>`:''}
     </div>`:'';
 
+  // ── Cumulative per-pair net R table with resets ───────────────────────────────
+  const byPairAgg=aggregateReplayByPair();
+  const pairEntries=Object.entries(byPairAgg)
+    .filter(([p])=>filterPair==='all'||p===filterPair)
+    .sort((a,b)=>b[1].netR-a[1].netR);
+  const hasCostData=pairEntries.some(([p])=>{const cs=(runningTotalsConfig.costSettings||{})[p]||{};return(cs.spread||0)+(cs.slip||0)+(cs.comm||0)>0;});
+
+  let pairSection='';
+  if(pairEntries.length>0){
+    const pOffsets=runningTotalsConfig.replayOffsets?.pairR||{};
+    const pRows=pairEntries.map(([pair,d])=>{
+      const offset=pOffsets[pair]||0;
+      const dispR=+(d.netR-offset).toFixed(2);
+      const rc=dispR>=0?'vu':'vd';
+      const wasReset=offset!==0;
+      const wrc2=d.traded>0?Math.round(d.wins/d.traded*100)+'%':'—';
+      return`<tr>
+        <td style="color:var(--text2);font-size:9px;padding:2px 0;white-space:nowrap">${pair}</td>
+        <td style="text-align:center;font-size:9px"><span class="vu">${d.wins}</span>/<span class="vd">${d.losses}</span></td>
+        <td style="text-align:center;font-size:9px;color:var(--text3)">${wrc2}</td>
+        <td class="mono ${rc}" style="font-size:9px;text-align:right;white-space:nowrap">${dispR>=0?'+':''}${dispR}R${wasReset?`<span style="color:var(--amber);font-size:7px;margin-left:1px">↺</span>`:''}${hasCostData&&d.costR>0?`<br><span style="font-size:8px;color:var(--text3)">-${d.costR.toFixed(1)}c</span>`:''}</td>
+        <td style="padding-left:3px"><button onclick="resetReplayPair('${pair}')" title="Reset ${pair} to zero — use to baseline before switching ATR/pip"
+          style="font-size:8px;color:${wasReset?'var(--amber)':'var(--text3)'};background:none;border:1px solid ${wasReset?'var(--amber)':'var(--border)'};border-radius:3px;padding:0 4px;cursor:pointer;line-height:1.6">↺</button></td>
+      </tr>`;
+    }).join('');
+    const totW=pairEntries.reduce((s,[,d])=>s+d.wins,0);
+    const totL=pairEntries.reduce((s,[,d])=>s+d.losses,0);
+    const totNetR=pairEntries.reduce((s,[,d])=>s+d.netR,0);
+    const totOffset=pairEntries.reduce((s,[p])=>s+(pOffsets[p]||0),0);
+    const dispTot=+(totNetR-totOffset).toFixed(2);
+    const totTrad=pairEntries.reduce((s,[,d])=>s+d.traded,0);
+    const totWr=totTrad>0?Math.round(totW/totTrad*100)+'%':'—';
+    pairSection=`
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <div style="font-size:9px;font-weight:600;color:var(--text3);letter-spacing:.05em">CUMUL · PER PAIR${hasCostData?' · net':''}</div>
+        <button onclick="resetReplayAll()" title="Reset all pairs to zero — baseline for ATR vs pip comparison"
+          style="font-size:8px;color:var(--red);background:none;border:1px solid var(--red);border-radius:3px;padding:0 6px;cursor:pointer;line-height:1.6">↺ All</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:left;padding-bottom:3px">Pair</th>
+          <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:center">W/L</th>
+          <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:center">WR%</th>
+          <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:right">${hasCostData?'Net R':'R'}</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${pRows}</tbody>
+        <tfoot><tr style="border-top:1px solid var(--border)">
+          <td style="font-size:9px;font-weight:600;color:var(--text2);padding-top:3px">Total</td>
+          <td style="text-align:center;font-size:9px;padding-top:3px"><span class="vu">${totW}</span>/<span class="vd">${totL}</span></td>
+          <td style="text-align:center;font-size:9px;color:var(--text3);padding-top:3px">${totWr}</td>
+          <td class="mono ${dispTot>=0?'vu':'vd'}" style="font-size:9px;text-align:right;font-weight:700;padding-top:3px">${dispTot>=0?'+':''}${dispTot}R</td>
+          <td></td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  }
+
+  // ── Selected-day per-pair breakdown (updates on calendar click) ───────────────
+  const dayByPair=aggregateReplayByDay(selectedDate);
+  const dayEntries=Object.entries(dayByPair)
+    .filter(([p])=>filterPair==='all'||p===filterPair);
+  let daySection='';
+  if(dayEntries.length>0){
+    const dow=new Date(selectedDate+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'});
+    const dRows=dayEntries.map(([pair,d])=>{
+      const rc=d.netR>=0?'vu':'vd';
+      const wrc2=d.traded>0?Math.round(d.wins/d.traded*100)+'%':'—';
+      return`<tr>
+        <td style="color:var(--text2);font-size:9px;padding:2px 0;white-space:nowrap">${pair}</td>
+        <td style="text-align:center;font-size:9px"><span class="vu">${d.wins}</span>/<span class="vd">${d.losses}</span></td>
+        <td style="text-align:center;font-size:9px;color:var(--text3)">${wrc2}</td>
+        <td class="mono ${rc}" style="font-size:9px;text-align:right;white-space:nowrap">${d.netR>=0?'+':''}${d.netR}R</td>
+      </tr>`;
+    }).join('');
+    const dTotW=dayEntries.reduce((s,[,d])=>s+d.wins,0);
+    const dTotL=dayEntries.reduce((s,[,d])=>s+d.losses,0);
+    const dTotR=+(dayEntries.reduce((s,[,d])=>s+d.netR,0)).toFixed(2);
+    const dTotTrad=dayEntries.reduce((s,[,d])=>s+d.traded,0);
+    const dTotWr=dTotTrad>0?Math.round(dTotW/dTotTrad*100)+'%':'—';
+    daySection=`
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+      <div style="font-size:9px;font-weight:600;color:var(--text3);letter-spacing:.05em;margin-bottom:5px">DAY · ${dow} ${selectedDate}</div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:left;padding-bottom:3px">Pair</th>
+          <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:center">W/L</th>
+          <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:center">WR%</th>
+          <th style="font-size:8px;color:var(--text3);font-weight:400;text-align:right">${hasCostData?'Net R':'R'}</th>
+        </tr></thead>
+        <tbody>${dRows}</tbody>
+        <tfoot><tr style="border-top:1px solid var(--border)">
+          <td style="font-size:9px;font-weight:600;color:var(--text2);padding-top:3px">Total</td>
+          <td style="text-align:center;font-size:9px;padding-top:3px"><span class="vu">${dTotW}</span>/<span class="vd">${dTotL}</span></td>
+          <td style="text-align:center;font-size:9px;color:var(--text3);padding-top:3px">${dTotWr}</td>
+          <td class="mono ${dTotR>=0?'vu':'vd'}" style="font-size:9px;text-align:right;font-weight:700;padding-top:3px">${dTotR>=0?'+':''}${dTotR}R</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  }
+
   document.getElementById('quickStats').innerHTML=`
     <div class="mrow"><span class="mrow-n">Levels saved</span><span class="mrow-v vp">${total}</span></div>
     <div class="mrow"><span class="mrow-n">Trades taken</span><span class="mrow-v vp">${taken}</span></div>
     <div class="mrow"><span class="mrow-n">Win rate</span><span class="mrow-v ${wrc}">${wr}%</span></div>
     <div class="mrow"><span class="mrow-n">W / L / BE</span><span class="mrow-v"><span class="vu">${wins}</span> / <span class="vd">${losses}</span> / <span class="vn">${bes}</span></span></div>
-    ${rpSection}`;
+    ${rpSection}${pairSection}${daySection}`;
 }
 
 function setView(v){
