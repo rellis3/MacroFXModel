@@ -59,6 +59,18 @@ def fetch_quote(pair: str, base_url: str = DASHBOARD_URL, timeout: int = 5) -> f
         return None
 
 
+def trigger_refresh(base_url: str = DASHBOARD_URL, timeout: int = 15) -> tuple[bool, list]:
+    """Ask the server to touch KV entry timestamps so the staleness gate passes."""
+    try:
+        resp = requests.post(f'{base_url}/api/refresh', timeout=timeout)
+        if resp.status_code == 200:
+            data = resp.json()
+            return True, data.get('refreshed', [])
+        return False, []
+    except Exception:
+        return False, []
+
+
 def push_bot_status(status: dict, base_url: str = DASHBOARD_URL, timeout: int = 5) -> None:
     """Non-critical — swallows all errors so status reporting never kills the bot."""
     try:

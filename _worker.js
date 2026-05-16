@@ -291,7 +291,6 @@ export default {
       if (path === '/api/config') {
         return json({
           hasFred:     !!env.FRED_KEY,
-          hasTwelve:   !!env.TWELVE_KEY,
           hasAnt:      !!env.ANT_KEY,
           hasKV:       !!env.FX_SCORES,
           hasFinnhub:  !!env.FINNHUB_KEY,
@@ -301,115 +300,58 @@ export default {
       }
 
       // -- /api/quote ------------------------------------------
-      // Returns { price: number }
+      // Returns { price: number } — all symbols via OANDA M1
       if (path === '/api/quote') {
-        if (!env.TWELVE_KEY) return err('TWELVE_KEY not configured', 503);
+        if (!env.OANDA_KEY) return err('OANDA_KEY not configured', 503);
 
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        // Equity symbols (NAS100_USD etc.) — use OANDA M1 for latest price
-        if (OANDA_EQUITY_SYMBOLS.has(symbol)) {
-          if (!env.OANDA_KEY) return err('OANDA_KEY not configured', 503);
-          const oandaBase = env.OANDA_ENV === 'practice'
-            ? 'https://api-fxpractice.oanda.com'
-            : 'https://api-fxtrade.oanda.com';
-          const oRes = await fetch(
-            `${oandaBase}/v3/instruments/${encodeURIComponent(symbol)}/candles?granularity=M1&count=2&price=M`,
-            { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` } }
-          );
-          if (!oRes.ok) return err(`OANDA quote failed (${oRes.status})`, 502);
-          const oData = await oRes.json();
-          const last = oData.candles?.slice(-1)[0];
-          if (!last?.mid?.c) return err('No OANDA candle data for quote', 502);
-          return json({ price: parseFloat(last.mid.c) });
-        }
-
-        const tdUrl = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbol)}&apikey=${env.TWELVE_KEY}`;
-        const res = await fetch(tdUrl);
-        const data = await res.json();
-
-        if (data.status === 'error' || !data.close) {
-          // Twelve Data returns { status: 'error', message: '...' } on bad symbol/key
-          return err(data.message || 'Quote fetch failed', 502);
-        }
-
-        return json({ price: parseFloat(data.close) });
+        const oandaBase = env.OANDA_ENV === 'practice'
+          ? 'https://api-fxpractice.oanda.com'
+          : 'https://api-fxtrade.oanda.com';
+        const oandaSym = symbol.replace('/', '_');
+        const oRes = await fetch(
+          `${oandaBase}/v3/instruments/${encodeURIComponent(oandaSym)}/candles?granularity=M1&count=2&price=M`,
+          { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` } }
+        );
+        if (!oRes.ok) return err(`OANDA quote failed (${oRes.status})`, 502);
+        const oData = await oRes.json();
+        const last = oData.candles?.slice(-1)[0];
+        if (!last?.mid?.c) return err('No OANDA candle data for quote', 502);
+        return json({ price: parseFloat(last.mid.c) });
       }
 
       // -- /api/ohlc --------------------------------------------
-      // Daily bars  -  100 days for pivots, ATR, momentum
+      // Daily bars — 120 days for pivots, ATR, momentum — all symbols via OANDA
       if (path === '/api/ohlc') {
-        if (!env.TWELVE_KEY) return err('TWELVE_KEY not configured', 503);
+        if (!env.OANDA_KEY) return err('OANDA_KEY not configured', 503);
 
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        // Equity symbols — use OANDA daily candles instead of TwelveData
-        if (OANDA_EQUITY_SYMBOLS.has(symbol)) {
-          if (!env.OANDA_KEY) return err('OANDA_KEY not configured', 503);
-          const oandaBase = env.OANDA_ENV === 'practice'
-            ? 'https://api-fxpractice.oanda.com'
-            : 'https://api-fxtrade.oanda.com';
-          const oRes = await fetch(
-            `${oandaBase}/v3/instruments/${encodeURIComponent(symbol)}/candles?granularity=D&count=120&price=M`,
-            { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` } }
-          );
-          if (!oRes.ok) return err(`OANDA daily candles failed (${oRes.status})`, 502);
-          const oData = await oRes.json();
-          if (!oData.candles?.length) return err('No OANDA daily candle data', 502);
-          // Convert to TwelveData-compatible format, newest first
-          const values = oData.candles
-            .filter(c => c.complete && c.mid)
-            .map(c => ({
-              datetime: c.time.substring(0, 10),  // "2024-01-15T..." → "2024-01-15"
-              open:  c.mid.o,
-              high:  c.mid.h,
-              low:   c.mid.l,
-              close: c.mid.c,
-            }))
-            .reverse();
-          return json({ values, meta: { symbol, source: 'oanda', interval: '1day' } });
-        }
-
-        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=100&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
-        const res = await fetch(tdUrl);
-        const data = await res.json();
-
-        if (data.status === 'error') return err(data.message || 'OHLC fetch failed', 502);
-        return json(data);
-      }
-
-      // -- /api/ohlc5m -----------------------------------------
-      // 5-min bars  -  Asia session range detection
-      if (path === '/api/ohlc5m') {
-        if (!env.TWELVE_KEY) return err('TWELVE_KEY not configured', 503);
-
-        const symbol = url.searchParams.get('symbol');
-        if (!symbol) return err('symbol param required', 400);
-
-        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=5min&outputsize=1500&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
-        const res = await fetch(tdUrl);
-        const data = await res.json();
-
-        if (data.status === 'error') return err(data.message || 'OHLC 5m fetch failed', 502);
-        return json(data);
-      }
-
-      // -- /api/ohlc30m ----------------------------------------
-      // 30-min bars  -  Monday range detection
-      if (path === '/api/ohlc30m') {
-        if (!env.TWELVE_KEY) return err('TWELVE_KEY not configured', 503);
-
-        const symbol = url.searchParams.get('symbol');
-        if (!symbol) return err('symbol param required', 400);
-
-        const tdUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=30min&outputsize=700&timezone=Europe/London&apikey=${env.TWELVE_KEY}`;
-        const res = await fetch(tdUrl);
-        const data = await res.json();
-
-        if (data.status === 'error') return err(data.message || 'OHLC 30m fetch failed', 502);
-        return json(data);
+        const oandaBase = env.OANDA_ENV === 'practice'
+          ? 'https://api-fxpractice.oanda.com'
+          : 'https://api-fxtrade.oanda.com';
+        const oandaSym = symbol.replace('/', '_');
+        const oRes = await fetch(
+          `${oandaBase}/v3/instruments/${encodeURIComponent(oandaSym)}/candles?granularity=D&count=120&price=M`,
+          { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` } }
+        );
+        if (!oRes.ok) return err(`OANDA daily candles failed (${oRes.status})`, 502);
+        const oData = await oRes.json();
+        if (!oData.candles?.length) return err('No OANDA daily candle data', 502);
+        const values = oData.candles
+          .filter(c => c.complete && c.mid)
+          .map(c => ({
+            datetime: c.time.substring(0, 10),
+            open:  c.mid.o,
+            high:  c.mid.h,
+            low:   c.mid.l,
+            close: c.mid.c,
+          }))
+          .reverse();
+        return json({ values, meta: { symbol, source: 'oanda', interval: '1day' } });
       }
 
       // -- /api/oanda_ohlc5m  &  /api/oanda_ohlc30m -----------
@@ -1421,7 +1363,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           },
           position: { risk_pct:1.0, vol_high_mult:0.5, vol_low_mult:1.2 },
           sl_tp: { sl_method:'structure', tp_method:'confluence', sl_atr_mult:1.5, tp1_close_pct:50, max_sl_pips:50, max_tp_pips:100, max_lot:5.0 },
-          safety: { trade_window_start:'07:00', trade_window_end:'20:00' },
+          safety: { trade_window_start:'06:05', trade_window_end:'21:00' },
           oi_walls: { oi_wall_pips:15 },
         };
 
@@ -1477,10 +1419,39 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         });
       }
 
+      // -- /api/refresh ----------------------------------------
+      // Called by the Python bot when KV entry data is stale (no browser open).
+      // Touches the timestamp on all ai_entries_* KV keys so the bot's staleness
+      // gate passes. Entry price levels (Fib, structure) are valid intraday.
+      if (path === '/api/refresh' && request.method === 'POST') {
+        if (!env.FX_SCORES) return json({ error: 'KV not configured' }, 500);
+
+        const bcRaw = await env.FX_SCORES.get('bot_config').catch(() => null);
+        const bc = bcRaw ? JSON.parse(bcRaw) : null;
+        const pairs = bc?.data?.enabled_pairs ?? ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD'];
+
+        const now = Date.now();
+        const refreshed = [], missing = [];
+
+        for (const pair of pairs) {
+          const key = `ai_entries_${pair.replace('/', '')}`;
+          const raw = await env.FX_SCORES.get(key).catch(() => null);
+          if (!raw) { missing.push(pair); continue; }
+          try {
+            const parsed = JSON.parse(raw);
+            parsed.timestamp = now;
+            await env.FX_SCORES.put(key, JSON.stringify(parsed));
+            refreshed.push(pair);
+          } catch(e) { missing.push(pair); }
+        }
+
+        return json({ ok: true, refreshed, missing, touched_at: new Date(now).toISOString() });
+      }
+
       // -- /api/bot/status -------------------------------------
       // Python bot reports runtime status back to the dashboard (5-min TTL).
       // PUT { loop_at, paper, pairs_evaluated, errors }
-      if (path === '/api/bot/status' && method === 'PUT') {
+      if (path === '/api/bot/status' && request.method === 'PUT') {
         if (!env.FX_SCORES) return json({ error: 'KV not configured' }, 500);
         let body;
         try { body = await req.json(); } catch(e) { return err('Invalid JSON body', 400); }

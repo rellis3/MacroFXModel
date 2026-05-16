@@ -33,7 +33,7 @@ import os
 import time
 from datetime import datetime, timezone, date as date_type
 
-from utils.state_reader import fetch_state, fetch_quote, check_staleness, push_bot_status, StaleDataError
+from utils.state_reader import fetch_state, fetch_quote, check_staleness, push_bot_status, trigger_refresh, StaleDataError
 from utils.sl_tp_engine import SLTPEngine
 from utils.indicators import compute_atr, compute_wt1, atr_to_tol_pips
 from utils.config_helpers import resolve_min_stars, session_threshold_mult
@@ -294,7 +294,7 @@ def handle_actions(results: dict, paper_mode: bool) -> None:
 def within_trade_window(config: dict) -> bool:
     s   = config.get('safety') or {}
     now = datetime.now(timezone.utc).strftime('%H:%M')
-    return s.get('trade_window_start', '07:00') <= now <= s.get('trade_window_end', '20:00')
+    return s.get('trade_window_start', '06:05') <= now <= s.get('trade_window_end', '21:00')
 
 
 class RiskGuard:
@@ -766,6 +766,12 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         except StaleDataError as exc:
             if tick_start - last_stale_warn >= 5 * 60:
                 log.warning(f'STALE DATA: {exc}')
+                ok, refreshed = trigger_refresh(base_url)
+                if ok:
+                    log.info(f'Server refresh triggered — touched {len(refreshed)} pairs {refreshed}  forcing state re-fetch')
+                    last_state_refresh = 0  # force immediate re-fetch next tick
+                else:
+                    log.warning('Refresh request failed — dashboard may have no entry data yet; open it to push levels to KV')
                 push_bot_status({'loop_at': datetime.now(timezone.utc).isoformat(),
                                  'paper': paper_mode, 'errors': [str(exc)],
                                  'pairs_evaluated': []}, base_url)

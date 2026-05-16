@@ -86,3 +86,173 @@
 [2026-05-16 11:01:48] [INFO] State refreshed from dashboard KV
 [2026-05-16 11:03:52] [INFO] State refreshed from dashboard KV
 [2026-05-16 11:05:55] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:07:59] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:09:59] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:11:59] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:14:00] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:16:03] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:18:07] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:20:08] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:22:13] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:23:13] [WARNING] STALE: Dashboard data is 15.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:24:16] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:24:16] [WARNING] STALE: Dashboard data is 16.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:25:15] [WARNING] STALE: Dashboard data is 17.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:26:17] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:26:17] [WARNING] STALE: Dashboard data is 18.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:27:18] [WARNING] STALE: Dashboard data is 19.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:28:20] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:28:20] [WARNING] STALE: Dashboard data is 20.4 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:29:21] [WARNING] STALE: Dashboard data is 21.4 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:30:20] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:30:23] [WARNING] STALE: Dashboard data is 22.4 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:31:24] [WARNING] STALE: Dashboard data is 23.4 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:32:20] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:32:26] [WARNING] STALE: Dashboard data is 24.5 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:33:27] [WARNING] STALE: Dashboard data is 25.5 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:34:20] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:34:29] [WARNING] STALE: Dashboard data is 26.5 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:35:30] [WARNING] STALE: Dashboard data is 27.5 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:36:21] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:36:33] [WARNING] STALE: Dashboard data is 28.6 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:37:34] [WARNING] STALE: Dashboard data is 29.6 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:38:21] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:40:22] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:42:22] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:44:24] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:46:26] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:48:30] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:50:31] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:52:32] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:53:12] [WARNING] STALE: Dashboard data is 15.0 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:54:13] [WARNING] STALE: Dashboard data is 16.0 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:54:33] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:55:15] [WARNING] STALE: Dashboard data is 17.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:56:16] [WARNING] STALE: Dashboard data is 18.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:56:33] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:57:18] [WARNING] STALE: Dashboard data is 19.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:58:19] [WARNING] STALE: Dashboard data is 20.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 11:58:34] [INFO] State refreshed from dashboard KV
+[2026-05-16 11:59:22] [WARNING] STALE: Dashboard data is 21.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:00:22] [WARNING] STALE: Dashboard data is 22.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:00:34] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:01:25] [WARNING] STALE: Dashboard data is 23.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:02:26] [WARNING] STALE: Dashboard data is 24.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:02:34] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:03:28] [WARNING] STALE: Dashboard data is 25.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:04:29] [WARNING] STALE: Dashboard data is 26.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:04:34] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:05:31] [WARNING] STALE: Dashboard data is 27.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:06:32] [WARNING] STALE: Dashboard data is 28.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:06:37] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:07:34] [WARNING] STALE: Dashboard data is 29.4 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:08:35] [WARNING] STALE: Dashboard data is 30.4 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:08:40] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:10:42] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:12:44] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:14:46] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:16:49] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:18:50] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:20:52] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:22:31] [WARNING] STALE: Dashboard data is 15.0 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:22:54] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:23:33] [WARNING] STALE: Dashboard data is 16.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:24:34] [WARNING] STALE: Dashboard data is 17.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:24:54] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:25:36] [WARNING] STALE: Dashboard data is 18.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:26:37] [WARNING] STALE: Dashboard data is 19.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:26:55] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:27:40] [WARNING] STALE: Dashboard data is 20.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:28:41] [WARNING] STALE: Dashboard data is 21.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:28:55] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:29:43] [WARNING] STALE: Dashboard data is 22.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:30:44] [WARNING] STALE: Dashboard data is 23.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:30:55] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:31:46] [WARNING] STALE: Dashboard data is 24.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:32:47] [WARNING] STALE: Dashboard data is 25.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:32:55] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:33:49] [WARNING] STALE: Dashboard data is 26.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:34:50] [WARNING] STALE: Dashboard data is 27.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:34:55] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:35:52] [WARNING] STALE: Dashboard data is 28.4 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:36:53] [WARNING] STALE: Dashboard data is 29.4 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:36:58] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:37:55] [WARNING] STALE: Dashboard data is 30.4 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:38:56] [WARNING] STALE: Dashboard data is 31.4 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:39:01] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:41:03] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:43:04] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:45:06] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:47:07] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:49:08] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:51:09] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:52:33] [WARNING] STALE: Dashboard data is 15.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:53:11] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:53:35] [WARNING] STALE: Dashboard data is 16.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:54:36] [WARNING] STALE: Dashboard data is 17.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:55:11] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:55:38] [WARNING] STALE: Dashboard data is 18.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:56:39] [WARNING] STALE: Dashboard data is 19.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:57:11] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:57:41] [WARNING] STALE: Dashboard data is 20.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:58:42] [WARNING] STALE: Dashboard data is 21.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 12:59:11] [INFO] State refreshed from dashboard KV
+[2026-05-16 12:59:44] [WARNING] STALE: Dashboard data is 22.2 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 13:00:45] [WARNING] STALE: Dashboard data is 23.3 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 13:01:14] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:03:18] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:05:21] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:07:22] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:09:23] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:11:26] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:13:27] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:15:28] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:17:33] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:19:33] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:21:34] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:22:33] [WARNING] STALE: Dashboard data is 15.1 min old (limit 15 min) — open the dashboard to refresh
+[2026-05-16 13:23:28] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-16 13:23:30] [INFO] Loaded persisted state: ['risk_guard', 'position_meta']
+[2026-05-16 13:23:31] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:23:31] [INFO] RiskGuard restored from disk
+[2026-05-16 13:23:31] [WARNING] STALE DATA: Dashboard data is 16.0 min old (limit 12 min) — open the dashboard to refresh
+[2026-05-16 13:25:33] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:27:34] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:28:31] [WARNING] STALE DATA: Dashboard data is 21.0 min old (limit 12 min) — open the dashboard to refresh
+[2026-05-16 13:29:37] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:31:38] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:33:32] [WARNING] STALE DATA: Dashboard data is 26.0 min old (limit 12 min) — open the dashboard to refresh
+[2026-05-16 13:33:40] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:35:41] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:37:42] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:37:48] [INFO] Monitoring 5 pairs — no level approach  [no prices]
+[2026-05-16 13:39:47] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:41:47] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:42:47] [INFO] Monitoring 5 pairs — no level approach  [no prices]
+[2026-05-16 13:43:49] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:45:50] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:47:50] [INFO] Monitoring 5 pairs — no level approach  [no prices]
+[2026-05-16 13:47:51] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:49:32] [WARNING] STALE DATA: Dashboard data is 12.0 min old (limit 12 min) — open the dashboard to refresh
+[2026-05-16 13:49:53] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:51:54] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:53:55] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:54:34] [WARNING] STALE DATA: Dashboard data is 17.1 min old (limit 12 min) — open the dashboard to refresh
+[2026-05-16 13:55:57] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:57:59] [INFO] State refreshed from dashboard KV
+[2026-05-16 13:59:35] [WARNING] STALE DATA: Dashboard data is 22.1 min old (limit 12 min) — open the dashboard to refresh
+[2026-05-16 14:00:01] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:02:02] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:04:03] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:04:36] [WARNING] STALE DATA: Dashboard data is 27.1 min old (limit 12 min) — open the dashboard to refresh
+[2026-05-16 14:06:06] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:08:07] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:08:12] [INFO] Monitoring 5 pairs — no level approach  [no prices]
+[2026-05-16 14:10:09] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:12:10] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:13:13] [INFO] Monitoring 5 pairs — no level approach  [no prices]
+[2026-05-16 14:14:13] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:16:15] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:18:13] [INFO] Monitoring 5 pairs — no level approach  [no prices]
+[2026-05-16 14:18:19] [INFO] State refreshed from dashboard KV
+[2026-05-16 14:19:31] [WARNING] STALE DATA: Dashboard data is 12.0 min old (limit 12 min) — open the dashboard to refresh

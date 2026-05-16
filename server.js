@@ -28,7 +28,6 @@ const REFRESH_LEVELS_MS = parseInt(process.env.REFRESH_LEVELS_MS || String(30 * 
 
 const cfEnv = {
   FRED_KEY:         process.env.FRED_KEY,
-  TWELVE_KEY:       process.env.TWELVE_KEY,
   ANT_KEY:          process.env.ANT_KEY,
   OANDA_KEY:        process.env.OANDA_KEY,
   OANDA_ENV:        process.env.OANDA_ENV || 'live',

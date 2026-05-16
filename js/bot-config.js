@@ -52,8 +52,8 @@ const DEFAULTS = {
     max_lot:        5.0,
   },
   safety: {
-    trade_window_start: '07:00',
-    trade_window_end:   '20:00',
+    trade_window_start: '06:05',
+    trade_window_end:   '21:00',
   },
   oi_walls: {
     oi_wall_pips: 15,
@@ -201,8 +201,8 @@ function readForm() {
 
   // Safety
   _cfg.safety = _cfg.safety || {};
-  _cfg.safety.trade_window_start = str('tw_start', '07:00');
-  _cfg.safety.trade_window_end   = str('tw_end',   '20:00');
+  _cfg.safety.trade_window_start = str('tw_start', '06:05');
+  _cfg.safety.trade_window_end   = str('tw_end',   '21:00');
 
   // OI Walls
   _cfg.oi_walls = _cfg.oi_walls || {};
@@ -270,8 +270,8 @@ function renderForm() {
   setVal('pos_max_lot',    _cfg.sl_tp?.max_lot        ?? 5.0);
 
   // Safety
-  setVal('tw_start', _cfg.safety?.trade_window_start ?? '07:00');
-  setVal('tw_end',   _cfg.safety?.trade_window_end   ?? '20:00');
+  setVal('tw_start', _cfg.safety?.trade_window_start ?? '06:05');
+  setVal('tw_end',   _cfg.safety?.trade_window_end   ?? '21:00');
 
   // OI Walls
   setVal('oi_wall_pips', _cfg.oi_walls?.oi_wall_pips ?? 15);
