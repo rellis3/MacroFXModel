@@ -809,8 +809,9 @@ export default {
       }
 
       // -- /api/fredhistory -------------------------------------
-      // Returns 90 days of yield data for spread chart.
+      // Returns yield/rate history for spread chart and gold-lab reconstruction.
       // Query: ?keys=us2y,us10y,de10y,de_short (comma-separated FRED keys)
+      //        ?period=90d|1y|2y|5y  (default: 90d)
       if (path === '/api/fredhistory') {
         if (!env.FRED_KEY) return err('FRED_KEY not configured', 503);
 
@@ -841,9 +842,21 @@ export default {
         const keysParam = url.searchParams.get('keys') || 'us2y,us10y,de10y,de_short';
         const requestedKeys = keysParam.split(',').filter(k => ALL_SERIES[k]);
 
+        const period   = url.searchParams.get('period') || '90d';
+        const limitMap = { '90d': 90, '1y': 365, '2y': 730, '5y': 1825 };
+        const limit    = limitMap[period] ?? 90;
+
+        // KV cache: 6h for 90d, 12h for longer periods (data updates once per business day)
+        const cacheKey = `fredhistory_${period}_${keysParam}`;
+        const cacheTtl = period === '90d' ? 21600 : 43200; // 6h or 12h
+        if (env.FX_SCORES) {
+          const cached = await env.FX_SCORES.get(cacheKey);
+          if (cached) return json(JSON.parse(cached));
+        }
+
         const fetches = requestedKeys.map(async key => {
           const seriesId = ALL_SERIES[key];
-          const u = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${env.FRED_KEY}&file_type=json&sort_order=desc&limit=90`;
+          const u = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${env.FRED_KEY}&file_type=json&sort_order=desc&limit=${limit}`;
           try {
             const r = await fetch(u);
             const d = await r.json();
@@ -858,7 +871,13 @@ export default {
         });
 
         const results = await Promise.all(fetches);
-        return json(Object.fromEntries(results));
+        const payload = Object.fromEntries(results);
+
+        if (env.FX_SCORES) {
+          await env.FX_SCORES.put(cacheKey, JSON.stringify(payload), { expirationTtl: cacheTtl });
+        }
+
+        return json(payload);
       }
 
       // -- /api/events ------------------------------------------

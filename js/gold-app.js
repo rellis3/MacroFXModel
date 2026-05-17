@@ -71,6 +71,13 @@ export async function init() {
 
     render(model, volRegime, data.history, data.cotData, data.liveQuote);
     setStatus('ok', 'Updated ' + new Date().toLocaleTimeString());
+
+    // Log today's model state to the Gold Lab live dataset (localStorage).
+    // This runs once per session so the ML training CSV grows automatically.
+    if (model && typeof window.goldLabLog === 'function') {
+      window.goldLabLog(buildLiveLogRow(model, data.liveQuote));
+    }
+
     startQuoteLoop();
   } catch (err) {
     console.error('[gold-app] init error:', err);
@@ -137,6 +144,7 @@ function setupState(data) {
   // Wire S singleton so all shared modules can read gold data
   S.currentPair  = PAIRS.find(p => p.symbol === 'XAU/USD');
   S.fredData     = data.fredData;
+  S.goldHistory  = data.history;   // enables acceleration + z-score in computeGoldMacroModel
   S._caps        = data.caps ?? CAP_DEFAULTS;
 
   if (data.ohlcData)   S.ohlcData['XAU/USD']  = data.ohlcData;
@@ -1038,6 +1046,59 @@ function buildWeightBars(weights) {
 }
 
 // ── Quote refresh loop ─────────────────────────────────────────────────────────
+// ── Live log row builder ───────────────────────────────────────────────────────
+// Builds a row matching the gold-lab-worker CSV format from the live model state.
+// Outcome columns are null — these are filled in by the Python training script
+// once 1m bars arrive.
+function buildLiveLogRow(model, liveQuote) {
+  const f = S.fredData ?? {};
+  const today = new Date().toISOString().slice(0, 10);
+  const priceNum = liveQuote
+    ? parseFloat(liveQuote.price ?? liveQuote.close ?? liveQuote.ask ?? 0) || null
+    : null;
+
+  const r2 = v => v != null ? Math.round(v * 100) / 100 : null;
+  const r3 = v => v != null ? Math.round(v * 1000) / 1000 : null;
+  const r4 = v => v != null ? Math.round(v * 10000) / 10000 : null;
+
+  return {
+    date:              today,
+    signal:            model.signal,
+    strength:          model.strength,
+    regime:            model.regime,
+    gold_score:        r3(model.goldScore),
+    confidence:        model.regimeConfidence?.confidence ?? null,
+    tips:              r2(f.tips?.value),
+    tips_mom:          r4(model.tipsMom),
+    tips_accel:        r4(model.tipsAccel),
+    tips_zscore:       r3(model.tipsZScore),
+    tips_inflection:   model.tipsInflection ?? null,
+    bei:               r2(f.bei?.value),
+    bei_mom:           r4(model.beiMom),
+    bei_accel:         r4(model.beiAccel),
+    bei_zscore:        r3(model.beiZScore),
+    bei_inflection:    model.beiInflection ?? null,
+    dxy:               r2(f.dxy?.value),
+    dxy_mom:           r3(model.dxyMom),
+    dxy_accel:         r4(model.dxyAccel),
+    dxy_zscore:        r3(model.dxyZScore),
+    vix:               r2(f.vix?.value),
+    vix_chg:           r3(model.vixChange),
+    vix_accel:         r4(model.vixAccel),
+    vix_zscore:        r3(model.vixZScore),
+    hy:                r3(f.hy?.value),
+    hy_chg:            r4(f.hy?.value != null && f.hy?.prev != null ? f.hy.value - f.hy.prev : null),
+    us2y_mom:          r4(model.us2yMom),
+    is_transitioning:  model.regimeConfidence?.isTransitioning ? 1 : 0,
+    entry_price:       r2(priceNum),
+    outcome_hit_tp:    null,
+    outcome_hit_sl:    null,
+    forward_return_1d: null,
+    forward_return_5d: null,
+    bars_to_outcome:   null,
+  };
+}
+
 function startQuoteLoop() {
   if (_quoteTimer) clearInterval(_quoteTimer);
   _quoteTimer = setInterval(async () => {
