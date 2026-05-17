@@ -801,3 +801,30 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 .bayes-bar-fill{height:100%;border-radius:4px;transition:width .4s ease}
 .bayes-bar-midline{position:absolute;left:50%;top:0;width:1px;height:100%;background:var(--border2);z-index:1}
 .bayes-bar-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace}
+
+/* ── MARKET ANALYST NARRATIVE PANEL ─────────────────────────────────────────── */
+.narrative-panel{background:var(--s1);border:1.5px solid var(--blue-bd);border-left:4px solid var(--blue);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;position:relative;overflow:hidden}
+.dark .narrative-panel{border-color:var(--blue-bd);border-left-color:var(--blue)}
+.narrative-panel::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--blue-bg) 0%,transparent 60%);opacity:.4;pointer-events:none}
+.np-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;position:relative}
+.np-icon{font-size:16px;flex-shrink:0;line-height:1}
+.np-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);flex-shrink:0}
+.np-pair-chip{font-size:11px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue);background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:6px;padding:1px 7px;flex-shrink:0}
+.np-badges{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap}
+.np-badge{font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:2px 8px;border-radius:8px;border:1px solid var(--border);white-space:nowrap}
+.np-headline{font-size:16px;font-weight:600;line-height:1.4;color:var(--text);margin-bottom:11px;position:relative}
+.np-sym{font-family:'DM Mono',monospace;font-size:15px}
+.np-stance{font-weight:800}
+.np-section{margin-bottom:10px;position:relative}
+.np-section-label{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;font-family:'DM Mono',monospace}
+.np-line{font-size:12.5px;color:var(--text2);line-height:1.55;margin-bottom:4px}
+.np-line:last-child{margin-bottom:0}
+.np-line strong{color:var(--text);font-weight:600}
+.np-line em{font-style:normal;color:var(--text2);font-weight:500}
+.np-conditions{padding:9px 12px;background:var(--s2);border-radius:6px;border:1px solid var(--border)}
+.np-warnings{padding:9px 12px;background:var(--amber-bg);border-radius:6px;border:1px solid var(--amber-bd)}
+.np-warnings .np-section-label{color:var(--amber)}
+.np-warnings .np-line{color:var(--text2)}
+.np-expectation{padding:10px 12px;background:var(--blue-bg);border-radius:6px;border:1px solid var(--blue-bd);position:relative}
+.np-expectation-text{font-size:13px;font-weight:500;color:var(--text);line-height:1.55}
+.np-expectation-text strong{font-weight:700;color:var(--blue)}
