@@ -234,6 +234,8 @@ export function computeRegimeTransition(volHistory) {
     riskDetail,
     recentATRPips:  Math.round(recent10 / pipSz),
     prevATRPips:    Math.round(prev10   / pipSz),
+    // Convenience flag consumed by regime-confidence.js sizing engine
+    lowVolPersistenceFlag: currentRegime === 'LOW' && consecutiveDays >= 20,
   };
 }
 

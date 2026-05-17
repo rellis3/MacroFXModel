@@ -15,6 +15,7 @@ import { calculateVolRegime, calculatePivots } from './vol.js';
 import { calculateTierScores, compute5mKalmanDev, computeBayesianScore } from './macro.js';
 import { gradeEntry } from './trade-grade.js';
 import { computeGoldMacroModel } from './gold-model.js';
+import { computeArimaContext } from './arima-price.js';
 
 const STORAGE_KEY  = 'tg_alert_cfg';
 const COOLDOWN_KEY = 'tg_alert_cooldowns';
@@ -149,7 +150,32 @@ export function checkAndSendAlerts() {
       }
       S.currentPair = _savedPair;
 
-      cached = { entries, tierData: alertTierData, approachArrow: alertApproachArrow, kalmanDev: alertKalmanDev, at: now };
+      // ARIMA price context — computed from daily bars, written to KV for the bot
+      const dailyBars  = S.ohlcData?.[sym]?.values ?? null;
+      const arimaCtx   = (() => { try { return computeArimaContext(dailyBars, sym); } catch(e) { return null; } })();
+      if (arimaCtx) {
+        fetch('/api/kv/set', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            key:  `arima_price_${sym.replace('/', '')}`,
+            data: {
+              residualStability: arimaCtx.residualStability,
+              residualRatio:     arimaCtx.residualRatio,
+              forecastPips:      arimaCtx.forecastPips,
+              ci68Pips:          arimaCtx.ci68Pips,
+              fairValueDev:      arimaCtx.fairValueDev,
+              phi:               arimaCtx.phi,
+              theta:             arimaCtx.theta,
+              narrative:         arimaCtx.narrative,
+              computedAt:        now,
+            },
+            timestamp: now,
+          }),
+        }).catch(() => {});
+      }
+
+      cached = { entries, tierData: alertTierData, approachArrow: alertApproachArrow, kalmanDev: alertKalmanDev, arimaCtx, at: now };
       _entryCache.set(sym, cached);
 
       // KV sync for Railway bot — throttled to once per 30 min per pair
@@ -233,7 +259,7 @@ export function checkAndSendAlerts() {
       _alertsInFlight.add(ck);
 
       const distPips = Math.round(dist / pipSz);
-      sendTelegramAlert(sym, e, price, distPips, digits, cached.approachArrow, cached.kalmanDev, cached.tierData).finally(() => {
+      sendTelegramAlert(sym, e, price, distPips, digits, cached.approachArrow, cached.kalmanDev, cached.tierData, cached.arimaCtx).finally(() => {
         _alertsInFlight.delete(ck);
       });
     }
@@ -249,7 +275,7 @@ export function invalidateAlertCache(sym) {
 
 // ── Format + dispatch ─────────────────────────────────────────────────────────
 
-async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, approachArrow, kalmanDev, tierData) {
+async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, approachArrow, kalmanDev, tierData, arimaCtx) {
   const unit     = sym === 'NAS100_USD' ? 'pts' : 'p';
   const arrowStr = approachArrow ?? '';
   const dir      = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
@@ -287,6 +313,18 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
     ? `5m Kalman: ${kalmanDev >= 0 ? '+' : ''}${kalmanDev.toFixed(2)}σ`
     : null;
 
+  // ARIMA price context
+  const arimaStr = (() => {
+    if (!arimaCtx) return null;
+    const stab  = arimaCtx.residualStability;
+    const icon  = stab >= 0.80 ? '✅' : stab >= 0.60 ? '🟡' : '🔴';
+    const label = stab >= 0.80 ? 'Stable' : stab >= 0.60 ? 'Elevated residuals' : 'Erratic — caution';
+    const fv    = Math.abs(arimaCtx.fairValueDev) > 1.0
+      ? ` · FV ${arimaCtx.fairValueDev > 0 ? '+' : ''}${arimaCtx.fairValueDev.toFixed(1)}σ`
+      : '';
+    return `${icon} ARIMA: ${label}${fv}`;
+  })();
+
   const lines = [
     `🎯 <b>${sym} ${arrowStr} ${dir}</b> ${stars}`,
     `Price: <b>${entry.price.toFixed(digits)}</b> · ${atStr}`,
@@ -297,6 +335,7 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
     bayesStr,
     regimeStr,
     kalmanStr,
+    arimaStr,
     entry.rangeBias ? `Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗` : null,
   ].filter(Boolean).join('\n');
 
@@ -482,9 +521,11 @@ export async function checkGoldMacroAlerts() {
   if (now - _goldAlertLastRun < GOLD_ALERT_THROTTLE_MS) return;
   _goldAlertLastRun = now;
 
-  // Compute gold model (use current vol regime if available)
+  // Compute gold model (use current vol regime + ARIMA stability if available)
   const volRegime = (() => { try { return calculateVolRegime(); } catch(e) { return null; } })();
-  const model = computeGoldMacroModel(volRegime);
+  const goldBars  = S.ohlcData?.['XAU/USD']?.values ?? null;
+  const goldArima = (() => { try { return computeArimaContext(goldBars, 'XAU/USD'); } catch(e) { return null; } })();
+  const model     = computeGoldMacroModel(volRegime, null, goldArima?.residualStability ?? null);
   if (!model) return;
 
   const cd = loadGoldCooldowns();
@@ -575,6 +616,7 @@ function syncGoldModelToKV(model) {
     vix:              model.vix,
     fedPricingSignal: model.fedPricingSignal,
     beiDecompDriver:  model.beiDecomp?.dominantDriver,
+    arimaStability:   model.arimaStability ?? null,
     computedAt:       model.computedAt,
   };
 
@@ -599,9 +641,12 @@ async function sendGoldSignalAlert(model) {
 }
 
 async function sendGoldTransitionAlert(model) {
-  const sigList = model.regimeConfidence.signals.slice(0, 3).join(' · ');
+  const sigList  = model.regimeConfidence.signals.slice(0, 3).join(' · ');
   const mainLine = `⚠️ Regime transitioning — reduce size (×${model.regimeConfidence.sizeMult})`;
-  const detailLine = sigList ? `Signals: ${sigList}` : null;
+  const arimaLine = model.arimaStability != null
+    ? `ARIMA residual stability: ${(model.arimaStability * 100).toFixed(0)}% ${model.arimaStability < 0.50 ? '🔴' : model.arimaStability < 0.70 ? '🟡' : '✅'}`
+    : null;
+  const detailLine = [sigList || null, arimaLine].filter(Boolean).join('\n') || null;
   await _sendGoldAlert(model, mainLine, '⚠️ GOLD REGIME TRANSITION', detailLine);
 }
 

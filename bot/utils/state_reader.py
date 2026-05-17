@@ -21,6 +21,8 @@ def fetch_state(base_url: str = DASHBOARD_URL, timeout: int = 30) -> dict:
             # Fetch gold model separately (pushed by browser after FRED refresh)
             # and attach it to regime_snapshot for gold_macro_module to consume.
             _attach_gold_model(state, base_url, timeout)
+            # Fetch per-pair ARIMA price stability (pushed by browser on each alert tick)
+            _attach_arima_price(state, base_url, timeout)
             return state
         except KeyboardInterrupt:
             if attempt == 0:
@@ -42,6 +44,31 @@ def _attach_gold_model(state: dict, base_url: str, timeout: int) -> None:
         snap['gold_model'] = j['data']
     except Exception:
         pass  # non-critical — gold_macro_module will handle missing data gracefully
+
+
+def _attach_arima_price(state: dict, base_url: str, timeout: int) -> None:
+    """
+    Fetches per-pair ARIMA price stability from KV and injects into
+    regime_snapshot.pairs[sym].arima for regime_confidence_module to consume.
+
+    Keys are written by the browser dashboard (alerts.js) every 5 min per pair:
+      arima_price_EURUSD, arima_price_XAUUSD, arima_price_GBPUSD, etc.
+    """
+    snap       = state.setdefault('regime_snapshot', {})
+    pairs_snap = snap.setdefault('pairs', {})
+
+    for sym in list(pairs_snap.keys()):
+        kv_key = f'arima_price_{sym.replace("/", "")}'
+        try:
+            resp = requests.get(f'{base_url}/api/kv/get?key={kv_key}', timeout=timeout)
+            if resp.status_code != 200:
+                continue
+            j = resp.json()
+            if j.get('miss') or not j.get('data'):
+                continue
+            pairs_snap[sym].setdefault('arima', {}).update(j['data'])
+        except Exception:
+            pass  # non-critical — regime_confidence_module defaults gracefully
 
 
 def check_staleness(regime_snapshot: dict) -> float:

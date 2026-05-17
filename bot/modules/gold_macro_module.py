@@ -77,15 +77,16 @@ class GoldMacroModule(BaseModule):
                 reason='Gold model not in KV — open the dashboard on XAU/USD tab to push it',
             )
 
-        signal     = gold_kv.get('signal', 'NEUTRAL')
-        strength   = gold_kv.get('strength', 'WEAK')
-        regime     = gold_kv.get('regime', 'NEUTRAL')
-        regime_lbl = gold_kv.get('regimeLabel', regime)
-        confidence = gold_kv.get('confidence', 'MEDIUM')
-        size_mult  = float(gold_kv.get('sizeMult', 1.0))
-        score      = float(gold_kv.get('goldScore', 0.0))
-        is_transitioning = gold_kv.get('isTransitioning', False)
+        signal          = gold_kv.get('signal', 'NEUTRAL')
+        strength        = gold_kv.get('strength', 'WEAK')
+        regime          = gold_kv.get('regime', 'NEUTRAL')
+        regime_lbl      = gold_kv.get('regimeLabel', regime)
+        confidence      = gold_kv.get('confidence', 'MEDIUM')
+        size_mult       = float(gold_kv.get('sizeMult', 1.0))
+        score           = float(gold_kv.get('goldScore', 0.0))
+        is_transitioning   = gold_kv.get('isTransitioning', False)
         transition_signals = gold_kv.get('transitionSignals') or []
+        arima_stability    = gold_kv.get('arimaStability')  # None if not yet computed
 
         # Convert goldScore [-1, +1] to a normalised bot score [0, 1]
         normalised = (score + 1) / 2  # 0 = max bearish, 1 = max bullish
@@ -185,7 +186,8 @@ class GoldMacroModule(BaseModule):
                 'regime_label':    regime_lbl,
                 'confidence':      confidence,
                 'size_mult':       size_mult,
-                'is_transitioning': is_transitioning,
-                'direction':       direction,
+                'is_transitioning':  is_transitioning,
+                'direction':         direction,
+                'arima_stability':   arima_stability,
             },
         )
