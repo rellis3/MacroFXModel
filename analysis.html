@@ -408,6 +408,9 @@ function runAnalysis() {
   document.getElementById('prog-fill').style.width = '0%';
   document.getElementById('btn-run').disabled = true;
 
+  const cotData = (() => { try { return JSON.parse(localStorage.getItem('cot_data') || '{}'); } catch { return {}; } })();
+  const oiData  = (() => { try { return JSON.parse(localStorage.getItem('oi_store') || '{}'); } catch { return {}; } })();
+
   _worker.postMessage({ type: 'run', payload: {
     symbols,
     cfg: {
@@ -416,7 +419,9 @@ function runAnalysis() {
       slMult:      +document.getElementById('cfg-sl').value,
       rrRatio:     +document.getElementById('cfg-tp').value,
       confTolPips: +document.getElementById('cfg-tol').value,
-    }
+    },
+    cotData,
+    oiData,
   }});
 }
 
@@ -569,45 +574,74 @@ function renderTiming(s) {
 // ─── Level Quality ────────────────────────────────────────────────────────────
 function renderLevels(s) {
   document.getElementById('tab-levels').innerHTML =
+    featureTable('Confluence Source', {
+      'Asia × Asia (yesterday\'s range)': s.byConfSource?.asia   || {n:0},
+      'Asia × Monday (week opener range)': s.byConfSource?.monday || {n:0},
+    }, s.baseline) +
+    featureTable('Fib Category', {
+      'Extension (outward — outside the range)':   s.byFibType?.ext || {n:0},
+      'Retracement (inward — inside the range)':   s.byFibType?.ret || {n:0},
+    }, s.baseline) +
     featureTable('Confluence Tightness', {
-      'Tight (same Fib or <0.2× tol)': s.byTight[true]  || {n:0},
-      'Normal (within tolerance)':      s.byTight[false] || {n:0},
+      'Tight (same Fib or <0.2× tol)': s.byTight['true']  || {n:0},
+      'Normal (within tolerance)':      s.byTight['false'] || {n:0},
     }, s.baseline) +
     featureTable('Confluence Density (overlapping Fibs)', s.byDensity, s.baseline) +
-    featureTable('Fib Level Type', s.byFib, s.baseline) +
+    featureTable('Individual Fib Level', s.byFib, s.baseline) +
+    featureTable('Touch Number (per level per day)', {
+      'First touch of level today':      s.byTouchNum?.first      || {n:0},
+      'Subsequent touch of level today': s.byTouchNum?.subsequent || {n:0},
+    }, s.baseline) +
     featureTable('Round Number Proximity', {
-      'Near round (00 or 50)': s.byRound[true]  || {n:0},
-      'Not near round':        s.byRound[false] || {n:0},
+      'Near round (00 or 50)': s.byRound['true']  || {n:0},
+      'Not near round':        s.byRound['false'] || {n:0},
     }, s.baseline) +
     featureTable('Previous Session Extreme Match', {
-      'Near prev day H/L': s.byPrevMatch[true]  || {n:0},
-      'No match':          s.byPrevMatch[false] || {n:0},
+      'Near prev day H/L': s.byPrevMatch['true']  || {n:0},
+      'No match':          s.byPrevMatch['false'] || {n:0},
     }, s.baseline) +
     featureTable('Level Freshness (days since last test)', s.byFreshness, s.baseline);
 }
 
 // ─── Market Context ───────────────────────────────────────────────────────────
 function renderRegime(s) {
+  const cotNote = `<div style="font-size:10px;color:var(--text3);margin-bottom:8px;padding:6px 8px;background:var(--s2);border-radius:5px;border-left:3px solid var(--blue)">
+    <strong>Note:</strong> COT and gamma wall data are current snapshots from the dashboard — not historical series.
+    These features show whether levels that worked historically align with <em>current</em> institutional positioning.
+  </div>`;
   document.getElementById('tab-regime').innerHTML =
     featureTable('ATR Regime (14-day rolling percentile)', {
-      'Low vol (<33rd pct)':  s.byAtrRegime.low || {n:0},
-      'Mid vol (33–67th)':    s.byAtrRegime.mid || {n:0},
-      'High vol (>67th pct)': s.byAtrRegime.high || {n:0},
+      'Low vol (<33rd pct)':  s.byAtrRegime?.low  || {n:0},
+      'Mid vol (33–67th)':    s.byAtrRegime?.mid  || {n:0},
+      'High vol (>67th pct)': s.byAtrRegime?.high || {n:0},
     }, s.baseline) +
     featureTable('ATR Sequence (3-day trend)', {
-      'Expanding (today > 3d ago)':   s.byAtrSeq.expanding  || {n:0},
-      'Contracting (today < 3d ago)': s.byAtrSeq.contracting || {n:0},
-      'Neutral':                      s.byAtrSeq.neutral     || {n:0},
+      'Expanding (today > 3d ago)':   s.byAtrSeq?.expanding   || {n:0},
+      'Contracting (today < 3d ago)': s.byAtrSeq?.contracting || {n:0},
+      'Neutral':                      s.byAtrSeq?.neutral      || {n:0},
     }, s.baseline) +
     featureTable('Asia Range Size (90-day percentile)', {
-      'Tight (<33rd pct — coiling)': s.byAsiaSize.tight  || {n:0},
-      'Normal (33–67th)':            s.byAsiaSize.normal || {n:0},
-      'Wide (>67th pct)':            s.byAsiaSize.wide   || {n:0},
+      'Tight (<33rd pct — coiling)': s.byAsiaSize?.tight  || {n:0},
+      'Normal (33–67th)':            s.byAsiaSize?.normal || {n:0},
+      'Wide (>67th pct)':            s.byAsiaSize?.wide   || {n:0},
     }, s.baseline) +
     featureTable('SMT Divergence (correlated pair)', {
-      'Confirmed divergence': s.bySmt.confirmed || {n:0},
-      'Absent':               s.bySmt.absent    || {n:0},
-      'No correlated pair':   s.bySmt.na        || {n:0},
+      'Confirmed divergence': s.bySmt?.confirmed || {n:0},
+      'Absent':               s.bySmt?.absent    || {n:0},
+      'No correlated pair':   s.bySmt?.na        || {n:0},
+    }, s.baseline) +
+    `<div class="an-card" style="margin-bottom:10px"><div class="an-card-title">Institutional Features (Snapshot)</div>${cotNote}</div>` +
+    featureTable('COT Positioning — Leveraged Fund Net (current snapshot)', {
+      'Aligned with COT direction': s.byCotBias?.aligned || {n:0},
+      'Counter COT direction':      s.byCotBias?.counter || {n:0},
+      'No COT data for pair':       s.byCotBias?.na      || {n:0},
+    }, s.baseline) +
+    featureTable('Gamma / Options Wall Proximity (current OI snapshot)', {
+      'Near call wall (resistance)': s.byGammaWall?.near_call    || {n:0},
+      'Near put wall (support)':     s.byGammaWall?.near_put     || {n:0},
+      'Near max pain':               s.byGammaWall?.near_maxpain || {n:0},
+      'Clear zone (no nearby wall)': s.byGammaWall?.clear        || {n:0},
+      'No OI data for pair':         s.byGammaWall?.na           || {n:0},
     }, s.baseline);
 }
 
@@ -682,18 +716,21 @@ function renderDecay(s) {
 // ─── Top Combinations ─────────────────────────────────────────────────────────
 function renderCombos(s) {
   const KZ_LABELS = { london_open:'London Open', ny_open:'NY Open', london_mid:'London Mid', ny_mid:'NY Mid', asia_close:'Asia Close', off_peak:'Off-Peak' };
-  function comboRow(c, i) {
-    const [kz, tight, approach, prem, atr] = c.parts;
-    const badges = [
+  function comboBadges(parts) {
+    const [kz, confSrc, tight, approach, prem, atr] = parts;
+    return [
       `<span class="combo-badge">${KZ_LABELS[kz] ?? kz}</span>`,
+      `<span class="combo-badge" style="border-color:${confSrc==='monday'?'var(--blue)':'var(--border)'}">${confSrc} conf</span>`,
       `<span class="combo-badge">${tight}</span>`,
       `<span class="combo-badge">${approach}</span>`,
       `<span class="combo-badge">${prem}</span>`,
       `<span class="combo-badge">${atr} vol</span>`,
     ].join('');
+  }
+  function comboRow(c, i) {
     return `<tr>
       <td style="font-size:10px;color:var(--text3)">#${i+1}</td>
-      <td>${badges}</td>
+      <td>${comboBadges(c.parts)}</td>
       <td class="mono">${fmtN(c.n)}</td>
       <td class="mono">${fmtPct(c.winRate)}</td>
       <td class="mono delta-pos">${fmtR(c.avgR)}</td>
@@ -701,17 +738,9 @@ function renderCombos(s) {
     </tr>`;
   }
   function worstRow(c, i) {
-    const [kz, tight, approach, prem, atr] = c.parts;
-    const badges = [
-      `<span class="combo-badge">${KZ_LABELS[kz] ?? kz}</span>`,
-      `<span class="combo-badge">${tight}</span>`,
-      `<span class="combo-badge">${approach}</span>`,
-      `<span class="combo-badge">${prem}</span>`,
-      `<span class="combo-badge">${atr} vol</span>`,
-    ].join('');
     return `<tr>
       <td style="font-size:10px;color:var(--text3)">#${i+1}</td>
-      <td>${badges}</td>
+      <td>${comboBadges(c.parts)}</td>
       <td class="mono">${fmtN(c.n)}</td>
       <td class="mono">${fmtPct(c.winRate)}</td>
       <td class="mono delta-neg">${fmtR(c.avgR)}</td>
@@ -785,10 +814,15 @@ function buildSummaryForClaude(s) {
     byBiasOk:    Object.fromEntries(Object.entries(s.byBiasOk    || {}).map(([k,d]) => [k, fmt(d,k)])),
     byJudas:     Object.fromEntries(Object.entries(s.byJudas     || {}).map(([k,d]) => [k, fmt(d,k)])),
     bySmt:       Object.fromEntries(Object.entries(s.bySmt       || {}).map(([k,d]) => [k, fmt(d,k)])),
-    byFreshness: Object.fromEntries(Object.entries(s.byFreshness || {}).map(([k,d]) => [k, fmt(d,k)])),
-    byAtrSeq:    Object.fromEntries(Object.entries(s.byAtrSeq    || {}).map(([k,d]) => [k, fmt(d,k)])),
-    byYear:      Object.fromEntries(Object.entries(s.byYear      || {}).filter(([,d]) => d.n>=10).map(([k,d]) => [k, fmt(d,k)])),
-    bySymbol:    Object.fromEntries(Object.entries(s.bySymbol    || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byFreshness:  Object.fromEntries(Object.entries(s.byFreshness  || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byAtrSeq:     Object.fromEntries(Object.entries(s.byAtrSeq     || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byConfSource: Object.fromEntries(Object.entries(s.byConfSource || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byFibType:    Object.fromEntries(Object.entries(s.byFibType    || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byTouchNum:   Object.fromEntries(Object.entries(s.byTouchNum   || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byCotBias:    Object.fromEntries(Object.entries(s.byCotBias    || {}).map(([k,d]) => [k, fmt(d,k)])),
+    byGammaWall:  Object.fromEntries(Object.entries(s.byGammaWall  || {}).filter(([,d]) => d.n>=5).map(([k,d]) => [k, fmt(d,k)])),
+    byYear:       Object.fromEntries(Object.entries(s.byYear       || {}).filter(([,d]) => d.n>=10).map(([k,d]) => [k, fmt(d,k)])),
+    bySymbol:     Object.fromEntries(Object.entries(s.bySymbol     || {}).map(([k,d]) => [k, fmt(d,k)])),
     topCombos:   (s.topCombos   || []).slice(0, 10).map(c => ({ combo: c.combo, ...fmt(c, c.combo) })),
     worstCombos: (s.worstCombos || []).slice(0,  5).map(c => ({ combo: c.combo, ...fmt(c, c.combo) })),
   };
