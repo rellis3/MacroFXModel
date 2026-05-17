@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gold Model Lab — Historical Reconstruction</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+  #labApp { padding: 0 20px 40px; max-width: 1400px; margin: 0 auto; }
+
+  /* Steps */
+  .lab-steps { display: flex; gap: 0; margin-bottom: 20px; }
+  .lab-step  { flex: 1; padding: 10px 16px; background: var(--s2); border: 1px solid var(--border);
+               font-size: 11px; font-weight: 600; color: var(--text3); display: flex;
+               align-items: center; gap: 8px; position: relative; }
+  .lab-step:not(:last-child)::after { content: '›'; position: absolute; right: -8px; top: 50%;
+               transform: translateY(-50%); font-size: 18px; color: var(--border2); z-index: 1; }
+  .lab-step.active  { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-bd); }
+  .lab-step.done    { background: var(--green-bg); color: var(--green); border-color: var(--green-bd); }
+  .lab-step-num { width: 20px; height: 20px; border-radius: 50%; background: currentColor;
+                  color: #fff; display: flex; align-items: center; justify-content: center;
+                  font-size: 10px; font-weight: 700; flex-shrink: 0; opacity: .85; }
+
+  /* Progress */
+  .lab-progress-wrap { margin-bottom: 14px; display: none; }
+  .lab-progress-wrap.visible { display: block; }
+  .lab-progress-bar  { height: 8px; border-radius: 4px; background: var(--s2); border: 1px solid var(--border); overflow: hidden; }
+  .lab-progress-fill { height: 100%; background: var(--blue); border-radius: 4px; transition: width .3s; }
+  .lab-progress-msg  { font-size: 11.5px; color: var(--text2); margin-top: 5px; font-family: 'DM Mono', monospace; }
+
+  /* Panels */
+  .lab-panel { background: var(--s1); border: 1px solid var(--border); border-radius: var(--rl);
+               padding: 18px 20px; margin-bottom: 14px; }
+  .lab-panel-title { font-size: 10px; font-weight: 600; text-transform: uppercase;
+                     letter-spacing: 1.2px; color: var(--text3); margin-bottom: 14px;
+                     display: flex; align-items: center; gap: 8px; }
+  .lab-panel-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Config grid */
+  .lab-cfg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+  @media (max-width: 800px) { .lab-cfg-grid { grid-template-columns: 1fr 1fr; } }
+  .lab-cfg-item label { font-size: 10.5px; color: var(--text3); display: block; margin-bottom: 4px; }
+  .lab-cfg-item input, .lab-cfg-item select {
+    width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--s1); color: var(--text); font-size: 12.5px; font-family: 'DM Mono', monospace; }
+
+  /* Status grid */
+  .lab-status-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 700px) { .lab-status-grid { grid-template-columns: 1fr 1fr; } }
+  .lab-status-cell { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r);
+                     padding: 10px 12px; }
+  .lab-status-label { font-size: 9px; text-transform: uppercase; letter-spacing: .8px; color: var(--text3);
+                      font-family: 'DM Mono', monospace; margin-bottom: 4px; }
+  .lab-status-val   { font-size: 14px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); }
+  .lab-status-sub   { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+  /* Stats cards */
+  .lab-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 700px) { .lab-stats-grid { grid-template-columns: 1fr; } }
+
+  /* Regime table */
+  .lab-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .lab-table th { font-size: 9.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--text3);
+                  font-weight: 600; padding: 6px 10px; text-align: left; border-bottom: 1.5px solid var(--border); }
+  .lab-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; }
+  .lab-table tr:last-child td { border-bottom: none; }
+  .wr-high { color: var(--green); font-weight: 600; }
+  .wr-mid  { color: var(--amber); }
+  .wr-low  { color: var(--red); }
+
+  /* Buttons */
+  .lab-btn { padding: 8px 20px; border-radius: 8px; border: 1.5px solid; cursor: pointer;
+             font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif;
+             display: inline-flex; align-items: center; gap: 6px; transition: all .15s; }
+  .lab-btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .lab-btn-primary:hover { background: var(--blue2); }
+  .lab-btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+  .lab-btn-green  { background: var(--green); color: #fff; border-color: var(--green); }
+  .lab-btn-green:hover { opacity: .9; }
+  .lab-btn-green:disabled { opacity: .4; cursor: not-allowed; }
+  .lab-btn-ghost  { background: none; color: var(--text2); border-color: var(--border); }
+  .lab-btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+  .lab-btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+
+  /* Live log badge */
+  .lab-live-note { font-size: 11px; color: var(--text3); font-style: italic; padding: 8px 12px;
+                   background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); }
+
+  #labResults { display: none; }
+  #labResults.visible { display: block; }
+</style>
+</head>
+<body>
+<div id="labApp">
+
+<div class="sticky-header">
+  <div class="topbar">
+    <div class="logo-box" style="background:linear-gradient(135deg,#1847c2,#6d28d9)">
+      <svg viewBox="0 0 17 17"><polyline points="1,13 5,8 9,11 16,3" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="11" r="1.5" fill="#fff"/></svg>
+    </div>
+    <div class="title-block">
+      <div class="title">Gold Model Lab</div>
+      <div class="sub">Historical Reconstruction · 5Y Feature Extraction · ML Dataset Builder</div>
+    </div>
+    <div class="spacer"></div>
+    <a href="gold.html" style="text-decoration:none"><button class="dark-btn">← Gold Model</button></a>
+    <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+  </div>
+</div>
+
+<!-- STEPS -->
+<div class="lab-steps" id="labSteps">
+  <div class="lab-step active" id="step1"><span class="lab-step-num">1</span> Load 1m Bars</div>
+  <div class="lab-step"        id="step2"><span class="lab-step-num">2</span> Load FRED History</div>
+  <div class="lab-step"        id="step3"><span class="lab-step-num">3</span> Configure &amp; Run</div>
+  <div class="lab-step"        id="step4"><span class="lab-step-num">4</span> Results &amp; Export</div>
+</div>
+
+<!-- PROGRESS BAR -->
+<div class="lab-progress-wrap" id="progressWrap">
+  <div class="lab-progress-bar"><div class="lab-progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="lab-progress-msg" id="progressMsg">Loading…</div>
+</div>
+
+<!-- STEP 1: Load 1m bars from R2 -->
+<div class="lab-panel" id="panelLoad">
+  <div class="lab-panel-title">Step 1 — Load XAU/USD 1-Minute Bars from R2</div>
+  <p style="font-size:12.5px;color:var(--text2);margin-bottom:14px">
+    Streams 5 years of 1m OHLC from R2. File: <code style="font-size:11px">XAUUSD/xauusd-m1-bid.csv</code><br>
+    Expect ~2.6M rows, ~120 MB download. Parsed in a background worker.
+  </p>
+  <div class="lab-status-grid">
+    <div class="lab-status-cell"><div class="lab-status-label">1m Bars</div><div class="lab-status-val" id="stat1mBars">—</div><div class="lab-status-sub" id="stat1mRange">not loaded</div></div>
+    <div class="lab-status-cell"><div class="lab-status-label">FRED History</div><div class="lab-status-val" id="statFredRows">—</div><div class="lab-status-sub" id="statFredRange">not loaded</div></div>
+    <div class="lab-status-cell"><div class="lab-status-label">Live Log Rows</div><div class="lab-status-val" id="statLiveRows">—</div><div class="lab-status-sub" id="statLiveRange">from dashboard sessions</div></div>
+    <div class="lab-status-cell"><div class="lab-status-label">Total Dataset</div><div class="lab-status-val" id="statTotal">—</div><div class="lab-status-sub">trading days to reconstruct</div></div>
+  </div>
+  <div class="lab-btn-row">
+    <button class="lab-btn lab-btn-primary" id="btnLoadR2">⬇ Load 1m Bars from R2</button>
+    <button class="lab-btn lab-btn-ghost"   id="btnLoadFred" disabled>⬇ Load 5Y FRED History</button>
+    <span style="font-size:11px;color:var(--text3)">Both required before reconstruction</span>
+  </div>
+</div>
+
+<!-- STEP 3: Config -->
+<div class="lab-panel" id="panelConfig">
+  <div class="lab-panel-title">Step 3 — Reconstruction Config</div>
+  <div class="lab-cfg-grid">
+    <div class="lab-cfg-item">
+      <label>SL Multiplier (× ATR)</label>
+      <input type="number" id="cfgSL" value="1.5" min="0.5" max="5" step="0.1">
+    </div>
+    <div class="lab-cfg-item">
+      <label>TP Multiplier (× ATR)</label>
+      <input type="number" id="cfgTP" value="2.5" min="0.5" max="8" step="0.1">
+    </div>
+    <div class="lab-cfg-item">
+      <label>Z-score Window (days)</label>
+      <input type="number" id="cfgZWin" value="60" min="20" max="120" step="5">
+    </div>
+    <div class="lab-cfg-item">
+      <label>Min History Before First Label</label>
+      <input type="number" id="cfgMinHist" value="30" min="10" max="90" step="5">
+    </div>
+  </div>
+  <p style="font-size:11.5px;color:var(--text3);margin-bottom:10px">
+    ATR is computed from 14 daily bars prior to each signal. SL/TP in price points ($).
+    Label = TP hit before SL on 1m bars scanning forward from next-day open.
+  </p>
+  <div class="lab-btn-row">
+    <button class="lab-btn lab-btn-primary" id="btnRun" disabled>▶ Run Reconstruction</button>
+    <span id="runNote" style="font-size:11px;color:var(--text3)">Load data first</span>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="labResults">
+
+  <!-- Stats cards -->
+  <div class="lab-stats-grid">
+    <div class="lab-panel" style="margin-bottom:0">
+      <div class="lab-panel-title">Overall Win Rate</div>
+      <div style="font-size:42px;font-weight:700;font-family:'DM Mono',monospace;text-align:center" id="statWinRate">—</div>
+      <div style="font-size:12px;color:var(--text3);text-align:center;margin-top:4px" id="statWinCount">—</div>
+    </div>
+    <div class="lab-panel" style="margin-bottom:0">
+      <div class="lab-panel-title">Dataset Coverage</div>
+      <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace" id="statCoverage">—</div>
+    </div>
+    <div class="lab-panel" style="margin-bottom:0">
+      <div class="lab-panel-title">Signal Distribution</div>
+      <div style="font-size:13px;font-family:'DM Mono',monospace" id="statSignalDist">—</div>
+    </div>
+  </div>
+
+  <!-- Regime win rates -->
+  <div class="lab-panel">
+    <div class="lab-panel-title">Win Rate by Regime</div>
+    <table class="lab-table" id="regimeTable">
+      <thead><tr><th>Regime</th><th>Trades</th><th>Win Rate</th><th>Avg Return 1D</th></tr></thead>
+      <tbody id="regimeTbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Strength win rates -->
+  <div class="lab-panel">
+    <div class="lab-panel-title">Win Rate by Signal Strength</div>
+    <table class="lab-table" id="strengthTable">
+      <thead><tr><th>Strength</th><th>Trades</th><th>Win Rate</th></tr></thead>
+      <tbody id="strengthTbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Export -->
+  <div class="lab-panel">
+    <div class="lab-panel-title">Export &amp; Live Logging</div>
+    <p style="font-size:12.5px;color:var(--text2);margin-bottom:12px">
+      Download the full feature matrix CSV for Python ML training.
+      The live log automatically appends each day you use the gold.html dashboard,
+      filling in data from April 2025 onwards.
+    </p>
+    <div class="lab-live-note" id="liveLogNote">Live log: checking localStorage…</div>
+    <div class="lab-btn-row">
+      <button class="lab-btn lab-btn-green" id="btnExport">⬇ Download CSV</button>
+      <button class="lab-btn lab-btn-ghost" id="btnExportMerged">⬇ Download CSV + Live Log (merged)</button>
+      <button class="lab-btn lab-btn-ghost" id="btnClearLive">Clear live log</button>
+    </div>
+  </div>
+
+</div><!-- /#labResults -->
+
+</div><!-- /#labApp -->
+
+<script type="module" src="./js/gold-lab-app.js"></script>
+</body>
+</html>
