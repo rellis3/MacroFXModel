@@ -219,7 +219,7 @@ export function calculateOTCForecast(bars, volRegime, macroScore, sym) {
   };
 }
 
-export function calcPositionSize(score, volRegime, transitionRisk) {
+export function calcPositionSize(score, volRegime, transitionRisk, regimeConfidenceResult) {
   const abs = Math.abs(score);
   let baseSize;
   if (abs >= 13) baseSize = 100;
@@ -228,13 +228,21 @@ export function calcPositionSize(score, volRegime, transitionRisk) {
   else if (abs >= 4) baseSize = 25;
   else baseSize = 10;
 
+  // Vol regime provides the base size multiplier (LOW=1.0, HIGH=0.6)
   let finalSize = Math.round(baseSize * volRegime.sizeMult);
 
-  if (transitionRisk && transitionRisk.riskScore > 70) {
+  // Regime confidence provides a continuous multiplier (0.25–1.0).
+  // This replaces the old binary transitionRisk.riskScore check — the continuous
+  // scale captures the full spectrum from "regime clearly identified" to
+  // "regime in flux, be defensive".
+  if (regimeConfidenceResult?.sizingMult != null) {
+    finalSize = Math.round(finalSize * regimeConfidenceResult.sizingMult);
+  } else if (transitionRisk && transitionRisk.riskScore > 70) {
+    // Legacy fallback when regime confidence engine not yet available
     finalSize = Math.round(finalSize * 0.8);
   }
 
-  return finalSize;
+  return Math.max(10, finalSize);
 }
 
 export function calculateRiskSentiment() {

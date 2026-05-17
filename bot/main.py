@@ -46,6 +46,7 @@ from modules.oi_walls import OIWallsModule
 from modules.cot_filter import COTFilterModule
 from modules.news_risk import NewsRiskModule
 from modules.gold_macro_module import GoldMacroModule
+from modules.regime_confidence_module import RegimeConfidenceModule
 
 try:
     import MetaTrader5 as mt5
@@ -68,16 +69,17 @@ log = logging.getLogger(__name__)
 
 # ── Module registry ────────────────────────────────────────────────────────────
 
-MODULE_ORDER = ['vol_gate', 'gold_macro', 'macro_regime', 'confluence', 'oi_walls', 'cot_filter', 'news_risk']
+MODULE_ORDER = ['vol_gate', 'regime_confidence', 'gold_macro', 'macro_regime', 'confluence', 'oi_walls', 'cot_filter', 'news_risk']
 
 MODULE_REGISTRY = {
-    'vol_gate':     VolGateModule,
-    'gold_macro':   GoldMacroModule,   # gold-specific two-layer macro model
-    'macro_regime': MacroRegimeModule,
-    'confluence':   ConfluenceModule,
-    'oi_walls':     OIWallsModule,
-    'cot_filter':   COTFilterModule,
-    'news_risk':    NewsRiskModule,
+    'vol_gate':          VolGateModule,
+    'regime_confidence': RegimeConfidenceModule,  # continuous sizing scalar from HMM+GARCH+ARMA
+    'gold_macro':        GoldMacroModule,          # gold-specific two-layer macro model
+    'macro_regime':      MacroRegimeModule,
+    'confluence':        ConfluenceModule,
+    'oi_walls':          OIWallsModule,
+    'cot_filter':        COTFilterModule,
+    'news_risk':         NewsRiskModule,
 }
 
 _PIP_SIZES = {
@@ -613,7 +615,10 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
     # Gold macro regime confidence feeds its own size multiplier — combines with vol sizing
     gold_result = results.get('gold_macro')
     gold_mult   = gold_result.metadata.get('size_mult', 1.0) if (gold_result and gold_result.passed) else 1.0
-    risk_pct    = (config.get('position') or {}).get('risk_pct', 1.0) * vol_mult * gold_mult
+    # Regime confidence provides a continuous multiplier based on HMM+GARCH+ARMA certainty
+    rc_result   = results.get('regime_confidence')
+    rc_mult     = rc_result.metadata.get('size_mult', 1.0) if rc_result else 1.0
+    risk_pct    = (config.get('position') or {}).get('risk_pct', 1.0) * vol_mult * gold_mult * rc_mult
 
     balance = 10_000
     if HAS_MT5 and not paper_mode:
