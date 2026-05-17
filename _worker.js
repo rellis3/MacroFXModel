@@ -197,9 +197,10 @@ function parseCFTCDisaggFile(text) {
       if (!lt) continue;
 
       // The "All" positions row — first one after the header dashes
+      // Disaggregated format has 12+ cols; legacy "other" format has 8-9 cols
       if (!posRowFound && /^All\s*:/.test(lt)) {
         const parsed = parseColonRow(lt);
-        if (parsed && parsed.nums.length >= 12) {
+        if (parsed && parsed.nums.length >= 8) {
           openInterest = parsed.oi;
           positions    = parsed.nums;
           posRowFound  = true;
@@ -215,7 +216,7 @@ function parseCFTCDisaggFile(text) {
           if (!cl) continue;
           // Changes row starts with spaces/colon, no "All"/"Old" label
           const nums = cl.replace(/,/g, '').split(/\s+/).map(Number).filter(n => !isNaN(n) && isFinite(n));
-          if (nums.length >= 12) { changes = nums; chgRowFound = true; break; }
+          if (nums.length >= 8) { changes = nums; chgRowFound = true; break; }
         }
         continue;
       }
@@ -227,10 +228,11 @@ function parseCFTCDisaggFile(text) {
           if (!tl) continue;
           if (/^All\s*:/.test(tl)) {
             const parsed = parseColonRow(tl);
-            if (parsed && parsed.nums.length >= 6) {
-              // Trader cols after OI: ProdL,ProdS,SwapL,SwapS,SwapSp,MML,MMS,...
-              numMML = parsed.nums[5] || 0;
-              numMMS = parsed.nums[6] || 0;
+            if (parsed && parsed.nums.length >= 2) {
+              // Disaggregated: ProdL,ProdS,SwapL,SwapS,SwapSp,MML,MMS,...
+              // Legacy: NonCommL,NonCommS,Comm,Total — use first two as spec traders
+              numMML = parsed.nums.length >= 6 ? (parsed.nums[5] || 0) : (parsed.nums[0] || 0);
+              numMMS = parsed.nums.length >= 7 ? (parsed.nums[6] || 0) : (parsed.nums[1] || 0);
               trdRowFound = true;
             }
             break;
@@ -240,19 +242,33 @@ function parseCFTCDisaggFile(text) {
       }
     }
 
-    if (!positions || positions.length < 12) continue;
+    if (!positions || positions.length < 8) continue;
 
     const p = positions;
     const c = changes || new Array(14).fill(0);
 
-    // Disaggregated cols (after OI stripped): ProducerL[0],ProducerS[1],ProducerSp[2],SwapL[3],SwapS[4],SwapSp[5],MML[6],MMS[7],MMSp[8],...
-    const producerL = p[0], producerS = p[1];
-    const swapL = p[3], swapS = p[4];
-    const mmL = p[6], mmS = p[7];
+    let mmL, mmS, swapL, swapS, producerL, producerS;
+    let mmNetChg, swapNetChg, producerNetChg, reportType;
 
-    const mmNetChg       = (c[6]||0) - (c[7]||0);
-    const swapNetChg     = (c[3]||0) - (c[4]||0);
-    const producerNetChg = (c[0]||0) - (c[1]||0);
+    if (p.length >= 12) {
+      // Disaggregated cols: ProducerL[0],ProducerS[1],ProducerSp[2],SwapL[3],SwapS[4],SwapSp[5],MML[6],MMS[7],...
+      producerL = p[0]; producerS = p[1];
+      swapL = p[3]; swapS = p[4];
+      mmL = p[6]; mmS = p[7];
+      mmNetChg       = (c[6]||0) - (c[7]||0);
+      swapNetChg     = (c[3]||0) - (c[4]||0);
+      producerNetChg = (c[0]||0) - (c[1]||0);
+      reportType = 'disagg';
+    } else {
+      // Legacy "Other" LOF cols: NonCommL[0],NonCommS[1],NonCommSp[2],CommL[3],CommS[4],TotalL[5],TotalS[6],NonRepL[7],NonRepS[8]
+      mmL = p[0]; mmS = p[1];          // Non-Commercial = large specs
+      producerL = p[3]; producerS = p[4]; // Commercial = hedgers
+      swapL = p[7]||0; swapS = p[8]||0;  // Non-Reportable (small traders)
+      mmNetChg       = (c[0]||0) - (c[1]||0);
+      producerNetChg = (c[3]||0) - (c[4]||0);
+      swapNetChg     = (c[7]||0) - (c[8]||0);
+      reportType = 'legacy';
+    }
 
     const levNet    = mmL - mmS;
     const amNet     = swapL - swapS;
@@ -269,7 +285,7 @@ function parseCFTCDisaggFile(text) {
       amLong: swapL,     amShort: swapS,     amNet,     amNetChg: swapNetChg,
       dealerLong: producerL, dealerShort: producerS, dealerNet, dealerNetChg: producerNetChg,
       grossRatio, crowdingPct,
-      _report: 'disagg',
+      _report: reportType,
     };
   }
 

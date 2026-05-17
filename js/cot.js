@@ -93,10 +93,11 @@ export function renderCOTCard(sym) {
   const shortPct = 100 - longPct;
   const crowded  = d.crowdingPct != null && d.crowdingPct >= 10;
   const isDisagg = d._report === 'disagg';
-  const specLabel    = isDisagg ? 'Managed Money' : 'Leveraged Funds';
-  const specSub      = isDisagg ? '(hedge funds / CTAs)' : '(specs / CTAs)';
-  const amLabel      = isDisagg ? 'Swap Dealers' : 'Asset Mgr / Institutional';
-  const dealerLabel  = isDisagg ? 'Producer / Merchant' : 'Dealer Intermediary';
+  const isLegacy = d._report === 'legacy';
+  const specLabel    = isDisagg ? 'Managed Money' : isLegacy ? 'Non-Commercial' : 'Leveraged Funds';
+  const specSub      = isDisagg ? '(hedge funds / CTAs)' : isLegacy ? '(large specs / CTAs)' : '(specs / CTAs)';
+  const amLabel      = isDisagg ? 'Swap Dealers' : isLegacy ? 'Non-Reportable' : 'Asset Mgr / Institutional';
+  const dealerLabel  = isDisagg ? 'Producer / Merchant' : isLegacy ? 'Commercial' : 'Dealer Intermediary';
 
   return `
 <div class="cot-card">
