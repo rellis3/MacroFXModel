@@ -1,20 +1,26 @@
-// watchlist.js — CSV export of daily top-starred levels for TV indicator
+// watchlist.js — CSV export of top-starred levels for TV indicator
 
-import { S } from './state.js';
 import { getDigits } from './utils.js';
 
 // ── CSV export — entry,dir,sl,tp,stars,label (TV indicator format) ────────────
+// entries: array of level objects (pass window._lastEntries or any filtered array)
 
-export function exportWatchlistCSV(pair, topN = null) {
-  const all = S.dailyWatchlist[pair];
+export function exportWatchlistCSV(pair, topN = null, entries = null) {
+  const all = entries ?? window._lastEntries ?? [];
   if (!all?.length) return null;
 
-  const levels = topN != null ? all.slice(0, topN) : all;
+  const sorted = [...all]
+    .filter(e => e.direction && (e.totalStars ?? 0) >= 4)
+    .sort((a, b) => (b.totalStars ?? 0) - (a.totalStars ?? 0) || (b.signalScore ?? 0) - (a.signalScore ?? 0));
+
+  const levels = topN != null ? sorted.slice(0, topN) : sorted;
+  if (!levels.length) return null;
+
   const digits = getDigits(pair);
   const fmt    = v => (typeof v === 'number' ? v.toFixed(digits) : (v ?? ''));
 
   const header = [
-    '# MacroFX Top Setups — ' + pair + ' — ' + (S.watchlistDate ?? new Date().toISOString().slice(0, 10)),
+    '# MacroFX Top Setups — ' + pair + ' — ' + new Date().toISOString().slice(0, 10),
     '# ' + levels.length + ' levels · ≥4★ sorted by stars then signal score',
     '# entry,dir,sl,tp,stars,label',
   ].join('\n');

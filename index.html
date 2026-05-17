@@ -232,6 +232,15 @@ Example:
         <div class="oi-hint">1–7 · only alert if entry has at least this many stars</div>
       </div>
       <div>
+        <label class="oi-lbl">Level Strength</label>
+        <select class="oi-input" id="alertMinStrength">
+          <option value="">Any grade</option>
+          <option value="strong">Strong (A / A+)</option>
+          <option value="stronger">Stronger (A+ only)</option>
+        </select>
+        <div class="oi-hint">Filter by trade grade — A+ is highest quality</div>
+      </div>
+      <div>
         <label class="oi-lbl">Cooldown (minutes)</label>
         <input class="oi-input" type="number" id="alertCooldown" value="60" min="5" max="480" step="5">
         <div class="oi-hint">Min wait before re-alerting the same level</div>
@@ -264,9 +273,15 @@ Example:
 
     <div id="alertModalStatus" class="cot-modal-status" style="min-height:18px;margin-bottom:8px"></div>
 
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:10px 12px;background:var(--bg3,#1e2130);border-radius:8px;border:1px solid var(--border,#2a2d3e)">
-      <button id="alertPushBtn" class="oi-btn" onclick="window._forceKVSync()" style="min-width:130px">🔄 Push to Bot</button>
-      <span id="alertPushStatus" style="font-size:12px;color:var(--text3,#6b7280)">Force-syncs entry data to Railway bot immediately (bypasses 30-min throttle)</span>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;padding:10px 12px;background:var(--bg3,#1e2130);border-radius:8px;border:1px solid var(--border,#2a2d3e)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="alertPushBtn" class="oi-btn" onclick="window._forceKVSync()" style="min-width:130px">📤 Push to Bot</button>
+        <span style="font-size:12px;color:var(--text3,#6b7280)">Push entry data from browser to Railway KV immediately</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="alertReloadBtn" class="oi-btn" onclick="window._reloadLevels()" style="min-width:130px">🔄 Refresh Data</button>
+        <span id="alertReloadStatus" style="font-size:12px;color:var(--text3,#6b7280)">Pull latest levels from KV into the bot now</span>
+      </div>
     </div>
 
     <div class="oi-modal-divider" style="margin:14px 0"></div>
@@ -309,11 +324,11 @@ Example:
 (function() {
   var base = window.location.origin;
   var cmds = [
-    base + '/api/levels              — all loaded levels with stars & signal score',
-    base + '/api/daily/watchlist     — today\'s selected top setups (≥4★)',
+    base + '/api/levels              — all loaded levels with stars & grade',
     base + '/api/monitor/status      — bot status, level counts, last alert',
     base + '/api/hmm/regimes         — HMM regime state per pair',
-    'curl -X POST ' + base + '/api/daily/watchlist/run   — recompute top setups now',
+    'curl -X POST ' + base + '/api/levels/reload   — pull latest KV levels into bot now',
+    '',
   ];
   cmds.forEach(function(cmd, i) {
     var el = document.getElementById('apiCmd' + (i + 1));

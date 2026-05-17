@@ -75,6 +75,7 @@ const PRICE_DIGITS = {
 const DEFAULT_CFG = {
   enabled:     false,
   minStars:    4,
+  minStrength: null, // null = any grade | 'strong' = A or A+ | 'stronger' = A+ only
   pairs:       [],
   proxPips:    { default: 5, 'XAU/USD': 15, 'NAS100_USD': 30 },
   cooldownMin: 60,
@@ -88,8 +89,7 @@ const state = {
   cooldowns:           {},   // { 'EURUSD_1.0847_long': lastSentMs }
   prices:              {},   // { 'EUR/USD': { price: n, at: ms } }
   hmmRegimes:          {},   // { 'EUR/USD': { regime, trendDir, rangeProb, ... } }
-  dailyWatchlist:      {},   // { 'EUR/USD': [{...entry, phase1Score}] } — top 6 per pair, set at 06:05 London
-  watchlistDate:       null, // 'YYYY-MM-DD' London date of last watchlist run
+  levelsLoadedDate:    null, // 'YYYY-MM-DD' London date of last daily levels load
   cfg:                 null,
   tg:                  null,
   lastRun:             null,
@@ -362,45 +362,6 @@ function formatAlert(sym, entry, price, distPips) {
 // Picks the top-starred levels per pair (≥4★ = strong, ≥5★ = prime).
 // No separate scoring layer — the star count IS the quality signal.
 
-function computeDailyWatchlist(pairs, cfg) {
-  const result   = {};
-  const minStars = cfg?.watchlist?.minStars ?? 4;
-  const topN     = cfg?.watchlist?.topN     ?? 6;
-
-  for (const sym of pairs) {
-    const bucket = state.levels[sym];
-    if (!bucket?.data?.length) continue;
-
-    const top = bucket.data
-      .filter(e => (e.totalStars ?? 0) >= minStars && e.direction)
-      .sort((a, b) =>
-        (b.totalStars ?? 0) - (a.totalStars ?? 0) ||
-        (b.signalScore ?? 0) - (a.signalScore ?? 0)
-      )
-      .slice(0, topN);
-
-    if (top.length) result[sym] = top;
-  }
-  return result;
-}
-
-async function runDailyWatchlist() {
-  const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
-  const watchlist = computeDailyWatchlist(pairs, state.cfg);
-  const dateStr   = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); // YYYY-MM-DD
-
-  state.dailyWatchlist = watchlist;
-  state.watchlistDate  = dateStr;
-
-  await kv.put('daily_watchlist', JSON.stringify({ date: dateStr, watchlist }));
-
-  const totalLevels = Object.values(watchlist).reduce((s, a) => s + a.length, 0);
-  console.log(`[WATCHLIST] Phase 1 computed for ${dateStr} — ${Object.keys(watchlist).length} pairs, ${totalLevels} levels`);
-  for (const [sym, levels] of Object.entries(watchlist)) {
-    console.log(`  ${sym}: ${levels.map(l => `${l.price}(${l.phase1Score}pt)`).join(', ')}`);
-  }
-}
-
 // ── Main monitoring tick ──────────────────────────────────────────────────────
 
 async function monitorTick() {
@@ -420,18 +381,20 @@ async function monitorTick() {
     // Reload Telegram + alert config from KV every 60 s
     if (now - state.cfgLoadedAt > 60_000) await reloadConfig();
 
-    // Daily watchlist Phase 1 — runs once at 06:05 London (Asia close + 5 min buffer)
+    // Daily levels load — once at 06:05 London (Asia close + 5 min buffer)
+    // Manual reload available via POST /api/levels/reload
     {
-      const ldn = new Date().toLocaleString('en-US', { timeZone: 'Europe/London', hour12: false, hour: '2-digit', minute: '2-digit' });
-      const [lh, lm] = ldn.split(':').map(Number);
       const todayLdn = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-      if (lh === 6 && lm >= 5 && lm <= 9 && state.watchlistDate !== todayLdn) {
-        runDailyWatchlist().catch(e => console.error('[WATCHLIST] Error:', e.message));
+      if (state.levelsLoadedDate !== todayLdn) {
+        const ldn = new Date().toLocaleString('en-US', { timeZone: 'Europe/London', hour12: false, hour: '2-digit', minute: '2-digit' });
+        const [lh, lm] = ldn.split(':').map(Number);
+        if (lh === 6 && lm >= 5 && lm <= 9) {
+          await reloadLevels();
+          state.levelsLoadedDate = todayLdn;
+          console.log(`[LEVELS] Daily load at 06:05 London — ${todayLdn}`);
+        }
       }
     }
-
-    // Reload entry levels from KV every 5 min
-    if (now - state.levelsLoadedAt > 300_000) await reloadLevels();
 
     if (!state.cfg?.enabled || !state.tg?.token || !state.tg?.chatId) return;
 
@@ -467,6 +430,9 @@ async function monitorTick() {
       for (const entry of sortedEntries) {
         if ((entry.totalStars ?? 0) < (state.cfg.minStars ?? 4))                               { skipStars++;   continue; }
         if (!entry.direction)                                                                    { skipDir++;     continue; }
+        // minStrength grade filter: 'strong' = A or A+, 'stronger' = A+ only
+        if (state.cfg.minStrength === 'strong'   && entry.grade !== 'A' && entry.grade !== 'A+') { skipScore++; continue; }
+        if (state.cfg.minStrength === 'stronger' && entry.grade !== 'A+')                        { skipScore++; continue; }
         // onlyAligned: only filter when signalAligned is explicitly false (browser-evaluated).
         // Server-side entries omit the field entirely — treat as "unknown", let through.
         if (state.cfg.onlyAligned && entry.signalAligned === false)                            { skipAligned++; continue; }
@@ -734,16 +700,13 @@ app.get('/api/levels', (_req, res) => {
   res.json({ loadedAt: state.levelsLoadedAt ? new Date(state.levelsLoadedAt).toISOString() : null, pairs: out });
 });
 
-// Daily watchlist — top-starred levels selected at London open
-app.get('/api/daily/watchlist', (_req, res) => {
-  res.json({ date: state.watchlistDate, watchlist: state.dailyWatchlist });
-});
-
-// Manually trigger a watchlist recompute (ignores date guard)
-app.post('/api/daily/watchlist/run', async (_req, res) => {
+// Manual levels reload — pull latest KV data into memory immediately
+app.post('/api/levels/reload', async (_req, res) => {
   try {
-    await runDailyWatchlist();
-    res.json({ ok: true, date: state.watchlistDate, watchlist: state.dailyWatchlist });
+    await reloadLevels();
+    const counts = Object.fromEntries(DEFAULT_PAIRS.map(p => [p, state.levels[p]?.data?.length ?? 0]));
+    console.log('[LEVELS] Manual reload triggered');
+    res.json({ ok: true, loadedAt: new Date(state.levelsLoadedAt).toISOString(), counts });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -988,19 +951,6 @@ async function runLevelsRefresh() {
 await kv.load();
 await reloadConfig();
 await reloadLevels();
-
-// Restore daily watchlist from KV so a Railway restart doesn't clear the day's levels
-{
-  const saved = await kv.get('daily_watchlist');
-  if (saved) {
-    try {
-      const { date, watchlist } = JSON.parse(saved);
-      state.dailyWatchlist = watchlist ?? {};
-      state.watchlistDate  = date ?? null;
-      if (date) console.log(`[WATCHLIST] Restored from KV — ${date}, ${Object.keys(watchlist ?? {}).length} pairs`);
-    } catch { /* ignore corrupt data */ }
-  }
-}
 
 setInterval(monitorTick, MONITOR_MS);
 monitorTick().catch(console.error);
