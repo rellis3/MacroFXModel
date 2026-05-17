@@ -199,10 +199,12 @@ function simulateTrade(bars5, touchIdx, level, dir, atrPrice, pip, slMult, rrRat
     const b = bars5[i];
     const fav = dir === 'long' ? (b.h - level) / pip : (level - b.l) / pip;
     const adv = dir === 'long' ? (level - b.l) / pip : (b.h - level) / pip;
-    if (fav > mfe) mfe = fav;
-    if (adv > mae) mae = adv;
 
     if (firstResult === null) {
+      // Only track MFE/MAE up to first exit — post-exit movement must not
+      // inflate these values or the sweep re-simulation misclassifies trades.
+      if (fav > mfe) mfe = fav;
+      if (adv > mae) mae = adv;
       if (dir === 'long') {
         if (b.l <= level - slDist) { firstResult = 'sl'; firstR = -1; }
         else if (b.h >= level + tpDist) { firstResult = 'tp'; firstR = rrRatio; }
