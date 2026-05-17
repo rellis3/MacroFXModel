@@ -421,6 +421,8 @@ function analyzeSymbol(symbol, cfg, cotData, oiData) {
     const d1 = by1?.[date] || [];
     const rawEntryBars  = (useM1 && d1.length > 30) ? d1 : (by5[date] || []);
     const entryBars     = rawEntryBars.filter(b => b.lHour >= 8 && b.lHour < 20);
+    // Simulation bars extend past 20:00 so EOD exit fires with the real session close.
+    const simBars       = rawEntryBars.filter(b => b.lHour >= 8);
     const smtBarsDay    = smtBy5[date] || [];
 
     // Per-day touch tracker per price bucket (first vs subsequent)
@@ -470,7 +472,8 @@ function analyzeSymbol(symbol, cfg, cotData, oiData) {
         const prior24 = entryBars.slice(Math.max(0, bi - 24), bi);
         const judas = detectJudas(prior24, prevDayHigh, prevDayLow, pip);
 
-        const trade = simulateTrade(entryBars, bi, level, dir, atrPrice, pip, slMult, rrRatio);
+        const simBi = simBars.findIndex(b => b.ts === bar.ts);
+        const trade = simulateTrade(simBars, simBi < 0 ? bi : simBi, level, dir, atrPrice, pip, slMult, rrRatio);
         if (!trade) { lastTouchBi = bi; continue; }
 
         // Touch number for this price bucket today

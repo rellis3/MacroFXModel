@@ -1902,13 +1902,13 @@ function rpCostChanged() {
 function rpSlModeChanged() {
   const mode = document.getElementById('rp-sl-mode').value;
   const valEl = document.getElementById('rp-sl-val');
-  if (mode === 'atr' && !valEl.value) valEl.value = '0.5';
+  if (mode === 'atr' && !valEl.value) valEl.value = '1';
   rpOptionsChanged();
 }
 function rpTpModeChanged() {
   const mode = document.getElementById('rp-tp-mode').value;
   const valEl = document.getElementById('rp-tp-val');
-  if (mode === 'atr' && !valEl.value) valEl.value = '1.5';
+  if (mode === 'atr' && !valEl.value) valEl.value = '2.2';
   rpOptionsChanged();
 }
 
