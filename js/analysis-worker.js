@@ -1,13 +1,12 @@
 // ══════════════════════════════════════════════════════════════════════════════
 // analysis-worker.js — Deep statistical analysis engine for Asia/Monday model
 // Runs as a Web Worker. Processes M5+M30 CSV bars, detects confluence levels,
-// records 15+ features per touch, aggregates statistics for the analysis page.
+// records 22+ features per touch, aggregates statistics for the analysis page.
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ─── Fib extensions projected from Asia range ─────────────────────────────────
 const FEXT = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0];
+const FRET = [0.382, 0.5, 0.618]; // inner retracements inside the range
 
-// ─── Kill zone windows (London time, hours) ───────────────────────────────────
 const KILL_ZONES = [
   { id: 'asia_close',   label: 'Asia Close (05–07)',  h0: 5,  h1: 7  },
   { id: 'london_open',  label: 'London Open (07–10)', h0: 7,  h1: 10 },
@@ -16,17 +15,21 @@ const KILL_ZONES = [
   { id: 'ny_mid',       label: 'NY Mid (16–20)',      h0: 16, h1: 20 },
 ];
 
-// ─── Correlated pairs for SMT divergence ─────────────────────────────────────
 const SMT_MAP = {
   EURUSD: 'GBPUSD', GBPUSD: 'EURUSD',
   USDJPY: 'GBPJPY', GBPJPY: 'USDJPY',
   AUDUSD: 'NZDUSD', NZDUSD: 'AUDUSD',
 };
 
-// ─── State ────────────────────────────────────────────────────────────────────
-const _bars = {}; // { [symbol]: { m1:[], m5:[], m30:[] } }
+// Dashboard COT data uses slash notation for keys
+const COT_SYM = {
+  EURUSD: 'EUR/USD', GBPUSD: 'GBP/USD', USDJPY: 'JPY',
+  AUDUSD: 'AUD/USD', NZDUSD: 'NZD/USD', USDCAD: 'CAD',
+  XAUUSD: 'Gold',    GBPJPY: null,
+};
 
-// ─── Entry point ──────────────────────────────────────────────────────────────
+const _bars = {};
+
 self.onmessage = ({ data }) => {
   const { type, payload } = data;
   if (type === 'parse') handleParse(payload);
@@ -44,7 +47,7 @@ function handleParse({ symbol, tf, text }) {
     const p = row.split(',');
     if (p.length < 5) continue;
     const ts = parseInt(p[0], 10);
-    if (!isFinite(ts) || ts < 1_000_000_000_000) continue; // require ms timestamp
+    if (!isFinite(ts) || ts < 1_000_000_000_000) continue;
     const o = +p[1], h = +p[2], l = +p[3], c = +p[4];
     if (!isFinite(o) || h < l) continue;
     bars.push({ ts, o, h, l, c, ...londonTime(ts) });
@@ -56,26 +59,26 @@ function handleParse({ symbol, tf, text }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// LONDON TIME (handles UK DST: last Sun Mar → last Sun Oct)
+// LONDON TIME
 // ══════════════════════════════════════════════════════════════════════════════
 function londonTime(ms) {
   const d = new Date(ms);
   const y = d.getUTCFullYear();
-  const dst0 = lastSundayMs(y, 2) + 3_600_000; // Last Sun Mar 01:00 UTC
-  const dst1 = lastSundayMs(y, 9) + 3_600_000; // Last Sun Oct 01:00 UTC
+  const dst0 = lastSundayMs(y, 2) + 3_600_000;
+  const dst1 = lastSundayMs(y, 9) + 3_600_000;
   const off  = (ms >= dst0 && ms < dst1) ? 3_600_000 : 0;
   const t    = new Date(ms + off);
   return {
     lDate:  t.toISOString().slice(0, 10),
     lHour:  t.getUTCHours(),
     lMin:   t.getUTCMinutes(),
-    lDay:   t.getUTCDay(),       // 0=Sun…6=Sat
-    lMonth: t.getUTCMonth(),     // 0–11
+    lDay:   t.getUTCDay(),
+    lMonth: t.getUTCMonth(),
     lYear:  t.getUTCFullYear(),
   };
 }
 function lastSundayMs(y, m) {
-  const d = new Date(Date.UTC(y, m + 1, 0)); // last day of month
+  const d = new Date(Date.UTC(y, m + 1, 0));
   while (d.getUTCDay() !== 0) d.setUTCDate(d.getUTCDate() - 1);
   return d.getTime();
 }
@@ -91,13 +94,10 @@ function getPip(sym) {
 
 function groupByDate(bars) {
   const m = {};
-  for (const b of bars) {
-    (m[b.lDate] ??= []).push(b);
-  }
+  for (const b of bars) { (m[b.lDate] ??= []).push(b); }
   return m;
 }
 
-// Rolling daily ATR (14-day average true range, price units)
 function rollingATR(dayHigh, dayLow, prevClose, atrBuf) {
   const tr = prevClose != null
     ? Math.max(dayHigh - dayLow, Math.abs(dayHigh - prevClose), Math.abs(dayLow - prevClose))
@@ -107,35 +107,46 @@ function rollingATR(dayHigh, dayLow, prevClose, atrBuf) {
   return atrBuf.reduce((s, v) => s + v, 0) / atrBuf.length;
 }
 
-// Fib levels: project from Asia range in both directions
-function genFibs(asiaH, asiaL) {
-  const range = asiaH - asiaL;
+// Fib extensions outward + Fib retracements inward from a session range
+// source: 'asia' | 'monday' — tracked through confluence detection
+function genFibs(h, l, source = 'asia') {
+  const range = h - l;
   const out = [];
   for (const f of FEXT) {
-    out.push({ fib: f,  price: asiaH + range * f, side: 'resist' }); // above → short
-    out.push({ fib: -f, price: asiaL - range * f, side: 'support' }); // below → long
+    out.push({ fib: f,       price: h + range * f, side: 'resist',  source, fibType: 'ext' });
+    out.push({ fib: -f,      price: l - range * f, side: 'support', source, fibType: 'ext' });
+  }
+  for (const f of FRET) {
+    // Inner level — direction determined at touch time from approach
+    out.push({ fib: `R${f}`, price: h - range * f, side: 'inner',   source, fibType: 'ret' });
   }
   return out;
 }
 
-// Confluence: today's Fib within tolerance of yesterday's Fib
+// Confluence: today's Fib within tolerance of any prev-session Fib (Asia or Monday)
 function detectConfluences(todayFibs, prevFibs, tolPrice) {
   const raw = [];
   for (const t of todayFibs) {
     for (const p of prevFibs) {
       const dist = Math.abs(t.price - p.price);
       if (dist <= tolPrice) {
-        raw.push({ price: (t.price + p.price) / 2, todayFib: t.fib, prevFib: p.fib, side: t.side, dist });
+        raw.push({
+          price: (t.price + p.price) / 2,
+          todayFib: t.fib, prevFib: p.fib,
+          side: t.side, dist,
+          hasMondayFib: p.source === 'monday',
+          fibType: t.fibType,
+        });
       }
     }
   }
-  // Merge clusters within 0.5 × tolPrice
   const merged = [];
   for (const r of raw.sort((a, b) => a.price - b.price)) {
     const existing = merged.find(m => Math.abs(m.price - r.price) < tolPrice * 0.5);
     if (existing) {
       existing.density++;
       existing.isTight = existing.isTight || r.dist < tolPrice * 0.2;
+      if (r.hasMondayFib) existing.hasMondayFib = true;
     } else {
       merged.push({ ...r, density: 1, isTight: r.dist < tolPrice * 0.2 });
     }
@@ -147,13 +158,11 @@ function getKillZone(hour) {
   return KILL_ZONES.find(z => hour >= z.h0 && hour < z.h1)?.id ?? 'off_peak';
 }
 
-// Near X.X000 or X.X500 (50-pip round numbers for FX; 1-pip for JPY/Gold)
 function isNearRound(price, pip) {
   const inPips = Math.round(price / pip);
   return inPips % 50 < 8 || inPips % 50 > 42;
 }
 
-// Monday of the week (for weekly open tracking)
 function weekMonday(dateStr) {
   const d = new Date(dateStr + 'T12:00:00Z');
   const day = d.getUTCDay();
@@ -162,7 +171,6 @@ function weekMonday(dateStr) {
   return d.toISOString().slice(0, 10);
 }
 
-// Rank of value in a sorted array → 0–1 percentile
 function pct(sorted, val) {
   if (sorted.length < 2) return 0.5;
   let lo = 0, hi = sorted.length - 1;
@@ -174,8 +182,7 @@ function pct(sorted, val) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// TRADE SIMULATION  (uses M5 bars from touch bar onwards)
-// Returns { result, r, mfe, mae } or null if no exit found
+// TRADE SIMULATION
 // ══════════════════════════════════════════════════════════════════════════════
 function simulateTrade(bars5, touchIdx, level, dir, atrPrice, pip, slMult, rrRatio) {
   const slDist = atrPrice * slMult;
@@ -208,7 +215,7 @@ function simulateTrade(bars5, touchIdx, level, dir, atrPrice, pip, slMult, rrRat
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// FEATURE: Judas swing (session open swept prev session extreme before touch)
+// FEATURE: Judas swing
 // ══════════════════════════════════════════════════════════════════════════════
 function detectJudas(barsBeforeTouch, prevHigh, prevLow, pip) {
   if (!prevHigh || !prevLow) return false;
@@ -218,7 +225,6 @@ function detectJudas(barsBeforeTouch, prevHigh, prevLow, pip) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // FEATURE: SMT divergence at time of touch
-// Primary makes a new session high/low that the correlated pair does NOT match
 // ══════════════════════════════════════════════════════════════════════════════
 function detectSMT(primaryBars, corBars, touchTs, dir) {
   if (!corBars?.length) return 'na';
@@ -227,14 +233,43 @@ function detectSMT(primaryBars, corBars, touchTs, dir) {
   if (pri.length < 6 || cor.length < 6) return 'na';
   const priH = Math.max(...pri.map(b => b.h)), priL = Math.min(...pri.map(b => b.l));
   const corH = Math.max(...cor.map(b => b.h)), corL = Math.min(...cor.map(b => b.l));
-  // Divergence: one makes extreme the other doesn't (normalised — ignore scale diffs)
   if (dir === 'short') return corH > priH ? 'confirmed' : 'absent';
   if (dir === 'long')  return corL < priL ? 'confirmed' : 'absent';
   return 'na';
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// LEVEL FRESHNESS — days since this price zone was last tested
+// FEATURE: COT positioning alignment
+// cotData = { 'EUR/USD': { levNet, ... } } — leveraged-fund net position
+// ══════════════════════════════════════════════════════════════════════════════
+function cotBiasCheck(symbol, dir, cotData) {
+  const cotKey = COT_SYM[symbol];
+  if (!cotKey || !cotData?.[cotKey]) return 'na';
+  const levNet = cotData[cotKey]?.levNet;
+  if (levNet == null || isNaN(+levNet)) return 'na';
+  const bullish = +levNet > 0;
+  if (dir === 'long'  &&  bullish) return 'aligned';
+  if (dir === 'short' && !bullish) return 'aligned';
+  return 'counter';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FEATURE: Gamma wall proximity (current OI snapshot — not historical data)
+// oiData = { 'EUR/USD': { callWall, putWall, maxPain, ... } }
+// ══════════════════════════════════════════════════════════════════════════════
+function gammaWallCheck(level, symbol, oiData, pip) {
+  const slashKey = symbol.length === 6 ? symbol.slice(0,3) + '/' + symbol.slice(3) : symbol;
+  const oi = oiData?.[slashKey] || oiData?.[symbol];
+  if (!oi) return 'na';
+  const thr = 30 * pip;
+  if (oi.callWall != null && Math.abs(level - oi.callWall) < thr) return 'near_call';
+  if (oi.putWall  != null && Math.abs(level - oi.putWall)  < thr) return 'near_put';
+  if (oi.maxPain  != null && Math.abs(level - oi.maxPain)  < thr) return 'near_maxpain';
+  return 'clear';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LEVEL FRESHNESS
 // ══════════════════════════════════════════════════════════════════════════════
 function freshnessLabel(daysSince) {
   if (daysSince >= 7)  return 'fresh_7d+';
@@ -244,14 +279,14 @@ function freshnessLabel(daysSince) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MAIN ANALYSIS RUNNER
+// MAIN RUNNER
 // ══════════════════════════════════════════════════════════════════════════════
-function handleRun({ symbols, cfg }) {
+function handleRun({ symbols, cfg, cotData = {}, oiData = {} }) {
   const allTouches = [];
   for (let si = 0; si < symbols.length; si++) {
     const sym = symbols[si];
     self.postMessage({ type: 'progress', pct: Math.round(si / symbols.length * 85), label: `Analysing ${sym}…` });
-    allTouches.push(...analyzeSymbol(sym, cfg));
+    allTouches.push(...analyzeSymbol(sym, cfg, cotData, oiData));
   }
   self.postMessage({ type: 'progress', pct: 92, label: 'Aggregating statistics…' });
   const stats = aggregateStats(allTouches);
@@ -261,14 +296,14 @@ function handleRun({ symbols, cfg }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // PER-SYMBOL ANALYSIS LOOP
 // ══════════════════════════════════════════════════════════════════════════════
-function analyzeSymbol(symbol, cfg) {
+function analyzeSymbol(symbol, cfg, cotData, oiData) {
   const pip    = getPip(symbol);
   const bars30 = _bars[symbol]?.m30 || [];
   const bars5  = _bars[symbol]?.m5  || [];
   if (bars30.length < 200 || bars5.length < 200) return [];
 
-  const by30 = groupByDate(bars30);
-  const by5  = groupByDate(bars5);
+  const by30   = groupByDate(bars30);
+  const by5    = groupByDate(bars5);
   const smtSym = SMT_MAP[symbol];
   const smtBy5 = smtSym ? groupByDate(_bars[smtSym]?.m5 || []) : {};
 
@@ -276,13 +311,13 @@ function analyzeSymbol(symbol, cfg) {
     .filter(d => d >= (cfg.startDate || '2020-01-01') && d <= (cfg.endDate || '2099-01-01'))
     .sort();
 
-  // Rolling history buffers
-  const atrBuf        = [];   // for 14-day ATR
-  const atrHistory    = [];   // sorted, for percentile
-  const asiaHistory   = [];   // sorted Asia range pips
-  const levelTested   = {};   // { priceBucket: lastDate } for freshness
-  const monthlyOpens  = {};
-  const weeklyOpens   = {};
+  const atrBuf          = [];
+  const atrHistory      = [];
+  const asiaHistory     = [];
+  const levelTested     = {};   // price-bucket → last test date
+  const monthlyOpens    = {};
+  const weeklyOpens     = {};
+  const mondayFibsByWeek = {};  // weekKey → Monday's Asia Fibs
 
   let prevFibs     = [];
   let prevDayHigh  = null;
@@ -290,8 +325,8 @@ function analyzeSymbol(symbol, cfg) {
   let prevDayClose = null;
   const touches    = [];
 
-  const slMult  = cfg.slMult  ?? 1.5;
-  const rrRatio = cfg.rrRatio ?? 2.0;
+  const slMult  = cfg.slMult     ?? 1.5;
+  const rrRatio = cfg.rrRatio    ?? 2.0;
   const tolPips = cfg.confTolPips ?? 2;
 
   for (const date of dates) {
@@ -299,128 +334,146 @@ function analyzeSymbol(symbol, cfg) {
     const d5  = by5[date] || [];
     if (!d30?.length) continue;
     const dow = d30[0].lDay;
-    if (dow === 0 || dow === 6) continue; // skip weekends
+    if (dow === 0 || dow === 6) continue;
 
-    // ── Asia range (00:00–06:00 London) ─────────────────────────────────────
+    const weekKey  = weekMonday(date);
+    const monthKey = date.slice(0, 7);
+
+    // ── Asia range 00:00–06:00 London ──────────────────────────────────────
     const asia = d30.filter(b => b.lHour >= 0 && b.lHour < 6);
     if (asia.length < 2) { prevFibs = []; continue; }
     const asiaH = Math.max(...asia.map(b => b.h));
     const asiaL = Math.min(...asia.map(b => b.l));
     const asiaRangePips = (asiaH - asiaL) / pip;
 
-    // Asia range percentile (vs trailing 90 sessions)
-    const asiaSorted = [...asiaHistory].sort((a, b) => a - b);
+    const asiaSorted  = [...asiaHistory].sort((a, b) => a - b);
     const asiaRankPct = pct(asiaSorted, asiaRangePips);
-    const asiaSize = asiaRankPct < 0.33 ? 'tight' : asiaRankPct < 0.67 ? 'normal' : 'wide';
+    const asiaSize    = asiaRankPct < 0.33 ? 'tight' : asiaRankPct < 0.67 ? 'normal' : 'wide';
     asiaHistory.push(asiaRangePips);
     if (asiaHistory.length > 90) asiaHistory.shift();
 
-    // ── Day ATR (14-day rolling, price units) ──────────────────────────────
-    const dayH = Math.max(...d30.map(b => b.h));
-    const dayL = Math.min(...d30.map(b => b.l));
-    const dayC = d30[d30.length - 1].c;
+    // ── Monday range — store this week's Monday Fibs ───────────────────────
+    if (dow === 1) {
+      mondayFibsByWeek[weekKey] = genFibs(asiaH, asiaL, 'monday');
+    }
+    // Tue–Fri: include Monday's Fibs alongside yesterday's in confluence detection
+    const monFibs     = dow !== 1 ? (mondayFibsByWeek[weekKey] || []) : [];
+
+    // ── Day ATR ────────────────────────────────────────────────────────────
+    const dayH     = Math.max(...d30.map(b => b.h));
+    const dayL     = Math.min(...d30.map(b => b.l));
+    const dayC     = d30[d30.length - 1].c;
     const atrPrice = rollingATR(dayH, dayL, prevDayClose, atrBuf);
 
-    const atrSorted = [...atrHistory].sort((a, b) => a - b);
+    const atrSorted  = [...atrHistory].sort((a, b) => a - b);
     const atrRankPct = pct(atrSorted, atrPrice);
-    const atrRegime = atrRankPct < 0.33 ? 'low' : atrRankPct < 0.67 ? 'mid' : 'high';
+    const atrRegime  = atrRankPct < 0.33 ? 'low' : atrRankPct < 0.67 ? 'mid' : 'high';
     atrHistory.push(atrPrice);
     if (atrHistory.length > 90) atrHistory.shift();
 
-    // ATR sequence: is current ATR expanding or contracting vs 3 days ago?
     const last3atr = atrHistory.slice(-3);
-    const atrSeq = last3atr.length >= 2
+    const atrSeq   = last3atr.length >= 2
       ? last3atr.at(-1) > last3atr[0] ? 'expanding' : 'contracting'
       : 'neutral';
 
-    // ── Reference levels for bias ─────────────────────────────────────────
-    const monthKey  = date.slice(0, 7);
-    const weekKey   = weekMonday(date);
+    // ── Reference levels ───────────────────────────────────────────────────
     if (!(monthKey in monthlyOpens)) monthlyOpens[monthKey] = d30[0].o;
     if (!(weekKey  in weeklyOpens))  weeklyOpens[weekKey]   = d30[0].o;
     const monthOpen = monthlyOpens[monthKey];
     const weekOpen  = weeklyOpens[weekKey];
 
-    // ── Confluence detection ──────────────────────────────────────────────
-    const todayFibs = genFibs(asiaH, asiaL);
-    const confs     = detectConfluences(todayFibs, prevFibs, tolPips * pip);
+    // ── Confluence: today's Asia Fibs × (yesterday's Asia + Monday's Fibs) ─
+    const todayFibs   = genFibs(asiaH, asiaL, 'asia');
+    const allPrevFibs = [...prevFibs, ...monFibs];
+    const confs       = allPrevFibs.length
+      ? detectConfluences(todayFibs, allPrevFibs, tolPips * pip)
+      : [];
 
-    // Entry window: M5 bars 08:00–20:00
-    const entryBars = d5.filter(b => b.lHour >= 8 && b.lHour < 20);
+    if (!confs.length) {
+      prevFibs     = todayFibs;
+      prevDayHigh  = dayH;
+      prevDayLow   = dayL;
+      prevDayClose = dayC;
+      continue;
+    }
+
+    const entryBars  = d5.filter(b => b.lHour >= 8 && b.lHour < 20);
     const smtBarsDay = smtBy5[date] || [];
 
-    // ── Scan touches per confluence level ─────────────────────────────────
+    // Per-day touch tracker per price bucket (first vs subsequent)
+    const dailyTouchCount = {};
+
     for (const conf of confs) {
       const level = conf.price;
       if (level <= 0) continue;
-      const dir  = conf.side === 'resist' ? 'short' : 'long';
 
-      // Round number
-      const isRound = isNearRound(level, pip);
-
-      // Previous session extreme match (within 10 pips)
+      const isRound   = isNearRound(level, pip);
       const prevMatch = prevDayHigh != null
         && (Math.abs(level - prevDayHigh) < 10 * pip || Math.abs(level - prevDayLow) < 10 * pip);
 
-      // Level freshness: days since this price bucket was last tested
-      const bucket = String(Math.round(level / (10 * pip))); // 10-pip bucket key
-      const lastTestedDate = levelTested[bucket];
-      let daysSince = 999;
-      if (lastTestedDate) {
-        daysSince = Math.round((new Date(date) - new Date(lastTestedDate)) / 86_400_000);
-      }
-      const freshness = freshnessLabel(daysSince);
+      const priceBucket = String(Math.round(level / (10 * pip)));
+      const lastTested  = levelTested[priceBucket];
+      const daysSince   = lastTested
+        ? Math.round((new Date(date) - new Date(lastTested)) / 86_400_000)
+        : 999;
+      const freshness   = freshnessLabel(daysSince);
+      const confSource  = conf.hasMondayFib ? 'monday' : 'asia';
 
       let lastTouchBi = -99;
       for (let bi = 0; bi < entryBars.length; bi++) {
         const bar = entryBars[bi];
-        if (bi - lastTouchBi < 3) continue; // 3-bar cooldown between touches
-        if (bar.l > level || bar.h < level) continue; // not touching level
-
-        // ── Features ─────────────────────────────────────────────────────
-        const kz = getKillZone(bar.lHour);
-
-        // Judas: price swept prev session extreme before this touch
-        const prior24 = entryBars.slice(Math.max(0, bi - 24), bi);
-        const judas   = detectJudas(prior24, prevDayHigh, prevDayLow, pip);
+        if (bi - lastTouchBi < 3) continue;
+        if (bar.l > level || bar.h < level) continue;
 
         // Approach direction (last 6 bars before touch)
-        const prev6    = entryBars.slice(Math.max(0, bi - 6), bi);
-        const appFrom  = prev6.length ? (prev6[0].c > level ? 'above' : 'below') : 'unknown';
-        const correctApproach = (dir === 'short' && appFrom === 'below') ||
-                                (dir === 'long'  && appFrom === 'above');
+        const prev6   = entryBars.slice(Math.max(0, bi - 6), bi);
+        const appFrom = prev6.length ? (prev6[0].c > level ? 'above' : 'below') : 'unknown';
 
-        // Premium / discount (price vs weekly open)
-        const premDisc = bar.c >= weekOpen ? 'premium' : 'discount';
-        const biasOk   = (dir === 'short' && premDisc === 'premium') ||
-                         (dir === 'long'  && premDisc === 'discount');
+        // For inner Fib levels, direction is inferred from approach
+        const dir = conf.side === 'resist'  ? 'short'
+                  : conf.side === 'support' ? 'long'
+                  : (appFrom === 'above' ? 'long' : 'short');
 
-        // Monthly open alignment
+        const correctApproach = conf.side === 'inner'
+          ? true
+          : (dir === 'short' && appFrom === 'below') || (dir === 'long' && appFrom === 'above');
+
+        const premDisc  = bar.c >= weekOpen  ? 'premium'  : 'discount';
+        const biasOk    = (dir === 'short' && premDisc === 'premium') ||
+                          (dir === 'long'  && premDisc === 'discount');
         const monthBias = ((dir === 'short') === (bar.c > monthOpen)) ? 'aligned' : 'counter';
 
-        // SMT divergence
-        const smt = detectSMT(entryBars, smtBarsDay, bar.ts, dir);
+        const smt   = detectSMT(entryBars, smtBarsDay, bar.ts, dir);
+        const prior24 = entryBars.slice(Math.max(0, bi - 24), bi);
+        const judas = detectJudas(prior24, prevDayHigh, prevDayLow, pip);
 
-        // ── Trade simulation ──────────────────────────────────────────────
         const trade = simulateTrade(entryBars, bi, level, dir, atrPrice, pip, slMult, rrRatio);
         if (!trade) { lastTouchBi = bi; continue; }
 
-        // Update freshness tracker on successful touch
-        levelTested[bucket] = date;
+        // Touch number for this price bucket today
+        dailyTouchCount[priceBucket] = (dailyTouchCount[priceBucket] || 0) + 1;
+        const touchNumLabel = dailyTouchCount[priceBucket] === 1 ? 'first' : 'subsequent';
+
+        // Institutional features (current snapshots, not historical)
+        const cotBias  = cotBiasCheck(symbol, dir, cotData);
+        const gwall    = gammaWallCheck(level, symbol, oiData, pip);
+
+        levelTested[priceBucket] = date;
 
         touches.push({
-          symbol,
-          date,
-          year:      String(bar.lYear),
-          quarter:   `${bar.lYear} Q${Math.ceil((bar.lMonth + 1) / 3)}`,
-          month:     monthKey,
-          dow,                      // 1=Mon…5=Fri
-          dowLabel:  ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', '', ''][dow],
-          hour:      bar.lHour,
-          kz,
-          fibLabel:  fibLabel(conf.todayFib),
-          isTight:   conf.isTight,
-          density:   Math.min(conf.density, 3),
+          symbol, date,
+          year:     String(bar.lYear),
+          quarter:  `${bar.lYear} Q${Math.ceil((bar.lMonth + 1) / 3)}`,
+          month:    monthKey,
+          dow,
+          dowLabel: ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', '', ''][dow],
+          hour:     bar.lHour,
+          kz:       getKillZone(bar.lHour),
+          fibLabel: fibLabel(conf.todayFib),
+          fibType:  conf.fibType,
+          isTight:  conf.isTight,
+          density:  Math.min(conf.density, 3),
+          confSource,
           asiaSize,
           atrRegime,
           atrSeq,
@@ -428,21 +481,23 @@ function analyzeSymbol(symbol, cfg) {
           prevMatch,
           freshness,
           judas,
-          approach:  correctApproach ? 'correct' : 'counter',
+          approach:     correctApproach ? 'correct' : 'counter',
           premDisc,
           biasOk,
           monthBias,
           smt,
-          result:    trade.result,
-          r:         trade.r,
-          mfe:       trade.mfe,
-          mae:       trade.mae,
+          touchNumLabel,
+          cotBias,
+          gammaWall: gwall,
+          result:   trade.result,
+          r:        trade.r,
+          mfe:      trade.mfe,
+          mae:      trade.mae,
         });
         lastTouchBi = bi;
       }
     }
 
-    // ── Advance state ─────────────────────────────────────────────────────
     prevFibs     = todayFibs;
     prevDayHigh  = dayH;
     prevDayLow   = dayL;
@@ -452,9 +507,11 @@ function analyzeSymbol(symbol, cfg) {
 }
 
 function fibLabel(f) {
-  if (f === 0) return '0 (range edge)';
-  const n = Math.abs(f);
-  return `${f > 0 ? '+' : '-'}${n} ext`;
+  if (typeof f === 'string' && f.startsWith('R')) {
+    return `${Math.round(parseFloat(f.slice(1)) * 1000) / 10}% ret`;
+  }
+  const n = Math.abs(+f);
+  return `${+f > 0 ? '+' : '-'}${n} ext`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -485,58 +542,47 @@ function aggregateStats(touches) {
   if (!touches.length) return { empty: true };
   const baseline = summarise(touches);
 
-  // Feature impact: for each binary/categorical feature, compute delta vs baseline
-  function impact(key, valA, labelA, valB, labelB) {
-    const a = touches.filter(t => t[key] === valA);
-    const b = touches.filter(t => t[key] === valB);
-    return {
-      [labelA]: { ...summarise(a), deltaR: summarise(a).avgR - baseline.avgR },
-      [labelB]: { ...summarise(b), deltaR: summarise(b).avgR - baseline.avgR },
-    };
-  }
-
-  // Top combinations (minimum 10 trades)
+  // Combination key: kill zone + conf source + tightness + approach + premium/discount + atr regime
   const comboMap = {};
   for (const t of touches) {
-    const k = [t.kz, t.isTight ? 'tight' : 'normal', t.approach, t.premDisc, t.atrRegime].join('|');
+    const k = [t.kz, t.confSource, t.isTight ? 'tight' : 'normal', t.approach, t.premDisc, t.atrRegime].join('|');
     (comboMap[k] ??= []).push(t);
   }
-  const topCombos = Object.entries(comboMap)
+  const allCombos = Object.entries(comboMap)
     .map(([k, ts]) => ({ combo: k, parts: k.split('|'), ...summarise(ts) }))
-    .filter(c => c.n >= 10)
-    .sort((a, b) => b.avgR - a.avgR)
-    .slice(0, 20);
+    .filter(c => c.n >= 10);
 
-  // Worst combinations (most negative avgR)
-  const worstCombos = [...Object.entries(comboMap)
-    .map(([k, ts]) => ({ combo: k, parts: k.split('|'), ...summarise(ts) }))
-    .filter(c => c.n >= 10)]
-    .sort((a, b) => a.avgR - b.avgR)
-    .slice(0, 10);
+  const topCombos   = [...allCombos].sort((a, b) => b.avgR - a.avgR).slice(0, 20);
+  const worstCombos = [...allCombos].sort((a, b) => a.avgR - b.avgR).slice(0, 10);
 
   return {
     baseline,
-    bySymbol:    bucket(touches, 'symbol'),
-    byYear:      bucket(touches, 'year'),
-    byQuarter:   bucket(touches, 'quarter'),
-    byDow:       bucket(touches, 'dowLabel'),
-    byHour:      bucket(touches, 'hour'),
-    byKz:        bucket(touches, 'kz'),
-    byFib:       bucket(touches, 'fibLabel'),
-    byTight:     bucket(touches, 'isTight'),
-    byDensity:   bucket(touches, 'density'),
-    byAsiaSize:  bucket(touches, 'asiaSize'),
-    byAtrRegime: bucket(touches, 'atrRegime'),
-    byAtrSeq:    bucket(touches, 'atrSeq'),
-    byApproach:  bucket(touches, 'approach'),
-    byPremDisc:  bucket(touches, 'premDisc'),
-    byBiasOk:    bucket(touches, 'biasOk'),
-    byMonthBias: bucket(touches, 'monthBias'),
-    byJudas:     bucket(touches, 'judas'),
-    byRound:     bucket(touches, 'isRound'),
-    byPrevMatch: bucket(touches, 'prevMatch'),
-    bySmt:       bucket(touches, 'smt'),
-    byFreshness: bucket(touches, 'freshness'),
+    bySymbol:     bucket(touches, 'symbol'),
+    byYear:       bucket(touches, 'year'),
+    byQuarter:    bucket(touches, 'quarter'),
+    byDow:        bucket(touches, 'dowLabel'),
+    byHour:       bucket(touches, 'hour'),
+    byKz:         bucket(touches, 'kz'),
+    byFib:        bucket(touches, 'fibLabel'),
+    byFibType:    bucket(touches, 'fibType'),
+    byTight:      bucket(touches, 'isTight'),
+    byDensity:    bucket(touches, 'density'),
+    byConfSource: bucket(touches, 'confSource'),
+    byAsiaSize:   bucket(touches, 'asiaSize'),
+    byAtrRegime:  bucket(touches, 'atrRegime'),
+    byAtrSeq:     bucket(touches, 'atrSeq'),
+    byApproach:   bucket(touches, 'approach'),
+    byPremDisc:   bucket(touches, 'premDisc'),
+    byBiasOk:     bucket(touches, 'biasOk'),
+    byMonthBias:  bucket(touches, 'monthBias'),
+    byJudas:      bucket(touches, 'judas'),
+    byRound:      bucket(touches, 'isRound'),
+    byPrevMatch:  bucket(touches, 'prevMatch'),
+    bySmt:        bucket(touches, 'smt'),
+    byFreshness:  bucket(touches, 'freshness'),
+    byTouchNum:   bucket(touches, 'touchNumLabel'),
+    byCotBias:    bucket(touches, 'cotBias'),
+    byGammaWall:  bucket(touches, 'gammaWall'),
     topCombos,
     worstCombos,
     totalTouches: touches.length,

@@ -32,9 +32,11 @@
   <button class="dark-btn" onclick="openAlertModal()" id="alertBtn" title="Telegram alerts (OFF)"><span>🔔</span><span>Alerts</span></button>
   <button class="dark-btn" onclick="toggleDark()"><span id="d-icon">🌙</span><span id="d-lbl">Dark</span></button>
   <button class="dark-btn" onclick="openCfgModal()" id="cfgBtn" title="Confluence proximity config"><span>⚙</span><span>Caps</span></button>
-  <button class="dark-btn" onclick="saveToJournal()" id="journalBtn" title="Save today's levels to Trade Journal" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>Journal</span></button>
+  <button class="dark-btn" onclick="saveToJournal()" id="journalBtn" title="Save active pair's levels to Trade Journal" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>Journal</span></button>
+  <button class="dark-btn" onclick="saveAllPairsToJournal()" id="journalAllBtn" title="Save ALL pairs' levels to Trade Journal in one go" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>All Pairs</span></button>
   <a href="journal.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Open Trade Journal">📒</button></a>
   <a href="backtest.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Backtest">📈 Backtest</button></a>
+  <a href="analysis.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="5-Year Pattern Analysis Engine">📊 Pattern Lab</button></a>
   <a href="bot-config.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Python Bot Config">🤖 Bot</button></a>
   <div class="live-pill"><div class="live-dot"></div>Live</div>
   <span class="upd" id="upd"></span>
