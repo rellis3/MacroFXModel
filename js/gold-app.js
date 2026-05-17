@@ -94,10 +94,10 @@ export async function init() {
   }
 }
 
+const COT_TTL = 7 * 24 * 60 * 60 * 1000;
+
 // ── Data fetching ──────────────────────────────────────────────────────────────
 async function loadData() {
-  // All fetches run in parallel — each uses loadCached with appropriate TTL.
-  // COT data is fetched directly (server manages its own cache in KV).
   const [
     fredData,
     history,
@@ -105,7 +105,7 @@ async function loadData() {
     ohlc5mData,
     ohlc30mData,
     liveQuote,
-    cotRaw,
+    cotData,
     caps,
   ] = await Promise.allSettled([
     loadCached('gold_fred',       () => fetchAPI('/api/fred'),                          CACHE_DURATION.FRED),
@@ -114,9 +114,16 @@ async function loadData() {
     loadCached('gold_ohlc5m',     () => fetchAPI('/api/oanda_ohlc5m?symbol=XAU/USD'),  CACHE_DURATION.OHLC5M),
     loadCached('gold_ohlc30m',    () => fetchAPI('/api/oanda_ohlc30m?symbol=XAU/USD'), CACHE_DURATION.OHLC30M),
     loadCached('gold_quote',      () => fetchAPI('/api/quote?symbol=XAU/USD'),          CACHE_DURATION.QUOTE),
-    fetchAPI('/api/kv/get?key=cot_data'),
+    // Use same key + TTL as main dashboard so shared localStorage is read first —
+    // if user has already loaded COT on the main dashboard it shows here instantly.
+    loadCached('cot_data', async () => {
+      const res = await fetch('/api/cot');
+      const j   = await res.json();
+      if (!j.ok) throw new Error(j.reason || 'COT fetch failed');
+      return j.data;
+    }, COT_TTL),
     fetchAPI('/api/config/caps'),
-    oiLoadStoreFromKV(),   // sync OI walls from KV → localStorage so confluences sees them
+    oiLoadStoreFromKV(),
   ]);
 
   // Helper to unwrap settled results — logs warnings on failure
@@ -126,9 +133,6 @@ async function loadData() {
     return fallback;
   }
 
-  const cotRawData = unwrap(cotRaw, 'COT data', null);
-  const cotData    = (cotRawData && !cotRawData.miss) ? cotRawData.data : null;
-
   return {
     fredData:   unwrap(fredData,   'FRED',          null),
     history:    unwrap(history,    'FRED history',  null),
@@ -136,7 +140,7 @@ async function loadData() {
     ohlc5mData: unwrap(ohlc5mData, 'OHLC 5m',       null),
     ohlc30mData:unwrap(ohlc30mData,'OHLC 30m',      null),
     liveQuote:  unwrap(liveQuote,  'Live quote',    null),
-    cotData,
+    cotData:    unwrap(cotData,    'COT data',      null),
     caps:       unwrap(caps,       'Caps config',   CAP_DEFAULTS),
   };
 }
@@ -1322,11 +1326,15 @@ function startQuoteLoop() {
       // Re-fetch COT from KV every 5 minutes (10 × 30s ticks) so URL changes
       // made on the main dashboard propagate here without needing a full reload.
       if (_quoteTick % 10 === 0) {
+        // Re-read COT from localStorage — picks up any update the main dashboard
+        // wrote without making a network request.
         try {
-          const cotRaw = await fetchAPI('/api/kv/get?key=cot_data');
-          if (cotRaw && !cotRaw.miss) _cotData = cotRaw.data ?? null;
+          const raw = localStorage.getItem('cot_data');
+          if (raw) {
+            const { data } = JSON.parse(raw);
+            if (data) _cotData = data;
+          }
         } catch(_) {}
-        // Also re-sync OI walls in case they were updated on the main dashboard.
         oiLoadStoreFromKV().catch(() => {});
       }
 
