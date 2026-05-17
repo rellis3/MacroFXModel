@@ -302,10 +302,16 @@ function analyzeSymbol(symbol, cfg, cotData, oiData) {
   const bars5  = _bars[symbol]?.m5  || [];
   if (bars30.length < 200 || bars5.length < 200) return [];
 
+  // Use M1 for entry scanning when available — more precise touch timing and SL/TP simulation
+  const bars1 = _bars[symbol]?.m1 || [];
+  const useM1 = bars1.length > 2000;
+
   const by30   = groupByDate(bars30);
   const by5    = groupByDate(bars5);
+  const by1    = useM1 ? groupByDate(bars1) : null;
   const smtSym = SMT_MAP[symbol];
-  const smtBy5 = smtSym ? groupByDate(_bars[smtSym]?.m5 || []) : {};
+  // Prefer M1 for SMT correlated pair too if available
+  const smtBy5 = smtSym ? groupByDate((_bars[smtSym]?.m1?.length > 2000 ? _bars[smtSym].m1 : _bars[smtSym]?.m5) || []) : {};
 
   const dates = Object.keys(by30)
     .filter(d => d >= (cfg.startDate || '2020-01-01') && d <= (cfg.endDate || '2099-01-01'))
@@ -331,7 +337,6 @@ function analyzeSymbol(symbol, cfg, cotData, oiData) {
 
   for (const date of dates) {
     const d30 = by30[date];
-    const d5  = by5[date] || [];
     if (!d30?.length) continue;
     const dow = d30[0].lDay;
     if (dow === 0 || dow === 6) continue;
@@ -397,8 +402,11 @@ function analyzeSymbol(symbol, cfg, cotData, oiData) {
       continue;
     }
 
-    const entryBars  = d5.filter(b => b.lHour >= 8 && b.lHour < 20);
-    const smtBarsDay = smtBy5[date] || [];
+    // M1 preferred for entry scanning when loaded — falls back to M5 per day
+    const d1 = by1?.[date] || [];
+    const rawEntryBars  = (useM1 && d1.length > 30) ? d1 : (by5[date] || []);
+    const entryBars     = rawEntryBars.filter(b => b.lHour >= 8 && b.lHour < 20);
+    const smtBarsDay    = smtBy5[date] || [];
 
     // Per-day touch tracker per price bucket (first vs subsequent)
     const dailyTouchCount = {};
@@ -489,6 +497,7 @@ function analyzeSymbol(symbol, cfg, cotData, oiData) {
           touchNumLabel,
           cotBias,
           gammaWall: gwall,
+          resolution: useM1 ? 'm1' : 'm5',
           result:   trade.result,
           r:        trade.r,
           mfe:      trade.mfe,
@@ -583,6 +592,7 @@ function aggregateStats(touches) {
     byTouchNum:   bucket(touches, 'touchNumLabel'),
     byCotBias:    bucket(touches, 'cotBias'),
     byGammaWall:  bucket(touches, 'gammaWall'),
+    byResolution: bucket(touches, 'resolution'),
     topCombos,
     worstCombos,
     totalTouches: touches.length,

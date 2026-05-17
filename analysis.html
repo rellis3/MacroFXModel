@@ -202,7 +202,7 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
     <button id="btn-run" class="btn-run" disabled>▶ Run Analysis</button>
 
     <div style="font-size:10px;color:var(--text3);line-height:1.5;padding:4px 0">
-      Load M5 + M30 data for each pair first, then run. Analysis sweeps every confluence level touch across the date range and records 15+ features per trade to identify what actually drives edge.
+      M30 = session range detection. M5 = entry simulation. <strong style="color:var(--green)">M1 = higher precision</strong> — when loaded, M1 replaces M5 for more accurate touch timing, kill zone attribution, and SL/TP simulation. M1 is optional; pairs without it fall back to M5.
     </div>
   </div>
 
@@ -278,11 +278,12 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
 // CONFIG
 // ══════════════════════════════════════════════════════════════════════════════
 const R2_BASE = 'https://pub-1d8354116ae54e158e7010f0deb8f6e6.r2.dev';
-const PAIRS = ['EURUSD','GBPUSD','USDJPY','XAUUSD','AUDUSD','GBPJPY','USDCAD','NZDUSD'];
-const TFS   = ['m5','m30'];
+const PAIRS    = ['EURUSD','GBPUSD','USDJPY','XAUUSD','AUDUSD','GBPJPY','USDCAD','NZDUSD'];
+const TFS_REQ  = ['m5','m30'];   // required to run
+const TFS_OPT  = ['m1'];         // optional — better simulation when present
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const loaded  = {}; // { [sym]: { m5: bool, m30: bool } }
+const loaded  = {}; // { [sym]: { m1: false|number, m5: false|number, m30: false|number } }
 let   _stats  = null;
 let   _worker = null;
 
@@ -293,7 +294,7 @@ function init() {
   // Build pair checkboxes
   const grid = document.getElementById('pair-grid');
   for (const p of PAIRS) {
-    loaded[p] = { m5: false, m30: false };
+    loaded[p] = { m1: false, m5: false, m30: false };
     const label = document.createElement('label');
     label.className = 'pair-cb';
     label.innerHTML = `<input type="checkbox" class="pair-cb-input" value="${p}" checked> ${p}`;
@@ -354,9 +355,8 @@ async function loadAllFromR2() {
   document.getElementById('btn-load-r2').textContent = 'Loading…';
   const tasks = [];
   for (const sym of pairs) {
-    for (const tf of TFS) {
-      tasks.push(loadCsv(sym, tf));
-    }
+    for (const tf of TFS_REQ) tasks.push(loadCsv(sym, tf, false));
+    for (const tf of TFS_OPT) tasks.push(loadCsv(sym, tf, true));  // silent fail if absent
   }
   await Promise.allSettled(tasks);
   document.getElementById('btn-load-r2').disabled = false;
@@ -364,7 +364,7 @@ async function loadAllFromR2() {
   checkRunnable();
 }
 
-async function loadCsv(sym, tf) {
+async function loadCsv(sym, tf, optional = false) {
   const url = `${R2_BASE}/${sym}/${sym.toLowerCase()}-${tf}-bid.csv`;
   try {
     const res = await fetch(url);
@@ -372,7 +372,8 @@ async function loadCsv(sym, tf) {
     const text = await res.text();
     _worker.postMessage({ type: 'parse', payload: { symbol: sym, tf, text } });
   } catch (e) {
-    loaded[sym][tf] = false;
+    if (!optional) loaded[sym][tf] = false;
+    // optional failures stay at false (grey chip) — not an error
     renderR2Status();
   }
 }
@@ -380,13 +381,15 @@ async function loadCsv(sym, tf) {
 function renderR2Status() {
   const box = document.getElementById('r2-status-box');
   box.innerHTML = PAIRS.map(p => {
-    const tfs = TFS.map(tf => {
-      const ok = loaded[p]?.[tf];
-      const cls = ok ? 'ok' : 'err';
+    const allTfs = [...TFS_OPT, ...TFS_REQ]; // m1 first for visual grouping
+    const chips = allTfs.map(tf => {
+      const ok  = loaded[p]?.[tf];
+      const opt = TFS_OPT.includes(tf);
+      const cls = ok ? 'ok' : (opt ? '' : 'err'); // optional not-loaded = grey, required not-loaded = red
       const lbl = ok ? `${tf} ${(ok/1000).toFixed(0)}k` : `${tf} —`;
-      return `<span class="r2-chip ${cls}">${lbl}</span>`;
+      return `<span class="r2-chip ${cls}" title="${opt ? 'optional — better simulation' : 'required'}">${lbl}</span>`;
     }).join('');
-    return `<div class="r2-row"><span class="r2-pair">${p}</span><span class="r2-tfs">${tfs}</span></div>`;
+    return `<div class="r2-row"><span class="r2-pair">${p}</span><span class="r2-tfs">${chips}</span></div>`;
   }).join('');
 }
 
@@ -500,13 +503,20 @@ function renderOverview(s) {
       ${pill(b.avgMfe?.toFixed(1) + 'p', 'Avg MFE')}
       ${pill(b.avgMae?.toFixed(1) + 'p', 'Avg MAE')}
     </div>
-    <div class="an-card">
+    <div class="an-card" style="margin-bottom:10px">
       <div class="an-card-title">Per Pair Breakdown</div>
       <table class="feat-table">
         <thead><tr><th>Pair</th><th>Touches</th><th>Win%</th><th>Avg R</th><th>Total R</th><th>MFE</th></tr></thead>
         <tbody>${pairRows}</tbody>
       </table>
-    </div>`;
+    </div>` +
+    (s.byResolution?.m1?.n
+      ? featureTable('Simulation Resolution (M1 vs M5 fallback)', {
+          'M1 (1-min — precise touch / SL / TP)': s.byResolution.m1 || {n:0},
+          'M5 (5-min — fallback, no M1 loaded)':  s.byResolution.m5 || {n:0},
+        }, s.baseline)
+      : `<div class="an-card"><div style="font-size:11px;color:var(--text3)">Load M1 data for higher-precision simulation — M5 fallback active for all pairs.</div></div>`
+    );
 }
 
 function pill(val, label, color) {
