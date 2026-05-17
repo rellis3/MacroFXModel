@@ -609,7 +609,10 @@ function renderBEIDecomp(model) {
 
   return `
   <div class="gold-card gold-full-width">
-    <div class="gold-card-title">Breakeven Decomposition — Fisher Equation Proxy</div>
+    <div class="gold-card-title">What's Driving Gold: Inflation vs Real Yield</div>
+    <div class="gold-bei-implication">
+      <strong>${escHtml(driverLabel)}</strong> — ${escHtml(d.interpretation)}
+    </div>
     <div class="gold-bei-grid">
       <div class="gold-bei-cell">
         <div class="gold-bei-label">TIPS (Real Yield)</div>
@@ -635,7 +638,6 @@ function renderBEIDecomp(model) {
         <div class="gold-bei-sub" style="color:${driverColor}">${escHtml(driverLabel)}</div>
       </div>
     </div>
-    <p class="gold-bei-interp">${escHtml(d.interpretation)}</p>
     ${model.fedPricingSignal ? `<p class="gold-bei-fed">Fed Pricing Signal: <strong>${escHtml(model.fedPricingSignal)}</strong></p>` : ''}
   </div>`;
 }
@@ -652,6 +654,13 @@ function renderSparklines(history) {
     { key: 'vix',  label: 'VIX (Uncertainty)',    color: '#e05c5c', unit: '' },
     { key: 'dxy',  label: 'DXY Index',            color: '#7ac97a', unit: '' },
   ];
+
+  const GOLD_CONTEXT = {
+    tips: { good: 'down', label: 'Rising = headwind for gold (bonds pay more)' },
+    bei:  { good: 'up',   label: 'Rising = tailwind for gold (inflation hedge)' },
+    vix:  { good: 'up',   label: 'Rising = safe-haven demand (short-term gold positive)' },
+    dxy:  { good: 'down', label: 'Rising = headwind for gold (dollar strength)' },
+  };
 
   const cards = KEYS.map(({ key, label, color, unit }) => {
     const series = history[key];
@@ -671,10 +680,15 @@ function renderSparklines(history) {
     const min    = Math.min(...vals);
     const max    = Math.max(...vals);
 
+    const ctx = GOLD_CONTEXT[key];
+    const trendIsGood = ctx && ((change >= 0 && ctx.good === 'up') || (change < 0 && ctx.good === 'down'));
+    const trendColor = ctx ? (trendIsGood ? 'var(--green)' : 'var(--red)') : chgColor;
+
     return `<div class="gold-spark-card">
       <div class="gold-spark-title">${escHtml(label)}</div>
+      ${ctx ? `<div class="gold-spark-context" style="color:var(--text3)">${escHtml(ctx.label)}</div>` : ''}
       <div class="gold-spark-value">${latest.toFixed(2)}${unit}
-        <span style="color:${chgColor};font-size:0.8em">${chgStr} (3M)</span>
+        <span style="color:${trendColor};font-size:0.8em">${chgStr} (3M) ${ctx ? (trendIsGood ? '✓' : '✗') : ''}</span>
       </div>
       ${buildSparkline(series, color)}
       <div class="gold-spark-range">
@@ -844,68 +858,65 @@ function renderCOTCard(cotData) {
 function renderVolCard(volRegime, model) {
   if (!volRegime) {
     return `<div class="gold-card">
-      <div class="gold-card-title">GARCH Vol Regime</div>
-      <p class="gold-muted">Vol data unavailable — need daily OHLC data for GARCH computation.</p>
+      <div class="gold-card-title">Price Volatility</div>
+      <p class="gold-muted">Volatility data unavailable — need daily OHLC data.</p>
     </div>`;
   }
 
-  const regimeColor = volRegime.regime === 'HIGH'   ? 'var(--red)'
-                    : volRegime.regime === 'LOW'    ? 'var(--green)'
+  const regimeColor = volRegime.regime === 'HIGH'  ? 'var(--red)'
+                    : volRegime.regime === 'LOW'   ? 'var(--green)'
                     : 'var(--amber)';
 
-  const biasColor = volRegime.volBias === 'expanding'   ? 'var(--red)'
-                  : volRegime.volBias === 'contracting' ? 'var(--green)'
-                  : 'var(--text2)';
+  const regimeDesc = volRegime.regime === 'HIGH'
+    ? 'High — bigger price swings than usual. Use wider stops.'
+    : volRegime.regime === 'LOW'
+    ? 'Low — calm market conditions. Tighter ranges.'
+    : 'Normal — typical price movement.';
 
   const pctBar = `<div class="gold-vol-pct-bar">
     <div class="gold-vol-pct-fill" style="width:${volRegime.percentile}%;background:${regimeColor}"></div>
   </div>`;
 
+  const biasColor = volRegime.volBias === 'expanding'   ? 'var(--red)'
+                  : volRegime.volBias === 'contracting' ? 'var(--green)'
+                  : 'var(--text2)';
+  const biasDesc  = volRegime.volBias === 'expanding'   ? 'Volatility increasing — consider wider stops'
+                  : volRegime.volBias === 'contracting' ? 'Volatility settling — conditions normalising'
+                  : 'Volatility stable';
+
   const garch = volRegime.garch;
-  const highVolNote = (volRegime.regime === 'HIGH' && model)
-    ? `<p class="gold-vol-warn">HIGH vol regime is reducing regime confidence (score dampened).</p>`
-    : '';
+  const sizeMult = model?.regimeConfidence?.sizeMult;
 
   return `<div class="gold-card">
-    <div class="gold-card-title">GARCH Vol Regime</div>
+    <div class="gold-card-title">Price Volatility</div>
     <div class="gold-vol-grid">
       <div class="gold-vol-row">
-        <span>Regime</span>
-        <strong style="color:${regimeColor}">${escHtml(volRegime.regime)}</strong>
+        <span>Current level</span>
+        <strong style="color:${regimeColor}">${escHtml(regimeDesc)}</strong>
       </div>
       <div class="gold-vol-row">
-        <span>ATR (EMA)</span>
-        <span>$${volRegime.atr.toFixed(2)} / ${volRegime.atrPips.toFixed(0)} pips</span>
+        <span>Typical daily move</span>
+        <span>$${volRegime.atr.toFixed(2)} (${volRegime.atrPips.toFixed(0)} pips)</span>
       </div>
       <div class="gold-vol-row">
-        <span>Vol Percentile</span>
-        <span>${volRegime.percentile}th</span>
+        <span>Vol vs recent history</span>
+        <span>Higher than ${volRegime.percentile}% of recent days</span>
       </div>
       ${pctBar}
       ${volRegime.volBias ? `<div class="gold-vol-row">
-        <span>Vol Impulse</span>
-        <span style="color:${biasColor}">${escHtml(volRegime.volBias)}
-          ${volRegime.volImpulsePct ? `(${volRegime.volImpulsePct > 0 ? '+' : ''}${volRegime.volImpulsePct.toFixed(1)}%)` : ''}
-        </span>
+        <span>Trend</span>
+        <span style="color:${biasColor}">${escHtml(biasDesc)}</span>
       </div>` : ''}
       ${garch ? `<div class="gold-vol-row">
-        <span>GARCH State</span>
-        <span>${escHtml(garch.cluster)}</span>
-      </div>
-      <div class="gold-vol-row">
-        <span>GARCH Daily Range</span>
-        <span>$${garch.range.toFixed(2)} (${garch.pips.toFixed(0)} pips)</span>
-      </div>
-      <div class="gold-vol-row">
-        <span>68% CI / 95% CI</span>
-        <span>${garch.ci68Pips.toFixed(0)} / ${garch.ci95Pips.toFixed(0)} pips</span>
+        <span>Expected daily range</span>
+        <span>±$${(garch.range / 2).toFixed(0)} typical · ±$${garch.ci95Pips ? (garch.ci95Pips * 0.1).toFixed(0) : '—'} extreme</span>
       </div>` : ''}
-      ${model?.regimeConfidence?.sizeMult != null ? `<div class="gold-vol-row">
-        <span>Regime Size Mult</span>
-        <strong>×${model.regimeConfidence.sizeMult}</strong>
+      ${sizeMult != null ? `<div class="gold-vol-row">
+        <span>Suggested position size</span>
+        <strong>×${sizeMult} of your base risk</strong>
       </div>` : ''}
     </div>
-    ${highVolNote}
+    ${volRegime.regime === 'HIGH' && model ? `<p class="gold-vol-warn">High volatility is reducing model confidence — consider smaller size.</p>` : ''}
   </div>`;
 }
 
@@ -956,10 +967,13 @@ function buildScoreGauge(score, signal, strength) {
   const fillWidth = pct;
 
   const pctInterp = Math.round(Math.abs(s) * 100);
-  const interpText = pctInterp >= 75 ? `${pctInterp}% — Strong ${signal.toLowerCase()} pressure`
-                   : pctInterp >= 40 ? `${pctInterp}% — Moderate ${signal.toLowerCase()} signal`
-                   : pctInterp >= 15 ? `${pctInterp}% — Weak ${signal.toLowerCase()} lean`
-                   : 'Essentially neutral — no directional edge';
+  const headline = signal === 'BULLISH' && pctInterp >= 60 ? 'Strong case for higher gold'
+                 : signal === 'BULLISH' && pctInterp >= 30 ? 'Moderate case for higher gold'
+                 : signal === 'BULLISH' ? 'Slight lean towards higher gold'
+                 : signal === 'BEARISH' && pctInterp >= 60 ? 'Strong case for lower gold'
+                 : signal === 'BEARISH' && pctInterp >= 30 ? 'Moderate case for lower gold'
+                 : signal === 'BEARISH' ? 'Slight lean towards lower gold'
+                 : 'No clear direction — factors are balanced';
 
   return `
   <div class="gold-gauge-wrap">
@@ -972,41 +986,66 @@ function buildScoreGauge(score, signal, strength) {
       <div class="gold-gauge-center-line"></div>
       <div class="gold-gauge-fill" style="left:${fillLeft}%;width:${fillWidth}%;background:${fillColor}"></div>
     </div>
-    <div class="gold-gauge-score" style="color:${fillColor}">
-      ${s > 0 ? '+' : ''}${s.toFixed(3)}
-    </div>
-    <div class="gold-gauge-label">SIGNAL STRENGTH — ${escHtml(strength)}</div>
-    <div class="gold-gauge-interp">${escHtml(interpText)}</div>
+    <div class="gold-gauge-headline" style="color:${fillColor}">${escHtml(headline)}</div>
+    <div class="gold-gauge-score">${s > 0 ? '+' : ''}${s.toFixed(3)} &nbsp;·&nbsp; ${escHtml(strength)}</div>
   </div>`;
 }
 
-// ── Factor score bar (split, -1 to +1) ────────────────────────────────────────
-// Left half = negative zone (red), right half = positive zone (green).
-// Fill shows where score falls within its zone.
+// ── Factor interpretation helper ───────────────────────────────────────────────
+function factorInterpretation(label, score) {
+  const dir = score > 0.15 ? 'up' : score < -0.15 ? 'down' : 'neutral';
+  const MAP = {
+    'TIPS Real Yield': {
+      up:      'Low/negative real yields — cost of holding gold vs bonds is low',
+      down:    'High real yields — bonds pay well, competing with gold',
+      neutral: 'Real yields moderate — no strong structural pull on gold',
+    },
+    'BEI Level': {
+      up:      'High inflation expectations — investors buying gold as inflation hedge',
+      down:    'Low inflation expectations — limited demand for inflation protection',
+      neutral: 'Inflation expectations moderate — no structural bias',
+    },
+    'Real Yield Δ': {
+      up:      'Real yields falling — easing the cost of holding gold',
+      down:    'Real yields rising fast — increasing competition from bonds',
+      neutral: 'Real yields stable — no momentum pressure on gold',
+    },
+    'BEI Δ': {
+      up:      'Inflation expectations rising — building the case for gold as a hedge',
+      down:    'Inflation expectations falling — reducing the inflation hedge case',
+      neutral: 'Inflation expectations stable — no momentum signal',
+    },
+    'DXY Δ': {
+      up:      'Dollar weakening — gold becomes cheaper globally, supporting price',
+      down:    'Dollar strengthening — gold more expensive for foreign buyers',
+      neutral: 'Dollar stable — no currency tailwind or headwind for gold',
+    },
+    'Safe Haven': {
+      up:      'Market stress elevated — investors fleeing to gold for protection',
+      down:    'Risk appetite high, low fear — limited safe-haven demand for gold',
+      neutral: 'Market calm — normal risk environment',
+    },
+  };
+  const set = MAP[label] ?? { up: 'Positive for gold', down: 'Negative for gold', neutral: 'Neutral for gold' };
+  const tag = dir === 'up' ? 'HELPING GOLD ↑' : dir === 'down' ? 'HURTING GOLD ↓' : 'NEUTRAL →';
+  const tagColor = dir === 'up' ? 'var(--green)' : dir === 'down' ? 'var(--red)' : 'var(--amber)';
+  return { tag, tagColor, explanation: set[dir] };
+}
+
+// ── Factor score bar (plain-English impact style) ──────────────────────────────
 function buildScoreBar(score, label, rawVal) {
-  const s      = Math.max(-1, Math.min(1, score ?? 0));
-  const isPos  = s >= 0;
-  const pct    = Math.abs(s) * 100; // % of half-width
-
-  // Negative fill: in left half (0–50%), fill from right edge of left half leftward
-  // Positive fill: in right half (50–100%), fill from left edge of right half rightward
-  const negFillLeft  = isPos ? 0 : (50 - pct / 2);
-  const negFillWidth = isPos ? 0 : pct / 2;
-  const posFillLeft  = isPos ? 50 : 0;
-  const posFillWidth = isPos ? pct / 2 : 0;
-
+  const s = Math.max(-1, Math.min(1, score ?? 0));
+  const { tag, tagColor, explanation } = factorInterpretation(label, s);
   const valDisplay = rawVal ? escHtml(rawVal) : (s > 0 ? '+' : '') + s.toFixed(2);
 
   return `
   <div class="gold-factor-row">
-    <span class="gold-factor-label">${escHtml(label)}</span>
-    <div class="gold-factor-track">
-      <div class="gold-factor-neg-fill" style="left:${negFillLeft.toFixed(1)}%;width:${negFillWidth.toFixed(1)}%"></div>
-      <div class="gold-factor-pos-fill" style="left:${posFillLeft.toFixed(1)}%;width:${posFillWidth.toFixed(1)}%"></div>
-      <div class="gold-factor-center"></div>
+    <div class="gold-factor-top">
+      <span class="gold-factor-label">${escHtml(label)}</span>
+      <span class="gold-factor-impact" style="color:${tagColor};background:${tagColor}18;border:1px solid ${tagColor}35">${tag}</span>
+      <span class="gold-factor-val">${valDisplay}</span>
     </div>
-    <span class="gold-factor-val">${valDisplay}</span>
-    <span class="gold-factor-score">${s > 0 ? '+' : ''}${s.toFixed(2)}</span>
+    <div class="gold-factor-explain">${escHtml(explanation)}</div>
   </div>`;
 }
 
@@ -1022,27 +1061,32 @@ function buildWeightBars(weights) {
     safeHaven:         'Safe Haven / VIX',
   };
 
-  const sorted = Object.entries(weights)
-    .sort((a, b) => b[1] - a[1]);
-
+  const sorted = Object.entries(weights).sort((a, b) => b[1] - a[1]);
   const maxWeight = sorted[0]?.[1] ?? 1;
 
-  return sorted.map(([key, w], i) => {
-    const label    = FACTOR_LABELS[key] ?? key;
-    const pct      = Math.round(w * 100);
-    const barWidth = Math.round((w / (maxWeight || 1)) * 100);
-    const isTop    = i === 0;
+  const importanceLabel = (w, max) => {
+    const r = w / max;
+    return r >= 0.85 ? 'Dominant' : r >= 0.65 ? 'High' : r >= 0.40 ? 'Moderate' : 'Background';
+  };
+
+  const rows = sorted.map(([key, w], i) => {
+    const label = FACTOR_LABELS[key] ?? key;
+    const barWidth = Math.round((w / maxWeight) * 100);
+    const isTop = i === 0;
     const barColor = isTop ? 'var(--amber)' : 'var(--blue)';
+    const imp = importanceLabel(w, maxWeight);
 
     return `
     <div class="gold-weight-row${isTop ? ' gold-weight-top' : ''}">
-      <span class="gold-weight-label">${escHtml(label)}</span>
+      <span class="gold-weight-label">${isTop ? '★ ' : ''}${escHtml(label)}</span>
       <div class="gold-weight-track">
         <div class="gold-weight-fill" style="width:${barWidth}%;background:${barColor}"></div>
       </div>
-      <span class="gold-weight-pct">${pct}%</span>
+      <span class="gold-weight-imp${isTop ? ' gold-weight-imp-top' : ''}">${imp}</span>
     </div>`;
   }).join('');
+
+  return `<div class="gold-weight-summary">Which factors the model focuses on in this regime</div>${rows}`;
 }
 
 // ── Quote refresh loop ─────────────────────────────────────────────────────────
