@@ -14,6 +14,7 @@ import { runSignalEngine, runEntryScanner, computeSignalScore } from './signal.j
 import { calculateVolRegime, calculatePivots } from './vol.js';
 import { calculateTierScores, compute5mKalmanDev, computeBayesianScore } from './macro.js';
 import { gradeEntry } from './trade-grade.js';
+import { computeGoldMacroModel } from './gold-model.js';
 
 const STORAGE_KEY  = 'tg_alert_cfg';
 const COOLDOWN_KEY = 'tg_alert_cooldowns';
@@ -439,4 +440,252 @@ export async function forceKVSync() {
   } catch(e) {
     return { ok: false, error: e.message };
   }
+}
+
+// ── Gold Macro Model Alert System ─────────────────────────────────────────────
+// Fires Telegram alerts when the gold macro regime or signal crosses meaningful
+// thresholds — distinct from price-proximity alerts. These are macro-event alerts:
+//
+//   1. Regime change      — fired when regime classification changes
+//   2. Signal threshold   — fired when signal crosses NEUTRAL ↔ BULLISH/BEARISH
+//   3. Transition warning — fired when regime confidence drops to LOW
+//   4. Uncertainty spike  — fired when BEI decomp shows uncertainty premium expanding
+//
+// Cooldowns stored under 'tg_gold_cooldowns' in localStorage (separate from price alerts).
+
+const GOLD_COOLDOWN_KEY = 'tg_gold_cooldowns';
+
+function loadGoldCooldowns() {
+  try { return JSON.parse(localStorage.getItem(GOLD_COOLDOWN_KEY) || '{}'); } catch(e) { return {}; }
+}
+
+function saveGoldCooldowns(cd) {
+  try { localStorage.setItem(GOLD_COOLDOWN_KEY, JSON.stringify(cd)); } catch(e) {}
+}
+
+// Rate-limit: gold macro alerts at most once per minute per alert type
+let _goldAlertLastRun = 0;
+const GOLD_ALERT_THROTTLE_MS = 60_000;
+
+// Previous model snapshot for change detection
+let _prevGoldModel = null;
+
+// Check gold macro alerts — call after FRED data loads (not every tick)
+export async function checkGoldMacroAlerts() {
+  const cfg = loadAlertCfg();
+  // Only fire if alerts enabled and XAU/USD is in the watch list (or all pairs watched)
+  if (!cfg.enabled) return;
+  const watchesGold = !cfg.pairs?.length || cfg.pairs.includes('XAU/USD');
+  if (!watchesGold) return;
+
+  const now = Date.now();
+  if (now - _goldAlertLastRun < GOLD_ALERT_THROTTLE_MS) return;
+  _goldAlertLastRun = now;
+
+  // Compute gold model (use current vol regime if available)
+  const volRegime = (() => { try { return calculateVolRegime(); } catch(e) { return null; } })();
+  const model = computeGoldMacroModel(volRegime);
+  if (!model) return;
+
+  const cd = loadGoldCooldowns();
+  let dirty = false;
+
+  // ── 1. Regime change alert ───────────────────────────────────────────────
+  const regimeCooldownKey = `gold_regime_${model.regime}`;
+  const REGIME_COOLDOWN = 4 * 60 * 60 * 1000; // 4 hours
+  const regimeChanged = _prevGoldModel && _prevGoldModel.regime !== model.regime;
+  const regimeCooledDown = now - (cd[regimeCooldownKey] ?? 0) > REGIME_COOLDOWN;
+
+  if (regimeChanged && regimeCooledDown) {
+    cd[regimeCooldownKey] = now;
+    dirty = true;
+    await sendGoldRegimeAlert(model, _prevGoldModel.regime);
+  }
+
+  // ── 2. Signal crossing alert ─────────────────────────────────────────────
+  const signalCooldownKey = `gold_signal_${model.signal}_${model.strength}`;
+  const SIGNAL_COOLDOWN = 2 * 60 * 60 * 1000; // 2 hours
+  const signalChanged = _prevGoldModel
+    && (_prevGoldModel.signal !== model.signal
+        || (_prevGoldModel.signal === 'NEUTRAL' && model.signal !== 'NEUTRAL')
+        || (model.strength === 'STRONG' && _prevGoldModel.strength !== 'STRONG'));
+  const signalCooledDown = now - (cd[signalCooldownKey] ?? 0) > SIGNAL_COOLDOWN;
+
+  if (signalChanged && signalCooledDown && model.signal !== 'NEUTRAL') {
+    cd[signalCooldownKey] = now;
+    dirty = true;
+    await sendGoldSignalAlert(model);
+  }
+
+  // ── 3. Regime transition warning ─────────────────────────────────────────
+  const transitionKey = 'gold_transition_warning';
+  const TRANSITION_COOLDOWN = 6 * 60 * 60 * 1000; // 6 hours
+  const transitionAlert = model.regimeConfidence.isTransitioning
+    && now - (cd[transitionKey] ?? 0) > TRANSITION_COOLDOWN;
+
+  if (transitionAlert) {
+    cd[transitionKey] = now;
+    dirty = true;
+    await sendGoldTransitionAlert(model);
+  }
+
+  // ── 4. Uncertainty premium spike alert ───────────────────────────────────
+  const uncertaintyKey = 'gold_uncertainty_spike';
+  const UNCERTAINTY_COOLDOWN = 3 * 60 * 60 * 1000; // 3 hours
+  const beiDecomp = model.beiDecomp;
+  const uncertaintySpike = beiDecomp?.dominantDriver === 'uncertainty_premium'
+    && beiDecomp.divergence > 0.08
+    && now - (cd[uncertaintyKey] ?? 0) > UNCERTAINTY_COOLDOWN;
+
+  if (uncertaintySpike) {
+    cd[uncertaintyKey] = now;
+    dirty = true;
+    await sendGoldUncertaintyAlert(model);
+  }
+
+  if (dirty) saveGoldCooldowns(cd);
+
+  // Store current model as previous for next check
+  _prevGoldModel = { regime: model.regime, signal: model.signal, strength: model.strength };
+
+  // Always sync gold model to KV so the bot can read it
+  syncGoldModelToKV(model);
+}
+
+// Sync gold model result to KV for the Python bot
+function syncGoldModelToKV(model) {
+  const payload = {
+    regime:           model.regime,
+    regimeLabel:      model.regimeLabel,
+    regimeBias:       model.regimeBias,
+    signal:           model.signal,
+    strength:         model.strength,
+    goldScore:        model.goldScore,
+    t1Score:          model.t1Score,
+    confidence:       model.regimeConfidence.confidence,
+    sizeMult:         model.regimeConfidence.sizeMult,
+    isTransitioning:  model.regimeConfidence.isTransitioning,
+    transitionScore:  model.regimeConfidence.transitionScore,
+    transitionSignals: model.regimeConfidence.signals,
+    tips:             model.tips,
+    tipsMom:          model.tipsMom,
+    bei:              model.bei,
+    beiMom:           model.beiMom,
+    dxyMom:           model.dxyMom,
+    vix:              model.vix,
+    fedPricingSignal: model.fedPricingSignal,
+    beiDecompDriver:  model.beiDecomp?.dominantDriver,
+    computedAt:       model.computedAt,
+  };
+
+  fetch('/api/kv/set', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: 'ai_goldmodel', data: payload, timestamp: Date.now() }),
+  }).catch(() => {});
+}
+
+// ── Gold Alert Message Formatters ──────────────────────────────────────────────
+
+async function sendGoldRegimeAlert(model, prevRegime) {
+  const regimeLine = `${model.regimeEmoji} Regime: <b>${prevRegime}</b> → <b>${model.regimeLabel}</b>`;
+  await _sendGoldAlert(model, regimeLine, '⚠️ GOLD MACRO REGIME CHANGE');
+}
+
+async function sendGoldSignalAlert(model) {
+  const arrow = model.signal === 'BULLISH' ? '↑' : '↓';
+  const sigLine = `Signal: ${arrow} <b>${model.signal} ${model.strength}</b> (score: ${(model.goldScore * 100).toFixed(0)}%)`;
+  await _sendGoldAlert(model, sigLine, '🥇 GOLD MACRO SIGNAL');
+}
+
+async function sendGoldTransitionAlert(model) {
+  const sigList = model.regimeConfidence.signals.slice(0, 3).join(' · ');
+  const mainLine = `⚠️ Regime transitioning — reduce size (×${model.regimeConfidence.sizeMult})`;
+  const detailLine = sigList ? `Signals: ${sigList}` : null;
+  await _sendGoldAlert(model, mainLine, '⚠️ GOLD REGIME TRANSITION', detailLine);
+}
+
+async function sendGoldUncertaintyAlert(model) {
+  const div = model.beiDecomp?.divergence;
+  const mainLine = `BEI diverging from TIPS: +${div != null ? (div * 100).toFixed(0) : '?'}bp — inflation uncertainty premium`;
+  await _sendGoldAlert(model, mainLine, '📊 GOLD BEI UNCERTAINTY SPIKE');
+}
+
+async function _sendGoldAlert(model, headline, title, extraLine) {
+  const layers = model.layers;
+  const beiD   = model.beiDecomp;
+
+  const layerLines = [
+    // Layer 1: Levels
+    `<b>Layer 1 — Structure (Levels)</b>`,
+    layers.level.realYield.label  ? `  Real Yield: ${layers.level.realYield.label}` : null,
+    layers.level.breakeven.label  ? `  BEI: ${layers.level.breakeven.label}` : null,
+    ``,
+    // Layer 2: Momentum (the alpha layer)
+    `<b>Layer 2 — Repricing Alpha (Momentum)</b>`,
+    layers.momentum.realYield.label ? `  ${layers.momentum.realYield.label}` : null,
+    layers.momentum.breakeven.label ? `  ${layers.momentum.breakeven.label}` : null,
+    layers.momentum.dxy.label       ? `  ${layers.momentum.dxy.label}` : null,
+    layers.momentum.safeHaven.label ? `  ${layers.momentum.safeHaven.label}` : null,
+  ].filter(v => v != null);
+
+  const beiLine = beiD?.interpretation
+    ? `BEI Decomp: ${beiD.interpretation}`
+    : null;
+
+  const confBadge = model.regimeConfidence.confidence === 'HIGH' ? '✅ HIGH confidence'
+                  : model.regimeConfidence.confidence === 'MEDIUM' ? '🟡 MEDIUM confidence'
+                  : '🔴 LOW confidence — regime transitioning';
+
+  const weightHighlight = (() => {
+    const w = model.weights;
+    const top = Object.entries(w).sort((a, b) => b[1] - a[1])[0];
+    const labels = {
+      realYieldMomentum: 'Real Yield Momentum',
+      breakevenMomentum: 'BEI Momentum',
+      safeHaven: 'Safe Haven Demand',
+      breakevenLevel: 'BEI Level',
+      realYieldLevel: 'Real Yield Level',
+      dxyMomentum: 'DXY Momentum',
+    };
+    return top ? `Primary driver: ${labels[top[0]] ?? top[0]} (${(top[1] * 100).toFixed(0)}% weight)` : null;
+  })();
+
+  const lines = [
+    `🥇 <b>${title}</b>`,
+    headline,
+    extraLine ?? null,
+    `${model.regimeEmoji} Regime: ${model.regimeLabel}`,
+    ``,
+    ...layerLines,
+    ``,
+    beiLine,
+    weightHighlight,
+    confBadge,
+    model.fedPricingSignal ? `Fed Pricing: ${model.fedPricingSignal}` : null,
+    model.nfciSignal ? `NFCI: ${model.nfciSignal}` : null,
+  ].filter(v => v != null).join('\n');
+
+  try {
+    const res = await fetch('/api/telegram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: lines, parseMode: 'HTML' }),
+    });
+    const j = await res.json();
+    if (!j.ok) console.warn('Gold macro alert failed:', j.error);
+  } catch(e) {
+    console.warn('Gold macro alert error:', e.message);
+  }
+}
+
+// Push current gold model to KV on demand (e.g., after user updates FRED data)
+export async function syncGoldModelNow() {
+  const volRegime = (() => { try { return calculateVolRegime(); } catch(e) { return null; } })();
+  const model = computeGoldMacroModel(volRegime);
+  if (model) {
+    syncGoldModelToKV(model);
+    S.goldModel = model;
+  }
+  return model;
 }

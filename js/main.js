@@ -19,7 +19,7 @@ import { detectSession, computeSessionOpens, computeDailyOpens } from './session
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 import { exportWatchlistCSV } from './watchlist.js';
-import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, loadAlertCfg, forceKVSync } from './alerts.js';
+import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, loadAlertCfg, forceKVSync, checkGoldMacroAlerts, syncGoldModelNow } from './alerts.js';
 
 // ── Debounced renderAll ───────────────────────────────────────────────────────
 // Prevents concurrent DOM mutations when async compass resolve + quote refresh
@@ -626,6 +626,20 @@ async function loadAll() {
     };
 
     renderAll();
+
+    // Gold macro model — compute after FRED data is available.
+    // Stores result in S.goldModel and pushes to KV for the bot.
+    // Also checks macro-level Telegram alerts (regime changes, uncertainty spikes).
+    if (S.fredData) {
+      // Pre-populate vol regime scratch slot so gold T1 can use GARCH output
+      if (S.currentPair.isGold) {
+        try { S._goldVolRegime = calculateVolRegime(); } catch(_) {}
+      }
+      // Non-blocking: sync gold model to KV and check macro alerts
+      syncGoldModelNow().catch(() => {});
+      checkGoldMacroAlerts().catch(() => {});
+    }
+
     updateStatus('ok', `${S.currentPair.name} loaded · ${S.asiaRangeData[S.currentPair.symbol].confluences.length + S.mondayRangeData[S.currentPair.symbol].confluences.length} total confluences`);
   } catch (error) {
     console.error('Load error:', error);
