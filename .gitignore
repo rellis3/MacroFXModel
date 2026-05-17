@@ -4,3 +4,6 @@ data/
 .env.local
 bot/.env.example
 bot.log
+__pycache__/
+*.pyc
+*.pyo
