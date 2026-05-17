@@ -310,7 +310,7 @@ function classifyGoldRegime(f) {
 //
 // Volatility regimes from vol.js are used to adjust the confidence level —
 // the framework the user described: "use vol to measure regime confidence."
-function assessRegimeConfidence(f, regimeData, volRegime) {
+function assessRegimeConfidence(f, regimeData, volRegime, arimaStability) {
   const { regime, tipsMom, beiMom, dxyMom } = regimeData;
   const vix     = f.vix?.value;
   const vixPrev = f.vix?.prev;
@@ -379,12 +379,22 @@ function assessRegimeConfidence(f, regimeData, volRegime) {
     signals.push('Gold vol expanding — watch for regime shift');
   }
 
+  // 6. ARIMA price residual stability — erratic residuals confirm regime instability
+  if (arimaStability != null) {
+    if (arimaStability < 0.45) {
+      transitionScore += 1.0;
+      signals.push('ARIMA residuals very erratic — gold price behaving unpredictably');
+    } else if (arimaStability < 0.65) {
+      transitionScore += 0.4;
+      signals.push(`ARIMA residuals elevated (stability ${(arimaStability * 100).toFixed(0)}%)`);
+    }
+  }
+
   const isTransitioning = transitionScore >= 1.5;
   const confidence = transitionScore <= 0.5 ? 'HIGH' :
                      transitionScore <= 1.5 ? 'MEDIUM' : 'LOW';
 
   // Size multiplier: regime confidence directly maps to position sizing
-  // This implements "reduce position size because volatility is high" from user framework
   const sizeMult = isTransitioning ? 0.55 :
                    confidence === 'MEDIUM' ? 0.80 : 1.0;
 
@@ -394,7 +404,8 @@ function assessRegimeConfidence(f, regimeData, volRegime) {
     isTransitioning,
     signals,
     sizeMult,
-    hurstProxy, // rough trend persistence proxy (0.5 = mixed, 1.0 = all agree)
+    hurstProxy,
+    arimaStability: arimaStability ?? null,
   };
 }
 
@@ -426,7 +437,7 @@ function calcZScore(arr, window = 60) {
 // ── Main Gold Model ────────────────────────────────────────────────────────────
 // Call after FRED data loads. Result stored in S.goldModel.
 // volRegime: optional output from calculateVolRegime() — used for confidence assessment.
-export function computeGoldMacroModel(volRegime, history) {
+export function computeGoldMacroModel(volRegime, history, arimaStability = null) {
   const f = S.fredData;
   if (!f) return null;
   const hist = history ?? S.goldHistory ?? null;
@@ -526,7 +537,7 @@ export function computeGoldMacroModel(volRegime, history) {
   const beiDecomp = decomposeBreakeven(tips, tipsPrev, bei, beiPrev);
 
   // ── Regime confidence / transition risk ───────────────────────────────────
-  const regimeConf = assessRegimeConfidence(f, { regime, tipsMom, beiMom, dxyMom }, volRegime ?? null);
+  const regimeConf = assessRegimeConfidence(f, { regime, tipsMom, beiMom, dxyMom }, volRegime ?? null, arimaStability);
 
   // Fed pricing proxy: 2Y momentum (most FOMC-sensitive tenor)
   const fedPricingSignal = us2yMom != null
@@ -607,6 +618,9 @@ export function computeGoldMacroModel(volRegime, history) {
 
     // ── Regime confidence ─────────────────────────────────────────────────────
     regimeConfidence: regimeConf,
+
+    // ── ARIMA stability (passed through for KV sync and downstream consumers) ─
+    arimaStability: arimaStability ?? null,
 
     // ── Contextual signals ────────────────────────────────────────────────────
     fedPricingSignal,

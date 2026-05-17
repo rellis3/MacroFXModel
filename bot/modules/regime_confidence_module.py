@@ -30,10 +30,11 @@ class RegimeConfidenceModule(BaseModule):
         pair_data = (snap.get('pairs') or {}).get(pair) or {}
 
         # ── Pull pre-computed data from KV snapshot ───────────────────────────
-        hmm   = pair_data.get('hmm')   or {}
-        vol   = pair_data.get('vol')   or {}
-        arma  = pair_data.get('arma')  or {}
-        hurst = pair_data.get('hurst')  # float or None
+        hmm      = pair_data.get('hmm')   or {}
+        vol      = pair_data.get('vol')   or {}
+        arma     = pair_data.get('arma')  or {}
+        hurst    = pair_data.get('hurst')  # float or None
+        arima_kv = pair_data.get('arima') or {}
 
         garch = vol.get('garch') or {}
 
@@ -71,9 +72,14 @@ class RegimeConfidenceModule(BaseModule):
             else:
                 hurst_bonus = 0.08 if hurst > 0.55 else -0.08 if hurst < 0.45 else 0.0
 
+        # ── 6. ARIMA price residual stability ─────────────────────────────────
+        # Written to KV by browser alerts.js every 5 min per pair.
+        # Default 0.85 when not yet available (conservative, doesn't punish cold start).
+        arima_stability = float(arima_kv.get('residualStability', 0.85))
+
         # ── Combined regime confidence ────────────────────────────────────────
         raw_confidence    = (hmm_certainty * garch_stability * impulse_discount
-                             * arma_factor * separation_clarity)
+                             * arma_factor * separation_clarity * arima_stability)
         regime_confidence = max(0.05, min(1.0, raw_confidence + hurst_bonus))
 
         # ── Transition risk (max of individual signals) ───────────────────────
@@ -83,6 +89,7 @@ class RegimeConfidenceModule(BaseModule):
             0.55 if low_vol_flag              else 0,
             0.55 if sigma_ratio < 1.2         else 0,
             0.50 if impulse_pct > 30          else 0,
+            0.60 if arima_stability < 0.50    else 0.35 if arima_stability < 0.70 else 0,
         )
 
         # ── Sizing multiplier (continuous, 0.25–1.0) ─────────────────────────
@@ -132,5 +139,6 @@ class RegimeConfidenceModule(BaseModule):
                 'garch_stability':   garch_stability,
                 'sigma_ratio':       sigma_ratio,
                 'low_vol_flag':      low_vol_flag,
+                'arima_stability':   round(arima_stability, 2),
             },
         )

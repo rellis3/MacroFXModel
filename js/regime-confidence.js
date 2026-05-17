@@ -16,9 +16,10 @@
  * @param {object|null} garch       — garch sub-object from calculateVolRegime(): { cluster, volImpulsePct }
  * @param {object|null} armaResult  — computeRegimeTransition() result: { lowVolPersistenceFlag, ... }
  * @param {number|null} hurst       — Hurst exponent (0.3–0.7 typical range)
+ * @param {number|null} arimaStability — residualStability from computeArimaContext() (0–1)
  * @returns {object} regimeConfidence, transitionRisk, sizingMult, defensiveMode, label, components, narrative
  */
-export function computeRegimeConfidence(hmm, garch, armaResult, hurst) {
+export function computeRegimeConfidence(hmm, garch, armaResult, hurst, arimaStability = null) {
   // 1. HMM state certainty — distance from 50/50 ambiguity
   //    rangeProb near 0.5 means the model cannot decide → very low certainty
   const rangeProb    = hmm?.rangeProb ?? 0.5;
@@ -57,8 +58,12 @@ export function computeRegimeConfidence(hmm, garch, armaResult, hurst) {
     }
   }
 
+  // 7. ARIMA price residual stability — erratic residuals signal regime breakdown
+  //    Default 0.85 when not yet computed (conservative, not punishing)
+  const arimaFactor = arimaStability ?? 0.85;
+
   // Combined regime confidence (multiplicative — weakest link dominates)
-  const rawConfidence    = hmmCertainty * garchStability * impulseDiscount * armaFactor * separationClarity;
+  const rawConfidence    = hmmCertainty * garchStability * impulseDiscount * armaFactor * separationClarity * arimaFactor;
   const regimeConfidence = Math.max(0.05, Math.min(1.0, rawConfidence + hurstBonus));
 
   // Transition risk: the highest individual signal determines defensive posture
@@ -68,6 +73,7 @@ export function computeRegimeConfidence(hmm, garch, armaResult, hurst) {
     lowVolFlag                ? 0.55 : 0,
     sigmaRatio < 1.2          ? 0.55 : 0,
     volImpulsePct > 30        ? 0.50 : 0,
+    arimaFactor < 0.50        ? 0.60 : arimaFactor < 0.70 ? 0.35 : 0,
   );
 
   // Sizing multiplier — smooth continuous scale from 0.25 to 1.0
@@ -96,15 +102,16 @@ export function computeRegimeConfidence(hmm, garch, armaResult, hurst) {
       impulseDiscount,
       armaFactor,
       separationClarity,
-      hurstBonus:        Math.round(hurstBonus * 100) / 100,
+      hurstBonus:        Math.round(hurstBonus         * 100) / 100,
+      arimaFactor:       Math.round(arimaFactor        * 100) / 100,
     },
     narrative: _buildNarrative(
-      regimeConfidence, transitionRisk, cluster, lowVolFlag, hmmCertainty, sigmaRatio, volImpulsePct
+      regimeConfidence, transitionRisk, cluster, lowVolFlag, hmmCertainty, sigmaRatio, volImpulsePct, arimaFactor
     ),
   };
 }
 
-function _buildNarrative(confidence, transitionRisk, cluster, lowVolFlag, hmmCertainty, sigmaRatio, impulse) {
+function _buildNarrative(confidence, transitionRisk, cluster, lowVolFlag, hmmCertainty, sigmaRatio, impulse, arimaFactor) {
   const parts = [];
   if (hmmCertainty < 0.30) parts.push('HMM near 50/50 state split — regime ambiguous');
   if (cluster === 'EXPANDING') parts.push('GARCH vol expanding — regime may be breaking');
@@ -112,6 +119,8 @@ function _buildNarrative(confidence, transitionRisk, cluster, lowVolFlag, hmmCer
   if (lowVolFlag) parts.push('Prolonged low-vol persistence — shock risk elevated');
   if (sigmaRatio < 1.2) parts.push('RANGE/TREND states poorly separated');
   if (impulse > 30) parts.push(`Vol impulse +${impulse.toFixed(0)}% — accelerating`);
+  if (arimaFactor < 0.50) parts.push('ARIMA residuals very erratic — price behaving unpredictably');
+  else if (arimaFactor < 0.70) parts.push('ARIMA residuals elevated — some regime uncertainty');
   if (transitionRisk > 0.55) parts.push('⚠ Transition risk HIGH — defensive sizing active');
   return parts.length > 0 ? parts.join('; ') : 'Regime stable — full confidence';
 }
