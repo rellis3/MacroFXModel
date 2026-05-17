@@ -398,12 +398,38 @@ function assessRegimeConfidence(f, regimeData, volRegime) {
   };
 }
 
+// ── Acceleration & Z-Score Helpers ────────────────────────────────────────────
+
+// Returns {mom, accel} where mom = arr[n-1] - arr[n-2], accel = mom - (arr[n-2] - arr[n-3])
+// Returns nulls if fewer than 3 points.
+function calcMomAccel(arr) {
+  if (!arr || arr.length < 2) return { mom: null, accel: null };
+  const n = arr.length;
+  const mom = arr[n-1].value - arr[n-2].value;
+  if (arr.length < 3) return { mom, accel: null };
+  const prevMom = arr[n-2].value - arr[n-3].value;
+  return { mom, accel: mom - prevMom };
+}
+
+// Rolling z-score: (current - mean of last `window` points) / stddev
+// Returns null if fewer than `window` points.
+function calcZScore(arr, window = 60) {
+  if (!arr || arr.length < window) return null;
+  const slice = arr.slice(-window).map(p => p.value);
+  const mean = slice.reduce((a, b) => a + b, 0) / window;
+  const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / window;
+  const std = Math.sqrt(variance);
+  if (std < 0.0001) return 0;
+  return (slice[slice.length - 1] - mean) / std;
+}
+
 // ── Main Gold Model ────────────────────────────────────────────────────────────
 // Call after FRED data loads. Result stored in S.goldModel.
 // volRegime: optional output from calculateVolRegime() — used for confidence assessment.
-export function computeGoldMacroModel(volRegime) {
+export function computeGoldMacroModel(volRegime, history) {
   const f = S.fredData;
   if (!f) return null;
+  const hist = history ?? S.goldHistory ?? null;
 
   const tips     = f.tips?.value;
   const tipsPrev = f.tips?.prev;
@@ -428,6 +454,39 @@ export function computeGoldMacroModel(volRegime) {
   const hyChange  = (hy   != null && hyPrev   != null) ? hy   - hyPrev   : null;
   const us2yMom   = (us2y != null && us2yPrev != null) ? us2y - us2yPrev : null;
 
+  // ── Acceleration (second derivative — detects exhaustion/inflection) ──────
+  const tipsArr   = hist?.tips;
+  const beiArr    = hist?.bei;
+  const dxyArr    = hist?.dxy;
+  const vixArr    = hist?.vix;
+
+  const { mom: tipsMomH,  accel: tipsAccel  } = calcMomAccel(tipsArr);
+  const { mom: beiMomH,   accel: beiAccel   } = calcMomAccel(beiArr);
+  const { accel: dxyAccel } = calcMomAccel(dxyArr);
+  const { accel: vixAccel } = calcMomAccel(vixArr);
+
+  // Prefer history-derived momentum when available (more points = less noise)
+  const tipsMomFinal = tipsMomH ?? tipsMom;
+  const beiMomFinal  = beiMomH  ?? beiMom;
+
+  // ── Z-scores (contextual normalisation — is value unusual vs recent history?) ─
+  const tipsZScore = calcZScore(tipsArr, 60);
+  const beiZScore  = calcZScore(beiArr,  60);
+  const dxyZScore  = calcZScore(dxyArr,  60);
+  const vixZScore  = calcZScore(vixArr,  30);
+
+  // ── Inflection flags (momentum positive but decelerating = exhaustion signal) ─
+  const tipsInflection = (tipsAccel != null && tipsMomFinal != null)
+    ? (tipsMomFinal > 0 && tipsAccel < -0.02 ? 'BEARISH_EXHAUSTING'
+     : tipsMomFinal < 0 && tipsAccel >  0.02 ? 'BULLISH_EXHAUSTING'
+     : 'TRENDING')
+    : null;
+  const beiInflection = (beiAccel != null && beiMomFinal != null)
+    ? (beiMomFinal > 0 && beiAccel < -0.02 ? 'BEARISH_EXHAUSTING'
+     : beiMomFinal < 0 && beiAccel >  0.02 ? 'BULLISH_EXHAUSTING'
+     : 'TRENDING')
+    : null;
+
   // ── Regime Classification ──────────────────────────────────────────────────
   const regimeData = classifyGoldRegime(f);
   const { regime } = regimeData;
@@ -439,8 +498,8 @@ export function computeGoldMacroModel(volRegime) {
   const breakevenLevelScore = scoreBreakevenLevel(bei);
 
   // ── Layer 2: Momentum scores (primary alpha) ───────────────────────────────
-  const realYieldMomentumScore = scoreTipsMomentum(tipsMom);
-  const breakevenMomentumScore = scoreBreakevenMomentum(beiMom);
+  const realYieldMomentumScore = scoreTipsMomentum(tipsMomFinal);
+  const breakevenMomentumScore = scoreBreakevenMomentum(beiMomFinal);
   const dxyMomentumScore       = scoreDxyMomentum(dxyMom);
   const safeHavenScore         = scoreSafeHaven(vix, vixChange, hy, hyChange);
 
@@ -552,6 +611,13 @@ export function computeGoldMacroModel(volRegime) {
     // ── Contextual signals ────────────────────────────────────────────────────
     fedPricingSignal,
     nfciSignal,
+
+    // ── Acceleration & inflection ─────────────────────────────────────────────
+    tipsAccel, beiAccel, dxyAccel, vixAccel,
+    tipsInflection, beiInflection,
+
+    // ── Z-scores (contextual normalisation) ──────────────────────────────────
+    tipsZScore, beiZScore, dxyZScore, vixZScore,
 
     computedAt: Date.now(),
   };

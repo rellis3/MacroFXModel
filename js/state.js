@@ -32,4 +32,5 @@ export const S = {
   watchlistDate:   null,   // 'YYYY-MM-DD' London date of last watchlist computation
   goldModel:       null,   // computeGoldMacroModel() result — updated after FRED loads and on gold tab
   _goldVolRegime:  null,   // scratch slot: vol regime passed from vol.js into gold T1 calc
+  goldHistory:     null,   // {tips,bei,dxy,vix,hy} arrays from fredhistory — enables accel + z-score
 };
