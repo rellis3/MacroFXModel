@@ -669,6 +669,8 @@ function renderResults(d) {
   if (tag === 'is')  { _isResult  = d; _oosResult = null; }
   if (tag === 'oos') { _oosResult = d; }
   renderIsOosComparison();
+  renderExitAnalysis();
+  renderRegimeBreakdown();
 
   // ── Stats tiles ─────────────────────────────────────────────────────────
   const mc = d.monteCarlo;
@@ -751,6 +753,184 @@ function renderResults(d) {
   const ymWrap = document.getElementById('yearmonth-wrap');
   if (ymWrap) ymWrap.style.display = d.monthly?.length ? 'block' : 'none';
   renderYearMonth(d.monthly);
+}
+
+// ── Exit distribution + Time-in-trade ─────────────────────────────────────────
+
+function renderExitAnalysis() {
+  const el = document.getElementById('exit-analysis-panel');
+  if (!el) return;
+
+  const is  = _isResult;
+  const oos = _oosResult;
+  const d   = oos ?? is;   // show latest run's data; comparison populates when both exist
+
+  if (!d?.exitAnalysis) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+
+  const ea = d.exitAnalysis;
+  const fmt = (v, dec = 3) => v != null ? v.toFixed(dec) : '—';
+  const fmtBar = (v) => v != null ? v.toFixed(1) + ' bars' : '—';
+
+  const leakBadge = ea.exitLeak != null && ea.exitLeak > 0.1
+    ? `<span class="exit-badge leak">💥 exit leak</span>`
+    : ea.exitLeak != null && ea.exitLeak <= 0
+      ? `<span class="exit-badge ok">✓ tight</span>`
+      : '';
+
+  const holdShakeout = (is && oos && oos.exitAnalysis?.avgHoldBarsAll != null && is.exitAnalysis?.avgHoldBarsAll != null)
+    ? (oos.exitAnalysis.avgHoldBarsAll < is.exitAnalysis.avgHoldBarsAll * 0.80)
+    : false;
+
+  // IS/OOS comparison rows (only shown when both results exist)
+  let compHtml = '';
+  if (is?.exitAnalysis && oos?.exitAnalysis) {
+    const ie = is.exitAnalysis, oe = oos.exitAnalysis;
+    const row = (label, isV, oosV, higherBetter = true, dec = 3) => {
+      const isFmt = isV != null ? isV.toFixed(dec) : '—';
+      const oosFmt = oosV != null ? oosV.toFixed(dec) : '—';
+      let cls = '', badge = '';
+      if (isV != null && oosV != null) {
+        const delta = oosV - isV;
+        const pct = isV !== 0 ? Math.abs(delta / isV) * 100 : 0;
+        const degraded = higherBetter ? delta < -isV * 0.10 : delta > Math.abs(isV) * 0.10;
+        cls   = degraded ? 'oos-warn' : delta * (higherBetter ? 1 : -1) > 0 ? 'oos-better' : 'oos-ok';
+        badge = `<span class="oos-delta">${delta >= 0 ? '+' : ''}${delta.toFixed(dec)}</span>`;
+      }
+      return `<tr><td class="oos-metric">${label}</td>
+        <td class="oos-is">${isFmt}</td>
+        <td class="oos-oos ${cls}">${oosFmt}</td>
+        <td>${badge}</td></tr>`;
+    };
+    compHtml = `
+      <div class="exit-comp-title">IS vs OOS Exit Comparison</div>
+      <table class="oos-table" style="margin-bottom:8px">
+        <thead><tr><th></th><th>IS</th><th>OOS</th><th>Δ</th></tr></thead>
+        <tbody>
+          ${row('Avg winner R',   ie.avgWinnerR,    oe.avgWinnerR)}
+          ${row('Avg loser R',    ie.avgLoserR,     oe.avgLoserR,  false)}
+          ${row('MFE winners',    ie.avgMFEWinners, oe.avgMFEWinners)}
+          ${row('MFE capture',    ie.avgMFECapture, oe.avgMFECapture)}
+          ${row('Exit leak (R)',  ie.exitLeak,      oe.exitLeak,   false)}
+          ${row('Avg hold (bars)', ie.avgHoldBarsAll, oe.avgHoldBarsAll)}
+        </tbody>
+      </table>
+      ${holdShakeout ? '<div class="exit-shakeout-warn">⚠ OOS trades held significantly shorter — possible early shake-out in OOS data</div>' : ''}`;
+  }
+
+  el.innerHTML = `
+    <div class="chart-title" style="display:flex;align-items:center;gap:6px">
+      Exit Distribution &amp; Time-in-Trade
+      <button class="help-btn" onclick="toggleHelp('h-exit')">?</button>
+    </div>
+    <div class="help-panel" id="h-exit" style="margin-bottom:10px">
+      <h4>MFE — Maximum Favourable Excursion</h4>
+      <p>The furthest price went <em>in your favour</em> before the trade closed, measured in R. If MFE winners is 2.8R but your TP is 2.2R, your exits are capturing 79% of the move. The gap is <em>exit leak</em>.</p>
+      <h4>Exit Leak</h4>
+      <p><span class="hr">Exit leak = MFE winners − avg winner R.</span> If MFE stays similar IS vs OOS but avg R drops → your exit is getting triggered early in OOS conditions. Could be slippage, tighter TP, or unfavourable market microstructure.</p>
+      <h4>MAE — Maximum Adverse Excursion</h4>
+      <p>How far price went <em>against</em> you before turning. If MAE losers ≈ 1.0R, trades are going straight to SL (normal). If MAE losers < 0.5R, losers are reversing from near entry — possible SL placement issue.</p>
+      <h4>Time in Trade</h4>
+      <p>Average bars from entry to exit. Winners should hold longer than losers in a trend-following system. If OOS trades are significantly shorter than IS, the market may be reversing faster — a sign of changed regime or getting shaken out early.</p>
+    </div>
+    <div class="exit-grid">
+      <div class="exit-block">
+        <div class="exit-block-title">Favourable Excursion</div>
+        <div class="exit-kv"><span>MFE winners (R)</span><span class="mono">${fmt(ea.avgMFEWinners)}</span></div>
+        <div class="exit-kv"><span>MFE losers (R)</span><span class="mono">${fmt(ea.avgMFELosers)}</span></div>
+        <div class="exit-kv"><span>Avg winner R</span><span class="mono pos">${fmt(ea.avgWinnerR)}</span></div>
+        <div class="exit-kv"><span>Avg loser R</span><span class="mono neg">${fmt(ea.avgLoserR)}</span></div>
+        <div class="exit-kv exit-kv-hl"><span>MFE capture %${leakBadge}</span><span class="mono">${ea.avgMFECapture != null ? (ea.avgMFECapture * 100).toFixed(1) + '%' : '—'}</span></div>
+        <div class="exit-kv exit-kv-hl"><span>Exit leak (R)</span><span class="mono ${ea.exitLeak > 0.1 ? 'neg' : ''}">${fmt(ea.exitLeak)}</span></div>
+      </div>
+      <div class="exit-block">
+        <div class="exit-block-title">Adverse Excursion</div>
+        <div class="exit-kv"><span>MAE winners (R)</span><span class="mono">${fmt(ea.avgMAEWinners)}</span></div>
+        <div class="exit-kv"><span>MAE losers (R)</span><span class="mono neg">${fmt(ea.avgMAELosers)}</span></div>
+        <div class="exit-kv" style="margin-top:8px"><span style="color:var(--text3);font-size:10px">MAE losers → 1.0 = clean SL tap<br>MAE losers ≪ 1.0 = premature reverse</span></div>
+      </div>
+      <div class="exit-block">
+        <div class="exit-block-title">Time in Trade</div>
+        <div class="exit-kv"><span>Avg hold (all)</span><span class="mono">${fmtBar(ea.avgHoldBarsAll)}</span></div>
+        <div class="exit-kv"><span>Winners</span><span class="mono pos">${fmtBar(ea.avgHoldBarsWinners)}</span></div>
+        <div class="exit-kv"><span>Losers</span><span class="mono neg">${fmtBar(ea.avgHoldBarsLosers)}</span></div>
+        <div class="exit-kv exit-kv-hl" style="margin-top:4px"><span>Exit reasons</span>
+          <span class="mono" style="font-size:10px">TP ${ea.exitReasons?.tp ?? 0} · SL ${ea.exitReasons?.sl ?? 0} · EOD ${ea.exitReasons?.eod ?? 0}</span>
+        </div>
+      </div>
+    </div>
+    ${compHtml}`;
+}
+
+// ── Regime breakdown ───────────────────────────────────────────────────────────
+
+function renderRegimeBreakdown() {
+  const el = document.getElementById('regime-panel');
+  if (!el) return;
+
+  const d = _oosResult ?? _isResult;
+  if (!d?.regimeBreakdown) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+
+  const rb  = d.regimeBreakdown;
+  const wr  = d.winRate; // overall win rate for delta colouring
+
+  const regimeTable = (rows) => {
+    if (!rows?.length) return '<p class="empty">No data.</p>';
+    return `<table class="regime-tbl">
+      <thead><tr><th>Regime</th><th>n</th><th>Win%</th><th>Avg R</th><th>Total R</th></tr></thead>
+      <tbody>${rows.map(r => {
+        const wrPct  = (r.winRate * 100).toFixed(1);
+        const wrDiff = r.winRate - wr;
+        const wrCls  = wrDiff > 0.03 ? 'pos' : wrDiff < -0.03 ? 'neg' : '';
+        const rCls   = r.avgR > 0 ? 'pos' : r.avgR < 0 ? 'neg' : '';
+        const drag   = r.avgR < 0 ? '<span class="regime-drag">drag</span>' : '';
+        return `<tr>
+          <td class="regime-lbl">${r.label}${drag}</td>
+          <td class="mono">${r.trades}</td>
+          <td class="mono ${wrCls}">${wrPct}%</td>
+          <td class="mono ${rCls}">${r.avgR > 0 ? '+' : ''}${r.avgR}</td>
+          <td class="mono ${r.totalR > 0 ? 'pos' : r.totalR < 0 ? 'neg' : ''}">${r.totalR > 0 ? '+' : ''}${r.totalR}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  };
+
+  const crossTabHtml = rb.crossTab?.length
+    ? `<div class="regime-sub-title">Session × Trend  <span style="font-size:10px;color:var(--text3);font-weight:400">sorted worst avg R → best · ≥5 trades</span></div>
+       ${regimeTable(rb.crossTab)}`
+    : '';
+
+  el.innerHTML = `
+    <div class="chart-title" style="display:flex;align-items:center;gap:6px">
+      Regime Breakdown
+      <button class="help-btn" onclick="toggleHelp('h-regime')">?</button>
+    </div>
+    <div class="help-panel" id="h-regime" style="margin-bottom:10px">
+      <h4>Session</h4>
+      <p>Performance split by London market open (07-12), New York overlap (12-17), Late session (17-22), and Asia (22-07). Weak sessions with negative avg R are candidates for a session filter.</p>
+      <h4>Trend vs Range</h4>
+      <p>Classified from the DM ratio of the last 14 entry bars. <span class="hb">TREND</span> = directional momentum dominant; <span class="ha">RANGE</span> = balanced buying/selling pressure. A mean-reversion strategy typically outperforms in RANGE regimes.</p>
+      <h4>Volatility</h4>
+      <p>Based on ATR in pips at entry. LOW (&lt;5 pip ATR), NORMAL (5–20), HIGH (&gt;20). High volatility often means wider bars and more whipsaws — consider a vol filter if HIGH is dragging avg R.</p>
+      <h4>Session × Trend cross-tab</h4>
+      <p>The worst-performing regime <em>combination</em>. A single bad combo (e.g. Asia × TREND) can drag the entire strategy average. Filter it and re-run to see the improvement.</p>
+    </div>
+    <div class="regime-grid">
+      <div>
+        <div class="regime-sub-title">Session</div>
+        ${regimeTable(rb.bySession)}
+      </div>
+      <div>
+        <div class="regime-sub-title">Trend / Range</div>
+        ${regimeTable(rb.byTrend)}
+      </div>
+      <div>
+        <div class="regime-sub-title">Volatility</div>
+        ${regimeTable(rb.byVol)}
+      </div>
+    </div>
+    ${crossTabHtml}`;
 }
 
 // ── IS/OOS comparison panel ────────────────────────────────────────────────────
