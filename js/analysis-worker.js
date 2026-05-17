@@ -38,6 +38,7 @@ self.onmessage = ({ data }) => {
   if (type === 'reset') { Object.keys(_bars).forEach(k => delete _bars[k]); }
   if (type === 'sweep')       handleSweep();
   if (type === 'sweep_stats') handleSweepStats(payload);
+  if (type === 'filter')      handleFilter(payload);
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -662,4 +663,10 @@ function handleSweepStats({ slMult, rrRatio }) {
   });
   const stats = aggregateStats(recomputed);
   self.postMessage({ type: 'sweep_stats_done', stats, slMult, rrRatio });
+}
+
+function handleFilter({ symbol }) {
+  const touches = symbol ? _allTouches.filter(t => t.symbol === symbol) : _allTouches;
+  const stats   = aggregateStats(touches);
+  self.postMessage({ type: 'filter_done', stats, symbol: symbol || null });
 }
