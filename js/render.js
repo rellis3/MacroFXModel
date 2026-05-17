@@ -3,7 +3,7 @@ import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTrading
 import { TYPICAL_SPREADS, PAIRS } from './config.js';
 import { calculateTierScores, computeDollarRegime, computeMacroRegime, computeBayesianScore } from './macro.js';
 import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
-import { computeRegimeTransition, renderARMAAndTransition } from './arma.js';
+import { computeRegimeTransition, renderARMAAndTransition, computeARMAForecast } from './arma.js';
 import { filterConfluences, enhanceConfluences, detectCrossSessionClusters } from './confluences.js';
 import { renderOISidebar } from './oi.js';
 import { loadAndRenderCompass } from './compass.js';
@@ -12,6 +12,7 @@ import { aiRenderCardOnUpdate } from './ai.js';
 import { renderCOTCard, renderCOTCrossPair } from './cot.js';
 import { sessionBadgeHTML } from './session.js';
 import { eventRiskBadgeHTML, surpriseIndexHTML, getPairSurpriseScore } from './events.js';
+import { buildMarketNarrative } from './market-narrative.js';
 
 export function renderAll() {
   try {
@@ -162,6 +163,10 @@ function renderAllInner() {
 
   const divergence = calculateDivergence(tierData.totalScore, volRegime);
 
+  const armaForecast = (() => {
+    try { return computeARMAForecast(S.compassData[S.currentPair.symbol] || null); } catch(e) { return null; }
+  })();
+
   const yesterdayLvls  = getYesterdayLevels();
   const prevWeekLvls   = getPrevWeekLevels();
   const roundNums      = getRoundNumberLevels(quote.price, S.currentPair.symbol);
@@ -227,9 +232,29 @@ function renderAllInner() {
   const macroQuadrant = computeMacroRegime();
   S.macroQuadrant = macroQuadrant;
 
+  const narrativePanel = buildMarketNarrative({
+    tierData,
+    volRegime,
+    transitionRisk,
+    sentiment,
+    macroBias,
+    session:       S.sessionData,
+    positionSize,
+    divergence,
+    macroQuadrant,
+    pair:          S.currentPair,
+    calendarCtx,
+    dollarRegime:  S.dollarRegime || computeDollarRegime(),
+    otcForecast,
+    armaForecast,
+  });
+
   const html = `
 <!-- SESSION BADGE -->
 ${sessionBadge}
+
+<!-- MARKET ANALYST NARRATIVE -->
+${narrativePanel}
 
 <!-- RISK SENTIMENT TRAFFIC LIGHT -->
 <div class="risk-bar">
