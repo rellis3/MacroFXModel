@@ -1041,11 +1041,19 @@ function renderSynthesis(analysis) {
   const status = document.getElementById('claude-status');
   status.textContent = 'Done';
 
+  // API often returns a string — try to parse as JSON first
   if (typeof analysis === 'string') {
-    out.innerHTML = `<div style="font-size:12px;color:var(--text2);line-height:1.65;white-space:pre-wrap;
-      padding:14px;background:var(--s1);border-radius:8px;border:1px solid var(--border)">${escHtml(analysis)}</div>`;
-    out.style.display = 'flex';
-    return;
+    // Strip markdown code fences (```json ... ```)
+    const stripped = analysis.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    try {
+      analysis = JSON.parse(stripped);
+    } catch (e) {
+      // Genuinely plain text — show readable
+      out.innerHTML = `<div style="font-size:12px;color:var(--text2);line-height:1.65;white-space:pre-wrap;
+        padding:14px;background:var(--s1);border-radius:8px;border:1px solid var(--border)">${escHtml(analysis)}</div>`;
+      out.style.display = 'flex';
+      return;
+    }
   }
 
   // Section order — filters first so the actionable stuff is at the top
