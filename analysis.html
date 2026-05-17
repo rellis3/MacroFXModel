@@ -103,6 +103,13 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
 /* ── Combo table ────────────────────────────────────────────────────────────── */
 .combo-badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:4px;background:var(--s2);color:var(--text3);margin:1px}
 
+/* ── SL/TP Sweep ─────────────────────────────────────────────────────────────── */
+.sweep-cell{width:76px;height:40px;text-align:center;vertical-align:middle;cursor:pointer;border:1px solid var(--border);font-size:10px;font-family:'DM Mono',monospace;position:relative;transition:outline .1s}
+.sweep-cell:hover{outline:2px solid var(--blue);z-index:1}
+.sweep-cell.selected{outline:2px solid var(--text);z-index:2}
+.sweep-th{font-size:9px;color:var(--text3);font-weight:400;padding:3px 6px;white-space:nowrap;text-align:center}
+.sweep-row-th{font-size:9px;color:var(--text3);font-weight:400;padding:3px 8px;white-space:nowrap;text-align:right}
+
 /* ── Claude synthesis ───────────────────────────────────────────────────────── */
 #synthesis-out{display:none;flex-direction:column;gap:10px;margin-top:14px}
 .syn-section{border:1px solid var(--border);border-radius:8px;overflow:hidden}
@@ -229,6 +236,9 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
 
     <div id="results-wrap" style="display:none;flex-direction:column;gap:14px">
 
+      <!-- ── Sweep active-params banner (injected when viewing a sweep cell) ─ -->
+      <div id="sweep-banner" style="display:none;align-items:center;gap:8px;font-size:11px;padding:7px 14px;background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);border-radius:6px;color:var(--blue)"></div>
+
       <!-- Tab bar -->
       <div class="tab-bar">
         <button class="tab-btn on" data-tab="overview">Overview</button>
@@ -239,6 +249,7 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
         <button class="tab-btn" data-tab="decay">Year / Pair</button>
         <button class="tab-btn" data-tab="combos">Top Combos</button>
         <button class="tab-btn" data-tab="claude">Claude Synthesis</button>
+        <button class="tab-btn" data-tab="sweep">SL/TP Sweep</button>
       </div>
 
       <!-- ── Overview ─────────────────────────────────────────────────────── -->
@@ -281,6 +292,9 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
         <div id="synthesis-out"></div>
       </div>
 
+      <!-- ── SL/TP Sweep ───────────────────────────────────────────────────── -->
+      <div class="tab-panel" id="tab-sweep"></div>
+
     </div><!-- /results-wrap -->
   </div><!-- /an-main -->
 </div><!-- /an-app -->
@@ -298,6 +312,12 @@ const TFS_OPT  = ['m1'];         // optional — better simulation when present
 const loaded  = {}; // { [sym]: { m1: false|number, m5: false|number, m30: false|number } }
 let   _stats  = null;
 let   _worker = null;
+let _baseStats = null;
+let _sweepGrid = null;
+let _sweepMetric = 'totalR';
+let _selectedCell = null;
+const SWEEP_SL_MULTS = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5];
+const SWEEP_RR_RATS  = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0];
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INIT
@@ -349,10 +369,22 @@ function spawnWorker() {
     }
     if (data.type === 'done') {
       _stats = data.stats;
+      _baseStats = data.stats;
       document.getElementById('progress-wrap').style.display = 'none';
       document.getElementById('btn-run').disabled = false;
       document.getElementById('btn-run').textContent = '▶ Re-run Analysis';
       renderResults(_stats);
+    }
+    if (data.type === 'sweep_done') {
+      _sweepGrid = data.grid;
+      renderSweepHeatmap();
+      const btn = document.getElementById('btn-sweep');
+      if (btn) { btn.disabled = false; btn.textContent = 'Re-run Sweep →'; }
+    }
+    if (data.type === 'sweep_stats_done') {
+      _stats = data.stats;
+      renderResults(_stats);
+      showSweepBanner(data.slMult, data.rrRatio);
     }
   };
 }
@@ -456,6 +488,7 @@ function renderResults(s) {
   renderApproach(s);
   renderDecay(s);
   renderCombos(s);
+  renderSweep();
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -890,6 +923,107 @@ function renderSynthesis(analysis) {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── SL/TP Sweep ───────────────────────────────────────────────────────────────
+function renderSweep() {
+  const panel = document.getElementById('tab-sweep');
+  if (!panel) return;
+  panel.innerHTML = `
+    <div class="an-card" style="margin-bottom:12px">
+      <div class="an-card-title">SL/TP Parameter Sweep</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+        Re-simulates every recorded touch across a grid of SL multipliers and TP ratios
+        using stored MFE, MAE and EOD-close data — no raw price data re-scan needed.
+        Click any cell to reload all analysis tabs for that parameter combination.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <button id="btn-sweep" class="btn-secondary" style="padding:7px 16px;font-size:12px;border-color:var(--blue);color:var(--blue)">Run Sweep →</button>
+        <span style="font-size:11px;color:var(--text3);margin-left:8px">Colour by:</span>
+        <button id="sw-metric-r"  class="btn-secondary" style="font-size:11px;padding:4px 10px${_sweepMetric==='totalR'?';border-color:var(--blue);color:var(--blue)':''}">Total R</button>
+        <button id="sw-metric-wr" class="btn-secondary" style="font-size:11px;padding:4px 10px${_sweepMetric==='winRate'?';border-color:var(--blue);color:var(--blue)':''}">Win Rate</button>
+      </div>
+      <div id="sweep-heatmap-wrap"></div>
+    </div>`;
+  document.getElementById('btn-sweep').addEventListener('click', () => {
+    if (!_stats) return;
+    const btn = document.getElementById('btn-sweep');
+    btn.disabled = true; btn.textContent = 'Running…';
+    _worker.postMessage({ type: 'sweep' });
+  });
+  document.getElementById('sw-metric-r').addEventListener('click',  () => { _sweepMetric = 'totalR';  renderSweep(); });
+  document.getElementById('sw-metric-wr').addEventListener('click', () => { _sweepMetric = 'winRate'; renderSweep(); });
+  if (_sweepGrid) renderSweepHeatmap();
+}
+
+function renderSweepHeatmap() {
+  const wrap = document.getElementById('sweep-heatmap-wrap');
+  if (!wrap || !_sweepGrid) return;
+  const metric = _sweepMetric;
+  const vals   = Object.values(_sweepGrid).map(d => d[metric]);
+  const vmin   = Math.min(...vals), vmax = Math.max(...vals);
+
+  const thCells = SWEEP_RR_RATS.map(rr => `<th class="sweep-th">TP&nbsp;${rr}R</th>`).join('');
+  const rows = SWEEP_SL_MULTS.map(sl => {
+    const cells = SWEEP_RR_RATS.map(rr => {
+      const key = `${sl}:${rr}`;
+      const d   = _sweepGrid[key];
+      if (!d) return `<td class="sweep-cell" style="color:var(--text3)">—</td>`;
+      const val  = d[metric];
+      const norm = vmax > vmin ? (val - vmin) / (vmax - vmin) : 0.5;
+      const bg   = val >= 0
+        ? `rgba(52,199,89,${(0.1 + norm * 0.6).toFixed(2)})`
+        : `rgba(255,59,48,${(0.1 + (1 - norm) * 0.6).toFixed(2)})`;
+      const sel  = _selectedCell === key ? ' selected' : '';
+      const disp = metric === 'totalR'
+        ? `${val >= 0 ? '+' : ''}${val.toFixed(1)}R`
+        : `${val.toFixed(1)}%`;
+      return `<td class="sweep-cell${sel}" style="background:${bg}"
+        data-sl="${sl}" data-rr="${rr}" data-key="${key}"
+        title="SL ${sl}× ATR · TP ${rr}R · n=${d.n} · WR ${d.winRate}% · Total ${d.totalR >= 0 ? '+' : ''}${d.totalR}R">
+        ${disp}<br><span style="font-size:8px;color:var(--text3)">${d.n}t</span>
+      </td>`;
+    }).join('');
+    return `<tr><th class="sweep-row-th">SL&nbsp;${sl}×</th>${cells}</tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="heatmap-wrap">
+      <table class="heatmap" style="border-collapse:collapse">
+        <thead><tr><th class="sweep-th"></th>${thCells}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:8px">
+      ${metric === 'totalR'
+        ? 'Green = positive total R · Red = negative · Darker = stronger magnitude'
+        : 'Darker green = higher win rate · Darker red = lower win rate'}
+      · Click a cell to view all analysis tabs under that SL/TP combination.
+    </div>`;
+
+  wrap.querySelectorAll('.sweep-cell[data-sl]').forEach(cell => {
+    cell.addEventListener('click', () => {
+      _selectedCell = cell.dataset.key;
+      renderSweepHeatmap();
+      _worker.postMessage({ type: 'sweep_stats', payload: { slMult: +cell.dataset.sl, rrRatio: +cell.dataset.rr } });
+    });
+  });
+}
+
+function showSweepBanner(sl, rr) {
+  const b = document.getElementById('sweep-banner');
+  if (!b) return;
+  b.style.display = 'flex';
+  b.innerHTML = `<strong>Sweep view:</strong>&nbsp;All tabs show results for <strong>SL&nbsp;${sl}×&nbsp;ATR&nbsp;·&nbsp;TP&nbsp;${rr}R</strong>
+    <button onclick="resetSweepView()" style="margin-left:auto;font-size:10px;padding:2px 10px;border-radius:4px;border:1px solid var(--blue);background:none;color:var(--blue);cursor:pointer">← Reset to default</button>`;
+}
+
+function resetSweepView() {
+  const b = document.getElementById('sweep-banner');
+  if (b) b.style.display = 'none';
+  _selectedCell = null;
+  if (_baseStats) { _stats = _baseStats; renderResults(_stats); }
+  if (_sweepGrid) renderSweepHeatmap();
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

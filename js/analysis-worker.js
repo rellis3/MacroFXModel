@@ -29,12 +29,15 @@ const COT_SYM = {
 };
 
 const _bars = {};
+let _allTouches = [];
 
 self.onmessage = ({ data }) => {
   const { type, payload } = data;
   if (type === 'parse') handleParse(payload);
   if (type === 'run')   handleRun(payload);
   if (type === 'reset') { Object.keys(_bars).forEach(k => delete _bars[k]); }
+  if (type === 'sweep')       handleSweep();
+  if (type === 'sweep_stats') handleSweepStats(payload);
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -188,9 +191,9 @@ function simulateTrade(bars5, touchIdx, level, dir, atrPrice, pip, slMult, rrRat
   const slDist = atrPrice * slMult;
   const tpDist = slDist * rrRatio;
   if (slDist <= 0) return null;
-  const sl = dir === 'long' ? level - slDist : level + slDist;
-  const tp = dir === 'long' ? level + tpDist : level - tpDist;
   let mfe = 0, mae = 0;
+  let firstResult = null, firstR = null;
+  let eodPnlPips = 0;
 
   for (let i = touchIdx + 1; i < bars5.length; i++) {
     const b = bars5[i];
@@ -199,19 +202,28 @@ function simulateTrade(bars5, touchIdx, level, dir, atrPrice, pip, slMult, rrRat
     if (fav > mfe) mfe = fav;
     if (adv > mae) mae = adv;
 
-    if (dir === 'long') {
-      if (b.l <= sl) return { result: 'sl', r: -1,      mfe, mae };
-      if (b.h >= tp) return { result: 'tp', r: rrRatio, mfe, mae };
-    } else {
-      if (b.h >= sl) return { result: 'sl', r: -1,      mfe, mae };
-      if (b.l <= tp) return { result: 'tp', r: rrRatio, mfe, mae };
+    if (firstResult === null) {
+      if (dir === 'long') {
+        if (b.l <= level - slDist) { firstResult = 'sl'; firstR = -1; }
+        else if (b.h >= level + tpDist) { firstResult = 'tp'; firstR = rrRatio; }
+      } else {
+        if (b.h >= level + slDist) { firstResult = 'sl'; firstR = -1; }
+        else if (b.l <= level - tpDist) { firstResult = 'tp'; firstR = rrRatio; }
+      }
     }
+
     if (b.lHour >= 20) {
-      const eod = (dir === 'long' ? b.c - level : level - b.c) / slDist;
-      return { result: 'eod', r: Math.max(-1, Math.min(rrRatio, eod)), mfe, mae };
+      eodPnlPips = (dir === 'long' ? b.c - level : level - b.c) / pip;
+      if (firstResult === null) {
+        firstResult = 'eod';
+        firstR = Math.max(-1, Math.min(rrRatio, eodPnlPips / (slDist / pip)));
+      }
+      break;
     }
   }
-  return null;
+
+  if (firstResult === null) return null;
+  return { result: firstResult, r: firstR, mfe, mae, eodPnlPips };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -290,6 +302,7 @@ function handleRun({ symbols, cfg, cotData = {}, oiData = {} }) {
   }
   self.postMessage({ type: 'progress', pct: 92, label: 'Aggregating statistics…' });
   const stats = aggregateStats(allTouches);
+  _allTouches = allTouches;
   self.postMessage({ type: 'done', stats, totalTouches: allTouches.length });
 }
 
@@ -502,6 +515,8 @@ function analyzeSymbol(symbol, cfg, cotData, oiData) {
           r:        trade.r,
           mfe:      trade.mfe,
           mae:      trade.mae,
+          atrPips:     atrPrice / pip,
+          eodPnlPips:  trade.eodPnlPips,
         });
         lastTouchBi = bi;
       }
@@ -597,4 +612,49 @@ function aggregateStats(touches) {
     worstCombos,
     totalTouches: touches.length,
   };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SL/TP SWEEP
+// ══════════════════════════════════════════════════════════════════════════════
+const SWEEP_SL_MULTS = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5];
+const SWEEP_RR_RATS  = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0];
+
+function recomputeR(touch, slMult, rrRatio) {
+  const slDistPips = touch.atrPips * slMult;
+  if (slDistPips <= 0) return null;
+  const tpDistPips = slDistPips * rrRatio;
+  if (touch.mae >= slDistPips) return { result: 'sl', r: -1 };
+  if (touch.mfe >= tpDistPips) return { result: 'tp', r: rrRatio };
+  const r = Math.max(-1, Math.min(rrRatio, touch.eodPnlPips / slDistPips));
+  return { result: 'eod', r };
+}
+
+function handleSweep() {
+  if (!_allTouches.length) { self.postMessage({ type: 'sweep_done', grid: {} }); return; }
+  const grid = {};
+  for (const sl of SWEEP_SL_MULTS) {
+    for (const rr of SWEEP_RR_RATS) {
+      let totalR = 0, wins = 0, n = 0;
+      for (const t of _allTouches) {
+        const res = recomputeR(t, sl, rr);
+        if (!res) continue;
+        totalR += res.r;
+        if (res.result === 'tp') wins++;
+        n++;
+      }
+      grid[`${sl}:${rr}`] = { totalR: +totalR.toFixed(2), winRate: n > 0 ? +(wins / n * 100).toFixed(1) : 0, n };
+    }
+  }
+  self.postMessage({ type: 'sweep_done', grid });
+}
+
+function handleSweepStats({ slMult, rrRatio }) {
+  if (!_allTouches.length) return;
+  const recomputed = _allTouches.map(t => {
+    const res = recomputeR(t, slMult, rrRatio);
+    return res ? { ...t, result: res.result, r: res.r } : t;
+  });
+  const stats = aggregateStats(recomputed);
+  self.postMessage({ type: 'sweep_stats_done', stats, slMult, rrRatio });
 }
