@@ -104,11 +104,23 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
 .combo-badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:4px;background:var(--s2);color:var(--text3);margin:1px}
 
 /* ── Claude synthesis ───────────────────────────────────────────────────────── */
-#synthesis-out{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:12px;line-height:1.65;color:var(--text2);white-space:pre-wrap;display:none}
-.syn-section{margin-bottom:12px}
-.syn-section h4{font-size:11px;font-weight:700;color:var(--text);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
-.syn-finding{padding:4px 0;border-bottom:1px solid var(--border)}
+#synthesis-out{display:none;flex-direction:column;gap:10px;margin-top:14px}
+.syn-section{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.syn-section-hd{display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.syn-section-hd svg{width:13px;height:13px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.syn-body{background:var(--bg)}
+.syn-finding{display:flex;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);font-size:12px;line-height:1.55;color:var(--text2)}
 .syn-finding:last-child{border-bottom:none}
+.syn-finding:hover{background:var(--s1)}
+.syn-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);flex-shrink:0;margin-top:2px;min-width:18px}
+/* Section accent colours */
+.syn-findings .syn-section-hd{background:rgba(74,158,255,.1);color:var(--blue)}
+.syn-edges    .syn-section-hd{background:rgba(52,199,89,.1);color:var(--green)}
+.syn-warnings .syn-section-hd{background:rgba(255,149,0,.1);color:#f0a500}
+.syn-regime   .syn-section-hd{background:rgba(175,82,222,.1);color:#af52de}
+.syn-filters  .syn-section-hd{background:rgba(52,199,89,.1);color:var(--green)}
+.syn-avoid    .syn-section-hd{background:rgba(255,59,48,.1);color:var(--red)}
+.syn-other    .syn-section-hd{background:var(--s2);color:var(--text2)}
 
 /* ── Empty / placeholder ────────────────────────────────────────────────────── */
 .empty-msg{text-align:center;padding:48px 20px;color:var(--text3);font-size:13px}
@@ -252,7 +264,7 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
 
       <!-- ── Claude Synthesis ─────────────────────────────────────────────── -->
       <div class="tab-panel" id="tab-claude">
-        <div class="an-card">
+        <div class="an-card" style="margin-bottom:12px">
           <div class="an-card-title">Claude Synthesis</div>
           <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
             Sends a structured statistical summary (~4K tokens) to the Claude API.
@@ -265,8 +277,8 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
             </button>
             <span id="claude-status" style="font-size:11px;color:var(--text3)"></span>
           </div>
-          <div id="synthesis-out" style="margin-top:14px"></div>
         </div>
+        <div id="synthesis-out"></div>
       </div>
 
     </div><!-- /results-wrap -->
@@ -838,28 +850,46 @@ function buildSummaryForClaude(s) {
   };
 }
 
+const SYN_META = {
+  key_findings:           { cls:'syn-findings', label:'Key Findings',            icon:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>' },
+  structural_edges:       { cls:'syn-edges',    label:'Structural Edges',         icon:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>' },
+  data_artefact_warnings: { cls:'syn-warnings', label:'Data Artefact Warnings',   icon:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>' },
+  regime_insights:        { cls:'syn-regime',   label:'Regime Insights',           icon:'<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>' },
+  filter_recommendations: { cls:'syn-filters',  label:'Filter Recommendations',    icon:'<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>' },
+  setups_to_avoid:        { cls:'syn-avoid',    label:'Setups to Avoid',           icon:'<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>' },
+};
+
 function renderSynthesis(analysis) {
   const out = document.getElementById('synthesis-out');
   document.getElementById('claude-status').textContent = 'Done';
+
   if (typeof analysis === 'string') {
-    out.textContent = analysis;
+    // Plain text fallback — wrap in a simple card
+    out.innerHTML = `<div class="syn-section syn-other">
+      <div class="syn-section-hd"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>Analysis</div>
+      <div class="syn-body"><div class="syn-finding" style="white-space:pre-wrap">${escHtml(analysis)}</div></div>
+    </div>`;
   } else {
-    // Structured JSON from Claude
-    let html = '';
-    for (const [key, val] of Object.entries(analysis)) {
-      const title = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      if (Array.isArray(val)) {
-        html += `<div class="syn-section">
-          <h4>${title}</h4>
-          ${val.map(v => `<div class="syn-finding">${v}</div>`).join('')}
-        </div>`;
-      } else {
-        html += `<div class="syn-section"><h4>${title}</h4><div>${val}</div></div>`;
-      }
-    }
-    out.innerHTML = html;
+    const order = Object.keys(SYN_META);
+    const keys  = [...order.filter(k => k in analysis), ...Object.keys(analysis).filter(k => !SYN_META[k])];
+    out.innerHTML = keys.map(key => {
+      const val  = analysis[key];
+      const meta = SYN_META[key] || { cls:'syn-other', label: key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()), icon:'<circle cx="12" cy="12" r="10"/>' };
+      const items = Array.isArray(val) ? val : (val ? [String(val)] : []);
+      const rows  = items.map((v, i) =>
+        `<div class="syn-finding"><span class="syn-num">${i+1}.</span><span>${escHtml(v)}</span></div>`
+      ).join('');
+      return `<div class="syn-section ${meta.cls}">
+        <div class="syn-section-hd"><svg viewBox="0 0 24 24">${meta.icon}</svg>${meta.label}</div>
+        <div class="syn-body">${rows || '<div class="syn-finding" style="color:var(--text3)">No data</div>'}</div>
+      </div>`;
+    }).join('');
   }
-  out.style.display = 'block';
+  out.style.display = 'flex';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

@@ -907,7 +907,7 @@ function renderLevelCard(level,idx,date,pair){
 
 function getDigits(pair){if(pair.includes('JPY'))return 3;if(pair.includes('XAU'))return 2;return 5;}
 function getStep(pair){if(pair.includes('JPY'))return '0.001';if(pair.includes('XAU'))return '0.01';return '0.00001';}
-function getPipSz(pair){if(pair.includes('JPY'))return 0.01;if(pair.includes('XAU'))return 0.1;return 0.0001;}
+function getPipSz(pair){if(pair.includes('JPY'))return 0.01;if(pair.includes('XAU'))return 0.1;if(pair.includes('NAS100'))return 1;return 0.0001;}
 
 function levelNarrative(level, pair) {
   const pipSize = getPipSz(pair);
