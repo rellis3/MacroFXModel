@@ -138,6 +138,15 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
 /* ── Empty / placeholder ────────────────────────────────────────────────────── */
 .empty-msg{text-align:center;padding:48px 20px;color:var(--text3);font-size:13px}
 .empty-msg svg{width:40px;height:40px;stroke:var(--border);fill:none;stroke-width:1.5;margin-bottom:12px}
+
+/* ── Level Quality / MFE-MAE ratio badges ───────────────────────────────────── */
+.ratio-badge{font-size:10px;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:4px;white-space:nowrap;display:inline-block}
+.ratio-good{background:rgba(52,199,89,.15);color:var(--green)}
+.ratio-ok{background:rgba(255,149,0,.15);color:#f0a500}
+.ratio-bad{background:rgba(255,59,48,.15);color:var(--red)}
+
+/* ── Today's Levels form ────────────────────────────────────────────────────── */
+.tl-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px}
 </style>
 </head>
 <body>
@@ -251,36 +260,24 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
       <!-- Tab bar -->
       <div class="tab-bar">
         <button class="tab-btn on" data-tab="overview">Overview</button>
-        <button class="tab-btn" data-tab="timing">Timing</button>
-        <button class="tab-btn" data-tab="levels">Level Quality</button>
-        <button class="tab-btn" data-tab="regime">Market Context</button>
-        <button class="tab-btn" data-tab="approach">Approach</button>
-        <button class="tab-btn" data-tab="decay">Year / Pair</button>
-        <button class="tab-btn" data-tab="combos">Top Combos</button>
-        <button class="tab-btn" data-tab="claude">Claude Synthesis</button>
+        <button class="tab-btn" data-tab="quality">Level Quality</button>
+        <button class="tab-btn" data-tab="decay">Touch Decay</button>
+        <button class="tab-btn" data-tab="today">Today's Levels</button>
         <button class="tab-btn" data-tab="sweep">SL/TP Sweep</button>
+        <button class="tab-btn" data-tab="claude">Claude Synthesis</button>
       </div>
 
       <!-- ── Overview ─────────────────────────────────────────────────────── -->
       <div class="tab-panel on" id="tab-overview"></div>
 
-      <!-- ── Timing ───────────────────────────────────────────────────────── -->
-      <div class="tab-panel" id="tab-timing"></div>
-
       <!-- ── Level Quality ────────────────────────────────────────────────── -->
-      <div class="tab-panel" id="tab-levels"></div>
+      <div class="tab-panel" id="tab-quality"></div>
 
-      <!-- ── Market Context ───────────────────────────────────────────────── -->
-      <div class="tab-panel" id="tab-regime"></div>
-
-      <!-- ── Approach ─────────────────────────────────────────────────────── -->
-      <div class="tab-panel" id="tab-approach"></div>
-
-      <!-- ── Year / Pair ──────────────────────────────────────────────────── -->
+      <!-- ── Touch Decay ──────────────────────────────────────────────────── -->
       <div class="tab-panel" id="tab-decay"></div>
 
-      <!-- ── Top Combinations ─────────────────────────────────────────────── -->
-      <div class="tab-panel" id="tab-combos"></div>
+      <!-- ── Today's Levels ───────────────────────────────────────────────── -->
+      <div class="tab-panel" id="tab-today"></div>
 
       <!-- ── Claude Synthesis ─────────────────────────────────────────────── -->
       <div class="tab-panel" id="tab-claude">
@@ -503,12 +500,9 @@ function renderResults(s) {
   if (s.empty) { alert('No touches found — check date range and data.'); return; }
   renderPairFilter(s);
   renderOverview(s);
-  renderTiming(s);
-  renderLevels(s);
-  renderRegime(s);
-  renderApproach(s);
-  renderDecay(s);
-  renderCombos(s);
+  renderLevelQuality(s);
+  renderTouchDecay(s);
+  renderTodaysLevels(s);
   renderSweep();
 }
 
@@ -592,256 +586,335 @@ function pill(val, label, color) {
   </div>`;
 }
 
-// ─── Timing ───────────────────────────────────────────────────────────────────
-function renderTiming(s) {
-  const kzOrder = ['asia_close','london_open','london_mid','ny_open','ny_mid','off_peak'];
-  const kzLabels = {
-    asia_close:'Asia Close\n05–07', london_open:'London Open\n07–10',
-    london_mid:'London Mid\n10–13', ny_open:'NY Open\n13–16',
-    ny_mid:'NY Mid\n16–20', off_peak:'Off-Peak'
-  };
-  const dowOrder = ['Mon','Tue','Wed','Thu','Fri'];
+// ─── Level Quality (MFE/MAE bars) ─────────────────────────────────────────────
+function renderLevelQuality(s) {
+  const panel = document.getElementById('tab-quality');
+  if (!panel) return;
 
-  const kzRows = kzOrder.filter(k => s.byKz[k]?.n >= 5)
-    .map(k => statRow(kzLabels[k].replace('\n',' '), s.byKz[k] || {n:0,winRate:0,avgR:0,avgMfe:0,avgMae:0}, s.baseline));
-  const dowRows = dowOrder.filter(k => s.byDow[k]?.n >= 5)
-    .map(k => statRow(k, s.byDow[k], s.baseline));
+  function qSection(title, entries, minN = 5) {
+    const items = Object.entries(entries || {})
+      .filter(([, d]) => d && d.n >= minN && ((d.avgMfe || 0) + (d.avgMae || 0)) > 0)
+      .map(([lbl, d]) => {
+        const mfe = d.avgMfe ?? 0, mae = d.avgMae ?? 0;
+        const ratio = mae > 0 ? mfe / mae : mfe > 0 ? 99 : 0;
+        return { lbl, n: d.n, mfe, mae, ratio, wr: d.winRate ?? 0, avgR: d.avgR ?? 0 };
+      })
+      .sort((a, b) => b.ratio - a.ratio);
+    if (!items.length) return '';
 
-  // Hour heat map
-  const hours = Array.from({length:12}, (_, i) => i + 8);
-  const maxAbs = Math.max(...hours.map(h => Math.abs(s.byHour[h]?.avgR ?? 0)), 0.01);
-  const hmCells = hours.map(h => {
-    const d = s.byHour[h];
-    if (!d || d.n < 3) return `<td style="color:var(--text3);font-size:9px">—</td>`;
-    const intensity = Math.min(1, Math.abs(d.avgR) / maxAbs);
-    const bg = d.avgR >= 0
-      ? `rgba(52,199,89,${0.1 + intensity * 0.5})`
-      : `rgba(255,59,48,${0.1 + intensity * 0.5})`;
-    return `<td style="background:${bg};color:var(--text)" title="${h}:00 — ${fmtN(d.n)} trades, ${fmtPct(d.winRate)} WR, ${fmtR(d.avgR)}">${fmtR(d.avgR).replace('R','')}</td>`;
-  }).join('');
+    const maxVal = Math.max(...items.map(i => Math.max(i.mfe, i.mae)), 0.01);
+    const W = 80;
 
-  document.getElementById('tab-timing').innerHTML = `
-    <div class="an-card" style="margin-bottom:10px">
-      <div class="an-card-title">Hour of Day Heat Map (London time)</div>
-      <div class="heatmap-wrap">
-        <table class="heatmap">
-          <thead><tr>${hours.map(h => `<th>${h}h</th>`).join('')}</tr></thead>
-          <tbody><tr>${hmCells}</tr></tbody>
-        </table>
-      </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:6px">Green = positive avg R · Red = negative avg R · Darker = stronger signal</div>
-    </div>
-    <div class="an-card" style="margin-bottom:10px">
-      <div class="an-card-title">Kill Zone Performance</div>
+    const rows = items.map(it => {
+      const mfeW = Math.min(W, Math.round((it.mfe / maxVal) * W));
+      const maeW = Math.min(W, Math.round((it.mae / maxVal) * W));
+      const rc = it.ratio >= 2 ? 'ratio-good' : it.ratio >= 1.2 ? 'ratio-ok' : 'ratio-bad';
+      const rl = it.ratio >= 99 ? '∞' : it.ratio.toFixed(1) + '×';
+      return `<tr>
+        <td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.lbl}">${it.lbl}</td>
+        <td class="mono" style="text-align:right;color:var(--text3);font-size:10px;padding-right:8px">${it.n}</td>
+        <td style="width:${W * 2 + 6}px;padding:3px 0">
+          <div style="display:flex;align-items:center">
+            <div style="width:${W}px;display:flex;justify-content:flex-end;padding-right:1px">
+              <div style="width:${maeW}px;height:8px;background:rgba(255,59,48,.5);border-radius:1px 0 0 1px"></div>
+            </div>
+            <div style="width:2px;height:14px;background:var(--border);flex-shrink:0"></div>
+            <div style="width:${W}px;padding-left:1px">
+              <div style="width:${mfeW}px;height:8px;background:rgba(52,199,89,.55);border-radius:0 1px 1px 0"></div>
+            </div>
+          </div>
+        </td>
+        <td><span class="ratio-badge ${rc}">${rl}</span></td>
+        <td class="mono" style="font-size:11px;color:var(--green)">${it.mfe.toFixed(1)}p</td>
+        <td class="mono" style="font-size:11px;color:var(--red)">${it.mae.toFixed(1)}p</td>
+        <td class="mono" style="font-size:11px">${(it.wr * 100).toFixed(0)}%</td>
+        <td class="mono" style="font-size:11px;color:${it.avgR >= 0 ? 'var(--green)' : 'var(--red)'}">${it.avgR >= 0 ? '+' : ''}${it.avgR.toFixed(2)}R</td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="an-card" style="margin-bottom:10px">
+      <div class="an-card-title">${title}</div>
       <table class="feat-table">
-        <thead><tr><th>Session Window</th><th>Trades</th><th>Win%</th><th>Avg R</th><th>vs Baseline</th><th>MFE / MAE</th></tr></thead>
-        <tbody>${kzRows.join('')}</tbody>
-      </table>
-    </div>
-    <div class="an-card">
-      <div class="an-card-title">Day of Week</div>
-      <table class="feat-table">
-        <thead><tr><th>Day</th><th>Trades</th><th>Win%</th><th>Avg R</th><th>vs Baseline</th><th>MFE / MAE</th></tr></thead>
-        <tbody>${dowRows.join('')}</tbody>
+        <thead><tr>
+          <th>Group</th><th style="text-align:right">n</th>
+          <th style="text-align:center"><span style="color:var(--red)">◄ MAE</span>&nbsp;│&nbsp;<span style="color:var(--green)">MFE ►</span></th>
+          <th>MFE/MAE</th><th style="color:var(--green)">MFE</th><th style="color:var(--red)">MAE</th><th>Win%</th><th>Avg R</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
       </table>
     </div>`;
+  }
+
+  panel.innerHTML =
+    `<div style="font-size:11px;color:var(--text3);margin-bottom:10px;padding:8px 12px;background:var(--s1);border-radius:6px;border:1px solid var(--border)">
+      <strong style="color:var(--text2)">MFE/MAE ratio ≥ 2×</strong> — price ran twice as far in your favour as against: a genuine barrier.
+      <strong style="color:#f0a500"> 1–2×</strong> moderate. <strong style="color:var(--red)">Below 1×</strong> — price pushes through more often than it holds.
+    </div>` +
+    qSection('Confluence Source', { 'Asia × Yesterday': s.byConfSource?.asia, 'Asia × Monday range': s.byConfSource?.monday }) +
+    qSection('Fib Category', { 'Extension (outside range)': s.byFibType?.ext, 'Retracement (inside range)': s.byFibType?.ret }) +
+    qSection('Individual Fib Level — sorted by MFE/MAE', s.byFib) +
+    qSection('Touch Number', { 'First touch of level': s.byTouchNum?.first, 'Subsequent touch': s.byTouchNum?.subsequent }) +
+    qSection('Confluence Density', s.byDensity) +
+    qSection('Kill Zone', s.byKz) +
+    qSection('Asia Range Size', { 'Tight (<33rd pct)': s.byAsiaSize?.tight, 'Normal (33–67th)': s.byAsiaSize?.normal, 'Wide (>67th pct)': s.byAsiaSize?.wide });
 }
 
-// ─── Level Quality ────────────────────────────────────────────────────────────
-function renderLevels(s) {
-  document.getElementById('tab-levels').innerHTML =
-    featureTable('Confluence Source', {
-      'Asia × Asia (yesterday\'s range)': s.byConfSource?.asia   || {n:0},
-      'Asia × Monday (week opener range)': s.byConfSource?.monday || {n:0},
-    }, s.baseline) +
-    featureTable('Fib Category', {
-      'Extension (outward — outside the range)':   s.byFibType?.ext || {n:0},
-      'Retracement (inward — inside the range)':   s.byFibType?.ret || {n:0},
-    }, s.baseline) +
-    featureTable('Confluence Tightness', {
-      'Tight (same Fib or <0.2× tol)': s.byTight['true']  || {n:0},
-      'Normal (within tolerance)':      s.byTight['false'] || {n:0},
-    }, s.baseline) +
-    featureTable('Confluence Density (overlapping Fibs)', s.byDensity, s.baseline) +
-    featureTable('Individual Fib Level', s.byFib, s.baseline) +
-    featureTable('Touch Number (per level per day)', {
-      'First touch of level today':      s.byTouchNum?.first      || {n:0},
-      'Subsequent touch of level today': s.byTouchNum?.subsequent || {n:0},
-    }, s.baseline) +
-    featureTable('Round Number Proximity', {
-      'Near round (00 or 50)': s.byRound['true']  || {n:0},
-      'Not near round':        s.byRound['false'] || {n:0},
-    }, s.baseline) +
-    featureTable('Previous Session Extreme Match', {
-      'Near prev day H/L': s.byPrevMatch['true']  || {n:0},
-      'No match':          s.byPrevMatch['false'] || {n:0},
-    }, s.baseline) +
-    featureTable('Level Freshness (days since last test)', s.byFreshness, s.baseline);
-}
+// ─── Touch Decay ──────────────────────────────────────────────────────────────
+function renderTouchDecay(s) {
+  const panel = document.getElementById('tab-decay');
+  if (!panel) return;
 
-// ─── Market Context ───────────────────────────────────────────────────────────
-function renderRegime(s) {
-  const cotNote = `<div style="font-size:10px;color:var(--text3);margin-bottom:8px;padding:6px 8px;background:var(--s2);border-radius:5px;border-left:3px solid var(--blue)">
-    <strong>Note:</strong> COT and gamma wall data are current snapshots from the dashboard — not historical series.
-    These features show whether levels that worked historically align with <em>current</em> institutional positioning.
-  </div>`;
-  document.getElementById('tab-regime').innerHTML =
-    featureTable('ATR Regime (14-day rolling percentile)', {
-      'Low vol (<33rd pct)':  s.byAtrRegime?.low  || {n:0},
-      'Mid vol (33–67th)':    s.byAtrRegime?.mid  || {n:0},
-      'High vol (>67th pct)': s.byAtrRegime?.high || {n:0},
-    }, s.baseline) +
-    featureTable('ATR Sequence (3-day trend)', {
-      'Expanding (today > 3d ago)':   s.byAtrSeq?.expanding   || {n:0},
-      'Contracting (today < 3d ago)': s.byAtrSeq?.contracting || {n:0},
-      'Neutral':                      s.byAtrSeq?.neutral      || {n:0},
-    }, s.baseline) +
-    featureTable('Asia Range Size (90-day percentile)', {
-      'Tight (<33rd pct — coiling)': s.byAsiaSize?.tight  || {n:0},
-      'Normal (33–67th)':            s.byAsiaSize?.normal || {n:0},
-      'Wide (>67th pct)':            s.byAsiaSize?.wide   || {n:0},
-    }, s.baseline) +
-    featureTable('SMT Divergence (correlated pair)', {
-      'Confirmed divergence': s.bySmt?.confirmed || {n:0},
-      'Absent':               s.bySmt?.absent    || {n:0},
-      'No correlated pair':   s.bySmt?.na        || {n:0},
-    }, s.baseline) +
-    `<div class="an-card" style="margin-bottom:10px"><div class="an-card-title">Institutional Features (Snapshot)</div>${cotNote}</div>` +
-    featureTable('COT Positioning — Leveraged Fund Net (current snapshot)', {
-      'Aligned with COT direction': s.byCotBias?.aligned || {n:0},
-      'Counter COT direction':      s.byCotBias?.counter || {n:0},
-      'No COT data for pair':       s.byCotBias?.na      || {n:0},
-    }, s.baseline) +
-    featureTable('Gamma / Options Wall Proximity (current OI snapshot)', {
-      'Near call wall (resistance)': s.byGammaWall?.near_call    || {n:0},
-      'Near put wall (support)':     s.byGammaWall?.near_put     || {n:0},
-      'Near max pain':               s.byGammaWall?.near_maxpain || {n:0},
-      'Clear zone (no nearby wall)': s.byGammaWall?.clear        || {n:0},
-      'No OI data for pair':         s.byGammaWall?.na           || {n:0},
-    }, s.baseline);
-}
+  function dSection(title, entries, minN = 5) {
+    const items = Object.entries(entries || {})
+      .filter(([, d]) => d && d.n >= minN)
+      .map(([lbl, d]) => {
+        const mfe = d.avgMfe ?? 0, mae = d.avgMae ?? 0;
+        const ratio = mae > 0 ? mfe / mae : mfe > 0 ? 99 : 0;
+        return { lbl, n: d.n, mfe, mae, ratio, wr: d.winRate ?? 0, avgR: d.avgR ?? 0 };
+      });
+    if (!items.length) return '';
+    const maxVal = Math.max(...items.map(i => Math.max(i.mfe, i.mae)), 0.01);
+    const W = 80;
+    const rows = items.map(it => {
+      const mfeW = Math.min(W, Math.round((it.mfe / maxVal) * W));
+      const maeW = Math.min(W, Math.round((it.mae / maxVal) * W));
+      const rc = it.ratio >= 2 ? 'ratio-good' : it.ratio >= 1.2 ? 'ratio-ok' : 'ratio-bad';
+      return `<tr>
+        <td>${it.lbl}</td>
+        <td class="mono" style="text-align:right;color:var(--text3);font-size:10px;padding-right:8px">${it.n}</td>
+        <td style="width:${W * 2 + 6}px;padding:3px 0">
+          <div style="display:flex;align-items:center">
+            <div style="width:${W}px;display:flex;justify-content:flex-end;padding-right:1px">
+              <div style="width:${maeW}px;height:8px;background:rgba(255,59,48,.5);border-radius:1px 0 0 1px"></div>
+            </div>
+            <div style="width:2px;height:14px;background:var(--border);flex-shrink:0"></div>
+            <div style="width:${W}px;padding-left:1px">
+              <div style="width:${mfeW}px;height:8px;background:rgba(52,199,89,.55);border-radius:0 1px 1px 0"></div>
+            </div>
+          </div>
+        </td>
+        <td><span class="ratio-badge ${rc}">${it.ratio >= 99 ? '∞' : it.ratio.toFixed(1) + '×'}</span></td>
+        <td class="mono" style="font-size:11px;color:var(--green)">${it.mfe.toFixed(1)}p</td>
+        <td class="mono" style="font-size:11px;color:var(--red)">${it.mae.toFixed(1)}p</td>
+        <td class="mono" style="font-size:11px">${(it.wr * 100).toFixed(0)}%</td>
+        <td class="mono" style="font-size:11px;color:${it.avgR >= 0 ? 'var(--green)' : 'var(--red)'}">${it.avgR >= 0 ? '+' : ''}${it.avgR.toFixed(2)}R</td>
+      </tr>`;
+    }).join('');
+    return `<div class="an-card" style="margin-bottom:10px">
+      <div class="an-card-title">${title}</div>
+      <table class="feat-table">
+        <thead><tr>
+          <th>Group</th><th style="text-align:right">n</th>
+          <th style="text-align:center"><span style="color:var(--red)">◄ MAE</span>&nbsp;│&nbsp;<span style="color:var(--green)">MFE ►</span></th>
+          <th>MFE/MAE</th><th style="color:var(--green)">MFE</th><th style="color:var(--red)">MAE</th><th>Win%</th><th>Avg R</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
 
-// ─── Approach ─────────────────────────────────────────────────────────────────
-function renderApproach(s) {
-  document.getElementById('tab-approach').innerHTML =
-    featureTable('Approach Direction', {
-      'Correct (resistance from below / support from above)': s.byApproach.correct || {n:0},
-      'Counter (wrong-side approach)':                        s.byApproach.counter || {n:0},
-    }, s.baseline) +
-    featureTable('Premium / Discount (vs weekly open)', {
-      'Premium (price > weekly open)': s.byPremDisc.premium  || {n:0},
-      'Discount (price < weekly open)': s.byPremDisc.discount || {n:0},
-    }, s.baseline) +
-    featureTable('Approach + Bias Aligned', {
-      'Aligned (direction matches premium/discount)': s.byBiasOk[true]  || {n:0},
-      'Counter-bias entry':                           s.byBiasOk[false] || {n:0},
-    }, s.baseline) +
-    featureTable('Monthly Open Bias', {
-      'Aligned (short in premium / long in discount)': s.byMonthBias.aligned || {n:0},
-      'Counter-month bias':                            s.byMonthBias.counter || {n:0},
-    }, s.baseline) +
-    featureTable('Judas Swing (session extreme swept before touch)', {
-      'Judas sweep detected': s.byJudas[true]  || {n:0},
-      'Direct touch (no sweep first)': s.byJudas[false] || {n:0},
-    }, s.baseline);
-}
+  const FRESH_ORDER = ['fresh_7d+','fresh_4_7d','recent_2_3d','retested_1d'];
+  const freshOrdered = Object.fromEntries(
+    FRESH_ORDER.filter(k => s.byFreshness?.[k]).map(k => [k, s.byFreshness[k]])
+  );
 
-// ─── Year / Pair decay ────────────────────────────────────────────────────────
-function renderDecay(s) {
-  const years = Object.keys(s.byYear).sort();
-  const yRows = years.filter(y => s.byYear[y].n >= 10).map(y => {
+  const years = Object.keys(s.byYear || {}).sort();
+  const yRows = years.filter(y => (s.byYear[y]?.n ?? 0) >= 10).map(y => {
     const d = s.byYear[y];
+    const mfe = d.avgMfe ?? 0, mae = d.avgMae ?? 0;
+    const ratio = mae > 0 ? mfe / mae : 0;
+    const rc = ratio >= 2 ? 'ratio-good' : ratio >= 1.2 ? 'ratio-ok' : 'ratio-bad';
     return `<tr>
       <td style="font-weight:600">${y}</td>
-      <td class="mono">${fmtN(d.n)}</td>
-      <td class="mono">${fmtPct(d.winRate)}</td>
+      <td class="mono" style="text-align:right;color:var(--text3);font-size:10px">${d.n}</td>
+      <td class="mono">${(d.winRate * 100).toFixed(1)}%</td>
       <td class="mono ${d.avgR >= 0 ? 'delta-pos' : 'delta-neg'}">${fmtR(d.avgR)}</td>
-      <td class="mono">${fmtR(d.totalR)}</td>
-      <td class="mono" style="color:var(--text3)">${d.wins}W / ${d.losses}L / ${d.eods}E</td>
+      <td class="mono" style="color:var(--green)">${mfe.toFixed(1)}p</td>
+      <td class="mono" style="color:var(--red)">${mae.toFixed(1)}p</td>
+      <td><span class="ratio-badge ${rc}">${ratio.toFixed(1)}×</span></td>
     </tr>`;
   }).join('');
 
-  const qtrs = Object.keys(s.byQuarter).sort();
-  const qRows = qtrs.filter(q => s.byQuarter[q].n >= 5).map(q => {
-    const d = s.byQuarter[q];
-    return `<tr>
-      <td>${q}</td>
-      <td class="mono">${fmtN(d.n)}</td>
-      <td class="mono">${fmtPct(d.winRate)}</td>
-      <td class="mono ${d.avgR >= 0 ? 'delta-pos' : 'delta-neg'}">${fmtR(d.avgR)}</td>
-    </tr>`;
-  }).join('');
-
-  document.getElementById('tab-decay').innerHTML = `
-    <div class="an-card" style="margin-bottom:10px">
-      <div class="an-card-title">Year-over-Year Edge</div>
+  panel.innerHTML =
+    dSection('Touch Number — Level Integrity After Each Test', {
+      'First touch (level fresh)': s.byTouchNum?.first,
+      'Subsequent touch (level retested)': s.byTouchNum?.subsequent,
+    }) +
+    dSection('Level Freshness — Days Since Last Test', freshOrdered) +
+    `<div class="an-card">
+      <div class="an-card-title">Year-over-Year — Edge Trend</div>
       <table class="feat-table">
-        <thead><tr><th>Year</th><th>Touches</th><th>Win%</th><th>Avg R</th><th>Total R</th><th>Breakdown</th></tr></thead>
-        <tbody>${yRows}</tbody>
-      </table>
-    </div>
-    <div class="an-card">
-      <div class="an-card-title">Quarterly Breakdown</div>
-      <table class="feat-table">
-        <thead><tr><th>Quarter</th><th>Touches</th><th>Win%</th><th>Avg R</th></tr></thead>
-        <tbody>${qRows}</tbody>
+        <thead><tr><th>Year</th><th style="text-align:right">n</th><th>Win%</th><th>Avg R</th><th style="color:var(--green)">MFE</th><th style="color:var(--red)">MAE</th><th>Ratio</th></tr></thead>
+        <tbody>${yRows || '<tr><td colspan="7" style="color:var(--text3)">Not enough data</td></tr>'}</tbody>
       </table>
     </div>`;
 }
 
-// ─── Top Combinations ─────────────────────────────────────────────────────────
-function renderCombos(s) {
-  const KZ_LABELS = { london_open:'London Open', ny_open:'NY Open', london_mid:'London Mid', ny_mid:'NY Mid', asia_close:'Asia Close', off_peak:'Off-Peak' };
-  function comboBadges(parts) {
-    const [kz, confSrc, tight, approach, prem, atr] = parts;
-    return [
-      `<span class="combo-badge">${KZ_LABELS[kz] ?? kz}</span>`,
-      `<span class="combo-badge" style="border-color:${confSrc==='monday'?'var(--blue)':'var(--border)'}">${confSrc} conf</span>`,
-      `<span class="combo-badge">${tight}</span>`,
-      `<span class="combo-badge">${approach}</span>`,
-      `<span class="combo-badge">${prem}</span>`,
-      `<span class="combo-badge">${atr} vol</span>`,
-    ].join('');
-  }
-  function comboRow(c, i) {
-    return `<tr>
-      <td style="font-size:10px;color:var(--text3)">#${i+1}</td>
-      <td>${comboBadges(c.parts)}</td>
-      <td class="mono">${fmtN(c.n)}</td>
-      <td class="mono">${fmtPct(c.winRate)}</td>
-      <td class="mono delta-pos">${fmtR(c.avgR)}</td>
-      <td class="mono">${fmtR(c.totalR)}</td>
-    </tr>`;
-  }
-  function worstRow(c, i) {
-    return `<tr>
-      <td style="font-size:10px;color:var(--text3)">#${i+1}</td>
-      <td>${comboBadges(c.parts)}</td>
-      <td class="mono">${fmtN(c.n)}</td>
-      <td class="mono">${fmtPct(c.winRate)}</td>
-      <td class="mono delta-neg">${fmtR(c.avgR)}</td>
-      <td class="mono">${fmtR(c.totalR)}</td>
-    </tr>`;
-  }
-
-  const goodRows  = (s.topCombos  || []).map((c, i) => comboRow(c, i)).join('');
-  const badRows   = (s.worstCombos || []).slice(0, 10).map((c, i) => worstRow(c, i)).join('');
-
-  document.getElementById('tab-combos').innerHTML = `
-    <div class="an-card" style="margin-bottom:10px">
-      <div class="an-card-title">Top 20 Feature Combinations (min 10 trades, highest avg R)</div>
-      <table class="feat-table">
-        <thead><tr><th>#</th><th>Features</th><th>Trades</th><th>Win%</th><th>Avg R</th><th>Total R</th></tr></thead>
-        <tbody>${goodRows || '<tr><td colspan="6" style="color:var(--text3)">Not enough data</td></tr>'}</tbody>
-      </table>
+// ─── Today's Levels ────────────────────────────────────────────────────────────
+function renderTodaysLevels(s) {
+  const panel = document.getElementById('tab-today');
+  if (!panel) return;
+  panel.innerHTML = `
+    <div class="an-card" style="margin-bottom:12px">
+      <div class="an-card-title">Generate &amp; Score Today's Confluence Levels</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+        Enter today's Asia range and the previous session range. The engine generates all Fib confluence points
+        and scores each using the MFE/MAE quality data from the historical analysis run above.
+      </p>
+      <div class="tl-form">
+        <div class="cfg-cell">
+          <label>Pair</label>
+          <select id="tl-pair" class="bt-select">
+            <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+            <option>XAUUSD</option><option>AUDUSD</option><option>GBPJPY</option>
+            <option>USDCAD</option><option>NZDUSD</option>
+          </select>
+        </div>
+        <div class="cfg-cell">
+          <label>Today Asia High</label>
+          <input type="number" id="tl-ah" class="bt-input" step="0.00001" placeholder="e.g. 1.08450">
+        </div>
+        <div class="cfg-cell">
+          <label>Today Asia Low</label>
+          <input type="number" id="tl-al" class="bt-input" step="0.00001" placeholder="e.g. 1.08210">
+        </div>
+        <div class="cfg-cell">
+          <label>Prev Session High</label>
+          <input type="number" id="tl-ph" class="bt-input" step="0.00001" placeholder="e.g. 1.08600">
+        </div>
+        <div class="cfg-cell">
+          <label>Prev Session Low</label>
+          <input type="number" id="tl-pl" class="bt-input" step="0.00001" placeholder="e.g. 1.08100">
+        </div>
+        <div class="cfg-cell">
+          <label>Monday Asia High (optional)</label>
+          <input type="number" id="tl-mh" class="bt-input" step="0.00001" placeholder="optional">
+        </div>
+        <div class="cfg-cell">
+          <label>Monday Asia Low (optional)</label>
+          <input type="number" id="tl-ml" class="bt-input" step="0.00001" placeholder="optional">
+        </div>
+        <div class="cfg-cell">
+          <label>Tolerance (pips)</label>
+          <input type="number" id="tl-tol" class="bt-input" value="2" step="0.5" min="0.5" max="10">
+        </div>
+      </div>
+      <button id="btn-score-levels" class="btn-secondary" style="padding:7px 16px;font-size:12px;border-color:var(--blue);color:var(--blue)">Score Levels →</button>
     </div>
-    <div class="an-card">
-      <div class="an-card-title">Setups to Avoid (worst avg R, min 10 trades)</div>
-      <table class="feat-table">
-        <thead><tr><th>#</th><th>Features</th><th>Trades</th><th>Win%</th><th>Avg R</th><th>Total R</th></tr></thead>
-        <tbody>${badRows || '<tr><td colspan="6" style="color:var(--text3)">Not enough data</td></tr>'}</tbody>
-      </table>
-    </div>`;
+    <div id="tl-results"></div>`;
+  document.getElementById('btn-score-levels').addEventListener('click', () => computeTodaysLevels(s));
+}
+
+function computeTodaysLevels(s) {
+  const pair = document.getElementById('tl-pair').value;
+  const ah   = +document.getElementById('tl-ah').value;
+  const al   = +document.getElementById('tl-al').value;
+  const ph   = +document.getElementById('tl-ph').value;
+  const pl   = +document.getElementById('tl-pl').value;
+  const mh   = +document.getElementById('tl-mh').value || 0;
+  const ml   = +document.getElementById('tl-ml').value || 0;
+  const tol  = +document.getElementById('tl-tol').value || 2;
+  const out  = document.getElementById('tl-results');
+
+  if (!ah || !al || !ph || !pl || ah <= al || ph <= pl) {
+    out.innerHTML = `<div class="an-card" style="color:var(--red);font-size:12px">Please enter valid High &gt; Low for both ranges.</div>`;
+    return;
+  }
+
+  const pip = pair.includes('JPY') ? 0.01 : pair === 'XAUUSD' ? 0.1 : 0.0001;
+  const tolP = tol * pip;
+  const FEXT2 = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0];
+  const FRET2 = [0.382, 0.5, 0.618];
+
+  function gf(h, l, src) {
+    const r = h - l, o = [];
+    for (const f of FEXT2) {
+      o.push({ fib: f,       price: h + r * f, side: 'resist',  source: src, fibType: 'ext' });
+      o.push({ fib: -f,      price: l - r * f, side: 'support', source: src, fibType: 'ext' });
+    }
+    for (const f of FRET2) o.push({ fib: `R${f}`, price: h - r * f, side: 'inner', source: src, fibType: 'ret' });
+    return o;
+  }
+
+  function dc(todayF, prevF, tp) {
+    const raw = [];
+    for (const t of todayF) for (const p of prevF) {
+      const dist = Math.abs(t.price - p.price);
+      if (dist <= tp) raw.push({ price: (t.price + p.price) / 2, todayFib: t.fib, side: t.side,
+        dist, hasMondayFib: p.source === 'monday', fibType: t.fibType });
+    }
+    const merged = [];
+    for (const r of raw.sort((a, b) => a.price - b.price)) {
+      const ex = merged.find(m => Math.abs(m.price - r.price) < tp * 0.5);
+      if (ex) { ex.density++; if (r.hasMondayFib) ex.hasMondayFib = true; }
+      else merged.push({ ...r, density: 1 });
+    }
+    return merged;
+  }
+
+  function fl(f) {
+    if (typeof f === 'string' && f.startsWith('R')) return `${Math.round(parseFloat(f.slice(1)) * 1000) / 10}% ret`;
+    return `${+f > 0 ? '+' : '-'}${Math.abs(+f)} ext`;
+  }
+
+  const confs = dc(gf(ah, al, 'asia'), [...gf(ph, pl, 'asia'), ...(mh && ml && mh > ml ? gf(mh, ml, 'monday') : [])], tolP);
+
+  if (!confs.length) {
+    out.innerHTML = `<div class="an-card" style="color:var(--text3);font-size:12px">No confluences found at ${tol}p tolerance — try increasing.</div>`;
+    return;
+  }
+
+  const scored = confs.map(c => {
+    const lbl = fl(c.todayFib);
+    const src = c.hasMondayFib ? 'monday' : 'asia';
+    const fs  = s.byFib?.[lbl];
+    const ss  = s.byConfSource?.[src];
+    const mfe = fs?.avgMfe ?? ss?.avgMfe ?? s.baseline?.avgMfe ?? 0;
+    const mae = fs?.avgMae ?? ss?.avgMae ?? s.baseline?.avgMae ?? 0;
+    const ratio = mae > 0 ? mfe / mae : 0;
+    return { ...c, fibLabel: lbl, quality: { mfe, mae, ratio, wr: fs?.winRate ?? 0, n: fs?.n ?? 0 } };
+  }).sort((a, b) => b.quality.ratio - a.quality.ratio);
+
+  const dp = pip === 0.01 ? 3 : pip === 0.1 ? 2 : 5;
+  const rows = scored.map(lv => {
+    const q = lv.quality;
+    const rc = q.ratio >= 2 ? 'ratio-good' : q.ratio >= 1.2 ? 'ratio-ok' : 'ratio-bad';
+    const sc = lv.side === 'resist' ? 'var(--red)' : lv.side === 'support' ? 'var(--green)' : 'var(--text3)';
+    const si = lv.side === 'resist' ? '▼' : lv.side === 'support' ? '▲' : '↕';
+    const srcB = lv.hasMondayFib
+      ? `<span class="combo-badge" style="border-color:var(--blue);color:var(--blue)">Monday</span>`
+      : `<span class="combo-badge">Asia</span>`;
+    const denB = lv.density > 1 ? `<span class="combo-badge">${lv.density}×</span>` : '';
+    return `<tr>
+      <td class="mono" style="font-weight:700;font-size:13px;color:${sc}">${lv.price.toFixed(dp)}</td>
+      <td style="font-size:10px;color:${sc}">${si} ${lv.side}</td>
+      <td>${lv.fibLabel}</td>
+      <td>${srcB}${denB}</td>
+      <td><span class="ratio-badge ${rc}">${q.ratio.toFixed(1)}×</span></td>
+      <td class="mono" style="font-size:11px;color:var(--green)">${q.mfe.toFixed(1)}p</td>
+      <td class="mono" style="font-size:11px;color:var(--red)">${q.mae.toFixed(1)}p</td>
+      <td class="mono" style="font-size:11px">${(q.wr * 100).toFixed(0)}%</td>
+      <td class="mono" style="font-size:10px;color:var(--text3)">${q.n ? q.n + ' hist' : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  out.innerHTML = `<div class="an-card">
+    <div class="an-card-title">${scored.length} levels — ${pair} · sorted by MFE/MAE quality</div>
+    <table class="feat-table">
+      <thead><tr>
+        <th>Price</th><th>Side</th><th>Fib</th><th>Source</th>
+        <th>MFE/MAE</th><th style="color:var(--green)">MFE</th><th style="color:var(--red)">MAE</th>
+        <th>WR%</th><th>Hist n</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="font-size:10px;color:var(--text3);margin-top:8px">
+      Scored from ${s.baseline?.n ?? 0} historical touches.
+      <span class="ratio-badge ratio-good" style="margin:0 3px">≥2×</span>strong barrier ·
+      <span class="ratio-badge ratio-ok" style="margin:0 3px">1–2×</span>moderate ·
+      <span class="ratio-badge ratio-bad" style="margin:0 3px">&lt;1×</span>weak.
+    </div>
+  </div>`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
