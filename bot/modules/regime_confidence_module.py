@@ -49,8 +49,13 @@ class RegimeConfidenceModule(BaseModule):
         impulse_pct      = abs(float(vol.get('volImpulsePct', 0)))
         impulse_discount = 0.75 if impulse_pct > 30 else 0.90 if impulse_pct > 15 else 1.0
 
-        # ── 4. ARMA low-vol persistence danger ───────────────────────────────
-        low_vol_flag = bool(arma.get('lowVolPersistenceFlag', False))
+        # ── 4. ARMA/vol-transition low-vol persistence danger ────────────────
+        # KV snapshot may store either the explicit flag or riskScore/transitionRisk
+        low_vol_flag = bool(
+            arma.get('lowVolPersistenceFlag')
+            or arma.get('riskScore', 0) > 60
+            or arma.get('transitionRisk') == 'HIGH'
+        )
         arma_factor  = 0.75 if low_vol_flag else 1.0
 
         # ── 5. HMM sigma ratio (state separation clarity) ────────────────────
