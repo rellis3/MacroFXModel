@@ -1,0 +1,579 @@
+/* css/gold.css — Gold Macro Model page styles
+   All selectors start with .gold- to avoid leaking into the main dashboard.
+   Relies on CSS variables defined in index.css (:root / body.dark). */
+
+/* ── Page shell ────────────────────────────────────────────────────────────── */
+#goldApp {
+  padding: 0 20px 40px 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+#goldRoot {
+  padding-top: 14px;
+}
+
+/* ── Error card ────────────────────────────────────────────────────────────── */
+.gold-error-card {
+  background: var(--red-bg);
+  border: 1.5px solid var(--red-bd);
+  border-radius: var(--rl);
+  padding: 20px 24px;
+  margin-bottom: 14px;
+  color: var(--red);
+}
+.gold-error-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.gold-error-card p  { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+/* ── Generic card ──────────────────────────────────────────────────────────── */
+.gold-card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--rl);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.gold-full-width { width: 100%; }
+
+.gold-card-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text3);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gold-card-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.gold-muted {
+  font-size: 12.5px;
+  color: var(--text3);
+  font-style: italic;
+}
+
+/* ── Regime panel ──────────────────────────────────────────────────────────── */
+.gold-regime-panel {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--rl);
+  padding: 22px 24px;
+  margin-bottom: 14px;
+  border-left-width: 4px;
+}
+
+.gold-regime-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.gold-regime-emoji {
+  font-size: 38px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.gold-regime-title-group { flex: 1; min-width: 200px; }
+
+.gold-regime-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.gold-regime-badges {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.gold-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.gold-regime-desc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.gold-regime-meta {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.gold-meta-item { display: flex; gap: 5px; align-items: center; }
+.gold-meta-label { color: var(--text3); }
+.gold-meta-item > *:last-child { color: var(--text2); font-weight: 500; }
+
+.gold-transition-warning {
+  margin-top: 12px;
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-bd);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: var(--amber);
+}
+.gold-transition-warning ul { margin: 5px 0 0 16px; }
+.gold-transition-warning li { margin-top: 3px; }
+
+/* ── Two-column layout ─────────────────────────────────────────────────────── */
+.gold-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.gold-two-col > .gold-card { margin-bottom: 0; }
+@media (max-width: 800px) {
+  .gold-two-col { grid-template-columns: 1fr; }
+  .gold-two-col > .gold-card { margin-bottom: 14px; }
+}
+
+/* ── Score gauge ───────────────────────────────────────────────────────────── */
+.gold-gauge-wrap { padding: 4px 0; }
+
+.gold-gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 6px;
+}
+
+.gold-gauge-track {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.gold-gauge-center-line {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--border2);
+  z-index: 1;
+}
+.gold-gauge-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  transition: left .4s, width .4s;
+}
+
+.gold-gauge-score {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  text-align: center;
+  margin: 8px 0 2px;
+}
+.gold-gauge-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text3);
+  text-align: center;
+  margin-bottom: 4px;
+  font-family: 'DM Mono', monospace;
+}
+.gold-gauge-interp {
+  font-size: 12px;
+  color: var(--text2);
+  text-align: center;
+  font-style: italic;
+}
+
+/* ── Factor score bars (layer breakdown) ───────────────────────────────────── */
+.gold-layer-desc {
+  font-size: 11.5px;
+  color: var(--text3);
+  margin-bottom: 12px;
+  font-style: italic;
+}
+
+.gold-factor-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.gold-factor-label {
+  font-size: 11.5px;
+  color: var(--text2);
+  width: 140px;
+  flex-shrink: 0;
+}
+.gold-factor-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.gold-factor-neg-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: var(--red);
+  border-radius: 5px 0 0 5px;
+}
+.gold-factor-pos-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: var(--green);
+  border-radius: 0 5px 5px 0;
+}
+.gold-factor-center {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--border2);
+}
+.gold-factor-val {
+  font-size: 10.5px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  width: 90px;
+  text-align: right;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gold-factor-score {
+  font-size: 10.5px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Weight bars ───────────────────────────────────────────────────────────── */
+.gold-weight-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+  padding: 3px 0;
+}
+.gold-weight-top { background: var(--amber-bg); border-radius: var(--r); padding: 3px 6px; margin: 0 -6px 7px; }
+.gold-weight-label {
+  font-size: 11.5px;
+  color: var(--text2);
+  width: 160px;
+  flex-shrink: 0;
+  font-family: 'DM Mono', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gold-weight-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.gold-weight-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .4s;
+}
+.gold-weight-pct {
+  font-size: 10.5px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── BEI decomposition ─────────────────────────────────────────────────────── */
+.gold-bei-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  gap: 0 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+@media (max-width: 700px) {
+  .gold-bei-grid { grid-template-columns: 1fr 1fr; }
+  .gold-bei-plus, .gold-bei-divider { display: none; }
+}
+.gold-bei-cell {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 11px 13px;
+  text-align: center;
+}
+.gold-bei-wide { grid-column: span 5; }
+@media (max-width: 700px) { .gold-bei-wide { grid-column: span 2; } }
+.gold-bei-label {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 4px;
+}
+.gold-bei-value {
+  font-size: 17px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.gold-bei-sub {
+  font-size: 10.5px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+}
+.gold-bei-plus {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text3);
+  text-align: center;
+}
+.gold-bei-divider { display: none; }
+.gold-bei-interp {
+  font-size: 12.5px;
+  color: var(--text2);
+  font-style: italic;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.gold-bei-fed {
+  font-size: 12px;
+  color: var(--text2);
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* ── 90-day sparklines ─────────────────────────────────────────────────────── */
+.gold-spark-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 900px) { .gold-spark-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 500px) { .gold-spark-grid { grid-template-columns: 1fr; } }
+
+.gold-spark-card {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 12px 8px;
+}
+.gold-spark-title {
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .9px;
+  color: var(--text3);
+  margin-bottom: 3px;
+  font-family: 'DM Mono', monospace;
+}
+.gold-spark-value {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.gold-spark-empty {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text3);
+  font-style: italic;
+}
+.gold-spark-range {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  margin-top: 4px;
+}
+
+/* ── Confluence levels ─────────────────────────────────────────────────────── */
+.gold-level-macro-ctx {
+  font-size: 11.5px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+.gold-level-list { }
+.gold-level-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 8px 13px;
+  margin-bottom: 5px;
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+.gold-level-row:hover { border-color: var(--border2); background: var(--s1); }
+
+.gold-level-stars {
+  font-size: 10px;
+  color: var(--amber);
+  letter-spacing: 1px;
+  flex-shrink: 0;
+  min-width: 60px;
+}
+.gold-level-price {
+  font-family: 'DM Mono', monospace;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+  min-width: 68px;
+}
+.gold-level-dir {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 30px;
+}
+.gold-level-dist {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  min-width: 130px;
+  flex: 1;
+}
+.gold-align-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+.gold-align-ok   { background: var(--green-bg); color: var(--green); border-color: var(--green-bd); }
+.gold-align-warn { background: var(--red-bg);   color: var(--red);   border-color: var(--red-bd); }
+
+/* ── COT card ──────────────────────────────────────────────────────────────── */
+.gold-cot-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gold-cot-section {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+.gold-cot-section:last-child { border-bottom: none; padding-bottom: 0; }
+.gold-cot-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--text3);
+  margin-bottom: 6px;
+  font-family: 'DM Mono', monospace;
+}
+.gold-cot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  padding: 3px 0;
+}
+.gold-cot-row span  { color: var(--text2); }
+.gold-cot-row strong { font-family: 'DM Mono', monospace; color: var(--text); }
+
+.gold-cot-crowding { }
+.gold-cot-crowd-bar {
+  height: 7px;
+  border-radius: 4px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-top: 6px;
+}
+.gold-cot-crowd-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .4s;
+}
+
+/* ── Vol card ──────────────────────────────────────────────────────────────── */
+.gold-vol-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.gold-vol-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+.gold-vol-row:last-child { border-bottom: none; }
+.gold-vol-row > span:first-child { color: var(--text2); }
+.gold-vol-row > span:last-child,
+.gold-vol-row > strong { font-family: 'DM Mono', monospace; }
+
+.gold-vol-pct-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin: 4px 0;
+}
+.gold-vol-pct-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .4s;
+}
+.gold-vol-warn {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--red);
+  font-style: italic;
+}
