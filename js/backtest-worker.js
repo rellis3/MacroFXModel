@@ -290,6 +290,17 @@ function handleRun({ symbol, cfg }) {
 
       // ── Exit check for open trade ──────────────────────────────────────
       if (openTrade && bar.ts >= openTrade.entryTs) {
+        // Track MFE/MAE in R units bar-by-bar while trade is live
+        const _fav = openTrade.dir === 'long'
+          ? (bar.h - openTrade.entry) / openTrade.slDist
+          : (openTrade.entry - bar.l) / openTrade.slDist;
+        const _adv = openTrade.dir === 'long'
+          ? (openTrade.entry - bar.l) / openTrade.slDist
+          : (bar.h - openTrade.entry) / openTrade.slDist;
+        if (_fav > openTrade._mfe) openTrade._mfe = _fav;
+        if (_adv > openTrade._mae) openTrade._mae = _adv;
+        openTrade._holdingBars++;
+
         const ex = checkExit(bar, openTrade);
         if (ex) {
           const pip   = getPipSize(symbol);
@@ -517,6 +528,10 @@ function handleRun({ symbol, cfg }) {
             todayFib: conf.todayFib ?? null,
             yestFib:  conf.yestFib  ?? null,
             rb,
+            _mfe: 0, _mae: 0, _holdingBars: 0,
+            session:     _sessionLabel(bar.lHour),
+            trendRegime: _trendRegime(bar5mWin),
+            volRegime:   _volRegime(atr, symbol),
           };
           break;
         }
@@ -619,6 +634,10 @@ function buildFlipTrade(original, entryTs, date, confluences, pip, slMode, slMul
     confKey: null,
     rb:      original.rb,
     tag:     '⚡flip',
+    _mfe: 0, _mae: 0, _holdingBars: 0,
+    session:     original.session     ?? 'Unknown',
+    trendRegime: original.trendRegime ?? 'UNKNOWN',
+    volRegime:   original.volRegime   ?? 'UNKNOWN',
   };
 }
 
@@ -646,6 +665,12 @@ function recordClose(trade, exitPrice, result, exitTs, trades, bayesian, costR =
     todayFib: trade.todayFib ?? null,
     yestFib:  trade.yestFib  ?? null,
     tag: trade.tag || '',
+    mfe:         +(trade._mfe?.toFixed(3)  ?? 0),
+    mae:         +(trade._mae?.toFixed(3)  ?? 0),
+    holdingBars: trade._holdingBars ?? 0,
+    session:     trade.session      ?? 'Unknown',
+    trendRegime: trade.trendRegime  ?? 'UNKNOWN',
+    volRegime:   trade.volRegime    ?? 'UNKNOWN',
   };
   trades.push(t);
   const isWin = r > 0;
@@ -764,6 +789,134 @@ function buildPrevMondayLookup(tradingDates, mondayRangeMap) {
     lookup.set(date, prev ? mondayRangeMap.get(prev) : null);
   }
   return lookup;
+}
+
+// ── Regime helpers ─────────────────────────────────────────────────────────────
+
+function _sessionLabel(lHour) {
+  if (lHour >= 7  && lHour < 12) return 'London';
+  if (lHour >= 12 && lHour < 17) return 'New York';
+  if (lHour >= 17 && lHour < 22) return 'Late';
+  return 'Asia';
+}
+
+function _trendRegime(bar5mWin) {
+  // bar5mWin is newest-first; need 14+ bars for DM ratio
+  if (bar5mWin.length < 15) return 'UNKNOWN';
+  const w = bar5mWin.slice(0, 14).reverse(); // oldest → newest
+  let pdm = 0, ndm = 0;
+  for (let i = 1; i < w.length; i++) {
+    pdm += Math.max(w[i].h - w[i-1].h, 0);
+    ndm += Math.max(w[i-1].l - w[i].l,  0);
+  }
+  const tot = pdm + ndm;
+  if (!tot) return 'RANGE';
+  return Math.abs(pdm - ndm) / tot > 0.30 ? 'TREND' : 'RANGE';
+}
+
+function _volRegime(atr, symbol) {
+  const atrPips = atr / getPipSize(symbol);
+  if (atrPips < 5)  return 'LOW';
+  if (atrPips > 20) return 'HIGH';
+  return 'NORMAL';
+}
+
+// ── Exit distribution aggregate ────────────────────────────────────────────────
+
+function computeExitAnalysis(trades) {
+  if (!trades.length) return null;
+  const winners = trades.filter(t => t.r > 0);
+  const losers  = trades.filter(t => t.r <= 0);
+  const avg = (arr, fn) => arr.length ? arr.reduce((s, t) => s + fn(t), 0) / arr.length : null;
+
+  const avgWinnerR    = avg(winners, t => t.r);
+  const avgLoserR     = avg(losers,  t => t.r);
+  const avgMFEWinners = avg(winners, t => t.mfe);
+  const avgMFELosers  = avg(losers,  t => t.mfe);
+  const avgMAEWinners = avg(winners, t => t.mae);
+  const avgMAELosers  = avg(losers,  t => t.mae);
+
+  const capRecs    = winners.filter(t => t.mfe > 0);
+  const avgCapture = capRecs.length
+    ? capRecs.reduce((s, t) => s + t.r / t.mfe, 0) / capRecs.length
+    : null;
+
+  const exitLeak = avgMFEWinners != null && avgWinnerR != null
+    ? avgMFEWinners - avgWinnerR
+    : null;
+
+  const avgHoldAll     = avg(trades,  t => t.holdingBars);
+  const avgHoldWinners = avg(winners, t => t.holdingBars);
+  const avgHoldLosers  = avg(losers,  t => t.holdingBars);
+
+  const exitReasons = { tp: 0, sl: 0, eod: 0 };
+  for (const t of trades) { if (t.result in exitReasons) exitReasons[t.result]++; }
+
+  const f = (v, d = 3) => v != null ? +v.toFixed(d) : null;
+  return {
+    avgWinnerR:         f(avgWinnerR),
+    avgLoserR:          f(avgLoserR),
+    avgMFEWinners:      f(avgMFEWinners),
+    avgMFELosers:       f(avgMFELosers),
+    avgMAEWinners:      f(avgMAEWinners),
+    avgMAELosers:       f(avgMAELosers),
+    avgMFECapture:      f(avgCapture),
+    exitLeak:           f(exitLeak),
+    avgHoldBarsAll:     f(avgHoldAll,     1),
+    avgHoldBarsWinners: f(avgHoldWinners, 1),
+    avgHoldBarsLosers:  f(avgHoldLosers,  1),
+    exitReasons,
+  };
+}
+
+// ── Regime breakdown aggregate ─────────────────────────────────────────────────
+
+function computeRegimeBreakdown(trades) {
+  if (!trades.length) return null;
+
+  const groupStats = (keyFn) => {
+    const g = {};
+    for (const t of trades) {
+      const k = keyFn(t) || 'Unknown';
+      if (!g[k]) g[k] = { trades: 0, wins: 0, totalR: 0 };
+      g[k].trades++; if (t.r > 0) g[k].wins++; g[k].totalR += t.r;
+    }
+    return Object.entries(g)
+      .map(([label, v]) => ({
+        label,
+        trades:  v.trades,
+        wins:    v.wins,
+        winRate: v.trades > 0 ? +(v.wins / v.trades).toFixed(4) : 0,
+        totalR:  +v.totalR.toFixed(2),
+        avgR:    +((v.totalR / v.trades) || 0).toFixed(3),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  };
+
+  const crossG = {};
+  for (const t of trades) {
+    const k = `${t.session} × ${t.trendRegime}`;
+    if (!crossG[k]) crossG[k] = { trades: 0, wins: 0, totalR: 0 };
+    crossG[k].trades++; if (t.r > 0) crossG[k].wins++; crossG[k].totalR += t.r;
+  }
+  const crossTab = Object.entries(crossG)
+    .filter(([, v]) => v.trades >= 5)
+    .map(([label, v]) => ({
+      label,
+      trades:  v.trades,
+      wins:    v.wins,
+      winRate: v.trades > 0 ? +(v.wins / v.trades).toFixed(4) : 0,
+      totalR:  +v.totalR.toFixed(2),
+      avgR:    +((v.totalR / v.trades) || 0).toFixed(3),
+    }))
+    .sort((a, b) => a.avgR - b.avgR); // worst first
+
+  return {
+    bySession: groupStats(t => t.session),
+    byTrend:   groupStats(t => t.trendRegime),
+    byVol:     groupStats(t => t.volRegime),
+    crossTab,
+  };
 }
 
 // ── Statistics ─────────────────────────────────────────────────────────────────
@@ -893,6 +1046,8 @@ function computeStats(trades, rrRatio, bayesian) {
     equityCurve: curve, drawdownCurve: ddCurve, monthly,
     monteCarlo, bayesian, tradeSample, fibLevelStats,
     dateRange: { first: firstDate, last: lastDate, years: +years.toFixed(1) },
+    exitAnalysis:    computeExitAnalysis(trades),
+    regimeBreakdown: computeRegimeBreakdown(trades),
   };
 }
 
