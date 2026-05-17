@@ -129,6 +129,12 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
 .syn-avoid    .syn-section-hd{background:rgba(255,59,48,.1);color:var(--red)}
 .syn-other    .syn-section-hd{background:var(--s2);color:var(--text2)}
 
+/* ── Pair filter bar ────────────────────────────────────────────────────────── */
+#pair-filter-bar{display:none;flex-wrap:wrap;gap:5px;padding-bottom:4px;flex-shrink:0}
+.pf-chip{padding:3px 11px;border-radius:20px;border:1px solid var(--border);background:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);cursor:pointer;transition:all .15s;white-space:nowrap}
+.pf-chip:hover{border-color:var(--blue);color:var(--blue)}
+.pf-chip.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+
 /* ── Empty / placeholder ────────────────────────────────────────────────────── */
 .empty-msg{text-align:center;padding:48px 20px;color:var(--text3);font-size:13px}
 .empty-msg svg{width:40px;height:40px;stroke:var(--border);fill:none;stroke-width:1.5;margin-bottom:12px}
@@ -236,6 +242,9 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
 
     <div id="results-wrap" style="display:none;flex-direction:column;gap:14px">
 
+      <!-- ── Pair filter ─────────────────────────────────────────────────── -->
+      <div id="pair-filter-bar"></div>
+
       <!-- ── Sweep active-params banner (injected when viewing a sweep cell) ─ -->
       <div id="sweep-banner" style="display:none;align-items:center;gap:8px;font-size:11px;padding:7px 14px;background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);border-radius:6px;color:var(--blue)"></div>
 
@@ -316,6 +325,7 @@ let _baseStats = null;
 let _sweepGrid = null;
 let _sweepMetric = 'totalR';
 let _selectedCell = null;
+let _activeSymbol = null;
 const SWEEP_SL_MULTS = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5];
 const SWEEP_RR_RATS  = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0];
 
@@ -385,6 +395,16 @@ function spawnWorker() {
       _stats = data.stats;
       renderResults(_stats);
       showSweepBanner(data.slMult, data.rrRatio);
+    }
+    if (data.type === 'filter_done') {
+      _stats = data.stats;
+      _baseStats = data.stats;
+      _activeSymbol = data.symbol;
+      _sweepGrid = null;
+      _selectedCell = null;
+      const banner = document.getElementById('sweep-banner');
+      if (banner) banner.style.display = 'none';
+      renderResults(_stats);
     }
   };
 }
@@ -481,6 +501,7 @@ function selectedPairs() {
 // ══════════════════════════════════════════════════════════════════════════════
 function renderResults(s) {
   if (s.empty) { alert('No touches found — check date range and data.'); return; }
+  renderPairFilter(s);
   renderOverview(s);
   renderTiming(s);
   renderLevels(s);
@@ -923,6 +944,30 @@ function renderSynthesis(analysis) {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Pair filter bar ───────────────────────────────────────────────────────────
+function renderPairFilter(s) {
+  const bar = document.getElementById('pair-filter-bar');
+  if (!bar) return;
+  const symbols = Object.keys(s.bySymbol || {}).sort();
+  if (!symbols.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML = ['all', ...symbols].map(sym => {
+    const isAll   = sym === 'all';
+    const active  = isAll ? _activeSymbol === null : _activeSymbol === sym;
+    const n       = isAll ? (s.baseline?.n ?? 0) : (s.bySymbol[sym]?.n ?? 0);
+    const wr      = isAll ? null : s.bySymbol[sym]?.winRate;
+    const wrLabel = wr != null ? ` · ${(wr*100).toFixed(0)}%wr` : '';
+    return `<button class="pf-chip${active?' on':''}" data-sym="${isAll?'':sym}">${isAll?'All':sym} <span style="opacity:.7;font-size:10px">${n}t${wrLabel}</span></button>`;
+  }).join('');
+  bar.querySelectorAll('.pf-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const sym = chip.dataset.sym || null;
+      if (sym === _activeSymbol) return;
+      _worker.postMessage({ type: 'filter', payload: { symbol: sym } });
+    });
+  });
 }
 
 // ── SL/TP Sweep ───────────────────────────────────────────────────────────────
