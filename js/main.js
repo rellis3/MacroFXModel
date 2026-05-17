@@ -72,8 +72,28 @@ window._forceKVSync           = async function() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing…'; }
   if (lbl) lbl.textContent = '';
   const result = await forceKVSync();
-  if (btn) { btn.disabled = false; btn.textContent = '🔄 Push to Bot'; }
+  if (btn) { btn.disabled = false; btn.textContent = '📤 Push to Bot'; }
   if (lbl) lbl.textContent = result.ok ? '✓ Pushed to Railway bot' : `✗ ${result.error ?? 'failed'}`;
+};
+
+window._reloadLevels = async function() {
+  const btn = document.getElementById('alertReloadBtn');
+  const lbl = document.getElementById('alertReloadStatus');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Loading…'; }
+  if (lbl) lbl.textContent = '';
+  try {
+    const r = await fetch('/api/levels/reload', { method: 'POST' });
+    const j = await r.json();
+    if (j.ok) {
+      if (lbl) lbl.textContent = `✓ Reloaded at ${new Date(j.loadedAt).toLocaleTimeString()}`;
+    } else {
+      if (lbl) lbl.textContent = `✗ ${j.error ?? 'failed'}`;
+    }
+  } catch (e) {
+    if (lbl) lbl.textContent = `✗ ${e.message}`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Data'; }
+  }
 };
 
 // ── Initialise state ─────────────────────────────────────────────────────────
@@ -575,31 +595,6 @@ async function loadAll() {
         .catch(() => {});
     }
 
-    // Daily watchlist — Phase 1 scores from server; refresh if date changed
-    fetch('/api/daily/watchlist')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.watchlist && Object.keys(data.watchlist).length) {
-          S.dailyWatchlist = data.watchlist;
-          S.watchlistDate  = data.date;
-          renderAllDebounced();
-        }
-      })
-      .catch(() => {});
-
-    window._manualWatchlist = () => {
-      fetch('/api/daily/watchlist/run', { method: 'POST' })
-        .then(r => r.json())
-        .then(data => {
-          if (!data.ok) throw new Error(data.error ?? 'recompute failed');
-          if (data.watchlist && Object.keys(data.watchlist).length) {
-            S.dailyWatchlist = data.watchlist;
-            S.watchlistDate  = data.date;
-            renderAllDebounced();
-          }
-        })
-        .catch(e => console.warn('[watchlist] manual recompute failed:', e.message));
-    };
 
     window._exportWatchlist = (pair, topN, btn) => {
       const csv = exportWatchlistCSV(pair, topN);

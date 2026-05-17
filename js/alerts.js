@@ -26,10 +26,11 @@ const _kvEntrySyncTimes = new Map();
 
 // Default config
 const DEFAULT_CFG = {
-  enabled:    false,
-  minStars:   4,           // minimum totalStars to alert
-  pairs:      [],          // [] = all active pairs; ['EUR/USD','XAU/USD'] = specific
-  proxPips:   {            // pips from level to trigger alert
+  enabled:     false,
+  minStars:    4,           // minimum totalStars to alert
+  minStrength: null,        // null = any | 'strong' = A/A+ | 'stronger' = A+ only
+  pairs:       [],          // [] = all active pairs; ['EUR/USD','XAU/USD'] = specific
+  proxPips:    {            // pips from level to trigger alert
     default:  5,
     'NAS100_USD': 30,
     'XAU/USD':    8,
@@ -242,6 +243,8 @@ export function checkAndSendAlerts() {
 
     for (const e of cached.entries) {
       if ((e.totalStars ?? 0) < cfg.minStars) continue;
+      if (cfg.minStrength === 'strong'   && e.grade !== 'A' && e.grade !== 'A+') continue;
+      if (cfg.minStrength === 'stronger' && e.grade !== 'A+') continue;
       if (cfg.onlyAligned && !e.signalAligned) continue;
       if (e.direction == null) continue;
 
@@ -362,6 +365,7 @@ export function openAlertModal() {
 
   document.getElementById('alertEnabled').checked      = cfg.enabled;
   document.getElementById('alertMinStars').value       = cfg.minStars;
+  document.getElementById('alertMinStrength').value    = cfg.minStrength ?? '';
   document.getElementById('alertCooldown').value       = cfg.cooldownMin;
   document.getElementById('alertProxDefault').value    = cfg.proxPips?.default ?? 5;
   document.getElementById('alertProxGold').value       = cfg.proxPips?.['XAU/USD'] ?? 8;
@@ -383,6 +387,7 @@ export function saveAlertModal() {
   const cfg = {
     enabled:     document.getElementById('alertEnabled').checked,
     minStars:    parseInt(document.getElementById('alertMinStars').value) || 4,
+    minStrength: document.getElementById('alertMinStrength').value || null,
     cooldownMin: parseInt(document.getElementById('alertCooldown').value) || 60,
     onlyAligned: document.getElementById('alertOnlyAligned').checked,
     proxPips: {
