@@ -413,6 +413,40 @@
   margin-bottom: 6px;
   font-style: italic;
 }
+
+/* ── Combined narrative block ──────────────────────────────────────────────── */
+.gold-spark-narrative {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.gold-spark-narr-headline {
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.gold-spark-narr-body {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.gold-spark-narr-score {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.gold-narr-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.gold-narr-dot-good { background: var(--green); }
+.gold-narr-dot-bad  { background: var(--red); }
 .gold-spark-value {
   font-size: 16px;
   font-weight: 700;

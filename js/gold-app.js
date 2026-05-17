@@ -15,6 +15,7 @@ import { S }                                        from './state.js';
 import { PAIRS, CACHE_DURATION, CAP_DEFAULTS }      from './config.js';
 import { loadCached, fetchAPI, getPipSize, getDigits, filterTradingDays } from './utils.js';
 import { detectSession, computeSessionOpens, computeDailyOpens } from './session.js';
+import { oiLoadStoreFromKV } from './oi.js';
 
 // ── Module-level state ─────────────────────────────────────────────────────────
 let _model          = null;   // computeGoldMacroModel result
@@ -115,6 +116,7 @@ async function loadData() {
     loadCached('gold_quote',      () => fetchAPI('/api/quote?symbol=XAU/USD'),          CACHE_DURATION.QUOTE),
     fetchAPI('/api/kv/get?key=cot_data'),
     fetchAPI('/api/config/caps'),
+    oiLoadStoreFromKV(),   // sync OI walls from KV → localStorage so confluences sees them
   ]);
 
   // Helper to unwrap settled results — logs warnings on failure
@@ -648,6 +650,151 @@ function renderBEIDecomp(model) {
   </div>`;
 }
 
+// ── Combined macro narrative ───────────────────────────────────────────────────
+// Reads the 3M trend of all four factors together and produces a plain-English
+// summary of what the combination means for gold right now.
+function buildSparklineNarrative(history) {
+  const get = key => {
+    const s = history[key];
+    if (!s || s.length < 2) return null;
+    const vals = s.map(p => p.value);
+    const change = vals[vals.length - 1] - vals[0];
+    const latest = vals[vals.length - 1];
+    const pctChg = vals[0] !== 0 ? (change / Math.abs(vals[0])) * 100 : 0;
+    return { change, latest, pctChg, rising: change > 0, falling: change < 0 };
+  };
+
+  const tips = get('tips');
+  const bei  = get('bei');
+  const dxy  = get('dxy');
+  const vix  = get('vix');
+
+  if (!tips && !bei && !dxy && !vix) return null;
+
+  // Score each factor: +1 = gold tailwind, -1 = gold headwind, 0 = flat
+  const tipsScore = !tips ? 0 : tips.falling ? 1 : tips.rising ? -1 : 0;
+  const beiScore  = !bei  ? 0 : bei.rising   ? 1 : bei.falling  ? -1 : 0;
+  const dxyScore  = !dxy  ? 0 : dxy.falling  ? 1 : dxy.rising   ? -1 : 0;
+  const vixScore  = !vix  ? 0 : vix.rising   ? 1 : vix.falling  ? -1 : 0;
+
+  const netScore = tipsScore + beiScore + dxyScore + vixScore;
+  const tailwinds = [tipsScore, beiScore, dxyScore, vixScore].filter(s => s > 0).length;
+  const headwinds = [tipsScore, beiScore, dxyScore, vixScore].filter(s => s < 0).length;
+
+  // Detect special regimes
+  const crisisVix    = vix && vix.latest > 30;
+  const stagflation  = tips && bei && tips.rising && bei.rising;
+  const deflation    = tips && bei && tips.falling && bei.falling;
+  const realYieldDriven = tips && Math.abs(tips.pctChg) > 5;
+  const dollarDom    = dxy && Math.abs(dxy.pctChg) > 3;
+
+  let headline, body, verdictColor;
+
+  if (crisisVix) {
+    headline = 'Fear is spiking — safe-haven demand is the primary driver.';
+    body = `VIX above 30 signals elevated market stress. In crisis episodes gold's normal macro relationships break down — it trades primarily as a safe haven. ${
+      tipsScore >= 0 ? 'Real yields and inflation signals are secondary right now.' :
+      'Rising real yields are normally a headwind, but fear-driven buying is overriding fundamentals.'
+    }`;
+    verdictColor = 'var(--green)';
+
+  } else if (stagflation) {
+    headline = 'Stagflation signal: both real yields and inflation expectations are rising.';
+    body = `This is the historical sweet spot for gold — inflation is building (${bei ? bei.change.toFixed(2) + '% BEI rise' : ''}) but real yields are also rising (${tips ? '+' + tips.change.toFixed(2) + '% TIPS' : ''}), creating uncertainty that gold tends to absorb. ${
+      beiScore > tipsScore
+        ? 'Inflation expectations are outpacing real yields — the net effect supports gold.'
+        : 'Real yields are rising faster than inflation expectations — this limits the upside.'
+    }${dxy && dxy.rising ? ' Dollar strength is an additional headwind to watch.' : ''}`;
+    verdictColor = 'var(--amber)';
+
+  } else if (deflation) {
+    headline = 'Both real yields and inflation expectations are falling — deflationary pressure.';
+    body = `Falling real yields (${tips ? tips.change.toFixed(2) + '% TIPS' : ''}) are gold-positive, but falling inflation expectations (${bei ? bei.change.toFixed(2) + '% BEI' : ''}) weaken the inflation-hedge argument. ${
+      vixScore > 0
+        ? 'Rising uncertainty is providing a partial offset via safe-haven demand.'
+        : 'With VIX calm, there is limited safe-haven support to fill the gap.'
+    }${dxyScore > 0 ? ' A weaker dollar is providing additional structural support.' : ''}`;
+    verdictColor = 'var(--amber)';
+
+  } else if (netScore >= 3) {
+    headline = 'The macro backdrop is strongly aligned in gold\'s favour.';
+    const drivers = [];
+    if (tipsScore > 0) drivers.push('real yields are falling (reducing competition from bonds)');
+    if (beiScore  > 0) drivers.push('inflation expectations are rising (building the hedge case)');
+    if (dxyScore  > 0) drivers.push('the dollar is weakening (gold cheaper globally)');
+    if (vixScore  > 0) drivers.push('uncertainty is elevated (safe-haven demand)');
+    body = `${drivers.length > 1
+      ? drivers.slice(0, -1).join(', ') + ', and ' + drivers[drivers.length - 1]
+      : drivers[0]} over the past 90 days. ${
+      headwinds === 0
+        ? 'No major macro headwinds are visible in the data.'
+        : 'Minor cross-currents remain but the dominant trend is supportive.'
+    }`;
+    verdictColor = 'var(--green)';
+
+  } else if (netScore <= -3) {
+    headline = 'Multiple macro factors are aligned against gold right now.';
+    const drags = [];
+    if (tipsScore < 0) drags.push('real yields are rising (bonds more competitive vs gold)');
+    if (beiScore  < 0) drags.push('inflation expectations are falling (weakening the hedge case)');
+    if (dxyScore  < 0) drags.push('the dollar is strengthening (headwind for gold in all currencies)');
+    if (vixScore  < 0) drags.push('fear is subdued (limited safe-haven bid)');
+    body = `${drags.length > 1
+      ? drags.slice(0, -1).join(', ') + ', and ' + drags[drags.length - 1]
+      : drags[0]}. ${
+      tailwinds === 0
+        ? 'There are no clear macro tailwinds in the 90-day data.'
+        : 'Some factors offer partial offset but the macro tide is running against gold.'
+    }`;
+    verdictColor = 'var(--red)';
+
+  } else if (realYieldDriven && tipsScore > 0) {
+    headline = 'Falling real yields are the dominant driver — the core bull case for gold.';
+    body = `Real yields have dropped ${tips ? Math.abs(tips.change).toFixed(2) + '%' : ''} over 90 days — this directly reduces the opportunity cost of holding gold versus bonds, which is historically the single strongest predictor of gold price moves. ${
+      beiScore > 0
+        ? 'Rising inflation expectations are reinforcing the move.'
+        : 'Inflation expectations are not yet participating — watch for BEI to confirm.'
+    }${dxyScore < 0 ? ' Dollar strength is a partial offset.' : dxyScore > 0 ? ' A weakening dollar adds further tailwind.' : ''}`;
+    verdictColor = 'var(--green)';
+
+  } else if (realYieldDriven && tipsScore < 0) {
+    headline = 'Rising real yields are the dominant headwind — the core bear case for gold.';
+    body = `Real yields have risen ${tips ? Math.abs(tips.change).toFixed(2) + '%' : ''} over 90 days. When bonds offer better real returns, gold — which pays nothing — faces structural selling pressure. ${
+      beiScore > 0
+        ? 'Rising inflation expectations are providing a partial offset, limiting the downside.'
+        : 'With inflation expectations also subdued, the bear case is reinforced.'
+    }${dollarDom && dxyScore < 0 ? ' A strengthening dollar compounds the pressure.' : ''}`;
+    verdictColor = 'var(--red)';
+
+  } else if (tailwinds === headwinds) {
+    headline = 'Mixed signals — macro factors are roughly balanced.';
+    const positives = [], negatives = [];
+    if (tipsScore > 0) positives.push('falling real yields');
+    if (tipsScore < 0) negatives.push('rising real yields');
+    if (beiScore  > 0) positives.push('building inflation expectations');
+    if (beiScore  < 0) negatives.push('falling inflation expectations');
+    if (dxyScore  > 0) positives.push('dollar weakness');
+    if (dxyScore  < 0) negatives.push('dollar strength');
+    if (vixScore  > 0) positives.push('elevated uncertainty');
+    if (vixScore  < 0) negatives.push('low fear');
+    body = `${positives.length ? positives.join(' and ') + ' support gold' : ''}${positives.length && negatives.length ? ', while ' : ''}${negatives.length ? negatives.join(' and ') + ' weigh against it' : ''}. In this environment gold often trades in a range — catalyst-driven moves rather than macro-led trends.`;
+    verdictColor = 'var(--amber)';
+
+  } else {
+    // Slight lean one way or the other
+    const bullish = netScore > 0;
+    headline = `Slight ${bullish ? 'tailwind' : 'headwind'} — ${tailwinds} of 4 macro factors ${bullish ? 'support' : 'oppose'} gold.`;
+    body = `The macro picture is not strongly aligned ${bullish ? 'for' : 'against'} gold. ${
+      bullish
+        ? 'The partial support is better than nothing but lacks the conviction of a full alignment — size accordingly and look for confirmation from price action.'
+        : 'The partial pressure is not enough to call a strong structural bear case, but it limits the macro tailwind. Any gold rally may face selling into strength.'
+    }`;
+    verdictColor = bullish ? 'var(--amber)' : 'var(--amber)';
+  }
+
+  return { headline, body, verdictColor, tailwinds, headwinds };
+}
+
 // ── Sparklines (90-day FRED history) ──────────────────────────────────────────
 function renderSparklines(history) {
   if (!history || typeof history !== 'object') {
@@ -704,9 +851,22 @@ function renderSparklines(history) {
     </div>`;
   }).join('');
 
+  const narr = buildSparklineNarrative(history);
+  const narrativeHtml = narr ? `
+    <div class="gold-spark-narrative">
+      <div class="gold-spark-narr-headline" style="color:${narr.verdictColor}">${escHtml(narr.headline)}</div>
+      <div class="gold-spark-narr-body">${escHtml(narr.body)}</div>
+      <div class="gold-spark-narr-score">
+        ${[...Array(narr.tailwinds)].map(() => `<span class="gold-narr-dot gold-narr-dot-good"></span>`).join('')}
+        ${[...Array(narr.headwinds)].map(() => `<span class="gold-narr-dot gold-narr-dot-bad"></span>`).join('')}
+        <span style="font-size:10px;color:var(--text3);margin-left:6px">${narr.tailwinds} tailwind${narr.tailwinds !== 1 ? 's' : ''} · ${narr.headwinds} headwind${narr.headwinds !== 1 ? 's' : ''}</span>
+      </div>
+    </div>` : '';
+
   return `
   <div class="gold-card gold-full-width">
     <div class="gold-card-title">90-Day Factor History</div>
+    ${narrativeHtml}
     <div class="gold-spark-grid">${cards}</div>
   </div>`;
 }
@@ -1149,12 +1309,26 @@ function buildLiveLogRow(model, liveQuote) {
   };
 }
 
+let _quoteTick = 0;  // counts 30s ticks; used to throttle less-frequent refreshes
+
 function startQuoteLoop() {
   if (_quoteTimer) clearInterval(_quoteTimer);
   _quoteTimer = setInterval(async () => {
+    _quoteTick++;
     try {
       const quote = await fetchAPI('/api/quote?symbol=XAU/USD');
       _liveQuote = quote;
+
+      // Re-fetch COT from KV every 5 minutes (10 × 30s ticks) so URL changes
+      // made on the main dashboard propagate here without needing a full reload.
+      if (_quoteTick % 10 === 0) {
+        try {
+          const cotRaw = await fetchAPI('/api/kv/get?key=cot_data');
+          if (cotRaw && !cotRaw.miss) _cotData = cotRaw.data ?? null;
+        } catch(_) {}
+        // Also re-sync OI walls in case they were updated on the main dashboard.
+        oiLoadStoreFromKV().catch(() => {});
+      }
 
       // Update price pill
       updatePricePill(quote);
