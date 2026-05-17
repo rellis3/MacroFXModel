@@ -1065,49 +1065,43 @@ function renderSynthesis(analysis) {
 
       case 'filter_recommendations':
         return _syn2Section(
-          'Trading Rules — apply these to your next session',
-          _syn2Cards(items, 'Rule', 'syn2-tag-blue', 'syn2-card-blue', true, true)
+          '✅ Rules to follow — what to look for before you take a trade',
+          _syn2Cards(items, 'Rule', 'syn2-tag-blue', 'syn2-card-blue', false, true)
         );
 
       case 'structural_edges':
         return _syn2Section(
-          'What actually has an edge — statistically supported',
-          _syn2Cards(items, 'Edge', 'syn2-tag-green', 'syn2-card-green', true, false)
+          '💪 What is actually working — and why',
+          _syn2Cards(items, 'Working', 'syn2-tag-green', 'syn2-card-green', false, false)
         );
 
       case 'key_findings': {
         const cards = items.map(item => {
           const { title, body } = _splitTitle(item);
-          const rM  = item.match(/avgR\s+(?:of\s+)?([+\-]?\d+\.?\d*)/);
-          const stat = rM ? parseFloat(rM[1]) : null;
-          const statHtml = stat !== null
-            ? `<div class="syn2-stat" style="color:${stat >= 0 ? 'var(--green)' : 'var(--red)'}">${(stat >= 0 ? '+' : '') + stat.toFixed(3)}R</div>`
-            : '';
           return `<div class="syn2-card">
-            ${statHtml}
             <div class="syn2-title">${escHtml(title)}</div>
-            <div class="syn2-body">${_hnum(body)}</div>
+            <div class="syn2-body">${escHtml(body)}</div>
           </div>`;
         }).join('');
-        return _syn2Section('What the data is telling you', cards);
+        return _syn2Section('🔍 The big picture — what this data is telling you', cards);
       }
 
       case 'regime_insights':
         return _syn2Section(
-          'Market regime context — when this strategy works',
-          _syn2Cards(items, 'Context', 'syn2-tag-purple', '', false, false)
+          '📅 When to trade — conditions that make this work better or worse',
+          _syn2Cards(items, 'Timing', 'syn2-tag-purple', '', false, false)
         );
 
       case 'setups_to_avoid':
         return _syn2Section(
-          'Setups to avoid — negative expectancy patterns',
+          '🚫 Walk away from these — situations where the strategy loses',
           _syn2Cards(items, 'Avoid', 'syn2-tag-red', 'syn2-card-red', false, false)
         );
 
       case 'data_artefact_warnings':
         return _syn2Section(
-          'Numbers to ignore — data quality issues',
-          _syn2Cards(items, '⚠ Unreliable', 'syn2-tag-amber', 'syn2-card-amber', false, false)
+          '⚠️ Don\'t be fooled by these — results that look good but probably won\'t repeat',
+          _syn2Cards(items, 'Heads up', 'syn2-tag-amber', 'syn2-card-amber', false, false)
         );
 
       default: {

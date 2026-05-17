@@ -813,28 +813,54 @@ app.post('/api/analysis-historical', async (req, res) => {
   const { summary } = req.body ?? {};
   if (!summary) return res.status(400).json({ error: 'Missing summary' });
 
-  const prompt = `You are a professional quantitative FX analyst reviewing the results of a 5-year statistical backtest of an Asia-range / Monday-range Fibonacci confluence trading model.
+  const prompt = `You are a patient trading coach explaining backtest results to someone who is brand new to trading. They do not understand statistics, percentages, R-multiples, or jargon. Speak like a friend who trades for a living — plain English only.
 
-The model identifies daily Fibonacci extension levels from the Asia session range (00:00–06:00 London) and looks for confluences between today's and yesterday's projections. Trades are taken when price touches a confluence level during the London/NY session.
+The data below is from a 5-year test of a strategy that trades specific price levels (Fibonacci confluence levels) during the London and New York sessions. Here are the results broken down by different conditions.
 
-Below is a structured statistical summary of every confluence touch detected across the full date range, broken down by 15+ features. Win rate and avg R are the key metrics. Baseline (all trades combined) is provided for comparison.
-
-STATISTICAL SUMMARY:
+DATA:
 ${JSON.stringify(summary, null, 2)}
 
-Analyse this data and return a JSON object with these exact keys:
+Your job: translate this into simple plain-English advice. DO NOT use raw numbers, percentages, or R-values in your output. Instead say things like "works well", "rarely works", "about half the time", "strong edge", "avoid this", "best time to trade", etc. Use analogies if helpful.
+
+Return a JSON object with EXACTLY these keys — each value is an array of short plain-English strings (1-2 sentences each, no numbers, no jargon):
+
 {
-  "key_findings": ["finding 1 (feature, evidence, magnitude)", "finding 2", "finding 3", "finding 4", "finding 5"],
-  "structural_edges": ["edge that appears theoretically sound and consistent across years"],
-  "data_artefact_warnings": ["any result that looks like overfitting or regime-specific, not durable"],
-  "regime_insights": ["any year-specific or market-condition patterns worth noting"],
-  "filter_recommendations": ["specific filter to add — e.g. only trade London Open kill zone"],
-  "setups_to_avoid": ["specific combination to avoid based on worst combos"],
-  "edge_durability": "1–2 sentences on whether the overall edge appears durable or regime-dependent",
-  "suggested_rules": ["concrete rule 1 for the trading plan", "concrete rule 2", "concrete rule 3"]
+  "filter_recommendations": [
+    "Simple rule 1 a beginner can follow tomorrow — what condition to look for",
+    "Simple rule 2",
+    "Simple rule 3",
+    "Simple rule 4"
+  ],
+  "structural_edges": [
+    "One thing that genuinely works — explain WHY in plain English as if explaining to a friend",
+    "Another thing that works"
+  ],
+  "key_findings": [
+    "The single most important thing this data is telling you — no numbers, just what it means",
+    "Second most important finding",
+    "Third finding"
+  ],
+  "regime_insights": [
+    "When does this strategy work best — what market conditions favour it",
+    "When does it struggle"
+  ],
+  "setups_to_avoid": [
+    "A specific situation to avoid — describe it simply so a beginner knows what NOT to do",
+    "Another situation to avoid"
+  ],
+  "data_artefact_warnings": [
+    "One result that looks good in the data but probably won't repeat — warn them not to rely on it"
+  ]
 }
 
-Respond with valid JSON only. No markdown, no explanation outside the JSON.`;
+Rules for your response:
+- Write like you are texting a friend who just started trading
+- Never use a percentage, decimal, or R-value
+- Never use words like: quantitative, regime, artefact, confluence, asymmetric, magnitude, percentile, winRate, avgR
+- DO use words like: works, doesn't work, strong, weak, often, rarely, best, worst, avoid, look for, wait for
+- Each string must be one or two plain sentences maximum
+- Respond with valid JSON only, no markdown`;
+
 
   try {
     const antRes = await fetch('https://api.anthropic.com/v1/messages', {
