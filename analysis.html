@@ -111,23 +111,26 @@ input[type="date"].bt-input{font-family:'DM Mono',monospace}
 .sweep-row-th{font-size:9px;color:var(--text3);font-weight:400;padding:3px 8px;white-space:nowrap;text-align:right}
 
 /* ── Claude synthesis ───────────────────────────────────────────────────────── */
-#synthesis-out{display:none;flex-direction:column;gap:10px;margin-top:14px}
-.syn-section{border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.syn-section-hd{display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
-.syn-section-hd svg{width:13px;height:13px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.syn-body{background:var(--bg)}
-.syn-finding{display:flex;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);font-size:12px;line-height:1.55;color:var(--text2)}
-.syn-finding:last-child{border-bottom:none}
-.syn-finding:hover{background:var(--s1)}
-.syn-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);flex-shrink:0;margin-top:2px;min-width:18px}
-/* Section accent colours */
-.syn-findings .syn-section-hd{background:rgba(74,158,255,.1);color:var(--blue)}
-.syn-edges    .syn-section-hd{background:rgba(52,199,89,.1);color:var(--green)}
-.syn-warnings .syn-section-hd{background:rgba(255,149,0,.1);color:#f0a500}
-.syn-regime   .syn-section-hd{background:rgba(175,82,222,.1);color:#af52de}
-.syn-filters  .syn-section-hd{background:rgba(52,199,89,.1);color:var(--green)}
-.syn-avoid    .syn-section-hd{background:rgba(255,59,48,.1);color:var(--red)}
-.syn-other    .syn-section-hd{background:var(--s2);color:var(--text2)}
+#synthesis-out{display:none;flex-direction:column;gap:0;margin-top:14px}
+.syn2-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.syn2-card{border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--bg);display:flex;flex-direction:column;gap:5px}
+.syn2-card-green{border-color:rgba(52,199,89,.28);background:rgba(52,199,89,.03)}
+.syn2-card-red{border-color:rgba(255,59,48,.28);background:rgba(255,59,48,.03)}
+.syn2-card-amber{border-color:rgba(255,149,0,.28);background:rgba(255,149,0,.03)}
+.syn2-card-blue{border-color:rgba(74,158,255,.28);background:rgba(74,158,255,.03)}
+.syn2-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;padding:2px 7px;border-radius:3px;align-self:flex-start;line-height:1.5}
+.syn2-tag-green{background:rgba(52,199,89,.15);color:var(--green)}
+.syn2-tag-red{background:rgba(255,59,48,.15);color:var(--red)}
+.syn2-tag-amber{background:rgba(255,149,0,.15);color:#f0a500}
+.syn2-tag-blue{background:rgba(74,158,255,.15);color:var(--blue)}
+.syn2-tag-purple{background:rgba(175,82,222,.15);color:#af52de}
+.syn2-stat{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;line-height:1}
+.syn2-title{font-size:12px;font-weight:600;color:var(--text);line-height:1.35}
+.syn2-body{font-size:11px;color:var(--text3);line-height:1.6;flex:1}
+.syn2-body b{color:var(--text2);font-weight:600}
+.syn2-edge-badge{font-family:'DM Mono',monospace;font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(52,199,89,.12);color:var(--green);align-self:flex-start;margin-top:2px}
+.syn2-section-hdr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.syn2-section-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
 
 /* ── Pair filter bar ────────────────────────────────────────────────────────── */
 #pair-filter-bar{display:none;flex-wrap:wrap;gap:5px;padding-bottom:4px;flex-shrink:0}
@@ -977,46 +980,143 @@ function buildSummaryForClaude(s) {
   };
 }
 
-const SYN_META = {
-  key_findings:           { cls:'syn-findings', label:'Key Findings',            icon:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>' },
-  structural_edges:       { cls:'syn-edges',    label:'Structural Edges',         icon:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>' },
-  data_artefact_warnings: { cls:'syn-warnings', label:'Data Artefact Warnings',   icon:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>' },
-  regime_insights:        { cls:'syn-regime',   label:'Regime Insights',           icon:'<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>' },
-  filter_recommendations: { cls:'syn-filters',  label:'Filter Recommendations',    icon:'<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>' },
-  setups_to_avoid:        { cls:'syn-avoid',    label:'Setups to Avoid',           icon:'<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>' },
-};
-
-function renderSynthesis(analysis) {
-  const out = document.getElementById('synthesis-out');
-  document.getElementById('claude-status').textContent = 'Done';
-
-  if (typeof analysis === 'string') {
-    // Plain text fallback — wrap in a simple card
-    out.innerHTML = `<div class="syn-section syn-other">
-      <div class="syn-section-hd"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>Analysis</div>
-      <div class="syn-body"><div class="syn-finding" style="white-space:pre-wrap">${escHtml(analysis)}</div></div>
-    </div>`;
-  } else {
-    const order = Object.keys(SYN_META);
-    const keys  = [...order.filter(k => k in analysis), ...Object.keys(analysis).filter(k => !SYN_META[k])];
-    out.innerHTML = keys.map(key => {
-      const val  = analysis[key];
-      const meta = SYN_META[key] || { cls:'syn-other', label: key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()), icon:'<circle cx="12" cy="12" r="10"/>' };
-      const items = Array.isArray(val) ? val : (val ? [String(val)] : []);
-      const rows  = items.map((v, i) =>
-        `<div class="syn-finding"><span class="syn-num">${i+1}.</span><span>${escHtml(v)}</span></div>`
-      ).join('');
-      return `<div class="syn-section ${meta.cls}">
-        <div class="syn-section-hd"><svg viewBox="0 0 24 24">${meta.icon}</svg>${meta.label}</div>
-        <div class="syn-body">${rows || '<div class="syn-finding" style="color:var(--text3)">No data</div>'}</div>
-      </div>`;
-    }).join('');
-  }
-  out.style.display = 'flex';
-}
-
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Highlight numbers, R values, percentages in synthesis text
+function _hnum(raw) {
+  return escHtml(raw)
+    // avgR 0.053  or  avgR of -0.020
+    .replace(/avgR\s+(?:of\s+)?([+\-]?\d+\.?\d*)/g,
+      'avg R&nbsp;<b style="color:var(--green);font-family:\'DM Mono\',monospace">$1R</b>')
+    // standalone R values like +0.058R or -0.393R
+    .replace(/([+\-]\d+\.?\d*)R\b/g,
+      '<b style="color:var(--green);font-family:\'DM Mono\',monospace">$1R</b>')
+    // percentages
+    .replace(/(\d+\.?\d*)%/g, '<b style="font-family:\'DM Mono\',monospace">$1%</b>')
+    // sample sizes n=1234
+    .replace(/\bn=(\d[\d,]*)\b/g, '<span style="opacity:.6;font-size:10px">n=$1</span>');
+}
+
+// Extract a short title from a finding string ("Title: details" or first sentence)
+function _splitTitle(text) {
+  const ci = text.indexOf(': ');
+  if (ci > 6 && ci < 85) return { title: text.slice(0, ci).trim(), body: text.slice(ci + 2).trim() };
+  const di = text.indexOf(' — ');
+  if (di > 6 && di < 85) return { title: text.slice(0, di).trim(), body: text.slice(di + 3).trim() };
+  const pi = text.indexOf('. ');
+  if (pi > 10 && pi < 90) return { title: text.slice(0, pi + 1).trim(), body: text.slice(pi + 2).trim() };
+  return { title: text.slice(0, 68) + (text.length > 68 ? '…' : ''), body: text };
+}
+
+// Generic card grid — tagLabel, tagCls, cardCls, showEdge, numbered
+function _syn2Cards(items, tagLabel, tagCls, cardCls, showEdge, numbered) {
+  return items.map((item, i) => {
+    const { title, body } = _splitTitle(item);
+    const rM  = item.match(/avgR\s+(?:of\s+)?([+\-]?\d+\.?\d*)/);
+    const stat = rM ? parseFloat(rM[1]) : null;
+    const badge = showEdge && stat !== null
+      ? `<span class="syn2-edge-badge">${stat >= 0 ? '+' : ''}${stat.toFixed(3)}R avg</span>`
+      : '';
+    const tag = numbered ? `Rule&nbsp;${String(i + 1).padStart(2, '0')}` : tagLabel;
+    return `<div class="syn2-card ${cardCls}">
+      <span class="syn2-tag ${tagCls}">${tag}</span>
+      <div class="syn2-title">${escHtml(title)}</div>
+      <div class="syn2-body">${_hnum(body)}</div>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+
+function _syn2Section(header, cards) {
+  return `<div style="margin-bottom:18px">
+    <div class="syn2-section-hdr">${header}</div>
+    <div class="syn2-grid">${cards}</div>
+  </div>`;
+}
+
+function renderSynthesis(analysis) {
+  const out    = document.getElementById('synthesis-out');
+  const status = document.getElementById('claude-status');
+  status.textContent = 'Done';
+
+  if (typeof analysis === 'string') {
+    out.innerHTML = `<div style="font-size:12px;color:var(--text2);line-height:1.65;white-space:pre-wrap;
+      padding:14px;background:var(--s1);border-radius:8px;border:1px solid var(--border)">${escHtml(analysis)}</div>`;
+    out.style.display = 'flex';
+    return;
+  }
+
+  // Section order — filters first so the actionable stuff is at the top
+  const ORDER = ['filter_recommendations','structural_edges','key_findings','regime_insights','setups_to_avoid','data_artefact_warnings'];
+
+  function renderSection(key, items) {
+    if (!items.length) return '';
+    switch (key) {
+
+      case 'filter_recommendations':
+        return _syn2Section(
+          'Trading Rules — apply these to your next session',
+          _syn2Cards(items, 'Rule', 'syn2-tag-blue', 'syn2-card-blue', true, true)
+        );
+
+      case 'structural_edges':
+        return _syn2Section(
+          'What actually has an edge — statistically supported',
+          _syn2Cards(items, 'Edge', 'syn2-tag-green', 'syn2-card-green', true, false)
+        );
+
+      case 'key_findings': {
+        const cards = items.map(item => {
+          const { title, body } = _splitTitle(item);
+          const rM  = item.match(/avgR\s+(?:of\s+)?([+\-]?\d+\.?\d*)/);
+          const stat = rM ? parseFloat(rM[1]) : null;
+          const statHtml = stat !== null
+            ? `<div class="syn2-stat" style="color:${stat >= 0 ? 'var(--green)' : 'var(--red)'}">${(stat >= 0 ? '+' : '') + stat.toFixed(3)}R</div>`
+            : '';
+          return `<div class="syn2-card">
+            ${statHtml}
+            <div class="syn2-title">${escHtml(title)}</div>
+            <div class="syn2-body">${_hnum(body)}</div>
+          </div>`;
+        }).join('');
+        return _syn2Section('What the data is telling you', cards);
+      }
+
+      case 'regime_insights':
+        return _syn2Section(
+          'Market regime context — when this strategy works',
+          _syn2Cards(items, 'Context', 'syn2-tag-purple', '', false, false)
+        );
+
+      case 'setups_to_avoid':
+        return _syn2Section(
+          'Setups to avoid — negative expectancy patterns',
+          _syn2Cards(items, 'Avoid', 'syn2-tag-red', 'syn2-card-red', false, false)
+        );
+
+      case 'data_artefact_warnings':
+        return _syn2Section(
+          'Numbers to ignore — data quality issues',
+          _syn2Cards(items, '⚠ Unreliable', 'syn2-tag-amber', 'syn2-card-amber', false, false)
+        );
+
+      default: {
+        const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        return _syn2Section(label, _syn2Cards(items, 'Note', '', '', false, false));
+      }
+    }
+  }
+
+  const keys = [...ORDER.filter(k => k in analysis), ...Object.keys(analysis).filter(k => !ORDER.includes(k))];
+  out.innerHTML = keys.map(key => {
+    const val   = analysis[key];
+    const items = Array.isArray(val) ? val : (val ? [String(val)] : []);
+    return renderSection(key, items);
+  }).join('');
+
+  out.style.display = 'flex';
 }
 
 // ── Pair filter bar ───────────────────────────────────────────────────────────
