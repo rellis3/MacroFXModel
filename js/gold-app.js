@@ -17,12 +17,13 @@ import { loadCached, fetchAPI, getPipSize, getDigits, filterTradingDays } from '
 import { detectSession, computeSessionOpens, computeDailyOpens } from './session.js';
 
 // ── Module-level state ─────────────────────────────────────────────────────────
-let _model       = null;   // computeGoldMacroModel result
-let _volRegime   = null;   // calculateVolRegime result
-let _history     = null;   // 90-day FRED history
-let _cotData     = null;   // COT KV data
-let _liveQuote   = null;   // latest quote object
-let _quoteTimer  = null;   // setInterval handle
+let _model          = null;   // computeGoldMacroModel result
+let _volRegime      = null;   // calculateVolRegime result
+let _history        = null;   // 90-day FRED history
+let _cotData        = null;   // COT KV data
+let _liveQuote      = null;   // latest quote object
+let _quoteTimer     = null;   // setInterval handle
+let _enhancedConfs  = [];     // last computed enhanced confluence levels (shared between checklist + levels)
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 // Apply saved preference on script load (before DOM is populated by render).
@@ -197,13 +198,16 @@ function render(model, volRegime, history, cotData, liveQuote) {
   if (!root) return;
 
   const priceNum = liveQuote
-    ? (liveQuote.price ?? liveQuote.close ?? liveQuote.ask ?? null)
+    ? parseFloat(liveQuote.price ?? liveQuote.close ?? liveQuote.ask ?? 0) || null
     : null;
 
-  // Update price pill
-  updatePricePill(liveQuote);
+  // Pre-compute enhanced confluences once — shared by checklist + levels sections.
+  if (model && priceNum) {
+    _enhancedConfs = _computeEnhancedConfs(model, priceNum);
+  }
 
-  // Update last-updated timestamp
+  // Update price pill + timestamp
+  updatePricePill(liveQuote);
   const updTime = document.getElementById('updTime');
   if (updTime) updTime.textContent = new Date().toLocaleTimeString();
 
@@ -217,6 +221,8 @@ function render(model, volRegime, history, cotData, liveQuote) {
       Ensure FRED_API_KEY is set in your server environment.
     </div>`;
   } else {
+    // Checklist first — the live verdict that frames everything below
+    html += renderChecklist(model, volRegime, cotData, liveQuote);
     html += renderRegimePanel(model);
     html += renderSignalAndWeights(model);
     html += renderLayers(model);
@@ -236,6 +242,211 @@ function render(model, volRegime, history, cotData, liveQuote) {
   }
 
   root.innerHTML = html;
+}
+
+// ── Shared confluence computation ──────────────────────────────────────────────
+// Extracts and enhances confluences once per tick; result stored in _enhancedConfs
+// so both renderChecklist and renderLevels read the same data.
+function _computeEnhancedConfs(model, priceNum) {
+  try {
+    const asiaConfs   = S.asiaRangeData['XAU/USD']?.confluences   ?? [];
+    const mondayConfs = S.mondayRangeData['XAU/USD']?.confluences ?? [];
+    const all = [...asiaConfs, ...mondayConfs];
+    if (!all.length) return [];
+
+    let pivots = null;
+    try { pivots = calculatePivots(); } catch(_) {}
+
+    const bias = model.regimeBias === 'BULLISH' ? 'bullish'
+               : model.regimeBias === 'BEARISH' ? 'bearish'
+               : 'neutral';
+
+    const filtered = filterConfluences(all);
+    return _volRegime
+      ? enhanceConfluences(filtered, priceNum, bias, pivots, _volRegime, model.goldScore)
+      : filtered;
+  } catch(e) {
+    console.warn('[gold-app] _computeEnhancedConfs:', e.message);
+    return [];
+  }
+}
+
+// ── Trade checklist evaluator ──────────────────────────────────────────────────
+function evaluateChecklist(model, volRegime, cotData, liveQuote) {
+  const priceNum = liveQuote
+    ? parseFloat(liveQuote.price ?? liveQuote.close ?? liveQuote.ask ?? 0) || null
+    : null;
+  const conf      = model.regimeConfidence;
+  const isLong    = model.signal === 'BULLISH';
+  const checks    = [];
+
+  // ── 1. Regime confidence ───────────────────────────────────────────────────
+  checks.push({
+    id:     'regime_conf',
+    label:  'Regime confidence',
+    status: conf.confidence === 'HIGH'   ? 'pass'
+          : conf.confidence === 'MEDIUM' ? 'warn'
+          : 'fail',
+    detail: `${conf.confidence} — ${escHtml(model.regimeLabel)}`,
+    failMsg: 'LOW confidence — model is uncertain. Stand aside.',
+  });
+
+  // ── 2. Signal direction + strength ────────────────────────────────────────
+  const strengthRank = { WEAK: 0, MODERATE: 1, STRONG: 2 };
+  const sigOk = model.signal !== 'NEUTRAL' && strengthRank[model.strength] >= 1;
+  checks.push({
+    id:     'signal',
+    label:  'Signal & strength',
+    status: sigOk ? 'pass' : model.signal !== 'NEUTRAL' ? 'warn' : 'fail',
+    detail: `${escHtml(model.signal)} ${escHtml(model.strength)} · score ${model.goldScore > 0 ? '+' : ''}${model.goldScore.toFixed(3)}`,
+    failMsg: 'NEUTRAL or WEAK signal — no directional conviction.',
+  });
+
+  // ── 3. Layer 2 momentum alignment ─────────────────────────────────────────
+  const l2 = model.layers.momentum;
+  const l2Scores  = [l2.realYield.score, l2.breakeven.score, l2.dxy.score, l2.safeHaven.score];
+  const aligned   = l2Scores.filter(s => isLong ? s > 0.05 : s < -0.05).length;
+  const conflicts = l2Scores.filter(s => isLong ? s < -0.2  : s > 0.2).length;
+  checks.push({
+    id:     'momentum',
+    label:  'Momentum layer (L2)',
+    status: aligned >= 3 ? 'pass' : aligned >= 2 ? 'warn' : 'fail',
+    detail: `${aligned}/4 factors confirm ${escHtml(model.signal.toLowerCase())}${conflicts > 1 ? ` · ${conflicts} conflicting` : ''}`,
+    failMsg: 'Momentum factors not confirming. Rate-of-change is the alpha — wait for alignment.',
+  });
+
+  // ── 4. Regime stability ────────────────────────────────────────────────────
+  checks.push({
+    id:     'stability',
+    label:  'Regime stability',
+    status: conf.isTransitioning ? 'warn' : 'pass',
+    detail: conf.isTransitioning
+      ? `Transitioning · ${conf.signals.length} signal${conf.signals.length !== 1 ? 's' : ''} · size ×${conf.sizeMult}`
+      : `Stable · persistence ${conf.hurstProxy != null ? Math.round(conf.hurstProxy * 100) + '%' : '—'}`,
+    failMsg: null,
+  });
+
+  // ── 5. COT crowding ───────────────────────────────────────────────────────
+  const xauCot = cotData?.['XAU/USD'] ?? cotData?.['XAUUSD'] ?? null;
+  const levPct  = xauCot?.levPct ?? xauCot?.lev_pct ?? null;
+  checks.push({
+    id:     'cot',
+    label:  'COT crowding',
+    status: levPct == null ? 'warn'
+          : levPct > 80    ? 'fail'
+          : levPct > 60    ? 'warn'
+          : 'pass',
+    detail: levPct != null
+      ? `Lev funds ${levPct.toFixed(0)}th pct${levPct > 80 ? ' — mean-reversion risk' : levPct > 60 ? ' — elevated' : ' — manageable'}`
+      : 'COT data unavailable',
+    failMsg: 'Extremely crowded positioning — mean-reversion risk. Avoid or reduce size heavily.',
+  });
+
+  // ── 6. Price at a model-aligned level (updates every 30s) ─────────────────
+  const pipSize   = getPipSize('XAU/USD');
+  const digits    = getDigits('XAU/USD');
+  const aligned6  = _enhancedConfs.filter(c => {
+    if (!priceNum) return false;
+    const dir = c.direction ?? (c.price > priceNum ? 'short' : 'long');
+    return (model.signal === 'BULLISH' && dir === 'long') ||
+           (model.signal === 'BEARISH' && dir === 'short');
+  });
+
+  let levelStatus = 'fail', levelDetail = 'No model-aligned confluence levels available', nearestLevel = null;
+  if (priceNum && aligned6.length) {
+    const nearest   = aligned6.reduce((best, c) =>
+      Math.abs(c.price - priceNum) < Math.abs(best.price - priceNum) ? c : best
+    , aligned6[0]);
+    nearestLevel    = nearest;
+    const dist      = Math.abs(nearest.price - priceNum);
+    const distPips  = Math.round(dist / pipSize);
+    const above     = nearest.price > priceNum;
+    levelStatus     = distPips <= 15 ? 'pass' : distPips <= 60 ? 'warn' : 'fail';
+    const stars     = nearest.totalStars ?? nearest.stars ?? 0;
+    const starsStr  = '★'.repeat(Math.min(5, stars));
+    levelDetail     = distPips <= 15
+      ? `AT LEVEL ${starsStr} — ${nearest.price.toFixed(digits)} (${distPips} pip${distPips !== 1 ? 's' : ''} ${above ? '↑' : '↓'})`
+      : `Nearest: ${nearest.price.toFixed(digits)} ${starsStr} · ${distPips} pips ${above ? 'above' : 'below'}`;
+  } else if (!priceNum) {
+    levelDetail = 'Live quote unavailable';
+    levelStatus = 'warn';
+  }
+  checks.push({
+    id:         'level',
+    label:      'At a model-aligned level',
+    status:     levelStatus,
+    detail:     levelDetail,
+    isDynamic:  true,   // this row re-renders on every quote tick
+    nearestLevel,
+    failMsg:    'Price is not near any model-aligned confluence. Wait for price to come to a level.',
+  });
+
+  // ── 7. Position size (informational — always shows) ───────────────────────
+  const regimeMult = conf.sizeMult;
+  const volMult    = volRegime?.sizeMult ?? 1.0;
+  const composite  = Math.round(regimeMult * volMult * 100) / 100;
+  checks.push({
+    id:     'size',
+    label:  'Position size',
+    status: 'info',
+    detail: `×${composite.toFixed(2)} of base risk  (regime ×${regimeMult} · vol ×${volMult.toFixed(2)})`,
+    failMsg: null,
+  });
+
+  return checks;
+}
+
+// ── Checklist verdict deriver ──────────────────────────────────────────────────
+function deriveVerdict(checks, model) {
+  const byId = Object.fromEntries(checks.map(c => [c.id, c]));
+  const hardFails = ['regime_conf', 'signal', 'momentum'];
+  const hasFail   = hardFails.some(id => byId[id]?.status === 'fail');
+  const cotFail   = byId.cot?.status === 'fail';
+  const atLevel   = byId.level?.status;
+  const sizeMult  = byId.size?.detail.match(/×([\d.]+)/)?.[1] ?? '1.0';
+  const dir       = model.signal === 'BULLISH' ? 'LONG' : model.signal === 'BEARISH' ? 'SHORT' : null;
+
+  if (hasFail)  return { verdict: 'PASS',           cls: 'fail',  emoji: '⛔', sub: byId[hardFails.find(id => byId[id]?.status === 'fail')]?.failMsg ?? 'Critical check failed.' };
+  if (cotFail)  return { verdict: 'REDUCE OR PASS', cls: 'warn',  emoji: '⚠',  sub: 'COT extremely crowded — mean-reversion risk elevated.' };
+  if (atLevel === 'fail') return { verdict: `WAIT FOR LEVEL — ${dir}`, cls: 'wait', emoji: '⏳', sub: `Model says ${dir} but price is not near a model-aligned confluence. Do not chase.` };
+  if (atLevel === 'warn') return { verdict: `APPROACHING — ${dir}`,   cls: 'wait', emoji: '👀', sub: `Price within 60 pips of nearest aligned level. Watch for entry.` };
+  return { verdict: `TRADE READY — ${dir}`, cls: 'pass', emoji: '✅', sub: `All checks pass. Size ×${sizeMult} of base risk.`, dir };
+}
+
+// ── Checklist renderer ─────────────────────────────────────────────────────────
+function renderChecklist(model, volRegime, cotData, liveQuote) {
+  const checks  = evaluateChecklist(model, volRegime, cotData, liveQuote);
+  const verdict = deriveVerdict(checks, model);
+
+  const ICONS = { pass: '✅', warn: '⚠', fail: '❌', info: 'ℹ' };
+  const rows  = checks.map(c => {
+    const icon    = ICONS[c.status] ?? 'ℹ';
+    const dynTag  = c.isDynamic ? '<span class="gold-ck-live-tag">LIVE</span>' : '';
+    const warnRow = (c.status === 'fail' || c.status === 'warn') && c.failMsg
+      ? `<div class="gold-ck-row-warn">${escHtml(c.failMsg)}</div>` : '';
+    return `
+    <div class="gold-ck-row gold-ck-${c.status}${c.isDynamic ? ' gold-ck-dynamic' : ''}">
+      <span class="gold-ck-icon">${icon}</span>
+      <span class="gold-ck-label">${escHtml(c.label)}${dynTag}</span>
+      <span class="gold-ck-detail">${c.detail}</span>
+    </div>${warnRow}`;
+  }).join('');
+
+  return `
+  <div id="goldChecklistSection" class="gold-ck-card">
+    <div class="gold-ck-verdict gold-ck-verdict-${verdict.cls}">
+      <span class="gold-ck-verdict-emoji">${verdict.emoji}</span>
+      <div class="gold-ck-verdict-body">
+        <div class="gold-ck-verdict-title">${verdict.verdict}</div>
+        <div class="gold-ck-verdict-sub">${escHtml(verdict.sub)}</div>
+      </div>
+      <div class="gold-ck-clock">
+        <div class="gold-ck-clock-dot"></div>
+        <span>Every 30s</span>
+      </div>
+    </div>
+    <div class="gold-ck-rows">${rows}</div>
+  </div>`;
 }
 
 // ── Regime Panel ───────────────────────────────────────────────────────────────
@@ -474,6 +685,7 @@ function renderSparklines(history) {
 
 // ── Confluence levels ─────────────────────────────────────────────────────────
 // Shows top 8 XAU/USD confluence levels with model alignment badges.
+// Uses _enhancedConfs computed by _computeEnhancedConfs — no double computation.
 function renderLevels(model, liveQuote) {
   const priceNum = liveQuote
     ? parseFloat(liveQuote.price ?? liveQuote.close ?? liveQuote.ask ?? 0)
@@ -486,34 +698,16 @@ function renderLevels(model, liveQuote) {
     </div>`;
   }
 
-  // Gather all raw confluences
-  const asiaConfs   = S.asiaRangeData['XAU/USD']?.confluences   ?? [];
-  const mondayConfs = S.mondayRangeData['XAU/USD']?.confluences ?? [];
-  const allConfs    = [...asiaConfs, ...mondayConfs];
+  // Re-compute if called from quote loop (priceNum changed since last full render)
+  const enhanced = _enhancedConfs.length
+    ? _enhancedConfs
+    : _computeEnhancedConfs(model, priceNum);
 
-  if (!allConfs.length) {
+  if (!enhanced.length) {
     return `<div id="goldLevelsSection" class="gold-card gold-full-width">
       <div class="gold-card-title">Confluence Levels — XAU/USD</div>
       <p class="gold-muted">No confluence levels found — Asia or Monday range data may be unavailable</p>
     </div>`;
-  }
-
-  let pivots = null;
-  try { pivots = calculatePivots(); } catch(e) {}
-
-  const bias = model.regimeBias === 'BULLISH' ? 'bullish'
-             : model.regimeBias === 'BEARISH' ? 'bearish'
-             : 'neutral';
-
-  let enhanced = [];
-  try {
-    const filtered = filterConfluences(allConfs);
-    enhanced = _volRegime
-      ? enhanceConfluences(filtered, priceNum, bias, pivots, _volRegime, model.goldScore)
-      : filtered;
-  } catch(e) {
-    console.warn('[gold-app] enhanceConfluences:', e.message);
-    enhanced = allConfs;
   }
 
   // Sort by distance from price, take top 8
@@ -858,24 +1052,23 @@ function startQuoteLoop() {
       const updTime = document.getElementById('updTime');
       if (updTime) updTime.textContent = new Date().toLocaleTimeString();
 
-      // Re-render levels section (distances change as price moves)
+      // Re-render distance-sensitive sections on every tick
       if (_model) {
         const priceNum = quote
           ? parseFloat(quote.price ?? quote.close ?? quote.ask ?? 0)
           : null;
 
         if (priceNum) {
+          // Recompute enhanced confluences with updated price
+          _enhancedConfs = _computeEnhancedConfs(_model, priceNum);
+
+          // Checklist — verdict + level proximity row update
+          const ckEl = document.getElementById('goldChecklistSection');
+          if (ckEl) ckEl.outerHTML = renderChecklist(_model, _volRegime, _cotData, quote);
+
+          // Levels — distances change as price moves
           const levelsEl = document.getElementById('goldLevelsSection');
-          if (levelsEl) {
-            levelsEl.outerHTML = renderLevels(_model, quote);
-          } else {
-            // Section may not have an id — regenerate just it as a fallback
-            const root = document.getElementById('goldRoot');
-            if (root) {
-              // Find and update price pill only (avoids full repaint on each tick)
-              updatePricePill(quote);
-            }
-          }
+          if (levelsEl) levelsEl.outerHTML = renderLevels(_model, quote);
         }
       }
 
