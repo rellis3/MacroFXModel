@@ -530,6 +530,12 @@ function renderRegimePanel(model) {
       <span class="gold-meta-item"><span class="gold-meta-label">Primary Driver</span> ${escHtml(primaryDriver)} (${Math.round(topFactor[1] * 100)}%)</span>
       <span class="gold-meta-item"><span class="gold-meta-label">Transition Score</span> ${conf.transitionScore} / 4</span>
       ${conf.hurstProxy != null ? `<span class="gold-meta-item"><span class="gold-meta-label">Persistence</span> ${Math.round(conf.hurstProxy * 100)}%</span>` : ''}
+      ${model.arimaStability != null ? (() => {
+        const s = model.arimaStability;
+        const col = s >= 0.80 ? 'var(--green)' : s >= 0.65 ? 'var(--amber)' : 'var(--red)';
+        const lbl = s >= 0.80 ? 'stable' : s >= 0.65 ? 'elevated' : 'erratic';
+        return `<span class="gold-meta-item" title="ARIMA price residual stability — erratic residuals signal regime transitioning"><span class="gold-meta-label">ARIMA</span> <strong style="color:${col}">${Math.round(s * 100)}%</strong> <span style="font-size:10px;color:var(--text3)">(${lbl})</span></span>`;
+      })() : ''}
       ${model.fedPricingSignal ? `<span class="gold-meta-item"><span class="gold-meta-label">Fed Pricing</span> ${escHtml(model.fedPricingSignal)}</span>` : ''}
       ${model.nfciSignal       ? `<span class="gold-meta-item"><span class="gold-meta-label">NFCI</span> ${escHtml(model.nfciSignal)}</span>` : ''}
     </div>

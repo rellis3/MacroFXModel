@@ -10,6 +10,8 @@ import { hmmSignalScore } from '../hmm.js';
 import { computeARMAForecast, computeRegimeTransition } from './arma.js';
 import { computeRangeBias, openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal } from './range-bias.js';
 import { gradeEntry } from './trade-grade.js';
+import { computeRegimeConfidence } from './regime-confidence.js';
+import { computeArimaContext } from './arima-price.js';
 
 export { openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal };
 
@@ -1027,6 +1029,20 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
   const _atrRender     = volRegime?.atr || 0;
   const _gravityBadge  = (_oiRender && _atrRender > 0) ? computeGravityRegime(_oiRender, _atrRender, pipSz) : null;
 
+  // Regime Confidence — computed once per render for the current pair
+  let _rcResult = null;
+  try {
+    const _rc5mBars = S.ohlc5m?.[sym]?.values || [];
+    const _rcTrs = _rc5mBars.map(b => {
+      const h = b.high ?? b.mid?.h ?? b.h ?? 0;
+      const l = b.low  ?? b.mid?.l ?? b.l ?? 0;
+      return h - l;
+    }).filter(v => v > 0);
+    const _rcArma  = _rcTrs.length >= 30 ? computeRegimeTransition(_rcTrs.slice().reverse()) : null;
+    const _rcArima = computeArimaContext(S.ohlcData?.[sym]?.values, sym);
+    _rcResult = computeRegimeConfidence(hmmData, volRegime?.garch ?? null, _rcArma, null, _rcArima?.residualStability ?? null);
+  } catch(_e) {}
+
   function gravityBadgeHtml(gr) {
     if (!gr) return '';
     const col = gr.regime === 'PIN' ? 'var(--blue)' : gr.regime === 'BREAKOUT' ? 'var(--amber)' : 'var(--text3)';
@@ -1263,7 +1279,48 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
     </div>`;
   })();
 
-  return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + hmmBanner + pairScoreBanner + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
+  // Regime Confidence panel — ARIMA stability + sizing multiplier
+  const regimeConfPanel = (() => {
+    if (!_rcResult) return '';
+    const rc  = _rcResult;
+    const col = rc.label === 'HIGH_CONFIDENCE' ? 'var(--green)'
+              : rc.label === 'DEFENSIVE'       ? 'var(--red)'
+              : rc.label === 'MODERATE'        ? 'var(--amber)'
+              : 'var(--text3)';
+    const bg  = rc.label === 'HIGH_CONFIDENCE' ? 'rgba(34,197,94,0.05)'
+              : rc.label === 'DEFENSIVE'       ? 'rgba(239,68,68,0.05)'
+              : rc.label === 'MODERATE'        ? 'rgba(245,158,11,0.05)'
+              : 'var(--s2)';
+    const bd  = rc.label === 'HIGH_CONFIDENCE' ? 'rgba(34,197,94,0.18)'
+              : rc.label === 'DEFENSIVE'       ? 'rgba(239,68,68,0.18)'
+              : rc.label === 'MODERATE'        ? 'rgba(245,158,11,0.18)'
+              : 'var(--border)';
+    const arimaVal = rc.components.arimaFactor;
+    const arimaCol = arimaVal >= 0.80 ? 'var(--green)' : arimaVal >= 0.65 ? 'var(--amber)' : 'var(--red)';
+    const arimaLbl = arimaVal >= 0.80 ? 'stable' : arimaVal >= 0.65 ? 'elevated' : 'erratic';
+    const multTxt  = `×${rc.sizingMult.toFixed(2)}`;
+    const defWarn  = rc.defensiveMode ? `<span style="font-size:9px;font-weight:700;color:var(--red)"> ⚠ DEFENSIVE</span>` : '';
+    const narr     = rc.narrative && rc.narrative !== 'Regime stable — full confidence'
+      ? `<div style="font-size:9px;color:var(--text3);margin-top:4px;line-height:1.4">${rc.narrative}</div>`
+      : '';
+    return `<div style="background:${bg};border:1px solid ${bd};border-radius:7px;padding:8px 10px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap">
+        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Regime Confidence</span>
+        <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;background:${col}22;color:${col};border:1px solid ${col}44">${rc.label.replace(/_/g, ' ')}</span>
+        <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;background:${col}22;color:${col};border:1px solid ${col}44">Size ${multTxt}</span>
+        ${defWarn}
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:9.5px;font-family:'DM Mono',monospace">
+        <span title="ARIMA price residual stability — erratic residuals signal regime breakdown">ARIMA <strong style="color:${arimaCol}">${(arimaVal * 100).toFixed(0)}%</strong> <span style="color:var(--text3)">(${arimaLbl})</span></span>
+        <span style="color:var(--text3)">HMM <strong>${Math.round(rc.components.hmmCertainty * 100)}%</strong></span>
+        <span style="color:var(--text3)">Conf <strong>${(rc.regimeConfidence * 100).toFixed(0)}%</strong></span>
+        <span style="color:${rc.transitionRisk > 0.55 ? 'var(--red)' : rc.transitionRisk > 0.30 ? 'var(--amber)' : 'var(--text3)'}">Risk <strong>${(rc.transitionRisk * 100).toFixed(0)}%</strong></span>
+      </div>
+      ${narr}
+    </div>`;
+  })();
+
+  return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + regimeConfPanel + hmmBanner + pairScoreBanner + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
     const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 9 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';
@@ -1304,13 +1361,26 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       ? `<span style="color:var(--text3)"><strong style="color:var(--text2)">SL(ATR)</strong> ${e.slAtr.toFixed(digits)} <span style="font-size:10px">(${e.slAtrPips?.toFixed(0)}${unit})</span></span>`
       : '';
 
+    // Size waterfall: show RC multiplier effect when it meaningfully reduces size
+    const _sizeLine = (() => {
+      if (!_rcResult || _rcResult.sizingMult >= 0.99) {
+        return `<span><strong>Size</strong> ${e.size}%</span>`;
+      }
+      const finalSz = Math.max(10, Math.round(e.size * _rcResult.sizingMult));
+      const szCol   = _rcResult.defensiveMode ? 'var(--red)' : 'var(--amber)';
+      return `<span style="display:inline-flex;flex-direction:column;gap:0;line-height:1.3">
+        <span style="font-size:8.5px;color:var(--text3)"><strong>Size</strong> <span style="text-decoration:line-through">${e.size}%</span></span>
+        <span><strong style="color:${szCol}">${finalSz}%</strong> <span style="font-size:8.5px;color:${szCol}">RC ×${_rcResult.sizingMult.toFixed(2)}</span></span>
+      </span>`;
+    })();
+
     const tradeHtml = e.sl != null ? `
       <span><strong>Entry</strong> ${e.price.toFixed(digits)}</span>
       <span><strong>SL</strong> ${e.sl.toFixed(digits)} (${e.slPips?.toFixed(0)}${unit})</span>
       ${slAtrLine}
       <span><strong>TP</strong> ${e.tp != null ? e.tp.toFixed(digits) : '—'} (${e.tpNote}${e.tpPips ? ' · ' + e.tpPips.toFixed(0) + unit : ''}) ${tpCapNote}</span>
       ${e.rrRatio ? `<span><strong style="color:${rrCol}">R:R 1:${e.rrRatio}</strong></span>` : ''}
-      <span><strong>Size</strong> ${e.size}%</span>
+      ${_sizeLine}
       ${sdLines}
       ${otcLine}
     ` : `<span style="opacity:.6"><em>Price at level — wait for directional close</em></span>${sdLines}${otcLine}`;
