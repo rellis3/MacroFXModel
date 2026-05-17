@@ -30,4 +30,6 @@ export const S = {
   hmmRegimes:      {},     // { 'EUR/USD': { regime, trendDir, rangeProb, trendProb, computedAt } }
   dailyWatchlist:  {},     // { 'EUR/USD': [{...entry, phase1Score}] } — top 6 levels, set at 06:05 London
   watchlistDate:   null,   // 'YYYY-MM-DD' London date of last watchlist computation
+  goldModel:       null,   // computeGoldMacroModel() result — updated after FRED loads and on gold tab
+  _goldVolRegime:  null,   // scratch slot: vol regime passed from vol.js into gold T1 calc
 };

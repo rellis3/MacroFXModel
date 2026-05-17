@@ -1,6 +1,7 @@
 import { S } from './state.js';
 import { COMPASS_CONFIG, KALMAN5M_DEFAULTS } from './config.js';
 import { ema, calcRSI, filterTradingDays } from './utils.js';
+import { computeGoldT1 } from './gold-model.js';
 
 export function calculateTierScores() {
   const tiers = [];
@@ -61,25 +62,12 @@ function computeT1() {
     };
   }
   if (S.currentPair.isGold) {
-    const tips = fredData.tips?.value;
-    if (tips == null) return tierUnavailable('T1', 'Rate Differential', 'TIPS Real Yield', 3);
-
-    let score = 0;
-    if (tips < 0) score = 3;
-    else if (tips < 0.5) score = 2;
-    else if (tips < 1.0) score = 1;
-    else if (tips < 1.5) score = 0;
-    else if (tips < 2.0) score = -1;
-    else if (tips < 2.5) score = -2;
-    else score = -3;
-
-    return {
-      tier: 'T1', name: 'Rate Differential', max: 3, score,
-      val: `${tips.toFixed(2)}%`,
-      reading: tips < 1 ? 'Low real yield supports gold' : tips > 2 ? 'High real yield drags gold' : 'Neutral real yield',
-      source: 'TIPS 10Y',
-      isMonthly: false
-    };
+    // Full two-layer model: level + momentum, adaptive regime weights, breakeven decomp.
+    // Pass vol regime if already computed so confidence assessment can use GARCH output.
+    const goldT1 = computeGoldT1(S._goldVolRegime ?? null);
+    // Cache the model for use in alerts and AI snapshot without recomputing
+    if (goldT1.goldModel) S.goldModel = goldT1.goldModel;
+    return goldT1;
   }
 
   const us10y = fredData.us10y?.value;

@@ -17,12 +17,31 @@ def fetch_state(base_url: str = DASHBOARD_URL, timeout: int = 30) -> dict:
         try:
             resp = requests.get(f'{base_url}/api/state', timeout=timeout)
             resp.raise_for_status()
-            return resp.json()
+            state = resp.json()
+            # Fetch gold model separately (pushed by browser after FRED refresh)
+            # and attach it to regime_snapshot for gold_macro_module to consume.
+            _attach_gold_model(state, base_url, timeout)
+            return state
         except KeyboardInterrupt:
             if attempt == 0:
                 time.sleep(0.5)
                 continue
             raise
+
+
+def _attach_gold_model(state: dict, base_url: str, timeout: int) -> None:
+    """Fetches gold model from KV and injects into regime_snapshot.gold_model."""
+    try:
+        resp = requests.get(f'{base_url}/api/kv/get?key=ai_goldmodel', timeout=timeout)
+        if resp.status_code != 200:
+            return
+        j = resp.json()
+        if j.get('miss') or not j.get('data'):
+            return
+        snap = state.setdefault('regime_snapshot', {})
+        snap['gold_model'] = j['data']
+    except Exception:
+        pass  # non-critical — gold_macro_module will handle missing data gracefully
 
 
 def check_staleness(regime_snapshot: dict) -> float:

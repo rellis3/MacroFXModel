@@ -816,8 +816,14 @@ export default {
 
         const ALL_SERIES = {
           us2y:     'GS2',
+          us5y:     'GS5',
           us10y:    'GS10',
           dxy:      'DTWEXBGS',
+          tips:     'DFII10',   // 10Y TIPS real yield — gold model Layer 1 + 2
+          tips5:    'DFII5',    // 5Y TIPS real yield — more reactive to near-term policy
+          bei:      'T10YIE',   // 10Y breakeven inflation — gold model breakeven decomp
+          vix:      'VIXCLS',   // VIX — safe haven / regime confidence
+          hy:       'BAMLH0A0HYM2', // HY credit spreads — safe haven signal
           de10y:    'IRLTLT01DEM156N',
           gb10y:    'IRLTLT01GBM156N',
           jp10y:    'IRLTLT01JPM156N',
