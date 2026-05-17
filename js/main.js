@@ -827,6 +827,154 @@ window.saveToJournal = function() {
   }
 };
 
+// ── Save ALL pairs to journal in one click ────────────────────────────────────
+window.saveAllPairsToJournal = async function() {
+  const btn = document.getElementById('journalAllBtn');
+  if (btn) { btn.disabled = true; btn.querySelector('span:last-child').textContent = 'Saving…'; }
+
+  const date   = new Date().toISOString().split('T')[0];
+  const JKEY   = 'journal_store';
+  let   jData  = {};
+  try { const raw = localStorage.getItem(JKEY); if (raw) jData = JSON.parse(raw) || {}; } catch(e) {}
+  if (!jData[date]) jData[date] = {};
+
+  const savedPairs  = [];
+  const skippedPairs = [];
+  const originalPair = S.currentPair;
+
+  for (const pairObj of PAIRS) {
+    const sym    = pairObj.symbol;
+    const asia   = S.asiaRangeData[sym];
+    const monday = S.mondayRangeData[sym];
+    const quote  = window._latestQuotes?.[sym];
+
+    // Skip pairs whose data hasn't been loaded yet
+    if (!asia || !monday || !quote || !S.ohlcData?.[sym]) {
+      skippedPairs.push(sym);
+      continue;
+    }
+
+    // Temporarily point S.currentPair at this pair so pair-specific
+    // functions (calculateVolRegime, calculatePivots, etc.) operate on it
+    S.currentPair = pairObj;
+    try {
+      const tierData  = calculateTierScores();
+      const volRegime = calculateVolRegime();
+      const pivots    = calculatePivots();
+      const macroBias = tierData.totalScore > 4 ? 'LONG' : tierData.totalScore < -4 ? 'SHORT' : 'NEUTRAL';
+
+      const allConfluences = [
+        ...(asia.confluences   || []).map(c => ({...c, source: 'asia'})),
+        ...(monday.confluences || []).map(c => ({...c, source: 'monday'})),
+      ];
+      const filtered = filterConfluences(allConfluences);
+      const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, tierData.totalScore);
+      enhanced.sort((a, b) => b.stars !== a.stars ? b.stars - a.stars : a.distance - b.distance);
+
+      const signal  = runSignalEngine(S.compassData, volRegime);
+      const entries = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime);
+
+      const seenPrices = new Set();
+      const levels = [];
+
+      enhanced.forEach(c => {
+        const key = c.price.toFixed(getDigits(sym));
+        if (seenPrices.has(key)) return;
+        seenPrices.add(key);
+        const tags = [];
+        if (c.source === 'asia')   tags.push({ label: 'Asia Fib',   cls: 'fib' });
+        if (c.source === 'monday') tags.push({ label: 'Monday Fib', cls: 'fib' });
+        if (c.isTight)             tags.push({ label: 'Tight',      cls: 'fib' });
+        if (c.aligned)             tags.push({ label: `Aligned ${macroBias}`, cls: 'signal' });
+        if (c.pivotMatch)          tags.push({ label: `Pivot ${c.pivotMatch}`, cls: 'pivot' });
+        levels.push({
+          price: c.price, direction: c.direction, stars: c.stars,
+          isTight: c.isTight || false, isRoundNumber: c.isRoundNumber || false,
+          todayFib: c.todayFib ?? null, sl: c.sl || null, tp: c.tp || null,
+          aligned: c.aligned || false, pivotMatch: c.pivotMatch || null,
+          distance: c.distance, tags, source: 'fib',
+          watchlist: (c.totalStars ?? 0) >= 4,
+        });
+      });
+
+      (entries || []).forEach(e => {
+        const key = e.price.toFixed(getDigits(sym));
+        if (seenPrices.has(key)) return;
+        seenPrices.add(key);
+        levels.push({
+          price: e.price, direction: e.direction, stars: e.totalStars || e.stars || 1,
+          isTight: e.isTight || false, isRoundNumber: e.isRoundNumber || false,
+          todayFib: e.todayFib ?? null, sl: e.sl || null, tp: e.tp || null,
+          aligned: e.aligned || false, distance: e.distance,
+          tags: (e.tags || []).map(t => ({ label: t.label, cls: t.cls || 'range' })),
+          source: 'scanner', watchlist: (e.totalStars ?? 0) >= 4,
+        });
+      });
+
+      if (levels.length === 0) { skippedPairs.push(sym + ' (no levels)'); continue; }
+
+      const macro = {
+        bias: macroBias, score: tierData.totalScore, maxScore: tierData.maxScore,
+        volRegime: volRegime.regime, atrPips: volRegime.atrPips,
+        garchPips: volRegime.garch ? volRegime.garch.pips : null,
+      };
+
+      // Merge preserving existing trade/outcome/notes
+      const existing    = jData[date][sym] || { levels: [], macro: {} };
+      const existingMap = {};
+      (existing.levels || []).forEach(l => { existingMap[l.price + '_' + l.direction] = l; });
+      const merged = levels.map(l => {
+        const ex = existingMap[l.price + '_' + l.direction];
+        return ex ? { ...l, trade: ex.trade, outcome: ex.outcome, notes: ex.notes,
+          slOverride: ex.slOverride, tpOverride: ex.tpOverride,
+          watchlist: l.watchlist || ex.watchlist } : l;
+      });
+
+      jData[date][sym] = { levels: merged, macro, savedAt: new Date().toISOString() };
+      savedPairs.push(`${sym} (${merged.length})`);
+    } catch(e) {
+      skippedPairs.push(sym + ' (err: ' + e.message + ')');
+    }
+  }
+
+  // Restore original pair context
+  S.currentPair = originalPair;
+
+  if (savedPairs.length === 0) {
+    if (btn) { btn.disabled = false; btn.querySelector('span:last-child').textContent = 'All Pairs'; }
+    alert('No pairs saved — switch to each pair tab first so their data loads, then try again.\nSkipped: ' + skippedPairs.join(', '));
+    return;
+  }
+
+  try { localStorage.setItem(JKEY, JSON.stringify(jData)); } catch(storageErr) {
+    alert('Storage error: ' + storageErr.message); return;
+  }
+  kvSet(JKEY, jData).catch(() => {});
+  localStorage.removeItem('journal_pending');
+
+  console.log('Journal All: saved', savedPairs, '| skipped', skippedPairs);
+
+  if (btn) {
+    const span = btn.querySelector('span:last-child');
+    btn.style.background  = 'var(--green-bg)';
+    btn.style.color       = 'var(--green)';
+    btn.style.borderColor = 'var(--green-bd)';
+    span.textContent = `Saved ${savedPairs.length}`;
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.style.background  = '';
+      btn.style.color       = 'var(--purple)';
+      btn.style.borderColor = 'var(--purple-bd)';
+      span.textContent = 'All Pairs';
+    }, 3000);
+  }
+
+  const skipMsg = skippedPairs.length
+    ? `\n\nSkipped (not loaded): ${skippedPairs.join(', ')}\nVisit those pair tabs to load their data.`
+    : '';
+  alert(`Saved ${savedPairs.length} pair${savedPairs.length > 1 ? 's' : ''} to journal:\n${savedPairs.join('\n')}${skipMsg}`);
+};
+
 // ── Lightweight data loader for Analyse All ───────────────────────────────────
 // Loads only what aiCollectSnapshot() needs for a given symbol without touching
 // the active pair's DOM or triggering a full renderAll.
