@@ -15,6 +15,7 @@ import { S }                                        from './state.js';
 import { PAIRS, CACHE_DURATION, CAP_DEFAULTS }      from './config.js';
 import { loadCached, fetchAPI, getPipSize, getDigits, filterTradingDays } from './utils.js';
 import { detectSession, computeSessionOpens, computeDailyOpens } from './session.js';
+import { oiLoadStoreFromKV } from './oi.js';
 
 // ── Module-level state ─────────────────────────────────────────────────────────
 let _model          = null;   // computeGoldMacroModel result
@@ -115,6 +116,7 @@ async function loadData() {
     loadCached('gold_quote',      () => fetchAPI('/api/quote?symbol=XAU/USD'),          CACHE_DURATION.QUOTE),
     fetchAPI('/api/kv/get?key=cot_data'),
     fetchAPI('/api/config/caps'),
+    oiLoadStoreFromKV(),   // sync OI walls from KV → localStorage so confluences sees them
   ]);
 
   // Helper to unwrap settled results — logs warnings on failure
@@ -1143,12 +1145,26 @@ function buildLiveLogRow(model, liveQuote) {
   };
 }
 
+let _quoteTick = 0;  // counts 30s ticks; used to throttle less-frequent refreshes
+
 function startQuoteLoop() {
   if (_quoteTimer) clearInterval(_quoteTimer);
   _quoteTimer = setInterval(async () => {
+    _quoteTick++;
     try {
       const quote = await fetchAPI('/api/quote?symbol=XAU/USD');
       _liveQuote = quote;
+
+      // Re-fetch COT from KV every 5 minutes (10 × 30s ticks) so URL changes
+      // made on the main dashboard propagate here without needing a full reload.
+      if (_quoteTick % 10 === 0) {
+        try {
+          const cotRaw = await fetchAPI('/api/kv/get?key=cot_data');
+          if (cotRaw && !cotRaw.miss) _cotData = cotRaw.data ?? null;
+        } catch(_) {}
+        // Also re-sync OI walls in case they were updated on the main dashboard.
+        oiLoadStoreFromKV().catch(() => {});
+      }
 
       // Update price pill
       updatePricePill(quote);
