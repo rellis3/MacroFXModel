@@ -697,6 +697,29 @@ async function refreshQuote() {
   }
 }
 
+// ── Journal localStorage helper ───────────────────────────────────────────────
+// Attempts to write to localStorage; on QuotaExceededError, prunes dates older
+// than 30 days and retries once. Returns true if local save succeeded.
+function tryJournalLocalSave(key, data) {
+  const json = JSON.stringify(data);
+  try {
+    localStorage.setItem(key, json);
+    return true;
+  } catch (e) {
+    if (!e.name?.includes('QuotaExceeded') && e.code !== 22) return false;
+    // Prune entries older than 30 days then retry
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    let pruned = false;
+    for (const date of Object.keys(data)) {
+      if (date < cutoffStr) { delete data[date]; pruned = true; }
+    }
+    if (!pruned) return false;
+    try { localStorage.setItem(key, JSON.stringify(data)); return true; } catch (e2) { return false; }
+  }
+}
+
 // ── Trade journal snapshot ────────────────────────────────────────────────────
 window.saveToJournal = function() {
   try {
@@ -805,10 +828,9 @@ window.saveToJournal = function() {
       return ex ? { ...l, trade: ex.trade, outcome: ex.outcome, notes: ex.notes, slOverride: ex.slOverride, tpOverride: ex.tpOverride, watchlist: l.watchlist || ex.watchlist } : l;
     });
     jData[date][sym] = { levels: merged, macro, savedAt: new Date().toISOString() };
-    try { localStorage.setItem(JKEY, JSON.stringify(jData)); } catch(storageErr) {
-      alert('Storage error — journal not saved: ' + storageErr.message); return;
-    }
-    // Best-effort KV sync so journal is available across devices
+    const localOk = tryJournalLocalSave(JKEY, jData);
+    if (!localOk) console.warn('Journal: localStorage full — data saved to KV only');
+    // Always sync to KV regardless of local storage success
     kvSet(JKEY, jData).catch(() => {});
     // Remove any stale pending key from old workflow
     localStorage.removeItem('journal_pending');
@@ -955,9 +977,9 @@ window.saveAllPairsToJournal = async function() {
     return;
   }
 
-  try { localStorage.setItem(JKEY, JSON.stringify(jData)); } catch(storageErr) {
-    alert('Storage error: ' + storageErr.message); return;
-  }
+  const localOk = tryJournalLocalSave(JKEY, jData);
+  if (!localOk) console.warn('Journal All: localStorage full — data saved to KV only');
+  // Always sync to KV regardless of local storage success
   kvSet(JKEY, jData).catch(() => {});
   localStorage.removeItem('journal_pending');
 
