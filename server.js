@@ -23,7 +23,7 @@ const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
 const MONITOR_MS        = parseInt(process.env.MONITOR_MS        || '3000');
 const REFRESH_LEVELS_MS  = parseInt(process.env.REFRESH_LEVELS_MS  || String(30 * 60 * 1000));
-const HMM5M_REFRESH_MS   = parseInt(process.env.HMM5M_REFRESH_MS   || String( 5 * 60 * 1000));
+const HMM5M_REFRESH_MS        = parseInt(process.env.HMM5M_REFRESH_MS   || String(60 * 1000)); // 1 min — matches M1 bar cadence
 const HMM5M_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // min gap between regime-change Telegram alerts per pair
 
 // ── Cloudflare env-compatible object ─────────────────────────────────────────
@@ -242,14 +242,14 @@ async function fetchDailyCandles(sym, count = 60) {
   } catch { return null; }
 }
 
-async function fetchM5Bars(sym, count = 300) {
+async function fetchHMMBars(sym, count = 300) {
   const instrument = sym.replace('/', '_');
   const base = (process.env.OANDA_ENV || 'live') === 'practice'
     ? 'https://api-fxpractice.oanda.com'
     : 'https://api-fxtrade.oanda.com';
   try {
     const r = await fetch(
-      `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=M5&count=${count}&price=M`,
+      `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=M1&count=${count}&price=M`,
       { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
     );
     if (!r.ok) return null;
@@ -1031,7 +1031,7 @@ async function runHMM5mRefresh() {
 
   for (const sym of pairs) {
     try {
-      const bars = await fetchM5Bars(sym, 300);
+      const bars = await fetchHMMBars(sym, 300);
       if (!bars || bars.length < 150) continue;
 
       const result = computeHMM5m(bars, sym);

@@ -80,13 +80,16 @@ function buildADX(bars, n = 14) {
 
   // Smooth DX into ADX
   if (dx.length < n) return out;
-  let adx    = dx.slice(0, n).reduce((s, v) => s + v, 0) / n;
-  const off  = n * 2;
+  let adx   = dx.slice(0, n).reduce((s, v) => s + v, 0) / n;
+  const off = n * 2;
   if (off < L) out[off] = adx;
   for (let i = n; i < dx.length; i++) {
     adx = (adx * (n - 1) + dx[i]) / n;
     if (i + n < L) out[i + n] = adx;
   }
+  // The loop writes up to out[L-2] — propagate to the last bar so rollingZ
+  // at index L-1 never sees 0 instead of the current ADX value.
+  if (out[L - 1] === 0 && L > 1) out[L - 1] = out[L - 2];
   return out;
 }
 

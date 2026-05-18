@@ -1082,9 +1082,9 @@ async function init() {
   setInterval(() => loadSpreadData().catch(() => {}), 60 * 1000);         // live spread, every 60s
   setInterval(() => loadSentimentData().catch(() => {}), 30 * 60 * 1000); // sentiment, every 30m
 
-  // Live 5m HMM regime — load on boot, then poll every 5 min to stay in sync with server
+  // Live 1m HMM regime — load on boot, then poll every 60s to stay in sync with server
   loadHMM5m().catch(() => {});
-  setInterval(() => loadHMM5m().catch(() => {}), 5 * 60 * 1000);
+  setInterval(() => loadHMM5m().catch(() => {}), 60 * 1000);
 
   // Toggle .pinned shadow on sticky header when page scrolls past natural position
   const sentinel = document.getElementById('stickysentinel');
