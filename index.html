@@ -225,6 +225,10 @@ Example:
         <input type="checkbox" id="alertOnlyAligned" style="width:14px;height:14px;cursor:pointer">
         Only signal-aligned
       </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="alertRegimeChange" style="width:14px;height:14px;cursor:pointer" checked>
+        Regime change alerts
+      </label>
     </div>
 
     <div class="oi-form-row" style="gap:10px;margin-bottom:10px">
@@ -246,6 +250,11 @@ Example:
         <label class="oi-lbl">Cooldown (minutes)</label>
         <input class="oi-input" type="number" id="alertCooldown" value="60" min="5" max="480" step="5">
         <div class="oi-hint">Min wait before re-alerting the same level</div>
+      </div>
+      <div>
+        <label class="oi-lbl">Flip break candles</label>
+        <input class="oi-input" type="number" id="alertFlipCandles" value="3" min="1" max="20" step="1">
+        <div class="oi-hint">Full-body closes beyond level to trigger polarity flip</div>
       </div>
     </div>
 

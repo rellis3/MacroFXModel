@@ -934,10 +934,11 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits, ti
     })();
 
     return `
-<div class="conf-item ${c.isTight ? 'tight' : 'normal'}">
+<div class="conf-item ${c.isTight ? 'tight' : 'normal'}${c.isFlipped ? ' flipped' : ''}">
   <div class="ci-row">
     <div class="ci-quality">
       ${c.isTight ? '<div class="ci-tight-label">TIGHT</div>' : ''}
+      ${c.isFlipped ? `<div class="ci-flip-label" title="${c.flipReason ?? 'Role reversal — direction flipped based on price action and regime'}">🔄 FLIP</div>` : ''}
       <div class="ci-stars">${stars}</div>
       <div class="ci-q-text">${c.stars}/5</div>
     </div>

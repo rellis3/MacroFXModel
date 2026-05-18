@@ -18,6 +18,7 @@ import worker            from './_worker.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
 import { computeHMM5m } from './hmm5m.js';
+import { detectPolarityFlip } from './js/polarity.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -85,6 +86,7 @@ const DEFAULT_CFG = {
   proxPips:    { default: 5, 'XAU/USD': 15, 'NAS100_USD': 30 },
   cooldownMin: 60,
   onlyAligned: false,
+  regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
 };
 
 // ── In-memory monitoring state ────────────────────────────────────────────────
@@ -96,6 +98,7 @@ const state = {
   hmmRegimes:          {},   // { 'EUR/USD': { regime, trendDir, rangeProb, ... } } — daily HMM
   hmm5mRegimes:        {},   // { 'EUR/USD': { regime, pBull, pBear, pRange, confidence, ... } } — live 5m HMM
   hmm5mLastAlert:      {},   // { 'EUR/USD': ms } — cooldown for regime-change Telegram alerts
+  hmm5mBars:           {},   // { 'EUR/USD': bars[] } — M1 bars cached for polarity flip detection
   levelsLoadedDate:    null, // 'YYYY-MM-DD' London date of last daily levels load
   cfg:                 null,
   tg:                  null,
@@ -459,39 +462,49 @@ async function monitorTick() {
 
       for (const entry of sortedEntries) {
         if ((entry.totalStars ?? 0) < (state.cfg.minStars ?? 4))                               { skipStars++;   continue; }
-        if (!entry.direction)                                                                    { skipDir++;     continue; }
+
+        // Polarity flip — override direction when level was broken and price has returned
+        // with regime confirming the new direction. Uses cached M1 bars from HMM refresh.
+        const _polarFlip = state.hmm5mBars?.[sym] && entry.direction
+          ? detectPolarityFlip(entry, state.hmm5mBars[sym], state.hmm5mRegimes[sym], state.cfg?.flipCandles ?? 3)
+          : null;
+        const eff = _polarFlip
+          ? { ...entry, direction: _polarFlip.newDirection, tags: [_polarFlip.tag, ...(entry.tags ?? [])], isFlipped: true }
+          : entry;
+
+        if (!eff.direction)                                                                      { skipDir++;     continue; }
         // minStrength grade filter: 'strong' = A or A+, 'stronger' = A+ only
-        if (state.cfg.minStrength === 'strong'   && entry.grade !== 'A' && entry.grade !== 'A+') { skipScore++; continue; }
-        if (state.cfg.minStrength === 'stronger' && entry.grade !== 'A+')                        { skipScore++; continue; }
+        if (state.cfg.minStrength === 'strong'   && eff.grade !== 'A' && eff.grade !== 'A+')    { skipScore++;   continue; }
+        if (state.cfg.minStrength === 'stronger' && eff.grade !== 'A+')                         { skipScore++;   continue; }
         // onlyAligned: only filter when signalAligned is explicitly false (browser-evaluated).
         // Server-side entries omit the field entirely — treat as "unknown", let through.
-        if (state.cfg.onlyAligned && entry.signalAligned === false)                            { skipAligned++; continue; }
-        if (state.cfg.minSignalScore && (entry.signalScore ?? 0) < state.cfg.minSignalScore)   { skipScore++;   continue; }
+        if (state.cfg.onlyAligned && eff.signalAligned === false)                               { skipAligned++; continue; }
+        if (state.cfg.minSignalScore && (eff.signalScore ?? 0) < state.cfg.minSignalScore)      { skipScore++;   continue; }
         // Skip counter-trend fades when HMM shows strong trend opposing direction
         const _hmm = state.hmmRegimes[sym];
         if (_hmm?.regime === 'TREND' && _hmm.trendProb > 0.75) {
-          const isLong = entry.direction === 'long';
+          const isLong    = eff.direction === 'long';
           const withTrend = (isLong && _hmm.trendDir === 'BULL') || (!isLong && _hmm.trendDir === 'BEAR');
           if (!withTrend) { skipScore++; continue; }
         }
 
-        const dist = Math.abs(entry.price - price);
-        if (dist > proxDist)                                       { skipProx++;     continue; }
+        const dist = Math.abs(eff.price - price);
+        if (dist > proxDist)                                                                     { skipProx++;    continue; }
 
-        const ck       = `${sym.replace('/', '')}_${entry.price.toFixed(digits)}_${entry.direction}`;
+        const ck       = `${sym.replace('/', '')}_${eff.price.toFixed(digits)}_${eff.direction}`;
         const lastSent = state.cooldowns[ck] ?? 0;
-        if (now - lastSent < (state.cfg.cooldownMin ?? 60) * 60_000) { skipCooldown++; continue; }
+        if (now - lastSent < (state.cfg.cooldownMin ?? 60) * 60_000)                            { skipCooldown++; continue; }
 
         state.cooldowns[ck] = now;
         cdDirty = true;
 
         const distPips = Math.round(dist / pipSz);
-        const msg      = formatAlert(sym, entry, price, distPips);
+        const msg      = formatAlert(sym, eff, price, distPips);
         const sent     = await sendTelegram(state.tg.token, state.tg.chatId, msg);
 
         if (sent) { state.lastAlert = new Date().toISOString(); state.alertCount++; }
 
-        console.log(`[MONITOR] ${sym} ${entry.direction} @ ${entry.price.toFixed(digits)} (${distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
+        console.log(`[MONITOR] ${sym} ${eff.direction}${_polarFlip ? ' [FLIPPED]' : ''} @ ${eff.price.toFixed(digits)} (${distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
       }
 
       state.skipCounts[sym] = { stars: skipStars, score: skipScore, dir: skipDir, aligned: skipAligned, prox: skipProx, cooldown: skipCooldown };
@@ -1038,6 +1051,7 @@ async function runHMM5mRefresh() {
     try {
       const bars = await fetchHMMBars(sym, 300);
       if (!bars || bars.length < 150) continue;
+      state.hmm5mBars[sym] = bars; // cache M1 bars for polarity flip detection
 
       const result = computeHMM5m(bars, sym);
       if (!result) continue;
@@ -1046,7 +1060,7 @@ async function runHMM5mRefresh() {
       state.hmm5mRegimes[sym] = result;
 
       // Telegram alert on regime change, with cooldown
-      if (prev && prev.regime !== result.regime) {
+      if (prev && prev.regime !== result.regime && state.cfg?.regimeChangeAlerts !== false) {
         const lastAlert = state.hmm5mLastAlert[sym] ?? 0;
         const now       = Date.now();
         if (now - lastAlert >= HMM5M_ALERT_COOLDOWN_MS && state.tg?.token && state.tg?.chatId) {

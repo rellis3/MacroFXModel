@@ -39,6 +39,8 @@ const DEFAULT_CFG = {
   },
   cooldownMin: 60,         // minutes before re-alerting the same level
   onlyAligned: false,      // if true, only alert when signal aligned with entry direction
+  flipCandles: 3,          // consecutive full-body closes beyond a level to constitute a polarity break
+  regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
 };
 
 export function loadAlertCfg() {
@@ -378,10 +380,12 @@ export function openAlertModal() {
   document.getElementById('alertMinStars').value          = cfg.minStars;
   document.getElementById('alertMinStrength').value    = cfg.minStrength ?? '';
   document.getElementById('alertCooldown').value       = cfg.cooldownMin;
+  if (document.getElementById('alertFlipCandles')) document.getElementById('alertFlipCandles').value = cfg.flipCandles ?? 3;
   document.getElementById('alertProxDefault').value    = cfg.proxPips?.default ?? 5;
   document.getElementById('alertProxGold').value       = cfg.proxPips?.['XAU/USD'] ?? 8;
   document.getElementById('alertProxNas').value        = cfg.proxPips?.['NAS100_USD'] ?? 30;
-  document.getElementById('alertOnlyAligned').checked  = cfg.onlyAligned;
+  document.getElementById('alertOnlyAligned').checked    = cfg.onlyAligned;
+  if (document.getElementById('alertRegimeChange')) document.getElementById('alertRegimeChange').checked = cfg.regimeChangeAlerts !== false;
   document.getElementById('alertPairs').value          = (cfg.pairs ?? []).join(', ');
 
   // Load saved bot status
@@ -402,7 +406,9 @@ export function saveAlertModal() {
     minStars:    parseInt(document.getElementById('alertMinStars').value) || 4,
     minStrength: document.getElementById('alertMinStrength').value || null,
     cooldownMin: parseInt(document.getElementById('alertCooldown').value) || 60,
-    onlyAligned: document.getElementById('alertOnlyAligned').checked,
+    onlyAligned:         document.getElementById('alertOnlyAligned').checked,
+    regimeChangeAlerts:  document.getElementById('alertRegimeChange')?.checked !== false,
+    flipCandles: parseInt(document.getElementById('alertFlipCandles')?.value) || 3,
     proxPips: {
       default:        parseFloat(document.getElementById('alertProxDefault').value) || 5,
       'XAU/USD':      parseFloat(document.getElementById('alertProxGold').value)   || 8,

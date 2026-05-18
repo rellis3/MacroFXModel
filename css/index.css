@@ -160,7 +160,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .conf-item:hover{border-color:var(--border2);transform:translateY(-1px)}
 .conf-item.tight{border-color:var(--green);border-width:2px;background:linear-gradient(to right, var(--green-bg), var(--s1) 40%);box-shadow:0 0 0 1px rgba(34,197,94,.12)}
 .conf-item.normal{border-color:rgba(180,83,9,0.4);background:linear-gradient(to right, var(--amber-bg), var(--s1) 30%)}
+.conf-item.flipped{border-left:3px solid #7c3aed;background:linear-gradient(to right,rgba(124,58,237,.08),var(--s1) 35%)}
 .ci-tight-label{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--green);background:var(--green-bg);border:1px solid var(--green-bd);border-radius:4px;padding:1px 5px;margin-bottom:3px}
+.ci-flip-label{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#c4b5fd;background:rgba(124,58,237,.18);border:1px solid rgba(124,58,237,.4);border-radius:4px;padding:1px 5px;margin-bottom:3px}
 .ci-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ci-quality{flex-shrink:0;width:60px;text-align:center}
 .ci-q-icon{font-size:18px;line-height:1}

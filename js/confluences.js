@@ -5,6 +5,7 @@ import { getCaps } from './caps.js';
 import { calcPositionSize } from './vol.js';
 import { oiLoadStore } from './oi.js';
 import { computeDivergences } from './divergence.js';
+import { detectPolarityFlip } from './polarity.js';
 
 const _DFIB_STRENGTH = { gold: 3, silver: 2, bronze: 1 };
 
@@ -61,8 +62,18 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
   const _dailyFibs = _asiaPips >= _asiaMinPips ? getDailyFibLevels(symbol) : [];
   const _structLevels = S.structuralFibData[symbol]?.levels || [];
 
+  // Polarity flip — read config once, reverse browser's newest-first bars to chronological order
+  const _alertFlipCfg  = (() => { try { return JSON.parse(localStorage.getItem('tg_alert_cfg') || '{}'); } catch(e) { return {}; } })();
+  const _flipCandles   = _alertFlipCfg.flipCandles ?? 3;
+  const _bars5mChron   = S.ohlc5m?.[symbol]?.values?.length ? [...S.ohlc5m[symbol].values].reverse() : null;
+  const _hmm5mRegime   = S.hmm5mRegimes?.[symbol] ?? null;
+
   return confluences.map(c => {
-    const direction = directionFromPrice(c.price, anchorPrice, symbol);
+    const rawDirection = directionFromPrice(c.price, anchorPrice, symbol);
+    const _flip        = rawDirection
+      ? detectPolarityFlip({ price: c.price, direction: rawDirection }, _bars5mChron, _hmm5mRegime, _flipCandles)
+      : null;
+    const direction    = _flip ? _flip.newDirection : rawDirection;
     const distance = pipsBetween(currentPrice, c.price, symbol);
 
     const aligned = direction != null && (
@@ -313,7 +324,11 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
 
     return {
       ...c,
+      tags: _flip ? [{ label: '🔄 Role Reversal', tooltip: _flip.reason }, ...(c.tags ?? [])] : (c.tags ?? []),
       direction,
+      originalDirection: rawDirection,
+      isFlipped:   !!_flip,
+      flipReason:  _flip?.reason ?? null,
       distance,
       aligned,
       alignStatus,
