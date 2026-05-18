@@ -1441,13 +1441,18 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           const pairKey = pair.replace('/','');
           const ts = entryData?.timestamp ?? null;
           if (ts && (!pushedAt || ts > pushedAt)) pushedAt = ts;
+          // Two storage formats — server (levels.js) writes { data: [...] },
+          // browser writes { data: { entries: [...], meta: {} } }. Handle both.
+          const rawEntries = Array.isArray(entryData?.data)
+            ? entryData.data
+            : (entryData?.data?.entries ?? []);
           pairSnapshots[pair] = {
             entries_pushed_at: ts ? new Date(ts).toISOString() : null,
-            entries:      entryData?.data?.entries ?? [],
-            entries_meta: entryData?.data?.meta    ?? {},
-            cot:          cotData?.data?.[pair]    ?? null,
-            oi:           oiStore?.[pair]           ?? null,
-            sentiment:    sentData?.[pairKey]       ?? null,
+            entries:      rawEntries,
+            entries_meta: entryData?.data?.meta ?? {},
+            cot:          cotData?.data?.[pair]  ?? null,
+            oi:           oiStore?.[pair]         ?? null,
+            sentiment:    sentData?.[pairKey]     ?? null,
           };
         }
 

@@ -2280,3 +2280,112 @@
   USD/CHF [not enabled]: no entries
   GBP/JPY [not enabled]: no entries
   NAS100_USD [not enabled]: no entries
+[2026-05-18 13:23:41] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-18 13:23:42] [INFO] Loaded persisted state: ['risk_guard', 'position_meta']
+[2026-05-18 13:23:53] [INFO] State refreshed from dashboard KV
+[2026-05-18 13:23:53] [INFO] RiskGuard restored from disk
+[2026-05-18 13:23:53] [WARNING] STALE DATA: Dashboard data is 14.8 min old (limit 12 min) — open the dashboard to refresh
+[2026-05-18 13:23:54] [INFO] Server refresh triggered — touched 7 pairs ['GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'USD/CAD', 'USD/CHF', 'NAS100_USD']  forcing state re-fetch
+[2026-05-18 13:24:07] [INFO] State refreshed from dashboard KV
+[2026-05-18 13:24:16] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T12:23:54.206Z  min_stars=3
+  EUR/USD: no entries
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+  EUR/GBP: no entries
+  USD/CAD: no entries
+  USD/CHF: no entries
+  GBP/JPY: no entries
+  NAS100_USD: no entries
+[2026-05-18 13:24:16] [INFO] Monitoring 10 pairs — no level approach  [EUR/USD=1.16449  GBP/USD=1.33858  USD/JPY=158.816  AUD/USD=0.71642  XAU/USD=4552.34  EUR/GBP=0.86994  USD/CAD=1.37398  USD/CHF=0.78517  GBP/JPY=212.6  NAS100_USD=29126.4]
+[2026-05-18 13:24:43] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T12:23:54.206Z  min_stars=3
+  EUR/USD: no entries
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+  EUR/GBP: no entries
+  USD/CAD: no entries
+  USD/CHF: no entries
+  GBP/JPY: no entries
+  NAS100_USD: no entries
+[2026-05-18 13:25:23] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T12:23:54.206Z  min_stars=3
+  EUR/USD: no entries
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+  EUR/GBP: no entries
+  USD/CAD: no entries
+  USD/CHF: no entries
+  GBP/JPY: no entries
+  NAS100_USD: no entries
+[2026-05-18 13:25:59] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T12:23:54.206Z  min_stars=3
+  EUR/USD: no entries
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+  EUR/GBP: no entries
+  USD/CAD: no entries
+  USD/CHF: no entries
+  GBP/JPY: no entries
+  NAS100_USD: no entries
+[2026-05-18 13:26:11] [INFO] State refreshed from dashboard KV
+[2026-05-18 13:26:38] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T12:23:54.206Z  min_stars=3
+  EUR/USD: no entries
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+  EUR/GBP: no entries
+  USD/CAD: no entries
+  USD/CHF: no entries
+  GBP/JPY: no entries
+  NAS100_USD: no entries
+[2026-05-18 13:27:14] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T12:23:54.206Z  min_stars=3
+  EUR/USD: no entries
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+  EUR/GBP: no entries
+  USD/CAD: no entries
+  USD/CHF: no entries
+  GBP/JPY: no entries
+  NAS100_USD: no entries
+[2026-05-18 13:27:50] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T12:23:54.206Z  min_stars=3
+  EUR/USD: no entries
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+  EUR/GBP: no entries
+  USD/CAD: no entries
+  USD/CHF: no entries
+  GBP/JPY: no entries
+  NAS100_USD: no entries
+[2026-05-18 13:28:19] [INFO] State refreshed from dashboard KV
+[2026-05-18 13:28:38] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T12:23:54.206Z  min_stars=3
+  EUR/USD: no entries
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+  EUR/GBP: no entries
+  USD/CAD: no entries
+  USD/CHF: no entries
+  GBP/JPY: no entries
+  NAS100_USD: no entries
+[2026-05-18 13:29:11] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T12:23:54.206Z  min_stars=3
+  EUR/USD: no entries
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+  EUR/GBP: no entries
+  USD/CAD: no entries
+  USD/CHF: no entries
+  GBP/JPY: no entries
+  NAS100_USD: no entries
