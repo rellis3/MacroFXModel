@@ -12,9 +12,9 @@
 //                for daily/H1 bars). On M1 bars +0.5 is more realistic — we still
 //                require above-average ADX but don't demand a strong outlier reading.
 export const HMM5M_CONFIG = {
-  'XAU/USD':    { selfProb: 0.88, linregN: 40, adxN: 30, dirAdxTarget: 0.7, minConfDisplay: 0.60, minConfBot: 0.70 },
-  'NAS100_USD': { selfProb: 0.94, linregN: 60, adxN: 40, dirAdxTarget: 0.7, minConfDisplay: 0.60, minConfBot: 0.65 },
-  _default:     { selfProb: 0.92, linregN: 50, adxN: 50, dirAdxTarget: 0.5, minConfDisplay: 0.55, minConfBot: 0.60 },
+  'XAU/USD':    { selfProb: 0.88, linregN: 40, adxN: 30, dirAdxTarget: 0.7 },
+  'NAS100_USD': { selfProb: 0.94, linregN: 60, adxN: 40, dirAdxTarget: 0.7 },
+  _default:     { selfProb: 0.92, linregN: 50, adxN: 50, dirAdxTarget: 0.5 },
 };
 
 function getCfg(sym) {
