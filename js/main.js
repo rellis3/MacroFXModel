@@ -1086,6 +1086,12 @@ async function init() {
   loadHMM5m().catch(() => {});
   setInterval(() => loadHMM5m().catch(() => {}), 60 * 1000);
 
+  // V2 shadow regime — same cadence, slight offset
+  setTimeout(() => {
+    if (window.loadHMM5mV2) window.loadHMM5mV2().catch(() => {});
+    setInterval(() => { if (window.loadHMM5mV2) window.loadHMM5mV2().catch(() => {}); }, 60 * 1000);
+  }, 5_000);
+
   // Toggle .pinned shadow on sticky header when page scrolls past natural position
   const sentinel = document.getElementById('stickysentinel');
   const header   = document.querySelector('.sticky-header');

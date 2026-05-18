@@ -24,12 +24,16 @@
     <span id="hdrPairName"></span>
     <span id="hdrPairPrice"></span>
   </div>
-  <div id="hdrRegime" class="hdr-regime" style="display:none" title="">
-    <span class="regime-dot"></span>
-    <span id="hdrRegimeLbl"></span>
-    <span id="hdrRegimeConf"></span>
+  <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
+    <div id="hdrRegime" class="hdr-regime" style="display:none" title="">
+      <span class="regime-dot"></span>
+      <span id="hdrRegimeLbl"></span>
+      <span id="hdrRegimeConf"></span>
+    </div>
+    <div id="hdrRegimeV2" class="hdr-regime" style="display:none;font-size:0.82em;opacity:0.85" title=""></div>
   </div>
   <button class="dark-btn" onclick="forceRefresh()" title="Clear all caches and reload data"><span>🔄</span><span>Refresh</span></button>
+  <button class="dark-btn" onclick="openV2Modal()" title="HMM V2 Shadow Model — Baum-Welch learned regime"><span>🔬</span><span>V2</span></button>
   <button class="dark-btn" onclick="openOIModal()" title="Open Interest Analyser"><span>📊</span><span>OI</span></button>
   <button class="dark-btn" onclick="openCOTModal()" id="cotBtn" title="COT — CFTC Commitment of Traders"><span>📋</span><span>COT</span></button>
   <button class="ai-analyse-btn" onclick="triggerAIAnalysis()" id="aiAnalysisBtn" title="AI trading analysis — reads all dashboard data"><span>🧠</span><span>Analyse</span></button>
@@ -165,7 +169,15 @@ Example:
   </div>
 </div>
 
+<!-- HMM V2 SHADOW MODEL MODAL -->
+<div class="oi-modal-overlay" id="v2ModalOverlay">
+  <div class="oi-modal" style="max-width:780px;max-height:88vh;overflow-y:auto">
+    <div id="v2ModalContent"></div>
+  </div>
+</div>
+
 <script type="module" src="./js/main.js"></script>
+<script type="module" src="./js/regime-v2.js"></script>
 
 <!-- TELEGRAM ALERT MODAL -->
 <div class="oi-modal-overlay" id="alertModalOverlay" onclick="if(event.target===this)closeAlertModal()">
