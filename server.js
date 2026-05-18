@@ -18,6 +18,8 @@ import worker            from './_worker.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
 import { computeHMM5m } from './hmm5m.js';
+import { computeHMM5mV2 } from './hmm5m-v2.js';
+import { trainHMM5mAll, loadTrainedParams } from './hmm5m-train.js';
 import { detectPolarityFlip } from './js/polarity.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
@@ -99,6 +101,10 @@ const state = {
   hmm5mRegimes:        {},   // { 'EUR/USD': { regime, pBull, pBear, pRange, confidence, ... } } — live 5m HMM
   hmm5mLastAlert:      {},   // { 'EUR/USD': ms } — cooldown for regime-change Telegram alerts
   hmm5mBars:           {},   // { 'EUR/USD': bars[] } — M1 bars cached for polarity flip detection
+  hmm5mV2Regimes:      {},   // shadow V2 regimes — 4-state, learned params
+  hmm5mTrainedParams:  null, // Baum-Welch learned parameters loaded from KV
+  hmm5mMacroContext:   null, // FRED macro overlay loaded from KV
+  hmm5mTrainStatus:    {},   // per-pair training progress { sym: { status, iterations, nBars } }
   levelsLoadedDate:    null, // 'YYYY-MM-DD' London date of last daily levels load
   cfg:                 null,
   tg:                  null,
@@ -945,6 +951,27 @@ app.get('/api/hmm5m', (_req, res) => {
   res.json(state.hmm5mRegimes);
 });
 
+// V2 shadow regime data
+app.get('/api/hmm5m-v2', (_req, res) => {
+  res.json(state.hmm5mV2Regimes);
+});
+
+// V2 training status per pair
+app.get('/api/hmm5m-train-status', (_req, res) => {
+  res.json(state.hmm5mTrainStatus);
+});
+
+// Trigger V2 Baum-Welch training (runs async, returns immediately)
+app.post('/api/hmm5m-train', (_req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(400).json({ ok: false, message: 'OANDA_KEY not configured' });
+  }
+  res.json({ ok: true, message: 'Training started — poll /api/hmm5m-train-status for progress' });
+  const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+  state.hmm5mTrainStatus = Object.fromEntries(pairs.map(s => [s, { status: 'queued' }]));
+  runHMM5mTraining(pairs).catch(e => console.error('[HMM5M-TRAIN]', e.message));
+});
+
 // SSE live price stream — must be handled before the generic /api/* catch-all
 // because it returns an infinite ReadableStream, not a text body.
 app.get('/api/oanda_stream', async (req, res) => {
@@ -1087,9 +1114,58 @@ async function runHMM5mRefresh() {
   if (results.length) console.log('[HMM5M]', results.join(' | '));
 }
 
+async function runHMM5mV2Refresh() {
+  if (!process.env.OANDA_KEY) return;
+  const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+  for (const sym of pairs) {
+    try {
+      const bars = await fetchHMMBars(sym, 300);
+      if (!bars || bars.length < 150) continue;
+      const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
+      if (!result) continue;
+      state.hmm5mV2Regimes[sym] = result;
+    } catch (e) {
+      console.error(`[HMM5M-V2] ${sym} error:`, e.message);
+    }
+  }
+}
+
+async function runHMM5mTraining(pairs) {
+  const { results, status } = await trainHMM5mAll(
+    pairs,
+    process.env.OANDA_KEY,
+    process.env.OANDA_ENV,
+  );
+  // Update training status with completion timestamps
+  for (const [sym, st] of Object.entries(status)) {
+    state.hmm5mTrainStatus[sym] = { ...st, completedAt: Date.now() };
+  }
+  // Reload learned params into state
+  try {
+    const { trainedParams, macroContext } = await loadTrainedParams();
+    if (trainedParams) state.hmm5mTrainedParams = trainedParams;
+    if (macroContext)  state.hmm5mMacroContext  = macroContext;
+  } catch (e) {
+    console.error('[HMM5M-TRAIN] reload error:', e.message);
+  }
+  const done  = Object.values(status).filter(s => s.status === 'done').length;
+  const total = pairs.length;
+  console.log(`[HMM5M-TRAIN] complete — ${done}/${total} pairs learned`);
+}
+
 await kv.load();
 await reloadConfig();
 await reloadLevels();
+
+// Load any previously trained V2 params from KV on startup
+try {
+  const { trainedParams, macroContext } = await loadTrainedParams();
+  if (trainedParams) state.hmm5mTrainedParams = trainedParams;
+  if (macroContext)  state.hmm5mMacroContext  = macroContext;
+  if (trainedParams) console.log('[HMM5M-V2] Loaded trained params from KV');
+} catch (e) {
+  console.error('[HMM5M-V2] Failed to load trained params:', e.message);
+}
 
 setInterval(monitorTick, MONITOR_MS);
 monitorTick().catch(console.error);
@@ -1098,11 +1174,17 @@ monitorTick().catch(console.error);
 setInterval(runLevelsRefresh, REFRESH_LEVELS_MS);
 runLevelsRefresh().catch(console.error);
 
-// Live 5m HMM — runs every 5 min, initial run after a short delay so levels load first
+// Live 5m HMM — runs every minute, initial run after a short delay so levels load first
 setTimeout(() => {
   runHMM5mRefresh().catch(console.error);
   setInterval(runHMM5mRefresh, HMM5M_REFRESH_MS);
 }, 15_000);
+
+// V2 shadow HMM — same cadence, 5s offset so it doesn't fire simultaneously with V1
+setTimeout(() => {
+  runHMM5mV2Refresh().catch(console.error);
+  setInterval(runHMM5mV2Refresh, HMM5M_REFRESH_MS);
+}, 20_000);
 
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';
