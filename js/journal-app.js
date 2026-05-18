@@ -1734,6 +1734,11 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
       let inTrade = false, touchBarIdx = -1, exitBarIdx = -1;
       let pTouchTime = null, pExitTime = null, pResult = 'untouched', pR = null;
       let pMaxFav = 0, pMaxAdv = 0, nextScan = windowBars.length;
+      // Per-pass direction and SL/TP — re-derived at touch time from approach bar so
+      // a level touched from above (support) and from below (resistance) scores correctly.
+      let passDir = dir;
+      let passSl  = sl;
+      let passTp  = tp;
 
       for (let bi = scanFrom; bi < windowBars.length; bi++) {
         const bar     = windowBars[bi];
@@ -1741,23 +1746,35 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
 
         if (!inTrade && bar.l <= entryPrice + pip * 0.5 && bar.h >= entryPrice - pip * 0.5) {
           inTrade = true; touchBarIdx = bi; pTouchTime = hhmm(bar);
+          // Derive approach direction from the bar before the touch:
+          // prior close above level → price fell to it → support → long
+          // prior close below level → price rose to it → resistance → short
+          if (bi > 0) {
+            const prevClose = windowBars[bi - 1].c;
+            if      (prevClose > entryPrice + pip * 0.5) passDir = 'long';
+            else if (prevClose < entryPrice - pip * 0.5) passDir = 'short';
+          }
+          if (passDir !== dir) {
+            passSl = passDir === 'long' ? entryPrice - slDist : entryPrice + slDist;
+            passTp = passDir === 'long' ? entryPrice + tpDist : entryPrice - tpDist;
+          }
         }
         if (inTrade) {
-          const fav = dir === 'long' ? (bar.h - entryPrice) / pip : (entryPrice - bar.l) / pip;
-          const adv = dir === 'long' ? (entryPrice - bar.l) / pip : (bar.h - entryPrice) / pip;
+          const fav = passDir === 'long' ? (bar.h - entryPrice) / pip : (entryPrice - bar.l) / pip;
+          const adv = passDir === 'long' ? (entryPrice - bar.l) / pip : (bar.h - entryPrice) / pip;
           if (fav > pMaxFav) pMaxFav = fav;
           if (adv > pMaxAdv) pMaxAdv = adv;
 
-          if (dir === 'long') {
-            if (bar.l <= sl) { pResult = 'sl'; pR = -1; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
-            if (bar.h >= tp) { pResult = 'tp'; pR = tpDist / slDist; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
+          if (passDir === 'long') {
+            if (bar.l <= passSl) { pResult = 'sl'; pR = -1; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
+            if (bar.h >= passTp) { pResult = 'tp'; pR = tpDist / slDist; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
           } else {
-            if (bar.h >= sl) { pResult = 'sl'; pR = -1; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
-            if (bar.l <= tp) { pResult = 'tp'; pR = tpDist / slDist; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
+            if (bar.h >= passSl) { pResult = 'sl'; pR = -1; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
+            if (bar.l <= passTp) { pResult = 'tp'; pR = tpDist / slDist; pExitTime = fmtExitTime(bar); exitBarIdx = bi; nextScan = bi + 1; break; }
           }
           if (bi === windowBars.length - 1) {
             // Last bar in window (21:00 EOD or custom end datetime)
-            const eodPnl = dir === 'long' ? bar.c - entryPrice : entryPrice - bar.c;
+            const eodPnl = passDir === 'long' ? bar.c - entryPrice : entryPrice - bar.c;
             pR = Math.max(-1, Math.min(tpDist / slDist, eodPnl / slDist));
             pResult = 'eod';
             pExitTime = endDt ? fmtExitTime(bar) : '21:00';
@@ -1788,6 +1805,7 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
         maxFav: pMaxFav > 0 ? +pMaxFav.toFixed(1) : null,
         maxAdv: pMaxAdv > 0 ? +pMaxAdv.toFixed(1) : null,
         chartBars: chartBarsPass,
+        dir: passDir, sl: passSl, tp: passTp,
       });
 
       // EOD or open (still in trade) stops scanning; SL/TP continue from nextScan
@@ -2320,7 +2338,10 @@ function buildReplayHTML(payload) {
         : p.result === 'sl'  ? '<span class="rp-badge sl">SL</span>'
         : p.result === 'eod' ? '<span class="rp-badge eod">EOD</span>'
         : `<span class="rp-badge open">${p.result.toUpperCase()}</span>`;
-      const rStr   = mkRCell(p.r, res.entryPrice, res.sl, p.result === 'tp' || p.result === 'sl' || p.result === 'eod');
+      const pSl    = p.sl ?? res.sl;
+      const pTp    = p.tp ?? res.tp;
+      const pDir   = p.dir ?? res.dir;
+      const rStr   = mkRCell(p.r, res.entryPrice, pSl, p.result === 'tp' || p.result === 'sl' || p.result === 'eod');
       const favStr = p.maxFav !== null ? `+${p.maxFav}p` : '—';
       const advStr = p.maxAdv !== null ? `<span class="vd">${p.maxAdv}p</span>` : '—';
       const rowCls = p.result === 'tp' ? 'rp-row-win' : p.result === 'sl' ? 'rp-row-loss' : '';
@@ -2330,13 +2351,14 @@ function buildReplayHTML(payload) {
         ? `<button class="rp-chevron" onclick="rpToggleChart('${chartId}')" aria-label="Toggle chart">▶</button>`
         : `<span class="rp-chevron-ph"></span>`;
       const durCell = p.duration ? `<span style="font-size:10px;color:var(--text3)">${p.duration}</span>` : '—';
+      const pDirHtml = pDir === 'long' ? '<span class="rp-long">↑L</span>' : '<span class="rp-short">↓S</span>';
       tableHtml += `<tr class="${rowCls}"><td class="rp-chevron-cell">${chevron}</td>`
-        + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${dirHtml}</td><td class="rp-stars">${stars}</td>`
+        + `<td>${sd}</td><td class="mono">${priceStr}</td><td>${pDirHtml}</td><td class="rp-stars">${stars}</td>`
         + `<td class="mono">${p.touchTime || '—'}</td><td class="mono">${p.exitTime || '—'}</td><td>${durCell}</td><td>${resultBadge}</td>`
         + `<td class="mono">${rStr}</td><td class="mono vn">${favStr}</td><td class="mono">${advStr}</td></tr>`;
       if (canExpand) {
         tableHtml += `<tr id="${chartId}" class="rp-chart-row" style="display:none">`
-          + `<td colspan="11" class="rp-chart-cell">${buildCandleChart({ ...p, entryPrice: res.entryPrice, sl: res.sl, tp: res.tp, dir: res.dir })}</td></tr>`;
+          + `<td colspan="11" class="rp-chart-cell">${buildCandleChart({ ...p, entryPrice: res.entryPrice, sl: pSl, tp: pTp, dir: pDir })}</td></tr>`;
       }
     } else {
       // Multi-pass: header row + sub-rows per pass
@@ -2367,19 +2389,23 @@ function buildReplayHTML(payload) {
           : p.result === 'sl'  ? '<span class="rp-badge sl">SL</span>'
           : p.result === 'eod' ? '<span class="rp-badge eod">EOD</span>'
           : `<span class="rp-badge open">${p.result.toUpperCase()}</span>`;
-        const rp      = mkRCell(p.r, res.entryPrice, res.sl, p.result === 'tp' || p.result === 'sl' || p.result === 'eod');
+        const pSl2   = p.sl ?? res.sl;
+        const pTp2   = p.tp ?? res.tp;
+        const pDir2  = p.dir ?? res.dir;
+        const rp      = mkRCell(p.r, res.entryPrice, pSl2, p.result === 'tp' || p.result === 'sl' || p.result === 'eod');
         const subCls  = p.result === 'tp' ? 'rp-row-win' : p.result === 'sl' ? 'rp-row-loss' : '';
         const subDur = p.duration ? `<span style="font-size:10px;color:var(--text3)">${p.duration}</span>` : '—';
+        const subDirHtml = pDir2 === 'long' ? '<span class="rp-long" style="font-size:10px">↑L</span>' : '<span class="rp-short" style="font-size:10px">↓S</span>';
         tableHtml += `<tr class="${subCls}" style="opacity:0.88"><td class="rp-chevron-cell">${chevron}</td>`
           + `<td style="padding-left:18px;color:var(--text3);font-size:10px">↳ #${pi + 1}</td>`
-          + `<td colspan="3"></td>`
+          + `<td>${subDirHtml}</td><td colspan="2"></td>`
           + `<td class="mono">${p.touchTime || '—'}</td><td class="mono">${p.exitTime || '—'}</td>`
           + `<td>${subDur}</td><td>${resultBadge}</td><td class="mono">${rp}</td>`
           + `<td class="mono vn">${p.maxFav ? '+' + p.maxFav + 'p' : '—'}</td>`
           + `<td class="mono">${p.maxAdv ? `<span class="vd">${p.maxAdv}p</span>` : '—'}</td></tr>`;
         if (canExpand) {
           tableHtml += `<tr id="${chartId}" class="rp-chart-row" style="display:none">`
-            + `<td colspan="11" class="rp-chart-cell">${buildCandleChart({ ...p, entryPrice: res.entryPrice, sl: res.sl, tp: res.tp, dir: res.dir })}</td></tr>`;
+            + `<td colspan="11" class="rp-chart-cell">${buildCandleChart({ ...p, entryPrice: res.entryPrice, sl: pSl2, tp: pTp2, dir: pDir2 })}</td></tr>`;
         }
       }
     }
