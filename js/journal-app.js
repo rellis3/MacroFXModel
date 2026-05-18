@@ -1683,10 +1683,20 @@ function runReplayEngine(pair, date, allBars, levels, opts = {}) {
   let runningR = 0;
   const equity = [{ label: 'Start', r: 0, cumR: 0 }];
 
+  // Use the 08:00 open of the replay day as the anchor for direction so that
+  // levels which have since flipped (e.g. a former short that price has moved
+  // above, now showing as long on the live dashboard) are replayed with the
+  // direction they actually had at the start of that session.
+  const dayOpenPrice = windowBars[0]?.o ?? null;
+
   for (let li = 0; li < levels.length; li++) {
     const level      = levels[li];
     const entryPrice = level.price;
-    const dir        = level.direction;
+    const replayDir  = (dayOpenPrice != null && entryPrice)
+      ? (entryPrice > dayOpenPrice + pip * 0.5 ? 'short'
+       : entryPrice < dayOpenPrice - pip * 0.5 ? 'long' : null)
+      : null;
+    const dir        = replayDir ?? level.direction;
     const stars      = level.stars || 1;
 
     // SL / TP overrides — pips from entry, or ATR multiplier, or level default
