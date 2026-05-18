@@ -949,7 +949,10 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits, ti
     <div class="ci-dir ${dirClass}">${dirIcon} ${dirText}</div>
     <div class="ci-source ${c.source}">${c.source === 'asia' ? '📍 Asia' : '🗓️ Monday'}</div>
     <div class="ci-distance ${isClose ? 'close' : ''}">${above ? '↑' : '↓'} ${c.distance.toFixed(0)}p</div>
-    ${c.aligned ? '<div class="ci-aligned">✓ Aligned</div>' : ''}
+    ${c.alignStatus === 'aligned'  ? '<div class="ci-aligned" title="Level direction matches macro bias">✓ Aligned</div>'
+    : c.alignStatus === 'opposing' ? '<div class="ci-opposing" title="Level direction opposes macro bias — counter-trend setup">⊘ Opposing</div>'
+    : c.direction                  ? '<div class="ci-align-neutral" title="Macro is neutral — no directional conviction">◎ Neutral</div>'
+    : ''}
     ${c.pivotMatch ? `<div class="ci-pivot">📍 ${c.pivotMatch}</div>` : ''}
     ${c.dailyFib ? `<div class="ci-dfib dfib-${c.dailyFib.strength}" title="Daily Fib retracement">📊 ${c.dailyFib.label} ${c.dailyFib.direction}</div>` : ''}
     ${c.structuralFib ? `<div class="ci-dfib dfib-${c.structuralFib.strength}" title="Structural fib · ${c.structuralFib.timeLabel}">📐 ${c.structuralFib.label} ${c.structuralFib.direction}${c.structuralFib.count >= 3 ? ` ×${c.structuralFib.count}` : ''}</div>` : ''}

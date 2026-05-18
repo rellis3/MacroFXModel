@@ -70,6 +70,11 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       (direction === 'short' && bias === 'SHORT') ||
       (direction === 'long'  && bias === 'LONG')
     );
+    // Three-state alignment for display: 'aligned' | 'opposing' | 'neutral'
+    const alignStatus = !direction          ? 'neutral'
+      : aligned                             ? 'aligned'
+      : (bias === 'NEUTRAL' || !bias)       ? 'neutral'
+      : 'opposing';
 
     const _enhCaps   = getCaps(symbol);
     const _isGoldEnh = pipSize >= 0.1 && symbol.includes('XAU');
@@ -312,6 +317,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       direction,
       distance,
       aligned,
+      alignStatus,
       pivotMatch,
       oiMatch,
       dailyFib,           // { label, direction, strength } of matching daily Fib level, or null

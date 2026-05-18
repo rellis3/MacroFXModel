@@ -179,6 +179,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .ci-distance{flex-shrink:0;font-size:11px;color:var(--text2);font-family:'DM Mono',monospace}
 .ci-distance.close{color:var(--green);font-weight:600}
 .ci-aligned{flex-shrink:0;font-size:10px;padding:2px 7px;border-radius:8px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);font-weight:600}
+.ci-opposing{flex-shrink:0;font-size:10px;padding:2px 7px;border-radius:8px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);font-weight:600}
+.ci-align-neutral{flex-shrink:0;font-size:10px;padding:2px 7px;border-radius:8px;background:transparent;color:var(--text3);border:1px solid var(--border);font-weight:500}
 .ci-pivot{flex-shrink:0;font-size:10px;padding:2px 7px;border-radius:8px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);font-weight:600}
 .ci-dfib{flex-shrink:0;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;white-space:nowrap}
 .dfib-gold{background:#fef3c7;color:#92400e;border:1px solid #f59e0b}
