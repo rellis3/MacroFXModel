@@ -649,6 +649,75 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
     return pair_status
 
 
+# ── Diagnostic summary ────────────────────────────────────────────────────────
+
+def log_diagnostic_summary(state: dict, live_prices: dict, config: dict, base_url: str) -> None:
+    """
+    Logs a compact confluence summary every DIAG_INTERVAL seconds.
+    Shows each pair's entry levels, current price, and pip distance so the
+    operator can verify the bot is reading levels correctly without waiting
+    for a trade signal.
+    """
+    snap        = state.get('regime_snapshot') or {}
+    pairs_snap  = snap.get('pairs') or {}
+    enabled     = config.get('enabled_pairs') or []
+    exec_cfg    = config.get('execution') or {}
+    min_stars   = resolve_min_stars(exec_cfg)
+
+    all_syms = list(pairs_snap.keys())
+    if not all_syms:
+        log.info('[DIAG] No entry data in regime_snapshot — push levels from dashboard (📤 Push to Bot)')
+        return
+
+    if not enabled:
+        log.info('[DIAG] enabled_pairs is empty in bot_config — bot will not trade. '
+                 'Configure pairs via the bot-config panel on the dashboard.')
+
+    # Fetch prices for any pair not already in live_prices (covers disabled pairs too)
+    prices: dict[str, float] = dict(live_prices)
+    for sym in all_syms:
+        if sym not in prices:
+            p = fetch_quote(sym, base_url)
+            if p:
+                prices[sym] = p
+
+    lines = []
+    for sym in all_syms:
+        entries  = pairs_snap[sym].get('entries') or []
+        price    = prices.get(sym)
+        pip      = _PIP_SIZES.get(sym, 0.0001)
+        tag      = '' if sym in enabled else ' [not enabled]'
+
+        if not entries:
+            lines.append(f'  {sym}{tag}: no entries')
+            continue
+
+        price_str = f'{price}' if price else 'no price'
+
+        entry_parts = []
+        for e in sorted(entries, key=lambda x: abs((x.get('price') or 0) - (price or 0))):
+            ep     = e.get('price') or 0
+            stars  = e.get('totalStars') or 0
+            grade  = e.get('grade') or '?'
+            dirn   = '↑' if e.get('direction') == 'long' else ('↓' if e.get('direction') == 'short' else '~')
+            if price:
+                dist = abs(ep - price) / pip
+                dist_str = f'{dist:.1f}p'
+            else:
+                dist_str = '?p'
+            skip = '' if stars >= min_stars else f'[skip<{min_stars}★]'
+            entry_parts.append(f'{dirn}{ep}({stars}★{grade} {dist_str}){skip}')
+
+        # Show closest 6 entries to keep log lines manageable
+        shown   = entry_parts[:6]
+        more    = len(entry_parts) - len(shown)
+        suffix  = f' +{more} more' if more > 0 else ''
+        lines.append(f'  {sym}{tag} @ {price_str} | {" ".join(shown)}{suffix}')
+
+    pushed_at = snap.get('pushed_at', 'unknown')
+    log.info(f'[DIAG] Snapshot pushed_at={pushed_at}  min_stars={min_stars}\n' + '\n'.join(lines))
+
+
 # ── Main loop — two-speed ─────────────────────────────────────────────────────
 
 def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
@@ -696,7 +765,9 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
     last_window_warn:  float = 0.0
     last_stale_warn:   float = 0.0
     last_heartbeat:    float = 0.0
+    last_diag:         float = 0.0
     HEARTBEAT_INTERVAL = 5 * 60  # log alive message every 5 min when monitoring quietly
+    DIAG_INTERVAL      = 30      # diagnostic confluence dump every 30s
 
     # ── Two-speed loop ────────────────────────────────────────────────────────
     while True:
@@ -801,6 +872,11 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
 
         # Attach to state so confluence module can read them
         cached_state['_live_prices'] = live_prices
+
+        # ── Diagnostic confluence dump every 30s ──────────────────────────────
+        if tick_start - last_diag >= DIAG_INTERVAL:
+            log_diagnostic_summary(cached_state, live_prices, config, base_url)
+            last_diag = tick_start
 
         # ── Position management (runs every tick, before new entries) ─────────
         mgmt_actions = manage_positions(position_meta, paper_mode)

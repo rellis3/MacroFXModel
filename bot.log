@@ -304,3 +304,17 @@
 [2026-05-16 17:54:48] [INFO] State refreshed from dashboard KV
 [2026-05-16 17:54:48] [INFO] RiskGuard restored from disk
 [2026-05-16 17:54:48] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 11:09:06] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-18 11:09:07] [INFO] MT5 credentials loaded from KV
+[2026-05-18 11:09:07] [INFO] Loaded persisted state: ['risk_guard', 'position_meta']
+[2026-05-18 11:09:19] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:09:19] [INFO] RiskGuard restored from disk
+[2026-05-18 11:09:19] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 11:09:19] [INFO] Midnight reset: day_start_bal 10000.00 → 10000.00
+[2026-05-18 11:11:19] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:13:21] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:14:07] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 11:15:24] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:17:26] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:19:09] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 11:19:28] [INFO] State refreshed from dashboard KV
