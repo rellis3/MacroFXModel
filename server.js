@@ -958,7 +958,10 @@ app.get('/api/hmm5m-v2', (_req, res) => {
 
 // V2 training status per pair
 app.get('/api/hmm5m-train-status', (_req, res) => {
-  res.json(state.hmm5mTrainStatus);
+  res.json({
+    ...state.hmm5mTrainStatus,
+    _meta: { hasLearnedParams: state.hmm5mTrainedParams !== null },
+  });
 });
 
 // Trigger V2 Baum-Welch training (runs async, returns immediately)

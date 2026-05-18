@@ -51,6 +51,8 @@ const _CF_EXACT = new Set([
   'cot_url',                // legacy single CFTC URL key
   'caps',                   // user-configured proximity caps
   'daily_watchlist',        // top-6 levels per pair, computed at 06:05 London — persists within trading day
+  'hmm5m_trained_params',   // Baum-Welch learned HMM V2 params — must survive redeploys
+  'hmm5m_macro_context',    // FRED macro context snapshot
 ]);
 function isCfKey(key) {
   // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart

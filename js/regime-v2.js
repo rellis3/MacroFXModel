@@ -123,7 +123,9 @@ export async function triggerV2Training() {
 
     _rerenderTrainingSection();
 
-    const statuses = Object.values(_v2TrainStatus).map(s => s.status);
+    const statuses = Object.values(_v2TrainStatus)
+      .filter(s => s && 'status' in s)
+      .map(s => s.status);
     const allSettled = statuses.length > 0 &&
       statuses.every(s => s === 'done' || s === 'error');
 
@@ -168,10 +170,11 @@ function renderV2Modal() {
 }
 
 function _renderStatusBar() {
-  const allStatuses = Object.values(_v2TrainStatus);
-  const anyLearned = S.hmm5mV2Regimes
-    ? Object.values(S.hmm5mV2Regimes).some(r => r.isLearned)
-    : false;
+  const allStatuses = Object.values(_v2TrainStatus).filter(s => s && typeof s === 'object' && 'status' in s);
+  const anyLearned = _v2TrainStatus._meta?.hasLearnedParams
+    || (S.hmm5mV2Regimes
+      ? Object.values(S.hmm5mV2Regimes).some(r => r.isLearned)
+      : false);
 
   let lastTrained = 'Never — click Train to begin';
   let badgeHtml = `<span style="font-size:10px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);padding:2px 8px;border-radius:8px;font-weight:600">NOT TRAINED</span>`;
