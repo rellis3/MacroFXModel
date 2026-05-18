@@ -59,14 +59,21 @@ async function loadJournal(){
           if(!journalData[date][pair]){journalData[date][pair]=pairObj;changed=true;}
         }
       }
-      if(changed){try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journalData));}catch(e){}}
+      if(changed){try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journalData));}catch(e){console.warn('journal load-merge: localStorage full',e);}}
     }
   }catch(e){}
 }
 function saveJournal(){
-  try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journalData));}catch(e){
-    // localStorage full — KV is the authoritative store so data is not lost
-    console.warn('journal localStorage full, relying on KV only',e);
+  const json=JSON.stringify(journalData);
+  try{localStorage.setItem(JOURNAL_KEY,json);}catch(e){
+    // Quota exceeded — prune dates older than 30 days then retry
+    const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);
+    const cutoffStr=cutoff.toISOString().split('T')[0];
+    let pruned=false;
+    for(const d of Object.keys(journalData)){if(d<cutoffStr){delete journalData[d];pruned=true;}}
+    if(pruned){try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journalData));}catch(e2){
+      console.warn('journal localStorage full after pruning, relying on KV only',e2);}}
+    else{console.warn('journal localStorage full, relying on KV only',e);}
   }
   kvSet(JOURNAL_KEY,journalData);}
 function todayStr(){return new Date().toISOString().split('T')[0];}
