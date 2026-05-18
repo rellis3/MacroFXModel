@@ -267,8 +267,11 @@ export function oiErf(x) {
   return sign*(1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x));
 }
 
+function isNQ(pair) { return pair === 'NQ' || pair === 'NAS100_USD'; }
+function isES(pair) { return pair === 'ES'; }
+
 export function oiGreeks(strike, spot, pair) {
-  const sigma = (pair==='NQ'||pair==='ES') ? 0.20 : pair.includes('XAU') ? 0.18 : 0.12;
+  const sigma = (isNQ(pair) || isES(pair)) ? 0.20 : pair.includes('XAU') ? 0.18 : 0.12;
   const T = 14/365;
   const d1 = (Math.log(spot/strike) + 0.5*sigma*sigma*T) / (sigma*Math.sqrt(T));
   const nd1 = Math.exp(-0.5*d1*d1) / Math.sqrt(2*Math.PI);
@@ -279,7 +282,7 @@ export function oiGreeks(strike, spot, pair) {
 
 export function oiCalcExposures(strikes, calls, puts, spot, pair) {
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };
-  const cs = (pair==='NQ') ? 20 : (pair==='ES') ? 50 : pair.includes('XAU') ? 100 : 125000;
+  const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : pair.includes('XAU') ? 100 : 125000;
   let gex=0, dex=0;
   for (let i=0; i<strikes.length; i++) {
     const {gamma, callDelta, putDelta} = oiGreeks(strikes[i], spot, pair);
@@ -452,7 +455,7 @@ export function processOIData() {
   const maxPain = oiCalcMaxPain(parsed.strikes, parsed.calls, parsed.puts);
   const exposures = oiCalcExposures(parsed.strikes, parsed.calls, parsed.puts, spot, pair);
 
-  const cs = (pair==='NQ') ? 20 : (pair==='ES') ? 50 : pair.includes('XAU') ? 100 : 125000;
+  const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : pair.includes('XAU') ? 100 : 125000;
 
   const withOI = parsed.strikes.map((s,i) => {
     const {gamma, callDelta, putDelta} = oiGreeks(s, spot, pair);
@@ -623,7 +626,8 @@ export function renderOICard(inst) {
   const pcClass = pcRatio > 1.3 ? 'oi-badge-red' : pcRatio < 0.77 ? 'oi-badge-green' : 'oi-badge-amber';
   const mpDist = spot > 0 ? Math.abs(((maxPain-spot)/spot)*100).toFixed(2) : '—';
   const mpDir  = maxPain > spot ? '↑' : maxPain < spot ? '↓' : '—';
-  const gexBn = (gex/1e9).toFixed(2);
+  const absGex = Math.abs(gex);
+  const gexFmt = absGex >= 1e9 ? `${(gex/1e9).toFixed(2)}Bn` : absGex >= 1e6 ? `${(gex/1e6).toFixed(0)}M` : absGex >= 1e3 ? `${(gex/1e3).toFixed(0)}K` : gex.toFixed(0);
   const gexSign = gex>0?'+':'';
   const gexClass = gex>0?'up':'dn';
   const skewPct = Math.min(100, Math.max(0, (pcRatio/3)*100)).toFixed(0);
@@ -668,7 +672,7 @@ export function renderOICard(inst) {
     </div>
     <div class="oi-stat">
       <div class="oi-stat-lbl">GEX</div>
-      <div class="oi-stat-val ${gexClass}">${gexSign}$${gexBn}Bn</div>
+      <div class="oi-stat-val ${gexClass}">${gexSign}$${gexFmt}</div>
       <div class="oi-stat-sub">${gex>0?'Dampening':'Amplifying'}</div>
     </div>
     <div class="oi-stat">
