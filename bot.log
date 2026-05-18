@@ -285,3 +285,22 @@
 [2026-05-16 14:57:07] [INFO] State refreshed from dashboard KV
 [2026-05-16 14:58:55] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.16252  GBP/USD=1.33242  USD/JPY=158.776  AUD/USD=0.71482  XAU/USD=4540.645]
 [2026-05-16 14:59:07] [INFO] State refreshed from dashboard KV
+[2026-05-16 17:44:22] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-16 17:44:31] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-16 17:44:32] [INFO] Loaded persisted state: ['risk_guard', 'position_meta']
+[2026-05-16 17:44:33] [INFO] State refreshed from dashboard KV
+[2026-05-16 17:44:33] [INFO] RiskGuard restored from disk
+[2026-05-16 17:44:38] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.16252  GBP/USD=1.33242  USD/JPY=158.776  AUD/USD=0.71482  XAU/USD=4540.645]
+[2026-05-16 17:46:38] [INFO] State refreshed from dashboard KV
+[2026-05-16 17:46:38] [INFO] RiskGuard updated — tier=balanced  sizing=1.0  cooldown=60m  ddlimit=3%
+[2026-05-16 17:48:38] [INFO] State refreshed from dashboard KV
+[2026-05-16 17:49:34] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-16 17:50:38] [INFO] State refreshed from dashboard KV
+[2026-05-16 17:52:38] [INFO] State refreshed from dashboard KV
+[2026-05-16 17:54:34] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-16 17:54:39] [INFO] State refreshed from dashboard KV
+[2026-05-16 17:54:46] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-16 17:54:47] [INFO] Loaded persisted state: ['risk_guard', 'position_meta']
+[2026-05-16 17:54:48] [INFO] State refreshed from dashboard KV
+[2026-05-16 17:54:48] [INFO] RiskGuard restored from disk
+[2026-05-16 17:54:48] [INFO] Monitoring 0 pairs — no level approach  [no prices]

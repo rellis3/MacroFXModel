@@ -11,12 +11,12 @@ export const PAIRS = [
   { symbol: 'NAS100_USD', code: 'nas', shortCode: 'nas', name: 'NAS100', isEquity: true },
 ];
 
-// 45 Fib levels matching Pine Script backtester exactly.
+// 45 Fib levels — exact match to Pine Script indicator.
 export const FIB_LEVELS = [
-  -10.5,-10,-9.5,-9,-8.5,-8,-7.5,-7,-6.5,-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,
-  -0.75,-0.5,-0.25,
+  -9.5,-9,-8.5,-8,-7.5,-7,-6.5,-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,
+  -0.5,-0.25,
   0,0.25,0.5,0.75,
-  1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10,10.5
+  1,1.25,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10,10.5
 ];
 
 export const CACHE_DURATION = {
