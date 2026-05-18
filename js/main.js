@@ -114,6 +114,7 @@ window.selectPair = async function(index) {
   });
   window._lastEntries = null;          // clear stale proximity targets before new pair loads
   dismissProxAlert();
+  updateHeaderRegime();                // switch regime pill immediately from cached data
   await loadAll();
   startLiveStream();                   // restart SSE for new pair
 };
@@ -184,6 +185,32 @@ function updateHeaderPrice(quote) {
   if (nEl) nEl.textContent = S.currentPair.name;
   if (pEl) pEl.textContent = quote.price.toFixed(digits);
   el.style.display = 'flex';
+}
+
+// ── Live 5m HMM regime ────────────────────────────────────────────────────────
+
+function updateHeaderRegime() {
+  const sym = S.currentPair?.symbol;
+  const el  = document.getElementById('hdrRegime');
+  if (!el) return;
+  const r = S.hmm5mRegimes?.[sym];
+  if (!r) { el.style.display = 'none'; return; }
+  const lbl  = document.getElementById('hdrRegimeLbl');
+  const conf = document.getElementById('hdrRegimeConf');
+  if (lbl)  lbl.textContent  = r.regime;
+  if (conf) conf.textContent = `${r.confidence}%`;
+  el.className = `hdr-regime ${r.regime.toLowerCase()}`;
+  el.title     = `Bull ${r.pBull}%  ·  Bear ${r.pBear}%  ·  Range ${r.pRange}%\ntrendZ ${r.trendZ}  volZ ${r.volZ}  adxZ ${r.adxZ}`;
+  el.style.display = 'flex';
+}
+
+async function loadHMM5m() {
+  try {
+    const r = await fetch('/api/hmm5m');
+    if (!r.ok) return;
+    S.hmm5mRegimes = await r.json();
+    updateHeaderRegime();
+  } catch {}
 }
 
 // Proximity thresholds (pips / points from the level)
@@ -1054,6 +1081,10 @@ async function init() {
   setInterval(() => refreshQuote(), 5 * 60 * 1000);       // polling fallback / 5m candle refresh
   setInterval(() => loadSpreadData().catch(() => {}), 60 * 1000);         // live spread, every 60s
   setInterval(() => loadSentimentData().catch(() => {}), 30 * 60 * 1000); // sentiment, every 30m
+
+  // Live 5m HMM regime — load on boot, then poll every 5 min to stay in sync with server
+  loadHMM5m().catch(() => {});
+  setInterval(() => loadHMM5m().catch(() => {}), 5 * 60 * 1000);
 
   // Toggle .pinned shadow on sticky header when page scrolls past natural position
   const sentinel = document.getElementById('stickysentinel');

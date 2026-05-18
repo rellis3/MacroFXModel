@@ -4,6 +4,7 @@
 export const S = {
   currentPair:     null,   // set to PAIRS[0] by main.js on init
   currentMode:     'all',
+  hmm5mRegimes:    {},    // { 'EUR/USD': { regime, pBull, pBear, pRange, confidence, trendZ, volZ, adxZ } }
   fredData:        null,
   ohlcData:        {},
   ohlc5m:          {},

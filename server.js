@@ -17,11 +17,14 @@ import * as kv           from './kv.js';
 import worker            from './_worker.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
+import { computeHMM5m } from './hmm5m.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
 const MONITOR_MS        = parseInt(process.env.MONITOR_MS        || '3000');
-const REFRESH_LEVELS_MS = parseInt(process.env.REFRESH_LEVELS_MS || String(30 * 60 * 1000));
+const REFRESH_LEVELS_MS  = parseInt(process.env.REFRESH_LEVELS_MS  || String(30 * 60 * 1000));
+const HMM5M_REFRESH_MS   = parseInt(process.env.HMM5M_REFRESH_MS   || String( 5 * 60 * 1000));
+const HMM5M_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // min gap between regime-change Telegram alerts per pair
 
 // ── Cloudflare env-compatible object ─────────────────────────────────────────
 // Exposes process.env vars and wraps kv.js so _worker.js runs unchanged.
@@ -90,7 +93,9 @@ const state = {
   levels:              {},   // { 'EUR/USD': { data: [...], timestamp: ms } }
   cooldowns:           {},   // { 'EURUSD_1.0847_long': lastSentMs }
   prices:              {},   // { 'EUR/USD': { price: n, at: ms } }
-  hmmRegimes:          {},   // { 'EUR/USD': { regime, trendDir, rangeProb, ... } }
+  hmmRegimes:          {},   // { 'EUR/USD': { regime, trendDir, rangeProb, ... } } — daily HMM
+  hmm5mRegimes:        {},   // { 'EUR/USD': { regime, pBull, pBear, pRange, confidence, ... } } — live 5m HMM
+  hmm5mLastAlert:      {},   // { 'EUR/USD': ms } — cooldown for regime-change Telegram alerts
   levelsLoadedDate:    null, // 'YYYY-MM-DD' London date of last daily levels load
   cfg:                 null,
   tg:                  null,
@@ -234,6 +239,24 @@ async function fetchDailyCandles(sym, count = 60) {
     if (!r.ok) return null;
     const d = await r.json();
     return d.candles?.filter(c => c.complete && c.mid).map(c => parseFloat(c.mid.c)) ?? null;
+  } catch { return null; }
+}
+
+async function fetchM5Bars(sym, count = 300) {
+  const instrument = sym.replace('/', '_');
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+  try {
+    const r = await fetch(
+      `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=M5&count=${count}&price=M`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    return (d.candles ?? [])
+      .filter(c => c.complete !== false && c.mid)
+      .map(c => ({ open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c }));
   } catch { return null; }
 }
 
@@ -899,6 +922,11 @@ app.get('/api/futures-quote', async (req, res) => {
   }
 });
 
+// Live 5m HMM regime data for all pairs
+app.get('/api/hmm5m', (_req, res) => {
+  res.json(state.hmm5mRegimes);
+});
+
 // SSE live price stream — must be handled before the generic /api/* catch-all
 // because it returns an infinite ReadableStream, not a text body.
 app.get('/api/oanda_stream', async (req, res) => {
@@ -996,6 +1024,50 @@ async function runLevelsRefresh() {
   }
 }
 
+async function runHMM5mRefresh() {
+  if (!process.env.OANDA_KEY) return;
+  const pairs   = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+  const results = [];
+
+  for (const sym of pairs) {
+    try {
+      const bars = await fetchM5Bars(sym, 300);
+      if (!bars || bars.length < 150) continue;
+
+      const result = computeHMM5m(bars, sym);
+      if (!result) continue;
+
+      const prev = state.hmm5mRegimes[sym];
+      state.hmm5mRegimes[sym] = result;
+
+      // Telegram alert on regime change, with cooldown
+      if (prev && prev.regime !== result.regime) {
+        const lastAlert = state.hmm5mLastAlert[sym] ?? 0;
+        const now       = Date.now();
+        if (now - lastAlert >= HMM5M_ALERT_COOLDOWN_MS && state.tg?.token && state.tg?.chatId) {
+          const timeStr = new Date(result.computedAt)
+            .toISOString().replace('T', ' ').substring(0, 16) + ' UTC';
+          const msg = [
+            `🔄 <b>${sym} Regime Change</b>`,
+            `${prev.regime} → <b>${result.regime}</b>`,
+            `Bull: <b>${result.pBull}%</b>  ·  Bear: ${result.pBear}%  ·  Range: ${result.pRange}%`,
+            `Confidence: <b>${result.confidence}%</b>`,
+            `<i>${timeStr}</i>`,
+          ].join('\n');
+          const sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
+          if (sent) state.hmm5mLastAlert[sym] = now;
+        }
+      }
+
+      results.push(`${sym}:${result.regime}@${result.confidence}%`);
+    } catch (e) {
+      console.error(`[HMM5M] ${sym} error:`, e.message);
+    }
+  }
+
+  if (results.length) console.log('[HMM5M]', results.join(' | '));
+}
+
 await kv.load();
 await reloadConfig();
 await reloadLevels();
@@ -1006,6 +1078,12 @@ monitorTick().catch(console.error);
 // Run an initial level refresh on boot, then every REFRESH_LEVELS_MS (default 30 min)
 setInterval(runLevelsRefresh, REFRESH_LEVELS_MS);
 runLevelsRefresh().catch(console.error);
+
+// Live 5m HMM — runs every 5 min, initial run after a short delay so levels load first
+setTimeout(() => {
+  runHMM5mRefresh().catch(console.error);
+  setInterval(runHMM5mRefresh, HMM5M_REFRESH_MS);
+}, 15_000);
 
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';
