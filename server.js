@@ -378,6 +378,11 @@ function formatAlert(sym, entry, price, distPips) {
   const infoLine = [scorePart, hmmPart, swingPart, rbPart].filter(Boolean).join(' · ');
   if (infoLine) parts.push(infoLine);
 
+  const hmm5m = state.hmm5mRegimes[sym];
+  if (hmm5m) {
+    parts.push(`1m: <b>${hmm5m.regime} ${hmm5m.confidence}%</b> · Bull ${hmm5m.pBull}% · Bear ${hmm5m.pBear}% · Range ${hmm5m.pRange}%`);
+  }
+
   parts.push('<i>🚂 MacroFX Railway</i>');
 
   return parts.filter(p => p !== undefined).join('\n');

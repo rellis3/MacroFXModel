@@ -331,6 +331,11 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
     return `${icon} ARIMA: ${label}${fv}`;
   })();
 
+  const hmm5m     = S.hmm5mRegimes?.[sym];
+  const hmm5mLine = hmm5m
+    ? `1m: <b>${hmm5m.regime} ${hmm5m.confidence}%</b> · Bull ${hmm5m.pBull}% · Bear ${hmm5m.pBear}% · Range ${hmm5m.pRange}%`
+    : null;
+
   const lines = [
     `🎯 <b>${sym} ${arrowStr} ${dir}</b> ${stars}`,
     `Price: <b>${entry.price.toFixed(digits)}</b> · ${atStr}`,
@@ -343,6 +348,7 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
     kalmanStr,
     arimaStr,
     entry.rangeBias ? `Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗` : null,
+    hmm5mLine,
   ].filter(Boolean).join('\n');
 
   try {
