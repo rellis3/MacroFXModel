@@ -26,7 +26,7 @@ function err(msg, status = 500) {
 // it has its own dedicated /api/config/caps route with stricter validation.
 function isAllowedKVKey(key) {
   const EXACT = new Set(['fred', 'oi_store', 'journal_store', 'journal_replay_store', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials']);
-  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_'];
+  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'arima_price_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
 }
