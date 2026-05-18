@@ -6,10 +6,15 @@
 // Per-instrument config adjusts regime stickiness (selfProb) and the linreg
 // window (linregN) — the z-scoring handles pip-size differences automatically.
 
+// adxN:          ADX smoothing period. On 1m bars ADX(14)=14min is pure noise;
+//                50 bars = 50-min ADX which responds to genuine intraday direction.
+// dirAdxTarget:  adxZ emission target for BULL/BEAR states. The spec uses +1.0 (tuned
+//                for daily/H1 bars). On M1 bars +0.5 is more realistic — we still
+//                require above-average ADX but don't demand a strong outlier reading.
 export const HMM5M_CONFIG = {
-  'XAU/USD':    { selfProb: 0.88, linregN: 40, minConfDisplay: 0.60, minConfBot: 0.70 },
-  'NAS100_USD': { selfProb: 0.94, linregN: 60, minConfDisplay: 0.60, minConfBot: 0.65 },
-  _default:     { selfProb: 0.92, linregN: 50, minConfDisplay: 0.55, minConfBot: 0.60 },
+  'XAU/USD':    { selfProb: 0.88, linregN: 40, adxN: 30, dirAdxTarget: 0.7, minConfDisplay: 0.60, minConfBot: 0.70 },
+  'NAS100_USD': { selfProb: 0.94, linregN: 60, adxN: 40, dirAdxTarget: 0.7, minConfDisplay: 0.60, minConfBot: 0.65 },
+  _default:     { selfProb: 0.92, linregN: 50, adxN: 50, dirAdxTarget: 0.5, minConfDisplay: 0.55, minConfBot: 0.60 },
 };
 
 function getCfg(sym) {
@@ -136,9 +141,10 @@ export function computeHMM5m(bars, sym) {
   const logO   = Math.log(otherP);
 
   // ── Feature series ──────────────────────────────────────────────────────────
-  const closes = bars.map(b => parseFloat(b.close));
-  const atr    = buildATR(bars, 20);
-  const adx    = buildADX(bars, 14);
+  const closes       = bars.map(b => parseFloat(b.close));
+  const atr          = buildATR(bars, 20);
+  const adx          = buildADX(bars, cfg.adxN ?? 14);
+  const dirAdxTarget = cfg.dirAdxTarget ?? 1.0;
 
   // Linreg slope at each bar — O(N × LN), ~15 000 ops for N=300, LN=50
   const trend = new Float64Array(N);
@@ -156,9 +162,9 @@ export function computeHMM5m(bars, sym) {
     const az = rollingZ(adx,   i, 200);
 
     // Emission log-likelihoods per the spec's state profiles
-    const eB  = gaussLL(tz, +1) + gaussLL(az, +1) + gaussLL(vz, 0);
-    const eBr = gaussLL(tz, -1) + gaussLL(az, +1) + gaussLL(vz, 0);
-    const eR  = gaussLL(tz,  0) + gaussLL(az, -1) + gaussLL(vz, 0);
+    const eB  = gaussLL(tz, +1)          + gaussLL(az, dirAdxTarget) + gaussLL(vz, 0);
+    const eBr = gaussLL(tz, -1)          + gaussLL(az, dirAdxTarget) + gaussLL(vz, 0);
+    const eR  = gaussLL(tz,  0)          + gaussLL(az, -1.0)         + gaussLL(vz, 0);
 
     // Predict (marginalise over previous states)
     const pBull  = lse3(lA[0] + logS, lA[1] + logO, lA[2] + logO);
