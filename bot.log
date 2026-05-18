@@ -318,3 +318,1217 @@
 [2026-05-18 11:17:26] [INFO] State refreshed from dashboard KV
 [2026-05-18 11:19:09] [INFO] Monitoring 0 pairs — no level approach  [no prices]
 [2026-05-18 11:19:28] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:21:31] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:29:17] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-18 11:29:18] [INFO] Loaded persisted state: ['risk_guard', 'position_meta']
+[2026-05-18 11:29:26] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:29:26] [INFO] RiskGuard restored from disk
+[2026-05-18 11:29:31] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:25:51.644Z  min_stars=3
+  EUR/USD @ 1.16354 | ↑1.1498125000000001(4★B 137.3p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:29:31] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.16354  GBP/USD=1.33606  USD/JPY=158.91  AUD/USD=0.71538  XAU/USD=4538.7]
+[2026-05-18 11:29:56] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:25:51.644Z  min_stars=3
+  EUR/USD @ 1.16362 | ↑1.1498125000000001(4★B 138.1p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:30:29] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:25:51.644Z  min_stars=3
+  EUR/USD @ 1.16364 | ↑1.1498125000000001(4★B 138.3p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:31:02] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:25:51.644Z  min_stars=3
+  EUR/USD @ 1.16362 | ↑1.1498125000000001(4★B 138.1p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:31:26] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:31:37] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:29:43.935Z  min_stars=3
+  EUR/USD @ 1.16358 | ↑1.1498125000000001(4★B 137.7p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:32:11] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:29:43.935Z  min_stars=3
+  EUR/USD @ 1.16364 | ↑1.1498125000000001(4★B 138.3p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:32:43] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:29:43.935Z  min_stars=3
+  EUR/USD @ 1.1636 | ↑1.1498125000000001(4★B 137.9p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:33:16] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:29:43.935Z  min_stars=3
+  EUR/USD @ 1.16356 | ↑1.1498125000000001(4★B 137.5p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:33:27] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:33:46] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:29:43.935Z  min_stars=3
+  EUR/USD @ 1.16353 | ↑1.1498125000000001(4★B 137.2p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:34:19] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:29:43.935Z  min_stars=3
+  EUR/USD @ 1.16344 | ↑1.1498125000000001(4★B 136.3p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:34:24] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.1634  GBP/USD=1.33584  USD/JPY=158.916  AUD/USD=0.71533  XAU/USD=4534.305]
+[2026-05-18 11:34:52] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:29:43.935Z  min_stars=3
+  EUR/USD @ 1.1634 | ↑1.1498125000000001(4★B 135.9p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:35:25] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:29:43.935Z  min_stars=3
+  EUR/USD @ 1.16333 | ↑1.1498125000000001(4★B 135.2p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:35:31] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:35:58] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:34:51.504Z  min_stars=3
+  EUR/USD @ 1.16324 | ↑1.1498125000000001(4★B 134.3p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:36:27] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:34:51.504Z  min_stars=3
+  EUR/USD @ 1.16324 | ↑1.1498125000000001(4★B 134.3p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:37:01] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:34:51.504Z  min_stars=3
+  EUR/USD @ 1.1633 | ↑1.1498125000000001(4★B 134.9p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:37:34] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:37:38] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:34:51.504Z  min_stars=3
+  EUR/USD @ 1.16336 | ↑1.1498125000000001(4★B 135.5p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:38:05] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:34:51.504Z  min_stars=3
+  EUR/USD @ 1.16336 | ↑1.1498125000000001(4★B 135.5p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:38:37] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:34:51.504Z  min_stars=3
+  EUR/USD @ 1.1634 | ↑1.1498125000000001(4★B 135.9p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:39:11] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:34:51.504Z  min_stars=3
+  EUR/USD @ 1.16332 | ↑1.1498125000000001(4★B 135.1p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:39:25] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.1633  GBP/USD=1.33554  USD/JPY=158.92  AUD/USD=0.71516  XAU/USD=4538.28]
+[2026-05-18 11:39:36] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:39:46] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:34:51.504Z  min_stars=3
+  EUR/USD @ 1.16336 | ↑1.1498125000000001(4★B 135.5p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:40:17] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:34:51.504Z  min_stars=3
+  EUR/USD @ 1.16339 | ↑1.1498125000000001(4★B 135.8p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:40:49] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:34:51.504Z  min_stars=3
+  EUR/USD @ 1.16346 | ↑1.1498125000000001(4★B 136.5p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:41:23] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:34:51.504Z  min_stars=3
+  EUR/USD @ 1.16343 | ↑1.1498125000000001(4★B 136.2p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:41:38] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:41:53] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:39:53.247Z  min_stars=3
+  EUR/USD @ 1.1633 | ↑1.1498125000000001(4★B 134.9p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:42:25] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:39:53.247Z  min_stars=3
+  EUR/USD @ 1.16334 | ↑1.1498125000000001(4★B 135.3p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:42:58] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:39:53.247Z  min_stars=3
+  EUR/USD @ 1.16336 | ↑1.1498125000000001(4★B 135.5p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:43:28] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:39:53.247Z  min_stars=3
+  EUR/USD @ 1.16335 | ↑1.1498125000000001(4★B 135.4p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:43:39] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:44:02] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:39:53.247Z  min_stars=3
+  EUR/USD @ 1.16337 | ↑1.1498125000000001(4★B 135.6p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:44:27] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.16342  GBP/USD=1.33574  USD/JPY=158.908  AUD/USD=0.71538  XAU/USD=4543.33]
+[2026-05-18 11:44:36] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:39:53.247Z  min_stars=3
+  EUR/USD @ 1.16342 | ↑1.1498125000000001(4★B 136.1p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:45:10] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:39:53.247Z  min_stars=3
+  EUR/USD @ 1.16342 | ↑1.1498125000000001(4★B 136.1p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:45:39] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:45:49] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD @ 1.16331 | ↑1.1498125000000001(4★B 135.0p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:46:21] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD @ 1.16336 | ↑1.1498125000000001(4★B 135.5p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:46:52] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD @ 1.16326 | ↑1.1498125000000001(4★B 134.5p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:47:26] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD @ 1.16321 | ↑1.1498125000000001(4★B 134.0p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:47:40] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:47:54] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD @ 1.16321 | ↑1.1498125000000001(4★B 134.0p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:48:27] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD @ 1.16316 | ↑1.1498125000000001(4★B 133.5p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:48:57] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD @ 1.16316 | ↑1.1498125000000001(4★B 133.5p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:49:30] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD @ 1.1632 | ↑1.1498125000000001(4★B 133.9p)
+  GBP/USD: no entries
+  USD/JPY: no entries
+  AUD/USD: no entries
+  XAU/USD: no entries
+[2026-05-18 11:49:30] [INFO] Monitoring 5 pairs — no level approach  [EUR/USD=1.1632  GBP/USD=1.3355  USD/JPY=158.92  AUD/USD=0.7155  XAU/USD=4543.085]
+[2026-05-18 11:49:50] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:49:50] [INFO] RiskGuard updated — tier=balanced  sizing=1.0  cooldown=60m  ddlimit=3%
+[2026-05-18 11:49:57] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:50:09] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16319 | ↑1.1498125000000001(4★B 133.8p)
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 11:50:27] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:50:39] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16318 | ↑1.1498125000000001(4★B 133.7p)
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 11:51:00] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:51:11] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16324 | ↑1.1498125000000001(4★B 134.3p)
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 11:51:32] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:51:41] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:45:00.013Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16324 | ↑1.1498125000000001(4★B 134.3p)
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 11:51:52] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:52:05] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:52:14] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:51:00.135Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16325 | ↑1.1498125000000001(4★B 134.4p)
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29056.4 | ↑27788.6625(7★A 1267.7p) ↓30580.1(3★C 1523.7p) ↑27257.024999999998(6★A 1799.4p)
+[2026-05-18 11:52:35] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:52:43] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:51:00.135Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16316 | ↑1.1498125000000001(4★B 133.5p)
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29050.7 | ↑27788.6625(7★A 1262.0p) ↓30580.1(3★C 1529.4p) ↑27257.024999999998(6★A 1793.7p)
+[2026-05-18 11:53:07] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:53:16] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:51:00.135Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16308 | ↑1.1498125000000001(4★B 132.7p)
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29051.4 | ↑27788.6625(7★A 1262.7p) ↓30580.1(3★C 1528.7p) ↑27257.024999999998(6★A 1794.4p)
+[2026-05-18 11:53:40] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:53:52] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:51:00.135Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16309 | ↑1.1498125000000001(4★B 132.8p)
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29047.5 | ↑27788.6625(7★A 1258.8p) ↓30580.1(3★C 1532.6p) ↑27257.024999999998(6★A 1790.5p)
+[2026-05-18 11:54:04] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:54:11] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:54:25] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:53:02.578Z  min_stars=3
+  EUR/USD [not enabled]: no entries
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 11:54:25] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 11:54:43] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:54:52] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:53:02.578Z  min_stars=3
+  EUR/USD [not enabled]: no entries
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 11:55:16] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:55:25] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:53:02.578Z  min_stars=3
+  EUR/USD [not enabled]: no entries
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 11:55:49] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:55:59] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:53:02.578Z  min_stars=3
+  EUR/USD [not enabled]: no entries
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 11:56:10] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:56:19] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:56:36] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:56:00.548Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16301 | ↑1.1634924999999998(2★B 4.8p)[skip<3★] ↑1.1624949999999998(5★B 5.2p) ↓1.164205(4★B 11.9p) ↓1.1652025(6★B 21.9p) ↓1.165915(4★B 29.0p) ↓1.1669124999999998(5★B 39.0p) +10 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29043.2 | ↓29271.350000000006(7★C 228.2p) ↓29304.75(6★C 261.5p) ↑28719.4(6★A 323.8p) ↓29383.575000000004(6★C 340.4p) ↓29442.75(5★C 399.5p) ↓29495.800000000003(4★C 452.6p) +7 more
+[2026-05-18 11:56:51] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:57:06] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:56:00.548Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16305 | ↑1.1634924999999998(2★B 4.4p)[skip<3★] ↑1.1624949999999998(5★B 5.6p) ↓1.164205(4★B 11.6p) ↓1.1652025(6★B 21.5p) ↓1.165915(4★B 28.7p) ↓1.1669124999999998(5★B 38.6p) +10 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29043.6 | ↓29271.350000000006(7★C 227.8p) ↓29304.75(6★C 261.2p) ↑28719.4(6★A 324.2p) ↓29383.575000000004(6★C 340.0p) ↓29442.75(5★C 399.2p) ↓29495.800000000003(4★C 452.2p) +7 more
+[2026-05-18 11:57:24] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:57:37] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:56:00.548Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16299 | ↑1.1624949999999998(5★B 5.0p) ↑1.1634924999999998(2★B 5.0p)[skip<3★] ↓1.164205(4★B 12.1p) ↓1.1652025(6★B 22.1p) ↓1.165915(4★B 29.3p) ↓1.1669124999999998(5★B 39.2p) +10 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29045.8 | ↓29271.350000000006(7★C 225.6p) ↓29304.75(6★C 259.0p) ↑28719.4(6★A 326.4p) ↓29383.575000000004(6★C 337.8p) ↓29442.75(5★C 397.0p) ↓29495.800000000003(4★C 450.0p) +7 more
+[2026-05-18 11:57:55] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:58:07] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:56:00.548Z  min_stars=3
+  EUR/USD [not enabled] @ 1.1629 | ↑1.1624949999999998(5★B 4.1p) ↑1.1634924999999998(2★B 5.9p)[skip<3★] ↓1.164205(4★B 13.0p) ↓1.1652025(6★B 23.0p) ↓1.165915(4★B 30.1p) ↓1.1669124999999998(5★B 40.1p) +10 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29043.2 | ↓29271.350000000006(7★C 228.2p) ↓29304.75(6★C 261.5p) ↑28719.4(6★A 323.8p) ↓29383.575000000004(6★C 340.4p) ↓29442.75(5★C 399.5p) ↓29495.800000000003(4★C 452.6p) +7 more
+[2026-05-18 11:58:21] [INFO] State refreshed from dashboard KV
+[2026-05-18 11:58:25] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:58:37] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:56:00.548Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16285 | ↑1.1624949999999998(5★B 3.6p) ↑1.1634924999999998(2★B 6.4p)[skip<3★] ↓1.164205(4★B 13.5p) ↓1.1652025(6★B 23.5p) ↓1.165915(4★B 30.7p) ↓1.1669124999999998(5★B 40.6p) +10 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29040.4 | ↓29271.350000000006(7★C 231.0p) ↓29304.75(6★C 264.3p) ↑28719.4(6★A 321.0p) ↓29383.575000000004(6★C 343.2p) ↓29442.75(5★C 402.3p) ↓29495.800000000003(4★C 455.4p) +7 more
+[2026-05-18 11:58:58] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:59:11] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:56:00.548Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16278 | ↑1.1624949999999998(5★B 2.9p) ↑1.1634924999999998(2★B 7.1p)[skip<3★] ↓1.164205(4★B 14.3p) ↓1.1652025(6★B 24.2p) ↓1.165915(4★B 31.4p) ↓1.1669124999999998(5★B 41.3p) +10 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29044.4 | ↓29271.350000000006(7★C 227.0p) ↓29304.75(6★C 260.3p) ↑28719.4(6★A 325.0p) ↓29383.575000000004(6★C 339.2p) ↓29442.75(5★C 398.3p) ↓29495.800000000003(4★C 451.4p) +7 more
+[2026-05-18 11:59:26] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 11:59:29] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 11:59:42] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:56:00.548Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16272 | ↑1.1624949999999998(5★B 2.3p) ↑1.1634924999999998(2★B 7.7p)[skip<3★] ↓1.164205(4★B 14.8p) ↓1.1652025(6★B 24.8p) ↓1.165915(4★B 32.0p) ↓1.1669124999999998(5★B 41.9p) +10 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29038.4 | ↓29271.350000000006(7★C 233.0p) ↓29304.75(6★C 266.3p) ↑28719.4(6★A 319.0p) ↓29383.575000000004(6★C 345.2p) ↓29442.75(5★C 404.3p) ↑28581.4(7★A 457.0p) +7 more
+[2026-05-18 12:00:00] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:00:13] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T10:56:00.548Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16267 | ↑1.1624949999999998(5★B 1.8p) ↑1.1634924999999998(2★B 8.2p)[skip<3★] ↓1.164205(4★B 15.3p) ↓1.1652025(6★B 25.3p) ↓1.165915(4★B 32.4p) ↓1.1669124999999998(5★B 42.4p) +10 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29047.0 | ↓29271.350000000006(7★C 224.4p) ↓29304.75(6★C 257.8p) ↑28719.4(6★A 327.6p) ↓29383.575000000004(6★C 336.6p) ↓29442.75(5★C 395.8p) ↓29495.800000000003(4★C 448.8p) +7 more
+[2026-05-18 12:00:29] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:00:33] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:00:45] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:00:03.738Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16278 | ↑1.1624949999999998(5★B 2.9p) ↓1.164205(4★B 14.3p) ↑1.16128375(2★B 15.0p)[skip<3★] ↓1.1652025(6★B 24.2p) ↑1.1600725(3★B 27.1p) ↓1.165915(6★B 31.4p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29037.2 | ↓29271.350000000006(7★C 234.2p) ↓29304.75(6★C 267.5p) ↑28719.4(6★A 317.8p) ↓29383.575000000004(6★C 346.4p) ↓29442.75(5★C 405.5p) ↑28581.4(7★A 455.8p) +7 more
+[2026-05-18 12:01:03] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:01:15] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:00:03.738Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16282 | ↑1.1624949999999998(5★B 3.3p) ↓1.164205(4★B 13.8p) ↑1.16128375(2★B 15.4p)[skip<3★] ↓1.1652025(6★B 23.8p) ↑1.1600725(3★B 27.5p) ↓1.165915(6★B 31.0p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29033.6 | ↓29271.350000000006(7★C 237.8p) ↓29304.75(6★C 271.2p) ↑28719.4(6★A 314.2p) ↓29383.575000000004(6★C 350.0p) ↓29442.75(5★C 409.2p) ↑28581.4(7★A 452.2p) +7 more
+[2026-05-18 12:01:33] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:01:46] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:00:03.738Z  min_stars=3
+  EUR/USD [not enabled] @ 1.1629 | ↑1.1624949999999998(5★B 4.1p) ↓1.164205(4★B 13.0p) ↑1.16128375(2★B 16.2p)[skip<3★] ↓1.1652025(6★B 23.0p) ↑1.1600725(3★B 28.3p) ↓1.165915(6★B 30.1p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29035.2 | ↓29271.350000000006(7★C 236.2p) ↓29304.75(6★C 269.5p) ↑28719.4(6★A 315.8p) ↓29383.575000000004(6★C 348.4p) ↓29442.75(5★C 407.5p) ↑28581.4(7★A 453.8p) +7 more
+[2026-05-18 12:02:04] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:02:16] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:00:03.738Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16294 | ↑1.1624949999999998(5★B 4.5p) ↓1.164205(4★B 12.6p) ↑1.16128375(2★B 16.6p)[skip<3★] ↓1.1652025(6★B 22.6p) ↑1.1600725(3★B 28.7p) ↓1.165915(6★B 29.7p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29028.4 | ↓29271.350000000006(7★C 243.0p) ↓29304.75(6★C 276.3p) ↑28719.4(6★A 309.0p) ↓29383.575000000004(6★C 355.2p) ↓29442.75(5★C 414.3p) ↑28581.4(7★A 447.0p) +7 more
+[2026-05-18 12:02:27] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:02:34] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:02:43] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:01:01.386Z  min_stars=3
+  EUR/USD [not enabled] @ 1.1629 | ↑1.1624949999999998(5★B 4.1p) ↓1.164205(4★B 13.0p) ↑1.16128375(2★B 16.2p)[skip<3★] ↓1.1652025(6★B 23.0p) ↑1.1600725(3★B 28.3p) ↓1.165915(6★B 30.1p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29032.8 | ↓29271.350000000006(7★C 238.6p) ↓29304.75(5★C 272.0p) ↑28719.4(6★A 313.4p) ↓29383.575000000004(6★C 350.8p) ↓29442.75(4★C 410.0p) ↑28581.4(6★A 451.4p) +7 more
+[2026-05-18 12:03:07] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:03:15] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:01:01.386Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16292 | ↑1.1624949999999998(5★B 4.3p) ↓1.164205(4★B 12.8p) ↑1.16128375(2★B 16.4p)[skip<3★] ↓1.1652025(6★B 22.8p) ↑1.1600725(3★B 28.5p) ↓1.165915(6★B 30.0p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29037.6 | ↓29271.350000000006(7★C 233.8p) ↓29304.75(5★C 267.2p) ↑28719.4(6★A 318.2p) ↓29383.575000000004(6★C 346.0p) ↓29442.75(4★C 405.2p) ↑28581.4(6★A 456.2p) +7 more
+[2026-05-18 12:03:39] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:03:48] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:01:01.386Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16296 | ↑1.1624949999999998(5★B 4.7p) ↓1.164205(4★B 12.4p) ↑1.16128375(2★B 16.8p)[skip<3★] ↓1.1652025(6★B 22.4p) ↑1.1600725(3★B 28.9p) ↓1.165915(6★B 29.6p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29025.6 | ↓29271.350000000006(7★C 245.8p) ↓29304.75(5★C 279.2p) ↑28719.4(6★A 306.2p) ↓29383.575000000004(6★C 358.0p) ↓29442.75(4★C 417.2p) ↑28581.4(6★A 444.2p) +7 more
+[2026-05-18 12:04:12] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:04:21] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:01:01.386Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16299 | ↑1.1624949999999998(5★B 5.0p) ↓1.164205(4★B 12.1p) ↑1.16128375(2★B 17.1p)[skip<3★] ↓1.1652025(6★B 22.1p) ↑1.1600725(3★B 29.2p) ↓1.165915(6★B 29.3p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29026.8 | ↓29271.350000000006(7★C 244.6p) ↓29304.75(5★C 278.0p) ↑28719.4(6★A 307.4p) ↓29383.575000000004(6★C 356.8p) ↓29442.75(4★C 416.0p) ↑28581.4(6★A 445.4p) +7 more
+[2026-05-18 12:04:31] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:04:32] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 12:04:44] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:04:53] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:01:01.386Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16299 | ↑1.1624949999999998(5★B 5.0p) ↓1.164205(4★B 12.1p) ↑1.16128375(2★B 17.1p)[skip<3★] ↓1.1652025(6★B 22.1p) ↑1.1600725(3★B 29.2p) ↓1.165915(6★B 29.3p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29025.7 | ↓29271.350000000006(7★C 245.7p) ↓29304.75(5★C 279.0p) ↑28719.4(6★A 306.3p) ↓29383.575000000004(6★C 357.9p) ↓29442.75(4★C 417.0p) ↑28581.4(6★A 444.3p) +7 more
+[2026-05-18 12:05:17] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:05:25] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:01:01.386Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16297 | ↑1.1624949999999998(5★B 4.8p) ↓1.164205(4★B 12.3p) ↑1.16128375(2★B 16.9p)[skip<3★] ↓1.1652025(6★B 22.3p) ↑1.1600725(3★B 29.0p) ↓1.165915(6★B 29.4p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29021.8 | ↓29271.350000000006(7★C 249.6p) ↓29304.75(5★C 283.0p) ↑28719.4(6★A 302.4p) ↓29383.575000000004(6★C 361.8p) ↓29442.75(4★C 421.0p) ↑28581.4(6★A 440.4p) +7 more
+[2026-05-18 12:05:49] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:05:59] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:01:01.386Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16298 | ↑1.1624949999999998(5★B 4.9p) ↓1.164205(4★B 12.3p) ↑1.16128375(2★B 17.0p)[skip<3★] ↓1.1652025(6★B 22.2p) ↑1.1600725(3★B 29.1p) ↓1.165915(6★B 29.4p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29017.2 | ↓29271.350000000006(7★C 254.2p) ↓29304.75(5★C 287.5p) ↑28719.4(6★A 297.8p) ↓29383.575000000004(6★C 366.4p) ↓29442.75(4★C 425.5p) ↑28581.4(6★A 435.8p) +7 more
+[2026-05-18 12:06:20] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:06:28] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:01:01.386Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16304 | ↑1.1624949999999998(5★B 5.5p) ↓1.164205(4★B 11.6p) ↑1.16128375(2★B 17.6p)[skip<3★] ↓1.1652025(6★B 21.6p) ↓1.165915(6★B 28.7p) ↑1.1600725(3★B 29.7p) +15 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29015.8 | ↓29271.350000000006(7★C 255.6p) ↓29304.75(5★C 289.0p) ↑28719.4(6★A 296.4p) ↓29383.575000000004(6★C 367.8p) ↓29442.75(4★C 427.0p) ↑28581.4(6★A 434.4p) +7 more
+[2026-05-18 12:06:38] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:06:51] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:07:00] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:06:04.033Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16301 | ↓1.1634924999999998(5★B 4.8p) ↑1.1624949999999998(3★B 5.2p) ↓1.164205(4★B 11.9p) ↓1.1652025(7★B 21.9p) ↓1.165915(7★B 29.0p) ↑1.1600725(3★B 29.4p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29017.4 | ↓29271.350000000006(7★C 254.0p) ↓29304.75(5★C 287.3p) ↑28719.4(6★A 298.0p) ↓29383.575000000004(6★C 366.2p) ↓29442.75(4★C 425.3p) ↑28581.4(6★A 436.0p) +7 more
+[2026-05-18 12:07:24] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:07:33] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:06:04.033Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16304 | ↓1.1634924999999998(5★B 4.5p) ↑1.1624949999999998(3★B 5.5p) ↓1.164205(4★B 11.6p) ↓1.1652025(7★B 21.6p) ↓1.165915(7★B 28.7p) ↑1.1600725(3★B 29.7p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29021.6 | ↓29271.350000000006(7★C 249.8p) ↓29304.75(5★C 283.2p) ↑28719.4(6★A 302.2p) ↓29383.575000000004(6★C 362.0p) ↓29442.75(4★C 421.2p) ↑28581.4(6★A 440.2p) +7 more
+[2026-05-18 12:07:57] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:08:05] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:06:04.033Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16301 | ↓1.1634924999999998(5★B 4.8p) ↑1.1624949999999998(3★B 5.2p) ↓1.164205(4★B 11.9p) ↓1.1652025(7★B 21.9p) ↓1.165915(7★B 29.0p) ↑1.1600725(3★B 29.4p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29017.8 | ↓29271.350000000006(7★C 253.6p) ↓29304.75(5★C 287.0p) ↑28719.4(6★A 298.4p) ↓29383.575000000004(6★C 365.8p) ↓29442.75(4★C 425.0p) ↑28581.4(6★A 436.4p) +7 more
+[2026-05-18 12:08:40] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:08:40] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:08:50] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:06:04.033Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16296 | ↑1.1624949999999998(3★B 4.7p) ↓1.1634924999999998(5★B 5.3p) ↓1.164205(4★B 12.4p) ↓1.1652025(7★B 22.4p) ↑1.1600725(3★B 28.9p) ↓1.165915(7★B 29.6p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29009.2 | ↓29271.350000000006(7★C 262.2p) ↑28719.4(6★A 289.8p) ↓29304.75(5★C 295.5p) ↓29383.575000000004(6★C 374.4p) ↑28581.4(6★A 427.8p) ↓29442.75(4★C 433.5p) +7 more
+[2026-05-18 12:09:01] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:09:14] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:06:04.033Z  min_stars=3
+  EUR/USD [not enabled] @ 1.163 | ↓1.1634924999999998(5★B 4.9p) ↑1.1624949999999998(3★B 5.1p) ↓1.164205(4★B 12.0p) ↓1.1652025(7★B 22.0p) ↓1.165915(7★B 29.2p) ↑1.1600725(3★B 29.3p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29009.2 | ↓29271.350000000006(7★C 262.2p) ↑28719.4(6★A 289.8p) ↓29304.75(5★C 295.5p) ↓29383.575000000004(6★C 374.4p) ↑28581.4(6★A 427.8p) ↓29442.75(4★C 433.5p) +7 more
+[2026-05-18 12:09:32] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:09:46] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:06:04.033Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16308 | ↓1.1634924999999998(5★B 4.1p) ↑1.1624949999999998(3★B 5.9p) ↓1.164205(4★B 11.3p) ↓1.1652025(7★B 21.2p) ↓1.165915(7★B 28.4p) ↑1.1600725(3★B 30.1p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29011.2 | ↓29271.350000000006(7★C 260.2p) ↑28719.4(6★A 291.8p) ↓29304.75(5★C 293.5p) ↓29383.575000000004(6★C 372.4p) ↑28581.4(6★A 429.8p) ↓29442.75(4★C 431.5p) +7 more
+[2026-05-18 12:09:46] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 12:10:04] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:10:16] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:06:04.033Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16284 | ↑1.1624949999999998(3★B 3.5p) ↓1.1634924999999998(5★B 6.5p) ↓1.164205(4★B 13.6p) ↓1.1652025(7★B 23.6p) ↑1.1600725(3★B 27.7p) ↓1.165915(7★B 30.7p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 28994.5 | ↑28719.4(6★A 275.1p) ↓29271.350000000006(7★C 276.9p) ↓29304.75(5★C 310.2p) ↓29383.575000000004(6★C 389.1p) ↑28581.4(6★A 413.1p) ↓29442.75(4★C 448.2p) +7 more
+[2026-05-18 12:10:47] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:10:48] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:11:02] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:10:08.992Z  min_stars=3
+  EUR/USD [not enabled] @ 1.1629 | ↑1.1624949999999998(3★B 4.1p) ↓1.1634924999999998(5★B 5.9p) ↓1.164205(4★B 13.0p) ↓1.1652025(7★B 23.0p) ↑1.1600725(3★B 28.3p) ↓1.165915(7★B 30.1p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 28998.1 | ↓29271.350000000006(7★C 273.3p) ↑28719.4(6★A 278.7p) ↓29304.75(5★C 306.7p) ↓29383.575000000004(6★C 385.5p) ↑28581.4(6★A 416.7p) ↓29442.75(4★C 444.7p) +7 more
+[2026-05-18 12:11:20] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:11:32] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:10:08.992Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16294 | ↑1.1624949999999998(3★B 4.5p) ↓1.1634924999999998(5★B 5.5p) ↓1.164205(4★B 12.6p) ↓1.1652025(7★B 22.6p) ↑1.1600725(3★B 28.7p) ↓1.165915(7★B 29.7p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29009.4 | ↓29271.350000000006(7★C 262.0p) ↑28719.4(6★A 290.0p) ↓29304.75(5★C 295.3p) ↓29383.575000000004(6★C 374.2p) ↑28581.4(6★A 428.0p) ↓29442.75(4★C 433.3p) +7 more
+[2026-05-18 12:11:50] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:12:03] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:10:08.992Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16297 | ↑1.1624949999999998(3★B 4.8p) ↓1.1634924999999998(5★B 5.2p) ↓1.164205(4★B 12.3p) ↓1.1652025(7★B 22.3p) ↑1.1600725(3★B 29.0p) ↓1.165915(7★B 29.4p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29015.4 | ↓29271.350000000006(7★C 256.0p) ↓29304.75(5★C 289.3p) ↑28719.4(6★A 296.0p) ↓29383.575000000004(6★C 368.2p) ↓29442.75(4★C 427.3p) ↑28581.4(6★A 434.0p) +7 more
+[2026-05-18 12:12:21] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:12:33] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:10:08.992Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16298 | ↑1.1624949999999998(3★B 4.9p) ↓1.1634924999999998(5★B 5.1p) ↓1.164205(4★B 12.3p) ↓1.1652025(7★B 22.2p) ↑1.1600725(3★B 29.1p) ↓1.165915(7★B 29.4p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29015.7 | ↓29271.350000000006(7★C 255.7p) ↓29304.75(5★C 289.0p) ↑28719.4(6★A 296.3p) ↓29383.575000000004(6★C 367.9p) ↓29442.75(4★C 427.0p) ↑28581.4(6★A 434.3p) +7 more
+[2026-05-18 12:12:49] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:12:53] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:13:11] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:11:07.811Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16294 | ↑1.1624949999999998(3★B 4.5p) ↓1.1634924999999998(5★B 5.5p) ↓1.164205(4★B 12.6p) ↓1.1652025(7★B 22.6p) ↑1.1600725(3★B 28.7p) ↓1.165915(7★B 29.7p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29022.8 | ↓29271.350000000006(7★C 248.6p) ↓29304.75(5★C 282.0p) ↑28719.4(6★A 303.4p) ↓29383.575000000004(6★C 360.8p) ↓29442.75(4★C 420.0p) ↑28581.4(6★A 441.4p) +7 more
+[2026-05-18 12:13:26] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:13:43] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:11:07.811Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16296 | ↑1.1624949999999998(3★B 4.7p) ↓1.1634924999999998(5★B 5.3p) ↓1.164205(4★B 12.4p) ↓1.1652025(7★B 22.4p) ↑1.1600725(3★B 28.9p) ↓1.165915(7★B 29.6p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29020.2 | ↓29271.350000000006(7★C 251.2p) ↓29304.75(5★C 284.5p) ↑28719.4(6★A 300.8p) ↓29383.575000000004(6★C 363.4p) ↓29442.75(4★C 422.5p) ↑28581.4(6★A 438.8p) +7 more
+[2026-05-18 12:13:58] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:14:07] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:11:07.811Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16296 | ↑1.1624949999999998(3★B 4.7p) ↓1.1634924999999998(5★B 5.3p) ↓1.164205(4★B 12.4p) ↓1.1652025(7★B 22.4p) ↑1.1600725(3★B 28.9p) ↓1.165915(7★B 29.6p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29021.5 | ↓29271.350000000006(7★C 249.9p) ↓29304.75(5★C 283.2p) ↑28719.4(6★A 302.1p) ↓29383.575000000004(6★C 362.1p) ↓29442.75(4★C 421.2p) ↑28581.4(6★A 440.1p) +7 more
+[2026-05-18 12:14:31] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:14:43] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:11:07.811Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16297 | ↑1.1624949999999998(3★B 4.8p) ↓1.1634924999999998(5★B 5.2p) ↓1.164205(4★B 12.3p) ↓1.1652025(7★B 22.3p) ↑1.1600725(3★B 29.0p) ↓1.165915(7★B 29.4p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29023.2 | ↓29271.350000000006(7★C 248.2p) ↓29304.75(5★C 281.5p) ↑28719.4(6★A 303.8p) ↓29383.575000000004(6★C 360.4p) ↓29442.75(4★C 419.5p) ↑28581.4(6★A 441.8p) +7 more
+[2026-05-18 12:14:54] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:14:54] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 12:15:01] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:15:10] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:11:07.811Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16294 | ↑1.1624949999999998(3★B 4.5p) ↓1.1634924999999998(5★B 5.5p) ↓1.164205(4★B 12.6p) ↓1.1652025(7★B 22.6p) ↑1.1600725(3★B 28.7p) ↓1.165915(7★B 29.7p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29028.0 | ↓29271.350000000006(7★C 243.4p) ↓29304.75(5★C 276.8p) ↑28719.4(6★A 308.6p) ↓29383.575000000004(6★C 355.6p) ↓29442.75(4★C 414.8p) ↑28581.4(6★A 446.6p) +7 more
+[2026-05-18 12:15:31] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:15:43] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:11:07.811Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16294 | ↑1.1624949999999998(3★B 4.5p) ↓1.1634924999999998(5★B 5.5p) ↓1.164205(4★B 12.6p) ↓1.1652025(7★B 22.6p) ↑1.1600725(3★B 28.7p) ↓1.165915(7★B 29.7p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29020.7 | ↓29271.350000000006(7★C 250.7p) ↓29304.75(5★C 284.0p) ↑28719.4(6★A 301.3p) ↓29383.575000000004(6★C 362.9p) ↓29442.75(4★C 422.0p) ↑28581.4(6★A 439.3p) +7 more
+[2026-05-18 12:16:04] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:16:18] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:11:07.811Z  min_stars=3
+  EUR/USD [not enabled] @ 1.1629 | ↑1.1624949999999998(3★B 4.1p) ↓1.1634924999999998(5★B 5.9p) ↓1.164205(4★B 13.0p) ↓1.1652025(7★B 23.0p) ↑1.1600725(3★B 28.3p) ↓1.165915(7★B 30.1p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29025.8 | ↓29271.350000000006(7★C 245.6p) ↓29304.75(5★C 279.0p) ↑28719.4(6★A 306.4p) ↓29383.575000000004(6★C 357.8p) ↓29442.75(4★C 417.0p) ↑28581.4(6★A 444.4p) +7 more
+[2026-05-18 12:16:36] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:16:47] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:11:07.811Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16286 | ↑1.1624949999999998(3★B 3.7p) ↓1.1634924999999998(5★B 6.3p) ↓1.164205(4★B 13.4p) ↓1.1652025(7★B 23.4p) ↑1.1600725(3★B 27.9p) ↓1.165915(7★B 30.6p) +13 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29016.2 | ↓29271.350000000006(7★C 255.2p) ↓29304.75(5★C 288.5p) ↑28719.4(6★A 296.8p) ↓29383.575000000004(6★C 367.4p) ↓29442.75(4★C 426.5p) ↑28581.4(6★A 434.8p) +7 more
+[2026-05-18 12:16:59] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:17:09] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:17:17] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:15:21.001Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16288 | ↑1.1624949999999998(3★B 3.9p) ↓1.164205(4★B 13.3p) ↓1.1652025(7★B 23.2p) ↑1.1600725(3★B 28.1p) ↓1.165915(7★B 30.4p) ↓1.1669124999999998(6★B 40.3p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29021.2 | ↓29271.350000000006(7★C 250.2p) ↓29304.75(5★C 283.5p) ↑28719.4(6★A 301.8p) ↓29383.575000000004(6★C 362.4p) ↓29442.75(4★C 421.5p) ↑28581.4(6★A 439.8p) +7 more
+[2026-05-18 12:17:41] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:17:53] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:15:21.001Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16286 | ↑1.1624949999999998(3★B 3.7p) ↓1.164205(4★B 13.4p) ↓1.1652025(7★B 23.4p) ↑1.1600725(3★B 27.9p) ↓1.165915(7★B 30.6p) ↓1.1669124999999998(6★B 40.5p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29019.6 | ↓29271.350000000006(7★C 251.8p) ↓29304.75(5★C 285.2p) ↑28719.4(6★A 300.2p) ↓29383.575000000004(6★C 364.0p) ↓29442.75(4★C 423.2p) ↑28581.4(6★A 438.2p) +7 more
+[2026-05-18 12:18:14] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:18:23] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:15:21.001Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16285 | ↑1.1624949999999998(3★B 3.6p) ↓1.164205(4★B 13.5p) ↓1.1652025(7★B 23.5p) ↑1.1600725(3★B 27.8p) ↓1.165915(7★B 30.7p) ↓1.1669124999999998(6★B 40.6p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29031.0 | ↓29271.350000000006(7★C 240.4p) ↓29304.75(5★C 273.8p) ↑28719.4(6★A 311.6p) ↓29383.575000000004(6★C 352.6p) ↓29442.75(4★C 411.8p) ↑28581.4(6★A 449.6p) +7 more
+[2026-05-18 12:18:47] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:18:57] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:15:21.001Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16287 | ↑1.1624949999999998(3★B 3.8p) ↓1.164205(4★B 13.3p) ↓1.1652025(7★B 23.3p) ↑1.1600725(3★B 28.0p) ↓1.165915(7★B 30.4p) ↓1.1669124999999998(6★B 40.4p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29030.0 | ↓29271.350000000006(7★C 241.4p) ↓29304.75(5★C 274.8p) ↑28719.4(6★A 310.6p) ↓29383.575000000004(6★C 353.6p) ↓29442.75(4★C 412.8p) ↑28581.4(6★A 448.6p) +7 more
+[2026-05-18 12:19:08] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:19:18] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:19:26] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:15:21.001Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16288 | ↑1.1624949999999998(3★B 3.9p) ↓1.164205(4★B 13.3p) ↓1.1652025(7★B 23.2p) ↑1.1600725(3★B 28.1p) ↓1.165915(7★B 30.4p) ↓1.1669124999999998(6★B 40.3p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29043.8 | ↓29271.350000000006(7★C 227.6p) ↓29304.75(5★C 261.0p) ↑28719.4(6★A 324.4p) ↓29383.575000000004(6★C 339.8p) ↓29442.75(4★C 399.0p) ↓29495.800000000003(4★C 452.0p) +7 more
+[2026-05-18 12:19:44] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 12:19:50] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:20:06] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:15:21.001Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16296 | ↑1.1624949999999998(3★B 4.7p) ↓1.164205(4★B 12.4p) ↓1.1652025(7★B 22.4p) ↑1.1600725(3★B 28.9p) ↓1.165915(7★B 29.6p) ↓1.1669124999999998(6★B 39.5p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29038.2 | ↓29271.350000000006(7★C 233.2p) ↓29304.75(5★C 266.5p) ↑28719.4(6★A 318.8p) ↓29383.575000000004(6★C 345.4p) ↓29442.75(4★C 404.5p) ↑28581.4(6★A 456.8p) +7 more
+[2026-05-18 12:20:21] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:20:37] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:15:21.001Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16298 | ↑1.1624949999999998(3★B 4.9p) ↓1.164205(4★B 12.3p) ↓1.1652025(7★B 22.2p) ↑1.1600725(3★B 29.1p) ↓1.165915(7★B 29.4p) ↓1.1669124999999998(6★B 39.3p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29048.8 | ↓29271.350000000006(7★C 222.6p) ↓29304.75(5★C 256.0p) ↑28719.4(6★A 329.4p) ↓29383.575000000004(6★C 334.8p) ↓29442.75(4★C 394.0p) ↓29495.800000000003(4★C 447.0p) +7 more
+[2026-05-18 12:20:52] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:21:08] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:15:21.001Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16298 | ↑1.1624949999999998(3★B 4.9p) ↓1.164205(4★B 12.3p) ↓1.1652025(7★B 22.2p) ↑1.1600725(3★B 29.1p) ↓1.165915(7★B 29.4p) ↓1.1669124999999998(6★B 39.3p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29047.2 | ↓29271.350000000006(7★C 224.2p) ↓29304.75(5★C 257.5p) ↑28719.4(6★A 327.8p) ↓29383.575000000004(6★C 336.4p) ↓29442.75(4★C 395.5p) ↓29495.800000000003(4★C 448.6p) +7 more
+[2026-05-18 12:21:20] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:21:24] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:21:34] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:20:21.996Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16308 | ↑1.1624949999999998(3★B 5.9p) ↓1.164205(4★B 11.3p) ↓1.1652025(7★B 21.2p) ↓1.165915(7★B 28.4p) ↑1.1600725(3★B 30.1p) ↓1.1669124999999998(6★B 38.3p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29045.2 | ↓29271.350000000006(7★C 226.2p) ↓29304.75(5★C 259.5p) ↑28719.4(6★A 325.8p) ↓29383.575000000004(6★C 338.4p) ↓29442.75(4★C 397.5p) ↓29495.800000000003(4★C 450.6p) +7 more
+[2026-05-18 12:21:55] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:22:04] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:20:21.996Z  min_stars=3
+  EUR/USD [not enabled] @ 1.1631 | ↑1.1624949999999998(3★B 6.1p) ↓1.164205(4★B 11.0p) ↓1.1652025(7★B 21.0p) ↓1.165915(7★B 28.2p) ↑1.1600725(3★B 30.3p) ↓1.1669124999999998(6★B 38.1p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29041.2 | ↓29271.350000000006(7★C 230.2p) ↓29304.75(5★C 263.5p) ↑28719.4(6★A 321.8p) ↓29383.575000000004(6★C 342.4p) ↓29442.75(4★C 401.5p) ↓29495.800000000003(4★C 454.6p) +7 more
+[2026-05-18 12:22:25] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:22:34] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:20:21.996Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16309 | ↑1.1624949999999998(3★B 6.0p) ↓1.164205(4★B 11.1p) ↓1.1652025(7★B 21.1p) ↓1.165915(7★B 28.3p) ↑1.1600725(3★B 30.2p) ↓1.1669124999999998(6★B 38.2p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29038.5 | ↓29271.350000000006(7★C 232.9p) ↓29304.75(5★C 266.2p) ↑28719.4(6★A 319.1p) ↓29383.575000000004(6★C 345.1p) ↓29442.75(4★C 404.2p) ↑28581.4(6★A 457.1p) +7 more
+[2026-05-18 12:22:58] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:23:07] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:20:21.996Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16304 | ↑1.1624949999999998(3★B 5.5p) ↓1.164205(4★B 11.6p) ↓1.1652025(7★B 21.6p) ↓1.165915(7★B 28.7p) ↑1.1600725(3★B 29.7p) ↓1.1669124999999998(6★B 38.7p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29035.8 | ↓29271.350000000006(7★C 235.6p) ↓29304.75(5★C 269.0p) ↑28719.4(6★A 316.4p) ↓29383.575000000004(6★C 347.8p) ↓29442.75(4★C 407.0p) ↑28581.4(6★A 454.4p) +7 more
+[2026-05-18 12:23:20] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:23:30] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:23:38] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:22:43.557Z  min_stars=3
+  EUR/USD [not enabled]: no entries
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 12:24:02] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:24:12] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:22:43.557Z  min_stars=3
+  EUR/USD [not enabled]: no entries
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 12:24:33] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:24:42] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:22:43.557Z  min_stars=3
+  EUR/USD [not enabled]: no entries
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 12:24:45] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 12:25:06] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:25:15] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:22:43.557Z  min_stars=3
+  EUR/USD [not enabled]: no entries
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled]: no entries
+[2026-05-18 12:25:26] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:25:38] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:25:47] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:24:37.121Z  min_stars=3
+  EUR/USD [not enabled]: no entries
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29032.8 | ↓29271.350000000006(7★C 238.6p) ↓29304.75(5★C 272.0p) ↑28719.4(6★A 313.4p) ↓29383.575000000004(6★C 350.8p) ↓29442.75(4★C 410.0p) ↑28581.4(6★A 451.4p) +7 more
+[2026-05-18 12:26:11] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:26:20] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:24:37.121Z  min_stars=3
+  EUR/USD [not enabled]: no entries
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29034.2 | ↓29271.350000000006(7★C 237.2p) ↓29304.75(5★C 270.5p) ↑28719.4(6★A 314.8p) ↓29383.575000000004(6★C 349.4p) ↓29442.75(4★C 408.5p) ↑28581.4(6★A 452.8p) +7 more
+[2026-05-18 12:26:44] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:26:53] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:24:37.121Z  min_stars=3
+  EUR/USD [not enabled]: no entries
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29023.4 | ↓29271.350000000006(7★C 248.0p) ↓29304.75(5★C 281.3p) ↑28719.4(6★A 304.0p) ↓29383.575000000004(6★C 360.2p) ↓29442.75(4★C 419.3p) ↑28581.4(6★A 442.0p) +7 more
+[2026-05-18 12:27:26] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:27:26] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:27:36] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:25:29.124Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16332 | ↑1.1624949999999998(3★B 8.3p) ↓1.164205(4★B 8.9p) ↓1.1652025(7★B 18.8p) ↓1.165915(7★B 26.0p) ↑1.1600725(3★B 32.5p) ↓1.1669124999999998(6★B 35.9p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29024.8 | ↓29271.350000000006(7★C 246.6p) ↓29304.75(5★C 280.0p) ↑28719.4(6★A 305.4p) ↓29383.575000000004(6★C 358.8p) ↓29442.75(4★C 418.0p) ↑28581.4(6★A 443.4p) +7 more
+[2026-05-18 12:27:49] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:27:57] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:25:29.124Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16326 | ↑1.1624949999999998(3★B 7.7p) ↓1.164205(4★B 9.4p) ↓1.1652025(7★B 19.4p) ↓1.165915(7★B 26.6p) ↑1.1600725(3★B 31.9p) ↓1.1669124999999998(6★B 36.5p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29023.5 | ↓29271.350000000006(7★C 247.9p) ↓29304.75(5★C 281.2p) ↑28719.4(6★A 304.1p) ↓29383.575000000004(6★C 360.1p) ↓29442.75(4★C 419.2p) ↑28581.4(6★A 442.1p) +7 more
+[2026-05-18 12:28:21] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:28:30] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:25:29.124Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16308 | ↑1.1624949999999998(3★B 5.9p) ↓1.164205(4★B 11.3p) ↓1.1652025(7★B 21.2p) ↓1.165915(7★B 28.4p) ↑1.1600725(3★B 30.1p) ↓1.1669124999999998(6★B 38.3p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29018.0 | ↓29271.350000000006(7★C 253.4p) ↓29304.75(5★C 286.8p) ↑28719.4(6★A 298.6p) ↓29383.575000000004(6★C 365.6p) ↓29442.75(4★C 424.8p) ↑28581.4(6★A 436.6p) +7 more
+[2026-05-18 12:28:54] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:29:02] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:25:29.124Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16312 | ↑1.1624949999999998(3★B 6.3p) ↓1.164205(4★B 10.9p) ↓1.1652025(7★B 20.8p) ↓1.165915(7★B 28.0p) ↑1.1600725(3★B 30.5p) ↓1.1669124999999998(6★B 37.9p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29018.8 | ↓29271.350000000006(7★C 252.6p) ↓29304.75(5★C 286.0p) ↑28719.4(6★A 299.4p) ↓29383.575000000004(6★C 364.8p) ↓29442.75(4★C 424.0p) ↑28581.4(6★A 437.4p) +7 more
+[2026-05-18 12:29:30] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:29:31] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:29:41] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:25:29.124Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16312 | ↑1.1624949999999998(3★B 6.3p) ↓1.164205(4★B 10.9p) ↓1.1652025(7★B 20.8p) ↓1.165915(7★B 28.0p) ↑1.1600725(3★B 30.5p) ↓1.1669124999999998(6★B 37.9p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29014.2 | ↓29271.350000000006(7★C 257.2p) ↓29304.75(5★C 290.5p) ↑28719.4(6★A 294.8p) ↓29383.575000000004(6★C 369.4p) ↓29442.75(4★C 428.5p) ↑28581.4(6★A 432.8p) +7 more
+[2026-05-18 12:29:47] [INFO] Monitoring 0 pairs — no level approach  [no prices]
+[2026-05-18 12:30:02] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:30:13] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:25:29.124Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16311 | ↑1.1624949999999998(3★B 6.2p) ↓1.164205(4★B 10.9p) ↓1.1652025(7★B 20.9p) ↓1.165915(7★B 28.0p) ↑1.1600725(3★B 30.4p) ↓1.1669124999999998(6★B 38.0p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29015.2 | ↓29271.350000000006(7★C 256.2p) ↓29304.75(5★C 289.5p) ↑28719.4(6★A 295.8p) ↓29383.575000000004(6★C 368.4p) ↓29442.75(4★C 427.5p) ↑28581.4(6★A 433.8p) +7 more
+[2026-05-18 12:30:34] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:30:49] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:25:29.124Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16305 | ↑1.1624949999999998(3★B 5.6p) ↓1.164205(4★B 11.6p) ↓1.1652025(7★B 21.5p) ↓1.165915(7★B 28.7p) ↑1.1600725(3★B 29.8p) ↓1.1669124999999998(6★B 38.6p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29017.2 | ↓29271.350000000006(7★C 254.2p) ↓29304.75(5★C 287.5p) ↑28719.4(6★A 297.8p) ↓29383.575000000004(6★C 366.4p) ↓29442.75(4★C 425.5p) ↑28581.4(6★A 435.8p) +7 more
+[2026-05-18 12:31:04] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.
+[2026-05-18 12:31:16] [INFO] [DIAG] Snapshot pushed_at=2026-05-18T11:25:29.124Z  min_stars=3
+  EUR/USD [not enabled] @ 1.16314 | ↑1.1624949999999998(3★B 6.5p) ↓1.164205(4★B 10.6p) ↓1.1652025(7★B 20.6p) ↓1.165915(7★B 27.7p) ↑1.1600725(3★B 30.7p) ↓1.1669124999999998(6★B 37.7p) +12 more
+  GBP/USD [not enabled]: no entries
+  USD/JPY [not enabled]: no entries
+  AUD/USD [not enabled]: no entries
+  XAU/USD [not enabled]: no entries
+  EUR/GBP [not enabled]: no entries
+  USD/CAD [not enabled]: no entries
+  USD/CHF [not enabled]: no entries
+  GBP/JPY [not enabled]: no entries
+  NAS100_USD [not enabled] @ 29023.4 | ↓29271.350000000006(7★C 248.0p) ↓29304.75(5★C 281.3p) ↑28719.4(6★A 304.0p) ↓29383.575000000004(6★C 360.2p) ↓29442.75(4★C 419.3p) ↑28581.4(6★A 442.0p) +7 more
+[2026-05-18 12:31:34] [INFO] State refreshed from dashboard KV
+[2026-05-18 12:31:35] [INFO] [DIAG] enabled_pairs is empty in bot_config — bot will not trade. Configure pairs via the bot-config panel on the dashboard.

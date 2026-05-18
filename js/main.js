@@ -742,8 +742,8 @@ window.saveToJournal = function() {
       ...(asia.confluences   || []).map(c => ({...c, source: 'asia'})),
       ...(monday.confluences || []).map(c => ({...c, source: 'monday'}))
     ];
-    const filtered  = filterConfluences(allConfluences);
-    const enhanced  = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, tierData.totalScore);
+    // Always save all levels — strength filter is display-only in the journal
+    const enhanced  = enhanceConfluences(allConfluences, quote.price, macroBias, pivots, volRegime, tierData.totalScore);
     enhanced.sort((a, b) => b.stars !== a.stars ? b.stars - a.stars : a.distance - b.distance);
 
     const signal  = runSignalEngine(S.compassData, volRegime);
@@ -899,8 +899,8 @@ window.saveAllPairsToJournal = async function() {
         ...(asia.confluences   || []).map(c => ({...c, source: 'asia'})),
         ...(monday.confluences || []).map(c => ({...c, source: 'monday'})),
       ];
-      const filtered = filterConfluences(allConfluences);
-      const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, tierData.totalScore);
+      // Always save all levels — strength filter is display-only in the journal
+      const enhanced = enhanceConfluences(allConfluences, quote.price, macroBias, pivots, volRegime, tierData.totalScore);
       enhanced.sort((a, b) => b.stars !== a.stars ? b.stars - a.stars : a.distance - b.distance);
 
       const signal  = runSignalEngine(S.compassData, volRegime);

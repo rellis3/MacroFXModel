@@ -1419,7 +1419,9 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           env.FX_SCORES.get('events_today').catch(() => null),
         ]);
 
-        const botConfig  = safeParse(botConfigRaw) ?? BOT_CONFIG_DEFAULT;
+        // KV stores { data: <config>, timestamp } — unwrap before use.
+        const botConfigParsed = safeParse(botConfigRaw);
+        const botConfig = botConfigParsed?.data ?? botConfigParsed ?? BOT_CONFIG_DEFAULT;
         const fredData   = safeParse(fredRaw);
         const cotData    = safeParse(cotRaw);
         const oiStore    = safeParse(oiRaw);
@@ -1495,7 +1497,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
       if (path === '/api/bot/status' && request.method === 'PUT') {
         if (!env.FX_SCORES) return json({ error: 'KV not configured' }, 500);
         let body;
-        try { body = await req.json(); } catch(e) { return err('Invalid JSON body', 400); }
+        try { body = await request.json(); } catch(e) { return err('Invalid JSON body', 400); }
         await env.FX_SCORES.put('bot_status', JSON.stringify({ data: body, timestamp: Date.now() }), { expirationTtl: 300 });
         return json({ ok: true });
       }

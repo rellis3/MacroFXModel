@@ -867,6 +867,38 @@ Rules for your response:
   }
 });
 
+// CME futures live price — proxies Yahoo Finance so the browser avoids CORS issues.
+// Returns { ok, price, symbol } where price is the raw CME futures price.
+// Inverted pairs (6J, 6C, 6S) return the raw CME quote; client converts to spot-equivalent.
+app.get('/api/futures-quote', async (req, res) => {
+  const FUTURES_MAP = {
+    'EUR/USD':    '6E=F',
+    'GBP/USD':    '6B=F',
+    'USD/JPY':    '6J=F',
+    'AUD/USD':    '6A=F',
+    'XAU/USD':    'GC=F',
+    'USD/CAD':    '6C=F',
+    'USD/CHF':    '6S=F',
+    'NAS100_USD': 'NQ=F',
+  };
+  const pair   = req.query.pair;
+  const symbol = FUTURES_MAP[pair];
+  if (!symbol) return res.json({ ok: false, error: 'No CME futures contract for this pair' });
+  try {
+    const r = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1m&range=1d`,
+      { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8_000) },
+    );
+    if (!r.ok) return res.json({ ok: false, error: `Yahoo Finance returned ${r.status}` });
+    const data  = await r.json();
+    const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (!price) return res.json({ ok: false, error: 'No price in Yahoo Finance response' });
+    res.json({ ok: true, price, symbol });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // SSE live price stream — must be handled before the generic /api/* catch-all
 // because it returns an infinite ReadableStream, not a text body.
 app.get('/api/oanda_stream', async (req, res) => {

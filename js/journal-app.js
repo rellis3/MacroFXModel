@@ -31,6 +31,7 @@ let calViewMonth = new Date().getMonth();
 let currentView  = 'day';
 let levelSortOrder = 'default'; // 'default'|'price-asc'|'price-desc'|'stars-asc'|'stars-desc'|'sd-asc'|'sd-desc'
 let filterWatchlist = false;
+let filterStrength  = 'all'; // 'all' | 'strong' (all confs) | 'strongest' (tight only)
 
 const RUNNING_TOTALS_KEY = 'journal_running_totals';
 let runningTotalsConfig = { accountSize: 0, riskPct: 1, dayResets: {}, overallOffsets: {} };
@@ -971,6 +972,16 @@ function setWatchlistFilter(v){
   renderPairNav();renderMain();renderCalendar();renderQuickStats();
 }
 
+function levelPassesStrengthFilter(l) {
+  if (filterStrength === 'strongest') return l.isTight === true;
+  return true; // 'strong' and 'all' show everything
+}
+
+function setStrengthFilter(v) {
+  filterStrength = v;
+  renderMain();renderQuickStats();
+}
+
 // Recompute replay stats from a (potentially filtered) results array
 function computeReplayStatsFromResults(results){
   const stats={total:0,touched:0,traded:0,wins:0,losses:0,eods:0,totalR:0};
@@ -1018,7 +1029,7 @@ function setLevelSort(order) {
 
 // Returns [{l, i}] where i is the original stored index (safe to use for mutations)
 function sortedIndexed(levels) {
-  const arr = levels.map((l, i) => ({ l, i }));
+  const arr = levels.map((l, i) => ({ l, i })).filter(({l}) => levelPassesStrengthFilter(l));
   switch (levelSortOrder) {
     case 'price-asc':  arr.sort((a, b) => (a.l.price || 0) - (b.l.price || 0)); break;
     case 'price-desc': arr.sort((a, b) => (b.l.price || 0) - (a.l.price || 0)); break;
@@ -1036,7 +1047,7 @@ function renderSortBar() {
     { key: 'stars', label: 'Stars',    asc: 'stars-asc',  desc: 'stars-desc' },
     { key: 'sd',    label: 'SD Level', asc: 'sd-asc',     desc: 'sd-desc'    },
   ];
-  const btns = OPTS.map(o => {
+  const sortBtns = OPTS.map(o => {
     let arrow = '⇅', active = '';
     let next;
     if (levelSortOrder === o.asc)       { arrow = '↑'; active = ' active'; next = o.desc; }
@@ -1044,7 +1055,16 @@ function renderSortBar() {
     else                                { next = o.asc; }
     return `<button class="sort-btn${active}" onclick="setLevelSort('${next}')">${o.label} ${arrow}</button>`;
   }).join('');
-  return `<div class="sort-bar"><span class="sort-lbl">Sort</span>${btns}</div>`;
+
+  const strengthBtns = [
+    { v: 'all',      label: 'All' },
+    { v: 'strong',   label: 'Strong' },
+    { v: 'strongest',label: 'Tight' },
+  ].map(o =>
+    `<button class="sort-btn${filterStrength===o.v?' active':''}" onclick="setStrengthFilter('${o.v}')" title="${o.v==='strongest'?'Tight confluences only':o.v==='strong'?'All confluences':'All saved levels'}">${o.label}</button>`
+  ).join('');
+
+  return `<div class="sort-bar"><span class="sort-lbl">Sort</span>${sortBtns}<span class="sort-lbl" style="margin-left:8px">View</span>${strengthBtns}</div>`;
 }
 
 function renderAllView(){
@@ -1056,7 +1076,7 @@ function renderAllView(){
     const pairs=Object.keys(dayObj).filter(p=>filterPair==='all'||p===filterPair);
     if(pairs.length===0)return;
     const fmt=new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
-    const allLevels=[];pairs.forEach(p=>(dayObj[p].levels||[]).forEach(l=>allLevels.push(l)));
+    const allLevels=[];pairs.forEach(p=>(dayObj[p].levels||[]).forEach(l=>{if(levelPassesStrengthFilter(l))allLevels.push(l);}));
     html+=`<div class="day-group"><div class="day-group-header" onclick="selectDate('${date}')" style="cursor:pointer">
       <span class="day-group-date">${fmt}</span>
       <span class="day-group-meta">${pairs.join(', ')} &middot; ${allLevels.length} levels</span>
@@ -1258,6 +1278,7 @@ function collectStats(){
       days.add(date);
       (v.levels||[]).forEach(l=>{
         if(filterWatchlist&&!l.watchlist)return;
+        if(!levelPassesStrengthFilter(l))return;
         total++;if(byPair[pair])byPair[pair].levels++;
         const s=Math.min(l.stars||1,7);if(byStar[s])byStar[s].levels++;
         if(l.trade==='long'||l.trade==='short'){

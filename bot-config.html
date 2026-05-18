@@ -348,6 +348,10 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <div class="input-wrap"><button class="help-btn" data-key="ex_min_score">?</button><input type="number" id="ex_min_score" min="0" max="12" step="1"></div>
         </div>
         <div class="form-row">
+          <span class="form-lbl">Min confluence stars <small>★ rating of the level</small></span>
+          <div class="input-wrap"><button class="help-btn" data-key="ex_min_stars">?</button><input type="number" id="ex_min_stars" min="1" max="7" step="1"></div>
+        </div>
+        <div class="form-row">
           <span class="form-lbl">Min modules agree <small>directional consensus count</small></span>
           <div class="input-wrap"><button class="help-btn" data-key="ex_min_agree">?</button><input type="number" id="ex_min_agree" min="1" max="6" step="1"></div>
         </div>
@@ -520,6 +524,7 @@ const HELP = {
   ex_bardir:       { t:'WT1 Bar Direction', b:'WaveTrend oscillator direction filter. Off = ignored. Auto = only applied when WT1 is extreme (above threshold). On = always requires 5m and 1H WT1 to agree with the trade direction.', e:'Auto + threshold 35: WT1=42 (trending) must confirm direction. WT1=18 (drifting) → filter skipped, trade allowed.' },
   ex_wtthreshold:  { t:'WT1 Threshold', b:'Used in Auto mode only. When |WT1| is above this value the bar direction filter activates. Below it, markets are considered non-trending and the WT1 requirement is waived.', e:'Default 35: WT1=40 → direction must agree with trade.\nWT1=20 → no WT1 requirement, setup evaluated freely.' },
   ex_min_score:    { t:'Min Macro Score', b:'The dashboard signal score (0–100) must exceed this value. The score combines macro regime alignment, momentum tiers, Bayesian continuation probability and signal direction.', e:'5 = very permissive (default — just needs some signal).\nRaise to 55 = only trade when macro picture is clearly in your favour.' },
+  ex_min_stars:    { t:'Min Confluence Stars', b:'The ★ star rating of the level must meet or exceed this value. Stars count how many independent confluences overlap at that price — Fib levels, pivots, OI walls, structure etc. More stars = more evidence price will react there.', e:'3★ (default): needs at least 3 overlapping confluences — a Fib + pivot + one more.\n5★: only the highest-conviction levels trade, expect 1-2 setups per day per pair.\n2★: very permissive, includes marginal levels — higher noise.' },
   ex_min_agree:    { t:'Min Modules Agree', b:'Minimum number of enabled modules that must point the same direction before a trade is placed. Higher = more conviction required.', e:'3: macro regime + confluence + one other must agree.\nRaise to 5 for near-unanimous module consensus only.' },
   ex_threshold:    { t:'Composite Threshold', b:'Average module score (0–1) across all enabled modules. All pass/fail module results are averaged — this is the minimum average required to proceed.', e:'0.60 (default): 60% average module agreement.\n0.40 → more trades, more noise.\n0.80 → only near-unanimous setups execute.' },
   ex_max_trades:   { t:'Max Trades Per Loop', b:'How many new positions can be opened in a single 3-second price tick. Prevents piling into many positions simultaneously during a fast market move.', e:'2 (default): at most 2 new entries per tick across all pairs.\nSet to 1 for strict one-at-a-time discipline.' },

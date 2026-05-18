@@ -48,6 +48,9 @@ export function openOIModal() {
   futEl.style.opacity = '';
   futEl.dataset.manual = '0';
   futEl.dataset.estimated = '0';
+  futEl.dataset.liveSymbol = '';
+  // Auto-fetch live CME futures price in background; won't overwrite if user has manually typed
+  autoFetchFuturesPrice(sym, futEl);
   document.getElementById('oiNumLevels').value  = existing ? (existing.numLevels || 8)  : 8;
   document.getElementById('oiMinOI').value      = existing ? (existing.minOI     || 20) : 20;
   document.getElementById('oiRawData').value    = existing ? (existing.rawOI  || '') : '';
@@ -62,11 +65,32 @@ export function closeOIModal() {
   if (sel) sel.disabled = false;
 }
 
+async function autoFetchFuturesPrice(pair, futEl) {
+  try {
+    const r = await fetch(`/api/futures-quote?pair=${encodeURIComponent(pair)}`);
+    const d = await r.json();
+    if (!d.ok || !d.price) return;
+    if (futEl.dataset.manual === '1') return; // user already typed something — don't overwrite
+    futEl.value = d.price;
+    futEl.dataset.estimated = '1';
+    futEl.dataset.liveSymbol = d.symbol;
+    futEl.style.opacity = '0.65';
+    updateOIBasis();
+  } catch { /* silently ignore — field stays blank or at saved value */ }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('oiModalOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeOIModal();
   });
 });
+
+// CME FX futures quotes the foreign currency in USD for EUR/USD, GBP/USD, AUD/USD
+// but quotes the USD in foreign-currency terms for USD/JPY (6J), USD/CAD (6C), USD/CHF (6S).
+// For those three, the raw CME price must be inverted (1/price) to get the spot-equivalent.
+function futuresIsInverted(pair) {
+  return pair === 'USD/JPY' || pair === 'USD/CAD' || pair === 'USD/CHF' || pair.includes('JPY');
+}
 
 // ── Spot / futures price estimation from OI data ─────────────────────────────
 // For CME FX options the strikes are in futures price terms, not spot.
@@ -132,10 +156,11 @@ export function autoEstimateBasis() {
     const futEl = document.getElementById('oiFuturesPrice');
     if (!futEl || futEl.dataset.manual === '1') return; // don't overwrite user's entry
     const pair = S.currentPair?.symbol ?? 'EUR/USD';
-    const isJpy = pair === 'USD/JPY' || pair.includes('JPY');
-    const digits = isJpy ? 6 : pair.includes('XAU') ? 2 : 5;
+    const inverted = futuresIsInverted(pair);
+    const digits = inverted ? 6 : pair.includes('XAU') ? 2 : 5;
     futEl.value = est.toFixed(digits);
     futEl.dataset.estimated = '1';
+    futEl.dataset.liveSymbol = '';
     futEl.style.opacity = '0.65';
     updateOIBasis();
   }, 350);
@@ -150,9 +175,10 @@ export function updateOIBasis() {
   const spotRaw    = parseFloat(document.getElementById('oiSpotPrice')?.value);
   const el = document.getElementById('oiBasisDisplay');
   if (!el) return;
-  // Mark as manually edited (stops auto-estimate from overwriting)
+  // Mark as manually edited (stops auto-fetch / auto-estimate from overwriting)
   if (futEl && futEl === document.activeElement && futEl.dataset.estimated === '1') {
     futEl.dataset.estimated = '0';
+    futEl.dataset.liveSymbol = '';
     futEl.dataset.manual = '1';
     futEl.style.opacity = '';
   }
@@ -162,12 +188,12 @@ export function updateOIBasis() {
     return;
   }
   let futuresSpot = futuresRaw;
-  if (isJpy && futuresRaw < 1) futuresSpot = 1 / futuresRaw;
+  if (futuresIsInverted(pair)) futuresSpot = 1 / futuresRaw;
   const basis = futuresSpot - spotRaw;
   const digits = isJpy ? 2 : pair.includes('XAU') ? 2 : 5;
   const basisSign = basis >= 0 ? '+' : '';
-  const source = futEl?.dataset.estimated === '1' ? ' (OI estimate)' : '';
-  el.textContent = `Basis: ${basisSign}${basis.toFixed(digits)}${source} · strikes shifted by ${(basis >= 0 ? '−' : '+') + Math.abs(basis).toFixed(digits)} → spot-equivalent levels`;
+  const src = futEl?.dataset.liveSymbol ? ` (CME ${futEl.dataset.liveSymbol})` : futEl?.dataset.estimated === '1' ? ' (OI estimate)' : '';
+  el.textContent = `Basis: ${basisSign}${basis.toFixed(digits)}${src} · strikes shifted by ${(basis >= 0 ? '−' : '+') + Math.abs(basis).toFixed(digits)} → spot-equivalent levels`;
   el.style.color = 'var(--blue)';
 }
 
@@ -391,31 +417,32 @@ export function processOIData() {
 
   // ── Basis conversion: Spot Level = CME Strike − Basis  (Basis = Futures − Spot) ──
   // CME strikes are in futures price terms. We shift them to spot-equivalent levels.
-  // If the user entered a CME futures price, use it. Otherwise auto-estimate ATM
-  // from the OI put/call balance distribution (same method as estimateSpotFromOI).
-  // JPY exception: CME 6J quotes JPY/USD (e.g. 0.006700) — invert before basis calc.
+  // If the user entered (or auto-fetched) a CME futures price, use it. Otherwise auto-estimate
+  // ATM from the OI put/call balance distribution (same method as estimateSpotFromOI).
+  // Inverted pairs (6J/6C/6S): CME prices are foreign-ccy/USD, must invert to get spot-equiv.
   let basis = 0;
   let futuresUsed = null;
   const isJpy = pair === 'USD/JPY' || (pair.includes('JPY') && !pair.startsWith('JPY'));
 
   if (!isNaN(futuresRaw) && spot) {
-    // Manual: user entered the current CME futures price
-    const futuresSpot = (isJpy && futuresRaw < 1) ? 1 / futuresRaw : futuresRaw;
+    // Manual or auto-fetched: CME raw price → convert to spot-equivalent for basis calc
+    const futuresSpot = futuresIsInverted(pair) ? 1 / futuresRaw : futuresRaw;
     basis = futuresSpot - spot;
     futuresUsed = futuresRaw;
   } else if (spot && parsed.strikes.length >= 3) {
     // Auto: estimate ATM from OI put/call balance, derive basis from that
     const oiAtm = estimateSpotFromOI(parsed.strikes, parsed.calls, parsed.puts);
     if (oiAtm != null) {
-      const atmSpot = (isJpy && oiAtm < 1) ? 1 / oiAtm : oiAtm;
+      const atmSpot = futuresIsInverted(pair) ? 1 / oiAtm : oiAtm;
       basis = atmSpot - spot;
     }
   }
 
-  // Apply basis shift to all strikes (converts futures strikes → spot-equivalent prices)
+  // Apply basis shift to all strikes (converts futures strikes → spot-equivalent prices).
+  // Inverted pairs (6J/6C/6S): CME strikes are in foreign-currency-per-USD space, so invert first.
   if (basis !== 0) {
-    parsed.strikes = isJpy
-      ? parsed.strikes.map(s => s < 1 ? (1 / s) - basis : s - basis)
+    parsed.strikes = futuresIsInverted(pair)
+      ? parsed.strikes.map(s => (1 / s) - basis)
       : parsed.strikes.map(s => s - basis);
   }
 
