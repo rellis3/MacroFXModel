@@ -613,14 +613,14 @@ function buildEntries(allConfs, currentPrice, atr, sym, hmmData, bars5m, bars30m
       signalScore,
       rangeBias: { confirmCount: rbias.confirmCount, conflictCount: rbias.conflictCount },
       tags,
-      totalStars: stars,
+      totalStars: Math.min(5, stars),
     };
     const g = gradeEntry(entryForGrade, hmmData);
 
     return {
       price:         parseFloat(c.price.toFixed(digits)),
       direction,
-      totalStars:    stars,
+      totalStars:    Math.min(5, stars),
       signalScore,
       grade:         g.grade,
       verdict:       g.verdict,

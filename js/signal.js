@@ -338,7 +338,7 @@ export function renderSignalCard(signal, volRegime, otcForecast) {
   }
 
   const stars     = Math.round((signal.score / signal.maxScore) * 5);
-  const starStr   = '⭐'.repeat(Math.max(0, stars)) + '☆'.repeat(Math.max(0, 5 - stars));
+  const starStr   = '★'.repeat(Math.max(0, stars)) + '☆'.repeat(Math.max(0, 5 - stars));
   const typeLabel = signal.type === 'trend'     ? 'Trend Follow' :
                     signal.type === 'reversion' ? 'Mean Reversion' :
                     signal.type === 'catchup'   ? 'Catch-up / Lag' : 'No Signal';
@@ -800,7 +800,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
     return {
       ...c,
       size: adjSize,
-      totalStars: Math.min(9, Math.round(layerScore)),
+      totalStars: Math.min(5, Math.round(layerScore)),
       layers,
       tags,
       tp,
@@ -1322,7 +1322,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
 
   return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + regimeConfPanel + hmmBanner + pairScoreBanner + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
-    const starStr = '⭐'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 9 - e.totalStars));
+    const starStr = '★'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 5 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';
 
     const tagsHtml = e.tags.map(t => `<span class="ec-tag ${t.cls}">${t.label}</span>`).join('');

@@ -99,7 +99,6 @@ window._reloadLevels = async function() {
 
 // ── Initialise state ─────────────────────────────────────────────────────────
 S.currentPair = PAIRS[0];
-S.currentMode = 'strongest';
 
 // ── UI helpers ───────────────────────────────────────────────────────────────
 function renderPairTabs() {
@@ -117,25 +116,6 @@ window.selectPair = async function(index) {
   dismissProxAlert();
   await loadAll();
   startLiveStream();                   // restart SSE for new pair
-};
-
-window.setMode = function(mode) {
-  S.currentMode = mode;
-  document.querySelectorAll('.mtab').forEach(btn => {
-    btn.classList.remove('active', 'green', 'amber');
-    if (btn.dataset.mode === mode) {
-      btn.classList.add('active');
-      if (mode === 'strongest') btn.classList.add('green');
-      if (mode === 'strong') btn.classList.add('amber');
-    }
-  });
-  const desc = {
-    strongest: 'Tight confluences only (highest probability)',
-    strong: 'All confluences (tight + normal)',
-    all: 'All confluences + key levels (0.25, 0.5, 0.75, 1.0)'
-  };
-  document.getElementById('modeDesc').textContent = desc[mode];
-  if (S.asiaRangeData[S.currentPair.symbol]) renderAllDebounced();
 };
 
 window.toggleDark = function() {
@@ -237,7 +217,7 @@ function checkProximityAlerts() {
   alertEl.className = `prox-alert ${urgency}`;
   alertEl.innerHTML = `
     <span class="pa-icon">${urgency === 'red' ? '🔴' : urgency === 'amber' ? '🟡' : '🟢'}</span>
-    <span class="pa-main">${dist <= 0 ? 'AT' : dist + unit + ' from'} <strong>${e.price.toFixed(digits)}</strong> ${e.direction === 'long' ? '↑ BUY' : '↓ SELL'} · ${'⭐'.repeat(e.totalStars || 0)}</span>
+    <span class="pa-main">${dist <= 0 ? 'AT' : dist + unit + ' from'} <strong>${e.price.toFixed(digits)}</strong> ${e.direction === 'long' ? '↑ BUY' : '↓ SELL'} · ${'★'.repeat(Math.min(5, e.totalStars || 0))}</span>
     ${e.candleConfirmed === true ? '<span class="pa-confirm">5m ✔</span>' : ''}
     <button class="pa-close" onclick="dismissProxAlert()">✕</button>
   `;

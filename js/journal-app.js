@@ -875,7 +875,7 @@ function renderLevelCard(level,idx,date,pair){
     replayBadge=`<span class="rp-badge untouched" style="font-size:9px;margin-left:6px">missed</span>`;
   }
   const stars=level.stars||1;
-  const starsHtml='<span style="color:var(--amber)">'+'&#9733;'.repeat(Math.min(stars,7))+'</span><span style="color:var(--border2)">'+'&#9734;'.repeat(Math.max(0,4-stars))+'</span>';
+  const starsHtml='<span style="color:var(--amber)">'+'&#9733;'.repeat(Math.min(stars,5))+'</span><span style="color:var(--border2)">'+'&#9734;'.repeat(Math.max(0,5-stars))+'</span>';
   const dirCls=level.direction==='long'?'long':'short';
   const dirLabel=level.direction==='long'?'&#8593; LONG':'&#8595; SHORT';
   const tags=(level.tags||[]).map(t=>`<span class="ec-tag ${t.cls||'range'}">${t.label}</span>`).join('');

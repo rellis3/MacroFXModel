@@ -28,7 +28,6 @@ export function detectCrossSessionClusters(asiaConfs, mondayConfs, symbol) {
 }
 
 export function filterConfluences(confluences) {
-  if (S.currentMode === 'strongest') return confluences.filter(c => c.isTight);
   return confluences;
 }
 
@@ -222,7 +221,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       }
     }
 
-    let stars = structuralStars + confirmationStars + crowdingAdj + divStars;
+    let stars = Math.min(5, structuralStars + confirmationStars + crowdingAdj + divStars);
 
     const baseSize = calcPositionSize(macroScore, volRegime);
     const sizeAdj = aligned ? 1 : 0.5;

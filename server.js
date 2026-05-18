@@ -315,7 +315,7 @@ function formatAlert(sym, entry, price, distPips) {
   const digits = PRICE_DIGITS[sym] ?? 5;
   const unit   = sym === 'NAS100_USD' ? 'pts' : 'p';
   const dir    = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
-  const stars  = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 9));
+  const stars  = '★'.repeat(Math.min(entry.totalStars ?? 0, 5));
   const at     = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
 
   const hmm   = state.hmmRegimes[sym];

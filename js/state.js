@@ -3,7 +3,7 @@
 // Using an object (not individual exports) so mutations are visible across modules.
 export const S = {
   currentPair:     null,   // set to PAIRS[0] by main.js on init
-  currentMode:     'strongest',
+  currentMode:     'all',
   fredData:        null,
   ohlcData:        {},
   ohlc5m:          {},

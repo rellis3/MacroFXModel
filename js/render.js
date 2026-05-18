@@ -631,7 +631,7 @@ ${calendarCtx.warnings.length > 0 ? `
       <span id="entryScannerCount" class="count-badge" style="display:none"></span>
     </div>
     <div class="hint" style="margin-bottom:8px">
-      <strong>How entry stars work:</strong> ⭐ Fib confluence · +⭐ tight · +⭐ macro bias · +⭐ pivot · +⭐ OI wall · +⭐ signal aligned · +⭐ gamma flip / range boundary. Max 7⭐. More sources = higher probability.
+      <strong>How entry stars work:</strong> ★ Fib confluence · +★ tight · +★ macro bias · +★ pivot · +★ OI wall · +★ signal aligned · +★ gamma flip / range boundary. Max 5★. More sources = higher probability.
     </div>
     <div id="entryScannerCard"></div>
 
@@ -643,7 +643,7 @@ ${calendarCtx.warnings.length > 0 ? `
     </div>
 
     <div class="hint">
-      <strong>How stars work:</strong> ⭐ Fib confluence · +⭐ tight · +⭐ macro bias · +⭐ pivot/OI · +⭐ daily Fib · +⭐ structural Fib · +⭐ Asia×Mon cluster · +⭐ RSI divergence · +⭐ WT divergence. Max 9⭐. Divergence tags (📊) added when oscillator momentum diverges from price at the level.
+      <strong>How stars work:</strong> ★ Fib confluence · +★ tight · +★ macro bias · +★ pivot/OI · +★ daily Fib · +★ structural Fib · +★ RSI/WT divergence. Max 5★. Tight levels (🟢) overlap two sessions — highest-probability zones.
     </div>
 
     <div class="legend">
@@ -656,8 +656,8 @@ ${calendarCtx.warnings.length > 0 ? `
       ${enhanced.length > 0 ? renderConfluences(enhanced, quote.price, pipSize, digits, tierData, approachArrow) :
         `<div class="empty-state">
           <div class="em-icon">🎯</div>
-          <div>No ${S.currentMode === 'strongest' ? 'tight' : ''} confluences detected.</div>
-          <div style="font-size:11px;margin-top:5px">Try switching to <strong>Strong</strong> or <strong>All Levels</strong> mode.</div>
+          <div>No confluences detected for this session.</div>
+          <div style="font-size:11px;margin-top:5px">Asia/Monday session ranges may be too narrow, or OHLC data not yet loaded.</div>
         </div>`}
     </div>
   </div>
@@ -914,7 +914,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits, ti
                     c.direction === 'short' ? 'SELL' :
                                               'AT';
     const dirClass = c.direction || 'neutral';
-    const stars = '⭐'.repeat(c.stars);
+    const stars = '★'.repeat(c.stars) + '☆'.repeat(Math.max(0, 5 - c.stars));
 
     // Tier regime agreement for this entry direction
     const regimeRow = (() => {
@@ -937,7 +937,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits, ti
 <div class="conf-item ${c.isTight ? 'tight' : 'normal'}">
   <div class="ci-row">
     <div class="ci-quality">
-      <div class="ci-q-icon">${c.isTight ? '🟢' : '🟠'}</div>
+      ${c.isTight ? '<div class="ci-tight-label">TIGHT</div>' : ''}
       <div class="ci-stars">${stars}</div>
       <div class="ci-q-text">${c.stars}/5</div>
     </div>

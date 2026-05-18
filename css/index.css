@@ -158,12 +158,13 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .conf-list{display:flex;flex-direction:column;gap:8px}
 .conf-item{background:var(--s1);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;transition:all .15s}
 .conf-item:hover{border-color:var(--border2);transform:translateY(-1px)}
-.conf-item.tight{border-color:var(--green);background:linear-gradient(to right, var(--green-bg), var(--s1) 30%)}
+.conf-item.tight{border-color:var(--green);border-width:2px;background:linear-gradient(to right, var(--green-bg), var(--s1) 40%);box-shadow:0 0 0 1px rgba(34,197,94,.12)}
 .conf-item.normal{border-color:rgba(180,83,9,0.4);background:linear-gradient(to right, var(--amber-bg), var(--s1) 30%)}
+.ci-tight-label{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--green);background:var(--green-bg);border:1px solid var(--green-bd);border-radius:4px;padding:1px 5px;margin-bottom:3px}
 .ci-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ci-quality{flex-shrink:0;width:60px;text-align:center}
 .ci-q-icon{font-size:18px;line-height:1}
-.ci-stars{font-size:11px;letter-spacing:1px;line-height:1;margin-top:2px}
+.ci-stars{font-size:12px;letter-spacing:2px;line-height:1;margin-top:2px;color:var(--amber)}
 .ci-q-text{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;font-weight:600}
 .ci-price-block{flex:1;min-width:120px}
 .ci-price{font-size:20px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.02em;line-height:1}

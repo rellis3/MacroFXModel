@@ -285,7 +285,7 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
   const unit     = sym === 'NAS100_USD' ? 'pts' : 'p';
   const arrowStr = approachArrow ?? '';
   const dir      = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
-  const stars    = '⭐'.repeat(entry.totalStars ?? 0);
+  const stars    = '★'.repeat(Math.min(5, entry.totalStars ?? 0));
   const rrStr    = entry.rrRatio ? `R:R 1:${entry.rrRatio}` : '';
   const slStr    = entry.sl != null ? `SL ${entry.sl.toFixed(digits)}` : '';
   const tpStr    = entry.tp != null ? `TP ${entry.tp.toFixed(digits)} (${entry.tpNote ?? ''})` : '';

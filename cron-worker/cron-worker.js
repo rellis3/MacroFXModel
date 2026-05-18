@@ -121,7 +121,7 @@ function formatAlert(sym, entry, currentPrice, distPips, meta) {
   const unit    = sym === 'NAS100_USD' ? 'pts' : 'p';
   const arrow   = meta?.approachArrow ? `${meta.approachArrow} ` : '';
   const dir     = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
-  const stars   = '⭐'.repeat(Math.min(entry.totalStars ?? 0, 9));
+  const stars   = '★'.repeat(Math.min(entry.totalStars ?? 0, 5));
   const atStr   = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
 
   const parts = [
