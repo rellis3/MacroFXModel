@@ -73,7 +73,9 @@ const PRICE_DIGITS = {
 };
 
 const DEFAULT_CFG = {
-  enabled:     false,
+  enabled:        false,
+  browserEnabled: true,  // browser tab proximity alerts (server ignores this)
+  serverEnabled:  true,  // Railway server monitoring loop on/off
   minStars:    4,
   minStrength: null, // null = any grade | 'strong' = A or A+ | 'stronger' = A+ only
   pairs:       [],
@@ -396,7 +398,7 @@ async function monitorTick() {
       }
     }
 
-    if (!state.cfg?.enabled || !state.tg?.token || !state.tg?.chatId) return;
+    if (!state.cfg?.enabled || state.cfg?.serverEnabled === false || !state.tg?.token || !state.tg?.chatId) return;
 
     const pairs       = state.cfg.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
 
@@ -701,6 +703,20 @@ app.get('/api/levels', (_req, res) => {
 });
 
 // Manual levels reload — pull latest KV data into memory immediately
+app.post('/api/telegram/test-server', async (_req, res) => {
+  if (!state.tg?.token || !state.tg?.chatId) {
+    return res.json({ ok: false, error: 'Telegram not configured on server' });
+  }
+  if (state.cfg?.serverEnabled === false) {
+    return res.json({ ok: false, error: 'Server alerts are disabled' });
+  }
+  const sent = await sendTelegram(
+    state.tg.token, state.tg.chatId,
+    '✅ <b>MacroFX Server (Railway)</b> — server-side alerts connected!',
+  );
+  res.json({ ok: sent, error: sent ? null : 'Telegram API returned error' });
+});
+
 app.post('/api/levels/reload', async (_req, res) => {
   try {
     await reloadLevels();

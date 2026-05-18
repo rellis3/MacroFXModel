@@ -26,7 +26,9 @@ const _kvEntrySyncTimes = new Map();
 
 // Default config
 const DEFAULT_CFG = {
-  enabled:     false,
+  enabled:        false,
+  browserEnabled: true,   // browser tab proximity alerts on/off
+  serverEnabled:  true,   // Railway server monitoring loop on/off
   minStars:    4,           // minimum totalStars to alert
   minStrength: null,        // null = any | 'strong' = A/A+ | 'stronger' = A+ only
   pairs:       [],          // [] = all active pairs; ['EUR/USD','XAU/USD'] = specific
@@ -102,7 +104,8 @@ export function checkAndSendAlerts() {
 
   const cfg = loadAlertCfg();
   const watchSyms = cfg.pairs?.length ? cfg.pairs : PAIRS.map(p => p.symbol);
-  let cooldowns      = cfg.enabled ? pruneCooldowns(loadCooldowns()) : null;
+  const browserActive = cfg.enabled && cfg.browserEnabled !== false;
+  let cooldowns      = browserActive ? pruneCooldowns(loadCooldowns()) : null;
   let cooldownsDirty = false;
 
   for (const sym of watchSyms) {
@@ -233,7 +236,7 @@ export function checkAndSendAlerts() {
     }
 
     // ── Browser proximity check against cached entries (fast path) ────────────
-    if (!cfg.enabled || !cached.entries?.length) continue;
+    if (!browserActive || !cached.entries?.length) continue;
 
     const pipSz    = getPipSize(sym);
     const digits   = getDigits(sym);
@@ -363,8 +366,10 @@ export function openAlertModal() {
 
   const cfg = loadAlertCfg();
 
-  document.getElementById('alertEnabled').checked      = cfg.enabled;
-  document.getElementById('alertMinStars').value       = cfg.minStars;
+  document.getElementById('alertEnabled').checked         = cfg.enabled;
+  document.getElementById('alertBrowserEnabled').checked  = cfg.browserEnabled !== false;
+  document.getElementById('alertServerEnabled').checked   = cfg.serverEnabled  !== false;
+  document.getElementById('alertMinStars').value          = cfg.minStars;
   document.getElementById('alertMinStrength').value    = cfg.minStrength ?? '';
   document.getElementById('alertCooldown').value       = cfg.cooldownMin;
   document.getElementById('alertProxDefault').value    = cfg.proxPips?.default ?? 5;
@@ -385,7 +390,9 @@ export function closeAlertModal() {
 
 export function saveAlertModal() {
   const cfg = {
-    enabled:     document.getElementById('alertEnabled').checked,
+    enabled:        document.getElementById('alertEnabled').checked,
+    browserEnabled: document.getElementById('alertBrowserEnabled').checked,
+    serverEnabled:  document.getElementById('alertServerEnabled').checked,
     minStars:    parseInt(document.getElementById('alertMinStars').value) || 4,
     minStrength: document.getElementById('alertMinStrength').value || null,
     cooldownMin: parseInt(document.getElementById('alertCooldown').value) || 60,
@@ -436,17 +443,39 @@ export async function saveTelegramCreds() {
 
 export async function sendTestAlert() {
   const statusEl = document.getElementById('alertModalStatus');
-  if (statusEl) { statusEl.textContent = 'Sending test…'; statusEl.className = 'alert-modal-status'; }
-
+  const cfg = loadAlertCfg();
+  if (!cfg.enabled || cfg.browserEnabled === false) {
+    if (statusEl) { statusEl.textContent = '— Browser alerts are off — nothing sent'; statusEl.className = 'alert-modal-status'; }
+    return;
+  }
+  if (statusEl) { statusEl.textContent = 'Sending browser test…'; statusEl.className = 'alert-modal-status'; }
   try {
     const res = await fetch('/api/telegram', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: '✅ <b>Regime Dashboard</b> — Telegram alerts connected successfully!', parseMode: 'HTML' }),
+      body: JSON.stringify({ message: '✅ <b>Regime Dashboard (browser)</b> — browser alerts connected!', parseMode: 'HTML' }),
     });
     const j = await res.json();
     if (!j.ok) throw new Error(j.error || 'Send failed');
-    if (statusEl) { statusEl.textContent = '✓ Test message sent — check Telegram'; statusEl.className = 'alert-modal-status ok'; }
+    if (statusEl) { statusEl.textContent = '✓ Browser test sent — check Telegram'; statusEl.className = 'alert-modal-status ok'; }
+  } catch(e) {
+    if (statusEl) { statusEl.textContent = '⚠ ' + e.message; statusEl.className = 'alert-modal-status err'; }
+  }
+}
+
+export async function sendTestServerAlert() {
+  const statusEl = document.getElementById('alertModalStatus');
+  const cfg = loadAlertCfg();
+  if (!cfg.enabled || cfg.serverEnabled === false) {
+    if (statusEl) { statusEl.textContent = '— Server alerts are off — nothing sent'; statusEl.className = 'alert-modal-status'; }
+    return;
+  }
+  if (statusEl) { statusEl.textContent = 'Sending server test…'; statusEl.className = 'alert-modal-status'; }
+  try {
+    const res = await fetch('/api/telegram/test-server', { method: 'POST' });
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || 'Send failed');
+    if (statusEl) { statusEl.textContent = '✓ Server test sent — check Telegram'; statusEl.className = 'alert-modal-status ok'; }
   } catch(e) {
     if (statusEl) { statusEl.textContent = '⚠ ' + e.message; statusEl.className = 'alert-modal-status err'; }
   }
@@ -478,6 +507,7 @@ export async function forceKVSync() {
   for (const p of PAIRS) {
     _kvEntrySyncTimes.set(p.symbol, 0);
   }
+  _alertsLastRun = 0; // bypass the 5s throttle so the KV writes actually fire
   try {
     await checkAndSendAlerts();
     return { ok: true };

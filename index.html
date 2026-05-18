@@ -180,7 +180,7 @@ Example:
     <div class="oi-modal-hd">
       <div>
         <div class="oi-modal-title">🔔 Telegram Level Alerts</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px">Alerts fire when price hits a confluence level matching your filters. Browser tab must be open.</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">Browser alerts fire when this tab is open. Server alerts run 24/7 on Railway.</div>
       </div>
       <button class="oi-btn" onclick="closeAlertModal()">✕ Close</button>
     </div>
@@ -205,7 +205,8 @@ Example:
       </div>
       <div style="display:flex;gap:8px">
         <button class="oi-btn oi-btn-primary" onclick="saveTelegramCreds()">Save Credentials</button>
-        <button class="oi-btn" onclick="sendTestAlert()">Send Test Message</button>
+        <button class="oi-btn" onclick="sendTestAlert()" title="Only sends if browser alerts are enabled">Test browser</button>
+        <button class="oi-btn" onclick="sendTestServerAlert()" title="Only sends if server alerts are enabled">Test server</button>
       </div>
     </div>
 
@@ -214,14 +215,22 @@ Example:
     <!-- Alert config -->
     <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:10px">Alert Filters</div>
 
-    <div class="oi-form-row" style="gap:10px;margin-bottom:10px;align-items:center">
+    <div class="oi-form-row" style="gap:16px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600">
         <input type="checkbox" id="alertEnabled" style="width:16px;height:16px;cursor:pointer">
         Alerts enabled
       </label>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="alertBrowserEnabled" style="width:14px;height:14px;cursor:pointer">
+        Browser alerts
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="alertServerEnabled" style="width:14px;height:14px;cursor:pointer">
+        Server alerts
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
         <input type="checkbox" id="alertOnlyAligned" style="width:14px;height:14px;cursor:pointer">
-        Only signal-aligned entries
+        Only signal-aligned
       </label>
     </div>
 
