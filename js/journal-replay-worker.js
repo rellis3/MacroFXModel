@@ -157,6 +157,7 @@ function handleReplay({ symbol, date, pair, levels, rrRatio, pipSize, noEod = fa
           touchTime    = hhmm(bar);
           inTrade      = true;
           touchBarIdx  = bi;
+          continue; // don't check SL/TP on the entry bar itself
         }
       }
 
