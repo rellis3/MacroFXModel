@@ -32,6 +32,63 @@ export function filterConfluences(confluences) {
   return confluences;
 }
 
+// Cross-source merge — collapses Asia + Monday levels that land within the
+// same within-source merge distance into a single averaged level.
+// Call this immediately after assembling [...asiaConfs, ...mondayConfs].
+// Halves the level count when Asia and Monday ranges overlap (very common for Gold).
+export function mergeCrossSources(confluences, symbol) {
+  if (!confluences.length) return confluences;
+
+  const pipSize = getPipSize(symbol);
+  const caps    = getCaps(symbol);
+  const bucket  = symbol.includes('XAU') ? caps.gold : symbol === 'NAS100_USD' ? caps.nas100 : caps.fx;
+  // Use same merge distance as within-source clustering in confluence-core.js
+  const mergeDist = (bucket?.confluencePips ?? 4) * (bucket?.mergeFactor ?? 0.30) * pipSize;
+
+  const sorted = [...confluences].sort((a, b) => a.price - b.price);
+  const result = [];
+  let cluster  = [sorted[0]];
+
+  for (let i = 1; i < sorted.length; i++) {
+    const centre = cluster.reduce((s, c) => s + c.price, 0) / cluster.length;
+    if (sorted[i].price - centre <= mergeDist) {
+      cluster.push(sorted[i]);
+    } else {
+      result.push(_collapseCluster(cluster));
+      cluster = [sorted[i]];
+    }
+  }
+  result.push(_collapseCluster(cluster));
+  return result;
+}
+
+function _collapseCluster(cluster) {
+  if (cluster.length === 1) return cluster[0];
+
+  const price     = cluster.reduce((s, c) => s + c.price, 0) / cluster.length;
+  const hasAsia   = cluster.some(c => c.source === 'asia');
+  const hasMonday = cluster.some(c => c.source === 'monday');
+  const density   = cluster.reduce((s, c) => s + (c.density || 1), 0);
+  const pipDiff   = Math.min(...cluster.map(c => c.pipDiff ?? Infinity));
+  const isTight   = cluster.some(c => c.isTight);
+  const todayFibs     = [...new Set(cluster.flatMap(c => c.todayFibs   ?? (c.todayFib   ? [c.todayFib]   : [])))];
+  const yesterdayFibs = [...new Set(cluster.flatMap(c => c.yesterdayFibs ?? (c.yesterdayFib ? [c.yesterdayFib] : [])))];
+
+  return {
+    ...cluster[0],
+    price,
+    isTight,
+    density,
+    pipDiff,
+    todayFibs,
+    yesterdayFibs,
+    todayFib:         todayFibs[0]     ?? cluster[0].todayFib,
+    yesterdayFib:     yesterdayFibs[0] ?? cluster[0].yesterdayFib,
+    source:           hasAsia && hasMonday ? 'cross' : (hasAsia ? 'asia' : 'monday'),
+    crossSessionMatch: hasAsia && hasMonday,
+  };
+}
+
 export function enhanceConfluences(confluences, currentPrice, bias, pivots, volRegime, macroScore) {
   const symbol = S.currentPair.symbol;
   const pipSize = getPipSize(symbol);

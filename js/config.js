@@ -55,7 +55,7 @@ export const CAP_DEFAULTS = {
   //   'midpoint' = average (current default), 'lowest' = Pine Script default, 'highest'
   // clusterMerge: true = collapse nearby pairs into one level (current default)
   //               false = Pine Script mode, one line per qualifying pair
-  confluencePriceMode: 'midpoint',
+  confluencePriceMode: 'lowest',
   clusterMerge: true,
 
   fx: {

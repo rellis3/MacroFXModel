@@ -4,7 +4,7 @@ import { TYPICAL_SPREADS, PAIRS } from './config.js';
 import { calculateTierScores, computeDollarRegime, computeMacroRegime, computeBayesianScore } from './macro.js';
 import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
 import { computeRegimeTransition, renderARMAAndTransition, computeARMAForecast } from './arma.js';
-import { filterConfluences, enhanceConfluences, detectCrossSessionClusters } from './confluences.js';
+import { filterConfluences, enhanceConfluences, detectCrossSessionClusters, mergeCrossSources } from './confluences.js';
 import { renderOISidebar } from './oi.js';
 import { loadAndRenderCompass } from './compass.js';
 import { renderSignalAndEntries } from './signal.js';
@@ -192,7 +192,7 @@ function renderAllInner() {
   const _asiaConfs   = (asia.confluences   || []).map(c => ({...c, source: 'asia'}));
   const _mondayConfs = (monday.confluences || []).map(c => ({...c, source: 'monday'}));
   detectCrossSessionClusters(_asiaConfs, _mondayConfs, S.currentPair.symbol);
-  const allConfluences = [..._asiaConfs, ..._mondayConfs];
+  const allConfluences = mergeCrossSources([..._asiaConfs, ..._mondayConfs], S.currentPair.symbol);
   const filtered = filterConfluences(allConfluences);
   const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, tierData.totalScore);
   enhanced.sort((a, b) => {
@@ -948,7 +948,7 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits, ti
     </div>
     ${approachArrow ? `<div class="ci-approach" title="Recent 5m price direction">${approachArrow}</div>` : ''}
     <div class="ci-dir ${dirClass}">${dirIcon} ${dirText}</div>
-    <div class="ci-source ${c.source}">${c.source === 'asia' ? '📍 Asia' : '🗓️ Monday'}</div>
+    <div class="ci-source ${c.source}">${c.source === 'asia' ? '📍 Asia' : c.source === 'monday' ? '🗓️ Monday' : '🔗 Asia+Mon'}</div>
     <div class="ci-distance ${isClose ? 'close' : ''}">${above ? '↑' : '↓'} ${c.distance.toFixed(0)}p</div>
     ${c.alignStatus === 'aligned'  ? '<div class="ci-aligned" title="Level direction matches macro bias">✓ Aligned</div>'
     : c.alignStatus === 'opposing' ? '<div class="ci-opposing" title="Level direction opposes macro bias — counter-trend setup">⊘ Opposing</div>'

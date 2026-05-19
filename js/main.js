@@ -4,7 +4,7 @@ import { kvSet, loadCached, cleanupStaleSessionCaches, fetchAPI, updateStatus, u
 import { TYPICAL_SPREADS } from './config.js';
 import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
 import { calculateStructuralFibs } from './structural-fibs.js';
-import { filterConfluences, enhanceConfluences } from './confluences.js';
+import { filterConfluences, enhanceConfluences, mergeCrossSources } from './confluences.js';
 import { calculateTierScores } from './macro.js';
 import { calculateVolRegime, calculatePivots } from './vol.js';
 import { loadCaps, openCfgModal, closeCfgModal, saveCaps, resetCaps } from './caps.js';
@@ -745,10 +745,10 @@ window.saveToJournal = function() {
     const monday    = S.mondayRangeData[sym] || { current: null, previous: null, confluences: [] };
     const macroBias = tierData.totalScore > 4 ? 'LONG' : tierData.totalScore < -4 ? 'SHORT' : 'NEUTRAL';
 
-    const allConfluences = [
+    const allConfluences = mergeCrossSources([
       ...(asia.confluences   || []).map(c => ({...c, source: 'asia'})),
       ...(monday.confluences || []).map(c => ({...c, source: 'monday'}))
-    ];
+    ], sym);
     // Always save all levels — strength filter is display-only in the journal
     const enhanced  = enhanceConfluences(allConfluences, quote.price, macroBias, pivots, volRegime, tierData.totalScore);
     enhanced.sort((a, b) => b.stars !== a.stars ? b.stars - a.stars : a.distance - b.distance);
@@ -902,10 +902,10 @@ window.saveAllPairsToJournal = async function() {
       const pivots    = calculatePivots();
       const macroBias = tierData.totalScore > 4 ? 'LONG' : tierData.totalScore < -4 ? 'SHORT' : 'NEUTRAL';
 
-      const allConfluences = [
+      const allConfluences = mergeCrossSources([
         ...(asia.confluences   || []).map(c => ({...c, source: 'asia'})),
         ...(monday.confluences || []).map(c => ({...c, source: 'monday'})),
-      ];
+      ], sym);
       // Always save all levels — strength filter is display-only in the journal
       const enhanced = enhanceConfluences(allConfluences, quote.price, macroBias, pivots, volRegime, tierData.totalScore);
       enhanced.sort((a, b) => b.stars !== a.stars ? b.stars - a.stars : a.distance - b.distance);

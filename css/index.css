@@ -179,6 +179,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .ci-source{flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:10px;font-family:'DM Mono',monospace;font-weight:500}
 .ci-source.asia{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
 .ci-source.monday{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd)}
+.ci-source.cross{background:rgba(20,184,166,.12);color:#2dd4bf;border:1px solid rgba(20,184,166,.35)}
 .ci-distance{flex-shrink:0;font-size:11px;color:var(--text2);font-family:'DM Mono',monospace}
 .ci-distance.close{color:var(--green);font-weight:600}
 .ci-aligned{flex-shrink:0;font-size:10px;padding:2px 7px;border-radius:8px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);font-weight:600}

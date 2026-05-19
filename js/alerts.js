@@ -9,7 +9,7 @@
 import { getPipSize, getDigits } from './utils.js';
 import { S } from './state.js';
 import { PAIRS } from './config.js';
-import { filterConfluences, enhanceConfluences } from './confluences.js';
+import { filterConfluences, enhanceConfluences, mergeCrossSources } from './confluences.js';
 import { runSignalEngine, runEntryScanner, computeSignalScore } from './signal.js';
 import { calculateVolRegime, calculatePivots } from './vol.js';
 import { calculateTierScores, compute5mKalmanDev, computeBayesianScore } from './macro.js';
@@ -118,10 +118,10 @@ export function checkAndSendAlerts() {
     const monday = S.mondayRangeData?.[sym];
     if (!asia || !monday) continue;
 
-    const allConfs = [
+    const allConfs = mergeCrossSources([
       ...(asia.confluences   || []).map(c => ({ ...c, source: 'asia'   })),
       ...(monday.confluences || []).map(c => ({ ...c, source: 'monday' })),
-    ];
+    ], sym);
     if (!allConfs.length) continue;
 
     // Refresh entry cache every 5 min — expensive computation, bars don't change faster
