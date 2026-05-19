@@ -3,7 +3,12 @@
 
 const DEFAULTS = {
   kill_switch: false,
+  mode: 'full',  // 'full' = run all modules, 'telegram' = entry criteria only
   enabled_pairs: ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD'],
+  tg_mode: {
+    min_grade:        'B',   // minimum KV entry grade to act on
+    min_signal_score: 0.55,  // minimum entry.signalScore
+  },
   modules: {
     macro_regime: true,
     vol_gate:     true,
@@ -207,6 +212,12 @@ function readForm() {
   // OI Walls
   _cfg.oi_walls = _cfg.oi_walls || {};
   _cfg.oi_walls.oi_wall_pips = num('oi_wall_pips', 15);
+
+  // Bot mode
+  _cfg.mode = radio('bot_mode', 'full');
+  _cfg.tg_mode = _cfg.tg_mode || {};
+  _cfg.tg_mode.min_grade        = str('tg_min_grade', 'B');
+  _cfg.tg_mode.min_signal_score = num('tg_min_signal', 0.55);
 }
 
 // ── _cfg → form ───────────────────────────────────────────────────────────────
@@ -275,6 +286,12 @@ function renderForm() {
 
   // OI Walls
   setVal('oi_wall_pips', _cfg.oi_walls?.oi_wall_pips ?? 15);
+
+  // Bot mode
+  setRadio('bot_mode', _cfg.mode ?? 'full');
+  setVal('tg_min_grade',  _cfg.tg_mode?.min_grade        ?? 'B');
+  setVal('tg_min_signal', _cfg.tg_mode?.min_signal_score ?? 0.55);
+  if (typeof window.toggleTgSettings === 'function') window.toggleTgSettings();
 }
 
 // ── Bot status polling ────────────────────────────────────────────────────────

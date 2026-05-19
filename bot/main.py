@@ -649,6 +649,94 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
     return pair_status
 
 
+# ── Telegram-mode evaluation (entry criteria only, no module pipeline) ────────
+
+def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: float,
+                            sl_tp_engine: SLTPEngine, paper_mode: bool,
+                            sizing_mult: float = 1.0) -> dict:
+    """
+    Enter when a KV entry matches the same criteria as the dashboard Telegram alert:
+    grade ≥ min_grade, totalStars ≥ min_stars, direction set, signalScore ≥ threshold,
+    price within ATR proximity.  All module pipeline logic is bypassed.
+    Same SL/TP engine, same risk guard, same execution path as full mode.
+    """
+    snap        = state.get('regime_snapshot') or {}
+    exec_cfg    = config.get('execution') or {}
+    tg_cfg      = config.get('tg_mode') or {}
+
+    min_stars   = resolve_min_stars(exec_cfg)
+    min_grade   = tg_cfg.get('min_grade', 'B')
+    min_signal  = tg_cfg.get('min_signal_score', 0.55)
+    pip_size    = _PIP_SIZES.get(pair, 0.0001)
+    tol_pips    = (state.get('_tol_pips') or {}).get(pair) or exec_cfg.get('prox_pips', 8)
+    tol_dist    = tol_pips * pip_size
+
+    pair_snap   = (snap.get('pairs') or {}).get(pair) or {}
+    entries     = pair_snap.get('entries') or []
+    pair_status = {'pair': pair, 'action': 'skip', 'live_price': live_price, 'reason': ''}
+
+    grade_order = {'A': 3, 'B': 2, 'C': 1}
+    candidates  = [
+        e for e in entries
+        if (e.get('totalStars') or 0) >= min_stars
+        and grade_order.get(e.get('grade') or 'C', 0) >= grade_order.get(min_grade, 2)
+        and e.get('direction') in ('long', 'short')
+        and (e.get('signalScore') or 0) >= min_signal
+        and abs((e.get('price') or 0) - live_price) <= tol_dist
+    ]
+
+    if not candidates:
+        pair_status['reason'] = (
+            f'No entry meets TG criteria '
+            f'(grade≥{min_grade} stars≥{min_stars} sig≥{min_signal} prox≤{tol_pips:.1f}p)'
+        )
+        return pair_status
+
+    # Best candidate: highest stars, then highest signalScore
+    entry       = max(candidates, key=lambda e: ((e.get('totalStars') or 0), (e.get('signalScore') or 0)))
+    direction   = entry['direction'].upper()
+    level_price = float(entry.get('price') or 0)
+    dist_pips   = abs(live_price - level_price) / pip_size
+
+    sl_tp = sl_tp_engine.calculate(
+        entry=entry, pair=pair, pair_data=pair_snap,
+        direction=entry['direction'], price=live_price,
+    )
+
+    risk_pct = (config.get('position') or {}).get('risk_pct', 1.0)
+    balance  = 10_000
+    if HAS_MT5 and not paper_mode:
+        acct    = mt5.account_info()
+        balance = acct.balance if acct else 10_000
+
+    sl_dist = abs(live_price - sl_tp.sl) if sl_tp.sl else 0
+    size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, sizing_mult) if sl_dist else 0
+
+    log.info(
+        f'  [{pair}] TG-MODE {direction} {entry.get("totalStars", 0)}★  '
+        f'grade={entry.get("grade")}  sig={entry.get("signalScore", 0):.2f}  '
+        f'level={level_price}  live={live_price}  dist={dist_pips:.1f}pips  '
+        f'SL={sl_tp.sl}  TP={sl_tp.tp}  R:R={sl_tp.rr_ratio}  lot={size}'
+    )
+
+    ticket = execute_trade(pair, direction, entry, sl_tp, size, live_price, paper_mode, config=config)
+
+    pair_status.update({
+        'action':           'trade',       'direction':       direction,
+        'score':            round(entry.get('signalScore') or 0, 2),
+        'stars':            entry.get('totalStars'),  'level':  level_price,
+        'live':             live_price,    'dist_pips':       round(dist_pips, 1),
+        'sl':               sl_tp.sl,      'tp':              sl_tp.tp,
+        'tp1':              sl_tp.tp1,     'tp1_close_pct':   sl_tp.tp1_close_pct,
+        'trailoffset_dist': sl_tp.trailoffset_dist,
+        'rr':               sl_tp.rr_ratio, 'lot':            size,
+        'executed':         bool(ticket),
+        'ticket':           ticket if isinstance(ticket, int) else None,
+        'mode':             'telegram',
+    })
+    return pair_status
+
+
 # ── Diagnostic summary ────────────────────────────────────────────────────────
 
 def log_diagnostic_summary(state: dict, live_prices: dict, config: dict, base_url: str) -> None:
@@ -936,16 +1024,24 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
             log.warning(f'RiskGuard SESSION: {session_block}')
             near_level = {}
 
+        bot_mode = config.get('mode', 'full')
+
         for pair, live_price in near_level.items():
             if trades_this_tick >= max_trades:
                 break
 
-            log.info(f'--- {pair}  live={live_price} ---')
+            log.info(f'--- {pair}  live={live_price}  mode={bot_mode} ---')
             try:
-                pair_status = evaluate_pair(
-                    cached_state, pair, config, live_price, sl_tp_engine, paper_mode,
-                    sizing_mult=risk_guard.sizing_mult,
-                )
+                if bot_mode == 'telegram':
+                    pair_status = evaluate_pair_telegram(
+                        cached_state, pair, config, live_price, sl_tp_engine, paper_mode,
+                        sizing_mult=risk_guard.sizing_mult,
+                    )
+                else:
+                    pair_status = evaluate_pair(
+                        cached_state, pair, config, live_price, sl_tp_engine, paper_mode,
+                        sizing_mult=risk_guard.sizing_mult,
+                    )
             except Exception as exc:
                 log.error(f'evaluate_pair [{pair}]: {exc}', exc_info=True)
                 pair_status = {'pair': pair, 'action': 'error', 'reason': str(exc)}
@@ -978,6 +1074,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                 'pairs_blocked':     blocked_pairs,
                 'mgmt_actions':      mgmt_actions,
                 'open_positions':    len(position_meta),
+                'mode':              config.get('mode', 'full'),
                 'tier':              exec_cfg.get('tier', 'balanced'),
                 'min_stars':         resolve_min_stars(exec_cfg),
                 'bardir':            exec_cfg.get('bardir', 'auto'),

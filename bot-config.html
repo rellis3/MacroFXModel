@@ -207,6 +207,37 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     </div>
   </div>
 
+  <!-- Bot Mode -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Bot Mode</div>
+    <div class="radio-group" style="flex-direction:column;gap:10px;margin-bottom:4px">
+      <label style="align-items:flex-start;gap:8px">
+        <input type="radio" name="bot_mode" value="full" onchange="toggleTgSettings()" style="margin-top:3px">
+        <span><span style="font-weight:600;font-size:12.5px;color:var(--text)">Full Pipeline</span><br>
+        <span style="font-size:11px;color:var(--text3)">All modules run: vol gate → macro regime → confluence → OI walls → COT → news</span></span>
+      </label>
+      <label style="align-items:flex-start;gap:8px">
+        <input type="radio" name="bot_mode" value="telegram" onchange="toggleTgSettings()" style="margin-top:3px">
+        <span><span style="font-weight:600;font-size:12.5px;color:var(--text)">Telegram Mode</span><br>
+        <span style="font-size:11px;color:var(--text3)">Enter when a KV entry passes grade + stars + signal score — same logic as Telegram alerts, no module pipeline</span></span>
+      </label>
+    </div>
+    <div id="tgSettings" style="display:none;border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+      <div class="form-row">
+        <span class="form-lbl">Min grade <small>minimum entry.grade from KV snapshot</small></span>
+        <select id="tg_min_grade">
+          <option value="A">A (highest conviction)</option>
+          <option value="B">B (default)</option>
+          <option value="C">C (any grade)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Min signal score <small>entry.signalScore 0–1 threshold</small></span>
+        <input type="number" id="tg_min_signal" min="0" max="1" step="0.05">
+      </div>
+    </div>
+  </div>
+
   <!-- Process flow diagram -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title" style="cursor:pointer;user-select:none" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.ftoggle').textContent=this.nextElementSibling.style.display==='none'?'▼ show':'▲ hide'">
@@ -512,6 +543,13 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 </div>
 
 <script>
+function toggleTgSettings() {
+  const mode = document.querySelector('input[name="bot_mode"]:checked')?.value;
+  const el   = document.getElementById('tgSettings');
+  if (el) el.style.display = mode === 'telegram' ? 'block' : 'none';
+}
+window.toggleTgSettings = toggleTgSettings;
+
 const HELP = {
   mod_vol_gate:    { t:'Vol Gate', b:'Blocks ALL new entries when VIX is in the HIGH volatility regime (>20). Prevents entering during panic or spike conditions when spreads are wide and stops can be run easily.', e:'VIX spikes to 28 after Fed announcement → no entries placed. Once VIX falls back below 20 the gate reopens.' },
   mod_macro_regime:{ t:'Macro Regime', b:'Requires the dashboard macro signal score and 30-min Break of Structure direction to align with the trade direction. Stops trading against the prevailing macro trend.', e:'Dashboard shows bearish bias 55% + 30m BOS bearish → longs are blocked, only short setups evaluated.' },
