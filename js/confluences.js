@@ -226,7 +226,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
 
     // Fix 8: track structural stars (level quality) separately from alignment stars
     let structuralStars = 1;
-    if (c.isTight)                 structuralStars++;
+    if (c.isTight)                 structuralStars += 4;
     if (pivotMatch)                structuralStars++;
     if (oiMatch)                   structuralStars++;
     if (nearDailyOpen)             structuralStars++;
@@ -295,10 +295,31 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     const sizeAdj = aligned ? 1 : 0.5;
     const finalSize = Math.round(baseSize * sizeAdj);
 
-    const stopDist = volRegime.stopDist || atr * 1.0;
+    // Structural SL — nearest confluence on adverse side, hard-capped at slMaxAtrMult × ATR.
+    // This replaces the old daily-ATR stop which was far too wide for intraday level entries.
+    const _slMaxAtrMult = (S._caps || {}).slMaxAtrMult ?? 0.5;
+    const _maxSlDist    = atr * _slMaxAtrMult;
+    const _slBuffer     = pipSize * 2; // buffer just beyond the adverse level
+
+    let slDist;
+    if (direction === 'long') {
+      const adverse = [...sortedByPrice].reverse().find(o => o !== c && o.price < c.price - pipSize * 0.5);
+      slDist = adverse
+        ? Math.min((c.price - adverse.price) + _slBuffer, _maxSlDist)
+        : _maxSlDist;
+    } else if (direction === 'short') {
+      const adverse = sortedByPrice.find(o => o !== c && o.price > c.price + pipSize * 0.5);
+      slDist = adverse
+        ? Math.min((adverse.price - c.price) + _slBuffer, _maxSlDist)
+        : _maxSlDist;
+    } else {
+      slDist = _maxSlDist;
+    }
+    // Noise floor: never tighter than 5% of daily ATR
+    slDist = Math.max(slDist, atr * 0.05);
 
     // ATR-based SL using 30m bars × user-configured multiplier
-    let slAtrDist = stopDist; // safe fallback — same as primary SL
+    let slAtrDist = atr * 1.0; // fallback: 1× daily ATR
     try {
       const _rbOpts    = (() => { try { return JSON.parse(localStorage.getItem('range_bias_opts') || '{}'); } catch(e) { return {}; } })();
       const _slAtrMult = _rbOpts.slAtrMult ?? 1.5;
@@ -325,7 +346,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
 
     if (direction === 'long') {
       const nextConf = sortedByPrice.find(other =>
-        other.price > c.price + stopDist * 0.5 && other !== c
+        other.price > c.price + slDist * 0.5 && other !== c
       );
       if (nextConf) {
         const confDist = nextConf.price - c.price;
@@ -337,7 +358,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       }
     } else if (direction === 'short') {
       const nextConf = [...sortedByPrice].reverse().find(other =>
-        other.price < c.price - stopDist * 0.5 && other !== c
+        other.price < c.price - slDist * 0.5 && other !== c
       );
       if (nextConf) {
         const confDist = c.price - nextConf.price;
@@ -353,21 +374,21 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       // Use 2.2R for session-sourced confluences (Asia/Monday) — validated in backtest.
       const isSessionLevel = (c.source === 'asia' || c.source === 'monday');
       const targetMult = isSessionLevel ? 2.2 : (volRegime.tpMult || 1.5);
-      const tpRaw = stopDist * targetMult;
+      const tpRaw = slDist * targetMult;
       tpDist  = Math.min(tpRaw, tpCap);
       tpCapped = tpDist < tpRaw;
       tpSource = tpCapped ? 'Vol cap' : (isSessionLevel ? '2.2R' : 'ATR');
       tp = direction === 'long' ? c.price + tpDist : c.price - tpDist;
     }
 
-    const rrRaw  = stopDist > 0 && tpDist != null ? (tpDist / stopDist) : 0;
+    const rrRaw  = slDist > 0 && tpDist != null ? (tpDist / slDist) : 0;
     const poorRR = rrRaw < 1.0;
 
     // TP path risk — warn if a structural fib sits between entry and TP.
-    // Buffer of 15% of stopDist on each end avoids flagging levels right at entry or TP.
+    // Buffer of 15% of slDist on each end avoids flagging levels right at entry or TP.
     let tpFibRisk = null;
     if (direction && tp != null && _structLevels.length > 0) {
-      const buf = stopDist * 0.15;
+      const buf = slDist * 0.15;
       const inPath = _structLevels.filter(sf =>
         direction === 'long'
           ? sf.price > c.price + buf && sf.price < tp - buf
@@ -403,14 +424,14 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       structuralStars,    // Fix 8: level quality stars (isTight, pivots, OI, fib clusters)
       confirmationStars,  // Fix 8: directional alignment stars
       size: finalSize,
-      sl: direction === 'long'  ? c.price - stopDist :
-          direction === 'short' ? c.price + stopDist : null,
+      sl: direction === 'long'  ? c.price - slDist :
+          direction === 'short' ? c.price + slDist : null,
       slAtr: direction === 'long'  ? c.price - slAtrDist :
              direction === 'short' ? c.price + slAtrDist : null,
       slAtrPips: slAtrDist / pipSize,
       tp,
       tpSource,
-      stopPips:  stopDist / pipSize,
+      stopPips:  slDist / pipSize,
       tpPips:    tpDist != null ? tpDist / pipSize : 0,
       tpCapped,
       poorRR,

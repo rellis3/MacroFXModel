@@ -117,6 +117,7 @@ function populateCfgForm(caps) {
   if (modeEl) modeEl.value = caps.confluencePriceMode ?? 'midpoint';
   const mergeEl = document.getElementById('conf_clusterMerge');
   if (mergeEl) mergeEl.value = String(caps.clusterMerge ?? true);
+  fill('conf_slMaxAtrMult', caps.slMaxAtrMult ?? 0.5);
 }
 
 function readCfgForm() {
@@ -125,6 +126,7 @@ function readCfgForm() {
   return {
     confluencePriceMode: str('conf_priceMode')    ?? 'midpoint',
     clusterMerge:        str('conf_clusterMerge') !== 'false',
+    slMaxAtrMult:        parseFloat(document.getElementById('conf_slMaxAtrMult')?.value) || 0.5,
     fx: {
       confluencePips: num('fx_confluencePips'),
       mergeFactor:    num('fx_mergeFactor'),

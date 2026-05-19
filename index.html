@@ -395,6 +395,11 @@ Example:
             </select>
             <div class="cfg-hint">On: nearby Fib pairs within the merge radius are averaged into a single level. Off: every qualifying pair gets its own line, matching the Pine Script indicator exactly.</div>
           </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Max SL ATR multiplier</span><span class="cfg-label-type">× daily ATR</span></div>
+            <input class="cfg-input" id="conf_slMaxAtrMult" type="number" min="0.1" max="3" step="0.05">
+            <div class="cfg-hint">Caps the structural stop loss at this multiple of the daily ATR. The SL is placed just beyond the nearest adverse confluence level — this prevents runaway stops when levels are far apart. Default 0.5 (half the daily range). Lower = tighter max, higher = allows wider stops.</div>
+          </div>
         </div>
         <div class="cfg-mode-note">
           <strong>To match the Pine Script indicator exactly:</strong> set <code>Price selection → Lowest</code> and <code>Cluster merge → Off</code>, then hit Save to KV. All consumers — dashboard, backtest, and Telegram alerts — update immediately.<br><br>
