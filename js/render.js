@@ -14,6 +14,13 @@ import { sessionBadgeHTML } from './session.js';
 import { eventRiskBadgeHTML, surpriseIndexHTML, getPairSurpriseScore } from './events.js';
 import { buildMarketNarrative } from './market-narrative.js';
 
+let _confSortMode = (() => { try { return localStorage.getItem('conf_sort_mode') || 'stars'; } catch(e) { return 'stars'; } })();
+window.setConfSortMode = (mode) => {
+  _confSortMode = mode;
+  try { localStorage.setItem('conf_sort_mode', mode); } catch(e) {}
+  window.renderAll?.();
+};
+
 export function renderAll() {
   try {
     return renderAllInner();
@@ -652,8 +659,14 @@ ${calendarCtx.warnings.length > 0 ? `
       <div class="lg-item">📍 Asia · 🗓️ Monday</div>
     </div>
 
+    <div class="conf-sort-bar">
+      ${['stars','price','proximity'].map(m => `<button
+        class="conf-sort-btn${_confSortMode === m ? ' active' : ''}"
+        onclick="window.setConfSortMode('${m}')">${m === 'stars' ? '★ Stars' : m === 'price' ? '$ Price' : '📍 Proximity'}</button>`).join('')}
+    </div>
+
     <div class="card">
-      ${enhanced.length > 0 ? renderConfluences(enhanced, quote.price, pipSize, digits, tierData, approachArrow) :
+      ${enhanced.length > 0 ? renderConfluences(sortConfluences(enhanced, _confSortMode), quote.price, pipSize, digits, tierData, approachArrow) :
         `<div class="empty-state">
           <div class="em-icon">🎯</div>
           <div>No confluences detected for this session.</div>
@@ -901,6 +914,14 @@ ${calendarCtx.warnings.length > 0 ? `
   loadAndRenderCompass();
   renderARMAAndTransition(S.compassData[S.currentPair.symbol] || null);
   renderSignalAndEntries(enhanced, pivots, asia, monday, quote, volRegime, otcForecast);
+}
+
+function sortConfluences(confs, mode) {
+  const c = [...confs];
+  if (mode === 'price')     return c.sort((a, b) => a.price - b.price);
+  if (mode === 'proximity') return c.sort((a, b) => a.distance - b.distance);
+  // default: stars desc, then distance asc
+  return c.sort((a, b) => b.stars !== a.stars ? b.stars - a.stars : a.distance - b.distance);
 }
 
 export function renderConfluences(confluences, currentPrice, pipSize, digits, tierData, approachArrow) {

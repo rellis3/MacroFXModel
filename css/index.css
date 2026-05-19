@@ -157,6 +157,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 /* CONFLUENCE LIST */
 .conf-list{display:flex;flex-direction:column;gap:8px}
 .conf-item{background:var(--s1);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;transition:all .15s}
+.conf-sort-bar{display:flex;gap:6px;margin-bottom:8px}
+.conf-sort-btn{flex:1;padding:5px 0;font-size:11px;font-weight:600;font-family:'DM Mono',monospace;border-radius:6px;border:1px solid var(--border);background:var(--s2);color:var(--text2);cursor:pointer;transition:all .15s}
+.conf-sort-btn:hover{background:var(--s3);color:var(--text1)}
+.conf-sort-btn.active{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)}
 .conf-item:hover{border-color:var(--border2);transform:translateY(-1px)}
 .conf-item.tight{border-color:var(--green);border-width:2px;background:linear-gradient(to right, var(--green-bg), var(--s1) 40%);box-shadow:0 0 0 1px rgba(34,197,94,.12)}
 .conf-item.normal{border-color:rgba(180,83,9,0.4);background:linear-gradient(to right, var(--amber-bg), var(--s1) 30%)}
