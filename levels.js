@@ -113,7 +113,10 @@ function oandaBase() {
 async function fetchOandaBars(sym, granularity, count) {
   const instrument = sym.replace('/', '_');
   const url = `${oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles?count=${count}&granularity=${granularity}&price=M`;
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` } });
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+    signal: AbortSignal.timeout(20_000),
+  });
   if (!r.ok) throw new Error(`OANDA ${sym} ${granularity}: ${r.status}`);
   const d = await r.json();
   return convertBars(d.candles || []);

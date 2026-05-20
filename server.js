@@ -82,7 +82,8 @@ const DEFAULT_CFG = {
   enabled:        false,
   browserEnabled: true,  // browser tab proximity alerts (server ignores this)
   serverEnabled:  true,  // Railway server monitoring loop on/off
-  minStars:    4,
+  minStars:       4,     // min stars for browser-computed entries
+  serverMinStars: 2,     // min stars for server-computed entries (server levels top out at 2-3★)
   minStrength: null, // null = any grade | 'strong' = A or A+ | 'stronger' = A+ only
   pairs:       [],
   proxPips:    { default: 5, 'XAU/USD': 15, 'NAS100_USD': 30 },
@@ -116,8 +117,9 @@ const state = {
   runningAt:           0,    // timestamp when state.running was set — for watchdog
   cfgLoadedAt:         0,
   levelsLoadedAt:      0,
-  levelsRefreshAt:     0,    // last time refreshAllPairs() completed
+  levelsRefreshAt:      0,    // last time refreshAllPairs() completed
   levelsRefreshRunning: false,
+  levelsRefreshStartedAt: 0, // monotonic ms when current refresh began (for watchdog)
   lastSummaryAt:       0,    // last time per-pair monitor summary was logged
   skipCounts:          {},   // { 'EUR/USD': { stars, score, prox, cooldown } } — last tick counts
 };
@@ -420,17 +422,18 @@ async function monitorTick() {
     // Reload Telegram + alert config from KV every 60 s
     if (now - state.cfgLoadedAt > 60_000) await reloadConfig();
 
-    // Daily levels load — once at 06:05 London (Asia close + 5 min buffer)
-    // Manual reload available via POST /api/levels/reload
+    // Daily levels refresh — once at 06:05 London (Asia close + 5 min buffer).
+    // Triggers a full OANDA recompute so the fresh Asia session is captured immediately.
+    // The 30-min runLevelsRefresh() loop also handles this but may be up to 30 min late.
     {
       const todayLdn = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
       if (state.levelsLoadedDate !== todayLdn) {
         const ldn = new Date().toLocaleString('en-US', { timeZone: 'Europe/London', hour12: false, hour: '2-digit', minute: '2-digit' });
         const [lh, lm] = ldn.split(':').map(Number);
-        if (lh === 6 && lm >= 5 && lm <= 9) {
-          await reloadLevels();
+        if (lh === 6 && lm >= 5) {
           state.levelsLoadedDate = todayLdn;
-          console.log(`[LEVELS] Daily load at 06:05 London — ${todayLdn}`);
+          console.log(`[LEVELS] Daily refresh triggered at ${lh}:${String(lm).padStart(2,'0')} London — ${todayLdn}`);
+          runLevelsRefresh().catch(e => console.error('[LEVELS] Daily refresh error:', e.message));
         }
       }
     }
@@ -463,11 +466,17 @@ async function monitorTick() {
 
       let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0, skipScore = 0, skipAligned = 0;
 
+      // Server-computed entries top out at 2-3★; use a separate (lower) threshold for them
+      const isServerBucket = bucket.source === 'server';
+      const effectiveMinStars = isServerBucket
+        ? (state.cfg.serverMinStars ?? 2)
+        : (state.cfg.minStars       ?? 4);
+
       // Sort entries by signalScore desc so highest quality alerts fire first
       const sortedEntries = [...bucket.data].sort((a, b) => (b.signalScore ?? -1) - (a.signalScore ?? -1));
 
       for (const entry of sortedEntries) {
-        if ((entry.totalStars ?? 0) < (state.cfg.minStars ?? 4))                               { skipStars++;   continue; }
+        if ((entry.totalStars ?? 0) < effectiveMinStars)                                       { skipStars++;   continue; }
 
         // Polarity flip — override direction when level was broken and price has returned
         // with regime confirming the new direction. Uses cached M1 bars from HMM refresh.
@@ -518,12 +527,20 @@ async function monitorTick() {
       if (doSummary && bucket.data.length > 0) {
         const maxStars = Math.max(...bucket.data.map(e => e.totalStars ?? 0));
         const maxScore = Math.max(...bucket.data.map(e => e.signalScore ?? 0));
-        summaryLines.push(`${sym}: ${bucket.data.length} entries max=${maxStars}★ score=${maxScore}% skip=${skipStars}⭐/${skipScore}score/${skipDir}dir/${skipAligned}align/${skipProx}prox/${skipCooldown}cd`);
+        const srcTag   = isServerBucket ? `srv(≥${effectiveMinStars}★)` : `browser(≥${effectiveMinStars}★)`;
+        summaryLines.push(`${sym}[${srcTag}]: ${bucket.data.length} entries max=${maxStars}★ score=${maxScore}% skip=${skipStars}⭐/${skipScore}score/${skipDir}dir/${skipAligned}align/${skipProx}prox/${skipCooldown}cd`);
       }
     }
 
     if (doSummary && summaryLines.length) {
       console.log('[MONITOR]', summaryLines.join(' | '));
+      state.lastSummaryAt = now;
+    } else if (doSummary) {
+      const cfgSummary = state.cfg
+        ? `enabled=${state.cfg.enabled} server=${state.cfg.serverEnabled !== false} minStars=${state.cfg.minStars} minStrength=${state.cfg.minStrength ?? 'any'}`
+        : 'cfg=null';
+      const tgOk = !!(state.tg?.token && state.tg?.chatId);
+      console.log(`[MONITOR] No monitored pairs with levels. ${cfgSummary} tg=${tgOk} levels=${Object.values(state.levels).filter(b => b?.data?.length).length}/${DEFAULT_PAIRS.length}`);
       state.lastSummaryAt = now;
     }
 
@@ -714,8 +731,9 @@ app.get('/api/monitor/status', (_req, res) => {
     running:             state.running,
     runningAgeS:         state.running ? Math.round((Date.now() - state.runningAt) / 1000) : null,
     telegramOK:          !!(state.tg?.token && state.tg?.chatId),
-    levelsRefreshAt:     state.levelsRefreshAt ? new Date(state.levelsRefreshAt).toISOString() : null,
-    levelsRefreshRunning:state.levelsRefreshRunning,
+    levelsRefreshAt:       state.levelsRefreshAt ? new Date(state.levelsRefreshAt).toISOString() : null,
+    levelsRefreshRunning:  state.levelsRefreshRunning,
+    levelsRefreshAgeS:     state.levelsRefreshRunning ? Math.round((Date.now() - state.levelsRefreshStartedAt) / 1_000) : null,
     levelCounts:         Object.fromEntries(DEFAULT_PAIRS.map(p => [p, state.levels[p]?.data?.length ?? 0])),
     lastPrices:          Object.fromEntries(
       Object.entries(state.prices).map(([p, v]) => [p, {
@@ -764,11 +782,25 @@ app.post('/api/telegram/test-server', async (_req, res) => {
   res.json({ ok: sent, error: sent ? null : 'Telegram API returned error' });
 });
 
-app.post('/api/levels/reload', async (_req, res) => {
+// Full recompute from OANDA — fires runLevelsRefresh() async, returns immediately.
+// This is what the dashboard "Reload Levels" button calls.
+app.post('/api/levels/reload', (req, res) => {
+  if (state.levelsRefreshRunning) {
+    const ageS = Math.round((Date.now() - state.levelsRefreshStartedAt) / 1_000);
+    return res.json({ ok: false, running: true, message: `Refresh already in progress (${ageS}s)` });
+  }
+  console.log('[LEVELS] Manual full refresh triggered via /api/levels/reload');
+  runLevelsRefresh().catch(e => console.error('[LEVELS] Manual refresh error:', e.message));
+  res.json({ ok: true, message: 'Level refresh started — takes ~30s for all pairs', running: true });
+});
+
+// Lightweight reload — re-reads KV into memory without hitting OANDA.
+// Useful after the browser has pushed new entries to KV.
+app.post('/api/levels/reload-kv', async (_req, res) => {
   try {
     await reloadLevels();
     const counts = Object.fromEntries(DEFAULT_PAIRS.map(p => [p, state.levels[p]?.data?.length ?? 0]));
-    console.log('[LEVELS] Manual reload triggered');
+    console.log('[LEVELS] KV reload triggered');
     res.json({ ok: true, loadedAt: new Date(state.levelsLoadedAt).toISOString(), counts });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1038,8 +1070,14 @@ app.get('*', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 // ── Level refresh loop ────────────────────────────────────────────────────────
 
 async function runLevelsRefresh() {
+  // Watchdog: if a previous refresh has been running for >5 min, force-release the lock
+  if (state.levelsRefreshRunning && Date.now() - state.levelsRefreshStartedAt > 5 * 60_000) {
+    console.warn('[LEVELS] Watchdog: releasing stuck refresh lock (hung >5 min)');
+    state.levelsRefreshRunning = false;
+  }
   if (state.levelsRefreshRunning || !process.env.OANDA_KEY) return;
   state.levelsRefreshRunning = true;
+  state.levelsRefreshStartedAt = Date.now();
   try {
     const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
     await refreshAllPairs(pairs);

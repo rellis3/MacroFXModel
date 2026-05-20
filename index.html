@@ -350,7 +350,8 @@ Example:
     base + '/api/levels              — all loaded levels with stars & grade',
     base + '/api/monitor/status      — bot status, level counts, last alert',
     base + '/api/hmm/regimes         — HMM regime state per pair',
-    'curl -X POST ' + base + '/api/levels/reload   — pull latest KV levels into bot now',
+    'curl -X POST ' + base + '/api/levels/reload    — full recompute from OANDA (async, ~30s)',
+    'curl -X POST ' + base + '/api/levels/reload-kv — fast: re-read KV into memory only',
     '',
   ];
   cmds.forEach(function(cmd, i) {

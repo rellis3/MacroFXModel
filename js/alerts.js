@@ -29,7 +29,8 @@ const DEFAULT_CFG = {
   enabled:        false,
   browserEnabled: true,   // browser tab proximity alerts on/off
   serverEnabled:  true,   // Railway server monitoring loop on/off
-  minStars:    4,           // minimum totalStars to alert
+  minStars:       4,      // minimum totalStars for browser-computed entries
+  serverMinStars: 2,      // minimum totalStars for server-computed entries (server tops out at 2-3★)
   minStrength: null,        // null = any | 'strong' = A/A+ | 'stronger' = A+ only
   pairs:       [],          // [] = all active pairs; ['EUR/USD','XAU/USD'] = specific
   proxPips:    {            // pips from level to trigger alert

@@ -86,9 +86,9 @@ window._reloadLevels = async function() {
     const r = await fetch('/api/levels/reload', { method: 'POST' });
     const j = await r.json();
     if (j.ok) {
-      if (lbl) lbl.textContent = `✓ Reloaded at ${new Date(j.loadedAt).toLocaleTimeString()}`;
+      if (lbl) lbl.textContent = `✓ ${j.message ?? 'Refresh started'}`;
     } else {
-      if (lbl) lbl.textContent = `✗ ${j.error ?? 'failed'}`;
+      if (lbl) lbl.textContent = `✗ ${j.message ?? j.error ?? 'failed'}`;
     }
   } catch (e) {
     if (lbl) lbl.textContent = `✗ ${e.message}`;
