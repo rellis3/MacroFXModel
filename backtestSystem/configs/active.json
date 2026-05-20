@@ -1,0 +1,125 @@
+{
+  "slMode": "atr30m",
+  "slFraction": 0.35,
+  "slMult": 1.5,
+  "minSlPips": 5,
+  "tpMode": "structural",
+  "rrRatio": 2.2,
+  "tpBuf": 1,
+  "tpAtrFallback": 2.2,
+  "tpVolLo": 2,
+  "tpVolMed": 3,
+  "tpVolHi": 5,
+  "reEnterTp": true,
+  "flipOnSL": true,
+  "minConviction": 0.2,
+  "minConfirms": 3,
+  "entryProximityATR": 0.3,
+  "warmupDays": 50,
+  "atrPeriod": 25,
+  "spread": 0.8,
+  "slippage": 0.3,
+  "commission": 10,
+  "posMode": "fixed",
+  "fixedSize": 10,
+  "riskPct": 1,
+  "killDaily": 2,
+  "killWeekly": 5,
+  "killMonthly": 10,
+  "startDate": "2020-01-01",
+  "endDate": "2025-12-31",
+  "method": "both",
+  "signalFilter": "all_conf",
+  "confTolPips": 2,
+  "tightPct": 50,
+  "entryWindow": 800,
+  "levelReentry": 99,
+  "candleConfirmN": 2,
+  "candleConfirmPct": 0.6,
+  "requireSweep": true,
+  "sweepPips": 1,
+  "secondTouchOnly": false,
+  "useM1Features": false,
+  "rejectionBar": false,
+  "rejWickPct": 0.4,
+  "rejMinAtrPct": 0.3,
+  "enabledFibs": [
+    1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 0, 0.25, 0.5, 0.75, 1, -0.25, -0.5, -0.75, -1,
+    -1.5, -2, -3, -4
+  ],
+  "features": {
+    "rangePosition": {
+      "enabled": true,
+      "weight": 1,
+      "label": "Range Position"
+    },
+    "chochBos": {
+      "enabled": true,
+      "weight": 2,
+      "label": "CHoCH / BOS"
+    },
+    "wickRejection": {
+      "enabled": true,
+      "weight": 1,
+      "label": "Wick Rejection"
+    },
+    "rsiDivergence": {
+      "enabled": false,
+      "weight": 1,
+      "label": "RSI Divergence"
+    },
+    "orderBlock": {
+      "enabled": true,
+      "weight": 1,
+      "label": "Order Block"
+    },
+    "htfEma": {
+      "enabled": true,
+      "weight": 1,
+      "label": "HTF EMA 21/50"
+    },
+    "vwapSlope": {
+      "enabled": true,
+      "weight": 1,
+      "label": "TWAP Slope"
+    },
+    "adxFilter": {
+      "enabled": false,
+      "weight": 1,
+      "label": "ADX Filter"
+    },
+    "hurstRegime": {
+      "enabled": true,
+      "weight": 1,
+      "label": "Hurst Regime"
+    },
+    "fvgBias": {
+      "enabled": true,
+      "weight": 1,
+      "label": "FVG Bias"
+    },
+    "weeklyPivot": {
+      "enabled": false,
+      "weight": 1,
+      "label": "Weekly Pivot"
+    },
+    "ichimokuCloud": {
+      "enabled": true,
+      "weight": 1,
+      "label": "Ichimoku Cloud"
+    },
+    "macdSignal": {
+      "enabled": true,
+      "weight": 1,
+      "label": "MACD (12/26/9)"
+    },
+    "zScore": {
+      "enabled": false,
+      "weight": 1,
+      "label": "Z-Score",
+      "length": 20,
+      "zLong": -2,
+      "zShort": 2
+    }
+  }
+}

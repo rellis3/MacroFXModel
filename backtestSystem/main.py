@@ -1,7 +1,7 @@
 """
 backtestSystem/main.py — MT5 trading loop.
 Completely separate from the main bot; no KV / Railway dependency.
-Reads configs/active.json, connects to MT5, polls every 60 s.
+Reads configs/active.json, connects to MT5, polls every pollInterval seconds (default 60).
 """
 
 import logging
@@ -36,7 +36,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-POLL_INTERVAL = 60  # seconds between pair scans
+_DEFAULT_POLL = 60  # fallback if not in config
 
 
 # ── KV credential fetch ───────────────────────────────────────────────────────
@@ -225,11 +225,12 @@ def main() -> None:
         log.error('MT5 connection failed — check .env and MT5 terminal')
         sys.exit(1)
 
-    pairs = cfg.get('enabledPairs', [])
-    kill  = KillSwitch(cfg)
+    pairs        = cfg.get('enabledPairs', [])
+    kill         = KillSwitch(cfg)
+    poll_interval = int(cfg.get('pollInterval', _DEFAULT_POLL))
 
     log.info('=== backtestSystem started ===')
-    log.info(f'Pairs: {pairs}')
+    log.info(f'Pairs: {pairs}  poll={poll_interval}s')
     log.info(f'Method: {cfg.get("method")}  SL: {cfg.get("slMode")}  TP: {cfg.get("tpMode")}  RR: {cfg.get("rrRatio")}')
     log.info(f'Kill: D={cfg.get("killDaily")}R  W={cfg.get("killWeekly")}R  M={cfg.get("killMonthly")}R')
     enabled_features = [k for k, v in cfg.get('features', {}).items() if v.get('enabled')]
@@ -249,7 +250,7 @@ def main() -> None:
                 log.info(f'--- New day {today_date} ---  {kill.summary()}')
 
             if not within_trade_window(cfg):
-                time.sleep(POLL_INTERVAL)
+                time.sleep(poll_interval)
                 continue
 
             for pair in pairs:
@@ -264,7 +265,7 @@ def main() -> None:
         except Exception as exc:
             log.exception(f'Main loop: {exc}')
 
-        time.sleep(POLL_INTERVAL)
+        time.sleep(poll_interval)
 
 
 if __name__ == '__main__':

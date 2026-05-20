@@ -57,6 +57,9 @@ DEFAULTS = {
     "killWeekly":        5.0,
     "killMonthly":       10.0,
 
+    # Poll interval
+    "pollInterval":      60,             # seconds between price checks
+
     # Position sizing
     "posMode":           "risk_pct",
     "fixedSize":         10,              # £/pip in fixed mode

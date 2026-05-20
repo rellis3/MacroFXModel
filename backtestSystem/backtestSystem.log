@@ -1,0 +1,7 @@
+09:16:48  INFO     MT5 connected  account=107132286  balance=100000.00 GBP  server=MetaQuotes-Demo
+09:16:48  INFO     === backtestSystem started ===
+09:16:48  INFO     Pairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD']
+09:16:48  INFO     Method: both  SL: atr30m  TP: structural  RR: 2.2
+09:16:48  INFO     Kill: D=2R  W=5R  M=10R
+09:16:48  INFO     Features (10): rangePosition, chochBos, wickRejection, orderBlock, htfEma, vwapSlope, hurstRegime, fvgBias, ichimokuCloud, macdSignal
+09:16:48  INFO     --- New day 2026-05-20 ---  R daily=+0.00  weekly=+0.00  monthly=+0.00  limits=D2/W5/M10
