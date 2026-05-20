@@ -535,6 +535,15 @@ def execute_trade(pair: str, direction: str, entry: dict,
     order_type = mt5.ORDER_TYPE_BUY if direction == 'LONG' else mt5.ORDER_TYPE_SELL
     exec_price = tick.ask if direction == 'LONG' else tick.bid
 
+    # Auto-detect supported filling mode — bitmask: 1=FOK, 2=IOC, 4=Return
+    info         = mt5.symbol_info(mt5_sym)
+    filling_mode = mt5.ORDER_FILLING_IOC  # safe fallback
+    if info:
+        allowed = info.filling_mode
+        if   allowed & 1: filling_mode = mt5.ORDER_FILLING_FOK
+        elif allowed & 2: filling_mode = mt5.ORDER_FILLING_IOC
+        elif allowed & 4: filling_mode = mt5.ORDER_FILLING_RETURN
+
     res = mt5.order_send({
         'action':       mt5.TRADE_ACTION_DEAL,
         'symbol':       mt5_sym,
@@ -547,8 +556,12 @@ def execute_trade(pair: str, direction: str, entry: dict,
         'magic':        20260001,
         'comment':      f'MacroFX {direction[0]} {entry.get("totalStars", 0)}★',
         'type_time':    mt5.ORDER_TIME_GTC,
-        'type_filling': mt5.ORDER_FILLING_IOC,
+        'type_filling': filling_mode,
     })
+
+    if res is None:
+        log.error(f'MT5 order_send returned None for {mt5_sym} — {mt5.last_error()}')
+        return False
 
     if res.retcode != mt5.TRADE_RETCODE_DONE:
         log.error(f'MT5 order failed: retcode={res.retcode}  {res.comment}')
