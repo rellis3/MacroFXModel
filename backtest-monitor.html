@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backtest Bot Monitor — MacroFX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg:#f4f6fb; --s1:#fff; --s2:#f0f3f8; --s3:#e8edf6;
+  --border:#dde3ed; --border2:#c5cedd;
+  --text:#0d1520; --text2:#4b5a6e; --text3:#8fa0b8;
+  --green:#0a8a5c; --green-bg:#edfaf4; --green-bd:#a3e6ca;
+  --red:#c8222a;   --red-bg:#fff1f1;   --red-bd:#f5b8b8;
+  --amber:#b45309; --amber-bg:#fffbeb; --amber-bd:#fde68a;
+  --blue:#1d4ed8;  --blue-bg:#eff6ff;  --blue-bd:#bfdbfe;
+  --rl:10px;
+}
+body.dark {
+  --bg:#0f1117; --s1:#1a1d27; --s2:#22263a; --s3:#2a2f45;
+  --border:#2e3347; --border2:#3d4460;
+  --text:#e8eaf2; --text2:#9ba3bf; --text3:#5a6380;
+  --green:#10b981; --green-bg:#0d2b22; --green-bd:#1a4a38;
+  --red:#f87171;   --red-bg:#2b1a1a;   --red-bd:#4a2828;
+  --amber:#fbbf24; --amber-bg:#292100; --amber-bd:#78610a;
+  --blue:#60a5fa;  --blue-bg:#172554;  --blue-bd:#1e40af;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px; line-height:1.5; }
+
+.top-bar { background:var(--s1); border-bottom:1px solid var(--border); padding:14px 24px; display:flex; align-items:center; gap:16px; }
+.top-bar .logo { font-size:15px; font-weight:600; }
+.top-bar .sub  { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.8px; }
+.top-bar .back { margin-left:auto; font-size:12px; color:var(--text3); text-decoration:none; }
+.top-bar .back:hover { color:var(--text); }
+.dark-btn { background:none; border:1.5px solid var(--border); border-radius:20px; padding:4px 12px; cursor:pointer; font-size:11px; color:var(--text2); }
+
+.page { max-width:1100px; margin:0 auto; padding:20px 16px 80px; }
+
+.meta-bar { display:flex; align-items:center; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+.meta-bar .badge { font-size:11px; font-family:'DM Mono',monospace; padding:4px 10px; border-radius:20px; }
+.meta-bar .badge.ok  { background:var(--green-bg); border:1px solid var(--green-bd); color:var(--green); }
+.meta-bar .badge.dim { background:var(--s2); border:1px solid var(--border); color:var(--text3); }
+.meta-bar .badge.warn{ background:var(--amber-bg); border:1px solid var(--amber-bd); color:var(--amber); }
+#lastUpdate { font-size:11px; color:var(--text3); font-family:'DM Mono',monospace; margin-left:auto; }
+
+.pair-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:14px; }
+
+.pair-card { background:var(--s1); border:1px solid var(--border); border-radius:var(--rl); overflow:hidden; transition:border-color .2s; }
+.pair-card.in-zone { border-color:var(--amber-bd); box-shadow:0 0 0 2px var(--amber-bg); }
+.pair-card.trading { border-color:var(--green-bd); box-shadow:0 0 0 2px var(--green-bg); }
+
+.card-head { padding:11px 14px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
+.pair-name { font-size:13px; font-weight:600; font-family:'DM Mono',monospace; }
+.pair-price { font-size:12px; font-family:'DM Mono',monospace; color:var(--text2); }
+.pair-badges { margin-left:auto; display:flex; gap:5px; }
+.zone-badge { font-size:10px; font-weight:600; padding:2px 7px; border-radius:10px; }
+.zone-badge.in  { background:var(--amber-bg); border:1px solid var(--amber-bd); color:var(--amber); }
+.zone-badge.dir-long  { background:var(--green-bg); border:1px solid var(--green-bd); color:var(--green); }
+.zone-badge.dir-short { background:var(--red-bg); border:1px solid var(--red-bd); color:var(--red); }
+
+.asia-bar { padding:8px 14px; border-bottom:1px solid var(--border); }
+.asia-label { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--text3); font-weight:600; margin-bottom:5px; }
+.asia-range-row { display:flex; align-items:center; gap:8px; }
+.asia-val { font-size:11px; font-family:'DM Mono',monospace; color:var(--text2); white-space:nowrap; }
+.asia-track { flex:1; height:6px; background:var(--s3); border-radius:3px; position:relative; overflow:visible; }
+.asia-fill  { height:100%; background:var(--blue-bd); border-radius:3px; }
+.price-tick { position:absolute; top:-3px; width:2px; height:12px; background:var(--amber); border-radius:1px; transform:translateX(-50%); }
+
+.levels-section { padding:8px 14px 12px; }
+.levels-label { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--text3); font-weight:600; margin-bottom:6px; }
+.level-row { display:flex; align-items:center; gap:6px; padding:3px 0; border-bottom:1px solid var(--border); font-size:11px; font-family:'DM Mono',monospace; }
+.level-row:last-child { border-bottom:none; }
+.level-row.nearest  { background:var(--amber-bg); margin:0 -14px; padding:3px 14px; }
+.level-arrow { width:14px; text-align:center; color:var(--text3); }
+.level-price { flex:1; color:var(--text); }
+.level-fib   { color:var(--text3); min-width:36px; text-align:right; }
+.level-dist  { min-width:48px; text-align:right; }
+.level-dist.close  { color:var(--amber); font-weight:600; }
+.level-dist.medium { color:var(--text2); }
+.level-dist.far    { color:var(--text3); }
+.tight-dot { width:5px; height:5px; border-radius:50%; background:var(--green); display:inline-block; margin-left:3px; }
+
+.feat-section { padding:6px 14px 10px; border-top:1px solid var(--border); font-size:11px; font-family:'DM Mono',monospace; color:var(--text2); }
+.feat-label { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--text3); font-weight:600; margin-bottom:4px; }
+.feat-conv { display:flex; gap:12px; flex-wrap:wrap; }
+.feat-val { color:var(--text); }
+.feat-val.long  { color:var(--green); }
+.feat-val.short { color:var(--red); }
+
+.no-data { text-align:center; padding:60px 20px; color:var(--text3); font-family:'DM Mono',monospace; font-size:12px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div>
+    <div class="logo">MacroFX · Backtest Bot Monitor</div>
+    <div class="sub">Live levels &amp; proximity</div>
+  </div>
+  <a class="back" href="bot-config.html">← Bot Config</a>
+  <a class="back" href="index.html" style="margin-left:0">← Dashboard</a>
+  <button class="dark-btn" onclick="document.body.classList.toggle('dark')">◑ Dark</button>
+</div>
+
+<div class="page">
+
+  <div class="meta-bar">
+    <span id="dateBadge" class="badge dim">—</span>
+    <span id="pairsBadge" class="badge dim">— pairs</span>
+    <span id="zoneBadge"  class="badge dim">— in zone</span>
+    <span id="lastUpdate">Never updated</span>
+  </div>
+
+  <div id="pairGrid" class="pair-grid">
+    <div class="no-data">Waiting for backtestSystem data…<br>Make sure main.py is running and DASHBOARD_URL is set in .env</div>
+  </div>
+
+</div>
+
+<script>
+async function kvGet(key) {
+  const r = await fetch(`/api/kv/get?key=${encodeURIComponent(key)}`);
+  if (!r.ok) return null;
+  const j = await r.json();
+  return j.miss ? null : j.data;
+}
+
+function distClass(pips) {
+  if (pips <= 5)  return 'close';
+  if (pips <= 15) return 'medium';
+  return 'far';
+}
+
+function priceTickPct(price, low, high) {
+  if (high <= low) return 50;
+  return Math.max(0, Math.min(100, ((price - low) / (high - low)) * 100));
+}
+
+function renderPair(pair, d) {
+  const inZone  = d.in_zone;
+  const hasDir  = d.direction && inZone;
+  const dir     = d.direction || '';
+  const cardCls = hasDir ? 'pair-card trading' : (inZone ? 'pair-card in-zone' : 'pair-card');
+
+  // Badges
+  let badges = '';
+  if (inZone) badges += '<span class="zone-badge in">IN ZONE</span>';
+  if (dir === 'long')  badges += '<span class="zone-badge dir-long">LONG</span>';
+  if (dir === 'short') badges += '<span class="zone-badge dir-short">SHORT</span>';
+
+  // Asia range bar
+  let asiaHtml = '<div class="asia-bar"><div class="asia-label">Asia Range</div>';
+  if (d.asia) {
+    const { low, high, range_pips } = d.asia;
+    const tickPct = d.price ? priceTickPct(d.price, low, high) : null;
+    asiaHtml += `
+      <div class="asia-range-row">
+        <span class="asia-val">${low.toFixed(5)}</span>
+        <div class="asia-track">
+          <div class="asia-fill" style="width:100%"></div>
+          ${tickPct !== null ? `<div class="price-tick" style="left:${tickPct}%"></div>` : ''}
+        </div>
+        <span class="asia-val">${high.toFixed(5)}</span>
+        <span class="asia-val" style="color:var(--text3)">${range_pips}p</span>
+      </div>`;
+  } else {
+    asiaHtml += '<div style="font-size:11px;color:var(--text3)">Range not yet formed</div>';
+  }
+  asiaHtml += '</div>';
+
+  // Levels table
+  let levelsHtml = '<div class="levels-section"><div class="levels-label">Confluence Levels</div>';
+  if (d.confluences && d.confluences.length) {
+    const nearest = d.confluences[0];
+    d.confluences.forEach((c, i) => {
+      const isNearest = i === 0;
+      const arrow     = c.above ? '↑' : '↓';
+      const fibStr    = c.fib != null ? c.fib.toFixed(2) : '—';
+      const tight     = c.isTight ? '<span class="tight-dot" title="Tight confluence"></span>' : '';
+      const distCls   = distClass(c.dist_pips);
+      const rowCls    = isNearest ? 'level-row nearest' : 'level-row';
+      levelsHtml += `
+        <div class="${rowCls}">
+          <span class="level-arrow">${arrow}</span>
+          <span class="level-price">${c.price.toFixed(5)}${tight}</span>
+          <span class="level-fib">${fibStr}</span>
+          <span class="level-dist ${distCls}">${c.dist_pips.toFixed(1)}p</span>
+        </div>`;
+    });
+  } else {
+    levelsHtml += '<div style="font-size:11px;color:var(--text3);padding:4px 0">No confluences — may still be forming</div>';
+  }
+  levelsHtml += '</div>';
+
+  // Feature conviction (only when in zone)
+  let featHtml = '';
+  if (inZone && d.conviction !== null) {
+    const convPct  = Math.round((d.conviction ?? 0) * 100);
+    const dirCls   = dir === 'long' ? 'long' : (dir === 'short' ? 'short' : '');
+    featHtml = `
+      <div class="feat-section">
+        <div class="feat-label">Feature Score</div>
+        <div class="feat-conv">
+          <span>Direction: <span class="feat-val ${dirCls}">${dir || 'none'}</span></span>
+          <span>Conviction: <span class="feat-val">${convPct}%</span></span>
+          <span>Confirms: <span class="feat-val">${d.confirms ?? '—'}</span></span>
+        </div>
+      </div>`;
+  }
+
+  const priceStr = d.price != null ? d.price.toFixed(5) : '—';
+
+  return `
+    <div class="${cardCls}">
+      <div class="card-head">
+        <span class="pair-name">${pair}</span>
+        <span class="pair-price">${priceStr}</span>
+        <div class="pair-badges">${badges}</div>
+      </div>
+      ${asiaHtml}
+      ${levelsHtml}
+      ${featHtml}
+    </div>`;
+}
+
+async function refresh() {
+  try {
+    const data = await kvGet('backtestsystem_status');
+    if (!data || !data.pairs) {
+      return;
+    }
+
+    const pairs    = Object.entries(data.pairs);
+    const inZone   = pairs.filter(([, d]) => d.in_zone).length;
+    const ageMin   = Math.round((Date.now() - (data.timestamp || 0)) / 60000);
+
+    document.getElementById('dateBadge').textContent  = data.date || '—';
+    document.getElementById('dateBadge').className    = 'badge ok';
+    document.getElementById('pairsBadge').textContent = `${pairs.length} pairs`;
+    document.getElementById('pairsBadge').className   = 'badge ok';
+    document.getElementById('zoneBadge').textContent  = `${inZone} in zone`;
+    document.getElementById('zoneBadge').className    = inZone ? 'badge warn' : 'badge dim';
+    document.getElementById('lastUpdate').textContent = `Updated ${ageMin}m ago`;
+
+    document.getElementById('pairGrid').innerHTML =
+      pairs.map(([pair, d]) => renderPair(pair, d)).join('');
+
+  } catch (e) {
+    console.error('Monitor refresh error:', e);
+  }
+}
+
+refresh();
+setInterval(refresh, 30_000);
+</script>
+</body>
+</html>

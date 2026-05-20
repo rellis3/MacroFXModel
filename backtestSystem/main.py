@@ -61,6 +61,27 @@ def _load_creds_from_kv(dashboard_url: str) -> dict | None:
         return None
 
 
+# ── KV status push ───────────────────────────────────────────────────────────
+
+def _push_status_to_kv(dashboard_url: str, status: dict) -> None:
+    try:
+        payload = json.dumps({
+            'key':       'backtestsystem_status',
+            'data':      status,
+            'timestamp': int(time.time() * 1000),
+        }).encode()
+        req = urllib.request.Request(
+            f'{dashboard_url.rstrip("/")}/api/kv/set',
+            data=payload,
+            headers={'Content-Type': 'application/json'},
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=5):
+            pass
+    except Exception as exc:
+        log.debug(f'KV status push failed: {exc}')
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _pair_has_open(symbol: str, positions: list) -> bool:
@@ -76,10 +97,14 @@ def _level_key(pair: str, price: float, pip: float) -> str:
 # ── Per-pair evaluation ───────────────────────────────────────────────────────
 
 def run_pair(pair: str, cfg: dict, kill: KillSwitch,
-             level_entries: dict, today_date: str, london_hour: int) -> None:
+             level_entries: dict, today_date: str, london_hour: int) -> dict:
+    """Returns a status dict for KV push; empty dict if skipped before levels computed."""
+    st: dict = {'pair': pair, 'price': None, 'asia': None, 'confluences': [],
+                'in_zone': False, 'direction': None, 'conviction': None, 'confirms': None}
+
     # Asia session runs midnight–06:00 London; levels are only valid once it closes
     if london_hour < 6:
-        return
+        return st
 
     pip = pip_size(pair)
 
@@ -90,16 +115,22 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     price    = fetch_price(pair)
     if not bars_5m or price is None:
         log.debug(f'{pair}: no data — skipping')
-        return
+        return st
+
+    st['price'] = price
 
     # ── Session ranges ────────────────────────────────────────────────────
     method = cfg.get('method', 'asia')
     asia   = compute_asia_range(bars_5m, today_date)
     monday = compute_monday_range(bars_30m) if method in ('monday', 'both') else None
 
-    if   method == 'asia'   and not asia:                return
-    elif method == 'monday' and not monday:               return
-    elif method == 'both'   and not asia and not monday:  return
+    if   method == 'asia'   and not asia:                return st
+    elif method == 'monday' and not monday:               return st
+    elif method == 'both'   and not asia and not monday:  return st
+
+    if asia:
+        st['asia'] = {'high': asia['high'], 'low': asia['low'],
+                      'range_pips': round(asia['range'] / pip)}
 
     # ── Confluence levels ─────────────────────────────────────────────────
     yest_date  = (datetime.strptime(today_date, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
@@ -121,18 +152,29 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     elif sig_filter == 'all_levels':  confluences = today_levels
 
     # ── Heartbeat status log ──────────────────────────────────────────────
-    now_ts  = time.monotonic()
-    due     = (now_ts - _last_status.get(pair, 0)) >= _STATUS_INTERVAL
+    now_ts   = time.monotonic()
+    due      = (now_ts - _last_status.get(pair, 0)) >= _STATUS_INTERVAL
     asia_tag = (f'Asia[{asia["low"]:.5f}–{asia["high"]:.5f} {round(asia["range"]/pip)}p]'
                 if asia else 'no range')
 
+    range_ref  = asia['range'] if asia else (monday['range'] if monday else pip * 20)
+    prox_limit = range_ref * cfg.get('entryProximityATR', 0.30)
+
     if confluences:
-        nearest     = min(confluences, key=lambda c: abs(c['price'] - price))
-        dist_pips   = abs(nearest['price'] - price) / pip
-        range_ref   = asia['range'] if asia else (monday['range'] if monday else pip * 20)
-        prox_limit  = range_ref * cfg.get('entryProximityATR', 0.30)
-        in_zone     = abs(nearest['price'] - price) <= prox_limit
-        zone_tag    = '  ◄ IN ZONE' if in_zone else ''
+        # Populate status confluences (sorted nearest first, cap at 12)
+        st['confluences'] = [
+            {'price': round(c['price'], 5),
+             'fib':   c.get('fib'),
+             'dist_pips': round(abs(c['price'] - price) / pip, 1),
+             'above':    c['price'] > price,
+             'isTight':  c.get('isTight', False)}
+            for c in sorted(confluences, key=lambda c: abs(c['price'] - price))[:12]
+        ]
+        nearest   = min(confluences, key=lambda c: abs(c['price'] - price))
+        dist_pips = abs(nearest['price'] - price) / pip
+        in_zone   = dist_pips * pip <= prox_limit
+        st['in_zone'] = in_zone
+        zone_tag  = '  ◄ IN ZONE' if in_zone else ''
         if due or in_zone:
             log.info(f'{pair}  {price:.5f}  {asia_tag}  '
                      f'nearest={nearest["price"]:.5f} ({dist_pips:.1f}p){zone_tag}')
@@ -141,67 +183,65 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
         if due:
             log.info(f'{pair}  {price:.5f}  {asia_tag}  no confluences yet')
             _last_status[pair] = now_ts
-        return
+        return st
 
     # ── Proximity check ───────────────────────────────────────────────────
-    range_ref  = asia['range'] if asia else (monday['range'] if monday else pip * 20)
-    prox_limit = range_ref * cfg.get('entryProximityATR', 0.30)
-    nearby     = sorted(
+    nearby = sorted(
         [c for c in confluences if abs(c['price'] - price) <= prox_limit],
         key=lambda c: abs(c['price'] - price),
     )
     if not nearby:
-        return
+        return st
 
     # ── Feature scoring ───────────────────────────────────────────────────
     feature_cfg = cfg.get('features', {})
     result      = compute_direction(bars_5m, bars_30m, daily,
                                     asia, monday, price, pip,
                                     today_date, feature_cfg)
-    entry_dir   = result.get('entry_dir')
-    conviction  = result.get('conviction', 0.0)
-    confirms    = result.get('confirm_count', 0)
-    conflicts   = result.get('conflict_count', 0)
-    atr         = result.get('atr', pip * 20)
+    entry_dir  = result.get('entry_dir')
+    conviction = result.get('conviction', 0.0)
+    confirms   = result.get('confirm_count', 0)
+    conflicts  = result.get('conflict_count', 0)
+    atr        = result.get('atr', pip * 20)
 
-    # Feature summary — always log when price is in zone
-    scored = result.get('results', [])
-    feat_str = '  '.join(
-        f'{r["key"][:8]}{r.get("icon", "·")}'
-        for r in scored
-    ) if scored else 'no features enabled'
+    st['direction']  = entry_dir
+    st['conviction'] = round(conviction, 2)
+    st['confirms']   = confirms
+
+    scored   = result.get('results', [])
+    feat_str = '  '.join(f'{r["key"][:8]}{r.get("icon","·")}' for r in scored) or 'no features'
     log.info(f'  {pair}  dir={entry_dir or "none":5s}  conv={conviction:.2f}  '
              f'confirms={confirms} conflicts={conflicts}  [{feat_str}]')
 
     if not entry_dir:
-        return
+        return st
 
     # ── Entry quality filters ─────────────────────────────────────────────
     if conviction < cfg.get('minConviction', 0.20):
         log.info(f'  {pair}  skip — conviction {conviction:.2f} < {cfg["minConviction"]}')
-        return
+        return st
     if confirms < cfg.get('minConfirms', 3):
         log.info(f'  {pair}  skip — confirms {confirms} < {cfg["minConfirms"]}')
-        return
+        return st
 
     # ── Level re-entry cap ────────────────────────────────────────────────
     target_price = nearby[0]['price']
     lkey = _level_key(pair, target_price, pip)
     if level_entries.get(lkey, 0) >= cfg.get('levelReentry', 2):
         log.info(f'  {pair}  skip — re-entry cap reached for {target_price:.5f}')
-        return
+        return st
 
     # ── Existing position guard ───────────────────────────────────────────
     open_pos = get_open_positions()
     if _pair_has_open(pair, open_pos):
         log.info(f'  {pair}  skip — position already open')
-        return
+        return st
 
     # ── Kill switch ───────────────────────────────────────────────────────
     block = kill.block_reason()
     if block:
         log.warning(f'  {pair}  BLOCKED — {block}')
-        return
+        return st
 
     # ── Compute SL / TP ───────────────────────────────────────────────────
     atr_30m    = atr * 1.5
@@ -234,6 +274,8 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     if ticket:
         level_entries[lkey] = level_entries.get(lkey, 0) + 1
         log.info(f'  → ticket #{ticket}')
+
+    return st
 
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
@@ -289,11 +331,21 @@ def main() -> None:
                 time.sleep(poll_interval)
                 continue
 
+            pair_statuses: dict = {}
             for pair in pairs:
                 try:
-                    run_pair(pair, cfg, kill, level_entries, today_date, now['lHour'])
+                    st = run_pair(pair, cfg, kill, level_entries, today_date, now['lHour'])
+                    if st.get('price') is not None:
+                        pair_statuses[pair] = st
                 except Exception as exc:
                     log.exception(f'{pair}: error — {exc}')
+
+            if dashboard_url and pair_statuses:
+                _push_status_to_kv(dashboard_url, {
+                    'timestamp': int(time.time() * 1000),
+                    'date':      today_date,
+                    'pairs':     pair_statuses,
+                })
 
         except KeyboardInterrupt:
             log.info('Stopped.')
