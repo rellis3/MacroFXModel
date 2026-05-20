@@ -554,6 +554,45 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     </div>
   </div>
 
+  <!-- Backtest Bot — Live Settings -->
+  <div class="card" style="margin-top:20px">
+    <div class="card-title">Backtest Bot — Live Settings <span class="card-sub">Stored in KV — override active.json at runtime</span></div>
+    <div class="form-row">
+      <span class="form-lbl">Risk % per trade</span>
+      <input type="number" id="bt_riskPct" value="1" min="0.1" max="10" step="0.1" style="width:80px">
+      <small>% of account balance lost if SL hit</small>
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">Kill switch — daily loss (R)</span>
+      <input type="number" id="bt_killDaily" value="2" min="0" step="0.5" style="width:80px">
+      <small>0 = disabled</small>
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">Kill switch — weekly loss (R)</span>
+      <input type="number" id="bt_killWeekly" value="5" min="0" step="0.5" style="width:80px">
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">Kill switch — monthly loss (R)</span>
+      <input type="number" id="bt_killMonthly" value="10" min="0" step="0.5" style="width:80px">
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">Entry window (HHMM London)</span>
+      <input type="number" id="bt_entryWindow" value="800" min="0" max="2359" style="width:80px">
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">EOD exit (HHMM London)</span>
+      <input type="number" id="bt_eodExit" value="2100" min="0" max="2359" style="width:80px">
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">Enabled pairs <small>comma-separated</small></span>
+      <input type="text" id="bt_enabledPairs" value="EURUSD,GBPUSD,USDJPY,AUDUSD,XAUUSD" style="width:340px;text-align:left">
+    </div>
+    <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+      <button class="btn-save" style="max-width:200px;padding:9px" onclick="saveLiveSettings()">Save Live Settings</button>
+      <span id="btLiveStatus" style="font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
   <!-- Action buttons -->
   <div class="actions">
     <button class="btn-save" onclick="saveConfig()">Save Config</button>

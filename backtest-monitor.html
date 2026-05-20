@@ -90,6 +90,15 @@ body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif
 .feat-val.short { color:var(--red); }
 
 .no-data { text-align:center; padding:60px 20px; color:var(--text3); font-family:'DM Mono',monospace; font-size:12px; }
+
+.pos-section { padding:8px 14px 10px; border-top:2px solid var(--green-bd); background:var(--green-bg); }
+.pos-label { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--green); font-weight:600; margin-bottom:6px; }
+.pos-row { display:flex; align-items:center; gap:8px; font-size:11px; font-family:'DM Mono',monospace; margin-bottom:2px; flex-wrap:wrap; }
+.pos-detail { font-size:10px; font-family:'DM Mono',monospace; color:var(--text3); margin-bottom:2px; }
+.pos-entry { color:var(--text); }
+.pos-level { color:var(--text3); flex:1; }
+.pnl-pos { color:var(--green); font-weight:600; }
+.pnl-neg { color:var(--red);   font-weight:600; }
 </style>
 </head>
 <body>
@@ -210,6 +219,29 @@ function renderPair(pair, d) {
       </div>`;
   }
 
+  // Open positions
+  let posHtml = '';
+  if (d.positions && d.positions.length) {
+    posHtml = '<div class="pos-section"><div class="pos-label">Open Position</div>';
+    d.positions.forEach(p => {
+      const dCls    = p.direction === 'long' ? 'dir-long' : 'dir-short';
+      const pnlCls  = p.profit >= 0 ? 'pnl-pos' : 'pnl-neg';
+      const pnlStr  = (p.profit >= 0 ? '+' : '') + p.profit.toFixed(2);
+      const levStr  = p.level != null
+        ? `@ ${p.level.toFixed(5)}${p.level_fib != null ? ' ('+p.level_fib.toFixed(2)+')' : ''}`
+        : '';
+      posHtml += `
+        <div class="pos-row">
+          <span class="zone-badge ${dCls}">${p.direction.toUpperCase()}</span>
+          <span class="pos-entry">${p.open_price.toFixed(5)}</span>
+          <span class="pos-level">${levStr}</span>
+          <span class="${pnlCls}">${pnlStr}</span>
+        </div>
+        <div class="pos-detail">SL ${p.sl.toFixed(5)} · TP ${p.tp.toFixed(5)} · ${p.lots} lots · #${p.ticket}</div>`;
+    });
+    posHtml += '</div>';
+  }
+
   const priceStr = d.price != null ? d.price.toFixed(5) : '—';
 
   return `
@@ -222,6 +254,7 @@ function renderPair(pair, d) {
       ${asiaHtml}
       ${levelsHtml}
       ${featHtml}
+      ${posHtml}
     </div>`;
 }
 

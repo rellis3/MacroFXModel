@@ -17,6 +17,7 @@
   "entryWindow":       800,
   "eodExit":           2100,
   "entryProximityATR": 0.30,
+  "entryTolPips":      3.0,
 
   "minConviction":     0.20,
   "minConfirms":       3,
@@ -40,6 +41,7 @@
 
   "tpMode":            "fixedR",
   "rrRatio":           2.2,
+  "maxRR":             4.0,
   "tpBuf":             5,
   "tpAtrFallback":     5,
   "tpVolLo":           2.0,

@@ -429,6 +429,47 @@ async function saveBtCreds() {
   await _saveCreds('backtestsystem_credentials', 'bt_mt5_', 'bt_mt5_password', 'btCredsStatus');
 }
 
+// ── Backtest bot live settings ────────────────────────────────────────────────
+
+const BT_LIVE_FIELDS = [
+  { id: 'bt_riskPct',     key: 'riskPct',      parse: parseFloat },
+  { id: 'bt_killDaily',   key: 'killDaily',     parse: parseFloat },
+  { id: 'bt_killWeekly',  key: 'killWeekly',    parse: parseFloat },
+  { id: 'bt_killMonthly', key: 'killMonthly',   parse: parseFloat },
+  { id: 'bt_entryWindow', key: 'entryWindow',   parse: parseInt   },
+  { id: 'bt_eodExit',     key: 'eodExit',       parse: parseInt   },
+  { id: 'bt_enabledPairs',key: 'enabledPairs',  parse: v => v.split(',').map(s => s.trim()).filter(Boolean) },
+];
+
+async function loadLiveSettings() {
+  try {
+    const stored = await kvGet('backtestsystem_live_config');
+    if (!stored) return;
+    for (const f of BT_LIVE_FIELDS) {
+      const el = document.getElementById(f.id);
+      if (!el || stored[f.key] == null) continue;
+      el.value = Array.isArray(stored[f.key]) ? stored[f.key].join(', ') : stored[f.key];
+    }
+  } catch(e) {}
+}
+
+async function saveLiveSettings() {
+  const status = document.getElementById('btLiveStatus');
+  status.textContent = 'Saving…';
+  try {
+    const data = {};
+    for (const f of BT_LIVE_FIELDS) {
+      const el = document.getElementById(f.id);
+      if (el) data[f.key] = f.parse(el.value);
+    }
+    await kvSet('backtestsystem_live_config', data);
+    status.textContent = 'Saved ✓';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 window.saveConfig       = saveConfig;
@@ -436,9 +477,11 @@ window.resetDefaults    = resetDefaults;
 window.toggleKillSwitch = toggleKillSwitch;
 window.saveCreds        = saveCreds;
 window.saveBtCreds      = saveBtCreds;
+window.saveLiveSettings = saveLiveSettings;
 
 loadConfig();
 loadCreds();
 loadBtCreds();
+loadLiveSettings();
 loadBotStatus();
 setInterval(loadBotStatus, 60_000);  // refresh status every 60s

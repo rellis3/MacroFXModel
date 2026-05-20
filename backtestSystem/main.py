@@ -20,8 +20,9 @@ from mt5_utils import (connect, fetch_bars_5m, fetch_bars_30m, fetch_bars_daily,
                        pip_size, london_now)
 from levels    import (compute_asia_range, compute_monday_range, project_fib_levels,
                        detect_confluences, get_yesterday_range_bars)
-from engine    import compute_direction
-from risk      import KillSwitch, within_trade_window, position_size
+from engine     import compute_direction
+from indicators import compute_atr
+from risk       import KillSwitch, within_trade_window, position_size
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 
@@ -186,12 +187,47 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
             _last_status[pair] = now_ts
         return st
 
+    # ── Open position status (always populate so monitor can show it) ────
+    open_pos = get_open_positions()
+    pair_pos = [p for p in open_pos if p.symbol == pair or p.symbol.startswith(pair)]
+    if pair_pos:
+        def _nearest_level(open_px: float):
+            if not confluences:
+                return None, None
+            c = min(confluences, key=lambda x: abs(x['price'] - open_px))
+            return round(c['price'], 5), c.get('fib')
+        st['positions'] = []
+        for p in pair_pos:
+            lv, fib = _nearest_level(p.price_open)
+            st['positions'].append({
+                'ticket':     p.ticket,
+                'direction':  'long' if p.type == 0 else 'short',
+                'lots':       p.volume,
+                'open_price': round(p.price_open, 5),
+                'sl':         round(p.sl, 5),
+                'tp':         round(p.tp, 5),
+                'profit':     round(p.profit, 2),
+                'level':      lv,
+                'level_fib':  fib,
+            })
+        log.info(f'  {pair}  {len(pair_pos)} position(s) open — skipping new entry')
+        return st
+
     # ── Proximity check ───────────────────────────────────────────────────
     nearby = sorted(
         [c for c in confluences if abs(c['price'] - price) <= prox_limit],
         key=lambda c: abs(c['price'] - price),
     )
     if not nearby:
+        return st
+
+    # ── Tight entry tolerance gate ────────────────────────────────────────
+    entry_tol   = cfg.get('entryTolPips', 3.0) * pip
+    nearest_lev = nearby[0]
+    dist_to_lev = abs(nearest_lev['price'] - price)
+    if dist_to_lev > entry_tol:
+        log.info(f'  {pair}  watching — {dist_to_lev/pip:.1f}p from level '
+                 f'{nearest_lev["price"]:.5f} (need ≤{cfg.get("entryTolPips",3.0)}p)')
         return st
 
     # ── Feature scoring ───────────────────────────────────────────────────
@@ -232,12 +268,6 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
         log.info(f'  {pair}  skip — re-entry cap reached for {target_price:.5f}')
         return st
 
-    # ── Existing position guard ───────────────────────────────────────────
-    open_pos = get_open_positions()
-    if _pair_has_open(pair, open_pos):
-        log.info(f'  {pair}  skip — position already open')
-        return st
-
     # ── Kill switch ───────────────────────────────────────────────────────
     block = kill.block_reason()
     if block:
@@ -245,15 +275,18 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
         return st
 
     # ── Compute SL / TP ───────────────────────────────────────────────────
-    atr_30m    = atr * 1.5
+    # engine returns the 30m ATR; compute 5m ATR here from newest-first bars
+    atr_5m     = compute_atr(list(reversed(bars_5m[:20])))
+    atr_30m    = atr   # already the 30m ATR from engine — do NOT multiply again
     asia_range = asia['range'] if asia else (monday['range'] if monday else pip * 20)
-    sl_dist    = sl_distance(cfg, atr, atr_30m, asia_range, pip)
+    sl_dist    = sl_distance(cfg, atr_5m, atr_30m, asia_range, pip)
 
-    beyond = [
-        c for c in confluences
-        if (entry_dir == 'long'  and c['price'] > price + pip) or
-           (entry_dir == 'short' and c['price'] < price - pip)
-    ]
+    beyond = sorted(
+        [c for c in confluences
+         if (entry_dir == 'long'  and c['price'] > price + pip) or
+            (entry_dir == 'short' and c['price'] < price - pip)],
+        key=lambda c: abs(c['price'] - price),
+    )
     next_dist = abs(beyond[0]['price'] - price) if beyond else None
     tp_dist   = tp_distance(cfg, sl_dist, pip, asia_range, next_dist)
 
@@ -272,7 +305,9 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
 
     log.info(
         f'TRADE  {pair} {entry_dir.upper()} @ {price:.5f}  '
-        f'SL={sl}  TP={tp}  lots={lots}  '
+        f'SL={sl} ({sl_dist/pip:.1f}p)  TP={tp} ({tp_dist/pip:.1f}p)  '
+        f'RR={tp_dist/sl_dist:.1f}  lots={lots}  '
+        f'atr5m={atr_5m/pip:.1f}p  atr30m={atr_30m/pip:.1f}p  '
         f'conv={conviction:.2f}  confirms={confirms}/{confirms + conflicts}'
     )
     ticket = place_order(pair, entry_dir, lots, sl, tp)
@@ -287,6 +322,20 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
 
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
+
+def _load_live_config_from_kv(dashboard_url: str) -> dict | None:
+    """Fetch backtestsystem_live_config from KV (risk%, kill switches, pairs, windows)."""
+    try:
+        url = f'{dashboard_url.rstrip("/")}/api/kv/get?key=backtestsystem_live_config'
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            data = json.loads(resp.read())
+        if data.get('miss') or not data.get('data'):
+            return None
+        return data['data']
+    except Exception as exc:
+        log.warning(f'Could not load live config from KV: {exc}')
+        return None
+
 
 def main() -> None:
     cfg = load_config()
@@ -306,6 +355,15 @@ def main() -> None:
         mt5_password = os.getenv('MT5_PASSWORD', '')
         mt5_server   = os.getenv('MT5_SERVER',   '')
         mt5_path     = os.getenv('MT5_PATH',     '')
+
+    # Merge live config from KV on top of active.json (survives strategy config exports)
+    if dashboard_url:
+        live_cfg = _load_live_config_from_kv(dashboard_url)
+        if live_cfg:
+            cfg.update(live_cfg)
+            log.info(f'Live config loaded from KV: risk={live_cfg.get("riskPct")}%  '
+                     f'pairs={live_cfg.get("enabledPairs")}  '
+                     f'kill D={live_cfg.get("killDaily")} W={live_cfg.get("killWeekly")}')
 
     if not connect(mt5_account, mt5_password, mt5_server, mt5_path):
         log.error('MT5 connection failed — check .env and MT5 terminal')

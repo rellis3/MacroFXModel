@@ -15,7 +15,8 @@ DEFAULTS = {
     # Entry timing & proximity
     "entryWindow":       800,             # HHMM London: no entries before this
     "eodExit":           2100,            # HHMM London: close all / no new entries
-    "entryProximityATR": 0.30,            # price within this × ATR of level
+    "entryProximityATR": 0.5,             # feature scan triggers when price within this × asiaRange of level
+    "entryTolPips":      3.0,             # actual order fires only when price within this many pips of level
 
     # Entry quality filters
     "minConviction":     0.20,            # 0-1 conviction threshold
@@ -42,6 +43,7 @@ DEFAULTS = {
     # TP
     "tpMode":            "fixedR",        # fixedR | structural | volScaledR
     "rrRatio":           2.2,
+    "maxRR":             4.0,             # hard ceiling on TP distance regardless of mode
     "tpBuf":             5,               # pips buffer from structural level
     "tpAtrFallback":     5,               # ATR multiplier if structural fails
     "tpVolLo":           2.0,
@@ -131,27 +133,30 @@ def sl_distance(cfg: dict, atr_5m: float, atr_30m: float,
 def tp_distance(cfg: dict, sl_dist: float, pip: float, asia_range: float,
                 next_level_dist: float | None = None) -> float:
     """Compute TP distance in price units."""
-    mode = cfg.get('tpMode', 'fixedR')
-    rr   = cfg.get('rrRatio', 2.2)
+    mode   = cfg.get('tpMode', 'fixedR')
+    rr     = cfg.get('rrRatio', 2.2)
+    max_rr = cfg.get('maxRR',   4.0)
 
     if mode == 'fixedR':
-        return sl_dist * rr
+        dist = sl_dist * rr
 
-    if mode == 'structural' and next_level_dist is not None:
-        buf = cfg.get('tpBuf', 5) * pip
+    elif mode == 'structural' and next_level_dist is not None:
+        buf  = cfg.get('tpBuf', 5) * pip
         dist = next_level_dist - buf
-        if dist > sl_dist * 0.5:
-            return dist
-        # Fallback to ATR-based
-        atr_fall = cfg.get('tpAtrFallback', 5)
-        return sl_dist * atr_fall
+        if dist <= sl_dist * 0.5:
+            dist = sl_dist * cfg.get('tpAtrFallback', 5)
 
-    if mode == 'volScaledR':
+    elif mode == 'volScaledR':
         range_pips = asia_range / pip
         if range_pips < 25:
-            return sl_dist * cfg.get('tpVolLo', 2.0)
-        if range_pips < 50:
-            return sl_dist * cfg.get('tpVolMed', 3.0)
-        return sl_dist * cfg.get('tpVolHi', 5.0)
+            mult = cfg.get('tpVolLo', 2.0)
+        elif range_pips < 50:
+            mult = cfg.get('tpVolMed', 3.0)
+        else:
+            mult = cfg.get('tpVolHi', 5.0)
+        dist = sl_dist * mult
 
-    return sl_dist * rr  # fallback
+    else:
+        dist = sl_dist * rr  # fallback
+
+    return min(dist, sl_dist * max_rr)

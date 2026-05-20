@@ -171,6 +171,19 @@ def place_order(symbol: str, direction: str, volume: float,
     if not tick:
         log.error(f'No tick for {mt5_sym}')
         return None
+
+    # Pick a filling mode the broker actually supports for this symbol
+    info = mt5.symbol_info(mt5_sym)
+    filling_mode = mt5.ORDER_FILLING_IOC  # fallback
+    if info:
+        allowed = info.filling_mode  # bitmask: 1=FOK, 2=IOC, 4=Return
+        if allowed & 1:
+            filling_mode = mt5.ORDER_FILLING_FOK
+        elif allowed & 2:
+            filling_mode = mt5.ORDER_FILLING_IOC
+        elif allowed & 4:
+            filling_mode = mt5.ORDER_FILLING_RETURN
+
     order_type = mt5.ORDER_TYPE_BUY if direction == 'long' else mt5.ORDER_TYPE_SELL
     price      = tick.ask if direction == 'long' else tick.bid
     res = mt5.order_send({
@@ -185,7 +198,7 @@ def place_order(symbol: str, direction: str, volume: float,
         'magic':        20260002,
         'comment':      comment,
         'type_time':    mt5.ORDER_TIME_GTC,
-        'type_filling': mt5.ORDER_FILLING_IOC,
+        'type_filling': filling_mode,
     })
     if res.retcode != mt5.TRADE_RETCODE_DONE:
         log.error(f'Order failed: retcode={res.retcode}  {res.comment}')
