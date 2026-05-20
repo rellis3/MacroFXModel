@@ -37,3 +37,10 @@
 09:51:18  WARNING  MT5: no bars for NAS100USD tf=5
 09:51:18  WARNING  MT5: no bars for NAS100USD tf=30
 09:51:18  WARNING  MT5: no bars for NAS100USD tf=16408
+10:11:27  INFO     MT5 connected  account=107132286  balance=100000.00 GBP  server=MetaQuotes-Demo
+10:11:27  INFO     === backtestSystem started ===
+10:11:27  INFO     Pairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'USTECH100M']  poll=2s
+10:11:27  INFO     Method: both  SL: atr30m  TP: structural  RR: 2.2
+10:11:27  INFO     Kill: D=2R  W=5R  M=10R
+10:11:27  INFO     Features (10): rangePosition, chochBos, wickRejection, orderBlock, htfEma, vwapSlope, hurstRegime, fvgBias, ichimokuCloud, macdSignal
+10:11:27  INFO     --- New day 2026-05-20 ---  R daily=+0.00  weekly=+0.00  monthly=+0.00  limits=D2/W5/M10

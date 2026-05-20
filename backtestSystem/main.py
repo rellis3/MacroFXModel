@@ -36,7 +36,9 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-_DEFAULT_POLL = 2  # fallback if not in config
+_DEFAULT_POLL    = 2   # fallback if not in config
+_STATUS_INTERVAL = 30  # seconds between heartbeat logs per pair
+_last_status: dict[str, float] = {}  # pair → last status log timestamp
 
 
 # ── KV credential fetch ───────────────────────────────────────────────────────
@@ -95,12 +97,12 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     asia   = compute_asia_range(bars_5m, today_date)
     monday = compute_monday_range(bars_30m) if method in ('monday', 'both') else None
 
-    if   method == 'asia'   and not asia:            return
-    elif method == 'monday' and not monday:           return
-    elif method == 'both'   and not asia and not monday: return
+    if   method == 'asia'   and not asia:                return
+    elif method == 'monday' and not monday:               return
+    elif method == 'both'   and not asia and not monday:  return
 
     # ── Confluence levels ─────────────────────────────────────────────────
-    yest_date = (datetime.strptime(today_date, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
+    yest_date  = (datetime.strptime(today_date, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
     yest_bars  = get_yesterday_range_bars(bars_5m, today_date)
     yest_asia  = compute_asia_range(yest_bars, yest_date) if yest_bars else None
 
@@ -109,19 +111,39 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     if monday: today_levels += project_fib_levels(monday)
     yest_levels = project_fib_levels(yest_asia) if yest_asia else []
 
-    tol_pips   = cfg.get('confTolPips',  2.0)
-    price_mode = cfg.get('priceMode',   'lowest')
-    cluster    = cfg.get('clusterMerge', True)
+    tol_pips    = cfg.get('confTolPips',  2.0)
+    price_mode  = cfg.get('priceMode',   'lowest')
+    cluster     = cfg.get('clusterMerge', True)
     confluences = detect_confluences(today_levels, yest_levels, pip, tol_pips, price_mode, cluster)
 
     sig_filter = cfg.get('signalFilter', 'all_conf')
     if   sig_filter == 'tight_only':  confluences = [c for c in confluences if c.get('isTight')]
-    elif sig_filter == 'all_levels':  confluences = today_levels  # no confluence required
+    elif sig_filter == 'all_levels':  confluences = today_levels
 
-    if not confluences:
+    # ── Heartbeat status log ──────────────────────────────────────────────
+    now_ts  = time.monotonic()
+    due     = (now_ts - _last_status.get(pair, 0)) >= _STATUS_INTERVAL
+    asia_tag = (f'Asia[{asia["low"]:.5f}–{asia["high"]:.5f} {round(asia["range"]/pip)}p]'
+                if asia else 'no range')
+
+    if confluences:
+        nearest     = min(confluences, key=lambda c: abs(c['price'] - price))
+        dist_pips   = abs(nearest['price'] - price) / pip
+        range_ref   = asia['range'] if asia else (monday['range'] if monday else pip * 20)
+        prox_limit  = range_ref * cfg.get('entryProximityATR', 0.30)
+        in_zone     = abs(nearest['price'] - price) <= prox_limit
+        zone_tag    = '  ◄ IN ZONE' if in_zone else ''
+        if due or in_zone:
+            log.info(f'{pair}  {price:.5f}  {asia_tag}  '
+                     f'nearest={nearest["price"]:.5f} ({dist_pips:.1f}p){zone_tag}')
+            _last_status[pair] = now_ts
+    else:
+        if due:
+            log.info(f'{pair}  {price:.5f}  {asia_tag}  no confluences yet')
+            _last_status[pair] = now_ts
         return
 
-    # ── Proximity to nearest confluence ───────────────────────────────────
+    # ── Proximity check ───────────────────────────────────────────────────
     range_ref  = asia['range'] if asia else (monday['range'] if monday else pip * 20)
     prox_limit = range_ref * cfg.get('entryProximityATR', 0.30)
     nearby     = sorted(
@@ -139,43 +161,53 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     entry_dir   = result.get('entry_dir')
     conviction  = result.get('conviction', 0.0)
     confirms    = result.get('confirm_count', 0)
+    conflicts   = result.get('conflict_count', 0)
     atr         = result.get('atr', pip * 20)
+
+    # Feature summary — always log when price is in zone
+    scored = result.get('results', [])
+    feat_str = '  '.join(
+        f'{r["key"][:8]}{r.get("icon", "·")}'
+        for r in scored
+    ) if scored else 'no features enabled'
+    log.info(f'  {pair}  dir={entry_dir or "none":5s}  conv={conviction:.2f}  '
+             f'confirms={confirms} conflicts={conflicts}  [{feat_str}]')
 
     if not entry_dir:
         return
 
     # ── Entry quality filters ─────────────────────────────────────────────
     if conviction < cfg.get('minConviction', 0.20):
-        log.debug(f'{pair}: conviction {conviction:.2f} < {cfg["minConviction"]} — skip')
+        log.info(f'  {pair}  skip — conviction {conviction:.2f} < {cfg["minConviction"]}')
         return
     if confirms < cfg.get('minConfirms', 3):
-        log.debug(f'{pair}: confirms {confirms} < {cfg["minConfirms"]} — skip')
+        log.info(f'  {pair}  skip — confirms {confirms} < {cfg["minConfirms"]}')
         return
 
     # ── Level re-entry cap ────────────────────────────────────────────────
     target_price = nearby[0]['price']
     lkey = _level_key(pair, target_price, pip)
     if level_entries.get(lkey, 0) >= cfg.get('levelReentry', 2):
-        log.info(f'{pair}: re-entry cap reached for level {target_price:.5f} — skip')
+        log.info(f'  {pair}  skip — re-entry cap reached for {target_price:.5f}')
         return
 
     # ── Existing position guard ───────────────────────────────────────────
     open_pos = get_open_positions()
     if _pair_has_open(pair, open_pos):
+        log.info(f'  {pair}  skip — position already open')
         return
 
     # ── Kill switch ───────────────────────────────────────────────────────
     block = kill.block_reason()
     if block:
-        log.warning(f'{pair}: {block}')
+        log.warning(f'  {pair}  BLOCKED — {block}')
         return
 
     # ── Compute SL / TP ───────────────────────────────────────────────────
-    atr_30m    = atr * 1.5          # rough 30m proxy; real fetch would be separate
+    atr_30m    = atr * 1.5
     asia_range = asia['range'] if asia else (monday['range'] if monday else pip * 20)
     sl_dist    = sl_distance(cfg, atr, atr_30m, asia_range, pip)
 
-    # Nearest level beyond entry for structural TP
     beyond = [
         c for c in confluences
         if (entry_dir == 'long'  and c['price'] > price + pip) or
@@ -196,7 +228,7 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     log.info(
         f'TRADE  {pair} {entry_dir.upper()} @ {price:.5f}  '
         f'SL={sl}  TP={tp}  lots={lots}  '
-        f'conviction={conviction:.2f}  confirms={confirms}/{confirms + result.get("conflict_count",0)}'
+        f'conv={conviction:.2f}  confirms={confirms}/{confirms + conflicts}'
     )
     ticket = place_order(pair, entry_dir, lots, sl, tp)
     if ticket:
