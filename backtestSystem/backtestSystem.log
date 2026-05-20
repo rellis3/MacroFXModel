@@ -366,3 +366,106 @@
 11:32:46  INFO     USTECH100M  29084.90000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
 11:33:17  INFO     EURUSD  1.15952  Asia[1.15920–1.16128 21p]  no confluences yet
 11:33:17  INFO     GBPUSD  1.33892  Asia[1.33778–1.34040 26p]  no confluences yet
+11:33:17  INFO     USDJPY  159.04250  Asia[158.95300–159.10400 15p]  no confluences yet
+11:33:17  INFO     AUDUSD  0.71214  Asia[0.70865–0.71124 26p]  no confluences yet
+11:33:17  INFO     XAUUSD  4491.02500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:33:17  INFO     USTECH100M  29084.90000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:33:48  INFO     EURUSD  1.15954  Asia[1.15920–1.16128 21p]  no confluences yet
+11:33:48  INFO     GBPUSD  1.33905  Asia[1.33778–1.34040 26p]  no confluences yet
+11:33:48  INFO     USDJPY  159.03450  Asia[158.95300–159.10400 15p]  no confluences yet
+11:33:48  INFO     AUDUSD  0.71214  Asia[0.70865–0.71124 26p]  no confluences yet
+11:33:48  INFO     XAUUSD  4490.81500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:33:48  INFO     USTECH100M  29082.80000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:34:19  INFO     EURUSD  1.15959  Asia[1.15920–1.16128 21p]  no confluences yet
+11:34:19  INFO     GBPUSD  1.33907  Asia[1.33778–1.34040 26p]  no confluences yet
+11:34:19  INFO     USDJPY  159.03550  Asia[158.95300–159.10400 15p]  no confluences yet
+11:34:19  INFO     AUDUSD  0.71215  Asia[0.70865–0.71124 26p]  no confluences yet
+11:34:19  INFO     XAUUSD  4492.04500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:34:19  INFO     USTECH100M  29084.15000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:43:32  INFO     MT5 connected  account=107132286  balance=100000.00 GBP  server=MetaQuotes-Demo
+11:43:32  INFO     === backtestSystem started ===
+11:43:32  INFO     Pairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'USTECH100M']  poll=2s
+11:43:32  INFO     Method: both  SL: atr30m  TP: structural  RR: 2.2
+11:43:32  INFO     Kill: D=2R  W=5R  M=10R
+11:43:32  INFO     Features (10): rangePosition, chochBos, wickRejection, orderBlock, htfEma, vwapSlope, hurstRegime, fvgBias, ichimokuCloud, macdSignal
+11:43:32  INFO     --- New day 2026-05-20 ---  R daily=+0.00  weekly=+0.00  monthly=+0.00  limits=D2/W5/M10
+11:43:32  INFO     EURUSD  1.16010  Asia[1.15920–1.16128 21p]  no confluences yet
+11:43:32  INFO     GBPUSD  1.33964  Asia[1.33778–1.34040 26p]  no confluences yet
+11:43:32  INFO     USDJPY  158.99550  Asia[158.95300–159.10400 15p]  no confluences yet
+11:43:32  INFO     AUDUSD  0.71227  Asia[0.70865–0.71124 26p]  no confluences yet
+11:43:32  INFO     XAUUSD  4495.33500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:43:32  INFO     USTECH100M  29069.25000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:44:03  INFO     EURUSD  1.16010  Asia[1.15920–1.16128 21p]  no confluences yet
+11:44:03  INFO     GBPUSD  1.33966  Asia[1.33778–1.34040 26p]  no confluences yet
+11:44:03  INFO     USDJPY  158.99850  Asia[158.95300–159.10400 15p]  no confluences yet
+11:44:03  INFO     AUDUSD  0.71235  Asia[0.70865–0.71124 26p]  no confluences yet
+11:44:03  INFO     XAUUSD  4495.95500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:44:03  INFO     USTECH100M  29070.90000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:44:34  INFO     EURUSD  1.16004  Asia[1.15920–1.16128 21p]  no confluences yet
+11:44:34  INFO     GBPUSD  1.33960  Asia[1.33778–1.34040 26p]  no confluences yet
+11:44:34  INFO     USDJPY  159.00650  Asia[158.95300–159.10400 15p]  no confluences yet
+11:44:34  INFO     AUDUSD  0.71234  Asia[0.70865–0.71124 26p]  no confluences yet
+11:44:34  INFO     XAUUSD  4494.74500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:44:34  INFO     USTECH100M  29072.15000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:45:05  INFO     EURUSD  1.16003  Asia[1.15920–1.16128 21p]  no confluences yet
+11:45:05  INFO     GBPUSD  1.33963  Asia[1.33778–1.34040 26p]  no confluences yet
+11:45:05  INFO     USDJPY  159.00450  Asia[158.95300–159.10400 15p]  no confluences yet
+11:45:05  INFO     AUDUSD  0.71239  Asia[0.70865–0.71124 26p]  no confluences yet
+11:45:05  INFO     XAUUSD  4494.38500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:45:05  INFO     USTECH100M  29072.15000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:45:36  INFO     EURUSD  1.16010  Asia[1.15920–1.16128 21p]  no confluences yet
+11:45:36  INFO     GBPUSD  1.33966  Asia[1.33778–1.34040 26p]  no confluences yet
+11:45:36  INFO     USDJPY  158.99950  Asia[158.95300–159.10400 15p]  no confluences yet
+11:45:36  INFO     AUDUSD  0.71241  Asia[0.70865–0.71124 26p]  no confluences yet
+11:45:36  INFO     XAUUSD  4493.58500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:45:36  INFO     USTECH100M  29071.40000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:46:07  INFO     EURUSD  1.16008  Asia[1.15920–1.16128 21p]  no confluences yet
+11:46:07  INFO     GBPUSD  1.33967  Asia[1.33778–1.34040 26p]  no confluences yet
+11:46:07  INFO     USDJPY  158.99850  Asia[158.95300–159.10400 15p]  no confluences yet
+11:46:07  INFO     AUDUSD  0.71237  Asia[0.70865–0.71124 26p]  no confluences yet
+11:46:07  INFO     XAUUSD  4494.04500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:46:07  INFO     USTECH100M  29070.05000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:47:14  WARNING  Could not load credentials from KV: HTTP Error 403: Forbidden
+11:47:14  INFO     MT5 connected  account=107132286  balance=100000.00 GBP  server=MetaQuotes-Demo
+11:47:14  INFO     === backtestSystem started ===
+11:47:14  INFO     Pairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'USTECH100M']  poll=2s
+11:47:14  INFO     Method: both  SL: atr30m  TP: structural  RR: 2.2
+11:47:14  INFO     Kill: D=2R  W=5R  M=10R
+11:47:14  INFO     Features (10): rangePosition, chochBos, wickRejection, orderBlock, htfEma, vwapSlope, hurstRegime, fvgBias, ichimokuCloud, macdSignal
+11:47:14  INFO     --- New day 2026-05-20 ---  R daily=+0.00  weekly=+0.00  monthly=+0.00  limits=D2/W5/M10
+11:47:14  INFO     EURUSD  1.16027  Asia[1.15920–1.16128 21p]  no confluences yet
+11:47:14  INFO     GBPUSD  1.33981  Asia[1.33778–1.34040 26p]  no confluences yet
+11:47:14  INFO     USDJPY  158.97250  Asia[158.95300–159.10400 15p]  no confluences yet
+11:47:14  INFO     AUDUSD  0.71248  Asia[0.70865–0.71124 26p]  no confluences yet
+11:47:14  INFO     XAUUSD  4495.54500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:47:14  INFO     USTECH100M  29078.30000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:47:44  INFO     EURUSD  1.16033  Asia[1.15920–1.16128 21p]  no confluences yet
+11:47:44  INFO     GBPUSD  1.33981  Asia[1.33778–1.34040 26p]  no confluences yet
+11:47:44  INFO     USDJPY  158.97350  Asia[158.95300–159.10400 15p]  no confluences yet
+11:47:44  INFO     AUDUSD  0.71244  Asia[0.70865–0.71124 26p]  no confluences yet
+11:47:44  INFO     XAUUSD  4495.19500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:47:44  INFO     USTECH100M  29075.05000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:48:14  INFO     EURUSD  1.16023  Asia[1.15920–1.16128 21p]  no confluences yet
+11:48:14  INFO     GBPUSD  1.33982  Asia[1.33778–1.34040 26p]  no confluences yet
+11:48:14  INFO     USDJPY  158.97250  Asia[158.95300–159.10400 15p]  no confluences yet
+11:48:14  INFO     AUDUSD  0.71243  Asia[0.70865–0.71124 26p]  no confluences yet
+11:48:14  INFO     XAUUSD  4493.92500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:48:14  INFO     USTECH100M  29075.65000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:48:45  INFO     EURUSD  1.16020  Asia[1.15920–1.16128 21p]  no confluences yet
+11:48:45  INFO     GBPUSD  1.33984  Asia[1.33778–1.34040 26p]  no confluences yet
+11:48:45  INFO     USDJPY  158.97050  Asia[158.95300–159.10400 15p]  no confluences yet
+11:48:45  INFO     AUDUSD  0.71243  Asia[0.70865–0.71124 26p]  no confluences yet
+11:48:45  INFO     XAUUSD  4493.86500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:48:45  INFO     USTECH100M  29074.65000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:49:15  INFO     EURUSD  1.16030  Asia[1.15920–1.16128 21p]  no confluences yet
+11:49:15  INFO     GBPUSD  1.33983  Asia[1.33778–1.34040 26p]  no confluences yet
+11:49:15  INFO     USDJPY  158.96850  Asia[158.95300–159.10400 15p]  no confluences yet
+11:49:15  INFO     AUDUSD  0.71240  Asia[0.70865–0.71124 26p]  no confluences yet
+11:49:15  INFO     XAUUSD  4492.92500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:49:15  INFO     USTECH100M  29067.55000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:49:47  INFO     EURUSD  1.16014  Asia[1.15920–1.16128 21p]  no confluences yet
+11:49:47  INFO     GBPUSD  1.33968  Asia[1.33778–1.34040 26p]  no confluences yet
+11:49:47  INFO     USDJPY  158.98150  Asia[158.95300–159.10400 15p]  no confluences yet
+11:49:47  INFO     AUDUSD  0.71237  Asia[0.70865–0.71124 26p]  no confluences yet
+11:49:47  INFO     XAUUSD  4492.42500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:49:47  INFO     USTECH100M  29067.20000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet

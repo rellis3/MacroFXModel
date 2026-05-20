@@ -23,7 +23,7 @@ from levels    import (compute_asia_range, compute_monday_range, project_fib_lev
 from engine    import compute_direction
 from risk      import KillSwitch, within_trade_window, position_size
 
-load_dotenv()
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -79,7 +79,7 @@ def _push_status_to_kv(dashboard_url: str, status: dict) -> None:
         with urllib.request.urlopen(req, timeout=5):
             pass
     except Exception as exc:
-        log.debug(f'KV status push failed: {exc}')
+        log.warning(f'KV status push failed: {exc}')
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -313,6 +313,7 @@ def main() -> None:
     poll_interval = int(cfg.get('pollInterval', _DEFAULT_POLL))
 
     log.info('=== backtestSystem started ===')
+    log.info(f'Dashboard URL: {dashboard_url or "(not set — monitor disabled)"}')
     log.info(f'Pairs: {pairs}  poll={poll_interval}s')
     log.info(f'Method: {cfg.get("method")}  SL: {cfg.get("slMode")}  TP: {cfg.get("tpMode")}  RR: {cfg.get("rrRatio")}')
     log.info(f'Kill: D={cfg.get("killDaily")}R  W={cfg.get("killWeekly")}R  M={cfg.get("killMonthly")}R')
