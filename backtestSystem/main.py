@@ -99,6 +99,7 @@ def _level_key(pair: str, price: float, pip: float) -> str:
 
 def run_pair(pair: str, cfg: dict, kill: KillSwitch,
              level_entries: dict, today_date: str, london_hour: int,
+             open_pos: list = None, cooldown_until: float = 0.0,
              can_trade: bool = True) -> dict:
     """Returns a status dict for KV push; empty dict if skipped before levels computed."""
     st: dict = {'pair': pair, 'price': None, 'asia': None, 'confluences': [],
@@ -188,7 +189,8 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
         return st
 
     # ── Open position status (always populate so monitor can show it) ────
-    open_pos = get_open_positions()
+    if open_pos is None:
+        open_pos = get_open_positions()
     pair_pos = [p for p in open_pos if p.symbol == pair or p.symbol.startswith(pair)]
     if pair_pos:
         def _nearest_level(open_px: float):
@@ -211,6 +213,13 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
                 'level_fib':  fib,
             })
         log.info(f'  {pair}  {len(pair_pos)} position(s) open — skipping new entry')
+        return st
+
+    # ── Trade cooldown ────────────────────────────────────────────────────
+    now_mono = time.monotonic()
+    if cooldown_until > now_mono:
+        mins_left = int((cooldown_until - now_mono) / 60) + 1
+        log.info(f'  {pair}  cooldown — {mins_left}m remaining after last trade')
         return st
 
     # ── Proximity check ───────────────────────────────────────────────────
@@ -381,8 +390,12 @@ def main() -> None:
     enabled_features = [k for k, v in cfg.get('features', {}).items() if v.get('enabled')]
     log.info(f'Features ({len(enabled_features)}): {", ".join(enabled_features)}')
 
-    level_entries: dict = {}
+    level_entries:    dict = {}
+    pair_close_times: dict = {}   # pair → monotonic timestamp of last close
+    prev_tickets:     dict = {}   # ticket_id → symbol
     last_date = ''
+
+    cooldown_secs = cfg.get('tradeCooldownMins', 30) * 60
 
     while True:
         try:
@@ -396,11 +409,24 @@ def main() -> None:
 
             in_window = within_trade_window(cfg)
 
+            # Fetch positions once; detect any that closed since last poll
+            open_pos = get_open_positions()
+            current_tickets = {p.ticket: p.symbol for p in open_pos}
+            for ticket, symbol in prev_tickets.items():
+                if ticket not in current_tickets:
+                    for pair in pairs:
+                        if symbol == pair or symbol.startswith(pair):
+                            pair_close_times[pair] = time.monotonic()
+                            log.info(f'{pair}  position #{ticket} closed — {cooldown_secs//60:.0f}m cooldown started')
+            prev_tickets = current_tickets
+
             pair_statuses: dict = {}
             for pair in pairs:
                 try:
+                    cooldown_until = pair_close_times.get(pair, 0) + cooldown_secs
                     st = run_pair(pair, cfg, kill, level_entries, today_date,
-                                  now['lHour'], can_trade=in_window)
+                                  now['lHour'], open_pos=open_pos,
+                                  cooldown_until=cooldown_until, can_trade=in_window)
                     if st.get('price') is not None:
                         pair_statuses[pair] = st
                 except Exception as exc:

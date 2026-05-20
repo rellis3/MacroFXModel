@@ -34,7 +34,7 @@ DEFAULTS = {
     "useM1Features":     True,
 
     # SL
-    "slMode":            "range",         # range | atr | atr30m
+    "slMode":            "atr30m",        # range | atr | atr30m
     "slFraction":        0.35,            # range × this fraction
     "slMult":            1.5,             # ATR × this multiplier
     "minSlPips":         5,
@@ -53,6 +53,7 @@ DEFAULTS = {
     # Trade management
     "reEnterTp":         True,
     "flipOnSL":          False,
+    "tradeCooldownMins": 30,             # minutes to block new entries after a trade closes
 
     # Kill switches (in R units, 0 = disabled)
     "killDaily":         2.0,

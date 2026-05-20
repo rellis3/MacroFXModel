@@ -50,6 +50,7 @@
 
   "reEnterTp":         true,
   "flipOnSL":          false,
+  "tradeCooldownMins": 30,
 
   "killDaily":         2.0,
   "killWeekly":        5.0,

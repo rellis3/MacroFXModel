@@ -438,7 +438,8 @@ const BT_LIVE_FIELDS = [
   { id: 'bt_killMonthly', key: 'killMonthly',   parse: parseFloat },
   { id: 'bt_entryWindow', key: 'entryWindow',   parse: parseInt   },
   { id: 'bt_eodExit',     key: 'eodExit',       parse: parseInt   },
-  { id: 'bt_enabledPairs',key: 'enabledPairs',  parse: v => v.split(',').map(s => s.trim()).filter(Boolean) },
+  { id: 'bt_tradeCooldownMins', key: 'tradeCooldownMins', parse: parseInt },
+  { id: 'bt_enabledPairs',     key: 'enabledPairs',      parse: v => v.split(',').map(s => s.trim()).filter(Boolean) },
 ];
 
 async function loadLiveSettings() {
