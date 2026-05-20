@@ -495,7 +495,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
   <!-- MT5 Credentials -->
   <div class="card">
-    <div class="card-title">MT5 Credentials</div>
+    <div class="card-title">MT5 Credentials — Main Bot</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
       Saved to KV — the Python bot reads these on startup instead of needing environment variables.
       Only one value needs to be set as an env var on the machine running the bot:
@@ -521,6 +521,36 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
       <button class="btn-save" style="max-width:180px;padding:9px" onclick="saveCreds()">Save Credentials</button>
       <span id="credsStatus" style="font-size:11px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <!-- BacktestSystem MT5 Credentials -->
+  <div class="card">
+    <div class="card-title">MT5 Credentials — Backtest Bot</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+      Saved to KV under a separate key. The local <code style="background:var(--s3);padding:1px 5px;border-radius:3px">backtestSystem/main.py</code>
+      reads these on startup when <code style="background:var(--s3);padding:1px 5px;border-radius:3px">DASHBOARD_URL</code> is set in its <code style="background:var(--s3);padding:1px 5px;border-radius:3px">.env</code>,
+      falling back to individual env vars if not.
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">Account number <small>File → Login to Trade Account in MT5</small></span>
+      <input type="number" id="bt_mt5_account" placeholder="e.g. 12345678" style="width:130px">
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">Password</span>
+      <input type="password" id="bt_mt5_password" placeholder="••••••••" style="width:130px">
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">Server <small>visible in MT5 login dropdown e.g. ICMarkets-Demo01</small></span>
+      <input type="text" id="bt_mt5_server" placeholder="Broker-Demo01" style="width:180px">
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">Terminal path <small>optional — full path to terminal64.exe</small></span>
+      <input type="text" id="bt_mt5_path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" style="width:280px;text-align:left">
+    </div>
+    <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+      <button class="btn-save" style="max-width:180px;padding:9px" onclick="saveBtCreds()">Save Credentials</button>
+      <span id="btCredsStatus" style="font-size:11px;color:var(--text3)"></span>
     </div>
   </div>
 

@@ -377,53 +377,56 @@ function setStatus(type, msg) {
   el.className = `save-status ${type}`;
 }
 
-// ── MT5 Credentials (separate KV key: bot_credentials) ───────────────────────
+// ── MT5 Credentials helpers ───────────────────────────────────────────────────
 
-async function loadCreds() {
-  try {
-    const stored = await kvGet('bot_credentials');
-    if (!stored) return;
-    setVal('mt5_account',  stored.mt5_account  ?? '');
-    setVal('mt5_server',   stored.mt5_server   ?? '');
-    setVal('mt5_path',     stored.mt5_path     ?? '');
-    // Don't pre-fill password — leave blank so it isn't visibly in the field on load
-    // The field only sends a new value when the user types something
-    document.getElementById('mt5_password')._hasStored = !!stored.mt5_password;
-    const pwEl = document.getElementById('mt5_password');
-    if (pwEl && stored.mt5_password) pwEl.placeholder = '(saved — leave blank to keep)';
-  } catch(e) {}
+function _applyCredsToForm(stored, idPrefix, pwId) {
+  if (!stored) return;
+  setVal(`${idPrefix}mt5_account`, stored.mt5_account ?? '');
+  setVal(`${idPrefix}mt5_server`,  stored.mt5_server  ?? '');
+  setVal(`${idPrefix}mt5_path`,    stored.mt5_path    ?? '');
+  const pwEl = document.getElementById(pwId);
+  if (pwEl && stored.mt5_password) pwEl.placeholder = '(saved — leave blank to keep)';
 }
 
-async function saveCreds() {
-  const pwEl  = document.getElementById('mt5_password');
+async function _saveCreds(kvKey, idPrefix, pwId, statusId) {
+  const pwEl  = document.getElementById(pwId);
   const pwVal = pwEl?.value || '';
-
-  // If user left password blank, reload existing value from KV rather than overwriting with ''
   let finalPw = pwVal;
   if (!pwVal) {
-    try {
-      const existing = await kvGet('bot_credentials');
-      finalPw = existing?.mt5_password ?? '';
-    } catch(e) {}
+    try { finalPw = (await kvGet(kvKey))?.mt5_password ?? ''; } catch(e) {}
   }
-
   const creds = {
-    mt5_account:  document.getElementById('mt5_account')?.value?.trim() ?? '',
+    mt5_account:  document.getElementById(`${idPrefix}mt5_account`)?.value?.trim() ?? '',
     mt5_password: finalPw,
-    mt5_server:   document.getElementById('mt5_server')?.value?.trim()  ?? '',
-    mt5_path:     document.getElementById('mt5_path')?.value?.trim()    ?? '',
+    mt5_server:   document.getElementById(`${idPrefix}mt5_server`)?.value?.trim()  ?? '',
+    mt5_path:     document.getElementById(`${idPrefix}mt5_path`)?.value?.trim()    ?? '',
   };
-
-  const statusEl = document.getElementById('credsStatus');
+  const statusEl = document.getElementById(statusId);
   if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.style.color = 'var(--text3)'; }
   try {
-    await kvSet('bot_credentials', creds);
+    await kvSet(kvKey, creds);
     if (pwEl) { pwEl.value = ''; pwEl.placeholder = '(saved — leave blank to keep)'; }
     if (statusEl) { statusEl.textContent = 'Saved ✓'; statusEl.style.color = 'var(--green)'; }
-    setTimeout(() => { if (statusEl) { statusEl.textContent = ''; } }, 3000);
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
   } catch(e) {
     if (statusEl) { statusEl.textContent = `Error: ${e.message}`; statusEl.style.color = 'var(--red)'; }
   }
+}
+
+// Main bot credentials (KV key: bot_credentials)
+async function loadCreds() {
+  try { _applyCredsToForm(await kvGet('bot_credentials'), 'mt5_', 'mt5_password'); } catch(e) {}
+}
+async function saveCreds() {
+  await _saveCreds('bot_credentials', 'mt5_', 'mt5_password', 'credsStatus');
+}
+
+// Backtest bot credentials (KV key: backtestsystem_credentials)
+async function loadBtCreds() {
+  try { _applyCredsToForm(await kvGet('backtestsystem_credentials'), 'bt_mt5_', 'bt_mt5_password'); } catch(e) {}
+}
+async function saveBtCreds() {
+  await _saveCreds('backtestsystem_credentials', 'bt_mt5_', 'bt_mt5_password', 'btCredsStatus');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -432,8 +435,10 @@ window.saveConfig       = saveConfig;
 window.resetDefaults    = resetDefaults;
 window.toggleKillSwitch = toggleKillSwitch;
 window.saveCreds        = saveCreds;
+window.saveBtCreds      = saveBtCreds;
 
 loadConfig();
 loadCreds();
+loadBtCreds();
 loadBotStatus();
 setInterval(loadBotStatus, 60_000);  // refresh status every 60s

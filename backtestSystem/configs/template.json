@@ -3,8 +3,8 @@
     "1. Copy this file to configs/active.json",
     "2. To export your saved browser config: open the backtest page,",
     "   open browser DevTools console, and run:",
-    "   copy(JSON.stringify(savedConfigs['old - 61%wr 5.7%dd'], null, 2))",
-    "   then paste the 'features' block and any overrides into active.json.",
+    "   copy(JSON.stringify(JSON.parse(localStorage.getItem('bt-saved-cfgs')).find(c => c.name === 'old - 61%wr 5.7%dd')?.cfg, null, 2))",
+    "   Paste the result into active.json (it is the cfg object directly).",
     "3. Only add keys you want to override — the engine merges with defaults."
   ],
 

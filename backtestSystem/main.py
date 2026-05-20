@@ -8,6 +8,8 @@ import logging
 import os
 import sys
 import time
+import urllib.request
+import json
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
@@ -35,6 +37,26 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 POLL_INTERVAL = 60  # seconds between pair scans
+
+
+# ── KV credential fetch ───────────────────────────────────────────────────────
+
+def _load_creds_from_kv(dashboard_url: str) -> dict | None:
+    """
+    Fetch backtestsystem_credentials from the dashboard KV API.
+    Returns a dict with mt5_account / mt5_password / mt5_server / mt5_path,
+    or None if unavailable.
+    """
+    try:
+        url = f'{dashboard_url.rstrip("/")}/api/kv/get?key=backtestsystem_credentials'
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            data = json.loads(resp.read())
+        if data.get('miss') or not data.get('data'):
+            return None
+        return data['data']
+    except Exception as exc:
+        log.warning(f'Could not load credentials from KV: {exc}')
+        return None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -183,10 +205,21 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
 def main() -> None:
     cfg = load_config()
 
-    mt5_account  = int(os.getenv('MT5_ACCOUNT', '0'))
-    mt5_password = os.getenv('MT5_PASSWORD', '')
-    mt5_server   = os.getenv('MT5_SERVER',   '')
-    mt5_path     = os.getenv('MT5_PATH',     '')
+    # Try KV first (set DASHBOARD_URL in .env), fall back to individual env vars
+    dashboard_url = os.getenv('DASHBOARD_URL', '')
+    kv_creds = _load_creds_from_kv(dashboard_url) if dashboard_url else None
+
+    if kv_creds:
+        log.info('Loaded MT5 credentials from dashboard KV')
+        mt5_account  = int(kv_creds.get('mt5_account') or 0)
+        mt5_password = kv_creds.get('mt5_password', '')
+        mt5_server   = kv_creds.get('mt5_server',   '')
+        mt5_path     = kv_creds.get('mt5_path',     '')
+    else:
+        mt5_account  = int(os.getenv('MT5_ACCOUNT', '0'))
+        mt5_password = os.getenv('MT5_PASSWORD', '')
+        mt5_server   = os.getenv('MT5_SERVER',   '')
+        mt5_path     = os.getenv('MT5_PATH',     '')
 
     if not connect(mt5_account, mt5_password, mt5_server, mt5_path):
         log.error('MT5 connection failed — check .env and MT5 terminal')
