@@ -1,0 +1,77 @@
+{
+  "_instructions": [
+    "1. Copy this file to configs/active.json",
+    "2. To export your saved browser config: open the backtest page,",
+    "   open browser DevTools console, and run:",
+    "   copy(JSON.stringify(savedConfigs['old - 61%wr 5.7%dd'], null, 2))",
+    "   then paste the 'features' block and any overrides into active.json.",
+    "3. Only add keys you want to override — the engine merges with defaults."
+  ],
+
+  "method":            "asia",
+  "confTolPips":       2.0,
+  "signalFilter":      "all_conf",
+  "priceMode":         "lowest",
+  "clusterMerge":      true,
+
+  "entryWindow":       800,
+  "eodExit":           2100,
+  "entryProximityATR": 0.30,
+
+  "minConviction":     0.20,
+  "minConfirms":       3,
+  "levelReentry":      2,
+
+  "requireSweep":      false,
+  "sweepPips":         2,
+  "secondTouchOnly":   false,
+  "candleConfirmN":    0,
+  "candleConfirmPct":  0.6,
+  "rejectionBar":      false,
+  "rejWickPct":        0.40,
+  "rejMinAtrPct":      0.30,
+  "useM1Features":     false,
+
+  "slMode":            "range",
+  "slFraction":        0.35,
+  "slMult":            1.5,
+  "minSlPips":         5,
+  "atrPeriod":         14,
+
+  "tpMode":            "fixedR",
+  "rrRatio":           2.2,
+  "tpBuf":             5,
+  "tpAtrFallback":     5,
+  "tpVolLo":           2.0,
+  "tpVolMed":          3.0,
+  "tpVolHi":           5.0,
+
+  "reEnterTp":         true,
+  "flipOnSL":          false,
+
+  "killDaily":         2.0,
+  "killWeekly":        5.0,
+  "killMonthly":       10.0,
+
+  "posMode":           "risk_pct",
+  "fixedSize":         10,
+  "riskPct":           1.0,
+
+  "enabledPairs": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD"],
+
+  "features": {
+    "rangePosition": { "enabled": false, "weight": 1, "label": "Range Position"  },
+    "chochBos":      { "enabled": false, "weight": 2, "label": "CHoCH / BOS"     },
+    "wickRejection": { "enabled": false, "weight": 1, "label": "Wick Rejection"  },
+    "rsiDivergence": { "enabled": false, "weight": 1, "label": "RSI Divergence"  },
+    "orderBlock":    { "enabled": false, "weight": 1, "label": "Order Block"     },
+    "htfEma":        { "enabled": false, "weight": 1, "label": "HTF EMA 21/50"  },
+    "vwapSlope":     { "enabled": false, "weight": 1, "label": "TWAP Slope"      },
+    "adxFilter":     { "enabled": false, "weight": 1, "label": "ADX Filter"      },
+    "hurstRegime":   { "enabled": false, "weight": 1, "label": "Hurst Regime"    },
+    "fvgBias":       { "enabled": false, "weight": 1, "label": "FVG Bias"        },
+    "weeklyPivot":   { "enabled": false, "weight": 1, "label": "Weekly Pivot"    },
+    "ichimokuCloud": { "enabled": false, "weight": 1, "label": "Ichimoku Cloud"  },
+    "macdSignal":    { "enabled": false, "weight": 1, "label": "MACD (12/26/9)" }
+  }
+}

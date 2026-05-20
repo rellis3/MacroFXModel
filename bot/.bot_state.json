@@ -3,15 +3,7 @@
     "day_start_bal": 10000.0,
     "month_start_bal": 10000.0,
     "locked_until": 0.0,
-    "last_trade_by_pair": {
-      "EUR/USD": 1779210088.1481006,
-      "XAU/USD": 1779202863.3729951,
-      "USD/CHF": 1779208679.3046541,
-      "USD/CAD": 1779207744.0572906,
-      "NAS100_USD": 1779206136.2604342,
-      "USD/JPY": 1779210598.0735939,
-      "AUD/USD": 1779208679.3004575
-    },
+    "last_trade_by_pair": {},
     "last_reset_date": "2026-05-19"
   },
   "position_meta": {}

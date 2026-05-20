@@ -25809,3 +25809,1661 @@
 [2026-05-19 18:12:16] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 57.7m remaining
 [2026-05-19 18:12:16] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 10.1m remaining
 [2026-05-19 18:12:16] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 25.7m remaining
+[2026-05-19 18:12:31] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:12:31] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.838
+[2026-05-19 18:12:31] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37504
+[2026-05-19 18:12:31] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78879
+[2026-05-19 18:12:31] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:12:31] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 48.9m remaining
+[2026-05-19 18:12:31] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 57.4m remaining
+[2026-05-19 18:12:31] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 9.9m remaining
+[2026-05-19 18:12:31] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 25.5m remaining
+[2026-05-19 18:12:44] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:08:31.494Z  min_stars=2
+  EUR/USD @ 1.16095 | ↓1.16129(5★B 3.4p) ↑1.1624249999999998(5★SKIP 14.7p) ↑1.15902(3★B 19.3p) ↑1.1634349999999998(5★SKIP 24.8p) ↑1.1641275(4★SKIP 31.8p) ↑1.1565950000000003(2★SKIP 43.5p) +20 more
+  GBP/USD @ 1.34074 | ↓1.34131(1★SKIP 5.7p)[skip<2★] ↓1.3421(1★SKIP 13.6p)[skip<2★] ↓1.3429(2★SKIP 21.6p) ↓1.34369(1★SKIP 29.5p)[skip<2★] ↓1.34448(1★SKIP 37.4p)[skip<2★] ↑1.33617(1★SKIP 45.7p)[skip<2★] +13 more
+  USD/JPY @ 158.836 | ↓158.861(2★A 2.5p) ↓158.918(2★A 8.2p) ↑158.72(1★SKIP 11.6p)[skip<2★] ↓159.059(2★A 22.3p) ↓159.117(1★A 28.1p)[skip<2★] ↑158.521(1★SKIP 31.5p)[skip<2★] +14 more
+  AUD/USD @ 0.71136 | ↑0.71042(2★B 9.4p) ↓0.71275(1★SKIP 13.9p)[skip<2★] ↑0.70978(1★B 15.8p)[skip<2★] ↓0.71508(1★SKIP 37.2p)[skip<2★] ↑0.70576(2★B 56.0p) ↓0.71785(2★SKIP 64.9p) +16 more
+  XAU/USD @ 4507.235 | ↑4504.35(1★SKIP 2.9p)[skip<2★] ↓4514.48(1★B 7.2p)[skip<2★] ↓4528.49(1★B 21.3p)[skip<2★] ↑4466.54(1★SKIP 40.7p)[skip<2★] ↓4548.42(1★B 41.2p)[skip<2★] ↓4555.89(1★B 48.7p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37505 | ↑1.37498(1★SKIP 0.7p)[skip<2★] ↑1.37482(1★SKIP 2.3p)[skip<2★] ↓1.37534(1★A 2.9p)[skip<2★] ↑1.37446(1★SKIP 5.9p)[skip<2★] ↓1.37569(3★A+ 6.4p) ↓1.37605(1★A 10.0p)[skip<2★] +27 more
+  USD/CHF @ 0.78879 | ↓0.78907(2★A 2.8p) ↓0.78948(1★B 6.9p)[skip<2★] ↑0.78771(1★SKIP 10.8p)[skip<2★] ↑0.78683(1★SKIP 19.6p)[skip<2★] ↑0.78661(2★SKIP 21.8p) ↑0.78646(3★SKIP 23.3p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29000.8 | ↓29057.2(1★SKIP 56.4p)[skip<2★] ↑28860.7(2★A 140.1p) ↓29160.9(1★SKIP 160.1p)[skip<2★] ↓29181.3(1★SKIP 180.5p)[skip<2★] ↑28793.5(2★A 207.3p) ↓29228.1(1★SKIP 227.3p)[skip<2★] +19 more
+[2026-05-19 18:12:44] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16095
+[2026-05-19 18:12:44] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.836
+[2026-05-19 18:12:44] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37505
+[2026-05-19 18:12:44] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78879
+[2026-05-19 18:12:44] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:12:44] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 48.7m remaining
+[2026-05-19 18:12:44] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 57.2m remaining
+[2026-05-19 18:12:44] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 9.7m remaining
+[2026-05-19 18:12:44] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 25.2m remaining
+[2026-05-19 18:13:01] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.834
+[2026-05-19 18:13:01] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37504
+[2026-05-19 18:13:01] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78878
+[2026-05-19 18:13:01] [INFO] Near level (2/2): USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:13:01] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 56.9m remaining
+[2026-05-19 18:13:01] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 9.4m remaining
+[2026-05-19 18:13:01] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 25.0m remaining
+[2026-05-19 18:13:13] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.161
+[2026-05-19 18:13:13] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.834
+[2026-05-19 18:13:13] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37501
+[2026-05-19 18:13:13] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78876
+[2026-05-19 18:13:13] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:13:13] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 48.2m remaining
+[2026-05-19 18:13:13] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 56.7m remaining
+[2026-05-19 18:13:13] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 9.2m remaining
+[2026-05-19 18:13:13] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 24.8m remaining
+[2026-05-19 18:13:25] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:08:31.494Z  min_stars=2
+  EUR/USD @ 1.161 | ↓1.16129(5★B 2.9p) ↑1.1624249999999998(5★SKIP 14.2p) ↑1.15902(3★B 19.8p) ↑1.1634349999999998(5★SKIP 24.3p) ↑1.1641275(4★SKIP 31.3p) ↑1.1565950000000003(2★SKIP 44.0p) +20 more
+  GBP/USD @ 1.34084 | ↓1.34131(1★SKIP 4.7p)[skip<2★] ↓1.3421(1★SKIP 12.6p)[skip<2★] ↓1.3429(2★SKIP 20.6p) ↓1.34369(1★SKIP 28.5p)[skip<2★] ↓1.34448(1★SKIP 36.4p)[skip<2★] ↑1.33617(1★SKIP 46.7p)[skip<2★] +13 more
+  USD/JPY @ 158.832 | ↓158.861(2★A 2.9p) ↓158.918(2★A 8.6p) ↑158.72(1★SKIP 11.2p)[skip<2★] ↓159.059(2★A 22.7p) ↓159.117(1★A 28.5p)[skip<2★] ↑158.521(1★SKIP 31.1p)[skip<2★] +14 more
+  AUD/USD @ 0.71142 | ↑0.71042(2★B 10.0p) ↓0.71275(1★SKIP 13.3p)[skip<2★] ↑0.70978(1★B 16.4p)[skip<2★] ↓0.71508(1★SKIP 36.6p)[skip<2★] ↑0.70576(2★B 56.6p) ↓0.71785(2★SKIP 64.3p) +16 more
+  XAU/USD @ 4507.855 | ↑4504.35(1★SKIP 3.5p)[skip<2★] ↓4514.48(1★B 6.6p)[skip<2★] ↓4528.49(1★B 20.6p)[skip<2★] ↓4548.42(1★B 40.6p)[skip<2★] ↑4466.54(1★SKIP 41.3p)[skip<2★] ↓4555.89(1★B 48.0p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37501 | ↑1.37498(1★SKIP 0.3p)[skip<2★] ↑1.37482(1★SKIP 1.9p)[skip<2★] ↓1.37534(1★A 3.3p)[skip<2★] ↑1.37446(1★SKIP 5.5p)[skip<2★] ↓1.37569(3★A+ 6.8p) ↓1.37605(1★A 10.4p)[skip<2★] +27 more
+  USD/CHF @ 0.78877 | ↓0.78907(2★A 3.0p) ↓0.78948(1★B 7.1p)[skip<2★] ↑0.78771(1★SKIP 10.6p)[skip<2★] ↑0.78683(1★SKIP 19.4p)[skip<2★] ↑0.78661(2★SKIP 21.6p) ↑0.78646(3★SKIP 23.1p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29013.8 | ↓29057.2(1★SKIP 43.4p)[skip<2★] ↓29160.9(1★SKIP 147.1p)[skip<2★] ↑28860.7(2★A 153.1p) ↓29181.3(1★SKIP 167.5p)[skip<2★] ↓29228.1(1★SKIP 214.3p)[skip<2★] ↑28793.5(2★A 220.3p) +19 more
+[2026-05-19 18:13:25] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.161
+[2026-05-19 18:13:25] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.832
+[2026-05-19 18:13:25] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37501
+[2026-05-19 18:13:25] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78877
+[2026-05-19 18:13:25] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:13:25] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 48.0m remaining
+[2026-05-19 18:13:25] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 56.5m remaining
+[2026-05-19 18:13:25] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 9.0m remaining
+[2026-05-19 18:13:25] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 24.6m remaining
+[2026-05-19 18:13:52] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:14:16] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1611
+[2026-05-19 18:14:16] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.824
+[2026-05-19 18:14:16] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37506
+[2026-05-19 18:14:16] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:14:16] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:14:16] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 47.2m remaining
+[2026-05-19 18:14:16] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 55.7m remaining
+[2026-05-19 18:14:16] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 8.1m remaining
+[2026-05-19 18:14:16] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 23.7m remaining
+[2026-05-19 18:14:40] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:08:31.494Z  min_stars=2
+  EUR/USD @ 1.16114 | ↓1.16129(5★B 1.5p) ↑1.1624249999999998(5★SKIP 12.8p) ↑1.15902(3★B 21.2p) ↑1.1634349999999998(5★SKIP 22.9p) ↑1.1641275(4★SKIP 29.9p) ↑1.1565950000000003(2★SKIP 45.4p) +20 more
+  GBP/USD @ 1.34105 | ↓1.34131(1★SKIP 2.6p)[skip<2★] ↓1.3421(1★SKIP 10.5p)[skip<2★] ↓1.3429(2★SKIP 18.5p) ↓1.34369(1★SKIP 26.4p)[skip<2★] ↓1.34448(1★SKIP 34.3p)[skip<2★] ↑1.33617(1★SKIP 48.8p)[skip<2★] +13 more
+  USD/JPY @ 158.834 | ↓158.861(2★A 2.7p) ↓158.918(2★A 8.4p) ↑158.72(1★SKIP 11.4p)[skip<2★] ↓159.059(2★A 22.5p) ↓159.117(1★A 28.3p)[skip<2★] ↑158.521(1★SKIP 31.3p)[skip<2★] +14 more
+  AUD/USD @ 0.71148 | ↑0.71042(2★B 10.6p) ↓0.71275(1★SKIP 12.7p)[skip<2★] ↑0.70978(1★B 17.0p)[skip<2★] ↓0.71508(1★SKIP 36.0p)[skip<2★] ↑0.70576(2★B 57.2p) ↓0.71785(2★SKIP 63.7p) +16 more
+  XAU/USD @ 4509.105 | ↑4504.35(1★SKIP 4.8p)[skip<2★] ↓4514.48(1★B 5.4p)[skip<2★] ↓4528.49(1★B 19.4p)[skip<2★] ↓4548.42(1★B 39.3p)[skip<2★] ↑4466.54(1★SKIP 42.6p)[skip<2★] ↓4555.89(1★B 46.8p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37505 | ↑1.37498(1★SKIP 0.7p)[skip<2★] ↑1.37482(1★SKIP 2.3p)[skip<2★] ↓1.37534(1★A 2.9p)[skip<2★] ↑1.37446(1★SKIP 5.9p)[skip<2★] ↓1.37569(3★A+ 6.4p) ↓1.37605(1★A 10.0p)[skip<2★] +27 more
+  USD/CHF @ 0.78865 | ↓0.78907(2★A 4.2p) ↓0.78948(1★B 8.3p)[skip<2★] ↑0.78771(1★SKIP 9.4p)[skip<2★] ↑0.78683(1★SKIP 18.2p)[skip<2★] ↑0.78661(2★SKIP 20.4p) ↑0.78646(3★SKIP 21.9p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29006.8 | ↓29057.2(1★SKIP 50.4p)[skip<2★] ↑28860.7(2★A 146.1p) ↓29160.9(1★SKIP 154.1p)[skip<2★] ↓29181.3(1★SKIP 174.5p)[skip<2★] ↑28793.5(2★A 213.3p) ↓29228.1(1★SKIP 221.3p)[skip<2★] +19 more
+[2026-05-19 18:14:40] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16114
+[2026-05-19 18:14:40] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.834
+[2026-05-19 18:14:40] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37505
+[2026-05-19 18:14:40] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78865
+[2026-05-19 18:14:40] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:14:40] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 46.8m remaining
+[2026-05-19 18:14:40] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 55.3m remaining
+[2026-05-19 18:14:40] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 7.7m remaining
+[2026-05-19 18:14:40] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 23.3m remaining
+[2026-05-19 18:15:02] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16115
+[2026-05-19 18:15:02] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.822
+[2026-05-19 18:15:02] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37501
+[2026-05-19 18:15:02] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78856
+[2026-05-19 18:15:02] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:15:02] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 46.4m remaining
+[2026-05-19 18:15:02] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 54.9m remaining
+[2026-05-19 18:15:02] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 7.4m remaining
+[2026-05-19 18:15:02] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 22.9m remaining
+[2026-05-19 18:15:26] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:08:31.494Z  min_stars=2
+  EUR/USD @ 1.16119 | ↓1.16129(5★B 1.0p) ↑1.1624249999999998(5★SKIP 12.3p) ↑1.15902(3★B 21.7p) ↑1.1634349999999998(5★SKIP 22.4p) ↑1.1641275(4★SKIP 29.4p) ↑1.1565950000000003(2★SKIP 45.9p) +20 more
+  GBP/USD @ 1.34114 | ↓1.34131(1★SKIP 1.7p)[skip<2★] ↓1.3421(1★SKIP 9.6p)[skip<2★] ↓1.3429(2★SKIP 17.6p) ↓1.34369(1★SKIP 25.5p)[skip<2★] ↓1.34448(1★SKIP 33.4p)[skip<2★] ↑1.33617(1★SKIP 49.7p)[skip<2★] +13 more
+  USD/JPY @ 158.818 | ↓158.861(2★A 4.3p) ↑158.72(1★SKIP 9.8p)[skip<2★] ↓158.918(2★A 10.0p) ↓159.059(2★A 24.1p) ↑158.521(1★SKIP 29.7p)[skip<2★] ↓159.117(1★A 29.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71157 | ↑0.71042(2★B 11.5p) ↓0.71275(1★SKIP 11.8p)[skip<2★] ↑0.70978(1★B 17.9p)[skip<2★] ↓0.71508(1★SKIP 35.1p)[skip<2★] ↑0.70576(2★B 58.1p) ↓0.71785(2★SKIP 62.8p) +16 more
+  XAU/USD @ 4510.355 | ↓4514.48(1★B 4.1p)[skip<2★] ↑4504.35(1★SKIP 6.0p)[skip<2★] ↓4528.49(1★B 18.1p)[skip<2★] ↓4548.42(1★B 38.1p)[skip<2★] ↑4466.54(1★SKIP 43.8p)[skip<2★] ↓4555.89(1★B 45.5p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37518 | ↓1.37534(1★A 1.6p)[skip<2★] ↑1.37498(1★SKIP 2.0p)[skip<2★] ↑1.37482(1★SKIP 3.6p)[skip<2★] ↓1.37569(3★A+ 5.1p) ↑1.37446(1★SKIP 7.2p)[skip<2★] ↓1.37605(1★A 8.7p)[skip<2★] +27 more
+  USD/CHF @ 0.78864 | ↓0.78907(2★A 4.3p) ↓0.78948(1★B 8.4p)[skip<2★] ↑0.78771(1★SKIP 9.3p)[skip<2★] ↑0.78683(1★SKIP 18.1p)[skip<2★] ↑0.78661(2★SKIP 20.3p) ↑0.78646(3★SKIP 21.8p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29017.2 | ↓29057.2(1★SKIP 40.0p)[skip<2★] ↓29160.9(1★SKIP 143.7p)[skip<2★] ↑28860.7(2★A 156.5p) ↓29181.3(1★SKIP 164.1p)[skip<2★] ↓29228.1(1★SKIP 210.9p)[skip<2★] ↑28793.5(2★A 223.7p) +19 more
+[2026-05-19 18:15:26] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16119
+[2026-05-19 18:15:26] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.818
+[2026-05-19 18:15:26] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:15:26] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78864
+[2026-05-19 18:15:26] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:15:26] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 46.0m remaining
+[2026-05-19 18:15:26] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 54.5m remaining
+[2026-05-19 18:15:26] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 7.0m remaining
+[2026-05-19 18:15:26] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 22.5m remaining
+[2026-05-19 18:15:48] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:16:00] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16105
+[2026-05-19 18:16:00] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.827
+[2026-05-19 18:16:00] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37526
+[2026-05-19 18:16:00] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7887
+[2026-05-19 18:16:00] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:16:00] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 45.5m remaining
+[2026-05-19 18:16:00] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 54.0m remaining
+[2026-05-19 18:16:00] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 6.4m remaining
+[2026-05-19 18:16:00] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 22.0m remaining
+[2026-05-19 18:16:14] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:13:37.520Z  min_stars=2
+  EUR/USD @ 1.16103 | ↓1.16129(5★B 2.6p) ↑1.1624249999999998(5★SKIP 13.9p) ↑1.15902(3★B 20.1p) ↑1.1634349999999998(5★SKIP 24.0p) ↑1.1641275(4★SKIP 31.0p) ↑1.1565950000000003(2★SKIP 44.3p) +20 more
+  GBP/USD @ 1.341 | ↓1.34131(1★SKIP 3.1p)[skip<2★] ↓1.3421(1★SKIP 11.0p)[skip<2★] ↓1.3429(2★SKIP 19.0p) ↓1.34369(1★SKIP 26.9p)[skip<2★] ↓1.34448(1★SKIP 34.8p)[skip<2★] ↑1.33617(1★SKIP 48.3p)[skip<2★] +13 more
+  USD/JPY @ 158.821 | ↓158.861(2★A 4.0p) ↓158.918(2★A 9.7p) ↑158.72(1★SKIP 10.1p)[skip<2★] ↓159.059(2★A 23.8p) ↓159.117(1★A 29.6p)[skip<2★] ↑158.521(1★SKIP 30.0p)[skip<2★] +14 more
+  AUD/USD @ 0.71156 | ↑0.71042(2★B 11.4p) ↓0.71275(1★SKIP 11.9p)[skip<2★] ↑0.70978(1★B 17.8p)[skip<2★] ↓0.71508(1★SKIP 35.2p)[skip<2★] ↑0.70576(2★B 58.0p) ↓0.71785(2★SKIP 62.9p) +16 more
+  XAU/USD @ 4510.15 | ↓4514.48(1★B 4.3p)[skip<2★] ↑4504.35(1★SKIP 5.8p)[skip<2★] ↓4528.49(1★B 18.3p)[skip<2★] ↓4548.42(1★B 38.3p)[skip<2★] ↑4466.54(1★SKIP 43.6p)[skip<2★] ↓4555.89(1★B 45.7p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37518 | ↓1.37534(1★A 1.6p)[skip<2★] ↑1.37498(1★SKIP 2.0p)[skip<2★] ↑1.37482(1★SKIP 3.6p)[skip<2★] ↓1.37569(3★A+ 5.1p) ↑1.37446(1★SKIP 7.2p)[skip<2★] ↓1.37605(1★A 8.7p)[skip<2★] +27 more
+  USD/CHF @ 0.78864 | ↓0.78907(2★A 4.3p) ↓0.78948(1★B 8.4p)[skip<2★] ↑0.78771(1★SKIP 9.3p)[skip<2★] ↑0.78683(1★SKIP 18.1p)[skip<2★] ↑0.78661(2★SKIP 20.3p) ↑0.78646(3★SKIP 21.8p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29027.6 | ↓29057.2(1★SKIP 29.6p)[skip<2★] ↓29160.9(1★SKIP 133.3p)[skip<2★] ↓29181.3(1★SKIP 153.7p)[skip<2★] ↑28860.7(2★A 166.9p) ↓29228.1(1★SKIP 200.5p)[skip<2★] ↑28793.5(2★A 234.1p) +19 more
+[2026-05-19 18:16:14] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16103
+[2026-05-19 18:16:14] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.821
+[2026-05-19 18:16:14] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:16:14] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78864
+[2026-05-19 18:16:14] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:16:14] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 45.2m remaining
+[2026-05-19 18:16:14] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 53.7m remaining
+[2026-05-19 18:16:14] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 6.2m remaining
+[2026-05-19 18:16:14] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 21.8m remaining
+[2026-05-19 18:16:32] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1611
+[2026-05-19 18:16:32] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.822
+[2026-05-19 18:16:32] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37517
+[2026-05-19 18:16:32] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78866
+[2026-05-19 18:16:32] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:16:32] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 44.9m remaining
+[2026-05-19 18:16:32] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 53.4m remaining
+[2026-05-19 18:16:32] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 5.9m remaining
+[2026-05-19 18:16:32] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 21.4m remaining
+[2026-05-19 18:16:46] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:13:37.520Z  min_stars=2
+  EUR/USD @ 1.1611 | ↓1.16129(5★B 1.9p) ↑1.1624249999999998(5★SKIP 13.2p) ↑1.15902(3★B 20.8p) ↑1.1634349999999998(5★SKIP 23.3p) ↑1.1641275(4★SKIP 30.3p) ↑1.1565950000000003(2★SKIP 45.0p) +20 more
+  GBP/USD @ 1.34101 | ↓1.34131(1★SKIP 3.0p)[skip<2★] ↓1.3421(1★SKIP 10.9p)[skip<2★] ↓1.3429(2★SKIP 18.9p) ↓1.34369(1★SKIP 26.8p)[skip<2★] ↓1.34448(1★SKIP 34.7p)[skip<2★] ↑1.33617(1★SKIP 48.4p)[skip<2★] +13 more
+  USD/JPY @ 158.822 | ↓158.861(2★A 3.9p) ↓158.918(2★A 9.6p) ↑158.72(1★SKIP 10.2p)[skip<2★] ↓159.059(2★A 23.7p) ↓159.117(1★A 29.5p)[skip<2★] ↑158.521(1★SKIP 30.1p)[skip<2★] +14 more
+  AUD/USD @ 0.71159 | ↓0.71275(1★SKIP 11.6p)[skip<2★] ↑0.71042(2★B 11.7p) ↑0.70978(1★B 18.1p)[skip<2★] ↓0.71508(1★SKIP 34.9p)[skip<2★] ↑0.70576(2★B 58.3p) ↓0.71785(2★SKIP 62.6p) +16 more
+  XAU/USD @ 4510.99 | ↓4514.48(1★B 3.5p)[skip<2★] ↑4504.35(1★SKIP 6.6p)[skip<2★] ↓4528.49(1★B 17.5p)[skip<2★] ↓4548.42(1★B 37.4p)[skip<2★] ↑4466.54(1★SKIP 44.4p)[skip<2★] ↓4555.89(1★B 44.9p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37517 | ↓1.37534(1★A 1.7p)[skip<2★] ↑1.37498(1★SKIP 1.9p)[skip<2★] ↑1.37482(1★SKIP 3.5p)[skip<2★] ↓1.37569(3★A+ 5.2p) ↑1.37446(1★SKIP 7.1p)[skip<2★] ↓1.37605(1★A 8.8p)[skip<2★] +27 more
+  USD/CHF @ 0.78868 | ↓0.78907(2★A 3.9p) ↓0.78948(1★B 8.0p)[skip<2★] ↑0.78771(1★SKIP 9.7p)[skip<2★] ↑0.78683(1★SKIP 18.5p)[skip<2★] ↑0.78661(2★SKIP 20.7p) ↑0.78646(3★SKIP 22.2p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29025.6 | ↓29057.2(1★SKIP 31.6p)[skip<2★] ↓29160.9(1★SKIP 135.3p)[skip<2★] ↓29181.3(1★SKIP 155.7p)[skip<2★] ↑28860.7(2★A 164.9p) ↓29228.1(1★SKIP 202.5p)[skip<2★] ↑28793.5(2★A 232.1p) +19 more
+[2026-05-19 18:16:46] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1611
+[2026-05-19 18:16:46] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.822
+[2026-05-19 18:16:46] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37517
+[2026-05-19 18:16:46] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:16:46] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:16:46] [WARNING] RiskGuard [EUR/USD]: [EUR/USD] Cooldown — 44.7m remaining
+[2026-05-19 18:16:46] [WARNING] RiskGuard [USD/JPY]: [USD/JPY] Cooldown — 53.2m remaining
+[2026-05-19 18:16:46] [WARNING] RiskGuard [USD/CAD]: [USD/CAD] Cooldown — 5.6m remaining
+[2026-05-19 18:16:46] [WARNING] RiskGuard [USD/CHF]: [USD/CHF] Cooldown — 21.2m remaining
+[2026-05-19 18:17:26] [INFO] MacroFX Bot  paper=True  state_refresh=120s  price_tick=3s  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-19 18:17:27] [INFO] MT5 credentials loaded from KV
+[2026-05-19 18:17:27] [INFO] Loaded persisted state: ['risk_guard', 'position_meta']
+[2026-05-19 18:17:47] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:17:47] [INFO] RiskGuard restored from disk
+[2026-05-19 18:18:09] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:13:37.520Z  min_stars=2
+  EUR/USD @ 1.16104 | ↓1.16129(5★B 2.5p) ↑1.1624249999999998(5★SKIP 13.8p) ↑1.15902(3★B 20.2p) ↑1.1634349999999998(5★SKIP 23.9p) ↑1.1641275(4★SKIP 30.9p) ↑1.1565950000000003(2★SKIP 44.4p) +20 more
+  GBP/USD @ 1.34112 | ↓1.34131(1★SKIP 1.9p)[skip<2★] ↓1.3421(1★SKIP 9.8p)[skip<2★] ↓1.3429(2★SKIP 17.8p) ↓1.34369(1★SKIP 25.7p)[skip<2★] ↓1.34448(1★SKIP 33.6p)[skip<2★] ↑1.33617(1★SKIP 49.5p)[skip<2★] +13 more
+  USD/JPY @ 158.824 | ↓158.861(2★A 3.7p) ↓158.918(2★A 9.4p) ↑158.72(1★SKIP 10.4p)[skip<2★] ↓159.059(2★A 23.5p) ↓159.117(1★A 29.3p)[skip<2★] ↑158.521(1★SKIP 30.3p)[skip<2★] +14 more
+  AUD/USD @ 0.71158 | ↑0.71042(2★B 11.6p) ↓0.71275(1★SKIP 11.7p)[skip<2★] ↑0.70978(1★B 18.0p)[skip<2★] ↓0.71508(1★SKIP 35.0p)[skip<2★] ↑0.70576(2★B 58.2p) ↓0.71785(2★SKIP 62.7p) +16 more
+  XAU/USD @ 4509.385 | ↑4504.35(1★SKIP 5.0p)[skip<2★] ↓4514.48(1★B 5.1p)[skip<2★] ↓4528.49(1★B 19.1p)[skip<2★] ↓4548.42(1★B 39.0p)[skip<2★] ↑4466.54(1★SKIP 42.8p)[skip<2★] ↓4555.89(1★B 46.5p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37518 | ↓1.37534(1★A 1.6p)[skip<2★] ↑1.37498(1★SKIP 2.0p)[skip<2★] ↑1.37482(1★SKIP 3.6p)[skip<2★] ↓1.37569(3★A+ 5.1p) ↑1.37446(1★SKIP 7.2p)[skip<2★] ↓1.37605(1★A 8.7p)[skip<2★] +27 more
+  USD/CHF @ 0.78867 | ↓0.78907(2★A 4.0p) ↓0.78948(1★B 8.1p)[skip<2★] ↑0.78771(1★SKIP 9.6p)[skip<2★] ↑0.78683(1★SKIP 18.4p)[skip<2★] ↑0.78661(2★SKIP 20.6p) ↑0.78646(3★SKIP 22.1p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29033.2 | ↓29057.2(1★SKIP 24.0p)[skip<2★] ↓29160.9(1★SKIP 127.7p)[skip<2★] ↓29181.3(1★SKIP 148.1p)[skip<2★] ↑28860.7(2★A 172.5p) ↓29228.1(1★SKIP 194.9p)[skip<2★] ↑28793.5(2★A 239.7p) +19 more
+[2026-05-19 18:18:09] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16104
+[2026-05-19 18:18:09] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.824
+[2026-05-19 18:18:09] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:18:09] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78867
+[2026-05-19 18:18:09] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:18:09] [WARNING] RiskGuard [EUR/USD]: Daily DD 90.0% ≥ limit 3% — locked 3h
+[2026-05-19 18:18:09] [WARNING] RiskGuard [USD/JPY]: Locked out — 180m remaining
+[2026-05-19 18:18:09] [WARNING] RiskGuard [USD/CAD]: Locked out — 180m remaining
+[2026-05-19 18:18:09] [WARNING] RiskGuard [USD/CHF]: Locked out — 180m remaining
+[2026-05-19 18:18:36] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:13:37.520Z  min_stars=2
+  EUR/USD @ 1.16106 | ↓1.16129(5★B 2.3p) ↑1.1624249999999998(5★SKIP 13.6p) ↑1.15902(3★B 20.4p) ↑1.1634349999999998(5★SKIP 23.7p) ↑1.1641275(4★SKIP 30.7p) ↑1.1565950000000003(2★SKIP 44.6p) +20 more
+  GBP/USD @ 1.34113 | ↓1.34131(1★SKIP 1.8p)[skip<2★] ↓1.3421(1★SKIP 9.7p)[skip<2★] ↓1.3429(2★SKIP 17.7p) ↓1.34369(1★SKIP 25.6p)[skip<2★] ↓1.34448(1★SKIP 33.5p)[skip<2★] ↑1.33617(1★SKIP 49.6p)[skip<2★] +13 more
+  USD/JPY @ 158.824 | ↓158.861(2★A 3.7p) ↓158.918(2★A 9.4p) ↑158.72(1★SKIP 10.4p)[skip<2★] ↓159.059(2★A 23.5p) ↓159.117(1★A 29.3p)[skip<2★] ↑158.521(1★SKIP 30.3p)[skip<2★] +14 more
+  AUD/USD @ 0.7116 | ↓0.71275(1★SKIP 11.5p)[skip<2★] ↑0.71042(2★B 11.8p) ↑0.70978(1★B 18.2p)[skip<2★] ↓0.71508(1★SKIP 34.8p)[skip<2★] ↑0.70576(2★B 58.4p) ↓0.71785(2★SKIP 62.5p) +16 more
+  XAU/USD @ 4508.53 | ↑4504.35(1★SKIP 4.2p)[skip<2★] ↓4514.48(1★B 5.9p)[skip<2★] ↓4528.49(1★B 20.0p)[skip<2★] ↓4548.42(1★B 39.9p)[skip<2★] ↑4466.54(1★SKIP 42.0p)[skip<2★] ↓4555.89(1★B 47.4p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37518 | ↓1.37534(1★A 1.6p)[skip<2★] ↑1.37498(1★SKIP 2.0p)[skip<2★] ↑1.37482(1★SKIP 3.6p)[skip<2★] ↓1.37569(3★A+ 5.1p) ↑1.37446(1★SKIP 7.2p)[skip<2★] ↓1.37605(1★A 8.7p)[skip<2★] +27 more
+  USD/CHF @ 0.78866 | ↓0.78907(2★A 4.1p) ↓0.78948(1★B 8.2p)[skip<2★] ↑0.78771(1★SKIP 9.5p)[skip<2★] ↑0.78683(1★SKIP 18.3p)[skip<2★] ↑0.78661(2★SKIP 20.5p) ↑0.78646(3★SKIP 22.0p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29029.6 | ↓29057.2(1★SKIP 27.6p)[skip<2★] ↓29160.9(1★SKIP 131.3p)[skip<2★] ↓29181.3(1★SKIP 151.7p)[skip<2★] ↑28860.7(2★A 168.9p) ↓29228.1(1★SKIP 198.5p)[skip<2★] ↑28793.5(2★A 236.1p) +19 more
+[2026-05-19 18:18:36] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16106
+[2026-05-19 18:18:36] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.824
+[2026-05-19 18:18:36] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:18:36] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78866
+[2026-05-19 18:18:36] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:18:36] [WARNING] RiskGuard [EUR/USD]: Locked out — 180m remaining
+[2026-05-19 18:18:36] [WARNING] RiskGuard [USD/JPY]: Locked out — 180m remaining
+[2026-05-19 18:18:36] [WARNING] RiskGuard [USD/CAD]: Locked out — 180m remaining
+[2026-05-19 18:18:36] [WARNING] RiskGuard [USD/CHF]: Locked out — 180m remaining
+[2026-05-19 18:18:59] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16106
+[2026-05-19 18:18:59] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.824
+[2026-05-19 18:18:59] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:18:59] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:18:59] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:18:59] [WARNING] RiskGuard [EUR/USD]: Locked out — 179m remaining
+[2026-05-19 18:18:59] [WARNING] RiskGuard [USD/JPY]: Locked out — 179m remaining
+[2026-05-19 18:18:59] [WARNING] RiskGuard [USD/CAD]: Locked out — 179m remaining
+[2026-05-19 18:18:59] [WARNING] RiskGuard [USD/CHF]: Locked out — 179m remaining
+[2026-05-19 18:19:21] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:13:37.520Z  min_stars=2
+  EUR/USD @ 1.16102 | ↓1.16129(5★B 2.7p) ↑1.1624249999999998(5★SKIP 14.0p) ↑1.15902(3★B 20.0p) ↑1.1634349999999998(5★SKIP 24.1p) ↑1.1641275(4★SKIP 31.1p) ↑1.1565950000000003(2★SKIP 44.2p) +20 more
+  GBP/USD @ 1.34112 | ↓1.34131(1★SKIP 1.9p)[skip<2★] ↓1.3421(1★SKIP 9.8p)[skip<2★] ↓1.3429(2★SKIP 17.8p) ↓1.34369(1★SKIP 25.7p)[skip<2★] ↓1.34448(1★SKIP 33.6p)[skip<2★] ↑1.33617(1★SKIP 49.5p)[skip<2★] +13 more
+  USD/JPY @ 158.822 | ↓158.861(2★A 3.9p) ↓158.918(2★A 9.6p) ↑158.72(1★SKIP 10.2p)[skip<2★] ↓159.059(2★A 23.7p) ↓159.117(1★A 29.5p)[skip<2★] ↑158.521(1★SKIP 30.1p)[skip<2★] +14 more
+  AUD/USD @ 0.71158 | ↑0.71042(2★B 11.6p) ↓0.71275(1★SKIP 11.7p)[skip<2★] ↑0.70978(1★B 18.0p)[skip<2★] ↓0.71508(1★SKIP 35.0p)[skip<2★] ↑0.70576(2★B 58.2p) ↓0.71785(2★SKIP 62.7p) +16 more
+  XAU/USD @ 4508.4 | ↑4504.35(1★SKIP 4.0p)[skip<2★] ↓4514.48(1★B 6.1p)[skip<2★] ↓4528.49(1★B 20.1p)[skip<2★] ↓4548.42(1★B 40.0p)[skip<2★] ↑4466.54(1★SKIP 41.9p)[skip<2★] ↓4555.89(1★B 47.5p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37517 | ↓1.37534(1★A 1.7p)[skip<2★] ↑1.37498(1★SKIP 1.9p)[skip<2★] ↑1.37482(1★SKIP 3.5p)[skip<2★] ↓1.37569(3★A+ 5.2p) ↑1.37446(1★SKIP 7.1p)[skip<2★] ↓1.37605(1★A 8.8p)[skip<2★] +27 more
+  USD/CHF @ 0.78864 | ↓0.78907(2★A 4.3p) ↓0.78948(1★B 8.4p)[skip<2★] ↑0.78771(1★SKIP 9.3p)[skip<2★] ↑0.78683(1★SKIP 18.1p)[skip<2★] ↑0.78661(2★SKIP 20.3p) ↑0.78646(3★SKIP 21.8p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29033.8 | ↓29057.2(1★SKIP 23.4p)[skip<2★] ↓29160.9(1★SKIP 127.1p)[skip<2★] ↓29181.3(1★SKIP 147.5p)[skip<2★] ↑28860.7(2★A 173.1p) ↓29228.1(1★SKIP 194.3p)[skip<2★] ↑28793.5(2★A 240.3p) +19 more
+[2026-05-19 18:19:21] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16102
+[2026-05-19 18:19:21] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.822
+[2026-05-19 18:19:21] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37517
+[2026-05-19 18:19:21] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78864
+[2026-05-19 18:19:21] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:19:21] [WARNING] RiskGuard [EUR/USD]: Locked out — 179m remaining
+[2026-05-19 18:19:21] [WARNING] RiskGuard [USD/JPY]: Locked out — 179m remaining
+[2026-05-19 18:19:21] [WARNING] RiskGuard [USD/CAD]: Locked out — 179m remaining
+[2026-05-19 18:19:21] [WARNING] RiskGuard [USD/CHF]: Locked out — 179m remaining
+[2026-05-19 18:19:45] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16106
+[2026-05-19 18:19:45] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.818
+[2026-05-19 18:19:45] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37516
+[2026-05-19 18:19:45] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78865
+[2026-05-19 18:19:45] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:19:45] [WARNING] RiskGuard [EUR/USD]: Locked out — 178m remaining
+[2026-05-19 18:19:45] [WARNING] RiskGuard [USD/JPY]: Locked out — 178m remaining
+[2026-05-19 18:19:45] [WARNING] RiskGuard [USD/CAD]: Locked out — 178m remaining
+[2026-05-19 18:19:45] [WARNING] RiskGuard [USD/CHF]: Locked out — 178m remaining
+[2026-05-19 18:20:11] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:20:35] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:18:43.131Z  min_stars=2
+  EUR/USD @ 1.16104 | ↓1.16129(5★B 2.5p) ↑1.1624249999999998(5★SKIP 13.8p) ↑1.15902(3★B 20.2p) ↑1.1634349999999998(5★SKIP 23.9p) ↑1.1641275(4★SKIP 30.9p) ↑1.1565950000000003(2★SKIP 44.4p) +20 more
+  GBP/USD @ 1.34104 | ↓1.34131(1★SKIP 2.7p)[skip<2★] ↓1.3421(1★SKIP 10.6p)[skip<2★] ↓1.3429(2★SKIP 18.6p) ↓1.34369(1★SKIP 26.5p)[skip<2★] ↓1.34448(1★SKIP 34.4p)[skip<2★] ↑1.33617(1★SKIP 48.7p)[skip<2★] +13 more
+  USD/JPY @ 158.82 | ↓158.861(2★A 4.1p) ↓158.918(2★A 9.8p) ↑158.72(1★SKIP 10.0p)[skip<2★] ↓159.059(2★A 23.9p) ↓159.117(1★A 29.7p)[skip<2★] ↑158.521(1★SKIP 29.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71158 | ↑0.71042(2★B 11.6p) ↓0.71275(1★SKIP 11.7p)[skip<2★] ↑0.70978(1★B 18.0p)[skip<2★] ↓0.71508(1★SKIP 35.0p)[skip<2★] ↑0.70576(2★B 58.2p) ↓0.71785(2★SKIP 62.7p) +16 more
+  XAU/USD @ 4507.93 | ↑4504.35(1★SKIP 3.6p)[skip<2★] ↓4514.48(1★B 6.5p)[skip<2★] ↓4528.49(1★B 20.6p)[skip<2★] ↓4548.42(1★B 40.5p)[skip<2★] ↑4466.54(1★SKIP 41.4p)[skip<2★] ↓4555.89(1★B 48.0p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37517 | ↓1.37534(1★A 1.7p)[skip<2★] ↑1.37498(1★SKIP 1.9p)[skip<2★] ↑1.37482(1★SKIP 3.5p)[skip<2★] ↓1.37569(3★A+ 5.2p) ↑1.37446(1★SKIP 7.1p)[skip<2★] ↓1.37605(1★A 8.8p)[skip<2★] +27 more
+  USD/CHF @ 0.7887 | ↓0.78907(2★A 3.7p) ↓0.78948(1★B 7.8p)[skip<2★] ↑0.78771(1★SKIP 9.9p)[skip<2★] ↑0.78683(1★SKIP 18.7p)[skip<2★] ↑0.78661(2★SKIP 20.9p) ↑0.78646(3★SKIP 22.4p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29025.5 | ↓29057.2(1★SKIP 31.7p)[skip<2★] ↓29160.9(1★SKIP 135.4p)[skip<2★] ↓29181.3(1★SKIP 155.8p)[skip<2★] ↑28860.7(2★A 164.8p) ↓29228.1(1★SKIP 202.6p)[skip<2★] ↑28793.5(2★A 232.0p) +19 more
+[2026-05-19 18:20:35] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16104
+[2026-05-19 18:20:35] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.82
+[2026-05-19 18:20:35] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37517
+[2026-05-19 18:20:35] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7887
+[2026-05-19 18:20:35] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:20:35] [WARNING] RiskGuard [EUR/USD]: Locked out — 178m remaining
+[2026-05-19 18:20:35] [WARNING] RiskGuard [USD/JPY]: Locked out — 178m remaining
+[2026-05-19 18:20:35] [WARNING] RiskGuard [USD/CAD]: Locked out — 178m remaining
+[2026-05-19 18:20:35] [WARNING] RiskGuard [USD/CHF]: Locked out — 178m remaining
+[2026-05-19 18:21:00] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:18:43.131Z  min_stars=2
+  EUR/USD @ 1.16104 | ↓1.16129(5★B 2.5p) ↑1.1624249999999998(5★SKIP 13.8p) ↑1.15902(3★B 20.2p) ↑1.1634349999999998(5★SKIP 23.9p) ↑1.1641275(4★SKIP 30.9p) ↑1.1565950000000003(2★SKIP 44.4p) +20 more
+  GBP/USD @ 1.34102 | ↓1.34131(1★SKIP 2.9p)[skip<2★] ↓1.3421(1★SKIP 10.8p)[skip<2★] ↓1.3429(2★SKIP 18.8p) ↓1.34369(1★SKIP 26.7p)[skip<2★] ↓1.34448(1★SKIP 34.6p)[skip<2★] ↑1.33617(1★SKIP 48.5p)[skip<2★] +13 more
+  USD/JPY @ 158.82 | ↓158.861(2★A 4.1p) ↓158.918(2★A 9.8p) ↑158.72(1★SKIP 10.0p)[skip<2★] ↓159.059(2★A 23.9p) ↓159.117(1★A 29.7p)[skip<2★] ↑158.521(1★SKIP 29.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71151 | ↑0.71042(2★B 10.9p) ↓0.71275(1★SKIP 12.4p)[skip<2★] ↑0.70978(1★B 17.3p)[skip<2★] ↓0.71508(1★SKIP 35.7p)[skip<2★] ↑0.70576(2★B 57.5p) ↓0.71785(2★SKIP 63.4p) +16 more
+  XAU/USD @ 4506.635 | ↑4504.35(1★SKIP 2.3p)[skip<2★] ↓4514.48(1★B 7.8p)[skip<2★] ↓4528.49(1★B 21.9p)[skip<2★] ↑4466.54(1★SKIP 40.1p)[skip<2★] ↓4548.42(1★B 41.8p)[skip<2★] ↓4555.89(1★B 49.3p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37519 | ↓1.37534(1★A 1.5p)[skip<2★] ↑1.37498(1★SKIP 2.1p)[skip<2★] ↑1.37482(1★SKIP 3.7p)[skip<2★] ↓1.37569(3★A+ 5.0p) ↑1.37446(1★SKIP 7.3p)[skip<2★] ↓1.37605(1★A 8.6p)[skip<2★] +27 more
+  USD/CHF @ 0.78876 | ↓0.78907(2★A 3.1p) ↓0.78948(1★B 7.2p)[skip<2★] ↑0.78771(1★SKIP 10.5p)[skip<2★] ↑0.78683(1★SKIP 19.3p)[skip<2★] ↑0.78661(2★SKIP 21.5p) ↑0.78646(3★SKIP 23.0p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29027.2 | ↓29057.2(1★SKIP 30.0p)[skip<2★] ↓29160.9(1★SKIP 133.7p)[skip<2★] ↓29181.3(1★SKIP 154.1p)[skip<2★] ↑28860.7(2★A 166.5p) ↓29228.1(1★SKIP 200.9p)[skip<2★] ↑28793.5(2★A 233.7p) +19 more
+[2026-05-19 18:21:00] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16104
+[2026-05-19 18:21:00] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.82
+[2026-05-19 18:21:00] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37519
+[2026-05-19 18:21:00] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78876
+[2026-05-19 18:21:00] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:21:00] [WARNING] RiskGuard [EUR/USD]: Locked out — 177m remaining
+[2026-05-19 18:21:00] [WARNING] RiskGuard [USD/JPY]: Locked out — 177m remaining
+[2026-05-19 18:21:00] [WARNING] RiskGuard [USD/CAD]: Locked out — 177m remaining
+[2026-05-19 18:21:00] [WARNING] RiskGuard [USD/CHF]: Locked out — 177m remaining
+[2026-05-19 18:21:23] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16093
+[2026-05-19 18:21:23] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.835
+[2026-05-19 18:21:23] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37516
+[2026-05-19 18:21:23] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78866
+[2026-05-19 18:21:23] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:21:23] [WARNING] RiskGuard [EUR/USD]: Locked out — 177m remaining
+[2026-05-19 18:21:23] [WARNING] RiskGuard [USD/JPY]: Locked out — 177m remaining
+[2026-05-19 18:21:23] [WARNING] RiskGuard [USD/CAD]: Locked out — 177m remaining
+[2026-05-19 18:21:23] [WARNING] RiskGuard [USD/CHF]: Locked out — 177m remaining
+[2026-05-19 18:21:47] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:18:43.131Z  min_stars=2
+  EUR/USD @ 1.16104 | ↓1.16129(5★B 2.5p) ↑1.1624249999999998(5★SKIP 13.8p) ↑1.15902(3★B 20.2p) ↑1.1634349999999998(5★SKIP 23.9p) ↑1.1641275(4★SKIP 30.9p) ↑1.1565950000000003(2★SKIP 44.4p) +20 more
+  GBP/USD @ 1.34113 | ↓1.34131(1★SKIP 1.8p)[skip<2★] ↓1.3421(1★SKIP 9.7p)[skip<2★] ↓1.3429(2★SKIP 17.7p) ↓1.34369(1★SKIP 25.6p)[skip<2★] ↓1.34448(1★SKIP 33.5p)[skip<2★] ↑1.33617(1★SKIP 49.6p)[skip<2★] +13 more
+  USD/JPY @ 158.832 | ↓158.861(2★A 2.9p) ↓158.918(2★A 8.6p) ↑158.72(1★SKIP 11.2p)[skip<2★] ↓159.059(2★A 22.7p) ↓159.117(1★A 28.5p)[skip<2★] ↑158.521(1★SKIP 31.1p)[skip<2★] +14 more
+  AUD/USD @ 0.71155 | ↑0.71042(2★B 11.3p) ↓0.71275(1★SKIP 12.0p)[skip<2★] ↑0.70978(1★B 17.7p)[skip<2★] ↓0.71508(1★SKIP 35.3p)[skip<2★] ↑0.70576(2★B 57.9p) ↓0.71785(2★SKIP 63.0p) +16 more
+  XAU/USD @ 4507.18 | ↑4504.35(1★SKIP 2.8p)[skip<2★] ↓4514.48(1★B 7.3p)[skip<2★] ↓4528.49(1★B 21.3p)[skip<2★] ↑4466.54(1★SKIP 40.6p)[skip<2★] ↓4548.42(1★B 41.2p)[skip<2★] ↓4555.89(1★B 48.7p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37518 | ↓1.37534(1★A 1.6p)[skip<2★] ↑1.37498(1★SKIP 2.0p)[skip<2★] ↑1.37482(1★SKIP 3.6p)[skip<2★] ↓1.37569(3★A+ 5.1p) ↑1.37446(1★SKIP 7.2p)[skip<2★] ↓1.37605(1★A 8.7p)[skip<2★] +27 more
+  USD/CHF @ 0.78868 | ↓0.78907(2★A 3.9p) ↓0.78948(1★B 8.0p)[skip<2★] ↑0.78771(1★SKIP 9.7p)[skip<2★] ↑0.78683(1★SKIP 18.5p)[skip<2★] ↑0.78661(2★SKIP 20.7p) ↑0.78646(3★SKIP 22.2p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29052.0 | ↓29057.2(1★SKIP 5.2p)[skip<2★] ↓29160.9(1★SKIP 108.9p)[skip<2★] ↓29181.3(1★SKIP 129.3p)[skip<2★] ↓29228.1(1★SKIP 176.1p)[skip<2★] ↑28860.7(2★A 191.3p) ↑28793.5(2★A 258.5p) +19 more
+[2026-05-19 18:21:47] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16104
+[2026-05-19 18:21:47] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.832
+[2026-05-19 18:21:47] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:21:47] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:21:47] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:21:47] [WARNING] RiskGuard [EUR/USD]: Locked out — 176m remaining
+[2026-05-19 18:21:47] [WARNING] RiskGuard [USD/JPY]: Locked out — 176m remaining
+[2026-05-19 18:21:47] [WARNING] RiskGuard [USD/CAD]: Locked out — 176m remaining
+[2026-05-19 18:21:47] [WARNING] RiskGuard [USD/CHF]: Locked out — 176m remaining
+[2026-05-19 18:22:14] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:22:37] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16098
+[2026-05-19 18:22:37] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.83
+[2026-05-19 18:22:37] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37514
+[2026-05-19 18:22:37] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:22:37] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:22:37] [WARNING] RiskGuard [EUR/USD]: Locked out — 176m remaining
+[2026-05-19 18:22:37] [WARNING] RiskGuard [USD/JPY]: Locked out — 176m remaining
+[2026-05-19 18:22:37] [WARNING] RiskGuard [USD/CAD]: Locked out — 176m remaining
+[2026-05-19 18:22:37] [WARNING] RiskGuard [USD/CHF]: Locked out — 176m remaining
+[2026-05-19 18:23:02] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:18:43.131Z  min_stars=2
+  EUR/USD @ 1.16102 | ↓1.16129(5★B 2.7p) ↑1.1624249999999998(5★SKIP 14.0p) ↑1.15902(3★B 20.0p) ↑1.1634349999999998(5★SKIP 24.1p) ↑1.1641275(4★SKIP 31.1p) ↑1.1565950000000003(2★SKIP 44.2p) +20 more
+  GBP/USD @ 1.34104 | ↓1.34131(1★SKIP 2.7p)[skip<2★] ↓1.3421(1★SKIP 10.6p)[skip<2★] ↓1.3429(2★SKIP 18.6p) ↓1.34369(1★SKIP 26.5p)[skip<2★] ↓1.34448(1★SKIP 34.4p)[skip<2★] ↑1.33617(1★SKIP 48.7p)[skip<2★] +13 more
+  USD/JPY @ 158.833 | ↓158.861(2★A 2.8p) ↓158.918(2★A 8.5p) ↑158.72(1★SKIP 11.3p)[skip<2★] ↓159.059(2★A 22.6p) ↓159.117(1★A 28.4p)[skip<2★] ↑158.521(1★SKIP 31.2p)[skip<2★] +14 more
+  AUD/USD @ 0.71152 | ↑0.71042(2★B 11.0p) ↓0.71275(1★SKIP 12.3p)[skip<2★] ↑0.70978(1★B 17.4p)[skip<2★] ↓0.71508(1★SKIP 35.6p)[skip<2★] ↑0.70576(2★B 57.6p) ↓0.71785(2★SKIP 63.3p) +16 more
+  XAU/USD @ 4507.69 | ↑4504.35(1★SKIP 3.3p)[skip<2★] ↓4514.48(1★B 6.8p)[skip<2★] ↓4528.49(1★B 20.8p)[skip<2★] ↓4548.42(1★B 40.7p)[skip<2★] ↑4466.54(1★SKIP 41.1p)[skip<2★] ↓4555.89(1★B 48.2p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37509 | ↑1.37498(1★SKIP 1.1p)[skip<2★] ↓1.37534(1★A 2.5p)[skip<2★] ↑1.37482(1★SKIP 2.7p)[skip<2★] ↓1.37569(3★A+ 6.0p) ↑1.37446(1★SKIP 6.3p)[skip<2★] ↓1.37605(1★A 9.6p)[skip<2★] +27 more
+  USD/CHF @ 0.78872 | ↓0.78907(2★A 3.5p) ↓0.78948(1★B 7.6p)[skip<2★] ↑0.78771(1★SKIP 10.1p)[skip<2★] ↑0.78683(1★SKIP 18.9p)[skip<2★] ↑0.78661(2★SKIP 21.1p) ↑0.78646(3★SKIP 22.6p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29059.6 | ↓29057.2(1★SKIP 2.4p)[skip<2★] ↓29160.9(1★SKIP 101.3p)[skip<2★] ↓29181.3(1★SKIP 121.7p)[skip<2★] ↓29228.1(1★SKIP 168.5p)[skip<2★] ↑28860.7(2★A 198.9p) ↑28793.5(2★A 266.1p) +19 more
+[2026-05-19 18:23:02] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16102
+[2026-05-19 18:23:02] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.833
+[2026-05-19 18:23:02] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37509
+[2026-05-19 18:23:02] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78872
+[2026-05-19 18:23:02] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:23:02] [WARNING] RiskGuard [EUR/USD]: Locked out — 175m remaining
+[2026-05-19 18:23:02] [WARNING] RiskGuard [USD/JPY]: Locked out — 175m remaining
+[2026-05-19 18:23:02] [WARNING] RiskGuard [USD/CAD]: Locked out — 175m remaining
+[2026-05-19 18:23:02] [WARNING] RiskGuard [USD/CHF]: Locked out — 175m remaining
+[2026-05-19 18:23:26] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16101
+[2026-05-19 18:23:26] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.831
+[2026-05-19 18:23:26] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37513
+[2026-05-19 18:23:26] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:23:26] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:23:26] [WARNING] RiskGuard [EUR/USD]: Locked out — 175m remaining
+[2026-05-19 18:23:26] [WARNING] RiskGuard [USD/JPY]: Locked out — 175m remaining
+[2026-05-19 18:23:26] [WARNING] RiskGuard [USD/CAD]: Locked out — 175m remaining
+[2026-05-19 18:23:26] [WARNING] RiskGuard [USD/CHF]: Locked out — 175m remaining
+[2026-05-19 18:23:50] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:18:43.131Z  min_stars=2
+  EUR/USD @ 1.16104 | ↓1.16129(5★B 2.5p) ↑1.1624249999999998(5★SKIP 13.8p) ↑1.15902(3★B 20.2p) ↑1.1634349999999998(5★SKIP 23.9p) ↑1.1641275(4★SKIP 30.9p) ↑1.1565950000000003(2★SKIP 44.4p) +20 more
+  GBP/USD @ 1.34103 | ↓1.34131(1★SKIP 2.8p)[skip<2★] ↓1.3421(1★SKIP 10.7p)[skip<2★] ↓1.3429(2★SKIP 18.7p) ↓1.34369(1★SKIP 26.6p)[skip<2★] ↓1.34448(1★SKIP 34.5p)[skip<2★] ↑1.33617(1★SKIP 48.6p)[skip<2★] +13 more
+  USD/JPY @ 158.834 | ↓158.861(2★A 2.7p) ↓158.918(2★A 8.4p) ↑158.72(1★SKIP 11.4p)[skip<2★] ↓159.059(2★A 22.5p) ↓159.117(1★A 28.3p)[skip<2★] ↑158.521(1★SKIP 31.3p)[skip<2★] +14 more
+  AUD/USD @ 0.71146 | ↑0.71042(2★B 10.4p) ↓0.71275(1★SKIP 12.9p)[skip<2★] ↑0.70978(1★B 16.8p)[skip<2★] ↓0.71508(1★SKIP 36.2p)[skip<2★] ↑0.70576(2★B 57.0p) ↓0.71785(2★SKIP 63.9p) +16 more
+  XAU/USD @ 4506.33 | ↑4504.35(1★SKIP 2.0p)[skip<2★] ↓4514.48(1★B 8.1p)[skip<2★] ↓4528.49(1★B 22.2p)[skip<2★] ↑4466.54(1★SKIP 39.8p)[skip<2★] ↓4548.42(1★B 42.1p)[skip<2★] ↓4555.89(1★B 49.6p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37518 | ↓1.37534(1★A 1.6p)[skip<2★] ↑1.37498(1★SKIP 2.0p)[skip<2★] ↑1.37482(1★SKIP 3.6p)[skip<2★] ↓1.37569(3★A+ 5.1p) ↑1.37446(1★SKIP 7.2p)[skip<2★] ↓1.37605(1★A 8.7p)[skip<2★] +27 more
+  USD/CHF @ 0.78869 | ↓0.78907(2★A 3.8p) ↓0.78948(1★B 7.9p)[skip<2★] ↑0.78771(1★SKIP 9.8p)[skip<2★] ↑0.78683(1★SKIP 18.6p)[skip<2★] ↑0.78661(2★SKIP 20.8p) ↑0.78646(3★SKIP 22.3p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29051.6 | ↓29057.2(1★SKIP 5.6p)[skip<2★] ↓29160.9(1★SKIP 109.3p)[skip<2★] ↓29181.3(1★SKIP 129.7p)[skip<2★] ↓29228.1(1★SKIP 176.5p)[skip<2★] ↑28860.7(2★A 190.9p) ↑28793.5(2★A 258.1p) +19 more
+[2026-05-19 18:23:50] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16104
+[2026-05-19 18:23:50] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.834
+[2026-05-19 18:23:50] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:23:50] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78869
+[2026-05-19 18:23:50] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:23:50] [WARNING] RiskGuard [EUR/USD]: Locked out — 174m remaining
+[2026-05-19 18:23:50] [WARNING] RiskGuard [USD/JPY]: Locked out — 174m remaining
+[2026-05-19 18:23:50] [WARNING] RiskGuard [USD/CAD]: Locked out — 174m remaining
+[2026-05-19 18:23:50] [WARNING] RiskGuard [USD/CHF]: Locked out — 174m remaining
+[2026-05-19 18:24:09] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:24:29] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16099
+[2026-05-19 18:24:29] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.83
+[2026-05-19 18:24:29] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:24:29] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78874
+[2026-05-19 18:24:29] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:24:29] [WARNING] RiskGuard [EUR/USD]: Locked out — 174m remaining
+[2026-05-19 18:24:29] [WARNING] RiskGuard [USD/JPY]: Locked out — 174m remaining
+[2026-05-19 18:24:29] [WARNING] RiskGuard [USD/CAD]: Locked out — 174m remaining
+[2026-05-19 18:24:29] [WARNING] RiskGuard [USD/CHF]: Locked out — 174m remaining
+[2026-05-19 18:24:50] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:18:43.131Z  min_stars=2
+  EUR/USD @ 1.16096 | ↓1.16129(5★B 3.3p) ↑1.1624249999999998(5★SKIP 14.6p) ↑1.15902(3★B 19.4p) ↑1.1634349999999998(5★SKIP 24.7p) ↑1.1641275(4★SKIP 31.7p) ↑1.1565950000000003(2★SKIP 43.6p) +20 more
+  GBP/USD @ 1.34083 | ↓1.34131(1★SKIP 4.8p)[skip<2★] ↓1.3421(1★SKIP 12.7p)[skip<2★] ↓1.3429(2★SKIP 20.7p) ↓1.34369(1★SKIP 28.6p)[skip<2★] ↓1.34448(1★SKIP 36.5p)[skip<2★] ↑1.33617(1★SKIP 46.6p)[skip<2★] +13 more
+  USD/JPY @ 158.834 | ↓158.861(2★A 2.7p) ↓158.918(2★A 8.4p) ↑158.72(1★SKIP 11.4p)[skip<2★] ↓159.059(2★A 22.5p) ↓159.117(1★A 28.3p)[skip<2★] ↑158.521(1★SKIP 31.3p)[skip<2★] +14 more
+  AUD/USD @ 0.71145 | ↑0.71042(2★B 10.3p) ↓0.71275(1★SKIP 13.0p)[skip<2★] ↑0.70978(1★B 16.7p)[skip<2★] ↓0.71508(1★SKIP 36.3p)[skip<2★] ↑0.70576(2★B 56.9p) ↓0.71785(2★SKIP 64.0p) +16 more
+  XAU/USD @ 4504.55 | ↑4504.35(1★SKIP 0.2p)[skip<2★] ↓4514.48(1★B 9.9p)[skip<2★] ↓4528.49(1★B 23.9p)[skip<2★] ↑4466.54(1★SKIP 38.0p)[skip<2★] ↓4548.42(1★B 43.9p)[skip<2★] ↓4555.89(1★B 51.3p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.3752 | ↓1.37534(1★A 1.4p)[skip<2★] ↑1.37498(1★SKIP 2.2p)[skip<2★] ↑1.37482(1★SKIP 3.8p)[skip<2★] ↓1.37569(3★A+ 4.9p) ↑1.37446(1★SKIP 7.4p)[skip<2★] ↓1.37605(1★A 8.5p)[skip<2★] +27 more
+  USD/CHF @ 0.78876 | ↓0.78907(2★A 3.1p) ↓0.78948(1★B 7.2p)[skip<2★] ↑0.78771(1★SKIP 10.5p)[skip<2★] ↑0.78683(1★SKIP 19.3p)[skip<2★] ↑0.78661(2★SKIP 21.5p) ↑0.78646(3★SKIP 23.0p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29048.4 | ↓29057.2(1★SKIP 8.8p)[skip<2★] ↓29160.9(1★SKIP 112.5p)[skip<2★] ↓29181.3(1★SKIP 132.9p)[skip<2★] ↓29228.1(1★SKIP 179.7p)[skip<2★] ↑28860.7(2★A 187.7p) ↑28793.5(2★A 254.9p) +19 more
+[2026-05-19 18:24:50] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16096
+[2026-05-19 18:24:50] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.834
+[2026-05-19 18:24:50] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3752
+[2026-05-19 18:24:50] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78876
+[2026-05-19 18:24:50] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:24:50] [WARNING] RiskGuard [EUR/USD]: Locked out — 173m remaining
+[2026-05-19 18:24:50] [WARNING] RiskGuard [USD/JPY]: Locked out — 173m remaining
+[2026-05-19 18:24:50] [WARNING] RiskGuard [USD/CAD]: Locked out — 173m remaining
+[2026-05-19 18:24:50] [WARNING] RiskGuard [USD/CHF]: Locked out — 173m remaining
+[2026-05-19 18:25:10] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:25:10] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.836
+[2026-05-19 18:25:10] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37519
+[2026-05-19 18:25:10] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78874
+[2026-05-19 18:25:10] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:25:10] [WARNING] RiskGuard [EUR/USD]: Locked out — 173m remaining
+[2026-05-19 18:25:10] [WARNING] RiskGuard [USD/JPY]: Locked out — 173m remaining
+[2026-05-19 18:25:10] [WARNING] RiskGuard [USD/CAD]: Locked out — 173m remaining
+[2026-05-19 18:25:10] [WARNING] RiskGuard [USD/CHF]: Locked out — 173m remaining
+[2026-05-19 18:25:33] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:18:43.131Z  min_stars=2
+  EUR/USD @ 1.16092 | ↓1.16129(5★B 3.7p) ↑1.1624249999999998(5★SKIP 15.0p) ↑1.15902(3★B 19.0p) ↑1.1634349999999998(5★SKIP 25.1p) ↑1.1641275(4★SKIP 32.1p) ↑1.1565950000000003(2★SKIP 43.2p) +20 more
+  GBP/USD @ 1.34083 | ↓1.34131(1★SKIP 4.8p)[skip<2★] ↓1.3421(1★SKIP 12.7p)[skip<2★] ↓1.3429(2★SKIP 20.7p) ↓1.34369(1★SKIP 28.6p)[skip<2★] ↓1.34448(1★SKIP 36.5p)[skip<2★] ↑1.33617(1★SKIP 46.6p)[skip<2★] +13 more
+  USD/JPY @ 158.836 | ↓158.861(2★A 2.5p) ↓158.918(2★A 8.2p) ↑158.72(1★SKIP 11.6p)[skip<2★] ↓159.059(2★A 22.3p) ↓159.117(1★A 28.1p)[skip<2★] ↑158.521(1★SKIP 31.5p)[skip<2★] +14 more
+  AUD/USD @ 0.71142 | ↑0.71042(2★B 10.0p) ↓0.71275(1★SKIP 13.3p)[skip<2★] ↑0.70978(1★B 16.4p)[skip<2★] ↓0.71508(1★SKIP 36.6p)[skip<2★] ↑0.70576(2★B 56.6p) ↓0.71785(2★SKIP 64.3p) +16 more
+  XAU/USD @ 4504.525 | ↑4504.35(1★SKIP 0.2p)[skip<2★] ↓4514.48(1★B 10.0p)[skip<2★] ↓4528.49(1★B 24.0p)[skip<2★] ↑4466.54(1★SKIP 38.0p)[skip<2★] ↓4548.42(1★B 43.9p)[skip<2★] ↓4555.89(1★B 51.4p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37519 | ↓1.37534(1★A 1.5p)[skip<2★] ↑1.37498(1★SKIP 2.1p)[skip<2★] ↑1.37482(1★SKIP 3.7p)[skip<2★] ↓1.37569(3★A+ 5.0p) ↑1.37446(1★SKIP 7.3p)[skip<2★] ↓1.37605(1★A 8.6p)[skip<2★] +27 more
+  USD/CHF @ 0.78872 | ↓0.78907(2★A 3.5p) ↓0.78948(1★B 7.6p)[skip<2★] ↑0.78771(1★SKIP 10.1p)[skip<2★] ↑0.78683(1★SKIP 18.9p)[skip<2★] ↑0.78661(2★SKIP 21.1p) ↑0.78646(3★SKIP 22.6p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29035.5 | ↓29057.2(1★SKIP 21.7p)[skip<2★] ↓29160.9(1★SKIP 125.4p)[skip<2★] ↓29181.3(1★SKIP 145.8p)[skip<2★] ↑28860.7(2★A 174.8p) ↓29228.1(1★SKIP 192.6p)[skip<2★] ↑28793.5(2★A 242.0p) +19 more
+[2026-05-19 18:25:33] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16092
+[2026-05-19 18:25:33] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.836
+[2026-05-19 18:25:33] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37519
+[2026-05-19 18:25:33] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78872
+[2026-05-19 18:25:33] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:25:33] [WARNING] RiskGuard [EUR/USD]: Locked out — 173m remaining
+[2026-05-19 18:25:33] [WARNING] RiskGuard [USD/JPY]: Locked out — 173m remaining
+[2026-05-19 18:25:33] [WARNING] RiskGuard [USD/CAD]: Locked out — 173m remaining
+[2026-05-19 18:25:33] [WARNING] RiskGuard [USD/CHF]: Locked out — 173m remaining
+[2026-05-19 18:25:54] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:25:54] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.834
+[2026-05-19 18:25:54] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:25:54] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78874
+[2026-05-19 18:25:54] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:25:54] [WARNING] RiskGuard [EUR/USD]: Locked out — 172m remaining
+[2026-05-19 18:25:54] [WARNING] RiskGuard [USD/JPY]: Locked out — 172m remaining
+[2026-05-19 18:25:54] [WARNING] RiskGuard [USD/CAD]: Locked out — 172m remaining
+[2026-05-19 18:25:54] [WARNING] RiskGuard [USD/CHF]: Locked out — 172m remaining
+[2026-05-19 18:26:16] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:26:35] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:18:43.131Z  min_stars=2
+  EUR/USD @ 1.1609 | ↓1.16129(5★B 3.9p) ↑1.1624249999999998(5★SKIP 15.2p) ↑1.15902(3★B 18.8p) ↑1.1634349999999998(5★SKIP 25.3p) ↑1.1641275(4★SKIP 32.3p) ↑1.1565950000000003(2★SKIP 43.0p) +20 more
+  GBP/USD @ 1.34082 | ↓1.34131(1★SKIP 4.9p)[skip<2★] ↓1.3421(1★SKIP 12.8p)[skip<2★] ↓1.3429(2★SKIP 20.8p) ↓1.34369(1★SKIP 28.7p)[skip<2★] ↓1.34448(1★SKIP 36.6p)[skip<2★] ↑1.33617(1★SKIP 46.5p)[skip<2★] +13 more
+  USD/JPY @ 158.836 | ↓158.861(2★A 2.5p) ↓158.918(2★A 8.2p) ↑158.72(1★SKIP 11.6p)[skip<2★] ↓159.059(2★A 22.3p) ↓159.117(1★A 28.1p)[skip<2★] ↑158.521(1★SKIP 31.5p)[skip<2★] +14 more
+  AUD/USD @ 0.71136 | ↑0.71042(2★B 9.4p) ↓0.71275(1★SKIP 13.9p)[skip<2★] ↑0.70978(1★B 15.8p)[skip<2★] ↓0.71508(1★SKIP 37.2p)[skip<2★] ↑0.70576(2★B 56.0p) ↓0.71785(2★SKIP 64.9p) +16 more
+  XAU/USD @ 4505.295 | ↑4504.35(1★SKIP 0.9p)[skip<2★] ↓4514.48(1★B 9.2p)[skip<2★] ↓4528.49(1★B 23.2p)[skip<2★] ↑4466.54(1★SKIP 38.8p)[skip<2★] ↓4548.42(1★B 43.1p)[skip<2★] ↓4555.89(1★B 50.6p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37521 | ↓1.37534(1★A 1.3p)[skip<2★] ↑1.37498(1★SKIP 2.3p)[skip<2★] ↑1.37482(1★SKIP 3.9p)[skip<2★] ↓1.37569(3★A+ 4.8p) ↑1.37446(1★SKIP 7.5p)[skip<2★] ↓1.37605(1★A 8.4p)[skip<2★] +27 more
+  USD/CHF @ 0.78872 | ↓0.78907(2★A 3.5p) ↓0.78948(1★B 7.6p)[skip<2★] ↑0.78771(1★SKIP 10.1p)[skip<2★] ↑0.78683(1★SKIP 18.9p)[skip<2★] ↑0.78661(2★SKIP 21.1p) ↑0.78646(3★SKIP 22.6p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29021.8 | ↓29057.2(1★SKIP 35.4p)[skip<2★] ↓29160.9(1★SKIP 139.1p)[skip<2★] ↓29181.3(1★SKIP 159.5p)[skip<2★] ↑28860.7(2★A 161.1p) ↓29228.1(1★SKIP 206.3p)[skip<2★] ↑28793.5(2★A 228.3p) +19 more
+[2026-05-19 18:26:35] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:26:35] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.836
+[2026-05-19 18:26:35] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37521
+[2026-05-19 18:26:35] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78872
+[2026-05-19 18:26:35] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:26:35] [WARNING] RiskGuard [EUR/USD]: Locked out — 172m remaining
+[2026-05-19 18:26:35] [WARNING] RiskGuard [USD/JPY]: Locked out — 172m remaining
+[2026-05-19 18:26:35] [WARNING] RiskGuard [USD/CAD]: Locked out — 172m remaining
+[2026-05-19 18:26:35] [WARNING] RiskGuard [USD/CHF]: Locked out — 172m remaining
+[2026-05-19 18:26:58] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:18:43.131Z  min_stars=2
+  EUR/USD @ 1.16093 | ↓1.16129(5★B 3.6p) ↑1.1624249999999998(5★SKIP 14.9p) ↑1.15902(3★B 19.1p) ↑1.1634349999999998(5★SKIP 25.0p) ↑1.1641275(4★SKIP 32.0p) ↑1.1565950000000003(2★SKIP 43.3p) +20 more
+  GBP/USD @ 1.34079 | ↓1.34131(1★SKIP 5.2p)[skip<2★] ↓1.3421(1★SKIP 13.1p)[skip<2★] ↓1.3429(2★SKIP 21.1p) ↓1.34369(1★SKIP 29.0p)[skip<2★] ↓1.34448(1★SKIP 36.9p)[skip<2★] ↑1.33617(1★SKIP 46.2p)[skip<2★] +13 more
+  USD/JPY @ 158.837 | ↓158.861(2★A 2.4p) ↓158.918(2★A 8.1p) ↑158.72(1★SKIP 11.7p)[skip<2★] ↓159.059(2★A 22.2p) ↓159.117(1★A 28.0p)[skip<2★] ↑158.521(1★SKIP 31.6p)[skip<2★] +14 more
+  AUD/USD @ 0.71136 | ↑0.71042(2★B 9.4p) ↓0.71275(1★SKIP 13.9p)[skip<2★] ↑0.70978(1★B 15.8p)[skip<2★] ↓0.71508(1★SKIP 37.2p)[skip<2★] ↑0.70576(2★B 56.0p) ↓0.71785(2★SKIP 64.9p) +16 more
+  XAU/USD @ 4506.11 | ↑4504.35(1★SKIP 1.8p)[skip<2★] ↓4514.48(1★B 8.4p)[skip<2★] ↓4528.49(1★B 22.4p)[skip<2★] ↑4466.54(1★SKIP 39.6p)[skip<2★] ↓4548.42(1★B 42.3p)[skip<2★] ↓4555.89(1★B 49.8p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37522 | ↓1.37534(1★A 1.2p)[skip<2★] ↑1.37498(1★SKIP 2.4p)[skip<2★] ↑1.37482(1★SKIP 4.0p)[skip<2★] ↓1.37569(3★A+ 4.7p) ↑1.37446(1★SKIP 7.6p)[skip<2★] ↓1.37605(1★A 8.3p)[skip<2★] +27 more
+  USD/CHF @ 0.78872 | ↓0.78907(2★A 3.5p) ↓0.78948(1★B 7.6p)[skip<2★] ↑0.78771(1★SKIP 10.1p)[skip<2★] ↑0.78683(1★SKIP 18.9p)[skip<2★] ↑0.78661(2★SKIP 21.1p) ↑0.78646(3★SKIP 22.6p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29009.2 | ↓29057.2(1★SKIP 48.0p)[skip<2★] ↑28860.7(2★A 148.5p) ↓29160.9(1★SKIP 151.7p)[skip<2★] ↓29181.3(1★SKIP 172.1p)[skip<2★] ↑28793.5(2★A 215.7p) ↓29228.1(1★SKIP 218.9p)[skip<2★] +19 more
+[2026-05-19 18:26:58] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16093
+[2026-05-19 18:26:58] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.837
+[2026-05-19 18:26:58] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37522
+[2026-05-19 18:26:58] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78872
+[2026-05-19 18:26:58] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:26:58] [WARNING] RiskGuard [EUR/USD]: Locked out — 171m remaining
+[2026-05-19 18:26:58] [WARNING] RiskGuard [USD/JPY]: Locked out — 171m remaining
+[2026-05-19 18:26:58] [WARNING] RiskGuard [USD/CAD]: Locked out — 171m remaining
+[2026-05-19 18:26:58] [WARNING] RiskGuard [USD/CHF]: Locked out — 171m remaining
+[2026-05-19 18:27:20] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16092
+[2026-05-19 18:27:20] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.833
+[2026-05-19 18:27:20] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37519
+[2026-05-19 18:27:20] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78872
+[2026-05-19 18:27:20] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:27:20] [WARNING] RiskGuard [EUR/USD]: Locked out — 171m remaining
+[2026-05-19 18:27:20] [WARNING] RiskGuard [USD/JPY]: Locked out — 171m remaining
+[2026-05-19 18:27:20] [WARNING] RiskGuard [USD/CAD]: Locked out — 171m remaining
+[2026-05-19 18:27:20] [WARNING] RiskGuard [USD/CHF]: Locked out — 171m remaining
+[2026-05-19 18:27:42] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:18:43.131Z  min_stars=2
+  EUR/USD @ 1.16092 | ↓1.16129(5★B 3.7p) ↑1.1624249999999998(5★SKIP 15.0p) ↑1.15902(3★B 19.0p) ↑1.1634349999999998(5★SKIP 25.1p) ↑1.1641275(4★SKIP 32.1p) ↑1.1565950000000003(2★SKIP 43.2p) +20 more
+  GBP/USD @ 1.34082 | ↓1.34131(1★SKIP 4.9p)[skip<2★] ↓1.3421(1★SKIP 12.8p)[skip<2★] ↓1.3429(2★SKIP 20.8p) ↓1.34369(1★SKIP 28.7p)[skip<2★] ↓1.34448(1★SKIP 36.6p)[skip<2★] ↑1.33617(1★SKIP 46.5p)[skip<2★] +13 more
+  USD/JPY @ 158.838 | ↓158.861(2★A 2.3p) ↓158.918(2★A 8.0p) ↑158.72(1★SKIP 11.8p)[skip<2★] ↓159.059(2★A 22.1p) ↓159.117(1★A 27.9p)[skip<2★] ↑158.521(1★SKIP 31.7p)[skip<2★] +14 more
+  AUD/USD @ 0.71136 | ↑0.71042(2★B 9.4p) ↓0.71275(1★SKIP 13.9p)[skip<2★] ↑0.70978(1★B 15.8p)[skip<2★] ↓0.71508(1★SKIP 37.2p)[skip<2★] ↑0.70576(2★B 56.0p) ↓0.71785(2★SKIP 64.9p) +16 more
+  XAU/USD @ 4505.965 | ↑4504.35(1★SKIP 1.6p)[skip<2★] ↓4514.48(1★B 8.5p)[skip<2★] ↓4528.49(1★B 22.5p)[skip<2★] ↑4466.54(1★SKIP 39.4p)[skip<2★] ↓4548.42(1★B 42.5p)[skip<2★] ↓4555.89(1★B 49.9p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.3752 | ↓1.37534(1★A 1.4p)[skip<2★] ↑1.37498(1★SKIP 2.2p)[skip<2★] ↑1.37482(1★SKIP 3.8p)[skip<2★] ↓1.37569(3★A+ 4.9p) ↑1.37446(1★SKIP 7.4p)[skip<2★] ↓1.37605(1★A 8.5p)[skip<2★] +27 more
+  USD/CHF @ 0.78876 | ↓0.78907(2★A 3.1p) ↓0.78948(1★B 7.2p)[skip<2★] ↑0.78771(1★SKIP 10.5p)[skip<2★] ↑0.78683(1★SKIP 19.3p)[skip<2★] ↑0.78661(2★SKIP 21.5p) ↑0.78646(3★SKIP 23.0p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29015.4 | ↓29057.2(1★SKIP 41.8p)[skip<2★] ↓29160.9(1★SKIP 145.5p)[skip<2★] ↑28860.7(2★A 154.7p) ↓29181.3(1★SKIP 165.9p)[skip<2★] ↓29228.1(1★SKIP 212.7p)[skip<2★] ↑28793.5(2★A 221.9p) +19 more
+[2026-05-19 18:27:42] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16092
+[2026-05-19 18:27:42] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.838
+[2026-05-19 18:27:42] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3752
+[2026-05-19 18:27:42] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78876
+[2026-05-19 18:27:42] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:27:42] [WARNING] RiskGuard [EUR/USD]: Locked out — 170m remaining
+[2026-05-19 18:27:42] [WARNING] RiskGuard [USD/JPY]: Locked out — 170m remaining
+[2026-05-19 18:27:42] [WARNING] RiskGuard [USD/CAD]: Locked out — 170m remaining
+[2026-05-19 18:27:42] [WARNING] RiskGuard [USD/CHF]: Locked out — 170m remaining
+[2026-05-19 18:28:04] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16088
+[2026-05-19 18:28:04] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.856
+[2026-05-19 18:28:04] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:28:04] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78878
+[2026-05-19 18:28:04] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:28:04] [WARNING] RiskGuard [EUR/USD]: Locked out — 170m remaining
+[2026-05-19 18:28:04] [WARNING] RiskGuard [USD/JPY]: Locked out — 170m remaining
+[2026-05-19 18:28:04] [WARNING] RiskGuard [USD/CAD]: Locked out — 170m remaining
+[2026-05-19 18:28:04] [WARNING] RiskGuard [USD/CHF]: Locked out — 170m remaining
+[2026-05-19 18:28:28] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:28:50] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:27:43.185Z  min_stars=2
+  EUR/USD @ 1.1609 | ↓1.16129(5★B 3.9p) ↑1.160015(4★B 8.9p) ↓1.1624249999999998(5★B 15.2p) ↑1.15902(3★B 18.8p) ↓1.1629924999999999(5★B 20.9p) ↓1.1634349999999998(5★B 25.3p) +20 more
+  GBP/USD @ 1.34084 | ↓1.34131(1★SKIP 4.7p)[skip<2★] ↓1.3421(1★SKIP 12.6p)[skip<2★] ↓1.3429(2★SKIP 20.6p) ↓1.34369(1★SKIP 28.5p)[skip<2★] ↓1.34448(1★SKIP 36.4p)[skip<2★] ↑1.33617(1★SKIP 46.7p)[skip<2★] +13 more
+  USD/JPY @ 158.846 | ↓158.861(2★A 1.5p) ↓158.918(2★A 7.2p) ↑158.72(1★SKIP 12.6p)[skip<2★] ↓159.059(2★A 21.3p) ↓159.117(1★A 27.1p)[skip<2★] ↑158.521(1★SKIP 32.5p)[skip<2★] +14 more
+  AUD/USD @ 0.71137 | ↑0.71042(2★B 9.5p) ↓0.71275(1★SKIP 13.8p)[skip<2★] ↑0.70978(1★B 15.9p)[skip<2★] ↓0.71508(1★SKIP 37.1p)[skip<2★] ↑0.70576(2★B 56.1p) ↓0.71785(2★SKIP 64.8p) +16 more
+  XAU/USD @ 4505.71 | ↑4504.35(1★SKIP 1.4p)[skip<2★] ↓4514.48(1★B 8.8p)[skip<2★] ↓4528.49(1★B 22.8p)[skip<2★] ↑4466.54(1★SKIP 39.2p)[skip<2★] ↓4548.42(1★B 42.7p)[skip<2★] ↓4555.89(1★B 50.2p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37515 | ↑1.37498(1★SKIP 1.7p)[skip<2★] ↓1.37534(1★A 1.9p)[skip<2★] ↑1.37482(1★SKIP 3.3p)[skip<2★] ↓1.37569(3★A+ 5.4p) ↑1.37446(1★SKIP 6.9p)[skip<2★] ↓1.37605(1★A 9.0p)[skip<2★] +27 more
+  USD/CHF @ 0.78872 | ↓0.78907(2★A 3.5p) ↓0.78948(1★B 7.6p)[skip<2★] ↑0.78771(1★SKIP 10.1p)[skip<2★] ↑0.78683(1★SKIP 18.9p)[skip<2★] ↑0.78661(2★SKIP 21.1p) ↑0.78646(3★SKIP 22.6p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28999.8 | ↓29057.2(1★SKIP 57.4p)[skip<2★] ↑28860.7(2★A 139.1p) ↓29160.9(1★SKIP 161.1p)[skip<2★] ↓29181.3(1★SKIP 181.5p)[skip<2★] ↑28793.5(2★A 206.3p) ↓29228.1(1★SKIP 228.3p)[skip<2★] +19 more
+[2026-05-19 18:28:50] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:28:50] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.846
+[2026-05-19 18:28:50] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37515
+[2026-05-19 18:28:50] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78872
+[2026-05-19 18:28:50] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:28:50] [WARNING] RiskGuard [EUR/USD]: Locked out — 169m remaining
+[2026-05-19 18:28:50] [WARNING] RiskGuard [USD/JPY]: Locked out — 169m remaining
+[2026-05-19 18:28:50] [WARNING] RiskGuard [USD/CAD]: Locked out — 169m remaining
+[2026-05-19 18:28:50] [WARNING] RiskGuard [USD/CHF]: Locked out — 169m remaining
+[2026-05-19 18:29:15] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:27:43.185Z  min_stars=2
+  EUR/USD @ 1.16093 | ↓1.16129(5★B 3.6p) ↑1.160015(4★B 9.1p) ↓1.1624249999999998(5★B 14.9p) ↑1.15902(3★B 19.1p) ↓1.1629924999999999(5★B 20.6p) ↓1.1634349999999998(5★B 25.0p) +20 more
+  GBP/USD @ 1.34086 | ↓1.34131(1★SKIP 4.5p)[skip<2★] ↓1.3421(1★SKIP 12.4p)[skip<2★] ↓1.3429(2★SKIP 20.4p) ↓1.34369(1★SKIP 28.3p)[skip<2★] ↓1.34448(1★SKIP 36.2p)[skip<2★] ↑1.33617(1★SKIP 46.9p)[skip<2★] +13 more
+  USD/JPY @ 158.836 | ↓158.861(2★A 2.5p) ↓158.918(2★A 8.2p) ↑158.72(1★SKIP 11.6p)[skip<2★] ↓159.059(2★A 22.3p) ↓159.117(1★A 28.1p)[skip<2★] ↑158.521(1★SKIP 31.5p)[skip<2★] +14 more
+  AUD/USD @ 0.71132 | ↑0.71042(2★B 9.0p) ↓0.71275(1★SKIP 14.3p)[skip<2★] ↑0.70978(1★B 15.4p)[skip<2★] ↓0.71508(1★SKIP 37.6p)[skip<2★] ↑0.70576(2★B 55.6p) ↓0.71785(2★SKIP 65.3p) +16 more
+  XAU/USD @ 4507.53 | ↑4504.35(1★SKIP 3.2p)[skip<2★] ↓4514.48(1★B 6.9p)[skip<2★] ↓4528.49(1★B 21.0p)[skip<2★] ↓4548.42(1★B 40.9p)[skip<2★] ↑4466.54(1★SKIP 41.0p)[skip<2★] ↓4555.89(1★B 48.4p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37512 | ↑1.37498(1★SKIP 1.4p)[skip<2★] ↓1.37534(1★A 2.2p)[skip<2★] ↑1.37482(1★SKIP 3.0p)[skip<2★] ↓1.37569(3★A+ 5.7p) ↑1.37446(1★SKIP 6.6p)[skip<2★] ↓1.37605(1★A 9.3p)[skip<2★] +27 more
+  USD/CHF @ 0.78873 | ↓0.78907(2★A 3.4p) ↓0.78948(1★B 7.5p)[skip<2★] ↑0.78771(1★SKIP 10.2p)[skip<2★] ↑0.78683(1★SKIP 19.0p)[skip<2★] ↑0.78661(2★SKIP 21.2p) ↑0.78646(3★SKIP 22.7p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29012.8 | ↓29057.2(1★SKIP 44.4p)[skip<2★] ↓29160.9(1★SKIP 148.1p)[skip<2★] ↑28860.7(2★A 152.1p) ↓29181.3(1★SKIP 168.5p)[skip<2★] ↓29228.1(1★SKIP 215.3p)[skip<2★] ↑28793.5(2★A 219.3p) +19 more
+[2026-05-19 18:29:15] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16093
+[2026-05-19 18:29:15] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.836
+[2026-05-19 18:29:15] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37512
+[2026-05-19 18:29:15] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78873
+[2026-05-19 18:29:15] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:29:15] [WARNING] RiskGuard [EUR/USD]: Locked out — 169m remaining
+[2026-05-19 18:29:15] [WARNING] RiskGuard [USD/JPY]: Locked out — 169m remaining
+[2026-05-19 18:29:15] [WARNING] RiskGuard [USD/CAD]: Locked out — 169m remaining
+[2026-05-19 18:29:15] [WARNING] RiskGuard [USD/CHF]: Locked out — 169m remaining
+[2026-05-19 18:29:35] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:29:35] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.842
+[2026-05-19 18:29:35] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37514
+[2026-05-19 18:29:35] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78874
+[2026-05-19 18:29:35] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:29:35] [WARNING] RiskGuard [EUR/USD]: Locked out — 169m remaining
+[2026-05-19 18:29:35] [WARNING] RiskGuard [USD/JPY]: Locked out — 169m remaining
+[2026-05-19 18:29:35] [WARNING] RiskGuard [USD/CAD]: Locked out — 169m remaining
+[2026-05-19 18:29:35] [WARNING] RiskGuard [USD/CHF]: Locked out — 169m remaining
+[2026-05-19 18:30:02] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:27:43.185Z  min_stars=2
+  EUR/USD @ 1.16098 | ↓1.16129(5★B 3.1p) ↑1.160015(4★B 9.6p) ↓1.1624249999999998(5★B 14.4p) ↑1.15902(3★B 19.6p) ↓1.1629924999999999(5★B 20.1p) ↓1.1634349999999998(5★B 24.5p) +20 more
+  GBP/USD @ 1.34092 | ↓1.34131(1★SKIP 3.9p)[skip<2★] ↓1.3421(1★SKIP 11.8p)[skip<2★] ↓1.3429(2★SKIP 19.8p) ↓1.34369(1★SKIP 27.7p)[skip<2★] ↓1.34448(1★SKIP 35.6p)[skip<2★] ↑1.33617(1★SKIP 47.5p)[skip<2★] +13 more
+  USD/JPY @ 158.836 | ↓158.861(2★A 2.5p) ↓158.918(2★A 8.2p) ↑158.72(1★SKIP 11.6p)[skip<2★] ↓159.059(2★A 22.3p) ↓159.117(1★A 28.1p)[skip<2★] ↑158.521(1★SKIP 31.5p)[skip<2★] +14 more
+  AUD/USD @ 0.71136 | ↑0.71042(2★B 9.4p) ↓0.71275(1★SKIP 13.9p)[skip<2★] ↑0.70978(1★B 15.8p)[skip<2★] ↓0.71508(1★SKIP 37.2p)[skip<2★] ↑0.70576(2★B 56.0p) ↓0.71785(2★SKIP 64.9p) +16 more
+  XAU/USD @ 4507.885 | ↑4504.35(1★SKIP 3.5p)[skip<2★] ↓4514.48(1★B 6.6p)[skip<2★] ↓4528.49(1★B 20.6p)[skip<2★] ↓4548.42(1★B 40.5p)[skip<2★] ↑4466.54(1★SKIP 41.3p)[skip<2★] ↓4555.89(1★B 48.0p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37512 | ↑1.37498(1★SKIP 1.4p)[skip<2★] ↓1.37534(1★A 2.2p)[skip<2★] ↑1.37482(1★SKIP 3.0p)[skip<2★] ↓1.37569(3★A+ 5.7p) ↑1.37446(1★SKIP 6.6p)[skip<2★] ↓1.37605(1★A 9.3p)[skip<2★] +27 more
+  USD/CHF @ 0.78871 | ↓0.78907(2★A 3.6p) ↓0.78948(1★B 7.7p)[skip<2★] ↑0.78771(1★SKIP 10.0p)[skip<2★] ↑0.78683(1★SKIP 18.8p)[skip<2★] ↑0.78661(2★SKIP 21.0p) ↑0.78646(3★SKIP 22.5p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29016.8 | ↓29057.2(1★SKIP 40.4p)[skip<2★] ↓29160.9(1★SKIP 144.1p)[skip<2★] ↑28860.7(2★A 156.1p) ↓29181.3(1★SKIP 164.5p)[skip<2★] ↓29228.1(1★SKIP 211.3p)[skip<2★] ↑28793.5(2★A 223.3p) +19 more
+[2026-05-19 18:30:02] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16098
+[2026-05-19 18:30:02] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.836
+[2026-05-19 18:30:02] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37512
+[2026-05-19 18:30:02] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78871
+[2026-05-19 18:30:02] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:30:02] [WARNING] RiskGuard [EUR/USD]: Locked out — 168m remaining
+[2026-05-19 18:30:02] [WARNING] RiskGuard [USD/JPY]: Locked out — 168m remaining
+[2026-05-19 18:30:02] [WARNING] RiskGuard [USD/CAD]: Locked out — 168m remaining
+[2026-05-19 18:30:02] [WARNING] RiskGuard [USD/CHF]: Locked out — 168m remaining
+[2026-05-19 18:30:26] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:30:26] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.844
+[2026-05-19 18:30:26] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37514
+[2026-05-19 18:30:26] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78874
+[2026-05-19 18:30:26] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:30:26] [WARNING] RiskGuard [EUR/USD]: Locked out — 168m remaining
+[2026-05-19 18:30:26] [WARNING] RiskGuard [USD/JPY]: Locked out — 168m remaining
+[2026-05-19 18:30:26] [WARNING] RiskGuard [USD/CAD]: Locked out — 168m remaining
+[2026-05-19 18:30:26] [WARNING] RiskGuard [USD/CHF]: Locked out — 168m remaining
+[2026-05-19 18:30:50] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:31:11] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:27:43.185Z  min_stars=2
+  EUR/USD @ 1.16102 | ↓1.16129(5★B 2.7p) ↑1.160015(4★B 10.0p) ↓1.1624249999999998(5★B 14.0p) ↓1.1629924999999999(5★B 19.7p) ↑1.15902(3★B 20.0p) ↓1.1634349999999998(5★B 24.1p) +20 more
+  GBP/USD @ 1.34094 | ↓1.34131(1★SKIP 3.7p)[skip<2★] ↓1.3421(1★SKIP 11.6p)[skip<2★] ↓1.3429(2★SKIP 19.6p) ↓1.34369(1★SKIP 27.5p)[skip<2★] ↓1.34448(1★SKIP 35.4p)[skip<2★] ↑1.33617(1★SKIP 47.7p)[skip<2★] +13 more
+  USD/JPY @ 158.83 | ↓158.861(2★A 3.1p) ↓158.918(2★A 8.8p) ↑158.72(1★SKIP 11.0p)[skip<2★] ↓159.059(2★A 22.9p) ↓159.117(1★A 28.7p)[skip<2★] ↑158.521(1★SKIP 30.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71138 | ↑0.71042(2★B 9.6p) ↓0.71275(1★SKIP 13.7p)[skip<2★] ↑0.70978(1★B 16.0p)[skip<2★] ↓0.71508(1★SKIP 37.0p)[skip<2★] ↑0.70576(2★B 56.2p) ↓0.71785(2★SKIP 64.7p) +16 more
+  XAU/USD @ 4507.745 | ↑4504.35(1★SKIP 3.4p)[skip<2★] ↓4514.48(1★B 6.7p)[skip<2★] ↓4528.49(1★B 20.7p)[skip<2★] ↓4548.42(1★B 40.7p)[skip<2★] ↑4466.54(1★SKIP 41.2p)[skip<2★] ↓4555.89(1★B 48.1p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37512 | ↑1.37498(1★SKIP 1.4p)[skip<2★] ↓1.37534(1★A 2.2p)[skip<2★] ↑1.37482(1★SKIP 3.0p)[skip<2★] ↓1.37569(3★A+ 5.7p) ↑1.37446(1★SKIP 6.6p)[skip<2★] ↓1.37605(1★A 9.3p)[skip<2★] +27 more
+  USD/CHF @ 0.78868 | ↓0.78907(2★A 3.9p) ↓0.78948(1★B 8.0p)[skip<2★] ↑0.78771(1★SKIP 9.7p)[skip<2★] ↑0.78683(1★SKIP 18.5p)[skip<2★] ↑0.78661(2★SKIP 20.7p) ↑0.78646(3★SKIP 22.2p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29043.8 | ↓29057.2(1★SKIP 13.4p)[skip<2★] ↓29160.9(1★SKIP 117.1p)[skip<2★] ↓29181.3(1★SKIP 137.5p)[skip<2★] ↑28860.7(2★A 183.1p) ↓29228.1(1★SKIP 184.3p)[skip<2★] ↑28793.5(2★A 250.3p) +19 more
+[2026-05-19 18:31:11] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16102
+[2026-05-19 18:31:11] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.83
+[2026-05-19 18:31:11] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37512
+[2026-05-19 18:31:11] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:31:11] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:31:11] [WARNING] RiskGuard [EUR/USD]: Locked out — 167m remaining
+[2026-05-19 18:31:11] [WARNING] RiskGuard [USD/JPY]: Locked out — 167m remaining
+[2026-05-19 18:31:11] [WARNING] RiskGuard [USD/CAD]: Locked out — 167m remaining
+[2026-05-19 18:31:11] [WARNING] RiskGuard [USD/CHF]: Locked out — 167m remaining
+[2026-05-19 18:31:36] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:27:43.185Z  min_stars=2
+  EUR/USD @ 1.161 | ↓1.16129(5★B 2.9p) ↑1.160015(4★B 9.9p) ↓1.1624249999999998(5★B 14.2p) ↑1.15902(3★B 19.8p) ↓1.1629924999999999(5★B 19.9p) ↓1.1634349999999998(5★B 24.3p) +20 more
+  GBP/USD @ 1.34098 | ↓1.34131(1★SKIP 3.3p)[skip<2★] ↓1.3421(1★SKIP 11.2p)[skip<2★] ↓1.3429(2★SKIP 19.2p) ↓1.34369(1★SKIP 27.1p)[skip<2★] ↓1.34448(1★SKIP 35.0p)[skip<2★] ↑1.33617(1★SKIP 48.1p)[skip<2★] +13 more
+  USD/JPY @ 158.825 | ↓158.861(2★A 3.6p) ↓158.918(2★A 9.3p) ↑158.72(1★SKIP 10.5p)[skip<2★] ↓159.059(2★A 23.4p) ↓159.117(1★A 29.2p)[skip<2★] ↑158.521(1★SKIP 30.4p)[skip<2★] +14 more
+  AUD/USD @ 0.71142 | ↑0.71042(2★B 10.0p) ↓0.71275(1★SKIP 13.3p)[skip<2★] ↑0.70978(1★B 16.4p)[skip<2★] ↓0.71508(1★SKIP 36.6p)[skip<2★] ↑0.70576(2★B 56.6p) ↓0.71785(2★SKIP 64.3p) +16 more
+  XAU/USD @ 4508.245 | ↑4504.35(1★SKIP 3.9p)[skip<2★] ↓4514.48(1★B 6.2p)[skip<2★] ↓4528.49(1★B 20.2p)[skip<2★] ↓4548.42(1★B 40.2p)[skip<2★] ↑4466.54(1★SKIP 41.7p)[skip<2★] ↓4555.89(1★B 47.6p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37506 | ↑1.37498(1★SKIP 0.8p)[skip<2★] ↑1.37482(1★SKIP 2.4p)[skip<2★] ↓1.37534(1★A 2.8p)[skip<2★] ↑1.37446(1★SKIP 6.0p)[skip<2★] ↓1.37569(3★A+ 6.3p) ↓1.37605(1★A 9.9p)[skip<2★] +27 more
+  USD/CHF @ 0.78862 | ↓0.78907(2★A 4.5p) ↓0.78948(1★B 8.6p)[skip<2★] ↑0.78771(1★SKIP 9.1p)[skip<2★] ↑0.78683(1★SKIP 17.9p)[skip<2★] ↑0.78661(2★SKIP 20.1p) ↑0.78646(3★SKIP 21.6p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29048.4 | ↓29057.2(1★SKIP 8.8p)[skip<2★] ↓29160.9(1★SKIP 112.5p)[skip<2★] ↓29181.3(1★SKIP 132.9p)[skip<2★] ↓29228.1(1★SKIP 179.7p)[skip<2★] ↑28860.7(2★A 187.7p) ↑28793.5(2★A 254.9p) +19 more
+[2026-05-19 18:31:36] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.161
+[2026-05-19 18:31:36] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.825
+[2026-05-19 18:31:36] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37506
+[2026-05-19 18:31:36] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78862
+[2026-05-19 18:31:36] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:31:36] [WARNING] RiskGuard [EUR/USD]: Locked out — 167m remaining
+[2026-05-19 18:31:36] [WARNING] RiskGuard [USD/JPY]: Locked out — 167m remaining
+[2026-05-19 18:31:36] [WARNING] RiskGuard [USD/CAD]: Locked out — 167m remaining
+[2026-05-19 18:31:36] [WARNING] RiskGuard [USD/CHF]: Locked out — 167m remaining
+[2026-05-19 18:31:58] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16106
+[2026-05-19 18:31:58] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.828
+[2026-05-19 18:31:58] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37516
+[2026-05-19 18:31:58] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78864
+[2026-05-19 18:31:58] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:31:58] [WARNING] RiskGuard [EUR/USD]: Locked out — 166m remaining
+[2026-05-19 18:31:58] [WARNING] RiskGuard [USD/JPY]: Locked out — 166m remaining
+[2026-05-19 18:31:58] [WARNING] RiskGuard [USD/CAD]: Locked out — 166m remaining
+[2026-05-19 18:31:58] [WARNING] RiskGuard [USD/CHF]: Locked out — 166m remaining
+[2026-05-19 18:32:20] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:27:43.185Z  min_stars=2
+  EUR/USD @ 1.16104 | ↓1.16129(5★B 2.5p) ↑1.160015(4★B 10.3p) ↓1.1624249999999998(5★B 13.8p) ↓1.1629924999999999(5★B 19.5p) ↑1.15902(3★B 20.2p) ↓1.1634349999999998(5★B 23.9p) +20 more
+  GBP/USD @ 1.34095 | ↓1.34131(1★SKIP 3.6p)[skip<2★] ↓1.3421(1★SKIP 11.5p)[skip<2★] ↓1.3429(2★SKIP 19.5p) ↓1.34369(1★SKIP 27.4p)[skip<2★] ↓1.34448(1★SKIP 35.3p)[skip<2★] ↑1.33617(1★SKIP 47.8p)[skip<2★] +13 more
+  USD/JPY @ 158.834 | ↓158.861(2★A 2.7p) ↓158.918(2★A 8.4p) ↑158.72(1★SKIP 11.4p)[skip<2★] ↓159.059(2★A 22.5p) ↓159.117(1★A 28.3p)[skip<2★] ↑158.521(1★SKIP 31.3p)[skip<2★] +14 more
+  AUD/USD @ 0.71136 | ↑0.71042(2★B 9.4p) ↓0.71275(1★SKIP 13.9p)[skip<2★] ↑0.70978(1★B 15.8p)[skip<2★] ↓0.71508(1★SKIP 37.2p)[skip<2★] ↑0.70576(2★B 56.0p) ↓0.71785(2★SKIP 64.9p) +16 more
+  XAU/USD @ 4507.93 | ↑4504.35(1★SKIP 3.6p)[skip<2★] ↓4514.48(1★B 6.5p)[skip<2★] ↓4528.49(1★B 20.6p)[skip<2★] ↓4548.42(1★B 40.5p)[skip<2★] ↑4466.54(1★SKIP 41.4p)[skip<2★] ↓4555.89(1★B 48.0p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37516 | ↑1.37498(1★SKIP 1.8p)[skip<2★] ↓1.37534(1★A 1.8p)[skip<2★] ↑1.37482(1★SKIP 3.4p)[skip<2★] ↓1.37569(3★A+ 5.3p) ↑1.37446(1★SKIP 7.0p)[skip<2★] ↓1.37605(1★A 8.9p)[skip<2★] +27 more
+  USD/CHF @ 0.78872 | ↓0.78907(2★A 3.5p) ↓0.78948(1★B 7.6p)[skip<2★] ↑0.78771(1★SKIP 10.1p)[skip<2★] ↑0.78683(1★SKIP 18.9p)[skip<2★] ↑0.78661(2★SKIP 21.1p) ↑0.78646(3★SKIP 22.6p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29028.8 | ↓29057.2(1★SKIP 28.4p)[skip<2★] ↓29160.9(1★SKIP 132.1p)[skip<2★] ↓29181.3(1★SKIP 152.5p)[skip<2★] ↑28860.7(2★A 168.1p) ↓29228.1(1★SKIP 199.3p)[skip<2★] ↑28793.5(2★A 235.3p) +19 more
+[2026-05-19 18:32:20] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16104
+[2026-05-19 18:32:20] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.834
+[2026-05-19 18:32:20] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37516
+[2026-05-19 18:32:20] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78872
+[2026-05-19 18:32:20] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:32:20] [WARNING] RiskGuard [EUR/USD]: Locked out — 166m remaining
+[2026-05-19 18:32:20] [WARNING] RiskGuard [USD/JPY]: Locked out — 166m remaining
+[2026-05-19 18:32:20] [WARNING] RiskGuard [USD/CAD]: Locked out — 166m remaining
+[2026-05-19 18:32:20] [WARNING] RiskGuard [USD/CHF]: Locked out — 166m remaining
+[2026-05-19 18:32:40] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16096
+[2026-05-19 18:32:40] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.849
+[2026-05-19 18:32:40] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:32:40] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78876
+[2026-05-19 18:32:40] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:32:40] [WARNING] RiskGuard [EUR/USD]: Locked out — 165m remaining
+[2026-05-19 18:32:40] [WARNING] RiskGuard [USD/JPY]: Locked out — 165m remaining
+[2026-05-19 18:32:40] [WARNING] RiskGuard [USD/CAD]: Locked out — 165m remaining
+[2026-05-19 18:32:40] [WARNING] RiskGuard [USD/CHF]: Locked out — 165m remaining
+[2026-05-19 18:33:04] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:33:25] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:27:43.185Z  min_stars=2
+  EUR/USD @ 1.16093 | ↓1.16129(5★B 3.6p) ↑1.160015(4★B 9.1p) ↓1.1624249999999998(5★B 14.9p) ↑1.15902(3★B 19.1p) ↓1.1629924999999999(5★B 20.6p) ↓1.1634349999999998(5★B 25.0p) +20 more
+  GBP/USD @ 1.34083 | ↓1.34131(1★SKIP 4.8p)[skip<2★] ↓1.3421(1★SKIP 12.7p)[skip<2★] ↓1.3429(2★SKIP 20.7p) ↓1.34369(1★SKIP 28.6p)[skip<2★] ↓1.34448(1★SKIP 36.5p)[skip<2★] ↑1.33617(1★SKIP 46.6p)[skip<2★] +13 more
+  USD/JPY @ 158.86 | ↓158.861(2★A 0.1p) ↓158.918(2★A 5.8p) ↑158.72(1★SKIP 14.0p)[skip<2★] ↓159.059(2★A 19.9p) ↓159.117(1★A 25.7p)[skip<2★] ↑158.521(1★SKIP 33.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71122 | ↑0.71042(2★B 8.0p) ↑0.70978(1★B 14.4p)[skip<2★] ↓0.71275(1★SKIP 15.3p)[skip<2★] ↓0.71508(1★SKIP 38.6p)[skip<2★] ↑0.70576(2★B 54.6p) ↓0.71785(2★SKIP 66.3p) +16 more
+  XAU/USD @ 4506.66 | ↑4504.35(1★SKIP 2.3p)[skip<2★] ↓4514.48(1★B 7.8p)[skip<2★] ↓4528.49(1★B 21.8p)[skip<2★] ↑4466.54(1★SKIP 40.1p)[skip<2★] ↓4548.42(1★B 41.8p)[skip<2★] ↓4555.89(1★B 49.2p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.3752 | ↓1.37534(1★A 1.4p)[skip<2★] ↑1.37498(1★SKIP 2.2p)[skip<2★] ↑1.37482(1★SKIP 3.8p)[skip<2★] ↓1.37569(3★A+ 4.9p) ↑1.37446(1★SKIP 7.4p)[skip<2★] ↓1.37605(1★A 8.5p)[skip<2★] +27 more
+  USD/CHF @ 0.7888 | ↓0.78907(2★A 2.7p) ↓0.78948(1★B 6.8p)[skip<2★] ↑0.78771(1★SKIP 10.9p)[skip<2★] ↑0.78683(1★SKIP 19.7p)[skip<2★] ↑0.78661(2★SKIP 21.9p) ↑0.78646(3★SKIP 23.4p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29035.5 | ↓29057.2(1★SKIP 21.7p)[skip<2★] ↓29160.9(1★SKIP 125.4p)[skip<2★] ↓29181.3(1★SKIP 145.8p)[skip<2★] ↑28860.7(2★A 174.8p) ↓29228.1(1★SKIP 192.6p)[skip<2★] ↑28793.5(2★A 242.0p) +19 more
+[2026-05-19 18:33:25] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16093
+[2026-05-19 18:33:25] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.86
+[2026-05-19 18:33:25] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71122
+[2026-05-19 18:33:25] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3752
+[2026-05-19 18:33:25] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7888
+[2026-05-19 18:33:25] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:33:25] [WARNING] RiskGuard [EUR/USD]: Locked out — 165m remaining
+[2026-05-19 18:33:25] [WARNING] RiskGuard [USD/JPY]: Locked out — 165m remaining
+[2026-05-19 18:33:25] [WARNING] RiskGuard [AUD/USD]: Locked out — 165m remaining
+[2026-05-19 18:33:25] [WARNING] RiskGuard [USD/CAD]: Locked out — 165m remaining
+[2026-05-19 18:33:25] [WARNING] RiskGuard [USD/CHF]: Locked out — 165m remaining
+[2026-05-19 18:33:49] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:27:43.185Z  min_stars=2
+  EUR/USD @ 1.16091 | ↓1.16129(5★B 3.8p) ↑1.160015(4★B 9.0p) ↓1.1624249999999998(5★B 15.1p) ↑1.15902(3★B 18.9p) ↓1.1629924999999999(5★B 20.8p) ↓1.1634349999999998(5★B 25.2p) +20 more
+  GBP/USD @ 1.34082 | ↓1.34131(1★SKIP 4.9p)[skip<2★] ↓1.3421(1★SKIP 12.8p)[skip<2★] ↓1.3429(2★SKIP 20.8p) ↓1.34369(1★SKIP 28.7p)[skip<2★] ↓1.34448(1★SKIP 36.6p)[skip<2★] ↑1.33617(1★SKIP 46.5p)[skip<2★] +13 more
+  USD/JPY @ 158.873 | ↓158.861(2★A 1.2p) ↓158.918(2★A 4.5p) ↑158.72(1★SKIP 15.3p)[skip<2★] ↓159.059(2★A 18.6p) ↓159.117(1★A 24.4p)[skip<2★] ↑158.521(1★SKIP 35.2p)[skip<2★] +14 more
+  AUD/USD @ 0.71122 | ↑0.71042(2★B 8.0p) ↑0.70978(1★B 14.4p)[skip<2★] ↓0.71275(1★SKIP 15.3p)[skip<2★] ↓0.71508(1★SKIP 38.6p)[skip<2★] ↑0.70576(2★B 54.6p) ↓0.71785(2★SKIP 66.3p) +16 more
+  XAU/USD @ 4507.495 | ↑4504.35(1★SKIP 3.1p)[skip<2★] ↓4514.48(1★B 7.0p)[skip<2★] ↓4528.49(1★B 21.0p)[skip<2★] ↓4548.42(1★B 40.9p)[skip<2★] ↑4466.54(1★SKIP 41.0p)[skip<2★] ↓4555.89(1★B 48.4p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.3752 | ↓1.37534(1★A 1.4p)[skip<2★] ↑1.37498(1★SKIP 2.2p)[skip<2★] ↑1.37482(1★SKIP 3.8p)[skip<2★] ↓1.37569(3★A+ 4.9p) ↑1.37446(1★SKIP 7.4p)[skip<2★] ↓1.37605(1★A 8.5p)[skip<2★] +27 more
+  USD/CHF @ 0.78878 | ↓0.78907(2★A 2.9p) ↓0.78948(1★B 7.0p)[skip<2★] ↑0.78771(1★SKIP 10.7p)[skip<2★] ↑0.78683(1★SKIP 19.5p)[skip<2★] ↑0.78661(2★SKIP 21.7p) ↑0.78646(3★SKIP 23.2p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29024.8 | ↓29057.2(1★SKIP 32.4p)[skip<2★] ↓29160.9(1★SKIP 136.1p)[skip<2★] ↓29181.3(1★SKIP 156.5p)[skip<2★] ↑28860.7(2★A 164.1p) ↓29228.1(1★SKIP 203.3p)[skip<2★] ↑28793.5(2★A 231.3p) +19 more
+[2026-05-19 18:33:49] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16091
+[2026-05-19 18:33:49] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.873
+[2026-05-19 18:33:49] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71122
+[2026-05-19 18:33:49] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3752
+[2026-05-19 18:33:49] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78878
+[2026-05-19 18:33:49] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:33:49] [WARNING] RiskGuard [EUR/USD]: Locked out — 164m remaining
+[2026-05-19 18:33:49] [WARNING] RiskGuard [USD/JPY]: Locked out — 164m remaining
+[2026-05-19 18:33:49] [WARNING] RiskGuard [AUD/USD]: Locked out — 164m remaining
+[2026-05-19 18:33:49] [WARNING] RiskGuard [USD/CAD]: Locked out — 164m remaining
+[2026-05-19 18:33:49] [WARNING] RiskGuard [USD/CHF]: Locked out — 164m remaining
+[2026-05-19 18:34:11] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:34:11] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.87
+[2026-05-19 18:34:11] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71122
+[2026-05-19 18:34:11] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37521
+[2026-05-19 18:34:11] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78876
+[2026-05-19 18:34:11] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:34:11] [WARNING] RiskGuard [EUR/USD]: Locked out — 164m remaining
+[2026-05-19 18:34:11] [WARNING] RiskGuard [USD/JPY]: Locked out — 164m remaining
+[2026-05-19 18:34:11] [WARNING] RiskGuard [AUD/USD]: Locked out — 164m remaining
+[2026-05-19 18:34:11] [WARNING] RiskGuard [USD/CAD]: Locked out — 164m remaining
+[2026-05-19 18:34:11] [WARNING] RiskGuard [USD/CHF]: Locked out — 164m remaining
+[2026-05-19 18:34:35] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:27:43.185Z  min_stars=2
+  EUR/USD @ 1.1609 | ↓1.16129(5★B 3.9p) ↑1.160015(4★B 8.9p) ↓1.1624249999999998(5★B 15.2p) ↑1.15902(3★B 18.8p) ↓1.1629924999999999(5★B 20.9p) ↓1.1634349999999998(5★B 25.3p) +20 more
+  GBP/USD @ 1.34078 | ↓1.34131(1★SKIP 5.3p)[skip<2★] ↓1.3421(1★SKIP 13.2p)[skip<2★] ↓1.3429(2★SKIP 21.2p) ↓1.34369(1★SKIP 29.1p)[skip<2★] ↓1.34448(1★SKIP 37.0p)[skip<2★] ↑1.33617(1★SKIP 46.1p)[skip<2★] +13 more
+  USD/JPY @ 158.861 | ↓158.861(2★A 0.0p) ↓158.918(2★A 5.7p) ↑158.72(1★SKIP 14.1p)[skip<2★] ↓159.059(2★A 19.8p) ↓159.117(1★A 25.6p)[skip<2★] ↑158.521(1★SKIP 34.0p)[skip<2★] +14 more
+  AUD/USD @ 0.71118 | ↑0.71042(2★B 7.6p) ↑0.70978(1★B 14.0p)[skip<2★] ↓0.71275(1★SKIP 15.7p)[skip<2★] ↓0.71508(1★SKIP 39.0p)[skip<2★] ↑0.70576(2★B 54.2p) ↓0.71785(2★SKIP 66.7p) +16 more
+  XAU/USD @ 4506.12 | ↑4504.35(1★SKIP 1.8p)[skip<2★] ↓4514.48(1★B 8.4p)[skip<2★] ↓4528.49(1★B 22.4p)[skip<2★] ↑4466.54(1★SKIP 39.6p)[skip<2★] ↓4548.42(1★B 42.3p)[skip<2★] ↓4555.89(1★B 49.8p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37522 | ↓1.37534(1★A 1.2p)[skip<2★] ↑1.37498(1★SKIP 2.4p)[skip<2★] ↑1.37482(1★SKIP 4.0p)[skip<2★] ↓1.37569(3★A+ 4.7p) ↑1.37446(1★SKIP 7.6p)[skip<2★] ↓1.37605(1★A 8.3p)[skip<2★] +27 more
+  USD/CHF @ 0.78886 | ↓0.78907(2★A 2.1p) ↓0.78948(1★B 6.2p)[skip<2★] ↑0.78771(1★SKIP 11.5p)[skip<2★] ↑0.78683(1★SKIP 20.3p)[skip<2★] ↑0.78661(2★SKIP 22.5p) ↓0.79125(2★A 23.9p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29020.6 | ↓29057.2(1★SKIP 36.6p)[skip<2★] ↓29160.9(1★SKIP 140.3p)[skip<2★] ↑28860.7(2★A 159.9p) ↓29181.3(1★SKIP 160.7p)[skip<2★] ↓29228.1(1★SKIP 207.5p)[skip<2★] ↑28793.5(2★A 227.1p) +19 more
+[2026-05-19 18:34:35] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:34:35] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.861
+[2026-05-19 18:34:35] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71118
+[2026-05-19 18:34:35] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37522
+[2026-05-19 18:34:35] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78886
+[2026-05-19 18:34:35] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:34:35] [WARNING] RiskGuard [EUR/USD]: Locked out — 164m remaining
+[2026-05-19 18:34:35] [WARNING] RiskGuard [USD/JPY]: Locked out — 164m remaining
+[2026-05-19 18:34:35] [WARNING] RiskGuard [AUD/USD]: Locked out — 164m remaining
+[2026-05-19 18:34:35] [WARNING] RiskGuard [USD/CAD]: Locked out — 164m remaining
+[2026-05-19 18:34:35] [WARNING] RiskGuard [USD/CHF]: Locked out — 164m remaining
+[2026-05-19 18:34:58] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16084
+[2026-05-19 18:34:58] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.872
+[2026-05-19 18:34:58] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7111
+[2026-05-19 18:34:58] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3752
+[2026-05-19 18:34:58] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78887
+[2026-05-19 18:34:58] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:34:58] [WARNING] RiskGuard [EUR/USD]: Locked out — 163m remaining
+[2026-05-19 18:34:58] [WARNING] RiskGuard [USD/JPY]: Locked out — 163m remaining
+[2026-05-19 18:34:58] [WARNING] RiskGuard [AUD/USD]: Locked out — 163m remaining
+[2026-05-19 18:34:58] [WARNING] RiskGuard [USD/CAD]: Locked out — 163m remaining
+[2026-05-19 18:34:58] [WARNING] RiskGuard [USD/CHF]: Locked out — 163m remaining
+[2026-05-19 18:35:23] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:35:45] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:32:54.548Z  min_stars=2
+  EUR/USD @ 1.16078 | ↓1.16129(5★B 5.1p) ↑1.160015(4★B 7.6p) ↓1.1624249999999998(5★B 16.4p) ↑1.15902(3★B 17.6p) ↓1.1629924999999999(5★B 22.1p) ↓1.1634349999999998(5★B 26.5p) +20 more
+  GBP/USD @ 1.34042 | ↓1.34131(1★SKIP 8.9p)[skip<2★] ↓1.3421(1★SKIP 16.8p)[skip<2★] ↓1.3429(2★SKIP 24.8p) ↓1.34369(1★SKIP 32.7p)[skip<2★] ↓1.34448(1★SKIP 40.6p)[skip<2★] ↑1.33617(1★SKIP 42.5p)[skip<2★] +13 more
+  USD/JPY @ 158.88 | ↓158.861(2★A 1.9p) ↓158.918(2★A 3.8p) ↑158.72(1★SKIP 16.0p)[skip<2★] ↓159.059(2★A 17.9p) ↓159.117(1★A 23.7p)[skip<2★] ↑158.521(1★SKIP 35.9p)[skip<2★] +14 more
+  AUD/USD @ 0.7111 | ↑0.71042(2★B 6.8p) ↑0.70978(1★B 13.2p)[skip<2★] ↓0.71275(1★SKIP 16.5p)[skip<2★] ↓0.71508(1★SKIP 39.8p)[skip<2★] ↑0.70576(2★B 53.4p) ↓0.71785(2★SKIP 67.5p) +16 more
+  XAU/USD @ 4504.065 | ↑4504.35(1★SKIP 0.3p)[skip<2★] ↓4514.48(1★B 10.4p)[skip<2★] ↓4528.49(1★B 24.4p)[skip<2★] ↑4466.54(1★SKIP 37.5p)[skip<2★] ↓4548.42(1★B 44.4p)[skip<2★] ↓4555.89(1★B 51.8p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37524 | ↓1.37534(1★A 1.0p)[skip<2★] ↑1.37498(1★SKIP 2.6p)[skip<2★] ↑1.37482(1★SKIP 4.2p)[skip<2★] ↓1.37569(3★A+ 4.5p) ↑1.37446(1★SKIP 7.8p)[skip<2★] ↓1.37605(1★A 8.1p)[skip<2★] +27 more
+  USD/CHF @ 0.7889 | ↓0.78907(2★A 1.7p) ↓0.78948(1★B 5.8p)[skip<2★] ↑0.78771(1★SKIP 11.9p)[skip<2★] ↑0.78683(1★SKIP 20.7p)[skip<2★] ↑0.78661(2★SKIP 22.9p) ↓0.79125(2★A 23.5p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29018.8 | ↓29057.2(1★SKIP 38.4p)[skip<2★] ↓29160.9(1★SKIP 142.1p)[skip<2★] ↑28860.7(2★A 158.1p) ↓29181.3(1★SKIP 162.5p)[skip<2★] ↓29228.1(1★SKIP 209.3p)[skip<2★] ↑28793.5(2★A 225.3p) +19 more
+[2026-05-19 18:35:45] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16078
+[2026-05-19 18:35:45] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.88
+[2026-05-19 18:35:45] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7111
+[2026-05-19 18:35:45] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37524
+[2026-05-19 18:35:45] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7889
+[2026-05-19 18:35:45] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:35:45] [WARNING] RiskGuard [EUR/USD]: Locked out — 162m remaining
+[2026-05-19 18:35:45] [WARNING] RiskGuard [USD/JPY]: Locked out — 162m remaining
+[2026-05-19 18:35:45] [WARNING] RiskGuard [AUD/USD]: Locked out — 162m remaining
+[2026-05-19 18:35:45] [WARNING] RiskGuard [USD/CAD]: Locked out — 162m remaining
+[2026-05-19 18:35:45] [WARNING] RiskGuard [USD/CHF]: Locked out — 162m remaining
+[2026-05-19 18:36:10] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:32:54.548Z  min_stars=2
+  EUR/USD @ 1.16078 | ↓1.16129(5★B 5.1p) ↑1.160015(4★B 7.6p) ↓1.1624249999999998(5★B 16.4p) ↑1.15902(3★B 17.6p) ↓1.1629924999999999(5★B 22.1p) ↓1.1634349999999998(5★B 26.5p) +20 more
+  GBP/USD @ 1.34048 | ↓1.34131(1★SKIP 8.3p)[skip<2★] ↓1.3421(1★SKIP 16.2p)[skip<2★] ↓1.3429(2★SKIP 24.2p) ↓1.34369(1★SKIP 32.1p)[skip<2★] ↓1.34448(1★SKIP 40.0p)[skip<2★] ↑1.33617(1★SKIP 43.1p)[skip<2★] +13 more
+  USD/JPY @ 158.882 | ↓158.861(2★A 2.1p) ↓158.918(2★A 3.6p) ↑158.72(1★SKIP 16.2p)[skip<2★] ↓159.059(2★A 17.7p) ↓159.117(1★A 23.5p)[skip<2★] ↑158.521(1★SKIP 36.1p)[skip<2★] +14 more
+  AUD/USD @ 0.71112 | ↑0.71042(2★B 7.0p) ↑0.70978(1★B 13.4p)[skip<2★] ↓0.71275(1★SKIP 16.3p)[skip<2★] ↓0.71508(1★SKIP 39.6p)[skip<2★] ↑0.70576(2★B 53.6p) ↓0.71785(2★SKIP 67.3p) +16 more
+  XAU/USD @ 4504.69 | ↑4504.35(1★SKIP 0.3p)[skip<2★] ↓4514.48(1★B 9.8p)[skip<2★] ↓4528.49(1★B 23.8p)[skip<2★] ↑4466.54(1★SKIP 38.1p)[skip<2★] ↓4548.42(1★B 43.7p)[skip<2★] ↓4555.89(1★B 51.2p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37522 | ↓1.37534(1★A 1.2p)[skip<2★] ↑1.37498(1★SKIP 2.4p)[skip<2★] ↑1.37482(1★SKIP 4.0p)[skip<2★] ↓1.37569(3★A+ 4.7p) ↑1.37446(1★SKIP 7.6p)[skip<2★] ↓1.37605(1★A 8.3p)[skip<2★] +27 more
+  USD/CHF @ 0.78888 | ↓0.78907(2★A 1.9p) ↓0.78948(1★B 6.0p)[skip<2★] ↑0.78771(1★SKIP 11.7p)[skip<2★] ↑0.78683(1★SKIP 20.5p)[skip<2★] ↑0.78661(2★SKIP 22.7p) ↓0.79125(2★A 23.7p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29024.3 | ↓29057.2(1★SKIP 32.9p)[skip<2★] ↓29160.9(1★SKIP 136.6p)[skip<2★] ↓29181.3(1★SKIP 157.0p)[skip<2★] ↑28860.7(2★A 163.6p) ↓29228.1(1★SKIP 203.8p)[skip<2★] ↑28793.5(2★A 230.8p) +19 more
+[2026-05-19 18:36:10] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16078
+[2026-05-19 18:36:10] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.882
+[2026-05-19 18:36:10] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71112
+[2026-05-19 18:36:10] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37522
+[2026-05-19 18:36:10] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78888
+[2026-05-19 18:36:10] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:36:10] [WARNING] RiskGuard [EUR/USD]: Locked out — 162m remaining
+[2026-05-19 18:36:10] [WARNING] RiskGuard [USD/JPY]: Locked out — 162m remaining
+[2026-05-19 18:36:10] [WARNING] RiskGuard [AUD/USD]: Locked out — 162m remaining
+[2026-05-19 18:36:10] [WARNING] RiskGuard [USD/CAD]: Locked out — 162m remaining
+[2026-05-19 18:36:10] [WARNING] RiskGuard [USD/CHF]: Locked out — 162m remaining
+[2026-05-19 18:36:32] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16081
+[2026-05-19 18:36:32] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.872
+[2026-05-19 18:36:32] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71115
+[2026-05-19 18:36:32] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37514
+[2026-05-19 18:36:32] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78884
+[2026-05-19 18:36:32] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:36:32] [WARNING] RiskGuard [EUR/USD]: Locked out — 162m remaining
+[2026-05-19 18:36:32] [WARNING] RiskGuard [USD/JPY]: Locked out — 162m remaining
+[2026-05-19 18:36:32] [WARNING] RiskGuard [AUD/USD]: Locked out — 162m remaining
+[2026-05-19 18:36:32] [WARNING] RiskGuard [USD/CAD]: Locked out — 162m remaining
+[2026-05-19 18:36:32] [WARNING] RiskGuard [USD/CHF]: Locked out — 162m remaining
+[2026-05-19 18:36:56] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:32:54.548Z  min_stars=2
+  EUR/USD @ 1.16085 | ↓1.16129(5★B 4.4p) ↑1.160015(4★B 8.3p) ↓1.1624249999999998(5★B 15.7p) ↑1.15902(3★B 18.3p) ↓1.1629924999999999(5★B 21.4p) ↓1.1634349999999998(5★B 25.8p) +20 more
+  GBP/USD @ 1.34056 | ↓1.34131(1★SKIP 7.5p)[skip<2★] ↓1.3421(1★SKIP 15.4p)[skip<2★] ↓1.3429(2★SKIP 23.4p) ↓1.34369(1★SKIP 31.3p)[skip<2★] ↓1.34448(1★SKIP 39.2p)[skip<2★] ↑1.33617(1★SKIP 43.9p)[skip<2★] +13 more
+  USD/JPY @ 158.87 | ↓158.861(2★A 0.9p) ↓158.918(2★A 4.8p) ↑158.72(1★SKIP 15.0p)[skip<2★] ↓159.059(2★A 18.9p) ↓159.117(1★A 24.7p)[skip<2★] ↑158.521(1★SKIP 34.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71115 | ↑0.71042(2★B 7.3p) ↑0.70978(1★B 13.7p)[skip<2★] ↓0.71275(1★SKIP 16.0p)[skip<2★] ↓0.71508(1★SKIP 39.3p)[skip<2★] ↑0.70576(2★B 53.9p) ↓0.71785(2★SKIP 67.0p) +16 more
+  XAU/USD @ 4504.72 | ↑4504.35(1★SKIP 0.4p)[skip<2★] ↓4514.48(1★B 9.8p)[skip<2★] ↓4528.49(1★B 23.8p)[skip<2★] ↑4466.54(1★SKIP 38.2p)[skip<2★] ↓4548.42(1★B 43.7p)[skip<2★] ↓4555.89(1★B 51.2p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37522 | ↓1.37534(1★A 1.2p)[skip<2★] ↑1.37498(1★SKIP 2.4p)[skip<2★] ↑1.37482(1★SKIP 4.0p)[skip<2★] ↓1.37569(3★A+ 4.7p) ↑1.37446(1★SKIP 7.6p)[skip<2★] ↓1.37605(1★A 8.3p)[skip<2★] +27 more
+  USD/CHF @ 0.78884 | ↓0.78907(2★A 2.3p) ↓0.78948(1★B 6.4p)[skip<2★] ↑0.78771(1★SKIP 11.3p)[skip<2★] ↑0.78683(1★SKIP 20.1p)[skip<2★] ↑0.78661(2★SKIP 22.3p) ↑0.78646(3★SKIP 23.8p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29025.0 | ↓29057.2(1★SKIP 32.2p)[skip<2★] ↓29160.9(1★SKIP 135.9p)[skip<2★] ↓29181.3(1★SKIP 156.3p)[skip<2★] ↑28860.7(2★A 164.3p) ↓29228.1(1★SKIP 203.1p)[skip<2★] ↑28793.5(2★A 231.5p) +19 more
+[2026-05-19 18:36:56] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16085
+[2026-05-19 18:36:56] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.87
+[2026-05-19 18:36:56] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71115
+[2026-05-19 18:36:56] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37522
+[2026-05-19 18:36:56] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78884
+[2026-05-19 18:36:56] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:36:56] [WARNING] RiskGuard [EUR/USD]: Locked out — 161m remaining
+[2026-05-19 18:36:56] [WARNING] RiskGuard [USD/JPY]: Locked out — 161m remaining
+[2026-05-19 18:36:56] [WARNING] RiskGuard [AUD/USD]: Locked out — 161m remaining
+[2026-05-19 18:36:56] [WARNING] RiskGuard [USD/CAD]: Locked out — 161m remaining
+[2026-05-19 18:36:56] [WARNING] RiskGuard [USD/CHF]: Locked out — 161m remaining
+[2026-05-19 18:37:18] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16086
+[2026-05-19 18:37:18] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.87
+[2026-05-19 18:37:18] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71122
+[2026-05-19 18:37:18] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3752
+[2026-05-19 18:37:18] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78883
+[2026-05-19 18:37:18] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:37:18] [WARNING] RiskGuard [EUR/USD]: Locked out — 161m remaining
+[2026-05-19 18:37:18] [WARNING] RiskGuard [USD/JPY]: Locked out — 161m remaining
+[2026-05-19 18:37:18] [WARNING] RiskGuard [AUD/USD]: Locked out — 161m remaining
+[2026-05-19 18:37:18] [WARNING] RiskGuard [USD/CAD]: Locked out — 161m remaining
+[2026-05-19 18:37:18] [WARNING] RiskGuard [USD/CHF]: Locked out — 161m remaining
+[2026-05-19 18:37:45] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:38:06] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:36:23.956Z  min_stars=2
+  EUR/USD @ 1.1609 | ↓1.16129(2★SKIP 3.9p) ↑1.16009(1★B 8.1p)[skip<2★] ↓1.1625(1★SKIP 16.0p)[skip<2★] ↑1.15909(1★B 18.1p)[skip<2★] ↓1.163(2★SKIP 21.0p) ↓1.1635(1★SKIP 26.0p)[skip<2★] +23 more
+  GBP/USD @ 1.34067 | ↓1.34131(1★SKIP 6.4p)[skip<2★] ↓1.3421(1★SKIP 14.3p)[skip<2★] ↓1.3429(2★SKIP 22.3p) ↓1.34369(1★SKIP 30.2p)[skip<2★] ↓1.34448(1★SKIP 38.1p)[skip<2★] ↑1.33617(1★SKIP 45.0p)[skip<2★] +13 more
+  USD/JPY @ 158.86 | ↑158.861(2★SKIP 0.1p) ↓158.918(2★SKIP 5.8p) ↑158.72(1★SKIP 14.0p)[skip<2★] ↓159.059(2★SKIP 19.9p) ↓159.117(1★SKIP 25.7p)[skip<2★] ↑158.521(1★SKIP 33.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71125 | ↑0.71042(2★B 8.3p) ↑0.70978(1★B 14.7p)[skip<2★] ↓0.71275(1★SKIP 15.0p)[skip<2★] ↓0.71508(1★SKIP 38.3p)[skip<2★] ↑0.70576(2★B 54.9p) ↓0.71785(2★SKIP 66.0p) +16 more
+  XAU/USD @ 4505.63 | ↑4504.35(1★SKIP 1.3p)[skip<2★] ↓4514.48(1★A 8.8p)[skip<2★] ↓4528.49(1★A 22.9p)[skip<2★] ↑4466.54(1★SKIP 39.1p)[skip<2★] ↓4548.42(1★A 42.8p)[skip<2★] ↓4555.89(1★A 50.3p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37516 | ↑1.37498(1★B 1.8p)[skip<2★] ↓1.37534(1★A 1.8p)[skip<2★] ↑1.37482(1★B 3.4p)[skip<2★] ↓1.37569(3★A 5.3p) ↑1.37446(1★B 7.0p)[skip<2★] ↓1.37605(1★A 8.9p)[skip<2★] +27 more
+  USD/CHF @ 0.7888 | ↓0.78907(2★A 2.7p) ↓0.78948(1★B 6.8p)[skip<2★] ↑0.78771(1★SKIP 10.9p)[skip<2★] ↑0.78683(1★SKIP 19.7p)[skip<2★] ↑0.78661(2★SKIP 21.9p) ↑0.78646(3★SKIP 23.4p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29034.1 | ↓29057.2(1★SKIP 23.1p)[skip<2★] ↓29160.9(1★SKIP 126.8p)[skip<2★] ↓29181.3(1★SKIP 147.2p)[skip<2★] ↑28860.7(2★A 173.4p) ↓29228.1(1★SKIP 194.0p)[skip<2★] ↑28793.5(2★A 240.6p) +19 more
+[2026-05-19 18:38:06] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:38:06] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.86
+[2026-05-19 18:38:06] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37516
+[2026-05-19 18:38:06] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7888
+[2026-05-19 18:38:06] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:38:06] [WARNING] RiskGuard [EUR/USD]: Locked out — 160m remaining
+[2026-05-19 18:38:06] [WARNING] RiskGuard [USD/JPY]: Locked out — 160m remaining
+[2026-05-19 18:38:06] [WARNING] RiskGuard [USD/CAD]: Locked out — 160m remaining
+[2026-05-19 18:38:06] [WARNING] RiskGuard [USD/CHF]: Locked out — 160m remaining
+[2026-05-19 18:38:32] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:36:23.956Z  min_stars=2
+  EUR/USD @ 1.1609 | ↓1.16129(2★SKIP 3.9p) ↑1.16009(1★B 8.1p)[skip<2★] ↓1.1625(1★SKIP 16.0p)[skip<2★] ↑1.15909(1★B 18.1p)[skip<2★] ↓1.163(2★SKIP 21.0p) ↓1.1635(1★SKIP 26.0p)[skip<2★] +23 more
+  GBP/USD @ 1.34066 | ↓1.34131(1★SKIP 6.5p)[skip<2★] ↓1.3421(1★SKIP 14.4p)[skip<2★] ↓1.3429(2★SKIP 22.4p) ↓1.34369(1★SKIP 30.3p)[skip<2★] ↓1.34448(1★SKIP 38.2p)[skip<2★] ↑1.33617(1★SKIP 44.9p)[skip<2★] +13 more
+  USD/JPY @ 158.858 | ↑158.861(2★SKIP 0.3p) ↓158.918(2★SKIP 6.0p) ↑158.72(1★SKIP 13.8p)[skip<2★] ↓159.059(2★SKIP 20.1p) ↓159.117(1★SKIP 25.9p)[skip<2★] ↑158.521(1★SKIP 33.7p)[skip<2★] +14 more
+  AUD/USD @ 0.71126 | ↑0.71042(2★B 8.4p) ↑0.70978(1★B 14.8p)[skip<2★] ↓0.71275(1★SKIP 14.9p)[skip<2★] ↓0.71508(1★SKIP 38.2p)[skip<2★] ↑0.70576(2★B 55.0p) ↓0.71785(2★SKIP 65.9p) +16 more
+  XAU/USD @ 4505.96 | ↑4504.35(1★SKIP 1.6p)[skip<2★] ↓4514.48(1★A 8.5p)[skip<2★] ↓4528.49(1★A 22.5p)[skip<2★] ↑4466.54(1★SKIP 39.4p)[skip<2★] ↓4548.42(1★A 42.5p)[skip<2★] ↓4555.89(1★A 49.9p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37519 | ↓1.37534(1★A 1.5p)[skip<2★] ↑1.37498(1★B 2.1p)[skip<2★] ↑1.37482(1★B 3.7p)[skip<2★] ↓1.37569(3★A 5.0p) ↑1.37446(1★B 7.3p)[skip<2★] ↓1.37605(1★A 8.6p)[skip<2★] +27 more
+  USD/CHF @ 0.7888 | ↓0.78907(2★A 2.7p) ↓0.78948(1★B 6.8p)[skip<2★] ↑0.78771(1★SKIP 10.9p)[skip<2★] ↑0.78683(1★SKIP 19.7p)[skip<2★] ↑0.78661(2★SKIP 21.9p) ↑0.78646(3★SKIP 23.4p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29035.0 | ↓29057.2(1★SKIP 22.2p)[skip<2★] ↓29160.9(1★SKIP 125.9p)[skip<2★] ↓29181.3(1★SKIP 146.3p)[skip<2★] ↑28860.7(2★A 174.3p) ↓29228.1(1★SKIP 193.1p)[skip<2★] ↑28793.5(2★A 241.5p) +19 more
+[2026-05-19 18:38:32] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:38:32] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.858
+[2026-05-19 18:38:32] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37519
+[2026-05-19 18:38:32] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7888
+[2026-05-19 18:38:32] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:38:32] [WARNING] RiskGuard [EUR/USD]: Locked out — 160m remaining
+[2026-05-19 18:38:32] [WARNING] RiskGuard [USD/JPY]: Locked out — 160m remaining
+[2026-05-19 18:38:32] [WARNING] RiskGuard [USD/CAD]: Locked out — 160m remaining
+[2026-05-19 18:38:32] [WARNING] RiskGuard [USD/CHF]: Locked out — 160m remaining
+[2026-05-19 18:38:58] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:38:58] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.858
+[2026-05-19 18:38:58] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37524
+[2026-05-19 18:38:58] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78884
+[2026-05-19 18:38:58] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:38:58] [WARNING] RiskGuard [EUR/USD]: Locked out — 159m remaining
+[2026-05-19 18:38:58] [WARNING] RiskGuard [USD/JPY]: Locked out — 159m remaining
+[2026-05-19 18:38:58] [WARNING] RiskGuard [USD/CAD]: Locked out — 159m remaining
+[2026-05-19 18:38:58] [WARNING] RiskGuard [USD/CHF]: Locked out — 159m remaining
+[2026-05-19 18:40:37] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:36:23.956Z  min_stars=2
+  EUR/USD @ 1.16082 | ↓1.16129(2★SKIP 4.7p) ↑1.16009(1★B 7.3p)[skip<2★] ↓1.1625(1★SKIP 16.8p)[skip<2★] ↑1.15909(1★B 17.3p)[skip<2★] ↓1.163(2★SKIP 21.8p) ↓1.1635(1★SKIP 26.8p)[skip<2★] +23 more
+  GBP/USD @ no price | ↑1.31636(1★SKIP ?p)[skip<2★] ↑1.31795(2★SKIP ?p) ↑1.32388(1★SKIP ?p)[skip<2★] ↑1.32547(2★SKIP ?p) ↑1.32706(1★SKIP ?p)[skip<2★] ↑1.33002(2★SKIP ?p) +13 more
+  USD/JPY @ no price | ↑156.93(1★SKIP ?p)[skip<2★] ↑156.953(1★SKIP ?p)[skip<2★] ↑157.145(1★SKIP ?p)[skip<2★] ↑157.327(2★SKIP ?p) ↑157.336(2★SKIP ?p) ↑157.725(1★SKIP ?p)[skip<2★] +14 more
+  AUD/USD @ no price | ↑0.68249(1★B ?p)[skip<2★] ↑0.68715(1★B ?p)[skip<2★] ↑0.6918(1★B ?p)[skip<2★] ↑0.69646(2★B ?p) ↑0.69876(1★B ?p)[skip<2★] ↑0.70111(2★B ?p) +16 more
+  XAU/USD @ no price | ↑3861.2(1★SKIP ?p)[skip<2★] ↑3964.28(1★SKIP ?p)[skip<2★] ↑4109.94(2★SKIP ?p) ↑4158.93(2★SKIP ?p) ↑4254.82(2★SKIP ?p) ↑4255.6(2★SKIP ?p) +24 more
+  EUR/GBP: no entries
+  USD/CAD @ no price | ↑1.35637(1★B ?p)[skip<2★] ↑1.36295(1★B ?p)[skip<2★] ↑1.36494(1★B ?p)[skip<2★] ↑1.36565(1★B ?p)[skip<2★] ↑1.3674(1★B ?p)[skip<2★] ↑1.36811(1★B ?p)[skip<2★] +27 more
+  USD/CHF @ 0.78878 | ↓0.78907(2★A 2.9p) ↓0.78948(1★B 7.0p)[skip<2★] ↑0.78771(1★SKIP 10.7p)[skip<2★] ↑0.78683(1★SKIP 19.5p)[skip<2★] ↑0.78661(2★SKIP 21.7p) ↑0.78646(3★SKIP 23.2p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ no price | ↑26450.6(1★A ?p)[skip<2★] ↑26585(1★A ?p)[skip<2★] ↑27355.3(1★A ?p)[skip<2★] ↑27588.5(1★A ?p)[skip<2★] ↑27722.8(1★A ?p)[skip<2★] ↑27904.8(1★A ?p)[skip<2★] +19 more
+[2026-05-19 18:40:37] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16082
+[2026-05-19 18:40:37] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78878
+[2026-05-19 18:40:37] [INFO] Near level (2/2): EUR/USD, USD/CHF
+[2026-05-19 18:40:37] [WARNING] RiskGuard [EUR/USD]: Locked out — 158m remaining
+[2026-05-19 18:40:37] [WARNING] RiskGuard [USD/CHF]: Locked out — 158m remaining
+[2026-05-19 18:40:37] [ERROR] State refresh failed: HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/state (Caused by NameResolutionError("HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443): Failed to resolve 'macrofxmodel-production.up.railway.app' ([Errno 11001] getaddrinfo failed)"))
+[2026-05-19 18:40:37] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:36:23.956Z  min_stars=2
+  EUR/USD @ no price | ↑1.14544(1★B ?p)[skip<2★] ↑1.14644(1★B ?p)[skip<2★] ↑1.14885(1★B ?p)[skip<2★] ↑1.14908(1★B ?p)[skip<2★] ↑1.14985(1★B ?p)[skip<2★] ↑1.15227(2★B ?p) +23 more
+  GBP/USD @ no price | ↑1.31636(1★SKIP ?p)[skip<2★] ↑1.31795(2★SKIP ?p) ↑1.32388(1★SKIP ?p)[skip<2★] ↑1.32547(2★SKIP ?p) ↑1.32706(1★SKIP ?p)[skip<2★] ↑1.33002(2★SKIP ?p) +13 more
+  USD/JPY @ no price | ↑156.93(1★SKIP ?p)[skip<2★] ↑156.953(1★SKIP ?p)[skip<2★] ↑157.145(1★SKIP ?p)[skip<2★] ↑157.327(2★SKIP ?p) ↑157.336(2★SKIP ?p) ↑157.725(1★SKIP ?p)[skip<2★] +14 more
+  AUD/USD @ no price | ↑0.68249(1★B ?p)[skip<2★] ↑0.68715(1★B ?p)[skip<2★] ↑0.6918(1★B ?p)[skip<2★] ↑0.69646(2★B ?p) ↑0.69876(1★B ?p)[skip<2★] ↑0.70111(2★B ?p) +16 more
+  XAU/USD @ no price | ↑3861.2(1★SKIP ?p)[skip<2★] ↑3964.28(1★SKIP ?p)[skip<2★] ↑4109.94(2★SKIP ?p) ↑4158.93(2★SKIP ?p) ↑4254.82(2★SKIP ?p) ↑4255.6(2★SKIP ?p) +24 more
+  EUR/GBP: no entries
+  USD/CAD @ no price | ↑1.35637(1★B ?p)[skip<2★] ↑1.36295(1★B ?p)[skip<2★] ↑1.36494(1★B ?p)[skip<2★] ↑1.36565(1★B ?p)[skip<2★] ↑1.3674(1★B ?p)[skip<2★] ↑1.36811(1★B ?p)[skip<2★] +27 more
+  USD/CHF @ no price | ↑0.75893(2★SKIP ?p) ↑0.76386(1★SKIP ?p)[skip<2★] ↑0.76734(1★SKIP ?p)[skip<2★] ↑0.77226(1★SKIP ?p)[skip<2★] ↑0.77533(1★SKIP ?p)[skip<2★] ↑0.77574(1★SKIP ?p)[skip<2★] +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ no price | ↑26450.6(1★A ?p)[skip<2★] ↑26585(1★A ?p)[skip<2★] ↑27355.3(1★A ?p)[skip<2★] ↑27588.5(1★A ?p)[skip<2★] ↑27722.8(1★A ?p)[skip<2★] ↑27904.8(1★A ?p)[skip<2★] +19 more
+[2026-05-19 18:40:37] [INFO] Monitoring 10 pairs — no level approach  [no prices]
+[2026-05-19 18:40:37] [WARNING] RiskGuard SESSION: Locked out — 158m remaining
+[2026-05-19 18:40:40] [ERROR] State refresh failed: HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/state (Caused by NameResolutionError("HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443): Failed to resolve 'macrofxmodel-production.up.railway.app' ([Errno 11001] getaddrinfo failed)"))
+[2026-05-19 18:40:40] [WARNING] RiskGuard SESSION: Locked out — 157m remaining
+[2026-05-19 18:40:43] [ERROR] State refresh failed: HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/state (Caused by NameResolutionError("HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443): Failed to resolve 'macrofxmodel-production.up.railway.app' ([Errno 11001] getaddrinfo failed)"))
+[2026-05-19 18:40:43] [WARNING] RiskGuard SESSION: Locked out — 157m remaining
+[2026-05-19 18:40:46] [ERROR] State refresh failed: HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/state (Caused by NameResolutionError("HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443): Failed to resolve 'macrofxmodel-production.up.railway.app' ([Errno 11001] getaddrinfo failed)"))
+[2026-05-19 18:40:46] [WARNING] RiskGuard SESSION: Locked out — 157m remaining
+[2026-05-19 18:42:00] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:42:22] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16085
+[2026-05-19 18:42:22] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.838
+[2026-05-19 18:42:22] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71116
+[2026-05-19 18:42:22] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37528
+[2026-05-19 18:42:22] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78883
+[2026-05-19 18:42:22] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:42:22] [WARNING] RiskGuard [EUR/USD]: Locked out — 156m remaining
+[2026-05-19 18:42:22] [WARNING] RiskGuard [USD/JPY]: Locked out — 156m remaining
+[2026-05-19 18:42:22] [WARNING] RiskGuard [AUD/USD]: Locked out — 156m remaining
+[2026-05-19 18:42:22] [WARNING] RiskGuard [USD/CAD]: Locked out — 156m remaining
+[2026-05-19 18:42:22] [WARNING] RiskGuard [USD/CHF]: Locked out — 156m remaining
+[2026-05-19 18:42:40] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:38:30.647Z  min_stars=2
+  EUR/USD @ 1.16084 | ↓1.16129(5★B 4.5p) ↑1.160015(4★B 8.3p) ↓1.1624249999999998(5★B 15.8p) ↑1.15902(3★B 18.2p) ↓1.1629924999999999(5★B 21.5p) ↓1.1634349999999998(5★B 25.9p) +20 more
+  GBP/USD @ 1.34058 | ↓1.34131(1★SKIP 7.3p)[skip<2★] ↓1.3421(1★SKIP 15.2p)[skip<2★] ↓1.3429(2★SKIP 23.2p) ↓1.34369(1★SKIP 31.1p)[skip<2★] ↓1.34448(1★SKIP 39.0p)[skip<2★] ↑1.33617(1★SKIP 44.1p)[skip<2★] +13 more
+  USD/JPY @ 158.832 | ↑158.861(2★SKIP 2.9p) ↓158.918(2★SKIP 8.6p) ↑158.72(1★SKIP 11.2p)[skip<2★] ↓159.059(2★SKIP 22.7p) ↓159.117(1★SKIP 28.5p)[skip<2★] ↑158.521(1★SKIP 31.1p)[skip<2★] +14 more
+  AUD/USD @ 0.71112 | ↑0.71042(2★B 7.0p) ↑0.70978(1★B 13.4p)[skip<2★] ↓0.71275(1★SKIP 16.3p)[skip<2★] ↓0.71508(1★SKIP 39.6p)[skip<2★] ↑0.70576(2★B 53.6p) ↓0.71785(2★SKIP 67.3p) +16 more
+  XAU/USD @ 4504.125 | ↑4504.35(1★SKIP 0.2p)[skip<2★] ↓4514.48(1★A 10.4p)[skip<2★] ↓4528.49(1★A 24.4p)[skip<2★] ↑4466.54(1★SKIP 37.6p)[skip<2★] ↓4548.42(1★A 44.3p)[skip<2★] ↓4555.89(1★A 51.8p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37528 | ↓1.37534(1★A 0.6p)[skip<2★] ↑1.37498(1★B 3.0p)[skip<2★] ↓1.37569(3★A 4.1p) ↑1.37482(1★B 4.6p)[skip<2★] ↓1.37605(1★A 7.7p)[skip<2★] ↑1.37446(1★B 8.2p)[skip<2★] +27 more
+  USD/CHF @ 0.78882 | ↓0.78907(2★A 2.5p) ↓0.78948(1★B 6.6p)[skip<2★] ↑0.78771(1★SKIP 11.1p)[skip<2★] ↑0.78683(1★SKIP 19.9p)[skip<2★] ↑0.78661(2★SKIP 22.1p) ↑0.78646(3★SKIP 23.6p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29032.4 | ↓29057.2(1★SKIP 24.8p)[skip<2★] ↓29160.9(1★SKIP 128.5p)[skip<2★] ↓29181.3(1★SKIP 148.9p)[skip<2★] ↑28860.7(2★A 171.7p) ↓29228.1(1★SKIP 195.7p)[skip<2★] ↑28793.5(2★A 238.9p) +19 more
+[2026-05-19 18:42:40] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16084
+[2026-05-19 18:42:40] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.832
+[2026-05-19 18:42:40] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71112
+[2026-05-19 18:42:40] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37528
+[2026-05-19 18:42:40] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78882
+[2026-05-19 18:42:40] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:42:40] [WARNING] RiskGuard [EUR/USD]: Locked out — 155m remaining
+[2026-05-19 18:42:40] [WARNING] RiskGuard [USD/JPY]: Locked out — 155m remaining
+[2026-05-19 18:42:40] [WARNING] RiskGuard [AUD/USD]: Locked out — 155m remaining
+[2026-05-19 18:42:40] [WARNING] RiskGuard [USD/CAD]: Locked out — 155m remaining
+[2026-05-19 18:42:40] [WARNING] RiskGuard [USD/CHF]: Locked out — 155m remaining
+[2026-05-19 18:43:03] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16084
+[2026-05-19 18:43:03] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.818
+[2026-05-19 18:43:03] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7112
+[2026-05-19 18:43:03] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3753
+[2026-05-19 18:43:03] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78875
+[2026-05-19 18:43:03] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:43:03] [WARNING] RiskGuard [EUR/USD]: Locked out — 155m remaining
+[2026-05-19 18:43:03] [WARNING] RiskGuard [USD/JPY]: Locked out — 155m remaining
+[2026-05-19 18:43:03] [WARNING] RiskGuard [AUD/USD]: Locked out — 155m remaining
+[2026-05-19 18:43:03] [WARNING] RiskGuard [USD/CAD]: Locked out — 155m remaining
+[2026-05-19 18:43:03] [WARNING] RiskGuard [USD/CHF]: Locked out — 155m remaining
+[2026-05-19 18:43:56] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:44:16] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:38:30.647Z  min_stars=2
+  EUR/USD @ 1.1609 | ↓1.16129(5★B 3.9p) ↑1.160015(4★B 8.9p) ↓1.1624249999999998(5★B 15.2p) ↑1.15902(3★B 18.8p) ↓1.1629924999999999(5★B 20.9p) ↓1.1634349999999998(5★B 25.3p) +20 more
+  GBP/USD @ 1.34068 | ↓1.34131(1★SKIP 6.3p)[skip<2★] ↓1.3421(1★SKIP 14.2p)[skip<2★] ↓1.3429(2★SKIP 22.2p) ↓1.34369(1★SKIP 30.1p)[skip<2★] ↓1.34448(1★SKIP 38.0p)[skip<2★] ↑1.33617(1★SKIP 45.1p)[skip<2★] +13 more
+  USD/JPY @ 158.81 | ↑158.861(2★SKIP 5.1p) ↑158.72(1★SKIP 9.0p)[skip<2★] ↓158.918(2★SKIP 10.8p) ↓159.059(2★SKIP 24.9p) ↑158.521(1★SKIP 28.9p)[skip<2★] ↓159.117(1★SKIP 30.7p)[skip<2★] +14 more
+  AUD/USD @ 0.71121 | ↑0.71042(2★B 7.9p) ↑0.70978(1★B 14.3p)[skip<2★] ↓0.71275(1★SKIP 15.4p)[skip<2★] ↓0.71508(1★SKIP 38.7p)[skip<2★] ↑0.70576(2★B 54.5p) ↓0.71785(2★SKIP 66.4p) +16 more
+  XAU/USD @ 4504.185 | ↑4504.35(1★SKIP 0.2p)[skip<2★] ↓4514.48(1★A 10.3p)[skip<2★] ↓4528.49(1★A 24.3p)[skip<2★] ↑4466.54(1★SKIP 37.6p)[skip<2★] ↓4548.42(1★A 44.2p)[skip<2★] ↓4555.89(1★A 51.7p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37528 | ↓1.37534(1★A 0.6p)[skip<2★] ↑1.37498(1★B 3.0p)[skip<2★] ↓1.37569(3★A 4.1p) ↑1.37482(1★B 4.6p)[skip<2★] ↓1.37605(1★A 7.7p)[skip<2★] ↑1.37446(1★B 8.2p)[skip<2★] +27 more
+  USD/CHF @ 0.78878 | ↓0.78907(2★A 2.9p) ↓0.78948(1★B 7.0p)[skip<2★] ↑0.78771(1★SKIP 10.7p)[skip<2★] ↑0.78683(1★SKIP 19.5p)[skip<2★] ↑0.78661(2★SKIP 21.7p) ↑0.78646(3★SKIP 23.2p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29026.8 | ↓29057.2(1★SKIP 30.4p)[skip<2★] ↓29160.9(1★SKIP 134.1p)[skip<2★] ↓29181.3(1★SKIP 154.5p)[skip<2★] ↑28860.7(2★A 166.1p) ↓29228.1(1★SKIP 201.3p)[skip<2★] ↑28793.5(2★A 233.3p) +19 more
+[2026-05-19 18:44:16] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:44:16] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.81
+[2026-05-19 18:44:16] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71121
+[2026-05-19 18:44:16] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37528
+[2026-05-19 18:44:16] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78878
+[2026-05-19 18:44:16] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:44:16] [WARNING] RiskGuard [EUR/USD]: Locked out — 154m remaining
+[2026-05-19 18:44:16] [WARNING] RiskGuard [USD/JPY]: Locked out — 154m remaining
+[2026-05-19 18:44:16] [WARNING] RiskGuard [AUD/USD]: Locked out — 154m remaining
+[2026-05-19 18:44:16] [WARNING] RiskGuard [USD/CAD]: Locked out — 154m remaining
+[2026-05-19 18:44:16] [WARNING] RiskGuard [USD/CHF]: Locked out — 154m remaining
+[2026-05-19 18:44:37] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:38:30.647Z  min_stars=2
+  EUR/USD @ 1.1609 | ↓1.16129(5★B 3.9p) ↑1.160015(4★B 8.9p) ↓1.1624249999999998(5★B 15.2p) ↑1.15902(3★B 18.8p) ↓1.1629924999999999(5★B 20.9p) ↓1.1634349999999998(5★B 25.3p) +20 more
+  GBP/USD @ 1.34068 | ↓1.34131(1★SKIP 6.3p)[skip<2★] ↓1.3421(1★SKIP 14.2p)[skip<2★] ↓1.3429(2★SKIP 22.2p) ↓1.34369(1★SKIP 30.1p)[skip<2★] ↓1.34448(1★SKIP 38.0p)[skip<2★] ↑1.33617(1★SKIP 45.1p)[skip<2★] +13 more
+  USD/JPY @ 158.813 | ↑158.861(2★SKIP 4.8p) ↑158.72(1★SKIP 9.3p)[skip<2★] ↓158.918(2★SKIP 10.5p) ↓159.059(2★SKIP 24.6p) ↑158.521(1★SKIP 29.2p)[skip<2★] ↓159.117(1★SKIP 30.4p)[skip<2★] +14 more
+  AUD/USD @ 0.71119 | ↑0.71042(2★B 7.7p) ↑0.70978(1★B 14.1p)[skip<2★] ↓0.71275(1★SKIP 15.6p)[skip<2★] ↓0.71508(1★SKIP 38.9p)[skip<2★] ↑0.70576(2★B 54.3p) ↓0.71785(2★SKIP 66.6p) +16 more
+  XAU/USD @ 4503.985 | ↑4504.35(1★SKIP 0.4p)[skip<2★] ↓4514.48(1★A 10.5p)[skip<2★] ↓4528.49(1★A 24.5p)[skip<2★] ↑4466.54(1★SKIP 37.4p)[skip<2★] ↓4548.42(1★A 44.4p)[skip<2★] ↓4555.89(1★A 51.9p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37526 | ↓1.37534(1★A 0.8p)[skip<2★] ↑1.37498(1★B 2.8p)[skip<2★] ↓1.37569(3★A 4.3p) ↑1.37482(1★B 4.4p)[skip<2★] ↓1.37605(1★A 7.9p)[skip<2★] ↑1.37446(1★B 8.0p)[skip<2★] +27 more
+  USD/CHF @ 0.7888 | ↓0.78907(2★A 2.7p) ↓0.78948(1★B 6.8p)[skip<2★] ↑0.78771(1★SKIP 10.9p)[skip<2★] ↑0.78683(1★SKIP 19.7p)[skip<2★] ↑0.78661(2★SKIP 21.9p) ↑0.78646(3★SKIP 23.4p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29025.2 | ↓29057.2(1★SKIP 32.0p)[skip<2★] ↓29160.9(1★SKIP 135.7p)[skip<2★] ↓29181.3(1★SKIP 156.1p)[skip<2★] ↑28860.7(2★A 164.5p) ↓29228.1(1★SKIP 202.9p)[skip<2★] ↑28793.5(2★A 231.7p) +19 more
+[2026-05-19 18:44:37] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:44:37] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.813
+[2026-05-19 18:44:37] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71119
+[2026-05-19 18:44:37] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37526
+[2026-05-19 18:44:37] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7888
+[2026-05-19 18:44:37] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:44:37] [WARNING] RiskGuard [EUR/USD]: Locked out — 154m remaining
+[2026-05-19 18:44:37] [WARNING] RiskGuard [USD/JPY]: Locked out — 154m remaining
+[2026-05-19 18:44:37] [WARNING] RiskGuard [AUD/USD]: Locked out — 154m remaining
+[2026-05-19 18:44:37] [WARNING] RiskGuard [USD/CAD]: Locked out — 154m remaining
+[2026-05-19 18:44:37] [WARNING] RiskGuard [USD/CHF]: Locked out — 154m remaining
+[2026-05-19 18:44:56] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:44:56] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.806
+[2026-05-19 18:44:56] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37515
+[2026-05-19 18:44:56] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78865
+[2026-05-19 18:44:56] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:44:56] [WARNING] RiskGuard [EUR/USD]: Locked out — 153m remaining
+[2026-05-19 18:44:56] [WARNING] RiskGuard [USD/JPY]: Locked out — 153m remaining
+[2026-05-19 18:44:56] [WARNING] RiskGuard [USD/CAD]: Locked out — 153m remaining
+[2026-05-19 18:44:56] [WARNING] RiskGuard [USD/CHF]: Locked out — 153m remaining
+[2026-05-19 18:45:17] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:38:30.647Z  min_stars=2
+  EUR/USD @ 1.16104 | ↓1.16129(5★B 2.5p) ↑1.160015(4★B 10.3p) ↓1.1624249999999998(5★B 13.8p) ↓1.1629924999999999(5★B 19.5p) ↑1.15902(3★B 20.2p) ↓1.1634349999999998(5★B 23.9p) +20 more
+  GBP/USD @ 1.3408 | ↓1.34131(1★SKIP 5.1p)[skip<2★] ↓1.3421(1★SKIP 13.0p)[skip<2★] ↓1.3429(2★SKIP 21.0p) ↓1.34369(1★SKIP 28.9p)[skip<2★] ↓1.34448(1★SKIP 36.8p)[skip<2★] ↑1.33617(1★SKIP 46.3p)[skip<2★] +13 more
+  USD/JPY @ 158.798 | ↑158.861(2★SKIP 6.3p) ↑158.72(1★SKIP 7.8p)[skip<2★] ↓158.918(2★SKIP 12.0p) ↓159.059(2★SKIP 26.1p) ↑158.521(1★SKIP 27.7p)[skip<2★] ↓159.117(1★SKIP 31.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71124 | ↑0.71042(2★B 8.2p) ↑0.70978(1★B 14.6p)[skip<2★] ↓0.71275(1★SKIP 15.1p)[skip<2★] ↓0.71508(1★SKIP 38.4p)[skip<2★] ↑0.70576(2★B 54.8p) ↓0.71785(2★SKIP 66.1p) +16 more
+  XAU/USD @ 4504.94 | ↑4504.35(1★SKIP 0.6p)[skip<2★] ↓4514.48(1★A 9.5p)[skip<2★] ↓4528.49(1★A 23.6p)[skip<2★] ↑4466.54(1★SKIP 38.4p)[skip<2★] ↓4548.42(1★A 43.5p)[skip<2★] ↓4555.89(1★A 51.0p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37515 | ↑1.37498(1★B 1.7p)[skip<2★] ↓1.37534(1★A 1.9p)[skip<2★] ↑1.37482(1★B 3.3p)[skip<2★] ↓1.37569(3★A 5.4p) ↑1.37446(1★B 6.9p)[skip<2★] ↓1.37605(1★A 9.0p)[skip<2★] +27 more
+  USD/CHF @ 0.78864 | ↓0.78907(2★A 4.3p) ↓0.78948(1★B 8.4p)[skip<2★] ↑0.78771(1★SKIP 9.3p)[skip<2★] ↑0.78683(1★SKIP 18.1p)[skip<2★] ↑0.78661(2★SKIP 20.3p) ↑0.78646(3★SKIP 21.8p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29021.8 | ↓29057.2(1★SKIP 35.4p)[skip<2★] ↓29160.9(1★SKIP 139.1p)[skip<2★] ↓29181.3(1★SKIP 159.5p)[skip<2★] ↑28860.7(2★A 161.1p) ↓29228.1(1★SKIP 206.3p)[skip<2★] ↑28793.5(2★A 228.3p) +19 more
+[2026-05-19 18:45:17] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16104
+[2026-05-19 18:45:17] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.798
+[2026-05-19 18:45:17] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37515
+[2026-05-19 18:45:17] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78864
+[2026-05-19 18:45:17] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:45:17] [WARNING] RiskGuard [EUR/USD]: Locked out — 153m remaining
+[2026-05-19 18:45:17] [WARNING] RiskGuard [USD/JPY]: Locked out — 153m remaining
+[2026-05-19 18:45:17] [WARNING] RiskGuard [USD/CAD]: Locked out — 153m remaining
+[2026-05-19 18:45:17] [WARNING] RiskGuard [USD/CHF]: Locked out — 153m remaining
+[2026-05-19 18:45:40] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:45:52] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16101
+[2026-05-19 18:45:52] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.792
+[2026-05-19 18:45:52] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7112
+[2026-05-19 18:45:52] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37511
+[2026-05-19 18:45:52] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:45:52] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:45:52] [WARNING] RiskGuard [EUR/USD]: Locked out — 152m remaining
+[2026-05-19 18:45:52] [WARNING] RiskGuard [USD/JPY]: Locked out — 152m remaining
+[2026-05-19 18:45:52] [WARNING] RiskGuard [AUD/USD]: Locked out — 152m remaining
+[2026-05-19 18:45:52] [WARNING] RiskGuard [USD/CAD]: Locked out — 152m remaining
+[2026-05-19 18:45:52] [WARNING] RiskGuard [USD/CHF]: Locked out — 152m remaining
+[2026-05-19 18:46:03] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ 1.16102 | ↓1.16129(5★B 2.7p) ↑1.160015(4★B 10.0p) ↓1.1624249999999998(5★B 14.0p) ↓1.1629924999999999(5★B 19.7p) ↑1.15902(3★B 20.0p) ↓1.1634349999999998(5★B 24.1p) +20 more
+  GBP/USD @ 1.34086 | ↓1.34131(1★SKIP 4.5p)[skip<2★] ↓1.3421(1★SKIP 12.4p)[skip<2★] ↓1.3429(2★SKIP 20.4p) ↓1.34369(1★SKIP 28.3p)[skip<2★] ↓1.34448(1★SKIP 36.2p)[skip<2★] ↑1.33617(1★SKIP 46.9p)[skip<2★] +13 more
+  USD/JPY @ 158.791 | ↑158.861(2★SKIP 7.0p) ↑158.72(1★SKIP 7.1p)[skip<2★] ↓158.918(2★SKIP 12.7p) ↓159.059(2★SKIP 26.8p) ↑158.521(1★SKIP 27.0p)[skip<2★] ↓159.117(1★SKIP 32.6p)[skip<2★] +14 more
+  AUD/USD @ 0.71124 | ↑0.71042(2★B 8.2p) ↑0.70978(1★B 14.6p)[skip<2★] ↓0.71275(1★SKIP 15.1p)[skip<2★] ↓0.71508(1★SKIP 38.4p)[skip<2★] ↑0.70576(2★B 54.8p) ↓0.71785(2★SKIP 66.1p) +16 more
+  XAU/USD @ 4502.94 | ↑4504.35(1★SKIP 1.4p)[skip<2★] ↓4514.48(1★A 11.5p)[skip<2★] ↓4528.49(1★A 25.6p)[skip<2★] ↑4466.54(1★SKIP 36.4p)[skip<2★] ↓4548.42(1★A 45.5p)[skip<2★] ↓4555.89(1★A 53.0p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37512 | ↑1.37498(1★B 1.4p)[skip<2★] ↓1.37534(1★A 2.2p)[skip<2★] ↑1.37482(1★B 3.0p)[skip<2★] ↓1.37569(3★A 5.7p) ↑1.37446(1★B 6.6p)[skip<2★] ↓1.37605(1★A 9.3p)[skip<2★] +27 more
+  USD/CHF @ 0.78865 | ↓0.78907(2★A 4.2p) ↓0.78948(1★B 8.3p)[skip<2★] ↑0.78771(1★SKIP 9.4p)[skip<2★] ↑0.78683(1★SKIP 18.2p)[skip<2★] ↑0.78661(2★SKIP 20.4p) ↑0.78646(3★SKIP 21.9p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29001.4 | ↓29057.2(1★SKIP 55.8p)[skip<2★] ↑28860.7(2★A 140.7p) ↓29160.9(1★SKIP 159.5p)[skip<2★] ↓29181.3(1★SKIP 179.9p)[skip<2★] ↑28793.5(2★A 207.9p) ↓29228.1(1★SKIP 226.7p)[skip<2★] +19 more
+[2026-05-19 18:46:03] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16102
+[2026-05-19 18:46:03] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.791
+[2026-05-19 18:46:03] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37512
+[2026-05-19 18:46:03] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78865
+[2026-05-19 18:46:03] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:46:03] [WARNING] RiskGuard [EUR/USD]: Locked out — 152m remaining
+[2026-05-19 18:46:03] [WARNING] RiskGuard [USD/JPY]: Locked out — 152m remaining
+[2026-05-19 18:46:03] [WARNING] RiskGuard [USD/CAD]: Locked out — 152m remaining
+[2026-05-19 18:46:03] [WARNING] RiskGuard [USD/CHF]: Locked out — 152m remaining
+[2026-05-19 18:46:14] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.161
+[2026-05-19 18:46:14] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.799
+[2026-05-19 18:46:14] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71116
+[2026-05-19 18:46:14] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37511
+[2026-05-19 18:46:14] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78871
+[2026-05-19 18:46:14] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:46:14] [WARNING] RiskGuard [EUR/USD]: Locked out — 152m remaining
+[2026-05-19 18:46:14] [WARNING] RiskGuard [USD/JPY]: Locked out — 152m remaining
+[2026-05-19 18:46:14] [WARNING] RiskGuard [AUD/USD]: Locked out — 152m remaining
+[2026-05-19 18:46:14] [WARNING] RiskGuard [USD/CAD]: Locked out — 152m remaining
+[2026-05-19 18:46:14] [WARNING] RiskGuard [USD/CHF]: Locked out — 152m remaining
+[2026-05-19 18:46:24] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16096
+[2026-05-19 18:46:24] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.822
+[2026-05-19 18:46:24] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71116
+[2026-05-19 18:46:24] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3751
+[2026-05-19 18:46:24] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7887
+[2026-05-19 18:46:24] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:46:24] [WARNING] RiskGuard [EUR/USD]: Locked out — 152m remaining
+[2026-05-19 18:46:24] [WARNING] RiskGuard [USD/JPY]: Locked out — 152m remaining
+[2026-05-19 18:46:24] [WARNING] RiskGuard [AUD/USD]: Locked out — 152m remaining
+[2026-05-19 18:46:24] [WARNING] RiskGuard [USD/CAD]: Locked out — 152m remaining
+[2026-05-19 18:46:24] [WARNING] RiskGuard [USD/CHF]: Locked out — 152m remaining
+[2026-05-19 18:46:36] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ 1.16094 | ↓1.16129(5★B 3.5p) ↑1.160015(4★B 9.3p) ↓1.1624249999999998(5★B 14.8p) ↑1.15902(3★B 19.2p) ↓1.1629924999999999(5★B 20.5p) ↓1.1634349999999998(5★B 24.9p) +20 more
+  GBP/USD @ 1.34077 | ↓1.34131(1★SKIP 5.4p)[skip<2★] ↓1.3421(1★SKIP 13.3p)[skip<2★] ↓1.3429(2★SKIP 21.3p) ↓1.34369(1★SKIP 29.2p)[skip<2★] ↓1.34448(1★SKIP 37.1p)[skip<2★] ↑1.33617(1★SKIP 46.0p)[skip<2★] +13 more
+  USD/JPY @ 158.808 | ↑158.861(2★SKIP 5.3p) ↑158.72(1★SKIP 8.8p)[skip<2★] ↓158.918(2★SKIP 11.0p) ↓159.059(2★SKIP 25.1p) ↑158.521(1★SKIP 28.7p)[skip<2★] ↓159.117(1★SKIP 30.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71118 | ↑0.71042(2★B 7.6p) ↑0.70978(1★B 14.0p)[skip<2★] ↓0.71275(1★SKIP 15.7p)[skip<2★] ↓0.71508(1★SKIP 39.0p)[skip<2★] ↑0.70576(2★B 54.2p) ↓0.71785(2★SKIP 66.7p) +16 more
+  XAU/USD @ 4502.26 | ↑4504.35(1★SKIP 2.1p)[skip<2★] ↓4514.48(1★A 12.2p)[skip<2★] ↓4528.49(1★A 26.2p)[skip<2★] ↑4466.54(1★SKIP 35.7p)[skip<2★] ↓4548.42(1★A 46.2p)[skip<2★] ↓4555.89(1★A 53.6p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37506 | ↑1.37498(1★B 0.8p)[skip<2★] ↑1.37482(1★B 2.4p)[skip<2★] ↓1.37534(1★A 2.8p)[skip<2★] ↑1.37446(1★B 6.0p)[skip<2★] ↓1.37569(3★A 6.3p) ↓1.37605(1★A 9.9p)[skip<2★] +27 more
+  USD/CHF @ 0.78867 | ↓0.78907(2★A 4.0p) ↓0.78948(1★B 8.1p)[skip<2★] ↑0.78771(1★SKIP 9.6p)[skip<2★] ↑0.78683(1★SKIP 18.4p)[skip<2★] ↑0.78661(2★SKIP 20.6p) ↑0.78646(3★SKIP 22.1p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28996.2 | ↓29057.2(1★SKIP 61.0p)[skip<2★] ↑28860.7(2★A 135.5p) ↓29160.9(1★SKIP 164.7p)[skip<2★] ↓29181.3(1★SKIP 185.1p)[skip<2★] ↑28793.5(2★A 202.7p) ↓29228.1(1★SKIP 231.9p)[skip<2★] +19 more
+[2026-05-19 18:46:36] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:46:36] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.808
+[2026-05-19 18:46:36] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71118
+[2026-05-19 18:46:36] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37506
+[2026-05-19 18:46:36] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78867
+[2026-05-19 18:46:36] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:46:36] [WARNING] RiskGuard [EUR/USD]: Locked out — 152m remaining
+[2026-05-19 18:46:36] [WARNING] RiskGuard [USD/JPY]: Locked out — 152m remaining
+[2026-05-19 18:46:36] [WARNING] RiskGuard [AUD/USD]: Locked out — 152m remaining
+[2026-05-19 18:46:36] [WARNING] RiskGuard [USD/CAD]: Locked out — 152m remaining
+[2026-05-19 18:46:36] [WARNING] RiskGuard [USD/CHF]: Locked out — 152m remaining
+[2026-05-19 18:46:46] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.161
+[2026-05-19 18:46:46] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.808
+[2026-05-19 18:46:46] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71117
+[2026-05-19 18:46:46] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37508
+[2026-05-19 18:46:46] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78865
+[2026-05-19 18:46:46] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:46:46] [WARNING] RiskGuard [EUR/USD]: Locked out — 151m remaining
+[2026-05-19 18:46:46] [WARNING] RiskGuard [USD/JPY]: Locked out — 151m remaining
+[2026-05-19 18:46:46] [WARNING] RiskGuard [AUD/USD]: Locked out — 151m remaining
+[2026-05-19 18:46:46] [WARNING] RiskGuard [USD/CAD]: Locked out — 151m remaining
+[2026-05-19 18:46:46] [WARNING] RiskGuard [USD/CHF]: Locked out — 151m remaining
+[2026-05-19 18:46:58] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16099
+[2026-05-19 18:46:58] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.814
+[2026-05-19 18:46:58] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71116
+[2026-05-19 18:46:58] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37508
+[2026-05-19 18:46:58] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78865
+[2026-05-19 18:46:58] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:46:58] [WARNING] RiskGuard [EUR/USD]: Locked out — 151m remaining
+[2026-05-19 18:46:58] [WARNING] RiskGuard [USD/JPY]: Locked out — 151m remaining
+[2026-05-19 18:46:58] [WARNING] RiskGuard [AUD/USD]: Locked out — 151m remaining
+[2026-05-19 18:46:58] [WARNING] RiskGuard [USD/CAD]: Locked out — 151m remaining
+[2026-05-19 18:46:58] [WARNING] RiskGuard [USD/CHF]: Locked out — 151m remaining
+[2026-05-19 18:47:11] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ 1.16093 | ↓1.16129(5★B 3.6p) ↑1.160015(4★B 9.1p) ↓1.1624249999999998(5★B 14.9p) ↑1.15902(3★B 19.1p) ↓1.1629924999999999(5★B 20.6p) ↓1.1634349999999998(5★B 25.0p) +20 more
+  GBP/USD @ 1.34076 | ↓1.34131(1★SKIP 5.5p)[skip<2★] ↓1.3421(1★SKIP 13.4p)[skip<2★] ↓1.3429(2★SKIP 21.4p) ↓1.34369(1★SKIP 29.3p)[skip<2★] ↓1.34448(1★SKIP 37.2p)[skip<2★] ↑1.33617(1★SKIP 45.9p)[skip<2★] +13 more
+  USD/JPY @ 158.82 | ↑158.861(2★SKIP 4.1p) ↓158.918(2★SKIP 9.8p) ↑158.72(1★SKIP 10.0p)[skip<2★] ↓159.059(2★SKIP 23.9p) ↓159.117(1★SKIP 29.7p)[skip<2★] ↑158.521(1★SKIP 29.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71112 | ↑0.71042(2★B 7.0p) ↑0.70978(1★B 13.4p)[skip<2★] ↓0.71275(1★SKIP 16.3p)[skip<2★] ↓0.71508(1★SKIP 39.6p)[skip<2★] ↑0.70576(2★B 53.6p) ↓0.71785(2★SKIP 67.3p) +16 more
+  XAU/USD @ 4501.255 | ↑4504.35(1★SKIP 3.1p)[skip<2★] ↓4514.48(1★A 13.2p)[skip<2★] ↓4528.49(1★A 27.2p)[skip<2★] ↑4466.54(1★SKIP 34.7p)[skip<2★] ↓4548.42(1★A 47.2p)[skip<2★] ↓4555.89(1★A 54.6p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37512 | ↑1.37498(1★B 1.4p)[skip<2★] ↓1.37534(1★A 2.2p)[skip<2★] ↑1.37482(1★B 3.0p)[skip<2★] ↓1.37569(3★A 5.7p) ↑1.37446(1★B 6.6p)[skip<2★] ↓1.37605(1★A 9.3p)[skip<2★] +27 more
+  USD/CHF @ 0.78868 | ↓0.78907(2★A 3.9p) ↓0.78948(1★B 8.0p)[skip<2★] ↑0.78771(1★SKIP 9.7p)[skip<2★] ↑0.78683(1★SKIP 18.5p)[skip<2★] ↑0.78661(2★SKIP 20.7p) ↑0.78646(3★SKIP 22.2p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28986.0 | ↓29057.2(1★SKIP 71.2p)[skip<2★] ↑28860.7(2★A 125.3p) ↓29160.9(1★SKIP 174.9p)[skip<2★] ↑28793.5(2★A 192.5p) ↓29181.3(1★SKIP 195.3p)[skip<2★] ↑28755.8(1★A 230.2p)[skip<2★] +19 more
+[2026-05-19 18:47:11] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16093
+[2026-05-19 18:47:11] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.82
+[2026-05-19 18:47:11] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71112
+[2026-05-19 18:47:11] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37512
+[2026-05-19 18:47:11] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:47:11] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:47:11] [WARNING] RiskGuard [EUR/USD]: Locked out — 151m remaining
+[2026-05-19 18:47:11] [WARNING] RiskGuard [USD/JPY]: Locked out — 151m remaining
+[2026-05-19 18:47:11] [WARNING] RiskGuard [AUD/USD]: Locked out — 151m remaining
+[2026-05-19 18:47:11] [WARNING] RiskGuard [USD/CAD]: Locked out — 151m remaining
+[2026-05-19 18:47:11] [WARNING] RiskGuard [USD/CHF]: Locked out — 151m remaining
+[2026-05-19 18:47:24] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16093
+[2026-05-19 18:47:24] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.832
+[2026-05-19 18:47:24] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71108
+[2026-05-19 18:47:24] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37512
+[2026-05-19 18:47:24] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78873
+[2026-05-19 18:47:24] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:47:24] [WARNING] RiskGuard [EUR/USD]: Locked out — 151m remaining
+[2026-05-19 18:47:24] [WARNING] RiskGuard [USD/JPY]: Locked out — 151m remaining
+[2026-05-19 18:47:24] [WARNING] RiskGuard [AUD/USD]: Locked out — 151m remaining
+[2026-05-19 18:47:24] [WARNING] RiskGuard [USD/CAD]: Locked out — 151m remaining
+[2026-05-19 18:47:24] [WARNING] RiskGuard [USD/CHF]: Locked out — 151m remaining
+[2026-05-19 18:47:38] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:47:49] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:47:49] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.821
+[2026-05-19 18:47:49] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71114
+[2026-05-19 18:47:49] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3751
+[2026-05-19 18:47:49] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:47:49] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:47:49] [WARNING] RiskGuard [EUR/USD]: Locked out — 150m remaining
+[2026-05-19 18:47:49] [WARNING] RiskGuard [USD/JPY]: Locked out — 150m remaining
+[2026-05-19 18:47:49] [WARNING] RiskGuard [AUD/USD]: Locked out — 150m remaining
+[2026-05-19 18:47:49] [WARNING] RiskGuard [USD/CAD]: Locked out — 150m remaining
+[2026-05-19 18:47:49] [WARNING] RiskGuard [USD/CHF]: Locked out — 150m remaining
+[2026-05-19 18:48:01] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ 1.16094 | ↓1.16129(5★B 3.5p) ↑1.160015(4★B 9.3p) ↓1.1624249999999998(5★B 14.8p) ↑1.15902(3★B 19.2p) ↓1.1629924999999999(5★B 20.5p) ↓1.1634349999999998(5★B 24.9p) +20 more
+  GBP/USD @ 1.34077 | ↓1.34131(1★SKIP 5.4p)[skip<2★] ↓1.3421(1★SKIP 13.3p)[skip<2★] ↓1.3429(2★SKIP 21.3p) ↓1.34369(1★SKIP 29.2p)[skip<2★] ↓1.34448(1★SKIP 37.1p)[skip<2★] ↑1.33617(1★SKIP 46.0p)[skip<2★] +13 more
+  USD/JPY @ 158.826 | ↑158.861(2★SKIP 3.5p) ↓158.918(2★SKIP 9.2p) ↑158.72(1★SKIP 10.6p)[skip<2★] ↓159.059(2★SKIP 23.3p) ↓159.117(1★SKIP 29.1p)[skip<2★] ↑158.521(1★SKIP 30.5p)[skip<2★] +14 more
+  AUD/USD @ 0.71114 | ↑0.71042(2★B 7.2p) ↑0.70978(1★B 13.6p)[skip<2★] ↓0.71275(1★SKIP 16.1p)[skip<2★] ↓0.71508(1★SKIP 39.4p)[skip<2★] ↑0.70576(2★B 53.8p) ↓0.71785(2★SKIP 67.1p) +16 more
+  XAU/USD @ 4501.92 | ↑4504.35(1★SKIP 2.4p)[skip<2★] ↓4514.48(1★A 12.6p)[skip<2★] ↓4528.49(1★A 26.6p)[skip<2★] ↑4466.54(1★SKIP 35.4p)[skip<2★] ↓4548.42(1★A 46.5p)[skip<2★] ↓4555.89(1★A 54.0p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.3751 | ↑1.37498(1★B 1.2p)[skip<2★] ↓1.37534(1★A 2.4p)[skip<2★] ↑1.37482(1★B 2.8p)[skip<2★] ↓1.37569(3★A 5.9p) ↑1.37446(1★B 6.4p)[skip<2★] ↓1.37605(1★A 9.5p)[skip<2★] +27 more
+  USD/CHF @ 0.78869 | ↓0.78907(2★A 3.8p) ↓0.78948(1★B 7.9p)[skip<2★] ↑0.78771(1★SKIP 9.8p)[skip<2★] ↑0.78683(1★SKIP 18.6p)[skip<2★] ↑0.78661(2★SKIP 20.8p) ↑0.78646(3★SKIP 22.3p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28975.8 | ↓29057.2(1★SKIP 81.4p)[skip<2★] ↑28860.7(2★A 115.1p) ↑28793.5(2★A 182.3p) ↓29160.9(1★SKIP 185.1p)[skip<2★] ↓29181.3(1★SKIP 205.5p)[skip<2★] ↑28755.8(1★A 220.0p)[skip<2★] +19 more
+[2026-05-19 18:48:01] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:48:01] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.826
+[2026-05-19 18:48:01] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71114
+[2026-05-19 18:48:01] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3751
+[2026-05-19 18:48:01] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78869
+[2026-05-19 18:48:01] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:48:01] [WARNING] RiskGuard [EUR/USD]: Locked out — 150m remaining
+[2026-05-19 18:48:01] [WARNING] RiskGuard [USD/JPY]: Locked out — 150m remaining
+[2026-05-19 18:48:01] [WARNING] RiskGuard [AUD/USD]: Locked out — 150m remaining
+[2026-05-19 18:48:01] [WARNING] RiskGuard [USD/CAD]: Locked out — 150m remaining
+[2026-05-19 18:48:01] [WARNING] RiskGuard [USD/CHF]: Locked out — 150m remaining
+[2026-05-19 18:48:12] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16093
+[2026-05-19 18:48:12] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.82
+[2026-05-19 18:48:12] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71118
+[2026-05-19 18:48:12] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37506
+[2026-05-19 18:48:12] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78867
+[2026-05-19 18:48:12] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:48:12] [WARNING] RiskGuard [EUR/USD]: Locked out — 150m remaining
+[2026-05-19 18:48:12] [WARNING] RiskGuard [USD/JPY]: Locked out — 150m remaining
+[2026-05-19 18:48:12] [WARNING] RiskGuard [AUD/USD]: Locked out — 150m remaining
+[2026-05-19 18:48:12] [WARNING] RiskGuard [USD/CAD]: Locked out — 150m remaining
+[2026-05-19 18:48:12] [WARNING] RiskGuard [USD/CHF]: Locked out — 150m remaining
+[2026-05-19 18:48:23] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:48:23] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.818
+[2026-05-19 18:48:23] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71116
+[2026-05-19 18:48:23] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37514
+[2026-05-19 18:48:23] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78866
+[2026-05-19 18:48:23] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:48:23] [WARNING] RiskGuard [EUR/USD]: Locked out — 150m remaining
+[2026-05-19 18:48:23] [WARNING] RiskGuard [USD/JPY]: Locked out — 150m remaining
+[2026-05-19 18:48:23] [WARNING] RiskGuard [AUD/USD]: Locked out — 150m remaining
+[2026-05-19 18:48:23] [WARNING] RiskGuard [USD/CAD]: Locked out — 150m remaining
+[2026-05-19 18:48:23] [WARNING] RiskGuard [USD/CHF]: Locked out — 150m remaining
+[2026-05-19 18:48:39] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ 1.16094 | ↓1.16129(5★B 3.5p) ↑1.160015(4★B 9.3p) ↓1.1624249999999998(5★B 14.8p) ↑1.15902(3★B 19.2p) ↓1.1629924999999999(5★B 20.5p) ↓1.1634349999999998(5★B 24.9p) +20 more
+  GBP/USD @ 1.34084 | ↓1.34131(1★SKIP 4.7p)[skip<2★] ↓1.3421(1★SKIP 12.6p)[skip<2★] ↓1.3429(2★SKIP 20.6p) ↓1.34369(1★SKIP 28.5p)[skip<2★] ↓1.34448(1★SKIP 36.4p)[skip<2★] ↑1.33617(1★SKIP 46.7p)[skip<2★] +13 more
+  USD/JPY @ 158.818 | ↑158.861(2★SKIP 4.3p) ↑158.72(1★SKIP 9.8p)[skip<2★] ↓158.918(2★SKIP 10.0p) ↓159.059(2★SKIP 24.1p) ↑158.521(1★SKIP 29.7p)[skip<2★] ↓159.117(1★SKIP 29.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71121 | ↑0.71042(2★B 7.9p) ↑0.70978(1★B 14.3p)[skip<2★] ↓0.71275(1★SKIP 15.4p)[skip<2★] ↓0.71508(1★SKIP 38.7p)[skip<2★] ↑0.70576(2★B 54.5p) ↓0.71785(2★SKIP 66.4p) +16 more
+  XAU/USD @ 4502.145 | ↑4504.35(1★SKIP 2.2p)[skip<2★] ↓4514.48(1★A 12.3p)[skip<2★] ↓4528.49(1★A 26.3p)[skip<2★] ↑4466.54(1★SKIP 35.6p)[skip<2★] ↓4548.42(1★A 46.3p)[skip<2★] ↓4555.89(1★A 53.7p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37514 | ↑1.37498(1★B 1.6p)[skip<2★] ↓1.37534(1★A 2.0p)[skip<2★] ↑1.37482(1★B 3.2p)[skip<2★] ↓1.37569(3★A 5.5p) ↑1.37446(1★B 6.8p)[skip<2★] ↓1.37605(1★A 9.1p)[skip<2★] +27 more
+  USD/CHF @ 0.78866 | ↓0.78907(2★A 4.1p) ↓0.78948(1★B 8.2p)[skip<2★] ↑0.78771(1★SKIP 9.5p)[skip<2★] ↑0.78683(1★SKIP 18.3p)[skip<2★] ↑0.78661(2★SKIP 20.5p) ↑0.78646(3★SKIP 22.0p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28993.0 | ↓29057.2(1★SKIP 64.2p)[skip<2★] ↑28860.7(2★A 132.3p) ↓29160.9(1★SKIP 167.9p)[skip<2★] ↓29181.3(1★SKIP 188.3p)[skip<2★] ↑28793.5(2★A 199.5p) ↓29228.1(1★SKIP 235.1p)[skip<2★] +19 more
+[2026-05-19 18:48:39] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:48:39] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.818
+[2026-05-19 18:48:39] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71121
+[2026-05-19 18:48:39] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37514
+[2026-05-19 18:48:39] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78866
+[2026-05-19 18:48:39] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:48:39] [WARNING] RiskGuard [EUR/USD]: Locked out — 150m remaining
+[2026-05-19 18:48:39] [WARNING] RiskGuard [USD/JPY]: Locked out — 150m remaining
+[2026-05-19 18:48:39] [WARNING] RiskGuard [AUD/USD]: Locked out — 150m remaining
+[2026-05-19 18:48:39] [WARNING] RiskGuard [USD/CAD]: Locked out — 150m remaining
+[2026-05-19 18:48:39] [WARNING] RiskGuard [USD/CHF]: Locked out — 150m remaining
+[2026-05-19 18:48:54] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:48:54] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.81
+[2026-05-19 18:48:54] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71122
+[2026-05-19 18:48:54] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37521
+[2026-05-19 18:48:54] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78866
+[2026-05-19 18:48:54] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:48:54] [WARNING] RiskGuard [EUR/USD]: Locked out — 149m remaining
+[2026-05-19 18:48:54] [WARNING] RiskGuard [USD/JPY]: Locked out — 149m remaining
+[2026-05-19 18:48:54] [WARNING] RiskGuard [AUD/USD]: Locked out — 149m remaining
+[2026-05-19 18:48:54] [WARNING] RiskGuard [USD/CAD]: Locked out — 149m remaining
+[2026-05-19 18:48:54] [WARNING] RiskGuard [USD/CHF]: Locked out — 149m remaining
+[2026-05-19 18:49:04] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ 1.16094 | ↓1.16129(5★B 3.5p) ↑1.160015(4★B 9.3p) ↓1.1624249999999998(5★B 14.8p) ↑1.15902(3★B 19.2p) ↓1.1629924999999999(5★B 20.5p) ↓1.1634349999999998(5★B 24.9p) +20 more
+  GBP/USD @ 1.34086 | ↓1.34131(1★SKIP 4.5p)[skip<2★] ↓1.3421(1★SKIP 12.4p)[skip<2★] ↓1.3429(2★SKIP 20.4p) ↓1.34369(1★SKIP 28.3p)[skip<2★] ↓1.34448(1★SKIP 36.2p)[skip<2★] ↑1.33617(1★SKIP 46.9p)[skip<2★] +13 more
+  USD/JPY @ 158.806 | ↑158.861(2★SKIP 5.5p) ↑158.72(1★SKIP 8.6p)[skip<2★] ↓158.918(2★SKIP 11.2p) ↓159.059(2★SKIP 25.3p) ↑158.521(1★SKIP 28.5p)[skip<2★] ↓159.117(1★SKIP 31.1p)[skip<2★] +14 more
+  AUD/USD @ 0.71122 | ↑0.71042(2★B 8.0p) ↑0.70978(1★B 14.4p)[skip<2★] ↓0.71275(1★SKIP 15.3p)[skip<2★] ↓0.71508(1★SKIP 38.6p)[skip<2★] ↑0.70576(2★B 54.6p) ↓0.71785(2★SKIP 66.3p) +16 more
+  XAU/USD @ 4502.415 | ↑4504.35(1★SKIP 1.9p)[skip<2★] ↓4514.48(1★A 12.1p)[skip<2★] ↓4528.49(1★A 26.1p)[skip<2★] ↑4466.54(1★SKIP 35.9p)[skip<2★] ↓4548.42(1★A 46.0p)[skip<2★] ↓4555.89(1★A 53.5p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.3752 | ↓1.37534(1★A 1.4p)[skip<2★] ↑1.37498(1★B 2.2p)[skip<2★] ↑1.37482(1★B 3.8p)[skip<2★] ↓1.37569(3★A 4.9p) ↑1.37446(1★B 7.4p)[skip<2★] ↓1.37605(1★A 8.5p)[skip<2★] +27 more
+  USD/CHF @ 0.78868 | ↓0.78907(2★A 3.9p) ↓0.78948(1★B 8.0p)[skip<2★] ↑0.78771(1★SKIP 9.7p)[skip<2★] ↑0.78683(1★SKIP 18.5p)[skip<2★] ↑0.78661(2★SKIP 20.7p) ↑0.78646(3★SKIP 22.2p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28988.8 | ↓29057.2(1★SKIP 68.4p)[skip<2★] ↑28860.7(2★A 128.1p) ↓29160.9(1★SKIP 172.1p)[skip<2★] ↓29181.3(1★SKIP 192.5p)[skip<2★] ↑28793.5(2★A 195.3p) ↑28755.8(1★A 233.0p)[skip<2★] +19 more
+[2026-05-19 18:49:04] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16094
+[2026-05-19 18:49:04] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.806
+[2026-05-19 18:49:04] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71122
+[2026-05-19 18:49:04] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3752
+[2026-05-19 18:49:04] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:49:04] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:49:04] [WARNING] RiskGuard [EUR/USD]: Locked out — 149m remaining
+[2026-05-19 18:49:04] [WARNING] RiskGuard [USD/JPY]: Locked out — 149m remaining
+[2026-05-19 18:49:04] [WARNING] RiskGuard [AUD/USD]: Locked out — 149m remaining
+[2026-05-19 18:49:04] [WARNING] RiskGuard [USD/CAD]: Locked out — 149m remaining
+[2026-05-19 18:49:04] [WARNING] RiskGuard [USD/CHF]: Locked out — 149m remaining
+[2026-05-19 18:49:15] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16092
+[2026-05-19 18:49:15] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.796
+[2026-05-19 18:49:15] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71122
+[2026-05-19 18:49:15] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37524
+[2026-05-19 18:49:15] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78868
+[2026-05-19 18:49:15] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:49:15] [WARNING] RiskGuard [EUR/USD]: Locked out — 149m remaining
+[2026-05-19 18:49:15] [WARNING] RiskGuard [USD/JPY]: Locked out — 149m remaining
+[2026-05-19 18:49:15] [WARNING] RiskGuard [AUD/USD]: Locked out — 149m remaining
+[2026-05-19 18:49:15] [WARNING] RiskGuard [USD/CAD]: Locked out — 149m remaining
+[2026-05-19 18:49:15] [WARNING] RiskGuard [USD/CHF]: Locked out — 149m remaining
+[2026-05-19 18:49:27] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16093
+[2026-05-19 18:49:27] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.791
+[2026-05-19 18:49:27] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71122
+[2026-05-19 18:49:27] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37522
+[2026-05-19 18:49:27] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78872
+[2026-05-19 18:49:27] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:49:27] [WARNING] RiskGuard [EUR/USD]: Locked out — 149m remaining
+[2026-05-19 18:49:27] [WARNING] RiskGuard [USD/JPY]: Locked out — 149m remaining
+[2026-05-19 18:49:27] [WARNING] RiskGuard [AUD/USD]: Locked out — 149m remaining
+[2026-05-19 18:49:27] [WARNING] RiskGuard [USD/CAD]: Locked out — 149m remaining
+[2026-05-19 18:49:27] [WARNING] RiskGuard [USD/CHF]: Locked out — 149m remaining
+[2026-05-19 18:49:52] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:50:13] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ 1.16084 | ↓1.16129(5★B 4.5p) ↑1.160015(4★B 8.3p) ↓1.1624249999999998(5★B 15.8p) ↑1.15902(3★B 18.2p) ↓1.1629924999999999(5★B 21.5p) ↓1.1634349999999998(5★B 25.9p) +20 more
+  GBP/USD @ 1.34082 | ↓1.34131(1★SKIP 4.9p)[skip<2★] ↓1.3421(1★SKIP 12.8p)[skip<2★] ↓1.3429(2★SKIP 20.8p) ↓1.34369(1★SKIP 28.7p)[skip<2★] ↓1.34448(1★SKIP 36.6p)[skip<2★] ↑1.33617(1★SKIP 46.5p)[skip<2★] +13 more
+  USD/JPY @ 158.802 | ↑158.861(2★SKIP 5.9p) ↑158.72(1★SKIP 8.2p)[skip<2★] ↓158.918(2★SKIP 11.6p) ↓159.059(2★SKIP 25.7p) ↑158.521(1★SKIP 28.1p)[skip<2★] ↓159.117(1★SKIP 31.5p)[skip<2★] +14 more
+  AUD/USD @ 0.7112 | ↑0.71042(2★B 7.8p) ↑0.70978(1★B 14.2p)[skip<2★] ↓0.71275(1★SKIP 15.5p)[skip<2★] ↓0.71508(1★SKIP 38.8p)[skip<2★] ↑0.70576(2★B 54.4p) ↓0.71785(2★SKIP 66.5p) +16 more
+  XAU/USD @ 4501.085 | ↑4504.35(1★SKIP 3.3p)[skip<2★] ↓4514.48(1★A 13.4p)[skip<2★] ↓4528.49(1★A 27.4p)[skip<2★] ↑4466.54(1★SKIP 34.5p)[skip<2★] ↓4548.42(1★A 47.3p)[skip<2★] ↑4446.6(1★SKIP 54.5p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37524 | ↓1.37534(1★A 1.0p)[skip<2★] ↑1.37498(1★B 2.6p)[skip<2★] ↑1.37482(1★B 4.2p)[skip<2★] ↓1.37569(3★A 4.5p) ↑1.37446(1★B 7.8p)[skip<2★] ↓1.37605(1★A 8.1p)[skip<2★] +27 more
+  USD/CHF @ 0.78875 | ↓0.78907(2★A 3.2p) ↓0.78948(1★B 7.3p)[skip<2★] ↑0.78771(1★SKIP 10.4p)[skip<2★] ↑0.78683(1★SKIP 19.2p)[skip<2★] ↑0.78661(2★SKIP 21.4p) ↑0.78646(3★SKIP 22.9p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28992.2 | ↓29057.2(1★SKIP 65.0p)[skip<2★] ↑28860.7(2★A 131.5p) ↓29160.9(1★SKIP 168.7p)[skip<2★] ↓29181.3(1★SKIP 189.1p)[skip<2★] ↑28793.5(2★A 198.7p) ↓29228.1(1★SKIP 235.9p)[skip<2★] +19 more
+[2026-05-19 18:50:13] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16084
+[2026-05-19 18:50:13] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.802
+[2026-05-19 18:50:13] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7112
+[2026-05-19 18:50:13] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37524
+[2026-05-19 18:50:13] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78875
+[2026-05-19 18:50:13] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:50:13] [WARNING] RiskGuard [EUR/USD]: Locked out — 148m remaining
+[2026-05-19 18:50:13] [WARNING] RiskGuard [USD/JPY]: Locked out — 148m remaining
+[2026-05-19 18:50:13] [WARNING] RiskGuard [AUD/USD]: Locked out — 148m remaining
+[2026-05-19 18:50:13] [WARNING] RiskGuard [USD/CAD]: Locked out — 148m remaining
+[2026-05-19 18:50:13] [WARNING] RiskGuard [USD/CHF]: Locked out — 148m remaining
+[2026-05-19 18:50:33] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ 1.1609 | ↓1.16129(5★B 3.9p) ↑1.160015(4★B 8.9p) ↓1.1624249999999998(5★B 15.2p) ↑1.15902(3★B 18.8p) ↓1.1629924999999999(5★B 20.9p) ↓1.1634349999999998(5★B 25.3p) +20 more
+  GBP/USD @ 1.34088 | ↓1.34131(1★SKIP 4.3p)[skip<2★] ↓1.3421(1★SKIP 12.2p)[skip<2★] ↓1.3429(2★SKIP 20.2p) ↓1.34369(1★SKIP 28.1p)[skip<2★] ↓1.34448(1★SKIP 36.0p)[skip<2★] ↑1.33617(1★SKIP 47.1p)[skip<2★] +13 more
+  USD/JPY @ 158.802 | ↑158.861(2★SKIP 5.9p) ↑158.72(1★SKIP 8.2p)[skip<2★] ↓158.918(2★SKIP 11.6p) ↓159.059(2★SKIP 25.7p) ↑158.521(1★SKIP 28.1p)[skip<2★] ↓159.117(1★SKIP 31.5p)[skip<2★] +14 more
+  AUD/USD @ 0.71128 | ↑0.71042(2★B 8.6p) ↓0.71275(1★SKIP 14.7p)[skip<2★] ↑0.70978(1★B 15.0p)[skip<2★] ↓0.71508(1★SKIP 38.0p)[skip<2★] ↑0.70576(2★B 55.2p) ↓0.71785(2★SKIP 65.7p) +16 more
+  XAU/USD @ 4501.38 | ↑4504.35(1★SKIP 3.0p)[skip<2★] ↓4514.48(1★A 13.1p)[skip<2★] ↓4528.49(1★A 27.1p)[skip<2★] ↑4466.54(1★SKIP 34.8p)[skip<2★] ↓4548.42(1★A 47.0p)[skip<2★] ↓4555.89(1★A 54.5p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37518 | ↓1.37534(1★A 1.6p)[skip<2★] ↑1.37498(1★B 2.0p)[skip<2★] ↑1.37482(1★B 3.6p)[skip<2★] ↓1.37569(3★A 5.1p) ↑1.37446(1★B 7.2p)[skip<2★] ↓1.37605(1★A 8.7p)[skip<2★] +27 more
+  USD/CHF @ 0.78865 | ↓0.78907(2★A 4.2p) ↓0.78948(1★B 8.3p)[skip<2★] ↑0.78771(1★SKIP 9.4p)[skip<2★] ↑0.78683(1★SKIP 18.2p)[skip<2★] ↑0.78661(2★SKIP 20.4p) ↑0.78646(3★SKIP 21.9p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28991.0 | ↓29057.2(1★SKIP 66.2p)[skip<2★] ↑28860.7(2★A 130.3p) ↓29160.9(1★SKIP 169.9p)[skip<2★] ↓29181.3(1★SKIP 190.3p)[skip<2★] ↑28793.5(2★A 197.5p) ↑28755.8(1★A 235.2p)[skip<2★] +19 more
+[2026-05-19 18:50:33] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:50:33] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.802
+[2026-05-19 18:50:33] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37518
+[2026-05-19 18:50:33] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78865
+[2026-05-19 18:50:33] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:50:33] [WARNING] RiskGuard [EUR/USD]: Locked out — 148m remaining
+[2026-05-19 18:50:33] [WARNING] RiskGuard [USD/JPY]: Locked out — 148m remaining
+[2026-05-19 18:50:33] [WARNING] RiskGuard [USD/CAD]: Locked out — 148m remaining
+[2026-05-19 18:50:33] [WARNING] RiskGuard [USD/CHF]: Locked out — 148m remaining
+[2026-05-19 18:50:55] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1609
+[2026-05-19 18:50:55] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.804
+[2026-05-19 18:50:55] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37514
+[2026-05-19 18:50:55] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78864
+[2026-05-19 18:50:55] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:50:55] [WARNING] RiskGuard [EUR/USD]: Locked out — 147m remaining
+[2026-05-19 18:50:55] [WARNING] RiskGuard [USD/JPY]: Locked out — 147m remaining
+[2026-05-19 18:50:55] [WARNING] RiskGuard [USD/CAD]: Locked out — 147m remaining
+[2026-05-19 18:50:55] [WARNING] RiskGuard [USD/CHF]: Locked out — 147m remaining
+[2026-05-19 18:51:23] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ 1.16099 | ↓1.16129(5★B 3.0p) ↑1.160015(4★B 9.7p) ↓1.1624249999999998(5★B 14.3p) ↑1.15902(3★B 19.7p) ↓1.1629924999999999(5★B 20.0p) ↓1.1634349999999998(5★B 24.4p) +20 more
+  GBP/USD @ 1.34104 | ↓1.34131(1★SKIP 2.7p)[skip<2★] ↓1.3421(1★SKIP 10.6p)[skip<2★] ↓1.3429(2★SKIP 18.6p) ↓1.34369(1★SKIP 26.5p)[skip<2★] ↓1.34448(1★SKIP 34.4p)[skip<2★] ↑1.33617(1★SKIP 48.7p)[skip<2★] +13 more
+  USD/JPY @ 158.796 | ↑158.861(2★SKIP 6.5p) ↑158.72(1★SKIP 7.6p)[skip<2★] ↓158.918(2★SKIP 12.2p) ↓159.059(2★SKIP 26.3p) ↑158.521(1★SKIP 27.5p)[skip<2★] ↓159.117(1★SKIP 32.1p)[skip<2★] +14 more
+  AUD/USD @ 0.71129 | ↑0.71042(2★B 8.7p) ↓0.71275(1★SKIP 14.6p)[skip<2★] ↑0.70978(1★B 15.1p)[skip<2★] ↓0.71508(1★SKIP 37.9p)[skip<2★] ↑0.70576(2★B 55.3p) ↓0.71785(2★SKIP 65.6p) +16 more
+  XAU/USD @ 4500.825 | ↑4504.35(1★SKIP 3.5p)[skip<2★] ↓4514.48(1★A 13.7p)[skip<2★] ↓4528.49(1★A 27.7p)[skip<2★] ↑4466.54(1★SKIP 34.3p)[skip<2★] ↓4548.42(1★A 47.6p)[skip<2★] ↑4446.6(1★SKIP 54.2p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37512 | ↑1.37498(1★B 1.4p)[skip<2★] ↓1.37534(1★A 2.2p)[skip<2★] ↑1.37482(1★B 3.0p)[skip<2★] ↓1.37569(3★A 5.7p) ↑1.37446(1★B 6.6p)[skip<2★] ↓1.37605(1★A 9.3p)[skip<2★] +27 more
+  USD/CHF @ 0.78862 | ↓0.78907(2★A 4.5p) ↓0.78948(1★B 8.6p)[skip<2★] ↑0.78771(1★SKIP 9.1p)[skip<2★] ↑0.78683(1★SKIP 17.9p)[skip<2★] ↑0.78661(2★SKIP 20.1p) ↑0.78646(3★SKIP 21.6p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28985.2 | ↓29057.2(1★SKIP 72.0p)[skip<2★] ↑28860.7(2★A 124.5p) ↓29160.9(1★SKIP 175.7p)[skip<2★] ↑28793.5(2★A 191.7p) ↓29181.3(1★SKIP 196.1p)[skip<2★] ↑28755.8(1★A 229.4p)[skip<2★] +19 more
+[2026-05-19 18:51:23] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16099
+[2026-05-19 18:51:23] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.796
+[2026-05-19 18:51:23] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37512
+[2026-05-19 18:51:23] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78862
+[2026-05-19 18:51:23] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:51:23] [WARNING] RiskGuard [EUR/USD]: Locked out — 147m remaining
+[2026-05-19 18:51:23] [WARNING] RiskGuard [USD/JPY]: Locked out — 147m remaining
+[2026-05-19 18:51:23] [WARNING] RiskGuard [USD/CAD]: Locked out — 147m remaining
+[2026-05-19 18:51:23] [WARNING] RiskGuard [USD/CHF]: Locked out — 147m remaining
+[2026-05-19 18:52:18] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.161
+[2026-05-19 18:52:18] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.806
+[2026-05-19 18:52:18] [INFO] Near level (2/2): EUR/USD, USD/JPY
+[2026-05-19 18:52:18] [WARNING] RiskGuard [EUR/USD]: Locked out — 146m remaining
+[2026-05-19 18:52:18] [WARNING] RiskGuard [USD/JPY]: Locked out — 146m remaining
+[2026-05-19 18:53:21] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:54:19] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ 1.16099 | ↓1.16129(5★B 3.0p) ↑1.160015(4★B 9.7p) ↓1.1624249999999998(5★B 14.3p) ↑1.15902(3★B 19.7p) ↓1.1629924999999999(5★B 20.0p) ↓1.1634349999999998(5★B 24.4p) +20 more
+  GBP/USD @ 1.34102 | ↓1.34131(1★SKIP 2.9p)[skip<2★] ↓1.3421(1★SKIP 10.8p)[skip<2★] ↓1.3429(2★SKIP 18.8p) ↓1.34369(1★SKIP 26.7p)[skip<2★] ↓1.34448(1★SKIP 34.6p)[skip<2★] ↑1.33617(1★SKIP 48.5p)[skip<2★] +13 more
+  USD/JPY @ 158.816 | ↑158.861(2★SKIP 4.5p) ↑158.72(1★SKIP 9.6p)[skip<2★] ↓158.918(2★SKIP 10.2p) ↓159.059(2★SKIP 24.3p) ↑158.521(1★SKIP 29.5p)[skip<2★] ↓159.117(1★SKIP 30.1p)[skip<2★] +14 more
+  AUD/USD @ 0.71121 | ↑0.71042(2★B 7.9p) ↑0.70978(1★B 14.3p)[skip<2★] ↓0.71275(1★SKIP 15.4p)[skip<2★] ↓0.71508(1★SKIP 38.7p)[skip<2★] ↑0.70576(2★B 54.5p) ↓0.71785(2★SKIP 66.4p) +16 more
+  XAU/USD @ 4500.285 | ↑4504.35(1★SKIP 4.1p)[skip<2★] ↓4514.48(1★A 14.2p)[skip<2★] ↓4528.49(1★A 28.2p)[skip<2★] ↑4466.54(1★SKIP 33.7p)[skip<2★] ↓4548.42(1★A 48.1p)[skip<2★] ↑4446.6(1★SKIP 53.7p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ no price | ↑1.35637(1★B ?p)[skip<2★] ↑1.36295(1★B ?p)[skip<2★] ↑1.36494(1★B ?p)[skip<2★] ↑1.36565(1★B ?p)[skip<2★] ↑1.3674(1★B ?p)[skip<2★] ↑1.36811(1★B ?p)[skip<2★] +27 more
+  USD/CHF @ no price | ↑0.75893(2★SKIP ?p) ↑0.76386(1★SKIP ?p)[skip<2★] ↑0.76734(1★SKIP ?p)[skip<2★] ↑0.77226(1★SKIP ?p)[skip<2★] ↑0.77533(1★SKIP ?p)[skip<2★] ↑0.77574(1★SKIP ?p)[skip<2★] +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ no price | ↑26450.6(1★A ?p)[skip<2★] ↑26585(1★A ?p)[skip<2★] ↑27355.3(1★A ?p)[skip<2★] ↑27588.5(1★A ?p)[skip<2★] ↑27722.8(1★A ?p)[skip<2★] ↑27904.8(1★A ?p)[skip<2★] +19 more
+[2026-05-19 18:54:19] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16099
+[2026-05-19 18:54:19] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.816
+[2026-05-19 18:54:19] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71121
+[2026-05-19 18:54:19] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD
+[2026-05-19 18:54:19] [WARNING] RiskGuard [EUR/USD]: Locked out — 144m remaining
+[2026-05-19 18:54:19] [WARNING] RiskGuard [USD/JPY]: Locked out — 144m remaining
+[2026-05-19 18:54:19] [WARNING] RiskGuard [AUD/USD]: Locked out — 144m remaining
+[2026-05-19 18:54:19] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ no price | ↑1.1454(3★SKIP ?p) ↑1.146335000000001(2★SKIP ?p) ↑1.1488049999999999(2★SKIP ?p) ↑1.1490300000000009(2★SKIP ?p) ↑1.1497550000000007(2★SKIP ?p) ↑1.15221(5★SKIP ?p) +20 more
+  GBP/USD @ no price | ↑1.31636(1★SKIP ?p)[skip<2★] ↑1.31795(2★SKIP ?p) ↑1.32388(1★SKIP ?p)[skip<2★] ↑1.32547(2★SKIP ?p) ↑1.32706(1★SKIP ?p)[skip<2★] ↑1.33002(2★SKIP ?p) +13 more
+  USD/JPY @ no price | ↑156.93(1★SKIP ?p)[skip<2★] ↑156.953(1★SKIP ?p)[skip<2★] ↑157.145(1★SKIP ?p)[skip<2★] ↑157.327(2★SKIP ?p) ↑157.336(2★SKIP ?p) ↑157.725(1★SKIP ?p)[skip<2★] +14 more
+  AUD/USD @ no price | ↑0.68249(1★B ?p)[skip<2★] ↑0.68715(1★B ?p)[skip<2★] ↑0.6918(1★B ?p)[skip<2★] ↑0.69646(2★B ?p) ↑0.69876(1★B ?p)[skip<2★] ↑0.70111(2★B ?p) +16 more
+  XAU/USD @ no price | ↑3861.2(1★SKIP ?p)[skip<2★] ↑3964.28(1★SKIP ?p)[skip<2★] ↑4109.94(2★SKIP ?p) ↑4158.93(2★SKIP ?p) ↑4254.82(2★SKIP ?p) ↑4255.6(2★SKIP ?p) +24 more
+  EUR/GBP: no entries
+  USD/CAD @ no price | ↑1.35637(1★B ?p)[skip<2★] ↑1.36295(1★B ?p)[skip<2★] ↑1.36494(1★B ?p)[skip<2★] ↑1.36565(1★B ?p)[skip<2★] ↑1.3674(1★B ?p)[skip<2★] ↑1.36811(1★B ?p)[skip<2★] +27 more
+  USD/CHF @ no price | ↑0.75893(2★SKIP ?p) ↑0.76386(1★SKIP ?p)[skip<2★] ↑0.76734(1★SKIP ?p)[skip<2★] ↑0.77226(1★SKIP ?p)[skip<2★] ↑0.77533(1★SKIP ?p)[skip<2★] ↑0.77574(1★SKIP ?p)[skip<2★] +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ no price | ↑26450.6(1★A ?p)[skip<2★] ↑26585(1★A ?p)[skip<2★] ↑27355.3(1★A ?p)[skip<2★] ↑27588.5(1★A ?p)[skip<2★] ↑27722.8(1★A ?p)[skip<2★] ↑27904.8(1★A ?p)[skip<2★] +19 more
+[2026-05-19 18:54:19] [INFO] Monitoring 10 pairs — no level approach  [no prices]
+[2026-05-19 18:54:19] [WARNING] RiskGuard SESSION: Locked out — 144m remaining
+[2026-05-19 18:54:22] [WARNING] RiskGuard SESSION: Locked out — 144m remaining
+[2026-05-19 18:54:25] [WARNING] RiskGuard SESSION: Locked out — 144m remaining
+[2026-05-19 18:54:28] [ERROR] State refresh failed: HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/state (Caused by NameResolutionError("HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443): Failed to resolve 'macrofxmodel-production.up.railway.app' ([Errno 11001] getaddrinfo failed)"))
+[2026-05-19 18:54:28] [WARNING] RiskGuard SESSION: Locked out — 144m remaining
+[2026-05-19 18:54:41] [ERROR] State refresh failed: HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/state (Caused by NameResolutionError("HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443): Failed to resolve 'macrofxmodel-production.up.railway.app' ([Errno 11001] getaddrinfo failed)"))
+[2026-05-19 18:54:53] [WARNING] RiskGuard SESSION: Locked out — 143m remaining
+[2026-05-19 18:54:53] [ERROR] State refresh failed: HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/state (Caused by NameResolutionError("HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443): Failed to resolve 'macrofxmodel-production.up.railway.app' ([Errno 11001] getaddrinfo failed)"))
+[2026-05-19 18:54:53] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:43:36.632Z  min_stars=2
+  EUR/USD @ no price | ↑1.1454(3★SKIP ?p) ↑1.146335000000001(2★SKIP ?p) ↑1.1488049999999999(2★SKIP ?p) ↑1.1490300000000009(2★SKIP ?p) ↑1.1497550000000007(2★SKIP ?p) ↑1.15221(5★SKIP ?p) +20 more
+  GBP/USD @ no price | ↑1.31636(1★SKIP ?p)[skip<2★] ↑1.31795(2★SKIP ?p) ↑1.32388(1★SKIP ?p)[skip<2★] ↑1.32547(2★SKIP ?p) ↑1.32706(1★SKIP ?p)[skip<2★] ↑1.33002(2★SKIP ?p) +13 more
+  USD/JPY @ no price | ↑156.93(1★SKIP ?p)[skip<2★] ↑156.953(1★SKIP ?p)[skip<2★] ↑157.145(1★SKIP ?p)[skip<2★] ↑157.327(2★SKIP ?p) ↑157.336(2★SKIP ?p) ↑157.725(1★SKIP ?p)[skip<2★] +14 more
+  AUD/USD @ no price | ↑0.68249(1★B ?p)[skip<2★] ↑0.68715(1★B ?p)[skip<2★] ↑0.6918(1★B ?p)[skip<2★] ↑0.69646(2★B ?p) ↑0.69876(1★B ?p)[skip<2★] ↑0.70111(2★B ?p) +16 more
+  XAU/USD @ no price | ↑3861.2(1★SKIP ?p)[skip<2★] ↑3964.28(1★SKIP ?p)[skip<2★] ↑4109.94(2★SKIP ?p) ↑4158.93(2★SKIP ?p) ↑4254.82(2★SKIP ?p) ↑4255.6(2★SKIP ?p) +24 more
+  EUR/GBP: no entries
+  USD/CAD @ no price | ↑1.35637(1★B ?p)[skip<2★] ↑1.36295(1★B ?p)[skip<2★] ↑1.36494(1★B ?p)[skip<2★] ↑1.36565(1★B ?p)[skip<2★] ↑1.3674(1★B ?p)[skip<2★] ↑1.36811(1★B ?p)[skip<2★] +27 more
+  USD/CHF @ no price | ↑0.75893(2★SKIP ?p) ↑0.76386(1★SKIP ?p)[skip<2★] ↑0.76734(1★SKIP ?p)[skip<2★] ↑0.77226(1★SKIP ?p)[skip<2★] ↑0.77533(1★SKIP ?p)[skip<2★] ↑0.77574(1★SKIP ?p)[skip<2★] +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ no price | ↑26450.6(1★A ?p)[skip<2★] ↑26585(1★A ?p)[skip<2★] ↑27355.3(1★A ?p)[skip<2★] ↑27588.5(1★A ?p)[skip<2★] ↑27722.8(1★A ?p)[skip<2★] ↑27904.8(1★A ?p)[skip<2★] +19 more
+[2026-05-19 18:54:53] [WARNING] RiskGuard SESSION: Locked out — 143m remaining
+[2026-05-19 18:54:56] [ERROR] State refresh failed: HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/state (Caused by NameResolutionError("HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443): Failed to resolve 'macrofxmodel-production.up.railway.app' ([Errno 11001] getaddrinfo failed)"))
+[2026-05-19 18:54:56] [WARNING] RiskGuard SESSION: Locked out — 143m remaining
+[2026-05-19 18:55:25] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:55:48] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16104
+[2026-05-19 18:55:48] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.813
+[2026-05-19 18:55:48] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37514
+[2026-05-19 18:55:48] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.7886
+[2026-05-19 18:55:48] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:55:48] [WARNING] RiskGuard [EUR/USD]: Locked out — 142m remaining
+[2026-05-19 18:55:48] [WARNING] RiskGuard [USD/JPY]: Locked out — 142m remaining
+[2026-05-19 18:55:48] [WARNING] RiskGuard [USD/CAD]: Locked out — 142m remaining
+[2026-05-19 18:55:48] [WARNING] RiskGuard [USD/CHF]: Locked out — 142m remaining
+[2026-05-19 18:56:10] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:53:15.312Z  min_stars=2
+  EUR/USD @ 1.16109 | ↓1.16129(5★B 2.0p) ↑1.160015(4★B 10.7p) ↓1.1624249999999998(5★B 13.3p) ↓1.1629924999999999(5★B 19.0p) ↑1.15902(3★B 20.7p) ↓1.1634349999999998(5★B 23.4p) +20 more
+  GBP/USD @ 1.34101 | ↓1.34131(1★SKIP 3.0p)[skip<2★] ↓1.3421(1★SKIP 10.9p)[skip<2★] ↓1.3429(2★SKIP 18.9p) ↓1.34369(1★SKIP 26.8p)[skip<2★] ↓1.34448(1★SKIP 34.7p)[skip<2★] ↑1.33617(1★SKIP 48.4p)[skip<2★] +13 more
+  USD/JPY @ 158.827 | ↑158.861(2★SKIP 3.4p) ↓158.918(2★SKIP 9.1p) ↑158.72(1★SKIP 10.7p)[skip<2★] ↓159.059(2★SKIP 23.2p) ↓159.117(1★SKIP 29.0p)[skip<2★] ↑158.521(1★SKIP 30.6p)[skip<2★] +14 more
+  AUD/USD @ 0.7113 | ↑0.71042(2★B 8.8p) ↓0.71275(1★SKIP 14.5p)[skip<2★] ↑0.70978(1★B 15.2p)[skip<2★] ↓0.71508(1★SKIP 37.8p)[skip<2★] ↑0.70576(2★B 55.4p) ↓0.71785(2★SKIP 65.5p) +16 more
+  XAU/USD @ 4499.665 | ↑4504.35(1★SKIP 4.7p)[skip<2★] ↓4514.48(1★A 14.8p)[skip<2★] ↓4528.49(1★A 28.8p)[skip<2★] ↑4466.54(1★SKIP 33.1p)[skip<2★] ↓4548.42(1★A 48.8p)[skip<2★] ↑4446.6(1★SKIP 53.1p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37512 | ↑1.37498(1★B 1.4p)[skip<2★] ↓1.37534(1★A 2.2p)[skip<2★] ↑1.37482(1★B 3.0p)[skip<2★] ↓1.37569(3★A 5.7p) ↑1.37446(1★B 6.6p)[skip<2★] ↓1.37605(1★A 9.3p)[skip<2★] +27 more
+  USD/CHF @ 0.78859 | ↓0.78907(2★A 4.8p) ↑0.78771(1★SKIP 8.8p)[skip<2★] ↓0.78948(1★B 8.9p)[skip<2★] ↑0.78683(1★SKIP 17.6p)[skip<2★] ↑0.78661(2★SKIP 19.8p) ↑0.78646(3★SKIP 21.3p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28989.4 | ↓29057.2(1★SKIP 67.8p)[skip<2★] ↑28860.7(2★A 128.7p) ↓29160.9(1★SKIP 171.5p)[skip<2★] ↓29181.3(1★SKIP 191.9p)[skip<2★] ↑28793.5(2★A 195.9p) ↑28755.8(1★A 233.6p)[skip<2★] +19 more
+[2026-05-19 18:56:10] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16109
+[2026-05-19 18:56:10] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.827
+[2026-05-19 18:56:10] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37512
+[2026-05-19 18:56:10] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78859
+[2026-05-19 18:56:10] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:56:10] [WARNING] RiskGuard [EUR/USD]: Locked out — 142m remaining
+[2026-05-19 18:56:10] [WARNING] RiskGuard [USD/JPY]: Locked out — 142m remaining
+[2026-05-19 18:56:10] [WARNING] RiskGuard [USD/CAD]: Locked out — 142m remaining
+[2026-05-19 18:56:10] [WARNING] RiskGuard [USD/CHF]: Locked out — 142m remaining
+[2026-05-19 18:56:35] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1611
+[2026-05-19 18:56:35] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.832
+[2026-05-19 18:56:35] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37511
+[2026-05-19 18:56:35] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78861
+[2026-05-19 18:56:35] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:56:35] [WARNING] RiskGuard [EUR/USD]: Locked out — 142m remaining
+[2026-05-19 18:56:35] [WARNING] RiskGuard [USD/JPY]: Locked out — 142m remaining
+[2026-05-19 18:56:35] [WARNING] RiskGuard [USD/CAD]: Locked out — 142m remaining
+[2026-05-19 18:56:35] [WARNING] RiskGuard [USD/CHF]: Locked out — 142m remaining
+[2026-05-19 18:57:19] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:53:15.312Z  min_stars=2
+  EUR/USD @ 1.16102 | ↓1.16129(5★B 2.7p) ↑1.160015(4★B 10.0p) ↓1.1624249999999998(5★B 14.0p) ↓1.1629924999999999(5★B 19.7p) ↑1.15902(3★B 20.0p) ↓1.1634349999999998(5★B 24.1p) +20 more
+  GBP/USD @ 1.34091 | ↓1.34131(1★SKIP 4.0p)[skip<2★] ↓1.3421(1★SKIP 11.9p)[skip<2★] ↓1.3429(2★SKIP 19.9p) ↓1.34369(1★SKIP 27.8p)[skip<2★] ↓1.34448(1★SKIP 35.7p)[skip<2★] ↑1.33617(1★SKIP 47.4p)[skip<2★] +13 more
+  USD/JPY @ 158.844 | ↑158.861(2★SKIP 1.7p) ↓158.918(2★SKIP 7.4p) ↑158.72(1★SKIP 12.4p)[skip<2★] ↓159.059(2★SKIP 21.5p) ↓159.117(1★SKIP 27.3p)[skip<2★] ↑158.521(1★SKIP 32.3p)[skip<2★] +14 more
+  AUD/USD @ 0.71126 | ↑0.71042(2★B 8.4p) ↑0.70978(1★B 14.8p)[skip<2★] ↓0.71275(1★SKIP 14.9p)[skip<2★] ↓0.71508(1★SKIP 38.2p)[skip<2★] ↑0.70576(2★B 55.0p) ↓0.71785(2★SKIP 65.9p) +16 more
+  XAU/USD @ 4499.93 | ↑4504.35(1★SKIP 4.4p)[skip<2★] ↓4514.48(1★A 14.5p)[skip<2★] ↓4528.49(1★A 28.6p)[skip<2★] ↑4466.54(1★SKIP 33.4p)[skip<2★] ↓4548.42(1★A 48.5p)[skip<2★] ↑4446.6(1★SKIP 53.3p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.3751 | ↑1.37498(1★B 1.2p)[skip<2★] ↓1.37534(1★A 2.4p)[skip<2★] ↑1.37482(1★B 2.8p)[skip<2★] ↓1.37569(3★A 5.9p) ↑1.37446(1★B 6.4p)[skip<2★] ↓1.37605(1★A 9.5p)[skip<2★] +27 more
+  USD/CHF @ 0.78864 | ↓0.78907(2★A 4.3p) ↓0.78948(1★B 8.4p)[skip<2★] ↑0.78771(1★SKIP 9.3p)[skip<2★] ↑0.78683(1★SKIP 18.1p)[skip<2★] ↑0.78661(2★SKIP 20.3p) ↑0.78646(3★SKIP 21.8p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28984.0 | ↓29057.2(1★SKIP 73.2p)[skip<2★] ↑28860.7(2★A 123.3p) ↓29160.9(1★SKIP 176.9p)[skip<2★] ↑28793.5(2★A 190.5p) ↓29181.3(1★SKIP 197.3p)[skip<2★] ↑28755.8(1★A 228.2p)[skip<2★] +19 more
+[2026-05-19 18:57:19] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16102
+[2026-05-19 18:57:19] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.844
+[2026-05-19 18:57:19] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.3751
+[2026-05-19 18:57:19] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78864
+[2026-05-19 18:57:19] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:57:19] [WARNING] RiskGuard [EUR/USD]: Locked out — 141m remaining
+[2026-05-19 18:57:19] [WARNING] RiskGuard [USD/JPY]: Locked out — 141m remaining
+[2026-05-19 18:57:19] [WARNING] RiskGuard [USD/CAD]: Locked out — 141m remaining
+[2026-05-19 18:57:19] [WARNING] RiskGuard [USD/CHF]: Locked out — 141m remaining
+[2026-05-19 18:57:55] [INFO] State refreshed from dashboard KV
+[2026-05-19 18:58:18] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:53:15.312Z  min_stars=2
+  EUR/USD @ 1.16102 | ↓1.16129(5★B 2.7p) ↑1.160015(4★B 10.0p) ↓1.1624249999999998(5★B 14.0p) ↓1.1629924999999999(5★B 19.7p) ↑1.15902(3★B 20.0p) ↓1.1634349999999998(5★B 24.1p) +20 more
+  GBP/USD @ 1.34084 | ↓1.34131(1★SKIP 4.7p)[skip<2★] ↓1.3421(1★SKIP 12.6p)[skip<2★] ↓1.3429(2★SKIP 20.6p) ↓1.34369(1★SKIP 28.5p)[skip<2★] ↓1.34448(1★SKIP 36.4p)[skip<2★] ↑1.33617(1★SKIP 46.7p)[skip<2★] +13 more
+  USD/JPY @ 158.863 | ↑158.861(2★SKIP 0.2p) ↓158.918(2★SKIP 5.5p) ↑158.72(1★SKIP 14.3p)[skip<2★] ↓159.059(2★SKIP 19.6p) ↓159.117(1★SKIP 25.4p)[skip<2★] ↑158.521(1★SKIP 34.2p)[skip<2★] +14 more
+  AUD/USD @ 0.71121 | ↑0.71042(2★B 7.9p) ↑0.70978(1★B 14.3p)[skip<2★] ↓0.71275(1★SKIP 15.4p)[skip<2★] ↓0.71508(1★SKIP 38.7p)[skip<2★] ↑0.70576(2★B 54.5p) ↓0.71785(2★SKIP 66.4p) +16 more
+  XAU/USD @ 4500.67 | ↑4504.35(1★SKIP 3.7p)[skip<2★] ↓4514.48(1★A 13.8p)[skip<2★] ↓4528.49(1★A 27.8p)[skip<2★] ↑4466.54(1★SKIP 34.1p)[skip<2★] ↓4548.42(1★A 47.8p)[skip<2★] ↑4446.6(1★SKIP 54.1p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37517 | ↓1.37534(1★A 1.7p)[skip<2★] ↑1.37498(1★B 1.9p)[skip<2★] ↑1.37482(1★B 3.5p)[skip<2★] ↓1.37569(3★A 5.2p) ↑1.37446(1★B 7.1p)[skip<2★] ↓1.37605(1★A 8.8p)[skip<2★] +27 more
+  USD/CHF @ 0.78873 | ↓0.78907(2★A 3.4p) ↓0.78948(1★B 7.5p)[skip<2★] ↑0.78771(1★SKIP 10.2p)[skip<2★] ↑0.78683(1★SKIP 19.0p)[skip<2★] ↑0.78661(2★SKIP 21.2p) ↑0.78646(3★SKIP 22.7p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28979.0 | ↓29057.2(1★SKIP 78.2p)[skip<2★] ↑28860.7(2★A 118.3p) ↓29160.9(1★SKIP 181.9p)[skip<2★] ↑28793.5(2★A 185.5p) ↓29181.3(1★SKIP 202.3p)[skip<2★] ↑28755.8(1★A 223.2p)[skip<2★] +19 more
+[2026-05-19 18:58:18] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16102
+[2026-05-19 18:58:18] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.863
+[2026-05-19 18:58:18] [INFO] [AUD/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.71121
+[2026-05-19 18:58:18] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37517
+[2026-05-19 18:58:18] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78873
+[2026-05-19 18:58:18] [INFO] Near level (2/2): EUR/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF
+[2026-05-19 18:58:18] [WARNING] RiskGuard [EUR/USD]: Locked out — 140m remaining
+[2026-05-19 18:58:18] [WARNING] RiskGuard [USD/JPY]: Locked out — 140m remaining
+[2026-05-19 18:58:18] [WARNING] RiskGuard [AUD/USD]: Locked out — 140m remaining
+[2026-05-19 18:58:18] [WARNING] RiskGuard [USD/CAD]: Locked out — 140m remaining
+[2026-05-19 18:58:18] [WARNING] RiskGuard [USD/CHF]: Locked out — 140m remaining
+[2026-05-19 18:58:46] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:53:15.312Z  min_stars=2
+  EUR/USD @ 1.16108 | ↓1.16129(5★B 2.1p) ↑1.160015(4★B 10.6p) ↓1.1624249999999998(5★B 13.4p) ↓1.1629924999999999(5★B 19.1p) ↑1.15902(3★B 20.6p) ↓1.1634349999999998(5★B 23.5p) +20 more
+  GBP/USD @ 1.34094 | ↓1.34131(1★SKIP 3.7p)[skip<2★] ↓1.3421(1★SKIP 11.6p)[skip<2★] ↓1.3429(2★SKIP 19.6p) ↓1.34369(1★SKIP 27.5p)[skip<2★] ↓1.34448(1★SKIP 35.4p)[skip<2★] ↑1.33617(1★SKIP 47.7p)[skip<2★] +13 more
+  USD/JPY @ 158.85 | ↑158.861(2★SKIP 1.1p) ↓158.918(2★SKIP 6.8p) ↑158.72(1★SKIP 13.0p)[skip<2★] ↓159.059(2★SKIP 20.9p) ↓159.117(1★SKIP 26.7p)[skip<2★] ↑158.521(1★SKIP 32.9p)[skip<2★] +14 more
+  AUD/USD @ 0.71126 | ↑0.71042(2★B 8.4p) ↑0.70978(1★B 14.8p)[skip<2★] ↓0.71275(1★SKIP 14.9p)[skip<2★] ↓0.71508(1★SKIP 38.2p)[skip<2★] ↑0.70576(2★B 55.0p) ↓0.71785(2★SKIP 65.9p) +16 more
+  XAU/USD @ 4501.01 | ↑4504.35(1★SKIP 3.3p)[skip<2★] ↓4514.48(1★A 13.5p)[skip<2★] ↓4528.49(1★A 27.5p)[skip<2★] ↑4466.54(1★SKIP 34.5p)[skip<2★] ↓4548.42(1★A 47.4p)[skip<2★] ↑4446.6(1★SKIP 54.4p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37515 | ↑1.37498(1★B 1.7p)[skip<2★] ↓1.37534(1★A 1.9p)[skip<2★] ↑1.37482(1★B 3.3p)[skip<2★] ↓1.37569(3★A 5.4p) ↑1.37446(1★B 6.9p)[skip<2★] ↓1.37605(1★A 9.0p)[skip<2★] +27 more
+  USD/CHF @ 0.78869 | ↓0.78907(2★A 3.8p) ↓0.78948(1★B 7.9p)[skip<2★] ↑0.78771(1★SKIP 9.8p)[skip<2★] ↑0.78683(1★SKIP 18.6p)[skip<2★] ↑0.78661(2★SKIP 20.8p) ↑0.78646(3★SKIP 22.3p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 28995.8 | ↓29057.2(1★SKIP 61.4p)[skip<2★] ↑28860.7(2★A 135.1p) ↓29160.9(1★SKIP 165.1p)[skip<2★] ↓29181.3(1★SKIP 185.5p)[skip<2★] ↑28793.5(2★A 202.3p) ↓29228.1(1★SKIP 232.3p)[skip<2★] +19 more
+[2026-05-19 18:58:46] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16108
+[2026-05-19 18:58:46] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.85
+[2026-05-19 18:58:46] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37515
+[2026-05-19 18:58:46] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78869
+[2026-05-19 18:58:46] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:58:46] [WARNING] RiskGuard [EUR/USD]: Locked out — 139m remaining
+[2026-05-19 18:58:46] [WARNING] RiskGuard [USD/JPY]: Locked out — 139m remaining
+[2026-05-19 18:58:46] [WARNING] RiskGuard [USD/CAD]: Locked out — 139m remaining
+[2026-05-19 18:58:46] [WARNING] RiskGuard [USD/CHF]: Locked out — 139m remaining
+[2026-05-19 18:59:22] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16109
+[2026-05-19 18:59:22] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.862
+[2026-05-19 18:59:22] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37514
+[2026-05-19 18:59:22] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78864
+[2026-05-19 18:59:22] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 18:59:22] [WARNING] RiskGuard [EUR/USD]: Locked out — 139m remaining
+[2026-05-19 18:59:22] [WARNING] RiskGuard [USD/JPY]: Locked out — 139m remaining
+[2026-05-19 18:59:22] [WARNING] RiskGuard [USD/CAD]: Locked out — 139m remaining
+[2026-05-19 18:59:22] [WARNING] RiskGuard [USD/CHF]: Locked out — 139m remaining
+[2026-05-19 18:59:49] [INFO] State refreshed from dashboard KV
+[2026-05-19 19:00:12] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:58:20.210Z  min_stars=2
+  EUR/USD @ 1.16107 | ↓1.16129(5★B 2.2p) ↑1.160015(4★B 10.6p) ↓1.1624249999999998(5★B 13.5p) ↓1.1629924999999999(5★B 19.2p) ↑1.15902(3★B 20.5p) ↓1.1634349999999998(5★B 23.6p) +20 more
+  GBP/USD @ 1.34086 | ↓1.34131(1★SKIP 4.5p)[skip<2★] ↓1.3421(1★SKIP 12.4p)[skip<2★] ↓1.3429(2★SKIP 20.4p) ↓1.34369(1★SKIP 28.3p)[skip<2★] ↓1.34448(1★SKIP 36.2p)[skip<2★] ↑1.33617(1★SKIP 46.9p)[skip<2★] +13 more
+  USD/JPY @ 158.864 | ↑158.861(2★SKIP 0.3p) ↓158.918(2★SKIP 5.4p) ↑158.72(1★SKIP 14.4p)[skip<2★] ↓159.059(2★SKIP 19.5p) ↓159.117(1★SKIP 25.3p)[skip<2★] ↑158.521(1★SKIP 34.3p)[skip<2★] +14 more
+  AUD/USD @ 0.71128 | ↑0.71042(2★B 8.6p) ↓0.71275(1★SKIP 14.7p)[skip<2★] ↑0.70978(1★B 15.0p)[skip<2★] ↓0.71508(1★SKIP 38.0p)[skip<2★] ↑0.70576(2★B 55.2p) ↓0.71785(2★SKIP 65.7p) +16 more
+  XAU/USD @ 4500.9 | ↑4504.35(1★SKIP 3.5p)[skip<2★] ↓4514.48(1★A 13.6p)[skip<2★] ↓4528.49(1★A 27.6p)[skip<2★] ↑4466.54(1★SKIP 34.4p)[skip<2★] ↓4548.42(1★A 47.5p)[skip<2★] ↑4446.6(1★SKIP 54.3p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37516 | ↑1.37498(1★B 1.8p)[skip<2★] ↓1.37534(1★A 1.8p)[skip<2★] ↑1.37482(1★B 3.4p)[skip<2★] ↓1.37569(3★A 5.3p) ↑1.37446(1★B 7.0p)[skip<2★] ↓1.37605(1★A 8.9p)[skip<2★] +27 more
+  USD/CHF @ 0.78865 | ↓0.78907(2★A 4.2p) ↓0.78948(1★B 8.3p)[skip<2★] ↑0.78771(1★SKIP 9.4p)[skip<2★] ↑0.78683(1★SKIP 18.2p)[skip<2★] ↑0.78661(2★SKIP 20.4p) ↑0.78646(3★SKIP 21.9p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29004.2 | ↓29057.2(1★SKIP 53.0p)[skip<2★] ↑28860.7(2★A 143.5p) ↓29160.9(1★SKIP 156.7p)[skip<2★] ↓29181.3(1★SKIP 177.1p)[skip<2★] ↑28793.5(2★A 210.7p) ↓29228.1(1★SKIP 223.9p)[skip<2★] +19 more
+[2026-05-19 19:00:12] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16107
+[2026-05-19 19:00:12] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.864
+[2026-05-19 19:00:12] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37516
+[2026-05-19 19:00:12] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78865
+[2026-05-19 19:00:12] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 19:00:12] [WARNING] RiskGuard [EUR/USD]: Locked out — 138m remaining
+[2026-05-19 19:00:12] [WARNING] RiskGuard [USD/JPY]: Locked out — 138m remaining
+[2026-05-19 19:00:12] [WARNING] RiskGuard [USD/CAD]: Locked out — 138m remaining
+[2026-05-19 19:00:12] [WARNING] RiskGuard [USD/CHF]: Locked out — 138m remaining
+[2026-05-19 19:00:32] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:58:20.210Z  min_stars=2
+  EUR/USD @ 1.1611 | ↓1.16129(5★B 1.9p) ↑1.160015(4★B 10.9p) ↓1.1624249999999998(5★B 13.2p) ↓1.1629924999999999(5★B 18.9p) ↑1.15902(3★B 20.8p) ↓1.1634349999999998(5★B 23.3p) +20 more
+  GBP/USD @ 1.34094 | ↓1.34131(1★SKIP 3.7p)[skip<2★] ↓1.3421(1★SKIP 11.6p)[skip<2★] ↓1.3429(2★SKIP 19.6p) ↓1.34369(1★SKIP 27.5p)[skip<2★] ↓1.34448(1★SKIP 35.4p)[skip<2★] ↑1.33617(1★SKIP 47.7p)[skip<2★] +13 more
+  USD/JPY @ 158.868 | ↑158.861(2★SKIP 0.7p) ↓158.918(2★SKIP 5.0p) ↑158.72(1★SKIP 14.8p)[skip<2★] ↓159.059(2★SKIP 19.1p) ↓159.117(1★SKIP 24.9p)[skip<2★] ↑158.521(1★SKIP 34.7p)[skip<2★] +14 more
+  AUD/USD @ 0.71132 | ↑0.71042(2★B 9.0p) ↓0.71275(1★SKIP 14.3p)[skip<2★] ↑0.70978(1★B 15.4p)[skip<2★] ↓0.71508(1★SKIP 37.6p)[skip<2★] ↑0.70576(2★B 55.6p) ↓0.71785(2★SKIP 65.3p) +16 more
+  XAU/USD @ 4500.88 | ↑4504.35(1★SKIP 3.5p)[skip<2★] ↓4514.48(1★A 13.6p)[skip<2★] ↓4528.49(1★A 27.6p)[skip<2★] ↑4466.54(1★SKIP 34.3p)[skip<2★] ↓4548.42(1★A 47.5p)[skip<2★] ↑4446.6(1★SKIP 54.3p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37516 | ↑1.37498(1★B 1.8p)[skip<2★] ↓1.37534(1★A 1.8p)[skip<2★] ↑1.37482(1★B 3.4p)[skip<2★] ↓1.37569(3★A 5.3p) ↑1.37446(1★B 7.0p)[skip<2★] ↓1.37605(1★A 8.9p)[skip<2★] +27 more
+  USD/CHF @ 0.78866 | ↓0.78907(2★A 4.1p) ↓0.78948(1★B 8.2p)[skip<2★] ↑0.78771(1★SKIP 9.5p)[skip<2★] ↑0.78683(1★SKIP 18.3p)[skip<2★] ↑0.78661(2★SKIP 20.5p) ↑0.78646(3★SKIP 22.0p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29008.4 | ↓29057.2(1★SKIP 48.8p)[skip<2★] ↑28860.7(2★A 147.7p) ↓29160.9(1★SKIP 152.5p)[skip<2★] ↓29181.3(1★SKIP 172.9p)[skip<2★] ↑28793.5(2★A 214.9p) ↓29228.1(1★SKIP 219.7p)[skip<2★] +19 more
+[2026-05-19 19:00:32] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.1611
+[2026-05-19 19:00:32] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.868
+[2026-05-19 19:00:32] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37516
+[2026-05-19 19:00:32] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78866
+[2026-05-19 19:00:32] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 19:00:32] [WARNING] RiskGuard [EUR/USD]: Locked out — 138m remaining
+[2026-05-19 19:00:32] [WARNING] RiskGuard [USD/JPY]: Locked out — 138m remaining
+[2026-05-19 19:00:32] [WARNING] RiskGuard [USD/CAD]: Locked out — 138m remaining
+[2026-05-19 19:00:32] [WARNING] RiskGuard [USD/CHF]: Locked out — 138m remaining
+[2026-05-19 19:00:53] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16112
+[2026-05-19 19:00:53] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.868
+[2026-05-19 19:00:53] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37511
+[2026-05-19 19:00:53] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78863
+[2026-05-19 19:00:53] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 19:00:53] [WARNING] RiskGuard [EUR/USD]: Locked out — 137m remaining
+[2026-05-19 19:00:53] [WARNING] RiskGuard [USD/JPY]: Locked out — 137m remaining
+[2026-05-19 19:00:53] [WARNING] RiskGuard [USD/CAD]: Locked out — 137m remaining
+[2026-05-19 19:00:53] [WARNING] RiskGuard [USD/CHF]: Locked out — 137m remaining
+[2026-05-19 19:01:10] [INFO] [DIAG] Snapshot pushed_at=2026-05-19T17:58:20.210Z  min_stars=2
+  EUR/USD @ 1.16114 | ↓1.16129(5★B 1.5p) ↑1.160015(4★B 11.3p) ↓1.1624249999999998(5★B 12.8p) ↓1.1629924999999999(5★B 18.5p) ↑1.15902(3★B 21.2p) ↓1.1634349999999998(5★B 22.9p) +20 more
+  GBP/USD @ 1.34086 | ↓1.34131(1★SKIP 4.5p)[skip<2★] ↓1.3421(1★SKIP 12.4p)[skip<2★] ↓1.3429(2★SKIP 20.4p) ↓1.34369(1★SKIP 28.3p)[skip<2★] ↓1.34448(1★SKIP 36.2p)[skip<2★] ↑1.33617(1★SKIP 46.9p)[skip<2★] +13 more
+  USD/JPY @ 158.876 | ↑158.861(2★SKIP 1.5p) ↓158.918(2★SKIP 4.2p) ↑158.72(1★SKIP 15.6p)[skip<2★] ↓159.059(2★SKIP 18.3p) ↓159.117(1★SKIP 24.1p)[skip<2★] ↑158.521(1★SKIP 35.5p)[skip<2★] +14 more
+  AUD/USD @ 0.71133 | ↑0.71042(2★B 9.1p) ↓0.71275(1★SKIP 14.2p)[skip<2★] ↑0.70978(1★B 15.5p)[skip<2★] ↓0.71508(1★SKIP 37.5p)[skip<2★] ↑0.70576(2★B 55.7p) ↓0.71785(2★SKIP 65.2p) +16 more
+  XAU/USD @ 4500.765 | ↑4504.35(1★SKIP 3.6p)[skip<2★] ↓4514.48(1★A 13.7p)[skip<2★] ↓4528.49(1★A 27.7p)[skip<2★] ↑4466.54(1★SKIP 34.2p)[skip<2★] ↓4548.42(1★A 47.7p)[skip<2★] ↑4446.6(1★SKIP 54.2p)[skip<2★] +24 more
+  EUR/GBP: no entries
+  USD/CAD @ 1.37514 | ↑1.37498(1★B 1.6p)[skip<2★] ↓1.37534(1★A 2.0p)[skip<2★] ↑1.37482(1★B 3.2p)[skip<2★] ↓1.37569(3★A 5.5p) ↑1.37446(1★B 6.8p)[skip<2★] ↓1.37605(1★A 9.1p)[skip<2★] +27 more
+  USD/CHF @ 0.78864 | ↓0.78907(2★A 4.3p) ↓0.78948(1★B 8.4p)[skip<2★] ↑0.78771(1★SKIP 9.3p)[skip<2★] ↑0.78683(1★SKIP 18.1p)[skip<2★] ↑0.78661(2★SKIP 20.3p) ↑0.78646(3★SKIP 21.8p) +27 more
+  GBP/JPY: no entries
+  NAS100_USD @ 29015.8 | ↓29057.2(1★SKIP 41.4p)[skip<2★] ↓29160.9(1★SKIP 145.1p)[skip<2★] ↑28860.7(2★A 155.1p) ↓29181.3(1★SKIP 165.5p)[skip<2★] ↓29228.1(1★SKIP 212.3p)[skip<2★] ↑28793.5(2★A 222.3p) +19 more
+[2026-05-19 19:01:10] [INFO] [EUR/USD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.16114
+[2026-05-19 19:01:10] [INFO] [USD/JPY] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=158.876
+[2026-05-19 19:01:10] [INFO] [USD/CAD] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=1.37514
+[2026-05-19 19:01:10] [INFO] [USD/CHF] pre_screen 2/2  tol=8.00pips  WT1=n/a  live=0.78864
+[2026-05-19 19:01:10] [INFO] Near level (2/2): EUR/USD, USD/JPY, USD/CAD, USD/CHF
+[2026-05-19 19:01:10] [WARNING] RiskGuard [EUR/USD]: Locked out — 137m remaining
+[2026-05-19 19:01:10] [WARNING] RiskGuard [USD/JPY]: Locked out — 137m remaining
+[2026-05-19 19:01:10] [WARNING] RiskGuard [USD/CAD]: Locked out — 137m remaining
+[2026-05-19 19:01:10] [WARNING] RiskGuard [USD/CHF]: Locked out — 137m remaining
