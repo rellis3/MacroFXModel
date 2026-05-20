@@ -5,3 +5,35 @@
 09:16:48  INFO     Kill: D=2R  W=5R  M=10R
 09:16:48  INFO     Features (10): rangePosition, chochBos, wickRejection, orderBlock, htfEma, vwapSlope, hurstRegime, fvgBias, ichimokuCloud, macdSignal
 09:16:48  INFO     --- New day 2026-05-20 ---  R daily=+0.00  weekly=+0.00  monthly=+0.00  limits=D2/W5/M10
+09:26:53  INFO     MT5 connected  account=107132286  balance=100000.00 GBP  server=MetaQuotes-Demo
+09:26:53  INFO     === backtestSystem started ===
+09:26:53  INFO     Pairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD']  poll=60s
+09:26:53  INFO     Method: both  SL: atr30m  TP: structural  RR: 2.2
+09:26:53  INFO     Kill: D=2R  W=5R  M=10R
+09:26:53  INFO     Features (10): rangePosition, chochBos, wickRejection, orderBlock, htfEma, vwapSlope, hurstRegime, fvgBias, ichimokuCloud, macdSignal
+09:26:53  INFO     --- New day 2026-05-20 ---  R daily=+0.00  weekly=+0.00  monthly=+0.00  limits=D2/W5/M10
+09:51:08  INFO     MT5 connected  account=107132286  balance=100000.00 GBP  server=MetaQuotes-Demo
+09:51:08  INFO     === backtestSystem started ===
+09:51:08  INFO     Pairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'NAS100USD']  poll=2s
+09:51:08  INFO     Method: both  SL: atr30m  TP: structural  RR: 2.2
+09:51:08  INFO     Kill: D=2R  W=5R  M=10R
+09:51:08  INFO     Features (10): rangePosition, chochBos, wickRejection, orderBlock, htfEma, vwapSlope, hurstRegime, fvgBias, ichimokuCloud, macdSignal
+09:51:08  INFO     --- New day 2026-05-20 ---  R daily=+0.00  weekly=+0.00  monthly=+0.00  limits=D2/W5/M10
+09:51:08  WARNING  MT5: no bars for NAS100USD tf=5
+09:51:08  WARNING  MT5: no bars for NAS100USD tf=30
+09:51:08  WARNING  MT5: no bars for NAS100USD tf=16408
+09:51:10  WARNING  MT5: no bars for NAS100USD tf=5
+09:51:10  WARNING  MT5: no bars for NAS100USD tf=30
+09:51:10  WARNING  MT5: no bars for NAS100USD tf=16408
+09:51:12  WARNING  MT5: no bars for NAS100USD tf=5
+09:51:12  WARNING  MT5: no bars for NAS100USD tf=30
+09:51:12  WARNING  MT5: no bars for NAS100USD tf=16408
+09:51:14  WARNING  MT5: no bars for NAS100USD tf=5
+09:51:14  WARNING  MT5: no bars for NAS100USD tf=30
+09:51:14  WARNING  MT5: no bars for NAS100USD tf=16408
+09:51:16  WARNING  MT5: no bars for NAS100USD tf=5
+09:51:16  WARNING  MT5: no bars for NAS100USD tf=30
+09:51:16  WARNING  MT5: no bars for NAS100USD tf=16408
+09:51:18  WARNING  MT5: no bars for NAS100USD tf=5
+09:51:18  WARNING  MT5: no bars for NAS100USD tf=30
+09:51:18  WARNING  MT5: no bars for NAS100USD tf=16408

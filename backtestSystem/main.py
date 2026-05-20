@@ -36,7 +36,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-_DEFAULT_POLL = 60  # fallback if not in config
+_DEFAULT_POLL = 2  # fallback if not in config
 
 
 # ── KV credential fetch ───────────────────────────────────────────────────────
@@ -74,7 +74,11 @@ def _level_key(pair: str, price: float, pip: float) -> str:
 # ── Per-pair evaluation ───────────────────────────────────────────────────────
 
 def run_pair(pair: str, cfg: dict, kill: KillSwitch,
-             level_entries: dict, today_date: str) -> None:
+             level_entries: dict, today_date: str, london_hour: int) -> None:
+    # Asia session runs midnight–06:00 London; levels are only valid once it closes
+    if london_hour < 6:
+        return
+
     pip = pip_size(pair)
 
     # ── Fetch bars + live price ───────────────────────────────────────────
@@ -255,7 +259,7 @@ def main() -> None:
 
             for pair in pairs:
                 try:
-                    run_pair(pair, cfg, kill, level_entries, today_date)
+                    run_pair(pair, cfg, kill, level_entries, today_date, now['lHour'])
                 except Exception as exc:
                     log.exception(f'{pair}: error — {exc}')
 

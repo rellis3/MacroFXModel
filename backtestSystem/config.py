@@ -58,7 +58,7 @@ DEFAULTS = {
     "killMonthly":       10.0,
 
     # Poll interval
-    "pollInterval":      60,             # seconds between price checks
+    "pollInterval":      2,             # seconds between price checks
 
     # Position sizing
     "posMode":           "risk_pct",
@@ -66,7 +66,7 @@ DEFAULTS = {
     "riskPct":           1.0,            # % of balance per trade
 
     # Enabled pairs
-    "enabledPairs": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD"],
+    "enabledPairs": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD","USTECH100M"],
 
     # Feature flags — all off by default; set in configs/active.json
     "features": {
