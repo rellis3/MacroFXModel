@@ -30,7 +30,7 @@ DEFAULTS = {
     "rejectionBar":      False,
     "rejWickPct":        0.40,
     "rejMinAtrPct":      0.30,
-    "useM1Features":     False,
+    "useM1Features":     True,
 
     # SL
     "slMode":            "range",         # range | atr | atr30m

@@ -582,3 +582,111 @@
 11:53:39  WARNING  KV status push failed: HTTP Error 403: Forbidden
 11:53:41  WARNING  KV status push failed: HTTP Error 403: Forbidden
 11:53:44  WARNING  KV status push failed: HTTP Error 403: Forbidden
+12:39:02  INFO     MT5 connected  account=107132286  balance=100000.00 GBP  server=MetaQuotes-Demo
+12:39:02  INFO     === backtestSystem started ===
+12:39:02  INFO     Dashboard URL: https://macrofxmodel-production.up.railway.app/
+12:39:02  INFO     Pairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'USTECH100M']  poll=2s
+12:39:02  INFO     Method: both  SL: atr30m  TP: structural  RR: 2.2
+12:39:02  INFO     Kill: D=2R  W=5R  M=10R
+12:39:02  INFO     Features (10): rangePosition, chochBos, wickRejection, orderBlock, htfEma, vwapSlope, hurstRegime, fvgBias, ichimokuCloud, macdSignal
+12:39:02  INFO     --- New day 2026-05-20 ---  R daily=+0.00  weekly=+0.00  monthly=+0.00  limits=D2/W5/M10
+12:39:02  INFO     EURUSD  1.16038  Asia[1.15920–1.16128 21p]  nearest=1.16024 (1.4p)  ◄ IN ZONE
+12:39:02  INFO       EURUSD  dir=short  conv=0.36  confirms=5 conflicts=2  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✓  hurstReg✓  fvgBias✗  ichimoku✓  macdSign✗]
+12:39:02  INFO     TRADE  EURUSD SHORT @ 1.16038  SL=1.16207  TP=1.14578  lots=5.92  conv=0.36  confirms=5/7
+12:39:02  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:02  INFO     GBPUSD  1.34057  Asia[1.33778–1.34040 26p]  nearest=1.34775 (71.8p)
+12:39:02  INFO     USDJPY  158.98850  Asia[158.95300–159.10400 15p]  nearest=158.94975 (3.9p)  ◄ IN ZONE
+12:39:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [rangePos·  chochBos·  wickReje·  orderBlo·  htfEma·  vwapSlop·  hurstReg·  fvgBias·  ichimoku·  macdSign·]
+12:39:02  INFO     AUDUSD  0.71325  Asia[0.70865–0.71124 26p]  nearest=0.71383 (5.8p)  ◄ IN ZONE
+12:39:02  INFO       AUDUSD  dir=long   conv=0.27  confirms=4 conflicts=2  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias·  ichimoku✓  macdSign✓]
+12:39:02  INFO     TRADE  AUDUSD LONG @ 0.71325  SL=0.71163  TP=0.71682  lots=6.16  conv=0.27  confirms=4/6
+12:39:02  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:02  INFO     XAUUSD  4496.25500  Asia[4456.24000–4508.83000 53p]  nearest=4482.53500 (13.7p)  ◄ IN ZONE
+12:39:02  INFO       XAUUSD  dir=short  conv=0.45  confirms=5 conflicts=1  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✗  vwapSlop✓  hurstReg✓  fvgBias·  ichimoku✓  macdSign✓]
+12:39:02  INFO     TRADE  XAUUSD SHORT @ 4496.25500  SL=4523.3608  TP=4220.585  lots=0.37  conv=0.45  confirms=5/6
+12:39:02  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:02  INFO     USTECH100M  29046.75000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+12:39:04  INFO     EURUSD  1.16038  Asia[1.15920–1.16128 21p]  nearest=1.16024 (1.4p)  ◄ IN ZONE
+12:39:04  INFO       EURUSD  dir=short  conv=0.36  confirms=5 conflicts=2  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✓  hurstReg✓  fvgBias✗  ichimoku✓  macdSign✗]
+12:39:04  INFO     TRADE  EURUSD SHORT @ 1.16038  SL=1.16207  TP=1.14578  lots=5.92  conv=0.36  confirms=5/7
+12:39:04  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:05  INFO     USDJPY  158.98850  Asia[158.95300–159.10400 15p]  nearest=158.94975 (3.9p)  ◄ IN ZONE
+12:39:05  INFO       USDJPY  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias✓  ichimoku✗  macdSign✓]
+12:39:05  INFO       USDJPY  skip — conviction 0.18 < 0.2
+12:39:05  INFO     AUDUSD  0.71325  Asia[0.70865–0.71124 26p]  nearest=0.71383 (5.8p)  ◄ IN ZONE
+12:39:05  INFO       AUDUSD  dir=long   conv=0.27  confirms=4 conflicts=2  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias·  ichimoku✓  macdSign✓]
+12:39:05  INFO     TRADE  AUDUSD LONG @ 0.71325  SL=0.71162  TP=0.71684  lots=6.13  conv=0.27  confirms=4/6
+12:39:05  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:05  INFO     XAUUSD  4496.23500  Asia[4456.24000–4508.83000 53p]  nearest=4482.53500 (13.7p)  ◄ IN ZONE
+12:39:05  INFO       XAUUSD  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✗  vwapSlop✓  hurstReg✓  fvgBias✗  ichimoku✓  macdSign✗]
+12:39:05  INFO       XAUUSD  skip — conviction 0.18 < 0.2
+12:39:07  INFO     EURUSD  1.16034  Asia[1.15920–1.16128 21p]  nearest=1.16024 (1.1p)  ◄ IN ZONE
+12:39:07  INFO       EURUSD  dir=short  conv=0.36  confirms=5 conflicts=2  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✓  hurstReg✓  fvgBias✗  ichimoku✓  macdSign✗]
+12:39:07  INFO     TRADE  EURUSD SHORT @ 1.16034  SL=1.16203  TP=1.14578  lots=5.92  conv=0.36  confirms=5/7
+12:39:07  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:07  INFO     USDJPY  158.98850  Asia[158.95300–159.10400 15p]  nearest=158.94975 (3.9p)  ◄ IN ZONE
+12:39:07  INFO       USDJPY  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias✓  ichimoku✗  macdSign✓]
+12:39:07  INFO       USDJPY  skip — conviction 0.18 < 0.2
+12:39:07  INFO     AUDUSD  0.71325  Asia[0.70865–0.71124 26p]  nearest=0.71383 (5.8p)  ◄ IN ZONE
+12:39:07  INFO       AUDUSD  dir=long   conv=0.27  confirms=4 conflicts=2  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias·  ichimoku✓  macdSign✓]
+12:39:07  INFO     TRADE  AUDUSD LONG @ 0.71325  SL=0.71162  TP=0.71684  lots=6.13  conv=0.27  confirms=4/6
+12:39:07  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:07  INFO     XAUUSD  4496.54500  Asia[4456.24000–4508.83000 53p]  nearest=4482.53500 (14.0p)  ◄ IN ZONE
+12:39:07  INFO       XAUUSD  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✗  vwapSlop✓  hurstReg✓  fvgBias✗  ichimoku✓  macdSign✗]
+12:39:07  INFO       XAUUSD  skip — conviction 0.18 < 0.2
+12:39:09  INFO     EURUSD  1.16038  Asia[1.15920–1.16128 21p]  nearest=1.16024 (1.4p)  ◄ IN ZONE
+12:39:09  INFO       EURUSD  dir=short  conv=0.36  confirms=5 conflicts=2  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✓  hurstReg✓  fvgBias✗  ichimoku✓  macdSign✗]
+12:39:09  INFO     TRADE  EURUSD SHORT @ 1.16038  SL=1.16207  TP=1.14578  lots=5.92  conv=0.36  confirms=5/7
+12:39:09  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:09  INFO     USDJPY  158.98850  Asia[158.95300–159.10400 15p]  nearest=158.94975 (3.9p)  ◄ IN ZONE
+12:39:09  INFO       USDJPY  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias✓  ichimoku✗  macdSign✓]
+12:39:09  INFO       USDJPY  skip — conviction 0.18 < 0.2
+12:39:09  INFO     AUDUSD  0.71325  Asia[0.70865–0.71124 26p]  nearest=0.71383 (5.8p)  ◄ IN ZONE
+12:39:09  INFO       AUDUSD  dir=long   conv=0.27  confirms=4 conflicts=2  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias·  ichimoku✓  macdSign✓]
+12:39:09  INFO     TRADE  AUDUSD LONG @ 0.71325  SL=0.71162  TP=0.71684  lots=6.13  conv=0.27  confirms=4/6
+12:39:09  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:09  INFO     XAUUSD  4496.44500  Asia[4456.24000–4508.83000 53p]  nearest=4482.53500 (13.9p)  ◄ IN ZONE
+12:39:09  INFO       XAUUSD  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✗  vwapSlop✓  hurstReg✓  fvgBias✗  ichimoku✓  macdSign✗]
+12:39:09  INFO       XAUUSD  skip — conviction 0.18 < 0.2
+12:39:12  INFO     EURUSD  1.16040  Asia[1.15920–1.16128 21p]  nearest=1.16024 (1.6p)  ◄ IN ZONE
+12:39:12  INFO       EURUSD  dir=short  conv=0.45  confirms=5 conflicts=1  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✓  hurstReg✓  fvgBias·  ichimoku✓  macdSign✗]
+12:39:12  INFO     TRADE  EURUSD SHORT @ 1.16040  SL=1.16209  TP=1.14578  lots=5.92  conv=0.45  confirms=5/6
+12:39:12  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:12  INFO     USDJPY  158.98850  Asia[158.95300–159.10400 15p]  nearest=158.94975 (3.9p)  ◄ IN ZONE
+12:39:12  INFO       USDJPY  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias✓  ichimoku✗  macdSign✓]
+12:39:12  INFO       USDJPY  skip — conviction 0.18 < 0.2
+12:39:12  INFO     AUDUSD  0.71325  Asia[0.70865–0.71124 26p]  nearest=0.71383 (5.8p)  ◄ IN ZONE
+12:39:12  INFO       AUDUSD  dir=long   conv=0.27  confirms=4 conflicts=2  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias·  ichimoku✓  macdSign✓]
+12:39:12  INFO     TRADE  AUDUSD LONG @ 0.71325  SL=0.71162  TP=0.71684  lots=6.13  conv=0.27  confirms=4/6
+12:39:12  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:12  INFO     XAUUSD  4496.47500  Asia[4456.24000–4508.83000 53p]  nearest=4482.53500 (13.9p)  ◄ IN ZONE
+12:39:12  INFO       XAUUSD  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✗  vwapSlop✓  hurstReg✓  fvgBias✗  ichimoku✓  macdSign✗]
+12:39:12  INFO       XAUUSD  skip — conviction 0.18 < 0.2
+12:39:14  INFO     EURUSD  1.16040  Asia[1.15920–1.16128 21p]  nearest=1.16024 (1.6p)  ◄ IN ZONE
+12:39:14  INFO       EURUSD  dir=short  conv=0.45  confirms=5 conflicts=1  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✓  hurstReg✓  fvgBias·  ichimoku✓  macdSign✗]
+12:39:14  INFO     TRADE  EURUSD SHORT @ 1.16040  SL=1.16209  TP=1.14578  lots=5.92  conv=0.45  confirms=5/6
+12:39:14  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:14  INFO     USDJPY  158.98950  Asia[158.95300–159.10400 15p]  nearest=159.02800 (3.8p)  ◄ IN ZONE
+12:39:14  INFO       USDJPY  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias✓  ichimoku✗  macdSign✓]
+12:39:14  INFO       USDJPY  skip — conviction 0.18 < 0.2
+12:39:14  INFO     AUDUSD  0.71325  Asia[0.70865–0.71124 26p]  nearest=0.71383 (5.8p)  ◄ IN ZONE
+12:39:14  INFO       AUDUSD  dir=long   conv=0.27  confirms=4 conflicts=2  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias·  ichimoku✓  macdSign✓]
+12:39:14  INFO     TRADE  AUDUSD LONG @ 0.71325  SL=0.71162  TP=0.71684  lots=6.13  conv=0.27  confirms=4/6
+12:39:14  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:14  INFO     XAUUSD  4496.44500  Asia[4456.24000–4508.83000 53p]  nearest=4482.53500 (13.9p)  ◄ IN ZONE
+12:39:14  INFO       XAUUSD  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✗  vwapSlop✓  hurstReg✓  fvgBias✗  ichimoku✓  macdSign✗]
+12:39:14  INFO       XAUUSD  skip — conviction 0.18 < 0.2
+12:39:16  INFO     EURUSD  1.16040  Asia[1.15920–1.16128 21p]  nearest=1.16024 (1.6p)  ◄ IN ZONE
+12:39:16  INFO       EURUSD  dir=short  conv=0.45  confirms=5 conflicts=1  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✓  hurstReg✓  fvgBias·  ichimoku✓  macdSign✗]
+12:39:16  INFO     TRADE  EURUSD SHORT @ 1.16040  SL=1.16209  TP=1.14578  lots=5.92  conv=0.45  confirms=5/6
+12:39:16  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:16  INFO     USDJPY  158.98950  Asia[158.95300–159.10400 15p]  nearest=159.02800 (3.8p)  ◄ IN ZONE
+12:39:16  INFO       USDJPY  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias✓  ichimoku✗  macdSign✓]
+12:39:16  INFO       USDJPY  skip — conviction 0.18 < 0.2
+12:39:16  INFO     AUDUSD  0.71325  Asia[0.70865–0.71124 26p]  nearest=0.71383 (5.8p)  ◄ IN ZONE
+12:39:16  INFO       AUDUSD  dir=long   conv=0.27  confirms=4 conflicts=2  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✓  vwapSlop✗  hurstReg✗  fvgBias·  ichimoku✓  macdSign✓]
+12:39:16  INFO     TRADE  AUDUSD LONG @ 0.71325  SL=0.71162  TP=0.71684  lots=6.13  conv=0.27  confirms=4/6
+12:39:16  ERROR    Order failed: retcode=10027  AutoTrading disabled by client
+12:39:16  INFO     XAUUSD  4496.47500  Asia[4456.24000–4508.83000 53p]  nearest=4482.53500 (13.9p)  ◄ IN ZONE
+12:39:16  INFO       XAUUSD  dir=short  conv=0.18  confirms=4 conflicts=3  [rangePos·  chochBos✓  wickReje·  orderBlo·  htfEma✗  vwapSlop✓  hurstReg✓  fvgBias✗  ichimoku✓  macdSign✗]
+12:39:16  INFO       XAUUSD  skip — conviction 0.18 < 0.2

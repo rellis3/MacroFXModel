@@ -276,9 +276,12 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
         f'conv={conviction:.2f}  confirms={confirms}/{confirms + conflicts}'
     )
     ticket = place_order(pair, entry_dir, lots, sl, tp)
+    level_entries[lkey] = level_entries.get(lkey, 0) + 1  # count attempt win or lose
     if ticket:
-        level_entries[lkey] = level_entries.get(lkey, 0) + 1
         log.info(f'  → ticket #{ticket}')
+    else:
+        remaining = cfg.get('levelReentry', 2) - level_entries[lkey]
+        log.warning(f'  → order rejected — {remaining} attempt(s) left on this level today')
 
     return st
 
