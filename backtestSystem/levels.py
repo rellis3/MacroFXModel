@@ -24,8 +24,9 @@ def compute_asia_range(bars_5m_newest_first: list, today_london_date: str) -> di
     ]
     if len(session_bars) < 36:
         return None
-    high = max(max(b['high'], b['close']) for b in session_bars)
-    low  = min(min(b['low'],  b['open'])  for b in session_bars)
+    # Body high/low only (no wicks) — matches the Pine Script indicator: math.max(open,close)
+    high = max(max(b['open'], b['close']) for b in session_bars)
+    low  = min(min(b['open'], b['close']) for b in session_bars)
     if high <= low:
         return None
     return {'high': high, 'low': low, 'range': high - low}
@@ -40,8 +41,9 @@ def compute_monday_range(bars_30m_oldest_first: list) -> dict | None:
     monday_bars = [b for b in bars_30m_oldest_first if b.get('lDay') == 1]
     if len(monday_bars) < 20:
         return None
-    high = max(max(b['high'], b['close']) for b in monday_bars)
-    low  = min(min(b['low'],  b['open'])  for b in monday_bars)
+    # Body high/low only — matches Pine Script indicator
+    high = max(max(b['open'], b['close']) for b in monday_bars)
+    low  = min(min(b['open'], b['close']) for b in monday_bars)
     if high <= low:
         return None
     return {'high': high, 'low': low, 'range': high - low}
