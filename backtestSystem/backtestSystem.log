@@ -469,3 +469,94 @@
 11:49:47  INFO     AUDUSD  0.71237  Asia[0.70865–0.71124 26p]  no confluences yet
 11:49:47  INFO     XAUUSD  4492.42500  Asia[4456.24000–4508.83000 53p]  no confluences yet
 11:49:47  INFO     USTECH100M  29067.20000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:50:42  WARNING  Could not load credentials from KV: unknown url type: '\\c/api/kv/get?key=backtestsystem_credentials'
+11:50:42  INFO     MT5 connected  account=107132286  balance=100000.00 GBP  server=MetaQuotes-Demo
+11:50:42  INFO     === backtestSystem started ===
+11:50:42  INFO     Dashboard URL: \c
+11:50:42  INFO     Pairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'USTECH100M']  poll=2s
+11:50:42  INFO     Method: both  SL: atr30m  TP: structural  RR: 2.2
+11:50:42  INFO     Kill: D=2R  W=5R  M=10R
+11:50:42  INFO     Features (10): rangePosition, chochBos, wickRejection, orderBlock, htfEma, vwapSlope, hurstRegime, fvgBias, ichimokuCloud, macdSignal
+11:50:42  INFO     --- New day 2026-05-20 ---  R daily=+0.00  weekly=+0.00  monthly=+0.00  limits=D2/W5/M10
+11:50:42  INFO     EURUSD  1.16002  Asia[1.15920–1.16128 21p]  no confluences yet
+11:50:42  INFO     GBPUSD  1.33954  Asia[1.33778–1.34040 26p]  no confluences yet
+11:50:42  INFO     USDJPY  158.99550  Asia[158.95300–159.10400 15p]  no confluences yet
+11:50:42  INFO     AUDUSD  0.71232  Asia[0.70865–0.71124 26p]  no confluences yet
+11:50:42  INFO     XAUUSD  4491.16500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:50:42  INFO     USTECH100M  29065.15000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:50:42  WARNING  KV status push failed: unknown url type: '\\c/api/kv/set'
+11:50:44  WARNING  KV status push failed: unknown url type: '\\c/api/kv/set'
+11:50:47  WARNING  KV status push failed: unknown url type: '\\c/api/kv/set'
+11:50:49  WARNING  KV status push failed: unknown url type: '\\c/api/kv/set'
+11:50:51  WARNING  KV status push failed: unknown url type: '\\c/api/kv/set'
+11:50:53  WARNING  KV status push failed: unknown url type: '\\c/api/kv/set'
+11:50:55  WARNING  KV status push failed: unknown url type: '\\c/api/kv/set'
+11:50:57  WARNING  KV status push failed: unknown url type: '\\c/api/kv/set'
+11:50:59  WARNING  KV status push failed: unknown url type: '\\c/api/kv/set'
+11:51:01  WARNING  KV status push failed: unknown url type: '\\c/api/kv/set'
+11:51:03  WARNING  KV status push failed: unknown url type: '\\c/api/kv/set'
+11:51:20  WARNING  Could not load credentials from KV: HTTP Error 403: Forbidden
+11:51:20  INFO     MT5 connected  account=107132286  balance=100000.00 GBP  server=MetaQuotes-Demo
+11:51:20  INFO     === backtestSystem started ===
+11:51:20  INFO     Dashboard URL: https://macrofxmodel-production.up.railway.app/
+11:51:20  INFO     Pairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'USTECH100M']  poll=2s
+11:51:20  INFO     Method: both  SL: atr30m  TP: structural  RR: 2.2
+11:51:20  INFO     Kill: D=2R  W=5R  M=10R
+11:51:20  INFO     Features (10): rangePosition, chochBos, wickRejection, orderBlock, htfEma, vwapSlope, hurstRegime, fvgBias, ichimokuCloud, macdSignal
+11:51:20  INFO     --- New day 2026-05-20 ---  R daily=+0.00  weekly=+0.00  monthly=+0.00  limits=D2/W5/M10
+11:51:21  INFO     EURUSD  1.16002  Asia[1.15920–1.16128 21p]  no confluences yet
+11:51:21  INFO     GBPUSD  1.33955  Asia[1.33778–1.34040 26p]  no confluences yet
+11:51:21  INFO     USDJPY  158.99250  Asia[158.95300–159.10400 15p]  no confluences yet
+11:51:21  INFO     AUDUSD  0.71225  Asia[0.70865–0.71124 26p]  no confluences yet
+11:51:21  INFO     XAUUSD  4491.14500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:51:21  INFO     USTECH100M  29064.15000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:51:21  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:23  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:25  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:28  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:30  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:32  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:35  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:37  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:39  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:42  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:44  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:46  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:49  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:51  INFO     EURUSD  1.16002  Asia[1.15920–1.16128 21p]  no confluences yet
+11:51:51  INFO     GBPUSD  1.33955  Asia[1.33778–1.34040 26p]  no confluences yet
+11:51:51  INFO     USDJPY  158.99450  Asia[158.95300–159.10400 15p]  no confluences yet
+11:51:51  INFO     AUDUSD  0.71226  Asia[0.70865–0.71124 26p]  no confluences yet
+11:51:51  INFO     XAUUSD  4492.33500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:51:51  INFO     USTECH100M  29069.05000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:51:51  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:53  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:56  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:51:58  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:00  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:02  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:05  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:07  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:09  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:12  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:14  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:17  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:19  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:21  INFO     EURUSD  1.15997  Asia[1.15920–1.16128 21p]  no confluences yet
+11:52:21  INFO     GBPUSD  1.33949  Asia[1.33778–1.34040 26p]  no confluences yet
+11:52:21  INFO     USDJPY  158.99650  Asia[158.95300–159.10400 15p]  no confluences yet
+11:52:21  INFO     AUDUSD  0.71223  Asia[0.70865–0.71124 26p]  no confluences yet
+11:52:21  INFO     XAUUSD  4491.55500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:52:21  INFO     USTECH100M  29064.55000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:52:21  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:23  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:26  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:28  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:30  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:33  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:35  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:37  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:40  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:42  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:44  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:52:47  WARNING  KV status push failed: HTTP Error 403: Forbidden
