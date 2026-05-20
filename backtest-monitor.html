@@ -228,21 +228,32 @@ function renderPair(pair, d) {
 async function refresh() {
   try {
     const data = await kvGet('backtestsystem_status');
-    if (!data || !data.pairs) {
+    if (!data) {
       return;
     }
 
-    const pairs    = Object.entries(data.pairs);
+    const pairs    = Object.entries(data.pairs || {});
     const inZone   = pairs.filter(([, d]) => d.in_zone).length;
-    const ageMin   = Math.round((Date.now() - (data.timestamp || 0)) / 60000);
+    const ageSec   = Math.round((Date.now() - (data.timestamp || 0)) / 1000);
+    const ageStr   = ageSec < 60 ? `${ageSec}s ago` : `${Math.round(ageSec/60)}m ago`;
+    const inWin    = data.in_window;
 
     document.getElementById('dateBadge').textContent  = data.date || '—';
     document.getElementById('dateBadge').className    = 'badge ok';
     document.getElementById('pairsBadge').textContent = `${pairs.length} pairs`;
-    document.getElementById('pairsBadge').className   = 'badge ok';
-    document.getElementById('zoneBadge').textContent  = `${inZone} in zone`;
-    document.getElementById('zoneBadge').className    = inZone ? 'badge warn' : 'badge dim';
-    document.getElementById('lastUpdate').textContent = `Updated ${ageMin}m ago`;
+    document.getElementById('pairsBadge').className   = pairs.length ? 'badge ok' : 'badge dim';
+    document.getElementById('zoneBadge').textContent  = inWin === false ? 'outside window' : `${inZone} in zone`;
+    document.getElementById('zoneBadge').className    = inWin === false ? 'badge dim' : (inZone ? 'badge warn' : 'badge dim');
+    document.getElementById('lastUpdate').textContent = `Updated ${ageStr}`;
+
+    if (!pairs.length) {
+      const msg = inWin === false
+        ? 'Outside trade window — monitoring paused. Levels will appear after entryWindow time.'
+        : 'Bot running but no price data yet — Asia session may still be forming (opens at 06:00 London).';
+      document.getElementById('pairGrid').innerHTML =
+        `<div class="no-data">${msg}</div>`;
+      return;
+    }
 
     document.getElementById('pairGrid').innerHTML =
       pairs.map(([pair, d]) => renderPair(pair, d)).join('');

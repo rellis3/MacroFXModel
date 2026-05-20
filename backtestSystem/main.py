@@ -97,7 +97,8 @@ def _level_key(pair: str, price: float, pip: float) -> str:
 # ── Per-pair evaluation ───────────────────────────────────────────────────────
 
 def run_pair(pair: str, cfg: dict, kill: KillSwitch,
-             level_entries: dict, today_date: str, london_hour: int) -> dict:
+             level_entries: dict, today_date: str, london_hour: int,
+             can_trade: bool = True) -> dict:
     """Returns a status dict for KV push; empty dict if skipped before levels computed."""
     st: dict = {'pair': pair, 'price': None, 'asia': None, 'confluences': [],
                 'in_zone': False, 'direction': None, 'conviction': None, 'confirms': None}
@@ -264,7 +265,11 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     risk_pct = cfg.get('riskPct', 1.0)
     lots     = position_size(balance, risk_pct, sl_dist, pip, pair)
 
-    # ── Place order ───────────────────────────────────────────────────────
+    # ── Place order (only within trade window) ───────────────────────────────
+    if not can_trade:
+        log.info(f'  {pair}  signal ready but outside trade window — watching')
+        return st
+
     log.info(
         f'TRADE  {pair} {entry_dir.upper()} @ {price:.5f}  '
         f'SL={sl}  TP={tp}  lots={lots}  '
@@ -327,23 +332,23 @@ def main() -> None:
                 last_date     = today_date
                 log.info(f'--- New day {today_date} ---  {kill.summary()}')
 
-            if not within_trade_window(cfg):
-                time.sleep(poll_interval)
-                continue
+            in_window = within_trade_window(cfg)
 
             pair_statuses: dict = {}
             for pair in pairs:
                 try:
-                    st = run_pair(pair, cfg, kill, level_entries, today_date, now['lHour'])
+                    st = run_pair(pair, cfg, kill, level_entries, today_date,
+                                  now['lHour'], can_trade=in_window)
                     if st.get('price') is not None:
                         pair_statuses[pair] = st
                 except Exception as exc:
                     log.exception(f'{pair}: error — {exc}')
 
-            if dashboard_url and pair_statuses:
+            if dashboard_url:
                 _push_status_to_kv(dashboard_url, {
                     'timestamp': int(time.time() * 1000),
                     'date':      today_date,
+                    'in_window': in_window,
                     'pairs':     pair_statuses,
                 })
 
