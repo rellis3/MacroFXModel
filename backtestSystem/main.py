@@ -184,7 +184,16 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
             _last_status[pair] = now_ts
     else:
         if due:
-            log.info(f'{pair}  {price:.5f}  {asia_tag}  no confluences yet')
+            if not yest_asia:
+                n_yest = len([b for b in yest_bars if 0 <= b.get('lHour', 24) < 6])
+                log.info(f'{pair}  {price:.5f}  {asia_tag}  '
+                         f'no confluences — yest Asia missing (only {n_yest}/36 Asia bars)')
+            else:
+                yest_tag = f'{yest_asia["low"]:.5f}–{yest_asia["high"]:.5f} {round(yest_asia["range"]/pip)}p'
+                log.info(f'{pair}  {price:.5f}  {asia_tag}  '
+                         f'no confluences — today={len(today_levels)} levels  '
+                         f'yest Asia[{yest_tag}]={len(yest_levels)} levels  '
+                         f'tol={tol_pips}p')
             _last_status[pair] = now_ts
         return st
 
