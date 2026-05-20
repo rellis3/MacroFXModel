@@ -560,3 +560,25 @@
 11:52:42  WARNING  KV status push failed: HTTP Error 403: Forbidden
 11:52:44  WARNING  KV status push failed: HTTP Error 403: Forbidden
 11:52:47  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:53:29  WARNING  Could not load credentials from KV: HTTP Error 403: Forbidden
+11:53:29  INFO     MT5 connected  account=107132286  balance=100000.00 GBP  server=MetaQuotes-Demo
+11:53:29  INFO     === backtestSystem started ===
+11:53:29  INFO     Dashboard URL: https://macrofxmodel-production.up.railway.app/
+11:53:29  INFO     Pairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'USTECH100M']  poll=2s
+11:53:29  INFO     Method: both  SL: atr30m  TP: structural  RR: 2.2
+11:53:29  INFO     Kill: D=2R  W=5R  M=10R
+11:53:29  INFO     Features (10): rangePosition, chochBos, wickRejection, orderBlock, htfEma, vwapSlope, hurstRegime, fvgBias, ichimokuCloud, macdSignal
+11:53:29  INFO     --- New day 2026-05-20 ---  R daily=+0.00  weekly=+0.00  monthly=+0.00  limits=D2/W5/M10
+11:53:29  INFO     EURUSD  1.16005  Asia[1.15920–1.16128 21p]  no confluences yet
+11:53:30  INFO     GBPUSD  1.33959  Asia[1.33778–1.34040 26p]  no confluences yet
+11:53:30  INFO     USDJPY  158.99350  Asia[158.95300–159.10400 15p]  no confluences yet
+11:53:30  INFO     AUDUSD  0.71226  Asia[0.70865–0.71124 26p]  no confluences yet
+11:53:30  INFO     XAUUSD  4492.85500  Asia[4456.24000–4508.83000 53p]  no confluences yet
+11:53:30  INFO     USTECH100M  29059.05000  Asia[28738.90000–28961.90000 2230000p]  no confluences yet
+11:53:30  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:53:32  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:53:34  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:53:37  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:53:39  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:53:41  WARNING  KV status push failed: HTTP Error 403: Forbidden
+11:53:44  WARNING  KV status push failed: HTTP Error 403: Forbidden
