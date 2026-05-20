@@ -644,7 +644,7 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
         'tp1':      sl_tp.tp1,    'tp1_close_pct': sl_tp.tp1_close_pct,
         'trailoffset_dist': sl_tp.trailoffset_dist,
         'rr':       sl_tp.rr_ratio, 'lot': size, 'executed': bool(ticket),
-        'ticket':   ticket if isinstance(ticket, int) else None,
+        'ticket':   ticket if isinstance(ticket, int) and not isinstance(ticket, bool) else None,
     })
     return pair_status
 
@@ -731,7 +731,7 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
         'trailoffset_dist': sl_tp.trailoffset_dist,
         'rr':               sl_tp.rr_ratio, 'lot':            size,
         'executed':         bool(ticket),
-        'ticket':           ticket if isinstance(ticket, int) else None,
+        'ticket':           ticket if isinstance(ticket, int) and not isinstance(ticket, bool) else None,
         'mode':             'telegram',
     })
     return pair_status
@@ -845,6 +845,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
     # Position metadata — keyed by MT5 ticket int, holds TP1/trail state
     position_meta: dict[int, dict] = {
         int(k): v for k, v in (persisted.get('position_meta') or {}).items()
+        if str(k).lstrip('-').isdigit()
     }
 
     # State save interval (every 60s to avoid disk churn)
