@@ -474,6 +474,7 @@ def main() -> None:
     log.info(f'Pairs: {pairs}  poll={poll_interval}s')
     log.info(f'Method: {cfg.get("method")}  SL: {cfg.get("slMode")}  TP: {cfg.get("tpMode")}  RR: {cfg.get("rrRatio")}')
     log.info(f'Kill: D={cfg.get("killDaily")}R  W={cfg.get("killWeekly")}R  M={cfg.get("killMonthly")}R')
+    log.info(f'Cooldown: {cfg.get("tradeCooldownMins")}m  slToBePct={cfg.get("slToBePct")}  regime={cfg.get("useServerRegime")}  poll={cfg.get("pollInterval")}s')
     enabled_features = [k for k, v in cfg.get('features', {}).items() if v.get('enabled')]
     log.info(f'Features ({len(enabled_features)}): {", ".join(enabled_features)}')
 
