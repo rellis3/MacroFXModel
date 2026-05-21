@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from config    import load_config, sl_distance, tp_distance
 from mt5_utils import (connect, fetch_bars_5m, fetch_bars_30m, fetch_bars_daily,
                        fetch_price, get_balance, get_open_positions, place_order,
-                       pip_size, london_now)
+                       pip_size, london_now, move_sl_to_be)
 from levels    import (compute_asia_range, compute_monday_range, project_fib_levels,
                        detect_confluences, get_yesterday_range_bars)
 from engine     import compute_direction
@@ -40,6 +40,66 @@ log = logging.getLogger(__name__)
 _DEFAULT_POLL    = 2   # fallback if not in config
 _STATUS_INTERVAL = 30  # seconds between heartbeat logs per pair
 _last_status: dict[str, float] = {}  # pair → last status log timestamp
+
+# ── Server regime cache ───────────────────────────────────────────────────────
+# Fetched from /api/hmm5m on the Railway server; refreshed every 5 min.
+_regime_cache:       dict  = {}   # symbol → { regime, pBull, pBear, pRange, confidence }
+_regime_cache_at:    float = 0.0  # monotonic timestamp of last successful fetch
+_REGIME_CACHE_TTL   = 5 * 60     # seconds
+
+
+def _fetch_server_regimes(dashboard_url: str) -> None:
+    """Pull 1m HMM regimes from Railway /api/hmm5m and cache them."""
+    global _regime_cache, _regime_cache_at
+    now = time.monotonic()
+    if now - _regime_cache_at < _REGIME_CACHE_TTL:
+        return
+    try:
+        url = f'{dashboard_url.rstrip("/")}/api/hmm5m'
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            data = json.loads(resp.read())
+        if isinstance(data, dict):
+            _regime_cache    = data
+            _regime_cache_at = now
+            log.debug(f'[Regime] Fetched {len(data)} pairs from server')
+    except Exception as exc:
+        log.warning(f'[Regime] Could not fetch server regimes: {exc}')
+
+
+def _regime_veto(pair: str, entry_dir: str, cfg: dict) -> str | None:
+    """
+    Return a veto reason string if the 1m HMM on the server strongly opposes
+    the intended entry direction, otherwise None.
+
+    Logic:
+      - Only veto when useServerRegime=True in config
+      - RANGE regime → never veto (mean-reversion is valid from either side)
+      - BULL + short entry  or  BEAR + long entry → veto when confidence ≥ threshold
+    """
+    if not cfg.get('useServerRegime', False):
+        return None
+
+    # Normalise pair to the key format the server uses (e.g. 'EUR/USD')
+    sym = pair if '/' in pair else f'{pair[:3]}/{pair[3:]}'
+    r   = _regime_cache.get(sym)
+    if not r:
+        return None
+
+    regime     = r.get('regime', 'RANGE')
+    confidence = r.get('confidence', 0)
+    threshold  = cfg.get('regimeVetoConfidence', 70)
+
+    if regime == 'RANGE':
+        return None  # range = mean-reversion fine in any direction
+
+    if confidence < threshold:
+        return None
+
+    if regime == 'BULL' and entry_dir == 'short':
+        return f'HMM1m BULL {confidence}% — vetoing SHORT'
+    if regime == 'BEAR' and entry_dir == 'long':
+        return f'HMM1m BEAR {confidence}% — vetoing LONG'
+    return None
 
 
 # ── KV credential fetch ───────────────────────────────────────────────────────
@@ -279,6 +339,12 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
         log.info(f'  {pair}  skip — confirms {confirms} < {cfg["minConfirms"]}')
         return st
 
+    # ── Server regime veto (1m HMM from Railway) ──────────────────────────
+    veto = _regime_veto(pair, entry_dir, cfg)
+    if veto:
+        log.info(f'  {pair}  skip — {veto}')
+        return st
+
     # ── Level re-entry cap ────────────────────────────────────────────────
     target_price = nearby[0]['price']
     lkey = _level_key(pair, target_price, pip)
@@ -418,6 +484,10 @@ def main() -> None:
 
             in_window = within_trade_window(cfg)
 
+            # Refresh server HMM regime cache if useServerRegime is on
+            if dashboard_url and cfg.get('useServerRegime', False):
+                _fetch_server_regimes(dashboard_url)
+
             # Fetch positions once; detect any that closed since last poll
             open_pos = get_open_positions()
             current_tickets = {p.ticket: p.symbol for p in open_pos}
@@ -428,6 +498,24 @@ def main() -> None:
                             pair_close_times[pair] = time.monotonic()
                             log.info(f'{pair}  position #{ticket} closed — {cooldown_secs//60:.0f}m cooldown started')
             prev_tickets = current_tickets
+
+            # ── SL → Breakeven management ─────────────────────────────────
+            be_pct = cfg.get('slToBePct', 0.0)
+            if be_pct > 0.0:
+                for pos in open_pos:
+                    entry, sl, tp = pos.price_open, pos.sl, pos.tp
+                    if tp == 0 or sl == 0:
+                        continue
+                    is_long   = pos.type == 0
+                    tp_dist   = abs(tp - entry)
+                    if tp_dist == 0:
+                        continue
+                    price_now = fetch_price(pos.symbol) or entry
+                    moved     = (price_now - entry) if is_long else (entry - price_now)
+                    progress  = moved / tp_dist
+                    if progress >= be_pct:
+                        move_sl_to_be(pos, pip_size(pos.symbol),
+                                      cfg.get('slBeBuffer', 1.0))
 
             pair_statuses: dict = {}
             for pair in pairs:

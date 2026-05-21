@@ -211,3 +211,37 @@ def get_open_positions(magic: int = 20260002) -> list:
     if not HAS_MT5:
         return []
     return [p for p in (mt5.positions_get() or []) if p.magic == magic]
+
+
+def move_sl_to_be(position, pip: float, be_buffer_pips: float = 1.0) -> bool:
+    """
+    Move the SL of an open position to breakeven (entry price + small buffer).
+    Returns True if the modification was sent successfully.
+    """
+    if not HAS_MT5:
+        return False
+
+    entry    = position.price_open
+    is_long  = position.type == 0  # 0 = BUY
+    buf      = be_buffer_pips * pip
+    new_sl   = round(entry + buf if is_long else entry - buf, 6)
+
+    # Already at or beyond BE — don't send a redundant request
+    if is_long  and position.sl >= new_sl:
+        return False
+    if not is_long and position.sl <= new_sl:
+        return False
+
+    res = mt5.order_send({
+        'action':   mt5.TRADE_ACTION_SLTP,
+        'position': position.ticket,
+        'sl':       new_sl,
+        'tp':       position.tp,
+    })
+    if res is None or res.retcode != mt5.TRADE_RETCODE_DONE:
+        err = res.retcode if res else mt5.last_error()
+        log.warning(f'BE move failed ticket={position.ticket}: {err}')
+        return False
+
+    log.info(f'SL → BE  ticket={position.ticket}  new_sl={new_sl}  (entry={entry})')
+    return True

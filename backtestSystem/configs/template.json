@@ -52,6 +52,12 @@
   "flipOnSL":          false,
   "tradeCooldownMins": 30,
 
+  "slToBePct":         0.0,
+  "slBeBuffer":        1.0,
+
+  "useServerRegime":       false,
+  "regimeVetoConfidence":  70,
+
   "killDaily":         2.0,
   "killWeekly":        5.0,
   "killMonthly":       10.0,

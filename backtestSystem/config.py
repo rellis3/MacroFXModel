@@ -55,6 +55,14 @@ DEFAULTS = {
     "flipOnSL":          False,
     "tradeCooldownMins": 30,             # minutes to block new entries after a trade closes
 
+    # SL → Breakeven
+    "slToBePct":         0.0,           # 0=disabled; e.g. 0.5 moves SL to BE when 50% to TP
+    "slBeBuffer":        1.0,           # pips above/below entry for the new SL
+
+    # Server regime veto (1m HMM from Railway /api/hmm5m)
+    "useServerRegime":       False,     # enable 1m HMM quality gate
+    "regimeVetoConfidence":  70,        # min confidence % to trigger veto
+
     # Kill switches (in R units, 0 = disabled)
     "killDaily":         2.0,
     "killWeekly":        5.0,
