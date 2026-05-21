@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 
-from config    import load_config, sl_distance, tp_distance
+from config    import load_config, sl_distance, tp_distance, _deep_merge
 from mt5_utils import (connect, fetch_bars_5m, fetch_bars_30m, fetch_bars_daily,
                        fetch_price, get_balance, get_open_positions, place_order,
                        pip_size, london_now, move_sl_to_be)
@@ -444,7 +444,7 @@ def main() -> None:
     if dashboard_url:
         live_cfg = _load_live_config_from_kv(dashboard_url)
         if live_cfg:
-            cfg.update(live_cfg)
+            cfg = _deep_merge(cfg, live_cfg)
             log.info(f'Live config loaded from KV: risk={live_cfg.get("riskPct")}%  '
                      f'pairs={live_cfg.get("enabledPairs")}  '
                      f'kill D={live_cfg.get("killDaily")} W={live_cfg.get("killWeekly")}')

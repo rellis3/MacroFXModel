@@ -15,6 +15,7 @@
   --red:#c8222a;   --red-bg:#fff1f1;   --red-bd:#f5b8b8;
   --amber:#b45309; --amber-bg:#fffbeb; --amber-bd:#fde68a;
   --blue:#1d4ed8;  --blue-bg:#eff6ff;  --blue-bd:#bfdbfe;
+  --purple:#7c3aed; --purple-bg:#f5f3ff; --purple-bd:#ddd6fe;
   --rl:10px; --rxl:14px;
 }
 body.dark {
@@ -25,6 +26,7 @@ body.dark {
   --red:#f87171;   --red-bg:#2b1a1a;   --red-bd:#4a2828;
   --amber:#fbbf24; --amber-bg:#292100; --amber-bd:#78610a;
   --blue:#60a5fa;  --blue-bg:#172554;  --blue-bd:#1e40af;
+  --purple:#a78bfa; --purple-bg:#1e1b4b; --purple-bd:#4338ca;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.5; }
@@ -38,18 +40,39 @@ a:hover { color: var(--text); }
 .top-bar .back { margin-left: auto; font-size: 12px; color: var(--text3); }
 .top-bar .back:hover { color: var(--text); }
 
-.page { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+.page { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+
+/* Tab navigation */
+.tab-nav { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+.tab-btn { padding: 10px 22px; border: none; background: none; color: var(--text3); font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; font-family: 'DM Sans', sans-serif; }
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active.tg { color: var(--blue); border-bottom-color: var(--blue); }
+.tab-btn.active.bt { color: var(--green); border-bottom-color: var(--green); }
+
+/* Tab panes */
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* Bot banner */
+.bot-banner { border-radius: var(--rl); padding: 12px 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 14px; }
+.bot-banner.tg { background: var(--blue-bg); border: 1px solid var(--blue-bd); }
+.bot-banner.bt { background: var(--green-bg); border: 1px solid var(--green-bd); }
+.bot-banner-icon { font-size: 22px; }
+.bot-banner-title { font-size: 13px; font-weight: 600; }
+.bot-banner.tg .bot-banner-title { color: var(--blue); }
+.bot-banner.bt .bot-banner-title { color: var(--green); }
+.bot-banner-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
 
 /* Status bar */
 .status-bar { display: flex; align-items: center; gap: 12px; background: var(--s1); border: 1px solid var(--border); border-radius: var(--rl); padding: 10px 16px; margin-bottom: 16px; }
-#saveStatus  { font-size: 12px; font-family: 'DM Mono', monospace; }
+#saveStatus { font-size: 12px; font-family: 'DM Mono', monospace; }
 #saveStatus.ok      { color: var(--green); }
 #saveStatus.err     { color: var(--red); }
 #saveStatus.loading { color: var(--text3); }
 
 /* Bot status strip */
 .bs-strip { background: var(--s2); border: 1px solid var(--border); border-radius: var(--rl); padding: 12px 16px; margin-bottom: 20px; font-size: 11px; font-family: 'DM Mono', monospace; }
-.bs-strip .bs-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.bs-strip .bs-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
 .bs-strip .bs-rows { display: flex; flex-direction: column; gap: 3px; }
 .bs-lbl   { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--text3); }
 .bs-dim   { color: var(--text3); }
@@ -71,9 +94,9 @@ a:hover { color: var(--text); }
 @keyframes pulse-red { 0%,100% { opacity:1; } 50% { opacity:.7; } }
 
 /* Form rows */
-.form-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.form-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); gap: 8px; }
 .form-row:last-child { border-bottom: none; }
-.form-lbl { font-size: 12.5px; color: var(--text2); }
+.form-lbl { font-size: 12.5px; color: var(--text2); flex: 1; min-width: 0; }
 .form-lbl small { display: block; font-size: 10.5px; color: var(--text3); }
 
 /* Inputs */
@@ -83,8 +106,14 @@ input[type=number], input[type=time], input[type=text] {
   padding: 5px 8px; width: 80px; text-align: right;
   transition: border-color .15s;
 }
+input[type=password] {
+  background: var(--s2); border: 1px solid var(--border2); border-radius: 6px;
+  color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px;
+  padding: 5px 8px; text-align: left;
+  transition: border-color .15s;
+}
 input[type=time] { width: 90px; text-align: left; }
-input[type=number]:focus, input[type=time]:focus { outline: none; border-color: var(--blue); }
+input[type=number]:focus, input[type=time]:focus, input[type=text]:focus, input[type=password]:focus { outline: none; border-color: var(--blue); }
 
 select {
   background: var(--s2); border: 1px solid var(--border2); border-radius: 6px;
@@ -96,7 +125,7 @@ select:focus { outline: none; border-color: var(--blue); }
 /* Toggle checkboxes */
 .toggle-wrap { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
 .toggle-wrap label { font-size: 12.5px; color: var(--text2); flex: 1; cursor: pointer; }
-input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cursor: pointer; }
+input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
 
 /* Radio groups */
 .radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -109,21 +138,29 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .pair-chk { display: flex; align-items: center; gap: 5px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text2); cursor: pointer; }
 .pair-chk input { accent-color: var(--green); }
 
+/* Feature grid */
+.feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+.feat-row { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.feat-row:nth-child(odd):last-child { border-bottom: none; }
+.feat-row label { font-size: 12px; color: var(--text2); flex: 1; cursor: pointer; }
+.feat-weight { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; white-space: nowrap; }
+
 /* Action buttons */
 .actions { display: flex; gap: 10px; margin-top: 20px; }
-.btn-save { flex: 1; padding: 12px; background: var(--blue); color: #fff; border: none; border-radius: var(--rl); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .2s; }
+.btn-save { flex: 1; padding: 12px; background: var(--blue); color: #fff; border: none; border-radius: var(--rl); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .2s; font-family: 'DM Sans', sans-serif; }
 .btn-save:hover { opacity: .88; }
-.btn-reset { padding: 12px 18px; background: var(--s2); color: var(--text2); border: 1px solid var(--border2); border-radius: var(--rl); font-size: 12px; cursor: pointer; }
-.btn-reset:hover { color: var(--text); border-color: var(--border2); }
+.btn-save.green { background: var(--green); }
+.btn-reset { padding: 12px 18px; background: var(--s2); color: var(--text2); border: 1px solid var(--border2); border-radius: var(--rl); font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.btn-reset:hover { color: var(--text); }
 
-/* Section label */
+/* Section separator */
 .sec { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin: 16px 0 8px; padding-top: 8px; border-top: 1px solid var(--border); }
 
 /* Dark toggle */
-.dark-btn { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 4px 12px; cursor: pointer; font-size: 11px; color: var(--text2); }
+.dark-btn { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 4px 12px; cursor: pointer; font-size: 11px; color: var(--text2); font-family: 'DM Sans', sans-serif; }
 
 /* Help button */
-.input-wrap { display: flex; align-items: center; gap: 6px; }
+.input-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .help-btn { width: 17px; height: 17px; border-radius: 50%; border: 1px solid var(--blue-bd); background: var(--blue-bg); color: var(--blue); font-size: 9px; font-weight: 700; cursor: pointer; flex-shrink: 0; line-height: 1; padding: 0; transition: background .15s; }
 .help-btn:hover { background: var(--blue); color: #fff; }
 .toggle-wrap .help-btn { margin-left: auto; }
@@ -143,7 +180,6 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .fbadge.b { background: var(--blue-bg); border: 1px solid var(--blue-bd); color: var(--blue); }
 .fbadge.g { background: var(--green-bg); border: 1px solid var(--green-bd); color: var(--green); }
 .fbadge.a { background: var(--amber-bg); border: 1px solid var(--amber-bd); color: var(--amber); }
-
 .fstep { display: flex; gap: 10px; margin-bottom: 2px; align-items: flex-start; }
 .fstep-num { width: 22px; height: 22px; border-radius: 50%; background: var(--s3); color: var(--text3); font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 3px; }
 .fstep-num.gate { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-bd); }
@@ -160,6 +196,9 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .fmod-list { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; margin-top: 5px; }
 .fmod { font-size: 11px; color: var(--text2); display: flex; gap: 5px; align-items: center; }
 .fmod-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+
+/* Inline save status */
+.inline-status { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
 </style>
 </head>
 <body>
@@ -167,7 +206,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 <div class="top-bar">
   <div>
     <div class="logo">MacroFX · Bot Config</div>
-    <div class="sub">Python Execution Bot</div>
+    <div class="sub">Two-Bot Control Panel</div>
   </div>
   <a class="back" href="index.html">← Back to Dashboard</a>
   <button class="dark-btn" onclick="document.body.classList.toggle('dark')">◑ Dark</button>
@@ -175,434 +214,736 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
 <div class="page">
 
-  <!-- Status -->
+  <!-- Save status -->
   <div class="status-bar">
     <div id="saveStatus" class="loading">Loading…</div>
   </div>
 
-  <!-- Live bot status -->
-  <div class="bs-strip">
-    <div class="bs-head">
-      <span class="bs-lbl">Bot Runtime</span>
-      <span id="bsAge" class="bs-dim">Checking…</span>
-      <span id="bsPaper" class="bs-dim"></span>
-      <span id="bsTier" class="bs-dim"></span>
-      <span id="bsBalance" class="bs-dim"></span>
-    </div>
-    <div class="bs-rows">
-      <div id="bsPairs"></div>
-      <div id="bsBlocked"></div>
-      <div id="bsOpen"></div>
-      <div id="bsMgmt"></div>
-      <div id="bsErrors"></div>
-    </div>
+  <!-- Tab navigation -->
+  <div class="tab-nav">
+    <button class="tab-btn tg" data-tab="original" onclick="switchTab('original')">Telegram Bot</button>
+    <button class="tab-btn bt" data-tab="backtest" onclick="switchTab('backtest')">Backtest Bot</button>
   </div>
 
-  <!-- Kill switch -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">Emergency</div>
-    <button id="ksBtn" class="ks-btn" onclick="toggleKillSwitch()">KILL SWITCH: OFF</button>
-    <div style="font-size:11px;color:var(--text3);margin-top:8px;text-align:center">
-      Toggle kills the bot on its <em>next poll cycle</em> — no restart needed
-    </div>
-  </div>
+  <!-- ═══════════════════════ TAB: TELEGRAM BOT ═══════════════════════ -->
+  <div id="tab-original" class="tab-pane">
 
-  <!-- Bot Mode -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">Bot Mode</div>
-    <div class="radio-group" style="flex-direction:column;gap:10px;margin-bottom:4px">
-      <label style="align-items:flex-start;gap:8px">
-        <input type="radio" name="bot_mode" value="full" onchange="toggleTgSettings()" style="margin-top:3px">
-        <span><span style="font-weight:600;font-size:12.5px;color:var(--text)">Full Pipeline</span><br>
-        <span style="font-size:11px;color:var(--text3)">All modules run: vol gate → macro regime → confluence → OI walls → COT → news</span></span>
-      </label>
-      <label style="align-items:flex-start;gap:8px">
-        <input type="radio" name="bot_mode" value="telegram" onchange="toggleTgSettings()" style="margin-top:3px">
-        <span><span style="font-weight:600;font-size:12.5px;color:var(--text)">Telegram Mode</span><br>
-        <span style="font-size:11px;color:var(--text3)">Enter when a KV entry passes grade + stars + signal score — same logic as Telegram alerts, no module pipeline</span></span>
-      </label>
-    </div>
-    <div id="tgSettings" style="display:none;border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
-      <div class="form-row">
-        <span class="form-lbl">Min grade <small>minimum entry.grade from KV snapshot</small></span>
-        <select id="tg_min_grade">
-          <option value="A">A (highest conviction)</option>
-          <option value="B">B (default)</option>
-          <option value="C">C (any grade)</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <span class="form-lbl">Min signal score <small>entry.signalScore 0–1 threshold</small></span>
-        <input type="number" id="tg_min_signal" min="0" max="1" step="0.05">
-      </div>
-    </div>
-  </div>
-
-  <!-- Process flow diagram -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title" style="cursor:pointer;user-select:none" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.ftoggle').textContent=this.nextElementSibling.style.display==='none'?'▼ show':'▲ hide'">
-      Bot Process Flow <span class="ftoggle" style="float:right;font-weight:400;font-size:10px">▼ show</span>
-    </div>
-    <div style="display:none">
-      <div class="flow-timers">
-        <span class="fbadge b">⏱ Every 120s — fetch /api/state (config + entries)</span>
-        <span class="fbadge g">⏱ Every 5min — dashboard pushes fresh levels to KV</span>
-        <span class="fbadge a">⏱ Every 3s — price tick loop below</span>
-      </div>
-
-      <div class="fstep"><div class="fstep-num">1</div><div class="fstep-body"><div class="fstep-lbl">Price Tick</div><div class="fstep-desc">OANDA live prices fetched for all enabled pairs</div></div></div>
-      <div class="fstep-conn"></div>
-
-      <div class="fstep"><div class="fstep-num gate">2</div><div class="fstep-body gate"><div class="fstep-lbl">Trade window? (06:05 – 21:00 UTC)</div><div class="fstep-no">NO → ⏸ Wait 3s · logs "Market closed" every 30 min</div></div></div>
-      <div class="fstep-conn"></div>
-
-      <div class="fstep"><div class="fstep-num gate">3</div><div class="fstep-body gate"><div class="fstep-lbl">Data fresh? (&lt; 12 min old)</div><div class="fstep-no">NO → 🔄 POST /api/refresh (auto-touch KV timestamps) then re-fetch state</div></div></div>
-      <div class="fstep-conn"></div>
-
-      <div class="fstep"><div class="fstep-num gate">4</div><div class="fstep-body gate"><div class="fstep-lbl">Price within proximity pips of a level? + WT1 direction aligns?</div><div class="fstep-no">NO → Monitor quietly · heartbeat log every 5 min</div></div></div>
-      <div class="fstep-conn"></div>
-
-      <div class="fstep"><div class="fstep-num gate">5</div><div class="fstep-body gate"><div class="fstep-lbl">RiskGuard — daily DD · lockout · per-pair cooldown</div><div class="fstep-no">BLOCKED → Skip pair + log warning</div></div></div>
-      <div class="fstep-conn"></div>
-
-      <div class="fstep"><div class="fstep-num">6</div><div class="fstep-body"><div class="fstep-lbl">Module Evaluation</div><div class="fmod-list"><span class="fmod"><span class="fmod-dot"></span>Vol Gate — VIX regime</span><span class="fmod"><span class="fmod-dot"></span>Macro Regime — score + BOS</span><span class="fmod"><span class="fmod-dot"></span>Confluence — level star rating</span><span class="fmod"><span class="fmod-dot"></span>OI Walls — wall proximity</span><span class="fmod"><span class="fmod-dot"></span>COT Filter — fund positioning</span><span class="fmod"><span class="fmod-dot"></span>News Risk — event blackout</span></div></div></div>
-      <div class="fstep-conn"></div>
-
-      <div class="fstep"><div class="fstep-num gate">7</div><div class="fstep-body gate"><div class="fstep-lbl">Composite score ≥ threshold?</div><div class="fstep-no">NO → Skip · wait 3s</div></div></div>
-      <div class="fstep-conn"></div>
-
-      <div class="fstep"><div class="fstep-num">8</div><div class="fstep-body"><div class="fstep-lbl">Calculate SL / TP / Lot Size</div></div></div>
-      <div class="fstep-conn"></div>
-
-      <div class="fstep"><div class="fstep-num gate">9</div><div class="fstep-body gate"><div class="fstep-lbl">Spread OK?</div><div class="fstep-no">NO → Reject trade</div></div></div>
-      <div class="fstep-conn"></div>
-
-      <div class="fstep"><div class="fstep-num exec">✓</div><div class="fstep-body exec"><div class="fstep-lbl">Execute Trade (or log PAPER)</div><div class="fstep-desc" style="color:var(--green)">Record position_meta · RiskGuard.record_trade() · Push status to dashboard</div></div></div>
-    </div>
-  </div>
-
-  <div class="grid">
-
-    <!-- Left column -->
-    <div>
-      <!-- Modules -->
-      <div class="card">
-        <div class="card-title">Modules</div>
-        <div class="toggle-wrap"><input type="checkbox" id="mod_vol_gate"><label for="mod_vol_gate">Vol Gate <small>VIX hard block on HIGH vol</small></label><button class="help-btn" data-key="mod_vol_gate">?</button></div>
-        <div class="toggle-wrap"><input type="checkbox" id="mod_macro_regime"><label for="mod_macro_regime">Macro Regime <small>Dashboard signal score + direction</small></label><button class="help-btn" data-key="mod_macro_regime">?</button></div>
-        <div class="toggle-wrap"><input type="checkbox" id="mod_confluence"><label for="mod_confluence">Confluence <small>Min-star Fib entry selector</small></label><button class="help-btn" data-key="mod_confluence">?</button></div>
-        <div class="toggle-wrap"><input type="checkbox" id="mod_oi_walls"><label for="mod_oi_walls">OI Walls <small>Block entries into call/put walls</small></label><button class="help-btn" data-key="mod_oi_walls">?</button></div>
-        <div class="toggle-wrap"><input type="checkbox" id="mod_cot_filter"><label for="mod_cot_filter">COT Filter <small>CFTC leveraged-fund positioning</small></label><button class="help-btn" data-key="mod_cot_filter">?</button></div>
-        <div class="toggle-wrap"><input type="checkbox" id="mod_news_risk"><label for="mod_news_risk">News Risk <small>HIGH impact event blackout window</small></label><button class="help-btn" data-key="mod_news_risk">?</button></div>
-      </div>
-
-      <!-- SL/TP -->
-      <div class="card">
-        <div class="card-title">Stop Loss Method</div>
-        <div class="radio-group" style="margin-bottom:14px">
-          <label><input type="radio" name="sl_method" value="structure"> Structure (OI wall / dashboard SL)</label>
-          <label><input type="radio" name="sl_method" value="atr"> ATR multiple</label>
-          <label><input type="radio" name="sl_method" value="garch"> GARCH 95%</label>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">ATR multiplier <small>used when SL method = ATR</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="sl_atr_mult">?</button><input type="number" id="sl_atr_mult" min="0.5" max="5" step="0.1"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Max SL pips <small>hard cap — log warning if hit</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="max_sl_pips">?</button><input type="number" id="max_sl_pips" min="5" max="200" step="1"></div>
-        </div>
-
-        <div class="card-title" style="margin-top:16px">Take Profit Method</div>
-        <div class="radio-group" style="margin-bottom:14px">
-          <label><input type="radio" name="tp_method" value="confluence"> Next confluence level</label>
-          <label><input type="radio" name="tp_method" value="partial"> Partial (TP1 + runner)</label>
-          <label><input type="radio" name="tp_method" value="fixed_rr"> Fixed R:R</label>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Close at TP1 % <small>% of position closed at TP1</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="tp1_close_pct">?</button><input type="number" id="tp1_close_pct" min="10" max="100" step="5"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Max TP pips <small>hard cap</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="max_tp_pips">?</button><input type="number" id="max_tp_pips" min="5" max="500" step="1"></div>
-        </div>
-
-        <div class="sec">Ladder Exits (R multiples)</div>
-        <div class="form-row">
-          <span class="form-lbl">TP1 R multiple <small>partial close at entry + tp1r × R</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ec_tp1r">?</button><input type="number" id="ec_tp1r" min="0.1" max="3" step="0.1"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">TP2 R multiple <small>runner / final target exit</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ec_tp2r">?</button><input type="number" id="ec_tp2r" min="0.5" max="10" step="0.1"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Trail offset ×R <small>trailing stop distance after TP1 hit</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ec_trailoffset">?</button><input type="number" id="ec_trailoffset" min="0.1" max="2" step="0.05"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right column -->
-    <div>
-      <!-- Execution thresholds -->
-      <div class="card">
-        <div class="card-title">Execution Thresholds</div>
-
-        <div class="sec" style="margin-top:0;padding-top:0;border-top:none">Quality Filter</div>
-        <div class="form-row">
-          <span class="form-lbl">Tier <small>strict=4★ · balanced=3★ · loose=2★ · aggressive=1★</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ex_tier">?</button><select id="ex_tier">
-            <option value="strict">Strict (4★)</option>
-            <option value="balanced">Balanced (3★)</option>
-            <option value="loose">Loose (2★)</option>
-            <option value="aggressive">Aggressive (1★)</option>
-          </select></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">WT1 bar direction <small>multi-timeframe WaveTrend filter</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ex_bardir">?</button><select id="ex_bardir">
-            <option value="off">Off — skip WT1 direction check</option>
-            <option value="auto">Auto — filter when |WT1| ≥ threshold</option>
-            <option value="on">On — strict 5m + 1H agreement</option>
-          </select></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">WT1 threshold <small>auto mode triggers above this value</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ex_wtthreshold">?</button><input type="number" id="ex_wtthreshold" min="10" max="80" step="1"></div>
-        </div>
-
-        <div class="sec">Score Gates</div>
-        <div class="form-row">
-          <span class="form-lbl">Min macro score <small>dashboard signal score 0–100</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ex_min_score">?</button><input type="number" id="ex_min_score" min="0" max="12" step="1"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Min confluence stars <small>★ rating of the level</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ex_min_stars">?</button><input type="number" id="ex_min_stars" min="1" max="5" step="1"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Min modules agree <small>directional consensus count</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ex_min_agree">?</button><input type="number" id="ex_min_agree" min="1" max="6" step="1"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Composite threshold <small>0–1 average of passing module scores</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ex_threshold">?</button><input type="number" id="ex_threshold" min="0" max="1" step="0.05"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Max trades per loop</span>
-          <div class="input-wrap"><button class="help-btn" data-key="ex_max_trades">?</button><input type="number" id="ex_max_trades" min="1" max="10" step="1"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Proximity pips <small>price distance to level · Gold/NAS in pts</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ex_prox_pips">?</button><input type="number" id="ex_prox_pips" min="1" max="100" step="1"></div>
-        </div>
-      </div>
-
-      <!-- Position sizing -->
-      <div class="card">
-        <div class="card-title">Position Sizing</div>
-        <div class="form-row">
-          <span class="form-lbl">Risk per trade % <small>of account balance</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="pos_risk">?</button><input type="number" id="pos_risk" min="0.1" max="5" step="0.1"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Sizing multiplier <small>manual override on top of vol sizing</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="pos_sizing">?</button><input type="number" id="pos_sizing" min="0.1" max="5" step="0.1"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Max lot ceiling <small>hard cap regardless of risk calc</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="pos_max_lot">?</button><input type="number" id="pos_max_lot" min="0.01" max="50" step="0.01"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">HIGH vol size mult <small>multiplied on VIX &gt; 20</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="pos_hi_mult">?</button><input type="number" id="pos_hi_mult" min="0.1" max="2" step="0.1"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">LOW vol size mult <small>multiplied on VIX &lt; 15</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="pos_lo_mult">?</button><input type="number" id="pos_lo_mult" min="0.5" max="3" step="0.1"></div>
-        </div>
-      </div>
-
-      <!-- Risk Guard -->
-      <div class="card">
-        <div class="card-title">Risk Guard</div>
-        <div class="form-row">
-          <span class="form-lbl">Daily DD limit % <small>halt all trading if breached</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ec_ddlimit">?</button><input type="number" id="ec_ddlimit" min="0.5" max="10" step="0.5"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Monthly DD limit % <small>longer-term circuit breaker</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ec_monthlydd">?</button><input type="number" id="ec_monthlydd" min="1" max="20" step="0.5"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Lockout (hours) <small>pause after DD limit breach</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ec_lockout">?</button><input type="number" id="ec_lockout" min="1" max="72" step="1"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Cooldown (min/pair) <small>per-pair pause after a trade executes</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="ec_cooldown">?</button><input type="number" id="ec_cooldown" min="5" max="480" step="5"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Trade window start <small>UTC</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="tw_start">?</button><input type="time" id="tw_start"></div>
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Trade window end <small>UTC</small></span>
-          <div class="input-wrap"><button class="help-btn" data-key="tw_end">?</button><input type="time" id="tw_end"></div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /grid -->
-
-  <!-- Filters card (full width) -->
-  <div class="card">
-    <div class="card-title">Filters</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 32px">
+    <div class="bot-banner tg">
+      <div class="bot-banner-icon">📡</div>
       <div>
+        <div class="bot-banner-title">Telegram Signal Bot</div>
+        <div class="bot-banner-sub">Reads signals from Railway dashboard · Executes via MT5 · Config stored in Cloudflare KV · bot/main.py</div>
+      </div>
+    </div>
+
+    <!-- Live bot status -->
+    <div class="bs-strip">
+      <div class="bs-head">
+        <span class="bs-lbl">Bot Runtime</span>
+        <span id="bsAge" class="bs-dim">Checking…</span>
+        <span id="bsPaper" class="bs-dim"></span>
+        <span id="bsTier" class="bs-dim"></span>
+        <span id="bsBalance" class="bs-dim"></span>
+      </div>
+      <div class="bs-rows">
+        <div id="bsPairs"></div>
+        <div id="bsBlocked"></div>
+        <div id="bsOpen"></div>
+        <div id="bsMgmt"></div>
+        <div id="bsErrors"></div>
+      </div>
+    </div>
+
+    <!-- Kill switch -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Emergency</div>
+      <button id="ksBtn" class="ks-btn" onclick="toggleKillSwitch()">KILL SWITCH: OFF</button>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px;text-align:center">
+        Toggle kills the bot on its <em>next poll cycle</em> — no restart needed
+      </div>
+    </div>
+
+    <!-- Bot Mode -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Bot Mode</div>
+      <div class="radio-group" style="flex-direction:column;gap:10px;margin-bottom:4px">
+        <label style="align-items:flex-start;gap:8px">
+          <input type="radio" name="bot_mode" value="full" onchange="toggleTgSettings()" style="margin-top:3px">
+          <span><span style="font-weight:600;font-size:12.5px;color:var(--text)">Full Pipeline</span><br>
+          <span style="font-size:11px;color:var(--text3)">All modules run: vol gate → macro regime → confluence → OI walls → COT → news</span></span>
+        </label>
+        <label style="align-items:flex-start;gap:8px">
+          <input type="radio" name="bot_mode" value="telegram" onchange="toggleTgSettings()" style="margin-top:3px">
+          <span><span style="font-weight:600;font-size:12.5px;color:var(--text)">Telegram Mode</span><br>
+          <span style="font-size:11px;color:var(--text3)">Enter when a KV entry passes grade + stars + signal score — no module pipeline</span></span>
+        </label>
+      </div>
+      <div id="tgSettings" style="display:none;border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
         <div class="form-row">
-          <span class="form-lbl">Max spread (pips) <small>reject trade if bid-ask spread exceeds this</small></span>
+          <span class="form-lbl">Min grade <small>minimum entry.grade from KV snapshot</small></span>
+          <select id="tg_min_grade">
+            <option value="A">A (highest conviction)</option>
+            <option value="B">B (default)</option>
+            <option value="C">C (any grade)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Min signal score <small>entry.signalScore 0–1 threshold</small></span>
+          <input type="number" id="tg_min_signal" min="0" max="1" step="0.05">
+        </div>
+      </div>
+    </div>
+
+    <!-- Process flow diagram -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="cursor:pointer;user-select:none" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.ftoggle').textContent=this.nextElementSibling.style.display==='none'?'▼ show':'▲ hide'">
+        Bot Process Flow <span class="ftoggle" style="float:right;font-weight:400;font-size:10px">▼ show</span>
+      </div>
+      <div style="display:none">
+        <div class="flow-timers">
+          <span class="fbadge b">⏱ Every 120s — fetch /api/state</span>
+          <span class="fbadge g">⏱ Every 5min — dashboard pushes levels to KV</span>
+          <span class="fbadge a">⏱ Every 3s — price tick loop</span>
+        </div>
+        <div class="fstep"><div class="fstep-num">1</div><div class="fstep-body"><div class="fstep-lbl">Price Tick</div><div class="fstep-desc">OANDA live prices for all enabled pairs</div></div></div>
+        <div class="fstep-conn"></div>
+        <div class="fstep"><div class="fstep-num gate">2</div><div class="fstep-body gate"><div class="fstep-lbl">Trade window? (06:05 – 21:00 UTC)</div><div class="fstep-no">NO → ⏸ Wait 3s</div></div></div>
+        <div class="fstep-conn"></div>
+        <div class="fstep"><div class="fstep-num gate">3</div><div class="fstep-body gate"><div class="fstep-lbl">Data fresh? (&lt; 12 min old)</div><div class="fstep-no">NO → 🔄 POST /api/refresh</div></div></div>
+        <div class="fstep-conn"></div>
+        <div class="fstep"><div class="fstep-num gate">4</div><div class="fstep-body gate"><div class="fstep-lbl">Price within proximity pips? + WT1 direction aligns?</div><div class="fstep-no">NO → Monitor quietly</div></div></div>
+        <div class="fstep-conn"></div>
+        <div class="fstep"><div class="fstep-num gate">5</div><div class="fstep-body gate"><div class="fstep-lbl">RiskGuard — daily DD · lockout · per-pair cooldown</div><div class="fstep-no">BLOCKED → Skip pair</div></div></div>
+        <div class="fstep-conn"></div>
+        <div class="fstep"><div class="fstep-num">6</div><div class="fstep-body"><div class="fstep-lbl">Module Evaluation</div><div class="fmod-list"><span class="fmod"><span class="fmod-dot"></span>Vol Gate</span><span class="fmod"><span class="fmod-dot"></span>Macro Regime</span><span class="fmod"><span class="fmod-dot"></span>Confluence</span><span class="fmod"><span class="fmod-dot"></span>OI Walls</span><span class="fmod"><span class="fmod-dot"></span>COT Filter</span><span class="fmod"><span class="fmod-dot"></span>News Risk</span></div></div></div>
+        <div class="fstep-conn"></div>
+        <div class="fstep"><div class="fstep-num gate">7</div><div class="fstep-body gate"><div class="fstep-lbl">Composite score ≥ threshold?</div><div class="fstep-no">NO → Skip</div></div></div>
+        <div class="fstep-conn"></div>
+        <div class="fstep"><div class="fstep-num">8</div><div class="fstep-body"><div class="fstep-lbl">Calculate SL / TP / Lot Size</div></div></div>
+        <div class="fstep-conn"></div>
+        <div class="fstep"><div class="fstep-num gate">9</div><div class="fstep-body gate"><div class="fstep-lbl">Spread OK?</div><div class="fstep-no">NO → Reject</div></div></div>
+        <div class="fstep-conn"></div>
+        <div class="fstep"><div class="fstep-num exec">✓</div><div class="fstep-body exec"><div class="fstep-lbl">Execute Trade (or log PAPER)</div></div></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Left column -->
+      <div>
+        <!-- Modules -->
+        <div class="card">
+          <div class="card-title">Modules</div>
+          <div class="toggle-wrap"><input type="checkbox" id="mod_vol_gate"><label for="mod_vol_gate">Vol Gate <small>VIX hard block on HIGH vol</small></label><button class="help-btn" data-key="mod_vol_gate">?</button></div>
+          <div class="toggle-wrap"><input type="checkbox" id="mod_macro_regime"><label for="mod_macro_regime">Macro Regime <small>Dashboard signal score + direction</small></label><button class="help-btn" data-key="mod_macro_regime">?</button></div>
+          <div class="toggle-wrap"><input type="checkbox" id="mod_confluence"><label for="mod_confluence">Confluence <small>Min-star Fib entry selector</small></label><button class="help-btn" data-key="mod_confluence">?</button></div>
+          <div class="toggle-wrap"><input type="checkbox" id="mod_oi_walls"><label for="mod_oi_walls">OI Walls <small>Block entries into call/put walls</small></label><button class="help-btn" data-key="mod_oi_walls">?</button></div>
+          <div class="toggle-wrap"><input type="checkbox" id="mod_cot_filter"><label for="mod_cot_filter">COT Filter <small>CFTC leveraged-fund positioning</small></label><button class="help-btn" data-key="mod_cot_filter">?</button></div>
+          <div class="toggle-wrap"><input type="checkbox" id="mod_news_risk"><label for="mod_news_risk">News Risk <small>HIGH impact event blackout window</small></label><button class="help-btn" data-key="mod_news_risk">?</button></div>
+        </div>
+
+        <!-- SL/TP -->
+        <div class="card">
+          <div class="card-title">Stop Loss Method</div>
+          <div class="radio-group" style="margin-bottom:14px">
+            <label><input type="radio" name="sl_method" value="structure"> Structure</label>
+            <label><input type="radio" name="sl_method" value="atr"> ATR multiple</label>
+            <label><input type="radio" name="sl_method" value="garch"> GARCH 95%</label>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">ATR multiplier <small>when SL method = ATR</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="sl_atr_mult">?</button><input type="number" id="sl_atr_mult" min="0.5" max="5" step="0.1"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Max SL pips <small>hard cap</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="max_sl_pips">?</button><input type="number" id="max_sl_pips" min="5" max="200" step="1"></div>
+          </div>
+
+          <div class="card-title" style="margin-top:16px">Take Profit Method</div>
+          <div class="radio-group" style="margin-bottom:14px">
+            <label><input type="radio" name="tp_method" value="confluence"> Next confluence level</label>
+            <label><input type="radio" name="tp_method" value="partial"> Partial (TP1 + runner)</label>
+            <label><input type="radio" name="tp_method" value="fixed_rr"> Fixed R:R</label>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Close at TP1 % <small>% of position closed at TP1</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="tp1_close_pct">?</button><input type="number" id="tp1_close_pct" min="10" max="100" step="5"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Max TP pips <small>hard cap</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="max_tp_pips">?</button><input type="number" id="max_tp_pips" min="5" max="500" step="1"></div>
+          </div>
+          <div class="sec">Ladder Exits (R multiples)</div>
+          <div class="form-row">
+            <span class="form-lbl">TP1 R multiple <small>partial close at entry + tp1r × R</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ec_tp1r">?</button><input type="number" id="ec_tp1r" min="0.1" max="3" step="0.1"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">TP2 R multiple <small>runner target</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ec_tp2r">?</button><input type="number" id="ec_tp2r" min="0.5" max="10" step="0.1"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Trail offset ×R <small>trailing stop after TP1 hit</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ec_trailoffset">?</button><input type="number" id="ec_trailoffset" min="0.1" max="2" step="0.05"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div>
+        <!-- Execution thresholds -->
+        <div class="card">
+          <div class="card-title">Execution Thresholds</div>
+          <div class="sec" style="margin-top:0;padding-top:0;border-top:none">Quality Filter</div>
+          <div class="form-row">
+            <span class="form-lbl">Tier <small>strict=4★ · balanced=3★ · loose=2★ · aggressive=1★</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ex_tier">?</button><select id="ex_tier">
+              <option value="strict">Strict (4★)</option>
+              <option value="balanced">Balanced (3★)</option>
+              <option value="loose">Loose (2★)</option>
+              <option value="aggressive">Aggressive (1★)</option>
+            </select></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">WT1 bar direction <small>multi-timeframe WaveTrend filter</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ex_bardir">?</button><select id="ex_bardir">
+              <option value="off">Off</option>
+              <option value="auto">Auto — filter when |WT1| ≥ threshold</option>
+              <option value="on">On — strict 5m + 1H agreement</option>
+            </select></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">WT1 threshold <small>auto mode triggers above this</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ex_wtthreshold">?</button><input type="number" id="ex_wtthreshold" min="10" max="80" step="1"></div>
+          </div>
+          <div class="sec">Score Gates</div>
+          <div class="form-row">
+            <span class="form-lbl">Min macro score <small>dashboard signal score 0–100</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ex_min_score">?</button><input type="number" id="ex_min_score" min="0" max="12" step="1"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Min confluence stars <small>★ rating of the level</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ex_min_stars">?</button><input type="number" id="ex_min_stars" min="1" max="5" step="1"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Min modules agree <small>directional consensus count</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ex_min_agree">?</button><input type="number" id="ex_min_agree" min="1" max="6" step="1"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Composite threshold <small>0–1 average module score</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ex_threshold">?</button><input type="number" id="ex_threshold" min="0" max="1" step="0.05"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Max trades per loop</span>
+            <div class="input-wrap"><button class="help-btn" data-key="ex_max_trades">?</button><input type="number" id="ex_max_trades" min="1" max="10" step="1"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Proximity pips <small>price distance to level</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ex_prox_pips">?</button><input type="number" id="ex_prox_pips" min="1" max="100" step="1"></div>
+          </div>
+        </div>
+
+        <!-- Position sizing -->
+        <div class="card">
+          <div class="card-title">Position Sizing</div>
+          <div class="form-row">
+            <span class="form-lbl">Risk per trade % <small>of account balance</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="pos_risk">?</button><input type="number" id="pos_risk" min="0.1" max="5" step="0.1"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Sizing multiplier <small>manual override on vol sizing</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="pos_sizing">?</button><input type="number" id="pos_sizing" min="0.1" max="5" step="0.1"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Max lot ceiling <small>hard cap</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="pos_max_lot">?</button><input type="number" id="pos_max_lot" min="0.01" max="50" step="0.01"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">HIGH vol size mult <small>VIX &gt; 20</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="pos_hi_mult">?</button><input type="number" id="pos_hi_mult" min="0.1" max="2" step="0.1"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">LOW vol size mult <small>VIX &lt; 15</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="pos_lo_mult">?</button><input type="number" id="pos_lo_mult" min="0.5" max="3" step="0.1"></div>
+          </div>
+        </div>
+
+        <!-- Risk Guard -->
+        <div class="card">
+          <div class="card-title">Risk Guard</div>
+          <div class="form-row">
+            <span class="form-lbl">Daily DD limit % <small>halt if breached</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ec_ddlimit">?</button><input type="number" id="ec_ddlimit" min="0.5" max="10" step="0.5"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Monthly DD limit %</span>
+            <div class="input-wrap"><button class="help-btn" data-key="ec_monthlydd">?</button><input type="number" id="ec_monthlydd" min="1" max="20" step="0.5"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Lockout (hours) <small>pause after DD breach</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ec_lockout">?</button><input type="number" id="ec_lockout" min="1" max="72" step="1"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Cooldown (min/pair) <small>per-pair pause after trade</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ec_cooldown">?</button><input type="number" id="ec_cooldown" min="5" max="480" step="5"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Trade window start <small>UTC</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="tw_start">?</button><input type="time" id="tw_start"></div>
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Trade window end <small>UTC</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="tw_end">?</button><input type="time" id="tw_end"></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /grid -->
+
+    <!-- Filters (full width) -->
+    <div class="card">
+      <div class="card-title">Filters</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 32px">
+        <div class="form-row">
+          <span class="form-lbl">Max spread (pips) <small>reject if bid-ask exceeds this</small></span>
           <div class="input-wrap"><button class="help-btn" data-key="ex_max_spread">?</button><input type="number" id="ex_max_spread" min="0.5" max="20" step="0.5"></div>
         </div>
-      </div>
-      <div>
         <div class="form-row">
-          <span class="form-lbl">OI wall proximity (pips) <small>block entry if call/put wall within N pips</small></span>
+          <span class="form-lbl">OI wall proximity (pips) <small>block if wall within N pips</small></span>
           <div class="input-wrap"><button class="help-btn" data-key="oi_wall_pips">?</button><input type="number" id="oi_wall_pips" min="5" max="100" step="1"></div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Enabled pairs -->
-  <div class="card">
-    <div class="card-title">Enabled Pairs</div>
-    <div class="pair-grid">
-      <label class="pair-chk"><input type="checkbox" id="pair_EURUSD"> EUR/USD</label>
-      <label class="pair-chk"><input type="checkbox" id="pair_GBPUSD"> GBP/USD</label>
-      <label class="pair-chk"><input type="checkbox" id="pair_USDJPY"> USD/JPY</label>
-      <label class="pair-chk"><input type="checkbox" id="pair_AUDUSD"> AUD/USD</label>
-      <label class="pair-chk"><input type="checkbox" id="pair_XAUUSD"> XAU/USD</label>
-      <label class="pair-chk"><input type="checkbox" id="pair_EURGBP"> EUR/GBP</label>
-      <label class="pair-chk"><input type="checkbox" id="pair_USDCAD"> USD/CAD</label>
-      <label class="pair-chk"><input type="checkbox" id="pair_USDCHF"> USD/CHF</label>
-      <label class="pair-chk"><input type="checkbox" id="pair_GBPJPY"> GBP/JPY</label>
-      <label class="pair-chk"><input type="checkbox" id="pair_NAS100_USD"> NAS100</label>
+    <!-- Enabled pairs -->
+    <div class="card">
+      <div class="card-title">Enabled Pairs</div>
+      <div class="pair-grid">
+        <label class="pair-chk"><input type="checkbox" id="pair_EURUSD"> EUR/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="pair_GBPUSD"> GBP/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="pair_USDJPY"> USD/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="pair_AUDUSD"> AUD/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="pair_XAUUSD"> XAU/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="pair_EURGBP"> EUR/GBP</label>
+        <label class="pair-chk"><input type="checkbox" id="pair_USDCAD"> USD/CAD</label>
+        <label class="pair-chk"><input type="checkbox" id="pair_USDCHF"> USD/CHF</label>
+        <label class="pair-chk"><input type="checkbox" id="pair_GBPJPY"> GBP/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="pair_NAS100_USD"> NAS100</label>
+      </div>
     </div>
-  </div>
 
-  <!-- MT5 Credentials -->
-  <div class="card">
-    <div class="card-title">MT5 Credentials — Main Bot</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
-      Saved to KV — the Python bot reads these on startup instead of needing environment variables.
-      Only one value needs to be set as an env var on the machine running the bot:
-      <code style="background:var(--s3);padding:1px 5px;border-radius:3px">DASHBOARD_URL</code>
-      (defaults to the Railway URL if omitted).
+    <!-- MT5 Credentials — Telegram Bot -->
+    <div class="card">
+      <div class="card-title">MT5 Credentials — Telegram Bot</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+        Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">bot_credentials</code>).
+        Only <code style="background:var(--s3);padding:1px 5px;border-radius:3px">DASHBOARD_URL</code> needs to be set on the machine running the bot.
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Account number</span>
+        <input type="number" id="mt5_account" placeholder="e.g. 12345678" style="width:130px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Password</span>
+        <input type="password" id="mt5_password" placeholder="••••••••" style="width:130px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Server <small>e.g. ICMarkets-Demo01</small></span>
+        <input type="text" id="mt5_server" placeholder="Broker-Demo01" style="width:180px;text-align:left">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Terminal path <small>optional</small></span>
+        <input type="text" id="mt5_path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" style="width:280px;text-align:left">
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+        <button class="btn-save" style="max-width:180px;padding:9px" onclick="saveCreds()">Save Credentials</button>
+        <span id="credsStatus" class="inline-status"></span>
+      </div>
     </div>
-    <div class="form-row">
-      <span class="form-lbl">Account number <small>File → Login to Trade Account in MT5</small></span>
-      <input type="number" id="mt5_account" placeholder="e.g. 12345678" style="width:130px">
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Password</span>
-      <input type="password" id="mt5_password" placeholder="••••••••" style="width:130px">
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Server <small>visible in MT5 login dropdown e.g. ICMarkets-Demo01</small></span>
-      <input type="text" id="mt5_server" placeholder="Broker-Demo01" style="width:180px">
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Terminal path <small>optional — full path to terminal64.exe</small></span>
-      <input type="text" id="mt5_path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" style="width:280px;text-align:left">
-    </div>
-    <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
-      <button class="btn-save" style="max-width:180px;padding:9px" onclick="saveCreds()">Save Credentials</button>
-      <span id="credsStatus" style="font-size:11px;color:var(--text3)"></span>
-    </div>
-  </div>
 
-  <!-- BacktestSystem MT5 Credentials -->
-  <div class="card">
-    <div class="card-title">MT5 Credentials — Backtest Bot</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
-      Saved to KV under a separate key. The local <code style="background:var(--s3);padding:1px 5px;border-radius:3px">backtestSystem/main.py</code>
-      reads these on startup when <code style="background:var(--s3);padding:1px 5px;border-radius:3px">DASHBOARD_URL</code> is set in its <code style="background:var(--s3);padding:1px 5px;border-radius:3px">.env</code>,
-      falling back to individual env vars if not.
+    <!-- Telegram bot action buttons -->
+    <div class="actions">
+      <button class="btn-save" onclick="saveConfig()">Save Telegram Bot Config</button>
+      <button class="btn-reset" onclick="resetDefaults()">Reset Defaults</button>
     </div>
-    <div class="form-row">
-      <span class="form-lbl">Account number <small>File → Login to Trade Account in MT5</small></span>
-      <input type="number" id="bt_mt5_account" placeholder="e.g. 12345678" style="width:130px">
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Password</span>
-      <input type="password" id="bt_mt5_password" placeholder="••••••••" style="width:130px">
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Server <small>visible in MT5 login dropdown e.g. ICMarkets-Demo01</small></span>
-      <input type="text" id="bt_mt5_server" placeholder="Broker-Demo01" style="width:180px">
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Terminal path <small>optional — full path to terminal64.exe</small></span>
-      <input type="text" id="bt_mt5_path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" style="width:280px;text-align:left">
-    </div>
-    <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
-      <button class="btn-save" style="max-width:180px;padding:9px" onclick="saveBtCreds()">Save Credentials</button>
-      <span id="btCredsStatus" style="font-size:11px;color:var(--text3)"></span>
-    </div>
-  </div>
 
-  <!-- Backtest Bot — Live Settings -->
-  <div class="card" style="margin-top:20px">
-    <div class="card-title">Backtest Bot — Live Settings <span class="card-sub">Stored in KV — override active.json at runtime</span></div>
-    <div class="form-row">
-      <span class="form-lbl">Risk % per trade</span>
-      <input type="number" id="bt_riskPct" value="1" min="0.1" max="10" step="0.1" style="width:80px">
-      <small>% of account balance lost if SL hit</small>
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Kill switch — daily loss (R)</span>
-      <input type="number" id="bt_killDaily" value="2" min="0" step="0.5" style="width:80px">
-      <small>0 = disabled</small>
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Kill switch — weekly loss (R)</span>
-      <input type="number" id="bt_killWeekly" value="5" min="0" step="0.5" style="width:80px">
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Kill switch — monthly loss (R)</span>
-      <input type="number" id="bt_killMonthly" value="10" min="0" step="0.5" style="width:80px">
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Entry window (HHMM London)</span>
-      <input type="number" id="bt_entryWindow" value="800" min="0" max="2359" style="width:80px">
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">EOD exit (HHMM London)</span>
-      <input type="number" id="bt_eodExit" value="2100" min="0" max="2359" style="width:80px">
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Cooldown after trade closes (mins)</span>
-      <input type="number" id="bt_tradeCooldownMins" value="30" min="0" step="5" style="width:80px">
-      <small>0 = no cooldown</small>
-    </div>
-    <div class="form-row">
-      <span class="form-lbl">Enabled pairs <small>comma-separated</small></span>
-      <input type="text" id="bt_enabledPairs" value="EURUSD,GBPUSD,USDJPY,AUDUSD,XAUUSD" style="width:340px;text-align:left">
-    </div>
-    <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
-      <button class="btn-save" style="max-width:200px;padding:9px" onclick="saveLiveSettings()">Save Live Settings</button>
-      <span id="btLiveStatus" style="font-size:11px;color:var(--text3)"></span>
-    </div>
-  </div>
+  </div><!-- /tab-original -->
 
-  <!-- Action buttons -->
-  <div class="actions">
-    <button class="btn-save" onclick="saveConfig()">Save Config</button>
-    <button class="btn-reset" onclick="resetDefaults()">Reset Defaults</button>
-  </div>
+  <!-- ═══════════════════════ TAB: BACKTEST BOT ═══════════════════════ -->
+  <div id="tab-backtest" class="tab-pane">
+
+    <div class="bot-banner bt">
+      <div class="bot-banner-icon">🤖</div>
+      <div>
+        <div class="bot-banner-title">Backtest / Live MT5 Bot</div>
+        <div class="bot-banner-sub">Polls MT5 directly · Asia Fib confluence entries · backtestSystem/main.py · Config stored in KV (overrides active.json)</div>
+      </div>
+    </div>
+
+    <!-- Backtest bot live status -->
+    <div class="bs-strip">
+      <div class="bs-head">
+        <span class="bs-lbl">Backtest Bot Runtime</span>
+        <span id="btBsAge" class="bs-dim">Checking…</span>
+        <span id="btBsWindow" class="bs-dim"></span>
+        <span id="btBsDate" class="bs-dim"></span>
+      </div>
+      <div class="bs-rows">
+        <div id="btBsPairs"></div>
+        <div id="btBsPositions"></div>
+      </div>
+    </div>
+
+    <!-- MT5 Credentials — Backtest Bot -->
+    <div class="card">
+      <div class="card-title">MT5 Credentials — Backtest Bot</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+        Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">backtestsystem_credentials</code>).
+        Set <code style="background:var(--s3);padding:1px 5px;border-radius:3px">DASHBOARD_URL</code> in backtestSystem/.env and the bot reads credentials from here on startup.
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Account number</span>
+        <input type="number" id="bt_mt5_account" placeholder="e.g. 12345678" style="width:130px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Password</span>
+        <input type="password" id="bt_mt5_password" placeholder="••••••••" style="width:130px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Server <small>e.g. ICMarkets-Demo01</small></span>
+        <input type="text" id="bt_mt5_server" placeholder="Broker-Demo01" style="width:180px;text-align:left">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Terminal path <small>optional</small></span>
+        <input type="text" id="bt_mt5_path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" style="width:280px;text-align:left">
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+        <button class="btn-save green" style="max-width:180px;padding:9px" onclick="saveBtCreds()">Save Credentials</button>
+        <span id="btCredsStatus" class="inline-status"></span>
+      </div>
+    </div>
+
+    <!-- Row 1: Entry Strategy | Entry Timing -->
+    <div class="grid">
+      <!-- Entry Strategy -->
+      <div class="card">
+        <div class="card-title">Entry Strategy</div>
+        <div class="form-row">
+          <span class="form-lbl">Session method <small>which range to project Fib levels from</small></span>
+          <div class="radio-group" style="flex-direction:column;gap:4px">
+            <label><input type="radio" name="bt_method" value="asia"> Asia (00:00–06:00 London)</label>
+            <label><input type="radio" name="bt_method" value="monday"> Monday range</label>
+            <label><input type="radio" name="bt_method" value="both"> Both</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Confluence tolerance (pips) <small>how close today + yest Fibs must be</small></span>
+          <input type="number" id="bt_confTolPips" min="0.5" max="20" step="0.5">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Signal filter</span>
+          <select id="bt_signalFilter">
+            <option value="all_conf">All confluences</option>
+            <option value="tight_only">Tight only</option>
+            <option value="all_levels">All levels (no confluence required)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Price reference <small>which price of the level cluster to use</small></span>
+          <select id="bt_priceMode">
+            <option value="lowest">Lowest</option>
+            <option value="midpoint">Midpoint</option>
+            <option value="highest">Highest</option>
+          </select>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="bt_clusterMerge">
+          <label for="bt_clusterMerge">Cluster merge <small>merge nearby levels into one entry</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="bt_useM1Features">
+          <label for="bt_useM1Features">Use 1m features <small>include 1-minute signals in scoring</small></label>
+        </div>
+      </div>
+
+      <!-- Entry Timing -->
+      <div class="card">
+        <div class="card-title">Entry Timing &amp; Proximity</div>
+        <div class="form-row">
+          <span class="form-lbl">Entry window open (HHMM London) <small>no entries before this time</small></span>
+          <input type="number" id="bt_entryWindow" min="0" max="2359" step="5">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">EOD exit (HHMM London) <small>close all / no new entries after</small></span>
+          <input type="number" id="bt_eodExit" min="0" max="2359" step="5">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Proximity (× Asia range) <small>triggers feature scan when price within this fraction of range from level</small></span>
+          <input type="number" id="bt_entryProximityATR" min="0.05" max="2" step="0.05">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Entry tolerance (pips) <small>order fires only when price within this many pips</small></span>
+          <input type="number" id="bt_entryTolPips" min="0.5" max="20" step="0.5">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Poll interval (seconds) <small>how often bot checks prices</small></span>
+          <input type="number" id="bt_pollInterval" min="1" max="60" step="1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Trade cooldown (mins) <small>block new entries on same pair after a trade</small></span>
+          <input type="number" id="bt_tradeCooldownMins" min="0" max="480" step="5">
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Entry Quality | Candle / Sweep Filters -->
+    <div class="grid">
+      <!-- Entry Quality -->
+      <div class="card">
+        <div class="card-title">Entry Quality Filters</div>
+        <div class="form-row">
+          <span class="form-lbl">Min conviction <small>0–1 feature score threshold</small></span>
+          <input type="number" id="bt_minConviction" min="0" max="1" step="0.05">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Min confirms <small>features voting in direction</small></span>
+          <input type="number" id="bt_minConfirms" min="0" max="10" step="1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max re-entries per level <small>per day</small></span>
+          <input type="number" id="bt_levelReentry" min="1" max="10" step="1">
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="bt_secondTouchOnly">
+          <label for="bt_secondTouchOnly">Second touch only <small>skip first approach to level</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="bt_reEnterTp">
+          <label for="bt_reEnterTp">Re-enter after TP <small>allow re-entry once TP is hit</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="bt_flipOnSL">
+          <label for="bt_flipOnSL">Flip on SL <small>reverse direction after stop hit (not yet implemented)</small></label>
+        </div>
+      </div>
+
+      <!-- Sweep / Candle filters -->
+      <div class="card">
+        <div class="card-title">Sweep &amp; Candle Confirmation</div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="bt_requireSweep">
+          <label for="bt_requireSweep">Require sweep <small>price must sweep through level first</small></label>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Sweep pips <small>min pips past level for sweep</small></span>
+          <input type="number" id="bt_sweepPips" min="0.5" max="20" step="0.5">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Candle confirm (bars) <small>0 = off; N bars must close in direction</small></span>
+          <input type="number" id="bt_candleConfirmN" min="0" max="5" step="1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Candle confirm % <small>body must fill this fraction of candle</small></span>
+          <input type="number" id="bt_candleConfirmPct" min="0.1" max="1" step="0.05">
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="bt_rejectionBar">
+          <label for="bt_rejectionBar">Rejection bar <small>require wick rejection pattern</small></label>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Rejection wick % <small>wick as fraction of candle body</small></span>
+          <input type="number" id="bt_rejWickPct" min="0.1" max="2" step="0.05">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Rejection min ATR % <small>min candle size vs ATR</small></span>
+          <input type="number" id="bt_rejMinAtrPct" min="0.05" max="2" step="0.05">
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: Stop Loss | Take Profit -->
+    <div class="grid">
+      <!-- Stop Loss -->
+      <div class="card">
+        <div class="card-title">Stop Loss</div>
+        <div class="form-row" style="flex-wrap:wrap;gap:6px">
+          <span class="form-lbl">SL mode</span>
+          <div class="radio-group">
+            <label><input type="radio" name="bt_slMode" value="range"> Range ×fraction</label>
+            <label><input type="radio" name="bt_slMode" value="atr"> ATR 5m ×mult</label>
+            <label><input type="radio" name="bt_slMode" value="atr30m"> ATR 30m ×mult</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">SL fraction <small>Asia range × this (range mode)</small></span>
+          <input type="number" id="bt_slFraction" min="0.1" max="1" step="0.05">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">SL multiplier <small>ATR × this (atr/atr30m mode)</small></span>
+          <input type="number" id="bt_slMult" min="0.3" max="5" step="0.1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Min SL pips <small>hard floor</small></span>
+          <input type="number" id="bt_minSlPips" min="1" max="50" step="1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">ATR period <small>bars used for ATR calculation</small></span>
+          <input type="number" id="bt_atrPeriod" min="5" max="50" step="1">
+        </div>
+        <div class="sec">SL → Breakeven</div>
+        <div class="form-row">
+          <span class="form-lbl">Move SL to BE at % of TP <small>0 = disabled; 0.5 = when 50% to TP</small></span>
+          <input type="number" id="bt_slToBePct" min="0" max="1" step="0.05">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">BE buffer (pips) <small>pips above/below entry for new SL</small></span>
+          <input type="number" id="bt_slBeBuffer" min="0" max="10" step="0.5">
+        </div>
+      </div>
+
+      <!-- Take Profit -->
+      <div class="card">
+        <div class="card-title">Take Profit</div>
+        <div class="form-row" style="flex-wrap:wrap;gap:6px">
+          <span class="form-lbl">TP mode</span>
+          <div class="radio-group" style="flex-direction:column;gap:4px">
+            <label><input type="radio" name="bt_tpMode" value="fixedR"> Fixed R:R</label>
+            <label><input type="radio" name="bt_tpMode" value="structural"> Structural (next level)</label>
+            <label><input type="radio" name="bt_tpMode" value="volScaledR"> Vol-scaled R</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">R:R ratio <small>TP = SL × this (fixedR mode)</small></span>
+          <input type="number" id="bt_rrRatio" min="0.5" max="10" step="0.1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max R:R <small>hard ceiling regardless of mode</small></span>
+          <input type="number" id="bt_maxRR" min="1" max="20" step="0.5">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Structural buffer (pips) <small>back off from next level by this</small></span>
+          <input type="number" id="bt_tpBuf" min="0" max="20" step="1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">ATR fallback mult <small>if structural TP calc fails</small></span>
+          <input type="number" id="bt_tpAtrFallback" min="1" max="20" step="0.5">
+        </div>
+        <div class="sec">Vol-scaled R multiples</div>
+        <div class="form-row">
+          <span class="form-lbl">LOW vol mult <small>Asia range &lt; 25 pips</small></span>
+          <input type="number" id="bt_tpVolLo" min="0.5" max="10" step="0.1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">MED vol mult <small>range 25–50 pips</small></span>
+          <input type="number" id="bt_tpVolMed" min="0.5" max="10" step="0.1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">HIGH vol mult <small>range &gt; 50 pips</small></span>
+          <input type="number" id="bt_tpVolHi" min="0.5" max="15" step="0.1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4: Kill Switches | Position Sizing -->
+    <div class="grid">
+      <!-- Kill Switches -->
+      <div class="card">
+        <div class="card-title">Kill Switches (R units · 0 = disabled)</div>
+        <div class="form-row">
+          <span class="form-lbl">Daily loss limit (R) <small>halt today if cumulative loss hits this</small></span>
+          <input type="number" id="bt_killDaily" min="0" max="20" step="0.5">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Weekly loss limit (R)</span>
+          <input type="number" id="bt_killWeekly" min="0" max="50" step="0.5">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Monthly loss limit (R)</span>
+          <input type="number" id="bt_killMonthly" min="0" max="100" step="1">
+        </div>
+      </div>
+
+      <!-- Position Sizing -->
+      <div class="card">
+        <div class="card-title">Position Sizing</div>
+        <div class="form-row" style="flex-wrap:wrap;gap:6px">
+          <span class="form-lbl">Sizing mode</span>
+          <div class="radio-group">
+            <label><input type="radio" name="bt_posMode" value="risk_pct"> Risk % per trade</label>
+            <label><input type="radio" name="bt_posMode" value="fixed"> Fixed £/pip</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Risk % per trade <small>% of balance risked if SL hit</small></span>
+          <input type="number" id="bt_riskPct" min="0.1" max="10" step="0.1">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Fixed size (£/pip) <small>used in fixed mode only</small></span>
+          <input type="number" id="bt_fixedSize" min="1" max="1000" step="1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Regime Veto (full width) -->
+    <div class="card">
+      <div class="card-title">1m HMM Regime Veto Gate</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">
+        Fetches the 1m HMM regime from the Railway server (/api/hmm5m) every 5 minutes.
+        When enabled, BULL regime blocks SHORT entries and BEAR regime blocks LONG entries above the confidence threshold. RANGE never blocks.
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" id="bt_useServerRegime">
+        <label for="bt_useServerRegime">Enable regime veto gate</label>
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Min veto confidence % <small>only veto when HMM confidence ≥ this</small></span>
+        <input type="number" id="bt_regimeVetoConfidence" min="50" max="99" step="5">
+      </div>
+    </div>
+
+    <!-- Features (full width) -->
+    <div class="card">
+      <div class="card-title">Feature Signals (vote for entry direction)</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">
+        Each enabled feature votes for long or short. The total weighted vote determines conviction and direction.
+        Features with weight 2 count double. Min confirms must be met before an entry is placed.
+      </div>
+      <div class="feat-grid">
+        <div class="feat-row"><input type="checkbox" id="bt_feat_rangePosition"><label for="bt_feat_rangePosition">Range Position</label><span class="feat-weight">w×1</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_chochBos"><label for="bt_feat_chochBos">CHoCH / BOS</label><span class="feat-weight">w×2</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_wickRejection"><label for="bt_feat_wickRejection">Wick Rejection</label><span class="feat-weight">w×1</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_rsiDivergence"><label for="bt_feat_rsiDivergence">RSI Divergence</label><span class="feat-weight">w×1</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_orderBlock"><label for="bt_feat_orderBlock">Order Block</label><span class="feat-weight">w×1</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_htfEma"><label for="bt_feat_htfEma">HTF EMA 21/50</label><span class="feat-weight">w×1</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_vwapSlope"><label for="bt_feat_vwapSlope">TWAP Slope</label><span class="feat-weight">w×1</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_adxFilter"><label for="bt_feat_adxFilter">ADX Filter</label><span class="feat-weight">w×1</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_hurstRegime"><label for="bt_feat_hurstRegime">Hurst Regime</label><span class="feat-weight">w×1</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_fvgBias"><label for="bt_feat_fvgBias">FVG Bias</label><span class="feat-weight">w×1</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_weeklyPivot"><label for="bt_feat_weeklyPivot">Weekly Pivot</label><span class="feat-weight">w×1</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_ichimokuCloud"><label for="bt_feat_ichimokuCloud">Ichimoku Cloud</label><span class="feat-weight">w×1</span></div>
+        <div class="feat-row"><input type="checkbox" id="bt_feat_macdSignal"><label for="bt_feat_macdSignal">MACD (12/26/9)</label><span class="feat-weight">w×1</span></div>
+      </div>
+    </div>
+
+    <!-- Enabled pairs -->
+    <div class="card">
+      <div class="card-title">Enabled Pairs</div>
+      <div class="pair-grid" style="grid-template-columns:repeat(6,1fr)">
+        <label class="pair-chk"><input type="checkbox" id="bt_pair_EURUSD"> EUR/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="bt_pair_GBPUSD"> GBP/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="bt_pair_USDJPY"> USD/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="bt_pair_AUDUSD"> AUD/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="bt_pair_XAUUSD"> XAU/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="bt_pair_USTECH100M"> NAS100</label>
+      </div>
+    </div>
+
+    <!-- Backtest bot action buttons -->
+    <div class="actions">
+      <button class="btn-save green" onclick="saveBtConfig()">Save Backtest Bot Config</button>
+      <button class="btn-reset" onclick="resetBtDefaults()">Reset Defaults</button>
+      <span id="btSaveStatus" class="inline-status" style="align-self:center"></span>
+    </div>
+
+  </div><!-- /tab-backtest -->
 
 </div><!-- /page -->
 
@@ -617,6 +958,20 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 </div>
 
 <script>
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  const pane = document.getElementById('tab-' + tab);
+  const btn  = document.querySelector('.tab-btn[data-tab="' + tab + '"]');
+  if (pane) pane.classList.add('active');
+  if (btn)  btn.classList.add('active');
+  try { localStorage.setItem('botConfigTab', tab); } catch(e) {}
+}
+window.switchTab = switchTab;
+try { switchTab(localStorage.getItem('botConfigTab') || 'original'); } catch(e) { switchTab('original'); }
+
+// ── Telegram mode toggle ──────────────────────────────────────────────────────
 function toggleTgSettings() {
   const mode = document.querySelector('input[name="bot_mode"]:checked')?.value;
   const el   = document.getElementById('tgSettings');
@@ -624,74 +979,63 @@ function toggleTgSettings() {
 }
 window.toggleTgSettings = toggleTgSettings;
 
+// ── Help system ───────────────────────────────────────────────────────────────
 const HELP = {
-  mod_vol_gate:    { t:'Vol Gate', b:'Blocks ALL new entries when VIX is in the HIGH volatility regime (>20). Prevents entering during panic or spike conditions when spreads are wide and stops can be run easily.', e:'VIX spikes to 28 after Fed announcement → no entries placed. Once VIX falls back below 20 the gate reopens.' },
-  mod_macro_regime:{ t:'Macro Regime', b:'Requires the dashboard macro signal score and 30-min Break of Structure direction to align with the trade direction. Stops trading against the prevailing macro trend.', e:'Dashboard shows bearish bias 55% + 30m BOS bearish → longs are blocked, only short setups evaluated.' },
-  mod_confluence:  { t:'Confluence', b:'Only entries at Fibonacci or structure levels rated at or above the minimum star count are evaluated. Low-quality unrated levels are skipped entirely.', e:'Min stars = 3: a 4-star R1 level passes, a 1-star raw Fib midpoint fails.' },
-  mod_oi_walls:    { t:'OI Walls', b:'Blocks entries where a large options call or put wall sits within the OI wall proximity pips. Price tends to be magnetically pinned or sharply reversed at major walls.', e:'Put wall at 1.1690 + proximity 15 pips → entry at 1.1700 (10 pips away) is blocked.' },
-  mod_cot_filter:  { t:'COT Filter', b:'Uses CFTC Commitment of Traders data. If leveraged funds are heavily net-short, only shorts are considered. Prevents trading against institutional positioning.', e:'Leveraged funds -25k net (bearish) on EUR/USD → all long entries blocked regardless of other signals.' },
-  mod_news_risk:   { t:'News Risk', b:'Blackout window around HIGH-impact scheduled events (Fed, NFP, CPI). No new trades placed inside the window before or after the event.', e:'NFP at 13:30 UTC → no entries 13:15–13:45. Bot resumes normally after window expires.' },
-
-  ex_tier:         { t:'Quality Tier', b:'Sets the minimum star rating an entry level must have. Stars reflect the number of confluences (Fib, pivot, OI wall, COT, structure) at that price. Higher tier = fewer but more reliable setups.', e:'Strict (4★): 1-2 high-conviction trades per day.\nAggressive (1★): 8-10+ trades, more noise, lower expected win rate.' },
-  ex_bardir:       { t:'WT1 Bar Direction', b:'WaveTrend oscillator direction filter. Off = ignored. Auto = only applied when WT1 is extreme (above threshold). On = always requires 5m and 1H WT1 to agree with the trade direction.', e:'Auto + threshold 35: WT1=42 (trending) must confirm direction. WT1=18 (drifting) → filter skipped, trade allowed.' },
-  ex_wtthreshold:  { t:'WT1 Threshold', b:'Used in Auto mode only. When |WT1| is above this value the bar direction filter activates. Below it, markets are considered non-trending and the WT1 requirement is waived.', e:'Default 35: WT1=40 → direction must agree with trade.\nWT1=20 → no WT1 requirement, setup evaluated freely.' },
-  ex_min_score:    { t:'Min Macro Score', b:'The dashboard signal score (0–100) must exceed this value. The score combines macro regime alignment, momentum tiers, Bayesian continuation probability and signal direction.', e:'5 = very permissive (default — just needs some signal).\nRaise to 55 = only trade when macro picture is clearly in your favour.' },
-  ex_min_stars:    { t:'Min Confluence Stars', b:'The ★ star rating of the level must meet or exceed this value. Stars count how many independent confluences overlap at that price — Fib levels, pivots, OI walls, structure etc. More stars = more evidence price will react there.', e:'3★ (default): needs at least 3 overlapping confluences — a Fib + pivot + one more.\n5★: only the highest-conviction levels trade, expect 1-2 setups per day per pair.\n2★: very permissive, includes marginal levels — higher noise.' },
-  ex_min_agree:    { t:'Min Modules Agree', b:'Minimum number of enabled modules that must point the same direction before a trade is placed. Higher = more conviction required.', e:'3: macro regime + confluence + one other must agree.\nRaise to 5 for near-unanimous module consensus only.' },
-  ex_threshold:    { t:'Composite Threshold', b:'Average module score (0–1) across all enabled modules. All pass/fail module results are averaged — this is the minimum average required to proceed.', e:'0.60 (default): 60% average module agreement.\n0.40 → more trades, more noise.\n0.80 → only near-unanimous setups execute.' },
-  ex_max_trades:   { t:'Max Trades Per Loop', b:'How many new positions can be opened in a single 3-second price tick. Prevents piling into many positions simultaneously during a fast market move.', e:'2 (default): at most 2 new entries per tick across all pairs.\nSet to 1 for strict one-at-a-time discipline.' },
-  ex_prox_pips:    { t:'Proximity Pips', b:'Price must be within this many pips of a level before the full module evaluation runs. Acts as a cheap pre-screen — only runs expensive logic when price is actually near a level.', e:'8 pips (default): level at 1.1700 → full eval triggers at 1.1692–1.1708.\nTighten to 3 for precise entries; widen to 15 to catch fast breakout approaches.' },
-
-  pos_risk:        { t:'Risk Per Trade %', b:'Percentage of account balance risked on each trade. The SL distance and this percentage together determine the lot size. This is the primary sizing lever.', e:'1% on £10,000 account = £100 risk per trade.\nSL = 20 pips → lot size calculated so a stop-out costs exactly £100.' },
-  pos_sizing:      { t:'Sizing Multiplier', b:'Manual override applied on top of the volatility-adjusted lot calculation. Quick way to scale all positions back without touching the risk %.', e:'1.0 = full normal size.\n0.5 = half size (useful during testing or uncertain periods).\n2.0 = double (use carefully — amplifies losses too).' },
-  pos_max_lot:     { t:'Max Lot Ceiling', b:'Hard cap on position size regardless of what the risk calculation produces. Safety net against misconfiguration or very large account balances producing oversized trades.', e:'5.0 lots: even if the risk calc says 8 lots, trade executes at 5.0 lots maximum.' },
-  pos_hi_mult:     { t:'HIGH Vol Size Mult', b:'When VIX > 20 (volatile market), multiply the calculated lot size by this factor. Keeps effective risk stable when price ranges expand and natural stop distances widen.', e:'0.5 = half size in high vol. Normal calc = 0.2 lots → high-vol trade = 0.1 lots.' },
-  pos_lo_mult:     { t:'LOW Vol Size Mult', b:'When VIX < 15 (calm, tight-ranging conditions), size up slightly. Low vol = tight spreads and predictable price action — a slightly larger position is justified.', e:'1.2 = 20% larger in calm markets. Normal calc = 0.2 lots → low-vol trade = 0.24 lots.' },
-
-  ec_ddlimit:      { t:'Daily DD Limit %', b:'If account drawdown reaches this percentage today, ALL trading halts immediately and the lockout timer starts. Protects against a bad run compounding into a large loss in one session.', e:'3% on £10,000 = £300 daily loss limit. Breach at 9am → no more trades until lockout expires.' },
-  ec_monthlydd:    { t:'Monthly DD Limit %', b:'Longer-term circuit breaker. Once total drawdown this calendar month reaches this %, the bot halts until manually reset from the dashboard. Prevents a bad week destroying the month.', e:'5% on £10,000 = £500 monthly loss limit. Breach → bot stops until you review and reset.' },
-  ec_lockout:      { t:'Lockout Hours', b:'After a daily DD limit breach, the bot pauses for this many hours before it can resume trading. Enforced cooling-off period to review what went wrong.', e:'3 hours: breach at 10:00 → bot resumes at 13:00 at the earliest. Open positions continue to be managed.' },
-  ec_cooldown:     { t:'Cooldown (min/pair)', b:'After any trade fires on a pair, that specific pair cannot be traded again for this many minutes. Prevents immediate re-entry or chasing the market after an exit.', e:'60 min (default): EUR/USD trade at 09:00 → EUR/USD locked until 10:00. Other pairs unaffected.' },
-  tw_start:        { t:'Trade Window Start (UTC)', b:'No new trades are placed before this UTC time. Avoids the thin illiquid overnight/Asian midnight session. Open positions are still managed outside the window.', e:'06:05 UTC = 5 min after London pre-market. Catches early London moves while skipping dead-of-night trades.' },
-  tw_end:          { t:'Trade Window End (UTC)', b:'No new entries after this UTC time. Avoids holding into the illiquid post-NY-close period. Any open positions continue to be trailed/managed until they close naturally.', e:'21:00 UTC = New York session close. Entries blocked after this; existing trades still managed.' },
-
-  sl_atr_mult:     { t:'ATR Multiplier', b:'When SL method = ATR, the stop loss is placed at entry ± (14-period ATR × this multiplier). Larger multiplier = wider stop, smaller = tighter (more likely to be stopped out by normal noise).', e:'ATR = 20 pips, mult 1.5 → SL at 30 pips.\nMult 0.8 → SL at 16 pips (tight — higher chance of premature stop).' },
-  max_sl_pips:     { t:'Max SL Pips', b:'Hard cap on stop loss distance. If the calculated SL is wider than this, the trade is rejected. Prevents taking oversized risk on very wide structure-based stops.', e:'50 pips max: structure SL calculates to 65 pips → trade skipped entirely.' },
-  tp1_close_pct:   { t:'Close at TP1 %', b:'When price reaches TP1, this percentage of the position is closed to lock in partial profit. The remainder (the "runner") is trailed toward TP2.', e:'50% (default): open 0.2 lots → close 0.1 lots at TP1, trail 0.1 lots toward TP2.' },
-  max_tp_pips:     { t:'Max TP Pips', b:'Hard cap on take profit distance. Prevents unrealistically wide targets from being set based on distant confluence levels.', e:'100 pips max: TP2 calculates to 140 pips → capped at 100 pips.' },
-  ec_tp1r:         { t:'TP1 R Multiple', b:'TP1 is placed at entry + (SL distance × this value). Smaller = TP1 closer to entry, higher hit rate but smaller partial profit. Larger = further away, harder to reach.', e:'0.3 (default): SL = 20 pips → TP1 at 6 pips.\n1.0: TP1 at 20 pips (full 1R first target).' },
-  ec_tp2r:         { t:'TP2 R Multiple', b:'The runner\'s final target. Placed at entry + (SL distance × this value). The trailing stop activates once TP1 is hit and protects the runner\'s profit.', e:'1.0: SL = 20 pips → TP2 at 20 pips.\n2.0: TP2 at 40 pips — allows the runner to compound.' },
-  ec_trailoffset:  { t:'Trail Offset ×R', b:'After TP1 is hit, a trailing stop follows price this distance behind (SL distance × this value). Tighter locks in more profit but may exit the runner early on a retest.', e:'0.7 (default): SL = 20 pips → trail sits 14 pips behind current price.\n0.3 → trail 6 pips behind (very tight, likely to stop out on small retraces).' },
-
-  ex_max_spread:   { t:'Max Spread (pips)', b:'Live bid-ask spread is checked before every trade. If it exceeds this, the entry is rejected. Protects against entering during news spikes or off-hours when spreads widen significantly.', e:'3 pips: EUR/USD normal spread 0.6 pips → passes.\nNFP spike spread 12 pips → rejected.' },
-  oi_wall_pips:    { t:'OI Wall Proximity (pips)', b:'If a large options call or put wall sits within this many pips of the proposed entry price, the trade is blocked. Requires the OI Walls module to be enabled.', e:'15 pips: put wall at 1.1690, entry at 1.1700 (10 pips away) → blocked.\nEntry at 1.1650 (40 pips away) → allowed.' },
+  mod_vol_gate:    { t:'Vol Gate', b:'Blocks ALL new entries when VIX is in the HIGH volatility regime (>20). Prevents entering during panic or spike conditions when spreads are wide.', e:'VIX spikes to 28 → no entries. Falls back below 20 → gate reopens.' },
+  mod_macro_regime:{ t:'Macro Regime', b:'Requires the dashboard macro signal score and 30-min Break of Structure direction to align with the trade direction.', e:'Dashboard bearish 55% + 30m BOS bearish → longs blocked.' },
+  mod_confluence:  { t:'Confluence', b:'Only entries at Fibonacci or structure levels rated at or above the minimum star count are evaluated.', e:'Min 3★: 4-star R1 level passes, 1-star raw Fib midpoint fails.' },
+  mod_oi_walls:    { t:'OI Walls', b:'Blocks entries where a large options call or put wall sits within the OI wall proximity pips.', e:'Put wall at 1.1690 + 15 pip proximity → entry at 1.1700 is blocked.' },
+  mod_cot_filter:  { t:'COT Filter', b:'Uses CFTC Commitment of Traders data. If leveraged funds are heavily net-short, only shorts are considered.', e:'Funds -25k net (bearish) on EUR/USD → all longs blocked.' },
+  mod_news_risk:   { t:'News Risk', b:'Blackout window around HIGH-impact scheduled events (Fed, NFP, CPI). No new trades inside the window.', e:'NFP at 13:30 → no entries 13:15–13:45.' },
+  ex_tier:         { t:'Quality Tier', b:'Sets the minimum star rating an entry level must have. Higher tier = fewer but more reliable setups.', e:'Strict (4★): 1-2 high-conviction trades/day.\nAggressive (1★): 8-10+ trades, more noise.' },
+  ex_bardir:       { t:'WT1 Bar Direction', b:'WaveTrend oscillator direction filter. Off = ignored. Auto = only when WT1 is extreme. On = always requires 5m and 1H WT1 agreement.', e:'Auto + threshold 35: WT1=42 must confirm direction. WT1=18 → filter skipped.' },
+  ex_wtthreshold:  { t:'WT1 Threshold', b:'In Auto mode, when |WT1| is above this the direction filter activates. Below it, the WT1 requirement is waived.', e:'Default 35: WT1=40 → must agree. WT1=20 → no requirement.' },
+  ex_min_score:    { t:'Min Macro Score', b:'The dashboard signal score (0–100) must exceed this. Combines macro regime, momentum tiers, Bayesian probability.', e:'5 = permissive. 55 = only trade with clear macro confirmation.' },
+  ex_min_stars:    { t:'Min Confluence Stars', b:'★ rating of the level must meet this. Stars count independent confluences — Fib, pivot, OI walls, structure.', e:'3★: Fib + pivot + one more needed.\n5★: highest-conviction only, 1-2 setups/day.' },
+  ex_min_agree:    { t:'Min Modules Agree', b:'Minimum modules pointing the same direction before a trade is placed.', e:'3: macro + confluence + one more.\n5: near-unanimous required.' },
+  ex_threshold:    { t:'Composite Threshold', b:'Average module score (0–1). All pass/fail results averaged — must meet this minimum.', e:'0.60 default. 0.40 → more trades. 0.80 → near-unanimous only.' },
+  ex_max_trades:   { t:'Max Trades Per Loop', b:'Max new positions in a single 3-second tick. Prevents piling in during fast moves.', e:'2: at most 2 new entries per tick across all pairs.' },
+  ex_prox_pips:    { t:'Proximity Pips', b:'Price must be within this many pips of a level before full module evaluation runs.', e:'8 pips: level at 1.1700 → eval triggers 1.1692–1.1708.' },
+  pos_risk:        { t:'Risk Per Trade %', b:'% of account balance risked per trade. SL distance + this % determine lot size.', e:'1% on £10,000 = £100 risk. SL = 20 pips → lots sized so stop-out = £100.' },
+  pos_sizing:      { t:'Sizing Multiplier', b:'Manual override applied on top of the vol-adjusted lot. Quick way to scale back without touching risk %.', e:'0.5 = half size during testing. 2.0 = double (use carefully).' },
+  pos_max_lot:     { t:'Max Lot Ceiling', b:'Hard cap on position size regardless of risk calculation. Safety net.', e:'5.0 lots: even if calc says 8 lots, trade executes at 5.0 max.' },
+  pos_hi_mult:     { t:'HIGH Vol Size Mult', b:'When VIX > 20, multiply lot size by this. Keeps effective risk stable as price ranges expand.', e:'0.5: normal 0.2 lots → high-vol trade = 0.1 lots.' },
+  pos_lo_mult:     { t:'LOW Vol Size Mult', b:'When VIX < 15, size up slightly. Low vol = tight spreads, predictable action.', e:'1.2: normal 0.2 lots → low-vol trade = 0.24 lots.' },
+  ec_ddlimit:      { t:'Daily DD Limit %', b:'If drawdown reaches this % today, all trading halts and lockout starts.', e:'3% on £10,000 = £300 limit. Breach at 9am → no more trades until lockout expires.' },
+  ec_monthlydd:    { t:'Monthly DD Limit %', b:'Once monthly drawdown hits this %, bot halts until manually reset.', e:'5% on £10,000 = £500 monthly limit.' },
+  ec_lockout:      { t:'Lockout Hours', b:'After a daily DD breach, bot pauses this many hours before resuming.', e:'3 hours: breach at 10:00 → resumes 13:00.' },
+  ec_cooldown:     { t:'Cooldown (min/pair)', b:'After a trade fires on a pair, that pair is locked for this many minutes.', e:'60 min: EUR/USD trade at 09:00 → locked until 10:00.' },
+  tw_start:        { t:'Trade Window Start (UTC)', b:'No new trades before this UTC time. Avoids thin overnight/Asian session.', e:'06:05 UTC = 5 min after London pre-market.' },
+  tw_end:          { t:'Trade Window End (UTC)', b:'No new entries after this UTC time.', e:'21:00 UTC = New York session close.' },
+  sl_atr_mult:     { t:'ATR Multiplier', b:'SL = entry ± (14-period ATR × multiplier). Larger = wider stop.', e:'ATR=20 pips, mult 1.5 → SL at 30 pips.' },
+  max_sl_pips:     { t:'Max SL Pips', b:'Hard cap on stop loss. If calculated SL wider than this, trade rejected.', e:'50 pips max: structure SL = 65 pips → trade skipped.' },
+  tp1_close_pct:   { t:'Close at TP1 %', b:'% of position closed at TP1. Remainder trailed toward TP2.', e:'50%: open 0.2 lots → close 0.1 at TP1, trail 0.1 toward TP2.' },
+  max_tp_pips:     { t:'Max TP Pips', b:'Hard cap on take profit distance.', e:'100 pips max: TP2 = 140 pips → capped at 100.' },
+  ec_tp1r:         { t:'TP1 R Multiple', b:'TP1 = entry + (SL × this). Smaller = closer, higher hit rate but less profit.', e:'0.3: SL=20 pips → TP1 at 6 pips.' },
+  ec_tp2r:         { t:'TP2 R Multiple', b:'Runner final target. Placed at entry + (SL × this).', e:'1.0: SL=20 → TP2 at 20 pips.' },
+  ec_trailoffset:  { t:'Trail Offset ×R', b:'After TP1 hit, trailing stop follows price at SL × this distance behind.', e:'0.7: SL=20 pips → trail 14 pips behind.' },
+  ex_max_spread:   { t:'Max Spread (pips)', b:'Spread checked before every trade. Exceeds this → entry rejected.', e:'3 pips: NFP spike spread 12 pips → rejected.' },
+  oi_wall_pips:    { t:'OI Wall Proximity', b:'If a large options wall sits within this many pips, trade is blocked.', e:'15 pips: put wall at 1.1690, entry at 1.1700 → blocked.' },
 };
 
 const tip = document.getElementById('helpTip');
-const tipTitle = document.getElementById('tipTitle');
-const tipBody  = document.getElementById('tipBody');
-const tipEx    = document.getElementById('tipEx');
 document.getElementById('tipClose').onclick = () => tip.classList.remove('visible');
-
 document.addEventListener('click', e => {
   const btn = e.target.closest('.help-btn');
   if (!btn) { if (!tip.contains(e.target)) tip.classList.remove('visible'); return; }
   e.stopPropagation();
-  const key = btn.dataset.key;
-  const h = HELP[key];
+  const h = HELP[btn.dataset.key];
   if (!h) return;
-  tipTitle.textContent = h.t;
-  tipBody.textContent  = h.b;
-  tipEx.textContent    = h.e;
-  tipEx.style.display  = h.e ? '' : 'none';
-
+  document.getElementById('tipTitle').textContent = h.t;
+  document.getElementById('tipBody').textContent  = h.b;
+  const tipEx = document.getElementById('tipEx');
+  tipEx.textContent   = h.e || '';
+  tipEx.style.display = h.e ? '' : 'none';
   tip.classList.add('visible');
-  const r = btn.getBoundingClientRect();
-  const tw = 290, th = tip.offsetHeight || 200;
-  let left = r.right + 8;
-  let top  = r.top;
+  const r = btn.getBoundingClientRect(), tw = 290, th = tip.offsetHeight || 200;
+  let left = r.right + 8, top = r.top;
   if (left + tw > window.innerWidth - 8) left = r.left - tw - 8;
-  if (top + th  > window.innerHeight - 8) top = window.innerHeight - th - 8;
+  if (top  + th > window.innerHeight - 8) top = window.innerHeight - th - 8;
   tip.style.left = Math.max(8, left) + 'px';
   tip.style.top  = Math.max(8, top)  + 'px';
 });

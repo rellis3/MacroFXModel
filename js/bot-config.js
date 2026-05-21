@@ -1,13 +1,15 @@
-// Bot configuration page — reads / writes bot_config in Cloudflare KV
-// and displays live bot_status when available.
+// Bot configuration page — manages both the Telegram signal bot (bot_config KV)
+// and the Backtest/MT5 bot (backtestsystem_live_config KV).
+
+// ── Telegram bot defaults ─────────────────────────────────────────────────────
 
 const DEFAULTS = {
   kill_switch: false,
-  mode: 'full',  // 'full' = run all modules, 'telegram' = entry criteria only
+  mode: 'full',
   enabled_pairs: ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD'],
   tg_mode: {
-    min_grade:        'B',   // minimum KV entry grade to act on
-    min_signal_score: 0.55,  // minimum entry.signalScore
+    min_grade:        'B',
+    min_signal_score: 0.55,
   },
   modules: {
     macro_regime: true,
@@ -18,29 +20,24 @@ const DEFAULTS = {
     news_risk:    false,
   },
   execution: {
-    // Quality filter
-    tier:                'balanced',  // strict=4★ balanced=3★ loose=2★ aggressive=1★
-    bardir:              'auto',      // off | auto | on (MTF WT1 filter mode)
-    wtthreshold:         35,          // WT1 magnitude threshold for auto mode
-    // Score gates
+    tier:                'balanced',
+    bardir:              'auto',
+    wtthreshold:         35,
     min_macro_score:     5,
     min_stars:           3,
     min_agree:           3,
     max_trades:          2,
     composite_threshold: 0.60,
     prox_pips:           8,
-    // Ladder exits (R multiples)
     tp1r:                0.3,
     tp2r:                1.0,
     trailoffset:         0.7,
-    // Spread gate
     max_spread_pips:     3.0,
-    // Risk Guard
-    ddlimit:             3,    // daily DD % before lockout
-    monthlydd:           5,    // monthly DD % before lockout
-    lockout:             3,    // hours locked after DD breach
-    cooldown:            60,   // minutes between trades, per pair
-    sizing:              1.0,  // manual sizing multiplier
+    ddlimit:             3,
+    monthlydd:           5,
+    lockout:             3,
+    cooldown:            60,
+    sizing:              1.0,
   },
   position: {
     risk_pct:      1.0,
@@ -70,7 +67,95 @@ const ALL_PAIRS = [
   'EUR/GBP', 'USD/CAD', 'USD/CHF', 'GBP/JPY', 'NAS100_USD',
 ];
 
-let _cfg = JSON.parse(JSON.stringify(DEFAULTS));
+// ── Backtest bot defaults (mirrors Python config.py DEFAULTS exactly) ─────────
+
+const BT_DEFAULTS = {
+  // Entry levels
+  method:            'asia',
+  confTolPips:       2.0,
+  signalFilter:      'all_conf',
+  priceMode:         'lowest',
+  clusterMerge:      true,
+  useM1Features:     true,
+  // Entry timing & proximity
+  entryWindow:       800,
+  eodExit:           2100,
+  entryProximityATR: 0.5,
+  entryTolPips:      3.0,
+  pollInterval:      2,
+  tradeCooldownMins: 30,
+  // Entry quality filters
+  minConviction:     0.20,
+  minConfirms:       3,
+  levelReentry:      2,
+  requireSweep:      false,
+  sweepPips:         2,
+  secondTouchOnly:   false,
+  candleConfirmN:    0,
+  candleConfirmPct:  0.6,
+  rejectionBar:      false,
+  rejWickPct:        0.40,
+  rejMinAtrPct:      0.30,
+  reEnterTp:         true,
+  flipOnSL:          false,
+  // Stop loss
+  slMode:            'atr30m',
+  slFraction:        0.35,
+  slMult:            1.5,
+  minSlPips:         5,
+  atrPeriod:         14,
+  // SL → Breakeven
+  slToBePct:         0.0,
+  slBeBuffer:        1.0,
+  // Take profit
+  tpMode:            'fixedR',
+  rrRatio:           2.2,
+  maxRR:             4.0,
+  tpBuf:             5,
+  tpAtrFallback:     5,
+  tpVolLo:           2.0,
+  tpVolMed:          3.0,
+  tpVolHi:           5.0,
+  // Kill switches
+  killDaily:         2.0,
+  killWeekly:        5.0,
+  killMonthly:       10.0,
+  // Position sizing
+  posMode:           'risk_pct',
+  riskPct:           1.0,
+  fixedSize:         10,
+  // Regime veto
+  useServerRegime:       false,
+  regimeVetoConfidence:  70,
+  // Enabled pairs
+  enabledPairs: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD'],
+  // Features
+  features: {
+    rangePosition: { enabled: false, weight: 1 },
+    chochBos:      { enabled: false, weight: 2 },
+    wickRejection: { enabled: false, weight: 1 },
+    rsiDivergence: { enabled: false, weight: 1 },
+    orderBlock:    { enabled: false, weight: 1 },
+    htfEma:        { enabled: false, weight: 1 },
+    vwapSlope:     { enabled: false, weight: 1 },
+    adxFilter:     { enabled: false, weight: 1 },
+    hurstRegime:   { enabled: false, weight: 1 },
+    fvgBias:       { enabled: false, weight: 1 },
+    weeklyPivot:   { enabled: false, weight: 1 },
+    ichimokuCloud: { enabled: false, weight: 1 },
+    macdSignal:    { enabled: false, weight: 1 },
+  },
+};
+
+const BT_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'USTECH100M'];
+const BT_FEATURES = [
+  'rangePosition', 'chochBos', 'wickRejection', 'rsiDivergence',
+  'orderBlock', 'htfEma', 'vwapSlope', 'adxFilter',
+  'hurstRegime', 'fvgBias', 'weeklyPivot', 'ichimokuCloud', 'macdSignal',
+];
+
+let _cfg   = JSON.parse(JSON.stringify(DEFAULTS));
+let _btCfg = JSON.parse(JSON.stringify(BT_DEFAULTS));
 
 // ── KV helpers ────────────────────────────────────────────────────────────────
 
@@ -89,27 +174,28 @@ async function kvSet(key, data) {
   });
 }
 
-// ── Load & save ───────────────────────────────────────────────────────────────
+function _deepMerge(base, override) {
+  const result = Object.assign({}, base);
+  for (const [k, v] of Object.entries(override)) {
+    if (v && typeof v === 'object' && !Array.isArray(v) && result[k] && typeof result[k] === 'object') {
+      result[k] = _deepMerge(result[k], v);
+    } else {
+      result[k] = v;
+    }
+  }
+  return result;
+}
+
+// ── Telegram bot load / save ──────────────────────────────────────────────────
 
 async function loadConfig() {
-  setStatus('loading', 'Loading config…');
+  setStatus('loading', 'Loading…');
   try {
     const stored = await kvGet('bot_config');
-    // Deep-merge stored over defaults so new fields always appear
-    if (stored) {
-      _cfg = JSON.parse(JSON.stringify(DEFAULTS));
-      for (const [k, v] of Object.entries(stored)) {
-        if (v && typeof v === 'object' && !Array.isArray(v) && _cfg[k]) {
-          Object.assign(_cfg[k], v);
-        } else {
-          _cfg[k] = v;
-        }
-      }
-    } else {
-      _cfg = JSON.parse(JSON.stringify(DEFAULTS));
-    }
+    _cfg = stored ? _deepMerge(JSON.parse(JSON.stringify(DEFAULTS)), stored)
+                  : JSON.parse(JSON.stringify(DEFAULTS));
     renderForm();
-    setStatus('ok', 'Config loaded from KV');
+    setStatus('ok', 'Config loaded');
   } catch (e) {
     setStatus('err', `Load failed: ${e.message}`);
   }
@@ -120,7 +206,7 @@ async function saveConfig() {
   setStatus('loading', 'Saving…');
   try {
     await kvSet('bot_config', _cfg);
-    setStatus('ok', 'Saved — bot picks up changes on next loop');
+    setStatus('ok', 'Saved — bot picks up on next loop');
   } catch (e) {
     setStatus('err', `Save failed: ${e.message}`);
   }
@@ -132,252 +218,377 @@ function resetDefaults() {
   setStatus('ok', 'Defaults restored — click Save to apply');
 }
 
-// ── Kill switch (instant, separate save) ─────────────────────────────────────
+// ── Kill switch ───────────────────────────────────────────────────────────────
 
 async function toggleKillSwitch() {
   _cfg.kill_switch = !_cfg.kill_switch;
-  document.getElementById('ksBtn').textContent = _cfg.kill_switch ? 'KILL SWITCH: ON' : 'KILL SWITCH: OFF';
-  document.getElementById('ksBtn').className = 'ks-btn' + (_cfg.kill_switch ? ' ks-on' : '');
+  const btn = document.getElementById('ksBtn');
+  btn.textContent = _cfg.kill_switch ? 'KILL SWITCH: ON' : 'KILL SWITCH: OFF';
+  btn.className = 'ks-btn' + (_cfg.kill_switch ? ' ks-on' : '');
   setStatus('loading', 'Updating kill switch…');
   try {
     await kvSet('bot_config', _cfg);
     setStatus(_cfg.kill_switch ? 'err' : 'ok',
-      _cfg.kill_switch ? 'KILL SWITCH ON — bot will not trade' : 'Kill switch OFF — bot will resume next loop');
+      _cfg.kill_switch ? 'KILL SWITCH ON — bot will not trade' : 'Kill switch OFF — bot will resume');
   } catch (e) {
     setStatus('err', `Kill switch update failed: ${e.message}`);
   }
 }
 
-// ── Form → _cfg ───────────────────────────────────────────────────────────────
+// ── Telegram bot form → _cfg ──────────────────────────────────────────────────
 
 function readForm() {
-  // Modules
   for (const mod of Object.keys(DEFAULTS.modules)) {
     const el = document.getElementById(`mod_${mod}`);
     if (el) _cfg.modules[mod] = el.checked;
   }
-  // Enabled pairs
   _cfg.enabled_pairs = ALL_PAIRS.filter(p => {
     const el = document.getElementById(`pair_${p.replace('/', '')}`);
     return el && el.checked;
   });
 
   _cfg.execution = _cfg.execution || {};
+  _cfg.execution.tier                = str('ex_tier',        'balanced');
+  _cfg.execution.bardir              = str('ex_bardir',      'auto');
+  _cfg.execution.wtthreshold         = num('ex_wtthreshold', 35);
+  _cfg.execution.min_macro_score     = num('ex_min_score',   5);
+  _cfg.execution.min_stars           = num('ex_min_stars',   3);
+  _cfg.execution.min_agree           = num('ex_min_agree',   3);
+  _cfg.execution.max_trades          = num('ex_max_trades',  2);
+  _cfg.execution.composite_threshold = num('ex_threshold',   0.60);
+  _cfg.execution.prox_pips           = num('ex_prox_pips',   8);
+  _cfg.execution.tp1r                = num('ec_tp1r',        0.3);
+  _cfg.execution.tp2r                = num('ec_tp2r',        1.0);
+  _cfg.execution.trailoffset         = num('ec_trailoffset', 0.7);
+  _cfg.execution.max_spread_pips     = num('ex_max_spread',  3.0);
+  _cfg.execution.ddlimit             = num('ec_ddlimit',     3);
+  _cfg.execution.monthlydd           = num('ec_monthlydd',   5);
+  _cfg.execution.lockout             = num('ec_lockout',     3);
+  _cfg.execution.cooldown            = num('ec_cooldown',    60);
+  _cfg.execution.sizing              = num('pos_sizing',     1.0);
 
-  // Execution — quality filter
-  _cfg.execution.tier             = str('ex_tier',          'balanced');
-  _cfg.execution.bardir           = str('ex_bardir',        'auto');
-  _cfg.execution.wtthreshold      = num('ex_wtthreshold',   35);
-  // Execution — score gates
-  _cfg.execution.min_macro_score  = num('ex_min_score',     5);
-  _cfg.execution.min_stars        = num('ex_min_stars',     3);
-  _cfg.execution.min_agree        = num('ex_min_agree',     3);
-  _cfg.execution.max_trades       = num('ex_max_trades',    2);
-  _cfg.execution.composite_threshold = num('ex_threshold',  0.60);
-  _cfg.execution.prox_pips        = num('ex_prox_pips',     8);
-  // Execution — ladder exits
-  _cfg.execution.tp1r             = num('ec_tp1r',          0.3);
-  _cfg.execution.tp2r             = num('ec_tp2r',          1.0);
-  _cfg.execution.trailoffset      = num('ec_trailoffset',   0.7);
-  // Execution — spread gate
-  _cfg.execution.max_spread_pips  = num('ex_max_spread',    3.0);
-  // Execution — risk guard
-  _cfg.execution.ddlimit          = num('ec_ddlimit',       3);
-  _cfg.execution.monthlydd        = num('ec_monthlydd',     5);
-  _cfg.execution.lockout          = num('ec_lockout',       3);
-  _cfg.execution.cooldown         = num('ec_cooldown',      60);
-  _cfg.execution.sizing           = num('pos_sizing',       1.0);
-
-  // Position
   _cfg.position = _cfg.position || {};
-  _cfg.position.risk_pct      = num('pos_risk',     1.0);
-  _cfg.position.vol_high_mult = num('pos_hi_mult',  0.5);
-  _cfg.position.vol_low_mult  = num('pos_lo_mult',  1.2);
+  _cfg.position.risk_pct      = num('pos_risk',    1.0);
+  _cfg.position.vol_high_mult = num('pos_hi_mult', 0.5);
+  _cfg.position.vol_low_mult  = num('pos_lo_mult', 1.2);
 
-  // SL/TP
   _cfg.sl_tp = _cfg.sl_tp || {};
-  _cfg.sl_tp.sl_method     = radio('sl_method',  'structure');
-  _cfg.sl_tp.tp_method     = radio('tp_method',  'confluence');
-  _cfg.sl_tp.sl_atr_mult   = num('sl_atr_mult',  1.5);
+  _cfg.sl_tp.sl_method     = radio('sl_method',   'structure');
+  _cfg.sl_tp.tp_method     = radio('tp_method',   'confluence');
+  _cfg.sl_tp.sl_atr_mult   = num('sl_atr_mult',   1.5);
   _cfg.sl_tp.tp1_close_pct = num('tp1_close_pct', 50);
-  _cfg.sl_tp.max_sl_pips   = num('max_sl_pips',  50);
-  _cfg.sl_tp.max_tp_pips   = num('max_tp_pips',  100);
-  _cfg.sl_tp.max_lot       = num('pos_max_lot',  5.0);
+  _cfg.sl_tp.max_sl_pips   = num('max_sl_pips',   50);
+  _cfg.sl_tp.max_tp_pips   = num('max_tp_pips',   100);
+  _cfg.sl_tp.max_lot       = num('pos_max_lot',   5.0);
 
-  // Safety
   _cfg.safety = _cfg.safety || {};
   _cfg.safety.trade_window_start = str('tw_start', '06:05');
   _cfg.safety.trade_window_end   = str('tw_end',   '21:00');
 
-  // OI Walls
   _cfg.oi_walls = _cfg.oi_walls || {};
   _cfg.oi_walls.oi_wall_pips = num('oi_wall_pips', 15);
 
-  // Bot mode
   _cfg.mode = radio('bot_mode', 'full');
   _cfg.tg_mode = _cfg.tg_mode || {};
   _cfg.tg_mode.min_grade        = str('tg_min_grade', 'B');
   _cfg.tg_mode.min_signal_score = num('tg_min_signal', 0.55);
 }
 
-// ── _cfg → form ───────────────────────────────────────────────────────────────
+// ── _cfg → Telegram bot form ──────────────────────────────────────────────────
 
 function renderForm() {
-  // Kill switch button
-  const ksBtn = document.getElementById('ksBtn');
-  if (ksBtn) {
-    ksBtn.textContent = _cfg.kill_switch ? 'KILL SWITCH: ON' : 'KILL SWITCH: OFF';
-    ksBtn.className = 'ks-btn' + (_cfg.kill_switch ? ' ks-on' : '');
+  const btn = document.getElementById('ksBtn');
+  if (btn) {
+    btn.textContent = _cfg.kill_switch ? 'KILL SWITCH: ON' : 'KILL SWITCH: OFF';
+    btn.className = 'ks-btn' + (_cfg.kill_switch ? ' ks-on' : '');
   }
-  // Modules
   for (const mod of Object.keys(DEFAULTS.modules)) {
     const el = document.getElementById(`mod_${mod}`);
     if (el) el.checked = !!(_cfg.modules?.[mod]);
   }
-  // Pairs
   for (const p of ALL_PAIRS) {
     const el = document.getElementById(`pair_${p.replace('/', '')}`);
     if (el) el.checked = (_cfg.enabled_pairs || []).includes(p);
   }
-
   const ec = _cfg.execution || {};
-
-  // Execution — quality filter
   setVal('ex_tier',        ec.tier              ?? 'balanced');
   setVal('ex_bardir',      ec.bardir            ?? 'auto');
   setVal('ex_wtthreshold', ec.wtthreshold       ?? 35);
-  // Execution — score gates
-  setVal('ex_min_score',  ec.min_macro_score    ?? 5);
-  setVal('ex_min_stars',  ec.min_stars          ?? 3);
-  setVal('ex_min_agree',  ec.min_agree          ?? 3);
-  setVal('ex_max_trades', ec.max_trades         ?? 2);
-  setVal('ex_threshold',  ec.composite_threshold ?? 0.60);
-  setVal('ex_prox_pips',  ec.prox_pips          ?? 8);
-  // Execution — ladder exits
+  setVal('ex_min_score',   ec.min_macro_score   ?? 5);
+  setVal('ex_min_stars',   ec.min_stars         ?? 3);
+  setVal('ex_min_agree',   ec.min_agree         ?? 3);
+  setVal('ex_max_trades',  ec.max_trades        ?? 2);
+  setVal('ex_threshold',   ec.composite_threshold ?? 0.60);
+  setVal('ex_prox_pips',   ec.prox_pips         ?? 8);
   setVal('ec_tp1r',        ec.tp1r              ?? 0.3);
   setVal('ec_tp2r',        ec.tp2r              ?? 1.0);
   setVal('ec_trailoffset', ec.trailoffset       ?? 0.7);
-  // Execution — spread gate
   setVal('ex_max_spread',  ec.max_spread_pips   ?? 3.0);
-  // Execution — risk guard
   setVal('ec_ddlimit',     ec.ddlimit           ?? 3);
   setVal('ec_monthlydd',   ec.monthlydd         ?? 5);
   setVal('ec_lockout',     ec.lockout           ?? 3);
   setVal('ec_cooldown',    ec.cooldown          ?? 60);
   setVal('pos_sizing',     ec.sizing            ?? 1.0);
-
-  // Position
-  setVal('pos_risk',    _cfg.position?.risk_pct      ?? 1.0);
-  setVal('pos_hi_mult', _cfg.position?.vol_high_mult ?? 0.5);
-  setVal('pos_lo_mult', _cfg.position?.vol_low_mult  ?? 1.2);
-
-  // SL/TP
-  setRadio('sl_method', _cfg.sl_tp?.sl_method ?? 'structure');
-  setRadio('tp_method', _cfg.sl_tp?.tp_method ?? 'confluence');
+  setVal('pos_risk',       _cfg.position?.risk_pct      ?? 1.0);
+  setVal('pos_hi_mult',    _cfg.position?.vol_high_mult ?? 0.5);
+  setVal('pos_lo_mult',    _cfg.position?.vol_low_mult  ?? 1.2);
+  setRadio('sl_method',    _cfg.sl_tp?.sl_method  ?? 'structure');
+  setRadio('tp_method',    _cfg.sl_tp?.tp_method  ?? 'confluence');
   setVal('sl_atr_mult',    _cfg.sl_tp?.sl_atr_mult    ?? 1.5);
   setVal('tp1_close_pct',  _cfg.sl_tp?.tp1_close_pct  ?? 50);
   setVal('max_sl_pips',    _cfg.sl_tp?.max_sl_pips    ?? 50);
   setVal('max_tp_pips',    _cfg.sl_tp?.max_tp_pips    ?? 100);
   setVal('pos_max_lot',    _cfg.sl_tp?.max_lot        ?? 5.0);
-
-  // Safety
-  setVal('tw_start', _cfg.safety?.trade_window_start ?? '06:05');
-  setVal('tw_end',   _cfg.safety?.trade_window_end   ?? '21:00');
-
-  // OI Walls
-  setVal('oi_wall_pips', _cfg.oi_walls?.oi_wall_pips ?? 15);
-
-  // Bot mode
-  setRadio('bot_mode', _cfg.mode ?? 'full');
-  setVal('tg_min_grade',  _cfg.tg_mode?.min_grade        ?? 'B');
-  setVal('tg_min_signal', _cfg.tg_mode?.min_signal_score ?? 0.55);
+  setVal('tw_start',       _cfg.safety?.trade_window_start ?? '06:05');
+  setVal('tw_end',         _cfg.safety?.trade_window_end   ?? '21:00');
+  setVal('oi_wall_pips',   _cfg.oi_walls?.oi_wall_pips ?? 15);
+  setRadio('bot_mode',     _cfg.mode ?? 'full');
+  setVal('tg_min_grade',   _cfg.tg_mode?.min_grade        ?? 'B');
+  setVal('tg_min_signal',  _cfg.tg_mode?.min_signal_score ?? 0.55);
   if (typeof window.toggleTgSettings === 'function') window.toggleTgSettings();
 }
 
-// ── Bot status polling ────────────────────────────────────────────────────────
+// ── Backtest bot load / save ──────────────────────────────────────────────────
+
+async function loadBtConfig() {
+  try {
+    const stored = await kvGet('backtestsystem_live_config');
+    _btCfg = stored ? _deepMerge(JSON.parse(JSON.stringify(BT_DEFAULTS)), stored)
+                    : JSON.parse(JSON.stringify(BT_DEFAULTS));
+    renderBtForm();
+  } catch (e) {
+    console.warn('loadBtConfig failed:', e);
+  }
+}
+
+async function saveBtConfig() {
+  readBtForm();
+  const el = document.getElementById('btSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('backtestsystem_live_config', _btCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = 'var(--green)'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetBtDefaults() {
+  _btCfg = JSON.parse(JSON.stringify(BT_DEFAULTS));
+  renderBtForm();
+  const el = document.getElementById('btSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+// ── readBtForm: form → _btCfg ─────────────────────────────────────────────────
+
+function readBtForm() {
+  // Entry strategy
+  _btCfg.method            = radio('bt_method',       'asia');
+  _btCfg.confTolPips        = num('bt_confTolPips',   2.0);
+  _btCfg.signalFilter       = str('bt_signalFilter',  'all_conf');
+  _btCfg.priceMode          = str('bt_priceMode',     'lowest');
+  _btCfg.clusterMerge       = chk('bt_clusterMerge');
+  _btCfg.useM1Features      = chk('bt_useM1Features');
+  // Entry timing
+  _btCfg.entryWindow        = num('bt_entryWindow',   800);
+  _btCfg.eodExit            = num('bt_eodExit',       2100);
+  _btCfg.entryProximityATR  = num('bt_entryProximityATR', 0.5);
+  _btCfg.entryTolPips       = num('bt_entryTolPips',  3.0);
+  _btCfg.pollInterval       = num('bt_pollInterval',  2);
+  _btCfg.tradeCooldownMins  = num('bt_tradeCooldownMins', 30);
+  // Entry quality
+  _btCfg.minConviction      = num('bt_minConviction', 0.20);
+  _btCfg.minConfirms        = num('bt_minConfirms',   3);
+  _btCfg.levelReentry       = num('bt_levelReentry',  2);
+  _btCfg.secondTouchOnly    = chk('bt_secondTouchOnly');
+  _btCfg.reEnterTp          = chk('bt_reEnterTp');
+  _btCfg.flipOnSL           = chk('bt_flipOnSL');
+  // Sweep / candle
+  _btCfg.requireSweep       = chk('bt_requireSweep');
+  _btCfg.sweepPips          = num('bt_sweepPips',     2);
+  _btCfg.candleConfirmN     = num('bt_candleConfirmN', 0);
+  _btCfg.candleConfirmPct   = num('bt_candleConfirmPct', 0.6);
+  _btCfg.rejectionBar       = chk('bt_rejectionBar');
+  _btCfg.rejWickPct         = num('bt_rejWickPct',    0.40);
+  _btCfg.rejMinAtrPct       = num('bt_rejMinAtrPct',  0.30);
+  // SL
+  _btCfg.slMode             = radio('bt_slMode',      'atr30m');
+  _btCfg.slFraction         = num('bt_slFraction',    0.35);
+  _btCfg.slMult             = num('bt_slMult',        1.5);
+  _btCfg.minSlPips          = num('bt_minSlPips',     5);
+  _btCfg.atrPeriod          = num('bt_atrPeriod',     14);
+  _btCfg.slToBePct          = num('bt_slToBePct',     0.0);
+  _btCfg.slBeBuffer         = num('bt_slBeBuffer',    1.0);
+  // TP
+  _btCfg.tpMode             = radio('bt_tpMode',      'fixedR');
+  _btCfg.rrRatio            = num('bt_rrRatio',       2.2);
+  _btCfg.maxRR              = num('bt_maxRR',         4.0);
+  _btCfg.tpBuf              = num('bt_tpBuf',         5);
+  _btCfg.tpAtrFallback      = num('bt_tpAtrFallback', 5);
+  _btCfg.tpVolLo            = num('bt_tpVolLo',       2.0);
+  _btCfg.tpVolMed           = num('bt_tpVolMed',      3.0);
+  _btCfg.tpVolHi            = num('bt_tpVolHi',       5.0);
+  // Kill switches
+  _btCfg.killDaily          = num('bt_killDaily',     2.0);
+  _btCfg.killWeekly         = num('bt_killWeekly',    5.0);
+  _btCfg.killMonthly        = num('bt_killMonthly',   10.0);
+  // Position sizing
+  _btCfg.posMode            = radio('bt_posMode',     'risk_pct');
+  _btCfg.riskPct            = num('bt_riskPct',       1.0);
+  _btCfg.fixedSize          = num('bt_fixedSize',     10);
+  // Regime veto
+  _btCfg.useServerRegime       = chk('bt_useServerRegime');
+  _btCfg.regimeVetoConfidence  = num('bt_regimeVetoConfidence', 70);
+  // Enabled pairs
+  _btCfg.enabledPairs = BT_PAIRS.filter(p => {
+    const el = document.getElementById(`bt_pair_${p}`);
+    return el && el.checked;
+  });
+  // Features
+  _btCfg.features = _btCfg.features || {};
+  for (const feat of BT_FEATURES) {
+    const el = document.getElementById(`bt_feat_${feat}`);
+    if (!_btCfg.features[feat]) _btCfg.features[feat] = { enabled: false, weight: BT_DEFAULTS.features[feat]?.weight ?? 1 };
+    _btCfg.features[feat].enabled = el ? el.checked : false;
+  }
+}
+
+// ── renderBtForm: _btCfg → form ───────────────────────────────────────────────
+
+function renderBtForm() {
+  setRadio('bt_method',      _btCfg.method           ?? 'asia');
+  setVal('bt_confTolPips',   _btCfg.confTolPips      ?? 2.0);
+  setVal('bt_signalFilter',  _btCfg.signalFilter     ?? 'all_conf');
+  setVal('bt_priceMode',     _btCfg.priceMode        ?? 'lowest');
+  setChk('bt_clusterMerge',  _btCfg.clusterMerge     ?? true);
+  setChk('bt_useM1Features', _btCfg.useM1Features    ?? true);
+
+  setVal('bt_entryWindow',        _btCfg.entryWindow        ?? 800);
+  setVal('bt_eodExit',            _btCfg.eodExit            ?? 2100);
+  setVal('bt_entryProximityATR',  _btCfg.entryProximityATR  ?? 0.5);
+  setVal('bt_entryTolPips',       _btCfg.entryTolPips       ?? 3.0);
+  setVal('bt_pollInterval',       _btCfg.pollInterval       ?? 2);
+  setVal('bt_tradeCooldownMins',  _btCfg.tradeCooldownMins  ?? 30);
+
+  setVal('bt_minConviction',  _btCfg.minConviction    ?? 0.20);
+  setVal('bt_minConfirms',    _btCfg.minConfirms      ?? 3);
+  setVal('bt_levelReentry',   _btCfg.levelReentry     ?? 2);
+  setChk('bt_secondTouchOnly',_btCfg.secondTouchOnly  ?? false);
+  setChk('bt_reEnterTp',      _btCfg.reEnterTp        ?? true);
+  setChk('bt_flipOnSL',       _btCfg.flipOnSL         ?? false);
+
+  setChk('bt_requireSweep',     _btCfg.requireSweep    ?? false);
+  setVal('bt_sweepPips',        _btCfg.sweepPips       ?? 2);
+  setVal('bt_candleConfirmN',   _btCfg.candleConfirmN  ?? 0);
+  setVal('bt_candleConfirmPct', _btCfg.candleConfirmPct ?? 0.6);
+  setChk('bt_rejectionBar',     _btCfg.rejectionBar    ?? false);
+  setVal('bt_rejWickPct',       _btCfg.rejWickPct      ?? 0.40);
+  setVal('bt_rejMinAtrPct',     _btCfg.rejMinAtrPct    ?? 0.30);
+
+  setRadio('bt_slMode',      _btCfg.slMode            ?? 'atr30m');
+  setVal('bt_slFraction',    _btCfg.slFraction        ?? 0.35);
+  setVal('bt_slMult',        _btCfg.slMult            ?? 1.5);
+  setVal('bt_minSlPips',     _btCfg.minSlPips         ?? 5);
+  setVal('bt_atrPeriod',     _btCfg.atrPeriod         ?? 14);
+  setVal('bt_slToBePct',     _btCfg.slToBePct         ?? 0.0);
+  setVal('bt_slBeBuffer',    _btCfg.slBeBuffer        ?? 1.0);
+
+  setRadio('bt_tpMode',      _btCfg.tpMode            ?? 'fixedR');
+  setVal('bt_rrRatio',       _btCfg.rrRatio           ?? 2.2);
+  setVal('bt_maxRR',         _btCfg.maxRR             ?? 4.0);
+  setVal('bt_tpBuf',         _btCfg.tpBuf             ?? 5);
+  setVal('bt_tpAtrFallback', _btCfg.tpAtrFallback     ?? 5);
+  setVal('bt_tpVolLo',       _btCfg.tpVolLo           ?? 2.0);
+  setVal('bt_tpVolMed',      _btCfg.tpVolMed          ?? 3.0);
+  setVal('bt_tpVolHi',       _btCfg.tpVolHi           ?? 5.0);
+
+  setVal('bt_killDaily',     _btCfg.killDaily         ?? 2.0);
+  setVal('bt_killWeekly',    _btCfg.killWeekly        ?? 5.0);
+  setVal('bt_killMonthly',   _btCfg.killMonthly       ?? 10.0);
+
+  setRadio('bt_posMode',     _btCfg.posMode           ?? 'risk_pct');
+  setVal('bt_riskPct',       _btCfg.riskPct           ?? 1.0);
+  setVal('bt_fixedSize',     _btCfg.fixedSize         ?? 10);
+
+  setChk('bt_useServerRegime',      _btCfg.useServerRegime      ?? false);
+  setVal('bt_regimeVetoConfidence', _btCfg.regimeVetoConfidence ?? 70);
+
+  for (const p of BT_PAIRS) {
+    const el = document.getElementById(`bt_pair_${p}`);
+    if (el) el.checked = (_btCfg.enabledPairs || []).includes(p);
+  }
+  for (const feat of BT_FEATURES) {
+    const el = document.getElementById(`bt_feat_${feat}`);
+    if (el) el.checked = !!(_btCfg.features?.[feat]?.enabled);
+  }
+}
+
+// ── Telegram bot status ───────────────────────────────────────────────────────
 
 async function loadBotStatus() {
   try {
     const data = await kvGet('bot_status');
-    if (!data) {
-      setText('bsAge', 'No status yet — bot may not have run');
-      return;
-    }
-
-    const age = Math.round((Date.now() - (data.timestamp ?? 0)) / 1000 / 60);
+    if (!data) { setText('bsAge', 'No status — bot may not have run'); return; }
+    const age = Math.round((Date.now() - (data.timestamp ?? 0)) / 60000);
     setText('bsAge',     `Last loop ${age}m ago`);
     setText('bsPaper',   data.paper ? '· paper' : '· LIVE');
-    setText('bsTier',    data.tier   ? `· ${data.tier}` : '');
-    setText('bsBalance', data.balance ? `· $${(+data.balance).toLocaleString('en-US', {maximumFractionDigits: 0})}` : '');
-
-    // Pairs evaluated
+    setText('bsTier',    data.tier    ? `· ${data.tier}` : '');
+    setText('bsBalance', data.balance ? `· $${(+data.balance).toLocaleString('en-US', {maximumFractionDigits:0})}` : '');
     const pairs = (data.pairs_evaluated || []).map(p => {
       const col = p.action === 'trade' ? 'bs-green' : 'bs-dim';
       return `<span class="${col}">${p.pair}→${p.action}${p.direction ? ' ' + p.direction : ''}${p.stars != null ? ' ' + p.stars + '★' : ''}</span>`;
     }).join('  ');
     document.getElementById('bsPairs').innerHTML = pairs || '<span class="bs-dim">No pairs evaluated</span>';
-
-    // Blocked pairs
     const blocked = (data.pairs_blocked || []);
-    if (blocked.length) {
-      document.getElementById('bsBlocked').innerHTML =
-        `<span class="bs-amber">Blocked: ${blocked.join('  ')}</span>`;
-    } else {
-      document.getElementById('bsBlocked').innerHTML = '';
-    }
-
-    // Open positions
+    document.getElementById('bsBlocked').innerHTML = blocked.length
+      ? `<span class="bs-amber">Blocked: ${blocked.join('  ')}</span>` : '';
     const open = (data.open_positions || []);
-    if (open.length) {
-      const pos = open.map(p =>
-        `<span class="bs-green">${p.pair} ${p.type} ${p.volume}L @${p.price_open}</span>`
-      ).join('  ');
-      document.getElementById('bsOpen').innerHTML = `Open: ${pos}`;
-    } else {
-      document.getElementById('bsOpen').innerHTML = '<span class="bs-dim">No open positions</span>';
-    }
-
-    // Management actions
+    document.getElementById('bsOpen').innerHTML = open.length
+      ? `Open: ${open.map(p => `<span class="bs-green">${p.pair} ${p.type} ${p.volume}L @${p.price_open}</span>`).join('  ')}`
+      : '<span class="bs-dim">No open positions</span>';
     const mgmt = (data.mgmt_actions || []);
-    if (mgmt.length) {
-      document.getElementById('bsMgmt').innerHTML =
-        `<span class="bs-dim">Actions: ${mgmt.slice(-3).join('  ')}</span>`;
-    } else {
-      document.getElementById('bsMgmt').innerHTML = '';
-    }
-
-    // Errors
-    const errs = (data.errors || []);
-    document.getElementById('bsErrors').innerHTML = errs.length
-      ? `<span class="bs-red">Errors: ${errs.join(' · ')}</span>` : '';
-
-  } catch (e) {
-    // non-critical
-  }
+    document.getElementById('bsMgmt').innerHTML = mgmt.length
+      ? `<span class="bs-dim">Actions: ${mgmt.slice(-3).join('  ')}</span>` : '';
+    document.getElementById('bsErrors').innerHTML = (data.errors || []).length
+      ? `<span class="bs-red">Errors: ${data.errors.join(' · ')}</span>` : '';
+  } catch (e) { /* non-critical */ }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Backtest bot status ───────────────────────────────────────────────────────
 
-function num(id, def) { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? def : v; }
-function str(id, def) { return document.getElementById(id)?.value || def; }
-function radio(name, def) {
-  const el = document.querySelector(`input[name="${name}"]:checked`);
-  return el ? el.value : def;
-}
-function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
-function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
-function setRadio(name, v) {
-  const el = document.querySelector(`input[name="${name}"][value="${v}"]`);
-  if (el) el.checked = true;
-}
-function setStatus(type, msg) {
-  const el = document.getElementById('saveStatus');
-  if (!el) return;
-  el.textContent = msg;
-  el.className = `save-status ${type}`;
+async function loadBtBotStatus() {
+  try {
+    const data = await kvGet('backtestsystem_status');
+    if (!data) { setText('btBsAge', 'No status — bot may not have run'); return; }
+    const age = Math.round((Date.now() - (data.timestamp ?? 0)) / 60000);
+    setText('btBsAge',    `Last update ${age}m ago`);
+    setText('btBsWindow', data.in_window ? '· IN WINDOW' : '· outside window');
+    setText('btBsDate',   data.date ? `· ${data.date}` : '');
+
+    const pairs = data.pairs || {};
+    const pairHtml = Object.values(pairs).map(p => {
+      if (!p.price) return '';
+      const zone = p.in_zone ? '<span class="bs-amber"> ◄ZONE</span>' : '';
+      const dir  = p.direction ? ` <span class="bs-green">${p.direction}</span>` : '';
+      const cv   = p.conviction != null ? ` conv=${p.conviction.toFixed(2)}` : '';
+      const posCount = (p.positions || []).length;
+      const posTag   = posCount ? ` <span class="bs-green">[${posCount} pos]</span>` : '';
+      return `<span class="bs-dim">${p.pair} ${p.price?.toFixed(5) ?? ''}${zone}${dir}${cv}${posTag}</span>`;
+    }).filter(Boolean).join('  ');
+    document.getElementById('btBsPairs').innerHTML = pairHtml || '<span class="bs-dim">No pair data yet</span>';
+
+    const allPositions = Object.values(pairs).flatMap(p => p.positions || []);
+    document.getElementById('btBsPositions').innerHTML = allPositions.length
+      ? `Open: ${allPositions.map(p =>
+          `<span class="bs-green">${p.direction?.toUpperCase()} @${p.open_price} SL:${p.sl} TP:${p.tp} P&L:${p.profit > 0 ? '+' : ''}${p.profit}</span>`
+        ).join('  ')}`
+      : '<span class="bs-dim">No open positions</span>';
+  } catch (e) { /* non-critical */ }
 }
 
-// ── MT5 Credentials helpers ───────────────────────────────────────────────────
+// ── MT5 Credentials ───────────────────────────────────────────────────────────
 
 function _applyCredsToForm(stored, idPrefix, pwId) {
   if (!stored) return;
@@ -413,76 +624,45 @@ async function _saveCreds(kvKey, idPrefix, pwId, statusId) {
   }
 }
 
-// Main bot credentials (KV key: bot_credentials)
-async function loadCreds() {
-  try { _applyCredsToForm(await kvGet('bot_credentials'), 'mt5_', 'mt5_password'); } catch(e) {}
-}
-async function saveCreds() {
-  await _saveCreds('bot_credentials', 'mt5_', 'mt5_password', 'credsStatus');
-}
+async function loadCreds()   { try { _applyCredsToForm(await kvGet('bot_credentials'),             'mt5_',     'mt5_password');    } catch(e) {} }
+async function saveCreds()   { await _saveCreds('bot_credentials',             'mt5_',     'mt5_password',    'credsStatus');   }
+async function loadBtCreds() { try { _applyCredsToForm(await kvGet('backtestsystem_credentials'), 'bt_mt5_', 'bt_mt5_password'); } catch(e) {} }
+async function saveBtCreds() { await _saveCreds('backtestsystem_credentials', 'bt_mt5_', 'bt_mt5_password', 'btCredsStatus'); }
 
-// Backtest bot credentials (KV key: backtestsystem_credentials)
-async function loadBtCreds() {
-  try { _applyCredsToForm(await kvGet('backtestsystem_credentials'), 'bt_mt5_', 'bt_mt5_password'); } catch(e) {}
-}
-async function saveBtCreds() {
-  await _saveCreds('backtestsystem_credentials', 'bt_mt5_', 'bt_mt5_password', 'btCredsStatus');
-}
+// ── Shared helpers ────────────────────────────────────────────────────────────
 
-// ── Backtest bot live settings ────────────────────────────────────────────────
-
-const BT_LIVE_FIELDS = [
-  { id: 'bt_riskPct',     key: 'riskPct',      parse: parseFloat },
-  { id: 'bt_killDaily',   key: 'killDaily',     parse: parseFloat },
-  { id: 'bt_killWeekly',  key: 'killWeekly',    parse: parseFloat },
-  { id: 'bt_killMonthly', key: 'killMonthly',   parse: parseFloat },
-  { id: 'bt_entryWindow', key: 'entryWindow',   parse: parseInt   },
-  { id: 'bt_eodExit',     key: 'eodExit',       parse: parseInt   },
-  { id: 'bt_tradeCooldownMins', key: 'tradeCooldownMins', parse: parseInt },
-  { id: 'bt_enabledPairs',     key: 'enabledPairs',      parse: v => v.split(',').map(s => s.trim()).filter(Boolean) },
-];
-
-async function loadLiveSettings() {
-  try {
-    const stored = await kvGet('backtestsystem_live_config');
-    if (!stored) return;
-    for (const f of BT_LIVE_FIELDS) {
-      const el = document.getElementById(f.id);
-      if (!el || stored[f.key] == null) continue;
-      el.value = Array.isArray(stored[f.key]) ? stored[f.key].join(', ') : stored[f.key];
-    }
-  } catch(e) {}
+function num(id, def)  { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? def : v; }
+function str(id, def)  { return document.getElementById(id)?.value || def; }
+function chk(id)       { return !!(document.getElementById(id)?.checked); }
+function radio(name, def) { return document.querySelector(`input[name="${name}"]:checked`)?.value ?? def; }
+function setVal(id, v)    { const el = document.getElementById(id); if (el) el.value = v; }
+function setChk(id, v)    { const el = document.getElementById(id); if (el) el.checked = !!v; }
+function setText(id, v)   { const el = document.getElementById(id); if (el) el.textContent = v; }
+function setRadio(name, v){ const el = document.querySelector(`input[name="${name}"][value="${v}"]`); if (el) el.checked = true; }
+function setStatus(type, msg) {
+  const el = document.getElementById('saveStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = type;
 }
 
-async function saveLiveSettings() {
-  const status = document.getElementById('btLiveStatus');
-  status.textContent = 'Saving…';
-  try {
-    const data = {};
-    for (const f of BT_LIVE_FIELDS) {
-      const el = document.getElementById(f.id);
-      if (el) data[f.key] = f.parse(el.value);
-    }
-    await kvSet('backtestsystem_live_config', data);
-    status.textContent = 'Saved ✓';
-    setTimeout(() => { status.textContent = ''; }, 3000);
-  } catch(e) {
-    status.textContent = 'Error: ' + e.message;
-  }
-}
-
-// ── Init ──────────────────────────────────────────────────────────────────────
+// ── Expose globals (called from inline onclick handlers in HTML) ───────────────
 
 window.saveConfig       = saveConfig;
 window.resetDefaults    = resetDefaults;
 window.toggleKillSwitch = toggleKillSwitch;
 window.saveCreds        = saveCreds;
 window.saveBtCreds      = saveBtCreds;
-window.saveLiveSettings = saveLiveSettings;
+window.saveBtConfig     = saveBtConfig;
+window.resetBtDefaults  = resetBtDefaults;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 
 loadConfig();
+loadBtConfig();
 loadCreds();
 loadBtCreds();
-loadLiveSettings();
 loadBotStatus();
-setInterval(loadBotStatus, 60_000);  // refresh status every 60s
+loadBtBotStatus();
+setInterval(loadBotStatus,   60_000);
+setInterval(loadBtBotStatus, 60_000);
