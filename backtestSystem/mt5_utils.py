@@ -213,6 +213,24 @@ def get_open_positions(magic: int = 20260002) -> list:
     return [p for p in (mt5.positions_get() or []) if p.magic == magic]
 
 
+def fetch_close_price(ticket: int) -> float | None:
+    """Return the closing deal price for a position by its position ticket ID."""
+    if not HAS_MT5:
+        return None
+    date_from = datetime.now(timezone.utc) - timedelta(days=7)
+    date_to   = datetime.now(timezone.utc) + timedelta(hours=1)
+    try:
+        deals = mt5.history_deals_get(date_from, date_to)
+    except Exception:
+        return None
+    if not deals:
+        return None
+    for d in reversed(deals):
+        if d.position_id == ticket and d.entry == mt5.DEAL_ENTRY_OUT:
+            return float(d.price)
+    return None
+
+
 def move_sl_to_be(position, pip: float, be_buffer_pips: float = 1.0) -> bool:
     """
     Move the SL of an open position to breakeven (entry price + small buffer).

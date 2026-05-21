@@ -99,6 +99,51 @@ body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif
 .pos-level { color:var(--text3); flex:1; }
 .pnl-pos { color:var(--green); font-weight:600; }
 .pnl-neg { color:var(--red);   font-weight:600; }
+
+/* ── Trade Journal ── */
+.journal-section { margin-top:28px; }
+.journal-head { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.journal-title { font-size:13px; font-weight:600; }
+.journal-count { font-size:11px; color:var(--text3); font-family:'DM Mono',monospace; }
+.journal-refresh { background:none; border:1px solid var(--border2); border-radius:6px; padding:3px 10px; font-size:11px; color:var(--text2); cursor:pointer; }
+.journal-refresh:hover { color:var(--text); }
+
+.jday-header { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text3); margin:16px 0 8px; padding-top:10px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+.jday-header:first-child { border-top:none; margin-top:0; padding-top:0; }
+.jday-pnl { font-size:11px; font-family:'DM Mono',monospace; font-weight:600; }
+.jday-pnl.pos { color:var(--green); }
+.jday-pnl.neg { color:var(--red); }
+
+.jgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:10px; }
+
+.jcard { background:var(--s1); border:1px solid var(--border); border-left:3px solid var(--border2); border-radius:var(--rl); padding:12px 14px; }
+.jcard.open     { border-left-color:var(--amber); }
+.jcard.c-tp     { border-left-color:var(--green); }
+.jcard.c-sl     { border-left-color:var(--red); }
+.jcard.c-be     { border-left-color:var(--blue); }
+.jcard.c-manual { border-left-color:var(--text3); }
+
+.jcard-head { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-bottom:7px; }
+.jcard-pair { font-size:13px; font-weight:600; font-family:'DM Mono',monospace; }
+.jcard-dir  { font-size:10px; padding:2px 7px; border-radius:4px; font-family:'DM Mono',monospace; font-weight:600; }
+.jcard-dir.long  { background:var(--green-bg); color:var(--green); border:1px solid var(--green-bd); }
+.jcard-dir.short { background:var(--red-bg);   color:var(--red);   border:1px solid var(--red-bd); }
+.jcard-time { font-size:11px; color:var(--text3); font-family:'DM Mono',monospace; }
+.jbadge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; white-space:nowrap; margin-left:auto; }
+.jbadge.open   { background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-bd); }
+.jbadge.tp     { background:var(--green-bg); color:var(--green); border:1px solid var(--green-bd); }
+.jbadge.sl     { background:var(--red-bg);   color:var(--red);   border:1px solid var(--red-bd); }
+.jbadge.be     { background:var(--blue-bg);  color:var(--blue);  border:1px solid var(--blue-bd); }
+.jbadge.manual { background:var(--s2);       color:var(--text3); border:1px solid var(--border); }
+.jpnl { font-size:12px; font-weight:600; font-family:'DM Mono',monospace; }
+.jpnl.pos { color:var(--green); }
+.jpnl.neg { color:var(--red); }
+
+.jmeta { display:flex; gap:10px; flex-wrap:wrap; font-size:10.5px; color:var(--text3); font-family:'DM Mono',monospace; margin-bottom:6px; }
+.jchips { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:7px; }
+.jchip { font-size:10px; padding:2px 6px; border-radius:10px; background:var(--s3); color:var(--text2); border:1px solid var(--border); }
+.jsvg-wrap { border-radius:6px; overflow:hidden; background:var(--s2); }
+.jsvg { width:100%; display:block; }
 </style>
 </head>
 <body>
@@ -124,6 +169,18 @@ body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif
 
   <div id="pairGrid" class="pair-grid">
     <div class="no-data">Waiting for backtestSystem data…<br>Make sure main.py is running and DASHBOARD_URL is set in .env</div>
+  </div>
+
+  <!-- Trade Journal -->
+  <div class="journal-section">
+    <div class="journal-head">
+      <span class="journal-title">Trade Journal</span>
+      <span id="jCount" class="journal-count"></span>
+      <button class="journal-refresh" onclick="refreshJournal()">↺ Refresh</button>
+    </div>
+    <div id="jList">
+      <div style="color:var(--text3);font-size:12px;font-family:'DM Mono',monospace">Loading…</div>
+    </div>
   </div>
 
 </div>
@@ -298,6 +355,163 @@ async function refresh() {
 
 refresh();
 setInterval(refresh, 30_000);
+
+// ── Trade Journal ─────────────────────────────────────────────────────────────
+
+function buildSvg(rec) {
+  const bars = rec.bars || [];
+  const W = 460, H = 100;
+  const ml = 38, mr = 6, mt = 7, mb = 8;
+  const cw = W - ml - mr, ch = H - mt - mb;
+
+  if (!bars.length) {
+    return `<svg viewBox="0 0 ${W} 36" class="jsvg" height="36">` +
+      `<text x="${W/2}" y="21" text-anchor="middle" font-size="11" fill="var(--text3)" ` +
+      `font-family="DM Sans,sans-serif">Trade open — bars accumulate on next poll</text></svg>`;
+  }
+
+  // Price range including all key levels
+  const prices = bars.flatMap(b => [b.h, b.l]);
+  prices.push(rec.entry_price, rec.sl, rec.tp);
+  if (rec.be_price != null) prices.push(rec.be_price);
+  const pMin = Math.min(...prices), pMax = Math.max(...prices);
+  const pRange = pMax - pMin || (rec.pip || 0.0001) * 10;
+  const pad = pRange * 0.14;
+  const yLo = pMin - pad, yHi = pMax + pad, yRange = yHi - yLo;
+
+  function yp(p)  { return +(mt + ch * (1 - (p - yLo) / yRange)).toFixed(1); }
+  const slot = Math.min(cw / bars.length, 14);
+  function xl(i)  { return +(ml + i * slot).toFixed(1); }
+  function xc(i)  { return +(ml + i * slot + slot * 0.5).toFixed(1); }
+  const bw = Math.max(+(slot * 0.72).toFixed(1), 1);
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" class="jsvg" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // Trade-period shade
+  const ets = rec.entry_ts_ms || 0;
+  const exts = rec.exit_time ? new Date(rec.exit_time).getTime() : Infinity;
+  let fi = -1, li = -1;
+  for (let i = 0; i < bars.length; i++) {
+    if (bars[i].t >= ets && bars[i].t <= exts) { if (fi < 0) fi = i; li = i; }
+  }
+  if (fi >= 0) {
+    svg += `<rect x="${xl(fi)}" y="${mt}" width="${+(xl(li) - xl(fi) + slot).toFixed(1)}" height="${ch}" fill="rgba(96,165,250,0.07)"/>`;
+  }
+
+  // Level lines
+  const lvs = [
+    { p: rec.tp,           c: 'var(--green)',  l: 'TP',  d: '4 2' },
+    { p: rec.entry_price,  c: 'var(--blue)',   l: 'Ent', d: '3 2' },
+    { p: rec.sl,           c: 'var(--red)',    l: 'SL',  d: '4 2' },
+  ];
+  if (rec.be_price != null) lvs.push({ p: rec.be_price, c: 'var(--amber)', l: 'BE', d: '2 2' });
+  for (const lv of lvs) {
+    const y = yp(lv.p);
+    svg += `<line x1="${ml}" y1="${y}" x2="${W-mr}" y2="${y}" stroke="${lv.c}" stroke-width="1" stroke-dasharray="${lv.d}" opacity="0.75"/>`;
+    svg += `<text x="${ml-3}" y="${y+3}" text-anchor="end" font-size="8" fill="${lv.c}" font-family="DM Mono,monospace">${lv.l}</text>`;
+  }
+
+  // Candlesticks
+  for (let i = 0; i < bars.length; i++) {
+    const b = bars[i];
+    const yo = yp(b.o), yc2 = yp(b.c), yh2 = yp(b.h), yl2 = yp(b.l);
+    const top = Math.min(yo, yc2), bh = Math.max(Math.abs(yo - yc2), 1);
+    const col = b.c >= b.o ? 'var(--green)' : 'var(--red)';
+    svg += `<line x1="${xc(i)}" y1="${yh2}" x2="${xc(i)}" y2="${yl2}" stroke="${col}" stroke-width="1" opacity="0.7"/>`;
+    svg += `<rect x="${xl(i)}" y="${top}" width="${bw}" height="${bh}" fill="${col}" opacity="0.85"/>`;
+  }
+
+  // Entry / exit verticals
+  if (fi >= 0) svg += `<line x1="${xl(fi)}" y1="${mt}" x2="${xl(fi)}" y2="${mt+ch}" stroke="var(--blue)" stroke-width="1.5" opacity="0.4"/>`;
+  if (rec.exit_time && li >= 0) {
+    const ec = rec.exit_type === 'tp' ? 'var(--green)' : rec.exit_type === 'be' ? 'var(--blue)' : 'var(--red)';
+    svg += `<line x1="${+(xl(li)+slot).toFixed(1)}" y1="${mt}" x2="${+(xl(li)+slot).toFixed(1)}" y2="${mt+ch}" stroke="${ec}" stroke-width="1.5" opacity="0.4"/>`;
+  }
+
+  return svg + '</svg>';
+}
+
+function renderCard(rec) {
+  const isOpen   = rec.status === 'open';
+  const badge    = isOpen ? 'open' : (rec.exit_type || 'manual');
+  const lbl      = { tp:'TP HIT', sl:'SL HIT', be:'BE EXIT', manual:'MANUAL', open:'OPEN' };
+  const cls      = isOpen ? 'open' : `c-${badge}`;
+  const pnlCls   = rec.pnl_r == null ? '' : rec.pnl_r > 0 ? 'pos' : rec.pnl_r < 0 ? 'neg' : '';
+  const pnlStr   = rec.pnl_r == null ? '' :
+    `${rec.pnl_r > 0 ? '+' : ''}${rec.pnl_r.toFixed(2)}R&nbsp;${rec.pnl_pips > 0 ? '+' : ''}${rec.pnl_pips.toFixed(1)}p`;
+  const eHM      = rec.entry_time ? rec.entry_time.slice(11,16) : '—';
+  const xHM      = rec.exit_time  ? rec.exit_time.slice(11,16)  : (isOpen ? 'open' : '—');
+  let dur = '';
+  if (rec.entry_time && rec.exit_time) {
+    const m = Math.round((new Date(rec.exit_time) - new Date(rec.entry_time)) / 60000);
+    dur = m < 60 ? ` (${m}m)` : ` (${Math.floor(m/60)}h${m%60}m)`;
+  }
+  const beTag  = rec.be_moved_at ? `<span style="font-size:10px;color:var(--amber)">BE@${rec.be_moved_at.slice(11,16)}</span>` : '';
+  const chips  = (rec.features||[]).map(f=>`<span class="jchip">${f}</span>`).join('');
+  return `<div class="jcard ${cls}">
+  <div class="jcard-head">
+    <span class="jcard-pair">${rec.pair}</span>
+    <span class="jcard-dir ${rec.direction}">${rec.direction.toUpperCase()}</span>
+    <span class="jcard-time">${eHM}→${xHM}${dur}</span>
+    ${beTag}
+    <span class="jbadge ${badge}">${lbl[badge]||badge.toUpperCase()}</span>
+    ${pnlStr?`<span class="jpnl ${pnlCls}">${pnlStr}</span>`:''}
+  </div>
+  <div class="jmeta">
+    <span>@${rec.entry_price}</span>
+    <span>SL ${rec.sl} (${rec.sl_dist_pips}p)</span>
+    <span>TP ${rec.tp} (${rec.tp_dist_pips}p)</span>
+    <span>${rec.lots}L</span>
+    <span>conv ${Math.round((rec.conviction||0)*100)}%</span>
+    ${rec.level_fib!=null?`<span>fib ${rec.level_fib}</span>`:''}
+  </div>
+  ${chips?`<div class="jchips">${chips}</div>`:''}
+  <div class="jsvg-wrap">${buildSvg(rec)}</div>
+</div>`;
+}
+
+async function refreshJournal() {
+  const listEl  = document.getElementById('jList');
+  const countEl = document.getElementById('jCount');
+  if (!listEl) return;
+  try {
+    const data = await kvGet('backtestsystem_journal');
+    if (!data || !data.length) {
+      listEl.innerHTML = '<div style="color:var(--text3);font-size:12px;font-family:\'DM Mono\',monospace">No trades recorded yet.</div>';
+      if (countEl) countEl.textContent = '0 trades';
+      return;
+    }
+    const openN = data.filter(r => r.status==='open').length;
+    if (countEl) countEl.textContent =
+      `${data.length} trade${data.length!==1?'s':''}${openN ? ` · ${openN} open` : ''}`;
+
+    // Group by date, newest first
+    const byDate = {};
+    for (const r of data) { const d = r.date||'Unknown'; (byDate[d]=byDate[d]||[]).push(r); }
+    const dates = Object.keys(byDate).sort((a,b) => b.localeCompare(a));
+
+    let html = '';
+    for (const date of dates) {
+      const recs   = byDate[date];
+      const closed = recs.filter(r => r.pnl_r != null);
+      const dayR   = closed.reduce((s, r) => s + (r.pnl_r||0), 0);
+      const dayCls = dayR > 0 ? 'pos' : dayR < 0 ? 'neg' : '';
+      const dayTag = closed.length
+        ? ` <span class="jday-pnl ${dayCls}">${dayR>0?'+':''}${dayR.toFixed(2)}R</span>`
+        : '';
+      html += `<div class="jday-header">${date}${dayTag}</div><div class="jgrid">`;
+      for (const r of recs) html += renderCard(r);
+      html += '</div>';
+    }
+    listEl.innerHTML = html;
+  } catch (e) {
+    if (listEl) listEl.innerHTML =
+      `<div style="color:var(--red);font-size:12px;font-family:'DM Mono',monospace">Error: ${e.message}</div>`;
+  }
+}
+
+refreshJournal();
+setInterval(refreshJournal, 120_000);
 </script>
 </body>
 </html>

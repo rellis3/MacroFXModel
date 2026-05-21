@@ -17,7 +17,8 @@ from dotenv import load_dotenv
 from config    import load_config, sl_distance, tp_distance, _deep_merge
 from mt5_utils import (connect, fetch_bars_5m, fetch_bars_30m, fetch_bars_daily,
                        fetch_price, get_balance, get_open_positions, place_order,
-                       pip_size, london_now, move_sl_to_be)
+                       pip_size, london_now, move_sl_to_be, fetch_close_price)
+import journal
 from levels    import (compute_asia_range, compute_monday_range, project_fib_levels,
                        detect_confluences, get_yesterday_range_bars)
 from engine     import compute_direction
@@ -281,6 +282,9 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
                 'level':      lv,
                 'level_fib':  fib,
             })
+            entry_ts_ms = journal.get_entry_ts_ms(p.ticket)
+            if entry_ts_ms is not None:
+                journal.accumulate_bars(p.ticket, bars_5m, entry_ts_ms)
         log.info(f'  {pair}  {len(pair_pos)} position(s) open — skipping new entry')
         return st
 
@@ -398,6 +402,12 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     level_entries[lkey] = level_entries.get(lkey, 0) + 1  # count attempt win or lose
     if ticket:
         log.info(f'  → ticket #{ticket}')
+        features_fired = [r['key'] for r in scored if r.get('icon', '·') != '·']
+        journal.record_open(
+            ticket, pair, entry_dir, price, sl, tp, lots, pip,
+            nearest_lev['price'], nearest_lev.get('fib'),
+            conviction, confirms, features_fired,
+        )
     else:
         remaining = cfg.get('levelReentry', 2) - level_entries[lkey]
         log.warning(f'  → order rejected — {remaining} attempt(s) left on this level today')
@@ -453,6 +463,8 @@ def main() -> None:
         log.error('MT5 connection failed — check .env and MT5 terminal')
         sys.exit(1)
 
+    journal.init(dashboard_url)
+
     pairs        = cfg.get('enabledPairs', [])
     kill         = KillSwitch(cfg)
     poll_interval = int(cfg.get('pollInterval', _DEFAULT_POLL))
@@ -497,6 +509,9 @@ def main() -> None:
                         if symbol == pair or symbol.startswith(pair):
                             pair_close_times[pair] = time.monotonic()
                             log.info(f'{pair}  position #{ticket} closed — {cooldown_secs//60:.0f}m cooldown started')
+                            exit_price = fetch_close_price(ticket)
+                            if exit_price:
+                                journal.record_close(ticket, exit_price)
             prev_tickets = current_tickets
 
             # ── SL → Breakeven management ─────────────────────────────────
@@ -514,8 +529,13 @@ def main() -> None:
                     moved     = (price_now - entry) if is_long else (entry - price_now)
                     progress  = moved / tp_dist
                     if progress >= be_pct:
-                        move_sl_to_be(pos, pip_size(pos.symbol),
-                                      cfg.get('slBeBuffer', 1.0))
+                        be_moved = move_sl_to_be(pos, pip_size(pos.symbol),
+                                                  cfg.get('slBeBuffer', 1.0))
+                        if be_moved:
+                            _p   = pip_size(pos.symbol)
+                            _buf = cfg.get('slBeBuffer', 1.0) * _p
+                            _be  = pos.price_open + _buf if pos.type == 0 else pos.price_open - _buf
+                            journal.record_be_move(pos.ticket, round(_be, 6))
 
             pair_statuses: dict = {}
             for pair in pairs:

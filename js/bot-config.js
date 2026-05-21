@@ -646,6 +646,187 @@ function setStatus(type, msg) {
   el.className = type;
 }
 
+// ── Trade Journal (rendering) ─────────────────────────────────────────────────
+// Full implementation lives in backtest-monitor.html
+
+function _buildJournalSvg(rec) {
+  const bars = rec.bars || [];
+  const W = 480, H = 108;
+  const ml = 40, mr = 6, mt = 7, mb = 10;
+  const cw = W - ml - mr, ch = H - mt - mb;
+
+  if (bars.length === 0) {
+    return `<svg viewBox="0 0 ${W} 38" class="jsvg" style="height:38px">` +
+           `<text x="${W/2}" y="22" text-anchor="middle" font-size="11" ` +
+           `fill="var(--text3)" font-family="DM Sans,sans-serif">` +
+           `Trade open — bars accumulating on next poll</text></svg>`;
+  }
+
+  // Price range from bars + all levels
+  const prices = bars.flatMap(b => [b.h, b.l]);
+  prices.push(rec.entry_price, rec.sl, rec.tp);
+  if (rec.be_price) prices.push(rec.be_price);
+  const pMin = Math.min(...prices);
+  const pMax = Math.max(...prices);
+  const pRange = pMax - pMin || (rec.pip || 0.0001) * 10;
+  const pad  = pRange * 0.15;
+  const yLo  = pMin - pad, yHi = pMax + pad, yRange = yHi - yLo;
+
+  function yp(price) {
+    return +(mt + ch * (1 - (price - yLo) / yRange)).toFixed(1);
+  }
+  const barSlot = Math.min(cw / bars.length, 16);
+  function xLeft(i)   { return +(ml + i * barSlot).toFixed(1); }
+  function xCenter(i) { return +(ml + i * barSlot + barSlot * 0.5).toFixed(1); }
+  const bodyW = Math.max(+(barSlot * 0.7).toFixed(1), 1);
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" class="jsvg" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // Trade-period shade
+  const entryTs = rec.entry_ts_ms || 0;
+  const exitTs  = rec.exit_time ? new Date(rec.exit_time).getTime() : Infinity;
+  let firstIn = -1, lastIn = -1;
+  for (let i = 0; i < bars.length; i++) {
+    if (bars[i].t >= entryTs && bars[i].t <= exitTs) {
+      if (firstIn < 0) firstIn = i;
+      lastIn = i;
+    }
+  }
+  if (firstIn >= 0) {
+    const x1 = xLeft(firstIn);
+    const x2 = xLeft(lastIn) + barSlot;
+    svg += `<rect x="${x1}" y="${mt}" width="${+(x2-x1).toFixed(1)}" height="${ch}" fill="rgba(96,165,250,0.07)"/>`;
+  }
+
+  // Level lines + labels
+  const levels = [
+    { price: rec.tp,          color: 'var(--green)',  label: 'TP', dash: '4 2' },
+    { price: rec.entry_price, color: 'var(--blue)',   label: 'Ent', dash: '3 2' },
+    { price: rec.sl,          color: 'var(--red)',    label: 'SL', dash: '4 2' },
+  ];
+  if (rec.be_price != null) {
+    levels.push({ price: rec.be_price, color: 'var(--amber)', label: 'BE', dash: '2 2' });
+  }
+  for (const lv of levels) {
+    const y = yp(lv.price);
+    svg += `<line x1="${ml}" y1="${y}" x2="${W - mr}" y2="${y}" stroke="${lv.color}" stroke-width="1" stroke-dasharray="${lv.dash}" opacity="0.75"/>`;
+    svg += `<text x="${ml - 3}" y="${y + 3}" text-anchor="end" font-size="8" fill="${lv.color}" font-family="DM Mono,monospace">${lv.label}</text>`;
+  }
+
+  // Candlesticks
+  for (let i = 0; i < bars.length; i++) {
+    const b  = bars[i];
+    const xc = xCenter(i), xl = xLeft(i);
+    const yo = yp(b.o), yc_ = yp(b.c), yh = yp(b.h), yl = yp(b.l);
+    const top = Math.min(yo, yc_), bodyH = Math.max(Math.abs(yo - yc_), 1);
+    const color = b.c >= b.o ? 'var(--green)' : 'var(--red)';
+    svg += `<line x1="${xc}" y1="${yh}" x2="${xc}" y2="${yl}" stroke="${color}" stroke-width="1" opacity="0.75"/>`;
+    svg += `<rect x="${xl}" y="${top}" width="${bodyW}" height="${bodyH}" fill="${color}" opacity="0.85"/>`;
+  }
+
+  // Entry / exit verticals
+  if (firstIn >= 0) {
+    const x = xLeft(firstIn);
+    svg += `<line x1="${x}" y1="${mt}" x2="${x}" y2="${mt + ch}" stroke="var(--blue)" stroke-width="1.5" opacity="0.45"/>`;
+  }
+  if (rec.exit_time != null && lastIn >= 0) {
+    const x     = +(xLeft(lastIn) + barSlot).toFixed(1);
+    const ecol  = rec.exit_type === 'tp' ? 'var(--green)' : rec.exit_type === 'be' ? 'var(--blue)' : 'var(--red)';
+    svg += `<line x1="${x}" y1="${mt}" x2="${x}" y2="${mt + ch}" stroke="${ecol}" stroke-width="1.5" opacity="0.45"/>`;
+  }
+
+  svg += '</svg>';
+  return svg;
+}
+
+function _renderJournalCard(rec) {
+  const isOpen   = rec.status === 'open';
+  const badge    = isOpen ? 'open' : (rec.exit_type || 'manual');
+  const badgeMap = { tp: 'TP HIT', sl: 'SL HIT', be: 'BE EXIT', manual: 'MANUAL' };
+  const badgeLbl = isOpen ? 'OPEN' : (badgeMap[badge] || badge.toUpperCase());
+  const cardCls  = isOpen ? 'open' : `c-${badge}`;
+
+  const pnlR     = rec.pnl_r;
+  const pnlPips  = rec.pnl_pips;
+  const pnlCls   = pnlR === null ? '' : pnlR > 0 ? 'pos' : pnlR < 0 ? 'neg' : '';
+  const pnlStr   = pnlR === null ? ''
+    : `${pnlR > 0 ? '+' : ''}${pnlR.toFixed(2)}R  ${pnlPips > 0 ? '+' : ''}${pnlPips.toFixed(1)}p`;
+
+  const entryHM  = rec.entry_time ? rec.entry_time.slice(11, 16) : '—';
+  const exitHM   = rec.exit_time  ? rec.exit_time.slice(11, 16)  : (isOpen ? 'open' : '—');
+
+  let duration = '';
+  if (rec.entry_time && rec.exit_time) {
+    const m = Math.round((new Date(rec.exit_time) - new Date(rec.entry_time)) / 60000);
+    duration = m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`;
+  }
+
+  const beTag = rec.be_moved_at
+    ? `<span style="font-size:10px;color:var(--amber)">BE@${rec.be_moved_at.slice(11,16)}</span>`
+    : '';
+
+  const chips = (rec.features || []).map(f => `<span class="jchip">${f}</span>`).join('');
+
+  return `
+<div class="jcard ${cardCls}">
+  <div class="jcard-head">
+    <span class="jcard-pair">${rec.pair}</span>
+    <span class="jcard-dir ${rec.direction}">${rec.direction.toUpperCase()}</span>
+    <span class="jcard-time">${entryHM}→${exitHM}${duration ? ` (${duration})` : ''}</span>
+    ${beTag}
+    <span class="jcard-badge ${badge}">${badgeLbl}</span>
+    ${pnlStr ? `<span class="jcard-pnl ${pnlCls}">${pnlStr}</span>` : ''}
+  </div>
+  <div class="jcard-meta">
+    <span>@${rec.entry_price}</span>
+    <span>SL ${rec.sl} (${rec.sl_dist_pips}p)</span>
+    <span>TP ${rec.tp} (${rec.tp_dist_pips}p)</span>
+    <span>${rec.lots}L</span>
+    <span>conv ${Math.round((rec.conviction || 0) * 100)}%</span>
+    ${rec.level_fib != null ? `<span>fib ${rec.level_fib}</span>` : ''}
+  </div>
+  ${chips ? `<div class="jcard-chips">${chips}</div>` : ''}
+  <div class="jsvg-wrap">${_buildJournalSvg(rec)}</div>
+</div>`;
+}
+
+async function loadBtJournal() {
+  const listEl  = document.getElementById('btJournalList');
+  const countEl = document.getElementById('btJournalCount');
+  if (!listEl) return;
+  try {
+    const data = await kvGet('backtestsystem_journal');
+    if (!data || !data.length) {
+      listEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0">No trades recorded yet.</div>';
+      if (countEl) countEl.textContent = '0 trades';
+      return;
+    }
+    const openCount = data.filter(r => r.status === 'open').length;
+    if (countEl) countEl.textContent =
+      `${data.length} trade${data.length !== 1 ? 's' : ''}${openCount ? ` · ${openCount} open` : ''}`;
+
+    // Group by date, newest first
+    const byDate = {};
+    for (const rec of data) {
+      const d = rec.date || 'Unknown';
+      if (!byDate[d]) byDate[d] = [];
+      byDate[d].push(rec);
+    }
+    const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+    let html = '';
+    for (const date of dates) {
+      html += `<div class="jday-header">${date}</div>`;
+      for (const rec of byDate[date]) {
+        html += _renderJournalCard(rec);
+      }
+    }
+    listEl.innerHTML = html;
+  } catch (e) {
+    if (listEl) listEl.innerHTML =
+      `<div style="color:var(--red);font-size:12px;padding:4px 0">Error: ${e.message}</div>`;
+  }
+}
+
 // ── Expose globals (called from inline onclick handlers in HTML) ───────────────
 
 window.saveConfig       = saveConfig;
@@ -655,6 +836,7 @@ window.saveCreds        = saveCreds;
 window.saveBtCreds      = saveBtCreds;
 window.saveBtConfig     = saveBtConfig;
 window.resetBtDefaults  = resetBtDefaults;
+window._loadBtJournal   = loadBtJournal;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -664,5 +846,7 @@ loadCreds();
 loadBtCreds();
 loadBotStatus();
 loadBtBotStatus();
+loadBtJournal();
 setInterval(loadBotStatus,   60_000);
 setInterval(loadBtBotStatus, 60_000);
+setInterval(loadBtJournal,   120_000);
