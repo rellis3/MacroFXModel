@@ -923,8 +923,9 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                 if not _ov.get('miss') and _ov.get('data', {}).get('force_unlock'):
                     _ts = _ov['data'].get('timestamp', 0) / 1000
                     if time.time() - _ts < 300:   # only honour if < 5 min old
-                        risk_guard._locked_until = 0.0
-                        log.info('RiskGuard lockout cleared by dashboard override')
+                        risk_guard._locked_until  = 0.0
+                        risk_guard._day_start_bal = None  # reset DD baseline so block_reason doesn't immediately re-lock
+                        log.info('RiskGuard lockout cleared by dashboard override — DD baseline reset')
                         # Acknowledge by writing force_unlock: false
                         _ack = json.dumps({'key': 'bot_override', 'data': {'force_unlock': False},
                                            'timestamp': int(time.time() * 1000)}).encode()
