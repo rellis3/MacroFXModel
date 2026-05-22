@@ -165,6 +165,10 @@ function renderV2Modal() {
 
     <div style="height:1px;background:var(--border);margin:20px 0"></div>
 
+    <div id="v2ExtractSection">${_renderExtractSection()}</div>
+
+    <div style="height:1px;background:var(--border);margin:20px 0"></div>
+
     ${_renderDailyGuide()}
   `;
 }
@@ -380,6 +384,42 @@ function _renderCompareTable() {
   `;
 }
 
+function _renderExtractSection() {
+  const pairOpts = DEFAULT_PAIRS
+    .map(p => `<option value="${p}">${p}</option>`)
+    .join('');
+
+  return `
+    <div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);font-weight:600;margin-bottom:10px">
+        Pine Script Parameters
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.5">
+        Extract learned emission parameters for one instrument and paste them into
+        the Pine indicator inputs on TradingView.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <select id="v2ExtractPair" class="oi-select" style="font-size:12px;padding:5px 8px;border-radius:7px;background:var(--s2);border:1px solid var(--border);color:var(--text);min-width:110px">
+          ${pairOpts}
+        </select>
+        <button class="oi-btn oi-btn-primary" onclick="extractV2Params()" style="font-size:12px;padding:6px 16px;border-radius:8px">
+          &#x25B6; Extract
+        </button>
+        <button class="oi-btn" id="v2CopyBtn" onclick="copyV2Params()" style="font-size:12px;padding:6px 16px;border-radius:8px;display:none">
+          &#x2398; Copy
+        </button>
+      </div>
+      <textarea
+        id="v2ExtractOutput"
+        readonly
+        placeholder="Select a pair and click Extract…"
+        style="width:100%;min-height:175px;font-family:'DM Mono',monospace;font-size:11px;padding:10px;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text2);resize:vertical;box-sizing:border-box;line-height:1.7"
+      ></textarea>
+      <div id="v2ExtractMsg" style="font-size:10px;color:var(--text3);margin-top:4px"></div>
+    </div>
+  `;
+}
+
 function _renderDailyGuide() {
   const section = (title, body) => `
     <div style="margin-bottom:14px">
@@ -473,9 +513,85 @@ function _rerenderCompareTable() {
   if (el) el.innerHTML = _renderCompareTable();
 }
 
+export async function extractV2Params() {
+  const pair   = document.getElementById('v2ExtractPair')?.value;
+  const output = document.getElementById('v2ExtractOutput');
+  const msg    = document.getElementById('v2ExtractMsg');
+  const copy   = document.getElementById('v2CopyBtn');
+  if (!output) return;
+
+  output.value = 'Loading…';
+  if (msg)  msg.textContent = '';
+  if (copy) copy.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/hmm5m-train-params');
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      output.value = '';
+      if (msg) msg.textContent = data.error || `HTTP ${res.status}`;
+      return;
+    }
+
+    const p = data.params[pair];
+    if (!p) {
+      output.value = '';
+      if (msg) msg.textContent = `No trained parameters found for ${pair}. Run Training first.`;
+      return;
+    }
+
+    const fmt = (arr) => arr.map(v => Number(v).toFixed(4)).join(',');
+
+    // Average diagonal of transition matrix for self-prob
+    const A = p.transMatrix;
+    const selfProb = A && A.length === 4
+      ? ((A[0][0] + A[1][1] + A[2][2] + A[3][3]) / 4).toFixed(4)
+      : '0.9000';
+
+    const lines = [
+      `BULL means:  ${fmt(p.means[0])}`,
+      `BULL vars:   ${fmt(p.vars[0])}`,
+      `BEAR means:  ${fmt(p.means[1])}`,
+      `BEAR vars:   ${fmt(p.vars[1])}`,
+      `RANGE means: ${fmt(p.means[2])}`,
+      `RANGE vars:  ${fmt(p.vars[2])}`,
+      `CHOP means:  ${fmt(p.means[3])}`,
+      `CHOP vars:   ${fmt(p.vars[3])}`,
+      `Self-prob:   ${selfProb}`,
+    ];
+
+    output.value = lines.join('\n');
+    if (msg)  msg.textContent = `Parameters for ${pair} — paste each value into the matching Pine indicator input.`;
+    if (copy) copy.style.display = '';
+  } catch (e) {
+    output.value = '';
+    if (msg) msg.textContent = `Error: ${e.message}`;
+  }
+}
+
+export function copyV2Params() {
+  const output = document.getElementById('v2ExtractOutput');
+  const msg    = document.getElementById('v2ExtractMsg');
+  if (!output || !output.value) return;
+
+  navigator.clipboard.writeText(output.value).then(() => {
+    if (msg) {
+      msg.textContent = '✓ Copied to clipboard';
+      setTimeout(() => { if (msg) msg.textContent = 'Parameters for the selected pair — paste each value into the matching Pine indicator input.'; }, 2000);
+    }
+  }).catch(() => {
+    output.select();
+    document.execCommand('copy');
+    if (msg) msg.textContent = '✓ Copied (fallback)';
+  });
+}
+
 // ── Window globals for onclick attributes ─────────────────────────────────────
 
 window.openV2Modal       = openV2Modal;
 window.closeV2Modal      = closeV2Modal;
 window.loadHMM5mV2       = loadHMM5mV2;
 window.triggerV2Training = triggerV2Training;
+window.extractV2Params   = extractV2Params;
+window.copyV2Params      = copyV2Params;

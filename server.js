@@ -1093,6 +1093,14 @@ app.post('/api/hmm5m-train', (_req, res) => {
   runHMM5mTraining(pairs).catch(e => console.error('[HMM5M-TRAIN]', e.message));
 });
 
+// Trained HMM V2 parameters export — consumed by Extract button in V2 modal
+app.get('/api/hmm5m-train-params', (_req, res) => {
+  if (!state.hmm5mTrainedParams) {
+    return res.status(404).json({ ok: false, error: 'No trained parameters found — run V2 Training first.' });
+  }
+  res.json({ ok: true, params: state.hmm5mTrainedParams });
+});
+
 // SSE live price stream — must be handled before the generic /api/* catch-all
 // because it returns an infinite ReadableStream, not a text body.
 app.get('/api/oanda_stream', async (req, res) => {

@@ -1,0 +1,240 @@
+//@version=5
+indicator("HMM V2 Regime [MacroFX]", shorttitle="HMM-V2", overlay=false, max_bars_back=500)
+
+// ─── INPUTS ─────────────────────────────────────────────────────────────────────
+// Paste values from the "Extract Parameters" button in the V2 training modal.
+// Default values are the hardcoded priors used before Baum-Welch training.
+
+i_bull_means  = input.string("1.0,0.0,0.7",  "BULL means  [trendZ,volZ,adxZ]",  group="Learned Means — paste from Extract")
+i_bear_means  = input.string("-1.0,0.0,0.7", "BEAR means  [trendZ,volZ,adxZ]",  group="Learned Means — paste from Extract")
+i_range_means = input.string("0.0,0.0,-1.0", "RANGE means [trendZ,volZ,adxZ]",  group="Learned Means — paste from Extract")
+i_chop_means  = input.string("0.0,1.0,0.0",  "CHOP means  [trendZ,volZ,adxZ]",  group="Learned Means — paste from Extract")
+
+i_bull_vars   = input.string("1.0,1.0,1.0",  "BULL vars  [trendZ,volZ,adxZ]",   group="Learned Variances — paste from Extract")
+i_bear_vars   = input.string("1.0,1.0,1.0",  "BEAR vars  [trendZ,volZ,adxZ]",   group="Learned Variances — paste from Extract")
+i_range_vars  = input.string("1.0,1.0,1.0",  "RANGE vars [trendZ,volZ,adxZ]",   group="Learned Variances — paste from Extract")
+i_chop_vars   = input.string("1.0,1.0,1.0",  "CHOP vars  [trendZ,volZ,adxZ]",   group="Learned Variances — paste from Extract")
+
+i_self_prob     = input.float(0.90, "Self-prob (avg diagonal A matrix)", group="Transitions", minval=0.5, maxval=0.99, step=0.01)
+i_session_boost = input.bool(true,  "Sticky outside 07:00–17:00 UTC",   group="Transitions")
+i_vix_overlay   = input.bool(true,  "Apply VIX confidence overlay",     group="Macro")
+i_vix_src       = input.string("CBOE:VIX", "VIX symbol",                group="Macro")
+i_show_table    = input.bool(true,  "Show info table",                  group="Display")
+i_bar_col       = input.bool(true,  "Colour bars by regime",            group="Display")
+
+// ─── PARSE CSV → FLOAT TRIPLE ────────────────────────────────────────────────────
+
+parseVec(s) =>
+    p  = str.split(s, ",")
+    sz = array.size(p)
+    v0 = nz(str.tonumber(sz > 0 ? str.trim(array.get(p, 0)) : "0"))
+    v1 = nz(str.tonumber(sz > 1 ? str.trim(array.get(p, 1)) : "0"))
+    v2 = nz(str.tonumber(sz > 2 ? str.trim(array.get(p, 2)) : "0"))
+    [v0, v1, v2]
+
+[bul_m0, bul_m1, bul_m2] = parseVec(i_bull_means)
+[bea_m0, bea_m1, bea_m2] = parseVec(i_bear_means)
+[rng_m0, rng_m1, rng_m2] = parseVec(i_range_means)
+[chp_m0, chp_m1, chp_m2] = parseVec(i_chop_means)
+
+[bul_v0, bul_v1, bul_v2] = parseVec(i_bull_vars)
+[bea_v0, bea_v1, bea_v2] = parseVec(i_bear_vars)
+[rng_v0, rng_v1, rng_v2] = parseVec(i_range_vars)
+[chp_v0, chp_v1, chp_v2] = parseVec(i_chop_vars)
+
+// Clamp variances to avoid log(0)
+bul_v0 := math.max(bul_v0, 0.001)
+bul_v1 := math.max(bul_v1, 0.001)
+bul_v2 := math.max(bul_v2, 0.001)
+bea_v0 := math.max(bea_v0, 0.001)
+bea_v1 := math.max(bea_v1, 0.001)
+bea_v2 := math.max(bea_v2, 0.001)
+rng_v0 := math.max(rng_v0, 0.001)
+rng_v1 := math.max(rng_v1, 0.001)
+rng_v2 := math.max(rng_v2, 0.001)
+chp_v0 := math.max(chp_v0, 0.001)
+chp_v1 := math.max(chp_v1, 0.001)
+chp_v2 := math.max(chp_v2, 0.001)
+
+// ─── M1 FEATURES (pinned regardless of chart timeframe) ─────────────────────────
+// Features are always computed on 1-minute bars to match Railway training data.
+
+m1_features() =>
+    W = 20
+
+    // trendZ: linear regression slope, rolling z-scored
+    lr0   = ta.linreg(close, W, 0)
+    lr1   = ta.linreg(close, W, 1)
+    slope = lr0 - lr1
+    mu_sl = ta.sma(slope, W)
+    sd_sl = ta.stdev(slope, W)
+    tZ    = sd_sl > 1e-8 ? (slope - mu_sl) / sd_sl : 0.0
+
+    // volZ: ATR(14), rolling z-scored
+    atr   = ta.atr(14)
+    mu_at = ta.sma(atr, W)
+    sd_at = ta.stdev(atr, W)
+    vZ    = sd_at > 1e-8 ? (atr - mu_at) / sd_at : 0.0
+
+    // adxZ: Wilder ADX(14), rolling z-scored
+    [_pdi, _mdi, adx] = ta.dmi(14, 14)
+    mu_ax = ta.sma(adx, W)
+    sd_ax = ta.stdev(adx, W)
+    aZ    = sd_ax > 1e-8 ? (adx - mu_ax) / sd_ax : 0.0
+
+    [tZ, vZ, aZ]
+
+[trendZ, volZ, adxZ] = request.security(
+     syminfo.tickerid, "1", m1_features(),
+     gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off)
+
+// ─── GAUSSIAN EMISSION LOG-LIKELIHOOD ────────────────────────────────────────────
+
+gaussLL(x, mu, s2) =>
+    -0.5 * (math.log(2.0 * math.pi * s2) + (x - mu) * (x - mu) / s2)
+
+stateLL(tZ, vZ, aZ, m0, m1, m2, v0, v1, v2) =>
+    gaussLL(tZ, m0, v0) + gaussLL(vZ, m1, v1) + gaussLL(aZ, m2, v2)
+
+// ─── LOG-SUM-EXP (4 terms) ──────────────────────────────────────────────────────
+
+lse4(a, b, c, d) =>
+    mx = math.max(math.max(a, b), math.max(c, d))
+    mx + math.log(math.exp(a - mx) + math.exp(b - mx) + math.exp(c - mx) + math.exp(d - mx) + 1e-300)
+
+// ─── SESSION-AWARE SELF-PROBABILITY ─────────────────────────────────────────────
+
+h         = hour(time, "UTC")
+inSession = h >= 7 and h < 17
+
+sp = i_self_prob
+if i_session_boost and not inSession
+    // boost self-prob 30% toward 0.98 during thin hours
+    sp := sp + (1.0 - sp) * 0.3
+
+logSp  = math.log(math.max(sp, 1e-10))
+logOff = math.log(math.max((1.0 - sp) / 3.0, 1e-10))
+
+// ─── HMM FORWARD PASS (bar by bar, log-space) ────────────────────────────────────
+// States: 0=BULL, 1=BEAR, 2=RANGE, 3=CHOP
+// lA{n} = log P(state=n, observations up to current bar)
+
+var float lA0 = -math.log(4.0)
+var float lA1 = -math.log(4.0)
+var float lA2 = -math.log(4.0)
+var float lA3 = -math.log(4.0)
+
+if not na(trendZ) and not na(volZ) and not na(adxZ)
+    // Per-state log emissions
+    e0 = stateLL(trendZ, volZ, adxZ, bul_m0, bul_m1, bul_m2, bul_v0, bul_v1, bul_v2)
+    e1 = stateLL(trendZ, volZ, adxZ, bea_m0, bea_m1, bea_m2, bea_v0, bea_v1, bea_v2)
+    e2 = stateLL(trendZ, volZ, adxZ, rng_m0, rng_m1, rng_m2, rng_v0, rng_v1, rng_v2)
+    e3 = stateLL(trendZ, volZ, adxZ, chp_m0, chp_m1, chp_m2, chp_v0, chp_v1, chp_v2)
+
+    // new alpha[j] = lse_i(alpha[i] + log A[i,j]) + log B[j]
+    // Transition matrix is symmetric with selfProb on diagonal, off/3 elsewhere
+    n0 = lse4(lA0 + logSp,  lA1 + logOff, lA2 + logOff, lA3 + logOff) + e0
+    n1 = lse4(lA0 + logOff, lA1 + logSp,  lA2 + logOff, lA3 + logOff) + e1
+    n2 = lse4(lA0 + logOff, lA1 + logOff, lA2 + logSp,  lA3 + logOff) + e2
+    n3 = lse4(lA0 + logOff, lA1 + logOff, lA2 + logOff, lA3 + logSp)  + e3
+
+    // Normalise to prevent underflow
+    logZ = lse4(n0, n1, n2, n3)
+    lA0 := n0 - logZ
+    lA1 := n1 - logZ
+    lA2 := n2 - logZ
+    lA3 := n3 - logZ
+
+pBull  = math.exp(lA0)
+pBear  = math.exp(lA1)
+pRange = math.exp(lA2)
+pChop  = math.exp(lA3)
+
+// ─── VIX MACRO OVERLAY ──────────────────────────────────────────────────────────
+
+vix = request.security(i_vix_src, "D", close, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off)
+
+vixMult = 1.0
+if i_vix_overlay and not na(vix)
+    vixMult := vix > 30 ? 0.65 : vix > 25 ? 0.80 : vix > 20 ? 0.90 : vix < 13 ? 1.10 : 1.0
+
+maxP    = math.max(math.max(pBull, pBear), math.max(pRange, pChop))
+rawConf = maxP * 100.0
+conf    = math.min(rawConf * vixMult, 100.0)
+
+// ─── REGIME LABEL & COLOUR ───────────────────────────────────────────────────────
+
+isBull  = pBull  >= pBear  and pBull  >= pRange and pBull  >= pChop
+isBear  = not isBull  and pBear  >= pRange and pBear  >= pChop
+isRange = not isBull  and not isBear  and pRange >= pChop
+isChop  = not isBull  and not isBear  and not isRange
+
+regimeName = isBull ? "BULL" : isBear ? "BEAR" : isRange ? "RANGE" : "CHOP"
+C_BULL  = color.new(#00c97d, 0)
+C_BEAR  = color.new(#ff4d4d, 0)
+C_RANGE = color.new(#f0a030, 0)
+C_CHOP  = color.new(#888888, 0)
+regimeCol = isBull ? C_BULL : isBear ? C_BEAR : isRange ? C_RANGE : C_CHOP
+
+// ─── PLOTS ───────────────────────────────────────────────────────────────────────
+
+plot(pBull  * 100, "BULL %",  color=color.new(#00c97d, 55), linewidth=1)
+plot(pBear  * 100, "BEAR %",  color=color.new(#ff4d4d, 55), linewidth=1)
+plot(pRange * 100, "RANGE %", color=color.new(#f0a030, 55), linewidth=1)
+plot(pChop  * 100, "CHOP %",  color=color.new(#888888, 55), linewidth=1)
+plot(conf,         "Conf %",  color=regimeCol,              linewidth=2)
+
+hline(50, "50%", color=color.new(color.gray, 70), linestyle=hline.style_dotted)
+
+bgcolor(isBull  ? color.new(#00c97d, 93) :
+        isBear  ? color.new(#ff4d4d, 93) :
+        isRange ? color.new(#f0a030, 93) :
+                  color.new(#888888, 93))
+
+barcolor(i_bar_col ? color.new(regimeCol, 60) : na)
+
+// ─── INFO TABLE ──────────────────────────────────────────────────────────────────
+
+var table tbl = table.new(
+     position.top_right, 2, 8,
+     bgcolor=color.new(color.black, 78),
+     border_color=color.new(color.gray, 65), border_width=1,
+     frame_color=color.new(color.gray, 45),  frame_width=1)
+
+if i_show_table and barstate.islast
+    sz_hdr  = size.small
+    sz_cell = size.tiny
+    bg_hdr  = color.new(color.black, 55)
+
+    table.cell(tbl, 0, 0, "HMM V2  [MacroFX]",
+         text_color=color.white, text_size=sz_hdr, bgcolor=bg_hdr)
+    table.cell(tbl, 1, 0, regimeName + "  " + str.tostring(math.round(conf)) + "%",
+         text_color=regimeCol,   text_size=sz_hdr, bgcolor=bg_hdr)
+
+    table.cell(tbl, 0, 1, "BULL",  text_color=C_BULL,  text_size=sz_cell)
+    table.cell(tbl, 1, 1, str.tostring(math.round(pBull  * 100)) + "%", text_color=C_BULL,  text_size=sz_cell)
+    table.cell(tbl, 0, 2, "BEAR",  text_color=C_BEAR,  text_size=sz_cell)
+    table.cell(tbl, 1, 2, str.tostring(math.round(pBear  * 100)) + "%", text_color=C_BEAR,  text_size=sz_cell)
+    table.cell(tbl, 0, 3, "RANGE", text_color=C_RANGE, text_size=sz_cell)
+    table.cell(tbl, 1, 3, str.tostring(math.round(pRange * 100)) + "%", text_color=C_RANGE, text_size=sz_cell)
+    table.cell(tbl, 0, 4, "CHOP",  text_color=C_CHOP,  text_size=sz_cell)
+    table.cell(tbl, 1, 4, str.tostring(math.round(pChop  * 100)) + "%", text_color=C_CHOP,  text_size=sz_cell)
+
+    table.cell(tbl, 0, 5, "tZ / vZ / aZ",
+         text_color=color.new(color.gray, 20), text_size=sz_cell)
+    table.cell(tbl, 1, 5,
+         str.tostring(nz(trendZ), "#.##") + " / " +
+         str.tostring(nz(volZ),   "#.##") + " / " +
+         str.tostring(nz(adxZ),   "#.##"),
+         text_color=color.new(color.gray, 20), text_size=sz_cell)
+
+    vixLabel = na(vix) ? "N/A" : str.tostring(vix, "#.#") + "  ×" + str.tostring(vixMult, "#.##")
+    table.cell(tbl, 0, 6, "VIX mult",
+         text_color=color.new(color.gray, 20), text_size=sz_cell)
+    table.cell(tbl, 1, 6, vixLabel,
+         text_color=color.new(color.gray, 20), text_size=sz_cell)
+
+    table.cell(tbl, 0, 7, "Session",
+         text_color=color.new(color.gray, 20), text_size=sz_cell)
+    table.cell(tbl, 1, 7, inSession ? "Active (07-17 UTC)" : "Off-hours (sticky)",
+         text_color=inSession ? color.new(#00c97d, 0) : color.new(color.gray, 30), text_size=sz_cell)
