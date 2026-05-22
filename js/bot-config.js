@@ -847,6 +847,7 @@ async function loadBtJournal() {
 window.saveConfig       = saveConfig;
 window.resetDefaults    = resetDefaults;
 window.toggleKillSwitch = toggleKillSwitch;
+window.forceUnlock      = forceUnlock;
 window.saveCreds        = saveCreds;
 window.saveBtCreds      = saveBtCreds;
 window.saveBtConfig     = saveBtConfig;
@@ -854,6 +855,8 @@ window.resetBtDefaults  = resetBtDefaults;
 window._loadBtJournal   = loadBtJournal;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+
+document.getElementById('unlockBtn')?.addEventListener('click', forceUnlock);
 
 loadConfig();
 loadBtConfig();
