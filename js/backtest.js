@@ -388,11 +388,6 @@ document.addEventListener('DOMContentLoaded', () => {
   onM1PatternChange();
   initSavedConfigs();
 
-  // Restore saved Anthropic key into the input (so user can see it's set)
-  try {
-    const k = localStorage.getItem('bt-anthropic-key');
-    if (k) { const el = document.getElementById('bt-anthropic-key'); if (el) el.value = k; }
-  } catch {}
 
   // Dark mode
   const saved = localStorage.getItem('bt-theme');
@@ -1807,23 +1802,11 @@ function onM1PatternChange() {
   if (row) row.style.display = (val === 'pin_bar' || val === 'any') ? '' : 'none';
 }
 
-// ── Anthropic API key ──────────────────────────────────────────────────────────
-
-function saveAnthropicKey() {
-  const key = document.getElementById('bt-anthropic-key')?.value.trim();
-  if (key) {
-    try { localStorage.setItem('bt-anthropic-key', key); } catch {}
-  }
-}
-
 // ── AI Analysis ───────────────────────────────────────────────────────────────
 
+function saveAnthropicKey() {} // no-op — key is server-side (ANT_KEY Railway var)
+
 async function runAIAnalysis() {
-  const apiKey = localStorage.getItem('bt-anthropic-key') || '';
-  if (!apiKey) {
-    alert('Add your Anthropic API key in the "AI Analysis" section of the sidebar first.');
-    return;
-  }
   if (!_lastResult) return;
 
   const btn = document.getElementById('ai-run-btn');
@@ -1831,88 +1814,20 @@ async function runAIAnalysis() {
   if (btn) btn.disabled = true;
   if (out) out.innerHTML = '<span class="ai-loading">Analysing…</span>';
 
-  const d   = _lastResult;
-  const cfg = _lastCfg || buildCfg();
   const symbol = document.getElementById('symbol-select')?.value || 'FX';
 
-  const feats = Object.entries(cfg.features || {})
-    .filter(([, v]) => v.enabled)
-    .map(([, v]) => v.label)
-    .join(', ') || 'none';
-
-  const winPct   = d.winRate != null ? (d.winRate * 100).toFixed(1) + '%' : '—';
-  const ddPct    = d.maxDrawdown != null ? (d.maxDrawdown * 100).toFixed(1) + '%' : '—';
-  const cagrPct  = d.cagr != null ? (d.cagr * 100).toFixed(1) + '%' : '—';
-  const kellyPct = d.kelly != null ? (d.kelly * 100).toFixed(1) + '%' : '—';
-
-  const prompt = [
-    'You are an expert FX algorithmic trading analyst. Give practical, specific feedback on this backtest.',
-    '',
-    `STRATEGY: Mean-reversion FX — fade Fibonacci confluence levels from the Asia session range`,
-    `SYMBOL: ${symbol}  |  MODE: ${cfg.strategyMode || 'mean_reversion'}`,
-    `DATE RANGE: ${cfg.startDate} → ${cfg.endDate}  (${d.dateRange?.years ?? '?'} years)`,
-    '',
-    'CONFIG:',
-    `  R:R ${cfg.rrRatio}  |  SL: ${cfg.slMode}${cfg.slMode === 'range' ? ` ×${cfg.slFraction}` : ` ×${cfg.slMult}ATR`}  |  Min SL: ${cfg.minSlPips}p`,
-    `  Confluence: ${cfg.method}  |  Filter: ${cfg.signalFilter}  |  Tol: ${cfg.confTolPips}p`,
-    `  Min Conviction: ${cfg.minConviction}  |  Min Confirms: ${cfg.minConfirms}`,
-    `  Entry window: ${String(cfg.entryWindow).replace(/(\d{2})$/, ':$1')} London`,
-    `  Features: ${feats}`,
-    `  Costs: ${cfg.spread}p spread + ${cfg.slippage}p slippage${cfg.commission ? ` + £${cfg.commission}/lot` : ''}`,
-    `  1m Pattern Filter: ${cfg.m1PatternFilter}`,
-    '',
-    'RESULTS:',
-    `  Trades: ${d.totalTrades}  |  Wins: ${d.wins}  |  Losses: ${d.losses}`,
-    `  Win Rate: ${winPct}  |  Profit Factor: ${d.profitFactor?.toFixed(2) ?? '—'}`,
-    `  Mean R: ${d.meanR?.toFixed(3) ?? '—'}  |  Sharpe: ${d.sharpe?.toFixed(2) ?? '—'}  |  Calmar: ${d.calmar?.toFixed(2) ?? '—'}`,
-    `  Max Drawdown: ${ddPct}  |  CAGR: ${cagrPct}  |  Kelly: ${kellyPct}`,
-    `  Break-even cost: ${d.breakEvenCostPips?.toFixed(1) ?? '—'} pips`,
-    '',
-    'Reply in this exact format (use ** for bold headers):',
-    '',
-    '**VERDICT** — one sentence: Good / Marginal / Poor and the single most important reason',
-    '',
-    '**STRENGTHS**',
-    '• [what looks solid]',
-    '• [what looks solid]',
-    '',
-    '**CONCERNS**',
-    '• [risk or weakness]',
-    '• [risk or weakness]',
-    '',
-    '**TWEAKS** — 3–5 specific suggestions; include the exact parameter name and direction',
-    '• [suggestion]',
-    '• [suggestion]',
-    '',
-    '**FEEL** — 1–2 sentences of trader instinct on this setup',
-  ].join('\n');
-
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('/api/ai-backtest', {
       method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 700,
-        messages: [{ role: 'user', content: prompt }],
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, cfg: _lastCfg || buildCfg(), results: _lastResult }),
     });
 
-    if (!resp.ok) {
-      const t = await resp.text().catch(() => '');
-      throw new Error(`API ${resp.status}: ${t.slice(0, 200)}`);
-    }
-
     const data = await resp.json();
-    const text = data.content?.[0]?.text || '(empty response)';
+    if (!resp.ok || !data.ok) throw new Error(data.error || `HTTP ${resp.status}`);
 
     if (out) {
-      out.innerHTML = text
+      out.innerHTML = (data.text || '')
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n/g, '<br>');

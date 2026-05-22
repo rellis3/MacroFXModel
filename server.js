@@ -946,6 +946,92 @@ Rules for your response:
   }
 });
 
+// ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
+app.post('/api/ai-backtest', async (req, res) => {
+  const key = process.env.ANT_KEY;
+  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured in Railway Variables' });
+
+  const { symbol, cfg, results } = req.body ?? {};
+  if (!results) return res.status(400).json({ error: 'Missing results' });
+
+  const c = cfg || {};
+  const d = results;
+
+  const feats = Object.entries(c.features || {})
+    .filter(([, v]) => v.enabled).map(([, v]) => v.label).join(', ') || 'none';
+
+  const winPct  = d.winRate   != null ? (d.winRate   * 100).toFixed(1) + '%' : '—';
+  const ddPct   = d.maxDrawdown != null ? (d.maxDrawdown * 100).toFixed(1) + '%' : '—';
+  const cagrPct = d.cagr      != null ? (d.cagr      * 100).toFixed(1) + '%' : '—';
+  const kellyPct= d.kelly     != null ? (d.kelly     * 100).toFixed(1) + '%' : '—';
+
+  const ewStr = String(c.entryWindow || 800).replace(/(\d{2})$/, ':$1');
+
+  const prompt = `You are an expert FX algorithmic trading analyst. Give practical, specific feedback on this backtest.
+
+STRATEGY: Mean-reversion FX — fade Fibonacci confluence levels from the Asia session range
+SYMBOL: ${symbol || 'FX'}  |  MODE: ${c.strategyMode || 'mean_reversion'}
+DATE RANGE: ${c.startDate || '?'} → ${c.endDate || '?'}  (${d.dateRange?.years ?? '?'} years)
+
+CONFIG:
+  R:R ${c.rrRatio}  |  SL: ${c.slMode}${c.slMode === 'range' ? ` ×${c.slFraction}` : ` ×${c.slMult}ATR`}  |  Min SL: ${c.minSlPips}p
+  Confluence: ${c.method}  |  Filter: ${c.signalFilter}  |  Tol: ${c.confTolPips}p
+  Min Conviction: ${c.minConviction}  |  Min Confirms: ${c.minConfirms}
+  Entry window: ${ewStr} London
+  Features: ${feats}
+  Costs: ${c.spread}p spread + ${c.slippage}p slippage${c.commission ? ` + £${c.commission}/lot` : ''}
+  1m Pattern Filter: ${c.m1PatternFilter || 'none'}
+
+RESULTS:
+  Trades: ${d.totalTrades}  |  Wins: ${d.wins}  |  Losses: ${d.losses}
+  Win Rate: ${winPct}  |  Profit Factor: ${d.profitFactor?.toFixed(2) ?? '—'}
+  Mean R: ${d.meanR?.toFixed(3) ?? '—'}  |  Sharpe: ${d.sharpe?.toFixed(2) ?? '—'}  |  Calmar: ${d.calmar?.toFixed(2) ?? '—'}
+  Max Drawdown: ${ddPct}  |  CAGR: ${cagrPct}  |  Kelly: ${kellyPct}
+  Break-even cost: ${d.breakEvenCostPips?.toFixed(1) ?? '—'} pips
+
+Reply in this exact format (use ** for bold headers):
+
+**VERDICT** — one sentence: Good / Marginal / Poor and the single most important reason
+
+**STRENGTHS**
+• what looks solid
+• what looks solid
+
+**CONCERNS**
+• risk or weakness
+• risk or weakness
+
+**TWEAKS** — 3–5 specific suggestions; include exact parameter name and direction
+• suggestion
+• suggestion
+
+**FEEL** — 1–2 sentences of trader instinct on this setup`;
+
+  try {
+    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 700,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    if (!antRes.ok) {
+      const err = await antRes.text();
+      return res.status(502).json({ error: `Anthropic error ${antRes.status}: ${err.slice(0, 300)}` });
+    }
+
+    const antData = await antRes.json();
+    const text = antData.content?.[0]?.text ?? '(empty)';
+    res.json({ ok: true, text });
+  } catch (e) {
+    console.error('[ai-backtest]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // CME futures live price — proxies Yahoo Finance so the browser avoids CORS issues.
 // Returns { ok, price, symbol } where price is the raw CME futures price.
 // Inverted pairs (6J, 6C, 6S) return the raw CME quote; client converts to spot-equivalent.
