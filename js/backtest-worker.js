@@ -491,13 +491,19 @@ function handleRun({ symbol, cfg }) {
             price: bar.c, todayDate: date, featureCfg: features, useM1Features,
           });
 
-          // No feature majority → skip (don't fall back to price-vs-level default)
-          if (!rb.entryDir) continue;
-          const entryDir = rb.entryDir;
+          // In telegram mode with no feature votes, fall back to mean-reversion
+          // direction (price vs midpoint) so grade/stars filters can still gate trades.
+          // In other modes, features must vote or we skip.
+          let entryDir = rb.entryDir;
+          if (!entryDir) {
+            if (strategyMode !== 'telegram') continue;
+            const rangeMidFb = asiaRange ? (asiaRange.high - asiaRange.range / 2) : null;
+            if (!rangeMidFb) continue;
+            entryDir = bar.c > rangeMidFb ? 'short' : 'long';
+          }
 
-          // In telegram mode the Telegram filter gates (grade/stars/ADX etc.) do the
-          // quality filtering — bypass the feature conviction/confirms hard gate which
-          // was designed for mean_reversion/hybrid mode where features are the primary signal.
+          // In telegram mode the grade/stars/ADX gates do quality filtering.
+          // In mean_reversion / hybrid modes the conviction/confirms gate applies.
           if (strategyMode !== 'telegram') {
             if (rb.conviction < minConviction || rb.confirmCount < minConfirms) continue;
           }
@@ -527,7 +533,7 @@ function handleRun({ symbol, cfg }) {
             const regBars = bar1mWin.length >= 15 ? bar1mWin : bar5mWin;
             const reg = _dmRegime(regBars, 14);
             if (!reg) continue;
-            const dirPct = rb.entryDir === 'long' ? reg.bullPct : reg.bearPct;
+            const dirPct = entryDir === 'long' ? reg.bullPct : reg.bearPct;
             if (dirPct < tgRegimePct) continue;
           }
           if (tgMinGrade) {
