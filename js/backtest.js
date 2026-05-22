@@ -162,11 +162,12 @@ function loadConfig(id) {
     }
   }
   // Telegram filters
-  sv('cfg-tg-min-stars',  cfg.tgMinStars  ?? 0);
-  sv('cfg-tg-min-grade',  cfg.tgMinGrade  ?? '');
-  sc('cfg-tg-choch',      cfg.tgRequireChochAlign);
-  sv('cfg-tg-min-adx',    cfg.tgMinAdx    ?? 0);
-  sc('cfg-tg-wt',         cfg.tgRequireWtAlign);
+  sv('cfg-tg-min-stars',   cfg.tgMinStars       ?? 0);
+  sv('cfg-tg-min-grade',   cfg.tgMinGrade       ?? '');
+  sc('cfg-tg-choch',       cfg.tgRequireChochAlign);
+  sv('cfg-tg-min-adx',     cfg.tgMinAdx         ?? 0);
+  sv('cfg-tg-min-signal',  cfg.tgMinSignalScore  ?? 0);
+  sc('cfg-tg-wt',          cfg.tgRequireWtAlign);
   sc('cfg-tg-rb',          cfg.tgRequireRbPositive);
   sc('cfg-tg-regime-align', cfg.tgRegimeAlign);
   sv('cfg-tg-regime-pct',   cfg.tgRegimePct ?? 60);
@@ -556,6 +557,7 @@ function buildCfg() {
     tgMinGrade:          g('cfg-tg-min-grade')            || '',
     tgRequireChochAlign: gb('cfg-tg-choch'),
     tgMinAdx:            parseFloat(g('cfg-tg-min-adx'))  || 0,
+    tgMinSignalScore:    parseFloat(g('cfg-tg-min-signal')) || 0,
     tgRequireWtAlign:    gb('cfg-tg-wt'),
     tgRequireRbPositive: gb('cfg-tg-rb'),
     tgRegimeAlign:       gb('cfg-tg-regime-align'),
@@ -1848,12 +1850,13 @@ function restoreSettings() {
       }
     }
     // Telegram filters
-    s('cfg-tg-min-stars',  cfg.tgMinStars  ?? 0);
-    s('cfg-tg-min-grade',  cfg.tgMinGrade  ?? '');
-    sc('cfg-tg-choch',     cfg.tgRequireChochAlign);
-    s('cfg-tg-min-adx',    cfg.tgMinAdx    ?? 0);
-    sc('cfg-tg-wt',        cfg.tgRequireWtAlign);
-    sc('cfg-tg-rb',          cfg.tgRequireRbPositive);
+    s('cfg-tg-min-stars',   cfg.tgMinStars       ?? 0);
+    s('cfg-tg-min-grade',   cfg.tgMinGrade       ?? '');
+    sc('cfg-tg-choch',      cfg.tgRequireChochAlign);
+    s('cfg-tg-min-adx',     cfg.tgMinAdx         ?? 0);
+    s('cfg-tg-min-signal',  cfg.tgMinSignalScore  ?? 0);
+    sc('cfg-tg-wt',         cfg.tgRequireWtAlign);
+    sc('cfg-tg-rb',         cfg.tgRequireRbPositive);
     sc('cfg-tg-regime-align', cfg.tgRegimeAlign);
     s('cfg-tg-regime-pct',    cfg.tgRegimePct ?? 60);
     // Schedule filter chips

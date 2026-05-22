@@ -206,6 +206,7 @@ function handleRun({ symbol, cfg }) {
   const tgMinGrade          = cfg.tgMinGrade          ?? '';
   const tgRequireChochAlign = cfg.tgRequireChochAlign ?? false;
   const tgMinAdx            = cfg.tgMinAdx            ?? 0;
+  const tgMinSignalScore    = cfg.tgMinSignalScore    ?? 0;
   const tgRequireWtAlign    = cfg.tgRequireWtAlign    ?? false;
   const tgRequireRbPositive = cfg.tgRequireRbPositive ?? false;
   const tgRegimeAlign       = cfg.tgRegimeAlign       ?? false;
@@ -502,6 +503,10 @@ function handleRun({ symbol, cfg }) {
             const ar = rb.results?.find(r => r.key === 'adxFilter');
             const m  = ar?.val?.match(/ADX ([\d.]+)/);
             if (!m || parseFloat(m[1]) < tgMinAdx) continue;
+          }
+          if (tgMinSignalScore > 0) {
+            const score = 50 + rb.conviction * 50;
+            if (score < tgMinSignalScore) continue;
           }
           if (tgRequireWtAlign) {
             const wtDir = _wt1Direction(bar5mWin);

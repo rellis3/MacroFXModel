@@ -891,6 +891,8 @@
         <p>Stars come from confluence quality: 1 base + 1 for Tight Fib + 1 for Round Number + 1 for cluster density ≥2. Setting <code>2★</code> keeps only Tight or clustered levels.</p>
         <h4>Min Grade</h4>
         <p>The grade mirrors <code>gradeEntry()</code> in <code>trade-grade.js</code>. Score is derived from feature conviction. A+ requires ≥72% conviction + no warnings. A requires ≥60%. B requires ≥46%. C is everything else.</p>
+        <h4>Min Signal %</h4>
+        <p>Filters by signal strength score (0–100). The backtest uses a conviction proxy: <code>score = 50 + conviction × 50</code>. This mirrors the Telegram's min_signal_score filter. 55%+ is a reasonable baseline; 65%+ is strong.</p>
         <h4>CHoCH/BOS Aligned</h4>
         <p>Requires the CHoCH/BOS feature to agree with the trade direction. This is equivalent to the "30m BOS" line in the Telegram message agreeing with entry direction.</p>
         <h4>Min ADX</h4>
@@ -928,6 +930,18 @@
             <option value="20">20</option>
             <option value="25">25</option>
             <option value="28">28</option>
+          </select>
+        </div>
+        <div class="cfg-cell">
+          <label>Min Signal %</label>
+          <select id="cfg-tg-min-signal" class="bt-select">
+            <option value="0">Off (any)</option>
+            <option value="50">50%+</option>
+            <option value="55">55%+</option>
+            <option value="60">60%+</option>
+            <option value="65">65%+</option>
+            <option value="70">70%+</option>
+            <option value="75">75%+</option>
           </select>
         </div>
       </div>
