@@ -277,6 +277,18 @@
     .regime-lbl { color: var(--text2); font-weight: 500; }
     .regime-drag { display: inline-block; font-size: 8px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: rgba(239,68,68,.12); color: var(--red); border: 1px solid rgba(239,68,68,.2); margin-left: 5px; text-transform: uppercase; letter-spacing: .3px; }
 
+    /* ── Strategy mode selector ──────────────────────────────────────────────── */
+    .strat-tabs { display:flex; gap:0; border:1px solid var(--border); border-radius:7px; overflow:hidden; }
+    .strat-tab { flex:1; padding:6px 4px; font-size:11px; font-weight:600; text-align:center; cursor:pointer; background:var(--s1); color:var(--text3); border:none; border-right:1px solid var(--border); transition:all .15s; font-family:'DM Sans',sans-serif; line-height:1.3; }
+    .strat-tab:last-child { border-right:none; }
+    .strat-tab.on { background:var(--blue); color:#fff; }
+    .strat-tab:hover:not(.on) { background:var(--s2); color:var(--text); }
+    .strat-badge { display:inline-block; font-size:8px; font-weight:700; padding:1px 5px; border-radius:3px; text-transform:uppercase; letter-spacing:.3px; margin-top:2px; }
+    .strat-badge.mr  { background:rgba(16,185,129,.15); color:var(--green); }
+    .strat-badge.hyb { background:rgba(99,102,241,.15); color:var(--blue); }
+    .strat-badge.tg  { background:rgba(232,168,56,.15); color:var(--amber, #e8a838); }
+    .strat-hint { font-size:10px; color:var(--text3); line-height:1.4; margin-top:4px; }
+
     /* ── Schedule filter chips ───────────────────────────────────────────────── */
     .sched-chip { padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; border-radius: 5px; border: 1px solid var(--border); background: var(--s2); color: var(--text3); transition: all .15s; font-family: 'DM Sans', sans-serif; }
     .sched-chip.active { background: var(--blue-bg); border-color: var(--blue-bd); color: var(--blue); }
@@ -366,6 +378,23 @@
         <option value="USDJPY">USD/JPY</option>
         <option value="XAUUSD">XAU/USD (Gold)</option>
       </select>
+    </div>
+
+    <!-- Strategy Mode -->
+    <div class="sb-group">
+      <div class="sb-lbl">Strategy Mode</div>
+      <div class="strat-tabs">
+        <button class="strat-tab on" data-mode="mean_reversion" onclick="onStrategyModeChange('mean_reversion')">
+          Mean Rev<br><span class="strat-badge mr">Feature</span>
+        </button>
+        <button class="strat-tab" data-mode="hybrid" onclick="onStrategyModeChange('hybrid')">
+          Hybrid<br><span class="strat-badge hyb">Both</span>
+        </button>
+        <button class="strat-tab" data-mode="telegram" onclick="onStrategyModeChange('telegram')">
+          Telegram<br><span class="strat-badge tg">Signal</span>
+        </button>
+      </div>
+      <div class="strat-hint" id="strat-hint">Fade Asia range fib levels. Feature votes determine direction. Midpoint guard always on.</div>
     </div>
 
     <!-- R2 data loader -->
@@ -565,7 +594,7 @@
     </div>
 
     <!-- Entry Quality Filters -->
-    <div class="sb-group">
+    <div class="sb-group" data-mode-section="mean_reversion hybrid">
       <div class="sb-lbl">Entry Quality Filters <button class="help-btn" onclick="toggleHelp('h-eqf')">?</button></div>
       <div class="help-panel" id="h-eqf">
         <h4>2nd-Touch Only</h4>
@@ -762,7 +791,7 @@
     </div>
 
     <!-- SD Level Filter -->
-    <div class="sb-group">
+    <div class="sb-group" data-mode-section="mean_reversion hybrid">
       <div class="sb-lbl">SD Level Filter <button class="help-btn" onclick="toggleHelp('h-sd')">?</button></div>
       <div class="help-panel" id="h-sd">
         <p>SD (Supply/Demand) levels are the Fibonacci projections of the Asia range. Each fib number represents a structural price zone relative to the range.</p>
@@ -798,7 +827,7 @@
     </div>
 
     <!-- Features -->
-    <div class="sb-group">
+    <div class="sb-group" data-mode-section="mean_reversion hybrid">
       <div class="sb-lbl">Features <button class="help-btn" onclick="toggleHelp('h-feat')">?</button></div>
       <div class="help-panel" id="h-feat">
         <p>Features are technical signals that <em>vote</em> on trade direction. Each enabled feature returns <span class="hg">long</span>, <span class="hr">short</span>, or <em>abstain</em>. Votes are weighted and summed to produce a conviction score and direction. A feature that abstains does not penalise conviction — only active disagreement does.</p>
@@ -841,8 +870,20 @@
       <div id="feature-list"></div>
     </div>
 
+    <!-- Hybrid Options (hybrid mode only) -->
+    <div class="sb-group" data-mode-section="hybrid">
+      <div class="sb-lbl">Hybrid Options</div>
+      <div class="toggle-row">
+        <input type="checkbox" id="cfg-remove-mr-guard"/>
+        <div>
+          <label for="cfg-remove-mr-guard" style="cursor:pointer">Remove midpoint guard</label>
+          <span class="toggle-hint">By default trades must go <em>toward</em> the Asia range midpoint (pure mean-reversion). Tick this to allow entries in either direction — letting the feature votes and level context decide. Enables trend-continuation pullback trades at fib levels.</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Telegram Filters -->
-    <div class="sb-group">
+    <div class="sb-group" data-mode-section="hybrid telegram">
       <div class="sb-lbl">Telegram Filters <button class="help-btn" onclick="toggleHelp('h-tg')">?</button></div>
       <div class="help-panel" id="h-tg">
         <p>These filters mirror the Telegram alert logic so you can backtest only the trades that would actually be sent as alerts. Enable a filter to restrict entries to those that meet the corresponding criterion.</p>
@@ -917,7 +958,7 @@
     </div>
 
     <!-- Schedule Filter -->
-    <div class="sb-group">
+    <div class="sb-group" data-mode-section="hybrid telegram">
       <div class="sb-lbl">Schedule Filter</div>
       <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Click to toggle. Active (highlighted) = allowed. Deselect to block that day/session.</div>
       <div style="font-size:10px;color:var(--text2);font-weight:600;margin-top:3px">Days</div>

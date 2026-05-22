@@ -179,6 +179,9 @@ function loadConfig(id) {
     const active = cfg.allowedSessions == null || !cfg.allowedSessions.length || cfg.allowedSessions.includes(el.dataset.sess);
     el.classList.toggle('active', active);
   });
+  // Strategy mode
+  if (cfg.strategyMode) onStrategyModeChange(cfg.strategyMode);
+  sc('cfg-remove-mr-guard', cfg.removeMidpointGuard);
   onSlModeChange();
   onTpModeChange();
   onPosModeChange();
@@ -373,6 +376,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderFeatureList();
   bindEvents();
   restoreSettings();
+  // Apply strategy mode visibility (restoreSettings may have set the tab, or use default)
+  const activeMode = document.querySelector('.strat-tab.on')?.dataset.mode || 'mean_reversion';
+  onStrategyModeChange(activeMode);
   onSlModeChange();
   onTpModeChange();
   onPosModeChange();
@@ -481,6 +487,7 @@ function runBacktest() {
 function buildCfg() {
   const g  = (id) => document.getElementById(id)?.value;
   const gb = (id) => document.getElementById(id)?.checked ?? false;
+  const strategyMode = document.querySelector('.strat-tab.on')?.dataset.mode || 'mean_reversion';
   const features = {};
   for (const [key, def] of Object.entries(DEFAULT_FEATURES)) {
     const chk = document.getElementById('feat-' + key);
@@ -556,6 +563,9 @@ function buildCfg() {
     // Schedule filter
     allowedDays:     [...document.querySelectorAll('.sched-day.active')].map(el => el.dataset.day),
     allowedSessions: [...document.querySelectorAll('.sched-sess.active')].map(el => el.dataset.sess),
+    // Strategy mode
+    strategyMode,
+    removeMidpointGuard: strategyMode === 'hybrid' ? gb('cfg-remove-mr-guard') : false,
     features,
   };
 }
@@ -1729,7 +1739,29 @@ function onPosModeChange() {
   show('pos-pct-row',   mode === 'percent');
 }
 
+const STRAT_HINTS = {
+  mean_reversion: 'Fade Asia range fib levels. Feature votes determine direction. Midpoint guard always on — all trades target the range midpoint.',
+  hybrid:         'Features + optional Telegram filters. Remove midpoint guard to allow trend-continuation pullback entries at fib levels alongside reversals.',
+  telegram:       'Entry gates mirror the live Telegram signal logic: grade, stars, ADX, CHoCH, WT1 and regime filters. Features still run for conviction.',
+};
+
+function onStrategyModeChange(mode) {
+  // Update tab buttons
+  document.querySelectorAll('.strat-tab').forEach(btn => {
+    btn.classList.toggle('on', btn.dataset.mode === mode);
+  });
+  // Show/hide mode-specific sidebar sections
+  document.querySelectorAll('[data-mode-section]').forEach(el => {
+    const modes = el.dataset.modeSection.split(' ');
+    el.style.display = modes.includes(mode) ? '' : 'none';
+  });
+  // Update hint text
+  const hint = document.getElementById('strat-hint');
+  if (hint) hint.textContent = STRAT_HINTS[mode] || '';
+}
+
 // Expose functions called from inline HTML onclick handlers (module scope workaround)
+window.onStrategyModeChange = onStrategyModeChange;
 window.loadConfig        = loadConfig;
 window.deleteConfig      = deleteConfig;
 window.fibSelectAll      = fibSelectAll;
@@ -1833,6 +1865,9 @@ function restoreSettings() {
       const active = !cfg.allowedSessions?.length || cfg.allowedSessions.includes(el.dataset.sess);
       el.classList.toggle('active', active);
     });
+    // Strategy mode
+    if (cfg.strategyMode) onStrategyModeChange(cfg.strategyMode);
+    sc('cfg-remove-mr-guard', cfg.removeMidpointGuard);
     onSlModeChange();
     onTpModeChange();
     onPosModeChange();

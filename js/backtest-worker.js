@@ -197,6 +197,10 @@ function handleRun({ symbol, cfg }) {
     ? new Set(cfg.enabledFibs.map(f => +f))
     : null;
 
+  // ── Strategy mode ──────────────────────────────────────────────────────────
+  const strategyMode       = cfg.strategyMode       ?? 'mean_reversion';
+  const removeMidpointGuard = cfg.removeMidpointGuard ?? false;
+
   // ── Telegram filter config ─────────────────────────────────────────────────
   const tgMinStars          = cfg.tgMinStars          ?? 0;
   const tgMinGrade          = cfg.tgMinGrade          ?? '';
@@ -518,12 +522,14 @@ function handleRun({ symbol, cfg }) {
           }
 
           // ── Mean-reversion guard ────────────────────────────────────
-          // Only trade toward the range midpoint. If features say 'long' but
-          // price is below the level (meaning we'd be buying into a resistance),
-          // that's a breakout trade — skip it.
-          const rangeMid = asiaRange.high - asiaRange.range / 2;
-          const mrDir    = bar.c > rangeMid ? 'short' : 'long';
-          if (entryDir !== mrDir) continue;
+          // In mean_reversion mode (or hybrid with guard on): only trade toward
+          // the Asia range midpoint. Hybrid with guard removed allows the feature
+          // votes alone to set direction (enables trend-continuation pullbacks).
+          if (!removeMidpointGuard) {
+            const rangeMid = asiaRange.high - asiaRange.range / 2;
+            const mrDir    = bar.c > rangeMid ? 'short' : 'long';
+            if (entryDir !== mrDir) continue;
+          }
 
           // ── Rejection bar filter ─────────────────────────────────────
           // Confirm quality on the TOUCH BAR ITSELF — no look-ahead, no R cost.
