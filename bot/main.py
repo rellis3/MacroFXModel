@@ -913,6 +913,29 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
 
             _last_risk_config_hash = risk_cfg_hash
 
+        # ── Dashboard override: force-unlock RiskGuard ───────────────────────
+        if risk_guard and base_url:
+            try:
+                import urllib.request as _ur
+                _ov_url = f'{base_url.rstrip("/")}/api/kv/get?key=bot_override'
+                with _ur.urlopen(_ov_url, timeout=3) as _r:
+                    _ov = json.loads(_r.read())
+                if not _ov.get('miss') and _ov.get('data', {}).get('force_unlock'):
+                    _ts = _ov['data'].get('timestamp', 0) / 1000
+                    if time.time() - _ts < 300:   # only honour if < 5 min old
+                        risk_guard._locked_until = 0.0
+                        log.info('RiskGuard lockout cleared by dashboard override')
+                        # Acknowledge by writing force_unlock: false
+                        _ack = json.dumps({'key': 'bot_override', 'data': {'force_unlock': False},
+                                           'timestamp': int(time.time() * 1000)}).encode()
+                        _req = _ur.Request(f'{base_url.rstrip("/")}/api/kv/set',
+                                           data=_ack, headers={'Content-Type': 'application/json'},
+                                           method='POST')
+                        with _ur.urlopen(_req, timeout=3):
+                            pass
+            except Exception:
+                pass   # override check is best-effort; never block the main loop
+
         # ── Kill switch (checked every tick so it takes effect fast) ──────────
         if config.get('kill_switch', False):
             if tick_start - last_status_push >= 30:

@@ -92,6 +92,9 @@ a:hover { color: var(--text); }
 .ks-btn { width: 100%; padding: 12px; border-radius: var(--rl); border: 2px solid var(--green-bd); background: var(--green-bg); color: var(--green); font-size: 13px; font-weight: 600; font-family: 'DM Mono', monospace; cursor: pointer; transition: all .2s; letter-spacing: .5px; }
 .ks-btn.ks-on { border-color: var(--red-bd); background: var(--red-bg); color: var(--red); animation: pulse-red 1.5s infinite; }
 @keyframes pulse-red { 0%,100% { opacity:1; } 50% { opacity:.7; } }
+.unlock-btn { width: 100%; padding: 9px; border-radius: var(--rl); border: 1px solid var(--amber, #e8a838); background: rgba(232,168,56,.10); color: var(--amber, #e8a838); font-size: 12px; font-weight: 600; font-family: 'DM Mono', monospace; cursor: pointer; transition: all .2s; }
+.unlock-btn:hover { background: rgba(232,168,56,.20); }
+.unlock-btn:disabled { opacity: .5; cursor: default; }
 
 /* Form rows */
 .form-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); gap: 8px; }
@@ -260,6 +263,13 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       <button id="ksBtn" class="ks-btn" onclick="toggleKillSwitch()">KILL SWITCH: OFF</button>
       <div style="font-size:11px;color:var(--text3);margin-top:8px;text-align:center">
         Toggle kills the bot on its <em>next poll cycle</em> — no restart needed
+      </div>
+      <button id="unlockBtn" class="unlock-btn" onclick="forceUnlock()" style="margin-top:10px">
+        Unlock RiskGuard
+      </button>
+      <div id="unlockStatus" style="font-size:11px;color:var(--text3);margin-top:6px;text-align:center"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;text-align:center">
+        Clears any active DD lockout — bot picks up on next loop
       </div>
     </div>
 

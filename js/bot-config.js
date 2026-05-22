@@ -220,6 +220,21 @@ function resetDefaults() {
 
 // ── Kill switch ───────────────────────────────────────────────────────────────
 
+async function forceUnlock() {
+  const btn = document.getElementById('unlockBtn');
+  const status = document.getElementById('unlockStatus');
+  btn.disabled = true;
+  if (status) { status.textContent = 'Sending unlock…'; status.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('bot_override', { force_unlock: true, timestamp: Date.now() });
+    if (status) { status.textContent = 'Unlock sent ✓ — bot clears lockout on next loop'; status.style.color = 'var(--green)'; }
+    setTimeout(() => { if (status) status.textContent = ''; btn.disabled = false; }, 8000);
+  } catch (e) {
+    if (status) { status.textContent = `Failed: ${e.message}`; status.style.color = 'var(--red)'; }
+    btn.disabled = false;
+  }
+}
+
 async function toggleKillSwitch() {
   _cfg.kill_switch = !_cfg.kill_switch;
   const btn = document.getElementById('ksBtn');
