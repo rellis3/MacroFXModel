@@ -197,6 +197,8 @@ function handleRun({ symbol, cfg }) {
   const rejectionBar     = cfg.rejectionBar     ?? false;  // same-bar wick rejection filter
   const rejWickPct       = cfg.rejWickPct       ?? 0.40;  // wick must be ≥ X of bar range
   const rejMinAtrPct     = cfg.rejMinAtrPct     ?? 0.30;  // bar range must be ≥ X of ATR
+  const m1PatternFilter  = cfg.m1PatternFilter  ?? 'none'; // 'none'|'pin_bar'|'engulfing'|'any'
+  const m1PatternWick    = cfg.m1PatternWick    ?? 0.50;  // pin bar: reversal wick ≥ X of range
   const enabledFibSet = cfg.enabledFibs?.length
     ? new Set(cfg.enabledFibs.map(f => +f))
     : null;
@@ -592,6 +594,35 @@ function handleRun({ symbol, cfg }) {
             }
             // Second+ touch only enters if price clearly left and returned
             if (!st.clearedSince) continue;
+          }
+
+          // ── 1m Candle Pattern Filter ─────────────────────────────────
+          // Applied only when M1 data is loaded (entry loop is m1Today).
+          // Checks the touch bar itself for a confirming reversal pattern —
+          // pin bar (wick ≥ threshold), engulfing vs prior bar, or either.
+          if (m1PatternFilter !== 'none' && entryBars === m1Today) {
+            const prevBar = _bi > 0 ? entryBars[_bi - 1] : null;
+            const range = bar.h - bar.l;
+            let hasPin = false, hasEngulf = false;
+            if (range > 0) {
+              if (entryDir === 'long') {
+                const lowerWick = Math.min(bar.o, bar.c) - bar.l;
+                hasPin = lowerWick / range >= m1PatternWick && bar.c > (bar.h + bar.l) / 2;
+                if (prevBar) hasEngulf = bar.c > bar.o
+                  && bar.o < Math.min(prevBar.o, prevBar.c)
+                  && bar.c > Math.max(prevBar.o, prevBar.c);
+              } else {
+                const upperWick = bar.h - Math.max(bar.o, bar.c);
+                hasPin = upperWick / range >= m1PatternWick && bar.c < (bar.h + bar.l) / 2;
+                if (prevBar) hasEngulf = bar.c < bar.o
+                  && bar.o > Math.max(prevBar.o, prevBar.c)
+                  && bar.c < Math.min(prevBar.o, prevBar.c);
+              }
+            }
+            const pass = m1PatternFilter === 'pin_bar'  ? hasPin :
+                         m1PatternFilter === 'engulfing' ? hasEngulf :
+                                                           hasPin || hasEngulf;
+            if (!pass) continue;
           }
 
           // ── N-candle momentum confirmation ───────────────────────────

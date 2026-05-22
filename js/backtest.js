@@ -385,7 +385,14 @@ document.addEventListener('DOMContentLoaded', () => {
   onPosModeChange();
   onSweepChange();
   onRejectionBarChange();
+  onM1PatternChange();
   initSavedConfigs();
+
+  // Restore saved Anthropic key into the input (so user can see it's set)
+  try {
+    const k = localStorage.getItem('bt-anthropic-key');
+    if (k) { const el = document.getElementById('bt-anthropic-key'); if (el) el.value = k; }
+  } catch {}
 
   // Dark mode
   const saved = localStorage.getItem('bt-theme');
@@ -548,6 +555,8 @@ function buildCfg() {
     sweepPips:         parseFloat(g('cfg-sweep-pips'))|| 2,
     secondTouchOnly:   gb('cfg-second-touch'),
     useM1Features:     gb('cfg-use-m1-features'),
+    m1PatternFilter:   g('cfg-m1-pattern')              || 'none',
+    m1PatternWick:     parseFloat(g('cfg-m1-wick'))     || 0.50,
     rejectionBar:      gb('cfg-rejection-bar'),
     rejWickPct:        parseFloat(g('cfg-rej-wick-pct'))    || 0.40,
     rejMinAtrPct:      parseFloat(g('cfg-rej-min-atr-pct')) || 0.30,
@@ -573,6 +582,9 @@ function buildCfg() {
 }
 
 // ── Results ────────────────────────────────────────────────────────────────────
+
+let _lastResult = null;
+let _lastCfg    = null;
 
 function handleResult(payload) {
   isRunning = false;
@@ -702,9 +714,18 @@ function _tagCurrentPeriod() {
 }
 
 function renderResults(d) {
+  _lastResult = d;
+  _lastCfg    = buildCfg();
+
   document.getElementById('results-panel').style.display = 'flex';
   const ph = document.getElementById('bt-placeholder');
   if (ph) ph.style.display = 'none';
+
+  // Show AI card; reset output so stale text from prior run isn't shown
+  const aiCard = document.getElementById('ai-analysis-card');
+  const aiOut  = document.getElementById('ai-output');
+  if (aiCard) aiCard.style.display = '';
+  if (aiOut)  aiOut.innerHTML = '<span style="color:var(--text3);font-size:11px">Click Analyse to get an AI assessment of this backtest.</span>';
 
   // Tag and store result for IS/OOS comparison
   const tag = _tagCurrentPeriod();
@@ -1780,6 +1801,129 @@ function onRejectionBarChange() {
   if (row) row.style.display = on ? '' : 'none';
 }
 
+function onM1PatternChange() {
+  const val = document.getElementById('cfg-m1-pattern')?.value;
+  const row = document.getElementById('m1-wick-row');
+  if (row) row.style.display = (val === 'pin_bar' || val === 'any') ? '' : 'none';
+}
+
+// ── Anthropic API key ──────────────────────────────────────────────────────────
+
+function saveAnthropicKey() {
+  const key = document.getElementById('bt-anthropic-key')?.value.trim();
+  if (key) {
+    try { localStorage.setItem('bt-anthropic-key', key); } catch {}
+  }
+}
+
+// ── AI Analysis ───────────────────────────────────────────────────────────────
+
+async function runAIAnalysis() {
+  const apiKey = localStorage.getItem('bt-anthropic-key') || '';
+  if (!apiKey) {
+    alert('Add your Anthropic API key in the "AI Analysis" section of the sidebar first.');
+    return;
+  }
+  if (!_lastResult) return;
+
+  const btn = document.getElementById('ai-run-btn');
+  const out  = document.getElementById('ai-output');
+  if (btn) btn.disabled = true;
+  if (out) out.innerHTML = '<span class="ai-loading">Analysing…</span>';
+
+  const d   = _lastResult;
+  const cfg = _lastCfg || buildCfg();
+  const symbol = document.getElementById('symbol-select')?.value || 'FX';
+
+  const feats = Object.entries(cfg.features || {})
+    .filter(([, v]) => v.enabled)
+    .map(([, v]) => v.label)
+    .join(', ') || 'none';
+
+  const winPct   = d.winRate != null ? (d.winRate * 100).toFixed(1) + '%' : '—';
+  const ddPct    = d.maxDrawdown != null ? (d.maxDrawdown * 100).toFixed(1) + '%' : '—';
+  const cagrPct  = d.cagr != null ? (d.cagr * 100).toFixed(1) + '%' : '—';
+  const kellyPct = d.kelly != null ? (d.kelly * 100).toFixed(1) + '%' : '—';
+
+  const prompt = [
+    'You are an expert FX algorithmic trading analyst. Give practical, specific feedback on this backtest.',
+    '',
+    `STRATEGY: Mean-reversion FX — fade Fibonacci confluence levels from the Asia session range`,
+    `SYMBOL: ${symbol}  |  MODE: ${cfg.strategyMode || 'mean_reversion'}`,
+    `DATE RANGE: ${cfg.startDate} → ${cfg.endDate}  (${d.dateRange?.years ?? '?'} years)`,
+    '',
+    'CONFIG:',
+    `  R:R ${cfg.rrRatio}  |  SL: ${cfg.slMode}${cfg.slMode === 'range' ? ` ×${cfg.slFraction}` : ` ×${cfg.slMult}ATR`}  |  Min SL: ${cfg.minSlPips}p`,
+    `  Confluence: ${cfg.method}  |  Filter: ${cfg.signalFilter}  |  Tol: ${cfg.confTolPips}p`,
+    `  Min Conviction: ${cfg.minConviction}  |  Min Confirms: ${cfg.minConfirms}`,
+    `  Entry window: ${String(cfg.entryWindow).replace(/(\d{2})$/, ':$1')} London`,
+    `  Features: ${feats}`,
+    `  Costs: ${cfg.spread}p spread + ${cfg.slippage}p slippage${cfg.commission ? ` + £${cfg.commission}/lot` : ''}`,
+    `  1m Pattern Filter: ${cfg.m1PatternFilter}`,
+    '',
+    'RESULTS:',
+    `  Trades: ${d.totalTrades}  |  Wins: ${d.wins}  |  Losses: ${d.losses}`,
+    `  Win Rate: ${winPct}  |  Profit Factor: ${d.profitFactor?.toFixed(2) ?? '—'}`,
+    `  Mean R: ${d.meanR?.toFixed(3) ?? '—'}  |  Sharpe: ${d.sharpe?.toFixed(2) ?? '—'}  |  Calmar: ${d.calmar?.toFixed(2) ?? '—'}`,
+    `  Max Drawdown: ${ddPct}  |  CAGR: ${cagrPct}  |  Kelly: ${kellyPct}`,
+    `  Break-even cost: ${d.breakEvenCostPips?.toFixed(1) ?? '—'} pips`,
+    '',
+    'Reply in this exact format (use ** for bold headers):',
+    '',
+    '**VERDICT** — one sentence: Good / Marginal / Poor and the single most important reason',
+    '',
+    '**STRENGTHS**',
+    '• [what looks solid]',
+    '• [what looks solid]',
+    '',
+    '**CONCERNS**',
+    '• [risk or weakness]',
+    '• [risk or weakness]',
+    '',
+    '**TWEAKS** — 3–5 specific suggestions; include the exact parameter name and direction',
+    '• [suggestion]',
+    '• [suggestion]',
+    '',
+    '**FEEL** — 1–2 sentences of trader instinct on this setup',
+  ].join('\n');
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 700,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => '');
+      throw new Error(`API ${resp.status}: ${t.slice(0, 200)}`);
+    }
+
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || '(empty response)';
+
+    if (out) {
+      out.innerHTML = text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    }
+  } catch (e) {
+    if (out) out.innerHTML = `<span style="color:var(--red)">Error: ${e.message}</span>`;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function onPosModeChange() {
   const mode = document.getElementById('cfg-pos-mode')?.value || 'fixed';
   const show = (id, vis) => { const el = document.getElementById(id); if (el) el.classList.toggle('visible', vis); };
@@ -1823,6 +1967,9 @@ window.onTpModeChange    = onTpModeChange;
 window.onPosModeChange   = onPosModeChange;
 window.onSweepChange          = onSweepChange;
 window.onRejectionBarChange   = onRejectionBarChange;
+window.onM1PatternChange      = onM1PatternChange;
+window.saveAnthropicKey       = saveAnthropicKey;
+window.runAIAnalysis          = runAIAnalysis;
 window.tlToggle               = tlToggle;
 
 function restoreSettings() {
@@ -1873,6 +2020,8 @@ function restoreSettings() {
     s('cfg-sweep-pips',      cfg.sweepPips);
     sc('cfg-second-touch',   cfg.secondTouchOnly);
     sc('cfg-use-m1-features',cfg.useM1Features);
+    s('cfg-m1-pattern',      cfg.m1PatternFilter ?? 'none');
+    s('cfg-m1-wick',         cfg.m1PatternWick   ?? 0.50);
     sc('cfg-rejection-bar',  cfg.rejectionBar);
     s('cfg-rej-wick-pct',    cfg.rejWickPct);
     s('cfg-rej-min-atr-pct', cfg.rejMinAtrPct);
@@ -1920,6 +2069,8 @@ function restoreSettings() {
     onSlModeChange();
     onTpModeChange();
     onPosModeChange();
+    onSweepChange();
     onRejectionBarChange();
+    onM1PatternChange();
   } catch {}
 }

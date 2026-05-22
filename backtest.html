@@ -125,6 +125,17 @@
     #theme-btn { flex: 0 0 auto; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--s1); color: var(--text2); font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
     #theme-btn:hover { background: var(--s2); }
 
+    /* ── AI Analysis card ───────────────────────────────────────────────────── */
+    #ai-analysis-card { display: none; }
+    #ai-output { font-size: 12px; line-height: 1.7; color: var(--text2); min-height: 40px; white-space: pre-wrap; }
+    #ai-output strong { color: var(--text1); display: block; margin-top: 10px; }
+    #ai-output strong:first-child { margin-top: 0; }
+    .ai-run-btn { padding: 4px 12px; border-radius: 6px; border: 1px solid var(--blue); background: transparent; color: var(--blue); font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .15s, color .15s; }
+    .ai-run-btn:hover:not(:disabled) { background: var(--blue); color: #fff; }
+    .ai-run-btn:disabled { opacity: 0.4; cursor: default; }
+    @keyframes ai-pulse { 0%,100% { opacity:1; } 50% { opacity:0.35; } }
+    .ai-loading { animation: ai-pulse 1.1s ease-in-out infinite; color: var(--text3); }
+
     /* ── Main content ────────────────────────────────────────────────────────── */
     #bt-main { flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 18px; scrollbar-width: thin; }
 
@@ -667,6 +678,19 @@
           </label>
         </div>
         <div class="cfg-cell full">
+          <label>1m Pattern Filter <span class="toggle-hint">Requires M1 data. Only enter when the touch bar shows a confirming reversal pattern — removes ambiguous bars where price touched the level but showed no rejection conviction. Pin Bar = reversal wick. Engulfing = body engulfs prior bar in trade direction.</span></label>
+          <select id="cfg-m1-pattern" class="bt-select" onchange="onM1PatternChange()">
+            <option value="none">None (disabled)</option>
+            <option value="pin_bar">Pin Bar / Hammer</option>
+            <option value="engulfing">Engulfing</option>
+            <option value="any">Any Pattern</option>
+          </select>
+        </div>
+        <div class="cfg-cell" id="m1-wick-row" style="display:none">
+          <label>Min wick % of range</label>
+          <input type="number" id="cfg-m1-wick" class="bt-input" value="0.50" min="0.30" max="0.90" step="0.05" title="Pin bar / Any: the reversal wick must be at least this fraction of the bar's high-low range. 0.50 = wick ≥ 50% of the bar."/>
+        </div>
+        <div class="cfg-cell full">
           <label class="toggle-row">
             <input type="checkbox" id="cfg-rejection-bar" onchange="onRejectionBarChange()"/>
             <span>Rejection bar required<span class="toggle-hint">Confirm entry on the touch bar itself — no waiting, no R cost. Requires: (1) bar range ≥ Min ATR%, (2) close back on the correct side of the level, (3) wick toward the level ≥ Wick %. Filters doji touches and close-through fakeouts instantly.</span></span>
@@ -1102,6 +1126,16 @@
       </div>
     </div>
 
+    <!-- AI Analysis key -->
+    <details class="file-fallback">
+      <summary>AI Analysis (Anthropic key)</summary>
+      <div style="padding:6px 4px;display:flex;flex-direction:column;gap:5px">
+        <input type="password" id="bt-anthropic-key" class="bt-input" placeholder="sk-ant-api03-…" spellcheck="false" autocomplete="off"/>
+        <button onclick="saveAnthropicKey()" class="cfg-save-btn-sm" style="width:100%">Save key</button>
+        <div style="font-size:10px;color:var(--text3)">Stored in browser only. Enables the AI Analysis button in the results panel after a backtest run.</div>
+      </div>
+    </details>
+
     <!-- Saved configs -->
     <div class="sb-group">
       <div class="sb-lbl">Saved Configs</div>
@@ -1175,6 +1209,15 @@
 
       <!-- Cost banner -->
       <div class="info-box amber" id="cost-banner"></div>
+
+      <!-- AI Analysis -->
+      <div class="chart-card" id="ai-analysis-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="res-hdr" style="margin-bottom:0;font-size:12px">AI Analysis</div>
+          <button id="ai-run-btn" class="ai-run-btn" onclick="runAIAnalysis()">▶ Analyse</button>
+        </div>
+        <div id="ai-output"></div>
+      </div>
 
       <!-- Charts: equity / drawdown / monthly -->
       <div class="chart-card" id="chart-panel">
