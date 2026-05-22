@@ -3,8 +3,75 @@
 
 import {
   FIB_LEVELS, tsToLondon, computeBodyRange, projectFibLevels, detectConfluences,
-  computeATR, computeDirection, getPipSize, getDigits,
+  computeATR, computeDirection, getPipSize, getDigits, ema,
 } from './backtest-engine.js';
+
+// ── Day-of-week names (UTC day index 0=Sun … 6=Sat) ──────────────────────────
+const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// ── Telegram filter helpers ───────────────────────────────────────────────────
+
+function computeConfluenceStars(conf) {
+  let stars = 1;
+  if (conf.isTight)                   stars++;
+  if (conf.isRoundNumber)             stars++;
+  if ((conf.density ?? 1) >= 2)       stars++;
+  return stars;
+}
+
+const GRADE_ORDER = { SKIP: 0, C: 1, B: 2, A: 3, 'A+': 4 };
+
+function computeBacktestGrade(rb) {
+  const score   = Math.round(50 + rb.conviction * 50);
+  const total   = rb.confirmCount + rb.conflictCount;
+  const rbConv  = total > 0 ? (rb.confirmCount - rb.conflictCount) / total : 0;
+  const warnings = [];
+  let hardStop = false;
+
+  const choch = rb.results?.find(r => r.key === 'chochBos');
+  const adxR  = rb.results?.find(r => r.key === 'adxFilter');
+  if (choch?.signal && choch.signal !== rb.entryDir) {
+    const adxMatch = adxR?.val?.match(/ADX ([\d.]+)/);
+    if (adxMatch && parseFloat(adxMatch[1]) > 28) hardStop = true;
+    else warnings.push('CHoCH opposing');
+  }
+  if (rbConv < -0.25) {
+    warnings.push('RB conflict');
+    if (rbConv < -0.45) hardStop = true;
+  }
+
+  if (hardStop || score < 30) return 'SKIP';
+  if (score >= 72 && rbConv >= 0.10 && !warnings.length) return 'A+';
+  if (score >= 60 && warnings.length <= 1) return 'A';
+  if (score >= 46) return 'B';
+  return 'C';
+}
+
+function _wt1Direction(bar5mWin) {
+  if (bar5mWin.length < 32) return null;
+  const sorted = bar5mWin.slice(0, 60).reverse();          // oldest→newest
+  const hlc3   = sorted.map(b => (b.h + b.l + b.c) / 3);
+  const esaArr = ema(hlc3, 10);
+  const dArr   = ema(hlc3.map((v, i) => Math.abs(v - esaArr[i])), 10);
+  const ci     = hlc3.map((v, i) => dArr[i] > 0 ? (v - esaArr[i]) / (0.015 * dArr[i]) : 0);
+  const wt1Arr = ema(ci, 21);
+  return wt1Arr[wt1Arr.length - 1] > 0 ? 'long' : 'short';
+}
+
+// Approximate the 1m HMM Bull/Bear% using raw DM ratio on the tightest available bars.
+// Returns { bullPct, bearPct } where bullPct + bearPct ≈ 100 (range is the remainder).
+function _dmRegime(barsNewestFirst, period = 14) {
+  if (barsNewestFirst.length < period + 1) return null;
+  const w = barsNewestFirst.slice(0, period + 1).reverse(); // oldest → newest
+  let pdm = 0, ndm = 0;
+  for (let i = 1; i < w.length; i++) {
+    pdm += Math.max(w[i].h - w[i-1].h, 0);
+    ndm += Math.max(w[i-1].l - w[i].l,  0);
+  }
+  const tot = pdm + ndm;
+  if (!tot) return { bullPct: 50, bearPct: 50 };
+  return { bullPct: (pdm / tot) * 100, bearPct: (ndm / tot) * 100 };
+}
 
 // ── Storage ────────────────────────────────────────────────────────────────────
 
@@ -129,6 +196,20 @@ function handleRun({ symbol, cfg }) {
   const enabledFibSet = cfg.enabledFibs?.length
     ? new Set(cfg.enabledFibs.map(f => +f))
     : null;
+
+  // ── Telegram filter config ─────────────────────────────────────────────────
+  const tgMinStars          = cfg.tgMinStars          ?? 0;
+  const tgMinGrade          = cfg.tgMinGrade          ?? '';
+  const tgRequireChochAlign = cfg.tgRequireChochAlign ?? false;
+  const tgMinAdx            = cfg.tgMinAdx            ?? 0;
+  const tgRequireWtAlign    = cfg.tgRequireWtAlign    ?? false;
+  const tgRequireRbPositive = cfg.tgRequireRbPositive ?? false;
+  const tgRegimeAlign       = cfg.tgRegimeAlign       ?? false;
+  const tgRegimePct         = cfg.tgRegimePct         ?? 60;   // minimum directional DM%
+
+  // ── Schedule filter config ─────────────────────────────────────────────────
+  const allowedDaySet  = cfg.allowedDays?.length     ? new Set(cfg.allowedDays)     : null;
+  const allowedSessSet = cfg.allowedSessions?.length ? new Set(cfg.allowedSessions) : null;
 
   // ── Transaction cost config ────────────────────────────────────────────────
   const spreadPips    = cfg.spread      ?? 0;
@@ -362,6 +443,11 @@ function handleRun({ symbol, cfg }) {
         if (bar5mWin.length < 20) continue;
         const atr = computeATR(bar5mWin.slice(0, 50).reverse(), atrPeriod);
         if (atr <= 0) continue;
+
+        // ── Schedule filter ─────────────────────────────────────────────────
+        if (allowedDaySet  && !allowedDaySet.has(DOW_NAMES[bar.lDay]))     continue;
+        if (allowedSessSet && !allowedSessSet.has(_sessionLabel(bar.lHour))) continue;
+
         const pip  = getPipSize(symbol);
         const prox = atr * proxATR;
 
@@ -401,6 +487,35 @@ function handleRun({ symbol, cfg }) {
           const entryDir = rb.entryDir;
 
           if (rb.conviction < minConviction || rb.confirmCount < minConfirms) continue;
+
+          // ── Telegram filter gates ───────────────────────────────────
+          if (tgMinStars > 0 && computeConfluenceStars(conf) < tgMinStars) continue;
+          if (tgRequireChochAlign) {
+            const ch = rb.results?.find(r => r.key === 'chochBos');
+            if (!ch || ch.signal !== rb.entryDir) continue;
+          }
+          if (tgMinAdx > 0) {
+            const ar = rb.results?.find(r => r.key === 'adxFilter');
+            const m  = ar?.val?.match(/ADX ([\d.]+)/);
+            if (!m || parseFloat(m[1]) < tgMinAdx) continue;
+          }
+          if (tgRequireWtAlign) {
+            const wtDir = _wt1Direction(bar5mWin);
+            if (wtDir && wtDir !== rb.entryDir) continue;
+          }
+          if (tgRequireRbPositive && rb.confirmCount <= rb.conflictCount) continue;
+          if (tgRegimeAlign) {
+            // Use 1m bars when available (more accurate), fall back to 5m
+            const regBars = bar1mWin.length >= 15 ? bar1mWin : bar5mWin;
+            const reg = _dmRegime(regBars, 14);
+            if (!reg) continue;
+            const dirPct = rb.entryDir === 'long' ? reg.bullPct : reg.bearPct;
+            if (dirPct < tgRegimePct) continue;
+          }
+          if (tgMinGrade) {
+            const grade = computeBacktestGrade(rb);
+            if ((GRADE_ORDER[grade] ?? -1) < (GRADE_ORDER[tgMinGrade] ?? 0)) continue;
+          }
 
           // ── Mean-reversion guard ────────────────────────────────────
           // Only trade toward the range midpoint. If features say 'long' but
@@ -530,6 +645,7 @@ function handleRun({ symbol, cfg }) {
             rb,
             _mfe: 0, _mae: 0, _holdingBars: 0,
             session:     _sessionLabel(bar.lHour),
+            dow:         DOW_NAMES[bar.lDay] ?? 'Unknown',
             trendRegime: _trendRegime(bar5mWin),
             volRegime:   _volRegime(atr, symbol),
           };
@@ -636,6 +752,7 @@ function buildFlipTrade(original, entryTs, date, confluences, pip, slMode, slMul
     tag:     '⚡flip',
     _mfe: 0, _mae: 0, _holdingBars: 0,
     session:     original.session     ?? 'Unknown',
+    dow:         original.dow         ?? 'Unknown',
     trendRegime: original.trendRegime ?? 'UNKNOWN',
     volRegime:   original.volRegime   ?? 'UNKNOWN',
   };
@@ -669,6 +786,7 @@ function recordClose(trade, exitPrice, result, exitTs, trades, bayesian, costR =
     mae:         +(trade._mae?.toFixed(3)  ?? 0),
     holdingBars: trade._holdingBars ?? 0,
     session:     trade.session      ?? 'Unknown',
+    dow:         trade.dow          ?? 'Unknown',
     trendRegime: trade.trendRegime  ?? 'UNKNOWN',
     volRegime:   trade.volRegime    ?? 'UNKNOWN',
   };
@@ -911,11 +1029,57 @@ function computeRegimeBreakdown(trades) {
     }))
     .sort((a, b) => a.avgR - b.avgR); // worst first
 
+  // ── Day × Session matrix ──────────────────────────────────────────────────
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  const SESSIONS = ['London', 'New York', 'Late', 'Asia'];
+
+  const dsMatrix = {};
+  for (const d of DAYS) {
+    dsMatrix[d] = {};
+    for (const s of SESSIONS) dsMatrix[d][s] = { trades: 0, wins: 0, totalR: 0 };
+  }
+  for (const t of trades) {
+    const d = t.dow, s = t.session;
+    if (dsMatrix[d] && dsMatrix[d][s]) {
+      dsMatrix[d][s].trades++;
+      if (t.r > 0) dsMatrix[d][s].wins++;
+      dsMatrix[d][s].totalR += t.r;
+    }
+  }
+  // Finalise cells + compute row/col totals
+  const dowSession = { days: DAYS, sessions: SESSIONS, cells: {}, rowTotals: {}, colTotals: {} };
+  for (const d of DAYS) {
+    let dTrades = 0, dWins = 0, dR = 0;
+    dowSession.cells[d] = {};
+    for (const s of SESSIONS) {
+      const c = dsMatrix[d][s];
+      dowSession.cells[d][s] = {
+        trades:  c.trades,
+        wins:    c.wins,
+        winRate: c.trades > 0 ? +(c.wins / c.trades).toFixed(4) : null,
+        avgR:    c.trades > 0 ? +(c.totalR / c.trades).toFixed(3) : null,
+      };
+      dTrades += c.trades; dWins += c.wins; dR += c.totalR;
+    }
+    dowSession.rowTotals[d] = { trades: dTrades, wins: dWins,
+      winRate: dTrades > 0 ? +(dWins / dTrades).toFixed(4) : null,
+      avgR:    dTrades > 0 ? +(dR    / dTrades).toFixed(3) : null };
+  }
+  for (const s of SESSIONS) {
+    let sTrades = 0, sWins = 0, sR = 0;
+    for (const d of DAYS) { const c = dsMatrix[d][s]; sTrades += c.trades; sWins += c.wins; sR += c.totalR; }
+    dowSession.colTotals[s] = { trades: sTrades, wins: sWins,
+      winRate: sTrades > 0 ? +(sWins / sTrades).toFixed(4) : null,
+      avgR:    sTrades > 0 ? +(sR    / sTrades).toFixed(3) : null };
+  }
+
   return {
     bySession: groupStats(t => t.session),
     byTrend:   groupStats(t => t.trendRegime),
     byVol:     groupStats(t => t.volRegime),
+    byDow:     groupStats(t => t.dow),
     crossTab,
+    dowSession,
   };
 }
 

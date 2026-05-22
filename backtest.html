@@ -277,6 +277,38 @@
     .regime-lbl { color: var(--text2); font-weight: 500; }
     .regime-drag { display: inline-block; font-size: 8px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: rgba(239,68,68,.12); color: var(--red); border: 1px solid rgba(239,68,68,.2); margin-left: 5px; text-transform: uppercase; letter-spacing: .3px; }
 
+    /* ── Schedule filter chips ───────────────────────────────────────────────── */
+    .sched-chip { padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; border-radius: 5px; border: 1px solid var(--border); background: var(--s2); color: var(--text3); transition: all .15s; font-family: 'DM Sans', sans-serif; }
+    .sched-chip.active { background: var(--blue-bg); border-color: var(--blue-bd); color: var(--blue); }
+    .sched-chip:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* ── Day × Session table ─────────────────────────────────────────────────── */
+    #dowsession-panel { background: var(--s1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .ds-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .ds-table th, .ds-table td { padding: 0; }
+    .ds-hdr { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); padding: 3px 8px 5px; text-align: center; border-bottom: 1px solid var(--border); }
+    .ds-hdr-total { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); padding: 3px 8px 5px; text-align: center; border-bottom: 1px solid var(--border); border-left: 1px solid var(--border); }
+    .ds-day { font-size: 11px; font-weight: 700; color: var(--text2); padding: 5px 8px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+    .ds-day.ds-total-lbl { color: var(--text3); font-size: 10px; }
+    .ds-cell { text-align: center; border-bottom: 1px solid var(--border); border-left: 1px solid var(--border); padding: 4px 6px; min-width: 70px; }
+    .ds-cell.ds-total { border-left: 2px solid var(--border); }
+    .ds-cell > span { display: block; line-height: 1.4; }
+    .ds-n  { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+    .ds-wr { font-size: 11px; font-weight: 700; font-family: 'DM Mono', monospace; }
+    .ds-r  { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text2); }
+    .ds-good    { background: rgba(34,197,94,.10); }
+    .ds-good    .ds-wr { color: var(--green); }
+    .ds-bad     { background: rgba(239,68,68,.08); }
+    .ds-bad     .ds-wr { color: var(--red); }
+    .ds-neutral { }
+    .ds-neutral .ds-wr { color: var(--text2); }
+    .ds-empty   { color: var(--text3); }
+    .ds-legend  { font-size: 10px; color: var(--text3); margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .ds-swatch  { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; }
+    .ds-good.ds-swatch  { background: rgba(34,197,94,.30); }
+    .ds-bad.ds-swatch   { background: rgba(239,68,68,.25); }
+    .ds-neutral.ds-swatch { background: var(--s2); border: 1px solid var(--border); }
+
     /* ── Shared helpers ──────────────────────────────────────────────────────── */
     .pos { color: var(--green) !important; }
     .neg { color: var(--red) !important; }
@@ -809,6 +841,102 @@
       <div id="feature-list"></div>
     </div>
 
+    <!-- Telegram Filters -->
+    <div class="sb-group">
+      <div class="sb-lbl">Telegram Filters <button class="help-btn" onclick="toggleHelp('h-tg')">?</button></div>
+      <div class="help-panel" id="h-tg">
+        <p>These filters mirror the Telegram alert logic so you can backtest only the trades that would actually be sent as alerts. Enable a filter to restrict entries to those that meet the corresponding criterion.</p>
+        <h4>Min Stars</h4>
+        <p>Stars come from confluence quality: 1 base + 1 for Tight Fib + 1 for Round Number + 1 for cluster density ≥2. Setting <code>2★</code> keeps only Tight or clustered levels.</p>
+        <h4>Min Grade</h4>
+        <p>The grade mirrors <code>gradeEntry()</code> in <code>trade-grade.js</code>. Score is derived from feature conviction. A+ requires ≥72% conviction + no warnings. A requires ≥60%. B requires ≥46%. C is everything else.</p>
+        <h4>CHoCH/BOS Aligned</h4>
+        <p>Requires the CHoCH/BOS feature to agree with the trade direction. This is equivalent to the "30m BOS" line in the Telegram message agreeing with entry direction.</p>
+        <h4>Min ADX</h4>
+        <p>Requires the ADX value from the ADX Filter feature to be above the threshold. Useful for filtering out low-momentum, choppy range environments.</p>
+        <h4>WT1 Aligned</h4>
+        <p>Requires the WaveTrend oscillator (WT1) on M5 to agree with trade direction — WT1 &gt; 0 for longs, WT1 &lt; 0 for shorts.</p>
+        <h4>Range Bias Net+</h4>
+        <p>Requires more features confirming the direction than conflicting with it (confirmCount &gt; conflictCount). Filters out trades where direction is contested.</p>
+      </div>
+      <div class="cfg-grid">
+        <div class="cfg-cell">
+          <label>Min Stars</label>
+          <select id="cfg-tg-min-stars" class="bt-select">
+            <option value="0">Off (any)</option>
+            <option value="1">1★+</option>
+            <option value="2">2★+</option>
+            <option value="3">3★+</option>
+          </select>
+        </div>
+        <div class="cfg-cell">
+          <label>Min Grade</label>
+          <select id="cfg-tg-min-grade" class="bt-select">
+            <option value="">Off (any)</option>
+            <option value="C">C+ (CAUTION)</option>
+            <option value="B">B+ (WATCH)</option>
+            <option value="A">A+ (TAKE)</option>
+            <option value="A+">A+ only</option>
+          </select>
+        </div>
+        <div class="cfg-cell">
+          <label>Min ADX</label>
+          <select id="cfg-tg-min-adx" class="bt-select">
+            <option value="0">Off</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+            <option value="25">25</option>
+            <option value="28">28</option>
+          </select>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" id="cfg-tg-choch"/>
+        <label for="cfg-tg-choch">CHoCH/BOS must align with direction</label>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" id="cfg-tg-wt"/>
+        <label for="cfg-tg-wt">WT1 (WaveTrend) must align</label>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" id="cfg-tg-rb"/>
+        <label for="cfg-tg-rb">Range Bias must be net positive</label>
+      </div>
+      <div class="toggle-row" style="align-items:flex-start;gap:8px">
+        <input type="checkbox" id="cfg-tg-regime-align" style="margin-top:2px"/>
+        <div>
+          <label for="cfg-tg-regime-align" style="cursor:pointer">1m Regime must align with direction</label>
+          <span class="toggle-hint">Approx. of Telegram's Bull%/Bear% using DM ratio on M1 (or M5 fallback). Enable M1 data for best accuracy.</span>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
+            <label style="font-size:10px;color:var(--text3);white-space:nowrap">Min DM%</label>
+            <input type="number" id="cfg-tg-regime-pct" class="bt-input" value="60" min="50" max="99" step="1" style="width:64px"/>
+            <span style="font-size:10px;color:var(--text3)">e.g. 60 → Bear 60%+ for SELL</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Schedule Filter -->
+    <div class="sb-group">
+      <div class="sb-lbl">Schedule Filter</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Click to toggle. Active (highlighted) = allowed. Deselect to block that day/session.</div>
+      <div style="font-size:10px;color:var(--text2);font-weight:600;margin-top:3px">Days</div>
+      <div class="chip-row" style="margin-bottom:5px">
+        <button class="sched-chip sched-day active" data-day="Mon" onclick="this.classList.toggle('active')">Mon</button>
+        <button class="sched-chip sched-day active" data-day="Tue" onclick="this.classList.toggle('active')">Tue</button>
+        <button class="sched-chip sched-day active" data-day="Wed" onclick="this.classList.toggle('active')">Wed</button>
+        <button class="sched-chip sched-day active" data-day="Thu" onclick="this.classList.toggle('active')">Thu</button>
+        <button class="sched-chip sched-day active" data-day="Fri" onclick="this.classList.toggle('active')">Fri</button>
+      </div>
+      <div style="font-size:10px;color:var(--text2);font-weight:600;margin-top:3px">Sessions</div>
+      <div class="chip-row">
+        <button class="sched-chip sched-sess active" data-sess="London"   onclick="this.classList.toggle('active')">London</button>
+        <button class="sched-chip sched-sess active" data-sess="New York" onclick="this.classList.toggle('active')">New York</button>
+        <button class="sched-chip sched-sess active" data-sess="Late"     onclick="this.classList.toggle('active')">Late</button>
+        <button class="sched-chip sched-sess active" data-sess="Asia"     onclick="this.classList.toggle('active')">Asia</button>
+      </div>
+    </div>
+
     <!-- Position Sizing -->
     <div class="sb-group">
       <div class="sb-lbl">Position Sizing <button class="help-btn" onclick="toggleHelp('h-pos')">?</button></div>
@@ -1060,6 +1188,9 @@
 
       <!-- Regime Breakdown -->
       <div id="regime-panel" style="display:none"></div>
+
+      <!-- Day × Session Breakdown -->
+      <div id="dowsession-panel" style="display:none"></div>
 
       <!-- Trade log -->
       <div class="chart-card">

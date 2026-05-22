@@ -52,8 +52,8 @@ DEFAULTS = {
 
     # Trade management
     "reEnterTp":         True,
-    "flipOnSL":          False,
-    "tradeCooldownMins": 30,             # minutes to block new entries after a trade closes
+    "flipOnSL":          True,
+    "tradeCooldownMins": 10,             # minutes to block new entries after a trade closes
 
     # SL → Breakeven
     "slToBePct":         0.0,           # 0=disabled; e.g. 0.5 moves SL to BE when 50% to TP

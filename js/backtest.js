@@ -161,6 +161,24 @@ function loadConfig(id) {
       sv('feat-zscore-short', zf.zShort);
     }
   }
+  // Telegram filters
+  sv('cfg-tg-min-stars',  cfg.tgMinStars  ?? 0);
+  sv('cfg-tg-min-grade',  cfg.tgMinGrade  ?? '');
+  sc('cfg-tg-choch',      cfg.tgRequireChochAlign);
+  sv('cfg-tg-min-adx',    cfg.tgMinAdx    ?? 0);
+  sc('cfg-tg-wt',         cfg.tgRequireWtAlign);
+  sc('cfg-tg-rb',          cfg.tgRequireRbPositive);
+  sc('cfg-tg-regime-align', cfg.tgRegimeAlign);
+  sv('cfg-tg-regime-pct',   cfg.tgRegimePct ?? 60);
+  // Schedule filter — day chips
+  document.querySelectorAll('.sched-day').forEach(el => {
+    const active = cfg.allowedDays == null || !cfg.allowedDays.length || cfg.allowedDays.includes(el.dataset.day);
+    el.classList.toggle('active', active);
+  });
+  document.querySelectorAll('.sched-sess').forEach(el => {
+    const active = cfg.allowedSessions == null || !cfg.allowedSessions.length || cfg.allowedSessions.includes(el.dataset.sess);
+    el.classList.toggle('active', active);
+  });
   onSlModeChange();
   onTpModeChange();
   onPosModeChange();
@@ -526,6 +544,18 @@ function buildCfg() {
     rejWickPct:        parseFloat(g('cfg-rej-wick-pct'))    || 0.40,
     rejMinAtrPct:      parseFloat(g('cfg-rej-min-atr-pct')) || 0.30,
     enabledFibs:       getEnabledFibs(),
+    // Telegram filter overlay
+    tgMinStars:          parseInt(g('cfg-tg-min-stars'))  || 0,
+    tgMinGrade:          g('cfg-tg-min-grade')            || '',
+    tgRequireChochAlign: gb('cfg-tg-choch'),
+    tgMinAdx:            parseFloat(g('cfg-tg-min-adx'))  || 0,
+    tgRequireWtAlign:    gb('cfg-tg-wt'),
+    tgRequireRbPositive: gb('cfg-tg-rb'),
+    tgRegimeAlign:       gb('cfg-tg-regime-align'),
+    tgRegimePct:         parseFloat(g('cfg-tg-regime-pct')) || 60,
+    // Schedule filter
+    allowedDays:     [...document.querySelectorAll('.sched-day.active')].map(el => el.dataset.day),
+    allowedSessions: [...document.querySelectorAll('.sched-sess.active')].map(el => el.dataset.sess),
     features,
   };
 }
@@ -671,6 +701,7 @@ function renderResults(d) {
   renderIsOosComparison();
   renderExitAnalysis();
   renderRegimeBreakdown();
+  renderDowSession();
 
   // ── Stats tiles ─────────────────────────────────────────────────────────
   const mc = d.monteCarlo;
@@ -931,6 +962,87 @@ function renderRegimeBreakdown() {
       </div>
     </div>
     ${crossTabHtml}`;
+}
+
+// ── Day × Session breakdown ────────────────────────────────────────────────────
+
+function renderDowSession() {
+  const el = document.getElementById('dowsession-panel');
+  if (!el) return;
+
+  const d = _oosResult ?? _isResult;
+  const ds = d?.regimeBreakdown?.dowSession;
+  if (!ds) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+
+  const wr = d.winRate;  // overall win rate for colour coding
+
+  const fmt = (v, precision = 1) => v != null ? (v * 100).toFixed(precision) + '%' : '—';
+  const fmtR = v => v != null ? (v > 0 ? '+' : '') + v.toFixed(2) + 'R' : '—';
+  const cellClass = (winRate) => {
+    if (winRate == null) return 'ds-empty';
+    const diff = winRate - wr;
+    if (diff >  0.04) return 'ds-good';
+    if (diff < -0.04) return 'ds-bad';
+    return 'ds-neutral';
+  };
+
+  const { days, sessions, cells, rowTotals, colTotals } = ds;
+
+  let html = `
+    <div class="chart-title">Day × Session Breakdown</div>
+    <div style="overflow-x:auto">
+    <table class="ds-table">
+      <thead><tr>
+        <th></th>
+        ${sessions.map(s => `<th class="ds-hdr">${s}</th>`).join('')}
+        <th class="ds-hdr-total">Total</th>
+      </tr></thead>
+      <tbody>`;
+
+  for (const day of days) {
+    html += `<tr><td class="ds-day">${day}</td>`;
+    for (const sess of sessions) {
+      const c = cells[day][sess];
+      if (!c || c.trades === 0) {
+        html += `<td class="ds-cell ds-empty"><span class="ds-n">—</span></td>`;
+      } else {
+        const cls = cellClass(c.winRate);
+        html += `<td class="ds-cell ${cls}">
+          <span class="ds-n">${c.trades}t</span>
+          <span class="ds-wr">${fmt(c.winRate)}</span>
+          <span class="ds-r">${fmtR(c.avgR)}</span>
+        </td>`;
+      }
+    }
+    const rt = rowTotals[day];
+    const rtCls = cellClass(rt?.winRate);
+    html += `<td class="ds-cell ds-total ${rt?.trades ? rtCls : 'ds-empty'}">
+      <span class="ds-n">${rt?.trades || 0}t</span>
+      <span class="ds-wr">${fmt(rt?.winRate)}</span>
+      <span class="ds-r">${fmtR(rt?.avgR)}</span>
+    </td></tr>`;
+  }
+
+  // Column totals row
+  html += `<tr><td class="ds-day ds-total-lbl">Total</td>`;
+  for (const sess of sessions) {
+    const ct = colTotals[sess];
+    const ctCls = cellClass(ct?.winRate);
+    html += `<td class="ds-cell ds-total ${ct?.trades ? ctCls : 'ds-empty'}">
+      <span class="ds-n">${ct?.trades || 0}t</span>
+      <span class="ds-wr">${fmt(ct?.winRate)}</span>
+      <span class="ds-r">${fmtR(ct?.avgR)}</span>
+    </td>`;
+  }
+  html += `<td class="ds-cell ds-total"></td></tr>`;
+
+  html += `</tbody></table></div>
+    <p class="ds-legend"><span class="ds-good ds-swatch"></span> &gt;4% above avg &nbsp;
+      <span class="ds-bad ds-swatch"></span> &gt;4% below avg &nbsp;
+      <span class="ds-neutral ds-swatch"></span> within ±4%</p>`;
+
+  el.innerHTML = html;
 }
 
 // ── IS/OOS comparison panel ────────────────────────────────────────────────────
@@ -1703,6 +1815,24 @@ function restoreSettings() {
         sv2('feat-zscore-short', zf.zShort);
       }
     }
+    // Telegram filters
+    s('cfg-tg-min-stars',  cfg.tgMinStars  ?? 0);
+    s('cfg-tg-min-grade',  cfg.tgMinGrade  ?? '');
+    sc('cfg-tg-choch',     cfg.tgRequireChochAlign);
+    s('cfg-tg-min-adx',    cfg.tgMinAdx    ?? 0);
+    sc('cfg-tg-wt',        cfg.tgRequireWtAlign);
+    sc('cfg-tg-rb',          cfg.tgRequireRbPositive);
+    sc('cfg-tg-regime-align', cfg.tgRegimeAlign);
+    s('cfg-tg-regime-pct',    cfg.tgRegimePct ?? 60);
+    // Schedule filter chips
+    document.querySelectorAll('.sched-day').forEach(el => {
+      const active = !cfg.allowedDays?.length || cfg.allowedDays.includes(el.dataset.day);
+      el.classList.toggle('active', active);
+    });
+    document.querySelectorAll('.sched-sess').forEach(el => {
+      const active = !cfg.allowedSessions?.length || cfg.allowedSessions.includes(el.dataset.sess);
+      el.classList.toggle('active', active);
+    });
     onSlModeChange();
     onTpModeChange();
     onPosModeChange();
