@@ -1,7 +1,7 @@
 """
 backtestSystem/main.py — MT5 trading loop.
-Completely separate from the main bot; no KV / Railway dependency.
-Reads configs/active.json, connects to MT5, polls every pollInterval seconds (default 60).
+Config priority: dashboard KV (backtestsystem_live_config) > local configs/active.json > built-in defaults.
+Set DASHBOARD_URL in .env to enable KV config and credentials. configs/active.json is optional.
 """
 
 import logging
@@ -450,14 +450,19 @@ def main() -> None:
         mt5_server   = os.getenv('MT5_SERVER',   '')
         mt5_path     = os.getenv('MT5_PATH',     '')
 
-    # Merge live config from KV on top of active.json (survives strategy config exports)
+    # Merge live config from KV on top of active.json / DEFAULTS.
+    # KV always wins — this is the primary config path when DASHBOARD_URL is set.
     if dashboard_url:
         live_cfg = _load_live_config_from_kv(dashboard_url)
         if live_cfg:
             cfg = _deep_merge(cfg, live_cfg)
-            log.info(f'Live config loaded from KV: risk={live_cfg.get("riskPct")}%  '
+            log.info(f'Live config loaded from dashboard KV (backtestsystem_live_config): '
+                     f'risk={live_cfg.get("riskPct")}%  '
                      f'pairs={live_cfg.get("enabledPairs")}  '
                      f'kill D={live_cfg.get("killDaily")} W={live_cfg.get("killWeekly")}')
+        else:
+            log.warning('No backtestsystem_live_config in KV — running on built-in defaults. '
+                        'Save config from the dashboard bot-config page to populate it.')
 
     if not connect(mt5_account, mt5_password, mt5_server, mt5_path):
         log.error('MT5 connection failed — check .env and MT5 terminal')

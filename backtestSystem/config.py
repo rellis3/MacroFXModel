@@ -112,10 +112,12 @@ def load_config(path: str = None) -> dict:
     if path is None:
         path = os.path.join(os.path.dirname(__file__), 'configs', 'active.json')
     if not os.path.exists(path):
-        raise FileNotFoundError(
-            f'Config not found: {path}\n'
-            f'Copy configs/template.json → configs/active.json and fill in your values.'
+        import logging
+        logging.getLogger(__name__).warning(
+            f'Config file not found: {path} — using built-in defaults. '
+            f'Full config will be loaded from dashboard KV (backtestsystem_live_config).'
         )
+        return dict(DEFAULTS)
     with open(path, encoding='utf-8') as f:
         user = json.load(f)
     return _deep_merge(DEFAULTS, user)
