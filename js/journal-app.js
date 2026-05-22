@@ -46,37 +46,68 @@ async function kvSet(key,data){
     body:JSON.stringify({key,data,timestamp:Date.now()})});}catch(e){}}
 
 async function loadJournal(){
-  // Load localStorage immediately so UI renders fast
-  try{const raw=localStorage.getItem(JOURNAL_KEY);if(raw)journalData=JSON.parse(raw)||{};}
-  catch(e){journalData={};}
-  // Then merge from KV (may have data from another device)
+  // ── Step 1: read localStorage ─────────────────────────────────────────────
+  // Supports both the old plain-object format and the new { data, ts } wrapper.
+  let localData={}, localTs=0;
+  try{
+    const raw=localStorage.getItem(JOURNAL_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      if(parsed!=null && typeof parsed.ts==='number' && parsed.data){
+        localData=parsed.data||{}; localTs=parsed.ts;   // new format
+      } else {
+        localData=parsed||{};  localTs=0;               // legacy plain format
+      }
+    }
+  }catch(e){localData={};}
+
+  // ── Step 2: read KV (central store) ──────────────────────────────────────
+  let kvData={}, kvTs=0;
   try{
     const kvObj=await kvGet(JOURNAL_KEY);
-    if(kvObj&&kvObj.data){
-      const kv=kvObj.data;let changed=false;
-      for(const[date,dayObj]of Object.entries(kv)){
-        if(!journalData[date]){journalData[date]=dayObj;changed=true;}
-        else for(const[pair,pairObj]of Object.entries(dayObj)){
-          if(!journalData[date][pair]){journalData[date][pair]=pairObj;changed=true;}
-        }
-      }
-      if(changed){try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journalData));}catch(e){console.warn('journal load-merge: localStorage full',e);}}
-    }
+    if(kvObj?.data){ kvData=kvObj.data||{}; kvTs=kvObj.timestamp||0; }
   }catch(e){}
+
+  // ── Step 3: merge — newer source wins for overlapping dates ──────────────
+  // Primary = whichever was saved most recently.
+  // Secondary fills in dates that primary doesn't have (handles offline edits
+  // on either device that hadn't been synced yet).
+  const [primary, secondary] = kvTs >= localTs ? [kvData, localData] : [localData, kvData];
+  journalData = Object.assign({}, primary);
+  for(const[date,dayObj]of Object.entries(secondary)){
+    if(!journalData[date]){
+      journalData[date]=dayObj;
+    } else if(dayObj && typeof dayObj==='object'){
+      for(const[pair,pairObj]of Object.entries(dayObj)){
+        if(!journalData[date][pair]) journalData[date][pair]=pairObj;
+      }
+    }
+  }
+
+  // ── Step 4: persist merged result back to localStorage ───────────────────
+  _writeLocal(journalData, Math.max(localTs, kvTs));
 }
-function saveJournal(){
-  const json=JSON.stringify(journalData);
-  try{localStorage.setItem(JOURNAL_KEY,json);}catch(e){
-    // Quota exceeded — prune dates older than 30 days then retry
-    const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);
+
+function _writeLocal(data, ts){
+  const payload=JSON.stringify({data, ts});
+  try{ localStorage.setItem(JOURNAL_KEY, payload); }
+  catch(e){
+    // Quota exceeded — prune dates older than 30 days then retry once
+    const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-30);
     const cutoffStr=cutoff.toISOString().split('T')[0];
     let pruned=false;
-    for(const d of Object.keys(journalData)){if(d<cutoffStr){delete journalData[d];pruned=true;}}
-    if(pruned){try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journalData));}catch(e2){
-      console.warn('journal localStorage full after pruning, relying on KV only',e2);}}
-    else{console.warn('journal localStorage full, relying on KV only',e);}
+    for(const d of Object.keys(data)){if(d<cutoffStr){delete data[d];pruned=true;}}
+    if(pruned){ try{ localStorage.setItem(JOURNAL_KEY,JSON.stringify({data,ts})); }catch(e2){
+      console.warn('journal: localStorage full after pruning, relying on KV only',e2); } }
+    else{ console.warn('journal: localStorage full, relying on KV only',e); }
   }
-  kvSet(JOURNAL_KEY,journalData);}
+}
+
+function saveJournal(){
+  const ts=Date.now();
+  _writeLocal(journalData, ts);
+  kvSet(JOURNAL_KEY, journalData);
+}
 function todayStr(){return new Date().toISOString().split('T')[0];}
 
 // ── Running Totals persistence ────────────────────────────────────────────────
@@ -434,7 +465,14 @@ function applyDark(){
 async function init(){
   applyDark();
   // Render with localStorage data immediately, then re-render after KV merge
-  try{const raw=localStorage.getItem(JOURNAL_KEY);if(raw)journalData=JSON.parse(raw)||{};}catch(e){}
+  try{
+    const raw=localStorage.getItem(JOURNAL_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      // Support new { data, ts } wrapper and legacy plain format
+      journalData=(parsed?.ts!=null&&parsed?.data)?parsed.data:parsed||{};
+    }
+  }catch(e){}
   // Load cached replay results so level cards show colours on first render
   try{const raw=localStorage.getItem(REPLAY_KV_KEY);if(raw)Object.assign(_replayResults,JSON.parse(raw));}catch(e){}
   loadRunningTotalsLocal();
