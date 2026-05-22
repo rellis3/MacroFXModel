@@ -719,7 +719,7 @@ function renderResults(d) {
   // Show AI card; reset output so stale text from prior run isn't shown
   const aiCard = document.getElementById('ai-analysis-card');
   const aiOut  = document.getElementById('ai-output');
-  if (aiCard) aiCard.style.display = '';
+  if (aiCard) aiCard.style.display = 'block';
   if (aiOut)  aiOut.innerHTML = '<span style="color:var(--text3);font-size:11px">Click Analyse to get an AI assessment of this backtest.</span>';
 
   // Tag and store result for IS/OOS comparison
