@@ -22,7 +22,11 @@ function computeConfluenceStars(conf) {
 const GRADE_ORDER = { SKIP: 0, C: 1, B: 2, A: 3, 'A+': 4 };
 
 function computeBacktestGrade(rb) {
-  const score   = Math.round(50 + rb.conviction * 50);
+  // Live signal score = HMM (20%) + Bayesian (30%) + Macro (25%) + RangeBias (15%) + Structure (10%).
+  // The backtest only has feature conviction for the structure/range-bias components.
+  // Add a +8 floor to approximate the baseline contribution of Bayesian/HMM/macro in a neutral regime,
+  // keeping the proxy calibrated to the live system's typical score range.
+  const score   = Math.round(58 + rb.conviction * 42);
   const total   = rb.confirmCount + rb.conflictCount;
   const rbConv  = total > 0 ? (rb.confirmCount - rb.conflictCount) / total : 0;
   const warnings = [];
@@ -491,7 +495,12 @@ function handleRun({ symbol, cfg }) {
           if (!rb.entryDir) continue;
           const entryDir = rb.entryDir;
 
-          if (rb.conviction < minConviction || rb.confirmCount < minConfirms) continue;
+          // In telegram mode the Telegram filter gates (grade/stars/ADX etc.) do the
+          // quality filtering — bypass the feature conviction/confirms hard gate which
+          // was designed for mean_reversion/hybrid mode where features are the primary signal.
+          if (strategyMode !== 'telegram') {
+            if (rb.conviction < minConviction || rb.confirmCount < minConfirms) continue;
+          }
 
           // ── Telegram filter gates ───────────────────────────────────
           if (tgMinStars > 0 && computeConfluenceStars(conf) < tgMinStars) continue;
@@ -505,7 +514,7 @@ function handleRun({ symbol, cfg }) {
             if (!m || parseFloat(m[1]) < tgMinAdx) continue;
           }
           if (tgMinSignalScore > 0) {
-            const score = 50 + rb.conviction * 50;
+            const score = 58 + rb.conviction * 42;
             if (score < tgMinSignalScore) continue;
           }
           if (tgRequireWtAlign) {
@@ -1074,14 +1083,16 @@ function computeRegimeBreakdown(trades) {
     }
     dowSession.rowTotals[d] = { trades: dTrades, wins: dWins,
       winRate: dTrades > 0 ? +(dWins / dTrades).toFixed(4) : null,
-      avgR:    dTrades > 0 ? +(dR    / dTrades).toFixed(3) : null };
+      avgR:    dTrades > 0 ? +(dR    / dTrades).toFixed(3) : null,
+      totalR:  +dR.toFixed(2) };
   }
   for (const s of SESSIONS) {
     let sTrades = 0, sWins = 0, sR = 0;
     for (const d of DAYS) { const c = dsMatrix[d][s]; sTrades += c.trades; sWins += c.wins; sR += c.totalR; }
     dowSession.colTotals[s] = { trades: sTrades, wins: sWins,
       winRate: sTrades > 0 ? +(sWins / sTrades).toFixed(4) : null,
-      avgR:    sTrades > 0 ? +(sR    / sTrades).toFixed(3) : null };
+      avgR:    sTrades > 0 ? +(sR    / sTrades).toFixed(3) : null,
+      totalR:  +sR.toFixed(2) };
   }
 
   return {

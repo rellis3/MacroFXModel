@@ -989,20 +989,64 @@ function renderDowSession() {
 
   const wr = d.winRate;  // overall win rate for colour coding
 
-  const fmt = (v, precision = 1) => v != null ? (v * 100).toFixed(precision) + '%' : '—';
-  const fmtR = v => v != null ? (v > 0 ? '+' : '') + v.toFixed(2) + 'R' : '—';
-  const cellClass = (winRate) => {
-    if (winRate == null) return 'ds-empty';
+  const fmt    = (v, p = 1) => v != null ? (v * 100).toFixed(p) + '%' : '—';
+  const fmtR   = v => v != null ? (v > 0 ? '+' : '') + v.toFixed(2) + 'R' : '—';
+  const wrCls  = (winRate) => {
+    if (winRate == null) return '';
     const diff = winRate - wr;
     if (diff >  0.04) return 'ds-good';
     if (diff < -0.04) return 'ds-bad';
     return 'ds-neutral';
   };
+  const rCls   = v => v == null ? '' : v > 0 ? 'ds-r-pos' : v < 0 ? 'ds-r-neg' : '';
+  const trCls  = v => v == null ? '' : v > 0 ? 'ds-r-pos' : v < 0 ? 'ds-r-neg' : '';
 
   const { days, sessions, cells, rowTotals, colTotals } = ds;
 
-  let html = `
-    <div class="chart-title">Day × Session Breakdown</div>
+  // ── Flat summary: By Day ───────────────────────────────────────────────
+  const summaryRow = (label, t) => {
+    if (!t || t.trades === 0) return `<tr><td class="ds-sum-lbl">${label}</td>
+      <td class="ds-sum-n">0</td><td>—</td><td>—</td>
+      <td>—</td><td>—</td><td>—</td></tr>`;
+    const losses = t.trades - t.wins;
+    return `<tr class="${wrCls(t.winRate)}">
+      <td class="ds-sum-lbl">${label}</td>
+      <td class="ds-sum-n">${t.trades}</td>
+      <td class="ds-sum-w">${t.wins}</td>
+      <td class="ds-sum-l">${losses}</td>
+      <td class="${wrCls(t.winRate)}">${fmt(t.winRate)}</td>
+      <td class="${rCls(t.avgR)}">${fmtR(t.avgR)}</td>
+      <td class="${trCls(t.totalR)}">${fmtR(t.totalR)}</td>
+    </tr>`;
+  };
+
+  const summaryTable = (title, items) => `
+    <div>
+      <div class="ds-sum-title">${title}</div>
+      <table class="ds-sum-tbl">
+        <thead><tr>
+          <th></th>
+          <th title="Total trades">Trades</th>
+          <th title="Winning trades" class="ds-sum-w">W</th>
+          <th title="Losing trades" class="ds-sum-l">L</th>
+          <th title="Win rate">Win%</th>
+          <th title="Average R per trade">Avg R</th>
+          <th title="Total R accumulated">Total R</th>
+        </tr></thead>
+        <tbody>${items}</tbody>
+      </table>
+    </div>`;
+
+  const dayRows  = days.map(day  => summaryRow(day,  rowTotals[day])).join('');
+  const sessRows = sessions.map(sess => summaryRow(sess, colTotals[sess])).join('');
+
+  // ── Day × Session grid ─────────────────────────────────────────────────
+  const cellClass = (winRate) => {
+    if (winRate == null) return 'ds-empty';
+    return wrCls(winRate) || 'ds-neutral';
+  };
+
+  let gridHtml = `
     <div style="overflow-x:auto">
     <table class="ds-table">
       <thead><tr>
@@ -1013,14 +1057,14 @@ function renderDowSession() {
       <tbody>`;
 
   for (const day of days) {
-    html += `<tr><td class="ds-day">${day}</td>`;
+    gridHtml += `<tr><td class="ds-day">${day}</td>`;
     for (const sess of sessions) {
       const c = cells[day][sess];
       if (!c || c.trades === 0) {
-        html += `<td class="ds-cell ds-empty"><span class="ds-n">—</span></td>`;
+        gridHtml += `<td class="ds-cell ds-empty"><span class="ds-n">—</span></td>`;
       } else {
         const cls = cellClass(c.winRate);
-        html += `<td class="ds-cell ${cls}">
+        gridHtml += `<td class="ds-cell ${cls}">
           <span class="ds-n">${c.trades}t</span>
           <span class="ds-wr">${fmt(c.winRate)}</span>
           <span class="ds-r">${fmtR(c.avgR)}</span>
@@ -1028,33 +1072,35 @@ function renderDowSession() {
       }
     }
     const rt = rowTotals[day];
-    const rtCls = cellClass(rt?.winRate);
-    html += `<td class="ds-cell ds-total ${rt?.trades ? rtCls : 'ds-empty'}">
+    gridHtml += `<td class="ds-cell ds-total ${cellClass(rt?.winRate)}">
       <span class="ds-n">${rt?.trades || 0}t</span>
       <span class="ds-wr">${fmt(rt?.winRate)}</span>
       <span class="ds-r">${fmtR(rt?.avgR)}</span>
     </td></tr>`;
   }
-
-  // Column totals row
-  html += `<tr><td class="ds-day ds-total-lbl">Total</td>`;
+  gridHtml += `<tr><td class="ds-day ds-total-lbl">Total</td>`;
   for (const sess of sessions) {
     const ct = colTotals[sess];
-    const ctCls = cellClass(ct?.winRate);
-    html += `<td class="ds-cell ds-total ${ct?.trades ? ctCls : 'ds-empty'}">
+    gridHtml += `<td class="ds-cell ds-total ${cellClass(ct?.winRate)}">
       <span class="ds-n">${ct?.trades || 0}t</span>
       <span class="ds-wr">${fmt(ct?.winRate)}</span>
       <span class="ds-r">${fmtR(ct?.avgR)}</span>
     </td>`;
   }
-  html += `<td class="ds-cell ds-total"></td></tr>`;
+  gridHtml += `<td class="ds-cell ds-total"></td></tr>`;
+  gridHtml += `</tbody></table></div>`;
 
-  html += `</tbody></table></div>
+  el.innerHTML = `
+    <div class="chart-title">Day &amp; Session Summary</div>
+    <div class="ds-sum-grid">
+      ${summaryTable('By Day of Week', dayRows)}
+      ${summaryTable('By Session', sessRows)}
+    </div>
+    <div class="ds-grid-title">Day × Session Grid</div>
+    ${gridHtml}
     <p class="ds-legend"><span class="ds-good ds-swatch"></span> &gt;4% above avg &nbsp;
       <span class="ds-bad ds-swatch"></span> &gt;4% below avg &nbsp;
       <span class="ds-neutral ds-swatch"></span> within ±4%</p>`;
-
-  el.innerHTML = html;
 }
 
 // ── IS/OOS comparison panel ────────────────────────────────────────────────────

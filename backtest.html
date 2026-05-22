@@ -296,6 +296,24 @@
 
     /* ── Day × Session table ─────────────────────────────────────────────────── */
     #dowsession-panel { background: var(--s1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    /* Summary flat tables */
+    .ds-sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+    @media (max-width: 600px) { .ds-sum-grid { grid-template-columns: 1fr; } }
+    .ds-sum-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text3); margin-bottom: 5px; }
+    .ds-grid-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text3); margin-bottom: 5px; }
+    .ds-sum-tbl { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .ds-sum-tbl th { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); padding: 2px 6px 5px; text-align: right; border-bottom: 1px solid var(--border); }
+    .ds-sum-tbl th:first-child { text-align: left; }
+    .ds-sum-tbl td { padding: 4px 6px; text-align: right; border-bottom: 1px solid rgba(255,255,255,.04); font-variant-numeric: tabular-nums; }
+    .ds-sum-lbl { text-align: left !important; font-weight: 600; color: var(--text2); }
+    .ds-sum-n   { color: var(--text2); }
+    .ds-sum-w   { color: var(--green); }
+    .ds-sum-l   { color: var(--red); }
+    .ds-r-pos   { color: var(--green); }
+    .ds-r-neg   { color: var(--red); }
+    .ds-sum-tbl tr.ds-good td { background: rgba(34,197,94,.06); }
+    .ds-sum-tbl tr.ds-bad  td { background: rgba(239,68,68,.06); }
+    /* Grid table */
     .ds-table { width: 100%; border-collapse: collapse; font-size: 11px; }
     .ds-table th, .ds-table td { padding: 0; }
     .ds-hdr { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); padding: 3px 8px 5px; text-align: center; border-bottom: 1px solid var(--border); }
@@ -827,7 +845,7 @@
     </div>
 
     <!-- Features -->
-    <div class="sb-group" data-mode-section="mean_reversion hybrid">
+    <div class="sb-group" data-mode-section="mean_reversion hybrid telegram">
       <div class="sb-lbl">Features <button class="help-btn" onclick="toggleHelp('h-feat')">?</button></div>
       <div class="help-panel" id="h-feat">
         <p>Features are technical signals that <em>vote</em> on trade direction. Each enabled feature returns <span class="hg">long</span>, <span class="hr">short</span>, or <em>abstain</em>. Votes are weighted and summed to produce a conviction score and direction. A feature that abstains does not penalise conviction — only active disagreement does.</p>
@@ -890,9 +908,9 @@
         <h4>Min Stars</h4>
         <p>Stars come from confluence quality: 1 base + 1 for Tight Fib + 1 for Round Number + 1 for cluster density ≥2. Setting <code>2★</code> keeps only Tight or clustered levels.</p>
         <h4>Min Grade</h4>
-        <p>The grade mirrors <code>gradeEntry()</code> in <code>trade-grade.js</code>. Score is derived from feature conviction. A+ requires ≥72% conviction + no warnings. A requires ≥60%. B requires ≥46%. C is everything else.</p>
+        <p>The grade mirrors <code>gradeEntry()</code> in <code>trade-grade.js</code>. Score is a proxy: <code>58 + conviction × 42</code> — approximating the live signal score which also includes HMM, Bayesian, and macro components not available in the backtest. A+ requires score ≥72 + no warnings. A requires ≥60. B requires ≥46.</p>
         <h4>Min Signal %</h4>
-        <p>Filters by signal strength score (0–100). The backtest uses a conviction proxy: <code>score = 50 + conviction × 50</code>. This mirrors the Telegram's min_signal_score filter. 55%+ is a reasonable baseline; 65%+ is strong.</p>
+        <p>Filters by signal strength score (0–100). The backtest uses a conviction proxy: <code>score = 58 + conviction × 42</code>. Neutral conviction gives ~58; strong agreement pushes toward 100. Mirrors the Telegram's min_signal_score. 60%+ is a reasonable baseline; 70%+ is strong.</p>
         <h4>CHoCH/BOS Aligned</h4>
         <p>Requires the CHoCH/BOS feature to agree with the trade direction. This is equivalent to the "30m BOS" line in the Telegram message agreeing with entry direction.</p>
         <h4>Min ADX</h4>
