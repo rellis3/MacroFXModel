@@ -4,18 +4,18 @@ RegimeBot — 1-minute HMM regime-following trading bot.
 Every SCAN_INTERVAL seconds (default 60s):
   1. Fetch the last 300 1m bars from MT5
   2. Run the HMM to get current regime + features
-  3. Update the rolling decay window
-  4. Check exit conditions (if holding a position)
-  5. Check entry conditions (if flat)
-  6. Log a status line matching the dashboard log format
+  3. Update the rolling decay window → compute decay score
+  4. Update the risk manager with current balance
+  5. Check exit conditions (if holding a position)
+  6. Check risk gates + entry conditions (if flat)
+  7. On entry: ATR-based SL/TP → account %-risk lot size → place order
 
-Telegram bot handles /status /pause /resume /exit /config commands
-concurrently in a background thread.
+Telegram handles /status /pause /resume /exit /config concurrently.
 
 Usage:
-  python main.py            # paper mode — no real orders placed
+  python main.py            # paper mode — no real orders
   python main.py --live     # live MT5 orders (requires MT5 + .env filled in)
-  python main.py --once     # single tick then exit (useful for testing)
+  python main.py --once     # single tick then exit (testing)
 """
 
 import argparse
@@ -31,6 +31,7 @@ import config
 import mt5_client
 from regime_engine  import RegimeEngine
 from decay_detector import DecayDetector
+from risk_manager   import RiskManager
 from state_machine  import BotState, should_enter, should_exit, on_entry, on_exit
 from telegram_bot   import TelegramBot
 
@@ -53,10 +54,11 @@ log = logging.getLogger(__name__)
 
 _engine  = RegimeEngine()
 _decay   = DecayDetector()
+_risk    = RiskManager()
 _state   = BotState()
 
 
-# ── Status / config text (used by Telegram commands) ──────────────────────────
+# ── Status / config text (Telegram commands) ───────────────────────────────────
 
 def _status_text() -> str:
     snap = _state.last_snap
@@ -68,12 +70,18 @@ def _status_text() -> str:
     d_icon = '🔴' if d >= config.DECAY_EXIT else ('🟠' if d >= config.DECAY_WARNING else '🟢')
     mode   = '⏸ PAUSED' if _state.paused else '▶️ ACTIVE'
 
+    balance = mt5_client.get_account_balance()
+    dd      = _risk.dd_status(balance)
+
     lines = [
         f'<b>RegimeBot</b> — {config.PAIR}',
         (f'{r_icon} <b>{snap.regime}</b>  conf={snap.conf*100:.1f}%  '
          f'rl={snap.run_length}b  vol_z={snap.vol_z:+.2f}  adx_z={snap.adx_z:+.2f}'),
-        f'{d_icon} Decay: <b>{d:.3f}</b>  (exit≥{config.DECAY_EXIT})',
-        f'Phase: {_state.phase}  |  {mode}  |  {"LIVE" if config.LIVE_MODE else "PAPER"}',
+        f'{d_icon} Decay: <b>{d:.3f}</b>  (warn≥{config.DECAY_WARNING}  exit≥{config.DECAY_EXIT})',
+        f'Phase: {_state.phase}  |  {mode}  |  {"🔴 LIVE" if config.LIVE_MODE else "PAPER"}',
+        (f'DD: day={dd["day_dd_pct"]:+.2f}%  session={dd["session_dd_pct"]:+.2f}%  '
+         f'trades={dd["daily_trades"]}/{dd["max_daily"]}'
+         + ('  🔒 LOCKED' if dd['locked'] else '')),
     ]
 
     if _state.phase != 'FLAT':
@@ -93,16 +101,20 @@ def _status_text() -> str:
 
 
 def _config_text() -> str:
+    sl_desc = (
+        f'ATR({config.SL_ATR_BARS})×{config.SL_ATR_MULT}  max={config.SL_MAX_PIPS}p'
+        if config.SL_METHOD == 'atr'
+        else f'fixed {config.SL_FIXED_PIPS}p'
+    )
     return (
         f'<b>RegimeBot config</b> — {config.PAIR}\n'
-        f'Entry: conf≥{config.ENTRY_CONF_MIN*100:.0f}%  '
-        f'vol_z≤{config.ENTRY_VOL_Z_MAX}  decay≤{config.ENTRY_DECAY_MAX}\n'
-        f'Decay exit: ≥{config.DECAY_EXIT}  warning: ≥{config.DECAY_WARNING}\n'
-        f'Regime flip exit: {config.REGIME_FLIP_EXIT}\n'
-        f'Lots: base={config.LOT_SIZE_BASE}  min={config.LOT_SIZE_MIN}  max={config.LOT_SIZE_MAX}\n'
-        f'SL={config.SL_PIPS}pip  TP={config.TP_PIPS}pip\n'
-        f'Decay window: {config.DECAY_WINDOW}b  scan: {config.SCAN_INTERVAL_S}s\n'
-        f'Mode: {"LIVE" if config.LIVE_MODE else "PAPER"}  magic={config.MAGIC}'
+        f'Entry: conf≥{config.ENTRY_CONF_MIN*100:.0f}%  vol_z≤{config.ENTRY_VOL_Z_MAX}  decay≤{config.ENTRY_DECAY_MAX}\n'
+        f'Decay exit: ≥{config.DECAY_EXIT}  warning: ≥{config.DECAY_WARNING}  flip_exit={config.REGIME_FLIP_EXIT}\n'
+        f'SL: {sl_desc}  |  TP: {config.TP_RR}R  max={config.TP_MAX_PIPS}p\n'
+        f'Size: {config.RISK_PCT_PER_TRADE}% risk/trade  lots={config.LOT_SIZE_MIN}–{config.LOT_SIZE_MAX}\n'
+        f'DD limits: daily={config.MAX_DAILY_DD_PCT}%  session={config.MAX_SESSION_DD_PCT}%  lockout={config.DD_LOCKOUT_HOURS}h\n'
+        f'Trades: max={config.MAX_DAILY_TRADES}/day  cooldown={config.TRADE_COOLDOWN_MIN}m\n'
+        f'Scan: {config.SCAN_INTERVAL_S}s  magic={config.MAGIC}  mode={"LIVE" if config.LIVE_MODE else "PAPER"}'
     )
 
 
@@ -120,7 +132,7 @@ def _cmd_resume() -> None:
 
 def _cmd_force_exit(tg: TelegramBot) -> None:
     if _state.phase == 'FLAT':
-        log.info('Force exit requested but no open position')
+        tg.send('No open position to close.')
         return
     log.info(f'Force exit: closing ticket={_state.ticket}')
     ok = mt5_client.close_position(_state.ticket)
@@ -148,30 +160,36 @@ def tick(tg: TelegramBot) -> None:
 
     _state.last_snap = snap
 
-    # 3. Update decay window and compute current score
+    # 3. Decay score
     _decay.push(snap)
     d             = _decay.score()
     _state.last_decay = d
     dsummary      = _decay.summary()
 
-    # 4. Status log line (matches dashboard screenshot format)
+    # 4. Balance + risk tracking
+    balance = mt5_client.get_account_balance()
+    _risk.update_balance(balance)
+
+    # 5. Status log line
+    dd = _risk.dd_status(balance)
     log.info(
         f'● {snap.regime:<4s}  conf={snap.conf*100:.1f}%  rl={snap.run_length}b  '
-        f'vol_z={snap.vol_z:+.2f}  adx_z={snap.adx_z:+.2f}  '
-        f'decay={d:.3f}  phase={_state.phase}'
+        f'vol_z={snap.vol_z:+.2f}  adx_z={snap.adx_z:+.2f}  decay={d:.3f}  '
+        f'phase={_state.phase}  dd_day={dd["day_dd_pct"]:+.2f}%  '
+        f'trades={dd["daily_trades"]}/{dd["max_daily"]}'
     )
 
-    # 5. Check exit if holding a position
+    # 6. Check exit if holding
     if _state.phase != 'FLAT':
         reason = should_exit(snap, d, _state)
 
         if d >= config.DECAY_WARNING and d < config.DECAY_EXIT:
-            log.warning(f'Decay WARNING: {d:.3f}  components={dsummary}')
+            log.warning(f'Decay WARNING: {d:.3f}  {dsummary}')
             tg.send(
                 f'⚠️ <b>Decay warning</b> {config.PAIR}\n'
-                f'Score: {d:.3f}  (exit at {config.DECAY_EXIT})\n'
+                f'Score: {d:.3f}  (exit at ≥{config.DECAY_EXIT})\n'
                 f'Regime: {snap.regime}  conf={snap.conf*100:.1f}%\n'
-                f'{dsummary}'
+                + str(dsummary)
             )
 
         if reason:
@@ -192,22 +210,52 @@ def tick(tg: TelegramBot) -> None:
                 log.error('close_position failed — will retry next tick')
             return
 
-    # 6. Check entry if flat
+    # 7. Check entry if flat
     if _state.phase == 'FLAT':
         direction = should_enter(snap, d, _state)
-        if direction:
-            fill = mt5_client.place_order(direction, d)
-            if fill:
-                on_entry(_state, direction, snap, d, fill)
-                icon = '🟢' if direction == 'BUY' else '🔴'
-                tg.send(
-                    f'{icon} <b>ENTRY {direction}</b> {config.PAIR}\n'
-                    f'Regime: {snap.regime}  conf={snap.conf*100:.1f}%  rl={snap.run_length}b\n'
-                    f'vol_z={snap.vol_z:+.2f}  decay={d:.3f}\n'
-                    f'Lots: {fill["lots"]}  @ {fill["price"]}  '
-                    f'SL={fill["sl"]}  TP={fill["tp"]}\n'
-                    f'{"LIVE" if config.LIVE_MODE else "PAPER"}'
-                )
+        if not direction:
+            return
+
+        # Risk gates (DD / cooldown / daily cap)
+        allowed, block_reason = _risk.check_entry(balance)
+        if not allowed:
+            log.info(f'Entry blocked by risk manager: {block_reason}')
+            return
+
+        # Compute ATR-based SL/TP
+        sl, tp, sl_pips, sl_method = _risk.compute_sl_tp(bars, direction, 0.0)
+        # Need actual current price for SL/TP anchoring
+        tick_data = mt5_client.get_tick(config.PAIR)
+        if tick_data:
+            bid, ask  = tick_data
+            price     = ask if direction == 'BUY' else bid
+            sl, tp, sl_pips, sl_method = _risk.compute_sl_tp(bars, direction, price)
+        else:
+            price = 0.0  # paper mode — price will come from fill
+
+        # Account %-risk lot size (with decay discount)
+        lots = _risk.size_lots(balance, sl_pips, d)
+
+        log.info(
+            f'ENTRY {direction}  lots={lots}  SL={sl_pips:.1f}p [{sl_method}]  '
+            f'TP={config.TP_RR}R  risk={config.RISK_PCT_PER_TRADE}%'
+        )
+
+        fill = mt5_client.place_order(direction, lots, sl, tp)
+        if fill:
+            on_entry(_state, direction, snap, d, fill)
+            _risk.record_trade()
+            icon = '🟢' if direction == 'BUY' else '🔴'
+            tg.send(
+                f'{icon} <b>ENTRY {direction}</b> {config.PAIR}\n'
+                f'Regime: {snap.regime}  conf={snap.conf*100:.1f}%  rl={snap.run_length}b\n'
+                f'vol_z={snap.vol_z:+.2f}  decay={d:.3f}\n'
+                f'Lots: {fill["lots"]}  @ {fill["price"]}\n'
+                f'SL: {fill["sl"]} ({sl_pips:.1f}p via {sl_method})\n'
+                f'TP: {fill["tp"]} ({config.TP_RR}R)\n'
+                f'Risk: {config.RISK_PCT_PER_TRADE}% of ${balance:.0f}\n'
+                f'{"🔴 LIVE" if config.LIVE_MODE else "PAPER"}'
+            )
 
 
 # ── Boot ───────────────────────────────────────────────────────────────────────
@@ -228,15 +276,14 @@ def main() -> None:
     log.info(
         f'RegimeBot starting  pair={config.PAIR}  '
         f'mode={"LIVE" if config.LIVE_MODE else "PAPER"}  '
-        f'interval={config.SCAN_INTERVAL_S}s'
+        f'interval={config.SCAN_INTERVAL_S}s  '
+        f'SL={config.SL_METHOD}  risk={config.RISK_PCT_PER_TRADE}%/trade'
     )
 
-    # Connect MT5
     connected = mt5_client.connect()
     if not connected:
         log.warning('MT5 not available — paper mode active')
 
-    # Start Telegram
     tg = TelegramBot(get_status_fn=_status_text, get_config_fn=_config_text)
     tg.set_callbacks(
         pause=_cmd_pause,
@@ -247,9 +294,11 @@ def main() -> None:
 
     tg.send(
         f'🤖 <b>RegimeBot started</b>\n'
-        f'Pair: {config.PAIR}  |  Mode: {"LIVE 🔴" if config.LIVE_MODE else "PAPER"}\n'
+        f'Pair: {config.PAIR}  |  Mode: {"🔴 LIVE" if config.LIVE_MODE else "PAPER"}\n'
         f'Entry: conf≥{config.ENTRY_CONF_MIN*100:.0f}%  decay≤{config.ENTRY_DECAY_MAX}\n'
-        f'Exit:  decay≥{config.DECAY_EXIT}  regime_flip={config.REGIME_FLIP_EXIT}'
+        f'Exit: decay≥{config.DECAY_EXIT}  flip={config.REGIME_FLIP_EXIT}\n'
+        f'SL: {config.SL_METHOD.upper()}×{config.SL_ATR_MULT}  TP: {config.TP_RR}R\n'
+        f'Risk: {config.RISK_PCT_PER_TRADE}%/trade  DD limit: {config.MAX_DAILY_DD_PCT}%/day'
     )
 
     try:
@@ -261,7 +310,7 @@ def main() -> None:
                 tg.send(f'⚠️ <b>Tick error</b>\n{exc}')
 
             if args.once:
-                log.info('--once: exiting after single tick')
+                log.info('--once: single tick complete')
                 break
 
             time.sleep(config.SCAN_INTERVAL_S)

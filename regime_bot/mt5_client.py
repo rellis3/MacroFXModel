@@ -133,39 +133,32 @@ def get_open_position(magic: int = None) -> Optional[dict]:
         return None
 
 
-# ── Sizing ────────────────────────────────────────────────────────────────────
-
-def _compute_lots(decay_score: float) -> float:
-    """
-    Scale lots inversely with decay — stronger regime gets larger size.
-    decay=0.0 → LOT_SIZE_MAX, decay=1.0 → LOT_SIZE_MIN.
-    """
-    scale = max(0.0, 1.0 - decay_score)
-    lots  = config.LOT_SIZE_MIN + (config.LOT_SIZE_MAX - config.LOT_SIZE_MIN) * scale
-    return round(max(config.LOT_SIZE_MIN, min(config.LOT_SIZE_MAX, lots)), 2)
-
-
 # ── Order execution ───────────────────────────────────────────────────────────
 
-def place_order(direction: str, decay_score: float) -> Optional[dict]:
+def place_order(
+    direction: str,
+    lots: float,
+    sl: float,
+    tp: float,
+) -> Optional[dict]:
     """
-    Places a market BUY or SELL order.
-    direction: 'BUY' | 'SELL'
+    Places a market BUY or SELL order with caller-supplied sizing.
+    SL/TP/lots are computed by risk_manager.py before this call.
+
     Returns fill dict with ticket/price/lots/sl/tp, or None on hard failure.
+    Paper mode returns a simulated fill at current mid price (or 0 if no MT5).
     """
-    is_buy  = direction == 'BUY'
-    lots    = _compute_lots(decay_score)
+    is_buy = direction == 'BUY'
 
     if not config.LIVE_MODE:
-        # Paper mode — simulate fill at mid price or 0 if no MT5
-        tick = get_tick(config.SYMBOL) if HAS_MT5 else None
+        tick  = get_tick(config.PAIR) if HAS_MT5 else None
         price = ((tick[0] + tick[1]) / 2) if tick else 0.0
-        sl_dist = config.SL_PIPS  * config.PIP_SIZE
-        tp_dist = config.TP_PIPS  * config.PIP_SIZE
-        sl  = round(price - sl_dist if is_buy else price + sl_dist, 6)
-        tp  = round(price + tp_dist if is_buy else price - tp_dist, 6)
-        log.info(f'[PAPER] {direction} {lots} {config.PAIR}  @ {price:.5f}  SL={sl:.5f}  TP={tp:.5f}')
-        return {'ticket': 0, 'direction': direction, 'price': price, 'lots': lots, 'sl': sl, 'tp': tp}
+        log.info(
+            f'[PAPER] {direction} {lots} {config.PAIR}  @ {price:.5f}'
+            f'  SL={sl:.5f}  TP={tp:.5f}'
+        )
+        return {'ticket': 0, 'direction': direction, 'price': price,
+                'lots': lots, 'sl': sl, 'tp': tp}
 
     if not HAS_MT5:
         log.error('Live mode requested but MT5 not available')
@@ -176,12 +169,8 @@ def place_order(direction: str, decay_score: float) -> Optional[dict]:
         log.error('Cannot place order — tick data unavailable')
         return None
 
-    bid, ask  = tick
-    price     = ask if is_buy else bid
-    sl_dist   = config.SL_PIPS * config.PIP_SIZE
-    tp_dist   = config.TP_PIPS * config.PIP_SIZE
-    sl = round(price - sl_dist if is_buy else price + sl_dist, 6)
-    tp = round(price + tp_dist if is_buy else price - tp_dist, 6)
+    bid, ask = tick
+    price    = ask if is_buy else bid
 
     req = {
         'action':       mt5.TRADE_ACTION_DEAL,

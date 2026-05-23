@@ -55,12 +55,31 @@ DECAY_WARNING    = float(os.getenv('RB_DECAY_WARNING', '0.50'))  # log + TG warn
 DECAY_EXIT       = float(os.getenv('RB_DECAY_EXIT', '0.70'))     # close position
 REGIME_FLIP_EXIT = os.getenv('RB_REGIME_FLIP_EXIT', 'true').lower() == 'true'
 
-# ── Risk / sizing ─────────────────────────────────────────────────────────────
-LOT_SIZE_BASE = float(os.getenv('RB_LOT_SIZE_BASE', '0.01'))
-LOT_SIZE_MIN  = float(os.getenv('RB_LOT_SIZE_MIN', '0.01'))
-LOT_SIZE_MAX  = float(os.getenv('RB_LOT_SIZE_MAX', '0.10'))
-SL_PIPS       = float(os.getenv('RB_SL_PIPS', '20'))
-TP_PIPS       = float(os.getenv('RB_TP_PIPS', '40'))
+# ── Position sizing ───────────────────────────────────────────────────────────
+# Account %-risk model: lots are computed so that a SL hit costs exactly
+# RISK_PCT_PER_TRADE % of the current account balance.
+# The lot range caps act as a safety net on top of the formula.
+RISK_PCT_PER_TRADE = float(os.getenv('RB_RISK_PCT', '1.0'))   # % of balance per trade
+LOT_SIZE_MIN       = float(os.getenv('RB_LOT_SIZE_MIN', '0.01'))
+LOT_SIZE_MAX       = float(os.getenv('RB_LOT_SIZE_MAX', '0.50'))
+
+# ── SL / TP ───────────────────────────────────────────────────────────────────
+# SL_METHOD='atr'        → SL = entry ± ATR(SL_ATR_BARS) × SL_ATR_MULT
+# SL_METHOD='fixed_pips' → SL = entry ± SL_FIXED_PIPS × pip_size
+SL_METHOD    = os.getenv('RB_SL_METHOD', 'atr')             # 'atr' | 'fixed_pips'
+SL_ATR_MULT  = float(os.getenv('RB_SL_ATR_MULT', '1.5'))   # ATR multiplier
+SL_ATR_BARS  = int(os.getenv('RB_SL_ATR_BARS', '20'))       # ATR period (1m bars)
+SL_FIXED_PIPS = float(os.getenv('RB_SL_FIXED_PIPS', '20')) # fallback fixed SL
+SL_MAX_PIPS  = float(os.getenv('RB_SL_MAX_PIPS', '50'))     # hard cap regardless of ATR
+TP_RR        = float(os.getenv('RB_TP_RR', '1.5'))          # TP = SL_dist × TP_RR
+TP_MAX_PIPS  = float(os.getenv('RB_TP_MAX_PIPS', '100'))    # hard cap
+
+# ── Drawdown / session limits ─────────────────────────────────────────────────
+MAX_DAILY_DD_PCT   = float(os.getenv('RB_MAX_DAILY_DD_PCT', '3.0'))   # % of day-start balance
+MAX_SESSION_DD_PCT = float(os.getenv('RB_MAX_SESSION_DD_PCT', '5.0')) # % of session-start balance
+DD_LOCKOUT_HOURS   = float(os.getenv('RB_DD_LOCKOUT_HOURS', '3.0'))   # lock duration after breach
+MAX_DAILY_TRADES   = int(os.getenv('RB_MAX_DAILY_TRADES', '5'))        # hard cap per calendar day
+TRADE_COOLDOWN_MIN = float(os.getenv('RB_TRADE_COOLDOWN_MIN', '60'))  # min minutes between trades
 
 # ── Execution ─────────────────────────────────────────────────────────────────
 SCAN_INTERVAL_S = int(os.getenv('RB_SCAN_INTERVAL', '60'))
