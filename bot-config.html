@@ -1132,6 +1132,37 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       </div>
     </div>
 
+    <!-- Decay Detector -->
+    <div class="card">
+      <div class="card-title">Decay Detector <small style="font-weight:normal;color:var(--muted)">regime health scoring — exits early when regime collapses</small></div>
+      <div class="two-col">
+        <div>
+          <div class="form-row">
+            <span class="form-lbl">Vol-z max entry <small>block entry when vol spike detected</small></span>
+            <input type="number" id="rg_vol_z_max" min="0" max="5" step="0.1" style="width:70px">
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Decay window <small>bars in rolling window</small></span>
+            <input type="number" id="rg_decay_window" min="3" max="60" step="1" style="width:70px">
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Entry decay max <small>block entry above this score</small></span>
+            <input type="number" id="rg_entry_decay_max" min="0" max="1" step="0.05" style="width:70px">
+          </div>
+        </div>
+        <div>
+          <div class="form-row">
+            <span class="form-lbl">Decay warning <small>log warning above this score</small></span>
+            <input type="number" id="rg_decay_warning" min="0" max="1" step="0.05" style="width:70px">
+          </div>
+          <div class="form-row">
+            <span class="form-lbl">Decay exit <small>close position above this score</small></span>
+            <input type="number" id="rg_decay_exit" min="0" max="1" step="0.05" style="width:70px">
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Enabled Pairs -->
     <div class="card">
       <div class="card-title">Enabled Pairs</div>

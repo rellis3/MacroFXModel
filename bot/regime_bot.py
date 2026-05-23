@@ -7,9 +7,16 @@ Entry logic:
   RANGE / CHOP → no trade, stay flat
 
 Exit logic:
-  Regime shifts away from the entry regime → close immediately.
+  Decay score >= decay_exit threshold → close early (regime collapsing)
+  Regime shifts away from entry regime → close immediately.
   Outside trade window → close immediately.
   SL / TP hit in MT5 → position already gone, state is cleaned up next cycle.
+
+Decay detector (ported from regime_bot/decay_detector.py):
+  Tracks rolling window of readings per pair.
+  Score = conf_decay×0.40 + volz_decay×0.35 + rl_stall×0.25
+  Mixed-regime window → 0.90 immediately.
+  Vol_z entry gate: blocks entry when vol_z > vol_z_max (spike filter).
 
 Risk management mirrors the Telegram bot:
   - Daily DD limit  → lockout
@@ -32,6 +39,7 @@ import logging
 import math
 import os
 import time
+from collections import deque
 from datetime import datetime, timezone, date as date_type
 
 import requests
@@ -93,6 +101,12 @@ DEFAULT_CFG: dict = {
     'monthlydd':           5.0,      # monthly DD % before lockout
     'lockout':             3,        # lockout duration (hours)
     'cooldown':            240,      # seconds between trades on same pair
+    # Decay / vol filter settings
+    'vol_z_max':           0.5,      # block entry when vol_z > this (spike filter)
+    'decay_window':        10,       # rolling bar count for decay computation
+    'entry_decay_max':     0.25,     # block entry when decay score >= this
+    'decay_warning':       0.50,     # log warning when score crosses this
+    'decay_exit':          0.70,     # close position early when score >= this
 }
 
 # ── KV helpers ─────────────────────────────────────────────────────────────────
@@ -229,7 +243,7 @@ def get_balance(paper_mode: bool) -> float:
 # ── Regime fetch ───────────────────────────────────────────────────────────────
 
 def fetch_regimes(base_url: str) -> dict:
-    """Returns full /api/hmm5m-v2 payload: { 'EUR/USD': {regime, confidence, ...} }"""
+    """Returns full /api/hmm5m-v2 payload: { 'EUR/USD': {regime, confidence, vol_z, ...} }"""
     try:
         r = requests.get(f'{base_url}/api/hmm5m-v2', timeout=10)
         if r.status_code == 200:
@@ -237,6 +251,106 @@ def fetch_regimes(base_url: str) -> dict:
     except Exception as exc:
         log.warning(f'fetch_regimes failed: {exc}')
     return {}
+
+
+# ── Decay helpers ──────────────────────────────────────────────────────────────
+
+def _ols_slope(values: list[float]) -> float:
+    """Ordinary least-squares slope of y=values over x=0..n-1."""
+    n = len(values)
+    if n < 2:
+        return 0.0
+    x_mean = (n - 1) / 2.0
+    y_mean = sum(values) / n
+    sXY    = sum((i - x_mean) * (v - y_mean) for i, v in enumerate(values))
+    sX2    = sum((i - x_mean) ** 2 for i in range(n))
+    return sXY / sX2 if sX2 > 0 else 0.0
+
+
+def _soft_clamp(slope: float, scale: float) -> float:
+    """Normalise slope to [-1, +1]: max(-1, min(1, slope/scale))."""
+    if scale == 0:
+        return 0.0
+    return max(-1.0, min(1.0, slope / scale))
+
+
+# ── Decay Detector ─────────────────────────────────────────────────────────────
+
+class DecayDetector:
+    """
+    Rolling window decay score 0.0 (strong) → 1.0 (collapsing) for one pair.
+
+    Score = conf_decay×0.40 + volz_decay×0.35 + rl_stall×0.25
+    Mixed-regime window returns 0.90 immediately.
+
+    Ported from regime_bot/decay_detector.py; adapted for API data:
+      - confidence is 0-100 (percentage), so _CONF_SCALE = 3.0 (not 0.003)
+      - vol_z is a raw z-score, _VOLZ_SCALE = 0.04 unchanged
+      - run_length tracked externally and passed in each push()
+    """
+
+    _CONF_SCALE = 3.0    # pct/bar drift that maps to full decay
+    _VOLZ_SCALE = 0.04   # z-score/bar rise that maps to full decay
+
+    def __init__(self, window: int):
+        # Each entry: (regime, confidence_pct, vol_z, run_length)
+        self._buf: deque[tuple[str, float, float, int]] = deque(maxlen=window)
+
+    def resize(self, window: int) -> None:
+        old = list(self._buf)
+        self._buf = deque(old, maxlen=window)
+
+    def push(self, regime: str, confidence: float, vol_z: float, run_length: int) -> None:
+        self._buf.append((regime, confidence, vol_z, run_length))
+
+    def score(self) -> float:
+        w = list(self._buf)
+        if len(w) < 3:
+            return 0.0
+
+        regimes = {r for r, _, _, _ in w}
+        if len(regimes) > 1:
+            return 0.90
+
+        confs = [c for _, c, _, _ in w]
+        vzs   = [v for _, _, v, _ in w]
+        rls   = [rl for _, _, _, rl in w]
+
+        conf_slope = _ols_slope(confs)
+        volz_slope = _ols_slope(vzs)
+        conf_decay = max(0.0, _soft_clamp(-conf_slope, self._CONF_SCALE))
+        volz_decay = max(0.0, _soft_clamp(volz_slope,  self._VOLZ_SCALE))
+
+        rl_increases = sum(1 for i in range(1, len(rls)) if rls[i] > rls[i - 1])
+        rl_stall     = 1.0 - rl_increases / max(1, len(rls) - 1)
+
+        raw = conf_decay * 0.40 + volz_decay * 0.35 + rl_stall * 0.25
+        return round(min(1.0, max(0.0, raw)), 3)
+
+    def summary(self) -> dict:
+        w = list(self._buf)
+        if len(w) < 3:
+            return {}
+        regimes = {r for r, _, _, _ in w}
+        if len(regimes) > 1:
+            return {'mixed_regimes': list(regimes)}
+
+        confs = [c for _, c, _, _ in w]
+        vzs   = [v for _, _, v, _ in w]
+        rls   = [rl for _, _, _, rl in w]
+
+        conf_slope = _ols_slope(confs)
+        volz_slope = _ols_slope(vzs)
+        conf_decay = max(0.0, _soft_clamp(-conf_slope, self._CONF_SCALE))
+        volz_decay = max(0.0, _soft_clamp(volz_slope,  self._VOLZ_SCALE))
+        rl_inc     = sum(1 for i in range(1, len(rls)) if rls[i] > rls[i - 1])
+        rl_stall   = 1.0 - rl_inc / max(1, len(rls) - 1)
+        return {
+            'conf_decay':  round(conf_decay,  3),
+            'volz_decay':  round(volz_decay,  3),
+            'rl_stall':    round(rl_stall,    3),
+            'window_size': len(w),
+        }
 
 
 # ── RiskGuard ─────────────────────────────────────────────────────────────────
@@ -313,14 +427,18 @@ class RiskGuard:
 # ── Position sizing ────────────────────────────────────────────────────────────
 
 def position_size(balance: float, risk_pct: float,
-                  sl_dist: float, pair: str, max_lot: float) -> float:
-    pip = _PIP_SIZES.get(pair, 0.0001)
-    pv  = _PIP_VALUES.get(pair, 10.0)
+                  sl_dist: float, pair: str, max_lot: float,
+                  decay_score: float = 0.0) -> float:
+    pip      = _PIP_SIZES.get(pair, 0.0001)
+    pv       = _PIP_VALUES.get(pair, 10.0)
     sl_pips  = sl_dist / pip
     risk_amt = balance * (risk_pct / 100)
     if sl_pips <= 0 or pv <= 0:
         return 0.01
-    return max(0.01, min(round(risk_amt / (sl_pips * pv), 2), max_lot))
+    raw_lots = risk_amt / (sl_pips * pv)
+    # Decay discount: lots shrink linearly as decay approaches 1
+    lots = raw_lots * (1.0 - decay_score)
+    return max(0.01, min(round(lots, 2), max_lot))
 
 
 # ── MT5 execution ─────────────────────────────────────────────────────────────
@@ -457,7 +575,6 @@ TRADEABLE = {'BULL', 'BEAR'}
 class RegimeDebounce:
     """
     Requires N consecutive regime readings at >= min_confidence% before confirming.
-    Either condition (candle_hold OR confidence) can be loosened via config.
     Returns the confirmed regime string, or None if gate not cleared.
     """
 
@@ -476,10 +593,10 @@ class RegimeDebounce:
 
         regimes = [r for r, _ in self._hist]
         if len(set(regimes)) != 1:
-            return None  # regime changed mid-window — reset implicitly
+            return None
 
         if any(c < self.min_conf for _, c in self._hist):
-            return None  # not confident enough across all readings
+            return None
 
         return self._hist[-1][0]
 
@@ -523,18 +640,25 @@ def run(base_url: str, paper_mode: bool) -> None:
     log.info(
         f'Initial config: pairs={cfg["pairs"]}  hold={cfg["candle_hold"]}  '
         f'minConf={cfg["min_confidence"]}%  SL={cfg["sl_atr_mult"]}× ATR({cfg["sl_atr_tf"]})  '
-        f'TP={cfg["tp_rr"]}R  interval={cfg["interval_secs"]}s'
+        f'TP={cfg["tp_rr"]}R  interval={cfg["interval_secs"]}s  '
+        f'vol_z_max={cfg["vol_z_max"]}  decay_window={cfg["decay_window"]}'
     )
 
     risk_guard = RiskGuard()
 
     # Per-pair runtime state
-    debounce:     dict[str, RegimeDebounce] = {}
-    open_pos:     dict[str, dict]           = {}   # pair → {ticket, direction, entry_price, sl, tp}
-    entry_regime: dict[str, str]            = {}   # pair → regime string at time of entry
+    debounce:      dict[str, RegimeDebounce] = {}
+    decay_dets:    dict[str, DecayDetector]  = {}
+    run_lengths:   dict[str, int]            = {}   # consecutive polls in same regime
+    last_regimes:  dict[str, str]            = {}   # last seen regime per pair
+    open_pos:      dict[str, dict]           = {}   # pair → {ticket, direction, entry_price, sl, tp}
+    entry_regime:  dict[str, str]            = {}   # pair → regime string at time of entry
 
     for pair in cfg['pairs']:
-        debounce[pair] = RegimeDebounce(cfg['candle_hold'], cfg['min_confidence'])
+        debounce[pair]     = RegimeDebounce(cfg['candle_hold'], cfg['min_confidence'])
+        decay_dets[pair]   = DecayDetector(cfg['decay_window'])
+        run_lengths[pair]  = 0
+        last_regimes[pair] = ''
 
     cycle = 0
 
@@ -548,13 +672,17 @@ def run(base_url: str, paper_mode: bool) -> None:
             time.sleep(max(cfg.get('interval_secs', 60), 30))
             continue
 
-        # Sync debounce gates in case config changed
+        # Sync per-pair objects in case config or pair list changed
         for pair in cfg['pairs']:
             if pair not in debounce:
-                debounce[pair] = RegimeDebounce(cfg['candle_hold'], cfg['min_confidence'])
+                debounce[pair]     = RegimeDebounce(cfg['candle_hold'], cfg['min_confidence'])
+                decay_dets[pair]   = DecayDetector(cfg['decay_window'])
+                run_lengths[pair]  = 0
+                last_regimes[pair] = ''
             else:
                 debounce[pair].hold     = cfg['candle_hold']
                 debounce[pair].min_conf = cfg['min_confidence']
+                decay_dets[pair].resize(cfg['decay_window'])
 
         balance = get_balance(paper_mode)
         risk_guard.sync_cfg(cfg)
@@ -568,17 +696,34 @@ def run(base_url: str, paper_mode: bool) -> None:
             rd         = all_regimes.get(pair) or {}
             regime     = rd.get('regime', 'RANGE')
             confidence = float(rd.get('confidence', 0))
+            vol_z      = float(rd.get('vol_z', 0.0))
 
-            log.info(f'[{pair}] regime={regime}  conf={confidence:.0f}%')
+            # ── run_length: consecutive polls in current regime ───────────────
+            if regime == last_regimes.get(pair):
+                run_lengths[pair] += 1
+            else:
+                run_lengths[pair]  = 1
+                last_regimes[pair] = regime
+
+            run_length = run_lengths[pair]
+
+            # ── Update decay detector ─────────────────────────────────────────
+            decay_dets[pair].push(regime, confidence, vol_z, run_length)
+            decay_score = decay_dets[pair].score()
+
+            log.info(
+                f'[{pair}] regime={regime}  conf={confidence:.0f}%  '
+                f'vol_z={vol_z:+.2f}  rl={run_length}  decay={decay_score:.3f}'
+            )
 
             # ── Manage existing open position ─────────────────────────────────
             if pair in open_pos:
-                pos      = open_pos[pair]
-                entry_r  = entry_regime.get(pair, '')
+                pos     = open_pos[pair]
+                entry_r = entry_regime.get(pair, '')
 
                 # Check whether MT5 already closed it (SL or TP hit)
                 if not paper_mode and HAS_MT5:
-                    mt5_sym  = pair.replace('/', '')
+                    mt5_sym    = pair.replace('/', '')
                     still_open = [
                         p for p in (mt5.positions_get(symbol=mt5_sym) or [])
                         if p.ticket == pos['ticket'] and p.magic == MAGIC
@@ -593,19 +738,35 @@ def run(base_url: str, paper_mode: bool) -> None:
                         }
                         continue
 
-                # Exit when regime shifts away from entry regime
-                should_close  = False
-                close_reason  = ''
-                if entry_r == 'BULL' and regime != 'BULL':
-                    should_close = True
-                    close_reason = f'regime {entry_r}→{regime}'
-                elif entry_r == 'BEAR' and regime != 'BEAR':
-                    should_close = True
-                    close_reason = f'regime {entry_r}→{regime}'
+                should_close = False
+                close_reason = ''
 
-                if not within_window(cfg):
+                # Decay exit — close early before regime fully flips
+                if decay_score >= cfg['decay_exit']:
+                    should_close = True
+                    close_reason = f'decay_exit score={decay_score:.3f}'
+                    dsummary = decay_dets[pair].summary()
+                    log.warning(f'[{pair}] DECAY EXIT  {dsummary}')
+
+                # Regime flip exit
+                if not should_close:
+                    if entry_r == 'BULL' and regime != 'BULL':
+                        should_close = True
+                        close_reason = f'regime {entry_r}→{regime}'
+                    elif entry_r == 'BEAR' and regime != 'BEAR':
+                        should_close = True
+                        close_reason = f'regime {entry_r}→{regime}'
+
+                if not should_close and not within_window(cfg):
                     should_close = True
                     close_reason = 'outside trade window'
+
+                # Decay warning (log only — not yet at exit threshold)
+                if not should_close and decay_score >= cfg['decay_warning']:
+                    log.warning(
+                        f'[{pair}] Decay WARNING  score={decay_score:.3f}  '
+                        + str(decay_dets[pair].summary())
+                    )
 
                 if should_close:
                     ok = close_position(pos['ticket'], pair, paper_mode, close_reason)
@@ -615,25 +776,28 @@ def run(base_url: str, paper_mode: bool) -> None:
                         debounce[pair].clear()
                         risk_guard.record_trade(pair)
                     status_positions[pair] = {
-                        'status': 'closed', 'reason': close_reason,
+                        'status':    'closed',
+                        'reason':    close_reason,
                         'direction': pos['direction'],
                     }
                 else:
-                    # Position holding — report current state
                     price_now = get_price(pair, base_url) or pos['entry_price']
                     pip       = _PIP_SIZES.get(pair, 0.0001)
                     sign      = 1 if pos['direction'] == 'LONG' else -1
                     pnl_pips  = round((price_now - pos['entry_price']) * sign / pip, 1)
                     status_positions[pair] = {
-                        'status':    'open',
-                        'direction': pos['direction'],
-                        'entry':     pos['entry_price'],
-                        'sl':        pos['sl'],
-                        'tp':        pos['tp'],
-                        'ticket':    pos['ticket'],
-                        'regime':    regime,
-                        'conf':      round(confidence, 1),
-                        'pnl_pips':  pnl_pips,
+                        'status':      'open',
+                        'direction':   pos['direction'],
+                        'entry':       pos['entry_price'],
+                        'sl':          pos['sl'],
+                        'tp':          pos['tp'],
+                        'ticket':      pos['ticket'],
+                        'regime':      regime,
+                        'conf':        round(confidence, 1),
+                        'vol_z':       round(vol_z, 3),
+                        'run_length':  run_length,
+                        'decay':       decay_score,
+                        'pnl_pips':    pnl_pips,
                     }
                 continue
 
@@ -648,6 +812,24 @@ def run(base_url: str, paper_mode: bool) -> None:
                 status_positions[pair] = {'status': 'blocked', 'reason': block, 'regime': regime}
                 continue
 
+            # Vol spike filter — avoid entering into noisy candles
+            if vol_z > cfg['vol_z_max']:
+                log.info(f'[{pair}] Vol gate blocked: vol_z={vol_z:.2f} > {cfg["vol_z_max"]}')
+                status_positions[pair] = {
+                    'status': 'vol_blocked', 'regime': regime,
+                    'vol_z': round(vol_z, 3), 'vol_z_max': cfg['vol_z_max'],
+                }
+                continue
+
+            # Decay gate — avoid entering a regime that's already collapsing
+            if decay_score >= cfg['entry_decay_max']:
+                log.info(f'[{pair}] Decay gate blocked: score={decay_score:.3f} >= {cfg["entry_decay_max"]}')
+                status_positions[pair] = {
+                    'status': 'decay_blocked', 'regime': regime,
+                    'decay': decay_score, 'entry_decay_max': cfg['entry_decay_max'],
+                }
+                continue
+
             confirmed = debounce[pair].push(regime, confidence)
 
             log.info(
@@ -657,11 +839,14 @@ def run(base_url: str, paper_mode: bool) -> None:
 
             if confirmed not in TRADEABLE:
                 status_positions[pair] = {
-                    'status':    'watching',
-                    'regime':    regime,
-                    'conf':      round(confidence, 1),
-                    'confirmed': confirmed or 'pending',
-                    'readings':  f'{debounce[pair].readings_count()}/{debounce[pair].hold}',
+                    'status':      'watching',
+                    'regime':      regime,
+                    'conf':        round(confidence, 1),
+                    'vol_z':       round(vol_z, 3),
+                    'run_length':  run_length,
+                    'decay':       decay_score,
+                    'confirmed':   confirmed or 'pending',
+                    'readings':    f'{debounce[pair].readings_count()}/{debounce[pair].hold}',
                 }
                 continue
 
@@ -680,7 +865,14 @@ def run(base_url: str, paper_mode: bool) -> None:
             tp = (price + sl_dist * cfg['tp_rr']) if direction == 'LONG' else (price - sl_dist * cfg['tp_rr'])
 
             size = position_size(
-                balance, cfg['risk_pct'], sl_dist, pair, cfg['max_lot']
+                balance, cfg['risk_pct'], sl_dist, pair, cfg['max_lot'],
+                decay_score=decay_score,
+            )
+
+            log.info(
+                f'[{pair}] ENTRY {direction}  conf={confidence:.0f}%  '
+                f'vol_z={vol_z:+.2f}  rl={run_length}  decay={decay_score:.3f}  '
+                f'lots={size}  SL={sl:.5f}  TP={tp:.5f}'
             )
 
             ticket = open_position(
@@ -698,19 +890,17 @@ def run(base_url: str, paper_mode: bool) -> None:
                 }
                 entry_regime[pair] = confirmed
                 risk_guard.record_trade(pair)
-                log.info(
-                    f'[{pair}] ENTERED {direction}  regime={confirmed}'
-                    f'  price={price}  SL={sl:.5f}  TP={tp:.5f}'
-                    f'  ATR={atr}  lot={size}'
-                )
                 status_positions[pair] = {
-                    'status':    'opened',
-                    'direction': direction,
-                    'entry':     price,
-                    'sl':        sl,
-                    'tp':        tp,
-                    'regime':    confirmed,
-                    'conf':      round(confidence, 1),
+                    'status':      'opened',
+                    'direction':   direction,
+                    'entry':       price,
+                    'sl':          sl,
+                    'tp':          tp,
+                    'regime':      confirmed,
+                    'conf':        round(confidence, 1),
+                    'vol_z':       round(vol_z, 3),
+                    'run_length':  run_length,
+                    'decay':       decay_score,
                 }
             else:
                 status_positions[pair] = {

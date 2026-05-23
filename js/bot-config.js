@@ -863,6 +863,12 @@ const RG_DEFAULTS = {
   monthlydd:          5.0,
   lockout:            3,
   cooldown:           240,
+  // Decay detector
+  vol_z_max:          0.5,
+  decay_window:       10,
+  entry_decay_max:    0.25,
+  decay_warning:      0.50,
+  decay_exit:         0.70,
 };
 
 const RG_PAIRS = [
@@ -898,6 +904,11 @@ function readRgForm() {
   _rgCfg.monthlydd          = num('rg_monthlydd',         5.0);
   _rgCfg.lockout            = num('rg_lockout',             3);
   _rgCfg.cooldown           = num('rg_cooldown',          240);
+  _rgCfg.vol_z_max          = num('rg_vol_z_max',         0.5);
+  _rgCfg.decay_window       = num('rg_decay_window',       10);
+  _rgCfg.entry_decay_max    = num('rg_entry_decay_max',   0.25);
+  _rgCfg.decay_warning      = num('rg_decay_warning',     0.50);
+  _rgCfg.decay_exit         = num('rg_decay_exit',        0.70);
   _rgCfg.pairs              = RG_PAIRS.filter(p => chk(p.id)).map(p => p.sym);
 }
 
@@ -918,7 +929,12 @@ function renderRgForm() {
   setVal('rg_ddlimit',          _rgCfg.ddlimit        ?? 3.0);
   setVal('rg_monthlydd',        _rgCfg.monthlydd      ?? 5.0);
   setVal('rg_lockout',          _rgCfg.lockout        ?? 3);
-  setVal('rg_cooldown',         _rgCfg.cooldown       ?? 240);
+  setVal('rg_cooldown',         _rgCfg.cooldown           ?? 240);
+  setVal('rg_vol_z_max',        _rgCfg.vol_z_max          ?? 0.5);
+  setVal('rg_decay_window',     _rgCfg.decay_window       ?? 10);
+  setVal('rg_entry_decay_max',  _rgCfg.entry_decay_max    ?? 0.25);
+  setVal('rg_decay_warning',    _rgCfg.decay_warning      ?? 0.50);
+  setVal('rg_decay_exit',       _rgCfg.decay_exit         ?? 0.70);
 
   const enabledPairs = new Set(_rgCfg.pairs || RG_DEFAULTS.pairs);
   RG_PAIRS.forEach(p => setChk(p.id, enabledPairs.has(p.sym)));
@@ -971,16 +987,24 @@ async function loadRgBotStatus() {
 
     const positions = data.positions || {};
     const pairHtml  = Object.entries(positions).map(([pair, p]) => {
+      const decayStr = p.decay != null ? ` d=${p.decay.toFixed(2)}` : '';
+      const rlStr    = p.run_length != null ? ` rl=${p.run_length}` : '';
       if (p.status === 'open') {
         const pnl  = p.pnl_pips != null ? ` ${p.pnl_pips > 0 ? '+' : ''}${p.pnl_pips}p` : '';
         const col  = p.direction === 'LONG' ? 'bs-green' : 'bs-red';
-        return `<span class="${col}">${pair} ${p.direction}${pnl} [${p.regime}]</span>`;
+        return `<span class="${col}">${pair} ${p.direction}${pnl} [${p.regime}]${decayStr}${rlStr}</span>`;
       }
       if (p.status === 'watching') {
-        return `<span class="bs-dim">${pair} watching ${p.regime} ${p.conf}% (${p.readings})</span>`;
+        return `<span class="bs-dim">${pair} watching ${p.regime} ${p.conf}%${decayStr}${rlStr} (${p.readings})</span>`;
       }
       if (p.status === 'blocked') {
         return `<span class="bs-amber">${pair} blocked: ${p.reason}</span>`;
+      }
+      if (p.status === 'vol_blocked') {
+        return `<span class="bs-amber">${pair} vol spike vol_z=${p.vol_z}</span>`;
+      }
+      if (p.status === 'decay_blocked') {
+        return `<span class="bs-amber">${pair} decay gate d=${p.decay}</span>`;
       }
       return `<span class="bs-dim">${pair} ${p.status}</span>`;
     }).join('  ');
