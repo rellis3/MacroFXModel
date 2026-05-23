@@ -32,17 +32,23 @@ MT5_PATH     = os.getenv('RB_MT5_PATH', '')      # optional path to terminal64.e
 TELEGRAM_TOKEN   = os.getenv('RB_TELEGRAM_TOKEN', '')
 TELEGRAM_CHAT_ID = int(os.getenv('RB_TELEGRAM_CHAT_ID', '0'))
 
-# ── HMM regime engine (mirrors hmm5m.js defaults for FX majors) ──────────────
-HMM_BARS       = int(os.getenv('RB_HMM_BARS', '300'))      # 1m bars fed into HMM
-HMM_SELF_PROB  = float(os.getenv('RB_HMM_SELF_PROB', '0.92'))   # regime stickiness
-HMM_LINREG_N   = int(os.getenv('RB_HMM_LINREG_N', '50'))        # linreg slope window
-HMM_ADX_N      = int(os.getenv('RB_HMM_ADX_N', '50'))           # ADX smoothing period
-HMM_ADX_TARGET = float(os.getenv('RB_HMM_ADX_TARGET', '0.5'))   # bull/bear adxZ target
+# ── Dashboard / KV ────────────────────────────────────────────────────────────
+# Used to fetch: Baum-Welch trained params, FRED macro context, COT, OI walls
+DASHBOARD_URL       = os.getenv('RB_DASHBOARD_URL', 'https://macrofxmodel-production.up.railway.app')
+CONTEXT_REFRESH_MIN = float(os.getenv('RB_CONTEXT_REFRESH_MIN', '60'))  # minutes between refreshes
+
+# ── HMM regime engine v2 (mirrors hmm5m-v2.js defaults) ──────────────────────
+HMM_BARS       = int(os.getenv('RB_HMM_BARS', '300'))          # 1m bars fed into HMM
+HMM_SELF_PROB  = float(os.getenv('RB_HMM_SELF_PROB', '0.92'))  # default regime stickiness
+HMM_LINREG_N   = int(os.getenv('RB_HMM_LINREG_N', '50'))       # linreg slope window
+HMM_ADX_N      = int(os.getenv('RB_HMM_ADX_N', '50'))          # ADX smoothing period
+HMM_ADX_TARGET = float(os.getenv('RB_HMM_ADX_TARGET', '0.5'))  # used only when no learned params
 
 # ── Entry conditions ──────────────────────────────────────────────────────────
-ENTRY_CONF_MIN  = float(os.getenv('RB_ENTRY_CONF_MIN', '0.90'))  # HMM state probability
+ENTRY_CONF_MIN  = float(os.getenv('RB_ENTRY_CONF_MIN', '0.90'))  # HMM state probability (macro-adjusted)
 ENTRY_VOL_Z_MAX = float(os.getenv('RB_ENTRY_VOL_Z_MAX', '0.5'))  # max vol_z (avoid spikes)
 ENTRY_DECAY_MAX = float(os.getenv('RB_ENTRY_DECAY_MAX', '0.25')) # max decay at entry
+THIN_CONF_BOOST = float(os.getenv('RB_THIN_CONF_BOOST', '0.05')) # extra conf required during THIN/ASIA sessions
 
 # ── Decay detector ─────────────────────────────────────────────────────────────
 DECAY_WINDOW      = int(os.getenv('RB_DECAY_WINDOW', '10'))       # rolling window bars
@@ -80,6 +86,19 @@ MAX_SESSION_DD_PCT = float(os.getenv('RB_MAX_SESSION_DD_PCT', '5.0')) # % of ses
 DD_LOCKOUT_HOURS   = float(os.getenv('RB_DD_LOCKOUT_HOURS', '3.0'))   # lock duration after breach
 MAX_DAILY_TRADES   = int(os.getenv('RB_MAX_DAILY_TRADES', '5'))        # hard cap per calendar day
 TRADE_COOLDOWN_MIN = float(os.getenv('RB_TRADE_COOLDOWN_MIN', '60'))  # min minutes between trades
+
+# ── Execution ─────────────────────────────────────────────────────────────────
+# ── OI wall hard-block ────────────────────────────────────────────────────────
+# Blocks a BUY if a call wall is within OI_WALL_PIPS above entry,
+# or a SELL if a put wall is within OI_WALL_PIPS below entry.
+OI_WALL_PIPS = float(os.getenv('RB_OI_WALL_PIPS', '15'))
+
+# ── COT directional lot-size multipliers ──────────────────────────────────────
+# Applied to lot size based on CFTC leveraged-fund positioning alignment.
+# Does NOT hard-block; reduces conviction when COT opposes intended direction.
+COT_ALIGNED_MULT = float(os.getenv('RB_COT_ALIGNED_MULT', '1.00'))  # COT agrees
+COT_NEUTRAL_MULT = float(os.getenv('RB_COT_NEUTRAL_MULT', '0.85'))  # COT flat / no data
+COT_OPPOSED_MULT = float(os.getenv('RB_COT_OPPOSED_MULT', '0.65'))  # COT disagrees
 
 # ── Execution ─────────────────────────────────────────────────────────────────
 SCAN_INTERVAL_S = int(os.getenv('RB_SCAN_INTERVAL', '60'))
