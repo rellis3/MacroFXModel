@@ -34,32 +34,63 @@ export function calculateTierScores() {
   };
 }
 
-function computeT1() {
-  const fredData = S.fredData;
-  if (S.currentPair.isEquity) {
-    // Yield curve steepness as equity T1: steep curve = growth priced in = bullish equities
-    const us10y = fredData.us10y?.value;
-    const us2y  = fredData.us2y?.value;
-    if (us10y == null || us2y == null) return tierUnavailable('T1', 'Yield Curve (10Y−2Y)', '10Y−2Y Spread', 3);
-    const curve = us10y - us2y;
-    let score = 0;
-    if      (curve >  1.0) score =  3;
-    else if (curve >  0.5) score =  2;
-    else if (curve >  0.0) score =  1;
-    else if (curve > -0.5) score = -1;
-    else if (curve > -1.0) score = -2;
-    else                   score = -3;
+// ── T1 for NQ/Equity: Net Fed Liquidity ─────────────────────────────────────
+// Net Liquidity = WALCL (Fed balance sheet) - TGA - RRP
+// Rising net liq = more dealer cash to deploy = risk-on tailwind for NQ.
+// WALCL updates weekly (Thursdays), so prev = prior week.
+function computeT1_Equity() {
+  const fredData  = S.fredData;
+  const walcl     = fredData.walcl?.value;
+  const walclPrev = fredData.walcl?.prev;
+  const tga       = fredData.tga?.value;
+  const tgaPrev   = fredData.tga?.prev;
+  const rrp       = fredData.rrp?.value;
+  const rrpPrev   = fredData.rrp?.prev;
+
+  if (walcl == null || tga == null || rrp == null) {
+    const missing = ['walcl', 'tga', 'rrp'].filter(k => fredData[k]?.value == null).join(', ');
+    console.warn(`[NQ T1] Missing FRED keys: ${missing} — add to SERIES in _worker.js`);
     return {
-      tier: 'T1', name: 'Yield Curve (10Y−2Y)', max: 3, score,
-      val: `${curve >= 0 ? '+' : ''}${curve.toFixed(2)}%`,
-      reading: curve >  0.5 ? 'Steep — market pricing growth, equity bullish' :
-               curve >  0.0 ? 'Mildly positive — neutral to constructive' :
-               curve > -0.5 ? 'Flat/inverted — growth concerns emerging' :
-                              'Deeply inverted — recession risk elevated',
-      source: 'GS10 − GS2',
-      isMonthly: false,
+      tier: 'T1', name: 'Net Fed Liquidity', max: 3, score: 0,
+      val: `Missing: ${missing}`,
+      reading: 'WALCL/TGA/RRP not in FRED response — check _worker.js SERIES',
+      source: 'WALCL-TGA-RRP', isMonthly: false, badge: 'WK', na: true,
     };
   }
+
+  const netLiq     = walcl - tga - rrp;
+  const netLiqPrev = (walclPrev != null && tgaPrev != null && rrpPrev != null)
+    ? walclPrev - tgaPrev - rrpPrev
+    : null;
+  const change = netLiqPrev != null ? netLiq - netLiqPrev : null;
+
+  let score = 0;
+  if (change != null) {
+    const abs = Math.abs(change);
+    if (change > 0) score = abs > 100 ? 3 : abs > 50 ? 2 : abs > 15 ? 1 : 0;
+    else            score = abs > 100 ? -3 : abs > 50 ? -2 : abs > 15 ? -1 : 0;
+  }
+
+  const netLiqTrn = `$${(netLiq / 1000).toFixed(2)}T`;
+  const chgStr    = change != null ? `${change >= 0 ? '+' : ''}${change.toFixed(0)}bn` : 'n/a';
+  const reading   = change == null       ? 'No prior period data'
+    : change >  15 ? 'Expanding — risk-on tailwind for equities'
+    : change < -15 ? 'Contracting — risk-off headwind for equities'
+    :                'Flat — neutral liquidity conditions';
+
+  return {
+    tier: 'T1', name: 'Net Fed Liquidity', max: 3, score,
+    val: `${netLiqTrn} (${chgStr})`,
+    reading,
+    source: 'WALCL-TGA-RRP',
+    isMonthly: false,
+    badge: 'WK',
+  };
+}
+
+function computeT1() {
+  const fredData = S.fredData;
+  if (S.currentPair.isEquity) return computeT1_Equity();
   if (S.currentPair.isGold) {
     const tips = fredData.tips?.value;
     if (tips == null) return tierUnavailable('T1', 'Rate Differential', 'TIPS Real Yield', 3);

@@ -50,7 +50,7 @@ export function calculateVolRegime() {
     emaATR = ATR_ALPHA * trueRanges[i] + (1 - ATR_ALPHA) * emaATR;
   }
 
-  const G_OMEGA = 1e-7;
+  const G_OMEGA = S.currentPair?.isEquity ? 2e-6 : 1e-7;  // NQ has higher base variance
   const G_ALPHA = 0.10;
   const G_BETA  = 0.85;
 

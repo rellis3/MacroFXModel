@@ -628,6 +628,10 @@ export default {
           ca_short: 'IRSTCI01CAM156N',
           ch_short: 'IRSTCI01CHM156N',
           wti:      'DCOILWTICO',
+          // Net Fed Liquidity components — NQ/equity T1 scoring only
+          walcl:    'WALCLS',     // Fed total assets (weekly, Thursdays)
+          tga:      'WTREGEN',    // Treasury General Account (daily)
+          rrp:      'RRPONTSYD',  // Overnight reverse repo (daily)
         };
 
         const fetches = Object.entries(SERIES).map(async ([key, id]) => {
