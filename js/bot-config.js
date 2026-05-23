@@ -842,6 +842,160 @@ async function loadBtJournal() {
   }
 }
 
+// ── Regime Bot ────────────────────────────────────────────────────────────────
+
+const RG_DEFAULTS = {
+  enabled:            true,
+  paper_mode:         true,
+  pairs:              ['EUR/USD', 'GBP/USD', 'USD/JPY'],
+  interval_secs:      60,
+  min_confidence:     65,
+  candle_hold:        3,
+  sl_atr_mult:        1.8,
+  sl_atr_tf:          '5m',
+  tp_rr:              2.0,
+  risk_pct:           1.0,
+  max_lot:            5.0,
+  max_spread_pips:    3.0,
+  trade_window_start: '07:00',
+  trade_window_end:   '20:00',
+  ddlimit:            3.0,
+  monthlydd:          5.0,
+  lockout:            3,
+  cooldown:           240,
+};
+
+const RG_PAIRS = [
+  { id: 'rg_pair_EURUSD', sym: 'EUR/USD' },
+  { id: 'rg_pair_GBPUSD', sym: 'GBP/USD' },
+  { id: 'rg_pair_USDJPY', sym: 'USD/JPY' },
+  { id: 'rg_pair_AUDUSD', sym: 'AUD/USD' },
+  { id: 'rg_pair_NZDUSD', sym: 'NZD/USD' },
+  { id: 'rg_pair_USDCAD', sym: 'USD/CAD' },
+  { id: 'rg_pair_USDCHF', sym: 'USD/CHF' },
+  { id: 'rg_pair_GBPJPY', sym: 'GBP/JPY' },
+  { id: 'rg_pair_XAUUSD', sym: 'XAU/USD' },
+  { id: 'rg_pair_NAS100', sym: 'NAS100_USD' },
+];
+
+let _rgCfg = JSON.parse(JSON.stringify(RG_DEFAULTS));
+
+function readRgForm() {
+  _rgCfg.enabled            = chk('rg_enabled');
+  _rgCfg.paper_mode         = chk('rg_paper_mode');
+  _rgCfg.interval_secs      = num('rg_interval_secs',      60);
+  _rgCfg.min_confidence     = num('rg_min_confidence',     65);
+  _rgCfg.candle_hold        = num('rg_candle_hold',         3);
+  _rgCfg.sl_atr_mult        = num('rg_sl_atr_mult',       1.8);
+  _rgCfg.sl_atr_tf          = radio('rg_sl_atr_tf',       '5m');
+  _rgCfg.tp_rr              = num('rg_tp_rr',             2.0);
+  _rgCfg.risk_pct           = num('rg_risk_pct',          1.0);
+  _rgCfg.max_lot            = num('rg_max_lot',           5.0);
+  _rgCfg.max_spread_pips    = num('rg_max_spread_pips',   3.0);
+  _rgCfg.trade_window_start = str('rg_window_start',   '07:00');
+  _rgCfg.trade_window_end   = str('rg_window_end',     '20:00');
+  _rgCfg.ddlimit            = num('rg_ddlimit',           3.0);
+  _rgCfg.monthlydd          = num('rg_monthlydd',         5.0);
+  _rgCfg.lockout            = num('rg_lockout',             3);
+  _rgCfg.cooldown           = num('rg_cooldown',          240);
+  _rgCfg.pairs              = RG_PAIRS.filter(p => chk(p.id)).map(p => p.sym);
+}
+
+function renderRgForm() {
+  setChk('rg_enabled',          _rgCfg.enabled        ?? true);
+  setChk('rg_paper_mode',       _rgCfg.paper_mode     ?? true);
+  setVal('rg_interval_secs',    _rgCfg.interval_secs  ?? 60);
+  setVal('rg_min_confidence',   _rgCfg.min_confidence ?? 65);
+  setVal('rg_candle_hold',      _rgCfg.candle_hold    ?? 3);
+  setVal('rg_sl_atr_mult',      _rgCfg.sl_atr_mult    ?? 1.8);
+  setRadio('rg_sl_atr_tf',      _rgCfg.sl_atr_tf      ?? '5m');
+  setVal('rg_tp_rr',            _rgCfg.tp_rr          ?? 2.0);
+  setVal('rg_risk_pct',         _rgCfg.risk_pct       ?? 1.0);
+  setVal('rg_max_lot',          _rgCfg.max_lot        ?? 5.0);
+  setVal('rg_max_spread_pips',  _rgCfg.max_spread_pips ?? 3.0);
+  setVal('rg_window_start',     _rgCfg.trade_window_start ?? '07:00');
+  setVal('rg_window_end',       _rgCfg.trade_window_end   ?? '20:00');
+  setVal('rg_ddlimit',          _rgCfg.ddlimit        ?? 3.0);
+  setVal('rg_monthlydd',        _rgCfg.monthlydd      ?? 5.0);
+  setVal('rg_lockout',          _rgCfg.lockout        ?? 3);
+  setVal('rg_cooldown',         _rgCfg.cooldown       ?? 240);
+
+  const enabledPairs = new Set(_rgCfg.pairs || RG_DEFAULTS.pairs);
+  RG_PAIRS.forEach(p => setChk(p.id, enabledPairs.has(p.sym)));
+}
+
+async function loadRgConfig() {
+  try {
+    const stored = await kvGet('regime_bot_config');
+    if (stored) { _rgCfg = { ...JSON.parse(JSON.stringify(RG_DEFAULTS)), ...stored }; }
+    renderRgForm();
+  } catch (e) { /* non-critical */ }
+}
+
+async function saveRgConfig() {
+  readRgForm();
+  const el = document.getElementById('rgSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('regime_bot_config', _rgCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = 'var(--purple)'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetRgDefaults() {
+  _rgCfg = JSON.parse(JSON.stringify(RG_DEFAULTS));
+  renderRgForm();
+  const el = document.getElementById('rgSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+async function loadRgCreds() {
+  try { _applyCredsToForm(await kvGet('regime_bot_credentials'), 'rg_mt5_', 'rg_mt5_password'); } catch (e) {}
+}
+async function saveRgCreds() {
+  await _saveCreds('regime_bot_credentials', 'rg_mt5_', 'rg_mt5_password', 'rgCredsStatus');
+}
+
+async function loadRgBotStatus() {
+  try {
+    const data = await kvGet('regime_bot_status');
+    if (!data) { setText('rgBsAge', 'No status — bot has not run yet'); return; }
+
+    const age = Math.round((Date.now() - (data.pushed_at ?? 0) * 1000) / 60000);
+    setText('rgBsAge',  age < 2 ? 'Live' : `Last update ${age}m ago`);
+    setText('rgBsMode', data.paper_mode ? '· paper' : '· LIVE');
+    setText('rgBsBal',  data.balance != null ? `· $${Number(data.balance).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '');
+
+    const positions = data.positions || {};
+    const pairHtml  = Object.entries(positions).map(([pair, p]) => {
+      if (p.status === 'open') {
+        const pnl  = p.pnl_pips != null ? ` ${p.pnl_pips > 0 ? '+' : ''}${p.pnl_pips}p` : '';
+        const col  = p.direction === 'LONG' ? 'bs-green' : 'bs-red';
+        return `<span class="${col}">${pair} ${p.direction}${pnl} [${p.regime}]</span>`;
+      }
+      if (p.status === 'watching') {
+        return `<span class="bs-dim">${pair} watching ${p.regime} ${p.conf}% (${p.readings})</span>`;
+      }
+      if (p.status === 'blocked') {
+        return `<span class="bs-amber">${pair} blocked: ${p.reason}</span>`;
+      }
+      return `<span class="bs-dim">${pair} ${p.status}</span>`;
+    }).join('  ');
+
+    document.getElementById('rgBsPairs').innerHTML     = pairHtml || '<span class="bs-dim">No pair data</span>';
+
+    const openPos = Object.entries(positions).filter(([, p]) => p.status === 'open');
+    document.getElementById('rgBsPositions').innerHTML = openPos.length
+      ? `Open: ${openPos.map(([pair, p]) =>
+          `<span class="bs-green">${pair} ${p.direction} @${(p.entry ?? 0).toFixed(5)} SL:${(p.sl ?? 0).toFixed(5)} TP:${(p.tp ?? 0).toFixed(5)}</span>`
+        ).join('  ')}`
+      : '<span class="bs-dim">No open positions</span>';
+  } catch (e) { /* non-critical */ }
+}
+
 // ── Expose globals (called from inline onclick handlers in HTML) ───────────────
 
 window.saveConfig       = saveConfig;
@@ -853,6 +1007,9 @@ window.saveBtCreds      = saveBtCreds;
 window.saveBtConfig     = saveBtConfig;
 window.resetBtDefaults  = resetBtDefaults;
 window._loadBtJournal   = loadBtJournal;
+window.saveRgConfig     = saveRgConfig;
+window.resetRgDefaults  = resetRgDefaults;
+window.saveRgCreds      = saveRgCreds;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -860,11 +1017,15 @@ document.getElementById('unlockBtn')?.addEventListener('click', forceUnlock);
 
 loadConfig();
 loadBtConfig();
+loadRgConfig();
 loadCreds();
 loadBtCreds();
+loadRgCreds();
 loadBotStatus();
 loadBtBotStatus();
+loadRgBotStatus();
 loadBtJournal();
-setInterval(loadBotStatus,   60_000);
-setInterval(loadBtBotStatus, 60_000);
+setInterval(loadBotStatus,    60_000);
+setInterval(loadBtBotStatus,  60_000);
+setInterval(loadRgBotStatus,  60_000);
 setInterval(loadBtJournal,   120_000);
