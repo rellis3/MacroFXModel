@@ -28,3 +28,35 @@
 [2026-05-24 21:16:02] [INFO] [USD/JPY] regime=RANGE  conf=98%  vol_z=+0.00  rl=1  decay=0.000
 [2026-05-24 21:16:03] [INFO] Cycle 1 complete — sleeping 60s
 [2026-05-24 21:16:04] [INFO] RegimeBot stopped by user
+[2026-05-24 21:18:50] [INFO] RegimeBot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-24 21:18:52] [INFO] MT5 connected  account=107132286  balance=89839.81 GBP  server=MetaQuotes-Demo  leverage=1:100
+[2026-05-24 21:18:54] [INFO] Initial config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY']  hold=3  minConf=65%  SL=1.8× ATR(5m)  interval=60s  exit_on_range=True  vol_z_max=0.5  decay_window=10
+[2026-05-24 21:18:56] [INFO] [EUR/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=1  decay=0.000
+[2026-05-24 21:18:56] [INFO] [GBP/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=1  decay=0.000
+[2026-05-24 21:18:56] [INFO] [USD/JPY] regime=RANGE  conf=98%  vol_z=+0.00  rl=1  decay=0.000
+[2026-05-24 21:18:58] [INFO] Cycle 1 complete — sleeping 60s
+[2026-05-24 21:20:00] [INFO] [EUR/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=2  decay=0.000
+[2026-05-24 21:20:00] [INFO] [GBP/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=2  decay=0.000
+[2026-05-24 21:20:00] [INFO] [USD/JPY] regime=RANGE  conf=98%  vol_z=+0.00  rl=2  decay=0.000
+[2026-05-24 21:20:02] [INFO] Cycle 2 complete — sleeping 60s
+[2026-05-24 21:21:06] [INFO] [EUR/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=3  decay=0.000
+[2026-05-24 21:21:06] [INFO] [GBP/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=3  decay=0.000
+[2026-05-24 21:21:06] [INFO] [USD/JPY] regime=RANGE  conf=98%  vol_z=+0.00  rl=3  decay=0.000
+[2026-05-24 21:21:07] [INFO] Cycle 3 complete — sleeping 60s
+[2026-05-24 21:22:11] [INFO] [EUR/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=4  decay=0.000
+[2026-05-24 21:22:11] [INFO] [GBP/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=4  decay=0.000
+[2026-05-24 21:22:11] [INFO] [USD/JPY] regime=RANGE  conf=98%  vol_z=+0.00  rl=4  decay=0.000
+[2026-05-24 21:22:13] [INFO] Cycle 4 complete — sleeping 60s
+[2026-05-24 21:23:16] [INFO] [EUR/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=5  decay=0.000
+[2026-05-24 21:23:16] [INFO] [GBP/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=5  decay=0.000
+[2026-05-24 21:23:16] [INFO] [USD/JPY] regime=RANGE  conf=98%  vol_z=+0.00  rl=5  decay=0.000
+[2026-05-24 21:23:19] [INFO] Cycle 5 complete — sleeping 60s
+[2026-05-24 21:24:00] [INFO] RegimeBot stopped by user
+[2026-05-24 21:24:18] [INFO] RegimeBot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-24 21:24:20] [INFO] MT5 connected  account=10011043879  balance=100000.00 GBP  server=MetaQuotes-Demo  leverage=1:100
+[2026-05-24 21:24:22] [INFO] Initial config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY']  hold=3  minConf=65%  SL=1.8× ATR(5m)  interval=60s  exit_on_range=True  vol_z_max=0.5  decay_window=10
+[2026-05-24 21:24:26] [INFO] [EUR/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=1  decay=0.000
+[2026-05-24 21:24:26] [INFO] [GBP/USD] regime=BEAR  conf=100%  vol_z=+0.00  rl=1  decay=0.000
+[2026-05-24 21:24:26] [INFO] [USD/JPY] regime=RANGE  conf=98%  vol_z=+0.00  rl=1  decay=0.000
+[2026-05-24 21:24:29] [INFO] Cycle 1 complete — sleeping 60s
+[2026-05-24 21:24:37] [INFO] RegimeBot stopped by user
