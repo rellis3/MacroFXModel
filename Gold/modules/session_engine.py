@@ -1,16 +1,36 @@
 """
-Session Engine — daily open, Asia/London/NY levels, floor pivots, session VWAP.
+Session Engine — daily open, Asia/London/NY levels, floor pivots, VWAP,
+and historical VWAP anchor levels.
 
 All times in UTC:
   Asia    22:00–07:00  (prior evening + early morning)
   London  07:00–13:00
   NY      13:00–20:00
+
+VWAP Anchor Levels:
+  At London and NY session opens, if the market makes a strong directional
+  drive in the first hour, the opening price at that session becomes a
+  "VWAP anchor" — the price level where the VWAP right-angle originated.
+  These levels remain significant until price revisits them. A fib zone
+  that lines up with an old VWAP anchor (especially 3–8 days old) is a
+  high-conviction location because it represents an unfilled institutional
+  price decision point from a prior session open.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
+
+
+@dataclass
+class VwapAnchor:
+    price: float         # session open price where the right-angle originated
+    date: str            # 'YYYY-MM-DD'
+    session: str         # 'LONDON' | 'NY'
+    direction: str       # 'UP' | 'DOWN' — direction of the drive away from this level
+    age_days: int
+    drive_size: float    # price range of the opening drive (in gold pips/$)
 
 
 @dataclass
@@ -29,14 +49,17 @@ class SessionLevels:
     ny_open: float
     ny_high: float
     ny_low: float
-    current_session: str   # ASIA | LONDON | NY | OFF
+    current_session: str
     pivot: float
     r1: float; r2: float; r3: float
     s1: float; s2: float; s3: float
     vwap: float
     vwap_slope: float
     vwap_std: float
+    vwap_anchors: list[VwapAnchor] = field(default_factory=list)
 
+
+# ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _vwap(bars: list[dict]) -> tuple[float, float, float]:
     if not bars:
@@ -57,7 +80,7 @@ def _vwap(bars: list[dict]) -> tuple[float, float, float]:
 
     slope = 0.0
     if len(tps) >= 6:
-        h = len(tps) // 4
+        h = max(1, len(tps) // 4)
         slope = sum(tps[-h:]) / h - sum(tps[:h]) / h
 
     return round(vwap, 2), round(slope, 3), round(std, 2)
@@ -74,8 +97,119 @@ def _pivots(ph: float, pl: float, pc: float) -> dict[str, float]:
     }
 
 
-def compute_session_levels(h1_bars: list[dict], prev_daily_bar: Optional[dict],
-                           current_price: float) -> SessionLevels:
+def _atr(bars: list[dict]) -> float:
+    if len(bars) < 2:
+        return 5.0
+    alpha = 0.15
+    tr = abs(bars[1]['high'] - bars[1]['low'])
+    for i in range(1, len(bars)):
+        h, l, pc = bars[i]['high'], bars[i]['low'], bars[i - 1]['close']
+        tr = alpha * max(h - l, abs(h - pc), abs(l - pc)) + (1 - alpha) * tr
+    return tr
+
+
+# ── VWAP anchor detection ─────────────────────────────────────────────────────
+
+# Session opens (UTC hour) to watch for right-angle drives
+_SESSION_OPENS = [('LONDON', 7), ('NY', 13)]
+
+# First N minutes of the session used to measure the opening drive
+_DRIVE_BARS = 15
+
+
+def compute_vwap_anchors(m1_bars: list[dict],
+                         today_low: float,
+                         today_high: float,
+                         min_drive_atr_mult: float = 1.2,
+                         max_sessions: int = 14) -> list[VwapAnchor]:
+    """
+    For each London and NY session open in the past N sessions, detect whether
+    the market made a strong directional drive in the first _DRIVE_BARS minutes.
+    The session open price = the VWAP anchor level (where the right-angle started).
+
+    Returns only levels not yet revisited today, sorted oldest-first.
+
+    m1_bars:       M1 bars covering past 10+ days, chronological.
+    today_low/high: today's session range so far (to check if level was touched).
+    max_sessions:  total number of session opens to look back through (London + NY combined).
+    """
+    today = datetime.now(timezone.utc).date()
+
+    # Group M1 bars by date, skip today
+    days: dict = {}
+    for b in m1_bars:
+        bar_date = datetime.fromtimestamp(b['time'], tz=timezone.utc).date()
+        if bar_date >= today:
+            continue
+        days.setdefault(bar_date, []).append(b)
+
+    sorted_dates = sorted(days.keys(), reverse=True)
+
+    anchors: list[VwapAnchor] = []
+    sessions_found = 0
+
+    for date in sorted_dates:
+        if sessions_found >= max_sessions:
+            break
+        day_bars = sorted(days[date], key=lambda b: b['time'])
+        if len(day_bars) < 30:
+            continue
+
+        day_atr = _atr(day_bars)
+
+        for session_name, open_hour in _SESSION_OPENS:
+            # Bars at the session open hour
+            drive_bars = [
+                b for b in day_bars
+                if datetime.fromtimestamp(b['time'], tz=timezone.utc).hour == open_hour
+            ]
+            if len(drive_bars) < _DRIVE_BARS:
+                continue
+
+            drive      = drive_bars[:_DRIVE_BARS]
+            open_price = drive[0]['open']
+            drv_high   = max(b['high'] for b in drive)
+            drv_low    = min(b['low']  for b in drive)
+            drive_size = drv_high - drv_low
+
+            # Only count as a right-angle if the opening drive was strong
+            if drive_size < day_atr * min_drive_atr_mult:
+                sessions_found += 1
+                continue
+
+            # Direction: which way did the session drive?
+            close_price = drive[-1]['close']
+            direction   = 'UP' if close_price > open_price else 'DOWN'
+
+            # Naked: today hasn't traded through the anchor level
+            if not (today_low <= open_price <= today_high):
+                age = (today - date).days
+                anchors.append(VwapAnchor(
+                    price=round(open_price, 2),
+                    date=str(date),
+                    session=session_name,
+                    direction=direction,
+                    age_days=age,
+                    drive_size=round(drive_size, 1),
+                ))
+
+            sessions_found += 1
+
+    anchors.sort(key=lambda a: a.age_days, reverse=True)   # oldest first
+    return anchors
+
+
+# ── Main entry point ──────────────────────────────────────────────────────────
+
+def compute_session_levels(h1_bars: list[dict],
+                           prev_daily_bar: Optional[dict],
+                           current_price: float,
+                           m1_bars_multiday: Optional[list[dict]] = None) -> SessionLevels:
+    """
+    h1_bars:           at least 48H of 1H bars, chronological.
+    prev_daily_bar:    previous D1 bar (for floor pivots).
+    m1_bars_multiday:  if provided, used to detect historical VWAP anchor levels.
+    """
     now   = datetime.now(tz=timezone.utc)
     hour  = now.hour
     today = now.date()
@@ -91,7 +225,6 @@ def compute_session_levels(h1_bars: list[dict], prev_daily_bar: Optional[dict],
 
     today_bars = [b for b in h1_bars
                   if datetime.fromtimestamp(b['time'], tz=timezone.utc).date() == today]
-
     daily_open = today_bars[0]['open'] if today_bars else current_price
 
     if prev_daily_bar:
@@ -115,7 +248,6 @@ def compute_session_levels(h1_bars: list[dict], prev_daily_bar: Optional[dict],
                 min(b['low']  for b in sel),
                 sel[0]['open'])
 
-    # Asia wraps midnight
     asia_late  = [b for b in h1_bars
                   if datetime.fromtimestamp(b['time'], tz=timezone.utc).hour >= 22]
     asia_early = [b for b in today_bars
@@ -127,8 +259,16 @@ def compute_session_levels(h1_bars: list[dict], prev_daily_bar: Optional[dict],
     lh, ll, lo = _range(h1_bars, 7, 13)
     nh, nl, no = _range(h1_bars, 13, 20)
 
-    pvts = _pivots(pdh, pdl, pdc)
-    vwap, vslope, vstd = _vwap(today_bars) if today_bars else (current_price, 0.0, 1.0)
+    pvts                      = _pivots(pdh, pdl, pdc)
+    vwap, vslope, vstd        = _vwap(today_bars) if today_bars else (current_price, 0.0, 1.0)
+
+    # Today's session range (for checking if VWAP anchor levels have been visited)
+    today_high = max((b['high'] for b in today_bars), default=current_price)
+    today_low  = min((b['low']  for b in today_bars), default=current_price)
+
+    vwap_anchors: list[VwapAnchor] = []
+    if m1_bars_multiday:
+        vwap_anchors = compute_vwap_anchors(m1_bars_multiday, today_low, today_high)
 
     return SessionLevels(
         current_price=current_price,
@@ -144,4 +284,5 @@ def compute_session_levels(h1_bars: list[dict], prev_daily_bar: Optional[dict],
         r1=pvts['r1'], r2=pvts['r2'], r3=pvts['r3'],
         s1=pvts['s1'], s2=pvts['s2'], s3=pvts['s3'],
         vwap=vwap, vwap_slope=vslope, vwap_std=vstd,
+        vwap_anchors=vwap_anchors,
     )

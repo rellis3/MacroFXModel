@@ -335,19 +335,21 @@ class GoldBot:
         h1_bars    = _bars(SYMBOL, 'H1',  96)
         m30_bars   = _bars(SYMBOL, 'M30', 150)
         m15_bars   = _bars(SYMBOL, 'M15', 150)
-        m1_bars    = _bars(SYMBOL, 'M1',  1440)    # today
-        m1_prev    = _bars(SYMBOL, 'M1',  2880)    # today + yesterday
+        # 13 days of M1 bars: today's volume profile + 12-day nPOC stack
+        # + VWAP anchor detection (~13 × 23h × 60 = ~18000 bars)
+        m1_multiday = _bars(SYMBOL, 'M1', 18_500)
 
         if not m15_bars and not m30_bars:
             log.warning('[REFRESH] No bar data — MT5 not connected and no fallback')
             return
 
         # Split M1 bars into today / previous day for volume profile
-        now_utc = datetime.now(timezone.utc)
-        today_m1 = [b for b in m1_bars
+        now_utc  = datetime.now(timezone.utc)
+        today_m1 = [b for b in m1_multiday
                     if datetime.fromtimestamp(b['time'], tz=timezone.utc).date() == now_utc.date()]
-        prev_m1  = [b for b in m1_prev
-                    if datetime.fromtimestamp(b['time'], tz=timezone.utc).date() < now_utc.date()]
+        prev_m1  = [b for b in m1_multiday
+                    if datetime.fromtimestamp(b['time'], tz=timezone.utc).date() <
+                       now_utc.date()][-1440:]   # cap to one day for prev profile
 
         # ── ATR (15m) ─────────────────────────────────────────────────────────
         if m15_bars:
@@ -364,15 +366,31 @@ class GoldBot:
             log.info(f'[HTF]    {self.htf_bias.bias} ({self.htf_bias.confidence:.0%}) '
                      f'— {self.htf_bias.reason}')
 
-        # ── Volume profile ────────────────────────────────────────────────────
+        # ── Volume profile + nPOC stack (12-day) ─────────────────────────────
         price_now = self._get_price()
         if price_now and today_m1:
-            self.vol_prof = compute_volume_profile(today_m1, prev_m1[-1440:], price_now)
+            self.vol_prof = compute_volume_profile(
+                today_m1, prev_m1, price_now,
+                all_m1_bars=m1_multiday, max_npoc_days=12,
+            )
+            if self.vol_prof.npoc_stack:
+                ages = ', '.join(f'{n.price:.1f}({n.age_days}d)'
+                                 for n in self.vol_prof.npoc_stack[:4])
+                log.info(f'[nPOC]   {len(self.vol_prof.npoc_stack)} naked POCs: {ages}')
 
-        # ── Session levels ────────────────────────────────────────────────────
+        # ── Session levels + VWAP anchor levels ──────────────────────────────
         if h1_bars and price_now:
             prev_d1 = daily_bars[-2] if len(daily_bars) >= 2 else None
-            self.sess_lvls = compute_session_levels(h1_bars, prev_d1, price_now)
+            self.sess_lvls = compute_session_levels(
+                h1_bars, prev_d1, price_now,
+                m1_bars_multiday=m1_multiday,
+            )
+            if self.sess_lvls.vwap_anchors:
+                anc = ', '.join(
+                    f'{a.price:.1f}({a.session[:1]}{a.age_days}d{a.direction[0]})'
+                    for a in self.sess_lvls.vwap_anchors[:4]
+                )
+                log.info(f'[VWAP]   {len(self.sess_lvls.vwap_anchors)} anchors: {anc}')
 
         # ── Fib zones (all TFs) ───────────────────────────────────────────────
         all_zones: list[FibZone] = []

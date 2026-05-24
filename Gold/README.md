@@ -18,15 +18,16 @@ Daily / 4H
   └─ Mark golden pocket zone (0.618–0.650) as primary entry window
         ↓
   Confluence Scoring
-  └─ Each zone is scored against: nPOC, POC, HVN, VAH/VAL, daily open,
-       session H/L, pivots, VWAP, HTF alignment, extra-TF fib clusters
+  └─ Each zone is scored against: nPOC stack (12-day), POC, HVN, VAH/VAL,
+       VWAP anchor levels, daily open, session H/L, pivots, HTF alignment,
+       extra-TF fib clusters
         ↓
   Wait — price must come TO the zone
         ↓
   30m / 5m Confirmation — VuManChu Cipher B
   └─ WT1/WT2 momentum (divergence at zone = fuel running out)
   └─ Money Flow (gold-specific: spike into zone = exhaustion/reversal)
-  └─ VWAP right-angle departure (sharp break from consolidation)
+  └─ VWAP slope exhaustion (momentum driving price INTO zone now fading)
   └─ Minimum 2 of 3 components must agree with expected direction
         ↓
   Paper Entry logged → Journal updated → TP1/TP2/SL tracked
@@ -43,10 +44,10 @@ Gold/
 ├── modules/
 │   ├── htf_bias.py           Daily/4H EMA + BOS → BULL / BEAR / NEUTRAL
 │   ├── fib_engine.py         Multi-TF impulse detection + Fib zone map
-│   ├── volume_profile.py     POC, VAH, VAL, HVN, LVN, nPOC from M1 bars
-│   ├── session_engine.py     Daily open, Asia/London/NY H/L, pivots, VWAP
-│   ├── confluence_scorer.py  Weighted zone scoring
-│   ├── vumanchu.py           VuManChu Cipher B (WT + Money Flow + VWAP)
+│   ├── volume_profile.py     POC, VAH, VAL, HVN, LVN, 12-day nPOC stack
+│   ├── session_engine.py     Daily open, session H/L, pivots, VWAP anchor levels
+│   ├── confluence_scorer.py  Weighted zone scoring (age-weighted nPOC + anchors)
+│   ├── vumanchu.py           VuManChu Cipher B (WT + Money Flow + VWAP slope)
 │   └── trade_state.py        State machine (WAITING → ARMED → MANAGING)
 ├── .env.example
 ├── requirements.txt
@@ -109,13 +110,15 @@ Up to 3 active zones are kept per timeframe. A zone expires when price closes tw
 
 ### Volume Profile (`volume_profile.py`)
 
-Built from MT5 M1 bars using a $0.50 bucket size. Tracks today and the previous session.
+Built from MT5 M1 bars using a $0.50 bucket size. Tracks today's session and a 12-day Naked POC stack.
 
 - **POC** — price level with the highest volume today
 - **VAH / VAL** — boundaries of the 70% value area around the POC
 - **HVN** — High Volume Nodes (local histogram peaks, act as support/resistance)
 - **LVN** — Low Volume Nodes (price tends to move through these quickly)
-- **nPOC** — Naked POC: the previous session's POC that has not been revisited today. This is the highest-weighted volume level because it is an unfilled institutional reference point.
+- **nPOC Stack (12-day)** — All session POCs from the past 12 trading days that today's price action has not traded through. Sorted oldest-first: an untouched POC from 10 days ago is a stronger institutional magnet than yesterday's. Each nPOC's age feeds directly into the confluence score weight (see Confluence Scorer).
+
+The 12-day nPOC stack requires approximately 18,500 M1 bars — the bot fetches these on each state refresh. MT5 stores M1 history for years; this quantity is well within what brokers retain.
 
 ---
 
@@ -131,6 +134,19 @@ All times UTC.
 
 Tracks: daily open (midnight UTC), session highs and lows, London open price, floor pivots (R1/R2/R3, S1/S2/S3) from previous day's H/L/C, and cumulative VWAP from midnight with slope and standard deviation.
 
+**VWAP Anchor Levels**
+
+At London (07:00 UTC) and NY (13:00 UTC) opens, if the market makes a strong directional drive in the first 15 minutes (drive range > 1.2 × day's ATR), the price at the session open becomes a VWAP anchor level.
+
+This is not a directional signal. The VWAP itself is irrelevant — what matters is the *price level* at which the sharp right-angle move originated. That level represents an institutional price decision point: the market agreed at that price and then drove aggressively away from it. Any untouched version of that level (one that today's session hasn't traded back through) is a high-conviction confluence zone.
+
+A fib golden pocket that aligns with an anchor from 3–8 days ago is a particularly strong location because:
+1. Many participants anchored positions at that price level
+2. The level has been untouched since (unfilled orders still sitting there)
+3. Now price is returning to that exact decision point for the first time
+
+Each anchor includes: price, session (LONDON/NY), direction of the drive (UP/DOWN), age in days, and the drive size in dollars.
+
 ---
 
 ### Confluence Scorer (`confluence_scorer.py`)
@@ -139,19 +155,21 @@ For each Fibonacci zone, the scorer checks how many other level types cluster ne
 
 **Score weights:**
 
-| Level type            | Weight |
-|-----------------------|--------|
-| nPOC                  | 2.0    |
-| HTF bias aligned      | 1.5    |
-| Daily open            | 1.5    |
-| POC (today)           | 1.5    |
-| Extra TF fib cluster  | 1.5    |
-| Previous day H/L      | 1.2    |
-| HVN                   | 1.2    |
-| VAH or VAL            | 1.0    |
-| Session H/L           | 1.0    |
-| VWAP                  | 1.0    |
-| Floor pivot           | 0.8    |
+| Level type            | Weight                                  |
+|-----------------------|-----------------------------------------|
+| nPOC (age-weighted)   | 2.0 base + 0.1/day old, cap 3.0         |
+| VWAP anchor (aged)    | 1.8 base + 0.05/day old, cap 2.5        |
+| HTF bias aligned      | 1.5                                     |
+| Daily open            | 1.5                                     |
+| POC (today)           | 1.5                                     |
+| Extra TF fib cluster  | 1.5                                     |
+| Previous day H/L      | 1.2                                     |
+| HVN                   | 1.2                                     |
+| VAH or VAL            | 1.0                                     |
+| Session H/L           | 1.0                                     |
+| Floor pivot           | 0.8                                     |
+
+**Age-weighting explained:** An nPOC untouched for 8 days scores 2.8 (2.0 + 0.8), capped at 3.0 at 10 days. A VWAP anchor from 5 days ago scores 2.05 (1.8 + 0.25). Age weighting reflects the reality that older untouched institutional reference levels carry more unfilled order flow.
 
 A zone scoring **3.0+** is eligible to be armed. A zone scoring **6.0+** with HTF alignment is a prime setup. The bot logs these scores in the console output so you can see exactly what is making each zone significant.
 
@@ -169,9 +187,12 @@ Confirmation uses three components evaluated on 5m bars once price is in proximi
 - Volume-weighted directional pressure per bar: `(close − open) / (high − low) × volume`, smoothed with EMA(14)
 - **Gold-specific behaviour:** a money flow spike INTO a zone signals exhaustion, not continuation. If sellers (for a long zone) have pushed hard and MF is now rolling over, the selling fuel is running out.
 
-**Component 3 — VWAP:**
-- Detects "right-angle" moves: price was consolidating near VWAP, then makes a sharp departure
-- Also flags when price is sitting directly at VWAP (a decision point)
+**Component 3 — VWAP Slope Exhaustion:**
+- Measures whether the momentum that pushed price INTO the zone is running out of energy — not VWAP position above/below price (that is not the signal).
+- The cumulative VWAP series from bar[0] is built, then slope is compared across two windows: early half vs late half of the last 20 bars.
+- For a **LONG zone** (expecting price to bounce from support): if the VWAP slope was falling (bearish move into the zone) but is now flattening or turning positive, the sellers are tiring.
+- For a **SHORT zone** (expecting price to reject from resistance): if the VWAP slope was rising (bullish move into the zone) but is now flattening or turning negative, the buyers are tiring.
+- Returns `EXHAUSTION` (slope fading by 55%+) or `REVERSAL` (slope has actively turned). Both count as aligned — either means the fuel driving price into the zone is running out.
 
 **Entry rules:**
 
@@ -242,15 +263,16 @@ pnl_pips, result, vu_components, vu_confidence, composition
 ```
 ──────────────────────────────────────────────────────────────────────
 ZONE MAP  09:35 UTC  | HTF BULL (75%)  | LONDON  | VWAP 2308.5
-  Vol: POC 2305.5  VAH 2312.0  VAL 2298.5  nPOC 2287.0
+  Vol: POC 2305.5  VAH 2312.0  VAL 2298.5  nPOC stack: 2287.0 (8d) 2274.5 (6d) 2291.0 (3d)
+  VWAP anchors: 2306.1 (NY 5d UP) 2319.4 (LON 2d DOWN)
   Daily open 2303.2  Asia 2299.0–2307.5  Pivot 2304.1
   SCORE  TF   DIR    GP ZONE            COMPOSITION
-    8.2  H4   LONG   2304.5–2308.0  H4 long GP, nPOC 2306.0, Daily open, HTF BULL *
+    8.2  H4   LONG   2304.5–2308.0  H4 long GP, nPOC 2306.0 (8d), VWAP anchor 2306.1 (5d), HTF BULL *
     5.1  H1   SHORT  2318.0–2320.5  H1 short GP, VAH, Session H/L
     3.4  M15  LONG   2295.0–2297.0  M15 long GP, Pivot
 ──────────────────────────────────────────────────────────────────────
 [ARMED]  H4_long_2285_2340 score=8.2  price=2305.1  (2.6 pips from GP 2304.5–2308.0)
-[ENTRY]  ▲ LONG @ 2305.1  SL 2297.5 (−7.6p)  TP1 2312.7 (+7.6p)  TP2 2320.3 (+15.2p)  R:R 1:2.0  VuManChu 3/3 [HIGH] WT DIVERGENCE_BULL · MF BULLISH_EXHAUSTION · VWAP RIGHT_ANGLE_UP
+[ENTRY]  ▲ LONG @ 2305.1  SL 2297.5 (−7.6p)  TP1 2312.7 (+7.6p)  TP2 2320.3 (+15.2p)  R:R 1:2.0  VuManChu 3/3 [HIGH] WT DIVERGENCE_BULL · MF BULLISH_EXHAUSTION · VWAP slope EXHAUSTION
 [TP1]    H4_long_2285_2340 @ 2312.7  +7.6 pips (partial close)
 [CLOSE]  ✓ H4_long_2285_2340  TP2_HIT  +15.2 pips  → WIN
 ```
@@ -310,6 +332,8 @@ MT5_SERVER=ICMarkets-Demo01
 ### Step 3 — Verify MT5 is connected
 
 In the MT5 terminal: confirm XAUUSD is in your Market Watch and you have historical data downloaded for M1 through D1. If bars are missing the bot will log a warning and skip that timeframe.
+
+The nPOC stack and VWAP anchor detection require ~13 days of M1 bars (~18,500 bars). MT5 downloads these on first run and caches them locally — the initial data fetch may take 30–60 seconds if the history hasn't been accessed recently.
 
 ### Step 4 — Verify the dashboard is live
 
@@ -392,24 +416,28 @@ All settings can be overridden at runtime by writing a JSON object to the KV key
 The zone map prints on every state refresh (default every 2 minutes). Zones are sorted by score, highest first. The `*` marker on a zone means it is aligned with the HTF bias.
 
 ```
-[8.2★]  H4  LONG   GP 2304.5–2308.0   H4 long GP, nPOC 2306.0, Daily open, HTF BULL *
+[8.2★]  H4  LONG   GP 2304.5–2308.0   H4 long GP, nPOC 2306.0 (8d), VWAP anchor 2306.1 (5d NY UP), HTF BULL *
 [5.1★]  H1  SHORT  GP 2318.0–2320.5   H1 short GP, VAH, Session H/L
 ```
 
 **Zone ID format:** `{TF}_{direction}_{swing_low_rounded}_{swing_high_rounded}`  
 Example: `H4_long_2285_2340` = 4H bullish impulse from $2285 to $2340.
 
+The composition list shows exactly what elevated the score. An nPOC label includes its age in parentheses:
+- `nPOC 2306.0 (8d)` — this POC has been naked for 8 days and scores 2.8
+- `VWAP anchor 2306.1 (5d NY UP)` — NY session drive from 5 days ago, price drove UP from this level
+
 ### Understanding the entry log
 
 ```
 [ENTRY]  ▲ LONG @ 2305.1  SL 2297.5 (−7.6p)  TP1 2312.7 (+7.6p)  TP2 2320.3 (+15.2p)  R:R 1:2.0
-         VuManChu 3/3 [HIGH] WT DIVERGENCE_BULL · MF BULLISH_EXHAUSTION · VWAP RIGHT_ANGLE_UP
+         VuManChu 3/3 [HIGH] WT DIVERGENCE_BULL · MF BULLISH_EXHAUSTION · VWAP slope EXHAUSTION
 ```
 
 - `3/3 [HIGH]` — all three VuManChu components aligned
 - `WT DIVERGENCE_BULL` — price was making lower lows but WT turned up (buyers stepping in)
 - `MF BULLISH_EXHAUSTION` — the negative money flow spike has rolled over (sellers ran out)
-- `VWAP RIGHT_ANGLE_UP` — sharp break upward from VWAP consolidation
+- `VWAP slope EXHAUSTION` — VWAP slope was bearish (falling into the zone) and has now flattened significantly — the selling pressure that drove price down to this level is fading
 
 ### End-of-day summary
 
@@ -448,11 +476,13 @@ The same data is written as a `SESSION_SUMMARY` event in `gold_journal.jsonl`.
 
 2. **False arms** — does price enter the zone and then immediately continue through it without reversing? If so, consider raising `min_zone_score` or `vu_min_components`.
 
-3. **VuManChu timing** — is the entry signal firing at the right point (at the zone, on the rejection candle) or too early/late? Check `vu_components` in the entry log. If it's always 2/3 and the missing component is always VWAP, the `proximity_pips` may need widening.
+3. **VuManChu timing** — is the entry signal firing at the right point (at the zone, on the rejection candle) or too early/late? Check `vu_components` in the entry log. If it's always 2/3 and the missing component is always the VWAP slope, it may mean the slope window is too wide — or the move into the zone is still strong and the bot is correctly holding off.
 
 4. **HTF alignment** — compare win rates for `htf_aligned: true` vs `false` trades in the CSV. If aligned trades significantly outperform, raise `min_zone_score` for counter-HTF zones.
 
 5. **Session timing** — filter the CSV by `time` column. London (07:00–13:00 UTC) and the NY open (13:00–15:00 UTC) tend to produce the cleanest moves on gold.
+
+6. **nPOC and VWAP anchor hits** — note in the journal when a zone's composition includes an aged nPOC or anchor. These tend to be the highest-conviction reversals because there is real trapped order flow at the level.
 
 ---
 
@@ -471,8 +501,7 @@ Each bot uses a unique MT5 magic number to avoid order conflicts:
 ## Phase 2 — Planned
 
 - **Structural fib from dashboard levels** — allow user-drawn fibs from the dashboard to feed into the zone map alongside auto-detected ones
-- **KV zone push** — write `gold_bot_zones` to KV so the gold dashboard page can overlay active zones on the chart
-- **nPOC from tick data** — current implementation uses M1 bar volume; true tick-by-price volume profile would be more accurate
+- **KV zone push** — write `gold_bot_zones` to KV so the gold dashboard page can overlay active zones and nPOC/anchor levels on the chart
 - **Trendline confluence** — detect and score trendline touches as an additional confluence type
 - **Adaptive min score** — automatically raise the entry threshold during low-volatility compression regimes
 - **Trade replay** — use the `gold_journal.jsonl` to replay past sessions against actual price data for backtesting the confirmation logic

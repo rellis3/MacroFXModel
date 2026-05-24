@@ -4,9 +4,24 @@ VuManChu Cipher B — three-component confirmation engine.
 Components:
   WT1/WT2     WaveTrend momentum oscillator (matches dashboard divergence.js)
   Money Flow  Volume-weighted directional pressure, scaled –100 to +100
-  VWAP        Right-angle departure from consolidation near VWAP
+  VWAP slope  Session VWAP momentum exhaustion at the zone
 
-Gold-specific behaviour:
+VWAP is NOT used as a directional bias (above/below price = bullish/bearish).
+That is the wrong read. The VWAP right-angle PRICE LEVELS are handled by the
+session engine as historical confluence zones. Here, VWAP slope tells us
+whether the momentum pushing price INTO the zone is running out of energy:
+
+  For a LONG zone (looking to buy at support):
+    Good: VWAP slope was falling but is now flattening or turning → bearish
+          momentum exhausting as price reaches the zone (sellers tiring)
+    Good: VWAP slope actively turning positive → reversal underway
+
+  For a SHORT zone (looking to sell at resistance):
+    Good: VWAP slope was rising but is now flattening or turning → bullish
+          momentum exhausting as price reaches the zone (buyers tiring)
+    Good: VWAP slope actively turning negative → reversal underway
+
+Gold-specific money flow behaviour:
   A money-flow SPIKE as price hits a zone signals EXHAUSTION, not continuation.
   (opposite to Bitcoin — sellers/buyers forced in, then snap-back)
 
@@ -27,7 +42,7 @@ class VuManChuSignal:
     wt_signal: str           # BULLISH | BEARISH | DIVERGENCE_BULL | DIVERGENCE_BEAR | NEUTRAL
     mf_value: float
     mf_signal: str           # BULLISH_EXHAUSTION | BEARISH_EXHAUSTION | BULLISH | BEARISH | NEUTRAL
-    vwap_signal: str         # RIGHT_ANGLE_UP | RIGHT_ANGLE_DOWN | AT_VWAP | NEUTRAL
+    vwap_signal: str         # EXHAUSTION | REVERSAL | NEUTRAL
     components_aligned: int  # 0–3
     reason: str
 
@@ -90,29 +105,56 @@ def _money_flow(bars: list[dict], period: int = 14) -> list[float]:
     return _ema(raw, period)
 
 
-# ── VWAP right-angle detection ────────────────────────────────────────────────
+# ── VWAP slope exhaustion ────────────────────────────────────────────────────
 
-def _vwap_signal(bars: list[dict], consol_n: int = 10) -> str:
-    if len(bars) < consol_n + 3:
+def _vwap_exhaustion(bars: list[dict], zone_direction: str,
+                     window: int = 20) -> str:
+    """
+    Reads the session VWAP slope to determine whether the momentum carrying
+    price INTO the zone is running out of energy.
+
+    Rolling VWAP is computed cumulatively from bar[0]. We measure slope
+    change: early-window slope vs late-window slope. If the slope was strong
+    in the move's direction and is now flattening or reversing, the momentum
+    is exhausting — which is exactly the confirmation needed for a reversal
+    entry at the zone.
+
+    Returns:
+      EXHAUSTION  — slope was strong, now flattening → fuel running out
+      REVERSAL    — slope has actively turned the other way → confirmation
+      NEUTRAL     — no clear exhaustion signal
+    """
+    if len(bars) < window + 5:
         return 'NEUTRAL'
 
-    closes = [b['close'] for b in bars]
-    vwap   = sum((b['high'] + b['low'] + b['close']) / 3 * b.get('tick_volume', 1)
-                 for b in bars) / max(sum(b.get('tick_volume', 1) for b in bars), 1)
+    # Build cumulative VWAP series
+    cum_tpv = cum_vol = 0.0
+    vwap_series: list[float] = []
+    for b in bars:
+        tp = (b['high'] + b['low'] + b['close']) / 3
+        v  = b.get('tick_volume', 1)
+        cum_tpv += tp * v; cum_vol += v
+        vwap_series.append(cum_tpv / cum_vol if cum_vol else tp)
 
-    prior   = closes[-(consol_n + 3):-3]
-    near_vw = sum(1 for c in prior if abs(c - vwap) < vwap * 0.002)
-    atr_est = sum(abs(b['high'] - b['low']) for b in bars[-10:]) / 10
-    move    = closes[-1] - closes[-3]
+    recent = vwap_series[-window:]
+    half   = window // 2
 
-    if near_vw >= consol_n // 2:
-        if move > atr_est * 0.8:
-            return 'RIGHT_ANGLE_UP'
-        elif move < -atr_est * 0.8:
-            return 'RIGHT_ANGLE_DOWN'
+    early_slope = recent[half] - recent[0]       # first half of window
+    late_slope  = recent[-1]  - recent[half]     # second half of window
 
-    if abs(closes[-1] - vwap) < vwap * 0.001:
-        return 'AT_VWAP'
+    if zone_direction == 'long':
+        # Price falling into support zone — we want bearish VWAP slope to be exhausting
+        if early_slope < 0 and late_slope > 0:
+            return 'REVERSAL'      # VWAP slope actively turned up
+        if early_slope < 0 and abs(late_slope) < abs(early_slope) * 0.45:
+            return 'EXHAUSTION'    # downward momentum fading fast
+    else:
+        # Price rising into resistance zone — we want bullish VWAP slope to be exhausting
+        if early_slope > 0 and late_slope < 0:
+            return 'REVERSAL'      # VWAP slope actively turned down
+        if early_slope > 0 and abs(late_slope) < abs(early_slope) * 0.45:
+            return 'EXHAUSTION'    # upward momentum fading fast
+
     return 'NEUTRAL'
 
 
@@ -156,7 +198,7 @@ def compute_vumanchu(bars: list[dict], zone_direction: str,
     closes         = [float(b['close']) for b in bars]
     wt1_s, wt2_s   = _wt_series(bars, n1, n2)
     mf_s           = _money_flow(bars, mf_period)
-    vwap_sig       = _vwap_signal(bars)
+    vwap_sig       = _vwap_exhaustion(bars, zone_direction)
 
     wt1 = wt1_s[-1] if wt1_s else 0.0
     wt2_v = wt2_s[-1] if wt2_s and not (isinstance(wt2_s[-1], float) and
@@ -194,20 +236,24 @@ def compute_vumanchu(bars: list[dict], zone_direction: str,
     aligned = 0
     notes: list[str] = []
 
+    # VWAP slope signals the same thing for both directions:
+    # EXHAUSTION or REVERSAL = the momentum driving price into the zone is fading
+    vwap_confirmed = vwap_sig in ('EXHAUSTION', 'REVERSAL')
+
     if zone_direction == 'long':
         if wt_sig in ('BULLISH', 'DIVERGENCE_BULL'):
             aligned += 1; notes.append(f'WT {wt_sig}')
         if mf_sig in ('BULLISH_EXHAUSTION', 'BULLISH'):
             aligned += 1; notes.append(f'MF {mf_sig}')
-        if vwap_sig in ('RIGHT_ANGLE_UP', 'AT_VWAP'):
-            aligned += 1; notes.append(f'VWAP {vwap_sig}')
+        if vwap_confirmed:
+            aligned += 1; notes.append(f'VWAP slope {vwap_sig}')
     else:
         if wt_sig in ('BEARISH', 'DIVERGENCE_BEAR'):
             aligned += 1; notes.append(f'WT {wt_sig}')
         if mf_sig in ('BEARISH_EXHAUSTION', 'BEARISH'):
             aligned += 1; notes.append(f'MF {mf_sig}')
-        if vwap_sig in ('RIGHT_ANGLE_DOWN', 'AT_VWAP'):
-            aligned += 1; notes.append(f'VWAP {vwap_sig}')
+        if vwap_confirmed:
+            aligned += 1; notes.append(f'VWAP slope {vwap_sig}')
 
     if aligned >= 3:
         confidence = 'HIGH';   direction = zone_direction.upper()

@@ -1,11 +1,17 @@
 """
 Confluence Scorer — assigns a weighted score to each Fibonacci zone.
 
-Each zone's golden-pocket centre is compared against every other level type.
+Each zone's golden-pocket centre is tested against every level type.
 Overlapping levels within PROXIMITY_PIPS add to the zone's score.
 
-Weights are intentionally asymmetric: nPOC and HTF alignment carry the most
-weight because they represent the clearest institutional price memory.
+nPOC stack weighting:
+  Older untouched POCs score higher — a 10-day naked POC is a stronger
+  institutional reference than yesterday's. Base weight 2.0 + 0.1 per day,
+  capped at 3.0.
+
+VWAP anchor weighting:
+  Historical session-open right-angle price levels. Older = stronger.
+  Base weight 1.8 + 0.05 per day, capped at 2.5.
 """
 
 from __future__ import annotations
@@ -14,20 +20,20 @@ from .volume_profile import VolumeProfile
 from .session_engine import SessionLevels
 from .htf_bias import HTFBias
 
-PROXIMITY_PIPS = 3.0   # XAU/USD pip = $1, so 3.0 = $3 tolerance
+PROXIMITY_PIPS = 3.0   # $3 tolerance for XAU/USD
 
 WEIGHTS = {
-    'fib_cluster':  1.5,   # another TF's fib aligns
-    'npoc':         2.0,   # naked POC — highest institutional weight
-    'poc':          1.5,
-    'hvn':          1.2,
-    'vah_val':      1.0,
-    'daily_open':   1.5,
-    'prev_day_hl':  1.2,
-    'session_hl':   1.0,
-    'pivot':        0.8,
-    'vwap':         1.0,
-    'htf_aligned':  1.5,
+    'fib_cluster':   1.5,
+    'npoc_base':     2.0,   # + 0.1 per day old, cap 3.0
+    'poc':           1.5,
+    'hvn':           1.2,
+    'vah_val':       1.0,
+    'vwap_anchor':   1.8,   # + 0.05 per day old, cap 2.5
+    'daily_open':    1.5,
+    'prev_day_hl':   1.2,
+    'session_hl':    1.0,
+    'pivot':         0.8,
+    'htf_aligned':   1.5,
 }
 
 
@@ -47,7 +53,7 @@ def score_zones(zones: list[FibZone], vol: VolumeProfile,
         score = 0.0
         comp: list[str] = [f'{zone.tf} {zone.direction} GP']
 
-        # Fib cluster: other TF zones nearby
+        # ── Fib cluster ───────────────────────────────────────────────────────
         for other in zones:
             if other.zone_id == zone.zone_id:
                 continue
@@ -55,11 +61,17 @@ def score_zones(zones: list[FibZone], vol: VolumeProfile,
                 score += WEIGHTS['fib_cluster']
                 comp.append(f'{other.tf} fib cluster')
 
-        # Volume profile
-        if vol.npoc and _near(c, vol.npoc):
-            score += WEIGHTS['npoc'];  comp.append(f'nPOC {vol.npoc:.1f}')
+        # ── nPOC stack — oldest (strongest) first ─────────────────────────────
+        for npoc in vol.npoc_stack:
+            if _near(c, npoc.price):
+                w = min(WEIGHTS['npoc_base'] + npoc.age_days * 0.1, 3.0)
+                score += w
+                comp.append(f'nPOC {npoc.price:.1f} ({npoc.age_days}d)')
+                break   # one nPOC credit per zone even if multiple cluster
+
+        # ── Today's POC / VAH / VAL / HVN ────────────────────────────────────
         if _near(c, vol.poc):
-            score += WEIGHTS['poc'];   comp.append(f'POC {vol.poc:.1f}')
+            score += WEIGHTS['poc']; comp.append(f'POC {vol.poc:.1f}')
         for hvn in vol.hvn_levels:
             if _near(c, hvn):
                 score += WEIGHTS['hvn']; comp.append(f'HVN {hvn:.1f}'); break
@@ -68,7 +80,18 @@ def score_zones(zones: list[FibZone], vol: VolumeProfile,
         elif _near(c, vol.val):
             score += WEIGHTS['vah_val']; comp.append('VAL')
 
-        # Session / daily levels
+        # ── VWAP anchor levels — session open right-angle prices ──────────────
+        for anchor in session.vwap_anchors:
+            if _near(c, anchor.price, PROXIMITY_PIPS * 1.5):
+                w = min(WEIGHTS['vwap_anchor'] + anchor.age_days * 0.05, 2.5)
+                score += w
+                comp.append(
+                    f'VWAP anchor {anchor.price:.1f} '
+                    f'({anchor.session} {anchor.age_days}d {anchor.direction})'
+                )
+                break
+
+        # ── Session / daily levels ────────────────────────────────────────────
         if session.daily_open and _near(c, session.daily_open):
             score += WEIGHTS['daily_open']; comp.append('Daily open')
         if _near(c, session.prev_daily_high) or _near(c, session.prev_daily_low):
@@ -78,14 +101,11 @@ def score_zones(zones: list[FibZone], vol: VolumeProfile,
                     session.ny_high, session.ny_low):
             if lvl and _near(c, lvl):
                 score += WEIGHTS['session_hl']; comp.append('Session H/L'); break
-        for pvt in (session.pivot, session.r1, session.r2,
-                    session.s1, session.s2):
+        for pvt in (session.pivot, session.r1, session.r2, session.s1, session.s2):
             if _near(c, pvt, PROXIMITY_PIPS * 1.5):
                 score += WEIGHTS['pivot']; comp.append('Pivot'); break
-        if session.vwap and _near(c, session.vwap, PROXIMITY_PIPS * 2):
-            score += WEIGHTS['vwap']; comp.append('VWAP')
 
-        # HTF alignment
+        # ── HTF alignment ─────────────────────────────────────────────────────
         bullish_zone = zone.direction == 'long'
         if (htf.bias == 'BULL' and bullish_zone) or (htf.bias == 'BEAR' and not bullish_zone):
             score += WEIGHTS['htf_aligned']
