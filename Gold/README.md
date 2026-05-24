@@ -580,3 +580,15 @@ The win-rate and R columns let you evaluate whether the zone scoring threshold, 
 
 - **Structural fib from dashboard levels** — allow user-drawn fibs on the dashboard to push their levels into the zone map alongside auto-detected ones
 - **Dashboard chart overlay** — read `gold_bot_zones` KV in `gold.html` and draw active zones, nPOC levels, VWAP anchors, and trendlines directly on the chart
+
+---
+
+## Phase 4 — Future
+
+- **Gold ML Model** — train a binary classifier on the 5Y Gold Lab dataset. Features: regime, TIPS/BEI/DXY z-scores, vol_z, run_length, decay score, OI wall distance, confluence score, VuManChu components. Label: TP hit within 5 days. Deploy as a daily signal that replaces (or gates) the current rule-based direction. The Gold Lab historical reconstruction is the data pipeline for this.
+
+- **Cross-bot Portfolio Layer** — a supervisor process that sees all bots' open positions and enforces portfolio-level constraints. Prevents correlated exposure (regime bot SHORT EUR/USD vs main bot LONG EUR/USD). Unified daily drawdown ceiling across all accounts. Kills the weakest signal when two bots disagree on the same instrument.
+
+- **Adaptive Parameter Optimiser** — a nightly process that backtests the last 30 days of live data and pushes updated parameters (SL multiplier, min confidence, hold bars, zone score threshold) to KV. Bots pick up the new values on their next config reload cycle and self-tune without a restart.
+
+- **Live Performance Dashboard** — P&L tracking per bot, per pair, per regime, per zone TF. Live win rate vs Gold Lab historical estimate side-by-side. Alerts when live performance diverges from backtest beyond a threshold — early warning of model degradation or regime change that the models haven't adapted to yet.
