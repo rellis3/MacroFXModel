@@ -4,6 +4,7 @@ Config priority: dashboard KV (backtestsystem_live_config) > local configs/activ
 Set DASHBOARD_URL in .env to enable KV config and credentials. configs/active.json is optional.
 """
 
+import json
 import logging
 import os
 import sys
