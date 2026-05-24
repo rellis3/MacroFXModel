@@ -32,4 +32,5 @@ export const S = {
   goldModel:       null,   // computeGoldMacroModel() result — updated after FRED loads and on gold tab
   _goldVolRegime:  null,   // scratch slot: vol regime passed from vol.js into gold T1 calc
   goldHistory:     null,   // {tips,bei,dxy,vix,hy} arrays from fredhistory — enables accel + z-score
+  nqEarningsWeek:  (() => { try { return localStorage.getItem('nq_earnings_week') === '1'; } catch(e) { return false; } })(),
 };

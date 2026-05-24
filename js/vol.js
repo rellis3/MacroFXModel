@@ -50,7 +50,7 @@ export function calculateVolRegime() {
     emaATR = ATR_ALPHA * trueRanges[i] + (1 - ATR_ALPHA) * emaATR;
   }
 
-  const G_OMEGA = 1e-7;
+  const G_OMEGA = S.currentPair?.isEquity ? 2e-6 : 1e-7;  // NQ has higher base variance
   const G_ALPHA = 0.10;
   const G_BETA  = 0.85;
 
@@ -105,6 +105,15 @@ export function calculateVolRegime() {
   if (percentile <= 25)      { regime = 'LOW';    sizeMult = 1.0; stopMult = 0.75; tpMult = 1.5; }
   else if (percentile >= 75) { regime = 'HIGH';   sizeMult = 0.6; stopMult = 1.5;  tpMult = 2.0; }
   else                       { regime = 'NORMAL'; sizeMult = 1.0; stopMult = 1.0;  tpMult = 1.5; }
+
+  // Refine sizeMult continuously using GARCH vs ATR ratio.
+  // garchVsEma > 1 = vol expanding above ATR baseline → reduce size.
+  // garchVsEma < 1 = vol calming below ATR baseline → allow slightly more.
+  // Capped at ±20% adjustment so regime buckets remain the primary anchor.
+  if (garchVar && !isNaN(garchVsEma) && garchVsEma > 0) {
+    const garchAdj = Math.max(0.8, Math.min(1.2, 1 / garchVsEma));
+    sizeMult = Math.max(0.4, Math.min(1.5, sizeMult * garchAdj));
+  }
 
   const todayBar  = bars[0];
   const todayHigh = parseFloat(todayBar.high);
@@ -230,6 +239,11 @@ export function calcPositionSize(score, volRegime, transitionRisk, regimeConfide
 
   // Vol regime provides the base size multiplier (LOW=1.0, HIGH=0.6)
   let finalSize = Math.round(baseSize * volRegime.sizeMult);
+
+  // NQ earnings week: manual flag cuts size 40% — mirrors HIGH event risk multiplier
+  if (S.nqEarningsWeek && S.currentPair?.isEquity) {
+    finalSize = Math.round(finalSize * 0.6);
+  }
 
   // Regime confidence provides a continuous multiplier (0.25–1.0).
   // This replaces the old binary transitionRisk.riskScore check — the continuous

@@ -283,9 +283,9 @@ export function renderARMACard(arma, data) {
       return 'Yield and DXY signals disagree -- Gold driver divergence, lower edge';
     }
     if (isEquity) {
-      if (arma.direction === 'BULLISH') return 'Yield curve forecast to steepen -- growth expectations rising, bullish for NAS100';
-      if (arma.direction === 'BEARISH') return 'Yield curve forecast to flatten/invert -- growth concern building, bearish for NAS100';
-      return 'Curve direction unclear -- mixed growth signals, reduce directional conviction';
+      if (arma.direction === 'BULLISH') return 'Yield curve (secondary) forecast to steepen — growth expectations rising, constructive for NAS100';
+      if (arma.direction === 'BEARISH') return 'Yield curve (secondary) forecast to flatten/invert — growth concern building, weight net liquidity T1 for confirmation';
+      return 'Curve direction unclear — mixed growth signals, weight net liquidity T1 more heavily';
     }
     if (arma.direction === 'BULLISH') return `Spread forecast to ${cfg.fxSign > 0 ? 'rise - bullish' : 'fall - bullish'} for ${data.sym.split('/')[0]} over 5 days`;
     if (arma.direction === 'BEARISH') return `Spread forecast to ${cfg.fxSign > 0 ? 'fall - bearish' : 'rise - bearish'} for ${data.sym.split('/')[0]} over 5 days`;

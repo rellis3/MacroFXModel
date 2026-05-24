@@ -50,34 +50,43 @@ export async function loadEventData(hasFinnhub) {
 // Score > 0 = positive surprise (economic beat → bullish for that currency)
 // Scaled roughly ±3 based on z-score of normalised actual−estimate
 
-function computeSurpriseIndex(observations) {
-  const scores = {};
-  const counts = {};
-
+function scoreObsWindow(observations) {
+  const scores = {}, counts = {};
   observations.forEach(o => {
     if (o.actual == null || o.estimate == null || o.estimate === '') return;
-    const actual   = parseFloat(o.actual);
-    const estimate = parseFloat(o.estimate);
+    const actual = parseFloat(o.actual), estimate = parseFloat(o.estimate);
     if (isNaN(actual) || isNaN(estimate)) return;
-
-    const diff     = actual - estimate;
-    const prev     = o.prev != null ? parseFloat(o.prev) : null;
-    const scale    = prev != null && prev !== 0 ? Math.abs(prev) : Math.abs(estimate) || 1;
-    const norm     = diff / scale;                  // normalised surprise
-
-    const ccy = COUNTRY_TO_CCY[o.country];
+    const prev  = o.prev != null ? parseFloat(o.prev) : null;
+    const scale = prev != null && prev !== 0 ? Math.abs(prev) : Math.abs(estimate) || 1;
+    const norm  = (actual - estimate) / scale;
+    const ccy   = COUNTRY_TO_CCY[o.country];
     if (!ccy) return;
-
     scores[ccy] = (scores[ccy] || 0) + norm;
     counts[ccy] = (counts[ccy] || 0) + 1;
   });
-
   const result = {};
   Object.keys(scores).forEach(ccy => {
-    const avg   = scores[ccy] / counts[ccy];
-    result[ccy] = Math.max(-3, Math.min(3, avg * 10)); // scale to ±3 range
+    result[ccy] = Math.max(-3, Math.min(3, (scores[ccy] / counts[ccy]) * 10));
   });
   return result;
+}
+
+function computeSurpriseIndex(observations) {
+  // Split into recent 14d vs prior 14d to detect whether momentum is improving/deteriorating.
+  const cutoff = Date.now() - 14 * 24 * 3600 * 1000;
+  const recent = observations.filter(o => o.time && new Date(o.time).getTime() >= cutoff);
+  const prior  = observations.filter(o => o.time && new Date(o.time).getTime() <  cutoff);
+
+  const recentScores = scoreObsWindow(recent.length >= 3 ? recent : observations);
+  const priorScores  = scoreObsWindow(prior);
+
+  const trend = {};
+  Object.keys(recentScores).forEach(ccy => {
+    trend[ccy] = recentScores[ccy] - (priorScores[ccy] ?? 0);
+  });
+
+  // _trend stored as hidden key; callers filter it out via !k.startsWith('_')
+  return { ...recentScores, _trend: trend };
 }
 
 // ── Event risk for current pair ───────────────────────────────────────────────
@@ -189,20 +198,28 @@ export function eventRiskBadgeHTML(eventRisk) {
 export function surpriseIndexHTML(si, pairScore) {
   if (!si || Object.keys(si).length === 0) return '';
 
+  const trend   = si._trend || {};
   const entries = Object.entries(si)
+    .filter(([k]) => !k.startsWith('_'))
     .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
     .slice(0, 6);
 
   const rows = entries.map(([ccy, score]) => {
-    const col  = score > 0.5 ? 'var(--green)' : score < -0.5 ? 'var(--red)' : 'var(--text3)';
-    const bar  = Math.abs(score) / 3 * 100;
-    const side = score >= 0 ? 'right' : 'left';
+    const col      = score > 0.5 ? 'var(--green)' : score < -0.5 ? 'var(--red)' : 'var(--text3)';
+    const bar      = Math.abs(score) / 3 * 100;
+    const side     = score >= 0 ? 'right' : 'left';
+    const trendVal = trend[ccy];
+    const trendArrow = trendVal == null ? '' :
+      trendVal >  0.3 ? `<span style="color:var(--green);font-size:9px" title="14d improving">↑</span>` :
+      trendVal < -0.3 ? `<span style="color:var(--red);font-size:9px"   title="14d deteriorating">↓</span>` :
+                        `<span style="color:var(--text3);font-size:9px"  title="14d stable">→</span>`;
     return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
       <span style="font-size:10px;font-weight:600;color:var(--text1);min-width:32px">${ccy}</span>
       <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;position:relative">
         <div style="position:absolute;top:0;bottom:0;${side}:50%;width:${bar/2}%;background:${col};border-radius:3px"></div>
       </div>
       <span style="font-size:10px;font-family:'DM Mono',monospace;color:${col};min-width:36px;text-align:right">${score >= 0 ? '+' : ''}${score.toFixed(1)}</span>
+      ${trendArrow}
     </div>`;
   }).join('');
 
