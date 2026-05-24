@@ -1222,7 +1222,7 @@ async function runHMM5mRefresh() {
       state.hmm5mRegimes[sym] = result;
 
       // Telegram alert on regime change, with cooldown
-      if (prev && prev.regime !== result.regime && state.cfg?.regimeChangeAlerts !== false) {
+      if (prev && prev.regime !== result.regime && state.cfg?.enabled !== false && state.cfg?.regimeChangeAlerts !== false) {
         const lastAlert = state.hmm5mLastAlert[sym] ?? 0;
         const now       = Date.now();
         if (now - lastAlert >= HMM5M_ALERT_COOLDOWN_MS && state.tg?.token && state.tg?.chatId) {
