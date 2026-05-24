@@ -54,7 +54,8 @@ export function calculateVolRegime() {
   const G_ALPHA = 0.10;
   const G_BETA  = 0.85;
 
-  let garchVar = null;
+  let garchVar   = null;
+  let garchVsEma = NaN;
 
   if (logReturns.length >= 20) {
     const seed20  = logReturns.slice(0, 20);
@@ -78,7 +79,7 @@ export function calculateVolRegime() {
     const ci68Pips  = ci68Range / pipSz;
     const ci95Pips  = ci95Range / pipSz;
 
-    const garchVsEma    = garchRange / emaATR;
+    garchVsEma          = garchRange / emaATR;
     const volCluster    = garchVsEma > 1.15 ? 'EXPANDING' : garchVsEma < 0.85 ? 'CONTRACTING' : 'STABLE';
     const volClusterMsg = garchVsEma > 1.15
       ? 'GARCH > ATR — vol clustering up, recent shock elevating forecast'
