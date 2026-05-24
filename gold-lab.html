@@ -153,8 +153,12 @@
       <input type="number" id="cfgSL" value="1.5" min="0.5" max="5" step="0.1">
     </div>
     <div class="lab-cfg-item">
-      <label>TP Multiplier (× ATR)</label>
+      <label>TP Multiplier (× ATR) <small style="opacity:.7">fallback — OI wall used if loaded</small></label>
       <input type="number" id="cfgTP" value="2.5" min="0.5" max="8" step="0.1">
+    </div>
+    <div class="lab-cfg-item">
+      <label>Forward Scan (days)</label>
+      <input type="number" id="cfgScanDays" value="5" min="1" max="20" step="1">
     </div>
     <div class="lab-cfg-item">
       <label>Z-score Window (days)</label>
@@ -167,6 +171,7 @@
   </div>
   <p style="font-size:11.5px;color:var(--text3);margin-bottom:10px">
     ATR is computed from 14 daily bars prior to each signal. SL/TP in price points ($).
+    If gold OI is loaded in the main dashboard, the nearest call/put wall is used as TP instead of ATR×multiplier.
     Label = TP hit before SL on 1m bars scanning forward from next-day open.
   </p>
   <div class="lab-btn-row">
@@ -192,6 +197,10 @@
     <div class="lab-panel" style="margin-bottom:0">
       <div class="lab-panel-title">Signal Distribution</div>
       <div style="font-size:13px;font-family:'DM Mono',monospace" id="statSignalDist">—</div>
+    </div>
+    <div class="lab-panel" style="margin-bottom:0">
+      <div class="lab-panel-title">TP Method</div>
+      <div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text3)" id="statTpMethod">—</div>
     </div>
   </div>
 

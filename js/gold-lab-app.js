@@ -138,11 +138,17 @@ el('btnRun').addEventListener('click', () => {
   showProgress('Starting reconstruction…');
   setStep(3);
 
+  // Pull gold OI from localStorage (synced from KV when dashboard was last open)
+  let oiData = null;
+  try { oiData = JSON.parse(localStorage.getItem('oi_store') || 'null'); } catch {}
+
   getWorker().postMessage({ type: 'reconstruct', payload: {
-    atrMultSl:       parseFloat(el('cfgSL').value)     || 1.5,
-    atrMultTp:       parseFloat(el('cfgTP').value)     || 2.5,
-    lookbackWindow:  parseInt(el('cfgZWin').value)     || 60,
-    minHistoryDays:  parseInt(el('cfgMinHist').value)  || 30,
+    atrMultSl:       parseFloat(el('cfgSL').value)       || 1.5,
+    atrMultTp:       parseFloat(el('cfgTP').value)       || 2.5,
+    scanDays:        parseInt(el('cfgScanDays').value)   || 5,
+    lookbackWindow:  parseInt(el('cfgZWin').value)       || 60,
+    minHistoryDays:  parseInt(el('cfgMinHist').value)    || 30,
+    oiData,
   }});
 });
 
@@ -206,6 +212,15 @@ function renderResults(stats, dateFrom, dateTo) {
       const wrCls = v.win_rate > 0.55 ? 'wr-high' : v.win_rate > 0.45 ? 'wr-mid' : 'wr-low';
       return `<tr><td>${str}</td><td>${v.n}</td><td class="${wrCls}">${(v.win_rate * 100).toFixed(1)}%</td></tr>`;
     }).join('');
+
+  // TP method breakdown (OI wall vs ATR fallback)
+  if (stats.byTpMethod) {
+    const tpNote = Object.entries(stats.byTpMethod)
+      .map(([m, v]) => `${m}: ${v.n} trades, ${(v.win_rate * 100).toFixed(1)}% WR`)
+      .join(' · ');
+    const tpEl = el('statTpMethod');
+    if (tpEl) tpEl.textContent = tpNote;
+  }
 
   refreshLiveLogStats();
 }

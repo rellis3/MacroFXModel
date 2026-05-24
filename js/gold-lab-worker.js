@@ -55,16 +55,17 @@ function handleSetHistory({ history }) {
 // ── Main reconstruction loop ──────────────────────────────────────────────────
 // For each trading day in FRED history: reconstruct macro features, then label
 // outcome by scanning forward on 1m bars for SL/TP hit.
-function handleReconstruct({ atrMultSl, atrMultTp, minHistoryDays, lookbackWindow }) {
+function handleReconstruct({ atrMultSl, atrMultTp, scanDays, minHistoryDays, lookbackWindow, oiData }) {
   if (!_fredHistory || !_bars1m.length) {
     post('error', 'Missing 1m bars or FRED history — load both first');
     return;
   }
 
-  const SL_MULT = atrMultSl ?? 1.5;   // SL = ATR * this
-  const TP_MULT = atrMultTp ?? 2.5;   // TP = ATR * this
-  const MIN_HIST = minHistoryDays ?? 30;
-  const Z_WINDOW = lookbackWindow  ?? 60;
+  const SL_MULT  = atrMultSl  ?? 1.5;
+  const TP_MULT  = atrMultTp  ?? 2.5;
+  const SCAN_BARS = (scanDays ?? 5) * 1440;  // 1440 1m bars per day
+  const MIN_HIST  = minHistoryDays ?? 30;
+  const Z_WINDOW  = lookbackWindow  ?? 60;
 
   // Align FRED series into a day-keyed map for fast lookup
   const fredByDate = buildFredByDate(_fredHistory);
@@ -98,10 +99,10 @@ function handleReconstruct({ atrMultSl, atrMultTp, minHistoryDays, lookbackWindo
 
     // Label: scan 1m bars from next trading day open forward
     const label = labelOutcome(barsByDate, date, sortedDates, di, features.signal,
-                               slPips, tpPips, features.entryPrice);
+                               slPips, tpPips, SCAN_BARS, oiData);
 
-    rows.push({ date, ...features, atr: round2(atr), sl_pips: round2(slPips),
-                tp_pips: round2(tpPips), ...label });
+    rows.push({ date, ...features, atr: round2(atr), sl_pips: round2(label.tp_pips_used ?? slPips),
+                tp_pips: round2(label.tp_pips_used ?? tpPips), tp_method: label.tp_method, ...label });
 
     processed++;
     if (processed % 50 === 0) {
@@ -239,46 +240,85 @@ function reconstructFeatures(today, histSlice, zWindow, fredByDate, sortedDates,
 
 // ── Outcome labeling ──────────────────────────────────────────────────────────
 
-function labelOutcome(barsByDate, date, sortedDates, di, signal, slPips, tpPips, _entryPrice) {
-  if (signal === 'NEUTRAL') {
-    return { entry_price: null, outcome_hit_tp: -1, outcome_hit_sl: -1,
-             forward_return_1d: null, forward_return_5d: null, bars_to_outcome: null };
-  }
+function labelOutcome(barsByDate, date, sortedDates, di, signal, slPips, atrTpPips, scanBars, oiData) {
+  const NEUTRAL_ROW = {
+    entry_price: null, outcome_hit_tp: -1, outcome_hit_sl: -1,
+    forward_return_1d: null, forward_return_5d: null,
+    bars_to_outcome: null, tp_pips_used: null, tp_method: null,
+  };
 
-  // Find next trading day's bars
-  const nextBars = getNextBars(barsByDate, sortedDates, di, 1, 1440); // up to 1440 min = 1 day
-  if (!nextBars.length) {
-    return { entry_price: null, outcome_hit_tp: -1, outcome_hit_sl: -1,
-             forward_return_1d: null, forward_return_5d: null, bars_to_outcome: null };
-  }
+  if (signal === 'NEUTRAL') return NEUTRAL_ROW;
+
+  const nextBars = getNextBars(barsByDate, sortedDates, di, 1, scanBars);
+  if (!nextBars.length) return NEUTRAL_ROW;
 
   const entryPrice = nextBars[0].o;  // open of first bar next day = entry
   const isLong     = signal === 'BULLISH';
-  const tp         = isLong ? entryPrice + tpPips : entryPrice - tpPips;
-  const sl         = isLong ? entryPrice - slPips : entryPrice + slPips;
+
+  // Prefer OI wall as TP; fall back to ATR multiplier
+  const oiTpDist  = findOiWallDist(entryPrice, isLong, oiData);
+  const tpPips    = oiTpDist ?? atrTpPips;
+  const tpMethod  = oiTpDist ? 'oi_wall' : 'atr';
+
+  const tp = isLong ? entryPrice + tpPips : entryPrice - tpPips;
+  const sl = isLong ? entryPrice - slPips : entryPrice + slPips;
 
   let outcome_hit_tp = -1, outcome_hit_sl = -1, bars_to_outcome = null;
 
   for (let i = 0; i < nextBars.length; i++) {
-    const bar = nextBars[i];
+    const bar   = nextBars[i];
     const tpHit = isLong ? bar.h >= tp : bar.l <= tp;
     const slHit = isLong ? bar.l <= sl : bar.h >= sl;
     if (tpHit && slHit) {
-      // Both hit same bar — use open proximity to decide (conservative: SL wins)
+      // Both hit same bar — conservative: SL wins
       outcome_hit_sl = 1; outcome_hit_tp = 0; bars_to_outcome = i + 1; break;
     }
     if (tpHit) { outcome_hit_tp = 1; outcome_hit_sl = 0; bars_to_outcome = i + 1; break; }
     if (slHit) { outcome_hit_sl = 1; outcome_hit_tp = 0; bars_to_outcome = i + 1; break; }
   }
 
-  // Forward returns at fixed horizons
-  const bars1d  = getNextBars(barsByDate, sortedDates, di, 1, 390); // ~6.5h = 1 session
-  const bars5d  = getNextBars(barsByDate, sortedDates, di, 1, 1950);// 5 sessions
-  const ret1d   = bars1d.length  ? round4((bars1d[bars1d.length-1].c   - entryPrice) / entryPrice) : null;
-  const ret5d   = bars5d.length  ? round4((bars5d[bars5d.length-1].c   - entryPrice) / entryPrice) : null;
+  // Forward returns at fixed horizons (independent of SL/TP)
+  const bars1d = getNextBars(barsByDate, sortedDates, di, 1, 390);   // ~6.5h = 1 session
+  const bars5d = getNextBars(barsByDate, sortedDates, di, 1, 1950);  // 5 sessions
+  const ret1d  = bars1d.length ? round4((bars1d[bars1d.length-1].c - entryPrice) / entryPrice) : null;
+  const ret5d  = bars5d.length ? round4((bars5d[bars5d.length-1].c - entryPrice) / entryPrice) : null;
 
-  return { entry_price: round2(entryPrice), outcome_hit_tp, outcome_hit_sl,
-           forward_return_1d: ret1d, forward_return_5d: ret5d, bars_to_outcome };
+  return {
+    entry_price: round2(entryPrice), outcome_hit_tp, outcome_hit_sl,
+    forward_return_1d: ret1d, forward_return_5d: ret5d,
+    bars_to_outcome, tp_pips_used: round2(tpPips), tp_method: tpMethod,
+  };
+}
+
+// ── OI wall TP helper ─────────────────────────────────────────────────────────
+// Finds the distance from entry to the nearest significant call wall (LONG)
+// or put wall (SHORT) in the loaded OI store.  Returns null if unavailable.
+
+function findOiWallDist(entryPrice, isLong, oiData) {
+  if (!oiData) return null;
+
+  // Gold OI can be stored under various symbol keys
+  const goldOi = oiData['XAUUSD'] || oiData['XAU/USD'] || oiData['GOLD'] || null;
+  if (!goldOi?.strikes?.length) return null;
+
+  const { strikes, calls, puts } = goldOi;
+  const wallOI  = isLong ? calls : puts;
+  const maxOI   = Math.max(...wallOI);
+  if (maxOI <= 0) return null;
+
+  // Only consider strikes with OI above 20% of the peak — ignores thin strikes
+  const threshold = maxOI * 0.20;
+
+  let bestDist = Infinity;
+
+  for (let i = 0; i < strikes.length; i++) {
+    if ((wallOI[i] || 0) < threshold) continue;
+    const s = strikes[i];
+    if (isLong  && s > entryPrice) bestDist = Math.min(bestDist, s - entryPrice);
+    if (!isLong && s < entryPrice) bestDist = Math.min(bestDist, entryPrice - s);
+  }
+
+  return bestDist === Infinity ? null : bestDist;
 }
 
 // ── 1m bar helpers ────────────────────────────────────────────────────────────
@@ -421,7 +461,18 @@ function computeStats(rows) {
     byStrength[k].win_rate = round2(byStrength[k].w / byStrength[k].n);
   }
 
-  return { total: rows.length, directional: directional.length, wins, winRate, byRegime, byStrength };
+  const byTpMethod = {};
+  for (const r of directional) {
+    const m = r.tp_method || 'atr';
+    if (!byTpMethod[m]) byTpMethod[m] = { w: 0, n: 0 };
+    byTpMethod[m].n++;
+    if (r.outcome_hit_tp === 1) byTpMethod[m].w++;
+  }
+  for (const k of Object.keys(byTpMethod)) {
+    byTpMethod[k].win_rate = round2(byTpMethod[k].w / byTpMethod[k].n);
+  }
+
+  return { total: rows.length, directional: directional.length, wins, winRate, byRegime, byStrength, byTpMethod };
 }
 
 // ── CSV generator ─────────────────────────────────────────────────────────────
