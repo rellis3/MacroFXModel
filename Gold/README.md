@@ -1,0 +1,478 @@
+# Gold Bot — XAU/USD Confluence Trading System
+
+Max-style top-down confluence bot for gold only. Paper mode by default — logs every zone, every signal, and every outcome so you can watch and evaluate before going live.
+
+---
+
+## Strategy Overview
+
+The bot mirrors the way Max approaches a gold chart: start with the big picture, identify the most important price levels, wait for price to come to those levels, then confirm on a lower timeframe before entering. No chasing. No random breakouts.
+
+```
+Daily / 4H
+  └─ Determine trend direction and bias (EMA structure + BOS)
+        ↓
+  Multi-TF Fib Zones (D1 / H4 / H1 / M30 / M15)
+  └─ Find valid impulse legs on each timeframe
+  └─ Draw traditional Fibonacci retracement levels
+  └─ Mark golden pocket zone (0.618–0.650) as primary entry window
+        ↓
+  Confluence Scoring
+  └─ Each zone is scored against: nPOC, POC, HVN, VAH/VAL, daily open,
+       session H/L, pivots, VWAP, HTF alignment, extra-TF fib clusters
+        ↓
+  Wait — price must come TO the zone
+        ↓
+  30m / 5m Confirmation — VuManChu Cipher B
+  └─ WT1/WT2 momentum (divergence at zone = fuel running out)
+  └─ Money Flow (gold-specific: spike into zone = exhaustion/reversal)
+  └─ VWAP right-angle departure (sharp break from consolidation)
+  └─ Minimum 2 of 3 components must agree with expected direction
+        ↓
+  Paper Entry logged → Journal updated → TP1/TP2/SL tracked
+```
+
+---
+
+## Architecture
+
+```
+Gold/
+├── main.py                   Two-speed orchestrator (entry point)
+├── journal.py                Event log + CSV output + console display
+├── modules/
+│   ├── htf_bias.py           Daily/4H EMA + BOS → BULL / BEAR / NEUTRAL
+│   ├── fib_engine.py         Multi-TF impulse detection + Fib zone map
+│   ├── volume_profile.py     POC, VAH, VAL, HVN, LVN, nPOC from M1 bars
+│   ├── session_engine.py     Daily open, Asia/London/NY H/L, pivots, VWAP
+│   ├── confluence_scorer.py  Weighted zone scoring
+│   ├── vumanchu.py           VuManChu Cipher B (WT + Money Flow + VWAP)
+│   └── trade_state.py        State machine (WAITING → ARMED → MANAGING)
+├── .env.example
+├── requirements.txt
+└── README.md                 (this file)
+```
+
+**Shared from `../bot/utils/` (no copying):**
+- `sl_tp_engine.py` — SL/TP calculation, ladder exits
+- `indicators.py` — ATR, WaveTrend
+- `state_reader.py` — KV fetch, dashboard quote fallback
+- `persistence.py` — State save/load
+
+---
+
+## Module Detail
+
+### HTF Bias (`htf_bias.py`)
+
+Reads Daily and 4H bars from MT5. Computes EMA(21) vs EMA(50) direction and slope on both timeframes, then checks for a recent Break of Structure on the Daily.
+
+Votes:
+- Daily EMA bullish/bearish → ±2
+- 4H EMA bullish/bearish → ±1
+- Daily BOS → ±1
+
+Output: `BULL`, `BEAR`, or `NEUTRAL` with a 0–1 confidence score. A `BULL` bias means the bot only takes long fib zones and blocks short ones (unless you override).
+
+---
+
+### Fib Engine (`fib_engine.py`)
+
+Traditional Fibonacci retracement — completely separate from the dashboard's standard-deviation range extensions.
+
+**Levels drawn:**
+```
+0.382  — shallow retrace
+0.618  — golden pocket floor  ← primary entry zone
+0.650  — golden pocket ceiling
+0.786  — deep retrace
+0.886  — extreme retrace (last line of defence)
+```
+
+**Impulse detection per timeframe:**
+
+| TF  | Min impulse size | Pivot confirmation bars |
+|-----|-----------------|------------------------|
+| D1  | 2.0 × ATR(14)  | 3 bars each side        |
+| H4  | 1.8 × ATR(14)  | 4 bars each side        |
+| H1  | 1.5 × ATR(14)  | 4 bars each side        |
+| M30 | 1.2 × ATR(14)  | 4 bars each side        |
+| M15 | 1.0 × ATR(14)  | 3 bars each side        |
+
+Up to 3 active zones are kept per timeframe. A zone expires when price closes two consecutive bars beyond the swing origin (the start of the impulse that created it).
+
+**Direction:**
+- `long` — impulse was UP (low→high). Fib retraces downward. Bot looks to BUY into the GP zone.
+- `short` — impulse was DOWN (high→low). Fib retraces upward. Bot looks to SELL into the GP zone.
+
+---
+
+### Volume Profile (`volume_profile.py`)
+
+Built from MT5 M1 bars using a $0.50 bucket size. Tracks today and the previous session.
+
+- **POC** — price level with the highest volume today
+- **VAH / VAL** — boundaries of the 70% value area around the POC
+- **HVN** — High Volume Nodes (local histogram peaks, act as support/resistance)
+- **LVN** — Low Volume Nodes (price tends to move through these quickly)
+- **nPOC** — Naked POC: the previous session's POC that has not been revisited today. This is the highest-weighted volume level because it is an unfilled institutional reference point.
+
+---
+
+### Session Engine (`session_engine.py`)
+
+All times UTC.
+
+| Session | UTC Window  |
+|---------|-------------|
+| Asia    | 22:00–07:00 |
+| London  | 07:00–13:00 |
+| NY      | 13:00–20:00 |
+
+Tracks: daily open (midnight UTC), session highs and lows, London open price, floor pivots (R1/R2/R3, S1/S2/S3) from previous day's H/L/C, and cumulative VWAP from midnight with slope and standard deviation.
+
+---
+
+### Confluence Scorer (`confluence_scorer.py`)
+
+For each Fibonacci zone, the scorer checks how many other level types cluster near the golden pocket centre (within ±$3 by default).
+
+**Score weights:**
+
+| Level type            | Weight |
+|-----------------------|--------|
+| nPOC                  | 2.0    |
+| HTF bias aligned      | 1.5    |
+| Daily open            | 1.5    |
+| POC (today)           | 1.5    |
+| Extra TF fib cluster  | 1.5    |
+| Previous day H/L      | 1.2    |
+| HVN                   | 1.2    |
+| VAH or VAL            | 1.0    |
+| Session H/L           | 1.0    |
+| VWAP                  | 1.0    |
+| Floor pivot           | 0.8    |
+
+A zone scoring **3.0+** is eligible to be armed. A zone scoring **6.0+** with HTF alignment is a prime setup. The bot logs these scores in the console output so you can see exactly what is making each zone significant.
+
+---
+
+### VuManChu Cipher B (`vumanchu.py`)
+
+Confirmation uses three components evaluated on 5m bars once price is in proximity of a zone. The rule is: **zone first, VuManChu second, entry only if the flow supports what you already expect.**
+
+**Component 1 — WaveTrend (WT1/WT2):**
+- Algorithm matches the dashboard's `divergence.js` (HLC3 → EMA(10) → channel index → EMA(21))
+- Looking for: divergence between price and WT at the zone (price makes new extreme but WT does not → momentum running out), or WT crossing from overbought/oversold territory
+
+**Component 2 — Money Flow:**
+- Volume-weighted directional pressure per bar: `(close − open) / (high − low) × volume`, smoothed with EMA(14)
+- **Gold-specific behaviour:** a money flow spike INTO a zone signals exhaustion, not continuation. If sellers (for a long zone) have pushed hard and MF is now rolling over, the selling fuel is running out.
+
+**Component 3 — VWAP:**
+- Detects "right-angle" moves: price was consolidating near VWAP, then makes a sharp departure
+- Also flags when price is sitting directly at VWAP (a decision point)
+
+**Entry rules:**
+
+| Components aligned | Result          |
+|-------------------|-----------------|
+| 3 of 3            | HIGH confidence — entry fires |
+| 2 of 3            | MEDIUM confidence — entry fires (default minimum) |
+| 1 or 0            | LOW — no trade, keep watching |
+
+You can raise the minimum to 3 of 3 via `vu_min_components: 3` in config.
+
+---
+
+### Trade State Machine (`trade_state.py`)
+
+```
+WAITING   ── no zones armed, scanning price every 3s
+    │
+    ├─ price enters proximity of scored zone
+    ▼
+ARMED     ── watching for VuManChu confirmation on 5m
+    │
+    ├─ VuManChu confirmed (2+ components)
+    ▼
+TRIGGERED ── paper entry logged (or real order if --live)
+    │
+    ▼
+MANAGING  ── tracking TP1 / TP2 / SL on every price tick
+    │
+    ├─ TP1 hit → partial close logged, continue managing for TP2
+    ├─ TP2 hit → full close, WIN logged
+    └─ SL hit  → full close, LOSS logged
+    │
+    ▼
+COOLDOWN  ── 30 min pause before next trade (configurable)
+    │
+    └─── WAITING
+```
+
+One trade at a time. The cooldown prevents revenge entries after a loss.
+
+---
+
+### Journal System (`journal.py`)
+
+Two output files written to `--log-dir` (default: current directory):
+
+**`gold_journal.jsonl`** — one JSON object per line, every event:
+```
+ZONE_MAP         full zone snapshot on each state refresh
+ZONE_APPROACHED  price entered proximity of a zone
+ENTRY_SIGNAL     VuManChu confirmed, paper trade opened
+TP1_HIT          first partial target reached
+TP2_HIT          final target reached
+SL_HIT           stop loss hit
+ZONE_INVALIDATED zone expired (price closed beyond origin)
+SESSION_SUMMARY  end-of-session statistics
+```
+
+**`gold_trades.csv`** — one row per completed trade:
+```
+date, time, zone_id, tf, direction, score, entry, sl, tp1, tp2,
+sl_pips, tp1_pips, tp2_pips, rr, close_reason, close_price,
+pnl_pips, result, vu_components, vu_confidence, composition
+```
+
+**Console output** — formatted zone map on each refresh:
+```
+──────────────────────────────────────────────────────────────────────
+ZONE MAP  09:35 UTC  | HTF BULL (75%)  | LONDON  | VWAP 2308.5
+  Vol: POC 2305.5  VAH 2312.0  VAL 2298.5  nPOC 2287.0
+  Daily open 2303.2  Asia 2299.0–2307.5  Pivot 2304.1
+  SCORE  TF   DIR    GP ZONE            COMPOSITION
+    8.2  H4   LONG   2304.5–2308.0  H4 long GP, nPOC 2306.0, Daily open, HTF BULL *
+    5.1  H1   SHORT  2318.0–2320.5  H1 short GP, VAH, Session H/L
+    3.4  M15  LONG   2295.0–2297.0  M15 long GP, Pivot
+──────────────────────────────────────────────────────────────────────
+[ARMED]  H4_long_2285_2340 score=8.2  price=2305.1  (2.6 pips from GP 2304.5–2308.0)
+[ENTRY]  ▲ LONG @ 2305.1  SL 2297.5 (−7.6p)  TP1 2312.7 (+7.6p)  TP2 2320.3 (+15.2p)  R:R 1:2.0  VuManChu 3/3 [HIGH] WT DIVERGENCE_BULL · MF BULLISH_EXHAUSTION · VWAP RIGHT_ANGLE_UP
+[TP1]    H4_long_2285_2340 @ 2312.7  +7.6 pips (partial close)
+[CLOSE]  ✓ H4_long_2285_2340  TP2_HIT  +15.2 pips  → WIN
+```
+
+---
+
+## KV Integration
+
+The bot reads from and writes to the dashboard's KV store:
+
+| Key | Direction | Purpose |
+|-----|-----------|---------|
+| `ai_goldmodel` | Read | Gold macro model (TIPS/BEI/DXY signal). Dashboard pushes this on each FRED refresh. Soft-blocks entries that strongly oppose the model. |
+| `gold_bot_config` | Read | Bot configuration (overrides defaults). Edit via dashboard or direct KV write. |
+| `gold_bot_status` | Write | Heartbeat: current state, HTF bias, active zones, trades today. |
+
+The gold macro gate is a soft block only: it will prevent entry if the macro model is **STRONG** in the opposite direction. A MODERATE or NEUTRAL signal lets the technical setup decide.
+
+---
+
+## Installation
+
+### Prerequisites
+
+- Python 3.11+
+- MetaTrader 5 desktop terminal installed and logged in (Windows/Wine)
+- Dashboard deployed and accessible (for KV reads and price fallback)
+
+### Step 1 — Install dependencies
+
+From the project root:
+
+```bash
+pip install -r Gold/requirements.txt
+```
+
+If you already have the main bot's dependencies installed (`bot/requirements.txt`), only `python-dotenv` and `requests` are new — MetaTrader5 is shared.
+
+### Step 2 — Create your `.env`
+
+```bash
+cp Gold/.env.example Gold/.env
+```
+
+Edit `Gold/.env`:
+
+```env
+MT5_ACCOUNT=123456
+MT5_PASSWORD=your_password_here
+MT5_SERVER=ICMarkets-Demo01
+# MT5_PATH=C:\Program Files\MetaTrader 5\terminal64.exe  # only needed if MT5 can't be found automatically
+
+# Leave blank to use the default Railway deployment
+# DASHBOARD_URL=https://macrofxmodel-production.up.railway.app
+```
+
+### Step 3 — Verify MT5 is connected
+
+In the MT5 terminal: confirm XAUUSD is in your Market Watch and you have historical data downloaded for M1 through D1. If bars are missing the bot will log a warning and skip that timeframe.
+
+### Step 4 — Verify the dashboard is live
+
+The bot reads the gold macro model from KV. Open `gold.html` in your browser — this triggers a FRED refresh and pushes `ai_goldmodel` to KV. You only need to do this once per session; it refreshes every 30 minutes automatically while the page is open.
+
+---
+
+## Running the Bot
+
+All commands run from the project root (`MacroFXModel/`).
+
+### Watch mode (paper — no real trades)
+
+```bash
+python Gold/main.py
+```
+
+Logs to the current directory. State refreshes every 120s, price checks every 3s.
+
+### Watch mode with dedicated log folder
+
+```bash
+python Gold/main.py --log-dir Gold/logs
+```
+
+Creates `Gold/logs/gold_journal.jsonl` and `Gold/logs/gold_trades.csv`.
+
+### Faster state refresh (useful when first watching)
+
+```bash
+python Gold/main.py --log-dir Gold/logs --state-interval 60
+```
+
+### Single cycle (test that everything connects)
+
+```bash
+python Gold/main.py --once --log-dir Gold/logs
+```
+
+Runs one state refresh and one price tick then exits. Good for confirming MT5 connection and zone detection.
+
+### Live mode (real MT5 orders — when ready)
+
+```bash
+python Gold/main.py --live --log-dir Gold/logs
+```
+
+Uses magic number `20260003`. Paper and live never conflict — each bot family has its own magic number.
+
+---
+
+## Configuration
+
+All settings can be overridden at runtime by writing a JSON object to the KV key `gold_bot_config` (via the dashboard's bot-config page or direct KV API). The bot reloads config on every state refresh (every 120s by default).
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `enabled` | `true` | Master kill switch |
+| `paper_mode` | `true` | No real orders when true |
+| `min_zone_score` | `3.0` | Minimum confluence score before a zone is armed |
+| `proximity_pips` | `5.0` | Price must be within this many $ of the GP zone to arm |
+| `vu_min_components` | `2` | VuManChu components required for entry (2 or 3) |
+| `risk_pct` | `0.5` | % of account balance risked per trade |
+| `tp1_r` | `1.0` | TP1 as a multiple of SL distance (1R) |
+| `tp2_r` | `2.0` | TP2 as a multiple of SL distance (2R) |
+| `sl_atr_mult` | `1.5` | SL = ATR(14) × this if no structural level available |
+| `max_sl_pips` | `40` | Hard cap on SL distance |
+| `max_trades_per_day` | `2` | Daily trade limit |
+| `trade_window_start` | `07:00` | UTC — no entries before this |
+| `trade_window_end` | `20:00` | UTC — no entries after this |
+| `cooldown_minutes` | `30` | Pause after each trade close |
+| `gold_macro_gate` | `true` | Block entries opposing the TIPS/BEI/DXY macro model |
+
+---
+
+## Reading the Logs
+
+### Watching zones form during the day
+
+The zone map prints on every state refresh (default every 2 minutes). Zones are sorted by score, highest first. The `*` marker on a zone means it is aligned with the HTF bias.
+
+```
+[8.2★]  H4  LONG   GP 2304.5–2308.0   H4 long GP, nPOC 2306.0, Daily open, HTF BULL *
+[5.1★]  H1  SHORT  GP 2318.0–2320.5   H1 short GP, VAH, Session H/L
+```
+
+**Zone ID format:** `{TF}_{direction}_{swing_low_rounded}_{swing_high_rounded}`  
+Example: `H4_long_2285_2340` = 4H bullish impulse from $2285 to $2340.
+
+### Understanding the entry log
+
+```
+[ENTRY]  ▲ LONG @ 2305.1  SL 2297.5 (−7.6p)  TP1 2312.7 (+7.6p)  TP2 2320.3 (+15.2p)  R:R 1:2.0
+         VuManChu 3/3 [HIGH] WT DIVERGENCE_BULL · MF BULLISH_EXHAUSTION · VWAP RIGHT_ANGLE_UP
+```
+
+- `3/3 [HIGH]` — all three VuManChu components aligned
+- `WT DIVERGENCE_BULL` — price was making lower lows but WT turned up (buyers stepping in)
+- `MF BULLISH_EXHAUSTION` — the negative money flow spike has rolled over (sellers ran out)
+- `VWAP RIGHT_ANGLE_UP` — sharp break upward from VWAP consolidation
+
+### End-of-day summary
+
+The bot prints a summary on exit (Ctrl+C) or at the end of a `--once` run:
+
+```
+══════════════════════════════════════════════════════════════════════
+GOLD BOT — SESSION SUMMARY  2026-05-24
+══════════════════════════════════════════════════════════════════════
+  Zones detected  : 7
+  Zones hit       : 3
+  Trades          : 2
+  Wins            : 1
+  Losses          : 1
+  Net pips        : +7.6
+  Win rate        : 50%
+══════════════════════════════════════════════════════════════════════
+```
+
+The same data is written as a `SESSION_SUMMARY` event in `gold_journal.jsonl`.
+
+### Analysing the CSV
+
+`gold_trades.csv` can be opened in Excel or any spreadsheet. Each row is one closed trade. Key columns for evaluating the strategy:
+
+- `score` — was the zone high-scoring? Do high-score trades win more?
+- `vu_components` — does requiring 3/3 vs 2/3 improve win rate?
+- `tf` — which timeframe's fibs are most predictive?
+- `composition` — which level combinations work best?
+
+---
+
+## What to Watch For (First Few Days)
+
+1. **Zone accuracy** — are the zones forming at levels that price actually reacts to? The `ZONE_APPROACHED` events tell you which zones get hit. If high-score zones are being approached and reacted, the zone detection is working.
+
+2. **False arms** — does price enter the zone and then immediately continue through it without reversing? If so, consider raising `min_zone_score` or `vu_min_components`.
+
+3. **VuManChu timing** — is the entry signal firing at the right point (at the zone, on the rejection candle) or too early/late? Check `vu_components` in the entry log. If it's always 2/3 and the missing component is always VWAP, the `proximity_pips` may need widening.
+
+4. **HTF alignment** — compare win rates for `htf_aligned: true` vs `false` trades in the CSV. If aligned trades significantly outperform, raise `min_zone_score` for counter-HTF zones.
+
+5. **Session timing** — filter the CSV by `time` column. London (07:00–13:00 UTC) and the NY open (13:00–15:00 UTC) tend to produce the cleanest moves on gold.
+
+---
+
+## Magic Numbers
+
+Each bot uses a unique MT5 magic number to avoid order conflicts:
+
+| Bot | Magic |
+|-----|-------|
+| `bot/main.py` (main confluence bot) | 20260001 |
+| `bot/regime_bot.py` (HMM regime bot) | 20260002 |
+| `Gold/main.py` (this bot) | 20260003 |
+
+---
+
+## Phase 2 — Planned
+
+- **Structural fib from dashboard levels** — allow user-drawn fibs from the dashboard to feed into the zone map alongside auto-detected ones
+- **KV zone push** — write `gold_bot_zones` to KV so the gold dashboard page can overlay active zones on the chart
+- **nPOC from tick data** — current implementation uses M1 bar volume; true tick-by-price volume profile would be more accurate
+- **Trendline confluence** — detect and score trendline touches as an additional confluence type
+- **Adaptive min score** — automatically raise the entry threshold during low-volatility compression regimes
+- **Trade replay** — use the `gold_journal.jsonl` to replay past sessions against actual price data for backtesting the confirmation logic
