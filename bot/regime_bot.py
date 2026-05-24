@@ -127,7 +127,8 @@ def _kv_get(key: str, base_url: str) -> dict | None:
 
 def _kv_put(key: str, data: dict, base_url: str) -> None:
     try:
-        requests.post(f'{base_url}/api/kv/put', json={'key': key, 'data': data}, timeout=10)
+        import time as _time
+        requests.post(f'{base_url}/api/kv/set', json={'key': key, 'data': data, 'timestamp': int(_time.time() * 1000)}, timeout=10)
     except Exception as exc:
         log.warning(f'kv_put({key}): {exc}')
 
