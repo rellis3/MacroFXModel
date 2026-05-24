@@ -632,6 +632,11 @@ export default {
           walcl:    'WALCLS',     // Fed total assets (weekly, Thursdays)
           tga:      'WTREGEN',    // Treasury General Account (daily)
           rrp:      'RRPONTSYD',  // Overnight reverse repo (daily)
+          // Carry basket extension — NZD for NZD/JPY alongside AUD/JPY in T5
+          nzd_usd:  'DEXUSNZ',
+          // Credit quality spread — BB vs CCC divergence as early distress signal in T4
+          hy_bb:    'BAMLH0A1HYBB',
+          hy_ccc:   'BAMLH0A3HYC',
         };
 
         const fetches = Object.entries(SERIES).map(async ([key, id]) => {

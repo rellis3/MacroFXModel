@@ -205,11 +205,25 @@ function computeT1() {
     ? `10Y ${diff10Bp >= 0 ? '+' : ''}${diff10Bp.toFixed(0)}bp · 2Y ${diff2Bp >= 0 ? '+' : ''}${diff2Bp.toFixed(0)}bp`
     : `10Y ${diff10Bp >= 0 ? '+' : ''}${diff10Bp.toFixed(0)}bp`;
 
+  // Fed pivot detector: front slope (5s-2s) steepening while full curve still inverted
+  // signals the market is beginning to price rate cuts before the 10Y confirms it.
+  let pivotNote = '';
+  const us5y = fredData.us5y?.value;
+  if (us5y != null && us10y != null && us2y != null) {
+    const slope5s2s  = us5y  - us2y;
+    const slope10s5s = us10y - us5y;
+    const curve      = us10y - us2y;
+    if (curve < 0 && slope5s2s > slope10s5s + 0.20) {
+      pivotNote = ' · Front slope steepening — pivot pricing emerging';
+    }
+  }
+
   return {
     tier: 'T1', name: 'Rate Differential', max: 3, score,
     val: valStr,
-    reading: Math.abs(diff10Bp) < 20 ? 'Tight spread, neutral' :
-             score > 0 ? 'Yield differential supports pair' : 'Yield differential drags pair',
+    reading: (Math.abs(diff10Bp) < 20 ? 'Tight spread, neutral' :
+              score > 0 ? 'Yield differential supports pair' : 'Yield differential drags pair')
+             + pivotNote,
     source: has2Y ? '10Y + 2Y spreads' : '10Y vs counterpart',
     isMonthly: !has2Y,
     momentumBonus,
@@ -332,16 +346,38 @@ function computeT4() {
   else if (change < -20) dirScore = 1;
   else if (change < -5) dirScore = 0.5;
 
-  let score = levelScore + dirScore;
+  // Credit quality spread: CCC widening faster than BB = distress reaching bottom of stack
+  // This early-warning signal fires before broad HY OAS reflects the stress.
+  let qualityMod = 0;
+  let qualityStr = '';
+  const bbBp   = fredData.hy_bb?.value  != null ? fredData.hy_bb.value  * 100 : null;
+  const cccBp  = fredData.hy_ccc?.value != null ? fredData.hy_ccc.value * 100 : null;
+  const bbPrev  = fredData.hy_bb?.prev  != null ? fredData.hy_bb.prev   * 100 : null;
+  const cccPrev = fredData.hy_ccc?.prev != null ? fredData.hy_ccc.prev  * 100 : null;
+  if (bbBp != null && cccBp != null) {
+    const qualitySpread = cccBp - bbBp;
+    qualityStr = ` | CCC−BB ${qualitySpread.toFixed(0)}bp`;
+    if (bbPrev != null && cccPrev != null) {
+      const qualityChange = qualitySpread - (cccPrev - bbPrev);
+      if (qualityChange > 50)       qualityMod = isInverted ?  0.5 : -0.5;
+      else if (qualityChange < -50) qualityMod = isInverted ? -0.5 :  0.5;
+    }
+  }
+
+  let score = levelScore + dirScore + qualityMod;
   if (isInverted) score = -score;
   score = Math.max(-2, Math.min(2, Math.round(score)));
 
+  const qualityReading = qualityMod !== 0
+    ? (qualityMod < 0 ? ' · CCC widening vs BB — distress spreading' : ' · CCC tightening vs BB — quality rally')
+    : '';
+
   return {
     tier: 'T4', name: 'HY Credit', max: 2, score,
-    val: `${hy.toFixed(0)}bp ${change >= 0 ? '+' : ''}${change.toFixed(0)}`,
-    reading: hy > 500 ? (isInverted ? 'Stressed credit favors safe haven' : 'Stressed credit, risk off') :
-             hy < 300 ? 'Risk on, follow momentum' : 'Normal range',
-    source: 'BAMLH0A0HYM2',
+    val: `${hy.toFixed(0)}bp ${change >= 0 ? '+' : ''}${change.toFixed(0)}${qualityStr}`,
+    reading: (hy > 500 ? (isInverted ? 'Stressed credit favors safe haven' : 'Stressed credit, risk off') :
+             hy < 300 ? 'Risk on, follow momentum' : 'Normal range') + qualityReading,
+    source: 'BAMLH0A0HYM2 + BB/CCC',
     isMonthly: false
   };
 }
@@ -363,7 +399,19 @@ function computeT5() {
     const jpyPrv = parseFloat(jpyBars[1].close);
     const audjpy     = audNow * jpyNow;
     const audjpyPrev = audPrv * jpyPrv;
-    const change     = audjpyPrev ? ((audjpy / audjpyPrev) - 1) * 100 : 0;
+    const audjpyChg  = audjpyPrev ? ((audjpy / audjpyPrev) - 1) * 100 : 0;
+
+    // Blend NZD/JPY (FRED scalar) as second carry leg — smooths AUD-specific noise
+    const nzd     = fredData.nzd_usd?.value;
+    const nzdPrev = fredData.nzd_usd?.prev;
+    let nzdjpyChg = null;
+    if (nzd != null && nzdPrev != null) {
+      const nzdjpy     = nzd * jpyNow;
+      const nzdjpyPrev = nzdPrev * jpyPrv;
+      nzdjpyChg = nzdjpyPrev > 0 ? ((nzdjpy / nzdjpyPrev) - 1) * 100 : null;
+    }
+    const change = nzdjpyChg != null ? audjpyChg * 0.6 + nzdjpyChg * 0.4 : audjpyChg;
+    const source = nzdjpyChg != null ? 'AUD/JPY × NZD/JPY basket (live)' : 'AUD/USD × USD/JPY (live bars)';
 
     let absScore = 0;
     if (Math.abs(change) > 0.5) absScore = 2;
@@ -374,11 +422,11 @@ function computeT5() {
     score = Math.max(-2, Math.min(2, score));
 
     return {
-      tier: 'T5', name: 'AUD/JPY Carry', max: 2, score,
-      val: `${audjpy.toFixed(2)} ${change >= 0 ? '+' : ''}${change.toFixed(2)}%`,
+      tier: 'T5', name: 'Carry Basket', max: 2, score,
+      val: `AUD/JPY ${audjpy.toFixed(2)} ${change >= 0 ? '+' : ''}${change.toFixed(2)}%`,
       reading: change > 0.2 ? (isInverted ? 'Risk-on hurts safe haven' : 'Carry on, risk-on') :
                change < -0.2 ? (isInverted ? 'Carry unwind benefits safe haven' : 'Carry off, risk-off') : 'Carry stable',
-      source: 'AUD/USD × USD/JPY (live bars)',
+      source,
       isMonthly: false,
     };
   }
@@ -388,11 +436,21 @@ function computeT5() {
   const audPrev = fredData.aud_usd?.prev;
   const jpy = fredData.usd_jpy?.value;
   const jpyPrev = fredData.usd_jpy?.prev;
-  if (aud == null || jpy == null) return tierUnavailable('T5', 'AUD/JPY Carry', 'Carry Proxy', 2);
+  if (aud == null || jpy == null) return tierUnavailable('T5', 'Carry Basket', 'Carry Proxy', 2);
 
   const audjpy = aud * jpy;
   const audjpyPrev = (audPrev && jpyPrev) ? audPrev * jpyPrev : null;
-  const change = audjpyPrev ? ((audjpy / audjpyPrev) - 1) * 100 : 0;
+  const audjpyChg = audjpyPrev ? ((audjpy / audjpyPrev) - 1) * 100 : 0;
+
+  const nzd = fredData.nzd_usd?.value;
+  const nzdPrev = fredData.nzd_usd?.prev;
+  let nzdjpyChg = null;
+  if (nzd != null && nzdPrev != null && jpyPrev != null) {
+    const nzdjpy = nzd * jpy;
+    const nzdjpyPrev = nzdPrev * jpyPrev;
+    nzdjpyChg = nzdjpyPrev > 0 ? ((nzdjpy / nzdjpyPrev) - 1) * 100 : null;
+  }
+  const change = nzdjpyChg != null ? audjpyChg * 0.6 + nzdjpyChg * 0.4 : audjpyChg;
 
   let absScore = 0;
   if (Math.abs(change) > 0.5) absScore = 2;
@@ -403,11 +461,11 @@ function computeT5() {
   score = Math.max(-2, Math.min(2, score));
 
   return {
-    tier: 'T5', name: 'AUD/JPY Carry', max: 2, score,
-    val: `${audjpy.toFixed(2)} ${change >= 0 ? '+' : ''}${change.toFixed(2)}%`,
+    tier: 'T5', name: 'Carry Basket', max: 2, score,
+    val: `AUD/JPY ${audjpy.toFixed(2)} ${change >= 0 ? '+' : ''}${change.toFixed(2)}%`,
     reading: change > 0.2 ? (isInverted ? 'Risk-on hurts safe haven' : 'Carry on, risk-on') :
              change < -0.2 ? (isInverted ? 'Carry unwind benefits safe haven' : 'Carry off, risk-off') : 'Carry stable',
-    source: 'AUD×USDJPY (FRED fallback)',
+    source: nzdjpyChg != null ? 'AUD/JPY × NZD/JPY (FRED fallback)' : 'AUD×USDJPY (FRED fallback)',
     isMonthly: false,
   };
 }
@@ -447,13 +505,13 @@ function computeT7() {
   if (!bars || bars.length < 50) return tierUnavailable('T7', 'Momentum', 'EMA/RSI', 2);
 
   const closes = bars.slice(0, 100).map(b => parseFloat(b.close)).reverse();
-  const ema20 = ema(closes, 20);
-  const ema50 = ema(closes, 50);
-  const rsi = calcRSI(closes, 14);
+  const ema20  = ema(closes, 20);
+  const ema50  = ema(closes, 50);
+  const rsiArr = calcRSI(closes, 14);
 
   const ema20Now = ema20[ema20.length - 1];
   const ema50Now = ema50[ema50.length - 1];
-  const rsiNow = rsi[rsi.length - 1];
+  const rsiNow   = rsiArr[rsiArr.length - 1];
 
   let score = 0;
   if (ema20Now > ema50Now) score += 1;
@@ -464,14 +522,44 @@ function computeT7() {
   else if (rsiNow < 40) score -= 0.5;
   else if (rsiNow < 50) score -= 0.3;
 
-  score = Math.max(-2, Math.min(2, Math.round(score)));
+  // RSI divergence: price and momentum moving in opposite directions over 3 bars
+  // Bearish div: price higher but RSI lower → fade the rally
+  // Bullish div: price lower but RSI higher → fade the sell-off
+  let divScore = 0;
+  let divNote  = '';
+  if (rsiArr.length >= 4 && closes.length >= 4) {
+    const n   = closes.length;
+    const m   = rsiArr.length;
+    const pChg  = closes[n-1] - closes[n-4];
+    const rChg  = rsiArr[m-1] - rsiArr[m-4];
+    if (pChg > 0 && rChg < -4)      { divScore = -0.5; divNote = ' · Bearish RSI div'; }
+    else if (pChg < 0 && rChg > 4)  { divScore =  0.5; divNote = ' · Bullish RSI div'; }
+  }
+
+  // 4h trend: 30m bars, 8-bar EMA (4h) vs 20-bar EMA (10h)
+  // When 4h opposes the daily trend, discount conviction
+  let htfScore = 0;
+  let htfNote  = '';
+  const bars30m = filterTradingDays(S.ohlc30m?.[S.currentPair.symbol]?.values);
+  if (bars30m?.length >= 24) {
+    const c30 = bars30m.slice(0, 24).map(b => parseFloat(b.close)).reverse();
+    const e8  = ema(c30, 8);
+    const e20 = ema(c30, 20);
+    const htfBull    = e8[e8.length-1] > e20[e20.length-1];
+    const dailyBull  = ema20Now > ema50Now;
+    if (htfBull === dailyBull) { htfScore =  0.5; htfNote = ' · 4h aligned'; }
+    else                       { htfScore = -0.5; htfNote = ' · 4h opposed'; }
+  }
+
+  score = Math.max(-2, Math.min(2, Math.round(score + divScore + htfScore)));
 
   return {
     tier: 'T7', name: 'Momentum', max: 2, score,
     val: `RSI ${rsiNow.toFixed(0)} | EMA${ema20Now > ema50Now ? '↑' : '↓'}`,
-    reading: ema20Now > ema50Now && rsiNow > 50 ? 'Trend up, momentum bullish' :
-             ema20Now < ema50Now && rsiNow < 50 ? 'Trend down, momentum bearish' : 'Mixed signals',
-    source: 'EMA(20/50), RSI(14)',
+    reading: (ema20Now > ema50Now && rsiNow > 50 ? 'Trend up, momentum bullish' :
+              ema20Now < ema50Now && rsiNow < 50 ? 'Trend down, momentum bearish' : 'Mixed signals')
+             + divNote + htfNote,
+    source: 'EMA(20/50), RSI(14), 4h',
     isMonthly: false
   };
 }
@@ -545,11 +633,19 @@ function computeT8() {
 // Returns { prob, pct, dir, label } where prob ∈ [0,1], pct = Math.round(prob*100).
 export function computeBayesianScore(tiers) {
   if (!tiers || !tiers.length) return null;
+  // T1 (rates) and T3 (DXY) are structurally correlated: rising US rates → USD strengthens.
+  // When both fire in the same direction we discount T3 to avoid double-counting.
+  const t1 = tiers.find(t => t.tier === 'T1');
+  const t3 = tiers.find(t => t.tier === 'T3');
+  const t1t3Agree = t1 && t3 && !t1.na && !t3.na && t1.score !== 0 && t3.score !== 0
+    && Math.sign(t1.score) === Math.sign(t3.score);
+
   let logOdds = 0;
   for (const t of tiers) {
     if (t.na || t.score === 0) continue;
     const strength = Math.min(Math.abs(t.score) / Math.max(t.max, 1), 1);
-    const lr = 1 + strength * 0.5;
+    const corrDiscount = (t.tier === 'T3' && t1t3Agree) ? 0.5 : 1.0;
+    const lr = 1 + strength * 0.5 * corrDiscount;
     logOdds += t.score > 0 ? Math.log(lr) : -Math.log(lr);
   }
   const prob = 1 / (1 + Math.exp(-logOdds));
