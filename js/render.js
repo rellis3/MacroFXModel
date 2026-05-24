@@ -542,7 +542,7 @@ ${calendarCtx.warnings.length > 0 ? `
           <div class="tc-val ${t.score > 0 ? 'up' : t.score < 0 ? 'dn' : t.na ? 'na' : 'neu'}">${t.val}</div>
           <div class="tc-read">${t.reading}</div>
           ${t.momentumBonus && t.momentumBonus !== 0 ? `<div style="font-size:9px;color:${t.momentumBonus > 0 ? 'var(--green)' : 'var(--amber)'};margin-top:2px;font-weight:600">Compass mom ${t.momentumBonus > 0 ? '+1 confirms' : '−1 conflicts'}</div>` : ''}
-          <div class="tc-src">${t.source}${t.isMonthly ? '<span class="tc-monthly">MONTHLY</span>' : ''}</div>
+          <div class="tc-src">${t.source}${t.isMonthly ? '<span class="tc-monthly">MONTHLY</span>' : t.badge ? `<span class="tc-monthly">${t.badge}</span>` : ''}</div>
         </div>
       `).join('')}
     </div>
@@ -893,6 +893,40 @@ ${calendarCtx.warnings.length > 0 ? `
         `;
       })()}
     </div>
+
+    ${S.currentPair.isEquity ? (() => {
+      const tips = fred('tips');
+      const tipsLabel = tips == null ? '—'
+        : tips < 0.5  ? `${tips.toFixed(2)}% — supportive for growth`
+        : tips < 1.5  ? `${tips.toFixed(2)}% — neutral`
+        : tips < 2.5  ? `${tips.toFixed(2)}% — mild headwind`
+        :               `${tips.toFixed(2)}% — strong headwind`;
+      const tipsCol = tips == null ? 'var(--text3)'
+        : tips < 0.5  ? 'var(--green)'
+        : tips < 1.5  ? 'var(--text)'
+        : tips < 2.5  ? 'var(--amber)'
+        :               'var(--red)';
+      const earningsOn = S.nqEarningsWeek === true;
+      return `
+    <div class="sec-lbl">NQ Equity Context <span class="sec-badge">RATES &amp; CALENDAR</span></div>
+    ${earningsOn ? `<div style="background:var(--amber-bg,#2a1f00);border:1px solid var(--amber);border-radius:6px;padding:6px 10px;margin-bottom:6px;font-size:11px;color:var(--amber);font-weight:600">⚡ Earnings Week active — size −40%, avoid chasing gaps</div>` : ''}
+    <div class="card" style="margin-bottom:8px">
+      <div class="mrow"><span class="mrow-n">TIPS Real Yield</span><span class="mrow-v" style="color:${tipsCol}">${tipsLabel}</span></div>
+      <div class="mrow" style="margin-top:6px">
+        <span class="mrow-n">Earnings Week</span>
+        <button onclick="window.toggleNQEarnings()" style="font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid ${earningsOn ? 'var(--amber)' : 'var(--border)'};background:${earningsOn ? 'var(--amber-bg,#2a1f00)' : 'var(--s2)'};color:${earningsOn ? 'var(--amber)' : 'var(--text3)'};cursor:pointer;font-weight:600">${earningsOn ? '⚡ ON' : 'OFF'}</button>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text3);line-height:1.8">
+        <a href="https://www.nasdaq.com/market-activity/earnings" target="_blank" style="color:var(--blue);text-decoration:none">Earnings Cal</a>
+        &nbsp;·&nbsp;
+        <a href="https://finance.yahoo.com/calendar/earnings" target="_blank" style="color:var(--blue);text-decoration:none">Yahoo Earnings</a>
+        &nbsp;·&nbsp;
+        <a href="https://fred.stlouisfed.org/graph/?g=1g1J2" target="_blank" style="color:var(--blue);text-decoration:none">Fed Net Liq Chart</a>
+        &nbsp;·&nbsp;
+        <a href="https://www.cmegroup.com/markets/equities/nasdaq/e-mini-nasdaq-100.html" target="_blank" style="color:var(--blue);text-decoration:none">CME NQ</a>
+      </div>
+    </div>`;
+    })() : ''}
 
     <!-- COT POSITIONING -->
     <div class="sec-lbl">COT Positioning <span class="sec-badge purple">CFTC</span></div>

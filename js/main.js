@@ -49,6 +49,10 @@ window.saveCaps               = saveCaps;
 window.resetCaps              = resetCaps;
 window.setCompassMode         = setCompassMode;
 window.toggleCompassFX        = toggleCompassFX;
+window.toggleNQEarnings       = function() {
+  try { S.nqEarningsWeek = !S.nqEarningsWeek; localStorage.setItem('nq_earnings_week', S.nqEarningsWeek ? '1' : ''); } catch(e) {}
+  window.renderAll?.();
+};
 window.detectCandlePatterns   = detectCandlePatterns;
 window.triggerAIAnalysis      = triggerAIAnalysis;
 window.copyAIAnalysis         = copyAIAnalysis;
