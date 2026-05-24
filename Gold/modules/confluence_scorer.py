@@ -12,28 +12,36 @@ nPOC stack weighting:
 VWAP anchor weighting:
   Historical session-open right-angle price levels. Older = stronger.
   Base weight 1.8 + 0.05 per day, capped at 2.5.
+
+Trendline weighting:
+  Only directionally aligned trendlines score (ascending at long zone,
+  descending at short zone). 2-touch = 1.2, 3+ touch = 1.8.
 """
 
 from __future__ import annotations
+from typing import Optional
 from .fib_engine import FibZone
 from .volume_profile import VolumeProfile
 from .session_engine import SessionLevels
 from .htf_bias import HTFBias
+from .trendline_engine import Trendline
 
 PROXIMITY_PIPS = 3.0   # $3 tolerance for XAU/USD
 
 WEIGHTS = {
-    'fib_cluster':   1.5,
-    'npoc_base':     2.0,   # + 0.1 per day old, cap 3.0
-    'poc':           1.5,
-    'hvn':           1.2,
-    'vah_val':       1.0,
-    'vwap_anchor':   1.8,   # + 0.05 per day old, cap 2.5
-    'daily_open':    1.5,
-    'prev_day_hl':   1.2,
-    'session_hl':    1.0,
-    'pivot':         0.8,
-    'htf_aligned':   1.5,
+    'fib_cluster':    1.5,
+    'npoc_base':      2.0,   # + 0.1 per day old, cap 3.0
+    'poc':            1.5,
+    'hvn':            1.2,
+    'vah_val':        1.0,
+    'vwap_anchor':    1.8,   # + 0.05 per day old, cap 2.5
+    'daily_open':     1.5,
+    'prev_day_hl':    1.2,
+    'session_hl':     1.0,
+    'pivot':          0.8,
+    'htf_aligned':    1.5,
+    'trendline_2t':   1.2,   # 2-pivot trendline touch (aligned direction only)
+    'trendline_3t':   1.8,   # 3+ pivot trendline touch
 }
 
 
@@ -46,7 +54,8 @@ def _centre(z: FibZone) -> float:
 
 
 def score_zones(zones: list[FibZone], vol: VolumeProfile,
-                session: SessionLevels, htf: HTFBias) -> list[FibZone]:
+                session: SessionLevels, htf: HTFBias,
+                trendlines: Optional[list[Trendline]] = None) -> list[FibZone]:
     """Score all zones in-place and return sorted highest-first."""
     for zone in zones:
         c     = _centre(zone)
@@ -90,6 +99,23 @@ def score_zones(zones: list[FibZone], vol: VolumeProfile,
                     f'({anchor.session} {anchor.age_days}d {anchor.direction})'
                 )
                 break
+
+        # ── Trendline confluence (direction-aligned only) ─────────────────────
+        if trendlines:
+            for tl in trendlines:
+                if not _near(c, tl.projected, PROXIMITY_PIPS * 2):
+                    continue
+                aligned = (
+                    (tl.kind == 'ascending'  and zone.direction == 'long') or
+                    (tl.kind == 'descending' and zone.direction == 'short')
+                )
+                if aligned:
+                    w = WEIGHTS['trendline_3t'] if tl.touches >= 3 else WEIGHTS['trendline_2t']
+                    score += w
+                    comp.append(
+                        f'{tl.tf} {tl.kind} TL ({tl.touches}t @ {tl.projected:.1f})'
+                    )
+                    break   # one trendline credit per zone
 
         # ── Session / daily levels ────────────────────────────────────────────
         if session.daily_open and _near(c, session.daily_open):

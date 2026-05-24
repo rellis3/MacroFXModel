@@ -39,8 +39,10 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 
-# Allow imports from ../bot/utils and ../bot/modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'bot'))
+# Gold/modules must take priority over bot/modules (both packages use 'modules.*').
+# Insert Gold's own directory first, then bot/ for utils/.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'bot'))
 
 import requests
 from dotenv import load_dotenv
@@ -55,6 +57,7 @@ from modules.session_engine import compute_session_levels
 from modules.confluence_scorer import score_zones
 from modules.vumanchu import compute_vumanchu
 from modules.trade_state import BotState, State, ActiveTrade
+from modules.trendline_engine import detect_trendlines, Trendline
 
 from journal import GoldJournal
 
@@ -269,10 +272,12 @@ class GoldBot:
         self.journal   = GoldJournal(args.log_dir)
         self.bot_state = BotState()
         self.zones: list[FibZone] = []
+        self.trendlines: list[Trendline] = []
         self.htf_bias  = None
         self.vol_prof  = None
         self.sess_lvls = None
         self.atr_15m   = 5.0
+        self.squeeze_ratio = 1.0   # ATR(14)/ATR(100) — <0.65 = compression
         self.trades_today = 0
         self.last_state_refresh = 0.0
         self._mt5_ok   = False
@@ -351,7 +356,7 @@ class GoldBot:
                     if datetime.fromtimestamp(b['time'], tz=timezone.utc).date() <
                        now_utc.date()][-1440:]   # cap to one day for prev profile
 
-        # ── ATR (15m) ─────────────────────────────────────────────────────────
+        # ── ATR (15m) + squeeze detection ────────────────────────────────────
         if m15_bars:
             from utils.indicators import compute_atr
             self.atr_15m = compute_atr(
@@ -359,6 +364,10 @@ class GoldBot:
                                   '__len__':  lambda s: len(m15_bars),
                                   '__getitem__': lambda s, i: m15_bars[i]})()
             ) or 5.0
+        if m15_bars and len(m15_bars) >= 100:
+            self.squeeze_ratio = _atr_squeeze(m15_bars)
+            if self.squeeze_ratio < 0.65:
+                log.info(f'[ATR]    Squeeze: {self.squeeze_ratio:.2f} — min score raised by +1.5')
 
         # ── HTF bias ──────────────────────────────────────────────────────────
         if daily_bars and h4_bars:
@@ -392,6 +401,18 @@ class GoldBot:
                 )
                 log.info(f'[VWAP]   {len(self.sess_lvls.vwap_anchors)} anchors: {anc}')
 
+        # ── Trendlines (H4 + H1) ─────────────────────────────────────────────
+        self.trendlines = []
+        for tf, bars in [('H4', h4_bars), ('H1', h1_bars)]:
+            if bars:
+                tls = detect_trendlines(bars, tf)
+                self.trendlines.extend(tls)
+        if self.trendlines:
+            desc = sum(1 for t in self.trendlines if t.kind == 'descending')
+            asc  = sum(1 for t in self.trendlines if t.kind == 'ascending')
+            log.info(f'[TL]     {len(self.trendlines)} trendlines: '
+                     f'{desc} descending, {asc} ascending')
+
         # ── Fib zones (all TFs) ───────────────────────────────────────────────
         all_zones: list[FibZone] = []
         for tf, bars in [('D1', daily_bars), ('H4', h4_bars), ('H1', h1_bars),
@@ -410,12 +431,14 @@ class GoldBot:
         # ── Confluence scoring ────────────────────────────────────────────────
         if self.zones and self.vol_prof and self.sess_lvls and self.htf_bias:
             self.zones = score_zones(self.zones, self.vol_prof,
-                                     self.sess_lvls, self.htf_bias)
+                                     self.sess_lvls, self.htf_bias,
+                                     trendlines=self.trendlines)
             self.journal.log_zone_map(self.zones, self.htf_bias,
                                        self.vol_prof, self.sess_lvls)
 
-        # ── Push status to KV ─────────────────────────────────────────────────
+        # ── Push status + full zone map to KV ────────────────────────────────
         self._push_status()
+        self._push_zones_kv()
 
     # ── Price tick (fast path) ────────────────────────────────────────────────
 
@@ -459,8 +482,15 @@ class GoldBot:
 
     def _scan_zones(self, price: float) -> None:
         """Check if price is approaching any high-score zone."""
-        min_score = self.cfg.get('min_zone_score', 3.0)
-        prox      = self.cfg.get('proximity_pips', 5.0) * PIP
+        base_score = self.cfg.get('min_zone_score', 3.0)
+        squeeze    = getattr(self, 'squeeze_ratio', 1.0)
+        if squeeze < 0.65:
+            min_score = base_score + 1.5   # strong ATR compression — only take the best
+        elif squeeze < 0.75:
+            min_score = base_score + 0.75  # mild compression
+        else:
+            min_score = base_score
+        prox = self.cfg.get('proximity_pips', 5.0) * PIP
 
         for zone in self.zones:
             if not zone.active or zone.score < min_score:
@@ -569,14 +599,77 @@ class GoldBot:
             'top_zones': zones_summary,
             'trades_today': self.trades_today,
             'paper_mode': self.cfg.get('paper_mode', True),
+            'squeeze_ratio': self.squeeze_ratio,
         }
         push_bot_status(status, self.base_url)
 
+    def _push_zones_kv(self) -> None:
+        """Push the full zone map, nPOC stack, VWAP anchors, and trendlines to KV.
 
-# ── ATR helper that accepts plain list[dict] ──────────────────────────────────
-# (compute_atr in bot/utils expects a numpy structured array — provide adapter)
+        Dashboard reads 'gold_bot_zones' to overlay zones, anchors, and naked
+        POCs directly on the chart — no manual configuration needed.
+        """
+        try:
+            payload = {
+                'timestamp':      datetime.now(timezone.utc).isoformat(),
+                'htf_bias':       self.htf_bias.bias if self.htf_bias else 'UNKNOWN',
+                'htf_confidence': round(self.htf_bias.confidence, 2) if self.htf_bias else 0.0,
+                'session':        self.sess_lvls.current_session if self.sess_lvls else 'UNKNOWN',
+                'vwap':           self.sess_lvls.vwap if self.sess_lvls else 0.0,
+                'bot_state':      self.bot_state.state.value,
+                'armed_zone':     self.bot_state.armed_zone_id,
+                'squeeze_ratio':  self.squeeze_ratio,
+                'zones': [
+                    {
+                        'zone_id':    z.zone_id,
+                        'tf':         z.tf,
+                        'direction':  z.direction,
+                        'gp_low':     z.gp_low,
+                        'gp_high':    z.gp_high,
+                        'zone_low':   z.zone_low,
+                        'zone_high':  z.zone_high,
+                        'score':      z.score,
+                        'htf_aligned': z.htf_aligned,
+                        'composition': z.composition,
+                    }
+                    for z in self.zones if z.active
+                ],
+                'npoc_stack': [
+                    {'price': n.price, 'age_days': n.age_days, 'date': n.date}
+                    for n in (self.vol_prof.npoc_stack if self.vol_prof else [])
+                ],
+                'vwap_anchors': [
+                    {
+                        'price':      a.price,
+                        'session':    a.session,
+                        'age_days':   a.age_days,
+                        'direction':  a.direction,
+                        'drive_size': a.drive_size,
+                        'date':       a.date,
+                    }
+                    for a in (self.sess_lvls.vwap_anchors if self.sess_lvls else [])
+                ],
+                'trendlines': [
+                    {
+                        'tf':        tl.tf,
+                        'kind':      tl.kind,
+                        'touches':   tl.touches,
+                        'projected': tl.projected,
+                        'slope':     tl.slope,
+                    }
+                    for tl in self.trendlines
+                ],
+            }
+            url = f'{self.base_url}/api/kv/set'
+            requests.post(url, json={'key': 'gold_bot_zones', 'data': payload}, timeout=5)
+        except Exception:
+            pass
+
+
+# ── ATR helpers ──────────────────────────────────────────────────────────────
 
 def _atr_from_list(bars: list[dict], period: int = 14) -> float:
+    """EMA-smoothed ATR from plain list[dict]. Adapter for bot/utils compute_atr."""
     if len(bars) < 2:
         return 5.0
     alpha = 0.15
@@ -585,6 +678,20 @@ def _atr_from_list(bars: list[dict], period: int = 14) -> float:
         h, l, pc = bars[i]['high'], bars[i]['low'], bars[i - 1]['close']
         tr = alpha * max(h - l, abs(h - pc), abs(l - pc)) + (1 - alpha) * tr
     return round(tr, 4)
+
+
+def _atr_squeeze(bars: list[dict]) -> float:
+    """
+    Returns ATR(14) / ATR(100) ratio. Values well below 1.0 indicate
+    the market is in an ATR compression — less volatile than its recent
+    baseline, often preceding a sharp expansion. In compression, only the
+    highest-scoring zones are worth arming (adaptive min score applies).
+    """
+    if len(bars) < 100:
+        return 1.0
+    short  = _atr_from_list(bars[-14:])
+    medium = _atr_from_list(bars[-100:])
+    return round(short / medium, 3) if medium > 0 else 1.0
 
 
 # Monkey-patch the bot to use the plain-list ATR

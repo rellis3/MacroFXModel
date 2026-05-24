@@ -498,10 +498,85 @@ Each bot uses a unique MT5 magic number to avoid order conflicts:
 
 ---
 
-## Phase 2 — Planned
+## Trendline Confluence (`modules/trendline_engine.py`)
 
-- **Structural fib from dashboard levels** — allow user-drawn fibs from the dashboard to feed into the zone map alongside auto-detected ones
-- **KV zone push** — write `gold_bot_zones` to KV so the gold dashboard page can overlay active zones and nPOC/anchor levels on the chart
-- **Trendline confluence** — detect and score trendline touches as an additional confluence type
-- **Adaptive min score** — automatically raise the entry threshold during low-volatility compression regimes
-- **Trade replay** — use the `gold_journal.jsonl` to replay past sessions against actual price data for backtesting the confirmation logic
+Detects ascending and descending structural trendlines on H4 and H1 bars by fitting lines through confirmed swing pivot points. A valid line requires at minimum 2 pivot touches.
+
+Each trendline is projected forward to the current bar to get its live price level. If that level falls within ±$6 of a Fibonacci zone's golden pocket centre, it adds to the zone's confluence score — but only when the trendline direction matches the zone's expected trade:
+
+- Ascending trendline at a LONG zone → structural rising support agrees with fib support → +score
+- Descending trendline at a SHORT zone → structural falling resistance agrees with fib resistance → +score
+- Misaligned trendlines (descending at long, ascending at short) → ignored
+
+| Touches | Score weight |
+|---------|-------------|
+| 2       | 1.2         |
+| 3+      | 1.8         |
+
+---
+
+## Adaptive Min Score
+
+The bot compares the current 14-bar M15 ATR to the 100-bar baseline ATR. The ratio (ATR squeeze) detects when gold is in a compression phase — tighter than its recent norm, often preceding a sharp expansion. In compression, the scoring threshold is raised automatically so only the most confluent zones are armed:
+
+| Squeeze ratio | Action |
+|--------------|--------|
+| < 0.65       | min score raised by +1.5 |
+| 0.65–0.75    | min score raised by +0.75 |
+| > 0.75       | normal threshold |
+
+The squeeze ratio is logged on each state refresh and included in the `gold_bot_status` KV write.
+
+---
+
+## KV Zone Push (`gold_bot_zones`)
+
+On every state refresh the bot pushes a full snapshot to the KV key `gold_bot_zones`. This is the data the dashboard needs to overlay the bot's view on the chart:
+
+```json
+{
+  "timestamp": "2026-05-24T09:35:00Z",
+  "htf_bias": "BULL",
+  "htf_confidence": 0.75,
+  "session": "LONDON",
+  "vwap": 2308.5,
+  "bot_state": "ARMED",
+  "armed_zone": "H4_long_2285_2340",
+  "squeeze_ratio": 0.82,
+  "zones": [{ "zone_id": "...", "tf": "H4", "direction": "long",
+              "gp_low": 2304.5, "gp_high": 2308.0, "score": 8.2,
+              "htf_aligned": true, "composition": [...] }],
+  "npoc_stack": [{ "price": 2306.0, "age_days": 8, "date": "2026-05-16" }],
+  "vwap_anchors": [{ "price": 2306.1, "session": "NY", "age_days": 5,
+                     "direction": "UP", "drive_size": 8.3 }],
+  "trendlines": [{ "tf": "H4", "kind": "ascending", "touches": 3,
+                   "projected": 2305.2, "slope": 0.12 }]
+}
+```
+
+---
+
+## Trade Replay (`replay.py`)
+
+Analyses the `gold_journal.jsonl` file to reconstruct performance statistics without needing MT5. Works entirely from the events the bot logged during live observation.
+
+```bash
+python Gold/replay.py                                          # uses ./gold_journal.jsonl
+python Gold/replay.py --journal Gold/logs/gold_journal.jsonl  # specify path
+python Gold/replay.py --date 2026-05-24                       # single day
+python Gold/replay.py --csv-out Gold/logs/replay.csv          # export CSV
+```
+
+Output includes:
+- Per-session table: zones detected, hit rate, entry rate, win rate, net-R
+- By-TF breakdown: which timeframe zones perform best
+- Composition analysis: which level combinations have highest win rates (min 3 appearances)
+
+The win-rate and R columns let you evaluate whether the zone scoring threshold, VuManChu minimum, or HTF alignment filter should be tightened.
+
+---
+
+## Phase 3 — Planned
+
+- **Structural fib from dashboard levels** — allow user-drawn fibs on the dashboard to push their levels into the zone map alongside auto-detected ones
+- **Dashboard chart overlay** — read `gold_bot_zones` KV in `gold.html` and draw active zones, nPOC levels, VWAP anchors, and trendlines directly on the chart
