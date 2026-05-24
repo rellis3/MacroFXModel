@@ -156,7 +156,7 @@ def load_credentials(base_url: str) -> None:
         val = creds.get(cfg_key)
         if val:
             os.environ[env_key] = str(val)
-    log.info('Regime bot credentials loaded from KV')
+    log.info(f'Regime bot credentials loaded from KV  account={creds.get("mt5_account")}  server={creds.get("mt5_server")}')
 
 
 # ── MT5 connection ─────────────────────────────────────────────────────────────
