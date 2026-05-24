@@ -291,7 +291,14 @@ class GoldBot:
         if HAS_MT5:
             self._mt5_ok = _init_mt5()
             if self._mt5_ok:
-                log.info('MT5 connected')
+                info = mt5.account_info()
+                if info:
+                    log.info(
+                        f'MT5 connected  account={info.login}  balance={info.balance:.2f} {info.currency}'
+                        f'  server={info.server}  leverage=1:{info.leverage}'
+                    )
+                else:
+                    log.info('MT5 connected  (account_info unavailable)')
             else:
                 log.warning('MT5 unavailable — price from dashboard, no execution')
         else:
