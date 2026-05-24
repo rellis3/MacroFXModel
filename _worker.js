@@ -629,7 +629,7 @@ export default {
           ch_short: 'IRSTCI01CHM156N',
           wti:      'DCOILWTICO',
           // Net Fed Liquidity components — NQ/equity T1 scoring only
-          walcl:    'WALCLS',     // Fed total assets (weekly, Thursdays)
+          walcl:    'WALCL',      // Fed total assets (weekly, Thursdays)
           tga:      'WTREGEN',    // Treasury General Account (daily)
           rrp:      'RRPONTSYD',  // Overnight reverse repo (daily)
           // Carry basket extension — NZD for NZD/JPY alongside AUD/JPY in T5
