@@ -639,10 +639,10 @@ async function _saveCreds(kvKey, idPrefix, pwId, statusId) {
   }
 }
 
-async function loadCreds()   { try { _applyCredsToForm(await kvGet('bot_credentials'),             'mt5_',     'mt5_password');    } catch(e) {} }
-async function saveCreds()   { await _saveCreds('bot_credentials',             'mt5_',     'mt5_password',    'credsStatus');   }
-async function loadBtCreds() { try { _applyCredsToForm(await kvGet('backtestsystem_credentials'), 'bt_mt5_', 'bt_mt5_password'); } catch(e) {} }
-async function saveBtCreds() { await _saveCreds('backtestsystem_credentials', 'bt_mt5_', 'bt_mt5_password', 'btCredsStatus'); }
+async function loadCreds()   { try { _applyCredsToForm(await kvGet('bot_credentials'),             '',     'mt5_password');    } catch(e) {} }
+async function saveCreds()   { await _saveCreds('bot_credentials',             '',     'mt5_password',    'credsStatus');   }
+async function loadBtCreds() { try { _applyCredsToForm(await kvGet('backtestsystem_credentials'), 'bt_', 'bt_mt5_password'); } catch(e) {} }
+async function saveBtCreds() { await _saveCreds('backtestsystem_credentials', 'bt_', 'bt_mt5_password', 'btCredsStatus'); }
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -973,10 +973,10 @@ function resetRgDefaults() {
 }
 
 async function loadRgCreds() {
-  try { _applyCredsToForm(await kvGet('regime_bot_credentials'), 'rg_mt5_', 'rg_mt5_password'); } catch (e) {}
+  try { _applyCredsToForm(await kvGet('regime_bot_credentials'), 'rg_', 'rg_mt5_password'); } catch (e) {}
 }
 async function saveRgCreds() {
-  await _saveCreds('regime_bot_credentials', 'rg_mt5_', 'rg_mt5_password', 'rgCredsStatus');
+  await _saveCreds('regime_bot_credentials', 'rg_', 'rg_mt5_password', 'rgCredsStatus');
 }
 
 async function loadRgBotStatus() {
