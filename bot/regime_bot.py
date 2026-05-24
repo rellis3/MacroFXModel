@@ -645,7 +645,7 @@ def run(base_url: str, paper_mode: bool) -> None:
     log.info(
         f'Initial config: pairs={cfg["pairs"]}  hold={cfg["candle_hold"]}  '
         f'minConf={cfg["min_confidence"]}%  SL={cfg["sl_atr_mult"]}× ATR({cfg["sl_atr_tf"]})  '
-        f'TP={cfg["tp_rr"]}R  interval={cfg["interval_secs"]}s  '
+        f'interval={cfg["interval_secs"]}s  exit_on_range={cfg["exit_on_range"]}  '
         f'vol_z_max={cfg["vol_z_max"]}  decay_window={cfg["decay_window"]}'
     )
 
