@@ -853,7 +853,6 @@ const RG_DEFAULTS = {
   candle_hold:        3,
   sl_atr_mult:        1.8,
   sl_atr_tf:          '5m',
-  tp_rr:              2.0,
   risk_pct:           1.0,
   max_lot:            5.0,
   max_spread_pips:    3.0,
@@ -863,6 +862,9 @@ const RG_DEFAULTS = {
   monthlydd:          5.0,
   lockout:            3,
   cooldown:           240,
+  // Dynamic exit
+  exit_on_range:      true,
+  range_exit_hold:    2,
   // Decay detector
   vol_z_max:          0.5,
   decay_window:       10,
@@ -894,7 +896,8 @@ function readRgForm() {
   _rgCfg.candle_hold        = num('rg_candle_hold',         3);
   _rgCfg.sl_atr_mult        = num('rg_sl_atr_mult',       1.8);
   _rgCfg.sl_atr_tf          = radio('rg_sl_atr_tf',       '5m');
-  _rgCfg.tp_rr              = num('rg_tp_rr',             2.0);
+  _rgCfg.exit_on_range      = chk('rg_exit_on_range');
+  _rgCfg.range_exit_hold    = num('rg_range_exit_hold',     2);
   _rgCfg.risk_pct           = num('rg_risk_pct',          1.0);
   _rgCfg.max_lot            = num('rg_max_lot',           5.0);
   _rgCfg.max_spread_pips    = num('rg_max_spread_pips',   3.0);
@@ -918,10 +921,11 @@ function renderRgForm() {
   setVal('rg_interval_secs',    _rgCfg.interval_secs  ?? 60);
   setVal('rg_min_confidence',   _rgCfg.min_confidence ?? 65);
   setVal('rg_candle_hold',      _rgCfg.candle_hold    ?? 3);
-  setVal('rg_sl_atr_mult',      _rgCfg.sl_atr_mult    ?? 1.8);
-  setRadio('rg_sl_atr_tf',      _rgCfg.sl_atr_tf      ?? '5m');
-  setVal('rg_tp_rr',            _rgCfg.tp_rr          ?? 2.0);
-  setVal('rg_risk_pct',         _rgCfg.risk_pct       ?? 1.0);
+  setVal('rg_sl_atr_mult',      _rgCfg.sl_atr_mult        ?? 1.8);
+  setRadio('rg_sl_atr_tf',      _rgCfg.sl_atr_tf          ?? '5m');
+  setChk('rg_exit_on_range',    _rgCfg.exit_on_range      ?? true);
+  setVal('rg_range_exit_hold',  _rgCfg.range_exit_hold    ?? 2);
+  setVal('rg_risk_pct',         _rgCfg.risk_pct           ?? 1.0);
   setVal('rg_max_lot',          _rgCfg.max_lot        ?? 5.0);
   setVal('rg_max_spread_pips',  _rgCfg.max_spread_pips ?? 3.0);
   setVal('rg_window_start',     _rgCfg.trade_window_start ?? '07:00');
@@ -990,9 +994,12 @@ async function loadRgBotStatus() {
       const decayStr = p.decay != null ? ` d=${p.decay.toFixed(2)}` : '';
       const rlStr    = p.run_length != null ? ` rl=${p.run_length}` : '';
       if (p.status === 'open') {
-        const pnl  = p.pnl_pips != null ? ` ${p.pnl_pips > 0 ? '+' : ''}${p.pnl_pips}p` : '';
-        const col  = p.direction === 'LONG' ? 'bs-green' : 'bs-red';
-        return `<span class="${col}">${pair} ${p.direction}${pnl} [${p.regime}]${decayStr}${rlStr}</span>`;
+        const pnl       = p.pnl_pips != null ? ` ${p.pnl_pips > 0 ? '+' : ''}${p.pnl_pips}p` : '';
+        const col       = p.direction === 'LONG' ? 'bs-green' : 'bs-red';
+        const flipStr   = p.flip_count > 0 ? ` ⚠️flip=${p.flip_count}` : '';
+        const regLabel  = p.entry_regime && p.regime !== p.entry_regime
+          ? `${p.entry_regime}→${p.regime}` : p.regime;
+        return `<span class="${col}">${pair} ${p.direction}${pnl} [${regLabel}]${decayStr}${rlStr}${flipStr}</span>`;
       }
       if (p.status === 'watching') {
         return `<span class="bs-dim">${pair} watching ${p.regime} ${p.conf}%${decayStr}${rlStr} (${p.readings})</span>`;

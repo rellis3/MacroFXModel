@@ -91,7 +91,6 @@ DEFAULT_CFG: dict = {
     'candle_hold':         3,        # N consecutive polls all agreeing before entry
     'sl_atr_mult':         1.8,      # SL = ATR × this
     'sl_atr_tf':           '5m',     # '5m' or '30m' ATR timeframe
-    'tp_rr':               2.0,      # TP = SL distance × this R:R
     'risk_pct':            1.0,      # % of balance risked per trade
     'max_lot':             5.0,
     'max_spread_pips':     3.0,
@@ -107,6 +106,9 @@ DEFAULT_CFG: dict = {
     'entry_decay_max':     0.25,     # block entry when decay score >= this
     'decay_warning':       0.50,     # log warning when score crosses this
     'decay_exit':          0.70,     # close position early when score >= this
+    # Dynamic exit settings
+    'exit_on_range':       True,     # close when regime goes RANGE/CHOP (not just full reversal)
+    'range_exit_hold':     2,        # consecutive RANGE bars required before closing (whipsaw filter)
 }
 
 # ── KV helpers ─────────────────────────────────────────────────────────────────
@@ -491,20 +493,23 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
     order_type = mt5.ORDER_TYPE_BUY if direction == 'LONG' else mt5.ORDER_TYPE_SELL
     exec_price = tick.ask if direction == 'LONG' else tick.bid
 
-    res = mt5.order_send({
+    order = {
         'action':       mt5.TRADE_ACTION_DEAL,
         'symbol':       mt5_sym,
         'volume':       size,
         'type':         order_type,
         'price':        exec_price,
         'sl':           round(sl, 5),
-        'tp':           round(tp, 5),
         'deviation':    20,
         'magic':        MAGIC,
         'comment':      f'RegimeBot {direction[0]}',
         'type_time':    mt5.ORDER_TIME_GTC,
         'type_filling': _filling_mode(mt5_sym),
-    })
+    }
+    if tp and tp > 0:
+        order['tp'] = round(tp, 5)
+
+    res = mt5.order_send(order)
 
     if res and res.retcode == mt5.TRADE_RETCODE_DONE:
         log.info(f'MT5 order placed: ticket={res.order}  exec_price={exec_price}')
@@ -651,7 +656,8 @@ def run(base_url: str, paper_mode: bool) -> None:
     decay_dets:    dict[str, DecayDetector]  = {}
     run_lengths:   dict[str, int]            = {}   # consecutive polls in same regime
     last_regimes:  dict[str, str]            = {}   # last seen regime per pair
-    open_pos:      dict[str, dict]           = {}   # pair → {ticket, direction, entry_price, sl, tp}
+    flip_counts:   dict[str, int]            = {}   # consecutive bars NOT in entry regime (for RANGE debounce)
+    open_pos:      dict[str, dict]           = {}   # pair → {ticket, direction, entry_price, sl}
     entry_regime:  dict[str, str]            = {}   # pair → regime string at time of entry
 
     for pair in cfg['pairs']:
@@ -659,6 +665,7 @@ def run(base_url: str, paper_mode: bool) -> None:
         decay_dets[pair]   = DecayDetector(cfg['decay_window'])
         run_lengths[pair]  = 0
         last_regimes[pair] = ''
+        flip_counts[pair]  = 0
 
     cycle = 0
 
@@ -679,6 +686,7 @@ def run(base_url: str, paper_mode: bool) -> None:
                 decay_dets[pair]   = DecayDetector(cfg['decay_window'])
                 run_lengths[pair]  = 0
                 last_regimes[pair] = ''
+                flip_counts[pair]  = 0
             else:
                 debounce[pair].hold     = cfg['candle_hold']
                 debounce[pair].min_conf = cfg['min_confidence']
@@ -745,21 +753,44 @@ def run(base_url: str, paper_mode: bool) -> None:
                 if decay_score >= cfg['decay_exit']:
                     should_close = True
                     close_reason = f'decay_exit score={decay_score:.3f}'
-                    dsummary = decay_dets[pair].summary()
-                    log.warning(f'[{pair}] DECAY EXIT  {dsummary}')
+                    flip_counts[pair] = 0
+                    log.warning(f'[{pair}] DECAY EXIT  {decay_dets[pair].summary()}')
 
-                # Regime flip exit
+                # Dynamic regime exit
                 if not should_close:
-                    if entry_r == 'BULL' and regime != 'BULL':
-                        should_close = True
-                        close_reason = f'regime {entry_r}→{regime}'
-                    elif entry_r == 'BEAR' and regime != 'BEAR':
-                        should_close = True
-                        close_reason = f'regime {entry_r}→{regime}'
+                    in_entry_regime = (regime == entry_r)
+                    is_reversal     = (
+                        (entry_r == 'BULL' and regime == 'BEAR') or
+                        (entry_r == 'BEAR' and regime == 'BULL')
+                    )
+
+                    if in_entry_regime:
+                        flip_counts[pair] = 0  # regime holding — reset RANGE counter
+
+                    elif is_reversal:
+                        # Hard reversal: BULL→BEAR or BEAR→BULL — exit immediately
+                        should_close     = True
+                        close_reason     = f'regime_reverse {entry_r}→{regime}'
+                        flip_counts[pair] = 0
+
+                    elif cfg.get('exit_on_range', True):
+                        # Neutral shift: BULL→RANGE/CHOP or BEAR→RANGE/CHOP
+                        # Debounce to avoid whipsaw on a single noisy bar
+                        flip_counts[pair] += 1
+                        hold = int(cfg.get('range_exit_hold', 2))
+                        log.info(
+                            f'[{pair}] Regime neutral {entry_r}→{regime}  '
+                            f'flip_count={flip_counts[pair]}/{hold}'
+                        )
+                        if flip_counts[pair] >= hold:
+                            should_close     = True
+                            close_reason     = f'regime_neutral {entry_r}→{regime} ({flip_counts[pair]} bars)'
+                            flip_counts[pair] = 0
 
                 if not should_close and not within_window(cfg):
                     should_close = True
                     close_reason = 'outside trade window'
+                    flip_counts[pair] = 0
 
                 # Decay warning (log only — not yet at exit threshold)
                 if not should_close and decay_score >= cfg['decay_warning']:
@@ -774,6 +805,7 @@ def run(base_url: str, paper_mode: bool) -> None:
                         del open_pos[pair]
                         entry_regime.pop(pair, None)
                         debounce[pair].clear()
+                        flip_counts[pair] = 0
                         risk_guard.record_trade(pair)
                     status_positions[pair] = {
                         'status':    'closed',
@@ -790,9 +822,10 @@ def run(base_url: str, paper_mode: bool) -> None:
                         'direction':   pos['direction'],
                         'entry':       pos['entry_price'],
                         'sl':          pos['sl'],
-                        'tp':          pos['tp'],
                         'ticket':      pos['ticket'],
                         'regime':      regime,
+                        'entry_regime': entry_r,
+                        'flip_count':  flip_counts.get(pair, 0),
                         'conf':        round(confidence, 1),
                         'vol_z':       round(vol_z, 3),
                         'run_length':  run_length,
@@ -862,7 +895,7 @@ def run(base_url: str, paper_mode: bool) -> None:
             sl_dist = (atr * cfg['sl_atr_mult']) if atr else (20 * pip)
 
             sl = (price - sl_dist) if direction == 'LONG' else (price + sl_dist)
-            tp = (price + sl_dist * cfg['tp_rr']) if direction == 'LONG' else (price - sl_dist * cfg['tp_rr'])
+            tp = 0  # no fixed TP — regime shift is the exit
 
             size = position_size(
                 balance, cfg['risk_pct'], sl_dist, pair, cfg['max_lot'],
@@ -872,7 +905,7 @@ def run(base_url: str, paper_mode: bool) -> None:
             log.info(
                 f'[{pair}] ENTRY {direction}  conf={confidence:.0f}%  '
                 f'vol_z={vol_z:+.2f}  rl={run_length}  decay={decay_score:.3f}  '
-                f'lots={size}  SL={sl:.5f}  TP={tp:.5f}'
+                f'lots={size}  SL={sl:.5f}  exit=regime_shift'
             )
 
             ticket = open_position(
@@ -886,16 +919,15 @@ def run(base_url: str, paper_mode: bool) -> None:
                     'direction':   direction,
                     'entry_price': price,
                     'sl':          sl,
-                    'tp':          tp,
                 }
                 entry_regime[pair] = confirmed
+                flip_counts[pair]  = 0
                 risk_guard.record_trade(pair)
                 status_positions[pair] = {
                     'status':      'opened',
                     'direction':   direction,
                     'entry':       price,
                     'sl':          sl,
-                    'tp':          tp,
                     'regime':      confirmed,
                     'conf':        round(confidence, 1),
                     'vol_z':       round(vol_z, 3),
