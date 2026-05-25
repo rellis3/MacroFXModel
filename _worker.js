@@ -820,11 +820,20 @@ export default {
           const { key, data, timestamp } = body;
           if (!key) return err('key required', 400);
           if (!isAllowedKVKey(key)) return err('key not permitted', 403);
-          // Permanent keys (oi_store, journal_store) have no TTL expiry --
-          // they persist until explicitly overwritten.
-          // Market-data keys get a 48h KV TTL as a hard safety net, even
-          // though the dashboard applies its own soft TTLs at read time.
-          const isPermanent = key === 'oi_store' || key === 'journal_store' || key === 'journal_replay_store' || key === 'journal_running_totals';
+          // Permanent keys have no TTL — they persist until explicitly overwritten.
+          // Includes all user config, credentials, journals, and trained ML params.
+          // Market-data keys get a 48h KV TTL as a hard safety net.
+          const PERMANENT_KEYS = new Set([
+            'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals',
+            'tg_config', 'ai_alert_cfg', 'caps',
+            'cot_data', 'cot_urls', 'cot_url',
+            'bot_config', 'bot_credentials',
+            'regime_bot_config', 'regime_bot_credentials',
+            'backtestsystem_live_config', 'backtestsystem_credentials',
+            'gold_bot_config', 'gold_ml_params', 'gold_optimiser_last', 'gold_perf_snapshot',
+            'hmm5m_trained_params', 'hmm5m_macro_context',
+          ]);
+          const isPermanent = PERMANENT_KEYS.has(key);
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h
           await env.FX_SCORES.put(key, JSON.stringify({ data, timestamp }), kvOpts);
           return json({ ok: true });
