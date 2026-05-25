@@ -48,7 +48,7 @@ import requests
 from dotenv import load_dotenv
 
 from utils.sl_tp_engine import SLTPEngine
-from utils.state_reader import push_bot_status, fetch_quote, DASHBOARD_URL
+from utils.state_reader import fetch_quote, DASHBOARD_URL
 
 from modules.htf_bias import compute_htf_bias, HTFBias
 from modules.fib_engine import detect_fib_zones, update_zone_activity, FibZone
@@ -189,6 +189,40 @@ def _load_config(base_url: str) -> dict:
     remote = _kv_get('gold_bot_config', base_url) or {}
     cfg = {**DEFAULT_CFG, **remote}
     return cfg
+
+
+def _kv_put_status(key: str, data: dict, base_url: str) -> None:
+    """Write bot heartbeat to its own KV key (non-critical — swallows all errors)."""
+    try:
+        import time as _time
+        requests.post(
+            f'{base_url}/api/kv/set',
+            json={'key': key, 'data': data, 'timestamp': int(_time.time() * 1000)},
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+
+def _ml_allows(zone_id: str, base_url: str) -> tuple[bool, str]:
+    """
+    Reads gold_ml_signal from KV (pushed by Gold/ml_model.py --predict).
+    Returns (allowed, reason). Soft gate: only blocks when signal is PASS
+    and gold_macro_gate is enabled in config.
+    """
+    signal = _kv_get('gold_ml_signal', base_url)
+    if not signal:
+        return True, 'ML signal not in KV — skipping ML gate'
+
+    for z in signal.get('zones', []):
+        if z.get('zone_id') == zone_id:
+            sig  = z.get('signal', 'LOW')
+            prob = z.get('prob', 0.5)
+            if sig == 'PASS':
+                return False, f'ML gate BLOCK: zone {zone_id} prob={prob:.2f} [{sig}]'
+            return True, f'ML gate OK: prob={prob:.2f} [{sig}]'
+
+    return True, 'Zone not in ML signal — skipping gate'
 
 
 # ── Gold macro gate ───────────────────────────────────────────────────────────
@@ -544,6 +578,16 @@ class GoldBot:
                 return
             log.info(f'[MACRO]  {reason}')
 
+        # ML signal gate (soft — only blocks PASS-rated zones)
+        if self.cfg.get('gold_macro_gate', True):
+            ml_ok, ml_reason = _ml_allows(zone.zone_id, self.base_url)
+            if not ml_ok:
+                log.info(f'[ML]     {ml_reason} — skipping entry')
+                self.bot_state.transition(State.WAITING)
+                self.bot_state.armed_zone_id = None
+                return
+            log.info(f'[ML]     {ml_reason}')
+
         # Calculate SL / TP
         sl, tp1, tp2 = _calc_sl_tp(zone, direction, price, self.atr_15m, self.cfg)
 
@@ -608,7 +652,7 @@ class GoldBot:
             'paper_mode': self.cfg.get('paper_mode', True),
             'squeeze_ratio': self.squeeze_ratio,
         }
-        push_bot_status(status, self.base_url)
+        _kv_put_status('gold_bot_status', status, self.base_url)
 
     def _push_zones_kv(self) -> None:
         """Push the full zone map, nPOC stack, VWAP anchors, and trendlines to KV.

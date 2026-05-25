@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Performance — MacroFX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg:#f4f6fb; --s1:#fff; --s2:#f0f3f8; --s3:#e8edf6;
+  --border:#dde3ed; --border2:#c5cedd;
+  --text:#0d1520; --text2:#4b5a6e; --text3:#8fa0b8;
+  --green:#0a8a5c; --green-bg:#edfaf4; --green-bd:#a3e6ca;
+  --red:#c8222a;   --red-bg:#fff1f1;   --red-bd:#f5b8b8;
+  --amber:#b45309; --amber-bg:#fffbeb; --amber-bd:#fde68a;
+  --blue:#1d4ed8;  --blue-bg:#eff6ff;  --blue-bd:#bfdbfe;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;--purple-bd:#ddd6fe;
+  --gold:#b45309;  --gold-bg:#fffbeb;  --gold-bd:#fde68a;
+  --rl:10px; --rxl:14px;
+}
+body.dark {
+  --bg:#0f1117; --s1:#1a1d27; --s2:#22263a; --s3:#2a2f45;
+  --border:#2e3347; --border2:#3d4460;
+  --text:#e8eaf2; --text2:#9ba3bf; --text3:#5a6380;
+  --green:#10b981; --green-bg:#0d2b22; --green-bd:#1a4a38;
+  --red:#f87171;   --red-bg:#2b1a1a;   --red-bd:#4a2828;
+  --amber:#fbbf24; --amber-bg:#292100; --amber-bd:#78610a;
+  --blue:#60a5fa;  --blue-bg:#172554;  --blue-bd:#1e40af;
+  --purple:#a78bfa;--purple-bg:#1e1b4b;--purple-bd:#4338ca;
+  --gold:#fbbf24;  --gold-bg:#1a1400;  --gold-bd:#78610a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.logo-box{width:32px;height:32px;background:linear-gradient(135deg,#1d4ed8,#7c3aed);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-box svg{width:17px;height:17px;stroke:#fff;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.title-block .title{font-weight:700;font-size:15px;color:var(--text)}
+.title-block .sub{font-size:11px;color:var(--text3);margin-top:1px}
+.spacer{flex:1}
+.dark-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:7px;background:var(--s2);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap;text-decoration:none}
+.dark-btn:hover{border-color:var(--border2);color:var(--text)}
+.refresh-info{font-size:11px;color:var(--text3);margin-left:4px}
+.content{max-width:1100px;margin:0 auto;padding:20px}
+
+/* Section headers */
+.sec-hdr{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;margin-top:24px}
+.sec-hdr:first-child{margin-top:0}
+
+/* Grid */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(max-width:700px){.grid3,.grid2{grid-template-columns:1fr}}
+
+/* Cards */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:var(--rxl);padding:16px}
+.card-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+
+/* Bot status pill */
+.bot-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-green{background:var(--green)}
+.dot-amber{background:var(--amber)}
+.dot-red{background:var(--red)}
+.dot-gray{background:var(--text3)}
+.bot-name{font-size:13px;font-weight:600;color:var(--text)}
+.bot-state{font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);margin-left:auto}
+.bot-detail{font-size:11px;color:var(--text3);margin-top:2px;padding-left:18px}
+
+/* Stats table */
+.stat-row{display:flex;align-items:baseline;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)}
+.stat-row:last-child{border-bottom:none}
+.stat-label{font-size:12px;color:var(--text2)}
+.stat-value{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text)}
+.stat-value.green{color:var(--green)}
+.stat-value.red{color:var(--red)}
+.stat-value.amber{color:var(--amber)}
+
+/* TF table */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;color:var(--text3);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:4px 8px;border-bottom:1px solid var(--border)}
+td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2)}
+td:last-child,th:last-child{text-align:right}
+tr:last-child td{border-bottom:none}
+td.mono{font-family:'DM Mono',monospace;color:var(--text)}
+td.wr-high{color:var(--green);font-weight:600}
+td.wr-low{color:var(--red);font-weight:600}
+
+/* Divergence alert */
+.alert-box{border-radius:var(--rl);padding:12px 14px;margin-bottom:12px;font-size:12px;line-height:1.5}
+.alert-warn{background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber)}
+.alert-ok{background:var(--green-bg);border:1px solid var(--green-bd);color:var(--green)}
+.alert-info{background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)}
+
+/* ML zone table */
+.ml-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.ml-row:last-child{border-bottom:none}
+.ml-zone-id{font-family:'DM Mono',monospace;font-size:11px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ml-prob{font-family:'DM Mono',monospace;font-size:12px;min-width:48px;text-align:right}
+.ml-sig{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;min-width:54px;text-align:center}
+.sig-HIGH{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.sig-MEDIUM{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.sig-LOW{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.sig-PASS{background:var(--s3);color:var(--text3);border:1px solid var(--border)}
+
+/* Footer meta */
+.meta{font-size:10px;color:var(--text3);margin-top:10px;text-align:right}
+.empty{color:var(--text3);font-size:12px;padding:10px 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo-box"><svg viewBox="0 0 17 17"><polyline points="1,13 5,8 9,11 16,3"/><line x1="12" y1="3" x2="16" y2="3"/><line x1="16" y1="3" x2="16" y2="7"/></svg></div>
+  <div class="title-block">
+    <div class="title">Live Performance</div>
+    <div class="sub">Bot Heartbeats · Gold P&amp;L · ML Signals · Divergence Alerts</div>
+  </div>
+  <div class="spacer"></div>
+  <span id="refreshLbl" class="refresh-info">loading…</span>
+  <button class="dark-btn" onclick="refresh()">↻ Refresh</button>
+  <button class="dark-btn" onclick="toggleDark()">🌙 Dark</button>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+</div>
+
+<div class="content">
+
+  <!-- ── Divergence alert area ─────────────────────────────────── -->
+  <div id="divergenceArea"></div>
+
+  <!-- ── Bot Heartbeats ─────────────────────────────────────────── -->
+  <div class="sec-hdr">Bot Heartbeats</div>
+  <div class="grid3" id="botCards">
+    <div class="card"><div class="empty">Loading…</div></div>
+    <div class="card"><div class="empty">Loading…</div></div>
+    <div class="card"><div class="empty">Loading…</div></div>
+  </div>
+
+  <!-- ── Gold 30-day Performance ───────────────────────────────── -->
+  <div class="sec-hdr">Gold Bot — 30-Day Performance</div>
+  <div class="grid2">
+    <div class="card" id="goldPerfCard"><div class="empty">Loading…</div></div>
+    <div class="card" id="goldTfCard"><div class="empty">Loading…</div></div>
+  </div>
+
+  <!-- ── ML Model ──────────────────────────────────────────────── -->
+  <div class="sec-hdr">Gold ML Model</div>
+  <div class="grid2">
+    <div class="card" id="mlModelCard"><div class="empty">Loading…</div></div>
+    <div class="card" id="mlZonesCard"><div class="empty">Loading…</div></div>
+  </div>
+
+  <!-- ── Optimiser ─────────────────────────────────────────────── -->
+  <div class="sec-hdr">Adaptive Parameter Optimiser</div>
+  <div class="card" id="optCard"><div class="empty">Loading…</div></div>
+
+</div>
+
+<script>
+const BASE = '';  // same origin
+
+// ── Dark mode ──────────────────────────────────────────────────────────────
+function toggleDark() {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('perf_dark', document.body.classList.contains('dark') ? '1' : '');
+}
+if (localStorage.getItem('perf_dark')) document.body.classList.add('dark');
+
+// ── KV fetch helper ────────────────────────────────────────────────────────
+async function kvGet(key) {
+  try {
+    const r = await fetch(`${BASE}/api/kv/get?key=${key}`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j.miss ? null : (j.data ?? null);
+  } catch { return null; }
+}
+
+// ── Time helpers ───────────────────────────────────────────────────────────
+function ageLabel(isoTs) {
+  if (!isoTs) return 'never';
+  try {
+    const secs = (Date.now() - new Date(isoTs).getTime()) / 1000;
+    if (secs < 60)   return `${Math.floor(secs)}s ago`;
+    if (secs < 3600) return `${Math.floor(secs/60)}m ago`;
+    return `${Math.floor(secs/3600)}h ago`;
+  } catch { return '?'; }
+}
+
+function isStale(isoTs, limitMinutes = 10) {
+  if (!isoTs) return true;
+  return (Date.now() - new Date(isoTs).getTime()) > limitMinutes * 60 * 1000;
+}
+
+// ── Bot heartbeat card ─────────────────────────────────────────────────────
+function buildBotCard(title, data, kvKey) {
+  if (!data) {
+    return `<div class="card">
+      <div class="card-title">${title}</div>
+      <div class="bot-row"><span class="dot dot-gray"></span><span class="bot-name">Offline</span></div>
+      <div class="bot-detail">No status in KV (${kvKey})</div>
+    </div>`;
+  }
+
+  const ts      = data.timestamp || data.loop_at || '';
+  const stale   = isStale(ts, 10);
+  const dotCls  = stale ? 'dot-amber' : 'dot-green';
+  const state   = data.state || data.regime || '—';
+  const mode    = data.paper_mode === false ? 'LIVE' : 'PAPER';
+  const modeClr = data.paper_mode === false ? 'color:var(--amber)' : 'color:var(--text3)';
+
+  let details = '';
+  if (data.bot === 'gold_bot') {
+    details = `
+      <div class="bot-detail">Zones active: ${data.zones_active ?? '—'}</div>
+      <div class="bot-detail">Trades today: ${data.trades_today ?? '—'}</div>
+      <div class="bot-detail">HTF bias: ${data.htf_bias ?? '—'}</div>
+    `;
+  } else if (data.pairs) {
+    const pairs = Array.isArray(data.pairs) ? data.pairs.join(', ') : data.pairs;
+    details = `<div class="bot-detail">Pairs: ${pairs}</div>`;
+  }
+
+  return `<div class="card">
+    <div class="card-title">${title}</div>
+    <div class="bot-row">
+      <span class="dot ${dotCls}"></span>
+      <span class="bot-name">${state}</span>
+      <span class="bot-state" style="${modeClr}">${mode}</span>
+    </div>
+    <div class="bot-detail">Last seen: ${ageLabel(ts)}</div>
+    ${details}
+  </div>`;
+}
+
+// ── Gold performance card ──────────────────────────────────────────────────
+function buildGoldPerfCard(snap) {
+  if (!snap) return '<div class="card-title">Gold 30-Day P&L</div><div class="empty">Run optimiser.py to generate stats</div>';
+
+  const wr    = snap.win_rate  != null ? `${(snap.win_rate * 100).toFixed(1)}%` : '—';
+  const avgR  = snap.avg_r     != null ? `${snap.avg_r > 0 ? '+' : ''}${snap.avg_r.toFixed(3)}R` : '—';
+  const totR  = snap.total_r   != null ? `${snap.total_r > 0 ? '+' : ''}${snap.total_r.toFixed(2)}R` : '—';
+  const wrNum = snap.win_rate  ?? 0;
+  const wrCls = wrNum >= 0.55 ? 'green' : wrNum >= 0.40 ? '' : 'red';
+  const rCls  = (snap.avg_r ?? 0) > 0 ? 'green' : 'red';
+
+  return `<div class="card-title">Gold 30-Day P&L</div>
+    <div class="stat-row"><span class="stat-label">Trades</span><span class="stat-value">${snap.total_trades ?? '—'}</span></div>
+    <div class="stat-row"><span class="stat-label">Wins</span><span class="stat-value green">${snap.wins ?? '—'}</span></div>
+    <div class="stat-row"><span class="stat-label">Losses</span><span class="stat-value red">${snap.losses ?? '—'}</span></div>
+    <div class="stat-row"><span class="stat-label">Win rate</span><span class="stat-value ${wrCls}">${wr}</span></div>
+    <div class="stat-row"><span class="stat-label">Avg R/trade</span><span class="stat-value ${rCls}">${avgR}</span></div>
+    <div class="stat-row"><span class="stat-label">Total R</span><span class="stat-value ${rCls}">${totR}</span></div>
+    <div class="meta">Generated ${ageLabel(snap.generated_at)} · ${snap.days_window ?? '?'}d window</div>`;
+}
+
+function buildGoldTfCard(snap) {
+  if (!snap || !snap.by_tf) return '<div class="card-title">By Timeframe</div><div class="empty">No data</div>';
+
+  const tfOrder = ['D1','H4','H1','M30','M15'];
+  const rows = tfOrder
+    .filter(tf => snap.by_tf[tf])
+    .map(tf => {
+      const d  = snap.by_tf[tf];
+      const wr = d.win_rate != null ? `${(d.win_rate * 100).toFixed(1)}%` : '—';
+      const cls = (d.win_rate ?? 0) >= 0.55 ? 'wr-high' : (d.win_rate ?? 0) <= 0.35 ? 'wr-low' : '';
+      return `<tr>
+        <td class="mono">${tf}</td>
+        <td>${d.trades}</td>
+        <td>${d.wins ?? '—'}</td>
+        <td class="${cls}">${wr}</td>
+      </tr>`;
+    }).join('');
+
+  if (!rows) return '<div class="card-title">By Timeframe</div><div class="empty">No TF data</div>';
+
+  return `<div class="card-title">By Timeframe</div>
+    <table>
+      <tr><th>TF</th><th>Trades</th><th>Wins</th><th>WR%</th></tr>
+      ${rows}
+    </table>
+    ${buildParamsBadge(snap.best_params)}`;
+}
+
+function buildParamsBadge(params) {
+  if (!params) return '';
+  return `<div class="meta" style="margin-top:8px;text-align:left">
+    Best params: score≥${params.min_zone_score ?? '?'}  VuManChu≥${params.vu_min_components ?? '?'}/3
+  </div>`;
+}
+
+// ── ML model card ──────────────────────────────────────────────────────────
+function buildMlModelCard(params) {
+  if (!params) {
+    return `<div class="card-title">ML Model</div>
+      <div class="empty">No model trained yet</div>
+      <div class="meta" style="margin-top:8px">Run: python Gold/ml_model.py --train</div>`;
+  }
+
+  const auc = params.cv_auc != null ? params.cv_auc.toFixed(3) : '—';
+  const aucCls = (params.cv_auc ?? 0) >= 0.60 ? 'green' : (params.cv_auc ?? 0) >= 0.55 ? '' : 'red';
+  const bal = params.n_pos != null && params.n_neg != null
+    ? `${params.n_pos}W / ${params.n_neg}L`
+    : '—';
+
+  return `<div class="card-title">ML Model (Logistic Regression)</div>
+    <div class="stat-row"><span class="stat-label">AUC (CV)</span><span class="stat-value ${aucCls}">${auc}</span></div>
+    <div class="stat-row"><span class="stat-label">Training set</span><span class="stat-value">${params.n_samples ?? '—'} trades</span></div>
+    <div class="stat-row"><span class="stat-label">Class balance</span><span class="stat-value">${bal}</span></div>
+    <div class="meta">Trained ${ageLabel(params.trained_at)}</div>
+    <div class="meta" style="margin-top:4px">Retrain: python Gold/ml_model.py --train</div>`;
+}
+
+function buildMlZonesCard(signal) {
+  if (!signal) {
+    return `<div class="card-title">Zone Predictions</div>
+      <div class="empty">No predictions yet</div>
+      <div class="meta" style="margin-top:8px">Run: python Gold/ml_model.py --predict</div>`;
+  }
+
+  const zones = signal.zones || [];
+  if (!zones.length) {
+    return `<div class="card-title">Zone Predictions</div><div class="empty">No active zones</div>`;
+  }
+
+  const rows = zones.map(z => {
+    const probPct = z.prob != null ? `${(z.prob * 100).toFixed(0)}%` : '—';
+    const sig     = z.signal || 'PASS';
+    return `<div class="ml-row">
+      <span class="ml-zone-id">${z.zone_id || '—'}</span>
+      <span class="ml-prob">${probPct}</span>
+      <span class="ml-sig sig-${sig}">${sig}</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="card-title">Zone Predictions</div>
+    ${rows}
+    <div class="meta">Predicted ${ageLabel(signal.predicted_at)} · AUC ${signal.model_auc ?? '—'}</div>`;
+}
+
+// ── Optimiser card ─────────────────────────────────────────────────────────
+function buildOptCard(snap) {
+  if (!snap) {
+    return `<div class="card-title">Adaptive Parameter Optimiser</div>
+      <div class="empty">Not yet run</div>
+      <div class="meta" style="margin-top:8px">Run: python Gold/optimiser.py --journal Gold/logs/gold_journal.jsonl</div>`;
+  }
+
+  const p      = snap.best_params || {};
+  const wrPct  = snap.win_rate != null ? `${(snap.win_rate * 100).toFixed(1)}%` : '—';
+  const avgR   = snap.avg_r    != null ? `${snap.avg_r > 0 ? '+' : ''}${snap.avg_r.toFixed(3)}R` : '—';
+
+  return `<div class="card-title">Adaptive Parameter Optimiser</div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div>
+        <div class="stat-row"><span class="stat-label">Trades analysed</span><span class="stat-value">${snap.total_trades ?? '—'}</span></div>
+        <div class="stat-row"><span class="stat-label">Win rate (current params)</span><span class="stat-value">${wrPct}</span></div>
+        <div class="stat-row"><span class="stat-label">Avg R/trade</span><span class="stat-value">${avgR}</span></div>
+        <div class="stat-row"><span class="stat-label">Days of data</span><span class="stat-value">${snap.days_data ?? snap.days_window ?? '—'}</span></div>
+      </div>
+      <div>
+        <div class="stat-row"><span class="stat-label">Recommended min_zone_score</span><span class="stat-value">${p.min_zone_score ?? '—'}</span></div>
+        <div class="stat-row"><span class="stat-label">Recommended vu_min_components</span><span class="stat-value">${p.vu_min_components ?? '—'}/3</span></div>
+      </div>
+    </div>
+    <div class="meta">Last run ${ageLabel(snap.generated_at)} · Re-run nightly: python Gold/optimiser.py</div>`;
+}
+
+// ── Divergence alert ───────────────────────────────────────────────────────
+function buildDivergenceAlert(snap) {
+  const el = document.getElementById('divergenceArea');
+  if (!snap || !snap.win_rate || snap.total_trades < 5) {
+    el.innerHTML = '';
+    return;
+  }
+
+  // Historical expectation: Gold Lab strategy targets 55-65% WR.
+  // Alert if live WR deviates more than 15 percentage points from 55% baseline.
+  const historicalWR = 0.55;
+  const liveWR       = snap.win_rate;
+  const delta        = liveWR - historicalWR;
+
+  if (delta < -0.15) {
+    el.innerHTML = `<div class="alert-box alert-warn">
+      ⚠ Divergence alert — Live WR ${(liveWR*100).toFixed(1)}% is ${Math.abs(delta*100).toFixed(1)}pp below expected ${(historicalWR*100).toFixed(1)}%.
+      Consider raising min_zone_score or vu_min_components, or pausing until conditions improve.
+    </div>`;
+  } else if (delta > 0.10) {
+    el.innerHTML = `<div class="alert-box alert-ok">
+      ✓ Performing above baseline — Live WR ${(liveWR*100).toFixed(1)}% vs expected ${(historicalWR*100).toFixed(1)}%.
+      Current params are working well.
+    </div>`;
+  } else {
+    el.innerHTML = `<div class="alert-box alert-info">
+      ● Live WR ${(liveWR*100).toFixed(1)}% on ${snap.total_trades} trades — within normal range of expected ${(historicalWR*100).toFixed(1)}%.
+    </div>`;
+  }
+}
+
+// ── Main refresh ───────────────────────────────────────────────────────────
+async function refresh() {
+  document.getElementById('refreshLbl').textContent = 'Refreshing…';
+
+  const [goldStatus, regimeStatus, mainStatus, goldPerf, mlParams, mlSignal, optLast] = await Promise.all([
+    kvGet('gold_bot_status'),
+    kvGet('regime_bot_status'),
+    kvGet('bot_status'),
+    kvGet('gold_perf_snapshot'),
+    kvGet('gold_ml_params'),
+    kvGet('gold_ml_signal'),
+    kvGet('gold_optimiser_last'),
+  ]);
+
+  // Bot status cards
+  document.getElementById('botCards').innerHTML = [
+    buildBotCard('Gold Bot  (XAU/USD)',  goldStatus,   'gold_bot_status'),
+    buildBotCard('Regime Bot  (HMM)',    regimeStatus, 'regime_bot_status'),
+    buildBotCard('Main Bot  (Levels)',   mainStatus,   'bot_status'),
+  ].join('');
+
+  // Gold P&L
+  document.getElementById('goldPerfCard').innerHTML = buildGoldPerfCard(goldPerf);
+  document.getElementById('goldTfCard').innerHTML   = buildGoldTfCard(goldPerf);
+
+  // ML model
+  document.getElementById('mlModelCard').innerHTML  = buildMlModelCard(mlParams);
+  document.getElementById('mlZonesCard').innerHTML  = buildMlZonesCard(mlSignal);
+
+  // Optimiser
+  document.getElementById('optCard').innerHTML      = buildOptCard(optLast ?? goldPerf);
+
+  // Divergence alert
+  buildDivergenceAlert(goldPerf);
+
+  const now = new Date().toLocaleTimeString();
+  document.getElementById('refreshLbl').textContent = `Updated ${now}`;
+}
+
+// ── Auto-refresh every 30s ─────────────────────────────────────────────────
+refresh();
+setInterval(refresh, 30_000);
+</script>
+</body>
+</html>

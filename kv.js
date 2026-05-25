@@ -59,6 +59,10 @@ const _CF_EXACT = new Set([
   'bot_credentials',        // main bot MT5 credentials — must survive redeploys
   'backtestsystem_live_config',  // backtest bot settings — must survive redeploys
   'backtestsystem_credentials',  // backtest bot MT5 credentials — must survive redeploys
+  'gold_bot_config',        // Gold bot settings — must survive redeploys
+  'gold_ml_params',         // trained ML model coefficients — must survive redeploys
+  'gold_optimiser_last',    // last optimiser run result — persists across restarts
+  'gold_perf_snapshot',     // 30-day P&L snapshot for performance dashboard
 ]);
 function isCfKey(key) {
   // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart
