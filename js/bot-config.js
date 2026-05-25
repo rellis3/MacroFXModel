@@ -30,7 +30,7 @@ const DEFAULTS = {
     composite_threshold: 0.60,
     prox_pips:           8,
     tp1r:                0.3,
-    tp2r:                1.0,
+    tp2r:                2.0,
     trailoffset:         0.7,
     max_spread_pips:     3.0,
     ddlimit:             3,
@@ -273,7 +273,7 @@ function readForm() {
   _cfg.execution.composite_threshold = num('ex_threshold',   0.60);
   _cfg.execution.prox_pips           = num('ex_prox_pips',   8);
   _cfg.execution.tp1r                = num('ec_tp1r',        0.3);
-  _cfg.execution.tp2r                = num('ec_tp2r',        1.0);
+  _cfg.execution.tp2r                = num('ec_tp2r',        2.0);
   _cfg.execution.trailoffset         = num('ec_trailoffset', 0.7);
   _cfg.execution.max_spread_pips     = num('ex_max_spread',  3.0);
   _cfg.execution.ddlimit             = num('ec_ddlimit',     3);
@@ -336,7 +336,7 @@ function renderForm() {
   setVal('ex_threshold',   ec.composite_threshold ?? 0.60);
   setVal('ex_prox_pips',   ec.prox_pips         ?? 8);
   setVal('ec_tp1r',        ec.tp1r              ?? 0.3);
-  setVal('ec_tp2r',        ec.tp2r              ?? 1.0);
+  setVal('ec_tp2r',        ec.tp2r              ?? 2.0);
   setVal('ec_trailoffset', ec.trailoffset       ?? 0.7);
   setVal('ex_max_spread',  ec.max_spread_pips   ?? 3.0);
   setVal('ec_ddlimit',     ec.ddlimit           ?? 3);

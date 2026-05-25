@@ -37,7 +37,7 @@ class SLTPEngine:
         ec = config.get('execution') or {}
         # Ladder exit ratios — settable via /tp1r, /tp2r, /trailoffset commands
         self.tp1r        = ec.get('tp1r',        self.sl_tp.get('tp1r',        0.3))
-        self.tp2r        = ec.get('tp2r',         self.sl_tp.get('tp2r',         1.0))
+        self.tp2r        = ec.get('tp2r',         self.sl_tp.get('tp2r',         2.0))
         self.trailoffset = ec.get('trailoffset',  self.sl_tp.get('trailoffset',  0.7))
 
     def pip_size(self, pair: str) -> float:

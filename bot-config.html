@@ -1284,7 +1284,7 @@ const HELP = {
   tp1_close_pct:   { t:'Close at TP1 %', b:'% of position closed at TP1. Remainder trailed toward TP2.', e:'50%: open 0.2 lots → close 0.1 at TP1, trail 0.1 toward TP2.' },
   max_tp_pips:     { t:'Max TP Pips', b:'Hard cap on take profit distance.', e:'100 pips max: TP2 = 140 pips → capped at 100.' },
   ec_tp1r:         { t:'TP1 R Multiple', b:'TP1 = entry + (SL × this). Smaller = closer, higher hit rate but less profit.', e:'0.3: SL=20 pips → TP1 at 6 pips.' },
-  ec_tp2r:         { t:'TP2 R Multiple', b:'Runner final target. Placed at entry + (SL × this).', e:'1.0: SL=20 → TP2 at 20 pips.' },
+  ec_tp2r:         { t:'TP2 R Multiple', b:'Runner final target. Placed at entry + (SL × this).', e:'2.0: SL=20 → TP2 at 40 pips.' },
   ec_trailoffset:  { t:'Trail Offset ×R', b:'After TP1 hit, trailing stop follows price at SL × this distance behind.', e:'0.7: SL=20 pips → trail 14 pips behind.' },
   ex_max_spread:   { t:'Max Spread (pips)', b:'Spread checked before every trade. Exceeds this → entry rejected.', e:'3 pips: NFP spike spread 12 pips → rejected.' },
   oi_wall_pips:    { t:'OI Wall Proximity', b:'If a large options wall sits within this many pips, trade is blocked.', e:'15 pips: put wall at 1.1690, entry at 1.1700 → blocked.' },
