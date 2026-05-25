@@ -124,10 +124,19 @@ def detect_confluences(today_levels: list, yest_levels: list,
 
 
 def get_yesterday_range_bars(bars_5m_newest_first: list, today_date: str) -> list:
-    """Extract yesterday's 5m bars from the window."""
-    from datetime import datetime, timedelta
-    yesterday = (datetime.strptime(today_date, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
-    return [b for b in bars_5m_newest_first if b.get('lDate') == yesterday]
+    """Extract the most-recent previous trading day's 5m bars from the window.
+
+    Finds the latest lDate that is not today_date, so Monday correctly
+    resolves to Friday rather than Sunday (no-trade day).
+    """
+    prev_dates = sorted(
+        {b['lDate'] for b in bars_5m_newest_first
+         if b.get('lDate') and b['lDate'] != today_date},
+        reverse=True,
+    )
+    if not prev_dates:
+        return []
+    return [b for b in bars_5m_newest_first if b.get('lDate') == prev_dates[0]]
 
 
 def levels_near_price(levels: list, price: float, pip: float, tol_pips: float) -> list:

@@ -197,8 +197,11 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
                       'range_pips': round(asia['range'] / pip)}
 
     # ── Confluence levels ─────────────────────────────────────────────────
-    yest_date  = (datetime.strptime(today_date, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
     yest_bars  = get_yesterday_range_bars(bars_5m, today_date)
+    # Use the actual date from the bars — not a calendar subtraction — so Monday
+    # resolves to Friday rather than Sunday (no-trade day).
+    yest_date  = (yest_bars[0]['lDate'] if yest_bars else
+                  (datetime.strptime(today_date, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d'))
     yest_asia  = compute_asia_range(yest_bars, yest_date) if yest_bars else None
 
     today_levels: list = []
