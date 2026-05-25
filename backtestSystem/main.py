@@ -161,8 +161,14 @@ def _level_key(pair: str, price: float, pip: float) -> str:
 def run_pair(pair: str, cfg: dict, kill: KillSwitch,
              level_entries: dict, today_date: str, london_hour: int,
              open_pos: list = None, cooldown_until: float = 0.0,
-             can_trade: bool = True) -> dict:
-    """Returns a status dict for KV push; empty dict if skipped before levels computed."""
+             can_trade: bool = True,
+             placed_tickets: dict = None) -> dict:
+    """Returns a status dict for KV push; empty dict if skipped before levels computed.
+
+    placed_tickets: if provided, any newly placed ticket is injected here so the
+    main loop's close-detection tracks it from the very next poll — guarding against
+    MT5 positions_get() briefly not returning a just-placed position.
+    """
     st: dict = {'pair': pair, 'price': None, 'asia': None, 'confluences': [],
                 'in_zone': False, 'direction': None, 'conviction': None, 'confirms': None}
 
@@ -405,6 +411,8 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     level_entries[lkey] = level_entries.get(lkey, 0) + 1  # count attempt win or lose
     if ticket:
         log.info(f'  → ticket #{ticket}')
+        if placed_tickets is not None:
+            placed_tickets[ticket] = pair  # guard against MT5 positions_get() lag
         features_fired = [r['key'] for r in scored if r.get('icon', '·') != '·']
         journal.record_open(
             ticket, pair, entry_dir, price, sl, tp, lots, pip,
@@ -552,7 +560,8 @@ def main() -> None:
                     cooldown_until = pair_close_times.get(pair, 0) + cooldown_secs
                     st = run_pair(pair, cfg, kill, level_entries, today_date,
                                   now['lHour'], open_pos=open_pos,
-                                  cooldown_until=cooldown_until, can_trade=in_window)
+                                  cooldown_until=cooldown_until, can_trade=in_window,
+                                  placed_tickets=current_tickets)
                     if st.get('price') is not None:
                         pair_statuses[pair] = st
                 except Exception as exc:
