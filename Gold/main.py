@@ -397,6 +397,19 @@ class GoldBot:
                     if datetime.fromtimestamp(b['time'], tz=timezone.utc).date() <
                        now_utc.date()][-1440:]   # cap to one day for prev profile
 
+        # Weekend/holiday fallback: if market is closed today there are no M1 bars.
+        # Use the most recent full trading day's bars so vol_prof still computes.
+        vol_m1 = today_m1
+        if not vol_m1 and m1_multiday:
+            most_recent = max(
+                datetime.fromtimestamp(b['time'], tz=timezone.utc).date()
+                for b in m1_multiday
+            )
+            vol_m1 = [b for b in m1_multiday
+                      if datetime.fromtimestamp(b['time'], tz=timezone.utc).date() == most_recent]
+            log.info(f'[VOL]    No bars today — using {most_recent} profile '
+                     f'({len(vol_m1)} M1 bars)')
+
         # ── ATR (15m) + squeeze detection ────────────────────────────────────
         if m15_bars:
             from utils.indicators import compute_atr
@@ -418,9 +431,11 @@ class GoldBot:
 
         # ── Volume profile + nPOC stack (12-day) ─────────────────────────────
         price_now = self._get_price()
-        if price_now and today_m1:
+        log.info(f'[PRICE]  {price_now}  today_m1={len(today_m1)}  vol_m1={len(vol_m1)}  '
+                 f'm30={len(m30_bars) if m30_bars else 0}')
+        if price_now and vol_m1:
             self.vol_prof = compute_volume_profile(
-                today_m1, prev_m1, price_now,
+                vol_m1, prev_m1, price_now,
                 all_m1_bars=m1_multiday, max_npoc_days=12,
             )
             if self.vol_prof.npoc_stack:
@@ -466,9 +481,12 @@ class GoldBot:
         for tf in zone_tfs:
             bars = tf_bar_map.get(tf)
             if bars and price_now:
-                zs = detect_fib_zones(bars, tf, price_now)
-                all_zones.extend(zs)
-        log.info(f'[ZONES]  {len(all_zones)} raw zones from {zone_tfs}')
+                try:
+                    zs = detect_fib_zones(bars, tf, price_now)
+                    all_zones.extend(zs)
+                    log.info(f'[ZONES]  {tf}: {len(zs)} raw ({sum(1 for z in zs if z.active)} active)')
+                except Exception as exc:
+                    log.error(f'[ZONES]  {tf} detection failed: {exc}', exc_info=True)
 
         # Update activity on previously detected zones
         zone_bars = tf_bar_map.get(zone_tfs[0]) or m30_bars or m15_bars
@@ -477,14 +495,20 @@ class GoldBot:
             update_zone_activity(all_zones, price_now, recent_closes)
 
         self.zones = [z for z in all_zones if z.active]
+        log.info(f'[ZONES]  {len(self.zones)} active zones total')
 
         # ── Confluence scoring ────────────────────────────────────────────────
-        if self.zones and self.vol_prof and self.sess_lvls and self.htf_bias:
+        missing = [n for n, v in [('vol_prof', self.vol_prof),
+                                   ('sess_lvls', self.sess_lvls),
+                                   ('htf_bias', self.htf_bias)] if not v]
+        if self.zones and not missing:
             self.zones = score_zones(self.zones, self.vol_prof,
                                      self.sess_lvls, self.htf_bias,
                                      trendlines=self.trendlines)
             self.journal.log_zone_map(self.zones, self.htf_bias,
                                        self.vol_prof, self.sess_lvls)
+        elif self.zones and missing:
+            log.warning(f'[ZONES]  Scoring skipped — missing: {missing}')
 
         # ── Push status + full zone map to KV ────────────────────────────────
         self._push_status()
