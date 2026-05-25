@@ -15,12 +15,18 @@ Daily / 4H
   Multi-TF Fib Zones (D1 / H4 / H1 / M30 / M15)
   └─ Find valid impulse legs on each timeframe
   └─ Draw traditional Fibonacci retracement levels
-  └─ Mark golden pocket zone (0.618–0.650) as primary entry window
+  └─ Create THREE zones per impulse:
+       A zone — GP (.618–.650)  ← tightest, highest probability
+       B zone — .786 (±1.6% R)  ← deep retrace, wider stop
+       B zone — .886 (±1.6% R)  ← near structure, widest stop
         ↓
-  Confluence Scoring
-  └─ Each zone is scored against: nPOC stack (12-day), POC, HVN, VAH/VAL,
-       VWAP anchor levels, daily open, session H/L, pivots, HTF alignment,
-       extra-TF fib clusters
+  Confluence Scoring (each zone scored independently at its own price)
+  └─ nPOC stack (12-day, age-weighted), POC, HVN, VAH/VAL
+  └─ VWAP anchor levels (session right-angle prices, age-weighted)
+  └─ Daily open, session H/L (Asia/London/NY), floor pivots
+  └─ HTF alignment, trendlines (direction-matched only)
+  └─ Cross-impulse fib alignment (.786/.886/.382 of a different leg)
+  └─ C-class: zone with no cross-fib items in composition
         ↓
   Wait — price must come TO the zone
         ↓
@@ -83,15 +89,25 @@ Output: `BULL`, `BEAR`, or `NEUTRAL` with a 0–1 confidence score. A `BULL` bia
 
 Traditional Fibonacci retracement — completely separate from the dashboard's standard-deviation range extensions.
 
-**Levels drawn:**
+**Levels computed per impulse:**
 
 ```
 0.382  — shallow retrace
-0.618  — golden pocket floor  ← primary entry zone
+0.618  — golden pocket floor
 0.650  — golden pocket ceiling
 0.786  — deep retrace
-0.886  — extreme retrace (last line of defence)
+0.886  — extreme retrace (last line of defence / near structure origin)
 ```
+
+**Three zone objects are created from every valid impulse leg:**
+
+| Zone variant | Entry window | Zone ID suffix |
+| ------------ | ------------ | -------------- |
+| `gp`         | .618 to .650 (the golden pocket range) | _(none)_ |
+| `786`        | .786 level ± 1.6% of impulse size | `_786` |
+| `886`        | .886 level ± 1.6% of impulse size | `_886` |
+
+All three variants share the same underlying swing data (same levels, same origin/end) but have different entry windows — so each is scored independently by the confluence scorer at its own price centre. A `.786` zone near an nPOC scores that nPOC at the `.786` price, not at the GP price.
 
 **Impulse detection per timeframe:**
 
@@ -103,12 +119,12 @@ Traditional Fibonacci retracement — completely separate from the dashboard's s
 | M30 | 1.2 × ATR(14)    | 4 bars each side        |
 | M15 | 1.0 × ATR(14)    | 3 bars each side        |
 
-Up to 3 active zones are kept per timeframe. A zone expires when price closes two consecutive bars beyond the swing origin (the start of the impulse that created it).
+Up to 9 active zones are kept per timeframe (3 impulses × 3 variants). A zone expires when price closes two consecutive bars beyond the swing origin (the start of the impulse that created it).
 
 **Direction:**
 
-- `long` — impulse was UP (low→high). Fib retraces downward. Bot looks to BUY into the GP zone.
-- `short` — impulse was DOWN (high→low). Fib retraces upward. Bot looks to SELL into the GP zone.
+- `long` — impulse was UP (low→high). Fib retraces downward. Bot looks to BUY at the zone.
+- `short` — impulse was DOWN (high→low). Fib retraces upward. Bot looks to SELL at the zone.
 
 ---
 
@@ -156,27 +172,55 @@ Each anchor includes: price, session (LONDON/NY), direction of the drive (UP/DOW
 
 ### Confluence Scorer (`confluence_scorer.py`)
 
-For each Fibonacci zone, the scorer checks how many other level types cluster near the golden pocket centre (within ±$3 by default).
+For each zone, the scorer checks how many level types cluster near the zone's entry window centre (within ±$3 by default). The score is purely additive — every qualifying confluence adds its weight. Zones are sorted highest-first.
 
-**Score weights:**
+**Level types and weights:**
 
-| Level type           | Weight                           |
-| -------------------- | -------------------------------- |
-| nPOC (age-weighted)  | 2.0 base + 0.1/day old, cap 3.0  |
-| VWAP anchor (aged)   | 1.8 base + 0.05/day old, cap 2.5 |
-| HTF bias aligned     | 1.5                              |
-| Daily open           | 1.5                              |
-| POC (today)          | 1.5                              |
-| Extra TF fib cluster | 1.5                              |
-| Previous day H/L     | 1.2                              |
-| HVN                  | 1.2                              |
-| VAH or VAL           | 1.0                              |
-| Session H/L          | 1.0                              |
-| Floor pivot          | 0.8                              |
+| Level type | Weight | Notes |
+| ---------- | ------ | ----- |
+| nPOC (age-weighted) | 2.0 base + 0.1/day, cap 3.0 | Naked POC from a prior session that today hasn't traded through |
+| VWAP anchor (age-weighted) | 1.8 base + 0.05/day, cap 2.5 | Session right-angle price level (see Session Engine) |
+| HTF bias aligned | 1.5 | Zone direction matches Daily/4H trend |
+| Daily open | 1.5 | Today's midnight-UTC open price |
+| POC (today) | 1.5 | Current session's highest-volume price |
+| Cross-impulse fib cluster | 1.5 | A different impulse's entry window aligns within ±$6 |
+| Cross-impulse .886 level | 1.5 | A different impulse's .886 level aligns within ±$4.50 |
+| Trendline 3+ touch | 1.8 | Aligned direction only |
+| Trendline 2 touch | 1.2 | Aligned direction only |
+| Previous day H/L | 1.2 | Yesterday's session high or low |
+| HVN | 1.2 | High Volume Node from today's profile |
+| Cross-impulse .786 level | 1.2 | A different impulse's .786 level aligns within ±$4.50 |
+| VAH or VAL | 1.0 | Value Area High / Low boundary |
+| Session H/L | 1.0 | Asia, London, or NY session extreme |
+| Floor pivot | 0.8 | Classic Pivot, R1/R2, S1/S2 |
+| Cross-impulse .382 level | 0.8 | A different impulse's .382 level aligns within ±$4.50 |
+
+**Cross-impulse fib alignment** is a particularly strong signal: it fires when this zone's entry centre coincides with a significant Fibonacci level from a *different* impulse leg. For example, your H4 long GP sitting at the exact .786 of a D1 impulse is two independent Fibonacci relationships pointing at the same price — that is the confluence that Wyckoff and harmonic traders look for. Variants from the same impulse (GP/.786/.886 siblings) are explicitly excluded from this check to prevent self-scoring.
 
 **Age-weighting explained:** An nPOC untouched for 8 days scores 2.8 (2.0 + 0.8), capped at 3.0 at 10 days. A VWAP anchor from 5 days ago scores 2.05 (1.8 + 0.25). Age weighting reflects the reality that older untouched institutional reference levels carry more unfilled order flow.
 
-A zone scoring **3.0+** is eligible to be armed. A zone scoring **6.0+** with HTF alignment is a prime setup. The bot logs these scores in the console output so you can see exactly what is making each zone significant.
+A zone scoring **3.0+** is eligible to be armed. A zone scoring **6.0+** with HTF alignment is a prime setup. The bot logs these scores and the full composition list in the console output so you can see exactly what is making each zone significant.
+
+---
+
+### Zone Classification (A / B / C)
+
+Every zone that makes it into the scored list is a legitimate Fibonacci level. The classification exists to give you a fast read on conviction without parsing the full composition list.
+
+| Class | Zone type | What it means |
+| ----- | --------- | ------------- |
+| **A** | `gp` (.618–.650) | Golden pocket — the tightest, most historically reliable reversal range. Institutions reference the GP more than any single level. If it has any additional confluence, it is a serious setup. |
+| **B** | `786` or `886` | Deep retrace — valid in its own right, not a fallback. A .786 or .886 with a naked POC and a pivot aligned is a strong entry location. The stop is wider (further from structure origin) and the retrace was larger, which means the setup requires slightly better VuManChu confirmation than an A zone. |
+| **C** | Any variant | The zone's composition contains **no fib-related items** — no cross-impulse cluster, no .786/.886/.382 from another impulse. The only things scoring it are volume and session levels (NPOC, VWAP anchor, pivot, daily open, etc.). Still tradeable if the score is high enough, but weaker conviction because no independent Fibonacci structure is agreeing with it. |
+
+**Practical reading:**
+
+- `A zone, score 7+, HTF aligned` → highest priority. Wait for VuManChu 2/3 minimum.
+- `B zone, score 6+, NPOC + cross-fib` → strong setup. Consider requiring 3/3 VuManChu given the wider stop.
+- `C zone, score 5+` → take note, keep watching, but do not rush the VuManChu entry. The fib level is there by construction; what is missing is independent confirmation from another impulse.
+- Any zone, score < 3 → below arming threshold. The bot ignores it.
+
+The zone ticker in `gold.html` shows a coloured badge for each variant: **GP** (amber), **.786** (purple), **.886** (rose). The class is not stored explicitly — it is derived at read time from `zone_variant` and the composition list.
 
 ---
 
@@ -431,8 +475,11 @@ The zone map prints on every state refresh (default every 2 minutes). Zones are 
 [5.1★]  H1  SHORT  GP 2318.0–2320.5   H1 short GP, VAH, Session H/L
 ```
 
-**Zone ID format:** `{TF}_{direction}_{swing_low_rounded}_{swing_high_rounded}`  
-Example: `H4_long_2285_2340` = 4H bullish impulse from $2285 to $2340.
+**Zone ID format:** `{TF}_{direction}_{swing_low_rounded}_{swing_high_rounded}[_{variant}]`  
+Examples:
+- `H4_long_2285_2340` — 4H bullish impulse GP zone (.618–.650)
+- `H4_long_2285_2340_786` — same impulse, .786 entry window
+- `H4_long_2285_2340_886` — same impulse, .886 entry window
 
 The composition list shows exactly what elevated the score. An nPOC label includes its age in parentheses:
 
