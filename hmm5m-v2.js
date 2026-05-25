@@ -25,11 +25,17 @@ export const HMM_V2_CONFIG = {
 };
 
 // Default emission means [trendZ, volZ, adxZ] per state
+//
+// CHOP = directionless + elevated vol + BELOW-average ADX.
+// Using adxZ=0 was wrong: a steady overnight trend builds ADX above average,
+// so CHOP was firing for grind-up moves that are clearly not directionless.
+// Requiring adxZ=-0.8 for CHOP separates "volatile grind" (ADX > avg = BULL)
+// from "true chop" (high vol, no sustained direction, ADX < avg).
 const DEFAULT_MEANS = [
-  [ 1.0,  0.0,  0.7],  // BULL
-  [-1.0,  0.0,  0.7],  // BEAR
-  [ 0.0,  0.0, -1.0],  // RANGE
-  [ 0.0,  1.0,  0.0],  // CHOP
+  [ 1.0,  0.0,  0.7],  // BULL  — positive trend, normal vol, above-avg ADX
+  [-1.0,  0.0,  0.7],  // BEAR  — negative trend, normal vol, above-avg ADX
+  [ 0.0,  0.0, -1.0],  // RANGE — flat, quiet, low ADX
+  [ 0.0,  0.8, -0.8],  // CHOP  — elevated vol + BELOW-avg ADX (genuinely directionless)
 ];
 
 function getCfg(sym) {
@@ -163,12 +169,16 @@ export function sessionLabel(hourUTC) {
   return 'ACTIVE';
 }
 
-// Boost self-transition probability during off-peak hours
+// Boost self-transition probability during genuinely dead THIN hours only.
+// ASIA (02:00–07:00 UTC) is a real session where trends develop — do NOT
+// over-sticky there, or a mis-labelled CHOP from the small hours stays stuck
+// all through Asia even when NAS/FX is clearly grinding in one direction.
 function sessionTransMatrix(A, hourUTC) {
-  if (hourUTC >= 7 && hourUTC < 17) return A;
+  if (hourUTC >= 2 && hourUTC < 17) return A;  // ASIA + active hours: no boost
+  // THIN (22:00–02:00 UTC): boost to reduce noise flip-flopping in dead markets
   return A.map((row, i) => {
     const selfP = row[i];
-    const boost = Math.min(0.98, selfP + (1 - selfP) * 0.3);
+    const boost = Math.min(0.97, selfP + (1 - selfP) * 0.2);
     const scale = (1 - boost) / Math.max(1 - selfP, 1e-10);
     return row.map((p, j) => j === i ? boost : p * scale);
   });
