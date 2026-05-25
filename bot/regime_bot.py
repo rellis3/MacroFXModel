@@ -518,7 +518,7 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
 
     log.error(
         f'MT5 order failed: retcode={getattr(res, "retcode", "?")} '
-        f'{getattr(res, "comment", "")}'
+        f'{getattr(res, "comment", "")}  last_error={mt5.last_error()}'
     )
     return None
 
@@ -693,6 +693,15 @@ def run(base_url: str, paper_mode: bool) -> None:
                 debounce[pair].min_conf = cfg['min_confidence']
                 decay_dets[pair].resize(cfg['decay_window'])
 
+        # MT5 reconnect guard — re-establish if terminal_info() returns None
+        if not paper_mode and HAS_MT5:
+            if not mt5.terminal_info():
+                log.warning('MT5 connection lost — attempting reconnect')
+                if not mt5_connect():
+                    log.error('MT5 reconnect failed — skipping cycle')
+                    time.sleep(30)
+                    continue
+
         balance = get_balance(paper_mode)
         risk_guard.sync_cfg(cfg)
         risk_guard.update_balance(balance)
@@ -705,7 +714,8 @@ def run(base_url: str, paper_mode: bool) -> None:
             rd         = all_regimes.get(pair) or {}
             regime     = rd.get('regime', 'RANGE')
             confidence = float(rd.get('confidence', 0))
-            vol_z      = float(rd.get('vol_z', 0.0))
+            # V2 API returns 'volZ' (camelCase); fall back to 'vol_z' for any future rename
+            vol_z      = float(rd.get('volZ', rd.get('vol_z', 0.0)))
 
             # ── run_length: consecutive polls in current regime ───────────────
             if regime == last_regimes.get(pair):
