@@ -258,7 +258,11 @@ export function computeHMM5mV2(bars, sym, trainedParams, macroCtx) {
   let means, vars, baseA, isLearned;
   const learned = trainedParams?.[sym];
   if (learned?.means && learned?.vars && learned?.transMatrix) {
-    means     = learned.means;
+    // Force the corrected CHOP emission regardless of what Baum-Welch learned.
+    // The old CHOP means [0, 1, 0] had no ADX penalty; Baum-Welch locked in
+    // that wrong definition. Preserve BULL/BEAR/RANGE from training but always
+    // use DEFAULT_MEANS[3] for CHOP so the fix applies even with trained params.
+    means     = learned.means.map((m, i) => i === 3 ? DEFAULT_MEANS[3] : m);
     vars      = learned.vars;
     baseA     = learned.transMatrix;
     isLearned = true;
