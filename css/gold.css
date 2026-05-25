@@ -890,3 +890,12 @@
 .zt-hist-table td { padding: 5px 6px; color: var(--text2); vertical-align: middle; }
 .zt-hist-table tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
 .zt-mono  { font-family: 'DM Mono', monospace; }
+
+/* Fib ladder inside zone rows */
+.zt-fib-ladder { display: flex; gap: 6px; flex-wrap: wrap; padding: 3px 0 1px; }
+.zt-fib {
+  font-size: 9px; font-family: 'DM Mono', monospace; font-weight: 500;
+  padding: 1px 5px; border-radius: 4px; white-space: nowrap;
+}
+.zt-fib-off { color: var(--text3); background: var(--s3); }
+.zt-fib-at  { color: #f59e0b; background: rgba(245,158,11,.2); font-weight: 700; border: 1px solid rgba(245,158,11,.4); }

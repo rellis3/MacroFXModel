@@ -1697,6 +1697,23 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
     const badge    = isArmed ? '<span class="zt-badge zt-badge-armed">ARMED</span>'
                    : isNear  ? '<span class="zt-badge zt-badge-near">NEAR</span>' : '';
     const distStr  = z.distPips < 1 ? 'INSIDE' : `${Math.round(z.distPips)}p`;
+    // Fib ladder: show where price sits relative to 0.382 / GP(.618-.650) / .786 / .886
+    let fibLadder = '';
+    if (price && z.level_382 != null) {
+      const fibs = [
+        { label: '.382', price: z.level_382 },
+        { label: '.618', price: z.level_618 ?? z.gp_high },
+        { label: '.650', price: z.level_650 ?? z.gp_low },
+        { label: '.786', price: z.level_786 },
+        { label: '.886', price: z.level_886 },
+      ].filter(f => f.price != null);
+      fibLadder = fibs.map(f => {
+        const diff = Math.round(Math.abs(price - f.price));
+        const atLevel = diff <= 3;
+        const cls = atLevel ? 'zt-fib-at' : 'zt-fib-off';
+        return `<span class="zt-fib ${cls}" title="${f.price.toFixed(1)}">${f.label}${atLevel ? '◀' : ''}</span>`;
+      }).join('');
+    }
     zoneRows += `
       <div class="zt-zone-row${isFocus ? ' zt-zone-focus' : ''}">
         <div class="zt-zone-meta">
@@ -1710,6 +1727,7 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
           <span class="zt-stars">${stars}</span>
           <span class="zt-dist">${distStr}</span>
         </div>
+        ${fibLadder ? `<div class="zt-fib-ladder" style="grid-column:1/-1">${fibLadder}</div>` : ''}
       </div>`;
   }
 

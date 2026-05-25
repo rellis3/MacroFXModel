@@ -30,6 +30,9 @@ PROXIMITY_PIPS = 3.0   # $3 tolerance for XAU/USD
 
 WEIGHTS = {
     'fib_cluster':    1.5,
+    'fib_786':        1.2,   # GP centre aligns with .786 of a different impulse
+    'fib_886':        1.5,   # GP centre aligns with .886 of a different impulse (rarer/tighter)
+    'fib_382':        0.8,   # GP centre aligns with .382 of a different impulse
     'npoc_base':      2.0,   # + 0.1 per day old, cap 3.0
     'poc':            1.5,
     'hvn':            1.2,
@@ -62,13 +65,31 @@ def score_zones(zones: list[FibZone], vol: VolumeProfile,
         score = 0.0
         comp: list[str] = [f'{zone.tf} {zone.direction} GP']
 
-        # ── Fib cluster ───────────────────────────────────────────────────────
+        # ── Fib cluster (GP-to-GP alignment across impulses) ─────────────────
         for other in zones:
             if other.zone_id == zone.zone_id:
                 continue
             if _near(c, _centre(other), PROXIMITY_PIPS * 2):
                 score += WEIGHTS['fib_cluster']
                 comp.append(f'{other.tf} fib cluster')
+
+        # ── Cross-impulse deep retrace levels (.382, .786, .886) ──────────────
+        # Scores when this zone's GP centre aligns with a significant retracement
+        # level of a DIFFERENT impulse leg — the strongest confluence signal in
+        # Wyckoff/harmonic analysis (e.g. .786 of H4 impulse = .618 of D1 impulse).
+        for other in zones:
+            if other.zone_id == zone.zone_id:
+                continue
+            tol = PROXIMITY_PIPS * 1.5
+            if _near(c, other.level_886, tol):
+                score += WEIGHTS['fib_886']
+                comp.append(f'{other.tf} .886 @ {other.level_886:.1f}')
+            elif _near(c, other.level_786, tol):
+                score += WEIGHTS['fib_786']
+                comp.append(f'{other.tf} .786 @ {other.level_786:.1f}')
+            elif _near(c, other.level_382, tol):
+                score += WEIGHTS['fib_382']
+                comp.append(f'{other.tf} .382 @ {other.level_382:.1f}')
 
         # ── nPOC stack — oldest (strongest) first ─────────────────────────────
         for npoc in vol.npoc_stack:
