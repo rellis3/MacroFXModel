@@ -55,6 +55,7 @@ Gold/
 ```
 
 **Shared from `../bot/utils/` (no copying):**
+
 - `sl_tp_engine.py` — SL/TP calculation, ladder exits
 - `indicators.py` — ATR, WaveTrend
 - `state_reader.py` — KV fetch, dashboard quote fallback
@@ -69,6 +70,7 @@ Gold/
 Reads Daily and 4H bars from MT5. Computes EMA(21) vs EMA(50) direction and slope on both timeframes, then checks for a recent Break of Structure on the Daily.
 
 Votes:
+
 - Daily EMA bullish/bearish → ±2
 - 4H EMA bullish/bearish → ±1
 - Daily BOS → ±1
@@ -82,6 +84,7 @@ Output: `BULL`, `BEAR`, or `NEUTRAL` with a 0–1 confidence score. A `BULL` bia
 Traditional Fibonacci retracement — completely separate from the dashboard's standard-deviation range extensions.
 
 **Levels drawn:**
+
 ```
 0.382  — shallow retrace
 0.618  — golden pocket floor  ← primary entry zone
@@ -93,16 +96,17 @@ Traditional Fibonacci retracement — completely separate from the dashboard's s
 **Impulse detection per timeframe:**
 
 | TF  | Min impulse size | Pivot confirmation bars |
-|-----|-----------------|------------------------|
-| D1  | 2.0 × ATR(14)  | 3 bars each side        |
-| H4  | 1.8 × ATR(14)  | 4 bars each side        |
-| H1  | 1.5 × ATR(14)  | 4 bars each side        |
-| M30 | 1.2 × ATR(14)  | 4 bars each side        |
-| M15 | 1.0 × ATR(14)  | 3 bars each side        |
+| --- | ---------------- | ----------------------- |
+| D1  | 2.0 × ATR(14)    | 3 bars each side        |
+| H4  | 1.8 × ATR(14)    | 4 bars each side        |
+| H1  | 1.5 × ATR(14)    | 4 bars each side        |
+| M30 | 1.2 × ATR(14)    | 4 bars each side        |
+| M15 | 1.0 × ATR(14)    | 3 bars each side        |
 
 Up to 3 active zones are kept per timeframe. A zone expires when price closes two consecutive bars beyond the swing origin (the start of the impulse that created it).
 
 **Direction:**
+
 - `long` — impulse was UP (low→high). Fib retraces downward. Bot looks to BUY into the GP zone.
 - `short` — impulse was DOWN (high→low). Fib retraces upward. Bot looks to SELL into the GP zone.
 
@@ -127,7 +131,7 @@ The 12-day nPOC stack requires approximately 18,500 M1 bars — the bot fetches 
 All times UTC.
 
 | Session | UTC Window  |
-|---------|-------------|
+| ------- | ----------- |
 | Asia    | 22:00–07:00 |
 | London  | 07:00–13:00 |
 | NY      | 13:00–20:00 |
@@ -138,9 +142,10 @@ Tracks: daily open (midnight UTC), session highs and lows, London open price, fl
 
 At London (07:00 UTC) and NY (13:00 UTC) opens, if the market makes a strong directional drive in the first 15 minutes (drive range > 1.2 × day's ATR), the price at the session open becomes a VWAP anchor level.
 
-This is not a directional signal. The VWAP itself is irrelevant — what matters is the *price level* at which the sharp right-angle move originated. That level represents an institutional price decision point: the market agreed at that price and then drove aggressively away from it. Any untouched version of that level (one that today's session hasn't traded back through) is a high-conviction confluence zone.
+This is not a directional signal. The VWAP itself is irrelevant — what matters is the _price level_ at which the sharp right-angle move originated. That level represents an institutional price decision point: the market agreed at that price and then drove aggressively away from it. Any untouched version of that level (one that today's session hasn't traded back through) is a high-conviction confluence zone.
 
 A fib golden pocket that aligns with an anchor from 3–8 days ago is a particularly strong location because:
+
 1. Many participants anchored positions at that price level
 2. The level has been untouched since (unfilled orders still sitting there)
 3. Now price is returning to that exact decision point for the first time
@@ -155,19 +160,19 @@ For each Fibonacci zone, the scorer checks how many other level types cluster ne
 
 **Score weights:**
 
-| Level type            | Weight                                  |
-|-----------------------|-----------------------------------------|
-| nPOC (age-weighted)   | 2.0 base + 0.1/day old, cap 3.0         |
-| VWAP anchor (aged)    | 1.8 base + 0.05/day old, cap 2.5        |
-| HTF bias aligned      | 1.5                                     |
-| Daily open            | 1.5                                     |
-| POC (today)           | 1.5                                     |
-| Extra TF fib cluster  | 1.5                                     |
-| Previous day H/L      | 1.2                                     |
-| HVN                   | 1.2                                     |
-| VAH or VAL            | 1.0                                     |
-| Session H/L           | 1.0                                     |
-| Floor pivot           | 0.8                                     |
+| Level type           | Weight                           |
+| -------------------- | -------------------------------- |
+| nPOC (age-weighted)  | 2.0 base + 0.1/day old, cap 3.0  |
+| VWAP anchor (aged)   | 1.8 base + 0.05/day old, cap 2.5 |
+| HTF bias aligned     | 1.5                              |
+| Daily open           | 1.5                              |
+| POC (today)          | 1.5                              |
+| Extra TF fib cluster | 1.5                              |
+| Previous day H/L     | 1.2                              |
+| HVN                  | 1.2                              |
+| VAH or VAL           | 1.0                              |
+| Session H/L          | 1.0                              |
+| Floor pivot          | 0.8                              |
 
 **Age-weighting explained:** An nPOC untouched for 8 days scores 2.8 (2.0 + 0.8), capped at 3.0 at 10 days. A VWAP anchor from 5 days ago scores 2.05 (1.8 + 0.25). Age weighting reflects the reality that older untouched institutional reference levels carry more unfilled order flow.
 
@@ -180,14 +185,17 @@ A zone scoring **3.0+** is eligible to be armed. A zone scoring **6.0+** with HT
 Confirmation uses three components evaluated on 5m bars once price is in proximity of a zone. The rule is: **zone first, VuManChu second, entry only if the flow supports what you already expect.**
 
 **Component 1 — WaveTrend (WT1/WT2):**
+
 - Algorithm matches the dashboard's `divergence.js` (HLC3 → EMA(10) → channel index → EMA(21))
 - Looking for: divergence between price and WT at the zone (price makes new extreme but WT does not → momentum running out), or WT crossing from overbought/oversold territory
 
 **Component 2 — Money Flow:**
+
 - Volume-weighted directional pressure per bar: `(close − open) / (high − low) × volume`, smoothed with EMA(14)
 - **Gold-specific behaviour:** a money flow spike INTO a zone signals exhaustion, not continuation. If sellers (for a long zone) have pushed hard and MF is now rolling over, the selling fuel is running out.
 
 **Component 3 — VWAP Slope Exhaustion:**
+
 - Measures whether the momentum that pushed price INTO the zone is running out of energy — not VWAP position above/below price (that is not the signal).
 - The cumulative VWAP series from bar[0] is built, then slope is compared across two windows: early half vs late half of the last 20 bars.
 - For a **LONG zone** (expecting price to bounce from support): if the VWAP slope was falling (bearish move into the zone) but is now flattening or turning positive, the sellers are tiring.
@@ -196,11 +204,11 @@ Confirmation uses three components evaluated on 5m bars once price is in proximi
 
 **Entry rules:**
 
-| Components aligned | Result          |
-|-------------------|-----------------|
-| 3 of 3            | HIGH confidence — entry fires |
-| 2 of 3            | MEDIUM confidence — entry fires (default minimum) |
-| 1 or 0            | LOW — no trade, keep watching |
+| Components aligned | Result                                            |
+| ------------------ | ------------------------------------------------- |
+| 3 of 3             | HIGH confidence — entry fires                     |
+| 2 of 3             | MEDIUM confidence — entry fires (default minimum) |
+| 1 or 0             | LOW — no trade, keep watching                     |
 
 You can raise the minimum to 3 of 3 via `vu_min_components: 3` in config.
 
@@ -241,6 +249,7 @@ One trade at a time. The cooldown prevents revenge entries after a loss.
 Two output files written to `--log-dir` (default: current directory):
 
 **`gold_journal.jsonl`** — one JSON object per line, every event:
+
 ```
 ZONE_MAP         full zone snapshot on each state refresh
 ZONE_APPROACHED  price entered proximity of a zone
@@ -253,6 +262,7 @@ SESSION_SUMMARY  end-of-session statistics
 ```
 
 **`gold_trades.csv`** — one row per completed trade:
+
 ```
 date, time, zone_id, tf, direction, score, entry, sl, tp1, tp2,
 sl_pips, tp1_pips, tp2_pips, rr, close_reason, close_price,
@@ -260,6 +270,7 @@ pnl_pips, result, vu_components, vu_confidence, composition
 ```
 
 **Console output** — formatted zone map on each refresh:
+
 ```
 ──────────────────────────────────────────────────────────────────────
 ZONE MAP  09:35 UTC  | HTF BULL (75%)  | LONDON  | VWAP 2308.5
@@ -283,11 +294,11 @@ ZONE MAP  09:35 UTC  | HTF BULL (75%)  | LONDON  | VWAP 2308.5
 
 The bot reads from and writes to the dashboard's KV store:
 
-| Key | Direction | Purpose |
-|-----|-----------|---------|
-| `ai_goldmodel` | Read | Gold macro model (TIPS/BEI/DXY signal). Dashboard pushes this on each FRED refresh. Soft-blocks entries that strongly oppose the model. |
-| `gold_bot_config` | Read | Bot configuration (overrides defaults). Edit via dashboard or direct KV write. |
-| `gold_bot_status` | Write | Heartbeat: current state, HTF bias, active zones, trades today. |
+| Key               | Direction | Purpose                                                                                                                                 |
+| ----------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `ai_goldmodel`    | Read      | Gold macro model (TIPS/BEI/DXY signal). Dashboard pushes this on each FRED refresh. Soft-blocks entries that strongly oppose the model. |
+| `gold_bot_config` | Read      | Bot configuration (overrides defaults). Edit via dashboard or direct KV write.                                                          |
+| `gold_bot_status` | Write     | Heartbeat: current state, HTF bias, active zones, trades today.                                                                         |
 
 The gold macro gate is a soft block only: it will prevent entry if the macro model is **STRONG** in the opposite direction. A MODERATE or NEUTRAL signal lets the technical setup decide.
 
@@ -389,23 +400,23 @@ Uses magic number `20260003`. Paper and live never conflict — each bot family 
 
 All settings can be overridden at runtime by writing a JSON object to the KV key `gold_bot_config` (via the dashboard's bot-config page or direct KV API). The bot reloads config on every state refresh (every 120s by default).
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `enabled` | `true` | Master kill switch |
-| `paper_mode` | `true` | No real orders when true |
-| `min_zone_score` | `3.0` | Minimum confluence score before a zone is armed |
-| `proximity_pips` | `5.0` | Price must be within this many $ of the GP zone to arm |
-| `vu_min_components` | `2` | VuManChu components required for entry (2 or 3) |
-| `risk_pct` | `0.5` | % of account balance risked per trade |
-| `tp1_r` | `1.0` | TP1 as a multiple of SL distance (1R) |
-| `tp2_r` | `2.0` | TP2 as a multiple of SL distance (2R) |
-| `sl_atr_mult` | `1.5` | SL = ATR(14) × this if no structural level available |
-| `max_sl_pips` | `40` | Hard cap on SL distance |
-| `max_trades_per_day` | `2` | Daily trade limit |
-| `trade_window_start` | `07:00` | UTC — no entries before this |
-| `trade_window_end` | `20:00` | UTC — no entries after this |
-| `cooldown_minutes` | `30` | Pause after each trade close |
-| `gold_macro_gate` | `true` | Block entries opposing the TIPS/BEI/DXY macro model |
+| Setting              | Default | Description                                            |
+| -------------------- | ------- | ------------------------------------------------------ |
+| `enabled`            | `true`  | Master kill switch                                     |
+| `paper_mode`         | `true`  | No real orders when true                               |
+| `min_zone_score`     | `3.0`   | Minimum confluence score before a zone is armed        |
+| `proximity_pips`     | `5.0`   | Price must be within this many $ of the GP zone to arm |
+| `vu_min_components`  | `2`     | VuManChu components required for entry (2 or 3)        |
+| `risk_pct`           | `0.5`   | % of account balance risked per trade                  |
+| `tp1_r`              | `1.0`   | TP1 as a multiple of SL distance (1R)                  |
+| `tp2_r`              | `2.0`   | TP2 as a multiple of SL distance (2R)                  |
+| `sl_atr_mult`        | `1.5`   | SL = ATR(14) × this if no structural level available   |
+| `max_sl_pips`        | `40`    | Hard cap on SL distance                                |
+| `max_trades_per_day` | `2`     | Daily trade limit                                      |
+| `trade_window_start` | `07:00` | UTC — no entries before this                           |
+| `trade_window_end`   | `20:00` | UTC — no entries after this                            |
+| `cooldown_minutes`   | `30`    | Pause after each trade close                           |
+| `gold_macro_gate`    | `true`  | Block entries opposing the TIPS/BEI/DXY macro model    |
 
 ---
 
@@ -424,6 +435,7 @@ The zone map prints on every state refresh (default every 2 minutes). Zones are 
 Example: `H4_long_2285_2340` = 4H bullish impulse from $2285 to $2340.
 
 The composition list shows exactly what elevated the score. An nPOC label includes its age in parentheses:
+
 - `nPOC 2306.0 (8d)` — this POC has been naked for 8 days and scores 2.8
 - `VWAP anchor 2306.1 (5d NY UP)` — NY session drive from 5 days ago, price drove UP from this level
 
@@ -490,11 +502,11 @@ The same data is written as a `SESSION_SUMMARY` event in `gold_journal.jsonl`.
 
 Each bot uses a unique MT5 magic number to avoid order conflicts:
 
-| Bot | Magic |
-|-----|-------|
-| `bot/main.py` (main confluence bot) | 20260001 |
+| Bot                                  | Magic    |
+| ------------------------------------ | -------- |
+| `bot/main.py` (main confluence bot)  | 20260001 |
 | `bot/regime_bot.py` (HMM regime bot) | 20260002 |
-| `Gold/main.py` (this bot) | 20260003 |
+| `Gold/main.py` (this bot)            | 20260003 |
 
 ---
 
@@ -509,9 +521,9 @@ Each trendline is projected forward to the current bar to get its live price lev
 - Misaligned trendlines (descending at long, ascending at short) → ignored
 
 | Touches | Score weight |
-|---------|-------------|
-| 2       | 1.2         |
-| 3+      | 1.8         |
+| ------- | ------------ |
+| 2       | 1.2          |
+| 3+      | 1.8          |
 
 ---
 
@@ -519,11 +531,11 @@ Each trendline is projected forward to the current bar to get its live price lev
 
 The bot compares the current 14-bar M15 ATR to the 100-bar baseline ATR. The ratio (ATR squeeze) detects when gold is in a compression phase — tighter than its recent norm, often preceding a sharp expansion. In compression, the scoring threshold is raised automatically so only the most confluent zones are armed:
 
-| Squeeze ratio | Action |
-|--------------|--------|
-| < 0.65       | min score raised by +1.5 |
-| 0.65–0.75    | min score raised by +0.75 |
-| > 0.75       | normal threshold |
+| Squeeze ratio | Action                    |
+| ------------- | ------------------------- |
+| < 0.65        | min score raised by +1.5  |
+| 0.65–0.75     | min score raised by +0.75 |
+| > 0.75        | normal threshold          |
 
 The squeeze ratio is logged on each state refresh and included in the `gold_bot_status` KV write.
 
@@ -568,6 +580,7 @@ python Gold/replay.py --csv-out Gold/logs/replay.csv          # export CSV
 ```
 
 Output includes:
+
 - Per-session table: zones detected, hit rate, entry rate, win rate, net-R
 - By-TF breakdown: which timeframe zones perform best
 - Composition analysis: which level combinations have highest win rates (min 3 appearances)
@@ -576,19 +589,21 @@ The win-rate and R columns let you evaluate whether the zone scoring threshold, 
 
 ---
 
-## Phase 3 — Planned
+## Phase 3 — Planned(done)
 
 - **Structural fib from dashboard levels** — allow user-drawn fibs on the dashboard to push their levels into the zone map alongside auto-detected ones
 - **Dashboard chart overlay** — read `gold_bot_zones` KV in `gold.html` and draw active zones, nPOC levels, VWAP anchors, and trendlines directly on the chart
 
 ---
 
-## Phase 4 — Future
+## Phase 4 — Future(done)
 
 - **Gold ML Model** — train a binary classifier on the 5Y Gold Lab dataset. Features: regime, TIPS/BEI/DXY z-scores, vol_z, run_length, decay score, OI wall distance, confluence score, VuManChu components. Label: TP hit within 5 days. Deploy as a daily signal that replaces (or gates) the current rule-based direction. The Gold Lab historical reconstruction is the data pipeline for this.
-
-- **Cross-bot Portfolio Layer** — a supervisor process that sees all bots' open positions and enforces portfolio-level constraints. Prevents correlated exposure (regime bot SHORT EUR/USD vs main bot LONG EUR/USD). Unified daily drawdown ceiling across all accounts. Kills the weakest signal when two bots disagree on the same instrument.
 
 - **Adaptive Parameter Optimiser** — a nightly process that backtests the last 30 days of live data and pushes updated parameters (SL multiplier, min confidence, hold bars, zone score threshold) to KV. Bots pick up the new values on their next config reload cycle and self-tune without a restart.
 
 - **Live Performance Dashboard** — P&L tracking per bot, per pair, per regime, per zone TF. Live win rate vs Gold Lab historical estimate side-by-side. Alerts when live performance diverges from backtest beyond a threshold — early warning of model degradation or regime change that the models haven't adapted to yet.
+
+## Phase 5 — Future
+
+- **Cross-bot Portfolio Layer** — a supervisor process that sees all bots' open positions and enforces portfolio-level constraints. Prevents correlated exposure (regime bot SHORT EUR/USD vs main bot LONG EUR/USD). Unified daily drawdown ceiling across all accounts. Kills the weakest signal when two bots disagree on the same instrument.
