@@ -756,3 +756,137 @@
   .gold-ck-label { width: auto; }
   .gold-ck-verdict { flex-wrap: wrap; }
 }
+
+
+/* ── Zone Ticker ─────────────────────────────────────────────────────────────── */
+#goldZoneTicker { padding-top: 14px; }
+
+.zt-card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--rl);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.zt-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text3);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.zt-title::after { content:''; flex:1; height:1px; background:var(--border); min-width:20px; }
+
+.zt-bot-state {
+  font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 10px;
+  background: var(--s2); color: var(--text3); text-transform: uppercase; letter-spacing: .8px;
+}
+.zt-bot-state.zt-state-armed    { background: rgba(245,158,11,.15); color: #f59e0b; }
+.zt-bot-state.zt-state-managing { background: var(--green-bg); color: var(--green); }
+.zt-bot-state.zt-state-cooldown { background: var(--red-bg); color: var(--red); }
+.zt-htf-lbl { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.zt-hist-btn {
+  margin-left: auto; background: none; border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text2); font-size: 10px; padding: 2px 8px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+}
+.zt-hist-btn:hover { border-color: var(--border2); color: var(--text); }
+.zt-empty { font-size: 12px; color: var(--text3); font-style: italic; padding: 4px 0; }
+
+/* Zone rows */
+.zt-zones { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.zt-zone-row {
+  display: grid;
+  grid-template-columns: 1fr 100px 70px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+  border-radius: 6px;
+}
+.zt-zone-row:not(:last-child) { border-bottom: 1px solid var(--border); }
+.zt-zone-focus { background: var(--s2); padding: 6px 8px !important; }
+
+.zt-zone-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; min-width: 0; }
+.zt-dir-pill {
+  font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 6px;
+  font-family: 'DM Mono', monospace; white-space: nowrap;
+}
+.zt-bull { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
+.zt-bear { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-bd);  }
+.zt-tf   { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.zt-gp   { font-size: 10.5px; font-family: 'DM Mono', monospace; color: var(--text2); }
+.zt-stars { font-size: 10px; color: #f59e0b; letter-spacing: -1px; white-space: nowrap; }
+.zt-dist  { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); text-align: right; }
+.zt-zone-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+
+.zt-bar-wrap { background: var(--s3); border-radius: 3px; height: 5px; overflow: hidden; }
+.zt-bar-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+.zt-bar-fill.zt-bull { background: var(--green); border: none; }
+.zt-bar-fill.zt-bear { background: var(--red);   border: none; }
+
+.zt-badge { font-size: 8.5px; font-weight: 700; padding: 1px 5px; border-radius: 5px; letter-spacing: .5px; white-space: nowrap; }
+.zt-badge-armed { background: rgba(245,158,11,.2); color: #f59e0b; }
+.zt-badge-near  { background: var(--s3); color: var(--text2); border: 1px solid var(--border2); }
+
+/* VuManChu panel */
+.zt-vu-panel {
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: 10px 12px; background: var(--s2); margin-top: 2px;
+}
+.zt-vu-header {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.zt-vu-title { font-size: 11px; font-weight: 600; color: var(--text); }
+.zt-vu-zone  { font-size: 9.5px; font-family: 'DM Mono', monospace; color: var(--text3); }
+
+.zt-conf { font-size: 9.5px; font-weight: 600; padding: 2px 7px; border-radius: 6px; margin-left: auto; }
+.zt-conf-high { background: var(--green-bg); color: var(--green); }
+.zt-conf-med  { background: rgba(245,158,11,.15); color: #f59e0b; }
+.zt-conf-low  { background: var(--s3); color: var(--text3); }
+
+.zt-comp-row { padding: 7px 0; }
+.zt-comp-row:not(:last-child) { border-bottom: 1px solid var(--border); }
+.zt-comp-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.zt-comp-name { font-size: 12px; font-weight: 500; color: var(--text); }
+.zt-sig { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 5px; font-family: 'DM Mono', monospace; }
+.zt-sig-ok   { background: var(--green-bg); color: var(--green); }
+.zt-sig-fail { background: var(--s3); color: var(--text3); }
+
+.zt-pass { color: var(--green); font-weight: 700; font-size: 14px; line-height: 1; }
+.zt-fail { color: var(--red);   font-weight: 700; font-size: 14px; line-height: 1; }
+
+.zt-rule-detail {
+  font-size: 10.5px; color: var(--text3); font-family: 'DM Mono', monospace;
+  margin-left: 22px; line-height: 1.7;
+}
+.zt-rule-detail strong { color: var(--text2); font-weight: 600; }
+.zt-rule-lbl { color: var(--text3); font-size: 9px; text-transform: uppercase; letter-spacing: .5px; }
+
+/* History panel */
+.zt-history { display: none; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; }
+.zt-history.zt-hist-open { display: block; }
+.zt-hist-title {
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text3); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+}
+.zt-hist-clear {
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text3); font-size: 10px; padding: 1px 6px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+}
+.zt-hist-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.zt-hist-table th {
+  font-size: 9px; text-transform: uppercase; letter-spacing: .8px; color: var(--text3);
+  text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--border); font-weight: 500;
+}
+.zt-hist-table td { padding: 5px 6px; color: var(--text2); vertical-align: middle; }
+.zt-hist-table tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+.zt-mono  { font-family: 'DM Mono', monospace; }

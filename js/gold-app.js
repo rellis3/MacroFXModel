@@ -80,6 +80,7 @@ export async function init() {
     }
 
     startQuoteLoop();
+    startZoneTicker();
   } catch (err) {
     console.error('[gold-app] init error:', err);
     setStatus('error', 'Load failed: ' + err.message);
@@ -1397,3 +1398,401 @@ function escHtml(str) {
 // Called from gold.html after DOM ready. Exposed on window for inline script use.
 window.goldApp = { init, toggleDark };
 init();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ZONE TICKER — live zone proximity + VuManChu pass/fail breakdown
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── VuManChu JS port (mirrors Gold/modules/vumanchu.py) ───────────────────────
+
+function _ztEma(vals, p) {
+  if (!vals.length) return [];
+  const k = 2 / (p + 1), out = [vals[0]];
+  for (let i = 1; i < vals.length; i++) out.push(vals[i] * k + out[i - 1] * (1 - k));
+  return out;
+}
+
+function _ztSma(vals, p) {
+  return vals.map((_, i) =>
+    i < p - 1 ? NaN : vals.slice(i - p + 1, i + 1).reduce((a, b) => a + b, 0) / p
+  );
+}
+
+function _ztWt(bars, n1 = 10, n2 = 21) {
+  const hl3 = bars.map(b => (b.high + b.low + b.close) / 3);
+  const esa  = _ztEma(hl3, n1);
+  const d    = _ztEma(hl3.map((v, i) => Math.abs(v - esa[i])), n1);
+  const ci   = hl3.map((v, i) => d[i] ? (v - esa[i]) / (0.015 * d[i]) : 0);
+  const wt1  = _ztEma(ci, n2);
+  const wt2  = _ztSma(wt1, 4);
+  return { wt1, wt2 };
+}
+
+function _ztMf(bars, p = 14) {
+  const raw = bars.map(b => {
+    const r = b.high - b.low + 0.001;
+    return (b.close - b.open) / r * (b.tick_volume ?? b.volume ?? 1);
+  });
+  const pk = Math.max(...raw.map(Math.abs), 1);
+  return _ztEma(raw.map(v => v / pk * 100), p);
+}
+
+function _ztVwap(bars, dir, win = 20) {
+  if (bars.length < win + 5) return { signal: 'NEUTRAL', earlySlope: null, lateSlope: null, ratio: null };
+  let cv = 0, ctvp = 0;
+  const vw = bars.map(b => {
+    const tp = (b.high + b.low + b.close) / 3, vol = b.tick_volume ?? b.volume ?? 1;
+    ctvp += tp * vol; cv += vol;
+    return cv ? ctvp / cv : tp;
+  });
+  const rec  = vw.slice(-win);
+  const half = Math.floor(win / 2);
+  const es   = rec[half] - rec[0];
+  const ls   = rec[rec.length - 1] - rec[half];
+  const ratio = es !== 0 ? Math.abs(ls) / Math.abs(es) : null;
+  let signal = 'NEUTRAL';
+  if (dir === 'long') {
+    if (es < 0 && ls > 0)                        signal = 'REVERSAL';
+    else if (es < 0 && ratio !== null && ratio < 0.45) signal = 'EXHAUSTION';
+  } else {
+    if (es > 0 && ls < 0)                        signal = 'REVERSAL';
+    else if (es > 0 && ratio !== null && ratio < 0.45) signal = 'EXHAUSTION';
+  }
+  return { signal, earlySlope: es, lateSlope: ls, ratio };
+}
+
+function _ztDiv(closes, wt1, n = 5) {
+  if (closes.length < n + 2) return 'NONE';
+  const rc = closes.slice(-n), rw = wt1.slice(-n);
+  const cp = Math.max(...rc), ct = Math.min(...rc);
+  const wp = Math.max(...rw), wt = Math.min(...rw);
+  const curC = closes[closes.length - 1], curW = wt1[wt1.length - 1];
+  if (curC >= cp * 0.999 && curW < wp * 0.90) return 'DIVERGENCE_BEAR';
+  if (curC <= ct * 1.001 && curW > wt * 0.90) return 'DIVERGENCE_BULL';
+  return 'NONE';
+}
+
+// Returns full VuManChu result including per-component rule/threshold/actual values.
+function _ztVuManchu(bars, zoneDir, minComp = 2) {
+  if (!bars || bars.length < 31) return null;
+  const closes = bars.map(b => b.close);
+  const { wt1: wt1s, wt2: wt2s } = _ztWt(bars);
+  const mfs  = _ztMf(bars);
+  const vwap = _ztVwap(bars, zoneDir);
+
+  const wt1 = wt1s[wt1s.length - 1] ?? 0;
+  const wt2 = isNaN(wt2s[wt2s.length - 1]) ? 0 : (wt2s[wt2s.length - 1] ?? 0);
+  const mf  = mfs[mfs.length - 1] ?? 0;
+
+  const div   = _ztDiv(closes, wt1s);
+  const wtSig = div !== 'NONE' ? div : wt1 > wt2 ? 'BULLISH' : wt1 < wt2 ? 'BEARISH' : 'NEUTRAL';
+
+  const prev5      = mfs.slice(-6, -1);
+  const mfMax      = prev5.length ? Math.max(...prev5) : mf;
+  const mfMin      = prev5.length ? Math.min(...prev5) : mf;
+  const mfRollback = mfMax > 0 ? mf / mfMax * 100 : null;  // % of bullish spike remaining
+  const mfRollup   = mfMin < 0 ? mf / mfMin * 100 : null;  // % of bearish trough remaining
+
+  let mfSig;
+  if      (mfMax > 30 && mf < mfMax * 0.7)  mfSig = 'BEARISH_EXHAUSTION';
+  else if (mfMin < -30 && mf > mfMin * 0.7) mfSig = 'BULLISH_EXHAUSTION';
+  else if (mf > 20)                          mfSig = 'BULLISH';
+  else if (mf < -20)                         mfSig = 'BEARISH';
+  else                                       mfSig = 'NEUTRAL';
+
+  const vwapOk = vwap.signal === 'EXHAUSTION' || vwap.signal === 'REVERSAL';
+  let aligned = 0;
+  const comps = [];
+
+  // ── WT Momentum ───────────────────────────────────────────────────────────
+  const wtOk = zoneDir === 'long'
+    ? (wtSig === 'BULLISH' || wtSig === 'DIVERGENCE_BULL')
+    : (wtSig === 'BEARISH' || wtSig === 'DIVERGENCE_BEAR');
+  if (wtOk) aligned++;
+  const isDivWT = wtSig.startsWith('DIVERGENCE');
+  comps.push({
+    name:      'Momentum (WT)',
+    ok:        wtOk,
+    signal:    wtSig,
+    rule:      isDivWT
+      ? `Price at ${zoneDir === 'long' ? 'trough' : 'peak'} but WT turning ${zoneDir === 'long' ? 'up (bull div)' : 'down (bear div)'}`
+      : `WT1 (${wt1.toFixed(1)}) ${wt1 > wt2 ? '>' : '<'} WT2 (${wt2.toFixed(1)})`,
+    threshold: isDivWT ? 'WT < 90% of 5-bar peak/trough' : `WT1 ${zoneDir === 'long' ? '>' : '<'} WT2`,
+    actual:    isDivWT ? '— divergence' : `WT1 ${wt1 > wt2 ? '>' : '<'} WT2`,
+  });
+
+  // ── Money Flow ────────────────────────────────────────────────────────────
+  let mfOk, mfRule, mfThreshold, mfActual;
+  if (zoneDir === 'long') {
+    mfOk = mfSig === 'BULLISH_EXHAUSTION' || mfSig === 'BULLISH';
+    if (mfSig === 'BULLISH_EXHAUSTION') {
+      mfRule      = `Bearish spike (${mfMin.toFixed(1)}) rolling back toward 0`;
+      mfThreshold = 'spike < −30, rollup > 70% of trough';
+      mfActual    = mfRollup !== null ? `${mfRollup.toFixed(0)}% rollup (need >70%)` : '—';
+    } else {
+      mfRule = 'MF positive pressure'; mfThreshold = '> +20'; mfActual = mf.toFixed(1);
+    }
+  } else {
+    mfOk = mfSig === 'BEARISH_EXHAUSTION' || mfSig === 'BEARISH';
+    if (mfSig === 'BEARISH_EXHAUSTION') {
+      mfRule      = `Bullish spike (${mfMax.toFixed(1)}) rolling back toward 0`;
+      mfThreshold = 'spike > +30, rollback < 70% of spike';
+      mfActual    = mfRollback !== null ? `${mfRollback.toFixed(0)}% of spike remains (need <70%)` : '—';
+    } else {
+      mfRule = 'MF negative pressure'; mfThreshold = '< −20'; mfActual = mf.toFixed(1);
+    }
+  }
+  if (mfOk) aligned++;
+  comps.push({ name: 'Money Flow (MF)', ok: mfOk, signal: mfSig, rule: mfRule, threshold: mfThreshold, actual: mfActual });
+
+  // ── VWAP Slope ────────────────────────────────────────────────────────────
+  let vwapRule, vwapThreshold, vwapActual;
+  if (vwap.signal === 'REVERSAL') {
+    vwapRule      = `VWAP slope sign-flipped (momentum reversed)`;
+    vwapThreshold = 'early/late slope opposite sign';
+    vwapActual    = `early ${vwap.earlySlope?.toFixed(3) ?? '—'} → late ${vwap.lateSlope?.toFixed(3) ?? '—'}`;
+  } else {
+    vwapRule      = `VWAP momentum exhausting into zone`;
+    vwapThreshold = 'late slope < 45% of early slope';
+    vwapActual    = vwap.ratio !== null ? `${(vwap.ratio * 100).toFixed(0)}% of early slope (need <45%)` : '—';
+  }
+  if (vwapOk) aligned++;
+  comps.push({ name: 'VWAP Slope', ok: vwapOk, signal: vwap.signal, rule: vwapRule, threshold: vwapThreshold, actual: vwapActual });
+
+  const confidence = aligned >= 3 ? 'HIGH' : aligned >= minComp ? 'MEDIUM' : 'LOW';
+  const direction  = aligned >= minComp ? zoneDir.toUpperCase() : 'NEUTRAL';
+  return { direction, confidence, aligned, minComp, components: comps };
+}
+
+// ── Zone ticker state + polling ───────────────────────────────────────────────
+
+const _ZT = {
+  timer:          null,
+  zones:          null,
+  status:         null,
+  lastZonesFetch: 0,
+};
+
+const ZT_HISTORY_KEY = 'gold_zone_events';
+const ZT_HISTORY_MAX = 100;
+const ZT_PROX_PIPS   = 50;   // show VuManChu panel when within this many pips
+
+let _ztLastLoggedZone = null;
+
+function _ztLogEvent(ev) {
+  try {
+    const raw    = localStorage.getItem(ZT_HISTORY_KEY);
+    const events = raw ? JSON.parse(raw) : [];
+    events.unshift({ ...ev, ts: new Date().toISOString() });
+    if (events.length > ZT_HISTORY_MAX) events.length = ZT_HISTORY_MAX;
+    localStorage.setItem(ZT_HISTORY_KEY, JSON.stringify(events));
+  } catch (_) {}
+}
+
+function _ztGetHistory() {
+  try { return JSON.parse(localStorage.getItem(ZT_HISTORY_KEY) ?? '[]'); } catch (_) { return []; }
+}
+
+async function _ztStep() {
+  const now = Date.now();
+
+  // Zones payload changes every ~2 min — fetch every 90s
+  if (now - _ZT.lastZonesFetch > 90_000) {
+    try {
+      const r = await fetch('/api/kv/get?key=gold_bot_zones');
+      const j = await r.json();
+      if (!j.miss && j.data) { _ZT.zones = j.data; _ZT.lastZonesFetch = now; }
+    } catch (_) {}
+  }
+
+  // Bot status (state, armed zone) — fetch every tick
+  try {
+    const r = await fetch('/api/kv/get?key=gold_bot_status');
+    const j = await r.json();
+    if (!j.miss && j.data) _ZT.status = j.data;
+  } catch (_) {}
+
+  const price  = _liveQuote ? parseFloat(_liveQuote.price ?? _liveQuote.close ?? _liveQuote.ask ?? 0) || null : null;
+  const bars5m = S.ohlc5m?.['XAU/USD']?.values ?? [];
+  const zones  = _ZT.zones?.zones ?? [];
+  const armedId = _ZT.zones?.armed_zone ?? _ZT.status?.armed_zone ?? null;
+
+  // Find focus zone: armed zone first, else closest within proximity
+  let focusZone = null, focusVu = null;
+  if (price && zones.length) {
+    const withDist = zones
+      .map(z => ({ ...z, distPips: Math.max(0, Math.max((z.gp_low ?? 0) - price, price - (z.gp_high ?? 0))) }))
+      .sort((a, b) => a.distPips - b.distPips);
+
+    focusZone = armedId
+      ? (withDist.find(z => z.zone_id === armedId) ?? (withDist[0]?.distPips <= ZT_PROX_PIPS ? withDist[0] : null))
+      : (withDist[0]?.distPips <= ZT_PROX_PIPS ? withDist[0] : null);
+
+    if (focusZone && bars5m.length >= 31) {
+      focusVu = _ztVuManchu(bars5m.slice(-60), focusZone.direction);
+
+      // Log once per zone approach
+      if (focusZone.distPips <= ZT_PROX_PIPS && focusZone.zone_id !== _ztLastLoggedZone) {
+        _ztLastLoggedZone = focusZone.zone_id;
+        if (focusVu) {
+          _ztLogEvent({
+            zone_id:    focusZone.zone_id,
+            direction:  focusZone.direction,
+            price,
+            dist_pips:  Math.round(focusZone.distPips),
+            score:      focusZone.score,
+            gp:         `${(focusZone.gp_low ?? 0).toFixed(1)}–${(focusZone.gp_high ?? 0).toFixed(1)}`,
+            aligned:    focusVu.aligned,
+            min_comp:   focusVu.minComp,
+            confidence: focusVu.confidence,
+            components: focusVu.components.map(c => ({ name: c.name, ok: c.ok, signal: c.signal })),
+          });
+        }
+      } else if (focusZone.distPips > ZT_PROX_PIPS) {
+        _ztLastLoggedZone = null;
+      }
+    }
+  }
+
+  _ztRender(price, zones, focusZone, focusVu, armedId);
+}
+
+function startZoneTicker() {
+  if (_ZT.timer) clearInterval(_ZT.timer);
+  _ztStep();
+  _ZT.timer = setInterval(_ztStep, 5_000);
+}
+
+// ── Zone ticker render ────────────────────────────────────────────────────────
+
+function _ztRender(price, zones, focusZone, focusVu, armedId) {
+  const el = document.getElementById('goldZoneTicker');
+  if (!el) return;
+
+  if (!zones || !zones.length) {
+    el.innerHTML = `<div class="zt-card"><div class="zt-title">ZONE TICKER</div><div class="zt-empty">Gold bot offline or no active zones loaded yet</div></div>`;
+    return;
+  }
+
+  const botState = _ZT.zones?.bot_state ?? _ZT.status?.state ?? '—';
+  const htfBias  = _ZT.zones?.htf_bias  ?? '—';
+  const htfConf  = _ZT.zones?.htf_confidence ?? 0;
+
+  // Sort zones by distance to price (or just by score if no price)
+  const withDist = zones
+    .map(z => ({ ...z, distPips: price ? Math.max(0, Math.max((z.gp_low ?? 0) - price, price - (z.gp_high ?? 0))) : 9999 }))
+    .sort((a, b) => a.distPips - b.distPips);
+
+  const maxDist = Math.max(...withDist.map(z => z.distPips), 100);
+
+  let zoneRows = '';
+  for (const z of withDist.slice(0, 8)) {
+    const isArmed  = z.zone_id === armedId;
+    const isNear   = z.distPips <= ZT_PROX_PIPS;
+    const isFocus  = focusZone?.zone_id === z.zone_id;
+    const dirCls   = z.direction === 'long' ? 'zt-bull' : 'zt-bear';
+    const barPct   = Math.max(3, Math.round((1 - z.distPips / (maxDist + 50)) * 100));
+    const score    = z.score ?? 0;
+    const stars    = '★'.repeat(Math.min(Math.round(score), 5)) + '☆'.repeat(Math.max(0, 5 - Math.round(score)));
+    const badge    = isArmed ? '<span class="zt-badge zt-badge-armed">ARMED</span>'
+                   : isNear  ? '<span class="zt-badge zt-badge-near">NEAR</span>' : '';
+    const distStr  = z.distPips < 1 ? 'INSIDE' : `${Math.round(z.distPips)}p`;
+    zoneRows += `
+      <div class="zt-zone-row${isFocus ? ' zt-zone-focus' : ''}">
+        <div class="zt-zone-meta">
+          <span class="zt-dir-pill ${dirCls}">${z.direction === 'long' ? '▲' : '▼'} ${(z.direction ?? '').toUpperCase()}</span>
+          <span class="zt-tf">${escHtml(z.tf ?? '')}</span>
+          <span class="zt-gp">${(z.gp_low ?? 0).toFixed(1)}–${(z.gp_high ?? 0).toFixed(1)}</span>
+          ${badge}
+        </div>
+        <div class="zt-bar-wrap"><div class="zt-bar-fill ${dirCls}" style="width:${barPct}%"></div></div>
+        <div class="zt-zone-right">
+          <span class="zt-stars">${stars}</span>
+          <span class="zt-dist">${distStr}</span>
+        </div>
+      </div>`;
+  }
+
+  // VuManChu breakdown panel
+  let vuHtml = '';
+  if (focusZone && focusVu) {
+    const confCls  = focusVu.confidence === 'HIGH' ? 'zt-conf-high' : focusVu.confidence === 'MEDIUM' ? 'zt-conf-med' : 'zt-conf-low';
+    const dirLabel = focusZone.direction === 'long' ? '▲ LONG' : '▼ SHORT';
+    let compRows = '';
+    for (const c of focusVu.components) {
+      const icon    = c.ok ? '<span class="zt-pass">✓</span>' : '<span class="zt-fail">✗</span>';
+      const sigCls  = c.ok ? 'zt-sig-ok' : 'zt-sig-fail';
+      const detail  = c.threshold
+        ? `<div class="zt-rule-detail"><span class="zt-rule-lbl">Rule:</span> ${escHtml(c.rule)}<br><span class="zt-rule-lbl">Threshold:</span> ${escHtml(c.threshold)}<br><span class="zt-rule-lbl">Actual:</span> <strong>${escHtml(c.actual)}</strong></div>`
+        : `<div class="zt-rule-detail">${escHtml(c.rule)}</div>`;
+      compRows += `
+        <div class="zt-comp-row">
+          <div class="zt-comp-head">${icon}<span class="zt-comp-name">${escHtml(c.name)}</span><span class="zt-sig ${sigCls}">${escHtml(c.signal)}</span></div>
+          ${detail}
+        </div>`;
+    }
+    vuHtml = `
+      <div class="zt-vu-panel">
+        <div class="zt-vu-header">
+          <span class="zt-vu-title">VuManChu Cipher B</span>
+          <span class="zt-vu-zone">${escHtml(focusZone.zone_id ?? '')}</span>
+          <span class="zt-dir-pill ${focusZone.direction === 'long' ? 'zt-bull' : 'zt-bear'}">${dirLabel}</span>
+          <span class="zt-conf ${confCls}">${focusVu.aligned}/${focusVu.minComp}+ aligned · ${focusVu.confidence}</span>
+        </div>
+        ${compRows}
+      </div>`;
+  } else if (focusZone) {
+    vuHtml = `<div class="zt-vu-panel"><div class="zt-empty">Loading 5m bars for VuManChu…</div></div>`;
+  }
+
+  // History toggle
+  const histCount = _ztGetHistory().length;
+  const histBtn   = histCount
+    ? `<button class="zt-hist-btn" onclick="document.getElementById('ztHistPanel').classList.toggle('zt-hist-open')">📋 ${histCount} zone events</button>`
+    : '';
+
+  el.innerHTML = `
+    <div class="zt-card">
+      <div class="zt-title">
+        ZONE TICKER
+        <span class="zt-bot-state zt-state-${escHtml((botState || '').toLowerCase().replace(/\s+/g, '-'))}">${escHtml(String(botState))}</span>
+        <span class="zt-htf-lbl">HTF ${escHtml(htfBias)} ${(htfConf * 100).toFixed(0)}%</span>
+        ${histBtn}
+      </div>
+      <div class="zt-zones">${zoneRows}</div>
+      ${vuHtml}
+      ${histCount ? _ztHistoryHtml() : ''}
+    </div>`;
+}
+
+function _ztHistoryHtml() {
+  const events = _ztGetHistory();
+  if (!events.length) return '';
+  let rows = '';
+  for (const e of events.slice(0, 25)) {
+    const d       = new Date(e.ts);
+    const timeStr = `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const dirCls  = e.direction === 'long' ? 'zt-bull' : 'zt-bear';
+    const passed  = (e.aligned ?? 0) >= (e.min_comp ?? 2);
+    const confBadge = `<span class="${passed ? 'zt-pass' : 'zt-fail'}">${e.aligned ?? 0}/3</span>`;
+    const icons     = (e.components ?? []).map(c => `<span title="${escHtml(c.name + ': ' + c.signal)}">${c.ok ? '✓' : '✗'}</span>`).join('');
+    rows += `<tr>
+      <td class="zt-mono">${escHtml(timeStr)}</td>
+      <td class="zt-mono" style="font-size:10px">${escHtml(e.zone_id ?? '—')}</td>
+      <td><span class="zt-dir-pill ${dirCls}" style="font-size:9px">${(e.direction ?? '').toUpperCase()}</span></td>
+      <td class="zt-mono">${(e.price ?? 0).toFixed(2)}</td>
+      <td class="zt-mono">${e.dist_pips ?? '—'}p</td>
+      <td>${confBadge} <span class="zt-mono" style="font-size:11px;letter-spacing:2px">${icons}</span></td>
+    </tr>`;
+  }
+  return `
+    <div id="ztHistPanel" class="zt-history">
+      <div class="zt-hist-title">Zone Approach History
+        <button class="zt-hist-clear" onclick="localStorage.removeItem('${ZT_HISTORY_KEY}');document.getElementById('ztHistPanel').remove()">clear</button>
+      </div>
+      <table class="zt-hist-table">
+        <thead><tr><th>Time</th><th>Zone</th><th>Dir</th><th>Price</th><th>Dist</th><th>VuManChu</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
