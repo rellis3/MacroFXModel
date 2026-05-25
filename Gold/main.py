@@ -454,17 +454,26 @@ class GoldBot:
             log.info(f'[TL]     {len(self.trendlines)} trendlines: '
                      f'{desc} descending, {asc} ascending')
 
-        # ── Fib zones (all TFs) ───────────────────────────────────────────────
+        # ── Fib zones (trading TF only — HTF is bias context, not zone source) ──
+        # zone_tfs controls which TFs contribute entry zones. Default M30.
+        # D1/H4 are still used above for HTF bias, session levels, trendlines.
+        zone_tfs = self.cfg.get('zone_tfs', ['M30'])
+        tf_bar_map = {
+            'D1': daily_bars, 'H4': h4_bars, 'H1': h1_bars,
+            'M30': m30_bars,  'M15': m15_bars,
+        }
         all_zones: list[FibZone] = []
-        for tf, bars in [('D1', daily_bars), ('H4', h4_bars), ('H1', h1_bars),
-                          ('M30', m30_bars), ('M15', m15_bars)]:
+        for tf in zone_tfs:
+            bars = tf_bar_map.get(tf)
             if bars and price_now:
                 zs = detect_fib_zones(bars, tf, price_now)
                 all_zones.extend(zs)
+        log.info(f'[ZONES]  {len(all_zones)} raw zones from {zone_tfs}')
 
         # Update activity on previously detected zones
-        if m15_bars and price_now:
-            recent_closes = [b['close'] for b in m15_bars[-3:]]
+        zone_bars = tf_bar_map.get(zone_tfs[0]) or m30_bars or m15_bars
+        if zone_bars and price_now:
+            recent_closes = [b['close'] for b in zone_bars[-3:]]
             update_zone_activity(all_zones, price_now, recent_closes)
 
         self.zones = [z for z in all_zones if z.active]

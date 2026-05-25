@@ -12,13 +12,14 @@ The bot mirrors the way Max approaches a gold chart: start with the big picture,
 Daily / 4H
   └─ Determine trend direction and bias (EMA structure + BOS)
         ↓
-  Multi-TF Fib Zones (D1 / H4 / H1 / M30 / M15)
-  └─ Find valid impulse legs on each timeframe
+  Fib Zones (trading TF only — default M30, configurable via zone_tfs)
+  └─ Find valid impulse legs on the trading timeframe
   └─ Draw traditional Fibonacci retracement levels
-  └─ Create THREE zones per impulse:
+  └─ Create THREE zones per impulse (no contradicting long/short from mixed TFs):
        A zone — GP (.618–.650)  ← tightest, highest probability
        B zone — .786 (±1.6% R)  ← deep retrace, wider stop
        B zone — .886 (±1.6% R)  ← near structure, widest stop
+  (D1 / H4 / H1 bars still fetched for HTF bias, session levels, trendlines)
         ↓
   Confluence Scoring (each zone scored independently at its own price)
   └─ nPOC stack (12-day, age-weighted), POC, HVN, VAH/VAL
@@ -119,7 +120,7 @@ All three variants share the same underlying swing data (same levels, same origi
 | M30 | 1.2 × ATR(14)    | 4 bars each side        |
 | M15 | 1.0 × ATR(14)    | 3 bars each side        |
 
-Up to 9 active zones are kept per timeframe (3 impulses × 3 variants). A zone expires when price closes two consecutive bars beyond the swing origin (the start of the impulse that created it).
+Up to 9 active zones are kept per configured trading timeframe (3 impulses × 3 variants). Default is M30 only — no contradicting long/short zones from different timeframes. D1 and H4 are always used for HTF bias and confluence scoring context only, never for entry zone generation. A zone expires when price closes two consecutive bars beyond the swing origin.
 
 **Direction:**
 
@@ -448,6 +449,7 @@ All settings can be overridden at runtime by writing a JSON object to the KV key
 | -------------------- | ------- | ------------------------------------------------------ |
 | `enabled`            | `true`  | Master kill switch                                     |
 | `paper_mode`         | `true`  | No real orders when true                               |
+| `zone_tfs`           | `["M30"]` | Timeframes that generate entry zones. D1/H4 are always HTF bias only. E.g. `["M30"]`, `["H1","M30"]` |
 | `min_zone_score`     | `3.0`   | Minimum confluence score before a zone is armed        |
 | `proximity_pips`     | `5.0`   | Price must be within this many $ of the GP zone to arm |
 | `vu_min_components`  | `2`     | VuManChu components required for entry (2 or 3)        |
