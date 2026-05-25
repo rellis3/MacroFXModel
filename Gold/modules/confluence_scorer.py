@@ -65,21 +65,26 @@ def score_zones(zones: list[FibZone], vol: VolumeProfile,
         score = 0.0
         comp: list[str] = [f'{zone.tf} {zone.direction} GP']
 
-        # ── Fib cluster (GP-to-GP alignment across impulses) ─────────────────
+        # ── Fib cluster (entry-level alignment across different impulses) ───────
         for other in zones:
             if other.zone_id == zone.zone_id:
                 continue
+            if other.swing_origin == zone.swing_origin and other.swing_end == zone.swing_end:
+                continue   # same impulse, different variant — not a cluster
             if _near(c, _centre(other), PROXIMITY_PIPS * 2):
                 score += WEIGHTS['fib_cluster']
-                comp.append(f'{other.tf} fib cluster')
+                comp.append(f'{other.tf} {other.zone_variant} cluster')
 
         # ── Cross-impulse deep retrace levels (.382, .786, .886) ──────────────
-        # Scores when this zone's GP centre aligns with a significant retracement
-        # level of a DIFFERENT impulse leg — the strongest confluence signal in
-        # Wyckoff/harmonic analysis (e.g. .786 of H4 impulse = .618 of D1 impulse).
+        # Scores when this zone's entry centre aligns with a significant level
+        # of a DIFFERENT impulse leg (e.g. .786 of H4 impulse = .618 of D1).
+        # Sibling zones from the same impulse (GP/.786/.886 variants) share
+        # identical levels and are explicitly excluded to prevent self-scoring.
         for other in zones:
             if other.zone_id == zone.zone_id:
                 continue
+            if other.swing_origin == zone.swing_origin and other.swing_end == zone.swing_end:
+                continue   # same impulse leg — different variant, not cross-impulse
             tol = PROXIMITY_PIPS * 1.5
             if _near(c, other.level_886, tol):
                 score += WEIGHTS['fib_886']

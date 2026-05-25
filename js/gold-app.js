@@ -1686,7 +1686,7 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
   const maxDist = Math.max(...withDist.map(z => z.distPips), 100);
 
   let zoneRows = '';
-  for (const z of withDist.slice(0, 8)) {
+  for (const z of withDist.slice(0, 12)) {
     const isArmed  = z.zone_id === armedId;
     const isNear   = z.distPips <= ZT_PROX_PIPS;
     const isFocus  = focusZone?.zone_id === z.zone_id;
@@ -1697,9 +1697,14 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
     const badge    = isArmed ? '<span class="zt-badge zt-badge-armed">ARMED</span>'
                    : isNear  ? '<span class="zt-badge zt-badge-near">NEAR</span>' : '';
     const distStr  = z.distPips < 1 ? 'INSIDE' : `${Math.round(z.distPips)}p`;
-    // Fib ladder: show where price sits relative to 0.382 / GP(.618-.650) / .786 / .886
+    // Zone variant label: GP (golden pocket) / .786 / .886
+    const variant  = z.zone_variant ?? (z.zone_id?.endsWith('_786') ? '786' : z.zone_id?.endsWith('_886') ? '886' : 'gp');
+    const variantLabel = variant === 'gp' ? 'GP' : `.${variant}`;
+    const variantCls   = variant === 'gp' ? 'zt-var-gp' : variant === '786' ? 'zt-var-786' : 'zt-var-886';
+    // Fib ladder: highlight the zone's own entry level as target
     let fibLadder = '';
     if (price && z.level_382 != null) {
+      const targetKey = variant === '786' ? '.786' : variant === '886' ? '.886' : null;
       const fibs = [
         { label: '.382', price: z.level_382 },
         { label: '.618', price: z.level_618 ?? z.gp_high },
@@ -1710,8 +1715,9 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
       fibLadder = fibs.map(f => {
         const diff = Math.round(Math.abs(price - f.price));
         const atLevel = diff <= 3;
-        const cls = atLevel ? 'zt-fib-at' : 'zt-fib-off';
-        return `<span class="zt-fib ${cls}" title="${f.price.toFixed(1)}">${f.label}${atLevel ? '◀' : ''}</span>`;
+        const isTarget = f.label === targetKey || (targetKey === null && (f.label === '.618' || f.label === '.650'));
+        const cls = atLevel ? 'zt-fib-at' : isTarget ? 'zt-fib-target' : 'zt-fib-off';
+        return `<span class="zt-fib ${cls}" title="${f.price.toFixed(1)}">${f.label}${atLevel ? '◀' : isTarget ? '⬤' : ''}</span>`;
       }).join('');
     }
     zoneRows += `
@@ -1719,6 +1725,7 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
         <div class="zt-zone-meta">
           <span class="zt-dir-pill ${dirCls}">${z.direction === 'long' ? '▲' : '▼'} ${(z.direction ?? '').toUpperCase()}</span>
           <span class="zt-tf">${escHtml(z.tf ?? '')}</span>
+          <span class="zt-variant ${variantCls}">${variantLabel}</span>
           <span class="zt-gp">${(z.gp_low ?? 0).toFixed(1)}–${(z.gp_high ?? 0).toFixed(1)}</span>
           ${badge}
         </div>
