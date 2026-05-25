@@ -8,14 +8,5 @@
     },
     "last_reset_date": "2026-05-25"
   },
-  "position_meta": {
-    "152104743783": {
-      "tp1": 4568.985,
-      "tp1_close_pct": 50,
-      "trailoffset_dist": 5.25,
-      "tp1_hit": false,
-      "trail_active": false,
-      "trail_sl": null
-    }
-  }
+  "position_meta": {}
 }

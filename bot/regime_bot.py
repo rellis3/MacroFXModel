@@ -101,7 +101,7 @@ DEFAULT_CFG: dict = {
     'lockout':             3,        # lockout duration (hours)
     'cooldown':            240,      # seconds between trades on same pair
     # Decay / vol filter settings
-    'vol_z_max':           0.5,      # block entry when vol_z > this (spike filter)
+    'vol_z_max':           2.5,      # block entry when vol_z > this (spike filter)
     'decay_window':        10,       # rolling bar count for decay computation
     'entry_decay_max':     0.25,     # block entry when decay score >= this
     'decay_warning':       0.50,     # log warning when score crosses this
@@ -728,11 +728,17 @@ def run(base_url: str, paper_mode: bool) -> None:
             vol_z      = float(rd.get('volZ', rd.get('vol_z', 0.0)))
 
             # ── run_length: consecutive polls in current regime ───────────────
-            if regime == last_regimes.get(pair):
+            prev_regime = last_regimes.get(pair, '')
+            if regime == prev_regime:
                 run_lengths[pair] += 1
             else:
                 run_lengths[pair]  = 1
                 last_regimes[pair] = regime
+                # Fresh tradeable regime with no open position — wipe stale decay
+                # so a previous exit's 0.9 score doesn't block the new entry gate
+                if regime in TRADEABLE and pair not in open_pos:
+                    decay_dets[pair] = DecayDetector(cfg['decay_window'])
+                    log.info(f'[{pair}] Decay reset — fresh {regime} after {prev_regime}')
 
             run_length = run_lengths[pair]
 

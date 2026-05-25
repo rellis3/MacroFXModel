@@ -860,7 +860,7 @@ const RG_DEFAULTS = {
   exit_on_range:      true,
   range_exit_hold:    2,
   // Decay detector
-  vol_z_max:          0.5,
+  vol_z_max:          2.5,
   decay_window:       10,
   entry_decay_max:    0.25,
   decay_warning:      0.50,
@@ -901,7 +901,7 @@ function readRgForm() {
   _rgCfg.monthlydd          = num('rg_monthlydd',         5.0);
   _rgCfg.lockout            = num('rg_lockout',             3);
   _rgCfg.cooldown           = num('rg_cooldown',          240);
-  _rgCfg.vol_z_max          = num('rg_vol_z_max',         0.5);
+  _rgCfg.vol_z_max          = num('rg_vol_z_max',         2.5);
   _rgCfg.decay_window       = num('rg_decay_window',       10);
   _rgCfg.entry_decay_max    = num('rg_entry_decay_max',   0.25);
   _rgCfg.decay_warning      = num('rg_decay_warning',     0.50);
@@ -928,7 +928,7 @@ function renderRgForm() {
   setVal('rg_monthlydd',        _rgCfg.monthlydd      ?? 5.0);
   setVal('rg_lockout',          _rgCfg.lockout        ?? 3);
   setVal('rg_cooldown',         _rgCfg.cooldown           ?? 240);
-  setVal('rg_vol_z_max',        _rgCfg.vol_z_max          ?? 0.5);
+  setVal('rg_vol_z_max',        _rgCfg.vol_z_max          ?? 2.5);
   setVal('rg_decay_window',     _rgCfg.decay_window       ?? 10);
   setVal('rg_entry_decay_max',  _rgCfg.entry_decay_max    ?? 0.25);
   setVal('rg_decay_warning',    _rgCfg.decay_warning      ?? 0.50);

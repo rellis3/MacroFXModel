@@ -31649,3 +31649,1998 @@
 [2026-05-25 16:12:47] [INFO] [NAS100_USD] regime=BEAR  conf=100%  vol_z=+3.67  rl=121  decay=0.350
 [2026-05-25 16:12:47] [INFO] [NAS100_USD] RiskGuard: Locked out — 159m remaining
 [2026-05-25 16:12:48] [INFO] Cycle 413 complete — sleeping 20s
+[2026-05-25 16:13:15] [INFO] [EUR/USD] regime=CHOP  conf=46%  vol_z=+4.67  rl=41  decay=0.750
+[2026-05-25 16:13:15] [INFO] [EUR/USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:15] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+5.34  rl=41  decay=0.352
+[2026-05-25 16:13:15] [INFO] [GBP/USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:15] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.90  rl=31  decay=0.357
+[2026-05-25 16:13:15] [INFO] [USD/JPY] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:15] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+6.23  rl=23  decay=0.350
+[2026-05-25 16:13:15] [INFO] [AUD/USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:15] [INFO] [NZD/USD] regime=BULL  conf=99%  vol_z=+5.71  rl=3  decay=0.900
+[2026-05-25 16:13:15] [INFO] [NZD/USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:15] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+3.52  rl=13  decay=0.364
+[2026-05-25 16:13:15] [INFO] [USD/CAD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:15] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.60  rl=18  decay=0.350
+[2026-05-25 16:13:15] [INFO] [USD/CHF] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:15] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=414  decay=0.000
+[2026-05-25 16:13:15] [INFO] [GBP/JPY] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:15] [INFO] [XAU/USD] regime=CHOP  conf=75%  vol_z=+0.27  rl=1  decay=0.900
+[2026-05-25 16:13:15] [INFO] [XAU/USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:15] [INFO] [NAS100_USD] regime=BEAR  conf=99%  vol_z=+3.88  rl=122  decay=0.354
+[2026-05-25 16:13:15] [INFO] [NAS100_USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:18] [INFO] Cycle 414 complete — sleeping 20s
+[2026-05-25 16:13:44] [INFO] [EUR/USD] regime=CHOP  conf=46%  vol_z=+4.67  rl=42  decay=0.750
+[2026-05-25 16:13:44] [INFO] [EUR/USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:44] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+5.34  rl=42  decay=0.352
+[2026-05-25 16:13:44] [INFO] [GBP/USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:44] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.90  rl=32  decay=0.359
+[2026-05-25 16:13:44] [INFO] [USD/JPY] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:44] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+6.23  rl=24  decay=0.350
+[2026-05-25 16:13:44] [INFO] [AUD/USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:44] [INFO] [NZD/USD] regime=BULL  conf=99%  vol_z=+5.71  rl=4  decay=0.900
+[2026-05-25 16:13:44] [INFO] [NZD/USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:44] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+3.52  rl=14  decay=0.370
+[2026-05-25 16:13:44] [INFO] [USD/CAD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:44] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.60  rl=19  decay=0.350
+[2026-05-25 16:13:44] [INFO] [USD/CHF] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:44] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=415  decay=0.000
+[2026-05-25 16:13:44] [INFO] [GBP/JPY] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:44] [INFO] [XAU/USD] regime=CHOP  conf=75%  vol_z=+0.27  rl=2  decay=0.900
+[2026-05-25 16:13:44] [INFO] [XAU/USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:44] [INFO] [NAS100_USD] regime=BEAR  conf=99%  vol_z=+3.88  rl=123  decay=0.358
+[2026-05-25 16:13:44] [INFO] [NAS100_USD] RiskGuard: Locked out — 158m remaining
+[2026-05-25 16:13:46] [INFO] Cycle 415 complete — sleeping 20s
+[2026-05-25 16:14:09] [INFO] [EUR/USD] regime=RANGE  conf=0%  vol_z=+0.00  rl=1  decay=0.900
+[2026-05-25 16:14:09] [INFO] [EUR/USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:09] [INFO] [GBP/USD] regime=RANGE  conf=0%  vol_z=+0.00  rl=1  decay=0.900
+[2026-05-25 16:14:09] [INFO] [GBP/USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:09] [INFO] [USD/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=1  decay=0.900
+[2026-05-25 16:14:09] [INFO] [USD/JPY] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:09] [INFO] [AUD/USD] regime=RANGE  conf=0%  vol_z=+0.00  rl=1  decay=0.900
+[2026-05-25 16:14:09] [INFO] [AUD/USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:09] [INFO] [NZD/USD] regime=RANGE  conf=0%  vol_z=+0.00  rl=1  decay=0.900
+[2026-05-25 16:14:09] [INFO] [NZD/USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:09] [INFO] [USD/CAD] regime=RANGE  conf=0%  vol_z=+0.00  rl=1  decay=0.900
+[2026-05-25 16:14:09] [INFO] [USD/CAD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:09] [INFO] [USD/CHF] regime=RANGE  conf=0%  vol_z=+0.00  rl=1  decay=0.900
+[2026-05-25 16:14:09] [INFO] [USD/CHF] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:09] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=416  decay=0.000
+[2026-05-25 16:14:09] [INFO] [GBP/JPY] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:09] [INFO] [XAU/USD] regime=RANGE  conf=0%  vol_z=+0.00  rl=1  decay=0.900
+[2026-05-25 16:14:09] [INFO] [XAU/USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:09] [INFO] [NAS100_USD] regime=RANGE  conf=0%  vol_z=+0.00  rl=1  decay=0.900
+[2026-05-25 16:14:09] [INFO] [NAS100_USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:10] [INFO] Cycle 416 complete — sleeping 20s
+[2026-05-25 16:14:34] [INFO] [EUR/USD] regime=BULL  conf=100%  vol_z=+4.22  rl=1  decay=0.900
+[2026-05-25 16:14:34] [INFO] [EUR/USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:34] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+4.92  rl=1  decay=0.900
+[2026-05-25 16:14:34] [INFO] [GBP/USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:34] [INFO] [USD/JPY] regime=CHOP  conf=98%  vol_z=+3.02  rl=1  decay=0.900
+[2026-05-25 16:14:34] [INFO] [USD/JPY] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:34] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+5.72  rl=1  decay=0.900
+[2026-05-25 16:14:34] [INFO] [AUD/USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:34] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+5.09  rl=1  decay=0.900
+[2026-05-25 16:14:34] [INFO] [NZD/USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:34] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+3.36  rl=1  decay=0.900
+[2026-05-25 16:14:34] [INFO] [USD/CAD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:34] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.45  rl=1  decay=0.900
+[2026-05-25 16:14:34] [INFO] [USD/CHF] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:34] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=417  decay=0.000
+[2026-05-25 16:14:34] [INFO] [GBP/JPY] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:34] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.24  rl=1  decay=0.900
+[2026-05-25 16:14:34] [INFO] [XAU/USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:34] [INFO] [NAS100_USD] regime=BEAR  conf=98%  vol_z=+3.67  rl=1  decay=0.900
+[2026-05-25 16:14:34] [INFO] [NAS100_USD] RiskGuard: Locked out — 157m remaining
+[2026-05-25 16:14:36] [INFO] Cycle 417 complete — sleeping 20s
+[2026-05-25 16:14:58] [INFO] [EUR/USD] regime=BULL  conf=100%  vol_z=+4.22  rl=2  decay=0.900
+[2026-05-25 16:14:58] [INFO] [EUR/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:14:58] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+4.92  rl=2  decay=0.900
+[2026-05-25 16:14:58] [INFO] [GBP/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:14:58] [INFO] [USD/JPY] regime=CHOP  conf=98%  vol_z=+3.02  rl=2  decay=0.900
+[2026-05-25 16:14:58] [INFO] [USD/JPY] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:14:58] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+5.72  rl=2  decay=0.900
+[2026-05-25 16:14:58] [INFO] [AUD/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:14:58] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+5.09  rl=2  decay=0.900
+[2026-05-25 16:14:58] [INFO] [NZD/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:14:58] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+3.36  rl=2  decay=0.900
+[2026-05-25 16:14:58] [INFO] [USD/CAD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:14:58] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.45  rl=2  decay=0.900
+[2026-05-25 16:14:58] [INFO] [USD/CHF] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:14:58] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=418  decay=0.000
+[2026-05-25 16:14:58] [INFO] [GBP/JPY] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:14:58] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.24  rl=2  decay=0.900
+[2026-05-25 16:14:58] [INFO] [XAU/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:14:58] [INFO] [NAS100_USD] regime=BEAR  conf=98%  vol_z=+3.67  rl=2  decay=0.900
+[2026-05-25 16:14:58] [INFO] [NAS100_USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:14:59] [INFO] Cycle 418 complete — sleeping 20s
+[2026-05-25 16:15:23] [INFO] [EUR/USD] regime=BULL  conf=100%  vol_z=+4.08  rl=3  decay=0.900
+[2026-05-25 16:15:23] [INFO] [EUR/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:23] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+4.69  rl=3  decay=0.900
+[2026-05-25 16:15:23] [INFO] [GBP/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:23] [INFO] [USD/JPY] regime=CHOP  conf=99%  vol_z=+2.82  rl=3  decay=0.900
+[2026-05-25 16:15:23] [INFO] [USD/JPY] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:23] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+5.47  rl=3  decay=0.900
+[2026-05-25 16:15:23] [INFO] [AUD/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:23] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+4.79  rl=3  decay=0.900
+[2026-05-25 16:15:23] [INFO] [NZD/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:23] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+3.33  rl=3  decay=0.900
+[2026-05-25 16:15:23] [INFO] [USD/CAD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:23] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.39  rl=3  decay=0.900
+[2026-05-25 16:15:23] [INFO] [USD/CHF] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:23] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=419  decay=0.000
+[2026-05-25 16:15:23] [INFO] [GBP/JPY] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:23] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.38  rl=3  decay=0.900
+[2026-05-25 16:15:23] [INFO] [XAU/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:23] [INFO] [NAS100_USD] regime=BEAR  conf=97%  vol_z=+3.67  rl=3  decay=0.900
+[2026-05-25 16:15:23] [INFO] [NAS100_USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:24] [INFO] Cycle 419 complete — sleeping 20s
+[2026-05-25 16:15:47] [INFO] [EUR/USD] regime=BULL  conf=100%  vol_z=+4.08  rl=4  decay=0.900
+[2026-05-25 16:15:47] [INFO] [EUR/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:47] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+4.69  rl=4  decay=0.900
+[2026-05-25 16:15:47] [INFO] [GBP/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:47] [INFO] [USD/JPY] regime=CHOP  conf=99%  vol_z=+2.82  rl=4  decay=0.900
+[2026-05-25 16:15:47] [INFO] [USD/JPY] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:47] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+5.47  rl=4  decay=0.900
+[2026-05-25 16:15:47] [INFO] [AUD/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:47] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+4.79  rl=4  decay=0.900
+[2026-05-25 16:15:47] [INFO] [NZD/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:47] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+3.33  rl=4  decay=0.900
+[2026-05-25 16:15:47] [INFO] [USD/CAD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:47] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.39  rl=4  decay=0.900
+[2026-05-25 16:15:47] [INFO] [USD/CHF] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:47] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=420  decay=0.000
+[2026-05-25 16:15:47] [INFO] [GBP/JPY] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:47] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.38  rl=4  decay=0.900
+[2026-05-25 16:15:47] [INFO] [XAU/USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:47] [INFO] [NAS100_USD] regime=BEAR  conf=97%  vol_z=+3.67  rl=4  decay=0.900
+[2026-05-25 16:15:47] [INFO] [NAS100_USD] RiskGuard: Locked out — 156m remaining
+[2026-05-25 16:15:49] [INFO] Cycle 420 complete — sleeping 20s
+[2026-05-25 16:16:12] [INFO] [EUR/USD] regime=BULL  conf=100%  vol_z=+4.08  rl=5  decay=0.900
+[2026-05-25 16:16:12] [INFO] [EUR/USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:12] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+4.69  rl=5  decay=0.900
+[2026-05-25 16:16:12] [INFO] [GBP/USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:12] [INFO] [USD/JPY] regime=CHOP  conf=99%  vol_z=+2.82  rl=5  decay=0.900
+[2026-05-25 16:16:12] [INFO] [USD/JPY] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:12] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+5.47  rl=5  decay=0.900
+[2026-05-25 16:16:12] [INFO] [AUD/USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:12] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+4.79  rl=5  decay=0.900
+[2026-05-25 16:16:12] [INFO] [NZD/USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:12] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+3.33  rl=5  decay=0.900
+[2026-05-25 16:16:12] [INFO] [USD/CAD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:12] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.39  rl=5  decay=0.900
+[2026-05-25 16:16:12] [INFO] [USD/CHF] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:12] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=421  decay=0.000
+[2026-05-25 16:16:12] [INFO] [GBP/JPY] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:12] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.38  rl=5  decay=0.900
+[2026-05-25 16:16:12] [INFO] [XAU/USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:12] [INFO] [NAS100_USD] regime=BEAR  conf=97%  vol_z=+3.67  rl=5  decay=0.900
+[2026-05-25 16:16:12] [INFO] [NAS100_USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:13] [INFO] Cycle 421 complete — sleeping 20s
+[2026-05-25 16:16:36] [INFO] [EUR/USD] regime=BULL  conf=100%  vol_z=+3.78  rl=6  decay=0.900
+[2026-05-25 16:16:36] [INFO] [EUR/USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:36] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+4.30  rl=6  decay=0.900
+[2026-05-25 16:16:36] [INFO] [GBP/USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:36] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.64  rl=6  decay=0.900
+[2026-05-25 16:16:36] [INFO] [USD/JPY] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:36] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+4.91  rl=6  decay=0.900
+[2026-05-25 16:16:36] [INFO] [AUD/USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:36] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+4.29  rl=6  decay=0.900
+[2026-05-25 16:16:36] [INFO] [NZD/USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:36] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+3.19  rl=6  decay=0.900
+[2026-05-25 16:16:36] [INFO] [USD/CAD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:36] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.26  rl=6  decay=0.900
+[2026-05-25 16:16:36] [INFO] [USD/CHF] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:36] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=422  decay=0.000
+[2026-05-25 16:16:36] [INFO] [GBP/JPY] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:36] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.38  rl=6  decay=0.900
+[2026-05-25 16:16:36] [INFO] [XAU/USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:36] [INFO] [NAS100_USD] regime=BEAR  conf=94%  vol_z=+3.55  rl=6  decay=0.900
+[2026-05-25 16:16:36] [INFO] [NAS100_USD] RiskGuard: Locked out — 155m remaining
+[2026-05-25 16:16:37] [INFO] Cycle 422 complete — sleeping 20s
+[2026-05-25 16:17:00] [INFO] [EUR/USD] regime=BULL  conf=100%  vol_z=+3.78  rl=7  decay=0.900
+[2026-05-25 16:17:00] [INFO] [EUR/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:00] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+4.30  rl=7  decay=0.900
+[2026-05-25 16:17:00] [INFO] [GBP/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:00] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.64  rl=7  decay=0.900
+[2026-05-25 16:17:00] [INFO] [USD/JPY] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:00] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+4.91  rl=7  decay=0.900
+[2026-05-25 16:17:00] [INFO] [AUD/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:00] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+4.29  rl=7  decay=0.900
+[2026-05-25 16:17:00] [INFO] [NZD/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:00] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+3.19  rl=7  decay=0.900
+[2026-05-25 16:17:00] [INFO] [USD/CAD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:00] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.26  rl=7  decay=0.900
+[2026-05-25 16:17:00] [INFO] [USD/CHF] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:00] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=423  decay=0.000
+[2026-05-25 16:17:00] [INFO] [GBP/JPY] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:00] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.38  rl=7  decay=0.900
+[2026-05-25 16:17:00] [INFO] [XAU/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:00] [INFO] [NAS100_USD] regime=BEAR  conf=94%  vol_z=+3.55  rl=7  decay=0.900
+[2026-05-25 16:17:00] [INFO] [NAS100_USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:01] [INFO] Cycle 423 complete — sleeping 20s
+[2026-05-25 16:17:23] [INFO] [EUR/USD] regime=BULL  conf=98%  vol_z=+3.50  rl=8  decay=0.900
+[2026-05-25 16:17:23] [INFO] [EUR/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:23] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+4.00  rl=8  decay=0.900
+[2026-05-25 16:17:23] [INFO] [GBP/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:23] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.51  rl=8  decay=0.900
+[2026-05-25 16:17:23] [INFO] [USD/JPY] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:23] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+4.57  rl=8  decay=0.900
+[2026-05-25 16:17:23] [INFO] [AUD/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:23] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+4.07  rl=8  decay=0.900
+[2026-05-25 16:17:23] [INFO] [NZD/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:23] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+3.16  rl=8  decay=0.900
+[2026-05-25 16:17:23] [INFO] [USD/CAD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:23] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.19  rl=8  decay=0.900
+[2026-05-25 16:17:23] [INFO] [USD/CHF] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:23] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=424  decay=0.000
+[2026-05-25 16:17:23] [INFO] [GBP/JPY] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:23] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.37  rl=8  decay=0.900
+[2026-05-25 16:17:23] [INFO] [XAU/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:23] [INFO] [NAS100_USD] regime=BEAR  conf=83%  vol_z=+3.68  rl=8  decay=0.900
+[2026-05-25 16:17:23] [INFO] [NAS100_USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:24] [INFO] Cycle 424 complete — sleeping 20s
+[2026-05-25 16:17:47] [INFO] [EUR/USD] regime=BULL  conf=98%  vol_z=+3.50  rl=9  decay=0.900
+[2026-05-25 16:17:47] [INFO] [EUR/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:47] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+4.00  rl=9  decay=0.900
+[2026-05-25 16:17:47] [INFO] [GBP/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:47] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.51  rl=9  decay=0.900
+[2026-05-25 16:17:47] [INFO] [USD/JPY] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:47] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+4.57  rl=9  decay=0.900
+[2026-05-25 16:17:47] [INFO] [AUD/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:47] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+4.07  rl=9  decay=0.900
+[2026-05-25 16:17:47] [INFO] [NZD/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:47] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+3.16  rl=9  decay=0.900
+[2026-05-25 16:17:47] [INFO] [USD/CAD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:47] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.19  rl=9  decay=0.900
+[2026-05-25 16:17:47] [INFO] [USD/CHF] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:47] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=425  decay=0.000
+[2026-05-25 16:17:47] [INFO] [GBP/JPY] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:47] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.37  rl=9  decay=0.900
+[2026-05-25 16:17:47] [INFO] [XAU/USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:47] [INFO] [NAS100_USD] regime=BEAR  conf=83%  vol_z=+3.68  rl=9  decay=0.900
+[2026-05-25 16:17:47] [INFO] [NAS100_USD] RiskGuard: Locked out — 154m remaining
+[2026-05-25 16:17:48] [INFO] Cycle 425 complete — sleeping 20s
+[2026-05-25 16:18:10] [INFO] [EUR/USD] regime=BULL  conf=98%  vol_z=+3.50  rl=10  decay=0.023
+[2026-05-25 16:18:10] [INFO] [EUR/USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:10] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+4.00  rl=10  decay=0.000
+[2026-05-25 16:18:10] [INFO] [GBP/USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:10] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.51  rl=10  decay=0.000
+[2026-05-25 16:18:10] [INFO] [USD/JPY] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:10] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+4.57  rl=10  decay=0.000
+[2026-05-25 16:18:10] [INFO] [AUD/USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:10] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+4.07  rl=10  decay=0.004
+[2026-05-25 16:18:10] [INFO] [NZD/USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:10] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+3.16  rl=10  decay=0.000
+[2026-05-25 16:18:10] [INFO] [USD/CAD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:10] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=+2.19  rl=10  decay=0.000
+[2026-05-25 16:18:10] [INFO] [USD/CHF] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:10] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=426  decay=0.000
+[2026-05-25 16:18:10] [INFO] [GBP/JPY] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:10] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.37  rl=10  decay=0.108
+[2026-05-25 16:18:10] [INFO] [XAU/USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:10] [INFO] [NAS100_USD] regime=BEAR  conf=83%  vol_z=+3.68  rl=10  decay=0.260
+[2026-05-25 16:18:10] [INFO] [NAS100_USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:11] [INFO] Cycle 426 complete — sleeping 20s
+[2026-05-25 16:18:33] [INFO] [EUR/USD] regime=BULL  conf=92%  vol_z=+3.16  rl=11  decay=0.075
+[2026-05-25 16:18:33] [INFO] [EUR/USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:33] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+3.47  rl=11  decay=0.000
+[2026-05-25 16:18:33] [INFO] [GBP/USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:33] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.34  rl=11  decay=0.000
+[2026-05-25 16:18:33] [INFO] [USD/JPY] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:33] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+4.21  rl=11  decay=0.000
+[2026-05-25 16:18:33] [INFO] [AUD/USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:33] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+3.84  rl=11  decay=0.006
+[2026-05-25 16:18:33] [INFO] [NZD/USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:33] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+3.08  rl=11  decay=0.000
+[2026-05-25 16:18:33] [INFO] [USD/CAD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:33] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+2.01  rl=11  decay=0.000
+[2026-05-25 16:18:33] [INFO] [USD/CHF] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:33] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=427  decay=0.000
+[2026-05-25 16:18:33] [INFO] [GBP/JPY] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:33] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.13  rl=11  decay=0.000
+[2026-05-25 16:18:33] [INFO] [XAU/USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:33] [INFO] [NAS100_USD] regime=BEAR  conf=59%  vol_z=+3.45  rl=11  decay=0.400
+[2026-05-25 16:18:33] [INFO] [NAS100_USD] RiskGuard: Locked out — 153m remaining
+[2026-05-25 16:18:34] [INFO] Cycle 427 complete — sleeping 20s
+[2026-05-25 16:18:56] [INFO] [EUR/USD] regime=BULL  conf=92%  vol_z=+3.16  rl=12  decay=0.114
+[2026-05-25 16:18:56] [INFO] [EUR/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:18:56] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+3.47  rl=12  decay=0.000
+[2026-05-25 16:18:56] [INFO] [GBP/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:18:56] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.34  rl=12  decay=0.000
+[2026-05-25 16:18:56] [INFO] [USD/JPY] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:18:56] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+4.21  rl=12  decay=0.000
+[2026-05-25 16:18:56] [INFO] [AUD/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:18:56] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+3.84  rl=12  decay=0.008
+[2026-05-25 16:18:56] [INFO] [NZD/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:18:56] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+3.08  rl=12  decay=0.000
+[2026-05-25 16:18:56] [INFO] [USD/CAD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:18:56] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+2.01  rl=12  decay=0.000
+[2026-05-25 16:18:56] [INFO] [USD/CHF] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:18:56] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=428  decay=0.000
+[2026-05-25 16:18:56] [INFO] [GBP/JPY] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:18:56] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.13  rl=12  decay=0.000
+[2026-05-25 16:18:56] [INFO] [XAU/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:18:56] [INFO] [NAS100_USD] regime=BEAR  conf=59%  vol_z=+3.45  rl=12  decay=0.400
+[2026-05-25 16:18:56] [INFO] [NAS100_USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:18:57] [INFO] Cycle 428 complete — sleeping 20s
+[2026-05-25 16:19:18] [INFO] [EUR/USD] regime=BULL  conf=92%  vol_z=+3.16  rl=13  decay=0.139
+[2026-05-25 16:19:18] [INFO] [EUR/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:18] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+3.47  rl=13  decay=0.000
+[2026-05-25 16:19:18] [INFO] [GBP/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:18] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.34  rl=13  decay=0.000
+[2026-05-25 16:19:18] [INFO] [USD/JPY] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:18] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+4.21  rl=13  decay=0.000
+[2026-05-25 16:19:18] [INFO] [AUD/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:18] [INFO] [NZD/USD] regime=BULL  conf=100%  vol_z=+3.84  rl=13  decay=0.008
+[2026-05-25 16:19:18] [INFO] [NZD/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:18] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+3.08  rl=13  decay=0.000
+[2026-05-25 16:19:18] [INFO] [USD/CAD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:18] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+2.01  rl=13  decay=0.000
+[2026-05-25 16:19:18] [INFO] [USD/CHF] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:18] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=429  decay=0.000
+[2026-05-25 16:19:18] [INFO] [GBP/JPY] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:18] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.13  rl=13  decay=0.000
+[2026-05-25 16:19:18] [INFO] [XAU/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:18] [INFO] [NAS100_USD] regime=BEAR  conf=59%  vol_z=+3.45  rl=13  decay=0.400
+[2026-05-25 16:19:18] [INFO] [NAS100_USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:19] [INFO] Cycle 429 complete — sleeping 20s
+[2026-05-25 16:19:41] [INFO] [EUR/USD] regime=CHOP  conf=56%  vol_z=+2.82  rl=1  decay=0.900
+[2026-05-25 16:19:41] [INFO] [EUR/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:41] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+3.04  rl=14  decay=0.000
+[2026-05-25 16:19:41] [INFO] [GBP/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:41] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.21  rl=14  decay=0.000
+[2026-05-25 16:19:41] [INFO] [USD/JPY] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:41] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+3.91  rl=14  decay=0.000
+[2026-05-25 16:19:41] [INFO] [AUD/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:41] [INFO] [NZD/USD] regime=BULL  conf=99%  vol_z=+3.63  rl=14  decay=0.014
+[2026-05-25 16:19:41] [INFO] [NZD/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:41] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.91  rl=14  decay=0.000
+[2026-05-25 16:19:41] [INFO] [USD/CAD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:41] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.83  rl=14  decay=0.000
+[2026-05-25 16:19:41] [INFO] [USD/CHF] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:41] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=430  decay=0.000
+[2026-05-25 16:19:41] [INFO] [GBP/JPY] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:41] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=-0.08  rl=14  decay=0.002
+[2026-05-25 16:19:41] [INFO] [XAU/USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:41] [INFO] [NAS100_USD] regime=BEAR  conf=51%  vol_z=+3.20  rl=14  decay=0.400
+[2026-05-25 16:19:41] [INFO] [NAS100_USD] RiskGuard: Locked out — 152m remaining
+[2026-05-25 16:19:42] [INFO] Cycle 430 complete — sleeping 20s
+[2026-05-25 16:20:04] [INFO] [EUR/USD] regime=CHOP  conf=56%  vol_z=+2.82  rl=2  decay=0.900
+[2026-05-25 16:20:04] [INFO] [EUR/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:04] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+3.04  rl=15  decay=0.000
+[2026-05-25 16:20:04] [INFO] [GBP/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:04] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.21  rl=15  decay=0.000
+[2026-05-25 16:20:04] [INFO] [USD/JPY] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:04] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+3.91  rl=15  decay=0.000
+[2026-05-25 16:20:04] [INFO] [AUD/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:04] [INFO] [NZD/USD] regime=BULL  conf=99%  vol_z=+3.63  rl=15  decay=0.018
+[2026-05-25 16:20:04] [INFO] [NZD/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:04] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.91  rl=15  decay=0.000
+[2026-05-25 16:20:04] [INFO] [USD/CAD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:04] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.83  rl=15  decay=0.000
+[2026-05-25 16:20:04] [INFO] [USD/CHF] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:04] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=431  decay=0.000
+[2026-05-25 16:20:04] [INFO] [GBP/JPY] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:04] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=-0.08  rl=15  decay=0.003
+[2026-05-25 16:20:04] [INFO] [XAU/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:04] [INFO] [NAS100_USD] regime=BEAR  conf=51%  vol_z=+3.20  rl=15  decay=0.400
+[2026-05-25 16:20:04] [INFO] [NAS100_USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:05] [INFO] Cycle 431 complete — sleeping 20s
+[2026-05-25 16:20:28] [INFO] [EUR/USD] regime=CHOP  conf=95%  vol_z=+2.65  rl=3  decay=0.900
+[2026-05-25 16:20:28] [INFO] [EUR/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:28] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.86  rl=16  decay=0.000
+[2026-05-25 16:20:28] [INFO] [GBP/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:28] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.35  rl=16  decay=0.000
+[2026-05-25 16:20:28] [INFO] [USD/JPY] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:28] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+3.58  rl=16  decay=0.000
+[2026-05-25 16:20:28] [INFO] [AUD/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:28] [INFO] [NZD/USD] regime=BULL  conf=95%  vol_z=+3.31  rl=16  decay=0.048
+[2026-05-25 16:20:28] [INFO] [NZD/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:28] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.96  rl=16  decay=0.000
+[2026-05-25 16:20:28] [INFO] [USD/CAD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:28] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.71  rl=16  decay=0.000
+[2026-05-25 16:20:28] [INFO] [USD/CHF] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:28] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=432  decay=0.000
+[2026-05-25 16:20:28] [INFO] [GBP/JPY] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:28] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.17  rl=16  decay=0.003
+[2026-05-25 16:20:28] [INFO] [XAU/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:28] [INFO] [NAS100_USD] regime=CHOP  conf=61%  vol_z=+3.02  rl=1  decay=0.900
+[2026-05-25 16:20:28] [INFO] [NAS100_USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:29] [INFO] Cycle 432 complete — sleeping 20s
+[2026-05-25 16:20:52] [INFO] [EUR/USD] regime=CHOP  conf=95%  vol_z=+2.65  rl=4  decay=0.900
+[2026-05-25 16:20:52] [INFO] [EUR/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:52] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.86  rl=17  decay=0.000
+[2026-05-25 16:20:52] [INFO] [GBP/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:52] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.35  rl=17  decay=0.000
+[2026-05-25 16:20:52] [INFO] [USD/JPY] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:52] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+3.58  rl=17  decay=0.000
+[2026-05-25 16:20:52] [INFO] [AUD/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:52] [INFO] [NZD/USD] regime=BULL  conf=95%  vol_z=+3.31  rl=17  decay=0.070
+[2026-05-25 16:20:52] [INFO] [NZD/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:52] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.96  rl=17  decay=0.000
+[2026-05-25 16:20:52] [INFO] [USD/CAD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:52] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.71  rl=17  decay=0.000
+[2026-05-25 16:20:52] [INFO] [USD/CHF] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:52] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=433  decay=0.000
+[2026-05-25 16:20:52] [INFO] [GBP/JPY] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:52] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.17  rl=17  decay=0.003
+[2026-05-25 16:20:52] [INFO] [XAU/USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:52] [INFO] [NAS100_USD] regime=CHOP  conf=61%  vol_z=+3.02  rl=2  decay=0.900
+[2026-05-25 16:20:52] [INFO] [NAS100_USD] RiskGuard: Locked out — 151m remaining
+[2026-05-25 16:20:54] [INFO] Cycle 433 complete — sleeping 20s
+[2026-05-25 16:21:16] [INFO] [EUR/USD] regime=CHOP  conf=95%  vol_z=+2.65  rl=5  decay=0.900
+[2026-05-25 16:21:16] [INFO] [EUR/USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:16] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.86  rl=18  decay=0.000
+[2026-05-25 16:21:16] [INFO] [GBP/USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:16] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.35  rl=18  decay=0.000
+[2026-05-25 16:21:16] [INFO] [USD/JPY] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:16] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+3.58  rl=18  decay=0.000
+[2026-05-25 16:21:16] [INFO] [AUD/USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:16] [INFO] [NZD/USD] regime=BULL  conf=95%  vol_z=+3.31  rl=18  decay=0.085
+[2026-05-25 16:21:16] [INFO] [NZD/USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:16] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.96  rl=18  decay=0.000
+[2026-05-25 16:21:16] [INFO] [USD/CAD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:16] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.71  rl=18  decay=0.000
+[2026-05-25 16:21:16] [INFO] [USD/CHF] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:16] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=434  decay=0.000
+[2026-05-25 16:21:16] [INFO] [GBP/JPY] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:16] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.17  rl=18  decay=0.002
+[2026-05-25 16:21:16] [INFO] [XAU/USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:16] [INFO] [NAS100_USD] regime=CHOP  conf=61%  vol_z=+3.02  rl=3  decay=0.900
+[2026-05-25 16:21:16] [INFO] [NAS100_USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:17] [INFO] Cycle 434 complete — sleeping 20s
+[2026-05-25 16:21:39] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.52  rl=6  decay=0.900
+[2026-05-25 16:21:39] [INFO] [EUR/USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:39] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.68  rl=19  decay=0.000
+[2026-05-25 16:21:39] [INFO] [GBP/USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:39] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.29  rl=19  decay=0.000
+[2026-05-25 16:21:39] [INFO] [USD/JPY] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:39] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+3.29  rl=19  decay=0.000
+[2026-05-25 16:21:39] [INFO] [AUD/USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:39] [INFO] [NZD/USD] regime=BULL  conf=80%  vol_z=+3.14  rl=19  decay=0.200
+[2026-05-25 16:21:39] [INFO] [NZD/USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:39] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.68  rl=19  decay=0.000
+[2026-05-25 16:21:39] [INFO] [USD/CAD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:39] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.59  rl=19  decay=0.000
+[2026-05-25 16:21:39] [INFO] [USD/CHF] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:39] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=435  decay=0.000
+[2026-05-25 16:21:39] [INFO] [GBP/JPY] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:39] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.39  rl=19  decay=0.041
+[2026-05-25 16:21:39] [INFO] [XAU/USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:39] [INFO] [NAS100_USD] regime=CHOP  conf=88%  vol_z=+2.95  rl=4  decay=0.900
+[2026-05-25 16:21:39] [INFO] [NAS100_USD] RiskGuard: Locked out — 150m remaining
+[2026-05-25 16:21:41] [INFO] Cycle 435 complete — sleeping 20s
+[2026-05-25 16:22:04] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.52  rl=7  decay=0.900
+[2026-05-25 16:22:04] [INFO] [EUR/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:04] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.68  rl=20  decay=0.000
+[2026-05-25 16:22:04] [INFO] [GBP/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:04] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.29  rl=20  decay=0.000
+[2026-05-25 16:22:04] [INFO] [USD/JPY] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:04] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+3.29  rl=20  decay=0.000
+[2026-05-25 16:22:04] [INFO] [AUD/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:04] [INFO] [NZD/USD] regime=BULL  conf=80%  vol_z=+3.14  rl=20  decay=0.283
+[2026-05-25 16:22:04] [INFO] [NZD/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:04] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.68  rl=20  decay=0.000
+[2026-05-25 16:22:04] [INFO] [USD/CAD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:04] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.59  rl=20  decay=0.000
+[2026-05-25 16:22:04] [INFO] [USD/CHF] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:04] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=436  decay=0.000
+[2026-05-25 16:22:04] [INFO] [GBP/JPY] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:04] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.39  rl=20  decay=0.284
+[2026-05-25 16:22:04] [INFO] [XAU/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:04] [INFO] [NAS100_USD] regime=CHOP  conf=88%  vol_z=+2.95  rl=5  decay=0.900
+[2026-05-25 16:22:04] [INFO] [NAS100_USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:05] [INFO] Cycle 436 complete — sleeping 20s
+[2026-05-25 16:22:27] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.43  rl=8  decay=0.900
+[2026-05-25 16:22:27] [INFO] [EUR/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:27] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.78  rl=21  decay=0.000
+[2026-05-25 16:22:27] [INFO] [GBP/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:27] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.34  rl=21  decay=0.025
+[2026-05-25 16:22:27] [INFO] [USD/JPY] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:27] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+3.18  rl=21  decay=0.000
+[2026-05-25 16:22:27] [INFO] [AUD/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:27] [INFO] [NZD/USD] regime=CHOP  conf=60%  vol_z=+3.05  rl=1  decay=0.900
+[2026-05-25 16:22:27] [INFO] [NZD/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:27] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.78  rl=21  decay=0.000
+[2026-05-25 16:22:27] [INFO] [USD/CAD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:27] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.41  rl=21  decay=0.000
+[2026-05-25 16:22:27] [INFO] [USD/CHF] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:27] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=437  decay=0.000
+[2026-05-25 16:22:27] [INFO] [GBP/JPY] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:27] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.33  rl=21  decay=0.350
+[2026-05-25 16:22:27] [INFO] [XAU/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:27] [INFO] [NAS100_USD] regime=CHOP  conf=98%  vol_z=+2.70  rl=6  decay=0.900
+[2026-05-25 16:22:27] [INFO] [NAS100_USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:28] [INFO] Cycle 437 complete — sleeping 20s
+[2026-05-25 16:22:51] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.43  rl=9  decay=0.900
+[2026-05-25 16:22:51] [INFO] [EUR/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:51] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.78  rl=22  decay=0.000
+[2026-05-25 16:22:51] [INFO] [GBP/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:51] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.34  rl=22  decay=0.060
+[2026-05-25 16:22:51] [INFO] [USD/JPY] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:51] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+3.18  rl=22  decay=0.000
+[2026-05-25 16:22:51] [INFO] [AUD/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:51] [INFO] [NZD/USD] regime=CHOP  conf=60%  vol_z=+3.05  rl=2  decay=0.900
+[2026-05-25 16:22:51] [INFO] [NZD/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:51] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.78  rl=22  decay=0.000
+[2026-05-25 16:22:51] [INFO] [USD/CAD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:51] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.41  rl=22  decay=0.000
+[2026-05-25 16:22:51] [INFO] [USD/CHF] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:51] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=438  decay=0.000
+[2026-05-25 16:22:51] [INFO] [GBP/JPY] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:51] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.33  rl=22  decay=0.350
+[2026-05-25 16:22:51] [INFO] [XAU/USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:51] [INFO] [NAS100_USD] regime=CHOP  conf=98%  vol_z=+2.70  rl=7  decay=0.900
+[2026-05-25 16:22:51] [INFO] [NAS100_USD] RiskGuard: Locked out — 149m remaining
+[2026-05-25 16:22:53] [INFO] Cycle 438 complete — sleeping 20s
+[2026-05-25 16:23:14] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.43  rl=10  decay=0.000
+[2026-05-25 16:23:14] [INFO] [EUR/USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:14] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.78  rl=23  decay=0.000
+[2026-05-25 16:23:14] [INFO] [GBP/USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:14] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.34  rl=23  decay=0.095
+[2026-05-25 16:23:14] [INFO] [USD/JPY] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:14] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+3.18  rl=23  decay=0.000
+[2026-05-25 16:23:14] [INFO] [AUD/USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:14] [INFO] [NZD/USD] regime=CHOP  conf=60%  vol_z=+3.05  rl=3  decay=0.900
+[2026-05-25 16:23:14] [INFO] [NZD/USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:14] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.78  rl=23  decay=0.000
+[2026-05-25 16:23:14] [INFO] [USD/CAD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:14] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.41  rl=23  decay=0.000
+[2026-05-25 16:23:14] [INFO] [USD/CHF] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:14] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=439  decay=0.000
+[2026-05-25 16:23:14] [INFO] [GBP/JPY] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:14] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.33  rl=23  decay=0.350
+[2026-05-25 16:23:14] [INFO] [XAU/USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:14] [INFO] [NAS100_USD] regime=CHOP  conf=98%  vol_z=+2.70  rl=8  decay=0.900
+[2026-05-25 16:23:14] [INFO] [NAS100_USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:15] [INFO] Cycle 439 complete — sleeping 20s
+[2026-05-25 16:23:38] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.38  rl=11  decay=0.000
+[2026-05-25 16:23:38] [INFO] [EUR/USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:38] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.41  rl=24  decay=0.000
+[2026-05-25 16:23:38] [INFO] [GBP/USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:38] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.94  rl=24  decay=0.000
+[2026-05-25 16:23:38] [INFO] [USD/JPY] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:38] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.80  rl=24  decay=0.000
+[2026-05-25 16:23:38] [INFO] [AUD/USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:38] [INFO] [NZD/USD] regime=CHOP  conf=95%  vol_z=+2.68  rl=4  decay=0.900
+[2026-05-25 16:23:38] [INFO] [NZD/USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:38] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.28  rl=24  decay=0.000
+[2026-05-25 16:23:38] [INFO] [USD/CAD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:38] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.39  rl=24  decay=0.000
+[2026-05-25 16:23:38] [INFO] [USD/CHF] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:38] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=440  decay=0.000
+[2026-05-25 16:23:38] [INFO] [GBP/JPY] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:38] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.21  rl=24  decay=0.266
+[2026-05-25 16:23:38] [INFO] [XAU/USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:38] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.69  rl=9  decay=0.900
+[2026-05-25 16:23:38] [INFO] [NAS100_USD] RiskGuard: Locked out — 148m remaining
+[2026-05-25 16:23:39] [INFO] Cycle 440 complete — sleeping 20s
+[2026-05-25 16:24:03] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.38  rl=12  decay=0.000
+[2026-05-25 16:24:03] [INFO] [EUR/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:03] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.41  rl=25  decay=0.000
+[2026-05-25 16:24:03] [INFO] [GBP/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:03] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.94  rl=25  decay=0.000
+[2026-05-25 16:24:03] [INFO] [USD/JPY] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:03] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.80  rl=25  decay=0.000
+[2026-05-25 16:24:03] [INFO] [AUD/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:03] [INFO] [NZD/USD] regime=CHOP  conf=95%  vol_z=+2.68  rl=5  decay=0.900
+[2026-05-25 16:24:03] [INFO] [NZD/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:03] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.28  rl=25  decay=0.000
+[2026-05-25 16:24:03] [INFO] [USD/CAD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:03] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.39  rl=25  decay=0.000
+[2026-05-25 16:24:03] [INFO] [USD/CHF] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:03] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=441  decay=0.000
+[2026-05-25 16:24:03] [INFO] [GBP/JPY] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:03] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.21  rl=25  decay=0.064
+[2026-05-25 16:24:03] [INFO] [XAU/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:03] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.69  rl=10  decay=0.000
+[2026-05-25 16:24:03] [INFO] [NAS100_USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:04] [INFO] Cycle 441 complete — sleeping 20s
+[2026-05-25 16:24:27] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.22  rl=13  decay=0.000
+[2026-05-25 16:24:27] [INFO] [EUR/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:27] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.32  rl=26  decay=0.000
+[2026-05-25 16:24:27] [INFO] [GBP/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:27] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.97  rl=26  decay=0.000
+[2026-05-25 16:24:27] [INFO] [USD/JPY] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:27] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.60  rl=26  decay=0.000
+[2026-05-25 16:24:27] [INFO] [AUD/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:27] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.56  rl=6  decay=0.900
+[2026-05-25 16:24:27] [INFO] [NZD/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:27] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.36  rl=26  decay=0.000
+[2026-05-25 16:24:27] [INFO] [USD/CAD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:27] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.30  rl=26  decay=0.000
+[2026-05-25 16:24:27] [INFO] [USD/CHF] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:27] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=442  decay=0.000
+[2026-05-25 16:24:27] [INFO] [GBP/JPY] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:27] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.07  rl=26  decay=0.001
+[2026-05-25 16:24:27] [INFO] [XAU/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:27] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.72  rl=11  decay=0.000
+[2026-05-25 16:24:27] [INFO] [NAS100_USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:28] [INFO] Cycle 442 complete — sleeping 20s
+[2026-05-25 16:24:50] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.22  rl=14  decay=0.000
+[2026-05-25 16:24:50] [INFO] [EUR/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:50] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.32  rl=27  decay=0.000
+[2026-05-25 16:24:50] [INFO] [GBP/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:50] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.97  rl=27  decay=0.000
+[2026-05-25 16:24:50] [INFO] [USD/JPY] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:50] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.60  rl=27  decay=0.000
+[2026-05-25 16:24:50] [INFO] [AUD/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:50] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.56  rl=7  decay=0.900
+[2026-05-25 16:24:50] [INFO] [NZD/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:50] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.36  rl=27  decay=0.000
+[2026-05-25 16:24:50] [INFO] [USD/CAD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:50] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.30  rl=27  decay=0.000
+[2026-05-25 16:24:50] [INFO] [USD/CHF] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:50] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=443  decay=0.000
+[2026-05-25 16:24:50] [INFO] [GBP/JPY] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:50] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.07  rl=27  decay=0.002
+[2026-05-25 16:24:50] [INFO] [XAU/USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:50] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.72  rl=12  decay=0.000
+[2026-05-25 16:24:50] [INFO] [NAS100_USD] RiskGuard: Locked out — 147m remaining
+[2026-05-25 16:24:52] [INFO] Cycle 443 complete — sleeping 20s
+[2026-05-25 16:25:14] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.22  rl=15  decay=0.000
+[2026-05-25 16:25:14] [INFO] [EUR/USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:14] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.32  rl=28  decay=0.000
+[2026-05-25 16:25:14] [INFO] [GBP/USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:14] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.97  rl=28  decay=0.000
+[2026-05-25 16:25:14] [INFO] [USD/JPY] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:14] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.60  rl=28  decay=0.000
+[2026-05-25 16:25:14] [INFO] [AUD/USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:14] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.56  rl=8  decay=0.900
+[2026-05-25 16:25:14] [INFO] [NZD/USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:14] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.36  rl=28  decay=0.000
+[2026-05-25 16:25:14] [INFO] [USD/CAD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:14] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.30  rl=28  decay=0.000
+[2026-05-25 16:25:14] [INFO] [USD/CHF] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:14] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=444  decay=0.000
+[2026-05-25 16:25:14] [INFO] [GBP/JPY] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:14] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.07  rl=28  decay=0.003
+[2026-05-25 16:25:14] [INFO] [XAU/USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:14] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.72  rl=13  decay=0.000
+[2026-05-25 16:25:14] [INFO] [NAS100_USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:15] [INFO] Cycle 444 complete — sleeping 20s
+[2026-05-25 16:25:40] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.12  rl=16  decay=0.000
+[2026-05-25 16:25:40] [INFO] [EUR/USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:40] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.15  rl=29  decay=0.000
+[2026-05-25 16:25:40] [INFO] [GBP/USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:40] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.01  rl=29  decay=0.000
+[2026-05-25 16:25:40] [INFO] [USD/JPY] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:40] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.52  rl=29  decay=0.001
+[2026-05-25 16:25:40] [INFO] [AUD/USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:40] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.36  rl=9  decay=0.900
+[2026-05-25 16:25:40] [INFO] [NZD/USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:40] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.34  rl=29  decay=0.000
+[2026-05-25 16:25:40] [INFO] [USD/CAD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:40] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.21  rl=29  decay=0.000
+[2026-05-25 16:25:40] [INFO] [USD/CHF] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:40] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=445  decay=0.000
+[2026-05-25 16:25:40] [INFO] [GBP/JPY] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:40] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.08  rl=29  decay=0.003
+[2026-05-25 16:25:40] [INFO] [XAU/USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:40] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.75  rl=14  decay=0.000
+[2026-05-25 16:25:40] [INFO] [NAS100_USD] RiskGuard: Locked out — 146m remaining
+[2026-05-25 16:25:42] [INFO] Cycle 445 complete — sleeping 20s
+[2026-05-25 16:26:06] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+2.12  rl=17  decay=0.000
+[2026-05-25 16:26:06] [INFO] [EUR/USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:06] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+2.15  rl=30  decay=0.000
+[2026-05-25 16:26:06] [INFO] [GBP/USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:06] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.01  rl=30  decay=0.000
+[2026-05-25 16:26:06] [INFO] [USD/JPY] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:06] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.52  rl=30  decay=0.001
+[2026-05-25 16:26:06] [INFO] [AUD/USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:07] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.36  rl=10  decay=0.000
+[2026-05-25 16:26:07] [INFO] [NZD/USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:07] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.34  rl=30  decay=0.000
+[2026-05-25 16:26:07] [INFO] [USD/CAD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:07] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.21  rl=30  decay=0.000
+[2026-05-25 16:26:07] [INFO] [USD/CHF] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:07] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=446  decay=0.000
+[2026-05-25 16:26:07] [INFO] [GBP/JPY] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:07] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.08  rl=30  decay=0.002
+[2026-05-25 16:26:07] [INFO] [XAU/USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:07] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.75  rl=15  decay=0.054
+[2026-05-25 16:26:07] [INFO] [NAS100_USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:08] [INFO] Cycle 446 complete — sleeping 20s
+[2026-05-25 16:26:33] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.86  rl=18  decay=0.000
+[2026-05-25 16:26:33] [INFO] [EUR/USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:33] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.87  rl=31  decay=0.000
+[2026-05-25 16:26:33] [INFO] [GBP/USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:33] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.93  rl=31  decay=0.000
+[2026-05-25 16:26:33] [INFO] [USD/JPY] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:33] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.19  rl=31  decay=0.002
+[2026-05-25 16:26:33] [INFO] [AUD/USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:33] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.10  rl=11  decay=0.000
+[2026-05-25 16:26:33] [INFO] [NZD/USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:33] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.13  rl=31  decay=0.002
+[2026-05-25 16:26:33] [INFO] [USD/CAD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:33] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.04  rl=31  decay=0.000
+[2026-05-25 16:26:33] [INFO] [USD/CHF] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:33] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=447  decay=0.000
+[2026-05-25 16:26:33] [INFO] [GBP/JPY] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:33] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.22  rl=31  decay=0.002
+[2026-05-25 16:26:33] [INFO] [XAU/USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:33] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.77  rl=16  decay=0.073
+[2026-05-25 16:26:33] [INFO] [NAS100_USD] RiskGuard: Locked out — 145m remaining
+[2026-05-25 16:26:36] [INFO] Cycle 447 complete — sleeping 20s
+[2026-05-25 16:27:01] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.86  rl=19  decay=0.000
+[2026-05-25 16:27:01] [INFO] [EUR/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:01] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.87  rl=32  decay=0.000
+[2026-05-25 16:27:01] [INFO] [GBP/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:01] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.93  rl=32  decay=0.000
+[2026-05-25 16:27:01] [INFO] [USD/JPY] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:01] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.19  rl=32  decay=0.002
+[2026-05-25 16:27:01] [INFO] [AUD/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:01] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.10  rl=12  decay=0.000
+[2026-05-25 16:27:01] [INFO] [NZD/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:01] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.13  rl=32  decay=0.004
+[2026-05-25 16:27:01] [INFO] [USD/CAD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:01] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.04  rl=32  decay=0.000
+[2026-05-25 16:27:01] [INFO] [USD/CHF] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:01] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=448  decay=0.000
+[2026-05-25 16:27:01] [INFO] [GBP/JPY] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:01] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.22  rl=32  decay=0.002
+[2026-05-25 16:27:02] [INFO] [XAU/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:02] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.77  rl=17  decay=0.084
+[2026-05-25 16:27:02] [INFO] [NAS100_USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:04] [INFO] Cycle 448 complete — sleeping 20s
+[2026-05-25 16:27:26] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.85  rl=20  decay=0.000
+[2026-05-25 16:27:26] [INFO] [EUR/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:26] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.95  rl=33  decay=0.000
+[2026-05-25 16:27:26] [INFO] [GBP/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:26] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.15  rl=33  decay=0.094
+[2026-05-25 16:27:26] [INFO] [USD/JPY] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:26] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.14  rl=33  decay=0.002
+[2026-05-25 16:27:26] [INFO] [AUD/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:26] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.19  rl=13  decay=0.000
+[2026-05-25 16:27:26] [INFO] [NZD/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:26] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.02  rl=33  decay=0.006
+[2026-05-25 16:27:26] [INFO] [USD/CAD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:26] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.10  rl=33  decay=0.000
+[2026-05-25 16:27:26] [INFO] [USD/CHF] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:26] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=449  decay=0.000
+[2026-05-25 16:27:26] [INFO] [GBP/JPY] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:26] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.35  rl=33  decay=0.114
+[2026-05-25 16:27:26] [INFO] [XAU/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:26] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.89  rl=18  decay=0.145
+[2026-05-25 16:27:26] [INFO] [NAS100_USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:27] [INFO] Cycle 449 complete — sleeping 20s
+[2026-05-25 16:27:49] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.85  rl=21  decay=0.000
+[2026-05-25 16:27:49] [INFO] [EUR/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:49] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.95  rl=34  decay=0.000
+[2026-05-25 16:27:50] [INFO] [GBP/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:50] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.15  rl=34  decay=0.150
+[2026-05-25 16:27:50] [INFO] [USD/JPY] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:50] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.14  rl=34  decay=0.002
+[2026-05-25 16:27:50] [INFO] [AUD/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:50] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.19  rl=14  decay=0.000
+[2026-05-25 16:27:50] [INFO] [NZD/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:50] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.02  rl=34  decay=0.007
+[2026-05-25 16:27:50] [INFO] [USD/CAD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:50] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.10  rl=34  decay=0.000
+[2026-05-25 16:27:50] [INFO] [USD/CHF] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:50] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=450  decay=0.000
+[2026-05-25 16:27:50] [INFO] [GBP/JPY] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:50] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.35  rl=34  decay=0.235
+[2026-05-25 16:27:50] [INFO] [XAU/USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:50] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.89  rl=19  decay=0.180
+[2026-05-25 16:27:50] [INFO] [NAS100_USD] RiskGuard: Locked out — 144m remaining
+[2026-05-25 16:27:51] [INFO] Cycle 450 complete — sleeping 20s
+[2026-05-25 16:28:14] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.85  rl=22  decay=0.000
+[2026-05-25 16:28:14] [INFO] [EUR/USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:14] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.95  rl=35  decay=0.000
+[2026-05-25 16:28:14] [INFO] [GBP/USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:14] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.15  rl=35  decay=0.183
+[2026-05-25 16:28:14] [INFO] [USD/JPY] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:14] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.14  rl=35  decay=0.002
+[2026-05-25 16:28:14] [INFO] [AUD/USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:14] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.19  rl=15  decay=0.000
+[2026-05-25 16:28:14] [INFO] [NZD/USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:14] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+2.02  rl=35  decay=0.008
+[2026-05-25 16:28:14] [INFO] [USD/CAD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:14] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.10  rl=35  decay=0.000
+[2026-05-25 16:28:14] [INFO] [USD/CHF] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:14] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=451  decay=0.000
+[2026-05-25 16:28:14] [INFO] [GBP/JPY] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:14] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.35  rl=35  decay=0.342
+[2026-05-25 16:28:14] [INFO] [XAU/USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:14] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.89  rl=20  decay=0.194
+[2026-05-25 16:28:14] [INFO] [NAS100_USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:15] [INFO] Cycle 451 complete — sleeping 20s
+[2026-05-25 16:28:37] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.89  rl=23  decay=0.000
+[2026-05-25 16:28:37] [INFO] [EUR/USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:37] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.89  rl=36  decay=0.000
+[2026-05-25 16:28:37] [INFO] [GBP/USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:37] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.17  rl=36  decay=0.222
+[2026-05-25 16:28:37] [INFO] [USD/JPY] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:37] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.07  rl=36  decay=0.002
+[2026-05-25 16:28:37] [INFO] [AUD/USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:37] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.02  rl=16  decay=0.000
+[2026-05-25 16:28:37] [INFO] [NZD/USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:37] [INFO] [USD/CAD] regime=CHOP  conf=98%  vol_z=+2.22  rl=36  decay=0.015
+[2026-05-25 16:28:37] [INFO] [USD/CAD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:37] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.13  rl=36  decay=0.000
+[2026-05-25 16:28:37] [INFO] [USD/CHF] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:37] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=452  decay=0.000
+[2026-05-25 16:28:37] [INFO] [GBP/JPY] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:37] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.49  rl=36  decay=0.350
+[2026-05-25 16:28:37] [INFO] [XAU/USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:37] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+3.04  rl=21  decay=0.275
+[2026-05-25 16:28:37] [INFO] [NAS100_USD] RiskGuard: Locked out — 143m remaining
+[2026-05-25 16:28:38] [INFO] Cycle 452 complete — sleeping 20s
+[2026-05-25 16:29:02] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.89  rl=24  decay=0.000
+[2026-05-25 16:29:02] [INFO] [EUR/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:02] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.89  rl=37  decay=0.000
+[2026-05-25 16:29:02] [INFO] [GBP/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:02] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.17  rl=37  decay=0.239
+[2026-05-25 16:29:02] [INFO] [USD/JPY] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:02] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+2.07  rl=37  decay=0.002
+[2026-05-25 16:29:02] [INFO] [AUD/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:02] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+2.02  rl=17  decay=0.000
+[2026-05-25 16:29:02] [INFO] [NZD/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:02] [INFO] [USD/CAD] regime=CHOP  conf=98%  vol_z=+2.22  rl=37  decay=0.020
+[2026-05-25 16:29:02] [INFO] [USD/CAD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:02] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.13  rl=37  decay=0.000
+[2026-05-25 16:29:02] [INFO] [USD/CHF] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:02] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=453  decay=0.000
+[2026-05-25 16:29:02] [INFO] [GBP/JPY] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:02] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.49  rl=37  decay=0.350
+[2026-05-25 16:29:02] [INFO] [XAU/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:02] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+3.04  rl=22  decay=0.323
+[2026-05-25 16:29:02] [INFO] [NAS100_USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:03] [INFO] Cycle 453 complete — sleeping 20s
+[2026-05-25 16:29:25] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.82  rl=25  decay=0.000
+[2026-05-25 16:29:25] [INFO] [EUR/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:25] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.78  rl=38  decay=0.000
+[2026-05-25 16:29:25] [INFO] [GBP/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:25] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.21  rl=38  decay=0.253
+[2026-05-25 16:29:25] [INFO] [USD/JPY] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:25] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+1.99  rl=38  decay=0.002
+[2026-05-25 16:29:25] [INFO] [AUD/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:25] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.87  rl=18  decay=0.000
+[2026-05-25 16:29:25] [INFO] [NZD/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:25] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+2.01  rl=38  decay=0.017
+[2026-05-25 16:29:25] [INFO] [USD/CAD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:25] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.03  rl=38  decay=0.000
+[2026-05-25 16:29:25] [INFO] [USD/CHF] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:25] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=454  decay=0.000
+[2026-05-25 16:29:25] [INFO] [GBP/JPY] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:25] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.44  rl=38  decay=0.351
+[2026-05-25 16:29:25] [INFO] [XAU/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:25] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.87  rl=23  decay=0.256
+[2026-05-25 16:29:25] [INFO] [NAS100_USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:26] [INFO] Cycle 454 complete — sleeping 20s
+[2026-05-25 16:29:49] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.82  rl=26  decay=0.000
+[2026-05-25 16:29:49] [INFO] [EUR/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:49] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.78  rl=39  decay=0.000
+[2026-05-25 16:29:49] [INFO] [GBP/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:49] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.21  rl=39  decay=0.266
+[2026-05-25 16:29:49] [INFO] [USD/JPY] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:49] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+1.99  rl=39  decay=0.003
+[2026-05-25 16:29:49] [INFO] [AUD/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:49] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.87  rl=19  decay=0.000
+[2026-05-25 16:29:49] [INFO] [NZD/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:49] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+2.01  rl=39  decay=0.013
+[2026-05-25 16:29:49] [INFO] [USD/CAD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:49] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.03  rl=39  decay=0.000
+[2026-05-25 16:29:49] [INFO] [USD/CHF] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:49] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=455  decay=0.000
+[2026-05-25 16:29:49] [INFO] [GBP/JPY] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:49] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.44  rl=39  decay=0.349
+[2026-05-25 16:29:49] [INFO] [XAU/USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:49] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.87  rl=24  decay=0.190
+[2026-05-25 16:29:49] [INFO] [NAS100_USD] RiskGuard: Locked out — 142m remaining
+[2026-05-25 16:29:50] [INFO] Cycle 455 complete — sleeping 20s
+[2026-05-25 16:30:13] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.82  rl=27  decay=0.000
+[2026-05-25 16:30:13] [INFO] [EUR/USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:13] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.78  rl=40  decay=0.000
+[2026-05-25 16:30:13] [INFO] [GBP/USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:13] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.21  rl=40  decay=0.258
+[2026-05-25 16:30:13] [INFO] [USD/JPY] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:13] [INFO] [AUD/USD] regime=BULL  conf=100%  vol_z=+1.99  rl=40  decay=0.004
+[2026-05-25 16:30:13] [INFO] [AUD/USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:13] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.87  rl=20  decay=0.000
+[2026-05-25 16:30:13] [INFO] [NZD/USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:13] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+2.01  rl=40  decay=0.008
+[2026-05-25 16:30:13] [INFO] [USD/CAD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:13] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+1.03  rl=40  decay=0.000
+[2026-05-25 16:30:13] [INFO] [USD/CHF] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:13] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=456  decay=0.000
+[2026-05-25 16:30:13] [INFO] [GBP/JPY] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:13] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.44  rl=40  decay=0.242
+[2026-05-25 16:30:13] [INFO] [XAU/USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:13] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.87  rl=25  decay=0.111
+[2026-05-25 16:30:13] [INFO] [NAS100_USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:15] [INFO] Cycle 456 complete — sleeping 20s
+[2026-05-25 16:30:38] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.56  rl=28  decay=0.000
+[2026-05-25 16:30:38] [INFO] [EUR/USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:38] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.54  rl=41  decay=0.000
+[2026-05-25 16:30:38] [INFO] [GBP/USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:38] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.19  rl=41  decay=0.172
+[2026-05-25 16:30:38] [INFO] [USD/JPY] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:38] [INFO] [AUD/USD] regime=BULL  conf=99%  vol_z=+1.86  rl=41  decay=0.007
+[2026-05-25 16:30:38] [INFO] [AUD/USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:38] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.57  rl=21  decay=0.000
+[2026-05-25 16:30:38] [INFO] [NZD/USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:38] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+1.72  rl=41  decay=0.006
+[2026-05-25 16:30:38] [INFO] [USD/CAD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:38] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.87  rl=41  decay=0.000
+[2026-05-25 16:30:38] [INFO] [USD/CHF] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:38] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=457  decay=0.000
+[2026-05-25 16:30:38] [INFO] [GBP/JPY] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:38] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.48  rl=41  decay=0.198
+[2026-05-25 16:30:38] [INFO] [XAU/USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:38] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.68  rl=26  decay=0.000
+[2026-05-25 16:30:38] [INFO] [NAS100_USD] RiskGuard: Locked out — 141m remaining
+[2026-05-25 16:30:39] [INFO] Cycle 457 complete — sleeping 20s
+[2026-05-25 16:31:01] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.56  rl=29  decay=0.000
+[2026-05-25 16:31:01] [INFO] [EUR/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:01] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.54  rl=42  decay=0.000
+[2026-05-25 16:31:01] [INFO] [GBP/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:01] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+2.19  rl=42  decay=0.058
+[2026-05-25 16:31:01] [INFO] [USD/JPY] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:01] [INFO] [AUD/USD] regime=BULL  conf=99%  vol_z=+1.86  rl=42  decay=0.009
+[2026-05-25 16:31:01] [INFO] [AUD/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:01] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.57  rl=22  decay=0.000
+[2026-05-25 16:31:01] [INFO] [NZD/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:01] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+1.72  rl=42  decay=0.003
+[2026-05-25 16:31:01] [INFO] [USD/CAD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:01] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.87  rl=42  decay=0.000
+[2026-05-25 16:31:01] [INFO] [USD/CHF] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:01] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=458  decay=0.000
+[2026-05-25 16:31:01] [INFO] [GBP/JPY] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:01] [INFO] [XAU/USD] regime=CHOP  conf=100%  vol_z=+0.48  rl=42  decay=0.127
+[2026-05-25 16:31:01] [INFO] [XAU/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:01] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.68  rl=27  decay=0.000
+[2026-05-25 16:31:01] [INFO] [NAS100_USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:03] [INFO] Cycle 458 complete — sleeping 20s
+[2026-05-25 16:31:25] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.34  rl=30  decay=0.000
+[2026-05-25 16:31:25] [INFO] [EUR/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:25] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.40  rl=43  decay=0.000
+[2026-05-25 16:31:25] [INFO] [GBP/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:25] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.91  rl=43  decay=0.000
+[2026-05-25 16:31:25] [INFO] [USD/JPY] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:25] [INFO] [AUD/USD] regime=BULL  conf=98%  vol_z=+1.68  rl=43  decay=0.021
+[2026-05-25 16:31:25] [INFO] [AUD/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:25] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.49  rl=23  decay=0.000
+[2026-05-25 16:31:25] [INFO] [NZD/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:25] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+1.50  rl=43  decay=0.000
+[2026-05-25 16:31:25] [INFO] [USD/CAD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:25] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.72  rl=43  decay=0.000
+[2026-05-25 16:31:25] [INFO] [USD/CHF] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:25] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=459  decay=0.000
+[2026-05-25 16:31:25] [INFO] [GBP/JPY] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:25] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.52  rl=43  decay=0.124
+[2026-05-25 16:31:25] [INFO] [XAU/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:25] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.67  rl=28  decay=0.000
+[2026-05-25 16:31:25] [INFO] [NAS100_USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:26] [INFO] Cycle 459 complete — sleeping 20s
+[2026-05-25 16:31:49] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.34  rl=31  decay=0.000
+[2026-05-25 16:31:49] [INFO] [EUR/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:49] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.40  rl=44  decay=0.000
+[2026-05-25 16:31:49] [INFO] [GBP/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:49] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.91  rl=44  decay=0.000
+[2026-05-25 16:31:49] [INFO] [USD/JPY] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:49] [INFO] [AUD/USD] regime=BULL  conf=98%  vol_z=+1.68  rl=44  decay=0.030
+[2026-05-25 16:31:49] [INFO] [AUD/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:49] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.49  rl=24  decay=0.000
+[2026-05-25 16:31:49] [INFO] [NZD/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:49] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+1.50  rl=44  decay=0.000
+[2026-05-25 16:31:49] [INFO] [USD/CAD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:49] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.72  rl=44  decay=0.000
+[2026-05-25 16:31:49] [INFO] [USD/CHF] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:49] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=460  decay=0.000
+[2026-05-25 16:31:49] [INFO] [GBP/JPY] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:49] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.52  rl=44  decay=0.102
+[2026-05-25 16:31:49] [INFO] [XAU/USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:49] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.67  rl=29  decay=0.000
+[2026-05-25 16:31:49] [INFO] [NAS100_USD] RiskGuard: Locked out — 140m remaining
+[2026-05-25 16:31:50] [INFO] Cycle 460 complete — sleeping 20s
+[2026-05-25 16:32:13] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.34  rl=32  decay=0.000
+[2026-05-25 16:32:13] [INFO] [EUR/USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:13] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.40  rl=45  decay=0.000
+[2026-05-25 16:32:13] [INFO] [GBP/USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:13] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.91  rl=45  decay=0.000
+[2026-05-25 16:32:13] [INFO] [USD/JPY] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:13] [INFO] [AUD/USD] regime=BULL  conf=98%  vol_z=+1.68  rl=45  decay=0.035
+[2026-05-25 16:32:13] [INFO] [AUD/USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:13] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.49  rl=25  decay=0.000
+[2026-05-25 16:32:13] [INFO] [NZD/USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:13] [INFO] [USD/CAD] regime=CHOP  conf=100%  vol_z=+1.50  rl=45  decay=0.000
+[2026-05-25 16:32:13] [INFO] [USD/CAD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:13] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.72  rl=45  decay=0.000
+[2026-05-25 16:32:13] [INFO] [USD/CHF] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:13] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=461  decay=0.000
+[2026-05-25 16:32:13] [INFO] [GBP/JPY] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:13] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.52  rl=45  decay=0.062
+[2026-05-25 16:32:13] [INFO] [XAU/USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:13] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.67  rl=30  decay=0.000
+[2026-05-25 16:32:13] [INFO] [NAS100_USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:14] [INFO] Cycle 461 complete — sleeping 20s
+[2026-05-25 16:32:37] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.31  rl=33  decay=0.000
+[2026-05-25 16:32:37] [INFO] [EUR/USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:37] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.36  rl=46  decay=0.000
+[2026-05-25 16:32:37] [INFO] [GBP/USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:37] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.87  rl=46  decay=0.000
+[2026-05-25 16:32:37] [INFO] [USD/JPY] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:37] [INFO] [AUD/USD] regime=BULL  conf=96%  vol_z=+1.57  rl=46  decay=0.054
+[2026-05-25 16:32:37] [INFO] [AUD/USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:37] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.58  rl=26  decay=0.000
+[2026-05-25 16:32:37] [INFO] [NZD/USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:37] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+1.25  rl=46  decay=0.000
+[2026-05-25 16:32:37] [INFO] [USD/CAD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:37] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.64  rl=46  decay=0.000
+[2026-05-25 16:32:37] [INFO] [USD/CHF] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:37] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=462  decay=0.000
+[2026-05-25 16:32:37] [INFO] [GBP/JPY] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:37] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.40  rl=46  decay=0.028
+[2026-05-25 16:32:37] [INFO] [XAU/USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:37] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.67  rl=31  decay=0.000
+[2026-05-25 16:32:37] [INFO] [NAS100_USD] RiskGuard: Locked out — 139m remaining
+[2026-05-25 16:32:38] [INFO] Cycle 462 complete — sleeping 20s
+[2026-05-25 16:33:00] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.31  rl=34  decay=0.000
+[2026-05-25 16:33:00] [INFO] [EUR/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:00] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.36  rl=47  decay=0.000
+[2026-05-25 16:33:00] [INFO] [GBP/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:00] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.87  rl=47  decay=0.000
+[2026-05-25 16:33:00] [INFO] [USD/JPY] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:00] [INFO] [AUD/USD] regime=BULL  conf=96%  vol_z=+1.57  rl=47  decay=0.066
+[2026-05-25 16:33:00] [INFO] [AUD/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:00] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.58  rl=27  decay=0.000
+[2026-05-25 16:33:00] [INFO] [NZD/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:00] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+1.25  rl=47  decay=0.003
+[2026-05-25 16:33:00] [INFO] [USD/CAD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:00] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.64  rl=47  decay=0.000
+[2026-05-25 16:33:00] [INFO] [USD/CHF] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:00] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=463  decay=0.000
+[2026-05-25 16:33:00] [INFO] [GBP/JPY] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:00] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.40  rl=47  decay=0.007
+[2026-05-25 16:33:00] [INFO] [XAU/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:00] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.67  rl=32  decay=0.000
+[2026-05-25 16:33:00] [INFO] [NAS100_USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:01] [INFO] Cycle 463 complete — sleeping 20s
+[2026-05-25 16:33:24] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.06  rl=35  decay=0.000
+[2026-05-25 16:33:24] [INFO] [EUR/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:24] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.08  rl=48  decay=0.000
+[2026-05-25 16:33:24] [INFO] [GBP/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:24] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.62  rl=48  decay=0.000
+[2026-05-25 16:33:24] [INFO] [USD/JPY] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:24] [INFO] [AUD/USD] regime=BULL  conf=58%  vol_z=+1.28  rl=48  decay=0.345
+[2026-05-25 16:33:24] [INFO] [AUD/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:24] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.38  rl=28  decay=0.000
+[2026-05-25 16:33:24] [INFO] [NZD/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:24] [INFO] [USD/CAD] regime=CHOP  conf=98%  vol_z=+0.86  rl=48  decay=0.010
+[2026-05-25 16:33:24] [INFO] [USD/CAD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:24] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.45  rl=48  decay=0.001
+[2026-05-25 16:33:24] [INFO] [USD/CHF] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:24] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=464  decay=0.000
+[2026-05-25 16:33:24] [INFO] [GBP/JPY] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:24] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.17  rl=48  decay=0.010
+[2026-05-25 16:33:24] [INFO] [XAU/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:24] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.41  rl=33  decay=0.000
+[2026-05-25 16:33:24] [INFO] [NAS100_USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:25] [INFO] Cycle 464 complete — sleeping 20s
+[2026-05-25 16:33:47] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.06  rl=36  decay=0.000
+[2026-05-25 16:33:47] [INFO] [EUR/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:47] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.08  rl=49  decay=0.000
+[2026-05-25 16:33:47] [INFO] [GBP/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:47] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.62  rl=49  decay=0.000
+[2026-05-25 16:33:47] [INFO] [USD/JPY] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:47] [INFO] [AUD/USD] regime=BULL  conf=58%  vol_z=+1.28  rl=49  decay=0.400
+[2026-05-25 16:33:47] [INFO] [AUD/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:47] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.38  rl=29  decay=0.000
+[2026-05-25 16:33:47] [INFO] [NZD/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:47] [INFO] [USD/CAD] regime=CHOP  conf=98%  vol_z=+0.86  rl=49  decay=0.015
+[2026-05-25 16:33:47] [INFO] [USD/CAD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:47] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.45  rl=49  decay=0.001
+[2026-05-25 16:33:47] [INFO] [USD/CHF] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:47] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=465  decay=0.000
+[2026-05-25 16:33:47] [INFO] [GBP/JPY] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:47] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.17  rl=49  decay=0.011
+[2026-05-25 16:33:47] [INFO] [XAU/USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:47] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.41  rl=34  decay=0.000
+[2026-05-25 16:33:47] [INFO] [NAS100_USD] RiskGuard: Locked out — 138m remaining
+[2026-05-25 16:33:49] [INFO] Cycle 465 complete — sleeping 20s
+[2026-05-25 16:34:11] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.06  rl=37  decay=0.000
+[2026-05-25 16:34:11] [INFO] [EUR/USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:11] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+1.08  rl=50  decay=0.000
+[2026-05-25 16:34:11] [INFO] [GBP/USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:11] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.62  rl=50  decay=0.000
+[2026-05-25 16:34:11] [INFO] [USD/JPY] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:11] [INFO] [AUD/USD] regime=BULL  conf=58%  vol_z=+1.28  rl=50  decay=0.400
+[2026-05-25 16:34:11] [INFO] [AUD/USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:11] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.38  rl=30  decay=0.000
+[2026-05-25 16:34:11] [INFO] [NZD/USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:11] [INFO] [USD/CAD] regime=CHOP  conf=98%  vol_z=+0.86  rl=50  decay=0.019
+[2026-05-25 16:34:11] [INFO] [USD/CAD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:11] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.45  rl=50  decay=0.002
+[2026-05-25 16:34:11] [INFO] [USD/CHF] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:11] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=466  decay=0.000
+[2026-05-25 16:34:11] [INFO] [GBP/JPY] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:11] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.17  rl=50  decay=0.011
+[2026-05-25 16:34:11] [INFO] [XAU/USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:11] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.41  rl=35  decay=0.000
+[2026-05-25 16:34:11] [INFO] [NAS100_USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:12] [INFO] Cycle 466 complete — sleeping 20s
+[2026-05-25 16:34:35] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.21  rl=38  decay=0.000
+[2026-05-25 16:34:35] [INFO] [EUR/USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:35] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.85  rl=51  decay=0.000
+[2026-05-25 16:34:35] [INFO] [GBP/USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:35] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.40  rl=51  decay=0.000
+[2026-05-25 16:34:35] [INFO] [USD/JPY] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:35] [INFO] [AUD/USD] regime=CHOP  conf=89%  vol_z=+1.33  rl=1  decay=0.900
+[2026-05-25 16:34:35] [INFO] [AUD/USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:35] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.35  rl=31  decay=0.000
+[2026-05-25 16:34:35] [INFO] [NZD/USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:35] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+0.84  rl=51  decay=0.014
+[2026-05-25 16:34:35] [INFO] [USD/CAD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:35] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.43  rl=51  decay=0.002
+[2026-05-25 16:34:35] [INFO] [USD/CHF] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:35] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=467  decay=0.000
+[2026-05-25 16:34:35] [INFO] [GBP/JPY] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:35] [INFO] [XAU/USD] regime=CHOP  conf=98%  vol_z=+0.02  rl=51  decay=0.016
+[2026-05-25 16:34:35] [INFO] [XAU/USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:35] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.26  rl=36  decay=0.000
+[2026-05-25 16:34:35] [INFO] [NAS100_USD] RiskGuard: Locked out — 137m remaining
+[2026-05-25 16:34:37] [INFO] Cycle 467 complete — sleeping 20s
+[2026-05-25 16:34:59] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.21  rl=39  decay=0.000
+[2026-05-25 16:34:59] [INFO] [EUR/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:34:59] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.85  rl=52  decay=0.000
+[2026-05-25 16:34:59] [INFO] [GBP/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:34:59] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.40  rl=52  decay=0.000
+[2026-05-25 16:34:59] [INFO] [USD/JPY] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:34:59] [INFO] [AUD/USD] regime=CHOP  conf=89%  vol_z=+1.33  rl=2  decay=0.900
+[2026-05-25 16:34:59] [INFO] [AUD/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:34:59] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.35  rl=32  decay=0.000
+[2026-05-25 16:34:59] [INFO] [NZD/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:34:59] [INFO] [USD/CAD] regime=CHOP  conf=99%  vol_z=+0.84  rl=52  decay=0.009
+[2026-05-25 16:34:59] [INFO] [USD/CAD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:34:59] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.43  rl=52  decay=0.002
+[2026-05-25 16:34:59] [INFO] [USD/CHF] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:34:59] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=468  decay=0.000
+[2026-05-25 16:34:59] [INFO] [GBP/JPY] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:34:59] [INFO] [XAU/USD] regime=CHOP  conf=98%  vol_z=+0.02  rl=52  decay=0.018
+[2026-05-25 16:34:59] [INFO] [XAU/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:34:59] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.26  rl=37  decay=0.000
+[2026-05-25 16:34:59] [INFO] [NAS100_USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:00] [INFO] Cycle 468 complete — sleeping 20s
+[2026-05-25 16:35:22] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.07  rl=40  decay=0.000
+[2026-05-25 16:35:22] [INFO] [EUR/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:22] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.78  rl=53  decay=0.000
+[2026-05-25 16:35:22] [INFO] [GBP/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:22] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.35  rl=53  decay=0.000
+[2026-05-25 16:35:22] [INFO] [USD/JPY] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:22] [INFO] [AUD/USD] regime=CHOP  conf=94%  vol_z=+1.18  rl=3  decay=0.900
+[2026-05-25 16:35:22] [INFO] [AUD/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:22] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.16  rl=33  decay=0.000
+[2026-05-25 16:35:22] [INFO] [NZD/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:22] [INFO] [USD/CAD] regime=CHOP  conf=91%  vol_z=+0.61  rl=53  decay=0.061
+[2026-05-25 16:35:22] [INFO] [USD/CAD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:22] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.30  rl=53  decay=0.002
+[2026-05-25 16:35:22] [INFO] [USD/CHF] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:22] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=469  decay=0.000
+[2026-05-25 16:35:22] [INFO] [GBP/JPY] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:22] [INFO] [XAU/USD] regime=CHOP  conf=97%  vol_z=-0.12  rl=53  decay=0.028
+[2026-05-25 16:35:22] [INFO] [XAU/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:22] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.17  rl=38  decay=0.000
+[2026-05-25 16:35:22] [INFO] [NAS100_USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:24] [INFO] Cycle 469 complete — sleeping 20s
+[2026-05-25 16:35:46] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.07  rl=41  decay=0.000
+[2026-05-25 16:35:46] [INFO] [EUR/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:46] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.78  rl=54  decay=0.000
+[2026-05-25 16:35:46] [INFO] [GBP/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:46] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.35  rl=54  decay=0.000
+[2026-05-25 16:35:46] [INFO] [USD/JPY] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:46] [INFO] [AUD/USD] regime=CHOP  conf=94%  vol_z=+1.18  rl=4  decay=0.900
+[2026-05-25 16:35:46] [INFO] [AUD/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:46] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.16  rl=34  decay=0.000
+[2026-05-25 16:35:46] [INFO] [NZD/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:46] [INFO] [USD/CAD] regime=CHOP  conf=91%  vol_z=+0.61  rl=54  decay=0.100
+[2026-05-25 16:35:46] [INFO] [USD/CAD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:46] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.30  rl=54  decay=0.002
+[2026-05-25 16:35:46] [INFO] [USD/CHF] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:46] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=470  decay=0.000
+[2026-05-25 16:35:46] [INFO] [GBP/JPY] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:46] [INFO] [XAU/USD] regime=CHOP  conf=97%  vol_z=-0.12  rl=54  decay=0.035
+[2026-05-25 16:35:46] [INFO] [XAU/USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:46] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.17  rl=39  decay=0.000
+[2026-05-25 16:35:46] [INFO] [NAS100_USD] RiskGuard: Locked out — 136m remaining
+[2026-05-25 16:35:48] [INFO] Cycle 470 complete — sleeping 20s
+[2026-05-25 16:36:10] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+1.07  rl=42  decay=0.000
+[2026-05-25 16:36:10] [INFO] [EUR/USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:10] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.78  rl=55  decay=0.000
+[2026-05-25 16:36:10] [INFO] [GBP/USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:10] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.35  rl=55  decay=0.000
+[2026-05-25 16:36:10] [INFO] [USD/JPY] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:10] [INFO] [AUD/USD] regime=CHOP  conf=94%  vol_z=+1.18  rl=5  decay=0.900
+[2026-05-25 16:36:10] [INFO] [AUD/USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:10] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.16  rl=35  decay=0.000
+[2026-05-25 16:36:10] [INFO] [NZD/USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:10] [INFO] [USD/CAD] regime=CHOP  conf=91%  vol_z=+0.61  rl=55  decay=0.126
+[2026-05-25 16:36:10] [INFO] [USD/CAD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:10] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.30  rl=55  decay=0.001
+[2026-05-25 16:36:10] [INFO] [USD/CHF] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:10] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=471  decay=0.000
+[2026-05-25 16:36:10] [INFO] [GBP/JPY] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:10] [INFO] [XAU/USD] regime=CHOP  conf=97%  vol_z=-0.12  rl=55  decay=0.038
+[2026-05-25 16:36:10] [INFO] [XAU/USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:10] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+2.17  rl=40  decay=0.000
+[2026-05-25 16:36:10] [INFO] [NAS100_USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:12] [INFO] Cycle 471 complete — sleeping 20s
+[2026-05-25 16:36:35] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.94  rl=43  decay=0.000
+[2026-05-25 16:36:35] [INFO] [EUR/USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:35] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.68  rl=56  decay=0.000
+[2026-05-25 16:36:35] [INFO] [GBP/USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:35] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.32  rl=56  decay=0.000
+[2026-05-25 16:36:35] [INFO] [USD/JPY] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:35] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+1.04  rl=6  decay=0.900
+[2026-05-25 16:36:35] [INFO] [AUD/USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:35] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.34  rl=36  decay=0.000
+[2026-05-25 16:36:35] [INFO] [NZD/USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:35] [INFO] [USD/CAD] regime=CHOP  conf=79%  vol_z=+0.60  rl=56  decay=0.233
+[2026-05-25 16:36:35] [INFO] [USD/CAD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:35] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.21  rl=56  decay=0.001
+[2026-05-25 16:36:35] [INFO] [USD/CHF] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:35] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=472  decay=0.000
+[2026-05-25 16:36:35] [INFO] [GBP/JPY] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:35] [INFO] [XAU/USD] regime=CHOP  conf=94%  vol_z=-0.32  rl=56  decay=0.064
+[2026-05-25 16:36:35] [INFO] [XAU/USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:35] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.95  rl=41  decay=0.000
+[2026-05-25 16:36:35] [INFO] [NAS100_USD] RiskGuard: Locked out — 135m remaining
+[2026-05-25 16:36:36] [INFO] Cycle 472 complete — sleeping 20s
+[2026-05-25 16:36:58] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.94  rl=44  decay=0.000
+[2026-05-25 16:36:58] [INFO] [EUR/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:36:58] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.68  rl=57  decay=0.000
+[2026-05-25 16:36:58] [INFO] [GBP/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:36:58] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.32  rl=57  decay=0.000
+[2026-05-25 16:36:58] [INFO] [USD/JPY] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:36:58] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+1.04  rl=7  decay=0.900
+[2026-05-25 16:36:58] [INFO] [AUD/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:36:58] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.34  rl=37  decay=0.000
+[2026-05-25 16:36:58] [INFO] [NZD/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:36:58] [INFO] [USD/CAD] regime=CHOP  conf=79%  vol_z=+0.60  rl=57  decay=0.308
+[2026-05-25 16:36:58] [INFO] [USD/CAD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:36:58] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.21  rl=57  decay=0.000
+[2026-05-25 16:36:58] [INFO] [USD/CHF] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:36:58] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=473  decay=0.000
+[2026-05-25 16:36:58] [INFO] [GBP/JPY] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:36:58] [INFO] [XAU/USD] regime=CHOP  conf=94%  vol_z=-0.32  rl=57  decay=0.081
+[2026-05-25 16:36:58] [INFO] [XAU/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:36:58] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.95  rl=42  decay=0.000
+[2026-05-25 16:36:58] [INFO] [NAS100_USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:00] [INFO] Cycle 473 complete — sleeping 20s
+[2026-05-25 16:37:22] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.71  rl=45  decay=0.000
+[2026-05-25 16:37:22] [INFO] [EUR/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:22] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.39  rl=58  decay=0.000
+[2026-05-25 16:37:22] [INFO] [GBP/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:22] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.28  rl=58  decay=0.000
+[2026-05-25 16:37:22] [INFO] [USD/JPY] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:22] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.78  rl=8  decay=0.900
+[2026-05-25 16:37:22] [INFO] [AUD/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:22] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.12  rl=38  decay=0.000
+[2026-05-25 16:37:22] [INFO] [NZD/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:22] [INFO] [USD/CAD] regime=CHOP  conf=73%  vol_z=+0.59  rl=58  decay=0.400
+[2026-05-25 16:37:22] [INFO] [USD/CAD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:22] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.02  rl=58  decay=0.001
+[2026-05-25 16:37:22] [INFO] [USD/CHF] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:22] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=474  decay=0.000
+[2026-05-25 16:37:22] [INFO] [GBP/JPY] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:22] [INFO] [XAU/USD] regime=CHOP  conf=90%  vol_z=-0.33  rl=58  decay=0.118
+[2026-05-25 16:37:22] [INFO] [XAU/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:22] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.82  rl=43  decay=0.000
+[2026-05-25 16:37:22] [INFO] [NAS100_USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:24] [INFO] Cycle 474 complete — sleeping 20s
+[2026-05-25 16:37:45] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.71  rl=46  decay=0.000
+[2026-05-25 16:37:45] [INFO] [EUR/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:45] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.39  rl=59  decay=0.000
+[2026-05-25 16:37:45] [INFO] [GBP/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:45] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.28  rl=59  decay=0.000
+[2026-05-25 16:37:45] [INFO] [USD/JPY] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:45] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.78  rl=9  decay=0.900
+[2026-05-25 16:37:45] [INFO] [AUD/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:45] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.12  rl=39  decay=0.000
+[2026-05-25 16:37:45] [INFO] [NZD/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:45] [INFO] [USD/CAD] regime=CHOP  conf=73%  vol_z=+0.59  rl=59  decay=0.400
+[2026-05-25 16:37:45] [INFO] [USD/CAD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:45] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.02  rl=59  decay=0.003
+[2026-05-25 16:37:45] [INFO] [USD/CHF] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:45] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=475  decay=0.000
+[2026-05-25 16:37:45] [INFO] [GBP/JPY] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:45] [INFO] [XAU/USD] regime=CHOP  conf=90%  vol_z=-0.33  rl=59  decay=0.140
+[2026-05-25 16:37:45] [INFO] [XAU/USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:45] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.82  rl=44  decay=0.000
+[2026-05-25 16:37:45] [INFO] [NAS100_USD] RiskGuard: Locked out — 134m remaining
+[2026-05-25 16:37:46] [INFO] Cycle 475 complete — sleeping 20s
+[2026-05-25 16:38:08] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.71  rl=47  decay=0.000
+[2026-05-25 16:38:08] [INFO] [EUR/USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:08] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.39  rl=60  decay=0.000
+[2026-05-25 16:38:08] [INFO] [GBP/USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:08] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.28  rl=60  decay=0.000
+[2026-05-25 16:38:08] [INFO] [USD/JPY] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:08] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.78  rl=10  decay=0.000
+[2026-05-25 16:38:08] [INFO] [AUD/USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:08] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+1.12  rl=40  decay=0.000
+[2026-05-25 16:38:08] [INFO] [NZD/USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:08] [INFO] [USD/CAD] regime=CHOP  conf=73%  vol_z=+0.59  rl=60  decay=0.400
+[2026-05-25 16:38:08] [INFO] [USD/CAD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:08] [INFO] [USD/CHF] regime=CHOP  conf=100%  vol_z=+0.02  rl=60  decay=0.003
+[2026-05-25 16:38:08] [INFO] [USD/CHF] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:08] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=476  decay=0.000
+[2026-05-25 16:38:08] [INFO] [GBP/JPY] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:08] [INFO] [XAU/USD] regime=CHOP  conf=90%  vol_z=-0.33  rl=60  decay=0.148
+[2026-05-25 16:38:08] [INFO] [XAU/USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:08] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.82  rl=45  decay=0.000
+[2026-05-25 16:38:08] [INFO] [NAS100_USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:10] [INFO] Cycle 476 complete — sleeping 20s
+[2026-05-25 16:38:33] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.55  rl=48  decay=0.000
+[2026-05-25 16:38:33] [INFO] [EUR/USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:33] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.23  rl=61  decay=0.000
+[2026-05-25 16:38:33] [INFO] [GBP/USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:33] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.25  rl=61  decay=0.000
+[2026-05-25 16:38:33] [INFO] [USD/JPY] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:33] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.64  rl=11  decay=0.000
+[2026-05-25 16:38:33] [INFO] [AUD/USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:33] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.91  rl=41  decay=0.000
+[2026-05-25 16:38:33] [INFO] [NZD/USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:33] [INFO] [USD/CAD] regime=BEAR  conf=71%  vol_z=+0.78  rl=1  decay=0.900
+[2026-05-25 16:38:33] [INFO] [USD/CAD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:33] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=-0.15  rl=61  decay=0.007
+[2026-05-25 16:38:33] [INFO] [USD/CHF] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:33] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=477  decay=0.000
+[2026-05-25 16:38:33] [INFO] [GBP/JPY] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:33] [INFO] [XAU/USD] regime=CHOP  conf=96%  vol_z=+0.06  rl=61  decay=0.103
+[2026-05-25 16:38:33] [INFO] [XAU/USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:33] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.72  rl=46  decay=0.000
+[2026-05-25 16:38:33] [INFO] [NAS100_USD] RiskGuard: Locked out — 133m remaining
+[2026-05-25 16:38:34] [INFO] Cycle 477 complete — sleeping 20s
+[2026-05-25 16:38:56] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.55  rl=49  decay=0.000
+[2026-05-25 16:38:56] [INFO] [EUR/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:38:56] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.23  rl=62  decay=0.000
+[2026-05-25 16:38:56] [INFO] [GBP/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:38:56] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.25  rl=62  decay=0.000
+[2026-05-25 16:38:56] [INFO] [USD/JPY] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:38:56] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.64  rl=12  decay=0.000
+[2026-05-25 16:38:56] [INFO] [AUD/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:38:56] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.91  rl=42  decay=0.000
+[2026-05-25 16:38:56] [INFO] [NZD/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:38:56] [INFO] [USD/CAD] regime=BEAR  conf=71%  vol_z=+0.78  rl=2  decay=0.900
+[2026-05-25 16:38:56] [INFO] [USD/CAD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:38:56] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=-0.15  rl=62  decay=0.009
+[2026-05-25 16:38:56] [INFO] [USD/CHF] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:38:56] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=478  decay=0.000
+[2026-05-25 16:38:56] [INFO] [GBP/JPY] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:38:56] [INFO] [XAU/USD] regime=CHOP  conf=96%  vol_z=+0.06  rl=62  decay=0.149
+[2026-05-25 16:38:56] [INFO] [XAU/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:38:56] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.72  rl=47  decay=0.000
+[2026-05-25 16:38:56] [INFO] [NAS100_USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:38:57] [INFO] Cycle 478 complete — sleeping 20s
+[2026-05-25 16:39:19] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.55  rl=50  decay=0.000
+[2026-05-25 16:39:19] [INFO] [EUR/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:19] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=+0.23  rl=63  decay=0.000
+[2026-05-25 16:39:19] [INFO] [GBP/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:19] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+1.25  rl=63  decay=0.000
+[2026-05-25 16:39:19] [INFO] [USD/JPY] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:19] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.64  rl=13  decay=0.000
+[2026-05-25 16:39:19] [INFO] [AUD/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:19] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.91  rl=43  decay=0.000
+[2026-05-25 16:39:19] [INFO] [NZD/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:19] [INFO] [USD/CAD] regime=BEAR  conf=71%  vol_z=+0.78  rl=3  decay=0.900
+[2026-05-25 16:39:19] [INFO] [USD/CAD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:19] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=-0.15  rl=63  decay=0.011
+[2026-05-25 16:39:19] [INFO] [USD/CHF] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:19] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=479  decay=0.000
+[2026-05-25 16:39:19] [INFO] [GBP/JPY] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:19] [INFO] [XAU/USD] regime=CHOP  conf=96%  vol_z=+0.06  rl=63  decay=0.264
+[2026-05-25 16:39:19] [INFO] [XAU/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:19] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.72  rl=48  decay=0.000
+[2026-05-25 16:39:19] [INFO] [NAS100_USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:21] [INFO] Cycle 479 complete — sleeping 20s
+[2026-05-25 16:39:42] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.45  rl=51  decay=0.000
+[2026-05-25 16:39:42] [INFO] [EUR/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:42] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=-0.01  rl=64  decay=0.001
+[2026-05-25 16:39:42] [INFO] [GBP/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:42] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.94  rl=64  decay=0.000
+[2026-05-25 16:39:42] [INFO] [USD/JPY] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:42] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.50  rl=14  decay=0.000
+[2026-05-25 16:39:42] [INFO] [AUD/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:42] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.75  rl=44  decay=0.000
+[2026-05-25 16:39:42] [INFO] [NZD/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:42] [INFO] [USD/CAD] regime=BEAR  conf=97%  vol_z=+0.70  rl=4  decay=0.900
+[2026-05-25 16:39:42] [INFO] [USD/CAD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:42] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=-0.22  rl=64  decay=0.014
+[2026-05-25 16:39:42] [INFO] [USD/CHF] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:42] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=480  decay=0.000
+[2026-05-25 16:39:42] [INFO] [GBP/JPY] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:42] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.00  rl=64  decay=0.350
+[2026-05-25 16:39:42] [INFO] [XAU/USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:42] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.68  rl=49  decay=0.000
+[2026-05-25 16:39:42] [INFO] [NAS100_USD] RiskGuard: Locked out — 132m remaining
+[2026-05-25 16:39:43] [INFO] Cycle 480 complete — sleeping 20s
+[2026-05-25 16:40:05] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.45  rl=52  decay=0.000
+[2026-05-25 16:40:05] [INFO] [EUR/USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:05] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=-0.01  rl=65  decay=0.003
+[2026-05-25 16:40:05] [INFO] [GBP/USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:05] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.94  rl=65  decay=0.000
+[2026-05-25 16:40:05] [INFO] [USD/JPY] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:05] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.50  rl=15  decay=0.000
+[2026-05-25 16:40:05] [INFO] [AUD/USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:05] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.75  rl=45  decay=0.000
+[2026-05-25 16:40:05] [INFO] [NZD/USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:05] [INFO] [USD/CAD] regime=BEAR  conf=97%  vol_z=+0.70  rl=5  decay=0.900
+[2026-05-25 16:40:05] [INFO] [USD/CAD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:05] [INFO] [USD/CHF] regime=CHOP  conf=99%  vol_z=-0.22  rl=65  decay=0.016
+[2026-05-25 16:40:05] [INFO] [USD/CHF] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:05] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=481  decay=0.000
+[2026-05-25 16:40:05] [INFO] [GBP/JPY] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:05] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=+0.00  rl=65  decay=0.350
+[2026-05-25 16:40:05] [INFO] [XAU/USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:05] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.68  rl=50  decay=0.000
+[2026-05-25 16:40:05] [INFO] [NAS100_USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:06] [INFO] Cycle 481 complete — sleeping 20s
+[2026-05-25 16:40:29] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.25  rl=53  decay=0.000
+[2026-05-25 16:40:29] [INFO] [EUR/USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:29] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=-0.15  rl=66  decay=0.005
+[2026-05-25 16:40:29] [INFO] [GBP/USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:29] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.66  rl=66  decay=0.000
+[2026-05-25 16:40:29] [INFO] [USD/JPY] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:29] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.37  rl=16  decay=0.000
+[2026-05-25 16:40:29] [INFO] [AUD/USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:29] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.52  rl=46  decay=0.000
+[2026-05-25 16:40:29] [INFO] [NZD/USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:29] [INFO] [USD/CAD] regime=BEAR  conf=98%  vol_z=+0.43  rl=6  decay=0.900
+[2026-05-25 16:40:29] [INFO] [USD/CAD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:29] [INFO] [USD/CHF] regime=CHOP  conf=98%  vol_z=-0.34  rl=66  decay=0.025
+[2026-05-25 16:40:29] [INFO] [USD/CHF] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:29] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=482  decay=0.000
+[2026-05-25 16:40:29] [INFO] [GBP/JPY] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:29] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=-0.06  rl=66  decay=0.350
+[2026-05-25 16:40:29] [INFO] [XAU/USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:29] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.52  rl=51  decay=0.000
+[2026-05-25 16:40:29] [INFO] [NAS100_USD] RiskGuard: Locked out — 131m remaining
+[2026-05-25 16:40:30] [INFO] Cycle 482 complete — sleeping 20s
+[2026-05-25 16:40:53] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.25  rl=54  decay=0.000
+[2026-05-25 16:40:53] [INFO] [EUR/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:40:53] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=-0.15  rl=67  decay=0.006
+[2026-05-25 16:40:53] [INFO] [GBP/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:40:53] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.66  rl=67  decay=0.000
+[2026-05-25 16:40:53] [INFO] [USD/JPY] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:40:53] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.37  rl=17  decay=0.000
+[2026-05-25 16:40:53] [INFO] [AUD/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:40:53] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.52  rl=47  decay=0.000
+[2026-05-25 16:40:53] [INFO] [NZD/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:40:53] [INFO] [USD/CAD] regime=BEAR  conf=98%  vol_z=+0.43  rl=7  decay=0.900
+[2026-05-25 16:40:53] [INFO] [USD/CAD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:40:53] [INFO] [USD/CHF] regime=CHOP  conf=98%  vol_z=-0.34  rl=67  decay=0.030
+[2026-05-25 16:40:53] [INFO] [USD/CHF] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:40:53] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=483  decay=0.000
+[2026-05-25 16:40:53] [INFO] [GBP/JPY] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:40:53] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=-0.06  rl=67  decay=0.307
+[2026-05-25 16:40:53] [INFO] [XAU/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:40:53] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.52  rl=52  decay=0.000
+[2026-05-25 16:40:53] [INFO] [NAS100_USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:40:54] [INFO] Cycle 483 complete — sleeping 20s
+[2026-05-25 16:41:17] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.25  rl=55  decay=0.000
+[2026-05-25 16:41:17] [INFO] [EUR/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:17] [INFO] [GBP/USD] regime=CHOP  conf=100%  vol_z=-0.15  rl=68  decay=0.007
+[2026-05-25 16:41:17] [INFO] [GBP/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:17] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.66  rl=68  decay=0.000
+[2026-05-25 16:41:17] [INFO] [USD/JPY] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:17] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.37  rl=18  decay=0.000
+[2026-05-25 16:41:17] [INFO] [AUD/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:17] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.52  rl=48  decay=0.000
+[2026-05-25 16:41:17] [INFO] [NZD/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:17] [INFO] [USD/CAD] regime=BEAR  conf=98%  vol_z=+0.43  rl=8  decay=0.900
+[2026-05-25 16:41:17] [INFO] [USD/CAD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:17] [INFO] [USD/CHF] regime=CHOP  conf=98%  vol_z=-0.34  rl=68  decay=0.034
+[2026-05-25 16:41:17] [INFO] [USD/CHF] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:17] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=484  decay=0.000
+[2026-05-25 16:41:17] [INFO] [GBP/JPY] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:17] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=-0.06  rl=68  decay=0.185
+[2026-05-25 16:41:17] [INFO] [XAU/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:17] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.52  rl=53  decay=0.000
+[2026-05-25 16:41:17] [INFO] [NAS100_USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:18] [INFO] Cycle 484 complete — sleeping 20s
+[2026-05-25 16:41:40] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.14  rl=56  decay=0.000
+[2026-05-25 16:41:40] [INFO] [EUR/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:40] [INFO] [GBP/USD] regime=CHOP  conf=99%  vol_z=-0.25  rl=69  decay=0.011
+[2026-05-25 16:41:40] [INFO] [GBP/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:40] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.39  rl=69  decay=0.001
+[2026-05-25 16:41:40] [INFO] [USD/JPY] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:40] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.21  rl=19  decay=0.000
+[2026-05-25 16:41:40] [INFO] [AUD/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:40] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.39  rl=49  decay=0.000
+[2026-05-25 16:41:40] [INFO] [NZD/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:40] [INFO] [USD/CAD] regime=BEAR  conf=93%  vol_z=+0.33  rl=9  decay=0.900
+[2026-05-25 16:41:40] [INFO] [USD/CAD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:40] [INFO] [USD/CHF] regime=CHOP  conf=97%  vol_z=-0.32  rl=69  decay=0.041
+[2026-05-25 16:41:40] [INFO] [USD/CHF] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:40] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=485  decay=0.000
+[2026-05-25 16:41:40] [INFO] [GBP/JPY] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:40] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=-0.21  rl=69  decay=0.000
+[2026-05-25 16:41:40] [INFO] [XAU/USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:40] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.47  rl=54  decay=0.000
+[2026-05-25 16:41:40] [INFO] [NAS100_USD] RiskGuard: Locked out — 130m remaining
+[2026-05-25 16:41:40] [INFO] Cycle 485 complete — sleeping 20s
+[2026-05-25 16:42:03] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.14  rl=57  decay=0.000
+[2026-05-25 16:42:03] [INFO] [EUR/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:03] [INFO] [GBP/USD] regime=CHOP  conf=99%  vol_z=-0.25  rl=70  decay=0.013
+[2026-05-25 16:42:03] [INFO] [GBP/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:03] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.39  rl=70  decay=0.001
+[2026-05-25 16:42:03] [INFO] [USD/JPY] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:03] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.21  rl=20  decay=0.001
+[2026-05-25 16:42:03] [INFO] [AUD/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:03] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.39  rl=50  decay=0.000
+[2026-05-25 16:42:03] [INFO] [NZD/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:03] [INFO] [USD/CAD] regime=BEAR  conf=93%  vol_z=+0.33  rl=10  decay=0.000
+[2026-05-25 16:42:03] [INFO] [USD/CAD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:03] [INFO] [USD/CHF] regime=CHOP  conf=97%  vol_z=-0.32  rl=70  decay=0.044
+[2026-05-25 16:42:03] [INFO] [USD/CHF] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:03] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=486  decay=0.000
+[2026-05-25 16:42:03] [INFO] [GBP/JPY] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:03] [INFO] [XAU/USD] regime=CHOP  conf=99%  vol_z=-0.21  rl=70  decay=0.000
+[2026-05-25 16:42:03] [INFO] [XAU/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:03] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.47  rl=55  decay=0.000
+[2026-05-25 16:42:03] [INFO] [NAS100_USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:04] [INFO] Cycle 486 complete — sleeping 20s
+[2026-05-25 16:42:26] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.06  rl=58  decay=0.000
+[2026-05-25 16:42:26] [INFO] [EUR/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:26] [INFO] [GBP/USD] regime=CHOP  conf=98%  vol_z=-0.35  rl=71  decay=0.021
+[2026-05-25 16:42:26] [INFO] [GBP/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:26] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.41  rl=71  decay=0.002
+[2026-05-25 16:42:26] [INFO] [USD/JPY] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:26] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.19  rl=21  decay=0.002
+[2026-05-25 16:42:26] [INFO] [AUD/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:26] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.34  rl=51  decay=0.000
+[2026-05-25 16:42:26] [INFO] [NZD/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:26] [INFO] [USD/CAD] regime=CHOP  conf=80%  vol_z=+0.07  rl=1  decay=0.900
+[2026-05-25 16:42:26] [INFO] [USD/CAD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:26] [INFO] [USD/CHF] regime=CHOP  conf=93%  vol_z=-0.44  rl=71  decay=0.071
+[2026-05-25 16:42:26] [INFO] [USD/CHF] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:26] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=487  decay=0.000
+[2026-05-25 16:42:26] [INFO] [GBP/JPY] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:26] [INFO] [XAU/USD] regime=CHOP  conf=98%  vol_z=-0.33  rl=71  decay=0.000
+[2026-05-25 16:42:26] [INFO] [XAU/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:26] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.37  rl=56  decay=0.000
+[2026-05-25 16:42:26] [INFO] [NAS100_USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:28] [INFO] Cycle 487 complete — sleeping 20s
+[2026-05-25 16:42:50] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.06  rl=59  decay=0.000
+[2026-05-25 16:42:50] [INFO] [EUR/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:50] [INFO] [GBP/USD] regime=CHOP  conf=98%  vol_z=-0.35  rl=72  decay=0.027
+[2026-05-25 16:42:50] [INFO] [GBP/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:50] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.41  rl=72  decay=0.002
+[2026-05-25 16:42:50] [INFO] [USD/JPY] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:50] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.19  rl=22  decay=0.002
+[2026-05-25 16:42:50] [INFO] [AUD/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:50] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.34  rl=52  decay=0.000
+[2026-05-25 16:42:50] [INFO] [NZD/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:50] [INFO] [USD/CAD] regime=CHOP  conf=80%  vol_z=+0.07  rl=2  decay=0.900
+[2026-05-25 16:42:50] [INFO] [USD/CAD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:50] [INFO] [USD/CHF] regime=CHOP  conf=93%  vol_z=-0.44  rl=72  decay=0.088
+[2026-05-25 16:42:50] [INFO] [USD/CHF] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:50] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=488  decay=0.000
+[2026-05-25 16:42:50] [INFO] [GBP/JPY] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:50] [INFO] [XAU/USD] regime=CHOP  conf=98%  vol_z=-0.33  rl=72  decay=0.000
+[2026-05-25 16:42:50] [INFO] [XAU/USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:50] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.37  rl=57  decay=0.000
+[2026-05-25 16:42:50] [INFO] [NAS100_USD] RiskGuard: Locked out — 129m remaining
+[2026-05-25 16:42:51] [INFO] Cycle 488 complete — sleeping 20s
+[2026-05-25 16:43:15] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.06  rl=60  decay=0.000
+[2026-05-25 16:43:15] [INFO] [EUR/USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:15] [INFO] [GBP/USD] regime=CHOP  conf=98%  vol_z=-0.35  rl=73  decay=0.029
+[2026-05-25 16:43:15] [INFO] [GBP/USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:15] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.41  rl=73  decay=0.002
+[2026-05-25 16:43:15] [INFO] [USD/JPY] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:15] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.19  rl=23  decay=0.002
+[2026-05-25 16:43:15] [INFO] [AUD/USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:15] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.34  rl=53  decay=0.000
+[2026-05-25 16:43:15] [INFO] [NZD/USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:15] [INFO] [USD/CAD] regime=CHOP  conf=80%  vol_z=+0.07  rl=3  decay=0.900
+[2026-05-25 16:43:15] [INFO] [USD/CAD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:15] [INFO] [USD/CHF] regime=CHOP  conf=93%  vol_z=-0.44  rl=73  decay=0.095
+[2026-05-25 16:43:15] [INFO] [USD/CHF] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:15] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=489  decay=0.000
+[2026-05-25 16:43:15] [INFO] [GBP/JPY] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:15] [INFO] [XAU/USD] regime=CHOP  conf=98%  vol_z=-0.33  rl=73  decay=0.021
+[2026-05-25 16:43:15] [INFO] [XAU/USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:15] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.37  rl=58  decay=0.000
+[2026-05-25 16:43:15] [INFO] [NAS100_USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:16] [INFO] Cycle 489 complete — sleeping 20s
+[2026-05-25 16:43:39] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.15  rl=61  decay=0.000
+[2026-05-25 16:43:39] [INFO] [EUR/USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:39] [INFO] [GBP/USD] regime=CHOP  conf=99%  vol_z=-0.09  rl=74  decay=0.025
+[2026-05-25 16:43:39] [INFO] [GBP/USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:39] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.43  rl=74  decay=0.002
+[2026-05-25 16:43:39] [INFO] [USD/JPY] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:39] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.42  rl=24  decay=0.001
+[2026-05-25 16:43:39] [INFO] [AUD/USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:39] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.48  rl=54  decay=0.000
+[2026-05-25 16:43:39] [INFO] [NZD/USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:39] [INFO] [USD/CAD] regime=BEAR  conf=97%  vol_z=+0.75  rl=1  decay=0.900
+[2026-05-25 16:43:39] [INFO] [USD/CAD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:39] [INFO] [USD/CHF] regime=CHOP  conf=92%  vol_z=-0.36  rl=74  decay=0.106
+[2026-05-25 16:43:39] [INFO] [USD/CHF] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:39] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=490  decay=0.000
+[2026-05-25 16:43:39] [INFO] [GBP/JPY] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:39] [INFO] [XAU/USD] regime=CHOP  conf=94%  vol_z=-0.38  rl=74  decay=0.053
+[2026-05-25 16:43:39] [INFO] [XAU/USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:39] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.23  rl=59  decay=0.000
+[2026-05-25 16:43:39] [INFO] [NAS100_USD] RiskGuard: Locked out — 128m remaining
+[2026-05-25 16:43:40] [INFO] Cycle 490 complete — sleeping 20s
+[2026-05-25 16:44:02] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.15  rl=62  decay=0.000
+[2026-05-25 16:44:02] [INFO] [EUR/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:02] [INFO] [GBP/USD] regime=CHOP  conf=99%  vol_z=-0.09  rl=75  decay=0.019
+[2026-05-25 16:44:02] [INFO] [GBP/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:02] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.43  rl=75  decay=0.002
+[2026-05-25 16:44:02] [INFO] [USD/JPY] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:02] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.42  rl=25  decay=0.000
+[2026-05-25 16:44:02] [INFO] [AUD/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:02] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.48  rl=55  decay=0.000
+[2026-05-25 16:44:02] [INFO] [NZD/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:02] [INFO] [USD/CAD] regime=BEAR  conf=97%  vol_z=+0.75  rl=2  decay=0.900
+[2026-05-25 16:44:02] [INFO] [USD/CAD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:02] [INFO] [USD/CHF] regime=CHOP  conf=92%  vol_z=-0.36  rl=75  decay=0.106
+[2026-05-25 16:44:02] [INFO] [USD/CHF] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:02] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=491  decay=0.000
+[2026-05-25 16:44:02] [INFO] [GBP/JPY] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:02] [INFO] [XAU/USD] regime=CHOP  conf=94%  vol_z=-0.38  rl=75  decay=0.078
+[2026-05-25 16:44:02] [INFO] [XAU/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:02] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.23  rl=60  decay=0.000
+[2026-05-25 16:44:02] [INFO] [NAS100_USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:04] [INFO] Cycle 491 complete — sleeping 20s
+[2026-05-25 16:44:26] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.02  rl=63  decay=0.001
+[2026-05-25 16:44:26] [INFO] [EUR/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:26] [INFO] [GBP/USD] regime=CHOP  conf=99%  vol_z=-0.20  rl=76  decay=0.038
+[2026-05-25 16:44:26] [INFO] [GBP/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:26] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.24  rl=76  decay=0.002
+[2026-05-25 16:44:26] [INFO] [USD/JPY] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:26] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.20  rl=26  decay=0.000
+[2026-05-25 16:44:26] [INFO] [AUD/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:26] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.23  rl=56  decay=0.000
+[2026-05-25 16:44:26] [INFO] [NZD/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:26] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.37  rl=3  decay=0.900
+[2026-05-25 16:44:26] [INFO] [USD/CAD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:26] [INFO] [USD/CHF] regime=CHOP  conf=78%  vol_z=-0.56  rl=76  decay=0.203
+[2026-05-25 16:44:26] [INFO] [USD/CHF] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:26] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=492  decay=0.000
+[2026-05-25 16:44:26] [INFO] [GBP/JPY] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:26] [INFO] [XAU/USD] regime=CHOP  conf=69%  vol_z=-0.62  rl=76  decay=0.275
+[2026-05-25 16:44:26] [INFO] [XAU/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:26] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.13  rl=61  decay=0.000
+[2026-05-25 16:44:26] [INFO] [NAS100_USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:28] [INFO] Cycle 492 complete — sleeping 20s
+[2026-05-25 16:44:51] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.02  rl=64  decay=0.001
+[2026-05-25 16:44:51] [INFO] [EUR/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:51] [INFO] [GBP/USD] regime=CHOP  conf=99%  vol_z=-0.20  rl=77  decay=0.085
+[2026-05-25 16:44:51] [INFO] [GBP/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:51] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.24  rl=77  decay=0.002
+[2026-05-25 16:44:51] [INFO] [USD/JPY] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:51] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.20  rl=27  decay=0.008
+[2026-05-25 16:44:51] [INFO] [AUD/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:51] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.23  rl=57  decay=0.000
+[2026-05-25 16:44:51] [INFO] [NZD/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:51] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.37  rl=4  decay=0.900
+[2026-05-25 16:44:51] [INFO] [USD/CAD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:51] [INFO] [USD/CHF] regime=CHOP  conf=78%  vol_z=-0.56  rl=77  decay=0.268
+[2026-05-25 16:44:51] [INFO] [USD/CHF] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:51] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=493  decay=0.000
+[2026-05-25 16:44:51] [INFO] [GBP/JPY] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:51] [INFO] [XAU/USD] regime=CHOP  conf=69%  vol_z=-0.62  rl=77  decay=0.400
+[2026-05-25 16:44:51] [INFO] [XAU/USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:51] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.13  rl=62  decay=0.000
+[2026-05-25 16:44:51] [INFO] [NAS100_USD] RiskGuard: Locked out — 127m remaining
+[2026-05-25 16:44:52] [INFO] Cycle 493 complete — sleeping 20s
+[2026-05-25 16:45:15] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=+0.02  rl=65  decay=0.002
+[2026-05-25 16:45:15] [INFO] [EUR/USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:15] [INFO] [GBP/USD] regime=CHOP  conf=99%  vol_z=-0.20  rl=78  decay=0.137
+[2026-05-25 16:45:15] [INFO] [GBP/USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:15] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.24  rl=78  decay=0.002
+[2026-05-25 16:45:15] [INFO] [USD/JPY] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:15] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.20  rl=28  decay=0.043
+[2026-05-25 16:45:15] [INFO] [AUD/USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:15] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.23  rl=58  decay=0.000
+[2026-05-25 16:45:15] [INFO] [NZD/USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:15] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.37  rl=5  decay=0.900
+[2026-05-25 16:45:15] [INFO] [USD/CAD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:15] [INFO] [USD/CHF] regime=CHOP  conf=78%  vol_z=-0.56  rl=78  decay=0.303
+[2026-05-25 16:45:15] [INFO] [USD/CHF] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:15] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=494  decay=0.000
+[2026-05-25 16:45:15] [INFO] [GBP/JPY] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:15] [INFO] [XAU/USD] regime=CHOP  conf=69%  vol_z=-0.62  rl=78  decay=0.400
+[2026-05-25 16:45:15] [INFO] [XAU/USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:15] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+1.13  rl=63  decay=0.000
+[2026-05-25 16:45:15] [INFO] [NAS100_USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:17] [INFO] Cycle 494 complete — sleeping 20s
+[2026-05-25 16:45:39] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=-0.04  rl=66  decay=0.002
+[2026-05-25 16:45:39] [INFO] [EUR/USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:39] [INFO] [GBP/USD] regime=CHOP  conf=98%  vol_z=-0.29  rl=79  decay=0.100
+[2026-05-25 16:45:39] [INFO] [GBP/USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:39] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.14  rl=79  decay=0.002
+[2026-05-25 16:45:39] [INFO] [USD/JPY] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:39] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.11  rl=29  decay=0.000
+[2026-05-25 16:45:39] [INFO] [AUD/USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:39] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.11  rl=59  decay=0.000
+[2026-05-25 16:45:39] [INFO] [NZD/USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:39] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.37  rl=6  decay=0.900
+[2026-05-25 16:45:39] [INFO] [USD/CAD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:39] [INFO] [USD/CHF] regime=CHOP  conf=54%  vol_z=-0.58  rl=79  decay=0.400
+[2026-05-25 16:45:39] [INFO] [USD/CHF] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:39] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=495  decay=0.000
+[2026-05-25 16:45:39] [INFO] [GBP/JPY] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:39] [INFO] [XAU/USD] regime=RANGE  conf=89%  vol_z=-0.81  rl=1  decay=0.900
+[2026-05-25 16:45:39] [INFO] [XAU/USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:39] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.99  rl=64  decay=0.000
+[2026-05-25 16:45:39] [INFO] [NAS100_USD] RiskGuard: Locked out — 126m remaining
+[2026-05-25 16:45:41] [INFO] Cycle 495 complete — sleeping 20s
+[2026-05-25 16:46:03] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=-0.04  rl=67  decay=0.002
+[2026-05-25 16:46:03] [INFO] [EUR/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:03] [INFO] [GBP/USD] regime=CHOP  conf=98%  vol_z=-0.29  rl=80  decay=0.067
+[2026-05-25 16:46:03] [INFO] [GBP/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:03] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=+0.14  rl=80  decay=0.002
+[2026-05-25 16:46:03] [INFO] [USD/JPY] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:03] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=+0.11  rl=30  decay=0.000
+[2026-05-25 16:46:03] [INFO] [AUD/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:03] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=+0.11  rl=60  decay=0.000
+[2026-05-25 16:46:03] [INFO] [NZD/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:03] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.37  rl=7  decay=0.900
+[2026-05-25 16:46:03] [INFO] [USD/CAD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:03] [INFO] [USD/CHF] regime=CHOP  conf=54%  vol_z=-0.58  rl=80  decay=0.400
+[2026-05-25 16:46:03] [INFO] [USD/CHF] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:03] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=496  decay=0.000
+[2026-05-25 16:46:03] [INFO] [GBP/JPY] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:03] [INFO] [XAU/USD] regime=RANGE  conf=89%  vol_z=-0.81  rl=2  decay=0.900
+[2026-05-25 16:46:03] [INFO] [XAU/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:03] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.99  rl=65  decay=0.000
+[2026-05-25 16:46:03] [INFO] [NAS100_USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:05] [INFO] Cycle 496 complete — sleeping 20s
+[2026-05-25 16:46:27] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=-0.21  rl=68  decay=0.004
+[2026-05-25 16:46:27] [INFO] [EUR/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:27] [INFO] [GBP/USD] regime=CHOP  conf=96%  vol_z=-0.41  rl=81  decay=0.013
+[2026-05-25 16:46:27] [INFO] [GBP/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:27] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=-0.09  rl=81  decay=0.003
+[2026-05-25 16:46:27] [INFO] [USD/JPY] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:27] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=-0.03  rl=31  decay=0.001
+[2026-05-25 16:46:27] [INFO] [AUD/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:27] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.11  rl=61  decay=0.001
+[2026-05-25 16:46:27] [INFO] [NZD/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:27] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.42  rl=8  decay=0.900
+[2026-05-25 16:46:27] [INFO] [USD/CAD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:27] [INFO] [USD/CHF] regime=RANGE  conf=85%  vol_z=-0.80  rl=1  decay=0.900
+[2026-05-25 16:46:27] [INFO] [USD/CHF] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:27] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=497  decay=0.000
+[2026-05-25 16:46:27] [INFO] [GBP/JPY] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:27] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-0.92  rl=3  decay=0.900
+[2026-05-25 16:46:27] [INFO] [XAU/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:27] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.84  rl=66  decay=0.000
+[2026-05-25 16:46:27] [INFO] [NAS100_USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:28] [INFO] Cycle 497 complete — sleeping 20s
+[2026-05-25 16:46:50] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=-0.21  rl=69  decay=0.006
+[2026-05-25 16:46:50] [INFO] [EUR/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:50] [INFO] [GBP/USD] regime=CHOP  conf=96%  vol_z=-0.41  rl=82  decay=0.030
+[2026-05-25 16:46:50] [INFO] [GBP/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:50] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=-0.09  rl=82  decay=0.004
+[2026-05-25 16:46:50] [INFO] [USD/JPY] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:50] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=-0.03  rl=32  decay=0.002
+[2026-05-25 16:46:50] [INFO] [AUD/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:50] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.11  rl=62  decay=0.001
+[2026-05-25 16:46:50] [INFO] [NZD/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:50] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.42  rl=9  decay=0.900
+[2026-05-25 16:46:50] [INFO] [USD/CAD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:50] [INFO] [USD/CHF] regime=RANGE  conf=85%  vol_z=-0.80  rl=2  decay=0.900
+[2026-05-25 16:46:50] [INFO] [USD/CHF] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:50] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=498  decay=0.000
+[2026-05-25 16:46:50] [INFO] [GBP/JPY] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:50] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-0.92  rl=4  decay=0.900
+[2026-05-25 16:46:50] [INFO] [XAU/USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:50] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.84  rl=67  decay=0.000
+[2026-05-25 16:46:50] [INFO] [NAS100_USD] RiskGuard: Locked out — 125m remaining
+[2026-05-25 16:46:51] [INFO] Cycle 498 complete — sleeping 20s
+[2026-05-25 16:47:15] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=-0.21  rl=70  decay=0.006
+[2026-05-25 16:47:15] [INFO] [EUR/USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:15] [INFO] [GBP/USD] regime=CHOP  conf=96%  vol_z=-0.41  rl=83  decay=0.044
+[2026-05-25 16:47:15] [INFO] [GBP/USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:15] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=-0.09  rl=83  decay=0.005
+[2026-05-25 16:47:15] [INFO] [USD/JPY] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:15] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=-0.03  rl=33  decay=0.003
+[2026-05-25 16:47:15] [INFO] [AUD/USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:15] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.11  rl=63  decay=0.002
+[2026-05-25 16:47:15] [INFO] [NZD/USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:15] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.42  rl=10  decay=0.000
+[2026-05-25 16:47:15] [INFO] [USD/CAD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:15] [INFO] [USD/CHF] regime=RANGE  conf=85%  vol_z=-0.80  rl=3  decay=0.900
+[2026-05-25 16:47:15] [INFO] [USD/CHF] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:15] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=499  decay=0.000
+[2026-05-25 16:47:15] [INFO] [GBP/JPY] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:15] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-0.92  rl=5  decay=0.900
+[2026-05-25 16:47:15] [INFO] [XAU/USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:15] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.84  rl=68  decay=0.000
+[2026-05-25 16:47:15] [INFO] [NAS100_USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:17] [INFO] Cycle 499 complete — sleeping 20s
+[2026-05-25 16:47:40] [INFO] [EUR/USD] regime=CHOP  conf=99%  vol_z=-0.32  rl=71  decay=0.012
+[2026-05-25 16:47:40] [INFO] [EUR/USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:40] [INFO] [GBP/USD] regime=CHOP  conf=94%  vol_z=-0.41  rl=84  decay=0.067
+[2026-05-25 16:47:40] [INFO] [GBP/USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:40] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=-0.04  rl=84  decay=0.005
+[2026-05-25 16:47:40] [INFO] [USD/JPY] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:40] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=-0.13  rl=34  decay=0.003
+[2026-05-25 16:47:40] [INFO] [AUD/USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:40] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.10  rl=64  decay=0.002
+[2026-05-25 16:47:40] [INFO] [NZD/USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:40] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.26  rl=11  decay=0.000
+[2026-05-25 16:47:40] [INFO] [USD/CAD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:40] [INFO] [USD/CHF] regime=RANGE  conf=98%  vol_z=-0.90  rl=4  decay=0.900
+[2026-05-25 16:47:40] [INFO] [USD/CHF] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:40] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=500  decay=0.000
+[2026-05-25 16:47:40] [INFO] [GBP/JPY] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:40] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-1.13  rl=6  decay=0.900
+[2026-05-25 16:47:40] [INFO] [XAU/USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:40] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.77  rl=69  decay=0.000
+[2026-05-25 16:47:40] [INFO] [NAS100_USD] RiskGuard: Locked out — 124m remaining
+[2026-05-25 16:47:42] [INFO] Cycle 500 complete — sleeping 20s
+[2026-05-25 16:48:05] [INFO] [EUR/USD] regime=CHOP  conf=99%  vol_z=-0.32  rl=72  decay=0.016
+[2026-05-25 16:48:05] [INFO] [EUR/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:05] [INFO] [GBP/USD] regime=CHOP  conf=94%  vol_z=-0.41  rl=85  decay=0.083
+[2026-05-25 16:48:05] [INFO] [GBP/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:05] [INFO] [USD/JPY] regime=CHOP  conf=100%  vol_z=-0.04  rl=85  decay=0.005
+[2026-05-25 16:48:05] [INFO] [USD/JPY] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:05] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=-0.13  rl=35  decay=0.003
+[2026-05-25 16:48:05] [INFO] [AUD/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:05] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.10  rl=65  decay=0.002
+[2026-05-25 16:48:05] [INFO] [NZD/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:05] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.26  rl=12  decay=0.000
+[2026-05-25 16:48:05] [INFO] [USD/CAD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:05] [INFO] [USD/CHF] regime=RANGE  conf=98%  vol_z=-0.90  rl=5  decay=0.900
+[2026-05-25 16:48:05] [INFO] [USD/CHF] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:05] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=501  decay=0.000
+[2026-05-25 16:48:05] [INFO] [GBP/JPY] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:05] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-1.13  rl=7  decay=0.900
+[2026-05-25 16:48:05] [INFO] [XAU/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:05] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.77  rl=70  decay=0.000
+[2026-05-25 16:48:05] [INFO] [NAS100_USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:06] [INFO] Cycle 501 complete — sleeping 20s
+[2026-05-25 16:48:28] [INFO] [EUR/USD] regime=CHOP  conf=97%  vol_z=-0.37  rl=73  decay=0.031
+[2026-05-25 16:48:28] [INFO] [EUR/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:28] [INFO] [GBP/USD] regime=CHOP  conf=82%  vol_z=-0.58  rl=86  decay=0.174
+[2026-05-25 16:48:28] [INFO] [GBP/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:28] [INFO] [USD/JPY] regime=CHOP  conf=99%  vol_z=-0.06  rl=86  decay=0.007
+[2026-05-25 16:48:28] [INFO] [USD/JPY] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:28] [INFO] [AUD/USD] regime=CHOP  conf=99%  vol_z=-0.33  rl=36  decay=0.007
+[2026-05-25 16:48:28] [INFO] [AUD/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:28] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.24  rl=66  decay=0.003
+[2026-05-25 16:48:28] [INFO] [NZD/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:28] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.05  rl=13  decay=0.000
+[2026-05-25 16:48:28] [INFO] [USD/CAD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:28] [INFO] [USD/CHF] regime=RANGE  conf=100%  vol_z=-1.01  rl=6  decay=0.900
+[2026-05-25 16:48:28] [INFO] [USD/CHF] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:28] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=502  decay=0.000
+[2026-05-25 16:48:28] [INFO] [GBP/JPY] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:28] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-1.23  rl=8  decay=0.900
+[2026-05-25 16:48:28] [INFO] [XAU/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:28] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.68  rl=71  decay=0.000
+[2026-05-25 16:48:28] [INFO] [NAS100_USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:30] [INFO] Cycle 502 complete — sleeping 20s
+[2026-05-25 16:48:51] [INFO] [EUR/USD] regime=CHOP  conf=97%  vol_z=-0.37  rl=74  decay=0.041
+[2026-05-25 16:48:51] [INFO] [EUR/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:51] [INFO] [GBP/USD] regime=CHOP  conf=82%  vol_z=-0.58  rl=87  decay=0.239
+[2026-05-25 16:48:51] [INFO] [GBP/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:51] [INFO] [USD/JPY] regime=CHOP  conf=99%  vol_z=-0.06  rl=87  decay=0.008
+[2026-05-25 16:48:51] [INFO] [USD/JPY] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:51] [INFO] [AUD/USD] regime=CHOP  conf=99%  vol_z=-0.33  rl=37  decay=0.009
+[2026-05-25 16:48:51] [INFO] [AUD/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:51] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.24  rl=67  decay=0.004
+[2026-05-25 16:48:51] [INFO] [NZD/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:51] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.05  rl=14  decay=0.000
+[2026-05-25 16:48:51] [INFO] [USD/CAD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:51] [INFO] [USD/CHF] regime=RANGE  conf=100%  vol_z=-1.01  rl=7  decay=0.900
+[2026-05-25 16:48:51] [INFO] [USD/CHF] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:51] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=503  decay=0.000
+[2026-05-25 16:48:51] [INFO] [GBP/JPY] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:51] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-1.23  rl=9  decay=0.900
+[2026-05-25 16:48:51] [INFO] [XAU/USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:51] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.68  rl=72  decay=0.000
+[2026-05-25 16:48:51] [INFO] [NAS100_USD] RiskGuard: Locked out — 123m remaining
+[2026-05-25 16:48:52] [INFO] Cycle 503 complete — sleeping 20s
+[2026-05-25 16:49:14] [INFO] [EUR/USD] regime=CHOP  conf=97%  vol_z=-0.37  rl=75  decay=0.047
+[2026-05-25 16:49:14] [INFO] [EUR/USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:14] [INFO] [GBP/USD] regime=CHOP  conf=82%  vol_z=-0.58  rl=88  decay=0.277
+[2026-05-25 16:49:14] [INFO] [GBP/USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:14] [INFO] [USD/JPY] regime=CHOP  conf=99%  vol_z=-0.06  rl=88  decay=0.008
+[2026-05-25 16:49:14] [INFO] [USD/JPY] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:14] [INFO] [AUD/USD] regime=CHOP  conf=99%  vol_z=-0.33  rl=38  decay=0.010
+[2026-05-25 16:49:14] [INFO] [AUD/USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:14] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.24  rl=68  decay=0.005
+[2026-05-25 16:49:14] [INFO] [NZD/USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:14] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=+0.05  rl=15  decay=0.000
+[2026-05-25 16:49:14] [INFO] [USD/CAD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:14] [INFO] [USD/CHF] regime=RANGE  conf=100%  vol_z=-1.01  rl=8  decay=0.900
+[2026-05-25 16:49:14] [INFO] [USD/CHF] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:14] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=504  decay=0.000
+[2026-05-25 16:49:14] [INFO] [GBP/JPY] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:14] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-1.23  rl=10  decay=0.000
+[2026-05-25 16:49:14] [INFO] [XAU/USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:14] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.68  rl=73  decay=0.000
+[2026-05-25 16:49:14] [INFO] [NAS100_USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:15] [INFO] Cycle 504 complete — sleeping 20s
+[2026-05-25 16:49:37] [INFO] [EUR/USD] regime=CHOP  conf=99%  vol_z=-0.11  rl=76  decay=0.035
+[2026-05-25 16:49:37] [INFO] [EUR/USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:37] [INFO] [GBP/USD] regime=CHOP  conf=81%  vol_z=-0.34  rl=89  decay=0.302
+[2026-05-25 16:49:37] [INFO] [GBP/USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:37] [INFO] [USD/JPY] regime=CHOP  conf=99%  vol_z=-0.01  rl=89  decay=0.007
+[2026-05-25 16:49:37] [INFO] [USD/JPY] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:37] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=-0.22  rl=39  decay=0.009
+[2026-05-25 16:49:37] [INFO] [AUD/USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:37] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.25  rl=69  decay=0.005
+[2026-05-25 16:49:37] [INFO] [NZD/USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:37] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=-0.09  rl=16  decay=0.000
+[2026-05-25 16:49:37] [INFO] [USD/CAD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:37] [INFO] [USD/CHF] regime=RANGE  conf=100%  vol_z=-0.92  rl=9  decay=0.900
+[2026-05-25 16:49:37] [INFO] [USD/CHF] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:37] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=505  decay=0.000
+[2026-05-25 16:49:37] [INFO] [GBP/JPY] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:37] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-1.29  rl=11  decay=0.000
+[2026-05-25 16:49:37] [INFO] [XAU/USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:37] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.60  rl=74  decay=0.000
+[2026-05-25 16:49:37] [INFO] [NAS100_USD] RiskGuard: Locked out — 122m remaining
+[2026-05-25 16:49:39] [INFO] Cycle 505 complete — sleeping 20s
+[2026-05-25 16:50:01] [INFO] [EUR/USD] regime=CHOP  conf=99%  vol_z=-0.11  rl=77  decay=0.053
+[2026-05-25 16:50:01] [INFO] [EUR/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:01] [INFO] [GBP/USD] regime=CHOP  conf=81%  vol_z=-0.34  rl=90  decay=0.299
+[2026-05-25 16:50:01] [INFO] [GBP/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:01] [INFO] [USD/JPY] regime=CHOP  conf=99%  vol_z=-0.01  rl=90  decay=0.077
+[2026-05-25 16:50:01] [INFO] [USD/JPY] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:01] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=-0.22  rl=40  decay=0.007
+[2026-05-25 16:50:01] [INFO] [AUD/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:01] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.25  rl=70  decay=0.004
+[2026-05-25 16:50:01] [INFO] [NZD/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:01] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=-0.09  rl=17  decay=0.000
+[2026-05-25 16:50:01] [INFO] [USD/CAD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:01] [INFO] [USD/CHF] regime=RANGE  conf=100%  vol_z=-0.92  rl=10  decay=0.000
+[2026-05-25 16:50:01] [INFO] [USD/CHF] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:01] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=506  decay=0.000
+[2026-05-25 16:50:01] [INFO] [GBP/JPY] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:01] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-1.29  rl=12  decay=0.000
+[2026-05-25 16:50:01] [INFO] [XAU/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:01] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.60  rl=75  decay=0.000
+[2026-05-25 16:50:01] [INFO] [NAS100_USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:03] [INFO] Cycle 506 complete — sleeping 20s
+[2026-05-25 16:50:25] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=-0.18  rl=78  decay=0.105
+[2026-05-25 16:50:25] [INFO] [EUR/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:25] [INFO] [GBP/USD] regime=CHOP  conf=75%  vol_z=-0.35  rl=91  decay=0.372
+[2026-05-25 16:50:25] [INFO] [GBP/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:25] [INFO] [USD/JPY] regime=CHOP  conf=99%  vol_z=-0.11  rl=91  decay=0.032
+[2026-05-25 16:50:25] [INFO] [USD/JPY] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:25] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=-0.16  rl=41  decay=0.004
+[2026-05-25 16:50:25] [INFO] [AUD/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:25] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.19  rl=71  decay=0.003
+[2026-05-25 16:50:25] [INFO] [NZD/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:25] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=-0.18  rl=18  decay=0.000
+[2026-05-25 16:50:25] [INFO] [USD/CAD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:25] [INFO] [USD/CHF] regime=RANGE  conf=100%  vol_z=-0.96  rl=11  decay=0.000
+[2026-05-25 16:50:25] [INFO] [USD/CHF] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:25] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=507  decay=0.000
+[2026-05-25 16:50:25] [INFO] [GBP/JPY] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:25] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-1.38  rl=13  decay=0.000
+[2026-05-25 16:50:25] [INFO] [XAU/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:25] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.47  rl=76  decay=0.000
+[2026-05-25 16:50:25] [INFO] [NAS100_USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:26] [INFO] Cycle 507 complete — sleeping 20s
+[2026-05-25 16:50:49] [INFO] [EUR/USD] regime=CHOP  conf=100%  vol_z=-0.18  rl=79  decay=0.163
+[2026-05-25 16:50:49] [INFO] [EUR/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:49] [INFO] [GBP/USD] regime=CHOP  conf=75%  vol_z=-0.35  rl=92  decay=0.426
+[2026-05-25 16:50:49] [INFO] [GBP/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:49] [INFO] [USD/JPY] regime=CHOP  conf=99%  vol_z=-0.11  rl=92  decay=0.008
+[2026-05-25 16:50:49] [INFO] [USD/JPY] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:49] [INFO] [AUD/USD] regime=CHOP  conf=100%  vol_z=-0.16  rl=42  decay=0.001
+[2026-05-25 16:50:49] [INFO] [AUD/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:49] [INFO] [NZD/USD] regime=CHOP  conf=100%  vol_z=-0.19  rl=72  decay=0.002
+[2026-05-25 16:50:49] [INFO] [NZD/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:49] [INFO] [USD/CAD] regime=BEAR  conf=100%  vol_z=-0.18  rl=19  decay=0.000
+[2026-05-25 16:50:49] [INFO] [USD/CAD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:49] [INFO] [USD/CHF] regime=RANGE  conf=100%  vol_z=-0.96  rl=12  decay=0.000
+[2026-05-25 16:50:49] [INFO] [USD/CHF] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:49] [INFO] [GBP/JPY] regime=RANGE  conf=0%  vol_z=+0.00  rl=508  decay=0.000
+[2026-05-25 16:50:49] [INFO] [GBP/JPY] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:49] [INFO] [XAU/USD] regime=RANGE  conf=100%  vol_z=-1.38  rl=14  decay=0.000
+[2026-05-25 16:50:49] [INFO] [XAU/USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:49] [INFO] [NAS100_USD] regime=CHOP  conf=100%  vol_z=+0.47  rl=77  decay=0.000
+[2026-05-25 16:50:49] [INFO] [NAS100_USD] RiskGuard: Locked out — 121m remaining
+[2026-05-25 16:50:51] [INFO] Cycle 508 complete — sleeping 20s

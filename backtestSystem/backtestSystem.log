@@ -32583,3 +32583,1607 @@
 16:13:02  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
 16:13:06  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16470 (0.2p)  ◄ IN ZONE
 16:13:06  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:13:09  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16470 (0.2p)  ◄ IN ZONE
+16:13:09  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:13:09  INFO     USTECH100M  29928.70000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:13:13  INFO     EURUSD  1.16470  Asia[1.16327–1.16475 15p]  nearest=1.16470 (0.0p)  ◄ IN ZONE
+16:13:13  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:13:16  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16470 (0.2p)  ◄ IN ZONE
+16:13:16  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:13:16  INFO     AUDUSD  0.71795  Asia[0.71535–0.71724 19p]  nearest=0.71913 (11.8p)
+16:13:20  INFO     EURUSD  1.16464  Asia[1.16327–1.16475 15p]  nearest=1.16470 (0.6p)  ◄ IN ZONE
+16:13:20  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:13:20  INFO     USDJPY  158.91650  Asia[158.74100–158.95400 21p]  nearest=158.93700 (2.0p)
+16:13:23  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16470 (0.2p)  ◄ IN ZONE
+16:13:23  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:13:23  INFO     GBPUSD  1.35031  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.2p)
+16:13:23  INFO     XAUUSD  4573.13500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (3.8p)
+16:13:27  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16470 (0.2p)  ◄ IN ZONE
+16:13:27  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:13:30  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16470 (0.2p)  ◄ IN ZONE
+16:13:30  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:13:33  INFO     EURUSD  1.16465  Asia[1.16327–1.16475 15p]  nearest=1.16470 (0.5p)  ◄ IN ZONE
+16:13:33  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:13:37  INFO     EURUSD  1.16466  Asia[1.16327–1.16475 15p]  nearest=1.16470 (0.4p)  ◄ IN ZONE
+16:13:37  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:13:41  INFO     USTECH100M  29927.35000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:13:44  INFO     EURUSD  1.16463  Asia[1.16327–1.16475 15p]  nearest=1.16470 (0.7p)  ◄ IN ZONE
+16:13:44  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:13:48  INFO     AUDUSD  0.71791  Asia[0.71535–0.71724 19p]  nearest=0.71677 (11.4p)
+16:13:51  INFO     USDJPY  158.92250  Asia[158.74100–158.95400 21p]  nearest=158.93700 (1.4p)
+16:13:55  INFO     GBPUSD  1.35019  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.4p)
+16:13:55  INFO     XAUUSD  4572.52500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (4.4p)
+16:14:11  INFO     USTECH100M  29926.50000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:14:14  INFO     EURUSD  1.16450  Asia[1.16327–1.16475 15p]  nearest=1.16470 (2.0p)
+16:14:14  INFO     USDJPY  158.92750  Asia[158.74100–158.95400 21p]  nearest=158.93700 (1.0p)  ◄ IN ZONE
+16:14:14  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:14:18  INFO     USDJPY  158.92650  Asia[158.74100–158.95400 21p]  nearest=158.93700 (1.1p)  ◄ IN ZONE
+16:14:18  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:14:18  INFO     AUDUSD  0.71782  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.5p)
+16:14:21  INFO     USDJPY  158.92850  Asia[158.74100–158.95400 21p]  nearest=158.93700 (0.8p)  ◄ IN ZONE
+16:14:21  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:14:25  INFO     GBPUSD  1.35003  Asia[1.34482–1.34896 41p]  nearest=1.35103 (10.0p)
+16:14:25  INFO     USDJPY  158.92950  Asia[158.74100–158.95400 21p]  nearest=158.93700 (0.8p)  ◄ IN ZONE
+16:14:25  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:14:25  INFO     XAUUSD  4570.44500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.9p)
+16:14:28  INFO     USDJPY  158.92950  Asia[158.74100–158.95400 21p]  nearest=158.93700 (0.8p)  ◄ IN ZONE
+16:14:28  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:14:42  INFO     USTECH100M  29921.30000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:14:45  INFO     EURUSD  1.16447  Asia[1.16327–1.16475 15p]  nearest=1.16470 (2.3p)
+16:14:49  INFO     USDJPY  158.92750  Asia[158.74100–158.95400 21p]  nearest=158.93700 (1.0p)  ◄ IN ZONE
+16:14:49  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:14:49  INFO     AUDUSD  0.71777  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.0p)
+16:14:52  INFO     USDJPY  158.92750  Asia[158.74100–158.95400 21p]  nearest=158.93700 (1.0p)  ◄ IN ZONE
+16:14:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:14:55  INFO     GBPUSD  1.35000  Asia[1.34482–1.34896 41p]  nearest=1.35103 (10.3p)
+16:14:55  INFO     USDJPY  158.92750  Asia[158.74100–158.95400 21p]  nearest=158.93700 (1.0p)  ◄ IN ZONE
+16:14:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:14:55  INFO     XAUUSD  4570.12500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.5p)
+16:14:59  INFO     USDJPY  158.92650  Asia[158.74100–158.95400 21p]  nearest=158.93700 (1.1p)  ◄ IN ZONE
+16:14:59  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:02  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:15:02  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:05  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:15:05  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:09  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:15:09  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:12  INFO     EURUSD  1.16441  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.3p)  ◄ IN ZONE
+16:15:12  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:15  INFO     USTECH100M  29922.60000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:15:22  INFO     AUDUSD  0.71773  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.6p)
+16:15:25  INFO     EURUSD  1.16445  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.7p)  ◄ IN ZONE
+16:15:25  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:29  INFO     EURUSD  1.16445  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.7p)  ◄ IN ZONE
+16:15:29  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:29  INFO     GBPUSD  1.35003  Asia[1.34482–1.34896 41p]  nearest=1.35103 (10.0p)
+16:15:29  INFO     USDJPY  158.91950  Asia[158.74100–158.95400 21p]  nearest=158.93900 (1.9p)
+16:15:29  INFO     XAUUSD  4570.17500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.6p)
+16:15:35  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:15:35  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:39  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:15:39  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:42  INFO     EURUSD  1.16440  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.2p)  ◄ IN ZONE
+16:15:42  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:46  INFO     EURUSD  1.16440  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.2p)  ◄ IN ZONE
+16:15:46  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:46  INFO     USTECH100M  29923.85000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:15:49  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:15:49  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:53  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:15:53  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:15:53  INFO     AUDUSD  0.71771  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.4p)
+16:16:00  INFO     GBPUSD  1.35003  Asia[1.34482–1.34896 41p]  nearest=1.35103 (10.0p)
+16:16:00  INFO     USDJPY  158.92150  Asia[158.74100–158.95400 21p]  nearest=158.93900 (1.7p)
+16:16:00  INFO     XAUUSD  4569.66000  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.1p)
+16:16:03  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:16:03  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:16:06  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:16:06  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:16:10  INFO     EURUSD  1.16441  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.3p)  ◄ IN ZONE
+16:16:10  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:16:13  INFO     EURUSD  1.16442  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.4p)  ◄ IN ZONE
+16:16:13  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:16:17  INFO     USTECH100M  29921.60000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:16:23  INFO     AUDUSD  0.71768  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.1p)
+16:16:30  INFO     GBPUSD  1.34999  Asia[1.34482–1.34896 41p]  nearest=1.35103 (10.4p)
+16:16:30  INFO     USDJPY  158.92350  Asia[158.74100–158.95400 21p]  nearest=158.93900 (1.6p)
+16:16:30  INFO     XAUUSD  4568.86500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.3p)
+16:16:37  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:16:37  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:16:40  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:16:40  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:16:43  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:16:43  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:16:47  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:16:47  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:16:47  INFO     USTECH100M  29914.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:16:50  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:16:50  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:16:53  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:16:53  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:16:53  INFO     AUDUSD  0.71770  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.3p)
+16:16:57  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:16:57  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:00  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:17:00  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:03  INFO     GBPUSD  1.35000  Asia[1.34482–1.34896 41p]  nearest=1.35103 (10.3p)
+16:17:03  INFO     USDJPY  158.91850  Asia[158.74100–158.95400 21p]  nearest=158.93900 (2.0p)
+16:17:03  INFO     XAUUSD  4568.41500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.8p)
+16:17:17  INFO     USTECH100M  29917.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:17:20  INFO     EURUSD  1.16442  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.4p)  ◄ IN ZONE
+16:17:20  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:23  INFO     EURUSD  1.16441  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.3p)  ◄ IN ZONE
+16:17:23  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:23  INFO     AUDUSD  0.71762  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.5p)
+16:17:27  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:17:27  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:30  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:17:30  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:33  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:17:33  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:33  INFO     GBPUSD  1.35002  Asia[1.34482–1.34896 41p]  nearest=1.35103 (10.1p)
+16:17:33  INFO     USDJPY  158.92250  Asia[158.74100–158.95400 21p]  nearest=158.93900 (1.6p)
+16:17:33  INFO     XAUUSD  4568.37500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.8p)
+16:17:37  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:17:37  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:40  INFO     EURUSD  1.16441  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.3p)  ◄ IN ZONE
+16:17:40  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:43  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:17:43  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:47  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:17:47  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:47  INFO     USTECH100M  29914.10000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:17:50  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:17:50  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:54  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:17:54  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:17:54  INFO     AUDUSD  0.71762  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.5p)
+16:17:57  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:17:57  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:18:00  INFO     EURUSD  1.16441  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.3p)  ◄ IN ZONE
+16:18:00  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:18:04  INFO     GBPUSD  1.35010  Asia[1.34482–1.34896 41p]  nearest=1.35103 (9.3p)
+16:18:04  INFO     USDJPY  158.91650  Asia[158.74100–158.95400 21p]  nearest=158.89525 (2.1p)
+16:18:04  INFO     XAUUSD  4568.75500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.2p)
+16:18:08  INFO     EURUSD  1.16442  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.4p)  ◄ IN ZONE
+16:18:08  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:18:11  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:18:11  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:18:15  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:18:15  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:18:18  INFO     EURUSD  1.16445  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.7p)  ◄ IN ZONE
+16:18:18  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:18:18  INFO     USTECH100M  29918.50000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:18:21  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:18:21  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:18:25  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:18:25  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:18:25  INFO     AUDUSD  0.71773  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.6p)
+16:18:28  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:18:28  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:18:34  INFO     GBPUSD  1.35006  Asia[1.34482–1.34896 41p]  nearest=1.35103 (9.7p)
+16:18:34  INFO     USDJPY  158.91450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.9p)
+16:18:34  INFO     XAUUSD  4568.56500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.0p)
+16:18:51  INFO     USTECH100M  29917.35000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:18:58  INFO     AUDUSD  0.71772  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.5p)
+16:19:01  INFO     EURUSD  1.16447  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.9p)
+16:19:07  INFO     GBPUSD  1.35011  Asia[1.34482–1.34896 41p]  nearest=1.35103 (9.2p)
+16:19:07  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:19:07  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:19:07  INFO     XAUUSD  4568.90500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.3p)
+16:19:11  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:19:11  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:19:14  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:19:14  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:19:17  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:19:17  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:19:20  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:19:20  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:19:24  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:19:24  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:19:24  INFO     USTECH100M  29922.50000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:19:27  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:19:27  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:19:30  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:19:30  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:19:30  INFO     AUDUSD  0.71778  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.1p)
+16:19:34  INFO     EURUSD  1.16451  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.3p)
+16:19:34  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:19:34  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:19:40  INFO     GBPUSD  1.35010  Asia[1.34482–1.34896 41p]  nearest=1.35103 (9.3p)
+16:19:40  INFO     XAUUSD  4569.54500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.0p)
+16:19:57  INFO     USTECH100M  29917.85000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:20:03  INFO     AUDUSD  0.71778  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.1p)
+16:20:07  INFO     EURUSD  1.16458  Asia[1.16327–1.16475 15p]  nearest=1.16475 (1.7p)
+16:20:07  INFO     USDJPY  158.91150  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.6p)
+16:20:10  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:20:10  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:13  INFO     GBPUSD  1.35031  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.2p)
+16:20:13  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:20:13  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:13  INFO     XAUUSD  4570.74500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.2p)
+16:20:16  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:20:16  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:20  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:20:20  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:23  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:20:23  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:26  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:20:26  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:30  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:20:30  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:30  INFO     USTECH100M  29919.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:20:33  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:20:33  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:36  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:20:36  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:36  INFO     AUDUSD  0.71782  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.5p)
+16:20:40  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:20:40  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:40  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:20:40  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:43  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:20:43  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:43  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:20:43  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:46  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:20:46  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:46  INFO     GBPUSD  1.35034  Asia[1.34482–1.34896 41p]  nearest=1.35103 (6.9p)
+16:20:46  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:20:46  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:46  INFO     XAUUSD  4572.36500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (4.6p)
+16:20:50  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:20:50  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:53  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:20:53  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:20:57  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:20:57  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:21:00  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:21:00  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:21:00  INFO     USTECH100M  29912.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:21:03  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:21:03  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:21:07  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:21:07  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:21:07  INFO     AUDUSD  0.71784  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.7p)
+16:21:10  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:21:10  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:21:13  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:21:13  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:21:17  INFO     EURUSD  1.16464  Asia[1.16327–1.16475 15p]  nearest=1.16475 (1.1p)
+16:21:17  INFO     GBPUSD  1.35028  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.5p)
+16:21:17  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:21:17  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:21:17  INFO     XAUUSD  4571.68500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (5.3p)
+16:21:20  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:21:20  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:21:23  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:21:23  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:21:33  INFO     USTECH100M  29912.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:21:40  INFO     AUDUSD  0.71773  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.6p)
+16:21:50  INFO     EURUSD  1.16459  Asia[1.16327–1.16475 15p]  nearest=1.16475 (1.6p)
+16:21:50  INFO     GBPUSD  1.35011  Asia[1.34482–1.34896 41p]  nearest=1.35103 (9.2p)
+16:21:50  INFO     XAUUSD  4571.19500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.6p)
+16:21:56  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:21:56  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:21:56  INFO     USDJPY  158.90950  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.4p)
+16:22:00  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:22:00  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:03  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:22:03  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:06  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:22:06  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:06  INFO     USTECH100M  29913.50000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:22:10  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:22:10  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:13  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:22:13  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:13  INFO     AUDUSD  0.71774  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.7p)
+16:22:16  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:22:16  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:20  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:22:20  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:20  INFO     GBPUSD  1.35017  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.6p)
+16:22:20  INFO     XAUUSD  4571.55500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (5.4p)
+16:22:23  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:22:23  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:26  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:22:26  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:30  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:22:30  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:30  INFO     USDJPY  158.90950  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.4p)
+16:22:33  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:22:33  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:36  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:22:36  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:40  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:22:40  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:40  INFO     USTECH100M  29910.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:22:43  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:22:43  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:43  INFO     AUDUSD  0.71775  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.8p)
+16:22:46  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:22:46  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:50  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:22:50  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:50  INFO     GBPUSD  1.35021  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.2p)
+16:22:50  INFO     XAUUSD  4572.10500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (4.8p)
+16:22:53  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:22:53  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:22:56  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:22:56  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:00  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:23:00  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:00  INFO     USDJPY  158.91050  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.5p)
+16:23:03  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:23:03  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:06  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:23:06  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:09  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:23:09  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:13  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:23:13  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:13  INFO     USTECH100M  29906.60000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:23:16  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:23:16  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:16  INFO     AUDUSD  0.71777  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.0p)
+16:23:19  INFO     EURUSD  1.16473  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.2p)  ◄ IN ZONE
+16:23:19  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:20  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:23:20  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:23  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:23:23  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:23  INFO     GBPUSD  1.35025  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.8p)
+16:23:23  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:23:23  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:23  INFO     XAUUSD  4571.38000  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (5.6p)
+16:23:26  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:23:26  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:26  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:23:26  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:43  INFO     USTECH100M  29900.60000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:23:46  INFO     AUDUSD  0.71773  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.6p)
+16:23:53  INFO     GBPUSD  1.35019  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.4p)
+16:23:53  INFO     XAUUSD  4571.75500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (5.2p)
+16:23:56  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:23:56  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:23:56  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.2p)
+16:24:00  INFO     EURUSD  1.16473  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.2p)  ◄ IN ZONE
+16:24:00  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:00  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:24:00  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:03  INFO     EURUSD  1.16474  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:24:03  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:03  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:24:03  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:06  INFO     EURUSD  1.16474  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:24:06  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:06  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:24:06  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:10  INFO     EURUSD  1.16474  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:24:10  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:10  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:24:10  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:13  INFO     EURUSD  1.16474  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:24:13  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:13  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:24:13  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:13  INFO     USTECH100M  29900.85000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:24:16  INFO     EURUSD  1.16474  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:24:16  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:16  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:24:16  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:16  INFO     AUDUSD  0.71781  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.4p)
+16:24:20  INFO     EURUSD  1.16476  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:24:20  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:20  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:24:20  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:23  INFO     EURUSD  1.16476  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:24:23  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:23  INFO     GBPUSD  1.35032  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.1p)
+16:24:23  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:24:23  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:23  INFO     XAUUSD  4572.93500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (4.0p)
+16:24:26  INFO     EURUSD  1.16476  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:24:26  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:26  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:24:26  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:30  INFO     EURUSD  1.16475  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.0p)  ◄ IN ZONE
+16:24:30  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:30  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:24:30  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:33  INFO     EURUSD  1.16475  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.0p)  ◄ IN ZONE
+16:24:33  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:33  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:24:33  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:36  INFO     EURUSD  1.16474  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:24:36  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:36  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:24:36  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:40  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:24:40  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:46  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:24:46  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:46  INFO     USTECH100M  29895.70000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:24:50  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:24:50  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:50  INFO     AUDUSD  0.71777  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.0p)
+16:24:53  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:24:53  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:56  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:24:56  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:24:56  INFO     GBPUSD  1.35019  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.4p)
+16:24:56  INFO     XAUUSD  4573.00500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (3.9p)
+16:24:59  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:24:59  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:09  INFO     USDJPY  158.91250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.7p)
+16:25:13  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:25:13  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:16  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:25:16  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:19  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:25:19  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:19  INFO     USTECH100M  29890.35000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:25:23  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:25:23  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:23  INFO     AUDUSD  0.71775  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.8p)
+16:25:26  INFO     EURUSD  1.16470  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.5p)  ◄ IN ZONE
+16:25:26  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:29  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:25:29  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:29  INFO     GBPUSD  1.35020  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.3p)
+16:25:29  INFO     XAUUSD  4573.71500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (3.2p)
+16:25:33  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:25:33  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:36  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:25:36  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:40  INFO     USDJPY  158.91050  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.5p)
+16:25:47  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:25:47  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:47  INFO     XAUUSD  4574.33500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (2.6p)  ◄ IN ZONE
+16:25:47  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:50  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:25:50  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:50  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:25:50  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:25:50  INFO     USTECH100M  29896.70000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:25:54  INFO     AUDUSD  0.71772  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.5p)
+16:26:00  INFO     GBPUSD  1.35019  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.4p)
+16:26:04  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:26:04  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:07  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:26:07  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:11  INFO     EURUSD  1.16470  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.5p)  ◄ IN ZONE
+16:26:11  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:14  INFO     EURUSD  1.16472  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.3p)  ◄ IN ZONE
+16:26:14  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:14  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:26:14  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:17  INFO     EURUSD  1.16472  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.3p)  ◄ IN ZONE
+16:26:17  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:17  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:26:17  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:17  INFO     XAUUSD  4573.19500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (3.7p)
+16:26:21  INFO     EURUSD  1.16472  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.3p)  ◄ IN ZONE
+16:26:21  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:21  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:26:21  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:21  INFO     USTECH100M  29900.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:26:24  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:26:24  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:24  INFO     AUDUSD  0.71774  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.7p)
+16:26:27  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:26:27  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:27  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:26:27  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:31  INFO     EURUSD  1.16473  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.2p)  ◄ IN ZONE
+16:26:31  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:31  INFO     GBPUSD  1.35032  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.1p)
+16:26:31  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:26:31  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:34  INFO     EURUSD  1.16476  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:26:34  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:34  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.4p)  ◄ IN ZONE
+16:26:34  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:38  INFO     EURUSD  1.16476  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:26:38  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:38  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:26:38  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:41  INFO     EURUSD  1.16476  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:26:41  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:41  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:26:41  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:44  INFO     EURUSD  1.16476  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:26:44  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:44  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:26:44  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:48  INFO     EURUSD  1.16474  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:26:48  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:48  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:26:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:48  INFO     XAUUSD  4573.94500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (3.0p)
+16:26:51  INFO     EURUSD  1.16472  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.3p)  ◄ IN ZONE
+16:26:51  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:51  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:26:51  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:51  INFO     USTECH100M  29904.60000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:26:55  INFO     EURUSD  1.16473  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.2p)  ◄ IN ZONE
+16:26:55  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:55  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:26:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:55  INFO     AUDUSD  0.71780  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.3p)
+16:26:58  INFO     EURUSD  1.16476  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:26:58  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:58  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:26:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:26:58  INFO     XAUUSD  4574.31500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (2.6p)  ◄ IN ZONE
+16:26:58  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:02  INFO     EURUSD  1.16478  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.3p)  ◄ IN ZONE
+16:27:02  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:02  INFO     GBPUSD  1.35039  Asia[1.34482–1.34896 41p]  nearest=1.35103 (6.4p)
+16:27:02  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:27:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:02  INFO     XAUUSD  4574.35500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (2.6p)  ◄ IN ZONE
+16:27:02  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:05  INFO     EURUSD  1.16477  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.2p)  ◄ IN ZONE
+16:27:05  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:05  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:27:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:08  INFO     EURUSD  1.16477  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.2p)  ◄ IN ZONE
+16:27:08  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:08  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:27:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:12  INFO     EURUSD  1.16478  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.3p)  ◄ IN ZONE
+16:27:12  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:12  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:27:12  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:15  INFO     EURUSD  1.16478  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.3p)  ◄ IN ZONE
+16:27:15  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:15  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:27:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:18  INFO     EURUSD  1.16474  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:27:18  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:18  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:27:18  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:22  INFO     EURUSD  1.16474  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:27:22  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:22  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:27:22  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:22  INFO     USTECH100M  29895.20000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:27:25  INFO     EURUSD  1.16474  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.1p)  ◄ IN ZONE
+16:27:25  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:25  INFO     AUDUSD  0.71780  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.3p)
+16:27:28  INFO     EURUSD  1.16473  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.2p)  ◄ IN ZONE
+16:27:28  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:32  INFO     EURUSD  1.16473  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.2p)  ◄ IN ZONE
+16:27:32  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:35  INFO     EURUSD  1.16473  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.2p)  ◄ IN ZONE
+16:27:35  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:35  INFO     GBPUSD  1.35031  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.2p)
+16:27:35  INFO     XAUUSD  4572.89500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (4.0p)
+16:27:38  INFO     EURUSD  1.16473  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.2p)  ◄ IN ZONE
+16:27:38  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:41  INFO     EURUSD  1.16473  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.2p)  ◄ IN ZONE
+16:27:41  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:45  INFO     EURUSD  1.16472  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.3p)  ◄ IN ZONE
+16:27:45  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:48  INFO     EURUSD  1.16471  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.4p)  ◄ IN ZONE
+16:27:48  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:51  INFO     EURUSD  1.16469  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.6p)  ◄ IN ZONE
+16:27:51  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:55  INFO     EURUSD  1.16471  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.4p)  ◄ IN ZONE
+16:27:55  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:55  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:27:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:55  INFO     USTECH100M  29891.50000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:27:58  INFO     EURUSD  1.16468  Asia[1.16327–1.16475 15p]  nearest=1.16475 (0.7p)  ◄ IN ZONE
+16:27:58  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:27:58  INFO     AUDUSD  0.71777  Asia[0.71535–0.71724 19p]  nearest=0.71677 (10.0p)
+16:28:08  INFO     GBPUSD  1.35023  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.0p)
+16:28:08  INFO     XAUUSD  4572.21500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (4.7p)
+16:28:25  INFO     USDJPY  158.91450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.9p)
+16:28:25  INFO     USTECH100M  29889.70000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:28:28  INFO     EURUSD  1.16455  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.7p)
+16:28:28  INFO     AUDUSD  0.71767  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.0p)
+16:28:38  INFO     GBPUSD  1.35019  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.4p)
+16:28:38  INFO     XAUUSD  4572.12500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (4.8p)
+16:28:58  INFO     USDJPY  158.91050  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.5p)
+16:28:58  INFO     USTECH100M  29889.20000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:29:01  INFO     EURUSD  1.16455  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.7p)
+16:29:01  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.0p)  ◄ IN ZONE
+16:29:01  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:29:01  INFO     AUDUSD  0.71768  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.1p)
+16:29:05  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:29:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:29:08  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.7p)  ◄ IN ZONE
+16:29:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:29:11  INFO     GBPUSD  1.35028  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.5p)
+16:29:11  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:29:11  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:29:11  INFO     XAUUSD  4572.66500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (4.3p)
+16:29:15  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.9p)  ◄ IN ZONE
+16:29:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:29:18  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:29:18  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:29:21  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:29:21  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:29:25  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:29:25  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:29:28  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89525 (0.8p)  ◄ IN ZONE
+16:29:28  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:29:28  INFO     USTECH100M  29890.50000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:29:31  INFO     EURUSD  1.16458  Asia[1.16327–1.16475 15p]  nearest=1.16475 (1.7p)
+16:29:31  INFO     AUDUSD  0.71770  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.3p)
+16:29:44  INFO     GBPUSD  1.35029  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.4p)
+16:29:45  INFO     XAUUSD  4573.42500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (3.5p)
+16:29:58  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89525 (1.2p)
+16:29:58  INFO     USTECH100M  29887.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:30:01  INFO     EURUSD  1.16454  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.6p)
+16:30:01  INFO     AUDUSD  0.71763  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.6p)
+16:30:05  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89775 (1.0p)  ◄ IN ZONE
+16:30:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:30:08  INFO     USDJPY  158.90650  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.9p)  ◄ IN ZONE
+16:30:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:30:11  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89775 (1.0p)  ◄ IN ZONE
+16:30:11  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:30:15  INFO     GBPUSD  1.35018  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.5p)
+16:30:15  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89775 (1.0p)  ◄ IN ZONE
+16:30:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:30:15  INFO     XAUUSD  4572.81500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (4.1p)
+16:30:28  INFO     USTECH100M  29883.20000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:30:32  INFO     EURUSD  1.16452  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.4p)
+16:30:32  INFO     AUDUSD  0.71757  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.0p)
+16:30:35  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89775 (1.0p)  ◄ IN ZONE
+16:30:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:30:38  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89775 (1.0p)  ◄ IN ZONE
+16:30:38  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:30:45  INFO     GBPUSD  1.35018  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.5p)
+16:30:45  INFO     XAUUSD  4572.30500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (4.6p)
+16:30:52  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89775 (1.0p)  ◄ IN ZONE
+16:30:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:30:55  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89775 (1.0p)  ◄ IN ZONE
+16:30:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:30:58  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89775 (1.0p)  ◄ IN ZONE
+16:30:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:30:58  INFO     USTECH100M  29879.20000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:31:02  INFO     EURUSD  1.16453  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.5p)
+16:31:02  INFO     AUDUSD  0.71759  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.2p)
+16:31:18  INFO     GBPUSD  1.35018  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.5p)
+16:31:18  INFO     XAUUSD  4571.17500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.6p)
+16:31:22  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89775 (1.0p)  ◄ IN ZONE
+16:31:22  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:31:28  INFO     USTECH100M  29885.35000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:31:32  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.8p)  ◄ IN ZONE
+16:31:32  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:31:35  INFO     EURUSD  1.16456  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.8p)
+16:31:35  INFO     USDJPY  158.90650  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.9p)  ◄ IN ZONE
+16:31:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:31:35  INFO     AUDUSD  0.71766  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.9p)
+16:31:38  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89775 (1.0p)  ◄ IN ZONE
+16:31:38  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:31:42  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:31:42  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:31:45  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.7p)  ◄ IN ZONE
+16:31:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:31:48  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:31:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:31:52  INFO     GBPUSD  1.35023  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.0p)
+16:31:52  INFO     USDJPY  158.90650  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.9p)  ◄ IN ZONE
+16:31:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:31:52  INFO     XAUUSD  4571.44500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (5.5p)
+16:31:55  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:31:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:31:58  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:31:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:31:58  INFO     USTECH100M  29886.85000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:32:02  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:05  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.7p)  ◄ IN ZONE
+16:32:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:08  INFO     EURUSD  1.16457  Asia[1.16327–1.16475 15p]  nearest=1.16475 (1.8p)
+16:32:08  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:08  INFO     AUDUSD  0.71767  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.0p)
+16:32:11  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:11  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:15  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:18  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:18  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:21  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:21  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:25  INFO     GBPUSD  1.35021  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.2p)
+16:32:25  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:25  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:25  INFO     XAUUSD  4571.24500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.7p)
+16:32:28  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:28  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:32  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:32  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:32  INFO     USTECH100M  29885.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:32:35  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:38  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:38  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:42  INFO     EURUSD  1.16456  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.8p)
+16:32:42  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:42  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:42  INFO     AUDUSD  0.71762  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.5p)
+16:32:45  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:48  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:52  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:32:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:55  INFO     GBPUSD  1.35023  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.0p)
+16:32:55  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:32:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:32:55  INFO     XAUUSD  4571.08500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.5p)
+16:32:58  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:32:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:01  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:05  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:05  INFO     USTECH100M  29887.35000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:33:08  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:12  INFO     EURUSD  1.16456  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.8p)
+16:33:12  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:12  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:12  INFO     AUDUSD  0.71766  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.9p)
+16:33:15  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:18  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:18  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:22  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:22  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:25  INFO     GBPUSD  1.35022  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.1p)
+16:33:25  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:25  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:25  INFO     XAUUSD  4570.99500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.4p)
+16:33:28  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:28  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:32  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:32  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:35  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:35  INFO     USTECH100M  29883.60000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:33:38  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:33:38  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:42  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:33:42  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:42  INFO     AUDUSD  0.71762  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.5p)
+16:33:45  INFO     EURUSD  1.16449  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.1p)
+16:33:45  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:33:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:48  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:33:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:52  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:33:52  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:52  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.8p)  ◄ IN ZONE
+16:33:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:55  INFO     GBPUSD  1.35022  Asia[1.34482–1.34896 41p]  nearest=1.35103 (8.1p)
+16:33:55  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:33:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:33:55  INFO     XAUUSD  4570.43500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.9p)
+16:33:58  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:33:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:02  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:34:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:05  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:34:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:08  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:34:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:08  INFO     USTECH100M  29884.95000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:34:12  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:34:12  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:12  INFO     AUDUSD  0.71759  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.2p)
+16:34:15  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:34:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:18  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:34:18  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:22  INFO     EURUSD  1.16453  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.5p)
+16:34:22  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:34:22  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:25  INFO     GBPUSD  1.35032  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.1p)
+16:34:25  INFO     USDJPY  158.89650  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:34:25  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:25  INFO     XAUUSD  4571.06500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.5p)
+16:34:28  INFO     USDJPY  158.89650  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:34:28  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:32  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:34:32  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:35  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:34:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:39  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:34:39  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:39  INFO     USTECH100M  29889.85000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:34:42  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:34:42  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:42  INFO     AUDUSD  0.71760  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.3p)
+16:34:45  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:34:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:49  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:34:49  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:52  INFO     EURUSD  1.16454  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.6p)
+16:34:52  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:34:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:55  INFO     GBPUSD  1.35033  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.0p)
+16:34:55  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:34:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:34:55  INFO     XAUUSD  4571.40500  Asia[4526.16000–4578.72000 53p]  nearest=4576.94000 (5.5p)
+16:34:59  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:34:59  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:02  INFO     USDJPY  158.89750  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.0p)  ◄ IN ZONE
+16:35:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:05  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:35:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:09  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:35:09  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:09  INFO     USTECH100M  29889.70000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:35:12  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:35:12  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:12  INFO     AUDUSD  0.71758  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.1p)
+16:35:15  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:35:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:19  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:35:19  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:22  INFO     EURUSD  1.16453  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.5p)
+16:35:22  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:35:22  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:26  INFO     GBPUSD  1.35033  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.0p)
+16:35:26  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:35:26  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:26  INFO     XAUUSD  4571.00500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.4p)
+16:35:29  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:35:29  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:32  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:35:32  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:36  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:35:36  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:39  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:35:39  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:39  INFO     USTECH100M  29892.50000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:35:42  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:35:42  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:42  INFO     AUDUSD  0.71753  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.6p)
+16:35:46  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:35:46  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:49  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:35:49  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:52  INFO     EURUSD  1.16449  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.1p)
+16:35:52  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:35:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:56  INFO     GBPUSD  1.35036  Asia[1.34482–1.34896 41p]  nearest=1.35103 (6.7p)
+16:35:56  INFO     USDJPY  158.89450  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:35:56  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:35:56  INFO     XAUUSD  4571.00500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.4p)
+16:35:59  INFO     USDJPY  158.89550  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:35:59  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:02  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:36:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:06  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:36:06  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:09  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:36:09  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:12  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:36:12  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:12  INFO     USTECH100M  29888.10000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:36:16  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.6p)  ◄ IN ZONE
+16:36:16  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:16  INFO     AUDUSD  0.71757  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.0p)
+16:36:19  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:36:19  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:22  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:36:22  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:26  INFO     EURUSD  1.16450  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.2p)
+16:36:26  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:36:26  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:29  INFO     GBPUSD  1.35033  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.0p)
+16:36:29  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:36:29  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:29  INFO     XAUUSD  4570.41500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.8p)
+16:36:33  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:36:33  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:36  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:36:36  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:39  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:36:39  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:43  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:36:43  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:43  INFO     USTECH100M  29887.20000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:36:46  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:36:46  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:46  INFO     AUDUSD  0.71757  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.0p)
+16:36:49  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:36:49  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:53  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:36:53  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:56  INFO     EURUSD  1.16449  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.1p)
+16:36:56  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:36:56  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:59  INFO     GBPUSD  1.35031  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.2p)
+16:36:59  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:36:59  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:36:59  INFO     XAUUSD  4569.99500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.4p)
+16:37:03  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:03  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:06  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:06  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:09  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:09  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:13  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:13  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:16  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:16  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:16  INFO     AUDUSD  0.71755  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.8p)
+16:37:16  INFO     USTECH100M  29883.10000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:37:19  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:19  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:23  INFO     USDJPY  158.89550  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:23  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:23  INFO     XAUUSD  4568.16500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.6p)  ◄ IN ZONE
+16:37:23  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:26  INFO     USDJPY  158.89650  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:37:26  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:26  INFO     XAUUSD  4568.11500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.5p)  ◄ IN ZONE
+16:37:26  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:29  INFO     EURUSD  1.16446  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.8p)
+16:37:29  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:37:29  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:29  INFO     XAUUSD  4567.90500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.3p)  ◄ IN ZONE
+16:37:29  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:32  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:37:32  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:32  INFO     GBPUSD  1.35030  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.3p)
+16:37:33  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:33  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:33  INFO     XAUUSD  4567.70500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.1p)  ◄ IN ZONE
+16:37:33  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:36  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:37:36  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:36  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:36  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:36  INFO     XAUUSD  4568.09500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.5p)  ◄ IN ZONE
+16:37:36  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:39  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:37:39  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:39  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:39  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:39  INFO     XAUUSD  4568.03500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.5p)  ◄ IN ZONE
+16:37:39  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:42  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:37:42  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:43  INFO     XAUUSD  4567.67500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.1p)  ◄ IN ZONE
+16:37:43  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:46  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:46  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:46  INFO     XAUUSD  4567.36500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (1.8p)  ◄ IN ZONE
+16:37:46  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:49  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:49  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:49  INFO     AUDUSD  0.71752  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.5p)
+16:37:49  INFO     XAUUSD  4567.03500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (1.5p)  ◄ IN ZONE
+16:37:49  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:49  INFO     USTECH100M  29884.10000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:37:52  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:52  INFO     XAUUSD  4566.84500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (1.3p)  ◄ IN ZONE
+16:37:52  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:56  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.1p)  ◄ IN ZONE
+16:37:56  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:56  INFO     XAUUSD  4567.27500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (1.7p)  ◄ IN ZONE
+16:37:56  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:59  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.2p)  ◄ IN ZONE
+16:37:59  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:37:59  INFO     XAUUSD  4567.35500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (1.8p)  ◄ IN ZONE
+16:37:59  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:02  INFO     EURUSD  1.16445  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.7p)  ◄ IN ZONE
+16:38:02  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:02  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:38:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:02  INFO     XAUUSD  4567.61500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.0p)  ◄ IN ZONE
+16:38:02  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:06  INFO     GBPUSD  1.35032  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.1p)
+16:38:06  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:38:06  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:06  INFO     XAUUSD  4567.93500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.4p)  ◄ IN ZONE
+16:38:06  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:09  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:38:09  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:09  INFO     XAUUSD  4567.87500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.3p)  ◄ IN ZONE
+16:38:09  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:12  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:38:12  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:12  INFO     XAUUSD  4567.95500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.4p)  ◄ IN ZONE
+16:38:12  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:16  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:38:16  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:16  INFO     XAUUSD  4567.95500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.4p)  ◄ IN ZONE
+16:38:16  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:19  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:38:19  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:19  INFO     XAUUSD  4568.03500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.5p)  ◄ IN ZONE
+16:38:19  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:22  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:38:22  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:22  INFO     AUDUSD  0.71756  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.9p)
+16:38:22  INFO     XAUUSD  4567.97500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.4p)  ◄ IN ZONE
+16:38:22  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:22  INFO     USTECH100M  29881.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:38:26  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:38:26  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:26  INFO     XAUUSD  4567.96500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.4p)  ◄ IN ZONE
+16:38:26  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:29  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:38:29  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:29  INFO     XAUUSD  4567.98500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.4p)  ◄ IN ZONE
+16:38:29  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:32  INFO     EURUSD  1.16450  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.2p)
+16:38:32  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:38:32  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:36  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:38:36  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:39  INFO     GBPUSD  1.35034  Asia[1.34482–1.34896 41p]  nearest=1.35103 (6.9p)
+16:38:39  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:38:39  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:42  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:38:42  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:46  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:38:46  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:49  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:38:49  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:52  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:38:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:52  INFO     XAUUSD  4568.20500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.6p)  ◄ IN ZONE
+16:38:52  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:56  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:38:56  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:56  INFO     AUDUSD  0.71756  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.9p)
+16:38:56  INFO     USTECH100M  29879.10000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:38:59  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:38:59  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:38:59  INFO     XAUUSD  4567.97500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.4p)  ◄ IN ZONE
+16:38:59  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:02  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:39:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:05  INFO     EURUSD  1.16451  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.3p)
+16:39:06  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:39:06  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:09  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:39:09  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:12  INFO     GBPUSD  1.35040  Asia[1.34482–1.34896 41p]  nearest=1.35103 (6.3p)
+16:39:12  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:39:12  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:16  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:39:16  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:19  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:39:19  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:22  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:39:22  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:26  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:39:26  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:26  INFO     USTECH100M  29882.75000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:39:29  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:39:29  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:29  INFO     AUDUSD  0.71758  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.1p)
+16:39:32  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:39:32  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:32  INFO     XAUUSD  4568.66500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.1p)
+16:39:35  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:39:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:39  INFO     EURUSD  1.16453  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.5p)
+16:39:39  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.3p)  ◄ IN ZONE
+16:39:39  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:42  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:39:42  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:45  INFO     GBPUSD  1.35039  Asia[1.34482–1.34896 41p]  nearest=1.35103 (6.4p)
+16:39:45  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:39:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:49  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:39:49  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:52  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.4p)  ◄ IN ZONE
+16:39:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:55  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:39:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:59  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89775 (0.5p)  ◄ IN ZONE
+16:39:59  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:39:59  INFO     USTECH100M  29879.85000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29381.70000–29528.00000 1463000p]=47 levels  tol=2p
+16:40:02  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:40:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:02  INFO     AUDUSD  0.71754  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.7p)
+16:40:05  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:40:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:05  INFO     XAUUSD  4568.55500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.0p)
+16:40:09  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:40:09  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:12  INFO     EURUSD  1.16448  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.0p)
+16:40:12  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:40:12  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:15  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:40:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:19  INFO     GBPUSD  1.35030  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.3p)
+16:40:19  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:40:19  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:22  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:40:22  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:25  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:40:25  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:29  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:40:29  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:29  INFO     USTECH100M  29878.50000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:40:32  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:40:32  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:32  INFO     AUDUSD  0.71752  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.5p)
+16:40:35  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:40:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:35  INFO     XAUUSD  4568.76500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.2p)
+16:40:39  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:40:39  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:42  INFO     EURUSD  1.16449  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.1p)
+16:40:42  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:40:42  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:45  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:40:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:49  INFO     GBPUSD  1.35032  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.1p)
+16:40:49  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:40:49  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:52  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:40:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:55  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:40:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:59  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:40:59  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:40:59  INFO     USTECH100M  29877.35000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:41:02  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:41:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:05  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.5p)  ◄ IN ZONE
+16:41:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:05  INFO     AUDUSD  0.71748  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.1p)
+16:41:09  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.4p)  ◄ IN ZONE
+16:41:09  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:09  INFO     XAUUSD  4568.65500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.1p)
+16:41:12  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.4p)  ◄ IN ZONE
+16:41:12  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:15  INFO     EURUSD  1.16446  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.8p)
+16:41:15  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.4p)  ◄ IN ZONE
+16:41:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:19  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.5p)  ◄ IN ZONE
+16:41:19  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:19  INFO     XAUUSD  4568.02500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.4p)  ◄ IN ZONE
+16:41:19  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:22  INFO     GBPUSD  1.35030  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.3p)
+16:41:22  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.5p)  ◄ IN ZONE
+16:41:22  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:22  INFO     XAUUSD  4568.18500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.6p)  ◄ IN ZONE
+16:41:22  INFO       XAUUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:25  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.5p)  ◄ IN ZONE
+16:41:25  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:29  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.5p)  ◄ IN ZONE
+16:41:29  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:32  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.4p)  ◄ IN ZONE
+16:41:32  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:32  INFO     USTECH100M  29880.10000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:41:35  INFO     EURUSD  1.16445  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.7p)  ◄ IN ZONE
+16:41:35  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:35  INFO     AUDUSD  0.71745  Asia[0.71535–0.71724 19p]  nearest=0.71677 (6.8p)
+16:41:39  INFO     USDJPY  158.90950  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.9p)  ◄ IN ZONE
+16:41:39  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:42  INFO     USDJPY  158.90950  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.9p)  ◄ IN ZONE
+16:41:42  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:45  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.7p)  ◄ IN ZONE
+16:41:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:48  INFO     EURUSD  1.16442  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.4p)  ◄ IN ZONE
+16:41:48  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:48  INFO     USDJPY  158.90850  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.8p)  ◄ IN ZONE
+16:41:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:52  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:41:52  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:52  INFO     USDJPY  158.90850  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.8p)  ◄ IN ZONE
+16:41:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:55  INFO     EURUSD  1.16442  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.4p)  ◄ IN ZONE
+16:41:55  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:55  INFO     GBPUSD  1.35027  Asia[1.34482–1.34896 41p]  nearest=1.35103 (7.6p)
+16:41:55  INFO     USDJPY  158.90850  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.8p)  ◄ IN ZONE
+16:41:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:55  INFO     XAUUSD  4568.50500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (2.9p)
+16:41:58  INFO     EURUSD  1.16442  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.4p)  ◄ IN ZONE
+16:41:58  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:41:58  INFO     USDJPY  158.90850  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.8p)  ◄ IN ZONE
+16:41:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:01  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:42:01  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:01  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.7p)  ◄ IN ZONE
+16:42:01  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:05  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:42:05  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:05  INFO     USDJPY  158.90850  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.8p)  ◄ IN ZONE
+16:42:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:05  INFO     USTECH100M  29880.85000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:42:08  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:42:08  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:08  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.7p)  ◄ IN ZONE
+16:42:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:08  INFO     AUDUSD  0.71745  Asia[0.71535–0.71724 19p]  nearest=0.71677 (6.8p)
+16:42:11  INFO     EURUSD  1.16444  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.6p)  ◄ IN ZONE
+16:42:11  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:11  INFO     USDJPY  158.90850  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.8p)  ◄ IN ZONE
+16:42:11  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:15  INFO     EURUSD  1.16443  Asia[1.16327–1.16475 15p]  nearest=1.16438 (0.5p)  ◄ IN ZONE
+16:42:15  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:15  INFO     USDJPY  158.90650  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.6p)  ◄ IN ZONE
+16:42:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:18  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.7p)  ◄ IN ZONE
+16:42:18  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:21  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:42:21  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:25  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:42:25  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:28  INFO     GBPUSD  1.35041  Asia[1.34482–1.34896 41p]  nearest=1.35103 (6.2p)
+16:42:28  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:42:28  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:28  INFO     XAUUSD  4569.23500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.7p)
+16:42:31  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:42:31  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:35  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:42:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:38  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.0p)  ◄ IN ZONE
+16:42:38  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:38  INFO     USTECH100M  29883.60000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:42:41  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:42:41  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:41  INFO     AUDUSD  0.71757  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.0p)
+16:42:45  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:42:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:48  INFO     EURUSD  1.16451  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.3p)
+16:42:48  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:42:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:51  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:42:51  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:55  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:42:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:42:58  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:42:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:01  INFO     GBPUSD  1.35046  Asia[1.34482–1.34896 41p]  nearest=1.35103 (5.7p)
+16:43:01  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:43:01  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:01  INFO     XAUUSD  4569.08500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.5p)
+16:43:04  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:43:04  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:08  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:43:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:11  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:43:11  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:11  INFO     USTECH100M  29882.60000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:43:14  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:43:14  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:14  INFO     AUDUSD  0.71757  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.0p)
+16:43:18  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:43:18  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:21  INFO     EURUSD  1.16449  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.1p)
+16:43:21  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:43:21  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:24  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:43:24  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:28  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.0p)  ◄ IN ZONE
+16:43:28  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:31  INFO     GBPUSD  1.35048  Asia[1.34482–1.34896 41p]  nearest=1.35103 (5.5p)
+16:43:31  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.0p)  ◄ IN ZONE
+16:43:31  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:31  INFO     XAUUSD  4569.22500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.6p)
+16:43:35  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:43:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:38  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:43:38  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:41  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:43:41  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:41  INFO     USTECH100M  29882.85000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:43:45  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:43:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:45  INFO     AUDUSD  0.71758  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.1p)
+16:43:48  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:43:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:51  INFO     EURUSD  1.16450  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.2p)
+16:43:51  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:43:51  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:55  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:43:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:43:58  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.1p)  ◄ IN ZONE
+16:43:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:01  INFO     GBPUSD  1.35041  Asia[1.34482–1.34896 41p]  nearest=1.35103 (6.2p)
+16:44:01  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.4p)  ◄ IN ZONE
+16:44:01  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:01  INFO     XAUUSD  4569.01500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.4p)
+16:44:05  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.5p)  ◄ IN ZONE
+16:44:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:08  INFO     USDJPY  158.90550  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.5p)  ◄ IN ZONE
+16:44:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:11  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.4p)  ◄ IN ZONE
+16:44:11  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:15  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.4p)  ◄ IN ZONE
+16:44:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:15  INFO     AUDUSD  0.71757  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.0p)
+16:44:15  INFO     USTECH100M  29877.35000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:44:18  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:44:18  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:21  INFO     EURUSD  1.16450  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.2p)
+16:44:21  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:44:21  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:25  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:44:25  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:28  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:44:28  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:31  INFO     GBPUSD  1.35044  Asia[1.34482–1.34896 41p]  nearest=1.35103 (5.9p)
+16:44:31  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:44:31  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:31  INFO     XAUUSD  4568.86500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.3p)
+16:44:35  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:44:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:38  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:44:38  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:41  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:44:41  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:45  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:44:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:45  INFO     AUDUSD  0.71758  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.1p)
+16:44:45  INFO     USTECH100M  29879.35000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:44:48  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:44:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:51  INFO     EURUSD  1.16454  Asia[1.16327–1.16475 15p]  nearest=1.16438 (1.6p)
+16:44:51  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.2p)  ◄ IN ZONE
+16:44:51  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:55  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.3p)  ◄ IN ZONE
+16:44:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:44:58  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.90075 (0.4p)  ◄ IN ZONE
+16:44:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:45:05  INFO     GBPUSD  1.35046  Asia[1.34482–1.34896 41p]  nearest=1.35096 (5.0p)
+16:45:05  INFO     XAUUSD  4569.09500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.5p)
+16:45:18  INFO     AUDUSD  0.71758  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.1p)
+16:45:18  INFO     USTECH100M  29878.50000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:45:21  INFO     EURUSD  1.16449  Asia[1.16327–1.16475 15p]  nearest=1.16435 (1.4p)
+16:45:31  INFO     USDJPY  158.90450  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.1p)
+16:45:35  INFO     GBPUSD  1.35043  Asia[1.34482–1.34896 41p]  nearest=1.35096 (5.3p)
+16:45:35  INFO     XAUUSD  4569.34500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (3.8p)
+16:45:41  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.9p)  ◄ IN ZONE
+16:45:41  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:45:45  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.9p)  ◄ IN ZONE
+16:45:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:45:48  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.9p)  ◄ IN ZONE
+16:45:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:45:51  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.9p)  ◄ IN ZONE
+16:45:51  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:45:51  INFO     AUDUSD  0.71764  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.7p)
+16:45:51  INFO     USTECH100M  29879.10000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:45:55  INFO     EURUSD  1.16452  Asia[1.16327–1.16475 15p]  nearest=1.16435 (1.7p)
+16:45:55  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.9p)  ◄ IN ZONE
+16:45:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:45:58  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.9p)  ◄ IN ZONE
+16:45:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:01  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.9p)  ◄ IN ZONE
+16:46:01  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:05  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:46:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:08  INFO     GBPUSD  1.35051  Asia[1.34482–1.34896 41p]  nearest=1.35096 (4.5p)
+16:46:08  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.8p)  ◄ IN ZONE
+16:46:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:08  INFO     XAUUSD  4569.62500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.0p)
+16:46:11  INFO     USDJPY  158.89350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.0p)  ◄ IN ZONE
+16:46:11  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:15  INFO     USDJPY  158.89350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.0p)  ◄ IN ZONE
+16:46:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:18  INFO     USDJPY  158.89350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.0p)  ◄ IN ZONE
+16:46:18  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:21  INFO     USDJPY  158.89350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.0p)  ◄ IN ZONE
+16:46:21  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:24  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.5p)  ◄ IN ZONE
+16:46:24  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:24  INFO     AUDUSD  0.71766  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.9p)
+16:46:24  INFO     USTECH100M  29880.25000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:46:28  INFO     EURUSD  1.16456  Asia[1.16327–1.16475 15p]  nearest=1.16475 (1.9p)
+16:46:28  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.5p)  ◄ IN ZONE
+16:46:28  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:31  INFO     USDJPY  158.90050  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.7p)  ◄ IN ZONE
+16:46:31  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:34  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.8p)  ◄ IN ZONE
+16:46:34  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:38  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.8p)  ◄ IN ZONE
+16:46:38  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:41  INFO     GBPUSD  1.35048  Asia[1.34482–1.34896 41p]  nearest=1.35096 (4.8p)
+16:46:41  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.8p)  ◄ IN ZONE
+16:46:41  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:41  INFO     XAUUSD  4569.57500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.0p)
+16:46:44  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.8p)  ◄ IN ZONE
+16:46:44  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:48  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.8p)  ◄ IN ZONE
+16:46:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:51  INFO     USDJPY  158.89450  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.1p)  ◄ IN ZONE
+16:46:51  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:54  INFO     USDJPY  158.89350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.0p)  ◄ IN ZONE
+16:46:54  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:58  INFO     USDJPY  158.89550  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.2p)  ◄ IN ZONE
+16:46:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:46:58  INFO     AUDUSD  0.71769  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.2p)
+16:46:58  INFO     USTECH100M  29876.60000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:47:01  INFO     EURUSD  1.16455  Asia[1.16327–1.16475 15p]  nearest=1.16475 (2.0p)
+16:47:01  INFO     USDJPY  158.89550  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.2p)  ◄ IN ZONE
+16:47:01  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:04  INFO     USDJPY  158.89550  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.2p)  ◄ IN ZONE
+16:47:04  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:08  INFO     USDJPY  158.89550  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.2p)  ◄ IN ZONE
+16:47:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:11  INFO     GBPUSD  1.35053  Asia[1.34482–1.34896 41p]  nearest=1.35096 (4.3p)
+16:47:11  INFO     USDJPY  158.89550  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.2p)  ◄ IN ZONE
+16:47:11  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:11  INFO     XAUUSD  4570.19500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.6p)
+16:47:15  INFO     USDJPY  158.89550  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.2p)  ◄ IN ZONE
+16:47:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:18  INFO     USDJPY  158.89550  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.2p)  ◄ IN ZONE
+16:47:18  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:21  INFO     USDJPY  158.89650  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.3p)  ◄ IN ZONE
+16:47:21  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:25  INFO     USDJPY  158.89750  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.4p)  ◄ IN ZONE
+16:47:25  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:28  INFO     USDJPY  158.89750  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.4p)  ◄ IN ZONE
+16:47:28  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:28  INFO     AUDUSD  0.71768  Asia[0.71535–0.71724 19p]  nearest=0.71677 (9.1p)
+16:47:28  INFO     USTECH100M  29878.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:47:31  INFO     EURUSD  1.16454  Asia[1.16327–1.16475 15p]  nearest=1.16435 (1.9p)
+16:47:31  INFO     USDJPY  158.89750  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.4p)  ◄ IN ZONE
+16:47:31  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:35  INFO     USDJPY  158.89650  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.3p)  ◄ IN ZONE
+16:47:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:38  INFO     USDJPY  158.89650  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.3p)  ◄ IN ZONE
+16:47:38  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:41  INFO     GBPUSD  1.35051  Asia[1.34482–1.34896 41p]  nearest=1.35096 (4.5p)
+16:47:41  INFO     USDJPY  158.89650  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.3p)  ◄ IN ZONE
+16:47:41  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:42  INFO     XAUUSD  4570.31500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.7p)
+16:47:45  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.6p)  ◄ IN ZONE
+16:47:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:48  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.6p)  ◄ IN ZONE
+16:47:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:52  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.6p)  ◄ IN ZONE
+16:47:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:55  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.6p)  ◄ IN ZONE
+16:47:55  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:58  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.6p)  ◄ IN ZONE
+16:47:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:47:58  INFO     AUDUSD  0.71766  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.9p)
+16:47:58  INFO     USTECH100M  29880.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:48:02  INFO     EURUSD  1.16450  Asia[1.16327–1.16475 15p]  nearest=1.16435 (1.5p)
+16:48:02  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.6p)  ◄ IN ZONE
+16:48:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:05  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.6p)  ◄ IN ZONE
+16:48:05  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:09  INFO     USDJPY  158.89950  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.6p)  ◄ IN ZONE
+16:48:09  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:12  INFO     GBPUSD  1.35049  Asia[1.34482–1.34896 41p]  nearest=1.35096 (4.7p)
+16:48:12  INFO     USDJPY  158.89750  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.4p)  ◄ IN ZONE
+16:48:12  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:12  INFO     XAUUSD  4570.50500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.9p)
+16:48:15  INFO     USDJPY  158.89850  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.5p)  ◄ IN ZONE
+16:48:15  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:19  INFO     USDJPY  158.90150  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.8p)  ◄ IN ZONE
+16:48:19  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:22  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.9p)  ◄ IN ZONE
+16:48:22  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:25  INFO     EURUSD  1.16442  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.7p)  ◄ IN ZONE
+16:48:25  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:25  INFO     USDJPY  158.90250  Asia[158.74100–158.95400 21p]  nearest=158.89350 (0.9p)  ◄ IN ZONE
+16:48:25  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:28  INFO     EURUSD  1.16438  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.3p)  ◄ IN ZONE
+16:48:28  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:29  INFO     AUDUSD  0.71763  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.6p)
+16:48:29  INFO     USTECH100M  29877.35000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:48:32  INFO     EURUSD  1.16438  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.3p)  ◄ IN ZONE
+16:48:32  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:32  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:48:32  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:35  INFO     EURUSD  1.16438  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.3p)  ◄ IN ZONE
+16:48:35  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:35  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:48:35  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:39  INFO     EURUSD  1.16438  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.3p)  ◄ IN ZONE
+16:48:39  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:42  INFO     EURUSD  1.16434  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.1p)  ◄ IN ZONE
+16:48:42  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:45  INFO     EURUSD  1.16434  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.1p)  ◄ IN ZONE
+16:48:45  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:45  INFO     GBPUSD  1.35031  Asia[1.34482–1.34896 41p]  nearest=1.35096 (6.5p)
+16:48:45  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:48:45  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:45  INFO     XAUUSD  4570.16500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.6p)
+16:48:48  INFO     EURUSD  1.16435  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.0p)  ◄ IN ZONE
+16:48:48  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:48  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:48:48  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:52  INFO     EURUSD  1.16435  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.0p)  ◄ IN ZONE
+16:48:52  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:52  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:48:52  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:55  INFO     EURUSD  1.16434  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.1p)  ◄ IN ZONE
+16:48:55  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:48:58  INFO     EURUSD  1.16434  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.1p)  ◄ IN ZONE
+16:48:58  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:02  INFO     EURUSD  1.16434  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.1p)  ◄ IN ZONE
+16:49:02  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:02  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:49:02  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:02  INFO     AUDUSD  0.71759  Asia[0.71535–0.71724 19p]  nearest=0.71677 (8.2p)
+16:49:02  INFO     USTECH100M  29879.10000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:49:05  INFO     EURUSD  1.16434  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.1p)  ◄ IN ZONE
+16:49:05  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:08  INFO     EURUSD  1.16430  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.5p)  ◄ IN ZONE
+16:49:08  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:12  INFO     EURUSD  1.16428  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.7p)  ◄ IN ZONE
+16:49:12  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:18  INFO     GBPUSD  1.35019  Asia[1.34482–1.34896 41p]  nearest=1.35096 (7.7p)
+16:49:19  INFO     XAUUSD  4570.61500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.0p)
+16:49:32  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.4p)
+16:49:32  INFO     AUDUSD  0.71751  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.4p)
+16:49:32  INFO     USTECH100M  29881.00000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:49:35  INFO     EURUSD  1.16429  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.6p)  ◄ IN ZONE
+16:49:35  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:38  INFO     EURUSD  1.16429  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.6p)  ◄ IN ZONE
+16:49:38  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:42  INFO     EURUSD  1.16428  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.7p)  ◄ IN ZONE
+16:49:42  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:45  INFO     EURUSD  1.16428  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.7p)  ◄ IN ZONE
+16:49:45  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:48  INFO     EURUSD  1.16428  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.7p)  ◄ IN ZONE
+16:49:48  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:52  INFO     EURUSD  1.16428  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.7p)  ◄ IN ZONE
+16:49:52  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:52  INFO     GBPUSD  1.35021  Asia[1.34482–1.34896 41p]  nearest=1.35096 (7.5p)
+16:49:52  INFO     XAUUSD  4570.34500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (4.8p)
+16:49:55  INFO     EURUSD  1.16428  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.7p)  ◄ IN ZONE
+16:49:55  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:49:58  INFO     EURUSD  1.16428  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.7p)  ◄ IN ZONE
+16:49:58  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:50:02  INFO     EURUSD  1.16428  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.7p)  ◄ IN ZONE
+16:50:02  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:50:05  INFO     EURUSD  1.16428  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.7p)  ◄ IN ZONE
+16:50:05  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:50:05  INFO     USDJPY  158.90650  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.3p)
+16:50:05  INFO     AUDUSD  0.71753  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.6p)
+16:50:05  INFO     USTECH100M  29880.60000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:50:12  INFO     EURUSD  1.16429  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.6p)  ◄ IN ZONE
+16:50:12  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:50:15  INFO     EURUSD  1.16428  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.7p)  ◄ IN ZONE
+16:50:15  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:50:25  INFO     GBPUSD  1.35021  Asia[1.34482–1.34896 41p]  nearest=1.35096 (7.5p)
+16:50:25  INFO     XAUUSD  4570.59500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.0p)
+16:50:38  INFO     USDJPY  158.90750  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.4p)
+16:50:38  INFO     AUDUSD  0.71748  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.1p)
+16:50:38  INFO     USTECH100M  29878.50000  Asia[29643.30000–29891.00000 2477000p]  no confluences — today=47 levels  yest Asia[29385.20000–29528.00000 1428000p]=47 levels  tol=2p
+16:50:48  INFO     EURUSD  1.16426  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.9p)
+16:50:51  INFO     EURUSD  1.16433  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.2p)  ◄ IN ZONE
+16:50:51  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:50:51  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:50:51  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:50:54  INFO     EURUSD  1.16433  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.2p)  ◄ IN ZONE
+16:50:54  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:50:58  INFO     EURUSD  1.16434  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.1p)  ◄ IN ZONE
+16:50:58  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:50:58  INFO     GBPUSD  1.35027  Asia[1.34482–1.34896 41p]  nearest=1.35096 (6.9p)
+16:50:58  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:50:58  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:50:58  INFO     XAUUSD  4570.62500  Asia[4526.16000–4578.72000 53p]  nearest=4565.58000 (5.0p)
+16:51:01  INFO     EURUSD  1.16434  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.1p)  ◄ IN ZONE
+16:51:01  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:51:01  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:51:01  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:51:04  INFO     EURUSD  1.16434  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.1p)  ◄ IN ZONE
+16:51:04  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:51:04  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:51:04  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:51:08  INFO     EURUSD  1.16434  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.1p)  ◄ IN ZONE
+16:51:08  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:51:08  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:51:08  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:51:11  INFO     EURUSD  1.16434  Asia[1.16327–1.16475 15p]  nearest=1.16435 (0.1p)  ◄ IN ZONE
+16:51:11  INFO       EURUSD  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:51:11  INFO     USDJPY  158.90350  Asia[158.74100–158.95400 21p]  nearest=158.89350 (1.0p)  ◄ IN ZONE
+16:51:11  INFO       USDJPY  dir=none   conv=0.00  confirms=0 conflicts=0  [no features]
+16:51:11  INFO     AUDUSD  0.71748  Asia[0.71535–0.71724 19p]  nearest=0.71677 (7.1p)
