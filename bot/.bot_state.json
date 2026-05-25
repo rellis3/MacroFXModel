@@ -2,9 +2,9 @@
   "risk_guard": {
     "day_start_bal": 89839.81,
     "month_start_bal": 10000.0,
-    "locked_until": 1779662607.4008873,
+    "locked_until": 1779487852.5729687,
     "last_trade_by_pair": {
-      "XAU/USD": 1779352343.38085
+      "XAU/USD": 1779697649.0018642
     },
     "last_reset_date": "2026-05-25"
   },
