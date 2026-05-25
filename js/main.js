@@ -1067,7 +1067,7 @@ export function updateAlertBtn() {
   if (cfg.enabled) {
     btn.style.borderColor = 'var(--green-bd)';
     btn.style.color       = 'var(--green)';
-    btn.title             = `Telegram alerts ON · min ${cfg.minStars}★`;
+    btn.title             = `Telegram alerts ON · min grade ${cfg.minGrade ?? 'B'}`;
   } else {
     btn.style.borderColor = '';
     btn.style.color       = '';

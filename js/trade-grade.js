@@ -75,7 +75,7 @@ export function gradeEntry(entry, hmmData = null, intraday30m = null) {
 
   // ── Grade ─────────────────────────────────────────────────────────────────
   let grade, color;
-  if (hardStop || score < 30) {
+  if (hardStop) {
     grade = 'SKIP'; color = '#ef4444';
   } else if (score >= 72 && conviction >= 0.10 && warnings.length === 0) {
     grade = 'A+';   color = '#22c55e';
@@ -83,14 +83,17 @@ export function gradeEntry(entry, hmmData = null, intraday30m = null) {
     grade = 'A';    color = '#4ade80';
   } else if (score >= 46) {
     grade = 'B';    color = '#f59e0b';
-  } else {
+  } else if (score >= 30) {
     grade = 'C';    color = '#94a3b8';
+  } else {
+    grade = 'D';    color = '#64748b';
   }
 
   const verdict = grade === 'SKIP'                    ? 'SKIP'
                 : (grade === 'A+' || grade === 'A')   ? 'TAKE'
                 : grade === 'B'                       ? 'WATCH'
-                :                                       'CAUTION';
+                : grade === 'C'                       ? 'CAUTION'
+                :                                       'SKIP';  // D = too weak
 
   return {
     grade,

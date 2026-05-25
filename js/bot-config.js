@@ -8,7 +8,6 @@ const DEFAULTS = {
   mode: 'full',
   enabled_pairs: ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD'],
   tg_mode: {
-    min_grade:        'B',
     min_signal_score: 0.55,
   },
   modules: {
@@ -20,11 +19,10 @@ const DEFAULTS = {
     news_risk:    false,
   },
   execution: {
-    tier:                'balanced',
+    min_grade:           'B',
     bardir:              'auto',
     wtthreshold:         35,
     min_macro_score:     5,
-    min_stars:           3,
     min_agree:           3,
     max_trades:          2,
     composite_threshold: 0.60,
@@ -263,11 +261,10 @@ function readForm() {
   });
 
   _cfg.execution = _cfg.execution || {};
-  _cfg.execution.tier                = str('ex_tier',        'balanced');
+  _cfg.execution.min_grade           = str('ex_min_grade',   'B');
   _cfg.execution.bardir              = str('ex_bardir',      'auto');
   _cfg.execution.wtthreshold         = num('ex_wtthreshold', 35);
   _cfg.execution.min_macro_score     = num('ex_min_score',   5);
-  _cfg.execution.min_stars           = num('ex_min_stars',   3);
   _cfg.execution.min_agree           = num('ex_min_agree',   3);
   _cfg.execution.max_trades          = num('ex_max_trades',  2);
   _cfg.execution.composite_threshold = num('ex_threshold',   0.60);
@@ -305,7 +302,6 @@ function readForm() {
 
   _cfg.mode = radio('bot_mode', 'full');
   _cfg.tg_mode = _cfg.tg_mode || {};
-  _cfg.tg_mode.min_grade        = str('tg_min_grade', 'B');
   _cfg.tg_mode.min_signal_score = num('tg_min_signal', 0.55);
 }
 
@@ -326,11 +322,10 @@ function renderForm() {
     if (el) el.checked = (_cfg.enabled_pairs || []).includes(p);
   }
   const ec = _cfg.execution || {};
-  setVal('ex_tier',        ec.tier              ?? 'balanced');
+  setVal('ex_min_grade',   ec.min_grade         ?? 'B');
   setVal('ex_bardir',      ec.bardir            ?? 'auto');
   setVal('ex_wtthreshold', ec.wtthreshold       ?? 35);
   setVal('ex_min_score',   ec.min_macro_score   ?? 5);
-  setVal('ex_min_stars',   ec.min_stars         ?? 3);
   setVal('ex_min_agree',   ec.min_agree         ?? 3);
   setVal('ex_max_trades',  ec.max_trades        ?? 2);
   setVal('ex_threshold',   ec.composite_threshold ?? 0.60);
@@ -358,7 +353,6 @@ function renderForm() {
   setVal('tw_end',         _cfg.safety?.trade_window_end   ?? '21:00');
   setVal('oi_wall_pips',   _cfg.oi_walls?.oi_wall_pips ?? 15);
   setRadio('bot_mode',     _cfg.mode ?? 'full');
-  setVal('tg_min_grade',   _cfg.tg_mode?.min_grade        ?? 'B');
   setVal('tg_min_signal',  _cfg.tg_mode?.min_signal_score ?? 0.55);
   if (typeof window.toggleTgSettings === 'function') window.toggleTgSettings();
 }
@@ -549,11 +543,11 @@ async function loadBotStatus() {
     const age = Math.round((Date.now() - (data.timestamp ?? 0)) / 60000);
     setText('bsAge',     `Last loop ${age}m ago`);
     setText('bsPaper',   data.paper ? '· paper' : '· LIVE');
-    setText('bsTier',    data.tier    ? `· ${data.tier}` : '');
+    setText('bsTier',    data.min_grade ? `· Grade ${data.min_grade}` : '');
     setText('bsBalance', data.balance ? `· $${(+data.balance).toLocaleString('en-US', {maximumFractionDigits:0})}` : '');
     const pairs = (data.pairs_evaluated || []).map(p => {
       const col = p.action === 'trade' ? 'bs-green' : 'bs-dim';
-      return `<span class="${col}">${p.pair}→${p.action}${p.direction ? ' ' + p.direction : ''}${p.stars != null ? ' ' + p.stars + '★' : ''}</span>`;
+      return `<span class="${col}">${p.pair}→${p.action}${p.direction ? ' ' + p.direction : ''}${p.grade ? ' [' + p.grade + ']' : ''}</span>`;
     }).join('  ');
     document.getElementById('bsPairs').innerHTML = pairs || '<span class="bs-dim">No pairs evaluated</span>';
     const blocked = (data.pairs_blocked || []);

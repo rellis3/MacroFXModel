@@ -245,18 +245,15 @@ Example:
 
     <div class="oi-form-row" style="gap:10px;margin-bottom:10px">
       <div>
-        <label class="oi-lbl">Minimum Stars</label>
-        <input class="oi-input" type="number" id="alertMinStars" value="4" min="1" max="7" step="1">
-        <div class="oi-hint">1–7 · only alert if entry has at least this many stars</div>
-      </div>
-      <div>
-        <label class="oi-lbl">Level Strength</label>
-        <select class="oi-input" id="alertMinStrength">
-          <option value="">Any grade</option>
-          <option value="strong">Strong (A / A+)</option>
-          <option value="stronger">Stronger (A+ only)</option>
+        <label class="oi-lbl">Min Grade</label>
+        <select class="oi-input" id="alertMinGrade">
+          <option value="A+">A+ — highest conviction</option>
+          <option value="A">A — strong</option>
+          <option value="B">B — balanced (default)</option>
+          <option value="C">C — any valid signal</option>
+          <option value="D">D — permissive</option>
         </select>
-        <div class="oi-hint">Filter by trade grade — A+ is highest quality</div>
+        <div class="oi-hint">Minimum entry grade to trigger an alert</div>
       </div>
       <div>
         <label class="oi-lbl">Cooldown (minutes)</label>

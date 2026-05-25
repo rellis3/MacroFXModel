@@ -36,7 +36,7 @@ from datetime import datetime, timezone, date as date_type
 from utils.state_reader import fetch_state, fetch_quote, check_staleness, push_bot_status, trigger_refresh, StaleDataError
 from utils.sl_tp_engine import SLTPEngine
 from utils.indicators import compute_atr, compute_wt1, atr_to_tol_pips
-from utils.config_helpers import resolve_min_stars, session_threshold_mult
+from utils.config_helpers import resolve_grade_thresholds, _GRADE_ORDER, session_threshold_mult
 from utils.persistence import load_bot_state, save_bot_state
 from position_manager import manage_positions, MAGIC
 from modules.vol_gate import VolGateModule
@@ -89,7 +89,7 @@ _PIP_SIZES = {
     'NAS100_USD': 1.0,
 }
 
-# resolve_min_stars and session_threshold_mult live in utils/config_helpers.py
+# resolve_grade_thresholds and session_threshold_mult live in utils/config_helpers.py
 
 
 # ── Live price (fast path) ────────────────────────────────────────────────────
@@ -154,9 +154,9 @@ def pre_screen(state: dict, pair: str, config: dict, live_price: float) -> tuple
     snap      = state.get('regime_snapshot') or {}
     pair_data = (snap.get('pairs') or {}).get(pair) or {}
     entries   = pair_data.get('entries') or []
-    exec_cfg  = config.get('execution') or {}
-    min_stars = resolve_min_stars(exec_cfg)
-    bardir    = (exec_cfg.get('bardir') or 'auto').lower()
+    exec_cfg            = config.get('execution') or {}
+    min_grade, min_stars = resolve_grade_thresholds(exec_cfg)
+    bardir               = (exec_cfg.get('bardir') or 'auto').lower()
     wt_thresh = exec_cfg.get('wtthreshold', 35)
     pip_size  = _PIP_SIZES.get(pair, 0.0001)
 
@@ -554,7 +554,7 @@ def execute_trade(pair: str, direction: str, entry: dict,
         'tp':           sl_tp.tp,
         'deviation':    20,
         'magic':        20260001,
-        'comment':      f'MacroFX {direction[0]} {entry.get("totalStars", 0)}★',
+        'comment':      f'MacroFX {direction[0]} {entry.get("grade","?")} {entry.get("totalStars", 0)}★',
         'type_time':    mt5.ORDER_TIME_GTC,
         'type_filling': filling_mode,
     })
@@ -642,7 +642,7 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
     size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, sizing_mult)
 
     log.info(
-        f'  [{pair}] ENTRY {direction} {entry.get("totalStars", 0)}★  '
+        f'  [{pair}] ENTRY {direction} [{entry.get("grade","?")}] {entry.get("totalStars", 0)}★  '
         f'level={level_price}  live={live_price}  dist={dist_pips:.1f}pips  '
         f'SL={sl_tp.sl}  TP={sl_tp.tp}  R:R={sl_tp.rr_ratio}  lot={size}  score={comp_score:.2f}'
     )
@@ -677,9 +677,8 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
     exec_cfg    = config.get('execution') or {}
     tg_cfg      = config.get('tg_mode') or {}
 
-    min_stars   = resolve_min_stars(exec_cfg)
-    min_grade   = tg_cfg.get('min_grade', 'B')
-    min_signal  = tg_cfg.get('min_signal_score', 0.55)
+    min_grade, min_stars = resolve_grade_thresholds(exec_cfg)
+    min_signal           = tg_cfg.get('min_signal_score', 0.55)
     pip_size    = _PIP_SIZES.get(pair, 0.0001)
     tol_pips    = (state.get('_tol_pips') or {}).get(pair) or exec_cfg.get('prox_pips', 8)
     tol_dist    = tol_pips * pip_size
@@ -688,11 +687,10 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
     entries     = pair_snap.get('entries') or []
     pair_status = {'pair': pair, 'action': 'skip', 'live_price': live_price, 'reason': ''}
 
-    grade_order = {'A': 3, 'B': 2, 'C': 1}
     candidates  = [
         e for e in entries
         if (e.get('totalStars') or 0) >= min_stars
-        and grade_order.get(e.get('grade') or 'C', 0) >= grade_order.get(min_grade, 2)
+        and _GRADE_ORDER.get(e.get('grade') or 'D', 0) >= _GRADE_ORDER.get(min_grade, 3)
         and e.get('direction') in ('long', 'short')
         and (e.get('signalScore') or 0) >= min_signal
         and abs((e.get('price') or 0) - live_price) <= tol_dist
@@ -726,8 +724,8 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
     size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, sizing_mult) if sl_dist else 0
 
     log.info(
-        f'  [{pair}] TG-MODE {direction} {entry.get("totalStars", 0)}★  '
-        f'grade={entry.get("grade")}  sig={entry.get("signalScore", 0):.2f}  '
+        f'  [{pair}] TG-MODE {direction} [{entry.get("grade", "?")}] {entry.get("totalStars", 0)}★  '
+        f'sig={entry.get("signalScore", 0):.2f}  '
         f'level={level_price}  live={live_price}  dist={dist_pips:.1f}pips  '
         f'SL={sl_tp.sl}  TP={sl_tp.tp}  R:R={sl_tp.rr_ratio}  lot={size}'
     )
@@ -737,6 +735,7 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
     pair_status.update({
         'action':           'trade',       'direction':       direction,
         'score':            round(entry.get('signalScore') or 0, 2),
+        'grade':            entry.get('grade'),
         'stars':            entry.get('totalStars'),  'level':  level_price,
         'live':             live_price,    'dist_pips':       round(dist_pips, 1),
         'sl':               sl_tp.sl,      'tp':              sl_tp.tp,
@@ -762,8 +761,8 @@ def log_diagnostic_summary(state: dict, live_prices: dict, config: dict, base_ur
     snap        = state.get('regime_snapshot') or {}
     pairs_snap  = snap.get('pairs') or {}
     enabled     = config.get('enabled_pairs') or []
-    exec_cfg    = config.get('execution') or {}
-    min_stars   = resolve_min_stars(exec_cfg)
+    exec_cfg              = config.get('execution') or {}
+    min_grade, min_stars  = resolve_grade_thresholds(exec_cfg)
 
     all_syms = list(pairs_snap.keys())
     if not all_syms:
@@ -806,8 +805,8 @@ def log_diagnostic_summary(state: dict, live_prices: dict, config: dict, base_ur
                 dist_str = f'{dist:.1f}p'
             else:
                 dist_str = '?p'
-            skip = '' if stars >= min_stars else f'[skip<{min_stars}★]'
-            entry_parts.append(f'{dirn}{ep}({stars}★{grade} {dist_str}){skip}')
+            skip = '' if (stars >= min_stars and _GRADE_ORDER.get(grade, 0) >= _GRADE_ORDER.get(min_grade, 3)) else f'[skip<{min_grade}]'
+            entry_parts.append(f'{dirn}{ep}({grade} {stars}★ {dist_str}){skip}')
 
         # Show closest 6 entries to keep log lines manageable
         shown   = entry_parts[:6]
@@ -816,7 +815,7 @@ def log_diagnostic_summary(state: dict, live_prices: dict, config: dict, base_ur
         lines.append(f'  {sym}{tag} @ {price_str} | {" ".join(shown)}{suffix}')
 
     pushed_at = snap.get('pushed_at', 'unknown')
-    log.info(f'[DIAG] Snapshot pushed_at={pushed_at}  min_stars={min_stars}\n' + '\n'.join(lines))
+    log.info(f'[DIAG] Snapshot pushed_at={pushed_at}  min_grade={min_grade} (≥{min_stars}★)\n' + '\n'.join(lines))
 
 
 # ── Main loop — two-speed ─────────────────────────────────────────────────────
@@ -1113,8 +1112,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                 'mgmt_actions':      mgmt_actions,
                 'open_positions':    len(position_meta),
                 'mode':              config.get('mode', 'full'),
-                'tier':              exec_cfg.get('tier', 'balanced'),
-                'min_stars':         resolve_min_stars(exec_cfg),
+                'min_grade':         exec_cfg.get('min_grade', 'B'),
                 'bardir':            exec_cfg.get('bardir', 'auto'),
                 'wtthreshold':       exec_cfg.get('wtthreshold', 35),
                 'sizing':            risk_guard.sizing_mult,

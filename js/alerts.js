@@ -29,9 +29,7 @@ const DEFAULT_CFG = {
   enabled:        false,
   browserEnabled: true,   // browser tab proximity alerts on/off
   serverEnabled:  true,   // Railway server monitoring loop on/off
-  minStars:       4,      // minimum totalStars for browser-computed entries
-  serverMinStars: 2,      // minimum totalStars for server-computed entries (server tops out at 2-3★)
-  minStrength: null,        // null = any | 'strong' = A/A+ | 'stronger' = A+ only
+  minGrade:       'B',    // A/B/C/D — minimum grade to alert on
   pairs:       [],          // [] = all active pairs; ['EUR/USD','XAU/USD'] = specific
   proxPips:    {            // pips from level to trigger alert
     default:  5,
@@ -248,9 +246,8 @@ export function checkAndSendAlerts() {
     const proxDist = proxPips * pipSz;
 
     for (const e of cached.entries) {
-      if ((e.totalStars ?? 0) < cfg.minStars) continue;
-      if (cfg.minStrength === 'strong'   && e.grade !== 'A' && e.grade !== 'A+') continue;
-      if (cfg.minStrength === 'stronger' && e.grade !== 'A+') continue;
+      const _GRADE_ORDER = {'A+': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1, 'SKIP': 0};
+      if ((_GRADE_ORDER[e.grade] ?? 0) < (_GRADE_ORDER[cfg.minGrade ?? 'B'] ?? 3)) continue;
       if (cfg.onlyAligned && !e.signalAligned) continue;
       if (e.direction == null) continue;
 
@@ -288,7 +285,7 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
   const unit     = sym === 'NAS100_USD' ? 'pts' : 'p';
   const arrowStr = approachArrow ?? '';
   const dir      = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
-  const stars    = '★'.repeat(Math.min(5, entry.totalStars ?? 0));
+  const stars    = entry.grade ? `[${entry.grade}]` : '';
   const rrStr    = entry.rrRatio ? `R:R 1:${entry.rrRatio}` : '';
   const slStr    = entry.sl != null ? `SL ${entry.sl.toFixed(digits)}` : '';
   const tpStr    = entry.tp != null ? `TP ${entry.tp.toFixed(digits)} (${entry.tpNote ?? ''})` : '';
@@ -378,8 +375,7 @@ export function openAlertModal() {
   document.getElementById('alertEnabled').checked         = cfg.enabled;
   document.getElementById('alertBrowserEnabled').checked  = cfg.browserEnabled !== false;
   document.getElementById('alertServerEnabled').checked   = cfg.serverEnabled  !== false;
-  document.getElementById('alertMinStars').value          = cfg.minStars;
-  document.getElementById('alertMinStrength').value    = cfg.minStrength ?? '';
+  document.getElementById('alertMinGrade').value = cfg.minGrade ?? 'B';
   document.getElementById('alertCooldown').value       = cfg.cooldownMin;
   if (document.getElementById('alertFlipCandles')) document.getElementById('alertFlipCandles').value = cfg.flipCandles ?? 3;
   document.getElementById('alertProxDefault').value    = cfg.proxPips?.default ?? 5;
@@ -404,8 +400,7 @@ export function saveAlertModal() {
     enabled:        document.getElementById('alertEnabled').checked,
     browserEnabled: document.getElementById('alertBrowserEnabled').checked,
     serverEnabled:  document.getElementById('alertServerEnabled').checked,
-    minStars:    parseInt(document.getElementById('alertMinStars').value) || 4,
-    minStrength: document.getElementById('alertMinStrength').value || null,
+    minGrade:    document.getElementById('alertMinGrade').value || 'B',
     cooldownMin: parseInt(document.getElementById('alertCooldown').value) || 60,
     onlyAligned:         document.getElementById('alertOnlyAligned').checked,
     regimeChangeAlerts:  document.getElementById('alertRegimeChange')?.checked !== false,

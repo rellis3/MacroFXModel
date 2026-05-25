@@ -32,7 +32,7 @@ const PRICE_DIGITS = {
 
 const DEFAULT_CFG = {
   enabled:     false,
-  minStars:    4,
+  minGrade:    'B',
   pairs:       [],
   proxPips:    { default: 5, 'XAU/USD': 8, 'NAS100_USD': 30 },
   cooldownMin: 60,
@@ -198,7 +198,7 @@ export default {
       ? { ...DEFAULT_CFG, ...(JSON.parse(cfgRaw).data ?? {}) }
       : { ...DEFAULT_CFG };
 
-    note('Alert config: enabled=' + cfg.enabled + ', minStars=' + cfg.minStars + ', cooldown=' + cfg.cooldownMin + 'min');
+    note('Alert config: enabled=' + cfg.enabled + ', minGrade=' + cfg.minGrade + ', cooldown=' + cfg.cooldownMin + 'min');
 
     if (!cfg.enabled) {
       note('SKIP: alerts disabled in config — toggle Enabled in the Alerts modal');
@@ -253,7 +253,8 @@ export default {
 
       let pairAlerts = 0;
       for (const entry of entries) {
-        if ((entry.totalStars ?? 0) < (cfg.minStars ?? 4)) continue;
+        const _GO = {'A+': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1, 'SKIP': 0};
+        if ((_GO[entry.grade] ?? 0) < (_GO[cfg.minGrade ?? 'B'] ?? 3)) continue;
         if (cfg.onlyAligned && !entry.signalAligned) continue;
         if (!entry.direction) continue;
 

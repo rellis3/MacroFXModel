@@ -41,7 +41,7 @@ except ImportError:
 sys.path.insert(0, os.path.dirname(__file__))
 
 from utils.indicators import compute_atr, compute_wt1, atr_to_tol_pips
-from utils.config_helpers import resolve_min_stars, session_threshold_mult
+from utils.config_helpers import resolve_grade_thresholds, session_threshold_mult
 
 _PIP_SIZES = {
     'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
@@ -213,10 +213,10 @@ def simulate_pre_screen(
     Simulates pre_screen for a single historical entry.
     Returns (score 0-2, tol_pips, wt1).
     """
-    min_stars = resolve_min_stars(exec_cfg)
-    bardir    = (exec_cfg.get('bardir') or 'auto').lower()
-    wt_thresh = exec_cfg.get('wtthreshold', 35)
-    pip_size  = _PIP_SIZES.get(pair, 0.0001)
+    _, min_stars = resolve_grade_thresholds(exec_cfg)
+    bardir       = (exec_cfg.get('bardir') or 'auto').lower()
+    wt_thresh    = exec_cfg.get('wtthreshold', 35)
+    pip_size     = _PIP_SIZES.get(pair, 0.0001)
 
     if entry_stars < min_stars:
         return 0, 0.0, float('nan')
@@ -814,7 +814,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='MacroFX Backtester')
     ap.add_argument('--pair',       help='Filter to single pair e.g. EUR/USD')
     ap.add_argument('--days',       type=int, default=365*6, help='History depth in days (default: 6 years)')
-    ap.add_argument('--tier',       default='balanced', help='Tier: strict|balanced|loose|aggressive')
+    ap.add_argument('--grade',      default='B',        help='Min grade: A|B|C|D')
     ap.add_argument('--bardir',     default='auto',     help='bardir: on|off|auto')
     ap.add_argument('--wt-thresh',  type=int, default=35, help='WT1 significance threshold')
     ap.add_argument('--output',     help='Save results JSON to this file')
@@ -825,10 +825,9 @@ if __name__ == '__main__':
     args = ap.parse_args()
 
     exec_cfg = {
-        'tier':        args.tier,
+        'min_grade':   args.grade,
         'bardir':      args.bardir,
         'wtthreshold': args.wt_thresh,
-        'min_stars':   3,
         'prox_pips':   8,
     }
 

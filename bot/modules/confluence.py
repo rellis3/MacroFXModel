@@ -1,5 +1,5 @@
 from .base import BaseModule, ModuleResult
-from utils.config_helpers import resolve_min_stars
+from utils.config_helpers import resolve_grade_thresholds
 
 _PIP_SIZES = {
     'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
@@ -14,7 +14,7 @@ class ConfluenceModule(BaseModule):
     Selects the highest-quality entry from the dashboard's processed level list.
 
     Filtering order:
-      1. Min star rating (from tier config via resolve_min_stars)
+      1. Min star rating (derived from min_grade config via resolve_grade_thresholds)
       2. Macro direction (if macro_regime voted LONG or SHORT)
       3. Proximity — entry must be within tol_pips of current live price
          (tol_pips comes from state['_tol_pips'][pair] set by pre_screen,
@@ -27,8 +27,8 @@ class ConfluenceModule(BaseModule):
         snap      = state.get('regime_snapshot') or {}
         pair_data = (snap.get('pairs') or {}).get(pair) or {}
         entries   = pair_data.get('entries') or []
-        exec_cfg  = config.get('execution') or {}
-        min_stars = resolve_min_stars(exec_cfg)
+        exec_cfg              = config.get('execution') or {}
+        _, min_stars          = resolve_grade_thresholds(exec_cfg)
 
         if not entries:
             return ModuleResult(

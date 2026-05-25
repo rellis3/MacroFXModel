@@ -82,9 +82,7 @@ const DEFAULT_CFG = {
   enabled:        false,
   browserEnabled: true,  // browser tab proximity alerts (server ignores this)
   serverEnabled:  true,  // Railway server monitoring loop on/off
-  minStars:       4,     // min stars for browser-computed entries
-  serverMinStars: 2,     // min stars for server-computed entries (server levels top out at 2-3★)
-  minStrength: null, // null = any grade | 'strong' = A or A+ | 'stronger' = A+ only
+  minGrade:       'B',   // A/B/C/D — minimum grade to alert on
   pairs:       [],
   proxPips:    { default: 5, 'XAU/USD': 15, 'NAS100_USD': 30 },
   cooldownMin: 60,
@@ -466,18 +464,13 @@ async function monitorTick() {
 
       let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0, skipScore = 0, skipAligned = 0;
 
-      // Server-computed entries top out at 2-3★; use a separate (lower) threshold for them
-      const isServerBucket = bucket.source === 'server';
-      const effectiveMinStars = isServerBucket
-        ? (state.cfg.serverMinStars ?? 2)
-        : (state.cfg.minStars       ?? 4);
+      const _GRADE_ORDER = {'A+': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1, 'SKIP': 0};
+      const minGrade      = state.cfg.minGrade ?? 'B';
 
       // Sort entries by signalScore desc so highest quality alerts fire first
       const sortedEntries = [...bucket.data].sort((a, b) => (b.signalScore ?? -1) - (a.signalScore ?? -1));
 
       for (const entry of sortedEntries) {
-        if ((entry.totalStars ?? 0) < effectiveMinStars)                                       { skipStars++;   continue; }
-
         // Polarity flip — override direction when level was broken and price has returned
         // with regime confirming the new direction. Uses cached M1 bars from HMM refresh.
         const _polarFlip = state.hmm5mBars?.[sym] && entry.direction
@@ -488,9 +481,7 @@ async function monitorTick() {
           : entry;
 
         if (!eff.direction)                                                                      { skipDir++;     continue; }
-        // minStrength grade filter: 'strong' = A or A+, 'stronger' = A+ only
-        if (state.cfg.minStrength === 'strong'   && eff.grade !== 'A' && eff.grade !== 'A+')    { skipScore++;   continue; }
-        if (state.cfg.minStrength === 'stronger' && eff.grade !== 'A+')                         { skipScore++;   continue; }
+        if ((_GRADE_ORDER[eff.grade] ?? 0) < (_GRADE_ORDER[minGrade] ?? 3))                    { skipScore++;   continue; }
         // onlyAligned: only filter when signalAligned is explicitly false (browser-evaluated).
         // Server-side entries omit the field entirely — treat as "unknown", let through.
         if (state.cfg.onlyAligned && eff.signalAligned === false)                               { skipAligned++; continue; }
@@ -525,10 +516,8 @@ async function monitorTick() {
       state.skipCounts[sym] = { stars: skipStars, score: skipScore, dir: skipDir, aligned: skipAligned, prox: skipProx, cooldown: skipCooldown };
 
       if (doSummary && bucket.data.length > 0) {
-        const maxStars = Math.max(...bucket.data.map(e => e.totalStars ?? 0));
         const maxScore = Math.max(...bucket.data.map(e => e.signalScore ?? 0));
-        const srcTag   = isServerBucket ? `srv(≥${effectiveMinStars}★)` : `browser(≥${effectiveMinStars}★)`;
-        summaryLines.push(`${sym}[${srcTag}]: ${bucket.data.length} entries max=${maxStars}★ score=${maxScore}% skip=${skipStars}⭐/${skipScore}score/${skipDir}dir/${skipAligned}align/${skipProx}prox/${skipCooldown}cd`);
+        summaryLines.push(`${sym}[≥${minGrade}]: ${bucket.data.length} entries score=${maxScore}% skip=${skipScore}grade/${skipDir}dir/${skipAligned}align/${skipProx}prox/${skipCooldown}cd`);
       }
     }
 
@@ -537,7 +526,7 @@ async function monitorTick() {
       state.lastSummaryAt = now;
     } else if (doSummary) {
       const cfgSummary = state.cfg
-        ? `enabled=${state.cfg.enabled} server=${state.cfg.serverEnabled !== false} minStars=${state.cfg.minStars} minStrength=${state.cfg.minStrength ?? 'any'}`
+        ? `enabled=${state.cfg.enabled} server=${state.cfg.serverEnabled !== false} minGrade=${state.cfg.minGrade ?? 'B'}`
         : 'cfg=null';
       const tgOk = !!(state.tg?.token && state.tg?.chatId);
       console.log(`[MONITOR] No monitored pairs with levels. ${cfgSummary} tg=${tgOk} levels=${Object.values(state.levels).filter(b => b?.data?.length).length}/${DEFAULT_PAIRS.length}`);

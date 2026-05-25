@@ -1,19 +1,23 @@
 from datetime import datetime, timezone
 
-_TIER_MIN_STARS = {
-    'strict':     4,
-    'balanced':   3,
-    'loose':      2,
-    'aggressive': 1,
+# Unified grade → min confluence stars.  A single min_grade config key
+# replaces the old tier + min_stars + tg_mode.min_grade trio.
+_GRADE_MIN_STARS = {
+    'A':  4,   # strict — highest-conviction only
+    'B':  3,   # balanced (default)
+    'C':  2,   # loose — more setups, more noise
+    'D':  1,   # permissive — any confluence present
 }
 
+_GRADE_ORDER = {'A+': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1, 'SKIP': 0}
 
-def resolve_min_stars(exec_cfg: dict) -> int:
-    """Resolves tier name → min star count. Falls back to explicit min_stars or 3."""
-    tier = (exec_cfg.get('tier') or 'balanced').lower()
-    if tier == 'auto':
-        return exec_cfg.get('min_stars', 3)
-    return _TIER_MIN_STARS.get(tier, exec_cfg.get('min_stars', 3))
+
+def resolve_grade_thresholds(exec_cfg: dict) -> tuple[str, int]:
+    """Returns (min_grade, min_stars) from the unified min_grade config key."""
+    grade = (exec_cfg.get('min_grade') or 'B').upper()
+    if grade not in _GRADE_MIN_STARS:
+        grade = 'B'
+    return grade, _GRADE_MIN_STARS[grade]
 
 
 def session_threshold_mult(now_utc: datetime | None = None) -> float:

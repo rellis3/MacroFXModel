@@ -292,14 +292,6 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       </div>
       <div id="tgSettings" style="display:none;border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
         <div class="form-row">
-          <span class="form-lbl">Min grade <small>minimum entry.grade from KV snapshot</small></span>
-          <select id="tg_min_grade">
-            <option value="A">A (highest conviction)</option>
-            <option value="B">B (default)</option>
-            <option value="C">C (any grade)</option>
-          </select>
-        </div>
-        <div class="form-row">
           <span class="form-lbl">Min signal score <small>entry.signalScore 0–1 threshold</small></span>
           <input type="number" id="tg_min_signal" min="0" max="1" step="0.05">
         </div>
@@ -407,12 +399,12 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <div class="card-title">Execution Thresholds</div>
           <div class="sec" style="margin-top:0;padding-top:0;border-top:none">Quality Filter</div>
           <div class="form-row">
-            <span class="form-lbl">Tier <small>strict=4★ · balanced=3★ · loose=2★ · aggressive=1★</small></span>
-            <div class="input-wrap"><button class="help-btn" data-key="ex_tier">?</button><select id="ex_tier">
-              <option value="strict">Strict (4★)</option>
-              <option value="balanced">Balanced (3★)</option>
-              <option value="loose">Loose (2★)</option>
-              <option value="aggressive">Aggressive (1★)</option>
+            <span class="form-lbl">Min grade <small>A=≥4★ · B=≥3★ · C=≥2★ · D=≥1★</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ex_min_grade">?</button><select id="ex_min_grade">
+              <option value="A">A — strict, highest conviction</option>
+              <option value="B">B — balanced (default)</option>
+              <option value="C">C — loose, more setups</option>
+              <option value="D">D — permissive, any level</option>
             </select></div>
           </div>
           <div class="form-row">
@@ -431,10 +423,6 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <div class="form-row">
             <span class="form-lbl">Min macro score <small>dashboard signal score 0–100</small></span>
             <div class="input-wrap"><button class="help-btn" data-key="ex_min_score">?</button><input type="number" id="ex_min_score" min="0" max="12" step="1"></div>
-          </div>
-          <div class="form-row">
-            <span class="form-lbl">Min confluence stars <small>★ rating of the level</small></span>
-            <div class="input-wrap"><button class="help-btn" data-key="ex_min_stars">?</button><input type="number" id="ex_min_stars" min="1" max="5" step="1"></div>
           </div>
           <div class="form-row">
             <span class="form-lbl">Min modules agree <small>directional consensus count</small></span>
@@ -1259,11 +1247,10 @@ const HELP = {
   mod_oi_walls:    { t:'OI Walls', b:'Blocks entries where a large options call or put wall sits within the OI wall proximity pips.', e:'Put wall at 1.1690 + 15 pip proximity → entry at 1.1700 is blocked.' },
   mod_cot_filter:  { t:'COT Filter', b:'Uses CFTC Commitment of Traders data. If leveraged funds are heavily net-short, only shorts are considered.', e:'Funds -25k net (bearish) on EUR/USD → all longs blocked.' },
   mod_news_risk:   { t:'News Risk', b:'Blackout window around HIGH-impact scheduled events (Fed, NFP, CPI). No new trades inside the window.', e:'NFP at 13:30 → no entries 13:15–13:45.' },
-  ex_tier:         { t:'Quality Tier', b:'Sets the minimum star rating an entry level must have. Higher tier = fewer but more reliable setups.', e:'Strict (4★): 1-2 high-conviction trades/day.\nAggressive (1★): 8-10+ trades, more noise.' },
+  ex_min_grade:    { t:'Min Grade', b:'Sets the minimum grade an entry must have. Grade combines signal quality + confluence star count into a single threshold. A=4★ high-conviction, B=3★ balanced (default), C=2★ more setups, D=1★ permissive.', e:'Grade B (default): balanced quality, 3-6 setups/day.\nGrade A: highest-conviction only, 1-2/day.\nGrade D: anything with one confluence — most noise.' },
   ex_bardir:       { t:'WT1 Bar Direction', b:'WaveTrend oscillator direction filter. Off = ignored. Auto = only when WT1 is extreme. On = always requires 5m and 1H WT1 agreement.', e:'Auto + threshold 35: WT1=42 must confirm direction. WT1=18 → filter skipped.' },
   ex_wtthreshold:  { t:'WT1 Threshold', b:'In Auto mode, when |WT1| is above this the direction filter activates. Below it, the WT1 requirement is waived.', e:'Default 35: WT1=40 → must agree. WT1=20 → no requirement.' },
   ex_min_score:    { t:'Min Macro Score', b:'The dashboard signal score (0–100) must exceed this. Combines macro regime, momentum tiers, Bayesian probability.', e:'5 = permissive. 55 = only trade with clear macro confirmation.' },
-  ex_min_stars:    { t:'Min Confluence Stars', b:'★ rating of the level must meet this. Stars count independent confluences — Fib, pivot, OI walls, structure.', e:'3★: Fib + pivot + one more needed.\n5★: highest-conviction only, 1-2 setups/day.' },
   ex_min_agree:    { t:'Min Modules Agree', b:'Minimum modules pointing the same direction before a trade is placed.', e:'3: macro + confluence + one more.\n5: near-unanimous required.' },
   ex_threshold:    { t:'Composite Threshold', b:'Average module score (0–1). All pass/fail results averaged — must meet this minimum.', e:'0.60 default. 0.40 → more trades. 0.80 → near-unanimous only.' },
   ex_max_trades:   { t:'Max Trades Per Loop', b:'Max new positions in a single 3-second tick. Prevents piling in during fast moves.', e:'2: at most 2 new entries per tick across all pairs.' },
