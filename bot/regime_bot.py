@@ -192,6 +192,16 @@ def mt5_connect() -> bool:
             f'MT5 connected  account={info.login}  balance={info.balance:.2f} {info.currency}'
             f'  server={info.server}  leverage=1:{info.leverage}'
         )
+        # Safety check: abort if connected account doesn't match expected account.
+        # Prevents trading on the wrong MT5 account when login credentials are
+        # missing from KV and MT5 falls back to its currently active session.
+        if account and str(info.login) != str(account):
+            log.error(
+                f'MT5 account mismatch: expected {account} but connected to {info.login} '
+                f'— refusing to start. Check regime_bot_credentials in KV.'
+            )
+            mt5.shutdown()
+            return False
     return True
 
 
