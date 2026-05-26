@@ -195,7 +195,7 @@ def place_order(symbol: str, direction: str, volume: float,
         'sl':           sl,
         'tp':           tp,
         'deviation':    20,
-        'magic':        20260002,
+        'magic':        20260099,
         'comment':      comment,
         'type_time':    mt5.ORDER_TIME_GTC,
         'type_filling': filling_mode,
@@ -207,7 +207,7 @@ def place_order(symbol: str, direction: str, volume: float,
     return res.order
 
 
-def get_open_positions(magic: int = 20260002) -> list:
+def get_open_positions(magic: int = 20260099) -> list:
     if not HAS_MT5:
         return []
     return [p for p in (mt5.positions_get() or []) if p.magic == magic]

@@ -105,6 +105,31 @@ _BETA_HISTORY_DIR  = os.path.join(os.path.dirname(__file__), 'data')
 _BETA_HISTORY_FILE = os.path.join(_BETA_HISTORY_DIR, 'beta_history.jsonl')
 
 
+def _serialize_open_positions(magic: int) -> list:
+    """Return a serialisable snapshot of all MT5 positions for the given magic number."""
+    if not HAS_MT5:
+        return []
+    try:
+        return [
+            {
+                'ticket':     int(p.ticket),
+                'symbol':     p.symbol,
+                'direction':  'BUY' if p.type == 0 else 'SELL',
+                'lots':       round(float(p.volume), 2),
+                'open_price': round(float(p.price_open), 5),
+                'price':      round(float(p.price_current), 5),
+                'profit':     round(float(p.profit), 2),
+                'swap':       round(float(p.swap), 2),
+                'time_open':  int(p.time),
+                'comment':    str(p.comment or ''),
+            }
+            for p in (mt5.positions_get() or [])
+            if p.magic == magic
+        ]
+    except Exception:
+        return []
+
+
 def _dominant_regime(state: dict, enabled_pairs: list) -> str:
     """Return the mode HMM regime across enabled pairs. Falls back to RANGE."""
     snap = (state.get('regime_snapshot') or {}).get('pairs') or {}
@@ -1404,6 +1429,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                 'pairs_blocked':     blocked_pairs,
                 'mgmt_actions':      mgmt_actions,
                 'open_positions':    len(position_meta),
+                'mt5_positions':     _serialize_open_positions(MAGIC),
                 'mode':              config.get('mode', 'full'),
                 'min_grade':         exec_cfg.get('min_grade', 'B'),
                 'bardir':            exec_cfg.get('bardir', 'auto'),

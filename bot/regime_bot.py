@@ -650,6 +650,32 @@ def within_window(cfg: dict) -> bool:
     return cfg.get('trade_window_start', '07:00') <= now <= cfg.get('trade_window_end', '20:00')
 
 
+# ── Position serialiser ────────────────────────────────────────────────────────
+
+def _serialize_open_positions(magic: int) -> list:
+    if not HAS_MT5:
+        return []
+    try:
+        return [
+            {
+                'ticket':     int(p.ticket),
+                'symbol':     p.symbol,
+                'direction':  'BUY' if p.type == 0 else 'SELL',
+                'lots':       round(float(p.volume), 2),
+                'open_price': round(float(p.price_open), 5),
+                'price':      round(float(p.price_current), 5),
+                'profit':     round(float(p.profit), 2),
+                'swap':       round(float(p.swap), 2),
+                'time_open':  int(p.time),
+                'comment':    str(p.comment or ''),
+            }
+            for p in (mt5.positions_get() or [])
+            if p.magic == magic
+        ]
+    except Exception:
+        return []
+
+
 # ── Status push ────────────────────────────────────────────────────────────────
 
 def push_status(data: dict, base_url: str) -> None:
@@ -986,12 +1012,13 @@ def run(base_url: str, paper_mode: bool) -> None:
 
         # ── Push status to KV ─────────────────────────────────────────────────
         push_status({
-            'enabled':    cfg.get('enabled', True),
-            'paper_mode': paper_mode,
-            'cycle':      cycle,
-            'balance':    round(balance, 2),
-            'pairs':      cfg['pairs'],
-            'positions':  status_positions,
+            'enabled':       cfg.get('enabled', True),
+            'paper_mode':    paper_mode,
+            'cycle':         cycle,
+            'balance':       round(balance, 2),
+            'pairs':         cfg['pairs'],
+            'positions':     status_positions,
+            'mt5_positions': _serialize_open_positions(MAGIC),
         }, base_url)
 
         interval = max(cfg.get('interval_secs', 60), 10)
