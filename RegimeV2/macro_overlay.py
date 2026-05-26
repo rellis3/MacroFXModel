@@ -81,7 +81,7 @@ class VIXFetcher:
         try:
             import yfinance as yf
             data   = yf.download('^VIX', period='5d', progress=False, auto_adjust=True)
-            closes = data['Close'].dropna()
+            closes = data['Close'].squeeze().dropna()
             self._vix     = round(float(closes.iloc[-1]), 2)
             self._fetched = now
             log.info(f'[VIX] spot={self._vix}')

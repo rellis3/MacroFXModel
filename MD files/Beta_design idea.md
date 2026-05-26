@@ -172,6 +172,280 @@ The BOCPD, GARCH, and decay detector all slot naturally into the dynamics model 
 
 ---
 
+## What You Would Need to Build Each Missing Part
+
+---
+
+### Part 1 — Rolling Factor Regression (β per pair per factor)
+
+**What it does:** Runs a multivariate OLS regression of each pair's returns against factor returns on a rolling window, producing live β coefficients.
+
+**Data required:**
+- OHLC returns for each traded pair at a consistent frequency (30m or daily recommended as starting point)
+- Factor return series at the same frequency:
+  - DXY: already available via MT5 or price feed
+  - 10Y−2Y yield spread changes: already pulled from FRED
+  - VIX changes: already pulled from FRED
+- Minimum history: ~60 bars for a meaningful regression (more → lower variance, higher lag)
+
+**Implementation:**
+- New Python module: `bot/modules/beta_estimator.py`
+- Rolling window OLS using `numpy` or `statsmodels` (both already likely available)
+- Runs on the state refresh cycle (every 120s) alongside existing regime computation
+- Output stored in KV: `beta:{pair}:{factor}` → coefficient value
+
+**Output shape:**
+```python
+{
+  "EURUSD": {
+    "beta_dxy":   {"value": -0.71, "window": 60},
+    "beta_rates": {"value":  0.34, "window": 60},
+    "beta_vix":   {"value": -0.18, "window": 60},
+    "r_squared":  0.61
+  },
+  ...
+}
+```
+
+**Dependencies:** None beyond what already exists. This is the standalone foundation.
+
+---
+
+### Part 2 — Kalman Filter on β (uncertainty-aware beta)
+
+**What it does:** Replaces or wraps the rolling OLS with a Kalman filter that treats β as a hidden state, producing a smooth posterior estimate and a variance (uncertainty) for each coefficient.
+
+**Data required:** Same as Part 1 — pair returns and factor returns at matching frequency.
+
+**Implementation:**
+- Extend `beta_estimator.py` or create `bot/modules/beta_kalman.py`
+- State vector: `[β_dxy, β_rates, β_vix]` per pair
+- Observation: pair return at each bar
+- Two tuning parameters:
+  - **Q** (process noise): how fast beta is allowed to drift. Higher Q → more responsive, more noisy
+  - **R** (observation noise): return variance not explained by factors (use rolling residual σ² from OLS as initialiser)
+- Use `filterpy` library (lightweight, pip installable) or implement the 4-equation Kalman update directly with `numpy`
+- Output: posterior mean β + posterior variance P (diagonal of covariance matrix) per factor
+
+**Output shape:**
+```python
+{
+  "EURUSD": {
+    "beta_dxy":   {"mean": -0.71, "variance": 0.004, "uncertainty": "LOW"},
+    "beta_rates": {"mean":  0.34, "variance": 0.031, "uncertainty": "HIGH"},
+    "beta_vix":   {"mean": -0.18, "variance": 0.009, "uncertainty": "MEDIUM"}
+  }
+}
+```
+
+**Uncertainty label thresholds** (tunable):
+- LOW: variance < 0.01
+- MEDIUM: 0.01–0.05
+- HIGH: > 0.05
+
+**Dependencies:** Part 1 initialises Q and R. Can run standalone but is better calibrated after OLS pass.
+
+---
+
+### Part 3 — Regime-Conditional Beta Table
+
+**What it does:** Segments historical β estimates by regime label, building a lookup table of expected β range per (pair, factor, regime). Answers: "what does EURUSD's DXY beta look like in BULL vs BEAR?"
+
+**Data required:**
+- Historical β time series from Part 1 or 2 (at least 3–6 months for meaningful regime segments)
+- Historical regime labels at matching timestamps — already stored in logs or can be reconstructed from HMM V2 outputs
+- Sufficient samples per regime: need at least ~30 observations per regime class to get reliable stats
+
+**Implementation:**
+- New script: `RegimeV2/beta_regime_table.py` — runs offline/periodically, not in the hot path
+- For each (pair, factor): group β observations by regime → compute mean, std, percentiles
+- Store result in KV: `beta_regime_table` → JSON blob
+- Refresh: run weekly or after any major regime model retrain
+
+**Output shape:**
+```python
+{
+  "EURUSD": {
+    "beta_dxy": {
+      "BULL":  {"mean": -0.72, "std": 0.08, "n": 94},
+      "BEAR":  {"mean": -0.65, "std": 0.12, "n": 61},
+      "RANGE": {"mean": -0.31, "std": 0.19, "n": 78},
+      "CHOP":  {"mean": -0.10, "std": 0.24, "n": 43}
+    }
+  }
+}
+```
+
+**Dependencies:** Requires Part 1 or 2 to have run long enough to accumulate historical β series. Historical regime labels from existing HMM outputs.
+
+---
+
+### Part 4 — Portfolio-Level Beta Aggregation
+
+**What it does:** At any moment, sums factor beta across all open positions weighted by position size, giving total book exposure to each factor.
+
+**Data required:**
+- Current open positions: pair, direction (long/short), lot size — already available via MT5 connector in `bot/main.py`
+- Current β estimates per pair from Part 1 or 2 — from KV
+- Pip value per lot per pair — already computed for sizing
+
+**Implementation:**
+- New function in `bot/position_manager.py` or a new `bot/modules/portfolio_beta.py`
+- Runs every price tick (3s cycle) alongside existing position management
+- Formula:
+
+```python
+portfolio_beta[factor] = sum(
+    position_direction * lot_size * beta[pair][factor]
+    for each open position
+)
+# direction: +1 for long, -1 for short
+```
+
+- Output pushed to KV: `portfolio_beta` → dict of factor exposures
+
+**Output shape:**
+```python
+{
+  "beta_dxy":   -1.34,   # net short USD beta (e.g. 2 long EUR positions)
+  "beta_rates":  0.67,
+  "beta_vix":   -0.29,
+  "position_count": 2,
+  "timestamp": 1234567890
+}
+```
+
+**Dashboard addition:** New panel showing total book beta per factor as a bar chart, updated each tick.
+
+**Dependencies:** Requires Part 1 or 2 for β estimates. MT5 position data already available.
+
+---
+
+### Part 5 — Target Beta Profile + Deviation Tracking
+
+**What it does:** Defines what factor exposure is *wanted* in each regime, then computes how far the current portfolio is from that target.
+
+**Data required:**
+- Regime-conditional β table from Part 3 (what beta looks like historically per regime)
+- Current portfolio β from Part 4
+- Current active regime (already available from HMM V2)
+- Target β config — set manually based on the regime-conditional table and macro view
+
+**Implementation:**
+- New config section in `bot-config.html` or a JSON config file: `beta_targets.json`
+- Target profile is a design decision — example starting point based on Part 3 table means:
+
+```json
+{
+  "BULL":  {"beta_dxy": -0.65, "beta_rates":  0.40, "beta_vix": -0.20},
+  "BEAR":  {"beta_dxy":  0.55, "beta_rates": -0.35, "beta_vix":  0.30},
+  "RANGE": {"beta_dxy":  0.00, "beta_rates":  0.00, "beta_vix":  0.00},
+  "CHOP":  {"beta_dxy":  0.00, "beta_rates":  0.00, "beta_vix":  0.00}
+}
+```
+
+- Deviation computed each tick:
+
+```python
+deviation[factor] = portfolio_beta[factor] - target_beta[current_regime][factor]
+```
+
+- Output pushed to KV: `beta_deviation` → dict of deviations per factor + overall alignment score
+
+**Output shape:**
+```python
+{
+  "regime": "BULL",
+  "deviations": {
+    "beta_dxy":   {"current": -1.34, "target": -0.65, "deviation": -0.69, "status": "OVEREXPOSED"},
+    "beta_rates": {"current":  0.67, "target":  0.40, "deviation":  0.27, "status": "SLIGHT_OVER"},
+    "beta_vix":   {"current": -0.29, "target": -0.20, "deviation": -0.09, "status": "ON_TARGET"}
+  },
+  "overall_alignment": 0.61
+}
+```
+
+**Dashboard addition:** Traffic-light panel — green (on target), amber (slight deviation), red (overexposed). Per factor, per regime.
+
+**Dependencies:** Parts 3 and 4 required. Target values are manually set initially, can be optimised later.
+
+---
+
+### Part 6 — Inaction Band / Rebalancing Trigger
+
+**What it does:** Given current beta deviation, decides whether the deviation is large enough to warrant rebalancing — factoring in transaction costs and beta uncertainty. This is the actual control output.
+
+**Data required:**
+- Beta deviation per factor from Part 5
+- Beta uncertainty from Part 2 (Kalman variance) — wide uncertainty → wider inaction band
+- Transaction cost estimate per pair: spread + slippage in pips (already tracked, used for entry sizing)
+- Expected return impact of rebalancing: position size × pip value × estimated mean reversion of β
+
+**Implementation:**
+- New function in `bot/modules/beta_rebalancer.py`
+- Inaction band width per factor:
+
+```python
+band_width = base_band + uncertainty_scale * beta_variance[factor]
+# base_band: e.g. 0.20 (tunable)
+# uncertainty_scale: e.g. 2.0 (widen band when beta is poorly identified)
+```
+
+- Trigger logic:
+
+```python
+if abs(deviation[factor]) > band_width[factor]:
+    # emit rebalancing signal
+    signal = "REDUCE" if deviation > 0 else "INCREASE"
+    # translate to: which pair to size down/up, by how much
+```
+
+- Rebalancing is a *sizing suggestion*, not a forced close — feeds into existing position manager as a size override recommendation
+
+**Output shape:**
+```python
+{
+  "rebalance_needed": True,
+  "factor": "beta_dxy",
+  "deviation": -0.69,
+  "band": 0.30,
+  "action": "REDUCE_LONG_USD_EXPOSURE",
+  "suggested_pairs": ["EURUSD: reduce by 30%", "GBPUSD: reduce by 20%"],
+  "urgency": "MEDIUM"
+}
+```
+
+**Dashboard addition:** Alert panel — "Beta rebalancing suggested: reduce DXY exposure. Current: −1.34 vs target: −0.65." With override button to dismiss.
+
+**Telegram alert:** Rebalancing signals above HIGH urgency threshold sent via existing alert system.
+
+**Dependencies:** All previous parts. This is the final integration layer.
+
+---
+
+## Infrastructure Summary
+
+| Component | New Files | Libraries Needed | Data Sources |
+|---|---|---|---|
+| Part 1 — Rolling OLS | `bot/modules/beta_estimator.py` | `numpy`, `statsmodels` | MT5 OHLC, FRED (already connected) |
+| Part 2 — Kalman on β | extend above or `beta_kalman.py` | `filterpy` or `numpy` only | Same as Part 1 |
+| Part 3 — Regime table | `RegimeV2/beta_regime_table.py` | `pandas`, `numpy` | Historical logs + HMM outputs |
+| Part 4 — Portfolio β | extend `position_manager.py` | None new | MT5 positions + KV beta |
+| Part 5 — Deviation tracking | `bot/modules/beta_deviation.py` | None new | KV (Parts 3 + 4 outputs) |
+| Part 6 — Rebalancing trigger | `bot/modules/beta_rebalancer.py` | None new | KV (Part 5 output) |
+| Dashboard panels | additions to `index.html` / new JS | None new | KV reads |
+
+**New KV keys required:**
+- `beta:{pair}` — rolling β estimates per pair (Part 1/2)
+- `beta_regime_table` — regime-conditional β lookup (Part 3)
+- `portfolio_beta` — aggregated book exposure (Part 4)
+- `beta_deviation` — current vs target per factor (Part 5)
+- `beta_rebalance` — latest rebalancing signal (Part 6)
+
+**No changes required to:** MT5 connector, trade execution logic, existing module pipeline, existing KV structure (new keys only), Railway deployment config.
+
+---
+
 ## Reference Reading
 
 - Merton (1969) — canonical starting point for stochastic portfolio control
