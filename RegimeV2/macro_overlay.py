@@ -80,7 +80,7 @@ class VIXFetcher:
             return
         try:
             import yfinance as yf
-            data = yf.download(['^VIX', '^VXMT'], period='1d', progress=False, auto_adjust=True)
+            data = yf.download(['^VIX', '^VXMT'], period='5d', progress=False, auto_adjust=True)
             closes = data['Close']
             vix   = float(closes['^VIX'].dropna().iloc[-1])
             vix3m = float(closes['^VXMT'].dropna().iloc[-1])
@@ -151,8 +151,8 @@ _VOL_ELEVATED_PCT = 65   # above this = warn in heartbeat
 
 
 def _fred_fetch(series_id: str, api_key: str) -> list[float]:
-    """Returns up to 1y of daily observations for a FRED series, oldest-first."""
-    start = (datetime.now(timezone.utc) - timedelta(days=370)).strftime('%Y-%m-%d')
+    """Returns up to 5y of daily observations for a FRED series, oldest-first."""
+    start = (datetime.now(timezone.utc) - timedelta(days=1825)).strftime('%Y-%m-%d')
     r = requests.get(
         _FRED_API_BASE,
         params={
@@ -220,7 +220,7 @@ class CBOEVolFetcher:
             try:
                 values = _fred_fetch(series_id, api_key)
                 if len(values) < 20:
-                    log.warning(f'[CVOL] {series_id}: only {len(values)} observations')
+                    log.debug(f'[CVOL] {series_id}: only {len(values)} observations — series may be discontinued')
                     continue
                 current           = values[-1]
                 pct               = sum(v < current for v in values) / len(values) * 100
