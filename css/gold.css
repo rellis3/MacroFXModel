@@ -965,15 +965,16 @@
   opacity: 0.7; white-space: nowrap;
 }
 
-/* Zone detail block: contains fib SVG + confluence chips side by side */
-.zt-zone-detail {
-  display: flex; align-items: flex-start; gap: 8px; padding: 4px 0 2px;
+/* Candle chart row — full width, scrolls horizontally if chart wider than card */
+.zt-fib-chart-row {
+  padding: 4px 0 2px; overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none;
 }
-.zt-zone-detail .zt-conf-row { flex: 1; align-content: flex-start; padding-top: 2px; }
+.zt-fib-chart-row::-webkit-scrollbar { display: none; }
 
 /* Fib SVG */
-.zt-fib-svg { flex-shrink: 0; display: block; }
-body.dark .zt-fib-svg text { fill: #9ca3af; }
+.zt-fib-svg { display: block; }
+.zt-fib-candles { border-radius: 4px; }
 
 /* Swing anchor line below fib ladder */
 .zt-swing-anchor {

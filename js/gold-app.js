@@ -1800,95 +1800,126 @@ function _ztSwingAnchor(z) {
   return `<span class="zt-sw-lbl">Impulse ${arrow}</span> ${originStr} → ${endStr}${pts}`;
 }
 
-// Mini SVG fib chart: vertical price ladder showing full impulse range with fib
-// levels marked, GP zone shaded, and current price as a horizontal tick.
+// Horizontal candle chart with fib levels overlaid — mirrors the TradingView layout.
+// Time runs left→right, price top→bottom. Fib lines are horizontal with labels on left.
+// Bar data comes from shared S state (ohlc30m / ohlc5m / ohlcData depending on zone TF).
 function _ztFibSvg(z, price) {
   if (z.swing_origin == null || z.swing_end == null || z.level_382 == null) return '';
 
-  const W = 56, H = 160, padT = 8, padB = 8;
+  // ── Resolve bar data for zone timeframe ──────────────────────────────────
+  const tfBars = {
+    'D1':  S.ohlcData?.['XAU/USD']?.values,
+    'H4':  S.ohlc30m?.['XAU/USD']?.values,
+    'H1':  S.ohlc30m?.['XAU/USD']?.values,
+    'M30': S.ohlc30m?.['XAU/USD']?.values,
+    'M15': S.ohlc5m?.['XAU/USD']?.values,
+  };
+  const allBars = tfBars[z.tf] ?? S.ohlc30m?.['XAU/USD']?.values ?? [];
+
+  // Normalise bar timestamp — Oanda bars may use 'time' string or 'date' string
+  const bt = b => {
+    if (b.time != null) return typeof b.time === 'number' ? b.time : Math.floor(new Date(b.time).getTime() / 1000);
+    if (b.date != null) return Math.floor(new Date(b.date).getTime() / 1000);
+    return 0;
+  };
+
+  // Keep bars from the swing origin bar onwards; cap at 80 for performance
+  const fromSec = (z.swing_origin_time ?? 0) - 300; // one bar before for context
+  const zoneBars = allBars.filter(b => bt(b) >= fromSec).slice(0, 80);
+
+  // ── Dimensions ────────────────────────────────────────────────────────────
+  const W = 310, H = 130;
+  const padL = 46, padR = 4, padT = 6, padB = 6;
+  const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
-  // Price range: full swing (origin to end) plus a small margin
-  const pMin = Math.min(z.swing_origin, z.swing_end);
-  const pMax = Math.max(z.swing_origin, z.swing_end);
-  const span = pMax - pMin || 1;
-  const margin = span * 0.05;
-  const vMin = pMin - margin, vMax = pMax + margin;
+  // ── Price range ───────────────────────────────────────────────────────────
+  const pLow  = Math.min(z.swing_origin, z.swing_end);
+  const pHigh = Math.max(z.swing_origin, z.swing_end);
+  const span  = pHigh - pLow || 1;
+  const vMin  = pLow  - span * 0.05;
+  const vMax  = pHigh + span * 0.05;
   const vSpan = vMax - vMin;
 
   const py = p => padT + chartH * (1 - (p - vMin) / vSpan);
 
-  const fibs = [
-    { label: '.382', p: z.level_382, cls: 'ztsvg-382' },
-    { label: '.618', p: z.level_618, cls: 'ztsvg-gp'  },
-    { label: '.650', p: z.level_650, cls: 'ztsvg-gp'  },
-    { label: '.786', p: z.level_786, cls: 'ztsvg-786' },
-    { label: '.886', p: z.level_886, cls: 'ztsvg-886' },
-  ].filter(f => f.p != null);
-
   const isLong   = z.direction === 'long';
   const dirColor = isLong ? '#22c55e' : '#ef4444';
 
-  // Impulse spine (vertical bar from origin to end)
-  const spineX = 10;
-  const spineY1 = py(z.swing_origin);
-  const spineY2 = py(z.swing_end);
-  const arrowDir = isLong ? -1 : 1; // arrowhead points up for long, down for short
-  const arrowY = isLong ? Math.min(spineY1, spineY2) : Math.max(spineY1, spineY2);
+  // ── Fib levels ────────────────────────────────────────────────────────────
+  // Mirror TradingView colours: white/grey for 0/1, orange for .786/.886, yellow for .618/.65, green .382
+  const mid = (z.swing_origin + z.swing_end) / 2;
+  const fibLevels = [
+    { lbl: '1',    p: z.swing_end,   color: '#e5e7eb', lw: 1.2 },
+    { lbl: '.886', p: z.level_886,   color: '#f97316', lw: 0.8 },
+    { lbl: '.786', p: z.level_786,   color: '#eab308', lw: 0.8 },
+    { lbl: '.65',  p: z.level_650,   color: dirColor,  lw: 1.5 },
+    { lbl: '.618', p: z.level_618,   color: dirColor,  lw: 1.5 },
+    { lbl: '.5',   p: mid,           color: '#60a5fa', lw: 0.8 },
+    { lbl: '.382', p: z.level_382,   color: '#4ade80', lw: 0.8 },
+    { lbl: '0',    p: z.swing_origin,color: '#9ca3af', lw: 1.0 },
+  ].filter(f => f.p != null);
 
-  // GP zone shading
-  const gpY1 = py(z.gp_high);
-  const gpY2 = py(z.gp_low);
+  let svg = `<svg class="zt-fib-svg zt-fib-candles" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
 
-  // Current price tick
-  const priceY  = price != null ? py(price) : null;
-  const inRange = price != null && price >= vMin && price <= vMax;
+  // Chart area background
+  svg += `<rect x="${padL}" y="${padT}" width="${chartW}" height="${chartH}" fill="rgba(15,20,30,0.7)" rx="2"/>`;
 
-  let svg = `<svg class="zt-fib-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+  // GP zone fill
+  const gpY1 = py(z.gp_high ?? z.level_618);
+  const gpY2 = py(z.gp_low  ?? z.level_650);
+  const gpTop = Math.min(gpY1, gpY2);
+  const gpHt  = Math.max(Math.abs(gpY2 - gpY1), 3);
+  svg += `<rect x="${padL}" y="${gpTop}" width="${chartW}" height="${gpHt}" fill="${dirColor}" fill-opacity="0.15"/>`;
 
-  // GP zone shading
-  const gpTop  = Math.min(gpY1, gpY2);
-  const gpHt   = Math.abs(gpY2 - gpY1);
-  svg += `<rect x="${spineX - 3}" y="${gpTop}" width="${W - spineX + 3 - 2}" height="${Math.max(gpHt, 2)}" fill="${dirColor}" fill-opacity="0.12" rx="1"/>`;
+  // Fib horizontal lines + labels
+  for (const f of fibLevels) {
+    const y    = py(f.p);
+    if (y < padT - 2 || y > padT + chartH + 2) continue;   // outside view
+    const isGP = f.lbl === '.618' || f.lbl === '.65';
+    const dash = f.lw > 1 ? '' : ' stroke-dasharray="3,2"';
+    svg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="${f.color}" stroke-width="${f.lw}"${dash} opacity="${isGP ? 0.9 : 0.5}"/>`;
+    // Label: ratio on left, price value in grey after
+    svg += `<text x="${padL - 2}" y="${y + 3}" font-size="7.5" fill="${f.color}" text-anchor="end" opacity="${isGP ? 1 : 0.8}">${f.lbl} <tspan fill="#6b7280">${f.p.toFixed(1)}</tspan></text>`;
+  }
 
-  // Fib level lines (right half of SVG)
-  for (const f of fibs) {
-    const y = py(f.p);
-    const isGP  = f.cls === 'ztsvg-gp';
-    const color = isGP ? dirColor : '#6b7280';
-    const dash  = isGP ? '' : ' stroke-dasharray="2,2"';
-    svg += `<line x1="${spineX}" y1="${y}" x2="${W - 2}" y2="${y}" stroke="${color}" stroke-width="${isGP ? 1.5 : 0.8}"${dash} opacity="0.7"/>`;
-    // Label (only for non-GP fibs to avoid clutter — GP is the shaded band)
-    if (!isGP) {
-      svg += `<text x="${spineX + 2}" y="${y - 1}" font-size="6" fill="${color}" opacity="0.8">${f.label}</text>`;
+  // ── Candlesticks ─────────────────────────────────────────────────────────
+  if (zoneBars.length >= 2) {
+    const n  = zoneBars.length;
+    const cw = Math.max(Math.floor(chartW / n * 0.7), 1);
+    const spacing = chartW / n;
+
+    for (let i = 0; i < n; i++) {
+      const b    = zoneBars[i];
+      const o    = parseFloat(b.open),  c = parseFloat(b.close);
+      const h    = parseFloat(b.high),  l = parseFloat(b.low);
+      const bull = c >= o;
+      const col  = bull ? '#22c55e' : '#ef4444';
+      const cx   = padL + (i + 0.5) * spacing;
+
+      const oY = py(o), cY = py(c), hY = py(h), lY = py(l);
+      const bodyTop = Math.min(oY, cY);
+      const bodyHt  = Math.max(Math.abs(cY - oY), 1);
+
+      // Wick
+      svg += `<line x1="${cx.toFixed(1)}" y1="${hY.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${lY.toFixed(1)}" stroke="${col}" stroke-width="0.8" opacity="0.6"/>`;
+      // Body
+      svg += `<rect x="${(cx - cw / 2).toFixed(1)}" y="${bodyTop.toFixed(1)}" width="${cw}" height="${bodyHt.toFixed(1)}" fill="${col}" opacity="0.85"/>`;
+    }
+  } else {
+    svg += `<text x="${padL + chartW / 2}" y="${padT + chartH / 2 + 3}" font-size="8" fill="#4b5563" text-anchor="middle">bars loading…</text>`;
+  }
+
+  // ── Current price ─────────────────────────────────────────────────────────
+  if (price != null) {
+    const priceY = py(price);
+    if (priceY >= padT && priceY <= padT + chartH) {
+      svg += `<line x1="${padL}" y1="${priceY.toFixed(1)}" x2="${W - padR}" y2="${priceY.toFixed(1)}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="2,2"/>`;
+      // Price badge pinned to right edge
+      svg += `<rect x="${W - padR - 38}" y="${priceY - 7}" width="38" height="12" fill="#f59e0b" rx="2"/>`;
+      svg += `<text x="${W - padR - 19}" y="${priceY + 2.5}" font-size="7.5" fill="#000" text-anchor="middle" font-weight="700">${price.toFixed(1)}</text>`;
     }
   }
-
-  // Impulse spine
-  svg += `<line x1="${spineX}" y1="${spineY1}" x2="${spineX}" y2="${spineY2}" stroke="${dirColor}" stroke-width="2"/>`;
-
-  // Origin dot
-  svg += `<circle cx="${spineX}" cy="${spineY1}" r="2.5" fill="#6b7280"/>`;
-  // End dot
-  svg += `<circle cx="${spineX}" cy="${spineY2}" r="2.5" fill="${dirColor}"/>`;
-
-  // Arrowhead on end
-  const ax = spineX, ay = arrowY;
-  svg += `<polygon points="${ax},${ay} ${ax - 3},${ay + arrowDir * 6} ${ax + 3},${ay + arrowDir * 6}" fill="${dirColor}"/>`;
-
-  // Origin / end price labels (left side)
-  svg += `<text x="${spineX - 2}" y="${spineY1 + (isLong ? 8 : -3)}" font-size="6" fill="#9ca3af" text-anchor="end">${z.swing_origin.toFixed(0)}</text>`;
-  svg += `<text x="${spineX - 2}" y="${spineY2 + (isLong ? -3 : 8)}" font-size="6" fill="${dirColor}" text-anchor="end">${z.swing_end.toFixed(0)}</text>`;
-
-  // Current price tick (if in view)
-  if (inRange && priceY != null) {
-    svg += `<line x1="${spineX - 5}" y1="${priceY}" x2="${spineX + 5}" y2="${priceY}" stroke="#f59e0b" stroke-width="1.5"/>`;
-    svg += `<text x="${W - 2}" y="${priceY + 3}" font-size="7" fill="#f59e0b" text-anchor="end" font-weight="bold">${price.toFixed(1)}</text>`;
-  }
-
-  // GP label inside the shaded band
-  const gpMidY = gpTop + gpHt / 2 + 2;
-  svg += `<text x="${spineX + 4}" y="${gpMidY}" font-size="6.5" fill="${dirColor}" font-weight="bold" opacity="0.9">GP</text>`;
 
   svg += '</svg>';
   return svg;
@@ -1974,17 +2005,15 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
         </div>
         ${fibLadder ? `<div class="zt-fib-ladder" style="grid-column:1/-1">${fibLadder}</div>` : ''}
         ${swingAnchor ? `<div class="zt-swing-anchor" style="grid-column:1/-1">${swingAnchor}</div>` : ''}
-        <div class="zt-zone-detail" style="grid-column:1/-1">
-          ${fibSvg}
-          ${(() => {
-            const comp = (z.composition ?? []).slice(1);
-            if (!comp.length) return '';
-            const chips = comp.map(item =>
-              `<span class="zt-conf-chip ${_ztConfClass(item)}" title="${escHtml(item)}">${escHtml(_ztConfLabel(item))}</span>`
-            ).join('');
-            return `<div class="zt-conf-row">${chips}</div>`;
-          })()}
-        </div>
+        ${fibSvg ? `<div class="zt-fib-chart-row" style="grid-column:1/-1">${fibSvg}</div>` : ''}
+        ${(() => {
+          const comp = (z.composition ?? []).slice(1);
+          if (!comp.length) return '';
+          const chips = comp.map(item =>
+            `<span class="zt-conf-chip ${_ztConfClass(item)}" title="${escHtml(item)}">${escHtml(_ztConfLabel(item))}</span>`
+          ).join('');
+          return `<div class="zt-conf-row" style="grid-column:1/-1">${chips}</div>`;
+        })()}
       </div>`;
   }
 
