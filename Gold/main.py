@@ -6,7 +6,7 @@ Top-down process:
   Zone proximity watch → VuManChu Cipher B confirmation → Paper entry
 
 Paper mode (default): journals all signals and outcomes, zero real orders.
-Live mode (--live):   sends orders to MT5 via magic number 20260003.
+Live mode (--live):   sends orders to MT5 via magic number 20260004.
 
 Two-speed loop:
   State refresh (--state-interval, default 120s):
@@ -72,7 +72,7 @@ except ImportError:
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 SYMBOL  = 'XAUUSD'
-MAGIC   = 20260003
+MAGIC   = 20260004
 PIP     = 1.0       # XAU/USD: 1 pip = $1
 
 # ── Default config (can be overridden via KV key gold_bot_config) ─────────────
@@ -189,6 +189,30 @@ def _load_config(base_url: str) -> dict:
     remote = _kv_get('gold_bot_config', base_url) or {}
     cfg = {**DEFAULT_CFG, **remote}
     return cfg
+
+
+def _serialize_open_positions(magic: int) -> list:
+    if not HAS_MT5:
+        return []
+    try:
+        return [
+            {
+                'ticket':     int(p.ticket),
+                'symbol':     p.symbol,
+                'direction':  'BUY' if p.type == 0 else 'SELL',
+                'lots':       round(float(p.volume), 2),
+                'open_price': round(float(p.price_open), 5),
+                'price':      round(float(p.price_current), 5),
+                'profit':     round(float(p.profit), 2),
+                'swap':       round(float(p.swap), 2),
+                'time_open':  int(p.time),
+                'comment':    str(p.comment or ''),
+            }
+            for p in (mt5.positions_get() or [])
+            if p.magic == magic
+        ]
+    except Exception:
+        return []
 
 
 def _kv_put_status(key: str, data: dict, base_url: str) -> None:
@@ -699,9 +723,10 @@ class GoldBot:
             'htf_bias': self.htf_bias.bias if self.htf_bias else 'UNKNOWN',
             'zones_active': len([z for z in self.zones if z.active]),
             'top_zones': zones_summary,
-            'trades_today': self.trades_today,
-            'paper_mode': self.cfg.get('paper_mode', True),
-            'squeeze_ratio': self.squeeze_ratio,
+            'trades_today':   self.trades_today,
+            'paper_mode':     self.cfg.get('paper_mode', True),
+            'squeeze_ratio':  self.squeeze_ratio,
+            'mt5_positions':  _serialize_open_positions(MAGIC),
         }
         _kv_put_status('gold_bot_status', status, self.base_url)
 

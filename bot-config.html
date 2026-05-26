@@ -203,6 +203,28 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
 /* Inline save status */
 .inline-status { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* ── Positions tab ───────────────────────────────────────────────────────── */
+.pos-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+.pos-summary { display:flex; gap:16px; flex-wrap:wrap; }
+.pos-summary-item { font-size:12px; color:var(--text3); }
+.pos-summary-item span { font-weight:600; color:var(--text); }
+.pos-bot-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap; }
+.pos-table-wrap { overflow-x:auto; }
+.pos-table { width:100%; border-collapse:collapse; font-size:12px; font-family:'DM Mono',monospace; }
+.pos-table th { text-align:left; padding:6px 10px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.6px; color:var(--text3); border-bottom:2px solid var(--border); white-space:nowrap; }
+.pos-table td { padding:7px 10px; border-bottom:1px solid var(--border); vertical-align:middle; white-space:nowrap; }
+.pos-table tr:last-child td { border-bottom:none; }
+.pos-table tr.pos-group-first td { border-top:2px solid var(--border2); }
+.pos-buy  { color:var(--green); font-weight:700; }
+.pos-sell { color:var(--red);   font-weight:700; }
+.pos-profit-pos { color:var(--green); }
+.pos-profit-neg { color:var(--red); }
+.pos-conflict-badge { display:inline-flex; align-items:center; gap:3px; background:var(--amber-bg); border:1px solid var(--amber-bd); color:var(--amber); padding:1px 7px; border-radius:10px; font-size:10px; font-weight:600; margin-left:6px; }
+.pos-paper-badge { opacity:.55; }
+.pos-empty { text-align:center; padding:40px 16px; color:var(--text3); font-size:13px; }
+.pos-stale { font-size:10px; color:var(--amber); margin-left:4px; }
+.pos-totals td { font-weight:700; border-top:2px solid var(--border2) !important; }
 </style>
 </head>
 <body>
@@ -230,6 +252,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn rg" data-tab="regime"   onclick="switchTab('regime')">Regime Bot</button>
     <button class="tab-btn rg" data-tab="regimev2" onclick="switchTab('regimev2')">Regime Bot V2</button>
     <button class="tab-btn" data-tab="beta" onclick="switchTab('beta')" style="color:#9d96f0" id="betaTabBtn">β Beta Targets</button>
+    <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
   </div>
 
   <!-- ═══════════════════════ TAB: TELEGRAM BOT ═══════════════════════ -->
@@ -1601,6 +1624,57 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
   </div><!-- /tab-beta -->
 
+  <!-- ══════════════════════════════════════════════════════ POSITIONS TAB -->
+  <div class="tab-pane" id="tab-positions">
+
+    <div class="card">
+      <div class="pos-header">
+        <div>
+          <div class="card-title">Open Positions — All Bots</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Live snapshot from each bot's KV status. Refreshes every 30s while tab is open.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="pos-summary" id="posSummary"></div>
+          <button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="loadPositionsTab()">↺ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <span class="pos-bot-badge" style="background:#172554;border:1px solid #1e40af;color:#60a5fa">MacroFX V1</span>
+        <span class="pos-bot-badge" style="background:#0d2b22;border:1px solid #1a4a38;color:#34d399">Regime V1</span>
+        <span class="pos-bot-badge" style="background:#292100;border:1px solid #78610a;color:#fbbf24">Gold</span>
+        <span class="pos-bot-badge" style="background:#1e1b4b;border:1px solid #4338ca;color:#a78bfa">Regime V2</span>
+        <span class="pos-bot-badge pos-paper-badge" style="background:var(--s2);border:1px solid var(--border);color:var(--text3)">Backtest (paper)</span>
+      </div>
+
+      <div class="pos-table-wrap">
+        <table class="pos-table">
+          <thead>
+            <tr>
+              <th>Pair</th>
+              <th>Bot</th>
+              <th>Dir</th>
+              <th>Lots</th>
+              <th>Entry</th>
+              <th>Current</th>
+              <th>P&amp;L</th>
+              <th>Swap</th>
+              <th>Net</th>
+              <th>Opened</th>
+              <th>Ticket</th>
+            </tr>
+          </thead>
+          <tbody id="posTableBody">
+            <tr><td colspan="11" class="pos-empty">Loading positions…</td></tr>
+          </tbody>
+          <tfoot id="posTableFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /tab-positions -->
+
 </div><!-- /page -->
 
 <script type="module" src="js/bot-config.js?v=2"></script>
@@ -1700,6 +1774,146 @@ window.loadBetaTargets = loadBetaTargets;
 // Load beta targets when tab is first opened
 document.querySelector('.tab-btn[data-tab="beta"]')?.addEventListener('click', () => {
   loadBetaTargets();
+});
+
+// ── Positions tab ─────────────────────────────────────────────────────────────
+const _POS_BOTS = [
+  { key: 'bot_status',            label: 'MacroFX V1', color: '#60a5fa', bg: '#172554', bd: '#1e40af', paper: false },
+  { key: 'regime_bot_status',     label: 'Regime V1',  color: '#34d399', bg: '#0d2b22', bd: '#1a4a38', paper: false },
+  { key: 'gold_bot_status',       label: 'Gold',       color: '#fbbf24', bg: '#292100', bd: '#78610a', paper: false },
+  { key: 'regime_bot_v2_status',  label: 'Regime V2',  color: '#a78bfa', bg: '#1e1b4b', bd: '#4338ca', paper: false },
+  { key: 'backtestsystem_status', label: 'Backtest',   color: '#9ba3bf', bg: 'var(--s2)', bd: 'var(--border)', paper: true },
+];
+
+let _posRefreshTimer = null;
+
+async function loadPositionsTab() {
+  const tbody = document.getElementById('posTableBody');
+  const tfoot = document.getElementById('posTableFoot');
+  if (!tbody) return;
+
+  // Fetch all bot statuses in parallel
+  const results = await Promise.allSettled(_POS_BOTS.map(b => _kvGet(b.key)));
+  const allPositions = [];
+  const staleBots = [];
+
+  _POS_BOTS.forEach((bot, i) => {
+    const data = results[i].status === 'fulfilled' ? results[i].value : null;
+    if (!data) return;
+    const ageSecs = data.pushed_at
+      ? Math.round((Date.now() / 1000) - data.pushed_at)
+      : (data.timestamp ? Math.round((Date.now() - data.timestamp) / 1000) : null);
+    if (ageSecs !== null && ageSecs > 300) staleBots.push(bot.label);
+    const positions = data.mt5_positions || [];
+    positions.forEach(p => allPositions.push({ ...p, _bot: bot }));
+  });
+
+  // Group by symbol
+  const bySymbol = {};
+  allPositions.forEach(p => {
+    const sym = p.symbol || '?';
+    if (!bySymbol[sym]) bySymbol[sym] = [];
+    bySymbol[sym].push(p);
+  });
+
+  // Update summary bar
+  const summaryEl = document.getElementById('posSummary');
+  if (summaryEl) {
+    const totalPnl = allPositions.reduce((s, p) => s + (p.profit || 0) + (p.swap || 0), 0);
+    const pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+    summaryEl.innerHTML = [
+      `<div class="pos-summary-item">Positions: <span>${allPositions.length}</span></div>`,
+      `<div class="pos-summary-item">Net P&L: <span style="color:${pnlColor}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}</span></div>`,
+      staleBots.length ? `<div class="pos-summary-item" style="color:var(--amber)">Stale: ${staleBots.join(', ')}</div>` : '',
+    ].join('');
+  }
+
+  if (!allPositions.length) {
+    tbody.innerHTML = '<tr><td colspan="11" class="pos-empty">No open positions across all bots</td></tr>';
+    tfoot.innerHTML = '';
+    return;
+  }
+
+  const rows = [];
+  const symbols = Object.keys(bySymbol).sort();
+
+  symbols.forEach(sym => {
+    const group = bySymbol[sym];
+    // Detect conflicts: multiple bots, or opposing directions within same symbol
+    const dirs = [...new Set(group.map(p => p.direction))];
+    const hasConflict = dirs.length > 1;
+    const isMultiBot  = new Set(group.map(p => p._bot.key)).size > 1;
+    const showConflictBadge = hasConflict || isMultiBot;
+
+    group.forEach((p, idx) => {
+      const bot    = p._bot;
+      const net    = (p.profit || 0) + (p.swap || 0);
+      const pClass = net >= 0 ? 'pos-profit-pos' : 'pos-profit-neg';
+      const dClass = p.direction === 'BUY' ? 'pos-buy' : 'pos-sell';
+
+      const openedTs = p.time_open ? new Date(p.time_open * 1000) : null;
+      const openedStr = openedTs
+        ? openedTs.toISOString().replace('T', ' ').slice(0, 16) + ' UTC'
+        : '—';
+
+      const conflictHtml = (idx === 0 && showConflictBadge)
+        ? `<span class="pos-conflict-badge">${hasConflict ? '⚠ CONFLICT' : '⚠ MULTI-BOT'}</span>`
+        : '';
+
+      const badgeStyle = `background:${bot.bg};border:1px solid ${bot.bd};color:${bot.color}`;
+      const badgeClass = `pos-bot-badge${bot.paper ? ' pos-paper-badge' : ''}`;
+      const firstClass = idx === 0 ? ' pos-group-first' : '';
+
+      rows.push(
+        `<tr class="${firstClass}">` +
+        `<td><strong>${idx === 0 ? sym : ''}</strong>${idx === 0 ? conflictHtml : ''}</td>` +
+        `<td><span class="${badgeClass}" style="${badgeStyle}">${bot.label}</span></td>` +
+        `<td class="${dClass}">${p.direction}</td>` +
+        `<td>${(p.lots || 0).toFixed(2)}</td>` +
+        `<td>${(p.open_price || 0).toFixed(5)}</td>` +
+        `<td>${(p.price || 0).toFixed(5)}</td>` +
+        `<td class="${p.profit >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${p.profit >= 0 ? '+' : ''}${(p.profit || 0).toFixed(2)}</td>` +
+        `<td class="${p.swap < 0 ? 'pos-profit-neg' : ''}">${(p.swap || 0).toFixed(2)}</td>` +
+        `<td class="${pClass}">${net >= 0 ? '+' : ''}${net.toFixed(2)}</td>` +
+        `<td style="color:var(--text3);font-size:11px">${openedStr}</td>` +
+        `<td style="color:var(--text3)">${p.ticket || '—'}</td>` +
+        `</tr>`
+      );
+    });
+  });
+
+  tbody.innerHTML = rows.join('');
+
+  // Totals row
+  const totalProfit = allPositions.reduce((s, p) => s + (p.profit || 0), 0);
+  const totalSwap   = allPositions.reduce((s, p) => s + (p.swap   || 0), 0);
+  const totalNet    = totalProfit + totalSwap;
+  const totalLots   = allPositions.reduce((s, p) => s + (p.lots   || 0), 0);
+  tfoot.innerHTML =
+    `<tr class="pos-totals">` +
+    `<td colspan="3">Totals (${allPositions.length} positions)</td>` +
+    `<td>${totalLots.toFixed(2)}</td>` +
+    `<td colspan="2"></td>` +
+    `<td class="${totalProfit >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}</td>` +
+    `<td class="${totalSwap < 0 ? 'pos-profit-neg' : ''}">${totalSwap.toFixed(2)}</td>` +
+    `<td class="${totalNet >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalNet >= 0 ? '+' : ''}${totalNet.toFixed(2)}</td>` +
+    `<td colspan="2"></td>` +
+    `</tr>`;
+}
+
+window.loadPositionsTab = loadPositionsTab;
+
+document.querySelector('.tab-btn[data-tab="positions"]')?.addEventListener('click', () => {
+  loadPositionsTab();
+  // Auto-refresh every 30s while tab is visible
+  clearInterval(_posRefreshTimer);
+  _posRefreshTimer = setInterval(() => {
+    if (document.getElementById('tab-positions')?.classList.contains('active')) {
+      loadPositionsTab();
+    } else {
+      clearInterval(_posRefreshTimer);
+    }
+  }, 30000);
 });
 
 // ── Telegram mode toggle ──────────────────────────────────────────────────────

@@ -67,8 +67,8 @@ try:
 except ImportError:
     HAS_MT5 = False
 
-# ── Magic number (unique — never collide with V1=20260002 or main=20260001) ────
-MAGIC = 20260003
+# ── Magic number (unique — never collide with V1=20260002, main=20260001, Gold=20260004) ──
+MAGIC = 20260005
 
 # ── Pip / pip-value tables ─────────────────────────────────────────────────────
 _PIP_SIZES = {
@@ -636,6 +636,32 @@ def consensus_score(pairs: list[str], all_regimes: dict, target_regime: str) -> 
     return count, len(pairs)
 
 
+# ── Position serialiser ────────────────────────────────────────────────────────
+
+def _serialize_open_positions(magic: int) -> list:
+    if not HAS_MT5:
+        return []
+    try:
+        return [
+            {
+                'ticket':     int(p.ticket),
+                'symbol':     p.symbol,
+                'direction':  'BUY' if p.type == 0 else 'SELL',
+                'lots':       round(float(p.volume), 2),
+                'open_price': round(float(p.price_open), 5),
+                'price':      round(float(p.price_current), 5),
+                'profit':     round(float(p.profit), 2),
+                'swap':       round(float(p.swap), 2),
+                'time_open':  int(p.time),
+                'comment':    str(p.comment or ''),
+            }
+            for p in (mt5.positions_get() or [])
+            if p.magic == magic
+        ]
+    except Exception:
+        return []
+
+
 # ── Status push ────────────────────────────────────────────────────────────────
 
 def push_status(pairs_status: dict, balance: float,
@@ -648,6 +674,7 @@ def push_status(pairs_status: dict, balance: float,
         'riskguard_locked': riskguard_locked,
         'pushed_at':        time.time(),
         'version':          'v2',
+        'mt5_positions':    _serialize_open_positions(MAGIC),
     }, url)
 
 
