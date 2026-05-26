@@ -1816,16 +1816,25 @@ function _ztFibSvg(z, price) {
   };
   const allBars = tfBars[z.tf] ?? S.ohlc30m?.['XAU/USD']?.values ?? [];
 
-  // Normalise bar timestamp — Oanda bars may use 'time' string or 'date' string
+  // Normalise bar timestamp — Oanda bars may use numeric 'time', or string 'time'/'date'
   const bt = b => {
-    if (b.time != null) return typeof b.time === 'number' ? b.time : Math.floor(new Date(b.time).getTime() / 1000);
-    if (b.date != null) return Math.floor(new Date(b.date).getTime() / 1000);
-    return 0;
+    const t = b.time ?? b.date ?? b.datetime;
+    if (!t) return 0;
+    if (typeof t === 'number') return t;
+    return Math.floor(new Date(t).getTime() / 1000);
   };
 
-  // Keep bars from the swing origin bar onwards; cap at 80 for performance
-  const fromSec = (z.swing_origin_time ?? 0) - 300; // one bar before for context
-  const zoneBars = allBars.filter(b => bt(b) >= fromSec).slice(0, 80);
+  // Bars to display: from the swing origin bar onwards (when available), capped at 80.
+  // Fallback to the most recent 80 bars when swing_origin_time is not yet in the KV
+  // (bot hasn't restarted with updated code that exports timestamps).
+  const hasOriginTime = z.swing_origin_time && z.swing_origin_time > 0;
+  let zoneBars;
+  if (hasOriginTime && allBars.length) {
+    const fromSec = z.swing_origin_time - 300; // include one bar before for context
+    zoneBars = allBars.filter(b => bt(b) >= fromSec).slice(0, 80);
+  } else {
+    zoneBars = allBars.slice(-60); // fallback: recent 60 bars
+  }
 
   // ── Dimensions ────────────────────────────────────────────────────────────
   const W = 310, H = 130;

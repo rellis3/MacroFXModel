@@ -80,7 +80,8 @@ async function autoFetchFuturesPrice(pair, futEl) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('oiModalOverlay').addEventListener('click', function(e) {
+  const overlay = document.getElementById('oiModalOverlay');
+  if (overlay) overlay.addEventListener('click', function(e) {
     if (e.target === this) closeOIModal();
   });
 });

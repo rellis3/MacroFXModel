@@ -2,7 +2,7 @@
 RegimeV2 — Macro overlay.
 
 Fetches and caches:
-  - VIX term structure (^VIX / ^VIX3M) from Yahoo Finance — hourly
+  - VIX term structure (^VIX / ^VXMT) from Yahoo Finance — hourly
   - CBOE FX/Gold implied vol indices via FRED API — 6h refresh
       EVZCLS (EUR/USD proxy for all FX pairs), GVZCLS (Gold)
       Requires FRED_KEY env var — free at fred.stlouisfed.org
@@ -64,7 +64,7 @@ def session_multiplier_from_utc() -> float:
 # ── VIX term structure ─────────────────────────────────────────────────────────
 
 class VIXFetcher:
-    """Fetches VIX spot (^VIX) and 3-month (^VIX3M) from Yahoo Finance."""
+    """Fetches VIX spot (^VIX) and mid-term (^VXMT) from Yahoo Finance."""
 
     _REFRESH_SECS = 3600  # hourly
 
@@ -80,10 +80,10 @@ class VIXFetcher:
             return
         try:
             import yfinance as yf
-            data = yf.download(['^VIX', '^VIX3M'], period='1d', progress=False, auto_adjust=True)
+            data = yf.download(['^VIX', '^VXMT'], period='1d', progress=False, auto_adjust=True)
             closes = data['Close']
             vix   = float(closes['^VIX'].dropna().iloc[-1])
-            vix3m = float(closes['^VIX3M'].dropna().iloc[-1])
+            vix3m = float(closes['^VXMT'].dropna().iloc[-1])
             self._vix    = round(vix, 2)
             self._vix3m  = round(vix3m, 2)
             self._ratio  = round(vix3m / vix, 4) if vix > 0 else None

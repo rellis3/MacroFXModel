@@ -64,7 +64,7 @@ async function callWorker(req) {
 
 const DEFAULT_PAIRS = [
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD',
-  'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD',
+  'NZD/USD', 'USD/CAD', 'USD/CHF', 'GBP/JPY', 'XAU/USD', 'NAS100_USD',
 ];
 
 const PIP_SIZE = {
