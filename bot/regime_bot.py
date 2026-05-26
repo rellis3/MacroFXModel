@@ -522,13 +522,30 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
 
     res = mt5.order_send(order)
 
+    # order_send returns None when MT5 has a transport error (dropped connection,
+    # autotrading disabled). Capture last_error before any further MT5 calls.
+    if res is None:
+        err = mt5.last_error()
+        log.error(f'MT5 order_send returned None (transport error)  last_error={err}')
+        # Single retry after re-fetching tick price
+        import time as _time
+        _time.sleep(0.5)
+        tick = mt5.symbol_info_tick(mt5_sym)
+        if tick:
+            order['price'] = tick.ask if direction == 'LONG' else tick.bid
+            res = mt5.order_send(order)
+            if res is None:
+                log.error(f'MT5 retry also returned None  last_error={mt5.last_error()}')
+                return None
+
     if res and res.retcode == mt5.TRADE_RETCODE_DONE:
         log.info(f'MT5 order placed: ticket={res.order}  exec_price={exec_price}')
         return res.order
 
+    err = mt5.last_error()
     log.error(
         f'MT5 order failed: retcode={getattr(res, "retcode", "?")} '
-        f'{getattr(res, "comment", "")}  last_error={mt5.last_error()}'
+        f'comment={getattr(res, "comment", "")}  last_error={err}'
     )
     return None
 
