@@ -48,7 +48,7 @@ from modules.cot_filter import COTFilterModule
 from modules.news_risk import NewsRiskModule
 from modules.gold_macro_module import GoldMacroModule
 from modules.regime_confidence_module import RegimeConfidenceModule
-from modules.beta_estimator import BetaEstimator, push_beta_to_kv, BAR_COUNT
+from modules.beta_estimator import BetaEstimator, push_beta_to_kv, BAR_COUNT, fetch_h4_bars_oanda
 from modules.portfolio_beta import compute_portfolio_beta, push_portfolio_beta
 from modules.beta_deviation import compute_beta_deviation, push_beta_deviation, fetch_beta_targets
 from modules.beta_rebalancer import evaluate_rebalancing, push_rebalance_signal
@@ -128,24 +128,43 @@ def _run_beta_estimation(
     """
     Fetch H4 bars for all trading pairs + factor proxies, run beta estimation,
     and push results to KV. Runs in the slow path (every 120s).
-    Returns the estimates dict (empty on failure or no MT5).
+
+    Primary source: MT5 copy_rates_from_pos (when connected).
+    Fallback/backfill: Oanda REST API using OANDA_KEY env var — eliminates the
+    80-hour cold start by pulling historical bars on first run or when MT5 is
+    unavailable. Set OANDA_PRACTICE=1 if using a practice account.
     """
-    if not HAS_MT5:
-        return {}
+    oanda_key      = os.environ.get('OANDA_KEY', '')
+    oanda_practice = os.environ.get('OANDA_PRACTICE', '').lower() in ('1', 'true', 'yes')
 
     all_pairs = list(set(enabled_pairs) | set(_BETA_FACTOR_PAIRS))
     bars_by_symbol: dict = {}
 
     for pair in all_pairs:
-        try:
-            bars = mt5.copy_rates_from_pos(pair.replace('/', ''), mt5.TIMEFRAME_H4, 0, BAR_COUNT)
-            if bars is not None and len(bars) >= 21:
-                bars_by_symbol[pair.replace('/', '')] = bars
-        except Exception as exc:
-            log.debug(f'BetaEstimator: bars fetch failed for {pair}: {exc}')
+        sym  = pair.replace('/', '')
+        bars = None
+
+        # Primary: MT5 bars
+        if HAS_MT5:
+            try:
+                mt5_bars = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_H4, 0, BAR_COUNT)
+                if mt5_bars is not None and len(mt5_bars) >= 21:
+                    bars = mt5_bars
+            except Exception as exc:
+                log.debug(f'BetaEstimator: MT5 fetch failed for {pair}: {exc}')
+
+        # Fallback: Oanda REST API — used on cold start or when MT5 is absent
+        if bars is None and oanda_key:
+            oanda_bars = fetch_h4_bars_oanda(sym, BAR_COUNT, oanda_key, practice=oanda_practice)
+            if oanda_bars is not None:
+                bars = oanda_bars
+                log.info(f'[BETA] Oanda backfill: {sym} ({len(oanda_bars)} bars)')
+
+        if bars is not None:
+            bars_by_symbol[sym] = bars
 
     if not bars_by_symbol:
-        log.debug('BetaEstimator: no bars available (MT5 may be disconnected)')
+        log.debug('BetaEstimator: no bars available (MT5 disconnected, OANDA_KEY missing or failed)')
         return {}
 
     estimates = beta_estimator.estimate(bars_by_symbol)
