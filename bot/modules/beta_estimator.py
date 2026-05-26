@@ -261,6 +261,73 @@ class BetaEstimator:
         return results
 
 
+# ── Oanda REST backfill ───────────────────────────────────────────────────────
+
+# Oanda instrument names that don't follow the simple XXX_YYY pattern
+_OANDA_OVERRIDES: dict[str, str] = {
+    'XAUUSD': 'XAU_USD',
+    'XAGUSD': 'XAG_USD',
+    'NAS100': 'NAS100_USD',
+    'SPX500': 'SPX500_USD',
+    'US30':   'US30_USD',
+    'UK100':  'UK100_GBP',
+    'GER40':  'DE30_EUR',
+    'WTIUSD': 'WTICO_USD',
+}
+
+
+def _mt5_to_oanda(sym: str) -> str | None:
+    """Convert MT5 symbol (no slash) to Oanda instrument name, or None if unknown."""
+    sym = sym.upper()
+    if sym in _OANDA_OVERRIDES:
+        return _OANDA_OVERRIDES[sym]
+    if len(sym) == 6 and sym.isalpha():
+        return f'{sym[:3]}_{sym[3:]}'
+    return None
+
+
+def fetch_h4_bars_oanda(
+    symbol: str,
+    count: int,
+    api_key: str,
+    practice: bool = False,
+) -> 'np.ndarray | None':
+    """
+    Fetch H4 OHLC bars from Oanda REST API.
+
+    Returns a numpy structured array with a 'close' field, compatible with
+    _log_returns() and BetaEstimator.estimate(). Returns None on any failure.
+    """
+    oanda_sym = _mt5_to_oanda(symbol)
+    if not oanda_sym:
+        log.debug(f'Oanda backfill: no instrument mapping for {symbol}')
+        return None
+
+    host = 'api-fxpractice.oanda.com' if practice else 'api-fxtrade.oanda.com'
+    url = (
+        f'https://{host}/v3/instruments/{oanda_sym}/candles'
+        f'?count={count}&granularity=H4&price=M'
+    )
+    try:
+        req = urllib.request.Request(url, headers={'Authorization': f'Bearer {api_key}'})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+
+        closes = np.array(
+            [float(c['mid']['c']) for c in data.get('candles', [])
+             if c.get('complete', True)],
+            dtype=np.float64,
+        )
+        if len(closes) < 2:
+            return None
+
+        dt = np.dtype([('close', np.float64)])
+        return np.array([(c,) for c in closes], dtype=dt)
+    except Exception as exc:
+        log.debug(f'Oanda H4 backfill failed for {symbol}: {exc}')
+        return None
+
+
 # ── KV I/O ────────────────────────────────────────────────────────────────────
 
 def push_beta_to_kv(estimates: dict, base_url: str, timeout: int = 5) -> bool:
