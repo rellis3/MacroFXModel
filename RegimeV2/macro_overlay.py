@@ -5,7 +5,7 @@ Fetches and caches:
   - VIX term structure (^VIX / ^VIX3M) from Yahoo Finance — hourly
   - CBOE FX/Gold implied vol indices via FRED API — 6h refresh
       EVZCLS (EUR/USD proxy for all FX pairs), GVZCLS (Gold)
-      Requires FRED_API_KEY env var — free at fred.stlouisfed.org
+      Requires FRED_KEY env var — free at fred.stlouisfed.org
       Note: ^EUVIX / ^BPVIX / ^JYVIX were delisted from Yahoo Finance;
       FRED carries EVZCLS (CBOE EuroCurrency ETF Vol) as the replacement.
   - FOMC meeting dates — daily check from hardcoded 2026 calendar
@@ -122,7 +122,7 @@ class VIXFetcher:
 #
 # ^EUVIX / ^BPVIX / ^JYVIX were delisted from Yahoo Finance.
 # FRED carries the equivalent CBOE settlement vol indices free with an API key.
-# Register at https://fred.stlouisfed.org/ and set env var FRED_API_KEY.
+# Register at https://fred.stlouisfed.org/ and set env var FRED_KEY.
 #
 #   EVZCLS — CBOE EuroCurrency ETF Volatility Index (EUR/USD 1-month IV)
 #   GVZCLS — CBOE Gold ETF Volatility Index
@@ -180,7 +180,7 @@ class CBOEVolFetcher:
     """
     Fetches CBOE FX and Gold implied volatility indices via FRED API (6h refresh).
 
-    Requires FRED_API_KEY environment variable (free at fred.stlouisfed.org).
+    Requires FRED_KEY environment variable (free at fred.stlouisfed.org).
 
     Series:
       EVZCLS — CBOE EuroCurrency ETF Volatility Index (EUR/USD 1-month IV)
@@ -207,9 +207,9 @@ class CBOEVolFetcher:
         now = time.time()
         if now - self._fetched < self._REFRESH_SECS:
             return
-        api_key = os.environ.get('FRED_API_KEY', '')
+        api_key = os.environ.get('FRED_KEY', '')
         if not api_key:
-            log.warning('[CVOL] FRED_API_KEY not set — skipping vol fetch')
+            log.warning('[CVOL] FRED_KEY not set — skipping vol fetch')
             self._fetched = now
             return
         levels: dict[str, float] = {}
