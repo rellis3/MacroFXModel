@@ -7292,3 +7292,530 @@
 [2026-05-26 15:50:34] [RGV2] [ERROR] ['^VXMT']: possibly delisted; no price data found  (period=5d)
 [2026-05-26 15:50:34] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
 [2026-05-26 15:50:36] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.00  rl=7  bocpd=98.0%  exh=0.00  decay=0.000  score=62  1h=BULL
+[2026-05-26 15:50:36] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=98%  slope=+0.1  vz=+1.70  rl=7  bocpd=97.0%  exh=0.00  decay=0.350  score=61  1h=BEAR
+[2026-05-26 15:50:36] [RGV2] [INFO] [USD/JPY] reg=BEAR  conf=99%  slope=-0.0  vz=+2.51  rl=7  bocpd=97.8%  exh=0.00  decay=0.211  score=54  1h=BEAR
+[2026-05-26 15:50:36] [RGV2] [INFO] [USD/JPY] Gate: vol_z 2.51 > 2.5
+[2026-05-26 15:50:36] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.63  rl=7  bocpd=98.0%  exh=0.11  decay=0.000  score=62  1h=BULL
+[2026-05-26 15:50:36] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.49  rl=7  bocpd=98.0%  exh=0.04  decay=0.000  score=62  1h=BULL
+[2026-05-26 15:50:36] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+1.02  rl=7  bocpd=97.9%  exh=0.13  decay=0.004  score=62  1h=BEAR
+[2026-05-26 15:50:36] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+1.06  rl=7  bocpd=98.0%  exh=0.01  decay=0.081  score=62  1h=BEAR
+[2026-05-26 15:50:36] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=+0.0  vz=+1.35  rl=7  bocpd=95.6%  exh=0.04  decay=0.116  score=60  1h=BULL
+[2026-05-26 15:50:36] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-2.34  rl=7  bocpd=98.0%  exh=0.00  decay=0.001  score=55  1h=RANGE
+[2026-05-26 15:51:04] [RGV2] [ERROR] $^VXMT: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:51:04] [RGV2] [ERROR] 
+1 Failed download:
+[2026-05-26 15:51:04] [RGV2] [ERROR] ['^VXMT']: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:51:04] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
+[2026-05-26 15:51:06] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.00  rl=8  bocpd=97.2%  exh=0.00  decay=0.025  score=63  1h=BULL
+[2026-05-26 15:51:06] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=98%  slope=+0.1  vz=+1.70  rl=8  bocpd=95.5%  exh=0.00  decay=0.350  score=62  1h=BEAR
+[2026-05-26 15:51:06] [RGV2] [INFO] [USD/JPY] reg=BEAR  conf=99%  slope=-0.0  vz=+2.51  rl=8  bocpd=96.7%  exh=0.00  decay=0.231  score=55  1h=BEAR
+[2026-05-26 15:51:06] [RGV2] [INFO] [USD/JPY] Gate: vol_z 2.51 > 2.5
+[2026-05-26 15:51:06] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.63  rl=8  bocpd=97.1%  exh=0.14  decay=0.000  score=63  1h=BULL
+[2026-05-26 15:51:06] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.49  rl=8  bocpd=97.2%  exh=0.07  decay=0.000  score=63  1h=BULL
+[2026-05-26 15:51:06] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+1.02  rl=8  bocpd=97.0%  exh=0.18  decay=0.004  score=62  1h=BEAR
+[2026-05-26 15:51:06] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+1.06  rl=8  bocpd=97.2%  exh=0.01  decay=0.075  score=63  1h=BEAR
+[2026-05-26 15:51:06] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=+0.0  vz=+1.35  rl=8  bocpd=93.0%  exh=0.09  decay=0.079  score=60  1h=BULL
+[2026-05-26 15:51:06] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-2.34  rl=8  bocpd=97.1%  exh=0.00  decay=0.002  score=55  1h=RANGE
+[2026-05-26 15:51:34] [RGV2] [ERROR] $^VXMT: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:51:34] [RGV2] [ERROR] 
+1 Failed download:
+[2026-05-26 15:51:34] [RGV2] [ERROR] ['^VXMT']: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:51:34] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
+[2026-05-26 15:51:37] [RGV2] [WARNING] Cycle 9: no regime data — skipping
+[2026-05-26 15:52:08] [RGV2] [ERROR] $^VXMT: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:52:08] [RGV2] [ERROR] 
+1 Failed download:
+[2026-05-26 15:52:08] [RGV2] [ERROR] ['^VXMT']: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:52:08] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
+[2026-05-26 15:52:10] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.92  rl=9  bocpd=95.1%  exh=0.07  decay=0.000  score=63  1h=BULL
+[2026-05-26 15:52:10] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.1  vz=+1.68  rl=9  bocpd=92.0%  exh=0.01  decay=0.318  score=62  1h=BEAR
+[2026-05-26 15:52:10] [RGV2] [INFO] [USD/JPY] reg=BEAR  conf=98%  slope=-0.2  vz=+2.32  rl=9  bocpd=93.4%  exh=0.08  decay=0.129  score=54  1h=BEAR
+[2026-05-26 15:52:10] [RGV2] [INFO] [USD/JPY] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 15:52:10] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.49  rl=9  bocpd=95.0%  exh=0.22  decay=0.000  score=63  1h=BULL
+[2026-05-26 15:52:10] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.34  rl=9  bocpd=95.1%  exh=0.18  decay=0.000  score=63  1h=BULL
+[2026-05-26 15:52:10] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+1.05  rl=9  bocpd=94.7%  exh=0.14  decay=0.004  score=63  1h=BEAR
+[2026-05-26 15:52:10] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.97  rl=9  bocpd=95.1%  exh=0.10  decay=0.015  score=63  1h=BEAR
+[2026-05-26 15:52:10] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=+0.0  vz=+1.31  rl=9  bocpd=87.2%  exh=0.11  decay=0.034  score=62  1h=BULL
+[2026-05-26 15:52:10] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-2.39  rl=9  bocpd=95.1%  exh=0.00  decay=0.002  score=56  1h=RANGE
+[2026-05-26 15:52:39] [RGV2] [ERROR] $^VXMT: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:52:39] [RGV2] [ERROR] 
+1 Failed download:
+[2026-05-26 15:52:39] [RGV2] [ERROR] ['^VXMT']: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:52:39] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
+[2026-05-26 15:52:41] [RGV2] [INFO] [CVOL] EVZCLS=10.7(86%ile)  GVZCLS=23.9(89%ile)  coherence=True
+[2026-05-26 15:52:41] [RGV2] [INFO] [DXY] level=99.133  5d=+0.17%
+[2026-05-26 15:52:41] [RGV2] [INFO] [HYG] level=80.11  5d=+0.72%
+[2026-05-26 15:52:42] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 15:52:44] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.81  rl=10  bocpd=90.2%  exh=0.20  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:52:44] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.1  vz=+1.54  rl=10  bocpd=84.3%  exh=0.12  decay=0.213  score=64  1h=BEAR
+[2026-05-26 15:52:44] [RGV2] [INFO] [USD/JPY] reg=BEAR  conf=94%  slope=-0.4  vz=+2.11  rl=10  bocpd=83.5%  exh=0.28  decay=0.057  score=52  1h=BEAR
+[2026-05-26 15:52:44] [RGV2] [INFO] [USD/JPY] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 15:52:44] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.29  rl=10  bocpd=89.9%  exh=0.32  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:52:44] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.21  rl=10  bocpd=90.2%  exh=0.27  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:52:44] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.94  rl=10  bocpd=89.4%  exh=0.13  decay=0.003  score=64  1h=BEAR
+[2026-05-26 15:52:44] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.85  rl=10  bocpd=90.2%  exh=0.22  decay=0.000  score=64  1h=BEAR
+[2026-05-26 15:52:44] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=+0.0  vz=+1.30  rl=10  bocpd=75.8%  exh=0.08  decay=0.004  score=64  1h=BULL
+[2026-05-26 15:52:44] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-2.66  rl=10  bocpd=90.0%  exh=0.00  decay=0.003  score=56  1h=RANGE
+[2026-05-26 15:53:08] [RGV2] [ERROR] $^VXMT: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:53:08] [RGV2] [ERROR] 
+1 Failed download:
+[2026-05-26 15:53:08] [RGV2] [ERROR] ['^VXMT']: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:53:08] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
+[2026-05-26 15:53:10] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.81  rl=11  bocpd=79.7%  exh=0.20  decay=0.000  score=66  1h=BULL
+[2026-05-26 15:53:10] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.1  vz=+1.54  rl=11  bocpd=70.4%  exh=0.14  decay=0.148  score=67  1h=BEAR
+[2026-05-26 15:53:10] [RGV2] [INFO] [USD/JPY] reg=BEAR  conf=94%  slope=-0.6  vz=+2.11  rl=11  bocpd=66.6%  exh=0.28  decay=0.087  score=55  1h=BEAR
+[2026-05-26 15:53:10] [RGV2] [INFO] [USD/JPY] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 15:53:10] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.29  rl=11  bocpd=79.1%  exh=0.32  decay=0.000  score=66  1h=BULL
+[2026-05-26 15:53:10] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.21  rl=11  bocpd=79.7%  exh=0.27  decay=0.000  score=66  1h=BULL
+[2026-05-26 15:53:10] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.94  rl=11  bocpd=78.2%  exh=0.15  decay=0.003  score=66  1h=BEAR
+[2026-05-26 15:53:10] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.85  rl=11  bocpd=79.7%  exh=0.22  decay=0.000  score=66  1h=BEAR
+[2026-05-26 15:53:10] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=+0.0  vz=+1.30  rl=11  bocpd=59.8%  exh=0.08  decay=0.000  score=67  1h=BULL
+[2026-05-26 15:53:10] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-2.66  rl=11  bocpd=79.2%  exh=0.00  decay=0.003  score=59  1h=RANGE
+[2026-05-26 15:53:38] [RGV2] [ERROR] $^VXMT: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:53:38] [RGV2] [ERROR] 
+1 Failed download:
+[2026-05-26 15:53:38] [RGV2] [ERROR] ['^VXMT']: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:53:38] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
+[2026-05-26 15:53:40] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.73  rl=12  bocpd=63.2%  exh=0.24  decay=0.000  score=70  1h=BULL
+[2026-05-26 15:53:40] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.33  rl=12  bocpd=53.8%  exh=0.27  decay=0.000  score=70  1h=BEAR
+[2026-05-26 15:53:40] [RGV2] [INFO] [USD/JPY] reg=BEAR  conf=72%  slope=-2.0  vz=+1.91  rl=12  bocpd=46.2%  exh=0.31  decay=0.264  score=37  1h=BEAR
+[2026-05-26 15:53:40] [RGV2] [INFO] [USD/JPY] Gate: conf 64.8% < 70% (sess×0.90)
+[2026-05-26 15:53:40] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.12  rl=12  bocpd=62.5%  exh=0.37  decay=0.000  score=70  1h=BULL
+[2026-05-26 15:53:40] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.13  rl=12  bocpd=63.2%  exh=0.25  decay=0.000  score=70  1h=BULL
+[2026-05-26 15:53:40] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.91  rl=12  bocpd=61.4%  exh=0.18  decay=0.002  score=70  1h=BEAR
+[2026-05-26 15:53:40] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.79  rl=12  bocpd=63.2%  exh=0.23  decay=0.000  score=70  1h=BEAR
+[2026-05-26 15:53:40] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=96%  slope=-0.0  vz=+1.10  rl=12  bocpd=44.7%  exh=0.23  decay=0.005  score=69  1h=BULL
+[2026-05-26 15:53:40] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=99%  slope=-0.0  vz=-2.86  rl=12  bocpd=62.0%  exh=0.00  decay=0.007  score=62  1h=RANGE
+[2026-05-26 15:54:08] [RGV2] [ERROR] $^VXMT: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:54:08] [RGV2] [ERROR] 
+1 Failed download:
+[2026-05-26 15:54:08] [RGV2] [ERROR] ['^VXMT']: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:54:08] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
+[2026-05-26 15:54:09] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.73  rl=13  bocpd=47.0%  exh=0.20  decay=0.000  score=73  1h=BULL
+[2026-05-26 15:54:09] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.33  rl=13  bocpd=41.4%  exh=0.24  decay=0.000  score=73  1h=BEAR
+[2026-05-26 15:54:09] [RGV2] [INFO] [USD/JPY] reg=BEAR  conf=72%  slope=-3.0  vz=+1.91  rl=13  bocpd=40.7%  exh=0.25  decay=0.397  score=38  1h=BEAR
+[2026-05-26 15:54:09] [RGV2] [INFO] [USD/JPY] Gate: conf 64.8% < 70% (sess×0.90)
+[2026-05-26 15:54:09] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.12  rl=13  bocpd=46.5%  exh=0.31  decay=0.000  score=73  1h=BULL
+[2026-05-26 15:54:09] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.13  rl=13  bocpd=47.0%  exh=0.21  decay=0.000  score=73  1h=BULL
+[2026-05-26 15:54:09] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.91  rl=13  bocpd=45.8%  exh=0.14  decay=0.002  score=73  1h=BEAR
+[2026-05-26 15:54:09] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.79  rl=13  bocpd=47.0%  exh=0.19  decay=0.000  score=73  1h=BEAR
+[2026-05-26 15:54:09] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=96%  slope=-0.1  vz=+1.10  rl=13  bocpd=36.0%  exh=0.25  decay=0.011  score=71  1h=BULL
+[2026-05-26 15:54:09] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=99%  slope=-0.1  vz=-2.86  rl=13  bocpd=45.8%  exh=0.00  decay=0.009  score=65  1h=RANGE
+[2026-05-26 15:54:38] [RGV2] [ERROR] $^VXMT: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:54:38] [RGV2] [ERROR] 
+1 Failed download:
+[2026-05-26 15:54:38] [RGV2] [ERROR] ['^VXMT']: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:54:38] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
+[2026-05-26 15:54:40] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.71  rl=14  bocpd=37.2%  exh=0.21  decay=0.000  score=76  1h=BULL
+[2026-05-26 15:54:40] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.69  rl=14  bocpd=34.9%  exh=0.00  decay=0.000  score=75  1h=BEAR
+[2026-05-26 15:54:40] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=64%  slope=-4.1  vz=+2.14  rl=1  bocpd=0.0%  exh=0.09  decay=0.900  score=48  1h=BEAR
+[2026-05-26 15:54:40] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.96  rl=14  bocpd=37.1%  exh=0.38  decay=0.000  score=76  1h=BULL
+[2026-05-26 15:54:40] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.99  rl=14  bocpd=37.2%  exh=0.29  decay=0.000  score=76  1h=BULL
+[2026-05-26 15:54:40] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.82  rl=14  bocpd=36.6%  exh=0.18  decay=0.001  score=76  1h=BEAR
+[2026-05-26 15:54:40] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.93  rl=14  bocpd=37.2%  exh=0.07  decay=0.000  score=76  1h=BEAR
+[2026-05-26 15:54:40] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=-0.1  vz=+1.50  rl=14  bocpd=32.7%  exh=0.00  decay=0.010  score=74  1h=BULL
+[2026-05-26 15:54:40] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=99%  slope=-0.1  vz=-2.98  rl=14  bocpd=35.7%  exh=0.00  decay=0.016  score=66  1h=RANGE
+[2026-05-26 15:55:08] [RGV2] [ERROR] $^VXMT: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:55:08] [RGV2] [ERROR] 
+1 Failed download:
+[2026-05-26 15:55:08] [RGV2] [ERROR] ['^VXMT']: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:55:08] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
+[2026-05-26 15:55:10] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.71  rl=15  bocpd=32.7%  exh=0.18  decay=0.000  score=77  1h=BULL
+[2026-05-26 15:55:10] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.69  rl=15  bocpd=31.9%  exh=0.00  decay=0.000  score=76  1h=BEAR
+[2026-05-26 15:55:10] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=64%  slope=-4.7  vz=+2.14  rl=2  bocpd=47.0%  exh=0.09  decay=0.900  score=39  1h=BEAR
+[2026-05-26 15:55:10] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.96  rl=15  bocpd=32.7%  exh=0.33  decay=0.000  score=77  1h=BULL
+[2026-05-26 15:55:10] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.99  rl=15  bocpd=32.7%  exh=0.28  decay=0.000  score=77  1h=BULL
+[2026-05-26 15:55:10] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.82  rl=15  bocpd=32.4%  exh=0.18  decay=0.001  score=77  1h=BEAR
+[2026-05-26 15:55:10] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.93  rl=15  bocpd=32.7%  exh=0.07  decay=0.000  score=77  1h=BEAR
+[2026-05-26 15:55:10] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=-0.0  vz=+1.50  rl=15  bocpd=31.0%  exh=0.00  decay=0.006  score=74  1h=BULL
+[2026-05-26 15:55:10] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=99%  slope=-0.2  vz=-2.98  rl=15  bocpd=31.3%  exh=0.00  decay=0.021  score=67  1h=RANGE
+[2026-05-26 15:55:38] [RGV2] [ERROR] $^VXMT: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:55:38] [RGV2] [ERROR] 
+1 Failed download:
+[2026-05-26 15:55:38] [RGV2] [ERROR] ['^VXMT']: possibly delisted; no price data found  (period=5d)
+[2026-05-26 15:55:38] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
+[2026-05-26 15:55:39] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.64  rl=16  bocpd=30.7%  exh=0.22  decay=0.000  score=77  1h=BULL
+[2026-05-26 15:55:39] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.58  rl=16  bocpd=30.5%  exh=0.04  decay=0.000  score=76  1h=BEAR
+[2026-05-26 15:55:39] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=92%  slope=-3.5  vz=+1.89  rl=3  bocpd=92.6%  exh=0.12  decay=0.900  score=56  1h=BEAR
+[2026-05-26 15:55:39] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.89  rl=16  bocpd=30.8%  exh=0.33  decay=0.000  score=77  1h=BULL
+[2026-05-26 15:55:39] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.89  rl=16  bocpd=30.7%  exh=0.30  decay=0.000  score=77  1h=BULL
+[2026-05-26 15:55:39] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.91  rl=16  bocpd=30.7%  exh=0.08  decay=0.000  score=77  1h=BEAR
+[2026-05-26 15:55:39] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.89  rl=16  bocpd=30.7%  exh=0.05  decay=0.000  score=77  1h=BEAR
+[2026-05-26 15:55:39] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=-0.0  vz=+1.47  rl=16  bocpd=30.2%  exh=0.01  decay=0.121  score=75  1h=BULL
+[2026-05-26 15:55:39] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=98%  slope=-0.2  vz=-2.97  rl=16  bocpd=29.5%  exh=0.00  decay=0.024  score=67  1h=RANGE
+[2026-05-26 15:56:06] [RGV2] [INFO] RegimeV2 starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-26 15:56:08] [RGV2] [INFO] Credentials loaded: account=10011064059  server=MetaQuotes-Demo
+[2026-05-26 15:56:08] [RGV2] [INFO] [RegimeV2-Bot] MT5 connected  account=10011064059  balance=100566.09  server=MetaQuotes-Demo
+[2026-05-26 15:56:09] [RGV2] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF', 'GBP/JPY', 'XAU/USD']  hold=2  entry_conf=70%  interval=30s  use_bocpd=True  use_1h=True  use_vix=True
+[2026-05-26 15:56:14] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 15:56:19] [RGV2] [INFO] [CVOL] EVZCLS=10.7(86%ile)  GVZCLS=23.9(89%ile)  coherence=True
+[2026-05-26 15:56:19] [RGV2] [INFO] [DXY] level=99.154  5d=+0.19%
+[2026-05-26 15:56:19] [RGV2] [INFO] [HYG] level=80.1  5d=+0.70%
+[2026-05-26 15:56:21] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 15:56:25] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.59  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=83  1h=BULL
+[2026-05-26 15:56:25] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.43  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=82  1h=BEAR
+[2026-05-26 15:56:25] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=99%  slope=+0.0  vz=+1.86  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=82  1h=BEAR
+[2026-05-26 15:56:25] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.91  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=83  1h=BULL
+[2026-05-26 15:56:25] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.95  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=83  1h=BULL
+[2026-05-26 15:56:25] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.03  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=83  1h=BEAR
+[2026-05-26 15:56:25] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.76  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=83  1h=BEAR
+[2026-05-26 15:56:25] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=+0.0  vz=+1.40  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=81  1h=BULL
+[2026-05-26 15:56:25] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.80  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 15:56:42] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 15:56:47] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.59  rl=2  bocpd=99.0%  exh=0.00  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:56:47] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.43  rl=2  bocpd=98.8%  exh=0.00  decay=0.000  score=63  1h=BEAR
+[2026-05-26 15:56:47] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=99%  slope=+0.0  vz=+1.86  rl=2  bocpd=98.7%  exh=0.00  decay=0.000  score=62  1h=BEAR
+[2026-05-26 15:56:47] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.91  rl=2  bocpd=99.0%  exh=0.00  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:56:47] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.95  rl=2  bocpd=99.0%  exh=0.00  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:56:47] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.03  rl=2  bocpd=99.0%  exh=0.00  decay=0.000  score=64  1h=BEAR
+[2026-05-26 15:56:47] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.76  rl=2  bocpd=99.0%  exh=0.00  decay=0.000  score=64  1h=BEAR
+[2026-05-26 15:56:47] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=+0.0  vz=+1.40  rl=2  bocpd=98.4%  exh=0.00  decay=0.000  score=61  1h=BULL
+[2026-05-26 15:56:47] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.80  rl=2  bocpd=98.9%  exh=0.00  decay=0.000  score=54  1h=RANGE
+[2026-05-26 15:57:12] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 15:57:16] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.56  rl=3  bocpd=98.8%  exh=0.00  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:57:16] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.1  vz=+1.33  rl=3  bocpd=98.6%  exh=0.00  decay=0.000  score=63  1h=BEAR
+[2026-05-26 15:57:16] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=100%  slope=+0.6  vz=+1.99  rl=3  bocpd=98.8%  exh=0.00  decay=0.350  score=63  1h=BEAR
+[2026-05-26 15:57:16] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.86  rl=3  bocpd=98.8%  exh=0.00  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:57:16] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.84  rl=3  bocpd=98.8%  exh=0.00  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:57:16] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.32  rl=3  bocpd=98.8%  exh=0.00  decay=0.350  score=64  1h=BEAR
+[2026-05-26 15:57:16] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.77  rl=3  bocpd=98.8%  exh=0.00  decay=0.044  score=64  1h=BEAR
+[2026-05-26 15:57:16] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=-0.1  vz=+1.36  rl=3  bocpd=98.0%  exh=0.00  decay=0.007  score=61  1h=BULL
+[2026-05-26 15:57:16] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.2  vz=-2.73  rl=3  bocpd=98.8%  exh=0.00  decay=0.306  score=55  1h=RANGE
+[2026-05-26 15:57:42] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 15:57:47] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.56  rl=4  bocpd=98.7%  exh=0.05  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:57:47] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.1  vz=+1.33  rl=4  bocpd=98.5%  exh=0.10  decay=0.000  score=63  1h=BEAR
+[2026-05-26 15:57:47] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=100%  slope=+0.4  vz=+1.99  rl=4  bocpd=98.6%  exh=0.00  decay=0.350  score=63  1h=BEAR
+[2026-05-26 15:57:47] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.86  rl=4  bocpd=98.7%  exh=0.06  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:57:47] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.84  rl=4  bocpd=98.7%  exh=0.13  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:57:47] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.32  rl=4  bocpd=98.7%  exh=0.00  decay=0.350  score=64  1h=BEAR
+[2026-05-26 15:57:47] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.77  rl=4  bocpd=98.7%  exh=0.00  decay=0.035  score=64  1h=BEAR
+[2026-05-26 15:57:47] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=-0.0  vz=+1.36  rl=4  bocpd=97.7%  exh=0.04  decay=0.005  score=61  1h=BULL
+[2026-05-26 15:57:47] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.1  vz=-2.73  rl=4  bocpd=98.7%  exh=0.00  decay=0.245  score=55  1h=RANGE
+[2026-05-26 15:58:12] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 15:58:17] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.48  rl=5  bocpd=98.6%  exh=0.16  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:58:17] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.1  vz=+1.62  rl=5  bocpd=98.4%  exh=0.00  decay=0.245  score=63  1h=BEAR
+[2026-05-26 15:58:17] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=100%  slope=+0.4  vz=+2.31  rl=5  bocpd=98.5%  exh=0.00  decay=0.350  score=64  1h=BEAR
+[2026-05-26 15:58:17] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.86  rl=5  bocpd=98.6%  exh=0.05  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:58:17] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.84  rl=5  bocpd=98.6%  exh=0.11  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:58:17] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.32  rl=5  bocpd=98.6%  exh=0.00  decay=0.350  score=64  1h=BEAR
+[2026-05-26 15:58:17] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.77  rl=5  bocpd=98.6%  exh=0.00  decay=0.026  score=64  1h=BEAR
+[2026-05-26 15:58:17] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=-0.0  vz=+1.36  rl=5  bocpd=97.4%  exh=0.03  decay=0.004  score=61  1h=BULL
+[2026-05-26 15:58:17] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.1  vz=-2.73  rl=5  bocpd=98.6%  exh=0.00  decay=0.184  score=55  1h=RANGE
+[2026-05-26 15:58:40] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 15:58:42] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.48  rl=6  bocpd=98.4%  exh=0.15  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:58:42] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.1  vz=+1.62  rl=6  bocpd=98.1%  exh=0.00  decay=0.350  score=63  1h=BEAR
+[2026-05-26 15:58:42] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=100%  slope=+0.3  vz=+2.31  rl=6  bocpd=98.3%  exh=0.00  decay=0.350  score=64  1h=BEAR
+[2026-05-26 15:58:42] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.90  rl=6  bocpd=98.4%  exh=0.01  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:58:42] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.75  rl=6  bocpd=98.4%  exh=0.16  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:58:42] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.44  rl=6  bocpd=98.4%  exh=0.00  decay=0.350  score=64  1h=BEAR
+[2026-05-26 15:58:42] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.83  rl=6  bocpd=98.4%  exh=0.00  decay=0.095  score=64  1h=BEAR
+[2026-05-26 15:58:42] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=+0.0  vz=+1.46  rl=6  bocpd=96.9%  exh=0.00  decay=0.045  score=61  1h=BULL
+[2026-05-26 15:58:42] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.1  vz=-2.71  rl=6  bocpd=98.4%  exh=0.00  decay=0.165  score=55  1h=RANGE
+[2026-05-26 15:59:10] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 15:59:12] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.48  rl=7  bocpd=98.0%  exh=0.14  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:59:12] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.1  vz=+1.62  rl=7  bocpd=97.6%  exh=0.00  decay=0.350  score=63  1h=BEAR
+[2026-05-26 15:59:12] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=100%  slope=+0.2  vz=+2.31  rl=7  bocpd=97.9%  exh=0.00  decay=0.350  score=64  1h=BEAR
+[2026-05-26 15:59:12] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.90  rl=7  bocpd=98.0%  exh=0.01  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:59:12] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.75  rl=7  bocpd=98.0%  exh=0.17  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:59:12] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.44  rl=7  bocpd=98.0%  exh=0.00  decay=0.350  score=64  1h=BEAR
+[2026-05-26 15:59:12] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.83  rl=7  bocpd=98.0%  exh=0.00  decay=0.109  score=64  1h=BEAR
+[2026-05-26 15:59:12] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=+0.0  vz=+1.46  rl=7  bocpd=95.9%  exh=0.00  decay=0.094  score=62  1h=BULL
+[2026-05-26 15:59:12] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.1  vz=-2.71  rl=7  bocpd=98.0%  exh=0.00  decay=0.141  score=55  1h=RANGE
+[2026-05-26 15:59:41] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 15:59:42] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.40  rl=8  bocpd=97.2%  exh=0.23  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:59:42] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.1  vz=+1.55  rl=8  bocpd=96.5%  exh=0.05  decay=0.307  score=64  1h=BEAR
+[2026-05-26 15:59:42] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=100%  slope=+0.2  vz=+2.43  rl=8  bocpd=97.0%  exh=0.00  decay=0.350  score=64  1h=BEAR
+[2026-05-26 15:59:42] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.78  rl=8  bocpd=97.2%  exh=0.12  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:59:42] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.63  rl=8  bocpd=97.2%  exh=0.29  decay=0.000  score=64  1h=BULL
+[2026-05-26 15:59:42] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.32  rl=8  bocpd=97.1%  exh=0.03  decay=0.350  score=64  1h=BEAR
+[2026-05-26 15:59:42] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.69  rl=8  bocpd=97.2%  exh=0.13  decay=0.004  score=64  1h=BEAR
+[2026-05-26 15:59:42] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=+0.1  vz=+1.69  rl=8  bocpd=93.8%  exh=0.00  decay=0.274  score=62  1h=BULL
+[2026-05-26 15:59:42] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.1  vz=-2.63  rl=8  bocpd=97.1%  exh=0.00  decay=0.177  score=55  1h=RANGE
+[2026-05-26 16:00:10] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:00:12] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.40  rl=9  bocpd=95.1%  exh=0.24  decay=0.000  score=64  1h=BULL
+[2026-05-26 16:00:12] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.1  vz=+1.55  rl=9  bocpd=93.9%  exh=0.06  decay=0.249  score=64  1h=BEAR
+[2026-05-26 16:00:12] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=100%  slope=+0.2  vz=+2.43  rl=9  bocpd=94.7%  exh=0.00  decay=0.350  score=64  1h=BEAR
+[2026-05-26 16:00:12] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.78  rl=9  bocpd=95.1%  exh=0.15  decay=0.000  score=64  1h=BULL
+[2026-05-26 16:00:12] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.63  rl=9  bocpd=95.1%  exh=0.27  decay=0.000  score=64  1h=BULL
+[2026-05-26 16:00:12] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.32  rl=9  bocpd=95.0%  exh=0.09  decay=0.349  score=64  1h=BEAR
+[2026-05-26 16:00:12] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.69  rl=9  bocpd=95.1%  exh=0.18  decay=0.000  score=64  1h=BEAR
+[2026-05-26 16:00:12] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=+0.1  vz=+1.69  rl=9  bocpd=88.9%  exh=0.00  decay=0.340  score=63  1h=BULL
+[2026-05-26 16:00:12] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.63  rl=9  bocpd=95.0%  exh=0.00  decay=0.182  score=56  1h=RANGE
+[2026-05-26 16:00:40] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:00:42] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.37  rl=10  bocpd=90.2%  exh=0.25  decay=0.000  score=65  1h=BULL
+[2026-05-26 16:00:42] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.1  vz=+1.71  rl=10  bocpd=87.8%  exh=0.00  decay=0.283  score=65  1h=BEAR
+[2026-05-26 16:00:42] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=100%  slope=+0.1  vz=+2.58  rl=10  bocpd=89.3%  exh=0.00  decay=0.350  score=65  1h=BEAR
+[2026-05-26 16:00:42] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.68  rl=10  bocpd=90.2%  exh=0.23  decay=0.001  score=65  1h=BULL
+[2026-05-26 16:00:42] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.52  rl=10  bocpd=90.2%  exh=0.32  decay=0.000  score=65  1h=BULL
+[2026-05-26 16:00:42] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.14  rl=10  bocpd=90.0%  exh=0.19  decay=0.186  score=65  1h=BEAR
+[2026-05-26 16:00:42] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.64  rl=10  bocpd=90.2%  exh=0.21  decay=0.000  score=65  1h=BEAR
+[2026-05-26 16:00:42] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=+0.1  vz=+1.85  rl=10  bocpd=79.3%  exh=0.00  decay=0.350  score=66  1h=BULL
+[2026-05-26 16:00:42] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.72  rl=10  bocpd=89.9%  exh=0.00  decay=0.132  score=56  1h=RANGE
+[2026-05-26 16:01:11] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:01:13] [RGV2] [INFO] [CVOL] EVZCLS=10.7(86%ile)  GVZCLS=23.9(89%ile)  coherence=True
+[2026-05-26 16:01:13] [RGV2] [INFO] [DXY] level=99.146  5d=+0.18%
+[2026-05-26 16:01:13] [RGV2] [INFO] [HYG] level=80.08  5d=+0.69%
+[2026-05-26 16:01:14] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 16:01:16] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.39  rl=11  bocpd=79.7%  exh=0.19  decay=0.000  score=67  1h=BULL
+[2026-05-26 16:01:16] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.47  rl=11  bocpd=75.7%  exh=0.07  decay=0.207  score=68  1h=BEAR
+[2026-05-26 16:01:16] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=100%  slope=+0.1  vz=+2.70  rl=11  bocpd=77.9%  exh=0.00  decay=0.350  score=67  1h=BEAR
+[2026-05-26 16:01:16] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.66  rl=11  bocpd=79.6%  exh=0.22  decay=0.001  score=67  1h=BULL
+[2026-05-26 16:01:16] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.60  rl=11  bocpd=79.7%  exh=0.20  decay=0.000  score=67  1h=BULL
+[2026-05-26 16:01:16] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.21  rl=11  bocpd=79.2%  exh=0.12  decay=0.019  score=67  1h=BEAR
+[2026-05-26 16:01:16] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.60  rl=11  bocpd=79.7%  exh=0.21  decay=0.000  score=67  1h=BEAR
+[2026-05-26 16:01:16] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=+0.1  vz=+1.78  rl=11  bocpd=64.4%  exh=0.00  decay=0.350  score=69  1h=BULL
+[2026-05-26 16:01:16] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.72  rl=11  bocpd=79.1%  exh=0.00  decay=0.084  score=59  1h=RANGE
+[2026-05-26 16:01:40] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:01:42] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.39  rl=12  bocpd=63.2%  exh=0.00  decay=0.000  score=71  1h=BULL
+[2026-05-26 16:01:42] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.47  rl=12  bocpd=58.8%  exh=0.15  decay=0.128  score=71  1h=BEAR
+[2026-05-26 16:01:42] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=100%  slope=-0.0  vz=+2.70  rl=12  bocpd=61.0%  exh=0.00  decay=0.351  score=71  1h=BEAR
+[2026-05-26 16:01:42] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.66  rl=12  bocpd=62.9%  exh=0.21  decay=0.002  score=71  1h=BULL
+[2026-05-26 16:01:42] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.60  rl=12  bocpd=63.2%  exh=0.17  decay=0.000  score=71  1h=BULL
+[2026-05-26 16:01:42] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+2.21  rl=12  bocpd=62.6%  exh=0.09  decay=0.000  score=71  1h=BEAR
+[2026-05-26 16:01:42] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.60  rl=12  bocpd=63.2%  exh=0.21  decay=0.000  score=71  1h=BEAR
+[2026-05-26 16:01:42] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=+0.2  vz=+1.78  rl=12  bocpd=49.3%  exh=0.02  decay=0.350  score=72  1h=BULL
+[2026-05-26 16:01:42] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.72  rl=12  bocpd=62.5%  exh=0.00  decay=0.028  score=62  1h=RANGE
+[2026-05-26 16:02:10] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:02:12] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.39  rl=13  bocpd=47.0%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 16:02:12] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.47  rl=13  bocpd=44.2%  exh=0.18  decay=0.000  score=74  1h=BEAR
+[2026-05-26 16:02:12] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=100%  slope=-0.0  vz=+2.70  rl=13  bocpd=45.4%  exh=0.00  decay=0.353  score=74  1h=BEAR
+[2026-05-26 16:02:12] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.66  rl=13  bocpd=46.8%  exh=0.17  decay=0.002  score=74  1h=BULL
+[2026-05-26 16:02:12] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.60  rl=13  bocpd=47.0%  exh=0.12  decay=0.000  score=74  1h=BULL
+[2026-05-26 16:02:12] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+2.21  rl=13  bocpd=46.6%  exh=0.06  decay=0.001  score=74  1h=BEAR
+[2026-05-26 16:02:12] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.60  rl=13  bocpd=47.0%  exh=0.18  decay=0.000  score=74  1h=BEAR
+[2026-05-26 16:02:12] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=+0.2  vz=+1.78  rl=13  bocpd=39.3%  exh=0.05  decay=0.350  score=74  1h=BULL
+[2026-05-26 16:02:12] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.72  rl=13  bocpd=46.5%  exh=0.00  decay=0.004  score=65  1h=RANGE
+[2026-05-26 16:02:42] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:02:47] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.42  rl=14  bocpd=37.2%  exh=0.00  decay=0.000  score=76  1h=RANGE
+[2026-05-26 16:02:47] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.24  rl=14  bocpd=36.1%  exh=0.26  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:02:47] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=99%  slope=-0.1  vz=+2.91  rl=14  bocpd=35.6%  exh=0.00  decay=0.361  score=75  1h=BEAR
+[2026-05-26 16:02:47] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.69  rl=14  bocpd=37.1%  exh=0.14  decay=0.002  score=76  1h=BULL
+[2026-05-26 16:02:47] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.65  rl=14  bocpd=37.2%  exh=0.08  decay=0.000  score=76  1h=BULL
+[2026-05-26 16:02:47] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+2.04  rl=14  bocpd=37.0%  exh=0.17  decay=0.001  score=76  1h=BEAR
+[2026-05-26 16:02:47] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.53  rl=14  bocpd=37.2%  exh=0.24  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:02:47] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=+0.1  vz=+1.77  rl=14  bocpd=34.2%  exh=0.03  decay=0.350  score=75  1h=BULL
+[2026-05-26 16:02:47] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.67  rl=14  bocpd=37.1%  exh=0.00  decay=0.003  score=67  1h=RANGE
+[2026-05-26 16:03:11] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:03:16] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.58  rl=15  bocpd=32.7%  exh=0.00  decay=0.022  score=77  1h=RANGE
+[2026-05-26 16:03:16] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.83  rl=15  bocpd=32.4%  exh=0.00  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:03:16] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=96%  slope=-0.3  vz=+2.99  rl=15  bocpd=29.9%  exh=0.00  decay=0.387  score=73  1h=BEAR
+[2026-05-26 16:03:16] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.75  rl=15  bocpd=32.6%  exh=0.02  decay=0.002  score=77  1h=BULL
+[2026-05-26 16:03:16] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.85  rl=15  bocpd=32.7%  exh=0.00  decay=0.002  score=77  1h=BULL
+[2026-05-26 16:03:16] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+2.18  rl=15  bocpd=32.6%  exh=0.07  decay=0.001  score=77  1h=BEAR
+[2026-05-26 16:03:16] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.53  rl=15  bocpd=32.7%  exh=0.18  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:03:16] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=+0.1  vz=+1.77  rl=15  bocpd=31.8%  exh=0.03  decay=0.298  score=75  1h=BULL
+[2026-05-26 16:03:16] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.67  rl=15  bocpd=32.7%  exh=0.00  decay=0.000  score=68  1h=RANGE
+[2026-05-26 16:03:41] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:03:43] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.58  rl=16  bocpd=30.7%  exh=0.00  decay=0.123  score=77  1h=RANGE
+[2026-05-26 16:03:43] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.83  rl=16  bocpd=30.7%  exh=0.00  decay=0.084  score=77  1h=BEAR
+[2026-05-26 16:03:43] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=96%  slope=-0.4  vz=+2.99  rl=16  bocpd=27.9%  exh=0.00  decay=0.408  score=74  1h=BEAR
+[2026-05-26 16:03:43] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.75  rl=16  bocpd=30.6%  exh=0.02  decay=0.002  score=77  1h=BULL
+[2026-05-26 16:03:43] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.85  rl=16  bocpd=30.7%  exh=0.00  decay=0.147  score=77  1h=BULL
+[2026-05-26 16:03:43] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=-0.0  vz=+2.18  rl=16  bocpd=30.7%  exh=0.04  decay=0.001  score=77  1h=BEAR
+[2026-05-26 16:03:43] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=+0.0  vz=+0.71  rl=16  bocpd=30.7%  exh=0.00  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:03:43] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=99%  slope=+0.1  vz=+2.42  rl=16  bocpd=31.1%  exh=0.00  decay=0.350  score=76  1h=BULL
+[2026-05-26 16:03:43] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.36  rl=16  bocpd=30.8%  exh=0.00  decay=0.142  score=68  1h=RANGE
+[2026-05-26 16:04:12] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:04:16] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.64  rl=17  bocpd=29.7%  exh=0.00  decay=0.242  score=77  1h=RANGE
+[2026-05-26 16:04:16] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.83  rl=17  bocpd=29.9%  exh=0.00  decay=0.233  score=77  1h=BEAR
+[2026-05-26 16:04:16] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=77%  slope=-1.6  vz=+3.08  rl=17  bocpd=34.8%  exh=0.00  decay=0.557  score=54  1h=BEAR
+[2026-05-26 16:04:16] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.80  rl=17  bocpd=29.7%  exh=0.00  decay=0.023  score=77  1h=BULL
+[2026-05-26 16:04:16] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.97  rl=17  bocpd=29.7%  exh=0.00  decay=0.339  score=77  1h=BULL
+[2026-05-26 16:04:16] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.28  rl=17  bocpd=29.7%  exh=0.00  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:04:16] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=-0.0  vz=+0.72  rl=17  bocpd=29.7%  exh=0.00  decay=0.001  score=77  1h=BEAR
+[2026-05-26 16:04:16] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=99%  slope=+0.1  vz=+2.35  rl=17  bocpd=30.4%  exh=0.00  decay=0.350  score=76  1h=BULL
+[2026-05-26 16:04:16] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.12  rl=17  bocpd=29.8%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:04:42] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:04:47] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.64  rl=18  bocpd=29.1%  exh=0.00  decay=0.297  score=78  1h=RANGE
+[2026-05-26 16:04:47] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.83  rl=18  bocpd=29.3%  exh=0.00  decay=0.319  score=77  1h=BEAR
+[2026-05-26 16:04:47] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=77%  slope=-2.4  vz=+3.08  rl=18  bocpd=36.3%  exh=0.00  decay=0.670  score=53  1h=BEAR
+[2026-05-26 16:04:47] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.80  rl=18  bocpd=29.1%  exh=0.00  decay=0.095  score=77  1h=BULL
+[2026-05-26 16:04:47] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.97  rl=18  bocpd=29.1%  exh=0.00  decay=0.350  score=78  1h=BULL
+[2026-05-26 16:04:47] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.28  rl=18  bocpd=29.1%  exh=0.00  decay=0.011  score=77  1h=BEAR
+[2026-05-26 16:04:47] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=-0.0  vz=+0.72  rl=18  bocpd=29.1%  exh=0.00  decay=0.060  score=77  1h=BEAR
+[2026-05-26 16:04:47] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=99%  slope=+0.1  vz=+2.35  rl=18  bocpd=29.8%  exh=0.02  decay=0.350  score=76  1h=BULL
+[2026-05-26 16:04:47] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.12  rl=18  bocpd=29.2%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:05:11] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:05:16] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.55  rl=19  bocpd=28.7%  exh=0.10  decay=0.284  score=76  1h=RANGE
+[2026-05-26 16:05:16] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.58  rl=19  bocpd=28.9%  exh=0.18  decay=0.256  score=76  1h=BEAR
+[2026-05-26 16:05:18] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=63%  slope=-3.7  vz=+2.85  rl=1  bocpd=0.0%  exh=0.10  decay=0.000  score=40  1h=BEAR
+[2026-05-26 16:05:18] [RGV2] [INFO] [USD/JPY] Gate: conf 56.6% < 70% (sess×0.90)
+[2026-05-26 16:05:18] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.73  rl=19  bocpd=28.6%  exh=0.06  decay=0.130  score=76  1h=BULL
+[2026-05-26 16:05:18] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.87  rl=19  bocpd=28.7%  exh=0.06  decay=0.350  score=76  1h=BULL
+[2026-05-26 16:05:18] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.99  rl=19  bocpd=28.7%  exh=0.15  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:05:18] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=-0.0  vz=+0.65  rl=19  bocpd=28.6%  exh=0.08  decay=0.100  score=76  1h=BEAR
+[2026-05-26 16:05:18] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=99%  slope=+0.1  vz=+2.22  rl=19  bocpd=29.2%  exh=0.13  decay=0.350  score=75  1h=BULL
+[2026-05-26 16:05:18] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.12  rl=19  bocpd=28.7%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:05:42] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:05:48] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.55  rl=20  bocpd=28.3%  exh=0.13  decay=0.237  score=76  1h=RANGE
+[2026-05-26 16:05:48] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.58  rl=20  bocpd=28.5%  exh=0.21  decay=0.283  score=76  1h=BEAR
+[2026-05-26 16:05:48] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=63%  slope=-4.6  vz=+2.85  rl=2  bocpd=0.0%  exh=0.17  decay=0.000  score=40  1h=BEAR
+[2026-05-26 16:05:48] [RGV2] [INFO] [USD/JPY] Gate: conf 56.6% < 70% (sess×0.90)
+[2026-05-26 16:05:48] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.73  rl=20  bocpd=28.3%  exh=0.09  decay=0.114  score=76  1h=BULL
+[2026-05-26 16:05:48] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.87  rl=20  bocpd=28.3%  exh=0.12  decay=0.350  score=76  1h=BULL
+[2026-05-26 16:05:48] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.99  rl=20  bocpd=28.3%  exh=0.23  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:05:48] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=-0.0  vz=+0.65  rl=20  bocpd=28.3%  exh=0.10  decay=0.116  score=76  1h=BEAR
+[2026-05-26 16:05:48] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=99%  slope=+0.1  vz=+2.22  rl=20  bocpd=28.8%  exh=0.12  decay=0.350  score=75  1h=BULL
+[2026-05-26 16:05:48] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-2.12  rl=20  bocpd=28.4%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:05:50] [RGV2] [INFO] Cycle 20  balance=100566.09  macro=vol-coherent  DXY=99.1→  sleep=19.0s
+[2026-05-26 16:06:11] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:06:16] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.56  rl=21  bocpd=28.1%  exh=0.11  decay=0.188  score=76  1h=RANGE
+[2026-05-26 16:06:16] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.73  rl=21  bocpd=28.2%  exh=0.07  decay=0.255  score=76  1h=BEAR
+[2026-05-26 16:06:16] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=96%  slope=-3.3  vz=+3.01  rl=3  bocpd=98.1%  exh=0.04  decay=0.350  score=51  1h=BEAR
+[2026-05-26 16:06:16] [RGV2] [INFO] [USD/JPY] Gate: vol_z 3.01 > 2.5
+[2026-05-26 16:06:16] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.73  rl=21  bocpd=28.0%  exh=0.08  decay=0.081  score=76  1h=BULL
+[2026-05-26 16:06:16] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.94  rl=21  bocpd=28.1%  exh=0.03  decay=0.346  score=76  1h=BULL
+[2026-05-26 16:06:16] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.93  rl=21  bocpd=28.0%  exh=0.23  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:06:16] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=-0.0  vz=+0.68  rl=21  bocpd=28.0%  exh=0.05  decay=0.121  score=76  1h=BEAR
+[2026-05-26 16:06:16] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=+0.1  vz=+2.20  rl=21  bocpd=28.3%  exh=0.12  decay=0.350  score=75  1h=BULL
+[2026-05-26 16:06:16] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.92  rl=21  bocpd=28.1%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:06:44] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:06:50] [RGV2] [INFO] [CVOL] EVZCLS=10.7(86%ile)  GVZCLS=23.9(89%ile)  coherence=True
+[2026-05-26 16:06:51] [RGV2] [INFO] [DXY] level=99.169  5d=+0.20%
+[2026-05-26 16:06:51] [RGV2] [INFO] [HYG] level=80.08  5d=+0.68%
+[2026-05-26 16:06:53] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 16:06:56] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.56  rl=22  bocpd=27.8%  exh=0.07  decay=0.120  score=76  1h=RANGE
+[2026-05-26 16:06:56] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.73  rl=22  bocpd=27.9%  exh=0.03  decay=0.200  score=76  1h=BEAR
+[2026-05-26 16:06:56] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=96%  slope=-1.9  vz=+3.01  rl=4  bocpd=97.7%  exh=0.01  decay=0.350  score=51  1h=BEAR
+[2026-05-26 16:06:56] [RGV2] [INFO] [USD/JPY] Gate: vol_z 3.01 > 2.5
+[2026-05-26 16:06:56] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.73  rl=22  bocpd=27.8%  exh=0.05  decay=0.040  score=76  1h=BULL
+[2026-05-26 16:06:56] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.94  rl=22  bocpd=27.8%  exh=0.02  decay=0.278  score=76  1h=BULL
+[2026-05-26 16:06:56] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.93  rl=22  bocpd=27.8%  exh=0.12  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:06:56] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=-0.0  vz=+0.68  rl=22  bocpd=27.8%  exh=0.03  decay=0.118  score=76  1h=BEAR
+[2026-05-26 16:06:56] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=+0.0  vz=+2.20  rl=22  bocpd=28.0%  exh=0.07  decay=0.350  score=75  1h=BULL
+[2026-05-26 16:06:56] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.92  rl=22  bocpd=27.9%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:07:12] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:07:16] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.49  rl=23  bocpd=27.6%  exh=0.17  decay=0.002  score=77  1h=RANGE
+[2026-05-26 16:07:16] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.54  rl=23  bocpd=27.7%  exh=0.11  decay=0.027  score=76  1h=BEAR
+[2026-05-26 16:07:16] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.3  vz=+2.82  rl=5  bocpd=98.4%  exh=0.06  decay=0.087  score=54  1h=BEAR
+[2026-05-26 16:07:16] [RGV2] [INFO] [USD/JPY] Gate: vol_z 2.82 > 2.5
+[2026-05-26 16:07:16] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.71  rl=23  bocpd=27.6%  exh=0.08  decay=0.000  score=76  1h=BULL
+[2026-05-26 16:07:16] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.83  rl=23  bocpd=27.6%  exh=0.10  decay=0.122  score=77  1h=BULL
+[2026-05-26 16:07:16] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.84  rl=23  bocpd=27.6%  exh=0.18  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:07:16] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=-0.0  vz=+0.57  rl=23  bocpd=27.5%  exh=0.16  decay=0.054  score=76  1h=BEAR
+[2026-05-26 16:07:16] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=-0.0  vz=+1.93  rl=23  bocpd=27.5%  exh=0.24  decay=0.153  score=74  1h=BULL
+[2026-05-26 16:07:16] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.56  rl=23  bocpd=27.6%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:07:41] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:07:43] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.49  rl=24  bocpd=27.4%  exh=0.18  decay=0.000  score=77  1h=RANGE
+[2026-05-26 16:07:43] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.54  rl=24  bocpd=27.5%  exh=0.20  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:07:43] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+1.3  vz=+2.82  rl=6  bocpd=98.3%  exh=0.15  decay=0.000  score=54  1h=BEAR
+[2026-05-26 16:07:43] [RGV2] [INFO] [USD/JPY] Gate: vol_z 2.82 > 2.5
+[2026-05-26 16:07:43] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.71  rl=24  bocpd=27.4%  exh=0.08  decay=0.000  score=76  1h=BULL
+[2026-05-26 16:07:43] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.83  rl=24  bocpd=27.4%  exh=0.14  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:07:43] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.84  rl=24  bocpd=27.4%  exh=0.16  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:07:43] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=-0.0  vz=+0.57  rl=24  bocpd=27.3%  exh=0.18  decay=0.003  score=76  1h=BEAR
+[2026-05-26 16:07:43] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=-0.1  vz=+1.93  rl=24  bocpd=27.3%  exh=0.25  decay=0.010  score=74  1h=BULL
+[2026-05-26 16:07:43] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.56  rl=24  bocpd=27.5%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:08:12] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:08:15] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.50  rl=25  bocpd=27.3%  exh=0.15  decay=0.000  score=77  1h=RANGE
+[2026-05-26 16:08:15] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.85  rl=25  bocpd=27.4%  exh=0.00  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:08:15] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+2.7  vz=+2.68  rl=7  bocpd=98.1%  exh=0.21  decay=0.000  score=55  1h=BEAR
+[2026-05-26 16:08:15] [RGV2] [INFO] [USD/JPY] Gate: vol_z 2.68 > 2.5
+[2026-05-26 16:08:15] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.57  rl=25  bocpd=27.2%  exh=0.24  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:08:15] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.79  rl=25  bocpd=27.3%  exh=0.17  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:08:15] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.84  rl=25  bocpd=27.2%  exh=0.15  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:08:15] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=-0.0  vz=+0.57  rl=25  bocpd=27.2%  exh=0.17  decay=0.002  score=76  1h=BEAR
+[2026-05-26 16:08:15] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=-0.1  vz=+1.93  rl=25  bocpd=27.1%  exh=0.21  decay=0.018  score=75  1h=BULL
+[2026-05-26 16:08:15] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.56  rl=25  bocpd=27.3%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:08:40] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:08:43] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.50  rl=26  bocpd=27.1%  exh=0.06  decay=0.000  score=77  1h=RANGE
+[2026-05-26 16:08:43] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.85  rl=26  bocpd=27.2%  exh=0.00  decay=0.000  score=76  1h=BEAR
+[2026-05-26 16:08:43] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+4.0  vz=+2.68  rl=8  bocpd=97.6%  exh=0.14  decay=0.000  score=55  1h=BEAR
+[2026-05-26 16:08:43] [RGV2] [INFO] [USD/JPY] Gate: vol_z 2.68 > 2.5
+[2026-05-26 16:08:43] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.57  rl=26  bocpd=27.1%  exh=0.21  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:08:43] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.79  rl=26  bocpd=27.1%  exh=0.12  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:08:43] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.80  rl=26  bocpd=27.1%  exh=0.07  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:08:43] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=-0.0  vz=+0.62  rl=26  bocpd=27.0%  exh=0.05  decay=0.003  score=76  1h=BEAR
+[2026-05-26 16:08:43] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=-0.1  vz=+2.15  rl=26  bocpd=26.9%  exh=0.02  decay=0.019  score=74  1h=BULL
+[2026-05-26 16:08:43] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.63  rl=26  bocpd=27.1%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:09:10] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:09:12] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.50  rl=27  bocpd=27.0%  exh=0.06  decay=0.000  score=77  1h=RANGE
+[2026-05-26 16:09:12] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.85  rl=27  bocpd=27.1%  exh=0.00  decay=0.141  score=76  1h=BEAR
+[2026-05-26 16:09:12] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+4.0  vz=+2.68  rl=9  bocpd=96.5%  exh=0.12  decay=0.000  score=55  1h=BEAR
+[2026-05-26 16:09:12] [RGV2] [INFO] [USD/JPY] Gate: vol_z 2.68 > 2.5
+[2026-05-26 16:09:12] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.57  rl=27  bocpd=27.0%  exh=0.19  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:09:12] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.79  rl=27  bocpd=27.0%  exh=0.11  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:09:12] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.80  rl=27  bocpd=27.0%  exh=0.08  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:09:12] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=100%  slope=-0.0  vz=+0.62  rl=27  bocpd=26.9%  exh=0.05  decay=0.003  score=76  1h=BEAR
+[2026-05-26 16:09:12] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=98%  slope=-0.1  vz=+2.15  rl=27  bocpd=26.8%  exh=0.02  decay=0.018  score=74  1h=BULL
+[2026-05-26 16:09:12] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.63  rl=27  bocpd=27.0%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:09:40] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:09:42] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.51  rl=28  bocpd=26.9%  exh=0.05  decay=0.000  score=77  1h=RANGE
+[2026-05-26 16:09:42] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.78  rl=28  bocpd=27.0%  exh=0.05  decay=0.247  score=76  1h=BEAR
+[2026-05-26 16:09:42] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+3.8  vz=+2.49  rl=10  bocpd=93.8%  exh=0.18  decay=0.000  score=56  1h=BEAR
+[2026-05-26 16:09:42] [RGV2] [INFO] [USD/JPY] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 16:09:42] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.52  rl=28  bocpd=26.9%  exh=0.19  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:09:42] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.68  rl=28  bocpd=26.9%  exh=0.21  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:09:42] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.64  rl=28  bocpd=26.9%  exh=0.17  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:09:42] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=99%  slope=-0.0  vz=+0.52  rl=28  bocpd=26.6%  exh=0.16  decay=0.007  score=76  1h=BEAR
+[2026-05-26 16:09:42] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=-0.2  vz=+2.05  rl=28  bocpd=26.5%  exh=0.04  decay=0.021  score=74  1h=BULL
+[2026-05-26 16:09:42] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.63  rl=28  bocpd=26.9%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:10:10] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:10:12] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.51  rl=29  bocpd=26.8%  exh=0.05  decay=0.000  score=77  1h=RANGE
+[2026-05-26 16:10:12] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.78  rl=29  bocpd=26.9%  exh=0.06  decay=0.212  score=76  1h=BEAR
+[2026-05-26 16:10:12] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+2.3  vz=+2.49  rl=11  bocpd=87.8%  exh=0.20  decay=0.000  score=57  1h=BEAR
+[2026-05-26 16:10:12] [RGV2] [INFO] [USD/JPY] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 16:10:12] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.52  rl=29  bocpd=26.8%  exh=0.20  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:10:12] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.68  rl=29  bocpd=26.8%  exh=0.23  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:10:12] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.64  rl=29  bocpd=26.8%  exh=0.17  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:10:12] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=99%  slope=-0.1  vz=+0.52  rl=29  bocpd=26.5%  exh=0.20  decay=0.009  score=76  1h=BEAR
+[2026-05-26 16:10:12] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=97%  slope=-0.2  vz=+2.05  rl=29  bocpd=26.3%  exh=0.09  decay=0.023  score=74  1h=BULL
+[2026-05-26 16:10:12] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.63  rl=29  bocpd=26.8%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 16:10:40] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:10:42] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.56  rl=30  bocpd=26.7%  exh=0.00  decay=0.000  score=77  1h=RANGE
+[2026-05-26 16:10:42] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+1.76  rl=30  bocpd=26.7%  exh=0.07  decay=0.147  score=76  1h=BEAR
+[2026-05-26 16:10:42] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.4  vz=+2.22  rl=12  bocpd=75.9%  exh=0.31  decay=0.000  score=59  1h=BEAR
+[2026-05-26 16:10:42] [RGV2] [INFO] [USD/JPY] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 16:10:42] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.44  rl=30  bocpd=26.7%  exh=0.28  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:10:42] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.60  rl=30  bocpd=26.7%  exh=0.24  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:10:42] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.49  rl=30  bocpd=26.7%  exh=0.24  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:10:42] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=98%  slope=-0.2  vz=+0.46  rl=30  bocpd=26.0%  exh=0.22  decay=0.022  score=75  1h=BEAR
+[2026-05-26 16:10:42] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=96%  slope=-0.2  vz=+2.01  rl=30  bocpd=26.0%  exh=0.10  decay=0.030  score=73  1h=BULL
+[2026-05-26 16:10:42] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.62  rl=30  bocpd=26.7%  exh=0.00  decay=0.217  score=69  1h=RANGE
+[2026-05-26 16:11:11] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:11:13] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.56  rl=31  bocpd=26.6%  exh=0.00  decay=0.033  score=77  1h=RANGE
+[2026-05-26 16:11:13] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+1.76  rl=31  bocpd=26.6%  exh=0.04  decay=0.150  score=76  1h=BEAR
+[2026-05-26 16:11:13] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.2  vz=+2.22  rl=13  bocpd=59.4%  exh=0.27  decay=0.000  score=63  1h=BEAR
+[2026-05-26 16:11:13] [RGV2] [INFO] [USD/JPY] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 16:11:13] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.44  rl=31  bocpd=26.6%  exh=0.27  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:11:13] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.60  rl=31  bocpd=26.6%  exh=0.21  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:11:13] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.49  rl=31  bocpd=26.6%  exh=0.19  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:11:13] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=98%  slope=-0.2  vz=+0.46  rl=31  bocpd=25.9%  exh=0.19  decay=0.031  score=75  1h=BEAR
+[2026-05-26 16:11:13] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=96%  slope=-0.3  vz=+2.01  rl=31  bocpd=25.9%  exh=0.06  decay=0.035  score=73  1h=BULL
+[2026-05-26 16:11:13] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.62  rl=31  bocpd=26.6%  exh=0.00  decay=0.091  score=69  1h=RANGE
+[2026-05-26 16:11:41] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:11:43] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.55  rl=32  bocpd=26.5%  exh=0.01  decay=0.073  score=77  1h=RANGE
+[2026-05-26 16:11:43] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+1.72  rl=32  bocpd=26.5%  exh=0.07  decay=0.131  score=76  1h=BEAR
+[2026-05-26 16:11:43] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+2.20  rl=14  bocpd=45.0%  exh=0.22  decay=0.000  score=66  1h=BEAR
+[2026-05-26 16:11:43] [RGV2] [INFO] [USD/JPY] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 16:11:43] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.36  rl=32  bocpd=26.5%  exh=0.28  decay=0.001  score=77  1h=BULL
+[2026-05-26 16:11:43] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.55  rl=32  bocpd=26.5%  exh=0.23  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:11:43] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.41  rl=32  bocpd=26.5%  exh=0.23  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:11:43] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=93%  slope=-0.5  vz=+0.44  rl=32  bocpd=26.0%  exh=0.21  decay=0.073  score=70  1h=BEAR
+[2026-05-26 16:11:43] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=93%  slope=-0.4  vz=+1.93  rl=32  bocpd=25.7%  exh=0.11  decay=0.087  score=70  1h=BULL
+[2026-05-26 16:11:43] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.62  rl=32  bocpd=26.6%  exh=0.00  decay=0.000  score=69  1h=RANGE
+[2026-05-26 16:12:12] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:12:14] [RGV2] [INFO] [CVOL] EVZCLS=10.7(86%ile)  GVZCLS=23.9(89%ile)  coherence=True
+[2026-05-26 16:12:14] [RGV2] [INFO] [DXY] level=99.197  5d=+0.23%
+[2026-05-26 16:12:14] [RGV2] [INFO] [HYG] level=80.07  5d=+0.66%
+[2026-05-26 16:12:15] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 16:12:17] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.54  rl=33  bocpd=26.5%  exh=0.03  decay=0.068  score=77  1h=RANGE
+[2026-05-26 16:12:17] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+1.79  rl=33  bocpd=26.4%  exh=0.02  decay=0.036  score=76  1h=BEAR
+[2026-05-26 16:12:17] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+2.14  rl=15  bocpd=36.7%  exh=0.16  decay=0.000  score=67  1h=BEAR
+[2026-05-26 16:12:17] [RGV2] [INFO] [USD/JPY] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 16:12:17] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.29  rl=33  bocpd=26.4%  exh=0.36  decay=0.002  score=76  1h=BULL
+[2026-05-26 16:12:17] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.44  rl=33  bocpd=26.5%  exh=0.34  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:12:17] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.38  rl=33  bocpd=26.5%  exh=0.20  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:12:17] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=76%  slope=-1.7  vz=+0.40  rl=33  bocpd=42.5%  exh=0.24  decay=0.225  score=50  1h=BEAR
+[2026-05-26 16:12:17] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=89%  slope=-0.8  vz=+1.95  rl=33  bocpd=26.8%  exh=0.09  decay=0.108  score=65  1h=BULL
+[2026-05-26 16:12:17] [RGV2] [INFO] [XAU/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.72  rl=33  bocpd=26.5%  exh=0.00  decay=0.000  score=69  1h=RANGE
+[2026-05-26 16:12:40] [RGV2] [WARNING] [VIX] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 16:12:43] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.54  rl=34  bocpd=26.4%  exh=0.03  decay=0.058  score=77  1h=RANGE
+[2026-05-26 16:12:43] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+1.79  rl=34  bocpd=26.4%  exh=0.02  decay=0.004  score=76  1h=BEAR
+[2026-05-26 16:12:43] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+2.14  rl=16  bocpd=32.9%  exh=0.16  decay=0.000  score=68  1h=BEAR
+[2026-05-26 16:12:43] [RGV2] [INFO] [USD/JPY] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 16:12:43] [RGV2] [INFO] [AUD/USD] reg=CHOP  conf=100%  slope=-0.0  vz=+0.29  rl=34  bocpd=26.3%  exh=0.36  decay=0.003  score=76  1h=BULL
+[2026-05-26 16:12:43] [RGV2] [INFO] [NZD/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.44  rl=34  bocpd=26.4%  exh=0.34  decay=0.000  score=77  1h=BULL
+[2026-05-26 16:12:43] [RGV2] [INFO] [USD/CAD] reg=CHOP  conf=100%  slope=+0.0  vz=+1.38  rl=34  bocpd=26.4%  exh=0.19  decay=0.000  score=77  1h=BEAR
+[2026-05-26 16:12:43] [RGV2] [INFO] [USD/CHF] reg=CHOP  conf=76%  slope=-2.5  vz=+0.40  rl=34  bocpd=46.4%  exh=0.24  decay=0.339  score=49  1h=BEAR
+[2026-05-26 16:12:43] [RGV2] [INFO] [GBP/JPY] reg=CHOP  conf=89%  slope=-1.1  vz=+1.95  rl=34  bocpd=27.0%  exh=0.08  decay=0.143  score=65  1h=BULL

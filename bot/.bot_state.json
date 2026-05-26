@@ -1,17 +1,43 @@
 {
   "risk_guard": {
-    "day_start_bal": 104383.17,
+    "day_start_bal": 100566.09,
     "month_start_bal": 10000.0,
-    "locked_until": 1779808957.0475452,
+    "locked_until": 0.0,
     "last_trade_by_pair": {
       "XAU/USD": 1779797784.9885044,
       "USD/JPY": 1779792677.8766346,
       "USD/CAD": 1779792532.3399787,
-      "EUR/USD": 1779797665.6724308,
-      "USD/CHF": 1779794945.2320044,
-      "EUR/GBP": 1779797743.9937732
+      "EUR/USD": 1779807893.1947572,
+      "USD/CHF": 1779807893.2853694,
+      "EUR/GBP": 1779797743.9937732,
+      "GBP/JPY": 1779807901.4855437
     },
     "last_reset_date": "2026-05-26"
   },
-  "position_meta": {}
+  "position_meta": {
+    "152109758737": {
+      "tp1": 1.16261,
+      "tp1_close_pct": 50,
+      "trailoffset_dist": 0.00053,
+      "tp1_hit": false,
+      "trail_active": false,
+      "trail_sl": null
+    },
+    "152109758747": {
+      "tp1": 0.78531,
+      "tp1_close_pct": 50,
+      "trailoffset_dist": 0.00053,
+      "tp1_hit": false,
+      "trail_active": false,
+      "trail_sl": null
+    },
+    "152109759363": {
+      "tp1": 214.272,
+      "tp1_close_pct": 50,
+      "trailoffset_dist": 0.0525,
+      "tp1_hit": false,
+      "trail_active": false,
+      "trail_sl": null
+    }
+  }
 }
