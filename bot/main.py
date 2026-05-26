@@ -48,6 +48,10 @@ from modules.cot_filter import COTFilterModule
 from modules.news_risk import NewsRiskModule
 from modules.gold_macro_module import GoldMacroModule
 from modules.regime_confidence_module import RegimeConfidenceModule
+from modules.beta_estimator import BetaEstimator, push_beta_to_kv, BAR_COUNT
+from modules.portfolio_beta import compute_portfolio_beta, push_portfolio_beta
+from modules.beta_deviation import compute_beta_deviation, push_beta_deviation, fetch_beta_targets
+from modules.beta_rebalancer import evaluate_rebalancing, push_rebalance_signal
 
 try:
     import MetaTrader5 as mt5
@@ -91,6 +95,123 @@ _PIP_SIZES = {
 }
 
 # resolve_grade_thresholds and session_threshold_mult live in utils/config_helpers.py
+
+# ── Beta system constants ──────────────────────────────────────────────────────
+# Factor proxy pairs for beta estimation — always fetched even if not traded
+_BETA_FACTOR_PAIRS = ['EUR/USD', 'USD/JPY', 'USD/CHF']
+BETA_PUSH_INTERVAL = 30  # seconds between portfolio beta / deviation KV pushes
+
+_BETA_HISTORY_DIR  = os.path.join(os.path.dirname(__file__), 'data')
+_BETA_HISTORY_FILE = os.path.join(_BETA_HISTORY_DIR, 'beta_history.jsonl')
+
+
+def _dominant_regime(state: dict, enabled_pairs: list) -> str:
+    """Return the mode HMM regime across enabled pairs. Falls back to RANGE."""
+    snap = (state.get('regime_snapshot') or {}).get('pairs') or {}
+    regimes = []
+    for pair in enabled_pairs:
+        r = (snap.get(pair) or {}).get('hmm') or {}
+        regime = r.get('regime', 'RANGE')
+        if regime:
+            regimes.append(regime.upper())
+    if not regimes:
+        return 'RANGE'
+    from collections import Counter
+    return Counter(regimes).most_common(1)[0][0]
+
+
+def _run_beta_estimation(
+    beta_estimator: BetaEstimator,
+    enabled_pairs: list,
+    base_url: str,
+) -> dict:
+    """
+    Fetch H4 bars for all trading pairs + factor proxies, run beta estimation,
+    and push results to KV. Runs in the slow path (every 120s).
+    Returns the estimates dict (empty on failure or no MT5).
+    """
+    if not HAS_MT5:
+        return {}
+
+    all_pairs = list(set(enabled_pairs) | set(_BETA_FACTOR_PAIRS))
+    bars_by_symbol: dict = {}
+
+    for pair in all_pairs:
+        try:
+            bars = mt5.copy_rates_from_pos(pair.replace('/', ''), mt5.TIMEFRAME_H4, 0, BAR_COUNT)
+            if bars is not None and len(bars) >= 21:
+                bars_by_symbol[pair.replace('/', '')] = bars
+        except Exception as exc:
+            log.debug(f'BetaEstimator: bars fetch failed for {pair}: {exc}')
+
+    if not bars_by_symbol:
+        log.debug('BetaEstimator: no bars available (MT5 may be disconnected)')
+        return {}
+
+    estimates = beta_estimator.estimate(bars_by_symbol)
+    if estimates:
+        push_beta_to_kv(estimates, base_url)
+        log.info(f'[BETA] Estimates updated for {len(estimates)} symbols')
+    return estimates
+
+
+def _run_beta_portfolio_tracking(
+    beta_estimates: dict,
+    regime: str,
+    base_url: str,
+    paper_mode: bool,
+    beta_targets: dict,
+) -> dict:
+    """
+    Compute portfolio beta, deviation, and rebalancing signal.
+    Pushes all to KV. Runs every BETA_PUSH_INTERVAL seconds.
+    Returns the rebalance signal dict.
+    """
+    portfolio = compute_portfolio_beta(beta_estimates, paper_mode)
+    if not portfolio:
+        return {}
+
+    deviation = compute_beta_deviation(portfolio, regime, beta_targets)
+
+    open_syms: list[str] = []
+    if HAS_MT5 and not paper_mode:
+        try:
+            open_syms = [p.symbol for p in (mt5.positions_get() or [])
+                         if p.magic == MAGIC]
+        except Exception:
+            pass
+
+    rebalance = evaluate_rebalancing(deviation, beta_estimates, open_syms)
+
+    push_portfolio_beta(portfolio, base_url)
+    push_beta_deviation(deviation, base_url)
+
+    if rebalance.get('rebalance_needed'):
+        push_rebalance_signal(rebalance, base_url)
+        urgency = rebalance.get('urgency', 'LOW')
+        if urgency in ('HIGH', 'MEDIUM'):
+            log.warning(
+                f'[BETA REBALANCE] {urgency}  {rebalance["action"]}'
+                f'  dev={rebalance["deviation"]:+.3f}  band={rebalance["band"]:.3f}'
+                f'  suggest={rebalance.get("suggested_pairs", [])}'
+            )
+
+    return rebalance
+
+
+def _append_beta_history(regime: str, estimates: dict) -> None:
+    """Append current beta snapshot to the rolling history log (for beta_regime_table.py)."""
+    try:
+        os.makedirs(_BETA_HISTORY_DIR, exist_ok=True)
+        record = json.dumps({
+            'ts':        int(time.time() * 1000),
+            'regime':    regime,
+            'estimates': estimates,
+        })
+        with open(_BETA_HISTORY_FILE, 'a', encoding='utf-8') as f:
+            f.write(record + '\n')
+    except Exception as exc:
+        log.debug(f'BetaEstimator: history append failed: {exc}')
 
 
 # ── Live price (fast path) ────────────────────────────────────────────────────
@@ -880,11 +1001,19 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
     HEARTBEAT_INTERVAL = 5 * 60  # log alive message every 5 min when monitoring quietly
     DIAG_INTERVAL      = 30      # diagnostic confluence dump every 30s
 
+    # ── Beta system state ─────────────────────────────────────────────────────
+    beta_estimator: BetaEstimator = BetaEstimator()
+    cached_beta_estimates: dict = {}
+    cached_beta_targets: dict = {}
+    last_beta_push: float = 0.0
+    last_beta_targets_fetch: float = 0.0
+    BETA_TARGETS_INTERVAL = 300  # re-fetch custom targets every 5 min
+
     # ── Two-speed loop ────────────────────────────────────────────────────────
     while True:
         tick_start = time.time()
 
-        # ── Slow path: refresh dashboard state ────────────────────────────────
+        # ── Slow path: refresh dashboard state + run beta estimation ─────────
         if tick_start - last_state_refresh >= state_interval or cached_state is None:
             try:
                 trigger_refresh(base_url)   # touch KV timestamps — keeps staleness gate clear
@@ -898,6 +1027,25 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                     # No state at all yet — wait before retrying
                     time.sleep(min(price_interval * 5, 30))
                     continue
+
+            # Beta estimation on H4 bars — runs once per state refresh cycle
+            try:
+                _enabled = (cached_state.get('bot_config') or {}).get('enabled_pairs') or []
+                new_estimates = _run_beta_estimation(beta_estimator, _enabled, base_url)
+                if new_estimates:
+                    cached_beta_estimates = new_estimates
+                    _regime_for_history = _dominant_regime(cached_state, _enabled)
+                    _append_beta_history(_regime_for_history, new_estimates)
+            except Exception as exc:
+                log.warning(f'Beta estimation error: {exc}')
+
+            # Periodically re-fetch custom beta targets from KV
+            if tick_start - last_beta_targets_fetch >= BETA_TARGETS_INTERVAL:
+                try:
+                    cached_beta_targets = fetch_beta_targets(base_url)
+                    last_beta_targets_fetch = tick_start
+                except Exception:
+                    pass
 
         config         = cached_state.get('bot_config') or {}
         snap           = cached_state.get('regime_snapshot') or {}
@@ -1022,6 +1170,18 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         mgmt_actions = manage_positions(position_meta, paper_mode)
         if mgmt_actions:
             log.info(f'Position actions this tick: {mgmt_actions}')
+
+        # ── Beta portfolio tracking (throttled to BETA_PUSH_INTERVAL) ─────────
+        if cached_beta_estimates and tick_start - last_beta_push >= BETA_PUSH_INTERVAL:
+            try:
+                _regime_now = _dominant_regime(cached_state, enabled_pairs)
+                _run_beta_portfolio_tracking(
+                    cached_beta_estimates, _regime_now, base_url,
+                    paper_mode, cached_beta_targets,
+                )
+            except Exception as exc:
+                log.debug(f'Beta portfolio tracking error: {exc}')
+            last_beta_push = tick_start
 
         # ── Pre-screen: ATR proximity + WT1 direction (cheap, runs every tick) ──
         near_level: dict = {}

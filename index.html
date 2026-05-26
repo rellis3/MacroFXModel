@@ -48,6 +48,7 @@
   <a href="analysis.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="5-Year Pattern Analysis Engine">📊 Pattern Lab</button></a>
   <a href="bot-config.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Python Bot Config">🤖 Bot</button></a>
   <a href="gold.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Gold Macro Model — XAU/USD two-layer regime">🥇 Gold</button></a>
+  <button class="dark-btn" onclick="openBetaPanel()" id="betaBtn" title="Beta Factor Exposure Monitor — stochastic control system" style="border-color:#7c6fe0;color:#9d96f0"><span>β</span><span>Beta</span></button>
   <div class="live-pill"><div class="live-dot"></div>Live</div>
   <span class="upd" id="upd"></span>
 </div>
@@ -168,6 +169,57 @@ Example:
     </div>
   </div>
 </div>
+
+<!-- BETA FACTOR EXPOSURE PANEL MODAL -->
+<div class="oi-modal-overlay" id="betaPanelOverlay" onclick="if(event.target===this)closeBetaPanel()">
+  <div class="oi-modal" style="max-width:860px;max-height:90vh;overflow-y:auto">
+    <div class="oi-modal-hd">
+      <div>
+        <div class="oi-modal-title">β Beta Factor Exposure Monitor</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">Stochastic control system · Factor betas estimated via Kalman filter on H4 bars · Updated every 120s by bot</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="oi-btn" onclick="refreshBetaPanel()" title="Reload from KV">↺ Refresh</button>
+        <button class="oi-btn" onclick="closeBetaPanel()">✕ Close</button>
+      </div>
+    </div>
+
+    <div id="betaPanelContent" style="padding:4px 0">
+      <div style="text-align:center;padding:40px;color:var(--text3);font-size:12px">Loading beta data…</div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Beta panel layout */
+.bp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.bp-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.bp-card-title{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+.bp-table{width:100%;border-collapse:collapse;font-size:11px}
+.bp-table th{text-align:left;color:var(--text3);font-weight:500;padding:3px 6px;border-bottom:1px solid var(--border)}
+.bp-table td{padding:4px 6px;border-bottom:1px solid var(--s2);font-family:var(--mono,monospace);font-size:10.5px}
+.bp-table tr:last-child td{border-bottom:none}
+.bp-unc-LOW{color:var(--green)}
+.bp-unc-MEDIUM{color:var(--amber,#f4b942)}
+.bp-unc-HIGH{color:var(--red)}
+.bp-bar-wrap{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bp-bar-lbl{font-size:10px;color:var(--text3);width:74px;flex-shrink:0}
+.bp-bar-track{flex:1;height:10px;background:var(--s2);border-radius:5px;position:relative;overflow:visible}
+.bp-bar-fill{height:100%;border-radius:5px;position:absolute;top:0;transition:width .3s}
+.bp-bar-val{font-size:10px;font-family:var(--mono,monospace);color:var(--text2);width:48px;text-align:right;flex-shrink:0}
+.bp-tl-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--s2)}
+.bp-tl-row:last-child{border-bottom:none}
+.bp-tl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.bp-tl-dot.ON_TARGET{background:var(--green)}
+.bp-tl-dot.SLIGHT_OVER{background:var(--amber,#f4b942)}
+.bp-tl-dot.OVEREXPOSED{background:var(--red)}
+.bp-alert-box{background:rgba(220,60,60,.1);border:1px solid rgba(220,60,60,.3);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:11px}
+.bp-alert-box.medium{background:rgba(244,185,66,.1);border-color:rgba(244,185,66,.3)}
+.bp-alert-box.low{background:var(--s1);border-color:var(--border)}
+.bp-align-bar{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--red),var(--amber,#f4b942),var(--green));margin:4px 0 8px;position:relative}
+.bp-align-ptr{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;background:var(--text);border:2px solid var(--bg);transform:translateX(-50%);transition:left .4s}
+@media(max-width:640px){.bp-grid{grid-template-columns:1fr}}
+</style>
 
 <!-- HMM V2 SHADOW MODEL MODAL -->
 <div class="oi-modal-overlay" id="v2ModalOverlay">
@@ -355,6 +407,235 @@ Example:
     var el = document.getElementById('apiCmd' + (i + 1));
     if (el) el.textContent = cmd;
   });
+})();
+</script>
+
+<script>
+// ── Beta Panel — stochastic control system dashboard ─────────────────────────
+(function() {
+
+async function kvGet(key) {
+  try {
+    const r = await fetch('/api/kv/get?key=' + encodeURIComponent(key));
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j.miss ? null : (j.data ?? null);
+  } catch { return null; }
+}
+
+window.openBetaPanel = async function() {
+  document.getElementById('betaPanelOverlay').style.display = 'flex';
+  await _loadBetaPanel();
+};
+
+window.closeBetaPanel = function() {
+  document.getElementById('betaPanelOverlay').style.display = 'none';
+};
+
+window.refreshBetaPanel = async function() {
+  const el = document.getElementById('betaPanelContent');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">Refreshing…</div>';
+  await _loadBetaPanel();
+};
+
+async function _loadBetaPanel() {
+  const [estimates, portfolio, deviation, rebalance] = await Promise.all([
+    kvGet('beta_estimates'),
+    kvGet('portfolio_beta'),
+    kvGet('beta_deviation'),
+    kvGet('beta_rebalance'),
+  ]);
+  const el = document.getElementById('betaPanelContent');
+  if (!el) return;
+  el.innerHTML = _renderBetaPanel(estimates, portfolio, deviation, rebalance);
+}
+
+function _fmt(v, digits) {
+  if (v == null) return '—';
+  const n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  return (n >= 0 ? '+' : '') + n.toFixed(digits ?? 3);
+}
+
+function _uncBadge(unc) {
+  const cls = 'bp-unc-' + (unc || 'HIGH');
+  return '<span class="' + cls + '">' + (unc || '?') + '</span>';
+}
+
+function _statusDot(status) {
+  return '<span class="bp-tl-dot ' + (status || '') + '" title="' + (status || '') + '"></span>';
+}
+
+function _bar(value, maxAbs, color, label) {
+  const pct = Math.min(Math.abs((value || 0)) / (maxAbs || 1) * 50, 50);
+  const left = value >= 0 ? 50 : 50 - pct;
+  return [
+    '<div class="bp-bar-wrap">',
+    '<div class="bp-bar-lbl">' + label + '</div>',
+    '<div class="bp-bar-track">',
+    '  <div style="position:absolute;top:0;left:50%;width:1px;height:100%;background:var(--border);"></div>',
+    '  <div class="bp-bar-fill" style="left:' + left + '%;width:' + pct + '%;background:' + color + '"></div>',
+    '</div>',
+    '<div class="bp-bar-val">' + _fmt(value) + '</div>',
+    '</div>',
+  ].join('');
+}
+
+function _renderBetaPanel(estimates, portfolio, deviation, rebalance) {
+  const FACTORS = ['beta_dxy', 'beta_rates', 'beta_vix'];
+  const FACTOR_LABELS = {beta_dxy: 'DXY β', beta_rates: 'Rates β', beta_vix: 'VIX β'};
+  const FACTOR_COLORS = {beta_dxy: '#5bc8f5', beta_rates: '#7c6fe0', beta_vix: '#f4b942'};
+  const parts = [];
+
+  // ── Rebalancing alert ──────────────────────────────────────────────────────
+  if (rebalance && rebalance.rebalance_needed) {
+    const urg = (rebalance.urgency || 'LOW').toLowerCase();
+    const urgColor = {high: 'var(--red)', medium: 'var(--amber,#f4b942)', low: 'var(--text3)'}[urg] || 'var(--text3)';
+    parts.push([
+      '<div class="bp-alert-box ' + urg + '">',
+      '<div style="font-weight:600;color:' + urgColor + ';margin-bottom:4px">',
+      '⚡ Rebalancing Suggested [' + rebalance.urgency + '] — ' + (rebalance.action || '').replace(/_/g, ' '),
+      '</div>',
+      '<div style="color:var(--text2)">',
+      'Factor: <b>' + FACTOR_LABELS[rebalance.factor] + '</b>  ',
+      'Deviation: <b>' + _fmt(rebalance.deviation) + '</b>  ',
+      'Inaction band: ±' + (rebalance.band ? rebalance.band.toFixed(3) : '—') + '  ',
+      'Regime: <b>' + (rebalance.regime || '—') + '</b>',
+      '</div>',
+      rebalance.suggested_pairs && rebalance.suggested_pairs.length
+        ? '<div style="color:var(--text3);margin-top:4px;font-size:10px">Suggested pairs: ' + rebalance.suggested_pairs.join(', ') + '</div>'
+        : '',
+      '</div>',
+    ].join(''));
+  }
+
+  // ── Alignment summary bar ─────────────────────────────────────────────────
+  if (deviation) {
+    const align = parseFloat(deviation.overall_alignment || 0);
+    const pctLeft = Math.round(align * 100);
+    const regime = deviation.regime || '—';
+    parts.push([
+      '<div style="margin-bottom:12px;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px 14px">',
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">',
+      '  <span style="font-size:11px;font-weight:600;color:var(--text2)">Overall Alignment — Regime: <b>' + regime + '</b></span>',
+      '  <span style="font-size:12px;font-weight:700;color:var(--text)">' + Math.round(align * 100) + '%</span>',
+      '</div>',
+      '<div class="bp-align-bar"><div class="bp-align-ptr" style="left:' + pctLeft + '%"></div></div>',
+      '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3)"><span>Misaligned</span><span>On Target</span></div>',
+      '</div>',
+    ].join(''));
+  }
+
+  // ── Two-column grid ───────────────────────────────────────────────────────
+  parts.push('<div class="bp-grid">');
+
+  // LEFT: per-pair beta estimates table
+  parts.push('<div class="bp-card">');
+  parts.push('<div class="bp-card-title">Per-Pair Beta Estimates (Kalman)</div>');
+  if (!estimates || Object.keys(estimates).length === 0) {
+    parts.push('<div style="color:var(--text3);font-size:11px">No data — bot must be running with MT5 connected</div>');
+  } else {
+    const syms = Object.keys(estimates).sort();
+    parts.push('<div style="overflow-x:auto"><table class="bp-table">');
+    parts.push('<tr><th>Pair</th><th>DXY β</th><th>Rates β</th><th>VIX β</th><th>R²</th><th>Uncert</th></tr>');
+    syms.forEach(sym => {
+      const d = estimates[sym];
+      const bd = d.beta_dxy || {}, br = d.beta_rates || {}, bv = d.beta_vix || {};
+      const dominantUnc = [bd.uncertainty, br.uncertainty, bv.uncertainty]
+        .filter(Boolean)
+        .sort((a,b) => ({HIGH:0,MEDIUM:1,LOW:2}[a]||0) - ({HIGH:0,MEDIUM:1,LOW:2}[b]||0))[0] || '?';
+      parts.push([
+        '<tr>',
+        '<td style="font-weight:500">' + sym + '</td>',
+        '<td>' + _fmt(bd.mean) + '</td>',
+        '<td>' + _fmt(br.mean) + '</td>',
+        '<td>' + _fmt(bv.mean) + '</td>',
+        '<td>' + (d.r_squared != null ? (d.r_squared * 100).toFixed(0) + '%' : '—') + '</td>',
+        '<td>' + _uncBadge(dominantUnc) + '</td>',
+        '</tr>',
+      ].join(''));
+    });
+    parts.push('</table></div>');
+  }
+  parts.push('</div>');  // left card
+
+  // RIGHT: portfolio beta bars + deviation traffic lights
+  parts.push('<div>');
+
+  // Portfolio beta bars
+  parts.push('<div class="bp-card" style="margin-bottom:12px">');
+  parts.push('<div class="bp-card-title">Portfolio Book Beta</div>');
+  if (!portfolio || portfolio.position_count === 0) {
+    parts.push('<div style="color:var(--text3);font-size:11px">No open positions' +
+      (portfolio ? '' : ' — bot not running') + '</div>');
+  } else {
+    FACTORS.forEach(f => {
+      const v = portfolio[f] || 0;
+      parts.push(_bar(v, 2, FACTOR_COLORS[f], FACTOR_LABELS[f]));
+    });
+    const ts = portfolio.timestamp ? new Date(portfolio.timestamp).toLocaleTimeString() : '—';
+    parts.push('<div style="font-size:9px;color:var(--text3);margin-top:4px">Positions: ' +
+      portfolio.position_count + ' · Updated: ' + ts + '</div>');
+  }
+  parts.push('</div>');
+
+  // Deviation traffic lights
+  parts.push('<div class="bp-card">');
+  parts.push('<div class="bp-card-title">Beta Deviation vs Target</div>');
+  if (!deviation || !deviation.deviations) {
+    parts.push('<div style="color:var(--text3);font-size:11px">No deviation data</div>');
+  } else {
+    FACTORS.forEach(f => {
+      const d = deviation.deviations[f];
+      if (!d) return;
+      parts.push([
+        '<div class="bp-tl-row">',
+        _statusDot(d.status),
+        '<span style="font-size:11px;width:58px;flex-shrink:0">' + FACTOR_LABELS[f] + '</span>',
+        '<span style="font-size:10px;font-family:monospace;color:var(--text2)">',
+        'cur <b>' + _fmt(d.current) + '</b>  tgt ' + _fmt(d.target) + '  dev <b>' + _fmt(d.deviation) + '</b>',
+        '</span>',
+        '<span style="margin-left:auto;font-size:9px;color:var(--text3)">' + (d.status || '').replace(/_/g,' ') + '</span>',
+        '</div>',
+      ].join(''));
+    });
+  }
+  parts.push('</div>');
+  parts.push('</div>');  // right column
+
+  parts.push('</div>');  // bp-grid
+
+  // ── All signals (if multiple) ─────────────────────────────────────────────
+  if (rebalance && rebalance.all_signals && rebalance.all_signals.length > 1) {
+    parts.push('<div class="bp-card" style="margin-top:0">');
+    parts.push('<div class="bp-card-title">All Rebalancing Signals</div>');
+    rebalance.all_signals.forEach(sig => {
+      parts.push([
+        '<div style="display:flex;gap:12px;font-size:10px;padding:4px 0;border-bottom:1px solid var(--s2)">',
+        '<span style="width:70px">' + FACTOR_LABELS[sig.factor] + '</span>',
+        '<span>' + sig.urgency + '</span>',
+        '<span>dev ' + _fmt(sig.deviation) + '</span>',
+        '<span>band ±' + sig.band.toFixed(3) + '</span>',
+        '<span style="color:var(--text3)">' + (sig.action || '').replace(/_/g,' ') + '</span>',
+        '</div>',
+      ].join(''));
+    });
+    parts.push('</div>');
+  }
+
+  // ── Footer note if no bot data ────────────────────────────────────────────
+  if (!estimates && !portfolio && !deviation) {
+    parts.push([
+      '<div style="text-align:center;padding:20px;color:var(--text3);font-size:11px">',
+      'No beta data available. The Python bot must be running with MT5 connected and numpy installed.<br>',
+      'Beta estimates are computed every 120s on H4 bars and pushed to KV.',
+      '</div>',
+    ].join(''));
+  }
+
+  return parts.join('');
+}
+
 })();
 </script>
 
