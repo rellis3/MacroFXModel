@@ -11984,3 +11984,703 @@
 [2026-05-26 18:56:57] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=98%  slope=+0.2  vz=-1.20  rl=69  bocpd=37.3%  exh=0.00  decay=0.076  score=75  1h=BULL
 [2026-05-26 18:56:57] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=99%  slope=+0.8  vz=+0.02  rl=17  bocpd=44.9%  exh=0.00  decay=0.350  score=66  1h=RANGE
 [2026-05-26 18:56:57] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 18:57:24] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=97%  slope=-1.1  vz=-1.46  rl=1  bocpd=0.0%  exh=0.00  decay=0.900  score=82  1h=RANGE
+[2026-05-26 18:57:24] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=92%  slope=-0.4  vz=-1.15  rl=7  bocpd=93.9%  exh=0.00  decay=0.063  score=53  1h=BEAR
+[2026-05-26 18:57:24] [RGV2] [INFO] [GBP/USD] Gate: Score 53 < 55 (Escore)
+[2026-05-26 18:57:24] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=-0.0  vz=-1.60  rl=70  bocpd=25.6%  exh=0.00  decay=0.001  score=79  1h=RANGE
+[2026-05-26 18:57:24] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.14  rl=70  bocpd=25.6%  exh=0.00  decay=0.002  score=79  1h=BULL
+[2026-05-26 18:57:26] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=91%  slope=-2.8  vz=-1.49  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=70  1h=BEAR
+[2026-05-26 18:57:26] [RGV2] [INFO] [NZD/USD] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 18:57:26] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.42  rl=70  bocpd=25.6%  exh=0.00  decay=0.002  score=79  1h=BEAR
+[2026-05-26 18:57:26] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=-0.0  vz=-1.34  rl=70  bocpd=25.6%  exh=0.00  decay=0.002  score=79  1h=BEAR
+[2026-05-26 18:57:26] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=98%  slope=+0.2  vz=-1.10  rl=70  bocpd=36.0%  exh=0.00  decay=0.111  score=76  1h=BULL
+[2026-05-26 18:57:26] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.7  vz=+0.15  rl=18  bocpd=41.8%  exh=0.00  decay=0.350  score=67  1h=RANGE
+[2026-05-26 18:57:26] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 18:57:54] [RGV2] [INFO] [VIX] spot=17.09
+[2026-05-26 18:57:57] [RGV2] [INFO] [CVOL] EVZCLS=10.7(86%ile)  GVZCLS=23.9(89%ile)  coherence=True
+[2026-05-26 18:57:57] [RGV2] [INFO] [DXY] level=99.21  5d=+0.24%
+[2026-05-26 18:57:57] [RGV2] [INFO] [HYG] level=80.08  5d=+0.69%
+[2026-05-26 18:57:59] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 18:58:01] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=97%  slope=+0.4  vz=-1.46  rl=2  bocpd=98.4%  exh=0.00  decay=0.900  score=58  1h=RANGE
+[2026-05-26 18:58:01] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=92%  slope=-0.4  vz=-1.15  rl=8  bocpd=90.9%  exh=0.00  decay=0.111  score=50  1h=BEAR
+[2026-05-26 18:58:01] [RGV2] [INFO] [GBP/USD] Gate: Score 50 < 55 (Escore)
+[2026-05-26 18:58:01] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=-0.0  vz=-1.60  rl=71  bocpd=25.6%  exh=0.00  decay=0.001  score=76  1h=RANGE
+[2026-05-26 18:58:01] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.14  rl=71  bocpd=25.6%  exh=0.00  decay=0.001  score=76  1h=BULL
+[2026-05-26 18:58:01] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=91%  slope=-2.3  vz=-1.49  rl=2  bocpd=0.0%  exh=0.00  decay=0.000  score=66  1h=BEAR
+[2026-05-26 18:58:01] [RGV2] [INFO] [NZD/USD] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 18:58:01] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.42  rl=71  bocpd=25.6%  exh=0.00  decay=0.003  score=75  1h=BEAR
+[2026-05-26 18:58:01] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=-0.0  vz=-1.34  rl=71  bocpd=25.6%  exh=0.00  decay=0.053  score=76  1h=BEAR
+[2026-05-26 18:58:01] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=98%  slope=+0.1  vz=-1.10  rl=71  bocpd=34.9%  exh=0.00  decay=0.127  score=72  1h=BULL
+[2026-05-26 18:58:01] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.5  vz=+0.15  rl=19  bocpd=39.2%  exh=0.00  decay=0.350  score=68  1h=RANGE
+[2026-05-26 18:58:01] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 18:58:22] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=99%  slope=+2.2  vz=-1.44  rl=3  bocpd=98.5%  exh=0.00  decay=0.900  score=60  1h=RANGE
+[2026-05-26 18:58:22] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=73%  slope=-1.4  vz=-1.14  rl=9  bocpd=58.2%  exh=0.00  decay=0.312  score=37  1h=BEAR
+[2026-05-26 18:58:22] [RGV2] [INFO] [GBP/USD] Gate: conf 65.7% < 70% (sess×0.90)
+[2026-05-26 18:58:22] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=-0.0  vz=-1.45  rl=72  bocpd=25.5%  exh=0.00  decay=0.004  score=75  1h=RANGE
+[2026-05-26 18:58:22] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.12  rl=72  bocpd=25.6%  exh=0.00  decay=0.001  score=76  1h=BULL
+[2026-05-26 18:58:22] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=96%  slope=-1.4  vz=-1.47  rl=3  bocpd=98.0%  exh=0.00  decay=0.088  score=51  1h=BEAR
+[2026-05-26 18:58:22] [RGV2] [INFO] [NZD/USD] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 18:58:22] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.48  rl=72  bocpd=25.5%  exh=0.00  decay=0.004  score=75  1h=BEAR
+[2026-05-26 18:58:22] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=-0.0  vz=-1.33  rl=72  bocpd=25.6%  exh=0.00  decay=0.084  score=76  1h=BEAR
+[2026-05-26 18:58:22] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=98%  slope=+0.1  vz=-1.09  rl=72  bocpd=34.1%  exh=0.00  decay=0.148  score=72  1h=BULL
+[2026-05-26 18:58:22] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.4  vz=+0.17  rl=20  bocpd=37.2%  exh=0.00  decay=0.350  score=68  1h=RANGE
+[2026-05-26 18:58:22] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 18:58:52] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=99%  slope=+3.8  vz=-1.44  rl=4  bocpd=98.3%  exh=0.00  decay=0.900  score=60  1h=RANGE
+[2026-05-26 18:58:52] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=73%  slope=-2.2  vz=-1.14  rl=10  bocpd=46.6%  exh=0.00  decay=0.398  score=40  1h=BEAR
+[2026-05-26 18:58:52] [RGV2] [INFO] [GBP/USD] Gate: conf 65.7% < 70% (sess×0.90)
+[2026-05-26 18:58:52] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=-0.0  vz=-1.45  rl=73  bocpd=25.5%  exh=0.00  decay=0.095  score=75  1h=RANGE
+[2026-05-26 18:58:52] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.12  rl=73  bocpd=25.6%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 18:58:52] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=96%  slope=-0.5  vz=-1.47  rl=4  bocpd=97.5%  exh=0.00  decay=0.070  score=51  1h=BEAR
+[2026-05-26 18:58:52] [RGV2] [INFO] [NZD/USD] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 18:58:52] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.48  rl=73  bocpd=25.5%  exh=0.00  decay=0.005  score=75  1h=BEAR
+[2026-05-26 18:58:52] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=-0.0  vz=-1.33  rl=73  bocpd=25.6%  exh=0.00  decay=0.108  score=76  1h=BEAR
+[2026-05-26 18:58:52] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=98%  slope=+0.0  vz=-1.09  rl=73  bocpd=33.3%  exh=0.00  decay=0.153  score=73  1h=BULL
+[2026-05-26 18:58:52] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.3  vz=+0.17  rl=21  bocpd=35.6%  exh=0.00  decay=0.350  score=68  1h=RANGE
+[2026-05-26 18:58:52] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 18:59:24] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=98%  slope=+4.3  vz=-1.46  rl=5  bocpd=97.8%  exh=0.00  decay=0.900  score=59  1h=RANGE
+[2026-05-26 18:59:24] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=97%  slope=-1.6  vz=-1.08  rl=11  bocpd=75.2%  exh=0.00  decay=0.358  score=58  1h=BEAR
+[2026-05-26 18:59:24] [RGV2] [INFO] [GBP/USD] Gate: decay 0.358 ≥ 0.25
+[2026-05-26 18:59:24] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=83%  slope=-1.0  vz=-1.39  rl=74  bocpd=35.9%  exh=0.00  decay=0.306  score=57  1h=RANGE
+[2026-05-26 18:59:24] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.12  rl=74  bocpd=25.6%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 18:59:24] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=94%  slope=+0.3  vz=-1.49  rl=5  bocpd=96.3%  exh=0.00  decay=0.018  score=50  1h=BEAR
+[2026-05-26 18:59:24] [RGV2] [INFO] [NZD/USD] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 18:59:24] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.1  vz=-1.49  rl=74  bocpd=25.5%  exh=0.00  decay=0.007  score=75  1h=BEAR
+[2026-05-26 18:59:24] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=-0.0  vz=-1.35  rl=74  bocpd=25.6%  exh=0.00  decay=0.109  score=76  1h=BEAR
+[2026-05-26 18:59:24] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=98%  slope=+0.0  vz=-1.07  rl=74  bocpd=32.5%  exh=0.00  decay=0.163  score=73  1h=BULL
+[2026-05-26 18:59:24] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.2  vz=+0.47  rl=22  bocpd=34.4%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 18:59:24] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 18:59:54] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=98%  slope=+4.4  vz=-1.46  rl=6  bocpd=97.4%  exh=0.00  decay=0.900  score=59  1h=RANGE
+[2026-05-26 18:59:54] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=97%  slope=-1.1  vz=-1.08  rl=12  bocpd=70.6%  exh=0.00  decay=0.308  score=59  1h=BEAR
+[2026-05-26 18:59:54] [RGV2] [INFO] [GBP/USD] Gate: decay 0.308 ≥ 0.25
+[2026-05-26 18:59:54] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=83%  slope=-1.7  vz=-1.39  rl=75  bocpd=39.2%  exh=0.00  decay=0.470  score=56  1h=RANGE
+[2026-05-26 18:59:54] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.12  rl=75  bocpd=25.6%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 18:59:54] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=94%  slope=+1.2  vz=-1.49  rl=6  bocpd=95.5%  exh=0.00  decay=0.000  score=50  1h=BEAR
+[2026-05-26 18:59:54] [RGV2] [INFO] [NZD/USD] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 18:59:54] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.1  vz=-1.49  rl=75  bocpd=25.5%  exh=0.00  decay=0.008  score=75  1h=BEAR
+[2026-05-26 18:59:54] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=-0.0  vz=-1.35  rl=75  bocpd=25.6%  exh=0.00  decay=0.103  score=76  1h=BEAR
+[2026-05-26 18:59:54] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=98%  slope=+0.0  vz=-1.07  rl=75  bocpd=31.8%  exh=0.00  decay=0.157  score=73  1h=BULL
+[2026-05-26 18:59:54] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.2  vz=+0.47  rl=23  bocpd=33.4%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 18:59:54] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:00:24] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=99%  slope=+4.5  vz=-1.40  rl=7  bocpd=96.9%  exh=0.00  decay=0.900  score=59  1h=RANGE
+[2026-05-26 19:00:24] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=97%  slope=-0.4  vz=-1.07  rl=13  bocpd=61.6%  exh=0.00  decay=0.231  score=61  1h=BEAR
+[2026-05-26 19:00:24] [RGV2] [INFO] TRADE GBP/USD SHORT  SL=1.34459  lot=2.82
+[2026-05-26 19:00:24] [RGV2] [ERROR] MT5 order failed: retcode=? 
+[2026-05-26 19:00:24] [RGV2] [WARNING] [GBP/USD] MT5 order failed — cooldown 300s
+[2026-05-26 19:00:25] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-1.3  vz=-1.28  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=76  1h=RANGE
+[2026-05-26 19:00:25] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.12  rl=76  bocpd=25.5%  exh=0.00  decay=0.014  score=74  1h=RANGE
+[2026-05-26 19:00:25] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=92%  slope=+1.7  vz=-1.49  rl=7  bocpd=92.2%  exh=0.00  decay=0.000  score=49  1h=RANGE
+[2026-05-26 19:00:25] [RGV2] [INFO] [NZD/USD] Gate: Score 49 < 55 (Escore)
+[2026-05-26 19:00:25] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.1  vz=-1.45  rl=76  bocpd=25.5%  exh=0.00  decay=0.009  score=74  1h=BEAR
+[2026-05-26 19:00:25] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=-0.0  vz=-1.32  rl=76  bocpd=25.5%  exh=0.00  decay=0.094  score=74  1h=BULL
+[2026-05-26 19:00:25] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=98%  slope=+0.0  vz=-1.11  rl=76  bocpd=31.2%  exh=0.00  decay=0.128  score=72  1h=BULL
+[2026-05-26 19:00:25] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.1  vz=+0.59  rl=24  bocpd=32.5%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 19:00:25] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:00:54] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=99%  slope=+4.3  vz=-1.40  rl=8  bocpd=95.3%  exh=0.00  decay=0.900  score=59  1h=RANGE
+[2026-05-26 19:00:54] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=97%  slope=+0.3  vz=-1.07  rl=14  bocpd=52.1%  exh=0.00  decay=0.174  score=63  1h=BEAR
+[2026-05-26 19:00:54] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.9  vz=-1.28  rl=2  bocpd=0.0%  exh=0.00  decay=0.000  score=76  1h=RANGE
+[2026-05-26 19:00:54] [RGV2] [INFO] TRADE USD/JPY LONG  SL=159.33613  lot=3.64
+[2026-05-26 19:00:54] [RGV2] [ERROR] MT5 order failed: retcode=? 
+[2026-05-26 19:00:54] [RGV2] [WARNING] [USD/JPY] MT5 order failed — cooldown 300s
+[2026-05-26 19:00:54] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.12  rl=77  bocpd=25.5%  exh=0.00  decay=0.034  score=74  1h=RANGE
+[2026-05-26 19:00:54] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=92%  slope=+2.4  vz=-1.49  rl=8  bocpd=88.2%  exh=0.00  decay=0.005  score=50  1h=RANGE
+[2026-05-26 19:00:54] [RGV2] [INFO] [NZD/USD] Gate: Score 50 < 55 (Escore)
+[2026-05-26 19:00:54] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.1  vz=-1.45  rl=77  bocpd=25.5%  exh=0.00  decay=0.038  score=74  1h=BEAR
+[2026-05-26 19:00:54] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.32  rl=77  bocpd=25.5%  exh=0.00  decay=0.072  score=74  1h=BULL
+[2026-05-26 19:00:54] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=98%  slope=+0.0  vz=-1.11  rl=77  bocpd=30.7%  exh=0.00  decay=0.089  score=72  1h=BULL
+[2026-05-26 19:00:54] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.1  vz=+0.59  rl=25  bocpd=31.7%  exh=0.00  decay=0.350  score=69  1h=RANGE
+[2026-05-26 19:00:54] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:01:23] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+2.5  vz=-1.43  rl=9  bocpd=92.2%  exh=0.00  decay=0.900  score=62  1h=RANGE
+[2026-05-26 19:01:23] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=92%  slope=+0.7  vz=-1.06  rl=1  bocpd=0.0%  exh=0.00  decay=0.900  score=73  1h=BEAR
+[2026-05-26 19:01:23] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.4  vz=-0.98  rl=3  bocpd=99.0%  exh=0.00  decay=0.350  score=56  1h=RANGE
+[2026-05-26 19:01:23] [RGV2] [INFO] [USD/JPY] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:01:23] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.16  rl=78  bocpd=25.5%  exh=0.00  decay=0.008  score=76  1h=RANGE
+[2026-05-26 19:01:23] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=87%  slope=+1.0  vz=-1.48  rl=9  bocpd=75.5%  exh=0.00  decay=0.056  score=48  1h=RANGE
+[2026-05-26 19:01:23] [RGV2] [INFO] [NZD/USD] Gate: Score 48 < 55 (Escore)
+[2026-05-26 19:01:23] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.1  vz=-1.49  rl=78  bocpd=25.4%  exh=0.00  decay=0.010  score=75  1h=BEAR
+[2026-05-26 19:01:23] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.27  rl=78  bocpd=25.5%  exh=0.00  decay=0.075  score=76  1h=BULL
+[2026-05-26 19:01:23] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.1  vz=-1.09  rl=78  bocpd=30.5%  exh=0.00  decay=0.050  score=74  1h=BULL
+[2026-05-26 19:01:23] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.1  vz=+0.69  rl=26  bocpd=31.2%  exh=0.00  decay=0.350  score=68  1h=RANGE
+[2026-05-26 19:01:23] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:01:25] [RGV2] [INFO] Cycle 80  balance=99069.72  macro=VIX=17.1  vol-coherent  DXY=99.2→  sleep=23.9s
+[2026-05-26 19:01:57] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.2  vz=-1.43  rl=10  bocpd=84.9%  exh=0.00  decay=0.042  score=63  1h=RANGE
+[2026-05-26 19:01:57] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=92%  slope=+1.2  vz=-1.06  rl=2  bocpd=96.2%  exh=0.00  decay=0.900  score=54  1h=BEAR
+[2026-05-26 19:01:57] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=-0.98  rl=4  bocpd=98.8%  exh=0.00  decay=0.350  score=56  1h=RANGE
+[2026-05-26 19:01:57] [RGV2] [INFO] [USD/JPY] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:01:57] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.16  rl=79  bocpd=25.5%  exh=0.00  decay=0.000  score=76  1h=RANGE
+[2026-05-26 19:01:57] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=88%  slope=-0.6  vz=-1.48  rl=10  bocpd=61.2%  exh=0.00  decay=0.074  score=52  1h=RANGE
+[2026-05-26 19:01:57] [RGV2] [INFO] [NZD/USD] Gate: Score 52 < 55 (Escore)
+[2026-05-26 19:01:57] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.1  vz=-1.49  rl=79  bocpd=25.4%  exh=0.00  decay=0.010  score=75  1h=BEAR
+[2026-05-26 19:01:57] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.27  rl=79  bocpd=25.5%  exh=0.00  decay=0.064  score=76  1h=BULL
+[2026-05-26 19:01:57] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.1  vz=-1.09  rl=79  bocpd=30.1%  exh=0.00  decay=0.000  score=74  1h=BULL
+[2026-05-26 19:01:57] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+0.69  rl=27  bocpd=30.7%  exh=0.00  decay=0.350  score=68  1h=RANGE
+[2026-05-26 19:01:57] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:02:27] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.2  vz=-1.48  rl=11  bocpd=72.0%  exh=0.00  decay=0.010  score=65  1h=RANGE
+[2026-05-26 19:02:29] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=78%  slope=+0.6  vz=-1.10  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=54  1h=BEAR
+[2026-05-26 19:02:29] [RGV2] [INFO] [GBP/USD] Gate: conf not rising (92%→78%)
+[2026-05-26 19:02:29] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.4  vz=-1.06  rl=5  bocpd=98.7%  exh=0.00  decay=0.350  score=56  1h=RANGE
+[2026-05-26 19:02:29] [RGV2] [INFO] [USD/JPY] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:02:29] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.19  rl=80  bocpd=25.5%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:02:29] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=80%  slope=-1.3  vz=-1.55  rl=11  bocpd=40.7%  exh=0.00  decay=0.170  score=48  1h=RANGE
+[2026-05-26 19:02:29] [RGV2] [INFO] [NZD/USD] Gate: conf not rising (88%→80%)
+[2026-05-26 19:02:29] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.1  vz=-1.50  rl=80  bocpd=25.4%  exh=0.00  decay=0.010  score=74  1h=BEAR
+[2026-05-26 19:02:29] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.29  rl=80  bocpd=25.5%  exh=0.00  decay=0.068  score=74  1h=BULL
+[2026-05-26 19:02:29] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.1  vz=-1.06  rl=80  bocpd=29.7%  exh=0.00  decay=0.011  score=72  1h=BULL
+[2026-05-26 19:02:29] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+0.75  rl=28  bocpd=30.2%  exh=0.00  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:02:29] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:03:01] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=99%  slope=+0.2  vz=-1.48  rl=12  bocpd=55.6%  exh=0.00  decay=0.000  score=68  1h=RANGE
+[2026-05-26 19:03:01] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=78%  slope=+0.2  vz=-1.10  rl=2  bocpd=0.0%  exh=0.00  decay=0.000  score=54  1h=BEAR
+[2026-05-26 19:03:01] [RGV2] [INFO] [GBP/USD] Gate: conf not rising (78%→78%)
+[2026-05-26 19:03:01] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.9  vz=-1.06  rl=6  bocpd=98.6%  exh=0.00  decay=0.350  score=56  1h=RANGE
+[2026-05-26 19:03:01] [RGV2] [INFO] [USD/JPY] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:03:01] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.19  rl=81  bocpd=25.5%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:03:01] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=83%  slope=-1.7  vz=-1.55  rl=12  bocpd=33.5%  exh=0.00  decay=0.224  score=52  1h=RANGE
+[2026-05-26 19:03:01] [RGV2] [INFO] [NZD/USD] Gate: Score 52 < 55 (Escore)
+[2026-05-26 19:03:01] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.1  vz=-1.50  rl=81  bocpd=25.4%  exh=0.00  decay=0.008  score=74  1h=BEAR
+[2026-05-26 19:03:01] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.29  rl=81  bocpd=25.5%  exh=0.00  decay=0.068  score=74  1h=BULL
+[2026-05-26 19:03:01] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.06  rl=81  bocpd=29.3%  exh=0.00  decay=0.017  score=72  1h=BULL
+[2026-05-26 19:03:01] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+0.75  rl=29  bocpd=29.8%  exh=0.00  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:03:01] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:03:33] [RGV2] [INFO] [VIX] spot=17.07
+[2026-05-26 19:03:40] [RGV2] [INFO] [CVOL] EVZCLS=10.7(86%ile)  GVZCLS=23.9(89%ile)  coherence=True
+[2026-05-26 19:03:40] [RGV2] [INFO] [DXY] level=99.209  5d=+0.24%
+[2026-05-26 19:03:40] [RGV2] [INFO] [HYG] level=80.09  5d=+0.69%
+[2026-05-26 19:03:43] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 19:03:48] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=99%  slope=+0.2  vz=-1.52  rl=13  bocpd=42.7%  exh=0.00  decay=0.000  score=70  1h=RANGE
+[2026-05-26 19:03:48] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=98%  slope=-0.2  vz=-1.09  rl=3  bocpd=98.6%  exh=0.00  decay=0.044  score=54  1h=BEAR
+[2026-05-26 19:03:48] [RGV2] [INFO] [GBP/USD] Gate: Score 54 < 55 (Escore)
+[2026-05-26 19:03:48] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+1.3  vz=-1.09  rl=7  bocpd=98.4%  exh=0.00  decay=0.291  score=56  1h=RANGE
+[2026-05-26 19:03:48] [RGV2] [INFO] [USD/JPY] Gate: decay 0.291 ≥ 0.25
+[2026-05-26 19:03:48] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.19  rl=82  bocpd=25.5%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:03:48] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=73%  slope=-2.2  vz=-1.54  rl=13  bocpd=29.5%  exh=0.00  decay=0.297  score=43  1h=RANGE
+[2026-05-26 19:03:48] [RGV2] [INFO] [NZD/USD] Gate: conf 65.9% < 70% (sess×0.90)
+[2026-05-26 19:03:48] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=98%  slope=-0.1  vz=-1.17  rl=82  bocpd=25.4%  exh=0.00  decay=0.145  score=73  1h=BEAR
+[2026-05-26 19:03:48] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.30  rl=82  bocpd=25.5%  exh=0.00  decay=0.063  score=74  1h=BULL
+[2026-05-26 19:03:48] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.09  rl=82  bocpd=28.9%  exh=0.00  decay=0.011  score=72  1h=BULL
+[2026-05-26 19:03:48] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.46  rl=30  bocpd=29.4%  exh=0.00  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:03:48] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:04:00] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=99%  slope=+0.2  vz=-1.52  rl=14  bocpd=35.7%  exh=0.00  decay=0.000  score=72  1h=RANGE
+[2026-05-26 19:04:00] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=98%  slope=-0.9  vz=-1.09  rl=4  bocpd=98.3%  exh=0.00  decay=0.035  score=54  1h=BEAR
+[2026-05-26 19:04:00] [RGV2] [INFO] [GBP/USD] Gate: Score 54 < 55 (Escore)
+[2026-05-26 19:04:00] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+1.7  vz=-1.09  rl=8  bocpd=98.0%  exh=0.00  decay=0.204  score=56  1h=RANGE
+[2026-05-26 19:04:00] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.19  rl=83  bocpd=25.5%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:04:00] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=73%  slope=-2.5  vz=-1.54  rl=14  bocpd=28.7%  exh=0.00  decay=0.333  score=43  1h=RANGE
+[2026-05-26 19:04:00] [RGV2] [INFO] [NZD/USD] Gate: conf 65.9% < 70% (sess×0.90)
+[2026-05-26 19:04:00] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=98%  slope=-0.1  vz=-1.17  rl=83  bocpd=25.4%  exh=0.00  decay=0.263  score=73  1h=BEAR
+[2026-05-26 19:04:00] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.30  rl=83  bocpd=25.5%  exh=0.00  decay=0.055  score=74  1h=BULL
+[2026-05-26 19:04:00] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.09  rl=83  bocpd=28.7%  exh=0.00  decay=0.004  score=72  1h=BULL
+[2026-05-26 19:04:00] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.46  rl=31  bocpd=29.1%  exh=0.00  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:04:00] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:04:29] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.1  vz=-1.44  rl=15  bocpd=32.6%  exh=0.00  decay=0.000  score=73  1h=RANGE
+[2026-05-26 19:04:29] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=98%  slope=-0.3  vz=-1.05  rl=5  bocpd=98.1%  exh=0.00  decay=0.096  score=54  1h=BEAR
+[2026-05-26 19:04:29] [RGV2] [INFO] [GBP/USD] Gate: Score 54 < 55 (Escore)
+[2026-05-26 19:04:29] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+1.0  vz=-1.08  rl=9  bocpd=97.2%  exh=0.00  decay=0.156  score=56  1h=RANGE
+[2026-05-26 19:04:29] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.13  rl=84  bocpd=25.5%  exh=0.00  decay=0.001  score=74  1h=RANGE
+[2026-05-26 19:04:30] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=69%  slope=-2.8  vz=-1.51  rl=15  bocpd=29.6%  exh=0.00  decay=0.378  score=39  1h=RANGE
+[2026-05-26 19:04:30] [RGV2] [INFO] [NZD/USD] Gate: conf 62.1% < 70% (sess×0.90)
+[2026-05-26 19:04:30] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=98%  slope=-0.2  vz=-1.10  rl=84  bocpd=25.4%  exh=0.00  decay=0.370  score=72  1h=BEAR
+[2026-05-26 19:04:30] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.23  rl=84  bocpd=25.5%  exh=0.00  decay=0.066  score=74  1h=BULL
+[2026-05-26 19:04:30] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.08  rl=84  bocpd=28.5%  exh=0.00  decay=0.014  score=73  1h=BULL
+[2026-05-26 19:04:30] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.46  rl=32  bocpd=28.8%  exh=0.00  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:04:30] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:05:01] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.1  vz=-1.44  rl=16  bocpd=31.0%  exh=0.00  decay=0.000  score=73  1h=RANGE
+[2026-05-26 19:05:01] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=98%  slope=+0.4  vz=-1.05  rl=6  bocpd=97.8%  exh=0.00  decay=0.100  score=54  1h=BEAR
+[2026-05-26 19:05:01] [RGV2] [INFO] [GBP/USD] Gate: Score 54 < 55 (Escore)
+[2026-05-26 19:05:01] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=-1.08  rl=10  bocpd=95.1%  exh=0.00  decay=0.123  score=57  1h=RANGE
+[2026-05-26 19:05:01] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.13  rl=85  bocpd=25.5%  exh=0.00  decay=0.001  score=74  1h=RANGE
+[2026-05-26 19:05:01] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=69%  slope=-2.9  vz=-1.51  rl=16  bocpd=29.7%  exh=0.00  decay=0.383  score=39  1h=RANGE
+[2026-05-26 19:05:01] [RGV2] [INFO] [NZD/USD] Gate: conf 62.1% < 70% (sess×0.90)
+[2026-05-26 19:05:01] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=98%  slope=-0.2  vz=-1.10  rl=85  bocpd=25.4%  exh=0.00  decay=0.375  score=72  1h=BEAR
+[2026-05-26 19:05:01] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.23  rl=85  bocpd=25.5%  exh=0.00  decay=0.064  score=74  1h=BULL
+[2026-05-26 19:05:01] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.08  rl=85  bocpd=28.3%  exh=0.00  decay=0.025  score=73  1h=BULL
+[2026-05-26 19:05:01] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.46  rl=33  bocpd=28.6%  exh=0.00  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:05:01] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:05:29] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.1  vz=-1.49  rl=17  bocpd=30.3%  exh=0.00  decay=0.000  score=73  1h=RANGE
+[2026-05-26 19:05:29] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=98%  slope=+0.9  vz=-1.14  rl=7  bocpd=97.3%  exh=0.00  decay=0.006  score=54  1h=BEAR
+[2026-05-26 19:05:29] [RGV2] [INFO] [GBP/USD] Gate: Score 54 < 55 (Escore)
+[2026-05-26 19:05:29] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=-1.24  rl=11  bocpd=90.2%  exh=0.00  decay=0.000  score=58  1h=RANGE
+[2026-05-26 19:05:29] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.17  rl=86  bocpd=25.5%  exh=0.00  decay=0.001  score=74  1h=RANGE
+[2026-05-26 19:05:29] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=70%  slope=-2.7  vz=-1.55  rl=17  bocpd=29.2%  exh=0.00  decay=0.364  score=40  1h=RANGE
+[2026-05-26 19:05:29] [RGV2] [INFO] [NZD/USD] Gate: conf 62.8% < 70% (sess×0.90)
+[2026-05-26 19:05:29] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=98%  slope=-0.2  vz=-0.99  rl=86  bocpd=25.4%  exh=0.00  decay=0.377  score=72  1h=BEAR
+[2026-05-26 19:05:29] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.20  rl=86  bocpd=25.5%  exh=0.00  decay=0.081  score=74  1h=BULL
+[2026-05-26 19:05:29] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.18  rl=86  bocpd=28.1%  exh=0.00  decay=0.000  score=73  1h=BULL
+[2026-05-26 19:05:29] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.59  rl=34  bocpd=28.4%  exh=0.00  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:05:29] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:06:02] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.49  rl=18  bocpd=29.7%  exh=0.00  decay=0.000  score=73  1h=RANGE
+[2026-05-26 19:06:02] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=98%  slope=+1.5  vz=-1.14  rl=8  bocpd=96.4%  exh=0.00  decay=0.000  score=54  1h=BEAR
+[2026-05-26 19:06:02] [RGV2] [INFO] [GBP/USD] Gate: Score 54 < 55 (Escore)
+[2026-05-26 19:06:02] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=-1.24  rl=12  bocpd=79.7%  exh=0.00  decay=0.000  score=60  1h=RANGE
+[2026-05-26 19:06:02] [RGV2] [INFO] TRADE USD/JPY LONG  SL=159.33654  lot=2.77
+[2026-05-26 19:06:02] [RGV2] [ERROR] MT5 order failed: retcode=? 
+[2026-05-26 19:06:02] [RGV2] [WARNING] [USD/JPY] MT5 order failed — cooldown 300s
+[2026-05-26 19:06:02] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.17  rl=87  bocpd=25.5%  exh=0.00  decay=0.018  score=74  1h=RANGE
+[2026-05-26 19:06:02] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=70%  slope=-2.3  vz=-1.55  rl=18  bocpd=28.8%  exh=0.00  decay=0.310  score=40  1h=RANGE
+[2026-05-26 19:06:02] [RGV2] [INFO] [NZD/USD] Gate: conf 62.8% < 70% (sess×0.90)
+[2026-05-26 19:06:02] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=98%  slope=-0.2  vz=-0.99  rl=87  bocpd=25.4%  exh=0.00  decay=0.377  score=72  1h=BEAR
+[2026-05-26 19:06:02] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.20  rl=87  bocpd=25.5%  exh=0.00  decay=0.085  score=74  1h=BULL
+[2026-05-26 19:06:02] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=-0.0  vz=-1.18  rl=87  bocpd=27.9%  exh=0.00  decay=0.001  score=73  1h=BULL
+[2026-05-26 19:06:02] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.59  rl=35  bocpd=28.1%  exh=0.00  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:06:02] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:06:30] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.44  rl=19  bocpd=29.2%  exh=0.00  decay=0.006  score=74  1h=RANGE
+[2026-05-26 19:06:30] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=97%  slope=+1.7  vz=-1.10  rl=9  bocpd=94.1%  exh=0.00  decay=0.000  score=54  1h=BEAR
+[2026-05-26 19:06:30] [RGV2] [INFO] [GBP/USD] Gate: Score 54 < 55 (Escore)
+[2026-05-26 19:06:30] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=-1.33  rl=13  bocpd=63.2%  exh=0.00  decay=0.000  score=63  1h=RANGE
+[2026-05-26 19:06:30] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.16  rl=88  bocpd=25.5%  exh=0.00  decay=0.026  score=74  1h=RANGE
+[2026-05-26 19:06:30] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=71%  slope=-1.9  vz=-1.46  rl=19  bocpd=28.3%  exh=0.00  decay=0.266  score=41  1h=RANGE
+[2026-05-26 19:06:30] [RGV2] [INFO] [NZD/USD] Gate: conf 63.8% < 70% (sess×0.90)
+[2026-05-26 19:06:30] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=98%  slope=-0.2  vz=-0.97  rl=88  bocpd=25.4%  exh=0.00  decay=0.371  score=73  1h=BEAR
+[2026-05-26 19:06:30] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.14  rl=88  bocpd=25.5%  exh=0.00  decay=0.134  score=74  1h=BULL
+[2026-05-26 19:06:30] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.16  rl=88  bocpd=27.9%  exh=0.00  decay=0.000  score=73  1h=BULL
+[2026-05-26 19:06:30] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+2.20  rl=36  bocpd=28.0%  exh=0.00  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:06:30] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:07:00] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.44  rl=20  bocpd=28.8%  exh=0.00  decay=0.047  score=74  1h=RANGE
+[2026-05-26 19:07:00] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=97%  slope=+1.8  vz=-1.10  rl=10  bocpd=89.1%  exh=0.00  decay=0.000  score=55  1h=BEAR
+[2026-05-26 19:07:00] [RGV2] [INFO] [GBP/USD] Gate: Score 55 < 55 (Escore)
+[2026-05-26 19:07:00] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=-1.33  rl=14  bocpd=47.0%  exh=0.00  decay=0.000  score=66  1h=RANGE
+[2026-05-26 19:07:00] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.16  rl=89  bocpd=25.5%  exh=0.00  decay=0.034  score=74  1h=RANGE
+[2026-05-26 19:07:00] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=71%  slope=-1.2  vz=-1.46  rl=20  bocpd=27.8%  exh=0.00  decay=0.230  score=41  1h=RANGE
+[2026-05-26 19:07:00] [RGV2] [INFO] [NZD/USD] Gate: conf 63.8% < 70% (sess×0.90)
+[2026-05-26 19:07:00] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=98%  slope=-0.1  vz=-0.97  rl=89  bocpd=25.4%  exh=0.00  decay=0.363  score=73  1h=BEAR
+[2026-05-26 19:07:00] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.14  rl=89  bocpd=25.5%  exh=0.00  decay=0.170  score=74  1h=BULL
+[2026-05-26 19:07:00] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.16  rl=89  bocpd=27.7%  exh=0.00  decay=0.000  score=73  1h=BULL
+[2026-05-26 19:07:00] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+2.20  rl=37  bocpd=27.8%  exh=0.00  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:07:00] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:07:29] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.1  vz=-1.50  rl=21  bocpd=28.5%  exh=0.00  decay=0.031  score=74  1h=RANGE
+[2026-05-26 19:07:29] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=98%  slope=+1.0  vz=-1.18  rl=11  bocpd=80.4%  exh=0.00  decay=0.000  score=58  1h=BEAR
+[2026-05-26 19:07:29] [RGV2] [INFO] TRADE GBP/USD SHORT  SL=1.34458  lot=2.68
+[2026-05-26 19:07:29] [RGV2] [ERROR] MT5 order failed: retcode=? 
+[2026-05-26 19:07:29] [RGV2] [WARNING] [GBP/USD] MT5 order failed — cooldown 300s
+[2026-05-26 19:07:29] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=-1.33  rl=15  bocpd=37.2%  exh=0.00  decay=0.000  score=68  1h=RANGE
+[2026-05-26 19:07:29] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.16  rl=90  bocpd=25.5%  exh=0.00  decay=0.025  score=74  1h=RANGE
+[2026-05-26 19:07:29] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=76%  slope=-0.5  vz=-1.52  rl=21  bocpd=28.0%  exh=0.00  decay=0.130  score=46  1h=RANGE
+[2026-05-26 19:07:29] [RGV2] [INFO] [NZD/USD] Gate: conf 68.4% < 70% (sess×0.90)
+[2026-05-26 19:07:29] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=+0.0  vz=-1.03  rl=90  bocpd=25.4%  exh=0.00  decay=0.350  score=74  1h=BEAR
+[2026-05-26 19:07:29] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.20  rl=90  bocpd=25.5%  exh=0.00  decay=0.151  score=74  1h=BULL
+[2026-05-26 19:07:29] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.24  rl=90  bocpd=27.6%  exh=0.00  decay=0.000  score=73  1h=BULL
+[2026-05-26 19:07:29] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+2.01  rl=38  bocpd=27.7%  exh=0.05  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:07:29] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:07:59] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.1  vz=-1.50  rl=22  bocpd=28.3%  exh=0.00  decay=0.017  score=74  1h=RANGE
+[2026-05-26 19:07:59] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=98%  slope=-0.0  vz=-1.18  rl=12  bocpd=65.8%  exh=0.00  decay=0.002  score=61  1h=BEAR
+[2026-05-26 19:07:59] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=-1.47  rl=16  bocpd=32.6%  exh=0.00  decay=0.001  score=69  1h=RANGE
+[2026-05-26 19:07:59] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.16  rl=91  bocpd=25.5%  exh=0.00  decay=0.013  score=74  1h=RANGE
+[2026-05-26 19:07:59] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=76%  slope=+0.4  vz=-1.52  rl=22  bocpd=27.2%  exh=0.00  decay=0.038  score=46  1h=RANGE
+[2026-05-26 19:07:59] [RGV2] [INFO] [NZD/USD] Gate: conf 68.4% < 70% (sess×0.90)
+[2026-05-26 19:07:59] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=+0.1  vz=-1.03  rl=91  bocpd=25.4%  exh=0.00  decay=0.174  score=74  1h=BEAR
+[2026-05-26 19:07:59] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.20  rl=91  bocpd=25.5%  exh=0.00  decay=0.123  score=74  1h=BULL
+[2026-05-26 19:07:59] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.24  rl=91  bocpd=27.5%  exh=0.00  decay=0.000  score=73  1h=BULL
+[2026-05-26 19:07:59] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+2.01  rl=39  bocpd=27.5%  exh=0.15  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:07:59] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:08:30] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.58  rl=23  bocpd=28.0%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:08:30] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=98%  slope=+0.0  vz=-1.19  rl=13  bocpd=50.5%  exh=0.00  decay=0.000  score=64  1h=BEAR
+[2026-05-26 19:08:30] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=-1.63  rl=17  bocpd=30.6%  exh=0.00  decay=0.001  score=70  1h=RANGE
+[2026-05-26 19:08:30] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.19  rl=92  bocpd=25.5%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:08:30] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=81%  slope=+1.0  vz=-1.58  rl=23  bocpd=28.5%  exh=0.00  decay=0.000  score=51  1h=RANGE
+[2026-05-26 19:08:30] [RGV2] [INFO] [NZD/USD] Gate: Score 51 < 55 (Escore)
+[2026-05-26 19:08:30] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=+0.2  vz=-1.10  rl=92  bocpd=25.4%  exh=0.00  decay=0.082  score=74  1h=BEAR
+[2026-05-26 19:08:30] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.18  rl=92  bocpd=25.5%  exh=0.00  decay=0.089  score=74  1h=BULL
+[2026-05-26 19:08:30] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.22  rl=92  bocpd=27.4%  exh=0.00  decay=0.000  score=73  1h=BULL
+[2026-05-26 19:08:30] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+2.04  rl=40  bocpd=27.4%  exh=0.11  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:08:30] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:08:59] [RGV2] [INFO] [VIX] spot=17.06
+[2026-05-26 19:09:05] [RGV2] [INFO] [CVOL] EVZCLS=10.7(86%ile)  GVZCLS=23.9(89%ile)  coherence=True
+[2026-05-26 19:09:05] [RGV2] [INFO] [DXY] level=99.213  5d=+0.25%
+[2026-05-26 19:09:05] [RGV2] [INFO] [HYG] level=80.1  5d=+0.70%
+[2026-05-26 19:09:09] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 19:09:13] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.58  rl=24  bocpd=27.8%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:09:13] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=98%  slope=+0.1  vz=-1.19  rl=14  bocpd=40.0%  exh=0.00  decay=0.000  score=66  1h=BEAR
+[2026-05-26 19:09:13] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=-1.63  rl=18  bocpd=29.6%  exh=0.00  decay=0.002  score=70  1h=RANGE
+[2026-05-26 19:09:13] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.19  rl=93  bocpd=25.5%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:09:13] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=81%  slope=+1.5  vz=-1.58  rl=24  bocpd=28.1%  exh=0.00  decay=0.000  score=51  1h=RANGE
+[2026-05-26 19:09:13] [RGV2] [INFO] [NZD/USD] Gate: conf not rising (81%→81%)
+[2026-05-26 19:09:13] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=+0.2  vz=-1.10  rl=93  bocpd=25.4%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:09:13] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.18  rl=93  bocpd=25.5%  exh=0.00  decay=0.042  score=74  1h=BULL
+[2026-05-26 19:09:13] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.22  rl=93  bocpd=27.3%  exh=0.00  decay=0.000  score=73  1h=BULL
+[2026-05-26 19:09:13] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+2.04  rl=41  bocpd=27.3%  exh=0.04  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:09:13] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:09:29] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.58  rl=25  bocpd=27.7%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:09:29] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=96%  slope=+0.0  vz=-1.16  rl=15  bocpd=32.8%  exh=0.00  decay=0.000  score=66  1h=BEAR
+[2026-05-26 19:09:29] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=-1.72  rl=19  bocpd=29.1%  exh=0.00  decay=0.002  score=70  1h=RANGE
+[2026-05-26 19:09:29] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.19  rl=94  bocpd=25.5%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:09:29] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=90%  slope=+2.1  vz=-1.59  rl=25  bocpd=35.7%  exh=0.00  decay=0.000  score=59  1h=RANGE
+[2026-05-26 19:09:29] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=+0.2  vz=-1.07  rl=94  bocpd=25.4%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:09:29] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.14  rl=94  bocpd=25.5%  exh=0.00  decay=0.043  score=74  1h=BULL
+[2026-05-26 19:09:29] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.17  rl=94  bocpd=27.2%  exh=0.00  decay=0.000  score=73  1h=BULL
+[2026-05-26 19:09:29] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+2.03  rl=42  bocpd=27.2%  exh=0.05  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:09:29] [RGV2] [INFO] [XAU/USD] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:09:59] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.58  rl=26  bocpd=27.5%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:09:59] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=96%  slope=-0.0  vz=-1.16  rl=16  bocpd=30.0%  exh=0.00  decay=0.006  score=66  1h=BEAR
+[2026-05-26 19:09:59] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=-1.72  rl=20  bocpd=28.6%  exh=0.00  decay=0.002  score=70  1h=RANGE
+[2026-05-26 19:09:59] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.19  rl=95  bocpd=25.5%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:09:59] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=90%  slope=+2.4  vz=-1.59  rl=26  bocpd=36.8%  exh=0.00  decay=0.000  score=58  1h=RANGE
+[2026-05-26 19:09:59] [RGV2] [INFO] TRADE NZD/USD LONG  SL=0.58308  lot=2.69
+[2026-05-26 19:09:59] [RGV2] [ERROR] MT5 order failed: retcode=? 
+[2026-05-26 19:09:59] [RGV2] [WARNING] [NZD/USD] MT5 order failed — cooldown 300s
+[2026-05-26 19:09:59] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=+0.2  vz=-1.07  rl=95  bocpd=25.4%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:09:59] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.14  rl=95  bocpd=25.5%  exh=0.00  decay=0.034  score=74  1h=BULL
+[2026-05-26 19:09:59] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.17  rl=95  bocpd=27.1%  exh=0.00  decay=0.000  score=73  1h=BULL
+[2026-05-26 19:09:59] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+2.03  rl=43  bocpd=27.1%  exh=0.05  decay=0.305  score=70  1h=RANGE
+[2026-05-26 19:09:59] [RGV2] [INFO] [XAU/USD] Gate: decay 0.305 ≥ 0.25
+[2026-05-26 19:10:31] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.57  rl=27  bocpd=27.4%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:10:31] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=96%  slope=-0.2  vz=-1.21  rl=17  bocpd=28.5%  exh=0.00  decay=0.020  score=66  1h=BEAR
+[2026-05-26 19:10:31] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=-1.53  rl=21  bocpd=28.3%  exh=0.00  decay=0.002  score=70  1h=RANGE
+[2026-05-26 19:10:31] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.23  rl=96  bocpd=25.4%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:10:31] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=96%  slope=+2.9  vz=-1.63  rl=27  bocpd=45.3%  exh=0.00  decay=0.000  score=62  1h=RANGE
+[2026-05-26 19:10:31] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=+0.2  vz=-1.17  rl=96  bocpd=25.5%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:10:31] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.16  rl=96  bocpd=25.4%  exh=0.00  decay=0.023  score=74  1h=BULL
+[2026-05-26 19:10:31] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.16  rl=96  bocpd=27.1%  exh=0.00  decay=0.007  score=73  1h=BULL
+[2026-05-26 19:10:31] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+2.00  rl=44  bocpd=27.0%  exh=0.07  decay=0.094  score=70  1h=RANGE
+[2026-05-26 19:10:31] [RGV2] [INFO] TRADE XAU/USD SHORT  SL=4497.53354  lot=0.8
+[2026-05-26 19:10:31] [RGV2] [ERROR] MT5 order failed: retcode=? 
+[2026-05-26 19:10:31] [RGV2] [WARNING] [XAU/USD] MT5 order failed — cooldown 300s
+[2026-05-26 19:11:01] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.57  rl=28  bocpd=27.2%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:11:01] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=96%  slope=-0.2  vz=-1.21  rl=18  bocpd=27.9%  exh=0.00  decay=0.030  score=66  1h=BEAR
+[2026-05-26 19:11:01] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=-1.53  rl=22  bocpd=28.0%  exh=0.00  decay=0.002  score=70  1h=RANGE
+[2026-05-26 19:11:01] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.23  rl=97  bocpd=25.4%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:11:01] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=96%  slope=+3.1  vz=-1.63  rl=28  bocpd=47.1%  exh=0.00  decay=0.000  score=62  1h=RANGE
+[2026-05-26 19:11:01] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=+0.1  vz=-1.17  rl=97  bocpd=25.5%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:11:01] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.16  rl=97  bocpd=25.4%  exh=0.00  decay=0.008  score=74  1h=BULL
+[2026-05-26 19:11:01] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.16  rl=97  bocpd=27.0%  exh=0.00  decay=0.030  score=73  1h=BULL
+[2026-05-26 19:11:01] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+2.00  rl=45  bocpd=26.9%  exh=0.03  decay=0.000  score=70  1h=RANGE
+[2026-05-26 19:11:30] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.41  rl=29  bocpd=27.0%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:11:30] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=95%  slope=-0.4  vz=-1.08  rl=19  bocpd=27.2%  exh=0.00  decay=0.049  score=65  1h=BEAR
+[2026-05-26 19:11:30] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=-1.40  rl=23  bocpd=27.8%  exh=0.00  decay=0.001  score=70  1h=RANGE
+[2026-05-26 19:11:30] [RGV2] [INFO] TRADE USD/JPY LONG  SL=159.31165  lot=3.35
+[2026-05-26 19:11:30] [RGV2] [ERROR] MT5 order failed: retcode=? 
+[2026-05-26 19:11:30] [RGV2] [WARNING] [USD/JPY] MT5 order failed — cooldown 300s
+[2026-05-26 19:11:30] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.11  rl=98  bocpd=25.4%  exh=0.00  decay=0.000  score=74  1h=RANGE
+[2026-05-26 19:11:30] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=99%  slope=+3.2  vz=-1.43  rl=29  bocpd=53.5%  exh=0.00  decay=0.000  score=64  1h=RANGE
+[2026-05-26 19:11:30] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=+0.1  vz=-1.09  rl=98  bocpd=25.4%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:11:30] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.08  rl=98  bocpd=25.4%  exh=0.00  decay=0.063  score=74  1h=BULL
+[2026-05-26 19:11:30] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.11  rl=98  bocpd=26.9%  exh=0.00  decay=0.085  score=73  1h=BULL
+[2026-05-26 19:11:30] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.98  rl=46  bocpd=26.8%  exh=0.04  decay=0.000  score=70  1h=RANGE
+[2026-05-26 19:11:33] [RGV2] [INFO] Cycle 100  balance=99069.72  macro=VIX=17.1  vol-coherent  DXY=99.2→  sleep=18.5s
+[2026-05-26 19:12:00] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.41  rl=30  bocpd=26.9%  exh=0.00  decay=0.081  score=74  1h=RANGE
+[2026-05-26 19:12:00] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=95%  slope=-0.5  vz=-1.08  rl=20  bocpd=26.9%  exh=0.00  decay=0.140  score=65  1h=BEAR
+[2026-05-26 19:12:00] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=-1.40  rl=24  bocpd=27.6%  exh=0.00  decay=0.036  score=70  1h=RANGE
+[2026-05-26 19:12:00] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.11  rl=99  bocpd=25.4%  exh=0.00  decay=0.025  score=74  1h=RANGE
+[2026-05-26 19:12:00] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=99%  slope=+2.9  vz=-1.43  rl=30  bocpd=55.0%  exh=0.00  decay=0.055  score=64  1h=RANGE
+[2026-05-26 19:12:00] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=+0.1  vz=-1.09  rl=99  bocpd=25.4%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:12:00] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.08  rl=99  bocpd=25.4%  exh=0.00  decay=0.110  score=74  1h=BULL
+[2026-05-26 19:12:00] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.11  rl=99  bocpd=26.8%  exh=0.00  decay=0.136  score=73  1h=BULL
+[2026-05-26 19:12:00] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.98  rl=47  bocpd=26.8%  exh=0.03  decay=0.000  score=70  1h=RANGE
+[2026-05-26 19:12:30] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.42  rl=31  bocpd=26.8%  exh=0.00  decay=0.148  score=74  1h=RANGE
+[2026-05-26 19:12:30] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=94%  slope=-0.5  vz=-1.08  rl=21  bocpd=26.6%  exh=0.00  decay=0.175  score=65  1h=BEAR
+[2026-05-26 19:12:30] [RGV2] [INFO] TRADE GBP/USD SHORT  SL=1.34472  lot=3.04
+[2026-05-26 19:12:30] [RGV2] [ERROR] MT5 order failed: retcode=? 
+[2026-05-26 19:12:30] [RGV2] [WARNING] [GBP/USD] MT5 order failed — cooldown 300s
+[2026-05-26 19:12:30] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=-1.29  rl=25  bocpd=27.4%  exh=0.00  decay=0.273  score=70  1h=RANGE
+[2026-05-26 19:12:30] [RGV2] [INFO] [USD/JPY] Gate: decay 0.273 ≥ 0.25
+[2026-05-26 19:12:30] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.12  rl=100  bocpd=25.4%  exh=0.00  decay=0.062  score=74  1h=RANGE
+[2026-05-26 19:12:30] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+2.7  vz=-1.43  rl=31  bocpd=55.8%  exh=0.00  decay=0.130  score=64  1h=RANGE
+[2026-05-26 19:12:30] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.02  rl=100  bocpd=25.4%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:12:30] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.07  rl=100  bocpd=25.4%  exh=0.00  decay=0.121  score=74  1h=BULL
+[2026-05-26 19:12:30] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.11  rl=100  bocpd=26.7%  exh=0.00  decay=0.134  score=73  1h=BULL
+[2026-05-26 19:12:30] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.78  rl=48  bocpd=26.7%  exh=0.16  decay=0.000  score=70  1h=RANGE
+[2026-05-26 19:13:00] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.42  rl=32  bocpd=26.7%  exh=0.00  decay=0.209  score=74  1h=RANGE
+[2026-05-26 19:13:00] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=94%  slope=-0.5  vz=-1.08  rl=22  bocpd=26.4%  exh=0.00  decay=0.192  score=65  1h=BEAR
+[2026-05-26 19:13:00] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=-1.29  rl=26  bocpd=27.2%  exh=0.00  decay=0.350  score=70  1h=RANGE
+[2026-05-26 19:13:00] [RGV2] [INFO] [USD/JPY] Gate: decay 0.350 ≥ 0.25
+[2026-05-26 19:13:00] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.12  rl=101  bocpd=25.4%  exh=0.00  decay=0.093  score=74  1h=RANGE
+[2026-05-26 19:13:00] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+2.2  vz=-1.43  rl=32  bocpd=54.9%  exh=0.00  decay=0.195  score=65  1h=RANGE
+[2026-05-26 19:13:00] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.02  rl=101  bocpd=25.4%  exh=0.00  decay=0.059  score=74  1h=BEAR
+[2026-05-26 19:13:00] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.07  rl=101  bocpd=25.4%  exh=0.00  decay=0.119  score=74  1h=BULL
+[2026-05-26 19:13:00] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=-0.0  vz=-1.11  rl=101  bocpd=26.7%  exh=0.00  decay=0.119  score=73  1h=BULL
+[2026-05-26 19:13:00] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.78  rl=49  bocpd=26.6%  exh=0.18  decay=0.000  score=71  1h=RANGE
+[2026-05-26 19:13:29] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.47  rl=33  bocpd=26.7%  exh=0.00  decay=0.189  score=74  1h=RANGE
+[2026-05-26 19:13:29] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=83%  slope=-1.0  vz=-1.14  rl=23  bocpd=28.4%  exh=0.00  decay=0.236  score=54  1h=BEAR
+[2026-05-26 19:13:29] [RGV2] [INFO] [GBP/USD] Gate: conf not rising (94%→83%)
+[2026-05-26 19:13:29] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=-1.48  rl=27  bocpd=27.1%  exh=0.00  decay=0.351  score=70  1h=RANGE
+[2026-05-26 19:13:29] [RGV2] [INFO] [USD/JPY] Gate: decay 0.351 ≥ 0.25
+[2026-05-26 19:13:29] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.08  rl=102  bocpd=25.4%  exh=0.00  decay=0.122  score=74  1h=RANGE
+[2026-05-26 19:13:29] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+1.8  vz=-1.45  rl=33  bocpd=53.6%  exh=0.00  decay=0.206  score=65  1h=RANGE
+[2026-05-26 19:13:29] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.0  vz=-1.01  rl=102  bocpd=25.4%  exh=0.00  decay=0.094  score=74  1h=BEAR
+[2026-05-26 19:13:29] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.14  rl=102  bocpd=25.4%  exh=0.00  decay=0.081  score=74  1h=BULL
+[2026-05-26 19:13:29] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=-0.0  vz=-1.16  rl=102  bocpd=26.7%  exh=0.00  decay=0.078  score=73  1h=BULL
+[2026-05-26 19:13:29] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.54  rl=50  bocpd=26.6%  exh=0.32  decay=0.000  score=71  1h=RANGE
+[2026-05-26 19:14:10] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.47  rl=34  bocpd=26.6%  exh=0.00  decay=0.158  score=74  1h=RANGE
+[2026-05-26 19:14:10] [RGV2] [INFO] [GBP/USD] reg=BEAR  conf=83%  slope=-1.3  vz=-1.14  rl=24  bocpd=28.9%  exh=0.00  decay=0.249  score=53  1h=BEAR
+[2026-05-26 19:14:10] [RGV2] [INFO] [GBP/USD] Gate: conf not rising (83%→83%)
+[2026-05-26 19:14:10] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=-1.48  rl=28  bocpd=26.9%  exh=0.00  decay=0.307  score=70  1h=RANGE
+[2026-05-26 19:14:10] [RGV2] [INFO] [USD/JPY] Gate: decay 0.307 ≥ 0.25
+[2026-05-26 19:14:10] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.08  rl=103  bocpd=25.4%  exh=0.00  decay=0.140  score=74  1h=RANGE
+[2026-05-26 19:14:10] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+1.2  vz=-1.45  rl=34  bocpd=51.8%  exh=0.00  decay=0.204  score=65  1h=RANGE
+[2026-05-26 19:14:10] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.0  vz=-1.01  rl=103  bocpd=25.4%  exh=0.00  decay=0.120  score=74  1h=BEAR
+[2026-05-26 19:14:10] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.14  rl=103  bocpd=25.4%  exh=0.00  decay=0.038  score=74  1h=BULL
+[2026-05-26 19:14:10] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=-0.0  vz=-1.16  rl=103  bocpd=26.6%  exh=0.00  decay=0.030  score=73  1h=BULL
+[2026-05-26 19:14:10] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.54  rl=51  bocpd=26.5%  exh=0.27  decay=0.000  score=71  1h=RANGE
+[2026-05-26 19:14:28] [RGV2] [INFO] [VIX] spot=17.07
+[2026-05-26 19:14:34] [RGV2] [INFO] [CVOL] EVZCLS=10.7(86%ile)  GVZCLS=23.9(89%ile)  coherence=True
+[2026-05-26 19:14:34] [RGV2] [INFO] [DXY] level=99.206  5d=+0.24%
+[2026-05-26 19:14:34] [RGV2] [INFO] [HYG] level=80.11  5d=+0.72%
+[2026-05-26 19:14:38] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 19:14:44] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.48  rl=35  bocpd=26.6%  exh=0.00  decay=0.109  score=76  1h=RANGE
+[2026-05-26 19:14:44] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=54%  slope=-3.2  vz=-1.15  rl=1  bocpd=0.0%  exh=0.00  decay=0.900  score=46  1h=BEAR
+[2026-05-26 19:14:44] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=97%  slope=-0.2  vz=-1.63  rl=29  bocpd=26.1%  exh=0.00  decay=0.123  score=67  1h=RANGE
+[2026-05-26 19:14:44] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.07  rl=104  bocpd=25.4%  exh=0.00  decay=0.151  score=76  1h=RANGE
+[2026-05-26 19:14:44] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.9  vz=-1.40  rl=35  bocpd=49.9%  exh=0.00  decay=0.205  score=66  1h=RANGE
+[2026-05-26 19:14:44] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.1  vz=-1.01  rl=104  bocpd=25.4%  exh=0.00  decay=0.154  score=75  1h=BEAR
+[2026-05-26 19:14:44] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.15  rl=104  bocpd=25.4%  exh=0.00  decay=0.010  score=76  1h=BULL
+[2026-05-26 19:14:44] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.17  rl=104  bocpd=26.6%  exh=0.00  decay=0.000  score=74  1h=BULL
+[2026-05-26 19:14:44] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.36  rl=52  bocpd=26.5%  exh=0.36  decay=0.000  score=69  1h=RANGE
+[2026-05-26 19:14:44] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:15:04] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.48  rl=36  bocpd=26.5%  exh=0.00  decay=0.051  score=76  1h=RANGE
+[2026-05-26 19:15:04] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=54%  slope=-4.6  vz=-1.15  rl=2  bocpd=31.1%  exh=0.00  decay=0.900  score=40  1h=BEAR
+[2026-05-26 19:15:04] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=97%  slope=-0.3  vz=-1.63  rl=30  bocpd=25.8%  exh=0.00  decay=0.043  score=67  1h=RANGE
+[2026-05-26 19:15:04] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.07  rl=105  bocpd=25.4%  exh=0.00  decay=0.148  score=76  1h=RANGE
+[2026-05-26 19:15:04] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.5  vz=-1.40  rl=36  bocpd=48.0%  exh=0.00  decay=0.187  score=66  1h=RANGE
+[2026-05-26 19:15:04] [RGV2] [INFO] TRADE NZD/USD LONG  SL=0.58319  lot=3.12
+[2026-05-26 19:15:04] [RGV2] [ERROR] MT5 order failed: retcode=? 
+[2026-05-26 19:15:04] [RGV2] [WARNING] [NZD/USD] MT5 order failed — cooldown 300s
+[2026-05-26 19:15:04] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.1  vz=-1.01  rl=105  bocpd=25.4%  exh=0.00  decay=0.181  score=75  1h=BEAR
+[2026-05-26 19:15:04] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.15  rl=105  bocpd=25.4%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:15:04] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.17  rl=105  bocpd=26.5%  exh=0.00  decay=0.000  score=74  1h=BULL
+[2026-05-26 19:15:04] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.36  rl=53  bocpd=26.4%  exh=0.28  decay=0.000  score=69  1h=RANGE
+[2026-05-26 19:15:04] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:15:34] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.49  rl=37  bocpd=26.4%  exh=0.00  decay=0.000  score=76  1h=RANGE
+[2026-05-26 19:15:34] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=71%  slope=-4.6  vz=-1.18  rl=3  bocpd=55.1%  exh=0.00  decay=0.900  score=41  1h=BEAR
+[2026-05-26 19:15:34] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=76%  slope=-1.5  vz=-1.74  rl=31  bocpd=42.0%  exh=0.00  decay=0.205  score=44  1h=RANGE
+[2026-05-26 19:15:34] [RGV2] [INFO] [USD/JPY] Gate: conf 68.5% < 70% (sess×0.90)
+[2026-05-26 19:15:34] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.07  rl=106  bocpd=25.4%  exh=0.00  decay=0.110  score=76  1h=RANGE
+[2026-05-26 19:15:34] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.3  vz=-1.42  rl=37  bocpd=46.4%  exh=0.00  decay=0.115  score=67  1h=RANGE
+[2026-05-26 19:15:34] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=99%  slope=-0.1  vz=-1.08  rl=106  bocpd=25.4%  exh=0.00  decay=0.110  score=74  1h=BEAR
+[2026-05-26 19:15:34] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.19  rl=106  bocpd=25.4%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:15:34] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.20  rl=106  bocpd=26.5%  exh=0.00  decay=0.000  score=75  1h=BULL
+[2026-05-26 19:15:34] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.71  rl=54  bocpd=26.4%  exh=0.08  decay=0.000  score=69  1h=RANGE
+[2026-05-26 19:15:34] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:16:07] [RGV2] [WARNING] fetch_regimes: HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-05-26 19:16:10] [RGV2] [WARNING] Cycle 109: no regime data — skipping
+[2026-05-26 19:16:49] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.49  rl=38  bocpd=26.4%  exh=0.00  decay=0.000  score=77  1h=RANGE
+[2026-05-26 19:16:49] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=96%  slope=-2.9  vz=-1.16  rl=4  bocpd=95.2%  exh=0.00  decay=0.900  score=59  1h=BEAR
+[2026-05-26 19:16:49] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=94%  slope=-1.5  vz=-1.70  rl=1  bocpd=0.0%  exh=0.00  decay=0.900  score=77  1h=RANGE
+[2026-05-26 19:16:49] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.11  rl=107  bocpd=25.4%  exh=0.00  decay=0.036  score=77  1h=RANGE
+[2026-05-26 19:16:49] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.1  vz=-1.43  rl=38  bocpd=44.8%  exh=0.00  decay=0.016  score=66  1h=RANGE
+[2026-05-26 19:16:49] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:16:49] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=97%  slope=-0.2  vz=-1.04  rl=107  bocpd=25.4%  exh=0.00  decay=0.056  score=74  1h=BEAR
+[2026-05-26 19:16:49] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.24  rl=107  bocpd=25.4%  exh=0.00  decay=0.000  score=77  1h=BULL
+[2026-05-26 19:16:49] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.25  rl=107  bocpd=26.5%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:16:49] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.66  rl=55  bocpd=26.4%  exh=0.04  decay=0.000  score=69  1h=RANGE
+[2026-05-26 19:16:49] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:17:18] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.53  rl=39  bocpd=26.3%  exh=0.00  decay=0.000  score=77  1h=RANGE
+[2026-05-26 19:17:18] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=94%  slope=-1.4  vz=-1.07  rl=5  bocpd=95.7%  exh=0.00  decay=0.900  score=57  1h=BEAR
+[2026-05-26 19:17:18] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=-1.0  vz=-1.67  rl=2  bocpd=99.0%  exh=0.00  decay=0.900  score=62  1h=RANGE
+[2026-05-26 19:17:18] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.06  rl=108  bocpd=25.4%  exh=0.00  decay=0.043  score=77  1h=RANGE
+[2026-05-26 19:17:18] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.1  vz=-1.36  rl=39  bocpd=43.4%  exh=0.00  decay=0.047  score=66  1h=RANGE
+[2026-05-26 19:17:18] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:17:18] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=94%  slope=-0.4  vz=-1.07  rl=108  bocpd=26.1%  exh=0.00  decay=0.055  score=71  1h=BEAR
+[2026-05-26 19:17:18] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.26  rl=108  bocpd=25.4%  exh=0.00  decay=0.000  score=77  1h=BULL
+[2026-05-26 19:17:18] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.17  rl=108  bocpd=26.4%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:17:18] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.65  rl=56  bocpd=26.3%  exh=0.04  decay=0.000  score=69  1h=RANGE
+[2026-05-26 19:17:18] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:17:48] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.53  rl=40  bocpd=26.3%  exh=0.00  decay=0.000  score=77  1h=RANGE
+[2026-05-26 19:17:48] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=94%  slope=+0.2  vz=-1.07  rl=6  bocpd=95.4%  exh=0.00  decay=0.900  score=57  1h=BEAR
+[2026-05-26 19:17:48] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=-0.6  vz=-1.67  rl=3  bocpd=98.8%  exh=0.00  decay=0.900  score=62  1h=RANGE
+[2026-05-26 19:17:48] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.06  rl=109  bocpd=25.4%  exh=0.00  decay=0.045  score=77  1h=RANGE
+[2026-05-26 19:17:48] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.0  vz=-1.36  rl=40  bocpd=42.2%  exh=0.00  decay=0.069  score=66  1h=RANGE
+[2026-05-26 19:17:48] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:17:48] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=94%  slope=-0.6  vz=-1.07  rl=109  bocpd=26.2%  exh=0.00  decay=0.076  score=71  1h=BEAR
+[2026-05-26 19:17:48] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.26  rl=109  bocpd=25.4%  exh=0.00  decay=0.000  score=77  1h=BULL
+[2026-05-26 19:17:48] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.17  rl=109  bocpd=26.4%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:17:48] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.65  rl=57  bocpd=26.3%  exh=0.05  decay=0.000  score=69  1h=RANGE
+[2026-05-26 19:17:48] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:18:18] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.48  rl=41  bocpd=26.2%  exh=0.00  decay=0.000  score=77  1h=RANGE
+[2026-05-26 19:18:18] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=96%  slope=+1.8  vz=-0.97  rl=7  bocpd=95.6%  exh=0.00  decay=0.900  score=59  1h=BEAR
+[2026-05-26 19:18:18] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=-0.2  vz=-1.56  rl=4  bocpd=98.7%  exh=0.00  decay=0.900  score=62  1h=RANGE
+[2026-05-26 19:18:18] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.01  rl=110  bocpd=25.4%  exh=0.00  decay=0.059  score=77  1h=RANGE
+[2026-05-26 19:18:18] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.0  vz=-1.30  rl=41  bocpd=41.0%  exh=0.00  decay=0.113  score=66  1h=RANGE
+[2026-05-26 19:18:18] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:18:18] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=94%  slope=-0.7  vz=-1.01  rl=110  bocpd=26.4%  exh=0.00  decay=0.093  score=71  1h=BEAR
+[2026-05-26 19:18:18] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.24  rl=110  bocpd=25.4%  exh=0.00  decay=0.000  score=77  1h=BULL
+[2026-05-26 19:18:18] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.13  rl=110  bocpd=26.3%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:18:18] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.56  rl=58  bocpd=26.2%  exh=0.09  decay=0.031  score=69  1h=RANGE
+[2026-05-26 19:18:18] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:18:43] [RGV2] [WARNING] kv_get(rgv2_force_unlock): ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+[2026-05-26 19:18:48] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.48  rl=42  bocpd=26.2%  exh=0.00  decay=0.000  score=77  1h=RANGE
+[2026-05-26 19:18:48] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=96%  slope=+3.3  vz=-0.97  rl=8  bocpd=94.6%  exh=0.00  decay=0.900  score=59  1h=BEAR
+[2026-05-26 19:18:48] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.3  vz=-1.56  rl=5  bocpd=98.5%  exh=0.00  decay=0.900  score=62  1h=RANGE
+[2026-05-26 19:18:48] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.01  rl=111  bocpd=25.4%  exh=0.00  decay=0.062  score=77  1h=RANGE
+[2026-05-26 19:18:48] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.0  vz=-1.30  rl=42  bocpd=40.0%  exh=0.00  decay=0.144  score=67  1h=RANGE
+[2026-05-26 19:18:48] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:18:48] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=94%  slope=-0.8  vz=-1.01  rl=111  bocpd=26.5%  exh=0.00  decay=0.101  score=71  1h=BEAR
+[2026-05-26 19:18:48] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.24  rl=111  bocpd=25.4%  exh=0.00  decay=0.000  score=77  1h=BULL
+[2026-05-26 19:18:48] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.13  rl=111  bocpd=26.3%  exh=0.00  decay=0.023  score=76  1h=BULL
+[2026-05-26 19:18:48] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.56  rl=59  bocpd=26.2%  exh=0.10  decay=0.137  score=69  1h=RANGE
+[2026-05-26 19:18:48] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:19:18] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.48  rl=43  bocpd=26.2%  exh=0.00  decay=0.000  score=77  1h=RANGE
+[2026-05-26 19:19:18] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+4.4  vz=-1.07  rl=9  bocpd=94.8%  exh=0.00  decay=0.900  score=63  1h=BEAR
+[2026-05-26 19:19:18] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.7  vz=-1.59  rl=6  bocpd=98.4%  exh=0.00  decay=0.900  score=62  1h=RANGE
+[2026-05-26 19:19:18] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.07  rl=112  bocpd=25.4%  exh=0.00  decay=0.047  score=77  1h=RANGE
+[2026-05-26 19:19:18] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.0  vz=-1.33  rl=43  bocpd=39.0%  exh=0.00  decay=0.134  score=67  1h=RANGE
+[2026-05-26 19:19:18] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:19:18] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=93%  slope=-0.8  vz=-0.87  rl=112  bocpd=27.0%  exh=0.00  decay=0.178  score=69  1h=BEAR
+[2026-05-26 19:19:18] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.27  rl=112  bocpd=25.4%  exh=0.00  decay=0.000  score=77  1h=BULL
+[2026-05-26 19:19:18] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.21  rl=112  bocpd=26.3%  exh=0.00  decay=0.011  score=76  1h=BULL
+[2026-05-26 19:19:18] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.50  rl=60  bocpd=26.2%  exh=0.13  decay=0.098  score=69  1h=RANGE
+[2026-05-26 19:19:18] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:19:46] [RGV2] [INFO] [VIX] spot=17.04
+[2026-05-26 19:19:52] [RGV2] [INFO] [CVOL] EVZCLS=10.7(86%ile)  GVZCLS=23.9(89%ile)  coherence=True
+[2026-05-26 19:19:52] [RGV2] [INFO] [DXY] level=99.2  5d=+0.23%
+[2026-05-26 19:19:52] [RGV2] [INFO] [HYG] level=80.11  5d=+0.72%
+[2026-05-26 19:19:55] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 19:20:01] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.48  rl=44  bocpd=26.1%  exh=0.00  decay=0.004  score=77  1h=RANGE
+[2026-05-26 19:20:01] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+5.2  vz=-1.07  rl=10  bocpd=92.8%  exh=0.00  decay=0.154  score=63  1h=BEAR
+[2026-05-26 19:20:01] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+1.1  vz=-1.59  rl=7  bocpd=98.0%  exh=0.00  decay=0.900  score=63  1h=RANGE
+[2026-05-26 19:20:01] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.07  rl=113  bocpd=25.4%  exh=0.00  decay=0.032  score=77  1h=RANGE
+[2026-05-26 19:20:01] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.0  vz=-1.33  rl=44  bocpd=38.2%  exh=0.00  decay=0.112  score=67  1h=RANGE
+[2026-05-26 19:20:01] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:20:01] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=93%  slope=-0.8  vz=-0.87  rl=113  bocpd=27.1%  exh=0.00  decay=0.253  score=69  1h=BEAR
+[2026-05-26 19:20:01] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.27  rl=113  bocpd=25.4%  exh=0.00  decay=0.000  score=77  1h=BULL
+[2026-05-26 19:20:01] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.21  rl=113  bocpd=26.3%  exh=0.00  decay=0.004  score=76  1h=BULL
+[2026-05-26 19:20:01] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.50  rl=61  bocpd=26.1%  exh=0.11  decay=0.063  score=69  1h=RANGE
+[2026-05-26 19:20:01] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:20:16] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.47  rl=45  bocpd=26.1%  exh=0.00  decay=0.022  score=77  1h=RANGE
+[2026-05-26 19:20:16] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+3.9  vz=-1.13  rl=11  bocpd=88.6%  exh=0.00  decay=0.095  score=64  1h=BEAR
+[2026-05-26 19:20:16] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+1.4  vz=-1.72  rl=8  bocpd=97.1%  exh=0.00  decay=0.900  score=63  1h=RANGE
+[2026-05-26 19:20:16] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.05  rl=114  bocpd=25.4%  exh=0.00  decay=0.031  score=77  1h=RANGE
+[2026-05-26 19:20:16] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.0  vz=-1.27  rl=45  bocpd=37.3%  exh=0.00  decay=0.135  score=67  1h=RANGE
+[2026-05-26 19:20:16] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:20:16] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=83%  slope=-1.3  vz=-0.88  rl=114  bocpd=36.3%  exh=0.00  decay=0.370  score=58  1h=BEAR
+[2026-05-26 19:20:16] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.25  rl=114  bocpd=25.4%  exh=0.00  decay=0.000  score=77  1h=BULL
+[2026-05-26 19:20:16] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.21  rl=114  bocpd=26.2%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:20:16] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.50  rl=62  bocpd=26.1%  exh=0.08  decay=0.000  score=69  1h=RANGE
+[2026-05-26 19:20:16] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:20:43] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.47  rl=46  bocpd=26.1%  exh=0.00  decay=0.038  score=77  1h=RANGE
+[2026-05-26 19:20:43] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+2.0  vz=-1.13  rl=12  bocpd=80.7%  exh=0.00  decay=0.035  score=66  1h=BEAR
+[2026-05-26 19:20:43] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+1.5  vz=-1.72  rl=9  bocpd=95.0%  exh=0.00  decay=0.900  score=63  1h=RANGE
+[2026-05-26 19:20:43] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.05  rl=115  bocpd=25.4%  exh=0.00  decay=0.028  score=77  1h=RANGE
+[2026-05-26 19:20:43] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=-0.0  vz=-1.27  rl=46  bocpd=36.5%  exh=0.00  decay=0.145  score=67  1h=RANGE
+[2026-05-26 19:20:43] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:20:43] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=83%  slope=-1.6  vz=-0.88  rl=115  bocpd=39.3%  exh=0.00  decay=0.448  score=57  1h=BEAR
+[2026-05-26 19:20:43] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.25  rl=115  bocpd=25.4%  exh=0.00  decay=0.000  score=77  1h=BULL
+[2026-05-26 19:20:43] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.24  rl=115  bocpd=26.2%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:20:43] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.36  rl=63  bocpd=26.1%  exh=0.16  decay=0.000  score=69  1h=RANGE
+[2026-05-26 19:20:43] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:21:13] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.47  rl=47  bocpd=26.0%  exh=0.00  decay=0.048  score=77  1h=RANGE
+[2026-05-26 19:21:13] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.7  vz=-1.13  rl=13  bocpd=68.5%  exh=0.00  decay=0.000  score=68  1h=BEAR
+[2026-05-26 19:21:13] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.3  vz=-1.72  rl=10  bocpd=90.0%  exh=0.00  decay=0.000  score=64  1h=RANGE
+[2026-05-26 19:21:13] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.05  rl=116  bocpd=25.4%  exh=0.00  decay=0.022  score=77  1h=RANGE
+[2026-05-26 19:21:13] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=-0.0  vz=-1.27  rl=47  bocpd=35.8%  exh=0.00  decay=0.129  score=67  1h=RANGE
+[2026-05-26 19:21:13] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:21:13] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=83%  slope=-1.7  vz=-0.88  rl=116  bocpd=40.4%  exh=0.00  decay=0.447  score=57  1h=BEAR
+[2026-05-26 19:21:13] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.25  rl=116  bocpd=25.4%  exh=0.00  decay=0.000  score=77  1h=BULL
+[2026-05-26 19:21:13] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.24  rl=116  bocpd=26.2%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:21:13] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.36  rl=64  bocpd=26.1%  exh=0.18  decay=0.000  score=69  1h=RANGE
+[2026-05-26 19:21:13] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:21:42] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.41  rl=48  bocpd=26.0%  exh=0.00  decay=0.084  score=77  1h=RANGE
+[2026-05-26 19:21:42] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.7  vz=-1.10  rl=14  bocpd=55.0%  exh=0.00  decay=0.000  score=71  1h=BEAR
+[2026-05-26 19:21:42] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.58  rl=11  bocpd=79.4%  exh=0.00  decay=0.000  score=66  1h=RANGE
+[2026-05-26 19:21:42] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.98  rl=117  bocpd=25.4%  exh=0.00  decay=0.025  score=77  1h=RANGE
+[2026-05-26 19:21:42] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=-0.0  vz=-1.18  rl=48  bocpd=35.2%  exh=0.00  decay=0.134  score=68  1h=RANGE
+[2026-05-26 19:21:42] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:21:42] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=76%  slope=-2.0  vz=-0.81  rl=117  bocpd=51.2%  exh=0.00  decay=0.522  score=47  1h=BEAR
+[2026-05-26 19:21:42] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.23  rl=117  bocpd=25.4%  exh=0.00  decay=0.014  score=77  1h=BULL
+[2026-05-26 19:21:42] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.20  rl=117  bocpd=26.1%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:21:42] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.21  rl=65  bocpd=26.0%  exh=0.25  decay=0.000  score=69  1h=RANGE
+[2026-05-26 19:21:42] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:21:43] [RGV2] [INFO] Cycle 120  balance=99069.72  macro=VIX=17.0  vol-coherent  DXY=99.2→  sleep=26.8s
+[2026-05-26 19:22:12] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.41  rl=49  bocpd=26.0%  exh=0.00  decay=0.088  score=77  1h=RANGE
+[2026-05-26 19:22:12] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.6  vz=-1.10  rl=15  bocpd=44.5%  exh=0.00  decay=0.000  score=73  1h=BEAR
+[2026-05-26 19:22:12] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.58  rl=12  bocpd=62.9%  exh=0.00  decay=0.000  score=70  1h=RANGE
+[2026-05-26 19:22:12] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.98  rl=118  bocpd=25.4%  exh=0.00  decay=0.043  score=77  1h=RANGE
+[2026-05-26 19:22:12] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=-0.0  vz=-1.18  rl=49  bocpd=34.6%  exh=0.00  decay=0.153  score=68  1h=RANGE
+[2026-05-26 19:22:12] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:22:12] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=76%  slope=-2.4  vz=-0.81  rl=118  bocpd=53.4%  exh=0.00  decay=0.547  score=47  1h=BEAR
+[2026-05-26 19:22:12] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.23  rl=118  bocpd=25.4%  exh=0.00  decay=0.020  score=77  1h=BULL
+[2026-05-26 19:22:12] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.20  rl=118  bocpd=26.1%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:22:12] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=+0.0  vz=+1.21  rl=66  bocpd=26.0%  exh=0.21  decay=0.000  score=70  1h=RANGE
+[2026-05-26 19:22:12] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:22:42] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.42  rl=50  bocpd=25.9%  exh=0.00  decay=0.075  score=77  1h=RANGE
+[2026-05-26 19:22:42] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.4  vz=-1.17  rl=16  bocpd=38.2%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:22:42] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.42  rl=13  bocpd=46.9%  exh=0.00  decay=0.041  score=73  1h=RANGE
+[2026-05-26 19:22:42] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.97  rl=119  bocpd=25.4%  exh=0.00  decay=0.057  score=77  1h=RANGE
+[2026-05-26 19:22:42] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=-0.0  vz=-1.18  rl=50  bocpd=34.1%  exh=0.00  decay=0.153  score=68  1h=RANGE
+[2026-05-26 19:22:42] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:22:42] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=53%  slope=-3.7  vz=-0.93  rl=119  bocpd=35.1%  exh=0.00  decay=0.527  score=40  1h=BEAR
+[2026-05-26 19:22:42] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.23  rl=119  bocpd=25.4%  exh=0.00  decay=0.022  score=77  1h=BULL
+[2026-05-26 19:22:42] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=+0.0  vz=-1.21  rl=119  bocpd=26.1%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:22:42] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=-0.0  vz=+1.02  rl=67  bocpd=26.0%  exh=0.33  decay=0.001  score=69  1h=RANGE
+[2026-05-26 19:22:42] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:23:12] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.42  rl=51  bocpd=25.9%  exh=0.00  decay=0.079  score=77  1h=RANGE
+[2026-05-26 19:23:12] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.2  vz=-1.17  rl=17  bocpd=34.8%  exh=0.00  decay=0.000  score=75  1h=BEAR
+[2026-05-26 19:23:12] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.42  rl=14  bocpd=37.2%  exh=0.00  decay=0.155  score=75  1h=RANGE
+[2026-05-26 19:23:12] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.97  rl=120  bocpd=25.4%  exh=0.00  decay=0.091  score=77  1h=RANGE
+[2026-05-26 19:23:12] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=-0.0  vz=-1.18  rl=51  bocpd=33.5%  exh=0.00  decay=0.169  score=68  1h=RANGE
+[2026-05-26 19:23:12] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:23:12] [RGV2] [INFO] [USD/CAD] reg=RANGE  conf=53%  slope=-4.5  vz=-0.93  rl=120  bocpd=26.7%  exh=0.00  decay=0.443  score=42  1h=BEAR
+[2026-05-26 19:23:12] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.23  rl=120  bocpd=25.4%  exh=0.00  decay=0.033  score=77  1h=BULL
+[2026-05-26 19:23:12] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=-0.0  vz=-1.21  rl=120  bocpd=26.1%  exh=0.00  decay=0.001  score=76  1h=BULL
+[2026-05-26 19:23:12] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=-0.0  vz=+1.02  rl=68  bocpd=25.9%  exh=0.29  decay=0.001  score=69  1h=RANGE
+[2026-05-26 19:23:12] [RGV2] [INFO] [XAU/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:23:43] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.38  rl=52  bocpd=25.9%  exh=0.00  decay=0.096  score=76  1h=RANGE
+[2026-05-26 19:23:43] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.15  rl=18  bocpd=32.9%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:23:43] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.25  rl=15  bocpd=32.7%  exh=0.00  decay=0.335  score=74  1h=RANGE
+[2026-05-26 19:23:43] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.98  rl=121  bocpd=25.4%  exh=0.00  decay=0.116  score=76  1h=RANGE
+[2026-05-26 19:23:43] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=-0.0  vz=-1.21  rl=52  bocpd=33.0%  exh=0.00  decay=0.157  score=68  1h=RANGE
+[2026-05-26 19:23:43] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:23:44] [RGV2] [INFO] [USD/CAD] reg=BEAR  conf=79%  slope=-3.5  vz=-0.94  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=54  1h=BEAR
+[2026-05-26 19:23:44] [RGV2] [INFO] [USD/CAD] Gate: Score 54 < 55 (Escore)
+[2026-05-26 19:23:44] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.22  rl=121  bocpd=25.4%  exh=0.00  decay=0.048  score=76  1h=BULL
+[2026-05-26 19:23:44] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=-0.0  vz=-1.23  rl=121  bocpd=26.0%  exh=0.00  decay=0.002  score=75  1h=BULL
+[2026-05-26 19:23:44] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=-0.0  vz=+0.89  rl=69  bocpd=25.9%  exh=0.37  decay=0.002  score=71  1h=RANGE
+[2026-05-26 19:23:44] [RGV2] [INFO] TRADE XAU/USD SHORT  SL=4500.40938  lot=0.82
+[2026-05-26 19:23:44] [RGV2] [ERROR] MT5 order failed: retcode=? 
+[2026-05-26 19:23:44] [RGV2] [WARNING] [XAU/USD] MT5 order failed — cooldown 300s
+[2026-05-26 19:24:12] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.38  rl=53  bocpd=25.9%  exh=0.00  decay=0.102  score=76  1h=RANGE
+[2026-05-26 19:24:12] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.15  rl=19  bocpd=31.7%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:24:12] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.25  rl=16  bocpd=30.8%  exh=0.00  decay=0.350  score=75  1h=RANGE
+[2026-05-26 19:24:12] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.98  rl=122  bocpd=25.4%  exh=0.00  decay=0.103  score=76  1h=RANGE
+[2026-05-26 19:24:12] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=-0.0  vz=-1.21  rl=53  bocpd=32.6%  exh=0.00  decay=0.118  score=68  1h=RANGE
+[2026-05-26 19:24:12] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:24:12] [RGV2] [INFO] [USD/CAD] reg=BEAR  conf=79%  slope=-2.4  vz=-0.94  rl=2  bocpd=0.0%  exh=0.00  decay=0.000  score=54  1h=BEAR
+[2026-05-26 19:24:12] [RGV2] [INFO] [USD/CAD] Gate: conf not rising (79%→79%)
+[2026-05-26 19:24:12] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.22  rl=122  bocpd=25.4%  exh=0.00  decay=0.043  score=76  1h=BULL
+[2026-05-26 19:24:12] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=-0.0  vz=-1.23  rl=122  bocpd=26.0%  exh=0.00  decay=0.002  score=75  1h=BULL
+[2026-05-26 19:24:12] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=-0.0  vz=+0.89  rl=70  bocpd=25.9%  exh=0.28  decay=0.002  score=71  1h=RANGE
+[2026-05-26 19:24:44] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.33  rl=54  bocpd=25.8%  exh=0.00  decay=0.123  score=76  1h=RANGE
+[2026-05-26 19:24:44] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.18  rl=20  bocpd=30.8%  exh=0.00  decay=0.000  score=74  1h=BEAR
+[2026-05-26 19:24:44] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-0.95  rl=17  bocpd=29.8%  exh=0.00  decay=0.350  score=75  1h=RANGE
+[2026-05-26 19:24:44] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.98  rl=123  bocpd=25.4%  exh=0.00  decay=0.080  score=76  1h=RANGE
+[2026-05-26 19:24:44] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=+0.0  vz=-1.19  rl=54  bocpd=32.1%  exh=0.00  decay=0.076  score=68  1h=RANGE
+[2026-05-26 19:24:44] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:24:44] [RGV2] [INFO] [USD/CAD] reg=BEAR  conf=97%  slope=-0.1  vz=-0.94  rl=3  bocpd=98.2%  exh=0.00  decay=0.000  score=53  1h=BEAR
+[2026-05-26 19:24:44] [RGV2] [INFO] [USD/CAD] Gate: Score 53 < 55 (Escore)
+[2026-05-26 19:24:44] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.20  rl=123  bocpd=25.4%  exh=0.00  decay=0.043  score=76  1h=BULL
+[2026-05-26 19:24:44] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=-0.0  vz=-1.17  rl=123  bocpd=26.0%  exh=0.00  decay=0.025  score=75  1h=BULL
+[2026-05-26 19:24:44] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=-0.0  vz=+0.73  rl=71  bocpd=25.9%  exh=0.39  decay=0.003  score=70  1h=RANGE
+[2026-05-26 19:25:13] [RGV2] [INFO] [VIX] spot=17.0
+[2026-05-26 19:25:16] [RGV2] [INFO] [CVOL] EVZCLS=10.7(86%ile)  GVZCLS=23.9(89%ile)  coherence=True
+[2026-05-26 19:25:17] [RGV2] [INFO] [DXY] level=99.189  5d=+0.22%
+[2026-05-26 19:25:17] [RGV2] [INFO] [HYG] level=80.11  5d=+0.71%
+[2026-05-26 19:25:18] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 19:25:21] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.37  rl=55  bocpd=25.8%  exh=0.00  decay=0.114  score=76  1h=RANGE
+[2026-05-26 19:25:21] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.17  rl=21  bocpd=30.2%  exh=0.00  decay=0.000  score=75  1h=BEAR
+[2026-05-26 19:25:21] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=-0.0  vz=-0.91  rl=18  bocpd=29.1%  exh=0.00  decay=0.351  score=75  1h=RANGE
+[2026-05-26 19:25:21] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.92  rl=124  bocpd=25.4%  exh=0.00  decay=0.088  score=76  1h=RANGE
+[2026-05-26 19:25:21] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=-0.0  vz=-1.14  rl=55  bocpd=31.6%  exh=0.00  decay=0.080  score=68  1h=RANGE
+[2026-05-26 19:25:21] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:25:21] [RGV2] [INFO] [USD/CAD] reg=BEAR  conf=98%  slope=+1.6  vz=-1.05  rl=4  bocpd=98.2%  exh=0.00  decay=0.000  score=54  1h=BEAR
+[2026-05-26 19:25:21] [RGV2] [INFO] [USD/CAD] Gate: Score 54 < 55 (Escore)
+[2026-05-26 19:25:21] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.25  rl=124  bocpd=25.4%  exh=0.00  decay=0.023  score=76  1h=BULL
+[2026-05-26 19:25:21] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=-0.0  vz=-1.16  rl=124  bocpd=25.9%  exh=0.00  decay=0.054  score=74  1h=BULL
+[2026-05-26 19:25:21] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=-0.0  vz=+0.57  rl=72  bocpd=25.8%  exh=0.47  decay=0.004  score=70  1h=RANGE
+[2026-05-26 19:25:43] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.37  rl=56  bocpd=25.8%  exh=0.00  decay=0.094  score=76  1h=RANGE
+[2026-05-26 19:25:43] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.17  rl=22  bocpd=29.7%  exh=0.00  decay=0.000  score=75  1h=BEAR
+[2026-05-26 19:25:43] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=-0.0  vz=-0.91  rl=19  bocpd=28.6%  exh=0.00  decay=0.351  score=75  1h=RANGE
+[2026-05-26 19:25:43] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.92  rl=125  bocpd=25.4%  exh=0.00  decay=0.082  score=76  1h=RANGE
+[2026-05-26 19:25:43] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=-0.0  vz=-1.14  rl=56  bocpd=31.1%  exh=0.00  decay=0.069  score=68  1h=RANGE
+[2026-05-26 19:25:43] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:25:43] [RGV2] [INFO] [USD/CAD] reg=BEAR  conf=98%  slope=+3.0  vz=-1.05  rl=5  bocpd=98.0%  exh=0.00  decay=0.000  score=54  1h=BEAR
+[2026-05-26 19:25:43] [RGV2] [INFO] [USD/CAD] Gate: Score 54 < 55 (Escore)
+[2026-05-26 19:25:43] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.25  rl=125  bocpd=25.4%  exh=0.00  decay=0.003  score=76  1h=BULL
+[2026-05-26 19:25:43] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=-0.0  vz=-1.16  rl=125  bocpd=25.9%  exh=0.00  decay=0.060  score=74  1h=BULL
+[2026-05-26 19:25:43] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=-0.0  vz=+0.57  rl=73  bocpd=25.8%  exh=0.47  decay=0.005  score=70  1h=RANGE
+[2026-05-26 19:26:13] [RGV2] [INFO] [EUR/USD] reg=RANGE  conf=100%  slope=-0.0  vz=-1.37  rl=57  bocpd=25.8%  exh=0.00  decay=0.063  score=76  1h=RANGE
+[2026-05-26 19:26:13] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-1.17  rl=23  bocpd=29.2%  exh=0.00  decay=0.000  score=75  1h=BEAR
+[2026-05-26 19:26:13] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=-0.0  vz=-0.91  rl=20  bocpd=28.3%  exh=0.00  decay=0.352  score=75  1h=RANGE
+[2026-05-26 19:26:13] [RGV2] [INFO] [AUD/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.92  rl=126  bocpd=25.4%  exh=0.00  decay=0.063  score=76  1h=RANGE
+[2026-05-26 19:26:13] [RGV2] [INFO] [NZD/USD] reg=BULL  conf=100%  slope=-0.0  vz=-1.14  rl=57  bocpd=30.7%  exh=0.00  decay=0.045  score=68  1h=RANGE
+[2026-05-26 19:26:13] [RGV2] [INFO] [NZD/USD] Gate: consensus 1/9 < 2 (E8)
+[2026-05-26 19:26:13] [RGV2] [INFO] [USD/CAD] reg=BEAR  conf=98%  slope=+4.3  vz=-1.05  rl=6  bocpd=97.8%  exh=0.00  decay=0.000  score=54  1h=BEAR
+[2026-05-26 19:26:13] [RGV2] [INFO] [USD/CAD] Gate: Score 54 < 55 (Escore)
+[2026-05-26 19:26:13] [RGV2] [INFO] [USD/CHF] reg=RANGE  conf=100%  slope=+0.0  vz=-1.25  rl=126  bocpd=25.4%  exh=0.00  decay=0.000  score=76  1h=BULL
+[2026-05-26 19:26:13] [RGV2] [INFO] [GBP/JPY] reg=RANGE  conf=99%  slope=-0.0  vz=-1.16  rl=126  bocpd=25.9%  exh=0.00  decay=0.057  score=74  1h=BULL
+[2026-05-26 19:26:13] [RGV2] [INFO] [XAU/USD] reg=BEAR  conf=100%  slope=-0.0  vz=+0.57  rl=74  bocpd=25.8%  exh=0.33  decay=0.005  score=70  1h=RANGE
