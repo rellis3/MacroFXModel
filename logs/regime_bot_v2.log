@@ -712,3 +712,46 @@
 [2026-05-26 09:26:22] [RGV2] [INFO] [GBP/USD] reg=BULL  conf=100%  slope=+0.0  vz=+0.32  rl=12  bocpd=61.5%  exh=0.28  decay=0.000  score=70  1h=BEAR
 [2026-05-26 09:26:22] [RGV2] [INFO] [GBP/USD] Gate: conf not rising (100%→100%)
 [2026-05-26 09:26:22] [RGV2] [INFO] [USD/JPY] reg=CHOP  conf=65%  slope=-2.4  vz=-0.52  rl=12  bocpd=43.6%  exh=0.00  decay=0.318  score=43  1h=BEAR
+[2026-05-26 10:27:11] [RGV2] [INFO] PAPER MODE — no real orders will be placed
+[2026-05-26 10:27:11] [RGV2] [INFO] RegimeV2 starting  paper=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-26 10:27:16] [RGV2] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY']  hold=2  entry_conf=70.0%  interval=30s  use_bocpd=True  use_1h=True  use_vix=True
+[2026-05-26 10:27:21] [RGV2] [INFO] [VIX] spot=16.8  3m=20.03  ratio=1.1923
+[2026-05-26 10:27:21] [RGV2] [WARNING] [CVOL] FRED_KEY not set — skipping vol fetch
+[2026-05-26 10:27:21] [RGV2] [INFO] [DXY] level=99.052  5d=+0.08%
+[2026-05-26 10:27:21] [RGV2] [INFO] [HYG] level=79.91  5d=+0.57%
+[2026-05-26 10:27:22] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 10:27:25] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.35  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=82  1h=BULL
+[2026-05-26 10:27:25] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.11  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=87  1h=BEAR
+[2026-05-26 10:27:25] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.23  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=87  1h=BEAR
+[2026-05-26 10:27:49] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.35  rl=2  bocpd=99.0%  exh=0.00  decay=0.000  score=62  1h=BULL
+[2026-05-26 10:27:49] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.11  rl=2  bocpd=99.0%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:27:49] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.23  rl=2  bocpd=99.0%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:28:21] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.35  rl=3  bocpd=98.8%  exh=0.00  decay=0.000  score=62  1h=BULL
+[2026-05-26 10:28:21] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.16  rl=3  bocpd=98.8%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:28:21] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.33  rl=3  bocpd=98.8%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:28:49] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.25  rl=4  bocpd=98.7%  exh=0.00  decay=0.000  score=62  1h=BULL
+[2026-05-26 10:28:49] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.16  rl=4  bocpd=98.7%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:28:49] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.33  rl=4  bocpd=98.7%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:29:21] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.18  rl=5  bocpd=98.6%  exh=0.00  decay=0.000  score=62  1h=BULL
+[2026-05-26 10:29:21] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.21  rl=5  bocpd=98.5%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:29:21] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.33  rl=5  bocpd=98.6%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:29:50] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.18  rl=6  bocpd=98.4%  exh=0.00  decay=0.000  score=62  1h=BULL
+[2026-05-26 10:29:50] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.21  rl=6  bocpd=98.3%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:29:50] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.34  rl=6  bocpd=98.4%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:30:22] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.26  rl=7  bocpd=98.0%  exh=0.00  decay=0.000  score=62  1h=BULL
+[2026-05-26 10:30:22] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.11  rl=7  bocpd=97.9%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:30:22] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.32  rl=7  bocpd=98.0%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:30:50] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.26  rl=8  bocpd=97.2%  exh=0.00  decay=0.000  score=62  1h=BULL
+[2026-05-26 10:30:50] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.11  rl=8  bocpd=97.0%  exh=0.00  decay=0.000  score=67  1h=BEAR
+[2026-05-26 10:30:50] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.32  rl=8  bocpd=97.2%  exh=0.00  decay=0.000  score=68  1h=BEAR
+[2026-05-26 10:31:20] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+0.37  rl=9  bocpd=95.1%  exh=0.00  decay=0.000  score=63  1h=BULL
+[2026-05-26 10:31:20] [RGV2] [INFO] [GBP/USD] reg=RANGE  conf=100%  slope=+0.0  vz=-0.11  rl=9  bocpd=94.8%  exh=0.00  decay=0.007  score=68  1h=BEAR
+[2026-05-26 10:31:20] [RGV2] [INFO] [USD/JPY] reg=RANGE  conf=100%  slope=+0.0  vz=-1.32  rl=9  bocpd=95.1%  exh=0.00  decay=0.000  score=68  1h=BEAR
+[2026-05-26 10:31:47] [RGV2] [INFO] PAPER MODE — no real orders will be placed
+[2026-05-26 10:31:47] [RGV2] [INFO] RegimeV2 starting  paper=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-26 10:31:51] [RGV2] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY']  hold=2  entry_conf=70.0%  interval=30s  use_bocpd=True  use_1h=True  use_vix=True
+[2026-05-26 10:31:55] [RGV2] [INFO] [VIX] spot=16.8  3m=20.03  ratio=1.1923
+[2026-05-26 10:31:55] [RGV2] [WARNING] [CVOL] FRED_KEY not set — skipping vol fetch
+[2026-05-26 10:31:55] [RGV2] [INFO] [DXY] level=99.053  5d=+0.08%
+[2026-05-26 10:31:55] [RGV2] [INFO] [HYG] level=79.91  5d=+0.57%
+[2026-05-26 10:31:56] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
