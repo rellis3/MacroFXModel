@@ -2,7 +2,7 @@
 RegimeV2 — Macro overlay.
 
 Fetches and caches:
-  - VIX term structure (^VIX / ^VXMT) from Yahoo Finance — hourly
+  - VIX spot (^VIX) from Yahoo Finance — hourly
   - CBOE FX/Gold implied vol indices via FRED API — 6h refresh
       EVZCLS (EUR/USD proxy for all FX pairs), GVZCLS (Gold)
       Requires FRED_KEY env var — free at fred.stlouisfed.org
@@ -64,14 +64,14 @@ def session_multiplier_from_utc() -> float:
 # ── VIX term structure ─────────────────────────────────────────────────────────
 
 class VIXFetcher:
-    """Fetches VIX spot (^VIX) and mid-term (^VXMT) from Yahoo Finance."""
+    """Fetches VIX spot (^VIX) from Yahoo Finance. Term structure dropped — ^VIX3M/^VXMT not on YF."""
 
     _REFRESH_SECS = 3600  # hourly
 
     def __init__(self):
         self._vix:      Optional[float] = None
-        self._vix3m:    Optional[float] = None
-        self._ratio:    Optional[float] = None
+        self._vix3m:    Optional[float] = None   # always None — no source available
+        self._ratio:    Optional[float] = None   # always None
         self._fetched:  float = 0.0
 
     def refresh(self) -> None:
@@ -80,15 +80,11 @@ class VIXFetcher:
             return
         try:
             import yfinance as yf
-            data = yf.download(['^VIX', '^VXMT'], period='5d', progress=False, auto_adjust=True)
-            closes = data['Close']
-            vix   = float(closes['^VIX'].dropna().iloc[-1])
-            vix3m = float(closes['^VXMT'].dropna().iloc[-1])
-            self._vix    = round(vix, 2)
-            self._vix3m  = round(vix3m, 2)
-            self._ratio  = round(vix3m / vix, 4) if vix > 0 else None
+            data   = yf.download('^VIX', period='5d', progress=False, auto_adjust=True)
+            closes = data['Close'].dropna()
+            self._vix     = round(float(closes.iloc[-1]), 2)
             self._fetched = now
-            log.info(f'[VIX] spot={self._vix}  3m={self._vix3m}  ratio={self._ratio}')
+            log.info(f'[VIX] spot={self._vix}')
         except ImportError:
             log.warning('[VIX] yfinance not installed — skipping VIX fetch')
             self._fetched = now  # don't retry until next hour
