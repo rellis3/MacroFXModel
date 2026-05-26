@@ -551,7 +551,7 @@ def execute_trade(pair: str, direction: str, entry: dict,
     res = mt5.order_send({
         'action':       mt5.TRADE_ACTION_DEAL,
         'symbol':       mt5_sym,
-        'volume':       size,
+        'volume':       float(size),
         'type':         order_type,
         'price':        exec_price,
         'sl':           sl_tp.sl,
@@ -637,10 +637,10 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
     rc_mult     = rc_result.metadata.get('size_mult', 1.0) if rc_result else 1.0
     risk_pct    = (config.get('position') or {}).get('risk_pct', 1.0) * vol_mult * gold_mult * rc_mult
 
-    balance = 10_000
+    balance = 10_000.0
     if HAS_MT5 and not paper_mode:
         acct    = mt5.account_info()
-        balance = acct.balance if acct else 10_000
+        balance = float(acct.balance) if acct else 10_000.0
 
     sl_dist = abs(live_price - sl_tp.sl)
     size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, sizing_mult)
@@ -719,10 +719,10 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
     )
 
     risk_pct = (config.get('position') or {}).get('risk_pct', 1.0)
-    balance  = 10_000
+    balance  = 10_000.0
     if HAS_MT5 and not paper_mode:
         acct    = mt5.account_info()
-        balance = acct.balance if acct else 10_000
+        balance = float(acct.balance) if acct else 10_000.0
 
     sl_dist = abs(live_price - sl_tp.sl) if sl_tp.sl else 0
     size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, sizing_mult) if sl_dist else 0

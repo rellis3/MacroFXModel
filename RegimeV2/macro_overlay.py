@@ -195,7 +195,8 @@ class CBOEVolFetcher:
     implied vol elevated, signalling systemic rather than pair-specific stress.
     """
 
-    _REFRESH_SECS = 3600 * 6  # 6h — EOD settlement values
+    _REFRESH_SECS       = 3600 * 6  # 6h — EOD settlement values
+    _RETRY_SECS_ON_FAIL = 300        # 5-min retry when FRED is down
 
     def __init__(self):
         self._levels:    dict[str, float] = {}
@@ -214,6 +215,7 @@ class CBOEVolFetcher:
             return
         levels: dict[str, float] = {}
         pcts:   dict[str, float] = {}
+        any_ok = False
         for series_id in _FRED_SERIES:
             try:
                 values = _fred_fetch(series_id, api_key)
@@ -224,18 +226,24 @@ class CBOEVolFetcher:
                 pct               = sum(v < current for v in values) / len(values) * 100
                 levels[series_id] = round(current, 2)
                 pcts[series_id]   = round(pct, 1)
+                any_ok = True
             except Exception as exc:
                 log.warning(f'[CVOL] {series_id} fetch failed: {exc}')
 
-        self._levels    = levels
-        self._pct       = pcts
-        self._fetched   = now
-        self._coherence = pcts.get('EVZCLS', 0) >= 50
+        if any_ok:
+            self._levels    = levels
+            self._pct       = pcts
+            self._fetched   = now
+            self._coherence = pcts.get('EVZCLS', 0) >= 50
+        else:
+            # All fetches failed — retry in 5 min rather than waiting the full 6h
+            self._fetched = now - self._REFRESH_SECS + self._RETRY_SECS_ON_FAIL
 
-        summary = '  '.join(
-            f'{s}={levels[s]:.1f}({pcts[s]:.0f}%ile)' for s in levels
-        )
-        log.info(f'[CVOL] {summary}  coherence={self._coherence}')
+        if any_ok:
+            summary = '  '.join(
+                f'{s}={levels[s]:.1f}({pcts[s]:.0f}%ile)' for s in levels
+            )
+            log.info(f'[CVOL] {summary}  coherence={self._coherence}')
 
     def pair_vol_level(self, pair: str) -> Optional[float]:
         sym = _PAIR_VOL_SERIES.get(pair)

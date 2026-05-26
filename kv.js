@@ -53,8 +53,10 @@ const _CF_EXACT = new Set([
   'daily_watchlist',        // top-6 levels per pair, computed at 06:05 London — persists within trading day
   'hmm5m_trained_params',   // Baum-Welch learned HMM V2 params — must survive redeploys
   'hmm5m_macro_context',    // FRED macro context snapshot
-  'regime_bot_config',      // regime bot settings — must survive redeploys
-  'regime_bot_credentials', // regime bot MT5 credentials — must survive redeploys
+  'regime_bot_config',       // regime bot settings — must survive redeploys
+  'regime_bot_credentials',  // regime bot MT5 credentials — must survive redeploys
+  'regime_bot_v2_config',    // regime v2 bot settings — must survive redeploys
+  'regime_bot_v2_credentials', // regime v2 bot MT5 credentials — must survive redeploys
   'bot_config',             // main bot settings — must survive redeploys
   'bot_credentials',        // main bot MT5 credentials — must survive redeploys
   'backtestsystem_live_config',  // backtest bot settings — must survive redeploys

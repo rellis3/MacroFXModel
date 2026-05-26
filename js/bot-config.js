@@ -1136,6 +1136,27 @@ function resetRgV2Defaults() {
   if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
 }
 
+async function rgV2TgTest() {
+  const btn = document.getElementById('rgv2TgTestBtn');
+  const el  = document.getElementById('rgv2TgTestStatus');
+  if (btn) btn.disabled = true;
+  if (el)  { el.textContent = 'Sending…'; el.style.color = 'var(--text3)'; }
+  try {
+    const r = await fetch('/api/regime-v2/tg-test', { method: 'POST' });
+    const j = await r.json();
+    if (j.ok) {
+      if (el) { el.textContent = `Sent ✓  (${j.pair})`; el.style.color = 'var(--purple)'; }
+      setTimeout(() => { if (el) el.textContent = ''; }, 4000);
+    } else {
+      if (el) { el.textContent = `Failed: ${j.reason}`; el.style.color = 'var(--red)'; }
+    }
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function loadRgV2Creds() {
   try { _applyCredsToForm(await kvGet('regime_bot_v2_credentials'), 'rgv2_', 'rgv2_mt5_password'); } catch (e) {}
 }
@@ -1332,10 +1353,11 @@ window._loadBtJournal   = loadBtJournal;
 window.saveRgConfig     = saveRgConfig;
 window.resetRgDefaults  = resetRgDefaults;
 window.saveRgCreds      = saveRgCreds;
-window.saveRgV2Config   = saveRgV2Config;
+window.saveRgV2Config    = saveRgV2Config;
 window.resetRgV2Defaults = resetRgV2Defaults;
-window.saveRgV2Creds    = saveRgV2Creds;
-window.rgV2ForceUnlock  = rgV2ForceUnlock;
+window.saveRgV2Creds     = saveRgV2Creds;
+window.rgV2ForceUnlock   = rgV2ForceUnlock;
+window.rgV2TgTest        = rgV2TgTest;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 

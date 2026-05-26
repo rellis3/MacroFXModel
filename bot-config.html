@@ -1494,6 +1494,11 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         <span class="form-lbl">Chat ID <small>group or channel ID</small></span>
         <input type="text" id="rgv2_tg_chat_id" placeholder="leave blank to share Level bot chat" style="width:200px;text-align:left">
       </div>
+      <div class="form-row" style="margin-top:10px">
+        <span class="form-lbl"></span>
+        <button id="rgv2TgTestBtn" onclick="rgV2TgTest()" class="btn-sm" style="background:var(--purple);color:#fff">Test Telegram</button>
+        <span id="rgv2TgTestStatus" style="margin-left:10px;font-size:12px;color:var(--text3)"></span>
+      </div>
     </div>
 
     <!-- Usage notes -->
