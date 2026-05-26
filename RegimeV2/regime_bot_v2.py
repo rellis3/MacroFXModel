@@ -264,7 +264,7 @@ def mt5_connect() -> bool:
             return False
     info = mt5.account_info()
     if info:
-        log.info(f'MT5 connected  account={info.login}  balance={info.balance:.2f}  server={info.server}')
+        log.info(f'[RegimeV2-Bot] MT5 connected  account={info.login}  balance={info.balance:.2f}  server={info.server}')
         if account and str(info.login) != str(account):
             log.error(f'MT5 account mismatch: expected {account} got {info.login} — aborting')
             mt5.shutdown()

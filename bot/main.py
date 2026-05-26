@@ -453,11 +453,11 @@ def mt5_connect() -> bool:
     info = mt5.account_info()
     if info:
         log.info(
-            f'MT5 connected  account={info.login}  balance={info.balance:.2f} {info.currency}'
+            f'[MacroFX-Bot] MT5 connected  account={info.login}  balance={info.balance:.2f} {info.currency}'
             f'  server={info.server}  leverage=1:{info.leverage}'
         )
     else:
-        log.warning('MT5 connected but account_info() returned None')
+        log.warning('[MacroFX-Bot] MT5 connected but account_info() returned None')
     return True
 
 
