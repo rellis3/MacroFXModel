@@ -1665,6 +1665,44 @@ function startZoneTicker() {
 
 // ── Zone ticker render ────────────────────────────────────────────────────────
 
+function _ztConfClass(item) {
+  if (/^nPOC/i.test(item))            return 'ztc-npoc';
+  if (/^POC /i.test(item))            return 'ztc-poc';
+  if (/^HVN/i.test(item))             return 'ztc-hvn';
+  if (/^VA[HL]/i.test(item))          return 'ztc-vah';
+  if (/VWAP/i.test(item))             return 'ztc-vwap';
+  if (/^HTF/i.test(item))             return 'ztc-htf';
+  if (/ TL /i.test(item))             return 'ztc-tl';
+  if (/cluster/i.test(item))          return 'ztc-cluster';
+  if (/\.(786|886|382)/.test(item))   return 'ztc-fib';
+  if (/Daily open/i.test(item))       return 'ztc-session';
+  if (/Prev day/i.test(item))         return 'ztc-session';
+  if (/Session H\/L/i.test(item))     return 'ztc-session';
+  if (/Pivot/i.test(item))            return 'ztc-pivot';
+  return 'ztc-other';
+}
+
+function _ztConfLabel(item) {
+  // nPOC 4521.1 (5d)  → keep as-is (already short)
+  if (/^nPOC/.test(item))   return item;
+  // VWAP anchor 4521.1 (NY 3d bullish) → VWAP (session+age)
+  const vw = item.match(/VWAP anchor [\d.]+ \((\w+) (\d+)d/);
+  if (vw) return `VWAP ${vw[1]} ${vw[2]}d`;
+  // M30 ascending TL (3t @ 4521.1) → M30 ↑TL 3t
+  const tl = item.match(/(\w+) (ascending|descending) TL \((\d+)t/);
+  if (tl) return `${tl[1]} ${tl[2] === 'ascending' ? '↑' : '↓'}TL ${tl[3]}t`;
+  // H4 886 cluster → H4 .886 clust
+  const cl = item.match(/(\w+) (\w+) cluster/);
+  if (cl) return `${cl[1]} .${cl[2]} clust`;
+  // H4 .786 @ 4521.3 → H4 .786
+  const fi = item.match(/(\w+ \.\d+) @/);
+  if (fi) return fi[1];
+  // HTF BULL → HTF ↑ | HTF BEAR → HTF ↓
+  if (/^HTF BULL/.test(item)) return 'HTF ↑';
+  if (/^HTF BEAR/.test(item)) return 'HTF ↓';
+  return item;
+}
+
 function _ztRender(price, zones, focusZone, focusVu, armedId) {
   const el = document.getElementById('goldZoneTicker');
   if (!el) return;
@@ -1735,6 +1773,14 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
           <span class="zt-dist">${distStr}</span>
         </div>
         ${fibLadder ? `<div class="zt-fib-ladder" style="grid-column:1/-1">${fibLadder}</div>` : ''}
+        ${(() => {
+          const comp = (z.composition ?? []).slice(1);
+          if (!comp.length) return '';
+          const chips = comp.map(item =>
+            `<span class="zt-conf-chip ${_ztConfClass(item)}" title="${escHtml(item)}">${escHtml(_ztConfLabel(item))}</span>`
+          ).join('');
+          return `<div class="zt-conf-row" style="grid-column:1/-1">${chips}</div>`;
+        })()}
       </div>`;
   }
 

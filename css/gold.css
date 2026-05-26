@@ -904,3 +904,22 @@
 .zt-fib-off    { color: var(--text3); background: var(--s3); }
 .zt-fib-at     { color: #f59e0b; background: rgba(245,158,11,.2); font-weight: 700; border: 1px solid rgba(245,158,11,.4); }
 .zt-fib-target { color: #e2e8f0; background: rgba(100,116,139,.25); font-weight: 600; border: 1px solid rgba(100,116,139,.5); }
+
+/* Confluence chips */
+.zt-conf-row  { display: flex; gap: 4px; flex-wrap: wrap; padding: 2px 0 2px; }
+.zt-conf-chip {
+  font-size: 9px; font-family: 'DM Mono', monospace; font-weight: 500;
+  padding: 1px 5px; border-radius: 4px; white-space: nowrap; cursor: default;
+}
+.ztc-npoc    { color: #f59e0b; background: rgba(245,158,11,.18); border: 1px solid rgba(245,158,11,.35); }
+.ztc-poc     { color: #60a5fa; background: rgba(96,165,250,.13); border: 1px solid rgba(96,165,250,.28); }
+.ztc-hvn     { color: #93c5fd; background: rgba(147,197,253,.1); border: 1px solid rgba(147,197,253,.22); }
+.ztc-vah     { color: #67e8f9; background: rgba(103,232,249,.1); border: 1px solid rgba(103,232,249,.22); }
+.ztc-vwap    { color: #2dd4bf; background: rgba(45,212,191,.1); border: 1px solid rgba(45,212,191,.22); }
+.ztc-htf     { color: #4ade80; background: rgba(74,222,128,.1); border: 1px solid rgba(74,222,128,.22); }
+.ztc-tl      { color: #c084fc; background: rgba(192,132,252,.1); border: 1px solid rgba(192,132,252,.22); }
+.ztc-cluster { color: #fbbf24; background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.22); }
+.ztc-fib     { color: #e2e8f0; background: rgba(100,116,139,.18); border: 1px solid rgba(100,116,139,.32); }
+.ztc-session { color: #94a3b8; background: rgba(148,163,184,.08); border: 1px solid rgba(148,163,184,.18); }
+.ztc-pivot   { color: #94a3b8; background: rgba(148,163,184,.08); border: 1px solid rgba(148,163,184,.18); }
+.ztc-other   { color: var(--text3); background: var(--s3); }

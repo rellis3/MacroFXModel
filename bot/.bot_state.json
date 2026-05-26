@@ -4,9 +4,18 @@
     "month_start_bal": 10000.0,
     "locked_until": 1779487852.5729687,
     "last_trade_by_pair": {
-      "XAU/USD": 1779721964.6556368
+      "XAU/USD": 1779782254.8815842
     },
     "last_reset_date": "2026-05-26"
   },
-  "position_meta": {}
+  "position_meta": {
+    "152107316573": {
+      "tp1": 4533.155,
+      "tp1_close_pct": 50,
+      "trailoffset_dist": 5.25,
+      "tp1_hit": true,
+      "trail_active": true,
+      "trail_sl": 4544.41
+    }
+  }
 }

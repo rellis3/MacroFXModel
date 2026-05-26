@@ -3,8 +3,11 @@ RegimeV2 — Macro overlay.
 
 Fetches and caches:
   - VIX term structure (^VIX / ^VIX3M) from Yahoo Finance — hourly
-  - CBOE FX implied vol indices per pair — 6h refresh via yfinance
-      ^EUVIX (EUR/USD), ^BPVIX (GBP/USD), ^JYVIX (USD/JPY), ^GVZ (Gold)
+  - CBOE FX/Gold implied vol indices via FRED API — 6h refresh
+      EVZCLS (EUR/USD proxy for all FX pairs), GVZCLS (Gold)
+      Requires FRED_API_KEY env var — free at fred.stlouisfed.org
+      Note: ^EUVIX / ^BPVIX / ^JYVIX were delisted from Yahoo Finance;
+      FRED carries EVZCLS (CBOE EuroCurrency ETF Vol) as the replacement.
   - FOMC meeting dates — daily check from hardcoded 2026 calendar
   - Forex Factory high-impact news — daily cache from public JSON
   - Session label → multiplier mapping from HMM API sessionLabel field
@@ -14,6 +17,7 @@ All fetches are non-blocking: stale data is returned on any error.
 """
 
 import logging
+import os
 import time
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -114,46 +118,84 @@ class VIXFetcher:
         return self._vix is not None and self._vix > 25.0
 
 
-# ── CBOE FX Implied Volatility ────────────────────────────────────────────────
+# ── FX / Gold Implied Volatility — FRED API ──────────────────────────────────
+#
+# ^EUVIX / ^BPVIX / ^JYVIX were delisted from Yahoo Finance.
+# FRED carries the equivalent CBOE settlement vol indices free with an API key.
+# Register at https://fred.stlouisfed.org/ and set env var FRED_API_KEY.
+#
+#   EVZCLS — CBOE EuroCurrency ETF Volatility Index (EUR/USD 1-month IV)
+#   GVZCLS — CBOE Gold ETF Volatility Index
+#
+# FRED has no dedicated GBP or JPY vol index; EVZCLS serves as the FX
+# implied-vol proxy for all non-gold pairs (same role ^EUVIX played).
 
-# CBOE publishes settlement implied vol indices for major FX pairs and Gold.
-# All are available free via yfinance. No API key required.
-_CBOE_FETCH = ['^EUVIX', '^BPVIX', '^JYVIX', '^GVZ']
+_FRED_API_BASE = 'https://api.stlouisfed.org/fred/series/observations'
+_FRED_SERIES   = ['EVZCLS', 'GVZCLS']
 
-# Which CBOE index to use for each pair.
-# Pairs without a dedicated index use the nearest FX vol proxy.
-_PAIR_VOL_INDEX: dict[str, str] = {
-    'EUR/USD':    '^EUVIX',
-    'GBP/USD':    '^BPVIX',
-    'USD/JPY':    '^JYVIX',
-    'AUD/USD':    '^EUVIX',   # no dedicated AUD index — USD vol proxy
-    'NZD/USD':    '^EUVIX',
-    'USD/CAD':    '^EUVIX',
-    'USD/CHF':    '^EUVIX',
-    'GBP/JPY':    '^BPVIX',   # GBP component dominates
-    'XAU/USD':    '^GVZ',     # CBOE Gold ETF Volatility Index
-    'NAS100_USD': None,       # use VIX already tracked by VIXFetcher
+_PAIR_VOL_SERIES: dict[str, str | None] = {
+    'EUR/USD':    'EVZCLS',
+    'GBP/USD':    'EVZCLS',
+    'USD/JPY':    'EVZCLS',
+    'AUD/USD':    'EVZCLS',
+    'NZD/USD':    'EVZCLS',
+    'USD/CAD':    'EVZCLS',
+    'USD/CHF':    'EVZCLS',
+    'GBP/JPY':    'EVZCLS',
+    'XAU/USD':    'GVZCLS',
+    'NAS100_USD': None,
 }
 
 _VOL_EXTREME_PCT  = 85   # above this 52-week percentile = block entries
 _VOL_ELEVATED_PCT = 65   # above this = warn in heartbeat
 
 
+def _fred_fetch(series_id: str, api_key: str) -> list[float]:
+    """Returns up to 1y of daily observations for a FRED series, oldest-first."""
+    start = (datetime.now(timezone.utc) - timedelta(days=370)).strftime('%Y-%m-%d')
+    r = requests.get(
+        _FRED_API_BASE,
+        params={
+            'series_id':         series_id,
+            'api_key':           api_key,
+            'file_type':         'json',
+            'observation_start': start,
+            'sort_order':        'asc',
+        },
+        timeout=10,
+    )
+    r.raise_for_status()
+    values: list[float] = []
+    for obs in r.json().get('observations', []):
+        v = obs.get('value', '.')
+        if v != '.':
+            try:
+                values.append(float(v))
+            except ValueError:
+                pass
+    return values
+
+
 class CBOEVolFetcher:
     """
-    Fetches CBOE FX implied volatility indices via yfinance (6h refresh).
+    Fetches CBOE FX and Gold implied volatility indices via FRED API (6h refresh).
+
+    Requires FRED_API_KEY environment variable (free at fred.stlouisfed.org).
+
+    Series:
+      EVZCLS — CBOE EuroCurrency ETF Volatility Index (EUR/USD 1-month IV)
+      GVZCLS — CBOE Gold ETF Volatility Index
 
     For each pair, provides:
       - Current index level (annualised implied vol %)
       - 52-week percentile (0–100) — how elevated is vol vs the past year?
       - is_extreme(pair) — True when vol is in the top 15% of the past year
 
-    Cross-asset coherence flag: True when all three FX indices are
-    simultaneously above their 50th percentile — signals systemic risk-off
-    rather than a pair-specific move.
+    Coherence flag: True when EVZCLS is above its 50th percentile — broad FX
+    implied vol elevated, signalling systemic rather than pair-specific stress.
     """
 
-    _REFRESH_SECS = 3600 * 6  # 6h — EOD settlement values, rarely intraday
+    _REFRESH_SECS = 3600 * 6  # 6h — EOD settlement values
 
     def __init__(self):
         self._levels:    dict[str, float] = {}
@@ -165,53 +207,43 @@ class CBOEVolFetcher:
         now = time.time()
         if now - self._fetched < self._REFRESH_SECS:
             return
-        try:
-            import yfinance as yf
-            data = yf.download(_CBOE_FETCH, period='1y', progress=False, auto_adjust=True)
-            closes = data['Close']
-
-            levels: dict[str, float] = {}
-            pcts:   dict[str, float] = {}
-            for sym in _CBOE_FETCH:
-                col = sym if sym in closes.columns else None
-                if col is None:
-                    continue
-                series = closes[col].dropna()
-                if len(series) < 20:
-                    continue
-                current = float(series.iloc[-1])
-                pct     = float((series < current).mean() * 100)
-                levels[sym] = round(current, 2)
-                pcts[sym]   = round(pct, 1)
-
-            self._levels  = levels
-            self._pct     = pcts
+        api_key = os.environ.get('FRED_API_KEY', '')
+        if not api_key:
+            log.warning('[CVOL] FRED_API_KEY not set — skipping vol fetch')
             self._fetched = now
+            return
+        levels: dict[str, float] = {}
+        pcts:   dict[str, float] = {}
+        for series_id in _FRED_SERIES:
+            try:
+                values = _fred_fetch(series_id, api_key)
+                if len(values) < 20:
+                    log.warning(f'[CVOL] {series_id}: only {len(values)} observations')
+                    continue
+                current           = values[-1]
+                pct               = sum(v < current for v in values) / len(values) * 100
+                levels[series_id] = round(current, 2)
+                pcts[series_id]   = round(pct, 1)
+            except Exception as exc:
+                log.warning(f'[CVOL] {series_id} fetch failed: {exc}')
 
-            fx_syms   = ['^EUVIX', '^BPVIX', '^JYVIX']
-            available = [s for s in fx_syms if s in pcts]
-            self._coherence = (
-                len(available) >= 2 and
-                all(pcts[s] >= 50 for s in available)
-            )
+        self._levels    = levels
+        self._pct       = pcts
+        self._fetched   = now
+        self._coherence = pcts.get('EVZCLS', 0) >= 50
 
-            summary = '  '.join(
-                f'{s}={levels[s]:.1f}({pcts[s]:.0f}%ile)' for s in levels
-            )
-            log.info(f'[CVOL] {summary}  coherence={self._coherence}')
-        except ImportError:
-            log.warning('[CVOL] yfinance not installed — skipping CBOE vol fetch')
-            self._fetched = now
-        except Exception as exc:
-            log.warning(f'[CVOL] fetch failed: {exc}')
+        summary = '  '.join(
+            f'{s}={levels[s]:.1f}({pcts[s]:.0f}%ile)' for s in levels
+        )
+        log.info(f'[CVOL] {summary}  coherence={self._coherence}')
 
     def pair_vol_level(self, pair: str) -> Optional[float]:
-        sym = _PAIR_VOL_INDEX.get(pair)
+        sym = _PAIR_VOL_SERIES.get(pair)
         return self._levels.get(sym) if sym else None
 
     def pair_vol_pct(self, pair: str) -> Optional[float]:
         """52-week percentile 0–100. Higher = more elevated implied vol."""
-        sym = _PAIR_VOL_INDEX.get(pair)
+        sym = _PAIR_VOL_SERIES.get(pair)
         return self._pct.get(sym) if sym else None
 
     def is_extreme(self, pair: str) -> bool:
@@ -226,7 +258,7 @@ class CBOEVolFetcher:
 
     @property
     def coherence(self) -> bool:
-        """True when all FX vol indices are simultaneously elevated — systemic stress."""
+        """True when FX implied vol (EVZCLS) is above its 50th percentile — broad stress."""
         return self._coherence
 
 
