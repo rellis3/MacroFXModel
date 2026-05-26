@@ -387,10 +387,24 @@ export default {
           ? 'https://api-fxpractice.oanda.com'
           : 'https://api-fxtrade.oanda.com';
 
+        // Server-side KV cache — M5: 4 min, M30: 22 min — prevents hammering OANDA on
+        // every dashboard load and eliminates timeouts for repeat requests.
+        const cacheKey    = `${granularity === 'M5' ? 'ohlc5m' : 'ohlc30m'}_srv_${instrument}`;
+        const cacheTtlMs  = granularity === 'M5' ? 4 * 60 * 1000 : 22 * 60 * 1000;
+        if (env.FX_SCORES) {
+          try {
+            const cached = await env.FX_SCORES.get(cacheKey);
+            if (cached) {
+              const { data: cachedData, ts } = JSON.parse(cached);
+              if (Date.now() - ts < cacheTtlMs) return json(cachedData);
+            }
+          } catch {}
+        }
+
         const oandaUrl = `${oandaBase}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${granularity}&count=${count}&price=M`;
         const res = await fetch(oandaUrl, {
           headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` },
-          signal: AbortSignal.timeout(12_000),
+          signal: AbortSignal.timeout(20_000),
         });
 
         if (!res.ok) {
@@ -416,7 +430,13 @@ export default {
           }))
           .reverse();
 
-        return json({ values, meta: { symbol, source: 'oanda', granularity } });
+        const result = { values, meta: { symbol, source: 'oanda', granularity } };
+
+        if (env.FX_SCORES) {
+          env.FX_SCORES.put(cacheKey, JSON.stringify({ data: result, ts: Date.now() }), { expirationTtl: 3600 }).catch(() => {});
+        }
+
+        return json(result);
       }
 
       // -- /api/oanda_ohlc1m  ----------------------------------
