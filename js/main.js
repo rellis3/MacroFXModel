@@ -374,13 +374,13 @@ function _openSseForSym(sym) {
 
 // Open one SSE stream per alert-watch pair that isn't the active pair.
 // Ticks only update _latestQuotes[sym] — no DOM changes.
+// Only opens streams for explicitly configured pairs — defaulting to ALL pairs would open
+// 13+ simultaneous OANDA connections and saturate the per-account connection limit.
 function startBackgroundStreams() {
   const cfg = (() => { try { return JSON.parse(localStorage.getItem('tg_alert_cfg') || '{}'); } catch(e) { return {}; } })();
-  if (!cfg.enabled) { _closeBackgroundStreams(); return; }
+  if (!cfg.enabled || !cfg.pairs?.length) { _closeBackgroundStreams(); return; }
 
-  const watchPairs = cfg.pairs && cfg.pairs.length > 0
-    ? cfg.pairs
-    : PAIRS.map(p => p.symbol);          // all pairs if no filter set
+  const watchPairs = cfg.pairs;
 
   const activeSym = S.currentPair?.symbol;
 

@@ -544,6 +544,10 @@ def execute_trade(pair: str, direction: str, entry: dict,
         elif allowed & 2: filling_mode = mt5.ORDER_FILLING_IOC
         elif allowed & 4: filling_mode = mt5.ORDER_FILLING_RETURN
 
+    if size <= 0:
+        log.error(f'Invalid lot size {size} for {mt5_sym} — trade skipped (no SL set?)')
+        return False
+
     res = mt5.order_send({
         'action':       mt5.TRADE_ACTION_DEAL,
         'symbol':       mt5_sym,
@@ -729,6 +733,11 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
         f'level={level_price}  live={live_price}  dist={dist_pips:.1f}pips  '
         f'SL={sl_tp.sl}  TP={sl_tp.tp}  R:R={sl_tp.rr_ratio}  lot={size}'
     )
+
+    if not size:
+        log.warning(f'[{pair}] TG-mode: size=0 (sl_tp.sl={sl_tp.sl}) — trade skipped')
+        pair_status['reason'] = 'size=0 — SL missing from sl_tp calculation'
+        return pair_status
 
     ticket = execute_trade(pair, direction, entry, sl_tp, size, live_price, paper_mode, config=config)
 

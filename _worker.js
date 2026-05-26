@@ -329,7 +329,7 @@ export default {
         const oandaSym = symbol.replace('/', '_');
         const oRes = await fetch(
           `${oandaBase}/v3/instruments/${encodeURIComponent(oandaSym)}/candles?granularity=M1&count=2&price=M`,
-          { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` } }
+          { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` }, signal: AbortSignal.timeout(8_000) }
         );
         if (!oRes.ok) return err(`OANDA quote failed (${oRes.status})`, 502);
         const oData = await oRes.json();
@@ -352,7 +352,7 @@ export default {
         const oandaSym = symbol.replace('/', '_');
         const oRes = await fetch(
           `${oandaBase}/v3/instruments/${encodeURIComponent(oandaSym)}/candles?granularity=D&count=120&price=M`,
-          { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` } }
+          { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
         );
         if (!oRes.ok) return err(`OANDA daily candles failed (${oRes.status})`, 502);
         const oData = await oRes.json();
