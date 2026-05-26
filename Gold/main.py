@@ -545,7 +545,9 @@ class GoldBot:
             zone = next((z for z in self.zones
                          if z.zone_id == bot.armed_zone_id and z.active), None)
             if not zone:
-                bot.transition(State.WAITING); bot.armed_zone_id = None
+                bot.transition(State.WAITING)
+                bot.armed_zone_id = None
+                bot.zone_gp_entry_time = None
                 return
             self._check_vumanchu(zone, price)
             return
@@ -574,6 +576,13 @@ class GoldBot:
             if dist <= prox:
                 self.bot_state.transition(State.ARMED)
                 self.bot_state.armed_zone_id = zone.zone_id
+                # Record exact GP entry time if price is already inside the window.
+                # If price is only nearby (not yet in GP), entry time is set on first
+                # tick where price crosses into gp_low..gp_high inside _check_vumanchu.
+                if zone.gp_low <= price <= zone.gp_high:
+                    self.bot_state.zone_gp_entry_time = time.time()
+                else:
+                    self.bot_state.zone_gp_entry_time = None
                 self.journal.log_zone_approached(zone, price, dist / PIP)
                 return
 
@@ -586,14 +595,23 @@ class GoldBot:
             log.info(f'[ARMED]  Zone {zone.zone_id} — price {price:.2f} left proximity, disarming')
             self.bot_state.transition(State.WAITING)
             self.bot_state.armed_zone_id = None
+            self.bot_state.zone_gp_entry_time = None
             return
+
+        # Record the moment price first enters the GP window so VuManChu divergence
+        # is anchored to the actual zone touch rather than the full lookback series.
+        if zone.gp_low <= price <= zone.gp_high and self.bot_state.zone_gp_entry_time is None:
+            self.bot_state.zone_gp_entry_time = time.time()
+            log.info(f'[ARMED]  Price entered GP window {zone.gp_low:.1f}–{zone.gp_high:.1f} '
+                     f'at {price:.2f} — VuManChu divergence anchored')
 
         m5_bars = _bars(SYMBOL, 'M5', 60)
         if not m5_bars:
             return
 
         min_comp = self.cfg.get('vu_min_components', 2)
-        vu = compute_vumanchu(m5_bars, zone.direction, min_components=min_comp)
+        vu = compute_vumanchu(m5_bars, zone.direction, min_components=min_comp,
+                              entry_time=self.bot_state.zone_gp_entry_time)
 
         if vu.direction == 'NEUTRAL':
             return   # not confirmed yet, keep watching
@@ -705,22 +723,28 @@ class GoldBot:
                 'squeeze_ratio':  self.squeeze_ratio,
                 'zones': [
                     {
-                        'zone_id':      z.zone_id,
-                        'tf':           z.tf,
-                        'direction':    z.direction,
-                        'zone_variant': z.zone_variant,
-                        'gp_low':       z.gp_low,
-                        'gp_high':      z.gp_high,
-                        'zone_low':     z.zone_low,
-                        'zone_high':    z.zone_high,
-                        'level_382':    z.level_382,
-                        'level_618':    z.level_618,
-                        'level_650':    z.level_650,
-                        'level_786':    z.level_786,
-                        'level_886':    z.level_886,
-                        'score':        z.score,
-                        'htf_aligned':  z.htf_aligned,
-                        'composition':  z.composition,
+                        'zone_id':           z.zone_id,
+                        'tf':                z.tf,
+                        'direction':         z.direction,
+                        'zone_variant':      z.zone_variant,
+                        'gp_low':            z.gp_low,
+                        'gp_high':           z.gp_high,
+                        'zone_low':          z.zone_low,
+                        'zone_high':         z.zone_high,
+                        'level_382':         z.level_382,
+                        'level_618':         z.level_618,
+                        'level_650':         z.level_650,
+                        'level_786':         z.level_786,
+                        'level_886':         z.level_886,
+                        'swing_origin':      z.swing_origin,
+                        'swing_end':         z.swing_end,
+                        'swing_origin_time': z.swing_origin_time,
+                        'swing_end_time':    z.swing_end_time,
+                        'impulse_size':      z.impulse_size,
+                        'age_bars':          z.age_bars,
+                        'score':             z.score,
+                        'htf_aligned':       z.htf_aligned,
+                        'composition':       z.composition,
                     }
                     for z in self.zones if z.active
                 ],

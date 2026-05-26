@@ -926,16 +926,17 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         # ── Dashboard override: force-unlock RiskGuard ───────────────────────
         if risk_guard and base_url:
             try:
-                import urllib.request as _ur
+                import urllib.request as _ur  # stdlib, safe to import inline
                 _ov_url = f'{base_url.rstrip("/")}/api/kv/get?key=bot_override'
                 with _ur.urlopen(_ov_url, timeout=3) as _r:
                     _ov = json.loads(_r.read())
                 if not _ov.get('miss') and _ov.get('data', {}).get('force_unlock'):
                     _ts = _ov['data'].get('timestamp', 0) / 1000
                     if time.time() - _ts < 300:   # only honour if < 5 min old
-                        risk_guard._locked_until  = 0.0
-                        risk_guard._day_start_bal = None  # reset DD baseline so block_reason doesn't immediately re-lock
-                        log.info('RiskGuard lockout cleared by dashboard override — DD baseline reset')
+                        risk_guard._locked_until        = 0.0
+                        risk_guard._day_start_bal       = None  # reset DD baseline so block_reason doesn't immediately re-lock
+                        risk_guard._last_trade_by_pair  = {}    # also clear per-pair cooldowns
+                        log.info('RiskGuard lockout + cooldowns cleared by dashboard override — DD baseline reset')
                         # Acknowledge by writing force_unlock: false
                         _ack = json.dumps({'key': 'bot_override', 'data': {'force_unlock': False},
                                            'timestamp': int(time.time() * 1000)}).encode()
@@ -1054,23 +1055,35 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
 
         # Fetch balance once per tick for risk guard (live only; paper uses placeholder)
         live_balance = 10_000.0
+        has_real_balance = False
         if HAS_MT5 and not paper_mode:
             acct = mt5.account_info()
             if acct:
                 live_balance = acct.balance
-        risk_guard.update_balance(live_balance)
+                has_real_balance = True
+
+        # Only update DD baseline when we have a real balance — the 10k fallback
+        # would trigger a false lockout against a persisted day_start_bal from
+        # a previous session or different account.
+        if has_real_balance:
+            risk_guard.update_balance(live_balance)
+
+        # For DD checks: use real balance, or a large placeholder so DD stays
+        # negative and no lockout fires. Time-based lockout/cooldown checks
+        # in block_reason are unaffected by the balance value.
+        guard_balance = live_balance if has_real_balance else 1_000_000.0
 
         # Per-pair risk check — filter near_level to only unblocked pairs
         blocked_pairs: list[str] = []
         for pair in list(near_level.keys()):
-            block = risk_guard.block_reason(live_balance, pair=pair)
+            block = risk_guard.block_reason(guard_balance, pair=pair)
             if block:
                 log.warning(f'RiskGuard [{pair}]: {block}')
                 blocked_pairs.append(pair)
                 del near_level[pair]
 
         # Session-level checks (lockout, DD) — clear everything if triggered
-        session_block = risk_guard.block_reason(live_balance, pair='')
+        session_block = risk_guard.block_reason(guard_balance, pair='')
         if session_block and not blocked_pairs:
             log.warning(f'RiskGuard SESSION: {session_block}')
             near_level = {}

@@ -1090,7 +1090,7 @@ def run(url: str, paper_mode: bool) -> None:
                 gate_fail = f'conf {eff_conf:.1f}% < {cfg["entry_conf"]}% (sess×{sess_mult:.2f})'
 
             if not gate_fail and len(conf_list) >= 2:
-                if conf_list[-1] <= conf_list[-2]:
+                if conf_list[-1] <= conf_list[-2] and conf_list[-1] < cfg.get('conf_rising_bypass', 85.0):
                     gate_fail = f'conf not rising ({conf_list[-2]:.0f}%→{conf_list[-1]:.0f}%)'
 
             if not gate_fail and vol_z > cfg.get('vol_z_max', 2.5):

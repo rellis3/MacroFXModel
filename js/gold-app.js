@@ -1472,8 +1472,24 @@ function _ztDiv(closes, wt1, n = 5) {
   return 'NONE';
 }
 
+// WT oversold/overbought thresholds for gold (mirrors Python WT_OVERSOLD/OVERBOUGHT)
+const ZT_WT_OVERSOLD   = -60;
+const ZT_WT_OVERBOUGHT =  60;
+
+// Divergence check with optional start index (mirrors Python _divergence start_idx)
+function _ztDivFrom(closes, wt1, startIdx, n = 5) {
+  const c = startIdx > 0 ? closes.slice(startIdx) : closes;
+  const w = startIdx > 0 ? wt1.slice(startIdx)    : wt1;
+  // Fallback to tail of full series if entry window is too short
+  const cs = c.length >= n + 2 ? c : closes.slice(-(n + 2));
+  const ws = c.length >= n + 2 ? w : wt1.slice(-(n + 2));
+  return _ztDiv(cs, ws, n);
+}
+
 // Returns full VuManChu result including per-component rule/threshold/actual values.
-function _ztVuManchu(bars, zoneDir, minComp = 2) {
+// gpEntryMs: Date.now() ms timestamp of when price first entered the GP window,
+//            or null if price hasn't touched the GP yet.
+function _ztVuManchu(bars, zoneDir, minComp = 2, gpEntryMs = null) {
   if (!bars || bars.length < 31) return null;
   const closes = bars.map(b => b.close);
   const { wt1: wt1s, wt2: wt2s } = _ztWt(bars);
@@ -1484,14 +1500,36 @@ function _ztVuManchu(bars, zoneDir, minComp = 2) {
   const wt2 = isNaN(wt2s[wt2s.length - 1]) ? 0 : (wt2s[wt2s.length - 1] ?? 0);
   const mf  = mfs[mfs.length - 1] ?? 0;
 
-  const div   = _ztDiv(closes, wt1s);
-  const wtSig = div !== 'NONE' ? div : wt1 > wt2 ? 'BULLISH' : wt1 < wt2 ? 'BEARISH' : 'NEUTRAL';
+  // ── Resolve zone-entry bar index ──────────────────────────────────────────
+  // Find the first bar (by time field) that was captured at or after the GP entry
+  // timestamp. Divergence is then measured only from that bar onwards so we catch
+  // the Cipher B pattern forming at the zone rather than in the whole window.
+  let entryBarIdx = 0;
+  if (gpEntryMs != null) {
+    const entrySec = gpEntryMs / 1000;
+    for (let i = 0; i < bars.length; i++) {
+      if ((bars[i].time ?? 0) >= entrySec) { entryBarIdx = i; break; }
+    }
+  }
+
+  // ── WT signal — priority order (mirrors Python compute_vumanchu) ──────────
+  // 1. OVERSOLD / OVERBOUGHT — most direct exhaustion read at the zone
+  // 2. Zone-entry divergence — Cipher B measured from first GP touch
+  // 3. WT1/WT2 crossover — weakest, only if neither above fires
+  let wtSig;
+  if      (zoneDir === 'long'  && wt1 <= ZT_WT_OVERSOLD)   wtSig = 'OVERSOLD';
+  else if (zoneDir === 'short' && wt1 >= ZT_WT_OVERBOUGHT)  wtSig = 'OVERBOUGHT';
+  else {
+    const div = _ztDivFrom(closes, wt1s, entryBarIdx);
+    if (div !== 'NONE') wtSig = div;
+    else                wtSig = wt1 > wt2 ? 'BULLISH' : wt1 < wt2 ? 'BEARISH' : 'NEUTRAL';
+  }
 
   const prev5      = mfs.slice(-6, -1);
   const mfMax      = prev5.length ? Math.max(...prev5) : mf;
   const mfMin      = prev5.length ? Math.min(...prev5) : mf;
-  const mfRollback = mfMax > 0 ? mf / mfMax * 100 : null;  // % of bullish spike remaining
-  const mfRollup   = mfMin < 0 ? mf / mfMin * 100 : null;  // % of bearish trough remaining
+  const mfRollback = mfMax > 0 ? mf / mfMax * 100 : null;
+  const mfRollup   = mfMin < 0 ? mf / mfMin * 100 : null;
 
   let mfSig;
   if      (mfMax > 30 && mf < mfMax * 0.7)  mfSig = 'BEARISH_EXHAUSTION';
@@ -1506,19 +1544,28 @@ function _ztVuManchu(bars, zoneDir, minComp = 2) {
 
   // ── WT Momentum ───────────────────────────────────────────────────────────
   const wtOk = zoneDir === 'long'
-    ? (wtSig === 'BULLISH' || wtSig === 'DIVERGENCE_BULL')
-    : (wtSig === 'BEARISH' || wtSig === 'DIVERGENCE_BEAR');
+    ? (wtSig === 'OVERSOLD' || wtSig === 'BULLISH' || wtSig === 'DIVERGENCE_BULL')
+    : (wtSig === 'OVERBOUGHT' || wtSig === 'BEARISH' || wtSig === 'DIVERGENCE_BEAR');
   if (wtOk) aligned++;
+
+  const isOSOB  = wtSig === 'OVERSOLD' || wtSig === 'OVERBOUGHT';
   const isDivWT = wtSig.startsWith('DIVERGENCE');
+  const entryBarNote = entryBarIdx > 0 ? ` (from bar ${entryBarIdx}, zone entry)` : ' (full window)';
   comps.push({
     name:      'Momentum (WT)',
     ok:        wtOk,
     signal:    wtSig,
-    rule:      isDivWT
-      ? `Price at ${zoneDir === 'long' ? 'trough' : 'peak'} but WT turning ${zoneDir === 'long' ? 'up (bull div)' : 'down (bear div)'}`
-      : `WT1 (${wt1.toFixed(1)}) ${wt1 > wt2 ? '>' : '<'} WT2 (${wt2.toFixed(1)})`,
-    threshold: isDivWT ? 'WT < 90% of 5-bar peak/trough' : `WT1 ${zoneDir === 'long' ? '>' : '<'} WT2`,
-    actual:    isDivWT ? '— divergence' : `WT1 ${wt1 > wt2 ? '>' : '<'} WT2`,
+    rule:      isOSOB
+      ? `WT1 ${zoneDir === 'long' ? '≤ −60 (oversold)' : '≥ +60 (overbought)'} — momentum exhausted at zone`
+      : isDivWT
+        ? `Price at ${zoneDir === 'long' ? 'trough' : 'peak'} but WT turning ${zoneDir === 'long' ? 'up (bull div)' : 'down (bear div)'}${entryBarNote}`
+        : `WT1 (${wt1.toFixed(1)}) ${wt1 > wt2 ? '>' : '<'} WT2 (${wt2.toFixed(1)}) — crossover`,
+    threshold: isOSOB ? `WT1 ${zoneDir === 'long' ? '≤ −60' : '≥ +60'}`
+             : isDivWT ? 'WT < 90% of 5-bar peak/trough'
+             : `WT1 ${zoneDir === 'long' ? '>' : '<'} WT2`,
+    actual:    isOSOB ? `WT1 = ${wt1.toFixed(1)}`
+             : isDivWT ? '— divergence'
+             : `WT1 ${wt1 > wt2 ? '>' : '<'} WT2`,
   });
 
   // ── Money Flow ────────────────────────────────────────────────────────────
@@ -1561,7 +1608,7 @@ function _ztVuManchu(bars, zoneDir, minComp = 2) {
 
   const confidence = aligned >= 3 ? 'HIGH' : aligned >= minComp ? 'MEDIUM' : 'LOW';
   const direction  = aligned >= minComp ? zoneDir.toUpperCase() : 'NEUTRAL';
-  return { direction, confidence, aligned, minComp, components: comps };
+  return { direction, confidence, aligned, minComp, entryBarIdx, components: comps };
 }
 
 // ── Zone ticker state + polling ───────────────────────────────────────────────
@@ -1571,6 +1618,9 @@ const _ZT = {
   zones:          null,
   status:         null,
   lastZonesFetch: 0,
+  // GP entry tracking: keyed by zone_id → timestamp (ms) when price first
+  // entered gp_low..gp_high. Used to anchor zone-entry divergence detection.
+  gpEntryTime:    {},
 };
 
 const ZT_HISTORY_KEY = 'gold_zone_events';
@@ -1629,7 +1679,21 @@ async function _ztStep() {
       : (withDist[0]?.distPips <= ZT_PROX_PIPS ? withDist[0] : null);
 
     if (focusZone && bars5m.length >= 31) {
-      focusVu = _ztVuManchu(bars5m.slice(-60), focusZone.direction);
+      // Track when price first enters the GP window for zone-entry divergence
+      const inGP = price != null && price >= (focusZone.gp_low ?? 0) && price <= (focusZone.gp_high ?? 0);
+      if (inGP && !_ZT.gpEntryTime[focusZone.zone_id]) {
+        _ZT.gpEntryTime[focusZone.zone_id] = Date.now();
+      } else if (!inGP && _ZT.gpEntryTime[focusZone.zone_id]) {
+        // Price left the GP window — keep entry time so we still detect divergence
+        // on any retest; clear only when the zone itself changes.
+      }
+      // Clear stale entry times for zones no longer focused
+      for (const id of Object.keys(_ZT.gpEntryTime)) {
+        if (id !== focusZone.zone_id) delete _ZT.gpEntryTime[id];
+      }
+
+      const gpEntryMs = _ZT.gpEntryTime[focusZone.zone_id] ?? null;
+      focusVu = _ztVuManchu(bars5m.slice(-60), focusZone.direction, 2, gpEntryMs);
 
       // Log once per zone approach
       if (focusZone.distPips <= ZT_PROX_PIPS && focusZone.zone_id !== _ztLastLoggedZone) {
@@ -1703,6 +1767,133 @@ function _ztConfLabel(item) {
   return item;
 }
 
+// ── Zone card helpers ─────────────────────────────────────────────────────────
+
+// Format a Unix timestamp (seconds) as "Mon DD HH:MM" or "HH:MM today"
+function _ztFmtTime(unixSec) {
+  if (!unixSec) return null;
+  const d = new Date(unixSec * 1000);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  if (isToday) {
+    return `today ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  }
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return `yesterday ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  }
+  return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+    + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// Swing anchor line: "Impulse ↑  4489.1 (Mon 09:00) → 4542.2 (Mon 11:30)  53.1pts"
+function _ztSwingAnchor(z) {
+  if (z.swing_origin == null || z.swing_end == null) return '';
+  const arrow     = z.direction === 'long' ? '↑' : '↓';
+  const originFmt = _ztFmtTime(z.swing_origin_time);
+  const endFmt    = _ztFmtTime(z.swing_end_time);
+  const originStr = originFmt ? `${z.swing_origin.toFixed(1)} <span class="zt-sw-ts">(${escHtml(originFmt)})</span>`
+                               : z.swing_origin.toFixed(1);
+  const endStr    = endFmt ? `${z.swing_end.toFixed(1)} <span class="zt-sw-ts">(${escHtml(endFmt)})</span>`
+                            : z.swing_end.toFixed(1);
+  const pts       = z.impulse_size != null ? ` · <span class="zt-sw-size">${z.impulse_size.toFixed(1)}pt impulse</span>` : '';
+  return `<span class="zt-sw-lbl">Impulse ${arrow}</span> ${originStr} → ${endStr}${pts}`;
+}
+
+// Mini SVG fib chart: vertical price ladder showing full impulse range with fib
+// levels marked, GP zone shaded, and current price as a horizontal tick.
+function _ztFibSvg(z, price) {
+  if (z.swing_origin == null || z.swing_end == null || z.level_382 == null) return '';
+
+  const W = 56, H = 160, padT = 8, padB = 8;
+  const chartH = H - padT - padB;
+
+  // Price range: full swing (origin to end) plus a small margin
+  const pMin = Math.min(z.swing_origin, z.swing_end);
+  const pMax = Math.max(z.swing_origin, z.swing_end);
+  const span = pMax - pMin || 1;
+  const margin = span * 0.05;
+  const vMin = pMin - margin, vMax = pMax + margin;
+  const vSpan = vMax - vMin;
+
+  const py = p => padT + chartH * (1 - (p - vMin) / vSpan);
+
+  const fibs = [
+    { label: '.382', p: z.level_382, cls: 'ztsvg-382' },
+    { label: '.618', p: z.level_618, cls: 'ztsvg-gp'  },
+    { label: '.650', p: z.level_650, cls: 'ztsvg-gp'  },
+    { label: '.786', p: z.level_786, cls: 'ztsvg-786' },
+    { label: '.886', p: z.level_886, cls: 'ztsvg-886' },
+  ].filter(f => f.p != null);
+
+  const isLong   = z.direction === 'long';
+  const dirColor = isLong ? '#22c55e' : '#ef4444';
+
+  // Impulse spine (vertical bar from origin to end)
+  const spineX = 10;
+  const spineY1 = py(z.swing_origin);
+  const spineY2 = py(z.swing_end);
+  const arrowDir = isLong ? -1 : 1; // arrowhead points up for long, down for short
+  const arrowY = isLong ? Math.min(spineY1, spineY2) : Math.max(spineY1, spineY2);
+
+  // GP zone shading
+  const gpY1 = py(z.gp_high);
+  const gpY2 = py(z.gp_low);
+
+  // Current price tick
+  const priceY  = price != null ? py(price) : null;
+  const inRange = price != null && price >= vMin && price <= vMax;
+
+  let svg = `<svg class="zt-fib-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // GP zone shading
+  const gpTop  = Math.min(gpY1, gpY2);
+  const gpHt   = Math.abs(gpY2 - gpY1);
+  svg += `<rect x="${spineX - 3}" y="${gpTop}" width="${W - spineX + 3 - 2}" height="${Math.max(gpHt, 2)}" fill="${dirColor}" fill-opacity="0.12" rx="1"/>`;
+
+  // Fib level lines (right half of SVG)
+  for (const f of fibs) {
+    const y = py(f.p);
+    const isGP  = f.cls === 'ztsvg-gp';
+    const color = isGP ? dirColor : '#6b7280';
+    const dash  = isGP ? '' : ' stroke-dasharray="2,2"';
+    svg += `<line x1="${spineX}" y1="${y}" x2="${W - 2}" y2="${y}" stroke="${color}" stroke-width="${isGP ? 1.5 : 0.8}"${dash} opacity="0.7"/>`;
+    // Label (only for non-GP fibs to avoid clutter — GP is the shaded band)
+    if (!isGP) {
+      svg += `<text x="${spineX + 2}" y="${y - 1}" font-size="6" fill="${color}" opacity="0.8">${f.label}</text>`;
+    }
+  }
+
+  // Impulse spine
+  svg += `<line x1="${spineX}" y1="${spineY1}" x2="${spineX}" y2="${spineY2}" stroke="${dirColor}" stroke-width="2"/>`;
+
+  // Origin dot
+  svg += `<circle cx="${spineX}" cy="${spineY1}" r="2.5" fill="#6b7280"/>`;
+  // End dot
+  svg += `<circle cx="${spineX}" cy="${spineY2}" r="2.5" fill="${dirColor}"/>`;
+
+  // Arrowhead on end
+  const ax = spineX, ay = arrowY;
+  svg += `<polygon points="${ax},${ay} ${ax - 3},${ay + arrowDir * 6} ${ax + 3},${ay + arrowDir * 6}" fill="${dirColor}"/>`;
+
+  // Origin / end price labels (left side)
+  svg += `<text x="${spineX - 2}" y="${spineY1 + (isLong ? 8 : -3)}" font-size="6" fill="#9ca3af" text-anchor="end">${z.swing_origin.toFixed(0)}</text>`;
+  svg += `<text x="${spineX - 2}" y="${spineY2 + (isLong ? -3 : 8)}" font-size="6" fill="${dirColor}" text-anchor="end">${z.swing_end.toFixed(0)}</text>`;
+
+  // Current price tick (if in view)
+  if (inRange && priceY != null) {
+    svg += `<line x1="${spineX - 5}" y1="${priceY}" x2="${spineX + 5}" y2="${priceY}" stroke="#f59e0b" stroke-width="1.5"/>`;
+    svg += `<text x="${W - 2}" y="${priceY + 3}" font-size="7" fill="#f59e0b" text-anchor="end" font-weight="bold">${price.toFixed(1)}</text>`;
+  }
+
+  // GP label inside the shaded band
+  const gpMidY = gpTop + gpHt / 2 + 2;
+  svg += `<text x="${spineX + 4}" y="${gpMidY}" font-size="6.5" fill="${dirColor}" font-weight="bold" opacity="0.9">GP</text>`;
+
+  svg += '</svg>';
+  return svg;
+}
+
 function _ztRender(price, zones, focusZone, focusVu, armedId) {
   const el = document.getElementById('goldZoneTicker');
   if (!el) return;
@@ -1758,6 +1949,15 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
         return `<span class="zt-fib ${cls}" title="${f.price.toFixed(1)}">${f.label}${atLevel ? '◀' : isTarget ? '⬤' : ''}</span>`;
       }).join('');
     }
+
+    // Mini SVG fib chart: vertical representation of the full impulse leg with
+    // fib levels marked and current price dot. Shows WHERE the swing came from.
+    const fibSvg = _ztFibSvg(z, price);
+
+    // Swing anchor text: shows the actual pivot prices and their dates so you
+    // can immediately understand which move this zone was drawn from.
+    const swingAnchor = _ztSwingAnchor(z);
+
     zoneRows += `
       <div class="zt-zone-row${isFocus ? ' zt-zone-focus' : ''}">
         <div class="zt-zone-meta">
@@ -1773,14 +1973,18 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
           <span class="zt-dist">${distStr}</span>
         </div>
         ${fibLadder ? `<div class="zt-fib-ladder" style="grid-column:1/-1">${fibLadder}</div>` : ''}
-        ${(() => {
-          const comp = (z.composition ?? []).slice(1);
-          if (!comp.length) return '';
-          const chips = comp.map(item =>
-            `<span class="zt-conf-chip ${_ztConfClass(item)}" title="${escHtml(item)}">${escHtml(_ztConfLabel(item))}</span>`
-          ).join('');
-          return `<div class="zt-conf-row" style="grid-column:1/-1">${chips}</div>`;
-        })()}
+        ${swingAnchor ? `<div class="zt-swing-anchor" style="grid-column:1/-1">${swingAnchor}</div>` : ''}
+        <div class="zt-zone-detail" style="grid-column:1/-1">
+          ${fibSvg}
+          ${(() => {
+            const comp = (z.composition ?? []).slice(1);
+            if (!comp.length) return '';
+            const chips = comp.map(item =>
+              `<span class="zt-conf-chip ${_ztConfClass(item)}" title="${escHtml(item)}">${escHtml(_ztConfLabel(item))}</span>`
+            ).join('');
+            return `<div class="zt-conf-row">${chips}</div>`;
+          })()}
+        </div>
       </div>`;
   }
 
@@ -1822,30 +2026,64 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
     ? `<button class="zt-hist-btn" onclick="document.getElementById('ztHistPanel').classList.toggle('zt-hist-open')">📋 ${histCount} zone events</button>`
     : '';
 
-  // Sniper Suite pivot marks — sourced from pivot_levels added to the KV payload
-  const pivLvls = _ZT.zones?.pivot_levels ?? null;
+  // Sniper Suite pivot marks — sourced from pivot_levels, vwap_anchors, npoc_stack in KV
+  const pivLvls    = _ZT.zones?.pivot_levels   ?? null;
+  const vwapAnchors = _ZT.zones?.vwap_anchors  ?? [];
+  const npocStack  = _ZT.zones?.npoc_stack     ?? [];
   let sniperHtml = '';
-  if (pivLvls && price) {
+  if (price && (pivLvls || vwapAnchors.length || npocStack.length)) {
     const SNAP = 3; // $3 alignment window
-    const marks = [
-      { label: 'VAH',  price: pivLvls.vah,        cls: 'zt-snp-vah'  },
-      { label: 'VAL',  price: pivLvls.val,        cls: 'zt-snp-val'  },
-      { label: 'PP',   price: pivLvls.pp,         cls: 'zt-snp-pp'   },
-      { label: 'R1',   price: pivLvls.r1,         cls: 'zt-snp-r'    },
-      { label: 'R2',   price: pivLvls.r2,         cls: 'zt-snp-r'    },
-      { label: 'S1',   price: pivLvls.s1,         cls: 'zt-snp-s'    },
-      { label: 'S2',   price: pivLvls.s2,         cls: 'zt-snp-s'    },
-      { label: 'POC',  price: pivLvls.poc,        cls: 'zt-snp-poc'  },
-      { label: 'VWAP', price: pivLvls.vwap,       cls: 'zt-snp-vwap' },
-      { label: 'Open', price: pivLvls.daily_open, cls: 'zt-snp-open' },
-    ].filter(m => m.price != null && m.price > 0)
-     .sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price))
-     .slice(0, 8);
 
-    const vah = pivLvls.vah, val = pivLvls.val;
+    // Build flat mark list. Pivot levels are from the previous session (labelled "prev day").
+    // VWAP anchors and nPOC entries carry explicit date/session context from the KV.
+    const marks = [];
+
+    if (pivLvls) {
+      marks.push(
+        { label: 'VAH',  price: pivLvls.vah,        cls: 'zt-snp-vah',  note: 'prev day VA' },
+        { label: 'VAL',  price: pivLvls.val,        cls: 'zt-snp-val',  note: 'prev day VA' },
+        { label: 'PP',   price: pivLvls.pp,         cls: 'zt-snp-pp',   note: 'prev day pivot' },
+        { label: 'R1',   price: pivLvls.r1,         cls: 'zt-snp-r',    note: 'prev day' },
+        { label: 'R2',   price: pivLvls.r2,         cls: 'zt-snp-r',    note: 'prev day' },
+        { label: 'S1',   price: pivLvls.s1,         cls: 'zt-snp-s',    note: 'prev day' },
+        { label: 'S2',   price: pivLvls.s2,         cls: 'zt-snp-s',    note: 'prev day' },
+        { label: 'POC',  price: pivLvls.poc,        cls: 'zt-snp-poc',  note: 'today' },
+        { label: 'VWAP', price: pivLvls.vwap,       cls: 'zt-snp-vwap', note: 'today session' },
+        { label: 'Open', price: pivLvls.daily_open, cls: 'zt-snp-open', note: 'today open' },
+      );
+    }
+
+    // VWAP anchors — each carries session name, age_days, direction, date
+    for (const a of vwapAnchors.slice(0, 5)) {
+      if (!a.price) continue;
+      const lbl  = `VWAP ${a.session ?? ''}`;
+      const note = [
+        a.age_days != null ? `${a.age_days}d` : null,
+        a.direction ? a.direction : null,
+        a.date ?? null,
+      ].filter(Boolean).join(' · ');
+      marks.push({ label: lbl, price: a.price, cls: 'zt-snp-vwap', note });
+    }
+
+    // Naked POC stack — each has price, age_days, date
+    for (const n of npocStack.slice(0, 4)) {
+      if (!n.price) continue;
+      const note = [
+        n.age_days != null ? `${n.age_days}d ago` : null,
+        n.date ?? null,
+      ].filter(Boolean).join(' · ');
+      marks.push({ label: 'nPOC', price: n.price, cls: 'zt-snp-poc', note });
+    }
+
+    const sorted = marks
+      .filter(m => m.price != null && m.price > 0)
+      .sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price))
+      .slice(0, 12);
+
+    const vah = pivLvls?.vah, val = pivLvls?.val;
     const inVA = vah != null && val != null && price >= val && price <= vah;
 
-    const rows = marks.map(m => {
+    const rows = sorted.map(m => {
       const dist    = m.price - price;
       const distStr = `${dist >= 0 ? '+' : ''}$${Math.abs(dist).toFixed(1)}`;
       const distCls = dist >= 0 ? 'zt-snp-above' : 'zt-snp-below';
@@ -1859,10 +2097,15 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
         ? `<span class="zt-snp-align">${escHtml(aligned.tf)} ${aligned.direction === 'long' ? '▲' : '▼'} ${(aligned.zone_variant ?? 'gp').toUpperCase()}</span>`
         : '';
 
+      const noteHtml = m.note
+        ? `<span class="zt-snp-note">${escHtml(m.note)}</span>`
+        : '';
+
       return `<div class="zt-snp-row">
-        <span class="zt-snp-lbl ${m.cls}">${m.label}</span>
+        <span class="zt-snp-lbl ${m.cls}">${escHtml(m.label)}</span>
         <span class="zt-snp-price">${m.price.toFixed(1)}</span>
         <span class="zt-snp-dist ${distCls}">${distStr}</span>
+        ${noteHtml}
         ${alignTag}
       </div>`;
     }).join('');

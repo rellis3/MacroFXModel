@@ -61,6 +61,10 @@ class BotState:
     active_trade: Optional[ActiveTrade] = None
     cooldown_until: Optional[datetime] = None
     last_change: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    # Unix timestamp (float) of when price first entered the GP window of the armed zone.
+    # Reset to None whenever the zone is disarmed. Passed to VuManChu so divergence is
+    # evaluated only from the entry bar onwards rather than the whole lookback window.
+    zone_gp_entry_time: Optional[float] = None
 
     def transition(self, new_state: State) -> None:
         self.state = new_state
@@ -93,4 +97,5 @@ class BotState:
             'active_trade': trade,
             'cooldown_until': self.cooldown_until.isoformat() if self.cooldown_until else None,
             'last_change': self.last_change.isoformat(),
+            'zone_gp_entry_time': self.zone_gp_entry_time,
         }

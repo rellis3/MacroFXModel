@@ -61,6 +61,12 @@ class FibZone:
     zone_low: float      # widest watch zone (382–886 spread)
     zone_high: float
 
+    # Unix timestamps of the pivot bars that define the impulse leg.
+    # swing_origin_time = bar time at the start of the impulse (low for long, high for short).
+    # swing_end_time    = bar time at the end of the impulse   (high for long, low for short).
+    swing_origin_time: int = 0
+    swing_end_time: int = 0
+
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     age_bars: int = 0
     active: bool = True
@@ -97,7 +103,8 @@ def _find_pivots(bars: list[dict], n: int) -> tuple[list[int], list[int]]:
 
 
 def _make_zone(tf: str, direction: str, swing_low: float, swing_high: float,
-               age_bars: int, variant: str = 'gp') -> FibZone:
+               age_bars: int, variant: str = 'gp',
+               origin_time: int = 0, end_time: int = 0) -> FibZone:
     """
     variant: 'gp' → golden pocket (.618–.650)
              '786' → symmetric window around .786 level
@@ -114,6 +121,7 @@ def _make_zone(tf: str, direction: str, swing_low: float, swing_high: float,
         l886 = swing_high - 0.886 * r
         zone_low, zone_high = l886, l382
         origin, end         = swing_low, swing_high
+        o_time, e_time      = origin_time, end_time
     else:
         l382 = swing_low + 0.382 * r
         l618 = swing_low + 0.618 * r
@@ -122,6 +130,7 @@ def _make_zone(tf: str, direction: str, swing_low: float, swing_high: float,
         l886 = swing_low + 0.886 * r
         zone_low, zone_high = l382, l886
         origin, end         = swing_high, swing_low
+        o_time, e_time      = origin_time, end_time
 
     if variant == '786':
         gp_low, gp_high = l786 - w, l786 + w
@@ -137,6 +146,7 @@ def _make_zone(tf: str, direction: str, swing_low: float, swing_high: float,
     return FibZone(
         zone_id=zone_id, tf=tf, direction=direction, zone_variant=variant,
         swing_origin=round(origin, 2), swing_end=round(end, 2),
+        swing_origin_time=o_time, swing_end_time=e_time,
         impulse_size=round(r, 2),
         level_382=round(l382, 2), level_618=round(l618, 2),
         level_650=round(l650, 2), level_786=round(l786, 2),
@@ -193,15 +203,22 @@ def detect_fib_zones(bars: list[dict], tf: str, current_price: float) -> list[Fi
         if pptype == 'low':
             swing_low, swing_high = pprice, price
             direction = 'long'
+            # origin = pivot low bar (pidx), end = pivot high bar (idx)
+            origin_time = bars[pidx].get('time', 0)
+            end_time    = bars[idx].get('time', 0)
         else:
             swing_low, swing_high = price, pprice
             direction = 'short'
+            # origin = pivot high bar (pidx), end = pivot low bar (idx)
+            origin_time = bars[pidx].get('time', 0)
+            end_time    = bars[idx].get('time', 0)
 
         impulse_size = swing_high - swing_low
         if impulse_size >= min_size:
             age = length - 1 - idx
             for variant in ('gp', '786', '886'):
-                zone = _make_zone(tf, direction, swing_low, swing_high, age, variant)
+                zone = _make_zone(tf, direction, swing_low, swing_high, age, variant,
+                                  origin_time=origin_time, end_time=end_time)
 
                 # Invalidate if price has closed beyond the impulse origin
                 if direction == 'long' and current_price < zone.swing_origin * 0.999:

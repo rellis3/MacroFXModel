@@ -25,12 +25,21 @@ Gold-specific money flow behaviour:
   A money-flow SPIKE as price hits a zone signals EXHAUSTION, not continuation.
   (opposite to Bitcoin — sellers/buyers forced in, then snap-back)
 
+WT signal priority (most specific first):
+  1. OVERSOLD/OVERBOUGHT — WT1 beyond ±60 at the zone: direct exhaustion read.
+     More reliable for gold than a simple crossover which flips repeatedly.
+  2. ZONE-ENTRY DIVERGENCE — price makes a new extreme inside the zone but WT
+     does not confirm it (classic Cipher B setup). Only counted when entry_time
+     is provided so divergence is measured from the first GP touch onwards.
+  3. WT1 > WT2 crossover — weakest signal, only used when neither above applies.
+
 Entry fires only when components_aligned >= min_required (default 2).
 Direction alignment is checked against the zone's expected trade direction.
 """
 
 from __future__ import annotations
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -39,12 +48,13 @@ class VuManChuSignal:
     confidence: str          # HIGH | MEDIUM | LOW
     wt1: float
     wt2: float
-    wt_signal: str           # BULLISH | BEARISH | DIVERGENCE_BULL | DIVERGENCE_BEAR | NEUTRAL
+    wt_signal: str           # OVERSOLD | OVERBOUGHT | DIVERGENCE_BULL | DIVERGENCE_BEAR | BULLISH | BEARISH | NEUTRAL
     mf_value: float
     mf_signal: str           # BULLISH_EXHAUSTION | BEARISH_EXHAUSTION | BULLISH | BEARISH | NEUTRAL
     vwap_signal: str         # EXHAUSTION | REVERSAL | NEUTRAL
     components_aligned: int  # 0–3
     reason: str
+    zone_entry_bar_idx: int = 0   # bar index in the passed series when price entered the GP
 
 
 # ── EMA / SMA helpers ────────────────────────────────────────────────────────
@@ -160,31 +170,64 @@ def _vwap_exhaustion(bars: list[dict], zone_direction: str,
 
 # ── Divergence ───────────────────────────────────────────────────────────────
 
-def _divergence(closes: list[float], wt: list[float], n: int = 5) -> str:
-    if len(closes) < n + 2 or len(wt) < n + 2:
+def _divergence(closes: list[float], wt: list[float], n: int = 5,
+                start_idx: int = 0) -> str:
+    """
+    Detect price/WT divergence.
+
+    start_idx: first bar to include in the divergence window (defaults to 0 =
+    whole series). When zone_entry_bar_idx is provided, only bars from zone
+    entry onwards are used so we detect divergence *at the zone* rather than
+    anywhere in the lookback window.
+
+    At least n+2 bars must be available after start_idx; if not, falls back to
+    checking the last n+2 bars of the full series so we always have a reading.
+    """
+    c = closes[start_idx:] if start_idx > 0 else closes
+    w = wt[start_idx:]     if start_idx > 0 else wt
+
+    # Fallback to tail of full series if entry window is too short
+    if len(c) < n + 2:
+        c = closes[-(n + 2):]
+        w = wt[-(n + 2):]
+
+    if len(c) < n + 2 or len(w) < n + 2:
         return 'NONE'
-    wt_peak = max(wt[-n:])
-    wt_trou = min(wt[-n:])
-    price_peak = max(closes[-n:])
-    price_trou = min(closes[-n:])
+
+    wt_peak    = max(w[-n:])
+    wt_trou    = min(w[-n:])
+    price_peak = max(c[-n:])
+    price_trou = min(c[-n:])
 
     # Bearish div: price at/near peak but WT rolling lower
-    if closes[-1] >= price_peak * 0.999 and wt[-1] < wt_peak * 0.90:
+    if c[-1] >= price_peak * 0.999 and w[-1] < wt_peak * 0.90:
         return 'DIVERGENCE_BEAR'
     # Bullish div: price at/near trough but WT turning higher
-    if closes[-1] <= price_trou * 1.001 and wt[-1] > wt_trou * 0.90:
+    if c[-1] <= price_trou * 1.001 and w[-1] > wt_trou * 0.90:
         return 'DIVERGENCE_BULL'
     return 'NONE'
+
+
+# WT levels for gold — beyond ±60 indicates genuine exhaustion at a zone.
+# A crossover alone is too noisy on a 5m chart; oversold/overbought is a
+# much cleaner read of momentum exhaustion as price sits in the GP.
+WT_OVERSOLD  = -60.0
+WT_OVERBOUGHT = 60.0
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def compute_vumanchu(bars: list[dict], zone_direction: str,
                      n1: int = 10, n2: int = 21, mf_period: int = 14,
-                     min_components: int = 2) -> VuManChuSignal:
+                     min_components: int = 2,
+                     entry_time: Optional[float] = None) -> VuManChuSignal:
     """
-    bars:           5m or 15m bars, at least 40 recommended.
+    bars:           5m or 15m bars, at least 40 recommended (chronological).
     zone_direction: 'long' or 'short' — expected trade direction.
+    entry_time:     Unix timestamp (float) of when price first entered the GP
+                    window. When supplied, divergence is measured from that bar
+                    onwards so we catch Cipher B setups that form *at the zone*
+                    rather than anywhere in the lookback window.
     """
     if len(bars) < n2 + n1:
         return VuManChuSignal(
@@ -195,26 +238,47 @@ def compute_vumanchu(bars: list[dict], zone_direction: str,
             reason='Insufficient bars',
         )
 
-    closes         = [float(b['close']) for b in bars]
-    wt1_s, wt2_s   = _wt_series(bars, n1, n2)
-    mf_s           = _money_flow(bars, mf_period)
-    vwap_sig       = _vwap_exhaustion(bars, zone_direction)
+    closes       = [float(b['close']) for b in bars]
+    wt1_s, wt2_s = _wt_series(bars, n1, n2)
+    mf_s         = _money_flow(bars, mf_period)
+    vwap_sig     = _vwap_exhaustion(bars, zone_direction)
 
-    wt1 = wt1_s[-1] if wt1_s else 0.0
+    wt1   = wt1_s[-1] if wt1_s else 0.0
     wt2_v = wt2_s[-1] if wt2_s and not (isinstance(wt2_s[-1], float) and
                                           wt2_s[-1] != wt2_s[-1]) else 0.0
-    mf  = mf_s[-1]  if mf_s  else 0.0
+    mf    = mf_s[-1]  if mf_s  else 0.0
 
-    # ── WT signal ─────────────────────────────────────────────────────────────
-    div = _divergence(closes, wt1_s)
-    if div != 'NONE':
-        wt_sig = div
-    elif wt1 > wt2_v:
-        wt_sig = 'BULLISH'
-    elif wt1 < wt2_v:
-        wt_sig = 'BEARISH'
+    # ── Resolve zone-entry bar index ──────────────────────────────────────────
+    # Find the first bar whose timestamp is >= entry_time so divergence is
+    # computed only over bars captured while price was inside the GP window.
+    zone_entry_bar_idx = 0
+    if entry_time is not None:
+        for i, b in enumerate(bars):
+            if b.get('time', 0) >= entry_time:
+                zone_entry_bar_idx = i
+                break
+
+    # ── WT signal — priority order ────────────────────────────────────────────
+    # 1. OVERSOLD / OVERBOUGHT — most direct exhaustion read for gold.
+    #    WT1 < -60 at a long zone: sellers fully extended, reversal likely.
+    #    WT1 > +60 at a short zone: buyers fully extended, reversal likely.
+    # 2. Zone-entry divergence (Cipher B): price makes new extreme inside the GP
+    #    but WT does not confirm — measured from zone_entry_bar_idx onwards.
+    # 3. WT1/WT2 crossover — weakest; only used when neither above fires.
+    if zone_direction == 'long' and wt1 <= WT_OVERSOLD:
+        wt_sig = 'OVERSOLD'
+    elif zone_direction == 'short' and wt1 >= WT_OVERBOUGHT:
+        wt_sig = 'OVERBOUGHT'
     else:
-        wt_sig = 'NEUTRAL'
+        div = _divergence(closes, wt1_s, n=5, start_idx=zone_entry_bar_idx)
+        if div != 'NONE':
+            wt_sig = div
+        elif wt1 > wt2_v:
+            wt_sig = 'BULLISH'
+        elif wt1 < wt2_v:
+            wt_sig = 'BEARISH'
+        else:
+            wt_sig = 'NEUTRAL'
 
     # ── Money flow (gold: spike = exhaustion) ─────────────────────────────────
     prev5  = mf_s[-6:-1] if len(mf_s) >= 6 else mf_s[:-1]
@@ -222,9 +286,9 @@ def compute_vumanchu(bars: list[dict], zone_direction: str,
     mf_min = min(prev5) if prev5 else mf
 
     if mf_max > 30 and mf < mf_max * 0.7:
-        mf_sig = 'BEARISH_EXHAUSTION'   # spike has rolled over = sellers tapped out at resistance
+        mf_sig = 'BEARISH_EXHAUSTION'   # bullish spike rolled over → sellers tapped out at resistance
     elif mf_min < -30 and mf > mf_min * 0.7:
-        mf_sig = 'BULLISH_EXHAUSTION'   # negative spike rolling over = buyers tapped out at support
+        mf_sig = 'BULLISH_EXHAUSTION'   # bearish spike rolling back → buyers tapped out at support
     elif mf > 20:
         mf_sig = 'BULLISH'
     elif mf < -20:
@@ -236,19 +300,17 @@ def compute_vumanchu(bars: list[dict], zone_direction: str,
     aligned = 0
     notes: list[str] = []
 
-    # VWAP slope signals the same thing for both directions:
-    # EXHAUSTION or REVERSAL = the momentum driving price into the zone is fading
     vwap_confirmed = vwap_sig in ('EXHAUSTION', 'REVERSAL')
 
     if zone_direction == 'long':
-        if wt_sig in ('BULLISH', 'DIVERGENCE_BULL'):
+        if wt_sig in ('OVERSOLD', 'BULLISH', 'DIVERGENCE_BULL'):
             aligned += 1; notes.append(f'WT {wt_sig}')
         if mf_sig in ('BULLISH_EXHAUSTION', 'BULLISH'):
             aligned += 1; notes.append(f'MF {mf_sig}')
         if vwap_confirmed:
             aligned += 1; notes.append(f'VWAP slope {vwap_sig}')
     else:
-        if wt_sig in ('BEARISH', 'DIVERGENCE_BEAR'):
+        if wt_sig in ('OVERBOUGHT', 'BEARISH', 'DIVERGENCE_BEAR'):
             aligned += 1; notes.append(f'WT {wt_sig}')
         if mf_sig in ('BEARISH_EXHAUSTION', 'BEARISH'):
             aligned += 1; notes.append(f'MF {mf_sig}')
@@ -269,4 +331,5 @@ def compute_vumanchu(bars: list[dict], zone_direction: str,
         vwap_signal=vwap_sig,
         components_aligned=aligned,
         reason=' · '.join(notes) or 'No alignment',
+        zone_entry_bar_idx=zone_entry_bar_idx,
     )
