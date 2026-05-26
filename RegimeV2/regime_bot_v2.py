@@ -112,6 +112,7 @@ DEFAULT_CFG: dict = {
     'vol_z_max':          2.5,
     'entry_decay_max':    0.25,
     'consensus_min':      2,
+    'entry_fail_cooldown_secs': 300,  # 5 min cooldown after a failed MT5 order
     # Hold / exit
     'hold_conf':          55.0,
     'conf_floor':         45.0,
@@ -258,14 +259,17 @@ def mt5_connect() -> bool:
     account  = os.environ.get('MT5_ACCOUNT', '')
     password = os.environ.get('MT5_PASSWORD', '')
     server   = os.environ.get('MT5_SERVER', '')
-    if account and password and server:
-        if not mt5.login(int(account), password, server):
-            log.error(f'MT5 login() failed: {mt5.last_error()}')
-            return False
+    if not (account and password and server):
+        log.error('MT5_ACCOUNT / MT5_PASSWORD / MT5_SERVER not set — cannot connect safely, aborting')
+        mt5.shutdown()
+        return False
+    if not mt5.login(int(account), password, server):
+        log.error(f'MT5 login() failed: {mt5.last_error()}')
+        return False
     info = mt5.account_info()
     if info:
         log.info(f'[RegimeV2-Bot] MT5 connected  account={info.login}  balance={info.balance:.2f}  server={info.server}')
-        if account and str(info.login) != str(account):
+        if str(info.login) != str(account):
             log.error(f'MT5 account mismatch: expected {account} got {info.login} — aborting')
             mt5.shutdown()
             return False
@@ -651,8 +655,8 @@ def run(url: str, paper_mode: bool) -> None:
 
     if not paper_mode:
         if not mt5_connect():
-            log.error('MT5 connection failed — aborting live start')
-            return
+            log.warning('MT5 connection failed — falling back to paper mode')
+            paper_mode = True
 
     cfg = load_config(url)
     tg  = load_tg_config(url, cfg)
@@ -681,6 +685,7 @@ def run(url: str, paper_mode: bool) -> None:
     range_exit_ctr:  dict[str, int]                  = {}
     entry_scores:    dict[str, float]                = {}   # regime score at time of entry
     score_low_bars:  dict[str, int]                  = {}   # polls below hold_score_min
+    failed_entry_t:  dict[str, float]                = {}   # time of last failed MT5 order per pair
 
     risk_guard = RiskGuardV2()
     bocpd_reg  = BOCPRegistry(expected_run_length=cfg.get('bocpd_run_length', 150))
@@ -1151,6 +1156,12 @@ def run(url: str, paper_mode: bool) -> None:
                 continue
 
             # ── ENTRY ────────────────────────────────────────────────────
+            fail_cd = cfg.get('entry_fail_cooldown_secs', 300)
+            if time.time() - failed_entry_t.get(pair, 0) < fail_cd:
+                remaining = int(fail_cd - (time.time() - failed_entry_t[pair]))
+                pairs_status[pair] = {'status': f'order_fail_cooldown ({remaining}s)', 'regime': regime}
+                continue
+
             direction = 'LONG' if confirmed == 'BULL' else 'SHORT'
             price     = get_price(pair, url)
             if price is None:
@@ -1209,6 +1220,8 @@ def run(url: str, paper_mode: bool) -> None:
                     'entry_score': reg_score.total,
                 }
             else:
+                failed_entry_t[pair] = time.time()
+                log.warning(f'[{pair}] MT5 order failed — cooldown {cfg.get("entry_fail_cooldown_secs", 300)}s')
                 pairs_status[pair] = {'status': 'entry_failed', 'regime': regime}
 
         # ── Status push + sleep ───────────────────────────────────────────────
