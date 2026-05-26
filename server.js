@@ -26,7 +26,7 @@ const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
 const MONITOR_MS        = parseInt(process.env.MONITOR_MS        || '3000');
 const REFRESH_LEVELS_MS  = parseInt(process.env.REFRESH_LEVELS_MS  || String(30 * 60 * 1000));
-const HMM5M_REFRESH_MS        = parseInt(process.env.HMM5M_REFRESH_MS   || String(60 * 1000)); // 1 min — matches M1 bar cadence
+const HMM5M_REFRESH_MS        = parseInt(process.env.HMM5M_REFRESH_MS   || String(30 * 1000)); // 30s — V2 bot polls at 30s cadence
 const HMM5M_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // min gap between regime-change Telegram alerts per pair
 
 // ── Cloudflare env-compatible object ─────────────────────────────────────────
@@ -101,6 +101,7 @@ const state = {
   hmm5mLastAlert:      {},   // { 'EUR/USD': ms } — cooldown for regime-change Telegram alerts
   hmm5mBars:           {},   // { 'EUR/USD': bars[] } — M1 bars cached for polarity flip detection
   hmm5mV2Regimes:      {},   // shadow V2 regimes — 4-state, learned params
+  hmm1hV2Regimes:      {},   // 1h V2 regimes — same HMM on H1 bars for HTF alignment
   hmm5mTrainedParams:  null, // Baum-Welch learned parameters loaded from KV
   hmm5mMacroContext:   null, // FRED macro overlay loaded from KV
   hmm5mTrainStatus:    {},   // per-pair training progress { sym: { status, iterations, nBars } }
@@ -1063,6 +1064,11 @@ app.get('/api/hmm5m-v2', (_req, res) => {
   res.json(state.hmm5mV2Regimes);
 });
 
+// V2 1h HTF regime data — used by regime_bot_v2.py for higher-timeframe alignment
+app.get('/api/hmm1h-v2', (_req, res) => {
+  res.json(state.hmm1hV2Regimes);
+});
+
 // V2 training status per pair
 app.get('/api/hmm5m-train-status', (_req, res) => {
   res.json({
@@ -1254,6 +1260,34 @@ async function runHMM5mV2Refresh() {
   }
 }
 
+async function runHMM1hV2Refresh() {
+  if (!process.env.OANDA_KEY) return;
+  const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+  for (const sym of pairs) {
+    try {
+      const instrument = sym.replace('/', '_');
+      const r = await fetch(
+        `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=H1&count=200&price=M`,
+        { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
+      );
+      if (!r.ok) continue;
+      const d = await r.json();
+      const bars = (d.candles ?? [])
+        .filter(c => c.complete !== false && c.mid)
+        .map(c => ({ open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c }));
+      if (bars.length < 100) continue;
+      const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
+      if (!result) continue;
+      state.hmm1hV2Regimes[sym] = result;
+    } catch (e) {
+      console.error(`[HMM1H-V2] ${sym} error:`, e.message);
+    }
+  }
+}
+
 async function runHMM5mTraining(pairs) {
   const { results, status } = await trainHMM5mAll(
     pairs,
@@ -1309,6 +1343,12 @@ setTimeout(() => {
   runHMM5mV2Refresh().catch(console.error);
   setInterval(runHMM5mV2Refresh, HMM5M_REFRESH_MS);
 }, 20_000);
+
+// V2 1h HTF HMM — refreshes every 5 min (H1 bars change slowly), 10s offset
+setTimeout(() => {
+  runHMM1hV2Refresh().catch(console.error);
+  setInterval(runHMM1hV2Refresh, 5 * 60 * 1000);
+}, 25_000);
 
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';

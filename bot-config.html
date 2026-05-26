@@ -228,6 +228,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn tg" data-tab="original" onclick="switchTab('original')">Telegram Bot</button>
     <button class="tab-btn bt" data-tab="backtest" onclick="switchTab('backtest')">Backtest Bot</button>
     <button class="tab-btn rg" data-tab="regime"   onclick="switchTab('regime')">Regime Bot</button>
+    <button class="tab-btn rg" data-tab="regimev2" onclick="switchTab('regimev2')">Regime Bot V2</button>
   </div>
 
   <!-- ═══════════════════════ TAB: TELEGRAM BOT ═══════════════════════ -->
@@ -1204,6 +1205,298 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     </div>
 
   </div><!-- /tab-regime -->
+
+  <!-- ═══════════════════════ TAB: REGIME BOT V2 ═══════════════════════ -->
+  <div id="tab-regimev2" class="tab-pane">
+
+    <div class="bot-banner" style="background:var(--purple-bg);border:1px solid var(--purple-bd)">
+      <div class="bot-banner-icon">🔮</div>
+      <div>
+        <div class="bot-banner-title" style="color:var(--purple)">HMM Regime Bot V2</div>
+        <div class="bot-banner-sub">Independent bot · Separate MT5 account · BOCPD + slope exit + cross-pair consensus · RegimeV2/regime_bot_v2.py · Config in KV</div>
+      </div>
+    </div>
+
+    <!-- Live status panel -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
+        <span style="font-size:12px;font-weight:600;color:var(--purple)">Live Status</span>
+        <span id="rgv2StatusAge" style="font-size:11px;color:var(--text3)">Loading…</span>
+        <span id="rgv2StatusMode" style="font-size:11px;font-weight:600"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="rgv2StatusTable" style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left;white-space:nowrap">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Regime</th>
+              <th style="padding:6px 10px;text-align:right">Conf</th>
+              <th style="padding:6px 10px;text-align:right">Slope</th>
+              <th style="padding:6px 10px;text-align:right">Vol z</th>
+              <th style="padding:6px 10px;text-align:right">Active</th>
+              <th style="padding:6px 10px;text-align:right">BOCPD</th>
+              <th style="padding:6px 10px;text-align:left">Position / Status</th>
+              <th style="padding:6px 10px;text-align:left">1h HTF</th>
+            </tr>
+          </thead>
+          <tbody id="rgv2StatusBody">
+            <tr><td colspan="9" style="padding:16px;text-align:center;color:var(--text3)">Waiting for bot status…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:8px 16px 12px;font-size:11px;color:var(--text3)">
+        Updates every 30s when bot is running. <span id="rgv2LockoutBadge" style="display:none;color:#e55;font-weight:600">🔒 LOCKED</span>
+      </div>
+    </div>
+
+    <!-- MT5 Credentials -->
+    <div class="card">
+      <div class="card-title">MT5 Credentials — Regime Bot V2</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+        Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">regime_bot_v2_credentials</code>).
+        V2 uses a <b>separate MT5 account</b> from V1 — enter V2 account details here.
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Account number</span>
+        <input type="number" id="rgv2_mt5_account" placeholder="e.g. 99887766" style="width:130px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Password</span>
+        <input type="password" id="rgv2_mt5_password" placeholder="••••••••" style="width:130px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Server <small>e.g. ICMarkets-Demo01</small></span>
+        <input type="text" id="rgv2_mt5_server" placeholder="Broker-Demo01" style="width:180px;text-align:left">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Terminal path <small>optional</small></span>
+        <input type="text" id="rgv2_mt5_path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" style="width:280px;text-align:left">
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+        <button class="btn-save" style="background:var(--purple);max-width:200px;padding:9px" onclick="saveRgV2Creds()">Save V2 Credentials</button>
+        <span id="rgv2CredsStatus" class="inline-status"></span>
+      </div>
+    </div>
+
+    <!-- Row: Bot Control | Entry Gate -->
+    <div class="grid">
+
+      <!-- Bot Control -->
+      <div class="card">
+        <div class="card-title">Bot Control</div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="rgv2_enabled">
+          <label for="rgv2_enabled">Enabled</label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="rgv2_paper_mode">
+          <label for="rgv2_paper_mode">Paper mode <small>log signals, no real orders</small></label>
+        </div>
+        <div class="form-row" style="margin-top:10px">
+          <span class="form-lbl">Poll interval <small>seconds</small></span>
+          <input type="number" id="rgv2_interval_secs" min="10" max="120" step="5" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Heartbeat Telegram <small>mins, 0=off</small></span>
+          <input type="number" id="rgv2_heartbeat_min" min="0" max="480" step="15" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Trade window start <small>UTC hh:mm</small></span>
+          <input type="time" id="rgv2_window_start" style="width:110px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Trade window end <small>UTC hh:mm</small></span>
+          <input type="time" id="rgv2_window_end" style="width:110px;text-align:left">
+        </div>
+      </div>
+
+      <!-- Entry Gate -->
+      <div class="card">
+        <div class="card-title">Entry Gate</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+          All gates must pass before opening a position.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Entry confidence % <small>min HMM confidence</small></span>
+          <input type="number" id="rgv2_entry_conf" min="40" max="99" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Candle hold <small>agree polls before entry</small></span>
+          <input type="number" id="rgv2_candle_hold" min="1" max="10" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Vol z max entry <small>block if spike detected</small></span>
+          <input type="number" id="rgv2_vol_z_max" min="0.5" max="5" step="0.1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Consensus min <small>pairs in same regime</small></span>
+          <input type="number" id="rgv2_consensus_min" min="1" max="8" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Entry decay max <small>block above this score</small></span>
+          <input type="number" id="rgv2_entry_decay_max" min="0" max="1" step="0.05" style="width:70px">
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Row: Exit Rules | RiskGuard -->
+    <div class="grid">
+
+      <!-- Exit Rules -->
+      <div class="card">
+        <div class="card-title">Exit Rules</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+          V2 exits on slope decay and BOCPD — not just regime flip.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Hold confidence % <small>exit if drops below</small></span>
+          <input type="number" id="rgv2_hold_conf" min="30" max="90" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Conf floor % <small>immediate exit</small></span>
+          <input type="number" id="rgv2_conf_floor" min="20" max="80" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Slope threshold %/bar <small>exit if slope ≤ this for N bars</small></span>
+          <input type="number" id="rgv2_slope_thresh" min="-20" max="0" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Slope exit bars <small>consecutive bad bars</small></span>
+          <input type="number" id="rgv2_slope_bars" min="1" max="10" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Drop threshold %/bar <small>single-bar immediate exit</small></span>
+          <input type="number" id="rgv2_drop_thresh" min="5" max="40" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">BOCPD threshold % <small>exit when BOCPD exceeds</small></span>
+          <input type="number" id="rgv2_bocpd_thresh" min="30" max="95" step="5" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">BOCPD exit bars <small>consecutive high bars</small></span>
+          <input type="number" id="rgv2_bocpd_exit_bars" min="1" max="5" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Decay exit score <small>close position above</small></span>
+          <input type="number" id="rgv2_decay_exit" min="0.3" max="1" step="0.05" style="width:70px">
+        </div>
+      </div>
+
+      <!-- RiskGuard V2 -->
+      <div class="card">
+        <div class="card-title">RiskGuard V2 <small style="font-weight:normal;color:var(--muted)">independent from V1</small></div>
+        <div class="form-row">
+          <span class="form-lbl">Daily DD limit %</span>
+          <input type="number" id="rgv2_ddlimit" min="0.5" max="10" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Monthly DD limit %</span>
+          <input type="number" id="rgv2_monthlydd" min="0.5" max="20" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Lockout hours <small>after DD breach</small></span>
+          <input type="number" id="rgv2_lockout" min="1" max="72" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Cooldown secs <small>between same-pair trades</small></span>
+          <input type="number" id="rgv2_cooldown" min="0" max="86400" step="60" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">BOCPD run length <small>expected bars per regime</small></span>
+          <input type="number" id="rgv2_bocpd_run_length" min="30" max="500" step="10" style="width:80px">
+        </div>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--bd)">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+            Force-unlock clears the drawdown lockout immediately. Use after reviewing the cause.
+          </div>
+          <button id="rgv2UnlockBtn" class="btn-save" style="background:#c0392b;max-width:200px;padding:9px" onclick="rgV2ForceUnlock()">
+            🔓 Unlock V2 RiskGuard
+          </button>
+          <span id="rgv2UnlockStatus" class="inline-status" style="display:block;margin-top:6px"></span>
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Feature Toggles -->
+    <div class="card">
+      <div class="card-title">Feature Toggles</div>
+      <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:0">
+        <div class="toggle-wrap">
+          <input type="checkbox" id="rgv2_use_1h">
+          <label for="rgv2_use_1h">1h HTF alignment <small>block entry vs 1h regime</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="rgv2_use_bocpd">
+          <label for="rgv2_use_bocpd">BOCPD exit <small>Bayesian change-point exit</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="rgv2_use_vix">
+          <label for="rgv2_use_vix">VIX overlay <small>pause entry in backwardation</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="rgv2_use_news">
+          <label for="rgv2_use_news">News block <small>Forex Factory high-impact events</small></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enabled Pairs -->
+    <div class="card">
+      <div class="card-title">Enabled Pairs — V2</div>
+      <div class="pair-grid" style="grid-template-columns:repeat(5,1fr)">
+        <label class="pair-chk"><input type="checkbox" id="rgv2_pair_EURUSD"> EUR/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="rgv2_pair_GBPUSD"> GBP/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="rgv2_pair_USDJPY"> USD/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="rgv2_pair_AUDUSD"> AUD/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="rgv2_pair_NZDUSD"> NZD/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="rgv2_pair_USDCAD"> USD/CAD</label>
+        <label class="pair-chk"><input type="checkbox" id="rgv2_pair_USDCHF"> USD/CHF</label>
+        <label class="pair-chk"><input type="checkbox" id="rgv2_pair_GBPJPY"> GBP/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="rgv2_pair_XAUUSD"> XAU/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="rgv2_pair_NAS100"> NAS100</label>
+      </div>
+    </div>
+
+    <!-- Telegram -->
+    <div class="card">
+      <div class="card-title">Telegram — V2 Alerts <small style="font-weight:normal;color:var(--muted)">optional — leave blank to share the Level bot's Telegram</small></div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+        If set, V2 regime alerts go to this separate bot/chat instead of the shared Level bot channel.
+        Leave both blank and V2 will use the same Telegram token and chat ID already configured for the Level bot.
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Bot token <small>from @BotFather</small></span>
+        <input type="password" id="rgv2_tg_token" placeholder="leave blank to share Level bot token" style="width:280px;text-align:left">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Chat ID <small>group or channel ID</small></span>
+        <input type="text" id="rgv2_tg_chat_id" placeholder="leave blank to share Level bot chat" style="width:200px;text-align:left">
+      </div>
+    </div>
+
+    <!-- Usage notes -->
+    <div class="card" style="background:var(--purple-bg);border-color:var(--purple-bd)">
+      <div class="card-title" style="color:var(--purple)">Running V2</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.8;font-family:'DM Mono',monospace">
+        python RegimeV2/regime_bot_v2.py                                           <span style="color:var(--text3)"># paper mode</span><br>
+        python RegimeV2/regime_bot_v2.py --live                                    <span style="color:var(--text3)"># live MT5</span><br>
+        python RegimeV2/regime_bot_v2.py --dashboard-url https://your-url.app --live
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">
+        V2 runs on a separate MT5 account. V1 is completely unaffected. Log prefix: <code>[RGV2]</code>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="actions">
+      <button class="btn-save" style="background:var(--purple)" onclick="saveRgV2Config()">Save V2 Config</button>
+      <button class="btn-reset" onclick="resetRgV2Defaults()">Reset Defaults</button>
+      <span id="rgv2SaveStatus" class="inline-status" style="align-self:center"></span>
+    </div>
+
+  </div><!-- /tab-regimev2 -->
 
 </div><!-- /page -->
 

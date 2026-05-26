@@ -973,6 +973,263 @@ async function saveRgCreds() {
   await _saveCreds('regime_bot_credentials', 'rg_', 'rg_mt5_password', 'rgCredsStatus');
 }
 
+// ── Regime Bot V2 ─────────────────────────────────────────────────────────────
+
+const RGV2_DEFAULTS = {
+  enabled:            true,
+  paper_mode:         true,
+  pairs:              ['EUR/USD', 'GBP/USD', 'USD/JPY'],
+  interval_secs:      30,
+  entry_conf:         70.0,
+  candle_hold:        2,
+  vol_z_max:          2.5,
+  entry_decay_max:    0.25,
+  consensus_min:      2,
+  hold_conf:          55.0,
+  conf_floor:         45.0,
+  slope_thresh:       -5.0,
+  slope_bars:         3,
+  drop_thresh:        15.0,
+  bocpd_thresh:       70.0,
+  bocpd_exit_bars:    2,
+  decay_exit:         0.70,
+  decay_window:       10,
+  ddlimit:            3.0,
+  monthlydd:          5.0,
+  lockout:            3,
+  cooldown:           240,
+  heartbeat_min:      120,
+  use_1h:             true,
+  use_bocpd:          true,
+  use_vix:            true,
+  use_news:           true,
+  fomc_window_hours:  48.0,
+  bocpd_run_length:   150,
+  trade_window_start: '07:00',
+  trade_window_end:   '20:00',
+  tg_token:           '',
+  tg_chat_id:         '',
+};
+
+const RGV2_PAIRS = [
+  { id: 'rgv2_pair_EURUSD', sym: 'EUR/USD' },
+  { id: 'rgv2_pair_GBPUSD', sym: 'GBP/USD' },
+  { id: 'rgv2_pair_USDJPY', sym: 'USD/JPY' },
+  { id: 'rgv2_pair_AUDUSD', sym: 'AUD/USD' },
+  { id: 'rgv2_pair_NZDUSD', sym: 'NZD/USD' },
+  { id: 'rgv2_pair_USDCAD', sym: 'USD/CAD' },
+  { id: 'rgv2_pair_USDCHF', sym: 'USD/CHF' },
+  { id: 'rgv2_pair_GBPJPY', sym: 'GBP/JPY' },
+  { id: 'rgv2_pair_XAUUSD', sym: 'XAU/USD' },
+  { id: 'rgv2_pair_NAS100',  sym: 'NAS100_USD' },
+];
+
+let _rgv2Cfg = JSON.parse(JSON.stringify(RGV2_DEFAULTS));
+
+function readRgV2Form() {
+  _rgv2Cfg.enabled            = chk('rgv2_enabled');
+  _rgv2Cfg.paper_mode         = chk('rgv2_paper_mode');
+  _rgv2Cfg.interval_secs      = num('rgv2_interval_secs',      30);
+  _rgv2Cfg.entry_conf         = num('rgv2_entry_conf',         70);
+  _rgv2Cfg.candle_hold        = num('rgv2_candle_hold',         2);
+  _rgv2Cfg.vol_z_max          = num('rgv2_vol_z_max',          2.5);
+  _rgv2Cfg.entry_decay_max    = num('rgv2_entry_decay_max',    0.25);
+  _rgv2Cfg.consensus_min      = num('rgv2_consensus_min',       2);
+  _rgv2Cfg.hold_conf          = num('rgv2_hold_conf',          55);
+  _rgv2Cfg.conf_floor         = num('rgv2_conf_floor',         45);
+  _rgv2Cfg.slope_thresh       = num('rgv2_slope_thresh',       -5);
+  _rgv2Cfg.slope_bars         = num('rgv2_slope_bars',          3);
+  _rgv2Cfg.drop_thresh        = num('rgv2_drop_thresh',        15);
+  _rgv2Cfg.bocpd_thresh       = num('rgv2_bocpd_thresh',       70);
+  _rgv2Cfg.bocpd_exit_bars    = num('rgv2_bocpd_exit_bars',     2);
+  _rgv2Cfg.decay_exit         = num('rgv2_decay_exit',         0.70);
+  _rgv2Cfg.ddlimit            = num('rgv2_ddlimit',            3.0);
+  _rgv2Cfg.monthlydd          = num('rgv2_monthlydd',          5.0);
+  _rgv2Cfg.lockout            = num('rgv2_lockout',              3);
+  _rgv2Cfg.cooldown           = num('rgv2_cooldown',           240);
+  _rgv2Cfg.heartbeat_min      = num('rgv2_heartbeat_min',      120);
+  _rgv2Cfg.bocpd_run_length   = num('rgv2_bocpd_run_length',   150);
+  _rgv2Cfg.use_1h             = chk('rgv2_use_1h');
+  _rgv2Cfg.use_bocpd          = chk('rgv2_use_bocpd');
+  _rgv2Cfg.use_vix            = chk('rgv2_use_vix');
+  _rgv2Cfg.use_news           = chk('rgv2_use_news');
+  _rgv2Cfg.trade_window_start = str('rgv2_window_start',   '07:00');
+  _rgv2Cfg.trade_window_end   = str('rgv2_window_end',     '20:00');
+  _rgv2Cfg.tg_token           = str('rgv2_tg_token',       '');
+  _rgv2Cfg.tg_chat_id         = str('rgv2_tg_chat_id',     '');
+  _rgv2Cfg.pairs              = RGV2_PAIRS.filter(p => chk(p.id)).map(p => p.sym);
+}
+
+function renderRgV2Form() {
+  setChk('rgv2_enabled',          _rgv2Cfg.enabled          ?? true);
+  setChk('rgv2_paper_mode',       _rgv2Cfg.paper_mode       ?? true);
+  setVal('rgv2_interval_secs',    _rgv2Cfg.interval_secs    ?? 30);
+  setVal('rgv2_entry_conf',       _rgv2Cfg.entry_conf       ?? 70);
+  setVal('rgv2_candle_hold',      _rgv2Cfg.candle_hold      ?? 2);
+  setVal('rgv2_vol_z_max',        _rgv2Cfg.vol_z_max        ?? 2.5);
+  setVal('rgv2_entry_decay_max',  _rgv2Cfg.entry_decay_max  ?? 0.25);
+  setVal('rgv2_consensus_min',    _rgv2Cfg.consensus_min    ?? 2);
+  setVal('rgv2_hold_conf',        _rgv2Cfg.hold_conf        ?? 55);
+  setVal('rgv2_conf_floor',       _rgv2Cfg.conf_floor       ?? 45);
+  setVal('rgv2_slope_thresh',     _rgv2Cfg.slope_thresh     ?? -5);
+  setVal('rgv2_slope_bars',       _rgv2Cfg.slope_bars       ?? 3);
+  setVal('rgv2_drop_thresh',      _rgv2Cfg.drop_thresh      ?? 15);
+  setVal('rgv2_bocpd_thresh',     _rgv2Cfg.bocpd_thresh     ?? 70);
+  setVal('rgv2_bocpd_exit_bars',  _rgv2Cfg.bocpd_exit_bars  ?? 2);
+  setVal('rgv2_decay_exit',       _rgv2Cfg.decay_exit       ?? 0.70);
+  setVal('rgv2_ddlimit',          _rgv2Cfg.ddlimit          ?? 3.0);
+  setVal('rgv2_monthlydd',        _rgv2Cfg.monthlydd        ?? 5.0);
+  setVal('rgv2_lockout',          _rgv2Cfg.lockout          ?? 3);
+  setVal('rgv2_cooldown',         _rgv2Cfg.cooldown         ?? 240);
+  setVal('rgv2_heartbeat_min',    _rgv2Cfg.heartbeat_min    ?? 120);
+  setVal('rgv2_bocpd_run_length', _rgv2Cfg.bocpd_run_length ?? 150);
+  setChk('rgv2_use_1h',           _rgv2Cfg.use_1h           ?? true);
+  setChk('rgv2_use_bocpd',        _rgv2Cfg.use_bocpd        ?? true);
+  setChk('rgv2_use_vix',          _rgv2Cfg.use_vix          ?? true);
+  setChk('rgv2_use_news',         _rgv2Cfg.use_news         ?? true);
+  setVal('rgv2_window_start',     _rgv2Cfg.trade_window_start ?? '07:00');
+  setVal('rgv2_window_end',       _rgv2Cfg.trade_window_end   ?? '20:00');
+  setVal('rgv2_tg_token',         _rgv2Cfg.tg_token           ?? '');
+  setVal('rgv2_tg_chat_id',       _rgv2Cfg.tg_chat_id         ?? '');
+
+  const enabledPairs = new Set(_rgv2Cfg.pairs || RGV2_DEFAULTS.pairs);
+  RGV2_PAIRS.forEach(p => setChk(p.id, enabledPairs.has(p.sym)));
+}
+
+async function loadRgV2Config() {
+  try {
+    const stored = await kvGet('regime_bot_v2_config');
+    if (stored) { _rgv2Cfg = { ...JSON.parse(JSON.stringify(RGV2_DEFAULTS)), ...stored }; }
+    renderRgV2Form();
+  } catch (e) { /* non-critical */ }
+}
+
+async function saveRgV2Config() {
+  readRgV2Form();
+  const el = document.getElementById('rgv2SaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('regime_bot_v2_config', _rgv2Cfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = 'var(--purple)'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetRgV2Defaults() {
+  _rgv2Cfg = JSON.parse(JSON.stringify(RGV2_DEFAULTS));
+  renderRgV2Form();
+  const el = document.getElementById('rgv2SaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+async function loadRgV2Creds() {
+  try { _applyCredsToForm(await kvGet('regime_bot_v2_credentials'), 'rgv2_', 'rgv2_mt5_password'); } catch (e) {}
+}
+async function saveRgV2Creds() {
+  await _saveCreds('regime_bot_v2_credentials', 'rgv2_', 'rgv2_mt5_password', 'rgv2CredsStatus');
+}
+
+async function rgV2ForceUnlock() {
+  const btn = document.getElementById('rgv2UnlockBtn');
+  const el  = document.getElementById('rgv2UnlockStatus');
+  if (btn) btn.disabled = true;
+  if (el)  { el.textContent = 'Sending…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('rgv2_force_unlock', { force_unlock: true, requested_at: Date.now() });
+    if (el) { el.textContent = 'Unlock sent — bot will clear lockout within 30s ✓'; el.style.color = 'var(--purple)'; }
+    setTimeout(() => { if (el) el.textContent = ''; if (btn) btn.disabled = false; }, 5000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+    if (btn) btn.disabled = false;
+  }
+}
+
+function _rgv2RegimeColor(regime) {
+  const r = (regime || '').toUpperCase();
+  if (r === 'BULL')  return '#2ecc71';
+  if (r === 'BEAR')  return '#e74c3c';
+  if (r === 'RANGE') return '#f1c40f';
+  return '#888';
+}
+
+async function loadRgV2Status() {
+  try {
+    const data = await kvGet('regime_bot_v2_status');
+    const ageEl    = document.getElementById('rgv2StatusAge');
+    const modeEl   = document.getElementById('rgv2StatusMode');
+    const lockEl   = document.getElementById('rgv2LockoutBadge');
+    const tbody    = document.getElementById('rgv2StatusBody');
+    if (!data) {
+      if (ageEl) ageEl.textContent = 'Bot has not run yet';
+      return;
+    }
+
+    const ageSecs = Math.round((Date.now() - (data.pushed_at ?? 0) * 1000) / 1000);
+    if (ageEl) {
+      ageEl.textContent = ageSecs < 60 ? `${ageSecs}s ago` : `${Math.round(ageSecs / 60)}m ago`;
+      ageEl.style.color = ageSecs > 90 ? '#f39c12' : 'var(--text3)';
+    }
+    if (modeEl) {
+      modeEl.textContent = data.paper_mode ? '· PAPER' : '· LIVE';
+      modeEl.style.color = data.paper_mode ? '#888' : '#e74c3c';
+    }
+    if (lockEl) {
+      lockEl.style.display = data.riskguard_locked ? 'inline' : 'none';
+    }
+
+    if (!tbody) return;
+    const pairs = data.pairs || {};
+    if (!Object.keys(pairs).length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="padding:16px;text-align:center;color:var(--text3)">No pair data yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = Object.entries(pairs).map(([sym, p]) => {
+      const regColor   = _rgv2RegimeColor(p.regime);
+      const confVal    = p.conf != null ? p.conf.toFixed(1) + '%' : '—';
+      const slopeStr   = p.slope != null ? (p.slope >= 0 ? `+${p.slope.toFixed(1)}` : p.slope.toFixed(1)) : '—';
+      const volStr     = p.vol_z != null ? (p.vol_z >= 0 ? `+${p.vol_z.toFixed(2)}` : p.vol_z.toFixed(2)) : '—';
+      const activeMins = p.regime_mins != null ? Math.round(p.regime_mins) + 'm' : '—';
+      const bocpdStr   = p.bocpd != null ? p.bocpd.toFixed(1) + '%' : '—';
+
+      let posCell = '<span style="color:var(--text3)">flat</span>';
+      if (p.status === 'open') {
+        const sign = (p.pnl_pips ?? 0) >= 0 ? '+' : '';
+        const pnl  = p.pnl_pips != null ? ` ${sign}${p.pnl_pips.toFixed(1)}p` : '';
+        const dur  = p.dur_secs != null ? ` ${Math.round(p.dur_secs / 60)}m` : '';
+        const col  = p.direction === 'LONG' ? '#2ecc71' : '#e74c3c';
+        posCell = `<span style="color:${col};font-weight:600">${p.direction}${dur}${pnl}</span>`;
+      } else if (p.status === 'blocked') {
+        posCell = `<span style="color:#f39c12">🔒 ${p.reason || 'locked'}</span>`;
+      } else if (p.status === 'gated') {
+        posCell = `<span style="color:var(--text3)">gated: ${(p.reason || '').substring(0, 24)}</span>`;
+      } else if (p.status === 'hold_pending') {
+        posCell = `<span style="color:var(--text3)">hold…</span>`;
+      } else if (p.status === 'watching') {
+        posCell = `<span style="color:var(--text3)">watching</span>`;
+      }
+
+      const h1Cell = p.h1_regime
+        ? `<span style="color:${_rgv2RegimeColor(p.h1_regime)}">${p.h1_regime}</span>`
+        : '<span style="color:var(--text3)">—</span>';
+
+      return `<tr style="border-bottom:1px solid var(--bd)">
+        <td style="padding:7px 10px;font-weight:600">${sym.replace('/', '')}</td>
+        <td style="padding:7px 10px;color:${regColor};font-weight:600">${p.regime || '—'}</td>
+        <td style="padding:7px 10px;text-align:right">${confVal}</td>
+        <td style="padding:7px 10px;text-align:right">${slopeStr}</td>
+        <td style="padding:7px 10px;text-align:right">${volStr}σ</td>
+        <td style="padding:7px 10px;text-align:right">${activeMins}</td>
+        <td style="padding:7px 10px;text-align:right">${bocpdStr}</td>
+        <td style="padding:7px 10px">${posCell}</td>
+        <td style="padding:7px 10px">${h1Cell}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { /* non-critical */ }
+}
+
 async function loadRgBotStatus() {
   try {
     const data = await kvGet('regime_bot_status');
@@ -1035,6 +1292,10 @@ window._loadBtJournal   = loadBtJournal;
 window.saveRgConfig     = saveRgConfig;
 window.resetRgDefaults  = resetRgDefaults;
 window.saveRgCreds      = saveRgCreds;
+window.saveRgV2Config   = saveRgV2Config;
+window.resetRgV2Defaults = resetRgV2Defaults;
+window.saveRgV2Creds    = saveRgV2Creds;
+window.rgV2ForceUnlock  = rgV2ForceUnlock;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -1043,14 +1304,18 @@ document.getElementById('unlockBtn')?.addEventListener('click', forceUnlock);
 loadConfig();
 loadBtConfig();
 loadRgConfig();
+loadRgV2Config();
 loadCreds();
 loadBtCreds();
 loadRgCreds();
+loadRgV2Creds();
 loadBotStatus();
 loadBtBotStatus();
 loadRgBotStatus();
+loadRgV2Status();
 loadBtJournal();
 setInterval(loadBotStatus,    60_000);
 setInterval(loadBtBotStatus,  60_000);
 setInterval(loadRgBotStatus,  60_000);
+setInterval(loadRgV2Status,   30_000);
 setInterval(loadBtJournal,   120_000);
