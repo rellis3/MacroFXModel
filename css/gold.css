@@ -923,3 +923,40 @@
 .ztc-session { color: #94a3b8; background: rgba(148,163,184,.08); border: 1px solid rgba(148,163,184,.18); }
 .ztc-pivot   { color: #94a3b8; background: rgba(148,163,184,.08); border: 1px solid rgba(148,163,184,.18); }
 .ztc-other   { color: var(--text3); background: var(--s3); }
+
+/* Sniper Suite Marks panel */
+.zt-sniper-panel { margin-top: 2px; }
+.zt-snp-va-bar {
+  font-size: 10px; font-family: 'DM Mono', monospace;
+  color: var(--text3); padding: 3px 0 5px; display: flex; align-items: center; gap: 6px;
+}
+.zt-snp-inside {
+  font-size: 8.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+  background: rgba(103,232,249,.15); color: #67e8f9; border: 1px solid rgba(103,232,249,.3);
+}
+.zt-snp-grid { display: flex; flex-direction: column; gap: 1px; }
+.zt-snp-row {
+  display: flex; align-items: center; gap: 7px; padding: 3px 0; font-size: 11px;
+}
+.zt-snp-row:not(:last-child) { border-bottom: 1px solid var(--border); }
+.zt-snp-lbl {
+  font-size: 9px; font-weight: 700; font-family: 'DM Mono', monospace;
+  padding: 1px 5px; border-radius: 3px; min-width: 34px; text-align: center; flex-shrink: 0;
+}
+.zt-snp-vah  { color: #67e8f9; background: rgba(103,232,249,.1);  border: 1px solid rgba(103,232,249,.25); }
+.zt-snp-val  { color: #4ade80; background: rgba(74,222,128,.1);   border: 1px solid rgba(74,222,128,.25);  }
+.zt-snp-pp   { color: #fbbf24; background: rgba(251,191,36,.1);   border: 1px solid rgba(251,191,36,.25);  }
+.zt-snp-r    { color: #f87171; background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.22); }
+.zt-snp-s    { color: #4ade80; background: rgba(74,222,128,.08);  border: 1px solid rgba(74,222,128,.22);  }
+.zt-snp-poc  { color: #60a5fa; background: rgba(96,165,250,.1);   border: 1px solid rgba(96,165,250,.25);  }
+.zt-snp-vwap { color: #2dd4bf; background: rgba(45,212,191,.1);   border: 1px solid rgba(45,212,191,.25);  }
+.zt-snp-open { color: #94a3b8; background: rgba(148,163,184,.08); border: 1px solid rgba(148,163,184,.2);  }
+.zt-snp-price { font-family: 'DM Mono', monospace; color: var(--text2); font-size: 11px; flex: 1; }
+.zt-snp-dist  { font-size: 10px; font-family: 'DM Mono', monospace; text-align: right; flex-shrink: 0; }
+.zt-snp-above { color: var(--red); }
+.zt-snp-below { color: var(--green); }
+.zt-snp-align {
+  font-size: 8.5px; font-weight: 700; padding: 1px 5px; border-radius: 4px; flex-shrink: 0;
+  background: rgba(167,139,250,.18); color: #a78bfa; border: 1px solid rgba(167,139,250,.35);
+  white-space: nowrap;
+}

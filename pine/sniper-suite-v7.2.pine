@@ -1,0 +1,374 @@
+//@version=6
+indicator("Sniper Suite v7.2 Complete Pivot Package", overlay=true, max_lines_count=500, max_labels_count=500)
+
+// --- INPUTS ---
+gp_persist = "Persistence"
+cleanUpMode = input.bool(false, "Clean Up Mode (Show Current Day Only)", group=gp_persist)
+lookbackDays = input.int(3, "Lookback Days (If Clean Up Off)", minval=1, group=gp_persist)
+lineTail = input.int(30, "Forward Extension (Bars in Front)", minval=0, group=gp_persist)
+backExtension = input.int(0, "Backward Extension (Bars)", minval=0, group=gp_persist)
+extendLines = input.bool(false, "Extend Lines to Infinity (Right)", group=gp_persist)
+showPrice = input.bool(true, "Show Price in Labels", group=gp_persist)
+
+gp_labels = "Label Settings"
+lblOffset = input.int(30, "Label Offset (Should match Forward Extension)", group=gp_labels)
+lblSizeInput = input.string("Small", "Label Font Size", options=["Tiny", "Small", "Normal", "Large", "Huge"], group=gp_labels)
+
+gp_bias_logic = "Bias Logic Control"
+pivotBiasMode = input.string("Dynamic (on Cross)", "Pivot Bias Mode", options=["Fixed (at Open)", "Dynamic (on Cross)"], group=gp_bias_logic)
+biasMode = input.string("Close Confirmation", "Structural Flip Logic", options=["Touch (Aggressive)", "Close Confirmation", "Volatility Buffer"], group=gp_bias_logic)
+bufferMult = input.float(0.1, "Buffer Multiplier (For Volatility Mode)", minval=0.0, step=0.05, group=gp_bias_logic)
+
+gp_visuals = "Visuals"
+lineStyleInput = input.string("Solid", "Line Style", options=["Solid", "Dashed", "Dotted"], group=gp_visuals)
+lineWidth = input.int(1, "Line Width", minval=1, maxval=5, group=gp_visuals)
+dashSizeInput = input.string("Small", "Dashboard Size", options=["Tiny", "Small", "Normal"], group=gp_visuals)
+
+gp_levels = "Levels & Colors"
+showOp = input.bool(true, "Show Open", group=gp_levels)
+opCol = input.color(color.teal, "Open Color", group=gp_levels)
+showP = input.bool(true, "Show Pivot (P)", group=gp_levels)
+pCol = input.color(color.yellow, "Pivot Color", group=gp_levels)
+showVA = input.bool(true, "Show VAH/VAL", group=gp_levels)
+vaCol = input.color(color.blue, "Value Area Color", group=gp_levels)
+rCol = input.color(color.red, "Resistance Color", group=gp_levels)
+sCol = input.color(color.green, "Support Color", group=gp_levels)
+showVWAP = input.bool(true, "Show Dynamic VWAP", group=gp_levels)
+vwapCol = input.color(color.orange, "VWAP Color", group=gp_levels)
+
+// --- SWING FIB CONFLUENCE ZONES ---
+gp_sfib      = "Swing Fib Confluence"
+showSwingFib = input.bool(true,  "Show Swing Fib Confluence",           group=gp_sfib)
+swingLen     = input.int(10,     "Pivot Lookback (bars each side)",      group=gp_sfib, minval=3, maxval=30)
+showFibLines = input.bool(true,  "Show All Fib Level Lines",             group=gp_sfib)
+fibLineCol   = input.color(color.new(color.fuchsia, 40), "Fib Level Color",          group=gp_sfib)
+fibZoneCol   = input.color(color.new(color.purple,   0), "Fib + Zone Align Color",   group=gp_sfib)
+fibBoxAlpha  = input.int(80, "Fib Zone Box Transparency", group=gp_sfib, minval=50, maxval=95)
+
+// --- HELPER FUNCTIONS ---
+getLineStyle(style) =>
+    style == "Solid" ? line.style_solid : style == "Dashed" ? line.style_dashed : line.style_dotted
+
+getDashSize(sz) =>
+    sz == "Tiny" ? size.tiny : sz == "Small" ? size.small : size.normal
+
+getLblSize(sz) =>
+    switch sz
+        "Tiny"   => size.tiny
+        "Small"  => size.small
+        "Normal" => size.normal
+        "Large"  => size.large
+        "Huge"   => size.huge
+        => size.small
+
+// --- CALCULATIONS ---
+gp_logic = "Logic"
+pTimeframe = input.timeframe("D", "Pivot Timeframe", group=gp_logic)
+pType = input.string("Traditional", "Pivot Type", options=["Traditional", "Fibonacci", "Woodie", "Camarilla", "DeMark", "CPR"], group=gp_logic)
+autoUpdate = input.bool(true, "Auto-Update Bias on Breach", group=gp_logic)
+
+[dHi, dLo, dCl, dOp, ptfOp] = request.security(syminfo.tickerid, pTimeframe, [high[1], low[1], close[1], open[1], open], lookahead=barmerge.lookahead_on)
+float dynamicVWAP = ta.vwap
+
+float pp = 0.0, float r1 = 0.0, float s1 = 0.0, float r2 = 0.0, float s2 = 0.0
+float r3 = 0.0, float s3 = 0.0, float r4 = 0.0, float s4 = 0.0, float r5 = 0.0, float s5 = 0.0
+
+if pType == "Traditional"
+    pp := (dHi + dLo + dCl) / 3
+    r1 := (2 * pp) - dLo, s1 := (2 * pp) - dHi
+    r2 := pp + (dHi - dLo), s2 := pp - (dHi - dLo)
+    r3 := dHi + 2 * (pp - dLo), s3 := dLo - 2 * (dHi - pp)
+else if pType == "Fibonacci"
+    pp := (dHi + dLo + dCl) / 3
+    r1 := pp + (dHi - dLo) * 0.382, s1 := pp - (dHi - dLo) * 0.382
+    r2 := pp + (dHi - dLo) * 0.618, s2 := pp - (dHi - dLo) * 0.618
+    r3 := pp + (dHi - dLo) * 1.000, s3 := pp - (dHi - dLo) * 1.000
+else if pType == "Woodie"
+    pp := (dHi + dLo + 2 * ptfOp) / 4
+    r1 := (2 * pp) - dLo, s1 := (2 * pp) - dHi
+    r2 := pp + (dHi - dLo), s2 := pp - (dHi - dLo)
+    r3 := dHi + 2 * (pp - dLo), s3 := dLo - 2 * (dHi - pp)
+else if pType == "Camarilla"
+    pp := (dHi + dLo + dCl) / 3
+    r1 := dCl + (dHi - dLo) * 1.1 / 12, s1 := dCl - (dHi - dLo) * 1.1 / 12
+    r2 := dCl + (dHi - dLo) * 1.1 / 6, s2 := dCl - (dHi - dLo) * 1.1 / 6
+    r3 := dCl + (dHi - dLo) * 1.1 / 4, s3 := dCl - (dHi - dLo) * 1.1 / 4
+    r4 := dCl + (dHi - dLo) * 1.1 / 2, s4 := dCl - (dHi - dLo) * 1.1 / 2
+else if pType == "DeMark"
+    float x_dm = dCl < dOp ? dHi + 2 * dLo + dCl : dCl > dOp ? 2 * dHi + dLo + dCl : dHi + dLo + 2 * dCl
+    pp := x_dm / 4
+    r1 := x_dm / 2 - dLo, s1 := x_dm / 2 - dHi
+else if pType == "CPR"
+    float bc = (dHi + dLo) / 2
+    pp := (dHi + dLo + dCl) / 3
+    float tc = (pp - bc) + pp
+    r1 := tc, s1 := bc
+    r2 := pp + (dHi - dLo), s2 := pp - (dHi - dLo)
+
+if pType != "Camarilla" and pType != "DeMark"
+    r4 := r3 + (r2 - r1), s4 := s3 - (s1 - s2)
+    r5 := r4 + (r3 - r2), s5 := s4 - (s2 - s3)
+
+float vah = dHi - ((dHi - dLo) * 0.15)
+float val = dLo + ((dHi - dLo) * 0.15)
+sessionChange = ta.change(time(pTimeframe)) != 0
+float priceRange = dHi - dLo
+float uBuff = vah + (priceRange * bufferMult)
+float lBuff = val - (priceRange * bufferMult)
+
+structBullCross = ta.crossover(close, vah)
+structBearCross = ta.crossunder(close, val)
+buffBullCross = ta.crossover(close, uBuff)
+buffBearCross = ta.crossunder(close, lBuff)
+
+var bool pivotBiasBull = true
+if sessionChange
+    pivotBiasBull := (ptfOp >= pp)
+else if autoUpdate and pivotBiasMode == "Dynamic (on Cross)"
+    if close > pp
+        pivotBiasBull := true
+    else if close < pp
+        pivotBiasBull := false
+
+var bool structBiasBull = true
+if sessionChange
+    structBiasBull := (ptfOp >= pp)
+else if autoUpdate
+    bool bullS = biasMode == "Touch (Aggressive)" ? (close > vah) : biasMode == "Close Confirmation" ? structBullCross : buffBullCross
+    bool bearS = biasMode == "Touch (Aggressive)" ? (close < val) : biasMode == "Close Confirmation" ? structBearCross : buffBearCross
+
+    if structBiasBull and bearS
+        structBiasBull := false
+    else if not structBiasBull and bullS
+        structBiasBull := true
+
+ap = hlc3
+esa = ta.ema(ap, 10)
+d_vmc = ta.ema(math.abs(ap - esa), 10)
+ci = (ap - esa) / (0.015 * d_vmc)
+wt1 = ta.ema(ci, 21)
+wt2 = ta.sma(wt1, 4)
+vumanchuBull = wt1 > wt2
+
+// --- DASHBOARD ---
+var table dash = table.new(position.bottom_right, 2, 5, border_width=1, border_color=color.gray)
+if barstate.islast
+    sz = getDashSize(dashSizeInput)
+    table.cell(dash, 0, 0, "LEVELS", text_color=color.white, bgcolor=color.gray, text_size=sz)
+    table.cell(dash, 1, 0, pType + " (" + pTimeframe + ")", text_color=color.white, bgcolor=color.gray, text_size=sz)
+    table.cell(dash, 0, 1, "PIVOT BIAS", text_color=color.white, bgcolor=color.black, text_size=sz)
+    table.cell(dash, 1, 1, pivotBiasBull ? "BULLISH" : "BEARISH", bgcolor=pivotBiasBull ? color.teal : color.red, text_color=color.white, text_size=sz)
+    table.cell(dash, 0, 2, "STRUCTURAL", text_color=color.white, bgcolor=color.black, text_size=sz)
+    table.cell(dash, 1, 2, structBiasBull ? "BULLISH" : "BEARISH", bgcolor=structBiasBull ? color.teal : color.red, text_color=color.white, text_size=sz)
+    table.cell(dash, 0, 3, "MOMENTUM", text_color=color.white, bgcolor=color.black, text_size=sz)
+    table.cell(dash, 1, 3, vumanchuBull ? "BULLISH" : "BEARISH", bgcolor=vumanchuBull ? color.teal : color.red, text_color=color.white, text_size=sz)
+    allMatch = (pivotBiasBull == structBiasBull) and (structBiasBull == vumanchuBull)
+    table.cell(dash, 0, 4, "CONFLUENCE", text_color=color.white, bgcolor=color.rgb(67, 70, 81), text_size=sz)
+    table.cell(dash, 1, 4, allMatch ? "CONFIRMED" : "MIXED", bgcolor=allMatch ? color.blue : color.orange, text_color=color.white, text_size=sz)
+
+// --- RENDERING ENGINE ---
+var int sessionAnchor = na
+var line[] allLines = array.new_line()
+var label[] allLabels = array.new_label()
+var int[] linesPerDay = array.new_int()
+
+render(float pr, string nm, color cl, bool vis, int anc) =>
+    int c = 0
+    if vis and not na(pr)
+        string txt = nm + (showPrice ? " (" + str.tostring(pr, "#.##") + ")" : "")
+        int lineEnd = bar_index + lineTail
+        int labelX = bar_index + lblOffset
+        line l = line.new(anc - backExtension, pr, lineEnd, pr, color=cl, width=lineWidth, style=getLineStyle(lineStyleInput), xloc=xloc.bar_index)
+        if extendLines
+            line.set_extend(l, extend.right)
+        label lbl = label.new(labelX, pr, txt, style=label.style_none, textcolor=cl, size=getLblSize(lblSizeInput), textalign=text.align_left, xloc=xloc.bar_index)
+        array.push(allLines, l), array.push(allLabels, lbl), c := 1
+    c
+
+if not na(sessionAnchor) and array.size(allLines) > 0 and array.size(linesPerDay) > 0
+    int lastIdx = array.size(linesPerDay) - 1
+    int startIdx = array.size(allLines) - array.get(linesPerDay, lastIdx)
+    if startIdx >= 0
+        for i = startIdx to array.size(allLines) - 1
+            line currentLine = array.get(allLines, i)
+            line.set_x2(currentLine, bar_index + lineTail)
+        for i = startIdx to array.size(allLabels) - 1
+            label currentLabel = array.get(allLabels, i)
+            label.set_x(currentLabel, bar_index + lblOffset)
+
+biasChangeGlobal = ta.change(structBiasBull)
+
+if sessionChange
+    sessionAnchor := bar_index
+
+if sessionChange or biasChangeGlobal
+    int currentAnchor = sessionAnchor
+    if sessionChange
+        if cleanUpMode
+            while array.size(allLines) > 0
+                line.delete(array.shift(allLines))
+                label.delete(array.shift(allLabels))
+            array.clear(linesPerDay)
+        else if array.size(linesPerDay) >= lookbackDays
+            int lToDel = array.shift(linesPerDay)
+            if lToDel > 0
+                for i = 1 to lToDel
+                    line.delete(array.shift(allLines))
+                    label.delete(array.shift(allLabels))
+
+    if biasChangeGlobal and not sessionChange and array.size(linesPerDay) > 0
+        int tCount = array.pop(linesPerDay)
+        if tCount > 0
+            for i = 1 to tCount
+                line.delete(array.pop(allLines))
+                label.delete(array.pop(allLabels))
+
+    int dTot = 0
+    dTot += render(ptfOp, "Open", opCol, showOp, currentAnchor)
+    dTot += render(pp, "P", pCol, showP, currentAnchor)
+    dTot += render(vah, "VAH", vaCol, showVA, currentAnchor)
+    dTot += render(val, "VAL", vaCol, showVA, currentAnchor)
+
+    if structBiasBull
+        dTot += render(r1, pType == "CPR" ? "TC" : "T1", rCol, true, currentAnchor)
+        dTot += render(r2, "T2", rCol, true, currentAnchor)
+        dTot += render(r3, "T3", rCol, true, currentAnchor)
+        dTot += render(r4, "T4", rCol, true, currentAnchor)
+        dTot += render(r5, "T5", rCol, true, currentAnchor)
+    else
+        dTot += render(s1, pType == "CPR" ? "BC" : "T1", sCol, true, currentAnchor)
+        dTot += render(s2, "T2", sCol, true, currentAnchor)
+        dTot += render(s3, "T3", sCol, true, currentAnchor)
+        dTot += render(s4, "T4", sCol, true, currentAnchor)
+        dTot += render(s5, "T5", sCol, true, currentAnchor)
+    array.push(linesPerDay, dTot)
+
+plot(showVWAP ? dynamicVWAP : na, "VWAP", color=vwapCol)
+
+// ─── SWING FIB CONFLUENCE ZONES ──────────────────────────────────────────────
+// Detects the most recent swing high/low pair, draws .382/.500/.618/.786 Fib
+// retracement levels, and highlights any level that lands inside or near the
+// Sniper Suite's VAH/VAL value area or Pivot Point. These overlap boxes are
+// high-probability zones where Fib structure and price structure agree.
+
+phSwing = ta.pivothigh(high, swingLen, swingLen)
+plSwing = ta.pivotlow(low,  swingLen, swingLen)
+
+var float lastSwingHigh = na
+var float lastSwingLow  = na
+var int   lastShBar     = na
+var int   lastSlBar     = na
+
+if not na(phSwing)
+    lastSwingHigh := phSwing
+    lastShBar     := bar_index[swingLen]
+
+if not na(plSwing)
+    lastSwingLow := plSwing
+    lastSlBar    := bar_index[swingLen]
+
+// Orange triangles marking every confirmed swing pivot at its actual bar
+plotshape(showSwingFib ? phSwing : na, style=shape.triangledown,
+    location=location.abovebar, color=color.new(color.orange, 0),
+    size=size.tiny, offset=-swingLen, title="Swing High")
+plotshape(showSwingFib ? plSwing : na, style=shape.triangleup,
+    location=location.belowbar, color=color.new(color.orange, 0),
+    size=size.tiny, offset=-swingLen, title="Swing Low")
+
+// Separate arrays — cleaned and rebuilt on every real-time tick
+var line[]  _fibLines  = array.new_line()
+var label[] _fibLabels = array.new_label()
+var box[]   _fibBoxes  = array.new_box()
+
+if barstate.islast and showSwingFib
+    if not na(lastSwingHigh) and not na(lastSwingLow) and not na(lastShBar) and not na(lastSlBar)
+        for l  in _fibLines  : line.delete(l)
+        for lb in _fibLabels : label.delete(lb)
+        for b  in _fibBoxes  : box.delete(b)
+        array.clear(_fibLines)
+        array.clear(_fibLabels)
+        array.clear(_fibBoxes)
+
+        float R = lastSwingHigh - lastSwingLow
+        if R > 0.0
+            // longSetup: swing low is the more recent anchor → impulse was DOWN
+            //   → Fib retrace levels rise from the low (buy pullback)
+            // shortSetup: swing high is the more recent anchor → impulse was UP
+            //   → Fib retrace levels fall from the high (sell pullback)
+            bool longSetup = lastSlBar >= lastShBar
+
+            float f382 = longSetup ? lastSwingLow + 0.382 * R : lastSwingHigh - 0.382 * R
+            float f500 = longSetup ? lastSwingLow + 0.500 * R : lastSwingHigh - 0.500 * R
+            float f618 = longSetup ? lastSwingLow + 0.618 * R : lastSwingHigh - 0.618 * R
+            float f786 = longSetup ? lastSwingLow + 0.786 * R : lastSwingHigh - 0.786 * R
+
+            // Lines span from the impulse start bar to current bar + tail
+            int drawStart = math.max(math.min(lastShBar, lastSlBar) - backExtension, bar_index - 500)
+            int drawEnd   = bar_index + lineTail
+
+            // Snap tolerance: 2% of yesterday's daily range (~$6 for gold)
+            float snapTol = math.max(priceRange * 0.02, 0.5)
+
+            // Vertical tick marks at each swing anchor
+            float tickSz = R * 0.025
+            line ahLine = line.new(lastShBar, lastSwingHigh + tickSz, lastShBar, lastSwingHigh - tickSz,
+                color=color.orange, width=2, xloc=xloc.bar_index)
+            line alLine = line.new(lastSlBar, lastSwingLow - tickSz, lastSlBar, lastSwingLow + tickSz,
+                color=color.orange, width=2, xloc=xloc.bar_index)
+            array.push(_fibLines, ahLine)
+            array.push(_fibLines, alLine)
+
+            // Dotted connector showing the impulse leg
+            line legLine = line.new(lastShBar, lastSwingHigh, lastSlBar, lastSwingLow,
+                color=color.new(color.orange, 60), width=1,
+                style=line.style_dotted, xloc=xloc.bar_index)
+            array.push(_fibLines, legLine)
+
+            // Draw each Fib level; highlight zone overlaps
+            float[] fibLvls = array.from(f382, f500, f618, f786)
+            string[] fibTxt = array.from(".382", ".500", ".618", ".786")
+
+            for i = 0 to 3
+                float fLvl = array.get(fibLvls, i)
+                string fTxt = array.get(fibTxt, i)
+
+                bool inVA    = fLvl >= val  and fLvl <= vah
+                bool nearPP  = math.abs(fLvl - pp)  <= snapTol
+                bool nearVAH = math.abs(fLvl - vah) <= snapTol
+                bool nearVAL = math.abs(fLvl - val) <= snapTol
+                bool zoneHit = inVA or nearPP or nearVAH or nearVAL
+
+                string alignTag = inVA    ? " ↔ VA ZONE"
+                                : nearPP  ? " ↔ PIVOT"
+                                : nearVAH ? " ↔ VAH"
+                                : nearVAL ? " ↔ VAL"
+                                : ""
+
+                color lCol = zoneHit ? fibZoneCol : fibLineCol
+                int   lWid = zoneHit ? 2 : 1
+
+                if showFibLines or zoneHit
+                    line l = line.new(drawStart, fLvl, drawEnd, fLvl,
+                        color=lCol, width=lWid, style=line.style_dashed,
+                        xloc=xloc.bar_index)
+                    if extendLines
+                        line.set_extend(l, extend.right)
+                    array.push(_fibLines, l)
+
+                    string arw = longSetup ? "▲" : "▼"
+                    string lbl = arw + " Fib " + fTxt
+                        + (showPrice ? " (" + str.tostring(fLvl, "#.##") + ")" : "")
+                        + alignTag
+                    label lb = label.new(drawEnd, fLvl, lbl,
+                        style=label.style_none, textcolor=lCol,
+                        size=getLblSize(lblSizeInput), textalign=text.align_left,
+                        xloc=xloc.bar_index)
+                    array.push(_fibLabels, lb)
+
+                if zoneHit
+                    float hb = math.max(snapTol * 0.35, priceRange * 0.004)
+                    box b = box.new(drawStart, fLvl + hb, drawEnd, fLvl - hb,
+                        bgcolor=color.new(fibZoneCol, fibBoxAlpha),
+                        border_color=color.new(fibZoneCol, 50),
+                        border_width=1, xloc=xloc.bar_index)
+                    array.push(_fibBoxes, b)

@@ -1822,6 +1822,63 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
     ? `<button class="zt-hist-btn" onclick="document.getElementById('ztHistPanel').classList.toggle('zt-hist-open')">📋 ${histCount} zone events</button>`
     : '';
 
+  // Sniper Suite pivot marks — sourced from pivot_levels added to the KV payload
+  const pivLvls = _ZT.zones?.pivot_levels ?? null;
+  let sniperHtml = '';
+  if (pivLvls && price) {
+    const SNAP = 3; // $3 alignment window
+    const marks = [
+      { label: 'VAH',  price: pivLvls.vah,        cls: 'zt-snp-vah'  },
+      { label: 'VAL',  price: pivLvls.val,        cls: 'zt-snp-val'  },
+      { label: 'PP',   price: pivLvls.pp,         cls: 'zt-snp-pp'   },
+      { label: 'R1',   price: pivLvls.r1,         cls: 'zt-snp-r'    },
+      { label: 'R2',   price: pivLvls.r2,         cls: 'zt-snp-r'    },
+      { label: 'S1',   price: pivLvls.s1,         cls: 'zt-snp-s'    },
+      { label: 'S2',   price: pivLvls.s2,         cls: 'zt-snp-s'    },
+      { label: 'POC',  price: pivLvls.poc,        cls: 'zt-snp-poc'  },
+      { label: 'VWAP', price: pivLvls.vwap,       cls: 'zt-snp-vwap' },
+      { label: 'Open', price: pivLvls.daily_open, cls: 'zt-snp-open' },
+    ].filter(m => m.price != null && m.price > 0)
+     .sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price))
+     .slice(0, 8);
+
+    const vah = pivLvls.vah, val = pivLvls.val;
+    const inVA = vah != null && val != null && price >= val && price <= vah;
+
+    const rows = marks.map(m => {
+      const dist    = m.price - price;
+      const distStr = `${dist >= 0 ? '+' : ''}$${Math.abs(dist).toFixed(1)}`;
+      const distCls = dist >= 0 ? 'zt-snp-above' : 'zt-snp-below';
+
+      // Tag if any bot Fib zone's GP window overlaps this pivot mark
+      const aligned = zones.find(z =>
+        z.gp_low != null && z.gp_high != null &&
+        m.price >= z.gp_low - SNAP && m.price <= z.gp_high + SNAP
+      );
+      const alignTag = aligned
+        ? `<span class="zt-snp-align">${escHtml(aligned.tf)} ${aligned.direction === 'long' ? '▲' : '▼'} ${(aligned.zone_variant ?? 'gp').toUpperCase()}</span>`
+        : '';
+
+      return `<div class="zt-snp-row">
+        <span class="zt-snp-lbl ${m.cls}">${m.label}</span>
+        <span class="zt-snp-price">${m.price.toFixed(1)}</span>
+        <span class="zt-snp-dist ${distCls}">${distStr}</span>
+        ${alignTag}
+      </div>`;
+    }).join('');
+
+    const vaStr = (vah && val)
+      ? `<div class="zt-snp-va-bar">VA ${val.toFixed(1)} – ${vah.toFixed(1)}${inVA ? ' <span class="zt-snp-inside">INSIDE VA</span>' : ''}</div>`
+      : '';
+
+    sniperHtml = `
+      <div class="zt-sniper-panel">
+        <div class="zt-title" style="margin-top:10px">SNIPER MARKS</div>
+        ${vaStr}
+        <div class="zt-snp-grid">${rows}</div>
+      </div>`;
+  }
+
   el.innerHTML = `
     <div class="zt-card">
       <div class="zt-title">
@@ -1831,6 +1888,7 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
         ${histBtn}
       </div>
       <div class="zt-zones">${zoneRows}</div>
+      ${sniperHtml}
       ${vuHtml}
       ${histCount ? _ztHistoryHtml() : ''}
     </div>`;

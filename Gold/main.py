@@ -749,6 +749,20 @@ class GoldBot:
                     }
                     for tl in self.trendlines
                 ],
+                'pivot_levels': {
+                    'pp':         self.sess_lvls.pivot,
+                    'r1':         self.sess_lvls.r1,
+                    'r2':         self.sess_lvls.r2,
+                    'r3':         self.sess_lvls.r3,
+                    's1':         self.sess_lvls.s1,
+                    's2':         self.sess_lvls.s2,
+                    's3':         self.sess_lvls.s3,
+                    'vah':        self.vol_prof.vah  if self.vol_prof else None,
+                    'val':        self.vol_prof.val  if self.vol_prof else None,
+                    'poc':        self.vol_prof.poc  if self.vol_prof else None,
+                    'vwap':       self.sess_lvls.vwap,
+                    'daily_open': self.sess_lvls.daily_open,
+                } if self.sess_lvls else None,
             }
             url = f'{self.base_url}/api/kv/set'
             requests.post(url, json={'key': 'gold_bot_zones', 'data': payload}, timeout=5)
