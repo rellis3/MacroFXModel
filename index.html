@@ -488,13 +488,25 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance) {
   const parts = [];
 
   // ── Rebalancing alert ──────────────────────────────────────────────────────
-  if (rebalance && rebalance.rebalance_needed) {
+  // Dismiss key = factor + timestamp (so each new signal is independently dismissible)
+  const _dismissKey = rebalance && rebalance.rebalance_needed
+    ? 'beta_dismiss_' + (rebalance.factor || '') + '_' + (rebalance.timestamp || 0)
+    : null;
+  const _dismissed = _dismissKey && localStorage.getItem(_dismissKey);
+
+  if (rebalance && rebalance.rebalance_needed && !_dismissed) {
     const urg = (rebalance.urgency || 'LOW').toLowerCase();
     const urgColor = {high: 'var(--red)', medium: 'var(--amber,#f4b942)', low: 'var(--text3)'}[urg] || 'var(--text3)';
     parts.push([
-      '<div class="bp-alert-box ' + urg + '">',
-      '<div style="font-weight:600;color:' + urgColor + ';margin-bottom:4px">',
-      '⚡ Rebalancing Suggested [' + rebalance.urgency + '] — ' + (rebalance.action || '').replace(/_/g, ' '),
+      '<div class="bp-alert-box ' + urg + '" id="betaAlertBox">',
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">',
+      '  <div style="font-weight:600;color:' + urgColor + ';margin-bottom:4px">',
+      '    ⚡ Rebalancing Suggested [' + rebalance.urgency + '] — ' + (rebalance.action || '').replace(/_/g, ' '),
+      '  </div>',
+      '  <button onclick="(function(){localStorage.setItem(\'' + _dismissKey + '\',\'1\');document.getElementById(\'betaAlertBox\').style.display=\'none\';})()" ',
+      '    style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:10px;padding:2px 7px;flex-shrink:0;margin-left:12px">',
+      '    Dismiss',
+      '  </button>',
       '</div>',
       '<div style="color:var(--text2)">',
       'Factor: <b>' + FACTOR_LABELS[rebalance.factor] + '</b>  ',

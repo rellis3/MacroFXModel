@@ -229,6 +229,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn bt" data-tab="backtest" onclick="switchTab('backtest')">Backtest Bot</button>
     <button class="tab-btn rg" data-tab="regime"   onclick="switchTab('regime')">Regime Bot</button>
     <button class="tab-btn rg" data-tab="regimev2" onclick="switchTab('regimev2')">Regime Bot V2</button>
+    <button class="tab-btn" data-tab="beta" onclick="switchTab('beta')" style="color:#9d96f0" id="betaTabBtn">β Beta Targets</button>
   </div>
 
   <!-- ═══════════════════════ TAB: TELEGRAM BOT ═══════════════════════ -->
@@ -1523,6 +1524,83 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
   </div><!-- /tab-regimev2 -->
 
+  <!-- ═══════════════════════════════════════════════════════ BETA TARGETS TAB -->
+  <div class="tab-pane" id="tab-beta">
+
+    <div class="card" style="border-color:#7c6fe0">
+      <div class="card-title" style="color:#9d96f0">β Beta Factor Target Profiles</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:16px;line-height:1.6">
+        Defines the target factor beta the portfolio should hold in each macro regime.
+        Deviations from these targets trigger the inaction-band rebalancing system.<br>
+        Saved to Cloudflare KV as <code>beta_targets</code> — the bot reads this every 5 minutes.
+        Leave as-is to use the built-in defaults (BULL: DXY −0.65, BEAR: DXY +0.55, RANGE/CHOP: 0).
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <!-- BULL -->
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">BULL Regime</div>
+          <div class="form-row"><span class="form-lbl">DXY β target</span><input type="number" step="0.01" id="bt_bull_dxy" value="-0.65" style="width:90px"></div>
+          <div class="form-row"><span class="form-lbl">Rates β target</span><input type="number" step="0.01" id="bt_bull_rates" value="0.40" style="width:90px"></div>
+          <div class="form-row"><span class="form-lbl">VIX β target</span><input type="number" step="0.01" id="bt_bull_vix" value="-0.20" style="width:90px"></div>
+        </div>
+        <!-- BEAR -->
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">BEAR Regime</div>
+          <div class="form-row"><span class="form-lbl">DXY β target</span><input type="number" step="0.01" id="bt_bear_dxy" value="0.55" style="width:90px"></div>
+          <div class="form-row"><span class="form-lbl">Rates β target</span><input type="number" step="0.01" id="bt_bear_rates" value="-0.35" style="width:90px"></div>
+          <div class="form-row"><span class="form-lbl">VIX β target</span><input type="number" step="0.01" id="bt_bear_vix" value="0.30" style="width:90px"></div>
+        </div>
+        <!-- RANGE -->
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--amber,#f4b942);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">RANGE Regime</div>
+          <div class="form-row"><span class="form-lbl">DXY β target</span><input type="number" step="0.01" id="bt_range_dxy" value="0.00" style="width:90px"></div>
+          <div class="form-row"><span class="form-lbl">Rates β target</span><input type="number" step="0.01" id="bt_range_rates" value="0.00" style="width:90px"></div>
+          <div class="form-row"><span class="form-lbl">VIX β target</span><input type="number" step="0.01" id="bt_range_vix" value="0.00" style="width:90px"></div>
+        </div>
+        <!-- CHOP -->
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">CHOP Regime</div>
+          <div class="form-row"><span class="form-lbl">DXY β target</span><input type="number" step="0.01" id="bt_chop_dxy" value="0.00" style="width:90px"></div>
+          <div class="form-row"><span class="form-lbl">Rates β target</span><input type="number" step="0.01" id="bt_chop_rates" value="0.00" style="width:90px"></div>
+          <div class="form-row"><span class="form-lbl">VIX β target</span><input type="number" step="0.01" id="bt_chop_vix" value="0.00" style="width:90px"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Rebalancing Band</div>
+        <div class="form-row">
+          <span class="form-lbl">Base band <small>minimum deviation before rebalance triggers</small></span>
+          <input type="number" step="0.01" id="bt_base_band" value="0.20" style="width:90px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Uncertainty scale <small>band widens by this × Kalman variance</small></span>
+          <input type="number" step="0.1" id="bt_unc_scale" value="2.0" style="width:90px">
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-save" style="background:#7c6fe0" onclick="saveBetaTargets()">Save Beta Targets</button>
+      <button class="btn-reset" onclick="loadBetaTargets()">Reload from KV</button>
+      <span id="betaTargetStatus" class="inline-status" style="align-self:center"></span>
+    </div>
+
+    <div class="card" style="background:var(--s2);border-color:var(--border);margin-top:12px">
+      <div class="card-title">Regime Table — Status</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+        The regime-conditional beta table is built offline from the bot's history log.
+        Run manually or wait for the weekly auto-rebuild (triggered by bot/main.py).
+      </div>
+      <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text2)">
+        python RegimeV2/beta_regime_table.py --update-targets<br>
+        python RegimeV2/beta_regime_table.py --dry-run  <span style="color:var(--text3)"># preview without writing to KV</span>
+      </div>
+      <div id="betaRegimeTableStatus" style="margin-top:10px;font-size:11px;color:var(--text3)">Checking…</div>
+    </div>
+
+  </div><!-- /tab-beta -->
+
 </div><!-- /page -->
 
 <script type="module" src="js/bot-config.js?v=2"></script>
@@ -1548,6 +1626,81 @@ function switchTab(tab) {
 }
 window.switchTab = switchTab;
 try { switchTab(localStorage.getItem('botConfigTab') || 'original'); } catch(e) { switchTab('original'); }
+
+// ── Beta Targets ──────────────────────────────────────────────────────────────
+async function _kvGet(key) {
+  try {
+    const r = await fetch('/api/kv/get?key=' + encodeURIComponent(key));
+    const j = await r.json();
+    return j.miss ? null : (j.data || null);
+  } catch { return null; }
+}
+async function _kvSet(key, data) {
+  const r = await fetch('/api/kv/set', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({key, data, timestamp: Date.now()}),
+  });
+  return (await r.json()).ok;
+}
+
+const _BT_DEFAULTS = {
+  BULL:  {beta_dxy: -0.65, beta_rates: 0.40,  beta_vix: -0.20},
+  BEAR:  {beta_dxy:  0.55, beta_rates: -0.35, beta_vix:  0.30},
+  RANGE: {beta_dxy:  0.00, beta_rates:  0.00, beta_vix:  0.00},
+  CHOP:  {beta_dxy:  0.00, beta_rates:  0.00, beta_vix:  0.00},
+};
+
+function _btFields(targets) {
+  const T = targets || _BT_DEFAULTS;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  set('bt_bull_dxy',   T.BULL?.beta_dxy  ?? -0.65);
+  set('bt_bull_rates', T.BULL?.beta_rates ?? 0.40);
+  set('bt_bull_vix',   T.BULL?.beta_vix  ?? -0.20);
+  set('bt_bear_dxy',   T.BEAR?.beta_dxy  ?? 0.55);
+  set('bt_bear_rates', T.BEAR?.beta_rates ?? -0.35);
+  set('bt_bear_vix',   T.BEAR?.beta_vix  ?? 0.30);
+  set('bt_range_dxy',  T.RANGE?.beta_dxy  ?? 0);
+  set('bt_range_rates',T.RANGE?.beta_rates ?? 0);
+  set('bt_range_vix',  T.RANGE?.beta_vix  ?? 0);
+  set('bt_chop_dxy',   T.CHOP?.beta_dxy  ?? 0);
+  set('bt_chop_rates', T.CHOP?.beta_rates ?? 0);
+  set('bt_chop_vix',   T.CHOP?.beta_vix  ?? 0);
+}
+
+async function loadBetaTargets() {
+  const t = await _kvGet('beta_targets');
+  _btFields(t);
+  const st = document.getElementById('betaTargetStatus');
+  if (st) st.textContent = t ? 'Loaded from KV' : 'Using defaults (no KV entry)';
+  // Check regime table
+  const rt = await _kvGet('beta_regime_table');
+  const rtEl = document.getElementById('betaRegimeTableStatus');
+  if (rtEl) rtEl.textContent = rt
+    ? 'Table found in KV — ' + Object.keys(rt).length + ' symbol(s)'
+    : 'Not found — run beta_regime_table.py after accumulating ~30 days of history';
+}
+
+async function saveBetaTargets() {
+  const g = id => parseFloat(document.getElementById(id)?.value || 0);
+  const targets = {
+    BULL:  {beta_dxy: g('bt_bull_dxy'),   beta_rates: g('bt_bull_rates'),  beta_vix: g('bt_bull_vix')},
+    BEAR:  {beta_dxy: g('bt_bear_dxy'),   beta_rates: g('bt_bear_rates'),  beta_vix: g('bt_bear_vix')},
+    RANGE: {beta_dxy: g('bt_range_dxy'),  beta_rates: g('bt_range_rates'), beta_vix: g('bt_range_vix')},
+    CHOP:  {beta_dxy: g('bt_chop_dxy'),   beta_rates: g('bt_chop_rates'),  beta_vix: g('bt_chop_vix')},
+  };
+  const st = document.getElementById('betaTargetStatus');
+  if (st) st.textContent = 'Saving…';
+  const ok = await _kvSet('beta_targets', targets);
+  if (st) st.textContent = ok ? '✓ Saved — bot will apply on next 5-min cycle' : '✗ Save failed';
+}
+window.saveBetaTargets = saveBetaTargets;
+window.loadBetaTargets = loadBetaTargets;
+
+// Load beta targets when tab is first opened
+document.querySelector('.tab-btn[data-tab="beta"]')?.addEventListener('click', () => {
+  loadBetaTargets();
+});
 
 // ── Telegram mode toggle ──────────────────────────────────────────────────────
 function toggleTgSettings() {

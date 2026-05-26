@@ -195,8 +195,54 @@ def _run_beta_portfolio_tracking(
                 f'  dev={rebalance["deviation"]:+.3f}  band={rebalance["band"]:.3f}'
                 f'  suggest={rebalance.get("suggested_pairs", [])}'
             )
+        if urgency == 'HIGH':
+            _send_beta_rebalance_telegram(rebalance, base_url)
 
     return rebalance
+
+
+def _send_beta_rebalance_telegram(signal: dict, base_url: str) -> None:
+    """Send HIGH urgency beta rebalancing alert via the shared Telegram bot."""
+    try:
+        import urllib.request as _ur
+        # Fetch tg_config from KV (same key used by all bots)
+        with _ur.urlopen(f'{base_url.rstrip("/")}/api/kv/get?key=tg_config', timeout=5) as r:
+            j = json.loads(r.read())
+        if j.get('miss') or not j.get('data'):
+            return
+        tg = j['data']
+        token   = tg.get('token', '')
+        chat_id = tg.get('chatId', '')
+        if not token or not chat_id:
+            return
+
+        action  = signal.get('action', '').replace('_', ' ')
+        factor  = signal.get('factor', '?').replace('beta_', '').upper()
+        dev     = signal.get('deviation', 0)
+        band    = signal.get('band', 0)
+        pairs   = ', '.join(signal.get('suggested_pairs', [])) or '—'
+        regime  = signal.get('regime', '?')
+        align   = signal.get('overall_alignment', 0)
+
+        text = (
+            f'⚡ <b>BETA REBALANCE — HIGH</b>\n'
+            f'Action: {action}\n'
+            f'Factor: {factor}  Deviation: {dev:+.3f}  Band: ±{band:.3f}\n'
+            f'Regime: {regime}  Alignment: {align:.0%}\n'
+            f'Suggested: {pairs}'
+        )
+
+        r = requests.post(
+            f'https://api.telegram.org/bot{token}/sendMessage',
+            json={'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'},
+            timeout=10,
+        )
+        if r.status_code == 200:
+            log.info('[BETA] Telegram alert sent')
+        else:
+            log.debug(f'[BETA] Telegram send failed: {r.status_code}')
+    except Exception as exc:
+        log.debug(f'[BETA] Telegram alert error: {exc}')
 
 
 def _append_beta_history(regime: str, estimates: dict) -> None:
@@ -1007,7 +1053,9 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
     cached_beta_targets: dict = {}
     last_beta_push: float = 0.0
     last_beta_targets_fetch: float = 0.0
-    BETA_TARGETS_INTERVAL = 300  # re-fetch custom targets every 5 min
+    last_regime_table_build: float = 0.0
+    BETA_TARGETS_INTERVAL      = 300          # re-fetch custom targets every 5 min
+    REGIME_TABLE_BUILD_INTERVAL = 7 * 24 * 3600  # auto-rebuild regime table weekly
 
     # ── Two-speed loop ────────────────────────────────────────────────────────
     while True:
@@ -1046,6 +1094,21 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                     last_beta_targets_fetch = tick_start
                 except Exception:
                     pass
+
+            # Weekly auto-rebuild of regime-conditional beta table
+            if tick_start - last_regime_table_build >= REGIME_TABLE_BUILD_INTERVAL:
+                try:
+                    import subprocess as _sp
+                    _script = os.path.join(os.path.dirname(__file__), '..', 'RegimeV2', 'beta_regime_table.py')
+                    if os.path.exists(_BETA_HISTORY_FILE) and os.path.exists(_script):
+                        log.info('[BETA] Weekly regime table rebuild starting…')
+                        _sp.Popen(
+                            ['python', _script, '--update-targets', '--url', base_url],
+                            stdout=_sp.DEVNULL, stderr=_sp.DEVNULL,
+                        )
+                except Exception as exc:
+                    log.debug(f'[BETA] Regime table rebuild error: {exc}')
+                last_regime_table_build = tick_start
 
         config         = cached_state.get('bot_config') or {}
         snap           = cached_state.get('regime_snapshot') or {}
