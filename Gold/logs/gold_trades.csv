@@ -1,1 +1,2 @@
 date,time,zone_id,tf,direction,score,entry,sl,tp1,tp2,sl_pips,tp1_pips,tp2_pips,rr,close_reason,close_price,pnl_pips,result,vu_components,vu_confidence,composition
+2026-05-25,13:48:39,M30_short_4535_4571_886,M30,SHORT,3.7,4561.45,4578.12,4544.78,4528.11,16.7,16.7,33.3,1.99,SL_HIT,4578.35,-16.9,LOSS,2,MEDIUM,M30 short GP; H1 descending TL (2t @ 4562.5); Daily open; Session H/L

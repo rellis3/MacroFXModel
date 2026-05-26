@@ -53,9 +53,10 @@ import requests
 # ── path so imports work when run from repo root or RegimeV2/ ─────────────────
 sys.path.insert(0, os.path.dirname(__file__))
 
-from bocpd      import BOCPRegistry
+from bocpd        import BOCPRegistry
 from macro_overlay import MacroOverlay
-from formatter  import (
+from regime_score  import compute_regime_score
+from formatter    import (
     regime_change_alert, heartbeat_message,
     entry_alert, exit_alert, lockout_alert,
 )
@@ -83,6 +84,7 @@ _PIP_VALUES = {
 TRADEABLE = {'BULL', 'BEAR'}
 
 # ── Logging ────────────────────────────────────────────────────────────────────
+os.makedirs(os.path.join(os.path.dirname(__file__), '..', 'logs'), exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] [RGV2] [%(levelname)s] %(message)s',
@@ -147,6 +149,11 @@ DEFAULT_CFG: dict = {
     'fomc_window_hours':  48.0,
     # BOCPD tuning
     'bocpd_run_length':   150,
+    # Composite regime score
+    'entry_score_min':    55.0,  # score gate for new entries
+    'hold_score_min':     40.0,  # X11: exit if score below this
+    'score_drop_exit':    30.0,  # X12: exit if score drops this many pts from entry
+    'score_drop_bars':    2,     # X11: bars below hold_score_min before exit
 }
 
 # ── KV helpers ─────────────────────────────────────────────────────────────────
@@ -672,6 +679,8 @@ def run(url: str, paper_mode: bool) -> None:
     entry_regime:    dict[str, str]                  = {}
     bocpd_high_bars: dict[str, int]                  = {}   # consecutive bars above bocpd_thresh
     range_exit_ctr:  dict[str, int]                  = {}
+    entry_scores:    dict[str, float]                = {}   # regime score at time of entry
+    score_low_bars:  dict[str, int]                  = {}   # polls below hold_score_min
 
     risk_guard = RiskGuardV2()
     bocpd_reg  = BOCPRegistry(expected_run_length=cfg.get('bocpd_run_length', 150))
@@ -693,6 +702,7 @@ def run(url: str, paper_mode: bool) -> None:
         flip_counts[pair]   = 0
         bocpd_high_bars[pair]= 0
         range_exit_ctr[pair] = 0
+        score_low_bars[pair] = 0
 
     last_heartbeat: dict[str, float] = {p: 0.0 for p in cfg['pairs']}
     last_cfg_reload = time.time()
@@ -724,6 +734,7 @@ def run(url: str, paper_mode: bool) -> None:
                     flip_counts[pair]    = 0
                     bocpd_high_bars[pair]= 0
                     range_exit_ctr[pair] = 0
+                    score_low_bars[pair] = 0
                     last_heartbeat[pair] = 0.0
 
         if not cfg.get('enabled', True):
@@ -826,10 +837,32 @@ def run(url: str, paper_mode: bool) -> None:
             decay_dets[pair].push(regime, confidence, vol_z, run_length)
             decay_score = decay_dets[pair].score()
 
+            # ── Per-pair inputs shared by score, entry, and exit ───────────
+            sess_mult    = macro.session_multiplier(session_lbl)
+            eff_conf     = confidence * sess_mult
+            cons, cons_total = consensus_score(cfg['pairs'], all_regimes, regime)
+
+            macro_inputs = macro.score_inputs(pair)
+            reg_score = compute_regime_score(
+                pair=pair, regime=regime, confidence=confidence,
+                bocpd_prob=bocpd_prob, session_mult=sess_mult,
+                consensus=cons, consensus_total=cons_total,
+                pair_vol_pct=macro_inputs.get('pair_vol_pct'),
+                dxy_trend_pct=macro_inputs.get('dxy_trend_pct', 0.0),
+                credit_5d_ret=macro_inputs.get('credit_5d_ret', 0.0),
+                entry_score_min=cfg.get('entry_score_min', 55.0),
+            )
+
+            # X11 counter: consecutive polls with score below hold threshold
+            if reg_score.total < cfg.get('hold_score_min', 40.0):
+                score_low_bars[pair] += 1
+            else:
+                score_low_bars[pair]  = 0
+
             log.info(
                 f'[{pair}] reg={regime}  conf={confidence:.0f}%  slope={conf_slope:+.1f}  '
                 f'vz={vol_z:+.2f}  rl={run_length}  bocpd={bocpd_prob:.1f}%  '
-                f'exh={exhaust_score:.2f}  decay={decay_score:.3f}'
+                f'exh={exhaust_score:.2f}  decay={decay_score:.3f}  score={reg_score.total:.0f}'
                 + (f'  1h={h1_regime}' if h1_regime else '')
             )
 
@@ -913,11 +946,11 @@ def run(url: str, paper_mode: bool) -> None:
                         close_reason = f'1h flipped to {h1_regime} (X7)'
                         exit_code = 'X7'
 
-                # X8 — consensus collapsed
+                # X8 — consensus collapsed (checked against entry regime, not current)
                 if not close_reason:
-                    cons, cons_total = consensus_score(cfg['pairs'], all_regimes, entry_r)
-                    if cons_total > 1 and cons < cfg.get('consensus_min', 2):
-                        close_reason = f'Consensus collapsed {cons}/{cons_total} (X8)'
+                    cons_x8, cons_x8_total = consensus_score(cfg['pairs'], all_regimes, entry_r)
+                    if cons_x8_total > 1 and cons_x8 < cfg.get('consensus_min', 2):
+                        close_reason = f'Consensus collapsed {cons_x8}/{cons_x8_total} (X8)'
                         exit_code = 'X8'
 
                 # X9 — VIX backwardation
@@ -925,6 +958,24 @@ def run(url: str, paper_mode: bool) -> None:
                     if macro.vix.is_backwardation:
                         close_reason = f'VIX backwardation (X9)'
                         exit_code = 'X9'
+
+                # X11 — score below hold threshold for N consecutive polls
+                if not close_reason:
+                    s_bars = cfg.get('score_drop_bars', 2)
+                    if score_low_bars[pair] >= s_bars:
+                        close_reason = (
+                            f'Score {reg_score.total:.0f} < {cfg.get("hold_score_min", 40.0):.0f} '
+                            f'× {score_low_bars[pair]} bars (X11)'
+                        )
+                        exit_code = 'X11'
+
+                # X12 — score dropped sharply from entry level in one poll period
+                if not close_reason:
+                    entry_s  = entry_scores.get(pair, reg_score.total)
+                    s_drop   = entry_s - reg_score.total
+                    if s_drop >= cfg.get('score_drop_exit', 30.0):
+                        close_reason = f'Score −{s_drop:.0f}pts from entry {entry_s:.0f} (X12)'
+                        exit_code = 'X12'
 
                 # Decay exit
                 if not close_reason and decay_score >= cfg.get('decay_exit', 0.70):
@@ -948,7 +999,10 @@ def run(url: str, paper_mode: bool) -> None:
                             paper_mode=paper_mode,
                         )
                         send_telegram(tg['token'], tg['chat_id'], msg)
-                        del open_pos[pair]; entry_regime.pop(pair, None)
+                        del open_pos[pair]
+                        entry_regime.pop(pair, None)
+                        entry_scores.pop(pair, None)
+                        score_low_bars[pair] = 0
                         risk_guard.record_trade(pair)
                         range_exit_ctr[pair] = 0
                         pairs_status[pair] = {
@@ -958,25 +1012,28 @@ def run(url: str, paper_mode: bool) -> None:
                         continue
 
                 pairs_status[pair] = {
-                    'status':      'open',
-                    'direction':   pos['direction'],
-                    'entry':       pos['entry_price'],
-                    'sl':          pos['sl'],
-                    'ticket':      pos['ticket'],
-                    'pnl_pips':    pnl_pips,
-                    'regime':      regime,
-                    'conf':        round(confidence, 1),
-                    'slope':       round(conf_slope, 2),
-                    'vol_z':       round(vol_z, 3),
-                    'bocpd':       round(bocpd_prob, 1),
-                    'exhaustion':  round(exhaust_score, 3),
-                    'h1_regime':   h1_regime,
-                    'session':     session_lbl,
-                    'regime_mins': round(regime_secs / 60, 1),
+                    'status':        'open',
+                    'direction':     pos['direction'],
+                    'entry':         pos['entry_price'],
+                    'sl':            pos['sl'],
+                    'ticket':        pos['ticket'],
+                    'pnl_pips':      pnl_pips,
+                    'regime':        regime,
+                    'conf':          round(confidence, 1),
+                    'slope':         round(conf_slope, 2),
+                    'vol_z':         round(vol_z, 3),
+                    'bocpd':         round(bocpd_prob, 1),
+                    'exhaustion':    round(exhaust_score, 3),
+                    'h1_regime':     h1_regime,
+                    'session':       session_lbl,
+                    'regime_mins':   round(regime_secs / 60, 1),
                     'momentum_mins': round(momentum_secs / 60, 1),
-                    'dur_secs':    round(dur_secs, 0),
-                    'decay':       round(decay_score, 3),
-                    'run_length':  run_length,
+                    'dur_secs':      round(dur_secs, 0),
+                    'decay':         round(decay_score, 3),
+                    'run_length':    run_length,
+                    'reg_score':     reg_score.to_dict(),
+                    'entry_score':   entry_scores.get(pair, reg_score.total),
+                    'score_low_bars':score_low_bars[pair],
                 }
 
                 # Heartbeat
@@ -993,6 +1050,7 @@ def run(url: str, paper_mode: bool) -> None:
                         bocpd_prob=bocpd_prob, exhaustion_score=exhaust_score,
                         consensus=cons, consensus_total=cons_total,
                         macro=macro.snapshot(pair), session_label=session_lbl,
+                        reg_score=reg_score.to_dict(),
                     )
                     send_telegram(tg['token'], tg['chat_id'], msg)
                     last_heartbeat[pair] = now_t
@@ -1019,12 +1077,12 @@ def run(url: str, paper_mode: bool) -> None:
                     'conf': round(confidence, 1), 'vol_z': round(vol_z, 3),
                     'slope': round(conf_slope, 2),
                     'regime_mins': round(regime_secs / 60, 1),
+                    'reg_score': reg_score.to_dict(),
                 }
                 continue
 
             # ── Gate checks ───────────────────────────────────────────────
-            sess_mult = macro.session_multiplier(session_lbl)
-            eff_conf  = confidence * sess_mult
+            # sess_mult / eff_conf / cons / cons_total already computed above
 
             gate_fail: Optional[str] = None
 
@@ -1050,8 +1108,7 @@ def run(url: str, paper_mode: bool) -> None:
                 if h1_regime == opp.get(regime, ''):
                     gate_fail = f'1h opposed ({h1_regime}) (E7)'
 
-            # Cross-pair consensus
-            cons, cons_total = consensus_score(cfg['pairs'], all_regimes, regime)
+            # Cross-pair consensus (cons/cons_total computed above for current regime)
             if not gate_fail and cons_total > 1 and cons < cfg.get('consensus_min', 2):
                 gate_fail = f'consensus {cons}/{cons_total} < {cfg["consensus_min"]} (E8)'
 
@@ -1065,6 +1122,10 @@ def run(url: str, paper_mode: bool) -> None:
             if not gate_fail and macro.fomc.is_window(cfg.get('fomc_window_hours', 48.0)):
                 gate_fail = f'FOMC window (E9)'
 
+            # Composite score gate
+            if not gate_fail and not reg_score.entry_allowed:
+                gate_fail = f'Score {reg_score.total:.0f} < {cfg.get("entry_score_min", 55.0):.0f} (Escore)'
+
             if gate_fail:
                 log.info(f'[{pair}] Gate: {gate_fail}')
                 pairs_status[pair] = {
@@ -1073,6 +1134,7 @@ def run(url: str, paper_mode: bool) -> None:
                     'slope': round(conf_slope, 2), 'vol_z': round(vol_z, 3),
                     'bocpd': round(bocpd_prob, 1),
                     'regime_mins': round(regime_secs / 60, 1),
+                    'reg_score': reg_score.to_dict(),
                 }
                 continue
 
@@ -1084,6 +1146,7 @@ def run(url: str, paper_mode: bool) -> None:
                     'conf': round(confidence, 1), 'slope': round(conf_slope, 2),
                     'vol_z': round(vol_z, 3),
                     'regime_mins': round(regime_secs / 60, 1),
+                    'reg_score': reg_score.to_dict(),
                 }
                 continue
 
@@ -1099,6 +1162,8 @@ def run(url: str, paper_mode: bool) -> None:
             sl_dist = (atr * cfg['sl_atr_mult']) if atr else (20 * pip)
             sl      = (price - sl_dist) if direction == 'LONG' else (price + sl_dist)
             size    = position_size(balance, cfg['risk_pct'], sl_dist, pair, cfg['max_lot'], decay_score)
+            # Scale lots by composite score: 50% at entry_score_min, 100% at score=100
+            size    = max(0.01, round(size * reg_score.size_pct / 100.0, 2))
 
             ticket = open_position(pair, direction, sl, 0, size, cfg['max_spread_pips'], paper_mode)
 
@@ -1110,7 +1175,9 @@ def run(url: str, paper_mode: bool) -> None:
                     'sl':          sl,
                     'opened_at':   time.time(),
                 }
-                entry_regime[pair] = confirmed
+                entry_regime[pair]   = confirmed
+                entry_scores[pair]   = reg_score.total
+                score_low_bars[pair] = 0
                 risk_guard.record_trade(pair)
 
                 # Telegram entry alert
@@ -1120,13 +1187,14 @@ def run(url: str, paper_mode: bool) -> None:
                     lots=size, paper_mode=paper_mode,
                     consensus=cons, consensus_total=cons_total,
                     h1_regime=h1_regime, vol_z=vol_z,
+                    reg_score=reg_score.to_dict(),
                 )
                 send_telegram(tg['token'], tg['chat_id'], msg)
 
                 log.info(
-                    f'[{pair}] ENTRY {direction}  conf={confidence:.0f}%  '
-                    f'consensus={cons}/{cons_total}  bocpd={bocpd_prob:.1f}%  '
-                    f'lots={size}  SL={sl:.5f}'
+                    f'[{pair}] ENTRY {direction}  conf={confidence:.0f}%  score={reg_score.total:.0f}  '
+                    f'size_pct={reg_score.size_pct:.0f}%  consensus={cons}/{cons_total}  '
+                    f'bocpd={bocpd_prob:.1f}%  lots={size}  SL={sl:.5f}'
                 )
 
                 pairs_status[pair] = {
@@ -1137,6 +1205,8 @@ def run(url: str, paper_mode: bool) -> None:
                     'regime':    confirmed,
                     'conf':      round(confidence, 1),
                     'slope':     round(conf_slope, 2),
+                    'reg_score': reg_score.to_dict(),
+                    'entry_score': reg_score.total,
                 }
             else:
                 pairs_status[pair] = {'status': 'entry_failed', 'regime': regime}

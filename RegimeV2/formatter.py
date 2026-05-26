@@ -266,6 +266,7 @@ def heartbeat_message(
     consensus_total: int = 0,
     macro: Optional[dict] = None,
     session_label: str = 'CALM',
+    reg_score: Optional[dict] = None,
 ) -> str:
     macro = macro or {}
     emoji = _emoji(regime)
@@ -273,8 +274,11 @@ def heartbeat_message(
     vix_stress = macro.get('vix_ratio', 1.0) < 0.95
     news_event = macro.get('next_news_name')
 
+    score_total = reg_score.get('score') if reg_score else None
+    score_tag   = f'  score={score_total:.0f}' if score_total is not None else ''
+
     lines = [
-        f'{emoji} <b>{pair_disp} — {_label(regime)}  ({confidence:.1f}%)</b>',
+        f'{emoji} <b>{pair_disp} — {_label(regime)}  ({confidence:.1f}%{score_tag})</b>',
         f'  {_label(regime)} active for : {_fmt_mins(regime_secs)}',
     ]
 
@@ -324,6 +328,13 @@ def heartbeat_message(
     if vol_coherence:
         lines.append(f'  Vol coherence   : ⚠️ all FX vols elevated — systemic')
 
+    # Composite score breakdown
+    if reg_score and reg_score.get('components'):
+        comps = reg_score['components']
+        parts = [f"{v['label']} {v['score']:.0f}" for v in comps.values()]
+        sep = '  '
+        lines.append(f'  Score breakdown : {sep.join(parts)}')
+
     lines.append('')
 
     commentary = _commentary(
@@ -347,6 +358,7 @@ def entry_alert(
     consensus: int = 0, consensus_total: int = 0,
     h1_regime: Optional[str] = None,
     vol_z: float = 0.0,
+    reg_score: Optional[dict] = None,
 ) -> str:
     emoji = '🟢' if direction == 'LONG' else '🔴'
     pair_disp = pair.replace('/', '')
@@ -356,6 +368,13 @@ def entry_alert(
     consensus_str = f'  Consensus : {consensus}/{consensus_total}\n' if consensus_total > 1 else ''
     h1_str = f'  1h regime : {_label(h1_regime)}\n' if h1_regime else ''
 
+    score_str = ''
+    if reg_score:
+        score_str = (
+            f'  Score     : {reg_score.get("score", 0):.0f}/100  '
+            f'(size {reg_score.get("size_pct", 100):.0f}%)\n'
+        )
+
     return (
         f'{emoji} <b>[V2] {pair_disp} — {direction}{paper_tag}</b>\n'
         f'  Regime    : {_label(regime)} ({confidence:.1f}%)\n'
@@ -363,9 +382,10 @@ def entry_alert(
         f'  SL        : {_fmt_price(sl, pair)}  ({sl_pips:.1f}p)\n'
         f'  Lots      : {lots:.2f}\n'
         f'  Vol z     : {vol_z:+.2f}σ\n'
+        f'{score_str}'
         f'{consensus_str}'
         f'{h1_str}'
-        f'  <i>Exit: regime shift / confidence collapse / SL</i>'
+        f'  <i>Exit: regime shift / confidence collapse / score exit / SL</i>'
     )
 
 

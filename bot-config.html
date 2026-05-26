@@ -1235,12 +1235,13 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
               <th style="padding:6px 10px;text-align:right">Vol z</th>
               <th style="padding:6px 10px;text-align:right">Active</th>
               <th style="padding:6px 10px;text-align:right">BOCPD</th>
+              <th style="padding:6px 10px;text-align:right" title="Composite regime score (0–100). Gate=55, Hold=40.">Score</th>
               <th style="padding:6px 10px;text-align:left">Position / Status</th>
               <th style="padding:6px 10px;text-align:left">1h HTF</th>
             </tr>
           </thead>
           <tbody id="rgv2StatusBody">
-            <tr><td colspan="9" style="padding:16px;text-align:center;color:var(--text3)">Waiting for bot status…</td></tr>
+            <tr><td colspan="10" style="padding:16px;text-align:center;color:var(--text3)">Waiting for bot status…</td></tr>
           </tbody>
         </table>
       </div>
@@ -1380,6 +1381,25 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         <div class="form-row">
           <span class="form-lbl">Decay exit score <small>close position above</small></span>
           <input type="number" id="rgv2_decay_exit" min="0.3" max="1" step="0.05" style="width:70px">
+        </div>
+        <div class="form-row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
+          <span class="form-lbl" style="font-weight:600;color:var(--purple)">Composite Score exits</span>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Entry score min <small>X: gate entries below this (0–100)</small></span>
+          <input type="number" id="rgv2_entry_score_min" min="0" max="100" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Hold score min <small>X11: exit if score below for N bars</small></span>
+          <input type="number" id="rgv2_hold_score_min" min="0" max="80" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Score drop bars <small>X11: bars below hold min before exit</small></span>
+          <input type="number" id="rgv2_score_drop_bars" min="1" max="10" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Score drop exit <small>X12: immediate exit if score falls this many pts from entry</small></span>
+          <input type="number" id="rgv2_score_drop_exit" min="5" max="60" step="1" style="width:70px">
         </div>
       </div>
 

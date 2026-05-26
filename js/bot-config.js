@@ -1005,6 +1005,10 @@ const RGV2_DEFAULTS = {
   use_news:           true,
   fomc_window_hours:  48.0,
   bocpd_run_length:   150,
+  entry_score_min:    55.0,
+  hold_score_min:     40.0,
+  score_drop_exit:    30.0,
+  score_drop_bars:    2,
   trade_window_start: '07:00',
   trade_window_end:   '20:00',
   tg_token:           '',
@@ -1049,6 +1053,10 @@ function readRgV2Form() {
   _rgv2Cfg.cooldown           = num('rgv2_cooldown',           240);
   _rgv2Cfg.heartbeat_min      = num('rgv2_heartbeat_min',      120);
   _rgv2Cfg.bocpd_run_length   = num('rgv2_bocpd_run_length',   150);
+  _rgv2Cfg.entry_score_min    = num('rgv2_entry_score_min',   55.0);
+  _rgv2Cfg.hold_score_min     = num('rgv2_hold_score_min',    40.0);
+  _rgv2Cfg.score_drop_exit    = num('rgv2_score_drop_exit',   30.0);
+  _rgv2Cfg.score_drop_bars    = num('rgv2_score_drop_bars',     2);
   _rgv2Cfg.use_1h             = chk('rgv2_use_1h');
   _rgv2Cfg.use_bocpd          = chk('rgv2_use_bocpd');
   _rgv2Cfg.use_vix            = chk('rgv2_use_vix');
@@ -1083,6 +1091,10 @@ function renderRgV2Form() {
   setVal('rgv2_cooldown',         _rgv2Cfg.cooldown         ?? 240);
   setVal('rgv2_heartbeat_min',    _rgv2Cfg.heartbeat_min    ?? 120);
   setVal('rgv2_bocpd_run_length', _rgv2Cfg.bocpd_run_length ?? 150);
+  setVal('rgv2_entry_score_min',  _rgv2Cfg.entry_score_min  ?? 55.0);
+  setVal('rgv2_hold_score_min',   _rgv2Cfg.hold_score_min   ?? 40.0);
+  setVal('rgv2_score_drop_exit',  _rgv2Cfg.score_drop_exit  ?? 30.0);
+  setVal('rgv2_score_drop_bars',  _rgv2Cfg.score_drop_bars  ?? 2);
   setChk('rgv2_use_1h',           _rgv2Cfg.use_1h           ?? true);
   setChk('rgv2_use_bocpd',        _rgv2Cfg.use_bocpd        ?? true);
   setChk('rgv2_use_vix',          _rgv2Cfg.use_vix          ?? true);
@@ -1182,7 +1194,7 @@ async function loadRgV2Status() {
     if (!tbody) return;
     const pairs = data.pairs || {};
     if (!Object.keys(pairs).length) {
-      tbody.innerHTML = '<tr><td colspan="9" style="padding:16px;text-align:center;color:var(--text3)">No pair data yet</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:var(--text3)">No pair data yet</td></tr>';
       return;
     }
 
@@ -1193,6 +1205,16 @@ async function loadRgV2Status() {
       const volStr     = p.vol_z != null ? (p.vol_z >= 0 ? `+${p.vol_z.toFixed(2)}` : p.vol_z.toFixed(2)) : '—';
       const activeMins = p.regime_mins != null ? Math.round(p.regime_mins) + 'm' : '—';
       const bocpdStr   = p.bocpd != null ? p.bocpd.toFixed(1) + '%' : '—';
+
+      // Score cell
+      const rs = p.reg_score;
+      let scoreCell = '<span style="color:var(--text3)">—</span>';
+      if (rs && rs.score != null) {
+        const s = rs.score;
+        const scoreColor = s >= 70 ? '#2ecc71' : s >= 55 ? '#f1c40f' : s >= 40 ? '#f39c12' : '#e74c3c';
+        const tip = rs.size_pct != null ? `title="Size ${rs.size_pct.toFixed(0)}% of target"` : '';
+        scoreCell = `<span ${tip} style="color:${scoreColor};font-weight:600">${s.toFixed(0)}</span>`;
+      }
 
       let posCell = '<span style="color:var(--text3)">flat</span>';
       if (p.status === 'open') {
@@ -1215,7 +1237,24 @@ async function loadRgV2Status() {
         ? `<span style="color:${_rgv2RegimeColor(p.h1_regime)}">${p.h1_regime}</span>`
         : '<span style="color:var(--text3)">—</span>';
 
-      return `<tr style="border-bottom:1px solid var(--bd)">
+      // Score component breakdown row (shown when reg_score.components available)
+      let breakdownRow = '';
+      if (rs && rs.components && Object.keys(rs.components).length) {
+        const chips = Object.values(rs.components).map(c => {
+          const cs = c.score;
+          const cc = cs >= 70 ? '#2ecc71' : cs >= 40 ? '#f39c12' : '#e74c3c';
+          return `<span title="${c.label}: score ${cs.toFixed(0)}, raw ${c.raw}${c.unit}" `
+               + `style="display:inline-block;padding:1px 6px;margin:1px 2px;border-radius:3px;`
+               + `background:${cc}22;color:${cc};font-size:10px;white-space:nowrap">`
+               + `${c.label} ${cs.toFixed(0)}</span>`;
+        }).join('');
+        const entryS = p.entry_score != null ? ` <span style="color:var(--text3)">entry=${p.entry_score.toFixed(0)}</span>` : '';
+        breakdownRow = `<tr style="border-bottom:1px solid var(--bd);background:var(--s2)">
+          <td colspan="10" style="padding:2px 10px 5px 24px">${chips}${entryS}</td>
+        </tr>`;
+      }
+
+      return `<tr style="border-bottom:${breakdownRow ? 'none' : '1px solid var(--bd)'}">
         <td style="padding:7px 10px;font-weight:600">${sym.replace('/', '')}</td>
         <td style="padding:7px 10px;color:${regColor};font-weight:600">${p.regime || '—'}</td>
         <td style="padding:7px 10px;text-align:right">${confVal}</td>
@@ -1223,9 +1262,10 @@ async function loadRgV2Status() {
         <td style="padding:7px 10px;text-align:right">${volStr}σ</td>
         <td style="padding:7px 10px;text-align:right">${activeMins}</td>
         <td style="padding:7px 10px;text-align:right">${bocpdStr}</td>
+        <td style="padding:7px 10px;text-align:right">${scoreCell}</td>
         <td style="padding:7px 10px">${posCell}</td>
         <td style="padding:7px 10px">${h1Cell}</td>
-      </tr>`;
+      </tr>${breakdownRow}`;
     }).join('');
   } catch (e) { /* non-critical */ }
 }

@@ -230,6 +230,125 @@ class CBOEVolFetcher:
         return self._coherence
 
 
+# ── DXY — US Dollar Index ─────────────────────────────────────────────────────
+
+class DXYFetcher:
+    """
+    Fetches the US Dollar Index (DX-Y.NYB) via yfinance. Hourly refresh.
+
+    Provides the 5-day % change as a directional trend signal.
+    Positive = USD strengthening.  Negative = USD weakening.
+    Used by the composite score to detect DXY / pair-direction conflicts.
+    """
+
+    _REFRESH_SECS = 3600
+    _SYMBOL       = 'DX-Y.NYB'
+
+    def __init__(self):
+        self._level:    Optional[float] = None
+        self._trend_5d: float           = 0.0
+        self._fetched:  float           = 0.0
+
+    def refresh(self) -> None:
+        now = time.time()
+        if now - self._fetched < self._REFRESH_SECS:
+            return
+        try:
+            import yfinance as yf
+            data   = yf.download(self._SYMBOL, period='1mo', progress=False, auto_adjust=True)
+            closes = data['Close'].dropna()
+            if len(closes) < 6:
+                return
+            current        = float(closes.iloc[-1])
+            five_ago       = float(closes.iloc[-6])
+            self._level    = round(current, 3)
+            self._trend_5d = round((current - five_ago) / five_ago * 100, 3)
+            self._fetched  = now
+            log.info(f'[DXY] level={self._level}  5d={self._trend_5d:+.2f}%')
+        except ImportError:
+            self._fetched = now
+        except Exception as exc:
+            log.warning(f'[DXY] fetch failed: {exc}')
+
+    @property
+    def level(self) -> Optional[float]:
+        return self._level
+
+    @property
+    def trend_5d(self) -> float:
+        """5-day % change. Positive = USD strengthening."""
+        return self._trend_5d
+
+    @property
+    def is_rising(self) -> bool:
+        return self._trend_5d > 0.30
+
+    @property
+    def is_falling(self) -> bool:
+        return self._trend_5d < -0.30
+
+
+# ── Credit spread proxy — HYG ──────────────────────────────────────────────────
+
+class CreditFetcher:
+    """
+    Fetches HYG (iShares iBoxx $ High Yield Corporate Bond ETF) via yfinance.
+    Hourly refresh.
+
+    A falling HYG = widening credit spreads = risk-off.
+    The 5-day return is used as a credit health proxy:
+      > 0%  = stable / risk-on
+      < -1% = stress building
+      < -2% = significant stress — pulls composite score down sharply
+
+    Credit spreads often widen BEFORE equity vol (VIX) spikes, so this
+    provides an earlier risk-off warning than VIX alone.
+    """
+
+    _REFRESH_SECS = 3600
+    _SYMBOL       = 'HYG'
+
+    def __init__(self):
+        self._level:  Optional[float] = None
+        self._ret_5d: float           = 0.0
+        self._fetched: float          = 0.0
+
+    def refresh(self) -> None:
+        now = time.time()
+        if now - self._fetched < self._REFRESH_SECS:
+            return
+        try:
+            import yfinance as yf
+            data   = yf.download(self._SYMBOL, period='1mo', progress=False, auto_adjust=True)
+            closes = data['Close'].dropna()
+            if len(closes) < 6:
+                return
+            current       = float(closes.iloc[-1])
+            five_ago      = float(closes.iloc[-6])
+            self._level   = round(current, 2)
+            self._ret_5d  = round((current - five_ago) / five_ago * 100, 3)
+            self._fetched = now
+            log.info(f'[HYG] level={self._level}  5d={self._ret_5d:+.2f}%')
+        except ImportError:
+            self._fetched = now
+        except Exception as exc:
+            log.warning(f'[HYG] fetch failed: {exc}')
+
+    @property
+    def level(self) -> Optional[float]:
+        return self._level
+
+    @property
+    def ret_5d(self) -> float:
+        """5-day % return. Positive = credit stable / risk-on."""
+        return self._ret_5d
+
+    @property
+    def is_stressed(self) -> bool:
+        """True when HYG has fallen more than 1% over 5 days."""
+        return self._ret_5d < -1.0
+
+
 # ── FOMC calendar ─────────────────────────────────────────────────────────────
 
 class FOMCCalendar:
@@ -382,6 +501,8 @@ class MacroOverlay:
                  vix_backwardation_threshold: float = 0.95):
         self.vix         = VIXFetcher()
         self.cboe_vol    = CBOEVolFetcher()
+        self.dxy         = DXYFetcher()
+        self.credit      = CreditFetcher()
         self.fomc        = FOMCCalendar()
         self.news        = NewsFetcher()
         self._fomc_win   = fomc_window_hours
@@ -390,6 +511,8 @@ class MacroOverlay:
     def refresh(self) -> None:
         self.vix.refresh()
         self.cboe_vol.refresh()
+        self.dxy.refresh()
+        self.credit.refresh()
         self.news.refresh()
 
     def session_multiplier(self, session_label: str = '') -> float:
@@ -424,6 +547,17 @@ class MacroOverlay:
 
         return False, ''
 
+    def score_inputs(self, pair: str) -> dict:
+        """
+        Raw inputs needed by compute_regime_score() for this pair.
+        Pulled separately so the bot can call without rebuilding snapshot().
+        """
+        return {
+            'pair_vol_pct':  self.cboe_vol.pair_vol_pct(pair),
+            'dxy_trend_pct': self.dxy.trend_5d,
+            'credit_5d_ret': self.credit.ret_5d,
+        }
+
     def snapshot(self, pair: str = '') -> dict:
         """
         Returns a plain dict with all macro context fields.
@@ -450,6 +584,15 @@ class MacroOverlay:
             'vol_extreme':     self.cboe_vol.is_extreme(pair)     if pair else False,
             'vol_elevated':    self.cboe_vol.is_elevated(pair)    if pair else False,
             'vol_coherence':   self.cboe_vol.coherence,
+            # DXY
+            'dxy_level':       self.dxy.level,
+            'dxy_trend_5d':    self.dxy.trend_5d,
+            'dxy_rising':      self.dxy.is_rising,
+            'dxy_falling':     self.dxy.is_falling,
+            # Credit (HYG)
+            'hyg_level':       self.credit.level,
+            'hyg_5d_ret':      self.credit.ret_5d,
+            'credit_stressed': self.credit.is_stressed,
         }
 
     def label(self) -> str:
@@ -463,4 +606,9 @@ class MacroOverlay:
             parts.append(f'FOMC<{self._fomc_win:.0f}h')
         if self.cboe_vol.coherence:
             parts.append('vol-coherent')
+        if self.dxy.level:
+            arrow = '↑' if self.dxy.is_rising else ('↓' if self.dxy.is_falling else '→')
+            parts.append(f'DXY={self.dxy.level:.1f}{arrow}')
+        if self.credit.is_stressed:
+            parts.append(f'HYG{self.credit.ret_5d:+.1f}%⚠')
         return '  '.join(parts) if parts else 'macro:ok'

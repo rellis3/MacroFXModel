@@ -390,6 +390,7 @@ export default {
         const oandaUrl = `${oandaBase}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${granularity}&count=${count}&price=M`;
         const res = await fetch(oandaUrl, {
           headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` },
+          signal: AbortSignal.timeout(12_000),
         });
 
         if (!res.ok) {
