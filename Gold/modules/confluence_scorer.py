@@ -144,14 +144,15 @@ def score_zones(zones: list[FibZone], vol: VolumeProfile,
                     break   # one trendline credit per zone
 
         # ── Session / daily levels ────────────────────────────────────────────
-        if session.daily_open and _near(c, session.daily_open):
+        tol_pd = PROXIMITY_PIPS * 1.5
+        if session.daily_open and _near(c, session.daily_open, tol_pd):
             score += WEIGHTS['daily_open']; comp.append('Daily open')
-        if _near(c, session.prev_daily_high) or _near(c, session.prev_daily_low):
+        if _near(c, session.prev_daily_high, tol_pd) or _near(c, session.prev_daily_low, tol_pd):
             score += WEIGHTS['prev_day_hl']; comp.append('Prev day H/L')
         for lvl in (session.asia_high, session.asia_low,
                     session.london_high, session.london_low,
                     session.ny_high, session.ny_low):
-            if lvl and _near(c, lvl):
+            if lvl and _near(c, lvl, tol_pd):
                 score += WEIGHTS['session_hl']; comp.append('Session H/L'); break
         for pvt in (session.pivot, session.r1, session.r2, session.s1, session.s2):
             if _near(c, pvt, PROXIMITY_PIPS * 1.5):

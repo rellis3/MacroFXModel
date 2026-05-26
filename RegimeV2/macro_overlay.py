@@ -256,7 +256,7 @@ class DXYFetcher:
         try:
             import yfinance as yf
             data   = yf.download(self._SYMBOL, period='1mo', progress=False, auto_adjust=True)
-            closes = data['Close'].dropna()
+            closes = data['Close'].squeeze().dropna()
             if len(closes) < 6:
                 return
             current        = float(closes.iloc[-1])
@@ -320,7 +320,7 @@ class CreditFetcher:
         try:
             import yfinance as yf
             data   = yf.download(self._SYMBOL, period='1mo', progress=False, auto_adjust=True)
-            closes = data['Close'].dropna()
+            closes = data['Close'].squeeze().dropna()
             if len(closes) < 6:
                 return
             current       = float(closes.iloc[-1])

@@ -1,0 +1,219 @@
+[2026-05-26 08:27:18] [RGV2] [INFO] PAPER MODE — no real orders will be placed
+[2026-05-26 08:27:18] [RGV2] [INFO] RegimeV2 starting  paper=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-05-26 08:27:23] [RGV2] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY']  hold=2  entry_conf=70.0%  interval=30s  use_bocpd=True  use_1h=True  use_vix=True
+[2026-05-26 08:27:35] [RGV2] [ERROR] 
+1 Failed download:
+[2026-05-26 08:27:35] [RGV2] [ERROR] ['^VIX3M']: OperationalError('database is locked')
+[2026-05-26 08:27:35] [RGV2] [WARNING] [VIX] fetch failed: single positional indexer is out-of-bounds
+[2026-05-26 08:27:35] [RGV2] [ERROR] $^BPVIX: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:27:35] [RGV2] [ERROR] $^EUVIX: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:27:35] [RGV2] [ERROR] $^JYVIX: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:27:35] [RGV2] [ERROR] 
+3 Failed downloads:
+[2026-05-26 08:27:35] [RGV2] [ERROR] ['^BPVIX', '^EUVIX', '^JYVIX']: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:27:35] [RGV2] [INFO] [CVOL] ^GVZ=23.9(53%ile)  coherence=False
+[2026-05-26 08:27:35] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:27:35] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:27:38] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 08:27:42] [RGV2] [INFO] [EUR/USD] reg=BEAR  conf=97%  slope=+0.0  vz=+1.59  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=78  1h=BULL
+[2026-05-26 08:27:42] [RGV2] [INFO] [EUR/USD] Gate: 1h opposed (BULL) (E7)
+[2026-05-26 08:27:42] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+2.05  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=80  1h=BEAR
+[2026-05-26 08:27:42] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.23  rl=1  bocpd=0.0%  exh=0.00  decay=0.000  score=81  1h=BEAR
+[2026-05-26 08:27:42] [RGV2] [INFO] [USD/JPY] Gate: 1h opposed (BEAR) (E7)
+[2026-05-26 08:27:54] [RGV2] [INFO] [VIX] spot=16.59  3m=20.03  ratio=1.2074
+[2026-05-26 08:27:54] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:27:54] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:27:58] [RGV2] [INFO] [EUR/USD] reg=BEAR  conf=97%  slope=+0.0  vz=+1.59  rl=2  bocpd=98.4%  exh=0.00  decay=0.000  score=59  1h=BULL
+[2026-05-26 08:27:58] [RGV2] [INFO] [EUR/USD] Gate: conf not rising (97%→97%)
+[2026-05-26 08:27:58] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+2.05  rl=2  bocpd=98.8%  exh=0.00  decay=0.000  score=60  1h=BEAR
+[2026-05-26 08:27:58] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.23  rl=2  bocpd=99.0%  exh=0.00  decay=0.000  score=61  1h=BEAR
+[2026-05-26 08:27:58] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:28:24] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:28:24] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:28:26] [RGV2] [INFO] [EUR/USD] reg=BEAR  conf=93%  slope=-2.2  vz=+1.53  rl=3  bocpd=96.0%  exh=0.00  decay=0.293  score=55  1h=BULL
+[2026-05-26 08:28:26] [RGV2] [INFO] [EUR/USD] Gate: conf not rising (97%→93%)
+[2026-05-26 08:28:26] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.99  rl=3  bocpd=98.5%  exh=0.00  decay=0.000  score=60  1h=BEAR
+[2026-05-26 08:28:26] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.23  rl=3  bocpd=98.8%  exh=0.00  decay=0.000  score=62  1h=BEAR
+[2026-05-26 08:28:26] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:28:55] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:28:55] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:28:58] [RGV2] [INFO] [EUR/USD] reg=BEAR  conf=93%  slope=-1.8  vz=+1.53  rl=4  bocpd=95.1%  exh=0.06  decay=0.235  score=55  1h=BULL
+[2026-05-26 08:28:58] [RGV2] [INFO] [EUR/USD] Gate: conf not rising (93%→93%)
+[2026-05-26 08:28:58] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.99  rl=4  bocpd=98.4%  exh=0.05  decay=0.000  score=60  1h=BEAR
+[2026-05-26 08:28:58] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.23  rl=4  bocpd=98.7%  exh=0.00  decay=0.000  score=62  1h=BEAR
+[2026-05-26 08:28:58] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:29:25] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:29:25] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:29:28] [RGV2] [INFO] [EUR/USD] reg=BEAR  conf=91%  slope=-1.7  vz=+1.43  rl=5  bocpd=92.5%  exh=0.12  decay=0.221  score=54  1h=BULL
+[2026-05-26 08:29:28] [RGV2] [INFO] [EUR/USD] Gate: conf not rising (93%→91%)
+[2026-05-26 08:29:28] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.90  rl=5  bocpd=98.2%  exh=0.10  decay=0.000  score=60  1h=BEAR
+[2026-05-26 08:29:28] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.17  rl=5  bocpd=98.6%  exh=0.05  decay=0.000  score=62  1h=BEAR
+[2026-05-26 08:29:28] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:29:54] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:29:54] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:29:57] [RGV2] [INFO] [EUR/USD] reg=BEAR  conf=91%  slope=-1.4  vz=+1.43  rl=6  bocpd=89.8%  exh=0.11  decay=0.186  score=54  1h=BULL
+[2026-05-26 08:29:57] [RGV2] [INFO] [EUR/USD] Gate: conf not rising (91%→91%)
+[2026-05-26 08:29:57] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.90  rl=6  bocpd=97.9%  exh=0.09  decay=0.000  score=60  1h=BEAR
+[2026-05-26 08:29:57] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.17  rl=6  bocpd=98.4%  exh=0.06  decay=0.000  score=62  1h=BEAR
+[2026-05-26 08:29:57] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:30:24] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:30:24] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:30:26] [RGV2] [INFO] [EUR/USD] reg=BEAR  conf=91%  slope=-1.2  vz=+1.43  rl=7  bocpd=85.0%  exh=0.10  decay=0.153  score=55  1h=BULL
+[2026-05-26 08:30:26] [RGV2] [INFO] [EUR/USD] Gate: conf not rising (91%→91%)
+[2026-05-26 08:30:26] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+1.86  rl=7  bocpd=97.2%  exh=0.11  decay=0.001  score=60  1h=BEAR
+[2026-05-26 08:30:26] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.07  rl=7  bocpd=98.0%  exh=0.14  decay=0.000  score=62  1h=BEAR
+[2026-05-26 08:30:26] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:30:55] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:30:56] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:31:00] [RGV2] [INFO] [EUR/USD] reg=BEAR  conf=84%  slope=-1.5  vz=+1.37  rl=8  bocpd=67.3%  exh=0.11  decay=0.201  score=52  1h=BULL
+[2026-05-26 08:31:00] [RGV2] [INFO] [EUR/USD] Gate: conf not rising (91%→84%)
+[2026-05-26 08:31:00] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+1.86  rl=8  bocpd=95.9%  exh=0.08  decay=0.002  score=61  1h=BEAR
+[2026-05-26 08:31:00] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.07  rl=8  bocpd=97.2%  exh=0.13  decay=0.000  score=62  1h=BEAR
+[2026-05-26 08:31:00] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:31:26] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:31:26] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:31:30] [RGV2] [INFO] [EUR/USD] reg=BEAR  conf=75%  slope=-2.2  vz=+1.58  rl=9  bocpd=43.6%  exh=0.00  decay=0.295  score=47  1h=BULL
+[2026-05-26 08:31:30] [RGV2] [INFO] [EUR/USD] Gate: conf 67.4% < 70.0% (sess×0.90)
+[2026-05-26 08:31:30] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+1.89  rl=9  bocpd=92.7%  exh=0.05  decay=0.002  score=61  1h=BEAR
+[2026-05-26 08:31:30] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.05  rl=9  bocpd=95.1%  exh=0.14  decay=0.000  score=62  1h=BEAR
+[2026-05-26 08:31:30] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:31:55] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:31:55] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:31:59] [RGV2] [INFO] [EUR/USD] reg=BEAR  conf=75%  slope=-2.4  vz=+1.58  rl=10  bocpd=34.8%  exh=0.00  decay=0.326  score=49  1h=BULL
+[2026-05-26 08:31:59] [RGV2] [INFO] [EUR/USD] Gate: conf 67.4% < 70.0% (sess×0.90)
+[2026-05-26 08:31:59] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+1.89  rl=10  bocpd=85.3%  exh=0.03  decay=0.002  score=63  1h=BEAR
+[2026-05-26 08:31:59] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.05  rl=10  bocpd=90.2%  exh=0.10  decay=0.000  score=63  1h=BEAR
+[2026-05-26 08:31:59] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:32:29] [RGV2] [INFO] [VIX] spot=16.93  3m=20.03  ratio=1.1831
+[2026-05-26 08:32:29] [RGV2] [ERROR] $^JYVIX: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:32:29] [RGV2] [ERROR] $^EUVIX: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:32:29] [RGV2] [ERROR] $^BPVIX: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:32:29] [RGV2] [ERROR] 
+3 Failed downloads:
+[2026-05-26 08:32:29] [RGV2] [ERROR] ['^JYVIX', '^EUVIX', '^BPVIX']: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:32:29] [RGV2] [INFO] [CVOL] ^GVZ=23.9(53%ile)  coherence=False
+[2026-05-26 08:32:29] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:32:29] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:32:30] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 08:32:34] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=58%  slope=-3.5  vz=+1.96  rl=1  bocpd=0.0%  exh=0.00  decay=0.900  score=51  1h=BULL
+[2026-05-26 08:32:34] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+2.26  rl=11  bocpd=71.8%  exh=0.00  decay=0.030  score=71  1h=BEAR
+[2026-05-26 08:32:34] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.07  rl=11  bocpd=79.7%  exh=0.08  decay=0.000  score=65  1h=BEAR
+[2026-05-26 08:32:34] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:32:54] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:32:54] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:32:56] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=58%  slope=-4.2  vz=+1.96  rl=2  bocpd=37.1%  exh=0.00  decay=0.900  score=44  1h=BULL
+[2026-05-26 08:32:56] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+2.26  rl=12  bocpd=54.7%  exh=0.00  decay=0.227  score=74  1h=BEAR
+[2026-05-26 08:32:56] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.07  rl=12  bocpd=63.2%  exh=0.05  decay=0.000  score=69  1h=BEAR
+[2026-05-26 08:32:56] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:33:24] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:33:24] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:33:27] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=92%  slope=-2.8  vz=+2.29  rl=3  bocpd=94.1%  exh=0.00  decay=0.900  score=60  1h=BULL
+[2026-05-26 08:33:27] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+2.53  rl=13  bocpd=41.6%  exh=0.00  decay=0.352  score=77  1h=BEAR
+[2026-05-26 08:33:27] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.48  rl=13  bocpd=47.0%  exh=0.00  decay=0.051  score=72  1h=BEAR
+[2026-05-26 08:33:27] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:33:54] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:33:55] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:33:58] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=92%  slope=-1.4  vz=+2.29  rl=4  bocpd=94.5%  exh=0.00  decay=0.900  score=60  1h=BULL
+[2026-05-26 08:33:58] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+2.53  rl=14  bocpd=34.8%  exh=0.00  decay=0.351  score=78  1h=BEAR
+[2026-05-26 08:33:58] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.48  rl=14  bocpd=37.2%  exh=0.00  decay=0.263  score=74  1h=BEAR
+[2026-05-26 08:33:58] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:34:24] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:34:24] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:34:26] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=92%  slope=-0.1  vz=+2.29  rl=5  bocpd=93.8%  exh=0.00  decay=0.900  score=60  1h=BULL
+[2026-05-26 08:34:26] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+2.62  rl=15  bocpd=31.6%  exh=0.00  decay=0.351  score=78  1h=BEAR
+[2026-05-26 08:34:26] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.48  rl=15  bocpd=32.7%  exh=0.00  decay=0.350  score=75  1h=BEAR
+[2026-05-26 08:34:26] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:34:54] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:34:54] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:34:57] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+1.6  vz=+2.47  rl=6  bocpd=97.1%  exh=0.00  decay=0.900  score=66  1h=BULL
+[2026-05-26 08:34:57] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+2.62  rl=16  bocpd=30.2%  exh=0.00  decay=0.351  score=79  1h=BEAR
+[2026-05-26 08:34:57] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.48  rl=16  bocpd=30.7%  exh=0.00  decay=0.350  score=75  1h=BEAR
+[2026-05-26 08:34:57] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:35:24] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:35:24] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:35:27] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+3.2  vz=+2.42  rl=7  bocpd=97.3%  exh=0.00  decay=0.900  score=67  1h=BULL
+[2026-05-26 08:35:27] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+2.55  rl=17  bocpd=29.5%  exh=0.02  decay=0.351  score=79  1h=BEAR
+[2026-05-26 08:35:27] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.57  rl=17  bocpd=29.7%  exh=0.00  decay=0.350  score=75  1h=BEAR
+[2026-05-26 08:35:27] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:35:55] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:35:55] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:35:58] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+4.3  vz=+2.42  rl=8  bocpd=96.9%  exh=0.01  decay=0.900  score=67  1h=BULL
+[2026-05-26 08:35:58] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+2.55  rl=18  bocpd=28.9%  exh=0.05  decay=0.351  score=79  1h=BEAR
+[2026-05-26 08:35:58] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.57  rl=18  bocpd=29.1%  exh=0.00  decay=0.350  score=75  1h=BEAR
+[2026-05-26 08:35:58] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:36:25] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:36:25] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:36:29] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+4.5  vz=+2.37  rl=9  bocpd=95.7%  exh=0.06  decay=0.900  score=67  1h=BULL
+[2026-05-26 08:36:29] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=-0.0  vz=+2.55  rl=19  bocpd=28.6%  exh=0.04  decay=0.350  score=79  1h=BEAR
+[2026-05-26 08:36:29] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.55  rl=19  bocpd=28.7%  exh=0.01  decay=0.350  score=76  1h=BEAR
+[2026-05-26 08:36:29] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:36:55] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:36:55] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:36:59] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+4.4  vz=+2.37  rl=10  bocpd=93.0%  exh=0.05  decay=0.350  score=68  1h=BULL
+[2026-05-26 08:36:59] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+2.42  rl=20  bocpd=28.2%  exh=0.10  decay=0.193  score=79  1h=BEAR
+[2026-05-26 08:36:59] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.55  rl=20  bocpd=28.3%  exh=0.02  decay=0.350  score=76  1h=BEAR
+[2026-05-26 08:36:59] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:37:00] [RGV2] [INFO] Cycle 20  balance=10000.00  macro=VIX=16.9  sleep=22.8s
+[2026-05-26 08:37:25] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:37:25] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:37:30] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+3.0  vz=+2.37  rl=11  bocpd=87.4%  exh=0.04  decay=0.265  score=69  1h=BULL
+[2026-05-26 08:37:30] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+2.33  rl=21  bocpd=28.0%  exh=0.17  decay=0.000  score=79  1h=BEAR
+[2026-05-26 08:37:30] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.51  rl=21  bocpd=28.1%  exh=0.05  decay=0.274  score=76  1h=BEAR
+[2026-05-26 08:37:30] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:38:00] [RGV2] [INFO] [VIX] spot=16.9  3m=20.03  ratio=1.1852
+[2026-05-26 08:38:00] [RGV2] [ERROR] $^EUVIX: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:38:00] [RGV2] [ERROR] $^BPVIX: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:38:00] [RGV2] [ERROR] $^JYVIX: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:38:00] [RGV2] [ERROR] 
+3 Failed downloads:
+[2026-05-26 08:38:00] [RGV2] [ERROR] ['^EUVIX', '^BPVIX', '^JYVIX']: possibly delisted; no price data found  (period=1y)
+[2026-05-26 08:38:00] [RGV2] [INFO] [CVOL] ^GVZ=23.9(53%ile)  coherence=False
+[2026-05-26 08:38:00] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:38:01] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:38:03] [RGV2] [INFO] [NEWS] Loaded 11 high-impact events this week
+[2026-05-26 08:38:07] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+1.0  vz=+2.37  rl=12  bocpd=77.1%  exh=0.02  decay=0.073  score=71  1h=BULL
+[2026-05-26 08:38:07] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+2.33  rl=22  bocpd=27.8%  exh=0.17  decay=0.000  score=80  1h=BEAR
+[2026-05-26 08:38:07] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.51  rl=22  bocpd=27.8%  exh=0.04  decay=0.055  score=76  1h=BEAR
+[2026-05-26 08:38:07] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:38:25] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:38:25] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:38:29] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.8  vz=+2.27  rl=13  bocpd=62.8%  exh=0.09  decay=0.000  score=74  1h=BULL
+[2026-05-26 08:38:29] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+2.28  rl=23  bocpd=27.6%  exh=0.13  decay=0.000  score=80  1h=BEAR
+[2026-05-26 08:38:29] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.45  rl=23  bocpd=27.6%  exh=0.09  decay=0.001  score=76  1h=BEAR
+[2026-05-26 08:38:29] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:38:55] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:38:55] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:38:59] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.4  vz=+2.27  rl=14  bocpd=49.1%  exh=0.09  decay=0.000  score=76  1h=BULL
+[2026-05-26 08:38:59] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+2.28  rl=24  bocpd=27.4%  exh=0.09  decay=0.000  score=80  1h=BEAR
+[2026-05-26 08:38:59] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.45  rl=24  bocpd=27.4%  exh=0.08  decay=0.000  score=76  1h=BEAR
+[2026-05-26 08:38:59] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:39:25] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:39:25] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:39:29] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.19  rl=15  bocpd=40.2%  exh=0.13  decay=0.000  score=78  1h=BULL
+[2026-05-26 08:39:29] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+2.15  rl=25  bocpd=27.2%  exh=0.17  decay=0.000  score=80  1h=BEAR
+[2026-05-26 08:39:29] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.32  rl=25  bocpd=27.3%  exh=0.17  decay=0.000  score=76  1h=BEAR
+[2026-05-26 08:39:29] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:39:55] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:39:55] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:40:00] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.19  rl=16  bocpd=35.4%  exh=0.09  decay=0.000  score=79  1h=BULL
+[2026-05-26 08:40:00] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+2.15  rl=26  bocpd=27.1%  exh=0.16  decay=0.000  score=80  1h=BEAR
+[2026-05-26 08:40:00] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=+0.0  vz=+1.32  rl=26  bocpd=27.1%  exh=0.16  decay=0.000  score=76  1h=BEAR
+[2026-05-26 08:40:00] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:40:24] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:40:25] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:40:28] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.08  rl=17  bocpd=33.0%  exh=0.15  decay=0.000  score=80  1h=BULL
+[2026-05-26 08:40:28] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+2.03  rl=27  bocpd=27.0%  exh=0.20  decay=0.000  score=80  1h=BEAR
+[2026-05-26 08:40:28] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=+1.18  rl=27  bocpd=27.0%  exh=0.25  decay=0.001  score=76  1h=BEAR
+[2026-05-26 08:40:28] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:40:54] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:40:55] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:40:58] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.08  rl=18  bocpd=31.6%  exh=0.13  decay=0.000  score=80  1h=BULL
+[2026-05-26 08:40:58] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+2.03  rl=28  bocpd=26.9%  exh=0.14  decay=0.000  score=80  1h=BEAR
+[2026-05-26 08:40:58] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=+1.18  rl=28  bocpd=26.8%  exh=0.21  decay=0.001  score=76  1h=BEAR
+[2026-05-26 08:40:58] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
+[2026-05-26 08:41:24] [RGV2] [WARNING] [DXY] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:41:24] [RGV2] [WARNING] [HYG] fetch failed: float() argument must be a string or a real number, not 'Series'
+[2026-05-26 08:41:27] [RGV2] [INFO] [EUR/USD] reg=CHOP  conf=100%  slope=+0.0  vz=+2.00  rl=19  bocpd=30.7%  exh=0.17  decay=0.000  score=80  1h=BULL
+[2026-05-26 08:41:27] [RGV2] [INFO] [GBP/USD] reg=CHOP  conf=99%  slope=+0.0  vz=+1.95  rl=29  bocpd=26.8%  exh=0.18  decay=0.000  score=80  1h=BEAR
+[2026-05-26 08:41:27] [RGV2] [INFO] [USD/JPY] reg=BULL  conf=100%  slope=-0.0  vz=+1.06  rl=29  bocpd=26.7%  exh=0.28  decay=0.002  score=76  1h=BEAR
+[2026-05-26 08:41:27] [RGV2] [INFO] [USD/JPY] Gate: conf not rising (100%→100%)
