@@ -27,6 +27,7 @@ Environment variables (copy bot/.env.example → bot/.env):
 """
 
 import argparse
+import json
 import logging
 import math
 import os
@@ -886,6 +887,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         # ── Slow path: refresh dashboard state ────────────────────────────────
         if tick_start - last_state_refresh >= state_interval or cached_state is None:
             try:
+                trigger_refresh(base_url)   # touch KV timestamps — keeps staleness gate clear
                 cached_state = fetch_state(base_url)
                 # events_today is now included in the /api/state response
                 last_state_refresh = tick_start
@@ -979,12 +981,15 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         try:
             check_staleness(snap)
         except StaleDataError as exc:
+            # Always attempt refresh when stale — don't throttle the call itself
+            ok, refreshed = trigger_refresh(base_url)
+            if ok:
+                last_state_refresh = 0  # force immediate re-fetch next tick
+            # Only log + push status at most once every 5 min to avoid spam
             if tick_start - last_stale_warn >= 5 * 60:
                 log.warning(f'STALE DATA: {exc}')
-                ok, refreshed = trigger_refresh(base_url)
                 if ok:
                     log.info(f'Server refresh triggered — touched {len(refreshed)} pairs {refreshed}  forcing state re-fetch')
-                    last_state_refresh = 0  # force immediate re-fetch next tick
                 else:
                     log.warning('Refresh request failed — dashboard may have no entry data yet; open it to push levels to KV')
                 push_bot_status({'loop_at': datetime.now(timezone.utc).isoformat(),

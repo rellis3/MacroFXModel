@@ -3,7 +3,7 @@ import requests
 from datetime import datetime, timezone
 
 DASHBOARD_URL = 'https://macrofxmodel-production.up.railway.app'
-STALE_THRESHOLD_S = 12 * 60  # 12 minutes — dashboard syncs KV every 5 min, bot refreshes every 2 min
+STALE_THRESHOLD_S = 60 * 60  # 60 minutes — bot proactively refreshes KV every state cycle
 
 
 class StaleDataError(Exception):
