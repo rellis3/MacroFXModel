@@ -288,7 +288,7 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
   const stars    = entry.grade ? `[${entry.grade}]` : '';
   const rrStr    = entry.rrRatio ? `R:R 1:${entry.rrRatio}` : '';
   const slStr    = entry.sl != null ? `SL ${entry.sl.toFixed(digits)}` : '';
-  const tpStr    = entry.tp != null ? `TP ${entry.tp.toFixed(digits)} (${entry.tpNote ?? ''})` : '';
+  const tpStr    = entry.tp != null ? `TP ${entry.tp.toFixed(digits)} (${entry.tpNote ? entry.tpNote + ' · ATR' : 'ATR'})` : '';
   const atStr    = distPips <= 0 ? 'AT LEVEL' : `${distPips}${unit} away`;
 
   // Top tags (first 4 to keep message short)
@@ -332,8 +332,10 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
   })();
 
   const hmm5m     = S.hmm5mRegimes?.[sym];
-  const hmm5mLine = hmm5m
-    ? `1m: <b>${hmm5m.regime} ${hmm5m.confidence}%</b> · Bull ${hmm5m.pBull}% · Bear ${hmm5m.pBear}% · Range ${hmm5m.pRange}%`
+  const isLong    = entry.direction === 'long';
+  const hmm5mLine = hmm5m && hmm5m.confidence >= 60 &&
+    ((isLong && hmm5m.regime === 'BEAR') || (!isLong && hmm5m.regime === 'BULL'))
+    ? `⚠ 1m: <b>${hmm5m.regime} ${hmm5m.confidence}%</b> — momentum opposing`
     : null;
 
   const lines = [

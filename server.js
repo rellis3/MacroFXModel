@@ -372,25 +372,27 @@ function formatAlert(sym, entry, price, distPips) {
 
   const sltp = [
     entry.sl != null ? `SL ${entry.sl.toFixed(digits)}` : null,
-    entry.tp != null ? `TP ${entry.tp.toFixed(digits)}${entry.tpNote ? ` (${entry.tpNote})` : ''}` : null,
+    entry.tp != null ? `TP ${entry.tp.toFixed(digits)}${entry.tpNote ? ` (${entry.tpNote} · ATR)` : ' (ATR)'}` : null,
   ].filter(Boolean).join(' · ');
   if (sltp) parts.push(sltp);
   if (entry.rrRatio) parts.push(`R:R 1:${entry.rrRatio}`);
 
-  const scorePart = entry.signalScore != null ? `Signal ${entry.signalScore}%` : null;
-  const hmmPart   = hmm
-    ? (hmm.regime === 'RANGE' ? `HMM Range ${Math.round(hmm.rangeProb * 100)}%` : `HMM Trend ${hmm.trendDir ?? ''} ${Math.round(hmm.trendProb * 100)}%`)
+  // Context line (C): readable sentence — replaces the raw signal/HMM dump
+  const regimeCtx = hmm
+    ? (hmm.regime === 'RANGE' ? 'Ranging' : `Trending ${hmm.trendDir ?? ''}`.trim())
     : null;
-  const swingPart = swing
-    ? (swing.regime === 'TREND' ? `30m BOS ${swing.dir ?? ''}` : `30m CHoCH`)
+  const swingCtx = swing
+    ? (swing.regime === 'TREND' ? `BOS ${swing.dir ?? ''}`.trim() + ' structure' : 'CHoCH structure')
     : null;
-  const rbPart = entry.rangeBias ? `RB ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗` : null;
-  const infoLine = [scorePart, hmmPart, swingPart, rbPart].filter(Boolean).join(' · ');
-  if (infoLine) parts.push(infoLine);
+  const ctxParts = [regimeCtx, swingCtx].filter(Boolean);
+  if (ctxParts.length) parts.push(`Context: ${ctxParts.join(' · ')}`);
 
-  const hmm5m = state.hmm5mRegimes[sym];
-  if (hmm5m) {
-    parts.push(`1m: <b>${hmm5m.regime} ${hmm5m.confidence}%</b> · Bull ${hmm5m.pBull}% · Bear ${hmm5m.pBear}% · Range ${hmm5m.pRange}%`);
+  // 1m HMM (B): only show when it conflicts with entry direction
+  const hmm5m  = state.hmm5mRegimes[sym];
+  const isLong = entry.direction === 'long';
+  if (hmm5m && hmm5m.confidence >= 60 &&
+      ((isLong && hmm5m.regime === 'BEAR') || (!isLong && hmm5m.regime === 'BULL'))) {
+    parts.push(`⚠ 1m: <b>${hmm5m.regime} ${hmm5m.confidence}%</b> — momentum opposing`);
   }
 
   parts.push('<i>🚂 MacroFX Railway</i>');
