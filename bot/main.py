@@ -328,20 +328,30 @@ class RiskGuard:
         self._locked_until:    float = 0.0
         self._last_trade_by_pair: dict[str, float] = {}  # pair → unix timestamp
         self._last_reset_date:   date_type | None = None
+        self._last_reset_month:  str | None = None       # 'YYYY-MM'
 
     def update_balance(self, balance: float) -> None:
-        today = datetime.now(timezone.utc).date()
+        today       = datetime.now(timezone.utc).date()
+        this_month  = today.strftime('%Y-%m')
+
         if self._day_start_bal is None:
             self._day_start_bal = balance
             self._last_reset_date = today
-        if self._month_start_bal is None:
-            self._month_start_bal = balance
+        if self._month_start_bal is None or self._last_reset_month is None:
+            self._month_start_bal  = balance
+            self._last_reset_month = this_month
 
         # Midnight daily reset
         if self._last_reset_date and today > self._last_reset_date:
             log.info(f'Midnight reset: day_start_bal {self._day_start_bal:.2f} → {balance:.2f}')
             self._day_start_bal   = balance
             self._last_reset_date = today
+
+        # Month-start reset
+        if self._last_reset_month != this_month:
+            log.info(f'Month reset: month_start_bal {self._month_start_bal:.2f} → {balance:.2f}')
+            self._month_start_bal  = balance
+            self._last_reset_month = this_month
 
     def reset_daily(self, balance: float) -> None:
         self._day_start_bal   = balance
@@ -387,13 +397,27 @@ class RiskGuard:
             'locked_until':       self._locked_until,
             'last_trade_by_pair': self._last_trade_by_pair,
             'last_reset_date':    self._last_reset_date.isoformat() if self._last_reset_date else None,
+            'last_reset_month':   self._last_reset_month,
         }
 
     def restore_from_dict(self, d: dict) -> None:
+        today      = datetime.now(timezone.utc).date()
+        this_month = today.strftime('%Y-%m')
+
         self._day_start_bal        = d.get('day_start_bal')
-        self._month_start_bal      = d.get('month_start_bal')
         self._locked_until         = d.get('locked_until') or 0.0
         self._last_trade_by_pair   = d.get('last_trade_by_pair') or {}
+        self._last_reset_month     = d.get('last_reset_month')
+
+        # Reject stale month_start_bal: if saved month != this month, treat as None
+        # so update_balance() resets it to current balance on the next tick.
+        saved_month = d.get('last_reset_month')
+        if saved_month == this_month:
+            self._month_start_bal = d.get('month_start_bal')
+        else:
+            self._month_start_bal  = None
+            self._last_reset_month = None
+
         raw_date = d.get('last_reset_date')
         if raw_date:
             try:

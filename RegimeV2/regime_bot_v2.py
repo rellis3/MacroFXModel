@@ -440,6 +440,7 @@ class RiskGuardV2:
         self._locked_until:  float = 0.0
         self._last_trade:    dict[str, float] = {}
         self._reset_date:    Optional[date_type] = None
+        self._reset_month:   Optional[str] = None        # 'YYYY-MM'
 
     def sync_cfg(self, cfg: dict) -> None:
         self.dd_limit_pct   = float(cfg.get('ddlimit',   3.0))
@@ -448,14 +449,18 @@ class RiskGuardV2:
         self.cooldown_secs  = float(cfg.get('cooldown',  240))
 
     def update_balance(self, bal: float) -> None:
-        today = datetime.now(timezone.utc).date()
+        today      = datetime.now(timezone.utc).date()
+        this_month = today.strftime('%Y-%m')
         if self._day_start is None:
             self._day_start = bal; self._reset_date = today
-        if self._month_start is None:
-            self._month_start = bal
+        if self._month_start is None or self._reset_month is None:
+            self._month_start = bal; self._reset_month = this_month
         if self._reset_date and today > self._reset_date:
             log.info(f'[RGV2] Daily reset: {self._day_start:.2f} → {bal:.2f}')
             self._day_start = bal; self._reset_date = today
+        if self._reset_month != this_month:
+            log.info(f'[RGV2] Month reset: {self._month_start:.2f} → {bal:.2f}')
+            self._month_start = bal; self._reset_month = this_month
 
     def record_trade(self, pair: str) -> None:
         self._last_trade[pair] = time.time()
