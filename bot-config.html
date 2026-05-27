@@ -250,6 +250,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .pos-empty { text-align:center; padding:40px 16px; color:var(--text3); font-size:13px; }
 .pos-stale { font-size:10px; color:var(--amber); margin-left:4px; }
 .pos-totals td { font-weight:700; border-top:2px solid var(--border2) !important; }
+.pos-bot-card { display:flex; align-items:center; gap:6px; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:5px 10px; }
+.pos-bot-dot  { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -1749,14 +1751,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         </div>
       </div>
 
-      <!-- Legend -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-        <span class="pos-bot-badge" style="background:#172554;border:1px solid #1e40af;color:#60a5fa">MacroFX V1</span>
-        <span class="pos-bot-badge" style="background:#0d2b22;border:1px solid #1a4a38;color:#34d399">Regime V1</span>
-        <span class="pos-bot-badge" style="background:#292100;border:1px solid #78610a;color:#fbbf24">Gold</span>
-        <span class="pos-bot-badge" style="background:#1e1b4b;border:1px solid #4338ca;color:#a78bfa">Regime V2</span>
-        <span class="pos-bot-badge pos-paper-badge" style="background:var(--s2);border:1px solid var(--border);color:var(--text3)">Backtest (paper)</span>
-      </div>
+      <!-- Per-bot status strip (populated by loadPositionsTab) -->
+      <div id="posBotStrip" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
 
       <div class="pos-table-wrap">
         <table class="pos-table">
@@ -1934,6 +1930,13 @@ const _POS_BOTS = [
 
 let _posRefreshTimer = null;
 
+function _botAgeSecs(data) {
+  if (!data) return null;
+  if (data.pushed_at) return Math.round((Date.now() / 1000) - data.pushed_at);
+  if (data.timestamp) return Math.round((Date.now() - new Date(data.timestamp).getTime()) / 1000);
+  return null;
+}
+
 async function loadPositionsTab() {
   const tbody = document.getElementById('posTableBody');
   const tfoot = document.getElementById('posTableFoot');
@@ -1947,13 +1950,52 @@ async function loadPositionsTab() {
   _POS_BOTS.forEach((bot, i) => {
     const data = results[i].status === 'fulfilled' ? results[i].value : null;
     if (!data) return;
-    const ageSecs = data.pushed_at
-      ? Math.round((Date.now() / 1000) - data.pushed_at)
-      : (data.timestamp ? Math.round((Date.now() - data.timestamp) / 1000) : null);
+    const ageSecs = _botAgeSecs(data);
     if (ageSecs !== null && ageSecs > 300) staleBots.push(bot.label);
     const positions = data.mt5_positions || [];
     positions.forEach(p => allPositions.push({ ...p, _bot: bot }));
   });
+
+  // Update per-bot status strip
+  const strip = document.getElementById('posBotStrip');
+  if (strip) {
+    strip.innerHTML = _POS_BOTS.map((bot, i) => {
+      const data = results[i].status === 'fulfilled' ? results[i].value : null;
+      if (!data) {
+        return `<div class="pos-bot-card" style="opacity:.5">` +
+          `<span class="pos-bot-badge" style="background:${bot.bg};border:1px solid ${bot.bd};color:${bot.color}">${bot.label}</span>` +
+          `<span style="font-size:11px;color:var(--text3)">No data</span>` +
+          `<span class="pos-bot-dot" style="background:var(--text3)"></span>` +
+          `</div>`;
+      }
+      const ageSecs = _botAgeSecs(data);
+      const count   = (data.mt5_positions || []).length;
+      const isPaper = !!(data.paper_mode || data.paper) || bot.paper;
+      const modeCol = isPaper ? 'var(--text3)' : 'var(--green)';
+      const modeStr = isPaper ? 'Paper' : 'Live';
+      const ageStr  = ageSecs === null ? '—'
+                    : ageSecs < 60    ? `${ageSecs}s`
+                    : ageSecs < 3600  ? `${Math.floor(ageSecs / 60)}m`
+                    : `${Math.floor(ageSecs / 3600)}h`;
+      const dotCol  = ageSecs === null ? 'var(--text3)'
+                    : ageSecs > 900   ? 'var(--red)'
+                    : ageSecs > 300   ? 'var(--amber)'
+                    : 'var(--green)';
+      const hasMt5Field = Array.isArray(data.mt5_positions);
+      const warnHtml = hasMt5Field ? ''
+        : `<span style="font-size:10px;color:var(--amber)" title="mt5_positions missing — bot may need restart">⚠</span>`;
+      return `<div class="pos-bot-card">` +
+        `<span class="pos-bot-badge" style="background:${bot.bg};border:1px solid ${bot.bd};color:${bot.color}">${bot.label}</span>` +
+        `<span style="font-size:11px;color:${modeCol}">${modeStr}</span>` +
+        `<span style="font-size:11px;color:var(--text3)">·</span>` +
+        `<span style="font-size:11px;color:var(--text)">${count} pos</span>` +
+        `<span style="font-size:11px;color:var(--text3)">·</span>` +
+        `<span style="font-size:11px;color:var(--text3)">${ageStr} ago</span>` +
+        warnHtml +
+        `<span class="pos-bot-dot" style="background:${dotCol}"></span>` +
+        `</div>`;
+    }).join('');
+  }
 
   // Group by symbol
   const bySymbol = {};
