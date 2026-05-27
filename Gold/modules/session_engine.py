@@ -57,6 +57,8 @@ class SessionLevels:
     vwap_slope: float
     vwap_std: float
     vwap_anchors: list[VwapAnchor] = field(default_factory=list)
+    today_high: float = 0.0
+    today_low: float = 0.0
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
@@ -285,4 +287,6 @@ def compute_session_levels(h1_bars: list[dict],
         s1=pvts['s1'], s2=pvts['s2'], s3=pvts['s3'],
         vwap=vwap, vwap_slope=vslope, vwap_std=vstd,
         vwap_anchors=vwap_anchors,
+        today_high=round(today_high, 2),
+        today_low=round(today_low, 2),
     )

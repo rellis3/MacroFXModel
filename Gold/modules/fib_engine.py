@@ -33,11 +33,13 @@ PIVOT_N: dict[str, int] = {
     'D1': 3, 'H4': 4, 'H1': 4, 'M30': 4, 'M15': 3,
 }
 
-MAX_ZONES_PER_TF = 9       # up to 3 impulses × 3 variants (gp / 786 / 886)
+MAX_ZONES_PER_TF = 15      # up to 3 impulses × 5 variants (gp / 50pct / 786 / 886 / retest)
 
-# Symmetric half-window around .786/.886 as fraction of impulse R
-# For a $300 impulse: ±$4.8 window gives a $9.6 zone, close to GP's ~$9.60 spread
+# Symmetric half-window around .786/.886 and .5 as fraction of impulse R
 DEEP_RETRACE_WINDOW = 0.016
+
+# Half-window around the broken anchor level for retest zones
+RETEST_WINDOW = 0.012
 
 
 @dataclass
@@ -55,6 +57,7 @@ class FibZone:
     level_650: float
     level_786: float
     level_886: float
+    level_500: float         # 0.5 retracement level (impulse midpoint)
 
     gp_low: float        # lower price boundary of entry window
     gp_high: float       # upper price boundary of entry window
@@ -106,9 +109,11 @@ def _make_zone(tf: str, direction: str, swing_low: float, swing_high: float,
                age_bars: int, variant: str = 'gp',
                origin_time: int = 0, end_time: int = 0) -> FibZone:
     """
-    variant: 'gp' → golden pocket (.618–.650)
-             '786' → symmetric window around .786 level
-             '886' → symmetric window around .886 level
+    variant: 'gp'     → golden pocket (.618–.650)
+             '50pct'  → symmetric window around .5 midpoint level
+             '786'    → symmetric window around .786 level
+             '886'    → symmetric window around .886 level
+             'retest' → tight window around the broken anchor (0 or 1 level)
     """
     r = swing_high - swing_low
     w = DEEP_RETRACE_WINDOW * r   # half-window for .786/.886 zones
@@ -132,10 +137,25 @@ def _make_zone(tf: str, direction: str, swing_low: float, swing_high: float,
         origin, end         = swing_high, swing_low
         o_time, e_time      = origin_time, end_time
 
+    l500 = (swing_high + swing_low) / 2
+
     if variant == '786':
         gp_low, gp_high = l786 - w, l786 + w
     elif variant == '886':
         gp_low, gp_high = l886 - w, l886 + w
+    elif variant == '50pct':
+        gp_low, gp_high = l500 - w, l500 + w
+    elif variant == 'retest':
+        w_rt = RETEST_WINDOW * r
+        gp_low  = end - w_rt
+        gp_high = end + w_rt
+        zone_low  = gp_low
+        zone_high = gp_high
+        # Override origin so update_zone_activity invalidates when the retest fails
+        if direction == 'long':
+            origin = end - w_rt * 2.5
+        else:
+            origin = end + w_rt * 2.5
     else:
         # Standard GP: .618 to .650 (direction-agnostic — lower always gp_low)
         gp_low  = min(l618, l650)
@@ -150,7 +170,7 @@ def _make_zone(tf: str, direction: str, swing_low: float, swing_high: float,
         impulse_size=round(r, 2),
         level_382=round(l382, 2), level_618=round(l618, 2),
         level_650=round(l650, 2), level_786=round(l786, 2),
-        level_886=round(l886, 2),
+        level_886=round(l886, 2), level_500=round(l500, 2),
         gp_low=round(gp_low, 2), gp_high=round(gp_high, 2),
         zone_low=round(zone_low, 2), zone_high=round(zone_high, 2),
         age_bars=age_bars,
@@ -216,7 +236,7 @@ def detect_fib_zones(bars: list[dict], tf: str, current_price: float) -> list[Fi
         impulse_size = swing_high - swing_low
         if impulse_size >= min_size:
             age = length - 1 - idx
-            for variant in ('gp', '786', '886'):
+            for variant in ('gp', '50pct', '786', '886'):
                 zone = _make_zone(tf, direction, swing_low, swing_high, age, variant,
                                   origin_time=origin_time, end_time=end_time)
 
@@ -227,6 +247,15 @@ def detect_fib_zones(bars: list[dict], tf: str, current_price: float) -> list[Fi
                     zone.active = False
 
                 zones.append(zone)
+
+            # Retest variant: price has broken through the "1" level (swing_end).
+            # The broken level often acts as new S/R on the first retest.
+            if direction == 'long' and current_price > swing_high * 1.001:
+                zones.append(_make_zone(tf, direction, swing_low, swing_high, age, 'retest',
+                                        origin_time=origin_time, end_time=end_time))
+            elif direction == 'short' and current_price < swing_low * 0.999:
+                zones.append(_make_zone(tf, direction, swing_low, swing_high, age, 'retest',
+                                        origin_time=origin_time, end_time=end_time))
 
         prev = (idx, ptype, price)
 

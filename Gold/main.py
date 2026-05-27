@@ -38,6 +38,7 @@ import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 # Gold/modules must take priority over bot/modules (both packages use 'modules.*').
 # Insert Gold's own directory first, then bot/ for utils/.
@@ -302,11 +303,16 @@ def _calc_sl_tp(zone: FibZone, direction: str, price: float,
     max_sl = cfg.get('max_sl_pips', 40) * PIP
     atr_sl = atr * cfg.get('sl_atr_mult', 1.5)
 
+    # Retest zones: SL just below/above the entry window, not at level_886 origin.
+    # level_886 for a retest is the original impulse's deep level — too far away.
+    is_retest = getattr(zone, 'zone_variant', '') == 'retest'
     if direction == 'LONG':
-        structural_sl = zone.level_886 - atr * 0.3
+        sl_anchor  = zone.gp_low if is_retest else zone.level_886
+        structural_sl = sl_anchor - atr * 0.3
         sl = max(structural_sl, price - max_sl)
     else:
-        structural_sl = zone.level_886 + atr * 0.3
+        sl_anchor  = zone.gp_high if is_retest else zone.level_886
+        structural_sl = sl_anchor + atr * 0.3
         sl = min(structural_sl, price + max_sl)
 
     sl_dist = abs(price - sl)
@@ -336,6 +342,7 @@ class GoldBot:
         self.sess_lvls = None
         self.atr_15m   = 5.0
         self.squeeze_ratio = 1.0   # ATR(14)/ATR(100) — <0.65 = compression
+        self.h4_pivot: Optional[dict] = None
         self.trades_today = 0
         self.last_state_refresh = 0.0
         self._mt5_ok   = False
@@ -453,6 +460,10 @@ class GoldBot:
             log.info(f'[HTF]    {self.htf_bias.bias} ({self.htf_bias.confidence:.0%}) '
                      f'— {self.htf_bias.reason}')
 
+        # ── 4H pivot (last completed bar) ─────────────────────────────────────
+        if h4_bars and len(h4_bars) >= 2:
+            self.h4_pivot = _h4_pivot_levels(h4_bars)
+
         # ── Volume profile + nPOC stack (12-day) ─────────────────────────────
         price_now = self._get_price()
         log.info(f'[PRICE]  {price_now}  today_m1={len(today_m1)}  vol_m1={len(vol_m1)}  '
@@ -544,6 +555,21 @@ class GoldBot:
         price = self._get_price()
         if not price:
             return
+
+        # ── Real-time tapped pivot tracking ───────────────────────────────────
+        # Extend today's range so _touched_pivot_levels reflects the live tick.
+        # Only push status when the range actually changes (new high or new low).
+        if self.sess_lvls:
+            self.sess_lvls.current_price = price
+            extended = False
+            if price > self.sess_lvls.today_high:
+                self.sess_lvls.today_high = round(price, 2)
+                extended = True
+            if price < self.sess_lvls.today_low:
+                self.sess_lvls.today_low = round(price, 2)
+                extended = True
+            if extended:
+                self._push_status()
 
         bot = self.bot_state
 
@@ -728,6 +754,11 @@ class GoldBot:
             'squeeze_ratio':  self.squeeze_ratio,
             'mt5_positions':  _serialize_open_positions(MAGIC),
         }
+        if self.sess_lvls:
+            status['touched']          = _touched_pivot_levels(self.sess_lvls)
+            status['pivot_bias']       = _pivot_bias(self.sess_lvls.current_price, self.sess_lvls.pivot)
+            status['structural_bias']  = self.htf_bias.bias if self.htf_bias else 'NEUTRAL'
+            status['momentum']         = _momentum_from_sess(self.sess_lvls)
         _kv_put_status('gold_bot_status', status, self.base_url)
 
     def _push_zones_kv(self) -> None:
@@ -757,6 +788,7 @@ class GoldBot:
                         'zone_low':          z.zone_low,
                         'zone_high':         z.zone_high,
                         'level_382':         z.level_382,
+                        'level_500':         z.level_500,
                         'level_618':         z.level_618,
                         'level_650':         z.level_650,
                         'level_786':         z.level_786,
@@ -799,18 +831,23 @@ class GoldBot:
                     for tl in self.trendlines
                 ],
                 'pivot_levels': {
-                    'pp':         self.sess_lvls.pivot,
-                    'r1':         self.sess_lvls.r1,
-                    'r2':         self.sess_lvls.r2,
-                    'r3':         self.sess_lvls.r3,
-                    's1':         self.sess_lvls.s1,
-                    's2':         self.sess_lvls.s2,
-                    's3':         self.sess_lvls.s3,
-                    'vah':        self.vol_prof.vah  if self.vol_prof else None,
-                    'val':        self.vol_prof.val  if self.vol_prof else None,
-                    'poc':        self.vol_prof.poc  if self.vol_prof else None,
-                    'vwap':       self.sess_lvls.vwap,
-                    'daily_open': self.sess_lvls.daily_open,
+                    'pp':              self.sess_lvls.pivot,
+                    'r1':              self.sess_lvls.r1,
+                    'r2':              self.sess_lvls.r2,
+                    'r3':              self.sess_lvls.r3,
+                    's1':              self.sess_lvls.s1,
+                    's2':              self.sess_lvls.s2,
+                    's3':              self.sess_lvls.s3,
+                    'vah':             self.vol_prof.vah  if self.vol_prof else None,
+                    'val':             self.vol_prof.val  if self.vol_prof else None,
+                    'poc':             self.vol_prof.poc  if self.vol_prof else None,
+                    'vwap':            self.sess_lvls.vwap,
+                    'daily_open':      self.sess_lvls.daily_open,
+                    'touched':         _touched_pivot_levels(self.sess_lvls),
+                    'pivot_bias':      _pivot_bias(self.sess_lvls.current_price, self.sess_lvls.pivot),
+                    'structural_bias': self.htf_bias.bias if self.htf_bias else 'NEUTRAL',
+                    'momentum':        _momentum_from_sess(self.sess_lvls),
+                    'h4_pivot':        self.h4_pivot,
                 } if self.sess_lvls else None,
             }
             url = f'{self.base_url}/api/kv/set'
@@ -845,6 +882,47 @@ def _atr_squeeze(bars: list[dict]) -> float:
     short  = _atr_from_list(bars[-14:])
     medium = _atr_from_list(bars[-100:])
     return round(short / medium, 3) if medium > 0 else 1.0
+
+
+def _h4_pivot_levels(h4_bars: list[dict]) -> Optional[dict]:
+    """Floor pivot from the last completed 4H bar (not the in-progress candle)."""
+    if len(h4_bars) < 2:
+        return None
+    b = h4_bars[-2]
+    p = (b['high'] + b['low'] + b['close']) / 3
+    return {
+        'pp': round(p, 2),
+        'r1': round(2 * p - b['low'], 2),
+        's1': round(2 * p - b['high'], 2),
+    }
+
+
+def _touched_pivot_levels(sess) -> dict:
+    """True for each daily pivot level that today's range has already covered."""
+    tl, th = sess.today_low, sess.today_high
+    return {
+        'pp': tl <= sess.pivot <= th,
+        'r1': tl <= sess.r1    <= th,
+        'r2': tl <= sess.r2    <= th,
+        's1': tl <= sess.s1    <= th,
+        's2': tl <= sess.s2    <= th,
+    }
+
+
+def _pivot_bias(price: float, pp: float) -> str:
+    if price > pp * 1.0003:
+        return 'BULL'
+    if price < pp * 0.9997:
+        return 'BEAR'
+    return 'NEUTRAL'
+
+
+def _momentum_from_sess(sess) -> str:
+    if sess.vwap_slope > 0.5:
+        return 'BULL'
+    if sess.vwap_slope < -0.5:
+        return 'BEAR'
+    return 'NEUTRAL'
 
 
 # Monkey-patch the bot to use the plain-list ATR

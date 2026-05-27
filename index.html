@@ -439,211 +439,297 @@ window.refreshBetaPanel = async function() {
 };
 
 async function _loadBetaPanel() {
-  const [estimates, portfolio, deviation, rebalance] = await Promise.all([
+  const [estimates, portfolio, deviation, rebalance, botStatus] = await Promise.all([
     kvGet('beta_estimates'),
     kvGet('portfolio_beta'),
     kvGet('beta_deviation'),
     kvGet('beta_rebalance'),
+    kvGet('bot_status'),
   ]);
   const el = document.getElementById('betaPanelContent');
   if (!el) return;
-  el.innerHTML = _renderBetaPanel(estimates, portfolio, deviation, rebalance);
+  const positions = (botStatus && botStatus.mt5_positions) ? botStatus.mt5_positions : [];
+  el.innerHTML = _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions);
 }
 
-function _fmt(v, digits) {
-  if (v == null) return '—';
-  const n = parseFloat(v);
-  if (isNaN(n)) return '—';
-  return (n >= 0 ? '+' : '') + n.toFixed(digits ?? 3);
+// ── Plain-English helpers ──────────────────────────────────────────────────
+
+function _exposureLabel(val, factor) {
+  const v = parseFloat(val) || 0;
+  const abs = Math.abs(v);
+  const mag = abs > 0.6 ? 'Strong' : abs > 0.3 ? 'Moderate' : 'Slight';
+  if (abs < 0.1) return 'Neutral';
+  if (factor === 'beta_dxy') {
+    return v > 0 ? mag + ' long dollar' : mag + ' short dollar';
+  }
+  if (factor === 'beta_rates') {
+    return v > 0 ? mag + ' long rates' : mag + ' short rates';
+  }
+  if (factor === 'beta_vix') {
+    return v > 0 ? mag + ' safe-haven bias' : mag + ' risk-on bias';
+  }
+  return 'Neutral';
 }
 
-function _uncBadge(unc) {
-  const cls = 'bp-unc-' + (unc || 'HIGH');
-  return '<span class="' + cls + '">' + (unc || '?') + '</span>';
+function _sensitivityText(val, factor) {
+  const v = parseFloat(val) || 0;
+  const abs = Math.abs(v);
+  if (abs < 0.05) return { text: 'Neutral', color: 'var(--text3)' };
+  if (factor === 'beta_dxy') {
+    if (v > 0.5)  return { text: 'Strongly follows $', color: '#5bc8f5' };
+    if (v > 0.2)  return { text: 'Follows $ up',       color: '#5bc8f5' };
+    if (v > 0)    return { text: 'Slightly follows $',  color: '#8ad8f7' };
+    if (v < -0.5) return { text: 'Moves against $',     color: '#b48af5' };
+    if (v < -0.2) return { text: 'Tends vs $',          color: '#b48af5' };
+    return         { text: 'Slightly vs $',              color: '#caaff8' };
+  }
+  if (factor === 'beta_rates') {
+    if (v > 0.5)  return { text: 'Strongly rises with rates', color: '#5bc8f5' };
+    if (v > 0.2)  return { text: 'Rises with rates',          color: '#5bc8f5' };
+    if (v > 0)    return { text: 'Slightly rises with rates',  color: '#8ad8f7' };
+    if (v < -0.5) return { text: 'Strongly falls with rates',  color: '#f47a5b' };
+    if (v < -0.2) return { text: 'Falls with rates',           color: '#f47a5b' };
+    return         { text: 'Slightly falls with rates',         color: '#f4a08a' };
+  }
+  if (factor === 'beta_vix') {
+    if (v > 0)    return { text: 'Defensive (safe-haven)',  color: '#f4b942' };
+    return         { text: 'Risk-on',                        color: '#5ef59a' };
+  }
+  return { text: 'Neutral', color: 'var(--text3)' };
 }
 
-function _statusDot(status) {
-  return '<span class="bp-tl-dot ' + (status || '') + '" title="' + (status || '') + '"></span>';
+function _explainDirection(symbol, direction, factor) {
+  const sym = (symbol || '').toUpperCase();
+  const dir = (direction || '').toUpperCase();
+  // Detect USD-base (e.g. USDCAD) vs USD-quote (e.g. EURUSD, GBPUSD)
+  const usdBase  = sym.startsWith('USD');
+  const usdQuote = !usdBase && sym.length >= 6 && sym.slice(3, 6) === 'USD';
+  if (factor === 'beta_dxy') {
+    if (usdBase) {
+      return dir === 'BUY'
+        ? 'Buying USD adds dollar exposure'
+        : 'Selling USD reduces dollar exposure';
+    }
+    if (usdQuote) {
+      return dir === 'BUY'
+        ? 'Buying this pair (priced in USD) reduces dollar exposure'
+        : 'Selling this pair (priced in USD) adds dollar exposure';
+    }
+    return dir === 'BUY' ? 'This trade adds dollar-correlated exposure' : 'This trade reduces dollar-correlated exposure';
+  }
+  if (factor === 'beta_rates') {
+    return dir === 'BUY' ? 'Long position adds rate exposure' : 'Short position reduces rate exposure';
+  }
+  if (factor === 'beta_vix') {
+    return dir === 'BUY' ? 'Long position adds defensive / safe-haven exposure' : 'Short position reduces safe-haven exposure';
+  }
+  return '';
 }
 
-function _bar(value, maxAbs, color, label) {
-  const pct = Math.min(Math.abs((value || 0)) / (maxAbs || 1) * 50, 50);
-  const left = value >= 0 ? 50 : 50 - pct;
-  return [
-    '<div class="bp-bar-wrap">',
-    '<div class="bp-bar-lbl">' + label + '</div>',
-    '<div class="bp-bar-track">',
-    '  <div style="position:absolute;top:0;left:50%;width:1px;height:100%;background:var(--border);"></div>',
-    '  <div class="bp-bar-fill" style="left:' + left + '%;width:' + pct + '%;background:' + color + '"></div>',
-    '</div>',
-    '<div class="bp-bar-val">' + _fmt(value) + '</div>',
-    '</div>',
-  ].join('');
+function _regimeTargetDesc(regime) {
+  const r = (regime || '').toUpperCase();
+  if (r === 'BULL') return 'slightly negative dollar / positive rates (risk-on positioning)';
+  if (r === 'BEAR') return 'slightly positive dollar / negative rates (risk-off positioning)';
+  return 'neutral — no strong directional bets';
 }
 
-function _renderBetaPanel(estimates, portfolio, deviation, rebalance) {
+function _deviationSentence(factor, deviation, regime) {
+  const dev = parseFloat(deviation) || 0;
+  const r = (regime || '').toUpperCase();
+  const map = {
+    beta_dxy:   { pos: 'positioned for a stronger dollar',        neg: 'positioned for a weaker dollar' },
+    beta_rates: { pos: 'too much exposure to rising rates',        neg: 'too exposed to falling rates' },
+    beta_vix:   { pos: 'too much safe-haven / defensive positioning', neg: 'too exposed to risk-on moves' },
+  };
+  const desc = (map[factor] || {})[dev >= 0 ? 'pos' : 'neg'] || 'off target';
+  const target = _regimeTargetDesc(r);
+  return `Your portfolio is ${desc}. In a ${r || '—'} market the target is ${target}.`;
+}
+
+// ── Main render ────────────────────────────────────────────────────────────
+
+function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions) {
   const FACTORS = ['beta_dxy', 'beta_rates', 'beta_vix'];
-  const FACTOR_LABELS = {beta_dxy: 'DXY β', beta_rates: 'Rates β', beta_vix: 'VIX β'};
-  const FACTOR_COLORS = {beta_dxy: '#5bc8f5', beta_rates: '#7c6fe0', beta_vix: '#f4b942'};
+  const FACTOR_ENGLISH = { beta_dxy: 'Dollar exposure', beta_rates: 'Rate exposure', beta_vix: 'Safe-haven exposure' };
   const parts = [];
 
-  // ── Rebalancing alert ──────────────────────────────────────────────────────
-  // Dismiss key = factor + timestamp (so each new signal is independently dismissible)
+  // ── Health banner ─────────────────────────────────────────────────────────
+  const noData = !estimates && !portfolio && !deviation;
+  if (noData) {
+    parts.push(`<div style="background:#5c1a1a;border:1px solid var(--red);border-radius:8px;padding:10px 14px;margin-bottom:12px;color:#ff8080;font-size:12px;font-weight:500">
+      Bot not running — start the bot with OANDA_KEY set
+    </div>`);
+  } else {
+    // Check if ALL pairs have HIGH uncertainty
+    let allHigh = false;
+    if (estimates && Object.keys(estimates).length > 0) {
+      allHigh = Object.values(estimates).every(d => {
+        const uncs = ['beta_dxy','beta_rates','beta_vix'].map(f => (d[f] || {}).uncertainty).filter(Boolean);
+        return uncs.length === 0 || uncs.every(u => u === 'HIGH');
+      });
+    }
+    if (allHigh) {
+      parts.push(`<div style="background:#3d2c00;border:1px solid var(--amber,#f4b942);border-radius:8px;padding:10px 14px;margin-bottom:12px;color:#f4b942;font-size:12px;font-weight:500">
+        Estimates are still building — this improves over the first 10 days. Alerts may be unreliable until confidence improves.
+      </div>`);
+    } else {
+      parts.push(`<div style="background:#0e2e1a;border:1px solid #2dbe6c;border-radius:8px;padding:10px 14px;margin-bottom:12px;color:#2dbe6c;font-size:12px;font-weight:500">
+        ✓ Estimates running — updated every 2 minutes
+      </div>`);
+    }
+  }
+
+  // ── Rebalancing alert ─────────────────────────────────────────────────────
   const _dismissKey = rebalance && rebalance.rebalance_needed
     ? 'beta_dismiss_' + (rebalance.factor || '') + '_' + (rebalance.timestamp || 0)
     : null;
   const _dismissed = _dismissKey && localStorage.getItem(_dismissKey);
 
   if (rebalance && rebalance.rebalance_needed && !_dismissed) {
-    const urg = (rebalance.urgency || 'LOW').toLowerCase();
-    const urgColor = {high: 'var(--red)', medium: 'var(--amber,#f4b942)', low: 'var(--text3)'}[urg] || 'var(--text3)';
-    parts.push([
-      '<div class="bp-alert-box ' + urg + '" id="betaAlertBox">',
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start">',
-      '  <div style="font-weight:600;color:' + urgColor + ';margin-bottom:4px">',
-      '    ⚡ Rebalancing Suggested [' + rebalance.urgency + '] — ' + (rebalance.action || '').replace(/_/g, ' '),
-      '  </div>',
-      '  <button onclick="(function(){localStorage.setItem(\'' + _dismissKey + '\',\'1\');document.getElementById(\'betaAlertBox\').style.display=\'none\';})()" ',
-      '    style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:10px;padding:2px 7px;flex-shrink:0;margin-left:12px">',
-      '    Dismiss',
-      '  </button>',
-      '</div>',
-      '<div style="color:var(--text2)">',
-      'Factor: <b>' + FACTOR_LABELS[rebalance.factor] + '</b>  ',
-      'Deviation: <b>' + _fmt(rebalance.deviation) + '</b>  ',
-      'Inaction band: ±' + (rebalance.band ? rebalance.band.toFixed(3) : '—') + '  ',
-      'Regime: <b>' + (rebalance.regime || '—') + '</b>',
-      '</div>',
-      rebalance.suggested_pairs && rebalance.suggested_pairs.length
-        ? '<div style="color:var(--text3);margin-top:4px;font-size:10px">Suggested pairs: ' + rebalance.suggested_pairs.join(', ') + '</div>'
-        : '',
-      '</div>',
-    ].join(''));
+    const factor   = rebalance.factor || '';
+    const dev      = parseFloat(rebalance.deviation) || 0;
+    const band     = parseFloat(rebalance.band) || 1;
+    const regime   = rebalance.regime || '—';
+    const ratio    = Math.round(Math.abs(dev / band));
+    const factorEn = FACTOR_ENGLISH[factor] || factor;
+    const sentence = _deviationSentence(factor, dev, regime);
+    const ratioTxt = ratio > 1
+      ? `Your exposure is about ${ratio}× above the acceptable range for this market.`
+      : `Your exposure is just outside the acceptable range for this market.`;
+
+    // Suggested pairs with position detail
+    const suggestedPairs = rebalance.suggested_pairs || [];
+    const pairLines = suggestedPairs.map(sym => {
+      const pos = (positions || []).find(p => (p.symbol || '').toUpperCase() === sym.toUpperCase());
+      if (pos) {
+        const dir   = (pos.type === 0 || (pos.direction || '').toUpperCase() === 'BUY') ? 'BUY' : 'SELL';
+        const lots  = parseFloat(pos.volume || pos.lots || 0).toFixed(2);
+        const expln = _explainDirection(sym, dir, factor);
+        // Compute contribution if beta is available
+        let contrib = '';
+        if (estimates && estimates[sym] && estimates[sym][factor] && estimates[sym][factor].mean != null) {
+          const dirSign = dir === 'BUY' ? 1 : -1;
+          const betaMean = parseFloat(estimates[sym][factor].mean) || 0;
+          const contribution = dirSign * parseFloat(lots) * betaMean;
+          const sign = contribution >= 0 ? '+' : '';
+          contrib = ` <span style="color:var(--text3);font-size:10px">(contributes ${sign}${contribution.toFixed(2)} to ${factorEn.toLowerCase()})</span>`;
+        }
+        return `<div style="padding:4px 0;font-size:11px;border-bottom:1px solid var(--s2)">
+          <span style="font-weight:600;min-width:60px;display:inline-block">${sym}</span>
+          <span style="color:${dir==='BUY'?'#2dbe6c':'#f47a5b'};margin-right:8px">${dir}</span>
+          <span style="color:var(--text2)">${lots} lots</span>
+          <span style="color:var(--text3);margin-left:8px">→ ${expln}</span>${contrib}
+        </div>`;
+      } else {
+        return `<div style="padding:4px 0;font-size:11px;border-bottom:1px solid var(--s2)">
+          <span style="font-weight:600;min-width:60px;display:inline-block">${sym}</span>
+          <span style="color:var(--text3)">→ This pair is contributing to ${factorEn.toLowerCase()} (no live position found)</span>
+        </div>`;
+      }
+    });
+
+    const actionPair = suggestedPairs.length ? suggestedPairs[0] : 'the flagged pair';
+
+    parts.push(`<div class="bp-alert-box high" id="betaAlertBox">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="font-weight:600;color:var(--red);margin-bottom:6px;font-size:13px">
+          🔴 ${factorEn} — action suggested
+        </div>
+        <button onclick="(function(){localStorage.setItem('${_dismissKey}','1');document.getElementById('betaAlertBox').style.display='none';})()"
+          style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:10px;padding:2px 7px;flex-shrink:0;margin-left:12px">
+          Dismiss
+        </button>
+      </div>
+      <div style="color:var(--text2);margin-bottom:6px">${sentence}</div>
+      <div style="color:var(--text2);margin-bottom:8px">${ratioTxt}</div>
+      ${pairLines.length ? `<div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:4px">What's causing it:</div>${pairLines.join('')}` : ''}
+      <div style="margin-top:8px;color:#f4b942;font-size:11px">
+        💡 What to do: Consider reducing your ${actionPair} position to bring ${factorEn.toLowerCase()} back toward neutral.
+      </div>
+    </div>`);
   }
 
-  // ── Alignment summary bar ─────────────────────────────────────────────────
+  // ── Regime context strip ──────────────────────────────────────────────────
   if (deviation) {
-    const align = parseFloat(deviation.overall_alignment || 0);
-    const pctLeft = Math.round(align * 100);
-    const regime = deviation.regime || '—';
-    parts.push([
-      '<div style="margin-bottom:12px;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px 14px">',
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">',
-      '  <span style="font-size:11px;font-weight:600;color:var(--text2)">Overall Alignment — Regime: <b>' + regime + '</b></span>',
-      '  <span style="font-size:12px;font-weight:700;color:var(--text)">' + Math.round(align * 100) + '%</span>',
-      '</div>',
-      '<div class="bp-align-bar"><div class="bp-align-ptr" style="left:' + pctLeft + '%"></div></div>',
-      '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3)"><span>Misaligned</span><span>On Target</span></div>',
-      '</div>',
-    ].join(''));
+    const align  = parseFloat(deviation.overall_alignment || 0);
+    const regime = (deviation.regime || '—').toUpperCase();
+    const regimeColor = { BULL: '#2dbe6c', BEAR: 'var(--red)', RANGE: '#f4b942', CHOP: 'var(--text3)' }[regime] || 'var(--text3)';
+    const regimeSentence = (regime === 'BULL')
+      ? 'Trending higher — target is risk-on positioning.'
+      : (regime === 'BEAR')
+      ? 'Trending lower — target is risk-off positioning.'
+      : 'No clear trend — target is factor-neutral.';
+    const alignPct = Math.round(align * 100);
+
+    parts.push(`<div style="margin-bottom:12px;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700;color:${regimeColor}">${regime}</span>
+        <span style="font-size:11px;color:var(--text2)">${regimeSentence}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">Portfolio is ${alignPct}% aligned with regime targets</div>
+    </div>`);
   }
 
-  // ── Two-column grid ───────────────────────────────────────────────────────
-  parts.push('<div class="bp-grid">');
-
-  // LEFT: per-pair beta estimates table
-  parts.push('<div class="bp-card">');
-  parts.push('<div class="bp-card-title">Per-Pair Beta Estimates (Kalman)</div>');
-  if (!estimates || Object.keys(estimates).length === 0) {
-    parts.push('<div style="color:var(--text3);font-size:11px">No data — bot must be running with MT5 connected</div>');
-  } else {
-    const syms = Object.keys(estimates).sort();
-    parts.push('<div style="overflow-x:auto"><table class="bp-table">');
-    parts.push('<tr><th>Pair</th><th>DXY β</th><th>Rates β</th><th>VIX β</th><th>R²</th><th>Uncert</th></tr>');
-    syms.forEach(sym => {
-      const d = estimates[sym];
-      const bd = d.beta_dxy || {}, br = d.beta_rates || {}, bv = d.beta_vix || {};
-      const dominantUnc = [bd.uncertainty, br.uncertainty, bv.uncertainty]
-        .filter(Boolean)
-        .sort((a,b) => ({HIGH:0,MEDIUM:1,LOW:2}[a]||0) - ({HIGH:0,MEDIUM:1,LOW:2}[b]||0))[0] || '?';
-      parts.push([
-        '<tr>',
-        '<td style="font-weight:500">' + sym + '</td>',
-        '<td>' + _fmt(bd.mean) + '</td>',
-        '<td>' + _fmt(br.mean) + '</td>',
-        '<td>' + _fmt(bv.mean) + '</td>',
-        '<td>' + (d.r_squared != null ? (d.r_squared * 100).toFixed(0) + '%' : '—') + '</td>',
-        '<td>' + _uncBadge(dominantUnc) + '</td>',
-        '</tr>',
-      ].join(''));
-    });
-    parts.push('</table></div>');
-  }
-  parts.push('</div>');  // left card
-
-  // RIGHT: portfolio beta bars + deviation traffic lights
-  parts.push('<div>');
-
-  // Portfolio beta bars
+  // ── Factor exposure section ───────────────────────────────────────────────
   parts.push('<div class="bp-card" style="margin-bottom:12px">');
-  parts.push('<div class="bp-card-title">Portfolio Book Beta</div>');
-  if (!portfolio || portfolio.position_count === 0) {
-    parts.push('<div style="color:var(--text3);font-size:11px">No open positions' +
-      (portfolio ? '' : ' — bot not running') + '</div>');
-  } else {
-    FACTORS.forEach(f => {
-      const v = portfolio[f] || 0;
-      parts.push(_bar(v, 2, FACTOR_COLORS[f], FACTOR_LABELS[f]));
-    });
-    const ts = portfolio.timestamp ? new Date(portfolio.timestamp).toLocaleTimeString() : '—';
-    parts.push('<div style="font-size:9px;color:var(--text3);margin-top:4px">Positions: ' +
-      portfolio.position_count + ' · Updated: ' + ts + '</div>');
-  }
-  parts.push('</div>');
-
-  // Deviation traffic lights
-  parts.push('<div class="bp-card">');
-  parts.push('<div class="bp-card-title">Beta Deviation vs Target</div>');
+  parts.push('<div class="bp-card-title">Current Exposure</div>');
   if (!deviation || !deviation.deviations) {
-    parts.push('<div style="color:var(--text3);font-size:11px">No deviation data</div>');
+    parts.push('<div style="color:var(--text3);font-size:11px">No exposure data yet — bot may still be starting up.</div>');
   } else {
     FACTORS.forEach(f => {
       const d = deviation.deviations[f];
       if (!d) return;
-      parts.push([
-        '<div class="bp-tl-row">',
-        _statusDot(d.status),
-        '<span style="font-size:11px;width:58px;flex-shrink:0">' + FACTOR_LABELS[f] + '</span>',
-        '<span style="font-size:10px;font-family:monospace;color:var(--text2)">',
-        'cur <b>' + _fmt(d.current) + '</b>  tgt ' + _fmt(d.target) + '  dev <b>' + _fmt(d.deviation) + '</b>',
-        '</span>',
-        '<span style="margin-left:auto;font-size:9px;color:var(--text3)">' + (d.status || '').replace(/_/g,' ') + '</span>',
-        '</div>',
-      ].join(''));
+      const status = (d.status || '').toUpperCase();
+      const icon = status === 'ON_TARGET' ? '✅' : status === 'OVEREXPOSED' || status === 'UNDEREXPOSED' ? '🔴' : '🟡';
+      const label = FACTOR_ENGLISH[f];
+      const currentState = _exposureLabel(d.current, f);
+      const regime = (deviation.regime || '—').toUpperCase();
+      const offTarget = (status !== 'ON_TARGET') && d.target != null;
+      const targetText = offTarget ? `<span style="color:#f4b942;font-size:10px;margin-left:8px">Target for ${regime}: ${_exposureLabel(d.target, f) || 'Neutral'}</span>` : '';
+      parts.push(`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--s2)">
+        <span style="font-size:14px">${icon}</span>
+        <span style="font-size:11px;font-weight:600;color:var(--text);min-width:140px">${label}</span>
+        <span style="font-size:11px;color:var(--text2)">${currentState}</span>
+        ${targetText}
+      </div>`);
     });
   }
   parts.push('</div>');
-  parts.push('</div>');  // right column
 
-  parts.push('</div>');  // bp-grid
-
-  // ── All signals (if multiple) ─────────────────────────────────────────────
-  if (rebalance && rebalance.all_signals && rebalance.all_signals.length > 1) {
-    parts.push('<div class="bp-card" style="margin-top:0">');
-    parts.push('<div class="bp-card-title">All Rebalancing Signals</div>');
-    rebalance.all_signals.forEach(sig => {
-      parts.push([
-        '<div style="display:flex;gap:12px;font-size:10px;padding:4px 0;border-bottom:1px solid var(--s2)">',
-        '<span style="width:70px">' + FACTOR_LABELS[sig.factor] + '</span>',
-        '<span>' + sig.urgency + '</span>',
-        '<span>dev ' + _fmt(sig.deviation) + '</span>',
-        '<span>band ±' + sig.band.toFixed(3) + '</span>',
-        '<span style="color:var(--text3)">' + (sig.action || '').replace(/_/g,' ') + '</span>',
-        '</div>',
-      ].join(''));
+  // ── Per-pair details table ────────────────────────────────────────────────
+  parts.push('<div class="bp-card">');
+  parts.push('<div class="bp-card-title">How Each Pair Behaves</div>');
+  parts.push('<div style="font-size:10px;color:var(--text3);margin-bottom:8px">Confidence improves as the bot learns your pairs. \'Still learning\' is normal for the first week.</div>');
+  if (!estimates || Object.keys(estimates).length === 0) {
+    parts.push('<div style="color:var(--text3);font-size:11px">No data — bot must be running with MT5 connected.</div>');
+  } else {
+    const syms = Object.keys(estimates).sort();
+    parts.push('<div style="overflow-x:auto"><table class="bp-table">');
+    parts.push('<tr><th>Pair</th><th>Dollar sensitivity</th><th>Rate sensitivity</th><th>Safe-haven sensitivity</th><th>Confidence</th></tr>');
+    syms.forEach(sym => {
+      const d = estimates[sym];
+      const bd = d.beta_dxy || {}, br = d.beta_rates || {}, bv = d.beta_vix || {};
+      const dominantUnc = ['beta_dxy','beta_rates','beta_vix']
+        .map(f => (d[f] || {}).uncertainty)
+        .filter(Boolean)
+        .sort((a,b) => ({HIGH:0,MEDIUM:1,LOW:2}[a]||0) - ({HIGH:0,MEDIUM:1,LOW:2}[b]||0))[0] || 'HIGH';
+      const confLabel = dominantUnc === 'LOW' ? { text: 'High',          color: '#2dbe6c' }
+                      : dominantUnc === 'MEDIUM' ? { text: 'Building',   color: '#f4b942' }
+                      : { text: 'Still learning', color: 'var(--text3)' };
+      const sdxy  = _sensitivityText(bd.mean, 'beta_dxy');
+      const srate = _sensitivityText(br.mean, 'beta_rates');
+      const svix  = _sensitivityText(bv.mean, 'beta_vix');
+      parts.push(`<tr>
+        <td style="font-weight:500">${sym}</td>
+        <td style="color:${sdxy.color}">${sdxy.text}</td>
+        <td style="color:${srate.color}">${srate.text}</td>
+        <td style="color:${svix.color}">${svix.text}</td>
+        <td style="color:${confLabel.color};font-weight:500">${confLabel.text}</td>
+      </tr>`);
     });
-    parts.push('</div>');
+    parts.push('</table></div>');
   }
-
-  // ── Footer note if no bot data ────────────────────────────────────────────
-  if (!estimates && !portfolio && !deviation) {
-    parts.push([
-      '<div style="text-align:center;padding:20px;color:var(--text3);font-size:11px">',
-      'No beta data available. The Python bot must be running with MT5 connected and numpy installed.<br>',
-      'Beta estimates are computed every 120s on H4 bars and pushed to KV.',
-      '</div>',
-    ].join(''));
-  }
+  parts.push('</div>');
 
   return parts.join('');
 }

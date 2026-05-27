@@ -102,6 +102,7 @@ class GoldJournal:
                 'wt1': vu.wt1, 'wt2': vu.wt2,
                 'wt_signal': vu.wt_signal, 'mf_value': vu.mf_value,
                 'mf_signal': vu.mf_signal, 'vwap_signal': vu.vwap_signal,
+                'vwap_divergence': vu.vwap_divergence,
                 'components': vu.components_aligned, 'confidence': vu.confidence,
             },
         }

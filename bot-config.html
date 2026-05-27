@@ -204,6 +204,31 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 /* Inline save status */
 .inline-status { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
 
+/* ── Regime table command panel ──────────────────────────────────────────── */
+.rt-status-bar { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:8px; margin-bottom:16px; font-size:12px; }
+.rt-status-bar.ok    { background:var(--green-bg); border:1px solid var(--green-bd); color:var(--green); }
+.rt-status-bar.warn  { background:var(--amber-bg); border:1px solid var(--amber-bd); color:var(--amber); }
+.rt-status-bar.empty { background:var(--s2);       border:1px solid var(--border);   color:var(--text3); }
+.rt-status-detail { font-size:11px; color:var(--text2); margin-left:auto; font-family:'DM Mono',monospace; }
+.rt-process { display:flex; gap:0; margin-bottom:18px; counter-reset:rt-step; }
+.rt-step { flex:1; position:relative; padding:10px 12px 10px 36px; background:var(--s2); border:1px solid var(--border); border-right:none; font-size:11px; color:var(--text2); line-height:1.5; }
+.rt-step:first-child { border-radius:8px 0 0 8px; }
+.rt-step:last-child  { border-right:1px solid var(--border); border-radius:0 8px 8px 0; }
+.rt-step::before { counter-increment:rt-step; content:counter(rt-step); position:absolute; left:10px; top:10px; width:18px; height:18px; border-radius:50%; background:var(--purple); color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; line-height:1; }
+.rt-step-title { font-weight:600; color:var(--text); margin-bottom:3px; font-size:12px; }
+.rt-step-time  { font-size:10px; color:var(--text3); margin-top:4px; }
+.rt-group { margin-bottom:16px; }
+.rt-group-title { font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+.rt-group-desc { font-size:11px; color:var(--text3); margin-bottom:8px; line-height:1.5; }
+.rt-cmd-block { background:var(--s2); border:1px solid var(--border); border-radius:6px; padding:10px 12px; font-family:'DM Mono',monospace; font-size:11px; color:var(--text); line-height:1.6; position:relative; }
+.rt-cmd-block .rt-comment { color:var(--text3); }
+.rt-timing { display:inline-flex; align-items:center; gap:4px; background:var(--blue-bg); border:1px solid var(--blue-bd); color:var(--blue); border-radius:10px; padding:1px 8px; font-size:10px; font-weight:600; }
+.rt-sample-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:10px; }
+.rt-sample-cell { background:var(--s2); border:1px solid var(--border); border-radius:6px; padding:8px; text-align:center; }
+.rt-sample-regime { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px; }
+.rt-sample-n { font-size:16px; font-weight:700; }
+.rt-sample-label { font-size:9px; color:var(--text3); margin-top:1px; }
+
 /* ── Positions tab ───────────────────────────────────────────────────────── */
 .pos-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
 .pos-summary { display:flex; gap:16px; flex-wrap:wrap; }
@@ -1609,17 +1634,102 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       <span id="betaTargetStatus" class="inline-status" style="align-self:center"></span>
     </div>
 
-    <div class="card" style="background:var(--s2);border-color:var(--border);margin-top:12px">
-      <div class="card-title">Regime Table — Status</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
-        The regime-conditional beta table is built offline from the bot's history log.
-        Run manually or wait for the weekly auto-rebuild (triggered by bot/main.py).
+    <div class="card" style="margin-top:12px">
+      <div class="card-title">Regime Table — Status &amp; Commands</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.6">
+        The regime table learns what beta exposures are normal for each market condition — so targets
+        are calibrated to your actual book rather than generic defaults. Run the script from your MT5
+        machine (or any machine with Python and your Oanda key).
       </div>
-      <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text2)">
-        python RegimeV2/beta_regime_table.py --update-targets<br>
-        python RegimeV2/beta_regime_table.py --dry-run  <span style="color:var(--text3)"># preview without writing to KV</span>
+
+      <!-- Live status from KV -->
+      <div id="betaRegimeTableStatus" class="rt-status-bar empty">
+        <span>⏳ Checking KV…</span>
       </div>
-      <div id="betaRegimeTableStatus" style="margin-top:10px;font-size:11px;color:var(--text3)">Checking…</div>
+
+      <!-- Process flow -->
+      <div class="rt-process">
+        <div class="rt-step">
+          <div class="rt-step-title">Preview</div>
+          Run with <code>--dry-run</code> first to see what would be built without writing anything to KV.
+          <div class="rt-step-time">⏱ &lt;5 seconds</div>
+        </div>
+        <div class="rt-step">
+          <div class="rt-step-title">Bootstrap</div>
+          Use <code>--backfill</code> to pull Oanda history and get derived targets on day one — no waiting for weeks of live data.
+          <div class="rt-step-time">⏱ 10–20 seconds</div>
+        </div>
+        <div class="rt-step">
+          <div class="rt-step-title">Refine</div>
+          After weeks of live bot data, run without <code>--backfill</code> to rebuild from real HMM-labelled history. Bot also auto-rebuilds weekly.
+          <div class="rt-step-time">⏱ &lt;2 seconds</div>
+        </div>
+      </div>
+
+      <!-- Command groups -->
+      <div class="rt-group">
+        <div class="rt-group-title">
+          🚀 Day one — bootstrap from Oanda history
+          <span class="rt-timing">⏱ 10–20 sec</span>
+        </div>
+        <div class="rt-group-desc">
+          Fetches ~13 days of H4 bars from Oanda (80 bars per pair), runs rolling beta estimation
+          across those bars, classifies regime per window using EMA crossover, and derives targets
+          immediately. Run this as soon as the bot is deployed.
+        </div>
+        <div class="rt-cmd-block">
+          <span class="rt-comment"># Preview first — see derived targets without pushing anything</span><br>
+          python RegimeV2/beta_regime_table.py --backfill --dry-run<br><br>
+          <span class="rt-comment"># Push regime table + update beta targets in KV</span><br>
+          python RegimeV2/beta_regime_table.py --backfill --update-targets --url https://your-worker.workers.dev<br><br>
+          <span class="rt-comment"># Double the history window (~26 days) for more regime diversity</span><br>
+          python RegimeV2/beta_regime_table.py --backfill --bar-count 160 --update-targets --url https://your-worker.workers.dev<br><br>
+          <span class="rt-comment"># Also save the synthetic records to beta_history.jsonl for future runs</span><br>
+          python RegimeV2/beta_regime_table.py --backfill --save-backfill --update-targets --url https://your-worker.workers.dev
+        </div>
+      </div>
+
+      <div class="rt-group">
+        <div class="rt-group-title">
+          🔄 After weeks of live data — rebuild from real history
+          <span class="rt-timing">⏱ &lt;2 sec</span>
+        </div>
+        <div class="rt-group-desc">
+          Once the bot has been running long enough to accumulate 30+ records per regime in
+          <code>bot/data/beta_history.jsonl</code>, drop <code>--backfill</code> entirely.
+          These targets will be more accurate because regime labels come from the actual HMM.
+        </div>
+        <div class="rt-cmd-block">
+          <span class="rt-comment"># Standard rebuild — derives targets from live history only</span><br>
+          python RegimeV2/beta_regime_table.py --update-targets --url https://your-worker.workers.dev<br><br>
+          <span class="rt-comment"># Require more samples per regime for higher-quality targets</span><br>
+          python RegimeV2/beta_regime_table.py --update-targets --min-samples 50 --url https://your-worker.workers.dev
+        </div>
+      </div>
+
+      <div class="rt-group">
+        <div class="rt-group-title">
+          🔧 Other options
+        </div>
+        <div class="rt-cmd-block">
+          <span class="rt-comment"># Custom pairs (default covers EUR/GBP/USD/JPY/AUD/CAD/CHF/NZD)</span><br>
+          python RegimeV2/beta_regime_table.py --backfill --pairs EURUSD GBPUSD USDCAD USDJPY --update-targets --url ...<br><br>
+          <span class="rt-comment"># Practice/demo Oanda account</span><br>
+          python RegimeV2/beta_regime_table.py --backfill --oanda-practice --update-targets --url ...<br><br>
+          <span class="rt-comment"># OANDA_KEY can also be passed as env var instead of --oanda-key</span><br>
+          OANDA_KEY=your_key python RegimeV2/beta_regime_table.py --backfill --update-targets --url ...
+        </div>
+      </div>
+
+      <!-- Sample counts from KV -->
+      <div id="betaRegimeSamples" style="display:none">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px">Samples per regime in current table:</div>
+        <div class="rt-sample-grid" id="betaRegimeSampleGrid"></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:8px">
+          30+ samples per regime = reliable targets. Less = useful but rough. Run <code>--backfill --bar-count 160</code> or wait for more live data.
+        </div>
+      </div>
+
     </div>
 
   </div><!-- /tab-beta -->
@@ -1747,12 +1857,49 @@ async function loadBetaTargets() {
   _btFields(t);
   const st = document.getElementById('betaTargetStatus');
   if (st) st.textContent = t ? 'Loaded from KV' : 'Using defaults (no KV entry)';
-  // Check regime table
-  const rt = await _kvGet('beta_regime_table');
-  const rtEl = document.getElementById('betaRegimeTableStatus');
-  if (rtEl) rtEl.textContent = rt
-    ? 'Table found in KV — ' + Object.keys(rt).length + ' symbol(s)'
-    : 'Not found — run beta_regime_table.py after accumulating ~30 days of history';
+  // Regime table status
+  const rt    = await _kvGet('beta_regime_table');
+  const rtEl  = document.getElementById('betaRegimeTableStatus');
+  const smEl  = document.getElementById('betaRegimeSamples');
+  const sgEl  = document.getElementById('betaRegimeSampleGrid');
+  if (rtEl) {
+    if (!rt) {
+      rtEl.className = 'rt-status-bar empty';
+      rtEl.innerHTML = '<span>📭 No regime table in KV — run the bootstrap command below to create one</span>';
+    } else {
+      const nSyms = Object.keys(rt).length;
+      // Count min samples across regimes for EURUSD (reference pair)
+      const ref   = rt['EURUSD'] || rt[Object.keys(rt)[0]] || {};
+      const regimes = ['BULL','BEAR','RANGE','CHOP'];
+      const counts  = {};
+      regimes.forEach(r => {
+        let minN = Infinity;
+        Object.values(ref).forEach(fData => { if (fData[r]?.n != null) minN = Math.min(minN, fData[r].n); });
+        counts[r] = minN === Infinity ? 0 : minN;
+      });
+      const minCount = Math.min(...Object.values(counts));
+      const isGood   = minCount >= 30;
+      const isOk     = minCount >= 15;
+      rtEl.className = 'rt-status-bar ' + (isGood ? 'ok' : isOk ? 'warn' : 'empty');
+      rtEl.innerHTML =
+        '<span>' + (isGood ? '✓' : isOk ? '⚠' : '⏳') + ' Table found — ' + nSyms + ' pair(s)</span>' +
+        '<span class="rt-status-detail">' + (isGood ? 'Ready' : isOk ? 'Thin — more data improves accuracy' : 'Very thin — run --bar-count 160') + '</span>';
+      // Sample grid
+      if (smEl && sgEl) {
+        smEl.style.display = 'block';
+        const regColors = { BULL:'var(--green)', BEAR:'var(--red)', RANGE:'var(--amber)', CHOP:'var(--text3)' };
+        sgEl.innerHTML = regimes.map(r => {
+          const n = counts[r];
+          const col = n >= 30 ? 'var(--green)' : n >= 15 ? 'var(--amber)' : 'var(--red)';
+          return `<div class="rt-sample-cell">
+            <div class="rt-sample-regime" style="color:${regColors[r]}">${r}</div>
+            <div class="rt-sample-n" style="color:${col}">${n || '—'}</div>
+            <div class="rt-sample-label">samples</div>
+          </div>`;
+        }).join('');
+      }
+    }
+  }
 }
 
 async function saveBetaTargets() {
