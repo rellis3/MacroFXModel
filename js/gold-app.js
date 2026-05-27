@@ -2162,14 +2162,16 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
   const npocStack   = _ZT.zones?.npoc_stack    ?? [];
   let sniperHtml = '';
   if (price && (pivLvls || vwapAnchors.length || npocStack.length)) {
-    const SNAP    = 3; // $3 alignment window
-    const touched = pivLvls?.touched ?? {};
-    const cleanMode = localStorage.getItem('zt_sniper_clean') === '1';
+    const SNAP = 3; // $3 alignment window
+
+    // Tapped/bias data: status KV updates every ~5s via live price ticks;
+    // zone KV is the 90s fallback for when the bot has just started.
+    const touched    = _ZT.status?.touched          ?? pivLvls?.touched          ?? {};
+    const pivBias    = _ZT.status?.pivot_bias        ?? pivLvls?.pivot_bias       ?? 'NEUTRAL';
+    const structBias = _ZT.status?.structural_bias   ?? pivLvls?.structural_bias  ?? 'NEUTRAL';
+    const momentum   = _ZT.status?.momentum          ?? pivLvls?.momentum         ?? 'NEUTRAL';
 
     // ── Confluence status box (pivot bias + structural bias + momentum) ────────
-    const pivBias    = pivLvls?.pivot_bias      ?? 'NEUTRAL';
-    const structBias = pivLvls?.structural_bias ?? 'NEUTRAL';
-    const momentum   = pivLvls?.momentum        ?? 'NEUTRAL';
     const _biasCls = v => v === 'BULL' ? 'zt-snp-conf-bull' : v === 'BEAR' ? 'zt-snp-conf-bear' : 'zt-snp-conf-neut';
     const _biasArrow = v => v === 'BULL' ? '▲' : v === 'BEAR' ? '▼' : '─';
     const allBull = pivBias === 'BULL' && structBias === 'BULL' && momentum === 'BULL';
@@ -2241,12 +2243,10 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
       marks.push({ label: 'nPOC', price: n.price, cls: 'zt-snp-poc', note, touched: false, key: false });
     }
 
-    const allSorted = marks
+    const sorted = marks
       .filter(m => m.price != null && m.price > 0)
-      .sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price));
-
-    // Clean-up mode: show only untapped levels
-    const sorted = (cleanMode ? allSorted.filter(m => !m.touched) : allSorted).slice(0, 14);
+      .sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price))
+      .slice(0, 14);
 
     const vah = pivLvls?.vah, val = pivLvls?.val;
     const inVA = vah != null && val != null && price >= val && price <= vah;
@@ -2288,16 +2288,9 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
       ? `<div class="zt-snp-va-bar">VA ${val.toFixed(1)} – ${vah.toFixed(1)}${inVA ? ' <span class="zt-snp-inside">INSIDE VA</span>' : ''}</div>`
       : '';
 
-    const cleanBtn = `<button class="zt-snp-clean-btn${cleanMode ? ' zt-snp-clean-on' : ''}"
-      onclick="localStorage.setItem('zt_sniper_clean', localStorage.getItem('zt_sniper_clean')==='1'?'0':'1');_ztRender()">
-      ${cleanMode ? '⬤ FRESH ONLY' : '○ CLEAN MODE'}
-    </button>`;
-
     sniperHtml = `
       <div class="zt-sniper-panel">
-        <div class="zt-title" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
-          <span>SNIPER MARKS</span>${cleanBtn}
-        </div>
+        <div class="zt-title" style="margin-top:10px">SNIPER MARKS</div>
         ${confluenceBox}
         ${vaStr}
         <div class="zt-snp-grid">${rows}</div>

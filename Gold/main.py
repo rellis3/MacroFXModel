@@ -556,6 +556,21 @@ class GoldBot:
         if not price:
             return
 
+        # ── Real-time tapped pivot tracking ───────────────────────────────────
+        # Extend today's range so _touched_pivot_levels reflects the live tick.
+        # Only push status when the range actually changes (new high or new low).
+        if self.sess_lvls:
+            self.sess_lvls.current_price = price
+            extended = False
+            if price > self.sess_lvls.today_high:
+                self.sess_lvls.today_high = round(price, 2)
+                extended = True
+            if price < self.sess_lvls.today_low:
+                self.sess_lvls.today_low = round(price, 2)
+                extended = True
+            if extended:
+                self._push_status()
+
         bot = self.bot_state
 
         # ── Cooldown check ────────────────────────────────────────────────────
@@ -739,6 +754,11 @@ class GoldBot:
             'squeeze_ratio':  self.squeeze_ratio,
             'mt5_positions':  _serialize_open_positions(MAGIC),
         }
+        if self.sess_lvls:
+            status['touched']          = _touched_pivot_levels(self.sess_lvls)
+            status['pivot_bias']       = _pivot_bias(self.sess_lvls.current_price, self.sess_lvls.pivot)
+            status['structural_bias']  = self.htf_bias.bias if self.htf_bias else 'NEUTRAL'
+            status['momentum']         = _momentum_from_sess(self.sess_lvls)
         _kv_put_status('gold_bot_status', status, self.base_url)
 
     def _push_zones_kv(self) -> None:
