@@ -33,6 +33,7 @@ WEIGHTS = {
     'fib_786':        1.2,   # GP centre aligns with .786 of a different impulse
     'fib_886':        1.5,   # GP centre aligns with .886 of a different impulse (rarer/tighter)
     'fib_382':        0.8,   # GP centre aligns with .382 of a different impulse
+    'fib_50pct':      0.6,   # GP centre aligns with .5 of a different impulse
     'npoc_base':      2.0,   # + 0.1 per day old, cap 3.0
     'poc':            1.5,
     'hvn':            1.2,
@@ -95,6 +96,9 @@ def score_zones(zones: list[FibZone], vol: VolumeProfile,
             elif _near(c, other.level_382, tol):
                 score += WEIGHTS['fib_382']
                 comp.append(f'{other.tf} .382 @ {other.level_382:.1f}')
+            elif _near(c, other.level_500, tol):
+                score += WEIGHTS['fib_50pct']
+                comp.append(f'{other.tf} .5 @ {other.level_500:.1f}')
 
         # ── nPOC stack — oldest (strongest) first ─────────────────────────────
         for npoc in vol.npoc_stack:
