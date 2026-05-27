@@ -105,7 +105,7 @@ function viterbi(obs, A, B, pi) {
 
 // ── Baum-Welch EM ─────────────────────────────────────────────────────────────
 
-function baumWelch(obs, maxIter = 25) {
+function baumWelch(obs, maxIter = 50) {
   const T = obs.length;
   const N = 2;
 
@@ -114,15 +114,23 @@ function baumWelch(obs, maxIter = 25) {
   const std = Math.sqrt(variance) || 1e-6;
 
   // State 0 = RANGE (tight distribution), State 1 = TREND (wide distribution)
+  // Ratio 1.44x (was 2.46x) — prevents Baum-Welch from collapsing to a single state
   let A  = [[0.93, 0.07], [0.12, 0.88]];
   let B  = [
-    { mu: 0.0, sigma: std * 0.65 },
-    { mu: 0.0, sigma: std * 1.60 },
+    { mu: 0.0, sigma: std * 0.80 },
+    { mu: 0.0, sigma: std * 1.15 },
   ];
   let pi = [0.60, 0.40];
 
+  let prevLogL = -Infinity;
+
   for (let iter = 0; iter < maxIter; iter++) {
     const { alpha, scales } = forward(obs, A, B, pi);
+
+    // Converge when log-likelihood improvement drops below threshold
+    const logL = scales.reduce((s, sc) => s + Math.log(sc || 1e-300), 0);
+    if (iter > 0 && Math.abs(logL - prevLogL) < 1e-4) break;
+    prevLogL = logL;
     const beta = backward(obs, A, B, scales);
 
     // gamma[t][i] = P(state=i | obs, params)
@@ -178,7 +186,8 @@ function baumWelch(obs, maxIter = 25) {
       const sig = Math.sqrt(
         gammaJ.reduce((s, g, t) => s + g * (obs[t] - mu) ** 2, 0) / gSum
       );
-      B[j] = { mu, sigma: Math.max(sig, std * 0.05) };
+      // Bound sigma: prevents runaway divergence between states
+      B[j] = { mu, sigma: Math.min(Math.max(sig, std * 0.40), std * 2.50) };
     }
   }
 
@@ -232,7 +241,8 @@ export function fitHMM(returns) {
       trendDir,
       rangeProb,
       trendProb: 1 - rangeProb,
-      sigmaRatio,       // >1.5 = well-separated states, <1.2 = ambiguous
+      sigmaRatio,
+      reliable: sigmaRatio >= 1.2,  // false = states not well-separated; don't trust regime
       computedAt: new Date().toISOString(),
     };
   } catch (e) {

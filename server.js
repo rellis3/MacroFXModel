@@ -78,6 +78,14 @@ const PRICE_DIGITS = {
   'USD/JPY': 3, 'GBP/JPY': 3, 'XAU/USD': 2, 'NAS100_USD': 1,
 };
 
+// Typical OANDA spread in pips per pair — used as baseline for spread quality gate
+const TYPICAL_SPREAD_PIPS = {
+  'EUR/USD': 0.6, 'GBP/USD': 0.9, 'USD/JPY': 0.7,
+  'AUD/USD': 0.9, 'NZD/USD': 1.1, 'USD/CAD': 1.1,
+  'USD/CHF': 1.0, 'GBP/JPY': 2.0,
+  'XAU/USD': 0.3, 'NAS100_USD': 1.0,
+};
+
 const DEFAULT_CFG = {
   enabled:        false,
   browserEnabled: true,  // browser tab proximity alerts (server ignores this)
@@ -199,9 +207,13 @@ async function fetchAllPrices(pairs) {
         const fetched = new Set();
         for (const p of (d.prices ?? [])) {
           if (p.bids?.[0] && p.asks?.[0]) {
-            const sym   = p.instrument.replace('_', '/');
-            const price = (parseFloat(p.bids[0].price) + parseFloat(p.asks[0].price)) / 2;
-            state.prices[sym] = { price, at: now };
+            const sym      = p.instrument.replace('_', '/');
+            const bid      = parseFloat(p.bids[0].price);
+            const ask      = parseFloat(p.asks[0].price);
+            const price    = (bid + ask) / 2;
+            const pipSz    = PIP_SIZE[sym] ?? 0.0001;
+            const spreadPips = (ask - bid) / pipSz;
+            state.prices[sym] = { price, spreadPips, at: now };
             fetched.add(sym);
           }
         }
@@ -303,7 +315,7 @@ function computeGrade(entry, hmmData, swing30m = null) {
   const warnings = [];
   let   hardStop = false;
 
-  if (hmmData?.regime) {
+  if (hmmData?.regime && hmmData.reliable !== false) {
     const isLong    = entry.direction === 'long';
     const withTrend = (isLong && hmmData.trendDir === 'BULL') || (!isLong && hmmData.trendDir === 'BEAR');
     if (hmmData.regime === 'RANGE') {
@@ -356,7 +368,48 @@ function formatAlert(sym, entry, price, distPips) {
   const hmm   = state.hmmRegimes[sym];
   const swing = hmm?.intraday30m ?? null;
   const g     = computeGrade(entry, hmm, swing);
-  const vi    = g.verdict === 'TAKE' ? '✅' : g.verdict === 'WATCH' ? '👁' : g.verdict === 'CAUTION' ? '⚠️' : '🚫';
+
+  // ── Post-grade overrides (applied at alert time regardless of who computed grade) ──
+
+  // 1. R:R gate: cap grade when risk/reward is poor
+  const rr = parseFloat(entry.rrRatio ?? 0) || 0;
+  if (rr > 0 && g.grade !== 'SKIP') {
+    if (rr < 1.0) {
+      if (g.grade === 'A+' || g.grade === 'A') g.grade = 'B';
+      g.warnings.push(`R:R 1:${rr} below breakeven`);
+      g.verdict = 'WATCH';
+    } else if (rr < 1.5 && g.grade === 'A+') {
+      g.grade  = 'A';
+      g.verdict = 'TAKE';
+    }
+  }
+
+  // 2. Spread gate: warn when execution cost is elevated
+  const liveSpreadPips  = state.prices[sym]?.spreadPips ?? null;
+  const typicalSpread   = TYPICAL_SPREAD_PIPS[sym] ?? 1.0;
+  const spreadRatio     = liveSpreadPips != null ? liveSpreadPips / typicalSpread : null;
+  if (spreadRatio != null && spreadRatio > 3.0) {
+    g.grade   = g.grade === 'A+' ? 'A' : g.grade === 'A' ? 'B' : g.grade;
+    g.verdict = g.grade === 'A+' || g.grade === 'A' ? 'TAKE' : 'WATCH';
+    g.warnings.push(`Spread ${liveSpreadPips.toFixed(1)}p (${spreadRatio.toFixed(1)}× typical) — wait`);
+  }
+
+  // 3. Event risk: downgrade if browser flagged a high-impact event on this entry
+  const entryTags = (entry.tags ?? []).map(t => typeof t === 'string' ? t : (t.label ?? ''));
+  const hasHighEvent = entryTags.some(t => t.includes('Event ⚠'));
+  if (hasHighEvent && (g.grade === 'A+' || g.grade === 'A')) {
+    g.grade   = 'B';
+    g.verdict = 'WATCH';
+    g.warnings.push('High-impact event risk');
+  }
+
+  // 4. HMM reliability gate: suppress confident regime label when states aren't well-separated
+  if (hmm && hmm.reliable === false) {
+    g.reasons = g.reasons.filter(r => !r.startsWith('Range') && !r.startsWith('Trend'));
+    g.warnings.push('Regime unclear');
+  }
+
+  const vi = g.verdict === 'TAKE' ? '✅' : g.verdict === 'WATCH' ? '👁' : g.verdict === 'CAUTION' ? '⚠️' : '🚫';
 
   const parts = [
     `🎯 <b>${sym} ${dir}</b> ${stars}`,
@@ -1215,10 +1268,10 @@ async function runLevelsRefresh() {
     state.levelsRefreshAt = Date.now();
     await reloadLevels();
 
-    // Compute HMM regime for each pair using last 60 daily closes
+    // Compute HMM regime for each pair using last 200 daily closes (1 year)
     const hmmResults = [];
     for (const sym of pairs) {
-      const closes = await fetchDailyCandles(sym, 61);
+      const closes = await fetchDailyCandles(sym, 201);
       if (closes && closes.length >= 20) {
         const returns = [];
         for (let i = 1; i < closes.length; i++) {
@@ -1228,7 +1281,8 @@ async function runLevelsRefresh() {
         if (result) {
           // Preserve intraday30m set by reloadLevels() — don't clobber it
           state.hmmRegimes[sym] = { ...result, intraday30m: state.hmmRegimes[sym]?.intraday30m };
-          hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range`);
+          const reliableTag = result.reliable ? '' : '⚠ambiguous';
+          hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range ratio=${result.sigmaRatio?.toFixed(2)}${reliableTag}`);
         }
       }
     }
