@@ -85,7 +85,8 @@ const DEFAULT_CFG = {
   minGrade:       'B',   // A/B/C/D — minimum grade to alert on
   pairs:       [],
   proxPips:    { default: 5, 'XAU/USD': 15, 'NAS100_USD': 30 },
-  cooldownMin: 60,
+  cooldownMin:    60,   // minutes before same level+direction can re-alert
+  pairCooldownMin: 240, // minutes before any alert on the same pair (4 h default)
   onlyAligned: false,
   regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
 };
@@ -95,6 +96,7 @@ const DEFAULT_CFG = {
 const state = {
   levels:              {},   // { 'EUR/USD': { data: [...], timestamp: ms } }
   cooldowns:           {},   // { 'EURUSD_1.0847_long': lastSentMs }
+  pairLastAlert:       {},   // { 'EUR/USD': lastSentMs } — per-pair rate-limit
   prices:              {},   // { 'EUR/USD': { price: n, at: ms } }
   hmmRegimes:          {},   // { 'EUR/USD': { regime, trendDir, rangeProb, ... } } — daily HMM
   hmm5mRegimes:        {},   // { 'EUR/USD': { regime, pBull, pBear, pRange, confidence, ... } } — live 5m HMM
@@ -465,13 +467,16 @@ async function monitorTick() {
       const proxPips = state.cfg.proxPips?.[sym] ?? state.cfg.proxPips?.default ?? 5;
       const proxDist = proxPips * pipSz;
 
-      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0, skipScore = 0, skipAligned = 0;
+      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0, skipScore = 0, skipAligned = 0, skipConflict = 0;
 
       const _GRADE_ORDER = {'A+': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1, 'SKIP': 0};
       const minGrade      = state.cfg.minGrade ?? 'B';
 
       // Sort entries by signalScore desc so highest quality alerts fire first
       const sortedEntries = [...bucket.data].sort((a, b) => (b.signalScore ?? -1) - (a.signalScore ?? -1));
+
+      // Pass 1: collect all candidates that pass per-entry filters and per-level cooldown
+      const tickCandidates = [];
 
       for (const entry of sortedEntries) {
         // Polarity flip — override direction when level was broken and price has returned
@@ -504,23 +509,58 @@ async function monitorTick() {
         const lastSent = state.cooldowns[ck] ?? 0;
         if (now - lastSent < (state.cfg.cooldownMin ?? 60) * 60_000)                            { skipCooldown++; continue; }
 
-        state.cooldowns[ck] = now;
-        cdDirty = true;
-
-        const distPips = Math.round(dist / pipSz);
-        const msg      = formatAlert(sym, eff, price, distPips);
-        const sent     = await sendTelegram(state.tg.token, state.tg.chatId, msg);
-
-        if (sent) { state.lastAlert = new Date().toISOString(); state.alertCount++; }
-
-        console.log(`[MONITOR] ${sym} ${eff.direction}${_polarFlip ? ' [FLIPPED]' : ''} @ ${eff.price.toFixed(digits)} (${distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
+        tickCandidates.push({ eff, ck, dist, distPips: Math.round(dist / pipSz), _polarFlip });
       }
 
-      state.skipCounts[sym] = { stars: skipStars, score: skipScore, dir: skipDir, aligned: skipAligned, prox: skipProx, cooldown: skipCooldown };
+      // Pass 2: pick one winner per pair per tick
+      if (tickCandidates.length) {
+        // Conflict resolution: if both buy and sell levels qualify simultaneously,
+        // keep only the one closest to the current price — prevents contradictory alerts.
+        const longCands  = tickCandidates.filter(c => c.eff.direction === 'long');
+        const shortCands = tickCandidates.filter(c => c.eff.direction === 'short');
+
+        let winner;
+        if (longCands.length && shortCands.length) {
+          const allSorted = [...tickCandidates].sort((a, b) => a.dist - b.dist);
+          winner       = allSorted[0];
+          skipConflict = allSorted.length - 1;
+          console.log(`[MONITOR] ${sym} conflict: ${longCands.length}L/${shortCands.length}S — kept closest ${winner.eff.direction} @ ${winner.eff.price.toFixed(digits)}`);
+        } else {
+          winner       = tickCandidates[0]; // highest signalScore (sorted above)
+          skipConflict = tickCandidates.length - 1;
+        }
+
+        // Per-pair cooldown: enforce a minimum gap between any two alerts on the same pair.
+        // Stored in cooldowns dict under a _pair_ prefix so it survives config reloads.
+        const pairCooldownMin = state.cfg.pairCooldownMin ?? 240;
+        const pairCoolKey     = `_pair_${sym.replace('/', '')}`;
+        const pairLastSent    = state.pairLastAlert[sym] ?? (state.cooldowns[pairCoolKey] ?? 0);
+        const pairElapsed     = now - pairLastSent;
+
+        if (pairElapsed < pairCooldownMin * 60_000) {
+          const remaining = ((pairCooldownMin * 60_000 - pairElapsed) / 60_000).toFixed(0);
+          console.log(`[MONITOR] ${sym} pair-cooldown: ${remaining}m remaining`);
+          skipCooldown += tickCandidates.length;
+        } else {
+          state.cooldowns[winner.ck]  = now;
+          state.cooldowns[pairCoolKey] = now;
+          state.pairLastAlert[sym]    = now;
+          cdDirty = true;
+
+          const msg  = formatAlert(sym, winner.eff, price, winner.distPips);
+          const sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
+
+          if (sent) { state.lastAlert = new Date().toISOString(); state.alertCount++; }
+
+          console.log(`[MONITOR] ${sym} ${winner.eff.direction}${winner._polarFlip ? ' [FLIPPED]' : ''} @ ${winner.eff.price.toFixed(digits)} (${winner.distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
+        }
+      }
+
+      state.skipCounts[sym] = { stars: skipStars, score: skipScore, dir: skipDir, aligned: skipAligned, prox: skipProx, cooldown: skipCooldown, conflict: skipConflict };
 
       if (doSummary && bucket.data.length > 0) {
         const maxScore = Math.max(...bucket.data.map(e => e.signalScore ?? 0));
-        summaryLines.push(`${sym}[≥${minGrade}]: ${bucket.data.length} entries score=${maxScore}% skip=${skipScore}grade/${skipDir}dir/${skipAligned}align/${skipProx}prox/${skipCooldown}cd`);
+        summaryLines.push(`${sym}[≥${minGrade}]: ${bucket.data.length} entries score=${maxScore}% skip=${skipScore}grade/${skipDir}dir/${skipAligned}align/${skipProx}prox/${skipCooldown}cd/${skipConflict}conflict`);
       }
     }
 
