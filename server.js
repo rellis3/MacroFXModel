@@ -78,6 +78,14 @@ const PRICE_DIGITS = {
   'USD/JPY': 3, 'GBP/JPY': 3, 'XAU/USD': 2, 'NAS100_USD': 1,
 };
 
+// Typical OANDA spread in pips per pair — used as baseline for spread quality gate
+const TYPICAL_SPREAD_PIPS = {
+  'EUR/USD': 0.6, 'GBP/USD': 0.9, 'USD/JPY': 0.7,
+  'AUD/USD': 0.9, 'NZD/USD': 1.1, 'USD/CAD': 1.1,
+  'USD/CHF': 1.0, 'GBP/JPY': 2.0,
+  'XAU/USD': 0.3, 'NAS100_USD': 1.0,
+};
+
 const DEFAULT_CFG = {
   enabled:        false,
   browserEnabled: true,  // browser tab proximity alerts (server ignores this)
@@ -85,7 +93,8 @@ const DEFAULT_CFG = {
   minGrade:       'B',   // A/B/C/D — minimum grade to alert on
   pairs:       [],
   proxPips:    { default: 5, 'XAU/USD': 15, 'NAS100_USD': 30 },
-  cooldownMin: 60,
+  cooldownMin:    60,   // minutes before same level+direction can re-alert
+  pairCooldownMin: 240, // minutes before any alert on the same pair (4 h default)
   onlyAligned: false,
   regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
 };
@@ -95,6 +104,7 @@ const DEFAULT_CFG = {
 const state = {
   levels:              {},   // { 'EUR/USD': { data: [...], timestamp: ms } }
   cooldowns:           {},   // { 'EURUSD_1.0847_long': lastSentMs }
+  pairLastAlert:       {},   // { 'EUR/USD': lastSentMs } — per-pair rate-limit
   prices:              {},   // { 'EUR/USD': { price: n, at: ms } }
   hmmRegimes:          {},   // { 'EUR/USD': { regime, trendDir, rangeProb, ... } } — daily HMM
   hmm5mRegimes:        {},   // { 'EUR/USD': { regime, pBull, pBear, pRange, confidence, ... } } — live 5m HMM
@@ -197,9 +207,13 @@ async function fetchAllPrices(pairs) {
         const fetched = new Set();
         for (const p of (d.prices ?? [])) {
           if (p.bids?.[0] && p.asks?.[0]) {
-            const sym   = p.instrument.replace('_', '/');
-            const price = (parseFloat(p.bids[0].price) + parseFloat(p.asks[0].price)) / 2;
-            state.prices[sym] = { price, at: now };
+            const sym      = p.instrument.replace('_', '/');
+            const bid      = parseFloat(p.bids[0].price);
+            const ask      = parseFloat(p.asks[0].price);
+            const price    = (bid + ask) / 2;
+            const pipSz    = PIP_SIZE[sym] ?? 0.0001;
+            const spreadPips = (ask - bid) / pipSz;
+            state.prices[sym] = { price, spreadPips, at: now };
             fetched.add(sym);
           }
         }
@@ -301,7 +315,7 @@ function computeGrade(entry, hmmData, swing30m = null) {
   const warnings = [];
   let   hardStop = false;
 
-  if (hmmData?.regime) {
+  if (hmmData?.regime && hmmData.reliable !== false) {
     const isLong    = entry.direction === 'long';
     const withTrend = (isLong && hmmData.trendDir === 'BULL') || (!isLong && hmmData.trendDir === 'BEAR');
     if (hmmData.regime === 'RANGE') {
@@ -354,7 +368,48 @@ function formatAlert(sym, entry, price, distPips) {
   const hmm   = state.hmmRegimes[sym];
   const swing = hmm?.intraday30m ?? null;
   const g     = computeGrade(entry, hmm, swing);
-  const vi    = g.verdict === 'TAKE' ? '✅' : g.verdict === 'WATCH' ? '👁' : g.verdict === 'CAUTION' ? '⚠️' : '🚫';
+
+  // ── Post-grade overrides (applied at alert time regardless of who computed grade) ──
+
+  // 1. R:R gate: cap grade when risk/reward is poor
+  const rr = parseFloat(entry.rrRatio ?? 0) || 0;
+  if (rr > 0 && g.grade !== 'SKIP') {
+    if (rr < 1.0) {
+      if (g.grade === 'A+' || g.grade === 'A') g.grade = 'B';
+      g.warnings.push(`R:R 1:${rr} below breakeven`);
+      g.verdict = 'WATCH';
+    } else if (rr < 1.5 && g.grade === 'A+') {
+      g.grade  = 'A';
+      g.verdict = 'TAKE';
+    }
+  }
+
+  // 2. Spread gate: warn when execution cost is elevated
+  const liveSpreadPips  = state.prices[sym]?.spreadPips ?? null;
+  const typicalSpread   = TYPICAL_SPREAD_PIPS[sym] ?? 1.0;
+  const spreadRatio     = liveSpreadPips != null ? liveSpreadPips / typicalSpread : null;
+  if (spreadRatio != null && spreadRatio > 3.0) {
+    g.grade   = g.grade === 'A+' ? 'A' : g.grade === 'A' ? 'B' : g.grade;
+    g.verdict = g.grade === 'A+' || g.grade === 'A' ? 'TAKE' : 'WATCH';
+    g.warnings.push(`Spread ${liveSpreadPips.toFixed(1)}p (${spreadRatio.toFixed(1)}× typical) — wait`);
+  }
+
+  // 3. Event risk: downgrade if browser flagged a high-impact event on this entry
+  const entryTags = (entry.tags ?? []).map(t => typeof t === 'string' ? t : (t.label ?? ''));
+  const hasHighEvent = entryTags.some(t => t.includes('Event ⚠'));
+  if (hasHighEvent && (g.grade === 'A+' || g.grade === 'A')) {
+    g.grade   = 'B';
+    g.verdict = 'WATCH';
+    g.warnings.push('High-impact event risk');
+  }
+
+  // 4. HMM reliability gate: suppress confident regime label when states aren't well-separated
+  if (hmm && hmm.reliable === false) {
+    g.reasons = g.reasons.filter(r => !r.startsWith('Range') && !r.startsWith('Trend'));
+    g.warnings.push('Regime unclear');
+  }
+
+  const vi = g.verdict === 'TAKE' ? '✅' : g.verdict === 'WATCH' ? '👁' : g.verdict === 'CAUTION' ? '⚠️' : '🚫';
 
   const parts = [
     `🎯 <b>${sym} ${dir}</b> ${stars}`,
@@ -465,13 +520,16 @@ async function monitorTick() {
       const proxPips = state.cfg.proxPips?.[sym] ?? state.cfg.proxPips?.default ?? 5;
       const proxDist = proxPips * pipSz;
 
-      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0, skipScore = 0, skipAligned = 0;
+      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0, skipScore = 0, skipAligned = 0, skipConflict = 0;
 
       const _GRADE_ORDER = {'A+': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1, 'SKIP': 0};
       const minGrade      = state.cfg.minGrade ?? 'B';
 
       // Sort entries by signalScore desc so highest quality alerts fire first
       const sortedEntries = [...bucket.data].sort((a, b) => (b.signalScore ?? -1) - (a.signalScore ?? -1));
+
+      // Pass 1: collect all candidates that pass per-entry filters and per-level cooldown
+      const tickCandidates = [];
 
       for (const entry of sortedEntries) {
         // Polarity flip — override direction when level was broken and price has returned
@@ -504,23 +562,58 @@ async function monitorTick() {
         const lastSent = state.cooldowns[ck] ?? 0;
         if (now - lastSent < (state.cfg.cooldownMin ?? 60) * 60_000)                            { skipCooldown++; continue; }
 
-        state.cooldowns[ck] = now;
-        cdDirty = true;
-
-        const distPips = Math.round(dist / pipSz);
-        const msg      = formatAlert(sym, eff, price, distPips);
-        const sent     = await sendTelegram(state.tg.token, state.tg.chatId, msg);
-
-        if (sent) { state.lastAlert = new Date().toISOString(); state.alertCount++; }
-
-        console.log(`[MONITOR] ${sym} ${eff.direction}${_polarFlip ? ' [FLIPPED]' : ''} @ ${eff.price.toFixed(digits)} (${distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
+        tickCandidates.push({ eff, ck, dist, distPips: Math.round(dist / pipSz), _polarFlip });
       }
 
-      state.skipCounts[sym] = { stars: skipStars, score: skipScore, dir: skipDir, aligned: skipAligned, prox: skipProx, cooldown: skipCooldown };
+      // Pass 2: pick one winner per pair per tick
+      if (tickCandidates.length) {
+        // Conflict resolution: if both buy and sell levels qualify simultaneously,
+        // keep only the one closest to the current price — prevents contradictory alerts.
+        const longCands  = tickCandidates.filter(c => c.eff.direction === 'long');
+        const shortCands = tickCandidates.filter(c => c.eff.direction === 'short');
+
+        let winner;
+        if (longCands.length && shortCands.length) {
+          const allSorted = [...tickCandidates].sort((a, b) => a.dist - b.dist);
+          winner       = allSorted[0];
+          skipConflict = allSorted.length - 1;
+          console.log(`[MONITOR] ${sym} conflict: ${longCands.length}L/${shortCands.length}S — kept closest ${winner.eff.direction} @ ${winner.eff.price.toFixed(digits)}`);
+        } else {
+          winner       = tickCandidates[0]; // highest signalScore (sorted above)
+          skipConflict = tickCandidates.length - 1;
+        }
+
+        // Per-pair cooldown: enforce a minimum gap between any two alerts on the same pair.
+        // Stored in cooldowns dict under a _pair_ prefix so it survives config reloads.
+        const pairCooldownMin = state.cfg.pairCooldownMin ?? 240;
+        const pairCoolKey     = `_pair_${sym.replace('/', '')}`;
+        const pairLastSent    = state.pairLastAlert[sym] ?? (state.cooldowns[pairCoolKey] ?? 0);
+        const pairElapsed     = now - pairLastSent;
+
+        if (pairElapsed < pairCooldownMin * 60_000) {
+          const remaining = ((pairCooldownMin * 60_000 - pairElapsed) / 60_000).toFixed(0);
+          console.log(`[MONITOR] ${sym} pair-cooldown: ${remaining}m remaining`);
+          skipCooldown += tickCandidates.length;
+        } else {
+          state.cooldowns[winner.ck]  = now;
+          state.cooldowns[pairCoolKey] = now;
+          state.pairLastAlert[sym]    = now;
+          cdDirty = true;
+
+          const msg  = formatAlert(sym, winner.eff, price, winner.distPips);
+          const sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
+
+          if (sent) { state.lastAlert = new Date().toISOString(); state.alertCount++; }
+
+          console.log(`[MONITOR] ${sym} ${winner.eff.direction}${winner._polarFlip ? ' [FLIPPED]' : ''} @ ${winner.eff.price.toFixed(digits)} (${winner.distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
+        }
+      }
+
+      state.skipCounts[sym] = { stars: skipStars, score: skipScore, dir: skipDir, aligned: skipAligned, prox: skipProx, cooldown: skipCooldown, conflict: skipConflict };
 
       if (doSummary && bucket.data.length > 0) {
         const maxScore = Math.max(...bucket.data.map(e => e.signalScore ?? 0));
-        summaryLines.push(`${sym}[≥${minGrade}]: ${bucket.data.length} entries score=${maxScore}% skip=${skipScore}grade/${skipDir}dir/${skipAligned}align/${skipProx}prox/${skipCooldown}cd`);
+        summaryLines.push(`${sym}[≥${minGrade}]: ${bucket.data.length} entries score=${maxScore}% skip=${skipScore}grade/${skipDir}dir/${skipAligned}align/${skipProx}prox/${skipCooldown}cd/${skipConflict}conflict`);
       }
     }
 
@@ -1175,10 +1268,10 @@ async function runLevelsRefresh() {
     state.levelsRefreshAt = Date.now();
     await reloadLevels();
 
-    // Compute HMM regime for each pair using last 60 daily closes
+    // Compute HMM regime for each pair using last 200 daily closes (1 year)
     const hmmResults = [];
     for (const sym of pairs) {
-      const closes = await fetchDailyCandles(sym, 61);
+      const closes = await fetchDailyCandles(sym, 201);
       if (closes && closes.length >= 20) {
         const returns = [];
         for (let i = 1; i < closes.length; i++) {
@@ -1188,7 +1281,8 @@ async function runLevelsRefresh() {
         if (result) {
           // Preserve intraday30m set by reloadLevels() — don't clobber it
           state.hmmRegimes[sym] = { ...result, intraday30m: state.hmmRegimes[sym]?.intraday30m };
-          hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range`);
+          const reliableTag = result.reliable ? '' : '⚠ambiguous';
+          hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range ratio=${result.sigmaRatio?.toFixed(2)}${reliableTag}`);
         }
       }
     }
