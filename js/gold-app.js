@@ -2157,30 +2157,66 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
     : '';
 
   // Sniper Suite pivot marks — sourced from pivot_levels, vwap_anchors, npoc_stack in KV
-  const pivLvls    = _ZT.zones?.pivot_levels   ?? null;
+  const pivLvls     = _ZT.zones?.pivot_levels  ?? null;
   const vwapAnchors = _ZT.zones?.vwap_anchors  ?? [];
-  const npocStack  = _ZT.zones?.npoc_stack     ?? [];
+  const npocStack   = _ZT.zones?.npoc_stack    ?? [];
   let sniperHtml = '';
   if (price && (pivLvls || vwapAnchors.length || npocStack.length)) {
-    const SNAP = 3; // $3 alignment window
+    const SNAP    = 3; // $3 alignment window
+    const touched = pivLvls?.touched ?? {};
+    const cleanMode = localStorage.getItem('zt_sniper_clean') === '1';
 
-    // Build flat mark list. Pivot levels are from the previous session (labelled "prev day").
-    // VWAP anchors and nPOC entries carry explicit date/session context from the KV.
+    // ── Confluence status box (pivot bias + structural bias + momentum) ────────
+    const pivBias    = pivLvls?.pivot_bias      ?? 'NEUTRAL';
+    const structBias = pivLvls?.structural_bias ?? 'NEUTRAL';
+    const momentum   = pivLvls?.momentum        ?? 'NEUTRAL';
+    const _biasCls = v => v === 'BULL' ? 'zt-snp-conf-bull' : v === 'BEAR' ? 'zt-snp-conf-bear' : 'zt-snp-conf-neut';
+    const _biasArrow = v => v === 'BULL' ? '▲' : v === 'BEAR' ? '▼' : '─';
+    const allBull = pivBias === 'BULL' && structBias === 'BULL' && momentum === 'BULL';
+    const allBear = pivBias === 'BEAR' && structBias === 'BEAR' && momentum === 'BEAR';
+    const verdict = allBull ? 'BULL CONFIRMED' : allBear ? 'BEAR CONFIRMED' : 'NO CONFLUENCE';
+    const verdictCls = allBull ? 'zt-snp-verdict-bull' : allBear ? 'zt-snp-verdict-bear' : 'zt-snp-verdict-none';
+    const confluenceBox = `
+      <div class="zt-snp-conf-box">
+        <div class="zt-snp-conf-row">
+          <span class="zt-snp-conf-lbl">Pivot Bias</span>
+          <span class="zt-snp-conf-val ${_biasCls(pivBias)}">${_biasArrow(pivBias)} ${pivBias}</span>
+        </div>
+        <div class="zt-snp-conf-row">
+          <span class="zt-snp-conf-lbl">Structure</span>
+          <span class="zt-snp-conf-val ${_biasCls(structBias)}">${_biasArrow(structBias)} ${structBias}</span>
+        </div>
+        <div class="zt-snp-conf-row">
+          <span class="zt-snp-conf-lbl">Momentum</span>
+          <span class="zt-snp-conf-val ${_biasCls(momentum)}">${_biasArrow(momentum)} ${momentum}</span>
+        </div>
+        <div class="zt-snp-verdict ${verdictCls}">${verdict}</div>
+      </div>`;
+
+    // ── Build flat mark list ──────────────────────────────────────────────────
     const marks = [];
 
     if (pivLvls) {
       marks.push(
-        { label: 'VAH',  price: pivLvls.vah,        cls: 'zt-snp-vah',  note: 'prev day VA' },
-        { label: 'VAL',  price: pivLvls.val,        cls: 'zt-snp-val',  note: 'prev day VA' },
-        { label: 'PP',   price: pivLvls.pp,         cls: 'zt-snp-pp',   note: 'prev day pivot' },
-        { label: 'R1',   price: pivLvls.r1,         cls: 'zt-snp-r',    note: 'prev day' },
-        { label: 'R2',   price: pivLvls.r2,         cls: 'zt-snp-r',    note: 'prev day' },
-        { label: 'S1',   price: pivLvls.s1,         cls: 'zt-snp-s',    note: 'prev day' },
-        { label: 'S2',   price: pivLvls.s2,         cls: 'zt-snp-s',    note: 'prev day' },
-        { label: 'POC',  price: pivLvls.poc,        cls: 'zt-snp-poc',  note: 'today' },
-        { label: 'VWAP', price: pivLvls.vwap,       cls: 'zt-snp-vwap', note: 'today session' },
-        { label: 'Open', price: pivLvls.daily_open, cls: 'zt-snp-open', note: 'today open' },
+        { label: 'VAH',  price: pivLvls.vah,        cls: 'zt-snp-vah',  note: 'prev day VA',    touched: false,           key: true  },
+        { label: 'VAL',  price: pivLvls.val,        cls: 'zt-snp-val',  note: 'prev day VA',    touched: false,           key: true  },
+        { label: 'PP',   price: pivLvls.pp,         cls: 'zt-snp-pp',   note: 'prev day pivot', touched: touched.pp??false, key: true  },
+        { label: 'R1',   price: pivLvls.r1,         cls: 'zt-snp-r',    note: 'daily',          touched: touched.r1??false, key: true  },
+        { label: 'R2',   price: pivLvls.r2,         cls: 'zt-snp-r',    note: 'daily',          touched: touched.r2??false, key: false },
+        { label: 'S1',   price: pivLvls.s1,         cls: 'zt-snp-s',    note: 'daily',          touched: touched.s1??false, key: true  },
+        { label: 'S2',   price: pivLvls.s2,         cls: 'zt-snp-s',    note: 'daily',          touched: touched.s2??false, key: false },
+        { label: 'POC',  price: pivLvls.poc,        cls: 'zt-snp-poc',  note: 'today',          touched: false,           key: true  },
+        { label: 'VWAP', price: pivLvls.vwap,       cls: 'zt-snp-vwap', note: 'today session',  touched: false,           key: true  },
+        { label: 'Open', price: pivLvls.daily_open, cls: 'zt-snp-open', note: 'today open',     touched: false,           key: true  },
       );
+
+      // 4H pivot levels (sub-daily precision, not touched-tracked)
+      const h4p = pivLvls.h4_pivot;
+      if (h4p) {
+        if (h4p.r1) marks.push({ label: 'H4 R1', price: h4p.r1, cls: 'zt-snp-r',  note: '4H pivot', touched: false, key: false });
+        if (h4p.pp) marks.push({ label: 'H4 PP', price: h4p.pp, cls: 'zt-snp-pp', note: '4H pivot', touched: false, key: false });
+        if (h4p.s1) marks.push({ label: 'H4 S1', price: h4p.s1, cls: 'zt-snp-s',  note: '4H pivot', touched: false, key: false });
+      }
     }
 
     // VWAP anchors — each carries session name, age_days, direction, date
@@ -2192,7 +2228,7 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
         a.direction ? a.direction : null,
         a.date ?? null,
       ].filter(Boolean).join(' · ');
-      marks.push({ label: lbl, price: a.price, cls: 'zt-snp-vwap', note });
+      marks.push({ label: lbl, price: a.price, cls: 'zt-snp-vwap', note, touched: false, key: false });
     }
 
     // Naked POC stack — each has price, age_days, date
@@ -2202,13 +2238,15 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
         n.age_days != null ? `${n.age_days}d ago` : null,
         n.date ?? null,
       ].filter(Boolean).join(' · ');
-      marks.push({ label: 'nPOC', price: n.price, cls: 'zt-snp-poc', note });
+      marks.push({ label: 'nPOC', price: n.price, cls: 'zt-snp-poc', note, touched: false, key: false });
     }
 
-    const sorted = marks
+    const allSorted = marks
       .filter(m => m.price != null && m.price > 0)
-      .sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price))
-      .slice(0, 12);
+      .sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price));
+
+    // Clean-up mode: show only untapped levels
+    const sorted = (cleanMode ? allSorted.filter(m => !m.touched) : allSorted).slice(0, 14);
 
     const vah = pivLvls?.vah, val = pivLvls?.val;
     const inVA = vah != null && val != null && price >= val && price <= vah;
@@ -2217,6 +2255,7 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
       const dist    = m.price - price;
       const distStr = `${dist >= 0 ? '+' : ''}$${Math.abs(dist).toFixed(1)}`;
       const distCls = dist >= 0 ? 'zt-snp-above' : 'zt-snp-below';
+      const rowCls  = m.touched ? ' zt-snp-tapped' : '';
 
       // Tag if any bot Fib zone's GP window overlaps this pivot mark
       const aligned = zones.find(z =>
@@ -2227,15 +2266,20 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
         ? `<span class="zt-snp-align">${escHtml(aligned.tf)} ${aligned.direction === 'long' ? '▲' : '▼'} ${(aligned.zone_variant ?? 'gp').toUpperCase()}</span>`
         : '';
 
+      const freshTag = !m.touched && m.key
+        ? `<span class="zt-snp-fresh">FRESH</span>`
+        : m.touched ? `<span class="zt-snp-tapped-badge">TAPPED</span>` : '';
+
       const noteHtml = m.note
         ? `<span class="zt-snp-note">${escHtml(m.note)}</span>`
         : '';
 
-      return `<div class="zt-snp-row">
+      return `<div class="zt-snp-row${rowCls}">
         <span class="zt-snp-lbl ${m.cls}">${escHtml(m.label)}</span>
         <span class="zt-snp-price">${m.price.toFixed(1)}</span>
         <span class="zt-snp-dist ${distCls}">${distStr}</span>
         ${noteHtml}
+        ${freshTag}
         ${alignTag}
       </div>`;
     }).join('');
@@ -2244,9 +2288,17 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
       ? `<div class="zt-snp-va-bar">VA ${val.toFixed(1)} – ${vah.toFixed(1)}${inVA ? ' <span class="zt-snp-inside">INSIDE VA</span>' : ''}</div>`
       : '';
 
+    const cleanBtn = `<button class="zt-snp-clean-btn${cleanMode ? ' zt-snp-clean-on' : ''}"
+      onclick="localStorage.setItem('zt_sniper_clean', localStorage.getItem('zt_sniper_clean')==='1'?'0':'1');_ztRender()">
+      ${cleanMode ? '⬤ FRESH ONLY' : '○ CLEAN MODE'}
+    </button>`;
+
     sniperHtml = `
       <div class="zt-sniper-panel">
-        <div class="zt-title" style="margin-top:10px">SNIPER MARKS</div>
+        <div class="zt-title" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
+          <span>SNIPER MARKS</span>${cleanBtn}
+        </div>
+        ${confluenceBox}
         ${vaStr}
         <div class="zt-snp-grid">${rows}</div>
       </div>`;
