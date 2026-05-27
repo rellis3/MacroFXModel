@@ -1461,29 +1461,88 @@ function _ztVwap(bars, dir, win = 20) {
   return { signal, earlySlope: es, lateSlope: ls, ratio };
 }
 
-function _ztDiv(closes, wt1, n = 5) {
-  if (closes.length < n + 2) return 'NONE';
-  const rc = closes.slice(-n), rw = wt1.slice(-n);
-  const cp = Math.max(...rc), ct = Math.min(...rc);
-  const wp = Math.max(...rw), wt = Math.min(...rw);
-  const curC = closes[closes.length - 1], curW = wt1[wt1.length - 1];
-  if (curC >= cp * 0.999 && curW < wp * 0.90) return 'DIVERGENCE_BEAR';
-  if (curC <= ct * 1.001 && curW > wt * 0.90) return 'DIVERGENCE_BULL';
-  return 'NONE';
-}
-
 // WT oversold/overbought thresholds for gold (mirrors Python WT_OVERSOLD/OVERBOUGHT)
 const ZT_WT_OVERSOLD   = -60;
 const ZT_WT_OVERBOUGHT =  60;
+const ZT_OSC_MIN_DIFF  =  2.0;   // min oscillator units for structural divergence
 
-// Divergence check with optional start index (mirrors Python _divergence start_idx)
-function _ztDivFrom(closes, wt1, startIdx, n = 5) {
-  const c = startIdx > 0 ? closes.slice(startIdx) : closes;
-  const w = startIdx > 0 ? wt1.slice(startIdx)    : wt1;
-  // Fallback to tail of full series if entry window is too short
-  const cs = c.length >= n + 2 ? c : closes.slice(-(n + 2));
-  const ws = c.length >= n + 2 ? w : wt1.slice(-(n + 2));
-  return _ztDiv(cs, ws, n);
+// Structural swing detection (mirrors Python _find_swings)
+function _ztFindSwings(series, left = 3, right = 2) {
+  const highs = [], lows = [];
+  for (let i = left; i < series.length - right; i++) {
+    const v = series[i];
+    let isH = true, isL = true;
+    for (let j = 1; j <= left;  j++) { if (v <= series[i - j]) isH = false; if (v >= series[i - j]) isL = false; }
+    for (let j = 1; j <= right; j++) { if (v <= series[i + j]) isH = false; if (v >= series[i + j]) isL = false; }
+    if (isH) highs.push([i, v]);
+    if (isL) lows.push([i, v]);
+  }
+  return { highs, lows };
+}
+
+// Structural divergence (mirrors Python _divergence_structural)
+// Returns DIVERGENCE_BULL | DIVERGENCE_BEAR | HIDDEN_BULL | HIDDEN_BEAR | NONE
+function _ztDivStructural(closes, oscillator, startIdx = 0, swingLeft = 3, swingRight = 2, oscWin = 2, minGap = 5) {
+  let c = startIdx > 0 ? closes.slice(startIdx)     : closes;
+  let o = startIdx > 0 ? oscillator.slice(startIdx) : oscillator;
+  const minBars = swingLeft + swingRight + minGap + 2;
+  if (c.length < minBars || o.length < minBars) {
+    c = closes.slice(-minBars);
+    o = oscillator.slice(-minBars);
+    if (c.length < minBars) return 'NONE';
+  }
+  const n = Math.min(c.length, o.length);
+  c = c.slice(0, n); o = o.slice(0, n);
+
+  const { highs: ph, lows: pl } = _ztFindSwings(c, swingLeft, swingRight);
+
+  const oscNear = (idx, takeMax) => {
+    const s = Math.max(0, idx - oscWin), e = Math.min(n, idx + oscWin + 1);
+    const seg = o.slice(s, e);
+    if (!seg.length) return null;
+    return takeMax ? Math.max(...seg) : Math.min(...seg);
+  };
+
+  if (ph.length >= 2) {
+    const [ph1i, ph1] = ph[ph.length - 2], [ph2i, ph2] = ph[ph.length - 1];
+    if (ph2i - ph1i >= minGap) {
+      const oh1 = oscNear(ph1i, true), oh2 = oscNear(ph2i, true);
+      if (oh1 !== null && oh2 !== null) {
+        if (ph2 > ph1 && (oh1 - oh2) >= ZT_OSC_MIN_DIFF) return 'DIVERGENCE_BEAR';
+        if (ph2 < ph1 && (oh2 - oh1) >= ZT_OSC_MIN_DIFF) return 'HIDDEN_BEAR';
+      }
+    }
+  }
+  if (pl.length >= 2) {
+    const [pl1i, pl1] = pl[pl.length - 2], [pl2i, pl2] = pl[pl.length - 1];
+    if (pl2i - pl1i >= minGap) {
+      const ol1 = oscNear(pl1i, false), ol2 = oscNear(pl2i, false);
+      if (ol1 !== null && ol2 !== null) {
+        if (pl2 < pl1 && (ol2 - ol1) >= ZT_OSC_MIN_DIFF) return 'DIVERGENCE_BULL';
+        if (pl2 > pl1 && (ol1 - ol2) >= ZT_OSC_MIN_DIFF) return 'HIDDEN_BULL';
+      }
+    }
+  }
+  return 'NONE';
+}
+
+// VWAP oscillator series: (close − session_VWAP) normalised ±100
+// Mirrors Python _vwap_osc_series
+function _ztVwapOscSeries(bars) {
+  let cumTpv = 0, cumVol = 0;
+  const raw = bars.map(b => {
+    const tp = (b.high + b.low + b.close) / 3, vol = b.tick_volume ?? b.volume ?? 1;
+    cumTpv += tp * vol; cumVol += vol;
+    const vwap = cumVol ? cumTpv / cumVol : tp;
+    return b.close - vwap;
+  });
+  const peak = Math.max(...raw.map(Math.abs), 1);
+  return raw.map(v => v / peak * 100);
+}
+
+// Structural divergence from zone-entry bar index (fallback to full tail)
+function _ztDivFrom(closes, oscillator, startIdx) {
+  return _ztDivStructural(closes, oscillator, startIdx);
 }
 
 // Returns full VuManChu result including per-component rule/threshold/actual values.
@@ -1491,10 +1550,11 @@ function _ztDivFrom(closes, wt1, startIdx, n = 5) {
 //            or null if price hasn't touched the GP yet.
 function _ztVuManchu(bars, zoneDir, minComp = 2, gpEntryMs = null) {
   if (!bars || bars.length < 31) return null;
-  const closes = bars.map(b => b.close);
+  const closes  = bars.map(b => b.close);
   const { wt1: wt1s, wt2: wt2s } = _ztWt(bars);
-  const mfs  = _ztMf(bars);
-  const vwap = _ztVwap(bars, zoneDir);
+  const mfs     = _ztMf(bars);
+  const vwap    = _ztVwap(bars, zoneDir);
+  const vwapOsc = _ztVwapOscSeries(bars);
 
   const wt1 = wt1s[wt1s.length - 1] ?? 0;
   const wt2 = isNaN(wt2s[wt2s.length - 1]) ? 0 : (wt2s[wt2s.length - 1] ?? 0);
@@ -1514,7 +1574,7 @@ function _ztVuManchu(bars, zoneDir, minComp = 2, gpEntryMs = null) {
 
   // ── WT signal — priority order (mirrors Python compute_vumanchu) ──────────
   // 1. OVERSOLD / OVERBOUGHT — most direct exhaustion read at the zone
-  // 2. Zone-entry divergence — Cipher B measured from first GP touch
+  // 2. Structural divergence (regular + hidden) from last two swing points
   // 3. WT1/WT2 crossover — weakest, only if neither above fires
   let wtSig;
   if      (zoneDir === 'long'  && wt1 <= ZT_WT_OVERSOLD)   wtSig = 'OVERSOLD';
@@ -1524,6 +1584,9 @@ function _ztVuManchu(bars, zoneDir, minComp = 2, gpEntryMs = null) {
     if (div !== 'NONE') wtSig = div;
     else                wtSig = wt1 > wt2 ? 'BULLISH' : wt1 < wt2 ? 'BEARISH' : 'NEUTRAL';
   }
+
+  // ── VWAP divergence (structural, price vs VWAP oscillator) ───────────────
+  const vwapDiv = _ztDivFrom(closes, vwapOsc, entryBarIdx);
 
   const prev5      = mfs.slice(-6, -1);
   const mfMax      = prev5.length ? Math.max(...prev5) : mf;
@@ -1538,33 +1601,44 @@ function _ztVuManchu(bars, zoneDir, minComp = 2, gpEntryMs = null) {
   else if (mf < -20)                         mfSig = 'BEARISH';
   else                                       mfSig = 'NEUTRAL';
 
-  const vwapOk = vwap.signal === 'EXHAUSTION' || vwap.signal === 'REVERSAL';
+  const vwapSlopeOk = vwap.signal === 'EXHAUSTION' || vwap.signal === 'REVERSAL';
+  const vwapDivOk   = zoneDir === 'long'
+    ? (vwapDiv === 'DIVERGENCE_BULL' || vwapDiv === 'HIDDEN_BULL')
+    : (vwapDiv === 'DIVERGENCE_BEAR' || vwapDiv === 'HIDDEN_BEAR');
+  const vwapOk = vwapSlopeOk || vwapDivOk;
   let aligned = 0;
   const comps = [];
 
   // ── WT Momentum ───────────────────────────────────────────────────────────
   const wtOk = zoneDir === 'long'
-    ? (wtSig === 'OVERSOLD' || wtSig === 'BULLISH' || wtSig === 'DIVERGENCE_BULL')
-    : (wtSig === 'OVERBOUGHT' || wtSig === 'BEARISH' || wtSig === 'DIVERGENCE_BEAR');
+    ? (wtSig === 'OVERSOLD' || wtSig === 'BULLISH' || wtSig === 'DIVERGENCE_BULL' || wtSig === 'HIDDEN_BULL')
+    : (wtSig === 'OVERBOUGHT' || wtSig === 'BEARISH' || wtSig === 'DIVERGENCE_BEAR' || wtSig === 'HIDDEN_BEAR');
   if (wtOk) aligned++;
 
-  const isOSOB  = wtSig === 'OVERSOLD' || wtSig === 'OVERBOUGHT';
-  const isDivWT = wtSig.startsWith('DIVERGENCE');
+  const isOSOB     = wtSig === 'OVERSOLD' || wtSig === 'OVERBOUGHT';
+  const isDivWT    = wtSig.startsWith('DIVERGENCE');
+  const isHiddenWT = wtSig.startsWith('HIDDEN');
   const entryBarNote = entryBarIdx > 0 ? ` (from bar ${entryBarIdx}, zone entry)` : ' (full window)';
+  const wtRuleMap = {
+    DIVERGENCE_BULL: `Price lower low, WT higher low — reversal divergence${entryBarNote}`,
+    DIVERGENCE_BEAR: `Price higher high, WT lower high — reversal divergence${entryBarNote}`,
+    HIDDEN_BULL:     `Price higher low, WT lower low — hidden bullish (trend continuation)${entryBarNote}`,
+    HIDDEN_BEAR:     `Price lower high, WT higher high — hidden bearish (trend continuation)${entryBarNote}`,
+  };
   comps.push({
     name:      'Momentum (WT)',
     ok:        wtOk,
     signal:    wtSig,
     rule:      isOSOB
       ? `WT1 ${zoneDir === 'long' ? '≤ −60 (oversold)' : '≥ +60 (overbought)'} — momentum exhausted at zone`
-      : isDivWT
-        ? `Price at ${zoneDir === 'long' ? 'trough' : 'peak'} but WT turning ${zoneDir === 'long' ? 'up (bull div)' : 'down (bear div)'}${entryBarNote}`
+      : (isDivWT || isHiddenWT)
+        ? (wtRuleMap[wtSig] ?? `Structural divergence detected${entryBarNote}`)
         : `WT1 (${wt1.toFixed(1)}) ${wt1 > wt2 ? '>' : '<'} WT2 (${wt2.toFixed(1)}) — crossover`,
     threshold: isOSOB ? `WT1 ${zoneDir === 'long' ? '≤ −60' : '≥ +60'}`
-             : isDivWT ? 'WT < 90% of 5-bar peak/trough'
+             : (isDivWT || isHiddenWT) ? 'Structural swing-point comparison (≥2 osc units)'
              : `WT1 ${zoneDir === 'long' ? '>' : '<'} WT2`,
     actual:    isOSOB ? `WT1 = ${wt1.toFixed(1)}`
-             : isDivWT ? '— divergence'
+             : (isDivWT || isHiddenWT) ? `${wtSig}`
              : `WT1 ${wt1 > wt2 ? '>' : '<'} WT2`,
   });
 
@@ -1592,19 +1666,33 @@ function _ztVuManchu(bars, zoneDir, minComp = 2, gpEntryMs = null) {
   if (mfOk) aligned++;
   comps.push({ name: 'Money Flow (MF)', ok: mfOk, signal: mfSig, rule: mfRule, threshold: mfThreshold, actual: mfActual });
 
-  // ── VWAP Slope ────────────────────────────────────────────────────────────
-  let vwapRule, vwapThreshold, vwapActual;
-  if (vwap.signal === 'REVERSAL') {
+  // ── VWAP (slope + divergence) ─────────────────────────────────────────────
+  let vwapRule, vwapThreshold, vwapActual, vwapSignalLabel;
+  if (vwapDivOk) {
+    // Divergence triggered — describe the structural div
+    const divMap = {
+      DIVERGENCE_BULL: 'Price lower low, VWAP osc higher low — reversal',
+      DIVERGENCE_BEAR: 'Price higher high, VWAP osc lower high — reversal',
+      HIDDEN_BULL:     'Price higher low, VWAP osc lower low — continuation',
+      HIDDEN_BEAR:     'Price lower high, VWAP osc higher high — continuation',
+    };
+    vwapRule      = divMap[vwapDiv] ?? `VWAP divergence: ${vwapDiv}`;
+    vwapThreshold = 'Structural swing-point comparison (≥2 osc units)';
+    vwapActual    = vwapDiv;
+    vwapSignalLabel = vwapDiv;
+  } else if (vwap.signal === 'REVERSAL') {
     vwapRule      = `VWAP slope sign-flipped (momentum reversed)`;
     vwapThreshold = 'early/late slope opposite sign';
     vwapActual    = `early ${vwap.earlySlope?.toFixed(3) ?? '—'} → late ${vwap.lateSlope?.toFixed(3) ?? '—'}`;
+    vwapSignalLabel = 'REVERSAL';
   } else {
     vwapRule      = `VWAP momentum exhausting into zone`;
     vwapThreshold = 'late slope < 45% of early slope';
     vwapActual    = vwap.ratio !== null ? `${(vwap.ratio * 100).toFixed(0)}% of early slope (need <45%)` : '—';
+    vwapSignalLabel = vwap.signal;
   }
   if (vwapOk) aligned++;
-  comps.push({ name: 'VWAP Slope', ok: vwapOk, signal: vwap.signal, rule: vwapRule, threshold: vwapThreshold, actual: vwapActual });
+  comps.push({ name: 'VWAP', ok: vwapOk, signal: vwapSignalLabel, rule: vwapRule, threshold: vwapThreshold, actual: vwapActual });
 
   const confidence = aligned >= 3 ? 'HIGH' : aligned >= minComp ? 'MEDIUM' : 'LOW';
   const direction  = aligned >= minComp ? zoneDir.toUpperCase() : 'NEUTRAL';
@@ -1738,7 +1826,8 @@ function _ztConfClass(item) {
   if (/^HTF/i.test(item))             return 'ztc-htf';
   if (/ TL /i.test(item))             return 'ztc-tl';
   if (/cluster/i.test(item))          return 'ztc-cluster';
-  if (/\.(786|886|382)/.test(item))   return 'ztc-fib';
+  if (/retest/i.test(item))            return 'ztc-retest';
+  if (/\.(786|886|382|5) @/.test(item)) return 'ztc-fib';
   if (/Daily open/i.test(item))       return 'ztc-session';
   if (/Prev day/i.test(item))         return 'ztc-session';
   if (/Session H\/L/i.test(item))     return 'ztc-session';
@@ -1966,20 +2055,23 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
     const badge    = isArmed ? '<span class="zt-badge zt-badge-armed">ARMED</span>'
                    : isNear  ? '<span class="zt-badge zt-badge-near">NEAR</span>' : '';
     const distStr  = z.distPips < 1 ? 'INSIDE' : `${Math.round(z.distPips)}p`;
-    // Zone variant label: GP (golden pocket) / .786 / .886
-    const variant  = z.zone_variant ?? (z.zone_id?.endsWith('_786') ? '786' : z.zone_id?.endsWith('_886') ? '886' : 'gp');
-    const variantLabel = variant === 'gp' ? 'GP' : `.${variant}`;
-    const variantCls   = variant === 'gp' ? 'zt-var-gp' : variant === '786' ? 'zt-var-786' : 'zt-var-886';
+    // Zone variant label: GP / .5 / .786 / .886 / RETEST
+    const variant  = z.zone_variant ?? (z.zone_id?.endsWith('_786') ? '786' : z.zone_id?.endsWith('_886') ? '886' : z.zone_id?.endsWith('_50pct') ? '50pct' : z.zone_id?.endsWith('_retest') ? 'retest' : 'gp');
+    const variantLabel = variant === 'gp' ? 'GP' : variant === '50pct' ? '.5' : variant === 'retest' ? 'RETEST' : `.${variant}`;
+    const variantCls   = variant === 'gp' ? 'zt-var-gp' : variant === '786' ? 'zt-var-786' : variant === '886' ? 'zt-var-886' : variant === '50pct' ? 'zt-var-50pct' : 'zt-var-retest';
     // Fib ladder: highlight the zone's own entry level as target
     let fibLadder = '';
     if (price && z.level_382 != null) {
-      const targetKey = variant === '786' ? '.786' : variant === '886' ? '.886' : null;
+      const targetKey = variant === '786' ? '.786' : variant === '886' ? '.886' : variant === '50pct' ? '.5' : variant === 'retest' ? '.retest' : null;
+      const midPrice  = (z.swing_origin != null && z.swing_end != null) ? (z.swing_origin + z.swing_end) / 2 : null;
       const fibs = [
-        { label: '.382', price: z.level_382 },
-        { label: '.618', price: z.level_618 ?? z.gp_high },
-        { label: '.650', price: z.level_650 ?? z.gp_low },
-        { label: '.786', price: z.level_786 },
-        { label: '.886', price: z.level_886 },
+        { label: '.382',    price: z.level_382 },
+        { label: '.5',      price: z.level_500 ?? midPrice },
+        { label: '.618',    price: z.level_618 ?? z.gp_high },
+        { label: '.650',    price: z.level_650 ?? z.gp_low },
+        { label: '.786',    price: z.level_786 },
+        { label: '.886',    price: z.level_886 },
+        ...(variant === 'retest' ? [{ label: '.retest', price: (z.gp_low + z.gp_high) / 2 }] : []),
       ].filter(f => f.price != null);
       fibLadder = fibs.map(f => {
         const diff = Math.round(Math.abs(price - f.price));

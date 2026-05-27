@@ -302,11 +302,16 @@ def _calc_sl_tp(zone: FibZone, direction: str, price: float,
     max_sl = cfg.get('max_sl_pips', 40) * PIP
     atr_sl = atr * cfg.get('sl_atr_mult', 1.5)
 
+    # Retest zones: SL just below/above the entry window, not at level_886 origin.
+    # level_886 for a retest is the original impulse's deep level — too far away.
+    is_retest = getattr(zone, 'zone_variant', '') == 'retest'
     if direction == 'LONG':
-        structural_sl = zone.level_886 - atr * 0.3
+        sl_anchor  = zone.gp_low if is_retest else zone.level_886
+        structural_sl = sl_anchor - atr * 0.3
         sl = max(structural_sl, price - max_sl)
     else:
-        structural_sl = zone.level_886 + atr * 0.3
+        sl_anchor  = zone.gp_high if is_retest else zone.level_886
+        structural_sl = sl_anchor + atr * 0.3
         sl = min(structural_sl, price + max_sl)
 
     sl_dist = abs(price - sl)
@@ -757,6 +762,7 @@ class GoldBot:
                         'zone_low':          z.zone_low,
                         'zone_high':         z.zone_high,
                         'level_382':         z.level_382,
+                        'level_500':         z.level_500,
                         'level_618':         z.level_618,
                         'level_650':         z.level_650,
                         'level_786':         z.level_786,

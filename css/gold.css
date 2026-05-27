@@ -823,9 +823,11 @@
 .zt-tf   { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); }
 .zt-gp   { font-size: 10.5px; font-family: 'DM Mono', monospace; color: var(--text2); }
 .zt-variant { font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600; padding: 1px 5px; border-radius: 3px; }
-.zt-var-gp  { color: #f59e0b; background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.3); }
-.zt-var-786 { color: #a78bfa; background: rgba(167,139,250,.15); border: 1px solid rgba(167,139,250,.3); }
-.zt-var-886 { color: #fb7185; background: rgba(251,113,133,.15); border: 1px solid rgba(251,113,133,.3); }
+.zt-var-gp     { color: #f59e0b; background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.3); }
+.zt-var-786    { color: #a78bfa; background: rgba(167,139,250,.15); border: 1px solid rgba(167,139,250,.3); }
+.zt-var-886    { color: #fb7185; background: rgba(251,113,133,.15); border: 1px solid rgba(251,113,133,.3); }
+.zt-var-50pct  { color: #60a5fa; background: rgba(96,165,250,.15);  border: 1px solid rgba(96,165,250,.3);  }
+.zt-var-retest { color: #34d399; background: rgba(52,211,153,.15);  border: 1px solid rgba(52,211,153,.3);  }
 .zt-stars { font-size: 10px; color: #f59e0b; letter-spacing: -1px; white-space: nowrap; }
 .zt-dist  { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); text-align: right; }
 .zt-zone-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
@@ -920,6 +922,8 @@
 .ztc-tl      { color: #c084fc; background: rgba(192,132,252,.1); border: 1px solid rgba(192,132,252,.22); }
 .ztc-cluster { color: #fbbf24; background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.22); }
 .ztc-fib     { color: #e2e8f0; background: rgba(100,116,139,.18); border: 1px solid rgba(100,116,139,.32); }
+.ztc-retest  { color: #34d399; background: rgba(52,211,153,.13);  border: 1px solid rgba(52,211,153,.28); }
+.ztc-50pct   { color: #60a5fa; background: rgba(96,165,250,.13);  border: 1px solid rgba(96,165,250,.28); }
 .ztc-session { color: #94a3b8; background: rgba(148,163,184,.08); border: 1px solid rgba(148,163,184,.18); }
 .ztc-pivot   { color: #94a3b8; background: rgba(148,163,184,.08); border: 1px solid rgba(148,163,184,.18); }
 .ztc-other   { color: var(--text3); background: var(--s3); }
