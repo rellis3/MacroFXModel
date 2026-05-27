@@ -1717,6 +1717,10 @@ const ZT_PROX_PIPS   = 50;   // show VuManChu panel when within this many pips
 
 let _ztLastLoggedZone = null;
 
+// History panel open/close state — must survive every-5s re-renders.
+// Stored on window so inline onclick handlers (in innerHTML) can reach it.
+window._ztHistOpen = false;
+
 function _ztLogEvent(ev) {
   try {
     const raw    = localStorage.getItem(ZT_HISTORY_KEY);
@@ -2150,10 +2154,11 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
     vuHtml = `<div class="zt-vu-panel"><div class="zt-empty">Loading 5m bars for VuManChu…</div></div>`;
   }
 
-  // History toggle
+  // History toggle — state persists across 5s re-renders via window._ztHistOpen
   const histCount = _ztGetHistory().length;
+  if (!histCount) window._ztHistOpen = false;   // auto-close when history is empty
   const histBtn   = histCount
-    ? `<button class="zt-hist-btn" onclick="document.getElementById('ztHistPanel').classList.toggle('zt-hist-open')">📋 ${histCount} zone events</button>`
+    ? `<button class="zt-hist-btn" onclick="window._ztHistOpen=!window._ztHistOpen;const p=document.getElementById('ztHistPanel');if(p)p.classList.toggle('zt-hist-open',window._ztHistOpen)">📋 ${histCount} zone events</button>`
     : '';
 
   // Sniper Suite pivot marks — sourced from pivot_levels, vwap_anchors, npoc_stack in KV
@@ -2306,9 +2311,65 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
         ${histBtn}
       </div>
       <div class="zt-zones">${zoneRows}</div>
+      ${_ztSummaryHtml(zones, price)}
       ${sniperHtml}
       ${vuHtml}
       ${histCount ? _ztHistoryHtml() : ''}
+    </div>`;
+}
+
+// ── Simple zone + confluence summary table ────────────────────────────────────
+// Shows every active zone as one plain row: direction, window, distance, how many
+// confluence levels converge, and the explicit list of those levels. This makes it
+// easy to audit whether the engine found real levels or noise.
+function _ztSummaryHtml(zones, price) {
+  if (!zones || !zones.length) return '';
+
+  const sorted = [...zones].sort((a, b) => {
+    const da = price != null ? Math.max(0, Math.max((a.gp_low ?? 0) - price, price - (a.gp_high ?? 0))) : 9999;
+    const db = price != null ? Math.max(0, Math.max((b.gp_low ?? 0) - price, price - (b.gp_high ?? 0))) : 9999;
+    return da - db;
+  });
+
+  const rows = sorted.map(z => {
+    const dist = price != null
+      ? Math.max(0, Math.max((z.gp_low ?? 0) - price, price - (z.gp_high ?? 0)))
+      : null;
+    const gpMid   = ((z.gp_low ?? 0) + (z.gp_high ?? 0)) / 2;
+    const distStr = dist == null ? '—'
+                  : dist < 1    ? 'AT ZONE'
+                  : `${Math.round(dist)}p ${price != null && gpMid > price ? '↑' : '↓'}`;
+
+    const conf    = (z.composition ?? []).slice(1);  // drop "{tf} dir GP" header label
+    const nLevels = conf.length;
+    const confStr = conf.length ? conf.join(' · ') : 'no extra levels found';
+
+    const dirCls  = z.direction === 'long' ? 'zt-bull' : 'zt-bear';
+    const dirLbl  = z.direction === 'long' ? 'BUY' : 'SELL';
+    const variant = z.zone_variant ?? 'gp';
+    const varLbl  = variant === 'gp' ? 'GP' : variant === '50pct' ? '.5' : variant === 'retest' ? 'RETEST' : `.${variant}`;
+    const scoreColor = nLevels >= 3 ? 'var(--green)' : nLevels >= 2 ? 'var(--amber)' : 'var(--text3)';
+
+    return `<tr class="zt-sum-row">
+      <td><span class="zt-dir-pill ${dirCls}" style="font-size:9px;padding:1px 5px">${dirLbl}</span></td>
+      <td class="zt-mono" style="font-size:10px">${escHtml(z.tf ?? '')} ${varLbl}</td>
+      <td class="zt-mono" style="font-size:10px;white-space:nowrap">${(z.gp_low ?? 0).toFixed(1)}–${(z.gp_high ?? 0).toFixed(1)}</td>
+      <td class="zt-mono" style="font-size:10px;white-space:nowrap">${distStr}</td>
+      <td style="font-size:11px;font-weight:700;color:${scoreColor};text-align:center">${nLevels}</td>
+      <td style="font-size:9px;color:var(--text3)">${escHtml(confStr)}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="zt-summary-section">
+      <div class="zt-title" style="margin-top:12px;font-size:11px;letter-spacing:0.08em">ALL ZONES — LEVEL CONFLUENCE (within $3)</div>
+      <div style="font-size:9px;color:var(--text3);margin-bottom:6px">Each row = one active zone. "LEVELS" = how many independent price references land within $3 of its entry window centre.</div>
+      <table class="zt-sum-table">
+        <thead><tr>
+          <th>DIR</th><th>TF / TYPE</th><th>GP WINDOW</th><th>DIST</th><th>LEVELS</th><th>WHAT CONVERGES</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
     </div>`;
 }
 
@@ -2333,9 +2394,9 @@ function _ztHistoryHtml() {
     </tr>`;
   }
   return `
-    <div id="ztHistPanel" class="zt-history">
+    <div id="ztHistPanel" class="zt-history${window._ztHistOpen ? ' zt-hist-open' : ''}">
       <div class="zt-hist-title">Zone Approach History
-        <button class="zt-hist-clear" onclick="localStorage.removeItem('${ZT_HISTORY_KEY}');document.getElementById('ztHistPanel').remove()">clear</button>
+        <button class="zt-hist-clear" onclick="window._ztHistOpen=false;localStorage.removeItem('${ZT_HISTORY_KEY}');document.getElementById('ztHistPanel').remove()">clear</button>
       </div>
       <table class="zt-hist-table">
         <thead><tr><th>Time</th><th>Zone</th><th>Dir</th><th>Price</th><th>Dist</th><th>VuManChu</th></tr></thead>

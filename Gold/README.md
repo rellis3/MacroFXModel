@@ -12,8 +12,8 @@ The bot mirrors the way Max approaches a gold chart: start with the big picture,
 Daily / 4H
   └─ Determine trend direction and bias (EMA structure + BOS)
         ↓
-  Fib Zones (trading TF only — default M30, configurable via zone_tfs)
-  └─ Find valid impulse legs on the trading timeframe
+  Fib Zones (default H4 + M30, configurable via zone_tfs)
+  └─ Find valid impulse legs on trading timeframes (H4 for structural swings, M30 for precision)
   └─ Draw traditional Fibonacci retracement levels
   └─ Create THREE zones per impulse (no contradicting long/short from mixed TFs):
        A zone — GP (.618–.650)  ← tightest, highest probability
@@ -449,7 +449,7 @@ All settings can be overridden at runtime by writing a JSON object to the KV key
 | -------------------- | ------- | ------------------------------------------------------ |
 | `enabled`            | `true`  | Master kill switch                                     |
 | `paper_mode`         | `true`  | No real orders when true                               |
-| `zone_tfs`           | `["M30"]` | Timeframes that generate entry zones. D1/H4 are always HTF bias only. E.g. `["M30"]`, `["H1","M30"]` |
+| `zone_tfs`           | `["H4","M30"]` | Timeframes that generate entry zones. H4 finds structural swing anchors (buy zones below price from major lows); M30 adds precision. D1 remains HTF bias only. E.g. `["H4","M30"]`, `["H1","M30"]` |
 | `min_zone_score`     | `3.0`   | Minimum confluence score before a zone is armed        |
 | `proximity_pips`     | `5.0`   | Price must be within this many $ of the GP zone to arm |
 | `vu_min_components`  | `2`     | VuManChu components required for entry (2 or 3)        |

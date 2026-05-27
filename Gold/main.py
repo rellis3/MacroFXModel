@@ -504,10 +504,13 @@ class GoldBot:
             log.info(f'[TL]     {len(self.trendlines)} trendlines: '
                      f'{desc} descending, {asc} ascending')
 
-        # ── Fib zones (trading TF only — HTF is bias context, not zone source) ──
-        # zone_tfs controls which TFs contribute entry zones. Default M30.
-        # D1/H4 are still used above for HTF bias, session levels, trendlines.
-        zone_tfs = self.cfg.get('zone_tfs', ['M30'])
+        # ── Fib zones — multi-TF including H4 for structural swing context ───────
+        # H4 is now a default entry TF alongside M30. H4 bars span 33 days with
+        # pivots confirmed over 32h, giving $50-200+ impulse legs that stay valid
+        # far longer than M30 legs. Without H4, buy zones from major swing lows
+        # below price are never generated — M30-only detection misses the structure.
+        # D1 remains HTF bias context only (too slow for entry timing).
+        zone_tfs = self.cfg.get('zone_tfs', ['H4', 'M30'])
         tf_bar_map = {
             'D1': daily_bars, 'H4': h4_bars, 'H1': h1_bars,
             'M30': m30_bars,  'M15': m15_bars,
@@ -523,11 +526,16 @@ class GoldBot:
                 except Exception as exc:
                     log.error(f'[ZONES]  {tf} detection failed: {exc}', exc_info=True)
 
-        # Update activity on previously detected zones
-        zone_bars = tf_bar_map.get(zone_tfs[0]) or m30_bars or m15_bars
-        if zone_bars and price_now:
-            recent_closes = [b['close'] for b in zone_bars[-3:]]
-            update_zone_activity(all_zones, price_now, recent_closes)
+        # Per-TF activity check — each zone is expired against its own TF's closes.
+        # Using M30 closes to expire H4 zones is too aggressive (noise-level moves
+        # would kill a zone that is still structurally valid on H4).
+        for tf in zone_tfs:
+            tf_zones = [z for z in all_zones if z.tf == tf]
+            if tf_zones and price_now:
+                bars = tf_bar_map.get(tf) or m30_bars or m15_bars
+                if bars:
+                    recent_closes = [b['close'] for b in bars[-3:]]
+                    update_zone_activity(tf_zones, price_now, recent_closes)
 
         self.zones = [z for z in all_zones if z.active]
         log.info(f'[ZONES]  {len(self.zones)} active zones total')

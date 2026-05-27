@@ -1023,3 +1023,42 @@
 .zt-sw-lbl  { font-weight: 700; color: var(--text2); font-size: 9px; }
 .zt-sw-ts   { color: var(--text3); font-size: 9px; }
 .zt-sw-size { color: #60a5fa; font-size: 9px; font-weight: 600; }
+
+/* ── Zone confluence summary table ──────────────────────────────────────────── */
+.zt-summary-section {
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.zt-sum-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono, "DM Mono", monospace);
+}
+.zt-sum-table thead tr {
+  font-size: 9px;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+}
+.zt-sum-table th {
+  text-align: left;
+  padding: 3px 6px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.zt-sum-table .zt-sum-row {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.zt-sum-table .zt-sum-row:last-child {
+  border-bottom: none;
+}
+.zt-sum-table td {
+  padding: 4px 6px;
+  vertical-align: middle;
+}
+.zt-sum-table td:last-child {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
