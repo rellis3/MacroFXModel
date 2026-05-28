@@ -385,6 +385,7 @@ export function openAlertModal() {
   document.getElementById('alertProxNas').value        = cfg.proxPips?.['NAS100_USD'] ?? 30;
   document.getElementById('alertOnlyAligned').checked    = cfg.onlyAligned;
   if (document.getElementById('alertRegimeChange')) document.getElementById('alertRegimeChange').checked = cfg.regimeChangeAlerts !== false;
+  if (document.getElementById('alertVuManChu')) document.getElementById('alertVuManChu').value = cfg.vuManChu ?? 'info';
   document.getElementById('alertPairs').value          = (cfg.pairs ?? []).join(', ');
 
   // Load saved bot status
@@ -406,6 +407,7 @@ export function saveAlertModal() {
     cooldownMin: parseInt(document.getElementById('alertCooldown').value) || 60,
     onlyAligned:         document.getElementById('alertOnlyAligned').checked,
     regimeChangeAlerts:  document.getElementById('alertRegimeChange')?.checked !== false,
+    vuManChu:    document.getElementById('alertVuManChu')?.value ?? 'info',
     flipCandles: parseInt(document.getElementById('alertFlipCandles')?.value) || 3,
     proxPips: {
       default:        parseFloat(document.getElementById('alertProxDefault').value) || 5,

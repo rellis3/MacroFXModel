@@ -21,6 +21,7 @@ import { computeHMM5m } from './hmm5m.js';
 import { computeHMM5mV2 } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams } from './hmm5m-train.js';
 import { detectPolarityFlip } from './js/polarity.js';
+import { assessEntry, resampleBars } from './js/vumanchu.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -96,6 +97,7 @@ const DEFAULT_CFG = {
   cooldownMin:    60,   // minutes before same level+direction can re-alert
   pairCooldownMin: 240, // minutes before any alert on the same pair (4 h default)
   onlyAligned: false,
+  vuManChu:    'info',  // 'off' | 'info' (show in message only) | 'filter' (affect grade)
   regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
 };
 
@@ -448,6 +450,43 @@ function formatAlert(sym, entry, price, distPips) {
   if (hmm5m && hmm5m.confidence >= 60 &&
       ((isLong && hmm5m.regime === 'BEAR') || (!isLong && hmm5m.regime === 'BULL'))) {
     parts.push(`⚠ 1m: <b>${hmm5m.regime} ${hmm5m.confidence}%</b> — momentum opposing`);
+  }
+
+  // VuManChu Cipher B assessment (M1 → M5 resampled)
+  const vmMode = state.cfg?.vuManChu ?? 'info';
+  if (vmMode !== 'off') {
+    try {
+      const m1Bars = state.hmm5mBars?.[sym];
+      if (m1Bars && m1Bars.length >= 160) {
+        const parsedBars = m1Bars.map(b => ({
+          open:   parseFloat(b.open  ?? b.mid?.o ?? b.o ?? b.close ?? b.mid?.c ?? b.c),
+          high:   parseFloat(b.high  ?? b.mid?.h ?? b.h ?? b.close ?? b.mid?.c ?? b.c),
+          low:    parseFloat(b.low   ?? b.mid?.l ?? b.l ?? b.close ?? b.mid?.c ?? b.c),
+          close:  parseFloat(b.close ?? b.mid?.c ?? b.c),
+          volume: parseFloat(b.volume ?? b.vol ?? 0),
+        }));
+        const m5Bars = resampleBars(parsedBars, 5);
+        if (m5Bars.length >= 31) {
+          const vm = assessEntry(m5Bars, entry.direction);
+
+          if (vmMode === 'filter' && vm.signal === 'oppose') {
+            if (g.grade === 'A+' || g.grade === 'A') {
+              g.grade   = 'B';
+              g.verdict = 'WATCH';
+            }
+            if (g.warnings.length < 2) g.warnings.push('VuManChu opposing');
+          }
+
+          const wtVal  = vm.wt?.value != null ? ` ${vm.wt.value >= 0 ? '+' : ''}${vm.wt.value.toFixed(1)}` : '';
+          const wtSig  = vm.wt?.signal ? `WT ${vm.wt.signal}${wtVal}` : 'WT —';
+          const mfPart = vm.mf?.signal ? ` · MF ${vm.mf.signal}` : '';
+          const total  = (vm.components ?? 0) + (vm.opposing ?? 0);
+          const comp   = total > 0 ? ` [${vm.components}/${total}]` : '';
+          const vmIcon = vm.signal === 'agree' ? '✅' : vm.signal === 'oppose' ? '❌' : '〰️';
+          parts.push(`${vmIcon} VM: ${wtSig}${mfPart}${comp}`);
+        }
+      }
+    } catch (_) { /* vumanchu data not yet available */ }
   }
 
   parts.push('<i>🚂 MacroFX Railway</i>');
