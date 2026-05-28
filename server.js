@@ -455,6 +455,7 @@ function formatAlert(sym, entry, price, distPips) {
 
   // VuManChu Cipher B assessment (M1 → M5 resampled)
   const vmMode = state.cfg?.vuManChu ?? 'info';
+  let vmExplain = null;
   if (vmMode !== 'off') {
     try {
       const m1Bars = state.hmm5mBars?.[sym];
@@ -485,12 +486,56 @@ function formatAlert(sym, entry, price, distPips) {
           const comp   = total > 0 ? ` [${vm.components}/${total}]` : '';
           const vmIcon = vm.signal === 'agree' ? '✅' : vm.signal === 'oppose' ? '❌' : '〰️';
           parts.push(`${vmIcon} VM: ${wtSig}${mfPart}${comp}`);
+
+          // Build VM plain-English explanation for decoder block
+          const wtMeaning = vm.wt?.signal === 'BULLISH' ? 'wave cycling up'
+                          : vm.wt?.signal === 'BEARISH' ? 'wave cycling down' : 'wave flat';
+          const mfMeaning = vm.mf?.signal === 'BULLISH' ? 'money flowing in'
+                          : vm.mf?.signal === 'BEARISH' ? 'money flowing out' : 'money flow flat';
+          const confirmStr = total > 0 ? `${vm.components} of ${total} momentum signals confirm` : 'momentum signals checked';
+          vmExplain = `〰️ VM = momentum check — ${wtMeaning}, ${mfMeaning} — ${confirmStr}`;
         }
       }
     } catch (_) { /* vumanchu data not yet available */ }
   }
 
   parts.push('<i>🚂 MacroFX Railway</i>');
+
+  // ── Plain-English decoder block ────────────────────────────────────────────
+  const decoderLines = [];
+  const totalStars = Math.min(entry.totalStars ?? 0, 5);
+  const tagLabels  = (entry.tags ?? []).map(t => typeof t === 'string' ? t : (t.label ?? ''));
+
+  const _starDesc = {
+    'Tight Fib':     'precise fib zone',
+    'Asia Fib':      'Asia session level',
+    'Monday Fib':    'Monday session level',
+    'Cross-Session': 'cross-session match',
+    'Dense Zone':    'dense confluence cluster',
+  };
+  const contribs = tagLabels.map(t => _starDesc[t]).filter(Boolean).slice(0, 3);
+  const strength = totalStars >= 4 ? 'very strong' : totalStars >= 3 ? 'strong' : totalStars >= 2 ? 'solid' : 'basic';
+  decoderLines.push(`${'★'.repeat(totalStars)} = ${strength} level${contribs.length ? ' — ' + contribs.join(' + ') : ''}`);
+
+  const _gradeDesc = {
+    'A+': 'top-tier — every signal aligned, high conviction → take it',
+    'A':  'good setup — regime, bias & momentum agree → take it',
+    'B':  'marginal — conditions mixed, watch but wait',
+    'C':  'weak signal — avoid or cut size significantly',
+    'SKIP': 'hard stop — do not trade',
+  };
+  if (_gradeDesc[g.grade]) decoderLines.push(`[${g.grade}] = ${_gradeDesc[g.grade]}`);
+
+  if (tagLabels.some(t => t.toLowerCase().includes('cross'))) {
+    decoderLines.push(`📍 Cross-session = level held in Asia AND London/NY — institutions watching this price`);
+  }
+
+  if (vmExplain) decoderLines.push(vmExplain);
+
+  if (decoderLines.length) {
+    parts.push('━━━━━━━━━━━━━━━━━━');
+    decoderLines.forEach(l => parts.push(l));
+  }
 
   return parts.filter(p => p !== undefined).join('\n');
 }
