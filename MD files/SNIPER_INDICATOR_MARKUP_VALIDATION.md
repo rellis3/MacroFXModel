@@ -1,8 +1,8 @@
 # Sniper Indicator Chart Markup — Validation Document
 
-> **Purpose:** Validate summaries and implementations against the documented chart markup process using Craig's Sniper Indicator.  
-> **Source:** Summary 1 of 3 (posted 2026-05-28)  
-> **Status:** Awaiting summaries 2 and 3 for full consolidation.
+> **Purpose:** Validate summaries and implementations against the documented chart markup process using Craig's Sniper Indicator and Vu Manchu.  
+> **Sources:** Summary 1 (Sniper Indicator, 2026-05-28) · Summary 2 (Vu Manchu, 2026-05-28)  
+> **Status:** Awaiting summary 3 for full consolidation.
 
 ---
 
@@ -116,12 +116,147 @@ The correct end-to-end workflow must satisfy all of the following:
 
 ---
 
+---
+
+## 9. Vu Manchu (VMU) — Indicator Setup Checklist
+
+| # | Requirement | Expected Value / Behaviour | Pass |
+|---|-------------|---------------------------|------|
+| 9.1 | Vu Manchu Cipher B + Divergences loaded on TradingView | Present in indicator pane | ☐ |
+| 9.2 | MFI area multiplier set to **300** (default 150) | Money flow area visibly thicker | ☐ |
+| 9.3 | RSI component **off** for trending markets | Disabled by default; enable only in extreme ranges | ☐ |
+| 9.4 | Stochastic RSI component **off** for trending markets | Same rule as RSI | ☐ |
+| 9.5 | VWAP line colour set to **yellow**, opacity **100%**, thickness increased | Clearly visible yellow line | ☐ |
+| 9.6 | Automatic bullish/bearish divergence signals **disabled** | Discretionary reading only; auto-alerts off | ☐ |
+| 9.7 | Zero line drawn horizontally on indicator pane | Visible reference for crosses and extremes | ☐ |
+
+---
+
+## 10. Vu Manchu — Core Components
+
+| Component | What It Represents | Key Behaviour |
+|-----------|--------------------|---------------|
+| **VWAP** | Volume Weighted Average Price oscillator | Large spikes = strong buyer/seller presence; weak spikes = likely fakeout / reversal |
+| **Waves** | Momentum (blue waves) | Measures strength/weakness of price pushes; used to confirm VWAP divergence |
+| **Money Flow** | Energy / "fuel" remaining in a move | Sharp spike = energy spent → reversal likely; weak spike = fuel remaining → continuation likely |
+
+**Validation rule:** All three components must be visible and legible on the indicator pane. Green/red dot signals must **not** be used as direct trade entries.
+
+---
+
+## 11. Vu Manchu — Divergence Types
+
+### 11.1 Regular Divergence (Reversal Signal)
+
+| # | Condition | Implication | Pass |
+|---|-----------|-------------|------|
+| 11.1a | Price makes a **higher high**, oscillator (VWAP / waves) makes a **lower high** | Bearish reversal signal — momentum weakening | ☐ |
+| 11.1b | Price makes a **lower low**, oscillator makes a **higher low** | Bullish reversal signal — downside momentum weakening | ☐ |
+| 11.1c | Divergence identified **before** price reaches the key level | Pre-confirmation; higher confidence | ☐ |
+
+### 11.2 Hidden Divergence (Trend Continuation Signal)
+
+| # | Condition | Implication | Pass |
+|---|-----------|-------------|------|
+| 11.2a | Price makes a **lower high** (pullback), oscillator makes a **higher low** | Bullish continuation — trend still has strength | ☐ |
+| 11.2b | Price makes a **higher low** (pullback), oscillator makes a **lower high** | Bearish continuation — trend still has strength | ☐ |
+
+**Validation rule:** Regular divergence ≠ hidden divergence. Misclassifying them inverts the signal. Both must be checked against the prevailing trend context.
+
+---
+
+## 12. Vu Manchu — Money Flow (Fuel) Concept
+
+| Scenario | Money Flow Behaviour | Interpretation | Action |
+|----------|---------------------|---------------|--------|
+| Price approaches support/resistance | MF spikes sharply **downward** | Energy spent; reversal likely | Consider entry / mark reversal zone |
+| Price approaches support/resistance | MF spike is **weak / shallow** | Fuel remaining; continuation likely | Avoid counter-trend entry; let price run |
+| Gold — MF spikes to red (down) | Strong downward red spike | Exhausted sellers → good **long** zone | Mark as buy opportunity | 
+| Gold — MF in green area | Green / elevated reading | Potential **sell** zone | Mark as sell opportunity |
+| Bitcoin — MF spikes down | Downward spike | Often implies **continuation** (reverse of gold) | Asset-specific — re-calibrate per instrument |
+
+**Validation rule:** Money flow interpretation must be calibrated per asset. Gold and Bitcoin have opposite default readings. Always document which asset convention is being applied.
+
+---
+
+## 13. Vu Manchu — Confluence Validation
+
+All three components must align for a high-confidence setup:
+
+| # | Confluence Condition | Signal Strength |
+|---|---------------------|----------------|
+| 13.1 | VWAP + Waves diverge together from price | Strong |
+| 13.2 | VWAP + Waves + Money Flow all diverge / align | Strongest |
+| 13.3 | Only one component diverges from price | Weak — avoid entry |
+| 13.4 | All components flowing cohesively **with** price | Trend continuation — do not fade |
+
+---
+
+## 14. Vu Manchu — Non-Entry / Trade Avoidance Rules
+
+| # | Condition | Rule |
+|---|-----------|------|
+| 14.1 | Indicators show clear lack of momentum | **Skip the trade** — preserve capital |
+| 14.2 | Money flow spike is weak near key level | Fuel remains → likely continuation; no reversal entry |
+| 14.3 | Only momentum diverging, VWAP and MF not confirming | Insufficient confluence — avoid |
+| 14.4 | Divergence signals present but no fundamental bias alignment | Lower conviction — reduce size or avoid |
+
+**Validation rule:** The ability to correctly identify **non-entry** conditions is weighted equally to entry conditions.
+
+---
+
+## 15. Vu Manchu — Entry Criteria (Combined Confluence)
+
+| Step | Criterion | Pass |
+|------|-----------|------|
+| 15.1 | Price approaches a key S/R level | ☐ |
+| 15.2 | Regular divergence present on VWAP **before** level is reached | ☐ |
+| 15.3 | Waves (momentum) confirm divergence in the same direction | ☐ |
+| 15.4 | Money flow spike confirms energy spent at the level | ☐ |
+| 15.5 | Fundamental bias aligns with trade direction (e.g. macro bullish on gold) | ☐ |
+| 15.6 | Green/red dot **ignored** as entry signal | ☐ |
+| 15.7 | Entry taken on discretionary read, not automatic divergence alert | ☐ |
+
+---
+
+## 16. Vu Manchu — Practical Mark-Up Workflow
+
+```
+1. Load Vu Manchu Cipher B + Divergences on TradingView
+2. Configure: MFI multiplier → 300, RSI/StochRSI off, VWAP → yellow 100% thick
+3. Draw zero line on indicator pane
+4. Disable automatic divergence alerts
+5. Scroll back through historical significant tops and bottoms
+6. At each top/bottom: record VWAP, waves, and money flow behaviour
+7. Note whether divergence was regular (reversal) or hidden (continuation)
+8. Mark horizontal levels at those key price points
+9. On live chart: as price approaches a level, check all three VMU components
+10. Only enter when VWAP + waves + money flow confirm same directional bias
+11. Identify and honour non-entry conditions (weak fuel, missing confluence)
+```
+
+---
+
+## 17. Cross-Indicator Confluence (Sniper + Vu Manchu)
+
+These are the touch-points where both indicators must agree for the highest-conviction setups:
+
+| Sniper Signal | Vu Manchu Confirmation Required | Combined Outcome |
+|--------------|--------------------------------|-----------------|
+| Price at Daily Open (support) | VMU VWAP bullish divergence + money flow red spike | High-conviction long |
+| Price at Pivot Level (resistance) | VMU VWAP bearish divergence + money flow green extreme | High-conviction short |
+| Sniper Confluence Confirmed (bullish) | VMU waves + money flow both bullish | Strongest buy signal |
+| Sniper Confluence Confirmed (bearish) | VMU waves + money flow both bearish | Strongest sell signal |
+| Sniper momentum trigger fires | VMU hidden divergence (continuation) | Trend continuation entry |
+
+---
+
 ## Validation Log
 
 | Summary # | Date Received | Key Additions / Conflicts | Status |
 |-----------|--------------|--------------------------|--------|
-| Summary 1 | 2026-05-28 | Base document — indicator setup, levels, confluence, entries | Captured |
-| Summary 2 | — | — | Pending |
+| Summary 1 | 2026-05-28 | Base document — Sniper Indicator setup, key levels, confluence box, entry criteria | Captured |
+| Summary 2 | 2026-05-28 | Vu Manchu setup, VWAP/waves/money flow components, regular & hidden divergence, fuel concept, non-entry rules, cross-indicator confluence | Captured |
 | Summary 3 | — | — | Pending |
 
 ---
