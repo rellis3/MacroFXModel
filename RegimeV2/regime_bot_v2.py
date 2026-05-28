@@ -26,6 +26,7 @@ Exit rules (any fires → close):
   X7  1h regime flipped to opposing   [Phase 2]
   X8  cross-pair consensus collapsed below entry threshold
   X9  VIX flipped to backwardation mid-trade [Phase 3]
+  X13 price retraces > mfe_retrace_pct of peak MFE distance  (MFE retrace exit)
 
 Config key : regime_bot_v2_config
 Creds key  : regime_bot_v2_credentials
@@ -155,6 +156,9 @@ DEFAULT_CFG: dict = {
     'hold_score_min':     40.0,  # X11: exit if score below this
     'score_drop_exit':    30.0,  # X12: exit if score drops this many pts from entry
     'score_drop_bars':    2,     # X11: bars below hold_score_min before exit
+    # MFE retrace exit (X13)
+    'mfe_retrace_pct':   0.25,  # close when price gives back this fraction of peak MFE
+    'mfe_min_r':         1.0,   # X13 only activates once MFE reaches this many R
 }
 
 # ── KV helpers ─────────────────────────────────────────────────────────────────
@@ -717,6 +721,7 @@ def run(url: str, paper_mode: bool) -> None:
     range_exit_ctr:  dict[str, int]                  = {}
     entry_scores:    dict[str, float]                = {}   # regime score at time of entry
     score_low_bars:  dict[str, int]                  = {}   # polls below hold_score_min
+    running_mfe:     dict[str, float]                = {}   # live MFE in price units (X13)
     failed_entry_t:  dict[str, float]                = {}   # time of last failed MT5 order per pair
 
     risk_guard = RiskGuardV2()
@@ -740,6 +745,7 @@ def run(url: str, paper_mode: bool) -> None:
         bocpd_high_bars[pair]= 0
         range_exit_ctr[pair] = 0
         score_low_bars[pair] = 0
+        running_mfe[pair]    = 0.0
 
     last_heartbeat: dict[str, float] = {p: 0.0 for p in cfg['pairs']}
     last_cfg_reload = time.time()
@@ -772,6 +778,7 @@ def run(url: str, paper_mode: bool) -> None:
                     bocpd_high_bars[pair]= 0
                     range_exit_ctr[pair] = 0
                     score_low_bars[pair] = 0
+                    running_mfe[pair]    = 0.0
                     last_heartbeat[pair] = 0.0
 
         if not cfg.get('enabled', True):
@@ -919,6 +926,11 @@ def run(url: str, paper_mode: bool) -> None:
                 pnl_pips  = round((price_now - pos['entry_price']) * sign / pip, 1)
                 dur_secs  = now_t - pos.get('opened_at', now_t)
 
+                # Track live MFE for X13
+                fav_dist = (price_now - pos['entry_price']) * sign
+                if fav_dist > running_mfe.get(pair, 0.0):
+                    running_mfe[pair] = fav_dist
+
                 # Check MT5 SL hit
                 if HAS_MT5 and not paper_mode:
                     mt5_sym = pair.replace('/', '')
@@ -927,6 +939,7 @@ def run(url: str, paper_mode: bool) -> None:
                     if not still_open:
                         log.info(f'[{pair}] Ticket {pos["ticket"]} gone — SL hit (X5)')
                         del open_pos[pair]; entry_regime.pop(pair, None)
+                        running_mfe.pop(pair, None)
                         risk_guard.record_trade(pair)
                         pairs_status[pair] = {'status': 'sl_hit', 'regime': regime}
                         continue
@@ -1014,6 +1027,23 @@ def run(url: str, paper_mode: bool) -> None:
                         close_reason = f'Score −{s_drop:.0f}pts from entry {entry_s:.0f} (X12)'
                         exit_code = 'X12'
 
+                # X13 — MFE retrace: price gives back > mfe_retrace_pct of peak profit
+                if not close_reason and cfg.get('mfe_retrace_pct', 0.0) > 0:
+                    mfe_dist = running_mfe.get(pair, 0.0)
+                    sl_dist  = abs(pos['entry_price'] - pos['sl']) if pos.get('sl') else 0.0
+                    mfe_r    = (mfe_dist / sl_dist) if sl_dist > 0 else 0.0
+                    if mfe_r >= cfg.get('mfe_min_r', 1.0):
+                        retrace_threshold = mfe_dist * cfg['mfe_retrace_pct']
+                        current_fav = (price_now - pos['entry_price']) * sign
+                        retrace_amount = mfe_dist - current_fav
+                        if retrace_amount >= retrace_threshold:
+                            close_reason = (
+                                f'MFE retrace {retrace_amount/pip:.1f}pips '
+                                f'({retrace_amount/mfe_dist*100:.0f}% of {mfe_dist/pip:.1f}pip MFE, '
+                                f'{mfe_r:.1f}R peak) (X13)'
+                            )
+                            exit_code = 'X13'
+
                 # Decay exit
                 if not close_reason and decay_score >= cfg.get('decay_exit', 0.70):
                     close_reason = f'Decay {decay_score:.3f} ≥ {cfg["decay_exit"]:.2f}'
@@ -1040,6 +1070,7 @@ def run(url: str, paper_mode: bool) -> None:
                         entry_regime.pop(pair, None)
                         entry_scores.pop(pair, None)
                         score_low_bars[pair] = 0
+                        running_mfe.pop(pair, None)
                         risk_guard.record_trade(pair)
                         range_exit_ctr[pair] = 0
                         pairs_status[pair] = {
@@ -1071,6 +1102,7 @@ def run(url: str, paper_mode: bool) -> None:
                     'reg_score':     reg_score.to_dict(),
                     'entry_score':   entry_scores.get(pair, reg_score.total),
                     'score_low_bars':score_low_bars[pair],
+                    'mfe_pips':      round(running_mfe.get(pair, 0.0) / pip, 1),
                 }
 
                 # Heartbeat
@@ -1221,6 +1253,7 @@ def run(url: str, paper_mode: bool) -> None:
                 entry_regime[pair]   = confirmed
                 entry_scores[pair]   = reg_score.total
                 score_low_bars[pair] = 0
+                running_mfe[pair]    = 0.0
                 risk_guard.record_trade(pair)
 
                 # Telegram entry alert
