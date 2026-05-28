@@ -18,8 +18,8 @@ import worker            from './_worker.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
 import { computeHMM5m } from './hmm5m.js';
-import { computeHMM5mV2 } from './hmm5m-v2.js';
-import { trainHMM5mAll, loadTrainedParams } from './hmm5m-train.js';
+import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
+import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 
@@ -28,6 +28,7 @@ const PORT              = parseInt(process.env.PORT              || '3000');
 const MONITOR_MS        = parseInt(process.env.MONITOR_MS        || '3000');
 const REFRESH_LEVELS_MS  = parseInt(process.env.REFRESH_LEVELS_MS  || String(30 * 60 * 1000));
 const HMM5M_REFRESH_MS        = parseInt(process.env.HMM5M_REFRESH_MS   || String(30 * 1000)); // 30s — V2 bot polls at 30s cadence
+const MACRO_REFRESH_MS        = parseInt(process.env.MACRO_REFRESH_MS    || String(6 * 60 * 60 * 1000)); // 6h — FRED data updates once daily
 const HMM5M_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // min gap between regime-change Telegram alerts per pair
 
 // ── Cloudflare env-compatible object ─────────────────────────────────────────
@@ -1423,6 +1424,20 @@ async function runHMM1hV2Refresh() {
   }
 }
 
+async function refreshMacroContext() {
+  if (!process.env.FRED_KEY) return;
+  try {
+    const fredData = await fetchFredMacro(process.env.FRED_KEY);
+    if (!fredData) return;
+    const macroCtx = { ...computeMacroContext(fredData), updatedAt: new Date().toISOString() };
+    state.hmm5mMacroContext = macroCtx;
+    await kv.put('hmm5m_macro_context', JSON.stringify(macroCtx));
+    console.log(`[MACRO] Refreshed — VIX=${macroCtx.vix}  HY=${macroCtx.hySpread}  curve=${macroCtx.curve}  label=${macroCtx.label}`);
+  } catch (e) {
+    console.error('[MACRO] refresh failed:', e.message);
+  }
+}
+
 async function runHMM5mTraining(pairs) {
   const { results, status } = await trainHMM5mAll(
     pairs,
@@ -1484,6 +1499,10 @@ setTimeout(() => {
   runHMM1hV2Refresh().catch(console.error);
   setInterval(runHMM1hV2Refresh, 5 * 60 * 1000);
 }, 25_000);
+
+// Macro context (VIX, HY spread, yield curve via FRED) — refresh every 6h, run once at startup
+refreshMacroContext().catch(console.error);
+setInterval(refreshMacroContext, MACRO_REFRESH_MS);
 
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';
