@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claude Strategy Backtester</title>
+<link rel="stylesheet" href="./css/index.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page-header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.page-header h1{font-size:1.15rem;font-weight:600}
+.page-header .badge{font-size:.7rem;background:var(--blue);color:#fff;padding:2px 8px;border-radius:10px;font-weight:600}
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 57px)}
+.sidebar{border-right:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.main{padding:20px;overflow-y:auto}
+.ctrl-group{display:flex;flex-direction:column;gap:6px}
+.ctrl-label{font-size:.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+select,input[type=text],input[type=number],input[type=date]{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 10px;font-size:.85rem;font-family:inherit}
+select:focus,input:focus{outline:none;border-color:var(--blue)}
+.btn{width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-secondary{background:var(--s2);color:var(--text);border:1px solid var(--border)}
+.progress-wrap{background:var(--s2);border-radius:4px;height:6px;overflow:hidden;display:none}
+.progress-bar{height:100%;background:var(--blue);width:0%;transition:width .3s}
+.status-msg{font-size:.78rem;color:var(--text2);min-height:18px;text-align:center}
+.divider{height:1px;background:var(--border)}
+.section-title{font-size:.8rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.stat-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.stat-card .lbl{font-size:.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.stat-card .val{font-size:1.35rem;font-weight:700;font-family:'DM Mono',monospace}
+.stat-card .sub{font-size:.72rem;color:var(--text3);margin-top:2px}
+.green{color:var(--green)}
+.red{color:var(--red)}
+.amber{color:var(--amber)}
+.blue{color:var(--blue)}
+.panel{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}
+.panel-title{font-size:.8rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.comparison-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cmp-box{background:var(--s2);border-radius:8px;padding:12px}
+.cmp-box h3{font-size:.78rem;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
+.cmp-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.cmp-row:last-child{border-bottom:none}
+.cmp-row span:first-child{color:var(--text2)}
+.cmp-row span:last-child{font-family:'DM Mono',monospace;font-weight:600}
+svg.chart{width:100%;display:block}
+.chart-wrap{position:relative}
+.breakdown-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.breakdown-table th{text-align:left;padding:6px 10px;color:var(--text2);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+.breakdown-table td{padding:6px 10px;border-bottom:1px solid var(--s2)}
+.breakdown-table tr:last-child td{border-bottom:none}
+.breakdown-table tr:hover td{background:var(--s2)}
+.bar-cell{position:relative;min-width:80px}
+.bar-fill{height:8px;border-radius:3px;min-width:2px}
+.tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:.7rem;font-weight:600}
+.tag-green{background:rgba(16,185,129,.15);color:var(--green)}
+.tag-red{background:rgba(248,113,113,.15);color:var(--red)}
+.tag-amber{background:rgba(251,191,36,.15);color:var(--amber)}
+.tag-blue{background:rgba(79,125,240,.15);color:var(--blue)}
+.mc-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}
+.mc-card{background:var(--s2);border-radius:8px;padding:10px;text-align:center}
+.mc-card .pct{font-size:.65rem;color:var(--text3);margin-bottom:4px}
+.mc-card .val{font-size:1rem;font-weight:700;font-family:'DM Mono',monospace}
+.trade-table-wrap{overflow-x:auto}
+.trade-table{width:100%;border-collapse:collapse;font-size:.78rem;min-width:700px}
+.trade-table th{padding:6px 8px;text-align:left;color:var(--text2);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap}
+.trade-table td{padding:5px 8px;border-bottom:1px solid var(--s2);font-family:'DM Mono',monospace}
+.trade-table tr:hover td{background:var(--s2)}
+.accordion-item{border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden}
+.accordion-hdr{background:var(--s2);padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:.85rem;font-weight:600;user-select:none}
+.accordion-hdr:hover{background:var(--s3)}
+.accordion-body{display:none;padding:12px}
+.accordion-body.open{display:block}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-state h2{font-size:1.1rem;margin-bottom:8px;color:var(--text2)}
+.empty-state p{font-size:.85rem;line-height:1.5}
+.heatmap-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.heatmap-table th,.heatmap-table td{padding:5px 8px;text-align:center;border:1px solid var(--border)}
+.heatmap-table th{background:var(--s2);color:var(--text2);font-size:.7rem;text-transform:uppercase;font-weight:600}
+.star-★{color:var(--amber)}
+.wr-bar{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-top:3px}
+.wr-fill{height:100%;border-radius:3px;background:var(--green)}
+.info-tip{font-size:.72rem;color:var(--text3);font-style:italic;margin-top:4px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{border-right:none;border-bottom:1px solid var(--border)}.comparison-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body class="dark">
+
+<div class="page-header">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+  <h1>Claude Strategy Backtester</h1>
+  <span class="badge">Fib Confluence + Macro</span>
+</div>
+
+<div class="layout">
+  <!-- SIDEBAR CONTROLS -->
+  <aside class="sidebar">
+    <div class="ctrl-group">
+      <div class="ctrl-label">Symbol</div>
+      <select id="sym">
+        <option value="EURUSD">EUR/USD</option>
+        <option value="GBPUSD">GBP/USD</option>
+        <option value="USDJPY">USD/JPY</option>
+        <option value="GBPJPY">GBP/JPY</option>
+        <option value="AUDUSD">AUD/USD</option>
+        <option value="USDCAD">USD/CAD</option>
+        <option value="USDCHF">USD/CHF</option>
+        <option value="NZDUSD">NZD/USD</option>
+        <option value="XAUUSD">XAU/USD</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Entry Timeframe</div>
+      <select id="entryTf">
+        <option value="m1">M1 (preferred)</option>
+        <option value="m5">M5 (fallback)</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">IS End Date</div>
+      <input type="date" id="isEnd" value="2023-12-31">
+    </div>
+    <div class="ctrl-group">
+      <div class="ctrl-label">OOS Start Date</div>
+      <input type="date" id="ooStart" value="2024-01-01">
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Min Stars (1–6)</div>
+      <input type="number" id="minStars" value="3" min="1" max="6">
+      <div class="info-tip">Higher = fewer but higher-quality trades</div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">SL Factor (× Asia Range)</div>
+      <input type="number" id="slFactor" value="0.35" min="0.1" max="1.0" step="0.05">
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">TP Multiple (R)</div>
+      <input type="number" id="tpR" value="2.2" min="1.0" max="5.0" step="0.1">
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Macro Gate</div>
+      <select id="macroGate">
+        <option value="SOFT">Soft (NEUTRAL allowed)</option>
+        <option value="STRICT">Strict (must align)</option>
+        <option value="OFF">Off (ignore macro)</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Vol Regime Filter</div>
+      <select id="volFilter">
+        <option value="ALL">All regimes</option>
+        <option value="SKIP_HIGH">Skip HIGH vol days</option>
+        <option value="ONLY_NORMAL">Only NORMAL vol</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Sessions</div>
+      <select id="sessionFilter">
+        <option value="BOTH">London + NY Overlap</option>
+        <option value="LONDON">London only (08-13)</option>
+        <option value="NY">NY Overlap only (13-17)</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Max Trades / Day</div>
+      <select id="maxPerDay">
+        <option value="1">1 (first setup only)</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="btn" id="runBtn" onclick="runBacktest()">Run Backtest</button>
+    <button class="btn btn-secondary" id="resetBtn" onclick="resetResults()" style="display:none">Reset</button>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+  </aside>
+
+  <!-- MAIN RESULTS -->
+  <main class="main" id="mainArea">
+    <div class="empty-state" id="emptyState">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" style="margin:0 auto 16px;display:block"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      <h2>No results yet</h2>
+      <p>Select a symbol and parameters,<br>then click <strong>Run Backtest</strong>.</p>
+      <p style="margin-top:10px;font-size:.75rem">Strategy: Asia body range → Fib confluence detection →<br>London/NY entry → Range SL + Fixed 2.2R TP + Vol-regime BE</p>
+    </div>
+    <div id="results" style="display:none"></div>
+  </main>
+</div>
+
+<!-- ============================================================
+     WORKER SOURCE (embedded as text, no escaping needed)
+     ============================================================ -->
+<script id="worker-src" type="text/plain">
+'use strict';
+
+// ── London DST (last Sun March / last Sun October) ──────────────
+function dstBounds(yr) {
+  function lastSunUTC(yr, mo) {
+    var d = new Date(Date.UTC(yr, mo, 31));
+    var dow = d.getUTCDay(); // 0=Sun
+    return Date.UTC(yr, mo, 31 - dow) + 3600000; // 01:00 UTC
+  }
+  return { s: lastSunUTC(yr, 2), e: lastSunUTC(yr, 9) };
+}
+
+function tsToLondon(tsMs) {
+  var yr = new Date(tsMs).getUTCFullYear();
+  var bd = dstBounds(yr);
+  var off = (tsMs >= bd.s && tsMs < bd.e) ? 3600000 : 0;
+  var lMs = tsMs + off;
+  var d = new Date(lMs);
+  return {
+    lDate: d.toISOString().slice(0, 10),
+    lHour: d.getUTCHours(),
+    lMin:  d.getUTCMinutes(),
+    lDay:  d.getUTCDay()
+  };
+}
+
+// ── CSV parser ───────────────────────────────────────────────────
+function parseBars(csv) {
+  var bars = [];
+  var lines = csv.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+    var p = line.split(',');
+    if (p.length < 5) continue;
+    var ts = parseInt(p[0], 10);
+    if (isNaN(ts) || ts <= 0) continue;
+    var o = +p[1], h = +p[2], l = +p[3], c = +p[4];
+    if (isNaN(o) || isNaN(c) || o <= 0) continue;
+    var lt = tsToLondon(ts);
+    bars.push({ ts:ts, o:o, h:h, l:l, c:c,
+      lDate:lt.lDate, lHour:lt.lHour, lMin:lt.lMin, lDay:lt.lDay });
+  }
+  bars.sort(function(a,b){ return a.ts - b.ts; });
+  return bars;
+}
+
+// ── Pip size ─────────────────────────────────────────────────────
+function getPipSize(sym) {
+  if (sym.indexOf('JPY') >= 0) return 0.01;
+  if (sym.indexOf('XAU') >= 0 || sym.indexOf('GOLD') >= 0) return 0.1;
+  return 0.0001;
+}
+
+// ── Vol regime: EMA-ATR (alpha=0.15), 100-bar percentile ─────────
+function computeVolRegimeMap(bars30) {
+  var alpha = 0.15;
+  var emaAtr = null;
+  var history = [];
+  var map = {};
+
+  for (var i = 0; i < bars30.length; i++) {
+    var b = bars30[i];
+    var atr = b.h - b.l;
+    if (emaAtr === null) emaAtr = atr;
+    else emaAtr = alpha * atr + (1 - alpha) * emaAtr;
+
+    history.push(emaAtr);
+    if (history.length > 100) history.shift();
+
+    var sorted = history.slice().sort(function(a,b){ return a-b; });
+    var idx = sorted.indexOf(emaAtr);
+    var pct = history.length < 2 ? 50 : idx / (sorted.length - 1) * 100;
+    var regime = pct < 25 ? 'LOW' : pct > 75 ? 'HIGH' : 'NORMAL';
+
+    // Last bar of each date wins
+    map[b.lDate] = { regime: regime, pct: pct, emaAtr: emaAtr };
+  }
+  return map;
+}
+
+// ── Macro proxy: incremental, O(n) ───────────────────────────────
+function computeMacroMap(bars30) {
+  var alpha20 = 2 / 21;   // EMA20
+  var alpha50 = 2 / 51;   // EMA50
+  var ema20 = null, ema50 = null;
+  var rsiWin = [];         // last 15 closes for RSI14
+  var momWin = [];         // last 241 closes (~5 days M30)
+  var map = {};
+
+  for (var i = 0; i < bars30.length; i++) {
+    var b = bars30[i];
+    var c = b.c;
+
+    if (ema20 === null) { ema20 = c; ema50 = c; }
+    else {
+      ema20 = alpha20 * c + (1 - alpha20) * ema20;
+      ema50 = alpha50 * c + (1 - alpha50) * ema50;
+    }
+
+    rsiWin.push(c);
+    if (rsiWin.length > 15) rsiWin.shift();
+
+    momWin.push(c);
+    if (momWin.length > 241) momWin.shift();
+
+    // Compute on last bar of the day
+    var next = bars30[i + 1];
+    if (!next || next.lDate !== b.lDate) {
+      var score = 0;
+      // EMA trend ±2
+      if (ema20 > ema50 * 1.0001) score += 2;
+      else if (ema20 < ema50 * 0.9999) score -= 2;
+
+      // RSI14 ±2
+      if (rsiWin.length >= 15) {
+        var gains = 0, losses = 0;
+        for (var j = 1; j < rsiWin.length; j++) {
+          var chg = rsiWin[j] - rsiWin[j-1];
+          if (chg > 0) gains += chg; else losses -= chg;
+        }
+        var avgGain = gains / (rsiWin.length - 1);
+        var avgLoss = losses / (rsiWin.length - 1);
+        var rsi = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+        if (rsi > 60) score += 2;
+        else if (rsi < 40) score -= 2;
+      }
+
+      // 5-day momentum ±1
+      if (momWin.length > 1) {
+        var base = momWin[0];
+        var momPct = base !== 0 ? (c - base) / base * 100 : 0;
+        if (momPct > 0.05) score += 1;
+        else if (momPct < -0.05) score -= 1;
+      }
+
+      map[b.lDate] = {
+        score: score,
+        bias: score >= 2 ? 'LONG' : score <= -2 ? 'SHORT' : 'NEUTRAL'
+      };
+    }
+  }
+  return map;
+}
+
+// ── Classic daily pivot ──────────────────────────────────────────
+function computePivot(bars) {
+  if (!bars || bars.length === 0) return null;
+  var H = -Infinity, L = Infinity, C = 0;
+  for (var i = 0; i < bars.length; i++) {
+    if (bars[i].h > H) H = bars[i].h;
+    if (bars[i].l < L) L = bars[i].l;
+    C = bars[i].c;
+  }
+  var P = (H + L + C) / 3;
+  return { P:P, R1:2*P-L, R2:P+(H-L), S1:2*P-H, S2:P-(H-L) };
+}
+
+// ── Fibonacci ratios ─────────────────────────────────────────────
+var FIB_RATIOS = [-1.618, -1.0, -0.618, -0.382, 0.0, 0.236, 0.382, 0.5,
+                   0.618, 0.786, 1.0, 1.236, 1.382, 1.618, 2.0, 2.618];
+
+function computeFibLevels(asiaLow, asiaHigh) {
+  var range = asiaHigh - asiaLow;
+  if (range <= 0) return [];
+  var levels = [];
+  for (var i = 0; i < FIB_RATIOS.length; i++) {
+    levels.push({ ratio: FIB_RATIOS[i], price: asiaLow + FIB_RATIOS[i] * range });
+  }
+  return levels;
+}
+
+function clusterFibLevels(rawLevels, pip) {
+  if (rawLevels.length === 0) return [];
+  var tol = pip * 4; // 4-pip tolerance for clustering
+  var sorted = rawLevels.slice().sort(function(a,b){ return a.price - b.price; });
+  var clusters = [];
+
+  for (var i = 0; i < sorted.length; i++) {
+    var lv = sorted[i];
+    var last = clusters[clusters.length - 1];
+    if (last && Math.abs(lv.price - last.price) <= tol) {
+      last.price = (last.price + lv.price) / 2;
+      last.count++;
+      last.ratios.push(lv.ratio);
+    } else {
+      clusters.push({ price: lv.price, count: 1, ratios: [lv.ratio] });
+    }
+  }
+  return clusters;
+}
+
+// ── Star rating (max 6) ─────────────────────────────────────────
+function computeStars(cluster, dir, macroBias, pivot, dailyOpens, pip) {
+  var stars = 1; // base
+
+  // Tight cluster: 2+ raw levels merged
+  if (cluster.count >= 2) stars++;
+
+  // Macro aligned
+  if ((dir === 'LONG' && macroBias === 'LONG') ||
+      (dir === 'SHORT' && macroBias === 'SHORT')) stars++;
+
+  // Pivot proximity (within 5 pips)
+  if (pivot) {
+    var pvLevels = [pivot.P, pivot.R1, pivot.R2, pivot.S1, pivot.S2];
+    for (var i = 0; i < pvLevels.length; i++) {
+      if (Math.abs(cluster.price - pvLevels[i]) <= pip * 5) { stars++; break; }
+    }
+  }
+
+  // Daily open proximity (within 8 pips)
+  if (dailyOpens && dailyOpens.length > 0) {
+    for (var j = 0; j < dailyOpens.length; j++) {
+      if (Math.abs(cluster.price - dailyOpens[j]) <= pip * 8) { stars++; break; }
+    }
+  }
+
+  // High density bonus: 3+ levels clustered
+  if (cluster.count >= 3) stars++;
+
+  return Math.min(stars, 6);
+}
+
+// ── BE R-multiple by vol regime ──────────────────────────────────
+function beRByRegime(regime) {
+  if (regime === 'HIGH') return 2.0;
+  if (regime === 'LOW')  return 1.0;
+  return 1.5; // NORMAL
+}
+
+// ── Trade record factory ─────────────────────────────────────────
+function makeTrade(date, dir, entry, exit, sl, tp, pnlR, stars, volReg, macroScore, macroBias, exitType, inIS, lDay, sessionType) {
+  return {
+    date:date, dir:dir, entry:entry, exit:exit, sl:sl, tp:tp,
+    pnlR: Math.round(pnlR * 100) / 100,
+    stars:stars, volReg:volReg, macroScore:macroScore, macroBias:macroBias,
+    exitType:exitType, inIS:inIS,
+    month:date.slice(0,7), year:date.slice(0,4),
+    dayOfWeek:lDay, sessionType:sessionType
+  };
+}
+
+// ── Summary statistics ───────────────────────────────────────────
+function summarise(arr) {
+  if (!arr || arr.length === 0) {
+    return { n:0, wr:0, pf:0, avgR:0, totalR:0, maxDD:0, sharpe:0, calmar:0, kelly:0, equityCurve:[] };
+  }
+  var wins = arr.filter(function(t){ return t.pnlR > 0; });
+  var losses = arr.filter(function(t){ return t.pnlR < 0; });
+  var wr = wins.length / arr.length;
+  var grossWin = wins.reduce(function(s,t){ return s + t.pnlR; }, 0);
+  var grossLoss = Math.abs(losses.reduce(function(s,t){ return s + t.pnlR; }, 0));
+  var pf = grossLoss === 0 ? (grossWin > 0 ? 99.9 : 0) : grossWin / grossLoss;
+  var totalR = arr.reduce(function(s,t){ return s + t.pnlR; }, 0);
+  var avgR = totalR / arr.length;
+
+  // Equity curve + max drawdown
+  var equity = 0, peak = 0, maxDD = 0;
+  var equityCurve = [];
+  for (var i = 0; i < arr.length; i++) {
+    equity += arr[i].pnlR;
+    equityCurve.push(Math.round(equity * 100) / 100);
+    if (equity > peak) peak = equity;
+    var dd = peak - equity;
+    if (dd > maxDD) maxDD = dd;
+  }
+
+  // Sharpe (daily-ish, annualised assuming 252 trade-days)
+  var mean = avgR;
+  var variance = 0;
+  for (var k = 0; k < arr.length; k++) variance += (arr[k].pnlR - mean) * (arr[k].pnlR - mean);
+  variance /= arr.length;
+  var std = Math.sqrt(variance);
+  var sharpe = std === 0 ? 0 : (mean / std) * Math.sqrt(252);
+
+  // Calmar = totalR / maxDD
+  var calmar = maxDD === 0 ? (totalR > 0 ? 99.9 : 0) : totalR / maxDD;
+
+  // Kelly fraction
+  var avgWin = wins.length > 0 ? grossWin / wins.length : 0;
+  var avgLos2 = losses.length > 0 ? grossLoss / losses.length : 0;
+  var kelly = 0;
+  if (avgWin > 0 && avgLos2 > 0) {
+    kelly = wr / avgLos2 - (1 - wr) / avgWin;
+    kelly = Math.max(0, Math.min(kelly, 1)) * 100; // % of capital
+  }
+
+  return { n:arr.length, wr:wr, pf:pf, avgR:avgR, totalR:totalR,
+    maxDD:maxDD, sharpe:sharpe, calmar:calmar, kelly:kelly,
+    equityCurve:equityCurve, grossWin:grossWin, grossLoss:grossLoss,
+    wins:wins.length, losses:losses.length };
+}
+
+// ── Monte Carlo ──────────────────────────────────────────────────
+function monteCarlo(trades, n) {
+  if (!trades || trades.length === 0) return null;
+  var pnls = trades.map(function(t){ return t.pnlR; });
+  var results = [];
+
+  for (var i = 0; i < n; i++) {
+    // Fisher-Yates shuffle
+    var arr = pnls.slice();
+    for (var j = arr.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var tmp = arr[j]; arr[j] = arr[k]; arr[k] = tmp;
+    }
+    var equity = 0, peak = 0, maxDD = 0;
+    for (var m = 0; m < arr.length; m++) {
+      equity += arr[m];
+      if (equity > peak) peak = equity;
+      var dd = peak - equity;
+      if (dd > maxDD) maxDD = dd;
+    }
+    results.push({ fe: equity, md: maxDD });
+  }
+
+  var fes = results.map(function(r){ return r.fe; }).sort(function(a,b){ return a-b; });
+  var mds = results.map(function(r){ return r.md; }).sort(function(a,b){ return a-b; });
+
+  // Histogram buckets (50 bins)
+  var minFe = fes[0], maxFe = fes[fes.length-1];
+  var binW = (maxFe - minFe) / 50 || 1;
+  var hist = [];
+  for (var b = 0; b < 50; b++) {
+    var lo = minFe + b * binW, hi = lo + binW;
+    var cnt = fes.filter(function(v){ return v >= lo && v < hi; }).length;
+    hist.push({ lo: Math.round(lo*10)/10, hi: Math.round(hi*10)/10, cnt: cnt });
+  }
+
+  return {
+    p5:  fes[Math.floor(n*0.05)],
+    p25: fes[Math.floor(n*0.25)],
+    p50: fes[Math.floor(n*0.50)],
+    p75: fes[Math.floor(n*0.75)],
+    p95: fes[Math.floor(n*0.95)],
+    mdMedian: mds[Math.floor(n*0.5)],
+    mdP95:    mds[Math.floor(n*0.95)],
+    hist: hist
+  };
+}
+
+// ── MAIN BACKTEST ────────────────────────────────────────────────
+self.onmessage = function(e) {
+  var d = e.data;
+  var symbol   = d.symbol;
+  var m30csv   = d.m30csv;
+  var entryCsv = d.entryCsv; // M1 preferred, M5 fallback
+  var cfg      = d.config;
+
+  var pip = getPipSize(symbol);
+
+  try {
+    self.postMessage({ type:'progress', pct:5, msg:'Parsing M30 bars...' });
+    var m30bars = parseBars(m30csv);
+    if (m30bars.length === 0) { self.postMessage({ type:'error', msg:'No M30 bars parsed' }); return; }
+
+    self.postMessage({ type:'progress', pct:12, msg:'Parsing entry bars...' });
+    var entryBars = parseBars(entryCsv);
+    if (entryBars.length === 0) { self.postMessage({ type:'error', msg:'No entry bars parsed' }); return; }
+
+    self.postMessage({ type:'progress', pct:20, msg:'Computing vol regimes...' });
+    var volMap = computeVolRegimeMap(m30bars);
+
+    self.postMessage({ type:'progress', pct:28, msg:'Computing macro proxy...' });
+    var macroMap = computeMacroMap(m30bars);
+
+    self.postMessage({ type:'progress', pct:35, msg:'Grouping bars by date...' });
+
+    // Group M30 by date
+    var m30ByDate = {};
+    for (var i = 0; i < m30bars.length; i++) {
+      var b = m30bars[i];
+      if (!m30ByDate[b.lDate]) m30ByDate[b.lDate] = [];
+      m30ByDate[b.lDate].push(b);
+    }
+
+    // Group entry bars by date
+    var entryByDate = {};
+    for (var i = 0; i < entryBars.length; i++) {
+      var b = entryBars[i];
+      if (!entryByDate[b.lDate]) entryByDate[b.lDate] = [];
+      entryByDate[b.lDate].push(b);
+    }
+
+    var allDates = Object.keys(m30ByDate).sort();
+    var trades = [];
+    var recentDailyOpens = []; // rolling 20 daily opens
+    var totalDates = allDates.length;
+
+    // Config params
+    var isEnd      = cfg.isEnd    || '2023-12-31';
+    var minStars   = cfg.minStars  || 3;
+    var slFactor   = cfg.slFactor  || 0.35;
+    var tpR        = cfg.tpR       || 2.2;
+    var macroGate  = cfg.macroGate || 'SOFT';
+    var volFilter  = cfg.volFilter || 'ALL';
+    var sessionCfg = cfg.session   || 'BOTH';
+    var maxPerDay  = cfg.maxPerDay || 1;
+
+    self.postMessage({ type:'progress', pct:40, msg:'Running backtest loop...' });
+
+    for (var di = 1; di < allDates.length; di++) {
+      var date    = allDates[di];
+      var prevDate = allDates[di - 1];
+
+      // Progress update every 5%
+      if (di % Math.ceil(totalDates / 20) === 0) {
+        var pct = 40 + Math.floor((di / totalDates) * 45);
+        self.postMessage({ type:'progress', pct:pct, msg:'Processing ' + date + '...' });
+      }
+
+      // Skip weekends
+      var dow = new Date(date + 'T12:00:00Z').getUTCDay();
+      if (dow === 0 || dow === 6) continue;
+
+      var m30Day    = m30ByDate[date]   || [];
+      var prevM30   = m30ByDate[prevDate] || [];
+      var entryDay  = entryByDate[date] || [];
+
+      if (m30Day.length === 0 || entryDay.length === 0) continue;
+
+      // Track daily open
+      if (m30Day.length > 0) {
+        recentDailyOpens.push(m30Day[0].o);
+        if (recentDailyOpens.length > 20) recentDailyOpens.shift();
+      }
+
+      // 1. Asia session body range (00:00–06:00 London, TRUE body: max(o,c) / min(o,c))
+      var asiaBars = m30Day.filter(function(b){ return b.lHour >= 0 && b.lHour < 6; });
+      if (asiaBars.length < 3) continue;
+
+      var asiaBodyHigh = -Infinity, asiaBodyLow = Infinity;
+      for (var ai = 0; ai < asiaBars.length; ai++) {
+        var ab = asiaBars[ai];
+        var bh = Math.max(ab.o, ab.c);
+        var bl = Math.min(ab.o, ab.c);
+        if (bh > asiaBodyHigh) asiaBodyHigh = bh;
+        if (bl < asiaBodyLow)  asiaBodyLow  = bl;
+      }
+      var asiaRange = asiaBodyHigh - asiaBodyLow;
+      if (asiaRange < pip * 5) continue; // too tight, skip
+
+      // 2. Vol regime
+      var volReg = (volMap[date] || {}).regime || 'NORMAL';
+
+      // Vol filter
+      if (volFilter === 'SKIP_HIGH' && volReg === 'HIGH') continue;
+      if (volFilter === 'ONLY_NORMAL' && volReg !== 'NORMAL') continue;
+
+      // 3. Macro proxy (from previous day's data)
+      var macro = macroMap[prevDate] || macroMap[date] || { score:0, bias:'NEUTRAL' };
+
+      // 4. Fib levels from Asia body range
+      var rawFibs    = computeFibLevels(asiaBodyLow, asiaBodyHigh);
+      var fibClusters = clusterFibLevels(rawFibs, pip);
+
+      // 5. Previous day pivot
+      var pivot = computePivot(prevM30);
+
+      // 6. Break-even R multiple for this regime
+      var beRMult = beRByRegime(volReg);
+
+      // 7. Session helpers
+      var inLondon = function(h, mn) { return (h > 8 || (h === 8 && mn >= 0)) && h < 13; };
+      var inNY     = function(h, mn) { return (h > 13 || (h === 13 && mn >= 0)) && h < 17; };
+      var inSession;
+      if (sessionCfg === 'LONDON') inSession = function(h,mn){ return inLondon(h,mn); };
+      else if (sessionCfg === 'NY') inSession = function(h,mn){ return inNY(h,mn); };
+      else inSession = function(h,mn){ return inLondon(h,mn) || inNY(h,mn); };
+
+      // 8. Intraday tracking
+      var dayHigh = -Infinity, dayLow = Infinity;
+      var tradesThisDay = 0;
+      var activeTrade = null; // { entry, dir, sl, tp, stars, beLevel, beTriggered, sessionType }
+
+      for (var bi = 0; bi < entryDay.length; bi++) {
+        var bar = entryDay[bi];
+        var h = bar.lHour, mn = bar.lMin;
+        var timeMin = h * 60 + mn;
+
+        // Update daily range tracker
+        if (bar.h > dayHigh) dayHigh = bar.h;
+        if (bar.l < dayLow)  dayLow  = bar.l;
+        var rangeUsed = dayHigh - dayLow;
+
+        // EOD forced close at 21:00
+        if (timeMin >= 1260 && activeTrade) {
+          var eodPnlR = activeTrade.dir === 'LONG'
+            ? (bar.c - activeTrade.entry) / (activeTrade.entry - activeTrade.sl)
+            : (activeTrade.entry - bar.c) / (activeTrade.sl - activeTrade.entry);
+          trades.push(makeTrade(date, activeTrade.dir, activeTrade.entry, bar.c,
+            activeTrade.sl, activeTrade.tp, eodPnlR, activeTrade.stars,
+            volReg, macro.score, macro.bias, 'EOD', date <= isEnd, dow, activeTrade.sessionType));
+          activeTrade = null;
+          break;
+        }
+        if (timeMin >= 1260) break;
+
+        // Manage active trade
+        if (activeTrade) {
+          if (activeTrade.dir === 'LONG') {
+            // Check TP
+            if (bar.h >= activeTrade.tp) {
+              trades.push(makeTrade(date, 'LONG', activeTrade.entry, activeTrade.tp,
+                activeTrade.sl, activeTrade.tp, tpR, activeTrade.stars,
+                volReg, macro.score, macro.bias, 'TP', date <= isEnd, dow, activeTrade.sessionType));
+              activeTrade = null; continue;
+            }
+            // Check BE trigger
+            if (!activeTrade.beTriggered && bar.h >= activeTrade.beLevel) {
+              activeTrade.sl = activeTrade.entry;
+              activeTrade.beTriggered = true;
+            }
+            // Check SL
+            if (bar.l <= activeTrade.sl) {
+              var slPnlR = activeTrade.beTriggered ? 0.0 : -1.0;
+              trades.push(makeTrade(date, 'LONG', activeTrade.entry, activeTrade.sl,
+                activeTrade.sl, activeTrade.tp, slPnlR, activeTrade.stars,
+                volReg, macro.score, macro.bias, activeTrade.beTriggered ? 'BE' : 'SL',
+                date <= isEnd, dow, activeTrade.sessionType));
+              activeTrade = null; continue;
+            }
+          } else { // SHORT
+            if (bar.l <= activeTrade.tp) {
+              trades.push(makeTrade(date, 'SHORT', activeTrade.entry, activeTrade.tp,
+                activeTrade.sl, activeTrade.tp, tpR, activeTrade.stars,
+                volReg, macro.score, macro.bias, 'TP', date <= isEnd, dow, activeTrade.sessionType));
+              activeTrade = null; continue;
+            }
+            if (!activeTrade.beTriggered && bar.l <= activeTrade.beLevel) {
+              activeTrade.sl = activeTrade.entry;
+              activeTrade.beTriggered = true;
+            }
+            if (bar.h >= activeTrade.sl) {
+              var slPnlR = activeTrade.beTriggered ? 0.0 : -1.0;
+              trades.push(makeTrade(date, 'SHORT', activeTrade.entry, activeTrade.sl,
+                activeTrade.sl, activeTrade.tp, slPnlR, activeTrade.stars,
+                volReg, macro.score, macro.bias, activeTrade.beTriggered ? 'BE' : 'SL',
+                date <= isEnd, dow, activeTrade.sessionType));
+              activeTrade = null; continue;
+            }
+          }
+          continue; // still in trade, skip entry scan
+        }
+
+        // No active trade — look for entry if in session and under max-per-day
+        if (tradesThisDay >= maxPerDay) continue;
+        if (!inSession(h, mn)) continue;
+
+        // Range budget check: remaining = asiaRange × 2.5 − rangeUsed
+        var budgetRemaining = asiaRange * 2.5 - rangeUsed;
+        if (budgetRemaining <= pip * 3) continue;
+
+        // Scan fib clusters for entry
+        var sessionType = inLondon(h, mn) ? 'LONDON' : 'NY';
+        var asiaMid = (asiaBodyHigh + asiaBodyLow) / 2;
+
+        for (var fi = 0; fi < fibClusters.length; fi++) {
+          var cluster = fibClusters[fi];
+          var fp = cluster.price;
+
+          // Determine natural direction from fib position
+          // Lower half / below Asia low → supports → LONG
+          // Upper half / above Asia high → resistances → SHORT
+          var naturalLong  = fp <= asiaMid + asiaRange * 0.15;
+          var naturalShort = fp >= asiaMid - asiaRange * 0.15;
+
+          var longTouch  = naturalLong  && Math.abs(bar.l - fp) <= pip * 3 && bar.c > bar.l;
+          var shortTouch = naturalShort && Math.abs(bar.h - fp) <= pip * 3 && bar.c < bar.h;
+
+          if (!longTouch && !shortTouch) continue;
+          var dir = longTouch ? 'LONG' : 'SHORT';
+
+          // Macro gate
+          if (macroGate === 'STRICT') {
+            if (macro.bias !== dir) continue;
+          } else if (macroGate === 'SOFT') {
+            if (macro.bias !== 'NEUTRAL' && macro.bias !== dir) continue;
+          }
+          // OFF: no macro filter
+
+          // Star rating
+          var stars = computeStars(cluster, dir, macro.bias, pivot, recentDailyOpens, pip);
+          if (stars < minStars) continue;
+
+          // Build trade parameters
+          var entryPrice = fp;
+          var slDist = asiaRange * slFactor;
+          var sl = dir === 'LONG' ? entryPrice - slDist : entryPrice + slDist;
+          var tp = dir === 'LONG' ? entryPrice + slDist * tpR : entryPrice - slDist * tpR;
+          var beLevel = dir === 'LONG'
+            ? entryPrice + slDist * beRMult
+            : entryPrice - slDist * beRMult;
+
+          activeTrade = { entry:entryPrice, dir:dir, sl:sl, tp:tp, stars:stars,
+            beLevel:beLevel, beTriggered:false, sessionType:sessionType };
+          tradesThisDay++;
+          break; // one setup per bar
+        }
+      } // end bar loop
+    } // end date loop
+
+    self.postMessage({ type:'progress', pct:85, msg:'Analysing ' + trades.length + ' trades...' });
+
+    // ── RESULTS ANALYSIS ────────────────────────────────────────
+    var inIS  = trades.filter(function(t){ return  t.inIS; });
+    var inOOS = trades.filter(function(t){ return !t.inIS; });
+
+    // By star
+    var byStar = {};
+    for (var s = 1; s <= 6; s++) {
+      var st = trades.filter(function(t){ return t.stars === s; });
+      byStar[s] = summarise(st);
+    }
+
+    // By vol regime
+    var byVol = {
+      LOW:    summarise(trades.filter(function(t){ return t.volReg === 'LOW'; })),
+      NORMAL: summarise(trades.filter(function(t){ return t.volReg === 'NORMAL'; })),
+      HIGH:   summarise(trades.filter(function(t){ return t.volReg === 'HIGH'; }))
+    };
+
+    // By day of week
+    var byDay = {};
+    var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    for (var dd = 0; dd <= 6; dd++) {
+      var dt = trades.filter(function(t){ return t.dayOfWeek === dd; });
+      byDay[dd] = summarise(dt);
+    }
+
+    // By exit type
+    var byExit = {
+      TP:  summarise(trades.filter(function(t){ return t.exitType === 'TP'; })),
+      SL:  summarise(trades.filter(function(t){ return t.exitType === 'SL'; })),
+      BE:  summarise(trades.filter(function(t){ return t.exitType === 'BE'; })),
+      EOD: summarise(trades.filter(function(t){ return t.exitType === 'EOD'; }))
+    };
+
+    // By session
+    var bySession = {
+      LONDON: summarise(trades.filter(function(t){ return t.sessionType === 'LONDON'; })),
+      NY:     summarise(trades.filter(function(t){ return t.sessionType === 'NY'; }))
+    };
+
+    // By month
+    var months = [];
+    var monthSeen = {};
+    for (var mi = 0; mi < trades.length; mi++) {
+      if (!monthSeen[trades[mi].month]) { monthSeen[trades[mi].month] = true; months.push(trades[mi].month); }
+    }
+    months.sort();
+    var byMonth = {};
+    for (var mj = 0; mj < months.length; mj++) {
+      var mm = months[mj];
+      byMonth[mm] = summarise(trades.filter(function(t){ return t.month === mm; }));
+    }
+
+    // By direction
+    var byDir = {
+      LONG:  summarise(trades.filter(function(t){ return t.dir === 'LONG'; })),
+      SHORT: summarise(trades.filter(function(t){ return t.dir === 'SHORT'; }))
+    };
+
+    self.postMessage({ type:'progress', pct:92, msg:'Running Monte Carlo (1000 simulations)...' });
+
+    var mc = monteCarlo(trades, 1000);
+
+    self.postMessage({
+      type: 'done',
+      result: {
+        all:   summarise(trades),
+        is:    summarise(inIS),
+        oos:   summarise(inOOS),
+        byStar: byStar,
+        byVol: byVol,
+        byDay: byDay,
+        byExit: byExit,
+        bySession: bySession,
+        byMonth: byMonth,
+        byDir: byDir,
+        months: months,
+        trades: trades,
+        config: cfg,
+        symbol: symbol
+      },
+      mc: mc
+    });
+
+  } catch(err) {
+    self.postMessage({ type:'error', msg: err.message + '\n' + (err.stack || '') });
+  }
+};
+</script>
+
+<!-- ============================================================
+     MAIN THREAD
+     ============================================================ -->
+<script>
+'use strict';
+
+const R2_BASE = 'https://pub-1d8354116ae54e158e7010f0deb8f6e6.r2.dev';
+
+function r2Url(symbol, tf) {
+  return `${R2_BASE}/${symbol}/${symbol.toLowerCase()}-${tf}-bid.csv`;
+}
+
+let worker = null;
+let lastResult = null;
+
+// Build blob worker once
+function getWorker() {
+  const src = document.getElementById('worker-src').textContent;
+  const blob = new Blob([src], { type: 'application/javascript' });
+  const url  = URL.createObjectURL(blob);
+  return new Worker(url);
+}
+
+function setStatus(msg, pct) {
+  document.getElementById('statusMsg').textContent = msg;
+  if (pct !== undefined) {
+    const wrap = document.getElementById('progressWrap');
+    const bar  = document.getElementById('progressBar');
+    wrap.style.display = 'block';
+    bar.style.width = pct + '%';
+    if (pct >= 100) setTimeout(() => { wrap.style.display = 'none'; }, 600);
+  }
+}
+
+async function runBacktest() {
+  const sym       = document.getElementById('sym').value;
+  const entryTf   = document.getElementById('entryTf').value;
+  const isEnd     = document.getElementById('isEnd').value;
+  const ooStart   = document.getElementById('ooStart').value;
+  const minStars  = +document.getElementById('minStars').value;
+  const slFactor  = +document.getElementById('slFactor').value;
+  const tpR       = +document.getElementById('tpR').value;
+  const macroGate = document.getElementById('macroGate').value;
+  const volFilter = document.getElementById('volFilter').value;
+  const session   = document.getElementById('sessionFilter').value;
+  const maxPerDay = +document.getElementById('maxPerDay').value;
+
+  const runBtn = document.getElementById('runBtn');
+  runBtn.disabled = true;
+  setStatus('Fetching M30 data...', 2);
+
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'block';
+
+  try {
+    const [m30resp, entryResp] = await Promise.all([
+      fetch(r2Url(sym, 'm30')),
+      fetch(r2Url(sym, entryTf))
+        .then(r => r.ok ? r : fetch(r2Url(sym, 'm5')))
+    ]);
+
+    if (!m30resp.ok) throw new Error(`M30 fetch failed: ${m30resp.status}`);
+    if (!entryResp.ok) throw new Error(`Entry TF fetch failed: ${entryResp.status}`);
+
+    setStatus('Downloading CSV data...', 8);
+    const [m30csv, entryCsv] = await Promise.all([m30resp.text(), entryResp.text()]);
+
+    setStatus('Launching worker...', 10);
+
+    if (worker) worker.terminate();
+    worker = getWorker();
+
+    worker.onmessage = (e) => {
+      const msg = e.data;
+      if (msg.type === 'progress') {
+        setStatus(msg.msg, msg.pct);
+      } else if (msg.type === 'error') {
+        setStatus('Error: ' + msg.msg, 0);
+        document.getElementById('progressWrap').style.display = 'none';
+        runBtn.disabled = false;
+      } else if (msg.type === 'done') {
+        setStatus('Complete — ' + msg.result.all.n + ' trades found', 100);
+        lastResult = msg;
+        renderResults(msg.result, msg.mc);
+        runBtn.disabled = false;
+        document.getElementById('resetBtn').style.display = 'block';
+      }
+    };
+
+    worker.onerror = (err) => {
+      setStatus('Worker error: ' + err.message, 0);
+      runBtn.disabled = false;
+    };
+
+    worker.postMessage({
+      symbol: sym,
+      m30csv: m30csv,
+      entryCsv: entryCsv,
+      config: { isEnd, ooStart, minStars, slFactor, tpR, macroGate, volFilter, session, maxPerDay }
+    });
+
+  } catch (err) {
+    setStatus('Error: ' + err.message, 0);
+    document.getElementById('progressWrap').style.display = 'none';
+    runBtn.disabled = false;
+  }
+}
+
+function resetResults() {
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'block';
+  document.getElementById('resetBtn').style.display = 'none';
+  document.getElementById('statusMsg').textContent = '';
+  lastResult = null;
+}
+
+// ── RENDERING ────────────────────────────────────────────────────
+
+function fmt(n, dec=2) {
+  if (!isFinite(n) || isNaN(n)) return '—';
+  return Number(n).toFixed(dec);
+}
+function pct(n) { return fmt(n * 100, 1) + '%'; }
+function pfColor(pf) { return pf >= 1.5 ? 'green' : pf >= 1.0 ? 'amber' : 'red'; }
+function wrColor(wr) { return wr >= 0.45 ? 'green' : wr >= 0.35 ? 'amber' : 'red'; }
+function rColor(r) { return r > 0 ? 'green' : r < 0 ? 'red' : ''; }
+
+function statCard(label, value, sub, colorClass='') {
+  return `<div class="stat-card">
+    <div class="lbl">${label}</div>
+    <div class="val ${colorClass}">${value}</div>
+    ${sub ? `<div class="sub">${sub}</div>` : ''}
+  </div>`;
+}
+
+function renderResults(r, mc) {
+  const el = document.getElementById('results');
+  const empty = document.getElementById('emptyState');
+  el.style.display = 'block';
+  empty.style.display = 'none';
+
+  const a = r.all;
+
+  let html = '';
+
+  // ── SUMMARY CARDS ─────────────────────────────────────────────
+  html += `<div class="section-title">${r.symbol} — All Trades Summary (${a.n} trades)</div>`;
+  html += `<div class="stats-grid">
+    ${statCard('Profit Factor', fmt(a.pf,2), a.grossWin ? `${fmt(a.grossWin,1)}R won / ${fmt(a.grossLoss,1)}R lost`, pfColor(a.pf))}
+    ${statCard('Win Rate', pct(a.wr), `${a.wins}W / ${a.losses}L`, wrColor(a.wr))}
+    ${statCard('Total R', fmt(a.totalR,1)+'R', `Avg ${fmt(a.avgR,2)}R/trade`, rColor(a.totalR))}
+    ${statCard('Max Drawdown', fmt(a.maxDD,1)+'R', 'consecutive loss peak', 'red')}
+    ${statCard('Sharpe', fmt(a.sharpe,2), 'annualised', a.sharpe > 1 ? 'green' : a.sharpe > 0 ? 'amber' : 'red')}
+    ${statCard('Calmar', fmt(a.calmar,2), 'totalR / maxDD', a.calmar > 2 ? 'green' : a.calmar > 1 ? 'amber' : 'red')}
+    ${statCard('Kelly %', fmt(a.kelly,1)+'%', 'fraction of capital', 'blue')}
+    ${statCard('Trades', a.n, `IS: ${r.is.n} / OOS: ${r.oos.n}`, '')}
+  </div>`;
+
+  // ── IS vs OOS COMPARISON ──────────────────────────────────────
+  html += `<div class="panel"><div class="panel-title">In-Sample vs Out-of-Sample</div>
+  <div class="comparison-grid">
+    ${cmpBox('In-Sample (Training)', r.is)}
+    ${cmpBox('Out-of-Sample (Test)', r.oos)}
+  </div></div>`;
+
+  // ── EQUITY CURVE ──────────────────────────────────────────────
+  if (a.equityCurve && a.equityCurve.length > 1) {
+    html += `<div class="panel"><div class="panel-title">Equity Curve (R)</div>
+    <div class="chart-wrap">${renderEquitySvg(r.is.equityCurve, r.oos.equityCurve, r.all.equityCurve)}</div></div>`;
+  }
+
+  // ── DRAWDOWN ──────────────────────────────────────────────────
+  if (a.equityCurve && a.equityCurve.length > 1) {
+    html += `<div class="panel"><div class="panel-title">Drawdown (R)</div>
+    <div class="chart-wrap">${renderDrawdownSvg(a.equityCurve)}</div></div>`;
+  }
+
+  // ── MONTE CARLO ───────────────────────────────────────────────
+  if (mc) {
+    html += `<div class="panel"><div class="panel-title">Monte Carlo (1000 simulations) — Final Equity Distribution</div>
+    <div class="mc-grid">
+      <div class="mc-card"><div class="pct">5th pct</div><div class="val ${rColor(mc.p5)}">${fmt(mc.p5,1)}R</div></div>
+      <div class="mc-card"><div class="pct">25th pct</div><div class="val ${rColor(mc.p25)}">${fmt(mc.p25,1)}R</div></div>
+      <div class="mc-card"><div class="pct">Median</div><div class="val ${rColor(mc.p50)}">${fmt(mc.p50,1)}R</div></div>
+      <div class="mc-card"><div class="pct">75th pct</div><div class="val ${rColor(mc.p75)}">${fmt(mc.p75,1)}R</div></div>
+      <div class="mc-card"><div class="pct">95th pct</div><div class="val ${rColor(mc.p95)}">${fmt(mc.p95,1)}R</div></div>
+    </div>
+    <div style="display:flex;gap:16px;font-size:.8rem;color:var(--text2);margin-bottom:10px">
+      <span>MaxDD Median: <strong class="red">${fmt(mc.mdMedian,1)}R</strong></span>
+      <span>MaxDD p95: <strong class="red">${fmt(mc.mdP95,1)}R</strong></span>
+    </div>
+    ${renderMcHist(mc.hist)}</div>`;
+  }
+
+  // ── MONTHLY PNL HEATMAP ───────────────────────────────────────
+  if (r.months && r.months.length > 0) {
+    html += `<div class="panel"><div class="panel-title">Monthly P&L (R)</div>${renderMonthHeatmap(r.byMonth, r.months)}</div>`;
+  }
+
+  // ── STAR BREAKDOWN ────────────────────────────────────────────
+  html += `<div class="panel"><div class="panel-title">Star Rating Breakdown</div>${renderStarTable(r.byStar)}</div>`;
+
+  // ── VOL REGIME BREAKDOWN ──────────────────────────────────────
+  html += `<div class="panel"><div class="panel-title">Vol Regime Breakdown</div>${renderVolTable(r.byVol)}</div>`;
+
+  // ── DAY OF WEEK ───────────────────────────────────────────────
+  html += `<div class="panel"><div class="panel-title">Day of Week Performance</div>${renderDowTable(r.byDay)}</div>`;
+
+  // ── SESSION BREAKDOWN ─────────────────────────────────────────
+  html += `<div class="panel"><div class="panel-title">Session Breakdown</div>${renderSessionTable(r.bySession)}</div>`;
+
+  // ── EXIT TYPE BREAKDOWN ───────────────────────────────────────
+  html += `<div class="panel"><div class="panel-title">Exit Type Breakdown</div>${renderExitTable(r.byExit)}</div>`;
+
+  // ── DIRECTION BREAKDOWN ───────────────────────────────────────
+  html += `<div class="panel"><div class="panel-title">Long vs Short</div>${renderDirTable(r.byDir)}</div>`;
+
+  // ── TRADE LOG ─────────────────────────────────────────────────
+  if (r.trades && r.trades.length > 0) {
+    html += `<div class="panel"><div class="panel-title">Trade Log (last 200)</div>
+    <div class="trade-table-wrap">${renderTradeTable(r.trades.slice(-200))}</div></div>`;
+  }
+
+  // ── YEAR/MONTH ACCORDION ──────────────────────────────────────
+  html += renderYearAccordion(r.byMonth, r.months);
+
+  el.innerHTML = html;
+
+  // Bind accordion toggles
+  el.querySelectorAll('.accordion-hdr').forEach(hdr => {
+    hdr.addEventListener('click', () => {
+      const body = hdr.nextElementSibling;
+      body.classList.toggle('open');
+    });
+  });
+}
+
+function cmpBox(title, s) {
+  if (!s || s.n === 0) return `<div class="cmp-box"><h3>${title}</h3><p style="color:var(--text3);font-size:.8rem;padding:20px 0;text-align:center">No trades in this period</p></div>`;
+  return `<div class="cmp-box"><h3>${title} (${s.n} trades)</h3>
+    <div class="cmp-row"><span>Profit Factor</span><span class="${pfColor(s.pf)}">${fmt(s.pf,2)}</span></div>
+    <div class="cmp-row"><span>Win Rate</span><span class="${wrColor(s.wr)}">${pct(s.wr)}</span></div>
+    <div class="cmp-row"><span>Total R</span><span class="${rColor(s.totalR)}">${fmt(s.totalR,1)}R</span></div>
+    <div class="cmp-row"><span>Avg R / trade</span><span class="${rColor(s.avgR)}">${fmt(s.avgR,2)}R</span></div>
+    <div class="cmp-row"><span>Max Drawdown</span><span class="red">${fmt(s.maxDD,1)}R</span></div>
+    <div class="cmp-row"><span>Sharpe</span><span>${fmt(s.sharpe,2)}</span></div>
+    <div class="cmp-row"><span>Calmar</span><span>${fmt(s.calmar,2)}</span></div>
+  </div>`;
+}
+
+function renderEquitySvg(isEc, oosEc, allEc) {
+  const W = 900, H = 180, PAD = 40;
+  if (!allEc || allEc.length < 2) return '';
+
+  const allVals = allEc;
+  const minV = Math.min(0, ...allVals);
+  const maxV = Math.max(...allVals);
+  const range = maxV - minV || 1;
+
+  const scaleX = i => PAD + (i / (allVals.length - 1)) * (W - PAD * 2);
+  const scaleY = v => H - PAD - ((v - minV) / range) * (H - PAD * 2);
+
+  const pathPts = (vals, offset=0) => vals.map((v, i) =>
+    `${scaleX(i + offset)},${scaleY(v)}`).join(' ');
+
+  const isEnd = isEc ? isEc.length - 1 : 0;
+  const isX = isEnd > 0 ? scaleX(isEnd) : null;
+
+  let svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">`;
+  // Zero line
+  svg += `<line x1="${PAD}" y1="${scaleY(0)}" x2="${W-PAD}" y2="${scaleY(0)}" stroke="var(--border)" stroke-width="1"/>`;
+  // IS/OOS divider
+  if (isX) svg += `<line x1="${isX}" y1="${PAD}" x2="${isX}" y2="${H-PAD}" stroke="var(--amber)" stroke-width="1" stroke-dasharray="4,3" opacity=".6"/>`;
+
+  // IS line (blue)
+  if (isEc && isEc.length > 1) {
+    svg += `<polyline points="${pathPts(isEc)}" fill="none" stroke="var(--blue)" stroke-width="1.5" opacity=".8"/>`;
+  }
+  // OOS line (green)
+  if (oosEc && oosEc.length > 1) {
+    const offset = isEc ? isEc.length : 0;
+    const oosStart = isEc && isEc.length > 0 ? isEc[isEc.length - 1] : 0;
+    const adjusted = oosEc.map((v, i) => i === 0 ? oosStart : oosStart + (v - oosEc[0]));
+    svg += `<polyline points="${pathPts(adjusted, offset)}" fill="none" stroke="var(--green)" stroke-width="1.5" opacity=".8"/>`;
+  }
+
+  // Labels
+  svg += `<text x="${PAD}" y="${PAD-6}" fill="var(--text3)" font-size="9">IS</text>`;
+  if (isX) svg += `<text x="${isX+4}" y="${PAD-6}" fill="var(--amber)" font-size="9">OOS</text>`;
+  svg += `<text x="${PAD-2}" y="${scaleY(maxV)}" fill="var(--text3)" font-size="9" text-anchor="end">${fmt(maxV,0)}R</text>`;
+  svg += `<text x="${PAD-2}" y="${scaleY(minV)}" fill="var(--text3)" font-size="9" text-anchor="end">${fmt(minV,0)}R</text>`;
+  svg += '</svg>';
+  return svg;
+}
+
+function renderDrawdownSvg(equityCurve) {
+  const W = 900, H = 120, PAD = 40;
+  if (!equityCurve || equityCurve.length < 2) return '';
+
+  let peak = 0;
+  const ddCurve = equityCurve.map(v => {
+    if (v > peak) peak = v;
+    return -(peak - v);
+  });
+
+  const minV = Math.min(...ddCurve, -0.1);
+  const maxV = 0;
+  const range = maxV - minV || 1;
+
+  const scaleX = i => PAD + (i / (ddCurve.length - 1)) * (W - PAD * 2);
+  const scaleY = v => H - PAD - ((v - minV) / range) * (H - PAD * 2);
+
+  const pts = ddCurve.map((v, i) => `${scaleX(i)},${scaleY(v)}`).join(' ');
+
+  let svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">`;
+  svg += `<line x1="${PAD}" y1="${scaleY(0)}" x2="${W-PAD}" y2="${scaleY(0)}" stroke="var(--border)" stroke-width="1"/>`;
+  // Fill area
+  const fillPts = `${PAD},${scaleY(0)} ${pts} ${scaleX(ddCurve.length-1)},${scaleY(0)}`;
+  svg += `<polygon points="${fillPts}" fill="rgba(248,113,113,0.15)"/>`;
+  svg += `<polyline points="${pts}" fill="none" stroke="var(--red)" stroke-width="1.5"/>`;
+  svg += `<text x="${PAD-2}" y="${scaleY(minV)}" fill="var(--red)" font-size="9" text-anchor="end">${fmt(minV,1)}R</text>`;
+  svg += '</svg>';
+  return svg;
+}
+
+function renderMcHist(hist) {
+  if (!hist || hist.length === 0) return '';
+  const maxCnt = Math.max(...hist.map(b => b.cnt), 1);
+  const W = 900, H = 80, PAD = 20;
+  const bw = (W - PAD * 2) / hist.length;
+
+  let svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">`;
+  hist.forEach((bucket, i) => {
+    const x = PAD + i * bw;
+    const bh = (bucket.cnt / maxCnt) * (H - PAD);
+    const color = bucket.lo < 0 ? 'var(--red)' : 'var(--green)';
+    svg += `<rect x="${x}" y="${H - PAD - bh}" width="${Math.max(bw - 1, 1)}" height="${bh}" fill="${color}" opacity=".6"/>`;
+  });
+  svg += `<line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="var(--border)" stroke-width="1"/>`;
+  svg += '</svg>';
+  return svg;
+}
+
+function renderMonthHeatmap(byMonth, months) {
+  if (!months || months.length === 0) return '<p style="color:var(--text3);font-size:.8rem">No monthly data</p>';
+
+  const years = [...new Set(months.map(m => m.slice(0,4)))].sort();
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  let html = '<div style="overflow-x:auto"><table class="heatmap-table"><thead><tr><th>Year</th>';
+  monthNames.forEach(mn => { html += `<th>${mn}</th>`; });
+  html += '<th>Total</th></tr></thead><tbody>';
+
+  for (const yr of years) {
+    const yrTrades = Object.keys(byMonth).filter(m => m.startsWith(yr));
+    const yrTotal = yrTrades.reduce((s, m) => s + (byMonth[m].totalR || 0), 0);
+    html += `<tr><td style="font-weight:600">${yr}</td>`;
+    for (let mo = 1; mo <= 12; mo++) {
+      const key = `${yr}-${String(mo).padStart(2,'0')}`;
+      if (byMonth[key]) {
+        const v = byMonth[key].totalR;
+        const bg = v > 0
+          ? `rgba(16,185,129,${Math.min(Math.abs(v)/5,1)*0.5})`
+          : `rgba(248,113,113,${Math.min(Math.abs(v)/5,1)*0.5})`;
+        html += `<td style="background:${bg};color:${v>0?'var(--green)':'var(--red)'}">${fmt(v,1)}</td>`;
+      } else {
+        html += '<td style="color:var(--text3)">—</td>';
+      }
+    }
+    html += `<td style="font-weight:700;color:${yrTotal>0?'var(--green)':'var(--red)'}">${fmt(yrTotal,1)}R</td>`;
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function renderStarTable(byStar) {
+  let html = `<table class="breakdown-table"><thead><tr>
+    <th>Stars</th><th>Trades</th><th>Win Rate</th><th>PF</th><th>Total R</th><th>Avg R</th><th>MaxDD</th>
+  </tr></thead><tbody>`;
+  for (let s = 6; s >= 1; s--) {
+    const d = byStar[s];
+    if (!d || d.n === 0) continue;
+    const stars = '★'.repeat(s) + '☆'.repeat(6-s);
+    html += `<tr>
+      <td><span class="star-★">${stars}</span></td>
+      <td>${d.n}</td>
+      <td class="${wrColor(d.wr)}">${pct(d.wr)}</td>
+      <td class="${pfColor(d.pf)}">${fmt(d.pf,2)}</td>
+      <td class="${rColor(d.totalR)}">${fmt(d.totalR,1)}R</td>
+      <td class="${rColor(d.avgR)}">${fmt(d.avgR,2)}R</td>
+      <td class="red">${fmt(d.maxDD,1)}R</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderVolTable(byVol) {
+  const regimes = ['LOW','NORMAL','HIGH'];
+  const colors = { LOW:'blue', NORMAL:'green', HIGH:'amber' };
+  let html = `<table class="breakdown-table"><thead><tr>
+    <th>Regime</th><th>Trades</th><th>Win Rate</th><th>PF</th><th>Total R</th><th>Sharpe</th>
+  </tr></thead><tbody>`;
+  for (const reg of regimes) {
+    const d = byVol[reg];
+    if (!d || d.n === 0) continue;
+    html += `<tr>
+      <td><span class="tag tag-${colors[reg]}">${reg}</span></td>
+      <td>${d.n}</td>
+      <td class="${wrColor(d.wr)}">${pct(d.wr)}</td>
+      <td class="${pfColor(d.pf)}">${fmt(d.pf,2)}</td>
+      <td class="${rColor(d.totalR)}">${fmt(d.totalR,1)}R</td>
+      <td>${fmt(d.sharpe,2)}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderDowTable(byDay) {
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html = `<table class="breakdown-table"><thead><tr>
+    <th>Day</th><th>Trades</th><th>Win Rate</th><th>PF</th><th>Total R</th>
+  </tr></thead><tbody>`;
+  for (let d = 1; d <= 5; d++) {
+    const s = byDay[d];
+    if (!s || s.n === 0) continue;
+    html += `<tr>
+      <td>${days[d]}</td><td>${s.n}</td>
+      <td class="${wrColor(s.wr)}">${pct(s.wr)}</td>
+      <td class="${pfColor(s.pf)}">${fmt(s.pf,2)}</td>
+      <td class="${rColor(s.totalR)}">${fmt(s.totalR,1)}R</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderSessionTable(bySession) {
+  let html = `<table class="breakdown-table"><thead><tr>
+    <th>Session</th><th>Trades</th><th>Win Rate</th><th>PF</th><th>Total R</th>
+  </tr></thead><tbody>`;
+  for (const [ses, d] of Object.entries(bySession)) {
+    if (!d || d.n === 0) continue;
+    html += `<tr>
+      <td>${ses}</td><td>${d.n}</td>
+      <td class="${wrColor(d.wr)}">${pct(d.wr)}</td>
+      <td class="${pfColor(d.pf)}">${fmt(d.pf,2)}</td>
+      <td class="${rColor(d.totalR)}">${fmt(d.totalR,1)}R</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderExitTable(byExit) {
+  const exitTypes = ['TP','SL','BE','EOD'];
+  let html = `<table class="breakdown-table"><thead><tr>
+    <th>Exit Type</th><th>Count</th><th>% of Trades</th><th>Avg R</th><th>Total R</th>
+  </tr></thead><tbody>`;
+  const total = Object.values(byExit).reduce((s,d) => s + (d.n||0), 0);
+  for (const ex of exitTypes) {
+    const d = byExit[ex];
+    if (!d || d.n === 0) continue;
+    const color = ex==='TP' ? 'green' : ex==='SL' ? 'red' : ex==='BE' ? 'amber' : '';
+    html += `<tr>
+      <td><span class="tag tag-${color}">${ex}</span></td>
+      <td>${d.n}</td>
+      <td>${total > 0 ? fmt(d.n/total*100,1)+'%' : '—'}</td>
+      <td class="${rColor(d.avgR)}">${fmt(d.avgR,2)}R</td>
+      <td class="${rColor(d.totalR)}">${fmt(d.totalR,1)}R</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderDirTable(byDir) {
+  let html = `<table class="breakdown-table"><thead><tr>
+    <th>Direction</th><th>Trades</th><th>Win Rate</th><th>PF</th><th>Total R</th><th>Avg R</th>
+  </tr></thead><tbody>`;
+  for (const [dir, d] of Object.entries(byDir)) {
+    if (!d || d.n === 0) continue;
+    const color = dir === 'LONG' ? 'green' : 'red';
+    html += `<tr>
+      <td><span class="tag tag-${color}">${dir}</span></td>
+      <td>${d.n}</td>
+      <td class="${wrColor(d.wr)}">${pct(d.wr)}</td>
+      <td class="${pfColor(d.pf)}">${fmt(d.pf,2)}</td>
+      <td class="${rColor(d.totalR)}">${fmt(d.totalR,1)}R</td>
+      <td class="${rColor(d.avgR)}">${fmt(d.avgR,2)}R</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderTradeTable(trades) {
+  let html = `<table class="trade-table"><thead><tr>
+    <th>Date</th><th>Dir</th><th>Entry</th><th>Exit</th><th>P&L (R)</th>
+    <th>Stars</th><th>Vol</th><th>Macro</th><th>Exit</th><th>IS/OOS</th>
+  </tr></thead><tbody>`;
+  for (const t of [...trades].reverse()) {
+    const pnlColor = t.pnlR > 0 ? 'green' : t.pnlR < 0 ? 'red' : '';
+    const dirColor = t.dir === 'LONG' ? 'tag-green' : 'tag-red';
+    const exitColor = t.exitType === 'TP' ? 'tag-green' : t.exitType === 'SL' ? 'tag-red' : t.exitType === 'BE' ? 'tag-amber' : '';
+    html += `<tr>
+      <td>${t.date}</td>
+      <td><span class="tag ${dirColor}">${t.dir}</span></td>
+      <td>${fmt(t.entry, t.entry > 100 ? 2 : 5)}</td>
+      <td>${fmt(t.exit, t.exit > 100 ? 2 : 5)}</td>
+      <td class="${pnlColor}">${fmt(t.pnlR,2)}R</td>
+      <td><span class="star-★">${'★'.repeat(t.stars)}</span></td>
+      <td>${t.volReg}</td>
+      <td>${t.macroBias}(${t.macroScore})</td>
+      <td><span class="tag ${exitColor}">${t.exitType}</span></td>
+      <td style="color:var(--text3)">${t.inIS ? 'IS' : 'OOS'}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderYearAccordion(byMonth, months) {
+  if (!months || months.length === 0) return '';
+  const years = [...new Set(months.map(m => m.slice(0,4)))].sort();
+  const monthNames = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  let html = `<div class="panel"><div class="panel-title">Year / Month Breakdown</div>`;
+  for (const yr of years) {
+    const yrMonths = months.filter(m => m.startsWith(yr));
+    const yrTotal = yrMonths.reduce((s,m) => s + (byMonth[m]?.totalR||0), 0);
+    const yrTrades = yrMonths.reduce((s,m) => s + (byMonth[m]?.n||0), 0);
+    html += `<div class="accordion-item">
+      <div class="accordion-hdr">
+        <span>${yr} — ${yrTrades} trades</span>
+        <span class="${rColor(yrTotal)}">${fmt(yrTotal,1)}R</span>
+      </div>
+      <div class="accordion-body">
+        <table class="breakdown-table"><thead><tr>
+          <th>Month</th><th>Trades</th><th>Win Rate</th><th>PF</th><th>Total R</th>
+        </tr></thead><tbody>`;
+    for (const mon of yrMonths) {
+      const d = byMonth[mon];
+      if (!d) continue;
+      const moNum = parseInt(mon.slice(5));
+      html += `<tr>
+        <td>${monthNames[moNum]} ${yr}</td>
+        <td>${d.n}</td>
+        <td class="${wrColor(d.wr)}">${pct(d.wr)}</td>
+        <td class="${pfColor(d.pf)}">${fmt(d.pf,2)}</td>
+        <td class="${rColor(d.totalR)}">${fmt(d.totalR,1)}R</td>
+      </tr>`;
+    }
+    html += '</tbody></table></div></div>';
+  }
+  html += '</div>';
+  return html;
+}
+</script>
+</body>
+</html>
