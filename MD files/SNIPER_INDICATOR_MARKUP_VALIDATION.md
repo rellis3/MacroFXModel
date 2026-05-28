@@ -1,8 +1,8 @@
 # Sniper Indicator Chart Markup — Validation Document
 
 > **Purpose:** Validate summaries and implementations against the documented chart markup process using Craig's Sniper Indicator and Vu Manchu.  
-> **Sources:** Summary 1 (Sniper Indicator, 2026-05-28) · Summary 2 (Vu Manchu, 2026-05-28)  
-> **Status:** Awaiting summary 3 for full consolidation.
+> **Sources:** Summary 1 (Sniper Indicator, 2026-05-28) · Summary 2 (Vu Manchu, 2026-05-28) · Summary 3 (Jay / Sniper Suite, 2026-05-28)  
+> **Status:** All three summaries captured — document complete.
 
 ---
 
@@ -251,14 +251,206 @@ These are the touch-points where both indicators must agree for the highest-conv
 
 ---
 
-## Validation Log
+---
 
-| Summary # | Date Received | Key Additions / Conflicts | Status |
-|-----------|--------------|--------------------------|--------|
-| Summary 1 | 2026-05-28 | Base document — Sniper Indicator setup, key levels, confluence box, entry criteria | Captured |
-| Summary 2 | 2026-05-28 | Vu Manchu setup, VWAP/waves/money flow components, regular & hidden divergence, fuel concept, non-entry rules, cross-indicator confluence | Captured |
-| Summary 3 | — | — | Pending |
+## 18. Jay's Approach — Pivot Setup & Calculation
+
+| # | Requirement | Expected Value / Behaviour | Pass |
+|---|-------------|---------------------------|------|
+| 18.1 | Daily pivot calculated and plotted | `(Prev High + Prev Low + Prev Close) / 3` | ☐ |
+| 18.2 | 4-hour pivot calculated and plotted | Same formula using 4-hour swing points | ☐ |
+| 18.3 | Clean up mode **on** by default | Reduces clutter; shows relevant pivots only | ☐ |
+| 18.4 | Clean up mode **off** when an untapped pivot is suspected | Reveals historically reactive levels not yet visited by price | ☐ |
+| 18.5 | Untapped pivots marked with horizontal line + text annotation | Labelled "Untapped Pivot" on chart | ☐ |
+| 18.6 | Price interaction at pivot observed (bounce vs. break-and-reverse) | Noted before committing to direction | ☐ |
 
 ---
 
-*This document will be updated after each summary is received. Conflicts between summaries will be flagged in the Validation Log.*
+## 19. Fibonacci Levels
+
+| Level | Name | Usage |
+|-------|------|-------|
+| 0.382 | Standard retracement | Continuation entry zone; align with pivot or VAH/VAL |
+| 0.618–0.70 | **Golden Pocket** | Primary confluence zone for reversals and continuations |
+| 0.786 | Deep retracement | Secondary reversal confirmation level |
+| 0.886 | **Preferred range entry** | Best risk-to-reward inside fixed volume ranges; sharp reactions expected |
+
+**Validation rules:**
+- Fibonacci must be pulled from the relevant swing high → swing low (or reverse for bearish).
+- The 0.886 level inside a fixed volume range is the preferred entry; validate it delivers ≥ 3R before marking as a setup.
+- Golden pocket (0.618–0.70) must coincide with the pivot for the confluence to count.
+
+| # | Requirement | Pass |
+|---|-------------|------|
+| 19.1 | Fibonacci retracement drawn from correct swing points | ☐ |
+| 19.2 | Golden pocket (0.618–0.70) identified and marked | ☐ |
+| 19.3 | 0.886 level marked inside fixed volume range | ☐ |
+| 19.4 | At least one Fibonacci level confluent with the pivot | ☐ |
+
+---
+
+## 20. Volume Profile Markings
+
+| # | Requirement | Expected Behaviour | Pass |
+|---|-------------|-------------------|------|
+| 20.1 | Fixed Volume Range (FVR) applied to chart | Visible as a histogram or shaded zone | ☐ |
+| 20.2 | Value Area High (VAH) marked | Horizontal line at upper boundary of main volume cluster | ☐ |
+| 20.3 | Value Area Low (VAL) marked | Horizontal line at lower boundary of main volume cluster | ☐ |
+| 20.4 | VAH/VAL treated as support/resistance | Price consolidation and reaction expected within this zone | ☐ |
+| 20.5 | On bank/low-volume days, FVR takes priority over other tools | Volume profile more reliable when sessions are thin | ☐ |
+
+---
+
+## 21. Four Key Confluences at the Pivot
+
+All four must be checked when price approaches the pivot area:
+
+| # | Confluence Level | Type | Pass |
+|---|-----------------|------|------|
+| 21.1 | **Pivot line** | Static (daily or 4H) | ☐ |
+| 21.2 | **Daily Open** | Static psychological level | ☐ |
+| 21.3 | **Value Area High (VAH)** | Volume-derived | ☐ |
+| 21.4 | **Value Area Low (VAL)** | Volume-derived | ☐ |
+| 21.5 | **VWAP** | Dynamic — confirms buyer/seller dominance | ☐ |
+
+**Scoring:** 3 or more confluences aligning at the same price zone = high-probability setup. Fewer than 3 = avoid or reduce size.
+
+---
+
+## 22. Jay's Reversal Entry Criteria
+
+| Step | Criterion | Pass |
+|------|-----------|------|
+| 22.1 | Price taps pivot (or Golden Pocket / 0.886 level) | ☐ |
+| 22.2 | Deep oversold (or overbought) candle visible on LTF (1m / 3m / 5m) | ☐ |
+| 22.3 | Momentum divergence present on LTF chart | ☐ |
+| 22.4 | Money flow shifts from **red → green** (bullish reversal) or **green → red** (bearish) | ☐ |
+| 22.5 | Entry on LTF after divergence + money flow confirmation | ☐ |
+| 22.6 | Stop loss placed beyond the recent swing high / low | ☐ |
+| 22.7 | VWAP position confirms bias (above = buyers; below = sellers) | ☐ |
+
+---
+
+## 23. Jay's Continuation Entry Criteria
+
+| Step | Criterion | Pass |
+|------|-----------|------|
+| 23.1 | Prevailing trend established | ☐ |
+| 23.2 | Price retraces into pivot within the Golden Pocket (0.618–0.70) | ☐ |
+| 23.3 | Price "breathes" / pauses near pivot — not a sharp break | ☐ |
+| 23.4 | Momentum on LTF flips in trend direction (green → red for sell, red → green for buy) | ☐ |
+| 23.5 | Sell / buy dots appear on LTF concurrent with negative / positive money flow | ☐ |
+| 23.6 | VWAP confirms — continuation direction matches price-vs-VWAP relationship | ☐ |
+| 23.7 | Stop loss placed just beyond recent swing in counter-trend direction | ☐ |
+
+---
+
+## 24. Target & Risk Management
+
+| # | Rule | Expected Behaviour | Pass |
+|---|------|--------------------|------|
+| 24.1 | TP1 = first extension level | Small partial close taken here | ☐ |
+| 24.2 | TP2 = second extension level | Majority of position closed here | ☐ |
+| 24.3 | TP3 and beyond | **Ignored** unless extreme market event; price rarely reaches them | ☐ |
+| 24.4 | Minimum acceptable R:R | ≥ 1.5R (example from video); 3R+ preferred on range setups | ☐ |
+| 24.5 | Stop loss logically placed beyond swing structure | Not arbitrary; coordinated with pivot and volume structure | ☐ |
+
+---
+
+## 25. Jay's Practical Mark-Up Workflow
+
+```
+1. Open chart → Craig's Sniper Indicator active
+2. Calculate daily pivot: (Prev H + Prev L + Prev Close) / 3
+3. Calculate 4H pivot using same formula for 4H swing points
+4. Enable clean up mode → check for any untapped pivots from previous sessions
+5. If untapped pivot found → disable clean up mode → mark with horizontal line + label
+6. Apply Fixed Volume Range → mark VAH and VAL as horizontal zones
+7. Identify current swing high and low → pull Fibonacci retracement
+8. Mark 0.382, Golden Pocket (0.618–0.70), 0.786, 0.886 levels
+9. Check: which Fibonacci level aligns with pivot / VAH / VAL / Daily Open?
+10. Count confluences at that price zone (pivot + daily open + VAH/VAL + Fib)
+11. Note VWAP position relative to price
+12. Drop to LTF (1m / 3m / 5m) as price approaches the confluence zone
+13. For reversal: wait for oversold candle + momentum divergence + MF shift
+14. For continuation: wait for retracement into Golden Pocket + LTF momentum flip + MF confirmation
+15. Enter on confirmation → stop beyond swing → target TP1 (partial) then TP2 (majority)
+```
+
+---
+
+## 26. Master Consolidated Validation Checklist
+
+This section combines all three summaries into a single pre-trade checklist. Every row must pass before a trade is taken.
+
+### 26A — Chart Preparation (all three approaches)
+
+| # | Check | Source | Pass |
+|---|-------|--------|------|
+| A1 | Craig's Sniper Indicator loaded | S1 | ☐ |
+| A2 | Sessions indicator (Lux Algo) loaded and sessions highlighted | S1 | ☐ |
+| A3 | Vu Manchu Cipher B + Divergences loaded and configured | S2 | ☐ |
+| A4 | Daily pivot and 4H pivot plotted | S3 | ☐ |
+| A5 | Daily Open marked | S1 / S3 | ☐ |
+| A6 | VWAP visible and updated (dynamic) | S1 / S2 / S3 | ☐ |
+| A7 | VAH and VAL marked from Fixed Volume Range | S1 (planned) / S3 | ☐ |
+| A8 | Fibonacci retracement drawn from correct swing | S3 | ☐ |
+| A9 | Untapped pivots identified and annotated | S3 | ☐ |
+| A10 | Clean up mode status appropriate for session | S1 / S3 | ☐ |
+
+### 26B — Confluence Count (minimum 3 required)
+
+| # | Confluence Layer | Present? |
+|---|-----------------|---------|
+| B1 | Pivot (daily or 4H) | ☐ |
+| B2 | Daily Open | ☐ |
+| B3 | VAH or VAL | ☐ |
+| B4 | Fibonacci level (especially Golden Pocket or 0.886) | ☐ |
+| B5 | VWAP | ☐ |
+| B6 | Sniper confluence box: Pivot Bias + Structural Bias aligned | ☐ |
+| B7 | VMU VWAP divergence at level | ☐ |
+| B8 | VMU Waves (momentum) divergence at level | ☐ |
+| B9 | VMU Money Flow spike / fuel confirmation | ☐ |
+
+> **Minimum to proceed:** 3 of B1–B9 confirmed. Ideal: 5+.
+
+### 26C — Entry Confirmation Sequence
+
+| Step | Action | Source | Pass |
+|------|--------|--------|------|
+| C1 | Price reaches confluence zone | All | ☐ |
+| C2 | Sniper: Pivot + Structural bias aligned to trade direction | S1 | ☐ |
+| C3 | Sniper: Momentum flips as entry trigger | S1 | ☐ |
+| C4 | VMU: VWAP divergence confirms trade direction | S2 | ☐ |
+| C5 | VMU: Waves divergence aligns with VWAP divergence | S2 | ☐ |
+| C6 | VMU: Money flow spike confirms energy spent at level | S2 / S3 | ☐ |
+| C7 | LTF (1m–5m): Momentum divergence visible | S3 | ☐ |
+| C8 | LTF: Money flow colour shift confirms direction | S3 | ☐ |
+| C9 | VWAP side matches trade direction (above = buy, below = sell) | S1 / S3 | ☐ |
+| C10 | No clear non-entry condition present (weak fuel, absent VMU confluence) | S2 | ☐ |
+
+### 26D — Risk Management
+
+| # | Rule | Pass |
+|---|------|------|
+| D1 | Stop loss placed beyond recent swing structure | ☐ |
+| D2 | TP1 identified (small partial) | ☐ |
+| D3 | TP2 identified (majority close) | ☐ |
+| D4 | R:R ≥ 1.5R; 3R+ preferred | ☐ |
+| D5 | Trade only within pre-defined watchable session hours | ☐ |
+
+---
+
+## Validation Log
+
+| Summary # | Date Received | Key Additions | Status |
+|-----------|--------------|---------------|--------|
+| Summary 1 | 2026-05-28 | Sniper Indicator setup, key price levels (Daily Open / Pivot / VWAP), confluence box (Pivot + Structural + Momentum biases), entry criteria, session focus | Captured |
+| Summary 2 | 2026-05-28 | Vu Manchu setup, VWAP/Waves/Money Flow components, regular vs hidden divergence, fuel concept, non-entry rules, cross-indicator confluence table | Captured |
+| Summary 3 | 2026-05-28 | Jay's pivot-based approach, pivot formula, untapped pivots, Fibonacci levels (0.382 / Golden Pocket / 0.886), FVR / VAH / VAL, four confluences at pivot, reversal vs continuation criteria, TP1/TP2 management | Captured |
+
+**No conflicts identified across summaries.** VWAP, confluence layering, money flow, and session-based trading are consistent themes across all three. Summary 3 adds Fibonacci and volume profile depth; Summary 2 adds VMU oscillator mechanics; Summary 1 provides the structural bias framework that anchors both.
+
+---
+
+*Document complete. All three summaries consolidated.*
