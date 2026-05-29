@@ -214,7 +214,7 @@ export async function startVolForecastScheduler() {
   // restart with today's forecast cached will NOT re-run prematurely.
   const neededDate = _applicableSessionDate(new Date());
   const cachedDate = forecastState.latest?.session_date;
-  const needsImmediateRun = !cachedDate || cachedDate < neededDate;
+  const needsImmediateRun = !cachedDate || cachedDate !== neededDate;
 
   if (needsImmediateRun) {
     console.log(`[VOL-FORECAST] No forecast for ${neededDate} — computing on startup …`);
