@@ -1338,6 +1338,21 @@ const _execFileAsync   = promisify(execFile);
 const BT_DATA_DIR      = path.join(__dirname, 'VolRangeForecaster', 'data');
 const BT_PYTHON_SCRIPT = path.join(__dirname, 'VolRangeForecaster', 'vol_backtest.py');
 
+// Resolve Python binary once at startup — tries env var, then common paths
+function _resolvePython() {
+  if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
+  const candidates = [
+    '/usr/local/bin/python3', '/usr/bin/python3',
+    '/usr/local/bin/python',  '/usr/bin/python',
+    'python3', 'python',
+  ];
+  for (const c of candidates) {
+    try { execFile(c, ['--version'], (_e, _o, _err) => {}); return c; } catch {}
+  }
+  return 'python3';
+}
+const BT_PYTHON = _resolvePython();
+
 function _latestBacktestCsv() {
   if (!fs.existsSync(BT_DATA_DIR)) return null;
   const files = fs.readdirSync(BT_DATA_DIR)
@@ -1543,7 +1558,7 @@ app.post('/api/vol-backtest/run', async (req, res) => {
   if (pair)     args.push('--pair', pair);
   if (slMult !== '1.5') args.push('--sl-mult', String(slMult));
 
-  const python = process.env.PYTHON_BIN || 'python3';
+  const python = BT_PYTHON;
   const cwd    = path.join(__dirname, 'VolRangeForecaster');
   try {
     const { stdout, stderr } = await _execFileAsync(python, args, { cwd, timeout: 120_000 });
