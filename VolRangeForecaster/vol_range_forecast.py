@@ -46,8 +46,15 @@ FETCH_DAYS    = 620     # calendar days to fetch (covers weekends/holidays)
 
 INSTRUMENTS = [
     {'name': 'GOLD',   'ticker': 'GC=F'},
-    {'name': 'EURUSD', 'ticker': 'EURUSD=X'},
     {'name': 'NQ',     'ticker': 'NQ=F'},
+    {'name': 'EURUSD', 'ticker': 'EURUSD=X'},
+    {'name': 'GBPUSD', 'ticker': 'GBPUSD=X'},
+    {'name': 'USDJPY', 'ticker': 'USDJPY=X'},
+    {'name': 'AUDUSD', 'ticker': 'AUDUSD=X'},
+    {'name': 'NZDUSD', 'ticker': 'NZDUSD=X'},
+    {'name': 'USDCAD', 'ticker': 'USDCAD=X'},
+    {'name': 'USDCHF', 'ticker': 'USDCHF=X'},
+    {'name': 'GBPJPY', 'ticker': 'GBPJPY=X'},
 ]
 
 _LINE_WIDTH = 32        # width of the ──── NAME ──── header line
