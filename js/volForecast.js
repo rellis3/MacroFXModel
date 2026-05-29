@@ -96,7 +96,7 @@ function gkEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
 // can depress estimates. Close-to-close matches reference on NQ and all FX.
 function ccEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
   const n    = bars.length;
-  const out  = new Array(n);
+  const out  = new Array(n - 1);  // one σ per log return, not per bar
   const initN = Math.min(20, n - 1);
   let v = 0;
   for (let i = 1; i <= initN; i++) {
