@@ -134,9 +134,31 @@ svg.chart{width:100%;display:block}
     <div class="divider"></div>
 
     <div class="ctrl-group">
+      <div class="ctrl-label">Level Filter (Display Mode)</div>
+      <select id="displayMode">
+        <option value="STRONGEST">Strongest — tight confluence, outside range only</option>
+        <option value="STRONG">Strong — any confluence, outside range only</option>
+        <option value="ALL">All — all confluence levels inc. inside range</option>
+      </select>
+      <div class="info-tip">Mirrors indicator's Strongest/Strong/All Levels modes</div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Confluence Threshold (pips)</div>
+      <input type="number" id="confluencePips" value="2.0" min="0.5" max="10" step="0.5">
+      <div class="info-tip">Max gap between today & yesterday levels to qualify</div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Tight Confluence % of Threshold</div>
+      <input type="number" id="tightPct" value="10" min="5" max="50" step="5">
+      <div class="info-tip">Within 10% = green (tight). Above = orange (regular)</div>
+    </div>
+
+    <div class="ctrl-group">
       <div class="ctrl-label">Min Stars (1–6)</div>
-      <input type="number" id="minStars" value="3" min="1" max="6">
-      <div class="info-tip">Higher = fewer but higher-quality trades</div>
+      <input type="number" id="minStars" value="2" min="1" max="6">
+      <div class="info-tip">Tight+outside=3 base, Regular+outside=2, macro/pivot add stars</div>
     </div>
 
     <div class="ctrl-group">
@@ -202,7 +224,7 @@ svg.chart{width:100%;display:block}
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" style="margin:0 auto 16px;display:block"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
       <h2>No results yet</h2>
       <p>Select a symbol and parameters,<br>then click <strong>Run Backtest</strong>.</p>
-      <p style="margin-top:10px;font-size:.75rem">Strategy: Asia body range → Fib confluence detection →<br>London/NY entry → Range SL + Fixed 2.2R TP + Vol-regime BE</p>
+      <p style="margin-top:10px;font-size:.75rem">Strategy: Asia body range (true body) → Today vs Yesterday<br>range-multiple level confluence → London/NY entry →<br>Range SL + 2.2R TP + Vol-regime break-even</p>
     </div>
     <div id="results" style="display:none"></div>
   </main>
@@ -370,68 +392,95 @@ function computePivot(bars) {
   return { P:P, R1:2*P-L, R2:P+(H-L), S1:2*P-H, S2:P-(H-L) };
 }
 
-// ── Fibonacci ratios ─────────────────────────────────────────────
-var FIB_RATIOS = [-1.618, -1.0, -0.618, -0.382, 0.0, 0.236, 0.382, 0.5,
-                   0.618, 0.786, 1.0, 1.236, 1.382, 1.618, 2.0, 2.618];
+// ── Range-multiple ratios (matches Pine Script indicator exactly) ─
+// Formula: price = asiaBodyLow + ratio × asiaBodyRange
+// Key levels (inside range): 0, 0.25, 0.5, 0.75, 1.0
+// Extensions above/below range: 1.25, 1.5, 2.0, 2.5, 3.0, -0.25, -0.5 ...
+var FIB_RATIOS = [-3, -2.5, -2, -1.5, -1, -0.5, -0.25,
+                   0, 0.25, 0.5, 0.75, 1,
+                   1.25, 1.5, 2, 2.5, 3, 3.5, 4];
 
-function computeFibLevels(asiaLow, asiaHigh) {
-  var range = asiaHigh - asiaLow;
-  if (range <= 0) return [];
+// Compute price levels for one session's Asia body range
+function computeFibPrices(asiaBodyLow, asiaRange) {
   var levels = [];
   for (var i = 0; i < FIB_RATIOS.length; i++) {
-    levels.push({ ratio: FIB_RATIOS[i], price: asiaLow + FIB_RATIOS[i] * range });
+    levels.push({ ratio: FIB_RATIOS[i], price: asiaBodyLow + FIB_RATIOS[i] * asiaRange });
   }
   return levels;
 }
 
-function clusterFibLevels(rawLevels, pip) {
-  if (rawLevels.length === 0) return [];
-  var tol = pip * 4; // 4-pip tolerance for clustering
-  var sorted = rawLevels.slice().sort(function(a,b){ return a.price - b.price; });
-  var clusters = [];
+// Detect confluence: cross-compare TODAY's levels vs YESTERDAY's levels.
+// Returns array of { price, type:'TIGHT'|'REGULAR', ratioToday, ratioYest, diff }
+// Mirrors the Pine Script confluence logic exactly.
+function detectConfluence(todayLvs, yesterdayLvs, pip, thresholdPips, tightPct) {
+  var threshold      = thresholdPips * pip;
+  var tightThreshold = threshold * (tightPct / 100);
 
-  for (var i = 0; i < sorted.length; i++) {
-    var lv = sorted[i];
-    var last = clusters[clusters.length - 1];
-    if (last && Math.abs(lv.price - last.price) <= tol) {
-      last.price = (last.price + lv.price) / 2;
-      last.count++;
-      last.ratios.push(lv.ratio);
-    } else {
-      clusters.push({ price: lv.price, count: 1, ratios: [lv.ratio] });
+  var confluences  = [];
+  var drawnPrices  = [];
+
+  for (var ti = 0; ti < todayLvs.length; ti++) {
+    for (var yi = 0; yi < yesterdayLvs.length; yi++) {
+      var diff = Math.abs(todayLvs[ti].price - yesterdayLvs[yi].price);
+      if (diff > threshold) continue;
+
+      // Use lowest price as the drawn level (Pine Script default)
+      var selectedPrice = Math.min(todayLvs[ti].price, yesterdayLvs[yi].price);
+      var type = diff <= tightThreshold ? 'TIGHT' : 'REGULAR';
+
+      // Skip if already drawn at this price (within half a pip)
+      var already = false;
+      for (var di = 0; di < drawnPrices.length; di++) {
+        if (Math.abs(selectedPrice - drawnPrices[di]) < pip * 0.5) { already = true; break; }
+      }
+      if (already) continue;
+
+      confluences.push({
+        price:      selectedPrice,
+        type:       type,
+        ratioToday: todayLvs[ti].ratio,
+        ratioYest:  yesterdayLvs[yi].ratio,
+        diff:       diff
+      });
+      drawnPrices.push(selectedPrice);
     }
   }
-  return clusters;
+  return confluences;
 }
 
 // ── Star rating (max 6) ─────────────────────────────────────────
-function computeStars(cluster, dir, macroBias, pivot, dailyOpens, pip) {
-  var stars = 1; // base
+// Mirrors indicator display modes:
+//   TIGHT outside range  = green line  = highest quality
+//   REGULAR outside range = orange line
+//   Any inside-range level = lower quality
+function computeStars(confluence, dir, macroBias, pivot, dailyOpens, pip, asiaBodyLow, asiaBodyHigh) {
+  var isOutside = confluence.price > asiaBodyHigh || confluence.price < asiaBodyLow;
+  var stars = 0;
 
-  // Tight cluster: 2+ raw levels merged
-  if (cluster.count >= 2) stars++;
+  // Base from confluence type + position (mirrors Strongest/Strong/All mode logic)
+  if (confluence.type === 'TIGHT' && isOutside) stars = 3;      // green + outside = best
+  else if (confluence.type === 'TIGHT')          stars = 2;      // green inside range
+  else if (confluence.type === 'REGULAR' && isOutside) stars = 2; // orange outside
+  else                                            stars = 1;      // orange inside range
 
   // Macro aligned
-  if ((dir === 'LONG' && macroBias === 'LONG') ||
+  if ((dir === 'LONG'  && macroBias === 'LONG') ||
       (dir === 'SHORT' && macroBias === 'SHORT')) stars++;
 
   // Pivot proximity (within 5 pips)
   if (pivot) {
     var pvLevels = [pivot.P, pivot.R1, pivot.R2, pivot.S1, pivot.S2];
     for (var i = 0; i < pvLevels.length; i++) {
-      if (Math.abs(cluster.price - pvLevels[i]) <= pip * 5) { stars++; break; }
+      if (Math.abs(confluence.price - pvLevels[i]) <= pip * 5) { stars++; break; }
     }
   }
 
   // Daily open proximity (within 8 pips)
   if (dailyOpens && dailyOpens.length > 0) {
     for (var j = 0; j < dailyOpens.length; j++) {
-      if (Math.abs(cluster.price - dailyOpens[j]) <= pip * 8) { stars++; break; }
+      if (Math.abs(confluence.price - dailyOpens[j]) <= pip * 8) { stars++; break; }
     }
   }
-
-  // High density bonus: 3+ levels clustered
-  if (cluster.count >= 3) stars++;
 
   return Math.min(stars, 6);
 }
@@ -444,11 +493,12 @@ function beRByRegime(regime) {
 }
 
 // ── Trade record factory ─────────────────────────────────────────
-function makeTrade(date, dir, entry, exit, sl, tp, pnlR, stars, volReg, macroScore, macroBias, exitType, inIS, lDay, sessionType) {
+function makeTrade(date, dir, entry, exit, sl, tp, pnlR, stars, confluenceType, volReg, macroScore, macroBias, exitType, inIS, lDay, sessionType) {
   return {
     date:date, dir:dir, entry:entry, exit:exit, sl:sl, tp:tp,
     pnlR: Math.round(pnlR * 100) / 100,
-    stars:stars, volReg:volReg, macroScore:macroScore, macroBias:macroBias,
+    stars:stars, confluenceType:confluenceType,
+    volReg:volReg, macroScore:macroScore, macroBias:macroBias,
     exitType:exitType, inIS:inIS,
     month:date.slice(0,7), year:date.slice(0,4),
     dayOfWeek:lDay, sessionType:sessionType
@@ -603,16 +653,23 @@ self.onmessage = function(e) {
     var totalDates = allDates.length;
 
     // Config params
-    var isEnd      = cfg.isEnd    || '2023-12-31';
-    var minStars   = cfg.minStars  || 3;
-    var slFactor   = cfg.slFactor  || 0.35;
-    var tpR        = cfg.tpR       || 2.2;
-    var macroGate  = cfg.macroGate || 'SOFT';
-    var volFilter  = cfg.volFilter || 'ALL';
-    var sessionCfg = cfg.session   || 'BOTH';
-    var maxPerDay  = cfg.maxPerDay || 1;
+    var isEnd           = cfg.isEnd           || '2023-12-31';
+    var minStars        = cfg.minStars         || 2;
+    var slFactor        = cfg.slFactor         || 0.35;
+    var tpR             = cfg.tpR              || 2.2;
+    var macroGate       = cfg.macroGate        || 'SOFT';
+    var volFilter       = cfg.volFilter        || 'ALL';
+    var sessionCfg      = cfg.session          || 'BOTH';
+    var maxPerDay       = cfg.maxPerDay        || 1;
+    var confluencePips  = cfg.confluencePips   || 2.0;
+    var tightPct        = cfg.tightPct         || 10.0;
+    var displayMode     = cfg.displayMode      || 'STRONG'; // ALL / STRONG / STRONGEST
 
     self.postMessage({ type:'progress', pct:40, msg:'Running backtest loop...' });
+
+    // Track previous Asia body range across days (rolling)
+    var prevAsiaBodyLow  = NaN;
+    var prevAsiaBodyHigh = NaN;
 
     for (var di = 1; di < allDates.length; di++) {
       var date    = allDates[di];
@@ -628,21 +685,24 @@ self.onmessage = function(e) {
       var dow = new Date(date + 'T12:00:00Z').getUTCDay();
       if (dow === 0 || dow === 6) continue;
 
-      var m30Day    = m30ByDate[date]   || [];
+      var m30Day    = m30ByDate[date]     || [];
       var prevM30   = m30ByDate[prevDate] || [];
-      var entryDay  = entryByDate[date] || [];
+      var entryDay  = entryByDate[date]   || [];
 
       if (m30Day.length === 0 || entryDay.length === 0) continue;
 
-      // Track daily open
+      // Track daily open (rolling 20)
       if (m30Day.length > 0) {
         recentDailyOpens.push(m30Day[0].o);
         if (recentDailyOpens.length > 20) recentDailyOpens.shift();
       }
 
-      // 1. Asia session body range (00:00–06:00 London, TRUE body: max(o,c) / min(o,c))
+      // 1. TODAY Asia body range (00:00–06:00 London, TRUE body: max(o,c) / min(o,c))
       var asiaBars = m30Day.filter(function(b){ return b.lHour >= 0 && b.lHour < 6; });
-      if (asiaBars.length < 3) continue;
+      if (asiaBars.length < 3) {
+        prevAsiaBodyLow = NaN; prevAsiaBodyHigh = NaN; // can't use next day either
+        continue;
+      }
 
       var asiaBodyHigh = -Infinity, asiaBodyLow = Infinity;
       for (var ai = 0; ai < asiaBars.length; ai++) {
@@ -653,40 +713,64 @@ self.onmessage = function(e) {
         if (bl < asiaBodyLow)  asiaBodyLow  = bl;
       }
       var asiaRange = asiaBodyHigh - asiaBodyLow;
-      if (asiaRange < pip * 5) continue; // too tight, skip
+
+      // Detect confluence between today and yesterday Asia body range projections.
+      // Requires a valid previous day range.
+      var confluences = [];
+      if (!isNaN(prevAsiaBodyLow) && !isNaN(prevAsiaBodyHigh)) {
+        var prevAsiaRange = prevAsiaBodyHigh - prevAsiaBodyLow;
+        if (asiaRange >= pip * 5 && prevAsiaRange >= pip * 5) {
+          var todayLvs     = computeFibPrices(asiaBodyLow, asiaRange);
+          var yesterdayLvs = computeFibPrices(prevAsiaBodyLow, prevAsiaRange);
+          confluences = detectConfluence(todayLvs, yesterdayLvs, pip, confluencePips, tightPct);
+
+          // displayMode filter (mirrors indicator Simple Mode):
+          // STRONGEST = only TIGHT confluence OUTSIDE Asia body range
+          // STRONG    = any confluence OUTSIDE Asia body range
+          // ALL       = all confluence levels including inside range
+          if (displayMode !== 'ALL') {
+            confluences = confluences.filter(function(c) {
+              var outside = c.price > asiaBodyHigh || c.price < asiaBodyLow;
+              if (displayMode === 'STRONGEST') return outside && c.type === 'TIGHT';
+              return outside; // STRONG
+            });
+          }
+        }
+      }
+
+      // Update prevAsia for next day BEFORE any skips
+      prevAsiaBodyLow  = asiaBodyLow;
+      prevAsiaBodyHigh = asiaBodyHigh;
+
+      if (asiaRange < pip * 5) continue;
+      if (confluences.length === 0) continue; // no levels to trade today
 
       // 2. Vol regime
       var volReg = (volMap[date] || {}).regime || 'NORMAL';
-
-      // Vol filter
-      if (volFilter === 'SKIP_HIGH' && volReg === 'HIGH') continue;
+      if (volFilter === 'SKIP_HIGH'   && volReg === 'HIGH')   continue;
       if (volFilter === 'ONLY_NORMAL' && volReg !== 'NORMAL') continue;
 
       // 3. Macro proxy (from previous day's data)
       var macro = macroMap[prevDate] || macroMap[date] || { score:0, bias:'NEUTRAL' };
 
-      // 4. Fib levels from Asia body range
-      var rawFibs    = computeFibLevels(asiaBodyLow, asiaBodyHigh);
-      var fibClusters = clusterFibLevels(rawFibs, pip);
-
-      // 5. Previous day pivot
+      // 4. Previous day pivot
       var pivot = computePivot(prevM30);
 
-      // 6. Break-even R multiple for this regime
+      // 5. Break-even R multiple for this regime
       var beRMult = beRByRegime(volReg);
 
-      // 7. Session helpers
-      var inLondon = function(h, mn) { return (h > 8 || (h === 8 && mn >= 0)) && h < 13; };
-      var inNY     = function(h, mn) { return (h > 13 || (h === 13 && mn >= 0)) && h < 17; };
+      // 6. Session helpers
+      var inLondon = function(h, mn) { return h >= 8  && h < 13; };
+      var inNY     = function(h, mn) { return h >= 13 && h < 17; };
       var inSession;
       if (sessionCfg === 'LONDON') inSession = function(h,mn){ return inLondon(h,mn); };
       else if (sessionCfg === 'NY') inSession = function(h,mn){ return inNY(h,mn); };
       else inSession = function(h,mn){ return inLondon(h,mn) || inNY(h,mn); };
 
-      // 8. Intraday tracking
+      // 7. Intraday tracking
       var dayHigh = -Infinity, dayLow = Infinity;
       var tradesThisDay = 0;
-      var activeTrade = null; // { entry, dir, sl, tp, stars, beLevel, beTriggered, sessionType }
+      var activeTrade = null;
 
       for (var bi = 0; bi < entryDay.length; bi++) {
         var bar = entryDay[bi];
@@ -704,7 +788,7 @@ self.onmessage = function(e) {
             ? (bar.c - activeTrade.entry) / (activeTrade.entry - activeTrade.sl)
             : (activeTrade.entry - bar.c) / (activeTrade.sl - activeTrade.entry);
           trades.push(makeTrade(date, activeTrade.dir, activeTrade.entry, bar.c,
-            activeTrade.sl, activeTrade.tp, eodPnlR, activeTrade.stars,
+            activeTrade.sl, activeTrade.tp, eodPnlR, activeTrade.stars, activeTrade.confluenceType,
             volReg, macro.score, macro.bias, 'EOD', date <= isEnd, dow, activeTrade.sessionType));
           activeTrade = null;
           break;
@@ -714,23 +798,20 @@ self.onmessage = function(e) {
         // Manage active trade
         if (activeTrade) {
           if (activeTrade.dir === 'LONG') {
-            // Check TP
             if (bar.h >= activeTrade.tp) {
               trades.push(makeTrade(date, 'LONG', activeTrade.entry, activeTrade.tp,
-                activeTrade.sl, activeTrade.tp, tpR, activeTrade.stars,
+                activeTrade.sl, activeTrade.tp, tpR, activeTrade.stars, activeTrade.confluenceType,
                 volReg, macro.score, macro.bias, 'TP', date <= isEnd, dow, activeTrade.sessionType));
               activeTrade = null; continue;
             }
-            // Check BE trigger
             if (!activeTrade.beTriggered && bar.h >= activeTrade.beLevel) {
               activeTrade.sl = activeTrade.entry;
               activeTrade.beTriggered = true;
             }
-            // Check SL
             if (bar.l <= activeTrade.sl) {
               var slPnlR = activeTrade.beTriggered ? 0.0 : -1.0;
               trades.push(makeTrade(date, 'LONG', activeTrade.entry, activeTrade.sl,
-                activeTrade.sl, activeTrade.tp, slPnlR, activeTrade.stars,
+                activeTrade.sl, activeTrade.tp, slPnlR, activeTrade.stars, activeTrade.confluenceType,
                 volReg, macro.score, macro.bias, activeTrade.beTriggered ? 'BE' : 'SL',
                 date <= isEnd, dow, activeTrade.sessionType));
               activeTrade = null; continue;
@@ -738,7 +819,7 @@ self.onmessage = function(e) {
           } else { // SHORT
             if (bar.l <= activeTrade.tp) {
               trades.push(makeTrade(date, 'SHORT', activeTrade.entry, activeTrade.tp,
-                activeTrade.sl, activeTrade.tp, tpR, activeTrade.stars,
+                activeTrade.sl, activeTrade.tp, tpR, activeTrade.stars, activeTrade.confluenceType,
                 volReg, macro.score, macro.bias, 'TP', date <= isEnd, dow, activeTrade.sessionType));
               activeTrade = null; continue;
             }
@@ -749,39 +830,34 @@ self.onmessage = function(e) {
             if (bar.h >= activeTrade.sl) {
               var slPnlR = activeTrade.beTriggered ? 0.0 : -1.0;
               trades.push(makeTrade(date, 'SHORT', activeTrade.entry, activeTrade.sl,
-                activeTrade.sl, activeTrade.tp, slPnlR, activeTrade.stars,
+                activeTrade.sl, activeTrade.tp, slPnlR, activeTrade.stars, activeTrade.confluenceType,
                 volReg, macro.score, macro.bias, activeTrade.beTriggered ? 'BE' : 'SL',
                 date <= isEnd, dow, activeTrade.sessionType));
               activeTrade = null; continue;
             }
           }
-          continue; // still in trade, skip entry scan
+          continue;
         }
 
-        // No active trade — look for entry if in session and under max-per-day
+        // ── Look for new entry ────────────────────────────────────
         if (tradesThisDay >= maxPerDay) continue;
         if (!inSession(h, mn)) continue;
 
-        // Range budget check: remaining = asiaRange × 2.5 − rangeUsed
+        // Range budget check (daily range should have fuel left)
         var budgetRemaining = asiaRange * 2.5 - rangeUsed;
         if (budgetRemaining <= pip * 3) continue;
 
-        // Scan fib clusters for entry
         var sessionType = inLondon(h, mn) ? 'LONDON' : 'NY';
-        var asiaMid = (asiaBodyHigh + asiaBodyLow) / 2;
 
-        for (var fi = 0; fi < fibClusters.length; fi++) {
-          var cluster = fibClusters[fi];
-          var fp = cluster.price;
+        for (var fi = 0; fi < confluences.length; fi++) {
+          var cf  = confluences[fi];
+          var fp  = cf.price;
 
-          // Determine natural direction from fib position
-          // Lower half / below Asia low → supports → LONG
-          // Upper half / above Asia high → resistances → SHORT
-          var naturalLong  = fp <= asiaMid + asiaRange * 0.15;
-          var naturalShort = fp >= asiaMid - asiaRange * 0.15;
-
-          var longTouch  = naturalLong  && Math.abs(bar.l - fp) <= pip * 3 && bar.c > bar.l;
-          var shortTouch = naturalShort && Math.abs(bar.h - fp) <= pip * 3 && bar.c < bar.h;
+          // Direction: level below current bar = support → LONG
+          //            level above current bar = resistance → SHORT
+          // Touch: bar.l dips to level (bullish rejection) OR bar.h pops to level (bearish rejection)
+          var longTouch  = Math.abs(bar.l - fp) <= pip * 3 && bar.c >= fp; // closed at/above = held as support
+          var shortTouch = Math.abs(bar.h - fp) <= pip * 3 && bar.c <= fp; // closed at/below = held as resistance
 
           if (!longTouch && !shortTouch) continue;
           var dir = longTouch ? 'LONG' : 'SHORT';
@@ -792,25 +868,22 @@ self.onmessage = function(e) {
           } else if (macroGate === 'SOFT') {
             if (macro.bias !== 'NEUTRAL' && macro.bias !== dir) continue;
           }
-          // OFF: no macro filter
 
           // Star rating
-          var stars = computeStars(cluster, dir, macro.bias, pivot, recentDailyOpens, pip);
+          var stars = computeStars(cf, dir, macro.bias, pivot, recentDailyOpens, pip, asiaBodyLow, asiaBodyHigh);
           if (stars < minStars) continue;
 
-          // Build trade parameters
+          // Trade parameters
           var entryPrice = fp;
           var slDist = asiaRange * slFactor;
-          var sl = dir === 'LONG' ? entryPrice - slDist : entryPrice + slDist;
-          var tp = dir === 'LONG' ? entryPrice + slDist * tpR : entryPrice - slDist * tpR;
-          var beLevel = dir === 'LONG'
-            ? entryPrice + slDist * beRMult
-            : entryPrice - slDist * beRMult;
+          var sl      = dir === 'LONG' ? entryPrice - slDist : entryPrice + slDist;
+          var tp      = dir === 'LONG' ? entryPrice + slDist * tpR : entryPrice - slDist * tpR;
+          var beLevel = dir === 'LONG' ? entryPrice + slDist * beRMult : entryPrice - slDist * beRMult;
 
           activeTrade = { entry:entryPrice, dir:dir, sl:sl, tp:tp, stars:stars,
-            beLevel:beLevel, beTriggered:false, sessionType:sessionType };
+            confluenceType:cf.type, beLevel:beLevel, beTriggered:false, sessionType:sessionType };
           tradesThisDay++;
-          break; // one setup per bar
+          break;
         }
       } // end bar loop
     } // end date loop
@@ -821,9 +894,15 @@ self.onmessage = function(e) {
     var inIS  = trades.filter(function(t){ return  t.inIS; });
     var inOOS = trades.filter(function(t){ return !t.inIS; });
 
+    // By confluence type
+    var byConfluence = {
+      TIGHT:   summarise(trades.filter(function(t){ return t.confluenceType === 'TIGHT'; })),
+      REGULAR: summarise(trades.filter(function(t){ return t.confluenceType === 'REGULAR'; }))
+    };
+
     // By star
     var byStar = {};
-    for (var s = 1; s <= 6; s++) {
+    for (var s = 1; s <= 7; s++) {
       var st = trades.filter(function(t){ return t.stars === s; });
       byStar[s] = summarise(st);
     }
@@ -887,6 +966,7 @@ self.onmessage = function(e) {
         is:    summarise(inIS),
         oos:   summarise(inOOS),
         byStar: byStar,
+        byConfluence: byConfluence,
         byVol: byVol,
         byDay: byDay,
         byExit: byExit,
@@ -942,17 +1022,20 @@ function setStatus(msg, pct) {
 }
 
 async function runBacktest() {
-  const sym       = document.getElementById('sym').value;
-  const entryTf   = document.getElementById('entryTf').value;
-  const isEnd     = document.getElementById('isEnd').value;
-  const ooStart   = document.getElementById('ooStart').value;
-  const minStars  = +document.getElementById('minStars').value;
-  const slFactor  = +document.getElementById('slFactor').value;
-  const tpR       = +document.getElementById('tpR').value;
-  const macroGate = document.getElementById('macroGate').value;
-  const volFilter = document.getElementById('volFilter').value;
-  const session   = document.getElementById('sessionFilter').value;
-  const maxPerDay = +document.getElementById('maxPerDay').value;
+  const sym            = document.getElementById('sym').value;
+  const entryTf        = document.getElementById('entryTf').value;
+  const isEnd          = document.getElementById('isEnd').value;
+  const ooStart        = document.getElementById('ooStart').value;
+  const displayMode    = document.getElementById('displayMode').value;
+  const confluencePips = +document.getElementById('confluencePips').value;
+  const tightPct       = +document.getElementById('tightPct').value;
+  const minStars       = +document.getElementById('minStars').value;
+  const slFactor       = +document.getElementById('slFactor').value;
+  const tpR            = +document.getElementById('tpR').value;
+  const macroGate      = document.getElementById('macroGate').value;
+  const volFilter      = document.getElementById('volFilter').value;
+  const session        = document.getElementById('sessionFilter').value;
+  const maxPerDay      = +document.getElementById('maxPerDay').value;
 
   const runBtn = document.getElementById('runBtn');
   runBtn.disabled = true;
@@ -1006,7 +1089,7 @@ async function runBacktest() {
       symbol: sym,
       m30csv: m30csv,
       entryCsv: entryCsv,
-      config: { isEnd, ooStart, minStars, slFactor, tpR, macroGate, volFilter, session, maxPerDay }
+      config: { isEnd, ooStart, displayMode, confluencePips, tightPct, minStars, slFactor, tpR, macroGate, volFilter, session, maxPerDay }
     });
 
   } catch (err) {
@@ -1105,6 +1188,11 @@ function renderResults(r, mc) {
   // ── MONTHLY PNL HEATMAP ───────────────────────────────────────
   if (r.months && r.months.length > 0) {
     html += `<div class="panel"><div class="panel-title">Monthly P&L (R)</div>${renderMonthHeatmap(r.byMonth, r.months)}</div>`;
+  }
+
+  // ── CONFLUENCE TYPE BREAKDOWN ─────────────────────────────────
+  if (r.byConfluence) {
+    html += `<div class="panel"><div class="panel-title">Confluence Type Breakdown</div>${renderConfluenceTable(r.byConfluence)}</div>`;
   }
 
   // ── STAR BREAKDOWN ────────────────────────────────────────────
@@ -1284,14 +1372,39 @@ function renderMonthHeatmap(byMonth, months) {
   return html;
 }
 
+function renderConfluenceTable(byConfluence) {
+  const types = [
+    { key:'TIGHT',   label:'Tight (green)',   desc:'Today & yesterday within tight% of threshold', color:'green' },
+    { key:'REGULAR', label:'Regular (orange)', desc:'Today & yesterday within threshold',           color:'amber' }
+  ];
+  let html = `<table class="breakdown-table"><thead><tr>
+    <th>Type</th><th>Trades</th><th>Win Rate</th><th>PF</th><th>Total R</th><th>Avg R</th><th>MaxDD</th>
+  </tr></thead><tbody>`;
+  for (const { key, label, color } of types) {
+    const d = byConfluence[key];
+    if (!d || d.n === 0) continue;
+    html += `<tr>
+      <td><span class="tag tag-${color}">${label}</span></td>
+      <td>${d.n}</td>
+      <td class="${wrColor(d.wr)}">${pct(d.wr)}</td>
+      <td class="${pfColor(d.pf)}">${fmt(d.pf,2)}</td>
+      <td class="${rColor(d.totalR)}">${fmt(d.totalR,1)}R</td>
+      <td class="${rColor(d.avgR)}">${fmt(d.avgR,2)}R</td>
+      <td class="red">${fmt(d.maxDD,1)}R</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
 function renderStarTable(byStar) {
   let html = `<table class="breakdown-table"><thead><tr>
     <th>Stars</th><th>Trades</th><th>Win Rate</th><th>PF</th><th>Total R</th><th>Avg R</th><th>MaxDD</th>
   </tr></thead><tbody>`;
-  for (let s = 6; s >= 1; s--) {
+  for (let s = 7; s >= 1; s--) {
     const d = byStar[s];
     if (!d || d.n === 0) continue;
-    const stars = '★'.repeat(s) + '☆'.repeat(6-s);
+    const stars = '★'.repeat(s) + '☆'.repeat(Math.max(0,6-s));
     html += `<tr>
       <td><span class="star-★">${stars}</span></td>
       <td>${d.n}</td>
@@ -1409,12 +1522,13 @@ function renderDirTable(byDir) {
 function renderTradeTable(trades) {
   let html = `<table class="trade-table"><thead><tr>
     <th>Date</th><th>Dir</th><th>Entry</th><th>Exit</th><th>P&L (R)</th>
-    <th>Stars</th><th>Vol</th><th>Macro</th><th>Exit</th><th>IS/OOS</th>
+    <th>Stars</th><th>Confluence</th><th>Vol</th><th>Macro</th><th>Exit</th><th>IS/OOS</th>
   </tr></thead><tbody>`;
   for (const t of [...trades].reverse()) {
-    const pnlColor = t.pnlR > 0 ? 'green' : t.pnlR < 0 ? 'red' : '';
-    const dirColor = t.dir === 'LONG' ? 'tag-green' : 'tag-red';
+    const pnlColor  = t.pnlR > 0 ? 'green' : t.pnlR < 0 ? 'red' : '';
+    const dirColor  = t.dir === 'LONG' ? 'tag-green' : 'tag-red';
     const exitColor = t.exitType === 'TP' ? 'tag-green' : t.exitType === 'SL' ? 'tag-red' : t.exitType === 'BE' ? 'tag-amber' : '';
+    const cfColor   = t.confluenceType === 'TIGHT' ? 'tag-green' : 'tag-amber';
     html += `<tr>
       <td>${t.date}</td>
       <td><span class="tag ${dirColor}">${t.dir}</span></td>
@@ -1422,6 +1536,7 @@ function renderTradeTable(trades) {
       <td>${fmt(t.exit, t.exit > 100 ? 2 : 5)}</td>
       <td class="${pnlColor}">${fmt(t.pnlR,2)}R</td>
       <td><span class="star-★">${'★'.repeat(t.stars)}</span></td>
+      <td><span class="tag ${cfColor}">${t.confluenceType||'—'}</span></td>
       <td>${t.volReg}</td>
       <td>${t.macroBias}(${t.macroScore})</td>
       <td><span class="tag ${exitColor}">${t.exitType}</span></td>
