@@ -1564,8 +1564,18 @@ app.post('/api/vol-backtest/run', async (req, res) => {
   if (!process.env.OANDA_KEY) {
     return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch live D1 data' });
   }
-  const { dateFrom = '', dateTo = '', pair = '', slMult = '1.5' } = req.body || {};
-  const opts = { dateFrom, dateTo, slMult: parseFloat(slMult) || 1.5, minLookback: 50 };
+  const {
+    dateFrom = '', dateTo = '', pair = '',
+    slMult = '1.5', strategy = 'reversal',
+    momentumPullback = '0', momentumSlMult = '1.0',
+  } = req.body || {};
+  const opts = {
+    dateFrom, dateTo, minLookback: 50,
+    slMult:           parseFloat(slMult)           || 1.5,
+    strategy,
+    momentumPullback: parseFloat(momentumPullback) || 0,
+    momentumSlMult:   parseFloat(momentumSlMult)   || 1.0,
+  };
 
   const instFilter   = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : undefined;
   const m1Status     = _m1CacheStatus();
@@ -1584,7 +1594,7 @@ app.post('/api/vol-backtest/run', async (req, res) => {
     if (!fs.existsSync(BT_DATA_DIR)) fs.mkdirSync(BT_DATA_DIR, { recursive: true });
     const ts      = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
     const outFile = path.join(BT_DATA_DIR, `backtest_${ts}.csv`);
-    const hdrs    = ['instrument','date','regime','hl_75_pct','oc_med_pct','side','filled','outcome','pnl_pct','open','high','low','close'];
+    const hdrs    = ['instrument','date','regime','hl_75_pct','oc_med_pct','side','filled','outcome','pnl_pct','leg','open','high','low','close'];
     const rows    = trades.map(r => hdrs.map(h => h === 'filled' ? (r[h] ? 'True' : 'False') : (r[h] ?? '')).join(','));
     fs.writeFileSync(outFile, [hdrs.join(','), ...rows].join('\n') + '\n');
 

@@ -124,6 +124,8 @@ function walkM1(bars, entryLevel, tpLevel, slLevel, isBuy, open) {
   return { outcome: 'open', pnlPct: eodPnl };
 }
 
+// ── Reversal leg (current strategy: fade from HL75 back toward OC_med) ────────
+
 function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5) {
   const hl  = open * hl75pct  / 100;
   const oc  = open * ocMedPct / 100;
@@ -162,8 +164,35 @@ function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5) {
     }
   }
 
-  if (!result) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0 };
-  return { filled: true, side, ...result, pnlPct: +result.pnlPct.toFixed(5) };
+  if (!result) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'reversal' };
+  return { filled: true, side, ...result, pnlPct: +result.pnlPct.toFixed(5), leg: 'reversal' };
+}
+
+// ── Momentum leg (optional): trade WITH regime toward HL75 ────────────────────
+//
+// BULL: BUY on pullback to open − pullback×OC, TP = open + HL75, SL = open − slMult×OC
+// BEAR: SELL on bounce to open + pullback×OC, TP = open − HL75, SL = open + slMult×OC
+// RANGE: no trade (regime direction is unclear)
+//
+// With pullback=0 the entry equals open — fills immediately on the first bar.
+// Risk:reward ≈ HL75 / OC_med ≈ 2.5–3:1, so break-even win rate is ~25–30%.
+
+function simulateMomentumM1(m1Bars, open, hl75pct, ocMedPct, regime, opts = {}) {
+  const { momentumPullback = 0, momentumSlMult = 1.0 } = opts;
+  const hl = open * hl75pct  / 100;
+  const oc = open * ocMedPct / 100;
+
+  if (regime === 'RANGE') return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum' };
+
+  const isBull     = regime === 'BULL';
+  const side       = isBull ? 'BUY' : 'SELL';
+  const entryLevel = isBull ? open - momentumPullback * oc : open + momentumPullback * oc;
+  const tpLevel    = isBull ? open + hl                    : open - hl;
+  const slLevel    = isBull ? open - momentumSlMult * oc   : open + momentumSlMult * oc;
+
+  const result = walkM1(m1Bars, entryLevel, tpLevel, slLevel, isBull, open);
+  if (!result) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum' };
+  return { filled: true, side, ...result, pnlPct: +result.pnlPct.toFixed(5), leg: 'momentum' };
 }
 
 // ── Walk-forward engine (M1 sim + D1 vol/regime) ──────────────────────────────
@@ -172,6 +201,8 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
   const {
     dateFrom = '', dateTo = '', minLookback = 50,
     slMult = 1.5, slopeThresh = 0.002,
+    strategy = 'reversal',                  // 'reversal' | 'momentum' | 'both'
+    momentumPullback = 0, momentumSlMult = 1.0,
   } = opts;
   const p      = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
   const closes = d1Bars.map(b => b.close);
@@ -192,28 +223,42 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     const ocMedPct  = HN_P50 * p.oc_corr    * sigmaD * 100;
     const regime    = classifyRegime(closes, i, 20, 5, slopeThresh);
 
-    const m1Bars = m1ByDate?.get(date) ?? null;
-    const result = (m1Bars && m1Bars.length >= 10)
-      ? simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult)
-      : _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMult);
+    const m1Bars   = m1ByDate?.get(date) ?? null;
+    const useM1    = !!(m1Bars && m1Bars.length >= 10);
+    const moOpts   = { momentumPullback, momentumSlMult };
 
-    records.push({
+    const base = {
       date, regime,
       hl_75_pct:  +hl75pct.toFixed(4),
       oc_med_pct: +ocMedPct.toFixed(4),
-      side:       result.side,
-      filled:     result.filled,
-      outcome:    result.outcome,
-      pnl_pct:    result.pnlPct,
-      m1_sim:     !!(m1Bars && m1Bars.length >= 10),
+      m1_sim:     useM1,
       open: +open.toFixed(6), high: +high.toFixed(6),
       low:  +low.toFixed(6),  close: +close.toFixed(6),
-    });
+    };
+
+    const legResults = [];
+    if (strategy !== 'momentum') {
+      const r = useM1
+        ? simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult)
+        : _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMult);
+      legResults.push(r);
+    }
+    if (strategy !== 'reversal') {
+      const r = useM1
+        ? simulateMomentumM1(m1Bars, open, hl75pct, ocMedPct, regime, moOpts)
+        : _simulateMomentumD1(open, high, low, close, hl75pct, ocMedPct, regime, moOpts);
+      legResults.push(r);
+    }
+
+    for (const r of legResults) {
+      records.push({ ...base, side: r.side, filled: r.filled, outcome: r.outcome, pnl_pct: r.pnlPct, leg: r.leg });
+    }
   }
   return records;
 }
 
-// Inline D1 fallback — same logic as volBacktestEngine.simulateDay
+// ── D1 fallback: reversal ─────────────────────────────────────────────────────
+
 function _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMult) {
   const hl  = open * hl75pct  / 100;
   const oc  = open * ocMedPct / 100;
@@ -244,8 +289,39 @@ function _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMul
   }
 
   return r
-    ? { filled: true,  side, ...r, pnlPct: +r.pnlPct.toFixed(5) }
-    : { filled: false, side: '',   outcome: 'no_fill', pnlPct: 0 };
+    ? { filled: true,  side, ...r, pnlPct: +r.pnlPct.toFixed(5), leg: 'reversal' }
+    : { filled: false, side: '',   outcome: 'no_fill', pnlPct: 0,  leg: 'reversal' };
+}
+
+// ── D1 fallback: momentum ─────────────────────────────────────────────────────
+
+function _simulateMomentumD1(open, high, low, close, hl75pct, ocMedPct, regime, opts = {}) {
+  const { momentumPullback = 0, momentumSlMult = 1.0 } = opts;
+  const hl = open * hl75pct  / 100;
+  const oc = open * ocMedPct / 100;
+
+  if (regime === 'RANGE') return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum' };
+
+  const isBull     = regime === 'BULL';
+  const side       = isBull ? 'BUY' : 'SELL';
+  const entryLevel = isBull ? open - momentumPullback * oc : open + momentumPullback * oc;
+  const tpLevel    = isBull ? open + hl                    : open - hl;
+  const slLevel    = isBull ? open - momentumSlMult * oc   : open + momentumSlMult * oc;
+
+  let r;
+  if (isBull) {
+    if (low > entryLevel) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum' };
+    if (low  <= slLevel)  r = { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100) };
+    else if (high >= tpLevel) r = { outcome: 'win',  pnlPct:  (tpLevel - entryLevel) / open * 100 };
+    else                  r = { outcome: 'open', pnlPct:  (close - entryLevel) / open * 100 };
+  } else {
+    if (high < entryLevel) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum' };
+    if (high >= slLevel)  r = { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100) };
+    else if (low <= tpLevel)  r = { outcome: 'win',  pnlPct:  (entryLevel - tpLevel) / open * 100 };
+    else                  r = { outcome: 'open', pnlPct:  (entryLevel - close) / open * 100 };
+  }
+
+  return { filled: true, side, ...r, pnlPct: +r.pnlPct.toFixed(5), leg: 'momentum' };
 }
 
 // ── Public: run all instruments with M1 data where available ─────────────────
