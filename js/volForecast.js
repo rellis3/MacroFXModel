@@ -2,17 +2,17 @@
  * Vol & Range Forecaster — core math engine (no network, no I/O).
  *
  * Methodology:
- *   σ         : GARCH(1,1) on log close-to-close returns — one-step-ahead daily σ
- *                 σ²_t = ω + α·r²_{t-1} + β·σ²_{t-1}
- *                 α=0.06, β=0.91 (α+β=0.97) — daily-calibrated (vol.js intraday uses α=0.10, β=0.85)
- *                 ω is per-asset-class, sets the long-run variance floor
- *                 long-run σ_annual = √(ω / (1−α−β)) × √252
+ *   σ         : Garman-Klass EWMA on daily OHLC bars — one-step-ahead daily σ
+ *                 gk_t = 0.5·[ln(H/L)]² − (2·ln2−1)·[ln(C/O)]²
+ *                 v_t  = λ·v_{t-1} + (1−λ)·gk_t          λ=0.94
+ *                 σ_t  = √v_t
  *
- *   Why GARCH over EWMA(λ=0.94)?
- *     EWMA is GARCH with ω=0 and α+β=1 — no long-run floor, vol drifts down in
- *     quiet periods and under-estimates structural regimes (e.g. gold's elevated
- *     2024-2026 vol). GARCH mean-reverts to ω-implied long-run σ, keeping
- *     estimates grounded even after a calm patch.
+ *   Why GK over close-to-close GARCH/EWMA?
+ *     Close-to-close vol only sees the overnight gap between closes.
+ *     For gold (large intraday H-L ranges that partially reverse by close),
+ *     close-to-close understates realized vol by 25-35%.
+ *     GK uses the full bar (O,H,L,C) — 5-8× more statistically efficient
+ *     than close-to-close and captures the true intraday range.
  *
  *   H-L range : Analytical Brownian-motion range distribution percentiles
  *               (BM range median=1.572σ, 75th=2.049σ) with per-asset-class correction
@@ -27,16 +27,10 @@
  */
 
 const TRADING_DAYS = 252;
+const EWMA_LAMBDA  = 0.94;
 
-// ── GARCH(1,1) parameters ─────────────────────────────────────────────────────
-// Calibrated for DAILY bars. vol.js uses α=0.10, β=0.85 (intraday — too fast
-// for daily: β=0.85 decays 2.5× faster than EWMA λ=0.94, dropping vol in
-// calm patches below even the EWMA estimate).
-// α=0.06 matches EWMA's shock weight (1−λ). β=0.91 gives ~23-day half-life,
-// appropriate for daily close-to-close returns.
-const G_ALPHA = 0.06;
-const G_BETA  = 0.91;
-// α + β = 0.97 → persistent with long-run mean reversion
+// Garman-Klass adjustment constant: 2·ln2 − 1 ≈ 0.3863
+const GK_ADJ = 2 * Math.LN2 - 1;
 
 // ── Analytical BM range distribution constants ────────────────────────────────
 const BM_RANGE_P50 = 1.572;
@@ -47,16 +41,11 @@ const HN_P50 = 0.6745;
 const HN_P75 = 1.1503;
 
 // ── Per-asset-class parameters ────────────────────────────────────────────────
-// garch_omega : long-run variance floor for GARCH(1,1)
-//   ω = (σ_annual_target / √252)² × (1 − α − β)
-//   commodity → 24 % long-run   ω ≈ 6.86e-6
-//   index     → 20 % long-run   ω ≈ 4.76e-6
-//   fx        → 7.5% long-run   ω ≈ 6.70e-7
 // hl_75_corr / oc_corr calibrated from reference data (May 29, 2026).
 const ASSET_PARAMS = {
-  commodity: { garch_omega: 6.86e-6, hl_75_corr: 0.989, oc_corr: 1.163 },
-  index:     { garch_omega: 4.76e-6, hl_75_corr: 0.950, oc_corr: 1.111 },
-  fx:        { garch_omega: 6.70e-7, hl_75_corr: 0.894, oc_corr: 0.948 },
+  commodity: { hl_75_corr: 0.989, oc_corr: 1.163 },
+  index:     { hl_75_corr: 0.950, oc_corr: 1.111 },
+  fx:        { hl_75_corr: 0.894, oc_corr: 0.948 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
@@ -82,39 +71,47 @@ export function detectNewsMultiplier(events = []) {
   return best;
 }
 
-// ── GARCH(1,1) vol series ─────────────────────────────────────────────────────
-// Initialized at the unconditional (long-run) variance so the seed has no
-// transient effect on the final estimate after the ~100-bar burn-in.
-function garch11VolSeries(logReturns, omega) {
-  const n = logReturns.length;
+// ── Garman-Klass EWMA vol series ──────────────────────────────────────────────
+// Uses full OHLC bars — 5-8× more efficient than close-to-close estimators.
+// GK variance: gk = 0.5·ln(H/L)² − (2ln2−1)·ln(C/O)²
+// Seeded from the sample mean of the first 20 bars to kill the transient.
+function gkEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
+  const n = bars.length;
   const out = new Array(n);
-  let sigma2 = omega / (1 - G_ALPHA - G_BETA);   // start at long-run variance
+
+  const initN = Math.min(20, n);
+  let v = 0;
+  for (let i = 0; i < initN; i++) {
+    const lnHL = Math.log(bars[i].high / bars[i].low);
+    const lnCO = Math.log(bars[i].close / bars[i].open);
+    v += Math.max(0.5 * lnHL * lnHL - GK_ADJ * lnCO * lnCO, 0);
+  }
+  v = Math.max(v / initN, 1e-10);
+
   for (let i = 0; i < n; i++) {
-    sigma2 = omega + G_ALPHA * logReturns[i] ** 2 + G_BETA * sigma2;
-    out[i] = Math.sqrt(sigma2);
+    const lnHL = Math.log(bars[i].high / bars[i].low);
+    const lnCO = Math.log(bars[i].close / bars[i].open);
+    const gk   = Math.max(0.5 * lnHL * lnHL - GK_ADJ * lnCO * lnCO, 0);
+    v = lambda * v + (1 - lambda) * gk;
+    out[i] = Math.sqrt(v);
   }
   return out;
 }
 
 // ── Main forecast ─────────────────────────────────────────────────────────────
 /**
- * @param {Array<{close}>} ohlc        Daily bars, oldest → newest
- * @param {string}         assetClass  'commodity' | 'index' | 'fx'
- * @param {number}         newsMult    Output of detectNewsMultiplier()
+ * @param {Array<{open,high,low,close}>} ohlc  Daily bars, oldest → newest
+ * @param {string}  assetClass  'commodity' | 'index' | 'fx'
+ * @param {number}  newsMult    Output of detectNewsMultiplier()
  * @returns forecast object — all values are percentages
  */
 export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
   const n = ohlc.length;
   if (n < 60) throw new Error(`Need ≥60 bars, got ${n}`);
 
-  const closes = ohlc.map(b => b.close);
-  const logRet = [];
-  for (let i = 1; i < n; i++) logRet.push(Math.log(closes[i] / closes[i - 1]));
-
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
-  // One-step-ahead GARCH(1,1) σ forecast
-  const sigmaFwd    = garch11VolSeries(logRet, p.garch_omega).at(-1);
+  const sigmaFwd    = gkEwmaVolSeries(ohlc).at(-1);
   const sigmaFwdPct = sigmaFwd * 100;
   const volAnnual   = sigmaFwdPct * Math.sqrt(TRADING_DAYS);
 

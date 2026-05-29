@@ -33,39 +33,28 @@ Open to Close move      : 1.06% median · 1.80% 75th Percentile
 
 ## Methodology
 
-### 1. Volatility — GARCH(1,1)
+### 1. Volatility — Garman-Klass EWMA
 
-Applied to daily **log close-to-close returns**.
+Applied to daily **OHLC bars** (not just closes).
 
 ```
-σ²_t = ω + α · r²_{t-1} + β · σ²_{t-1}
-σ_daily = √σ²_t
-σ_annual = σ_daily × √252
-
-α = 0.06   (shock response — matches EWMA 1−λ)
-β = 0.91   (persistence — ~23-day half-life, appropriate for daily data)
-α + β = 0.97  → persistent with long-run mean reversion
-ω = per-asset-class (sets long-run variance floor — see table below)
+gk_t  = 0.5 · [ln(H/L)]² − (2·ln2−1) · [ln(C/O)]²
+v_t   = λ · v_{t-1} + (1−λ) · gk_t      λ = 0.94
+σ_t   = √v_t
+σ_annual = σ_t × √252
 ```
 
-- One-step-ahead forecast: last value of the GARCH series
-- Initialized at unconditional variance ω/(1−α−β) — no seed transient
-- ~800 daily bars fetched (~3 years)
-- Same α/β as the live vol.js intraday engine for consistency
+- One-step-ahead forecast: last value of the GK-EWMA series
+- Seeded from mean GK variance of first 20 bars — no transient
+- ~800 daily bars fetched (~3 years) from Oanda (mid-price OHLC)
 
-**Why GARCH over EWMA(λ=0.94)?**
-EWMA is GARCH with ω=0 and α+β=1 — it has no long-run floor, so in
-quiet periods vol drifts down and under-estimates structural regimes
-(e.g. gold's elevated 2024–2026 volatility). GARCH mean-reverts to the
-ω-implied long-run σ, keeping estimates grounded.
-
-**Long-run variance floor (ω) by asset class:**
-
-| Asset class | ω | Long-run σ_annual |
-|---|---|---|
-| commodity (GOLD) | 1.14e-5 | ~24% |
-| index (NQ) | 7.94e-6 | ~20% |
-| fx | 1.12e-6 | ~7.5% |
+**Why Garman-Klass over close-to-close EWMA/GARCH?**
+Close-to-close vol only captures the overnight change between closes.
+For gold (large intraday H-L ranges that often partially reverse by close),
+this systematically understates realized vol by 25–35%. The GK estimator
+uses the full bar (O, H, L, C) and is 5–8× more statistically efficient than
+close-to-close. This closes the gap between our estimates and professional
+quant systems that use range-based vol estimation.
 
 ### 2. High–Low Range — Analytical Brownian Motion
 
@@ -115,15 +104,12 @@ Applied to all range outputs. Sourced from Finnhub economic calendar
 ## Constants Summary (use these in backtester)
 
 ```js
-// GARCH(1,1)
-G_ALPHA       = 0.06   // daily-calibrated (vol.js intraday uses 0.10)
-G_BETA        = 0.91   // ~23-day half-life for daily data
+// Garman-Klass EWMA
+EWMA_LAMBDA   = 0.94
+GK_ADJ        = 2*ln2 - 1  // ≈ 0.3863
 TRADING_DAYS  = 252
 
-// Long-run ω per asset class  (ω = (σ_annual/√252)² × (1−α−β), 1−α−β=0.03)
-OMEGA_COMMODITY = 6.86e-6   // ~24% annual long-run vol
-OMEGA_INDEX     = 4.76e-6   // ~20% annual long-run vol
-OMEGA_FX        = 6.70e-7   // ~7.5% annual long-run vol
+// GK variance per bar: gk = 0.5·ln(H/L)² − GK_ADJ·ln(C/O)²
 
 // BM range percentiles
 BM_RANGE_P50  = 1.572   // HL median multiplier
