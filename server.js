@@ -27,6 +27,7 @@ import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast } from './js/volForecastScheduler.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
+import { runFullM1Backtest, BT_M1_DIR, M1_DRIVE_IDS }               from './js/volBacktestM1Engine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -1550,42 +1551,65 @@ app.get('/api/vol-backtest', (req, res) => {
   }
 });
 
+// Check how many M1 parquets are cached locally
+function _m1CacheStatus() {
+  if (!fs.existsSync(BT_M1_DIR)) return { cached: 0, pairs: [] };
+  const files = fs.readdirSync(BT_M1_DIR).filter(f => f.endsWith('_m1.parquet'));
+  return { cached: files.length, pairs: files.map(f => f.replace('_m1.parquet', '').toUpperCase()) };
+}
+
 // Trigger a fresh backtest run using pure-JS engine (no Python required)
+// Uses M1 intraday simulation when parquets are cached, D1 otherwise.
 app.post('/api/vol-backtest/run', async (req, res) => {
   if (!process.env.OANDA_KEY) {
     return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch live D1 data' });
   }
   const { dateFrom = '', dateTo = '', pair = '', slMult = '1.5' } = req.body || {};
-  const opts = {
-    dateFrom,
-    dateTo,
-    slMult:     parseFloat(slMult) || 1.5,
-    minLookback: 50,
-  };
+  const opts = { dateFrom, dateTo, slMult: parseFloat(slMult) || 1.5, minLookback: 50 };
 
-  // Optionally filter to a single instrument
-  const instFilter = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : null;
+  const instFilter   = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : undefined;
+  const m1Status     = _m1CacheStatus();
+  const useM1        = m1Status.cached > 0;
+  const engineLabel  = useM1 ? `M1 engine (${m1Status.cached} pairs cached)` : 'D1 engine (Oanda API)';
 
   try {
-    const { trades, log } = await runFullBacktest(opts, instFilter ?? undefined);
+    const { trades, log } = useM1
+      ? await runFullM1Backtest(opts, instFilter ?? BT_INSTRUMENTS)
+      : await runFullBacktest(opts, instFilter ?? BT_INSTRUMENTS);
 
     if (!trades.length) {
       return res.status(500).json({ ok: false, error: 'No trades generated', log });
     }
 
-    // Persist to CSV
     if (!fs.existsSync(BT_DATA_DIR)) fs.mkdirSync(BT_DATA_DIR, { recursive: true });
-    const ts  = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+    const ts      = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
     const outFile = path.join(BT_DATA_DIR, `backtest_${ts}.csv`);
-    const hdrs = ['instrument','date','regime','hl_75_pct','oc_med_pct','side','filled','outcome','pnl_pct','open','high','low','close'];
-    const rows = trades.map(r => hdrs.map(h => h === 'filled' ? (r[h] ? 'True' : 'False') : (r[h] ?? '')).join(','));
+    const hdrs    = ['instrument','date','regime','hl_75_pct','oc_med_pct','side','filled','outcome','pnl_pct','open','high','low','close'];
+    const rows    = trades.map(r => hdrs.map(h => h === 'filled' ? (r[h] ? 'True' : 'False') : (r[h] ?? '')).join(','));
     fs.writeFileSync(outFile, [hdrs.join(','), ...rows].join('\n') + '\n');
 
-    res.json({ ok: true, message: `Backtest complete — ${trades.filter(t => t.filled).length} filled trades`, log, file: path.basename(outFile) });
+    res.json({
+      ok: true,
+      message:    `Backtest complete — ${trades.filter(t => t.filled).length} filled trades`,
+      engine:     engineLabel,
+      m1Pairs:    m1Status.pairs,
+      log,
+      file:       path.basename(outFile),
+    });
   } catch (e) {
     console.error('[vol-backtest/run]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// Report M1 cache status and Drive IDs for download instructions
+app.get('/api/vol-backtest/m1-status', (_req, res) => {
+  const status = _m1CacheStatus();
+  res.json({
+    ...status,
+    m1Dir:    BT_M1_DIR,
+    driveIds: M1_DRIVE_IDS,
+  });
 });
 
 // All other /api/* routes — call _worker.js and return the JSON response.

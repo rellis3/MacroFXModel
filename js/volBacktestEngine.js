@@ -180,6 +180,9 @@ function runBacktest(bars, assetClass, opts = {}) {
 
 // ── Public: run all instruments and return structured result ──────────────────
 
+export { ewmaVarSeries, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P75, HN_P50 };
+export { fetchD1 };
+
 export async function runFullBacktest(opts = {}, instruments = INSTRUMENTS) {
   if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set — cannot fetch D1 data');
 
