@@ -33,19 +33,39 @@ Open to Close move      : 1.06% median · 1.80% 75th Percentile
 
 ## Methodology
 
-### 1. Volatility — EWMA(λ=0.94)
+### 1. Volatility — GARCH(1,1)
 
-RiskMetrics 1994 standard. Applied to daily **log close-to-close returns**.
+Applied to daily **log close-to-close returns**.
 
 ```
-σ²_t = λ · σ²_{t-1} + (1 − λ) · r²_t      where λ = 0.94
+σ²_t = ω + α · r²_{t-1} + β · σ²_{t-1}
 σ_daily = √σ²_t
 σ_annual = σ_daily × √252
+
+α = 0.10   (shock response)
+β = 0.85   (persistence)
+α + β = 0.95  → long-run mean reversion, half-life ≈ 13 sessions
+ω = per-asset-class (sets long-run variance floor — see table below)
 ```
 
-- One-step-ahead forecast: last value of the EWMA series
-- Seed: mean of squared returns over first 20 observations
+- One-step-ahead forecast: last value of the GARCH series
+- Initialized at unconditional variance ω/(1−α−β) — no seed transient
 - ~800 daily bars fetched (~3 years)
+- Same α/β as the live vol.js intraday engine for consistency
+
+**Why GARCH over EWMA(λ=0.94)?**
+EWMA is GARCH with ω=0 and α+β=1 — it has no long-run floor, so in
+quiet periods vol drifts down and under-estimates structural regimes
+(e.g. gold's elevated 2024–2026 volatility). GARCH mean-reverts to the
+ω-implied long-run σ, keeping estimates grounded.
+
+**Long-run variance floor (ω) by asset class:**
+
+| Asset class | ω | Long-run σ_annual |
+|---|---|---|
+| commodity (GOLD) | 1.14e-5 | ~24% |
+| index (NQ) | 7.94e-6 | ~20% |
+| fx | 1.12e-6 | ~7.5% |
 
 ### 2. High–Low Range — Analytical Brownian Motion
 
@@ -95,9 +115,15 @@ Applied to all range outputs. Sourced from Finnhub economic calendar
 ## Constants Summary (use these in backtester)
 
 ```js
-// EWMA
-LAMBDA        = 0.94
+// GARCH(1,1)
+G_ALPHA       = 0.10
+G_BETA        = 0.85
 TRADING_DAYS  = 252
+
+// Long-run ω per asset class
+OMEGA_COMMODITY = 1.14e-5   // ~24% annual long-run vol
+OMEGA_INDEX     = 7.94e-6   // ~20% annual long-run vol
+OMEGA_FX        = 1.12e-6   // ~7.5% annual long-run vol
 
 // BM range percentiles
 BM_RANGE_P50  = 1.572   // HL median multiplier
