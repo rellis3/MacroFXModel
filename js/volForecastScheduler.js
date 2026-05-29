@@ -20,16 +20,16 @@ import { computeForecast, detectNewsMultiplier } from './volForecast.js';
 
 // ── Instrument definitions ────────────────────────────────────────────────────
 const INSTRUMENTS = [
-  { name: 'GOLD',   ticker: 'GC=F'     },
-  { name: 'NQ',     ticker: 'NQ=F'     },
-  { name: 'EURUSD', ticker: 'EURUSD=X' },
-  { name: 'GBPUSD', ticker: 'GBPUSD=X' },
-  { name: 'USDJPY', ticker: 'USDJPY=X' },
-  { name: 'AUDUSD', ticker: 'AUDUSD=X' },
-  { name: 'NZDUSD', ticker: 'NZDUSD=X' },
-  { name: 'USDCAD', ticker: 'USDCAD=X' },
-  { name: 'USDCHF', ticker: 'USDCHF=X' },
-  { name: 'GBPJPY', ticker: 'GBPJPY=X' },
+  { name: 'GOLD',   ticker: 'GC=F',     assetClass: 'commodity' },
+  { name: 'NQ',     ticker: 'NQ=F',     assetClass: 'index'     },
+  { name: 'EURUSD', ticker: 'EURUSD=X', assetClass: 'fx'        },
+  { name: 'GBPUSD', ticker: 'GBPUSD=X', assetClass: 'fx'        },
+  { name: 'USDJPY', ticker: 'USDJPY=X', assetClass: 'fx'        },
+  { name: 'AUDUSD', ticker: 'AUDUSD=X', assetClass: 'fx'        },
+  { name: 'NZDUSD', ticker: 'NZDUSD=X', assetClass: 'fx'        },
+  { name: 'USDCAD', ticker: 'USDCAD=X', assetClass: 'fx'        },
+  { name: 'USDCHF', ticker: 'USDCHF=X', assetClass: 'fx'        },
+  { name: 'GBPJPY', ticker: 'GBPJPY=X', assetClass: 'fx'        },
 ];
 
 const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
@@ -109,10 +109,7 @@ async function fetchNewsEvents(targetDate) {
 // ── Core computation ──────────────────────────────────────────────────────────
 export async function runVolForecast(targetDate) {
   const target = targetDate ?? nextTradingDay(new Date());
-
-  // Convert UTC day-of-week (Sun=0,Mon=1…Sat=6) → forecast dow (Mon=0…Fri=4)
-  const utcDow       = target.getUTCDay();
-  const forecastDow  = utcDow >= 1 && utcDow <= 5 ? utcDow - 1 : 2;  // fallback Wed
+  const utcDow = target.getUTCDay();
 
   const events  = await fetchNewsEvents(target);
   const { mult: newsMult, label: newsLabel } = detectNewsMultiplier(events);
@@ -126,7 +123,7 @@ export async function runVolForecast(targetDate) {
   for (const cfg of INSTRUMENTS) {
     try {
       const ohlc = await fetchOHLC(cfg.ticker);
-      const f    = computeForecast(ohlc, forecastDow, newsMult);
+      const f    = computeForecast(ohlc, cfg.assetClass, newsMult);
       instruments[cfg.name] = f;
       console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%`);
     } catch (err) {
