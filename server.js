@@ -26,6 +26,7 @@ import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast } from './js/volForecastScheduler.js';
+import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -1549,22 +1550,41 @@ app.get('/api/vol-backtest', (req, res) => {
   }
 });
 
-// Trigger a fresh backtest run (async, waits up to 120s)
+// Trigger a fresh backtest run using pure-JS engine (no Python required)
 app.post('/api/vol-backtest/run', async (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch live D1 data' });
+  }
   const { dateFrom = '', dateTo = '', pair = '', slMult = '1.5' } = req.body || {};
-  const args = ['vol_backtest.py', '--save'];
-  if (dateFrom) args.push('--from', dateFrom);
-  if (dateTo)   args.push('--to',   dateTo);
-  if (pair)     args.push('--pair', pair);
-  if (slMult !== '1.5') args.push('--sl-mult', String(slMult));
+  const opts = {
+    dateFrom,
+    dateTo,
+    slMult:     parseFloat(slMult) || 1.5,
+    minLookback: 50,
+  };
 
-  const python = BT_PYTHON;
-  const cwd    = path.join(__dirname, 'VolRangeForecaster');
+  // Optionally filter to a single instrument
+  const instFilter = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : null;
+
   try {
-    const { stdout, stderr } = await _execFileAsync(python, args, { cwd, timeout: 120_000 });
-    res.json({ ok: true, message: 'Backtest complete', output: (stdout + stderr).slice(-2000) });
+    const { trades, log } = await runFullBacktest(opts, instFilter ?? undefined);
+
+    if (!trades.length) {
+      return res.status(500).json({ ok: false, error: 'No trades generated', log });
+    }
+
+    // Persist to CSV
+    if (!fs.existsSync(BT_DATA_DIR)) fs.mkdirSync(BT_DATA_DIR, { recursive: true });
+    const ts  = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+    const outFile = path.join(BT_DATA_DIR, `backtest_${ts}.csv`);
+    const hdrs = ['instrument','date','regime','hl_75_pct','oc_med_pct','side','filled','outcome','pnl_pct','open','high','low','close'];
+    const rows = trades.map(r => hdrs.map(h => h === 'filled' ? (r[h] ? 'True' : 'False') : (r[h] ?? '')).join(','));
+    fs.writeFileSync(outFile, [hdrs.join(','), ...rows].join('\n') + '\n');
+
+    res.json({ ok: true, message: `Backtest complete — ${trades.filter(t => t.filled).length} filled trades`, log, file: path.basename(outFile) });
   } catch (e) {
-    res.status(500).json({ ok: false, error: e.message, output: (e.stdout + e.stderr || '').slice(-2000) });
+    console.error('[vol-backtest/run]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
