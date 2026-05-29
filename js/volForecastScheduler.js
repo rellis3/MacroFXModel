@@ -108,7 +108,7 @@ async function fetchNewsEvents(targetDate) {
 
 // ── Core computation ──────────────────────────────────────────────────────────
 export async function runVolForecast(targetDate) {
-  const target = targetDate ?? nextTradingDay(new Date());
+  const target = targetDate ?? new Date(_applicableSessionDate(new Date()) + 'T12:00:00Z');
   const utcDow = target.getUTCDay();
 
   const events  = await fetchNewsEvents(target);
