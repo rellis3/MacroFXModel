@@ -17,7 +17,7 @@
   gap: 14px;
   margin-top: 14px;
 }
-@media (max-width: 900px) { .vf-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px)  { .vf-grid { grid-template-columns: 1fr; } }
 @media (max-width: 1200px) and (min-width: 901px) { .vf-grid { grid-template-columns: 1fr 1fr; } }
 
 /* ── Instrument card ─────────────────────────────────────────────────────── */
@@ -55,7 +55,7 @@
   padding: 4px 10px;
   border-radius: 20px;
 }
-.vf-vol-pill.hi { background: var(--red-bg); border-color: var(--red-bd); color: var(--red); }
+.vf-vol-pill.hi { background: var(--red-bg);   border-color: var(--red-bd);   color: var(--red);   }
 .vf-vol-pill.lo { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
 
 /* ── Range section ───────────────────────────────────────────────────────── */
@@ -107,7 +107,7 @@
   flex-shrink: 0;
 }
 
-/* ── Multiplier footer ───────────────────────────────────────────────────── */
+/* ── News chip footer ────────────────────────────────────────────────────── */
 .vf-mults {
   display: flex;
   gap: 8px;
@@ -176,6 +176,7 @@
   font-family: 'DM Mono', monospace;
   border-bottom: 1px solid var(--border);
 }
+.vf-hist-scroll { overflow-x: auto; }
 .vf-hist-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .vf-hist-table th {
   padding: 8px 12px;
@@ -224,10 +225,11 @@
   </div>
   <div class="title-block">
     <div class="title">Vol & Range Forecast</div>
-    <div class="sub">EWMA · Day-of-Week · News-Aware · GOLD · EURUSD · NQ</div>
+    <div class="sub">EWMA · BM Range · News-Aware · 10 Instruments</div>
   </div>
   <div class="spacer"></div>
   <span class="upd">Updated: <span id="vfUpdated">—</span></span>
+  <button class="dark-btn" id="vfExportBtn" onclick="exportForecast()" disabled>⬇ Export</button>
   <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
   <a href="index.html" style="text-decoration:none">
     <button class="dark-btn">← Dashboard</button>
@@ -240,9 +242,7 @@
   <div class="sdot" id="vfSdot"></div>
   <div class="stxt" id="vfStxt">Loading forecast…</div>
   <div class="data-pills">
-    <span class="dpill" id="pillGold">GOLD</span>
-    <span class="dpill" id="pillEurusd">EURUSD</span>
-    <span class="dpill" id="pillNq">NQ</span>
+    <span class="dpill" id="pillCount">— pairs</span>
     <span class="dpill" id="pillNews">NEWS</span>
   </div>
 </div>
@@ -263,24 +263,13 @@
 
 <!-- HISTORY TABLE -->
 <div class="vf-history" id="vfHistory" style="display:none">
-  <div class="vf-history-title">Recent Sessions</div>
-  <table class="vf-hist-table" id="vfHistTable">
-    <thead>
-      <tr>
-        <th>Session</th>
-        <th>GOLD Vol</th>
-        <th>H-L Med</th>
-        <th>H-L 75th</th>
-        <th>EUR Vol</th>
-        <th>H-L Med</th>
-        <th>H-L 75th</th>
-        <th>NQ Vol</th>
-        <th>H-L Med</th>
-        <th>H-L 75th</th>
-      </tr>
-    </thead>
-    <tbody id="vfHistBody"></tbody>
-  </table>
+  <div class="vf-history-title">Recent Sessions — Annualised Vol%</div>
+  <div class="vf-hist-scroll">
+    <table class="vf-hist-table">
+      <thead id="vfHistHead"></thead>
+      <tbody id="vfHistBody"></tbody>
+    </table>
+  </div>
 </div>
 
 </div><!-- /vfApp -->
@@ -289,7 +278,7 @@
 // ── State ────────────────────────────────────────────────────────────────────
 let currentForecast = null;
 let refreshTimer    = null;
-const POLL_MS       = 5 * 60 * 1000;  // auto-refresh every 5 min
+const POLL_MS       = 5 * 60 * 1000;
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -319,6 +308,7 @@ async function loadForecast() {
 
     currentForecast = data;
     renderForecast(data);
+    document.getElementById('vfExportBtn').disabled = false;
     setStatus('ok', `Forecast ready — session ${data.session_date}`);
   } catch (e) {
     setStatus('err', `Fetch error: ${e.message}`);
@@ -348,6 +338,61 @@ async function triggerRefresh() {
   }
 }
 
+// ── Export ────────────────────────────────────────────────────────────────────
+// Produces the same format as vol_range_forecast.py format_report()
+function buildExportText(data) {
+  const LINE_WIDTH = 32;
+
+  function divider(name) {
+    const prefix = `──── ${name} `;
+    return prefix + '─'.repeat(Math.max(0, LINE_WIDTH - prefix.length));
+  }
+
+  const lines = [
+    '**VOL & RANGE FORECAST**',
+    `**For session: ${data.session_label}**`,
+    '',
+  ];
+
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    lines.push(divider(name));
+    lines.push('');
+    lines.push(`Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`);
+    lines.push(
+      `High to Low range       : ${f.hl_median.toFixed(2)}% median · ${f.hl_75.toFixed(2)}% 75th Percentile`
+    );
+    lines.push(
+      `Open to Close move      : ${f.oc_median.toFixed(2)}% median · ${f.oc_75.toFixed(2)}% 75th Percentile`
+    );
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+function exportForecast() {
+  if (!currentForecast) return;
+
+  const text = buildExportText(currentForecast);
+  const btn  = document.getElementById('vfExportBtn');
+
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    // Clipboard API unavailable — fall back to file download
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `vol-forecast-${currentForecast.session_date}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
 // ── Rendering ──────────────────────────────────────────────────────────────────
 function renderForecast(data) {
   // Session bar
@@ -368,19 +413,14 @@ function renderForecast(data) {
     document.getElementById('pillNews').className = 'dpill';
   }
 
-  // Cards
+  // Cards — render all instruments returned by API
   const grid = document.getElementById('vfGrid');
   grid.innerHTML = '';
-  const instruments = ['GOLD', 'EURUSD', 'NQ'];
-  const pillIds = { GOLD: 'pillGold', EURUSD: 'pillEurusd', NQ: 'pillNq' };
+  const entries = Object.entries(data.instruments ?? {});
+  document.getElementById('pillCount').textContent = `${entries.length} pairs`;
+  document.getElementById('pillCount').className   = entries.length > 0 ? 'dpill ok' : 'dpill err';
 
-  for (const name of instruments) {
-    const f = data.instruments?.[name];
-    if (!f) {
-      document.getElementById(pillIds[name]).className = 'dpill';
-      continue;
-    }
-    document.getElementById(pillIds[name]).className = 'dpill ok';
+  for (const [name, f] of entries) {
     grid.appendChild(buildCard(name, f, data.meta));
   }
 }
@@ -392,9 +432,12 @@ function buildCard(name, f, meta) {
   // Vol pill colour: > 20% = hi (red), < 8% = lo (green), else default (blue)
   const volClass = f.vol_annual > 20 ? 'hi' : f.vol_annual < 8 ? 'lo' : '';
 
-  // Scale bars within this card: hl_75 is the 100% reference for H-L bars
-  const hlMax = f.hl_75 * 1.1;   // slight headroom
+  const hlMax = f.hl_75 * 1.1;
   const ocMax = f.oc_75 * 1.1;
+
+  const newsChip = meta?.news_flag
+    ? `<span class="vf-mult-chip active">📅 ${meta.news_flag} ×${(meta.news_mult ?? 1).toFixed(2)}</span>`
+    : `<span class="vf-mult-chip">No news flag</span>`;
 
   card.innerHTML = `
     <div class="vf-card-header">
@@ -415,12 +458,7 @@ function buildCard(name, f, meta) {
     </div>
 
     <div class="vf-mults">
-      <span class="vf-mult-chip ${(f.dow_mult ?? 1) !== 1 ? 'active' : ''}">
-        ${meta?.dow_label ?? ''} ×${(f.dow_mult ?? 1).toFixed(2)}
-      </span>
-      ${meta?.news_flag
-        ? `<span class="vf-mult-chip active">📅 ${meta.news_flag} ×${(f.news_mult ?? 1).toFixed(2)}</span>`
-        : `<span class="vf-mult-chip">No news flag</span>`}
+      ${newsChip}
     </div>
   `;
   return card;
@@ -439,25 +477,24 @@ function barRow(label, value, maxValue, fillClass) {
 }
 
 function renderHistory(forecasts) {
+  // Build column list from the most recent forecast
+  const allNames = Object.keys(forecasts[0]?.instruments ?? {});
+
+  // Header
+  const thead = document.getElementById('vfHistHead');
+  thead.innerHTML = '<tr><th>Session</th>' +
+    allNames.map(n => `<th>${n}</th>`).join('') + '</tr>';
+
   const tbody = document.getElementById('vfHistBody');
   tbody.innerHTML = '';
-  for (const f of forecasts) {
-    const g = f.instruments?.GOLD;
-    const e = f.instruments?.EURUSD;
-    const n = f.instruments?.NQ;
+
+  for (const fc of forecasts) {
+    const cells = allNames.map(n => {
+      const f = fc.instruments?.[n];
+      return `<td>${f ? f.vol_annual.toFixed(2) + '%' : '—'}</td>`;
+    }).join('');
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${f.session_date}</td>
-      <td>${g ? g.vol_annual.toFixed(2)+'%' : '—'}</td>
-      <td>${g ? g.hl_median.toFixed(2)+'%' : '—'}</td>
-      <td>${g ? g.hl_75.toFixed(2)+'%' : '—'}</td>
-      <td>${e ? e.vol_annual.toFixed(2)+'%' : '—'}</td>
-      <td>${e ? e.hl_median.toFixed(2)+'%' : '—'}</td>
-      <td>${e ? e.hl_75.toFixed(2)+'%' : '—'}</td>
-      <td>${n ? n.vol_annual.toFixed(2)+'%' : '—'}</td>
-      <td>${n ? n.hl_median.toFixed(2)+'%' : '—'}</td>
-      <td>${n ? n.hl_75.toFixed(2)+'%' : '—'}</td>
-    `;
+    tr.innerHTML = `<td>${fc.session_date}</td>${cells}`;
     tbody.appendChild(tr);
   }
   document.getElementById('vfHistory').style.display = '';
@@ -465,10 +502,8 @@ function renderHistory(forecasts) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function setStatus(level, msg) {
-  const dot = document.getElementById('vfSdot');
-  const txt = document.getElementById('vfStxt');
-  dot.className = `sdot ${level}`;
-  txt.textContent = msg;
+  document.getElementById('vfSdot').className = `sdot ${level}`;
+  document.getElementById('vfStxt').textContent = msg;
 }
 
 function timeAgo(date) {
