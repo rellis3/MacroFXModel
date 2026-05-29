@@ -1,23 +1,25 @@
 /**
  * Vol & Range Forecaster — core math engine (no network, no I/O).
  *
- * Methodology:
- *   σ (commodity) : Garman-Klass EWMA on daily OHLC bars
- *                     gk_t = 0.5·[ln(H/L)]² − (2·ln2−1)·[ln(C/O)]²
- *                     v_t  = λ·v_{t-1} + (1−λ)·gk_t          λ=0.94
- *                     σ_t  = √v_t
- *                     Gold has large intraday H-L ranges that partly reverse
- *                     by close; GK captures this, close-to-close misses it.
+ * Methodology — estimator chosen per asset class:
  *
- *   σ (index/fx)  : Close-to-close EWMA (RiskMetrics, λ=0.94)
- *                     v_t = λ·v_{t-1} + (1−λ)·r²_t    r = ln(C_t/C_{t-1})
- *                     For 24-hour FX and equity-index futures, the Oanda
- *                     daily open/close are near-continuous so the GK C/O
- *                     term can drag estimates down. Close-to-close matches
- *                     the reference system on NQ and all FX pairs.
+ *   commodity : Garman-Klass EWMA on daily OHLC (λ=0.94)
+ *                 gk_t = 0.5·[ln(H/L)]² − (2·ln2−1)·[ln(C/O)]²
+ *                 v_t  = λ·v_{t-1} + (1−λ)·gk_t
+ *                 Gold has large intraday H-L ranges that partially reverse
+ *                 by close; GK captures this, close-to-close misses it (~25%
+ *                 underestimate).
  *
- *   H-L range : Analytical BM range distribution percentiles
- *               (median=1.572σ, 75th=2.049σ) with per-asset-class correction
+ *   index/fx  : GARCH(1,1) on close-to-close log returns
+ *                 σ²_t = ω + α·r²_{t-1} + β·σ²_{t-1}
+ *                 α=0.06, β=0.91 (α+β=0.97, ~23-day half-life)
+ *                 ω sets the long-run variance floor — prevents estimates
+ *                 collapsing in quiet patches. Pure EWMA (ω=0) drops ~15%
+ *                 too low for FX in calm regimes. The ω floor keeps FX in
+ *                 line with the reference quant system.
+ *
+ *   H-L range : BM range distribution percentiles (P50=1.572σ, P75=2.049σ)
+ *               with per-asset-class correction
  *   O-C move  : Half-normal percentiles (|N(0,σ)|) with per-asset-class correction
  *   News mult : High-impact US event overlay (FOMC, NFP, CPI etc.)
  */
@@ -28,6 +30,11 @@ const EWMA_LAMBDA  = 0.94;
 // Garman-Klass adjustment constant: 2·ln2 − 1 ≈ 0.3863
 const GK_ADJ = 2 * Math.LN2 - 1;
 
+// GARCH(1,1) parameters for index/fx (daily close-to-close)
+const G_ALPHA = 0.06;
+const G_BETA  = 0.91;
+// α+β=0.97, 1−α−β=0.03
+
 // ── Analytical BM range distribution constants ────────────────────────────────
 const BM_RANGE_P50 = 1.572;
 const BM_RANGE_P75 = 2.049;
@@ -37,11 +44,15 @@ const HN_P50 = 0.6745;
 const HN_P75 = 1.1503;
 
 // ── Per-asset-class parameters ────────────────────────────────────────────────
+// garch_omega : long-run variance floor for GARCH (index/fx only)
+//   ω = (σ_annual_target / √252)² × (1−α−β)
+//   index → 20% long-run  ω = 4.76e-6
+//   fx    → 7.5% long-run ω = 6.70e-7
 // hl_75_corr / oc_corr calibrated from reference data (May 29, 2026).
 const ASSET_PARAMS = {
   commodity: { hl_75_corr: 0.989, oc_corr: 1.163 },
-  index:     { hl_75_corr: 0.950, oc_corr: 1.111 },
-  fx:        { hl_75_corr: 0.894, oc_corr: 0.948 },
+  index:     { hl_75_corr: 0.950, oc_corr: 1.111, garch_omega: 4.76e-6 },
+  fx:        { hl_75_corr: 0.894, oc_corr: 0.948, garch_omega: 6.70e-7 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
@@ -69,10 +80,9 @@ export function detectNewsMultiplier(events = []) {
 
 // ── Garman-Klass EWMA ─────────────────────────────────────────────────────────
 // For commodity (gold): captures large intraday ranges that close-to-close misses.
-// gk = 0.5·ln(H/L)² − (2ln2−1)·ln(C/O)²   clamped ≥ 0
 function gkEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
-  const n    = bars.length;
-  const out  = new Array(n);
+  const n     = bars.length;
+  const out   = new Array(n);
   const initN = Math.min(20, n);
   let v = 0;
   for (let i = 0; i < initN; i++) {
@@ -91,23 +101,17 @@ function gkEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
   return out;
 }
 
-// ── Close-to-close EWMA ───────────────────────────────────────────────────────
-// For index and FX: Oanda daily O/C are near-continuous so GK's C/O term
-// can depress estimates. Close-to-close matches reference on NQ and all FX.
-function ccEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
-  const n    = bars.length;
-  const out  = new Array(n - 1);  // one σ per log return, not per bar
-  const initN = Math.min(20, n - 1);
-  let v = 0;
-  for (let i = 1; i <= initN; i++) {
-    const r = Math.log(bars[i].close / bars[i - 1].close);
-    v += r * r;
-  }
-  v = Math.max(v / initN, 1e-10);
+// ── GARCH(1,1) close-to-close ─────────────────────────────────────────────────
+// For index/fx: ω floor prevents estimates collapsing in quiet regimes.
+// Initialized at unconditional variance ω/(1−α−β) — no seed transient.
+function garch11VolSeries(bars, omega) {
+  const n   = bars.length;
+  const out = new Array(n - 1);
+  let sigma2 = omega / (1 - G_ALPHA - G_BETA);
   for (let i = 1; i < n; i++) {
     const r = Math.log(bars[i].close / bars[i - 1].close);
-    v = lambda * v + (1 - lambda) * r * r;
-    out[i - 1] = Math.sqrt(v);
+    sigma2 = omega + G_ALPHA * r * r + G_BETA * sigma2;
+    out[i - 1] = Math.sqrt(sigma2);
   }
   return out;
 }
@@ -125,11 +129,11 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
 
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
-  // Commodity uses GK (captures gold's large intraday ranges).
-  // Index and FX use close-to-close EWMA (GK's C/O term drags these down).
+  // Commodity: GK-EWMA captures full intraday range.
+  // Index/FX: GARCH with ω floor prevents quiet-period collapse.
   const volSeries = assetClass === 'commodity'
     ? gkEwmaVolSeries(ohlc)
-    : ccEwmaVolSeries(ohlc);
+    : garch11VolSeries(ohlc, p.garch_omega);
 
   const sigmaFwd    = volSeries.at(-1);
   const sigmaFwdPct = sigmaFwd * 100;
