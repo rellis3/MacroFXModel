@@ -22,6 +22,7 @@ import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
+import { startVolForecastScheduler, forecastState, runVolForecast } from './js/volForecastScheduler.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -1321,6 +1322,30 @@ app.all('/api/*', async (req, res) => {
   }
 });
 
+// ── Vol & Range Forecast endpoints ────────────────────────────────────────────
+
+// Latest session forecast — primary endpoint for bots and the dashboard page.
+// Response shape:
+//   { ok, session_date, session_label, computed_at,
+//     instruments: { GOLD, EURUSD, NQ }, meta }
+app.get('/api/vol-forecast', (_req, res) => {
+  if (!forecastState.latest) {
+    return res.status(202).json({ ok: false, status: 'computing', message: 'Forecast not yet available — check back in 60s.' });
+  }
+  res.json(forecastState.latest);
+});
+
+// History — last 5 computed sessions, newest first.
+app.get('/api/vol-forecast/history', (_req, res) => {
+  res.json({ ok: true, forecasts: forecastState.history });
+});
+
+// Force re-compute (admin / manual trigger).
+app.post('/api/vol-forecast/refresh', async (_req, res) => {
+  res.json({ ok: true, status: 'running', message: 'Recompute triggered — poll /api/vol-forecast in ~30s' });
+  runVolForecast().catch(e => console.error('[VOL-FORECAST] Manual refresh error:', e.message));
+});
+
 // Dashboard static assets — served from project root.
 // journal.html and backtest.html are served as-is; index.html is the fallback.
 app.use(express.static(__dirname, {
@@ -1548,6 +1573,9 @@ setTimeout(() => {
 // Macro context (VIX, HY spread, yield curve via FRED) — refresh every 6h, run once at startup
 refreshMacroContext().catch(console.error);
 setInterval(refreshMacroContext, MACRO_REFRESH_MS);
+
+// Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
+startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));
 
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';

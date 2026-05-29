@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vol & Range Forecast</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+/* ── Page layout ─────────────────────────────────────────────────────────── */
+#vfApp { padding: 0 20px 32px; max-width: 1200px; margin: 0 auto; }
+
+/* ── Instrument grid ─────────────────────────────────────────────────────── */
+.vf-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+@media (max-width: 900px) { .vf-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1200px) and (min-width: 901px) { .vf-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ── Instrument card ─────────────────────────────────────────────────────── */
+.vf-card {
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rl);
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color .2s;
+}
+.vf-card:hover { border-color: var(--border2); }
+
+.vf-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.vf-name {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: .04em;
+  color: var(--text);
+}
+.vf-vol-pill {
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-bd);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.vf-vol-pill.hi { background: var(--red-bg); border-color: var(--red-bd); color: var(--red); }
+.vf-vol-pill.lo { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+
+/* ── Range section ───────────────────────────────────────────────────────── */
+.vf-section { display: flex; flex-direction: column; gap: 8px; }
+
+.vf-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+}
+
+.vf-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vf-row-label {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  width: 42px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.vf-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--s2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.vf-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .5s ease;
+}
+.vf-bar-fill.median { background: var(--blue); }
+.vf-bar-fill.p75    { background: var(--amber); }
+.vf-row-val {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  width: 46px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Multiplier footer ───────────────────────────────────────────────────── */
+.vf-mults {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.vf-mult-chip {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  background: var(--s2);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+.vf-mult-chip.active { color: var(--amber); border-color: var(--amber-bd); background: var(--amber-bg); }
+
+/* ── Session header card ─────────────────────────────────────────────────── */
+.vf-session-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 18px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.vf-session-date {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  letter-spacing: .04em;
+}
+.vf-session-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.vf-news-badge {
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-bd);
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+.vf-spacer { flex: 1; }
+
+/* ── History table ───────────────────────────────────────────────────────── */
+.vf-history {
+  margin-top: 22px;
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rl);
+  overflow: hidden;
+}
+.vf-history-title {
+  padding: 12px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text2);
+  font-family: 'DM Mono', monospace;
+  border-bottom: 1px solid var(--border);
+}
+.vf-hist-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.vf-hist-table th {
+  padding: 8px 12px;
+  text-align: right;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.vf-hist-table th:first-child { text-align: left; }
+.vf-hist-table td {
+  padding: 9px 12px;
+  text-align: right;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.vf-hist-table td:first-child { text-align: left; color: var(--text2); font-size: 10px; }
+.vf-hist-table tr:last-child td { border-bottom: none; }
+.vf-hist-table tbody tr:hover td { background: var(--s2); }
+
+/* ── Skeleton / loading ──────────────────────────────────────────────────── */
+.vf-skeleton {
+  background: linear-gradient(90deg, var(--s2) 25%, var(--s3) 50%, var(--s2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+</style>
+</head>
+<body class="dark">
+<div id="vfApp">
+
+<!-- TOPBAR -->
+<div class="sticky-header" id="vfHeader">
+<div class="topbar">
+  <div class="logo-box" style="background:linear-gradient(135deg,#1847c2,#7c3aed)">
+    <svg viewBox="0 0 17 17" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 12 L5 7 L8 9 L11 5 L14 7"/>
+      <line x1="14" y1="4" x2="14" y2="8"/>
+      <line x1="3" y1="14" x2="15" y2="14"/>
+    </svg>
+  </div>
+  <div class="title-block">
+    <div class="title">Vol & Range Forecast</div>
+    <div class="sub">EWMA · Day-of-Week · News-Aware · GOLD · EURUSD · NQ</div>
+  </div>
+  <div class="spacer"></div>
+  <span class="upd">Updated: <span id="vfUpdated">—</span></span>
+  <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
+  <a href="index.html" style="text-decoration:none">
+    <button class="dark-btn">← Dashboard</button>
+  </a>
+  <div class="live-pill" id="vfLivePill"><div class="live-dot"></div>Live</div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="sdot" id="vfSdot"></div>
+  <div class="stxt" id="vfStxt">Loading forecast…</div>
+  <div class="data-pills">
+    <span class="dpill" id="pillGold">GOLD</span>
+    <span class="dpill" id="pillEurusd">EURUSD</span>
+    <span class="dpill" id="pillNq">NQ</span>
+    <span class="dpill" id="pillNews">NEWS</span>
+  </div>
+</div>
+</div><!-- /sticky-header -->
+
+<!-- SESSION INFO -->
+<div class="vf-session-bar" id="vfSessionBar">
+  <div class="vf-session-date" id="vfSessionLabel">Loading…</div>
+  <div class="vf-session-meta" id="vfComputedAt">—</div>
+  <div class="vf-spacer"></div>
+  <div class="vf-news-badge" id="vfNewsBadge" style="display:none"></div>
+</div>
+
+<!-- INSTRUMENT CARDS -->
+<div class="vf-grid" id="vfGrid">
+  <!-- Populated by JS -->
+</div>
+
+<!-- HISTORY TABLE -->
+<div class="vf-history" id="vfHistory" style="display:none">
+  <div class="vf-history-title">Recent Sessions</div>
+  <table class="vf-hist-table" id="vfHistTable">
+    <thead>
+      <tr>
+        <th>Session</th>
+        <th>GOLD Vol</th>
+        <th>H-L Med</th>
+        <th>H-L 75th</th>
+        <th>EUR Vol</th>
+        <th>H-L Med</th>
+        <th>H-L 75th</th>
+        <th>NQ Vol</th>
+        <th>H-L Med</th>
+        <th>H-L 75th</th>
+      </tr>
+    </thead>
+    <tbody id="vfHistBody"></tbody>
+  </table>
+</div>
+
+</div><!-- /vfApp -->
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let currentForecast = null;
+let refreshTimer    = null;
+const POLL_MS       = 5 * 60 * 1000;  // auto-refresh every 5 min
+
+// ── Bootstrap ────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.body.classList.toggle('dark', true);
+  loadForecast();
+  loadHistory();
+  scheduleRefresh();
+});
+
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => { loadForecast(); loadHistory(); scheduleRefresh(); }, POLL_MS);
+}
+
+// ── Data loading ──────────────────────────────────────────────────────────────
+async function loadForecast() {
+  setStatus('spin', 'Fetching forecast…');
+  try {
+    const res  = await fetch('/api/vol-forecast');
+    const data = await res.json();
+
+    if (!data.ok) {
+      setStatus('spin', data.message ?? 'Computing — check back shortly…');
+      setTimeout(loadForecast, 15_000);
+      return;
+    }
+
+    currentForecast = data;
+    renderForecast(data);
+    setStatus('ok', `Forecast ready — session ${data.session_date}`);
+  } catch (e) {
+    setStatus('err', `Fetch error: ${e.message}`);
+  }
+}
+
+async function loadHistory() {
+  try {
+    const res  = await fetch('/api/vol-forecast/history');
+    const data = await res.json();
+    if (data.ok && data.forecasts.length > 1) renderHistory(data.forecasts);
+  } catch { /* silent */ }
+}
+
+async function triggerRefresh() {
+  const btn = document.getElementById('vfRefreshBtn');
+  btn.disabled = true;
+  btn.textContent = '↻ Refreshing…';
+  setStatus('spin', 'Triggered re-compute…');
+  try {
+    await fetch('/api/vol-forecast/refresh', { method: 'POST' });
+    setTimeout(() => { loadForecast(); loadHistory(); }, 35_000);
+  } catch (e) {
+    setStatus('err', `Refresh error: ${e.message}`);
+  } finally {
+    setTimeout(() => { btn.disabled = false; btn.textContent = '↻ Refresh'; }, 38_000);
+  }
+}
+
+// ── Rendering ──────────────────────────────────────────────────────────────────
+function renderForecast(data) {
+  // Session bar
+  document.getElementById('vfSessionLabel').textContent = data.session_label;
+  const computedAt = new Date(data.computed_at);
+  document.getElementById('vfComputedAt').textContent =
+    `Computed ${computedAt.toUTCString().replace(/:\d\d GMT$/, ' UTC')}`;
+  document.getElementById('vfUpdated').textContent = timeAgo(computedAt);
+
+  // News badge
+  const newsBadge = document.getElementById('vfNewsBadge');
+  if (data.meta?.news_flag) {
+    newsBadge.textContent = `📅 ${data.meta.news_flag} ×${data.meta.news_mult.toFixed(2)}`;
+    newsBadge.style.display = '';
+    document.getElementById('pillNews').className = 'dpill ok';
+  } else {
+    newsBadge.style.display = 'none';
+    document.getElementById('pillNews').className = 'dpill';
+  }
+
+  // Cards
+  const grid = document.getElementById('vfGrid');
+  grid.innerHTML = '';
+  const instruments = ['GOLD', 'EURUSD', 'NQ'];
+  const pillIds = { GOLD: 'pillGold', EURUSD: 'pillEurusd', NQ: 'pillNq' };
+
+  for (const name of instruments) {
+    const f = data.instruments?.[name];
+    if (!f) {
+      document.getElementById(pillIds[name]).className = 'dpill';
+      continue;
+    }
+    document.getElementById(pillIds[name]).className = 'dpill ok';
+    grid.appendChild(buildCard(name, f, data.meta));
+  }
+}
+
+function buildCard(name, f, meta) {
+  const card = document.createElement('div');
+  card.className = 'vf-card';
+
+  // Vol pill colour: > 20% = hi (red), < 8% = lo (green), else default (blue)
+  const volClass = f.vol_annual > 20 ? 'hi' : f.vol_annual < 8 ? 'lo' : '';
+
+  // Scale bars within this card: hl_75 is the 100% reference for H-L bars
+  const hlMax = f.hl_75 * 1.1;   // slight headroom
+  const ocMax = f.oc_75 * 1.1;
+
+  card.innerHTML = `
+    <div class="vf-card-header">
+      <div class="vf-name">${name}</div>
+      <div class="vf-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</div>
+    </div>
+
+    <div class="vf-section">
+      <div class="vf-section-label">High ↔ Low Range</div>
+      ${barRow('50th', f.hl_median, hlMax, 'median')}
+      ${barRow('75th', f.hl_75,    hlMax, 'p75')}
+    </div>
+
+    <div class="vf-section">
+      <div class="vf-section-label">Open → Close Move</div>
+      ${barRow('50th', f.oc_median, ocMax, 'median')}
+      ${barRow('75th', f.oc_75,    ocMax, 'p75')}
+    </div>
+
+    <div class="vf-mults">
+      <span class="vf-mult-chip ${(f.dow_mult ?? 1) !== 1 ? 'active' : ''}">
+        ${meta?.dow_label ?? ''} ×${(f.dow_mult ?? 1).toFixed(2)}
+      </span>
+      ${meta?.news_flag
+        ? `<span class="vf-mult-chip active">📅 ${meta.news_flag} ×${(f.news_mult ?? 1).toFixed(2)}</span>`
+        : `<span class="vf-mult-chip">No news flag</span>`}
+    </div>
+  `;
+  return card;
+}
+
+function barRow(label, value, maxValue, fillClass) {
+  const w = Math.min(100, (value / maxValue) * 100).toFixed(1);
+  return `
+    <div class="vf-row">
+      <div class="vf-row-label">${label}</div>
+      <div class="vf-bar-track">
+        <div class="vf-bar-fill ${fillClass}" style="width:${w}%"></div>
+      </div>
+      <div class="vf-row-val">${value.toFixed(2)}%</div>
+    </div>`;
+}
+
+function renderHistory(forecasts) {
+  const tbody = document.getElementById('vfHistBody');
+  tbody.innerHTML = '';
+  for (const f of forecasts) {
+    const g = f.instruments?.GOLD;
+    const e = f.instruments?.EURUSD;
+    const n = f.instruments?.NQ;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${f.session_date}</td>
+      <td>${g ? g.vol_annual.toFixed(2)+'%' : '—'}</td>
+      <td>${g ? g.hl_median.toFixed(2)+'%' : '—'}</td>
+      <td>${g ? g.hl_75.toFixed(2)+'%' : '—'}</td>
+      <td>${e ? e.vol_annual.toFixed(2)+'%' : '—'}</td>
+      <td>${e ? e.hl_median.toFixed(2)+'%' : '—'}</td>
+      <td>${e ? e.hl_75.toFixed(2)+'%' : '—'}</td>
+      <td>${n ? n.vol_annual.toFixed(2)+'%' : '—'}</td>
+      <td>${n ? n.hl_median.toFixed(2)+'%' : '—'}</td>
+      <td>${n ? n.hl_75.toFixed(2)+'%' : '—'}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  document.getElementById('vfHistory').style.display = '';
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setStatus(level, msg) {
+  const dot = document.getElementById('vfSdot');
+  const txt = document.getElementById('vfStxt');
+  dot.className = `sdot ${level}`;
+  txt.textContent = msg;
+}
+
+function timeAgo(date) {
+  const secs = Math.floor((Date.now() - date) / 1000);
+  if (secs < 60)    return `${secs}s ago`;
+  if (secs < 3600)  return `${Math.floor(secs/60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs/3600)}h ago`;
+  return date.toLocaleDateString();
+}
+</script>
+</body>
+</html>
