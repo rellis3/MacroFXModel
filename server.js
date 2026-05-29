@@ -10,9 +10,12 @@
 // Required env vars: OANDA_KEY  (+ same vars as _worker.js)
 // Optional:         MONITOR_MS  (default 3000), DATA_DIR, PORT
 
-import express           from 'express';
-import path              from 'path';
-import { fileURLToPath } from 'url';
+import express              from 'express';
+import path                from 'path';
+import { fileURLToPath }   from 'url';
+import fs                  from 'fs';
+import { execFile }        from 'child_process';
+import { promisify }       from 'util';
 import * as kv           from './kv.js';
 import worker            from './_worker.js';
 import { refreshAllPairs } from './levels.js';
@@ -1327,6 +1330,227 @@ app.get('/api/vol-forecast/history', (_req, res) => {
 app.post('/api/vol-forecast/refresh', async (_req, res) => {
   res.json({ ok: true, status: 'running', message: 'Recompute triggered — poll /api/vol-forecast in ~30s' });
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Manual refresh error:', e.message));
+});
+
+// ── Vol Backtest API ──────────────────────────────────────────────────────────
+
+const _execFileAsync   = promisify(execFile);
+const BT_DATA_DIR      = path.join(__dirname, 'VolRangeForecaster', 'data');
+const BT_PYTHON_SCRIPT = path.join(__dirname, 'VolRangeForecaster', 'vol_backtest.py');
+
+function _latestBacktestCsv() {
+  if (!fs.existsSync(BT_DATA_DIR)) return null;
+  const files = fs.readdirSync(BT_DATA_DIR)
+    .filter(f => f.startsWith('backtest_') && f.endsWith('.csv'))
+    .sort().reverse();
+  return files.length ? path.join(BT_DATA_DIR, files[0]) : null;
+}
+
+function _parseBtCsv(csvPath) {
+  const lines = fs.readFileSync(csvPath, 'utf8').trim().split('\n');
+  const hdrs  = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = line.split(',');
+    const o    = Object.fromEntries(hdrs.map((h, i) => [h, (vals[i] ?? '').trim()]));
+    o.filled   = o.filled === 'True';
+    o.pnl_pct  = parseFloat(o.pnl_pct)  || 0;
+    o.hl_75_pct = parseFloat(o.hl_75_pct) || 0;
+    o.oc_med_pct = parseFloat(o.oc_med_pct) || 0;
+    o.open     = parseFloat(o.open)  || 0;
+    o.high     = parseFloat(o.high)  || 0;
+    o.low      = parseFloat(o.low)   || 0;
+    o.close    = parseFloat(o.close) || 0;
+    return o;
+  });
+}
+
+function _btStats(trades) {
+  const filled  = trades.filter(r => r.filled);
+  const wins    = filled.filter(r => r.outcome === 'win');
+  const losses  = filled.filter(r => r.outcome === 'loss');
+  const openEod = filled.filter(r => r.outcome === 'open');
+  const nDays   = trades.length;
+  const nFilled = filled.length;
+  if (nFilled === 0) return { nDays, nFilled, fillRate: 0, winRate: 0, totalPnl: 0 };
+
+  const pnls   = filled.map(r => r.pnl_pct);
+  const totalPnl = pnls.reduce((s, p) => s + p, 0);
+  const avgPnl   = totalPnl / nFilled;
+  const std      = Math.sqrt(pnls.reduce((s, p) => s + (p - avgPnl) ** 2, 0) / Math.max(1, nFilled - 1));
+  const sharpe   = std > 0 ? avgPnl / std * Math.sqrt(252) : 0;
+
+  const negPnls = pnls.filter(p => p < 0);
+  const downStd = negPnls.length > 0
+    ? Math.sqrt(negPnls.reduce((s, p) => s + p ** 2, 0) / negPnls.length) : 0;
+  const sortino = downStd > 0 ? avgPnl / downStd * Math.sqrt(252) : 0;
+
+  let peak = 0, maxDd = 0, cum = 0;
+  for (const p of pnls) {
+    cum += p; if (cum > peak) peak = cum;
+    const dd = cum - peak; if (dd < maxDd) maxDd = dd;
+  }
+
+  const dates  = trades.map(r => new Date(r.date)).filter(d => !isNaN(d)).sort((a, b) => a - b);
+  const years  = dates.length > 1 ? (dates[dates.length - 1] - dates[0]) / (365.25 * 86400e3) : 1;
+  const cagr   = years > 0 ? ((1 + totalPnl / 100) ** (1 / years) - 1) * 100 : 0;
+  const annRet = years > 0 ? totalPnl / years : 0;
+  const calmar = maxDd < 0 ? annRet / Math.abs(maxDd) : 0;
+
+  const avgWin  = wins.length   ? wins.reduce((s, r)   => s + r.pnl_pct, 0) / wins.length   : 0;
+  const avgLoss = losses.length ? losses.reduce((s, r) => s + r.pnl_pct, 0) / losses.length : 0;
+  const rr      = avgLoss < 0 ? Math.abs(avgWin / avgLoss) : 0;
+  const grossW  = wins.reduce((s, r) => s + r.pnl_pct, 0);
+  const grossL  = Math.abs(losses.reduce((s, r) => s + r.pnl_pct, 0));
+  const pf      = grossL > 0 ? grossW / grossL : Infinity;
+  const expect  = wins.length / nFilled * avgWin + losses.length / nFilled * avgLoss;
+
+  let maxCW = 0, maxCL = 0, cw = 0, cl = 0;
+  for (const r of filled) {
+    if (r.outcome === 'win')  { cw++; cl = 0; if (cw > maxCW) maxCW = cw; }
+    else if (r.outcome === 'loss') { cl++; cw = 0; if (cl > maxCL) maxCL = cl; }
+    else { cw = 0; cl = 0; }
+  }
+
+  return {
+    nDays, nFilled, nWins: wins.length, nLosses: losses.length, nOpenEod: openEod.length,
+    fillRate:  +(nFilled / nDays * 100).toFixed(1),
+    winRate:   +(wins.length / nFilled * 100).toFixed(1),
+    avgPnl:    +avgPnl.toFixed(4),
+    totalPnl:  +totalPnl.toFixed(3),
+    cagr:      +cagr.toFixed(2),
+    sharpe:    +sharpe.toFixed(2),
+    sortino:   +sortino.toFixed(2),
+    calmar:    +calmar.toFixed(2),
+    profitFactor: pf === Infinity ? 999 : +pf.toFixed(2),
+    maxDd:     +maxDd.toFixed(3),
+    rr:        +rr.toFixed(2),
+    expectancy: +expect.toFixed(4),
+    avgWin:    +avgWin.toFixed(4),
+    avgLoss:   +avgLoss.toFixed(4),
+    maxConsecWins: maxCW, maxConsecLosses: maxCL,
+    years:     +years.toFixed(2),
+  };
+}
+
+// Latest cached backtest results
+app.get('/api/vol-backtest', (req, res) => {
+  const csvPath = _latestBacktestCsv();
+  if (!csvPath) return res.status(404).json({ ok: false, error: 'No backtest data. Run the backtester first.' });
+
+  try {
+    const trades = _parseBtCsv(csvPath);
+    if (!trades.length) return res.status(404).json({ ok: false, error: 'Empty backtest file.' });
+
+    // Instrument list
+    const instruments = [...new Set(trades.map(r => r.instrument))].sort();
+
+    // Per-instrument stats
+    const byInstrument = Object.fromEntries(
+      instruments.map(inst => [inst, _btStats(trades.filter(r => r.instrument === inst))])
+    );
+
+    // Per-regime stats
+    const regimes = ['BULL', 'BEAR', 'RANGE'];
+    const byRegime = Object.fromEntries(
+      regimes.map(rg => [rg, _btStats(trades.filter(r => r.regime === rg))])
+    );
+
+    // Regime distribution
+    const regimeDist = Object.fromEntries(
+      regimes.map(rg => [rg, +(trades.filter(r => r.regime === rg).length / trades.length * 100).toFixed(1)])
+    );
+
+    // Equity curve: daily cumulative P&L across all instruments
+    const dailyPnl = {};
+    for (const r of trades.filter(t => t.filled)) {
+      const d = r.date.substring(0, 10);
+      dailyPnl[d] = (dailyPnl[d] || 0) + r.pnl_pct;
+    }
+    const sortedDates = Object.keys(dailyPnl).sort();
+    let cumPnl = 0;
+    const equityCurve = sortedDates.map(d => {
+      cumPnl += dailyPnl[d];
+      return { date: d, pnl: +cumPnl.toFixed(3) };
+    });
+
+    // Per-instrument equity curves
+    const instEquity = {};
+    for (const inst of instruments) {
+      const instTrades = trades.filter(r => r.instrument === inst && r.filled);
+      const byDay = {};
+      for (const r of instTrades) {
+        const d = r.date.substring(0, 10);
+        byDay[d] = (byDay[d] || 0) + r.pnl_pct;
+      }
+      let c = 0;
+      instEquity[inst] = Object.keys(byDay).sort().map(d => {
+        c += byDay[d]; return { date: d, pnl: +c.toFixed(3) };
+      });
+    }
+
+    // Monthly P&L
+    const monthly = {};
+    for (const r of trades.filter(t => t.filled)) {
+      const m = r.date.substring(0, 7);
+      monthly[m] = (monthly[m] || 0) + r.pnl_pct;
+    }
+    const monthlyArr = Object.entries(monthly).sort().map(([month, pnl]) => ({ month, pnl: +pnl.toFixed(3) }));
+
+    // Recent trades (last 200)
+    const recentTrades = trades
+      .filter(t => t.filled)
+      .slice(-200)
+      .reverse()
+      .map(r => ({
+        date: r.date?.substring(0, 10),
+        instrument: r.instrument,
+        regime: r.regime,
+        side: r.side,
+        outcome: r.outcome,
+        pnl_pct: r.pnl_pct,
+        hl_75_pct: r.hl_75_pct,
+        oc_med_pct: r.oc_med_pct,
+        open: r.open,
+      }));
+
+    res.json({
+      ok: true,
+      file: path.basename(csvPath),
+      computedAt: fs.statSync(csvPath).mtime.toISOString(),
+      overall: _btStats(trades),
+      byInstrument,
+      byRegime,
+      regimeDist,
+      equityCurve,
+      instEquity,
+      monthlyPnl: monthlyArr,
+      recentTrades,
+      totalTrades: trades.filter(t => t.filled).length,
+      instruments,
+    });
+  } catch (e) {
+    console.error('[vol-backtest]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Trigger a fresh backtest run (async, waits up to 120s)
+app.post('/api/vol-backtest/run', async (req, res) => {
+  const { dateFrom = '', dateTo = '', pair = '', slMult = '1.5' } = req.body || {};
+  const args = ['vol_backtest.py', '--save'];
+  if (dateFrom) args.push('--from', dateFrom);
+  if (dateTo)   args.push('--to',   dateTo);
+  if (pair)     args.push('--pair', pair);
+  if (slMult !== '1.5') args.push('--sl-mult', String(slMult));
+
+  const python = process.env.PYTHON_BIN || 'python3';
+  const cwd    = path.join(__dirname, 'VolRangeForecaster');
+  try {
+    const { stdout, stderr } = await _execFileAsync(python, args, { cwd, timeout: 120_000 });
+    res.json({ ok: true, message: 'Backtest complete', output: (stdout + stderr).slice(-2000) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message, output: (e.stdout + e.stderr || '').slice(-2000) });
+  }
 });
 
 // All other /api/* routes — call _worker.js and return the JSON response.
