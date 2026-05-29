@@ -4,7 +4,7 @@
  * Methodology:
  *   σ         : GARCH(1,1) on log close-to-close returns — one-step-ahead daily σ
  *                 σ²_t = ω + α·r²_{t-1} + β·σ²_{t-1}
- *                 α=0.10, β=0.85 (α+β=0.95) — same as vol.js live engine
+ *                 α=0.06, β=0.91 (α+β=0.97) — daily-calibrated (vol.js intraday uses α=0.10, β=0.85)
  *                 ω is per-asset-class, sets the long-run variance floor
  *                 long-run σ_annual = √(ω / (1−α−β)) × √252
  *
@@ -29,10 +29,14 @@
 const TRADING_DAYS = 252;
 
 // ── GARCH(1,1) parameters ─────────────────────────────────────────────────────
-// Matches the live vol.js engine — consistent across the whole dashboard.
-const G_ALPHA = 0.10;   // shock response (weight on last squared return)
-const G_BETA  = 0.85;   // persistence  (weight on previous variance)
-// α + β = 0.95 → long-run mean reversion with half-life ≈ 13 sessions
+// Calibrated for DAILY bars. vol.js uses α=0.10, β=0.85 (intraday — too fast
+// for daily: β=0.85 decays 2.5× faster than EWMA λ=0.94, dropping vol in
+// calm patches below even the EWMA estimate).
+// α=0.06 matches EWMA's shock weight (1−λ). β=0.91 gives ~23-day half-life,
+// appropriate for daily close-to-close returns.
+const G_ALPHA = 0.06;
+const G_BETA  = 0.91;
+// α + β = 0.97 → persistent with long-run mean reversion
 
 // ── Analytical BM range distribution constants ────────────────────────────────
 const BM_RANGE_P50 = 1.572;
@@ -45,14 +49,14 @@ const HN_P75 = 1.1503;
 // ── Per-asset-class parameters ────────────────────────────────────────────────
 // garch_omega : long-run variance floor for GARCH(1,1)
 //   ω = (σ_annual_target / √252)² × (1 − α − β)
-//   commodity → 24 % long-run   ω ≈ 1.14e-5
-//   index     → 20 % long-run   ω ≈ 7.94e-6
-//   fx        → 7.5% long-run   ω ≈ 1.12e-6
+//   commodity → 24 % long-run   ω ≈ 6.86e-6
+//   index     → 20 % long-run   ω ≈ 4.76e-6
+//   fx        → 7.5% long-run   ω ≈ 6.70e-7
 // hl_75_corr / oc_corr calibrated from reference data (May 29, 2026).
 const ASSET_PARAMS = {
-  commodity: { garch_omega: 1.14e-5, hl_75_corr: 0.989, oc_corr: 1.163 },
-  index:     { garch_omega: 7.94e-6, hl_75_corr: 0.950, oc_corr: 1.111 },
-  fx:        { garch_omega: 1.12e-6, hl_75_corr: 0.894, oc_corr: 0.948 },
+  commodity: { garch_omega: 6.86e-6, hl_75_corr: 0.989, oc_corr: 1.163 },
+  index:     { garch_omega: 4.76e-6, hl_75_corr: 0.950, oc_corr: 1.111 },
+  fx:        { garch_omega: 6.70e-7, hl_75_corr: 0.894, oc_corr: 0.948 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
