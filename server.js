@@ -1305,23 +1305,6 @@ app.get('/api/oanda_stream', async (req, res) => {
   res.end();
 });
 
-// All other /api/* routes — call _worker.js and return the JSON response.
-app.all('/api/*', async (req, res) => {
-  try {
-    const response = await callWorker(req);
-    res.status(response.status);
-    response.headers.forEach((val, key) => {
-      const k = key.toLowerCase();
-      // Drop hop-by-hop headers that Express handles itself
-      if (k !== 'content-encoding' && k !== 'transfer-encoding') res.setHeader(key, val);
-    });
-    res.send(await response.text());
-  } catch (e) {
-    console.error('[API]', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // ── Vol & Range Forecast endpoints ────────────────────────────────────────────
 
 // Latest session forecast — primary endpoint for bots and the dashboard page.
@@ -1344,6 +1327,23 @@ app.get('/api/vol-forecast/history', (_req, res) => {
 app.post('/api/vol-forecast/refresh', async (_req, res) => {
   res.json({ ok: true, status: 'running', message: 'Recompute triggered — poll /api/vol-forecast in ~30s' });
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Manual refresh error:', e.message));
+});
+
+// All other /api/* routes — call _worker.js and return the JSON response.
+app.all('/api/*', async (req, res) => {
+  try {
+    const response = await callWorker(req);
+    res.status(response.status);
+    response.headers.forEach((val, key) => {
+      const k = key.toLowerCase();
+      // Drop hop-by-hop headers that Express handles itself
+      if (k !== 'content-encoding' && k !== 'transfer-encoding') res.setHeader(key, val);
+    });
+    res.send(await response.text());
+  } catch (e) {
+    console.error('[API]', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Dashboard static assets — served from project root.
