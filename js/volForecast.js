@@ -2,28 +2,24 @@
  * Vol & Range Forecaster — core math engine (no network, no I/O).
  *
  * Methodology:
- *   σ         : Garman-Klass EWMA on daily OHLC bars — one-step-ahead daily σ
- *                 gk_t = 0.5·[ln(H/L)]² − (2·ln2−1)·[ln(C/O)]²
- *                 v_t  = λ·v_{t-1} + (1−λ)·gk_t          λ=0.94
- *                 σ_t  = √v_t
+ *   σ (commodity) : Garman-Klass EWMA on daily OHLC bars
+ *                     gk_t = 0.5·[ln(H/L)]² − (2·ln2−1)·[ln(C/O)]²
+ *                     v_t  = λ·v_{t-1} + (1−λ)·gk_t          λ=0.94
+ *                     σ_t  = √v_t
+ *                     Gold has large intraday H-L ranges that partly reverse
+ *                     by close; GK captures this, close-to-close misses it.
  *
- *   Why GK over close-to-close GARCH/EWMA?
- *     Close-to-close vol only sees the overnight gap between closes.
- *     For gold (large intraday H-L ranges that partially reverse by close),
- *     close-to-close understates realized vol by 25-35%.
- *     GK uses the full bar (O,H,L,C) — 5-8× more statistically efficient
- *     than close-to-close and captures the true intraday range.
+ *   σ (index/fx)  : Close-to-close EWMA (RiskMetrics, λ=0.94)
+ *                     v_t = λ·v_{t-1} + (1−λ)·r²_t    r = ln(C_t/C_{t-1})
+ *                     For 24-hour FX and equity-index futures, the Oanda
+ *                     daily open/close are near-continuous so the GK C/O
+ *                     term can drag estimates down. Close-to-close matches
+ *                     the reference system on NQ and all FX pairs.
  *
- *   H-L range : Analytical Brownian-motion range distribution percentiles
- *               (BM range median=1.572σ, 75th=2.049σ) with per-asset-class correction
- *   O-C move  : Half-normal distribution percentiles (|N(0,σ)|)
- *               with per-asset-class correction for overnight gap behaviour
+ *   H-L range : Analytical BM range distribution percentiles
+ *               (median=1.572σ, 75th=2.049σ) with per-asset-class correction
+ *   O-C move  : Half-normal percentiles (|N(0,σ)|) with per-asset-class correction
  *   News mult : High-impact US event overlay (FOMC, NFP, CPI etc.)
- *
- * Per-asset-class corrections (derived from reference data):
- *   commodity  Futures overnight gaps inflate OC vs half-normal (+16%)
- *   index      Equity futures — moderate gap effect (+11%)
- *   fx         24h spot trading — fewer gaps, tighter HL 75th (-5 to -10%)
  */
 
 const TRADING_DAYS = 252;
@@ -71,14 +67,12 @@ export function detectNewsMultiplier(events = []) {
   return best;
 }
 
-// ── Garman-Klass EWMA vol series ──────────────────────────────────────────────
-// Uses full OHLC bars — 5-8× more efficient than close-to-close estimators.
-// GK variance: gk = 0.5·ln(H/L)² − (2ln2−1)·ln(C/O)²
-// Seeded from the sample mean of the first 20 bars to kill the transient.
+// ── Garman-Klass EWMA ─────────────────────────────────────────────────────────
+// For commodity (gold): captures large intraday ranges that close-to-close misses.
+// gk = 0.5·ln(H/L)² − (2ln2−1)·ln(C/O)²   clamped ≥ 0
 function gkEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
-  const n = bars.length;
-  const out = new Array(n);
-
+  const n    = bars.length;
+  const out  = new Array(n);
   const initN = Math.min(20, n);
   let v = 0;
   for (let i = 0; i < initN; i++) {
@@ -87,13 +81,33 @@ function gkEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
     v += Math.max(0.5 * lnHL * lnHL - GK_ADJ * lnCO * lnCO, 0);
   }
   v = Math.max(v / initN, 1e-10);
-
   for (let i = 0; i < n; i++) {
     const lnHL = Math.log(bars[i].high / bars[i].low);
     const lnCO = Math.log(bars[i].close / bars[i].open);
     const gk   = Math.max(0.5 * lnHL * lnHL - GK_ADJ * lnCO * lnCO, 0);
     v = lambda * v + (1 - lambda) * gk;
     out[i] = Math.sqrt(v);
+  }
+  return out;
+}
+
+// ── Close-to-close EWMA ───────────────────────────────────────────────────────
+// For index and FX: Oanda daily O/C are near-continuous so GK's C/O term
+// can depress estimates. Close-to-close matches reference on NQ and all FX.
+function ccEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
+  const n    = bars.length;
+  const out  = new Array(n);
+  const initN = Math.min(20, n - 1);
+  let v = 0;
+  for (let i = 1; i <= initN; i++) {
+    const r = Math.log(bars[i].close / bars[i - 1].close);
+    v += r * r;
+  }
+  v = Math.max(v / initN, 1e-10);
+  for (let i = 1; i < n; i++) {
+    const r = Math.log(bars[i].close / bars[i - 1].close);
+    v = lambda * v + (1 - lambda) * r * r;
+    out[i - 1] = Math.sqrt(v);
   }
   return out;
 }
@@ -111,7 +125,13 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
 
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
-  const sigmaFwd    = gkEwmaVolSeries(ohlc).at(-1);
+  // Commodity uses GK (captures gold's large intraday ranges).
+  // Index and FX use close-to-close EWMA (GK's C/O term drags these down).
+  const volSeries = assetClass === 'commodity'
+    ? gkEwmaVolSeries(ohlc)
+    : ccEwmaVolSeries(ohlc);
+
+  const sigmaFwd    = volSeries.at(-1);
   const sigmaFwdPct = sigmaFwd * 100;
   const volAnnual   = sigmaFwdPct * Math.sqrt(TRADING_DAYS);
 
