@@ -58,7 +58,7 @@ function nextTradingDay(from) {
 function formatSessionLabel(date) {
   const dow = DOW_NAMES[date.getUTCDay()];
   const mon = MONTH_NAMES[date.getUTCMonth()];
-  return `${dow.toUpperCase()}, ${mon.toUpperCase()} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+  return `${dow.toUpperCase()}, ${mon} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
 }
 
 // ── Yahoo Finance fetch ───────────────────────────────────────────────────────

@@ -160,7 +160,7 @@ def compute_forecast(df: pd.DataFrame,
 
 # ── Formatting ────────────────────────────────────────────────────────────────────
 
-_LINE_WIDTH = 32
+_LINE_WIDTH = 29
 
 def _divider(name: str) -> str:
     prefix = f'──── {name} '
@@ -175,7 +175,6 @@ def format_report(session_label: str, results: list[dict]) -> str:
     ]
     for r in results:
         lines.append(_divider(r['name']))
-        lines.append('')
         lines.append(f"Volatility (annualized) : {r['vol_annual']:.2f}%")
         lines.append(
             f"High to Low range       : {r['hl_median']:.2f}% median · "
@@ -201,7 +200,7 @@ def next_trading_day(dt: datetime) -> datetime:
 def run_forecast(target_date: Optional[datetime] = None) -> str:
     if target_date is None:
         target_date = next_trading_day(datetime.now(timezone.utc))
-    session_label = target_date.strftime('%A, %B %-d, %Y').upper()
+    session_label = target_date.strftime('%A').upper() + target_date.strftime(', %B %-d, %Y')
 
     results = []
     for cfg in INSTRUMENTS:
