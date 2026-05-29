@@ -160,7 +160,7 @@ export async function runVolForecast(targetDate) {
   forecastState.history = [forecast, ...forecastState.history].slice(0, 5);
 
   const n = Object.keys(instruments).length;
-  console.log(`[VOL-FORECAST] ${sessionLabel}  ${n}/3 instruments  news=${newsLabel ?? '—'}`);
+  console.log(`[VOL-FORECAST] ${sessionLabel}  ${n} instruments  news=${newsLabel ?? '—'}`);
   return forecast;
 }
 
@@ -182,6 +182,19 @@ async function _schedulerTick() {
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Daily run failed:', e.message));
 }
 
+// Returns the session date that should currently be shown:
+//   Before TARGET_HOUR_UTC → the nearest upcoming trading day (today or Monday if weekend)
+//   At/after TARGET_HOUR_UTC on a weekday → the NEXT trading day (today's close is in)
+function _applicableSessionDate(now) {
+  const d   = new Date(now);
+  const day = d.getUTCDay();
+  const isPastCutoff = day !== 0 && day !== 6 && d.getUTCHours() >= TARGET_HOUR_UTC;
+  if (isPastCutoff) return nextTradingDay(d).toISOString().split('T')[0];
+  // Before cutoff (or weekend): nearest upcoming weekday
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().split('T')[0];
+}
+
 export async function startVolForecastScheduler() {
   // Warm up from KV
   try {
@@ -196,14 +209,18 @@ export async function startVolForecastScheduler() {
     console.error('[VOL-FORECAST] KV warm-up error:', e.message);
   }
 
-  // Compute immediately if there's no valid forecast for the next session
-  const nextSession    = nextTradingDay(new Date()).toISOString().split('T')[0];
-  const cachedDate     = forecastState.latest?.session_date;
-  const needsImmediateRun = !cachedDate || cachedDate < nextSession;
+  // Only trigger an immediate run when we genuinely lack the currently applicable
+  // forecast.  Before 22:00 UTC the applicable session is today — so a mid-day
+  // restart with today's forecast cached will NOT re-run prematurely.
+  const neededDate = _applicableSessionDate(new Date());
+  const cachedDate = forecastState.latest?.session_date;
+  const needsImmediateRun = !cachedDate || cachedDate < neededDate;
 
   if (needsImmediateRun) {
-    console.log('[VOL-FORECAST] No current forecast — computing on startup …');
-    runVolForecast().catch(e => console.error('[VOL-FORECAST] Startup run failed:', e.message));
+    console.log(`[VOL-FORECAST] No forecast for ${neededDate} — computing on startup …`);
+    // Pass the target date explicitly so we compute for the right session.
+    runVolForecast(new Date(neededDate + 'T12:00:00Z'))
+      .catch(e => console.error('[VOL-FORECAST] Startup run failed:', e.message));
   }
 
   // Scheduler: check every 5 minutes
