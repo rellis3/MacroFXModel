@@ -341,7 +341,7 @@ async function triggerRefresh() {
 // ── Export ────────────────────────────────────────────────────────────────────
 // Produces the same format as vol_range_forecast.py format_report()
 function buildExportText(data) {
-  const LINE_WIDTH = 32;
+  const LINE_WIDTH = 29;
 
   function divider(name) {
     const prefix = `──── ${name} `;
@@ -356,7 +356,6 @@ function buildExportText(data) {
 
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     lines.push(divider(name));
-    lines.push('');
     lines.push(`Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`);
     lines.push(
       `High to Low range       : ${f.hl_median.toFixed(2)}% median · ${f.hl_75.toFixed(2)}% 75th Percentile`
