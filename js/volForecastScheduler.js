@@ -20,7 +20,7 @@ import { computeForecast, detectNewsMultiplier } from './volForecast.js';
 
 // ── Instrument definitions ────────────────────────────────────────────────────
 const INSTRUMENTS = [
-  { name: 'GOLD',   ticker: 'GC=F',     assetClass: 'commodity' },
+  { name: 'GOLD',   ticker: 'GLD',      assetClass: 'commodity' },
   { name: 'NQ',     ticker: 'NQ=F',     assetClass: 'index'     },
   { name: 'EURUSD', ticker: 'EURUSD=X', assetClass: 'fx'        },
   { name: 'GBPUSD', ticker: 'GBPUSD=X', assetClass: 'fx'        },
