@@ -42,9 +42,9 @@ Applied to daily **log close-to-close returns**.
 σ_daily = √σ²_t
 σ_annual = σ_daily × √252
 
-α = 0.10   (shock response)
-β = 0.85   (persistence)
-α + β = 0.95  → long-run mean reversion, half-life ≈ 13 sessions
+α = 0.06   (shock response — matches EWMA 1−λ)
+β = 0.91   (persistence — ~23-day half-life, appropriate for daily data)
+α + β = 0.97  → persistent with long-run mean reversion
 ω = per-asset-class (sets long-run variance floor — see table below)
 ```
 
@@ -116,14 +116,14 @@ Applied to all range outputs. Sourced from Finnhub economic calendar
 
 ```js
 // GARCH(1,1)
-G_ALPHA       = 0.10
-G_BETA        = 0.85
+G_ALPHA       = 0.06   // daily-calibrated (vol.js intraday uses 0.10)
+G_BETA        = 0.91   // ~23-day half-life for daily data
 TRADING_DAYS  = 252
 
-// Long-run ω per asset class
-OMEGA_COMMODITY = 1.14e-5   // ~24% annual long-run vol
-OMEGA_INDEX     = 7.94e-6   // ~20% annual long-run vol
-OMEGA_FX        = 1.12e-6   // ~7.5% annual long-run vol
+// Long-run ω per asset class  (ω = (σ_annual/√252)² × (1−α−β), 1−α−β=0.03)
+OMEGA_COMMODITY = 6.86e-6   // ~24% annual long-run vol
+OMEGA_INDEX     = 4.76e-6   // ~20% annual long-run vol
+OMEGA_FX        = 6.70e-7   // ~7.5% annual long-run vol
 
 // BM range percentiles
 BM_RANGE_P50  = 1.572   // HL median multiplier
