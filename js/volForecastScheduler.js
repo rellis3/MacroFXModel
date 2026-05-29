@@ -2,12 +2,16 @@
  * Vol & Range Forecast — server-side scheduler.
  *
  * Responsibilities:
- *   - Fetch 3 years of daily OHLC from Yahoo Finance (v8 chart API)
+ *   - Fetch ~3 years of daily OHLC from Oanda v20 (primary) or Yahoo Finance (fallback)
  *   - Detect high-impact events via Finnhub calendar (if FINNHUB_KEY set)
- *   - Run computeForecast() for GOLD, EURUSD, NQ
+ *   - Run computeForecast() for all 10 instruments
  *   - Persist results to KV: 'vol_forecast_latest' + 'vol_forecast_YYYY-MM-DD'
  *   - Maintain an in-memory cache of the latest + last 5 sessions
  *   - Schedule a daily run at VOL_FORECAST_UTC (default 22:00 UTC, Mon–Fri)
+ *
+ * Data source priority:
+ *   1. Oanda v20 candles API (if OANDA_KEY set) — continuous mid prices, no roll distortion
+ *   2. Yahoo Finance v8 chart API — free fallback
  *
  * Exports:
  *   forecastState      — live in-memory cache { latest, history }
@@ -19,20 +23,23 @@ import * as kv from '../kv.js';
 import { computeForecast, detectNewsMultiplier } from './volForecast.js';
 
 // ── Instrument definitions ────────────────────────────────────────────────────
+// oandaInstrument: Oanda v20 instrument name (primary data source)
+// ticker:          Yahoo Finance ticker (fallback when OANDA_KEY not set)
 const INSTRUMENTS = [
-  { name: 'GOLD',   ticker: 'GC=F',     assetClass: 'commodity' },
-  { name: 'NQ',     ticker: 'NQ=F',     assetClass: 'index'     },
-  { name: 'EURUSD', ticker: 'EURUSD=X', assetClass: 'fx'        },
-  { name: 'GBPUSD', ticker: 'GBPUSD=X', assetClass: 'fx'        },
-  { name: 'USDJPY', ticker: 'USDJPY=X', assetClass: 'fx'        },
-  { name: 'AUDUSD', ticker: 'AUDUSD=X', assetClass: 'fx'        },
-  { name: 'NZDUSD', ticker: 'NZDUSD=X', assetClass: 'fx'        },
-  { name: 'USDCAD', ticker: 'USDCAD=X', assetClass: 'fx'        },
-  { name: 'USDCHF', ticker: 'USDCHF=X', assetClass: 'fx'        },
-  { name: 'GBPJPY', ticker: 'GBPJPY=X', assetClass: 'fx'        },
+  { name: 'GOLD',   oandaInstrument: 'XAU_USD',    ticker: 'GLD',      assetClass: 'commodity' },
+  { name: 'NQ',     oandaInstrument: 'NAS100_USD',  ticker: 'NQ=F',     assetClass: 'index'     },
+  { name: 'EURUSD', oandaInstrument: 'EUR_USD',     ticker: 'EURUSD=X', assetClass: 'fx'        },
+  { name: 'GBPUSD', oandaInstrument: 'GBP_USD',     ticker: 'GBPUSD=X', assetClass: 'fx'        },
+  { name: 'USDJPY', oandaInstrument: 'USD_JPY',     ticker: 'USDJPY=X', assetClass: 'fx'        },
+  { name: 'AUDUSD', oandaInstrument: 'AUD_USD',     ticker: 'AUDUSD=X', assetClass: 'fx'        },
+  { name: 'NZDUSD', oandaInstrument: 'NZD_USD',     ticker: 'NZDUSD=X', assetClass: 'fx'        },
+  { name: 'USDCAD', oandaInstrument: 'USD_CAD',     ticker: 'USDCAD=X', assetClass: 'fx'        },
+  { name: 'USDCHF', oandaInstrument: 'USD_CHF',     ticker: 'USDCHF=X', assetClass: 'fx'        },
+  { name: 'GBPJPY', oandaInstrument: 'GBP_JPY',     ticker: 'GBPJPY=X', assetClass: 'fx'        },
 ];
 
-const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
+const YAHOO_BASE       = 'https://query1.finance.yahoo.com/v8/finance/chart';
+const OANDA_BAR_COUNT  = 800;  // ~3 years of trading days (5000 max per Oanda request)
 
 // Hour (UTC) at which the daily forecast runs. After US session close + buffer.
 const TARGET_HOUR_UTC = parseInt(process.env.VOL_FORECAST_UTC ?? '22');
@@ -61,19 +68,46 @@ function formatSessionLabel(date) {
   return `${dow.toUpperCase()}, ${mon} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
 }
 
-// ── Yahoo Finance fetch ───────────────────────────────────────────────────────
-async function fetchOHLC(ticker) {
+// ── Oanda fetch (primary) ─────────────────────────────────────────────────────
+function _oandaBase() {
+  return (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+}
+
+async function fetchOHLCOanda(instrument) {
+  const url = `${_oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+            + `?granularity=D&count=${OANDA_BAR_COUNT}&price=M`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+    signal:  AbortSignal.timeout(20_000),
+  });
+  if (!res.ok) throw new Error(`Oanda HTTP ${res.status} for ${instrument}`);
+  const data = await res.json();
+  const bars = (data.candles ?? [])
+    .filter(c => c.complete && c.mid)
+    .map(c => ({
+      open:  parseFloat(c.mid.o),
+      high:  parseFloat(c.mid.h),
+      low:   parseFloat(c.mid.l),
+      close: parseFloat(c.mid.c),
+    }))
+    .filter(b => b.close > 0);
+  if (bars.length < 60) throw new Error(`Only ${bars.length} valid bars for ${instrument}`);
+  return bars;
+}
+
+// ── Yahoo Finance fetch (fallback) ────────────────────────────────────────────
+async function fetchOHLCYahoo(ticker) {
   const url = `${YAHOO_BASE}/${encodeURIComponent(ticker)}?range=3y&interval=1d`;
   const res = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0; +https://macrofxmodel.com)' },
     signal:  AbortSignal.timeout(20_000),
   });
   if (!res.ok) throw new Error(`Yahoo HTTP ${res.status} for ${ticker}`);
-
   const data   = await res.json();
   const result = data.chart?.result?.[0];
   if (!result) throw new Error(`No chart data for ${ticker}`);
-
   const ts = result.timestamp ?? [];
   const q  = result.indicators.quote[0];
   const bars = [];
@@ -85,6 +119,12 @@ async function fetchOHLC(ticker) {
   }
   if (bars.length < 60) throw new Error(`Only ${bars.length} valid bars for ${ticker}`);
   return bars;
+}
+
+// Dispatcher: Oanda if key is available, Yahoo otherwise.
+async function fetchOHLC(cfg) {
+  if (process.env.OANDA_KEY) return fetchOHLCOanda(cfg.oandaInstrument);
+  return fetchOHLCYahoo(cfg.ticker);
 }
 
 // ── Finnhub event fetch ───────────────────────────────────────────────────────
@@ -116,16 +156,17 @@ export async function runVolForecast(targetDate) {
 
   const sessionDate  = target.toISOString().split('T')[0];
   const sessionLabel = formatSessionLabel(target);
+  const dataSource   = process.env.OANDA_KEY ? 'oanda' : 'yahoo';
 
   const instruments = {};
   const errors      = [];
 
   for (const cfg of INSTRUMENTS) {
     try {
-      const ohlc = await fetchOHLC(cfg.ticker);
+      const ohlc = await fetchOHLC(cfg);
       const f    = computeForecast(ohlc, cfg.assetClass, newsMult);
       instruments[cfg.name] = f;
-      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%`);
+      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  [${dataSource}]`);
     } catch (err) {
       console.error(`[VOL-FORECAST] ${cfg.name} error: ${err.message}`);
       errors.push({ name: cfg.name, error: err.message });
@@ -139,9 +180,10 @@ export async function runVolForecast(targetDate) {
     computed_at:   new Date().toISOString(),
     instruments,
     meta: {
-      dow_label: DOW_NAMES[utcDow],
-      news_flag: newsLabel,
-      news_mult: newsMult,
+      dow_label:   DOW_NAMES[utcDow],
+      news_flag:   newsLabel,
+      news_mult:   newsMult,
+      data_source: dataSource,
       ...(errors.length ? { errors } : {}),
     },
   };
@@ -160,7 +202,7 @@ export async function runVolForecast(targetDate) {
   forecastState.history = [forecast, ...forecastState.history].slice(0, 5);
 
   const n = Object.keys(instruments).length;
-  console.log(`[VOL-FORECAST] ${sessionLabel}  ${n} instruments  news=${newsLabel ?? '—'}`);
+  console.log(`[VOL-FORECAST] ${sessionLabel}  ${n} instruments  source=${dataSource}  news=${newsLabel ?? '—'}`);
   return forecast;
 }
 
@@ -218,12 +260,12 @@ export async function startVolForecastScheduler() {
 
   if (needsImmediateRun) {
     console.log(`[VOL-FORECAST] No forecast for ${neededDate} — computing on startup …`);
-    // Pass the target date explicitly so we compute for the right session.
     runVolForecast(new Date(neededDate + 'T12:00:00Z'))
       .catch(e => console.error('[VOL-FORECAST] Startup run failed:', e.message));
   }
 
   // Scheduler: check every 5 minutes
   setInterval(_schedulerTick, 5 * 60 * 1000);
-  console.log(`[VOL-FORECAST] Scheduler active — daily run at ${TARGET_HOUR_UTC}:00 UTC`);
+  const src = process.env.OANDA_KEY ? 'oanda' : 'yahoo';
+  console.log(`[VOL-FORECAST] Scheduler active — daily run at ${TARGET_HOUR_UTC}:00 UTC  source=${src}`);
 }

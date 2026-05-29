@@ -50,7 +50,7 @@ EWMA_LAMBDA  = 0.94
 FETCH_DAYS   = 620     # calendar days to fetch
 
 INSTRUMENTS = [
-    {'name': 'GOLD',   'ticker': 'GC=F',     'asset_class': 'commodity'},
+    {'name': 'GOLD',   'ticker': 'GLD',      'asset_class': 'commodity'},
     {'name': 'NQ',     'ticker': 'NQ=F',     'asset_class': 'index'},
     {'name': 'EURUSD', 'ticker': 'EURUSD=X', 'asset_class': 'fx'},
     {'name': 'GBPUSD', 'ticker': 'GBPUSD=X', 'asset_class': 'fx'},
