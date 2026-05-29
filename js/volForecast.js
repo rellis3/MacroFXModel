@@ -2,18 +2,23 @@
  * Vol & Range Forecaster — core math engine (no network, no I/O).
  *
  * Methodology:
- *   σ         : EWMA(λ=0.94) on log close-to-close returns — one-step-ahead daily σ
+ *   σ         : GARCH(1,1) on log close-to-close returns — one-step-ahead daily σ
+ *                 σ²_t = ω + α·r²_{t-1} + β·σ²_{t-1}
+ *                 α=0.10, β=0.85 (α+β=0.95) — same as vol.js live engine
+ *                 ω is per-asset-class, sets the long-run variance floor
+ *                 long-run σ_annual = √(ω / (1−α−β)) × √252
+ *
+ *   Why GARCH over EWMA(λ=0.94)?
+ *     EWMA is GARCH with ω=0 and α+β=1 — no long-run floor, vol drifts down in
+ *     quiet periods and under-estimates structural regimes (e.g. gold's elevated
+ *     2024-2026 vol). GARCH mean-reverts to ω-implied long-run σ, keeping
+ *     estimates grounded even after a calm patch.
+ *
  *   H-L range : Analytical Brownian-motion range distribution percentiles
  *               (BM range median=1.572σ, 75th=2.049σ) with per-asset-class correction
  *   O-C move  : Half-normal distribution percentiles (|N(0,σ)|)
  *               with per-asset-class correction for overnight gap behaviour
  *   News mult : High-impact US event overlay (FOMC, NFP, CPI etc.)
- *
- * Why analytical instead of empirical?
- *   The reference system uses stable ratio multipliers that are very close to the
- *   theoretical BM range distribution. Empirical calibration from GBM simulation
- *   produces inflated 75th pct ratios (~2.39x vs reference 1.83-2.03x).
- *   The analytical approach matches the reference within 0-2.5% on all metrics.
  *
  * Per-asset-class corrections (derived from reference data):
  *   commodity  Futures overnight gaps inflate OC vs half-normal (+16%)
@@ -21,27 +26,33 @@
  *   fx         24h spot trading — fewer gaps, tighter HL 75th (-5 to -10%)
  */
 
-const LAMBDA       = 0.94;
 const TRADING_DAYS = 252;
 
+// ── GARCH(1,1) parameters ─────────────────────────────────────────────────────
+// Matches the live vol.js engine — consistent across the whole dashboard.
+const G_ALPHA = 0.10;   // shock response (weight on last squared return)
+const G_BETA  = 0.85;   // persistence  (weight on previous variance)
+// α + β = 0.95 → long-run mean reversion with half-life ≈ 13 sessions
+
 // ── Analytical BM range distribution constants ────────────────────────────────
-// Percentiles of (H-L)/σ_daily for a standard Brownian motion on [0,T].
-// Derived from BM range theory (Feller 1951; validated by simulation).
 const BM_RANGE_P50 = 1.572;
 const BM_RANGE_P75 = 2.049;
 
-// Percentiles of |O-C|/σ_daily for a half-normal distribution (|N(0,1)|).
+// ── Half-normal O-C percentiles ───────────────────────────────────────────────
 const HN_P50 = 0.6745;
 const HN_P75 = 1.1503;
 
-// ── Per-asset-class correction factors ───────────────────────────────────────
-// hl_75_corr : adjusts the BM 75th pct to match real-market behaviour
-// oc_corr    : adjusts the half-normal O-C to match real-market behaviour
-// Calibrated from reference data (Friday May 29, 2026 + surrounding sessions).
+// ── Per-asset-class parameters ────────────────────────────────────────────────
+// garch_omega : long-run variance floor for GARCH(1,1)
+//   ω = (σ_annual_target / √252)² × (1 − α − β)
+//   commodity → 24 % long-run   ω ≈ 1.14e-5
+//   index     → 20 % long-run   ω ≈ 7.94e-6
+//   fx        → 7.5% long-run   ω ≈ 1.12e-6
+// hl_75_corr / oc_corr calibrated from reference data (May 29, 2026).
 const ASSET_PARAMS = {
-  commodity: { hl_75_corr: 0.989, oc_corr: 1.163 },  // GOLD — futures gaps
-  index:     { hl_75_corr: 0.950, oc_corr: 1.111 },  // NQ   — equity futures
-  fx:        { hl_75_corr: 0.894, oc_corr: 0.948 },  // FX   — 24h spot, fewer gaps
+  commodity: { garch_omega: 1.14e-5, hl_75_corr: 0.989, oc_corr: 1.163 },
+  index:     { garch_omega: 7.94e-6, hl_75_corr: 0.950, oc_corr: 1.111 },
+  fx:        { garch_omega: 1.12e-6, hl_75_corr: 0.894, oc_corr: 0.948 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
@@ -67,22 +78,23 @@ export function detectNewsMultiplier(events = []) {
   return best;
 }
 
-// ── EWMA vol series ───────────────────────────────────────────────────────────
-function ewmaVolSeries(logReturns, lam = LAMBDA) {
-  const n    = logReturns.length;
-  const out  = new Array(n);
-  const seed = logReturns.slice(0, Math.min(20, n));
-  let v = seed.reduce((s, r) => s + r * r, 0) / (seed.length || 1) || 1e-8;
+// ── GARCH(1,1) vol series ─────────────────────────────────────────────────────
+// Initialized at the unconditional (long-run) variance so the seed has no
+// transient effect on the final estimate after the ~100-bar burn-in.
+function garch11VolSeries(logReturns, omega) {
+  const n = logReturns.length;
+  const out = new Array(n);
+  let sigma2 = omega / (1 - G_ALPHA - G_BETA);   // start at long-run variance
   for (let i = 0; i < n; i++) {
-    v = lam * v + (1 - lam) * logReturns[i] ** 2;
-    out[i] = Math.sqrt(v);
+    sigma2 = omega + G_ALPHA * logReturns[i] ** 2 + G_BETA * sigma2;
+    out[i] = Math.sqrt(sigma2);
   }
   return out;
 }
 
 // ── Main forecast ─────────────────────────────────────────────────────────────
 /**
- * @param {Array<{close}>} ohlc        Daily bars, oldest → newest (only close needed for vol)
+ * @param {Array<{close}>} ohlc        Daily bars, oldest → newest
  * @param {string}         assetClass  'commodity' | 'index' | 'fx'
  * @param {number}         newsMult    Output of detectNewsMultiplier()
  * @returns forecast object — all values are percentages
@@ -95,20 +107,21 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
   const logRet = [];
   for (let i = 1; i < n; i++) logRet.push(Math.log(closes[i] / closes[i - 1]));
 
-  // One-step-ahead EWMA σ forecast
-  const sigmaFwd    = ewmaVolSeries(logRet).at(-1);
+  const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
+
+  // One-step-ahead GARCH(1,1) σ forecast
+  const sigmaFwd    = garch11VolSeries(logRet, p.garch_omega).at(-1);
   const sigmaFwdPct = sigmaFwd * 100;
   const volAnnual   = sigmaFwdPct * Math.sqrt(TRADING_DAYS);
 
-  const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
   const r2 = x => Math.round(x * 100) / 100;
 
   return {
     vol_annual: r2(volAnnual),
-    hl_median:  r2(BM_RANGE_P50                   * sigmaFwdPct * newsMult),
-    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr    * sigmaFwdPct * newsMult),
-    oc_median:  r2(HN_P50       * p.oc_corr        * sigmaFwdPct * newsMult),
-    oc_75:      r2(HN_P75       * p.oc_corr        * sigmaFwdPct * newsMult),
+    hl_median:  r2(BM_RANGE_P50                * sigmaFwdPct * newsMult),
+    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * newsMult),
+    oc_median:  r2(HN_P50       * p.oc_corr    * sigmaFwdPct * newsMult),
+    oc_75:      r2(HN_P75       * p.oc_corr    * sigmaFwdPct * newsMult),
     news_mult:  r2(newsMult),
   };
 }
