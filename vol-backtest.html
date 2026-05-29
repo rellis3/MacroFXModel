@@ -327,7 +327,40 @@
     </select>
   </span>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
+  <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--border)" onclick="toggleHelp()" title="Strategy help">?</button>
   <span id="runStatus" class="bt-run-lbl"></span>
+</div>
+
+<!-- ── Strategy help panel ───────────────────────────────────────────────── -->
+<div id="stratHelp" style="display:none;margin:8px 0 0;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;color:var(--txt2)">
+  <strong style="color:var(--txt);font-size:13px">Strategy modes</strong>
+  <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Reversal</div>
+      Waits for price to reach the statistically expected daily range extreme (HL75 — the 75th-percentile of that day's predicted range) then fades back toward the median close (OC_med).
+      Entry is a <em>limit order at the edge</em>. Risk:reward ≈ 0.5–0.7:1, so needs a high fill-to-win rate (~60%+) to be profitable.
+      <div style="margin-top:6px;color:var(--green)">BULL regime → SELL limit at open+HL75, TP at open+OC_med</div>
+      <div style="color:var(--red)">BEAR regime → BUY limit at open−HL75, TP at open−OC_med</div>
+      <div style="color:var(--blue)">RANGE → fade whichever extreme fills first</div>
+    </div>
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Momentum</div>
+      Trades <em>with</em> the regime direction toward HL75 rather than against it. Entry near the open (or on a small pullback), TP at the HL75 extreme, SL at OC_med in the opposite direction.
+      Risk:reward ≈ 2.5–3:1 (HL75 ÷ OC_med), so break-even win rate is only ~25–30%. Profits if the regime signal correctly predicts the day's dominant direction. Skips RANGE days (no clear directional signal).
+      <div style="margin-top:6px"><strong>Pullback</strong> — how far price must retrace before entry (0 = fill at open, ×0.5 = wait for half an OC_med dip). Higher pullback = tighter SL but fewer fills.</div>
+      <div><strong>Mo-SL</strong> — stop loss size as a multiple of OC_med beyond the open.</div>
+    </div>
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Both</div>
+      Runs both legs simultaneously on every day. Produces two rows per day in the results — one labelled <code>reversal</code>, one <code>momentum</code>. The headline KPIs aggregate both legs together.
+      Useful for seeing whether the strategies are complementary: momentum tends to win on clean trending days (when reversal fails), and reversal wins on range-extension days (when momentum overshoots its target).
+      <div style="margin-top:6px">Use the <strong>Leg</strong> filter in the trade log to isolate each leg's performance.</div>
+    </div>
+  </div>
+  <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+    <strong style="color:var(--txt)">SL ×</strong> — reversal stop loss as a multiple of HL75 beyond the entry level (default ×1.5). Wider SL survives more intraday noise but increases loss size.
+    &nbsp;|&nbsp; <strong style="color:var(--txt)">M1 simulation</strong> — when M1 parquet files are present in <code>data/m1/</code>, each day's fill/TP/SL sequence is resolved by walking 1-minute bars, eliminating the D1 high/low ordering ambiguity entirely.
+  </div>
 </div>
 
 <!-- ── Status bar ────────────────────────────────────────────────────────── -->
@@ -505,6 +538,11 @@
       <option value="win">Win</option>
       <option value="loss">Loss</option>
       <option value="open">Open (EOD)</option>
+    </select>
+    <select class="bt-sel" id="fLeg" onchange="filterTrades()">
+      <option value="">All legs</option>
+      <option value="reversal">Reversal</option>
+      <option value="momentum">Momentum</option>
     </select>
     <button class="dark-btn" onclick="clearFilters()">Clear</button>
   </div>
@@ -854,10 +892,12 @@ function filterTrades() {
   const pair    = document.getElementById('fPair').value;
   const regime  = document.getElementById('fRegime').value;
   const outcome = document.getElementById('fOutcome').value;
+  const leg     = document.getElementById('fLeg').value;
   _filtTrades = _allTrades.filter(r =>
     (!pair    || r.instrument === pair) &&
     (!regime  || r.regime === regime)   &&
-    (!outcome || r.outcome === outcome)
+    (!outcome || r.outcome === outcome) &&
+    (!leg     || r.leg === leg)
   );
   _page = 0;
   renderTradePage();
@@ -867,6 +907,7 @@ function clearFilters() {
   document.getElementById('fPair').value    = '';
   document.getElementById('fRegime').value  = '';
   document.getElementById('fOutcome').value = '';
+  document.getElementById('fLeg').value     = '';
   filterTrades();
 }
 
@@ -899,6 +940,11 @@ function renderTradePage() {
       ${r.pnl_pct >= 0 ? '+' : ''}${r.pnl_pct?.toFixed(4)}%
     </td>
   </tr>`).join('');
+}
+
+function toggleHelp() {
+  const el = document.getElementById('stratHelp');
+  el.style.display = el.style.display === 'none' ? '' : 'none';
 }
 
 function toggleMomentumOpts() {

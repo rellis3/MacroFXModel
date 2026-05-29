@@ -1579,13 +1579,14 @@ app.post('/api/vol-backtest/run', async (req, res) => {
 
   const instFilter   = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : undefined;
   const m1Status     = _m1CacheStatus();
-  const useM1        = m1Status.cached > 0;
-  const engineLabel  = useM1 ? `M1 engine (${m1Status.cached} pairs cached)` : 'D1 engine (Oanda API)';
+  const engineLabel  = m1Status.cached > 0
+    ? `M1 engine (${m1Status.cached} pairs cached)`
+    : `D1 engine (Oanda API) · strategy: ${strategy}`;
 
   try {
-    const { trades, log } = useM1
-      ? await runFullM1Backtest(opts, instFilter ?? BT_INSTRUMENTS)
-      : await runFullBacktest(opts, instFilter ?? BT_INSTRUMENTS);
+    // Always use runFullM1Backtest — it handles the strategy param and D1 fallback
+    // when M1 parquets are not cached. runFullBacktest ignores strategy entirely.
+    const { trades, log } = await runFullM1Backtest(opts, instFilter ?? BT_INSTRUMENTS);
 
     if (!trades.length) {
       return res.status(500).json({ ok: false, error: 'No trades generated', log });
