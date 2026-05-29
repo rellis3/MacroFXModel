@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vol Range Backtester</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+#btApp { padding: 0 20px 40px; max-width: 1340px; margin: 0 auto; }
+
+/* ── KPI grid ─────────────────────────────────────────────────────────────── */
+.bt-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+@media (max-width: 900px) { .bt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.bt-kpi {
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rl);
+  padding: 16px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color .2s;
+}
+.bt-kpi:hover { border-color: var(--border2); }
+.bt-kpi-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+}
+.bt-kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  line-height: 1.1;
+}
+.bt-kpi-value.green { color: var(--green); }
+.bt-kpi-value.red   { color: var(--red);   }
+.bt-kpi-value.blue  { color: var(--blue);  }
+.bt-kpi-value.amber { color: var(--amber); }
+.bt-kpi-sub {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── Secondary stat row ───────────────────────────────────────────────────── */
+.bt-sec-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+@media (max-width: 900px) { .bt-sec-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.bt-sec {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.bt-sec-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bt-sec-val { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
+
+/* ── Card wrapper ─────────────────────────────────────────────────────────── */
+.bt-card {
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rl);
+  overflow: hidden;
+  margin-top: 14px;
+}
+.bt-card-hdr {
+  padding: 12px 18px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text2);
+  font-family: 'DM Mono', monospace;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bt-card-hdr .tabs { display: flex; gap: 4px; margin-left: auto; }
+.bt-card-body { padding: 18px; }
+
+/* ── Chart ────────────────────────────────────────────────────────────────── */
+.bt-chart-wrap { position: relative; height: 280px; }
+
+/* ── Two-column layout ────────────────────────────────────────────────────── */
+.bt-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+@media (max-width: 900px) { .bt-two-col { grid-template-columns: 1fr; } }
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+.bt-tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+.bt-tbl th {
+  padding: 7px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.bt-tbl td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+.bt-tbl tr:last-child td { border-bottom: none; }
+.bt-tbl tr:hover td { background: var(--s2); }
+.bt-tbl td.num { text-align: right; }
+.bt-tbl td.pos { color: var(--green); }
+.bt-tbl td.neg { color: var(--red); }
+.bt-tbl td.neu { color: var(--text2); }
+
+/* ── Outcome badge ────────────────────────────────────────────────────────── */
+.bt-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  border: 1px solid;
+}
+.bt-badge.win   { color: var(--green); background: var(--green-bg); border-color: var(--green-bd); }
+.bt-badge.loss  { color: var(--red);   background: var(--red-bg);   border-color: var(--red-bd);   }
+.bt-badge.open  { color: var(--amber); background: var(--amber-bg); border-color: var(--amber-bd); }
+
+/* ── Regime chip ──────────────────────────────────────────────────────────── */
+.rg { display:inline-block;padding:2px 7px;border-radius:9px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;border:1px solid; }
+.rg.bull { color:var(--green);background:var(--green-bg);border-color:var(--green-bd); }
+.rg.bear { color:var(--red);  background:var(--red-bg);  border-color:var(--red-bd);   }
+.rg.range{ color:var(--blue); background:var(--blue-bg); border-color:var(--blue-bd);  }
+
+/* ── Filter bar ───────────────────────────────────────────────────────────── */
+.bt-filters {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.bt-sel {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.bt-sel:focus { outline: none; border-color: var(--blue); }
+.bt-filter-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* ── Pagination ───────────────────────────────────────────────────────────── */
+.bt-pg {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  border-top: 1px solid var(--border);
+}
+.bt-pg button {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text2);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.bt-pg button:hover { border-color: var(--blue); color: var(--blue); }
+.bt-pg button:disabled { opacity: .35; cursor: default; }
+
+/* ── Run panel ────────────────────────────────────────────────────────────── */
+.bt-run-bar {
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 16px;
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.bt-run-bar input, .bt-run-bar select {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 5px 10px;
+}
+.bt-run-btn {
+  background: var(--green);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 18px;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.bt-run-btn:hover { opacity: .85; }
+.bt-run-btn:disabled { opacity: .5; cursor: wait; }
+.bt-run-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* ── Mini bar chart for regime dist ──────────────────────────────────────── */
+.rg-dist { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 14px 18px; }
+.rg-dist-item { display: flex; flex-direction: column; gap: 4px; }
+.rg-dist-bar-track { width: 100px; height: 6px; background: var(--s2); border-radius: 3px; overflow: hidden; }
+.rg-dist-fill { height: 100%; border-radius: 3px; }
+.rg-dist-fill.bull { background: var(--green); }
+.rg-dist-fill.bear { background: var(--red); }
+.rg-dist-fill.range { background: var(--blue); }
+.rg-dist-label { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); }
+
+/* ── Scrollable table area ────────────────────────────────────────────────── */
+.bt-tbl-scroll { overflow-x: auto; max-height: 400px; overflow-y: auto; }
+
+/* ── Monthly heatmap ──────────────────────────────────────────────────────── */
+.hm-grid { display: flex; flex-wrap: wrap; gap: 4px; padding: 14px 18px; }
+.hm-cell {
+  width: 54px; height: 40px;
+  border-radius: 5px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  border: 1px solid var(--border);
+  cursor: default;
+}
+.hm-cell .hm-month { color: var(--text3); }
+.hm-cell .hm-val   { font-size: 11px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="sticky-header">
+<div id="btApp">
+
+<!-- ── Top bar ─────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14 L8 2 L14 14" stroke="white" stroke-width="2" stroke-linejoin="round" fill="none"/><path d="M4.5 9.5 h7" stroke="white" stroke-width="1.5"/></svg></div>
+  <div class="title-block">
+    <div class="title" style="font-size:15px;font-weight:700;">Vol & Range Backtester</div>
+    <div class="sub">Walk-forward · EWMA vol · EMA regime · Fade HL75 → OC median</div>
+  </div>
+  <div style="flex:1"></div>
+  <span class="upd" id="btComputedAt"></span>
+  <a href="vol-forecast.html" style="text-decoration:none"><button class="dark-btn" style="border-color:var(--blue);color:var(--blue)">📐 Vol Forecast</button></a>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+</div>
+
+</div>
+</div>
+
+<div id="btApp" style="padding-top:0">
+
+<!-- ── Run bar ──────────────────────────────────────────────────────────────── -->
+<div class="bt-run-bar" id="runBar">
+  <span class="bt-run-lbl">Run Backtest:</span>
+  <input type="date" id="runFrom" placeholder="From" style="width:130px">
+  <input type="date" id="runTo" placeholder="To" style="width:130px">
+  <select id="runPair" class="bt-sel">
+    <option value="">All pairs</option>
+    <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+    <option>AUDUSD</option><option>NZDUSD</option><option>USDCAD</option>
+    <option>USDCHF</option><option>GBPJPY</option>
+  </select>
+  <select id="runSl" class="bt-sel">
+    <option value="1.5">SL ×1.5</option>
+    <option value="1.0">SL ×1.0</option>
+    <option value="2.0">SL ×2.0</option>
+    <option value="2.5">SL ×2.5</option>
+  </select>
+  <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
+  <span id="runStatus" class="bt-run-lbl"></span>
+</div>
+
+<!-- ── Status bar ────────────────────────────────────────────────────────── -->
+<div class="status-bar" id="btStatus" style="margin-top:10px">
+  <div class="sdot spin" id="btDot"></div>
+  <span class="stxt" id="btMsg">Loading backtest results…</span>
+</div>
+
+<!-- ── Primary KPIs ──────────────────────────────────────────────────────── -->
+<div class="bt-kpi-grid" id="kpiGrid" style="display:none">
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Win Rate</div>
+    <div class="bt-kpi-value green" id="kWin">—</div>
+    <div class="bt-kpi-sub" id="kWinSub">of filled trades</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Sharpe Ratio</div>
+    <div class="bt-kpi-value blue" id="kSharpe">—</div>
+    <div class="bt-kpi-sub">annualised</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">CAGR</div>
+    <div class="bt-kpi-value green" id="kCagr">—</div>
+    <div class="bt-kpi-sub" id="kCagrSub">compound annual return</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Profit Factor</div>
+    <div class="bt-kpi-value blue" id="kPf">—</div>
+    <div class="bt-kpi-sub">gross win / gross loss</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Max Drawdown</div>
+    <div class="bt-kpi-value red" id="kMaxDd">—</div>
+    <div class="bt-kpi-sub">cumulative peak→trough</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Sortino Ratio</div>
+    <div class="bt-kpi-value blue" id="kSortino">—</div>
+    <div class="bt-kpi-sub">downside-adjusted</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Calmar Ratio</div>
+    <div class="bt-kpi-value amber" id="kCalmar">—</div>
+    <div class="bt-kpi-sub">ann. return / max DD</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Reward : Risk</div>
+    <div class="bt-kpi-value amber" id="kRr">—</div>
+    <div class="bt-kpi-sub">avg win / avg loss</div>
+  </div>
+</div>
+
+<!-- ── Secondary stats ───────────────────────────────────────────────────── -->
+<div class="bt-sec-grid" id="secGrid" style="display:none">
+  <div class="bt-sec">
+    <span class="bt-sec-lbl">Total Filled Trades</span>
+    <span class="bt-sec-val" id="sTotalFilled">—</span>
+  </div>
+  <div class="bt-sec">
+    <span class="bt-sec-lbl">Fill Rate</span>
+    <span class="bt-sec-val" id="sFillRate">—</span>
+  </div>
+  <div class="bt-sec">
+    <span class="bt-sec-lbl">Total P&amp;L %</span>
+    <span class="bt-sec-val" id="sTotalPnl">—</span>
+  </div>
+  <div class="bt-sec">
+    <span class="bt-sec-lbl">Expectancy / trade</span>
+    <span class="bt-sec-val" id="sExpect">—</span>
+  </div>
+  <div class="bt-sec">
+    <span class="bt-sec-lbl">Avg Win</span>
+    <span class="bt-sec-val" id="sAvgWin">—</span>
+  </div>
+  <div class="bt-sec">
+    <span class="bt-sec-lbl">Avg Loss</span>
+    <span class="bt-sec-val" id="sAvgLoss">—</span>
+  </div>
+  <div class="bt-sec">
+    <span class="bt-sec-lbl">Max Consec. Wins</span>
+    <span class="bt-sec-val" id="sMaxCW">—</span>
+  </div>
+  <div class="bt-sec">
+    <span class="bt-sec-lbl">Max Consec. Losses</span>
+    <span class="bt-sec-val" id="sMaxCL">—</span>
+  </div>
+</div>
+
+<!-- ── Equity curve ───────────────────────────────────────────────────────── -->
+<div class="bt-card" id="eqCard" style="display:none">
+  <div class="bt-card-hdr">
+    Cumulative P&amp;L  (% of price, all instruments combined)
+    <div class="tabs" id="eqTabs">
+      <button class="ptab active" onclick="switchEq('combined',this)">Combined</button>
+      <button class="ptab" onclick="switchEq('instruments',this)">Per Instrument</button>
+    </div>
+  </div>
+  <div class="bt-card-body">
+    <div class="bt-chart-wrap"><canvas id="eqChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ── Monthly P&L heatmap ────────────────────────────────────────────────── -->
+<div class="bt-card" id="hmCard" style="display:none">
+  <div class="bt-card-hdr">Monthly P&amp;L % (all instruments)</div>
+  <div class="hm-grid" id="hmGrid"></div>
+</div>
+
+<!-- ── Per-instrument & regime tables ─────────────────────────────────────── -->
+<div class="bt-two-col" id="twoCol" style="display:none">
+
+  <!-- Per instrument -->
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Per Instrument</div>
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="instTbl">
+        <thead><tr>
+          <th>Pair</th><th class="num">Win%</th><th class="num">Fills</th>
+          <th class="num">Sharpe</th><th class="num">PF</th>
+          <th class="num">CAGR%</th><th class="num">MaxDD%</th>
+        </tr></thead>
+        <tbody id="instTblBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Per regime -->
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Per Regime</div>
+    <!-- Regime distribution mini bars -->
+    <div class="rg-dist" id="rgDist"></div>
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="rgTbl">
+        <thead><tr>
+          <th>Regime</th><th class="num">Win%</th><th class="num">Fills</th>
+          <th class="num">Fill%</th><th class="num">Avg P&amp;L</th>
+          <th class="num">Sharpe</th><th class="num">PF</th>
+        </tr></thead>
+        <tbody id="rgTblBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Win/Loss chart ─────────────────────────────────────────────────────── -->
+<div class="bt-two-col" id="twoCol2" style="display:none">
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Outcome Distribution</div>
+    <div class="bt-card-body">
+      <div class="bt-chart-wrap" style="height:220px"><canvas id="pieChart"></canvas></div>
+    </div>
+  </div>
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Win Rate by Regime × Instrument</div>
+    <div class="bt-card-body">
+      <div class="bt-chart-wrap" style="height:220px"><canvas id="regimeChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Trade log ──────────────────────────────────────────────────────────── -->
+<div class="bt-card" id="tradeCard" style="display:none">
+  <div class="bt-card-hdr">Trade Log  <span id="tradeCount" style="color:var(--text3);font-weight:400"></span></div>
+  <div class="bt-filters">
+    <span class="bt-filter-lbl">Filter:</span>
+    <select class="bt-sel" id="fPair" onchange="filterTrades()">
+      <option value="">All pairs</option>
+    </select>
+    <select class="bt-sel" id="fRegime" onchange="filterTrades()">
+      <option value="">All regimes</option>
+      <option>BULL</option><option>BEAR</option><option>RANGE</option>
+    </select>
+    <select class="bt-sel" id="fOutcome" onchange="filterTrades()">
+      <option value="">All outcomes</option>
+      <option value="win">Win</option>
+      <option value="loss">Loss</option>
+      <option value="open">Open (EOD)</option>
+    </select>
+    <button class="dark-btn" onclick="clearFilters()">Clear</button>
+  </div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl">
+      <thead><tr>
+        <th>Date</th><th>Pair</th><th>Regime</th><th>Side</th>
+        <th class="num">HL75%</th><th class="num">OC Med%</th>
+        <th class="num">Open</th><th>Outcome</th><th class="num">P&amp;L%</th>
+      </tr></thead>
+      <tbody id="tradeTblBody"></tbody>
+    </table>
+  </div>
+  <div class="bt-pg">
+    <button id="pgPrev" onclick="changePage(-1)" disabled>‹ Prev</button>
+    <span id="pgInfo">Page 1</span>
+    <button id="pgNext" onclick="changePage(1)">Next ›</button>
+    <span style="flex:1"></span>
+    <span id="pgTotal"></span>
+  </div>
+</div>
+
+</div><!-- #btApp -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let _data       = null;
+let _allTrades  = [];
+let _filtTrades = [];
+let _page       = 0;
+const PAGE_SIZE = 50;
+
+let _eqChart     = null;
+let _pieChart    = null;
+let _regChart    = null;
+let _eqMode      = 'combined';
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+const fmt  = (v, d=2) => v == null ? '—' : (typeof v === 'number' ? v.toFixed(d) : v);
+const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+const fmtSign = v => v >= 0 ? 'pos' : 'neg';
+
+function rgClass(rg) {
+  return rg === 'BULL' ? 'bull' : rg === 'BEAR' ? 'bear' : 'range';
+}
+
+function setKpi(id, val, suffix='') {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val + suffix;
+}
+
+// ── Load data ──────────────────────────────────────────────────────────────────
+async function loadData() {
+  setStatus('spin', 'Loading backtest results…');
+  try {
+    const r = await fetch('/api/vol-backtest');
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({ error: r.statusText }));
+      setStatus('err', e.error || 'Failed to load. Run the backtester first.');
+      return;
+    }
+    _data = await r.json();
+    renderAll(_data);
+    setStatus('ok', `Loaded · ${_data.totalTrades.toLocaleString()} trades · file: ${_data.file}`);
+    document.getElementById('btComputedAt').textContent =
+      'computed ' + new Date(_data.computedAt).toLocaleString();
+  } catch (e) {
+    setStatus('err', 'Error: ' + e.message);
+  }
+}
+
+function setStatus(type, msg) {
+  const dot = document.getElementById('btDot');
+  const txt = document.getElementById('btMsg');
+  dot.className = 'sdot ' + type;
+  txt.textContent = msg;
+}
+
+// ── Render all ────────────────────────────────────────────────────────────────
+function renderAll(data) {
+  renderKpis(data.overall);
+  renderSecondary(data.overall);
+  renderEquityCurve(data);
+  renderMonthlyHeatmap(data.monthlyPnl);
+  renderInstTable(data.byInstrument);
+  renderRegimeTable(data.byRegime, data.regimeDist);
+  renderCharts(data);
+  initTradelog(data.recentTrades, data.instruments);
+
+  ['kpiGrid','secGrid','eqCard','hmCard','twoCol','twoCol2','tradeCard'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = '';
+  });
+}
+
+function renderKpis(s) {
+  setKpi('kWin',    s.winRate,  '%');
+  setKpi('kWinSub', `${s.nWins} wins / ${s.nFilled} fills (${s.fillRate}% fill rate)`);
+  setKpi('kSharpe', fmt(s.sharpe));
+  setKpi('kCagr',   fmt(s.cagr), '%');
+  setKpi('kCagrSub', `over ${s.years} years`);
+  setKpi('kPf',     s.profitFactor >= 99 ? '∞' : fmt(s.profitFactor));
+  setKpi('kMaxDd',  fmt(s.maxDd), '%');
+  setKpi('kSortino',fmt(s.sortino));
+  setKpi('kCalmar', fmt(s.calmar));
+  setKpi('kRr',     fmt(s.rr));
+}
+
+function renderSecondary(s) {
+  setKpi('sTotalFilled', s.nFilled.toLocaleString());
+  setKpi('sFillRate',    s.fillRate + '%');
+  setKpi('sTotalPnl',    (s.totalPnl >= 0 ? '+' : '') + s.totalPnl.toFixed(2) + '%');
+  setKpi('sExpect',      (s.expectancy >= 0 ? '+' : '') + s.expectancy.toFixed(4) + '%');
+  setKpi('sAvgWin',      '+' + s.avgWin.toFixed(4) + '%');
+  setKpi('sAvgLoss',     s.avgLoss.toFixed(4) + '%');
+  setKpi('sMaxCW',       s.maxConsecWins);
+  setKpi('sMaxCL',       s.maxConsecLosses);
+}
+
+// ── Equity curve chart ────────────────────────────────────────────────────────
+function renderEquityCurve(data) {
+  const ctx = document.getElementById('eqChart').getContext('2d');
+  if (_eqChart) _eqChart.destroy();
+
+  const isDark = document.documentElement.classList.contains('dark') ||
+    window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridCol = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+  const textCol = isDark ? '#5a6380' : '#8fa0b8';
+
+  if (_eqMode === 'combined') {
+    const pts = data.equityCurve;
+    _eqChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: pts.map(p => p.date),
+        datasets: [{
+          label: 'Combined P&L %',
+          data: pts.map(p => p.pnl),
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16,185,129,0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          borderWidth: 2,
+        }]
+      },
+      options: _chartOpts(gridCol, textCol, 'Cumulative P&L %')
+    });
+  } else {
+    const COLORS = ['#4f7df0','#10b981','#fbbf24','#f87171','#a78bfa','#34d399','#fb923c','#60a5fa'];
+    const datasets = Object.entries(data.instEquity).map(([inst, pts], i) => ({
+      label: inst,
+      data: pts.map(p => ({ x: p.date, y: p.pnl })),
+      borderColor: COLORS[i % COLORS.length],
+      backgroundColor: 'transparent',
+      tension: 0.3,
+      pointRadius: 0,
+      borderWidth: 1.5,
+    }));
+    _eqChart = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      options: { ..._chartOpts(gridCol, textCol, 'P&L %'), parsing: false }
+    });
+  }
+}
+
+function _chartOpts(gridCol, textCol, yLabel) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: _eqMode === 'instruments',
+        labels: { color: textCol, font: { family: 'DM Mono', size: 11 }, boxWidth: 12 } },
+      tooltip: { callbacks: {
+        label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}%`
+      }}
+    },
+    scales: {
+      x: { ticks: { color: textCol, font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 10 },
+           grid: { color: gridCol } },
+      y: { ticks: { color: textCol, font: { family: 'DM Mono', size: 10 },
+                    callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' },
+           grid: { color: gridCol }, title: { display: false } }
+    }
+  };
+}
+
+function switchEq(mode, btn) {
+  _eqMode = mode;
+  document.querySelectorAll('#eqTabs .ptab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEquityCurve(_data);
+}
+
+// ── Monthly heatmap ───────────────────────────────────────────────────────────
+function renderMonthlyHeatmap(monthly) {
+  const grid = document.getElementById('hmGrid');
+  if (!monthly?.length) { grid.textContent = 'No data'; return; }
+  const vals = monthly.map(m => m.pnl);
+  const maxAbs = Math.max(...vals.map(Math.abs), 0.01);
+  grid.innerHTML = monthly.map(({ month, pnl }) => {
+    const pct = pnl / maxAbs;
+    const alpha = Math.min(0.85, Math.abs(pct) * 0.85 + 0.05);
+    const bg = pct >= 0
+      ? `rgba(16,185,129,${alpha})`
+      : `rgba(248,113,113,${alpha})`;
+    const txtColor = Math.abs(pct) > 0.5 ? '#fff' : (pnl >= 0 ? 'var(--green)' : 'var(--red)');
+    return `<div class="hm-cell" style="background:${bg}" title="${month}: ${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%">
+      <span class="hm-month" style="color:${txtColor};opacity:.7">${month.slice(2)}</span>
+      <span class="hm-val"   style="color:${txtColor}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(1)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Per-instrument table ──────────────────────────────────────────────────────
+function renderInstTable(byInstrument) {
+  const body = document.getElementById('instTblBody');
+  body.innerHTML = Object.entries(byInstrument)
+    .sort((a, b) => b[1].winRate - a[1].winRate)
+    .map(([inst, s]) => `<tr>
+      <td><b>${inst}</b></td>
+      <td class="num ${s.winRate >= 70 ? 'pos' : s.winRate < 60 ? 'neg' : 'neu'}">${s.winRate}%</td>
+      <td class="num">${s.nFilled}</td>
+      <td class="num ${s.sharpe >= 8 ? 'pos' : 'neu'}">${fmt(s.sharpe)}</td>
+      <td class="num pos">${s.profitFactor >= 99 ? '∞' : fmt(s.profitFactor)}</td>
+      <td class="num ${s.cagr >= 0 ? 'pos' : 'neg'}">${fmt(s.cagr)}%</td>
+      <td class="num neg">${fmt(s.maxDd)}%</td>
+    </tr>`).join('');
+}
+
+// ── Per-regime table & dist bars ──────────────────────────────────────────────
+function renderRegimeTable(byRegime, regimeDist) {
+  const dist = document.getElementById('rgDist');
+  dist.innerHTML = ['BULL','BEAR','RANGE'].map(rg => {
+    const pct = regimeDist[rg] || 0;
+    return `<div class="rg-dist-item">
+      <div class="rg-dist-label"><span class="rg ${rgClass(rg)}">${rg}</span> ${pct}%</div>
+      <div class="rg-dist-bar-track"><div class="rg-dist-fill ${rgClass(rg)}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+
+  const body = document.getElementById('rgTblBody');
+  body.innerHTML = ['BULL','BEAR','RANGE'].map(rg => {
+    const s = byRegime[rg];
+    if (!s || !s.nFilled) return '';
+    return `<tr>
+      <td><span class="rg ${rgClass(rg)}">${rg}</span></td>
+      <td class="num ${s.winRate >= 70 ? 'pos' : 'neu'}">${s.winRate}%</td>
+      <td class="num">${s.nFilled}</td>
+      <td class="num">${s.fillRate}%</td>
+      <td class="num ${s.avgPnl >= 0 ? 'pos' : 'neg'}">${fmtPct(s.avgPnl)}</td>
+      <td class="num ${s.sharpe >= 8 ? 'pos' : 'neu'}">${fmt(s.sharpe)}</td>
+      <td class="num pos">${s.profitFactor >= 99 ? '∞' : fmt(s.profitFactor)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Pie + regime bar charts ────────────────────────────────────────────────────
+function renderCharts(data) {
+  const s    = data.overall;
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const textCol = isDark ? '#5a6380' : '#8fa0b8';
+
+  // Pie: Win / Loss / Open EOD
+  const pieCtx = document.getElementById('pieChart').getContext('2d');
+  if (_pieChart) _pieChart.destroy();
+  _pieChart = new Chart(pieCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Win', 'Loss', 'Open (EOD)'],
+      datasets: [{
+        data: [s.nWins, s.nLosses, s.nOpenEod],
+        backgroundColor: ['rgba(16,185,129,0.8)','rgba(248,113,113,0.8)','rgba(251,191,36,0.8)'],
+        borderColor: ['#10b981','#f87171','#fbbf24'],
+        borderWidth: 1.5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: textCol, font: { family: 'DM Mono', size: 11 }, boxWidth: 12, padding: 14 } },
+        tooltip: { callbacks: {
+          label: ctx => ` ${ctx.label}: ${ctx.raw} (${(ctx.raw / s.nFilled * 100).toFixed(1)}%)`
+        }}
+      }
+    }
+  });
+
+  // Bar: win rate per regime per instrument
+  const rgCtx = document.getElementById('regimeChart').getContext('2d');
+  if (_regChart) _regChart.destroy();
+  const insts = data.instruments;
+  const gridCol = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+
+  const winRateByRg = (rg) => insts.map(inst => {
+    const t = (data.byInstrument[inst] || {});
+    // Compute per-regime win rate from recentTrades
+    const rt = _data.recentTrades || [];
+    const sub = rt.filter(r => r.instrument === inst && r.regime === rg);
+    if (!sub.length) return null;
+    return +(sub.filter(r => r.outcome === 'win').length / sub.length * 100).toFixed(1);
+  });
+
+  _regChart = new Chart(rgCtx, {
+    type: 'bar',
+    data: {
+      labels: insts,
+      datasets: [
+        { label: 'BULL',  data: winRateByRg('BULL'),  backgroundColor: 'rgba(16,185,129,0.75)',  borderColor: '#10b981', borderWidth: 1 },
+        { label: 'BEAR',  data: winRateByRg('BEAR'),  backgroundColor: 'rgba(248,113,113,0.75)', borderColor: '#f87171', borderWidth: 1 },
+        { label: 'RANGE', data: winRateByRg('RANGE'), backgroundColor: 'rgba(79,125,240,0.75)',  borderColor: '#4f7df0', borderWidth: 1 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: textCol, font: { family: 'DM Mono', size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw ?? '—'}%` } }
+      },
+      scales: {
+        x: { ticks: { color: textCol, font: { family: 'DM Mono', size: 10 } }, grid: { color: gridCol } },
+        y: { ticks: { color: textCol, font: { family: 'DM Mono', size: 10 }, callback: v => v + '%' },
+             grid: { color: gridCol }, min: 40, max: 100 }
+      }
+    }
+  });
+}
+
+// ── Trade log ──────────────────────────────────────────────────────────────────
+function initTradelog(trades, instruments) {
+  _allTrades  = trades;
+  _filtTrades = trades;
+
+  const sel = document.getElementById('fPair');
+  instruments.forEach(inst => {
+    const opt = document.createElement('option');
+    opt.value = inst; opt.textContent = inst;
+    sel.appendChild(opt);
+  });
+  document.getElementById('tradeCount').textContent =
+    `(${trades.length.toLocaleString()} shown)`;
+  renderTradePage();
+}
+
+function filterTrades() {
+  const pair    = document.getElementById('fPair').value;
+  const regime  = document.getElementById('fRegime').value;
+  const outcome = document.getElementById('fOutcome').value;
+  _filtTrades = _allTrades.filter(r =>
+    (!pair    || r.instrument === pair) &&
+    (!regime  || r.regime === regime)   &&
+    (!outcome || r.outcome === outcome)
+  );
+  _page = 0;
+  renderTradePage();
+}
+
+function clearFilters() {
+  document.getElementById('fPair').value    = '';
+  document.getElementById('fRegime').value  = '';
+  document.getElementById('fOutcome').value = '';
+  filterTrades();
+}
+
+function changePage(delta) {
+  const total = Math.ceil(_filtTrades.length / PAGE_SIZE);
+  _page = Math.max(0, Math.min(_page + delta, total - 1));
+  renderTradePage();
+}
+
+function renderTradePage() {
+  const start = _page * PAGE_SIZE;
+  const slice = _filtTrades.slice(start, start + PAGE_SIZE);
+  const total = Math.ceil(_filtTrades.length / PAGE_SIZE);
+
+  document.getElementById('pgPrev').disabled = _page === 0;
+  document.getElementById('pgNext').disabled = _page >= total - 1;
+  document.getElementById('pgInfo').textContent  = `Page ${_page + 1} of ${total}`;
+  document.getElementById('pgTotal').textContent = `${_filtTrades.length} trades`;
+
+  document.getElementById('tradeTblBody').innerHTML = slice.map(r => `<tr>
+    <td style="color:var(--text2)">${r.date || '—'}</td>
+    <td><b>${r.instrument}</b></td>
+    <td><span class="rg ${rgClass(r.regime)}">${r.regime}</span></td>
+    <td style="color:var(--text2)">${r.side}</td>
+    <td class="num" style="color:var(--amber)">${r.hl_75_pct?.toFixed(3)}%</td>
+    <td class="num" style="color:var(--blue)">${r.oc_med_pct?.toFixed(3)}%</td>
+    <td class="num" style="color:var(--text3);font-size:10px">${r.open}</td>
+    <td><span class="bt-badge ${r.outcome}">${r.outcome.toUpperCase()}</span></td>
+    <td class="num ${r.pnl_pct >= 0 ? 'pos' : 'neg'}" style="font-weight:600">
+      ${r.pnl_pct >= 0 ? '+' : ''}${r.pnl_pct?.toFixed(4)}%
+    </td>
+  </tr>`).join('');
+}
+
+// ── Run backtest ──────────────────────────────────────────────────────────────
+async function runBacktest() {
+  const btn = document.getElementById('runBtn');
+  const st  = document.getElementById('runStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+  st.textContent = 'Running Python backtester — this takes ~15-30s…';
+  setStatus('spin', 'Running backtest…');
+
+  try {
+    const body = {
+      dateFrom: document.getElementById('runFrom').value,
+      dateTo:   document.getElementById('runTo').value,
+      pair:     document.getElementById('runPair').value,
+      slMult:   document.getElementById('runSl').value,
+    };
+    const r = await fetch('/api/vol-backtest/run', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      st.textContent = 'Complete ✓  Reloading results…';
+      setTimeout(loadData, 500);
+    } else {
+      st.textContent = 'Error: ' + (d.error || 'Unknown');
+      setStatus('err', d.error);
+    }
+  } catch (e) {
+    st.textContent = 'Error: ' + e.message;
+    setStatus('err', e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Run';
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
