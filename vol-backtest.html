@@ -309,6 +309,23 @@
     <option value="2.0">SL ×2.0</option>
     <option value="2.5">SL ×2.5</option>
   </select>
+  <select id="runStrategy" class="bt-sel" onchange="toggleMomentumOpts()">
+    <option value="reversal">Reversal</option>
+    <option value="momentum">Momentum</option>
+    <option value="both">Both</option>
+  </select>
+  <span id="momentumOpts" style="display:none">
+    <select id="runMoPb" class="bt-sel" title="Pullback: fraction of OC_med for entry offset">
+      <option value="0">Entry @ open</option>
+      <option value="0.25">Pullback ×0.25</option>
+      <option value="0.5">Pullback ×0.5</option>
+    </select>
+    <select id="runMoSl" class="bt-sel" title="Momentum SL multiplier of OC_med">
+      <option value="1.0">Mo-SL ×1.0</option>
+      <option value="0.75">Mo-SL ×0.75</option>
+      <option value="1.5">Mo-SL ×1.5</option>
+    </select>
+  </span>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <span id="runStatus" class="bt-run-lbl"></span>
 </div>
@@ -884,21 +901,31 @@ function renderTradePage() {
   </tr>`).join('');
 }
 
+function toggleMomentumOpts() {
+  const strategy = document.getElementById('runStrategy').value;
+  document.getElementById('momentumOpts').style.display =
+    strategy === 'reversal' ? 'none' : '';
+}
+
 // ── Run backtest ──────────────────────────────────────────────────────────────
 async function runBacktest() {
-  const btn = document.getElementById('runBtn');
-  const st  = document.getElementById('runStatus');
-  btn.disabled = true;
+  const btn      = document.getElementById('runBtn');
+  const st       = document.getElementById('runStatus');
+  const strategy = document.getElementById('runStrategy').value;
+  btn.disabled    = true;
   btn.textContent = '⏳ Running…';
-  st.textContent = 'Running Python backtester — this takes ~15-30s…';
+  st.textContent  = 'Running backtest — this may take 15-30s…';
   setStatus('spin', 'Running backtest…');
 
   try {
     const body = {
-      dateFrom: document.getElementById('runFrom').value,
-      dateTo:   document.getElementById('runTo').value,
-      pair:     document.getElementById('runPair').value,
-      slMult:   document.getElementById('runSl').value,
+      dateFrom:         document.getElementById('runFrom').value,
+      dateTo:           document.getElementById('runTo').value,
+      pair:             document.getElementById('runPair').value,
+      slMult:           document.getElementById('runSl').value,
+      strategy,
+      momentumPullback: document.getElementById('runMoPb')?.value ?? '0',
+      momentumSlMult:   document.getElementById('runMoSl')?.value ?? '1.0',
     };
     const r = await fetch('/api/vol-backtest/run', {
       method: 'POST',
