@@ -893,8 +893,16 @@ function renderSessionTable(bySession) {
   const body = document.getElementById('sessionTblBody');
   if (!body || !bySession) return;
   const UTC = { Asia: '22–07', London: '07–13', Overlap: '13–16', NY: '16–22', 'N/A': '—' };
-  body.innerHTML = Object.entries(bySession)
-    .filter(([, s]) => s && s.nFilled > 0)
+  const entries = Object.entries(bySession).filter(([, s]) => s && s.nFilled > 0);
+  // If every fill is N/A, M1 parquets weren't loaded — show an explanation instead of a useless table
+  if (entries.length === 1 && entries[0][0] === 'N/A') {
+    body.innerHTML = `<tr><td colspan="6" style="color:var(--txt2);font-size:11px;padding:10px">
+      Session breakdown requires M1 parquet files. Without them the D1 fallback
+      has no intraday fill time — upload M1 parquets to see Asia / London / NY splits.
+    </td></tr>`;
+    return;
+  }
+  body.innerHTML = entries
     .map(([sess, s]) => `<tr>
       <td><b>${sess}</b></td>
       <td style="color:var(--txt2);font-size:10px">${UTC[sess] ?? ''}</td>

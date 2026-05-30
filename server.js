@@ -1560,9 +1560,12 @@ app.get('/api/vol-backtest', (req, res) => {
         .map(s => [s, _btStats(bySession[s])])
     );
 
-    // Recent trades (last 200)
+    // Recent trades (last 200 by date, across all instruments)
+    // CSV rows are ordered by instrument then date, so slice(-200) without
+    // sorting would return only the last instrument processed (NQ).
     const recentTrades = trades
       .filter(t => t.filled)
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
       .slice(-200)
       .reverse()
       .map(r => ({
