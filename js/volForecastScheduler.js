@@ -288,14 +288,22 @@ export async function runVolForecast(targetDate) {
     try {
       let f;
       if (process.env.OANDA_KEY) {
-        const rvSeries = await getDailyRV(cfg);
-        if (rvSeries.length >= 60) {
-          f = computeForecastFromRV(rvSeries, cfg.assetClass, newsMult);
-        } else {
-          // Not enough M15 history yet — fall back to daily OHLC
-          console.warn(`[VOL-FORECAST] ${cfg.name} insufficient RV (${rvSeries.length} days) — using daily bars`);
+        if (cfg.assetClass === 'commodity') {
+          // Gold: Oanda XAU_USD M15 bars have incomplete overnight coverage
+          // (~65-70 bars/day vs theoretical 96), which causes realized variance
+          // to underestimate by ~15-20%. GK-EWMA on daily OHLC is more accurate.
           const ohlc = await fetchOHLCOanda(cfg.oandaInstrument);
           f = computeForecast(ohlc, cfg.assetClass, newsMult);
+        } else {
+          const rvSeries = await getDailyRV(cfg);
+          if (rvSeries.length >= 60) {
+            f = computeForecastFromRV(rvSeries, cfg.assetClass, newsMult);
+          } else {
+            // Not enough M15 history yet — fall back to daily OHLC
+            console.warn(`[VOL-FORECAST] ${cfg.name} insufficient RV (${rvSeries.length} days) — using daily bars`);
+            const ohlc = await fetchOHLCOanda(cfg.oandaInstrument);
+            f = computeForecast(ohlc, cfg.assetClass, newsMult);
+          }
         }
       } else {
         const ohlc = await fetchOHLCYahoo(cfg.ticker);
