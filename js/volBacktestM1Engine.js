@@ -77,7 +77,7 @@ function groupByDate(rows) {
   for (const row of rows) {
     const date = String(row[5]).substring(0, 10);
     if (!byDate.has(date)) byDate.set(date, []);
-    byDate.get(date).push({ open: row[0], high: row[1], low: row[2], close: row[3] });
+    byDate.get(date).push({ time: String(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] });
   }
   return byDate;
 }
@@ -90,29 +90,27 @@ function groupByDate(rows) {
  * P&L expressed as % of the day's open price.
  */
 function walkM1(bars, entryLevel, tpLevel, slLevel, isBuy, open) {
-  let filled = false;
+  let filled = false, fillTime = null;
   for (const bar of bars) {
     if (!filled) {
       if (isBuy ? bar.low <= entryLevel : bar.high >= entryLevel) {
         filled = true;
-        // On the fill bar itself the intra-minute path is unknown — use
-        // the conservative (SL before TP) assumption for this one bar only.
+        fillTime = bar.time ?? null;
         if (isBuy) {
-          if (bar.low  <= slLevel)  return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100) };
-          if (bar.high >= tpLevel)  return { outcome: 'win',  pnlPct:   (tpLevel - entryLevel) / open * 100 };
+          if (bar.low  <= slLevel)  return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100), fillTime };
+          if (bar.high >= tpLevel)  return { outcome: 'win',  pnlPct:   (tpLevel - entryLevel) / open * 100,  fillTime };
         } else {
-          if (bar.high >= slLevel)  return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100) };
-          if (bar.low  <= tpLevel)  return { outcome: 'win',  pnlPct:   (entryLevel - tpLevel) / open * 100 };
+          if (bar.high >= slLevel)  return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100), fillTime };
+          if (bar.low  <= tpLevel)  return { outcome: 'win',  pnlPct:   (entryLevel - tpLevel) / open * 100,  fillTime };
         }
       }
     } else {
-      // Post-fill bars: strictly unambiguous — each bar is a full minute
       if (isBuy) {
-        if (bar.low  <= slLevel)  return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100) };
-        if (bar.high >= tpLevel)  return { outcome: 'win',  pnlPct:   (tpLevel - entryLevel) / open * 100 };
+        if (bar.low  <= slLevel)  return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100), fillTime };
+        if (bar.high >= tpLevel)  return { outcome: 'win',  pnlPct:   (tpLevel - entryLevel) / open * 100,  fillTime };
       } else {
-        if (bar.high >= slLevel)  return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100) };
-        if (bar.low  <= tpLevel)  return { outcome: 'win',  pnlPct:   (entryLevel - tpLevel) / open * 100 };
+        if (bar.high >= slLevel)  return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100), fillTime };
+        if (bar.low  <= tpLevel)  return { outcome: 'win',  pnlPct:   (entryLevel - tpLevel) / open * 100,  fillTime };
       }
     }
   }
@@ -121,7 +119,16 @@ function walkM1(bars, entryLevel, tpLevel, slLevel, isBuy, open) {
   const eodPnl   = isBuy
     ? (eodClose - entryLevel) / open * 100
     : (entryLevel - eodClose) / open * 100;
-  return { outcome: 'open', pnlPct: eodPnl };
+  return { outcome: 'open', pnlPct: eodPnl, fillTime };
+}
+
+function classifySession(isoTime) {
+  if (!isoTime) return 'N/A';
+  const h = parseInt(String(isoTime).substring(11, 13));
+  if (h >= 22 || h < 7)  return 'Asia';
+  if (h >= 7  && h < 13) return 'London';
+  if (h >= 13 && h < 16) return 'Overlap';
+  return 'NY';
 }
 
 // ── Reversal leg (current strategy: fade from HL75 back toward OC_med) ────────
@@ -149,7 +156,7 @@ function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5) {
         result = walkM1(m1Bars.slice(i), sellEntry, open, open + slD, false, open);
         if (!result) {
           const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
-          result = { outcome: 'open', pnlPct: (sellEntry - eod) / open * 100 };
+          result = { outcome: 'open', pnlPct: (sellEntry - eod) / open * 100, fillTime: null };
         }
         break;
       } else if (bar.low <= buyEntry) {
@@ -157,15 +164,15 @@ function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5) {
         result = walkM1(m1Bars.slice(i), buyEntry, open, open - slD, true, open);
         if (!result) {
           const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
-          result = { outcome: 'open', pnlPct: (eod - buyEntry) / open * 100 };
+          result = { outcome: 'open', pnlPct: (eod - buyEntry) / open * 100, fillTime: null };
         }
         break;
       }
     }
   }
 
-  if (!result) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'reversal' };
-  return { filled: true, side, ...result, pnlPct: +result.pnlPct.toFixed(5), leg: 'reversal' };
+  if (!result) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'reversal', fillTime: null };
+  return { filled: true, side, ...result, pnlPct: +result.pnlPct.toFixed(5), leg: 'reversal', fillTime: result.fillTime ?? null };
 }
 
 // ── Momentum leg (optional): trade WITH regime toward HL75 ────────────────────
@@ -191,8 +198,8 @@ function simulateMomentumM1(m1Bars, open, hl75pct, ocMedPct, regime, opts = {}) 
   const slLevel    = isBull ? open - momentumSlMult * oc   : open + momentumSlMult * oc;
 
   const result = walkM1(m1Bars, entryLevel, tpLevel, slLevel, isBull, open);
-  if (!result) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum' };
-  return { filled: true, side, ...result, pnlPct: +result.pnlPct.toFixed(5), leg: 'momentum' };
+  if (!result) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum', fillTime: null };
+  return { filled: true, side, ...result, pnlPct: +result.pnlPct.toFixed(5), leg: 'momentum', fillTime: result.fillTime ?? null };
 }
 
 // ── Walk-forward engine (M1 sim + D1 vol/regime) ──────────────────────────────
@@ -203,6 +210,7 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     slMult = 1.5, slopeThresh = 0.002,
     strategy = 'reversal',                  // 'reversal' | 'momentum' | 'both'
     momentumPullback = 0, momentumSlMult = 1.0,
+    spreadPct = 0,
   } = opts;
   const p      = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
   const closes = d1Bars.map(b => b.close);
@@ -251,7 +259,17 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     }
 
     for (const r of legResults) {
-      records.push({ ...base, side: r.side, filled: r.filled, outcome: r.outcome, pnl_pct: r.pnlPct, leg: r.leg });
+      const costAdj = r.filled ? r.pnlPct - spreadPct : 0;
+      const dow = new Date(date + 'T00:00:00Z').getUTCDay(); // 0=Sun…6=Sat
+      records.push({
+        ...base,
+        side: r.side, filled: r.filled, outcome: r.outcome,
+        pnl_pct: r.filled ? +costAdj.toFixed(5) : 0,
+        leg: r.leg,
+        fill_time: r.fillTime ?? null,
+        session: classifySession(r.fillTime),
+        dow,
+      });
     }
   }
   return records;
