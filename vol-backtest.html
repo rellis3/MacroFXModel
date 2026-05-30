@@ -912,8 +912,9 @@ function runMonteCarlo() {
   const st    = document.getElementById('mcStatus');
   const N     = parseInt(document.getElementById('mcN').value) || 5000;
   const BATCH = 500; // sims per chunk — keeps browser responsive
-  const pnls  = _allTrades.filter(t => t.filled).map(t => +t.pnl_pct);
-  if (pnls.length < 10) { st.textContent = 'Not enough trades'; return; }
+  // Use the full P&L sequence from server, not just the 200-trade display slice
+  const pnls  = (_data?.allPnls || []).map(Number).filter(v => !isNaN(v));
+  if (pnls.length < 10) { st.textContent = 'Run a backtest first — no P&L data loaded'; return; }
 
   btn.disabled = true;
   const STEPS = Math.min(pnls.length, 500);
