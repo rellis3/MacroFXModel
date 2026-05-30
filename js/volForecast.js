@@ -3,15 +3,23 @@
  *
  * Methodology — estimator chosen per asset class:
  *
- *   commodity : Garman-Klass EWMA on daily OHLC (λ=0.94)
+ *   Primary (when OANDA_KEY is set): M15 realized variance pipeline
+ *     M15 log-returns are aggregated to daily realized variance (RV).
+ *     RV series is cached in KV and updated incrementally each day.
+ *
+ *   commodity : EWMA on daily realized variance (M15) — λ=0.94 (primary)
+ *               Garman-Klass EWMA on daily OHLC (fallback, no Oanda key)
  *                 gk_t = 0.5·[ln(H/L)]² − (2·ln2−1)·[ln(C/O)]²
  *                 v_t  = λ·v_{t-1} + (1−λ)·gk_t
  *                 Gold has large intraday H-L ranges that partially reverse
  *                 by close; GK captures this, close-to-close misses it (~25%
  *                 underestimate).
  *
- *   index/fx  : GARCH(1,1) on close-to-close log returns
- *                 σ²_t = ω + α·r²_{t-1} + β·σ²_{t-1}
+ *   index/fx  : Realized GARCH(1,1) — uses daily RV as innovation (primary)
+ *               σ²_t = ω + α·RV_{t-1} + β·σ²_{t-1}
+ *               More efficient than r²_{t-1}: M15 captures every intraday
+ *               move vs 4 OHLC endpoints per day.
+ *               GARCH(1,1) on close-to-close log returns (fallback)
  *                 α=0.06, β=0.91 (α+β=0.97, ~23-day half-life)
  *                 ω sets the long-run variance floor — prevents estimates
  *                 collapsing in quiet patches. Pure EWMA (ω=0) drops ~15%
@@ -139,6 +147,56 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
   const sigmaFwdPct = sigmaFwd * 100;
   const volAnnual   = sigmaFwdPct * Math.sqrt(TRADING_DAYS);
 
+  const r2 = x => Math.round(x * 100) / 100;
+
+  return {
+    vol_annual: r2(volAnnual),
+    hl_median:  r2(BM_RANGE_P50                * sigmaFwdPct * newsMult),
+    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * newsMult),
+    oc_median:  r2(HN_P50       * p.oc_corr    * sigmaFwdPct * newsMult),
+    oc_75:      r2(HN_P75       * p.oc_corr    * sigmaFwdPct * newsMult),
+    news_mult:  r2(newsMult),
+  };
+}
+
+// ── Realized-variance based estimators (M15 bar pipeline) ─────────────────────
+
+// EWMA on daily realized variance — for commodity (gold).
+function ewmaOnRV(rvValues, lambda = EWMA_LAMBDA) {
+  const initN = Math.min(20, rvValues.length);
+  let v = rvValues.slice(0, initN).reduce((s, r) => s + r, 0) / initN;
+  v = Math.max(v, 1e-10);
+  for (const rv of rvValues) v = lambda * v + (1 - lambda) * rv;
+  return Math.sqrt(v);
+}
+
+// Realized GARCH(1,1) — for index/fx.
+// Uses daily RV as innovation term (more efficient than r²_{t-1}).
+// ω floor prevents quiet-period collapse.
+function garchOnRV(rvValues, omega) {
+  let sigma2 = omega / (1 - G_ALPHA - G_BETA);
+  for (const rv of rvValues) sigma2 = omega + G_ALPHA * rv + G_BETA * sigma2;
+  return Math.sqrt(Math.max(sigma2, 0));
+}
+
+/**
+ * Forecast from pre-computed daily realized variances (M15 pipeline).
+ * @param {Array<{date:string, rv:number}>} dailyRVs  Oldest → newest
+ * @param {string} assetClass  'commodity'|'index'|'fx'
+ * @param {number} newsMult
+ */
+export function computeForecastFromRV(dailyRVs, assetClass = 'fx', newsMult = 1.0) {
+  if (dailyRVs.length < 60) throw new Error(`Need ≥60 daily RV values, got ${dailyRVs.length}`);
+
+  const rvValues = dailyRVs.map(d => d.rv);
+  const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
+
+  const sigmaFwd = assetClass === 'commodity'
+    ? ewmaOnRV(rvValues)
+    : garchOnRV(rvValues, p.garch_omega);
+
+  const sigmaFwdPct = sigmaFwd * 100;
+  const volAnnual   = sigmaFwdPct * Math.sqrt(TRADING_DAYS);
   const r2 = x => Math.round(x * 100) / 100;
 
   return {
