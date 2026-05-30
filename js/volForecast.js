@@ -3,23 +3,16 @@
  *
  * Methodology — estimator chosen per asset class:
  *
- *   Primary (when OANDA_KEY is set): M15 realized variance pipeline
- *     M15 log-returns are aggregated to daily realized variance (RV).
- *     RV series is cached in KV and updated incrementally each day.
+ *   commodity : Rogers-Satchell EWMA on daily OHLC — λ=0.94
+ *                 rs_t = ln(H/C)·ln(H/O) + ln(L/C)·ln(L/O)
+ *                 v_t  = λ·v_{t-1} + (1−λ)·rs_t
+ *                 RS handles non-zero drift correctly (gold 2024-2026 uptrend).
+ *                 Unlike Garman-Klass it is always ≥ 0 and does not subtract
+ *                 the directional CO component, so it doesn't understate vol
+ *                 in trending markets.
  *
- *   commodity : EWMA on daily realized variance (M15) — λ=0.94 (primary)
- *               Garman-Klass EWMA on daily OHLC (fallback, no Oanda key)
- *                 gk_t = 0.5·[ln(H/L)]² − (2·ln2−1)·[ln(C/O)]²
- *                 v_t  = λ·v_{t-1} + (1−λ)·gk_t
- *                 Gold has large intraday H-L ranges that partially reverse
- *                 by close; GK captures this, close-to-close misses it (~25%
- *                 underestimate).
- *
- *   index/fx  : Realized GARCH(1,1) — uses daily RV as innovation (primary)
- *               σ²_t = ω + α·RV_{t-1} + β·σ²_{t-1}
- *               More efficient than r²_{t-1}: M15 captures every intraday
- *               move vs 4 OHLC endpoints per day.
- *               GARCH(1,1) on close-to-close log returns (fallback)
+ *   index/fx  : GARCH(1,1) on close-to-close log returns
+ *                 σ²_t = ω + α·r²_{t-1} + β·σ²_{t-1}
  *                 α=0.06, β=0.91 (α+β=0.97, ~23-day half-life)
  *                 ω sets the long-run variance floor — prevents estimates
  *                 collapsing in quiet patches. Pure EWMA (ω=0) drops ~15%
@@ -34,9 +27,6 @@
 
 const TRADING_DAYS = 252;
 const EWMA_LAMBDA  = 0.94;
-
-// Garman-Klass adjustment constant: 2·ln2 − 1 ≈ 0.3863
-const GK_ADJ = 2 * Math.LN2 - 1;
 
 // GARCH(1,1) parameters for index/fx (daily close-to-close)
 const G_ALPHA = 0.06;
@@ -86,25 +76,25 @@ export function detectNewsMultiplier(events = []) {
   return best;
 }
 
-// ── Garman-Klass EWMA ─────────────────────────────────────────────────────────
-// For commodity (gold): captures large intraday ranges that close-to-close misses.
-function gkEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
+// ── Rogers-Satchell EWMA ──────────────────────────────────────────────────────
+// For commodity (gold): handles non-zero drift; always ≥ 0; no CO subtraction.
+// rs = ln(H/C)·ln(H/O) + ln(L/C)·ln(L/O)
+function rsEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
   const n     = bars.length;
   const out   = new Array(n);
   const initN = Math.min(20, n);
   let v = 0;
   for (let i = 0; i < initN; i++) {
-    const lnHL = Math.log(bars[i].high / bars[i].low);
-    const lnCO = Math.log(bars[i].close / bars[i].open);
-    v += Math.max(0.5 * lnHL * lnHL - GK_ADJ * lnCO * lnCO, 0);
+    const rs = Math.log(bars[i].high / bars[i].close) * Math.log(bars[i].high / bars[i].open)
+             + Math.log(bars[i].low  / bars[i].close) * Math.log(bars[i].low  / bars[i].open);
+    v += rs;
   }
   v = Math.max(v / initN, 1e-10);
   for (let i = 0; i < n; i++) {
-    const lnHL = Math.log(bars[i].high / bars[i].low);
-    const lnCO = Math.log(bars[i].close / bars[i].open);
-    const gk   = Math.max(0.5 * lnHL * lnHL - GK_ADJ * lnCO * lnCO, 0);
-    v = lambda * v + (1 - lambda) * gk;
-    out[i] = Math.sqrt(v);
+    const rs = Math.log(bars[i].high / bars[i].close) * Math.log(bars[i].high / bars[i].open)
+             + Math.log(bars[i].low  / bars[i].close) * Math.log(bars[i].low  / bars[i].open);
+    v = lambda * v + (1 - lambda) * rs;
+    out[i] = Math.sqrt(Math.max(v, 0));
   }
   return out;
 }
@@ -137,10 +127,10 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
 
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
-  // Commodity: GK-EWMA captures full intraday range.
+  // Commodity: RS-EWMA handles drift; never subtracts directional component.
   // Index/FX: GARCH with ω floor prevents quiet-period collapse.
   const volSeries = assetClass === 'commodity'
-    ? gkEwmaVolSeries(ohlc)
+    ? rsEwmaVolSeries(ohlc)
     : garch11VolSeries(ohlc, p.garch_omega);
 
   const sigmaFwd    = volSeries.at(-1);
