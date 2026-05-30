@@ -1394,16 +1394,35 @@ function _btStats(trades) {
   const pnls   = filled.map(r => r.pnl_pct);
   const totalPnl = pnls.reduce((s, p) => s + p, 0);
   const avgPnl   = totalPnl / nFilled;
-  const std      = Math.sqrt(pnls.reduce((s, p) => s + (p - avgPnl) ** 2, 0) / Math.max(1, nFilled - 1));
-  const sharpe   = std > 0 ? avgPnl / std * Math.sqrt(252) : 0;
+
+  // Aggregate into daily portfolio P&L (sum all filled trades on the same date)
+  // then compute Sharpe/Sortino on those daily sums × √252.
+  // Using per-trade avg/std × √252 over-counts when multiple instruments or legs
+  // fill on the same day.
+  const dailyMap = new Map();
+  for (const r of filled) {
+    dailyMap.set(r.date, (dailyMap.get(r.date) ?? 0) + r.pnl_pct);
+  }
+  const dailyPnls  = [...dailyMap.values()];
+  const nDailyObs  = dailyPnls.length;
+  const dailyMean  = dailyPnls.reduce((s, p) => s + p, 0) / nDailyObs;
+  const dailyStd   = Math.sqrt(dailyPnls.reduce((s, p) => s + (p - dailyMean) ** 2, 0) / Math.max(1, nDailyObs - 1));
+  const sharpe     = dailyStd > 0 ? dailyMean / dailyStd * Math.sqrt(252) : 0;
+
+  const dailyNeg  = dailyPnls.filter(p => p < 0);
+  const downStd   = dailyNeg.length > 0
+    ? Math.sqrt(dailyNeg.reduce((s, p) => s + p ** 2, 0) / dailyNeg.length) : 0;
+  const sortino   = downStd > 0 ? dailyMean / downStd * Math.sqrt(252) : 0;
 
   const negPnls = pnls.filter(p => p < 0);
-  const downStd = negPnls.length > 0
-    ? Math.sqrt(negPnls.reduce((s, p) => s + p ** 2, 0) / negPnls.length) : 0;
-  const sortino = downStd > 0 ? avgPnl / downStd * Math.sqrt(252) : 0;
 
+  // Drawdown on the daily portfolio series (sorted by date) so multi-instrument
+  // fills on the same day are treated as one portfolio move.
+  const sortedDailyPnls = [...dailyMap.entries()]
+    .sort(([a], [b]) => a < b ? -1 : 1)
+    .map(([, p]) => p);
   let peak = 0, maxDd = 0, cum = 0;
-  for (const p of pnls) {
+  for (const p of sortedDailyPnls) {
     cum += p; if (cum > peak) peak = cum;
     const dd = cum - peak; if (dd < maxDd) maxDd = dd;
   }
