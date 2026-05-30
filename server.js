@@ -1514,12 +1514,13 @@ app.get('/api/vol-backtest', (req, res) => {
     }
     const monthlyArr = Object.entries(monthly).sort().map(([month, pnl]) => ({ month, pnl: +pnl.toFixed(3) }));
 
-    // Day-of-week stats (1=Mon … 5=Fri)
+    // Day-of-week stats — always derive from date string, never trust CSV dow column
+    // (old CSVs lack the column; parseInt('') || 0 = 0 = Sunday which skips all trades)
     const DOW_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const byDow = {};
     for (const day of ['Mon','Tue','Wed','Thu','Fri']) byDow[day] = [];
     for (const r of trades) {
-      const label = DOW_LABELS[r.dow ?? new Date(r.date + 'T00:00:00Z').getUTCDay()];
+      const label = DOW_LABELS[new Date(r.date + 'T00:00:00Z').getUTCDay()];
       if (byDow[label]) byDow[label].push(r);
     }
     const byDowStats = Object.fromEntries(
@@ -1560,6 +1561,9 @@ app.get('/api/vol-backtest', (req, res) => {
         open: r.open,
       }));
 
+    // All filled P&L values for Monte Carlo (client needs the full sequence)
+    const allPnls = trades.filter(t => t.filled).map(r => r.pnl_pct);
+
     res.json({
       ok: true,
       file: path.basename(csvPath),
@@ -1574,6 +1578,7 @@ app.get('/api/vol-backtest', (req, res) => {
       instEquity,
       monthlyPnl: monthlyArr,
       recentTrades,
+      allPnls,
       totalTrades: trades.filter(t => t.filled).length,
       instruments,
     });
