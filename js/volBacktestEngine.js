@@ -119,18 +119,24 @@ function simulateDay(open, high, low, close, hl75pct, ocMedPct, regime, slMult =
   function sell(entry, tp, sl) {
     if (high < entry) return null;
     if (high >= sl)   return { outcome: 'loss', pnlPct: -((sl - entry) / open * 100) };
-    // TP condition must use EOD close, not daily low.
-    // tp = open+OCMed (above open) so low <= tp is always true (low <= open <= tp),
-    // making every filled non-SL trade a false win. Use close instead.
-    if (close <= tp)  return { outcome: 'win',  pnlPct:   (entry - tp)  / open * 100  };
-    return              { outcome: 'open', pnlPct:   (entry - close) / open * 100 };
+    // D1 mark-to-close: measure reversal from fill level.
+    // close <= entry  → price reversed (win); cap at TP pnl if close cleared TP level.
+    // close >  entry  → no reversal, at a loss at EOD (open with negative pnl).
+    // Note: close > entry is possible when high > entry and the day closed above the fill.
+    const markPnl = (entry - close) / open * 100;
+    const tpPnl   = (entry - tp)   / open * 100;
+    if (markPnl >= tpPnl) return { outcome: 'win',  pnlPct: tpPnl    }; // full TP
+    if (markPnl  > 0)     return { outcome: 'win',  pnlPct: markPnl  }; // partial reversal
+    return                       { outcome: 'open', pnlPct: markPnl  }; // no reversal
   }
   function buy(entry, tp, sl) {
     if (low > entry)  return null;
     if (low  <= sl)   return { outcome: 'loss', pnlPct: -((entry - sl) / open * 100) };
-    // tp = open-OCMed (below open) so high >= tp is always true (high >= open >= tp).
-    if (close >= tp)  return { outcome: 'win',  pnlPct:   (tp - entry)  / open * 100  };
-    return              { outcome: 'open', pnlPct:   (close - entry) / open * 100 };
+    const markPnl = (close - entry) / open * 100;
+    const tpPnl   = (tp - entry)   / open * 100;
+    if (markPnl >= tpPnl) return { outcome: 'win',  pnlPct: tpPnl    };
+    if (markPnl  > 0)     return { outcome: 'win',  pnlPct: markPnl  };
+    return                       { outcome: 'open', pnlPct: markPnl  };
   }
 
   let r = null;
