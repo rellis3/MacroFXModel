@@ -20,7 +20,7 @@
  */
 
 import * as kv from '../kv.js';
-import { computeForecast, detectNewsMultiplier } from './volForecast.js';
+import { computeForecast, computeForecastFromRV, detectNewsMultiplier } from './volForecast.js';
 
 // ── Instrument definitions ────────────────────────────────────────────────────
 // oandaInstrument: Oanda v20 instrument name (primary data source)
@@ -40,6 +40,12 @@ const INSTRUMENTS = [
 
 const YAHOO_BASE       = 'https://query1.finance.yahoo.com/v8/finance/chart';
 const OANDA_BAR_COUNT  = 800;  // ~3 years of trading days (5000 max per Oanda request)
+
+// ── M15 realized-vol pipeline ─────────────────────────────────────────────────
+const M15_GRAN        = 'M15';
+const M15_BACKFILL_MS = 2 * 365.25 * 24 * 60 * 60 * 1000;  // 2-year backfill window
+const RV_MAX_DAYS     = 500;                                  // days to keep in KV
+const RV_KV_PREFIX    = 'vol_rv_';                            // KV key prefix per instrument
 
 // Hour (UTC) at which the daily forecast runs. After US session close + buffer.
 const TARGET_HOUR_UTC = parseInt(process.env.VOL_FORECAST_UTC ?? '22');
@@ -127,6 +133,123 @@ async function fetchOHLC(cfg) {
   return fetchOHLCYahoo(cfg.ticker);
 }
 
+// ── M15 bar fetching (batched) ────────────────────────────────────────────────
+// Fetches M15 bars from `fromIso` forward in 5000-bar chunks.
+// Returns the raw Oanda candle objects (with .time and .mid fields).
+async function fetchM15Batched(instrument, fromIso) {
+  const allBars = [];
+  let cursor    = fromIso;
+  const toMs    = Date.now();
+
+  while (new Date(cursor).getTime() < toMs) {
+    const url = `${_oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+              + `?granularity=${M15_GRAN}&from=${encodeURIComponent(cursor)}&count=5000&price=M`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+      signal:  AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new Error(`Oanda M15 HTTP ${res.status} for ${instrument}`);
+
+    const data = await res.json();
+    const bars = (data.candles ?? []).filter(c => c.complete && c.mid);
+    if (bars.length === 0) break;
+
+    allBars.push(...bars);
+
+    if (bars.length < 5000) break;   // partial batch → at current time
+
+    // Advance cursor past last received bar
+    const lastMs = new Date(bars.at(-1).time).getTime();
+    cursor = new Date(lastMs + 15 * 60 * 1000).toISOString();
+
+    await new Promise(r => setTimeout(r, 120));  // be polite to Oanda
+  }
+
+  return allBars;
+}
+
+// ── Convert M15 bars → daily realized variance ────────────────────────────────
+// Chains log-returns across consecutive bars, assigns each return to the
+// UTC date of the later bar, sums squared returns per day.
+function barsToDailyRV(m15bars) {
+  if (m15bars.length < 2) return [];
+
+  const sorted = m15bars.slice().sort((a, b) => a.time.localeCompare(b.time));
+  const rvMap  = new Map();   // date → cumulative RV
+
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = parseFloat(sorted[i - 1].mid.c);
+    const curr = parseFloat(sorted[i].mid.c);
+    if (prev <= 0 || curr <= 0) continue;
+    const r = Math.log(curr / prev);
+    if (!isFinite(r) || Math.abs(r) > 0.15) continue;   // skip bad bars
+
+    const date = sorted[i].time.substring(0, 10);
+    rvMap.set(date, (rvMap.get(date) ?? 0) + r * r);
+  }
+
+  return Array.from(rvMap.entries())
+    .map(([date, rv]) => ({ date, rv }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .filter(d => d.rv > 0);
+}
+
+// ── Daily RV series: load from KV, backfill / update, save ───────────────────
+async function getDailyRV(cfg) {
+  const kvKey = RV_KV_PREFIX + cfg.name;
+
+  // Load stored series
+  let rvSeries = [];
+  try {
+    const raw = await kv.get(kvKey);
+    if (raw) rvSeries = JSON.parse(raw);
+  } catch (e) {
+    console.error(`[VOL-FORECAST] RV KV read error ${cfg.name}:`, e.message);
+  }
+
+  // Check if already current (last stored date ≥ yesterday UTC)
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+  const lastDate  = rvSeries.at(-1)?.date ?? null;
+  if (lastDate && lastDate >= yesterday) {
+    console.log(`[VOL-FORECAST] ${cfg.name} RV cache current (${lastDate}, ${rvSeries.length} days)`);
+    return rvSeries;
+  }
+
+  // Fetch from start of last stored date (re-anchors the first return chain)
+  // or from 2 years ago for a full backfill.
+  const fromIso = lastDate
+    ? new Date(lastDate + 'T00:00:00Z').toISOString()
+    : new Date(Date.now() - M15_BACKFILL_MS).toISOString();
+
+  const batchLabel = lastDate ? `update from ${lastDate}` : '2-year backfill';
+  console.log(`[VOL-FORECAST] ${cfg.name} M15 fetch — ${batchLabel} …`);
+
+  const newBars = await fetchM15Batched(cfg.oandaInstrument, fromIso);
+  if (newBars.length === 0) {
+    console.warn(`[VOL-FORECAST] ${cfg.name} M15 fetch returned no bars`);
+    return rvSeries;
+  }
+
+  // Merge new daily RVs into stored series (deduplicate by date — latest wins)
+  const newRVs = barsToDailyRV(newBars);
+  const merged = new Map(rvSeries.map(d => [d.date, d.rv]));
+  for (const { date, rv } of newRVs) merged.set(date, rv);
+
+  rvSeries = Array.from(merged.entries())
+    .map(([date, rv]) => ({ date, rv }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-RV_MAX_DAYS);
+
+  try {
+    await kv.put(kvKey, JSON.stringify(rvSeries));
+    console.log(`[VOL-FORECAST] ${cfg.name} RV stored: ${rvSeries.length} days (last: ${rvSeries.at(-1)?.date})`);
+  } catch (e) {
+    console.error(`[VOL-FORECAST] RV KV write error ${cfg.name}:`, e.message);
+  }
+
+  return rvSeries;
+}
+
 // ── Finnhub event fetch ───────────────────────────────────────────────────────
 async function fetchNewsEvents(targetDate) {
   const key = process.env.FINNHUB_KEY;
@@ -156,17 +279,31 @@ export async function runVolForecast(targetDate) {
 
   const sessionDate  = target.toISOString().split('T')[0];
   const sessionLabel = formatSessionLabel(target);
-  const dataSource   = process.env.OANDA_KEY ? 'oanda' : 'yahoo';
+  const dataSource   = process.env.OANDA_KEY ? 'm15-rv' : 'yahoo';
 
   const instruments = {};
   const errors      = [];
 
   for (const cfg of INSTRUMENTS) {
     try {
-      const ohlc = await fetchOHLC(cfg);
-      const f    = computeForecast(ohlc, cfg.assetClass, newsMult);
+      let f;
+      if (process.env.OANDA_KEY) {
+        const rvSeries = await getDailyRV(cfg);
+        if (rvSeries.length >= 60) {
+          f = computeForecastFromRV(rvSeries, cfg.assetClass, newsMult);
+        } else {
+          // Not enough M15 history yet — fall back to daily OHLC
+          console.warn(`[VOL-FORECAST] ${cfg.name} insufficient RV (${rvSeries.length} days) — using daily bars`);
+          const ohlc = await fetchOHLCOanda(cfg.oandaInstrument);
+          f = computeForecast(ohlc, cfg.assetClass, newsMult);
+        }
+      } else {
+        const ohlc = await fetchOHLCYahoo(cfg.ticker);
+        f = computeForecast(ohlc, cfg.assetClass, newsMult);
+      }
       instruments[cfg.name] = f;
-      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  [${dataSource}]`);
+      const src = process.env.OANDA_KEY ? 'm15' : 'yahoo';
+      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  [${src}]`);
     } catch (err) {
       console.error(`[VOL-FORECAST] ${cfg.name} error: ${err.message}`);
       errors.push({ name: cfg.name, error: err.message });
