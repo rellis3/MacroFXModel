@@ -33,28 +33,37 @@ Open to Close move      : 1.06% median · 1.80% 75th Percentile
 
 ## Methodology
 
-### 1. Volatility — Garman-Klass EWMA
+### 1. Volatility — Rogers-Satchell EWMA (commodity) / GARCH(1,1) (index/fx)
 
-Applied to daily **OHLC bars** (not just closes).
+**Commodity (gold):** Rogers-Satchell EWMA on daily OHLC bars.
 
 ```
-gk_t  = 0.5 · [ln(H/L)]² − (2·ln2−1) · [ln(C/O)]²
-v_t   = λ · v_{t-1} + (1−λ) · gk_t      λ = 0.94
-σ_t   = √v_t
+rs_t  = ln(H/C)·ln(H/O) + ln(L/C)·ln(L/O)
+v_t   = λ · v_{t-1} + (1−λ) · rs_t      λ = 0.94
+σ_t   = √max(v_t, 0)
 σ_annual = σ_t × √252
 ```
 
-- One-step-ahead forecast: last value of the GK-EWMA series
-- Seeded from mean GK variance of first 20 bars — no transient
+- One-step-ahead forecast: last value of the RS-EWMA series
+- Seeded from mean RS variance of first 20 bars — no transient
 - ~800 daily bars fetched (~3 years) from Oanda (mid-price OHLC)
 
-**Why Garman-Klass over close-to-close EWMA/GARCH?**
-Close-to-close vol only captures the overnight change between closes.
-For gold (large intraday H-L ranges that often partially reverse by close),
-this systematically understates realized vol by 25–35%. The GK estimator
-uses the full bar (O, H, L, C) and is 5–8× more statistically efficient than
-close-to-close. This closes the gap between our estimates and professional
-quant systems that use range-based vol estimation.
+**Why Rogers-Satchell over Garman-Klass for gold?**
+GK assumes zero drift and subtracts the directional ln(C/O) component.
+Gold has been in a strong uptrend (2024–2026), so GK systematically
+understates vol in trending markets. Rogers-Satchell handles non-zero
+drift correctly, is always ≥ 0, uses the full OHLC bar, and is
+5–8× more efficient than close-to-close.
+
+**Index/FX:** GARCH(1,1) on daily close-to-close log returns.
+
+```
+r_t    = ln(C_t / C_{t-1})
+σ²_t   = ω + α·r²_{t-1} + β·σ²_{t-1}     α=0.06, β=0.91
+σ_annual = σ_t × √252
+```
+
+ω long-run variance floor: index 4.76e-6 (~20% annual), fx 6.70e-7 (~7.5% annual).
 
 ### 2. High–Low Range — Analytical Brownian Motion
 
@@ -104,12 +113,11 @@ Applied to all range outputs. Sourced from Finnhub economic calendar
 ## Constants Summary (use these in backtester)
 
 ```js
-// Garman-Klass EWMA
+// Rogers-Satchell EWMA (commodity)
 EWMA_LAMBDA   = 0.94
-GK_ADJ        = 2*ln2 - 1  // ≈ 0.3863
 TRADING_DAYS  = 252
 
-// GK variance per bar: gk = 0.5·ln(H/L)² − GK_ADJ·ln(C/O)²
+// RS variance per bar: rs = ln(H/C)·ln(H/O) + ln(L/C)·ln(L/O)
 
 // BM range percentiles
 BM_RANGE_P50  = 1.572   // HL median multiplier
