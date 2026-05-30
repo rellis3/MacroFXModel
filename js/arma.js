@@ -2,6 +2,151 @@ import { S } from './state.js';
 import { COMPASS_CONFIG } from './config.js';
 import { getPipSize, filterTradingDays } from './utils.js';
 
+// ── OLS helper: y = a + b·x ──────────────────────────────────────────────────
+function ols(x, y) {
+  const n  = x.length;
+  const mx = x.reduce((s, v) => s + v, 0) / n;
+  const my = y.reduce((s, v) => s + v, 0) / n;
+  let num = 0, denX = 0;
+  for (let i = 0; i < n; i++) {
+    num  += (x[i] - mx) * (y[i] - my);
+    denX += (x[i] - mx) ** 2;
+  }
+  const b     = denX > 0 ? num / denX : 0;
+  const a     = my - b * mx;
+  const ssTot = y.reduce((s, v)    => s + (v - my) ** 2, 0);
+  const ssRes = y.reduce((s, v, i) => s + (v - (a + b * x[i])) ** 2, 0);
+  const r2    = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+  return { a, b, r2 };
+}
+
+// ── VECM(1): ARMA enhanced with cointegration error-correction ────────────────
+// Model: Δspread_t = μ + φ·Δspread_{t-1} + γ·ECT_{t-1} + θ·ε_{t-1} + ε_t
+// ECT_t = spread_t − (a + b·ln(price_t))  — deviation from long-run equilibrium
+// γ < 0: when spread too high vs price, it mean-reverts downward (and vice versa).
+// Falls back to ARMA when price data unavailable or cointegration R² < 0.05.
+export function fitVECM(arr, priceBarsChron) {
+  if (!arr || arr.length < 20) return null;
+  if (!priceBarsChron || priceBarsChron.length < 30) return fitARMA(arr);
+
+  const vals = arr.map(p => p.value);
+  const N    = Math.min(vals.length, priceBarsChron.length);
+
+  const spread = vals.slice(-N);
+  const logPx  = priceBarsChron.slice(-N).map(b => {
+    const c = parseFloat(b.close ?? b.c ?? b.mid?.c ?? 0);
+    return c > 0 ? Math.log(c) : NaN;
+  });
+
+  const valid = spread.map((s, i) => ({ s, p: logPx[i] })).filter(v => !isNaN(v.p));
+  if (valid.length < 25) return fitARMA(arr);
+
+  const sp = valid.map(v => v.s);
+  const px = valid.map(v => v.p);
+
+  // Step 1: OLS cointegrating regression — spread_t = a + b·ln(price_t)
+  const coint = ols(px, sp);
+  if (coint.r2 < 0.05) return fitARMA(arr);   // weak cointegration — fall back
+
+  // ECT: deviation of spread from long-run equilibrium implied by current price
+  const ect = sp.map((s, i) => s - (coint.a + coint.b * px[i]));
+
+  // Step 2: first differences of spread
+  const diff = [];
+  for (let i = 1; i < sp.length; i++) diff.push(sp[i] - sp[i - 1]);
+  if (diff.length < 15) return fitARMA(arr);
+
+  const mu       = diff.reduce((a, b) => a + b, 0) / diff.length;
+  const demeaned = diff.map(d => d - mu);
+
+  // Step 3: AR(1) coefficient on demeaned diff
+  let num = 0, den = 0;
+  for (let i = 1; i < demeaned.length; i++) {
+    num += demeaned[i] * demeaned[i - 1];
+    den += demeaned[i - 1] ** 2;
+  }
+  const phi = den > 0 ? Math.max(-0.95, Math.min(0.95, num / den)) : 0;
+
+  // Lagged ECT aligned to diff: diff[i] = sp[i+1]−sp[i], paired with ect[i]
+  const ectLag = ect.slice(0, diff.length);
+
+  // Step 4: ECT coefficient γ via OLS of AR residuals on lagged ECT
+  const arResid = [demeaned[0]];
+  for (let i = 1; i < demeaned.length; i++) {
+    arResid.push(demeaned[i] - phi * demeaned[i - 1]);
+  }
+  let gNum = 0, gDen = 0;
+  for (let i = 1; i < arResid.length; i++) {
+    gNum += arResid[i] * ectLag[i - 1];
+    gDen += ectLag[i - 1] ** 2;
+  }
+  // Constrain γ ∈ [−1, 0]: must be mean-reverting (negative) or zero
+  const gamma = gDen > 0 ? Math.max(-1.0, Math.min(0.0, gNum / gDen)) : 0;
+
+  // Step 5: MA(1) theta on updated residuals (including ECT term)
+  const residuals = [demeaned[0]];
+  for (let i = 1; i < demeaned.length; i++) {
+    residuals.push(demeaned[i] - phi * demeaned[i - 1] - gamma * ectLag[i - 1]);
+  }
+  let rNum = 0, rDen = 0;
+  for (let i = 1; i < residuals.length; i++) {
+    rNum += residuals[i] * residuals[i - 1];
+    rDen += residuals[i - 1] ** 2;
+  }
+  const theta = rDen > 0 ? Math.max(-0.95, Math.min(0.95, rNum / rDen)) : 0;
+
+  const resVar   = residuals.reduce((a, r) => a + r * r, 0) / residuals.length;
+  const resSigma = Math.sqrt(resVar);
+
+  const lastECT   = ect[ect.length - 1];
+  const lastDiff  = demeaned[demeaned.length - 1];
+  const lastResid = residuals[residuals.length - 1];
+
+  // Step 6: 5-step forecast (ECT decays geometrically at rate (1+γ) per step)
+  const forecasts   = [];
+  let forecastLevel = vals[vals.length - 1];
+  let prevDiff      = lastDiff;
+  let prevResid     = lastResid;
+  let prevECT       = lastECT;
+
+  for (let h = 1; h <= 5; h++) {
+    const ectTerm      = gamma * prevECT;
+    const forecastDiff = mu + phi * prevDiff + (h === 1 ? theta * prevResid : 0) + ectTerm;
+    forecastLevel += forecastDiff;
+    const ci68 = resSigma * Math.sqrt(h);
+    forecasts.push({ h, level: forecastLevel, change: forecastDiff,
+                     ci68Up: forecastLevel + ci68, ci68Dn: forecastLevel - ci68 });
+    prevDiff  = forecastDiff;
+    prevResid = 0;
+    prevECT   = prevECT * (1 + gamma);
+  }
+
+  // Step 7: skill vs naive
+  let vecmErr = 0, naiveErr = 0;
+  for (let i = 1; i < diff.length; i++) {
+    const pred = mu + phi * demeaned[i - 1] + gamma * ectLag[i - 1];
+    vecmErr  += Math.abs(diff[i] - pred);
+    naiveErr += Math.abs(diff[i] - mu);
+  }
+  const n_     = diff.length - 1;
+  const skill  = naiveErr > 0 ? 1 - vecmErr / naiveErr : 0;
+
+  return {
+    phi:           phi.toFixed(3),
+    theta:         theta.toFixed(3),
+    mu:            mu.toFixed(4),
+    gamma:         gamma.toFixed(3),
+    cointR2:       coint.r2.toFixed(3),
+    resSigma,
+    forecasts,
+    skillPct:      Math.round(skill * 100),
+    currentLevel:  vals[vals.length - 1],
+    currentChange: diff[diff.length - 1],
+    ectNow:        lastECT.toFixed(4),
+    isVECM:        true,
+  };
+}
+
 // ARMA(1,1) on first differences of yield spread.
 // Model: Δspread_t = μ + φ·Δspread_{t-1} + θ·ε_{t-1} + ε_t
 // Parameters estimated via Yule-Walker / method of moments.
@@ -93,7 +238,11 @@ export function computeARMAForecast(data) {
 
   const isGoldARMA = data.sym === 'XAU/USD';
 
-  const arma10 = data.spread10y.length >= 20 ? fitARMA(data.spread10y) : null;
+  // Fetch price bars for VECM cointegration (oldest→newest after reverse)
+  const _rawBars    = filterTradingDays(S.ohlcData[data.sym]?.values);
+  const priceChron  = _rawBars ? [..._rawBars].reverse() : null;
+
+  const arma10 = data.spread10y.length >= 20 ? fitVECM(data.spread10y, priceChron) : null;
   const arma2  = isGoldARMA
     ? (data.spreadDxy && data.spreadDxy.length >= 20 ? fitARMA(data.spreadDxy) : null)
     : (data.spread2y.length >= 20 ? fitARMA(data.spread2y) : null);
@@ -352,7 +501,7 @@ export function renderARMACard(arma, data) {
 
   return `<div class="arma-card">
     <div class="arma-hd">
-      <span class="arma-title">📐 ARMA(1,1) ${isEquity ? 'Curve' : 'Spread'} Forecast</span>
+      <span class="arma-title">📐 ${arma.arma10?.isVECM ? 'VECM(1)' : 'ARMA(1,1)'} ${isEquity ? 'Curve' : 'Spread'} Forecast</span>
       <span class="arma-badge" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)">${badgeLabel}</span>
       <span class="arma-badge" style="background:${confCol}22;color:${confCol};border-color:${confCol}44">${arma.confidence}</span>
       <span class="arma-badge" style="background:${skillCol}22;color:${skillCol};border-color:${skillCol}44" title="Model accuracy vs random walk">${arma.avgSkill > 0 ? '+' : ''}${arma.avgSkill}% accuracy</span>
@@ -391,7 +540,9 @@ export function renderARMACard(arma, data) {
     </div>
 
     <div style="font-size:9.5px;color:var(--text3);line-height:1.5;padding:6px 8px;background:var(--s1);border-radius:5px;border:1px solid var(--border)">
-      Model: Δspread_t = ${arma.arma10?.mu > 0 ? '+' : ''}${((arma.arma10?.mu || 0)*100).toFixed(2)}bp + ${phi10}·Δs_{t-1} + ${theta10}·ε_{t-1}
+      ${arma.arma10?.isVECM
+        ? `VECM: Δs_t = ${((arma.arma10?.mu||0)*100).toFixed(2)}bp + ${phi10}·Δs_{t-1} + ${arma.arma10.gamma}·ECT_{t-1} + ${theta10}·ε_{t-1} | R²=${arma.arma10.cointR2} ECT=${arma.arma10.ectNow}`
+        : `ARMA: Δspread_t = ${arma.arma10?.mu > 0 ? '+' : ''}${((arma.arma10?.mu || 0)*100).toFixed(2)}bp + ${phi10}·Δs_{t-1} + ${theta10}·ε_{t-1}`}
     </div>
   </div>`;
 }
