@@ -1395,12 +1395,12 @@ function _btStats(trades) {
   const totalPnl = pnls.reduce((s, p) => s + p, 0);
   const avgPnl   = totalPnl / nFilled;
 
-  // Aggregate into daily portfolio P&L (sum all filled trades on the same date)
-  // then compute Sharpe/Sortino on those daily sums × √252.
-  // Using per-trade avg/std × √252 over-counts when multiple instruments or legs
-  // fill on the same day.
+  // Build daily portfolio P&L from ALL trades (filled and unfilled).
+  // Unfilled days have pnl_pct=0, so they don't change the sum but DO appear
+  // in the std denominator — zero-return days must dilute the Sharpe.
+  // Using only filled days inflates Sharpe by √(total_days / fill_days).
   const dailyMap = new Map();
-  for (const r of filled) {
+  for (const r of trades) {
     dailyMap.set(r.date, (dailyMap.get(r.date) ?? 0) + r.pnl_pct);
   }
   const dailyPnls  = [...dailyMap.values()];
