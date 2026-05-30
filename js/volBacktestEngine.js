@@ -60,13 +60,21 @@ async function fetchD1(instrument, count = 5000) {
   const data = await r.json();
   return (data.candles ?? [])
     .filter(c => c.complete !== false && c.mid)
-    .map(c => ({
-      date:  c.time.substring(0, 10),
-      open:  parseFloat(c.mid.o),
-      high:  parseFloat(c.mid.h),
-      low:   parseFloat(c.mid.l),
-      close: parseFloat(c.mid.c),
-    }))
+    .map(c => {
+      // Oanda D1 bars open at 22:00 UTC (broker day starts Sunday evening).
+      // substring(0,10) would label Monday's session as Sunday, Friday as Thursday.
+      // Advance by 1 day when the open is in the evening (≥ 20:00 UTC) so the
+      // date reflects the actual trading session traders would call that day.
+      const t = new Date(c.time);
+      if (t.getUTCHours() >= 20) t.setUTCDate(t.getUTCDate() + 1);
+      return {
+        date:  t.toISOString().substring(0, 10),
+        open:  parseFloat(c.mid.o),
+        high:  parseFloat(c.mid.h),
+        low:   parseFloat(c.mid.l),
+        close: parseFloat(c.mid.c),
+      };
+    })
     .filter(c => c.close > 0);
 }
 
