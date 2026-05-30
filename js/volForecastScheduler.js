@@ -291,7 +291,7 @@ export async function runVolForecast(targetDate) {
 
   const sessionDate  = target.toISOString().split('T')[0];
   const sessionLabel = formatSessionLabel(target);
-  const dataSource   = process.env.OANDA_KEY ? 'm15-rv' : 'yahoo';
+  const dataSource   = process.env.OANDA_KEY ? 'oanda' : 'yahoo';
 
   const instruments = {};
   const errors      = [];
@@ -300,22 +300,14 @@ export async function runVolForecast(targetDate) {
     try {
       let f;
       if (process.env.OANDA_KEY) {
-        const rvSeries = await getDailyRV(cfg);
-        if (rvSeries.length >= 60) {
-          f = computeForecastFromRV(rvSeries, cfg.assetClass, newsMult);
-        } else {
-          // Not enough M15 history yet — fall back to daily OHLC
-          console.warn(`[VOL-FORECAST] ${cfg.name} insufficient RV (${rvSeries.length} days) — using daily bars`);
-          const ohlc = await fetchOHLCOanda(cfg.oandaInstrument);
-          f = computeForecast(ohlc, cfg.assetClass, newsMult);
-        }
+        const ohlc = await fetchOHLCOanda(cfg.oandaInstrument);
+        f = computeForecast(ohlc, cfg.assetClass, newsMult);
       } else {
         const ohlc = await fetchOHLCYahoo(cfg.ticker);
         f = computeForecast(ohlc, cfg.assetClass, newsMult);
       }
       instruments[cfg.name] = f;
-      const src = process.env.OANDA_KEY ? 'm15' : 'yahoo';
-      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  [${src}]`);
+      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  [${dataSource}]`);
     } catch (err) {
       console.error(`[VOL-FORECAST] ${cfg.name} error: ${err.message}`);
       errors.push({ name: cfg.name, error: err.message });
