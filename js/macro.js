@@ -2,6 +2,70 @@ import { S } from './state.js';
 import { COMPASS_CONFIG, KALMAN5M_DEFAULTS } from './config.js';
 import { ema, calcRSI, filterTradingDays } from './utils.js';
 
+// ── PCA-inspired tier decorrelation ───────────────────────────────────────────
+// Applies discount weights to tier score contributions when pairs of tiers are
+// known to be correlated, preventing double-counting of the same risk factor.
+// Known correlations (empirical, FX literature):
+//   T1 ↔ T3: rate differential drives DXY (~65% corr) — T3 partially redundant
+//   T2 ↔ T4: VIX & HY both capture risk-off sentiment (~75% corr)
+//   T5 ↔ T2: carry unwinds when VIX spikes (~60% corr)
+//   T6 ↔ T4: NFCI & HY both measure financial conditions (~55% corr)
+//   T7 ↔ T8: both technical momentum signals
+// Output is scaled back to the original ±rawMax range for threshold compatibility.
+function applyPCADecorrelation(tiers) {
+  const s = {};
+  for (const t of tiers) s[t.tier] = t;
+
+  const w        = {};
+  for (const t of tiers) w[t.tier] = 1.0;
+  const discounts = [];
+
+  const agree = (a, b) =>
+    a && b && !a.na && !b.na && a.score !== 0 && b.score !== 0 &&
+    Math.sign(a.score) === Math.sign(b.score);
+
+  // T1 ↔ T3: rate differential already partially captured by DXY
+  if (agree(s.T1, s.T3)) {
+    w.T3 = 0.5;
+    discounts.push('T3×0.5 (T1 corr)');
+  }
+
+  // T2 ↔ T4: discount whichever has the weaker normalised magnitude
+  if (agree(s.T2, s.T4)) {
+    const m2 = s.T2 ? Math.abs(s.T2.score) / Math.max(s.T2.max, 1) : 0;
+    const m4 = s.T4 ? Math.abs(s.T4.score) / Math.max(s.T4.max, 1) : 0;
+    if (m2 >= m4) { w.T4 = 0.6; discounts.push('T4×0.6 (T2 corr)'); }
+    else          { w.T2 = 0.6; discounts.push('T2×0.6 (T4 corr)'); }
+  }
+
+  // T5 ↔ T2: carry is partially reflected in VIX
+  if (agree(s.T5, s.T2)) {
+    w.T5 = 0.75;
+    discounts.push('T5×0.75 (T2 corr)');
+  }
+
+  // T6 ↔ T4: NFCI and HY share financial-conditions information
+  if (agree(s.T6, s.T4)) {
+    w.T6 = 0.7;
+    discounts.push('T6×0.7 (T4 corr)');
+  }
+
+  // T7 ↔ T8: both technicals
+  if (agree(s.T7, s.T8)) {
+    w.T8 = 0.8;
+    discounts.push('T8×0.8 (T7 corr)');
+  }
+
+  const adjSum = tiers.reduce((sum, t) => sum + t.score * (w[t.tier] ?? 1.0), 0);
+  const adjMax = tiers.reduce((sum, t) => sum + t.max  * (w[t.tier] ?? 1.0), 0);
+  const rawMax = tiers.reduce((sum, t) => sum + t.max, 0);
+
+  // Scale back to original ±rawMax range so downstream thresholds are unaffected
+  const adjustedScore = adjMax > 0 ? Math.round(adjSum / adjMax * rawMax) : 0;
+
+  return { adjustedScore, discounts, weights: w };
+}
+
 export function calculateTierScores() {
   const tiers = [];
 
@@ -15,22 +79,24 @@ export function calculateTierScores() {
   tiers.push(computeT7());
   tiers.push(computeT8());
 
-  const totalScore = tiers.reduce((sum, t) => sum + t.score, 0);
+  const rawScore = tiers.reduce((sum, t) => sum + t.score, 0);
+  const pca      = applyPCADecorrelation(tiers);
 
   // Only count tiers with a meaningful directional view (|score| >= 1) —
   // a marginal +1 from RSI at 51 should not tip the coherence gate.
   const agreeCount = tiers.filter(t =>
-    Math.abs(t.score) >= 1 && Math.sign(t.score) === Math.sign(totalScore)
+    Math.abs(t.score) >= 1 && Math.sign(t.score) === Math.sign(pca.adjustedScore)
   ).length;
-  const coherenceBonus = agreeCount >= 5 ? Math.sign(totalScore) : 0;
+  const coherenceBonus = agreeCount >= 5 ? Math.sign(pca.adjustedScore) : 0;
 
   return {
     tiers,
-    totalScore: totalScore + coherenceBonus,
-    rawScore: totalScore,
+    totalScore:   pca.adjustedScore + coherenceBonus,
+    rawScore,
+    pcaDiscounts: pca.discounts,
     coherenceBonus,
     agreeCount,
-    maxScore: 18
+    maxScore: 18,
   };
 }
 
@@ -382,11 +448,106 @@ function computeT4() {
   };
 }
 
+// ── Cross-Sectional Carry Factor ──────────────────────────────────────────────
+// Ranks all available pairs by their short-rate differential (carry) and
+// correlates carry with 5-day returns across pairs.
+// Positive correlation → carry is rewarded (risk-on).
+// Negative correlation → carry crash / risk-off unwind.
+// Returns null when fewer than 4 pairs have both rate data and price bars.
+function computeCrossCarryScore() {
+  const f = S.fredData;
+  const us = f.us2y?.value ?? null;
+  if (us == null) return null;
+
+  // Carry differential: positive = base currency has higher short rate
+  // Pair goes UP when base currency appreciates
+  const PAIR_CARRY = [
+    { sym: 'EUR/USD', carry: (f.de_short?.value ?? null) != null ? f.de_short.value - us : null },
+    { sym: 'GBP/USD', carry: (f.gb_short?.value ?? null) != null ? f.gb_short.value - us : null },
+    { sym: 'USD/JPY', carry: (f.jp_short?.value ?? null) != null ? us - f.jp_short.value : null },
+    { sym: 'AUD/USD', carry: (f.au_short?.value ?? null) != null ? f.au_short.value - us : null },
+    { sym: 'USD/CAD', carry: (f.ca_short?.value ?? null) != null ? us - f.ca_short.value : null },
+    { sym: 'USD/CHF', carry: (f.ch_short?.value ?? null) != null ? us - f.ch_short.value : null },
+    { sym: 'EUR/GBP', carry: (f.de_short?.value ?? null) != null && (f.gb_short?.value ?? null) != null ? f.de_short.value - f.gb_short.value : null },
+    { sym: 'GBP/JPY', carry: (f.gb_short?.value ?? null) != null && (f.jp_short?.value ?? null) != null ? f.gb_short.value - f.jp_short.value : null },
+  ];
+
+  // Attach 5-day sign-adjusted returns (positive = base currency up = carry direction)
+  for (const pc of PAIR_CARRY) {
+    if (pc.carry == null) continue;
+    const bars = filterTradingDays(S.ohlcData[pc.sym]?.values);
+    if (bars && bars.length >= 6) {
+      const now  = parseFloat(bars[0].close);
+      const prev = parseFloat(bars[5].close);
+      pc.ret5d = prev > 0 ? (now / prev) - 1 : null;
+    } else {
+      pc.ret5d = null;
+    }
+  }
+
+  const valid = PAIR_CARRY.filter(p => p.carry != null && p.ret5d != null);
+  if (valid.length < 4) return null;
+
+  // Pearson correlation between carry differential and 5-day return across pairs
+  const carries = valid.map(p => p.carry);
+  const returns = valid.map(p => p.ret5d);
+  const mc = carries.reduce((a, b) => a + b, 0) / carries.length;
+  const mr = returns.reduce((a, b) => a + b, 0) / returns.length;
+  let num = 0, dc = 0, dr = 0;
+  for (let i = 0; i < valid.length; i++) {
+    num += (carries[i] - mc) * (returns[i] - mr);
+    dc  += (carries[i] - mc) ** 2;
+    dr  += (returns[i] - mr) ** 2;
+  }
+  const corr = (dc > 0 && dr > 0) ? num / Math.sqrt(dc * dr) : 0;
+
+  let score = 0;
+  if      (corr >  0.5) score =  2;
+  else if (corr >  0.2) score =  1;
+  else if (corr < -0.5) score = -2;
+  else if (corr < -0.2) score = -1;
+
+  const regime = corr >  0.3 ? 'Carry rewarded — risk-on'
+               : corr < -0.3 ? 'Carry unwind — risk-off'
+               :                'Carry neutral — mixed';
+
+  // Find highest and lowest carry pairs for display
+  const sorted   = [...valid].sort((a, b) => b.carry - a.carry);
+  const topPair  = sorted[0]?.sym  ?? '—';
+  const botPair  = sorted[sorted.length - 1]?.sym ?? '—';
+
+  return {
+    corr,
+    score,
+    regime,
+    pairsUsed: valid.length,
+    topPair,
+    botPair,
+    val: `Carry corr ${corr >= 0 ? '+' : ''}${(corr * 100).toFixed(0)}% · ${valid.length} pairs`,
+  };
+}
+
 function computeT5() {
   const fredData   = S.fredData;
   const isInverted = S.currentPair.isSafeHaven || S.currentPair.isGold;
 
-  // Primary: compute AUD/JPY from daily OHLC bars already loaded in state.
+  // Primary: cross-sectional carry factor — ranks all pairs by rate differential
+  // and measures whether carry is being rewarded (risk-on) or punished (risk-off).
+  const cs = computeCrossCarryScore();
+  if (cs) {
+    let score = cs.score;
+    if (isInverted) score = -score;
+    score = Math.max(-2, Math.min(2, score));
+    return {
+      tier: 'T5', name: 'Cross-Sectional Carry', max: 2, score,
+      val: cs.val,
+      reading: cs.regime + ` · Hi-carry: ${cs.topPair} Lo-carry: ${cs.botPair}`,
+      source: `Cross-carry correlation (${cs.pairsUsed} pairs)`,
+      isMonthly: false,
+    };
+  }
+
+  // Fallback: compute AUD/JPY from daily OHLC bars already loaded in state.
   // These are always current (23h cache, refreshed on pair load) vs FRED H.10
   // which lags by up to 7 days and fires requests in parallel risking rate-limit nulls.
   const audBars = filterTradingDays(S.ohlcData['AUD/USD']?.values);
@@ -431,7 +592,7 @@ function computeT5() {
     };
   }
 
-  // Fallback: FRED H.10 exchange rates (weekly lag, may be null under rate-limiting)
+  // Final fallback: FRED H.10 exchange rates (weekly lag, may be null under rate-limiting)
   const aud = fredData.aud_usd?.value;
   const audPrev = fredData.aud_usd?.prev;
   const jpy = fredData.usd_jpy?.value;
