@@ -285,13 +285,15 @@ function _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMul
   function sell(entry, tp, sl) {
     if (high < entry) return null;
     if (high >= sl)   return { outcome: 'loss', pnlPct: -((sl - entry) / open * 100) };
-    if (low  <= tp)   return { outcome: 'win',  pnlPct:  (entry - tp)  / open * 100 };
+    // Use EOD close for TP: tp > open >= low, so low<=tp is always true (trivial false win).
+    if (close <= tp)  return { outcome: 'win',  pnlPct:  (entry - tp)  / open * 100 };
     return              { outcome: 'open', pnlPct:  (entry - close) / open * 100 };
   }
   function buy(entry, tp, sl) {
     if (low > entry)  return null;
     if (low  <= sl)   return { outcome: 'loss', pnlPct: -((entry - sl) / open * 100) };
-    if (high >= tp)   return { outcome: 'win',  pnlPct:  (tp - entry)  / open * 100 };
+    // tp < open <= high, so high>=tp is always true (trivial false win).
+    if (close >= tp)  return { outcome: 'win',  pnlPct:  (tp - entry)  / open * 100 };
     return              { outcome: 'open', pnlPct:  (close - entry) / open * 100 };
   }
 
