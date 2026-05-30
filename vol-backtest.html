@@ -538,7 +538,12 @@
 <div class="bt-card" id="mcCard" style="display:none;margin-top:10px">
   <div class="bt-card-hdr" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     Monte Carlo Simulation (bootstrap resampling)
-    <button class="dark-btn" id="mcBtn" onclick="runMonteCarlo()" style="padding:3px 10px;font-size:11px">▶ Run 500 sims</button>
+    <select id="mcN" class="bt-sel" style="width:110px">
+      <option value="1000">1 000 sims</option>
+      <option value="5000" selected>5 000 sims</option>
+      <option value="10000">10 000 sims</option>
+    </select>
+    <button class="dark-btn" id="mcBtn" onclick="runMonteCarlo()" style="padding:3px 10px;font-size:11px">▶ Run</button>
     <span id="mcStatus" style="font-size:11px;color:var(--txt2)"></span>
     <div id="mcKpis" style="display:flex;gap:16px;margin-left:auto;font-size:11px;flex-wrap:wrap"></div>
   </div>
@@ -903,17 +908,21 @@ function renderSessionTable(bySession) {
 // ── Monte Carlo simulation ────────────────────────────────────────────────────
 let _mcChart = null;
 function runMonteCarlo() {
-  const btn  = document.getElementById('mcBtn');
-  const st   = document.getElementById('mcStatus');
-  const pnls = _allTrades.filter(t => t.filled).map(t => +t.pnl_pct);
+  const btn   = document.getElementById('mcBtn');
+  const st    = document.getElementById('mcStatus');
+  const N     = parseInt(document.getElementById('mcN').value) || 5000;
+  const BATCH = 500; // sims per chunk — keeps browser responsive
+  const pnls  = _allTrades.filter(t => t.filled).map(t => +t.pnl_pct);
   if (pnls.length < 10) { st.textContent = 'Not enough trades'; return; }
-  btn.disabled = true; st.textContent = 'Running…';
-  setTimeout(() => {
-    const N     = 500;
-    const STEPS = Math.min(pnls.length, 400);
-    const step  = pnls.length / STEPS;
-    const paths = [];
-    for (let s = 0; s < N; s++) {
+
+  btn.disabled = true;
+  const STEPS = Math.min(pnls.length, 500);
+  const step  = pnls.length / STEPS;
+  const paths = [];
+
+  function runBatch() {
+    const end = Math.min(paths.length + BATCH, N);
+    for (let s = paths.length; s < end; s++) {
       let cum = 0;
       const path = new Float64Array(STEPS);
       for (let i = 0; i < STEPS; i++) {
@@ -923,17 +932,23 @@ function runMonteCarlo() {
       }
       paths.push(path);
     }
+    st.textContent = `${paths.length.toLocaleString()} / ${N.toLocaleString()} sims…`;
+    if (paths.length < N) { setTimeout(runBatch, 0); return; }
+
+    // All sims done — compute percentiles and render
     const bands = Array.from({ length: STEPS }, (_, i) => {
       const col = paths.map(p => p[i]).sort((a, b) => a - b);
       return [0.05, 0.25, 0.50, 0.75, 0.95].map(p => col[Math.floor(p * N)]);
     });
     const finals = paths.map(p => p[STEPS - 1]).sort((a, b) => a - b);
     const pPos   = finals.filter(v => v > 0).length / N * 100;
+
     document.getElementById('mcKpis').innerHTML =
-      `<span>P(profit) <b style="color:var(--green)">${pPos.toFixed(0)}%</b></span>` +
-      `<span>Median <b>${fmtPct(finals[Math.floor(0.5 * N)])}</b></span>` +
+      `<span>P(profit) <b style="color:var(--green)">${pPos.toFixed(1)}%</b></span>` +
+      `<span>Median <b>${fmtPct(finals[Math.floor(0.50 * N)])}</b></span>` +
       `<span>5th <b style="color:var(--red)">${fmtPct(finals[Math.floor(0.05 * N)])}</b></span>` +
       `<span>95th <b style="color:var(--green)">${fmtPct(finals[Math.floor(0.95 * N)])}</b></span>`;
+
     const isDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const textCol = isDark ? '#5a6380' : '#8fa0b8';
     const gridCol = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
@@ -969,9 +984,11 @@ function runMonteCarlo() {
         }
       }
     });
-    st.textContent = `${N} simulations · ${pnls.length} trades resampled`;
+    st.textContent = `${N.toLocaleString()} simulations · ${pnls.length.toLocaleString()} trades resampled`;
     btn.disabled = false;
-  }, 20);
+  }
+
+  setTimeout(runBatch, 20);
 }
 
 // ── Pie + regime bar charts ────────────────────────────────────────────────────
