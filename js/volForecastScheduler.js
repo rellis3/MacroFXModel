@@ -45,7 +45,8 @@ const OANDA_BAR_COUNT  = 800;  // ~3 years of trading days (5000 max per Oanda r
 const M15_GRAN        = 'M15';
 const M15_BACKFILL_MS = 2 * 365.25 * 24 * 60 * 60 * 1000;  // 2-year backfill window
 const RV_MAX_DAYS     = 500;                                  // days to keep in KV
-const RV_KV_PREFIX    = 'vol_rv_';                            // KV key prefix per instrument
+const RV_KV_PREFIX    = 'vol_rv2_';                           // v2: GK per M15 bar (was close-to-close)
+const GK_ADJ_SCHED    = 2 * Math.LN2 - 1;                   // 2ln2−1 ≈ 0.3863
 
 // Hour (UTC) at which the daily forecast runs. After US session close + buffer.
 const TARGET_HOUR_UTC = parseInt(process.env.VOL_FORECAST_UTC ?? '22');
@@ -171,21 +172,32 @@ async function fetchM15Batched(instrument, fromIso) {
 // ── Convert M15 bars → daily realized variance ────────────────────────────────
 // Chains log-returns across consecutive bars, assigns each return to the
 // UTC date of the later bar, sums squared returns per day.
+// Applies Garman-Klass to each M15 bar individually and sums per UTC day.
+// Using each bar's own O,H,L,C rather than bar-to-bar closes means:
+//   • Intraday spikes within a 15-min window are captured via H-L
+//   • Missing overnight/weekend bars contribute zero (no movement assumed)
+//   • No chaining required — each bar is independent
 function barsToDailyRV(m15bars) {
-  if (m15bars.length < 2) return [];
+  if (m15bars.length < 1) return [];
 
   const sorted = m15bars.slice().sort((a, b) => a.time.localeCompare(b.time));
-  const rvMap  = new Map();   // date → cumulative RV
+  const rvMap  = new Map();
 
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = parseFloat(sorted[i - 1].mid.c);
-    const curr = parseFloat(sorted[i].mid.c);
-    if (prev <= 0 || curr <= 0) continue;
-    const r = Math.log(curr / prev);
-    if (!isFinite(r) || Math.abs(r) > 0.15) continue;   // skip bad bars
+  for (const bar of sorted) {
+    const h = parseFloat(bar.mid.h);
+    const l = parseFloat(bar.mid.l);
+    const o = parseFloat(bar.mid.o);
+    const c = parseFloat(bar.mid.c);
+    if (h <= 0 || l <= 0 || o <= 0 || c <= 0) continue;
+    if (h < l) continue;   // bad bar
 
-    const date = sorted[i].time.substring(0, 10);
-    rvMap.set(date, (rvMap.get(date) ?? 0) + r * r);
+    const lnHL = Math.log(h / l);
+    const lnCO = Math.log(c / o);
+    if (!isFinite(lnHL) || !isFinite(lnCO) || lnHL > 0.15) continue;
+
+    const gk   = Math.max(0.5 * lnHL * lnHL - GK_ADJ_SCHED * lnCO * lnCO, 0);
+    const date = bar.time.substring(0, 10);
+    rvMap.set(date, (rvMap.get(date) ?? 0) + gk);
   }
 
   return Array.from(rvMap.entries())
@@ -288,22 +300,14 @@ export async function runVolForecast(targetDate) {
     try {
       let f;
       if (process.env.OANDA_KEY) {
-        if (cfg.assetClass === 'commodity') {
-          // Gold: Oanda XAU_USD M15 bars have incomplete overnight coverage
-          // (~65-70 bars/day vs theoretical 96), which causes realized variance
-          // to underestimate by ~15-20%. GK-EWMA on daily OHLC is more accurate.
+        const rvSeries = await getDailyRV(cfg);
+        if (rvSeries.length >= 60) {
+          f = computeForecastFromRV(rvSeries, cfg.assetClass, newsMult);
+        } else {
+          // Not enough M15 history yet — fall back to daily OHLC
+          console.warn(`[VOL-FORECAST] ${cfg.name} insufficient RV (${rvSeries.length} days) — using daily bars`);
           const ohlc = await fetchOHLCOanda(cfg.oandaInstrument);
           f = computeForecast(ohlc, cfg.assetClass, newsMult);
-        } else {
-          const rvSeries = await getDailyRV(cfg);
-          if (rvSeries.length >= 60) {
-            f = computeForecastFromRV(rvSeries, cfg.assetClass, newsMult);
-          } else {
-            // Not enough M15 history yet — fall back to daily OHLC
-            console.warn(`[VOL-FORECAST] ${cfg.name} insufficient RV (${rvSeries.length} days) — using daily bars`);
-            const ohlc = await fetchOHLCOanda(cfg.oandaInstrument);
-            f = computeForecast(ohlc, cfg.assetClass, newsMult);
-          }
         }
       } else {
         const ohlc = await fetchOHLCYahoo(cfg.ticker);
