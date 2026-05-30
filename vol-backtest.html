@@ -309,6 +309,13 @@
     <option value="2.0">SL ×2.0</option>
     <option value="2.5">SL ×2.5</option>
   </select>
+  <select id="runSpread" class="bt-sel" title="Round-trip transaction cost as % of position">
+    <option value="0">No cost</option>
+    <option value="0.001">Spread 0.001%</option>
+    <option value="0.002">Spread 0.002%</option>
+    <option value="0.005">Spread 0.005%</option>
+    <option value="0.01">Spread 0.01%</option>
+  </select>
   <select id="runStrategy" class="bt-sel" onchange="toggleMomentumOpts()">
     <option value="reversal">Reversal</option>
     <option value="momentum">Momentum</option>
@@ -505,6 +512,46 @@
   </div>
 </div>
 
+<!-- ── Day-of-week & Session ──────────────────────────────────────────────── -->
+<div class="bt-two-col" id="dowSessionCard" style="display:none">
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Win Rate by Day of Week</div>
+    <div class="bt-card-body" style="padding:8px 0">
+      <div class="bt-chart-wrap" style="height:180px"><canvas id="dowChart"></canvas></div>
+    </div>
+  </div>
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Performance by Session (UTC)</div>
+    <div class="bt-card-body" style="padding:8px 12px">
+      <table class="bt-tbl">
+        <thead><tr>
+          <th>Session</th><th>Hours (UTC)</th><th class="num">Win%</th>
+          <th class="num">Fills</th><th class="num">Avg P&amp;L</th><th class="num">PF</th>
+        </tr></thead>
+        <tbody id="sessionTblBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Monte Carlo ────────────────────────────────────────────────────────── -->
+<div class="bt-card" id="mcCard" style="display:none;margin-top:10px">
+  <div class="bt-card-hdr" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    Monte Carlo Simulation (bootstrap resampling)
+    <select id="mcN" class="bt-sel" style="width:110px">
+      <option value="1000">1 000 sims</option>
+      <option value="5000" selected>5 000 sims</option>
+      <option value="10000">10 000 sims</option>
+    </select>
+    <button class="dark-btn" id="mcBtn" onclick="runMonteCarlo()" style="padding:3px 10px;font-size:11px">▶ Run</button>
+    <span id="mcStatus" style="font-size:11px;color:var(--txt2)"></span>
+    <div id="mcKpis" style="display:flex;gap:16px;margin-left:auto;font-size:11px;flex-wrap:wrap"></div>
+  </div>
+  <div class="bt-card-body">
+    <div class="bt-chart-wrap" style="height:240px"><canvas id="mcChart"></canvas></div>
+  </div>
+</div>
+
 <!-- ── Win/Loss chart ─────────────────────────────────────────────────────── -->
 <div class="bt-two-col" id="twoCol2" style="display:none">
   <div class="bt-card" style="margin-top:0">
@@ -632,7 +679,9 @@ function renderAll(data) {
   renderCharts(data);
   initTradelog(data.recentTrades, data.instruments);
 
-  ['kpiGrid','secGrid','eqCard','hmCard','twoCol','twoCol2','tradeCard'].forEach(id => {
+  renderDowChart(data.byDow);
+  renderSessionTable(data.bySession);
+  ['kpiGrid','secGrid','eqCard','hmCard','twoCol','dowSessionCard','mcCard','twoCol2','tradeCard'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
@@ -693,19 +742,20 @@ function renderEquityCurve(data) {
     });
   } else {
     const COLORS = ['#4f7df0','#10b981','#fbbf24','#f87171','#a78bfa','#34d399','#fb923c','#60a5fa'];
-    const datasets = Object.entries(data.instEquity).map(([inst, pts], i) => ({
-      label: inst,
-      data: pts.map(p => ({ x: p.date, y: p.pnl })),
-      borderColor: COLORS[i % COLORS.length],
-      backgroundColor: 'transparent',
-      tension: 0.3,
-      pointRadius: 0,
-      borderWidth: 1.5,
-    }));
+    const allDates = [...new Set(
+      Object.values(data.instEquity).flatMap(pts => pts.map(p => p.date))
+    )].sort();
+    const datasets = Object.entries(data.instEquity).map(([inst, pts], i) => {
+      const pnlMap = Object.fromEntries(pts.map(p => [p.date, p.pnl]));
+      let last = 0;
+      const aligned = allDates.map(d => { if (d in pnlMap) last = pnlMap[d]; return last; });
+      return { label: inst, data: aligned, borderColor: COLORS[i % COLORS.length],
+               backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 1.5 };
+    });
     _eqChart = new Chart(ctx, {
       type: 'line',
-      data: { datasets },
-      options: { ..._chartOpts(gridCol, textCol, 'P&L %'), parsing: false }
+      data: { labels: allDates, datasets },
+      options: _chartOpts(gridCol, textCol, 'P&L % per instrument'),
     });
   }
 }
@@ -799,6 +849,146 @@ function renderRegimeTable(byRegime, regimeDist) {
       <td class="num pos">${s.profitFactor >= 99 ? '∞' : fmt(s.profitFactor)}</td>
     </tr>`;
   }).join('');
+}
+
+// ── Day-of-week chart ─────────────────────────────────────────────────────────
+let _dowChart = null;
+function renderDowChart(byDow) {
+  const ctx = document.getElementById('dowChart')?.getContext('2d');
+  if (!ctx || !byDow) return;
+  if (_dowChart) _dowChart.destroy();
+  const isDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const textCol = isDark ? '#5a6380' : '#8fa0b8';
+  const gridCol = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+  const days    = ['Mon','Tue','Wed','Thu','Fri'];
+  _dowChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: days,
+      datasets: [
+        { label: 'Win Rate %', data: days.map(d => byDow[d]?.winRate ?? 0),
+          backgroundColor: days.map(d => {
+            const wr = byDow[d]?.winRate ?? 0;
+            return wr >= 65 ? 'rgba(16,185,129,0.7)' : wr < 55 ? 'rgba(248,113,113,0.7)' : 'rgba(79,125,240,0.7)';
+          }), yAxisID: 'y', borderRadius: 3 },
+        { label: 'Fills', type: 'line', data: days.map(d => byDow[d]?.nFilled ?? 0),
+          borderColor: 'rgba(251,191,36,0.8)', backgroundColor: 'transparent',
+          yAxisID: 'y2', pointRadius: 3, borderWidth: 1.5 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: textCol, font: { family: 'DM Mono', size: 10 }, boxWidth: 10 } } },
+      scales: {
+        x:  { ticks: { color: textCol, font: { family: 'DM Mono', size: 11 } }, grid: { color: gridCol } },
+        y:  { min: 0, max: 100, ticks: { color: textCol, font: { family: 'DM Mono', size: 10 }, callback: v => v + '%' }, grid: { color: gridCol } },
+        y2: { position: 'right', ticks: { color: '#fbbf24', font: { family: 'DM Mono', size: 10 } }, grid: { display: false } },
+      }
+    }
+  });
+}
+
+// ── Session table ─────────────────────────────────────────────────────────────
+function renderSessionTable(bySession) {
+  const body = document.getElementById('sessionTblBody');
+  if (!body || !bySession) return;
+  const UTC = { Asia: '22–07', London: '07–13', Overlap: '13–16', NY: '16–22', 'N/A': '—' };
+  body.innerHTML = Object.entries(bySession)
+    .filter(([, s]) => s && s.nFilled > 0)
+    .map(([sess, s]) => `<tr>
+      <td><b>${sess}</b></td>
+      <td style="color:var(--txt2);font-size:10px">${UTC[sess] ?? ''}</td>
+      <td class="num ${s.winRate >= 65 ? 'pos' : s.winRate < 55 ? 'neg' : 'neu'}">${s.winRate}%</td>
+      <td class="num">${s.nFilled}</td>
+      <td class="num ${s.avgPnl >= 0 ? 'pos' : 'neg'}">${fmtPct(s.avgPnl)}</td>
+      <td class="num ${s.profitFactor >= 1 ? 'pos' : 'neg'}">${s.profitFactor >= 99 ? '∞' : fmt(s.profitFactor)}</td>
+    </tr>`).join('');
+}
+
+// ── Monte Carlo simulation ────────────────────────────────────────────────────
+let _mcChart = null;
+function runMonteCarlo() {
+  const btn   = document.getElementById('mcBtn');
+  const st    = document.getElementById('mcStatus');
+  const N     = parseInt(document.getElementById('mcN').value) || 5000;
+  const BATCH = 500; // sims per chunk — keeps browser responsive
+  const pnls  = _allTrades.filter(t => t.filled).map(t => +t.pnl_pct);
+  if (pnls.length < 10) { st.textContent = 'Not enough trades'; return; }
+
+  btn.disabled = true;
+  const STEPS = Math.min(pnls.length, 500);
+  const step  = pnls.length / STEPS;
+  const paths = [];
+
+  function runBatch() {
+    const end = Math.min(paths.length + BATCH, N);
+    for (let s = paths.length; s < end; s++) {
+      let cum = 0;
+      const path = new Float64Array(STEPS);
+      for (let i = 0; i < STEPS; i++) {
+        const a = Math.round(i * step), b = Math.round((i + 1) * step);
+        for (let j = a; j < b; j++) cum += pnls[Math.floor(Math.random() * pnls.length)];
+        path[i] = cum;
+      }
+      paths.push(path);
+    }
+    st.textContent = `${paths.length.toLocaleString()} / ${N.toLocaleString()} sims…`;
+    if (paths.length < N) { setTimeout(runBatch, 0); return; }
+
+    // All sims done — compute percentiles and render
+    const bands = Array.from({ length: STEPS }, (_, i) => {
+      const col = paths.map(p => p[i]).sort((a, b) => a - b);
+      return [0.05, 0.25, 0.50, 0.75, 0.95].map(p => col[Math.floor(p * N)]);
+    });
+    const finals = paths.map(p => p[STEPS - 1]).sort((a, b) => a - b);
+    const pPos   = finals.filter(v => v > 0).length / N * 100;
+
+    document.getElementById('mcKpis').innerHTML =
+      `<span>P(profit) <b style="color:var(--green)">${pPos.toFixed(1)}%</b></span>` +
+      `<span>Median <b>${fmtPct(finals[Math.floor(0.50 * N)])}</b></span>` +
+      `<span>5th <b style="color:var(--red)">${fmtPct(finals[Math.floor(0.05 * N)])}</b></span>` +
+      `<span>95th <b style="color:var(--green)">${fmtPct(finals[Math.floor(0.95 * N)])}</b></span>`;
+
+    const isDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const textCol = isDark ? '#5a6380' : '#8fa0b8';
+    const gridCol = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+    const ctx     = document.getElementById('mcChart').getContext('2d');
+    if (_mcChart) _mcChart.destroy();
+    const xs = Array.from({ length: STEPS }, (_, i) => i + 1);
+    _mcChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: xs,
+        datasets: [
+          { label: '95th', data: bands.map(b => b[4]), borderColor: 'rgba(16,185,129,0.35)', backgroundColor: 'rgba(16,185,129,0.07)', fill: '+1', pointRadius: 0, borderWidth: 1 },
+          { label: '75th', data: bands.map(b => b[3]), borderColor: 'rgba(16,185,129,0.2)',  backgroundColor: 'rgba(16,185,129,0.10)', fill: '+1', pointRadius: 0, borderWidth: 1 },
+          { label: 'Median', data: bands.map(b => b[2]), borderColor: '#10b981', backgroundColor: 'transparent', fill: false, pointRadius: 0, borderWidth: 2 },
+          { label: '25th', data: bands.map(b => b[1]), borderColor: 'rgba(248,113,113,0.2)',  backgroundColor: 'rgba(248,113,113,0.10)', fill: '+1', pointRadius: 0, borderWidth: 1 },
+          { label: '5th',  data: bands.map(b => b[0]), borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(248,113,113,0.07)', fill: false, pointRadius: 0, borderWidth: 1 },
+          { label: 'Actual', data: (_data.equityCurve || []).slice(0, STEPS).map(p => p.pnl),
+            borderColor: '#4f7df0', backgroundColor: 'transparent', fill: false, pointRadius: 0, borderWidth: 1.5, borderDash: [4, 3] },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, labels: { color: textCol, font: { family: 'DM Mono', size: 10 }, boxWidth: 10,
+            filter: item => ['95th','Median','5th','Actual'].includes(item.text) } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtPct(ctx.parsed.y)}` } }
+        },
+        scales: {
+          x: { ticks: { color: textCol, font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 8 }, grid: { color: gridCol },
+               title: { display: true, text: 'Trade #', color: textCol, font: { family: 'DM Mono', size: 10 } } },
+          y: { ticks: { color: textCol, font: { family: 'DM Mono', size: 10 }, callback: v => fmtPct(v) }, grid: { color: gridCol } }
+        }
+      }
+    });
+    st.textContent = `${N.toLocaleString()} simulations · ${pnls.length.toLocaleString()} trades resampled`;
+    btn.disabled = false;
+  }
+
+  setTimeout(runBatch, 20);
 }
 
 // ── Pie + regime bar charts ────────────────────────────────────────────────────
@@ -972,6 +1162,7 @@ async function runBacktest() {
       strategy,
       momentumPullback: document.getElementById('runMoPb')?.value ?? '0',
       momentumSlMult:   document.getElementById('runMoSl')?.value ?? '1.0',
+      spreadPct:        document.getElementById('runSpread').value,
     };
     const r = await fetch('/api/vol-backtest/run', {
       method: 'POST',
