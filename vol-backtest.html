@@ -352,6 +352,7 @@
   </select>
   <select id="runStrategy" class="bt-sel" onchange="toggleMomentumOpts()">
     <option value="reversal">Reversal</option>
+    <option value="reversal50">Rev-50</option>
     <option value="momentum">Momentum</option>
     <option value="both">Both</option>
     <option value="momentum50">Mom-50</option>
@@ -382,35 +383,41 @@
 <!-- ── Strategy help panel ───────────────────────────────────────────────── -->
 <div id="stratHelp" style="display:none;margin:8px 0 0;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;color:var(--txt2)">
   <strong style="color:var(--txt);font-size:13px">Strategy modes</strong>
-  <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
+  <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:12px">
     <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Reversal</div>
-      Waits for price to reach the statistically expected daily range extreme (HL75 — the 75th-percentile of that day's predicted range) then fades back toward the median close (OC_med).
-      Entry is a <em>limit order at the edge</em>. Risk:reward ≈ 0.5–0.7:1, so needs a high fill-to-win rate (~60%+) to be profitable.
-      <div style="margin-top:6px;color:var(--green)">BULL regime → SELL limit at open+HL75, TP at open+OC_med</div>
-      <div style="color:var(--red)">BEAR regime → BUY limit at open−HL75, TP at open−OC_med</div>
+      Waits for price to reach the 75th-pct daily range extreme (HL75) then fades back toward the median close (OC_med).
+      Entry is a limit order at the edge. R:R ≈ 0.5–0.7:1, so needs a high fill-to-win rate (~60%+).
+      <div style="margin-top:6px;color:var(--green)">BULL → SELL limit at open+HL75, TP open+OC_med</div>
+      <div style="color:var(--red)">BEAR → BUY limit at open−HL75, TP open−OC_med</div>
       <div style="color:var(--blue)">RANGE → fade whichever extreme fills first</div>
     </div>
     <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Rev-50 ★</div>
+      Fades the <em>median</em> range extreme (HL50) rather than the 75th-pct. TP = open, SL = HL75. Fill rate ~35% of days. R:R ≈ 3.8:1 (TP is HL50 distance, SL is HL75−HL50 gap). Break-even win rate only ~21%.
+      Most faithful to the teacher's methodology: fade when price reaches the expected daily midpoint, target a return to open.
+      <div style="margin-top:6px;color:var(--green)">BULL → SELL limit at open+HL50, TP = open, SL = open+HL75</div>
+      <div style="color:var(--red)">BEAR → BUY limit at open−HL50, TP = open, SL = open−HL75</div>
+      <div style="color:var(--blue)">RANGE → first HL50 extreme hit</div>
+    </div>
+    <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Momentum</div>
-      Trades <em>with</em> the regime direction toward HL75 rather than against it. Entry near the open (or on a small pullback), TP at the HL75 extreme, SL at OC_med in the opposite direction.
-      Risk:reward ≈ 2.5–3:1 (HL75 ÷ OC_med), so break-even win rate is only ~25–30%. Profits if the regime signal correctly predicts the day's dominant direction. Skips RANGE days (no clear directional signal).
-      <div style="margin-top:6px"><strong>Pullback</strong> — how far price must retrace before entry (0 = fill at open, ×0.5 = wait for half an OC_med dip). Higher pullback = tighter SL but fewer fills.</div>
-      <div><strong>Mo-SL</strong> — stop loss size as a multiple of OC_med beyond the open.</div>
+      Trades <em>with</em> the regime direction toward HL75. Entry near the open (or small pullback), TP at HL75, SL at OC_med in opposite direction.
+      R:R ≈ 2.5–3:1, break-even ~25–30%. Skips RANGE days.
+      <div style="margin-top:6px"><strong>Pullback</strong> — how far price must dip before entry (0 = at open).</div>
+      <div><strong>Mo-SL</strong> — stop loss as multiple of OC_med.</div>
     </div>
     <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Both</div>
-      Runs both legs simultaneously on every day. Produces two rows per day in the results — one labelled <code>reversal</code>, one <code>momentum</code>. The headline KPIs aggregate both legs together.
-      Useful for seeing whether the strategies are complementary: momentum tends to win on clean trending days (when reversal fails), and reversal wins on range-extension days (when momentum overshoots its target).
-      <div style="margin-top:6px">Use the <strong>Leg</strong> filter in the trade log to isolate each leg's performance.</div>
+      Runs Reversal + Momentum simultaneously on every day. Two rows per day in the results.
+      Useful for seeing whether the strategies are complementary — check the Leg filter to isolate each.
     </div>
     <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Mom-50</div>
-      A momentum scalp between the two range boundaries: enter <em>with</em> the regime direction once price breaks through the HL50 (median range) level, targeting HL75 (75th-pct range) with a symmetric 1:1 stop.
-      <div style="margin-top:6px">Risk:reward 1:1, so needs &gt;50% win rate. Fill rate is much higher than the Reversal (~35% of days reach HL50 vs ~8% for HL75). Run the Level Analysis to see the continuation rate per regime before backtesting.</div>
-      <div style="margin-top:4px;color:var(--green)">BULL → stop-BUY at open+HL50, TP = open+HL75, SL = open+HL50−gap</div>
-      <div style="color:var(--red)">BEAR → stop-SELL at open−HL50, TP = open−HL75, SL = open−HL50+gap</div>
-      <div style="color:var(--blue)">RANGE → first HL50 hit in either direction</div>
+      Enter <em>with</em> regime once price breaks HL50, target HL75, symmetric 1:1 stop.
+      R:R 1:1, needs &gt;50% win rate. Run Level Analysis first to see the HL50→HL75 continuation rate per regime.
+      <div style="margin-top:4px;color:var(--green)">BULL → stop-BUY at open+HL50, TP open+HL75</div>
+      <div style="color:var(--red)">BEAR → stop-SELL at open−HL50, TP open−HL75</div>
     </div>
   </div>
   <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
@@ -638,6 +645,7 @@
     <select class="bt-sel" id="fLeg" onchange="filterTrades()">
       <option value="">All legs</option>
       <option value="reversal">Reversal</option>
+      <option value="reversal50">Reversal 50</option>
       <option value="momentum">Momentum</option>
       <option value="momentum50">Momentum 50</option>
     </select>
@@ -1317,7 +1325,7 @@ function toggleHelp() {
 function toggleMomentumOpts() {
   const strategy = document.getElementById('runStrategy').value;
   document.getElementById('momentumOpts').style.display =
-    (strategy === 'reversal' || strategy === 'momentum50') ? 'none' : '';
+    (strategy === 'reversal' || strategy === 'reversal50' || strategy === 'momentum50') ? 'none' : '';
 }
 
 // ── Run backtest ──────────────────────────────────────────────────────────────
