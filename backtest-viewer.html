@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Backtest Viewer</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://s3.tradingview.com/tv.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -528,9 +527,9 @@ html, body {
     <!-- Chart fills all space not taken by the panel -->
     <div class="bv-chart-wrap">
       <div id="bvTvChart"></div>
-      <div class="bv-chart-veil" id="bvVeil">
+      <div class="bv-chart-veil" id="bvVeil" style="display:none">
         <div class="bv-spinner" id="bvVeilSpinner" style="display:none"></div>
-        <div id="bvVeilMsg">Loading trades…</div>
+        <div id="bvVeilMsg"></div>
       </div>
     </div>
 
@@ -713,7 +712,7 @@ function _togglePanel() {
 
 // ── TradingView Widget ────────────────────────────────────────────────────────
 
-function _initTV() {
+function _createTVWidget() {
   tvWidget = new TradingView.widget({
     container_id:        'bvTvChart',
     symbol:              'FX:EURUSD',
@@ -741,6 +740,22 @@ function _initTV() {
       _applyTrade(t);
     }
   });
+}
+
+// Load tv.js dynamically so it never blocks the trades fetch or veil updates.
+// If the TradingView CDN is slow or unreachable the rest of the page still works.
+function _initTV() {
+  if (window.TradingView) { _createTVWidget(); return; }
+  const s = document.createElement('script');
+  s.src   = 'https://s3.tradingview.com/tv.js';
+  s.async = true;
+  s.onload  = _createTVWidget;
+  s.onerror = () => {
+    console.warn('TradingView widget failed to load — chart unavailable');
+    document.getElementById('bvTvChart').innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#5a6380;font-family:\'DM Mono\',monospace;font-size:12px">TradingView chart unavailable — select a trade to see detail</div>';
+  };
+  document.head.appendChild(s);
 }
 
 // ── Chart Annotations ─────────────────────────────────────────────────────────
@@ -851,9 +866,9 @@ async function _loadTrades() {
   try {
     allTrades = await adapter.fetchTrades();
     _applyFilters();
-    _setVeil('Select a trade →', false);
+    _setVeil('Select a trade from the list →', false);
   } catch (e) {
-    _setVeil('Error: ' + e.message, false);
+    _setVeil('⚠ ' + e.message, false);
   }
 }
 
