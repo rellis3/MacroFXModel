@@ -1339,26 +1339,44 @@ async function runLevelAnalysis() {
   const st  = document.getElementById('laStatus');
   btn.disabled = true;
   btn.textContent = '⏳';
-  st.textContent  = 'Running — fetching M1 data from R2…';
+  st.textContent  = 'Starting analysis…';
 
   try {
-    const pair    = document.getElementById('laPair').value;
+    const pair     = document.getElementById('laPair').value;
     const dateFrom = document.getElementById('laFrom').value;
     const dateTo   = document.getElementById('laTo').value;
 
-    const resp = await fetch('/api/vol-backtest/level-analysis', {
+    // Start the job — returns immediately with jobId
+    const start = await fetch('/api/vol-backtest/level-analysis', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pair: pair || undefined, dateFrom, dateTo }),
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
+    const startData = await start.json();
+    if (!startData.ok || !startData.jobId) throw new Error(startData.error || 'Failed to start job');
 
-    if (data.error) throw new Error(data.error);
-    if (!data.agg)  { st.textContent = 'No M1 data available — set R2 credentials'; return; }
+    const { jobId } = startData;
+    st.textContent = 'Fetching M1 data and walking levels…';
 
-    renderLevelAnalysis(data);
-    st.textContent = `${data.n} days analysed across ${Object.keys(data.byInstrument).length} pairs`;
+    // Poll until done (up to 10 min)
+    for (let i = 0; i < 200; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      const r = await fetch(`/api/vol-backtest/level-analysis/status/${jobId}`);
+      const d = await r.json();
+
+      if (d.status === 'running') {
+        st.textContent = `Analysing M1 bars… ${d.elapsed}s`;
+        continue;
+      }
+      if (d.status === 'error') throw new Error(d.error || 'Analysis failed');
+      if (d.status === 'done') {
+        if (!d.agg) { st.textContent = 'No M1 data available — check R2 credentials or local parquet files'; return; }
+        renderLevelAnalysis(d);
+        st.textContent = `${d.n} days analysed across ${Object.keys(d.byInstrument).length} pairs`;
+        return;
+      }
+    }
+    throw new Error('Timed out waiting for analysis');
   } catch (e) {
     st.textContent = 'Error: ' + e.message;
   } finally {

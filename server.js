@@ -1774,8 +1774,15 @@ app.get('/api/vol-backtest/diagnose', async (_req, res) => {
 
 app.get('/api/version', (_req, res) => res.json({ version: 'r2-m1-engine', deployedAt: new Date().toISOString(), r2: !!process.env.R2_ACCESS_KEY }));
 
-// Level hit analysis — sweep matrix across all pairs with M1 data
-app.post('/api/vol-backtest/level-analysis', async (req, res) => {
+// Level hit analysis — async job queue (same pattern as vol-backtest/run)
+const laJobs = new Map();
+
+function _purgeStaleLaJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of laJobs) if (job.startedAt < cutoff) laJobs.delete(id);
+}
+
+app.post('/api/vol-backtest/level-analysis', (req, res) => {
   const { dateFrom, dateTo, pair } = req.body ?? {};
   const opts = {
     dateFrom:    dateFrom ?? '',
@@ -1787,21 +1794,43 @@ app.post('/api/vol-backtest/level-analysis', async (req, res) => {
     ? BT_INSTRUMENTS.filter(i => i.name === pair)
     : BT_INSTRUMENTS;
 
-  try {
-    const { records, agg, log } = await runFullLevelAnalysis(opts, instFilter);
+  const jobId     = `la_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
 
-    // Per-instrument aggregates
-    const instruments = [...new Set(records.map(r => r.instrument))];
-    const byInstrument = Object.fromEntries(
-      instruments.map(inst => [inst, aggregateLevelHits(records.filter(r => r.instrument === inst))])
-    );
+  _purgeStaleLaJobs();
+  laJobs.set(jobId, { status: 'running', startedAt });
 
-    res.json({ agg, byInstrument, log, n: records.length });
-  } catch (e) {
-    console.error('[level-analysis]', e.message);
-    res.status(500).json({ error: e.message });
-  }
+  // Fire-and-forget — response returns immediately with jobId
+  (async () => {
+    try {
+      const { records, agg, log } = await runFullLevelAnalysis(opts, instFilter);
+      const instruments = [...new Set(records.map(r => r.instrument))];
+      const byInstrument = Object.fromEntries(
+        instruments.map(inst => [inst, aggregateLevelHits(records.filter(r => r.instrument === inst))])
+      );
+      laJobs.set(jobId, {
+        status: 'done', startedAt,
+        result: { agg, byInstrument, log, n: records.length },
+      });
+    } catch (e) {
+      console.error('[level-analysis]', e.message);
+      laJobs.set(jobId, { status: 'error', error: e.message, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
 });
+
+app.get('/api/vol-backtest/level-analysis/status/:jobId', (req, res) => {
+  const job = laJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {
   try {
