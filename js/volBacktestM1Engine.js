@@ -389,48 +389,56 @@ function _simulateMomentumD1(open, high, low, close, hl75pct, ocMedPct, regime, 
 export async function runFullM1Backtest(opts = {}, instruments = INSTRUMENTS, m1Dir = BT_M1_DIR) {
   if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set — cannot fetch D1 data');
 
-  const allTrades = [];
-  const log       = [];
+  // Process instruments in parallel batches of 5 to stay within Railway's request timeout
+  const CONCURRENCY = 5;
+  const allResults  = [];
+  for (let i = 0; i < instruments.length; i += CONCURRENCY) {
+    const batch = instruments.slice(i, i + CONCURRENCY);
+    const batchResults = await Promise.all(batch.map(async cfg => {
+      const pairLog = [];
+      try {
+        pairLog.push(`Fetching D1 ${cfg.name}…`);
+        const d1Bars = await fetchD1(cfg.oanda, 5000);
+        pairLog.push(`  ${d1Bars.length} D1 bars (${d1Bars[0]?.date} → ${d1Bars.at(-1)?.date})`);
 
-  for (const cfg of instruments) {
-    try {
-      log.push(`Fetching D1 ${cfg.name}…`);
-      const d1Bars = await fetchD1(cfg.oanda, 5000);
-      log.push(`  ${d1Bars.length} D1 bars (${d1Bars[0]?.date} → ${d1Bars.at(-1)?.date})`);
+        const pairKey  = cfg.name.toLowerCase().replace('/', '');
+        const m1File   = path.join(m1Dir, `${pairKey}_m1.parquet`);
+        let   m1ByDate = null;
 
-      // Load M1 parquet — try R2 first (if credentials set), then local file
-      const pairKey  = cfg.name.toLowerCase().replace('/', '');
-      const m1File   = path.join(m1Dir, `${pairKey}_m1.parquet`);
-      let   m1ByDate = null;
+        const r2ab = await fetchFromR2(pairKey);
+        if (r2ab) {
+          pairLog.push(`  Loading M1 parquet from R2 (${(r2ab.byteLength / 1e6).toFixed(1)} MB)…`);
+          const rows = await readM1Parquet(r2ab);
+          m1ByDate   = groupByDate(rows);
+          pairLog.push(`  ${rows.length.toLocaleString()} M1 bars across ${m1ByDate.size} dates`);
+        } else if (existsSync(m1File)) {
+          pairLog.push(`  Loading M1 parquet from disk (${(readFileSync(m1File).length / 1e6).toFixed(1)} MB)…`);
+          const rows = await readM1Parquet(m1File);
+          m1ByDate   = groupByDate(rows);
+          pairLog.push(`  ${rows.length.toLocaleString()} M1 bars across ${m1ByDate.size} dates`);
+        } else {
+          pairLog.push(`  No M1 parquet — falling back to D1 simulation`);
+        }
 
-      const r2ab = await fetchFromR2(pairKey);
-      if (r2ab) {
-        log.push(`  Loading M1 parquet from R2 (${(r2ab.byteLength / 1e6).toFixed(1)} MB)…`);
-        const rows = await readM1Parquet(r2ab);
-        m1ByDate   = groupByDate(rows);
-        log.push(`  ${rows.length.toLocaleString()} M1 bars across ${m1ByDate.size} dates`);
-      } else if (existsSync(m1File)) {
-        log.push(`  Loading M1 parquet from disk (${(readFileSync(m1File).length / 1e6).toFixed(1)} MB)…`);
-        const rows = await readM1Parquet(m1File);
-        m1ByDate   = groupByDate(rows);
-        log.push(`  ${rows.length.toLocaleString()} M1 bars across ${m1ByDate.size} dates`);
-      } else {
-        log.push(`  No M1 parquet (set R2_ACCESS_KEY/R2_SECRET_KEY or run r2_download.py) — falling back to D1 simulation`);
+        const trades = runM1Backtest(d1Bars, m1ByDate, cfg.assetClass, opts)
+          .map(r => ({ instrument: cfg.name, ...r }));
+
+        const nM1   = trades.filter(t => t.filled && t.m1_sim).length;
+        const nFill = trades.filter(t => t.filled).length;
+        pairLog.push(`  ${nFill} filled trades (${nM1} via M1, ${nFill - nM1} via D1 fallback)`);
+        return { trades, log: pairLog };
+      } catch (e) {
+        pairLog.push(`  Error: ${e.message}`);
+        return { trades: [], log: pairLog };
       }
-
-      const trades = runM1Backtest(d1Bars, m1ByDate, cfg.assetClass, opts)
-        .map(r => ({ instrument: cfg.name, ...r }));
-      allTrades.push(...trades);
-
-      const nM1    = trades.filter(t => t.filled && t.m1_sim).length;
-      const nFill  = trades.filter(t => t.filled).length;
-      log.push(`  ${nFill} filled trades (${nM1} via M1, ${nFill - nM1} via D1 fallback)`);
-    } catch (e) {
-      log.push(`  Error: ${e.message}`);
-    }
+    }));
+    allResults.push(...batchResults);
   }
 
-  return { trades: allTrades, log };
+  return {
+    trades: allResults.flatMap(r => r.trades),
+    log:    allResults.flatMap(r => r.log),
+  };
 }
 
 export { INSTRUMENTS };
