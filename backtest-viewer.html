@@ -51,12 +51,66 @@ html, body {
 
 /* ── Replay bar ───────────────────────────────────────────────────────────── */
 .bv-replay-bar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 4px 14px; height: 36px;
-  background: #0e1520; border-bottom: 1px solid #1c2133;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 14px; height: 40px;
+  background: #0b111e; border-bottom: 1px solid #1c2133;
   flex-shrink: 0;
 }
-.bv-replay-stat { font-family: 'DM Mono', monospace; font-size: 11px; color: #5a6380; flex: 1; }
+.bv-rplay-btns { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+
+/* Scrubber */
+.bv-scrubber {
+  flex: 1; min-width: 60px; position: relative;
+  height: 40px; display: flex; align-items: center;
+  cursor: pointer; padding: 0 4px;
+}
+.bv-scrub-track {
+  position: relative; width: 100%; height: 4px;
+  background: #1c2840; border-radius: 2px;
+}
+.bv-scrub-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: #4f7df0; border-radius: 2px;
+  pointer-events: none; width: 0%;
+}
+.bv-scrub-thumb {
+  position: absolute; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px; height: 12px; background: #e8eaf0;
+  border-radius: 50%; box-shadow: 0 0 0 2px #4f7df0, 0 2px 6px rgba(0,0,0,.5);
+  cursor: grab; z-index: 2; left: 0%; transition: box-shadow .1s;
+}
+.bv-scrub-thumb:hover { box-shadow: 0 0 0 3px #4f7df0, 0 2px 8px rgba(79,125,240,.4); }
+.bv-scrubber:active .bv-scrub-thumb { cursor: grabbing; }
+.bv-scrub-marker {
+  position: absolute; top: -5px; bottom: -5px; width: 2px;
+  border-radius: 1px; pointer-events: none; z-index: 1;
+}
+
+/* Speed buttons */
+.bv-speed-group { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.bv-speed-btn {
+  background: transparent; border: 1px solid #252e42; color: #4a5570;
+  border-radius: 3px; padding: 2px 6px; font-size: 10px;
+  font-family: 'DM Mono', monospace; cursor: pointer;
+  transition: all .1s; white-space: nowrap;
+}
+.bv-speed-btn:hover  { background: #1c2133; color: #9aa8c0; border-color: #3a4a65; }
+.bv-speed-btn.bv-active { background: #4f7df018; border-color: #4f7df088; color: #7fa8f8; }
+
+/* Replay timestamp */
+.bv-replay-ts {
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  color: #7a8faa; white-space: nowrap; min-width: 110px;
+  letter-spacing: .02em;
+}
+
+/* Replay vertical "now" line on chart */
+.bv-replay-line {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: linear-gradient(to bottom, transparent 0%, rgba(79,125,240,.5) 10%, rgba(79,125,240,.5) 90%, transparent 100%);
+  pointer-events: none; z-index: 5; display: none; left: 0;
+}
 
 /* ── Body ─────────────────────────────────────────────────────────────────── */
 .bv-body { display: flex; flex: 1; min-height: 0; overflow: hidden; position: relative; }
@@ -161,7 +215,10 @@ html, body {
   .bv-mob-panel-btn .bv-mob-icon { font-size: 15px; line-height: 1; color: #4f7df0; }
   .bv-mob-panel-btn .bv-mob-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .bv-hints { display: none; }
-  .bv-replay-bar { padding: 4px 10px; gap: 6px; }
+  .bv-replay-bar { padding: 0 10px; gap: 5px; height: 38px; }
+  .bv-replay-ts { min-width: 80px; font-size: 10px; }
+  .bv-speed-group { gap: 1px; }
+  .bv-speed-btn { padding: 2px 4px; font-size: 9px; }
 }
 </style>
 </head>
@@ -196,24 +253,44 @@ html, body {
 
   <!-- Replay bar (hidden until activated) -->
   <div class="bv-replay-bar" id="bvReplayBar" style="display:none">
-    <button class="bv-btn" id="bvPlayBtn" style="color:#26a69a;border-color:#26a69a44">▶ Play</button>
-    <button class="bv-btn bv-sm" id="bvStepBtn">Step ▶|</button>
-    <button class="bv-btn bv-sm" id="bvResetBtn">⟲ Reset</button>
-    <span class="bv-lbl">Speed</span>
-    <select class="bv-sel" id="bvSpeed">
-      <option value="800">0.5×</option>
-      <option value="350" selected>1×</option>
-      <option value="150">2×</option>
-      <option value="50">4×</option>
-    </select>
-    <span class="bv-replay-stat" id="bvReplayStat"></span>
-    <button class="bv-btn bv-sm" id="bvExitReplay" style="color:#ef5350;border-color:#ef535044;margin-left:auto">✕ Exit</button>
+    <!-- Transport controls -->
+    <div class="bv-rplay-btns">
+      <button class="bv-btn bv-sm" id="bvStepBackBtn" title="Step back ←">|◀</button>
+      <button class="bv-btn" id="bvPlayBtn" style="color:#26a69a;border-color:#26a69a55;min-width:80px">▶ Play</button>
+      <button class="bv-btn bv-sm" id="bvStepBtn" title="Step forward →">▶|</button>
+      <button class="bv-btn bv-sm" id="bvResetBtn" title="Reset">⟲</button>
+    </div>
+
+    <!-- Scrubber timeline -->
+    <div class="bv-scrubber" id="bvScrubber">
+      <div class="bv-scrub-track" id="bvScrubTrack">
+        <div class="bv-scrub-fill" id="bvScrubFill"></div>
+        <div class="bv-scrub-marker" id="bvScrubEntry" style="display:none;background:#26a69a99"></div>
+        <div class="bv-scrub-marker" id="bvScrubExit"  style="display:none;background:#ef535099"></div>
+        <div class="bv-scrub-thumb" id="bvScrubThumb"></div>
+      </div>
+    </div>
+
+    <!-- Current bar timestamp -->
+    <span class="bv-replay-ts" id="bvReplayTs">—</span>
+
+    <!-- Speed presets -->
+    <div class="bv-speed-group" id="bvSpeedGroup">
+      <button class="bv-speed-btn" data-ms="800">½×</button>
+      <button class="bv-speed-btn bv-active" data-ms="350">1×</button>
+      <button class="bv-speed-btn" data-ms="150">2×</button>
+      <button class="bv-speed-btn" data-ms="50">4×</button>
+    </div>
+
+    <button class="bv-btn bv-sm" id="bvExitReplay" style="color:#ef5350;border-color:#ef535044;flex-shrink:0">✕</button>
   </div>
 
   <!-- Main body -->
   <div class="bv-body">
     <div class="bv-chart-wrap">
       <div class="bv-chart" id="bvChart"></div>
+      <!-- Replay "now" line overlay -->
+      <div class="bv-replay-line" id="bvReplayLine"></div>
       <div class="bv-chart-veil" id="bvVeil" style="display:none">
         <div class="bv-spinner" id="bvVeilSpinner" style="display:none"></div>
         <div id="bvVeilMsg"></div>
@@ -260,7 +337,7 @@ html, body {
     <button class="bv-mob-btn bv-mob-nav" id="bvMobNext">›</button>
   </div>
 
-  <div class="bv-hints">← → Navigate &nbsp;·&nbsp; R Replay &nbsp;·&nbsp; Space Step &nbsp;·&nbsp; L Levels &nbsp;·&nbsp; Enter Re-center</div>
+  <div class="bv-hints">← → Navigate &nbsp;·&nbsp; R Replay &nbsp;·&nbsp; ←→ Step &nbsp;·&nbsp; Space Play/Pause &nbsp;·&nbsp; L Levels &nbsp;·&nbsp; Enter Re-center</div>
 </div>
 
 <script>
@@ -353,9 +430,13 @@ let _candles = [], _exitBar = null;
 let _levelLines = [], _fibLines = [];
 
 // Replay state
-let _replayMode = false, _replayCursor = 0, _replayStart = 0;
-let _replayTimer = null, _replaySpeed = 350;
-let _replayEntryMarked = false, _replayExitMarked = false;
+let _replayMode        = false;
+let _replayCursor      = 0;
+let _replayStart       = 0;
+let _replayTimer       = null;
+let _replaySpeed       = 350;
+let _replayEntryMarked = false;
+let _replayExitMarked  = false;
 
 // ── LightweightCharts — dynamic load ─────────────────────────────────────────
 
@@ -384,6 +465,10 @@ function _initChart() {
       upColor: '#26a69a', downColor: '#ef5350',
       borderUpColor: '#26a69a', borderDownColor: '#ef5350',
       wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    });
+    // Update replay line whenever the visible range changes (pan/zoom)
+    _chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      if (_replayMode) _updateReplayLine();
     });
     // If a trade was already selected while chart was loading, render it now
     if (currentTrade && _candles.length) {
@@ -647,13 +732,24 @@ function _openReplay() {
   _replayEntryMarked  = false;
   _replayExitMarked   = false;
   _replayMode         = true;
+
   document.getElementById('bvReplayBar').style.display = '';
-  document.getElementById('bvPlayBtn').textContent = '▶ Play';
+  _setPlayLabel('▶ Play');
   _cs.setData(_candles.slice(0, _replayCursor));
   _clearLevelLines();
   _cs.setMarkers([]);
-  _updateReplayStat();
-  _zoomToTrade(currentTrade);
+
+  // Zoom to the replay start window: 5 bars before, ~70 bars ahead
+  const startBar = _candles[_replayStart];
+  if (startBar && _chart) {
+    _chart.timeScale().setVisibleRange({
+      from: startBar.time - 5 * 60,
+      to:   startBar.time + 70 * 60,
+    });
+  }
+
+  _initScrubberMarkers();
+  _updateReplayState();
 }
 
 function _closeReplay(silent = false) {
@@ -661,22 +757,40 @@ function _closeReplay(silent = false) {
   _stopReplayTimer();
   _replayMode = false;
   document.getElementById('bvReplayBar').style.display = 'none';
+  document.getElementById('bvReplayLine').style.display = 'none';
+  _resetScrubber();
   if (!silent && currentTrade && _candles.length && _cs) _renderChartFull();
 }
 
 function _togglePlay() {
-  const btn = document.getElementById('bvPlayBtn');
-  if (_replayTimer) { _stopReplayTimer(); btn.textContent = '▶ Play'; }
-  else { _startReplayTimer(); btn.textContent = '⏸ Pause'; }
+  if (_replayTimer) {
+    _stopReplayTimer();
+    _setPlayLabel('▶ Play');
+  } else {
+    if (_replayCursor >= _candles.length) _resetReplay();
+    _startReplayTimer();
+    _setPlayLabel('⏸ Pause');
+  }
 }
 
-function _startReplayTimer() { _replayTimer = setInterval(_stepReplay, _replaySpeed); }
-function _stopReplayTimer()  { if (_replayTimer) { clearInterval(_replayTimer); _replayTimer = null; } }
+function _setPlayLabel(txt) {
+  document.getElementById('bvPlayBtn').textContent = txt;
+}
+
+function _startReplayTimer() {
+  _replayTimer = setInterval(_stepReplay, _replaySpeed);
+}
+
+function _stopReplayTimer() {
+  if (_replayTimer) { clearInterval(_replayTimer); _replayTimer = null; }
+}
 
 function _stepReplay() {
   if (!_replayMode || !_cs) return;
   if (_replayCursor >= _candles.length) {
-    _stopReplayTimer(); document.getElementById('bvPlayBtn').textContent = '▶ Play'; return;
+    _stopReplayTimer();
+    _setPlayLabel('▶ Play');
+    return;
   }
   _cs.update(_candles[_replayCursor]);
   _replayCursor++;
@@ -691,23 +805,196 @@ function _stepReplay() {
   if (_exitBar && !_replayExitMarked && curr?.time >= _exitBar.time) {
     _replayExitMarked = true;
     _renderMarkers(currentTrade, null);
-    _stopReplayTimer(); document.getElementById('bvPlayBtn').textContent = '▶ Play';
+    _stopReplayTimer();
+    _setPlayLabel('▶ Play');
   }
-  _updateReplayStat();
+
+  _autoScrollToBar();
+  _updateReplayState();
+}
+
+function _stepBackReplay() {
+  if (!_replayMode || !_cs || _replayCursor <= _replayStart) return;
+  _stopReplayTimer();
+  _setPlayLabel('▶ Play');
+  _replayCursor--;
+  _cs.setData(_candles.slice(0, _replayCursor));
+
+  // Recompute which markers should be visible at the new cursor
+  const curr   = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  const fillTs = currentTrade?.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+  _replayEntryMarked = !!(curr && fillTs && curr.time >= fillTs);
+  _replayExitMarked  = !!(curr && _exitBar && curr.time >= _exitBar.time);
+
+  _clearLevelLines();
+  _cs.setMarkers([]);
+  if (_replayEntryMarked) {
+    if (showLevels) _renderLevels(currentTrade);
+    _renderMarkers(currentTrade, _replayExitMarked ? null : curr.time);
+  }
+
+  _updateReplayState();
 }
 
 function _resetReplay() {
-  _stopReplayTimer(); document.getElementById('bvPlayBtn').textContent = '▶ Play';
-  _replayCursor = _replayStart; _replayEntryMarked = false; _replayExitMarked = false;
-  if (_cs) { _cs.setData(_candles.slice(0, _replayCursor)); _clearLevelLines(); _cs.setMarkers([]); }
-  _updateReplayStat();
+  _stopReplayTimer();
+  _setPlayLabel('▶ Play');
+  _replayCursor = _replayStart;
+  _replayEntryMarked = false;
+  _replayExitMarked  = false;
+  if (_cs) {
+    _cs.setData(_candles.slice(0, _replayCursor));
+    _clearLevelLines();
+    _cs.setMarkers([]);
+  }
+  // Scroll back to the replay start
+  const startBar = _candles[_replayStart];
+  if (startBar && _chart) {
+    _chart.timeScale().setVisibleRange({
+      from: startBar.time - 5 * 60,
+      to:   startBar.time + 70 * 60,
+    });
+  }
+  _updateReplayState();
 }
 
-function _updateReplayStat() {
-  const el = document.getElementById('bvReplayStat'); if (!el) return;
-  const bar = _candles[Math.max(0, _replayCursor - 1)];
-  const t   = bar ? new Date(bar.time * 1000).toISOString().substring(0, 16) + 'Z' : '';
-  el.textContent = `Bar ${_replayCursor} / ${_candles.length}  ${t}`;
+// Seek to a fractional position [0,1] on the scrubber
+function _scrubTo(pct) {
+  if (!_replayMode || !_cs) return;
+  const total = _candles.length - _replayStart;
+  _replayCursor = Math.max(_replayStart, Math.min(_candles.length, Math.round(pct * total) + _replayStart));
+  _stopReplayTimer();
+  _setPlayLabel('▶ Play');
+  _cs.setData(_candles.slice(0, _replayCursor));
+
+  const curr   = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  const fillTs = currentTrade?.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+  _replayEntryMarked = !!(curr && fillTs && curr.time >= fillTs);
+  _replayExitMarked  = !!(curr && _exitBar && curr.time >= _exitBar.time);
+
+  _clearLevelLines();
+  _cs.setMarkers([]);
+  if (_replayEntryMarked) {
+    if (showLevels) _renderLevels(currentTrade);
+    _renderMarkers(currentTrade, _replayExitMarked ? null : curr?.time);
+  }
+
+  _autoScrollToBar();
+  _updateReplayState();
+}
+
+// Keep the current replay bar visible when auto-playing
+function _autoScrollToBar() {
+  if (!_chart || !_candles.length) return;
+  const curr = _candles[_replayCursor - 1];
+  if (!curr) return;
+  const ts = _chart.timeScale();
+  const x  = ts.timeToCoordinate(curr.time);
+  const w  = (document.getElementById('bvChart').clientWidth || 800) - 70;
+  // Only scroll if the bar has drifted off-screen
+  if (x !== null && x >= 20 && x <= w - 20) return;
+  ts.setVisibleRange({
+    from: curr.time - 45 * 60,
+    to:   curr.time + 15 * 60,
+  });
+}
+
+// Update scrubber position and the "now" vertical line
+function _updateReplayState() {
+  const total = _candles.length - _replayStart;
+  const pos   = _replayCursor - _replayStart;
+  const pct   = total > 0 ? (pos / total) : 0;
+  const pctPx = (pct * 100).toFixed(2) + '%';
+
+  document.getElementById('bvScrubFill').style.width = pctPx;
+  document.getElementById('bvScrubThumb').style.left = pctPx;
+
+  // Timestamp
+  const bar = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  document.getElementById('bvReplayTs').textContent = bar
+    ? new Date(bar.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z'
+    : '—';
+
+  _updateReplayLine();
+}
+
+// Position the vertical "now" line overlay on the chart
+function _updateReplayLine() {
+  const line = document.getElementById('bvReplayLine');
+  if (!line || !_chart) return;
+  const curr = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  if (!curr) { line.style.display = 'none'; return; }
+  const x = _chart.timeScale().timeToCoordinate(curr.time);
+  if (x === null) { line.style.display = 'none'; return; }
+  line.style.left    = Math.round(x) + 'px';
+  line.style.display = 'block';
+}
+
+// Place entry and exit tick marks on the scrubber track
+function _initScrubberMarkers() {
+  const total = _candles.length - _replayStart;
+  if (total <= 0) return;
+
+  const entryEl = document.getElementById('bvScrubEntry');
+  const exitEl  = document.getElementById('bvScrubExit');
+
+  const fillTs = currentTrade?.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+  if (fillTs) {
+    const ei  = _candles.findIndex(c => c.time >= fillTs);
+    const pct = ei >= _replayStart ? ((ei - _replayStart) / total * 100).toFixed(2) + '%' : '-1px';
+    entryEl.style.left    = pct;
+    entryEl.style.display = '';
+  } else {
+    entryEl.style.display = 'none';
+  }
+
+  if (_exitBar) {
+    const xi  = _candles.findIndex(c => c.time >= _exitBar.time);
+    const pct = xi >= _replayStart ? ((xi - _replayStart) / total * 100).toFixed(2) + '%' : '-1px';
+    exitEl.style.left    = pct;
+    exitEl.style.display = '';
+  } else {
+    exitEl.style.display = 'none';
+  }
+}
+
+function _resetScrubber() {
+  document.getElementById('bvScrubFill').style.width  = '0%';
+  document.getElementById('bvScrubThumb').style.left  = '0%';
+  document.getElementById('bvScrubEntry').style.display = 'none';
+  document.getElementById('bvScrubExit').style.display  = 'none';
+}
+
+// Wire up scrubber click + drag
+function _initScrubberEvents() {
+  const scrubber = document.getElementById('bvScrubber');
+  const track    = document.getElementById('bvScrubTrack');
+  let dragging   = false;
+
+  function getPct(e) {
+    const rect = track.getBoundingClientRect();
+    const cx   = e.touches ? e.touches[0].clientX : e.clientX;
+    return Math.max(0, Math.min(1, (cx - rect.left) / rect.width));
+  }
+
+  scrubber.addEventListener('mousedown', e => {
+    e.preventDefault();
+    dragging = true;
+    if (_replayMode) _scrubTo(getPct(e));
+  });
+  document.addEventListener('mousemove', e => {
+    if (dragging && _replayMode) _scrubTo(getPct(e));
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+
+  scrubber.addEventListener('touchstart', e => {
+    dragging = true;
+    if (_replayMode) _scrubTo(getPct(e));
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (dragging && _replayMode) _scrubTo(getPct(e));
+  }, { passive: true });
+  document.addEventListener('touchend', () => { dragging = false; });
 }
 
 // ── Levels & view controls ────────────────────────────────────────────────────
@@ -750,21 +1037,36 @@ function _hideVeil() { document.getElementById('bvVeil').style.display = 'none';
 if (!adapter) {
   document.body.innerHTML = `<div style="padding:40px;color:#ef5350;font-family:monospace">Unknown source "${source}"</div>`;
 } else {
-  // Controls
-  document.getElementById('bvFResult') .addEventListener('change', e => { fResult = e.target.value; _applyFilters(); });
-  document.getElementById('bvFDir')    .addEventListener('change', e => { fDir    = e.target.value; _applyFilters(); });
-  document.getElementById('bvLevels')  .addEventListener('click',  _toggleLevels);
-  document.getElementById('bvReCenter').addEventListener('click',  _reCenter);
+  // Filters
+  document.getElementById('bvFResult').addEventListener('change', e => { fResult = e.target.value; _applyFilters(); });
+  document.getElementById('bvFDir')   .addEventListener('change', e => { fDir    = e.target.value; _applyFilters(); });
+
+  // Top-bar controls
+  document.getElementById('bvLevels')   .addEventListener('click', _toggleLevels);
+  document.getElementById('bvReCenter') .addEventListener('click', _reCenter);
   document.getElementById('bvReplayBtn').addEventListener('click', _openReplay);
-  document.getElementById('bvTvBtn')   .addEventListener('click',  _openTradingView);
-  document.getElementById('bvPlayBtn') .addEventListener('click',  _togglePlay);
-  document.getElementById('bvStepBtn') .addEventListener('click',  _stepReplay);
-  document.getElementById('bvResetBtn').addEventListener('click',  _resetReplay);
-  document.getElementById('bvExitReplay').addEventListener('click', () => _closeReplay());
-  document.getElementById('bvSpeed')   .addEventListener('change', e => { _replaySpeed = +e.target.value; if (_replayTimer) { _stopReplayTimer(); _startReplayTimer(); } });
-  document.getElementById('bvPrevBtn') .addEventListener('click',  _prevTrade);
-  document.getElementById('bvNextBtn') .addEventListener('click',  _nextTrade);
-  document.getElementById('bvList')    .addEventListener('click', e => { const r = e.target.closest('.bv-row'); if (r) _selectTrade(+r.dataset.idx); });
+  document.getElementById('bvTvBtn')    .addEventListener('click', _openTradingView);
+
+  // Replay transport
+  document.getElementById('bvStepBackBtn').addEventListener('click', _stepBackReplay);
+  document.getElementById('bvPlayBtn')    .addEventListener('click', _togglePlay);
+  document.getElementById('bvStepBtn')    .addEventListener('click', _stepReplay);
+  document.getElementById('bvResetBtn')   .addEventListener('click', _resetReplay);
+  document.getElementById('bvExitReplay') .addEventListener('click', () => _closeReplay());
+
+  // Speed buttons
+  document.getElementById('bvSpeedGroup').addEventListener('click', e => {
+    const btn = e.target.closest('.bv-speed-btn');
+    if (!btn) return;
+    _replaySpeed = +btn.dataset.ms;
+    document.querySelectorAll('.bv-speed-btn').forEach(b => b.classList.toggle('bv-active', b === btn));
+    if (_replayTimer) { _stopReplayTimer(); _startReplayTimer(); }
+  });
+
+  // Trade nav
+  document.getElementById('bvPrevBtn').addEventListener('click', _prevTrade);
+  document.getElementById('bvNextBtn').addEventListener('click', _nextTrade);
+  document.getElementById('bvList')   .addEventListener('click', e => { const r = e.target.closest('.bv-row'); if (r) _selectTrade(+r.dataset.idx); });
 
   // Mobile
   document.getElementById('bvMobToggle')    .addEventListener('click', _togglePanel);
@@ -775,17 +1077,26 @@ if (!adapter) {
   document.getElementById('bvMobPrev')      .addEventListener('click', _prevTrade);
   document.getElementById('bvMobNext')      .addEventListener('click', _nextTrade);
 
-  // Keyboard
+  // Keyboard — arrow keys are hijacked for step during replay
   document.addEventListener('keydown', e => {
-    if (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+    if (_replayMode) {
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); _stepBackReplay(); return; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); _stepReplay();     return; }
+      if (e.key === ' ')          { e.preventDefault(); _togglePlay();     return; }
+      if (e.key === 'Escape')     { _closeReplay(); return; }
+      return;
+    }
     if (e.key === 'ArrowLeft')  { e.preventDefault(); _prevTrade(); }
     if (e.key === 'ArrowRight') { e.preventDefault(); _nextTrade(); }
     if (e.key === 'r' || e.key === 'R') _openReplay();
-    if (e.key === ' ' && _replayMode) { e.preventDefault(); _stepReplay(); }
     if (e.key === 'l' || e.key === 'L') _toggleLevels();
     if (e.key === 'Enter') _reCenter();
-    if (e.key === 'Escape') { _closePanel(); if (_replayMode) _closeReplay(); }
+    if (e.key === 'Escape') _closePanel();
   });
+
+  // Scrubber drag/click
+  _initScrubberEvents();
 
   // Back link
   const back = BACK_LINKS[source];
