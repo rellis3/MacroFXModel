@@ -153,29 +153,30 @@ function walkM1(bars, entryLevel, tpLevel, slLevel, isBuy, open, dynHlCorr = 0) 
             : open - actualFromOpen * (1 - dynHlCorr);
         }
         if (isBuy) {
-          if (bar.low  <= slLevel)      return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100), fillTime };
-          if (bar.high >= effectiveTp)  return { outcome: 'win',  pnlPct:   (effectiveTp - entryLevel) / open * 100,  fillTime };
+          if (bar.low  <= slLevel)      return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100), fillTime, exitTime: bar.time };
+          if (bar.high >= effectiveTp)  return { outcome: 'win',  pnlPct:   (effectiveTp - entryLevel) / open * 100,  fillTime, exitTime: bar.time };
         } else {
-          if (bar.high >= slLevel)      return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100), fillTime };
-          if (bar.low  <= effectiveTp)  return { outcome: 'win',  pnlPct:   (entryLevel - effectiveTp) / open * 100,  fillTime };
+          if (bar.high >= slLevel)      return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100), fillTime, exitTime: bar.time };
+          if (bar.low  <= effectiveTp)  return { outcome: 'win',  pnlPct:   (entryLevel - effectiveTp) / open * 100,  fillTime, exitTime: bar.time };
         }
       }
     } else {
       if (isBuy) {
-        if (bar.low  <= slLevel)      return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100), fillTime };
-        if (bar.high >= effectiveTp)  return { outcome: 'win',  pnlPct:   (effectiveTp - entryLevel) / open * 100,  fillTime };
+        if (bar.low  <= slLevel)      return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100), fillTime, exitTime: bar.time };
+        if (bar.high >= effectiveTp)  return { outcome: 'win',  pnlPct:   (effectiveTp - entryLevel) / open * 100,  fillTime, exitTime: bar.time };
       } else {
-        if (bar.high >= slLevel)      return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100), fillTime };
-        if (bar.low  <= effectiveTp)  return { outcome: 'win',  pnlPct:   (entryLevel - effectiveTp) / open * 100,  fillTime };
+        if (bar.high >= slLevel)      return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100), fillTime, exitTime: bar.time };
+        if (bar.low  <= effectiveTp)  return { outcome: 'win',  pnlPct:   (entryLevel - effectiveTp) / open * 100,  fillTime, exitTime: bar.time };
       }
     }
   }
   if (!filled) return null;
-  const eodClose = bars[bars.length - 1]?.close ?? entryLevel;
-  const eodPnl   = isBuy
+  const eodClose  = bars[bars.length - 1]?.close ?? entryLevel;
+  const eodPnl    = isBuy
     ? (eodClose - entryLevel) / open * 100
     : (entryLevel - eodClose) / open * 100;
-  return { outcome: 'open', pnlPct: eodPnl, fillTime };
+  const eodTime   = bars[bars.length - 1]?.time ?? null;
+  return { outcome: 'open', pnlPct: eodPnl, fillTime, exitTime: eodTime };
 }
 
 function classifySession(isoTime) {
@@ -212,7 +213,7 @@ function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5, dy
         result = walkM1(m1Bars.slice(i), sellEntry, open, open + slD, false, open, dynHlCorr);
         if (!result) {
           const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
-          result = { outcome: 'open', pnlPct: (sellEntry - eod) / open * 100, fillTime: null };
+          result = { outcome: 'open', pnlPct: (sellEntry - eod) / open * 100, fillTime: null, exitTime: m1Bars[m1Bars.length - 1]?.time ?? null };
         }
         break;
       } else if (bar.low <= buyEntry) {
@@ -220,7 +221,7 @@ function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5, dy
         result = walkM1(m1Bars.slice(i), buyEntry, open, open - slD, true, open, dynHlCorr);
         if (!result) {
           const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
-          result = { outcome: 'open', pnlPct: (eod - buyEntry) / open * 100, fillTime: null };
+          result = { outcome: 'open', pnlPct: (eod - buyEntry) / open * 100, fillTime: null, exitTime: m1Bars[m1Bars.length - 1]?.time ?? null };
         }
         break;
       }
@@ -307,17 +308,18 @@ function simulateMomentum50M1(m1Bars, open, hl50pct, hl75pct, regime) {
       filled = true; fillTime = bar.time;
     }
     if (isBull) {
-      if (bar.low  <= slL) return { filled: true, side, outcome: 'loss', pnlPct: +(-(entryL - slL) / open * 100).toFixed(5), leg: 'momentum50', fillTime };
-      if (bar.high >= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +( (tpL - entryL) / open * 100).toFixed(5),  leg: 'momentum50', fillTime };
+      if (bar.low  <= slL) return { filled: true, side, outcome: 'loss', pnlPct: +(-(entryL - slL) / open * 100).toFixed(5), leg: 'momentum50', fillTime, exitTime: bar.time };
+      if (bar.high >= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +( (tpL - entryL) / open * 100).toFixed(5),  leg: 'momentum50', fillTime, exitTime: bar.time };
     } else {
-      if (bar.high >= slL) return { filled: true, side, outcome: 'loss', pnlPct: +(-(slL - entryL) / open * 100).toFixed(5), leg: 'momentum50', fillTime };
-      if (bar.low  <= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +( (entryL - tpL) / open * 100).toFixed(5),  leg: 'momentum50', fillTime };
+      if (bar.high >= slL) return { filled: true, side, outcome: 'loss', pnlPct: +(-(slL - entryL) / open * 100).toFixed(5), leg: 'momentum50', fillTime, exitTime: bar.time };
+      if (bar.low  <= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +( (entryL - tpL) / open * 100).toFixed(5),  leg: 'momentum50', fillTime, exitTime: bar.time };
     }
   }
-  if (!filled) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum50', fillTime: null };
-  const eod    = m1Bars[m1Bars.length - 1]?.close ?? entryL;
-  const eodPnl = isBull ? (eod - entryL) / open * 100 : (entryL - eod) / open * 100;
-  return { filled: true, side, outcome: 'open', pnlPct: +eodPnl.toFixed(5), leg: 'momentum50', fillTime };
+  if (!filled) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum50', fillTime: null, exitTime: null };
+  const eod     = m1Bars[m1Bars.length - 1]?.close ?? entryL;
+  const eodPnl  = isBull ? (eod - entryL) / open * 100 : (entryL - eod) / open * 100;
+  const eodTime = m1Bars[m1Bars.length - 1]?.time ?? null;
+  return { filled: true, side, outcome: 'open', pnlPct: +eodPnl.toFixed(5), leg: 'momentum50', fillTime, exitTime: eodTime };
 }
 
 // ── Walk-forward engine (M1 sim + D1 vol/regime) ──────────────────────────────
@@ -393,7 +395,8 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
         side: r.side, filled: r.filled, outcome: r.outcome,
         pnl_pct: r.filled ? +costAdj.toFixed(5) : 0,
         leg: r.leg,
-        fill_time: r.fillTime ?? null,
+        fill_time:  r.fillTime  ?? null,
+        exit_time:  r.exitTime  ?? null,
         session: classifySession(r.fillTime),
         dow,
       });

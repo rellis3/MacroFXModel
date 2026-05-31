@@ -316,6 +316,7 @@
   </div>
   <div style="flex:1"></div>
   <span class="upd" id="btComputedAt"></span>
+  <a href="backtest-viewer.html?source=vol" style="text-decoration:none"><button class="dark-btn" style="border-color:#4f7df0;color:#4f7df0">⛶ Full Chart Viewer</button></a>
   <a href="vol-forecast.html" style="text-decoration:none"><button class="dark-btn" style="border-color:var(--blue);color:var(--blue)">📐 Vol Forecast</button></a>
   <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
 </div>
@@ -767,6 +768,10 @@
   <div class="chart-modal-hdr">
     <span id="chartModalTitle" style="font-weight:600;font-size:14px;color:#d1d4dc"></span>
     <span id="chartModalBadge" style="font-size:11px;color:#8fa0b8;flex:1"></span>
+    <a id="chartModalViewerLink" href="/backtest-viewer?source=vol" target="_blank"
+       style="background:#1c2133;border:1px solid #2a3348;color:#4f7df0;cursor:pointer;padding:4px 12px;border-radius:4px;font-size:12px;text-decoration:none;white-space:nowrap">
+      ⛶ Full Viewer
+    </a>
     <button onclick="closeChartModal()" style="background:none;border:1px solid #2a2f45;color:#8fa0b8;cursor:pointer;padding:4px 12px;border-radius:4px;font-size:12px">✕ Close</button>
   </div>
   <div id="chartContainer" style="flex:1;min-height:0;width:100%"></div>
