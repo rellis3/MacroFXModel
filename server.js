@@ -1669,8 +1669,9 @@ app.post('/api/vol-backtest/run', async (req, res) => {
       file:       path.basename(outFile),
     });
   } catch (e) {
-    console.error('[vol-backtest/run]', e.message);
-    res.status(500).json({ ok: false, error: e.message });
+    const msg = e?.message || String(e) || 'Unknown engine error';
+    console.error('[vol-backtest/run]', msg, e?.stack ?? '');
+    res.status(500).json({ ok: false, error: msg });
   }
 });
 
