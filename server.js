@@ -1686,6 +1686,55 @@ app.get('/api/vol-backtest/m1-status', (_req, res) => {
   });
 });
 
+app.get('/api/vol-backtest/diagnose', async (_req, res) => {
+  const report = {};
+
+  // Env vars
+  report.env = {
+    OANDA_KEY:     !!process.env.OANDA_KEY,
+    R2_ACCESS_KEY: !!process.env.R2_ACCESS_KEY,
+    R2_SECRET_KEY: !!process.env.R2_SECRET_KEY,
+    NODE_ENV:      process.env.NODE_ENV || '(unset)',
+  };
+
+  // R2 connectivity
+  try {
+    const { S3Client, HeadObjectCommand } = await import('@aws-sdk/client-s3');
+    const r2 = new S3Client({
+      endpoint:    'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com',
+      region:      'auto',
+      credentials: {
+        accessKeyId:     process.env.R2_ACCESS_KEY,
+        secretAccessKey: process.env.R2_SECRET_KEY,
+      },
+    });
+    const cmd = new HeadObjectCommand({ Bucket: 'r2-storage', Key: 'm1/eurusd_m1.parquet' });
+    const meta = await r2.send(cmd);
+    report.r2 = { ok: true, eurusdBytes: meta.ContentLength };
+  } catch (e) {
+    report.r2 = { ok: false, error: e?.message ?? String(e) };
+  }
+
+  // OANDA connectivity
+  try {
+    const key = process.env.OANDA_KEY;
+    if (!key) throw new Error('OANDA_KEY not set');
+    const resp = await fetch('https://api-fxtrade.oanda.com/v3/accounts', {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    report.oanda = { ok: resp.ok, status: resp.status };
+  } catch (e) {
+    report.oanda = { ok: false, error: e?.message ?? String(e) };
+  }
+
+  // M1 cache
+  report.m1Cache = _m1CacheStatus();
+
+  res.json(report);
+});
+
+app.get('/api/version', (_req, res) => res.json({ version: 'r2-m1-engine', deployedAt: new Date().toISOString(), r2: !!process.env.R2_ACCESS_KEY }));
+
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {
   try {
@@ -1714,8 +1763,6 @@ app.use(express.static(__dirname, {
 }));
 
 // SPA fallback — catches clean URLs not matched by express.static
-app.get('/api/version', (_req, res) => res.json({ version: 'r2-m1-engine', deployedAt: new Date().toISOString(), r2: !!process.env.R2_ACCESS_KEY }));
-
 app.get('*', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
