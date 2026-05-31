@@ -1852,6 +1852,9 @@ app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
     let bars = m1CandleCache.get(pair);
     if (from) bars = bars.filter(b => b.time.substring(0, 10) >= from);
     if (to)   bars = bars.filter(b => b.time.substring(0, 10) <= to);
+    // Safety cap — shouldn't be needed once date filters are applied, but prevents
+    // accidentally sending millions of bars on a misconfigured request
+    if (bars.length > 20000) bars = bars.slice(0, 20000);
     res.json({ ok: true, pair, n: bars.length, candles: bars });
   } catch (e) {
     console.error('[candles]', e.message);

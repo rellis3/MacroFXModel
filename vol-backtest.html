@@ -1538,7 +1538,11 @@ function openChartModal(tradeIdx) {
     .then(r => r.json())
     .then(d => {
       if (!d.ok || !d.candles?.length) {
-        container.innerHTML = `<div style="padding:24px;color:#ef5350;font-size:13px">No M1 candle data${d.error ? ': ' + d.error : ''}</div>`;
+        container.innerHTML = `<div style="padding:24px;font-size:13px;line-height:1.7">
+          <div style="color:#ef5350;font-weight:600;margin-bottom:8px">⚠ No M1 candle data</div>
+          <div style="color:#8fa0b8">${d.error || 'No data returned'}</div>
+          <div style="color:#8fa0b8;margin-top:8px;font-size:12px">Set <code style="color:#fbbf24">R2_ACCESS_KEY</code> and <code style="color:#fbbf24">R2_SECRET_KEY</code> env vars in Railway to load M1 data from R2.</div>
+        </div>`;
         return;
       }
       container.innerHTML = '';
