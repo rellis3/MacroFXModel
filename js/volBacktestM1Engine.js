@@ -269,6 +269,7 @@ function simulateMomentumM1(m1Bars, open, hl75pct, ocMedPct, regime, opts = {}) 
 
 function simulateMomentum50M1(m1Bars, open, hl50pct, hl75pct, regime) {
   if (regime === 'RANGE') return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum50', fillTime: null, exitTime: null };
+  const hl50 = open * hl50pct / 100;
   const hl75 = open * hl75pct / 100;
   const gap  = hl75 - hl50;                    // profit distance = SL distance
 
