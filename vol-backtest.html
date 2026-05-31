@@ -1178,13 +1178,16 @@ async function runBacktest() {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
-    const d = await r.json();
+    let d;
+    try { d = await r.json(); } catch { d = { ok: false, error: `HTTP ${r.status} — non-JSON response` }; }
+    console.log('[vol-backtest/run] response:', d);
     if (d.ok) {
       st.textContent = 'Complete ✓  Reloading results…';
       setTimeout(loadData, 500);
     } else {
-      st.textContent = 'Error: ' + (d.error || 'Unknown');
-      setStatus('err', d.error);
+      const errMsg = d.error || d.message || d.reason || JSON.stringify(d);
+      st.textContent = 'Error: ' + errMsg;
+      setStatus('err', errMsg);
     }
   } catch (e) {
     st.textContent = 'Error: ' + e.message;
