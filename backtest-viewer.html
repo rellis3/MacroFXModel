@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Backtest Viewer</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
-<script src="./js/backtest-viewer.js"></script>
+<script src="https://s3.tradingview.com/tv.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -56,10 +55,6 @@ html, body {
   gap: 6px;
 }
 
-.bv-ctrl-btns {
-  gap: 4px;
-}
-
 .bv-lbl {
   font-size: 11px;
   color: #5a6380;
@@ -100,36 +95,12 @@ html, body {
 }
 .bv-btn.bv-sm { padding: 3px 8px; }
 
-.bv-replay-play  { color: #26a69a; border-color: #26a69a44; }
-.bv-replay-play:hover { background: #26a69a22; }
-.bv-exit-replay  { color: #ef5350; border-color: #ef535044; }
-.bv-exit-replay:hover { background: #ef535022; }
-
 .bv-stat {
   font-family: 'DM Mono', monospace;
   font-size: 11px;
   color: #5a6380;
   margin-left: auto;
   white-space: nowrap;
-}
-
-/* ── Replay bar ───────────────────────────────────────────────────────────── */
-.bv-replay-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 16px;
-  height: 36px;
-  background: #0e1520;
-  border-bottom: 1px solid #1c2133;
-  flex-shrink: 0;
-}
-
-.bv-replay-stat {
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  color: #5a6380;
-  min-width: 200px;
 }
 
 /* ── Body ─────────────────────────────────────────────────────────────────── */
@@ -147,7 +118,7 @@ html, body {
   min-width: 0;
 }
 
-.bv-chart {
+#bvTvChart {
   position: absolute;
   inset: 0;
 }
@@ -164,6 +135,7 @@ html, body {
   font-size: 13px;
   gap: 12px;
   pointer-events: none;
+  z-index: 10;
 }
 
 .bv-spinner {
@@ -253,8 +225,8 @@ html, body {
   font-family: 'DM Mono', monospace;
   text-transform: uppercase;
 }
-.bv-badge.buy   { background: #26a69a22; color: #26a69a; border: 1px solid #26a69a44; }
-.bv-badge.sell  { background: #ef535022; color: #ef5350; border: 1px solid #ef535044; }
+.bv-badge.buy      { background: #26a69a22; color: #26a69a; border: 1px solid #26a69a44; }
+.bv-badge.sell     { background: #ef535022; color: #ef5350; border: 1px solid #ef535044; }
 .bv-badge.rg-bull  { background: #26a69a22; color: #26a69a; border: 1px solid #26a69a44; }
 .bv-badge.rg-bear  { background: #ef535022; color: #ef5350; border: 1px solid #ef535044; }
 .bv-badge.rg-range { background: #4f7df022; color: #4f7df0; border: 1px solid #4f7df044; }
@@ -280,7 +252,7 @@ html, body {
   scrollbar-width: thin;
   scrollbar-color: #2a3348 transparent;
 }
-.bv-list::-webkit-scrollbar      { width: 5px; }
+.bv-list::-webkit-scrollbar       { width: 5px; }
 .bv-list::-webkit-scrollbar-thumb { background: #2a3348; border-radius: 4px; }
 
 .bv-row {
@@ -325,11 +297,9 @@ html, body {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.bv-outcome.win    { color: #26a69a; background: #26a69a1a; }
-.bv-outcome.loss   { color: #ef5350; background: #ef53501a; }
-.bv-outcome.open   { color: #fbbf24; background: #fbbf241a; }
-.bv-outcome.partial_be,
-.bv-outcome.partial\.be { color: #fbbf24; background: #fbbf241a; }
+.bv-outcome.win  { color: #26a69a; background: #26a69a1a; }
+.bv-outcome.loss { color: #ef5350; background: #ef53501a; }
+.bv-outcome.open { color: #fbbf24; background: #fbbf241a; }
 
 .bv-row-pnl {
   font-family: 'DM Mono', monospace;
@@ -357,19 +327,87 @@ html, body {
 </head>
 <body>
 
-<div id="bvMount" style="height:100vh"></div>
+<div class="bv-root">
+  <!-- Top toolbar -->
+  <div class="bv-topbar" id="bvTopbar">
+    <span class="bv-title" id="bvTitle">Backtest Viewer</span>
+    <div class="bv-ctrl-group">
+      <span class="bv-lbl">Result</span>
+      <select class="bv-sel" id="bvFResult">
+        <option value="">All</option>
+        <option value="win">Win</option>
+        <option value="loss">Loss</option>
+        <option value="open">Open</option>
+      </select>
+    </div>
+    <div class="bv-ctrl-group">
+      <span class="bv-lbl">Direction</span>
+      <select class="bv-sel" id="bvFDir">
+        <option value="">All</option>
+        <option value="BUY">Buy</option>
+        <option value="SELL">Sell</option>
+      </select>
+    </div>
+    <div class="bv-ctrl-group">
+      <button class="bv-btn bv-active" id="bvLevels">Levels</button>
+      <button class="bv-btn" id="bvReCenter">Re-center</button>
+    </div>
+    <span class="bv-stat" id="bvStat"></span>
+  </div>
+
+  <!-- Main body: chart + right panel -->
+  <div class="bv-body">
+    <div class="bv-chart-wrap">
+      <div id="bvTvChart"></div>
+      <div class="bv-chart-veil" id="bvVeil">
+        <div class="bv-spinner" id="bvVeilSpinner" style="display:none"></div>
+        <div id="bvVeilMsg">Loading trades…</div>
+      </div>
+    </div>
+
+    <div class="bv-panel">
+      <div class="bv-detail-card">
+        <div class="bv-panel-hdr">TRADE DETAIL</div>
+        <div class="bv-detail-body" id="bvDetailBody">
+          <div class="bv-no-trade">No trade selected</div>
+        </div>
+      </div>
+      <div class="bv-list-hdr">
+        <span id="bvListCount">—</span>
+        <div class="bv-nav-btns">
+          <button class="bv-btn bv-sm" id="bvPrevBtn" title="Previous trade (←)">‹ Prev</button>
+          <button class="bv-btn bv-sm" id="bvNextBtn" title="Next trade (→)">Next ›</button>
+        </div>
+      </div>
+      <div class="bv-list" id="bvList"></div>
+    </div>
+  </div>
+
+  <!-- Keyboard hints -->
+  <div class="bv-hints">← → Navigate &nbsp;·&nbsp; L Levels &nbsp;·&nbsp; Enter Re-center</div>
+</div>
 
 <script>
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
 function _dateOffset(dateStr, days) {
   const d = new Date(dateStr + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().substring(0, 10);
 }
 
+function _toEpochSec(t) {
+  const s = String(t).substring(0, 19).replace(' ', 'T');
+  return Math.floor(new Date(s + 'Z').getTime() / 1000);
+}
+
+// Convert instrument name (e.g. "eurusd", "EUR/USD") to TradingView FX symbol
+function _toTvSymbol(instrument) {
+  return 'FX:' + instrument.toUpperCase().replace(/[^A-Z]/g, '');
+}
+
 // ── Vol Backtest Adapter ──────────────────────────────────────────────────────
-// Plugs into the vol-backtest API (/api/vol-backtest + /api/vol-backtest/candles/:pair)
-// Add more adapters below for other backtest sources and pass them via ?source=xxx
+
 const VOL_ADAPTER = {
   async fetchTrades() {
     const r = await fetch('/api/vol-backtest/trades');
@@ -378,17 +416,6 @@ const VOL_ADAPTER = {
     if (!d.ok) throw new Error(d.error || 'Failed to load trades');
     if (!d.trades?.length) throw new Error('No trades found — run the backtester first');
     return d.trades;
-  },
-
-  async fetchCandles(trade) {
-    const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
-    const from = _dateOffset(trade.date, -2);
-    const to   = _dateOffset(trade.date, +2);
-    const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const d = await r.json();
-    if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data (check R2 credentials)');
-    return d.candles;
   },
 
   getLevels(trade) {
@@ -423,47 +450,390 @@ const VOL_ADAPTER = {
 };
 
 // ── Adapter registry — add new backtest adapters here ─────────────────────────
+
 const ADAPTERS = {
   vol: VOL_ADAPTER,
-  // claude:  CLAUDE_ADAPTER,  // <-- future: claude-backtest adapter
-  // gold:    GOLD_ADAPTER,    // <-- future: gold model backtest adapter
+  // claude: CLAUDE_ADAPTER,
+  // gold:   GOLD_ADAPTER,
 };
 
-// ── Adapter registry source → backpage map ───────────────────────────────────
 const BACK_LINKS = {
   vol:    { href: 'vol-backtest.html',    label: '← Vol Backtester' },
   claude: { href: 'claude-backtest.html', label: '← Claude Backtest' },
   gold:   { href: 'gold.html',            label: '← Gold Model' },
 };
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
+// ── App State ─────────────────────────────────────────────────────────────────
+
 const source  = new URLSearchParams(location.search).get('source') || 'vol';
 const adapter = ADAPTERS[source];
 
+let allTrades    = [];
+let filtTrades   = [];
+let filtCapitals = [];
+let currentIdx   = -1;
+let currentTrade = null;
+let fResult      = '';
+let fDir         = '';
+let showLevels   = true;
+
+// TradingView widget state
+let tvWidget     = null;
+let tvReady      = false;
+let tvSymbol     = '';      // symbol currently loaded in the widget
+let orderLines   = [];     // active createOrderLine() handles
+let shapeIds     = [];     // active createShape() entity IDs
+let pendingTrade = null;   // trade queued until widget is ready
+
+// ── TradingView Widget Initialisation ─────────────────────────────────────────
+
+function _initTV() {
+  tvWidget = new TradingView.widget({
+    container_id:        'bvTvChart',
+    symbol:              'FX:EURUSD',
+    interval:            '1',
+    timezone:            'Etc/UTC',
+    theme:               'dark',
+    style:               '1',         // candlesticks
+    locale:              'en',
+    toolbar_bg:          '#131722',
+    autosize:            true,
+    hide_top_toolbar:    false,
+    enable_publishing:   false,
+    allow_symbol_change: true,
+    withdateranges:      true,
+    studies:             [],
+    disabled_features:   ['header_screenshot'],
+    enabled_features:    [],
+  });
+
+  tvWidget.onChartReady(() => {
+    tvReady = true;
+    if (pendingTrade) {
+      const t    = pendingTrade;
+      pendingTrade = null;
+      _applyTrade(t);
+    }
+  });
+}
+
+// ── Chart Annotations ─────────────────────────────────────────────────────────
+
+function _getChart() {
+  try { return tvWidget?.activeChart?.() || tvWidget?.chart?.(); } catch { return null; }
+}
+
+function _clearAnnotations() {
+  const chart = _getChart();
+  orderLines.forEach(l => { try { l.remove(); } catch {} });
+  orderLines = [];
+  if (chart) {
+    shapeIds.forEach(id => { try { chart.removeEntity(id); } catch {} });
+  }
+  shapeIds = [];
+}
+
+function _addOrderLine(chart, price, color, label) {
+  if (price == null) return;
+  try {
+    const l = chart.createOrderLine()
+      .setPrice(price)
+      .setQuantity('')
+      .setText(label)
+      .setLineColor(color)
+      .setBodyBorderColor(color)
+      .setBodyTextColor(color)
+      .setBodyBackgroundColor('#0e1117');
+    orderLines.push(l);
+  } catch (e) {
+    console.warn('createOrderLine:', e.message);
+  }
+}
+
+function _addEntryShape(chart, trade, entryPrice) {
+  if (!trade.fill_time) return;
+  const isSell = trade.side === 'SELL';
+  const fillTs = _toEpochSec(trade.fill_time);
+  try {
+    const id = chart.createShape(
+      { time: fillTs, price: entryPrice, channel: '' },
+      {
+        shape:     isSell ? 'arrow_down' : 'arrow_up',
+        text:      `${trade.side} ${entryPrice.toFixed(5)}`,
+        lock:      false,
+        overrides: { color: isSell ? '#ef5350' : '#26a69a' },
+      }
+    );
+    if (id != null) shapeIds.push(id);
+  } catch (e) {
+    console.warn('createShape:', e.message);
+  }
+}
+
+function _applyAnnotations(trade) {
+  const chart = _getChart();
+  if (!chart) return;
+
+  _clearAnnotations();
+
+  // Zoom to the trade day: 3 h before open → 3 h past EOD
+  const dayStart = _toEpochSec(trade.date + 'T00:00:00');
+  try {
+    chart.setVisibleRange(
+      { from: dayStart - 3 * 3600, to: dayStart + 27 * 3600 },
+      { applyDefaultRightMargin: false }
+    );
+  } catch {
+    try { chart.setVisibleRange({ from: dayStart - 3 * 3600, to: dayStart + 27 * 3600 }); } catch {}
+  }
+
+  if (!showLevels) return;
+  const lvl = adapter.getLevels(trade);
+  if (!lvl) return;
+
+  const isSell = trade.side === 'SELL';
+
+  // Horizontal order lines for each key level
+  _addOrderLine(chart, lvl.entry, isSell ? '#ef5350' : '#26a69a', 'Entry');
+  _addOrderLine(chart, lvl.tp,    '#26a69a',                       'TP');
+  _addOrderLine(chart, lvl.sl,    '#ef5350',                       'SL');
+  _addOrderLine(chart, lvl.hl75H, '#f59e0b',                       'HL75↑');
+  _addOrderLine(chart, lvl.hl75L, '#f59e0b',                       'HL75↓');
+  _addOrderLine(chart, lvl.ocH,   '#4f7df0',                       'OC↑');
+  _addOrderLine(chart, lvl.ocL,   '#4f7df0',                       'OC↓');
+  _addOrderLine(chart, lvl.open,  '#6b7280',                       'Open');
+
+  // Entry arrow shape
+  _addEntryShape(chart, trade, lvl.entry);
+}
+
+// Change symbol if needed, then apply annotations.
+function _applyTrade(trade) {
+  if (!tvReady) { pendingTrade = trade; return; }
+
+  const sym = _toTvSymbol(trade.instrument);
+
+  if (sym !== tvSymbol) {
+    tvSymbol = sym;
+    try {
+      tvWidget.setSymbol(sym, '1', () => {
+        // Allow the chart to settle before overlaying annotations
+        setTimeout(() => _applyAnnotations(trade), 400);
+      });
+    } catch {
+      // Fallback: chart-level setSymbol
+      try { _getChart()?.setSymbol?.(sym, () => setTimeout(() => _applyAnnotations(trade), 400)); }
+      catch { _applyAnnotations(trade); }
+    }
+  } else {
+    _applyAnnotations(trade);
+  }
+}
+
+function _reCenter() {
+  if (!currentTrade || !tvReady) return;
+  const dayStart = _toEpochSec(currentTrade.date + 'T00:00:00');
+  try {
+    _getChart()?.setVisibleRange({ from: dayStart - 3 * 3600, to: dayStart + 27 * 3600 });
+  } catch {}
+}
+
+// ── Data Loading ──────────────────────────────────────────────────────────────
+
+async function _loadTrades() {
+  _setVeil('Loading trades…', false);
+  try {
+    allTrades = await adapter.fetchTrades();
+    _applyFilters();
+    _setVeil('Select a trade from the list →', false);
+  } catch (e) {
+    _setVeil('Error: ' + e.message, false);
+  }
+}
+
+function _applyFilters() {
+  filtTrades = allTrades.filter(t => {
+    if (fResult && t.outcome !== fResult) return false;
+    if (fDir    && t.side    !== fDir)    return false;
+    return true;
+  });
+  let cap = 100000;
+  filtCapitals = filtTrades.map(t => {
+    cap = cap * (1 + (t.pnl_pct || 0) / 100);
+    return Math.round(cap);
+  });
+  _renderList();
+  _updateStats();
+}
+
+function _updateStats() {
+  const n    = filtTrades.length;
+  const wins = filtTrades.filter(t => t.outcome === 'win').length;
+  const wr   = n ? (wins / n * 100).toFixed(1) : '—';
+  document.getElementById('bvStat').textContent      = `${n.toLocaleString()} trades · Win ${wr}%`;
+  document.getElementById('bvListCount').textContent = `${n.toLocaleString()} trades`;
+}
+
+// ── Trade Selection ───────────────────────────────────────────────────────────
+
+function _selectTrade(idx) {
+  if (idx < 0 || idx >= filtTrades.length) return;
+  const trade  = filtTrades[idx];
+  currentIdx   = idx;
+  currentTrade = trade;
+
+  // Highlight selected row and scroll it into view
+  document.querySelectorAll('.bv-row').forEach(r => r.classList.remove('bv-selected'));
+  const row = document.querySelector(`.bv-row[data-idx="${idx}"]`);
+  if (row) { row.classList.add('bv-selected'); row.scrollIntoView({ block: 'nearest' }); }
+
+  document.getElementById('bvTitle').textContent = `${trade.instrument} — Backtest Viewer`;
+
+  _hideVeil();
+  _applyTrade(trade);
+  _renderDetail(trade, idx);
+}
+
+function _prevTrade() { _selectTrade(currentIdx - 1); }
+function _nextTrade() { _selectTrade(currentIdx + 1); }
+
+// ── Detail Panel ──────────────────────────────────────────────────────────────
+
+function _renderDetail(trade, idx) {
+  const lvl    = adapter.getLevels(trade);
+  const extra  = adapter.getDetail ? adapter.getDetail(trade) : {};
+  const isSell = trade.side === 'SELL';
+  const capital = filtCapitals[idx];
+
+  const row = (lbl, val, cls = '') =>
+    `<div class="bv-dr"><span class="bv-dl">${lbl}</span><span class="bv-dv ${cls}">${val ?? '—'}</span></div>`;
+
+  const dirBadge = `<span class="bv-badge ${isSell ? 'sell' : 'buy'}">${trade.side}</span>`;
+  const rgBadge  = `<span class="bv-badge rg-${(trade.regime || '').toLowerCase()}">${trade.regime || '—'}</span>`;
+  const outColor = trade.outcome === 'win' ? 'bv-green' : trade.outcome === 'loss' ? 'bv-red' : 'bv-amber';
+  const pnlColor = (trade.pnl_pct || 0) >= 0 ? 'bv-green' : 'bv-red';
+  const pnlStr   = trade.pnl_pct != null
+    ? `${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(4)}%` : '—';
+  const fillTime = trade.fill_time
+    ? new Date(String(trade.fill_time).substring(0, 19).replace(' ', 'T') + 'Z')
+        .toISOString().substring(11, 16)
+    : '—';
+  const asiaRange = extra.asiaRange || (trade.asia_low && trade.asia_high
+    ? `${(+trade.asia_low).toFixed(5)} – ${(+trade.asia_high).toFixed(5)}` : '—');
+
+  document.getElementById('bvDetailBody').innerHTML = [
+    row('Date',       trade.date),
+    row('Direction',  dirBadge),
+    row('Entry px',   lvl ? lvl.entry.toFixed(5) : trade.open?.toFixed(5)),
+    row('Entry time', fillTime),
+    row('SL',         lvl?.sl?.toFixed(5),  'bv-red'),
+    row('TP',         lvl?.tp?.toFixed(5),  'bv-green'),
+    row('SD Level',   trade.hl_75_pct?.toFixed(2) ?? extra.sdLevel),
+    row('Vol Regime', extra.volRegime || trade.vol_regime || '—'),
+    row('Asia range', asiaRange),
+    row('Regime',     rgBadge),
+    row('Leg',        trade.leg || '—'),
+    row('P&L',        pnlStr, pnlColor),
+    row('Result',     `<span class="${outColor}">${trade.outcome || '—'}</span>`),
+    row('Capital',    capital ? `$${capital.toLocaleString()}` : '—'),
+  ].join('');
+}
+
+// ── Trade List ────────────────────────────────────────────────────────────────
+
+function _renderList() {
+  const list = document.getElementById('bvList');
+  if (!list) return;
+  list.innerHTML = filtTrades.map((t, i) => {
+    const isSell = t.side === 'SELL';
+    const isWin  = t.outcome === 'win';
+    const isLoss = t.outcome === 'loss';
+    const pnlStr = t.pnl_pct != null
+      ? `${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(1)}%` : '';
+    const pnlCls = isWin ? 'bv-green' : isLoss ? 'bv-red' : 'bv-amber';
+    const selCls = i === currentIdx ? ' bv-selected' : '';
+    return `<div class="bv-row${selCls}" data-idx="${i}">
+      <span class="bv-row-date">${t.date || '—'}</span>
+      <span class="bv-badge ${isSell ? 'sell' : 'buy'}">${t.side}</span>
+      <span class="bv-row-px">${(t.open || 0).toFixed(4)}</span>
+      <span class="bv-outcome ${t.outcome || ''}">${(t.outcome || '').toUpperCase()}</span>
+      <span class="bv-row-pnl ${pnlCls}">${pnlStr}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── UI Controls ───────────────────────────────────────────────────────────────
+
+function _toggleLevels() {
+  showLevels = !showLevels;
+  document.getElementById('bvLevels').classList.toggle('bv-active', showLevels);
+  if (currentTrade) {
+    if (showLevels) _applyAnnotations(currentTrade);
+    else            _clearAnnotations();
+  }
+}
+
+// ── Veil ──────────────────────────────────────────────────────────────────────
+
+function _setVeil(msg, spinner) {
+  document.getElementById('bvVeil').style.display        = '';
+  document.getElementById('bvVeilMsg').textContent       = msg;
+  document.getElementById('bvVeilSpinner').style.display = spinner ? '' : 'none';
+}
+
+function _hideVeil() {
+  document.getElementById('bvVeil').style.display = 'none';
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
 if (!adapter) {
-  document.getElementById('bvMount').innerHTML =
+  document.body.innerHTML =
     `<div style="padding:40px;color:#ef5350;font-family:monospace">
       Unknown source "${source}". Available: ${Object.keys(ADAPTERS).join(', ')}
     </div>`;
 } else {
-  const viewer = new BacktestViewer({ container: document.getElementById('bvMount'), adapter });
-  viewer.init().then(() => {
-    // Inject a back-link button into the topbar once the viewer is rendered
-    const back  = BACK_LINKS[source];
-    const topbar = document.querySelector('.bv-topbar');
-    if (back && topbar) {
-      const a = document.createElement('a');
-      a.href      = back.href;
-      a.textContent = back.label;
-      a.style.cssText = 'font-family:"DM Mono",monospace;font-size:11px;color:#5a6380;text-decoration:none;white-space:nowrap;flex-shrink:0;order:-1;margin-right:4px';
-      a.addEventListener('mouseenter', () => a.style.color = '#9aa8c0');
-      a.addEventListener('mouseleave', () => a.style.color = '#5a6380');
-      topbar.insertBefore(a, topbar.firstChild);
-    }
+  // Controls
+  document.getElementById('bvFResult').addEventListener('change', e => { fResult = e.target.value; _applyFilters(); });
+  document.getElementById('bvFDir')   .addEventListener('change', e => { fDir    = e.target.value; _applyFilters(); });
+  document.getElementById('bvLevels') .addEventListener('click',  _toggleLevels);
+  document.getElementById('bvReCenter').addEventListener('click', _reCenter);
+  document.getElementById('bvPrevBtn').addEventListener('click',  _prevTrade);
+  document.getElementById('bvNextBtn').addEventListener('click',  _nextTrade);
+
+  document.getElementById('bvList').addEventListener('click', e => {
+    const row = e.target.closest('.bv-row');
+    if (row) _selectTrade(+row.dataset.idx);
   });
 
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); _prevTrade(); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); _nextTrade(); }
+    if (e.key === 'l' || e.key === 'L') _toggleLevels();
+    if (e.key === 'Enter') _reCenter();
+  });
+
+  // Back-link button
+  const back = BACK_LINKS[source];
+  if (back) {
+    const topbar = document.getElementById('bvTopbar');
+    const a = document.createElement('a');
+    a.href = back.href;
+    a.textContent = back.label;
+    a.style.cssText = 'font-family:"DM Mono",monospace;font-size:11px;color:#5a6380;text-decoration:none;white-space:nowrap;flex-shrink:0;order:-1;margin-right:4px';
+    a.addEventListener('mouseenter', () => a.style.color = '#9aa8c0');
+    a.addEventListener('mouseleave', () => a.style.color = '#5a6380');
+    topbar.insertBefore(a, topbar.firstChild);
+  }
+
+  // Start TradingView widget and fetch trades in parallel
+  _initTV();
+  _loadTrades();
+
   // Expose for console debugging
-  window._bv = viewer;
+  window._bv = { selectTrade: _selectTrade, reCenter: _reCenter };
 }
 </script>
 </body>
