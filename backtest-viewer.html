@@ -606,12 +606,21 @@ function _isMobile() {
 
 const VOL_ADAPTER = {
   async fetchTrades() {
-    const r = await fetch('/api/vol-backtest/trades');
-    if (!r.ok) throw new Error(`HTTP ${r.status} — run the backtester first`);
-    const d = await r.json();
-    if (!d.ok) throw new Error(d.error || 'Failed to load trades');
-    if (!d.trades?.length) throw new Error('No trades found — run the backtester first');
-    return d.trades;
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const r = await fetch('/api/vol-backtest/trades', { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status} — run the backtester first`);
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'Failed to load trades');
+      if (!d.trades?.length) throw new Error('No trades found — run the backtester first');
+      return d.trades;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Request timed out — server may be starting up, try again');
+      throw e;
+    } finally {
+      clearTimeout(tid);
+    }
   },
 
   getLevels(trade) {
@@ -838,7 +847,7 @@ function _reCenter() {
 // ── Data Loading ──────────────────────────────────────────────────────────────
 
 async function _loadTrades() {
-  _setVeil('Loading trades…', false);
+  _setVeil('Loading trades…', true);
   try {
     allTrades = await adapter.fetchTrades();
     _applyFilters();
