@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backtest Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="./js/backtest-viewer.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: #0e1117;
+  color: #d1d4dc;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ── Root layout ──────────────────────────────────────────────────────────── */
+.bv-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #0e1117;
+}
+
+/* ── Top toolbar ──────────────────────────────────────────────────────────── */
+.bv-topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  height: 46px;
+  border-bottom: 1px solid #1c2133;
+  background: #131722;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  overflow: hidden;
+}
+
+.bv-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #d1d4dc;
+  white-space: nowrap;
+  margin-right: 4px;
+}
+
+.bv-ctrl-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bv-ctrl-btns {
+  gap: 4px;
+}
+
+.bv-lbl {
+  font-size: 11px;
+  color: #5a6380;
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+}
+
+.bv-sel {
+  background: #1c2133;
+  border: 1px solid #2a3348;
+  color: #c8d0e0;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  cursor: pointer;
+  outline: none;
+}
+.bv-sel:focus { border-color: #4f7df0; }
+
+.bv-btn {
+  background: #1c2133;
+  border: 1px solid #2a3348;
+  color: #9aa8c0;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.bv-btn:hover   { background: #242b42; color: #d1d4dc; }
+.bv-btn.bv-active {
+  background: #2563eb22;
+  border-color: #4f7df0;
+  color: #4f7df0;
+}
+.bv-btn.bv-sm { padding: 3px 8px; }
+
+.bv-replay-play  { color: #26a69a; border-color: #26a69a44; }
+.bv-replay-play:hover { background: #26a69a22; }
+.bv-exit-replay  { color: #ef5350; border-color: #ef535044; }
+.bv-exit-replay:hover { background: #ef535022; }
+
+.bv-stat {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: #5a6380;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── Replay bar ───────────────────────────────────────────────────────────── */
+.bv-replay-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 16px;
+  height: 36px;
+  background: #0e1520;
+  border-bottom: 1px solid #1c2133;
+  flex-shrink: 0;
+}
+
+.bv-replay-stat {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: #5a6380;
+  min-width: 200px;
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────────── */
+.bv-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Chart area ───────────────────────────────────────────────────────────── */
+.bv-chart-wrap {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+.bv-chart {
+  position: absolute;
+  inset: 0;
+}
+
+.bv-chart-veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #131722cc;
+  color: #5a6380;
+  font-size: 13px;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.bv-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #2a3348;
+  border-top-color: #4f7df0;
+  border-radius: 50%;
+  animation: bv-spin .7s linear infinite;
+}
+@keyframes bv-spin { to { transform: rotate(360deg); } }
+
+/* ── Right panel ──────────────────────────────────────────────────────────── */
+.bv-panel {
+  width: 268px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #1c2133;
+  background: #131722;
+  overflow: hidden;
+}
+
+/* Trade detail card */
+.bv-detail-card {
+  border-bottom: 1px solid #1c2133;
+  flex-shrink: 0;
+}
+
+.bv-panel-hdr {
+  padding: 8px 12px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  color: #5a6380;
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  border-bottom: 1px solid #1c2133;
+}
+
+.bv-detail-body {
+  padding: 6px 10px 8px;
+}
+
+.bv-no-trade {
+  font-size: 12px;
+  color: #3a4255;
+  padding: 6px 0;
+}
+
+.bv-dr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+  border-bottom: 1px solid #1c2133;
+  min-height: 22px;
+}
+.bv-dr:last-child { border-bottom: none; }
+
+.bv-dl {
+  font-size: 10px;
+  color: #5a6380;
+  font-family: 'DM Mono', monospace;
+  flex-shrink: 0;
+  padding-right: 6px;
+}
+
+.bv-dv {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: #c8d0e0;
+  text-align: right;
+}
+
+.bv-green { color: #26a69a !important; }
+.bv-red   { color: #ef5350 !important; }
+.bv-amber { color: #fbbf24 !important; }
+
+/* Badges */
+.bv-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+}
+.bv-badge.buy   { background: #26a69a22; color: #26a69a; border: 1px solid #26a69a44; }
+.bv-badge.sell  { background: #ef535022; color: #ef5350; border: 1px solid #ef535044; }
+.bv-badge.rg-bull  { background: #26a69a22; color: #26a69a; border: 1px solid #26a69a44; }
+.bv-badge.rg-bear  { background: #ef535022; color: #ef5350; border: 1px solid #ef535044; }
+.bv-badge.rg-range { background: #4f7df022; color: #4f7df0; border: 1px solid #4f7df044; }
+
+/* ── Trade list ───────────────────────────────────────────────────────────── */
+.bv-list-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  font-size: 10px;
+  color: #5a6380;
+  font-family: 'DM Mono', monospace;
+  border-bottom: 1px solid #1c2133;
+  flex-shrink: 0;
+}
+
+.bv-nav-btns { display: flex; gap: 4px; }
+
+.bv-list {
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: #2a3348 transparent;
+}
+.bv-list::-webkit-scrollbar      { width: 5px; }
+.bv-list::-webkit-scrollbar-thumb { background: #2a3348; border-radius: 4px; }
+
+.bv-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-bottom: 1px solid #0e1117;
+  cursor: pointer;
+  transition: background .1s;
+  user-select: none;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.bv-row:hover     { background: #1c2133; }
+.bv-row.bv-selected { background: #1c2840; border-left: 2px solid #4f7df0; padding-left: 8px; }
+
+.bv-row-date {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #6a7892;
+  white-space: nowrap;
+  flex-shrink: 0;
+  width: 72px;
+}
+
+.bv-row-px {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #9aa8c0;
+  flex: 1;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.bv-outcome {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bv-outcome.win    { color: #26a69a; background: #26a69a1a; }
+.bv-outcome.loss   { color: #ef5350; background: #ef53501a; }
+.bv-outcome.open   { color: #fbbf24; background: #fbbf241a; }
+.bv-outcome.partial_be,
+.bv-outcome.partial\.be { color: #fbbf24; background: #fbbf241a; }
+
+.bv-row-pnl {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 44px;
+  text-align: right;
+}
+
+/* ── Keyboard hints ───────────────────────────────────────────────────────── */
+.bv-hints {
+  position: fixed;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #3a4255;
+  pointer-events: none;
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<div id="bvMount" style="height:100vh"></div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function _dateOffset(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().substring(0, 10);
+}
+
+// ── Vol Backtest Adapter ──────────────────────────────────────────────────────
+// Plugs into the vol-backtest API (/api/vol-backtest + /api/vol-backtest/candles/:pair)
+// Add more adapters below for other backtest sources and pass them via ?source=xxx
+const VOL_ADAPTER = {
+  async fetchTrades() {
+    const r = await fetch('/api/vol-backtest');
+    if (!r.ok) throw new Error(`HTTP ${r.status} — run the backtester first`);
+    const d = await r.json();
+    if (!d.recentTrades?.length) throw new Error('No trades in response (run the backtester first)');
+    return d.recentTrades;
+  },
+
+  async fetchCandles(trade) {
+    const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
+    const from = _dateOffset(trade.date, -2);
+    const to   = _dateOffset(trade.date, +2);
+    const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data (check R2 credentials)');
+    return d.candles;
+  },
+
+  getLevels(trade) {
+    const { open, hl_75_pct, oc_med_pct, side, regime } = trade;
+    if (!open || !hl_75_pct || !oc_med_pct) return null;
+    const hl     = open * hl_75_pct  / 100;
+    const oc     = open * oc_med_pct / 100;
+    const isSell = side === 'SELL';
+    const isRng  = regime === 'RANGE';
+    return {
+      entry: isSell ? open + hl        : open - hl,
+      tp:    isSell ? (isRng ? open : open + oc) : (isRng ? open : open - oc),
+      sl:    isSell ? open + hl * 1.5  : open - hl * 1.5,
+      hl75H: open + hl,
+      hl75L: open - hl,
+      ocH:   open + oc,
+      ocL:   open - oc,
+      open,
+    };
+  },
+
+  getDetail(trade) {
+    const asiaRange = (trade.asia_low != null && trade.asia_high != null)
+      ? `${(+trade.asia_low).toFixed(5)} – ${(+trade.asia_high).toFixed(5)}`
+      : '—';
+    return {
+      volRegime: trade.vol_regime || '—',
+      asiaRange,
+      sdLevel:   trade.hl_75_pct?.toFixed(2),
+    };
+  },
+};
+
+// ── Adapter registry — add new backtest adapters here ─────────────────────────
+const ADAPTERS = {
+  vol: VOL_ADAPTER,
+  // claude:  CLAUDE_ADAPTER,  // <-- future: claude-backtest adapter
+  // gold:    GOLD_ADAPTER,    // <-- future: gold model backtest adapter
+};
+
+// ── Adapter registry source → backpage map ───────────────────────────────────
+const BACK_LINKS = {
+  vol:    { href: 'vol-backtest.html',    label: '← Vol Backtester' },
+  claude: { href: 'claude-backtest.html', label: '← Claude Backtest' },
+  gold:   { href: 'gold.html',            label: '← Gold Model' },
+};
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+const source  = new URLSearchParams(location.search).get('source') || 'vol';
+const adapter = ADAPTERS[source];
+
+if (!adapter) {
+  document.getElementById('bvMount').innerHTML =
+    `<div style="padding:40px;color:#ef5350;font-family:monospace">
+      Unknown source "${source}". Available: ${Object.keys(ADAPTERS).join(', ')}
+    </div>`;
+} else {
+  const viewer = new BacktestViewer({ container: document.getElementById('bvMount'), adapter });
+  viewer.init().then(() => {
+    // Inject a back-link button into the topbar once the viewer is rendered
+    const back  = BACK_LINKS[source];
+    const topbar = document.querySelector('.bv-topbar');
+    if (back && topbar) {
+      const a = document.createElement('a');
+      a.href      = back.href;
+      a.textContent = back.label;
+      a.style.cssText = 'font-family:"DM Mono",monospace;font-size:11px;color:#5a6380;text-decoration:none;white-space:nowrap;flex-shrink:0;order:-1;margin-right:4px';
+      a.addEventListener('mouseenter', () => a.style.color = '#9aa8c0');
+      a.addEventListener('mouseleave', () => a.style.color = '#5a6380');
+      topbar.insertBefore(a, topbar.firstChild);
+    }
+  });
+
+  // Expose for console debugging
+  window._bv = viewer;
+}
+</script>
+</body>
+</html>
