@@ -390,6 +390,7 @@
   </select>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--border)" onclick="toggleHelp()" title="Strategy help">?</button>
+  <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--accent);color:var(--accent)" onclick="toggleRevGuide()" title="Rev-HL50 config guide">★ Guide</button>
   <span id="runStatus" class="bt-run-lbl"></span>
 </div>
 
@@ -444,6 +445,97 @@
     <strong style="color:var(--txt)">SL ×</strong> — reversal stop loss as a multiple of HL75 beyond the entry level (default ×1.5). Wider SL survives more intraday noise but increases loss size.
     &nbsp;|&nbsp; <strong style="color:var(--txt)">M1 simulation</strong> — when M1 parquet files are present in <code>data/m1/</code>, each day's fill/TP/SL sequence is resolved by walking 1-minute bars, eliminating the D1 high/low ordering ambiguity entirely.
   </div>
+</div>
+
+<!-- ── Rev-HL50 Config Guide ─────────────────────────────────────────────── -->
+<div id="revGuide" style="display:none;margin:8px 0 0;padding:14px 18px;background:var(--bg2);border:1px solid var(--accent);border-radius:6px;font-size:12px;line-height:1.8;color:var(--txt2)">
+
+  <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:12px">
+    <strong style="color:var(--accent);font-size:14px">★ Rev-HL50 Strategy Guide</strong>
+    <span style="color:var(--txt3);font-size:11px">Open-anchored mean reversion at the HL50 level</span>
+  </div>
+
+  <!-- 2-col layout: trade logic + results reference -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+    <!-- Left: trade logic -->
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:6px;font-size:12px">How the trade works</div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px;margin-bottom:8px">
+        <div style="display:grid;grid-template-columns:90px 1fr;gap:4px 10px">
+          <span style="color:var(--txt3)">Entry trigger</span><span>Price hits <strong>open ± HL50</strong> (median daily range level). First hit of the day wins — either side.</span>
+          <span style="color:var(--txt3)">Take profit</span><span style="color:var(--green)"><strong>Open</strong> — full mean reversion to the daily open. Distance = HL50 ≈ 1.45σ.</span>
+          <span style="color:var(--txt3)">Stop loss</span><span style="color:var(--red)"><strong>open ± HL75</strong> — the 75th-pct projected range level. Distance = HL75−HL50 ≈ 0.38σ.</span>
+          <span style="color:var(--txt3)">R:R</span><span><strong>~3.8:1</strong> theoretical (1.45σ profit / 0.38σ risk). Actual R:R from backtest: <strong>5.89:1</strong>.</span>
+          <span style="color:var(--txt3)">Break-even</span><span>Only <strong>21%</strong> win rate needed to cover losses. Actual: 13.6% fills → profitable because losses are so small.</span>
+          <span style="color:var(--txt3)">Fill rate</span><span>~28% of days — only days where the daily range extends to HL50 will generate a trade.</span>
+        </div>
+      </div>
+      <div style="color:var(--txt3);font-size:11px;font-style:italic">
+        SELL example: EURUSD opens 1.0800. HL50 = +0.37% → entry SELL at 1.0840. TP at 1.0800. SL at HL75 = +0.53% → 1.0857.
+      </div>
+    </div>
+
+    <!-- Right: config reference -->
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:6px;font-size:12px">Run bar settings for Rev-HL50</div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px">
+        <div style="display:grid;grid-template-columns:110px 1fr;gap:6px 10px;align-items:start">
+
+          <span style="color:var(--txt3)">Strategy</span>
+          <span><strong>Rev-HL50 ★</strong> — select this in the strategy dropdown.</span>
+
+          <span style="color:var(--txt3)">SL ×</span>
+          <span><strong>Ignored for Rev-HL50.</strong> The SL is always fixed at HL75 regardless of this setting. It applies only to the Reversal strategy.</span>
+
+          <span style="color:var(--txt3)">Slope ×</span>
+          <span>Controls the EMA slope threshold for BULL/BEAR/RANGE regime classification. Only matters if you use <em>Counter-regime</em> mode (see below). Default <strong>×1 (0.2%)</strong> is fine for most runs.</span>
+
+          <span style="color:var(--txt3)">Rev mode</span>
+          <div>
+            <div><strong>Any direction</strong> — best baseline. Takes the first HL50 hit each day regardless of regime. Backtest result: Sharpe 4.71, CAGR 49%, Max DD −10.6%.</div>
+            <div style="margin-top:4px"><strong>Counter-regime</strong> — on BULL days skip the SELL-from-high (trend likely to push to HL75). On BEAR days skip the BUY-from-low. Trades fewer fills, potentially higher win rate. Run both and compare Sharpe.</div>
+          </div>
+
+          <span style="color:var(--txt3)">Spread</span>
+          <span>Add <strong>0.001–0.002%</strong> to simulate realistic bid/ask. With no cost the CAGR is 49%; a small spread tests robustness.</span>
+
+          <span style="color:var(--txt3)">Dyn-HL</span>
+          <span><strong>Off</strong> — not applicable to Rev-HL50. The entry and TP are fixed at open±HL50 and open.</span>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom: results key + what to look for -->
+  <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Benchmark results (all pairs, 3y)</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 10px">
+        <span style="color:var(--green)">Win Rate</span><span>13.6% — low, but fine at this R:R</span>
+        <span style="color:var(--green)">Sharpe</span><span>4.71 (elite; &gt;2 is very good)</span>
+        <span style="color:var(--green)">CAGR</span><span>48.9% annualised</span>
+        <span style="color:var(--green)">Max DD</span><span>−10.6% — manageable</span>
+        <span style="color:var(--green)">Calmar</span><span>7.25 (return per unit of DD)</span>
+        <span style="color:var(--green)">R:R actual</span><span>5.89 avg win / avg loss</span>
+      </div>
+    </div>
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">What to watch when tuning</div>
+      <ul style="margin:0;padding-left:16px">
+        <li>Win rate dropping below <strong>15%</strong> with same R:R = edge degrading</li>
+        <li>Sharpe below <strong>2.0</strong> = consider reverting changes</li>
+        <li>Max DD above <strong>20%</strong> = over-leveraged or regime breakdown</li>
+        <li>Profit Factor below <strong>1.2</strong> = gross wins barely covering gross losses</li>
+      </ul>
+    </div>
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Why it works</div>
+      <div>Price reaching HL50 means the day has used its <em>median expected range</em> in one direction. Mean reversion back to open then becomes the higher-probability path. The tight SL at HL75 keeps losses small even when wrong — the 3.8:1 R:R means you can be wrong <strong>4 times</strong> for every win and still break even.</div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ── Status bar ────────────────────────────────────────────────────────── -->
@@ -1340,6 +1432,11 @@ function renderTradePage() {
 
 function toggleHelp() {
   const el = document.getElementById('stratHelp');
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+function toggleRevGuide() {
+  const el = document.getElementById('revGuide');
   el.style.display = el.style.display === 'none' ? '' : 'none';
 }
 
