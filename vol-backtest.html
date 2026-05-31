@@ -1159,8 +1159,8 @@ async function runBacktest() {
   const strategy = document.getElementById('runStrategy').value;
   btn.disabled    = true;
   btn.textContent = '⏳ Running…';
-  st.textContent  = 'Running backtest — this may take 15-30s…';
-  setStatus('spin', 'Running backtest…');
+  st.textContent  = 'Starting…';
+  setStatus('spin', 'Starting backtest…');
 
   try {
     const body = {
@@ -1173,21 +1173,51 @@ async function runBacktest() {
       momentumSlMult:   document.getElementById('runMoSl')?.value ?? '1.0',
       spreadPct:        document.getElementById('runSpread').value,
     };
-    const r = await fetch('/api/vol-backtest/run', {
+
+    // Start the job — server returns immediately with a jobId
+    const startR = await fetch('/api/vol-backtest/run', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
-    let d;
-    try { d = await r.json(); } catch { d = { ok: false, error: `HTTP ${r.status} — non-JSON response` }; }
-    console.log('[vol-backtest/run] response:', d);
-    if (d.ok) {
-      st.textContent = 'Complete ✓  Reloading results…';
-      setTimeout(loadData, 500);
-    } else {
-      const errMsg = d.error || d.message || d.reason || JSON.stringify(d);
+    let start;
+    try { start = await startR.json(); } catch { start = { ok: false, error: `HTTP ${startR.status} — non-JSON` }; }
+    if (!start.ok || !start.jobId) {
+      const errMsg = start.error || JSON.stringify(start);
       st.textContent = 'Error: ' + errMsg;
       setStatus('err', errMsg);
+      return;
+    }
+
+    // Poll for completion every 3s
+    const { jobId } = start;
+    const t0 = Date.now();
+    while (true) {
+      await new Promise(r => setTimeout(r, 3000));
+      const elapsed = Math.round((Date.now() - t0) / 1000);
+      st.textContent = `Running… ${elapsed}s`;
+      setStatus('spin', `Running backtest… ${elapsed}s`);
+
+      let d;
+      try {
+        const r = await fetch(`/api/vol-backtest/status/${jobId}`);
+        try { d = await r.json(); } catch { d = { ok: false, status: 'error', error: `HTTP ${r.status}` }; }
+      } catch (e) {
+        d = { ok: false, status: 'error', error: e.message };
+      }
+
+      if (d.status === 'done') {
+        st.textContent = 'Complete ✓  Reloading results…';
+        setTimeout(loadData, 500);
+        return;
+      }
+      if (d.status === 'error' || !d.ok) {
+        const errMsg = d.error || JSON.stringify(d);
+        st.textContent = 'Error: ' + errMsg;
+        setStatus('err', errMsg);
+        return;
+      }
+      // status === 'running' — keep polling
     }
   } catch (e) {
     st.textContent = 'Error: ' + e.message;

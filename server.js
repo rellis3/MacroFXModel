@@ -1620,7 +1620,15 @@ function _m1CacheStatus() {
 
 // Trigger a fresh backtest run using pure-JS engine (no Python required)
 // Uses M1 intraday simulation when parquets are cached, D1 otherwise.
-app.post('/api/vol-backtest/run', async (req, res) => {
+// In-memory job store for async backtest runs — keyed by jobId
+const btJobs = new Map();
+
+function _purgeStaleBtJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of btJobs) if (job.startedAt < cutoff) btJobs.delete(id);
+}
+
+app.post('/api/vol-backtest/run', (req, res) => {
   if (!process.env.OANDA_KEY) {
     return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch live D1 data' });
   }
@@ -1639,41 +1647,64 @@ app.post('/api/vol-backtest/run', async (req, res) => {
     spreadPct:        parseFloat(spreadPct)         || 0,
   };
 
-  const instFilter   = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : undefined;
-  const m1Status     = _m1CacheStatus();
-  const engineLabel  = m1Status.cached > 0
-    ? `M1 engine (${m1Status.cached} pairs cached)`
-    : `D1 engine (Oanda API) · strategy: ${strategy}`;
+  const instFilter  = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : undefined;
+  const jobId       = `bt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt   = Date.now();
 
-  try {
-    // Always use runFullM1Backtest — it handles the strategy param and D1 fallback
-    // when M1 parquets are not cached. runFullBacktest ignores strategy entirely.
-    const { trades, log } = await runFullM1Backtest(opts, instFilter ?? BT_INSTRUMENTS);
+  _purgeStaleBtJobs();
+  btJobs.set(jobId, { status: 'running', startedAt });
 
-    if (!trades.length) {
-      return res.status(500).json({ ok: false, error: 'No trades generated', log });
+  // Fire-and-forget — response returns immediately with jobId
+  (async () => {
+    try {
+      const m1Status    = _m1CacheStatus();
+      const engineLabel = m1Status.cached > 0
+        ? `M1 engine (${m1Status.cached} pairs cached)`
+        : `D1 engine (Oanda API) · strategy: ${strategy}`;
+
+      const { trades, log } = await runFullM1Backtest(opts, instFilter ?? BT_INSTRUMENTS);
+
+      if (!trades.length) {
+        btJobs.set(jobId, { status: 'error', error: 'No trades generated', log, startedAt });
+        return;
+      }
+
+      if (!fs.existsSync(BT_DATA_DIR)) fs.mkdirSync(BT_DATA_DIR, { recursive: true });
+      const ts      = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(BT_DATA_DIR, `backtest_${ts}.csv`);
+      const hdrs    = ['instrument','date','regime','hl_75_pct','oc_med_pct','side','filled','outcome','pnl_pct','leg','session','dow','open','high','low','close'];
+      const rows    = trades.map(r => hdrs.map(h => h === 'filled' ? (r[h] ? 'True' : 'False') : (r[h] ?? '')).join(','));
+      fs.writeFileSync(outFile, [hdrs.join(','), ...rows].join('\n') + '\n');
+
+      btJobs.set(jobId, {
+        status: 'done', startedAt,
+        result: {
+          ok:      true,
+          message: `Backtest complete — ${trades.filter(t => t.filled).length} filled trades`,
+          engine:  engineLabel,
+          m1Pairs: m1Status.pairs,
+          log,
+          file:    path.basename(outFile),
+        },
+      });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[vol-backtest/run]', msg, e?.stack ?? '');
+      btJobs.set(jobId, { status: 'error', error: msg, startedAt });
     }
+  })();
 
-    if (!fs.existsSync(BT_DATA_DIR)) fs.mkdirSync(BT_DATA_DIR, { recursive: true });
-    const ts      = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
-    const outFile = path.join(BT_DATA_DIR, `backtest_${ts}.csv`);
-    const hdrs    = ['instrument','date','regime','hl_75_pct','oc_med_pct','side','filled','outcome','pnl_pct','leg','session','dow','open','high','low','close'];
-    const rows    = trades.map(r => hdrs.map(h => h === 'filled' ? (r[h] ? 'True' : 'False') : (r[h] ?? '')).join(','));
-    fs.writeFileSync(outFile, [hdrs.join(','), ...rows].join('\n') + '\n');
+  res.json({ ok: true, jobId });
+});
 
-    res.json({
-      ok: true,
-      message:    `Backtest complete — ${trades.filter(t => t.filled).length} filled trades`,
-      engine:     engineLabel,
-      m1Pairs:    m1Status.pairs,
-      log,
-      file:       path.basename(outFile),
-    });
-  } catch (e) {
-    const msg = e?.message || String(e) || 'Unknown engine error';
-    console.error('[vol-backtest/run]', msg, e?.stack ?? '');
-    res.status(500).json({ ok: false, error: msg });
+app.get('/api/vol-backtest/status/:jobId', (req, res) => {
+  const job = btJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
 
 // Report M1 cache status and Drive IDs for download instructions
