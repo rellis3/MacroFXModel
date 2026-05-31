@@ -290,7 +290,11 @@ class BacktestViewer {
         time:  this._toEpochSec(b.time),
         open:  b.open, high: b.high, low: b.low, close: b.close,
       }));
-      this._exitBar = this._computeExitBar(trade);
+      // Prefer exit_time from the trade record (new JSON output).
+      // Fall back to M1 walk for legacy CSV-sourced data that lacks exit_time.
+      this._exitBar = trade.exit_time
+        ? { time: this._toEpochSec(trade.exit_time), type: trade.outcome === 'win' ? 'win' : 'loss' }
+        : this._computeExitBar(trade);
       this._renderChartFull();
       this._renderDetail(trade, idx);
       this._hideVeil();

@@ -1355,29 +1355,39 @@ function _resolvePython() {
 }
 const BT_PYTHON = _resolvePython();
 
-function _latestBacktestCsv() {
+// Prefer .json files (new format), fall back to legacy .csv
+function _latestBacktestFile() {
   if (!fs.existsSync(BT_DATA_DIR)) return null;
-  const files = fs.readdirSync(BT_DATA_DIR)
-    .filter(f => f.startsWith('backtest_') && f.endsWith('.csv'))
-    .sort().reverse();
-  return files.length ? path.join(BT_DATA_DIR, files[0]) : null;
+  const all = fs.readdirSync(BT_DATA_DIR).filter(f => f.startsWith('backtest_'));
+  const json = all.filter(f => f.endsWith('.json')).sort().reverse();
+  if (json.length) return path.join(BT_DATA_DIR, json[0]);
+  const csv  = all.filter(f => f.endsWith('.csv')).sort().reverse();
+  return csv.length ? path.join(BT_DATA_DIR, csv[0]) : null;
 }
 
-function _parseBtCsv(csvPath) {
-  const lines = fs.readFileSync(csvPath, 'utf8').trim().split('\n');
+// Load trades from JSON (new) or CSV (legacy).  Always returns a plain array.
+function _loadBacktestTrades(filePath) {
+  if (filePath.endsWith('.json')) {
+    const d = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return Array.isArray(d) ? d : (d.trades ?? []);
+  }
+  // Legacy CSV fallback
+  const lines = fs.readFileSync(filePath, 'utf8').trim().split('\n');
   const hdrs  = lines[0].split(',').map(h => h.trim());
   return lines.slice(1).filter(l => l.trim()).map(line => {
     const vals = line.split(',');
     const o    = Object.fromEntries(hdrs.map((h, i) => [h, (vals[i] ?? '').trim()]));
-    o.filled   = o.filled === 'True';
-    o.pnl_pct  = parseFloat(o.pnl_pct)  || 0;
-    o.dow      = parseInt(o.dow) || 0;
-    o.hl_75_pct = parseFloat(o.hl_75_pct) || 0;
+    o.filled     = o.filled === 'True';
+    o.pnl_pct    = parseFloat(o.pnl_pct)    || 0;
+    o.dow        = parseInt(o.dow)           || 0;
+    o.hl_75_pct  = parseFloat(o.hl_75_pct)  || 0;
     o.oc_med_pct = parseFloat(o.oc_med_pct) || 0;
-    o.open     = parseFloat(o.open)  || 0;
-    o.high     = parseFloat(o.high)  || 0;
-    o.low      = parseFloat(o.low)   || 0;
-    o.close    = parseFloat(o.close) || 0;
+    o.open       = parseFloat(o.open)        || 0;
+    o.high       = parseFloat(o.high)        || 0;
+    o.low        = parseFloat(o.low)         || 0;
+    o.close      = parseFloat(o.close)       || 0;
+    o.fill_time  = o.fill_time  || null;
+    o.exit_time  = o.exit_time  || null;
     return o;
   });
 }
@@ -1471,11 +1481,11 @@ function _btStats(trades) {
 
 // Latest cached backtest results
 app.get('/api/vol-backtest', (req, res) => {
-  const csvPath = _latestBacktestCsv();
-  if (!csvPath) return res.status(404).json({ ok: false, error: 'No backtest data. Run the backtester first.' });
+  const filePath = _latestBacktestFile();
+  if (!filePath) return res.status(404).json({ ok: false, error: 'No backtest data. Run the backtester first.' });
 
   try {
-    const trades = _parseBtCsv(csvPath);
+    const trades = _loadBacktestTrades(filePath);
     if (!trades.length) return res.status(404).json({ ok: false, error: 'Empty backtest file.' });
 
     // Instrument list
@@ -1589,8 +1599,8 @@ app.get('/api/vol-backtest', (req, res) => {
 
     res.json({
       ok: true,
-      file: path.basename(csvPath),
-      computedAt: fs.statSync(csvPath).mtime.toISOString(),
+      file: path.basename(filePath),
+      computedAt: fs.statSync(filePath).mtime.toISOString(),
       overall: _btStats(trades),
       byInstrument,
       byRegime,
@@ -1614,14 +1624,14 @@ app.get('/api/vol-backtest', (req, res) => {
 
 // ── All trades endpoint for the Backtest Viewer ───────────────────────────────
 // Returns every filled trade (no 200-cap), sorted newest-first.
-// Includes all fields needed by BacktestViewer's VOL_ADAPTER.
+// Includes all fields including fill_time and exit_time for chart markers.
 app.get('/api/vol-backtest/trades', (req, res) => {
-  const csvPath = _latestBacktestCsv();
-  if (!csvPath) return res.status(404).json({ ok: false, error: 'No backtest data. Run the backtester first.' });
+  const filePath = _latestBacktestFile();
+  if (!filePath) return res.status(404).json({ ok: false, error: 'No backtest data. Run the backtester first.' });
 
   try {
     const DOW_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const trades = _parseBtCsv(csvPath)
+    const trades = _loadBacktestTrades(filePath)
       .filter(t => t.filled)
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
       .reverse()
@@ -1638,7 +1648,8 @@ app.get('/api/vol-backtest/trades', (req, res) => {
         session:    r.session,
         dow:        DOW_LABELS[r.dow ?? new Date(r.date + 'T00:00:00Z').getUTCDay()],
         open:       r.open,
-        fill_time:  r.fill_time || null,
+        fill_time:  r.fill_time  || null,
+        exit_time:  r.exit_time  || null,
       }));
 
     res.json({ ok: true, trades, total: trades.length });
@@ -1710,10 +1721,8 @@ app.post('/api/vol-backtest/run', (req, res) => {
 
       if (!fs.existsSync(BT_DATA_DIR)) fs.mkdirSync(BT_DATA_DIR, { recursive: true });
       const ts      = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
-      const outFile = path.join(BT_DATA_DIR, `backtest_${ts}.csv`);
-      const hdrs    = ['instrument','date','regime','hl_75_pct','oc_med_pct','side','filled','outcome','pnl_pct','leg','session','dow','open','high','low','close','fill_time'];
-      const rows    = trades.map(r => hdrs.map(h => h === 'filled' ? (r[h] ? 'True' : 'False') : (r[h] ?? '')).join(','));
-      fs.writeFileSync(outFile, [hdrs.join(','), ...rows].join('\n') + '\n');
+      const outFile = path.join(BT_DATA_DIR, `backtest_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify(trades, null, 0) + '\n');
 
       btJobs.set(jobId, {
         status: 'done', startedAt,
