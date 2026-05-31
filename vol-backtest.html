@@ -369,6 +369,12 @@
       <option value="1.5">Mo-SL ×1.5</option>
     </select>
   </span>
+  <select id="runSlope" class="bt-sel" title="EMA-20 slope threshold: how steep the slope must be to classify as BULL or BEAR. Higher = fewer but stronger trend signals.">
+    <option value="0.002">Slope ×1 (0.2%)</option>
+    <option value="0.004">Slope ×2 (0.4%)</option>
+    <option value="0.006">Slope ×3 (0.6%)</option>
+    <option value="0.001">Slope ×0.5 (0.1%)</option>
+  </select>
   <select id="runDynHl" class="bt-sel" title="Dynamic TP: scale reversal target by actual fill-bar extreme (0=off, 0.65=FX empirical)">
     <option value="0">Dyn-HL off</option>
     <option value="0.65">Dyn-HL 0.65</option>
@@ -1349,6 +1355,7 @@ async function runBacktest() {
       momentumSlMult:   document.getElementById('runMoSl')?.value ?? '1.0',
       spreadPct:        document.getElementById('runSpread').value,
       dynHlCorr:        document.getElementById('runDynHl').value,
+      slopeThresh:      document.getElementById('runSlope').value,
     };
 
     // Start the job — server returns immediately with a jobId
