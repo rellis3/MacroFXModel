@@ -7,7 +7,7 @@
  * Vol (EWMA λ=0.94) and regime (EMA-20 slope) are still computed from
  * D1 close-to-close returns — no lookahead bias.
  *
- * M1 parquet files must be present in BT_M1_DIR before use.
+ * M1 data source priority: R2 (set R2_ACCESS_KEY + R2_SECRET_KEY env vars) → local BT_M1_DIR.
  * Naming: {pair_lowercase}_m1.parquet  e.g. eurusd_m1.parquet
  * Parquet schema: [open, high, low, close, volume, datetime] (UTC ISO timestamps)
  */
@@ -16,6 +16,7 @@ import { readFileSync, existsSync } from 'fs';
 import path                         from 'path';
 import { fileURLToPath }            from 'url';
 import { parquetRead, parquetMetadataAsync } from 'hyparquet';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import {
   ewmaVarSeries, classifyRegime, ASSET_PARAMS,
   BM_P75, HN_P50, fetchD1, INSTRUMENTS,
@@ -24,6 +25,36 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const BT_M1_DIR = path.join(__dirname, '..', 'VolRangeForecaster', 'data', 'm1');
+
+const R2_ENDPOINT   = 'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com';
+const R2_BUCKET     = 'r2-storage';
+const R2_KEY_PREFIX = 'm1';
+
+function makeR2Client() {
+  const accessKeyId     = process.env.R2_ACCESS_KEY;
+  const secretAccessKey = process.env.R2_SECRET_KEY;
+  if (!accessKeyId || !secretAccessKey) return null;
+  return new S3Client({
+    endpoint: R2_ENDPOINT,
+    region: 'auto',
+    credentials: { accessKeyId, secretAccessKey },
+  });
+}
+
+async function fetchFromR2(pairKey) {
+  const client = makeR2Client();
+  if (!client) return null;
+  try {
+    const cmd  = new GetObjectCommand({ Bucket: R2_BUCKET, Key: `${R2_KEY_PREFIX}/${pairKey}_m1.parquet` });
+    const resp = await client.send(cmd);
+    const chunks = [];
+    for await (const chunk of resp.Body) chunks.push(chunk);
+    const buf = Buffer.concat(chunks);
+    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  } catch {
+    return null;
+  }
+}
 
 // ── Drive file IDs for all 25 M1 parquets ────────────────────────────────────
 
@@ -57,17 +88,21 @@ export const M1_DRIVE_IDS = {
 
 // ── Parquet loader ────────────────────────────────────────────────────────────
 
-async function readM1Parquet(filePath) {
-  const nodeBuf = readFileSync(filePath);
-  const ab      = nodeBuf.buffer; // the Node Buffer's underlying ArrayBuffer
-  const file    = {
+async function readM1Parquet(source) {
+  let ab;
+  if (source instanceof ArrayBuffer) {
+    ab = source;
+  } else {
+    const nodeBuf = readFileSync(source);
+    ab = nodeBuf.buffer.slice(nodeBuf.byteOffset, nodeBuf.byteOffset + nodeBuf.byteLength);
+  }
+  const file = {
     byteLength: ab.byteLength,
     slice: (start, end) => Promise.resolve(ab.slice(start, end)),
   };
   const meta = await parquetMetadataAsync(file);
   let rows;
   await parquetRead({ file, metadata: meta, onComplete: d => (rows = d) });
-  // Each row: [open, high, low, close, volume, datetime_iso_string]
   return rows;
 }
 
@@ -362,18 +397,24 @@ export async function runFullM1Backtest(opts = {}, instruments = INSTRUMENTS, m1
       const d1Bars = await fetchD1(cfg.oanda, 5000);
       log.push(`  ${d1Bars.length} D1 bars (${d1Bars[0]?.date} → ${d1Bars.at(-1)?.date})`);
 
-      // Load M1 parquet if present
+      // Load M1 parquet — try R2 first (if credentials set), then local file
       const pairKey  = cfg.name.toLowerCase().replace('/', '');
       const m1File   = path.join(m1Dir, `${pairKey}_m1.parquet`);
       let   m1ByDate = null;
 
-      if (existsSync(m1File)) {
-        log.push(`  Loading M1 parquet (${(readFileSync(m1File).length / 1e6).toFixed(1)} MB)…`);
+      const r2ab = await fetchFromR2(pairKey);
+      if (r2ab) {
+        log.push(`  Loading M1 parquet from R2 (${(r2ab.byteLength / 1e6).toFixed(1)} MB)…`);
+        const rows = await readM1Parquet(r2ab);
+        m1ByDate   = groupByDate(rows);
+        log.push(`  ${rows.length.toLocaleString()} M1 bars across ${m1ByDate.size} dates`);
+      } else if (existsSync(m1File)) {
+        log.push(`  Loading M1 parquet from disk (${(readFileSync(m1File).length / 1e6).toFixed(1)} MB)…`);
         const rows = await readM1Parquet(m1File);
         m1ByDate   = groupByDate(rows);
         log.push(`  ${rows.length.toLocaleString()} M1 bars across ${m1ByDate.size} dates`);
       } else {
-        log.push(`  No M1 parquet — falling back to D1 simulation`);
+        log.push(`  No M1 parquet (set R2_ACCESS_KEY/R2_SECRET_KEY or run r2_download.py) — falling back to D1 simulation`);
       }
 
       const trades = runM1Backtest(d1Bars, m1ByDate, cfg.assetClass, opts)
