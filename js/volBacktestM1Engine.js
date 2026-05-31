@@ -258,13 +258,75 @@ function simulateMomentumM1(m1Bars, open, hl75pct, ocMedPct, regime, opts = {}) 
   return { filled: true, side, ...result, pnlPct: +result.pnlPct.toFixed(5), leg: 'momentum', fillTime: result.fillTime ?? null };
 }
 
+// ── Momentum50 leg: enter at HL50 in regime direction, TP = HL75, SL = 1:1 ────
+//
+// BULL: stop-BUY when price rises to open+HL50, TP = open+HL75, SL = open+HL50−gap
+// BEAR: stop-SELL when price drops to open−HL50, TP = open−HL75, SL = open−HL50+gap
+// RANGE: first HL50 extreme hit in either direction
+//
+// Gap = HL75 − HL50 ≈ 0.3σ. Risk:reward = 1:1, so needs >50% win rate.
+// Fill rate is much higher than the reversal (HL50 hit ~35% of days vs ~8% for HL75).
+
+function simulateMomentum50M1(m1Bars, open, hl50pct, hl75pct, regime) {
+  const hl50 = open * hl50pct / 100;
+  const hl75 = open * hl75pct / 100;
+  const gap  = hl75 - hl50;                    // profit distance = SL distance
+
+  let side = '', entryL, tpL, slL, isBull = null;
+
+  if (regime === 'BULL') {
+    isBull = true;  side = 'BUY';
+    entryL = open + hl50;
+    tpL    = open + hl75;
+    slL    = open + hl50 - gap;                 // = open + 2×hl50 − hl75
+  } else if (regime === 'BEAR') {
+    isBull = false; side = 'SELL';
+    entryL = open - hl50;
+    tpL    = open - hl75;
+    slL    = open - hl50 + gap;                 // = open − 2×hl50 + hl75
+  } else {
+    for (const bar of m1Bars) {
+      if (bar.high >= open + hl50) {
+        isBull = true;  side = 'BUY';
+        entryL = open + hl50; tpL = open + hl75; slL = open + hl50 - gap;
+        break;
+      }
+      if (bar.low <= open - hl50) {
+        isBull = false; side = 'SELL';
+        entryL = open - hl50; tpL = open - hl75; slL = open - hl50 + gap;
+        break;
+      }
+    }
+    if (isBull === null) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum50', fillTime: null };
+  }
+
+  let filled = false, fillTime = null;
+  for (const bar of m1Bars) {
+    if (!filled) {
+      if (isBull ? bar.high < entryL : bar.low > entryL) continue;
+      filled = true; fillTime = bar.time;
+    }
+    if (isBull) {
+      if (bar.low  <= slL) return { filled: true, side, outcome: 'loss', pnlPct: +(-(entryL - slL) / open * 100).toFixed(5), leg: 'momentum50', fillTime };
+      if (bar.high >= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +( (tpL - entryL) / open * 100).toFixed(5),  leg: 'momentum50', fillTime };
+    } else {
+      if (bar.high >= slL) return { filled: true, side, outcome: 'loss', pnlPct: +(-(slL - entryL) / open * 100).toFixed(5), leg: 'momentum50', fillTime };
+      if (bar.low  <= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +( (entryL - tpL) / open * 100).toFixed(5),  leg: 'momentum50', fillTime };
+    }
+  }
+  if (!filled) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum50', fillTime: null };
+  const eod    = m1Bars[m1Bars.length - 1]?.close ?? entryL;
+  const eodPnl = isBull ? (eod - entryL) / open * 100 : (entryL - eod) / open * 100;
+  return { filled: true, side, outcome: 'open', pnlPct: +eodPnl.toFixed(5), leg: 'momentum50', fillTime };
+}
+
 // ── Walk-forward engine (M1 sim + D1 vol/regime) ──────────────────────────────
 
 function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
   const {
     dateFrom = '', dateTo = '', minLookback = 50,
     slMult = 1.5, slopeThresh = 0.002,
-    strategy = 'reversal',                  // 'reversal' | 'momentum' | 'both'
+    strategy = 'reversal',                  // 'reversal' | 'momentum' | 'both' | 'momentum50'
     momentumPullback = 0, momentumSlMult = 1.0,
     spreadPct = 0,
     dynHlCorr = 0,    // 0 = disabled; 0.65 = scale TP by actual fill-bar extreme
@@ -286,17 +348,19 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     const ewmaIdx = i - 2; // allEwmaVar[i-2] = EWMA variance after returns 0..i-2
     if (ewmaIdx < 19) continue;
 
-    const sigmaD  = Math.sqrt(allEwmaVar[ewmaIdx]);
-    const hl75pct = BM_P75 * p.hl_75_corr * sigmaD * 100;
-    const ocMedPct  = HN_P50 * p.oc_corr    * sigmaD * 100;
-    const regime    = classifyRegime(closes, i, 20, 5, slopeThresh);
+    const sigmaD   = Math.sqrt(allEwmaVar[ewmaIdx]);
+    const hl50pct  = BM_P50 * p.hl_50_corr * sigmaD * 100;
+    const hl75pct  = BM_P75 * p.hl_75_corr * sigmaD * 100;
+    const ocMedPct = HN_P50 * p.oc_corr    * sigmaD * 100;
+    const regime   = classifyRegime(closes, i, 20, 5, slopeThresh);
 
-    const m1Bars   = m1ByDate?.get(date) ?? null;
-    const useM1    = !!(m1Bars && m1Bars.length >= 10);
-    const moOpts   = { momentumPullback, momentumSlMult };
+    const m1Bars = m1ByDate?.get(date) ?? null;
+    const useM1  = !!(m1Bars && m1Bars.length >= 10);
+    const moOpts = { momentumPullback, momentumSlMult };
 
     const base = {
       date, regime,
+      hl_50_pct:  +hl50pct.toFixed(4),
       hl_75_pct:  +hl75pct.toFixed(4),
       oc_med_pct: +ocMedPct.toFixed(4),
       m1_sim:     useM1,
@@ -305,17 +369,20 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     };
 
     const legResults = [];
-    if (strategy !== 'momentum') {
+    if (strategy !== 'momentum' && strategy !== 'momentum50') {
       const r = useM1
         ? simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult, dynHlCorr)
         : _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMult);
       legResults.push(r);
     }
-    if (strategy !== 'reversal') {
+    if (strategy !== 'reversal' && strategy !== 'momentum50') {
       const r = useM1
         ? simulateMomentumM1(m1Bars, open, hl75pct, ocMedPct, regime, moOpts)
         : _simulateMomentumD1(open, high, low, close, hl75pct, ocMedPct, regime, moOpts);
       legResults.push(r);
+    }
+    if (strategy === 'momentum50' && useM1) {
+      legResults.push(simulateMomentum50M1(m1Bars, open, hl50pct, hl75pct, regime));
     }
 
     for (const r of legResults) {
@@ -558,6 +625,11 @@ function _sliceStats(rs) {
     lFirst_oc75H: rL('lret_oc75H'),  // OC75↑
     lFirst_hl50H: rL('lret_hl50H'),  // HL50↑
     lFirst_sweep: rL('lret_hl75H'),  // full sweep to HL75↑
+    // HL50 → HL75 continuation: P(HL75 hit | HL50 already hit) — momentum50 edge
+    hl50H_n:           rs.filter(r => r.hl50H_hit).length,
+    hl50L_n:           rs.filter(r => r.hl50L_hit).length,
+    hl75H_given_hl50H: _pct(rs.filter(r => r.hl50H_hit && r.hl75H_hit).length, rs.filter(r => r.hl50H_hit).length),
+    hl75L_given_hl50L: _pct(rs.filter(r => r.hl50L_hit && r.hl75L_hit).length, rs.filter(r => r.hl50L_hit).length),
   };
 }
 

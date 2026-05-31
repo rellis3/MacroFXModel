@@ -353,6 +353,7 @@
     <option value="reversal">Reversal</option>
     <option value="momentum">Momentum</option>
     <option value="both">Both</option>
+    <option value="momentum50">Mom-50</option>
   </select>
   <span id="momentumOpts" style="display:none">
     <select id="runMoPb" class="bt-sel" title="Pullback: fraction of OC_med for entry offset">
@@ -380,7 +381,7 @@
 <!-- ── Strategy help panel ───────────────────────────────────────────────── -->
 <div id="stratHelp" style="display:none;margin:8px 0 0;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;color:var(--txt2)">
   <strong style="color:var(--txt);font-size:13px">Strategy modes</strong>
-  <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+  <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
     <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Reversal</div>
       Waits for price to reach the statistically expected daily range extreme (HL75 — the 75th-percentile of that day's predicted range) then fades back toward the median close (OC_med).
@@ -401,6 +402,14 @@
       Runs both legs simultaneously on every day. Produces two rows per day in the results — one labelled <code>reversal</code>, one <code>momentum</code>. The headline KPIs aggregate both legs together.
       Useful for seeing whether the strategies are complementary: momentum tends to win on clean trending days (when reversal fails), and reversal wins on range-extension days (when momentum overshoots its target).
       <div style="margin-top:6px">Use the <strong>Leg</strong> filter in the trade log to isolate each leg's performance.</div>
+    </div>
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Mom-50</div>
+      A momentum scalp between the two range boundaries: enter <em>with</em> the regime direction once price breaks through the HL50 (median range) level, targeting HL75 (75th-pct range) with a symmetric 1:1 stop.
+      <div style="margin-top:6px">Risk:reward 1:1, so needs &gt;50% win rate. Fill rate is much higher than the Reversal (~35% of days reach HL50 vs ~8% for HL75). Run the Level Analysis to see the continuation rate per regime before backtesting.</div>
+      <div style="margin-top:4px;color:var(--green)">BULL → stop-BUY at open+HL50, TP = open+HL75, SL = open+HL50−gap</div>
+      <div style="color:var(--red)">BEAR → stop-SELL at open−HL50, TP = open−HL75, SL = open−HL50+gap</div>
+      <div style="color:var(--blue)">RANGE → first HL50 hit in either direction</div>
     </div>
   </div>
   <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
@@ -629,6 +638,7 @@
       <option value="">All legs</option>
       <option value="reversal">Reversal</option>
       <option value="momentum">Momentum</option>
+      <option value="momentum50">Momentum 50</option>
     </select>
     <button class="dark-btn" onclick="clearFilters()">Clear</button>
   </div>
@@ -707,6 +717,22 @@
               <th class="num">Sweep↑</th>
             </tr></thead>
             <tbody id="laTblDnBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- HL50 → HL75 continuation table -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;margin-bottom:4px;color:var(--txt2)">HL50 → HL75 CONTINUATION — momentum50 edge by regime</div>
+        <div style="font-size:11px;color:var(--txt3);margin-bottom:6px">Of days where HL50 was reached, what % continued to HL75? This is the expected win rate for the Mom-50 strategy (1:1 R:R needs &gt;50%).</div>
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl" id="laTblCont">
+            <thead><tr>
+              <th>Regime</th>
+              <th class="num">HL50↑ days</th><th class="num">→ HL75↑ %</th>
+              <th class="num">HL50↓ days</th><th class="num">→ HL75↓ %</th>
+            </tr></thead>
+            <tbody id="laTblContBody"></tbody>
           </table>
         </div>
       </div>
@@ -1286,7 +1312,7 @@ function toggleHelp() {
 function toggleMomentumOpts() {
   const strategy = document.getElementById('runStrategy').value;
   document.getElementById('momentumOpts').style.display =
-    strategy === 'reversal' ? 'none' : '';
+    (strategy === 'reversal' || strategy === 'momentum50') ? 'none' : '';
 }
 
 // ── Run backtest ──────────────────────────────────────────────────────────────
@@ -1460,12 +1486,22 @@ function renderLevelAnalysis(data) {
       <div style="font-size:18px;font-weight:700;color:var(--${k.color})">${k.val != null ? k.fmt(k.val) : '—'}</div>
     </div>`).join('');
 
-  // After HL75↑ first table
+  // Retracement tables
   const rgOrder = [['Overall', agg.overall], ...Object.entries(agg.byRegime)];
   document.getElementById('laTblUpBody').innerHTML =
     rgOrder.map(([rg, s]) => _renderRetRow(rg, s, 'up')).join('');
   document.getElementById('laTblDnBody').innerHTML =
     rgOrder.map(([rg, s]) => _renderRetRow(rg, s, 'dn')).join('');
+
+  // Continuation table
+  document.getElementById('laTblContBody').innerHTML = rgOrder.map(([rg, s]) => {
+    if (!s) return '';
+    return `<tr>
+      <td><b>${rg}</b></td>
+      <td class="num">${s.hl50H_n ?? '—'}</td>${_pctCell(s.hl75H_given_hl50H, 50)}
+      <td class="num">${s.hl50L_n ?? '—'}</td>${_pctCell(s.hl75L_given_hl50L, 50)}
+    </tr>`;
+  }).join('');
 
   // Per-instrument table
   const instRows = Object.entries(byInstrument)
