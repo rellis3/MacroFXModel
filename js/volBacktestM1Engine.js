@@ -273,18 +273,21 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
   const closes = d1Bars.map(b => b.close);
   const records = [];
 
+  // Pre-compute EWMA variance series once — O(n) vs O(n²) per-bar rebuild
+  const allLogRet = [];
+  for (let j = 1; j < closes.length; j++) allLogRet.push(Math.log(closes[j] / closes[j - 1]));
+  const allEwmaVar = ewmaVarSeries(allLogRet);
+
   for (let i = minLookback; i < d1Bars.length; i++) {
     const { date, open, high, low, close } = d1Bars[i];
     if (dateFrom && date < dateFrom) continue;
     if (dateTo   && date > dateTo)   continue;
 
-    const logRet = [];
-    for (let j = 1; j < i; j++) logRet.push(Math.log(closes[j] / closes[j - 1]));
-    if (logRet.length < 20) continue;
+    const ewmaIdx = i - 2; // allEwmaVar[i-2] = EWMA variance after returns 0..i-2
+    if (ewmaIdx < 19) continue;
 
-    const varSeries = ewmaVarSeries(logRet);
-    const sigmaD    = Math.sqrt(varSeries[varSeries.length - 1]);
-    const hl75pct   = BM_P75 * p.hl_75_corr * sigmaD * 100;
+    const sigmaD  = Math.sqrt(allEwmaVar[ewmaIdx]);
+    const hl75pct = BM_P75 * p.hl_75_corr * sigmaD * 100;
     const ocMedPct  = HN_P50 * p.oc_corr    * sigmaD * 100;
     const regime    = classifyRegime(closes, i, 20, 5, slopeThresh);
 
@@ -454,6 +457,11 @@ function runLevelHitAnalysis(d1Bars, m1ByDate, assetClass, opts = {}) {
   const closes = d1Bars.map(b => b.close);
   const records = [];
 
+  // Pre-compute EWMA variance series once — O(n) vs O(n²) per-bar rebuild
+  const allLogRet = [];
+  for (let j = 1; j < closes.length; j++) allLogRet.push(Math.log(closes[j] / closes[j - 1]));
+  const allEwmaVar = ewmaVarSeries(allLogRet);
+
   for (let i = minLookback; i < d1Bars.length; i++) {
     const { date, open } = d1Bars[i];
     if (dateFrom && date < dateFrom) continue;
@@ -462,15 +470,13 @@ function runLevelHitAnalysis(d1Bars, m1ByDate, assetClass, opts = {}) {
     const m1Bars = m1ByDate?.get(date) ?? null;
     if (!m1Bars || m1Bars.length < 10) continue;
 
-    const logRet = [];
-    for (let j = 1; j < i; j++) logRet.push(Math.log(closes[j] / closes[j - 1]));
-    if (logRet.length < 20) continue;
+    const ewmaIdx = i - 2;
+    if (ewmaIdx < 19) continue;
 
-    const varSeries = ewmaVarSeries(logRet);
-    const sigmaD    = Math.sqrt(varSeries[varSeries.length - 1]);
-    const hl75pct   = BM_P75 * p.hl_75_corr * sigmaD * 100;
-    const ocMedPct  = HN_P50 * p.oc_corr    * sigmaD * 100;
-    const regime    = classifyRegime(closes, i, 20, 5, slopeThresh);
+    const sigmaD  = Math.sqrt(allEwmaVar[ewmaIdx]);
+    const hl75pct = BM_P75 * p.hl_75_corr * sigmaD * 100;
+    const ocMedPct = HN_P50 * p.oc_corr   * sigmaD * 100;
+    const regime   = classifyRegime(closes, i, 20, 5, slopeThresh);
 
     records.push({
       date, regime,
@@ -615,13 +621,16 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
   return null;
 }
 
-export async function runFullLevelAnalysis(opts = {}, instruments = INSTRUMENTS, m1Dir = BT_M1_DIR) {
+export async function runFullLevelAnalysis(opts = {}, instruments = INSTRUMENTS, m1Dir = BT_M1_DIR, onProgress = null) {
   if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set — cannot fetch D1 data');
 
   const allRecords = [];
   const log        = [];
+  const total      = instruments.length;
 
-  for (const cfg of instruments) {
+  for (let pi = 0; pi < instruments.length; pi++) {
+    const cfg = instruments[pi];
+    onProgress?.(`${cfg.name} (${pi + 1}/${total})`);
     try {
       log.push(`Fetching D1 ${cfg.name}…`);
       const d1Bars  = await fetchD1(cfg.oanda, 5000);

@@ -1804,7 +1804,11 @@ app.post('/api/vol-backtest/level-analysis', (req, res) => {
   // Fire-and-forget — response returns immediately with jobId
   (async () => {
     try {
-      const { records, agg, log } = await runFullLevelAnalysis(opts, instFilter);
+      const { records, agg, log } = await runFullLevelAnalysis(opts, instFilter, BT_M1_DIR,
+        (pair) => {
+          const job = laJobs.get(jobId);
+          if (job) laJobs.set(jobId, { ...job, currentPair: pair });
+        });
       const instruments = [...new Set(records.map(r => r.instrument))];
       const byInstrument = Object.fromEntries(
         instruments.map(inst => [inst, aggregateLevelHits(records.filter(r => r.instrument === inst))])
@@ -1826,7 +1830,7 @@ app.get('/api/vol-backtest/level-analysis/status/:jobId', (req, res) => {
   const job = laJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
-    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), currentPair: job.currentPair ?? null });
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });

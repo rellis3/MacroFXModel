@@ -1410,7 +1410,7 @@ async function runLevelAnalysis() {
       const d = await r.json();
 
       if (d.status === 'running') {
-        st.textContent = `Analysing M1 bars… ${d.elapsed}s`;
+        st.textContent = `Analysing M1 bars… ${d.elapsed}s${d.currentPair ? ' — ' + d.currentPair : ''}`;
         continue;
       }
       if (d.status === 'error') throw new Error(d.error || 'Analysis failed');
