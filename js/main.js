@@ -591,6 +591,8 @@ async function loadAll() {
             S.ohlcData[sym] = data;
             S.usdStrength   = computeUSDStrength();
             S.dollarRegime  = computeDollarRegime();
+            // Re-render so T5 cross-sectional carry picks up the newly available pair bars.
+            renderAllDebounced();
           }
         }).catch(() => {});
       }
