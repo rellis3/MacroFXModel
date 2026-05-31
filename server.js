@@ -1612,6 +1612,43 @@ app.get('/api/vol-backtest', (req, res) => {
   }
 });
 
+// ── All trades endpoint for the Backtest Viewer ───────────────────────────────
+// Returns every filled trade (no 200-cap), sorted newest-first.
+// Includes all fields needed by BacktestViewer's VOL_ADAPTER.
+app.get('/api/vol-backtest/trades', (req, res) => {
+  const csvPath = _latestBacktestCsv();
+  if (!csvPath) return res.status(404).json({ ok: false, error: 'No backtest data. Run the backtester first.' });
+
+  try {
+    const DOW_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const trades = _parseBtCsv(csvPath)
+      .filter(t => t.filled)
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+      .reverse()
+      .map(r => ({
+        date:       r.date?.substring(0, 10),
+        instrument: r.instrument,
+        regime:     r.regime,
+        side:       r.side,
+        outcome:    r.outcome,
+        pnl_pct:    r.pnl_pct,
+        hl_75_pct:  r.hl_75_pct,
+        oc_med_pct: r.oc_med_pct,
+        leg:        r.leg,
+        session:    r.session,
+        dow:        DOW_LABELS[r.dow ?? new Date(r.date + 'T00:00:00Z').getUTCDay()],
+        open:       r.open,
+        fill_time:  r.fill_time || null,
+      }));
+
+    res.json({ ok: true, trades, total: trades.length });
+  } catch (e) {
+    const msg = e?.message || String(e) || 'Parse error';
+    console.error('[vol-backtest/trades]', msg, e?.stack ?? '');
+    res.status(500).json({ ok: false, error: msg });
+  }
+});
+
 // Check how many M1 parquets are cached locally
 function _m1CacheStatus() {
   if (!fs.existsSync(BT_M1_DIR)) return { cached: 0, pairs: [] };

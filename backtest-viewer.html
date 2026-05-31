@@ -372,11 +372,12 @@ function _dateOffset(dateStr, days) {
 // Add more adapters below for other backtest sources and pass them via ?source=xxx
 const VOL_ADAPTER = {
   async fetchTrades() {
-    const r = await fetch('/api/vol-backtest');
+    const r = await fetch('/api/vol-backtest/trades');
     if (!r.ok) throw new Error(`HTTP ${r.status} — run the backtester first`);
     const d = await r.json();
-    if (!d.recentTrades?.length) throw new Error('No trades in response (run the backtester first)');
-    return d.recentTrades;
+    if (!d.ok) throw new Error(d.error || 'Failed to load trades');
+    if (!d.trades?.length) throw new Error('No trades found — run the backtester first');
+    return d.trades;
   },
 
   async fetchCandles(trade) {

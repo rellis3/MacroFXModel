@@ -27,6 +27,9 @@ class BacktestViewer {
     this._currentTrade = null;
     this._candles    = [];
 
+    // Exit bar computed from M1 data (null = not found / RANGE open)
+    this._exitBar = null;
+
     // Running capital (computed from pnl_pct chain)
     this._capitals   = [];
 
@@ -287,10 +290,12 @@ class BacktestViewer {
         time:  this._toEpochSec(b.time),
         open:  b.open, high: b.high, low: b.low, close: b.close,
       }));
+      this._exitBar = this._computeExitBar(trade);
       this._renderChartFull();
       this._renderDetail(trade, idx);
       this._hideVeil();
     } catch (e) {
+      this._exitBar = null;
       this._setVeil('No M1 data — ' + e.message);
     }
 
@@ -299,6 +304,31 @@ class BacktestViewer {
 
   _prevTrade() { this._selectTrade(this._idx - 1); }
   _nextTrade() { this._selectTrade(this._idx + 1); }
+
+  // Walk forward from fill_time in M1 bars to find the first bar that hits TP or SL.
+  // Returns { time, type: 'win'|'loss' } or null if neither is hit in the loaded range.
+  _computeExitBar(trade) {
+    const lvl    = this.adapter.getLevels(trade);
+    if (!lvl || !trade.fill_time || !this._candles.length) return null;
+
+    const fillTs  = this._toEpochSec(trade.fill_time);
+    const isSell  = trade.side === 'SELL';
+    const startIdx = this._candles.findIndex(c => c.time >= fillTs);
+    if (startIdx < 0) return null;
+
+    for (let i = startIdx; i < this._candles.length; i++) {
+      const { time, high, low } = this._candles[i];
+      if (isSell) {
+        // SL hit if price moves against the trade (high breaches stop)
+        if (high >= lvl.sl) return { time, type: 'loss' };
+        if (low  <= lvl.tp) return { time, type: 'win'  };
+      } else {
+        if (low  <= lvl.sl) return { time, type: 'loss' };
+        if (high >= lvl.tp) return { time, type: 'win'  };
+      }
+    }
+    return null;
+  }
 
   // ── Chart Rendering ──────────────────────────────────────────────────────────
 
@@ -359,16 +389,20 @@ class BacktestViewer {
       }
     }
 
-    if (trade.exit_time && replayUpTo == null) {
-      const ts  = this._toEpochSec(trade.exit_time);
-      const win = trade.outcome === 'win';
-      markers.push({
-        time: ts, size: 0.6,
-        position: isSell ? 'belowBar' : 'aboveBar',
-        color:    win ? '#26a69a' : '#ef5350',
-        shape:    'circle',
-        text:     (trade.outcome || '').toUpperCase(),
-      });
+    // Exit marker — use stored exit_time if available, otherwise use M1-computed exit bar
+    if (replayUpTo == null) {
+      const exitTs   = trade.exit_time ? this._toEpochSec(trade.exit_time) : this._exitBar?.time;
+      const exitType = trade.exit_time ? trade.outcome : this._exitBar?.type;
+      if (exitTs) {
+        const win = exitType === 'win';
+        markers.push({
+          time: exitTs, size: 0.8,
+          position: isSell ? 'belowBar' : 'aboveBar',
+          color:    win ? '#26a69a' : '#ef5350',
+          shape:    win ? 'arrowUp'  : 'arrowDown',
+          text:     win ? 'TP' : 'SL',
+        });
+      }
     }
 
     this._cs.setMarkers(markers.sort((a, b) => a.time - b.time));
@@ -470,6 +504,7 @@ class BacktestViewer {
     this._replayStart       = Math.max(0, entryIdx - 30);
     this._replayCursor      = this._replayStart;
     this._replayEntryMarked = false;
+    this._replayExitMarked  = false;
     this._replayMode        = true;
 
     document.getElementById('bvReplayBar').style.display = '';
@@ -525,16 +560,23 @@ class BacktestViewer {
     this._cs.update(this._candles[this._replayCursor]);
     this._replayCursor++;
 
-    // Reveal entry arrow when we pass the fill time
     const trade  = this._currentTrade;
+    const curr   = this._candles[this._replayCursor - 1];
     const fillTs = trade?.fill_time ? this._toEpochSec(trade.fill_time) : null;
-    if (fillTs && !this._replayEntryMarked) {
-      const curr = this._candles[this._replayCursor - 1];
-      if (curr && curr.time >= fillTs) {
-        this._replayEntryMarked = true;
-        this._renderMarkers(trade, curr.time);
-        if (this._showLevels) this._renderLevels(trade);
-      }
+
+    // Reveal entry arrow + levels when fill bar is reached
+    if (fillTs && !this._replayEntryMarked && curr && curr.time >= fillTs) {
+      this._replayEntryMarked = true;
+      this._renderMarkers(trade, curr.time);
+      if (this._showLevels) this._renderLevels(trade);
+    }
+
+    // Reveal TP/SL exit marker and auto-pause when the exit bar is reached
+    if (this._exitBar && !this._replayExitMarked && curr && curr.time >= this._exitBar.time) {
+      this._replayExitMarked = true;
+      this._renderMarkers(trade, null);  // show full markers including TP/SL arrow
+      this._stopReplayTimer();
+      document.getElementById('bvPlayBtn').textContent = '▶ Play';
     }
 
     this._updateReplayStat();
@@ -545,6 +587,7 @@ class BacktestViewer {
     document.getElementById('bvPlayBtn').textContent = '▶ Play';
     this._replayCursor      = this._replayStart;
     this._replayEntryMarked = false;
+    this._replayExitMarked  = false;
     this._cs.setData(this._candles.slice(0, this._replayCursor));
     this._clearLevelLines();
     this._cs.setMarkers([]);
