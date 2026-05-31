@@ -376,25 +376,36 @@ function simulateReversal50M1(m1Bars, open, hl50pct, hl75pct) {
 // TP:    open (full mean reversion — HL50 profit distance).
 // SL:    open±HL75 (HL75−HL50 ≈ 0.38σ risk distance).
 //
-// No regime filter. One fill per day (first signal wins).
-// R:R ≈ 3.8:1. Break-even ≈ 21%.
+// revMode='all':     take the first HL50 hit in either direction.
+// revMode='counter': skip with-trend hits — on BULL only take BUY from low;
+//                    on BEAR only take SELL from high; RANGE takes either.
+//                    Filters out days where momentum is most likely to push
+//                    HL50 through to HL75, reducing SL hits.
+//
+// No regime filter in 'all' mode. R:R ≈ 3.8:1. Break-even ≈ 21%.
 
-function simulateRevHL50M1(m1Bars, open, hl50pct, hl75pct) {
+function simulateRevHL50M1(m1Bars, open, hl50pct, hl75pct, regime = 'RANGE', revMode = 'all') {
   const hl50 = open * hl50pct / 100;
   const hl75 = open * hl75pct / 100;
+
+  // Determine which sides are allowed based on revMode
+  const allowHigh = revMode === 'all' || regime !== 'BULL';   // skip SELL on BULL days in counter mode
+  const allowLow  = revMode === 'all' || regime !== 'BEAR';   // skip BUY  on BEAR days in counter mode
+
+  if (!allowHigh && !allowLow) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'revHL50', fillTime: null, exitTime: null };
 
   let filled = false, side = '', isBull = null;
   let entryL, tpL, slL, fillTime;
 
   for (const bar of m1Bars) {
     if (!filled) {
-      if (bar.high >= open + hl50) {
+      if (allowHigh && bar.high >= open + hl50) {
         filled = true; side = 'SELL'; isBull = false;
         entryL = open + hl50; tpL = open; slL = open + hl75;
         fillTime = bar.time;
         if (bar.high >= slL) return { filled: true, side, outcome: 'loss', pnlPct: +(-((slL - entryL) / open * 100)).toFixed(5), leg: 'revHL50', fillTime, exitTime: bar.time };
         if (bar.low  <= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +((entryL - tpL)   / open * 100).toFixed(5),  leg: 'revHL50', fillTime, exitTime: bar.time };
-      } else if (bar.low <= open - hl50) {
+      } else if (allowLow && bar.low <= open - hl50) {
         filled = true; side = 'BUY'; isBull = true;
         entryL = open - hl50; tpL = open; slL = open - hl75;
         fillTime = bar.time;
@@ -419,17 +430,19 @@ function simulateRevHL50M1(m1Bars, open, hl50pct, hl75pct) {
   return { filled: true, side, outcome: 'open', pnlPct: +eodPnl.toFixed(5), leg: 'revHL50', fillTime, exitTime: eodTime };
 }
 
-function _simulateRevHL50D1(open, high, low, close, hl50pct, hl75pct) {
+function _simulateRevHL50D1(open, high, low, close, hl50pct, hl75pct, regime = 'RANGE', revMode = 'all') {
   const hl50 = open * hl50pct / 100;
   const hl75 = open * hl75pct / 100;
+  const allowHigh = revMode === 'all' || regime !== 'BULL';
+  const allowLow  = revMode === 'all' || regime !== 'BEAR';
 
-  if (high >= open + hl50) {
+  if (allowHigh && high >= open + hl50) {
     const entry = open + hl50, tp = open, sl = open + hl75;
     if (high >= sl) return { filled: true, side: 'SELL', outcome: 'loss', pnlPct: +(-(sl - entry) / open * 100).toFixed(5), leg: 'revHL50', fillTime: null, exitTime: null };
     if (low  <= tp) return { filled: true, side: 'SELL', outcome: 'win',  pnlPct: +((entry - tp) / open * 100).toFixed(5),  leg: 'revHL50', fillTime: null, exitTime: null };
     return { filled: true, side: 'SELL', outcome: 'open', pnlPct: +((entry - close) / open * 100).toFixed(5), leg: 'revHL50', fillTime: null, exitTime: null };
   }
-  if (low <= open - hl50) {
+  if (allowLow && low <= open - hl50) {
     const entry = open - hl50, tp = open, sl = open - hl75;
     if (low  <= sl) return { filled: true, side: 'BUY', outcome: 'loss', pnlPct: +(-(entry - sl) / open * 100).toFixed(5), leg: 'revHL50', fillTime: null, exitTime: null };
     if (high >= tp) return { filled: true, side: 'BUY', outcome: 'win',  pnlPct: +((tp - entry) / open * 100).toFixed(5),  leg: 'revHL50', fillTime: null, exitTime: null };
@@ -509,9 +522,10 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
       legResults.push(r);
     }
     if (strategy === 'revHL50') {
+      const revMode = opts.revHL50Mode ?? 'all';
       const r = useM1
-        ? simulateRevHL50M1(m1Bars, open, hl50pct, hl75pct)
-        : _simulateRevHL50D1(open, high, low, close, hl50pct, hl75pct);
+        ? simulateRevHL50M1(m1Bars, open, hl50pct, hl75pct, regime, revMode)
+        : _simulateRevHL50D1(open, high, low, close, hl50pct, hl75pct, regime, revMode);
       legResults.push(r);
     }
 
