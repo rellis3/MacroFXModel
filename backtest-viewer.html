@@ -30,13 +30,12 @@ html, body {
 .bv-topbar {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 16px;
+  gap: 10px;
+  padding: 0 14px;
   height: 46px;
   border-bottom: 1px solid #1c2133;
   background: #131722;
   flex-shrink: 0;
-  flex-wrap: wrap;
   overflow: hidden;
 }
 
@@ -47,6 +46,9 @@ html, body {
   color: #d1d4dc;
   white-space: nowrap;
   margin-right: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bv-ctrl-group {
@@ -109,6 +111,7 @@ html, body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 /* ── Chart area ───────────────────────────────────────────────────────────── */
@@ -148,6 +151,11 @@ html, body {
 }
 @keyframes bv-spin { to { transform: rotate(360deg); } }
 
+/* ── Panel backdrop (mobile overlay) ─────────────────────────────────────── */
+.bv-panel-backdrop {
+  display: none;
+}
+
 /* ── Right panel ──────────────────────────────────────────────────────────── */
 .bv-panel {
   width: 268px;
@@ -157,6 +165,11 @@ html, body {
   border-left: 1px solid #1c2133;
   background: #131722;
   overflow: hidden;
+}
+
+/* Mobile-only panel header — hidden on desktop */
+.bv-panel-mobile-hdr {
+  display: none;
 }
 
 /* Trade detail card */
@@ -311,7 +324,12 @@ html, body {
   text-align: right;
 }
 
-/* ── Keyboard hints ───────────────────────────────────────────────────────── */
+/* ── Mobile bottom bar (hidden on desktop) ────────────────────────────────── */
+.bv-mobile-bar {
+  display: none;
+}
+
+/* ── Keyboard hints (desktop only) ───────────────────────────────────────── */
 .bv-hints {
   position: fixed;
   bottom: 8px;
@@ -323,11 +341,160 @@ html, body {
   pointer-events: none;
   white-space: nowrap;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE  ≤ 768px
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* Topbar: slimmer, no overflow clip */
+  .bv-topbar {
+    gap: 8px;
+    padding: 0 10px;
+    overflow: visible;
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 46px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  /* Hide desktop-only topbar controls (they move into the panel) */
+  #bvLevels,
+  #bvReCenter,
+  #bvStat {
+    display: none;
+  }
+
+  /* ── Panel becomes a right-side slide-in drawer ── */
+  .bv-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 200;
+    width: 88%;
+    max-width: 320px;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.65);
+    border-left: 1px solid #2a3348;
+  }
+
+  .bv-panel.bv-panel-open {
+    transform: translateX(0);
+  }
+
+  /* ── Backdrop dims chart while panel is open ── */
+  .bv-panel-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 199;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+  }
+  .bv-panel-backdrop.bv-visible {
+    opacity: 1;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
+  /* ── Mobile panel header (visible only on mobile) ── */
+  .bv-panel-mobile-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    height: 44px;
+    flex-shrink: 0;
+    border-bottom: 1px solid #1c2133;
+    background: #0e1520;
+  }
+
+  .bv-panel-mobile-hdr-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    color: #5a6380;
+    text-transform: uppercase;
+  }
+
+  .bv-panel-mobile-hdr-actions {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+
+  /* ── Bottom action bar ── */
+  .bv-mobile-bar {
+    display: flex;
+    align-items: center;
+    height: 52px;
+    padding: 0 12px;
+    gap: 8px;
+    border-top: 1px solid #1c2133;
+    background: #131722;
+    flex-shrink: 0;
+  }
+
+  .bv-mob-btn {
+    background: #1c2133;
+    border: 1px solid #2a3348;
+    color: #9aa8c0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .bv-mob-btn:active { background: #242b42; }
+
+  .bv-mob-nav {
+    width: 44px;
+    flex-shrink: 0;
+    font-size: 18px;
+    color: #6a7892;
+    border-color: #1c2133;
+  }
+  .bv-mob-nav:active { color: #d1d4dc; background: #242b42; }
+
+  .bv-mob-panel-btn {
+    flex: 1;
+    gap: 7px;
+    font-size: 12px;
+    padding: 0 10px;
+    color: #c8d0e0;
+    border-color: #2a3348;
+  }
+  .bv-mob-panel-btn .bv-mob-icon {
+    font-size: 15px;
+    line-height: 1;
+    color: #4f7df0;
+  }
+  .bv-mob-panel-btn .bv-mob-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Hints hidden on mobile */
+  .bv-hints { display: none; }
+}
 </style>
 </head>
 <body>
 
 <div class="bv-root">
+
   <!-- Top toolbar -->
   <div class="bv-topbar" id="bvTopbar">
     <span class="bv-title" id="bvTitle">Backtest Viewer</span>
@@ -341,7 +508,7 @@ html, body {
       </select>
     </div>
     <div class="bv-ctrl-group">
-      <span class="bv-lbl">Direction</span>
+      <span class="bv-lbl">Dir</span>
       <select class="bv-sel" id="bvFDir">
         <option value="">All</option>
         <option value="BUY">Buy</option>
@@ -355,8 +522,10 @@ html, body {
     <span class="bv-stat" id="bvStat"></span>
   </div>
 
-  <!-- Main body: chart + right panel -->
+  <!-- Main body: chart + sliding panel -->
   <div class="bv-body">
+
+    <!-- Chart fills all space not taken by the panel -->
     <div class="bv-chart-wrap">
       <div id="bvTvChart"></div>
       <div class="bv-chart-veil" id="bvVeil">
@@ -365,13 +534,31 @@ html, body {
       </div>
     </div>
 
-    <div class="bv-panel">
+    <!-- Backdrop (mobile only) — tap to close panel -->
+    <div class="bv-panel-backdrop" id="bvBackdrop"></div>
+
+    <!-- Right panel: detail + trade list -->
+    <div class="bv-panel" id="bvPanel">
+
+      <!-- Mobile-only panel header -->
+      <div class="bv-panel-mobile-hdr">
+        <span class="bv-panel-mobile-hdr-title">Trades</span>
+        <div class="bv-panel-mobile-hdr-actions">
+          <button class="bv-btn bv-sm bv-active" id="bvPanelLevels">Levels</button>
+          <button class="bv-btn bv-sm" id="bvPanelReCenter">Re-center</button>
+          <button class="bv-btn bv-sm" id="bvClosePanel" style="padding:3px 10px;font-size:13px">✕</button>
+        </div>
+      </div>
+
+      <!-- Trade detail card -->
       <div class="bv-detail-card">
         <div class="bv-panel-hdr">TRADE DETAIL</div>
         <div class="bv-detail-body" id="bvDetailBody">
           <div class="bv-no-trade">No trade selected</div>
         </div>
       </div>
+
+      <!-- List header with prev/next nav -->
       <div class="bv-list-hdr">
         <span id="bvListCount">—</span>
         <div class="bv-nav-btns">
@@ -381,29 +568,38 @@ html, body {
       </div>
       <div class="bv-list" id="bvList"></div>
     </div>
+
   </div>
 
-  <!-- Keyboard hints -->
+  <!-- Mobile bottom bar (hidden on desktop) -->
+  <div class="bv-mobile-bar" id="bvMobileBar">
+    <button class="bv-mob-btn bv-mob-nav" id="bvMobPrev" title="Previous trade">‹</button>
+    <button class="bv-mob-btn bv-mob-panel-btn" id="bvMobToggle">
+      <span class="bv-mob-icon">☰</span>
+      <span class="bv-mob-label" id="bvMobLabel">Trades</span>
+    </button>
+    <button class="bv-mob-btn bv-mob-nav" id="bvMobNext" title="Next trade">›</button>
+  </div>
+
+  <!-- Keyboard shortcut hint (desktop only) -->
   <div class="bv-hints">← → Navigate &nbsp;·&nbsp; L Levels &nbsp;·&nbsp; Enter Re-center</div>
+
 </div>
 
 <script>
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function _dateOffset(dateStr, days) {
-  const d = new Date(dateStr + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().substring(0, 10);
-}
 
 function _toEpochSec(t) {
   const s = String(t).substring(0, 19).replace(' ', 'T');
   return Math.floor(new Date(s + 'Z').getTime() / 1000);
 }
 
-// Convert instrument name (e.g. "eurusd", "EUR/USD") to TradingView FX symbol
 function _toTvSymbol(instrument) {
   return 'FX:' + instrument.toUpperCase().replace(/[^A-Z]/g, '');
+}
+
+function _isMobile() {
+  return window.innerWidth <= 768;
 }
 
 // ── Vol Backtest Adapter ──────────────────────────────────────────────────────
@@ -449,7 +645,7 @@ const VOL_ADAPTER = {
   },
 };
 
-// ── Adapter registry — add new backtest adapters here ─────────────────────────
+// ── Adapter registry ──────────────────────────────────────────────────────────
 
 const ADAPTERS = {
   vol: VOL_ADAPTER,
@@ -458,9 +654,9 @@ const ADAPTERS = {
 };
 
 const BACK_LINKS = {
-  vol:    { href: 'vol-backtest.html',    label: '← Vol Backtester' },
-  claude: { href: 'claude-backtest.html', label: '← Claude Backtest' },
-  gold:   { href: 'gold.html',            label: '← Gold Model' },
+  vol:    { href: 'vol-backtest.html',    label: '← Vol' },
+  claude: { href: 'claude-backtest.html', label: '← Claude' },
+  gold:   { href: 'gold.html',            label: '← Gold' },
 };
 
 // ── App State ─────────────────────────────────────────────────────────────────
@@ -476,16 +672,37 @@ let currentTrade = null;
 let fResult      = '';
 let fDir         = '';
 let showLevels   = true;
+let panelOpen    = false;
 
-// TradingView widget state
+// TradingView widget
 let tvWidget     = null;
 let tvReady      = false;
-let tvSymbol     = '';      // symbol currently loaded in the widget
-let orderLines   = [];     // active createOrderLine() handles
-let shapeIds     = [];     // active createShape() entity IDs
-let pendingTrade = null;   // trade queued until widget is ready
+let tvSymbol     = '';
+let orderLines   = [];
+let shapeIds     = [];
+let pendingTrade = null;
 
-// ── TradingView Widget Initialisation ─────────────────────────────────────────
+// ── Panel open / close ────────────────────────────────────────────────────────
+
+function _openPanel() {
+  if (!_isMobile()) return;
+  panelOpen = true;
+  document.getElementById('bvPanel').classList.add('bv-panel-open');
+  document.getElementById('bvBackdrop').classList.add('bv-visible');
+}
+
+function _closePanel() {
+  if (!_isMobile()) return;
+  panelOpen = false;
+  document.getElementById('bvPanel').classList.remove('bv-panel-open');
+  document.getElementById('bvBackdrop').classList.remove('bv-visible');
+}
+
+function _togglePanel() {
+  panelOpen ? _closePanel() : _openPanel();
+}
+
+// ── TradingView Widget ────────────────────────────────────────────────────────
 
 function _initTV() {
   tvWidget = new TradingView.widget({
@@ -494,7 +711,7 @@ function _initTV() {
     interval:            '1',
     timezone:            'Etc/UTC',
     theme:               'dark',
-    style:               '1',         // candlesticks
+    style:               '1',
     locale:              'en',
     toolbar_bg:          '#131722',
     autosize:            true,
@@ -527,9 +744,7 @@ function _clearAnnotations() {
   const chart = _getChart();
   orderLines.forEach(l => { try { l.remove(); } catch {} });
   orderLines = [];
-  if (chart) {
-    shapeIds.forEach(id => { try { chart.removeEntity(id); } catch {} });
-  }
+  if (chart) shapeIds.forEach(id => { try { chart.removeEntity(id); } catch {} });
   shapeIds = [];
 }
 
@@ -545,18 +760,15 @@ function _addOrderLine(chart, price, color, label) {
       .setBodyTextColor(color)
       .setBodyBackgroundColor('#0e1117');
     orderLines.push(l);
-  } catch (e) {
-    console.warn('createOrderLine:', e.message);
-  }
+  } catch (e) { console.warn('createOrderLine:', e.message); }
 }
 
 function _addEntryShape(chart, trade, entryPrice) {
   if (!trade.fill_time) return;
   const isSell = trade.side === 'SELL';
-  const fillTs = _toEpochSec(trade.fill_time);
   try {
     const id = chart.createShape(
-      { time: fillTs, price: entryPrice, channel: '' },
+      { time: _toEpochSec(trade.fill_time), price: entryPrice, channel: '' },
       {
         shape:     isSell ? 'arrow_down' : 'arrow_up',
         text:      `${trade.side} ${entryPrice.toFixed(5)}`,
@@ -565,9 +777,7 @@ function _addEntryShape(chart, trade, entryPrice) {
       }
     );
     if (id != null) shapeIds.push(id);
-  } catch (e) {
-    console.warn('createShape:', e.message);
-  }
+  } catch (e) { console.warn('createShape:', e.message); }
 }
 
 function _applyAnnotations(trade) {
@@ -576,7 +786,6 @@ function _applyAnnotations(trade) {
 
   _clearAnnotations();
 
-  // Zoom to the trade day: 3 h before open → 3 h past EOD
   const dayStart = _toEpochSec(trade.date + 'T00:00:00');
   try {
     chart.setVisibleRange(
@@ -592,8 +801,6 @@ function _applyAnnotations(trade) {
   if (!lvl) return;
 
   const isSell = trade.side === 'SELL';
-
-  // Horizontal order lines for each key level
   _addOrderLine(chart, lvl.entry, isSell ? '#ef5350' : '#26a69a', 'Entry');
   _addOrderLine(chart, lvl.tp,    '#26a69a',                       'TP');
   _addOrderLine(chart, lvl.sl,    '#ef5350',                       'SL');
@@ -602,26 +809,18 @@ function _applyAnnotations(trade) {
   _addOrderLine(chart, lvl.ocH,   '#4f7df0',                       'OC↑');
   _addOrderLine(chart, lvl.ocL,   '#4f7df0',                       'OC↓');
   _addOrderLine(chart, lvl.open,  '#6b7280',                       'Open');
-
-  // Entry arrow shape
   _addEntryShape(chart, trade, lvl.entry);
 }
 
-// Change symbol if needed, then apply annotations.
 function _applyTrade(trade) {
   if (!tvReady) { pendingTrade = trade; return; }
 
   const sym = _toTvSymbol(trade.instrument);
-
   if (sym !== tvSymbol) {
     tvSymbol = sym;
     try {
-      tvWidget.setSymbol(sym, '1', () => {
-        // Allow the chart to settle before overlaying annotations
-        setTimeout(() => _applyAnnotations(trade), 400);
-      });
+      tvWidget.setSymbol(sym, '1', () => setTimeout(() => _applyAnnotations(trade), 400));
     } catch {
-      // Fallback: chart-level setSymbol
       try { _getChart()?.setSymbol?.(sym, () => setTimeout(() => _applyAnnotations(trade), 400)); }
       catch { _applyAnnotations(trade); }
     }
@@ -633,9 +832,7 @@ function _applyTrade(trade) {
 function _reCenter() {
   if (!currentTrade || !tvReady) return;
   const dayStart = _toEpochSec(currentTrade.date + 'T00:00:00');
-  try {
-    _getChart()?.setVisibleRange({ from: dayStart - 3 * 3600, to: dayStart + 27 * 3600 });
-  } catch {}
+  try { _getChart()?.setVisibleRange({ from: dayStart - 3 * 3600, to: dayStart + 27 * 3600 }); } catch {}
 }
 
 // ── Data Loading ──────────────────────────────────────────────────────────────
@@ -645,7 +842,7 @@ async function _loadTrades() {
   try {
     allTrades = await adapter.fetchTrades();
     _applyFilters();
-    _setVeil('Select a trade from the list →', false);
+    _setVeil('Select a trade →', false);
   } catch (e) {
     _setVeil('Error: ' + e.message, false);
   }
@@ -670,7 +867,20 @@ function _updateStats() {
   const n    = filtTrades.length;
   const wins = filtTrades.filter(t => t.outcome === 'win').length;
   const wr   = n ? (wins / n * 100).toFixed(1) : '—';
-  document.getElementById('bvStat').textContent      = `${n.toLocaleString()} trades · Win ${wr}%`;
+  const stat = `${n.toLocaleString()} trades · Win ${wr}%`;
+  document.getElementById('bvStat').textContent = stat;
+
+  // Mobile bar label
+  const mobLabel = document.getElementById('bvMobLabel');
+  if (mobLabel) {
+    if (currentTrade) {
+      const t = currentTrade;
+      mobLabel.textContent = `${t.instrument.toUpperCase()} · ${t.side} · ${t.date}`;
+    } else {
+      mobLabel.textContent = stat;
+    }
+  }
+
   document.getElementById('bvListCount').textContent = `${n.toLocaleString()} trades`;
 }
 
@@ -682,20 +892,38 @@ function _selectTrade(idx) {
   currentIdx   = idx;
   currentTrade = trade;
 
-  // Highlight selected row and scroll it into view
+  // Highlight row
   document.querySelectorAll('.bv-row').forEach(r => r.classList.remove('bv-selected'));
   const row = document.querySelector(`.bv-row[data-idx="${idx}"]`);
   if (row) { row.classList.add('bv-selected'); row.scrollIntoView({ block: 'nearest' }); }
 
-  document.getElementById('bvTitle').textContent = `${trade.instrument} — Backtest Viewer`;
+  document.getElementById('bvTitle').textContent =
+    _isMobile() ? 'Backtest Viewer' : `${trade.instrument} — Backtest Viewer`;
 
   _hideVeil();
   _applyTrade(trade);
   _renderDetail(trade, idx);
+  _updateStats();
+
+  // On mobile: close the panel so the chart is visible after selecting a trade
+  if (_isMobile()) _closePanel();
 }
 
 function _prevTrade() { _selectTrade(currentIdx - 1); }
 function _nextTrade() { _selectTrade(currentIdx + 1); }
+
+// ── Levels toggle ─────────────────────────────────────────────────────────────
+
+function _toggleLevels() {
+  showLevels = !showLevels;
+  // Sync both desktop and mobile buttons
+  document.getElementById('bvLevels').classList.toggle('bv-active', showLevels);
+  document.getElementById('bvPanelLevels').classList.toggle('bv-active', showLevels);
+  if (currentTrade) {
+    if (showLevels) _applyAnnotations(currentTrade);
+    else            _clearAnnotations();
+  }
+}
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
 
@@ -762,17 +990,6 @@ function _renderList() {
   }).join('');
 }
 
-// ── UI Controls ───────────────────────────────────────────────────────────────
-
-function _toggleLevels() {
-  showLevels = !showLevels;
-  document.getElementById('bvLevels').classList.toggle('bv-active', showLevels);
-  if (currentTrade) {
-    if (showLevels) _applyAnnotations(currentTrade);
-    else            _clearAnnotations();
-  }
-}
-
 // ── Veil ──────────────────────────────────────────────────────────────────────
 
 function _setVeil(msg, spinner) {
@@ -793,29 +1010,39 @@ if (!adapter) {
       Unknown source "${source}". Available: ${Object.keys(ADAPTERS).join(', ')}
     </div>`;
 } else {
-  // Controls
+
+  // Desktop controls
   document.getElementById('bvFResult').addEventListener('change', e => { fResult = e.target.value; _applyFilters(); });
   document.getElementById('bvFDir')   .addEventListener('change', e => { fDir    = e.target.value; _applyFilters(); });
   document.getElementById('bvLevels') .addEventListener('click',  _toggleLevels);
   document.getElementById('bvReCenter').addEventListener('click', _reCenter);
   document.getElementById('bvPrevBtn').addEventListener('click',  _prevTrade);
   document.getElementById('bvNextBtn').addEventListener('click',  _nextTrade);
-
-  document.getElementById('bvList').addEventListener('click', e => {
+  document.getElementById('bvList')   .addEventListener('click', e => {
     const row = e.target.closest('.bv-row');
     if (row) _selectTrade(+row.dataset.idx);
   });
 
-  // Keyboard shortcuts
+  // Mobile panel controls
+  document.getElementById('bvMobToggle')   .addEventListener('click', _togglePanel);
+  document.getElementById('bvBackdrop')    .addEventListener('click', _closePanel);
+  document.getElementById('bvClosePanel')  .addEventListener('click', _closePanel);
+  document.getElementById('bvPanelLevels') .addEventListener('click', _toggleLevels);
+  document.getElementById('bvPanelReCenter').addEventListener('click', () => { _reCenter(); _closePanel(); });
+  document.getElementById('bvMobPrev')     .addEventListener('click', _prevTrade);
+  document.getElementById('bvMobNext')     .addEventListener('click', _nextTrade);
+
+  // Keyboard shortcuts (desktop)
   document.addEventListener('keydown', e => {
     if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
     if (e.key === 'ArrowLeft')  { e.preventDefault(); _prevTrade(); }
     if (e.key === 'ArrowRight') { e.preventDefault(); _nextTrade(); }
     if (e.key === 'l' || e.key === 'L') _toggleLevels();
     if (e.key === 'Enter') _reCenter();
+    if (e.key === 'Escape') _closePanel();
   });
 
-  // Back-link button
+  // Back link in topbar
   const back = BACK_LINKS[source];
   if (back) {
     const topbar = document.getElementById('bvTopbar');
@@ -828,11 +1055,10 @@ if (!adapter) {
     topbar.insertBefore(a, topbar.firstChild);
   }
 
-  // Start TradingView widget and fetch trades in parallel
+  // Init TradingView widget and load trades
   _initTV();
   _loadTrades();
 
-  // Expose for console debugging
   window._bv = { selectTrade: _selectTrade, reCenter: _reCenter };
 }
 </script>
