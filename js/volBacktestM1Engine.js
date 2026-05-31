@@ -51,7 +51,8 @@ async function fetchFromR2(pairKey) {
     for await (const chunk of resp.Body) chunks.push(chunk);
     const buf = Buffer.concat(chunks);
     return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-  } catch {
+  } catch (err) {
+    console.warn(`[M1] R2 fetch failed for ${pairKey}: ${err?.message ?? err}`);
     return null;
   }
 }
