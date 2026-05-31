@@ -108,12 +108,17 @@ async function readM1Parquet(source) {
 }
 
 // Groups raw parquet rows into Map<'YYYY-MM-DD', [{open,high,low,close}]>
+// row[5] is a Date object from hyparquet; use .toISOString() to get a stable
+// ISO string instead of the locale-dependent Date.toString() output.
 function groupByDate(rows) {
   const byDate = new Map();
   for (const row of rows) {
-    const date = String(row[5]).substring(0, 10);
+    const dt   = row[5] instanceof Date
+      ? row[5].toISOString().substring(0, 19)
+      : String(row[5]).substring(0, 19).replace(' ', 'T');
+    const date = dt.substring(0, 10);
     if (!byDate.has(date)) byDate.set(date, []);
-    byDate.get(date).push({ time: String(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] });
+    byDate.get(date).push({ time: dt, open: row[0], high: row[1], low: row[2], close: row[3] });
   }
   return byDate;
 }
@@ -593,15 +598,19 @@ export async function runFullM1Backtest(opts = {}, instruments = INSTRUMENTS, m1
  * Used by the candles API for chart rendering.
  */
 export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
+  const toIso = v => v instanceof Date
+    ? v.toISOString().substring(0, 19)
+    : String(v).substring(0, 19).replace(' ', 'T');
+
   const r2ab = await fetchFromR2(pairKey);
   if (r2ab) {
     const rows = await readM1Parquet(r2ab);
-    return rows.map(row => ({ time: String(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] }));
+    return rows.map(row => ({ time: toIso(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] }));
   }
   const m1File = path.join(m1Dir, `${pairKey}_m1.parquet`);
   if (existsSync(m1File)) {
     const rows = await readM1Parquet(m1File);
-    return rows.map(row => ({ time: String(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] }));
+    return rows.map(row => ({ time: toIso(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] }));
   }
   return null;
 }
