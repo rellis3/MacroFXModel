@@ -324,51 +324,41 @@ function simulateMomentum50M1(m1Bars, open, hl50pct, hl75pct, regime) {
 
 // ── Reversal50 leg: fade HL50 extreme back to open, SL at HL75 ───────────────
 //
-// BULL: sell limit at open+HL50, TP = open, SL = open+HL75
-// BEAR: buy  limit at open−HL50, TP = open, SL = open−HL75
-// RANGE: fade whichever HL50 extreme fills first
+// No regime filter — fade whichever HL50 extreme fills first (teacher's methodology).
+// Regime-filtered version was counter-trend: BULL regime → selling into an uptrend.
 //
 // TP distance = HL50 (~1.45σ for FX). SL distance = HL75 − HL50 (~0.38σ).
-// R:R ≈ 3.8:1 → break-even win rate ~21%. Fill rate ~35% (HL50 vs ~8% for HL75).
-// Most faithful to the teacher's methodology: fade median range extreme to open.
+// R:R ≈ 3.8:1 → break-even win rate ~21%.
 
-function simulateReversal50M1(m1Bars, open, hl50pct, hl75pct, regime) {
+function simulateReversal50M1(m1Bars, open, hl50pct, hl75pct) {
   const hl50 = open * hl50pct / 100;
   const hl75 = open * hl75pct / 100;
 
   let side = '', result = null;
 
-  if (regime === 'BULL') {
-    side   = 'SELL';
-    result = walkM1(m1Bars, open + hl50, open, open + hl75, false, open);
-  } else if (regime === 'BEAR') {
-    side   = 'BUY';
-    result = walkM1(m1Bars, open - hl50, open, open - hl75, true, open);
-  } else {
-    for (let i = 0; i < m1Bars.length; i++) {
-      const bar = m1Bars[i];
-      if (bar.high >= open + hl50) {
-        side   = 'SELL';
-        result = walkM1(m1Bars.slice(i), open + hl50, open, open + hl75, false, open);
-        if (!result) {
-          const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
-          result = { outcome: 'open', pnlPct: (open + hl50 - eod) / open * 100, fillTime: null };
-        }
-        break;
-      } else if (bar.low <= open - hl50) {
-        side   = 'BUY';
-        result = walkM1(m1Bars.slice(i), open - hl50, open, open - hl75, true, open);
-        if (!result) {
-          const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
-          result = { outcome: 'open', pnlPct: (eod - (open - hl50)) / open * 100, fillTime: null };
-        }
-        break;
+  for (let i = 0; i < m1Bars.length; i++) {
+    const bar = m1Bars[i];
+    if (bar.high >= open + hl50) {
+      side   = 'SELL';
+      result = walkM1(m1Bars.slice(i), open + hl50, open, open + hl75, false, open);
+      if (!result) {
+        const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
+        result = { outcome: 'open', pnlPct: (open + hl50 - eod) / open * 100, fillTime: null, exitTime: null };
       }
+      break;
+    } else if (bar.low <= open - hl50) {
+      side   = 'BUY';
+      result = walkM1(m1Bars.slice(i), open - hl50, open, open - hl75, true, open);
+      if (!result) {
+        const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
+        result = { outcome: 'open', pnlPct: (eod - (open - hl50)) / open * 100, fillTime: null, exitTime: null };
+      }
+      break;
     }
   }
 
-  if (!result) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'reversal50', fillTime: null };
-  return { filled: true, side, ...result, pnlPct: +result.pnlPct.toFixed(5), leg: 'reversal50', fillTime: result.fillTime ?? null };
+  if (!result) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'reversal50', fillTime: null, exitTime: null };
+  return { filled: true, side, ...result, pnlPct: +result.pnlPct.toFixed(5), leg: 'reversal50', fillTime: result.fillTime ?? null, exitTime: result.exitTime ?? null };
 }
 
 // ── Walk-forward engine (M1 sim + D1 vol/regime) ──────────────────────────────
@@ -437,8 +427,8 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     }
     if (strategy === 'reversal50') {
       const r = useM1
-        ? simulateReversal50M1(m1Bars, open, hl50pct, hl75pct, regime)
-        : _simulateReversal50D1(open, high, low, close, hl50pct, hl75pct, regime);
+        ? simulateReversal50M1(m1Bars, open, hl50pct, hl75pct)
+        : _simulateReversal50D1(open, high, low, close, hl50pct, hl75pct);
       legResults.push(r);
     }
 
@@ -535,7 +525,7 @@ function _simulateMomentumD1(open, high, low, close, hl75pct, ocMedPct, regime, 
 
 // ── D1 fallback: reversal50 ───────────────────────────────────────────────────
 
-function _simulateReversal50D1(open, high, low, close, hl50pct, hl75pct, regime) {
+function _simulateReversal50D1(open, high, low, close, hl50pct, hl75pct) {
   const hl50 = open * hl50pct / 100;
   const hl75 = open * hl75pct / 100;
 
@@ -558,16 +548,12 @@ function _simulateReversal50D1(open, high, low, close, hl50pct, hl75pct, regime)
     return                       { outcome: 'open', pnlPct: markPnl };
   }
 
+  // No regime filter: fade whichever extreme hits first (D1 can't distinguish order,
+  // so check high side first — consistent with the chronological M1 simulation)
   let r = null, side = '';
-  if (regime === 'BULL') {
-    side = 'SELL'; r = sell(open + hl50, open, open + hl75);
-  } else if (regime === 'BEAR') {
-    side = 'BUY';  r = buy(open - hl50,  open, open - hl75);
-  } else {
-    r = sell(open + hl50, open, open + hl75);
-    if (r) { side = 'SELL'; }
-    else   { r = buy(open - hl50, open, open - hl75); if (r) side = 'BUY'; }
-  }
+  r = sell(open + hl50, open, open + hl75);
+  if (r) { side = 'SELL'; }
+  else   { r = buy(open - hl50, open, open - hl75); if (r) side = 'BUY'; }
 
   return r
     ? { filled: true,  side, ...r, pnlPct: +r.pnlPct.toFixed(5), leg: 'reversal50' }
