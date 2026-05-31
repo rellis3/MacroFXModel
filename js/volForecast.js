@@ -46,11 +46,15 @@ const HN_P75 = 1.1503;
 //   ω = (σ_annual_target / √252)² × (1−α−β)
 //   index → 20% long-run  ω = 4.76e-6
 //   fx    → 7.5% long-run ω = 6.70e-7
-// hl_75_corr / oc_corr calibrated from reference data (May 29, 2026).
+//
+// hl_50_corr / hl_75_corr / oc_50_corr / oc_75_corr
+//   Calibrated from June 1 2026 reference data (same-day comparison).
+//   OC median and 75th need separate corrections because the reference
+//   system's OC75/OC50 ratio differs from the theoretical half-normal ratio.
 const ASSET_PARAMS = {
-  commodity: { hl_75_corr: 0.989, oc_corr: 1.163 },
-  index:     { hl_75_corr: 0.950, oc_corr: 1.111, garch_omega: 4.76e-6 },
-  fx:        { hl_75_corr: 0.894, oc_corr: 0.948, garch_omega: 6.70e-7 },
+  commodity: { hl_50_corr: 0.985, hl_75_corr: 0.938, oc_50_corr: 0.991, oc_75_corr: 1.084 },
+  index:     { hl_50_corr: 1.000, hl_75_corr: 0.937, oc_50_corr: 1.139, oc_75_corr: 1.099, garch_omega: 4.76e-6 },
+  fx:        { hl_50_corr: 0.921, hl_75_corr: 0.863, oc_50_corr: 0.987, oc_75_corr: 0.932, garch_omega: 6.70e-7 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
@@ -141,10 +145,10 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
 
   return {
     vol_annual: r2(volAnnual),
-    hl_median:  r2(BM_RANGE_P50                * sigmaFwdPct * newsMult),
+    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * newsMult),
     hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * newsMult),
-    oc_median:  r2(HN_P50       * p.oc_corr    * sigmaFwdPct * newsMult),
-    oc_75:      r2(HN_P75       * p.oc_corr    * sigmaFwdPct * newsMult),
+    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct * newsMult),
+    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct * newsMult),
     news_mult:  r2(newsMult),
   };
 }
@@ -191,10 +195,10 @@ export function computeForecastFromRV(dailyRVs, assetClass = 'fx', newsMult = 1.
 
   return {
     vol_annual: r2(volAnnual),
-    hl_median:  r2(BM_RANGE_P50                * sigmaFwdPct * newsMult),
+    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * newsMult),
     hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * newsMult),
-    oc_median:  r2(HN_P50       * p.oc_corr    * sigmaFwdPct * newsMult),
-    oc_75:      r2(HN_P75       * p.oc_corr    * sigmaFwdPct * newsMult),
+    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct * newsMult),
+    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct * newsMult),
     news_mult:  r2(newsMult),
   };
 }
