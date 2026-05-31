@@ -263,13 +263,12 @@ function simulateMomentumM1(m1Bars, open, hl75pct, ocMedPct, regime, opts = {}) 
 //
 // BULL: stop-BUY when price rises to open+HL50, TP = open+HL75, SL = open+HL50−gap
 // BEAR: stop-SELL when price drops to open−HL50, TP = open−HL75, SL = open−HL50+gap
-// RANGE: first HL50 extreme hit in either direction
+// RANGE: skipped — no directional conviction, would be a coin flip at 1:1
 //
 // Gap = HL75 − HL50 ≈ 0.3σ. Risk:reward = 1:1, so needs >50% win rate.
-// Fill rate is much higher than the reversal (HL50 hit ~35% of days vs ~8% for HL75).
 
 function simulateMomentum50M1(m1Bars, open, hl50pct, hl75pct, regime) {
-  const hl50 = open * hl50pct / 100;
+  if (regime === 'RANGE') return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum50', fillTime: null, exitTime: null };
   const hl75 = open * hl75pct / 100;
   const gap  = hl75 - hl50;                    // profit distance = SL distance
 
@@ -285,20 +284,6 @@ function simulateMomentum50M1(m1Bars, open, hl50pct, hl75pct, regime) {
     entryL = open - hl50;
     tpL    = open - hl75;
     slL    = open - hl50 + gap;                 // = open − 2×hl50 + hl75
-  } else {
-    for (const bar of m1Bars) {
-      if (bar.high >= open + hl50) {
-        isBull = true;  side = 'BUY';
-        entryL = open + hl50; tpL = open + hl75; slL = open + hl50 - gap;
-        break;
-      }
-      if (bar.low <= open - hl50) {
-        isBull = false; side = 'SELL';
-        entryL = open - hl50; tpL = open - hl75; slL = open - hl50 + gap;
-        break;
-      }
-    }
-    if (isBull === null) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'momentum50', fillTime: null };
   }
 
   let filled = false, fillTime = null;

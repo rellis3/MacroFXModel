@@ -1685,7 +1685,7 @@ app.post('/api/vol-backtest/run', (req, res) => {
     dateFrom = '', dateTo = '', pair = '',
     slMult = '1.5', strategy = 'reversal',
     momentumPullback = '0', momentumSlMult = '1.0',
-    spreadPct = '0', dynHlCorr = '0',
+    spreadPct = '0', dynHlCorr = '0', slopeThresh = '0.002',
   } = req.body || {};
   const opts = {
     dateFrom, dateTo, minLookback: 50,
@@ -1693,6 +1693,7 @@ app.post('/api/vol-backtest/run', (req, res) => {
     strategy,
     momentumPullback: parseFloat(momentumPullback) || 0,
     momentumSlMult:   parseFloat(momentumSlMult)   || 1.0,
+    slopeThresh:      parseFloat(slopeThresh)       || 0.002,
     spreadPct:        parseFloat(spreadPct)         || 0,
     dynHlCorr:        parseFloat(dynHlCorr)         || 0,
   };
