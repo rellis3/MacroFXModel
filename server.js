@@ -1703,6 +1703,7 @@ app.get('/api/vol-backtest/diagnose', async (_req, res) => {
     const r2 = new S3Client({
       endpoint:    'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com',
       region:      'auto',
+      requestHandler: { requestTimeout: 5000 },
       credentials: {
         accessKeyId:     process.env.R2_ACCESS_KEY,
         secretAccessKey: process.env.R2_SECRET_KEY,
@@ -1721,6 +1722,7 @@ app.get('/api/vol-backtest/diagnose', async (_req, res) => {
     if (!key) throw new Error('OANDA_KEY not set');
     const resp = await fetch('https://api-fxtrade.oanda.com/v3/accounts', {
       headers: { Authorization: `Bearer ${key}` },
+      signal:  AbortSignal.timeout(5000),
     });
     report.oanda = { ok: resp.ok, status: resp.status };
   } catch (e) {
