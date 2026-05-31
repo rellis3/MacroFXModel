@@ -27,7 +27,7 @@ import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast } from './js/volForecastScheduler.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
-import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, BT_M1_DIR, M1_DRIVE_IDS } from './js/volBacktestM1Engine.js';
+import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS } from './js/volBacktestM1Engine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -1581,6 +1581,7 @@ app.get('/api/vol-backtest', (req, res) => {
         session: r.session,
         dow: DOW_LABELS[r.dow ?? new Date(r.date + 'T00:00:00Z').getUTCDay()],
         open: r.open,
+        fill_time: r.fill_time || null,
       }));
 
     // All filled P&L values for Monte Carlo (client needs the full sequence)
@@ -1673,7 +1674,7 @@ app.post('/api/vol-backtest/run', (req, res) => {
       if (!fs.existsSync(BT_DATA_DIR)) fs.mkdirSync(BT_DATA_DIR, { recursive: true });
       const ts      = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
       const outFile = path.join(BT_DATA_DIR, `backtest_${ts}.csv`);
-      const hdrs    = ['instrument','date','regime','hl_75_pct','oc_med_pct','side','filled','outcome','pnl_pct','leg','session','dow','open','high','low','close'];
+      const hdrs    = ['instrument','date','regime','hl_75_pct','oc_med_pct','side','filled','outcome','pnl_pct','leg','session','dow','open','high','low','close','fill_time'];
       const rows    = trades.map(r => hdrs.map(h => h === 'filled' ? (r[h] ? 'True' : 'False') : (r[h] ?? '')).join(','));
       fs.writeFileSync(outFile, [hdrs.join(','), ...rows].join('\n') + '\n');
 
@@ -1829,6 +1830,33 @@ app.get('/api/vol-backtest/level-analysis/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// M1 candlestick endpoint — returns filtered bars for chart rendering
+// LRU cache: max 3 pairs in memory (each parquet ~80 MB parsed)
+const m1CandleCache = new Map();
+const M1_CACHE_MAX  = 3;
+
+app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
+  const { from, to } = req.query;
+  try {
+    if (!m1CandleCache.has(pair)) {
+      if (m1CandleCache.size >= M1_CACHE_MAX) {
+        m1CandleCache.delete(m1CandleCache.keys().next().value);
+      }
+      const bars = await loadM1ForPair(pair);
+      if (!bars) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
+      m1CandleCache.set(pair, bars);
+    }
+    let bars = m1CandleCache.get(pair);
+    if (from) bars = bars.filter(b => b.time.substring(0, 10) >= from);
+    if (to)   bars = bars.filter(b => b.time.substring(0, 10) <= to);
+    res.json({ ok: true, pair, n: bars.length, candles: bars });
+  } catch (e) {
+    console.error('[candles]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // All other /api/* routes — call _worker.js and return the JSON response.

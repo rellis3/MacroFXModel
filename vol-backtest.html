@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/index.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 #btApp { padding: 0 20px 40px; max-width: 1340px; margin: 0 auto; }
 
@@ -268,6 +269,38 @@
 }
 .hm-cell .hm-month { color: var(--text3); }
 .hm-cell .hm-val   { font-size: 11px; font-weight: 600; }
+
+/* ── M1 chart button + modal ──────────────────────────────────────────────── */
+.chart-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  cursor: pointer;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: color .15s, border-color .15s;
+}
+.chart-btn:hover { color: var(--amber); border-color: var(--amber); }
+
+#chartModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #0d0f14;
+  flex-direction: column;
+}
+.chart-modal-hdr {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #2a2f45;
+  background: #131722;
+  flex-shrink: 0;
+}
 </style>
 </head>
 <body>
@@ -605,6 +638,7 @@
         <th>Date</th><th>Pair</th><th>Regime</th><th>Side</th>
         <th class="num">HL75%</th><th class="num">OC Med%</th>
         <th class="num">Open</th><th>Outcome</th><th class="num">P&amp;L%</th>
+        <th></th>
       </tr></thead>
       <tbody id="tradeTblBody"></tbody>
     </table>
@@ -698,6 +732,16 @@
 </div>
 
 </div><!-- #btApp -->
+
+<!-- ── M1 Chart Modal ──────────────────────────────────────────────────────── -->
+<div id="chartModal">
+  <div class="chart-modal-hdr">
+    <span id="chartModalTitle" style="font-weight:600;font-size:14px;color:#d1d4dc"></span>
+    <span id="chartModalBadge" style="font-size:11px;color:#8fa0b8;flex:1"></span>
+    <button onclick="closeChartModal()" style="background:none;border:1px solid #2a2f45;color:#8fa0b8;cursor:pointer;padding:4px 12px;border-radius:4px;font-size:12px">✕ Close</button>
+  </div>
+  <div id="chartContainer" style="flex:1;min-height:0;width:100%"></div>
+</div>
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────────
@@ -1215,7 +1259,7 @@ function renderTradePage() {
   document.getElementById('pgInfo').textContent  = `Page ${_page + 1} of ${total}`;
   document.getElementById('pgTotal').textContent = `${_filtTrades.length} trades`;
 
-  document.getElementById('tradeTblBody').innerHTML = slice.map(r => `<tr>
+  document.getElementById('tradeTblBody').innerHTML = slice.map((r, i) => `<tr>
     <td style="color:var(--text2)">${r.date || '—'}</td>
     <td><b>${r.instrument}</b></td>
     <td><span class="rg ${rgClass(r.regime)}">${r.regime}</span></td>
@@ -1227,6 +1271,7 @@ function renderTradePage() {
     <td class="num ${r.pnl_pct >= 0 ? 'pos' : 'neg'}" style="font-weight:600">
       ${r.pnl_pct >= 0 ? '+' : ''}${r.pnl_pct?.toFixed(4)}%
     </td>
+    <td><button class="chart-btn" onclick="openChartModal(${start + i})" title="View M1 chart">◫</button></td>
   </tr>`).join('');
 }
 
@@ -1436,6 +1481,131 @@ function renderLevelAnalysis(data) {
     }).join('');
   document.getElementById('laTblInstBody').innerHTML = instRows;
 }
+
+// ── M1 Chart Modal ────────────────────────────────────────────────────────────
+let _chartInstance = null;
+
+function _toEpochSec(timeStr) {
+  const s = String(timeStr).substring(0, 19).replace(' ', 'T');
+  return Math.floor(new Date(s + 'Z').getTime() / 1000);
+}
+
+function _dateOffset(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().substring(0, 10);
+}
+
+function openChartModal(tradeIdx) {
+  const trade = _filtTrades[tradeIdx];
+  if (!trade) return;
+
+  const pair  = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
+  const date  = trade.date;
+  const { open, hl_75_pct, oc_med_pct, side, regime, leg } = trade;
+  const hl     = open * hl_75_pct  / 100;
+  const oc     = open * oc_med_pct / 100;
+  const isSell = side === 'SELL';
+  const isRng  = regime === 'RANGE';
+
+  const levels = {
+    entry: isSell ? open + hl  : open - hl,
+    tp:    isSell ? (isRng ? open : open + oc) : (isRng ? open : open - oc),
+    sl:    isSell ? open + hl * 1.5 : open - hl * 1.5,
+    hl75H: open + hl,
+    hl75L: open - hl,
+    ocH:   open + oc,
+    ocL:   open - oc,
+  };
+
+  // Show modal
+  const modal = document.getElementById('chartModal');
+  modal.style.display = 'flex';
+  document.getElementById('chartModalTitle').textContent = `${trade.instrument} — ${date}`;
+  document.getElementById('chartModalBadge').textContent =
+    `${regime} · ${side} · ${leg} · ${(trade.outcome || '').toUpperCase()} · ` +
+    `${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct?.toFixed(4)}%`;
+
+  if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; }
+
+  const container = document.getElementById('chartContainer');
+  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8fa0b8;font-size:13px">Loading M1 data…</div>';
+
+  const from = _dateOffset(date, -2);
+  const to   = _dateOffset(date, +2);
+
+  fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`)
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok || !d.candles?.length) {
+        container.innerHTML = `<div style="padding:24px;color:#ef5350;font-size:13px">No M1 candle data${d.error ? ': ' + d.error : ''}</div>`;
+        return;
+      }
+      container.innerHTML = '';
+
+      _chartInstance = LightweightCharts.createChart(container, {
+        autoSize:  true,
+        layout:    { background: { color: '#131722' }, textColor: '#d1d4dc' },
+        grid:      { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { borderColor: '#2a3348' },
+        timeScale: { borderColor: '#2a3348', timeVisible: true, secondsVisible: false },
+      });
+
+      const cs = _chartInstance.addCandlestickSeries({
+        upColor: '#26a69a', downColor: '#ef5350',
+        borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+        wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+      });
+
+      cs.setData(d.candles.map(b => ({
+        time: _toEpochSec(b.time),
+        open: b.open, high: b.high, low: b.low, close: b.close,
+      })));
+
+      // Price level lines
+      const LS = LightweightCharts.LineStyle;
+      const addLine = (price, color, title, style) =>
+        cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title });
+
+      addLine(open,         '#6b7280', 'Open',  LS.Solid);
+      addLine(levels.hl75H, '#fbbf24', 'HL75↑', LS.Dashed);
+      addLine(levels.hl75L, '#fbbf24', 'HL75↓', LS.Dashed);
+      addLine(levels.ocH,   '#4f7df0', 'OC↑',   LS.Dashed);
+      addLine(levels.ocL,   '#4f7df0', 'OC↓',   LS.Dashed);
+      addLine(levels.entry, isSell ? '#ef5350' : '#26a69a', 'Entry', LS.Solid);
+      addLine(levels.tp,    '#26a69a', 'TP',    LS.Dotted);
+      addLine(levels.sl,    '#ef5350', 'SL',    LS.Dotted);
+
+      // Fill marker
+      if (trade.fill_time) {
+        cs.setMarkers([{
+          time:     _toEpochSec(trade.fill_time),
+          position: isSell ? 'aboveBar' : 'belowBar',
+          color:    isSell ? '#ef5350' : '#26a69a',
+          shape:    isSell ? 'arrowDown' : 'arrowUp',
+          text:     side,
+        }]);
+      }
+
+      // Zoom to trade date (21:00 prev UTC → 03:00 next UTC = full FX day + context)
+      const dayStart = _toEpochSec(date + 'T00:00:00');
+      _chartInstance.timeScale().setVisibleRange({
+        from: dayStart - 3 * 3600,
+        to:   dayStart + 27 * 3600,
+      });
+    })
+    .catch(e => {
+      container.innerHTML = `<div style="padding:24px;color:#ef5350;font-size:13px">Error: ${e.message}</div>`;
+    });
+}
+
+function closeChartModal() {
+  document.getElementById('chartModal').style.display = 'none';
+  if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChartModal(); });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 loadData();
