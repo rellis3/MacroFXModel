@@ -1392,6 +1392,10 @@ function _loadBacktestTrades(filePath) {
   });
 }
 
+// In-memory cache for the trades endpoint — invalidated when the backtest file changes.
+// Eliminates repeated synchronous parsing of a multi-MB CSV on every page load.
+const _btTradesCache = { filePath: null, mtimeMs: 0, trades: null };
+
 function _btStats(trades) {
   const filled  = trades.filter(r => r.filled);
   const wins    = filled.filter(r => r.outcome === 'win');
@@ -1630,6 +1634,13 @@ app.get('/api/vol-backtest/trades', (req, res) => {
   if (!filePath) return res.status(404).json({ ok: false, error: 'No backtest data. Run the backtester first.' });
 
   try {
+    // Return cached result when the file hasn't changed — avoids blocking the event
+    // loop with synchronous CSV/JSON parsing on every page load.
+    const mtimeMs = fs.statSync(filePath).mtimeMs;
+    if (_btTradesCache.filePath === filePath && _btTradesCache.mtimeMs === mtimeMs && _btTradesCache.trades) {
+      return res.json({ ok: true, trades: _btTradesCache.trades, total: _btTradesCache.trades.length, cached: true });
+    }
+
     const DOW_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const trades = _loadBacktestTrades(filePath)
       .filter(t => t.filled)
@@ -1646,11 +1657,15 @@ app.get('/api/vol-backtest/trades', (req, res) => {
         oc_med_pct: r.oc_med_pct,
         leg:        r.leg,
         session:    r.session,
-        dow:        DOW_LABELS[r.dow ?? new Date(r.date + 'T00:00:00Z').getUTCDay()],
+        dow:        DOW_LABELS[r.dow != null ? r.dow : new Date((r.date?.substring(0,10) ?? '') + 'T00:00:00Z').getUTCDay()],
         open:       r.open,
         fill_time:  r.fill_time  || null,
         exit_time:  r.exit_time  || null,
       }));
+
+    _btTradesCache.filePath = filePath;
+    _btTradesCache.mtimeMs  = mtimeMs;
+    _btTradesCache.trades   = trades;
 
     res.json({ ok: true, trades, total: trades.length });
   } catch (e) {
