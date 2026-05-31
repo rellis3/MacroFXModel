@@ -322,43 +322,65 @@ function simulateMomentum50M1(m1Bars, open, hl50pct, hl75pct, regime) {
   return { filled: true, side, outcome: 'open', pnlPct: +eodPnl.toFixed(5), leg: 'momentum50', fillTime, exitTime: eodTime };
 }
 
-// ── Reversal50 leg: fade HL50 extreme back to open, SL at HL75 ───────────────
+// ── Reversal50 leg: dynamic anchor from developing intraday extreme ────────────
 //
-// No regime filter — fade whichever HL50 extreme fills first (teacher's methodology).
-// Regime-filtered version was counter-trend: BULL regime → selling into an uptrend.
+// Teacher's methodology: track running_high and running_low bar-by-bar.
+// Once an extreme is established (≥30% of HL50 from open), fade a HL50
+// retracement from it — expecting mean reversion back to that extreme.
 //
-// TP distance = HL50 (~1.45σ for FX). SL distance = HL75 − HL50 (~0.38σ).
-// R:R ≈ 3.8:1 → break-even win rate ~21%.
+// BUY: runHigh established → price drops HL50 from it → entry at runHigh−HL50
+//      TP = runHigh (full HL50 recovery), SL = runHigh−HL75 (range extension)
+// SELL: runLow established → price rallies HL50 from it → entry at runLow+HL50
+//      TP = runLow, SL = runLow+HL75
+//
+// No regime filter. One fill per day (first signal wins).
+// R:R ≈ 3.8:1 (TP = HL50, SL = HL75−HL50). Dynamic anchor should give better
+// win rate than open-anchored version because entry is at a real intraday pivot.
 
 function simulateReversal50M1(m1Bars, open, hl50pct, hl75pct) {
-  const hl50 = open * hl50pct / 100;
-  const hl75 = open * hl75pct / 100;
+  const hl50    = open * hl50pct / 100;
+  const hl75    = open * hl75pct / 100;
+  const minMove = hl50 * 0.3;  // extreme must be ≥30% of HL50 from open before triggering
 
-  let side = '', result = null;
+  let runHigh = open, runLow = open;
+  let filled = false, side = '', entryL = 0, tpL = 0, slL = 0, isBull = null;
+  let fillTime = null;
 
-  for (let i = 0; i < m1Bars.length; i++) {
-    const bar = m1Bars[i];
-    if (bar.high >= open + hl50) {
-      side   = 'SELL';
-      result = walkM1(m1Bars.slice(i), open + hl50, open, open + hl75, false, open);
-      if (!result) {
-        const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
-        result = { outcome: 'open', pnlPct: (open + hl50 - eod) / open * 100, fillTime: null, exitTime: null };
+  for (const bar of m1Bars) {
+    if (!filled) {
+      // Check signals using extremes from PREVIOUS bars (update after check)
+      if (runHigh >= open + minMove && bar.low <= runHigh - hl50) {
+        filled = true; side = 'BUY'; isBull = true;
+        entryL = runHigh - hl50; tpL = runHigh; slL = runHigh - hl75;
+        fillTime = bar.time;
+        // Check TP/SL on the fill bar itself
+        if (bar.low  <= slL) return { filled: true, side, outcome: 'loss', pnlPct: +(-((entryL - slL) / open * 100)).toFixed(5), leg: 'reversal50', fillTime, exitTime: bar.time };
+        if (bar.high >= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +((tpL - entryL)   / open * 100).toFixed(5),  leg: 'reversal50', fillTime, exitTime: bar.time };
+      } else if (runLow <= open - minMove && bar.high >= runLow + hl50) {
+        filled = true; side = 'SELL'; isBull = false;
+        entryL = runLow + hl50; tpL = runLow; slL = runLow + hl75;
+        fillTime = bar.time;
+        if (bar.high >= slL) return { filled: true, side, outcome: 'loss', pnlPct: +(-((slL - entryL) / open * 100)).toFixed(5),  leg: 'reversal50', fillTime, exitTime: bar.time };
+        if (bar.low  <= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +((entryL - tpL)   / open * 100).toFixed(5),   leg: 'reversal50', fillTime, exitTime: bar.time };
       }
-      break;
-    } else if (bar.low <= open - hl50) {
-      side   = 'BUY';
-      result = walkM1(m1Bars.slice(i), open - hl50, open, open - hl75, true, open);
-      if (!result) {
-        const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
-        result = { outcome: 'open', pnlPct: (eod - (open - hl50)) / open * 100, fillTime: null, exitTime: null };
+      if (bar.high > runHigh) runHigh = bar.high;
+      if (bar.low  < runLow)  runLow  = bar.low;
+    } else {
+      if (isBull) {
+        if (bar.low  <= slL) return { filled: true, side, outcome: 'loss', pnlPct: +(-((entryL - slL) / open * 100)).toFixed(5), leg: 'reversal50', fillTime, exitTime: bar.time };
+        if (bar.high >= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +((tpL - entryL)   / open * 100).toFixed(5),  leg: 'reversal50', fillTime, exitTime: bar.time };
+      } else {
+        if (bar.high >= slL) return { filled: true, side, outcome: 'loss', pnlPct: +(-((slL - entryL) / open * 100)).toFixed(5),  leg: 'reversal50', fillTime, exitTime: bar.time };
+        if (bar.low  <= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +((entryL - tpL)   / open * 100).toFixed(5),   leg: 'reversal50', fillTime, exitTime: bar.time };
       }
-      break;
     }
   }
 
-  if (!result) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'reversal50', fillTime: null, exitTime: null };
-  return { filled: true, side, ...result, pnlPct: +result.pnlPct.toFixed(5), leg: 'reversal50', fillTime: result.fillTime ?? null, exitTime: result.exitTime ?? null };
+  if (!filled) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'reversal50', fillTime: null, exitTime: null };
+  const eod     = m1Bars[m1Bars.length - 1]?.close ?? entryL;
+  const eodPnl  = isBull ? (eod - entryL) / open * 100 : (entryL - eod) / open * 100;
+  const eodTime = m1Bars[m1Bars.length - 1]?.time ?? null;
+  return { filled: true, side, outcome: 'open', pnlPct: +eodPnl.toFixed(5), leg: 'reversal50', fillTime, exitTime: eodTime };
 }
 
 // ── Walk-forward engine (M1 sim + D1 vol/regime) ──────────────────────────────
