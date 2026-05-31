@@ -8,5 +8,18 @@
       "Bash(node --input-type=module)",
       "Bash(git commit -m ' *)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pip3 install -q boto3 2>/dev/null; python3 /home/user/MacroFXModel/scripts/r2_download.py"
+          }
+        ]
+      }
+    ]
   }
 }
