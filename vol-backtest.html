@@ -353,6 +353,7 @@
   <select id="runStrategy" class="bt-sel" onchange="toggleMomentumOpts()">
     <option value="reversal">Reversal</option>
     <option value="reversal50">Rev-50</option>
+    <option value="revHL50">Rev-HL50 ★</option>
     <option value="momentum">Momentum</option>
     <option value="both">Both</option>
     <option value="momentum50">Mom-50</option>
@@ -389,7 +390,7 @@
 <!-- ── Strategy help panel ───────────────────────────────────────────────── -->
 <div id="stratHelp" style="display:none;margin:8px 0 0;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;color:var(--txt2)">
   <strong style="color:var(--txt);font-size:13px">Strategy modes</strong>
-  <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:12px">
+  <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:12px">
     <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Reversal</div>
       Waits for price to reach the 75th-pct daily range extreme (HL75) then fades back toward the median close (OC_med).
@@ -399,12 +400,19 @@
       <div style="color:var(--blue)">RANGE → fade whichever extreme fills first</div>
     </div>
     <div>
-      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Rev-50 ★</div>
-      Fades the <em>median</em> range extreme (HL50) rather than the 75th-pct. TP = open, SL = HL75. Fill rate ~35% of days. R:R ≈ 3.8:1 (TP is HL50 distance, SL is HL75−HL50 gap). Break-even win rate only ~21%.
-      Most faithful to the teacher's methodology: fade when price reaches the expected daily midpoint, target a return to open.
-      <div style="margin-top:6px;color:var(--green)">BULL → SELL limit at open+HL50, TP = open, SL = open+HL75</div>
-      <div style="color:var(--red)">BEAR → BUY limit at open−HL50, TP = open, SL = open−HL75</div>
-      <div style="color:var(--blue)">RANGE → first HL50 extreme hit</div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Rev-HL50 ★</div>
+      Open-anchored mean reversion. When price hits the projected HL50 (median daily range), fade it back to open. SL at HL75.
+      R:R ≈ 3.8:1. Break-even only ~21%. No regime filter — takes first HL50 hit each day.
+      Confirmed by chart analysis: ~66% of HL50 hits return to open.
+      <div style="margin-top:6px;color:var(--green)">High → SELL limit at open+HL50, TP = open, SL = open+HL75</div>
+      <div style="color:var(--red)">Low → BUY limit at open−HL50, TP = open, SL = open−HL75</div>
+    </div>
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Rev-50</div>
+      Dynamic-anchor reversal. Tracks the developing intraday extreme bar-by-bar; once it's established (≥30% of HL50), fades a HL50 pullback from that pivot back to the pivot.
+      R:R ≈ 3.8:1. More complex, requires an intraday swing to form first.
+      <div style="margin-top:6px;color:var(--green)">Swing high → BUY at runHigh−HL50, TP runHigh, SL runHigh−HL75</div>
+      <div style="color:var(--red)">Swing low → SELL at runLow+HL50, TP runLow, SL runLow+HL75</div>
     </div>
     <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Momentum</div>
@@ -421,7 +429,7 @@
     <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Mom-50</div>
       Enter <em>with</em> regime once price breaks HL50, target HL75, symmetric 1:1 stop.
-      R:R 1:1, needs &gt;50% win rate. Run Level Analysis first to see the HL50→HL75 continuation rate per regime.
+      R:R 1:1, needs &gt;50% win rate. RANGE days skipped.
       <div style="margin-top:4px;color:var(--green)">BULL → stop-BUY at open+HL50, TP open+HL75</div>
       <div style="color:var(--red)">BEAR → stop-SELL at open−HL50, TP open−HL75</div>
     </div>
@@ -652,6 +660,7 @@
       <option value="">All legs</option>
       <option value="reversal">Reversal</option>
       <option value="reversal50">Reversal 50</option>
+      <option value="revHL50">Rev-HL50</option>
       <option value="momentum">Momentum</option>
       <option value="momentum50">Momentum 50</option>
     </select>
@@ -1331,7 +1340,7 @@ function toggleHelp() {
 function toggleMomentumOpts() {
   const strategy = document.getElementById('runStrategy').value;
   document.getElementById('momentumOpts').style.display =
-    (strategy === 'reversal' || strategy === 'reversal50' || strategy === 'momentum50') ? 'none' : '';
+    (strategy === 'reversal' || strategy === 'reversal50' || strategy === 'revHL50' || strategy === 'momentum50') ? 'none' : '';
 }
 
 // ── Run backtest ──────────────────────────────────────────────────────────────
