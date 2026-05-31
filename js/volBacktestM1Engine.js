@@ -19,7 +19,7 @@ import { parquetRead, parquetMetadataAsync } from 'hyparquet';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import {
   ewmaVarSeries, classifyRegime, ASSET_PARAMS,
-  BM_P75, HN_P50, fetchD1, INSTRUMENTS,
+  BM_P50, BM_P75, HN_P50, HN_P75, fetchD1, INSTRUMENTS,
 } from './volBacktestEngine.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -410,44 +410,76 @@ function _simulateMomentumD1(open, high, low, close, hl75pct, ocMedPct, regime, 
 
 // ── Level Hit Analysis ────────────────────────────────────────────────────────
 //
-// Walk M1 bars per day and record which forecast levels are touched and when.
-// Levels relative to day's open:
-//   HL75_H = open + hl75    (75th-pct upside)
-//   HL75_L = open - hl75    (75th-pct downside)
-//   OC_H   = open + ocMed   (median close above open)
-//   OC_L   = open - ocMed   (median close below open)
+// Walk M1 bars per day and record which of the 4 forecast levels are touched,
+// then — after the first HL75 extreme is hit — how far price retraces.
 //
-// "Sweep" = HL75_H hit first → HL75_L also hit same day (full range traversal).
-// This quantifies the R:R opportunity of fading the extreme and targeting the
-// opposite extreme.
+// Levels (relative to day open):
+//   HL50_H/L  = open ± hl50  (median range boundary)
+//   HL75_H/L  = open ± hl75  (75th-pct range boundary — entry trigger)
+//   OC50_H/L  = open ± oc50  (median OC — current reversal TP)
+//   OC75_H/L  = open ± oc75  (75th-pct OC — larger TP target)
+//
+// After the first HL75 extreme is hit, the retracement waterfall records
+// whether price subsequently touched each level back towards (and through) open.
+// For HL75_H first: hret_oc75H → hret_oc50H → hret_open → hret_oc50L → hret_oc75L → hret_hl50L → hret_hl75L
+// For HL75_L first: lret_oc75L → lret_oc50L → lret_open → lret_oc50H → lret_oc75H → lret_hl50H → lret_hl75H
 
-function _analyzeDayLevels(m1Bars, open, hl75pct, ocMedPct) {
-  const hl = open * hl75pct / 100;
-  const oc = open * ocMedPct / 100;
+function _analyzeDayLevels(m1Bars, open, hl50pct, hl75pct, oc50pct, oc75pct) {
+  const hl50 = open * hl50pct / 100;
+  const hl75 = open * hl75pct / 100;
+  const oc50 = open * oc50pct / 100;
+  const oc75 = open * oc75pct / 100;
 
-  let hl75H_t = null, hl75L_t = null, ocH_t = null, ocL_t = null;
+  let hl50H_t=null, hl75H_t=null, oc50H_t=null, oc75H_t=null;
+  let hl50L_t=null, hl75L_t=null, oc50L_t=null, oc75L_t=null;
+  let hl75H_idx=-1, hl75L_idx=-1;
 
-  for (const bar of m1Bars) {
-    if (!hl75H_t && bar.high >= open + hl) hl75H_t = bar.time;
-    if (!hl75L_t && bar.low  <= open - hl) hl75L_t = bar.time;
-    if (!ocH_t   && bar.high >= open + oc) ocH_t   = bar.time;
-    if (!ocL_t   && bar.low  <= open - oc) ocL_t   = bar.time;
+  for (let i = 0; i < m1Bars.length; i++) {
+    const bar = m1Bars[i];
+    if (!hl50H_t && bar.high >= open + hl50) hl50H_t = bar.time;
+    if (!hl75H_t && bar.high >= open + hl75) { hl75H_t = bar.time; hl75H_idx = i; }
+    if (!oc50H_t && bar.high >= open + oc50) oc50H_t = bar.time;
+    if (!oc75H_t && bar.high >= open + oc75) oc75H_t = bar.time;
+    if (!hl50L_t && bar.low  <= open - hl50) hl50L_t = bar.time;
+    if (!hl75L_t && bar.low  <= open - hl75) { hl75L_t = bar.time; hl75L_idx = i; }
+    if (!oc50L_t && bar.low  <= open - oc50) oc50L_t = bar.time;
+    if (!oc75L_t && bar.low  <= open - oc75) oc75L_t = bar.time;
   }
 
   let firstHit = null;
   if      (hl75H_t && (!hl75L_t || hl75H_t <= hl75L_t)) firstHit = 'HL75_H';
   else if (hl75L_t)                                       firstHit = 'HL75_L';
-
   const firstHitTime = firstHit === 'HL75_H' ? hl75H_t : hl75L_t;
 
+  // Retracement from first HL75 extreme — bars after the hit index
+  const ret = {};
+  if (firstHit === 'HL75_H' && hl75H_idx >= 0) {
+    const after = m1Bars.slice(hl75H_idx + 1);
+    ret.hret_oc75H = after.some(b => b.low <= open + oc75);
+    ret.hret_oc50H = after.some(b => b.low <= open + oc50);
+    ret.hret_open  = after.some(b => b.low <= open);
+    ret.hret_oc50L = after.some(b => b.low <= open - oc50);
+    ret.hret_oc75L = after.some(b => b.low <= open - oc75);
+    ret.hret_hl50L = after.some(b => b.low <= open - hl50);
+    ret.hret_hl75L = after.some(b => b.low <= open - hl75);
+  } else if (firstHit === 'HL75_L' && hl75L_idx >= 0) {
+    const after = m1Bars.slice(hl75L_idx + 1);
+    ret.lret_oc75L = after.some(b => b.high >= open - oc75);
+    ret.lret_oc50L = after.some(b => b.high >= open - oc50);
+    ret.lret_open  = after.some(b => b.high >= open);
+    ret.lret_oc50H = after.some(b => b.high >= open + oc50);
+    ret.lret_oc75H = after.some(b => b.high >= open + oc75);
+    ret.lret_hl50H = after.some(b => b.high >= open + hl50);
+    ret.lret_hl75H = after.some(b => b.high >= open + hl75);
+  }
+
   return {
-    hl75H_hit: !!hl75H_t, hl75H_time: hl75H_t,
-    hl75L_hit: !!hl75L_t, hl75L_time: hl75L_t,
-    ocH_hit:   !!ocH_t,   ocH_time:   ocH_t,
-    ocL_hit:   !!ocL_t,   ocL_time:   ocL_t,
+    hl50H_hit: !!hl50H_t, hl75H_hit: !!hl75H_t, oc50H_hit: !!oc50H_t, oc75H_hit: !!oc75H_t,
+    hl50L_hit: !!hl50L_t, hl75L_hit: !!hl75L_t, oc50L_hit: !!oc50L_t, oc75L_hit: !!oc75L_t,
     firstHit,
     firstHitTime,
     firstHitSession: classifySession(firstHitTime),
+    ...ret,
   };
 }
 
@@ -474,15 +506,19 @@ function runLevelHitAnalysis(d1Bars, m1ByDate, assetClass, opts = {}) {
     if (ewmaIdx < 19) continue;
 
     const sigmaD  = Math.sqrt(allEwmaVar[ewmaIdx]);
+    const hl50pct = BM_P50 * p.hl_50_corr * sigmaD * 100;
     const hl75pct = BM_P75 * p.hl_75_corr * sigmaD * 100;
-    const ocMedPct = HN_P50 * p.oc_corr   * sigmaD * 100;
-    const regime   = classifyRegime(closes, i, 20, 5, slopeThresh);
+    const oc50pct = HN_P50 * p.oc_corr    * sigmaD * 100;
+    const oc75pct = HN_P75 * p.oc_75_corr * sigmaD * 100;
+    const regime  = classifyRegime(closes, i, 20, 5, slopeThresh);
 
     records.push({
       date, regime,
+      hl_50_pct:  +hl50pct.toFixed(4),
       hl_75_pct:  +hl75pct.toFixed(4),
-      oc_med_pct: +ocMedPct.toFixed(4),
-      ..._analyzeDayLevels(m1Bars, open, hl75pct, ocMedPct),
+      oc_50_pct:  +oc50pct.toFixed(4),
+      oc_75_pct:  +oc75pct.toFixed(4),
+      ..._analyzeDayLevels(m1Bars, open, hl50pct, hl75pct, oc50pct, oc75pct),
     });
   }
   return records;
@@ -495,26 +531,33 @@ function _pct(num, den) {
 function _sliceStats(rs) {
   const hFirst = rs.filter(r => r.firstHit === 'HL75_H');
   const lFirst = rs.filter(r => r.firstHit === 'HL75_L');
+  const rH = key => _pct(hFirst.filter(r => r[key]).length, hFirst.length);
+  const rL = key => _pct(lFirst.filter(r => r[key]).length, lFirst.length);
   return {
     n:             rs.length,
-    hl75H_pct:     _pct(rs.filter(r => r.hl75H_hit).length,  rs.length),
-    hl75L_pct:     _pct(rs.filter(r => r.hl75L_hit).length,  rs.length),
-    ocH_pct:       _pct(rs.filter(r => r.ocH_hit).length,    rs.length),
-    ocL_pct:       _pct(rs.filter(r => r.ocL_hit).length,    rs.length),
+    hl75H_pct:     _pct(rs.filter(r => r.hl75H_hit).length, rs.length),
+    hl75L_pct:     _pct(rs.filter(r => r.hl75L_hit).length, rs.length),
+    hl50H_pct:     _pct(rs.filter(r => r.hl50H_hit).length, rs.length),
+    hl50L_pct:     _pct(rs.filter(r => r.hl50L_hit).length, rs.length),
     both_hl75_pct: _pct(rs.filter(r => r.hl75H_hit && r.hl75L_hit).length, rs.length),
-    hFirst_pct:    _pct(hFirst.length,  rs.length),
-    lFirst_pct:    _pct(lFirst.length,  rs.length),
-    // P(HL75_L hit | HL75_H hit first) — full daily sweep
-    sweepHL: _pct(hFirst.filter(r => r.hl75L_hit).length, hFirst.length),
-    // P(HL75_H hit | HL75_L hit first)
-    sweepLH: _pct(lFirst.filter(r => r.hl75H_hit).length, lFirst.length),
-    // Reversal TP (OC_med) hit rate given the extreme is reached
-    ocL_given_hl75H: _pct(
-      rs.filter(r => r.hl75H_hit && r.ocL_hit).length,
-      rs.filter(r => r.hl75H_hit).length),
-    ocH_given_hl75L: _pct(
-      rs.filter(r => r.hl75L_hit && r.ocH_hit).length,
-      rs.filter(r => r.hl75L_hit).length),
+    hFirst_n:  hFirst.length,
+    lFirst_n:  lFirst.length,
+    // After HL75↑ hit first: retracement waterfall (bars AFTER the extreme)
+    hFirst_oc75H: rH('hret_oc75H'),  // came back below OC75↑ (large-TP same side)
+    hFirst_oc50H: rH('hret_oc50H'),  // came back below OC50↑ ← BULL strategy TP
+    hFirst_open:  rH('hret_open'),   // came back to open
+    hFirst_oc50L: rH('hret_oc50L'),  // went through open to OC50↓ ← RANGE/BEAR TP
+    hFirst_oc75L: rH('hret_oc75L'),  // OC75↓
+    hFirst_hl50L: rH('hret_hl50L'),  // HL50↓
+    hFirst_sweep: rH('hret_hl75L'),  // full sweep to HL75↓
+    // After HL75↓ hit first: symmetric waterfall
+    lFirst_oc75L: rL('lret_oc75L'),  // came back above OC75↓ (large-TP same side)
+    lFirst_oc50L: rL('lret_oc50L'),  // came back above OC50↓ ← BEAR strategy TP
+    lFirst_open:  rL('lret_open'),   // came back to open
+    lFirst_oc50H: rL('lret_oc50H'),  // went through open to OC50↑ ← BULL/RANGE TP
+    lFirst_oc75H: rL('lret_oc75H'),  // OC75↑
+    lFirst_hl50H: rL('lret_hl50H'),  // HL50↑
+    lFirst_sweep: rL('lret_hl75H'),  // full sweep to HL75↑
   };
 }
 

@@ -655,9 +655,9 @@
 <!-- ── Level Hit Analysis ──────────────────────────────────────────────────── -->
 <div class="bt-card" id="laCard" style="margin-top:10px">
   <div class="bt-card-hdr">
-    Level Hit Analysis — Sweep Matrix
+    Level Hit Analysis — Retracement Depth
     <span style="font-size:11px;font-weight:400;color:var(--txt2);margin-left:8px">
-      How often does price hit HL75 extremes, and does it sweep both sides?
+      After HL75 extreme is hit, how far does price retrace? Split by regime to test trend alignment.
     </span>
   </div>
   <div class="bt-card-body">
@@ -675,34 +675,38 @@
       <!-- KPI row -->
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px" id="laKpis"></div>
 
-      <!-- Regime sweep matrix -->
+      <!-- After HL75↑ first — retracement waterfall by regime -->
       <div style="margin-bottom:14px">
-        <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--txt2)">SWEEP MATRIX — by Regime</div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:4px;color:var(--txt2)">AFTER HL75↑ HIT FIRST — retracement depth by regime</div>
+        <div style="font-size:11px;color:var(--txt3);margin-bottom:6px">★ = BULL strategy TP &nbsp;|&nbsp; Each % = probability of touching that level <em>after</em> the HL75↑ extreme</div>
         <div class="bt-tbl-scroll">
-          <table class="bt-tbl" id="laTblRegime">
+          <table class="bt-tbl" id="laTblUp">
             <thead><tr>
-              <th>Regime</th><th class="num">Days</th>
-              <th class="num">HL75↑ hit%</th><th class="num">HL75↓ hit%</th>
-              <th class="num">Both hit%</th>
-              <th class="num">Sweep ↑→↓</th><th class="num">Sweep ↓→↑</th>
-              <th class="num">OC↓ | HL75↑</th><th class="num">OC↑ | HL75↓</th>
+              <th>Regime</th><th class="num">n days</th>
+              <th class="num">OC75↑↩</th><th class="num">OC50↑↩ ★</th>
+              <th class="num">→ Open</th>
+              <th class="num">OC50↓</th><th class="num">OC75↓</th><th class="num">HL50↓</th>
+              <th class="num">Sweep↓</th>
             </tr></thead>
-            <tbody id="laTblRegimeBody"></tbody>
+            <tbody id="laTblUpBody"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- Session sweep matrix -->
-      <div>
-        <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--txt2)">SWEEP MATRIX — by Session of First HL75 Hit</div>
+      <!-- After HL75↓ first — symmetric waterfall -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;margin-bottom:4px;color:var(--txt2)">AFTER HL75↓ HIT FIRST — retracement depth by regime</div>
+        <div style="font-size:11px;color:var(--txt3);margin-bottom:6px">★ = BEAR strategy TP &nbsp;|&nbsp; Each % = probability of touching that level <em>after</em> the HL75↓ extreme</div>
         <div class="bt-tbl-scroll">
-          <table class="bt-tbl" id="laTblSession">
+          <table class="bt-tbl" id="laTblDn">
             <thead><tr>
-              <th>Session</th><th class="num">Days</th>
-              <th class="num">Sweep ↑→↓</th><th class="num">Sweep ↓→↑</th>
-              <th class="num">OC↓ | HL75↑</th><th class="num">OC↑ | HL75↓</th>
+              <th>Regime</th><th class="num">n days</th>
+              <th class="num">OC75↓↩</th><th class="num">OC50↓↩ ★</th>
+              <th class="num">→ Open</th>
+              <th class="num">OC50↑</th><th class="num">OC75↑</th><th class="num">HL50↑</th>
+              <th class="num">Sweep↑</th>
             </tr></thead>
-            <tbody id="laTblSessionBody"></tbody>
+            <tbody id="laTblDnBody"></tbody>
           </table>
         </div>
       </div>
@@ -714,10 +718,9 @@
           <table class="bt-tbl" id="laTblInst">
             <thead><tr>
               <th>Pair</th><th class="num">Days</th>
-              <th class="num">HL75↑%</th><th class="num">HL75↓%</th>
-              <th class="num">Both%</th>
-              <th class="num">Sweep ↑→↓</th><th class="num">Sweep ↓→↑</th>
-              <th class="num">OC↓|HL75↑</th><th class="num">OC↑|HL75↓</th>
+              <th class="num">HL50↑%</th><th class="num">HL75↑%</th>
+              <th class="num">HL50↓%</th><th class="num">HL75↓%</th>
+              <th class="num">OC50↑↩|H</th><th class="num">OC50↓↩|L</th>
             </tr></thead>
             <tbody id="laTblInstBody"></tbody>
           </table>
@@ -726,7 +729,7 @@
     </div>
 
     <div id="laEmpty" style="color:var(--txt2);font-size:12px;padding:8px 0">
-      Click Analyse to run the level hit sweep matrix. Requires M1 parquet data (R2 credentials or local files).
+      Click Analyse to run the level hit retracement analysis. Requires M1 parquet data (R2 credentials or local files).
     </div>
   </div>
 </div>
@@ -1365,17 +1368,21 @@ async function runBacktest() {
 
 // ── Level Hit Analysis ────────────────────────────────────────────────────────
 
-function _pctCell(v, highlight = false) {
+function _pctCell(v, thresh = 0) {
   if (v === null || v === undefined) return '<td class="num" style="color:var(--txt3)">—</td>';
-  const cls = highlight && v >= 60 ? 'pos' : highlight && v < 40 ? 'neg' : '';
+  const cls = thresh > 0 ? (v >= thresh ? 'pos' : v < thresh * 0.6 ? 'neg' : '') : '';
   return `<td class="num ${cls}">${v.toFixed(1)}%</td>`;
 }
 
-function _renderSweepRow(label, s, showHL75 = true) {
+function _renderRetRow(label, s, dir) {
   if (!s) return '';
-  const cols = showHL75
-    ? `<td class="num">${s.n}</td>${_pctCell(s.hl75H_pct)}${_pctCell(s.hl75L_pct)}${_pctCell(s.both_hl75_pct)}${_pctCell(s.sweepHL, true)}${_pctCell(s.sweepLH, true)}${_pctCell(s.ocL_given_hl75H, true)}${_pctCell(s.ocH_given_hl75L, true)}`
-    : `<td class="num">${s.n}</td>${_pctCell(s.sweepHL, true)}${_pctCell(s.sweepLH, true)}${_pctCell(s.ocL_given_hl75H, true)}${_pctCell(s.ocH_given_hl75L, true)}`;
+  const isUp = dir === 'up';
+  const n    = isUp ? s.hFirst_n : s.lFirst_n;
+  if (!n) return '';
+  const c = (key, thr) => _pctCell(s[key], thr);
+  const cols = isUp
+    ? `<td class="num">${n}</td>${c('hFirst_oc75H',65)}${c('hFirst_oc50H',65)}${c('hFirst_open',0)}${c('hFirst_oc50L',0)}${c('hFirst_oc75L',0)}${c('hFirst_hl50L',0)}${c('hFirst_sweep',0)}`
+    : `<td class="num">${n}</td>${c('lFirst_oc75L',65)}${c('lFirst_oc50L',65)}${c('lFirst_open',0)}${c('lFirst_oc50H',0)}${c('lFirst_oc75H',0)}${c('lFirst_hl50H',0)}${c('lFirst_sweep',0)}`;
   return `<tr><td><b>${label}</b></td>${cols}</tr>`;
 }
 
@@ -1439,44 +1446,39 @@ function renderLevelAnalysis(data) {
 
   // KPI chips
   document.getElementById('laKpis').innerHTML = [
-    { label: 'Days analysed',  val: agg.n,                    fmt: v => v.toLocaleString(), color: 'blue'  },
-    { label: 'HL75↑ hit rate', val: ov.hl75H_pct,             fmt: v => v.toFixed(1)+'%',   color: 'amber' },
-    { label: 'HL75↓ hit rate', val: ov.hl75L_pct,             fmt: v => v.toFixed(1)+'%',   color: 'amber' },
-    { label: 'Both sides hit', val: ov.both_hl75_pct,          fmt: v => v.toFixed(1)+'%',   color: 'blue'  },
-    { label: 'Sweep ↑→↓',     val: ov.sweepHL,                fmt: v => v?.toFixed(1)+'%',  color: ov.sweepHL >= 50 ? 'green' : 'red' },
-    { label: 'Sweep ↓→↑',     val: ov.sweepLH,                fmt: v => v?.toFixed(1)+'%',  color: ov.sweepLH >= 50 ? 'green' : 'red' },
-    { label: 'OC↓|HL75↑',    val: ov.ocL_given_hl75H,        fmt: v => v?.toFixed(1)+'%',  color: 'blue'  },
-    { label: 'OC↑|HL75↓',    val: ov.ocH_given_hl75L,        fmt: v => v?.toFixed(1)+'%',  color: 'blue'  },
+    { label: 'Days analysed',    val: agg.n,             fmt: v => v.toLocaleString(),  color: 'blue'  },
+    { label: 'HL50↑ hit rate',   val: ov.hl50H_pct,      fmt: v => v.toFixed(1)+'%',    color: 'amber' },
+    { label: 'HL75↑ hit rate',   val: ov.hl75H_pct,      fmt: v => v.toFixed(1)+'%',    color: 'amber' },
+    { label: 'HL50↓ hit rate',   val: ov.hl50L_pct,      fmt: v => v.toFixed(1)+'%',    color: 'amber' },
+    { label: 'HL75↓ hit rate',   val: ov.hl75L_pct,      fmt: v => v.toFixed(1)+'%',    color: 'amber' },
+    { label: 'OC50↑↩ | HL75↑', val: ov.hFirst_oc50H,   fmt: v => v?.toFixed(1)+'%',   color: 'green' },
+    { label: 'OC50↓↩ | HL75↓', val: ov.lFirst_oc50L,   fmt: v => v?.toFixed(1)+'%',   color: 'green' },
+    { label: 'Both HL75 hit',    val: ov.both_hl75_pct,  fmt: v => v.toFixed(1)+'%',    color: 'blue'  },
   ].map(k => `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 14px;min-width:120px">
       <div style="font-size:10px;color:var(--txt2);text-transform:uppercase;letter-spacing:.04em">${k.label}</div>
       <div style="font-size:18px;font-weight:700;color:var(--${k.color})">${k.val != null ? k.fmt(k.val) : '—'}</div>
     </div>`).join('');
 
-  // Regime table
-  const rgRows = [
-    ['Overall', agg.overall],
-    ...Object.entries(agg.byRegime),
-  ].map(([rg, s]) => _renderSweepRow(rg, s, true)).join('');
-  document.getElementById('laTblRegimeBody').innerHTML = rgRows;
-
-  // Session table
-  const sessRows = Object.entries(agg.bySession)
-    .map(([sess, s]) => _renderSweepRow(sess, s, false)).join('');
-  document.getElementById('laTblSessionBody').innerHTML = sessRows || '<tr><td colspan="6" style="color:var(--txt2)">No first-hit session data</td></tr>';
+  // After HL75↑ first table
+  const rgOrder = [['Overall', agg.overall], ...Object.entries(agg.byRegime)];
+  document.getElementById('laTblUpBody').innerHTML =
+    rgOrder.map(([rg, s]) => _renderRetRow(rg, s, 'up')).join('');
+  document.getElementById('laTblDnBody').innerHTML =
+    rgOrder.map(([rg, s]) => _renderRetRow(rg, s, 'dn')).join('');
 
   // Per-instrument table
   const instRows = Object.entries(byInstrument)
-    .sort(([, a], [, b]) => (b.overall?.sweepHL ?? 0) - (a.overall?.sweepHL ?? 0))
+    .sort(([, a], [, b]) => (b.overall?.hFirst_oc50H ?? 0) - (a.overall?.hFirst_oc50H ?? 0))
     .map(([inst, iagg]) => {
       const s = iagg?.overall;
       if (!s) return '';
       return `<tr>
         <td><b>${inst}</b></td>
         <td class="num">${s.n}</td>
-        ${_pctCell(s.hl75H_pct)}${_pctCell(s.hl75L_pct)}${_pctCell(s.both_hl75_pct)}
-        ${_pctCell(s.sweepHL, true)}${_pctCell(s.sweepLH, true)}
-        ${_pctCell(s.ocL_given_hl75H, true)}${_pctCell(s.ocH_given_hl75L, true)}
+        ${_pctCell(s.hl50H_pct)}${_pctCell(s.hl75H_pct)}
+        ${_pctCell(s.hl50L_pct)}${_pctCell(s.hl75L_pct)}
+        ${_pctCell(s.hFirst_oc50H, 65)}${_pctCell(s.lFirst_oc50L, 65)}
       </tr>`;
     }).join('');
   document.getElementById('laTblInstBody').innerHTML = instRows;

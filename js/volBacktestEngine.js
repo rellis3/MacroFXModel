@@ -19,13 +19,15 @@
 // ── Constants (mirrors vol_range_forecast.py) ─────────────────────────────────
 
 const LAMBDA       = 0.94;
+const BM_P50       = 1.572;
 const BM_P75       = 2.049;
 const HN_P50       = 0.6745;
+const HN_P75       = 1.1503;
 
 const ASSET_PARAMS = {
-  commodity: { hl_75_corr: 0.989, oc_corr: 1.163 },
-  index:     { hl_75_corr: 0.950, oc_corr: 1.111 },
-  fx:        { hl_75_corr: 0.894, oc_corr: 0.948 },
+  commodity: { hl_75_corr: 0.989, oc_corr: 1.163, hl_50_corr: 0.985, oc_75_corr: 1.084 },
+  index:     { hl_75_corr: 0.950, oc_corr: 1.111, hl_50_corr: 1.000, oc_75_corr: 1.099 },
+  fx:        { hl_75_corr: 0.894, oc_corr: 0.948, hl_50_corr: 0.921, oc_75_corr: 0.932 },
 };
 
 const INSTRUMENTS = [
@@ -198,7 +200,7 @@ function runBacktest(bars, assetClass, opts = {}) {
 
 // ── Public: run all instruments and return structured result ──────────────────
 
-export { ewmaVarSeries, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P75, HN_P50 };
+export { ewmaVarSeries, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75 };
 export { fetchD1 };
 
 export async function runFullBacktest(opts = {}, instruments = INSTRUMENTS) {
