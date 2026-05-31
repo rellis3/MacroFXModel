@@ -333,6 +333,12 @@
       <option value="1.5">Mo-SL ×1.5</option>
     </select>
   </span>
+  <select id="runDynHl" class="bt-sel" title="Dynamic TP: scale reversal target by actual fill-bar extreme (0=off, 0.65=FX empirical)">
+    <option value="0">Dyn-HL off</option>
+    <option value="0.65">Dyn-HL 0.65</option>
+    <option value="0.5">Dyn-HL 0.50</option>
+    <option value="0.7">Dyn-HL 0.70</option>
+  </select>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--border)" onclick="toggleHelp()" title="Strategy help">?</button>
   <span id="runStatus" class="bt-run-lbl"></span>
@@ -609,6 +615,85 @@
     <button id="pgNext" onclick="changePage(1)">Next ›</button>
     <span style="flex:1"></span>
     <span id="pgTotal"></span>
+  </div>
+</div>
+
+<!-- ── Level Hit Analysis ──────────────────────────────────────────────────── -->
+<div class="bt-card" id="laCard" style="margin-top:10px">
+  <div class="bt-card-hdr">
+    Level Hit Analysis — Sweep Matrix
+    <span style="font-size:11px;font-weight:400;color:var(--txt2);margin-left:8px">
+      How often does price hit HL75 extremes, and does it sweep both sides?
+    </span>
+  </div>
+  <div class="bt-card-body">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <select id="laPair" class="bt-sel" style="width:120px">
+        <option value="">All pairs</option>
+      </select>
+      <input type="date" id="laFrom" placeholder="From" style="width:130px">
+      <input type="date" id="laTo"   placeholder="To"   style="width:130px">
+      <button class="bt-run-btn" id="laBtn" onclick="runLevelAnalysis()" style="padding:4px 14px">▶ Analyse</button>
+      <span id="laStatus" style="font-size:11px;color:var(--txt2)"></span>
+    </div>
+
+    <div id="laResults" style="display:none">
+      <!-- KPI row -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px" id="laKpis"></div>
+
+      <!-- Regime sweep matrix -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--txt2)">SWEEP MATRIX — by Regime</div>
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl" id="laTblRegime">
+            <thead><tr>
+              <th>Regime</th><th class="num">Days</th>
+              <th class="num">HL75↑ hit%</th><th class="num">HL75↓ hit%</th>
+              <th class="num">Both hit%</th>
+              <th class="num">Sweep ↑→↓</th><th class="num">Sweep ↓→↑</th>
+              <th class="num">OC↓ | HL75↑</th><th class="num">OC↑ | HL75↓</th>
+            </tr></thead>
+            <tbody id="laTblRegimeBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Session sweep matrix -->
+      <div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--txt2)">SWEEP MATRIX — by Session of First HL75 Hit</div>
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl" id="laTblSession">
+            <thead><tr>
+              <th>Session</th><th class="num">Days</th>
+              <th class="num">Sweep ↑→↓</th><th class="num">Sweep ↓→↑</th>
+              <th class="num">OC↓ | HL75↑</th><th class="num">OC↑ | HL75↓</th>
+            </tr></thead>
+            <tbody id="laTblSessionBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Per-instrument collapsible -->
+      <details style="margin-top:12px">
+        <summary style="font-size:12px;font-weight:600;color:var(--txt2);cursor:pointer">Per-Instrument Breakdown</summary>
+        <div class="bt-tbl-scroll" style="margin-top:6px">
+          <table class="bt-tbl" id="laTblInst">
+            <thead><tr>
+              <th>Pair</th><th class="num">Days</th>
+              <th class="num">HL75↑%</th><th class="num">HL75↓%</th>
+              <th class="num">Both%</th>
+              <th class="num">Sweep ↑→↓</th><th class="num">Sweep ↓→↑</th>
+              <th class="num">OC↓|HL75↑</th><th class="num">OC↑|HL75↓</th>
+            </tr></thead>
+            <tbody id="laTblInstBody"></tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+
+    <div id="laEmpty" style="color:var(--txt2);font-size:12px;padding:8px 0">
+      Click Analyse to run the level hit sweep matrix. Requires M1 parquet data (R2 credentials or local files).
+    </div>
   </div>
 </div>
 
@@ -1077,10 +1162,14 @@ function initTradelog(trades, instruments) {
   _filtTrades = trades;
 
   const sel = document.getElementById('fPair');
+  const laSel = document.getElementById('laPair');
   instruments.forEach(inst => {
     const opt = document.createElement('option');
     opt.value = inst; opt.textContent = inst;
     sel.appendChild(opt);
+    const laOpt = document.createElement('option');
+    laOpt.value = inst; laOpt.textContent = inst;
+    laSel.appendChild(laOpt);
   });
   document.getElementById('tradeCount').textContent =
     `(${trades.length.toLocaleString()} shown)`;
@@ -1172,6 +1261,7 @@ async function runBacktest() {
       momentumPullback: document.getElementById('runMoPb')?.value ?? '0',
       momentumSlMult:   document.getElementById('runMoSl')?.value ?? '1.0',
       spreadPct:        document.getElementById('runSpread').value,
+      dynHlCorr:        document.getElementById('runDynHl').value,
     };
 
     // Start the job — server returns immediately with a jobId
@@ -1226,6 +1316,107 @@ async function runBacktest() {
     btn.disabled = false;
     btn.textContent = '▶ Run';
   }
+}
+
+// ── Level Hit Analysis ────────────────────────────────────────────────────────
+
+function _pctCell(v, highlight = false) {
+  if (v === null || v === undefined) return '<td class="num" style="color:var(--txt3)">—</td>';
+  const cls = highlight && v >= 60 ? 'pos' : highlight && v < 40 ? 'neg' : '';
+  return `<td class="num ${cls}">${v.toFixed(1)}%</td>`;
+}
+
+function _renderSweepRow(label, s, showHL75 = true) {
+  if (!s) return '';
+  const cols = showHL75
+    ? `<td class="num">${s.n}</td>${_pctCell(s.hl75H_pct)}${_pctCell(s.hl75L_pct)}${_pctCell(s.both_hl75_pct)}${_pctCell(s.sweepHL, true)}${_pctCell(s.sweepLH, true)}${_pctCell(s.ocL_given_hl75H, true)}${_pctCell(s.ocH_given_hl75L, true)}`
+    : `<td class="num">${s.n}</td>${_pctCell(s.sweepHL, true)}${_pctCell(s.sweepLH, true)}${_pctCell(s.ocL_given_hl75H, true)}${_pctCell(s.ocH_given_hl75L, true)}`;
+  return `<tr><td><b>${label}</b></td>${cols}</tr>`;
+}
+
+async function runLevelAnalysis() {
+  const btn = document.getElementById('laBtn');
+  const st  = document.getElementById('laStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  st.textContent  = 'Running — fetching M1 data from R2…';
+
+  try {
+    const pair    = document.getElementById('laPair').value;
+    const dateFrom = document.getElementById('laFrom').value;
+    const dateTo   = document.getElementById('laTo').value;
+
+    const resp = await fetch('/api/vol-backtest/level-analysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pair: pair || undefined, dateFrom, dateTo }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+
+    if (data.error) throw new Error(data.error);
+    if (!data.agg)  { st.textContent = 'No M1 data available — set R2 credentials'; return; }
+
+    renderLevelAnalysis(data);
+    st.textContent = `${data.n} days analysed across ${Object.keys(data.byInstrument).length} pairs`;
+  } catch (e) {
+    st.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Analyse';
+  }
+}
+
+function renderLevelAnalysis(data) {
+  const { agg, byInstrument } = data;
+  const ov = agg.overall;
+
+  document.getElementById('laResults').style.display = '';
+  document.getElementById('laEmpty').style.display   = 'none';
+
+  // KPI chips
+  document.getElementById('laKpis').innerHTML = [
+    { label: 'Days analysed',  val: agg.n,                    fmt: v => v.toLocaleString(), color: 'blue'  },
+    { label: 'HL75↑ hit rate', val: ov.hl75H_pct,             fmt: v => v.toFixed(1)+'%',   color: 'amber' },
+    { label: 'HL75↓ hit rate', val: ov.hl75L_pct,             fmt: v => v.toFixed(1)+'%',   color: 'amber' },
+    { label: 'Both sides hit', val: ov.both_hl75_pct,          fmt: v => v.toFixed(1)+'%',   color: 'blue'  },
+    { label: 'Sweep ↑→↓',     val: ov.sweepHL,                fmt: v => v?.toFixed(1)+'%',  color: ov.sweepHL >= 50 ? 'green' : 'red' },
+    { label: 'Sweep ↓→↑',     val: ov.sweepLH,                fmt: v => v?.toFixed(1)+'%',  color: ov.sweepLH >= 50 ? 'green' : 'red' },
+    { label: 'OC↓|HL75↑',    val: ov.ocL_given_hl75H,        fmt: v => v?.toFixed(1)+'%',  color: 'blue'  },
+    { label: 'OC↑|HL75↓',    val: ov.ocH_given_hl75L,        fmt: v => v?.toFixed(1)+'%',  color: 'blue'  },
+  ].map(k => `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 14px;min-width:120px">
+      <div style="font-size:10px;color:var(--txt2);text-transform:uppercase;letter-spacing:.04em">${k.label}</div>
+      <div style="font-size:18px;font-weight:700;color:var(--${k.color})">${k.val != null ? k.fmt(k.val) : '—'}</div>
+    </div>`).join('');
+
+  // Regime table
+  const rgRows = [
+    ['Overall', agg.overall],
+    ...Object.entries(agg.byRegime),
+  ].map(([rg, s]) => _renderSweepRow(rg, s, true)).join('');
+  document.getElementById('laTblRegimeBody').innerHTML = rgRows;
+
+  // Session table
+  const sessRows = Object.entries(agg.bySession)
+    .map(([sess, s]) => _renderSweepRow(sess, s, false)).join('');
+  document.getElementById('laTblSessionBody').innerHTML = sessRows || '<tr><td colspan="6" style="color:var(--txt2)">No first-hit session data</td></tr>';
+
+  // Per-instrument table
+  const instRows = Object.entries(byInstrument)
+    .sort(([, a], [, b]) => (b.overall?.sweepHL ?? 0) - (a.overall?.sweepHL ?? 0))
+    .map(([inst, iagg]) => {
+      const s = iagg?.overall;
+      if (!s) return '';
+      return `<tr>
+        <td><b>${inst}</b></td>
+        <td class="num">${s.n}</td>
+        ${_pctCell(s.hl75H_pct)}${_pctCell(s.hl75L_pct)}${_pctCell(s.both_hl75_pct)}
+        ${_pctCell(s.sweepHL, true)}${_pctCell(s.sweepLH, true)}
+        ${_pctCell(s.ocL_given_hl75H, true)}${_pctCell(s.ocH_given_hl75L, true)}
+      </tr>`;
+    }).join('');
+  document.getElementById('laTblInstBody').innerHTML = instRows;
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
