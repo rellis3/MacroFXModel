@@ -124,29 +124,44 @@ function groupByDate(rows) {
  * Walk M1 bars to simulate a single-sided limit order.
  * Returns { outcome, pnlPct } or null (limit never hit).
  * P&L expressed as % of the day's open price.
+ *
+ * dynHlCorr (0–1): when set, TP is scaled to the fill-bar's actual extreme
+ * rather than the pre-computed OC_med level.  Empirically ~0.65 for FX.
+ * Formula: tp = open ± |actualExtreme − open| × (1 − dynHlCorr)
+ * At forecast extreme this ≈ OC_med; overshoots push TP proportionally further.
  */
-function walkM1(bars, entryLevel, tpLevel, slLevel, isBuy, open) {
+function walkM1(bars, entryLevel, tpLevel, slLevel, isBuy, open, dynHlCorr = 0) {
   let filled = false, fillTime = null;
+  let effectiveTp = tpLevel;
   for (const bar of bars) {
     if (!filled) {
       if (isBuy ? bar.low <= entryLevel : bar.high >= entryLevel) {
         filled = true;
         fillTime = bar.time ?? null;
+        // Dynamic TP: scale based on actual fill-bar extreme vs open
+        if (dynHlCorr > 0) {
+          const actualFromOpen = isBuy
+            ? Math.abs(bar.low  - open)
+            : Math.abs(bar.high - open);
+          effectiveTp = isBuy
+            ? open + actualFromOpen * (1 - dynHlCorr)
+            : open - actualFromOpen * (1 - dynHlCorr);
+        }
         if (isBuy) {
-          if (bar.low  <= slLevel)  return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100), fillTime };
-          if (bar.high >= tpLevel)  return { outcome: 'win',  pnlPct:   (tpLevel - entryLevel) / open * 100,  fillTime };
+          if (bar.low  <= slLevel)      return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100), fillTime };
+          if (bar.high >= effectiveTp)  return { outcome: 'win',  pnlPct:   (effectiveTp - entryLevel) / open * 100,  fillTime };
         } else {
-          if (bar.high >= slLevel)  return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100), fillTime };
-          if (bar.low  <= tpLevel)  return { outcome: 'win',  pnlPct:   (entryLevel - tpLevel) / open * 100,  fillTime };
+          if (bar.high >= slLevel)      return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100), fillTime };
+          if (bar.low  <= effectiveTp)  return { outcome: 'win',  pnlPct:   (entryLevel - effectiveTp) / open * 100,  fillTime };
         }
       }
     } else {
       if (isBuy) {
-        if (bar.low  <= slLevel)  return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100), fillTime };
-        if (bar.high >= tpLevel)  return { outcome: 'win',  pnlPct:   (tpLevel - entryLevel) / open * 100,  fillTime };
+        if (bar.low  <= slLevel)      return { outcome: 'loss', pnlPct: -((entryLevel - slLevel) / open * 100), fillTime };
+        if (bar.high >= effectiveTp)  return { outcome: 'win',  pnlPct:   (effectiveTp - entryLevel) / open * 100,  fillTime };
       } else {
-        if (bar.high >= slLevel)  return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100), fillTime };
-        if (bar.low  <= tpLevel)  return { outcome: 'win',  pnlPct:   (entryLevel - tpLevel) / open * 100,  fillTime };
+        if (bar.high >= slLevel)      return { outcome: 'loss', pnlPct: -((slLevel - entryLevel) / open * 100), fillTime };
+        if (bar.low  <= effectiveTp)  return { outcome: 'win',  pnlPct:   (entryLevel - effectiveTp) / open * 100,  fillTime };
       }
     }
   }
@@ -169,7 +184,7 @@ function classifySession(isoTime) {
 
 // ── Reversal leg (current strategy: fade from HL75 back toward OC_med) ────────
 
-function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5) {
+function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5, dynHlCorr = 0) {
   const hl  = open * hl75pct  / 100;
   const oc  = open * ocMedPct / 100;
   const slD = hl * slMult;
@@ -178,10 +193,10 @@ function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5) {
 
   if (regime === 'BULL') {
     side   = 'SELL';
-    result = walkM1(m1Bars, open + hl, open + oc, open + slD, false, open);
+    result = walkM1(m1Bars, open + hl, open + oc, open + slD, false, open, dynHlCorr);
   } else if (regime === 'BEAR') {
     side   = 'BUY';
-    result = walkM1(m1Bars, open - hl, open - oc, open - slD, true,  open);
+    result = walkM1(m1Bars, open - hl, open - oc, open - slD, true,  open, dynHlCorr);
   } else {
     // RANGE: walk bars to find which limit fills first (no H/L ordering assumption)
     const sellEntry = open + hl, buyEntry = open - hl;
@@ -189,7 +204,7 @@ function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5) {
       const bar = m1Bars[i];
       if (bar.high >= sellEntry) {
         side   = 'SELL';
-        result = walkM1(m1Bars.slice(i), sellEntry, open, open + slD, false, open);
+        result = walkM1(m1Bars.slice(i), sellEntry, open, open + slD, false, open, dynHlCorr);
         if (!result) {
           const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
           result = { outcome: 'open', pnlPct: (sellEntry - eod) / open * 100, fillTime: null };
@@ -197,7 +212,7 @@ function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5) {
         break;
       } else if (bar.low <= buyEntry) {
         side   = 'BUY';
-        result = walkM1(m1Bars.slice(i), buyEntry, open, open - slD, true, open);
+        result = walkM1(m1Bars.slice(i), buyEntry, open, open - slD, true, open, dynHlCorr);
         if (!result) {
           const eod = m1Bars[m1Bars.length - 1]?.close ?? open;
           result = { outcome: 'open', pnlPct: (eod - buyEntry) / open * 100, fillTime: null };
@@ -247,6 +262,7 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     strategy = 'reversal',                  // 'reversal' | 'momentum' | 'both'
     momentumPullback = 0, momentumSlMult = 1.0,
     spreadPct = 0,
+    dynHlCorr = 0,    // 0 = disabled; 0.65 = scale TP by actual fill-bar extreme
   } = opts;
   const p      = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
   const closes = d1Bars.map(b => b.close);
@@ -283,7 +299,7 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     const legResults = [];
     if (strategy !== 'momentum') {
       const r = useM1
-        ? simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult)
+        ? simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult, dynHlCorr)
         : _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMult);
       legResults.push(r);
     }
@@ -384,6 +400,136 @@ function _simulateMomentumD1(open, high, low, close, hl75pct, ocMedPct, regime, 
   return { filled: true, side, ...r, pnlPct: +r.pnlPct.toFixed(5), leg: 'momentum' };
 }
 
+// ── Level Hit Analysis ────────────────────────────────────────────────────────
+//
+// Walk M1 bars per day and record which forecast levels are touched and when.
+// Levels relative to day's open:
+//   HL75_H = open + hl75    (75th-pct upside)
+//   HL75_L = open - hl75    (75th-pct downside)
+//   OC_H   = open + ocMed   (median close above open)
+//   OC_L   = open - ocMed   (median close below open)
+//
+// "Sweep" = HL75_H hit first → HL75_L also hit same day (full range traversal).
+// This quantifies the R:R opportunity of fading the extreme and targeting the
+// opposite extreme.
+
+function _analyzeDayLevels(m1Bars, open, hl75pct, ocMedPct) {
+  const hl = open * hl75pct / 100;
+  const oc = open * ocMedPct / 100;
+
+  let hl75H_t = null, hl75L_t = null, ocH_t = null, ocL_t = null;
+
+  for (const bar of m1Bars) {
+    if (!hl75H_t && bar.high >= open + hl) hl75H_t = bar.time;
+    if (!hl75L_t && bar.low  <= open - hl) hl75L_t = bar.time;
+    if (!ocH_t   && bar.high >= open + oc) ocH_t   = bar.time;
+    if (!ocL_t   && bar.low  <= open - oc) ocL_t   = bar.time;
+  }
+
+  let firstHit = null;
+  if      (hl75H_t && (!hl75L_t || hl75H_t <= hl75L_t)) firstHit = 'HL75_H';
+  else if (hl75L_t)                                       firstHit = 'HL75_L';
+
+  const firstHitTime = firstHit === 'HL75_H' ? hl75H_t : hl75L_t;
+
+  return {
+    hl75H_hit: !!hl75H_t, hl75H_time: hl75H_t,
+    hl75L_hit: !!hl75L_t, hl75L_time: hl75L_t,
+    ocH_hit:   !!ocH_t,   ocH_time:   ocH_t,
+    ocL_hit:   !!ocL_t,   ocL_time:   ocL_t,
+    firstHit,
+    firstHitTime,
+    firstHitSession: classifySession(firstHitTime),
+  };
+}
+
+function runLevelHitAnalysis(d1Bars, m1ByDate, assetClass, opts = {}) {
+  const { dateFrom = '', dateTo = '', minLookback = 50, slopeThresh = 0.002 } = opts;
+  const p      = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
+  const closes = d1Bars.map(b => b.close);
+  const records = [];
+
+  for (let i = minLookback; i < d1Bars.length; i++) {
+    const { date, open } = d1Bars[i];
+    if (dateFrom && date < dateFrom) continue;
+    if (dateTo   && date > dateTo)   continue;
+
+    const m1Bars = m1ByDate?.get(date) ?? null;
+    if (!m1Bars || m1Bars.length < 10) continue;
+
+    const logRet = [];
+    for (let j = 1; j < i; j++) logRet.push(Math.log(closes[j] / closes[j - 1]));
+    if (logRet.length < 20) continue;
+
+    const varSeries = ewmaVarSeries(logRet);
+    const sigmaD    = Math.sqrt(varSeries[varSeries.length - 1]);
+    const hl75pct   = BM_P75 * p.hl_75_corr * sigmaD * 100;
+    const ocMedPct  = HN_P50 * p.oc_corr    * sigmaD * 100;
+    const regime    = classifyRegime(closes, i, 20, 5, slopeThresh);
+
+    records.push({
+      date, regime,
+      hl_75_pct:  +hl75pct.toFixed(4),
+      oc_med_pct: +ocMedPct.toFixed(4),
+      ..._analyzeDayLevels(m1Bars, open, hl75pct, ocMedPct),
+    });
+  }
+  return records;
+}
+
+function _pct(num, den) {
+  return den > 0 ? +(num / den * 100).toFixed(1) : null;
+}
+
+function _sliceStats(rs) {
+  const hFirst = rs.filter(r => r.firstHit === 'HL75_H');
+  const lFirst = rs.filter(r => r.firstHit === 'HL75_L');
+  return {
+    n:             rs.length,
+    hl75H_pct:     _pct(rs.filter(r => r.hl75H_hit).length,  rs.length),
+    hl75L_pct:     _pct(rs.filter(r => r.hl75L_hit).length,  rs.length),
+    ocH_pct:       _pct(rs.filter(r => r.ocH_hit).length,    rs.length),
+    ocL_pct:       _pct(rs.filter(r => r.ocL_hit).length,    rs.length),
+    both_hl75_pct: _pct(rs.filter(r => r.hl75H_hit && r.hl75L_hit).length, rs.length),
+    hFirst_pct:    _pct(hFirst.length,  rs.length),
+    lFirst_pct:    _pct(lFirst.length,  rs.length),
+    // P(HL75_L hit | HL75_H hit first) — full daily sweep
+    sweepHL: _pct(hFirst.filter(r => r.hl75L_hit).length, hFirst.length),
+    // P(HL75_H hit | HL75_L hit first)
+    sweepLH: _pct(lFirst.filter(r => r.hl75H_hit).length, lFirst.length),
+    // Reversal TP (OC_med) hit rate given the extreme is reached
+    ocL_given_hl75H: _pct(
+      rs.filter(r => r.hl75H_hit && r.ocL_hit).length,
+      rs.filter(r => r.hl75H_hit).length),
+    ocH_given_hl75L: _pct(
+      rs.filter(r => r.hl75L_hit && r.ocH_hit).length,
+      rs.filter(r => r.hl75L_hit).length),
+  };
+}
+
+export function aggregateLevelHits(records) {
+  if (!records.length) return null;
+
+  const byRegime = {};
+  for (const rg of ['BULL', 'BEAR', 'RANGE']) {
+    const rs = records.filter(r => r.regime === rg);
+    if (rs.length) byRegime[rg] = _sliceStats(rs);
+  }
+
+  const bySession = {};
+  for (const sess of ['Asia', 'London', 'Overlap', 'NY']) {
+    const rs = records.filter(r => r.firstHitSession === sess);
+    if (rs.length) bySession[sess] = _sliceStats(rs);
+  }
+
+  return {
+    n: records.length,
+    overall:   _sliceStats(records),
+    byRegime,
+    bySession,
+  };
+}
+
 // ── Public: run all instruments with M1 data where available ─────────────────
 
 export async function runFullM1Backtest(opts = {}, instruments = INSTRUMENTS, m1Dir = BT_M1_DIR) {
@@ -439,6 +585,47 @@ export async function runFullM1Backtest(opts = {}, instruments = INSTRUMENTS, m1
     trades: allResults.flatMap(r => r.trades),
     log:    allResults.flatMap(r => r.log),
   };
+}
+
+export async function runFullLevelAnalysis(opts = {}, instruments = INSTRUMENTS, m1Dir = BT_M1_DIR) {
+  if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set — cannot fetch D1 data');
+
+  const allRecords = [];
+  const log        = [];
+
+  for (const cfg of instruments) {
+    try {
+      log.push(`Fetching D1 ${cfg.name}…`);
+      const d1Bars  = await fetchD1(cfg.oanda, 5000);
+      log.push(`  ${d1Bars.length} D1 bars`);
+
+      const pairKey = cfg.name.toLowerCase().replace('/', '');
+      const m1File  = path.join(m1Dir, `${pairKey}_m1.parquet`);
+      let   m1ByDate = null;
+
+      const r2ab = await fetchFromR2(pairKey);
+      if (r2ab) {
+        log.push(`  M1 from R2 (${(r2ab.byteLength / 1e6).toFixed(1)} MB)…`);
+        m1ByDate = groupByDate(await readM1Parquet(r2ab));
+      } else if (existsSync(m1File)) {
+        log.push(`  M1 from disk…`);
+        m1ByDate = groupByDate(await readM1Parquet(m1File));
+      } else {
+        log.push(`  No M1 data — skipping ${cfg.name}`);
+        continue;
+      }
+
+      log.push(`  ${m1ByDate.size} dates with M1 data`);
+      const records = runLevelHitAnalysis(d1Bars, m1ByDate, cfg.assetClass, opts)
+        .map(r => ({ instrument: cfg.name, ...r }));
+      allRecords.push(...records);
+      log.push(`  ${records.length} days analysed`);
+    } catch (e) {
+      log.push(`  Error: ${e.message}`);
+    }
+  }
+
+  return { records: allRecords, agg: aggregateLevelHits(allRecords), log };
 }
 
 export { INSTRUMENTS };

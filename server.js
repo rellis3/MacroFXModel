@@ -27,7 +27,7 @@ import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast } from './js/volForecastScheduler.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
-import { runFullM1Backtest, BT_M1_DIR, M1_DRIVE_IDS }               from './js/volBacktestM1Engine.js';
+import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, BT_M1_DIR, M1_DRIVE_IDS } from './js/volBacktestM1Engine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -1636,7 +1636,7 @@ app.post('/api/vol-backtest/run', (req, res) => {
     dateFrom = '', dateTo = '', pair = '',
     slMult = '1.5', strategy = 'reversal',
     momentumPullback = '0', momentumSlMult = '1.0',
-    spreadPct = '0',
+    spreadPct = '0', dynHlCorr = '0',
   } = req.body || {};
   const opts = {
     dateFrom, dateTo, minLookback: 50,
@@ -1645,6 +1645,7 @@ app.post('/api/vol-backtest/run', (req, res) => {
     momentumPullback: parseFloat(momentumPullback) || 0,
     momentumSlMult:   parseFloat(momentumSlMult)   || 1.0,
     spreadPct:        parseFloat(spreadPct)         || 0,
+    dynHlCorr:        parseFloat(dynHlCorr)         || 0,
   };
 
   const instFilter  = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : undefined;
@@ -1773,6 +1774,34 @@ app.get('/api/vol-backtest/diagnose', async (_req, res) => {
 
 app.get('/api/version', (_req, res) => res.json({ version: 'r2-m1-engine', deployedAt: new Date().toISOString(), r2: !!process.env.R2_ACCESS_KEY }));
 
+// Level hit analysis — sweep matrix across all pairs with M1 data
+app.post('/api/vol-backtest/level-analysis', async (req, res) => {
+  const { dateFrom, dateTo, pair } = req.body ?? {};
+  const opts = {
+    dateFrom:    dateFrom ?? '',
+    dateTo:      dateTo   ?? '',
+    minLookback: 50,
+    slopeThresh: 0.002,
+  };
+  const instFilter = pair
+    ? BT_INSTRUMENTS.filter(i => i.name === pair)
+    : BT_INSTRUMENTS;
+
+  try {
+    const { records, agg, log } = await runFullLevelAnalysis(opts, instFilter);
+
+    // Per-instrument aggregates
+    const instruments = [...new Set(records.map(r => r.instrument))];
+    const byInstrument = Object.fromEntries(
+      instruments.map(inst => [inst, aggregateLevelHits(records.filter(r => r.instrument === inst))])
+    );
+
+    res.json({ agg, byInstrument, log, n: records.length });
+  } catch (e) {
+    console.error('[level-analysis]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {
   try {
