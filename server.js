@@ -1701,6 +1701,7 @@ app.post('/api/vol-backtest/run', (req, res) => {
     slMult = '1.5', strategy = 'reversal',
     momentumPullback = '0', momentumSlMult = '1.0',
     spreadPct = '0', dynHlCorr = '0', slopeThresh = '0.002',
+    revHL50Mode = 'all',
   } = req.body || {};
   const opts = {
     dateFrom, dateTo, minLookback: 50,
@@ -1711,6 +1712,7 @@ app.post('/api/vol-backtest/run', (req, res) => {
     slopeThresh:      parseFloat(slopeThresh)       || 0.002,
     spreadPct:        parseFloat(spreadPct)         || 0,
     dynHlCorr:        parseFloat(dynHlCorr)         || 0,
+    revHL50Mode,
   };
 
   const instFilter  = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : undefined;
