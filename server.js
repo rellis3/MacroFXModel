@@ -1691,10 +1691,12 @@ app.get('/api/vol-backtest/diagnose', async (_req, res) => {
 
   // Env vars
   report.env = {
-    OANDA_KEY:     !!process.env.OANDA_KEY,
-    R2_ACCESS_KEY: !!process.env.R2_ACCESS_KEY,
-    R2_SECRET_KEY: !!process.env.R2_SECRET_KEY,
-    NODE_ENV:      process.env.NODE_ENV || '(unset)',
+    OANDA_KEY:        !!process.env.OANDA_KEY,
+    OANDA_ENV:        process.env.OANDA_ENV || '(unset — defaults to live)',
+    OANDA_ACCOUNT_ID: process.env.OANDA_ACCOUNT_ID || '(unset)',
+    R2_ACCESS_KEY:    !!process.env.R2_ACCESS_KEY,
+    R2_SECRET_KEY:    !!process.env.R2_SECRET_KEY,
+    NODE_ENV:         process.env.NODE_ENV || '(unset)',
   };
 
   // R2 connectivity
@@ -1720,11 +1722,14 @@ app.get('/api/vol-backtest/diagnose', async (_req, res) => {
   try {
     const key = process.env.OANDA_KEY;
     if (!key) throw new Error('OANDA_KEY not set');
-    const resp = await fetch('https://api-fxtrade.oanda.com/v3/accounts', {
+    const oandaBase = (process.env.OANDA_ENV || 'live') === 'practice'
+      ? 'https://api-fxpractice.oanda.com'
+      : 'https://api-fxtrade.oanda.com';
+    const resp = await fetch(`${oandaBase}/v3/accounts`, {
       headers: { Authorization: `Bearer ${key}` },
       signal:  AbortSignal.timeout(5000),
     });
-    report.oanda = { ok: resp.ok, status: resp.status };
+    report.oanda = { ok: resp.ok, status: resp.status, env: process.env.OANDA_ENV || 'live' };
   } catch (e) {
     report.oanda = { ok: false, error: e?.message ?? String(e) };
   }
