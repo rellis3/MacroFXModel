@@ -1605,8 +1605,9 @@ app.get('/api/vol-backtest', (req, res) => {
       instruments,
     });
   } catch (e) {
-    console.error('[vol-backtest]', e.message);
-    res.status(500).json({ ok: false, error: e.message });
+    const msg = e?.message || String(e) || 'Stats error';
+    console.error('[vol-backtest]', msg, e?.stack ?? '');
+    res.status(500).json({ ok: false, error: msg });
   }
 });
 
@@ -1713,6 +1714,8 @@ app.use(express.static(__dirname, {
 }));
 
 // SPA fallback — catches clean URLs not matched by express.static
+app.get('/api/version', (_req, res) => res.json({ version: 'r2-m1-engine', deployedAt: new Date().toISOString(), r2: !!process.env.R2_ACCESS_KEY }));
+
 app.get('*', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
