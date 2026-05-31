@@ -587,6 +587,25 @@ export async function runFullM1Backtest(opts = {}, instruments = INSTRUMENTS, m1
   };
 }
 
+/**
+ * Load all M1 bars for a single pair from R2 (preferred) or local disk.
+ * Returns flat array of {time, open, high, low, close} or null if no source available.
+ * Used by the candles API for chart rendering.
+ */
+export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
+  const r2ab = await fetchFromR2(pairKey);
+  if (r2ab) {
+    const rows = await readM1Parquet(r2ab);
+    return rows.map(row => ({ time: String(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] }));
+  }
+  const m1File = path.join(m1Dir, `${pairKey}_m1.parquet`);
+  if (existsSync(m1File)) {
+    const rows = await readM1Parquet(m1File);
+    return rows.map(row => ({ time: String(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] }));
+  }
+  return null;
+}
+
 export async function runFullLevelAnalysis(opts = {}, instruments = INSTRUMENTS, m1Dir = BT_M1_DIR) {
   if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set — cannot fetch D1 data');
 
