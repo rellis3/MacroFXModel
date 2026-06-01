@@ -1702,19 +1702,22 @@ function openChartModal(tradeIdx) {
   if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; }
 
   const container = document.getElementById('chartContainer');
-  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8fa0b8;font-size:13px">Loading M1 data…</div>';
+  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8fa0b8;font-size:13px">Loading M1 data… (first load may take a minute)</div>';
 
   const from = _dateOffset(date, -2);
   const to   = _dateOffset(date, +2);
 
-  fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`)
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), 120_000);
+
+  fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal })
     .then(r => r.json())
     .then(d => {
+      clearTimeout(tid);
       if (!d.ok || !d.candles?.length) {
         container.innerHTML = `<div style="padding:24px;font-size:13px;line-height:1.7">
           <div style="color:#ef5350;font-weight:600;margin-bottom:8px">⚠ No M1 candle data</div>
-          <div style="color:#8fa0b8">${d.error || 'No data returned'}</div>
-          <div style="color:#8fa0b8;margin-top:8px;font-size:12px">Set <code style="color:#fbbf24">R2_ACCESS_KEY</code> and <code style="color:#fbbf24">R2_SECRET_KEY</code> env vars in Railway to load M1 data from R2.</div>
+          <div style="color:#8fa0b8">${d.error || 'No candles returned for this date range'}</div>
         </div>`;
         return;
       }

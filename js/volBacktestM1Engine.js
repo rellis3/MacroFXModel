@@ -38,7 +38,7 @@ function makeR2Client() {
     endpoint: R2_ENDPOINT,
     region: 'auto',
     credentials: { accessKeyId, secretAccessKey },
-    requestHandler: { requestTimeout: 30_000, connectionTimeout: 10_000 },
+    requestHandler: { connectionTimeout: 10_000 },
   });
 }
 
