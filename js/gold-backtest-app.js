@@ -75,9 +75,9 @@ async function fetchAndParse(tf) {
         setStatus(`Downloading M1 + M5 + M30 from R2… M${tf}: ${fmtBytes(loaded)}/${fmtBytes(total)}`, 'running', combined);
       }
     }
-    const text = new TextDecoder().decode(new Uint8Array(chunks.flatMap(c => [...c])));
+    const buf  = await new Blob(chunks).text();
     _parsed[`m${tf}`] = false; // reset — set true when worker posts 'parsed'
-    ensureWorker().postMessage({ type: 'parse', payload: { tf: `m${tf}`, text } });
+    ensureWorker().postMessage({ type: 'parse', payload: { tf: `m${tf}`, text: buf } });
   } catch (err) {
     setStatus(`Failed to load M${tf}: ${err.message}`, 'error');
     throw err;
@@ -116,8 +116,8 @@ function buildCfg() {
     sessionEnd:      v('cfg-sess-end', 19),
     warmupDays:      v('cfg-warmup', 60),
     maxDailyTrades:  v('cfg-max-daily', 3),
-    useAsiaFib:      v('gate-asia-fib', true),
-    useMondayFib:    v('gate-monday-fib', true),
+    useStructuralFib: v('gate-struct-fib', true),
+    useSessionBonus:  v('gate-session-bonus', true),
     usePivot:        v('gate-pivot', true),
     useVwapChop:     v('gate-vwap-chop', true),
     useVmu:          v('gate-vmu', true),
@@ -147,11 +147,18 @@ async function runBacktest() {
   const w = ensureWorker(); // creates fresh worker with correct onmessage handler
   void w;
 
-  // All three timeframes required — M1 for bias-free SL/TP detection
-  const fetches = [fetchAndParse('1'), fetchAndParse('5'), fetchAndParse('30')];
+  // Load M5 + M30 in parallel; M1 in parallel but failure is caught gracefully
+  // (M1 may not exist on R2 for gold — fall back to M5 with a warning)
+  const m5fetch  = fetchAndParse('5');
+  const m30fetch = fetchAndParse('30');
+  const m1fetch  = fetchAndParse('1').catch(err => {
+    console.warn('[gold-bt] M1 not found:', err.message);
+    _parsed.m1 = true; // allow run to proceed without M1 (worker will warn)
+    checkAllParsed();
+  });
 
   try {
-    await Promise.all(fetches);
+    await Promise.all([m5fetch, m30fetch, m1fetch]);
   } catch (e) {
     setStatus(`Load failed: ${e.message}`, 'error');
     setRunning(false);

@@ -1,8 +1,5 @@
 // gold-backtest-worker.js — Gold strategy backtester Web Worker (type: module)
-import {
-  tsToLondon, computeBodyRange, computeATR, detectConfluences,
-  projectFibLevels, getPipSize, getDigits, computeDirection, ema, FIB_LEVELS,
-} from './backtest-engine.js';
+import { tsToLondon, computeATR, computeDirection } from './backtest-engine.js';
 import { assessEntry } from './vumanchu.js';
 
 const PIP    = 0.1;
@@ -117,7 +114,98 @@ function buildPivotMap(dailyBars) {
   return map;
 }
 
-// Transform backtest bars {h,l,c,o,vol} → vumanchu {high,low,close,open,volume}
+// ── Structural Fibonacci (M30 swing-based) ────────────────────────────────────
+// Matches the gold bot's structural-fibs.js logic:
+//   - Find N-bar swing pivots in the lookback window
+//   - Project GP zone (0.618–0.65) + point levels (0.382, 0.5, 0.786, 0.886)
+//   - Three passes: full range, swing highs vs range low, range high vs swing lows
+// Entry zones are where multiple projections cluster (confluence).
+const GP_LOW_FIB  = 0.618;
+const GP_HIGH_FIB = 0.65;
+const POINT_FIBS  = [0.382, 0.5, 0.786, 0.886];
+const PIVOT_N     = 5;
+
+function buildStructuralFibLevels(m30Win) {
+  if (m30Win.length < PIVOT_N * 2 + 2) return [];
+
+  const swingHighs = [], swingLows = [];
+  for (let i = PIVOT_N; i < m30Win.length - PIVOT_N; i++) {
+    const b = m30Win[i];
+    let isH = true, isL = true;
+    for (let k = i - PIVOT_N; k <= i + PIVOT_N; k++) {
+      if (k === i) continue;
+      if (m30Win[k].h >= b.h) isH = false;
+      if (m30Win[k].l <= b.l) isL = false;
+    }
+    if (isH) swingHighs.push(b.h);
+    if (isL) swingLows.push(b.l);
+  }
+  if (!swingHighs.length || !swingLows.length) return [];
+
+  const rangeHigh = Math.max(...swingHighs);
+  const rangeLow  = Math.min(...swingLows);
+  const levels    = [];
+
+  const addFibs = (ancH, ancL) => {
+    const r = ancH - ancL;
+    if (r < 1) return;
+    // Retracements from a downswing: support levels (potential longs)
+    for (const fib of POINT_FIBS) {
+      levels.push({ price: ancL + r * fib, fib, type: 'point' });
+    }
+    levels.push({
+      gpLow:  ancL + r * GP_LOW_FIB,
+      gpHigh: ancL + r * GP_HIGH_FIB,
+      price:  ancL + r * ((GP_LOW_FIB + GP_HIGH_FIB) / 2),
+      fib: 'gp', type: 'gp',
+    });
+    // Retracements from an upswing: resistance levels (potential shorts)
+    for (const fib of POINT_FIBS) {
+      levels.push({ price: ancH - r * fib, fib, type: 'point' });
+    }
+    levels.push({
+      gpLow:  ancH - r * GP_HIGH_FIB,
+      gpHigh: ancH - r * GP_LOW_FIB,
+      price:  ancH - r * ((GP_LOW_FIB + GP_HIGH_FIB) / 2),
+      fib: 'gp', type: 'gp',
+    });
+  };
+
+  // Pass 1: full range
+  addFibs(rangeHigh, rangeLow);
+  // Pass 2: each swing high vs range low
+  for (const sh of swingHighs) {
+    if (sh > rangeLow + 1) addFibs(sh, rangeLow);
+  }
+  // Pass 3: range high vs each swing low
+  for (const sl of swingLows) {
+    if (rangeHigh > sl + 1) addFibs(rangeHigh, sl);
+  }
+
+  return levels;
+}
+
+// Pre-compute structural fibs per trading day for performance
+function buildStructuralFibMap(m30, fibLookbackDays) {
+  const map     = new Map();
+  let   lbStart = 0;
+  let   lastDate = '';
+
+  for (let i = 0; i < m30.length; i++) {
+    const b = m30[i];
+    if (b.lDay === 0 || b.lDay === 6) continue;
+    if (b.lDate === lastDate) continue; // rebuild once per day
+
+    lastDate = b.lDate;
+    const lbTs = b.ts - fibLookbackDays * 86400_000;
+    while (lbStart < i && m30[lbStart].ts < lbTs) lbStart++;
+
+    map.set(b.lDate, buildStructuralFibLevels(m30.slice(lbStart, i + 1)));
+  }
+  return map;
+}
+
+// Transform backtest bars → vumanchu {high,low,close,open,volume}
 function toVmuBars(bars) {
   return bars.map(b => ({ high: b.h, low: b.l, close: b.c, open: b.o, volume: b.vol ?? 1 }));
 }
@@ -151,19 +239,16 @@ function tickTrade(trade, bar, tp1PartialPct) {
   if (adv > trade.maePts) trade.maePts = adv;
 
   if (isLong) {
-    // TP1 check (mark partial exit)
     if (!tp1Hit && bar.h >= tp1Price) {
       trade.tp1Hit = true;
-      trade.slPrice = trade.entryPrice; // Move SL to BE
+      trade.slPrice = trade.entryPrice; // move SL to BE
     }
-    // SL check
     if (bar.l <= trade.slPrice) {
       const r = trade.tp1Hit
         ? trade.tp1R * tp1PartialPct + 0 * (1 - tp1PartialPct)
         : -1;
       return { exitPrice: trade.slPrice, result: trade.tp1Hit ? 'tp1+sl_be' : 'sl', r };
     }
-    // TP2 check
     if (trade.tp1Hit && bar.h >= tp2Price) {
       const r = trade.tp1R * tp1PartialPct + trade.tp2R * (1 - tp1PartialPct);
       return { exitPrice: tp2Price, result: 'tp1+tp2', r };
@@ -374,18 +459,6 @@ function computeLevelStats(trades) {
     .map(s => ({ ...s, winRate: s.n > 0 ? +(s.wins / s.n * 100).toFixed(1) : 0, r: +s.r.toFixed(2) }));
 }
 
-function computeGateEffectiveness(allTrades, filteredTrades) {
-  // Compare all candidate entries vs filtered to show gate impact
-  const filtered = new Set(filteredTrades.map(t => t.entryTs));
-  const excluded = allTrades.filter(t => !filtered.has(t.entryTs));
-  return {
-    total:    allTrades.length,
-    taken:    filteredTrades.length,
-    excluded: excluded.length,
-    gateCounts: {},
-  };
-}
-
 // ── WFO helpers ────────────────────────────────────────────────────────────────
 function buildWfoWindows(sortedDates, isMonths, oosMonths) {
   const windows = [];
@@ -408,11 +481,11 @@ function buildWfoWindows(sortedDates, isMonths, oosMonths) {
       oosStart: isEndStr,
       oosEnd:   oosEndStr,
     });
-    cur = new Date(isEnd); // anchor walk
+    cur = new Date(isEnd);
     cur.setUTCMonth(cur.getUTCMonth() + oosMonths);
     if (cur >= end) break;
   }
-  return windows.slice(0, 12); // cap at 12 windows
+  return windows.slice(0, 12);
 }
 
 // ── Main backtest run ──────────────────────────────────────────────────────────
@@ -425,9 +498,9 @@ function handleRun(cfg) {
     post('error', 'Missing M5 or M30 data');
     return;
   }
-  if (!m1?.length) {
-    post('error', 'Missing M1 data — M1 bars are required for unbiased SL/TP detection. Please wait for M1 to finish parsing.');
-    return;
+  const hasM1 = m1?.length > 0;
+  if (!hasM1) {
+    post('progress', { status: 'M1 not available — using M5 for trade management (introduces inside-bar ambiguity)', pct: 1 });
   }
 
   post('progress', { status: 'Building structures…', pct: 2 });
@@ -455,28 +528,28 @@ function handleRun(cfg) {
   const sessionStart     = cfg.sessionStart      ?? 7;
   const sessionEnd       = cfg.sessionEnd        ?? 19;
   const warmupDays       = cfg.warmupDays        ?? 60;
+  const fibLookbackDays  = cfg.fibLookbackDays   ?? 30;
   const _sd              = cfg.startDate         ?? null;
   const _ed              = cfg.endDate           ?? null;
   const isSplit          = cfg.isSplit           ?? 0;
   const wfoEnabled       = cfg.wfoEnabled        ?? false;
   const wfoIsMonths      = cfg.wfoIsMonths       ?? 6;
   const wfoOosMonths     = cfg.wfoOosMonths      ?? 2;
-  const maxDailyLoss     = cfg.maxDailyLoss      ?? 0;  // max daily loss in R (0 = unlimited)
+  const maxDailyLoss     = cfg.maxDailyLoss      ?? 0;
   const maxDailyTrades   = cfg.maxDailyTrades    ?? 3;
 
   // Gate toggles
-  const useAsiaFib   = cfg.useAsiaFib   ?? true;
-  const useMondayFib = cfg.useMondayFib ?? true;
-  const usePivot     = cfg.usePivot     ?? true;
-  const useVwapChop  = cfg.useVwapChop  ?? true;
-  const useVmu       = cfg.useVmu       ?? true;
-  const requireVmuAgree = cfg.requireVmuAgree ?? false;
-  const useSession   = cfg.useSession   ?? true;
-  const useChoch     = cfg.useChoch     ?? true;
-  const useHtfEma    = cfg.useHtfEma    ?? true;
-  const useAdx       = cfg.useAdx       ?? false;
+  const useStructuralFib = cfg.useStructuralFib ?? true;  // M30 swing-based Fib entry zones
+  const useSessionBonus  = cfg.useSessionBonus  ?? true;  // Asia/Monday range proximity → bonus star
+  const usePivot         = cfg.usePivot         ?? true;
+  const useVwapChop      = cfg.useVwapChop      ?? true;
+  const useVmu           = cfg.useVmu           ?? true;
+  const requireVmuAgree  = cfg.requireVmuAgree  ?? false;
+  const useSession       = cfg.useSession       ?? true;
+  const useChoch         = cfg.useChoch         ?? true;
+  const useHtfEma        = cfg.useHtfEma        ?? true;
+  const useAdx           = cfg.useAdx           ?? false;
 
-  // Feature config for computeDirection
   const featureCfg = {
     rangePosition: { enabled: true,      weight: 1, label: 'Range Position' },
     chochBos:      { enabled: useChoch,  weight: 2, label: 'CHoCH / BOS' },
@@ -492,6 +565,10 @@ function handleRun(cfg) {
     ichimokuCloud: { enabled: false,     weight: 1, label: 'Ichimoku Cloud' },
     macdSignal:    { enabled: false,     weight: 1, label: 'MACD' },
   };
+
+  // ── Pre-compute structural fibs per day ──────────────────────────────────────
+  post('progress', { status: 'Building structural fibs…', pct: 4 });
+  const structFibMap = buildStructuralFibMap(m30, fibLookbackDays);
 
   post('progress', { status: 'Simulating trades…', pct: 5 });
 
@@ -539,11 +616,10 @@ function handleRun(cfg) {
 
     // ── Manage open trade ─────────────────────────────────────────────────────
     if (openTrade) {
-      // Get M1 bars overlapping this M5 period
       const nextTs = i + 1 < m5.length ? m5[i + 1].ts : bar.ts + 300_000;
       let closed = false;
 
-      if (m1.length) {
+      if (hasM1) {
         const m1Start = lowerBound(m1, bar.ts);
         for (let j = m1Start; j < m1.length && m1[j].ts < nextTs; j++) {
           const result = tickTrade(openTrade, m1[j], tp1PartialPct);
@@ -561,7 +637,7 @@ function handleRun(cfg) {
           }
         }
       } else {
-        // Use M5 bar directly
+        // M1 unavailable — use M5 bar (introduces inside-bar ambiguity)
         const result = tickTrade(openTrade, bar, tp1PartialPct);
         if (result) {
           openTrade.exitTs    = bar.ts;
@@ -590,47 +666,95 @@ function handleRun(cfg) {
     if (maxDailyTrades > 0 && dailyTradeCount >= maxDailyTrades) continue;
     if (maxDailyLoss > 0 && dailyR <= -maxDailyLoss) continue;
 
-    const asiaRange  = asiaRangeMap.get(lDate);
+    const asiaRange   = asiaRangeMap.get(lDate);
     const mondayRange = mondayRangeMap.get(getWeekStart(lDate));
     const pivots      = pivotMap.get(lDate);
 
-    if (useAsiaFib && !asiaRange) continue;
-
-    // ── Build candidate levels ───────────────────────────────────────────────
     const price = bar.c;
     const m5Win = m5.slice(Math.max(0, i - 100), i + 1);
     const atr   = computeATR(m5Win, 14);
     if (!atr) continue;
 
+    // ── Structural fib levels (primary entry zones) ───────────────────────────
+    // Gold bot entries are where multiple M30-swing Fibonacci projections converge.
+    // Levels: GP zone (0.618–0.65) and point retracements (0.382, 0.786, 0.886).
+    const structFibs = structFibMap.get(lDate) ?? [];
+
+    if (useStructuralFib && !structFibs.length) continue;
+
     let nearestLevel = null, nearestDist = Infinity;
+    let inGpZone = false;
 
-    const checkLevel = (lvlPrice, src, dir) => {
-      const dist = Math.abs(price - lvlPrice);
-      if (dist < fibTolerance && dist < nearestDist) {
-        nearestDist  = dist;
-        nearestLevel = { price: lvlPrice, src, dir };
-      }
-    };
-
-    if (asiaRange && useAsiaFib) {
-      for (const fib of [0, 0.236, 0.382, 0.5, 0.618, 0.65, 0.786, 0.886, 1, 1.236, 1.382, 1.618, -0.236, -0.382]) {
-        checkLevel(asiaRange.low + asiaRange.range * fib, `Asia-${fib}`, fib >= 0.5 ? 'short' : fib <= 0.5 ? 'long' : 'both');
+    for (const lvl of structFibs) {
+      if (lvl.type === 'gp') {
+        if (price >= lvl.gpLow && price <= lvl.gpHigh) {
+          if (!inGpZone) {
+            inGpZone = true;
+            nearestDist = 0;
+            nearestLevel = { price: lvl.price, src: 'GP', dir: 'both' };
+          }
+        }
+      } else {
+        const dist = Math.abs(price - lvl.price);
+        if (dist < fibTolerance && dist < nearestDist && !inGpZone) {
+          nearestDist = dist;
+          nearestLevel = { price: lvl.price, src: `Fib-${lvl.fib}`, dir: 'both' };
+        }
       }
     }
-    if (mondayRange && useMondayFib) {
-      for (const fib of [0, 0.382, 0.5, 0.618, 0.786, 1, 1.272, 1.618, -0.272, -0.618]) {
-        checkLevel(mondayRange.low + mondayRange.range * fib, `Mon-${fib}`, fib >= 0.5 ? 'short' : fib <= 0.5 ? 'long' : 'both');
+
+    // Also accept daily pivots as entry levels (usePivot gate)
+    if (!nearestLevel && usePivot && pivots) {
+      const pivotEntries = [
+        { price: pivots.pp, src: 'PP' }, { price: pivots.r1, src: 'R1' },
+        { price: pivots.s1, src: 'S1' }, { price: pivots.r2, src: 'R2' },
+        { price: pivots.s2, src: 'S2' },
+      ];
+      for (const pl of pivotEntries) {
+        const dist = Math.abs(price - pl.price);
+        if (dist < fibTolerance && dist < nearestDist) {
+          nearestDist = dist;
+          nearestLevel = { price: pl.price, src: pl.src, dir: 'both' };
+        }
       }
-    }
-    if (pivots && usePivot) {
-      checkLevel(pivots.pp, 'DailyPP', 'both');
-      checkLevel(pivots.r1, 'DailyR1', 'short');
-      checkLevel(pivots.s1, 'DailyS1', 'long');
-      checkLevel(pivots.r2, 'DailyR2', 'short');
-      checkLevel(pivots.s2, 'DailyS2', 'long');
     }
 
     if (!nearestLevel) continue;
+
+    // ── Confluence count (how many fib levels cluster near current price) ──────
+    let confluenceCount = 0;
+    for (const lvl of structFibs) {
+      const dist = lvl.type === 'gp'
+        ? (price >= lvl.gpLow && price <= lvl.gpHigh
+            ? 0
+            : Math.min(Math.abs(price - lvl.gpLow), Math.abs(price - lvl.gpHigh)))
+        : Math.abs(price - lvl.price);
+      if (dist < fibTolerance * 1.5) confluenceCount++;
+    }
+    if (pivots && usePivot) {
+      for (const pl of [pivots.pp, pivots.r1, pivots.s1, pivots.r2, pivots.s2]) {
+        if (Math.abs(price - pl) < fibTolerance) { confluenceCount++; break; }
+      }
+    }
+
+    // ── Asia/Monday session bonus (not a gate — adds star when nearby) ─────────
+    let sessionBonus = 0;
+    if (useSessionBonus) {
+      if (asiaRange) {
+        for (const fib of [0.382, 0.5, 0.618, 0.65, 0.786, 1.0]) {
+          if (Math.abs(price - (asiaRange.low + asiaRange.range * fib)) < fibTolerance * 1.5) {
+            sessionBonus++; break;
+          }
+        }
+      }
+      if (mondayRange) {
+        for (const fib of [0.382, 0.5, 0.618, 0.786, 1.0]) {
+          if (Math.abs(price - (mondayRange.low + mondayRange.range * fib)) < fibTolerance * 1.5) {
+            sessionBonus++; break;
+          }
+        }
+      }
+    }
 
     // ── Feature direction ─────────────────────────────────────────────────────
     const m5Rev = m5.slice(Math.max(0, i - 200), i + 1).reverse();
@@ -639,14 +763,14 @@ function handleRun(cfg) {
     for (let j = 0; j < m30.length; j++) {
       if (m30[j].lDate === lDate) { m30Start = Math.max(0, j - 200); break; }
     }
-    const m30Win = m30.slice(m30Start, m30Start + 201);
+    const m30Win2 = m30.slice(m30Start, m30Start + 201);
 
     const dIdx = dailyIdxMap.get(lDate) ?? -1;
     const dailySlice = dIdx > 0 ? dailyBars.slice(Math.max(0, dIdx - 80), dIdx) : [];
 
     const dirResult = computeDirection({
       bars5mRev: m5Rev,
-      bars30m:   m30Win,
+      bars30m:   m30Win2,
       dailyBars: dailySlice,
       asiaRange, mondayRange, atr,
       symbol: SYMBOL, price, todayDate: lDate, featureCfg,
@@ -656,9 +780,6 @@ function handleRun(cfg) {
     if (!entryDir) continue;
     if (conviction < minConviction) continue;
     if (confirmCount < minConfirms) continue;
-
-    // Level direction constraint
-    if (nearestLevel.dir && nearestLevel.dir !== 'both' && nearestLevel.dir !== entryDir) continue;
 
     // ── VMU Gate ──────────────────────────────────────────────────────────────
     let vmuResult = null;
@@ -676,14 +797,23 @@ function handleRun(cfg) {
     }
 
     // ── Enter trade ───────────────────────────────────────────────────────────
-    const slippage = spread;
+    const slippage  = spread;
     const entryPrice = entryDir === 'long' ? price + slippage : price - slippage;
-    const slDist  = Math.max(atr * slAtrMult, PIP * 50);
-    const slPrice  = entryDir === 'long' ? entryPrice - slDist : entryPrice + slDist;
-    const tp1Price = entryDir === 'long' ? entryPrice + slDist * tp1R : entryPrice - slDist * tp1R;
-    const tp2Price = entryDir === 'long' ? entryPrice + slDist * tp2R : entryPrice - slDist * tp2R;
+    const slDist    = Math.max(atr * slAtrMult, PIP * 50);
+    const slPrice   = entryDir === 'long' ? entryPrice - slDist : entryPrice + slDist;
+    const tp1Price  = entryDir === 'long' ? entryPrice + slDist * tp1R : entryPrice - slDist * tp1R;
+    const tp2Price  = entryDir === 'long' ? entryPrice + slDist * tp2R : entryPrice - slDist * tp2R;
 
     const isOos = splitDate ? lDate >= splitDate : false;
+
+    // Stars: GP zone = higher baseline; confluence, conviction, VMU, session all add
+    const stars = Math.min(5,
+      (inGpZone ? 2 : 1)
+      + (confluenceCount >= 3 ? 1 : 0)
+      + (conviction > 0.3 ? 1 : 0)
+      + (vmuResult?.signal === 'agree' ? 1 : 0)
+      + sessionBonus
+    );
 
     openTrade = {
       entryTs: bar.ts, entryPrice, exitTs: null, exitPrice: null,
@@ -694,10 +824,10 @@ function handleRun(cfg) {
       level: nearestLevel.src, levelDir: nearestLevel.dir,
       lDate, lHour, lDay,
       conviction: +conviction.toFixed(3),
-      confirmCount, vmuSignal: vmuResult?.signal ?? 'n/a',
+      confirmCount, confluenceCount,
+      vmuSignal: vmuResult?.signal ?? 'n/a',
       vmuComponents: vmuResult?.components ?? 0,
-      isOos,
-      stars: Math.min(4, 1 + (conviction > 0.3 ? 1 : 0) + (confirmCount >= 3 ? 1 : 0) + (vmuResult?.signal === 'agree' ? 1 : 0)),
+      isOos, stars,
       featureVotes: dirResult.results?.map(r => ({ key: r.key, signal: r.signal, val: r.val, pts: r.pts })) ?? [],
     };
     dailyTradeCount++;
@@ -754,6 +884,7 @@ function handleRun(cfg) {
     r: +t.r.toFixed(3), mfe: +t.mfe.toFixed(2), mae: +t.mae.toFixed(2),
     level: t.level, stars: t.stars, lDate: t.lDate, lHour: t.lHour, lDay: t.lDay,
     vmuSignal: t.vmuSignal, conviction: t.conviction, confirmCount: t.confirmCount,
+    confluenceCount: t.confluenceCount,
     isOos: t.isOos,
   }));
 
