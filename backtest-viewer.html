@@ -1,205 +1,419 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Backtest Viewer</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap">
-  <style>
-    :root {
-      --bg:     #111;
-      --bg2:    #191919;
-      --bg3:    #222;
-      --bg4:    #2a2a2a;
-      --border: #2a2a2a;
-      --text1:  #f0f0f0;
-      --text2:  #aaa;
-      --text3:  #666;
-      --gold:   #f4c430;
-      --green:  #4caf8a;
-      --red:    #e05555;
-      --blue:   #5a9de0;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text1); font-family: 'DM Sans', sans-serif; font-size: 13px; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backtest Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* ── Header ── */
-    .bv-header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg2); flex-shrink: 0; }
-    .bv-header-logo  { color: var(--gold); font-size: 16px; font-weight: 600; }
-    .bv-header-sep   { color: var(--text3); }
-    .bv-header-title { color: var(--text2); font-size: 12px; }
-    .bv-back-link    { color: var(--text2); text-decoration: none; font-size: 12px; }
-    .bv-back-link:hover { color: var(--text1); }
-    .bv-header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-    .bv-filter-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); border-radius: 4px; padding: 4px 9px; font-size: 11px; cursor: pointer; font-family: inherit; }
-    .bv-filter-btn.active { background: var(--bg4); color: var(--text1); border-color: var(--text3); }
-    .bv-filter-btn.win.active { color: var(--green); border-color: var(--green); }
-    .bv-filter-btn.loss.active { color: var(--red); border-color: var(--red); }
-    .bv-filter-btn.buy.active { color: var(--blue); border-color: var(--blue); }
-    .bv-filter-btn.sell.active { color: var(--gold); border-color: var(--gold); }
-    #bv-trade-count { font-size: 11px; color: var(--text3); }
+html, body {
+  height: 100%;
+  background: #0e1117;
+  color: #d1d4dc;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
 
-    /* ── Main layout ── */
-    .bv-body { display: grid; grid-template-columns: 260px 1fr 220px; flex: 1; overflow: hidden; }
+/* ── Root layout ──────────────────────────────────────────────────────────── */
+.bv-root { display: flex; flex-direction: column; height: 100vh; background: #0e1117; }
 
-    /* ── Trade list ── */
-    .bv-list { background: var(--bg2); border-right: 1px solid var(--border); overflow-y: auto; }
-    .bv-trade-card {
-      padding: 9px 12px; border-bottom: 1px solid var(--border); cursor: pointer;
-      transition: background 0.1s;
-    }
-    .bv-trade-card:hover { background: var(--bg3); }
-    .bv-trade-card.selected { background: var(--bg3); border-left: 2px solid var(--gold); }
-    .bv-card-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
-    .bv-card-date { font-size: 11px; color: var(--text3); }
-    .bv-card-pnl { font-size: 12px; font-weight: 600; }
-    .bv-card-pnl.win { color: var(--green); }
-    .bv-card-pnl.loss { color: var(--red); }
-    .bv-card-row2 { display: flex; align-items: center; gap: 6px; }
-    .bv-card-side { font-size: 10px; font-weight: 600; }
-    .bv-card-side.buy  { color: var(--blue); }
-    .bv-card-side.sell { color: var(--gold); }
-    .bv-card-badge { font-size: 10px; background: var(--bg4); border-radius: 3px; padding: 1px 5px; color: var(--text2); }
-    .bv-card-badge.gp { color: var(--gold); }
-    .bv-list-empty { padding: 20px; text-align: center; color: var(--text3); font-size: 12px; }
+/* ── Top toolbar ──────────────────────────────────────────────────────────── */
+.bv-topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px; height: 46px;
+  border-bottom: 1px solid #1c2133; background: #131722;
+  flex-shrink: 0; overflow: hidden;
+}
+.bv-title { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: #d1d4dc; white-space: nowrap; margin-right: 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.bv-ctrl-group { display: flex; align-items: center; gap: 6px; }
+.bv-lbl { font-size: 11px; color: #5a6380; font-family: 'DM Mono', monospace; white-space: nowrap; }
+.bv-sel {
+  background: #1c2133; border: 1px solid #2a3348; color: #c8d0e0;
+  border-radius: 4px; padding: 3px 6px; font-size: 11px;
+  font-family: 'DM Mono', monospace; cursor: pointer; outline: none;
+}
+.bv-sel:focus { border-color: #4f7df0; }
+.bv-btn {
+  background: #1c2133; border: 1px solid #2a3348; color: #9aa8c0;
+  border-radius: 4px; padding: 4px 10px; font-size: 11px;
+  font-family: 'DM Mono', monospace; cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s; white-space: nowrap;
+}
+.bv-btn:hover   { background: #242b42; color: #d1d4dc; }
+.bv-btn.bv-active { background: #2563eb22; border-color: #4f7df0; color: #4f7df0; }
+.bv-btn.bv-sm { padding: 3px 8px; }
+.bv-btn.bv-tv { border-color: #2962ff44; color: #2962ff; }
+.bv-btn.bv-tv:hover { background: #2962ff15; color: #5085ff; }
+.bv-stat { font-family: 'DM Mono', monospace; font-size: 11px; color: #5a6380; margin-left: auto; white-space: nowrap; }
 
-    /* ── Chart area ── */
-    .bv-chart-wrap { display: flex; flex-direction: column; overflow: hidden; }
-    .bv-chart-container { flex: 1; position: relative; }
-    #bv-chart { width: 100%; height: 100%; }
-    .bv-chart-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: 13px; pointer-events: none; }
-    .bv-chart-loading { color: var(--text2); }
+/* ── Replay bar ───────────────────────────────────────────────────────────── */
+.bv-replay-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 14px; height: 40px;
+  background: #0b111e; border-bottom: 1px solid #1c2133;
+  flex-shrink: 0;
+}
+.bv-rplay-btns { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
 
-    /* ── Replay controls ── */
-    .bv-replay { background: var(--bg2); border-top: 1px solid var(--border); padding: 8px 14px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-    .bv-replay-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text1); border-radius: 4px; padding: 5px 10px; font-size: 12px; cursor: pointer; font-family: inherit; min-width: 32px; }
-    .bv-replay-btn:hover { background: var(--bg4); }
-    .bv-replay-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-    .bv-replay-btn.active { background: var(--gold); color: #111; border-color: var(--gold); }
-    .bv-scrubber-wrap { flex: 1; position: relative; height: 20px; display: flex; align-items: center; }
-    .bv-scrubber-track { width: 100%; height: 4px; background: var(--bg4); border-radius: 2px; cursor: pointer; }
-    .bv-scrubber-fill { height: 100%; background: var(--gold); border-radius: 2px; width: 0%; pointer-events: none; }
-    .bv-replay-pos { font-size: 11px; color: var(--text3); min-width: 70px; text-align: right; }
-    .bv-speed-select { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); border-radius: 4px; padding: 4px 6px; font-size: 11px; font-family: inherit; cursor: pointer; }
-    .bv-replay-sep { width: 1px; height: 16px; background: var(--border); }
-    .bv-level-btn { font-size: 11px; }
-    .bv-level-btn.active { color: var(--gold); border-color: var(--gold); }
+/* Scrubber */
+.bv-scrubber {
+  flex: 1; min-width: 60px; position: relative;
+  height: 40px; display: flex; align-items: center;
+  cursor: pointer; padding: 0 4px;
+}
+.bv-scrub-track {
+  position: relative; width: 100%; height: 4px;
+  background: #1c2840; border-radius: 2px;
+}
+.bv-scrub-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: #4f7df0; border-radius: 2px;
+  pointer-events: none; width: 0%;
+}
+.bv-scrub-thumb {
+  position: absolute; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px; height: 12px; background: #e8eaf0;
+  border-radius: 50%; box-shadow: 0 0 0 2px #4f7df0, 0 2px 6px rgba(0,0,0,.5);
+  cursor: grab; z-index: 2; left: 0%; transition: box-shadow .1s;
+}
+.bv-scrub-thumb:hover { box-shadow: 0 0 0 3px #4f7df0, 0 2px 8px rgba(79,125,240,.4); }
+.bv-scrubber:active .bv-scrub-thumb { cursor: grabbing; }
+.bv-scrub-marker {
+  position: absolute; top: -5px; bottom: -5px; width: 2px;
+  border-radius: 1px; pointer-events: none; z-index: 1;
+}
 
-    /* ── Detail panel ── */
-    .bv-detail { background: var(--bg2); border-left: 1px solid var(--border); overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 10px; }
-    .bv-detail-empty { color: var(--text3); font-size: 12px; text-align: center; margin-top: 30px; }
-    .bv-detail-section { display: flex; flex-direction: column; gap: 5px; }
-    .bv-detail-heading { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); font-weight: 600; margin-bottom: 2px; }
-    .bv-detail-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-    .bv-detail-label { font-size: 11px; color: var(--text2); }
-    .bv-detail-value { font-size: 12px; font-weight: 500; color: var(--text1); text-align: right; }
-    .bv-detail-value.win  { color: var(--green); }
-    .bv-detail-value.loss { color: var(--red); }
-    .bv-detail-value.gold { color: var(--gold); }
-    .bv-detail-value.blue { color: var(--blue); }
-    .bv-detail-divider { height: 1px; background: var(--border); }
+/* Speed buttons */
+.bv-speed-group { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.bv-speed-btn {
+  background: transparent; border: 1px solid #252e42; color: #4a5570;
+  border-radius: 3px; padding: 2px 6px; font-size: 10px;
+  font-family: 'DM Mono', monospace; cursor: pointer;
+  transition: all .1s; white-space: nowrap;
+}
+.bv-speed-btn:hover  { background: #1c2133; color: #9aa8c0; border-color: #3a4a65; }
+.bv-speed-btn.bv-active { background: #4f7df018; border-color: #4f7df088; color: #7fa8f8; }
 
-    /* ── Error overlay ── */
-    .bv-error { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; }
-    .bv-error-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 24px 32px; max-width: 400px; text-align: center; }
-    .bv-error-box h2 { color: var(--red); font-size: 14px; margin-bottom: 10px; }
-    .bv-error-box p  { color: var(--text2); font-size: 12px; line-height: 1.6; }
-    .bv-error-box a  { color: var(--gold); }
-  </style>
+/* Replay timestamp */
+.bv-replay-ts {
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  color: #7a8faa; white-space: nowrap; min-width: 110px;
+  letter-spacing: .02em;
+}
+
+/* Replay vertical "now" line on chart */
+.bv-replay-line {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: linear-gradient(to bottom, transparent 0%, rgba(79,125,240,.5) 10%, rgba(79,125,240,.5) 90%, transparent 100%);
+  pointer-events: none; z-index: 5; display: none; left: 0;
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────────── */
+.bv-body { display: flex; flex: 1; min-height: 0; overflow: hidden; position: relative; }
+
+/* ── Chart area ───────────────────────────────────────────────────────────── */
+.bv-chart-wrap { flex: 1; position: relative; min-width: 0; }
+.bv-chart      { position: absolute; inset: 0; }
+.bv-chart-veil {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #131722cc; color: #5a6380; font-size: 13px; gap: 12px;
+  pointer-events: none;
+}
+.bv-spinner {
+  width: 22px; height: 22px; border: 2px solid #2a3348; border-top-color: #4f7df0;
+  border-radius: 50%; animation: bv-spin .7s linear infinite;
+}
+@keyframes bv-spin { to { transform: rotate(360deg); } }
+
+/* ── Panel backdrop ───────────────────────────────────────────────────────── */
+.bv-panel-backdrop { display: none; }
+
+/* ── Right panel ──────────────────────────────────────────────────────────── */
+.bv-panel {
+  width: 268px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  border-left: 1px solid #1c2133; background: #131722; overflow: hidden;
+}
+.bv-panel-mobile-hdr { display: none; }
+.bv-detail-card { border-bottom: 1px solid #1c2133; flex-shrink: 0; }
+.bv-panel-hdr { padding: 8px 12px 6px; font-size: 10px; font-weight: 600; letter-spacing: .1em; color: #5a6380; font-family: 'DM Mono', monospace; text-transform: uppercase; border-bottom: 1px solid #1c2133; }
+.bv-detail-body { padding: 6px 10px 8px; }
+.bv-no-trade { font-size: 12px; color: #3a4255; padding: 6px 0; }
+.bv-dr { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; border-bottom: 1px solid #1c2133; min-height: 22px; }
+.bv-dr:last-child { border-bottom: none; }
+.bv-dl { font-size: 10px; color: #5a6380; font-family: 'DM Mono', monospace; flex-shrink: 0; padding-right: 6px; }
+.bv-dv { font-size: 11px; font-family: 'DM Mono', monospace; color: #c8d0e0; text-align: right; }
+.bv-green { color: #26a69a !important; }
+.bv-red   { color: #ef5350 !important; }
+.bv-amber { color: #fbbf24 !important; }
+.bv-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; font-family: 'DM Mono', monospace; text-transform: uppercase; }
+.bv-badge.buy      { background: #26a69a22; color: #26a69a; border: 1px solid #26a69a44; }
+.bv-badge.sell     { background: #ef535022; color: #ef5350; border: 1px solid #ef535044; }
+.bv-badge.rg-bull  { background: #26a69a22; color: #26a69a; border: 1px solid #26a69a44; }
+.bv-badge.rg-bear  { background: #ef535022; color: #ef5350; border: 1px solid #ef535044; }
+.bv-badge.rg-range { background: #4f7df022; color: #4f7df0; border: 1px solid #4f7df044; }
+
+/* ── Trade list ───────────────────────────────────────────────────────────── */
+.bv-list-hdr { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; font-size: 10px; color: #5a6380; font-family: 'DM Mono', monospace; border-bottom: 1px solid #1c2133; flex-shrink: 0; }
+.bv-nav-btns { display: flex; gap: 4px; }
+.bv-list { overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #2a3348 transparent; }
+.bv-list::-webkit-scrollbar       { width: 5px; }
+.bv-list::-webkit-scrollbar-thumb { background: #2a3348; border-radius: 4px; }
+.bv-row { display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-bottom: 1px solid #0e1117; cursor: pointer; transition: background .1s; user-select: none; flex-wrap: nowrap; overflow: hidden; }
+.bv-row:hover { background: #1c2133; }
+.bv-row.bv-selected { background: #1c2840; border-left: 2px solid #4f7df0; padding-left: 8px; }
+.bv-row-date { font-family: 'DM Mono', monospace; font-size: 10px; color: #6a7892; white-space: nowrap; flex-shrink: 0; width: 72px; }
+.bv-row-px   { font-family: 'DM Mono', monospace; font-size: 10px; color: #9aa8c0; flex: 1; text-align: right; white-space: nowrap; }
+.bv-outcome  { font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 600; padding: 1px 4px; border-radius: 2px; white-space: nowrap; flex-shrink: 0; }
+.bv-outcome.win  { color: #26a69a; background: #26a69a1a; }
+.bv-outcome.loss { color: #ef5350; background: #ef53501a; }
+.bv-outcome.open { color: #fbbf24; background: #fbbf241a; }
+.bv-row-pnl  { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 600; white-space: nowrap; flex-shrink: 0; min-width: 44px; text-align: right; }
+
+/* ── Mobile bottom bar ────────────────────────────────────────────────────── */
+.bv-mobile-bar { display: none; }
+.bv-hints { position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%); font-family: 'DM Mono', monospace; font-size: 10px; color: #3a4255; pointer-events: none; white-space: nowrap; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE  ≤ 768px
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .bv-topbar { gap: 8px; padding: 0 10px; overflow: visible; flex-wrap: wrap; height: auto; min-height: 46px; padding-top: 6px; padding-bottom: 6px; }
+  #bvLevels, #bvReCenter, #bvTvBtn, #bvReplayBtn, #bvStat { display: none; }
+  .bv-panel {
+    position: absolute; top: 0; right: 0; bottom: 0; z-index: 200;
+    width: 88%; max-width: 320px;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: -8px 0 32px rgba(0,0,0,.65);
+    border-left: 1px solid #2a3348;
+  }
+  .bv-panel.bv-panel-open { transform: translateX(0); }
+  .bv-panel-backdrop {
+    display: block; position: absolute; inset: 0; background: rgba(0,0,0,.55);
+    z-index: 199; opacity: 0; pointer-events: none; transition: opacity 0.28s ease;
+  }
+  .bv-panel-backdrop.bv-visible { opacity: 1; pointer-events: auto; cursor: pointer; }
+  .bv-panel-mobile-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 10px; height: 44px; flex-shrink: 0;
+    border-bottom: 1px solid #1c2133; background: #0e1520;
+  }
+  .bv-panel-mobile-hdr-title { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: .08em; color: #5a6380; text-transform: uppercase; }
+  .bv-panel-mobile-hdr-actions { display: flex; gap: 5px; align-items: center; }
+  .bv-mobile-bar { display: flex; align-items: center; height: 52px; padding: 0 12px; gap: 8px; border-top: 1px solid #1c2133; background: #131722; flex-shrink: 0; }
+  .bv-mob-btn { background: #1c2133; border: 1px solid #2a3348; color: #9aa8c0; border-radius: 6px; font-size: 13px; font-family: 'DM Mono', monospace; cursor: pointer; height: 36px; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+  .bv-mob-btn:active { background: #242b42; }
+  .bv-mob-nav { width: 44px; flex-shrink: 0; font-size: 18px; color: #6a7892; border-color: #1c2133; }
+  .bv-mob-nav:active { color: #d1d4dc; background: #242b42; }
+  .bv-mob-panel-btn { flex: 1; gap: 7px; font-size: 12px; padding: 0 10px; color: #c8d0e0; border-color: #2a3348; }
+  .bv-mob-panel-btn .bv-mob-icon { font-size: 15px; line-height: 1; color: #4f7df0; }
+  .bv-mob-panel-btn .bv-mob-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .bv-hints { display: none; }
+  .bv-replay-bar { padding: 0 10px; gap: 5px; height: 38px; }
+  .bv-replay-ts { min-width: 80px; font-size: 10px; }
+  .bv-speed-group { gap: 1px; }
+  .bv-speed-btn { padding: 2px 4px; font-size: 9px; }
+}
+</style>
 </head>
 <body>
-  <header class="bv-header">
-    <span class="bv-header-logo">VIEWER</span>
-    <span class="bv-header-sep">/</span>
-    <span class="bv-header-title" id="source-label">—</span>
-    <a id="back-link" href="#" class="bv-back-link">← Back</a>
-    <div class="bv-header-right">
-      <span id="bv-trade-count"></span>
-      <div style="display:flex;gap:4px">
-        <button class="bv-filter-btn active" onclick="setFilter('outcome','all',this)">All</button>
-        <button class="bv-filter-btn win"    onclick="setFilter('outcome','win',this)">Win</button>
-        <button class="bv-filter-btn loss"   onclick="setFilter('outcome','loss',this)">Loss</button>
-      </div>
-      <div style="display:flex;gap:4px">
-        <button class="bv-filter-btn active" onclick="setFilter('side','all',this)">All</button>
-        <button class="bv-filter-btn buy"    onclick="setFilter('side','BUY',this)">Buy</button>
-        <button class="bv-filter-btn sell"   onclick="setFilter('side','SELL',this)">Sell</button>
+
+<div class="bv-root">
+
+  <!-- Top toolbar -->
+  <div class="bv-topbar" id="bvTopbar">
+    <span class="bv-title" id="bvTitle">Backtest Viewer</span>
+    <div class="bv-ctrl-group">
+      <span class="bv-lbl">Result</span>
+      <select class="bv-sel" id="bvFResult">
+        <option value="">All</option><option value="win">Win</option>
+        <option value="loss">Loss</option><option value="open">Open</option>
+      </select>
+    </div>
+    <div class="bv-ctrl-group">
+      <span class="bv-lbl">Dir</span>
+      <select class="bv-sel" id="bvFDir">
+        <option value="">All</option><option value="BUY">Buy</option><option value="SELL">Sell</option>
+      </select>
+    </div>
+    <div class="bv-ctrl-group">
+      <button class="bv-btn bv-active" id="bvLevels">Levels</button>
+      <button class="bv-btn" id="bvReCenter">Re-center</button>
+      <button class="bv-btn" id="bvReplayBtn">▶ Replay</button>
+      <button class="bv-btn bv-tv" id="bvTvBtn" title="Open on TradingView">TradingView ↗</button>
+    </div>
+    <span class="bv-stat" id="bvStat"></span>
+  </div>
+
+  <!-- Replay bar (hidden until activated) -->
+  <div class="bv-replay-bar" id="bvReplayBar" style="display:none">
+    <!-- Transport controls -->
+    <div class="bv-rplay-btns">
+      <button class="bv-btn bv-sm" id="bvStepBackBtn" title="Step back ←">|◀</button>
+      <button class="bv-btn" id="bvPlayBtn" style="color:#26a69a;border-color:#26a69a55;min-width:80px">▶ Play</button>
+      <button class="bv-btn bv-sm" id="bvStepBtn" title="Step forward →">▶|</button>
+      <button class="bv-btn bv-sm" id="bvResetBtn" title="Reset">⟲</button>
+    </div>
+
+    <!-- Scrubber timeline -->
+    <div class="bv-scrubber" id="bvScrubber">
+      <div class="bv-scrub-track" id="bvScrubTrack">
+        <div class="bv-scrub-fill" id="bvScrubFill"></div>
+        <div class="bv-scrub-marker" id="bvScrubEntry" style="display:none;background:#26a69a99"></div>
+        <div class="bv-scrub-marker" id="bvScrubExit"  style="display:none;background:#ef535099"></div>
+        <div class="bv-scrub-thumb" id="bvScrubThumb"></div>
       </div>
     </div>
-  </header>
 
+    <!-- Current bar timestamp -->
+    <span class="bv-replay-ts" id="bvReplayTs">—</span>
+
+    <!-- Speed presets -->
+    <div class="bv-speed-group" id="bvSpeedGroup">
+      <button class="bv-speed-btn" data-ms="800">½×</button>
+      <button class="bv-speed-btn bv-active" data-ms="350">1×</button>
+      <button class="bv-speed-btn" data-ms="150">2×</button>
+      <button class="bv-speed-btn" data-ms="50">4×</button>
+    </div>
+
+    <button class="bv-btn bv-sm" id="bvExitReplay" style="color:#ef5350;border-color:#ef535044;flex-shrink:0">✕</button>
+  </div>
+
+  <!-- Main body -->
   <div class="bv-body">
-    <!-- Trade list -->
-    <div class="bv-list" id="bv-trade-list">
-      <div class="bv-list-empty">Loading trades…</div>
-    </div>
-
-    <!-- Chart + replay -->
     <div class="bv-chart-wrap">
-      <div class="bv-chart-container">
-        <div id="bv-chart"></div>
-        <div class="bv-chart-msg" id="bv-chart-msg">Select a trade from the list</div>
-      </div>
-      <div class="bv-replay">
-        <button class="bv-replay-btn" id="btn-step-back"  onclick="stepReplay(-1)"  title="Step back (←)" disabled>‹</button>
-        <button class="bv-replay-btn" id="btn-play-pause" onclick="togglePlay()"    title="Play / Pause (Space)" disabled>▶</button>
-        <button class="bv-replay-btn" id="btn-step-fwd"   onclick="stepReplay(1)"   title="Step forward (→)" disabled>›</button>
-        <button class="bv-replay-btn" id="btn-restart"    onclick="restartReplay()" title="Restart (R)" disabled>⟳</button>
-        <div class="bv-replay-sep"></div>
-        <div class="bv-scrubber-wrap">
-          <div class="bv-scrubber-track" id="bv-scrubber" onclick="scrubClick(event)">
-            <div class="bv-scrubber-fill" id="bv-scrubber-fill"></div>
-          </div>
-        </div>
-        <span class="bv-replay-pos" id="bv-replay-pos">—</span>
-        <div class="bv-replay-sep"></div>
-        <select class="bv-speed-select" id="bv-speed" onchange="setSpeed(this.value)">
-          <option value="700">0.5×</option>
-          <option value="350">1×</option>
-          <option value="200" selected>2×</option>
-          <option value="100">4×</option>
-          <option value="50">8×</option>
-        </select>
-        <button class="bv-replay-btn bv-level-btn active" id="btn-levels" onclick="toggleLevels()" title="Toggle levels (L)">Lvl</button>
+      <div class="bv-chart" id="bvChart"></div>
+      <!-- Replay "now" line overlay -->
+      <div class="bv-replay-line" id="bvReplayLine"></div>
+      <div class="bv-chart-veil" id="bvVeil" style="display:none">
+        <div class="bv-spinner" id="bvVeilSpinner" style="display:none"></div>
+        <div id="bvVeilMsg"></div>
       </div>
     </div>
 
-    <!-- Detail panel -->
-    <div class="bv-detail" id="bv-detail">
-      <div class="bv-detail-empty">Select a trade to see details</div>
+    <!-- Backdrop (mobile) -->
+    <div class="bv-panel-backdrop" id="bvBackdrop"></div>
+
+    <!-- Right panel -->
+    <div class="bv-panel" id="bvPanel">
+      <!-- Mobile-only header -->
+      <div class="bv-panel-mobile-hdr">
+        <span class="bv-panel-mobile-hdr-title">Trades</span>
+        <div class="bv-panel-mobile-hdr-actions">
+          <button class="bv-btn bv-sm bv-active" id="bvPanelLevels">Levels</button>
+          <button class="bv-btn bv-sm" id="bvPanelReCenter">Re-center</button>
+          <button class="bv-btn bv-sm" id="bvClosePanel" style="padding:3px 10px;font-size:13px">✕</button>
+        </div>
+      </div>
+
+      <div class="bv-detail-card">
+        <div class="bv-panel-hdr">TRADE DETAIL</div>
+        <div class="bv-detail-body" id="bvDetailBody"><div class="bv-no-trade">No trade selected</div></div>
+      </div>
+      <div class="bv-list-hdr">
+        <span id="bvListCount">—</span>
+        <div class="bv-nav-btns">
+          <button class="bv-btn bv-sm" id="bvPrevBtn">‹ Prev</button>
+          <button class="bv-btn bv-sm" id="bvNextBtn">Next ›</button>
+        </div>
+      </div>
+      <div class="bv-list" id="bvList"></div>
     </div>
   </div>
 
+  <!-- Mobile bottom bar -->
+  <div class="bv-mobile-bar" id="bvMobileBar">
+    <button class="bv-mob-btn bv-mob-nav" id="bvMobPrev">‹</button>
+    <button class="bv-mob-btn bv-mob-panel-btn" id="bvMobToggle">
+      <span class="bv-mob-icon">☰</span>
+      <span class="bv-mob-label" id="bvMobLabel">Trades</span>
+    </button>
+    <button class="bv-mob-btn bv-mob-nav" id="bvMobNext">›</button>
+  </div>
+
+  <div class="bv-hints">← → Navigate &nbsp;·&nbsp; R Replay &nbsp;·&nbsp; ←→ Step &nbsp;·&nbsp; Space Play/Pause &nbsp;·&nbsp; L Levels &nbsp;·&nbsp; Enter Re-center</div>
+</div>
+
 <script>
-// ── Helpers ─────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function _dateOffset(dateStr, days) {
-  const d = new Date(dateStr + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
+function _dateOffset(d, days) {
+  const dt = new Date(d + 'T00:00:00Z');
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().substring(0, 10);
 }
 
-function _isoToEpochSec(isoStr) {
-  // Handles "2025-01-15T08:32:00" (no Z) → treats as UTC
-  return Math.floor(new Date(isoStr.includes('Z') ? isoStr : isoStr + 'Z').getTime() / 1000);
+function _toEpochSec(t) {
+  return Math.floor(new Date(String(t).substring(0, 19).replace(' ', 'T') + 'Z').getTime() / 1000);
 }
 
-function _fmtR(v) {
-  if (v == null) return '—';
-  return (v >= 0 ? '+' : '') + (+v).toFixed(2) + 'R';
-}
+function _isMobile() { return window.innerWidth <= 768; }
 
-function _fmtPrice(v, digits = 2) {
-  return v != null ? (+v).toFixed(digits) : '—';
-}
+// ── Vol Backtest Adapter ──────────────────────────────────────────────────────
 
-function _fmtTime(isoStr) {
-  if (!isoStr) return '—';
-  return isoStr.replace('T', ' ').slice(0, 16);
-}
+const VOL_ADAPTER = {
+  async fetchTrades() {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const r = await fetch('/api/vol-backtest/trades', { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status} — run the backtester first`);
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'Failed to load trades');
+      if (!d.trades?.length) throw new Error('No trades found — run the backtester first');
+      return d.trades;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Request timed out — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
 
-// ── Adapters ─────────────────────────────────────────────────────────────────────
+  async fetchCandles(trade) {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 120_000);
+    try {
+      const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
+      const from = _dateOffset(trade.date, -2);
+      const to   = _dateOffset(trade.date, +2);
+      const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data');
+      return d.candles;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('M1 data took too long — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  getLevels(trade) {
+    const { open, hl_75_pct, oc_med_pct, side, regime } = trade;
+    if (!open || !hl_75_pct || !oc_med_pct) return null;
+    const hl = open * hl_75_pct / 100, oc = open * oc_med_pct / 100;
+    const isSell = side === 'SELL', isRng = regime === 'RANGE';
+    return {
+      entry: isSell ? open + hl       : open - hl,
+      tp:    isSell ? (isRng ? open : open + oc) : (isRng ? open : open - oc),
+      sl:    isSell ? open + hl * 1.5 : open - hl * 1.5,
+      hl75H: open + hl, hl75L: open - hl,
+      ocH:   open + oc, ocL:   open - oc, open,
+    };
+  },
+
+  getDetail(trade) {
+    const asiaRange = (trade.asia_low != null && trade.asia_high != null)
+      ? `${(+trade.asia_low).toFixed(5)} – ${(+trade.asia_high).toFixed(5)}` : '—';
+    return { volRegime: trade.vol_regime || '—', asiaRange, sdLevel: trade.hl_75_pct?.toFixed(2) };
+  },
+};
+
+// ── Gold Backtest Adapter ─────────────────────────────────────────────────────
 
 const GOLD_ADAPTER = {
   async fetchTrades() {
@@ -209,11 +423,11 @@ const GOLD_ADAPTER = {
       const r = await fetch('/api/gold-backtest/trades', { signal: ctrl.signal });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
-        throw new Error(d.error || `HTTP ${r.status}`);
+        throw new Error(d.error || `HTTP ${r.status} — run the gold backtester first`);
       }
       const d = await r.json();
       if (!d.ok) throw new Error(d.error || 'Failed to load trades');
-      if (!d.trades?.length) throw new Error('No trades found — run the backtester first');
+      if (!d.trades?.length) throw new Error('No trades found — run the gold backtester first');
       return d.trades;
     } catch (e) {
       if (e.name === 'AbortError') throw new Error('Request timed out — try again');
@@ -229,10 +443,7 @@ const GOLD_ADAPTER = {
       const from = _dateOffset(trade.date, -2);
       const to   = _dateOffset(trade.date, +2);
       const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal });
-      if (!r.ok) {
-        const d = await r.json().catch(() => ({}));
-        throw new Error(d.error || `HTTP ${r.status} — M1 data may not be cached yet`);
-      }
+      if (!r.ok) throw new Error(`HTTP ${r.status} — M1 data may not be loaded yet`);
       const d = await r.json();
       if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data returned');
       return d.candles;
@@ -264,572 +475,715 @@ const GOLD_ADAPTER = {
   },
 };
 
-const VOL_ADAPTER = {
-  async fetchTrades() {
-    throw new Error('Vol backtest viewer not yet connected — run the vol backtester first');
-  },
-  async fetchCandles(trade) {
-    const ctrl = new AbortController();
-    const tid  = setTimeout(() => ctrl.abort(), 120_000);
-    try {
-      const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
-      const from = _dateOffset(trade.date, -2);
-      const to   = _dateOffset(trade.date, +2);
-      const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const d = await r.json();
-      if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data');
-      return d.candles;
-    } finally { clearTimeout(tid); }
-  },
-  getLevels(trade) {
-    if (!trade.entry_price) return null;
-    return {
-      entry: trade.entry_price,
-      sl:    trade.sl_price,
-      tp:    trade.tp_price,
-    };
-  },
-  getDetail(trade) {
-    return {
-      regime: trade.vol_regime || '—',
-      asia:   trade.asia_low != null ? `${(+trade.asia_low).toFixed(5)} – ${(+trade.asia_high).toFixed(5)}` : '—',
-      sd:     trade.sd_level?.toFixed(2) || '—',
-    };
-  },
-};
+// ── Adapter registry ──────────────────────────────────────────────────────────
 
-const ADAPTERS = { gold: GOLD_ADAPTER, vol: VOL_ADAPTER };
+const ADAPTERS   = { vol: VOL_ADAPTER, gold: GOLD_ADAPTER };
 const BACK_LINKS = {
-  gold: { href: 'gold-backtest.html', label: '← Gold Backtest' },
-  vol:  { href: 'backtest.html',      label: '← Vol Backtest' },
+  vol:    { href: 'vol-backtest.html',    label: '← Vol' },
+  claude: { href: 'claude-backtest.html', label: '← Claude' },
+  gold:   { href: 'gold-backtest.html',   label: '← Gold Backtest' },
 };
 
-// ── Viewer state ─────────────────────────────────────────────────────────────────
+const source  = new URLSearchParams(location.search).get('source') || 'vol';
+const adapter = ADAPTERS[source];
 
-let _adapter     = null;
-let _trades      = [];
-let _filtered    = [];
-let _activeTrade = null;
-let _candles     = [];     // parsed [{time: epochSec, open, high, low, close}]
-let _rawCandles  = [];     // original [{time: 'ISO', ...}] from server
-let _chart       = null;
-let _cs          = null;   // candlestick series
-let _priceLinesArr = [];   // active price line handles
-let _replayCursor = 0;
-let _replayTimer  = null;
-let _replaySpeed  = 200;
-let _showLevels   = true;
-let _filterOutcome = 'all';
-let _filterSide    = 'all';
-let _LWC = null;           // LightweightCharts namespace
+// ── State ─────────────────────────────────────────────────────────────────────
 
-// ── Init ─────────────────────────────────────────────────────────────────────────
+let allTrades = [], filtTrades = [], filtCapitals = [];
+let currentIdx = -1, currentTrade = null, fResult = '', fDir = '';
+let showLevels = true, panelOpen = false, loading = false;
 
-async function init() {
-  const params = new URLSearchParams(location.search);
-  const src    = params.get('source') ?? 'gold';
-  _adapter     = ADAPTERS[src];
+// Chart state
+let _chart = null, _cs = null;
+let _candles = [], _exitBar = null;
+let _levelLines = [], _fibLines = [];
 
-  if (!_adapter) {
-    showError(`Unknown source: <strong>${src}</strong>`, `Valid sources: ${Object.keys(ADAPTERS).join(', ')}`);
-    return;
-  }
+// Replay state
+let _replayMode        = false;
+let _replayCursor      = 0;
+let _replayStart       = 0;
+let _replayTimer       = null;
+let _replaySpeed       = 350;
+let _replayEntryMarked = false;
+let _replayExitMarked  = false;
 
-  const bl = BACK_LINKS[src];
-  if (bl) {
-    const link = document.getElementById('back-link');
-    if (link) { link.href = bl.href; link.textContent = bl.label; }
-  }
-  document.getElementById('source-label').textContent = src.toUpperCase();
-  document.title = `Viewer — ${src.toUpperCase()}`;
+// ── LightweightCharts — dynamic load ─────────────────────────────────────────
 
-  await loadLWC();
-  initChart();
-  attachKeyboard();
-  await loadTrades();
+function _loadLWC(cb) {
+  if (window.LightweightCharts) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js';
+  s.onload  = cb;
+  s.onerror = () => _setVeil('Chart library failed to load — check network connection', false);
+  document.head.appendChild(s);
 }
 
-// ── LightweightCharts loader ─────────────────────────────────────────────────────
-
-function loadLWC() {
-  return new Promise((resolve, reject) => {
-    if (window.LightweightCharts) { _LWC = window.LightweightCharts; resolve(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js';
-    s.onload = () => { _LWC = window.LightweightCharts; resolve(); };
-    s.onerror = () => reject(new Error('Failed to load LightweightCharts from CDN'));
-    document.head.appendChild(s);
-  });
-}
-
-// ── Chart init ───────────────────────────────────────────────────────────────────
-
-function initChart() {
-  const container = document.getElementById('bv-chart');
-  _chart = _LWC.createChart(container, {
-    width:  container.clientWidth,
-    height: container.clientHeight,
-    layout: {
-      background: { type: 'solid', color: '#111' },
-      textColor:  '#aaa',
-      fontFamily: "'DM Sans', sans-serif",
-    },
-    grid: {
-      vertLines: { color: '#1a1a1a' },
-      horzLines: { color: '#1a1a1a' },
-    },
-    crosshair: { mode: 1 },
-    rightPriceScale: { borderColor: '#2a2a2a', scaleMargins: { top: 0.1, bottom: 0.1 } },
-    timeScale: { borderColor: '#2a2a2a', timeVisible: true, secondsVisible: false },
-    handleScroll:  { vertTouchDrag: false },
-    handleScale:   { pinch: true, wheel: true },
-  });
-
-  _cs = _chart.addCandlestickSeries({
-    upColor:      '#4caf8a',
-    downColor:    '#e05555',
-    borderVisible: false,
-    wickUpColor:   '#4caf8a',
-    wickDownColor: '#e05555',
-  });
-
-  // Resize observer
-  const ro = new ResizeObserver(() => {
-    _chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
-  });
-  ro.observe(container);
-}
-
-// ── Trades loading ────────────────────────────────────────────────────────────────
-
-async function loadTrades() {
-  const list = document.getElementById('bv-trade-list');
-  list.innerHTML = '<div class="bv-list-empty">Loading trades…</div>';
-  try {
-    _trades = await _adapter.fetchTrades();
-    applyFilters();
-  } catch (e) {
-    list.innerHTML = `<div class="bv-list-empty" style="color:var(--red)">${e.message}</div>`;
-  }
-}
-
-function applyFilters() {
-  _filtered = _trades.filter(t => {
-    if (_filterOutcome !== 'all' && t.outcome !== _filterOutcome) return false;
-    if (_filterSide    !== 'all' && t.side    !== _filterSide)    return false;
-    return true;
-  });
-  renderTradeList();
-  document.getElementById('bv-trade-count').textContent = `${_filtered.length} / ${_trades.length}`;
-}
-
-function setFilter(type, value, btn) {
-  if (type === 'outcome') {
-    _filterOutcome = value;
-    document.querySelectorAll('.bv-filter-btn.win, .bv-filter-btn.loss').forEach(b => b.classList.remove('active'));
-    if (value === 'all') {
-      document.querySelectorAll('.bv-filter-btn:not(.buy):not(.sell)').forEach(b => {
-        if (b.textContent === 'All') b.classList.add('active');
-      });
+function _initChart() {
+  _loadLWC(() => {
+    const el = document.getElementById('bvChart');
+    if (!el || _chart) return;
+    _chart = LightweightCharts.createChart(el, {
+      autoSize:  true,
+      layout:    { background: { color: '#131722' }, textColor: '#d1d4dc' },
+      grid:      { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+      rightPriceScale: { borderColor: '#2a3348' },
+      timeScale: { borderColor: '#2a3348', timeVisible: true, secondsVisible: false },
+    });
+    _cs = _chart.addCandlestickSeries({
+      upColor: '#26a69a', downColor: '#ef5350',
+      borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+      wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    });
+    // Update replay line whenever the visible range changes (pan/zoom)
+    _chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      if (_replayMode) _updateReplayLine();
+    });
+    // If a trade was already selected while chart was loading, render it now
+    if (currentTrade && _candles.length) {
+      _renderChartFull();
+      _hideVeil();
     }
-  } else {
-    _filterSide = value;
-    document.querySelectorAll('.bv-filter-btn.buy, .bv-filter-btn.sell').forEach(b => b.classList.remove('active'));
-    if (value === 'all') {
-      document.querySelectorAll('.bv-filter-btn:not(.win):not(.loss)').forEach(b => {
-        if (b.textContent === 'All') b.classList.add('active');
-      });
-    }
-  }
-  btn.classList.add('active');
-  applyFilters();
+  });
 }
 
-function renderTradeList() {
-  const list = document.getElementById('bv-trade-list');
-  if (!_filtered.length) {
-    list.innerHTML = '<div class="bv-list-empty">No trades match current filter</div>';
-    return;
-  }
-  list.innerHTML = [..._filtered].reverse().map((t, revIdx) => {
-    const origIdx = _filtered.length - 1 - revIdx;
-    const isWin   = t.outcome === 'win';
-    const isBuy   = t.side === 'BUY';
-    const pnl     = t.pnl_pct != null ? (t.pnl_pct >= 0 ? '+' : '') + (+t.pnl_pct).toFixed(2) + 'R' : '—';
-    const badgeCls = (t.in_gp_zone || t.zone_variant === 'GP') ? 'gp' : '';
-    const badge    = t.zone_variant || t.level || '';
-    const isSelected = _activeTrade === t;
-    return `<div class="bv-trade-card${isSelected ? ' selected' : ''}" onclick="selectTrade(${origIdx})" data-idx="${origIdx}">
-      <div class="bv-card-row1">
-        <span class="bv-card-date">${t.date}</span>
-        <span class="bv-card-pnl ${isWin ? 'win' : 'loss'}">${pnl}</span>
-      </div>
-      <div class="bv-card-row2">
-        <span class="bv-card-side ${isBuy ? 'buy' : 'sell'}">${t.side}</span>
-        <span class="bv-card-badge ${badgeCls}">${badge}</span>
-        <span class="bv-card-badge">${t.outcome}</span>
-      </div>
-    </div>`;
-  }).join('');
-}
+// ── Chart rendering ───────────────────────────────────────────────────────────
 
-// ── Trade selection ───────────────────────────────────────────────────────────────
-
-async function selectTrade(idx) {
-  const trade = _filtered[idx];
-  if (!trade) return;
-  _activeTrade = trade;
-  stopReplay();
-  renderTradeList();
-  renderDetail(trade);
-  setReplayEnabled(false);
-  setChartMsg('Loading M1 data…', true);
-
-  try {
-    const rawCandles = await _adapter.fetchCandles(trade);
-    _rawCandles = rawCandles;
-    _candles = rawCandles.map(c => ({
-      time:  _isoToEpochSec(c.time),
-      open:  c.open, high: c.high, low: c.low, close: c.close,
-    }));
-
-    _replayCursor = findEntryIdx(trade) + 1;
-    if (_replayCursor < 1) _replayCursor = _candles.length;
-
-    _cs.setData(_candles.slice(0, _replayCursor));
-    clearLevels();
-    if (_showLevels) drawLevels(trade);
-    drawMarkers(trade);
-    zoomToTrade(trade);
-    setChartMsg('');
-    setReplayEnabled(true);
-    updateScrubber();
-  } catch (e) {
-    setChartMsg(e.message, false);
-    _candles = [];
-  }
-}
-
-function findEntryIdx(trade) {
-  if (!trade.fill_time || !_candles.length) return _candles.length - 1;
-  const entryTs = _isoToEpochSec(trade.fill_time);
-  let best = 0;
-  for (let i = 0; i < _candles.length; i++) {
-    if (_candles[i].time <= entryTs) best = i;
-    else break;
-  }
-  return best;
-}
-
-function findExitIdx(trade) {
-  if (!trade.exit_time || !_candles.length) return _candles.length - 1;
-  const exitTs = _isoToEpochSec(trade.exit_time);
-  let best = _candles.length - 1;
-  for (let i = 0; i < _candles.length; i++) {
-    if (_candles[i].time >= exitTs) { best = i; break; }
-  }
-  return best;
-}
-
-// ── Chart helpers ─────────────────────────────────────────────────────────────────
-
-function setChartMsg(msg, loading = false) {
-  const el = document.getElementById('bv-chart-msg');
-  el.textContent = msg;
-  el.className   = 'bv-chart-msg' + (loading ? ' bv-chart-loading' : '');
-  el.style.display = msg ? '' : 'none';
-}
-
-function clearLevels() {
-  for (const pl of _priceLinesArr) {
-    try { _cs.removePriceLine(pl); } catch (_) {}
-  }
-  _priceLinesArr = [];
-}
-
-function drawLevels(trade) {
+function _renderChartFull() {
   if (!_cs) return;
-  const levels = _adapter.getLevels(trade);
-  if (!levels) return;
-  const LS = _LWC.LineStyle;
-
-  const addLine = (price, color, style, title) => {
-    if (price == null) return;
-    const pl = _cs.createPriceLine({ price: +price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title });
-    _priceLinesArr.push(pl);
-  };
-
-  addLine(levels.entry, trade.side === 'BUY' ? '#4caf8a' : '#e05555', LS.Solid, 'Entry');
-  addLine(levels.sl,    '#e05555', LS.Dashed, 'SL');
-  addLine(levels.tp,    '#4caf8a', LS.Dashed, 'TP1');
-  addLine(levels.tp2,   '#4caf8a', LS.LargeDashed, 'TP2');
-  addLine(levels.hl75H, '#f4c430', LS.Dashed, 'HL75↑');
-  addLine(levels.hl75L, '#f4c430', LS.Dashed, 'HL75↓');
-  addLine(levels.ocH,   '#5a9de0', LS.Dashed, 'OC↑');
-  addLine(levels.ocL,   '#5a9de0', LS.Dashed, 'OC↓');
-  addLine(levels.open,  '#888',    LS.Solid,  'Open');
+  _cs.setData(_candles);
+  _clearLevelLines();
+  if (showLevels && currentTrade) _renderLevels(currentTrade);
+  _renderMarkers(currentTrade);
+  if (_cs.priceScale) _cs.priceScale().applyOptions({ autoScale: true });
+  _zoomToTrade(currentTrade);
 }
 
-function drawMarkers(trade) {
-  if (!_cs || !_candles.length) return;
+function _renderLevels(trade) {
+  if (!_cs || !showLevels) return;
+  const lvl = adapter.getLevels(trade);
+  if (!lvl) return;
+  const LS = LightweightCharts.LineStyle;
+  const add = (price, color, title, style) => {
+    if (price == null) return null;
+    return _cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title });
+  };
+  _levelLines = [
+    add(lvl.open,  '#6b7280', 'Open',  LS.Solid),
+    add(lvl.hl75H, '#fbbf24', 'HL75↑', LS.Dashed),
+    add(lvl.hl75L, '#fbbf24', 'HL75↓', LS.Dashed),
+    add(lvl.ocH,   '#4f7df0', 'OC↑',   LS.Dashed),
+    add(lvl.ocL,   '#4f7df0', 'OC↓',   LS.Dashed),
+    add(lvl.entry, trade.side === 'SELL' ? '#ef5350' : '#26a69a', 'Entry', LS.Solid),
+    add(lvl.tp,    '#26a69a', 'TP',    LS.Dotted),
+    add(lvl.sl,    '#ef5350', 'SL',    LS.Dotted),
+  ].filter(Boolean);
+}
+
+function _clearLevelLines() {
+  if (!_cs) return;
+  _levelLines.forEach(l => { try { _cs.removePriceLine(l); } catch {} });
+  _levelLines = [];
+}
+
+function _renderMarkers(trade, replayUpTo = null) {
+  if (!_cs || !trade) return;
+  const isSell = trade.side === 'SELL';
   const markers = [];
 
   if (trade.fill_time) {
-    const entryTs = _isoToEpochSec(trade.fill_time);
-    const isBuy   = trade.side === 'BUY';
-    markers.push({
-      time:     entryTs,
-      position: isBuy ? 'belowBar' : 'aboveBar',
-      color:    isBuy ? '#4caf8a' : '#e05555',
-      shape:    isBuy ? 'arrowUp' : 'arrowDown',
-      text:     'Entry',
-    });
-  }
-
-  if (trade.exit_time) {
-    const exitTs  = _isoToEpochSec(trade.exit_time);
-    const isWin   = trade.outcome === 'win';
-    markers.push({
-      time:     exitTs,
-      position: trade.side === 'BUY' ? 'aboveBar' : 'belowBar',
-      color:    isWin ? '#4caf8a' : '#e05555',
-      shape:    'circle',
-      text:     isWin ? 'TP' : 'SL',
-    });
-  } else {
-    // Compute exit by walking bars for TP/SL breach
-    const exitBar = _computeExitBar(trade);
-    if (exitBar) {
+    const ts = _toEpochSec(trade.fill_time);
+    if (replayUpTo == null || ts <= replayUpTo) {
       markers.push({
-        time:     exitBar.time,
-        position: trade.side === 'BUY' ? 'aboveBar' : 'belowBar',
-        color:    exitBar.wasWin ? '#4caf8a' : '#e05555',
-        shape:    'circle',
-        text:     exitBar.wasWin ? 'TP' : 'SL',
+        time: ts, size: 1,
+        position: isSell ? 'aboveBar' : 'belowBar',
+        color: isSell ? '#ef5350' : '#26a69a',
+        shape: isSell ? 'arrowDown' : 'arrowUp',
+        text: trade.side,
       });
     }
   }
 
-  markers.sort((a, b) => a.time - b.time);
-  _cs.setMarkers(markers);
+  if (replayUpTo == null) {
+    const exitTs   = trade.exit_time ? _toEpochSec(trade.exit_time) : _exitBar?.time;
+    const exitType = trade.exit_time ? trade.outcome : _exitBar?.type;
+    if (exitTs) {
+      const win = exitType === 'win';
+      markers.push({
+        time: exitTs, size: 0.8,
+        position: isSell ? 'belowBar' : 'aboveBar',
+        color: win ? '#26a69a' : '#ef5350',
+        shape: win ? 'arrowUp' : 'arrowDown',
+        text: win ? 'TP' : 'SL',
+      });
+    }
+  }
+
+  _cs.setMarkers(markers.sort((a, b) => a.time - b.time));
 }
 
+function _zoomToTrade(trade) {
+  if (!_chart || !trade?.date) return;
+  const dayStart = _toEpochSec(trade.date + 'T00:00:00');
+  _chart.timeScale().setVisibleRange({ from: dayStart - 3 * 3600, to: dayStart + 27 * 3600 });
+}
+
+// Walk M1 bars to find exit bar when exit_time is not stored (legacy CSV)
 function _computeExitBar(trade) {
-  const levels = _adapter.getLevels(trade);
-  if (!levels?.sl && !levels?.tp) return null;
-  const fillTs = trade.fill_time ? _isoToEpochSec(trade.fill_time) : 0;
-  const isBuy  = trade.side === 'BUY';
-  for (const c of _candles) {
-    if (c.time <= fillTs) continue;
-    if (isBuy) {
-      if (levels.sl  && c.low  <= levels.sl)  return { time: c.time, wasWin: false };
-      if (levels.tp  && c.high >= levels.tp)  return { time: c.time, wasWin: true  };
+  const lvl = adapter.getLevels(trade);
+  if (!lvl || !trade.fill_time || !_candles.length) return null;
+  const fillTs   = _toEpochSec(trade.fill_time);
+  const isSell   = trade.side === 'SELL';
+  const startIdx = _candles.findIndex(c => c.time >= fillTs);
+  if (startIdx < 0) return null;
+  for (let i = startIdx; i < _candles.length; i++) {
+    const { time, high, low } = _candles[i];
+    if (isSell) {
+      if (high >= lvl.sl) return { time, type: 'loss' };
+      if (low  <= lvl.tp) return { time, type: 'win'  };
     } else {
-      if (levels.sl  && c.high >= levels.sl)  return { time: c.time, wasWin: false };
-      if (levels.tp  && c.low  <= levels.tp)  return { time: c.time, wasWin: true  };
+      if (low  <= lvl.sl) return { time, type: 'loss' };
+      if (high >= lvl.tp) return { time, type: 'win'  };
     }
   }
   return null;
 }
 
-function zoomToTrade(trade) {
-  if (!_chart || !_candles.length) return;
-  const entryTs  = trade.fill_time ? _isoToEpochSec(trade.fill_time) : null;
-  const exitTs   = trade.exit_time ? _isoToEpochSec(trade.exit_time) : null;
-  const THREE_HR = 3 * 3600;
-  if (entryTs) {
+// ── Data loading ──────────────────────────────────────────────────────────────
+
+async function _loadTrades() {
+  _setVeil('Loading trades…', true);
+  try {
+    allTrades = await adapter.fetchTrades();
+    _applyFilters();
+    _setVeil('Select a trade from the list →', false);
+  } catch (e) {
+    _setVeil('⚠ ' + e.message, false);
+  }
+}
+
+function _applyFilters() {
+  filtTrades = allTrades.filter(t => {
+    if (fResult && t.outcome !== fResult) return false;
+    if (fDir    && t.side    !== fDir)    return false;
+    return true;
+  });
+  let cap = 100000;
+  filtCapitals = filtTrades.map(t => (cap = cap * (1 + (t.pnl_pct || 0) / 100), Math.round(cap)));
+  _renderList();
+  _updateStats();
+}
+
+function _updateStats() {
+  const n = filtTrades.length, wins = filtTrades.filter(t => t.outcome === 'win').length;
+  const wr = n ? (wins / n * 100).toFixed(1) : '—';
+  document.getElementById('bvStat').textContent = `${n.toLocaleString()} trades · Win ${wr}%`;
+  document.getElementById('bvListCount').textContent = `${n.toLocaleString()} trades`;
+  const lbl = document.getElementById('bvMobLabel');
+  if (lbl) lbl.textContent = currentTrade
+    ? `${currentTrade.instrument.toUpperCase()} · ${currentTrade.side} · ${currentTrade.date}`
+    : `${n.toLocaleString()} trades · Win ${wr}%`;
+}
+
+// ── Trade selection ───────────────────────────────────────────────────────────
+
+async function _selectTrade(idx) {
+  if (idx < 0 || idx >= filtTrades.length || loading) return;
+  loading = true;
+  _closeReplay(true);
+
+  const trade = filtTrades[idx];
+  currentIdx = idx; currentTrade = trade;
+
+  document.querySelectorAll('.bv-row').forEach(r => r.classList.remove('bv-selected'));
+  const row = document.querySelector(`.bv-row[data-idx="${idx}"]`);
+  if (row) { row.classList.add('bv-selected'); row.scrollIntoView({ block: 'nearest' }); }
+
+  document.getElementById('bvTitle').textContent = _isMobile()
+    ? 'Backtest Viewer' : `${trade.instrument} M1 — Backtest Viewer`;
+
+  _renderDetail(trade, idx);
+  _updateStats();
+
+  if (_isMobile()) _closePanel();
+
+  // Fetch M1 candles
+  _setVeil('Loading M1 data… (first load may take up to a minute)', true);
+  try {
+    const raw = await adapter.fetchCandles(trade);
+    _candles = raw.map(b => ({ time: _toEpochSec(b.time), open: b.open, high: b.high, low: b.low, close: b.close }));
+    _exitBar = trade.exit_time
+      ? { time: _toEpochSec(trade.exit_time), type: trade.outcome === 'win' ? 'win' : 'loss' }
+      : _computeExitBar(trade);
+
+    if (_cs) {
+      _renderChartFull();
+      _hideVeil();
+    } else {
+      // Chart not ready yet (LWC still loading) — render once it's ready
+      _initChart();
+      _setVeil('Loading chart…', true);
+    }
+  } catch (e) {
+    _exitBar = null;
+    _candles = [];
+    _setVeil('⚠ No M1 data — ' + e.message, false);
+  }
+
+  loading = false;
+}
+
+function _prevTrade() { _selectTrade(currentIdx - 1); }
+function _nextTrade() { _selectTrade(currentIdx + 1); }
+
+// ── Detail panel ──────────────────────────────────────────────────────────────
+
+function _renderDetail(trade, idx) {
+  const lvl = adapter.getLevels(trade), extra = adapter.getDetail ? adapter.getDetail(trade) : {};
+  const isSell = trade.side === 'SELL', capital = filtCapitals[idx];
+  const row = (l, v, c = '') => `<div class="bv-dr"><span class="bv-dl">${l}</span><span class="bv-dv ${c}">${v ?? '—'}</span></div>`;
+  const dirBadge = `<span class="bv-badge ${isSell ? 'sell' : 'buy'}">${trade.side}</span>`;
+  const rgBadge  = `<span class="bv-badge rg-${(trade.regime||'').toLowerCase()}">${trade.regime||'—'}</span>`;
+  const outColor = trade.outcome === 'win' ? 'bv-green' : trade.outcome === 'loss' ? 'bv-red' : 'bv-amber';
+  const pnlColor = (trade.pnl_pct||0) >= 0 ? 'bv-green' : 'bv-red';
+  const pnlStr   = trade.pnl_pct != null ? `${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(4)}%` : '—';
+  const fillTime = trade.fill_time
+    ? new Date(String(trade.fill_time).substring(0,19).replace(' ','T') + 'Z').toISOString().substring(11,16) : '—';
+  const asiaRange = extra.asiaRange || (trade.asia_low && trade.asia_high
+    ? `${(+trade.asia_low).toFixed(5)} – ${(+trade.asia_high).toFixed(5)}` : '—');
+  document.getElementById('bvDetailBody').innerHTML = [
+    row('Date',       trade.date),
+    row('Direction',  dirBadge),
+    row('Entry px',   lvl ? lvl.entry.toFixed(5) : trade.open?.toFixed(5)),
+    row('Entry time', fillTime),
+    row('SL',         lvl?.sl?.toFixed(5),  'bv-red'),
+    row('TP',         lvl?.tp?.toFixed(5),  'bv-green'),
+    row('SD Level',   trade.hl_75_pct?.toFixed(2) ?? extra.sdLevel),
+    row('Vol Regime', extra.volRegime || trade.vol_regime || '—'),
+    row('Asia range', asiaRange),
+    row('Regime',     rgBadge),
+    row('Leg',        trade.leg || '—'),
+    row('P&L',        pnlStr, pnlColor),
+    row('Result',     `<span class="${outColor}">${trade.outcome||'—'}</span>`),
+    row('Capital',    capital ? `$${capital.toLocaleString()}` : '—'),
+  ].join('');
+}
+
+// ── Trade list ────────────────────────────────────────────────────────────────
+
+function _renderList() {
+  const list = document.getElementById('bvList');
+  if (!list) return;
+  list.innerHTML = filtTrades.map((t, i) => {
+    const isSell = t.side === 'SELL', isWin = t.outcome === 'win', isLoss = t.outcome === 'loss';
+    const pnlStr = t.pnl_pct != null ? `${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(1)}%` : '';
+    const pnlCls = isWin ? 'bv-green' : isLoss ? 'bv-red' : 'bv-amber';
+    return `<div class="bv-row${i === currentIdx ? ' bv-selected' : ''}" data-idx="${i}">
+      <span class="bv-row-date">${t.date||'—'}</span>
+      <span class="bv-badge ${isSell ? 'sell' : 'buy'}">${t.side}</span>
+      <span class="bv-row-px">${(t.open||0).toFixed(4)}</span>
+      <span class="bv-outcome ${t.outcome||''}">${(t.outcome||'').toUpperCase()}</span>
+      <span class="bv-row-pnl ${pnlCls}">${pnlStr}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Replay ────────────────────────────────────────────────────────────────────
+
+function _openReplay() {
+  if (!currentTrade || !_candles.length || !_cs) return;
+  _replayMode = false;
+  const fillTs  = currentTrade.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+  let entryIdx  = fillTs ? _candles.findIndex(c => c.time >= fillTs) : -1;
+  if (entryIdx < 0) entryIdx = Math.floor(_candles.length / 2);
+  _replayStart        = Math.max(0, entryIdx - 30);
+  _replayCursor       = _replayStart;
+  _replayEntryMarked  = false;
+  _replayExitMarked   = false;
+  _replayMode         = true;
+
+  document.getElementById('bvReplayBar').style.display = '';
+  _setPlayLabel('▶ Play');
+  _cs.setData(_candles.slice(0, _replayCursor));
+  _clearLevelLines();
+  _cs.setMarkers([]);
+
+  // Zoom to the replay start window: 5 bars before, ~70 bars ahead
+  const startBar = _candles[_replayStart];
+  if (startBar && _chart) {
     _chart.timeScale().setVisibleRange({
-      from: entryTs - THREE_HR,
-      to:   (exitTs ?? entryTs) + THREE_HR,
+      from: startBar.time - 5 * 60,
+      to:   startBar.time + 70 * 60,
     });
   }
+
+  _initScrubberMarkers();
+  _updateReplayState();
 }
 
-function toggleLevels() {
-  _showLevels = !_showLevels;
-  const btn = document.getElementById('btn-levels');
-  btn.classList.toggle('active', _showLevels);
-  clearLevels();
-  if (_showLevels && _activeTrade) drawLevels(_activeTrade);
+function _closeReplay(silent = false) {
+  if (!_replayMode && !silent) return;
+  _stopReplayTimer();
+  _replayMode = false;
+  document.getElementById('bvReplayBar').style.display = 'none';
+  document.getElementById('bvReplayLine').style.display = 'none';
+  _resetScrubber();
+  if (!silent && currentTrade && _candles.length && _cs) _renderChartFull();
 }
 
-// ── Detail panel ─────────────────────────────────────────────────────────────────
-
-function renderDetail(trade) {
-  const detail = _adapter.getDetail(trade);
-  const isBuy  = trade.side === 'BUY';
-  const isWin  = trade.outcome === 'win';
-  const pnl    = trade.pnl_pct != null ? _fmtR(trade.pnl_pct) : '—';
-
-  const row = (label, value, cls = '') =>
-    `<div class="bv-detail-row">
-       <span class="bv-detail-label">${label}</span>
-       <span class="bv-detail-value ${cls}">${value}</span>
-     </div>`;
-
-  const detailRows = Object.entries(detail).map(([k, v]) => {
-    const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-    const cls = k === 'stars' ? 'gold' : k === 'vmuSignal' ? 'blue' : '';
-    return row(label, v, cls);
-  }).join('');
-
-  document.getElementById('bv-detail').innerHTML = `
-    <div class="bv-detail-section">
-      <div class="bv-detail-heading">Trade</div>
-      ${row('Instrument', trade.instrument || 'XAUUSD')}
-      ${row('Date', trade.date || '—')}
-      ${row('Direction', trade.side || '—', isBuy ? 'blue' : 'gold')}
-      ${row('Outcome', trade.outcome || '—', isWin ? 'win' : 'loss')}
-      ${row('P&L', pnl, isWin ? 'win' : 'loss')}
-    </div>
-    <div class="bv-detail-divider"></div>
-    <div class="bv-detail-section">
-      <div class="bv-detail-heading">Timing</div>
-      ${row('Entry time', _fmtTime(trade.fill_time))}
-      ${row('Exit time',  _fmtTime(trade.exit_time))}
-    </div>
-    <div class="bv-detail-divider"></div>
-    <div class="bv-detail-section">
-      <div class="bv-detail-heading">Levels</div>
-      ${row('Entry', _fmtPrice(trade.entry_price))}
-      ${row('Stop Loss', _fmtPrice(trade.sl_price), 'loss')}
-      ${row('TP1', _fmtPrice(trade.tp1_price), 'win')}
-      ${row('TP2', _fmtPrice(trade.tp2_price), 'win')}
-    </div>
-    ${detailRows ? `<div class="bv-detail-divider"></div>
-    <div class="bv-detail-section">
-      <div class="bv-detail-heading">Analysis</div>
-      ${detailRows}
-    </div>` : ''}
-  `;
-}
-
-// ── Replay ────────────────────────────────────────────────────────────────────────
-
-function setReplayEnabled(on) {
-  ['btn-step-back', 'btn-play-pause', 'btn-step-fwd', 'btn-restart'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.disabled = !on;
-  });
-}
-
-function updateScrubber() {
-  const total = _candles.length;
-  const pct   = total > 0 ? (_replayCursor / total) * 100 : 0;
-  document.getElementById('bv-scrubber-fill').style.width = pct + '%';
-  document.getElementById('bv-replay-pos').textContent =
-    total > 0 ? `${_replayCursor} / ${total}` : '—';
-}
-
-function scrubClick(e) {
-  if (!_candles.length) return;
-  const rect = e.currentTarget.getBoundingClientRect();
-  const pct  = (e.clientX - rect.left) / rect.width;
-  _replayCursor = Math.max(1, Math.min(_candles.length, Math.round(pct * _candles.length)));
-  _cs.setData(_candles.slice(0, _replayCursor));
-  updateScrubber();
-  scrollToBar(_replayCursor - 1);
-}
-
-function stepReplay(n) {
-  if (!_candles.length) return;
-  _replayCursor = Math.max(1, Math.min(_candles.length, _replayCursor + n));
-  _cs.setData(_candles.slice(0, _replayCursor));
-  updateScrubber();
-  scrollToBar(_replayCursor - 1);
-}
-
-function togglePlay() {
+function _togglePlay() {
   if (_replayTimer) {
-    stopReplay();
+    _stopReplayTimer();
+    _setPlayLabel('▶ Play');
   } else {
-    startReplay();
+    if (_replayCursor >= _candles.length) _resetReplay();
+    _startReplayTimer();
+    _setPlayLabel('⏸ Pause');
   }
 }
 
-function startReplay() {
-  if (!_candles.length) return;
-  if (_replayCursor >= _candles.length) _replayCursor = findEntryIdx(_activeTrade) || 0;
-  const btn = document.getElementById('btn-play-pause');
-  if (btn) btn.classList.add('active');
-  _replayTimer = setInterval(() => {
-    if (_replayCursor >= _candles.length) { stopReplay(); return; }
-    _cs.setData(_candles.slice(0, _replayCursor + 1));
-    _replayCursor++;
-    updateScrubber();
-    scrollToBar(_replayCursor - 1);
-  }, _replaySpeed);
+function _setPlayLabel(txt) {
+  document.getElementById('bvPlayBtn').textContent = txt;
 }
 
-function stopReplay() {
+function _startReplayTimer() {
+  _replayTimer = setInterval(_stepReplay, _replaySpeed);
+}
+
+function _stopReplayTimer() {
   if (_replayTimer) { clearInterval(_replayTimer); _replayTimer = null; }
-  const btn = document.getElementById('btn-play-pause');
-  if (btn) btn.classList.remove('active');
 }
 
-function restartReplay() {
-  stopReplay();
-  if (!_candles.length || !_activeTrade) return;
-  _replayCursor = Math.max(1, findEntryIdx(_activeTrade));
+function _stepReplay() {
+  if (!_replayMode || !_cs) return;
+  if (_replayCursor >= _candles.length) {
+    _stopReplayTimer();
+    _setPlayLabel('▶ Play');
+    return;
+  }
+  _cs.update(_candles[_replayCursor]);
+  _replayCursor++;
+  const curr   = _candles[_replayCursor - 1];
+  const fillTs = currentTrade?.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+
+  if (fillTs && !_replayEntryMarked && curr?.time >= fillTs) {
+    _replayEntryMarked = true;
+    _renderMarkers(currentTrade, curr.time);
+    if (showLevels) _renderLevels(currentTrade);
+  }
+  if (_exitBar && !_replayExitMarked && curr?.time >= _exitBar.time) {
+    _replayExitMarked = true;
+    _renderMarkers(currentTrade, null);
+    _stopReplayTimer();
+    _setPlayLabel('▶ Play');
+  }
+
+  _autoScrollToBar();
+  _updateReplayState();
+}
+
+function _stepBackReplay() {
+  if (!_replayMode || !_cs || _replayCursor <= _replayStart) return;
+  _stopReplayTimer();
+  _setPlayLabel('▶ Play');
+  _replayCursor--;
   _cs.setData(_candles.slice(0, _replayCursor));
-  updateScrubber();
-  zoomToTrade(_activeTrade);
+
+  // Recompute which markers should be visible at the new cursor
+  const curr   = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  const fillTs = currentTrade?.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+  _replayEntryMarked = !!(curr && fillTs && curr.time >= fillTs);
+  _replayExitMarked  = !!(curr && _exitBar && curr.time >= _exitBar.time);
+
+  _clearLevelLines();
+  _cs.setMarkers([]);
+  if (_replayEntryMarked) {
+    if (showLevels) _renderLevels(currentTrade);
+    _renderMarkers(currentTrade, _replayExitMarked ? null : curr.time);
+  }
+
+  _updateReplayState();
 }
 
-function setSpeed(val) {
-  _replaySpeed = parseInt(val, 10);
-  if (_replayTimer) { stopReplay(); startReplay(); }
+function _resetReplay() {
+  _stopReplayTimer();
+  _setPlayLabel('▶ Play');
+  _replayCursor = _replayStart;
+  _replayEntryMarked = false;
+  _replayExitMarked  = false;
+  if (_cs) {
+    _cs.setData(_candles.slice(0, _replayCursor));
+    _clearLevelLines();
+    _cs.setMarkers([]);
+  }
+  // Scroll back to the replay start
+  const startBar = _candles[_replayStart];
+  if (startBar && _chart) {
+    _chart.timeScale().setVisibleRange({
+      from: startBar.time - 5 * 60,
+      to:   startBar.time + 70 * 60,
+    });
+  }
+  _updateReplayState();
 }
 
-function scrollToBar(idx) {
-  if (!_chart || idx < 0 || idx >= _candles.length) return;
-  try {
-    _chart.timeScale().scrollToPosition(-Math.min(20, _candles.length - idx), false);
-  } catch (_) {}
+// Seek to a fractional position [0,1] on the scrubber
+function _scrubTo(pct) {
+  if (!_replayMode || !_cs) return;
+  const total = _candles.length - _replayStart;
+  _replayCursor = Math.max(_replayStart, Math.min(_candles.length, Math.round(pct * total) + _replayStart));
+  _stopReplayTimer();
+  _setPlayLabel('▶ Play');
+  _cs.setData(_candles.slice(0, _replayCursor));
+
+  const curr   = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  const fillTs = currentTrade?.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+  _replayEntryMarked = !!(curr && fillTs && curr.time >= fillTs);
+  _replayExitMarked  = !!(curr && _exitBar && curr.time >= _exitBar.time);
+
+  _clearLevelLines();
+  _cs.setMarkers([]);
+  if (_replayEntryMarked) {
+    if (showLevels) _renderLevels(currentTrade);
+    _renderMarkers(currentTrade, _replayExitMarked ? null : curr?.time);
+  }
+
+  _autoScrollToBar();
+  _updateReplayState();
 }
 
-// ── Keyboard shortcuts ────────────────────────────────────────────────────────────
-
-function attachKeyboard() {
-  document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-    if (e.code === 'Space') {
-      e.preventDefault();
-      if (_candles.length) togglePlay();
-    } else if (e.code === 'ArrowRight') {
-      e.preventDefault();
-      stepReplay(1);
-    } else if (e.code === 'ArrowLeft') {
-      e.preventDefault();
-      stepReplay(-1);
-    } else if (e.code === 'KeyR') {
-      restartReplay();
-    } else if (e.code === 'KeyL') {
-      toggleLevels();
-    } else if (e.code === 'Enter') {
-      if (_activeTrade) zoomToTrade(_activeTrade);
-    }
+// Keep the current replay bar visible when auto-playing
+function _autoScrollToBar() {
+  if (!_chart || !_candles.length) return;
+  const curr = _candles[_replayCursor - 1];
+  if (!curr) return;
+  const ts = _chart.timeScale();
+  const x  = ts.timeToCoordinate(curr.time);
+  const w  = (document.getElementById('bvChart').clientWidth || 800) - 70;
+  // Only scroll if the bar has drifted off-screen
+  if (x !== null && x >= 20 && x <= w - 20) return;
+  ts.setVisibleRange({
+    from: curr.time - 45 * 60,
+    to:   curr.time + 15 * 60,
   });
 }
 
-// ── Error display ─────────────────────────────────────────────────────────────────
+// Update scrubber position and the "now" vertical line
+function _updateReplayState() {
+  const total = _candles.length - _replayStart;
+  const pos   = _replayCursor - _replayStart;
+  const pct   = total > 0 ? (pos / total) : 0;
+  const pctPx = (pct * 100).toFixed(2) + '%';
 
-function showError(heading, body = '') {
-  document.body.innerHTML = `
-    <div class="bv-error">
-      <div class="bv-error-box">
-        <h2>${heading}</h2>
-        <p>${body}</p>
-        <p style="margin-top:12px"><a href="gold-backtest.html">← Back to Backtest</a></p>
-      </div>
-    </div>
-  `;
+  document.getElementById('bvScrubFill').style.width = pctPx;
+  document.getElementById('bvScrubThumb').style.left = pctPx;
+
+  // Timestamp
+  const bar = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  document.getElementById('bvReplayTs').textContent = bar
+    ? new Date(bar.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z'
+    : '—';
+
+  _updateReplayLine();
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────────
+// Position the vertical "now" line overlay on the chart
+function _updateReplayLine() {
+  const line = document.getElementById('bvReplayLine');
+  if (!line || !_chart) return;
+  const curr = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  if (!curr) { line.style.display = 'none'; return; }
+  const x = _chart.timeScale().timeToCoordinate(curr.time);
+  if (x === null) { line.style.display = 'none'; return; }
+  line.style.left    = Math.round(x) + 'px';
+  line.style.display = 'block';
+}
 
-init().catch(e => showError('Viewer failed to load', e.message));
+// Place entry and exit tick marks on the scrubber track
+function _initScrubberMarkers() {
+  const total = _candles.length - _replayStart;
+  if (total <= 0) return;
+
+  const entryEl = document.getElementById('bvScrubEntry');
+  const exitEl  = document.getElementById('bvScrubExit');
+
+  const fillTs = currentTrade?.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+  if (fillTs) {
+    const ei  = _candles.findIndex(c => c.time >= fillTs);
+    const pct = ei >= _replayStart ? ((ei - _replayStart) / total * 100).toFixed(2) + '%' : '-1px';
+    entryEl.style.left    = pct;
+    entryEl.style.display = '';
+  } else {
+    entryEl.style.display = 'none';
+  }
+
+  if (_exitBar) {
+    const xi  = _candles.findIndex(c => c.time >= _exitBar.time);
+    const pct = xi >= _replayStart ? ((xi - _replayStart) / total * 100).toFixed(2) + '%' : '-1px';
+    exitEl.style.left    = pct;
+    exitEl.style.display = '';
+  } else {
+    exitEl.style.display = 'none';
+  }
+}
+
+function _resetScrubber() {
+  document.getElementById('bvScrubFill').style.width  = '0%';
+  document.getElementById('bvScrubThumb').style.left  = '0%';
+  document.getElementById('bvScrubEntry').style.display = 'none';
+  document.getElementById('bvScrubExit').style.display  = 'none';
+}
+
+// Wire up scrubber click + drag
+function _initScrubberEvents() {
+  const scrubber = document.getElementById('bvScrubber');
+  const track    = document.getElementById('bvScrubTrack');
+  let dragging   = false;
+
+  function getPct(e) {
+    const rect = track.getBoundingClientRect();
+    const cx   = e.touches ? e.touches[0].clientX : e.clientX;
+    return Math.max(0, Math.min(1, (cx - rect.left) / rect.width));
+  }
+
+  scrubber.addEventListener('mousedown', e => {
+    e.preventDefault();
+    dragging = true;
+    if (_replayMode) _scrubTo(getPct(e));
+  });
+  document.addEventListener('mousemove', e => {
+    if (dragging && _replayMode) _scrubTo(getPct(e));
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+
+  scrubber.addEventListener('touchstart', e => {
+    dragging = true;
+    if (_replayMode) _scrubTo(getPct(e));
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (dragging && _replayMode) _scrubTo(getPct(e));
+  }, { passive: true });
+  document.addEventListener('touchend', () => { dragging = false; });
+}
+
+// ── Levels & view controls ────────────────────────────────────────────────────
+
+function _toggleLevels() {
+  showLevels = !showLevels;
+  ['bvLevels', 'bvPanelLevels'].forEach(id => document.getElementById(id)?.classList.toggle('bv-active', showLevels));
+  if (!currentTrade) return;
+  if (showLevels) _renderLevels(currentTrade);
+  else _clearLevelLines();
+}
+
+function _reCenter() {
+  if (currentTrade) _zoomToTrade(currentTrade);
+}
+
+function _openTradingView() {
+  if (!currentTrade) return;
+  const sym = currentTrade.instrument.toUpperCase().replace(/[^A-Z]/g, '');
+  window.open(`https://www.tradingview.com/chart/?symbol=FX:${sym}&interval=1`, '_blank');
+}
+
+// ── Mobile panel ──────────────────────────────────────────────────────────────
+
+function _openPanel()   { if (!_isMobile()) return; panelOpen = true;  document.getElementById('bvPanel').classList.add('bv-panel-open'); document.getElementById('bvBackdrop').classList.add('bv-visible'); }
+function _closePanel()  { if (!_isMobile()) return; panelOpen = false; document.getElementById('bvPanel').classList.remove('bv-panel-open'); document.getElementById('bvBackdrop').classList.remove('bv-visible'); }
+function _togglePanel() { panelOpen ? _closePanel() : _openPanel(); }
+
+// ── Veil ──────────────────────────────────────────────────────────────────────
+
+function _setVeil(msg, spinner) {
+  document.getElementById('bvVeil').style.display        = '';
+  document.getElementById('bvVeilMsg').textContent       = msg;
+  document.getElementById('bvVeilSpinner').style.display = spinner ? '' : 'none';
+}
+function _hideVeil() { document.getElementById('bvVeil').style.display = 'none'; }
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+if (!adapter) {
+  document.body.innerHTML = `<div style="padding:40px;color:#ef5350;font-family:monospace">Unknown source "${source}"</div>`;
+} else {
+  // Filters
+  document.getElementById('bvFResult').addEventListener('change', e => { fResult = e.target.value; _applyFilters(); });
+  document.getElementById('bvFDir')   .addEventListener('change', e => { fDir    = e.target.value; _applyFilters(); });
+
+  // Top-bar controls
+  document.getElementById('bvLevels')   .addEventListener('click', _toggleLevels);
+  document.getElementById('bvReCenter') .addEventListener('click', _reCenter);
+  document.getElementById('bvReplayBtn').addEventListener('click', _openReplay);
+  document.getElementById('bvTvBtn')    .addEventListener('click', _openTradingView);
+
+  // Replay transport
+  document.getElementById('bvStepBackBtn').addEventListener('click', _stepBackReplay);
+  document.getElementById('bvPlayBtn')    .addEventListener('click', _togglePlay);
+  document.getElementById('bvStepBtn')    .addEventListener('click', _stepReplay);
+  document.getElementById('bvResetBtn')   .addEventListener('click', _resetReplay);
+  document.getElementById('bvExitReplay') .addEventListener('click', () => _closeReplay());
+
+  // Speed buttons
+  document.getElementById('bvSpeedGroup').addEventListener('click', e => {
+    const btn = e.target.closest('.bv-speed-btn');
+    if (!btn) return;
+    _replaySpeed = +btn.dataset.ms;
+    document.querySelectorAll('.bv-speed-btn').forEach(b => b.classList.toggle('bv-active', b === btn));
+    if (_replayTimer) { _stopReplayTimer(); _startReplayTimer(); }
+  });
+
+  // Trade nav
+  document.getElementById('bvPrevBtn').addEventListener('click', _prevTrade);
+  document.getElementById('bvNextBtn').addEventListener('click', _nextTrade);
+  document.getElementById('bvList')   .addEventListener('click', e => { const r = e.target.closest('.bv-row'); if (r) _selectTrade(+r.dataset.idx); });
+
+  // Mobile
+  document.getElementById('bvMobToggle')    .addEventListener('click', _togglePanel);
+  document.getElementById('bvBackdrop')     .addEventListener('click', _closePanel);
+  document.getElementById('bvClosePanel')   .addEventListener('click', _closePanel);
+  document.getElementById('bvPanelLevels')  .addEventListener('click', _toggleLevels);
+  document.getElementById('bvPanelReCenter').addEventListener('click', () => { _reCenter(); _closePanel(); });
+  document.getElementById('bvMobPrev')      .addEventListener('click', _prevTrade);
+  document.getElementById('bvMobNext')      .addEventListener('click', _nextTrade);
+
+  // Keyboard — arrow keys are hijacked for step during replay
+  document.addEventListener('keydown', e => {
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+    if (_replayMode) {
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); _stepBackReplay(); return; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); _stepReplay();     return; }
+      if (e.key === ' ')          { e.preventDefault(); _togglePlay();     return; }
+      if (e.key === 'Escape')     { _closeReplay(); return; }
+      return;
+    }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); _prevTrade(); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); _nextTrade(); }
+    if (e.key === 'r' || e.key === 'R') _openReplay();
+    if (e.key === 'l' || e.key === 'L') _toggleLevels();
+    if (e.key === 'Enter') _reCenter();
+    if (e.key === 'Escape') _closePanel();
+  });
+
+  // Scrubber drag/click
+  _initScrubberEvents();
+
+  // Back link
+  const back = BACK_LINKS[source];
+  if (back) {
+    const a = document.createElement('a');
+    a.href = back.href; a.textContent = back.label;
+    a.style.cssText = 'font-family:"DM Mono",monospace;font-size:11px;color:#5a6380;text-decoration:none;white-space:nowrap;flex-shrink:0;order:-1;margin-right:4px';
+    a.addEventListener('mouseenter', () => a.style.color = '#9aa8c0');
+    a.addEventListener('mouseleave', () => a.style.color = '#5a6380');
+    document.getElementById('bvTopbar').insertBefore(a, document.getElementById('bvTopbar').firstChild);
+  }
+
+  // Start: load trades + chart in parallel
+  _initChart();
+  _loadTrades();
+
+  window._bv = { selectTrade: _selectTrade };
+}
 </script>
 </body>
 </html>

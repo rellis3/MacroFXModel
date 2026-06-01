@@ -93,24 +93,28 @@ export function computeDivergences(sym) {
   };
 
   // ── Daily RSI divergence ───────────────────────────────────────────────────
-  try {
-    const bars = filterTradingDays(S.ohlcData[symbol]?.values);
-    if (bars && bars.length >= 25) {
-      const chron  = [...bars].reverse();         // oldest-first
-      const closes = chron.map(b => parseFloat(b.close));
-      const highs  = chron.map(b => parseFloat(b.high));
-      const lows   = chron.map(b => parseFloat(b.low));
+  // RSI can stay extended for weeks in a trend — only meaningful in RANGE regime.
+  const dailyRegime = S.hmmRegimes[symbol]?.regime;
+  if (dailyRegime !== 'TREND') {
+    try {
+      const bars = filterTradingDays(S.ohlcData[symbol]?.values);
+      if (bars && bars.length >= 25) {
+        const chron  = [...bars].reverse();         // oldest-first
+        const closes = chron.map(b => parseFloat(b.close));
+        const highs  = chron.map(b => parseFloat(b.high));
+        const lows   = chron.map(b => parseFloat(b.low));
 
-      const rsiArr = calcRSI(closes, 14);
-      const bots   = fractalBots(rsiArr, 2);
-      const tops   = fractalTops(rsiArr, 2);
+        const rsiArr = calcRSI(closes, 14);
+        const bots   = fractalBots(rsiArr, 2);
+        const tops   = fractalTops(rsiArr, 2);
 
-      // Bull: RSI at fractal bottom must be in oversold zone (< 40)
-      // Bear: RSI at fractal top must be in overbought zone (> 60)
-      result.rsi.bullDiv = findBullDiv(rsiArr, lows,  bots, 30, 40);
-      result.rsi.bearDiv = findBearDiv(rsiArr, highs, tops, 30, 60);
-    }
-  } catch (e) { /* fail silently — data may not yet be loaded */ }
+        // Bull: RSI at fractal bottom must be in oversold zone (< 40)
+        // Bear: RSI at fractal top must be in overbought zone (> 60)
+        result.rsi.bullDiv = findBullDiv(rsiArr, lows,  bots, 30, 40);
+        result.rsi.bearDiv = findBearDiv(rsiArr, highs, tops, 30, 60);
+      }
+    } catch (e) { /* fail silently — data may not yet be loaded */ }
+  }
 
   // ── 5m WaveTrend divergence ────────────────────────────────────────────────
   try {

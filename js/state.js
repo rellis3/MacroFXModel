@@ -29,6 +29,7 @@ export const S = {
   hasOanda:        false,  // true when OANDA_KEY is configured server-side
   hasMyfxbook:     false,  // true when MYFXBOOK_SESSION is configured server-side
   hmmRegimes:      {},     // { 'EUR/USD': { regime, trendDir, rangeProb, trendProb, computedAt } }
+  pfRegime:        {},     // { 'EUR/USD': { regime, confidence, pBull, pBear, pRange, pChop } } — particle filter
   goldModel:       null,   // computeGoldMacroModel() result — updated after FRED loads and on gold tab
   _goldVolRegime:  null,   // scratch slot: vol regime passed from vol.js into gold T1 calc
   goldHistory:     null,   // {tips,bei,dxy,vix,hy} arrays from fredhistory — enables accel + z-score

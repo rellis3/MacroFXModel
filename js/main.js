@@ -1,7 +1,6 @@
 import { S } from './state.js';
-import { PAIRS, CACHE_DURATION } from './config.js';
+import { PAIRS, CACHE_DURATION, FEATURE_FLAGS, TYPICAL_SPREADS } from './config.js';
 import { kvSet, loadCached, cleanupStaleSessionCaches, fetchAPI, updateStatus, updatePill, londonSessionDay, getDigits, getPipSize, toOandaSym, classifySpread } from './utils.js';
-import { TYPICAL_SPREADS } from './config.js';
 import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
 import { calculateStructuralFibs } from './structural-fibs.js';
 import { filterConfluences, enhanceConfluences, mergeCrossSources } from './confluences.js';
@@ -20,6 +19,7 @@ import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 import { exportWatchlistCSV } from './watchlist.js';
 import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, sendTestServerAlert, loadAlertCfg, forceKVSync, checkGoldMacroAlerts, syncGoldModelNow } from './alerts.js';
+import { runParticleFilter } from './particleFilter.js';
 
 // ── Debounced renderAll ───────────────────────────────────────────────────────
 // Prevents concurrent DOM mutations when async compass resolve + quote refresh
@@ -199,12 +199,38 @@ function updateHeaderRegime() {
   if (!el) return;
   const r = S.hmm5mRegimes?.[sym];
   if (!r) { el.style.display = 'none'; return; }
+
   const lbl  = document.getElementById('hdrRegimeLbl');
   const conf = document.getElementById('hdrRegimeConf');
   if (lbl)  lbl.textContent  = r.regime;
   if (conf) conf.textContent = `${r.confidence}%`;
   el.className = `hdr-regime ${r.regime.toLowerCase()}`;
-  el.title     = `Bull ${r.pBull}%  ·  Bear ${r.pBear}%  ·  Range ${r.pRange}%\ntrendZ ${r.trendZ}  volZ ${r.volZ}  adxZ ${r.adxZ}`;
+
+  // Particle filter secondary estimate — shown in tooltip and as a small badge
+  const pf = FEATURE_FLAGS.PARTICLE_FILTER ? S.pfRegime?.[sym] : null;
+  const pfNote = pf
+    ? `\nPF: ${pf.regime} ${pf.confidence}%  (Bull ${pf.pBull}% Bear ${pf.pBear}% Range ${pf.pRange}% Chop ${pf.pChop}%)`
+    : '';
+  el.title = `HMM: Bull ${r.pBull}%  ·  Bear ${r.pBear}%  ·  Range ${r.pRange}%\ntrendZ ${r.trendZ}  volZ ${r.volZ}  adxZ ${r.adxZ}${pfNote}`;
+
+  // Show PF badge next to HMM when available and flags agree (or disagree) with HMM
+  let pfBadge = document.getElementById('hdrPFBadge');
+  if (pf) {
+    if (!pfBadge) {
+      pfBadge = document.createElement('span');
+      pfBadge.id        = 'hdrPFBadge';
+      pfBadge.style.cssText = 'font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px;margin-left:5px;opacity:.85;letter-spacing:.03em';
+      el.appendChild(pfBadge);
+    }
+    const agree = pf.regime === r.regime;
+    pfBadge.textContent = `PF:${pf.regime[0]}${pf.confidence}%`;
+    pfBadge.style.background = agree ? 'rgba(255,255,255,.15)' : 'rgba(255,165,0,.3)';
+    pfBadge.style.color      = agree ? 'inherit' : '#ffa500';
+    pfBadge.title = `Particle filter: ${pf.regime} ${pf.confidence}%${agree ? ' (agrees with HMM)' : ' ⚠ disagrees with HMM'}`;
+  } else if (pfBadge) {
+    pfBadge.remove();
+  }
+
   el.style.display = 'flex';
 }
 
@@ -213,6 +239,11 @@ async function loadHMM5m() {
     const r = await fetch('/api/hmm5m');
     if (!r.ok) return;
     S.hmm5mRegimes = await r.json();
+    // Refresh PF estimate when new 5m bars arrive
+    const sym = S.currentPair?.symbol;
+    if (sym && S.ohlc5m[sym]?.values) {
+      S.pfRegime[sym] = runParticleFilter(S.ohlc5m[sym].values);
+    }
     updateHeaderRegime();
   } catch {}
 }
@@ -513,10 +544,17 @@ async function loadAll() {
     const sessionDay = londonSessionDay();
 
     // Fire all independent fetches in parallel — cached values resolve instantly
+    const fredValid = S.fredData &&
+      ['vix', 'us10y', 'hy', 'nfci'].every(k => S.fredData[k]?.value != null);
+    // If FRED was unavailable on the last attempt, wait 30s before retrying so we
+    // don't hammer /api/fred on every pair switch while the server refresh is in progress.
+    const fredCooling = !fredValid && S._fredUnavailAt &&
+      Date.now() - S._fredUnavailAt < 30_000;
     const [fredData, ecbData, cfg, ohlcData, ohlc5mData, ohlc30mData, quote] =
       await Promise.all([
-        S.fredData ? Promise.resolve(S.fredData) :
-          loadCached('fred', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED),
+        (fredValid || fredCooling) ? Promise.resolve(S.fredData) :
+          loadCached('fred2', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED,
+            d => ['vix', 'us10y', 'hy', 'nfci'].every(k => d?.[k]?.value != null)),
         S.ecbData ? Promise.resolve(S.ecbData) :
           fetch('/api/ecbsdw').then(r => r.ok ? r.json() : null).catch(() => null),
         fetch('/api/config').then(r => r.json()).catch(() => ({})),
@@ -529,8 +567,15 @@ async function loadAll() {
         loadCached(`quote_${symKey}`, () => fetchAPI(`/api/quote?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.QUOTE),
       ]);
 
-    // Apply global results
-    if (!S.fredData) { S.fredData = fredData; updatePill('pillFred', 'ok'); }
+    // Only promote fredData to S.fredData if the critical series are actually present.
+    // Storing partial/empty data (null critical series) keeps fredValid false on every
+    // loadAll() call, triggering continuous re-fetches.
+    const fredNowValid = fredData &&
+      ['vix', 'us10y', 'hy', 'nfci'].every(k => fredData[k]?.value != null);
+    if (!fredValid && !fredCooling) {
+      if (fredNowValid) { S.fredData = fredData; delete S._fredUnavailAt; updatePill('pillFred', 'ok'); }
+      else              { S._fredUnavailAt = Date.now(); } // start 30s cooldown
+    }
     if (!S.ecbData)    S.ecbData  = ecbData;
     if (cfg.hasAnt)    updatePill('pillAnt', 'ant');
     if (cfg.hasKV)     updatePill('pillKV',  'ok');
@@ -547,6 +592,9 @@ async function loadAll() {
     S.ohlc5m[sym]   = ohlc5mData; updatePill('pill5m', 'ok');
     S.ohlc30m[sym]  = ohlc30mData; updatePill('pill30m', 'ok');
     updatePill('pillQuote', 'ok');
+
+    // Particle filter regime estimate — runs on 5m bars, result stored in S.pfRegime
+    S.pfRegime[sym] = runParticleFilter(ohlc5mData?.values);
 
     // Session data (no network — instant)
     S.sessionData = detectSession();
@@ -591,6 +639,8 @@ async function loadAll() {
             S.ohlcData[sym] = data;
             S.usdStrength   = computeUSDStrength();
             S.dollarRegime  = computeDollarRegime();
+            // Re-render so T5 cross-sectional carry picks up the newly available pair bars.
+            renderAllDebounced();
           }
         }).catch(() => {});
       }
