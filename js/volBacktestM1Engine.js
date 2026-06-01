@@ -26,9 +26,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const BT_M1_DIR = path.join(__dirname, '..', 'VolRangeForecaster', 'data', 'm1');
 
-const R2_ENDPOINT   = 'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com';
-const R2_BUCKET     = 'r2-storage';
-const R2_KEY_PREFIX = 'm1';
+const R2_ENDPOINT   = process.env.R2_ENDPOINT || 'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com';
+const R2_BUCKET     = process.env.R2_BUCKET   || 'r2-storage';
+const R2_KEY_PREFIX = process.env.R2_KEY_PREFIX || 'm1';
 
 function makeR2Client() {
   const accessKeyId     = process.env.R2_ACCESS_KEY;
@@ -38,23 +38,23 @@ function makeR2Client() {
     endpoint: R2_ENDPOINT,
     region: 'auto',
     credentials: { accessKeyId, secretAccessKey },
+    requestHandler: { requestTimeout: 30_000, connectionTimeout: 10_000 },
   });
 }
 
+// Returns ArrayBuffer on success, throws on R2 error (caller decides whether to fall through).
 async function fetchFromR2(pairKey) {
   const client = makeR2Client();
-  if (!client) return null;
-  try {
-    const cmd  = new GetObjectCommand({ Bucket: R2_BUCKET, Key: `${R2_KEY_PREFIX}/${pairKey}_m1.parquet` });
-    const resp = await client.send(cmd);
-    const chunks = [];
-    for await (const chunk of resp.Body) chunks.push(chunk);
-    const buf = Buffer.concat(chunks);
-    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-  } catch (err) {
-    console.warn(`[M1] R2 fetch failed for ${pairKey}: ${err?.message ?? err}`);
-    return null;
-  }
+  if (!client) return null; // credentials not set — not an error, just skip
+  const key = `${R2_KEY_PREFIX}/${pairKey}_m1.parquet`;
+  console.log(`[M1] Fetching from R2: bucket=${R2_BUCKET} key=${key}`);
+  const cmd  = new GetObjectCommand({ Bucket: R2_BUCKET, Key: key });
+  const resp = await client.send(cmd); // throws on 403/404/timeout — let caller handle
+  const chunks = [];
+  for await (const chunk of resp.Body) chunks.push(chunk);
+  const buf = Buffer.concat(chunks);
+  console.log(`[M1] R2 OK: ${pairKey} (${(buf.length / 1e6).toFixed(1)} MB)`);
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
 }
 
 // ── Drive file IDs for all 25 M1 parquets ────────────────────────────────────
@@ -706,7 +706,10 @@ export async function runFullM1Backtest(opts = {}, instruments = INSTRUMENTS, m1
         const m1File   = path.join(m1Dir, `${pairKey}_m1.parquet`);
         let   m1ByDate = null;
 
-        const r2ab = await fetchFromR2(pairKey);
+        let r2ab = null;
+        try { r2ab = await fetchFromR2(pairKey); }
+        catch (e) { pairLog.push(`  R2 error: ${e?.message} — trying local/Drive`); }
+
         if (r2ab) {
           pairLog.push(`  Loading M1 parquet from R2 (${(r2ab.byteLength / 1e6).toFixed(1)} MB)…`);
           const rows = await readM1Parquet(r2ab);
@@ -753,16 +756,26 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
     : String(v).substring(0, 19).replace(' ', 'T');
   const parse = rows => rows.map(row => ({ time: toIso(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] }));
 
-  const r2ab = await fetchFromR2(pairKey);
-  if (r2ab) return parse(await readM1Parquet(r2ab));
+  // 1. R2 (throws with a descriptive message on credential/bucket/key errors)
+  let r2Error = null;
+  try {
+    const r2ab = await fetchFromR2(pairKey);
+    if (r2ab) return parse(await readM1Parquet(r2ab));
+  } catch (err) {
+    r2Error = err?.message ?? String(err);
+    console.warn(`[M1] R2 failed for ${pairKey}: ${r2Error}`);
+  }
 
+  // 2. Local disk
   const m1File = path.join(m1Dir, `${pairKey}_m1.parquet`);
   if (existsSync(m1File)) return parse(await readM1Parquet(m1File));
 
-  // Last resort: download from Google Drive (slow on first load, then cached to disk)
+  // 3. Google Drive (slow on first load, then saved to disk)
   const driveAb = await fetchFromDrive(pairKey, m1Dir);
   if (driveAb) return parse(await readM1Parquet(driveAb));
 
+  // Surface the R2 error so the client sees something actionable
+  if (r2Error) throw new Error(`R2 error: ${r2Error}`);
   return null;
 }
 

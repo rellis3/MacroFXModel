@@ -1783,6 +1783,10 @@ app.get('/api/vol-backtest/m1-status', (_req, res) => {
 app.get('/api/vol-backtest/diagnose', async (_req, res) => {
   const report = {};
 
+  const R2_ENDPOINT_CFG   = process.env.R2_ENDPOINT    || 'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com';
+  const R2_BUCKET_CFG     = process.env.R2_BUCKET      || 'r2-storage';
+  const R2_KEY_PREFIX_CFG = process.env.R2_KEY_PREFIX  || 'm1';
+
   // Env vars
   report.env = {
     OANDA_KEY:        !!process.env.OANDA_KEY,
@@ -1790,6 +1794,9 @@ app.get('/api/vol-backtest/diagnose', async (_req, res) => {
     OANDA_ACCOUNT_ID: process.env.OANDA_ACCOUNT_ID || '(unset)',
     R2_ACCESS_KEY:    !!process.env.R2_ACCESS_KEY,
     R2_SECRET_KEY:    !!process.env.R2_SECRET_KEY,
+    R2_BUCKET:        R2_BUCKET_CFG,
+    R2_ENDPOINT:      R2_ENDPOINT_CFG,
+    R2_KEY_PREFIX:    R2_KEY_PREFIX_CFG,
     NODE_ENV:         process.env.NODE_ENV || '(unset)',
   };
 
@@ -1797,7 +1804,7 @@ app.get('/api/vol-backtest/diagnose', async (_req, res) => {
   try {
     const { S3Client, HeadObjectCommand } = await import('@aws-sdk/client-s3');
     const r2 = new S3Client({
-      endpoint:    'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com',
+      endpoint:    R2_ENDPOINT_CFG,
       region:      'auto',
       requestHandler: { requestTimeout: 5000 },
       credentials: {
@@ -1805,7 +1812,7 @@ app.get('/api/vol-backtest/diagnose', async (_req, res) => {
         secretAccessKey: process.env.R2_SECRET_KEY,
       },
     });
-    const cmd = new HeadObjectCommand({ Bucket: 'r2-storage', Key: 'm1/eurusd_m1.parquet' });
+    const cmd = new HeadObjectCommand({ Bucket: R2_BUCKET_CFG, Key: `${R2_KEY_PREFIX_CFG}/eurusd_m1.parquet` });
     const meta = await r2.send(cmd);
     report.r2 = { ok: true, eurusdBytes: meta.ContentLength };
   } catch (e) {
