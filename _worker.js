@@ -629,7 +629,7 @@ export default {
       if (path === '/api/fred') {
         if (!env.FRED_KEY) return err('FRED_KEY not configured', 503);
 
-        const FRED_KV_KEY  = 'fred_data_v2';
+        const FRED_KV_KEY  = 'fred_data_v3'; // v3: requires critical series (vix+us10y+hy+nfci)
         const FRED_FRESH_MS = 6 * 60 * 60 * 1000; // 6 h in ms
 
         // ── KV cache read ──────────────────────────────────────────────────────
@@ -682,44 +682,51 @@ export default {
           hy_ccc:   'BAMLH0A3HYC',
         };
 
-        // ── Live FRED fetch ────────────────────────────────────────────────────
-        const fetches = Object.entries(SERIES).map(async ([key, id]) => {
-          const u = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${env.FRED_KEY}&file_type=json&sort_order=desc&limit=5`;
-          try {
-            const r = await fetch(u);
-            const d = await r.json();
-            // Filter out FRED null marker "."
-            const valid = (d.observations || [])
-              .filter(o => o.value && o.value !== '.')
-              .map(o => parseFloat(o.value));
-            // Return { value: latest, prev: previous }  -  exactly what dashboard accesses
-            return [key, {
-              value: valid[0] ?? null,
-              prev:  valid[1] ?? null,
-            }];
-          } catch (e) {
-            return [key, { value: null, prev: null }];
-          }
-        });
+        // ── Live FRED fetch (batched to stay under rate limit) ───────────────────
+        // Fire in batches of 9 with 80 ms gaps — reduces peak concurrent FRED
+        // connections from 27 → 9, keeping well under the 120 req/min limit.
+        const seriesEntries = Object.entries(SERIES);
+        const BATCH = 9;
+        const allResults = [];
+        for (let i = 0; i < seriesEntries.length; i += BATCH) {
+          if (i > 0) await new Promise(r => setTimeout(r, 80));
+          const batch = seriesEntries.slice(i, i + BATCH);
+          const batchResults = await Promise.all(batch.map(async ([key, id]) => {
+            const u = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${env.FRED_KEY}&file_type=json&sort_order=desc&limit=5`;
+            try {
+              const r = await fetch(u);
+              const d = await r.json();
+              // Filter out FRED null marker "."
+              const valid = (d.observations || [])
+                .filter(o => o.value && o.value !== '.')
+                .map(o => parseFloat(o.value));
+              return [key, { value: valid[0] ?? null, prev: valid[1] ?? null }];
+            } catch (e) {
+              return [key, { value: null, prev: null }];
+            }
+          }));
+          allResults.push(...batchResults);
+        }
 
-        const results = await Promise.all(fetches);
-        const out     = Object.fromEntries(results);
+        const out = Object.fromEntries(allResults);
 
-        // ── KV cache write (only when FRED returned enough valid data) ─────────
-        // Require ≥ 15 non-null series before caching. If FRED is rate-limiting,
-        // validCount will be low — return stale data instead of caching nulls.
-        const validCount = Object.values(out).filter(v => v.value != null).length;
-        if (validCount >= 15) {
+        // ── KV cache write — require critical series before caching ───────────
+        // A partial rate-limited batch may return 15+ series but miss VIX/yields/
+        // NFCI. Require the four dashboard-critical series to be non-null so that
+        // partial results don't get cached as good data.
+        const CRITICAL = ['vix', 'us10y', 'hy', 'nfci'];
+        const criticalOk = CRITICAL.every(k => out[k]?.value != null);
+        const validCount  = Object.values(out).filter(v => v.value != null).length;
+        if (criticalOk && validCount >= 10) {
           env.FX_SCORES?.put(
             FRED_KV_KEY,
             JSON.stringify({ d: out, t: Date.now() }),
-            { expirationTtl: 86400 },  // absolute KV TTL = 24 h
+            { expirationTtl: 86400 },
           ).catch(() => {});
           return json(out);
         }
 
-        // FRED rate-limited or mostly failing — serve stale cache to avoid
-        // propagating nulls to all open dashboards.
+        // FRED rate-limited or critical series missing — serve stale cache.
         if (staleData) return json(staleData);
         return json(out); // no stale available — return whatever we got
       }
