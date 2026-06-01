@@ -44,8 +44,7 @@ class _GaussianUPM:
 
     def update(self, x: float) -> None:
         self._kappa += 1
-        self._mu     = (self._kappa0 * self._mu0 + self._n * x) / self._kappa if self._n == 0 else \
-                       (self._mu * (self._kappa - 1) + x) / self._kappa
+        self._mu     = (self._mu * (self._kappa - 1) + x) / self._kappa
         self._n     += 1
 
     def clone(self) -> '_GaussianUPM':
