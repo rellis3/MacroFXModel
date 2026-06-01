@@ -43,8 +43,7 @@ const _parsed = { m1: false, m5: false, m30: false };
 let   _pendingRun = null;
 
 function checkAllParsed() {
-  const needed = _pendingRun?.loadM1 ? ['m1', 'm5', 'm30'] : ['m5', 'm30'];
-  if (needed.every(tf => _parsed[tf]) && _pendingRun) {
+  if (['m1', 'm5', 'm30'].every(tf => _parsed[tf]) && _pendingRun) {
     const cfg = _pendingRun;
     _pendingRun = null;
     ensureWorker().postMessage({ type: 'run', payload: cfg });
@@ -53,9 +52,11 @@ function checkAllParsed() {
 
 // ── R2 fetch with streaming progress ─────────────────────────────────────────
 
+// Track per-tf download progress for combined display
+const _dlPct = { m1: 0, m5: 0, m30: 0 };
+
 async function fetchAndParse(tf) {
   const url = `${R2_BASE}/${GOLD_SYM}/${GOLD_SYM.toLowerCase()}-m${tf}-bid.csv`;
-  setStatus(`Loading M${tf} data from R2…`, 'running');
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status} for M${tf}`);
@@ -69,12 +70,13 @@ async function fetchAndParse(tf) {
       chunks.push(value);
       loaded += value.length;
       if (total > 0) {
-        const pct = Math.round(loaded / total * 30);
-        setStatus(`M${tf}: ${fmtBytes(loaded)} / ${fmtBytes(total)}`, 'running', pct);
+        _dlPct[`m${tf}`] = loaded / total;
+        const combined = Math.round((_dlPct.m1 + _dlPct.m5 + _dlPct.m30) / 3 * 40);
+        setStatus(`Downloading M1 + M5 + M30 from R2… M${tf}: ${fmtBytes(loaded)}/${fmtBytes(total)}`, 'running', combined);
       }
     }
     const text = new TextDecoder().decode(new Uint8Array(chunks.flatMap(c => [...c])));
-    _parsed[`m${tf}`] = false; // reset — will be set true when worker posts 'parsed'
+    _parsed[`m${tf}`] = false; // reset — set true when worker posts 'parsed'
     ensureWorker().postMessage({ type: 'parse', payload: { tf: `m${tf}`, text } });
   } catch (err) {
     setStatus(`Failed to load M${tf}: ${err.message}`, 'error');
@@ -124,7 +126,6 @@ function buildCfg() {
     useChoch:        v('gate-choch', true),
     useHtfEma:       v('gate-htf-ema', true),
     useAdx:          v('gate-adx', false),
-    loadM1:          v('cfg-load-m1', false),
   };
 }
 
@@ -146,10 +147,8 @@ async function runBacktest() {
   const w = ensureWorker(); // creates fresh worker with correct onmessage handler
   void w;
 
-  // Fire fetches
-  const fetches = [fetchAndParse('5'), fetchAndParse('30')];
-  if (cfg.loadM1) fetches.push(fetchAndParse('1'));
-  else { _parsed.m1 = true; } // not needed
+  // All three timeframes required — M1 for bias-free SL/TP detection
+  const fetches = [fetchAndParse('1'), fetchAndParse('5'), fetchAndParse('30')];
 
   try {
     await Promise.all(fetches);
