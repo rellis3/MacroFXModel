@@ -13,6 +13,7 @@ import { renderCOTCard, renderCOTCrossPair } from './cot.js';
 import { sessionBadgeHTML } from './session.js';
 import { eventRiskBadgeHTML, surpriseIndexHTML, getPairSurpriseScore } from './events.js';
 import { buildMarketNarrative } from './market-narrative.js';
+import { renderDecisionBanner } from '../DecisionEngine/decisionUI.js';
 
 let _confSortMode = (() => { try { return localStorage.getItem('conf_sort_mode') || 'stars'; } catch(e) { return 'stars'; } })();
 window.setConfSortMode = (mode) => {
@@ -261,6 +262,9 @@ function renderAllInner() {
   });
 
   const html = `
+<!-- DECISION ENGINE BANNER -->
+<div id="decisionBannerCard"></div>
+
 <!-- SESSION BADGE -->
 ${sessionBadge}
 
@@ -953,6 +957,7 @@ ${calendarCtx.warnings.length > 0 ? `
   loadAndRenderCompass();
   renderARMAAndTransition(S.compassData[S.currentPair.symbol] || null);
   renderSignalAndEntries(enhanced, pivots, asia, monday, quote, volRegime, otcForecast);
+  renderDecisionBanner(volRegime, otcForecast);
 }
 
 function sortConfluences(confs, mode) {

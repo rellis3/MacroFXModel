@@ -5,6 +5,7 @@ import {
   FIB_LEVELS, tsToLondon, computeBodyRange, projectFibLevels, detectConfluences,
   computeATR, computeDirection, getPipSize, getDigits, ema,
 } from './backtest-engine.js';
+import { tagTradeDecision } from '../DecisionEngine/decisionBacktest.js';
 
 // ── Day-of-week names (UTC day index 0=Sun … 6=Sat) ──────────────────────────
 const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -335,6 +336,10 @@ function handleRun({ symbol, cfg }) {
     if (weekKey  !== lastWeekKey)  { weeklyR  = 0; lastWeekKey  = weekKey;  }
     if (monthKey !== lastMonthKey) { monthlyR = 0; lastMonthKey = monthKey; }
 
+    // ── Per-day session range tracking (for decision engine rangeUtil) ───
+    let _sessionHigh = -Infinity;
+    let _sessionLow  =  Infinity;
+
     // ── Per-day level touch counter (for re-entry limit) ─────────────────
     const dayLevelTouches = new Map();
     // ── Per-day sweep tracker: confKey → true when price has already wicked
@@ -357,6 +362,8 @@ function handleRun({ symbol, cfg }) {
     for (let _bi = 0; _bi < entryBars.length; _bi++) {
       const bar = entryBars[_bi];
       const barCloseTs = bar.ts + barDurMs;
+      _sessionHigh = Math.max(_sessionHigh, bar.h);
+      _sessionLow  = Math.min(_sessionLow,  bar.l);
 
       // ── Advance M30 window up to this bar ─────────────────────────────
       while (m30Ptr < m30Today.length && m30Today[m30Ptr].ts < bar.ts) {
@@ -705,6 +712,18 @@ function handleRun({ symbol, cfg }) {
             dow:         DOW_NAMES[bar.lDay] ?? 'Unknown',
             trendRegime: _trendRegime(bar5mWin),
             volRegime:   _volRegime(atr, symbol),
+            ...tagTradeDecision({
+              bar5mWin,
+              atr,
+              atrPercentile: (() => {
+                const trs = bar5mWin.slice(0, 50).map(b => b.h - b.l).sort((a, b) => a - b);
+                const cur = bar5mWin[0] ? bar5mWin[0].h - bar5mWin[0].l : 0;
+                return trs.length > 5 ? (trs.filter(t => t <= cur).length / trs.length) * 100 : 50;
+              })(),
+              lHour:       bar.lHour,
+              sessionHigh: _sessionHigh,
+              sessionLow:  _sessionLow,
+            }),
           };
           break;
         }
@@ -808,10 +827,16 @@ function buildFlipTrade(original, entryTs, date, confluences, pip, slMode, slMul
     rb:      original.rb,
     tag:     '⚡flip',
     _mfe: 0, _mae: 0, _holdingBars: 0,
-    session:     original.session     ?? 'Unknown',
-    dow:         original.dow         ?? 'Unknown',
-    trendRegime: original.trendRegime ?? 'UNKNOWN',
-    volRegime:   original.volRegime   ?? 'UNKNOWN',
+    session:               original.session               ?? 'Unknown',
+    dow:                   original.dow                   ?? 'Unknown',
+    trendRegime:           original.trendRegime           ?? 'UNKNOWN',
+    volRegime:             original.volRegime             ?? 'UNKNOWN',
+    decisionMode:          original.decisionMode          ?? null,
+    decisionParticipation: original.decisionParticipation ?? null,
+    decisionRiskMult:      original.decisionRiskMult      ?? null,
+    rangeUtilAtEntry:      original.rangeUtilAtEntry       ?? null,
+    sessionPhaseAtEntry:   original.sessionPhaseAtEntry    ?? null,
+    volStateAtEntry:       original.volStateAtEntry        ?? null,
   };
 }
 
@@ -846,6 +871,12 @@ function recordClose(trade, exitPrice, result, exitTs, trades, bayesian, costR =
     dow:         trade.dow          ?? 'Unknown',
     trendRegime: trade.trendRegime  ?? 'UNKNOWN',
     volRegime:   trade.volRegime    ?? 'UNKNOWN',
+    decisionMode:          trade.decisionMode          ?? null,
+    decisionParticipation: trade.decisionParticipation ?? null,
+    decisionRiskMult:      trade.decisionRiskMult      ?? null,
+    rangeUtilAtEntry:      trade.rangeUtilAtEntry       ?? null,
+    sessionPhaseAtEntry:   trade.sessionPhaseAtEntry    ?? null,
+    volStateAtEntry:       trade.volStateAtEntry        ?? null,
   };
   trades.push(t);
   const isWin = r > 0;
@@ -1133,10 +1164,14 @@ function computeRegimeBreakdown(trades) {
   }
 
   return {
-    bySession: groupStats(t => t.session),
-    byTrend:   groupStats(t => t.trendRegime),
-    byVol:     groupStats(t => t.volRegime),
-    byDow:     groupStats(t => t.dow),
+    bySession:       groupStats(t => t.session),
+    byTrend:         groupStats(t => t.trendRegime),
+    byVol:           groupStats(t => t.volRegime),
+    byDow:           groupStats(t => t.dow),
+    byDecisionMode:  groupStats(t => t.decisionMode ?? 'UNTAGGED'),
+    byParticipation: groupStats(t => t.decisionParticipation ?? 'UNTAGGED'),
+    byVolState:      groupStats(t => t.volStateAtEntry ?? 'UNTAGGED'),
+    bySessionPhase:  groupStats(t => t.sessionPhaseAtEntry ?? 'UNTAGGED'),
     crossTab,
     dowSession,
   };
