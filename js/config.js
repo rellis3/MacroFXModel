@@ -46,7 +46,7 @@ export const COMPASS_CONFIG = {
 
 export const COMPASS_TTL = 6 * 60 * 60 * 1000;
 // Increment when cached data structure changes to force re-fetch.
-export const COMPASS_CACHE_VERSION = 4;
+export const COMPASS_CACHE_VERSION = 5;
 
 export const CAP_DEFAULTS = {
   // Global confluence mode — applies to all instruments and all consumers
