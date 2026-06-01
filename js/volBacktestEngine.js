@@ -96,58 +96,60 @@ function ewmaVarSeries(logReturns, lam = LAMBDA) {
 
 // ── Regime classifier (EMA-20 slope, walk-forward) ────────────────────────────
 
-function classifyRegime(closes, idx, span = 20, slopeWindow = 5, thresh = 0.002) {
+function classifyRegime(closes, idx, span = 20, slopeWindow = 5, thresh = 0.002, bearMult = 1.0) {
   if (idx < span + slopeWindow) return 'RANGE';
-  // EMA on closes[0..idx-1]
   const k = 2 / (span + 1);
   let ema = closes[0];
   for (let i = 1; i < idx; i++) ema = closes[i] * k + ema * (1 - k);
-  // 5-bar slope: run EMA back slopeWindow steps
   let emaPrev = closes[0];
   for (let i = 1; i < idx - slopeWindow; i++) emaPrev = closes[i] * k + emaPrev * (1 - k);
   const slope = (ema - emaPrev) / ema;
-  if (slope >  thresh) return 'BULL';
-  if (slope < -thresh) return 'BEAR';
+  if (slope >  thresh)              return 'BULL';
+  if (slope < -(thresh * bearMult)) return 'BEAR';
   return 'RANGE';
 }
 
 // ── Single-day trade simulator ─────────────────────────────────────────────────
 
-function simulateDay(open, high, low, close, hl75pct, ocMedPct, regime, slMult = 1.5) {
+function simulateDay(open, high, low, close, hl75pct, ocMedPct, regime, slMult = 1.5, rangeMode = 'fade_both') {
   const hl  = open * hl75pct  / 100;
   const oc  = open * ocMedPct / 100;
   const slD = hl * slMult;
 
-  function sell(entry, tp, sl) {
-    if (high < entry) return null;
-    if (high >= sl)   return { outcome: 'loss', pnlPct: -((sl - entry) / open * 100) };
-    // D1 mark-to-close: measure reversal from fill level.
-    // close <= entry  → price reversed (win); cap at TP pnl if close cleared TP level.
-    // close >  entry  → no reversal, at a loss at EOD (open with negative pnl).
-    // Note: close > entry is possible when high > entry and the day closed above the fill.
-    const markPnl = (entry - close) / open * 100;
-    const tpPnl   = (entry - tp)   / open * 100;
-    if (markPnl >= tpPnl) return { outcome: 'win',  pnlPct: tpPnl    }; // full TP
-    if (markPnl  > 0)     return { outcome: 'win',  pnlPct: markPnl  }; // partial reversal
-    return                       { outcome: 'open', pnlPct: markPnl  }; // no reversal
-  }
-  function buy(entry, tp, sl) {
-    if (low > entry)  return null;
-    if (low  <= sl)   return { outcome: 'loss', pnlPct: -((entry - sl) / open * 100) };
-    const markPnl = (close - entry) / open * 100;
-    const tpPnl   = (tp - entry)   / open * 100;
-    if (markPnl >= tpPnl) return { outcome: 'win',  pnlPct: tpPnl    };
-    if (markPnl  > 0)     return { outcome: 'win',  pnlPct: markPnl  };
-    return                       { outcome: 'open', pnlPct: markPnl  };
+  function mfeR(side, entry, tpDist) {
+    if (tpDist <= 0) return 0;
+    const exc = side === 'SELL' ? Math.max(0, entry - low) : Math.max(0, high - entry);
+    return +Math.min(exc / tpDist, 3).toFixed(3);
   }
 
-  let r = null;
-  let side = '';
+  function sell(entry, tp, sl) {
+    if (high < entry) return null;
+    const mfe = mfeR('SELL', entry, entry - tp);
+    if (high >= sl) return { outcome: 'loss', pnlPct: -((sl - entry) / open * 100), mfe_r: mfe };
+    const markPnl = (entry - close) / open * 100;
+    const tpPnl   = (entry - tp)   / open * 100;
+    if (markPnl >= tpPnl) return { outcome: 'win',  pnlPct: tpPnl,   mfe_r: mfe };
+    if (markPnl  > 0)     return { outcome: 'win',  pnlPct: markPnl, mfe_r: mfe };
+    return                       { outcome: 'open', pnlPct: markPnl, mfe_r: mfe };
+  }
+  function buy(entry, tp, sl) {
+    if (low > entry) return null;
+    const mfe = mfeR('BUY', entry, tp - entry);
+    if (low <= sl) return { outcome: 'loss', pnlPct: -((entry - sl) / open * 100), mfe_r: mfe };
+    const markPnl = (close - entry) / open * 100;
+    const tpPnl   = (tp - entry)   / open * 100;
+    if (markPnl >= tpPnl) return { outcome: 'win',  pnlPct: tpPnl,   mfe_r: mfe };
+    if (markPnl  > 0)     return { outcome: 'win',  pnlPct: markPnl, mfe_r: mfe };
+    return                       { outcome: 'open', pnlPct: markPnl, mfe_r: mfe };
+  }
+
+  let r = null, side = '';
   if (regime === 'BULL') {
     side = 'SELL'; r = sell(open + hl, open + oc, open + slD);
   } else if (regime === 'BEAR') {
-    side = 'BUY';  r = buy(open - hl,  open - oc,  open - slD);
+    side = 'BUY';  r = buy(open - hl, open - oc, open - slD);
   } else {
+    if (rangeMode === 'skip') return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, mfe_r: 0 };
     r = sell(open + hl, open, open + slD);
     if (r) { side = 'SELL'; }
     else   { r = buy(open - hl, open, open - slD); if (r) side = 'BUY'; }
@@ -155,13 +157,17 @@ function simulateDay(open, high, low, close, hl75pct, ocMedPct, regime, slMult =
 
   return r
     ? { filled: true,  side, ...r, pnlPct: +r.pnlPct.toFixed(5) }
-    : { filled: false, side: '',   outcome: 'no_fill', pnlPct: 0 };
+    : { filled: false, side: '',   outcome: 'no_fill', pnlPct: 0, mfe_r: 0 };
 }
 
 // ── Walk-forward engine ────────────────────────────────────────────────────────
 
 function runBacktest(bars, assetClass, opts = {}) {
-  const { dateFrom = '', dateTo = '', minLookback = 50, slMult = 1.5, slopeThresh = 0.002 } = opts;
+  const {
+    dateFrom = '', dateTo = '', minLookback = 50,
+    slMult = 1.5, slopeThresh = 0.002,
+    bearMult = 1.0, rangeMode = 'fade_both',
+  } = opts;
   const p       = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
   const closes  = bars.map(b => b.close);
   const records = [];
@@ -171,7 +177,6 @@ function runBacktest(bars, assetClass, opts = {}) {
     if (dateFrom && date < dateFrom) continue;
     if (dateTo   && date > dateTo)   continue;
 
-    // Log returns up to bar i-1
     const logRet = [];
     for (let j = 1; j < i; j++) logRet.push(Math.log(closes[j] / closes[j - 1]));
     if (logRet.length < 20) continue;
@@ -180,8 +185,8 @@ function runBacktest(bars, assetClass, opts = {}) {
     const sigmaD    = Math.sqrt(varSeries[varSeries.length - 1]);
     const hl75pct   = BM_P75 * p.hl_75_corr * sigmaD * 100;
     const ocMedPct  = HN_P50 * p.oc_corr    * sigmaD * 100;
-    const regime    = classifyRegime(closes, i, 20, 5, slopeThresh);
-    const result    = simulateDay(open, high, low, close, hl75pct, ocMedPct, regime, slMult);
+    const regime    = classifyRegime(closes, i, 20, 5, slopeThresh, bearMult);
+    const result    = simulateDay(open, high, low, close, hl75pct, ocMedPct, regime, slMult, rangeMode);
 
     records.push({
       date, regime,
@@ -191,6 +196,7 @@ function runBacktest(bars, assetClass, opts = {}) {
       filled:     result.filled,
       outcome:    result.outcome,
       pnl_pct:    result.pnlPct,
+      mfe_r:      result.mfe_r ?? 0,
       open: +open.toFixed(6), high: +high.toFixed(6),
       low:  +low.toFixed(6),  close: +close.toFixed(6),
     });

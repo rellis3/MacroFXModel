@@ -225,7 +225,7 @@ function classifySession(isoTime) {
 
 // ── Reversal leg (current strategy: fade from HL75 back toward OC_med) ────────
 
-function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5, dynHlCorr = 0) {
+function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5, dynHlCorr = 0, rangeMode = 'fade_both') {
   const hl  = open * hl75pct  / 100;
   const oc  = open * ocMedPct / 100;
   const slD = hl * slMult;
@@ -237,9 +237,11 @@ function simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult = 1.5, dy
     result = walkM1(m1Bars, open + hl, open + oc, open + slD, false, open, dynHlCorr);
   } else if (regime === 'BEAR') {
     side   = 'BUY';
-    result = walkM1(m1Bars, open - hl, open - oc, open - slD, true,  open, dynHlCorr);
+    result = walkM1(m1Bars, open - hl, open - oc, open - slD, true, open, dynHlCorr);
   } else {
-    // RANGE: walk bars to find which limit fills first (no H/L ordering assumption)
+    // RANGE
+    if (rangeMode === 'skip') return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'reversal', fillTime: null };
+    // fade_both: walk bars to find which limit fills first
     const sellEntry = open + hl, buyEntry = open - hl;
     for (let i = 0; i < m1Bars.length; i++) {
       const bar = m1Bars[i];
@@ -492,6 +494,7 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
   const {
     dateFrom = '', dateTo = '', minLookback = 50,
     slMult = 1.5, slopeThresh = 0.002,
+    bearMult = 1.0, rangeMode = 'fade_both',
     strategy = 'reversal',  // 'reversal' | 'momentum' | 'both' | 'momentum50' | 'reversal50'
     momentumPullback = 0, momentumSlMult = 1.0,
     spreadPct = 0,
@@ -518,7 +521,7 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     const hl50pct  = BM_P50 * p.hl_50_corr * sigmaD * 100;
     const hl75pct  = BM_P75 * p.hl_75_corr * sigmaD * 100;
     const ocMedPct = HN_P50 * p.oc_corr    * sigmaD * 100;
-    const regime   = classifyRegime(closes, i, 20, 5, slopeThresh);
+    const regime   = classifyRegime(closes, i, 20, 5, slopeThresh, bearMult);
 
     const m1Bars = m1ByDate?.get(date) ?? null;
     const useM1  = !!(m1Bars && m1Bars.length >= 10);
@@ -537,8 +540,8 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     const legResults = [];
     if (strategy !== 'momentum' && strategy !== 'momentum50' && strategy !== 'reversal50' && strategy !== 'revHL50') {
       const r = useM1
-        ? simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult, dynHlCorr)
-        : _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMult);
+        ? simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult, dynHlCorr, rangeMode)
+        : _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMult, rangeMode);
       legResults.push(r);
     }
     if (strategy !== 'reversal' && strategy !== 'momentum50' && strategy !== 'reversal50' && strategy !== 'revHL50') {
@@ -584,7 +587,7 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
 
 // ── D1 fallback: reversal ─────────────────────────────────────────────────────
 
-function _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMult) {
+function _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMult, rangeMode = 'fade_both') {
   const hl  = open * hl75pct  / 100;
   const oc  = open * ocMedPct / 100;
   const slD = hl * slMult;
@@ -612,8 +615,9 @@ function _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMul
   if (regime === 'BULL') {
     side = 'SELL'; r = sell(open + hl, open + oc, open + slD);
   } else if (regime === 'BEAR') {
-    side = 'BUY';  r = buy(open - hl,  open - oc,  open - slD);
+    side = 'BUY';  r = buy(open - hl, open - oc, open - slD);
   } else {
+    if (rangeMode === 'skip') return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'reversal' };
     r = sell(open + hl, open, open + slD);
     if (r) { side = 'SELL'; }
     else   { r = buy(open - hl, open, open - slD); if (r) side = 'BUY'; }
