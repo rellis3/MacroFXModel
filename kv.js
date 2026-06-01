@@ -70,6 +70,9 @@ const _CF_EXACT = new Set([
 function isCfKey(key) {
   // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart
   if (key.startsWith('ai_entries_') || key.startsWith('ai_cron_')) return false;
+  // fredhistory_* caches (90-day yield series for spread charts) are expensive to rebuild
+  // (concurrent FRED requests cause rate-limits) so persist them in CF KV
+  if (key.startsWith('fredhistory_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 

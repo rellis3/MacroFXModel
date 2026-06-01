@@ -142,18 +142,21 @@ async function fetchFredLatest(seriesId) {
 
 export async function fetchGlobalMacro() {
   if (!process.env.FRED_KEY) return null;
+  // Read from the pre-populated fred_data_v3 KV cache written by refreshFredDashboard().
+  // This avoids 5 concurrent FRED API requests on every 30-min levels refresh, which
+  // competed with the sequential startup refresh and caused rate-limit failures.
   try {
-    const [vix, hy, nfci, gs10, gs2] = await Promise.all([
-      fetchFredLatest('VIXCLS'),
-      fetchFredLatest('BAMLH0A0HYM2'),
-      fetchFredLatest('NFCI'),
-      fetchFredLatest('GS10'),
-      fetchFredLatest('GS2'),
-    ]);
-    return { vix, hy, nfci, gs10, gs2 };
-  } catch {
-    return null;
-  }
+    const raw = await kv.get('fred_data_v3');
+    if (raw) {
+      const { d } = JSON.parse(raw);
+      if (d) {
+        const toVal = k => d[k]?.value != null ? { current: d[k].value, prev: d[k].prev ?? d[k].value } : null;
+        return { vix: toVal('vix'), hy: toVal('hy'), nfci: toVal('nfci'), gs10: toVal('us10y'), gs2: toVal('us2y') };
+      }
+    }
+  } catch {}
+  // KV empty (server refresh still in progress) — skip macro enrichment this cycle.
+  return null;
 }
 
 // ── Fibonacci computation ─────────────────────────────────────────────────────
