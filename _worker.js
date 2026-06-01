@@ -942,6 +942,25 @@ export default {
           if (cached) return json(JSON.parse(cached));
         }
 
+        // For 90d requests, try pre-populated individual series cache (written by server
+        // refreshFredHistory at startup) — avoids hitting FRED on concurrent client loads.
+        if (period === '90d' && env.FX_SCORES) {
+          const assembled = {};
+          let allFound = true;
+          for (const key of requestedKeys) {
+            const raw = await env.FX_SCORES.get(`fredhistory_series_${key}`);
+            if (raw) {
+              try { assembled[key] = JSON.parse(raw); } catch { allFound = false; break; }
+            } else { allFound = false; break; }
+          }
+          if (allFound) {
+            // Write composite cache so next request is instant
+            await env.FX_SCORES.put(cacheKey, JSON.stringify(assembled), { expirationTtl: cacheTtl })
+              .catch(() => {});
+            return json(assembled);
+          }
+        }
+
         const fetches = requestedKeys.map(async key => {
           const seriesId = ALL_SERIES[key];
           const u = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${env.FRED_KEY}&file_type=json&sort_order=desc&limit=${limit}`;
