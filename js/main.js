@@ -547,7 +547,7 @@ async function loadAll() {
     const [fredData, ecbData, cfg, ohlcData, ohlc5mData, ohlc30mData, quote] =
       await Promise.all([
         S.fredData ? Promise.resolve(S.fredData) :
-          loadCached('fred', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED),
+          loadCached('fred2', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED),
         S.ecbData ? Promise.resolve(S.ecbData) :
           fetch('/api/ecbsdw').then(r => r.ok ? r.json() : null).catch(() => null),
         fetch('/api/config').then(r => r.json()).catch(() => ({})),
