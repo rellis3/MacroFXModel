@@ -869,7 +869,6 @@ def run(url: str, paper_mode: bool) -> None:
                         macro=macro_snap,
                     )
                     send_telegram(tg['token'], tg['chat_id'], msg)
-                    bocpd_reg.reset(pair)
             else:
                 run_lengths[pair] += 1
 
