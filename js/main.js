@@ -213,20 +213,21 @@ function updateHeaderRegime() {
     : '';
   el.title = `HMM: Bull ${r.pBull}%  ·  Bear ${r.pBear}%  ·  Range ${r.pRange}%\ntrendZ ${r.trendZ}  volZ ${r.volZ}  adxZ ${r.adxZ}${pfNote}`;
 
-  // Show PF badge next to HMM when available and flags agree (or disagree) with HMM
+  // PF badge — only visible when PF disagrees with HMM (signals potential regime shift).
+  // When they agree it's redundant; full PF probabilities always available in the HMM tooltip.
   let pfBadge = document.getElementById('hdrPFBadge');
-  if (pf) {
+  const pfDisagrees = pf && pf.regime !== r.regime;
+  if (pfDisagrees) {
     if (!pfBadge) {
       pfBadge = document.createElement('span');
       pfBadge.id        = 'hdrPFBadge';
       pfBadge.style.cssText = 'font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px;margin-left:5px;opacity:.85;letter-spacing:.03em';
       el.appendChild(pfBadge);
     }
-    const agree = pf.regime === r.regime;
     pfBadge.textContent = `PF:${pf.regime[0]}${pf.confidence}%`;
-    pfBadge.style.background = agree ? 'rgba(255,255,255,.15)' : 'rgba(255,165,0,.3)';
-    pfBadge.style.color      = agree ? 'inherit' : '#ffa500';
-    pfBadge.title = `Particle filter: ${pf.regime} ${pf.confidence}%${agree ? ' (agrees with HMM)' : ' ⚠ disagrees with HMM'}`;
+    pfBadge.style.background = 'rgba(255,165,0,.3)';
+    pfBadge.style.color      = '#ffa500';
+    pfBadge.title = `Particle filter sees ${pf.regime} ${pf.confidence}% — disagrees with HMM (${r.regime})\nBull ${pf.pBull}%  Bear ${pf.pBear}%  Range ${pf.pRange}%  Chop ${pf.pChop}%`;
   } else if (pfBadge) {
     pfBadge.remove();
   }
