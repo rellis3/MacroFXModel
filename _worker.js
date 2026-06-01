@@ -620,8 +620,30 @@ export default {
       // Returns { vix: { value, prev }, us10y: { value, prev }, ... }
       // Each series transformed from raw FRED observations array into
       // { value: latestValue, prev: previousValue }  -  shape the dashboard expects.
+      //
+      // KV caching (6h fresh TTL, stale-on-failure fallback):
+      //   Previously this endpoint fired 27+ concurrent FRED requests on every
+      //   client cache-miss, causing rate-limit nulls for VIX/GS10/NFCI/TIPS.
+      //   Now the batch runs at most once per 6 hours server-wide; stale data
+      //   is returned if FRED is rate-limited rather than propagating nulls.
       if (path === '/api/fred') {
         if (!env.FRED_KEY) return err('FRED_KEY not configured', 503);
+
+        const FRED_KV_KEY  = 'fred_data_v2';
+        const FRED_FRESH_MS = 6 * 60 * 60 * 1000; // 6 h in ms
+
+        // ── KV cache read ──────────────────────────────────────────────────────
+        let staleData = null; // available as fallback if live fetch fails
+        if (env.FX_SCORES) {
+          try {
+            const raw = await env.FX_SCORES.get(FRED_KV_KEY);
+            if (raw) {
+              const { d, t } = JSON.parse(raw);
+              if (Date.now() - (t ?? 0) < FRED_FRESH_MS) return json(d); // fresh hit
+              staleData = d; // stale but usable as fallback
+            }
+          } catch { /* KV read error — proceed to live fetch */ }
+        }
 
         const SERIES = {
           vix:      'VIXCLS',
@@ -660,6 +682,7 @@ export default {
           hy_ccc:   'BAMLH0A3HYC',
         };
 
+        // ── Live FRED fetch ────────────────────────────────────────────────────
         const fetches = Object.entries(SERIES).map(async ([key, id]) => {
           const u = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${env.FRED_KEY}&file_type=json&sort_order=desc&limit=5`;
           try {
@@ -680,8 +703,25 @@ export default {
         });
 
         const results = await Promise.all(fetches);
-        const out = Object.fromEntries(results);
-        return json(out);
+        const out     = Object.fromEntries(results);
+
+        // ── KV cache write (only when FRED returned enough valid data) ─────────
+        // Require ≥ 15 non-null series before caching. If FRED is rate-limiting,
+        // validCount will be low — return stale data instead of caching nulls.
+        const validCount = Object.values(out).filter(v => v.value != null).length;
+        if (validCount >= 15) {
+          env.FX_SCORES?.put(
+            FRED_KV_KEY,
+            JSON.stringify({ d: out, t: Date.now() }),
+            { expirationTtl: 86400 },  // absolute KV TTL = 24 h
+          ).catch(() => {});
+          return json(out);
+        }
+
+        // FRED rate-limited or mostly failing — serve stale cache to avoid
+        // propagating nulls to all open dashboards.
+        if (staleData) return json(staleData);
+        return json(out); // no stale available — return whatever we got
       }
 
       // -- /api/ecbsdw ------------------------------------------
