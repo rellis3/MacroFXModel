@@ -13,6 +13,9 @@ import { renderCOTCard, renderCOTCrossPair } from './cot.js';
 import { sessionBadgeHTML } from './session.js';
 import { eventRiskBadgeHTML, surpriseIndexHTML, getPairSurpriseScore } from './events.js';
 import { buildMarketNarrative } from './market-narrative.js';
+import { renderDecisionBanner } from '../DecisionEngine/decisionUI.js';
+import { collectDecisionInputs } from '../DecisionEngine/decisionInputs.js';
+import { runDecisionEngine } from '../DecisionEngine/decisionEngine.js';
 
 let _confSortMode = (() => { try { return localStorage.getItem('conf_sort_mode') || 'stars'; } catch(e) { return 'stars'; } })();
 window.setConfSortMode = (mode) => {
@@ -150,6 +153,13 @@ function renderAllInner() {
     volRegime, tierData.totalScore, S.currentPair.symbol
   );
   S.otcForecast = otcForecast;
+
+  // Compute decision state once here so entry scanner and level map can both use it
+  window._lastDecisionState = (() => {
+    try { return runDecisionEngine(collectDecisionInputs(volRegime, otcForecast, quote)); }
+    catch (_) { return null; }
+  })();
+
   const pivots = calculatePivots();
   const asia = S.asiaRangeData[S.currentPair.symbol] || { today: null, yesterday: null, confluences: [] };
   const monday = S.mondayRangeData[S.currentPair.symbol] || { current: null, previous: null, confluences: [] };
@@ -261,6 +271,9 @@ function renderAllInner() {
   });
 
   const html = `
+<!-- DECISION ENGINE BANNER -->
+<div id="decisionBannerCard"></div>
+
 <!-- SESSION BADGE -->
 ${sessionBadge}
 
@@ -653,6 +666,27 @@ ${calendarCtx.warnings.length > 0 ? `
       <span class="sec-badge purple">TIER 2</span>
       <span class="count-badge">${enhanced.length}</span>
     </div>
+    ${(() => {
+      const ds = window._lastDecisionState;
+      if (!ds || ds.mode === 'NO_TRADE') return ds ? `<div style="font-size:10px;color:var(--text3);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;margin-bottom:8px">⛔ Decision Engine: NO TRADE — ${ds.reasons[0] ?? 'conditions not met'}</div>` : '';
+      const modeCol = ds.mode === 'TREND_CONTINUATION' ? 'var(--green)' : ds.mode === 'MEAN_REVERSION' ? 'var(--blue)' : ds.mode === 'EXHAUSTION' ? 'var(--red)' : '#f59e0b';
+      const p = ds.permissions;
+      const chips = [
+        p.long     ? '<span style="color:var(--green);font-weight:700">↑L</span>' : '<span style="color:var(--text3);text-decoration:line-through">↑L</span>',
+        p.short    ? '<span style="color:var(--red);font-weight:700">↓S</span>'   : '<span style="color:var(--text3);text-decoration:line-through">↓S</span>',
+        p.breakout ? '<span style="color:#f59e0b;font-weight:700">BRK</span>'     : '<span style="color:var(--text3);text-decoration:line-through">BRK</span>',
+        p.fade     ? '<span style="color:var(--blue);font-weight:700">FADE</span>': '<span style="color:var(--text3);text-decoration:line-through">FADE</span>',
+      ].join(' · ');
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:10px;background:${modeCol}08;border:1px solid ${modeCol}33;border-radius:6px;padding:5px 10px;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-weight:700;color:${modeCol}">${ds.mode.replace(/_/g,' ')}</span>
+        <span style="color:var(--border2)">·</span>
+        <span style="color:var(--text3)">${ds.participation}</span>
+        <span style="color:var(--border2)">·</span>
+        ${chips}
+        <span style="color:var(--border2)">·</span>
+        <span style="color:var(--text3)">Risk ${ds.riskMult.toFixed(2)}×</span>
+      </div>`;
+    })()}
 
     <div class="hint">
       <strong>How stars work:</strong> ★ Fib confluence · +★ tight · +★ macro bias · +★ pivot/OI · +★ daily Fib · +★ structural Fib · +★ RSI/WT divergence. Max 5★. Tight levels (🟢) overlap two sessions — highest-probability zones.
@@ -953,6 +987,7 @@ ${calendarCtx.warnings.length > 0 ? `
   loadAndRenderCompass();
   renderARMAAndTransition(S.compassData[S.currentPair.symbol] || null);
   renderSignalAndEntries(enhanced, pivots, asia, monday, quote, volRegime, otcForecast);
+  renderDecisionBanner(volRegime, otcForecast);
 }
 
 function sortConfluences(confs, mode) {
