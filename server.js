@@ -1230,6 +1230,86 @@ app.get('/api/hmm5m-train-params', (_req, res) => {
   res.json({ ok: true, params: state.hmm5mTrainedParams });
 });
 
+// ── Gold backtest trades store ────────────────────────────────────────────────
+// In-memory store; persists for the lifetime of the process.
+const goldBacktestStore = { trades: [], savedAt: null };
+
+app.post('/api/gold-backtest/trades', express.json({ limit: '20mb' }), (req, res) => {
+  const { trades } = req.body ?? {};
+  if (!Array.isArray(trades)) return res.status(400).json({ ok: false, error: 'trades array required' });
+  goldBacktestStore.trades  = trades;
+  goldBacktestStore.savedAt = new Date().toISOString();
+  console.log(`[gold-bt] saved ${trades.length} trades for viewer`);
+  res.json({ ok: true, n: trades.length });
+});
+
+app.get('/api/gold-backtest/trades', (req, res) => {
+  if (!goldBacktestStore.trades.length) {
+    return res.status(404).json({ ok: false, error: 'No trades found — run the backtester first' });
+  }
+  res.json({ ok: true, trades: goldBacktestStore.trades, savedAt: goldBacktestStore.savedAt });
+});
+
+// ── M1 candles endpoint — shared by all backtest-viewer sources ───────────────
+// Serves bars from the same R2 public bucket used by the browser-side backtester.
+// First request downloads & caches the full CSV; subsequent requests filter in-memory.
+const _m1Cache    = {};  // pair → { bars, loadedAt }
+const _R2_PUB_BASE = 'https://pub-1d8354116ae54e158e7010f0deb8f6e6.r2.dev';
+
+async function _loadM1ForPair(pair) {
+  const cached = _m1Cache[pair];
+  if (cached && Date.now() - cached.loadedAt < 6 * 3_600_000) return cached.bars;
+
+  const symUpper = pair.toUpperCase();
+  const url = `${_R2_PUB_BASE}/${symUpper}/${pair}-m1-bid.csv`;
+  console.log(`[m1-candles] downloading ${pair} from R2…`);
+  const r = await fetch(url, { signal: AbortSignal.timeout(120_000) });
+  if (!r.ok) throw new Error(`R2 returned HTTP ${r.status} for ${pair}`);
+
+  const text  = await r.text();
+  const lines = text.split('\n');
+  const bars  = [];
+  for (let i = 1; i < lines.length; i++) {
+    const raw = lines[i].trim();
+    if (!raw) continue;
+    const p = raw.split(',');
+    if (p.length < 5) continue;
+    const ts = parseInt(p[0], 10);
+    if (isNaN(ts)) continue;
+    const o = +p[1], h = +p[2], l = +p[3], c = +p[4];
+    if (isNaN(o) || isNaN(h) || isNaN(l) || isNaN(c)) continue;
+    const d = new Date(ts);
+    bars.push({
+      time: d.toISOString().slice(0, 19).replace('T', 'T'),
+      open: o, high: h, low: l, close: c, _ts: ts,
+    });
+  }
+  bars.sort((a, b) => a._ts - b._ts);
+  _m1Cache[pair] = { bars, loadedAt: Date.now() };
+  console.log(`[m1-candles] cached ${bars.length} bars for ${pair}`);
+  return bars;
+}
+
+app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
+  const pair   = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
+  const { from, to } = req.query;
+  const fromTs = from ? new Date(from + 'T00:00:00Z').getTime() : 0;
+  const toTs   = to   ? new Date(to   + 'T23:59:59Z').getTime() : Infinity;
+
+  try {
+    const allBars = await _loadM1ForPair(pair);
+    const candles = allBars
+      .filter(b => b._ts >= fromTs && b._ts <= toTs)
+      .map(({ time, open, high, low, close }) => ({ time, open, high, low, close }))
+      .slice(0, 20_000);
+    if (!candles.length) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} in ${from}→${to}` });
+    res.json({ ok: true, pair, n: candles.length, candles });
+  } catch (e) {
+    console.error(`[m1-candles] ${pair}:`, e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // SSE live price stream — must be handled before the generic /api/* catch-all
 // because it returns an infinite ReadableStream, not a text body.
 app.get('/api/oanda_stream', async (req, res) => {
