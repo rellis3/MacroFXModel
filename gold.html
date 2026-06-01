@@ -70,6 +70,231 @@
 
 </div><!-- /#goldApp -->
 
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     GOLD BOT STRATEGY REFERENCE — static panel, does not require API data
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div id="goldStrategyRef" style="max-width:900px;margin:32px auto 48px;padding:0 16px;font-family:'DM Sans',sans-serif">
+
+  <details open>
+  <summary style="cursor:pointer;font-size:14px;font-weight:600;letter-spacing:.04em;padding:10px 0;border-bottom:1px solid var(--border,#333);color:var(--text,#e8e8e8)">
+    ▶ Gold Bot — Strategy &amp; Gate Reference
+  </summary>
+
+  <div style="margin-top:18px;display:flex;flex-direction:column;gap:22px;color:var(--text,#e8e8e8);font-size:13px;line-height:1.6">
+
+    <!-- OVERVIEW -->
+    <section>
+      <h3 style="margin:0 0 8px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#f4c430">Overview</h3>
+      <p style="margin:0">The Gold Bot is a <strong>mean-reversion + macro-confluence</strong> system for XAU/USD. It combines a two-layer macro model (fundamental direction) with a Fibonacci zone system (where to enter) and a VuManchu oscillator assessment (when momentum confirms). A trade is only valid when <em>all eight gates pass</em> simultaneously.</p>
+    </section>
+
+    <!-- GATE TABLE -->
+    <section>
+      <h3 style="margin:0 0 10px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#f4c430">Trade Gates (checklist)</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="border-bottom:1px solid #444;color:#999;text-align:left">
+            <th style="padding:5px 8px;width:28px">#</th>
+            <th style="padding:5px 8px;width:200px">Gate</th>
+            <th style="padding:5px 8px">Pass condition</th>
+            <th style="padding:5px 8px">Warn</th>
+            <th style="padding:5px 8px">Fail → Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #2a2a2a">
+            <td style="padding:6px 8px;color:#f4c430;font-weight:700">1</td>
+            <td style="padding:6px 8px;font-weight:600">Regime Confidence</td>
+            <td style="padding:6px 8px">HMM regime = HIGH confidence</td>
+            <td style="padding:6px 8px;color:#f0a500">MEDIUM → reduce size</td>
+            <td style="padding:6px 8px;color:#e05555">LOW → stand aside</td>
+          </tr>
+          <tr style="border-bottom:1px solid #2a2a2a">
+            <td style="padding:6px 8px;color:#f4c430;font-weight:700">2</td>
+            <td style="padding:6px 8px;font-weight:600">Signal &amp; Strength</td>
+            <td style="padding:6px 8px">BULLISH or BEARISH with MODERATE or STRONG strength</td>
+            <td style="padding:6px 8px;color:#f0a500">WEAK signal</td>
+            <td style="padding:6px 8px;color:#e05555">NEUTRAL → no trade</td>
+          </tr>
+          <tr style="border-bottom:1px solid #2a2a2a">
+            <td style="padding:6px 8px;color:#f4c430;font-weight:700">3</td>
+            <td style="padding:6px 8px;font-weight:600">Momentum Layer (L2)</td>
+            <td style="padding:6px 8px">≥ 3/4 L2 factors aligned: real yield, breakeven, DXY, safe-haven flows</td>
+            <td style="padding:6px 8px;color:#f0a500">2/4 aligned</td>
+            <td style="padding:6px 8px;color:#e05555">&lt;2 → stand aside</td>
+          </tr>
+          <tr style="border-bottom:1px solid #2a2a2a">
+            <td style="padding:6px 8px;color:#f4c430;font-weight:700">4</td>
+            <td style="padding:6px 8px;font-weight:600">Regime Stability</td>
+            <td style="padding:6px 8px">Regime stable (Hurst persistence confirmed, no CHoCH)</td>
+            <td style="padding:6px 8px;color:#f0a500">Transitioning → size × 0.5–0.8</td>
+            <td style="padding:6px 8px;color:#888">—</td>
+          </tr>
+          <tr style="border-bottom:1px solid #2a2a2a">
+            <td style="padding:6px 8px;color:#f4c430;font-weight:700">5</td>
+            <td style="padding:6px 8px;font-weight:600">COT Crowding</td>
+            <td style="padding:6px 8px">Leveraged funds ≤ 60th percentile</td>
+            <td style="padding:6px 8px;color:#f0a500">60–80th pct → reduce</td>
+            <td style="padding:6px 8px;color:#e05555">&gt;80th → mean-reversion risk, reduce or pass</td>
+          </tr>
+          <tr style="border-bottom:1px solid #2a2a2a">
+            <td style="padding:6px 8px;color:#f4c430;font-weight:700">6</td>
+            <td style="padding:6px 8px;font-weight:600">Price at Level <span style="color:#5b9bd5;font-size:11px">[LIVE]</span></td>
+            <td style="padding:6px 8px">Price within <strong>15 pips</strong> of a Fib confluence (Asia/Monday body-range) <em>or</em> Daily Pivot PP / R1 / S1</td>
+            <td style="padding:6px 8px;color:#f0a500">15–60 pips → approaching, watch</td>
+            <td style="padding:6px 8px;color:#e05555">&gt;60 pips → do not chase</td>
+          </tr>
+          <tr style="border-bottom:1px solid #2a2a2a">
+            <td style="padding:6px 8px;color:#f4c430;font-weight:700">7</td>
+            <td style="padding:6px 8px;font-weight:600">VWAP Chop Zone <span style="color:#5b9bd5;font-size:11px">[LIVE]</span></td>
+            <td style="padding:6px 8px">Price &gt; ATR×0.25 away from session VWAP (directional conviction present)</td>
+            <td style="padding:6px 8px;color:#f0a500">Inside chop band → wait for breakout</td>
+            <td style="padding:6px 8px;color:#888">—</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 8px;color:#888;font-style:italic">ℹ</td>
+            <td style="padding:6px 8px;color:#888;font-style:italic">Position Size</td>
+            <td colspan="3" style="padding:6px 8px;color:#888;font-style:italic">Informational only — base × regime confidence mult × GARCH vol mult</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- KEY LEVELS -->
+    <section>
+      <h3 style="margin:0 0 8px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#f4c430">Key Price Levels</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:12px">
+        <div><strong>Daily Pivot (PP)</strong> — (prevH + prevL + prevC) / 3. Primary mean-reversion anchor. Static all day.</div>
+        <div><strong>R1 / S1</strong> — First resistance / support extensions from daily pivot. Directional targets and entry zones.</div>
+        <div><strong>4H Pivot</strong> — Same formula, 4-hour bars. Sub-daily precision confluences. Displayed in Zone Ticker.</div>
+        <div><strong>Daily Open</strong> — Psychological anchor. Price frequently reverts to it intraday. Tagged when price approaches.</div>
+        <div><strong>VAH / VAL</strong> — Value Area High / Low from previous day's volume profile. Key consolidation zone boundaries.</div>
+        <div><strong>Session VWAP</strong> — Cumulative today's VWAP. Above = buyers in control; below = sellers. Chop band gate.</div>
+        <div><strong>Asia Body-Range Fibs</strong> — 00:00–06:00 London. Fib levels projected from session body. Today + yesterday confluences.</div>
+        <div><strong>Monday Body-Range Fibs</strong> — Weekly range anchor. Current + previous Monday body. Cross-session matches are high-star.</div>
+      </div>
+    </section>
+
+    <!-- FIBONACCI ZONES -->
+    <section>
+      <h3 style="margin:0 0 8px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#f4c430">Fibonacci Confluences &amp; Zone Grading</h3>
+      <p style="margin:0 0 8px">A <strong>confluence</strong> is where today's Fib level and yesterday's Fib level overlap within the pip threshold. Higher density = more Fib lines agree = higher-star zone.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="color:#999;border-bottom:1px solid #444"><th style="padding:4px 8px;text-align:left">Level</th><th style="padding:4px 8px;text-align:left">Strength</th><th style="padding:4px 8px;text-align:left">Usage</th></tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #2a2a2a"><td style="padding:5px 8px">0.382 / 0.5</td><td style="padding:5px 8px;color:#cd7f32">Bronze</td><td style="padding:5px 8px">Continuation entries on pullbacks; low conviction alone</td></tr>
+          <tr style="border-bottom:1px solid #2a2a2a"><td style="padding:5px 8px">0.786 / 0.886</td><td style="padding:5px 8px;color:#c0c0c0">Silver</td><td style="padding:5px 8px">Deep reversal zones; preferred for range-bound entries (0.886 = best R:R)</td></tr>
+          <tr style="border-bottom:1px solid #2a2a2a"><td style="padding:5px 8px">0.618–0.65 <em>(GP)</em></td><td style="padding:5px 8px;color:#f4c430">Gold</td><td style="padding:5px 8px"><strong>Golden Pocket</strong> — primary mean-reversion zone. Zone Ticker watches for GP entry to trigger VMU assessment.</td></tr>
+          <tr><td style="padding:5px 8px">Cross-session match</td><td style="padding:5px 8px;color:#a78bfa">Bonus ★</td><td style="padding:5px 8px">Asia Fib + Monday Fib agree within pip threshold — highest conviction level</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ZONE TICKER & VMU -->
+    <section>
+      <h3 style="margin:0 0 8px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#f4c430">Zone Ticker &amp; VuManchu Assessment</h3>
+      <p style="margin:0 0 8px">When price enters a Golden Pocket zone, the Zone Ticker activates and runs a live VuManchu (Cipher B) assessment from the moment of GP entry. Needs <strong>≥ 2/3 components</strong> to return <code>AGREE</code>.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="color:#999;border-bottom:1px solid #444"><th style="padding:4px 8px;text-align:left">Component</th><th style="padding:4px 8px;text-align:left">Signal Types</th><th style="padding:4px 8px;text-align:left">Meaning</th></tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #2a2a2a">
+            <td style="padding:5px 8px;font-weight:600">WT (WaveTrend)</td>
+            <td style="padding:5px 8px">OVERSOLD / OVERBOUGHT<br>DIVERGENCE_BULL / BEAR<br>HIDDEN_BULL / BEAR<br>BULLISH / BEARISH</td>
+            <td style="padding:5px 8px">
+              OS/OB = exhaustion at zone<br>
+              DIVERGENCE = reversal signal (price new extreme, WT doesn't confirm)<br>
+              HIDDEN = continuation signal (pullback in trend)<br>
+              Cross = directional momentum
+            </td>
+          </tr>
+          <tr style="border-bottom:1px solid #2a2a2a">
+            <td style="padding:5px 8px;font-weight:600">MF (Money Flow)</td>
+            <td style="padding:5px 8px">BULLISH / BEARISH<br>BULLISH_EXHAUSTION<br>BEARISH_EXHAUSTION</td>
+            <td style="padding:5px 8px">
+              EXHAUSTION = fuel spent (sharp spike now rolling back) → reversal likely<br>
+              BULLISH/BEARISH = directional pressure<br>
+              <em>Gold-specific: red MF spike (negative) = buyers stepping in (fade retail)</em>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:5px 8px;font-weight:600">VWAP (oscillator)</td>
+            <td style="padding:5px 8px">EXHAUSTION / REVERSAL<br>DIVERGENCE_BULL / BEAR<br>HIDDEN_BULL / BEAR</td>
+            <td style="padding:5px 8px">
+              Slope exhaustion = VWAP momentum decelerating into zone<br>
+              Divergence = price and VWAP oscillator moving in opposite directions
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin:8px 0 0;color:#999;font-size:12px">HIDDEN divergences signal <strong>trend continuation</strong>. DIVERGENCE signals <strong>reversal</strong>. Both count as VMU alignment for their respective trade directions.</p>
+    </section>
+
+    <!-- SNIPER SUITE CONFLUENCE BOX -->
+    <section>
+      <h3 style="margin:0 0 8px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#f4c430">Sniper Suite Confluence Box</h3>
+      <p style="margin:0 0 6px">Three structural biases are tracked by the bot and displayed in the Zone Ticker. All three aligning = highest conviction.</p>
+      <ul style="margin:0;padding-left:18px;font-size:12px">
+        <li><strong>Pivot Bias</strong> — price above/below daily pivot PP. BULL = price &gt; PP; BEAR = price &lt; PP.</li>
+        <li><strong>Structural Bias</strong> — CHoCH / BOS analysis on 30m bars. Detects trend breaks and continuations.</li>
+        <li><strong>Momentum</strong> — WT crossover direction. BULL = WT1 crossing above WT2; BEAR = crossing below.</li>
+      </ul>
+    </section>
+
+    <!-- ENTRY SEQUENCE -->
+    <section>
+      <h3 style="margin:0 0 8px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#f4c430">Entry Sequence</h3>
+      <ol style="margin:0;padding-left:18px;font-size:12px;line-height:1.8">
+        <li>All <strong>7 checklist gates</strong> must pass (or warn on non-critical gates — stability, VWAP chop).</li>
+        <li>Identify the highest-star Fib confluence or daily pivot in the signal direction.</li>
+        <li>Wait for price to enter the <strong>Golden Pocket (0.618–0.65)</strong> of the zone. Zone Ticker activates automatically.</li>
+        <li>Zone Ticker VMU must return <strong>AGREE (≥2/3 components)</strong>.</li>
+        <li>Sniper Suite confluence box: <strong>Pivot Bias + Structural Bias</strong> must align with trade direction. Momentum is the trigger.</li>
+        <li>Session VWAP must be on the correct side: <strong>price above VWAP for long; price below VWAP for short</strong>.</li>
+        <li>VWAP chop gate must be clear (price &gt; ATR×0.25 from VWAP).</li>
+        <li>Enter on WT cross (momentum trigger) or on the candle that confirms VMU AGREE.</li>
+      </ol>
+    </section>
+
+    <!-- RISK MANAGEMENT -->
+    <section>
+      <h3 style="margin:0 0 8px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#f4c430">Risk Management</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <tbody>
+          <tr style="border-bottom:1px solid #2a2a2a"><td style="padding:5px 8px;font-weight:600;width:160px">Stop Loss</td><td style="padding:5px 8px">Swing low/high of GP zone ± ATR×1.3. Adjusted by GARCH vol regime (HIGH vol → wider stop).</td></tr>
+          <tr style="border-bottom:1px solid #2a2a2a"><td style="padding:5px 8px;font-weight:600">TP1 (partial)</td><td style="padding:5px 8px">~1.5R. OTC session character median projection from daily open.</td></tr>
+          <tr style="border-bottom:1px solid #2a2a2a"><td style="padding:5px 8px;font-weight:600">TP2 (majority)</td><td style="padding:5px 8px">~2.2R. ATR extension target. Next major Fib level or daily R1/S1.</td></tr>
+          <tr style="border-bottom:1px solid #2a2a2a"><td style="padding:5px 8px;font-weight:600">TP3+</td><td style="padding:5px 8px;color:#888">Ignored in normal conditions — price rarely reaches these in a single session.</td></tr>
+          <tr style="border-bottom:1px solid #2a2a2a"><td style="padding:5px 8px;font-weight:600">Position Size</td><td style="padding:5px 8px">Base size × regime confidence mult (LOW=0.25, MED=0.6, HIGH=1.0) × GARCH vol mult (HIGH vol=0.6, LOW vol=1.0).</td></tr>
+          <tr><td style="padding:5px 8px;font-weight:600">Range Cap</td><td style="padding:5px 8px">GARCH CI68 daily range cap. Track <em>remaining range</em> — do not enter trades where the expected range is already exhausted.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- NON-ENTRY -->
+    <section>
+      <h3 style="margin:0 0 8px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#f4c430">Non-Entry Conditions (skip the trade)</h3>
+      <ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.8">
+        <li>Any hard-fail gate (regime LOW, signal NEUTRAL, L2 momentum &lt;2/4).</li>
+        <li>Price inside VWAP chop band — no directional conviction.</li>
+        <li>Price &gt;60 pips from any aligned level — do not chase.</li>
+        <li>COT leveraged funds &gt;80th percentile — mean-reversion risk elevated.</li>
+        <li>GARCH daily cap already &gt;85% used — limited remaining range.</li>
+        <li>VMU returns OPPOSE (oscillators actively contradicting trade direction).</li>
+        <li>OTC forecast = CHOPPY session character — sessions historically close near open.</li>
+        <li>Sniper Suite bias box: Pivot + Structural disagree — wait for alignment before entry.</li>
+      </ul>
+    </section>
+
+    <!-- VOLUME FORECAST NOTE -->
+    <section style="background:rgba(244,196,48,.06);border:1px solid rgba(244,196,48,.2);border-radius:6px;padding:12px">
+      <h3 style="margin:0 0 6px;font-size:12px;font-weight:600;color:#f4c430">Why we don't use Pine Script's simple percentile range</h3>
+      <p style="margin:0;font-size:12px;color:#bbb">The bot's <strong>GARCH(1,1) + OTC Forecast</strong> is superior: it regime-matches the historical sample to current volatility (LOW/NORMAL/HIGH), computes CI68/CI95 confidence intervals, tracks <em>remaining range cap</em> intraday, and flags CHOPPY vs TRENDING session character. The Pine Script uses a simple 90-day percentile of open-to-high % — useful but a significant simplification of what the OTC engine already does.</p>
+    </section>
+
+  </div><!-- /content -->
+  </details>
+</div><!-- /#goldStrategyRef -->
+
 <script type="module" src="./js/gold-app.js"></script>
 </body>
 </html>
