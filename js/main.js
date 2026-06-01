@@ -546,9 +546,13 @@ async function loadAll() {
     // Fire all independent fetches in parallel — cached values resolve instantly
     const fredValid = S.fredData &&
       ['vix', 'us10y', 'hy', 'nfci'].every(k => S.fredData[k]?.value != null);
+    // If FRED was unavailable on the last attempt, wait 30s before retrying so we
+    // don't hammer /api/fred on every pair switch while the server refresh is in progress.
+    const fredCooling = !fredValid && S._fredUnavailAt &&
+      Date.now() - S._fredUnavailAt < 30_000;
     const [fredData, ecbData, cfg, ohlcData, ohlc5mData, ohlc30mData, quote] =
       await Promise.all([
-        fredValid ? Promise.resolve(S.fredData) :
+        (fredValid || fredCooling) ? Promise.resolve(S.fredData) :
           loadCached('fred2', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED,
             d => ['vix', 'us10y', 'hy', 'nfci'].every(k => d?.[k]?.value != null)),
         S.ecbData ? Promise.resolve(S.ecbData) :
@@ -563,8 +567,15 @@ async function loadAll() {
         loadCached(`quote_${symKey}`, () => fetchAPI(`/api/quote?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.QUOTE),
       ]);
 
-    // Apply global results — always overwrite fredData if incoming data is better
-    if (!fredValid && fredData) { S.fredData = fredData; updatePill('pillFred', 'ok'); }
+    // Only promote fredData to S.fredData if the critical series are actually present.
+    // Storing partial/empty data (null critical series) keeps fredValid false on every
+    // loadAll() call, triggering continuous re-fetches.
+    const fredNowValid = fredData &&
+      ['vix', 'us10y', 'hy', 'nfci'].every(k => fredData[k]?.value != null);
+    if (!fredValid && !fredCooling) {
+      if (fredNowValid) { S.fredData = fredData; delete S._fredUnavailAt; updatePill('pillFred', 'ok'); }
+      else              { S._fredUnavailAt = Date.now(); } // start 30s cooldown
+    }
     if (!S.ecbData)    S.ecbData  = ecbData;
     if (cfg.hasAnt)    updatePill('pillAnt', 'ant');
     if (cfg.hasKV)     updatePill('pillKV',  'ok');

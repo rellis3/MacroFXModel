@@ -629,106 +629,28 @@ export default {
       if (path === '/api/fred') {
         if (!env.FRED_KEY) return err('FRED_KEY not configured', 503);
 
-        const FRED_KV_KEY  = 'fred_data_v3'; // v3: requires critical series (vix+us10y+hy+nfci)
-        const FRED_FRESH_MS = 6 * 60 * 60 * 1000; // 6 h in ms
+        // All FRED fetching is done exclusively by server.js refreshFredDashboard()
+        // (sequential, 600 ms per series, rate-safe). This endpoint is KV-read-only —
+        // it never touches FRED directly, eliminating the concurrent-request race that
+        // was rate-limiting the critical series and creating a null-data livelock.
+        const FRED_KV_KEY  = 'fred_data_v3';
+        const FRED_FRESH_MS = 6 * 60 * 60 * 1000;
 
-        // ── KV cache read ──────────────────────────────────────────────────────
-        let staleData = null; // available as fallback if live fetch fails
         if (env.FX_SCORES) {
           try {
             const raw = await env.FX_SCORES.get(FRED_KV_KEY);
             if (raw) {
               const { d, t } = JSON.parse(raw);
-              if (Date.now() - (t ?? 0) < FRED_FRESH_MS) return json(d); // fresh hit
-              staleData = d; // stale but usable as fallback
+              // Return fresh data immediately; return stale as fallback when server
+              // refresh is still in progress (startup window ≤ 20 s).
+              if (d && typeof d === 'object') return json(d);
             }
-          } catch { /* KV read error — proceed to live fetch */ }
+          } catch { /* KV read error */ }
         }
 
-        const SERIES = {
-          vix:      'VIXCLS',
-          us2y:     'GS2',
-          us5y:     'GS5',
-          us10y:    'GS10',
-          dxy:      'DTWEXBGS',
-          hy:       'BAMLH0A0HYM2',
-          nfci:     'NFCI',
-          tips:     'DFII10',
-          tips5:    'DFII5',
-          bei:      'T10YIE',
-          aud_usd:  'DEXUSAL',
-          usd_jpy:  'DEXJPUS',
-          de10y:    'IRLTLT01DEM156N',
-          gb10y:    'IRLTLT01GBM156N',
-          jp10y:    'IRLTLT01JPM156N',
-          au10y:    'IRLTLT01AUM156N',
-          ca10y:    'IRLTLT01CAM156N',
-          ch10y:    'IRLTLT01CHM156N',
-          de_short: 'IRSTCI01DEM156N',
-          gb_short: 'IR3TIB01GBM156N',
-          jp_short: 'IRSTCI01JPM156N',
-          au_short: 'IR3TIB01AUM156N',
-          ca_short: 'IRSTCI01CAM156N',
-          ch_short: 'IRSTCI01CHM156N',
-          wti:      'DCOILWTICO',
-          // Net Fed Liquidity components — NQ/equity T1 scoring only
-          walcl:    'WALCL',      // Fed total assets (weekly, Thursdays)
-          tga:      'WTREGEN',    // Treasury General Account (daily)
-          rrp:      'RRPONTSYD',  // Overnight reverse repo (daily)
-          // Carry basket extension — NZD for NZD/JPY alongside AUD/JPY in T5
-          nzd_usd:  'DEXUSNZ',
-          // Credit quality spread — BB vs CCC divergence as early distress signal in T4
-          hy_bb:    'BAMLH0A1HYBB',
-          hy_ccc:   'BAMLH0A3HYC',
-        };
-
-        // ── Live FRED fetch (batched to stay under rate limit) ───────────────────
-        // Fire in batches of 9 with 80 ms gaps — reduces peak concurrent FRED
-        // connections from 27 → 9, keeping well under the 120 req/min limit.
-        const seriesEntries = Object.entries(SERIES);
-        const BATCH = 9;
-        const allResults = [];
-        for (let i = 0; i < seriesEntries.length; i += BATCH) {
-          if (i > 0) await new Promise(r => setTimeout(r, 80));
-          const batch = seriesEntries.slice(i, i + BATCH);
-          const batchResults = await Promise.all(batch.map(async ([key, id]) => {
-            const u = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${env.FRED_KEY}&file_type=json&sort_order=desc&limit=5`;
-            try {
-              const r = await fetch(u);
-              const d = await r.json();
-              // Filter out FRED null marker "."
-              const valid = (d.observations || [])
-                .filter(o => o.value && o.value !== '.')
-                .map(o => parseFloat(o.value));
-              return [key, { value: valid[0] ?? null, prev: valid[1] ?? null }];
-            } catch (e) {
-              return [key, { value: null, prev: null }];
-            }
-          }));
-          allResults.push(...batchResults);
-        }
-
-        const out = Object.fromEntries(allResults);
-
-        // ── KV cache write — require critical series before caching ───────────
-        // A partial rate-limited batch may return 15+ series but miss VIX/yields/
-        // NFCI. Require the four dashboard-critical series to be non-null so that
-        // partial results don't get cached as good data.
-        const CRITICAL = ['vix', 'us10y', 'hy', 'nfci'];
-        const criticalOk = CRITICAL.every(k => out[k]?.value != null);
-        const validCount  = Object.values(out).filter(v => v.value != null).length;
-        if (criticalOk && validCount >= 10) {
-          env.FX_SCORES?.put(
-            FRED_KV_KEY,
-            JSON.stringify({ d: out, t: Date.now() }),
-            { expirationTtl: 86400 },
-          ).catch(() => {});
-          return json(out);
-        }
-
-        // FRED rate-limited or critical series missing — serve stale cache.
-        if (staleData) return json(staleData);
-        return json(out); // no stale available — return whatever we got
+        // KV empty — server refresh not yet complete (first deploy or post-restart).
+        // Return empty object; client will retry on next pair switch or page reload.
+        return json({});
       }
 
       // -- /api/ecbsdw ------------------------------------------
