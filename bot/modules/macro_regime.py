@@ -26,9 +26,14 @@ class MacroRegimeModule(BaseModule):
         # Take max signalScore across all entries (not just first)
         signal_score = max((e.get('signalScore') or 0) for e in entries)
 
-        # Direction from count of aligned entries
+        # Direction from count of aligned entries.
+        # signalAligned is set by the browser analysis or by levels.js (signalScore >= 50).
+        # When all entries lack the field entirely (old cache), fall back to direction counts.
         aligned_longs  = sum(1 for e in entries if e.get('signalAligned') and e.get('direction') == 'long')
         aligned_shorts = sum(1 for e in entries if e.get('signalAligned') and e.get('direction') == 'short')
+        if aligned_longs == 0 and aligned_shorts == 0 and all('signalAligned' not in e for e in entries):
+            aligned_longs  = sum(1 for e in entries if e.get('direction') == 'long')
+            aligned_shorts = sum(1 for e in entries if e.get('direction') == 'short')
 
         if aligned_longs > aligned_shorts:
             direction = 'LONG'
