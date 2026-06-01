@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gold Strategy Backtester</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap">
+  <style>
+    :root {
+      --bg:    #111;
+      --bg2:   #191919;
+      --bg3:   #222;
+      --border: #2a2a2a;
+      --text1: #f0f0f0;
+      --text2: #aaa;
+      --text3: #666;
+      --gold:  #f4c430;
+      --green: #4caf8a;
+      --red:   #e05555;
+      --blue:  #5a9de0;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text1); font-family: 'DM Sans', sans-serif; font-size: 13px; min-height: 100vh; }
+
+    /* ── Header ── */
+    .header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--bg2); }
+    .header-logo { color: var(--gold); font-size: 18px; font-weight: 600; letter-spacing: -0.5px; }
+    .header-sep  { color: var(--text3); }
+    .header-title { color: var(--text2); font-size: 13px; }
+    .header-link  { margin-left: auto; color: var(--gold); text-decoration: none; font-size: 12px; opacity: 0.7; }
+    .header-link:hover { opacity: 1; }
+
+    /* ── Layout ── */
+    .layout { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 49px); overflow: hidden; }
+    .sidebar { background: var(--bg2); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px 12px; display: flex; flex-direction: column; gap: 12px; }
+    .main    { overflow-y: auto; padding: 16px 20px; }
+
+    /* ── Config sections ── */
+    .cfg-section { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .cfg-section summary { padding: 8px 12px; cursor: pointer; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); background: var(--bg3); list-style: none; display: flex; justify-content: space-between; }
+    .cfg-section summary::after { content: '▾'; }
+    .cfg-section[open] summary::after { content: '▴'; }
+    .cfg-section .cfg-body { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+
+    .cfg-row  { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .cfg-label { font-size: 11px; color: var(--text2); flex: 1; }
+    .cfg-input { background: var(--bg); border: 1px solid var(--border); color: var(--text1); border-radius: 4px; padding: 4px 6px; font-size: 12px; font-family: inherit; width: 90px; }
+    .cfg-input:focus { outline: none; border-color: var(--gold); }
+    input[type="date"].cfg-input { width: 120px; }
+    input[type="range"] { accent-color: var(--gold); cursor: pointer; width: 100%; }
+    .split-lbl { font-size: 10px; color: var(--gold); text-align: center; margin-top: 2px; }
+
+    .gate-toggle { display: flex; align-items: center; gap: 8px; }
+    .gate-toggle label { font-size: 12px; color: var(--text1); cursor: pointer; display: flex; align-items: center; gap: 6px; flex: 1; }
+    .gate-toggle input[type="checkbox"] { accent-color: var(--gold); width: 14px; height: 14px; cursor: pointer; }
+
+    /* ── Run button ── */
+    .run-btn { width: 100%; padding: 10px; background: var(--gold); color: #111; font-size: 13px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; transition: opacity 0.2s; }
+    .run-btn:hover:not(:disabled) { opacity: 0.9; }
+    .run-btn:disabled { opacity: 0.5; cursor: default; }
+
+    /* ── Status bar ── */
+    .status-bar { font-size: 11px; color: var(--text2); padding: 6px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .status-bar.running { color: var(--gold); }
+    .status-bar.done    { color: var(--green); }
+    .status-bar.error   { color: var(--red); }
+    .progress-track { height: 2px; background: var(--bg3); border-radius: 1px; overflow: hidden; }
+    .progress-fill  { height: 100%; background: var(--gold); width: 0; transition: width 0.3s; }
+
+    /* ── Results area ── */
+    .placeholder { color: var(--text3); font-size: 12px; padding: 40px; text-align: center; }
+
+    /* ── Stat grid ── */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+    .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+    .stat-val  { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .stat-lbl  { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ── Tab system ── */
+    .tab-bar { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .tab-btn { background: none; border: none; color: var(--text2); font-size: 12px; font-family: inherit; padding: 8px 14px; cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.15s; }
+    .tab-btn:hover { color: var(--text1); }
+    .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+    .tab-title { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 12px; }
+
+    /* ── Charts ── */
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .chart-box { height: 200px; background: var(--bg2); border-radius: 8px; overflow: hidden; }
+
+    /* ── Detail grid ── */
+    .detail-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+    .detail-item { background: var(--bg2); border-radius: 6px; padding: 8px; }
+    .detail-lbl  { display: block; font-size: 10px; color: var(--text3); text-transform: uppercase; margin-bottom: 2px; }
+    .detail-val  { font-size: 13px; font-weight: 500; }
+
+    /* ── Tables ── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .data-table th { background: var(--bg3); color: var(--text2); font-weight: 500; text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); position: sticky; top: 0; }
+    .data-table td { padding: 5px 8px; border-bottom: 1px solid #1c1c1c; }
+    .data-table tr:hover td { background: var(--bg3); }
+    .data-table .oos-row td { background: rgba(90, 157, 224, 0.06); }
+
+    /* ── WFO toggle ── */
+    .wfo-sub { padding: 8px 10px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .wfo-sub.hidden { display: none; }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-row { grid-template-columns: 1fr; }
+      .detail-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="header">
+  <span class="header-logo">GOLD</span>
+  <span class="header-sep">/</span>
+  <span class="header-title">Strategy Backtester</span>
+  <a href="gold.html" class="header-link">← Back to Gold Dashboard</a>
+</header>
+
+<div class="layout">
+
+  <!-- ── Sidebar: Config ── -->
+  <aside class="sidebar">
+
+    <!-- Date range -->
+    <details class="cfg-section" open>
+      <summary>Date Range</summary>
+      <div class="cfg-body">
+        <div class="cfg-row">
+          <label class="cfg-label">Start</label>
+          <input type="date" id="cfg-start" class="cfg-input" value="2018-01-01">
+        </div>
+        <div class="cfg-row">
+          <label class="cfg-label">End</label>
+          <input type="date" id="cfg-end" class="cfg-input" value="2025-12-31">
+        </div>
+        <div style="margin-top:4px">
+          <label class="cfg-label">IS/OOS Split</label>
+          <input type="range" id="cfg-is-split" min="0" max="90" step="5" value="0" oninput="syncSplitSlider()">
+          <div class="split-lbl" id="split-lbl">Single run (no split)</div>
+        </div>
+      </div>
+    </details>
+
+    <!-- WFO -->
+    <details class="cfg-section">
+      <summary>Walk-Forward Validation</summary>
+      <div class="cfg-body">
+        <div class="gate-toggle">
+          <label><input type="checkbox" id="cfg-wfo" onchange="document.getElementById('wfo-sub').classList.toggle('hidden',!this.checked)"> Enable WFO</label>
+        </div>
+        <div id="wfo-sub" class="wfo-sub hidden">
+          <div class="cfg-row">
+            <label class="cfg-label">IS Months</label>
+            <input type="number" id="cfg-wfo-is" class="cfg-input" value="6" min="2" max="36">
+          </div>
+          <div class="cfg-row">
+            <label class="cfg-label">OOS Months</label>
+            <input type="number" id="cfg-wfo-oos" class="cfg-input" value="2" min="1" max="12">
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- Strategy gates -->
+    <details class="cfg-section" open>
+      <summary>Strategy Gates</summary>
+      <div class="cfg-body">
+        <div class="gate-toggle"><label><input type="checkbox" id="gate-asia-fib" checked> Asia Range Fibs</label></div>
+        <div class="gate-toggle"><label><input type="checkbox" id="gate-monday-fib" checked> Monday Range Fibs</label></div>
+        <div class="gate-toggle"><label><input type="checkbox" id="gate-pivot" checked> Daily Pivot (PP/R1/S1)</label></div>
+        <div class="gate-toggle"><label><input type="checkbox" id="gate-vwap-chop" checked> VWAP Chop Zone</label></div>
+        <div class="gate-toggle"><label><input type="checkbox" id="gate-vmu" checked> VMU Filter (WT+MF+VWAP)</label></div>
+        <div class="gate-toggle" style="padding-left:18px"><label><input type="checkbox" id="gate-vmu-agree"> Require VMU 'agree' (strict)</label></div>
+        <div class="gate-toggle"><label><input type="checkbox" id="gate-session" checked> Session Filter (London/NY)</label></div>
+        <div class="gate-toggle"><label><input type="checkbox" id="gate-choch" checked> CHoCH / BOS Structure</label></div>
+        <div class="gate-toggle"><label><input type="checkbox" id="gate-htf-ema" checked> HTF EMA 21/50</label></div>
+        <div class="gate-toggle"><label><input type="checkbox" id="gate-adx"> ADX Trend Filter</label></div>
+      </div>
+    </details>
+
+    <!-- Trade params -->
+    <details class="cfg-section" open>
+      <summary>Trade Parameters</summary>
+      <div class="cfg-body">
+        <div class="cfg-row"><label class="cfg-label">Risk %</label><input type="number" id="cfg-risk" class="cfg-input" value="1.0" step="0.1" min="0.1" max="5"></div>
+        <div class="cfg-row"><label class="cfg-label">SL ATR mult</label><input type="number" id="cfg-sl-atr" class="cfg-input" value="1.3" step="0.1" min="0.5" max="4"></div>
+        <div class="cfg-row"><label class="cfg-label">TP1 R</label><input type="number" id="cfg-tp1r" class="cfg-input" value="1.5" step="0.1" min="0.5" max="5"></div>
+        <div class="cfg-row"><label class="cfg-label">TP2 R</label><input type="number" id="cfg-tp2r" class="cfg-input" value="2.5" step="0.1" min="1" max="10"></div>
+        <div class="cfg-row"><label class="cfg-label">TP1 partial %</label><input type="number" id="cfg-tp1-pct" class="cfg-input" value="50" step="5" min="10" max="90"></div>
+        <div class="cfg-row"><label class="cfg-label">Spread (pips)</label><input type="number" id="cfg-spread" class="cfg-input" value="0.3" step="0.1" min="0"></div>
+      </div>
+    </details>
+
+    <!-- Filter params -->
+    <details class="cfg-section">
+      <summary>Filter Parameters</summary>
+      <div class="cfg-body">
+        <div class="cfg-row"><label class="cfg-label">Fib tolerance (pips)</label><input type="number" id="cfg-fib-tol" class="cfg-input" value="200" step="10" min="10"></div>
+        <div class="cfg-row"><label class="cfg-label">Min conviction</label><input type="number" id="cfg-min-conv" class="cfg-input" value="0" step="0.05" min="-1" max="1"></div>
+        <div class="cfg-row"><label class="cfg-label">Min confirms</label><input type="number" id="cfg-min-conf" class="cfg-input" value="2" step="1" min="0" max="8"></div>
+        <div class="cfg-row"><label class="cfg-label">VWAP chop mult</label><input type="number" id="cfg-vwap-chop" class="cfg-input" value="0.25" step="0.05" min="0.1" max="1"></div>
+        <div class="cfg-row"><label class="cfg-label">VMU min components</label><input type="number" id="cfg-vmu-min" class="cfg-input" value="2" step="1" min="1" max="3"></div>
+        <div class="cfg-row"><label class="cfg-label">Session start (hr)</label><input type="number" id="cfg-sess-start" class="cfg-input" value="7" step="1" min="0" max="12"></div>
+        <div class="cfg-row"><label class="cfg-label">Session end (hr)</label><input type="number" id="cfg-sess-end" class="cfg-input" value="19" step="1" min="12" max="23"></div>
+        <div class="cfg-row"><label class="cfg-label">Warmup days</label><input type="number" id="cfg-warmup" class="cfg-input" value="60" step="10" min="20"></div>
+        <div class="cfg-row"><label class="cfg-label">Max trades/day</label><input type="number" id="cfg-max-daily" class="cfg-input" value="3" step="1" min="1" max="10"></div>
+      </div>
+    </details>
+
+    <!-- Data -->
+    <details class="cfg-section">
+      <summary>Data</summary>
+      <div class="cfg-body">
+        <div class="gate-toggle"><label><input type="checkbox" id="cfg-load-m1"> Load M1 for precise SL/TP (~500MB, slow)</label></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">M5 + M30 loaded automatically. M1 optional for bar-accurate trade management vs M5 approximation.</div>
+      </div>
+    </details>
+
+    <!-- Status & run -->
+    <div style="margin-top:auto">
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="status-bar" id="status-bar">Ready — configure above and click Run</div>
+      <button class="run-btn" id="run-btn" onclick="runBacktest()">Run Backtest</button>
+    </div>
+
+  </aside>
+
+  <!-- ── Main: Results ── -->
+  <main class="main">
+    <div id="results-area">
+      <div class="placeholder">
+        Configure gates and parameters in the sidebar, then click <strong>Run Backtest</strong>.<br><br>
+        Data loaded from R2 (XAUUSD 2016→) · M5 + M30 required · M1 optional for precision
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script type="module" src="js/gold-backtest-app.js"></script>
+</body>
+</html>
