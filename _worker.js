@@ -939,7 +939,17 @@ export default {
         const cacheTtl = period === '90d' ? 21600 : 43200; // 6h or 12h
         if (env.FX_SCORES) {
           const cached = await env.FX_SCORES.get(cacheKey);
-          if (cached) return json(JSON.parse(cached));
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              // Validate all requested keys have data — partial caches from rate-limited
+              // sessions have some empty arrays; invalidate them so they get rebuilt.
+              if (requestedKeys.every(k => Array.isArray(parsed[k]) && parsed[k].length >= 20)) {
+                return json(parsed);
+              }
+              env.FX_SCORES.delete(cacheKey).catch(() => {});
+            } catch {}
+          }
         }
 
         // For 90d requests, try pre-populated individual series cache (written by server
