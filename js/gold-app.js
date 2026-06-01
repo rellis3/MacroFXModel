@@ -286,6 +286,28 @@ function _computeEnhancedConfs(model, priceNum) {
   }
 }
 
+// ── Session VWAP (price level) from today's M5 bars ──────────────────────────
+// Used by the VWAP chop-zone gate in evaluateChecklist.
+// Returns the cumulative session VWAP price, or null when bars are unavailable.
+function _computeSessionVwap() {
+  const bars = S.ohlc5m?.['XAU/USD']?.values;
+  if (!bars?.length) return null;
+  // bars are London-time datetime strings ("YYYY-MM-DD HH:MM:SS"), newest-first
+  const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' })
+    .format(new Date()).slice(0, 10);
+  const todayBars = bars.filter(b => b.datetime?.startsWith(londonDate));
+  if (!todayBars.length) return null;
+  const chrono = [...todayBars].reverse();  // oldest-first for cumulative calc
+  let cumTpv = 0, cumVol = 0;
+  for (const b of chrono) {
+    const tp  = (parseFloat(b.high) + parseFloat(b.low) + parseFloat(b.close)) / 3;
+    const vol = parseFloat(b.tick_volume ?? b.volume ?? 1);
+    cumTpv += tp * vol;
+    cumVol += vol;
+  }
+  return cumVol > 0 ? cumTpv / cumVol : null;
+}
+
 // ── Trade checklist evaluator ──────────────────────────────────────────────────
 function evaluateChecklist(model, volRegime, cotData, liveQuote) {
   const priceNum = liveQuote
@@ -358,6 +380,8 @@ function evaluateChecklist(model, volRegime, cotData, liveQuote) {
   });
 
   // ── 6. Price at a model-aligned level (updates every 30s) ─────────────────
+  // Candidates: Asia/Monday Fib confluences + daily pivot PP / R1 / S1.
+  // Daily pivot is directionally assigned: PP = both, R1 = short approach, S1 = long approach.
   const pipSize   = getPipSize('XAU/USD');
   const digits    = getDigits('XAU/USD');
   const aligned6  = _enhancedConfs.filter(c => {
@@ -367,21 +391,45 @@ function evaluateChecklist(model, volRegime, cotData, liveQuote) {
            (model.signal === 'BEARISH' && dir === 'short');
   });
 
+  // Build daily pivot candidates and merge into the level set
+  const pivotCandidates = [];
+  try {
+    const dp = calculatePivots();
+    if (dp && priceNum) {
+      const entries = [
+        { price: dp.pp, label: 'Daily PP', dir: 'both'  },
+        { price: dp.r1, label: 'Daily R1', dir: 'short' },
+        { price: dp.s1, label: 'Daily S1', dir: 'long'  },
+      ];
+      for (const e of entries) {
+        if (!e.price) continue;
+        const dirOk = e.dir === 'both' ||
+          (model.signal === 'BULLISH' && e.dir === 'long') ||
+          (model.signal === 'BEARISH' && e.dir === 'short');
+        if (dirOk) pivotCandidates.push({ price: e.price, pivotLabel: e.label, isPivot: true });
+      }
+    }
+  } catch(_) {}
+
+  const allLevel6 = [...aligned6, ...pivotCandidates];
+
   let levelStatus = 'fail', levelDetail = 'No model-aligned confluence levels available', nearestLevel = null;
-  if (priceNum && aligned6.length) {
-    const nearest   = aligned6.reduce((best, c) =>
+  if (priceNum && allLevel6.length) {
+    const nearest   = allLevel6.reduce((best, c) =>
       Math.abs(c.price - priceNum) < Math.abs(best.price - priceNum) ? c : best
-    , aligned6[0]);
+    , allLevel6[0]);
     nearestLevel    = nearest;
     const dist      = Math.abs(nearest.price - priceNum);
     const distPips  = Math.round(dist / pipSize);
     const above     = nearest.price > priceNum;
     levelStatus     = distPips <= 15 ? 'pass' : distPips <= 60 ? 'warn' : 'fail';
+    const isPivot   = nearest.isPivot;
     const stars     = nearest.totalStars ?? nearest.stars ?? 0;
-    const starsStr  = '★'.repeat(Math.min(5, stars));
+    const starsStr  = isPivot ? '' : '★'.repeat(Math.min(5, stars));
+    const nameStr   = isPivot ? nearest.pivotLabel : `Fib ${starsStr}`;
     levelDetail     = distPips <= 15
-      ? `AT LEVEL ${starsStr} — ${nearest.price.toFixed(digits)} (${distPips} pip${distPips !== 1 ? 's' : ''} ${above ? '↑' : '↓'})`
-      : `Nearest: ${nearest.price.toFixed(digits)} ${starsStr} · ${distPips} pips ${above ? 'above' : 'below'}`;
+      ? `AT LEVEL — ${nameStr} ${nearest.price.toFixed(digits)} (${distPips}p ${above ? '↑' : '↓'})`
+      : `Nearest: ${nameStr} ${nearest.price.toFixed(digits)} · ${distPips}p ${above ? 'above' : 'below'}`;
   } else if (!priceNum) {
     levelDetail = 'Live quote unavailable';
     levelStatus = 'warn';
@@ -391,12 +439,40 @@ function evaluateChecklist(model, volRegime, cotData, liveQuote) {
     label:      'At a model-aligned level',
     status:     levelStatus,
     detail:     levelDetail,
-    isDynamic:  true,   // this row re-renders on every quote tick
+    isDynamic:  true,
     nearestLevel,
-    failMsg:    'Price is not near any model-aligned confluence. Wait for price to come to a level.',
+    failMsg:    'Price not near any Fib confluence or daily pivot. Wait for price to come to a level.',
   });
 
-  // ── 7. Position size (informational — always shows) ───────────────────────
+  // ── 7. VWAP chop zone (updates every 30s) ─────────────────────────────────
+  // Suppresses signals when price is oscillating within ATR×0.25 of session VWAP.
+  // No directional conviction is possible inside this band.
+  const sessionVwap = _computeSessionVwap();
+  const atrForChop  = volRegime?.atr ?? 0;
+  let vwapStatus = 'info', vwapDetail = 'Session VWAP unavailable';
+  if (sessionVwap && priceNum && atrForChop > 0) {
+    const chopBand   = atrForChop * 0.25;
+    const distToVwap = Math.abs(priceNum - sessionVwap);
+    const side       = priceNum > sessionVwap ? 'above' : 'below';
+    const distPipsV  = Math.round(distToVwap / pipSize);
+    if (distToVwap < chopBand) {
+      vwapStatus = 'warn';
+      vwapDetail = `In chop band — ${distPipsV}p from VWAP (${sessionVwap.toFixed(digits)}). No directional conviction.`;
+    } else {
+      vwapStatus = 'pass';
+      vwapDetail = `Price ${distPipsV}p ${side} VWAP (${sessionVwap.toFixed(digits)}) — clear of chop band`;
+    }
+  }
+  checks.push({
+    id:       'vwap_chop',
+    label:    'VWAP chop zone',
+    status:   vwapStatus,
+    detail:   vwapDetail,
+    isDynamic: true,
+    failMsg:  'Price inside VWAP chop band — oscillating with no directional conviction. Stand aside.',
+  });
+
+  // ── 8. Position size (informational — always shows) ───────────────────────
   const regimeMult = conf.sizeMult;
   const volMult    = volRegime?.sizeMult ?? 1.0;
   const composite  = Math.round(regimeMult * volMult * 100) / 100;
@@ -418,13 +494,15 @@ function deriveVerdict(checks, model) {
   const hasFail   = hardFails.some(id => byId[id]?.status === 'fail');
   const cotFail   = byId.cot?.status === 'fail';
   const atLevel   = byId.level?.status;
+  const inChop    = byId.vwap_chop?.status === 'warn';
   const sizeMult  = byId.size?.detail.match(/×([\d.]+)/)?.[1] ?? '1.0';
   const dir       = model.signal === 'BULLISH' ? 'LONG' : model.signal === 'BEARISH' ? 'SHORT' : null;
 
-  if (hasFail)  return { verdict: 'PASS',           cls: 'fail',  emoji: '⛔', sub: byId[hardFails.find(id => byId[id]?.status === 'fail')]?.failMsg ?? 'Critical check failed.' };
-  if (cotFail)  return { verdict: 'REDUCE OR PASS', cls: 'warn',  emoji: '⚠',  sub: 'COT extremely crowded — mean-reversion risk elevated.' };
-  if (atLevel === 'fail') return { verdict: `WAIT FOR LEVEL — ${dir}`, cls: 'wait', emoji: '⏳', sub: `Model says ${dir} but price is not near a model-aligned confluence. Do not chase.` };
-  if (atLevel === 'warn') return { verdict: `APPROACHING — ${dir}`,   cls: 'wait', emoji: '👀', sub: `Price within 60 pips of nearest aligned level. Watch for entry.` };
+  if (hasFail)    return { verdict: 'PASS',           cls: 'fail',  emoji: '⛔', sub: byId[hardFails.find(id => byId[id]?.status === 'fail')]?.failMsg ?? 'Critical check failed.' };
+  if (cotFail)    return { verdict: 'REDUCE OR PASS', cls: 'warn',  emoji: '⚠',  sub: 'COT extremely crowded — mean-reversion risk elevated.' };
+  if (atLevel === 'fail') return { verdict: `WAIT FOR LEVEL — ${dir}`, cls: 'wait', emoji: '⏳', sub: `Model says ${dir} but price is not near a Fib confluence or daily pivot. Do not chase.` };
+  if (atLevel === 'warn') return { verdict: `APPROACHING — ${dir}`,   cls: 'wait', emoji: '👀', sub: `Price within 60 pips of nearest level. Watch for touch.` };
+  if (inChop)     return { verdict: `CHOP ZONE — ${dir}`,            cls: 'wait', emoji: '⏸', sub: `Price inside VWAP chop band. Wait for price to clear the band before entry.` };
   return { verdict: `TRADE READY — ${dir}`, cls: 'pass', emoji: '✅', sub: `All checks pass. Size ×${sizeMult} of base risk.`, dir };
 }
 
