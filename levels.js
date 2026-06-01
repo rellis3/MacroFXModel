@@ -638,7 +638,7 @@ function buildEntries(allConfs, currentPrice, atr, sym, hmmData, bars5m, bars30m
       rrRatio,
       tags,
       rangeBias:     { confirmCount: rbias.confirmCount, conflictCount: rbias.conflictCount },
-      // signalAligned omitted intentionally — no full macro bias server-side
+      signalAligned: signalScore >= 50,
     };
   }).filter(Boolean);
 }
