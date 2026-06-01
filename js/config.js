@@ -127,6 +127,21 @@ export const KALMAN5M_DEFAULTS = {
 export const AI_CACHE_PREFIX = 'ai_';
 export const AI_CACHE_TTL = 60 * 60 * 1000;
 
+// ── Feature flags ─────────────────────────────────────────────────────────────
+// Toggle experimental features without reverting code. Set to false to fall back
+// to the previous behaviour. Changes take effect on the next page load.
+export const FEATURE_FLAGS = {
+  // PCA-inspired tier decorrelation (suggestion #10).
+  // Discounts correlated tier pairs (T1↔T3, T2↔T4 etc.) to reduce double-counting.
+  // Disable to revert to raw additive sum.
+  PCA_DECORRELATION: true,
+
+  // Client-side bootstrap particle filter for 5m regime estimation (suggestion #7).
+  // When true, the particle filter output is shown next to the server-side HMM pill.
+  // Disable to hide PF and rely solely on the server HMM.
+  PARTICLE_FILTER: true,
+};
+
 // Typical bid/ask spreads in pips for session quality classification.
 // XAU/USD unit is dollars (pip size = 1.0 in the spread endpoint).
 export const TYPICAL_SPREADS = {

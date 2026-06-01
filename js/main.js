@@ -1,7 +1,6 @@
 import { S } from './state.js';
-import { PAIRS, CACHE_DURATION } from './config.js';
+import { PAIRS, CACHE_DURATION, FEATURE_FLAGS, TYPICAL_SPREADS } from './config.js';
 import { kvSet, loadCached, cleanupStaleSessionCaches, fetchAPI, updateStatus, updatePill, londonSessionDay, getDigits, getPipSize, toOandaSym, classifySpread } from './utils.js';
-import { TYPICAL_SPREADS } from './config.js';
 import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
 import { calculateStructuralFibs } from './structural-fibs.js';
 import { filterConfluences, enhanceConfluences, mergeCrossSources } from './confluences.js';
@@ -20,6 +19,7 @@ import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 import { exportWatchlistCSV } from './watchlist.js';
 import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, sendTestServerAlert, loadAlertCfg, forceKVSync, checkGoldMacroAlerts, syncGoldModelNow } from './alerts.js';
+import { runParticleFilter } from './particleFilter.js';
 
 // ── Debounced renderAll ───────────────────────────────────────────────────────
 // Prevents concurrent DOM mutations when async compass resolve + quote refresh
@@ -199,12 +199,38 @@ function updateHeaderRegime() {
   if (!el) return;
   const r = S.hmm5mRegimes?.[sym];
   if (!r) { el.style.display = 'none'; return; }
+
   const lbl  = document.getElementById('hdrRegimeLbl');
   const conf = document.getElementById('hdrRegimeConf');
   if (lbl)  lbl.textContent  = r.regime;
   if (conf) conf.textContent = `${r.confidence}%`;
   el.className = `hdr-regime ${r.regime.toLowerCase()}`;
-  el.title     = `Bull ${r.pBull}%  ·  Bear ${r.pBear}%  ·  Range ${r.pRange}%\ntrendZ ${r.trendZ}  volZ ${r.volZ}  adxZ ${r.adxZ}`;
+
+  // Particle filter secondary estimate — shown in tooltip and as a small badge
+  const pf = FEATURE_FLAGS.PARTICLE_FILTER ? S.pfRegime?.[sym] : null;
+  const pfNote = pf
+    ? `\nPF: ${pf.regime} ${pf.confidence}%  (Bull ${pf.pBull}% Bear ${pf.pBear}% Range ${pf.pRange}% Chop ${pf.pChop}%)`
+    : '';
+  el.title = `HMM: Bull ${r.pBull}%  ·  Bear ${r.pBear}%  ·  Range ${r.pRange}%\ntrendZ ${r.trendZ}  volZ ${r.volZ}  adxZ ${r.adxZ}${pfNote}`;
+
+  // Show PF badge next to HMM when available and flags agree (or disagree) with HMM
+  let pfBadge = document.getElementById('hdrPFBadge');
+  if (pf) {
+    if (!pfBadge) {
+      pfBadge = document.createElement('span');
+      pfBadge.id        = 'hdrPFBadge';
+      pfBadge.style.cssText = 'font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px;margin-left:5px;opacity:.85;letter-spacing:.03em';
+      el.appendChild(pfBadge);
+    }
+    const agree = pf.regime === r.regime;
+    pfBadge.textContent = `PF:${pf.regime[0]}${pf.confidence}%`;
+    pfBadge.style.background = agree ? 'rgba(255,255,255,.15)' : 'rgba(255,165,0,.3)';
+    pfBadge.style.color      = agree ? 'inherit' : '#ffa500';
+    pfBadge.title = `Particle filter: ${pf.regime} ${pf.confidence}%${agree ? ' (agrees with HMM)' : ' ⚠ disagrees with HMM'}`;
+  } else if (pfBadge) {
+    pfBadge.remove();
+  }
+
   el.style.display = 'flex';
 }
 
@@ -213,6 +239,11 @@ async function loadHMM5m() {
     const r = await fetch('/api/hmm5m');
     if (!r.ok) return;
     S.hmm5mRegimes = await r.json();
+    // Refresh PF estimate when new 5m bars arrive
+    const sym = S.currentPair?.symbol;
+    if (sym && S.ohlc5m[sym]?.values) {
+      S.pfRegime[sym] = runParticleFilter(S.ohlc5m[sym].values);
+    }
     updateHeaderRegime();
   } catch {}
 }
@@ -547,6 +578,9 @@ async function loadAll() {
     S.ohlc5m[sym]   = ohlc5mData; updatePill('pill5m', 'ok');
     S.ohlc30m[sym]  = ohlc30mData; updatePill('pill30m', 'ok');
     updatePill('pillQuote', 'ok');
+
+    // Particle filter regime estimate — runs on 5m bars, result stored in S.pfRegime
+    S.pfRegime[sym] = runParticleFilter(ohlc5mData?.values);
 
     // Session data (no network — instant)
     S.sessionData = detectSession();

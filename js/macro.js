@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { COMPASS_CONFIG, KALMAN5M_DEFAULTS } from './config.js';
+import { COMPASS_CONFIG, KALMAN5M_DEFAULTS, FEATURE_FLAGS } from './config.js';
 import { ema, calcRSI, filterTradingDays } from './utils.js';
 
 // ── PCA-inspired tier decorrelation ───────────────────────────────────────────
@@ -80,7 +80,9 @@ export function calculateTierScores() {
   tiers.push(computeT8());
 
   const rawScore = tiers.reduce((sum, t) => sum + t.score, 0);
-  const pca      = applyPCADecorrelation(tiers);
+  const pca = FEATURE_FLAGS.PCA_DECORRELATION
+    ? applyPCADecorrelation(tiers)
+    : { adjustedScore: rawScore, discounts: [], weights: {} };
 
   // Only count tiers with a meaningful directional view (|score| >= 1) —
   // a marginal +1 from RSI at 51 should not tip the coherence gate.
@@ -93,6 +95,7 @@ export function calculateTierScores() {
     tiers,
     totalScore:   pca.adjustedScore + coherenceBonus,
     rawScore,
+    pcaActive:    FEATURE_FLAGS.PCA_DECORRELATION,
     pcaDiscounts: pca.discounts,
     coherenceBonus,
     agreeCount,

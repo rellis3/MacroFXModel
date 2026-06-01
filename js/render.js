@@ -2,7 +2,7 @@ import { S } from './state.js';
 import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTradingDays, toMyfxbSym } from './utils.js';
 import { TYPICAL_SPREADS, PAIRS } from './config.js';
 import { calculateTierScores, computeDollarRegime, computeMacroRegime, computeBayesianScore } from './macro.js';
-import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
+import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence, computeDCCCorrelation } from './vol.js';
 import { computeRegimeTransition, renderARMAAndTransition, computeARMAForecast } from './arma.js';
 import { filterConfluences, enhanceConfluences, detectCrossSessionClusters, mergeCrossSources } from './confluences.js';
 import { renderOISidebar } from './oi.js';
@@ -170,6 +170,10 @@ function renderAllInner() {
 
   const divergence = calculateDivergence(tierData.totalScore, volRegime);
 
+  const dccCorr = (() => {
+    try { return computeDCCCorrelation(); } catch { return null; }
+  })();
+
   const armaForecast = (() => {
     try { return computeARMAForecast(S.compassData[S.currentPair.symbol] || null); } catch(e) { return null; }
   })();
@@ -319,7 +323,8 @@ ${calendarCtx.warnings.length > 0 ? `
       <div class="hd-top">
         <div>
           <div class="pair-title">${S.currentPair.isEquity ? S.currentPair.name : S.currentPair.symbol.split('/')[0] + '<span class="q">/</span>' + (S.currentPair.symbol.split('/')[1] || '')}</div>
-          <div class="pair-meta">Vol: ${volRegime.regime} (${volRegime.percentile}th pct) · ATR ${volRegime.atrPips.toFixed(0)}${S.currentPair.isEquity ? 'pts' : 'p'}${volRegime.garch ? ' · GARCH ' + volRegime.garch.pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ' [68%: ' + volRegime.ci68Pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ']' : ''}${volImpulsePill}${dregPill} · ${tierData.agreeCount}/7 tiers agree</div>
+          <div class="pair-meta">Vol: ${volRegime.regime} (${volRegime.percentile}th pct) · ATR ${volRegime.atrPips.toFixed(0)}${S.currentPair.isEquity ? 'pts' : 'p'}${volRegime.garch ? ' · GARCH ' + volRegime.garch.pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ' [68%: ' + volRegime.ci68Pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ']' : ''}${volImpulsePill}${dregPill} · ${tierData.agreeCount}/7 tiers agree${tierData.pcaActive ? ' · PCA on' : ''}</div>
+          ${dccCorr ? `<div class="pair-meta" style="margin-top:2px;font-size:10px" title="DCC-GARCH: EWMA correlation of GARCH(1,1) residuals vs ${dccCorr.refSym}. Aligned = macro/USD driver; decoupled = pair-specific move.">${dccCorr.label}</div>` : ''}
           <div class="bias-badge ${biasClass}">${biasText}${macroBias} · ${Math.abs(tierData.totalScore) >= 9 ? 'HIGH' : Math.abs(tierData.totalScore) >= 5 ? 'MED' : 'LOW'} CONVICTION</div>
           ${(() => {
             const sym = S.currentPair.symbol;
