@@ -16,6 +16,8 @@ import { calculateTierScores, compute5mKalmanDev, computeBayesianScore } from '.
 import { gradeEntry } from './trade-grade.js';
 import { computeGoldMacroModel } from './gold-model.js';
 import { computeArimaContext } from './arima-price.js';
+import { collectDecisionInputs } from '../DecisionEngine/decisionInputs.js';
+import { runDecisionEngine } from '../DecisionEngine/decisionEngine.js';
 
 const STORAGE_KEY  = 'tg_alert_cfg';
 const COOLDOWN_KEY = 'tg_alert_cooldowns';
@@ -153,6 +155,11 @@ export function checkAndSendAlerts() {
         S.currentPair = _savedPair;
         continue;
       }
+      const alertOtcForecast = S.otcForecasts?.[sym] ?? null;
+      const alertDecisionState = (() => {
+        try { return runDecisionEngine(collectDecisionInputs(volRegime, alertOtcForecast, quote)); }
+        catch(_) { return null; }
+      })();
       S.currentPair = _savedPair;
 
       // ARIMA price context — computed from daily bars, written to KV for the bot
@@ -180,7 +187,7 @@ export function checkAndSendAlerts() {
         }).catch(() => {});
       }
 
-      cached = { entries, tierData: alertTierData, approachArrow: alertApproachArrow, kalmanDev: alertKalmanDev, arimaCtx, at: now };
+      cached = { entries, tierData: alertTierData, approachArrow: alertApproachArrow, kalmanDev: alertKalmanDev, arimaCtx, decisionState: alertDecisionState, at: now };
       _entryCache.set(sym, cached);
 
       // KV sync for Railway bot — throttled to once per 30 min per pair
@@ -265,7 +272,7 @@ export function checkAndSendAlerts() {
       _alertsInFlight.add(ck);
 
       const distPips = Math.round(dist / pipSz);
-      sendTelegramAlert(sym, e, price, distPips, digits, cached.approachArrow, cached.kalmanDev, cached.tierData, cached.arimaCtx).finally(() => {
+      sendTelegramAlert(sym, e, price, distPips, digits, cached.approachArrow, cached.kalmanDev, cached.tierData, cached.arimaCtx, cached.decisionState).finally(() => {
         _alertsInFlight.delete(ck);
       });
     }
@@ -281,7 +288,7 @@ export function invalidateAlertCache(sym) {
 
 // ── Format + dispatch ─────────────────────────────────────────────────────────
 
-async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, approachArrow, kalmanDev, tierData, arimaCtx) {
+async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, approachArrow, kalmanDev, tierData, arimaCtx, decisionState) {
   const unit     = sym === 'NAS100_USD' ? 'pts' : 'p';
   const arrowStr = approachArrow ?? '';
   const dir      = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
@@ -338,6 +345,19 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
     ? `⚠ 1m: <b>${hmm5m.regime} ${hmm5m.confidence}%</b> — momentum opposing`
     : null;
 
+  // Decision engine gate — permission + context for this direction
+  const decisionLine = (() => {
+    const ds = decisionState;
+    if (!ds) return null;
+    if (ds.mode === 'NO_TRADE') {
+      return `🚫 Decision: <b>NO TRADE</b> — ${ds.reasons[0] ?? 'conditions not met'}`;
+    }
+    const permitted = isLong ? ds.permissions.long : ds.permissions.short;
+    const gate      = permitted ? '✅ PERMITTED' : '❌ NOT PERMITTED';
+    const modeLabel = ds.mode.replace(/_/g, ' ');
+    return `${gate} · ${modeLabel} · ${ds.participation} · Risk ${ds.riskMult.toFixed(2)}×`;
+  })();
+
   const lines = [
     `🎯 <b>${sym} ${arrowStr} ${dir}</b> ${stars}`,
     `Price: <b>${entry.price.toFixed(digits)}</b> · ${atStr}`,
@@ -351,6 +371,7 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
     arimaStr,
     entry.rangeBias ? `Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗` : null,
     hmm5mLine,
+    decisionLine,
   ].filter(Boolean).join('\n');
 
   try {

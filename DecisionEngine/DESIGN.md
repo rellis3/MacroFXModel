@@ -313,15 +313,6 @@ timing (discretion layer), not the permission state.
 
 ---
 
-## Future: Beta to Risk (Phase 2)
-
-Not in first build. AUD/JPY beta to VIX ~1.8×, USD/CHF ~-0.9×.
-
-When added: EXPANSION vol state + high-beta pair → cap participation to REDUCED.
-Requires ~50 lines of rolling correlation vs VIX. Add after core engine is validated.
-
----
-
 ## Key Design Principles
 
 1. **Regime is king** — nothing overrides regime except a live event gate
@@ -330,3 +321,123 @@ Requires ~50 lines of rolling correlation vs VIX. Add after core engine is valid
 4. **Confidence handles grey areas** — no need to enumerate all 64 state combinations
 5. **Discretion lives in execution, not permission** — human judgment on entry timing, not strategy mode
 6. **The filter is the edge** — you are not predicting better, you are eliminating invalid trades before they happen
+
+---
+
+## Implementation Status
+
+### What was built
+
+All core phases are implemented and wired.
+
+| File | Status | Notes |
+|---|---|---|
+| `DecisionEngine/decisionEngine.js` | ✅ Complete | Pure modifier chain, no DOM, no side effects |
+| `DecisionEngine/decisionInputs.js` | ✅ Complete | Reads S.* state, normalises to engine input shape |
+| `DecisionEngine/decisionUI.js` | ✅ Complete | Full permission banner with range util meter, risk bar, reason chips |
+| `DecisionEngine/decisionBacktest.js` | ✅ Complete | Price-only derivation (DM ratio, ATR percentile, session H/L) |
+| `js/render.js` | ✅ Wired | Decision banner rendered in main view; compact bar above Level Map |
+| `js/signal.js` | ✅ Wired | Decision bar above entry scanner; per-entry ✓/✗ PERMITTED chip |
+| `js/backtest-worker.js` | ✅ Wired | Trades tagged with decisionMode, participation, riskMult, volState, sessionPhase |
+| `js/backtest.js` | ✅ Wired | Breakdown table shows Decision Engine section (mode / participation / session) |
+| `js/alerts.js` | ✅ Wired | Telegram message includes gate line: ✅ PERMITTED / ❌ NOT PERMITTED + mode + risk |
+
+### Key decisions made during build
+
+**Modifier chain over lookup table.** ChatGPT's spec used a case matrix that caused most conditions
+to default to NO_TRADE. Replaced with a 5-step modifier chain where NO_TRADE only fires explicitly
+(confidence <0.3 or high-impact event). All other states resolve to a meaningful participation level.
+This was the single most important architectural change.
+
+**Regime wins the Case 1/3 conflict.** When regime=TREND and rangeUtil>1.25, the result is
+POSITION_MANAGEMENT (hold only, no new entries) — not MEAN_REVERSION. Regime sets direction;
+range utilisation only gates whether new entries are permitted, not which direction is correct.
+
+**Confidence scaler eliminates the 64-case enumeration.** With 4 regimes × 4 vol states × 4
+range util buckets × 4 session phases, a lookup table would need 256 rows. The confidence scaler
+collapses all ambiguous states into a continuous 0–1 value that drives participation level linearly.
+No hard-coded case for every combination.
+
+**Price-only backtest derivation.** Live inputs use FRED macro, COT, and event risk which don't
+exist in historical bar data. Backtest uses: DM ratio from last 20 5m bars for regime, bar TR
+percentile for vol state, session H/L vs ATR×1.5 for range utilisation. This gives ~80% coverage
+of the live engine without requiring macro history.
+
+**COT modifier is gracefully optional.** `deriveCotPercentile` in decisionInputs.js reads
+`cot.netSpeculative` and `cot.history` from S.cotData. These field names have not been verified
+against the _worker.js COT parser. The function returns null if fields are absent — engine runs
+normally without it, COT modifier simply doesn't fire.
+
+**Signal scores kept independent.** Existing HMM signal scores, Bayesian continuation probability,
+regime confidence, and grade (A/B/C/CAUTION/TAKE/WATCH) were not changed. The decision engine
+is a parallel gate, not a replacement for signal quality measurement.
+
+---
+
+## Future Work
+
+### Phase 2 — Beta to Risk
+
+AUD/JPY has ~1.8× beta to VIX. USD/CHF ~-0.9×. During EXPANSION vol, high-beta pairs move
+disproportionately — continuation entries carry hidden gamma risk.
+
+Implementation: rolling 20-day correlation of pair daily returns vs VIX daily returns. If
+`|correlation| > 0.5` and volState = EXPANSION, cap participation to REDUCED regardless of regime.
+Pairs file defines beta tier per symbol. ~50 lines added to `decisionInputs.js`.
+
+Not built yet because: the core filter needs validation first. Adds complexity before the
+base case is proven by backtest.
+
+### Phase 3 — Combined Execution Score
+
+Currently: signal scores (HMM, Bayesian, grade) and the decision engine run in parallel.
+Neither drives the other.
+
+Future: the decision engine's riskMult should feed into the signal score as a multiplier gate.
+Concretely: `effectiveScore = signalScore × riskMult` where riskMult comes from DecisionState.
+A 90% signal score at riskMult=0.5 (REDUCED) becomes effectively 45% — this maps to a different
+grade band and changes the TAKE/WATCH/CAUTION verdict.
+
+This closes the loop: decision engine conditions feed trade quality, which feeds execution policy.
+Link point is `gradeEntry()` in `trade-grade.js` — accept an optional `decisionRiskMult` param.
+
+### Phase 4 — Alert Suppression for NOT PERMITTED Directions
+
+Currently: Telegram alerts fire for all entries that hit proximity regardless of decision state.
+The message includes the ✅/❌ gate line so the trader can see it — but the alert still fires.
+
+Future: suppress Telegram alert entirely (or downgrade to info-only) when the entry direction
+is NOT PERMITTED. This prevents alert fatigue from levels that are technically valid setups but
+the decision engine has blocked.
+
+Implementation: inside `checkAlerts()` in `alerts.js`, after fetching `cached.decisionState`,
+check `permitted = isLong ? ds.permissions.long : ds.permissions.short` before calling
+`sendTelegramAlert`. If `!permitted && cfg.suppressBlockedAlerts`, skip the send.
+
+Requires a new config option in the alert modal: "Suppress NOT PERMITTED alerts".
+
+### Phase 5 — COT Historical Backtest
+
+COT data is currently unavailable in backtest because we don't store weekly COT history in the
+worker. To include COT confidence modifier in backtests:
+
+1. Worker fetches historical CFTC COT data and stores weekly net speculative positions in KV
+2. `decisionBacktest.js` looks up COT for the bar's date → percentile vs trailing 52 weeks
+3. Full confidence modifier runs including COT signal
+
+Low priority: the COT modifier is ±0.1/0.15 on confidence. Effect on P&L is likely small.
+High-impact events and regime are the dominant filter factors.
+
+### Phase 6 — Automated Execution Gate (Longer Term)
+
+If the system were to drive automated orders rather than discretionary alerting:
+
+The gate logic would be:
+1. Decision engine produces DecisionState
+2. Price hits entry level
+3. `ds.permissions[direction] === true` → order eligible
+4. `ds.riskMult` feeds position sizing formula
+5. `ds.participation === 'NO_TRADE'` → no order, regardless of signal score
+
+This requires a separate execution module, broker API wiring, and a fully validated
+backtest P&L proving the filter adds positive expectancy before enabling it.
