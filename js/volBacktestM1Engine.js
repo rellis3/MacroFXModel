@@ -43,18 +43,27 @@ function makeR2Client() {
 }
 
 // Returns ArrayBuffer on success, throws on R2 error (caller decides whether to fall through).
+// Uses transformToByteArray() (SDK built-in) rather than manual chunk iteration — more reliable
+// for large files. Retries once on transient failures.
 async function fetchFromR2(pairKey) {
   const client = makeR2Client();
-  if (!client) return null; // credentials not set — not an error, just skip
+  if (!client) return null; // credentials not set — skip silently
   const key = `${R2_KEY_PREFIX}/${pairKey}_m1.parquet`;
-  console.log(`[M1] Fetching from R2: bucket=${R2_BUCKET} key=${key}`);
   const cmd  = new GetObjectCommand({ Bucket: R2_BUCKET, Key: key });
-  const resp = await client.send(cmd); // throws on 403/404/timeout — let caller handle
-  const chunks = [];
-  for await (const chunk of resp.Body) chunks.push(chunk);
-  const buf = Buffer.concat(chunks);
-  console.log(`[M1] R2 OK: ${pairKey} (${(buf.length / 1e6).toFixed(1)} MB)`);
-  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      console.log(`[M1] R2 fetch ${pairKey} (attempt ${attempt}) bucket=${R2_BUCKET} key=${key}`);
+      const resp  = await client.send(cmd);
+      const bytes = await resp.Body.transformToByteArray();
+      const buf   = Buffer.from(bytes);
+      console.log(`[M1] R2 OK: ${pairKey} (${(buf.length / 1e6).toFixed(1)} MB)`);
+      return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    } catch (err) {
+      if (attempt === 2) throw err; // re-throw after second failure
+      console.warn(`[M1] R2 attempt ${attempt} failed for ${pairKey}: ${err?.message} — retrying`);
+    }
+  }
 }
 
 // ── Drive file IDs for all 25 M1 parquets ────────────────────────────────────
