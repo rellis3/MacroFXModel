@@ -422,7 +422,11 @@ function handleRun(cfg) {
   const m1  = _bars.m1;
 
   if (!m5?.length || !m30?.length) {
-    post('error', 'Missing M5 or M30 data — please load both timeframes first');
+    post('error', 'Missing M5 or M30 data');
+    return;
+  }
+  if (!m1?.length) {
+    post('error', 'Missing M1 data — M1 bars are required for unbiased SL/TP detection. Please wait for M1 to finish parsing.');
     return;
   }
 

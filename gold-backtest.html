@@ -219,8 +219,11 @@
     <details class="cfg-section">
       <summary>Data</summary>
       <div class="cfg-body">
-        <div class="gate-toggle"><label><input type="checkbox" id="cfg-load-m1"> Load M1 for precise SL/TP (~500MB, slow)</label></div>
-        <div style="font-size:10px;color:var(--text3);margin-top:4px">M5 + M30 loaded automatically. M1 optional for bar-accurate trade management vs M5 approximation.</div>
+        <div style="font-size:10px;color:var(--text2);line-height:1.5">
+          <strong style="color:var(--gold)">M1 + M5 + M30</strong> loaded on each run from R2.<br>
+          M1 is required — it resolves inside-bar ambiguity so SL and TP hits are detected on the exact 1-minute bar they occurred, not approximated from a 5-minute candle.<br>
+          <span style="color:var(--text3)">M1 is ~300–500 MB for the full history. First load is slow; the browser does not cache it across sessions.</span>
+        </div>
       </div>
     </details>
 
@@ -238,7 +241,7 @@
     <div id="results-area">
       <div class="placeholder">
         Configure gates and parameters in the sidebar, then click <strong>Run Backtest</strong>.<br><br>
-        Data loaded from R2 (XAUUSD 2016→) · M5 + M30 required · M1 optional for precision
+        Loads M1 + M5 + M30 from R2 (XAUUSD 2016→) · M1 required for unbiased SL/TP detection
       </div>
     </div>
   </main>
