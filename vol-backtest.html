@@ -354,6 +354,7 @@
     <option value="reversal">Reversal</option>
     <option value="reversal50">Rev-50</option>
     <option value="revHL50">Rev-HL50 ★</option>
+    <option value="dynamicAnchor">Dyn-Anchor ◈</option>
     <option value="momentum">Momentum</option>
     <option value="both">Both</option>
     <option value="momentum50">Mom-50</option>
@@ -408,7 +409,7 @@
 <!-- ── Strategy help panel ───────────────────────────────────────────────── -->
 <div id="stratHelp" style="display:none;margin:8px 0 0;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;color:var(--txt2)">
   <strong style="color:var(--txt);font-size:13px">Strategy modes</strong>
-  <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:12px">
+  <div style="margin-top:8px;display:grid;grid-template-columns:repeat(7,1fr);gap:12px">
     <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Reversal</div>
       Waits for price to reach the 75th-pct daily range extreme (HL75) then fades back toward the median close (OC_med).
@@ -450,6 +451,16 @@
       R:R 1:1, needs &gt;50% win rate. RANGE days skipped.
       <div style="margin-top:4px;color:var(--green)">BULL → stop-BUY at open+HL50, TP open+HL75</div>
       <div style="color:var(--red)">BEAR → stop-SELL at open−HL50, TP open−HL75</div>
+    </div>
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Dyn-Anchor ◈</div>
+      From the lesson walkthrough. Tracks the intraday running High and Low bar-by-bar.
+      SELL when price reaches <strong>runLow × (1+HL50%)</strong> — the forecasted daily HIGH from the LL anchor.
+      BUY when price reaches <strong>runHigh × (1−HL50%)</strong> — the forecasted daily LOW from the HH anchor.
+      TP at open, SL at the HL75 level from the same anchor. Guard: entry must cross open.
+      Re-anchors on every new extreme — identical to the lesson chart markup.
+      <div style="margin-top:6px;color:var(--red)">SELL: runLow×(1+HL50%) → TP open, SL runLow×(1+HL75%)</div>
+      <div style="color:var(--green)">BUY: runHigh×(1−HL50%) → TP open, SL runHigh×(1−HL75%)</div>
     </div>
   </div>
   <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
@@ -771,6 +782,7 @@
       <option value="reversal">Reversal</option>
       <option value="reversal50">Reversal 50</option>
       <option value="revHL50">Rev-HL50</option>
+      <option value="dynamicAnchor">Dyn-Anchor</option>
       <option value="momentum">Momentum</option>
       <option value="momentum50">Momentum 50</option>
     </select>
@@ -1461,7 +1473,7 @@ function toggleRevGuide() {
 function toggleMomentumOpts() {
   const strategy = document.getElementById('runStrategy').value;
   document.getElementById('momentumOpts').style.display =
-    (strategy === 'reversal' || strategy === 'reversal50' || strategy === 'revHL50' || strategy === 'momentum50') ? 'none' : '';
+    (strategy === 'reversal' || strategy === 'reversal50' || strategy === 'revHL50' || strategy === 'momentum50' || strategy === 'dynamicAnchor') ? 'none' : '';
   document.getElementById('revHL50Opts').style.display =
     strategy === 'revHL50' ? '' : 'none';
 }

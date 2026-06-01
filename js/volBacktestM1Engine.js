@@ -467,6 +467,71 @@ function simulateRevHL50M1(m1Bars, open, hl50pct, hl75pct, regime = 'RANGE', rev
   return { filled: true, side, outcome: 'open', pnlPct: +eodPnl.toFixed(5), leg: 'revHL50', fillTime, exitTime: eodTime };
 }
 
+// ── Dynamic-anchor strategy ───────────────────────────────────────────────────
+//
+// Lesson methodology: track running_high and running_low bar-by-bar.
+// SELL: from running LOW, project UP by hl50 → forecasted HIGH.
+//       Entry when price hits it (guard: must be above open). TP=open. SL=LL×(1+hl75).
+// BUY:  from running HIGH, project DOWN by hl50 → forecasted LOW.
+//       Entry when price hits it (guard: must be below open). TP=open. SL=HH×(1-hl75).
+// Re-anchors automatically: each new HH slides the BUY level down;
+// each new LL slides the SELL level up.
+// One fill per day, SELL checked before BUY.
+
+function simulateDynamicAnchorM1(m1Bars, open, hl50pct, hl75pct) {
+  let runHigh = open, runLow = open;
+  let filled = false, side = '', isBuy = null;
+  let entryL, tpL = open, slL, fillTime = null, exitTime = null;
+
+  for (const bar of m1Bars) {
+    if (!filled) {
+      const sellEntry = runLow  * (1 + hl50pct / 100);
+      const sellSl    = runLow  * (1 + hl75pct / 100);
+      const buyEntry  = runHigh * (1 - hl50pct / 100);
+      const buySl     = runHigh * (1 - hl75pct / 100);
+
+      // SELL: forecasted HIGH from LL, must be above open
+      if (sellEntry > open && bar.high >= sellEntry) {
+        filled = true; side = 'SELL'; isBuy = false;
+        entryL = sellEntry; slL = sellSl; fillTime = bar.time;
+        if (bar.high >= slL)  return { filled: true, side, outcome: 'loss', pnlPct: +(-((slL - entryL) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime, exitTime: bar.time };
+        if (bar.low  <= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +((entryL - tpL)   / open * 100).toFixed(5),  leg: 'dynamicAnchor', fillTime, exitTime: bar.time };
+        // Update extremes before moving on (needed if bar also extends HH/LL)
+        if (bar.high > runHigh) runHigh = bar.high;
+        if (bar.low  < runLow)  runLow  = bar.low;
+        continue;
+      }
+      // BUY: forecasted LOW from HH, must be below open
+      if (buyEntry < open && bar.low <= buyEntry) {
+        filled = true; side = 'BUY'; isBuy = true;
+        entryL = buyEntry; slL = buySl; fillTime = bar.time;
+        if (bar.low  <= slL)  return { filled: true, side, outcome: 'loss', pnlPct: +(-((entryL - slL) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime, exitTime: bar.time };
+        if (bar.high >= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +((tpL - entryL)   / open * 100).toFixed(5),  leg: 'dynamicAnchor', fillTime, exitTime: bar.time };
+        if (bar.high > runHigh) runHigh = bar.high;
+        if (bar.low  < runLow)  runLow  = bar.low;
+        continue;
+      }
+      // No fill yet — update running extremes
+      if (bar.high > runHigh) runHigh = bar.high;
+      if (bar.low  < runLow)  runLow  = bar.low;
+    } else {
+      // Position open — walk TP/SL
+      if (isBuy) {
+        if (bar.low  <= slL)  return { filled: true, side, outcome: 'loss', pnlPct: +(-((entryL - slL) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime, exitTime: bar.time };
+        if (bar.high >= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +((tpL - entryL)   / open * 100).toFixed(5),  leg: 'dynamicAnchor', fillTime, exitTime: bar.time };
+      } else {
+        if (bar.high >= slL)  return { filled: true, side, outcome: 'loss', pnlPct: +(-((slL - entryL) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime, exitTime: bar.time };
+        if (bar.low  <= tpL) return { filled: true, side, outcome: 'win',  pnlPct: +((entryL - tpL)   / open * 100).toFixed(5),  leg: 'dynamicAnchor', fillTime, exitTime: bar.time };
+      }
+    }
+  }
+
+  if (!filled) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'dynamicAnchor', fillTime: null, exitTime: null };
+  const eod    = m1Bars[m1Bars.length - 1]?.close ?? entryL;
+  const eodPnl = isBuy ? (eod - entryL) / open * 100 : (entryL - eod) / open * 100;
+  return { filled: true, side, outcome: 'open', pnlPct: +eodPnl.toFixed(5), leg: 'dynamicAnchor', fillTime, exitTime: m1Bars[m1Bars.length - 1]?.time ?? null };
+}
+
 function _simulateRevHL50D1(open, high, low, close, hl50pct, hl75pct, regime = 'RANGE', revMode = 'all') {
   const hl50 = open * hl50pct / 100;
   const hl75 = open * hl75pct / 100;
@@ -486,6 +551,27 @@ function _simulateRevHL50D1(open, high, low, close, hl50pct, hl75pct, regime = '
     return { filled: true, side: 'BUY', outcome: 'open', pnlPct: +((close - entry) / open * 100).toFixed(5), leg: 'revHL50', fillTime: null, exitTime: null };
   }
   return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'revHL50', fillTime: null, exitTime: null };
+}
+
+function _simulateDynamicAnchorD1(open, high, low, close, hl50pct, hl75pct) {
+  // D1 approximation: use actual day extremes as final anchors.
+  // SELL: anchor from actual low. BUY: anchor from actual high.
+  const sellEntry = low  * (1 + hl50pct / 100);
+  const sellSl    = low  * (1 + hl75pct / 100);
+  const buyEntry  = high * (1 - hl50pct / 100);
+  const buySl     = high * (1 - hl75pct / 100);
+
+  if (sellEntry > open && high >= sellEntry) {
+    if (high >= sellSl) return { filled: true, side: 'SELL', outcome: 'loss', pnlPct: +(-((sellSl - sellEntry) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
+    if (low <= open)    return { filled: true, side: 'SELL', outcome: 'win',  pnlPct: +((sellEntry - open)     / open * 100).toFixed(5),  leg: 'dynamicAnchor', fillTime: null, exitTime: null };
+    return { filled: true, side: 'SELL', outcome: 'open', pnlPct: +((sellEntry - close) / open * 100).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
+  }
+  if (buyEntry < open && low <= buyEntry) {
+    if (low <= buySl)   return { filled: true, side: 'BUY', outcome: 'loss', pnlPct: +(-((buyEntry - buySl) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
+    if (high >= open)   return { filled: true, side: 'BUY', outcome: 'win',  pnlPct: +((open - buyEntry)    / open * 100).toFixed(5),  leg: 'dynamicAnchor', fillTime: null, exitTime: null };
+    return { filled: true, side: 'BUY', outcome: 'open', pnlPct: +((close - buyEntry) / open * 100).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
+  }
+  return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'dynamicAnchor', fillTime: null, exitTime: null };
 }
 
 // ── Walk-forward engine (M1 sim + D1 vol/regime) ──────────────────────────────
@@ -538,13 +624,13 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     };
 
     const legResults = [];
-    if (strategy !== 'momentum' && strategy !== 'momentum50' && strategy !== 'reversal50' && strategy !== 'revHL50') {
+    if (strategy !== 'momentum' && strategy !== 'momentum50' && strategy !== 'reversal50' && strategy !== 'revHL50' && strategy !== 'dynamicAnchor') {
       const r = useM1
         ? simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult, dynHlCorr, rangeMode)
         : _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMult, rangeMode);
       legResults.push(r);
     }
-    if (strategy !== 'reversal' && strategy !== 'momentum50' && strategy !== 'reversal50' && strategy !== 'revHL50') {
+    if (strategy !== 'reversal' && strategy !== 'momentum50' && strategy !== 'reversal50' && strategy !== 'revHL50' && strategy !== 'dynamicAnchor') {
       const r = useM1
         ? simulateMomentumM1(m1Bars, open, hl75pct, ocMedPct, regime, moOpts)
         : _simulateMomentumD1(open, high, low, close, hl75pct, ocMedPct, regime, moOpts);
@@ -564,6 +650,12 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
       const r = useM1
         ? simulateRevHL50M1(m1Bars, open, hl50pct, hl75pct, regime, revMode)
         : _simulateRevHL50D1(open, high, low, close, hl50pct, hl75pct, regime, revMode);
+      legResults.push(r);
+    }
+    if (strategy === 'dynamicAnchor') {
+      const r = useM1
+        ? simulateDynamicAnchorM1(m1Bars, open, hl50pct, hl75pct)
+        : _simulateDynamicAnchorD1(open, high, low, close, hl50pct, hl75pct);
       legResults.push(r);
     }
 
