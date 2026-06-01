@@ -128,7 +128,7 @@ const PIVOT_N     = 5;
 function buildStructuralFibLevels(m30Win) {
   if (m30Win.length < PIVOT_N * 2 + 2) return [];
 
-  const swingHighs = [], swingLows = [];
+  const rawHighs = [], rawLows = [];
   for (let i = PIVOT_N; i < m30Win.length - PIVOT_N; i++) {
     const b = m30Win[i];
     let isH = true, isL = true;
@@ -137,48 +137,62 @@ function buildStructuralFibLevels(m30Win) {
       if (m30Win[k].h >= b.h) isH = false;
       if (m30Win[k].l <= b.l) isL = false;
     }
-    if (isH) swingHighs.push(b.h);
-    if (isL) swingLows.push(b.l);
+    if (isH) rawHighs.push(b.h);
+    if (isL) rawLows.push(b.l);
   }
-  if (!swingHighs.length || !swingLows.length) return [];
+  if (!rawHighs.length || !rawLows.length) return [];
 
-  const rangeHigh = Math.max(...swingHighs);
-  const rangeLow  = Math.min(...swingLows);
-  const levels    = [];
+  const rangeHigh = Math.max(...rawHighs);
+  const rangeLow  = Math.min(...rawLows);
+
+  // Filter to the 5 most significant pivots, excluding those within 30 pips of the
+  // absolute extreme (they would produce degenerate near-zero retracements).
+  // Matches the structural-fibs.js logic used by the live dashboard.
+  const snapThresh = PIP * 30;
+  const filteredHighs = rawHighs
+    .filter(h => rangeHigh - h > snapThresh)
+    .sort((a, b) => b - a)
+    .slice(0, 5);
+  const filteredLows = rawLows
+    .filter(l => l - rangeLow > snapThresh)
+    .sort((a, b) => a - b)
+    .slice(0, 5);
+
+  const levels = [];
 
   const addFibs = (ancH, ancL) => {
     const r = ancH - ancL;
     if (r < 1) return;
-    // Retracements from a downswing: support levels (potential longs)
+    // Support levels: price retraced DOWN from ancH toward ancL → expect bounce LONG
     for (const fib of POINT_FIBS) {
-      levels.push({ price: ancL + r * fib, fib, type: 'point' });
+      levels.push({ price: ancL + r * fib, fib, type: 'point', dir: 'long' });
     }
     levels.push({
       gpLow:  ancL + r * GP_LOW_FIB,
       gpHigh: ancL + r * GP_HIGH_FIB,
       price:  ancL + r * ((GP_LOW_FIB + GP_HIGH_FIB) / 2),
-      fib: 'gp', type: 'gp',
+      fib: 'gp', type: 'gp', dir: 'long',
     });
-    // Retracements from an upswing: resistance levels (potential shorts)
+    // Resistance levels: price retraced UP from ancL toward ancH → expect bounce SHORT
     for (const fib of POINT_FIBS) {
-      levels.push({ price: ancH - r * fib, fib, type: 'point' });
+      levels.push({ price: ancH - r * fib, fib, type: 'point', dir: 'short' });
     }
     levels.push({
       gpLow:  ancH - r * GP_HIGH_FIB,
       gpHigh: ancH - r * GP_LOW_FIB,
       price:  ancH - r * ((GP_LOW_FIB + GP_HIGH_FIB) / 2),
-      fib: 'gp', type: 'gp',
+      fib: 'gp', type: 'gp', dir: 'short',
     });
   };
 
-  // Pass 1: full range
+  // Pass 1: full lookback range
   addFibs(rangeHigh, rangeLow);
-  // Pass 2: each swing high vs range low
-  for (const sh of swingHighs) {
+  // Pass 2: top 5 swing highs vs range low (short retracements from each swing high)
+  for (const sh of filteredHighs) {
     if (sh > rangeLow + 1) addFibs(sh, rangeLow);
   }
-  // Pass 3: range high vs each swing low
-  for (const sl of swingLows) {
+  // Pass 3: range high vs top 5 swing lows (long retracements from each swing low)
+  for (const sl of filteredLows) {
     if (rangeHigh > sl + 1) addFibs(rangeHigh, sl);
   }
 
@@ -741,7 +755,8 @@ function handleRun(cfg) {
           if (!inGpZone) {
             inGpZone = true;
             nearestDist = 0;
-            nearestLevel = { price: lvl.price, src: 'GP', variant: 'GP', dir: 'both' };
+            // Use the first matching GP zone's direction
+            nearestLevel = { price: lvl.price, src: 'GP', variant: 'GP', dir: lvl.dir };
           }
         }
       } else {
@@ -749,32 +764,32 @@ function handleRun(cfg) {
         if (dist < fibTolerance && dist < nearestDist && !inGpZone) {
           nearestDist = dist;
           const vLabel = fibVariantLabel(lvl.fib);
-          nearestLevel = { price: lvl.price, src: vLabel, variant: vLabel, dir: 'both' };
+          nearestLevel = { price: lvl.price, src: vLabel, variant: vLabel, dir: lvl.dir };
         }
       }
     }
 
-    // Also accept daily pivots as entry levels (usePivot gate)
+    // Daily pivots as entry levels — R1/R2 are resistance (short), S1/S2 are support (long)
     if (!nearestLevel && usePivot && pivots) {
       const pivotEntries = [
-        { price: pivots.pp, src: 'PP', variant: 'Pivot' },
-        { price: pivots.r1, src: 'R1', variant: 'Pivot' },
-        { price: pivots.s1, src: 'S1', variant: 'Pivot' },
-        { price: pivots.r2, src: 'R2', variant: 'Pivot' },
-        { price: pivots.s2, src: 'S2', variant: 'Pivot' },
+        { price: pivots.pp, src: 'PP', variant: 'Pivot', dir: 'both'  },
+        { price: pivots.r1, src: 'R1', variant: 'Pivot', dir: 'short' },
+        { price: pivots.s1, src: 'S1', variant: 'Pivot', dir: 'long'  },
+        { price: pivots.r2, src: 'R2', variant: 'Pivot', dir: 'short' },
+        { price: pivots.s2, src: 'S2', variant: 'Pivot', dir: 'long'  },
       ];
       for (const pl of pivotEntries) {
         const dist = Math.abs(price - pl.price);
         if (dist < fibTolerance && dist < nearestDist) {
           nearestDist = dist;
-          nearestLevel = { price: pl.price, src: pl.src, variant: pl.variant, dir: 'both' };
+          nearestLevel = { ...pl };
         }
       }
     }
 
     if (!nearestLevel) continue;
 
-    // ── Confluence count (how many fib levels cluster near current price) ──────
+    // ── Confluence count (how many fib projections cluster near current price) ──
     let confluenceCount = 0;
     for (const lvl of structFibs) {
       const dist = lvl.type === 'gp'
@@ -789,6 +804,10 @@ function handleRun(cfg) {
         if (Math.abs(price - pl) < fibTolerance) { confluenceCount++; break; }
       }
     }
+
+    // minConfirms now gates fib confluence (require 2+ projections from different
+    // swing pairs to agree — this is the gold bot's core confluence requirement)
+    if (confluenceCount < minConfirms) continue;
 
     // ── Asia/Monday session bonus (not a gate — adds star when nearby) ─────────
     let sessionBonus = 0;
@@ -809,7 +828,18 @@ function handleRun(cfg) {
       }
     }
 
-    // ── Feature direction ─────────────────────────────────────────────────────
+    // ── Direction: derived from fib geometry, confirmed by M30 CHoCH/BOS ───────
+    //
+    // 'ancL + r*fib' levels are support (price retraced DOWN → expect LONG bounce).
+    // 'ancH - r*fib' levels are resistance (price retraced UP → expect SHORT bounce).
+    // computeDirection was designed for Asia-range entries and most of its features
+    // require price to be within atr*0.22 of an Asia/Monday boundary — they return
+    // null at structural fib levels. Using it for direction here produced coin-flip
+    // results. We use CHoCH/BOS alone as the structural confirmation filter.
+    //
+    // Note: this matches how the live gold bot determines trade direction —
+    // the fib zone implies the reversal direction; structure confirms it.
+
     const m5Rev = m5.slice(Math.max(0, i - 200), i + 1).reverse();
 
     let m30Start = 0;
@@ -821,18 +851,30 @@ function handleRun(cfg) {
     const dIdx = dailyIdxMap.get(lDate) ?? -1;
     const dailySlice = dIdx > 0 ? dailyBars.slice(Math.max(0, dIdx - 80), dIdx) : [];
 
-    const dirResult = computeDirection({
-      bars5mRev: m5Rev,
-      bars30m:   m30Win2,
-      dailyBars: dailySlice,
-      asiaRange, mondayRange, atr,
-      symbol: SYMBOL, price, todayDate: lDate, featureCfg,
+    // Run CHoCH/BOS check in isolation (the only feature that directly signals
+    // reversal structure without needing Asia/Monday boundary proximity)
+    const chochOnlyCfg = Object.fromEntries(
+      Object.keys(featureCfg).map(k => [k, { ...featureCfg[k], enabled: false }])
+    );
+    chochOnlyCfg.chochBos = { enabled: true, weight: 1, label: 'CHoCH / BOS' };
+    const chochResult = computeDirection({
+      bars5mRev: m5Rev, bars30m: m30Win2, dailyBars: dailySlice,
+      asiaRange, mondayRange, atr, symbol: SYMBOL, price, todayDate: lDate,
+      featureCfg: chochOnlyCfg,
     });
+    const chochDir = chochResult.entryDir; // 'long', 'short', or null
 
-    const { entryDir, conviction, confirmCount } = dirResult;
-    if (!entryDir) continue;
-    if (conviction < minConviction) continue;
-    if (confirmCount < minConfirms) continue;
+    // Resolve final entry direction
+    let entryDir = nearestLevel.dir;
+    if (entryDir === 'both') {
+      // PP has no inherent direction — require CHoCH to provide it
+      if (!chochDir) continue;
+      entryDir = chochDir;
+    }
+
+    // If M30 structure actively opposes the fib direction → skip
+    // (null CHoCH = structure neutral → fine to take the trade)
+    if (useChoch && chochDir && chochDir !== entryDir) continue;
 
     // ── VMU Gate ──────────────────────────────────────────────────────────────
     let vmuResult = null;
@@ -859,11 +901,12 @@ function handleRun(cfg) {
 
     const isOos = splitDate ? lDate >= splitDate : false;
 
-    // Stars: GP zone = higher baseline; confluence, conviction, VMU, session all add
+    // Stars: choch alignment replaces conviction score
+    const chochConfirms = chochDir === entryDir;
     const stars = Math.min(5,
       (inGpZone ? 2 : 1)
-      + (confluenceCount >= 3 ? 1 : 0)
-      + (conviction > 0.3 ? 1 : 0)
+      + (confluenceCount >= 5 ? 1 : 0)
+      + (chochConfirms ? 1 : 0)
       + (vmuResult?.signal === 'agree' ? 1 : 0)
       + sessionBonus
     );
@@ -874,17 +917,18 @@ function handleRun(cfg) {
       tp1R, tp2R, tp1Hit: false,
       mfePts: 0, maePts: 0, mfe: 0, mae: 0, r: 0,
       result: '', holdingBars: 0,
-      level: nearestLevel.src,           // e.g. 'GP', '.786', '.886', '.5', '.382', 'PP'
-      zoneVariant: nearestLevel.variant, // clean variant bucket for grouping
-      levelDir: nearestLevel.dir,
+      level: nearestLevel.src,
+      zoneVariant: nearestLevel.variant,
+      levelDir: entryDir,
       inGpZone,
       lDate, lHour, lDay,
-      conviction: +conviction.toFixed(3),
-      confirmCount, confluenceCount,
+      conviction: chochConfirms ? 0.5 : 0.0,
+      confirmCount: confluenceCount,
+      confluenceCount,
       vmuSignal: vmuResult?.signal ?? 'n/a',
       vmuComponents: vmuResult?.components ?? 0,
       isOos, stars,
-      featureVotes: dirResult.results?.map(r => ({ key: r.key, signal: r.signal, val: r.val, pts: r.pts })) ?? [],
+      featureVotes: chochResult.results?.map(r => ({ key: r.key, signal: r.signal, val: r.val, pts: r.pts })) ?? [],
     };
     dailyTradeCount++;
     if (i % 1000 === 0) post('progress', { status: 'Simulating…', pct: Math.round(5 + (i / m5.length) * 85) });
