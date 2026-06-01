@@ -388,6 +388,17 @@
     <option value="0.5">Dyn-HL 0.50</option>
     <option value="0.7">Dyn-HL 0.70</option>
   </select>
+  <select id="runBearMult" class="bt-sel" title="BEAR filter: multiply the slope threshold for BEAR-day classification. BEAR is the weakest regime (PF ~3). Raise to 1.25–1.5 to require a steeper downtrend before trading BEAR.">
+    <option value="1.0">Bear ×1 (default)</option>
+    <option value="1.25">Bear ×1.25</option>
+    <option value="1.5">Bear ×1.5 (recommended)</option>
+    <option value="2.0">Bear ×2 (strict)</option>
+  </select>
+  <select id="runRangeMode" class="bt-sel" title="Range days: how to handle flat-market days. fade_both = 1:2 R:R (best PF historically). skip = no trade. directional = 3-day momentum picks side (proxy for HMM lean).">
+    <option value="fade_both">Range: fade both (1:2)</option>
+    <option value="skip">Range: skip</option>
+    <option value="directional">Range: directional</option>
+  </select>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--border)" onclick="toggleHelp()" title="Strategy help">?</button>
   <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--accent);color:var(--accent)" onclick="toggleRevGuide()" title="Rev-HL50 config guide">★ Guide</button>
@@ -673,6 +684,7 @@
           <th>Regime</th><th class="num">Win%</th><th class="num">Fills</th>
           <th class="num">Fill%</th><th class="num">Avg P&amp;L</th>
           <th class="num">Sharpe</th><th class="num">PF</th>
+          <th class="num" title="Avg MFE on losing trades (R multiples). High value = Chandelier exit opportunity.">MFE loss</th>
         </tr></thead>
         <tbody id="rgTblBody"></tbody>
       </table>
@@ -1123,6 +1135,11 @@ function renderRegimeTable(byRegime, regimeDist) {
   body.innerHTML = ['BULL','BEAR','RANGE'].map(rg => {
     const s = byRegime[rg];
     if (!s || !s.nFilled) return '';
+    const pfTag  = s.profitFactor < 2.5 ? 'neg' : s.profitFactor < 3.5 ? 'neu' : 'pos';
+    const mfeTxt = s.avgMfeLoss != null
+      ? `<span title="Avg MFE on losing trades in R multiples. >0.5R means losses got halfway to TP before reversing — Chandelier exit could help.">${fmt(s.avgMfeLoss)}R</span>`
+      : '—';
+    const mfeClass = s.avgMfeLoss >= 0.5 ? 'pos' : 'neu';
     return `<tr>
       <td><span class="rg ${rgClass(rg)}">${rg}</span></td>
       <td class="num ${s.winRate >= 70 ? 'pos' : 'neu'}">${s.winRate}%</td>
@@ -1130,7 +1147,8 @@ function renderRegimeTable(byRegime, regimeDist) {
       <td class="num">${s.fillRate}%</td>
       <td class="num ${s.avgPnl >= 0 ? 'pos' : 'neg'}">${fmtPct(s.avgPnl)}</td>
       <td class="num ${s.sharpe >= 8 ? 'pos' : 'neu'}">${fmt(s.sharpe)}</td>
-      <td class="num pos">${s.profitFactor >= 99 ? '∞' : fmt(s.profitFactor)}</td>
+      <td class="num ${pfTag}">${s.profitFactor >= 99 ? '∞' : fmt(s.profitFactor)}</td>
+      <td class="num ${mfeClass}">${mfeTxt}</td>
     </tr>`;
   }).join('');
 }
@@ -1471,6 +1489,8 @@ async function runBacktest() {
       dynHlCorr:        document.getElementById('runDynHl').value,
       slopeThresh:      document.getElementById('runSlope').value,
       revHL50Mode:      document.getElementById('runRevMode').value,
+      bearMult:         document.getElementById('runBearMult').value,
+      rangeMode:        document.getElementById('runRangeMode').value,
     };
 
     // Start the job — server returns immediately with a jobId

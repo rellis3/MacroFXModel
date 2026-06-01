@@ -1462,6 +1462,13 @@ function _btStats(trades) {
     else { cw = 0; cl = 0; }
   }
 
+  // MFE on losing trades: how far did price move in our favour before reversing?
+  // High average (>0.5R) = Chandelier/trailing stop could salvage these losses.
+  const mfeLosses = losses.filter(r => typeof r.mfe_r === 'number');
+  const avgMfeLoss = mfeLosses.length
+    ? +(mfeLosses.reduce((s, r) => s + r.mfe_r, 0) / mfeLosses.length).toFixed(2)
+    : null;
+
   return {
     nDays, nFilled, nWins: wins.length, nLosses: losses.length, nOpenEod: openEod.length,
     fillRate:  +(nFilled / nDays * 100).toFixed(1),
@@ -1480,6 +1487,7 @@ function _btStats(trades) {
     avgLoss:   +avgLoss.toFixed(4),
     maxConsecWins: maxCW, maxConsecLosses: maxCL,
     years:     +years.toFixed(2),
+    avgMfeLoss,
   };
 }
 
@@ -1702,6 +1710,7 @@ app.post('/api/vol-backtest/run', (req, res) => {
     momentumPullback = '0', momentumSlMult = '1.0',
     spreadPct = '0', dynHlCorr = '0', slopeThresh = '0.002',
     revHL50Mode = 'all',
+    bearMult = '1.0', rangeMode = 'fade_both',
   } = req.body || {};
   const opts = {
     dateFrom, dateTo, minLookback: 50,
@@ -1713,6 +1722,8 @@ app.post('/api/vol-backtest/run', (req, res) => {
     spreadPct:        parseFloat(spreadPct)         || 0,
     dynHlCorr:        parseFloat(dynHlCorr)         || 0,
     revHL50Mode,
+    bearMult:         parseFloat(bearMult)          || 1.0,
+    rangeMode,
   };
 
   const instFilter  = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : undefined;
