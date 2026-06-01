@@ -934,21 +934,37 @@ export async function runFullM1Backtest(opts = {}, instruments = INSTRUMENTS, m1
 }
 
 /**
- * Load all M1 bars for a single pair from R2 (preferred) or local disk.
- * Returns flat array of {time, open, high, low, close} or null if no source available.
- * Used by the candles API for chart rendering.
+ * Load M1 bars for a pair and return a memory-efficient packed structure.
+ * Storing 1.4M rows as TypedArrays uses ~28 MB vs ~350 MB for plain objects.
+ *
+ * Returns: { n, times: Int32Array (epoch seconds), opens/highs/lows/closes: Float32Array }
+ * or null if no data source available.
  */
 export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
-  const toIso = v => v instanceof Date
-    ? v.toISOString().substring(0, 19)
-    : String(v).substring(0, 19).replace(' ', 'T');
-  const parse = rows => rows.map(row => ({ time: toIso(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] }));
+  const toEpoch = v => {
+    const s = v instanceof Date ? v.toISOString().substring(0, 19) : String(v).substring(0, 19).replace(' ', 'T');
+    return Math.floor(new Date(s + 'Z').getTime() / 1000);
+  };
 
-  // 1. R2 (throws with a descriptive message on credential/bucket/key errors)
+  const pack = rows => {
+    const n      = rows.length;
+    const times  = new Int32Array(n);
+    const opens  = new Float32Array(n);
+    const highs  = new Float32Array(n);
+    const lows   = new Float32Array(n);
+    const closes = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const r = rows[i];
+      times[i] = toEpoch(r[5]); opens[i] = r[0]; highs[i] = r[1]; lows[i] = r[2]; closes[i] = r[3];
+    }
+    return { n, times, opens, highs, lows, closes };
+  };
+
+  // 1. R2
   let r2Error = null;
   try {
     const r2ab = await fetchFromR2(pairKey);
-    if (r2ab) return parse(await readM1Parquet(r2ab));
+    if (r2ab) return pack(await readM1Parquet(r2ab));
   } catch (err) {
     r2Error = err?.message ?? String(err);
     console.warn(`[M1] R2 failed for ${pairKey}: ${r2Error}`);
@@ -956,13 +972,12 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
 
   // 2. Local disk
   const m1File = path.join(m1Dir, `${pairKey}_m1.parquet`);
-  if (existsSync(m1File)) return parse(await readM1Parquet(m1File));
+  if (existsSync(m1File)) return pack(await readM1Parquet(m1File));
 
   // 3. Google Drive (slow on first load, then saved to disk)
   const driveAb = await fetchFromDrive(pairKey, m1Dir);
-  if (driveAb) return parse(await readM1Parquet(driveAb));
+  if (driveAb) return pack(await readM1Parquet(driveAb));
 
-  // Surface the R2 error so the client sees something actionable
   if (r2Error) throw new Error(`R2 error: ${r2Error}`);
   return null;
 }
