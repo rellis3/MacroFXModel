@@ -544,9 +544,11 @@ async function loadAll() {
     const sessionDay = londonSessionDay();
 
     // Fire all independent fetches in parallel — cached values resolve instantly
+    const fredValid = S.fredData &&
+      ['vix', 'us10y', 'hy', 'nfci'].every(k => S.fredData[k]?.value != null);
     const [fredData, ecbData, cfg, ohlcData, ohlc5mData, ohlc30mData, quote] =
       await Promise.all([
-        S.fredData ? Promise.resolve(S.fredData) :
+        fredValid ? Promise.resolve(S.fredData) :
           loadCached('fred2', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED,
             d => ['vix', 'us10y', 'hy', 'nfci'].every(k => d?.[k]?.value != null)),
         S.ecbData ? Promise.resolve(S.ecbData) :
@@ -561,8 +563,8 @@ async function loadAll() {
         loadCached(`quote_${symKey}`, () => fetchAPI(`/api/quote?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.QUOTE),
       ]);
 
-    // Apply global results
-    if (!S.fredData) { S.fredData = fredData; updatePill('pillFred', 'ok'); }
+    // Apply global results — always overwrite fredData if incoming data is better
+    if (!fredValid && fredData) { S.fredData = fredData; updatePill('pillFred', 'ok'); }
     if (!S.ecbData)    S.ecbData  = ecbData;
     if (cfg.hasAnt)    updatePill('pillAnt', 'ant');
     if (cfg.hasKV)     updatePill('pillKV',  'ok');
