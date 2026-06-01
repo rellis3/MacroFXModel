@@ -1841,6 +1841,77 @@ async function refreshMacroContext() {
   }
 }
 
+// ── Server-side FRED dashboard cache refresh ──────────────────────────────────
+// Fetches all 31 FRED series sequentially (600ms gaps = ~100 req/min) and stores
+// in fred_data_v3 KV. Runs at startup and every 6h so the /api/fred endpoint
+// always serves from KV — no client-triggered concurrent FRED batches.
+const _FRED_DASH_SERIES = {
+  vix: 'VIXCLS', us2y: 'GS2', us5y: 'GS5', us10y: 'GS10',
+  dxy: 'DTWEXBGS', hy: 'BAMLH0A0HYM2', nfci: 'NFCI',
+  tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE',
+  aud_usd: 'DEXUSAL', usd_jpy: 'DEXJPUS',
+  de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
+  jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
+  ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',
+  de_short: 'IRSTCI01DEM156N', gb_short: 'IR3TIB01GBM156N',
+  jp_short: 'IRSTCI01JPM156N', au_short: 'IR3TIB01AUM156N',
+  ca_short: 'IRSTCI01CAM156N', ch_short: 'IRSTCI01CHM156N',
+  wti: 'DCOILWTICO', walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD',
+  nzd_usd: 'DEXUSNZ', hy_bb: 'BAMLH0A1HYBB', hy_ccc: 'BAMLH0A3HYC',
+};
+const _FRED_DASH_KV     = 'fred_data_v3';
+const _FRED_DASH_CRIT   = ['vix', 'us10y', 'hy', 'nfci'];
+let   _fredDashRunning  = false;
+
+async function refreshFredDashboard() {
+  if (!process.env.FRED_KEY) return;
+  if (_fredDashRunning) return; // prevent overlapping runs
+
+  // Skip if KV already has fresh valid data
+  try {
+    const existing = await kv.get(_FRED_DASH_KV);
+    if (existing) {
+      const { d, t } = JSON.parse(existing);
+      if (_FRED_DASH_CRIT.every(k => d[k]?.value != null) &&
+          Date.now() - (t || 0) < 5 * 60 * 60 * 1000) return;
+    }
+  } catch {}
+
+  _fredDashRunning = true;
+  console.log('[FRED] Sequential dashboard refresh starting (31 series, ~20s)...');
+  const out = {};
+  try {
+    for (const [key, id] of Object.entries(_FRED_DASH_SERIES)) {
+      try {
+        const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}` +
+          `&api_key=${process.env.FRED_KEY}&file_type=json&sort_order=desc&limit=5`;
+        const r = await fetch(url);
+        const d = await r.json();
+        const valid = (d.observations || [])
+          .filter(o => o.value && o.value !== '.')
+          .map(o => parseFloat(o.value));
+        out[key] = { value: valid[0] ?? null, prev: valid[1] ?? null };
+      } catch {
+        out[key] = { value: null, prev: null };
+      }
+      await new Promise(res => setTimeout(res, 600)); // 600ms gap ≈ 100 req/min
+    }
+
+    const critOk     = _FRED_DASH_CRIT.every(k => out[k]?.value != null);
+    const validCount = Object.values(out).filter(v => v.value != null).length;
+    if (critOk && validCount >= 10) {
+      await kv.put(_FRED_DASH_KV, JSON.stringify({ d: out, t: Date.now() }), { expirationTtl: 86400 });
+      console.log(`[FRED] Dashboard cache ready — ${validCount}/31 valid` +
+        ` VIX=${out.vix?.value} HY=${out.hy?.value} US10Y=${out.us10y?.value} NFCI=${out.nfci?.value}`);
+    } else {
+      const missing = _FRED_DASH_CRIT.filter(k => out[k]?.value == null);
+      console.warn(`[FRED] Dashboard refresh incomplete — missing: ${missing.join(', ')}`);
+    }
+  } finally {
+    _fredDashRunning = false;
+  }
+}
+
 async function runHMM5mTraining(pairs) {
   const { results, status } = await trainHMM5mAll(
     pairs,
@@ -1906,6 +1977,11 @@ setTimeout(() => {
 // Macro context (VIX, HY spread, yield curve via FRED) — refresh every 6h, run once at startup
 refreshMacroContext().catch(console.error);
 setInterval(refreshMacroContext, MACRO_REFRESH_MS);
+
+// FRED dashboard cache — sequential fetch at startup + every 6h to pre-populate fred_data_v3
+// so /api/fred always serves from KV without client-triggered concurrent FRED batches.
+refreshFredDashboard().catch(console.error);
+setInterval(refreshFredDashboard, MACRO_REFRESH_MS);
 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
 startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));
