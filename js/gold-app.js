@@ -110,7 +110,7 @@ async function loadData() {
     caps,
   ] = await Promise.allSettled([
     loadCached('gold_fred2', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED,
-      d => Object.values(d || {}).filter(v => v?.value != null).length >= 8),
+      d => ['vix', 'us10y', 'hy', 'nfci'].every(k => d?.[k]?.value != null)),
     loadCached('gold_fredhistory2', () => fetchAPI('/api/fredhistory?keys=tips,bei,vix,hy,dxy'), 6 * 60 * 60 * 1000,
       d => Object.values(d || {}).some(arr => Array.isArray(arr) && arr.length > 0)),
     loadCached('gold_ohlc',       () => fetchAPI('/api/ohlc?symbol=XAU/USD'),           CACHE_DURATION.OHLC),
