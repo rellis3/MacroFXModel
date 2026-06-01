@@ -1904,8 +1904,9 @@ app.get('/api/vol-backtest/level-analysis/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
-// M1 candlestick endpoint — returns filtered bars for chart rendering
-// LRU cache: max 3 pairs in memory (each parquet ~80 MB parsed)
+// M1 candlestick endpoint — returns filtered bars for chart rendering.
+// Cache stores TypedArrays (~28 MB/pair) not objects (~350 MB/pair) to avoid OOM.
+// LRU: max 3 pairs in memory at once.
 const m1CandleCache = new Map();
 const M1_CACHE_MAX  = 3;
 
@@ -1917,17 +1918,24 @@ app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
       if (m1CandleCache.size >= M1_CACHE_MAX) {
         m1CandleCache.delete(m1CandleCache.keys().next().value);
       }
-      const bars = await loadM1ForPair(pair);
-      if (!bars) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
-      m1CandleCache.set(pair, bars);
+      const packed = await loadM1ForPair(pair);
+      if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
+      m1CandleCache.set(pair, packed);
     }
-    let bars = m1CandleCache.get(pair);
-    if (from) bars = bars.filter(b => b.time.substring(0, 10) >= from);
-    if (to)   bars = bars.filter(b => b.time.substring(0, 10) <= to);
-    // Safety cap — shouldn't be needed once date filters are applied, but prevents
-    // accidentally sending millions of bars on a misconfigured request
-    if (bars.length > 20000) bars = bars.slice(0, 20000);
-    res.json({ ok: true, pair, n: bars.length, candles: bars });
+    const packed = m1CandleCache.get(pair);
+    const { n, times, opens, highs, lows, closes } = packed;
+
+    // Unpack only the requested date window — avoids allocating millions of objects
+    const fromTs = from ? Math.floor(new Date(from + 'T00:00:00Z').getTime() / 1000) : 0;
+    const toTs   = to   ? Math.floor(new Date(to   + 'T23:59:59Z').getTime() / 1000) : 2_000_000_000;
+    const candles = [];
+    for (let i = 0; i < n && candles.length < 20000; i++) {
+      const t = times[i];
+      if (t >= fromTs && t <= toTs) {
+        candles.push({ time: new Date(t * 1000).toISOString().substring(0, 19), open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
+      }
+    }
+    res.json({ ok: true, pair, n: candles.length, candles });
   } catch (e) {
     console.error('[candles]', e.message);
     res.status(500).json({ ok: false, error: e.message });
