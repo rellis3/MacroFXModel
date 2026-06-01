@@ -26,28 +26,35 @@ export async function kvSet(key, data) {
   }
 }
 
-export async function loadCached(key, fetchFn, maxAge) {
+export async function loadCached(key, fetchFn, maxAge, validate) {
   const localRaw = localStorage.getItem(key);
   if (localRaw) {
     try {
       const { data, timestamp } = JSON.parse(localRaw);
-      if (Date.now() - timestamp < maxAge) return data;
+      if (Date.now() - timestamp < maxAge) {
+        if (!validate || validate(data)) return data;
+        localStorage.removeItem(key); // evict invalid cached data so next load retries
+      }
     } catch(e) {}
   }
 
   const kvObj = await kvGet(key);
   if (kvObj && kvObj.data != null && kvObj.timestamp) {
     if (Date.now() - kvObj.timestamp < maxAge) {
-      try { localStorage.setItem(key, JSON.stringify(kvObj)); } catch(e) {}
-      return kvObj.data;
+      if (!validate || validate(kvObj.data)) {
+        try { localStorage.setItem(key, JSON.stringify(kvObj)); } catch(e) {}
+        return kvObj.data;
+      }
     }
   }
 
   const data = await fetchFn();
 
-  const entry = { data, timestamp: Date.now() };
-  try { localStorage.setItem(key, JSON.stringify(entry)); } catch(e) {}
-  kvSet(key, data);
+  if (!validate || validate(data)) {
+    const entry = { data, timestamp: Date.now() };
+    try { localStorage.setItem(key, JSON.stringify(entry)); } catch(e) {}
+    kvSet(key, data);
+  }
 
   return data;
 }
