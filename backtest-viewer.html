@@ -413,13 +413,75 @@ const VOL_ADAPTER = {
   },
 };
 
+// ── Gold Backtest Adapter ─────────────────────────────────────────────────────
+
+const GOLD_ADAPTER = {
+  async fetchTrades() {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const r = await fetch('/api/gold-backtest/trades', { signal: ctrl.signal });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || `HTTP ${r.status} — run the gold backtester first`);
+      }
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'Failed to load trades');
+      if (!d.trades?.length) throw new Error('No trades found — run the gold backtester first');
+      return d.trades;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Request timed out — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  async fetchCandles(trade) {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 120_000);
+    try {
+      const pair = 'xauusd';
+      const from = _dateOffset(trade.date, -2);
+      const to   = _dateOffset(trade.date, +2);
+      const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status} — M1 data may not be loaded yet`);
+      const d = await r.json();
+      if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data returned');
+      return d.candles;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('M1 data took too long — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  getLevels(trade) {
+    if (!trade.entry_price) return null;
+    return {
+      entry: trade.entry_price,
+      sl:    trade.sl_price,
+      tp:    trade.tp1_price,
+      tp2:   trade.tp2_price,
+    };
+  },
+
+  getDetail(trade) {
+    const zoneLabel = trade.in_gp_zone
+      ? '★ GP (0.618–0.65)'
+      : (trade.zone_variant || trade.level || '—');
+    return {
+      zone:      zoneLabel,
+      stars:     trade.stars ? '★'.repeat(trade.stars) + '☆'.repeat(Math.max(0, 5 - trade.stars)) : '—',
+      vmuSignal: trade.vmu_signal || '—',
+    };
+  },
+};
+
 // ── Adapter registry ──────────────────────────────────────────────────────────
 
-const ADAPTERS   = { vol: VOL_ADAPTER };
+const ADAPTERS   = { vol: VOL_ADAPTER, gold: GOLD_ADAPTER };
 const BACK_LINKS = {
   vol:    { href: 'vol-backtest.html',    label: '← Vol' },
   claude: { href: 'claude-backtest.html', label: '← Claude' },
-  gold:   { href: 'gold.html',            label: '← Gold' },
+  gold:   { href: 'gold-backtest.html',   label: '← Gold Backtest' },
 };
 
 const source  = new URLSearchParams(location.search).get('source') || 'vol';

@@ -32,6 +32,7 @@ function onWorkerMessage({ data: { type, payload } }) {
     renderResults(payload);
     setStatus(`Done — ${fmtNum(payload.totalTrades)} trades · Sharpe ${payload.allStats?.sharpe ?? '—'}`, 'done');
     setRunning(false);
+    _persistTradesForViewer(payload.tradeSample);
   } else if (type === 'error') {
     setStatus(payload, 'error');
     setRunning(false);
@@ -165,6 +166,43 @@ async function runBacktest() {
   }
 }
 
+
+// ── Viewer persistence ────────────────────────────────────────────────────────
+// Maps tradeSample to the backtest-viewer.html format and saves to /api/gold-backtest/trades.
+function _persistTradesForViewer(tradeSample) {
+  if (!tradeSample?.length) return;
+  const trades = tradeSample.map(t => ({
+    instrument:       'XAUUSD',
+    date:             t.lDate,
+    side:             t.dir === 'long' ? 'BUY' : 'SELL',
+    outcome:          (t.r ?? 0) > 0 ? 'win' : (t.r ?? 0) < 0 ? 'loss' : 'open',
+    pnl_pct:          t.r,
+    fill_time:        new Date(t.entryTs).toISOString().slice(0, 19),
+    exit_time:        t.exitTs ? new Date(t.exitTs).toISOString().slice(0, 19) : null,
+    entry_price:      t.entryPrice,
+    sl_price:         t.slPrice,
+    tp1_price:        t.tp1Price,
+    tp2_price:        t.tp2Price,
+    level:            t.level,
+    zone_variant:     t.zoneVariant,
+    in_gp_zone:       t.inGpZone,
+    stars:            t.stars,
+    confluence_count: t.confluenceCount,
+    vmu_signal:       t.vmuSignal,
+  }));
+  fetch('/api/gold-backtest/trades', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ trades }),
+  }).then(() => {
+    const link = document.getElementById('viewer-link');
+    if (link) {
+      link.style.opacity = '1';
+      link.style.cursor  = 'pointer';
+      link.title = 'Open trades in Replay Viewer';
+    }
+  }).catch(err => console.warn('[gold-bt] viewer persist failed:', err.message));
+}
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
 

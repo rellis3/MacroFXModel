@@ -932,10 +932,11 @@ function handleRun(cfg) {
     });
   }
 
-  // Trade sample for table (last 500)
+  // Trade sample for table and backtest-viewer.html (last 500)
   const tradeSample = allTrades.slice(-500).map(t => ({
     entryTs: t.entryTs, exitTs: t.exitTs,
     entryPrice: t.entryPrice, exitPrice: t.exitPrice,
+    slPrice: t.slPrice, tp1Price: t.tp1Price, tp2Price: t.tp2Price,
     dir: t.dir, result: t.result,
     r: +t.r.toFixed(3), mfe: +t.mfe.toFixed(2), mae: +t.mae.toFixed(2),
     level: t.level, zoneVariant: t.zoneVariant, inGpZone: t.inGpZone,

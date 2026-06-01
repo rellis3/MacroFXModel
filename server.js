@@ -1282,6 +1282,26 @@ app.get('/api/hmm5m-train-params', (_req, res) => {
   res.json({ ok: true, params: state.hmm5mTrainedParams });
 });
 
+// ── Gold backtest trades store ────────────────────────────────────────────────
+// In-memory store; persists for the lifetime of the process.
+const goldBacktestStore = { trades: [], savedAt: null };
+
+app.post('/api/gold-backtest/trades', express.json({ limit: '20mb' }), (req, res) => {
+  const { trades } = req.body ?? {};
+  if (!Array.isArray(trades)) return res.status(400).json({ ok: false, error: 'trades array required' });
+  goldBacktestStore.trades  = trades;
+  goldBacktestStore.savedAt = new Date().toISOString();
+  console.log(`[gold-bt] saved ${trades.length} trades for viewer`);
+  res.json({ ok: true, n: trades.length });
+});
+
+app.get('/api/gold-backtest/trades', (req, res) => {
+  if (!goldBacktestStore.trades.length) {
+    return res.status(404).json({ ok: false, error: 'No trades found — run the backtester first' });
+  }
+  res.json({ ok: true, trades: goldBacktestStore.trades, savedAt: goldBacktestStore.savedAt });
+});
+
 // SSE live price stream — must be handled before the generic /api/* catch-all
 // because it returns an infinite ReadableStream, not a text body.
 app.get('/api/oanda_stream', async (req, res) => {
