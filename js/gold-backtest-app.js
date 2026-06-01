@@ -206,7 +206,7 @@ function statColor(v, good = 'green') {
 // ── Render results ────────────────────────────────────────────────────────────
 
 function renderResults(data) {
-  const { allStats: s, isStats, oosStats, sessions, days, levels, mc, wfoResults, tradeSample, cfg } = data;
+  const { allStats: s, isStats, oosStats, sessions, days, levels, variants, mc, wfoResults, tradeSample, cfg } = data;
   if (!s) { clearResults(); return; }
 
   const area = document.getElementById('results-area');
@@ -261,7 +261,7 @@ function switchTab(id, btn) {
   else if (id === 'tab-isoos')   renderTabIsOos(_result?.isStats, _result?.oosStats);
   else if (id === 'tab-wfo')     renderTabWfo(_result?.wfoResults);
   else if (id === 'tab-sessions') renderTabSessions(_result?.sessions, _result?.days);
-  else if (id === 'tab-levels')  renderTabLevels(_result?.levels);
+  else if (id === 'tab-levels')  renderTabLevels(_result?.levels, _result?.variants);
   else if (id === 'tab-trades')  renderTabTrades(_result?.tradeSample);
 }
 
@@ -407,23 +407,57 @@ function renderTabSessions(sessions, days) {
 
 // ── Tab: Levels ───────────────────────────────────────────────────────────────
 
-function renderTabLevels(levels) {
+function renderTabLevels(levels, variants) {
   const tc = document.getElementById('tab-content');
-  const rows = (levels ?? []).map(l => `
+
+  // Zone variant colour coding matching gold bot convention
+  const variantStyle = v => {
+    if (v === 'GP')    return 'color:var(--gold);font-weight:600';
+    if (v === '.786')  return 'color:var(--blue)';
+    if (v === '.886')  return 'color:var(--blue)';
+    if (v === '.5')    return 'color:var(--text2)';
+    if (v === '.382')  return 'color:var(--text3)';
+    if (v === 'Pivot') return 'color:#a78bfa';
+    return '';
+  };
+
+  const variantRows = (variants ?? []).map(v => `
     <tr>
-      <td>${l.level}</td>
+      <td style="${variantStyle(v.variant)}">${v.variant === 'GP' ? '★ GP (0.618–0.65)' : v.variant}</td>
+      <td>${fmtNum(v.n)}</td>
+      <td style="${statColor(v.winRate - 50)}">${fmtPct(v.winRate)}</td>
+      <td style="${statColor(v.r)}">${fmtR(v.r)}</td>
+      <td style="${statColor(v.n > 0 ? v.r / v.n : 0)}">${v.n > 0 ? fmtR(+(v.r / v.n).toFixed(2)) : '—'}</td>
+      <td>${fmtR(v.avgMfe)}</td>
+      <td>${fmtR(v.avgMae)}</td>
+    </tr>
+  `).join('');
+
+  const levelRows = (levels ?? []).map(l => `
+    <tr>
+      <td style="${variantStyle(l.level)}">${l.level}</td>
       <td>${fmtNum(l.n)}</td>
       <td style="${statColor(l.winRate - 50)}">${fmtPct(l.winRate)}</td>
       <td style="${statColor(l.r)}">${fmtR(l.r)}</td>
       <td style="${statColor(l.n > 0 ? l.r / l.n : 0)}">${l.n > 0 ? fmtR(+(l.r / l.n).toFixed(2)) : '—'}</td>
+      <td>${fmtR(l.avgMfe ?? 0)}</td>
     </tr>
   `).join('');
 
   tc.innerHTML = `
-    <h3 class="tab-title">Level Performance</h3>
+    <h3 class="tab-title">Zone Variant Performance</h3>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:10px">
+      GP = Golden Pocket (0.618–0.65 of swing) — primary entry zone.
+      .786 / .886 = deep reversal zones. .5 / .382 = continuation pullbacks. Pivot = daily PP/R1/S1.
+    </p>
+    <table class="data-table" style="margin-bottom:20px">
+      <thead><tr><th>Zone Variant</th><th>Trades</th><th>Win%</th><th>Net R</th><th>Avg R</th><th>Avg MFE</th><th>Avg MAE</th></tr></thead>
+      <tbody>${variantRows || '<tr><td colspan="7" style="color:var(--text3);text-align:center">No data</td></tr>'}</tbody>
+    </table>
+    <h3 class="tab-title">Level Detail</h3>
     <table class="data-table">
-      <thead><tr><th>Level</th><th>Trades</th><th>Win%</th><th>Net R</th><th>Avg R</th></tr></thead>
-      <tbody>${rows}</tbody>
+      <thead><tr><th>Level</th><th>Trades</th><th>Win%</th><th>Net R</th><th>Avg R</th><th>Avg MFE</th></tr></thead>
+      <tbody>${levelRows || '<tr><td colspan="6" style="color:var(--text3);text-align:center">No data</td></tr>'}</tbody>
     </table>
   `;
 }
@@ -436,9 +470,17 @@ function renderTabTrades(trades) {
 
   const resultColor = r => r === 'sl' ? 'color:var(--red)' : r === 'eod' ? 'color:var(--text2)' : 'color:var(--green)';
 
+  const variantColor = v => {
+    if (v === 'GP')    return 'color:var(--gold);font-weight:600';
+    if (v === '.786' || v === '.886') return 'color:var(--blue)';
+    if (v === 'Pivot') return 'color:#a78bfa';
+    return 'color:var(--text2)';
+  };
+
   const rows = [...trades].reverse().slice(0, 200).map(t => {
-    const rCol = (t.r ?? 0) >= 0 ? 'color:var(--green)' : 'color:var(--red)';
-    const stars = '★'.repeat(t.stars ?? 1) + '☆'.repeat(4 - (t.stars ?? 1));
+    const rCol  = (t.r ?? 0) >= 0 ? 'color:var(--green)' : 'color:var(--red)';
+    const stars = '★'.repeat(t.stars ?? 1) + '☆'.repeat(Math.max(0, 5 - (t.stars ?? 1)));
+    const varLabel = t.inGpZone ? '★GP' : (t.zoneVariant ?? t.level ?? '—');
     return `
       <tr class="${t.isOos ? 'oos-row' : ''}">
         <td>${t.lDate}</td>
@@ -448,7 +490,7 @@ function renderTabTrades(trades) {
         <td style="${resultColor(t.result)}">${t.result ?? '—'}</td>
         <td style="${rCol}">${fmtR(t.r)}</td>
         <td>${fmtR(t.mfe)}</td>
-        <td>${t.level ?? '—'}</td>
+        <td style="${variantColor(t.zoneVariant)}" title="${t.level}">${varLabel}</td>
         <td title="${t.vmuSignal}">${t.vmuSignal ?? '—'}</td>
         <td title="${stars}" style="color:var(--gold)">${'★'.repeat(t.stars ?? 1)}</td>
       </tr>
@@ -459,7 +501,7 @@ function renderTabTrades(trades) {
     <h3 class="tab-title">Last ${Math.min(200, trades.length)} Trades ${trades.length > 200 ? `(of ${fmtNum(trades.length)})` : ''}</h3>
     <div style="overflow-x:auto">
     <table class="data-table trades-table">
-      <thead><tr><th>Date</th><th>Dir</th><th>Entry</th><th>Exit</th><th>Result</th><th>R</th><th>MFE</th><th>Level</th><th>VMU</th><th>★</th></tr></thead>
+      <thead><tr><th>Date</th><th>Dir</th><th>Entry</th><th>Exit</th><th>Result</th><th>R</th><th>MFE</th><th>Zone</th><th>VMU</th><th>★</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     </div>

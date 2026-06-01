@@ -446,17 +446,58 @@ function computeDays(trades) {
 }
 
 function computeLevelStats(trades) {
+  // Per exact level (GP, .786, .886, .5, .382, PP, R1, S1…)
   const map = new Map();
   for (const t of trades) {
     const k = t.level ?? 'Unknown';
-    if (!map.has(k)) map.set(k, { level: k, n: 0, wins: 0, r: 0 });
+    if (!map.has(k)) map.set(k, { level: k, n: 0, wins: 0, r: 0, avgMfe: 0, avgMae: 0 });
     const e = map.get(k);
     e.n++; e.r += t.r ?? 0;
+    e.avgMfe += t.mfe ?? 0;
+    e.avgMae += t.mae ?? 0;
     if ((t.r ?? 0) > 0) e.wins++;
   }
-  return [...map.values()]
-    .sort((a, b) => b.n - a.n)
-    .map(s => ({ ...s, winRate: s.n > 0 ? +(s.wins / s.n * 100).toFixed(1) : 0, r: +s.r.toFixed(2) }));
+  const levels = [...map.values()]
+    .sort((a, b) => {
+      // Sort: GP first, then .786, .886, .5, .382, Pivot, Unknown
+      const order = { GP: 0, '.786': 1, '.886': 2, '.5': 3, '.382': 4, Pivot: 5 };
+      const oa = order[a.level] ?? 9, ob = order[b.level] ?? 9;
+      return oa !== ob ? oa - ob : b.n - a.n;
+    })
+    .map(s => ({
+      ...s,
+      winRate: s.n > 0 ? +(s.wins / s.n * 100).toFixed(1) : 0,
+      r: +s.r.toFixed(2),
+      avgMfe: s.n > 0 ? +(s.avgMfe / s.n).toFixed(2) : 0,
+      avgMae: s.n > 0 ? +(s.avgMae / s.n).toFixed(2) : 0,
+    }));
+
+  // Per zone variant (GP, .786, .886, .5, .382, Pivot)
+  const vmap = new Map();
+  for (const t of trades) {
+    const k = t.zoneVariant ?? t.level ?? 'Unknown';
+    if (!vmap.has(k)) vmap.set(k, { variant: k, n: 0, wins: 0, r: 0, avgMfe: 0, avgMae: 0 });
+    const e = vmap.get(k);
+    e.n++; e.r += t.r ?? 0;
+    e.avgMfe += t.mfe ?? 0;
+    e.avgMae += t.mae ?? 0;
+    if ((t.r ?? 0) > 0) e.wins++;
+  }
+  const variants = [...vmap.values()]
+    .sort((a, b) => {
+      const order = { GP: 0, '.786': 1, '.886': 2, '.5': 3, '.382': 4, Pivot: 5 };
+      const oa = order[a.variant] ?? 9, ob = order[b.variant] ?? 9;
+      return oa !== ob ? oa - ob : b.n - a.n;
+    })
+    .map(s => ({
+      ...s,
+      winRate: s.n > 0 ? +(s.wins / s.n * 100).toFixed(1) : 0,
+      r: +s.r.toFixed(2),
+      avgMfe: s.n > 0 ? +(s.avgMfe / s.n).toFixed(2) : 0,
+      avgMae: s.n > 0 ? +(s.avgMae / s.n).toFixed(2) : 0,
+    }));
+
+  return { levels, variants };
 }
 
 // ── WFO helpers ────────────────────────────────────────────────────────────────
@@ -685,20 +726,30 @@ function handleRun(cfg) {
     let nearestLevel = null, nearestDist = Infinity;
     let inGpZone = false;
 
+    // Map fib values to gold bot zone variant labels (matching Python bot convention)
+    const fibVariantLabel = (fib) => {
+      if (fib === 0.382) return '.382';
+      if (fib === 0.5)   return '.5';
+      if (fib === 0.786) return '.786';
+      if (fib === 0.886) return '.886';
+      return `Fib-${fib}`;
+    };
+
     for (const lvl of structFibs) {
       if (lvl.type === 'gp') {
         if (price >= lvl.gpLow && price <= lvl.gpHigh) {
           if (!inGpZone) {
             inGpZone = true;
             nearestDist = 0;
-            nearestLevel = { price: lvl.price, src: 'GP', dir: 'both' };
+            nearestLevel = { price: lvl.price, src: 'GP', variant: 'GP', dir: 'both' };
           }
         }
       } else {
         const dist = Math.abs(price - lvl.price);
         if (dist < fibTolerance && dist < nearestDist && !inGpZone) {
           nearestDist = dist;
-          nearestLevel = { price: lvl.price, src: `Fib-${lvl.fib}`, dir: 'both' };
+          const vLabel = fibVariantLabel(lvl.fib);
+          nearestLevel = { price: lvl.price, src: vLabel, variant: vLabel, dir: 'both' };
         }
       }
     }
@@ -706,15 +757,17 @@ function handleRun(cfg) {
     // Also accept daily pivots as entry levels (usePivot gate)
     if (!nearestLevel && usePivot && pivots) {
       const pivotEntries = [
-        { price: pivots.pp, src: 'PP' }, { price: pivots.r1, src: 'R1' },
-        { price: pivots.s1, src: 'S1' }, { price: pivots.r2, src: 'R2' },
-        { price: pivots.s2, src: 'S2' },
+        { price: pivots.pp, src: 'PP', variant: 'Pivot' },
+        { price: pivots.r1, src: 'R1', variant: 'Pivot' },
+        { price: pivots.s1, src: 'S1', variant: 'Pivot' },
+        { price: pivots.r2, src: 'R2', variant: 'Pivot' },
+        { price: pivots.s2, src: 'S2', variant: 'Pivot' },
       ];
       for (const pl of pivotEntries) {
         const dist = Math.abs(price - pl.price);
         if (dist < fibTolerance && dist < nearestDist) {
           nearestDist = dist;
-          nearestLevel = { price: pl.price, src: pl.src, dir: 'both' };
+          nearestLevel = { price: pl.price, src: pl.src, variant: pl.variant, dir: 'both' };
         }
       }
     }
@@ -821,7 +874,10 @@ function handleRun(cfg) {
       tp1R, tp2R, tp1Hit: false,
       mfePts: 0, maePts: 0, mfe: 0, mae: 0, r: 0,
       result: '', holdingBars: 0,
-      level: nearestLevel.src, levelDir: nearestLevel.dir,
+      level: nearestLevel.src,           // e.g. 'GP', '.786', '.886', '.5', '.382', 'PP'
+      zoneVariant: nearestLevel.variant, // clean variant bucket for grouping
+      levelDir: nearestLevel.dir,
+      inGpZone,
       lDate, lHour, lDay,
       conviction: +conviction.toFixed(3),
       confirmCount, confluenceCount,
@@ -853,7 +909,7 @@ function handleRun(cfg) {
 
   const sessions = computeSessions(allTrades);
   const days     = computeDays(allTrades);
-  const levels   = computeLevelStats(allTrades);
+  const { levels, variants } = computeLevelStats(allTrades);
 
   post('progress', { status: 'Running Monte Carlo…', pct: 95 });
   const mc = runMonteCarlo(allTrades.map(t => t.r), riskPct);
@@ -882,7 +938,8 @@ function handleRun(cfg) {
     entryPrice: t.entryPrice, exitPrice: t.exitPrice,
     dir: t.dir, result: t.result,
     r: +t.r.toFixed(3), mfe: +t.mfe.toFixed(2), mae: +t.mae.toFixed(2),
-    level: t.level, stars: t.stars, lDate: t.lDate, lHour: t.lHour, lDay: t.lDay,
+    level: t.level, zoneVariant: t.zoneVariant, inGpZone: t.inGpZone,
+    stars: t.stars, lDate: t.lDate, lHour: t.lHour, lDay: t.lDay,
     vmuSignal: t.vmuSignal, conviction: t.conviction, confirmCount: t.confirmCount,
     confluenceCount: t.confluenceCount,
     isOos: t.isOos,
@@ -890,7 +947,7 @@ function handleRun(cfg) {
 
   post('result', {
     allStats, isStats, oosStats,
-    sessions, days, levels, mc, wfoResults,
+    sessions, days, levels, variants, mc, wfoResults,
     tradeSample, totalTrades: allTrades.length,
     cfg,
   });
