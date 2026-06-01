@@ -375,14 +375,21 @@ const VOL_ADAPTER = {
   },
 
   async fetchCandles(trade) {
-    const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
-    const from = _dateOffset(trade.date, -2);
-    const to   = _dateOffset(trade.date, +2);
-    const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const d = await r.json();
-    if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data');
-    return d.candles;
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 120_000);
+    try {
+      const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
+      const from = _dateOffset(trade.date, -2);
+      const to   = _dateOffset(trade.date, +2);
+      const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data');
+      return d.candles;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('M1 data took too long — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
   },
 
   getLevels(trade) {
@@ -639,7 +646,7 @@ async function _selectTrade(idx) {
   if (_isMobile()) _closePanel();
 
   // Fetch M1 candles
-  _setVeil('Loading M1 data…', true);
+  _setVeil('Loading M1 data… (first load may take up to a minute)', true);
   try {
     const raw = await adapter.fetchCandles(trade);
     _candles = raw.map(b => ({ time: _toEpochSec(b.time), open: b.open, high: b.high, low: b.low, close: b.close }));

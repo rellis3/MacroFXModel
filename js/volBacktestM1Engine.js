@@ -7,12 +7,12 @@
  * Vol (EWMA λ=0.94) and regime (EMA-20 slope) are still computed from
  * D1 close-to-close returns — no lookahead bias.
  *
- * M1 data source priority: R2 (set R2_ACCESS_KEY + R2_SECRET_KEY env vars) → local BT_M1_DIR.
+ * M1 data source priority: R2 (set R2_ACCESS_KEY + R2_SECRET_KEY env vars) → local BT_M1_DIR → Google Drive.
  * Naming: {pair_lowercase}_m1.parquet  e.g. eurusd_m1.parquet
  * Parquet schema: [open, high, low, close, volume, datetime] (UTC ISO timestamps)
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
 import path                         from 'path';
 import { fileURLToPath }            from 'url';
 import { parquetRead, parquetMetadataAsync } from 'hyparquet';
@@ -86,6 +86,32 @@ export const M1_DRIVE_IDS = {
   chfjpy: '10PBymXfhO4PdaxxZahreX5gdqOYQISCG',
   nzdjpy: '13DjEKFjT9vOwg7eBf6JTNz5G_CTM8zUG',
 };
+
+// Google Drive fallback — for Railway environments without R2 credentials.
+// Downloads the public parquet file, saves it to m1Dir so re-fetches within
+// the same session hit disk instead of Drive again.
+async function fetchFromDrive(pairKey, saveDir = BT_M1_DIR) {
+  const id = M1_DRIVE_IDS[pairKey];
+  if (!id) return null;
+  try {
+    const url = `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`;
+    console.log(`[M1] Downloading ${pairKey} from Google Drive (${id})…`);
+    const resp = await fetch(url, { signal: AbortSignal.timeout(180_000) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('text/html')) throw new Error('Got HTML — file may not be publicly shared');
+    const buf = Buffer.from(await resp.arrayBuffer());
+    console.log(`[M1] Drive download OK: ${pairKey} (${(buf.length / 1e6).toFixed(1)} MB)`);
+    try {
+      mkdirSync(saveDir, { recursive: true });
+      writeFileSync(path.join(saveDir, `${pairKey}_m1.parquet`), buf);
+    } catch {}
+    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  } catch (err) {
+    console.warn(`[M1] Drive download failed for ${pairKey}: ${err?.message ?? err}`);
+    return null;
+  }
+}
 
 // ── Parquet loader ────────────────────────────────────────────────────────────
 
@@ -725,17 +751,18 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
   const toIso = v => v instanceof Date
     ? v.toISOString().substring(0, 19)
     : String(v).substring(0, 19).replace(' ', 'T');
+  const parse = rows => rows.map(row => ({ time: toIso(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] }));
 
   const r2ab = await fetchFromR2(pairKey);
-  if (r2ab) {
-    const rows = await readM1Parquet(r2ab);
-    return rows.map(row => ({ time: toIso(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] }));
-  }
+  if (r2ab) return parse(await readM1Parquet(r2ab));
+
   const m1File = path.join(m1Dir, `${pairKey}_m1.parquet`);
-  if (existsSync(m1File)) {
-    const rows = await readM1Parquet(m1File);
-    return rows.map(row => ({ time: toIso(row[5]), open: row[0], high: row[1], low: row[2], close: row[3] }));
-  }
+  if (existsSync(m1File)) return parse(await readM1Parquet(m1File));
+
+  // Last resort: download from Google Drive (slow on first load, then cached to disk)
+  const driveAb = await fetchFromDrive(pairKey, m1Dir);
+  if (driveAb) return parse(await readM1Parquet(driveAb));
+
   return null;
 }
 
