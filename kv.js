@@ -65,6 +65,7 @@ const _CF_EXACT = new Set([
   'gold_ml_params',         // trained ML model coefficients — must survive redeploys
   'gold_optimiser_last',    // last optimiser run result — persists across restarts
   'gold_perf_snapshot',     // 30-day P&L snapshot for performance dashboard
+  'fred_data_v3',           // FRED dashboard cache (31 series) — survives Railway restarts
 ]);
 function isCfKey(key) {
   // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart

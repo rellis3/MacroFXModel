@@ -2131,8 +2131,11 @@ const _FRED_DASH_KV     = 'fred_data_v3';
 const _FRED_DASH_CRIT   = ['vix', 'us10y', 'hy', 'nfci'];
 let   _fredDashRunning  = false;
 
-async function refreshFredDashboard() {
-  if (!process.env.FRED_KEY) return;
+async function refreshFredDashboard(retry = 0) {
+  if (!process.env.FRED_KEY) {
+    console.warn('[FRED] FRED_KEY not set — dashboard FRED data unavailable');
+    return;
+  }
   if (_fredDashRunning) return; // prevent overlapping runs
 
   // Skip if KV already has fresh valid data
@@ -2173,7 +2176,15 @@ async function refreshFredDashboard() {
         ` VIX=${out.vix?.value} HY=${out.hy?.value} US10Y=${out.us10y?.value} NFCI=${out.nfci?.value}`);
     } else {
       const missing = _FRED_DASH_CRIT.filter(k => out[k]?.value == null);
-      console.warn(`[FRED] Dashboard refresh incomplete — missing: ${missing.join(', ')}`);
+      if (retry < 2) {
+        const waitMin = (retry + 1) * 2;
+        console.warn(`[FRED] Refresh incomplete (attempt ${retry + 1}) — missing: ${missing.join(', ')} — retry in ${waitMin} min`);
+        // Retry up to 2 times to recover from transient FRED rate-limiting at startup.
+        // finally{} below clears _fredDashRunning so the retry can acquire the lock.
+        setTimeout(() => refreshFredDashboard(retry + 1).catch(console.error), waitMin * 60 * 1000);
+      } else {
+        console.warn(`[FRED] Refresh failed after ${retry + 1} attempts — missing: ${missing.join(', ')} — next attempt at scheduled 6h interval`);
+      }
     }
   } finally {
     _fredDashRunning = false;
@@ -2256,12 +2267,14 @@ startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler i
 
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';
+  const fredKey = process.env.FRED_KEY   ? '✓' : '✗ missing — T1/T2/T4/T6 will show Data unavailable';
   const cfKv    = process.env.CF_ACCOUNT_ID ? '✓ CF REST API' : '✗ file only (set CF_ACCOUNT_ID + CF_API_TOKEN)';
   const alerts  = state.cfg?.enabled ? 'ON' : 'OFF (enable in Alerts modal)';
   console.log(`MacroFX Server   http://localhost:${PORT}`);
   console.log(`Monitoring       every ${MONITOR_MS} ms | ${DEFAULT_PAIRS.length} pairs | alerts ${alerts}`);
   console.log(`Level refresh    every ${REFRESH_LEVELS_MS / 60_000} min`);
   console.log(`OANDA_KEY        ${oanda}`);
+  console.log(`FRED_KEY         ${fredKey}`);
   console.log(`KV persistence   ${cfKv}`);
   console.log(`Data dir         ${process.env.DATA_DIR || path.join(__dirname, 'data')}`);
 });
