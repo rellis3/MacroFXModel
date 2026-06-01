@@ -2131,6 +2131,67 @@ const _FRED_DASH_KV     = 'fred_data_v3';
 const _FRED_DASH_CRIT   = ['vix', 'us10y', 'hy', 'nfci'];
 let   _fredDashRunning  = false;
 
+// fredhistory series — 90 daily/monthly obs per series, pre-populated at startup so
+// /api/fredhistory assembles from KV instead of making concurrent FRED calls from every
+// client compass load. Stored as fredhistory_series_<key> with 6h TTL.
+const _FREDHISTORY_SERIES = {
+  us2y: 'GS2', us5y: 'GS5', us10y: 'GS10', dxy: 'DTWEXBGS',
+  tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS',
+  hy: 'BAMLH0A0HYM2',
+  de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
+  jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
+  ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',
+  de_short: 'IRSTCI01DEM156N', gb_short: 'IR3TIB01GBM156N',
+  jp_short: 'IRSTCI01JPM156N', au_short: 'IR3TIB01AUM156N',
+  ca_short: 'IRSTCI01CAM156N', ch_short: 'IRSTCI01CHM156N',
+};
+let _fredHistoryRunning = false;
+
+async function refreshFredHistory(retry = 0) {
+  if (!process.env.FRED_KEY) return;
+  if (_fredHistoryRunning) return;
+  _fredHistoryRunning = true;
+  const entries = Object.entries(_FREDHISTORY_SERIES);
+  let ok = 0, skipped = 0, fail = 0;
+  try {
+    for (const [key, id] of entries) {
+      const kvKey = `fredhistory_series_${key}`;
+      try {
+        const existing = await kv.get(kvKey);
+        if (existing) { skipped++; continue; }
+        const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}` +
+          `&api_key=${process.env.FRED_KEY}&file_type=json&sort_order=desc&limit=90`;
+        const r = await fetch(url);
+        if (!r.ok) { fail++; console.warn(`[FRED] fredhistory ${key}: HTTP ${r.status}`); }
+        else {
+          const d = await r.json();
+          const pts = (d.observations || [])
+            .filter(o => o.value && o.value !== '.')
+            .map(o => ({ date: o.date, value: parseFloat(o.value) }))
+            .reverse();
+          if (pts.length > 0) {
+            await kv.put(kvKey, JSON.stringify(pts), { expirationTtl: 6 * 60 * 60 });
+            ok++;
+          } else { fail++; }
+        }
+      } catch(e) {
+        fail++;
+        console.warn(`[FRED] fredhistory ${key}:`, e.message);
+      }
+      await new Promise(res => setTimeout(res, 600));
+    }
+    if (ok > 0 || skipped === entries.length)
+      console.log(`[FRED] fredhistory series ready — ${ok} fetched, ${skipped} cached, ${fail} failed`);
+    if (fail > 0 && retry < 2) {
+      const waitMin = (retry + 1) * 2;
+      console.warn(`[FRED] fredhistory ${fail} failures — retry in ${waitMin} min`);
+      setTimeout(() => refreshFredHistory(retry + 1).catch(console.error), waitMin * 60 * 1000);
+    }
+  } finally {
+    _fredHistoryRunning = false;
+  }
+}
+
 async function refreshFredDashboard(retry = 0) {
   if (!process.env.FRED_KEY) {
     console.warn('[FRED] FRED_KEY not set — dashboard FRED data unavailable');
@@ -2261,6 +2322,13 @@ setInterval(refreshMacroContext, MACRO_REFRESH_MS);
 // so /api/fred always serves from KV without client-triggered concurrent FRED batches.
 refreshFredDashboard().catch(console.error);
 setInterval(refreshFredDashboard, MACRO_REFRESH_MS);
+
+// fredhistory series cache — 21 series × 90 obs, starts 30s after dashboard refresh to avoid
+// concurrent FRED requests, then every 6h.  Allows /api/fredhistory to serve entirely from KV.
+setTimeout(() => {
+  refreshFredHistory().catch(console.error);
+  setInterval(refreshFredHistory, MACRO_REFRESH_MS);
+}, 30_000);
 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
 startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));
