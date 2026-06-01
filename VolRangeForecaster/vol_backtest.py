@@ -49,6 +49,7 @@ warnings.filterwarnings("ignore")
 
 EWMA_LAMBDA  = 0.94
 TRADING_DAYS = 252
+BM_RANGE_P50 = 1.572    # HL median (50th pct) multiplier
 BM_RANGE_P75 = 2.049    # HL 75th pct multiplier
 HALFNORM_P50 = 0.6745   # OC median multiplier
 
@@ -292,6 +293,68 @@ def simulate_day(open_: float, high: float, low: float, close: float,
     return no_fill
 
 
+# ── Dynamic-anchor strategy simulator ────────────────────────────────────────
+
+def simulate_day_dynamic_anchor(open_: float, high: float, low: float, close: float,
+                                 hl_median_pct: float, hl_75_pct: float) -> dict:
+    """
+    Dynamic-anchor range fade.
+
+    The HL_median% forecast is applied FROM the actual session extreme (not the open).
+
+    SELL limit: low  × (1 + hl_median%)  →  TP = open_,  SL = low  × (1 + hl_75%)
+    BUY  limit: high × (1 - hl_median%)  →  TP = open_,  SL = high × (1 - hl_75%)
+
+    Guard: entry must be on the far side of open (sell entry > open_, buy entry < open_).
+    This ensures TP at open_ is always in the profitable direction.
+    Both sides live simultaneously; SELL is checked first.
+    """
+    sell_entry = low  * (1.0 + hl_median_pct / 100.0)
+    sell_tp    = open_
+    sell_sl    = low  * (1.0 + hl_75_pct     / 100.0)
+
+    buy_entry  = high * (1.0 - hl_median_pct / 100.0)
+    buy_tp     = open_
+    buy_sl     = high * (1.0 - hl_75_pct     / 100.0)
+
+    base    = {"regime": "DA", "hl_75": hl_75_pct, "oc_median": 0.0}
+    no_fill = {**base, "filled": False, "side": "", "outcome": "no_fill",
+               "pnl_pct": 0.0, "mfe_r": 0.0}
+
+    def _mfe_r(side: str, entry: float, tp: float) -> float:
+        if side == "SELL":
+            td = entry - tp
+            return round(min(max(entry - low,  0.0) / td, 3.0), 3) if td > 0 else 0.0
+        td = tp - entry
+        return round(min(max(high  - entry, 0.0) / td, 3.0), 3) if td > 0 else 0.0
+
+    # SELL: fade the high, anchored from day's low
+    if sell_entry > open_ and high >= sell_entry:
+        mfe = _mfe_r("SELL", sell_entry, sell_tp)
+        if high >= sell_sl:
+            return {**base, "filled": True, "side": "SELL", "outcome": "loss",
+                    "pnl_pct": -((sell_sl - sell_entry) / open_ * 100.0), "mfe_r": mfe}
+        if low <= sell_tp:
+            return {**base, "filled": True, "side": "SELL", "outcome": "win",
+                    "pnl_pct":  (sell_entry - sell_tp) / open_ * 100.0, "mfe_r": mfe}
+        return {**base, "filled": True, "side": "SELL", "outcome": "open",
+                "pnl_pct": (sell_entry - close) / open_ * 100.0, "mfe_r": mfe}
+
+    # BUY: fade the low, anchored from day's high
+    if buy_entry < open_ and low <= buy_entry:
+        mfe = _mfe_r("BUY", buy_entry, buy_tp)
+        if low <= buy_sl:
+            return {**base, "filled": True, "side": "BUY", "outcome": "loss",
+                    "pnl_pct": -((buy_entry - buy_sl) / open_ * 100.0), "mfe_r": mfe}
+        if high >= buy_tp:
+            return {**base, "filled": True, "side": "BUY", "outcome": "win",
+                    "pnl_pct":  (buy_tp - buy_entry) / open_ * 100.0, "mfe_r": mfe}
+        return {**base, "filled": True, "side": "BUY", "outcome": "open",
+                "pnl_pct": (close - buy_entry) / open_ * 100.0, "mfe_r": mfe}
+
+    return no_fill
+
+
 # ── Walk-forward backtest engine ──────────────────────────────────────────────
 
 def run_backtest(name: str, df: pd.DataFrame, asset_class: str,
@@ -302,10 +365,13 @@ def run_backtest(name: str, df: pd.DataFrame, asset_class: str,
                  slope_thresh: float = 0.002,
                  bear_slope_mult: float = 1.0,
                  no_regime: bool = False,
-                 range_mode: str = "fade_both") -> pd.DataFrame:
+                 range_mode: str = "fade_both",
+                 strategy: str = "fade_open") -> pd.DataFrame:
     """
     Walk-forward backtest. Returns a DataFrame of per-day trade records.
 
+    strategy        : 'fade_open'      — original regime-based strategy (default)
+                      'dynamic_anchor' — lesson strategy; all other params ignored
     min_lookback    : bars required before first forecast (vol warmup)
     no_regime       : if True always use RANGE (baseline fade-both-extremes)
     bear_slope_mult : multiply slope_thresh by this for BEAR classification.
@@ -334,10 +400,38 @@ def run_backtest(name: str, df: pd.DataFrame, asset_class: str,
         if len(log_ret) < 20:
             continue
 
-        sigma_d   = math.sqrt(_ewma_variance_series(log_ret)[-1])
-        hl_75     = BM_RANGE_P75 * p["hl_75_corr"] * sigma_d * 100.0
-        oc_median = HALFNORM_P50 * p["oc_corr"]    * sigma_d * 100.0
+        sigma_d    = math.sqrt(_ewma_variance_series(log_ret)[-1])
+        hl_median  = BM_RANGE_P50                * sigma_d * 100.0
+        hl_75      = BM_RANGE_P75 * p["hl_75_corr"] * sigma_d * 100.0
+        oc_median  = HALFNORM_P50 * p["oc_corr"]    * sigma_d * 100.0
 
+        # ── Dynamic-anchor strategy ───────────────────────────────────────────
+        if strategy == "dynamic_anchor":
+            result = simulate_day_dynamic_anchor(
+                open_=opens[i], high=highs[i], low=lows[i], close=closes[i],
+                hl_median_pct=hl_median, hl_75_pct=hl_75,
+            )
+            records.append({
+                "instrument":    name,
+                "date":          dates[i],
+                "regime":        "DA",
+                "eff_regime":    "DA",
+                "hl_median_pct": round(hl_median, 4),
+                "hl_75_pct":     round(hl_75, 4),
+                "oc_med_pct":    round(oc_median, 4),
+                "side":          result.get("side", ""),
+                "filled":        result["filled"],
+                "outcome":       result["outcome"],
+                "pnl_pct":       round(result["pnl_pct"], 5),
+                "mfe_r":         result.get("mfe_r", 0.0),
+                "open":          round(opens[i], 6),
+                "high":          round(highs[i], 6),
+                "low":           round(lows[i], 6),
+                "close":         round(closes[i], 6),
+            })
+            continue
+
+        # ── Original fade-open strategy ───────────────────────────────────────
         if no_regime:
             regime = "RANGE"
         else:
@@ -359,21 +453,22 @@ def run_backtest(name: str, df: pd.DataFrame, asset_class: str,
         )
 
         records.append({
-            "instrument": name,
-            "date":       dates[i],
-            "regime":     regime,          # original EMA regime label
-            "eff_regime": effective_regime, # regime actually traded
-            "hl_75_pct":  round(hl_75, 4),
-            "oc_med_pct": round(oc_median, 4),
-            "side":       result.get("side", ""),
-            "filled":     result["filled"],
-            "outcome":    result["outcome"],
-            "pnl_pct":    round(result["pnl_pct"], 5),
-            "mfe_r":      result.get("mfe_r", 0.0),
-            "open":       round(opens[i], 6),
-            "high":       round(highs[i], 6),
-            "low":        round(lows[i], 6),
-            "close":      round(closes[i], 6),
+            "instrument":    name,
+            "date":          dates[i],
+            "regime":        regime,
+            "eff_regime":    effective_regime,
+            "hl_median_pct": round(hl_median, 4),
+            "hl_75_pct":     round(hl_75, 4),
+            "oc_med_pct":    round(oc_median, 4),
+            "side":          result.get("side", ""),
+            "filled":        result["filled"],
+            "outcome":       result["outcome"],
+            "pnl_pct":       round(result["pnl_pct"], 5),
+            "mfe_r":         result.get("mfe_r", 0.0),
+            "open":          round(opens[i], 6),
+            "high":          round(highs[i], 6),
+            "low":           round(lows[i], 6),
+            "close":         round(closes[i], 6),
         })
 
     return pd.DataFrame(records)
@@ -568,6 +663,57 @@ def print_regime_breakdown(all_trades: pd.DataFrame) -> None:
     print()
 
 
+def print_summary_dynamic_anchor(all_trades: pd.DataFrame) -> None:
+    bar = "═" * 80
+    print(f"\n{bar}")
+    print(f"  Dynamic-Anchor Range Fade — Backtest Results")
+    print(f"  Entry : extreme × (1 ± HL_median%)  |  guard: entry must cross open")
+    print(f"  TP    : open                         |  SL: extreme × (1 ± HL_75%)")
+    print(bar)
+
+    print("\n  PER INSTRUMENT")
+    print(HDR)
+    print("  " + "-" * 78)
+    for inst in sorted(all_trades["instrument"].unique()):
+        t = all_trades[all_trades["instrument"] == inst]
+        print(_row(_stats(t), inst))
+
+    print("\n  PER SIDE  (all instruments, filled trades)")
+    print(HDR)
+    print("  " + "-" * 78)
+    for side in ["SELL", "BUY"]:
+        t = all_trades[all_trades["side"] == side]
+        if len(t):
+            print(_row(_stats(t), side))
+
+    print("\n  OVERALL")
+    print(HDR)
+    print("  " + "-" * 78)
+    print(_row(_stats(all_trades), "ALL"))
+
+    filled = all_trades[all_trades["filled"]]
+    if len(filled):
+        wins   = filled[filled["outcome"] == "win"]["pnl_pct"].mean()
+        losses = filled[filled["outcome"] == "loss"]["pnl_pct"].mean()
+        if not np.isnan(losses) and losses < 0:
+            rr = abs(wins / losses)
+            print(f"\n  Avg win: {wins:+.4f}%  |  Avg loss: {losses:+.4f}%  |  R:R = {rr:.2f}")
+        date_range = f"{all_trades['date'].min().date()} → {all_trades['date'].max().date()}"
+        print(f"  Date range: {date_range}  |  Instruments: {all_trades['instrument'].nunique()}")
+
+    if "mfe_r" in all_trades.columns and len(filled):
+        losses_df = filled[filled["outcome"] == "loss"]
+        if len(losses_df) >= 3:
+            avg = losses_df["mfe_r"].mean()
+            note = ""
+            if avg >= 0.60:
+                note = "  <- >60% to TP before reversing; Chandelier exit worth testing"
+            elif avg >= 0.35:
+                note = "  <- moderate excursion; trailing stop worth testing"
+            print(f"\n  MFE on losses: {avg:.2f}R avg{note}")
+    print()
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -602,6 +748,13 @@ def main() -> None:
                              "'fade_both' (default, 1:2 R:R, TP=open), "
                              "'skip' (no trade on flat days), "
                              "'directional' (3-day momentum picks side, proxy for HMM lean).")
+    parser.add_argument("--strategy",     choices=["fade-open", "dynamic-anchor"],
+                        default="fade-open",
+                        help="fade-open: original regime-based strategy (default). "
+                             "dynamic-anchor: lesson strategy — anchors from session "
+                             "extreme, TP at open, SL at HL_75 level. "
+                             "Ignores --sl-mult, --no-regime, --bear-mult, "
+                             "--range-mode, --slope-thresh.")
     parser.add_argument("--save",         action="store_true",
                         help="Save full trade log to CSV in data/")
     parser.add_argument("--lookback",     type=int, default=50,
@@ -620,20 +773,28 @@ def main() -> None:
                   ", ".join(i["name"] for i in CORE_INSTRUMENTS + EXTRA_INSTRUMENTS))
             return
 
-    strategy_label = ""
-    if args.no_regime:
-        strategy_label = "[baseline: no regime filter]"
-    if args.sl_mult != 1.5:
-        strategy_label += f"  SL×{args.sl_mult}"
-    if args.bear_mult != 1.0:
-        strategy_label += f"  bear_mult×{args.bear_mult}"
-    if args.range_mode != "fade_both":
-        strategy_label += f"  range={args.range_mode}"
+    use_dynamic = args.strategy == "dynamic-anchor"
 
-    print(f"\nVol & Range Backtester — sl_mult={args.sl_mult}  "
-          f"slope_thresh={args.slope_thresh}  bear_mult={args.bear_mult}  "
-          f"range_mode={args.range_mode}  "
-          f"{'Yahoo' if args.yahoo else 'Drive/Parquet'}")
+    if use_dynamic:
+        print(f"\nVol & Range Backtester — DYNAMIC-ANCHOR strategy  "
+              f"{'Yahoo' if args.yahoo else 'Drive/Parquet'}")
+        print(f"  Entry: extreme × (1 ± HL_median%)  |  TP: open  |  SL: extreme × (1 ± HL_75%)")
+        print(f"  [--sl-mult, --no-regime, --bear-mult, --range-mode, --slope-thresh are ignored]")
+    else:
+        strategy_label = ""
+        if args.no_regime:
+            strategy_label = "[baseline: no regime filter]"
+        if args.sl_mult != 1.5:
+            strategy_label += f"  SL×{args.sl_mult}"
+        if args.bear_mult != 1.0:
+            strategy_label += f"  bear_mult×{args.bear_mult}"
+        if args.range_mode != "fade_both":
+            strategy_label += f"  range={args.range_mode}"
+        print(f"\nVol & Range Backtester — sl_mult={args.sl_mult}  "
+              f"slope_thresh={args.slope_thresh}  bear_mult={args.bear_mult}  "
+              f"range_mode={args.range_mode}  "
+              f"{'Yahoo' if args.yahoo else 'Drive/Parquet'}")
+
     if args.date_from or args.date_to:
         print(f"Date range: {args.date_from or 'earliest'} → {args.date_to or 'latest'}")
     print()
@@ -654,6 +815,7 @@ def main() -> None:
                 min_lookback=args.lookback,
                 date_from=args.date_from,
                 date_to=args.date_to,
+                strategy="dynamic_anchor" if use_dynamic else "fade_open",
                 sl_mult=args.sl_mult,
                 slope_thresh=args.slope_thresh,
                 bear_slope_mult=args.bear_mult,
@@ -669,8 +831,11 @@ def main() -> None:
         return
 
     combined = pd.concat(all_trades, ignore_index=True)
-    print_summary(combined, strategy_label)
-    print_regime_breakdown(combined)
+    if use_dynamic:
+        print_summary_dynamic_anchor(combined)
+    else:
+        print_summary(combined, strategy_label)
+        print_regime_breakdown(combined)
 
     if args.save:
         path = save_results(combined)
