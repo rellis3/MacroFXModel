@@ -300,6 +300,25 @@ export function checkAndSendAlerts() {
             meta.decisionPermLong      = alertDecisionState.permissions.long;
             meta.decisionPermShort     = alertDecisionState.permissions.short;
             meta.decisionReasons       = alertDecisionState.reasons?.slice(0, 2) ?? [];
+            // Write decision state to a CF-KV-routed key so the Railway bot can read it.
+            // ai_entries_* is local-file-only on the server (levels.js overwrites it),
+            // but ai_decision_meta_* routes through CF KV (matches the ai_* prefix rule).
+            fetch('/api/kv/set', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({
+                key:  `ai_decision_meta_${sym.replace('/', '')}`,
+                data: {
+                  decisionMode:          alertDecisionState.mode,
+                  decisionParticipation: alertDecisionState.participation,
+                  decisionRiskMult:      alertDecisionState.riskMult,
+                  decisionPermLong:      alertDecisionState.permissions.long,
+                  decisionPermShort:     alertDecisionState.permissions.short,
+                  decisionReasons:       alertDecisionState.reasons?.slice(0, 2) ?? [],
+                },
+                timestamp: now,
+              }),
+            }).catch(() => {});
           }
           fetch('/api/kv/set', {
             method:  'POST',

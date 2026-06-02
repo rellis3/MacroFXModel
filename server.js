@@ -175,7 +175,11 @@ async function reloadConfig() {
 
 async function reloadLevels() {
   for (const sym of DEFAULT_PAIRS) {
-    const raw = await kv.get(`ai_entries_${sym.replace('/', '')}`);
+    const symKey = sym.replace('/', '');
+    const [raw, decisionRaw] = await Promise.all([
+      kv.get(`ai_entries_${symKey}`),
+      kv.get(`ai_decision_meta_${symKey}`),
+    ]);
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
@@ -183,6 +187,13 @@ async function reloadLevels() {
         if (!Array.isArray(parsed.data) && Array.isArray(parsed.data?.entries)) {
           if (parsed.data.meta) parsed.meta = parsed.data.meta;
           parsed.data = parsed.data.entries;
+        }
+        // Merge decision meta from dedicated CF-KV key (browser-written, CF-routed)
+        if (decisionRaw) {
+          try {
+            const dm = JSON.parse(decisionRaw);
+            parsed.meta = { ...(parsed.meta ?? {}), ...(dm.data ?? dm) };
+          } catch {}
         }
         state.levels[sym] = parsed;
         // Merge intraday30m into hmmRegimes when present (set by levels.js refreshPair)
