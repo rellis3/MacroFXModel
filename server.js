@@ -563,6 +563,38 @@ function formatAlert(sym, entry, price, distPips) {
 
   if (vmExplain) decoderLines.push(vmExplain);
 
+  // Decision engine plain-English decoder
+  if (dMeta?.decisionMode && dMeta.decisionMode !== 'NO_TRADE') {
+    const permitted  = isLong ? dMeta.decisionPermLong : dMeta.decisionPermShort;
+    const gateWord   = permitted ? '✅ PERMITTED' : '❌ NOT PERMITTED';
+    const gateDesc   = permitted ? 'direction cleared — take it' : 'direction blocked — skip or wait for regime shift';
+
+    const _modeDesc = {
+      TREND_CONTINUATION: 'join the trend, buy pullbacks / sell rallies',
+      MEAN_REVERSION:     'fade range extremes — buy support, sell resistance',
+      BREAKOUT:           'wait for confirmed breakout — no pre-emption',
+      POSITION_MANAGEMENT:'trend extended — manage existing, no new entries',
+      EXHAUSTION:         'range overextended — exit priority only',
+    };
+    const modeLabel = dMeta.decisionMode.replace(/_/g, ' ');
+    const modeDesc  = _modeDesc[dMeta.decisionMode] ?? modeLabel.toLowerCase();
+
+    const _partDesc = {
+      FULL:    'full size — high conviction',
+      REDUCED: '¾ size — confidence below peak',
+      MINIMUM: 'minimum size — unfavourable conditions',
+    };
+    const partDesc = _partDesc[dMeta.decisionParticipation] ?? dMeta.decisionParticipation;
+    const riskPct  = Math.round((dMeta.decisionRiskMult ?? 1) * 100);
+
+    decoderLines.push(`${gateWord} = ${gateDesc}`);
+    decoderLines.push(`${modeLabel} = ${modeDesc}`);
+    decoderLines.push(`${dMeta.decisionParticipation} = ${partDesc} · Risk ${riskPct}% of normal`);
+    if (dMeta.decisionReasons?.length) {
+      decoderLines.push(`ℹ️ ${dMeta.decisionReasons[0]}`);
+    }
+  }
+
   if (decoderLines.length) {
     parts.push('━━━━━━━━━━━━━━━━━━');
     decoderLines.forEach(l => parts.push(l));
