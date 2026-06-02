@@ -478,7 +478,11 @@ function simulateRevHL50M1(m1Bars, open, hl50pct, hl75pct, regime = 'RANGE', rev
 // each new LL slides the SELL level up.
 // One fill per day, SELL checked before BUY.
 
-function simulateDynamicAnchorM1(m1Bars, open, hl50pct, hl75pct) {
+function simulateDynamicAnchorM1(m1Bars, open, hl50pct, hl75pct, regime = 'RANGE', daDir = 'both') {
+  // counter-regime: SELL only on BULL days, BUY only on BEAR days
+  const allowSell = daDir === 'both' || regime !== 'BEAR';
+  const allowBuy  = daDir === 'both' || regime !== 'BULL';
+
   let runHigh = open, runLow = open;
   let filled = false, side = '', isBuy = null;
   let entryL, tpL = open, slL, fillTime = null, exitTime = null;
@@ -491,7 +495,7 @@ function simulateDynamicAnchorM1(m1Bars, open, hl50pct, hl75pct) {
       const buySl     = runHigh * (1 - hl75pct / 100);
 
       // SELL: forecasted HIGH from LL, must be above open
-      if (sellEntry > open && bar.high >= sellEntry) {
+      if (allowSell && sellEntry > open && bar.high >= sellEntry) {
         filled = true; side = 'SELL'; isBuy = false;
         entryL = sellEntry; slL = sellSl; fillTime = bar.time;
         if (bar.high >= slL)  return { filled: true, side, outcome: 'loss', pnlPct: +(-((slL - entryL) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime, exitTime: bar.time };
@@ -502,7 +506,7 @@ function simulateDynamicAnchorM1(m1Bars, open, hl50pct, hl75pct) {
         continue;
       }
       // BUY: forecasted LOW from HH, must be below open
-      if (buyEntry < open && bar.low <= buyEntry) {
+      if (allowBuy && buyEntry < open && bar.low <= buyEntry) {
         filled = true; side = 'BUY'; isBuy = true;
         entryL = buyEntry; slL = buySl; fillTime = bar.time;
         if (bar.low  <= slL)  return { filled: true, side, outcome: 'loss', pnlPct: +(-((entryL - slL) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime, exitTime: bar.time };
@@ -553,20 +557,23 @@ function _simulateRevHL50D1(open, high, low, close, hl50pct, hl75pct, regime = '
   return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'revHL50', fillTime: null, exitTime: null };
 }
 
-function _simulateDynamicAnchorD1(open, high, low, close, hl50pct, hl75pct) {
+function _simulateDynamicAnchorD1(open, high, low, close, hl50pct, hl75pct, regime = 'RANGE', daDir = 'both') {
   // D1 approximation: use actual day extremes as final anchors.
   // SELL: anchor from actual low. BUY: anchor from actual high.
+  const allowSell = daDir === 'both' || regime !== 'BEAR';
+  const allowBuy  = daDir === 'both' || regime !== 'BULL';
+
   const sellEntry = low  * (1 + hl50pct / 100);
   const sellSl    = low  * (1 + hl75pct / 100);
   const buyEntry  = high * (1 - hl50pct / 100);
   const buySl     = high * (1 - hl75pct / 100);
 
-  if (sellEntry > open && high >= sellEntry) {
+  if (allowSell && sellEntry > open && high >= sellEntry) {
     if (high >= sellSl) return { filled: true, side: 'SELL', outcome: 'loss', pnlPct: +(-((sellSl - sellEntry) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
     if (low <= open)    return { filled: true, side: 'SELL', outcome: 'win',  pnlPct: +((sellEntry - open)     / open * 100).toFixed(5),  leg: 'dynamicAnchor', fillTime: null, exitTime: null };
     return { filled: true, side: 'SELL', outcome: 'open', pnlPct: +((sellEntry - close) / open * 100).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
   }
-  if (buyEntry < open && low <= buyEntry) {
+  if (allowBuy && buyEntry < open && low <= buyEntry) {
     if (low <= buySl)   return { filled: true, side: 'BUY', outcome: 'loss', pnlPct: +(-((buyEntry - buySl) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
     if (high >= open)   return { filled: true, side: 'BUY', outcome: 'win',  pnlPct: +((open - buyEntry)    / open * 100).toFixed(5),  leg: 'dynamicAnchor', fillTime: null, exitTime: null };
     return { filled: true, side: 'BUY', outcome: 'open', pnlPct: +((close - buyEntry) / open * 100).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
@@ -653,10 +660,18 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
       legResults.push(r);
     }
     if (strategy === 'dynamicAnchor') {
-      const r = useM1
-        ? simulateDynamicAnchorM1(m1Bars, open, hl50pct, hl75pct)
-        : _simulateDynamicAnchorD1(open, high, low, close, hl50pct, hl75pct);
-      legResults.push(r);
+      const daRegime = opts.daRegime ?? 'all';
+      const daDir    = opts.daDir    ?? 'both';
+      const regimeOk = daRegime === 'all' ||
+        (daRegime === 'bullbear' && (regime === 'BULL' || regime === 'BEAR')) ||
+        (daRegime === 'bull'     && regime === 'BULL') ||
+        (daRegime === 'bear'     && regime === 'BEAR');
+      if (regimeOk) {
+        const r = useM1
+          ? simulateDynamicAnchorM1(m1Bars, open, hl50pct, hl75pct, regime, daDir)
+          : _simulateDynamicAnchorD1(open, high, low, close, hl50pct, hl75pct, regime, daDir);
+        legResults.push(r);
+      }
     }
 
     for (const r of legResults) {
