@@ -32,7 +32,7 @@ const _kvEntrySyncTimes = new Map();
 // In-memory + localStorage. Written on every proximity event that clears
 // grade/cooldown filters. KV-synced for the backtest-viewer adapter.
 
-const _MAX_AUDIT = 200;
+const _MAX_AUDIT = 1000;
 
 let _auditLog = (() => {
   try { return JSON.parse(localStorage.getItem(AUDIT_LOCAL_KEY) ?? '[]'); }

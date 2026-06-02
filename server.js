@@ -1675,12 +1675,16 @@ app.get('/api/vol-backtest', (req, res) => {
 // Returns the rolling audit log written by the browser (alerts.js) to KV.
 // Entries are proximity events where the decision engine gate was evaluated.
 
-app.get('/api/decision-audit', async (_req, res) => {
+app.get('/api/decision-audit', async (req, res) => {
   try {
     const raw = await kv.get('decision_audit_log');
     if (!raw) return res.json({ ok: true, trades: [], total: 0 });
-    const entries = JSON.parse(raw);
+    let entries = JSON.parse(raw);
     if (!Array.isArray(entries)) return res.json({ ok: true, trades: [], total: 0 });
+    // Optional date range filter
+    const { from, to } = req.query;
+    if (from) entries = entries.filter(e => e.date >= from);
+    if (to)   entries = entries.filter(e => e.date <= to);
     // Map audit entries to the trade shape expected by backtest-viewer.html
     const trades = entries.map(e => ({
       instrument:            e.sym,

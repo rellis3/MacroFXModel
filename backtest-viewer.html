@@ -48,6 +48,13 @@ html, body {
 .bv-btn.bv-tv { border-color: #2962ff44; color: #2962ff; }
 .bv-btn.bv-tv:hover { background: #2962ff15; color: #5085ff; }
 .bv-stat { font-family: 'DM Mono', monospace; font-size: 11px; color: #5a6380; margin-left: auto; white-space: nowrap; }
+.bv-date-input {
+  background: #1c2133; border: 1px solid #2a3348; color: #c8d0e0;
+  border-radius: 4px; padding: 3px 6px; font-size: 11px;
+  font-family: 'DM Mono', monospace; cursor: pointer; outline: none;
+  color-scheme: dark;
+}
+.bv-date-input:focus { border-color: #4f7df0; }
 
 /* ── Replay bar ───────────────────────────────────────────────────────────── */
 .bv-replay-bar {
@@ -241,6 +248,18 @@ html, body {
       <select class="bv-sel" id="bvFDir">
         <option value="">All</option><option value="BUY">Buy</option><option value="SELL">Sell</option>
       </select>
+    </div>
+    <!-- Decision engine date range controls — shown only when source=decision -->
+    <div class="bv-ctrl-group" id="bvDecisionRange" style="display:none">
+      <span class="bv-lbl">From</span>
+      <input type="date" class="bv-date-input" id="bvDateFrom">
+      <span class="bv-lbl">→</span>
+      <input type="date" class="bv-date-input" id="bvDateTo">
+      <button class="bv-btn bv-sm" id="bvDateLoad">Load</button>
+      <button class="bv-btn bv-sm" id="bvPreset7">7d</button>
+      <button class="bv-btn bv-sm" id="bvPreset14">14d</button>
+      <button class="bv-btn bv-sm" id="bvPreset30">30d</button>
+      <button class="bv-btn bv-sm" id="bvPresetAll">All</button>
     </div>
     <div class="bv-ctrl-group">
       <button class="bv-btn bv-active" id="bvLevels">Levels</button>
@@ -480,17 +499,25 @@ const GOLD_ADAPTER = {
 // ── Decision Engine Audit Adapter ─────────────────────────────────────────────
 // Replays real-time proximity events logged by alerts.js.
 // Each entry = a level that was approached + the decision engine gate result.
+// Date range is controlled by the #bvDecisionRange toolbar (shown for this source only).
+
+let _decisionFrom = null;  // set by date range controls; null = use 7d default
+let _decisionTo   = null;
+
+function _today() { return new Date().toISOString().slice(0, 10); }
 
 const DECISION_ADAPTER = {
   async fetchTrades() {
+    const from = _decisionFrom || _dateOffset(_today(), -7);
+    const to   = _decisionTo   || _today();
     const ctrl = new AbortController();
     const tid  = setTimeout(() => ctrl.abort(), 30_000);
     try {
-      const r = await fetch('/api/decision-audit', { signal: ctrl.signal });
+      const r = await fetch(`/api/decision-audit?from=${from}&to=${to}`, { signal: ctrl.signal });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = await r.json();
       if (!d.ok) throw new Error(d.error || 'Audit log unavailable');
-      if (!d.trades?.length) throw new Error('No audit entries yet — levels need to be approached with alerts enabled first');
+      if (!d.trades?.length) throw new Error(`No audit entries for ${from} → ${to} — try a wider range or enable alerts`);
       return d.trades;
     } catch (e) {
       if (e.name === 'AbortError') throw new Error('Request timed out — try again');
@@ -1239,6 +1266,36 @@ if (!adapter) {
     a.addEventListener('mouseenter', () => a.style.color = '#9aa8c0');
     a.addEventListener('mouseleave', () => a.style.color = '#5a6380');
     document.getElementById('bvTopbar').insertBefore(a, document.getElementById('bvTopbar').firstChild);
+  }
+
+  // Decision engine date range controls
+  if (source === 'decision') {
+    const rangeEl = document.getElementById('bvDecisionRange');
+    const fromEl  = document.getElementById('bvDateFrom');
+    const toEl    = document.getElementById('bvDateTo');
+    rangeEl.style.display = 'flex';
+    toEl.value   = _today();
+    fromEl.value = _dateOffset(_today(), -7);
+    _decisionFrom = fromEl.value;
+    _decisionTo   = toEl.value;
+
+    const _applyRange = () => {
+      _decisionFrom = fromEl.value || _dateOffset(_today(), -7);
+      _decisionTo   = toEl.value   || _today();
+      _loadTrades();
+    };
+    const _setPreset = (days) => {
+      toEl.value   = _today();
+      fromEl.value = days > 0 ? _dateOffset(_today(), -days) : '2020-01-01';
+      _decisionFrom = fromEl.value;
+      _decisionTo   = toEl.value;
+      _loadTrades();
+    };
+    document.getElementById('bvDateLoad') .addEventListener('click', _applyRange);
+    document.getElementById('bvPreset7')  .addEventListener('click', () => _setPreset(7));
+    document.getElementById('bvPreset14') .addEventListener('click', () => _setPreset(14));
+    document.getElementById('bvPreset30') .addEventListener('click', () => _setPreset(30));
+    document.getElementById('bvPresetAll').addEventListener('click', () => _setPreset(0));
   }
 
   // Start: load trades + chart in parallel
