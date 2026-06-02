@@ -1009,7 +1009,8 @@
 <script>
 // ── State ──────────────────────────────────────────────────────────────────────
 let _data       = null;
-let _allTrades  = [];
+let _allTrades  = [];   // trade-log subset (200 most recent filled, for display)
+let _btData     = [];   // full trade set (all dates, filled+unfilled, for analysis panels)
 let _filtTrades = [];
 let _page       = 0;
 const PAGE_SIZE = 50;
@@ -1136,6 +1137,7 @@ function renderAll(data) {
   renderRegimeTable(data.byRegime, data.regimeDist);
   renderCharts(data);
   initTradelog(data.recentTrades, data.instruments);
+  _btData = data.allTrades || [];   // full dataset for analysis panels
 
   renderDowChart(data.byDow);
   renderSessionTable(data.bySession);
@@ -1145,8 +1147,8 @@ function renderAll(data) {
   });
   renderYearBreakdown();
   renderSpreadSensitivity();
-  // Set default IS/OOS split date
-  const _allDates = _allTrades.map(r => r.date).sort();
+  // Set default IS/OOS split date to 2/3 mark of full date range
+  const _allDates = _btData.map(r => r.date).sort();
   if (_allDates.length > 1 && document.getElementById('splitDate')) {
     const midIdx = Math.floor(_allDates.length * 2 / 3);
     document.getElementById('splitDate').value = _allDates[midIdx].substring(0, 10);
@@ -1154,9 +1156,9 @@ function renderAll(data) {
 }
 
 function renderYearBreakdown() {
-  if (!_allTrades.length) return;
+  if (!_btData.length) return;
   const byYear = {};
-  for (const r of _allTrades) {
+  for (const r of _btData) {
     const yr = r.date.substring(0, 4);
     (byYear[yr] = byYear[yr] || []).push(r);
   }
@@ -1179,11 +1181,11 @@ function renderYearBreakdown() {
 }
 
 function renderSpreadSensitivity() {
-  if (!_allTrades.length) return;
+  if (!_btData.length) return;
   const spreads = [0, 0.001, 0.002, 0.003, 0.005, 0.01];
   let prevPf = null;
   const rows = spreads.map(sp => {
-    const s = clientBtStats(_allTrades, sp);
+    const s = clientBtStats(_btData, sp);
     if (!s || !s.nFilled) return '';
     const crossedBE = prevPf !== null && prevPf >= 1.0 && s.profitFactor < 1.0;
     prevPf = s.profitFactor;
@@ -1203,9 +1205,9 @@ function renderSpreadSensitivity() {
 
 function computeISOS() {
   const splitDate = document.getElementById('splitDate').value;
-  if (!splitDate || !_allTrades.length) return;
-  const isTrades  = _allTrades.filter(r => r.date <  splitDate);
-  const oosTrades = _allTrades.filter(r => r.date >= splitDate);
+  if (!splitDate || !_btData.length) return;
+  const isTrades  = _btData.filter(r => r.date <  splitDate);
+  const oosTrades = _btData.filter(r => r.date >= splitDate);
   const isStats   = clientBtStats(isTrades);
   const oosStats  = clientBtStats(oosTrades);
   if (!isStats || !oosStats) return;
@@ -1258,11 +1260,11 @@ function computeISOS() {
 }
 
 function computeWalkForward() {
-  if (!_allTrades.length) return;
+  if (!_btData.length) return;
   const isMonths  = parseInt(document.getElementById('wfIs').value);
   const oosMonths = parseInt(document.getElementById('wfOos').value);
 
-  const allDates = [...new Set(_allTrades.map(r => r.date))].sort();
+  const allDates = [...new Set(_btData.map(r => r.date))].sort();
   const startDate = new Date(allDates[0]);
   const endDate   = new Date(allDates[allDates.length - 1]);
 
@@ -1279,8 +1281,8 @@ function computeWalkForward() {
     const isTo    = isEndD.toISOString().substring(0, 10);
     const oosTo   = oosEndD.toISOString().substring(0, 10);
 
-    const isTrades  = _allTrades.filter(r => r.date >= isFrom && r.date < isTo);
-    const oosTrades = _allTrades.filter(r => r.date >= isTo   && r.date < oosTo);
+    const isTrades  = _btData.filter(r => r.date >= isFrom && r.date < isTo);
+    const oosTrades = _btData.filter(r => r.date >= isTo   && r.date < oosTo);
 
     if (isTrades.length > 10 && oosTrades.length > 0) {
       windows.push({
@@ -1303,7 +1305,7 @@ function computeWalkForward() {
   }
 
   // Aggregate OOS-only stats
-  const allOosTrades = _allTrades.filter(r => {
+  const allOosTrades = _btData.filter(r => {
     // Include trade if it falls in any OOS window
     return windows.some(w => r.date >= w.isTo && r.date < w.oosTo);
   });

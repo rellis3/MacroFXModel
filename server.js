@@ -1609,6 +1609,16 @@ app.get('/api/vol-backtest', (req, res) => {
     // All filled P&L values for Monte Carlo (client needs the full sequence)
     const allPnls = trades.filter(t => t.filled).map(r => r.pnl_pct);
 
+    // Compact full trade list for client-side analysis (IS/OOS, year-by-year, walk-forward, spread sensitivity)
+    const allTrades = trades.map(r => ({
+      date:       r.date?.substring(0, 10),
+      filled:     r.filled,
+      pnl_pct:    r.pnl_pct,
+      outcome:    r.outcome,
+      regime:     r.regime,
+      instrument: r.instrument,
+    }));
+
     res.json({
       ok: true,
       file: path.basename(filePath),
@@ -1623,6 +1633,7 @@ app.get('/api/vol-backtest', (req, res) => {
       instEquity,
       monthlyPnl: monthlyArr,
       recentTrades,
+      allTrades,
       allPnls,
       totalTrades: trades.filter(t => t.filled).length,
       instruments,
