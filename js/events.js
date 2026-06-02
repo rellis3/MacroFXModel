@@ -109,11 +109,11 @@ function computeEventRisk(events) {
   const relevant      = parsed.filter(e => pairCountries.includes(e.country));
   const inNext4h      = relevant.filter(e => e.timeMs - nowMs <= fourHoursMs);
 
-  // High-impact events that fired in the last 60 min (post-event volatility window)
-  const oneHourAgoMs  = nowMs - 60 * 60_000;
+  // High-impact events that fired in the last 30 min (post-event volatility window)
+  const thirtyMinAgoMs = nowMs - 30 * 60_000;
   const recentlyPassed = events
     .map(e => ({ ...e, timeMs: e.time ? new Date(e.time).getTime() : null }))
-    .filter(e => e.timeMs != null && e.timeMs >= oneHourAgoMs && e.timeMs < nowMs
+    .filter(e => e.timeMs != null && e.timeMs >= thirtyMinAgoMs && e.timeMs < nowMs
               && pairCountries.includes(e.country) && (e.impact || '').toLowerCase() === 'high');
 
   // Highest impact
