@@ -818,9 +818,11 @@ window.saveToJournal = function() {
       if (seenPrices.has(key)) return;
       seenPrices.add(key);
       const tags = [];
-      if (c.source === 'asia')   tags.push({ label: 'Asia Fib',   cls: 'fib' });
-      if (c.source === 'monday') tags.push({ label: 'Monday Fib', cls: 'fib' });
-      if (c.isTight)             tags.push({ label: 'Tight',      cls: 'fib' });
+      if (c.source === 'asia')                tags.push({ label: 'Asia Fib',   cls: 'fib' });
+      if (c.source === 'monday')              tags.push({ label: 'Monday Fib', cls: 'fib' });
+      if (c.source === 'cross')               tags.push({ label: 'Asia Fib',   cls: 'fib' });
+      if (c.crossSessionMatch)                tags.push({ label: 'Cross-Session', cls: 'fib' });
+      if (c.isTight)                          tags.push({ label: 'Tight',      cls: 'fib' });
       if (c.aligned)             tags.push({ label: `Aligned ${macroBias}`, cls: 'signal' });
       if (c.pivotMatch)          tags.push({ label: `Pivot ${c.pivotMatch}`, cls: 'pivot' });
       levels.push({
@@ -975,9 +977,11 @@ window.saveAllPairsToJournal = async function() {
         if (seenPrices.has(key)) return;
         seenPrices.add(key);
         const tags = [];
-        if (c.source === 'asia')   tags.push({ label: 'Asia Fib',   cls: 'fib' });
-        if (c.source === 'monday') tags.push({ label: 'Monday Fib', cls: 'fib' });
-        if (c.isTight)             tags.push({ label: 'Tight',      cls: 'fib' });
+        if (c.source === 'asia')                tags.push({ label: 'Asia Fib',      cls: 'fib' });
+        if (c.source === 'monday')              tags.push({ label: 'Monday Fib',    cls: 'fib' });
+        if (c.source === 'cross')               tags.push({ label: 'Asia Fib',      cls: 'fib' });
+        if (c.crossSessionMatch)                tags.push({ label: 'Cross-Session', cls: 'fib' });
+        if (c.isTight)                          tags.push({ label: 'Tight',         cls: 'fib' });
         if (c.aligned)             tags.push({ label: `Aligned ${macroBias}`, cls: 'signal' });
         if (c.pivotMatch)          tags.push({ label: `Pivot ${c.pivotMatch}`, cls: 'pivot' });
         levels.push({
