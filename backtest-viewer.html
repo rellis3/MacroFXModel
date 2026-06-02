@@ -477,11 +477,74 @@ const GOLD_ADAPTER = {
 
 // ── Adapter registry ──────────────────────────────────────────────────────────
 
-const ADAPTERS   = { vol: VOL_ADAPTER, gold: GOLD_ADAPTER };
+// ── Decision Engine Audit Adapter ─────────────────────────────────────────────
+// Replays real-time proximity events logged by alerts.js.
+// Each entry = a level that was approached + the decision engine gate result.
+
+const DECISION_ADAPTER = {
+  async fetchTrades() {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const r = await fetch('/api/decision-audit', { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'Audit log unavailable');
+      if (!d.trades?.length) throw new Error('No audit entries yet — levels need to be approached with alerts enabled first');
+      return d.trades;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Request timed out — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  async fetchCandles(trade) {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 120_000);
+    try {
+      const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
+      const from = _dateOffset(trade.date, -1);
+      const to   = _dateOffset(trade.date, +2);
+      const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data for this pair');
+      return d.candles;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('M1 data took too long — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  getLevels(trade) {
+    if (!trade.entry_price) return null;
+    return {
+      entry: trade.entry_price,
+      tp:    trade.tp_price ?? undefined,
+      sl:    trade.sl_price ?? undefined,
+    };
+  },
+
+  getDetail(trade) {
+    const gate   = trade.permitted === false ? '❌ BLOCKED' : trade.permitted === true ? '✅ PERMITTED' : '—';
+    const mode   = trade.decisionMode ? trade.decisionMode.replace(/_/g, ' ') : '—';
+    const part   = trade.decisionParticipation
+      ? `${trade.decisionParticipation} · Risk ${(trade.decisionRiskMult ?? 1).toFixed(2)}×`
+      : '—';
+    return {
+      decision:      `${gate} · ${mode}`,
+      participation: part,
+      grade:         `${trade.grade ?? '—'} ${trade.verdict ?? ''}${trade.suppressed ? ' 🔇' : ''}`,
+    };
+  },
+};
+
+const ADAPTERS   = { vol: VOL_ADAPTER, gold: GOLD_ADAPTER, decision: DECISION_ADAPTER };
 const BACK_LINKS = {
-  vol:    { href: 'vol-backtest.html',    label: '← Vol' },
-  claude: { href: 'claude-backtest.html', label: '← Claude' },
-  gold:   { href: 'gold-backtest.html',   label: '← Gold Backtest' },
+  vol:      { href: 'vol-backtest.html',    label: '← Vol' },
+  claude:   { href: 'claude-backtest.html', label: '← Claude' },
+  gold:     { href: 'gold-backtest.html',   label: '← Gold Backtest' },
+  decision: { href: 'index.html',           label: '← Dashboard' },
 };
 
 const source  = new URLSearchParams(location.search).get('source') || 'vol';

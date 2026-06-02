@@ -1671,6 +1671,44 @@ app.get('/api/vol-backtest', (req, res) => {
 // ── All trades endpoint for the Backtest Viewer ───────────────────────────────
 // Returns every filled trade (no 200-cap), sorted newest-first.
 // Includes all fields including fill_time and exit_time for chart markers.
+// ── Decision engine audit log ─────────────────────────────────────────────────
+// Returns the rolling audit log written by the browser (alerts.js) to KV.
+// Entries are proximity events where the decision engine gate was evaluated.
+
+app.get('/api/decision-audit', async (_req, res) => {
+  try {
+    const raw = await kv.get('decision_audit_log');
+    if (!raw) return res.json({ ok: true, trades: [], total: 0 });
+    const entries = JSON.parse(raw);
+    if (!Array.isArray(entries)) return res.json({ ok: true, trades: [], total: 0 });
+    // Map audit entries to the trade shape expected by backtest-viewer.html
+    const trades = entries.map(e => ({
+      instrument:            e.sym,
+      date:                  e.date,
+      side:                  e.direction === 'long' ? 'BUY' : 'SELL',
+      outcome:               'open',
+      pnl_pct:               0,
+      fill_time:             e.fill_time,
+      entry_price:           e.price,
+      tp_price:              e.tp   ?? null,
+      sl_price:              e.sl   ?? null,
+      rrRatio:               e.rrRatio ?? null,
+      grade:                 e.grade,
+      verdict:               e.verdict,
+      tags:                  e.tags ?? [],
+      decisionMode:          e.decisionMode,
+      decisionParticipation: e.decisionParticipation,
+      decisionRiskMult:      e.decisionRiskMult,
+      permitted:             e.permitted,
+      suppressed:            e.suppressed,
+      reasons:               e.reasons ?? [],
+    }));
+    res.json({ ok: true, trades, total: trades.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/api/vol-backtest/trades', (req, res) => {
   const filePath = _latestBacktestFile();
   if (!filePath) return res.status(404).json({ ok: false, error: 'No backtest data. Run the backtester first.' });
