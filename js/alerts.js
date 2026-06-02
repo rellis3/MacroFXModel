@@ -189,8 +189,9 @@ export function checkAndSendAlerts() {
       const _savedPair = S.currentPair;
       S.currentPair = PAIRS.find(p => p.symbol === sym) || _savedPair;
       let entries = [], alertTierData = null, alertApproachArrow = null, alertKalmanDev = null;
+      let volRegime = null;
       try {
-        const volRegime = calculateVolRegime();
+        volRegime = calculateVolRegime();
         const pivots    = calculatePivots();
         const macroBias = (() => {
           try { return runSignalEngine(S.compassData, volRegime).bias; }
