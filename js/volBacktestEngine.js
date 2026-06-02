@@ -25,9 +25,9 @@ const HN_P50       = 0.6745;
 const HN_P75       = 1.1503;
 
 const ASSET_PARAMS = {
-  commodity: { hl_75_corr: 0.989, oc_corr: 1.163, hl_50_corr: 0.985, oc_75_corr: 1.084 },
-  index:     { hl_75_corr: 0.950, oc_corr: 1.111, hl_50_corr: 1.000, oc_75_corr: 1.099 },
-  fx:        { hl_75_corr: 0.894, oc_corr: 0.948, hl_50_corr: 0.921, oc_75_corr: 0.932 },
+  commodity: { hl_75_corr: 0.940, oc_corr: 1.144, hl_50_corr: 1.023, oc_75_corr: 1.092 },
+  index:     { hl_75_corr: 0.967, oc_corr: 1.092, hl_50_corr: 1.010, oc_75_corr: 1.115 },
+  fx:        { hl_75_corr: 0.912, oc_corr: 1.038, hl_50_corr: 0.965, oc_75_corr: 1.015 },
 };
 
 const INSTRUMENTS = [
