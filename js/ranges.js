@@ -159,6 +159,7 @@ export function detectConfluences(todayLevels, yesterdayLevels, symbol, source, 
   const results = detectConfluencesCore(todayLevels, yesterdayLevels, {
     pipSize, normalDistance, tightDistance, mergeDistance,
     priceMode, clusterMerge, source,
+    sessionRange: bodyRange ?? null,
   });
 
   return results.sort((a, b) => {
