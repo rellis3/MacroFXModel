@@ -755,6 +755,78 @@
   </div>
 </div>
 
+<!-- ── Year-by-Year Breakdown ─────────────────────────────────────────────── -->
+<div id="yearCard" style="display:none;margin-top:16px">
+  <div class="card-hdr" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <span style="font-weight:600;color:var(--txt)">Year-by-Year Performance</span>
+    <span style="font-size:11px;color:var(--txt3)">Computed from loaded trades</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="bt-tbl" style="width:100%">
+      <thead><tr>
+        <th>Year</th><th class="num">Fills</th><th class="num">Fill%</th>
+        <th class="num">Win%</th><th class="num">PF</th>
+        <th class="num">Total PnL%</th><th class="num">Calmar</th><th class="num">Max DD%</th>
+      </tr></thead>
+      <tbody id="yearTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Spread / Cost Sensitivity ─────────────────────────────────────────── -->
+<div id="costCard" style="display:none;margin-top:16px">
+  <div class="card-hdr" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <span style="font-weight:600;color:var(--txt)">Cost Sensitivity</span>
+    <span style="font-size:11px;color:var(--txt3)">Additional spread on top of run config · PF &lt; 1.0 = loss territory</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="bt-tbl" style="width:100%">
+      <thead><tr>
+        <th>Extra Spread</th><th class="num">Win%</th><th class="num">PF</th>
+        <th class="num">Calmar</th><th class="num">Exp/trade</th><th class="num">Total PnL%</th>
+      </tr></thead>
+      <tbody id="costTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── IS / OOS Validation ───────────────────────────────────────────────── -->
+<div id="validationCard" style="display:none;margin-top:16px">
+  <div class="card-hdr" style="margin-bottom:10px">
+    <span style="font-weight:600;color:var(--txt)">In-Sample / Out-of-Sample Validation</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    <label style="font-size:12px;color:var(--txt2)">Split date:</label>
+    <input type="date" id="splitDate" class="bt-sel" style="padding:4px 8px">
+    <button class="dark-btn" style="padding:4px 12px;font-size:12px" onclick="computeISOS()">Compute split</button>
+    <span style="font-size:11px;color:var(--txt3)">IS = before split date · OOS = after split date</span>
+  </div>
+  <div id="isoResults"></div>
+</div>
+
+<!-- ── Walk-Forward Analysis ─────────────────────────────────────────────── -->
+<div id="wfCard" style="display:none;margin-top:16px">
+  <div class="card-hdr" style="margin-bottom:10px">
+    <span style="font-weight:600;color:var(--txt)">Walk-Forward Analysis</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    <label style="font-size:12px;color:var(--txt2)">IS window:</label>
+    <select id="wfIs" class="bt-sel">
+      <option value="12">12 months</option>
+      <option value="18" selected>18 months</option>
+      <option value="24">24 months</option>
+    </select>
+    <label style="font-size:12px;color:var(--txt2)">OOS window:</label>
+    <select id="wfOos" class="bt-sel">
+      <option value="3">3 months</option>
+      <option value="6" selected>6 months</option>
+      <option value="9">9 months</option>
+    </select>
+    <button class="dark-btn" style="padding:4px 12px;font-size:12px" onclick="computeWalkForward()">Compute</button>
+  </div>
+  <div id="wfResults"></div>
+</div>
+
 <!-- ── Win/Loss chart ─────────────────────────────────────────────────────── -->
 <div class="bt-two-col" id="twoCol2" style="display:none">
   <div class="bt-card" style="margin-top:0">
@@ -952,6 +1024,72 @@ const fmt  = (v, d=2) => v == null ? '—' : (typeof v === 'number' ? v.toFixed(
 const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
 const fmtSign = v => v >= 0 ? 'pos' : 'neg';
 
+function clientBtStats(trades, extraSpread = 0) {
+  const filled  = trades.filter(r => r.filled);
+  const nDays   = trades.length;
+  const nFilled = filled.length;
+  if (nFilled === 0) return { nDays, nFilled, fillRate: 0, winRate: 0, totalPnl: 0, cagr: 0, sharpe: 0, sortino: 0, calmar: 0, profitFactor: 0, maxDd: 0, rr: 0, expectancy: 0, avgWin: 0, avgLoss: 0, years: 0 };
+
+  const dailyMap = new Map();
+  const adjPnls  = [];
+  for (const r of trades) {
+    const p = r.filled ? r.pnl_pct - extraSpread : 0;
+    dailyMap.set(r.date, (dailyMap.get(r.date) ?? 0) + p);
+    if (r.filled) adjPnls.push(p);
+  }
+  const dailyArr  = [...dailyMap.values()];
+  const nObs      = dailyArr.length;
+  const dailyMean = dailyArr.reduce((s, p) => s + p, 0) / nObs;
+  const dailyStd  = Math.sqrt(dailyArr.reduce((s, p) => s + (p - dailyMean) ** 2, 0) / Math.max(1, nObs - 1));
+  const sharpe    = dailyStd > 0 ? (dailyMean / dailyStd) * Math.sqrt(252) : 0;
+
+  const downArr  = dailyArr.filter(p => p < 0);
+  const downStd  = downArr.length > 0 ? Math.sqrt(downArr.reduce((s, p) => s + p ** 2, 0) / downArr.length) : 0;
+  const sortino  = downStd > 0 ? (dailyMean / downStd) * Math.sqrt(252) : 0;
+
+  const sortedDays = [...dailyMap.entries()].sort(([a], [b]) => a < b ? -1 : 1).map(([, p]) => p);
+  let peak = 0, maxDd = 0, cum = 0;
+  for (const p of sortedDays) {
+    cum += p; if (cum > peak) peak = cum;
+    const dd = peak - cum; if (dd > maxDd) maxDd = dd;
+  }
+
+  const totalPnl = adjPnls.reduce((s, p) => s + p, 0);
+  const wins     = adjPnls.filter(p => p > 0);
+  const losses   = adjPnls.filter(p => p <= 0);
+  const grossWin = wins.reduce((s, p) => s + p, 0);
+  const grossLoss = Math.abs(losses.reduce((s, p) => s + p, 0));
+  const pf       = grossLoss > 0 ? grossWin / grossLoss : wins.length > 0 ? 999 : 0;
+  const avgWin   = wins.length   > 0 ? grossWin   / wins.length   : 0;
+  const avgLoss  = losses.length > 0 ? grossLoss  / losses.length : 0;
+  const rr       = avgLoss > 0 ? avgWin / avgLoss : 0;
+
+  const dates = [...dailyMap.keys()].sort();
+  const years = dates.length > 1
+    ? (new Date(dates[dates.length - 1]) - new Date(dates[0])) / (365.25 * 24 * 3600 * 1000)
+    : 1;
+  const cagr   = years > 0 ? (Math.pow(1 + totalPnl / 100, 1 / years) - 1) * 100 : 0;
+  const calmar = maxDd > 0 ? Math.abs(cagr / maxDd) : 0;
+
+  return {
+    nDays, nFilled,
+    fillRate:     +(nFilled / nDays * 100).toFixed(1),
+    winRate:      +(wins.length / nFilled * 100).toFixed(1),
+    totalPnl:     +totalPnl.toFixed(3),
+    cagr:         +cagr.toFixed(2),
+    sharpe:       +sharpe.toFixed(2),
+    sortino:      +sortino.toFixed(2),
+    calmar:       +calmar.toFixed(2),
+    profitFactor: +Math.min(pf, 999).toFixed(2),
+    maxDd:        +maxDd.toFixed(3),
+    rr:           +rr.toFixed(2),
+    expectancy:   +(totalPnl / nFilled).toFixed(4),
+    avgWin:       +avgWin.toFixed(4),
+    avgLoss:      +(-avgLoss).toFixed(4),
+    years:        +years.toFixed(2),
+  };
+}
+
 function rgClass(rg) {
   return rg === 'BULL' ? 'bull' : rg === 'BEAR' ? 'bear' : 'range';
 }
@@ -1001,10 +1139,215 @@ function renderAll(data) {
 
   renderDowChart(data.byDow);
   renderSessionTable(data.bySession);
-  ['kpiGrid','secGrid','eqCard','hmCard','twoCol','dowSessionCard','mcCard','twoCol2','tradeCard'].forEach(id => {
+  ['kpiGrid','secGrid','eqCard','hmCard','twoCol','dowSessionCard','mcCard','yearCard','costCard','validationCard','wfCard','twoCol2','tradeCard'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
+  renderYearBreakdown();
+  renderSpreadSensitivity();
+  // Set default IS/OOS split date
+  const _allDates = _allTrades.map(r => r.date).sort();
+  if (_allDates.length > 1 && document.getElementById('splitDate')) {
+    const midIdx = Math.floor(_allDates.length * 2 / 3);
+    document.getElementById('splitDate').value = _allDates[midIdx].substring(0, 10);
+  }
+}
+
+function renderYearBreakdown() {
+  if (!_allTrades.length) return;
+  const byYear = {};
+  for (const r of _allTrades) {
+    const yr = r.date.substring(0, 4);
+    (byYear[yr] = byYear[yr] || []).push(r);
+  }
+  const rows = Object.keys(byYear).sort().map(yr => {
+    const s = clientBtStats(byYear[yr]);
+    if (!s || !s.nFilled) return '';
+    const pfCol = s.profitFactor >= 1.5 ? 'pos' : s.profitFactor >= 1.0 ? 'neu' : 'neg';
+    return `<tr>
+      <td><strong>${yr}</strong></td>
+      <td class="num">${s.nFilled}</td>
+      <td class="num">${s.fillRate}%</td>
+      <td class="num ${s.winRate >= 25 ? 'pos' : 'neg'}">${s.winRate}%</td>
+      <td class="num ${pfCol}">${s.profitFactor >= 99 ? '∞' : fmt(s.profitFactor)}</td>
+      <td class="num ${fmtSign(s.totalPnl)}">${fmtPct(s.totalPnl)}</td>
+      <td class="num">${fmt(s.calmar)}</td>
+      <td class="num ${s.maxDd > 10 ? 'neg' : 'neu'}">${fmt(-s.maxDd)}%</td>
+    </tr>`;
+  });
+  document.getElementById('yearTbody').innerHTML = rows.join('');
+}
+
+function renderSpreadSensitivity() {
+  if (!_allTrades.length) return;
+  const spreads = [0, 0.001, 0.002, 0.003, 0.005, 0.01];
+  let prevPf = null;
+  const rows = spreads.map(sp => {
+    const s = clientBtStats(_allTrades, sp);
+    if (!s || !s.nFilled) return '';
+    const crossedBE = prevPf !== null && prevPf >= 1.0 && s.profitFactor < 1.0;
+    prevPf = s.profitFactor;
+    const pfCol = s.profitFactor >= 1.5 ? 'pos' : s.profitFactor >= 1.0 ? 'neu' : 'neg';
+    const beTag = crossedBE ? ' ← break-even' : '';
+    return `<tr ${crossedBE ? 'style="border-left:3px solid var(--red)"' : ''}>
+      <td>${sp === 0 ? '<em>Base (0%)</em>' : '+' + sp + '%'}${beTag}</td>
+      <td class="num ${s.winRate >= 25 ? 'pos' : 'neg'}">${s.winRate}%</td>
+      <td class="num ${pfCol}">${s.profitFactor >= 99 ? '∞' : fmt(s.profitFactor)}</td>
+      <td class="num">${fmt(s.calmar)}</td>
+      <td class="num ${fmtSign(s.expectancy)}">${s.expectancy >= 0 ? '+' : ''}${s.expectancy}%</td>
+      <td class="num ${fmtSign(s.totalPnl)}">${fmtPct(s.totalPnl)}</td>
+    </tr>`;
+  });
+  document.getElementById('costTbody').innerHTML = rows.join('');
+}
+
+function computeISOS() {
+  const splitDate = document.getElementById('splitDate').value;
+  if (!splitDate || !_allTrades.length) return;
+  const isTrades  = _allTrades.filter(r => r.date <  splitDate);
+  const oosTrades = _allTrades.filter(r => r.date >= splitDate);
+  const isStats   = clientBtStats(isTrades);
+  const oosStats  = clientBtStats(oosTrades);
+  if (!isStats || !oosStats) return;
+
+  const metrics = [
+    { label: 'Fills',       isV: isStats.nFilled,      oosV: oosStats.nFilled,      fmt: v => v.toLocaleString(), ratio: false },
+    { label: 'Fill Rate',   isV: isStats.fillRate,      oosV: oosStats.fillRate,      fmt: v => v + '%',           ratio: false },
+    { label: 'Win Rate',    isV: isStats.winRate,        oosV: oosStats.winRate,        fmt: v => v + '%',           ratio: true },
+    { label: 'Prof Factor', isV: isStats.profitFactor,  oosV: oosStats.profitFactor,  fmt: v => fmt(v),            ratio: true },
+    { label: 'CAGR',        isV: isStats.cagr,           oosV: oosStats.cagr,           fmt: v => fmt(v) + '%',      ratio: true },
+    { label: 'Calmar',      isV: isStats.calmar,         oosV: oosStats.calmar,         fmt: v => fmt(v),            ratio: true },
+    { label: 'Max DD',      isV: isStats.maxDd,          oosV: oosStats.maxDd,          fmt: v => fmt(-v) + '%',     ratio: false },
+    { label: 'Sharpe',      isV: isStats.sharpe,         oosV: oosStats.sharpe,         fmt: v => fmt(v),            ratio: true },
+    { label: 'Exp/trade',   isV: isStats.expectancy,    oosV: oosStats.expectancy,    fmt: v => v + '%',           ratio: true },
+  ];
+
+  const rows = metrics.map(m => {
+    let ratioHtml = '';
+    if (m.ratio && m.isV !== 0) {
+      const r = m.oosV / m.isV;
+      const col = r >= 0.7 ? 'pos' : r >= 0.4 ? 'neu' : 'neg';
+      ratioHtml = `<td class="num ${col}">${(r * 100).toFixed(0)}%</td>`;
+    } else {
+      ratioHtml = `<td class="num">—</td>`;
+    }
+    const oosCol = m.ratio ? (m.oosV >= m.isV * 0.7 ? 'pos' : m.oosV >= m.isV * 0.4 ? 'neu' : 'neg') : '';
+    return `<tr>
+      <td style="color:var(--txt2)">${m.label}</td>
+      <td class="num">${m.fmt(m.isV)}</td>
+      <td class="num ${oosCol}">${m.fmt(m.oosV)}</td>
+      ${ratioHtml}
+    </tr>`;
+  });
+
+  document.getElementById('isoResults').innerHTML = `
+    <table class="bt-tbl" style="width:100%;max-width:500px">
+      <thead><tr>
+        <th>Metric</th>
+        <th class="num">In-Sample<br><small style="font-weight:400;color:var(--txt3)">before ${splitDate}</small></th>
+        <th class="num">Out-of-Sample<br><small style="font-weight:400;color:var(--txt3)">from ${splitDate}</small></th>
+        <th class="num">OOS/IS</th>
+      </tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>
+    <div style="margin-top:8px;font-size:11px;color:var(--txt3)">
+      OOS/IS ratio: <span style="color:var(--green)">≥70% = robust</span> ·
+      <span style="color:var(--yellow,#eab308)">40–70% = moderate decay</span> ·
+      <span style="color:var(--red)">&lt;40% = likely overfit</span>
+    </div>`;
+}
+
+function computeWalkForward() {
+  if (!_allTrades.length) return;
+  const isMonths  = parseInt(document.getElementById('wfIs').value);
+  const oosMonths = parseInt(document.getElementById('wfOos').value);
+
+  const allDates = [...new Set(_allTrades.map(r => r.date))].sort();
+  const startDate = new Date(allDates[0]);
+  const endDate   = new Date(allDates[allDates.length - 1]);
+
+  const windows = [];
+  let wStart = new Date(startDate);
+  while (true) {
+    const isEndD = new Date(wStart);
+    isEndD.setMonth(isEndD.getMonth() + isMonths);
+    const oosEndD = new Date(isEndD);
+    oosEndD.setMonth(oosEndD.getMonth() + oosMonths);
+    if (isEndD > endDate) break;
+
+    const isFrom  = wStart.toISOString().substring(0, 10);
+    const isTo    = isEndD.toISOString().substring(0, 10);
+    const oosTo   = oosEndD.toISOString().substring(0, 10);
+
+    const isTrades  = _allTrades.filter(r => r.date >= isFrom && r.date < isTo);
+    const oosTrades = _allTrades.filter(r => r.date >= isTo   && r.date < oosTo);
+
+    if (isTrades.length > 10 && oosTrades.length > 0) {
+      windows.push({
+        n: windows.length + 1,
+        isFrom, isTo, oosTo,
+        is:  clientBtStats(isTrades),
+        oos: clientBtStats(oosTrades),
+      });
+    }
+
+    // Step forward by OOS months
+    wStart = new Date(wStart);
+    wStart.setMonth(wStart.getMonth() + oosMonths);
+    if (wStart >= endDate) break;
+  }
+
+  if (!windows.length) {
+    document.getElementById('wfResults').innerHTML = '<p style="color:var(--txt3);font-size:12px">Not enough data for the selected window sizes.</p>';
+    return;
+  }
+
+  // Aggregate OOS-only stats
+  const allOosTrades = _allTrades.filter(r => {
+    // Include trade if it falls in any OOS window
+    return windows.some(w => r.date >= w.isTo && r.date < w.oosTo);
+  });
+  const aggOos = clientBtStats(allOosTrades);
+
+  const rows = windows.map(w => {
+    if (!w.is || !w.oos) return '';
+    const pfCol  = w.oos.profitFactor >= 1.5 ? 'pos' : w.oos.profitFactor >= 1.0 ? 'neu' : 'neg';
+    const ratio  = w.is.calmar > 0 ? (w.oos.calmar / w.is.calmar * 100).toFixed(0) + '%' : '—';
+    const rCol   = w.is.calmar > 0 ? (w.oos.calmar >= w.is.calmar * 0.7 ? 'pos' : w.oos.calmar >= w.is.calmar * 0.4 ? 'neu' : 'neg') : '';
+    return `<tr>
+      <td class="num">${w.n}</td>
+      <td style="font-size:11px">${w.isFrom} → ${w.isTo}</td>
+      <td style="font-size:11px">${w.isTo} → ${w.oosTo}</td>
+      <td class="num">${fmt(w.is.profitFactor)}</td>
+      <td class="num">${fmt(w.is.calmar)}</td>
+      <td class="num ${pfCol}">${fmt(w.oos.profitFactor)}</td>
+      <td class="num ${w.oos.calmar > 0 ? 'pos' : 'neg'}">${fmt(w.oos.calmar)}</td>
+      <td class="num ${w.oos.winRate >= 20 ? 'pos' : 'neg'}">${w.oos.winRate}%</td>
+      <td class="num ${rCol}">${ratio}</td>
+    </tr>`;
+  });
+
+  const aggPfCol = aggOos && aggOos.profitFactor >= 1.5 ? 'pos' : aggOos && aggOos.profitFactor >= 1.0 ? 'neu' : 'neg';
+
+  document.getElementById('wfResults').innerHTML = `
+    <table class="bt-tbl" style="width:100%">
+      <thead><tr>
+        <th>#</th><th>IS Period</th><th>OOS Period</th>
+        <th class="num">IS PF</th><th class="num">IS Calmar</th>
+        <th class="num">OOS PF</th><th class="num">OOS Calmar</th>
+        <th class="num">OOS Win%</th><th class="num">Calmar OOS/IS</th>
+      </tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>
+    ${aggOos && aggOos.nFilled > 0 ? `
+    <div style="margin-top:12px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px">
+      <strong style="color:var(--txt)">Aggregated OOS (all test windows combined):</strong>
+      &nbsp; Fills: ${aggOos.nFilled}
+      &nbsp; Win%: <span class="${aggOos.winRate >= 20 ? 'pos' : 'neg'}">${aggOos.winRate}%</span>
+      &nbsp; PF: <span class="${aggPfCol}">${fmt(aggOos.profitFactor)}</span>
+      &nbsp; Calmar: ${fmt(aggOos.calmar)}
+      &nbsp; Exp/trade: <span class="${fmtSign(aggOos.expectancy)}">${aggOos.expectancy >= 0 ? '+' : ''}${aggOos.expectancy}%</span>
+    </div>` : ''}`;
 }
 
 function renderKpis(s) {
