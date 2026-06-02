@@ -1369,6 +1369,7 @@ const DA_DEFAULTS = {
   trade_window_start:  '00:00',
   trade_window_end:    '22:00',
   eod_close_time:      '22:30',
+  eod_close_mode:      'close',
   risk_pct:            1.0,
   max_lot:             5.0,
   max_spread_pips:     3.0,
@@ -1409,6 +1410,7 @@ function readDaForm() {
   _daCfg.trade_window_start = str('da_window_start',    '00:00');
   _daCfg.trade_window_end   = str('da_window_end',      '22:00');
   _daCfg.eod_close_time     = str('da_eod_close_time',  '22:30');
+  _daCfg.eod_close_mode     = str('da_eod_close_mode',  'close');
   _daCfg.risk_pct           = num('da_risk_pct',          1.0);
   _daCfg.max_lot            = num('da_max_lot',            5.0);
   _daCfg.max_spread_pips    = num('da_max_spread_pips',    3.0);
@@ -1432,6 +1434,7 @@ function renderDaForm() {
   setVal('da_window_start',     _daCfg.trade_window_start ?? '00:00');
   setVal('da_window_end',       _daCfg.trade_window_end   ?? '22:00');
   setVal('da_eod_close_time',   _daCfg.eod_close_time     ?? '22:30');
+  setVal('da_eod_close_mode',   _daCfg.eod_close_mode     ?? 'close');
   setVal('da_risk_pct',         _daCfg.risk_pct         ?? 1.0);
   setVal('da_max_lot',          _daCfg.max_lot          ?? 5.0);
   setVal('da_max_spread_pips',  _daCfg.max_spread_pips  ?? 3.0);

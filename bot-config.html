@@ -1673,6 +1673,13 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <input type="time" id="da_window_end" style="width:110px;text-align:left">
         </div>
         <div class="form-row">
+          <span class="form-lbl">EOD Close Mode</span>
+          <select id="da_eod_close_mode" style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 8px">
+            <option value="close">close — force-close at EOD time</option>
+            <option value="run">run — hold until TP/SL (carry across days)</option>
+          </select>
+        </div>
+        <div class="form-row">
           <span class="form-lbl">EOD close time <small>UTC — force-close open positions</small></span>
           <input type="time" id="da_eod_close_time" style="width:110px;text-align:left">
         </div>
