@@ -2051,6 +2051,132 @@ app.get('/api/vol-backtest/level-analysis/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
+// ── Dyn Anchor nightly forecast ────────────────────────────────────────────────
+// Fetches full OHLC D1 candles from OANDA (includes open/high/low, unlike
+// fetchDailyCandles which returns close-only).
+
+async function fetchDailyOHLC(sym, count = 70) {
+  const instrument = sym.replace('/', '_');
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+  try {
+    const r = await fetch(
+      `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=D&count=${count}&price=M`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.candles?.filter(c => c.complete && c.mid).map(c => ({
+      open:  parseFloat(c.mid.o),
+      high:  parseFloat(c.mid.h),
+      low:   parseFloat(c.mid.l),
+      close: parseFloat(c.mid.c),
+    })) ?? null;
+  } catch { return null; }
+}
+
+function _computeDaForecast(candles, opts = {}) {
+  const lambda     = opts.lambda     ?? 0.94;
+  const emaPeriod  = opts.emaPeriod  ?? 20;
+  const slopeThresh= opts.slopeThresh?? 0.002;
+
+  const BM_P50 = 1.572, BM_P75 = 2.049;
+  const HL50_CORR = 0.921, HL75_CORR = 0.894;
+
+  const closes = candles.map(c => c.close);
+  if (closes.length < emaPeriod + 5) return null;
+
+  // EWMA variance from daily log returns
+  const rets = closes.slice(1).map((c, i) => Math.log(c / closes[i]));
+  let ewmaVar = rets[0] ** 2;
+  for (const r of rets.slice(1)) ewmaVar = lambda * ewmaVar + (1 - lambda) * r ** 2;
+  const sigmaD = Math.sqrt(Math.max(ewmaVar, 1e-12));
+
+  // EMA series for slope
+  const alpha = 2 / (emaPeriod + 1);
+  let ema = closes[0];
+  let emaPrev = closes[0];
+  for (let i = 1; i < closes.length; i++) {
+    emaPrev = ema;
+    ema = alpha * closes[i] + (1 - alpha) * ema;
+  }
+  const slope  = emaPrev !== 0 ? (ema - emaPrev) / emaPrev : 0;
+  const regime = slope > slopeThresh ? 'BULL' : slope < -slopeThresh ? 'BEAR' : 'RANGE';
+
+  return {
+    regime,
+    sigma_d:   sigmaD,
+    hl50:      BM_P50 * HL50_CORR * sigmaD,
+    hl75:      BM_P75 * HL75_CORR * sigmaD,
+    ema_slope: slope,
+    prev_close: closes[closes.length - 1],
+    bars_used:  closes.length,
+  };
+}
+
+// GET /api/dyn-anchor-forecast?pairs=EUR/USD,GBP/USD,...
+// Computes next-session EWMA vol + regime for each requested pair (or the
+// default 25-pair list) and stores the result to dyn_anchor_forecast KV.
+app.get('/api/dyn-anchor-forecast', async (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  }
+
+  const DEFAULT_DA_PAIRS = [
+    'EUR/USD','GBP/USD','USD/JPY','AUD/USD','NZD/USD','USD/CAD','USD/CHF',
+    'GBP/JPY','EUR/JPY','EUR/GBP','EUR/CHF','EUR/CAD','EUR/AUD','AUD/JPY',
+    'AUD/CAD','GBP/AUD','GBP/CAD','CAD/JPY','CHF/JPY','NZD/JPY','AUD/NZD',
+    'GBP/NZD','EUR/NZD','AUD/CHF','GBP/CHF',
+  ];
+
+  const pairsParam = req.query.pairs;
+  const pairs = pairsParam
+    ? pairsParam.split(',').map(p => p.trim()).filter(Boolean)
+    : DEFAULT_DA_PAIRS;
+
+  const lambda      = parseFloat(req.query.lambda)       || 0.94;
+  const emaPeriod   = parseInt(req.query.emaPeriod)       || 20;
+  const slopeThresh = parseFloat(req.query.slopeThresh)  || 0.002;
+  const barCount    = Math.min(parseInt(req.query.bars) || 70, 250);
+
+  const forecast = {};
+  const errors   = {};
+
+  await Promise.all(pairs.map(async pair => {
+    try {
+      const candles = await fetchDailyOHLC(pair, barCount);
+      if (!candles || candles.length < emaPeriod + 5) {
+        errors[pair] = `Only ${candles?.length ?? 0} bars (need ${emaPeriod + 5})`;
+        return;
+      }
+      const f = _computeDaForecast(candles, { lambda, emaPeriod, slopeThresh });
+      if (f) forecast[pair] = f;
+      else   errors[pair] = 'computation failed';
+    } catch (e) {
+      errors[pair] = e.message;
+    }
+  }));
+
+  const payload = {
+    forecast,
+    errors,
+    computed_at: new Date().toISOString(),
+    pairs_ok:    Object.keys(forecast).length,
+    pairs_err:   Object.keys(errors).length,
+    params:      { lambda, emaPeriod, slopeThresh, barCount },
+  };
+
+  // Store to KV so bot can read it at session open
+  try {
+    await kv.put('dyn_anchor_forecast', JSON.stringify({ data: payload, timestamp: Date.now() }));
+  } catch (e) {
+    console.warn('[dyn-anchor-forecast] KV store failed:', e.message);
+  }
+
+  res.json({ ok: true, ...payload });
+});
+
 // M1 candlestick endpoint — returns filtered bars for chart rendering.
 // Cache stores TypedArrays (~28 MB/pair) not objects (~350 MB/pair) to avoid OOM.
 // LRU: max 3 pairs in memory at once.

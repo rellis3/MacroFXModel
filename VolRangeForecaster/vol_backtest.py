@@ -355,6 +355,172 @@ def simulate_day_dynamic_anchor(open_: float, high: float, low: float, close: fl
     return no_fill
 
 
+# ── Dynamic-anchor carry-forward simulator ────────────────────────────────────
+
+def run_backtest_da_carry(name: str, df: pd.DataFrame,
+                          min_lookback: int = 50,
+                          date_from: Optional[str] = None,
+                          date_to:   Optional[str] = None) -> pd.DataFrame:
+    """
+    Dynamic-anchor backtest where positions are NOT force-closed at EOD.
+    Each day's trade is carried forward until TP or SL is hit, possibly on a
+    future daily bar.  A new independent trade can also open each day (so
+    multiple positions can be alive simultaneously — one per calendar day).
+
+    Carry resolution uses conservative SL-first ordering (same as simulate_day).
+    P&L is always expressed as % of the ORIGINAL session open (day of entry).
+    Records include 'carry_days' (0 = resolved same day, N = resolved N days later).
+    """
+    p      = ASSET_PARAMS["fx"]
+    closes = df["close"].to_numpy(dtype=float)
+    opens  = df["open"].to_numpy(dtype=float)
+    highs  = df["high"].to_numpy(dtype=float)
+    lows   = df["low"].to_numpy(dtype=float)
+    dates  = df.index
+
+    carry: list = []   # list of dicts: {side, entry, tp, sl, orig_open, open_date, ...base fields}
+    records: list = []
+
+    for i in range(min_lookback, len(df)):
+        date_str = str(dates[i].date())
+        if date_from and date_str < date_from:
+            continue
+        if date_to   and date_str > date_to:
+            break
+
+        open_, high, low, close = opens[i], highs[i], lows[i], closes[i]
+
+        # -- Step 1: Resolve carry positions against today's OHLC --------------
+        new_carry = []
+        for pos in carry:
+            side      = pos["side"]
+            entry     = pos["entry"]
+            tp        = pos["tp"]
+            sl        = pos["sl"]
+            orig_open = pos["orig_open"]
+            cdays     = pos.get("carry_days", 0) + 1
+
+            resolved = None
+            if side == "SELL":
+                if high >= sl:
+                    pnl = -((sl - entry) / orig_open * 100.0)
+                    resolved = {**pos, "date": dates[i], "outcome": "loss",
+                                "pnl_pct": round(pnl, 5), "carry_days": cdays}
+                elif low <= tp:
+                    pnl = (entry - tp) / orig_open * 100.0
+                    resolved = {**pos, "date": dates[i], "outcome": "win",
+                                "pnl_pct": round(pnl, 5), "carry_days": cdays}
+            else:  # BUY
+                if low <= sl:
+                    pnl = -((entry - sl) / orig_open * 100.0)
+                    resolved = {**pos, "date": dates[i], "outcome": "loss",
+                                "pnl_pct": round(pnl, 5), "carry_days": cdays}
+                elif high >= tp:
+                    pnl = (tp - entry) / orig_open * 100.0
+                    resolved = {**pos, "date": dates[i], "outcome": "win",
+                                "pnl_pct": round(pnl, 5), "carry_days": cdays}
+
+            if resolved is not None:
+                records.append(resolved)
+            else:
+                new_carry.append({**pos, "carry_days": cdays})
+        carry = new_carry
+
+        # -- Step 2: Compute vol levels for today's session -------------------
+        log_ret = np.log(closes[1:i] / closes[:i - 1])
+        if len(log_ret) < 20:
+            continue
+
+        sigma_d   = math.sqrt(_ewma_variance_series(log_ret)[-1])
+        hl_median = BM_RANGE_P50                   * sigma_d * 100.0
+        hl_75     = BM_RANGE_P75 * p["hl_75_corr"] * sigma_d * 100.0
+
+        base = {
+            "instrument":    name,
+            "date":          dates[i],
+            "regime":        "DA",
+            "eff_regime":    "DA",
+            "hl_median_pct": round(hl_median, 4),
+            "hl_75_pct":     round(hl_75,     4),
+            "oc_med_pct":    0.0,
+            "open":          round(open_, 6),
+            "high":          round(high,  6),
+            "low":           round(low,   6),
+            "close":         round(close, 6),
+            "carry_days":    0,
+        }
+
+        # -- Step 3: Attempt a new position for today -------------------------
+        sell_entry = low  * (1.0 + hl_median / 100.0)
+        sell_tp    = open_
+        sell_sl    = low  * (1.0 + hl_75     / 100.0)
+        buy_entry  = high * (1.0 - hl_median / 100.0)
+        buy_tp     = open_
+        buy_sl     = high * (1.0 - hl_75     / 100.0)
+
+        def _mfe_r(side: str, entry: float, tp: float) -> float:
+            if side == "SELL":
+                td = entry - tp
+                return round(min(max(entry - low,  0.0) / td, 3.0), 3) if td > 0 else 0.0
+            td = tp - entry
+            return round(min(max(high - entry,  0.0) / td, 3.0), 3) if td > 0 else 0.0
+
+        filled = False
+        if sell_entry > open_ and high >= sell_entry:
+            filled = True
+            mfe = _mfe_r("SELL", sell_entry, sell_tp)
+            if high >= sell_sl:
+                pnl = -((sell_sl - sell_entry) / open_ * 100.0)
+                records.append({**base, "filled": True, "side": "SELL",
+                                 "outcome": "loss", "pnl_pct": round(pnl, 5), "mfe_r": mfe})
+            elif low <= sell_tp:
+                pnl = (sell_entry - sell_tp) / open_ * 100.0
+                records.append({**base, "filled": True, "side": "SELL",
+                                 "outcome": "win",  "pnl_pct": round(pnl, 5), "mfe_r": mfe})
+            else:
+                # Carry forward
+                carry.append({**base, "filled": True, "side": "SELL",
+                               "entry": sell_entry, "tp": sell_tp, "sl": sell_sl,
+                               "orig_open": open_, "open_date": dates[i],
+                               "outcome": "open", "pnl_pct": 0.0, "mfe_r": mfe})
+
+        elif buy_entry < open_ and low <= buy_entry:
+            filled = True
+            mfe = _mfe_r("BUY", buy_entry, buy_tp)
+            if low <= buy_sl:
+                pnl = -((buy_entry - buy_sl) / open_ * 100.0)
+                records.append({**base, "filled": True, "side": "BUY",
+                                 "outcome": "loss", "pnl_pct": round(pnl, 5), "mfe_r": mfe})
+            elif high >= buy_tp:
+                pnl = (buy_tp - buy_entry) / open_ * 100.0
+                records.append({**base, "filled": True, "side": "BUY",
+                                 "outcome": "win",  "pnl_pct": round(pnl, 5), "mfe_r": mfe})
+            else:
+                carry.append({**base, "filled": True, "side": "BUY",
+                               "entry": buy_entry, "tp": buy_tp, "sl": buy_sl,
+                               "orig_open": open_, "open_date": dates[i],
+                               "outcome": "open", "pnl_pct": 0.0, "mfe_r": mfe})
+
+        if not filled:
+            records.append({**base, "filled": False, "side": "",
+                             "outcome": "no_fill", "pnl_pct": 0.0, "mfe_r": 0.0})
+
+    # Positions still open at the end of data — close at final close price
+    final_close = closes[-1]
+    for pos in carry:
+        side      = pos["side"]
+        entry     = pos["entry"]
+        orig_open = pos["orig_open"]
+        if side == "SELL":
+            pnl = (entry - final_close) / orig_open * 100.0
+        else:
+            pnl = (final_close - entry) / orig_open * 100.0
+        records.append({**pos, "date": dates[-1], "outcome": "open",
+                        "pnl_pct": round(pnl, 5)})
+
+    return pd.DataFrame(records)
+
+
 # ── Walk-forward backtest engine ──────────────────────────────────────────────
 
 def run_backtest(name: str, df: pd.DataFrame, asset_class: str,
@@ -366,7 +532,8 @@ def run_backtest(name: str, df: pd.DataFrame, asset_class: str,
                  bear_slope_mult: float = 1.0,
                  no_regime: bool = False,
                  range_mode: str = "fade_both",
-                 strategy: str = "fade_open") -> pd.DataFrame:
+                 strategy: str = "fade_open",
+                 eod_mode: str = "close") -> pd.DataFrame:
     """
     Walk-forward backtest. Returns a DataFrame of per-day trade records.
 
@@ -381,6 +548,9 @@ def run_backtest(name: str, df: pd.DataFrame, asset_class: str,
     range_mode      : 'fade_both' (default), 'skip' (no RANGE trades),
                       'directional' (short-term momentum picks side in RANGE).
     """
+    if strategy == "dynamic_anchor" and eod_mode == "run":
+        return run_backtest_da_carry(name, df, min_lookback, date_from, date_to)
+
     p      = ASSET_PARAMS[asset_class]
     closes = df["close"].to_numpy(dtype=float)
     opens  = df["open"].to_numpy(dtype=float)
@@ -711,6 +881,18 @@ def print_summary_dynamic_anchor(all_trades: pd.DataFrame) -> None:
             elif avg >= 0.35:
                 note = "  <- moderate excursion; trailing stop worth testing"
             print(f"\n  MFE on losses: {avg:.2f}R avg{note}")
+
+    if "carry_days" in all_trades.columns:
+        carried = filled[filled["carry_days"] > 0]
+        if len(carried):
+            avg_days = carried["carry_days"].mean()
+            max_days = carried["carry_days"].max()
+            c_wins   = len(carried[carried["outcome"] == "win"])
+            c_loss   = len(carried[carried["outcome"] == "loss"])
+            c_wr     = c_wins / len(carried) * 100 if len(carried) else 0
+            print(f"\n  CARRY ANALYSIS  ({len(carried)} trades resolved after EOD)")
+            print(f"  Avg carry days: {avg_days:.1f}  |  Max: {max_days}  |  "
+                  f"Win rate on carried: {c_wr:.1f}%  ({c_wins}W / {c_loss}L)")
     print()
 
 
@@ -755,6 +937,11 @@ def main() -> None:
                              "extreme, TP at open, SL at HL_75 level. "
                              "Ignores --sl-mult, --no-regime, --bear-mult, "
                              "--range-mode, --slope-thresh.")
+    parser.add_argument("--eod-mode",    choices=["close", "run"], default="close",
+                        dest="eod_mode",
+                        help="close (default): resolve open positions at EOD using close price. "
+                             "run: carry positions forward until TP/SL is hit, even across days. "
+                             "Only applies to --strategy dynamic-anchor.")
     parser.add_argument("--save",         action="store_true",
                         help="Save full trade log to CSV in data/")
     parser.add_argument("--lookback",     type=int, default=50,
@@ -776,9 +963,12 @@ def main() -> None:
     use_dynamic = args.strategy == "dynamic-anchor"
 
     if use_dynamic:
+        eod_label = "carry (no EOD close)" if args.eod_mode == "run" else "close at EOD"
         print(f"\nVol & Range Backtester — DYNAMIC-ANCHOR strategy  "
-              f"{'Yahoo' if args.yahoo else 'Drive/Parquet'}")
+              f"{'Yahoo' if args.yahoo else 'Drive/Parquet'}  EOD={eod_label}")
         print(f"  Entry: extreme × (1 ± HL_median%)  |  TP: open  |  SL: extreme × (1 ± HL_75%)")
+        if args.eod_mode == "run":
+            print(f"  Carry mode: positions held until TP/SL hit; multiple positions per pair possible")
         print(f"  [--sl-mult, --no-regime, --bear-mult, --range-mode, --slope-thresh are ignored]")
     else:
         strategy_label = ""
@@ -821,6 +1011,7 @@ def main() -> None:
                 bear_slope_mult=args.bear_mult,
                 no_regime=args.no_regime,
                 range_mode=args.range_mode,
+                eod_mode=args.eod_mode,
             )
             all_trades.append(trades)
         except Exception as exc:
