@@ -533,7 +533,7 @@ function simulateDynamicAnchorM1(m1Bars, open, hl50pct, hl75pct, regime = 'RANGE
   if (!filled) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'dynamicAnchor', fillTime: null, exitTime: null };
   const eod    = m1Bars[m1Bars.length - 1]?.close ?? entryL;
   const eodPnl = isBuy ? (eod - entryL) / open * 100 : (entryL - eod) / open * 100;
-  return { filled: true, side, outcome: 'open', pnlPct: +eodPnl.toFixed(5), leg: 'dynamicAnchor', fillTime, exitTime: m1Bars[m1Bars.length - 1]?.time ?? null };
+  return { filled: true, side, outcome: 'open', pnlPct: +eodPnl.toFixed(5), leg: 'dynamicAnchor', fillTime, exitTime: m1Bars[m1Bars.length - 1]?.time ?? null, _entry: entryL, _sl: slL, _tp: tpL };
 }
 
 function _simulateRevHL50D1(open, high, low, close, hl50pct, hl75pct, regime = 'RANGE', revMode = 'all') {
@@ -571,14 +571,40 @@ function _simulateDynamicAnchorD1(open, high, low, close, hl50pct, hl75pct, regi
   if (allowSell && sellEntry > open && high >= sellEntry) {
     if (high >= sellSl) return { filled: true, side: 'SELL', outcome: 'loss', pnlPct: +(-((sellSl - sellEntry) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
     if (low <= open)    return { filled: true, side: 'SELL', outcome: 'win',  pnlPct: +((sellEntry - open)     / open * 100).toFixed(5),  leg: 'dynamicAnchor', fillTime: null, exitTime: null };
-    return { filled: true, side: 'SELL', outcome: 'open', pnlPct: +((sellEntry - close) / open * 100).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
+    return { filled: true, side: 'SELL', outcome: 'open', pnlPct: +((sellEntry - close) / open * 100).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null, _entry: sellEntry, _sl: sellSl, _tp: open };
   }
   if (allowBuy && buyEntry < open && low <= buyEntry) {
     if (low <= buySl)   return { filled: true, side: 'BUY', outcome: 'loss', pnlPct: +(-((buyEntry - buySl) / open * 100)).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
     if (high >= open)   return { filled: true, side: 'BUY', outcome: 'win',  pnlPct: +((open - buyEntry)    / open * 100).toFixed(5),  leg: 'dynamicAnchor', fillTime: null, exitTime: null };
-    return { filled: true, side: 'BUY', outcome: 'open', pnlPct: +((close - buyEntry) / open * 100).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null };
+    return { filled: true, side: 'BUY', outcome: 'open', pnlPct: +((close - buyEntry) / open * 100).toFixed(5), leg: 'dynamicAnchor', fillTime: null, exitTime: null, _entry: buyEntry, _sl: buySl, _tp: open };
   }
   return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, leg: 'dynamicAnchor', fillTime: null, exitTime: null };
+}
+
+// ── Carry-forward helpers (for EOD-run mode) ─────────────────────────────────
+
+function _checkCarryM1(m1Bars, carry) {
+  for (const bar of m1Bars) {
+    if (carry.side === 'SELL') {
+      if (bar.high >= carry.sl) return { resolved: true, outcome: 'loss', pnlPct: +(-((carry.sl - carry.entry) / carry.origOpen * 100)).toFixed(5), exitTime: bar.time };
+      if (bar.low  <= carry.tp) return { resolved: true, outcome: 'win',  pnlPct: +((carry.entry - carry.tp)   / carry.origOpen * 100).toFixed(5),  exitTime: bar.time };
+    } else {
+      if (bar.low  <= carry.sl) return { resolved: true, outcome: 'loss', pnlPct: +(-((carry.entry - carry.sl) / carry.origOpen * 100)).toFixed(5), exitTime: bar.time };
+      if (bar.high >= carry.tp) return { resolved: true, outcome: 'win',  pnlPct: +((carry.tp - carry.entry)   / carry.origOpen * 100).toFixed(5),  exitTime: bar.time };
+    }
+  }
+  return { resolved: false };
+}
+
+function _checkCarryD1(high, low, carry) {
+  if (carry.side === 'SELL') {
+    if (high >= carry.sl) return { resolved: true, outcome: 'loss', pnlPct: +(-((carry.sl - carry.entry) / carry.origOpen * 100)).toFixed(5) };
+    if (low  <= carry.tp) return { resolved: true, outcome: 'win',  pnlPct: +((carry.entry - carry.tp)   / carry.origOpen * 100).toFixed(5) };
+  } else {
+    if (low  <= carry.sl) return { resolved: true, outcome: 'loss', pnlPct: +(-((carry.entry - carry.sl) / carry.origOpen * 100)).toFixed(5) };
+    if (high >= carry.tp) return { resolved: true, outcome: 'win',  pnlPct: +((carry.tp - carry.entry)   / carry.origOpen * 100).toFixed(5) };
+  }
+  return { resolved: false };
 }
 
 // ── Walk-forward engine (M1 sim + D1 vol/regime) ──────────────────────────────
@@ -596,6 +622,7 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
   const p      = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
   const closes = d1Bars.map(b => b.close);
   const records = [];
+  const daCarried = [];  // carry-forward state for dynamicAnchor EOD-run mode
 
   // Pre-compute EWMA variance series once — O(n) vs O(n²) per-bar rebuild
   const allLogRet = [];
@@ -660,8 +687,38 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
       legResults.push(r);
     }
     if (strategy === 'dynamicAnchor') {
-      const daRegime = opts.daRegime ?? 'all';
-      const daDir    = opts.daDir    ?? 'both';
+      const daRegime  = opts.daRegime  ?? 'all';
+      const daDir     = opts.daDir     ?? 'both';
+      const daEodMode = opts.daEodMode ?? 'close';
+      const dow = new Date(date + 'T00:00:00Z').getUTCDay();
+
+      // Resolve any carry positions against today's bars first
+      if (daEodMode === 'run' && daCarried.length > 0) {
+        const stillCarried = [];
+        for (const carry of daCarried) {
+          const cr = useM1 ? _checkCarryM1(m1Bars, carry) : _checkCarryD1(high, low, carry);
+          if (cr.resolved) {
+            records.push({
+              ...base,
+              side: carry.side, filled: true, outcome: cr.outcome,
+              pnl_pct: +(cr.pnlPct - spreadPct).toFixed(5),
+              leg: 'dynamicAnchor',
+              fill_time: carry.openFillTime ?? null,
+              exit_time: cr.exitTime ?? null,
+              session: classifySession(carry.openFillTime),
+              dow,
+              carry_days: carry.carryDays,
+              open_date:  carry.openDate,
+            });
+          } else {
+            stillCarried.push({ ...carry, carryDays: carry.carryDays + 1 });
+          }
+        }
+        daCarried.length = 0;
+        daCarried.push(...stillCarried);
+      }
+
+      // New trade attempt for today
       const regimeOk = daRegime === 'all' ||
         (daRegime === 'bullbear' && (regime === 'BULL' || regime === 'BEAR')) ||
         (daRegime === 'bull'     && regime === 'BULL') ||
@@ -670,7 +727,15 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
         const r = useM1
           ? simulateDynamicAnchorM1(m1Bars, open, hl50pct, hl75pct, regime, daDir)
           : _simulateDynamicAnchorD1(open, high, low, close, hl50pct, hl75pct, regime, daDir);
-        legResults.push(r);
+        if (daEodMode === 'run' && r.outcome === 'open' && r._entry != null) {
+          daCarried.push({
+            side: r.side, entry: r._entry, sl: r._sl, tp: r._tp,
+            origOpen: open, openDate: date,
+            openFillTime: r.fillTime, carryDays: 0,
+          });
+        } else {
+          legResults.push(r);
+        }
       }
     }
 
@@ -689,6 +754,32 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
       });
     }
   }
+
+  // Flush any remaining carry positions at end of available data
+  if (strategy === 'dynamicAnchor' && daCarried.length > 0) {
+    const lastBar   = d1Bars[d1Bars.length - 1];
+    const lastClose = lastBar?.close ?? 0;
+    for (const carry of daCarried) {
+      const pnl = carry.side === 'SELL'
+        ? (carry.entry - lastClose) / carry.origOpen * 100
+        : (lastClose - carry.entry) / carry.origOpen * 100;
+      records.push({
+        date: lastBar?.date ?? '', regime: 'RANGE',
+        hl_50_pct: 0, hl_75_pct: 0, oc_med_pct: 0, m1_sim: false,
+        open: 0, high: 0, low: 0, close: +lastClose.toFixed(6),
+        side: carry.side, filled: true, outcome: 'open',
+        pnl_pct: +(pnl - spreadPct).toFixed(5),
+        leg: 'dynamicAnchor',
+        fill_time: carry.openFillTime ?? null,
+        exit_time: null,
+        session: classifySession(carry.openFillTime),
+        dow: 0,
+        carry_days: carry.carryDays,
+        open_date:  carry.openDate,
+      });
+    }
+  }
+
   return records;
 }
 
