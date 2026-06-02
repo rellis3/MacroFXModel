@@ -56,27 +56,27 @@ function noTrade(reason, inputs) {
 }
 
 // ── Step 0 — Event gate (hard override) ──────────────────────────────────────
-// NO_TRADE within 1 hour either side of a high-impact event:
-//   – Pre-event:  minutesUntil <= 60 (or timing unknown)
-//   – Post-event: minutesSince <= 60 (spike/settlement window)
-// 1–4 hours out: REDUCED participation (confidence capped at 0.5 by caller).
+// NO_TRADE within 30 minutes either side of a high-impact event:
+//   – Pre-event:  minutesUntil <= 30 (or timing unknown)
+//   – Post-event: minutesSince <= 30 (spike/settlement window)
+// 30 min–4 hours out: REDUCED participation (confidence capped at 0.5 by caller).
 
 function applyEventGate(inputs) {
   const ev = inputs.eventRisk;
   if (!ev || ev.level === 'none' || ev.level === 'low') return null;
   if (ev.level === 'high') {
     // Post-event spike window
-    if (ev.minutesSince != null && ev.minutesSince <= 60) {
+    if (ev.minutesSince != null && ev.minutesSince <= 30) {
       return noTrade(`High-impact event released ${ev.minutesSince}m ago: ${ev.label || 'scheduled'} — stand aside`, inputs);
     }
-    // Pre-event: hard NO_TRADE within 1h; beyond that treat as medium
+    // Pre-event: hard NO_TRADE within 30 min; beyond that treat as medium
     const mins = ev.minutesUntil;
-    if (mins == null || mins <= 60) {
+    if (mins == null || mins <= 30) {
       return noTrade(`High-impact event${mins != null ? ` in ${mins}m` : ''}: ${ev.label || 'scheduled'} — stand aside`, inputs);
     }
-    // 1–4h window: fall through to medium handling (confidence capped below)
+    // 30 min–4h window: fall through to medium handling (confidence capped below)
   }
-  // medium or high >1h: let chain continue but cap confidence
+  // medium or high >30 min: let chain continue but cap confidence
   return null;
 }
 
