@@ -1411,6 +1411,88 @@ app.post('/api/vol-forecast/refresh', async (_req, res) => {
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Manual refresh error:', e.message));
 });
 
+// ── Text-format export helpers ────────────────────────────────────────────────
+// Mirrors the client-side buildExportText() / buildSessionText() in vol-forecast.html
+
+function _fmtForecastText(data) {
+  const LW  = 29;
+  const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const lines = ['**VOL & RANGE FORECAST**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    lines.push(
+      div(name),
+      `Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`,
+      `High to Low range       : ${f.hl_median.toFixed(2)}% median · ${f.hl_75.toFixed(2)}% 75th Percentile`,
+      `Open to Close move      : ${f.oc_median.toFixed(2)}% median · ${f.oc_75.toFixed(2)}% 75th Percentile`,
+      '',
+    );
+  }
+  return lines.join('\n');
+}
+
+function _fmtSessionText(data) {
+  const LW  = 29;
+  const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const p2  = x => (typeof x === 'number' ? x.toFixed(2) : '—');
+  const p3  = x => (typeof x === 'number' ? x.toFixed(3) : '—');
+  const fmtT = iso => iso
+    ? new Date(iso).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC')
+    : null;
+  const remTxt = (rem, actual, fc75, reachedAt) => {
+    const t = fmtT(reachedAt);
+    if (actual >= fc75) return `75th reached${t ? ' ' + t : ''}`;
+    if (rem <= 0)       return `reached${t ? ' ' + t : ''}`;
+    return `${p2(rem)}% remaining`;
+  };
+
+  const lines = [
+    '**VOL & RANGE FORECAST — LIVE SESSION STATUS**',
+    `**Session: ${data.session_label}**`,
+    `Fetched: ${new Date(data.fetched_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')}`,
+    '',
+  ];
+
+  for (const [name, s] of Object.entries(data.instruments ?? {})) {
+    if (s.error) { lines.push(div(name), `Error: ${s.error}`, ''); continue; }
+    const fc     = s.forecast;
+    const t      = new Date(s.bar_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC');
+    const closed = s.complete ? ' (session closed)' : '';
+    const vsM    = s.hl_vs_med >= 0 ? `+${p2(s.hl_vs_med)}` : p2(s.hl_vs_med);
+    const vsP    = s.hl_vs_75  >= 0 ? `+${p2(s.hl_vs_75)}`  : p2(s.hl_vs_75);
+    const ocSign = s.oc >= 0 ? '+' : '';
+
+    lines.push(
+      div(name),
+      `${name} Status — ${t}${closed}`,
+      '',
+      `H-L:  ${p2(s.hl)}%  (med ${p2(fc.hl_median)}%  |  75th ${p2(fc.hl_75)}%)`,
+      `  vs median  ${vsM}%  |  vs 75th  ${vsP}%`,
+      '',
+      `O-C:  ${ocSign}${p2(s.oc)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.oc_rem, Math.abs(s.oc), fc.oc_75, s.oc_reached_at)}`,
+      `O-H:  ${p2(s.oh)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.oh_rem, s.oh, fc.oc_75, s.oh_reached_at)}`,
+      `O-L:  ${p2(s.ol)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.ol_rem, s.ol, fc.oc_75, s.ol_reached_at)}`,
+      '',
+      `Bias:  ${s.bias} — ${s.bias_detail}`,
+      `  O-H ${p3(s.oh)}% / ${p3(fc.oc_median)}% forecast (${Math.round(s.oh_ratio)}%)  |  O-L ${p3(s.ol)}% / ${p3(fc.oc_median)}% forecast (${Math.round(s.ol_ratio)}%)`,
+      '',
+      `Directionality:  ${p2(s.dir)}%  (expected ~${p2(data.expected_dir)}%)`,
+      `Shape:  ${s.shape}`,
+      '',
+      `Outlook:  ${s.outlook}`,
+      '',
+    );
+  }
+  return lines.join('\n');
+}
+
+// Plain-text forecast export — same format as the ⬇ Export button on the dashboard.
+app.get('/api/vol-forecast/export', (_req, res) => {
+  if (!forecastState.latest) {
+    return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
+  }
+  res.type('text/plain').send(_fmtForecastText(forecastState.latest));
+});
+
 // Live session status — intraday tracking (actual OHLC vs forecast).
 // Fetches today's current/latest daily bar from Oanda and computes consumed
 // range, directional bias, shape, and outlook per instrument.
@@ -1420,6 +1502,19 @@ app.get('/api/vol-forecast/live', async (_req, res) => {
     res.json(status);
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Plain-text live session export — same format as the ⬇ Session button on the dashboard.
+app.get('/api/vol-forecast/live/export', async (_req, res) => {
+  try {
+    const status = await getSessionStatus();
+    if (!status?.ok) {
+      return res.status(202).type('text/plain').send(status?.message ?? 'Live session data not available.');
+    }
+    res.type('text/plain').send(_fmtSessionText(status));
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Error: ${e.message}`);
   }
 });
 

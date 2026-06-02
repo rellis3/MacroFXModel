@@ -330,6 +330,44 @@
   padding: 6px 0;
 }
 
+/* ── API reference table ─────────────────────────────────────────────────── */
+.vf-api-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.vf-api-method {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  color: var(--blue);
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-bd);
+  padding: 2px 7px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  min-width: 38px;
+  text-align: center;
+}
+.vf-api-method.post {
+  color: var(--amber);
+  background: var(--amber-bg);
+  border-color: var(--amber-bd);
+}
+.vf-api-path {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.vf-api-desc {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+}
+
 /* ── Skeleton / loading ──────────────────────────────────────────────────── */
 .vf-skeleton {
   background: linear-gradient(90deg, var(--s2) 25%, var(--s3) 50%, var(--s2) 75%);
@@ -400,6 +438,50 @@
       <thead id="vfHistHead"></thead>
       <tbody id="vfHistBody"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- API REFERENCE -->
+<div class="vf-history" style="margin-top:22px">
+  <div class="vf-history-title">API Endpoints</div>
+  <div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px">
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast</span>
+      <span class="vf-api-desc">Latest forecast — JSON (vol%, H-L, O-C per instrument)</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/export</span>
+      <span class="vf-api-desc">Latest forecast — plain text (same as ⬇ Export)</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/history</span>
+      <span class="vf-api-desc">Last 5 sessions — JSON array</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/live</span>
+      <span class="vf-api-desc">Live session tracker — JSON (H-L consumed, O-H/O-L/O-C vs forecast, bias, directionality, outlook)</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/live/export</span>
+      <span class="vf-api-desc">Live session tracker — plain text (same as ⬇ Session)</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method post">POST</span>
+      <span class="vf-api-path">/api/vol-forecast/refresh</span>
+      <span class="vf-api-desc">Trigger manual recompute — responds immediately, poll /api/vol-forecast in ~30s</span>
+    </div>
+
   </div>
 </div>
 
