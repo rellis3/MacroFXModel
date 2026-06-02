@@ -687,7 +687,10 @@ function buildSessionHtml(name, s, data) {
 
   const fc       = s.forecast;
   const p2       = x => x.toFixed(2);
-  const timeStr  = new Date(s.bar_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC');
+  const timeStr    = new Date(s.bar_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC');
+  const anchorStr  = s.anchor_time
+    ? new Date(s.anchor_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC anchor')
+    : '00:00 UTC anchor';
   const dotCls   = s.complete ? 'vf-live-dot closed' : 'vf-live-dot';
   const dotTitle = s.complete ? 'Session closed' : 'Live';
 
@@ -718,7 +721,7 @@ function buildSessionHtml(name, s, data) {
     <div class="vf-live-hdr">
       <div class="${dotCls}" title="${dotTitle}"></div>
       LIVE SESSION
-      <span class="vf-live-time">${timeStr}</span>
+      <span class="vf-live-time">${anchorStr} · as of ${timeStr}</span>
     </div>
 
     <div class="vf-srow">

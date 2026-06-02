@@ -352,24 +352,42 @@ export async function runVolForecast(targetDate) {
 // Ratio of expected |O-C| to expected H-L from BM theory: HN_P50 / BM_P50
 const EXPECTED_DIRECTIONALITY = 0.6745 / 1.572 * 100;  // ~42.9%
 
-async function fetchCurrentSessionBar(instrument) {
+// Anchor the open to the first H1 bar at/after 00:00 UTC today.
+// High = rolling max of all H1 highs since midnight.
+// Low  = rolling min of all H1 lows  since midnight.
+// Close = last available H1 bar's close (current price).
+// For FX/Gold the 00:00 bar exists; for equity indices (NQ) the first bar
+// is the market open (~13:00 UTC), which becomes the effective anchor.
+async function fetchMidnightAnchoredBar(instrument) {
+  const now = new Date();
+  const midnight = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+    0, 0, 0,
+  ));
   const url = `${_oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
-            + `?granularity=D&count=2&price=M`;
+            + `?granularity=H1&from=${encodeURIComponent(midnight.toISOString())}&price=M`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
-    signal:  AbortSignal.timeout(10_000),
+    signal:  AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`Oanda HTTP ${res.status}`);
-  const candles = (await res.json()).candles ?? [];
-  const last = candles.at(-1);
-  if (!last?.mid) throw new Error('No bar available');
+
+  // Include incomplete bars — the in-progress hour contributes to H/L/C.
+  const candles = ((await res.json()).candles ?? []).filter(c => c.mid);
+  if (candles.length === 0) throw new Error('No bars since midnight');
+
+  const open  = parseFloat(candles[0].mid.o);  // midnight (or market open) anchor
+  const high  = Math.max(...candles.map(c => parseFloat(c.mid.h)));
+  const low   = Math.min(...candles.map(c => parseFloat(c.mid.l)));
+  const last  = candles.at(-1);
+  const close = parseFloat(last.mid.c);
+
   return {
-    open:     parseFloat(last.mid.o),
-    high:     parseFloat(last.mid.h),
-    low:      parseFloat(last.mid.l),
-    close:    parseFloat(last.mid.c),
-    complete: !!last.complete,
-    time:     last.time,
+    open, high, low, close,
+    complete:    !!last.complete,
+    time:        last.time,
+    anchor_time: candles[0].time,
+    bar_count:   candles.length,
   };
 }
 
@@ -448,14 +466,16 @@ export async function getSessionStatus() {
 
   await Promise.all(INSTRUMENTS.map(async cfg => {
     try {
-      const bar = await fetchCurrentSessionBar(cfg.oandaInstrument);
+      const bar = await fetchMidnightAnchoredBar(cfg.oandaInstrument);
       const f   = fc.instruments[cfg.name];
       if (!f) return;
       instruments[cfg.name] = {
         ...computeSessionMetrics(bar, f),
-        forecast: { hl_median: f.hl_median, hl_75: f.hl_75, oc_median: f.oc_median, oc_75: f.oc_75 },
-        bar_time: bar.time,
-        complete: bar.complete,
+        forecast:    { hl_median: f.hl_median, hl_75: f.hl_75, oc_median: f.oc_median, oc_75: f.oc_75 },
+        bar_time:    bar.time,
+        anchor_time: bar.anchor_time,
+        bar_count:   bar.bar_count,
+        complete:    bar.complete,
       };
     } catch (err) {
       instruments[cfg.name] = { error: err.message };
