@@ -388,10 +388,11 @@ async function fetchMidnightAnchoredBar(instrument) {
     time:        last.time,
     anchor_time: candles[0].time,
     bar_count:   candles.length,
+    bars:        candles,   // raw H1 candles for reach-time computation
   };
 }
 
-function computeSessionMetrics(bar, fc) {
+function computeSessionMetrics(bar, fc, bars = []) {
   const { open: o, high: h, low: l, close: c } = bar;
   const r2 = x => Math.round(x * 100) / 100;
 
@@ -413,6 +414,24 @@ function computeSessionMetrics(bar, fc) {
   // Ratios of actual to forecast (%)
   const ohRatio = r2(fc.oc_median > 0 ? oh / fc.oc_median * 100 : 0);
   const olRatio = r2(fc.oc_median > 0 ? ol / fc.oc_median * 100 : 0);
+
+  // Reach times — walk H1 bars chronologically, record first bar where each
+  // threshold was crossed. Time is bar open (start of that hour).
+  let ohReachedAt = null, olReachedAt = null, ocReachedAt = null;
+  if (bars.length > 0 && fc.oc_median > 0) {
+    const medPrice = fc.oc_median / 100 * o;   // threshold in price units
+    let runHigh = o, runLow = o;
+    for (const b of bars) {
+      const bH = parseFloat(b.mid.h);
+      const bL = parseFloat(b.mid.l);
+      const bC = parseFloat(b.mid.c);
+      if (bH > runHigh) runHigh = bH;
+      if (bL < runLow ) runLow  = bL;
+      if (!ohReachedAt && (runHigh - o) >= medPrice) ohReachedAt = b.time;
+      if (!olReachedAt && (o - runLow)  >= medPrice) olReachedAt = b.time;
+      if (!ocReachedAt && Math.abs(bC - o) >= medPrice) ocReachedAt = b.time;
+    }
+  }
 
   // Bias
   const ohR = ohRatio / 100, olR = olRatio / 100;
@@ -447,6 +466,9 @@ function computeSessionMetrics(bar, fc) {
     hl_vs_med: hlVsMed, hl_vs_75: hlVs75,
     oc_rem: ocRem, oh_rem: ohRem, ol_rem: olRem,
     oh_ratio: ohRatio, ol_ratio: olRatio,
+    oh_reached_at: ohReachedAt,
+    ol_reached_at: olReachedAt,
+    oc_reached_at: ocReachedAt,
     bias, bias_detail: biasDetail, shape, outlook,
   };
 }
@@ -470,7 +492,7 @@ export async function getSessionStatus() {
       const f   = fc.instruments[cfg.name];
       if (!f) return;
       instruments[cfg.name] = {
-        ...computeSessionMetrics(bar, f),
+        ...computeSessionMetrics(bar, f, bar.bars),
         forecast:    { hl_median: f.hl_median, hl_75: f.hl_75, oc_median: f.oc_median, oc_75: f.oc_75 },
         bar_time:    bar.time,
         anchor_time: bar.anchor_time,
