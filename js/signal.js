@@ -1279,6 +1279,29 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
     </div>`;
   })();
 
+  // Decision engine permission bar — compact summary for this section
+  const decisionBar = (() => {
+    const ds = window._lastDecisionState;
+    if (!ds) return '';
+    const modeLabel = ds.mode.replace(/_/g, ' ');
+    if (ds.mode === 'NO_TRADE') {
+      return `<div style="font-size:10px;color:var(--text3);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;margin-bottom:6px">
+        ⛔ <strong>NO TRADE</strong> — ${ds.reasons[0] ?? 'conditions not met'}
+      </div>`;
+    }
+    const modeCol = ds.mode === 'TREND_CONTINUATION' ? 'var(--green)' : ds.mode === 'MEAN_REVERSION' ? 'var(--blue)' : ds.mode === 'EXHAUSTION' ? 'var(--red)' : '#f59e0b';
+    const p = ds.permissions;
+    return `<div style="display:flex;align-items:center;gap:6px;font-size:10px;background:${modeCol}08;border:1px solid ${modeCol}30;border-radius:6px;padding:5px 10px;margin-bottom:6px;flex-wrap:wrap">
+      <span style="font-weight:700;color:${modeCol}">${modeLabel}</span>
+      <span style="color:var(--border2)">·</span>
+      <span style="color:var(--text3)">${ds.participation} · Risk ${ds.riskMult.toFixed(2)}×</span>
+      <span style="color:var(--border2)">·</span>
+      ${p.long  ? '<span style="color:var(--green);font-weight:700;font-size:9.5px">↑ Long ✓</span>' : '<span style="color:var(--text3);font-size:9.5px;text-decoration:line-through">↑ Long</span>'}
+      ${p.short ? '<span style="color:var(--red);font-weight:700;font-size:9.5px">↓ Short ✓</span>' : '<span style="color:var(--text3);font-size:9.5px;text-decoration:line-through">↓ Short</span>'}
+      ${p.fade  ? '<span style="color:var(--blue);font-weight:700;font-size:9.5px">Fade ✓</span>' : ''}
+    </div>`;
+  })();
+
   // Regime Confidence panel — ARIMA stability + sizing multiplier
   const regimeConfPanel = (() => {
     if (!_rcResult) return '';
@@ -1320,7 +1343,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
     </div>`;
   })();
 
-  return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + regimeConfPanel + hmmBanner + pairScoreBanner + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
+  return volCtx + gravityBanner + candleBlock + otcCard + sessionWarn + dowCtx + rbSettingsBtn + regimeConfPanel + hmmBanner + pairScoreBanner + decisionBar + `<div class="entry-scanner">${entries.slice(0, 6).map(e => {
     const above   = quote.price < e.price;
     const starStr = '★'.repeat(e.totalStars) + '☆'.repeat(Math.max(0, 5 - e.totalStars));
     const cls     = e.totalStars >= 5 ? 'ec-5plus' : e.totalStars >= 4 ? 'ec-4' : e.totalStars >= 3 ? 'ec-3' : 'ec-low';
@@ -1502,6 +1525,20 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
       </div>`;
     })();
 
+    const _decisionChip = (() => {
+      const ds = window._lastDecisionState;
+      if (!ds) return '';
+      if (ds.mode === 'NO_TRADE') {
+        return `<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;background:rgba(239,68,68,0.10);color:var(--red);border:1px solid rgba(239,68,68,0.28);white-space:nowrap">⛔ NOT PERMITTED</span>`;
+      }
+      const isLongEntry = e.direction === 'long';
+      const permitted   = isLongEntry ? ds.permissions.long : ds.permissions.short;
+      if (permitted) {
+        return `<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;background:rgba(34,197,94,0.10);color:var(--green);border:1px solid rgba(34,197,94,0.28);white-space:nowrap">✓ PERMITTED</span>`;
+      }
+      return `<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;background:rgba(239,68,68,0.10);color:var(--red);border:1px solid rgba(239,68,68,0.28);white-space:nowrap">✗ NOT PERMITTED</span>`;
+    })();
+
     return `
     <div class="entry-card ${cls}">
       <div class="ec-top">
@@ -1509,6 +1546,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
         <span class="ec-price">${e.price.toFixed(digits)}</span>
         ${approachArrow ? `<span class="ec-approach" title="Recent 5m price direction">${approachArrow}</span>` : ''}
         <span class="ec-dir ${e.direction}">${e.direction === 'long' ? '↑ BUY' : '↓ SELL'}</span>
+        ${_decisionChip}
         <span class="ec-dist">${above ? '↑' : '↓'} ${e.distance.toFixed(0)}${unit}</span>
       </div>
       ${_gradeBanner}

@@ -989,7 +989,25 @@ function renderRegimeBreakdown() {
         ${regimeTable(rb.byVol)}
       </div>
     </div>
-    ${crossTabHtml}`;
+    ${crossTabHtml}
+    ${rb.byDecisionMode?.length ? `
+    <div class="regime-sub-title" style="margin-top:14px">Decision Engine — Strategy Mode
+      <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:6px">FULL participation expected to outperform REDUCED / MINIMUM — validates the filter</span>
+    </div>
+    <div class="regime-grid">
+      <div>
+        <div class="regime-sub-title">Mode at Entry</div>
+        ${regimeTable(rb.byDecisionMode)}
+      </div>
+      <div>
+        <div class="regime-sub-title">Participation Level</div>
+        ${regimeTable(rb.byParticipation)}
+      </div>
+      <div>
+        <div class="regime-sub-title">Session Phase</div>
+        ${regimeTable(rb.bySessionPhase)}
+      </div>
+    </div>` : ''}`;
 }
 
 // ── Day × Session breakdown ────────────────────────────────────────────────────

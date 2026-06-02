@@ -153,6 +153,89 @@ export function calculateVolRegime() {
   };
 }
 
+// ── DCC-GARCH cross-pair correlation (suggestion #3) ─────────────────────────
+// Estimates the time-varying correlation between the current pair's GARCH(1,1)
+// standardised residuals and those of a reference pair using EWMA (λ=0.94) —
+// a simplified DCC without the full two-step MLE.
+//
+// Why it matters: high cross-pair correlation → macro/USD driver, trade the trend.
+// Low (decoupled) → pair-specific move, mean-reversion more reliable.
+export function computeDCCCorrelation() {
+  const sym  = S.currentPair?.symbol;
+  const bars = filterTradingDays(S.ohlcData[sym]?.values);
+  if (!bars || bars.length < 30) return null;
+
+  // Pick best available reference pair (prefer risk-on liquid pairs)
+  const REF_ORDER = ['EUR/USD', 'GBP/USD', 'AUD/USD', 'USD/JPY'];
+  const refSym = REF_ORDER.find(s => s !== sym && (S.ohlcData[s]?.values?.length ?? 0) >= 30);
+  if (!refSym) return null;
+
+  const refBars = filterTradingDays(S.ohlcData[refSym].values);
+
+  // GARCH(1,1) standardised residuals — same params as calculateVolRegime()
+  function garchResiduals(bs) {
+    const chron = [...bs].reverse();
+    const rets  = [];
+    for (let i = 1; i < chron.length; i++) {
+      const c = parseFloat(chron[i].close), pc = parseFloat(chron[i - 1].close);
+      if (pc > 0) rets.push(Math.log(c / pc));
+    }
+    if (rets.length < 20) return [];
+    const seed   = rets.slice(0, 20);
+    const m      = seed.reduce((a, b) => a + b, 0) / seed.length;
+    let sigma2   = seed.reduce((a, r) => a + (r - m) ** 2, 0) / seed.length;
+    const OMEGA  = 1e-7, ALPHA = 0.10, BETA = 0.85;
+    const resid  = [];
+    for (let i = 0; i < rets.length; i++) {
+      const sigma = Math.sqrt(Math.max(sigma2, 1e-12));
+      resid.push(rets[i] / sigma);
+      sigma2 = OMEGA + ALPHA * rets[i] ** 2 + BETA * sigma2;
+    }
+    return resid;
+  }
+
+  const cr = garchResiduals(bars);
+  const rr = garchResiduals(refBars);
+  const minLen = Math.min(cr.length, rr.length);
+  if (minLen < 20) return null;
+
+  const cx = cr.slice(-minLen);
+  const rx = rr.slice(-minLen);
+
+  // EWMA covariance / variance — λ=0.94 matches vol.js GARCH persistence
+  const LAMBDA = 0.94;
+  let cov = cx[0] * rx[0], varC = cx[0] ** 2, varR = rx[0] ** 2;
+  for (let i = 1; i < cx.length; i++) {
+    cov  = LAMBDA * cov  + (1 - LAMBDA) * cx[i] * rx[i];
+    varC = LAMBDA * varC + (1 - LAMBDA) * cx[i] ** 2;
+    varR = LAMBDA * varR + (1 - LAMBDA) * rx[i] ** 2;
+  }
+  const denom = Math.sqrt(varC * varR);
+  const corr  = denom > 0 ? Math.max(-1, Math.min(1, cov / denom)) : 0;
+
+  // Trailing correlation 20 steps back — used to detect rising/falling trend
+  let cov2 = cx[0] * rx[0], vC2 = cx[0] ** 2, vR2 = rx[0] ** 2;
+  const cut = Math.max(0, cx.length - 20);
+  for (let i = 1; i < cut; i++) {
+    cov2 = LAMBDA * cov2 + (1 - LAMBDA) * cx[i] * rx[i];
+    vC2  = LAMBDA * vC2  + (1 - LAMBDA) * cx[i] ** 2;
+    vR2  = LAMBDA * vR2  + (1 - LAMBDA) * rx[i] ** 2;
+  }
+  const d2      = Math.sqrt(vC2 * vR2);
+  const corrOld = d2 > 0 ? Math.max(-1, Math.min(1, cov2 / d2)) : 0;
+
+  const delta  = corr - corrOld;
+  const trend  = delta >  0.05 ? 'rising' : delta < -0.05 ? 'falling' : 'stable';
+  const corrPct = Math.round(corr * 100);
+  const regime  = Math.abs(corr) > 0.65 ? (corr > 0 ? 'aligned'  : 'inverse')
+               : Math.abs(corr) > 0.35 ? (corr > 0 ? 'corr+'    : 'corr−')
+               :                                       'decoupled';
+  const arrow   = trend === 'rising' ? '↑' : trend === 'falling' ? '↓' : '→';
+
+  return { corr, corrPct, trend, regime, refSym, arrow,
+           label: `DCC vs ${refSym}: ${corrPct >= 0 ? '+' : ''}${corrPct}% (${regime})${arrow}` };
+}
+
 export function calculateOTCForecast(bars, volRegime, macroScore, sym) {
   if (!bars || bars.length < 30) return null;
 

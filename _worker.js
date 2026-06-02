@@ -25,7 +25,7 @@ function err(msg, status = 500) {
 // via /api/kv/get and /api/kv/set. The 'caps' key is excluded here because
 // it has its own dedicated /api/config/caps route with stricter validation.
 function isAllowedKVKey(key) {
-  const EXACT = new Set(['fred', 'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials']);
+  const EXACT = new Set(['fred', 'fred2', 'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock']);
   const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'arima_price_', 'gold_', 'beta_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
@@ -620,68 +620,37 @@ export default {
       // Returns { vix: { value, prev }, us10y: { value, prev }, ... }
       // Each series transformed from raw FRED observations array into
       // { value: latestValue, prev: previousValue }  -  shape the dashboard expects.
+      //
+      // KV caching (6h fresh TTL, stale-on-failure fallback):
+      //   Previously this endpoint fired 27+ concurrent FRED requests on every
+      //   client cache-miss, causing rate-limit nulls for VIX/GS10/NFCI/TIPS.
+      //   Now the batch runs at most once per 6 hours server-wide; stale data
+      //   is returned if FRED is rate-limited rather than propagating nulls.
       if (path === '/api/fred') {
         if (!env.FRED_KEY) return err('FRED_KEY not configured', 503);
 
-        const SERIES = {
-          vix:      'VIXCLS',
-          us2y:     'GS2',
-          us5y:     'GS5',
-          us10y:    'GS10',
-          dxy:      'DTWEXBGS',
-          hy:       'BAMLH0A0HYM2',
-          nfci:     'NFCI',
-          tips:     'DFII10',
-          tips5:    'DFII5',
-          bei:      'T10YIE',
-          aud_usd:  'DEXUSAL',
-          usd_jpy:  'DEXJPUS',
-          de10y:    'IRLTLT01DEM156N',
-          gb10y:    'IRLTLT01GBM156N',
-          jp10y:    'IRLTLT01JPM156N',
-          au10y:    'IRLTLT01AUM156N',
-          ca10y:    'IRLTLT01CAM156N',
-          ch10y:    'IRLTLT01CHM156N',
-          de_short: 'IRSTCI01DEM156N',
-          gb_short: 'IR3TIB01GBM156N',
-          jp_short: 'IRSTCI01JPM156N',
-          au_short: 'IR3TIB01AUM156N',
-          ca_short: 'IRSTCI01CAM156N',
-          ch_short: 'IRSTCI01CHM156N',
-          wti:      'DCOILWTICO',
-          // Net Fed Liquidity components — NQ/equity T1 scoring only
-          walcl:    'WALCL',      // Fed total assets (weekly, Thursdays)
-          tga:      'WTREGEN',    // Treasury General Account (daily)
-          rrp:      'RRPONTSYD',  // Overnight reverse repo (daily)
-          // Carry basket extension — NZD for NZD/JPY alongside AUD/JPY in T5
-          nzd_usd:  'DEXUSNZ',
-          // Credit quality spread — BB vs CCC divergence as early distress signal in T4
-          hy_bb:    'BAMLH0A1HYBB',
-          hy_ccc:   'BAMLH0A3HYC',
-        };
+        // All FRED fetching is done exclusively by server.js refreshFredDashboard()
+        // (sequential, 600 ms per series, rate-safe). This endpoint is KV-read-only —
+        // it never touches FRED directly, eliminating the concurrent-request race that
+        // was rate-limiting the critical series and creating a null-data livelock.
+        const FRED_KV_KEY  = 'fred_data_v3';
+        const FRED_FRESH_MS = 6 * 60 * 60 * 1000;
 
-        const fetches = Object.entries(SERIES).map(async ([key, id]) => {
-          const u = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${env.FRED_KEY}&file_type=json&sort_order=desc&limit=5`;
+        if (env.FX_SCORES) {
           try {
-            const r = await fetch(u);
-            const d = await r.json();
-            // Filter out FRED null marker "."
-            const valid = (d.observations || [])
-              .filter(o => o.value && o.value !== '.')
-              .map(o => parseFloat(o.value));
-            // Return { value: latest, prev: previous }  -  exactly what dashboard accesses
-            return [key, {
-              value: valid[0] ?? null,
-              prev:  valid[1] ?? null,
-            }];
-          } catch (e) {
-            return [key, { value: null, prev: null }];
-          }
-        });
+            const raw = await env.FX_SCORES.get(FRED_KV_KEY);
+            if (raw) {
+              const { d, t } = JSON.parse(raw);
+              // Return fresh data immediately; return stale as fallback when server
+              // refresh is still in progress (startup window ≤ 20 s).
+              if (d && typeof d === 'object') return json(d);
+            }
+          } catch { /* KV read error */ }
+        }
 
-        const results = await Promise.all(fetches);
-        const out = Object.fromEntries(results);
-        return json(out);
+        // KV empty — server refresh not yet complete (first deploy or post-restart).
+        // Return empty object; client will retry on next pair switch or page reload.
+        return json({});
       }
 
       // -- /api/ecbsdw ------------------------------------------
@@ -970,7 +939,36 @@ export default {
         const cacheTtl = period === '90d' ? 21600 : 43200; // 6h or 12h
         if (env.FX_SCORES) {
           const cached = await env.FX_SCORES.get(cacheKey);
-          if (cached) return json(JSON.parse(cached));
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              // Validate all requested keys have data — partial caches from rate-limited
+              // sessions have some empty arrays; invalidate them so they get rebuilt.
+              if (requestedKeys.every(k => Array.isArray(parsed[k]) && parsed[k].length >= 20)) {
+                return json(parsed);
+              }
+              env.FX_SCORES.delete(cacheKey).catch(() => {});
+            } catch {}
+          }
+        }
+
+        // For 90d requests, try pre-populated individual series cache (written by server
+        // refreshFredHistory at startup) — avoids hitting FRED on concurrent client loads.
+        if (period === '90d' && env.FX_SCORES) {
+          const assembled = {};
+          let allFound = true;
+          for (const key of requestedKeys) {
+            const raw = await env.FX_SCORES.get(`fredhistory_series_${key}`);
+            if (raw) {
+              try { assembled[key] = JSON.parse(raw); } catch { allFound = false; break; }
+            } else { allFound = false; break; }
+          }
+          if (allFound) {
+            // Write composite cache so next request is instant
+            await env.FX_SCORES.put(cacheKey, JSON.stringify(assembled), { expirationTtl: cacheTtl })
+              .catch(() => {});
+            return json(assembled);
+          }
         }
 
         const fetches = requestedKeys.map(async key => {
@@ -992,7 +990,9 @@ export default {
         const results = await Promise.all(fetches);
         const payload = Object.fromEntries(results);
 
-        if (env.FX_SCORES) {
+        // Only cache if FRED returned usable data — avoids caching empty arrays when rate-limited
+        const hasData = Object.values(payload).some(arr => Array.isArray(arr) && arr.length > 0);
+        if (env.FX_SCORES && hasData) {
           await env.FX_SCORES.put(cacheKey, JSON.stringify(payload), { expirationTtl: cacheTtl });
         }
 

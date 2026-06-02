@@ -16,13 +16,72 @@ import { calculateTierScores, compute5mKalmanDev, computeBayesianScore } from '.
 import { gradeEntry } from './trade-grade.js';
 import { computeGoldMacroModel } from './gold-model.js';
 import { computeArimaContext } from './arima-price.js';
+import { collectDecisionInputs } from '../DecisionEngine/decisionInputs.js';
+import { runDecisionEngine } from '../DecisionEngine/decisionEngine.js';
 
-const STORAGE_KEY  = 'tg_alert_cfg';
-const COOLDOWN_KEY = 'tg_alert_cooldowns';
+const STORAGE_KEY    = 'tg_alert_cfg';
+const COOLDOWN_KEY   = 'tg_alert_cooldowns';
+const AUDIT_LOG_KEY  = 'decision_audit_log';
+const AUDIT_LOCAL_KEY = 'decision_audit_local';
 
 // Throttle KV entry syncs — at most once per 5 min per pair.
 // This prevents flooding KV on every SSE price tick.
 const _kvEntrySyncTimes = new Map();
+
+// ── Decision engine audit log ─────────────────────────────────────────────────
+// In-memory + localStorage. Written on every proximity event that clears
+// grade/cooldown filters. KV-synced for the backtest-viewer adapter.
+
+const _MAX_AUDIT = 1000;
+
+let _auditLog = (() => {
+  try { return JSON.parse(localStorage.getItem(AUDIT_LOCAL_KEY) ?? '[]'); }
+  catch { return []; }
+})();
+
+// Live suppressed log — resets on page reload. Last 20 suppressed entries.
+const _suppressedLog = [];
+
+export function getSuppressedLog() { return _suppressedLog; }
+export function getAuditLog()      { return _auditLog; }
+
+function _writeAuditEntry(sym, entry, decisionState, permitted, suppressed) {
+  const now  = Date.now();
+  const date = new Date(now).toISOString().slice(0, 10);
+  const rec  = {
+    id:                    `${sym.replace('/', '')}_${now}`,
+    sym,
+    date,
+    fill_time:             new Date(now).toISOString().replace('Z', ''),
+    direction:             entry.direction,
+    price:                 entry.price,
+    sl:                    entry.sl   ?? null,
+    tp:                    entry.tp   ?? null,
+    rrRatio:               entry.rrRatio ?? null,
+    grade:                 entry.grade   ?? '—',
+    verdict:               entry.verdict ?? '—',
+    tags:                  (entry.tags ?? []).map(t => t.label ?? t).slice(0, 4),
+    decisionMode:          decisionState?.mode          ?? null,
+    decisionParticipation: decisionState?.participation ?? null,
+    decisionRiskMult:      decisionState?.riskMult      ?? null,
+    permitted,
+    suppressed,
+    reasons:               decisionState?.reasons?.slice(0, 2) ?? [],
+  };
+
+  _auditLog = [rec, ..._auditLog].slice(0, _MAX_AUDIT);
+  try { localStorage.setItem(AUDIT_LOCAL_KEY, JSON.stringify(_auditLog)); } catch {}
+
+  if (suppressed) _suppressedLog.unshift(rec);
+  if (_suppressedLog.length > 20) _suppressedLog.length = 20;
+
+  // Async KV write — fire and forget, no error recovery needed
+  fetch('/api/kv/set', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ key: AUDIT_LOG_KEY, data: _auditLog, timestamp: now }),
+  }).catch(() => {});
+}
 
 // Default config
 const DEFAULT_CFG = {
@@ -40,6 +99,7 @@ const DEFAULT_CFG = {
   onlyAligned: false,      // if true, only alert when signal aligned with entry direction
   flipCandles: 3,          // consecutive full-body closes beyond a level to constitute a polarity break
   regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
+  suppressBlocked: false,  // if true, skip Telegram for NOT PERMITTED directions
 };
 
 export function loadAlertCfg() {
@@ -129,8 +189,9 @@ export function checkAndSendAlerts() {
       const _savedPair = S.currentPair;
       S.currentPair = PAIRS.find(p => p.symbol === sym) || _savedPair;
       let entries = [], alertTierData = null, alertApproachArrow = null, alertKalmanDev = null;
+      let volRegime = null;
       try {
-        const volRegime = calculateVolRegime();
+        volRegime = calculateVolRegime();
         const pivots    = calculatePivots();
         const macroBias = (() => {
           try { return runSignalEngine(S.compassData, volRegime).bias; }
@@ -153,6 +214,11 @@ export function checkAndSendAlerts() {
         S.currentPair = _savedPair;
         continue;
       }
+      const alertOtcForecast = S.otcForecasts?.[sym] ?? null;
+      const alertDecisionState = (() => {
+        try { return runDecisionEngine(collectDecisionInputs(volRegime, alertOtcForecast, quote)); }
+        catch(_) { return null; }
+      })();
       S.currentPair = _savedPair;
 
       // ARIMA price context — computed from daily bars, written to KV for the bot
@@ -180,7 +246,7 @@ export function checkAndSendAlerts() {
         }).catch(() => {});
       }
 
-      cached = { entries, tierData: alertTierData, approachArrow: alertApproachArrow, kalmanDev: alertKalmanDev, arimaCtx, at: now };
+      cached = { entries, tierData: alertTierData, approachArrow: alertApproachArrow, kalmanDev: alertKalmanDev, arimaCtx, decisionState: alertDecisionState, at: now };
       _entryCache.set(sym, cached);
 
       // KV sync for Railway bot — throttled to once per 30 min per pair
@@ -227,6 +293,33 @@ export function checkAndSendAlerts() {
             meta.tiersNeg = alertTierData.tiers.filter(t => !t.na && t.score < 0).length;
             meta.tiersNa  = alertTierData.tiers.filter(t =>  t.na || t.score === 0).length;
           }
+          if (alertDecisionState) {
+            meta.decisionMode          = alertDecisionState.mode;
+            meta.decisionParticipation = alertDecisionState.participation;
+            meta.decisionRiskMult      = alertDecisionState.riskMult;
+            meta.decisionPermLong      = alertDecisionState.permissions.long;
+            meta.decisionPermShort     = alertDecisionState.permissions.short;
+            meta.decisionReasons       = alertDecisionState.reasons?.slice(0, 2) ?? [];
+            // Write decision state to a CF-KV-routed key so the Railway bot can read it.
+            // ai_entries_* is local-file-only on the server (levels.js overwrites it),
+            // but ai_decision_meta_* routes through CF KV (matches the ai_* prefix rule).
+            fetch('/api/kv/set', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({
+                key:  `ai_decision_meta_${sym.replace('/', '')}`,
+                data: {
+                  decisionMode:          alertDecisionState.mode,
+                  decisionParticipation: alertDecisionState.participation,
+                  decisionRiskMult:      alertDecisionState.riskMult,
+                  decisionPermLong:      alertDecisionState.permissions.long,
+                  decisionPermShort:     alertDecisionState.permissions.short,
+                  decisionReasons:       alertDecisionState.reasons?.slice(0, 2) ?? [],
+                },
+                timestamp: now,
+              }),
+            }).catch(() => {});
+          }
           fetch('/api/kv/set', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -264,8 +357,22 @@ export function checkAndSendAlerts() {
       cooldownsDirty = true;
       _alertsInFlight.add(ck);
 
-      const distPips = Math.round(dist / pipSz);
-      sendTelegramAlert(sym, e, price, distPips, digits, cached.approachArrow, cached.kalmanDev, cached.tierData, cached.arimaCtx).finally(() => {
+      const distPips   = Math.round(dist / pipSz);
+      const ds         = cached.decisionState;
+      const isLongEntry = e.direction === 'long';
+      const permitted  = !ds || ds.mode === 'NO_TRADE'
+        ? false
+        : (isLongEntry ? ds.permissions.long : ds.permissions.short);
+      const suppressed = !permitted && (cfg.suppressBlocked ?? false);
+
+      _writeAuditEntry(sym, e, ds, permitted, suppressed);
+
+      if (suppressed) {
+        _alertsInFlight.delete(ck);
+        continue;
+      }
+
+      sendTelegramAlert(sym, e, price, distPips, digits, cached.approachArrow, cached.kalmanDev, cached.tierData, cached.arimaCtx, ds).finally(() => {
         _alertsInFlight.delete(ck);
       });
     }
@@ -281,7 +388,7 @@ export function invalidateAlertCache(sym) {
 
 // ── Format + dispatch ─────────────────────────────────────────────────────────
 
-async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, approachArrow, kalmanDev, tierData, arimaCtx) {
+async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, approachArrow, kalmanDev, tierData, arimaCtx, decisionState) {
   const unit     = sym === 'NAS100_USD' ? 'pts' : 'p';
   const arrowStr = approachArrow ?? '';
   const dir      = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
@@ -338,6 +445,19 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
     ? `⚠ 1m: <b>${hmm5m.regime} ${hmm5m.confidence}%</b> — momentum opposing`
     : null;
 
+  // Decision engine gate — permission + context for this direction
+  const decisionLine = (() => {
+    const ds = decisionState;
+    if (!ds) return null;
+    if (ds.mode === 'NO_TRADE') {
+      return `🚫 Decision: <b>NO TRADE</b> — ${ds.reasons[0] ?? 'conditions not met'}`;
+    }
+    const permitted = isLong ? ds.permissions.long : ds.permissions.short;
+    const gate      = permitted ? '✅ PERMITTED' : '❌ NOT PERMITTED';
+    const modeLabel = ds.mode.replace(/_/g, ' ');
+    return `${gate} · ${modeLabel} · ${ds.participation} · Risk ${ds.riskMult.toFixed(2)}×`;
+  })();
+
   const lines = [
     `🎯 <b>${sym} ${arrowStr} ${dir}</b> ${stars}`,
     `Price: <b>${entry.price.toFixed(digits)}</b> · ${atStr}`,
@@ -351,6 +471,7 @@ async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, app
     arimaStr,
     entry.rangeBias ? `Range Bias: ${entry.rangeBias.confirmCount}✓ ${entry.rangeBias.conflictCount}✗` : null,
     hmm5mLine,
+    decisionLine,
   ].filter(Boolean).join('\n');
 
   try {
@@ -384,7 +505,8 @@ export function openAlertModal() {
   document.getElementById('alertProxGold').value       = cfg.proxPips?.['XAU/USD'] ?? 8;
   document.getElementById('alertProxNas').value        = cfg.proxPips?.['NAS100_USD'] ?? 30;
   document.getElementById('alertOnlyAligned').checked    = cfg.onlyAligned;
-  if (document.getElementById('alertRegimeChange')) document.getElementById('alertRegimeChange').checked = cfg.regimeChangeAlerts !== false;
+  if (document.getElementById('alertRegimeChange'))   document.getElementById('alertRegimeChange').checked   = cfg.regimeChangeAlerts !== false;
+  if (document.getElementById('alertSuppressBlocked')) document.getElementById('alertSuppressBlocked').checked = cfg.suppressBlocked ?? false;
   if (document.getElementById('alertVuManChu')) document.getElementById('alertVuManChu').value = cfg.vuManChu ?? 'info';
   document.getElementById('alertPairs').value          = (cfg.pairs ?? []).join(', ');
 
@@ -407,6 +529,7 @@ export function saveAlertModal() {
     cooldownMin: parseInt(document.getElementById('alertCooldown').value) || 60,
     onlyAligned:         document.getElementById('alertOnlyAligned').checked,
     regimeChangeAlerts:  document.getElementById('alertRegimeChange')?.checked !== false,
+    suppressBlocked:     document.getElementById('alertSuppressBlocked')?.checked ?? false,
     vuManChu:    document.getElementById('alertVuManChu')?.value ?? 'info',
     flipCandles: parseInt(document.getElementById('alertFlipCandles')?.value) || 3,
     proxPips: {

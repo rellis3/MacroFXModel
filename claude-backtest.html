@@ -115,8 +115,8 @@ svg.chart{width:100%;display:block}
     <div class="ctrl-group">
       <div class="ctrl-label">Entry Timeframe</div>
       <select id="entryTf">
-        <option value="m1">M1 (preferred)</option>
-        <option value="m5">M5 (fallback)</option>
+        <option value="m5">M5</option>
+        <option value="m1">M1 (if available in R2)</option>
       </select>
     </div>
 
@@ -136,9 +136,9 @@ svg.chart{width:100%;display:block}
     <div class="ctrl-group">
       <div class="ctrl-label">Level Filter (Display Mode)</div>
       <select id="displayMode">
-        <option value="STRONGEST">Strongest — tight confluence, outside range only</option>
         <option value="STRONG">Strong — any confluence, outside range only</option>
         <option value="ALL">All — all confluence levels inc. inside range</option>
+        <option value="STRONGEST">Strongest — tight confluence, outside range only</option>
       </select>
       <div class="info-tip">Mirrors indicator's Strongest/Strong/All Levels modes</div>
     </div>
@@ -151,8 +151,8 @@ svg.chart{width:100%;display:block}
 
     <div class="ctrl-group">
       <div class="ctrl-label">Tight Confluence % of Threshold</div>
-      <input type="number" id="tightPct" value="10" min="5" max="50" step="5">
-      <div class="info-tip">Within 10% = green (tight). Above = orange (regular)</div>
+      <input type="number" id="tightPct" value="50" min="5" max="100" step="5">
+      <div class="info-tip">Within 50% = tight (green). Above = regular (orange)</div>
     </div>
 
     <div class="ctrl-group">
@@ -888,7 +888,9 @@ self.onmessage = function(e) {
       } // end bar loop
     } // end date loop
 
-    self.postMessage({ type:'progress', pct:85, msg:'Analysing ' + trades.length + ' trades...' });
+    var daysWithConfluence = 0;
+    // (count approximated from trades and empty days already processed)
+    self.postMessage({ type:'progress', pct:85, msg:'Analysing ' + trades.length + ' trades across ' + allDates.length + ' days...' });
 
     // ── RESULTS ANALYSIS ────────────────────────────────────────
     var inIS  = trades.filter(function(t){ return  t.inIS; });
@@ -1046,14 +1048,24 @@ async function runBacktest() {
   document.getElementById('emptyState').style.display = 'block';
 
   try {
+    // Fetch M30 + entry TF with fallback chain: selected → m5 → m30
+    const fetchEntry = async () => {
+      let r = await fetch(r2Url(sym, entryTf));
+      if (r.ok) return r;
+      if (entryTf !== 'm5') {
+        setStatus('M1 not found, trying M5...', 4);
+        r = await fetch(r2Url(sym, 'm5'));
+        if (r.ok) return r;
+      }
+      throw new Error(`No entry TF data found for ${sym} (tried ${entryTf} and m5)`);
+    };
+
     const [m30resp, entryResp] = await Promise.all([
       fetch(r2Url(sym, 'm30')),
-      fetch(r2Url(sym, entryTf))
-        .then(r => r.ok ? r : fetch(r2Url(sym, 'm5')))
+      fetchEntry()
     ]);
 
-    if (!m30resp.ok) throw new Error(`M30 fetch failed: ${m30resp.status}`);
-    if (!entryResp.ok) throw new Error(`Entry TF fetch failed: ${entryResp.status}`);
+    if (!m30resp.ok) throw new Error(`M30 fetch failed: ${m30resp.status} — is ${sym} available in R2?`);
 
     setStatus('Downloading CSV data...', 8);
     const [m30csv, entryCsv] = await Promise.all([m30resp.text(), entryResp.text()]);
@@ -1135,6 +1147,24 @@ function renderResults(r, mc) {
   const a = r.all;
 
   let html = '';
+
+  // ── ZERO TRADES WARNING ───────────────────────────────────────
+  if (a.n === 0) {
+    html += `<div class="panel" style="border-color:var(--amber)">
+      <div class="panel-title" style="color:var(--amber)">No trades found</div>
+      <p style="font-size:.85rem;color:var(--text2);line-height:1.6">
+        The confluence engine found no qualifying setups. Try:
+        <br>• Switch <strong>Level Filter</strong> to <em>Strong</em> or <em>All</em>
+        <br>• Lower <strong>Min Stars</strong> to 1 or 2
+        <br>• Increase <strong>Confluence Threshold</strong> to 3–5 pips
+        <br>• Set <strong>Macro Gate</strong> to <em>Off</em>
+        <br>• Set <strong>Vol Filter</strong> to <em>All regimes</em>
+      </p>
+    </div>`;
+    el.innerHTML = html;
+    empty.style.display = 'none';
+    return;
+  }
 
   // ── SUMMARY CARDS ─────────────────────────────────────────────
   html += `<div class="section-title">${r.symbol} — All Trades Summary (${a.n} trades)</div>`;

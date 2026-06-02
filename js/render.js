@@ -2,7 +2,7 @@ import { S } from './state.js';
 import { getDigits, getPipSize, getConfluenceThreshold, fred, fmt, filterTradingDays, toMyfxbSym } from './utils.js';
 import { TYPICAL_SPREADS, PAIRS } from './config.js';
 import { calculateTierScores, computeDollarRegime, computeMacroRegime, computeBayesianScore } from './macro.js';
-import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence } from './vol.js';
+import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRiskSentiment, getForeignCurves, calculatePivots, calculateDivergence, computeDCCCorrelation } from './vol.js';
 import { computeRegimeTransition, renderARMAAndTransition, computeARMAForecast } from './arma.js';
 import { filterConfluences, enhanceConfluences, detectCrossSessionClusters, mergeCrossSources } from './confluences.js';
 import { renderOISidebar } from './oi.js';
@@ -13,6 +13,10 @@ import { renderCOTCard, renderCOTCrossPair } from './cot.js';
 import { sessionBadgeHTML } from './session.js';
 import { eventRiskBadgeHTML, surpriseIndexHTML, getPairSurpriseScore } from './events.js';
 import { buildMarketNarrative } from './market-narrative.js';
+import { renderDecisionBanner } from '../DecisionEngine/decisionUI.js';
+import { collectDecisionInputs } from '../DecisionEngine/decisionInputs.js';
+import { runDecisionEngine } from '../DecisionEngine/decisionEngine.js';
+import { getSuppressedLog, loadAlertCfg } from './alerts.js';
 
 let _confSortMode = (() => { try { return localStorage.getItem('conf_sort_mode') || 'stars'; } catch(e) { return 'stars'; } })();
 window.setConfSortMode = (mode) => {
@@ -150,6 +154,13 @@ function renderAllInner() {
     volRegime, tierData.totalScore, S.currentPair.symbol
   );
   S.otcForecast = otcForecast;
+
+  // Compute decision state once here so entry scanner and level map can both use it
+  window._lastDecisionState = (() => {
+    try { return runDecisionEngine(collectDecisionInputs(volRegime, otcForecast, quote)); }
+    catch (_) { return null; }
+  })();
+
   const pivots = calculatePivots();
   const asia = S.asiaRangeData[S.currentPair.symbol] || { today: null, yesterday: null, confluences: [] };
   const monday = S.mondayRangeData[S.currentPair.symbol] || { current: null, previous: null, confluences: [] };
@@ -169,6 +180,10 @@ function renderAllInner() {
   }
 
   const divergence = calculateDivergence(tierData.totalScore, volRegime);
+
+  const dccCorr = (() => {
+    try { return computeDCCCorrelation(); } catch { return null; }
+  })();
 
   const armaForecast = (() => {
     try { return computeARMAForecast(S.compassData[S.currentPair.symbol] || null); } catch(e) { return null; }
@@ -256,7 +271,32 @@ function renderAllInner() {
     armaForecast,
   });
 
+  // Suppressed alerts banner — shows when suppressBlocked is on and there are silenced entries
+  const suppressedBanner = (() => {
+    try {
+      const cfg = loadAlertCfg();
+      if (!cfg.suppressBlocked) return '';
+      const log = getSuppressedLog();
+      if (!log.length) return `<div style="font-size:10px;color:var(--text3);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;margin-bottom:6px">🔇 Suppress NOT PERMITTED: on — no suppressions yet this session</div>`;
+      const chips = log.slice(0, 5).map(r => {
+        const dir = r.direction === 'long' ? '↑' : '↓';
+        return `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(239,68,68,0.10);color:var(--red);border:1px solid rgba(239,68,68,0.25);white-space:nowrap">${r.sym} ${dir} ${r.price} — ${(r.decisionMode ?? 'BLOCKED').replace(/_/g,' ')}</span>`;
+      }).join(' ');
+      return `<div style="display:flex;align-items:center;gap:6px;font-size:10px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.20);border-radius:6px;padding:5px 10px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-weight:700;color:var(--red);flex-shrink:0">🔇 ${log.length} suppressed</span>
+        ${chips}
+        <a href="backtest-viewer.html?source=decision" target="_blank" style="margin-left:auto;font-size:9px;color:var(--text3);text-decoration:none;flex-shrink:0">View audit →</a>
+      </div>`;
+    } catch { return ''; }
+  })();
+
   const html = `
+<!-- SUPPRESSED ALERTS BANNER -->
+${suppressedBanner}
+
+<!-- DECISION ENGINE BANNER -->
+<div id="decisionBannerCard"></div>
+
 <!-- SESSION BADGE -->
 ${sessionBadge}
 
@@ -319,7 +359,8 @@ ${calendarCtx.warnings.length > 0 ? `
       <div class="hd-top">
         <div>
           <div class="pair-title">${S.currentPair.isEquity ? S.currentPair.name : S.currentPair.symbol.split('/')[0] + '<span class="q">/</span>' + (S.currentPair.symbol.split('/')[1] || '')}</div>
-          <div class="pair-meta">Vol: ${volRegime.regime} (${volRegime.percentile}th pct) · ATR ${volRegime.atrPips.toFixed(0)}${S.currentPair.isEquity ? 'pts' : 'p'}${volRegime.garch ? ' · GARCH ' + volRegime.garch.pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ' [68%: ' + volRegime.ci68Pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ']' : ''}${volImpulsePill}${dregPill} · ${tierData.agreeCount}/7 tiers agree</div>
+          <div class="pair-meta">Vol: ${volRegime.regime} (${volRegime.percentile}th pct) · ATR ${volRegime.atrPips.toFixed(0)}${S.currentPair.isEquity ? 'pts' : 'p'}${volRegime.garch ? ' · GARCH ' + volRegime.garch.pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ' [68%: ' + volRegime.ci68Pips.toFixed(0) + (S.currentPair.isEquity ? 'pts' : 'p') + ']' : ''}${volImpulsePill}${dregPill} · ${tierData.agreeCount}/7 tiers agree${tierData.pcaActive ? ' · PCA on' : ''}</div>
+          ${dccCorr ? `<div class="pair-meta" style="margin-top:2px;font-size:10px" title="DCC-GARCH: EWMA correlation of GARCH(1,1) residuals vs ${dccCorr.refSym}. Aligned = macro/USD driver; decoupled = pair-specific move.">${dccCorr.label}</div>` : ''}
           <div class="bias-badge ${biasClass}">${biasText}${macroBias} · ${Math.abs(tierData.totalScore) >= 9 ? 'HIGH' : Math.abs(tierData.totalScore) >= 5 ? 'MED' : 'LOW'} CONVICTION</div>
           ${(() => {
             const sym = S.currentPair.symbol;
@@ -648,6 +689,27 @@ ${calendarCtx.warnings.length > 0 ? `
       <span class="sec-badge purple">TIER 2</span>
       <span class="count-badge">${enhanced.length}</span>
     </div>
+    ${(() => {
+      const ds = window._lastDecisionState;
+      if (!ds || ds.mode === 'NO_TRADE') return ds ? `<div style="font-size:10px;color:var(--text3);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;margin-bottom:8px">⛔ Decision Engine: NO TRADE — ${ds.reasons[0] ?? 'conditions not met'}</div>` : '';
+      const modeCol = ds.mode === 'TREND_CONTINUATION' ? 'var(--green)' : ds.mode === 'MEAN_REVERSION' ? 'var(--blue)' : ds.mode === 'EXHAUSTION' ? 'var(--red)' : '#f59e0b';
+      const p = ds.permissions;
+      const chips = [
+        p.long     ? '<span style="color:var(--green);font-weight:700">↑L</span>' : '<span style="color:var(--text3);text-decoration:line-through">↑L</span>',
+        p.short    ? '<span style="color:var(--red);font-weight:700">↓S</span>'   : '<span style="color:var(--text3);text-decoration:line-through">↓S</span>',
+        p.breakout ? '<span style="color:#f59e0b;font-weight:700">BRK</span>'     : '<span style="color:var(--text3);text-decoration:line-through">BRK</span>',
+        p.fade     ? '<span style="color:var(--blue);font-weight:700">FADE</span>': '<span style="color:var(--text3);text-decoration:line-through">FADE</span>',
+      ].join(' · ');
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:10px;background:${modeCol}08;border:1px solid ${modeCol}33;border-radius:6px;padding:5px 10px;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-weight:700;color:${modeCol}">${ds.mode.replace(/_/g,' ')}</span>
+        <span style="color:var(--border2)">·</span>
+        <span style="color:var(--text3)">${ds.participation}</span>
+        <span style="color:var(--border2)">·</span>
+        ${chips}
+        <span style="color:var(--border2)">·</span>
+        <span style="color:var(--text3)">Risk ${ds.riskMult.toFixed(2)}×</span>
+      </div>`;
+    })()}
 
     <div class="hint">
       <strong>How stars work:</strong> ★ Fib confluence · +★ tight · +★ macro bias · +★ pivot/OI · +★ daily Fib · +★ structural Fib · +★ RSI/WT divergence. Max 5★. Tight levels (🟢) overlap two sessions — highest-probability zones.
@@ -948,6 +1010,7 @@ ${calendarCtx.warnings.length > 0 ? `
   loadAndRenderCompass();
   renderARMAAndTransition(S.compassData[S.currentPair.symbol] || null);
   renderSignalAndEntries(enhanced, pivots, asia, monday, quote, volRegime, otcForecast);
+  renderDecisionBanner(volRegime, otcForecast);
 }
 
 function sortConfluences(confs, mode) {

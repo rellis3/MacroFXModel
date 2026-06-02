@@ -48,13 +48,14 @@ const HN_P75 = 1.1503;
 //   fx    → 7.5% long-run ω = 6.70e-7
 //
 // hl_50_corr / hl_75_corr / oc_50_corr / oc_75_corr
-//   Calibrated from June 1 2026 reference data (same-day comparison).
-//   OC median and 75th need separate corrections because the reference
-//   system's OC75/OC50 ratio differs from the theoretical half-normal ratio.
+//   Recalibrated 2026-06-01 against reference forecasts (back-solving from
+//   published HL/OC levels at known σ via BM/HN quantile formulas).
+//   Key change: Gold oc_50_corr raised 0.991→1.14 (was 15% below reference;
+//   backtest engine already used 1.163). FX and NQ aligned to within ~1%.
 const ASSET_PARAMS = {
-  commodity: { hl_50_corr: 0.985, hl_75_corr: 0.938, oc_50_corr: 0.991, oc_75_corr: 1.084 },
-  index:     { hl_50_corr: 1.000, hl_75_corr: 0.937, oc_50_corr: 1.139, oc_75_corr: 1.099, garch_omega: 4.76e-6 },
-  fx:        { hl_50_corr: 0.921, hl_75_corr: 0.863, oc_50_corr: 0.987, oc_75_corr: 0.932, garch_omega: 6.70e-7 },
+  commodity: { hl_50_corr: 1.023, hl_75_corr: 0.940, oc_50_corr: 1.144, oc_75_corr: 1.092 },
+  index:     { hl_50_corr: 1.010, hl_75_corr: 0.967, oc_50_corr: 1.092, oc_75_corr: 1.115, garch_omega: 4.76e-6 },
+  fx:        { hl_50_corr: 0.965, hl_75_corr: 0.912, oc_50_corr: 1.038, oc_75_corr: 1.015, garch_omega: 6.70e-7 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
