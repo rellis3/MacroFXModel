@@ -22,7 +22,7 @@ import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
-import { startVolForecastScheduler, forecastState, runVolForecast } from './js/volForecastScheduler.js';
+import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus } from './js/volForecastScheduler.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -1327,6 +1327,18 @@ app.get('/api/vol-forecast/history', (_req, res) => {
 app.post('/api/vol-forecast/refresh', async (_req, res) => {
   res.json({ ok: true, status: 'running', message: 'Recompute triggered — poll /api/vol-forecast in ~30s' });
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Manual refresh error:', e.message));
+});
+
+// Live session status — intraday tracking (actual OHLC vs forecast).
+// Fetches today's current/latest daily bar from Oanda and computes consumed
+// range, directional bias, shape, and outlook per instrument.
+app.get('/api/vol-forecast/live', async (_req, res) => {
+  try {
+    const status = await getSessionStatus();
+    res.json(status);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // All other /api/* routes — call _worker.js and return the JSON response.
