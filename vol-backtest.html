@@ -377,6 +377,18 @@
       <option value="counter">Counter-regime</option>
     </select>
   </span>
+  <span id="dynAnchorOpts" style="display:none">
+    <select id="runDaRegime" class="bt-sel" title="Dyn-Anchor: which regime days to trade. Default 'All regimes' preserves base config.">
+      <option value="all">All regimes</option>
+      <option value="bullbear">BULL+BEAR only</option>
+      <option value="bull">BULL only</option>
+      <option value="bear">BEAR only</option>
+    </select>
+    <select id="runDaDir" class="bt-sel" title="Dyn-Anchor: direction filter. Counter-regime takes SELL on BULL days and BUY on BEAR days only.">
+      <option value="both">Both sides</option>
+      <option value="counter">Counter-regime</option>
+    </select>
+  </span>
   <select id="runSlope" class="bt-sel" title="EMA-20 slope threshold: how steep the slope must be to classify as BULL or BEAR. Higher = fewer but stronger trend signals.">
     <option value="0.002">Slope ×1 (0.2%)</option>
     <option value="0.004">Slope ×2 (0.4%)</option>
@@ -1476,6 +1488,8 @@ function toggleMomentumOpts() {
     (strategy === 'reversal' || strategy === 'reversal50' || strategy === 'revHL50' || strategy === 'momentum50' || strategy === 'dynamicAnchor') ? 'none' : '';
   document.getElementById('revHL50Opts').style.display =
     strategy === 'revHL50' ? '' : 'none';
+  document.getElementById('dynAnchorOpts').style.display =
+    strategy === 'dynamicAnchor' ? '' : 'none';
 }
 
 // ── Run backtest ──────────────────────────────────────────────────────────────
@@ -1501,6 +1515,8 @@ async function runBacktest() {
       dynHlCorr:        document.getElementById('runDynHl').value,
       slopeThresh:      document.getElementById('runSlope').value,
       revHL50Mode:      document.getElementById('runRevMode').value,
+      daRegime:         document.getElementById('runDaRegime')?.value ?? 'all',
+      daDir:            document.getElementById('runDaDir')?.value    ?? 'both',
       bearMult:         document.getElementById('runBearMult').value,
       rangeMode:        document.getElementById('runRangeMode').value,
     };
