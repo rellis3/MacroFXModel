@@ -97,9 +97,9 @@ DEFAULT_CFG: dict = {
     'paper_mode':          True,
     'pairs':               ['EUR/USD', 'GBP/USD', 'USD/JPY'],
     'interval_secs':       60,
-    'trade_window_start':  '07:00',
-    'trade_window_end':    '20:00',
-    'eod_close_time':      '20:30',   # close open positions before this UTC time
+    'trade_window_start':  '00:00',
+    'trade_window_end':    '22:00',
+    'eod_close_time':      '22:30',   # close open positions before this UTC time
     'risk_pct':            1.0,
     'max_lot':             5.0,
     'max_spread_pips':     3.0,
@@ -733,11 +733,11 @@ def _utc_hhmm() -> str:
 
 def within_window(cfg: dict) -> bool:
     now = _utc_hhmm()
-    return cfg.get('trade_window_start', '07:00') <= now <= cfg.get('trade_window_end', '20:00')
+    return cfg.get('trade_window_start', '00:00') <= now <= cfg.get('trade_window_end', '22:00')
 
 
 def past_eod(cfg: dict) -> bool:
-    return _utc_hhmm() >= cfg.get('eod_close_time', '20:30')
+    return _utc_hhmm() >= cfg.get('eod_close_time', '22:30')
 
 
 # ── Main loop ─────────────────────────────────────────────────────────────────

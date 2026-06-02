@@ -1366,9 +1366,9 @@ const DA_DEFAULTS = {
   paper_mode:          true,
   pairs:               ['EUR/USD', 'GBP/USD', 'USD/JPY'],
   interval_secs:       60,
-  trade_window_start:  '07:00',
-  trade_window_end:    '20:00',
-  eod_close_time:      '20:30',
+  trade_window_start:  '00:00',
+  trade_window_end:    '22:00',
+  eod_close_time:      '22:30',
   risk_pct:            1.0,
   max_lot:             5.0,
   max_spread_pips:     3.0,
@@ -1406,9 +1406,9 @@ function readDaForm() {
   _daCfg.enabled            = chk('da_enabled');
   _daCfg.paper_mode         = chk('da_paper_mode');
   _daCfg.interval_secs      = num('da_interval_secs',      60);
-  _daCfg.trade_window_start = str('da_window_start',    '07:00');
-  _daCfg.trade_window_end   = str('da_window_end',      '20:00');
-  _daCfg.eod_close_time     = str('da_eod_close_time',  '20:30');
+  _daCfg.trade_window_start = str('da_window_start',    '00:00');
+  _daCfg.trade_window_end   = str('da_window_end',      '22:00');
+  _daCfg.eod_close_time     = str('da_eod_close_time',  '22:30');
   _daCfg.risk_pct           = num('da_risk_pct',          1.0);
   _daCfg.max_lot            = num('da_max_lot',            5.0);
   _daCfg.max_spread_pips    = num('da_max_spread_pips',    3.0);
@@ -1429,9 +1429,9 @@ function renderDaForm() {
   setChk('da_enabled',          _daCfg.enabled          ?? true);
   setChk('da_paper_mode',       _daCfg.paper_mode       ?? true);
   setVal('da_interval_secs',    _daCfg.interval_secs    ?? 60);
-  setVal('da_window_start',     _daCfg.trade_window_start ?? '07:00');
-  setVal('da_window_end',       _daCfg.trade_window_end   ?? '20:00');
-  setVal('da_eod_close_time',   _daCfg.eod_close_time     ?? '20:30');
+  setVal('da_window_start',     _daCfg.trade_window_start ?? '00:00');
+  setVal('da_window_end',       _daCfg.trade_window_end   ?? '22:00');
+  setVal('da_eod_close_time',   _daCfg.eod_close_time     ?? '22:30');
   setVal('da_risk_pct',         _daCfg.risk_pct         ?? 1.0);
   setVal('da_max_lot',          _daCfg.max_lot          ?? 5.0);
   setVal('da_max_spread_pips',  _daCfg.max_spread_pips  ?? 3.0);
