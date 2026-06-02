@@ -122,9 +122,15 @@ function deriveCotPercentile(sym) {
 function deriveEventRisk() {
   const ev = S.eventRisk;
   if (!ev) return null;
-  const topEvent = ev.inNext4h?.[0] || ev.events?.[0];
+  // Only use inNext4h for the label — never fall back to any-time-today events
+  const topEvent = ev.inNext4h?.[0];
   const label    = topEvent ? (topEvent.event || topEvent.description || '') : '';
-  return { level: ev.level ?? 'none', label };
+  // Compute minutes until the nearest high-impact event in the 4h window
+  const nowMs    = Date.now();
+  const highIn4h = (ev.inNext4h ?? []).filter(e => (e.impact || '').toLowerCase() === 'high');
+  const nearestHighMs = highIn4h.length ? Math.min(...highIn4h.map(e => e.timeMs)) : null;
+  const minutesUntil  = nearestHighMs != null ? Math.max(0, Math.round((nearestHighMs - nowMs) / 60_000)) : null;
+  return { level: ev.level ?? 'none', label, minutesUntil };
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────────
