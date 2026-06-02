@@ -56,12 +56,22 @@ function noTrade(reason, inputs) {
 }
 
 // ── Step 0 — Event gate (hard override) ──────────────────────────────────────
+// NO_TRADE only within 2 hours of a high-impact event.
+// 2–4 hours out: REDUCED participation (confidence capped at 0.5 by caller).
+// This prevents speeches/data releases 3–4h away from blocking the whole session.
 
 function applyEventGate(inputs) {
   const ev = inputs.eventRisk;
   if (!ev || ev.level === 'none' || ev.level === 'low') return null;
-  if (ev.level === 'high') return noTrade(`High-impact event: ${ev.label || 'scheduled'} — stand aside`, inputs);
-  // medium: let chain continue but cap confidence
+  if (ev.level === 'high') {
+    // Hard NO_TRADE only within 2h; beyond that treat as medium (cap confidence)
+    const mins = ev.minutesUntil;
+    if (mins == null || mins <= 120) {
+      return noTrade(`High-impact event${mins != null ? ` in ${mins}m` : ''}: ${ev.label || 'scheduled'} — stand aside`, inputs);
+    }
+    // 2–4h window: fall through to medium handling (confidence capped below)
+  }
+  // medium or high >2h: let chain continue but cap confidence
   return null;
 }
 
