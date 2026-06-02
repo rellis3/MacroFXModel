@@ -1841,7 +1841,7 @@ app.post('/api/vol-backtest/run', (req, res) => {
     spreadPct = '0', dynHlCorr = '0', slopeThresh = '0.002',
     revHL50Mode = 'all',
     bearMult = '1.0', rangeMode = 'fade_both',
-    daRegime = 'all', daDir = 'both',
+    daRegime = 'all', daDir = 'both', daEodMode = 'close',
   } = req.body || {};
   const opts = {
     dateFrom, dateTo, minLookback: 50,
@@ -1857,6 +1857,7 @@ app.post('/api/vol-backtest/run', (req, res) => {
     rangeMode,
     daRegime,
     daDir,
+    daEodMode,
   };
 
   const instFilter  = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : undefined;
