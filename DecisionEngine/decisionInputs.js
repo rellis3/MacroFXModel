@@ -122,15 +122,24 @@ function deriveCotPercentile(sym) {
 function deriveEventRisk() {
   const ev = S.eventRisk;
   if (!ev) return null;
-  // Only use inNext4h for the label — never fall back to any-time-today events
+  const nowMs = Date.now();
+
+  // Post-event window: high-impact event fired in the last 60 min
+  const recentlyPassed = ev.recentlyPassed ?? [];
+  if (recentlyPassed.length > 0) {
+    const mostRecent   = recentlyPassed.reduce((a, b) => a.timeMs > b.timeMs ? a : b);
+    const minutesSince = Math.max(0, Math.round((nowMs - mostRecent.timeMs) / 60_000));
+    const postLabel    = mostRecent.event || mostRecent.description || '';
+    return { level: 'high', label: postLabel, minutesUntil: null, minutesSince };
+  }
+
+  // Pre-event window: upcoming high-impact events
   const topEvent = ev.inNext4h?.[0];
   const label    = topEvent ? (topEvent.event || topEvent.description || '') : '';
-  // Compute minutes until the nearest high-impact event in the 4h window
-  const nowMs    = Date.now();
   const highIn4h = (ev.inNext4h ?? []).filter(e => (e.impact || '').toLowerCase() === 'high');
   const nearestHighMs = highIn4h.length ? Math.min(...highIn4h.map(e => e.timeMs)) : null;
   const minutesUntil  = nearestHighMs != null ? Math.max(0, Math.round((nearestHighMs - nowMs) / 60_000)) : null;
-  return { level: ev.level ?? 'none', label, minutesUntil };
+  return { level: ev.level ?? 'none', label, minutesUntil, minutesSince: null };
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────────
