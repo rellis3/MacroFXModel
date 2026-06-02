@@ -276,6 +276,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn bt" data-tab="backtest" onclick="switchTab('backtest')">Backtest Bot</button>
     <button class="tab-btn rg" data-tab="regime"   onclick="switchTab('regime')">Regime Bot</button>
     <button class="tab-btn rg" data-tab="regimev2" onclick="switchTab('regimev2')">Regime Bot V2</button>
+    <button class="tab-btn" data-tab="dynanchor" onclick="switchTab('dynanchor')" style="color:#f59e0b" id="daTabBtn">⚓ Dyn Anchor</button>
     <button class="tab-btn" data-tab="beta" onclick="switchTab('beta')" style="color:#9d96f0" id="betaTabBtn">β Beta Targets</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
   </div>
@@ -1572,6 +1573,265 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
   </div><!-- /tab-regimev2 -->
 
+  <!-- ══════════════════════════════════════════════════════ DYN ANCHOR TAB -->
+  <div class="tab-pane" id="tab-dynanchor">
+
+    <div class="bot-banner" style="background:var(--amber-bg);border:1px solid var(--amber-bd)">
+      <div class="bot-banner-icon">⚓</div>
+      <div>
+        <div class="bot-banner-title" style="color:var(--amber)">Dynamic Anchor Bot</div>
+        <div class="bot-banner-sub">EWMA vol · EMA-20 regime · Counter-regime SELL/BUY · Calmar 9.97 (BULL+BEAR) · DynAnchorBot/dyn_anchor_mt5_bot.py · Magic 20260006</div>
+      </div>
+    </div>
+
+    <!-- Live status panel -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
+        <span style="font-size:12px;font-weight:600;color:var(--amber)">Live Status</span>
+        <span id="daStatusAge" style="font-size:11px;color:var(--text3)">Loading…</span>
+        <span id="daStatusMode" style="font-size:11px;font-weight:600"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="daStatusTable" style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Regime</th>
+              <th style="padding:6px 10px;text-align:right">Session Open</th>
+              <th style="padding:6px 10px;text-align:right">Run High</th>
+              <th style="padding:6px 10px;text-align:right">Run Low</th>
+              <th style="padding:6px 10px;text-align:right">Sell Entry</th>
+              <th style="padding:6px 10px;text-align:right">Buy Entry</th>
+              <th style="padding:6px 10px;text-align:right">HL50%</th>
+              <th style="padding:6px 10px;text-align:right">σ_d%</th>
+              <th style="padding:6px 10px;text-align:left">Position / Status</th>
+            </tr>
+          </thead>
+          <tbody id="daStatusBody">
+            <tr><td colspan="10" style="padding:16px;text-align:center;color:var(--text3)">Waiting for bot status…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:8px 16px 12px;font-size:11px;color:var(--text3)">
+        Updates every 60s when bot is running.
+      </div>
+    </div>
+
+    <!-- MT5 Credentials -->
+    <div class="card">
+      <div class="card-title">MT5 Credentials — Dyn Anchor Bot</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+        Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">dyn_anchor_credentials</code>).
+        Can share the same MT5 account as other bots — trades are isolated by magic number <code>20260006</code>.
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Account number</span>
+        <input type="number" id="da_mt5_account" placeholder="e.g. 99887766" style="width:130px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Password</span>
+        <input type="password" id="da_mt5_password" placeholder="••••••••" style="width:130px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Server <small>e.g. ICMarkets-Demo01</small></span>
+        <input type="text" id="da_mt5_server" placeholder="Broker-Demo01" style="width:180px;text-align:left">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Terminal path <small>optional</small></span>
+        <input type="text" id="da_mt5_path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" style="width:280px;text-align:left">
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+        <button class="btn-save" style="background:var(--amber);max-width:200px;padding:9px;color:#fff" onclick="saveDaCreds()">Save Credentials</button>
+        <span id="daCredsStatus" class="inline-status"></span>
+      </div>
+    </div>
+
+    <!-- Row: Bot Control | Strategy Params -->
+    <div class="grid">
+
+      <!-- Bot Control -->
+      <div class="card">
+        <div class="card-title">Bot Control</div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="da_enabled">
+          <label for="da_enabled">Enabled</label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="da_paper_mode">
+          <label for="da_paper_mode">Paper mode <small>log signals, no real orders</small></label>
+        </div>
+        <div class="form-row" style="margin-top:10px">
+          <span class="form-lbl">Poll interval <small>seconds</small></span>
+          <input type="number" id="da_interval_secs" min="10" max="300" step="10" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Trade window start <small>UTC hh:mm</small></span>
+          <input type="time" id="da_window_start" style="width:110px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Trade window end <small>UTC hh:mm</small></span>
+          <input type="time" id="da_window_end" style="width:110px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">EOD close time <small>UTC — force-close open positions</small></span>
+          <input type="time" id="da_eod_close_time" style="width:110px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max spread pips <small>skip entry if wider</small></span>
+          <input type="number" id="da_max_spread_pips" min="0.5" max="10" step="0.5" style="width:70px">
+        </div>
+      </div>
+
+      <!-- Strategy Parameters -->
+      <div class="card">
+        <div class="card-title">Strategy Parameters</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+          Exact backtest config (Calmar 9.97). Adjust only if re-optimising.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">EWMA λ <small>0.94 standard</small></span>
+          <input type="number" id="da_ewma_lambda" min="0.80" max="0.99" step="0.01" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">EMA period <small>for regime slope</small></span>
+          <input type="number" id="da_ema_period" min="5" max="50" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Regime threshold <small>slope |x| below = RANGE</small></span>
+          <input type="number" id="da_regime_threshold" min="0.0001" max="0.01" step="0.0001" style="width:90px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Daily bars <small>D1 lookback for vol model</small></span>
+          <input type="number" id="da_daily_bars_needed" min="30" max="200" step="5" style="width:70px">
+        </div>
+        <div style="margin-top:12px;padding:10px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:6px;font-size:11px;color:var(--amber)">
+          Strategy: <b>BULL day → SELL only · BEAR day → BUY only</b><br>
+          Entry = runExtreme × (1 ± HL50) · TP = session open · SL = HL75 level
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Row: Risk / Sizing | RiskGuard -->
+    <div class="grid">
+
+      <!-- Risk / Sizing -->
+      <div class="card">
+        <div class="card-title">Risk &amp; Sizing</div>
+        <div class="form-row">
+          <span class="form-lbl">Risk per trade %</span>
+          <input type="number" id="da_risk_pct" min="0.1" max="5" step="0.1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max lot ceiling</span>
+          <input type="number" id="da_max_lot" min="0.01" max="50" step="0.1" style="width:70px">
+        </div>
+      </div>
+
+      <!-- RiskGuard -->
+      <div class="card">
+        <div class="card-title">RiskGuard</div>
+        <div class="form-row">
+          <span class="form-lbl">Daily DD limit %</span>
+          <input type="number" id="da_ddlimit" min="0.5" max="10" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Monthly DD limit %</span>
+          <input type="number" id="da_monthlydd" min="0.5" max="20" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Lockout hours <small>after DD breach</small></span>
+          <input type="number" id="da_lockout" min="1" max="72" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Cooldown secs <small>0 = no cooldown</small></span>
+          <input type="number" id="da_cooldown" min="0" max="86400" step="60" style="width:80px">
+        </div>
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+          <button id="daUnlockBtn" class="btn-save" style="background:#c0392b;max-width:200px;padding:9px" onclick="daForceUnlock()">
+            🔓 Unlock RiskGuard
+          </button>
+          <span id="daUnlockStatus" class="inline-status" style="display:block;margin-top:6px"></span>
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Telegram -->
+    <div class="card">
+      <div class="card-title">Telegram Alerts</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+        Leave blank to disable Telegram alerts for this bot. Entry, exit, and EOD close events are notified.
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Bot token <small>from @BotFather</small></span>
+        <input type="password" id="da_tg_token" placeholder="leave blank to disable" style="width:280px;text-align:left">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Chat ID <small>group or channel ID</small></span>
+        <input type="text" id="da_tg_chat_id" placeholder="e.g. -100123456789" style="width:200px;text-align:left">
+      </div>
+    </div>
+
+    <!-- Enabled Pairs -->
+    <div class="card">
+      <div class="card-title">Enabled Pairs</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+        One trade per pair per day. Pairs skipped on RANGE days automatically.
+      </div>
+      <div class="pair-grid" style="grid-template-columns:repeat(5,1fr)">
+        <label class="pair-chk"><input type="checkbox" id="da_pair_EURUSD"> EUR/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_GBPUSD"> GBP/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_USDJPY"> USD/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_AUDUSD"> AUD/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_NZDUSD"> NZD/USD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_USDCAD"> USD/CAD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_USDCHF"> USD/CHF</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_GBPJPY"> GBP/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_EURJPY"> EUR/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_EURGBP"> EUR/GBP</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_EURCHF"> EUR/CHF</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_EURCAD"> EUR/CAD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_EURAUD"> EUR/AUD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_AUDJPY"> AUD/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_AUDCAD"> AUD/CAD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_GBPAUD"> GBP/AUD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_GBPCAD"> GBP/CAD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_CADJPY"> CAD/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_CHFJPY"> CHF/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_NZDJPY"> NZD/JPY</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_AUDNZD"> AUD/NZD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_GBPNZD"> GBP/NZD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_EURNZD"> EUR/NZD</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_AUDCHF"> AUD/CHF</label>
+        <label class="pair-chk"><input type="checkbox" id="da_pair_GBPCHF"> GBP/CHF</label>
+      </div>
+    </div>
+
+    <!-- Run instructions -->
+    <div class="card" style="background:var(--amber-bg);border-color:var(--amber-bd)">
+      <div class="card-title" style="color:var(--amber)">Running the Bot</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.8;font-family:'DM Mono',monospace">
+        python DynAnchorBot/dyn_anchor_mt5_bot.py                                         <span style="color:var(--text3)"># paper mode</span><br>
+        python DynAnchorBot/dyn_anchor_mt5_bot.py --live                                  <span style="color:var(--text3)"># live MT5</span><br>
+        python DynAnchorBot/dyn_anchor_mt5_bot.py --dashboard-url https://your-url.app --live
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">
+        Magic: <code>20260006</code> · Log: <code>logs/dyn_anchor_bot.log</code> · One trade per pair per day.
+        Bot does <b>daily setup</b> at trade window start (fetches D1 bars, computes EWMA vol + EMA-20 regime).
+        Skips RANGE days automatically. EOD close ensures no overnight holds.
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="actions">
+      <button class="btn-save" style="background:var(--amber);color:#fff" onclick="saveDaConfig()">Save Config</button>
+      <button class="btn-reset" onclick="resetDaDefaults()">Reset Defaults</button>
+      <span id="daSaveStatus" class="inline-status" style="align-self:center"></span>
+    </div>
+
+  </div><!-- /tab-dynanchor -->
+
   <!-- ═══════════════════════════════════════════════════════ BETA TARGETS TAB -->
   <div class="tab-pane" id="tab-beta">
 
@@ -1930,6 +2190,7 @@ const _POS_BOTS = [
   { key: 'gold_bot_status',       label: 'Gold',       color: '#fbbf24', bg: '#292100', bd: '#78610a', paper: false },
   { key: 'regime_bot_v2_status',  label: 'Regime V2',  color: '#a78bfa', bg: '#1e1b4b', bd: '#4338ca', paper: false },
   { key: 'backtestsystem_status', label: 'Backtest',   color: '#9ba3bf', bg: 'var(--s2)', bd: 'var(--border)', paper: true },
+  { key: 'dyn_anchor_status',    label: 'DynAnchor',  color: '#f59e0b', bg: '#292100',  bd: '#78610a',       paper: false },
 ];
 
 let _posRefreshTimer = null;
