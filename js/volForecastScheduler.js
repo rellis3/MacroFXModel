@@ -347,6 +347,155 @@ export async function runVolForecast(targetDate) {
   return forecast;
 }
 
+// ── Session status (intraday tracking vs forecast) ────────────────────────────
+
+// Ratio of expected |O-C| to expected H-L from BM theory: HN_P50 / BM_P50
+const EXPECTED_DIRECTIONALITY = 0.6745 / 1.572 * 100;  // ~42.9%
+
+// Anchor the open to the first H1 bar at/after 00:00 UTC today.
+// High = rolling max of all H1 highs since midnight.
+// Low  = rolling min of all H1 lows  since midnight.
+// Close = last available H1 bar's close (current price).
+// For FX/Gold the 00:00 bar exists; for equity indices (NQ) the first bar
+// is the market open (~13:00 UTC), which becomes the effective anchor.
+async function fetchMidnightAnchoredBar(instrument) {
+  const now = new Date();
+  const midnight = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+    0, 0, 0,
+  ));
+  const url = `${_oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+            + `?granularity=H1&from=${encodeURIComponent(midnight.toISOString())}&price=M`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+    signal:  AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`Oanda HTTP ${res.status}`);
+
+  // Include incomplete bars — the in-progress hour contributes to H/L/C.
+  const candles = ((await res.json()).candles ?? []).filter(c => c.mid);
+  if (candles.length === 0) throw new Error('No bars since midnight');
+
+  const open  = parseFloat(candles[0].mid.o);  // midnight (or market open) anchor
+  const high  = Math.max(...candles.map(c => parseFloat(c.mid.h)));
+  const low   = Math.min(...candles.map(c => parseFloat(c.mid.l)));
+  const last  = candles.at(-1);
+  const close = parseFloat(last.mid.c);
+
+  return {
+    open, high, low, close,
+    complete:    !!last.complete,
+    time:        last.time,
+    anchor_time: candles[0].time,
+    bar_count:   candles.length,
+  };
+}
+
+function computeSessionMetrics(bar, fc) {
+  const { open: o, high: h, low: l, close: c } = bar;
+  const r2 = x => Math.round(x * 100) / 100;
+
+  const hl  = r2((h - l) / o * 100);
+  const oc  = r2((c - o) / o * 100);    // signed
+  const oh  = r2((h - o) / o * 100);    // always ≥ 0
+  const ol  = r2((o - l) / o * 100);    // always ≥ 0
+  const dir = r2(hl > 0 ? Math.abs(oc) / hl * 100 : 0);
+
+  // vs forecast medians
+  const hlVsMed = r2(hl - fc.hl_median);
+  const hlVs75  = r2(hl - fc.hl_75);
+
+  // Remaining vs oc_median (absolute one-sided expected move)
+  const ocRem = r2(Math.max(fc.oc_median - Math.abs(oc), 0));
+  const ohRem = r2(Math.max(fc.oc_median - oh, 0));
+  const olRem = r2(Math.max(fc.oc_median - ol, 0));
+
+  // Ratios of actual to forecast (%)
+  const ohRatio = r2(fc.oc_median > 0 ? oh / fc.oc_median * 100 : 0);
+  const olRatio = r2(fc.oc_median > 0 ? ol / fc.oc_median * 100 : 0);
+
+  // Bias
+  const ohR = ohRatio / 100, olR = olRatio / 100;
+  let bias, biasDetail;
+  if      (olR > 1.25 && ohR < 0.55) { bias = 'Strong bearish'; biasDetail = 'downside leg dominating, upside contained'; }
+  else if (ohR > 1.25 && olR < 0.55) { bias = 'Strong bullish'; biasDetail = 'upside leg dominating, downside contained'; }
+  else if (olR > 1.0  && ohR < 0.75) { bias = 'Bearish bias';   biasDetail = 'downside extended'; }
+  else if (ohR > 1.0  && olR < 0.75) { bias = 'Bullish bias';   biasDetail = 'upside extended'; }
+  else if (ohR > 0.8  && olR > 0.8 ) { bias = 'Two-way';        biasDetail = 'both sides active'; }
+  else                                 { bias = 'Neutral';        biasDetail = 'session developing'; }
+
+  // Shape
+  let shape;
+  if      (dir > 65) shape = 'Highly directional';
+  else if (dir > 43) shape = 'Moderate direction';
+  else if (dir > 25) shape = 'Two-way / balanced';
+  else               shape = 'Very two-way / choppy';
+
+  // Outlook
+  const hlConsumed = fc.hl_median > 0 ? hl / fc.hl_median : 0;
+  let outlook;
+  if      (hlConsumed > 0.85 && dir < 30) outlook = 'Most range consumed with little direction — likely to close near open.';
+  else if (hlConsumed > 0.85 && dir > 55) outlook = 'Most range consumed directionally — trend continuation possible but extended.';
+  else if (hlConsumed > 0.85)             outlook = 'Most range consumed — session likely winding down.';
+  else if (hlConsumed > 0.60 && dir > 50) outlook = 'Significant range consumed directionally — watch for continuation vs. reversal.';
+  else if (hlConsumed > 0.60)             outlook = 'Good range consumed — session dynamics established.';
+  else if (hlConsumed < 0.25)             outlook = 'Minimal range so far — session still developing.';
+  else                                     outlook = 'Moderate range consumed — more movement expected.';
+
+  return {
+    hl, oc, oh, ol, dir,
+    hl_vs_med: hlVsMed, hl_vs_75: hlVs75,
+    oc_rem: ocRem, oh_rem: ohRem, ol_rem: olRem,
+    oh_ratio: ohRatio, ol_ratio: olRatio,
+    bias, bias_detail: biasDetail, shape, outlook,
+  };
+}
+
+// In-memory session cache — avoids hammering Oanda on every dashboard poll.
+let _sessionCache   = null;
+let _sessionCacheAt = 0;
+const SESSION_TTL_MS = 90 * 1000;  // 90 seconds
+
+export async function getSessionStatus() {
+  if (!forecastState.latest)        return { ok: false, reason: 'no_forecast' };
+  if (!process.env.OANDA_KEY)       return { ok: false, reason: 'no_oanda_key', message: 'Live session tracking requires Oanda API key.' };
+  if (_sessionCache && (Date.now() - _sessionCacheAt) < SESSION_TTL_MS) return _sessionCache;
+
+  const fc          = forecastState.latest;
+  const instruments = {};
+
+  await Promise.all(INSTRUMENTS.map(async cfg => {
+    try {
+      const bar = await fetchMidnightAnchoredBar(cfg.oandaInstrument);
+      const f   = fc.instruments[cfg.name];
+      if (!f) return;
+      instruments[cfg.name] = {
+        ...computeSessionMetrics(bar, f),
+        forecast:    { hl_median: f.hl_median, hl_75: f.hl_75, oc_median: f.oc_median, oc_75: f.oc_75 },
+        bar_time:    bar.time,
+        anchor_time: bar.anchor_time,
+        bar_count:   bar.bar_count,
+        complete:    bar.complete,
+      };
+    } catch (err) {
+      instruments[cfg.name] = { error: err.message };
+    }
+  }));
+
+  const result = {
+    ok:            true,
+    session_date:  fc.session_date,
+    session_label: fc.session_label,
+    fetched_at:    new Date().toISOString(),
+    expected_dir:  Math.round(EXPECTED_DIRECTIONALITY * 10) / 10,
+    instruments,
+  };
+
+  _sessionCache   = result;
+  _sessionCacheAt = Date.now();
+  return result;
+}
+
 // ── Daily scheduler ───────────────────────────────────────────────────────────
 // Polls every 5 minutes. Fires the run once per calendar day after TARGET_HOUR_UTC.
 
