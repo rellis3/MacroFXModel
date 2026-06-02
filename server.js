@@ -2073,7 +2073,7 @@ async function runHMM5mRefresh() {
 
   for (const sym of pairs) {
     try {
-      const bars = await fetchHMMBars(sym, 300);
+      const bars = await fetchHMMBars(sym, 500);
       if (!bars || bars.length < 150) continue;
       state.hmm5mBars[sym] = bars; // cache M1 bars for polarity flip detection
 
@@ -2116,7 +2116,7 @@ async function runHMM5mV2Refresh() {
   const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
   for (const sym of pairs) {
     try {
-      const bars = await fetchHMMBars(sym, 300);
+      const bars = await fetchHMMBars(sym, 500);
       if (!bars || bars.length < 150) continue;
       const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
       if (!result) continue;
