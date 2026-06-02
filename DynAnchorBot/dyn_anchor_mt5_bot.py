@@ -100,6 +100,7 @@ DEFAULT_CFG: dict = {
     'trade_window_start':  '00:00',
     'trade_window_end':    '22:00',
     'eod_close_time':      '22:30',   # close open positions before this UTC time
+    'eod_close_mode':      'close',   # 'close' = force-close at EOD; 'run' = let TP/SL play out
     'risk_pct':            1.0,
     'max_lot':             5.0,
     'max_spread_pips':     3.0,
@@ -495,7 +496,7 @@ class DailyState:
         self.ema_slope:       float = 0.0
         self.tradeable:       bool  = False  # False when RANGE or no data
         self.daily_trade_done: bool = False  # one trade per day
-        self.open_pos:        Optional[dict] = None
+        self.open_positions:  list = []      # open position dicts (list for multi-day carry)
         # Precompute cache — populated by nightly 23:30 forecast call
         self.forecast_params: Optional[dict] = None   # {hl50, hl75, sigma_d, regime, ema_slope}
         self.forecast_date:   Optional[date_type] = None  # date the forecast was run
@@ -519,7 +520,7 @@ class DailyState:
         self.run_high       = self.session_open
         self.run_low        = self.session_open
         self.daily_trade_done = False
-        self.open_pos       = None
+        self.open_positions = []
 
 
 # ── Trade journal ──────────────────────────────────────────────────────────────
@@ -618,13 +619,15 @@ def push_status(pairs_state: dict, balance: float,
     for pair, ds in pairs_state.items():
         pip = _PIP_SIZES.get(pair, 0.0001)
         entry_info = {}
-        if ds.open_pos:
+        if ds.open_positions:
+            pos0 = ds.open_positions[0]
             entry_info = {
-                'ticket':    ds.open_pos.get('ticket'),
-                'direction': ds.open_pos.get('direction'),
-                'entry':     ds.open_pos.get('entry_price'),
-                'sl':        ds.open_pos.get('sl'),
-                'tp':        ds.open_pos.get('tp'),
+                'ticket':      pos0.get('ticket'),
+                'direction':   pos0.get('direction'),
+                'entry':       pos0.get('entry_price'),
+                'sl':          pos0.get('sl'),
+                'tp':          pos0.get('tp'),
+                'n_positions': len(ds.open_positions),
             }
         pairs_summary[pair] = {
             'regime':            ds.regime,
@@ -805,47 +808,52 @@ def run(url: str, paper_mode: bool) -> None:
 
         # ── EOD close check ───────────────────────────────────────────────────
         if past_eod(cfg):
-            for pair in cfg['pairs']:
-                ds = daily_state.get(pair)
-                if ds and ds.open_pos:
-                    pos = ds.open_pos
-                    ok  = close_position(pos['ticket'], pair, paper_mode, 'EOD')
-                    if ok:
-                        tick = get_tick(pair)
-                        exit_p = ((tick.bid + tick.ask) / 2) if tick else pos['entry_price']
-                        pip    = _PIP_SIZES.get(pair, 0.0001)
-                        sign   = 1 if pos['direction'] == 'BUY' else -1
-                        pnl_p  = (exit_p - pos['entry_price']) * sign / pip
-                        pnl_pct = pnl_p * pip * _PIP_VALUES.get(pair, 10.0) / balance * 100
-                        msg = _tg_exit(pair, pos['direction'], pos['entry_price'],
-                                       exit_p, 'EOD', pnl_pct, paper_mode)
-                        send_telegram(tg_t, tg_c, msg)
-                        log.info(
-                            f'[{pair}] EOD close  {pos["direction"]}  '
-                            f'entry={pos["entry_price"]:.5f}  exit={exit_p:.5f}  pnl={pnl_p:+.1f}p'
-                        )
-                        outcome = 'win' if pnl_pct > 0 else 'loss'
-                        log_trade_to_journal({
-                            'date':        datetime.now(timezone.utc).strftime('%Y-%m-%d'),
-                            'pair':        pair,
-                            'side':        pos['direction'],
-                            'entry_price': pos['entry_price'],
-                            'entry_time':  pos.get('entry_time', ''),
-                            'sl':          pos['sl'],
-                            'tp':          pos['tp'],
-                            'exit_price':  exit_p,
-                            'exit_time':   datetime.now(timezone.utc).strftime('%H:%M'),
-                            'status':      'closed',
-                            'filled':      True,
-                            'pnl_pct':     round(pnl_pct, 4),
-                            'regime':      ds.regime,
-                            'outcome':     outcome,
-                            'lots':        pos.get('lots', 0),
-                            'bot':         'dyn_anchor',
-                        }, url)
-                        risk_guard.record_trade(pair)
-                        ds.open_pos        = None
-                        ds.daily_trade_done = True
+            if cfg.get('eod_close_mode', 'close') == 'close':
+                for pair in cfg['pairs']:
+                    ds = daily_state.get(pair)
+                    if not ds or not ds.open_positions:
+                        continue
+                    still_open = []
+                    for pos in ds.open_positions:
+                        ok = close_position(pos['ticket'], pair, paper_mode, 'EOD')
+                        if ok:
+                            tick = get_tick(pair)
+                            exit_p = ((tick.bid + tick.ask) / 2) if tick else pos['entry_price']
+                            pip    = _PIP_SIZES.get(pair, 0.0001)
+                            sign   = 1 if pos['direction'] == 'BUY' else -1
+                            pnl_p  = (exit_p - pos['entry_price']) * sign / pip
+                            pnl_pct = pnl_p * pip * _PIP_VALUES.get(pair, 10.0) / balance * 100
+                            msg = _tg_exit(pair, pos['direction'], pos['entry_price'],
+                                           exit_p, 'EOD', pnl_pct, paper_mode)
+                            send_telegram(tg_t, tg_c, msg)
+                            log.info(
+                                f'[{pair}] EOD close  {pos["direction"]}  '
+                                f'entry={pos["entry_price"]:.5f}  exit={exit_p:.5f}  pnl={pnl_p:+.1f}p'
+                            )
+                            outcome = 'win' if pnl_pct > 0 else 'loss'
+                            log_trade_to_journal({
+                                'date':        datetime.now(timezone.utc).strftime('%Y-%m-%d'),
+                                'pair':        pair,
+                                'side':        pos['direction'],
+                                'entry_price': pos['entry_price'],
+                                'entry_time':  pos.get('entry_time', ''),
+                                'sl':          pos['sl'],
+                                'tp':          pos['tp'],
+                                'exit_price':  exit_p,
+                                'exit_time':   datetime.now(timezone.utc).strftime('%H:%M'),
+                                'status':      'closed',
+                                'filled':      True,
+                                'pnl_pct':     round(pnl_pct, 4),
+                                'regime':      ds.regime,
+                                'outcome':     outcome,
+                                'lots':        pos.get('lots', 0),
+                                'bot':         'dyn_anchor',
+                            }, url)
+                            risk_guard.record_trade(pair)
+                            ds.daily_trade_done = True
+                        else:
+                            still_open.append(pos)
+                    ds.open_positions = still_open
             time.sleep(max(cfg.get('interval_secs', 60), 30))
             continue
 
@@ -907,7 +915,9 @@ def run(url: str, paper_mode: bool) -> None:
                 ds.ema_slope    = slope
                 ds.tradeable    = regime in ('BULL', 'BEAR') and hl50 > 0
                 ds.daily_trade_done = False
-                ds.open_pos     = None
+                # In close mode reset any tracked position; in run mode carry positions forward
+                if cfg.get('eod_close_mode', 'close') == 'close':
+                    ds.open_positions = []
 
                 log.info(
                     f'[{pair}] Setup [{source}]: regime={regime}  sigma_d={sigma_d*100:.3f}%  '
@@ -922,59 +932,60 @@ def run(url: str, paper_mode: bool) -> None:
                 continue
 
             # ── Open position management ──────────────────────────────────────
-            if ds.open_pos:
-                pos = ds.open_pos
+            if ds.open_positions:
+                remaining = []
+                for pos in ds.open_positions:
+                    if not paper_mode and HAS_MT5:
+                        sym   = pair.replace('/', '')
+                        still = [p for p in (mt5.positions_get(symbol=sym) or [])
+                                 if p.ticket == pos['ticket'] and p.magic == MAGIC]
+                        if not still:
+                            tick   = get_tick(pair)
+                            exit_p = (tick.bid + tick.ask) / 2 if tick else pos['entry_price']
+                            pip    = _PIP_SIZES.get(pair, 0.0001)
+                            sign   = 1 if pos['direction'] == 'BUY' else -1
+                            pnl_p  = (exit_p - pos['entry_price']) * sign / pip
+                            pnl_pct = pnl_p * pip * _PIP_VALUES.get(pair, 10.0) / balance * 100
+                            log.info(
+                                f'[{pair}] Ticket {pos["ticket"]} gone — SL/TP hit  '
+                                f'pnl={pnl_p:+.1f}p'
+                            )
+                            outcome = 'win' if pnl_pct > 0 else 'loss'
+                            msg = _tg_exit(pair, pos['direction'], pos['entry_price'],
+                                           exit_p, 'SL/TP', pnl_pct, paper_mode)
+                            send_telegram(tg_t, tg_c, msg)
+                            log_trade_to_journal({
+                                'date':        datetime.now(timezone.utc).strftime('%Y-%m-%d'),
+                                'pair':        pair,
+                                'side':        pos['direction'],
+                                'entry_price': pos['entry_price'],
+                                'entry_time':  pos.get('entry_time', ''),
+                                'sl':          pos['sl'],
+                                'tp':          pos['tp'],
+                                'exit_price':  exit_p,
+                                'exit_time':   datetime.now(timezone.utc).strftime('%H:%M'),
+                                'status':      'closed',
+                                'filled':      True,
+                                'pnl_pct':     round(pnl_pct, 4),
+                                'regime':      ds.regime,
+                                'outcome':     outcome,
+                                'lots':        pos.get('lots', 0),
+                                'bot':         'dyn_anchor',
+                            }, url)
+                            risk_guard.record_trade(pair)
+                            continue  # position closed, don't add to remaining
+                    remaining.append(pos)
+                ds.open_positions = remaining
 
-                # Check MT5 SL/TP hit
-                if not paper_mode and HAS_MT5:
-                    sym   = pair.replace('/', '')
-                    still = [p for p in (mt5.positions_get(symbol=sym) or [])
-                             if p.ticket == pos['ticket'] and p.magic == MAGIC]
-                    if not still:
-                        tick   = get_tick(pair)
-                        exit_p = (tick.bid + tick.ask) / 2 if tick else pos['entry_price']
-                        pip    = _PIP_SIZES.get(pair, 0.0001)
-                        sign   = 1 if pos['direction'] == 'BUY' else -1
-                        pnl_p  = (exit_p - pos['entry_price']) * sign / pip
-                        pnl_pct = pnl_p * pip * _PIP_VALUES.get(pair, 10.0) / balance * 100
-
-                        log.info(
-                            f'[{pair}] Ticket {pos["ticket"]} gone — SL/TP hit  '
-                            f'pnl={pnl_p:+.1f}p'
-                        )
-                        outcome = 'win' if pnl_pct > 0 else 'loss'
-                        msg = _tg_exit(pair, pos['direction'], pos['entry_price'],
-                                       exit_p, 'SL/TP', pnl_pct, paper_mode)
-                        send_telegram(tg_t, tg_c, msg)
-                        log_trade_to_journal({
-                            'date':        datetime.now(timezone.utc).strftime('%Y-%m-%d'),
-                            'pair':        pair,
-                            'side':        pos['direction'],
-                            'entry_price': pos['entry_price'],
-                            'entry_time':  pos.get('entry_time', ''),
-                            'sl':          pos['sl'],
-                            'tp':          pos['tp'],
-                            'exit_price':  exit_p,
-                            'exit_time':   datetime.now(timezone.utc).strftime('%H:%M'),
-                            'status':      'closed',
-                            'filled':      True,
-                            'pnl_pct':     round(pnl_pct, 4),
-                            'regime':      ds.regime,
-                            'outcome':     outcome,
-                            'lots':        pos.get('lots', 0),
-                            'bot':         'dyn_anchor',
-                        }, url)
-                        risk_guard.record_trade(pair)
-                        ds.open_pos        = None
-                        ds.daily_trade_done = True
-                        continue
-
-                # Update running extremes while position is open (for reference only)
+                # Update running extremes
                 tick = get_tick(pair)
                 if tick:
                     ds.run_high = max(ds.run_high, float(tick.ask))
                     ds.run_low  = min(ds.run_low,  float(tick.bid))
-                continue
+
+                # In close mode skip entry check while any position is open
+                if cfg.get('eod_close_mode', 'close') == 'close' and ds.open_positions:
+                    continue
 
             # ── Skip if not tradeable or already traded ───────────────────────
             if not ds.tradeable or ds.daily_trade_done:
@@ -1035,7 +1046,7 @@ def run(url: str, paper_mode: bool) -> None:
                                        cfg['max_spread_pips'], paper_mode)
                 if ticket is not None:
                     actual_entry = bid  # SELL fills at bid
-                    ds.open_pos = {
+                    ds.open_positions.append({
                         'ticket':      ticket,
                         'direction':   'SELL',
                         'entry_price': actual_entry,
@@ -1043,7 +1054,8 @@ def run(url: str, paper_mode: bool) -> None:
                         'tp':          round(tp, 5),
                         'lots':        size,
                         'entry_time':  datetime.now(timezone.utc).strftime('%H:%M'),
-                    }
+                    })
+                    ds.daily_trade_done = True
                     risk_guard.record_trade(pair)
                     msg = _tg_entry(pair, 'SELL', actual_entry, sl, tp, size,
                                     ds.regime, ds.hl50 * 100, paper_mode)
@@ -1067,7 +1079,7 @@ def run(url: str, paper_mode: bool) -> None:
                                        cfg['max_spread_pips'], paper_mode)
                 if ticket is not None:
                     actual_entry = ask  # BUY fills at ask
-                    ds.open_pos = {
+                    ds.open_positions.append({
                         'ticket':      ticket,
                         'direction':   'BUY',
                         'entry_price': actual_entry,
@@ -1075,7 +1087,8 @@ def run(url: str, paper_mode: bool) -> None:
                         'tp':          round(tp, 5),
                         'lots':        size,
                         'entry_time':  datetime.now(timezone.utc).strftime('%H:%M'),
-                    }
+                    })
+                    ds.daily_trade_done = True
                     risk_guard.record_trade(pair)
                     msg = _tg_entry(pair, 'BUY', actual_entry, sl, tp, size,
                                     ds.regime, ds.hl50 * 100, paper_mode)
