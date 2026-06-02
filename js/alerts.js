@@ -234,6 +234,14 @@ export function checkAndSendAlerts() {
             meta.tiersNeg = alertTierData.tiers.filter(t => !t.na && t.score < 0).length;
             meta.tiersNa  = alertTierData.tiers.filter(t =>  t.na || t.score === 0).length;
           }
+          if (alertDecisionState) {
+            meta.decisionMode          = alertDecisionState.mode;
+            meta.decisionParticipation = alertDecisionState.participation;
+            meta.decisionRiskMult      = alertDecisionState.riskMult;
+            meta.decisionPermLong      = alertDecisionState.permissions.long;
+            meta.decisionPermShort     = alertDecisionState.permissions.short;
+            meta.decisionReasons       = alertDecisionState.reasons?.slice(0, 2) ?? [];
+          }
           fetch('/api/kv/set', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },

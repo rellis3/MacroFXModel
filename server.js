@@ -181,6 +181,7 @@ async function reloadLevels() {
         const parsed = JSON.parse(raw);
         // Normalize: server writes { data: entries[] }, browser writes { data: { entries, meta } }
         if (!Array.isArray(parsed.data) && Array.isArray(parsed.data?.entries)) {
+          if (parsed.data.meta) parsed.meta = parsed.data.meta;
           parsed.data = parsed.data.entries;
         }
         state.levels[sym] = parsed;
@@ -503,6 +504,19 @@ function formatAlert(sym, entry, price, distPips) {
         }
       }
     } catch (_) { /* vumanchu data not yet available */ }
+  }
+
+  // Decision engine gate line — sourced from browser KV payload meta
+  const dMeta = state.levels[sym]?.meta;
+  if (dMeta?.decisionMode) {
+    if (dMeta.decisionMode === 'NO_TRADE') {
+      parts.push(`🚫 Decision: <b>NO TRADE</b> — ${dMeta.decisionReasons?.[0] ?? 'conditions not met'}`);
+    } else {
+      const permitted = isLong ? dMeta.decisionPermLong : dMeta.decisionPermShort;
+      const gate      = permitted ? '✅ PERMITTED' : '❌ NOT PERMITTED';
+      const modeLabel = dMeta.decisionMode.replace(/_/g, ' ');
+      parts.push(`${gate} · ${modeLabel} · ${dMeta.decisionParticipation} · Risk ${(dMeta.decisionRiskMult ?? 1).toFixed(2)}×`);
+    }
   }
 
   parts.push('<i>🚂 MacroFX Railway</i>');
