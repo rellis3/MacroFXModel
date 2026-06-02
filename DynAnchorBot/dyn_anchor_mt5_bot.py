@@ -496,10 +496,23 @@ class DailyState:
         self.tradeable:       bool  = False  # False when RANGE or no data
         self.daily_trade_done: bool = False  # one trade per day
         self.open_pos:        Optional[dict] = None
+        # Precompute cache — populated by nightly 23:30 forecast call
+        self.forecast_params: Optional[dict] = None   # {hl50, hl75, sigma_d, regime, ema_slope}
+        self.forecast_date:   Optional[date_type] = None  # date the forecast was run
 
     @property
     def is_today(self) -> bool:
         return self.setup_date == datetime.now(timezone.utc).date()
+
+    @property
+    def has_fresh_forecast(self) -> bool:
+        """True when forecast was run last night (yesterday) and is still valid."""
+        today = datetime.now(timezone.utc).date()
+        return (
+            self.forecast_params is not None and
+            self.forecast_date is not None and
+            self.forecast_date >= today   # forecast from today or yesterday
+        )
 
     def reset_intraday(self) -> None:
         """Reset intraday state (keeps daily params)."""
@@ -638,6 +651,80 @@ def push_status(pairs_state: dict, balance: float,
     }, url)
 
 
+# ── Nightly precompute ─────────────────────────────────────────────────────────
+
+_PRECOMPUTE_START = '23:15'   # UTC — after NY close, D1 candle complete
+_PRECOMPUTE_END   = '23:55'
+
+
+def within_precompute_window() -> bool:
+    now = datetime.now(timezone.utc).strftime('%H:%M')
+    return _PRECOMPUTE_START <= now <= _PRECOMPUTE_END
+
+
+def fetch_server_forecast(pairs: list, url: str, cfg: dict) -> Optional[dict]:
+    """
+    Call /api/dyn-anchor-forecast on the dashboard server.
+    Returns dict of pair → forecast params, or None on failure.
+    """
+    try:
+        pairs_str   = ','.join(pairs)
+        lam         = cfg.get('ewma_lambda',     _EWMA_LAMBDA)
+        ema_period  = cfg.get('ema_period',      _EMA_PERIOD)
+        slope_thr   = cfg.get('regime_threshold', _SLOPE_THRESH)
+        n_bars      = cfg.get('daily_bars_needed', 70)
+        params = {
+            'pairs':       pairs_str,
+            'lambda':      lam,
+            'emaPeriod':   ema_period,
+            'slopeThresh': slope_thr,
+            'bars':        n_bars,
+        }
+        r = requests.get(f'{url}/api/dyn-anchor-forecast', params=params, timeout=60)
+        if r.status_code != 200:
+            log.warning(f'Forecast endpoint returned {r.status_code}: {r.text[:200]}')
+            return None
+        j = r.json()
+        if not j.get('ok'):
+            log.warning(f'Forecast endpoint error: {j}')
+            return None
+        return j.get('forecast', {})
+    except Exception as exc:
+        log.warning(f'fetch_server_forecast: {exc}')
+        return None
+
+
+def run_nightly_precompute(daily_state: dict, pairs: list, url: str, cfg: dict) -> None:
+    """
+    Runs at ~23:30 UTC. Fetches next-session forecast params from the
+    dashboard server and caches them in each pair's DailyState.
+    """
+    log.info(f'[Precompute] Running nightly forecast for {len(pairs)} pairs…')
+    forecast = fetch_server_forecast(pairs, url, cfg)
+    if not forecast:
+        log.warning('[Precompute] No forecast data returned — bot will fall back to MT5 bars at session open')
+        return
+
+    tomorrow = (datetime.now(timezone.utc).date())
+    ok_count = 0
+    for pair in pairs:
+        f = forecast.get(pair)
+        if not f:
+            log.warning(f'[Precompute] No forecast for {pair}: {forecast.get("errors", {}).get(pair, "missing")}')
+            continue
+        ds = daily_state.setdefault(pair, DailyState())
+        ds.forecast_params = f
+        ds.forecast_date   = tomorrow
+        ok_count += 1
+        log.info(
+            f'[Precompute] {pair}  regime={f["regime"]}  '
+            f'sigma_d={f["sigma_d"]*100:.3f}%  '
+            f'hl50={f["hl50"]*100:.3f}%  hl75={f["hl75"]*100:.3f}%  '
+            f'slope={f["ema_slope"]:.6f}'
+        )
+    log.info(f'[Precompute] Done — {ok_count}/{len(pairs)} pairs cached')
+
+
 # ── Trade window helpers ───────────────────────────────────────────────────────
 
 def _utc_hhmm() -> str:
@@ -675,7 +762,8 @@ def run(url: str, paper_mode: bool) -> None:
     risk_guard  = RiskGuard()
     daily_state: dict[str, DailyState] = {p: DailyState() for p in cfg['pairs']}
 
-    last_cfg_reload = time.time()
+    last_cfg_reload    = time.time()
+    precompute_done_on: Optional[date_type] = None   # date precompute last ran
     cycle = 0
 
     while True:
@@ -691,6 +779,12 @@ def run(url: str, paper_mode: bool) -> None:
             for pair in cfg['pairs']:
                 if pair not in daily_state:
                     daily_state[pair] = DailyState()
+
+        # ── Nightly precompute (23:15–23:55 UTC) ─────────────────────────────
+        today = datetime.now(timezone.utc).date()
+        if within_precompute_window() and precompute_done_on != today:
+            run_nightly_precompute(daily_state, cfg['pairs'], url, cfg)
+            precompute_done_on = today
 
         if not cfg.get('enabled', True):
             time.sleep(max(cfg.get('interval_secs', 60), 30))
@@ -763,19 +857,41 @@ def run(url: str, paper_mode: bool) -> None:
             # ── Daily setup ───────────────────────────────────────────────────
             if not ds.is_today and within_window(cfg):
                 log.info(f'[{pair}] Running daily setup…')
-                n_bars = int(cfg.get('daily_bars_needed', 60))
-                bars   = get_daily_bars(pair, n_bars + 1)
 
-                if bars is None or len(bars) < int(cfg.get('ema_period', 20)) + 5:
-                    log.warning(f'[{pair}] Insufficient daily bars — skipping today')
-                    ds.setup_date = datetime.now(timezone.utc).date()
-                    ds.tradeable  = False
-                    continue
+                # --- Try to use nightly precomputed forecast first -----------
+                hl50 = hl75 = sigma_d = slope = 0.0
+                regime = 'RANGE'
+                source = 'MT5'
 
-                hl50, hl75, regime, sigma_d, slope = compute_vol_and_regime(bars[:-1], cfg)
+                if ds.has_fresh_forecast:
+                    fp = ds.forecast_params
+                    hl50    = fp['hl50']
+                    hl75    = fp['hl75']
+                    sigma_d = fp['sigma_d']
+                    regime  = fp['regime']
+                    slope   = fp['ema_slope']
+                    source  = 'forecast'
+                    log.info(f'[{pair}] Using precomputed forecast params')
+                else:
+                    # Fall back: fetch D1 bars from MT5
+                    n_bars = int(cfg.get('daily_bars_needed', 60))
+                    bars   = get_daily_bars(pair, n_bars + 1)
+                    if bars is None or len(bars) < int(cfg.get('ema_period', 20)) + 5:
+                        log.warning(f'[{pair}] Insufficient D1 bars — skipping today')
+                        ds.setup_date = datetime.now(timezone.utc).date()
+                        ds.tradeable  = False
+                        continue
+                    hl50, hl75, regime, sigma_d, slope = compute_vol_and_regime(bars[:-1], cfg)
+                    log.info(f'[{pair}] Computed vol/regime from MT5 bars (no precompute available)')
 
-                # session_open = today's D1 open
-                today_open = float(bars[-1]['open'])
+                # --- session_open = today's D1 open --------------------------
+                # Always fetch from MT5/tick — cannot be precomputed since the
+                # bar hasn't opened yet at 23:30.
+                today_open = 0.0
+                if HAS_MT5:
+                    bars_today = get_daily_bars(pair, 1)
+                    if bars_today and len(bars_today) > 0:
+                        today_open = float(bars_today[0]['open'])
                 if today_open <= 0:
                     tick = get_tick(pair)
                     today_open = (tick.bid + tick.ask) / 2 if tick else 0.0
@@ -794,7 +910,7 @@ def run(url: str, paper_mode: bool) -> None:
                 ds.open_pos     = None
 
                 log.info(
-                    f'[{pair}] Setup: regime={regime}  sigma_d={sigma_d*100:.3f}%  '
+                    f'[{pair}] Setup [{source}]: regime={regime}  sigma_d={sigma_d*100:.3f}%  '
                     f'hl50={hl50*100:.3f}%  hl75={hl75*100:.3f}%  '
                     f'session_open={today_open:.5f}  slope={slope:.6f}'
                 )
