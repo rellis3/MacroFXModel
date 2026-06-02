@@ -569,9 +569,18 @@ function buildSessionText(data) {
     lines.push('');
 
     const ocSign  = s.oc >= 0 ? '+' : '';
-    const ocRemLbl = s.oc_rem > 0 ? `${p2(s.oc_rem)}% remaining` : 'reached';
-    const ohRemLbl = s.oh_rem > 0 ? `${p2(s.oh_rem)}% remaining` : 'reached';
-    const olRemLbl = s.ol_rem > 0 ? `${p2(s.ol_rem)}% remaining` : 'reached';
+    const fmtT = iso => iso
+      ? new Date(iso).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC')
+      : null;
+    const remTxt = (rem, actual, fc75, reachedAt) => {
+      const t = fmtT(reachedAt);
+      if (actual >= fc75) return `75th reached${t ? ' ' + t : ''}`;
+      if (rem <= 0)       return `reached${t ? ' ' + t : ''}`;
+      return `${p2(rem)}% remaining`;
+    };
+    const ocRemLbl = remTxt(s.oc_rem, Math.abs(s.oc), fc.oc_75, s.oc_reached_at);
+    const ohRemLbl = remTxt(s.oh_rem, s.oh,            fc.oc_75, s.oh_reached_at);
+    const olRemLbl = remTxt(s.ol_rem, s.ol,            fc.oc_75, s.ol_reached_at);
     lines.push(`O-C:  ${ocSign}${p2(s.oc)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${ocRemLbl}`);
     lines.push(`O-H:  ${p2(s.oh)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${ohRemLbl}`);
     lines.push(`O-L:  ${p2(s.ol)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${olRemLbl}`);
@@ -695,9 +704,13 @@ function buildSessionHtml(name, s, data) {
   const dotTitle = s.complete ? 'Session closed' : 'Live';
 
   // Remaining label helpers
-  const remLabel = (rem, actual, median) => {
-    if (actual >= fc.oc_75) return `<span class="vf-srow-rem exceeded">75th reached!</span>`;
-    if (rem <= 0)            return `<span class="vf-srow-rem reached">reached</span>`;
+  const fmtReachTime = iso => iso
+    ? new Date(iso).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC')
+    : null;
+  const remLabel = (rem, actual, reachedAt) => {
+    const t = fmtReachTime(reachedAt);
+    if (actual >= fc.oc_75) return `<span class="vf-srow-rem exceeded">75th reached${t ? ' ' + t : '!'}</span>`;
+    if (rem <= 0)            return `<span class="vf-srow-rem reached">reached${t ? ' ' + t : ''}</span>`;
     return `<span class="vf-srow-rem ok">${p2(rem)}% rem</span>`;
   };
 
@@ -735,19 +748,19 @@ function buildSessionHtml(name, s, data) {
       <span class="vf-srow-lbl">O-C</span>
       <span class="vf-srow-val ${ocCls}">${ocSign}${p2(s.oc)}%</span>
       <span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>
-      ${remLabel(s.oc_rem, Math.abs(s.oc), fc.oc_median)}
+      ${remLabel(s.oc_rem, Math.abs(s.oc), s.oc_reached_at)}
     </div>
     <div class="vf-srow">
       <span class="vf-srow-lbl">O-H</span>
       <span class="vf-srow-val">${p2(s.oh)}%</span>
       <span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>
-      ${remLabel(s.oh_rem, s.oh, fc.oc_median)}
+      ${remLabel(s.oh_rem, s.oh, s.oh_reached_at)}
     </div>
     <div class="vf-srow">
       <span class="vf-srow-lbl">O-L</span>
       <span class="vf-srow-val">${p2(s.ol)}%</span>
       <span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>
-      ${remLabel(s.ol_rem, s.ol, fc.oc_median)}
+      ${remLabel(s.ol_rem, s.ol, s.ol_reached_at)}
     </div>
 
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
