@@ -16,6 +16,7 @@ import { buildMarketNarrative } from './market-narrative.js';
 import { renderDecisionBanner } from '../DecisionEngine/decisionUI.js';
 import { collectDecisionInputs } from '../DecisionEngine/decisionInputs.js';
 import { runDecisionEngine } from '../DecisionEngine/decisionEngine.js';
+import { getSuppressedLog, loadAlertCfg } from './alerts.js';
 
 let _confSortMode = (() => { try { return localStorage.getItem('conf_sort_mode') || 'stars'; } catch(e) { return 'stars'; } })();
 window.setConfSortMode = (mode) => {
@@ -270,7 +271,29 @@ function renderAllInner() {
     armaForecast,
   });
 
+  // Suppressed alerts banner — shows when suppressBlocked is on and there are silenced entries
+  const suppressedBanner = (() => {
+    try {
+      const cfg = loadAlertCfg();
+      if (!cfg.suppressBlocked) return '';
+      const log = getSuppressedLog();
+      if (!log.length) return `<div style="font-size:10px;color:var(--text3);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;margin-bottom:6px">🔇 Suppress NOT PERMITTED: on — no suppressions yet this session</div>`;
+      const chips = log.slice(0, 5).map(r => {
+        const dir = r.direction === 'long' ? '↑' : '↓';
+        return `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(239,68,68,0.10);color:var(--red);border:1px solid rgba(239,68,68,0.25);white-space:nowrap">${r.sym} ${dir} ${r.price} — ${(r.decisionMode ?? 'BLOCKED').replace(/_/g,' ')}</span>`;
+      }).join(' ');
+      return `<div style="display:flex;align-items:center;gap:6px;font-size:10px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.20);border-radius:6px;padding:5px 10px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-weight:700;color:var(--red);flex-shrink:0">🔇 ${log.length} suppressed</span>
+        ${chips}
+        <a href="backtest-viewer.html?source=decision" target="_blank" style="margin-left:auto;font-size:9px;color:var(--text3);text-decoration:none;flex-shrink:0">View audit →</a>
+      </div>`;
+    } catch { return ''; }
+  })();
+
   const html = `
+<!-- SUPPRESSED ALERTS BANNER -->
+${suppressedBanner}
+
 <!-- DECISION ENGINE BANNER -->
 <div id="decisionBannerCard"></div>
 
