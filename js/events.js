@@ -109,13 +109,21 @@ function computeEventRisk(events) {
   const relevant      = parsed.filter(e => pairCountries.includes(e.country));
   const inNext4h      = relevant.filter(e => e.timeMs - nowMs <= fourHoursMs);
 
+  // High-impact events that fired in the last 30 min (post-event volatility window)
+  const thirtyMinAgoMs = nowMs - 30 * 60_000;
+  const recentlyPassed = events
+    .map(e => ({ ...e, timeMs: e.time ? new Date(e.time).getTime() : null }))
+    .filter(e => e.timeMs != null && e.timeMs >= thirtyMinAgoMs && e.timeMs < nowMs
+              && pairCountries.includes(e.country) && (e.impact || '').toLowerCase() === 'high');
+
   // Highest impact
-  const hasHighNext4h = inNext4h.some(e => (e.impact || '').toLowerCase() === 'high');
-  const hasMedNext4h  = inNext4h.some(e => (e.impact || '').toLowerCase() === 'medium');
-  const hasHighToday  = relevant.some(e => (e.impact || '').toLowerCase() === 'high');
+  const hasHighNext4h  = inNext4h.some(e => (e.impact || '').toLowerCase() === 'high');
+  const hasMedNext4h   = inNext4h.some(e => (e.impact || '').toLowerCase() === 'medium');
+  const hasHighToday   = relevant.some(e => (e.impact || '').toLowerCase() === 'high');
+  const hasRecentHigh  = recentlyPassed.length > 0;
 
   let level, sizeMult;
-  if (hasHighNext4h) {
+  if (hasHighNext4h || hasRecentHigh) {
     level = 'high';   sizeMult = 0.50;
   } else if (hasMedNext4h || hasHighToday) {
     level = 'medium'; sizeMult = 0.75;
@@ -132,7 +140,7 @@ function computeEventRisk(events) {
     if (hi || med) currencyRisk[ccy] = { high: hi, medium: med };
   });
 
-  return { level, sizeMult, events: relevant.slice(0, 8), inNext4h: inNext4h.slice(0, 5), currencyRisk };
+  return { level, sizeMult, events: relevant.slice(0, 8), inNext4h: inNext4h.slice(0, 5), recentlyPassed, currencyRisk };
 }
 
 // ── Surprise score for current pair ─────────────────────────────────────────

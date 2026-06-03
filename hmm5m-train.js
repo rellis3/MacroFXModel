@@ -63,7 +63,7 @@ async function fetchTrainingBars(sym, oandaKey, oandaEnv, count = 5000) {
 
 // ── FRED macro fetcher ─────────────────────────────────────────────────────────
 
-async function fetchFredMacro(fredKey) {
+export async function fetchFredMacro(fredKey) {
   if (!fredKey) return null;
   const seriesMap = {
     vix:  'VIXCLS',

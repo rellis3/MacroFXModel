@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vol & Range Forecast</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+/* ── Page layout ─────────────────────────────────────────────────────────── */
+#vfApp { padding: 0 20px 32px; max-width: 1200px; margin: 0 auto; }
+
+/* ── Instrument grid ─────────────────────────────────────────────────────── */
+.vf-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+@media (max-width: 900px)  { .vf-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1200px) and (min-width: 901px) { .vf-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ── Instrument card ─────────────────────────────────────────────────────── */
+.vf-card {
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rl);
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color .2s;
+}
+.vf-card:hover { border-color: var(--border2); }
+
+.vf-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.vf-name {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: .04em;
+  color: var(--text);
+}
+.vf-vol-pill {
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-bd);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.vf-vol-pill.hi { background: var(--red-bg);   border-color: var(--red-bd);   color: var(--red);   }
+.vf-vol-pill.lo { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+
+/* ── Range section ───────────────────────────────────────────────────────── */
+.vf-section { display: flex; flex-direction: column; gap: 8px; }
+
+.vf-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+}
+
+.vf-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vf-row-label {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  width: 42px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.vf-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--s2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.vf-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .5s ease;
+}
+.vf-bar-fill.median { background: var(--blue); }
+.vf-bar-fill.p75    { background: var(--amber); }
+.vf-row-val {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  width: 46px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── News chip footer ────────────────────────────────────────────────────── */
+.vf-mults {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.vf-mult-chip {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  background: var(--s2);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+.vf-mult-chip.active { color: var(--amber); border-color: var(--amber-bd); background: var(--amber-bg); }
+
+/* ── Session header card ─────────────────────────────────────────────────── */
+.vf-session-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 18px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.vf-session-date {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  letter-spacing: .04em;
+}
+.vf-session-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.vf-news-badge {
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-bd);
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+.vf-spacer { flex: 1; }
+
+/* ── History table ───────────────────────────────────────────────────────── */
+.vf-history {
+  margin-top: 22px;
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rl);
+  overflow: hidden;
+}
+.vf-history-title {
+  padding: 12px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text2);
+  font-family: 'DM Mono', monospace;
+  border-bottom: 1px solid var(--border);
+}
+.vf-hist-scroll { overflow-x: auto; }
+.vf-hist-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.vf-hist-table th {
+  padding: 8px 12px;
+  text-align: right;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.vf-hist-table th:first-child { text-align: left; }
+.vf-hist-table td {
+  padding: 9px 12px;
+  text-align: right;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.vf-hist-table td:first-child { text-align: left; color: var(--text2); font-size: 10px; }
+.vf-hist-table tr:last-child td { border-bottom: none; }
+.vf-hist-table tbody tr:hover td { background: var(--s2); }
+
+/* ── Live session tracker ────────────────────────────────────────────────── */
+.vf-live-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+.vf-live-hdr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+}
+.vf-live-dot {
+  width: 6px; height: 6px;
+  background: #22c55e;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: livepulse 2s infinite;
+}
+.vf-live-dot.closed { background: var(--text3); animation: none; }
+@keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.vf-live-time { margin-left: auto; font-weight: 400; }
+
+.vf-sstat { display: flex; flex-direction: column; gap: 5px; }
+
+.vf-srow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.vf-srow-lbl {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  width: 30px;
+  flex-shrink: 0;
+}
+.vf-srow-val {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  min-width: 46px;
+}
+.vf-srow-val.pos { color: #22c55e; }
+.vf-srow-val.neg { color: var(--red); }
+.vf-srow-fc {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  flex: 1;
+}
+.vf-srow-rem {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  flex-shrink: 0;
+}
+.vf-srow-rem.ok      { color: var(--blue); }
+.vf-srow-rem.reached { color: var(--amber); }
+.vf-srow-rem.exceeded{ color: var(--red); }
+
+.vf-srow-vs {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  padding-left: 36px;
+}
+.vf-srow-vs .pos { color: #22c55e; }
+.vf-srow-vs .neg { color: var(--red); }
+
+.vf-bias-chip {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+.vf-bias-chip.bear { border-color: var(--red-bd);   background: var(--red-bg);   color: var(--red);   }
+.vf-bias-chip.bull { border-color: var(--green-bd); background: var(--green-bg); color: var(--green); }
+.vf-bias-chip.ambi { border-color: var(--amber-bd); background: var(--amber-bg); color: var(--amber); }
+.vf-bias-detail { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.vf-dir-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vf-dir-track {
+  flex: 1;
+  height: 4px;
+  background: var(--s2);
+  border-radius: 2px;
+  position: relative;
+  overflow: visible;
+}
+.vf-dir-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--blue);
+  transition: width .5s;
+}
+.vf-dir-mark {
+  position: absolute;
+  top: -3px; bottom: -3px;
+  width: 1px;
+  background: var(--text3);
+}
+.vf-dir-lbl { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.vf-dir-lbl b { color: var(--text); font-weight: 600; }
+.vf-outlook {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text2);
+  line-height: 1.5;
+}
+.vf-session-na {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  text-align: center;
+  padding: 6px 0;
+}
+
+/* ── API reference table ─────────────────────────────────────────────────── */
+.vf-api-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.vf-api-method {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  color: var(--blue);
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-bd);
+  padding: 2px 7px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  min-width: 38px;
+  text-align: center;
+}
+.vf-api-method.post {
+  color: var(--amber);
+  background: var(--amber-bg);
+  border-color: var(--amber-bd);
+}
+.vf-api-path {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.vf-api-desc {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+}
+
+/* ── Skeleton / loading ──────────────────────────────────────────────────── */
+.vf-skeleton {
+  background: linear-gradient(90deg, var(--s2) 25%, var(--s3) 50%, var(--s2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+</style>
+</head>
+<body class="dark">
+<div id="vfApp">
+
+<!-- TOPBAR -->
+<div class="sticky-header" id="vfHeader">
+<div class="topbar">
+  <div class="logo-box" style="background:linear-gradient(135deg,#1847c2,#7c3aed)">
+    <svg viewBox="0 0 17 17" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 12 L5 7 L8 9 L11 5 L14 7"/>
+      <line x1="14" y1="4" x2="14" y2="8"/>
+      <line x1="3" y1="14" x2="15" y2="14"/>
+    </svg>
+  </div>
+  <div class="title-block">
+    <div class="title">Vol & Range Forecast</div>
+    <div class="sub">EWMA · BM Range · News-Aware · 10 Instruments</div>
+  </div>
+  <div class="spacer"></div>
+  <span class="upd">Updated: <span id="vfUpdated">—</span></span>
+  <button class="dark-btn" id="vfExportBtn" onclick="exportForecast()" disabled>⬇ Export</button>
+  <button class="dark-btn" id="vfSessionExportBtn" onclick="exportSession()" disabled>⬇ Session</button>
+  <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
+  <a href="index.html" style="text-decoration:none">
+    <button class="dark-btn">← Dashboard</button>
+  </a>
+  <div class="live-pill" id="vfLivePill"><div class="live-dot"></div>Live</div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="sdot" id="vfSdot"></div>
+  <div class="stxt" id="vfStxt">Loading forecast…</div>
+  <div class="data-pills">
+    <span class="dpill" id="pillCount">— pairs</span>
+    <span class="dpill" id="pillNews">NEWS</span>
+  </div>
+</div>
+</div><!-- /sticky-header -->
+
+<!-- SESSION INFO -->
+<div class="vf-session-bar" id="vfSessionBar">
+  <div class="vf-session-date" id="vfSessionLabel">Loading…</div>
+  <div class="vf-session-meta" id="vfComputedAt">—</div>
+  <div class="vf-spacer"></div>
+  <div class="vf-news-badge" id="vfNewsBadge" style="display:none"></div>
+</div>
+
+<!-- INSTRUMENT CARDS -->
+<div class="vf-grid" id="vfGrid">
+  <!-- Populated by JS -->
+</div>
+
+<!-- HISTORY TABLE -->
+<div class="vf-history" id="vfHistory" style="display:none">
+  <div class="vf-history-title">Recent Sessions — Annualised Vol%</div>
+  <div class="vf-hist-scroll">
+    <table class="vf-hist-table">
+      <thead id="vfHistHead"></thead>
+      <tbody id="vfHistBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- API REFERENCE -->
+<div class="vf-history" style="margin-top:22px">
+  <div class="vf-history-title">API Endpoints</div>
+  <div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px">
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast</span>
+      <span class="vf-api-desc">Latest forecast — JSON (vol%, H-L, O-C per instrument)</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/export</span>
+      <span class="vf-api-desc">Latest forecast — plain text (same as ⬇ Export)</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/history</span>
+      <span class="vf-api-desc">Last 5 sessions — JSON array</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/live</span>
+      <span class="vf-api-desc">Live session tracker — JSON (H-L consumed, O-H/O-L/O-C vs forecast, bias, directionality, outlook)</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/live/export</span>
+      <span class="vf-api-desc">Live session tracker — plain text (same as ⬇ Session)</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method post">POST</span>
+      <span class="vf-api-path">/api/vol-forecast/refresh</span>
+      <span class="vf-api-desc">Trigger manual recompute — responds immediately, poll /api/vol-forecast in ~30s</span>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /vfApp -->
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let currentForecast = null;
+let currentSession  = null;
+let refreshTimer    = null;
+const POLL_MS       = 5 * 60 * 1000;
+
+// ── Bootstrap ────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.body.classList.toggle('dark', true);
+  loadForecast();
+  loadHistory();
+  loadSession();
+  scheduleRefresh();
+});
+
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => { loadForecast(); loadHistory(); loadSession(); scheduleRefresh(); }, POLL_MS);
+}
+
+// ── Data loading ──────────────────────────────────────────────────────────────
+async function loadForecast() {
+  setStatus('spin', 'Fetching forecast…');
+  try {
+    const res  = await fetch('/api/vol-forecast');
+    const data = await res.json();
+
+    if (!data.ok) {
+      setStatus('spin', data.message ?? 'Computing — check back shortly…');
+      setTimeout(loadForecast, 15_000);
+      return;
+    }
+
+    currentForecast = data;
+    renderForecast(data);
+    document.getElementById('vfExportBtn').disabled = false;
+    setStatus('ok', `Forecast ready — session ${data.session_date}`);
+  } catch (e) {
+    setStatus('err', `Fetch error: ${e.message}`);
+  }
+}
+
+async function loadHistory() {
+  try {
+    const res  = await fetch('/api/vol-forecast/history');
+    const data = await res.json();
+    if (data.ok && data.forecasts.length > 1) renderHistory(data.forecasts);
+  } catch { /* silent */ }
+}
+
+async function loadSession() {
+  try {
+    const res  = await fetch('/api/vol-forecast/live');
+    const data = await res.json();
+    if (!data.ok) return;
+    currentSession = data;
+    document.getElementById('vfSessionExportBtn').disabled = false;
+    for (const [name, s] of Object.entries(data.instruments ?? {})) {
+      const el = document.getElementById(`vf-sess-${name}`);
+      if (el) el.innerHTML = buildSessionHtml(name, s, data);
+    }
+  } catch { /* silent */ }
+}
+
+async function triggerRefresh() {
+  const btn = document.getElementById('vfRefreshBtn');
+  btn.disabled = true;
+  btn.textContent = '↻ Refreshing…';
+  setStatus('spin', 'Triggered re-compute…');
+  try {
+    await fetch('/api/vol-forecast/refresh', { method: 'POST' });
+    setTimeout(() => { loadForecast(); loadHistory(); }, 35_000);
+  } catch (e) {
+    setStatus('err', `Refresh error: ${e.message}`);
+  } finally {
+    setTimeout(() => { btn.disabled = false; btn.textContent = '↻ Refresh'; }, 38_000);
+  }
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+// Produces the same format as vol_range_forecast.py format_report()
+function buildExportText(data) {
+  const LINE_WIDTH = 29;
+
+  function divider(name) {
+    const prefix = `──── ${name} `;
+    return prefix + '─'.repeat(Math.max(0, LINE_WIDTH - prefix.length));
+  }
+
+  const lines = [
+    '**VOL & RANGE FORECAST**',
+    `**For session: ${data.session_label}**`,
+    '',
+  ];
+
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    lines.push(divider(name));
+    lines.push(`Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`);
+    lines.push(
+      `High to Low range       : ${f.hl_median.toFixed(2)}% median · ${f.hl_75.toFixed(2)}% 75th Percentile`
+    );
+    lines.push(
+      `Open to Close move      : ${f.oc_median.toFixed(2)}% median · ${f.oc_75.toFixed(2)}% 75th Percentile`
+    );
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+function exportForecast() {
+  if (!currentForecast) return;
+
+  const text = buildExportText(currentForecast);
+  const btn  = document.getElementById('vfExportBtn');
+
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    // Clipboard API unavailable — fall back to file download
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `vol-forecast-${currentForecast.session_date}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+// ── Session export ────────────────────────────────────────────────────────────
+function buildSessionText(data) {
+  const lines = [
+    '**VOL & RANGE FORECAST — LIVE SESSION STATUS**',
+    `**Session: ${data.session_label}**`,
+    `Fetched: ${new Date(data.fetched_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')}`,
+    '',
+  ];
+
+  const p2 = x => (typeof x === 'number' ? x.toFixed(2) : '—');
+  const p3 = x => (typeof x === 'number' ? x.toFixed(3) : '—');
+  const LINE_WIDTH = 29;
+  const divider = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
+
+  for (const [name, s] of Object.entries(data.instruments ?? {})) {
+    if (s.error) { lines.push(divider(name), `Error: ${s.error}`, ''); continue; }
+    const fc = s.forecast;
+    const t  = new Date(s.bar_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC');
+    const closed = s.complete ? ' (session closed)' : '';
+
+    lines.push(divider(name));
+    lines.push(`${name} Status — ${t}${closed}`);
+    lines.push('');
+    lines.push(`H-L:  ${p2(s.hl)}%  (med ${p2(fc.hl_median)}%  |  75th ${p2(fc.hl_75)}%)`);
+    const vsM = s.hl_vs_med >= 0 ? `+${p2(s.hl_vs_med)}` : p2(s.hl_vs_med);
+    const vsP = s.hl_vs_75  >= 0 ? `+${p2(s.hl_vs_75)}`  : p2(s.hl_vs_75);
+    lines.push(`  vs median  ${vsM}%  |  vs 75th  ${vsP}%`);
+    lines.push('');
+
+    const ocSign  = s.oc >= 0 ? '+' : '';
+    const fmtT = iso => iso
+      ? new Date(iso).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC')
+      : null;
+    const remTxt = (rem, actual, fc75, reachedAt) => {
+      const t = fmtT(reachedAt);
+      if (actual >= fc75) return `75th reached${t ? ' ' + t : ''}`;
+      if (rem <= 0)       return `reached${t ? ' ' + t : ''}`;
+      return `${p2(rem)}% remaining`;
+    };
+    const ocRemLbl = remTxt(s.oc_rem, Math.abs(s.oc), fc.oc_75, s.oc_reached_at);
+    const ohRemLbl = remTxt(s.oh_rem, s.oh,            fc.oc_75, s.oh_reached_at);
+    const olRemLbl = remTxt(s.ol_rem, s.ol,            fc.oc_75, s.ol_reached_at);
+    lines.push(`O-C:  ${ocSign}${p2(s.oc)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${ocRemLbl}`);
+    lines.push(`O-H:  ${p2(s.oh)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${ohRemLbl}`);
+    lines.push(`O-L:  ${p2(s.ol)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${olRemLbl}`);
+    lines.push('');
+    lines.push(`Bias:  ${s.bias} — ${s.bias_detail}`);
+    lines.push(`  O-H ${p3(s.oh)}% / ${p3(fc.oc_median)}% forecast (${Math.round(s.oh_ratio)}%)  |  O-L ${p3(s.ol)}% / ${p3(fc.oc_median)}% forecast (${Math.round(s.ol_ratio)}%)`);
+    lines.push('');
+    lines.push(`Directionality:  ${p2(s.dir)}%  (expected ~${p2(data.expected_dir)}%)`);
+    lines.push(`Shape:  ${s.shape}`);
+    lines.push('');
+    lines.push(`Outlook:  ${s.outlook}`);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+function exportSession() {
+  if (!currentSession) return;
+  const text = buildSessionText(currentSession);
+  const btn  = document.getElementById('vfSessionExportBtn');
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `session-${currentSession.session_date}.txt`;
+    a.click(); URL.revokeObjectURL(url);
+  });
+}
+
+// ── Rendering ──────────────────────────────────────────────────────────────────
+function renderForecast(data) {
+  // Session bar
+  document.getElementById('vfSessionLabel').textContent = data.session_label;
+  const computedAt = new Date(data.computed_at);
+  document.getElementById('vfComputedAt').textContent =
+    `Computed ${computedAt.toUTCString().replace(/:\d\d GMT$/, ' UTC')}`;
+  document.getElementById('vfUpdated').textContent = timeAgo(computedAt);
+
+  // News badge
+  const newsBadge = document.getElementById('vfNewsBadge');
+  if (data.meta?.news_flag) {
+    newsBadge.textContent = `📅 ${data.meta.news_flag} ×${data.meta.news_mult.toFixed(2)}`;
+    newsBadge.style.display = '';
+    document.getElementById('pillNews').className = 'dpill ok';
+  } else {
+    newsBadge.style.display = 'none';
+    document.getElementById('pillNews').className = 'dpill';
+  }
+
+  // Cards — render all instruments returned by API
+  const grid = document.getElementById('vfGrid');
+  grid.innerHTML = '';
+  const entries = Object.entries(data.instruments ?? {});
+  document.getElementById('pillCount').textContent = `${entries.length} pairs`;
+  document.getElementById('pillCount').className   = entries.length > 0 ? 'dpill ok' : 'dpill err';
+
+  for (const [name, f] of entries) {
+    grid.appendChild(buildCard(name, f, data.meta));
+  }
+}
+
+function buildCard(name, f, meta) {
+  const card = document.createElement('div');
+  card.className = 'vf-card';
+
+  // Vol pill colour: > 20% = hi (red), < 8% = lo (green), else default (blue)
+  const volClass = f.vol_annual > 20 ? 'hi' : f.vol_annual < 8 ? 'lo' : '';
+
+  const hlMax = f.hl_75 * 1.1;
+  const ocMax = f.oc_75 * 1.1;
+
+  const newsChip = meta?.news_flag
+    ? `<span class="vf-mult-chip active">📅 ${meta.news_flag} ×${(meta.news_mult ?? 1).toFixed(2)}</span>`
+    : `<span class="vf-mult-chip">No news flag</span>`;
+
+  card.innerHTML = `
+    <div class="vf-card-header">
+      <div class="vf-name">${name}</div>
+      <div class="vf-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</div>
+    </div>
+
+    <div class="vf-section">
+      <div class="vf-section-label">High ↔ Low Range</div>
+      ${barRow('50th', f.hl_median, hlMax, 'median')}
+      ${barRow('75th', f.hl_75,    hlMax, 'p75')}
+    </div>
+
+    <div class="vf-section">
+      <div class="vf-section-label">Open → Close Move</div>
+      ${barRow('50th', f.oc_median, ocMax, 'median')}
+      ${barRow('75th', f.oc_75,    ocMax, 'p75')}
+    </div>
+
+    <div class="vf-mults">
+      ${newsChip}
+    </div>
+
+    <div class="vf-live-divider"></div>
+    <div id="vf-sess-${name}" class="vf-sstat">
+      <div class="vf-session-na">Loading session…</div>
+    </div>
+  `;
+  return card;
+}
+
+function buildSessionHtml(name, s, data) {
+  if (s.error) return `<div class="vf-session-na">No data: ${s.error}</div>`;
+
+  const fc       = s.forecast;
+  const p2       = x => x.toFixed(2);
+  const timeStr    = new Date(s.bar_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC');
+  const anchorStr  = s.anchor_time
+    ? new Date(s.anchor_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC anchor')
+    : '00:00 UTC anchor';
+  const dotCls   = s.complete ? 'vf-live-dot closed' : 'vf-live-dot';
+  const dotTitle = s.complete ? 'Session closed' : 'Live';
+
+  // Remaining label helpers
+  const fmtReachTime = iso => iso
+    ? new Date(iso).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC')
+    : null;
+  const remLabel = (rem, actual, reachedAt) => {
+    const t = fmtReachTime(reachedAt);
+    if (actual >= fc.oc_75) return `<span class="vf-srow-rem exceeded">75th reached${t ? ' ' + t : '!'}</span>`;
+    if (rem <= 0)            return `<span class="vf-srow-rem reached">reached${t ? ' ' + t : ''}</span>`;
+    return `<span class="vf-srow-rem ok">${p2(rem)}% rem</span>`;
+  };
+
+  // Bias chip class
+  const biasCls = s.bias.toLowerCase().includes('bear') ? 'bear'
+                : s.bias.toLowerCase().includes('bull') ? 'bull'
+                : s.bias.toLowerCase().includes('two')  ? 'ambi' : '';
+
+  // Directionality bar (capped at 100%)
+  const dirFill = Math.min(100, s.dir).toFixed(1);
+  const expMark = Math.min(100, data.expected_dir).toFixed(1);
+
+  // vs median labels
+  const vsM = s.hl_vs_med >= 0 ? `<span class="pos">+${p2(s.hl_vs_med)}%</span>` : `<span class="neg">${p2(s.hl_vs_med)}%</span>`;
+  const vsP = s.hl_vs_75  >= 0 ? `<span class="pos">+${p2(s.hl_vs_75)}%</span>`  : `<span class="neg">${p2(s.hl_vs_75)}%</span>`;
+
+  const ocSign = s.oc >= 0 ? '+' : '';
+  const ocCls  = s.oc >= 0 ? 'pos' : 'neg';
+
+  return `
+    <div class="vf-live-hdr">
+      <div class="${dotCls}" title="${dotTitle}"></div>
+      LIVE SESSION
+      <span class="vf-live-time">${anchorStr} · as of ${timeStr}</span>
+    </div>
+
+    <div class="vf-srow">
+      <span class="vf-srow-lbl">H-L</span>
+      <span class="vf-srow-val">${p2(s.hl)}%</span>
+      <span class="vf-srow-fc">med ${p2(fc.hl_median)}% · 75th ${p2(fc.hl_75)}%</span>
+    </div>
+    <div class="vf-srow-vs">vs med ${vsM} · vs 75th ${vsP}</div>
+
+    <div class="vf-srow">
+      <span class="vf-srow-lbl">O-C</span>
+      <span class="vf-srow-val ${ocCls}">${ocSign}${p2(s.oc)}%</span>
+      <span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>
+      ${remLabel(s.oc_rem, Math.abs(s.oc), s.oc_reached_at)}
+    </div>
+    <div class="vf-srow">
+      <span class="vf-srow-lbl">O-H</span>
+      <span class="vf-srow-val">${p2(s.oh)}%</span>
+      <span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>
+      ${remLabel(s.oh_rem, s.oh, s.oh_reached_at)}
+    </div>
+    <div class="vf-srow">
+      <span class="vf-srow-lbl">O-L</span>
+      <span class="vf-srow-val">${p2(s.ol)}%</span>
+      <span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>
+      ${remLabel(s.ol_rem, s.ol, s.ol_reached_at)}
+    </div>
+
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span class="vf-bias-chip ${biasCls}">${s.bias}</span>
+      <span class="vf-bias-detail">${s.bias_detail}</span>
+    </div>
+
+    <div class="vf-dir-row">
+      <span class="vf-dir-lbl">Dir</span>
+      <div class="vf-dir-track">
+        <div class="vf-dir-fill" style="width:${dirFill}%"></div>
+        <div class="vf-dir-mark" style="left:${expMark}%" title="Expected ~${p2(data.expected_dir)}%"></div>
+      </div>
+      <span class="vf-dir-lbl"><b>${p2(s.dir)}%</b> · ${s.shape}</span>
+    </div>
+
+    <div class="vf-outlook">${s.outlook}</div>
+  `;
+}
+
+function barRow(label, value, maxValue, fillClass) {
+  const w = Math.min(100, (value / maxValue) * 100).toFixed(1);
+  return `
+    <div class="vf-row">
+      <div class="vf-row-label">${label}</div>
+      <div class="vf-bar-track">
+        <div class="vf-bar-fill ${fillClass}" style="width:${w}%"></div>
+      </div>
+      <div class="vf-row-val">${value.toFixed(2)}%</div>
+    </div>`;
+}
+
+function renderHistory(forecasts) {
+  // Build column list from the most recent forecast
+  const allNames = Object.keys(forecasts[0]?.instruments ?? {});
+
+  // Header
+  const thead = document.getElementById('vfHistHead');
+  thead.innerHTML = '<tr><th>Session</th>' +
+    allNames.map(n => `<th>${n}</th>`).join('') + '</tr>';
+
+  const tbody = document.getElementById('vfHistBody');
+  tbody.innerHTML = '';
+
+  for (const fc of forecasts) {
+    const cells = allNames.map(n => {
+      const f = fc.instruments?.[n];
+      return `<td>${f ? f.vol_annual.toFixed(2) + '%' : '—'}</td>`;
+    }).join('');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${fc.session_date}</td>${cells}`;
+    tbody.appendChild(tr);
+  }
+  document.getElementById('vfHistory').style.display = '';
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setStatus(level, msg) {
+  document.getElementById('vfSdot').className = `sdot ${level}`;
+  document.getElementById('vfStxt').textContent = msg;
+}
+
+function timeAgo(date) {
+  const secs = Math.floor((Date.now() - date) / 1000);
+  if (secs < 60)    return `${secs}s ago`;
+  if (secs < 3600)  return `${Math.floor(secs/60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs/3600)}h ago`;
+  return date.toLocaleDateString();
+}
+</script>
+</body>
+</html>

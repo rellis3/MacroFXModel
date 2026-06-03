@@ -1,5 +1,7 @@
 node_modules/
-data/
+/data/
+VolRangeForecaster/data/*.parquet
+VolRangeForecaster/data/m1/
 .env
 .env.local
 bot/.env.example

@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backtest Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: #0e1117;
+  color: #d1d4dc;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ── Root layout ──────────────────────────────────────────────────────────── */
+.bv-root { display: flex; flex-direction: column; height: 100vh; background: #0e1117; }
+
+/* ── Top toolbar ──────────────────────────────────────────────────────────── */
+.bv-topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px; height: 46px;
+  border-bottom: 1px solid #1c2133; background: #131722;
+  flex-shrink: 0; overflow: hidden;
+}
+.bv-title { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: #d1d4dc; white-space: nowrap; margin-right: 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.bv-ctrl-group { display: flex; align-items: center; gap: 6px; }
+.bv-lbl { font-size: 11px; color: #5a6380; font-family: 'DM Mono', monospace; white-space: nowrap; }
+.bv-sel {
+  background: #1c2133; border: 1px solid #2a3348; color: #c8d0e0;
+  border-radius: 4px; padding: 3px 6px; font-size: 11px;
+  font-family: 'DM Mono', monospace; cursor: pointer; outline: none;
+}
+.bv-sel:focus { border-color: #4f7df0; }
+.bv-btn {
+  background: #1c2133; border: 1px solid #2a3348; color: #9aa8c0;
+  border-radius: 4px; padding: 4px 10px; font-size: 11px;
+  font-family: 'DM Mono', monospace; cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s; white-space: nowrap;
+}
+.bv-btn:hover   { background: #242b42; color: #d1d4dc; }
+.bv-btn.bv-active { background: #2563eb22; border-color: #4f7df0; color: #4f7df0; }
+.bv-btn.bv-sm { padding: 3px 8px; }
+.bv-btn.bv-tv { border-color: #2962ff44; color: #2962ff; }
+.bv-btn.bv-tv:hover { background: #2962ff15; color: #5085ff; }
+.bv-stat { font-family: 'DM Mono', monospace; font-size: 11px; color: #5a6380; margin-left: auto; white-space: nowrap; }
+.bv-date-input {
+  background: #1c2133; border: 1px solid #2a3348; color: #c8d0e0;
+  border-radius: 4px; padding: 3px 6px; font-size: 11px;
+  font-family: 'DM Mono', monospace; cursor: pointer; outline: none;
+  color-scheme: dark;
+}
+.bv-date-input:focus { border-color: #4f7df0; }
+
+/* ── Replay bar ───────────────────────────────────────────────────────────── */
+.bv-replay-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 14px; height: 40px;
+  background: #0b111e; border-bottom: 1px solid #1c2133;
+  flex-shrink: 0;
+}
+.bv-rplay-btns { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+
+/* Scrubber */
+.bv-scrubber {
+  flex: 1; min-width: 60px; position: relative;
+  height: 40px; display: flex; align-items: center;
+  cursor: pointer; padding: 0 4px;
+}
+.bv-scrub-track {
+  position: relative; width: 100%; height: 4px;
+  background: #1c2840; border-radius: 2px;
+}
+.bv-scrub-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: #4f7df0; border-radius: 2px;
+  pointer-events: none; width: 0%;
+}
+.bv-scrub-thumb {
+  position: absolute; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px; height: 12px; background: #e8eaf0;
+  border-radius: 50%; box-shadow: 0 0 0 2px #4f7df0, 0 2px 6px rgba(0,0,0,.5);
+  cursor: grab; z-index: 2; left: 0%; transition: box-shadow .1s;
+}
+.bv-scrub-thumb:hover { box-shadow: 0 0 0 3px #4f7df0, 0 2px 8px rgba(79,125,240,.4); }
+.bv-scrubber:active .bv-scrub-thumb { cursor: grabbing; }
+.bv-scrub-marker {
+  position: absolute; top: -5px; bottom: -5px; width: 2px;
+  border-radius: 1px; pointer-events: none; z-index: 1;
+}
+
+/* Speed buttons */
+.bv-speed-group { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.bv-speed-btn {
+  background: transparent; border: 1px solid #252e42; color: #4a5570;
+  border-radius: 3px; padding: 2px 6px; font-size: 10px;
+  font-family: 'DM Mono', monospace; cursor: pointer;
+  transition: all .1s; white-space: nowrap;
+}
+.bv-speed-btn:hover  { background: #1c2133; color: #9aa8c0; border-color: #3a4a65; }
+.bv-speed-btn.bv-active { background: #4f7df018; border-color: #4f7df088; color: #7fa8f8; }
+
+/* Replay timestamp */
+.bv-replay-ts {
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  color: #7a8faa; white-space: nowrap; min-width: 110px;
+  letter-spacing: .02em;
+}
+
+/* Replay vertical "now" line on chart */
+.bv-replay-line {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: linear-gradient(to bottom, transparent 0%, rgba(79,125,240,.5) 10%, rgba(79,125,240,.5) 90%, transparent 100%);
+  pointer-events: none; z-index: 5; display: none; left: 0;
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────────── */
+.bv-body { display: flex; flex: 1; min-height: 0; overflow: hidden; position: relative; }
+
+/* ── Chart area ───────────────────────────────────────────────────────────── */
+.bv-chart-wrap { flex: 1; position: relative; min-width: 0; }
+.bv-chart      { position: absolute; inset: 0; }
+.bv-chart-veil {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #131722cc; color: #5a6380; font-size: 13px; gap: 12px;
+  pointer-events: none;
+}
+.bv-spinner {
+  width: 22px; height: 22px; border: 2px solid #2a3348; border-top-color: #4f7df0;
+  border-radius: 50%; animation: bv-spin .7s linear infinite;
+}
+@keyframes bv-spin { to { transform: rotate(360deg); } }
+
+/* ── Panel backdrop ───────────────────────────────────────────────────────── */
+.bv-panel-backdrop { display: none; }
+
+/* ── Right panel ──────────────────────────────────────────────────────────── */
+.bv-panel {
+  width: 268px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  border-left: 1px solid #1c2133; background: #131722; overflow: hidden;
+}
+.bv-panel-mobile-hdr { display: none; }
+.bv-detail-card { border-bottom: 1px solid #1c2133; flex-shrink: 0; }
+.bv-panel-hdr { padding: 8px 12px 6px; font-size: 10px; font-weight: 600; letter-spacing: .1em; color: #5a6380; font-family: 'DM Mono', monospace; text-transform: uppercase; border-bottom: 1px solid #1c2133; }
+.bv-detail-body { padding: 6px 10px 8px; }
+.bv-no-trade { font-size: 12px; color: #3a4255; padding: 6px 0; }
+.bv-dr { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; border-bottom: 1px solid #1c2133; min-height: 22px; }
+.bv-dr:last-child { border-bottom: none; }
+.bv-dl { font-size: 10px; color: #5a6380; font-family: 'DM Mono', monospace; flex-shrink: 0; padding-right: 6px; }
+.bv-dv { font-size: 11px; font-family: 'DM Mono', monospace; color: #c8d0e0; text-align: right; }
+.bv-green { color: #26a69a !important; }
+.bv-red   { color: #ef5350 !important; }
+.bv-amber { color: #fbbf24 !important; }
+.bv-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; font-family: 'DM Mono', monospace; text-transform: uppercase; }
+.bv-badge.buy      { background: #26a69a22; color: #26a69a; border: 1px solid #26a69a44; }
+.bv-badge.sell     { background: #ef535022; color: #ef5350; border: 1px solid #ef535044; }
+.bv-badge.rg-bull  { background: #26a69a22; color: #26a69a; border: 1px solid #26a69a44; }
+.bv-badge.rg-bear  { background: #ef535022; color: #ef5350; border: 1px solid #ef535044; }
+.bv-badge.rg-range { background: #4f7df022; color: #4f7df0; border: 1px solid #4f7df044; }
+
+/* ── Trade list ───────────────────────────────────────────────────────────── */
+.bv-list-hdr { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; font-size: 10px; color: #5a6380; font-family: 'DM Mono', monospace; border-bottom: 1px solid #1c2133; flex-shrink: 0; }
+.bv-nav-btns { display: flex; gap: 4px; }
+.bv-list { overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #2a3348 transparent; }
+.bv-list::-webkit-scrollbar       { width: 5px; }
+.bv-list::-webkit-scrollbar-thumb { background: #2a3348; border-radius: 4px; }
+.bv-row { display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-bottom: 1px solid #0e1117; cursor: pointer; transition: background .1s; user-select: none; flex-wrap: nowrap; overflow: hidden; }
+.bv-row:hover { background: #1c2133; }
+.bv-row.bv-selected { background: #1c2840; border-left: 2px solid #4f7df0; padding-left: 8px; }
+.bv-row-date { font-family: 'DM Mono', monospace; font-size: 10px; color: #6a7892; white-space: nowrap; flex-shrink: 0; width: 72px; }
+.bv-row-px   { font-family: 'DM Mono', monospace; font-size: 10px; color: #9aa8c0; flex: 1; text-align: right; white-space: nowrap; }
+.bv-outcome  { font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 600; padding: 1px 4px; border-radius: 2px; white-space: nowrap; flex-shrink: 0; }
+.bv-outcome.win  { color: #26a69a; background: #26a69a1a; }
+.bv-outcome.loss { color: #ef5350; background: #ef53501a; }
+.bv-outcome.open { color: #fbbf24; background: #fbbf241a; }
+.bv-row-pnl  { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 600; white-space: nowrap; flex-shrink: 0; min-width: 44px; text-align: right; }
+
+/* ── Mobile bottom bar ────────────────────────────────────────────────────── */
+.bv-mobile-bar { display: none; }
+.bv-hints { position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%); font-family: 'DM Mono', monospace; font-size: 10px; color: #3a4255; pointer-events: none; white-space: nowrap; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MOBILE  ≤ 768px
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .bv-topbar { gap: 8px; padding: 0 10px; overflow: visible; flex-wrap: wrap; height: auto; min-height: 46px; padding-top: 6px; padding-bottom: 6px; }
+  #bvLevels, #bvReCenter, #bvTvBtn, #bvReplayBtn, #bvStat { display: none; }
+  .bv-panel {
+    position: absolute; top: 0; right: 0; bottom: 0; z-index: 200;
+    width: 88%; max-width: 320px;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: -8px 0 32px rgba(0,0,0,.65);
+    border-left: 1px solid #2a3348;
+  }
+  .bv-panel.bv-panel-open { transform: translateX(0); }
+  .bv-panel-backdrop {
+    display: block; position: absolute; inset: 0; background: rgba(0,0,0,.55);
+    z-index: 199; opacity: 0; pointer-events: none; transition: opacity 0.28s ease;
+  }
+  .bv-panel-backdrop.bv-visible { opacity: 1; pointer-events: auto; cursor: pointer; }
+  .bv-panel-mobile-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 10px; height: 44px; flex-shrink: 0;
+    border-bottom: 1px solid #1c2133; background: #0e1520;
+  }
+  .bv-panel-mobile-hdr-title { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: .08em; color: #5a6380; text-transform: uppercase; }
+  .bv-panel-mobile-hdr-actions { display: flex; gap: 5px; align-items: center; }
+  .bv-mobile-bar { display: flex; align-items: center; height: 52px; padding: 0 12px; gap: 8px; border-top: 1px solid #1c2133; background: #131722; flex-shrink: 0; }
+  .bv-mob-btn { background: #1c2133; border: 1px solid #2a3348; color: #9aa8c0; border-radius: 6px; font-size: 13px; font-family: 'DM Mono', monospace; cursor: pointer; height: 36px; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+  .bv-mob-btn:active { background: #242b42; }
+  .bv-mob-nav { width: 44px; flex-shrink: 0; font-size: 18px; color: #6a7892; border-color: #1c2133; }
+  .bv-mob-nav:active { color: #d1d4dc; background: #242b42; }
+  .bv-mob-panel-btn { flex: 1; gap: 7px; font-size: 12px; padding: 0 10px; color: #c8d0e0; border-color: #2a3348; }
+  .bv-mob-panel-btn .bv-mob-icon { font-size: 15px; line-height: 1; color: #4f7df0; }
+  .bv-mob-panel-btn .bv-mob-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .bv-hints { display: none; }
+  .bv-replay-bar { padding: 0 10px; gap: 5px; height: 38px; }
+  .bv-replay-ts { min-width: 80px; font-size: 10px; }
+  .bv-speed-group { gap: 1px; }
+  .bv-speed-btn { padding: 2px 4px; font-size: 9px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bv-root">
+
+  <!-- Top toolbar -->
+  <div class="bv-topbar" id="bvTopbar">
+    <span class="bv-title" id="bvTitle">Backtest Viewer</span>
+    <div class="bv-ctrl-group">
+      <span class="bv-lbl">Result</span>
+      <select class="bv-sel" id="bvFResult">
+        <option value="">All</option><option value="win">Win</option>
+        <option value="loss">Loss</option><option value="open">Open</option>
+      </select>
+    </div>
+    <div class="bv-ctrl-group">
+      <span class="bv-lbl">Dir</span>
+      <select class="bv-sel" id="bvFDir">
+        <option value="">All</option><option value="BUY">Buy</option><option value="SELL">Sell</option>
+      </select>
+    </div>
+    <!-- Decision engine date range controls — shown only when source=decision -->
+    <div class="bv-ctrl-group" id="bvDecisionRange" style="display:none">
+      <span class="bv-lbl">From</span>
+      <input type="date" class="bv-date-input" id="bvDateFrom">
+      <span class="bv-lbl">→</span>
+      <input type="date" class="bv-date-input" id="bvDateTo">
+      <button class="bv-btn bv-sm" id="bvDateLoad">Load</button>
+      <button class="bv-btn bv-sm" id="bvPreset7">7d</button>
+      <button class="bv-btn bv-sm" id="bvPreset14">14d</button>
+      <button class="bv-btn bv-sm" id="bvPreset30">30d</button>
+      <button class="bv-btn bv-sm" id="bvPresetAll">All</button>
+    </div>
+    <div class="bv-ctrl-group">
+      <button class="bv-btn bv-active" id="bvLevels">Levels</button>
+      <button class="bv-btn" id="bvReCenter">Re-center</button>
+      <button class="bv-btn" id="bvReplayBtn">▶ Replay</button>
+      <button class="bv-btn bv-tv" id="bvTvBtn" title="Open on TradingView">TradingView ↗</button>
+    </div>
+    <span class="bv-stat" id="bvStat"></span>
+  </div>
+
+  <!-- Replay bar (hidden until activated) -->
+  <div class="bv-replay-bar" id="bvReplayBar" style="display:none">
+    <!-- Transport controls -->
+    <div class="bv-rplay-btns">
+      <button class="bv-btn bv-sm" id="bvStepBackBtn" title="Step back ←">|◀</button>
+      <button class="bv-btn" id="bvPlayBtn" style="color:#26a69a;border-color:#26a69a55;min-width:80px">▶ Play</button>
+      <button class="bv-btn bv-sm" id="bvStepBtn" title="Step forward →">▶|</button>
+      <button class="bv-btn bv-sm" id="bvResetBtn" title="Reset">⟲</button>
+    </div>
+
+    <!-- Scrubber timeline -->
+    <div class="bv-scrubber" id="bvScrubber">
+      <div class="bv-scrub-track" id="bvScrubTrack">
+        <div class="bv-scrub-fill" id="bvScrubFill"></div>
+        <div class="bv-scrub-marker" id="bvScrubEntry" style="display:none;background:#26a69a99"></div>
+        <div class="bv-scrub-marker" id="bvScrubExit"  style="display:none;background:#ef535099"></div>
+        <div class="bv-scrub-thumb" id="bvScrubThumb"></div>
+      </div>
+    </div>
+
+    <!-- Current bar timestamp -->
+    <span class="bv-replay-ts" id="bvReplayTs">—</span>
+
+    <!-- Speed presets -->
+    <div class="bv-speed-group" id="bvSpeedGroup">
+      <button class="bv-speed-btn" data-ms="800">½×</button>
+      <button class="bv-speed-btn bv-active" data-ms="350">1×</button>
+      <button class="bv-speed-btn" data-ms="150">2×</button>
+      <button class="bv-speed-btn" data-ms="50">4×</button>
+    </div>
+
+    <button class="bv-btn bv-sm" id="bvExitReplay" style="color:#ef5350;border-color:#ef535044;flex-shrink:0">✕</button>
+  </div>
+
+  <!-- Main body -->
+  <div class="bv-body">
+    <div class="bv-chart-wrap">
+      <div class="bv-chart" id="bvChart"></div>
+      <!-- Replay "now" line overlay -->
+      <div class="bv-replay-line" id="bvReplayLine"></div>
+      <div class="bv-chart-veil" id="bvVeil" style="display:none">
+        <div class="bv-spinner" id="bvVeilSpinner" style="display:none"></div>
+        <div id="bvVeilMsg"></div>
+      </div>
+    </div>
+
+    <!-- Backdrop (mobile) -->
+    <div class="bv-panel-backdrop" id="bvBackdrop"></div>
+
+    <!-- Right panel -->
+    <div class="bv-panel" id="bvPanel">
+      <!-- Mobile-only header -->
+      <div class="bv-panel-mobile-hdr">
+        <span class="bv-panel-mobile-hdr-title">Trades</span>
+        <div class="bv-panel-mobile-hdr-actions">
+          <button class="bv-btn bv-sm bv-active" id="bvPanelLevels">Levels</button>
+          <button class="bv-btn bv-sm" id="bvPanelReCenter">Re-center</button>
+          <button class="bv-btn bv-sm" id="bvClosePanel" style="padding:3px 10px;font-size:13px">✕</button>
+        </div>
+      </div>
+
+      <div class="bv-detail-card">
+        <div class="bv-panel-hdr">TRADE DETAIL</div>
+        <div class="bv-detail-body" id="bvDetailBody"><div class="bv-no-trade">No trade selected</div></div>
+      </div>
+      <div class="bv-list-hdr">
+        <span id="bvListCount">—</span>
+        <div class="bv-nav-btns">
+          <button class="bv-btn bv-sm" id="bvPrevBtn">‹ Prev</button>
+          <button class="bv-btn bv-sm" id="bvNextBtn">Next ›</button>
+        </div>
+      </div>
+      <div class="bv-list" id="bvList"></div>
+    </div>
+  </div>
+
+  <!-- Mobile bottom bar -->
+  <div class="bv-mobile-bar" id="bvMobileBar">
+    <button class="bv-mob-btn bv-mob-nav" id="bvMobPrev">‹</button>
+    <button class="bv-mob-btn bv-mob-panel-btn" id="bvMobToggle">
+      <span class="bv-mob-icon">☰</span>
+      <span class="bv-mob-label" id="bvMobLabel">Trades</span>
+    </button>
+    <button class="bv-mob-btn bv-mob-nav" id="bvMobNext">›</button>
+  </div>
+
+  <div class="bv-hints">← → Navigate &nbsp;·&nbsp; R Replay &nbsp;·&nbsp; ←→ Step &nbsp;·&nbsp; Space Play/Pause &nbsp;·&nbsp; L Levels &nbsp;·&nbsp; Enter Re-center</div>
+</div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function _dateOffset(d, days) {
+  const dt = new Date(d + 'T00:00:00Z');
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().substring(0, 10);
+}
+
+function _toEpochSec(t) {
+  return Math.floor(new Date(String(t).substring(0, 19).replace(' ', 'T') + 'Z').getTime() / 1000);
+}
+
+function _isMobile() { return window.innerWidth <= 768; }
+
+// ── Vol Backtest Adapter ──────────────────────────────────────────────────────
+
+const VOL_ADAPTER = {
+  async fetchTrades() {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const r = await fetch('/api/vol-backtest/trades', { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status} — run the backtester first`);
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'Failed to load trades');
+      if (!d.trades?.length) throw new Error('No trades found — run the backtester first');
+      return d.trades;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Request timed out — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  async fetchCandles(trade) {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 120_000);
+    try {
+      const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
+      const from = _dateOffset(trade.date, -2);
+      const to   = _dateOffset(trade.date, +2);
+      const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data');
+      return d.candles;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('M1 data took too long — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  getLevels(trade) {
+    const { open, hl_75_pct, oc_med_pct, side, regime } = trade;
+    if (!open || !hl_75_pct || !oc_med_pct) return null;
+    const hl = open * hl_75_pct / 100, oc = open * oc_med_pct / 100;
+    const isSell = side === 'SELL', isRng = regime === 'RANGE';
+    return {
+      entry: isSell ? open + hl       : open - hl,
+      tp:    isSell ? (isRng ? open : open + oc) : (isRng ? open : open - oc),
+      sl:    isSell ? open + hl * 1.5 : open - hl * 1.5,
+      hl75H: open + hl, hl75L: open - hl,
+      ocH:   open + oc, ocL:   open - oc, open,
+    };
+  },
+
+  getDetail(trade) {
+    const asiaRange = (trade.asia_low != null && trade.asia_high != null)
+      ? `${(+trade.asia_low).toFixed(5)} – ${(+trade.asia_high).toFixed(5)}` : '—';
+    return { volRegime: trade.vol_regime || '—', asiaRange, sdLevel: trade.hl_75_pct?.toFixed(2) };
+  },
+};
+
+// ── Gold Backtest Adapter ─────────────────────────────────────────────────────
+
+const GOLD_ADAPTER = {
+  async fetchTrades() {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const r = await fetch('/api/gold-backtest/trades', { signal: ctrl.signal });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || `HTTP ${r.status} — run the gold backtester first`);
+      }
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'Failed to load trades');
+      if (!d.trades?.length) throw new Error('No trades found — run the gold backtester first');
+      return d.trades;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Request timed out — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  async fetchCandles(trade) {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 120_000);
+    try {
+      const pair = 'xauusd';
+      const from = _dateOffset(trade.date, -2);
+      const to   = _dateOffset(trade.date, +2);
+      const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status} — M1 data may not be loaded yet`);
+      const d = await r.json();
+      if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data returned');
+      return d.candles;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('M1 data took too long — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  getLevels(trade) {
+    if (!trade.entry_price) return null;
+    return {
+      entry: trade.entry_price,
+      sl:    trade.sl_price,
+      tp:    trade.tp1_price,
+      tp2:   trade.tp2_price,
+    };
+  },
+
+  getDetail(trade) {
+    const zoneLabel = trade.in_gp_zone
+      ? '★ GP (0.618–0.65)'
+      : (trade.zone_variant || trade.level || '—');
+    return {
+      zone:      zoneLabel,
+      stars:     trade.stars ? '★'.repeat(trade.stars) + '☆'.repeat(Math.max(0, 5 - trade.stars)) : '—',
+      vmuSignal: trade.vmu_signal || '—',
+    };
+  },
+};
+
+// ── Adapter registry ──────────────────────────────────────────────────────────
+
+// ── Decision Engine Audit Adapter ─────────────────────────────────────────────
+// Replays real-time proximity events logged by alerts.js.
+// Each entry = a level that was approached + the decision engine gate result.
+// Date range is controlled by the #bvDecisionRange toolbar (shown for this source only).
+
+let _decisionFrom = null;  // set by date range controls; null = use 7d default
+let _decisionTo   = null;
+
+function _today() { return new Date().toISOString().slice(0, 10); }
+
+const DECISION_ADAPTER = {
+  async fetchTrades() {
+    const from = _decisionFrom || _dateOffset(_today(), -7);
+    const to   = _decisionTo   || _today();
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const r = await fetch(`/api/decision-audit?from=${from}&to=${to}`, { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'Audit log unavailable');
+      if (!d.trades?.length) throw new Error(`No audit entries for ${from} → ${to} — try a wider range or enable alerts`);
+      return d.trades;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Request timed out — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  async fetchCandles(trade) {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 120_000);
+    try {
+      const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
+      const from = _dateOffset(trade.date, -1);
+      const to   = _dateOffset(trade.date, +2);
+      const r = await fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data for this pair');
+      return d.candles;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('M1 data took too long — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  getLevels(trade) {
+    if (!trade.entry_price) return null;
+    return {
+      entry: trade.entry_price,
+      tp:    trade.tp_price ?? undefined,
+      sl:    trade.sl_price ?? undefined,
+    };
+  },
+
+  getDetail(trade) {
+    const gate   = trade.permitted === false ? '❌ BLOCKED' : trade.permitted === true ? '✅ PERMITTED' : '—';
+    const mode   = trade.decisionMode ? trade.decisionMode.replace(/_/g, ' ') : '—';
+    const part   = trade.decisionParticipation
+      ? `${trade.decisionParticipation} · Risk ${(trade.decisionRiskMult ?? 1).toFixed(2)}×`
+      : '—';
+    return {
+      decision:      `${gate} · ${mode}`,
+      participation: part,
+      grade:         `${trade.grade ?? '—'} ${trade.verdict ?? ''}${trade.suppressed ? ' 🔇' : ''}`,
+    };
+  },
+};
+
+const ADAPTERS   = { vol: VOL_ADAPTER, gold: GOLD_ADAPTER, decision: DECISION_ADAPTER };
+const BACK_LINKS = {
+  vol:      { href: 'vol-backtest.html',    label: '← Vol' },
+  claude:   { href: 'claude-backtest.html', label: '← Claude' },
+  gold:     { href: 'gold-backtest.html',   label: '← Gold Backtest' },
+  decision: { href: 'index.html',           label: '← Dashboard' },
+};
+
+const source  = new URLSearchParams(location.search).get('source') || 'vol';
+const adapter = ADAPTERS[source];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let allTrades = [], filtTrades = [], filtCapitals = [];
+let currentIdx = -1, currentTrade = null, fResult = '', fDir = '';
+let showLevels = true, panelOpen = false, loading = false;
+
+// Chart state
+let _chart = null, _cs = null;
+let _candles = [], _exitBar = null;
+let _levelLines = [], _fibLines = [];
+
+// Replay state
+let _replayMode        = false;
+let _replayCursor      = 0;
+let _replayStart       = 0;
+let _replayTimer       = null;
+let _replaySpeed       = 350;
+let _replayEntryMarked = false;
+let _replayExitMarked  = false;
+
+// ── LightweightCharts — dynamic load ─────────────────────────────────────────
+
+function _loadLWC(cb) {
+  if (window.LightweightCharts) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js';
+  s.onload  = cb;
+  s.onerror = () => _setVeil('Chart library failed to load — check network connection', false);
+  document.head.appendChild(s);
+}
+
+function _initChart() {
+  _loadLWC(() => {
+    const el = document.getElementById('bvChart');
+    if (!el || _chart) return;
+    _chart = LightweightCharts.createChart(el, {
+      autoSize:  true,
+      layout:    { background: { color: '#131722' }, textColor: '#d1d4dc' },
+      grid:      { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+      rightPriceScale: { borderColor: '#2a3348' },
+      timeScale: { borderColor: '#2a3348', timeVisible: true, secondsVisible: false },
+    });
+    _cs = _chart.addCandlestickSeries({
+      upColor: '#26a69a', downColor: '#ef5350',
+      borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+      wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    });
+    // Update replay line whenever the visible range changes (pan/zoom)
+    _chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      if (_replayMode) _updateReplayLine();
+    });
+    // If a trade was already selected while chart was loading, render it now
+    if (currentTrade && _candles.length) {
+      _renderChartFull();
+      _hideVeil();
+    }
+  });
+}
+
+// ── Chart rendering ───────────────────────────────────────────────────────────
+
+function _renderChartFull() {
+  if (!_cs) return;
+  _cs.setData(_candles);
+  _clearLevelLines();
+  if (showLevels && currentTrade) _renderLevels(currentTrade);
+  _renderMarkers(currentTrade);
+  if (_cs.priceScale) _cs.priceScale().applyOptions({ autoScale: true });
+  _zoomToTrade(currentTrade);
+}
+
+function _renderLevels(trade) {
+  if (!_cs || !showLevels) return;
+  const lvl = adapter.getLevels(trade);
+  if (!lvl) return;
+  const LS = LightweightCharts.LineStyle;
+  const add = (price, color, title, style) => {
+    if (price == null) return null;
+    return _cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title });
+  };
+  _levelLines = [
+    add(lvl.open,  '#6b7280', 'Open',  LS.Solid),
+    add(lvl.hl75H, '#fbbf24', 'HL75↑', LS.Dashed),
+    add(lvl.hl75L, '#fbbf24', 'HL75↓', LS.Dashed),
+    add(lvl.ocH,   '#4f7df0', 'OC↑',   LS.Dashed),
+    add(lvl.ocL,   '#4f7df0', 'OC↓',   LS.Dashed),
+    add(lvl.entry, trade.side === 'SELL' ? '#ef5350' : '#26a69a', 'Entry', LS.Solid),
+    add(lvl.tp,    '#26a69a', 'TP',    LS.Dotted),
+    add(lvl.sl,    '#ef5350', 'SL',    LS.Dotted),
+  ].filter(Boolean);
+}
+
+function _clearLevelLines() {
+  if (!_cs) return;
+  _levelLines.forEach(l => { try { _cs.removePriceLine(l); } catch {} });
+  _levelLines = [];
+}
+
+function _renderMarkers(trade, replayUpTo = null) {
+  if (!_cs || !trade) return;
+  const isSell = trade.side === 'SELL';
+  const markers = [];
+
+  if (trade.fill_time) {
+    const ts = _toEpochSec(trade.fill_time);
+    if (replayUpTo == null || ts <= replayUpTo) {
+      markers.push({
+        time: ts, size: 1,
+        position: isSell ? 'aboveBar' : 'belowBar',
+        color: isSell ? '#ef5350' : '#26a69a',
+        shape: isSell ? 'arrowDown' : 'arrowUp',
+        text: trade.side,
+      });
+    }
+  }
+
+  if (replayUpTo == null) {
+    const exitTs   = trade.exit_time ? _toEpochSec(trade.exit_time) : _exitBar?.time;
+    const exitType = trade.exit_time ? trade.outcome : _exitBar?.type;
+    if (exitTs) {
+      const win = exitType === 'win';
+      markers.push({
+        time: exitTs, size: 0.8,
+        position: isSell ? 'belowBar' : 'aboveBar',
+        color: win ? '#26a69a' : '#ef5350',
+        shape: win ? 'arrowUp' : 'arrowDown',
+        text: win ? 'TP' : 'SL',
+      });
+    }
+  }
+
+  _cs.setMarkers(markers.sort((a, b) => a.time - b.time));
+}
+
+function _zoomToTrade(trade) {
+  if (!_chart || !trade?.date) return;
+  const dayStart = _toEpochSec(trade.date + 'T00:00:00');
+  _chart.timeScale().setVisibleRange({ from: dayStart - 3 * 3600, to: dayStart + 27 * 3600 });
+}
+
+// Walk M1 bars to find exit bar when exit_time is not stored (legacy CSV)
+function _computeExitBar(trade) {
+  const lvl = adapter.getLevels(trade);
+  if (!lvl || !trade.fill_time || !_candles.length) return null;
+  const fillTs   = _toEpochSec(trade.fill_time);
+  const isSell   = trade.side === 'SELL';
+  const startIdx = _candles.findIndex(c => c.time >= fillTs);
+  if (startIdx < 0) return null;
+  for (let i = startIdx; i < _candles.length; i++) {
+    const { time, high, low } = _candles[i];
+    if (isSell) {
+      if (high >= lvl.sl) return { time, type: 'loss' };
+      if (low  <= lvl.tp) return { time, type: 'win'  };
+    } else {
+      if (low  <= lvl.sl) return { time, type: 'loss' };
+      if (high >= lvl.tp) return { time, type: 'win'  };
+    }
+  }
+  return null;
+}
+
+// ── Data loading ──────────────────────────────────────────────────────────────
+
+async function _loadTrades() {
+  _setVeil('Loading trades…', true);
+  try {
+    allTrades = await adapter.fetchTrades();
+    _applyFilters();
+    _setVeil('Select a trade from the list →', false);
+  } catch (e) {
+    _setVeil('⚠ ' + e.message, false);
+  }
+}
+
+function _applyFilters() {
+  filtTrades = allTrades.filter(t => {
+    if (fResult && t.outcome !== fResult) return false;
+    if (fDir    && t.side    !== fDir)    return false;
+    return true;
+  });
+  let cap = 100000;
+  filtCapitals = filtTrades.map(t => (cap = cap * (1 + (t.pnl_pct || 0) / 100), Math.round(cap)));
+  _renderList();
+  _updateStats();
+}
+
+function _updateStats() {
+  const n = filtTrades.length, wins = filtTrades.filter(t => t.outcome === 'win').length;
+  const wr = n ? (wins / n * 100).toFixed(1) : '—';
+  document.getElementById('bvStat').textContent = `${n.toLocaleString()} trades · Win ${wr}%`;
+  document.getElementById('bvListCount').textContent = `${n.toLocaleString()} trades`;
+  const lbl = document.getElementById('bvMobLabel');
+  if (lbl) lbl.textContent = currentTrade
+    ? `${currentTrade.instrument.toUpperCase()} · ${currentTrade.side} · ${currentTrade.date}`
+    : `${n.toLocaleString()} trades · Win ${wr}%`;
+}
+
+// ── Trade selection ───────────────────────────────────────────────────────────
+
+async function _selectTrade(idx) {
+  if (idx < 0 || idx >= filtTrades.length || loading) return;
+  loading = true;
+  _closeReplay(true);
+
+  const trade = filtTrades[idx];
+  currentIdx = idx; currentTrade = trade;
+
+  document.querySelectorAll('.bv-row').forEach(r => r.classList.remove('bv-selected'));
+  const row = document.querySelector(`.bv-row[data-idx="${idx}"]`);
+  if (row) { row.classList.add('bv-selected'); row.scrollIntoView({ block: 'nearest' }); }
+
+  document.getElementById('bvTitle').textContent = _isMobile()
+    ? 'Backtest Viewer' : `${trade.instrument} M1 — Backtest Viewer`;
+
+  _renderDetail(trade, idx);
+  _updateStats();
+
+  if (_isMobile()) _closePanel();
+
+  // Fetch M1 candles
+  _setVeil('Loading M1 data… (first load may take up to a minute)', true);
+  try {
+    const raw = await adapter.fetchCandles(trade);
+    _candles = raw.map(b => ({ time: _toEpochSec(b.time), open: b.open, high: b.high, low: b.low, close: b.close }));
+    _exitBar = trade.exit_time
+      ? { time: _toEpochSec(trade.exit_time), type: trade.outcome === 'win' ? 'win' : 'loss' }
+      : _computeExitBar(trade);
+
+    if (_cs) {
+      _renderChartFull();
+      _hideVeil();
+    } else {
+      // Chart not ready yet (LWC still loading) — render once it's ready
+      _initChart();
+      _setVeil('Loading chart…', true);
+    }
+  } catch (e) {
+    _exitBar = null;
+    _candles = [];
+    _setVeil('⚠ No M1 data — ' + e.message, false);
+  }
+
+  loading = false;
+}
+
+function _prevTrade() { _selectTrade(currentIdx - 1); }
+function _nextTrade() { _selectTrade(currentIdx + 1); }
+
+// ── Detail panel ──────────────────────────────────────────────────────────────
+
+function _renderDetail(trade, idx) {
+  const lvl = adapter.getLevels(trade), extra = adapter.getDetail ? adapter.getDetail(trade) : {};
+  const isSell = trade.side === 'SELL', capital = filtCapitals[idx];
+  const row = (l, v, c = '') => `<div class="bv-dr"><span class="bv-dl">${l}</span><span class="bv-dv ${c}">${v ?? '—'}</span></div>`;
+  const dirBadge = `<span class="bv-badge ${isSell ? 'sell' : 'buy'}">${trade.side}</span>`;
+  const rgBadge  = `<span class="bv-badge rg-${(trade.regime||'').toLowerCase()}">${trade.regime||'—'}</span>`;
+  const outColor = trade.outcome === 'win' ? 'bv-green' : trade.outcome === 'loss' ? 'bv-red' : 'bv-amber';
+  const pnlColor = (trade.pnl_pct||0) >= 0 ? 'bv-green' : 'bv-red';
+  const pnlStr   = trade.pnl_pct != null ? `${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(4)}%` : '—';
+  const fillTime = trade.fill_time
+    ? new Date(String(trade.fill_time).substring(0,19).replace(' ','T') + 'Z').toISOString().substring(11,16) : '—';
+  const asiaRange = extra.asiaRange || (trade.asia_low && trade.asia_high
+    ? `${(+trade.asia_low).toFixed(5)} – ${(+trade.asia_high).toFixed(5)}` : '—');
+  document.getElementById('bvDetailBody').innerHTML = [
+    row('Date',       trade.date),
+    row('Direction',  dirBadge),
+    row('Entry px',   lvl ? lvl.entry.toFixed(5) : trade.open?.toFixed(5)),
+    row('Entry time', fillTime),
+    row('SL',         lvl?.sl?.toFixed(5),  'bv-red'),
+    row('TP',         lvl?.tp?.toFixed(5),  'bv-green'),
+    row('SD Level',   trade.hl_75_pct?.toFixed(2) ?? extra.sdLevel),
+    row('Vol Regime', extra.volRegime || trade.vol_regime || '—'),
+    row('Asia range', asiaRange),
+    row('Regime',     rgBadge),
+    row('Leg',        trade.leg || '—'),
+    row('P&L',        pnlStr, pnlColor),
+    row('Result',     `<span class="${outColor}">${trade.outcome||'—'}</span>`),
+    row('Capital',    capital ? `$${capital.toLocaleString()}` : '—'),
+  ].join('');
+}
+
+// ── Trade list ────────────────────────────────────────────────────────────────
+
+function _renderList() {
+  const list = document.getElementById('bvList');
+  if (!list) return;
+  list.innerHTML = filtTrades.map((t, i) => {
+    const isSell = t.side === 'SELL', isWin = t.outcome === 'win', isLoss = t.outcome === 'loss';
+    const pnlStr = t.pnl_pct != null ? `${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(1)}%` : '';
+    const pnlCls = isWin ? 'bv-green' : isLoss ? 'bv-red' : 'bv-amber';
+    return `<div class="bv-row${i === currentIdx ? ' bv-selected' : ''}" data-idx="${i}">
+      <span class="bv-row-date">${t.date||'—'}</span>
+      <span class="bv-badge ${isSell ? 'sell' : 'buy'}">${t.side}</span>
+      <span class="bv-row-px">${(t.open||0).toFixed(4)}</span>
+      <span class="bv-outcome ${t.outcome||''}">${(t.outcome||'').toUpperCase()}</span>
+      <span class="bv-row-pnl ${pnlCls}">${pnlStr}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Replay ────────────────────────────────────────────────────────────────────
+
+function _openReplay() {
+  if (!currentTrade || !_candles.length || !_cs) return;
+  _replayMode = false;
+  const fillTs  = currentTrade.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+  let entryIdx  = fillTs ? _candles.findIndex(c => c.time >= fillTs) : -1;
+  if (entryIdx < 0) entryIdx = Math.floor(_candles.length / 2);
+  _replayStart        = Math.max(0, entryIdx - 30);
+  _replayCursor       = _replayStart;
+  _replayEntryMarked  = false;
+  _replayExitMarked   = false;
+  _replayMode         = true;
+
+  document.getElementById('bvReplayBar').style.display = '';
+  _setPlayLabel('▶ Play');
+  _cs.setData(_candles.slice(0, _replayCursor));
+  _clearLevelLines();
+  _cs.setMarkers([]);
+
+  // Zoom to the replay start window: 5 bars before, ~70 bars ahead
+  const startBar = _candles[_replayStart];
+  if (startBar && _chart) {
+    _chart.timeScale().setVisibleRange({
+      from: startBar.time - 5 * 60,
+      to:   startBar.time + 70 * 60,
+    });
+  }
+
+  _initScrubberMarkers();
+  _updateReplayState();
+}
+
+function _closeReplay(silent = false) {
+  if (!_replayMode && !silent) return;
+  _stopReplayTimer();
+  _replayMode = false;
+  document.getElementById('bvReplayBar').style.display = 'none';
+  document.getElementById('bvReplayLine').style.display = 'none';
+  _resetScrubber();
+  if (!silent && currentTrade && _candles.length && _cs) _renderChartFull();
+}
+
+function _togglePlay() {
+  if (_replayTimer) {
+    _stopReplayTimer();
+    _setPlayLabel('▶ Play');
+  } else {
+    if (_replayCursor >= _candles.length) _resetReplay();
+    _startReplayTimer();
+    _setPlayLabel('⏸ Pause');
+  }
+}
+
+function _setPlayLabel(txt) {
+  document.getElementById('bvPlayBtn').textContent = txt;
+}
+
+function _startReplayTimer() {
+  _replayTimer = setInterval(_stepReplay, _replaySpeed);
+}
+
+function _stopReplayTimer() {
+  if (_replayTimer) { clearInterval(_replayTimer); _replayTimer = null; }
+}
+
+function _stepReplay() {
+  if (!_replayMode || !_cs) return;
+  if (_replayCursor >= _candles.length) {
+    _stopReplayTimer();
+    _setPlayLabel('▶ Play');
+    return;
+  }
+  _cs.update(_candles[_replayCursor]);
+  _replayCursor++;
+  const curr   = _candles[_replayCursor - 1];
+  const fillTs = currentTrade?.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+
+  if (fillTs && !_replayEntryMarked && curr?.time >= fillTs) {
+    _replayEntryMarked = true;
+    _renderMarkers(currentTrade, curr.time);
+    if (showLevels) _renderLevels(currentTrade);
+  }
+  if (_exitBar && !_replayExitMarked && curr?.time >= _exitBar.time) {
+    _replayExitMarked = true;
+    _renderMarkers(currentTrade, null);
+    _stopReplayTimer();
+    _setPlayLabel('▶ Play');
+  }
+
+  _autoScrollToBar();
+  _updateReplayState();
+}
+
+function _stepBackReplay() {
+  if (!_replayMode || !_cs || _replayCursor <= _replayStart) return;
+  _stopReplayTimer();
+  _setPlayLabel('▶ Play');
+  _replayCursor--;
+  _cs.setData(_candles.slice(0, _replayCursor));
+
+  // Recompute which markers should be visible at the new cursor
+  const curr   = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  const fillTs = currentTrade?.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+  _replayEntryMarked = !!(curr && fillTs && curr.time >= fillTs);
+  _replayExitMarked  = !!(curr && _exitBar && curr.time >= _exitBar.time);
+
+  _clearLevelLines();
+  _cs.setMarkers([]);
+  if (_replayEntryMarked) {
+    if (showLevels) _renderLevels(currentTrade);
+    _renderMarkers(currentTrade, _replayExitMarked ? null : curr.time);
+  }
+
+  _updateReplayState();
+}
+
+function _resetReplay() {
+  _stopReplayTimer();
+  _setPlayLabel('▶ Play');
+  _replayCursor = _replayStart;
+  _replayEntryMarked = false;
+  _replayExitMarked  = false;
+  if (_cs) {
+    _cs.setData(_candles.slice(0, _replayCursor));
+    _clearLevelLines();
+    _cs.setMarkers([]);
+  }
+  // Scroll back to the replay start
+  const startBar = _candles[_replayStart];
+  if (startBar && _chart) {
+    _chart.timeScale().setVisibleRange({
+      from: startBar.time - 5 * 60,
+      to:   startBar.time + 70 * 60,
+    });
+  }
+  _updateReplayState();
+}
+
+// Seek to a fractional position [0,1] on the scrubber
+function _scrubTo(pct) {
+  if (!_replayMode || !_cs) return;
+  const total = _candles.length - _replayStart;
+  _replayCursor = Math.max(_replayStart, Math.min(_candles.length, Math.round(pct * total) + _replayStart));
+  _stopReplayTimer();
+  _setPlayLabel('▶ Play');
+  _cs.setData(_candles.slice(0, _replayCursor));
+
+  const curr   = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  const fillTs = currentTrade?.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+  _replayEntryMarked = !!(curr && fillTs && curr.time >= fillTs);
+  _replayExitMarked  = !!(curr && _exitBar && curr.time >= _exitBar.time);
+
+  _clearLevelLines();
+  _cs.setMarkers([]);
+  if (_replayEntryMarked) {
+    if (showLevels) _renderLevels(currentTrade);
+    _renderMarkers(currentTrade, _replayExitMarked ? null : curr?.time);
+  }
+
+  _autoScrollToBar();
+  _updateReplayState();
+}
+
+// Keep the current replay bar visible when auto-playing
+function _autoScrollToBar() {
+  if (!_chart || !_candles.length) return;
+  const curr = _candles[_replayCursor - 1];
+  if (!curr) return;
+  const ts = _chart.timeScale();
+  const x  = ts.timeToCoordinate(curr.time);
+  const w  = (document.getElementById('bvChart').clientWidth || 800) - 70;
+  // Only scroll if the bar has drifted off-screen
+  if (x !== null && x >= 20 && x <= w - 20) return;
+  ts.setVisibleRange({
+    from: curr.time - 45 * 60,
+    to:   curr.time + 15 * 60,
+  });
+}
+
+// Update scrubber position and the "now" vertical line
+function _updateReplayState() {
+  const total = _candles.length - _replayStart;
+  const pos   = _replayCursor - _replayStart;
+  const pct   = total > 0 ? (pos / total) : 0;
+  const pctPx = (pct * 100).toFixed(2) + '%';
+
+  document.getElementById('bvScrubFill').style.width = pctPx;
+  document.getElementById('bvScrubThumb').style.left = pctPx;
+
+  // Timestamp
+  const bar = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  document.getElementById('bvReplayTs').textContent = bar
+    ? new Date(bar.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z'
+    : '—';
+
+  _updateReplayLine();
+}
+
+// Position the vertical "now" line overlay on the chart
+function _updateReplayLine() {
+  const line = document.getElementById('bvReplayLine');
+  if (!line || !_chart) return;
+  const curr = _replayCursor > 0 ? _candles[_replayCursor - 1] : null;
+  if (!curr) { line.style.display = 'none'; return; }
+  const x = _chart.timeScale().timeToCoordinate(curr.time);
+  if (x === null) { line.style.display = 'none'; return; }
+  line.style.left    = Math.round(x) + 'px';
+  line.style.display = 'block';
+}
+
+// Place entry and exit tick marks on the scrubber track
+function _initScrubberMarkers() {
+  const total = _candles.length - _replayStart;
+  if (total <= 0) return;
+
+  const entryEl = document.getElementById('bvScrubEntry');
+  const exitEl  = document.getElementById('bvScrubExit');
+
+  const fillTs = currentTrade?.fill_time ? _toEpochSec(currentTrade.fill_time) : null;
+  if (fillTs) {
+    const ei  = _candles.findIndex(c => c.time >= fillTs);
+    const pct = ei >= _replayStart ? ((ei - _replayStart) / total * 100).toFixed(2) + '%' : '-1px';
+    entryEl.style.left    = pct;
+    entryEl.style.display = '';
+  } else {
+    entryEl.style.display = 'none';
+  }
+
+  if (_exitBar) {
+    const xi  = _candles.findIndex(c => c.time >= _exitBar.time);
+    const pct = xi >= _replayStart ? ((xi - _replayStart) / total * 100).toFixed(2) + '%' : '-1px';
+    exitEl.style.left    = pct;
+    exitEl.style.display = '';
+  } else {
+    exitEl.style.display = 'none';
+  }
+}
+
+function _resetScrubber() {
+  document.getElementById('bvScrubFill').style.width  = '0%';
+  document.getElementById('bvScrubThumb').style.left  = '0%';
+  document.getElementById('bvScrubEntry').style.display = 'none';
+  document.getElementById('bvScrubExit').style.display  = 'none';
+}
+
+// Wire up scrubber click + drag
+function _initScrubberEvents() {
+  const scrubber = document.getElementById('bvScrubber');
+  const track    = document.getElementById('bvScrubTrack');
+  let dragging   = false;
+
+  function getPct(e) {
+    const rect = track.getBoundingClientRect();
+    const cx   = e.touches ? e.touches[0].clientX : e.clientX;
+    return Math.max(0, Math.min(1, (cx - rect.left) / rect.width));
+  }
+
+  scrubber.addEventListener('mousedown', e => {
+    e.preventDefault();
+    dragging = true;
+    if (_replayMode) _scrubTo(getPct(e));
+  });
+  document.addEventListener('mousemove', e => {
+    if (dragging && _replayMode) _scrubTo(getPct(e));
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+
+  scrubber.addEventListener('touchstart', e => {
+    dragging = true;
+    if (_replayMode) _scrubTo(getPct(e));
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (dragging && _replayMode) _scrubTo(getPct(e));
+  }, { passive: true });
+  document.addEventListener('touchend', () => { dragging = false; });
+}
+
+// ── Levels & view controls ────────────────────────────────────────────────────
+
+function _toggleLevels() {
+  showLevels = !showLevels;
+  ['bvLevels', 'bvPanelLevels'].forEach(id => document.getElementById(id)?.classList.toggle('bv-active', showLevels));
+  if (!currentTrade) return;
+  if (showLevels) _renderLevels(currentTrade);
+  else _clearLevelLines();
+}
+
+function _reCenter() {
+  if (currentTrade) _zoomToTrade(currentTrade);
+}
+
+function _openTradingView() {
+  if (!currentTrade) return;
+  const sym = currentTrade.instrument.toUpperCase().replace(/[^A-Z]/g, '');
+  window.open(`https://www.tradingview.com/chart/?symbol=FX:${sym}&interval=1`, '_blank');
+}
+
+// ── Mobile panel ──────────────────────────────────────────────────────────────
+
+function _openPanel()   { if (!_isMobile()) return; panelOpen = true;  document.getElementById('bvPanel').classList.add('bv-panel-open'); document.getElementById('bvBackdrop').classList.add('bv-visible'); }
+function _closePanel()  { if (!_isMobile()) return; panelOpen = false; document.getElementById('bvPanel').classList.remove('bv-panel-open'); document.getElementById('bvBackdrop').classList.remove('bv-visible'); }
+function _togglePanel() { panelOpen ? _closePanel() : _openPanel(); }
+
+// ── Veil ──────────────────────────────────────────────────────────────────────
+
+function _setVeil(msg, spinner) {
+  document.getElementById('bvVeil').style.display        = '';
+  document.getElementById('bvVeilMsg').textContent       = msg;
+  document.getElementById('bvVeilSpinner').style.display = spinner ? '' : 'none';
+}
+function _hideVeil() { document.getElementById('bvVeil').style.display = 'none'; }
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+if (!adapter) {
+  document.body.innerHTML = `<div style="padding:40px;color:#ef5350;font-family:monospace">Unknown source "${source}"</div>`;
+} else {
+  // Filters
+  document.getElementById('bvFResult').addEventListener('change', e => { fResult = e.target.value; _applyFilters(); });
+  document.getElementById('bvFDir')   .addEventListener('change', e => { fDir    = e.target.value; _applyFilters(); });
+
+  // Top-bar controls
+  document.getElementById('bvLevels')   .addEventListener('click', _toggleLevels);
+  document.getElementById('bvReCenter') .addEventListener('click', _reCenter);
+  document.getElementById('bvReplayBtn').addEventListener('click', _openReplay);
+  document.getElementById('bvTvBtn')    .addEventListener('click', _openTradingView);
+
+  // Replay transport
+  document.getElementById('bvStepBackBtn').addEventListener('click', _stepBackReplay);
+  document.getElementById('bvPlayBtn')    .addEventListener('click', _togglePlay);
+  document.getElementById('bvStepBtn')    .addEventListener('click', _stepReplay);
+  document.getElementById('bvResetBtn')   .addEventListener('click', _resetReplay);
+  document.getElementById('bvExitReplay') .addEventListener('click', () => _closeReplay());
+
+  // Speed buttons
+  document.getElementById('bvSpeedGroup').addEventListener('click', e => {
+    const btn = e.target.closest('.bv-speed-btn');
+    if (!btn) return;
+    _replaySpeed = +btn.dataset.ms;
+    document.querySelectorAll('.bv-speed-btn').forEach(b => b.classList.toggle('bv-active', b === btn));
+    if (_replayTimer) { _stopReplayTimer(); _startReplayTimer(); }
+  });
+
+  // Trade nav
+  document.getElementById('bvPrevBtn').addEventListener('click', _prevTrade);
+  document.getElementById('bvNextBtn').addEventListener('click', _nextTrade);
+  document.getElementById('bvList')   .addEventListener('click', e => { const r = e.target.closest('.bv-row'); if (r) _selectTrade(+r.dataset.idx); });
+
+  // Mobile
+  document.getElementById('bvMobToggle')    .addEventListener('click', _togglePanel);
+  document.getElementById('bvBackdrop')     .addEventListener('click', _closePanel);
+  document.getElementById('bvClosePanel')   .addEventListener('click', _closePanel);
+  document.getElementById('bvPanelLevels')  .addEventListener('click', _toggleLevels);
+  document.getElementById('bvPanelReCenter').addEventListener('click', () => { _reCenter(); _closePanel(); });
+  document.getElementById('bvMobPrev')      .addEventListener('click', _prevTrade);
+  document.getElementById('bvMobNext')      .addEventListener('click', _nextTrade);
+
+  // Keyboard — arrow keys are hijacked for step during replay
+  document.addEventListener('keydown', e => {
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+    if (_replayMode) {
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); _stepBackReplay(); return; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); _stepReplay();     return; }
+      if (e.key === ' ')          { e.preventDefault(); _togglePlay();     return; }
+      if (e.key === 'Escape')     { _closeReplay(); return; }
+      return;
+    }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); _prevTrade(); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); _nextTrade(); }
+    if (e.key === 'r' || e.key === 'R') _openReplay();
+    if (e.key === 'l' || e.key === 'L') _toggleLevels();
+    if (e.key === 'Enter') _reCenter();
+    if (e.key === 'Escape') _closePanel();
+  });
+
+  // Scrubber drag/click
+  _initScrubberEvents();
+
+  // Back link
+  const back = BACK_LINKS[source];
+  if (back) {
+    const a = document.createElement('a');
+    a.href = back.href; a.textContent = back.label;
+    a.style.cssText = 'font-family:"DM Mono",monospace;font-size:11px;color:#5a6380;text-decoration:none;white-space:nowrap;flex-shrink:0;order:-1;margin-right:4px';
+    a.addEventListener('mouseenter', () => a.style.color = '#9aa8c0');
+    a.addEventListener('mouseleave', () => a.style.color = '#5a6380');
+    document.getElementById('bvTopbar').insertBefore(a, document.getElementById('bvTopbar').firstChild);
+  }
+
+  // Decision engine date range controls
+  if (source === 'decision') {
+    const rangeEl = document.getElementById('bvDecisionRange');
+    const fromEl  = document.getElementById('bvDateFrom');
+    const toEl    = document.getElementById('bvDateTo');
+    rangeEl.style.display = 'flex';
+    toEl.value   = _today();
+    fromEl.value = _dateOffset(_today(), -7);
+    _decisionFrom = fromEl.value;
+    _decisionTo   = toEl.value;
+
+    const _applyRange = () => {
+      _decisionFrom = fromEl.value || _dateOffset(_today(), -7);
+      _decisionTo   = toEl.value   || _today();
+      _loadTrades();
+    };
+    const _setPreset = (days) => {
+      toEl.value   = _today();
+      fromEl.value = days > 0 ? _dateOffset(_today(), -days) : '2020-01-01';
+      _decisionFrom = fromEl.value;
+      _decisionTo   = toEl.value;
+      _loadTrades();
+    };
+    document.getElementById('bvDateLoad') .addEventListener('click', _applyRange);
+    document.getElementById('bvPreset7')  .addEventListener('click', () => _setPreset(7));
+    document.getElementById('bvPreset14') .addEventListener('click', () => _setPreset(14));
+    document.getElementById('bvPreset30') .addEventListener('click', () => _setPreset(30));
+    document.getElementById('bvPresetAll').addEventListener('click', () => _setPreset(0));
+  }
+
+  // Start: load trades + chart in parallel
+  _initChart();
+  _loadTrades();
+
+  window._bv = { selectTrade: _selectTrade };
+}
+</script>
+</body>
+</html>

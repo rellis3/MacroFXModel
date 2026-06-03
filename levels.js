@@ -22,7 +22,7 @@
 import * as kv from './kv.js';
 import { fitHMM, hmmSignalScore, compute30mSwingRegime } from './hmm.js';
 import { gradeEntry } from './js/trade-grade.js';
-import { detectConfluencesCore } from './js/confluence-core.js';
+import { detectConfluencesCore, mergeCrossSessionConfs } from './js/confluence-core.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -142,18 +142,21 @@ async function fetchFredLatest(seriesId) {
 
 export async function fetchGlobalMacro() {
   if (!process.env.FRED_KEY) return null;
+  // Read from the pre-populated fred_data_v3 KV cache written by refreshFredDashboard().
+  // This avoids 5 concurrent FRED API requests on every 30-min levels refresh, which
+  // competed with the sequential startup refresh and caused rate-limit failures.
   try {
-    const [vix, hy, nfci, gs10, gs2] = await Promise.all([
-      fetchFredLatest('VIXCLS'),
-      fetchFredLatest('BAMLH0A0HYM2'),
-      fetchFredLatest('NFCI'),
-      fetchFredLatest('GS10'),
-      fetchFredLatest('GS2'),
-    ]);
-    return { vix, hy, nfci, gs10, gs2 };
-  } catch {
-    return null;
-  }
+    const raw = await kv.get('fred_data_v3');
+    if (raw) {
+      const { d } = JSON.parse(raw);
+      if (d) {
+        const toVal = k => d[k]?.value != null ? { current: d[k].value, prev: d[k].prev ?? d[k].value } : null;
+        return { vix: toVal('vix'), hy: toVal('hy'), nfci: toVal('nfci'), gs10: toVal('us10y'), gs2: toVal('us2y') };
+      }
+    }
+  } catch {}
+  // KV empty (server refresh still in progress) — skip macro enrichment this cycle.
+  return null;
 }
 
 // ── Fibonacci computation ─────────────────────────────────────────────────────
@@ -578,6 +581,7 @@ function buildEntries(allConfs, currentPrice, atr, sym, hmmData, bars5m, bars30m
     if (c.isTight)             tags.push('Tight Fib');
     if (c.source === 'asia')   tags.push('Asia Fib');
     if (c.source === 'monday') tags.push('Monday Fib');
+    if (c.source === 'cross')  tags.push('Asia Fib');  // cross = Asia+Monday merge; primary label
     if (c.crossSessionMatch)   tags.push('Cross-Session');
     if ((c.density || 1) >= 3) tags.push('Dense Zone');
     if (pivotMatch)            tags.push(`Pivot ${pivotMatch}`);
@@ -635,25 +639,9 @@ function buildEntries(allConfs, currentPrice, atr, sym, hmmData, bars5m, bars30m
       rrRatio,
       tags,
       rangeBias:     { confirmCount: rbias.confirmCount, conflictCount: rbias.conflictCount },
-      // signalAligned omitted intentionally — no full macro bias server-side
+      signalAligned: signalScore >= 50,
     };
   }).filter(Boolean);
-}
-
-// ── Cross-session cluster marking ─────────────────────────────────────────────
-
-function detectCrossSessionClusters(asiaConfs, mondayConfs, sym, caps) {
-  const bucket  = getCapBucket(sym, caps);
-  const pipSize = getPipSize(sym);
-  const threshold = (bucket.confluencePips ?? 2) * pipSize;
-  for (const ac of asiaConfs) {
-    for (const mc of mondayConfs) {
-      if (Math.abs(ac.price - mc.price) <= threshold) {
-        ac.crossSessionMatch = true;
-        mc.crossSessionMatch = true;
-      }
-    }
-  }
 }
 
 // ── Per-pair refresh ──────────────────────────────────────────────────────────
@@ -703,7 +691,7 @@ export async function refreshPair(sym, globalData = {}) {
       asiaConfs = detectConfluencesCore(
         projectFibLevels(todayRange),
         projectFibLevels(yesterdayRange),
-        { pipSize, normalDistance: normalDist, tightDistance: tightDist, mergeDistance: mergeDist, priceMode, clusterMerge, source: 'asia' }
+        { pipSize, normalDistance: normalDist, tightDistance: tightDist, mergeDistance: mergeDist, priceMode, clusterMerge, source: 'asia', sessionRange: todayRange?.range }
       );
     }
 
@@ -713,7 +701,7 @@ export async function refreshPair(sym, globalData = {}) {
       mondayConfs = detectConfluencesCore(
         projectFibLevels(curRange),
         projectFibLevels(prevRange),
-        { pipSize, normalDistance: normalDist, tightDistance: tightDist, mergeDistance: mergeDist, priceMode, clusterMerge, source: 'monday' }
+        { pipSize, normalDistance: normalDist, tightDistance: tightDist, mergeDistance: mergeDist, priceMode, clusterMerge, source: 'monday', sessionRange: curRange?.range }
       );
     }
 
@@ -722,14 +710,14 @@ export async function refreshPair(sym, globalData = {}) {
       return null;
     }
 
-    detectCrossSessionClusters(asiaConfs, mondayConfs, sym, caps);
+    const allConfs = mergeCrossSessionConfs(asiaConfs, mondayConfs, { mergeDistance: mergeDist, priceMode });
 
     const atr          = computeEmaAtr(bars30m);
     const currentPrice = await fetchCurrentPrice(sym);
     const fredData     = globalData.fredData ?? null;
 
     const entries = buildEntries(
-      [...asiaConfs, ...mondayConfs],
+      allConfs,
       currentPrice, atr, sym,
       hmmData, bars5m, bars30m, barsDaily, fredData
     );

@@ -20,7 +20,10 @@ async function compassLoadCache(sym) {
           !obj.spreadDxy  || obj.spreadDxy.length  === 0 ||
           !obj.spread10y  || obj.spread10y.length  === 0
         )) { /* fall through */ }
-        else if ((obj._v || 1) >= COMPASS_CACHE_VERSION) return obj;
+        else if ((obj._v || 1) >= COMPASS_CACHE_VERSION) {
+          if (!obj.spread10y || obj.spread10y.length < 5) { /* fall through — cached with empty spread */ }
+          else return obj;
+        }
       }
     }
   } catch(e) {}
@@ -33,6 +36,7 @@ async function compassLoadCache(sym) {
         !obj.spread10y || obj.spread10y.length === 0
       )) return null;
       if ((obj._v || 1) < COMPASS_CACHE_VERSION) return null;
+      if (!obj.spread10y || obj.spread10y.length < 5) return null;
       try { localStorage.setItem(key, JSON.stringify(obj)); } catch(e) {}
       return obj;
     }

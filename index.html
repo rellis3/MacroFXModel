@@ -45,9 +45,12 @@
   <button class="dark-btn" onclick="saveAllPairsToJournal()" id="journalAllBtn" title="Save ALL pairs' levels to Trade Journal in one go" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>All Pairs</span></button>
   <a href="journal.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Open Trade Journal">📒</button></a>
   <a href="backtest.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Backtest">📈 Backtest</button></a>
+  <a href="claude-backtest.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Asia Confluence Backtester">🔬 Asia BT</button></a>
   <a href="analysis.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="5-Year Pattern Analysis Engine">📊 Pattern Lab</button></a>
   <a href="bot-config.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Python Bot Config">🤖 Bot</button></a>
   <a href="gold.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Gold Macro Model — XAU/USD two-layer regime">🥇 Gold</button></a>
+  <a href="vol-forecast.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Vol & Range Forecast — EWMA daily range forecaster" style="border-color:#4f7df0;color:#4f7df0">📐 Vol Forecast</button></a>
+  <a href="vol-backtest.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Vol Range Backtester — walk-forward strategy results" style="border-color:#10b981;color:#10b981">📊 Vol BT</button></a>
   <button class="dark-btn" onclick="openBetaPanel()" id="betaBtn" title="Beta Factor Exposure Monitor — stochastic control system" style="border-color:#7c6fe0;color:#9d96f0"><span>β</span><span>Beta</span></button>
   <div class="live-pill"><div class="live-dot"></div>Live</div>
   <span class="upd" id="upd"></span>
@@ -293,6 +296,10 @@ Example:
         <input type="checkbox" id="alertRegimeChange" style="width:14px;height:14px;cursor:pointer" checked>
         Regime change alerts
       </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer" title="Silence Telegram for NOT PERMITTED directions — they still appear in the suppressed log">
+        <input type="checkbox" id="alertSuppressBlocked" style="width:14px;height:14px;cursor:pointer">
+        🔇 Suppress NOT PERMITTED
+      </label>
     </div>
 
     <div class="oi-form-row" style="gap:10px;margin-bottom:10px">
@@ -316,6 +323,15 @@ Example:
         <label class="oi-lbl">Flip break candles</label>
         <input class="oi-input" type="number" id="alertFlipCandles" value="3" min="1" max="20" step="1">
         <div class="oi-hint">Full-body closes beyond level to trigger polarity flip</div>
+      </div>
+      <div>
+        <label class="oi-lbl">VuManChu check</label>
+        <select class="oi-input" id="alertVuManChu">
+          <option value="off">Off — disabled</option>
+          <option value="info">Info — show in message only</option>
+          <option value="filter">Filter — affects grade</option>
+        </select>
+        <div class="oi-hint">VuManChu Cipher B · WT/MF momentum shown in every alert</div>
       </div>
     </div>
 

@@ -89,6 +89,18 @@ export function gradeEntry(entry, hmmData = null, intraday30m = null) {
     grade = 'D';    color = '#64748b';
   }
 
+  // ── R:R ratio gate ────────────────────────────────────────────────────────
+  // A high signal score with poor risk/reward is a losing expectancy trade.
+  const rr = parseFloat(entry.rrRatio ?? entry.rr ?? 0) || 0;
+  if (rr > 0 && grade !== 'SKIP' && grade !== 'D') {
+    if (rr < 1.0) {
+      if (grade === 'A+' || grade === 'A') { grade = 'B'; color = '#f59e0b'; }
+      warnings.push(`R:R 1:${rr} — below breakeven`);
+    } else if (rr < 1.5 && grade === 'A+') {
+      grade = 'A'; color = '#4ade80';  // A+ requires at least 1.5R
+    }
+  }
+
   const verdict = grade === 'SKIP'                    ? 'SKIP'
                 : (grade === 'A+' || grade === 'A')   ? 'TAKE'
                 : grade === 'B'                       ? 'WATCH'

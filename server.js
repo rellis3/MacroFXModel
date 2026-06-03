@@ -10,23 +10,31 @@
 // Required env vars: OANDA_KEY  (+ same vars as _worker.js)
 // Optional:         MONITOR_MS  (default 3000), DATA_DIR, PORT
 
-import express           from 'express';
-import path              from 'path';
-import { fileURLToPath } from 'url';
+import express              from 'express';
+import path                from 'path';
+import { fileURLToPath }   from 'url';
+import fs                  from 'fs';
+import { execFile }        from 'child_process';
+import { promisify }       from 'util';
 import * as kv           from './kv.js';
 import worker            from './_worker.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
 import { computeHMM5m } from './hmm5m.js';
-import { computeHMM5mV2 } from './hmm5m-v2.js';
-import { trainHMM5mAll, loadTrainedParams } from './hmm5m-train.js';
+import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
+import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
 import { detectPolarityFlip } from './js/polarity.js';
+import { assessEntry, resampleBars } from './js/vumanchu.js';
+import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus } from './js/volForecastScheduler.js';
+import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
+import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS } from './js/volBacktestM1Engine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
 const MONITOR_MS        = parseInt(process.env.MONITOR_MS        || '3000');
 const REFRESH_LEVELS_MS  = parseInt(process.env.REFRESH_LEVELS_MS  || String(30 * 60 * 1000));
 const HMM5M_REFRESH_MS        = parseInt(process.env.HMM5M_REFRESH_MS   || String(30 * 1000)); // 30s — V2 bot polls at 30s cadence
+const MACRO_REFRESH_MS        = parseInt(process.env.MACRO_REFRESH_MS    || String(6 * 60 * 60 * 1000)); // 6h — FRED data updates once daily
 const HMM5M_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // min gap between regime-change Telegram alerts per pair
 
 // ── Cloudflare env-compatible object ─────────────────────────────────────────
@@ -78,6 +86,14 @@ const PRICE_DIGITS = {
   'USD/JPY': 3, 'GBP/JPY': 3, 'XAU/USD': 2, 'NAS100_USD': 1,
 };
 
+// Typical OANDA spread in pips per pair — used as baseline for spread quality gate
+const TYPICAL_SPREAD_PIPS = {
+  'EUR/USD': 0.6, 'GBP/USD': 0.9, 'USD/JPY': 0.7,
+  'AUD/USD': 0.9, 'NZD/USD': 1.1, 'USD/CAD': 1.1,
+  'USD/CHF': 1.0, 'GBP/JPY': 2.0,
+  'XAU/USD': 0.3, 'NAS100_USD': 1.0,
+};
+
 const DEFAULT_CFG = {
   enabled:        false,
   browserEnabled: true,  // browser tab proximity alerts (server ignores this)
@@ -85,8 +101,10 @@ const DEFAULT_CFG = {
   minGrade:       'B',   // A/B/C/D — minimum grade to alert on
   pairs:       [],
   proxPips:    { default: 5, 'XAU/USD': 15, 'NAS100_USD': 30 },
-  cooldownMin: 60,
+  cooldownMin:    60,   // minutes before same level+direction can re-alert
+  pairCooldownMin: 240, // minutes before any alert on the same pair (4 h default)
   onlyAligned: false,
+  vuManChu:    'info',  // 'off' | 'info' (show in message only) | 'filter' (affect grade)
   regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
 };
 
@@ -95,6 +113,7 @@ const DEFAULT_CFG = {
 const state = {
   levels:              {},   // { 'EUR/USD': { data: [...], timestamp: ms } }
   cooldowns:           {},   // { 'EURUSD_1.0847_long': lastSentMs }
+  pairLastAlert:       {},   // { 'EUR/USD': lastSentMs } — per-pair rate-limit
   prices:              {},   // { 'EUR/USD': { price: n, at: ms } }
   hmmRegimes:          {},   // { 'EUR/USD': { regime, trendDir, rangeProb, ... } } — daily HMM
   hmm5mRegimes:        {},   // { 'EUR/USD': { regime, pBull, pBear, pRange, confidence, ... } } — live 5m HMM
@@ -156,13 +175,25 @@ async function reloadConfig() {
 
 async function reloadLevels() {
   for (const sym of DEFAULT_PAIRS) {
-    const raw = await kv.get(`ai_entries_${sym.replace('/', '')}`);
+    const symKey = sym.replace('/', '');
+    const [raw, decisionRaw] = await Promise.all([
+      kv.get(`ai_entries_${symKey}`),
+      kv.get(`ai_decision_meta_${symKey}`),
+    ]);
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
         // Normalize: server writes { data: entries[] }, browser writes { data: { entries, meta } }
         if (!Array.isArray(parsed.data) && Array.isArray(parsed.data?.entries)) {
+          if (parsed.data.meta) parsed.meta = parsed.data.meta;
           parsed.data = parsed.data.entries;
+        }
+        // Merge decision meta from dedicated CF-KV key (browser-written, CF-routed)
+        if (decisionRaw) {
+          try {
+            const dm = JSON.parse(decisionRaw);
+            parsed.meta = { ...(parsed.meta ?? {}), ...(dm.data ?? dm) };
+          } catch {}
         }
         state.levels[sym] = parsed;
         // Merge intraday30m into hmmRegimes when present (set by levels.js refreshPair)
@@ -197,9 +228,13 @@ async function fetchAllPrices(pairs) {
         const fetched = new Set();
         for (const p of (d.prices ?? [])) {
           if (p.bids?.[0] && p.asks?.[0]) {
-            const sym   = p.instrument.replace('_', '/');
-            const price = (parseFloat(p.bids[0].price) + parseFloat(p.asks[0].price)) / 2;
-            state.prices[sym] = { price, at: now };
+            const sym      = p.instrument.replace('_', '/');
+            const bid      = parseFloat(p.bids[0].price);
+            const ask      = parseFloat(p.asks[0].price);
+            const price    = (bid + ask) / 2;
+            const pipSz    = PIP_SIZE[sym] ?? 0.0001;
+            const spreadPips = (ask - bid) / pipSz;
+            state.prices[sym] = { price, spreadPips, at: now };
             fetched.add(sym);
           }
         }
@@ -301,7 +336,7 @@ function computeGrade(entry, hmmData, swing30m = null) {
   const warnings = [];
   let   hardStop = false;
 
-  if (hmmData?.regime) {
+  if (hmmData?.regime && hmmData.reliable !== false) {
     const isLong    = entry.direction === 'long';
     const withTrend = (isLong && hmmData.trendDir === 'BULL') || (!isLong && hmmData.trendDir === 'BEAR');
     if (hmmData.regime === 'RANGE') {
@@ -354,7 +389,48 @@ function formatAlert(sym, entry, price, distPips) {
   const hmm   = state.hmmRegimes[sym];
   const swing = hmm?.intraday30m ?? null;
   const g     = computeGrade(entry, hmm, swing);
-  const vi    = g.verdict === 'TAKE' ? '✅' : g.verdict === 'WATCH' ? '👁' : g.verdict === 'CAUTION' ? '⚠️' : '🚫';
+
+  // ── Post-grade overrides (applied at alert time regardless of who computed grade) ──
+
+  // 1. R:R gate: cap grade when risk/reward is poor
+  const rr = parseFloat(entry.rrRatio ?? 0) || 0;
+  if (rr > 0 && g.grade !== 'SKIP') {
+    if (rr < 1.0) {
+      if (g.grade === 'A+' || g.grade === 'A') g.grade = 'B';
+      g.warnings.push(`R:R 1:${rr} below breakeven`);
+      g.verdict = 'WATCH';
+    } else if (rr < 1.5 && g.grade === 'A+') {
+      g.grade  = 'A';
+      g.verdict = 'TAKE';
+    }
+  }
+
+  // 2. Spread gate: warn when execution cost is elevated
+  const liveSpreadPips  = state.prices[sym]?.spreadPips ?? null;
+  const typicalSpread   = TYPICAL_SPREAD_PIPS[sym] ?? 1.0;
+  const spreadRatio     = liveSpreadPips != null ? liveSpreadPips / typicalSpread : null;
+  if (spreadRatio != null && spreadRatio > 3.0) {
+    g.grade   = g.grade === 'A+' ? 'A' : g.grade === 'A' ? 'B' : g.grade;
+    g.verdict = g.grade === 'A+' || g.grade === 'A' ? 'TAKE' : 'WATCH';
+    g.warnings.push(`Spread ${liveSpreadPips.toFixed(1)}p (${spreadRatio.toFixed(1)}× typical) — wait`);
+  }
+
+  // 3. Event risk: downgrade if browser flagged a high-impact event on this entry
+  const entryTags = (entry.tags ?? []).map(t => typeof t === 'string' ? t : (t.label ?? ''));
+  const hasHighEvent = entryTags.some(t => t.includes('Event ⚠'));
+  if (hasHighEvent && (g.grade === 'A+' || g.grade === 'A')) {
+    g.grade   = 'B';
+    g.verdict = 'WATCH';
+    g.warnings.push('High-impact event risk');
+  }
+
+  // 4. HMM reliability gate: suppress confident regime label when states aren't well-separated
+  if (hmm && hmm.reliable === false) {
+    g.reasons = g.reasons.filter(r => !r.startsWith('Range') && !r.startsWith('Trend'));
+    g.warnings.push('Regime unclear');
+  }
+
+  const vi = g.verdict === 'TAKE' ? '✅' : g.verdict === 'WATCH' ? '👁' : g.verdict === 'CAUTION' ? '⚠️' : '🚫';
 
   const parts = [
     `🎯 <b>${sym} ${dir}</b> ${stars}`,
@@ -395,7 +471,134 @@ function formatAlert(sym, entry, price, distPips) {
     parts.push(`⚠ 1m: <b>${hmm5m.regime} ${hmm5m.confidence}%</b> — momentum opposing`);
   }
 
+  // VuManChu Cipher B assessment (M1 → M5 resampled)
+  const vmMode = state.cfg?.vuManChu ?? 'info';
+  let vmExplain = null;
+  if (vmMode !== 'off') {
+    try {
+      const m1Bars = state.hmm5mBars?.[sym];
+      if (m1Bars && m1Bars.length >= 160) {
+        const parsedBars = m1Bars.map(b => ({
+          open:   parseFloat(b.open  ?? b.mid?.o ?? b.o ?? b.close ?? b.mid?.c ?? b.c),
+          high:   parseFloat(b.high  ?? b.mid?.h ?? b.h ?? b.close ?? b.mid?.c ?? b.c),
+          low:    parseFloat(b.low   ?? b.mid?.l ?? b.l ?? b.close ?? b.mid?.c ?? b.c),
+          close:  parseFloat(b.close ?? b.mid?.c ?? b.c),
+          volume: parseFloat(b.volume ?? b.vol ?? 0),
+        }));
+        const m5Bars = resampleBars(parsedBars, 5);
+        if (m5Bars.length >= 31) {
+          const vm = assessEntry(m5Bars, entry.direction);
+
+          if (vmMode === 'filter' && vm.signal === 'oppose') {
+            if (g.grade === 'A+' || g.grade === 'A') {
+              g.grade   = 'B';
+              g.verdict = 'WATCH';
+            }
+            if (g.warnings.length < 2) g.warnings.push('VuManChu opposing');
+          }
+
+          const wtVal  = vm.wt?.value != null ? ` ${vm.wt.value >= 0 ? '+' : ''}${vm.wt.value.toFixed(1)}` : '';
+          const wtSig  = vm.wt?.signal ? `WT ${vm.wt.signal}${wtVal}` : 'WT —';
+          const mfPart = vm.mf?.signal ? ` · MF ${vm.mf.signal}` : '';
+          const total  = (vm.components ?? 0) + (vm.opposing ?? 0);
+          const comp   = total > 0 ? ` [${vm.components}/${total}]` : '';
+          const vmIcon = vm.signal === 'agree' ? '✅' : vm.signal === 'oppose' ? '❌' : '〰️';
+          parts.push(`${vmIcon} VM: ${wtSig}${mfPart}${comp}`);
+
+          // Build VM plain-English explanation for decoder block
+          const wtMeaning = vm.wt?.signal === 'BULLISH' ? 'wave cycling up'
+                          : vm.wt?.signal === 'BEARISH' ? 'wave cycling down' : 'wave flat';
+          const mfMeaning = vm.mf?.signal === 'BULLISH' ? 'money flowing in'
+                          : vm.mf?.signal === 'BEARISH' ? 'money flowing out' : 'money flow flat';
+          const confirmStr = total > 0 ? `${vm.components} of ${total} momentum signals confirm` : 'momentum signals checked';
+          vmExplain = `〰️ VM = momentum check — ${wtMeaning}, ${mfMeaning} — ${confirmStr}`;
+        }
+      }
+    } catch (_) { /* vumanchu data not yet available */ }
+  }
+
+  // Decision engine gate line — sourced from browser KV payload meta
+  const dMeta = state.levels[sym]?.meta;
+  if (dMeta?.decisionMode) {
+    if (dMeta.decisionMode === 'NO_TRADE') {
+      parts.push(`🚫 Decision: <b>NO TRADE</b> — ${dMeta.decisionReasons?.[0] ?? 'conditions not met'}`);
+    } else {
+      const permitted = isLong ? dMeta.decisionPermLong : dMeta.decisionPermShort;
+      const gate      = permitted ? '✅ PERMITTED' : '❌ NOT PERMITTED';
+      const modeLabel = dMeta.decisionMode.replace(/_/g, ' ');
+      parts.push(`${gate} · ${modeLabel} · ${dMeta.decisionParticipation} · Risk ${(dMeta.decisionRiskMult ?? 1).toFixed(2)}×`);
+    }
+  }
+
   parts.push('<i>🚂 MacroFX Railway</i>');
+
+  // ── Plain-English decoder block ────────────────────────────────────────────
+  const decoderLines = [];
+  const totalStars = Math.min(entry.totalStars ?? 0, 5);
+  const tagLabels  = (entry.tags ?? []).map(t => typeof t === 'string' ? t : (t.label ?? ''));
+
+  const _starDesc = {
+    'Tight Fib':     'precise fib zone',
+    'Asia Fib':      'Asia session level',
+    'Monday Fib':    'Monday session level',
+    'Cross-Session': 'cross-session match',
+    'Dense Zone':    'dense confluence cluster',
+  };
+  const contribs = tagLabels.map(t => _starDesc[t]).filter(Boolean).slice(0, 3);
+  const strength = totalStars >= 4 ? 'very strong' : totalStars >= 3 ? 'strong' : totalStars >= 2 ? 'solid' : 'basic';
+  decoderLines.push(`${'★'.repeat(totalStars)} = ${strength} level${contribs.length ? ' — ' + contribs.join(' + ') : ''}`);
+
+  const _gradeDesc = {
+    'A+': 'top-tier — every signal aligned, high conviction → take it',
+    'A':  'good setup — regime, bias & momentum agree → take it',
+    'B':  'marginal — conditions mixed, watch but wait',
+    'C':  'weak signal — avoid or cut size significantly',
+    'SKIP': 'hard stop — do not trade',
+  };
+  if (_gradeDesc[g.grade]) decoderLines.push(`[${g.grade}] = ${_gradeDesc[g.grade]}`);
+
+  if (tagLabels.some(t => t.toLowerCase().includes('cross'))) {
+    decoderLines.push(`📍 Cross-session = level held in Asia AND London/NY — institutions watching this price`);
+  }
+
+  if (vmExplain) decoderLines.push(vmExplain);
+
+  // Decision engine plain-English decoder
+  if (dMeta?.decisionMode && dMeta.decisionMode !== 'NO_TRADE') {
+    const permitted  = isLong ? dMeta.decisionPermLong : dMeta.decisionPermShort;
+    const gateWord   = permitted ? '✅ PERMITTED' : '❌ NOT PERMITTED';
+    const gateDesc   = permitted ? 'direction cleared — take it' : 'direction blocked — skip or wait for regime shift';
+
+    const _modeDesc = {
+      TREND_CONTINUATION: 'join the trend, buy pullbacks / sell rallies',
+      MEAN_REVERSION:     'fade range extremes — buy support, sell resistance',
+      BREAKOUT:           'wait for confirmed breakout — no pre-emption',
+      POSITION_MANAGEMENT:'trend extended — manage existing, no new entries',
+      EXHAUSTION:         'range overextended — exit priority only',
+    };
+    const modeLabel = dMeta.decisionMode.replace(/_/g, ' ');
+    const modeDesc  = _modeDesc[dMeta.decisionMode] ?? modeLabel.toLowerCase();
+
+    const _partDesc = {
+      FULL:    'full size — high conviction',
+      REDUCED: '¾ size — confidence below peak',
+      MINIMUM: 'minimum size — unfavourable conditions',
+    };
+    const partDesc = _partDesc[dMeta.decisionParticipation] ?? dMeta.decisionParticipation;
+    const riskPct  = Math.round((dMeta.decisionRiskMult ?? 1) * 100);
+
+    decoderLines.push(`${gateWord} = ${gateDesc}`);
+    decoderLines.push(`${modeLabel} = ${modeDesc}`);
+    decoderLines.push(`${dMeta.decisionParticipation} = ${partDesc} · Risk ${riskPct}% of normal`);
+    if (dMeta.decisionReasons?.length) {
+      decoderLines.push(`ℹ️ ${dMeta.decisionReasons[0]}`);
+    }
+  }
+
+  if (decoderLines.length) {
+    parts.push('━━━━━━━━━━━━━━━━━━');
+    decoderLines.forEach(l => parts.push(l));
+  }
 
   return parts.filter(p => p !== undefined).join('\n');
 }
@@ -465,13 +668,16 @@ async function monitorTick() {
       const proxPips = state.cfg.proxPips?.[sym] ?? state.cfg.proxPips?.default ?? 5;
       const proxDist = proxPips * pipSz;
 
-      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0, skipScore = 0, skipAligned = 0;
+      let skipStars = 0, skipDir = 0, skipProx = 0, skipCooldown = 0, skipScore = 0, skipAligned = 0, skipConflict = 0;
 
       const _GRADE_ORDER = {'A+': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1, 'SKIP': 0};
       const minGrade      = state.cfg.minGrade ?? 'B';
 
       // Sort entries by signalScore desc so highest quality alerts fire first
       const sortedEntries = [...bucket.data].sort((a, b) => (b.signalScore ?? -1) - (a.signalScore ?? -1));
+
+      // Pass 1: collect all candidates that pass per-entry filters and per-level cooldown
+      const tickCandidates = [];
 
       for (const entry of sortedEntries) {
         // Polarity flip — override direction when level was broken and price has returned
@@ -504,23 +710,58 @@ async function monitorTick() {
         const lastSent = state.cooldowns[ck] ?? 0;
         if (now - lastSent < (state.cfg.cooldownMin ?? 60) * 60_000)                            { skipCooldown++; continue; }
 
-        state.cooldowns[ck] = now;
-        cdDirty = true;
-
-        const distPips = Math.round(dist / pipSz);
-        const msg      = formatAlert(sym, eff, price, distPips);
-        const sent     = await sendTelegram(state.tg.token, state.tg.chatId, msg);
-
-        if (sent) { state.lastAlert = new Date().toISOString(); state.alertCount++; }
-
-        console.log(`[MONITOR] ${sym} ${eff.direction}${_polarFlip ? ' [FLIPPED]' : ''} @ ${eff.price.toFixed(digits)} (${distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
+        tickCandidates.push({ eff, ck, dist, distPips: Math.round(dist / pipSz), _polarFlip });
       }
 
-      state.skipCounts[sym] = { stars: skipStars, score: skipScore, dir: skipDir, aligned: skipAligned, prox: skipProx, cooldown: skipCooldown };
+      // Pass 2: pick one winner per pair per tick
+      if (tickCandidates.length) {
+        // Conflict resolution: if both buy and sell levels qualify simultaneously,
+        // keep only the one closest to the current price — prevents contradictory alerts.
+        const longCands  = tickCandidates.filter(c => c.eff.direction === 'long');
+        const shortCands = tickCandidates.filter(c => c.eff.direction === 'short');
+
+        let winner;
+        if (longCands.length && shortCands.length) {
+          const allSorted = [...tickCandidates].sort((a, b) => a.dist - b.dist);
+          winner       = allSorted[0];
+          skipConflict = allSorted.length - 1;
+          console.log(`[MONITOR] ${sym} conflict: ${longCands.length}L/${shortCands.length}S — kept closest ${winner.eff.direction} @ ${winner.eff.price.toFixed(digits)}`);
+        } else {
+          winner       = tickCandidates[0]; // highest signalScore (sorted above)
+          skipConflict = tickCandidates.length - 1;
+        }
+
+        // Per-pair cooldown: enforce a minimum gap between any two alerts on the same pair.
+        // Stored in cooldowns dict under a _pair_ prefix so it survives config reloads.
+        const pairCooldownMin = state.cfg.pairCooldownMin ?? 240;
+        const pairCoolKey     = `_pair_${sym.replace('/', '')}`;
+        const pairLastSent    = state.pairLastAlert[sym] ?? (state.cooldowns[pairCoolKey] ?? 0);
+        const pairElapsed     = now - pairLastSent;
+
+        if (pairElapsed < pairCooldownMin * 60_000) {
+          const remaining = ((pairCooldownMin * 60_000 - pairElapsed) / 60_000).toFixed(0);
+          console.log(`[MONITOR] ${sym} pair-cooldown: ${remaining}m remaining`);
+          skipCooldown += tickCandidates.length;
+        } else {
+          state.cooldowns[winner.ck]  = now;
+          state.cooldowns[pairCoolKey] = now;
+          state.pairLastAlert[sym]    = now;
+          cdDirty = true;
+
+          const msg  = formatAlert(sym, winner.eff, price, winner.distPips);
+          const sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
+
+          if (sent) { state.lastAlert = new Date().toISOString(); state.alertCount++; }
+
+          console.log(`[MONITOR] ${sym} ${winner.eff.direction}${winner._polarFlip ? ' [FLIPPED]' : ''} @ ${winner.eff.price.toFixed(digits)} (${winner.distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
+        }
+      }
+
+      state.skipCounts[sym] = { stars: skipStars, score: skipScore, dir: skipDir, aligned: skipAligned, prox: skipProx, cooldown: skipCooldown, conflict: skipConflict };
 
       if (doSummary && bucket.data.length > 0) {
         const maxScore = Math.max(...bucket.data.map(e => e.signalScore ?? 0));
-        summaryLines.push(`${sym}[≥${minGrade}]: ${bucket.data.length} entries score=${maxScore}% skip=${skipScore}grade/${skipDir}dir/${skipAligned}align/${skipProx}prox/${skipCooldown}cd`);
+        summaryLines.push(`${sym}[≥${minGrade}]: ${bucket.data.length} entries score=${maxScore}% skip=${skipScore}grade/${skipDir}dir/${skipAligned}align/${skipProx}prox/${skipCooldown}cd/${skipConflict}conflict`);
       }
     }
 
@@ -1098,6 +1339,26 @@ app.get('/api/hmm5m-train-params', (_req, res) => {
   res.json({ ok: true, params: state.hmm5mTrainedParams });
 });
 
+// ── Gold backtest trades store ────────────────────────────────────────────────
+// In-memory store; persists for the lifetime of the process.
+const goldBacktestStore = { trades: [], savedAt: null };
+
+app.post('/api/gold-backtest/trades', express.json({ limit: '20mb' }), (req, res) => {
+  const { trades } = req.body ?? {};
+  if (!Array.isArray(trades)) return res.status(400).json({ ok: false, error: 'trades array required' });
+  goldBacktestStore.trades  = trades;
+  goldBacktestStore.savedAt = new Date().toISOString();
+  console.log(`[gold-bt] saved ${trades.length} trades for viewer`);
+  res.json({ ok: true, n: trades.length });
+});
+
+app.get('/api/gold-backtest/trades', (req, res) => {
+  if (!goldBacktestStore.trades.length) {
+    return res.status(404).json({ ok: false, error: 'No trades found — run the backtester first' });
+  }
+  res.json({ ok: true, trades: goldBacktestStore.trades, savedAt: goldBacktestStore.savedAt });
+});
+
 // SSE live price stream — must be handled before the generic /api/* catch-all
 // because it returns an infinite ReadableStream, not a text body.
 app.get('/api/oanda_stream', async (req, res) => {
@@ -1124,6 +1385,942 @@ app.get('/api/oanda_stream', async (req, res) => {
     }
   } catch {}
   res.end();
+});
+
+// ── Vol & Range Forecast endpoints ────────────────────────────────────────────
+
+// Latest session forecast — primary endpoint for bots and the dashboard page.
+// Response shape:
+//   { ok, session_date, session_label, computed_at,
+//     instruments: { GOLD, EURUSD, NQ }, meta }
+app.get('/api/vol-forecast', (_req, res) => {
+  if (!forecastState.latest) {
+    return res.status(202).json({ ok: false, status: 'computing', message: 'Forecast not yet available — check back in 60s.' });
+  }
+  res.json(forecastState.latest);
+});
+
+// History — last 5 computed sessions, newest first.
+app.get('/api/vol-forecast/history', (_req, res) => {
+  res.json({ ok: true, forecasts: forecastState.history });
+});
+
+// Force re-compute (admin / manual trigger).
+app.post('/api/vol-forecast/refresh', async (_req, res) => {
+  res.json({ ok: true, status: 'running', message: 'Recompute triggered — poll /api/vol-forecast in ~30s' });
+  runVolForecast().catch(e => console.error('[VOL-FORECAST] Manual refresh error:', e.message));
+});
+
+// ── Text-format export helpers ────────────────────────────────────────────────
+// Mirrors the client-side buildExportText() / buildSessionText() in vol-forecast.html
+
+function _fmtForecastText(data) {
+  const LW  = 29;
+  const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const lines = ['**VOL & RANGE FORECAST**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    lines.push(
+      div(name),
+      `Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`,
+      `High to Low range       : ${f.hl_median.toFixed(2)}% median · ${f.hl_75.toFixed(2)}% 75th Percentile`,
+      `Open to Close move      : ${f.oc_median.toFixed(2)}% median · ${f.oc_75.toFixed(2)}% 75th Percentile`,
+      '',
+    );
+  }
+  return lines.join('\n');
+}
+
+function _fmtSessionText(data) {
+  const LW  = 29;
+  const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const p2  = x => (typeof x === 'number' ? x.toFixed(2) : '—');
+  const p3  = x => (typeof x === 'number' ? x.toFixed(3) : '—');
+  const fmtT = iso => iso
+    ? new Date(iso).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC')
+    : null;
+  const remTxt = (rem, actual, fc75, reachedAt) => {
+    const t = fmtT(reachedAt);
+    if (actual >= fc75) return `75th reached${t ? ' ' + t : ''}`;
+    if (rem <= 0)       return `reached${t ? ' ' + t : ''}`;
+    return `${p2(rem)}% remaining`;
+  };
+
+  const lines = [
+    '**VOL & RANGE FORECAST — LIVE SESSION STATUS**',
+    `**Session: ${data.session_label}**`,
+    `Fetched: ${new Date(data.fetched_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')}`,
+    '',
+  ];
+
+  for (const [name, s] of Object.entries(data.instruments ?? {})) {
+    if (s.error) { lines.push(div(name), `Error: ${s.error}`, ''); continue; }
+    const fc     = s.forecast;
+    const t      = new Date(s.bar_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC');
+    const closed = s.complete ? ' (session closed)' : '';
+    const vsM    = s.hl_vs_med >= 0 ? `+${p2(s.hl_vs_med)}` : p2(s.hl_vs_med);
+    const vsP    = s.hl_vs_75  >= 0 ? `+${p2(s.hl_vs_75)}`  : p2(s.hl_vs_75);
+    const ocSign = s.oc >= 0 ? '+' : '';
+
+    lines.push(
+      div(name),
+      `${name} Status — ${t}${closed}`,
+      '',
+      `H-L:  ${p2(s.hl)}%  (med ${p2(fc.hl_median)}%  |  75th ${p2(fc.hl_75)}%)`,
+      `  vs median  ${vsM}%  |  vs 75th  ${vsP}%`,
+      '',
+      `O-C:  ${ocSign}${p2(s.oc)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.oc_rem, Math.abs(s.oc), fc.oc_75, s.oc_reached_at)}`,
+      `O-H:  ${p2(s.oh)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.oh_rem, s.oh, fc.oc_75, s.oh_reached_at)}`,
+      `O-L:  ${p2(s.ol)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.ol_rem, s.ol, fc.oc_75, s.ol_reached_at)}`,
+      '',
+      `Bias:  ${s.bias} — ${s.bias_detail}`,
+      `  O-H ${p3(s.oh)}% / ${p3(fc.oc_median)}% forecast (${Math.round(s.oh_ratio)}%)  |  O-L ${p3(s.ol)}% / ${p3(fc.oc_median)}% forecast (${Math.round(s.ol_ratio)}%)`,
+      '',
+      `Directionality:  ${p2(s.dir)}%  (expected ~${p2(data.expected_dir)}%)`,
+      `Shape:  ${s.shape}`,
+      '',
+      `Outlook:  ${s.outlook}`,
+      '',
+    );
+  }
+  return lines.join('\n');
+}
+
+// Plain-text forecast export — same format as the ⬇ Export button on the dashboard.
+app.get('/api/vol-forecast/export', (_req, res) => {
+  if (!forecastState.latest) {
+    return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
+  }
+  res.type('text/plain').send(_fmtForecastText(forecastState.latest));
+});
+
+// Live session status — intraday tracking (actual OHLC vs forecast).
+// Fetches today's current/latest daily bar from Oanda and computes consumed
+// range, directional bias, shape, and outlook per instrument.
+app.get('/api/vol-forecast/live', async (_req, res) => {
+  try {
+    const status = await getSessionStatus();
+    res.json(status);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Plain-text live session export — same format as the ⬇ Session button on the dashboard.
+app.get('/api/vol-forecast/live/export', async (_req, res) => {
+  try {
+    const status = await getSessionStatus();
+    if (!status?.ok) {
+      return res.status(202).type('text/plain').send(status?.message ?? 'Live session data not available.');
+    }
+    res.type('text/plain').send(_fmtSessionText(status));
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
+// ── Vol Backtest API ──────────────────────────────────────────────────────────
+
+const _execFileAsync   = promisify(execFile);
+const BT_DATA_DIR      = path.join(__dirname, 'VolRangeForecaster', 'data');
+const BT_PYTHON_SCRIPT = path.join(__dirname, 'VolRangeForecaster', 'vol_backtest.py');
+
+// Resolve Python binary once at startup — tries env var, then common paths
+function _resolvePython() {
+  if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
+  const candidates = [
+    '/usr/local/bin/python3', '/usr/bin/python3',
+    '/usr/local/bin/python',  '/usr/bin/python',
+    'python3', 'python',
+  ];
+  for (const c of candidates) {
+    try { execFile(c, ['--version'], (_e, _o, _err) => {}); return c; } catch {}
+  }
+  return 'python3';
+}
+const BT_PYTHON = _resolvePython();
+
+// Prefer .json files (new format), fall back to legacy .csv
+function _latestBacktestFile() {
+  if (!fs.existsSync(BT_DATA_DIR)) return null;
+  const all = fs.readdirSync(BT_DATA_DIR).filter(f => f.startsWith('backtest_'));
+  const json = all.filter(f => f.endsWith('.json')).sort().reverse();
+  if (json.length) return path.join(BT_DATA_DIR, json[0]);
+  const csv  = all.filter(f => f.endsWith('.csv')).sort().reverse();
+  return csv.length ? path.join(BT_DATA_DIR, csv[0]) : null;
+}
+
+// Load trades from JSON (new) or CSV (legacy).  Always returns a plain array.
+function _loadBacktestTrades(filePath) {
+  if (filePath.endsWith('.json')) {
+    const d = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return Array.isArray(d) ? d : (d.trades ?? []);
+  }
+  // Legacy CSV fallback
+  const lines = fs.readFileSync(filePath, 'utf8').trim().split('\n');
+  const hdrs  = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = line.split(',');
+    const o    = Object.fromEntries(hdrs.map((h, i) => [h, (vals[i] ?? '').trim()]));
+    o.filled     = o.filled === 'True';
+    o.pnl_pct    = parseFloat(o.pnl_pct)    || 0;
+    o.dow        = parseInt(o.dow)           || 0;
+    o.hl_75_pct  = parseFloat(o.hl_75_pct)  || 0;
+    o.oc_med_pct = parseFloat(o.oc_med_pct) || 0;
+    o.open       = parseFloat(o.open)        || 0;
+    o.high       = parseFloat(o.high)        || 0;
+    o.low        = parseFloat(o.low)         || 0;
+    o.close      = parseFloat(o.close)       || 0;
+    o.fill_time  = o.fill_time  || null;
+    o.exit_time  = o.exit_time  || null;
+    return o;
+  });
+}
+
+// In-memory cache for the trades endpoint — invalidated when the backtest file changes.
+// Eliminates repeated synchronous parsing of a multi-MB CSV on every page load.
+const _btTradesCache = { filePath: null, mtimeMs: 0, trades: null };
+
+function _btStats(trades) {
+  const filled  = trades.filter(r => r.filled);
+  const wins    = filled.filter(r => r.outcome === 'win');
+  const losses  = filled.filter(r => r.outcome === 'loss');
+  const openEod = filled.filter(r => r.outcome === 'open');
+  const nDays   = trades.length;
+  const nFilled = filled.length;
+  if (nFilled === 0) return { nDays, nFilled, fillRate: 0, winRate: 0, totalPnl: 0 };
+
+  const pnls   = filled.map(r => r.pnl_pct);
+  const totalPnl = pnls.reduce((s, p) => s + p, 0);
+  const avgPnl   = totalPnl / nFilled;
+
+  // Build daily portfolio P&L from ALL trades (filled and unfilled).
+  // Unfilled days have pnl_pct=0, so they don't change the sum but DO appear
+  // in the std denominator — zero-return days must dilute the Sharpe.
+  // Using only filled days inflates Sharpe by √(total_days / fill_days).
+  const dailyMap = new Map();
+  for (const r of trades) {
+    dailyMap.set(r.date, (dailyMap.get(r.date) ?? 0) + r.pnl_pct);
+  }
+  const dailyPnls  = [...dailyMap.values()];
+  const nDailyObs  = dailyPnls.length;
+  const dailyMean  = dailyPnls.reduce((s, p) => s + p, 0) / nDailyObs;
+  const dailyStd   = Math.sqrt(dailyPnls.reduce((s, p) => s + (p - dailyMean) ** 2, 0) / Math.max(1, nDailyObs - 1));
+  const sharpe     = dailyStd > 0 ? dailyMean / dailyStd * Math.sqrt(252) : 0;
+
+  const dailyNeg  = dailyPnls.filter(p => p < 0);
+  const downStd   = dailyNeg.length > 0
+    ? Math.sqrt(dailyNeg.reduce((s, p) => s + p ** 2, 0) / dailyNeg.length) : 0;
+  const sortino   = downStd > 0 ? dailyMean / downStd * Math.sqrt(252) : 0;
+
+  const negPnls = pnls.filter(p => p < 0);
+
+  // Drawdown on the daily portfolio series (sorted by date) so multi-instrument
+  // fills on the same day are treated as one portfolio move.
+  const sortedDailyPnls = [...dailyMap.entries()]
+    .sort(([a], [b]) => a < b ? -1 : 1)
+    .map(([, p]) => p);
+  let peak = 0, maxDd = 0, cum = 0;
+  for (const p of sortedDailyPnls) {
+    cum += p; if (cum > peak) peak = cum;
+    const dd = cum - peak; if (dd < maxDd) maxDd = dd;
+  }
+
+  const dates  = trades.map(r => new Date(r.date)).filter(d => !isNaN(d)).sort((a, b) => a - b);
+  const years  = dates.length > 1 ? (dates[dates.length - 1] - dates[0]) / (365.25 * 86400e3) : 1;
+  const cagr   = years > 0 ? ((1 + totalPnl / 100) ** (1 / years) - 1) * 100 : 0;
+  const annRet = years > 0 ? totalPnl / years : 0;
+  const calmar = maxDd < 0 ? annRet / Math.abs(maxDd) : 0;
+
+  const avgWin  = wins.length   ? wins.reduce((s, r)   => s + r.pnl_pct, 0) / wins.length   : 0;
+  const avgLoss = losses.length ? losses.reduce((s, r) => s + r.pnl_pct, 0) / losses.length : 0;
+  const rr      = avgLoss < 0 ? Math.abs(avgWin / avgLoss) : 0;
+  const grossW  = wins.reduce((s, r) => s + r.pnl_pct, 0);
+  const grossL  = Math.abs(losses.reduce((s, r) => s + r.pnl_pct, 0));
+  const pf      = grossL > 0 ? grossW / grossL : Infinity;
+  const expect  = wins.length / nFilled * avgWin + losses.length / nFilled * avgLoss;
+
+  let maxCW = 0, maxCL = 0, cw = 0, cl = 0;
+  for (const r of filled) {
+    if (r.outcome === 'win')  { cw++; cl = 0; if (cw > maxCW) maxCW = cw; }
+    else if (r.outcome === 'loss') { cl++; cw = 0; if (cl > maxCL) maxCL = cl; }
+    else { cw = 0; cl = 0; }
+  }
+
+  // MFE on losing trades: how far did price move in our favour before reversing?
+  // High average (>0.5R) = Chandelier/trailing stop could salvage these losses.
+  const mfeLosses = losses.filter(r => typeof r.mfe_r === 'number');
+  const avgMfeLoss = mfeLosses.length
+    ? +(mfeLosses.reduce((s, r) => s + r.mfe_r, 0) / mfeLosses.length).toFixed(2)
+    : null;
+
+  return {
+    nDays, nFilled, nWins: wins.length, nLosses: losses.length, nOpenEod: openEod.length,
+    fillRate:  +(nFilled / nDays * 100).toFixed(1),
+    winRate:   +(wins.length / nFilled * 100).toFixed(1),
+    avgPnl:    +avgPnl.toFixed(4),
+    totalPnl:  +totalPnl.toFixed(3),
+    cagr:      +cagr.toFixed(2),
+    sharpe:    +sharpe.toFixed(2),
+    sortino:   +sortino.toFixed(2),
+    calmar:    +calmar.toFixed(2),
+    profitFactor: pf === Infinity ? 999 : +pf.toFixed(2),
+    maxDd:     +maxDd.toFixed(3),
+    rr:        +rr.toFixed(2),
+    expectancy: +expect.toFixed(4),
+    avgWin:    +avgWin.toFixed(4),
+    avgLoss:   +avgLoss.toFixed(4),
+    maxConsecWins: maxCW, maxConsecLosses: maxCL,
+    years:     +years.toFixed(2),
+    avgMfeLoss,
+  };
+}
+
+// Latest cached backtest results
+app.get('/api/vol-backtest', (req, res) => {
+  const filePath = _latestBacktestFile();
+  if (!filePath) return res.status(404).json({ ok: false, error: 'No backtest data. Run the backtester first.' });
+
+  try {
+    const trades = _loadBacktestTrades(filePath);
+    if (!trades.length) return res.status(404).json({ ok: false, error: 'Empty backtest file.' });
+
+    // Instrument list
+    const instruments = [...new Set(trades.map(r => r.instrument))].sort();
+
+    // Per-instrument stats
+    const byInstrument = Object.fromEntries(
+      instruments.map(inst => [inst, _btStats(trades.filter(r => r.instrument === inst))])
+    );
+
+    // Per-regime stats
+    const regimes = ['BULL', 'BEAR', 'RANGE'];
+    const byRegime = Object.fromEntries(
+      regimes.map(rg => [rg, _btStats(trades.filter(r => r.regime === rg))])
+    );
+
+    // Regime distribution
+    const regimeDist = Object.fromEntries(
+      regimes.map(rg => [rg, +(trades.filter(r => r.regime === rg).length / trades.length * 100).toFixed(1)])
+    );
+
+    // Equity curve: daily cumulative P&L across all instruments
+    const dailyPnl = {};
+    for (const r of trades.filter(t => t.filled)) {
+      const d = r.date.substring(0, 10);
+      dailyPnl[d] = (dailyPnl[d] || 0) + r.pnl_pct;
+    }
+    const sortedDates = Object.keys(dailyPnl).sort();
+    let cumPnl = 0;
+    const equityCurve = sortedDates.map(d => {
+      cumPnl += dailyPnl[d];
+      return { date: d, pnl: +cumPnl.toFixed(3) };
+    });
+
+    // Per-instrument equity curves
+    const instEquity = {};
+    for (const inst of instruments) {
+      const instTrades = trades.filter(r => r.instrument === inst && r.filled);
+      const byDay = {};
+      for (const r of instTrades) {
+        const d = r.date.substring(0, 10);
+        byDay[d] = (byDay[d] || 0) + r.pnl_pct;
+      }
+      let c = 0;
+      instEquity[inst] = Object.keys(byDay).sort().map(d => {
+        c += byDay[d]; return { date: d, pnl: +c.toFixed(3) };
+      });
+    }
+
+    // Monthly P&L
+    const monthly = {};
+    for (const r of trades.filter(t => t.filled)) {
+      const m = r.date.substring(0, 7);
+      monthly[m] = (monthly[m] || 0) + r.pnl_pct;
+    }
+    const monthlyArr = Object.entries(monthly).sort().map(([month, pnl]) => ({ month, pnl: +pnl.toFixed(3) }));
+
+    // Day-of-week stats — always derive from date string, never trust CSV dow column
+    // (old CSVs lack the column; parseInt('') || 0 = 0 = Sunday which skips all trades)
+    const DOW_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const byDow = {};
+    for (const day of ['Mon','Tue','Wed','Thu','Fri']) byDow[day] = [];
+    for (const r of trades) {
+      const label = DOW_LABELS[new Date(r.date + 'T00:00:00Z').getUTCDay()];
+      if (byDow[label]) byDow[label].push(r);
+    }
+    const byDowStats = Object.fromEntries(
+      Object.entries(byDow).map(([day, ts]) => [day, _btStats(ts)])
+    );
+
+    // Session stats
+    const SESSION_ORDER = ['Asia','London','Overlap','NY','N/A'];
+    const bySession = {};
+    for (const s of SESSION_ORDER) bySession[s] = [];
+    for (const r of trades) {
+      const sess = r.session || 'N/A';
+      if (bySession[sess]) bySession[sess].push(r);
+      else bySession['N/A'].push(r);
+    }
+    const bySessionStats = Object.fromEntries(
+      SESSION_ORDER.filter(s => bySession[s].length > 0)
+        .map(s => [s, _btStats(bySession[s])])
+    );
+
+    // Recent trades (last 200 by date, across all instruments)
+    // CSV rows are ordered by instrument then date, so slice(-200) without
+    // sorting would return only the last instrument processed (NQ).
+    const recentTrades = trades
+      .filter(t => t.filled)
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+      .slice(-200)
+      .reverse()
+      .map(r => ({
+        date: r.date?.substring(0, 10),
+        instrument: r.instrument,
+        regime: r.regime,
+        side: r.side,
+        outcome: r.outcome,
+        pnl_pct: r.pnl_pct,
+        hl_75_pct: r.hl_75_pct,
+        oc_med_pct: r.oc_med_pct,
+        leg: r.leg,
+        session: r.session,
+        dow: DOW_LABELS[r.dow ?? new Date(r.date + 'T00:00:00Z').getUTCDay()],
+        open: r.open,
+        fill_time: r.fill_time || null,
+      }));
+
+    // All filled P&L values for Monte Carlo (client needs the full sequence)
+    const allPnls = trades.filter(t => t.filled).map(r => r.pnl_pct);
+
+    // Compact full trade list for client-side analysis (IS/OOS, year-by-year, walk-forward, spread sensitivity)
+    const allTrades = trades.map(r => ({
+      date:       r.date?.substring(0, 10),
+      filled:     r.filled,
+      pnl_pct:    r.pnl_pct,
+      outcome:    r.outcome,
+      regime:     r.regime,
+      instrument: r.instrument,
+    }));
+
+    res.json({
+      ok: true,
+      file: path.basename(filePath),
+      computedAt: fs.statSync(filePath).mtime.toISOString(),
+      overall: _btStats(trades),
+      byInstrument,
+      byRegime,
+      regimeDist,
+      byDow: byDowStats,
+      bySession: bySessionStats,
+      equityCurve,
+      instEquity,
+      monthlyPnl: monthlyArr,
+      recentTrades,
+      allTrades,
+      allPnls,
+      totalTrades: trades.filter(t => t.filled).length,
+      instruments,
+    });
+  } catch (e) {
+    const msg = e?.message || String(e) || 'Stats error';
+    console.error('[vol-backtest]', msg, e?.stack ?? '');
+    res.status(500).json({ ok: false, error: msg });
+  }
+});
+
+// ── All trades endpoint for the Backtest Viewer ───────────────────────────────
+// Returns every filled trade (no 200-cap), sorted newest-first.
+// Includes all fields including fill_time and exit_time for chart markers.
+// ── Decision engine audit log ─────────────────────────────────────────────────
+// Returns the rolling audit log written by the browser (alerts.js) to KV.
+// Entries are proximity events where the decision engine gate was evaluated.
+
+app.get('/api/decision-audit', async (req, res) => {
+  try {
+    const raw = await kv.get('decision_audit_log');
+    if (!raw) return res.json({ ok: true, trades: [], total: 0 });
+    let entries = JSON.parse(raw);
+    if (!Array.isArray(entries)) return res.json({ ok: true, trades: [], total: 0 });
+    // Optional date range filter
+    const { from, to } = req.query;
+    if (from) entries = entries.filter(e => e.date >= from);
+    if (to)   entries = entries.filter(e => e.date <= to);
+    // Map audit entries to the trade shape expected by backtest-viewer.html
+    const trades = entries.map(e => ({
+      instrument:            e.sym,
+      date:                  e.date,
+      side:                  e.direction === 'long' ? 'BUY' : 'SELL',
+      outcome:               'open',
+      pnl_pct:               0,
+      fill_time:             e.fill_time,
+      entry_price:           e.price,
+      tp_price:              e.tp   ?? null,
+      sl_price:              e.sl   ?? null,
+      rrRatio:               e.rrRatio ?? null,
+      grade:                 e.grade,
+      verdict:               e.verdict,
+      tags:                  e.tags ?? [],
+      decisionMode:          e.decisionMode,
+      decisionParticipation: e.decisionParticipation,
+      decisionRiskMult:      e.decisionRiskMult,
+      permitted:             e.permitted,
+      suppressed:            e.suppressed,
+      reasons:               e.reasons ?? [],
+    }));
+    res.json({ ok: true, trades, total: trades.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/vol-backtest/trades', (req, res) => {
+  const filePath = _latestBacktestFile();
+  if (!filePath) return res.status(404).json({ ok: false, error: 'No backtest data. Run the backtester first.' });
+
+  try {
+    // Return cached result when the file hasn't changed — avoids blocking the event
+    // loop with synchronous CSV/JSON parsing on every page load.
+    const mtimeMs = fs.statSync(filePath).mtimeMs;
+    if (_btTradesCache.filePath === filePath && _btTradesCache.mtimeMs === mtimeMs && _btTradesCache.trades) {
+      return res.json({ ok: true, trades: _btTradesCache.trades, total: _btTradesCache.trades.length, cached: true });
+    }
+
+    const DOW_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const trades = _loadBacktestTrades(filePath)
+      .filter(t => t.filled)
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+      .reverse()
+      .map(r => ({
+        date:       r.date?.substring(0, 10),
+        instrument: r.instrument,
+        regime:     r.regime,
+        side:       r.side,
+        outcome:    r.outcome,
+        pnl_pct:    r.pnl_pct,
+        hl_75_pct:  r.hl_75_pct,
+        oc_med_pct: r.oc_med_pct,
+        leg:        r.leg,
+        session:    r.session,
+        dow:        DOW_LABELS[r.dow != null ? r.dow : new Date((r.date?.substring(0,10) ?? '') + 'T00:00:00Z').getUTCDay()],
+        open:       r.open,
+        fill_time:  r.fill_time  || null,
+        exit_time:  r.exit_time  || null,
+      }));
+
+    _btTradesCache.filePath = filePath;
+    _btTradesCache.mtimeMs  = mtimeMs;
+    _btTradesCache.trades   = trades;
+
+    res.json({ ok: true, trades, total: trades.length });
+  } catch (e) {
+    const msg = e?.message || String(e) || 'Parse error';
+    console.error('[vol-backtest/trades]', msg, e?.stack ?? '');
+    res.status(500).json({ ok: false, error: msg });
+  }
+});
+
+// Check how many M1 parquets are cached locally
+function _m1CacheStatus() {
+  if (!fs.existsSync(BT_M1_DIR)) return { cached: 0, pairs: [] };
+  const files = fs.readdirSync(BT_M1_DIR).filter(f => f.endsWith('_m1.parquet'));
+  return { cached: files.length, pairs: files.map(f => f.replace('_m1.parquet', '').toUpperCase()) };
+}
+
+// Trigger a fresh backtest run using pure-JS engine (no Python required)
+// Uses M1 intraday simulation when parquets are cached, D1 otherwise.
+// In-memory job store for async backtest runs — keyed by jobId
+const btJobs = new Map();
+
+function _purgeStaleBtJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of btJobs) if (job.startedAt < cutoff) btJobs.delete(id);
+}
+
+app.post('/api/vol-backtest/run', (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch live D1 data' });
+  }
+  const {
+    dateFrom = '', dateTo = '', pair = '',
+    slMult = '1.5', strategy = 'reversal',
+    momentumPullback = '0', momentumSlMult = '1.0',
+    spreadPct = '0', dynHlCorr = '0', slopeThresh = '0.002',
+    revHL50Mode = 'all',
+    bearMult = '1.0', rangeMode = 'fade_both',
+    daRegime = 'all', daDir = 'both', daEodMode = 'close',
+  } = req.body || {};
+  const opts = {
+    dateFrom, dateTo, minLookback: 50,
+    slMult:           parseFloat(slMult)           || 1.5,
+    strategy,
+    momentumPullback: parseFloat(momentumPullback) || 0,
+    momentumSlMult:   parseFloat(momentumSlMult)   || 1.0,
+    slopeThresh:      parseFloat(slopeThresh)       || 0.002,
+    spreadPct:        parseFloat(spreadPct)         || 0,
+    dynHlCorr:        parseFloat(dynHlCorr)         || 0,
+    revHL50Mode,
+    bearMult:         parseFloat(bearMult)          || 1.0,
+    rangeMode,
+    daRegime,
+    daDir,
+    daEodMode,
+  };
+
+  const instFilter  = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : undefined;
+  const jobId       = `bt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt   = Date.now();
+
+  _purgeStaleBtJobs();
+  btJobs.set(jobId, { status: 'running', startedAt });
+
+  // Fire-and-forget — response returns immediately with jobId
+  (async () => {
+    try {
+      const m1Status    = _m1CacheStatus();
+      const engineLabel = m1Status.cached > 0
+        ? `M1 engine (${m1Status.cached} pairs cached)`
+        : `D1 engine (Oanda API) · strategy: ${strategy}`;
+
+      const { trades, log } = await runFullM1Backtest(opts, instFilter ?? BT_INSTRUMENTS);
+
+      if (!trades.length) {
+        btJobs.set(jobId, { status: 'error', error: 'No trades generated', log, startedAt });
+        return;
+      }
+
+      if (!fs.existsSync(BT_DATA_DIR)) fs.mkdirSync(BT_DATA_DIR, { recursive: true });
+      const ts      = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(BT_DATA_DIR, `backtest_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify(trades, null, 0) + '\n');
+
+      btJobs.set(jobId, {
+        status: 'done', startedAt,
+        result: {
+          ok:      true,
+          message: `Backtest complete — ${trades.filter(t => t.filled).length} filled trades`,
+          engine:  engineLabel,
+          m1Pairs: m1Status.pairs,
+          log,
+          file:    path.basename(outFile),
+        },
+      });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[vol-backtest/run]', msg, e?.stack ?? '');
+      btJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/vol-backtest/status/:jobId', (req, res) => {
+  const job = btJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// Report M1 cache status and Drive IDs for download instructions
+app.get('/api/vol-backtest/m1-status', (_req, res) => {
+  const status = _m1CacheStatus();
+  res.json({
+    ...status,
+    m1Dir:    BT_M1_DIR,
+    driveIds: M1_DRIVE_IDS,
+  });
+});
+
+app.get('/api/vol-backtest/diagnose', async (_req, res) => {
+  const report = {};
+
+  const R2_ENDPOINT_CFG   = process.env.R2_ENDPOINT    || 'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com';
+  const R2_BUCKET_CFG     = process.env.R2_BUCKET      || 'r2-storage';
+  const R2_KEY_PREFIX_CFG = process.env.R2_KEY_PREFIX  || 'm1';
+
+  // Env vars
+  report.env = {
+    OANDA_KEY:        !!process.env.OANDA_KEY,
+    OANDA_ENV:        process.env.OANDA_ENV || '(unset — defaults to live)',
+    OANDA_ACCOUNT_ID: process.env.OANDA_ACCOUNT_ID || '(unset)',
+    R2_ACCESS_KEY:    !!process.env.R2_ACCESS_KEY,
+    R2_SECRET_KEY:    !!process.env.R2_SECRET_KEY,
+    R2_BUCKET:        R2_BUCKET_CFG,
+    R2_ENDPOINT:      R2_ENDPOINT_CFG,
+    R2_KEY_PREFIX:    R2_KEY_PREFIX_CFG,
+    NODE_ENV:         process.env.NODE_ENV || '(unset)',
+  };
+
+  // R2 connectivity
+  try {
+    const { S3Client, HeadObjectCommand } = await import('@aws-sdk/client-s3');
+    const r2 = new S3Client({
+      endpoint:    R2_ENDPOINT_CFG,
+      region:      'auto',
+      requestHandler: { requestTimeout: 5000 },
+      credentials: {
+        accessKeyId:     process.env.R2_ACCESS_KEY,
+        secretAccessKey: process.env.R2_SECRET_KEY,
+      },
+    });
+    const cmd = new HeadObjectCommand({ Bucket: R2_BUCKET_CFG, Key: `${R2_KEY_PREFIX_CFG}/eurusd_m1.parquet` });
+    const meta = await r2.send(cmd);
+    report.r2 = { ok: true, eurusdBytes: meta.ContentLength };
+  } catch (e) {
+    report.r2 = { ok: false, error: e?.message ?? String(e) };
+  }
+
+  // OANDA connectivity
+  try {
+    const key = process.env.OANDA_KEY;
+    if (!key) throw new Error('OANDA_KEY not set');
+    const oandaBase = (process.env.OANDA_ENV || 'live') === 'practice'
+      ? 'https://api-fxpractice.oanda.com'
+      : 'https://api-fxtrade.oanda.com';
+    const resp = await fetch(`${oandaBase}/v3/accounts`, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal:  AbortSignal.timeout(5000),
+    });
+    report.oanda = { ok: resp.ok, status: resp.status, env: process.env.OANDA_ENV || 'live' };
+  } catch (e) {
+    report.oanda = { ok: false, error: e?.message ?? String(e) };
+  }
+
+  // M1 cache
+  report.m1Cache = _m1CacheStatus();
+
+  res.json(report);
+});
+
+app.get('/api/version', (_req, res) => res.json({ version: 'r2-m1-engine', deployedAt: new Date().toISOString(), r2: !!process.env.R2_ACCESS_KEY }));
+
+// Level hit analysis — async job queue (same pattern as vol-backtest/run)
+const laJobs = new Map();
+
+function _purgeStaleLaJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of laJobs) if (job.startedAt < cutoff) laJobs.delete(id);
+}
+
+app.post('/api/vol-backtest/level-analysis', (req, res) => {
+  const { dateFrom, dateTo, pair } = req.body ?? {};
+  const opts = {
+    dateFrom:    dateFrom ?? '',
+    dateTo:      dateTo   ?? '',
+    minLookback: 50,
+    slopeThresh: 0.002,
+  };
+  const instFilter = pair
+    ? BT_INSTRUMENTS.filter(i => i.name === pair)
+    : BT_INSTRUMENTS;
+
+  const jobId     = `la_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+
+  _purgeStaleLaJobs();
+  laJobs.set(jobId, { status: 'running', startedAt });
+
+  // Fire-and-forget — response returns immediately with jobId
+  (async () => {
+    try {
+      const { records, agg, log } = await runFullLevelAnalysis(opts, instFilter, BT_M1_DIR,
+        (pair) => {
+          const job = laJobs.get(jobId);
+          if (job) laJobs.set(jobId, { ...job, currentPair: pair });
+        });
+      const instruments = [...new Set(records.map(r => r.instrument))];
+      const byInstrument = Object.fromEntries(
+        instruments.map(inst => [inst, aggregateLevelHits(records.filter(r => r.instrument === inst))])
+      );
+      laJobs.set(jobId, {
+        status: 'done', startedAt,
+        result: { agg, byInstrument, log, n: records.length },
+      });
+    } catch (e) {
+      console.error('[level-analysis]', e.message);
+      laJobs.set(jobId, { status: 'error', error: e.message, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/vol-backtest/level-analysis/status/:jobId', (req, res) => {
+  const job = laJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), currentPair: job.currentPair ?? null });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Dyn Anchor nightly forecast ────────────────────────────────────────────────
+// Fetches full OHLC D1 candles from OANDA (includes open/high/low, unlike
+// fetchDailyCandles which returns close-only).
+
+async function fetchDailyOHLC(sym, count = 70) {
+  const instrument = sym.replace('/', '_');
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+  try {
+    const r = await fetch(
+      `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=D&count=${count}&price=M`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.candles?.filter(c => c.complete && c.mid).map(c => ({
+      open:  parseFloat(c.mid.o),
+      high:  parseFloat(c.mid.h),
+      low:   parseFloat(c.mid.l),
+      close: parseFloat(c.mid.c),
+    })) ?? null;
+  } catch { return null; }
+}
+
+function _computeDaForecast(candles, opts = {}) {
+  const lambda     = opts.lambda     ?? 0.94;
+  const emaPeriod  = opts.emaPeriod  ?? 20;
+  const slopeThresh= opts.slopeThresh?? 0.002;
+
+  const BM_P50 = 1.572, BM_P75 = 2.049;
+  const HL50_CORR = 0.921, HL75_CORR = 0.894;
+
+  const closes = candles.map(c => c.close);
+  if (closes.length < emaPeriod + 5) return null;
+
+  // EWMA variance from daily log returns
+  const rets = closes.slice(1).map((c, i) => Math.log(c / closes[i]));
+  let ewmaVar = rets[0] ** 2;
+  for (const r of rets.slice(1)) ewmaVar = lambda * ewmaVar + (1 - lambda) * r ** 2;
+  const sigmaD = Math.sqrt(Math.max(ewmaVar, 1e-12));
+
+  // EMA series for slope
+  const alpha = 2 / (emaPeriod + 1);
+  let ema = closes[0];
+  let emaPrev = closes[0];
+  for (let i = 1; i < closes.length; i++) {
+    emaPrev = ema;
+    ema = alpha * closes[i] + (1 - alpha) * ema;
+  }
+  const slope  = emaPrev !== 0 ? (ema - emaPrev) / emaPrev : 0;
+  const regime = slope > slopeThresh ? 'BULL' : slope < -slopeThresh ? 'BEAR' : 'RANGE';
+
+  return {
+    regime,
+    sigma_d:   sigmaD,
+    hl50:      BM_P50 * HL50_CORR * sigmaD,
+    hl75:      BM_P75 * HL75_CORR * sigmaD,
+    ema_slope: slope,
+    prev_close: closes[closes.length - 1],
+    bars_used:  closes.length,
+  };
+}
+
+// GET /api/dyn-anchor-forecast?pairs=EUR/USD,GBP/USD,...
+// Computes next-session EWMA vol + regime for each requested pair (or the
+// default 25-pair list) and stores the result to dyn_anchor_forecast KV.
+app.get('/api/dyn-anchor-forecast', async (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  }
+
+  const DEFAULT_DA_PAIRS = [
+    'EUR/USD','GBP/USD','USD/JPY','AUD/USD','NZD/USD','USD/CAD','USD/CHF',
+    'GBP/JPY','EUR/JPY','EUR/GBP','EUR/CHF','EUR/CAD','EUR/AUD','AUD/JPY',
+    'AUD/CAD','GBP/AUD','GBP/CAD','CAD/JPY','CHF/JPY','NZD/JPY','AUD/NZD',
+    'GBP/NZD','EUR/NZD','AUD/CHF','GBP/CHF',
+  ];
+
+  const pairsParam = req.query.pairs;
+  const pairs = pairsParam
+    ? pairsParam.split(',').map(p => p.trim()).filter(Boolean)
+    : DEFAULT_DA_PAIRS;
+
+  const lambda      = parseFloat(req.query.lambda)       || 0.94;
+  const emaPeriod   = parseInt(req.query.emaPeriod)       || 20;
+  const slopeThresh = parseFloat(req.query.slopeThresh)  || 0.002;
+  const barCount    = Math.min(parseInt(req.query.bars) || 70, 250);
+
+  const forecast = {};
+  const errors   = {};
+
+  await Promise.all(pairs.map(async pair => {
+    try {
+      const candles = await fetchDailyOHLC(pair, barCount);
+      if (!candles || candles.length < emaPeriod + 5) {
+        errors[pair] = `Only ${candles?.length ?? 0} bars (need ${emaPeriod + 5})`;
+        return;
+      }
+      const f = _computeDaForecast(candles, { lambda, emaPeriod, slopeThresh });
+      if (f) forecast[pair] = f;
+      else   errors[pair] = 'computation failed';
+    } catch (e) {
+      errors[pair] = e.message;
+    }
+  }));
+
+  const payload = {
+    forecast,
+    errors,
+    computed_at: new Date().toISOString(),
+    pairs_ok:    Object.keys(forecast).length,
+    pairs_err:   Object.keys(errors).length,
+    params:      { lambda, emaPeriod, slopeThresh, barCount },
+  };
+
+  // Store to KV so bot can read it at session open
+  try {
+    await kv.put('dyn_anchor_forecast', JSON.stringify({ data: payload, timestamp: Date.now() }));
+  } catch (e) {
+    console.warn('[dyn-anchor-forecast] KV store failed:', e.message);
+  }
+
+  res.json({ ok: true, ...payload });
+});
+
+// M1 candlestick endpoint — returns filtered bars for chart rendering.
+// Cache stores TypedArrays (~28 MB/pair) not objects (~350 MB/pair) to avoid OOM.
+// LRU: max 3 pairs in memory at once.
+const m1CandleCache = new Map();
+const M1_CACHE_MAX  = 3;
+
+app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
+  const { from, to } = req.query;
+  try {
+    if (!m1CandleCache.has(pair)) {
+      if (m1CandleCache.size >= M1_CACHE_MAX) {
+        m1CandleCache.delete(m1CandleCache.keys().next().value);
+      }
+      const packed = await loadM1ForPair(pair);
+      if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
+      m1CandleCache.set(pair, packed);
+    }
+    const packed = m1CandleCache.get(pair);
+    const { n, times, opens, highs, lows, closes } = packed;
+
+    // Unpack only the requested date window — avoids allocating millions of objects
+    const fromTs = from ? Math.floor(new Date(from + 'T00:00:00Z').getTime() / 1000) : 0;
+    const toTs   = to   ? Math.floor(new Date(to   + 'T23:59:59Z').getTime() / 1000) : 2_000_000_000;
+    const candles = [];
+    for (let i = 0; i < n && candles.length < 20000; i++) {
+      const t = times[i];
+      if (t >= fromTs && t <= toTs) {
+        candles.push({ time: new Date(t * 1000).toISOString().substring(0, 19), open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
+      }
+    }
+    res.json({ ok: true, pair, n: candles.length, candles });
+  } catch (e) {
+    console.error('[candles]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // All other /api/* routes — call _worker.js and return the JSON response.
@@ -1175,10 +2372,10 @@ async function runLevelsRefresh() {
     state.levelsRefreshAt = Date.now();
     await reloadLevels();
 
-    // Compute HMM regime for each pair using last 60 daily closes
+    // Compute HMM regime for each pair using last 200 daily closes (1 year)
     const hmmResults = [];
     for (const sym of pairs) {
-      const closes = await fetchDailyCandles(sym, 61);
+      const closes = await fetchDailyCandles(sym, 201);
       if (closes && closes.length >= 20) {
         const returns = [];
         for (let i = 1; i < closes.length; i++) {
@@ -1188,7 +2385,8 @@ async function runLevelsRefresh() {
         if (result) {
           // Preserve intraday30m set by reloadLevels() — don't clobber it
           state.hmmRegimes[sym] = { ...result, intraday30m: state.hmmRegimes[sym]?.intraday30m };
-          hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range`);
+          const reliableTag = result.reliable ? '' : '⚠ambiguous';
+          hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range ratio=${result.sigmaRatio?.toFixed(2)}${reliableTag}`);
         }
       }
     }
@@ -1208,7 +2406,7 @@ async function runHMM5mRefresh() {
 
   for (const sym of pairs) {
     try {
-      const bars = await fetchHMMBars(sym, 300);
+      const bars = await fetchHMMBars(sym, 500);
       if (!bars || bars.length < 150) continue;
       state.hmm5mBars[sym] = bars; // cache M1 bars for polarity flip detection
 
@@ -1251,7 +2449,7 @@ async function runHMM5mV2Refresh() {
   const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
   for (const sym of pairs) {
     try {
-      const bars = await fetchHMMBars(sym, 300);
+      const bars = await fetchHMMBars(sym, 500);
       if (!bars || bars.length < 150) continue;
       const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
       if (!result) continue;
@@ -1287,6 +2485,163 @@ async function runHMM1hV2Refresh() {
     } catch (e) {
       console.error(`[HMM1H-V2] ${sym} error:`, e.message);
     }
+  }
+}
+
+async function refreshMacroContext() {
+  if (!process.env.FRED_KEY) return;
+  try {
+    const fredData = await fetchFredMacro(process.env.FRED_KEY);
+    if (!fredData) return;
+    const macroCtx = { ...computeMacroContext(fredData), updatedAt: new Date().toISOString() };
+    state.hmm5mMacroContext = macroCtx;
+    await kv.put('hmm5m_macro_context', JSON.stringify(macroCtx));
+    console.log(`[MACRO] Refreshed — VIX=${macroCtx.vix}  HY=${macroCtx.hySpread}  curve=${macroCtx.curve}  label=${macroCtx.label}`);
+  } catch (e) {
+    console.error('[MACRO] refresh failed:', e.message);
+  }
+}
+
+// ── Server-side FRED dashboard cache refresh ──────────────────────────────────
+// Fetches all 31 FRED series sequentially (600ms gaps = ~100 req/min) and stores
+// in fred_data_v3 KV. Runs at startup and every 6h so the /api/fred endpoint
+// always serves from KV — no client-triggered concurrent FRED batches.
+const _FRED_DASH_SERIES = {
+  vix: 'VIXCLS', us2y: 'GS2', us5y: 'GS5', us10y: 'GS10',
+  dxy: 'DTWEXBGS', hy: 'BAMLH0A0HYM2', nfci: 'NFCI',
+  tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE',
+  aud_usd: 'DEXUSAL', usd_jpy: 'DEXJPUS',
+  de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
+  jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
+  ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',
+  de_short: 'IRSTCI01DEM156N', gb_short: 'IR3TIB01GBM156N',
+  jp_short: 'IRSTCI01JPM156N', au_short: 'IR3TIB01AUM156N',
+  ca_short: 'IRSTCI01CAM156N', ch_short: 'IRSTCI01CHM156N',
+  wti: 'DCOILWTICO', walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD',
+  nzd_usd: 'DEXUSNZ', hy_bb: 'BAMLH0A1HYBB', hy_ccc: 'BAMLH0A3HYC',
+};
+const _FRED_DASH_KV     = 'fred_data_v3';
+const _FRED_DASH_CRIT   = ['vix', 'us10y', 'hy', 'nfci'];
+let   _fredDashRunning  = false;
+
+// fredhistory series — 90 daily/monthly obs per series, pre-populated at startup so
+// /api/fredhistory assembles from KV instead of making concurrent FRED calls from every
+// client compass load. Stored as fredhistory_series_<key> with 6h TTL.
+const _FREDHISTORY_SERIES = {
+  us2y: 'GS2', us5y: 'GS5', us10y: 'GS10', dxy: 'DTWEXBGS',
+  tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS',
+  hy: 'BAMLH0A0HYM2',
+  de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
+  jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
+  ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',
+  de_short: 'IRSTCI01DEM156N', gb_short: 'IR3TIB01GBM156N',
+  jp_short: 'IRSTCI01JPM156N', au_short: 'IR3TIB01AUM156N',
+  ca_short: 'IRSTCI01CAM156N', ch_short: 'IRSTCI01CHM156N',
+};
+let _fredHistoryRunning = false;
+
+async function refreshFredHistory(retry = 0) {
+  if (!process.env.FRED_KEY) return;
+  if (_fredHistoryRunning) return;
+  _fredHistoryRunning = true;
+  const entries = Object.entries(_FREDHISTORY_SERIES);
+  let ok = 0, skipped = 0, fail = 0;
+  try {
+    for (const [key, id] of entries) {
+      const kvKey = `fredhistory_series_${key}`;
+      try {
+        const existing = await kv.get(kvKey);
+        if (existing) { skipped++; continue; }
+        const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}` +
+          `&api_key=${process.env.FRED_KEY}&file_type=json&sort_order=desc&limit=90`;
+        const r = await fetch(url);
+        if (!r.ok) { fail++; console.warn(`[FRED] fredhistory ${key}: HTTP ${r.status}`); }
+        else {
+          const d = await r.json();
+          const pts = (d.observations || [])
+            .filter(o => o.value && o.value !== '.')
+            .map(o => ({ date: o.date, value: parseFloat(o.value) }))
+            .reverse();
+          if (pts.length > 0) {
+            await kv.put(kvKey, JSON.stringify(pts), { expirationTtl: 6 * 60 * 60 });
+            ok++;
+          } else { fail++; }
+        }
+      } catch(e) {
+        fail++;
+        console.warn(`[FRED] fredhistory ${key}:`, e.message);
+      }
+      await new Promise(res => setTimeout(res, 600));
+    }
+    if (ok > 0 || skipped === entries.length)
+      console.log(`[FRED] fredhistory series ready — ${ok} fetched, ${skipped} cached, ${fail} failed`);
+    if (fail > 0 && retry < 2) {
+      const waitMin = (retry + 1) * 2;
+      console.warn(`[FRED] fredhistory ${fail} failures — retry in ${waitMin} min`);
+      setTimeout(() => refreshFredHistory(retry + 1).catch(console.error), waitMin * 60 * 1000);
+    }
+  } finally {
+    _fredHistoryRunning = false;
+  }
+}
+
+async function refreshFredDashboard(retry = 0) {
+  if (!process.env.FRED_KEY) {
+    console.warn('[FRED] FRED_KEY not set — dashboard FRED data unavailable');
+    return;
+  }
+  if (_fredDashRunning) return; // prevent overlapping runs
+
+  // Skip if KV already has fresh valid data
+  try {
+    const existing = await kv.get(_FRED_DASH_KV);
+    if (existing) {
+      const { d, t } = JSON.parse(existing);
+      if (_FRED_DASH_CRIT.every(k => d[k]?.value != null) &&
+          Date.now() - (t || 0) < 5 * 60 * 60 * 1000) return;
+    }
+  } catch {}
+
+  _fredDashRunning = true;
+  console.log('[FRED] Sequential dashboard refresh starting (31 series, ~20s)...');
+  const out = {};
+  try {
+    for (const [key, id] of Object.entries(_FRED_DASH_SERIES)) {
+      try {
+        const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}` +
+          `&api_key=${process.env.FRED_KEY}&file_type=json&sort_order=desc&limit=5`;
+        const r = await fetch(url);
+        const d = await r.json();
+        const valid = (d.observations || [])
+          .filter(o => o.value && o.value !== '.')
+          .map(o => parseFloat(o.value));
+        out[key] = { value: valid[0] ?? null, prev: valid[1] ?? null };
+      } catch {
+        out[key] = { value: null, prev: null };
+      }
+      await new Promise(res => setTimeout(res, 600)); // 600ms gap ≈ 100 req/min
+    }
+
+    const critOk     = _FRED_DASH_CRIT.every(k => out[k]?.value != null);
+    const validCount = Object.values(out).filter(v => v.value != null).length;
+    if (critOk && validCount >= 10) {
+      await kv.put(_FRED_DASH_KV, JSON.stringify({ d: out, t: Date.now() }), { expirationTtl: 86400 });
+      console.log(`[FRED] Dashboard cache ready — ${validCount}/31 valid` +
+        ` VIX=${out.vix?.value} HY=${out.hy?.value} US10Y=${out.us10y?.value} NFCI=${out.nfci?.value}`);
+    } else {
+      const missing = _FRED_DASH_CRIT.filter(k => out[k]?.value == null);
+      if (retry < 2) {
+        const waitMin = (retry + 1) * 2;
+        console.warn(`[FRED] Refresh incomplete (attempt ${retry + 1}) — missing: ${missing.join(', ')} — retry in ${waitMin} min`);
+        // Retry up to 2 times to recover from transient FRED rate-limiting at startup.
+        // finally{} below clears _fredDashRunning so the retry can acquire the lock.
+        setTimeout(() => refreshFredDashboard(retry + 1).catch(console.error), waitMin * 60 * 1000);
+      } else {
+        console.warn(`[FRED] Refresh failed after ${retry + 1} attempts — missing: ${missing.join(', ')} — next attempt at scheduled 6h interval`);
+      }
+    }
+  } finally {
+    _fredDashRunning = false;
   }
 }
 
@@ -1352,14 +2707,35 @@ setTimeout(() => {
   setInterval(runHMM1hV2Refresh, 5 * 60 * 1000);
 }, 25_000);
 
+// Macro context (VIX, HY spread, yield curve via FRED) — refresh every 6h, run once at startup
+refreshMacroContext().catch(console.error);
+setInterval(refreshMacroContext, MACRO_REFRESH_MS);
+
+// FRED dashboard cache — sequential fetch at startup + every 6h to pre-populate fred_data_v3
+// so /api/fred always serves from KV without client-triggered concurrent FRED batches.
+refreshFredDashboard().catch(console.error);
+setInterval(refreshFredDashboard, MACRO_REFRESH_MS);
+
+// fredhistory series cache — 21 series × 90 obs, starts 30s after dashboard refresh to avoid
+// concurrent FRED requests, then every 6h.  Allows /api/fredhistory to serve entirely from KV.
+setTimeout(() => {
+  refreshFredHistory().catch(console.error);
+  setInterval(refreshFredHistory, MACRO_REFRESH_MS);
+}, 30_000);
+
+// Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
+startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));
+
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';
+  const fredKey = process.env.FRED_KEY   ? '✓' : '✗ missing — T1/T2/T4/T6 will show Data unavailable';
   const cfKv    = process.env.CF_ACCOUNT_ID ? '✓ CF REST API' : '✗ file only (set CF_ACCOUNT_ID + CF_API_TOKEN)';
   const alerts  = state.cfg?.enabled ? 'ON' : 'OFF (enable in Alerts modal)';
   console.log(`MacroFX Server   http://localhost:${PORT}`);
   console.log(`Monitoring       every ${MONITOR_MS} ms | ${DEFAULT_PAIRS.length} pairs | alerts ${alerts}`);
   console.log(`Level refresh    every ${REFRESH_LEVELS_MS / 60_000} min`);
   console.log(`OANDA_KEY        ${oanda}`);
+  console.log(`FRED_KEY         ${fredKey}`);
   console.log(`KV persistence   ${cfKv}`);
   console.log(`Data dir         ${process.env.DATA_DIR || path.join(__dirname, 'data')}`);
 });

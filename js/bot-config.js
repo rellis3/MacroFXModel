@@ -1359,6 +1359,220 @@ window.saveRgV2Creds     = saveRgV2Creds;
 window.rgV2ForceUnlock   = rgV2ForceUnlock;
 window.rgV2TgTest        = rgV2TgTest;
 
+// ── Dyn Anchor Bot ────────────────────────────────────────────────────────────
+
+const DA_DEFAULTS = {
+  enabled:             true,
+  paper_mode:          true,
+  pairs:               ['EUR/USD', 'GBP/USD', 'USD/JPY'],
+  interval_secs:       60,
+  trade_window_start:  '00:00',
+  trade_window_end:    '22:00',
+  eod_close_time:      '22:30',
+  eod_close_mode:      'close',
+  risk_pct:            1.0,
+  max_lot:             5.0,
+  max_spread_pips:     3.0,
+  daily_bars_needed:   60,
+  ewma_lambda:         0.94,
+  ema_period:          20,
+  regime_threshold:    0.002,
+  ddlimit:             3.0,
+  monthlydd:           5.0,
+  lockout:             3,
+  cooldown:            0,
+  tg_token:            '',
+  tg_chat_id:          '',
+};
+
+const DA_PAIRS = [
+  { id: 'da_pair_EURUSD', sym: 'EUR/USD'  }, { id: 'da_pair_GBPUSD', sym: 'GBP/USD'  },
+  { id: 'da_pair_USDJPY', sym: 'USD/JPY'  }, { id: 'da_pair_AUDUSD', sym: 'AUD/USD'  },
+  { id: 'da_pair_NZDUSD', sym: 'NZD/USD'  }, { id: 'da_pair_USDCAD', sym: 'USD/CAD'  },
+  { id: 'da_pair_USDCHF', sym: 'USD/CHF'  }, { id: 'da_pair_GBPJPY', sym: 'GBP/JPY'  },
+  { id: 'da_pair_EURJPY', sym: 'EUR/JPY'  }, { id: 'da_pair_EURGBP', sym: 'EUR/GBP'  },
+  { id: 'da_pair_EURCHF', sym: 'EUR/CHF'  }, { id: 'da_pair_EURCAD', sym: 'EUR/CAD'  },
+  { id: 'da_pair_EURAUD', sym: 'EUR/AUD'  }, { id: 'da_pair_AUDJPY', sym: 'AUD/JPY'  },
+  { id: 'da_pair_AUDCAD', sym: 'AUD/CAD'  }, { id: 'da_pair_GBPAUD', sym: 'GBP/AUD'  },
+  { id: 'da_pair_GBPCAD', sym: 'GBP/CAD'  }, { id: 'da_pair_CADJPY', sym: 'CAD/JPY'  },
+  { id: 'da_pair_CHFJPY', sym: 'CHF/JPY'  }, { id: 'da_pair_NZDJPY', sym: 'NZD/JPY'  },
+  { id: 'da_pair_AUDNZD', sym: 'AUD/NZD'  }, { id: 'da_pair_GBPNZD', sym: 'GBP/NZD'  },
+  { id: 'da_pair_EURNZD', sym: 'EUR/NZD'  }, { id: 'da_pair_AUDCHF', sym: 'AUD/CHF'  },
+  { id: 'da_pair_GBPCHF', sym: 'GBP/CHF'  },
+];
+
+let _daCfg = JSON.parse(JSON.stringify(DA_DEFAULTS));
+
+function readDaForm() {
+  _daCfg.enabled            = chk('da_enabled');
+  _daCfg.paper_mode         = chk('da_paper_mode');
+  _daCfg.interval_secs      = num('da_interval_secs',      60);
+  _daCfg.trade_window_start = str('da_window_start',    '00:00');
+  _daCfg.trade_window_end   = str('da_window_end',      '22:00');
+  _daCfg.eod_close_time     = str('da_eod_close_time',  '22:30');
+  _daCfg.eod_close_mode     = str('da_eod_close_mode',  'close');
+  _daCfg.risk_pct           = num('da_risk_pct',          1.0);
+  _daCfg.max_lot            = num('da_max_lot',            5.0);
+  _daCfg.max_spread_pips    = num('da_max_spread_pips',    3.0);
+  _daCfg.daily_bars_needed  = num('da_daily_bars_needed',  60);
+  _daCfg.ewma_lambda        = num('da_ewma_lambda',        0.94);
+  _daCfg.ema_period         = num('da_ema_period',         20);
+  _daCfg.regime_threshold   = num('da_regime_threshold',   0.002);
+  _daCfg.ddlimit            = num('da_ddlimit',            3.0);
+  _daCfg.monthlydd          = num('da_monthlydd',          5.0);
+  _daCfg.lockout            = num('da_lockout',            3);
+  _daCfg.cooldown           = num('da_cooldown',           0);
+  _daCfg.tg_token           = str('da_tg_token',          '');
+  _daCfg.tg_chat_id         = str('da_tg_chat_id',        '');
+  _daCfg.pairs              = DA_PAIRS.filter(p => chk(p.id)).map(p => p.sym);
+}
+
+function renderDaForm() {
+  setChk('da_enabled',          _daCfg.enabled          ?? true);
+  setChk('da_paper_mode',       _daCfg.paper_mode       ?? true);
+  setVal('da_interval_secs',    _daCfg.interval_secs    ?? 60);
+  setVal('da_window_start',     _daCfg.trade_window_start ?? '00:00');
+  setVal('da_window_end',       _daCfg.trade_window_end   ?? '22:00');
+  setVal('da_eod_close_time',   _daCfg.eod_close_time     ?? '22:30');
+  setVal('da_eod_close_mode',   _daCfg.eod_close_mode     ?? 'close');
+  setVal('da_risk_pct',         _daCfg.risk_pct         ?? 1.0);
+  setVal('da_max_lot',          _daCfg.max_lot          ?? 5.0);
+  setVal('da_max_spread_pips',  _daCfg.max_spread_pips  ?? 3.0);
+  setVal('da_daily_bars_needed',_daCfg.daily_bars_needed ?? 60);
+  setVal('da_ewma_lambda',      _daCfg.ewma_lambda      ?? 0.94);
+  setVal('da_ema_period',       _daCfg.ema_period       ?? 20);
+  setVal('da_regime_threshold', _daCfg.regime_threshold ?? 0.002);
+  setVal('da_ddlimit',          _daCfg.ddlimit          ?? 3.0);
+  setVal('da_monthlydd',        _daCfg.monthlydd        ?? 5.0);
+  setVal('da_lockout',          _daCfg.lockout          ?? 3);
+  setVal('da_cooldown',         _daCfg.cooldown         ?? 0);
+  setVal('da_tg_token',         _daCfg.tg_token         ?? '');
+  setVal('da_tg_chat_id',       _daCfg.tg_chat_id       ?? '');
+  const enabledPairs = new Set(_daCfg.pairs || DA_DEFAULTS.pairs);
+  DA_PAIRS.forEach(p => setChk(p.id, enabledPairs.has(p.sym)));
+}
+
+async function loadDaConfig() {
+  try {
+    const stored = await kvGet('dyn_anchor_config');
+    if (stored) { _daCfg = { ...JSON.parse(JSON.stringify(DA_DEFAULTS)), ...stored }; }
+    renderDaForm();
+  } catch (e) { /* non-critical */ }
+}
+
+async function saveDaConfig() {
+  readDaForm();
+  const el = document.getElementById('daSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('dyn_anchor_config', _daCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = 'var(--amber)'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetDaDefaults() {
+  _daCfg = JSON.parse(JSON.stringify(DA_DEFAULTS));
+  renderDaForm();
+  const el = document.getElementById('daSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+async function loadDaCreds() {
+  try { _applyCredsToForm(await kvGet('dyn_anchor_credentials'), 'da_', 'da_mt5_password'); } catch (e) {}
+}
+async function saveDaCreds() {
+  await _saveCreds('dyn_anchor_credentials', 'da_', 'da_mt5_password', 'daCredsStatus');
+}
+
+async function daForceUnlock() {
+  const btn = document.getElementById('daUnlockBtn');
+  const el  = document.getElementById('daUnlockStatus');
+  if (btn) btn.disabled = true;
+  if (el)  { el.textContent = 'Sending…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('da_force_unlock', { force_unlock: true, requested_at: Date.now() });
+    if (el) { el.textContent = 'Unlock sent — bot will clear lockout within 60s ✓'; el.style.color = 'var(--amber)'; }
+    setTimeout(() => { if (el) el.textContent = ''; if (btn) btn.disabled = false; }, 5000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+    if (btn) btn.disabled = false;
+  }
+}
+
+function _daRegimeColor(regime) {
+  const r = (regime || '').toUpperCase();
+  if (r === 'BULL')  return '#f59e0b';
+  if (r === 'BEAR')  return '#e74c3c';
+  if (r === 'RANGE') return '#888';
+  return '#888';
+}
+
+async function loadDaStatus() {
+  try {
+    const data  = await kvGet('dyn_anchor_status');
+    const ageEl = document.getElementById('daStatusAge');
+    const modeEl= document.getElementById('daStatusMode');
+    const tbody = document.getElementById('daStatusBody');
+    if (!data) {
+      if (ageEl) ageEl.textContent = 'Bot has not run yet';
+      return;
+    }
+    const ageSecs = data.pushed_at ? Math.round(Date.now() / 1000 - data.pushed_at) : null;
+    if (ageEl)  ageEl.textContent  = ageSecs != null ? `${ageSecs}s ago` : '—';
+    if (modeEl) modeEl.textContent = data.paper_mode ? '📋 PAPER' : '🔴 LIVE';
+    if (modeEl) modeEl.style.color = data.paper_mode ? 'var(--text3)' : 'var(--red)';
+
+    const pairs = data.pairs || {};
+    if (!tbody) return;
+    if (!Object.keys(pairs).length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:var(--text3)">No pair data yet</td></tr>';
+      return;
+    }
+    const rows = Object.entries(pairs).map(([pair, ps]) => {
+      const regime = (ps.regime || 'RANGE').toUpperCase();
+      const rCol   = _daRegimeColor(regime);
+      const tradeCol = ps.tradeable ? rCol : 'var(--text3)';
+      let posHtml = '';
+      if (ps.direction) {
+        const pCol = ps.direction === 'BUY' ? 'var(--green)' : 'var(--red)';
+        posHtml = `<span style="color:${pCol};font-weight:700">${ps.direction}</span> @${ps.entry?.toFixed(5) || '—'}`;
+      } else if (ps.daily_trade_done) {
+        posHtml = '<span style="color:var(--text3)">traded ✓</span>';
+      } else if (!ps.tradeable) {
+        posHtml = '<span style="color:var(--text3)">RANGE skip</span>';
+      } else if (!ps.setup_done) {
+        posHtml = '<span style="color:var(--text3)">setup pending</span>';
+      } else {
+        posHtml = '<span style="color:var(--green)">watching</span>';
+      }
+      return `<tr>
+        <td style="font-weight:600">${pair}</td>
+        <td style="color:${tradeCol};font-weight:700">${regime}</td>
+        <td style="text-align:right">${ps.session_open?.toFixed(5) || '—'}</td>
+        <td style="text-align:right">${ps.run_high?.toFixed(5) || '—'}</td>
+        <td style="text-align:right">${ps.run_low?.toFixed(5) || '—'}</td>
+        <td style="text-align:right;color:var(--red)">${ps.sell_entry?.toFixed(5) || '—'}</td>
+        <td style="text-align:right;color:var(--green)">${ps.buy_entry?.toFixed(5) || '—'}</td>
+        <td style="text-align:right">${ps.hl50_pct != null ? ps.hl50_pct.toFixed(3) + '%' : '—'}</td>
+        <td style="text-align:right">${ps.sigma_d_pct != null ? ps.sigma_d_pct.toFixed(3) + '%' : '—'}</td>
+        <td>${posHtml}</td>
+      </tr>`;
+    }).join('');
+    tbody.innerHTML = rows;
+  } catch (e) {
+    const tbody = document.getElementById('daStatusBody');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="padding:16px;color:var(--red)">Error: ${e.message}</td></tr>`;
+  }
+}
+
+window.saveDaConfig     = saveDaConfig;
+window.resetDaDefaults  = resetDaDefaults;
+window.saveDaCreds      = saveDaCreds;
+window.daForceUnlock    = daForceUnlock;
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.getElementById('unlockBtn')?.addEventListener('click', forceUnlock);
@@ -1367,17 +1581,21 @@ loadConfig();
 loadBtConfig();
 loadRgConfig();
 loadRgV2Config();
+loadDaConfig();
 loadCreds();
 loadBtCreds();
 loadRgCreds();
 loadRgV2Creds();
+loadDaCreds();
 loadBotStatus();
 loadBtBotStatus();
 loadRgBotStatus();
 loadRgV2Status();
+loadDaStatus();
 loadBtJournal();
 setInterval(loadBotStatus,    60_000);
 setInterval(loadBtBotStatus,  60_000);
 setInterval(loadRgBotStatus,  60_000);
 setInterval(loadRgV2Status,   30_000);
+setInterval(loadDaStatus,     60_000);
 setInterval(loadBtJournal,   120_000);
