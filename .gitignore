@@ -11,3 +11,7 @@ __pycache__/
 *.pyo
 .claude/worktrees/
 backtestSystem/backtestSystem.log
+Gold/logs/gold_bot.log
+Gold/logs/gold_bot.log
+bot/regime_bot.log
+backtestSystem/backtestSystem.log

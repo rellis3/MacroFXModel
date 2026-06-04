@@ -1648,7 +1648,11 @@ function _ztVuManchu(bars, zoneDir, minComp = 2, gpEntryMs = null) {
   if (gpEntryMs != null) {
     const entrySec = gpEntryMs / 1000;
     for (let i = 0; i < bars.length; i++) {
-      if ((bars[i].time ?? 0) >= entrySec) { entryBarIdx = i; break; }
+      // Oanda bars use 'datetime' (London string); 'time' is absent — parse either
+      const bt = bars[i].time ?? (bars[i].datetime
+        ? new Date(bars[i].datetime.replace(' ', 'T') + 'Z').getTime() / 1000
+        : 0);
+      if (bt >= entrySec) { entryBarIdx = i; break; }
     }
   }
 
@@ -1865,7 +1869,7 @@ async function _ztStep() {
       }
 
       const gpEntryMs = _ZT.gpEntryTime[focusZone.zone_id] ?? null;
-      focusVu = _ztVuManchu(bars5m.slice(-60), focusZone.direction, 2, gpEntryMs);
+      focusVu = _ztVuManchu(bars5m.slice(0, 60).reverse(), focusZone.direction, 2, gpEntryMs);
 
       // Log once per zone approach
       if (focusZone.distPips <= ZT_PROX_PIPS && focusZone.zone_id !== _ztLastLoggedZone) {
