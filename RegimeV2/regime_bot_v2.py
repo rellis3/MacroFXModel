@@ -587,7 +587,8 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
     if res and res.retcode == mt5.TRADE_RETCODE_DONE:
         log.info(f'MT5 order placed: ticket={res.order}  price={price}')
         return res.order
-    log.error(f'MT5 order failed: retcode={getattr(res,"retcode","?")} {getattr(res,"comment","")}')
+    last_err = mt5.last_error()
+    log.error(f'MT5 order failed: retcode={getattr(res,"retcode","?")} {getattr(res,"comment","")}  last_error={last_err}')
     return None
 
 
