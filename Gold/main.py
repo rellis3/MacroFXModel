@@ -343,6 +343,11 @@ def _calc_sl_tp(zone: FibZone, direction: str, price: float,
         sl = (price - atr_sl) if direction == 'LONG' else (price + atr_sl)
         sl_dist = atr_sl
 
+    # Hard cap: ATR fallback must not exceed max_sl_pips either
+    if sl_dist > max_sl:
+        sl = (price - max_sl) if direction == 'LONG' else (price + max_sl)
+        sl_dist = max_sl
+
     sign = 1 if direction == 'LONG' else -1
     tp1  = round(price + sign * sl_dist * cfg.get('tp1_r', 1.0), 2)
     tp2  = round(price + sign * sl_dist * cfg.get('tp2_r', 2.0), 2)
