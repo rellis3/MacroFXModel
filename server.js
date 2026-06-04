@@ -2672,7 +2672,8 @@ app.post('/api/regime-backfill-trigger', (req, res) => {
   // Use PATH-resolved python3 so this works on Railway without hardcoded paths.
   // BT_PYTHON uses execFile() try/catch which only catches synchronous errors
   // and always returns /usr/local/bin/python3 even when that path doesn't exist.
-  const pyBin = process.env.PYTHON_BIN || 'python3';
+  // Railway Nixpacks installs Python as 'python' (see start.sh). Fall back to python3 for local dev.
+  const pyBin = process.env.PYTHON_BIN || 'python';
 
   const child = spawn(
     pyBin, [SCRIPT, '--upload', '--dashboard-url', baseUrl],
