@@ -125,7 +125,8 @@ function garch11VolSeries(bars, omega) {
 /**
  * @param {Array<{open,high,low,close}>} ohlc  Daily bars, oldest → newest
  * @param {string}  assetClass  'commodity' | 'index' | 'fx'
- * @param {number}  newsMult    Output of detectNewsMultiplier()
+ * @param {number}  newsMult    Output of detectNewsMultiplier() — stored in output as
+ *                              informational context only, not applied to ranges.
  * @returns forecast object — all values are percentages
  */
 export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
@@ -146,12 +147,15 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
 
   const r2 = x => Math.round(x * 100) / 100;
 
+  // newsMult is NOT applied to ranges — reference methodology uses pure vol-based
+  // forecasts; event days are already embedded in the historical vol estimate.
+  // The multiplier is retained in output as informational context for the dashboard.
   return {
     vol_annual: r2(volAnnual),
-    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * newsMult),
-    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * newsMult),
-    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct * newsMult),
-    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct * newsMult),
+    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct),
+    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct),
+    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct),
+    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct),
     news_mult:  r2(newsMult),
   };
 }
@@ -198,10 +202,10 @@ export function computeForecastFromRV(dailyRVs, assetClass = 'fx', newsMult = 1.
 
   return {
     vol_annual: r2(volAnnual),
-    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * newsMult),
-    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * newsMult),
-    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct * newsMult),
-    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct * newsMult),
+    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct),
+    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct),
+    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct),
+    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct),
     news_mult:  r2(newsMult),
   };
 }
