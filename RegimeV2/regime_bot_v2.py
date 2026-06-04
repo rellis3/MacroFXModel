@@ -1132,6 +1132,9 @@ def run(url: str, paper_mode: bool) -> None:
                             conf_at_exit=confidence, regime_at_exit=regime,
                             pnl_pips=pnl_pips, duration_secs=dur_secs,
                             paper_mode=paper_mode,
+                            entry_price=pos['entry_price'],
+                            close_price=price_now,
+                            opened_at=pos.get('opened_at'),
                         )
                         send_telegram(tg['token'], tg['chat_id'], msg)
                         del open_pos[pair]
@@ -1177,7 +1180,13 @@ def run(url: str, paper_mode: bool) -> None:
                 hb_interval = cfg.get('heartbeat_min', 120) * 60
                 if hb_interval > 0 and now_t - last_heartbeat.get(pair, 0) >= hb_interval:
                     cons, cons_total = consensus_score(cfg['pairs'], all_regimes, regime)
-                    pos_info = {'direction': pos['direction'], 'pnl_pips': pnl_pips, 'duration_secs': dur_secs}
+                    pos_info = {
+                        'direction':   pos['direction'],
+                        'pnl_pips':    pnl_pips,
+                        'duration_secs': dur_secs,
+                        'entry_price': pos['entry_price'],
+                        'opened_at':   pos.get('opened_at', 0),
+                    }
                     msg = heartbeat_message(
                         pair=pair, regime=regime, confidence=confidence,
                         slope=conf_slope, vol_z=vol_z,
