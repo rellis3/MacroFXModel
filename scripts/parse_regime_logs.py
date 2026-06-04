@@ -359,9 +359,16 @@ def write_pair_files(records_by_pair: dict, events: list, version: str):
     Write one JSON file per pair under data/regime_history/{version}/.
 
     Returns a list of (pair, payload) tuples for optional upload.
+    File writing is best-effort — failures are warned but do not abort so
+    --upload still works on read-only filesystems (e.g. Railway ephemeral FS).
     """
     out_dir = os.path.join(OUTPUT_BASE, version)
-    os.makedirs(out_dir, exist_ok=True)
+    _can_write = False
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+        _can_write = True
+    except OSError as exc:
+        print(f"[WARN] Cannot create output dir {out_dir}: {exc}", file=sys.stderr)
 
     # Group events by pair
     events_by_pair: dict = {}
@@ -387,9 +394,13 @@ def write_pair_files(records_by_pair: dict, events: list, version: str):
             "events": evs,
         }
 
-        fname = os.path.join(out_dir, f"{pair_safe(pair)}.json")
-        with open(fname, "w", encoding="utf-8") as fh:
-            json.dump(payload, fh, separators=(",", ":"))
+        if _can_write:
+            fname = os.path.join(out_dir, f"{pair_safe(pair)}.json")
+            try:
+                with open(fname, "w", encoding="utf-8") as fh:
+                    json.dump(payload, fh, separators=(",", ":"))
+            except OSError as exc:
+                print(f"[WARN] Cannot write {fname}: {exc}", file=sys.stderr)
 
         payloads.append((pair, payload))
 
