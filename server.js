@@ -14,7 +14,7 @@ import express              from 'express';
 import path                from 'path';
 import { fileURLToPath }   from 'url';
 import fs                  from 'fs';
-import { execFile }        from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { promisify }       from 'util';
 import * as kv           from './kv.js';
 import worker            from './_worker.js';
@@ -2632,6 +2632,80 @@ app.get('/api/corr-history', (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── Regime log backfill ──────────────────────────────────────────────────────
+// Triggers parse_regime_logs.py --upload against localhost so the user can
+// backfill historical regime data from the dashboard without SSH access.
+
+const _rgJobs = new Map();
+
+function _purgeStaleRgJobs() {
+  const now = Date.now();
+  for (const [id, job] of _rgJobs) {
+    if (now - job.startedAt > 30 * 60 * 1000) _rgJobs.delete(id);
+  }
+}
+
+app.post('/api/regime-backfill-trigger', (req, res) => {
+  const SCRIPT  = path.join(__dirname, 'scripts', 'parse_regime_logs.py');
+  const baseUrl = `http://localhost:${PORT}`;
+
+  if (!fs.existsSync(SCRIPT)) {
+    return res.status(500).json({ ok: false, error: 'parse_regime_logs.py not found' });
+  }
+
+  _purgeStaleRgJobs();
+
+  // Only allow one job at a time
+  for (const job of _rgJobs.values()) {
+    if (job.status === 'running') {
+      return res.json({ ok: true, jobId: job.jobId, alreadyRunning: true });
+    }
+  }
+
+  const jobId     = `rg_${Date.now()}`;
+  const startedAt = Date.now();
+  const lines     = [];
+  _rgJobs.set(jobId, { jobId, status: 'running', startedAt, lines });
+
+  const child = spawn(
+    BT_PYTHON, [SCRIPT, '--upload', '--dashboard-url', baseUrl],
+    { cwd: __dirname }
+  );
+
+  child.stdout.on('data', chunk => {
+    const text = chunk.toString();
+    text.split('\n').filter(l => l.trim()).forEach(l => lines.push(l));
+    if (lines.length > 200) lines.splice(0, lines.length - 200);
+  });
+  child.stderr.on('data', chunk => {
+    const text = chunk.toString();
+    text.split('\n').filter(l => l.trim()).forEach(l => lines.push('[err] ' + l));
+    if (lines.length > 200) lines.splice(0, lines.length - 200);
+  });
+  child.on('close', code => {
+    const job = _rgJobs.get(jobId);
+    if (job) {
+      job.status = code === 0 ? 'done' : 'error';
+      job.exitCode = code;
+      job.finishedAt = Date.now();
+    }
+  });
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/regime-backfill-status/:jobId', (req, res) => {
+  const job = _rgJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  res.json({
+    ok:        true,
+    status:    job.status,
+    elapsed:   Math.round((Date.now() - job.startedAt) / 1000),
+    lines:     job.lines.slice(-40),
+    exitCode:  job.exitCode ?? null,
+  });
 });
 
 // All other /api/* routes — call _worker.js and return the JSON response.

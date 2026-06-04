@@ -303,6 +303,10 @@ html, body {
 
     <button class="rv-load-btn" id="loadBtn" onclick="loadData()">Load</button>
 
+    <div class="rv-sep"></div>
+
+    <button class="rv-load-btn" id="backfillBtn" onclick="triggerBackfill()" style="background:#1c2133;border-color:#f0a030;color:#f0a030" title="Parse bot log files on the server and upload all historical regime data to KV">Backfill logs</button>
+
     <span class="rv-status" id="statusText">Ready</span>
   </div>
 
@@ -876,6 +880,51 @@ function setStatus(msg, cls) {
   const el = document.getElementById('statusText');
   el.textContent = msg;
   el.className = 'rv-status' + (cls ? ' ' + cls : '');
+}
+
+// ─── Backfill from server logs ───────────────────────────────────────────────
+
+async function triggerBackfill() {
+  const btn = document.getElementById('backfillBtn');
+  btn.disabled = true;
+  setStatus('Starting backfill…', 'loading');
+
+  let jobId;
+  try {
+    const r = await fetch('/api/regime-backfill-trigger', { method: 'POST' });
+    const d = await r.json();
+    if (!d.ok) { setStatus('Backfill error: ' + (d.error || 'unknown'), 'err'); btn.disabled = false; return; }
+    jobId = d.jobId;
+    if (d.alreadyRunning) setStatus('Backfill already running…', 'loading');
+  } catch(e) {
+    setStatus('Backfill failed: ' + e.message, 'err');
+    btn.disabled = false;
+    return;
+  }
+
+  // Poll for completion
+  const poll = setInterval(async () => {
+    try {
+      const r = await fetch(`/api/regime-backfill-status/${jobId}`);
+      const d = await r.json();
+      const last = d.lines && d.lines.length ? d.lines[d.lines.length - 1] : '';
+      if (d.status === 'running') {
+        setStatus(`Backfill running (${d.elapsed}s)… ${last}`, 'loading');
+      } else if (d.status === 'done') {
+        clearInterval(poll);
+        btn.disabled = false;
+        setStatus(`Backfill complete (${d.elapsed}s) — reload to see regime colours`, 'ok');
+      } else {
+        clearInterval(poll);
+        btn.disabled = false;
+        setStatus('Backfill error: ' + (last || 'see server logs'), 'err');
+      }
+    } catch(e) {
+      clearInterval(poll);
+      btn.disabled = false;
+      setStatus('Backfill poll error: ' + e.message, 'err');
+    }
+  }, 3000);
 }
 
 // ─── Initial metric series creation ──────────────────────────────────────────
