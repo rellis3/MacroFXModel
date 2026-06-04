@@ -278,6 +278,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn rg" data-tab="regimev2" onclick="switchTab('regimev2')">Regime Bot V2</button>
     <button class="tab-btn" data-tab="dynanchor" onclick="switchTab('dynanchor')" style="color:#f59e0b" id="daTabBtn">⚓ Dyn Anchor</button>
     <button class="tab-btn" data-tab="beta" onclick="switchTab('beta')" style="color:#9d96f0" id="betaTabBtn">β Beta Targets</button>
+    <button class="tab-btn" data-tab="gold" onclick="switchTab('gold')" style="color:#f4c430" id="goldTabBtn">⚡ Gold Bot</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
   </div>
 
@@ -2005,6 +2006,147 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     </div>
 
   </div><!-- /tab-beta -->
+
+  <!-- ══════════════════════════════════════════════════════ GOLD BOT TAB -->
+  <div id="tab-gold" class="tab-pane">
+
+    <div class="bot-banner" style="background:rgba(244,196,48,0.08);border:1px solid rgba(244,196,48,0.25)">
+      <div class="bot-banner-icon">⚡</div>
+      <div>
+        <div class="bot-banner-title" style="color:#f4c430">Gold Bot — XAU/USD</div>
+        <div class="bot-banner-sub">Max-style confluence trading · HTF bias → Fib zones → VuManChu confirmation · Gold/main.py · Config stored in KV</div>
+      </div>
+    </div>
+
+    <!-- Live status strip -->
+    <div class="bs-strip">
+      <div class="bs-head">
+        <span class="bs-lbl">Gold Bot Runtime</span>
+        <span id="goldBsAge"   class="bs-dim">Checking…</span>
+        <span id="goldBsMode"  class="bs-dim"></span>
+        <span id="goldBsState" class="bs-dim"></span>
+        <span id="goldBsHTF"   class="bs-dim"></span>
+      </div>
+      <div class="bs-rows">
+        <div id="goldBsZones"></div>
+        <div id="goldBsTrades"></div>
+      </div>
+    </div>
+
+    <!-- Row: Bot Control | Entry Gate -->
+    <div class="grid">
+
+      <!-- Bot Control -->
+      <div class="card">
+        <div class="card-title">Bot Control</div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="gold_enabled">
+          <label for="gold_enabled">Enabled <small>uncheck to pause without stopping the process</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="gold_paper_mode">
+          <label for="gold_paper_mode">Paper mode <small>journal signals, no real MT5 orders</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="gold_macro_gate">
+          <label for="gold_macro_gate">Macro gate <small>block if AI gold model strongly opposes direction</small></label>
+        </div>
+        <div class="form-row" style="margin-top:10px">
+          <span class="form-lbl">Trade window start <small>UTC</small></span>
+          <input type="time" id="gold_window_start" style="width:110px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Trade window end <small>UTC</small></span>
+          <input type="time" id="gold_window_end" style="width:110px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max trades per day</span>
+          <input type="number" id="gold_max_trades_per_day" min="1" max="10" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Cooldown <small>minutes after each trade</small></span>
+          <input type="number" id="gold_cooldown_minutes" min="5" max="240" step="5" style="width:80px">
+        </div>
+      </div>
+
+      <!-- Entry Gate -->
+      <div class="card">
+        <div class="card-title">Entry Gate</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px">
+          Price must be within <b>proximity pips</b> of the GP zone centre.
+          Zone must score at least <b>min score</b>. VuManChu needs <b>N components</b> aligned before firing.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Min zone score <small>confluence threshold to arm</small></span>
+          <input type="number" id="gold_min_zone_score" min="1" max="15" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Proximity pips <small>$-distance from GP edge to arm</small></span>
+          <input type="number" id="gold_proximity_pips" min="2" max="30" step="1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">VuManChu components <small>2 = medium, 3 = high confidence only</small></span>
+          <div class="radio-group">
+            <label><input type="radio" name="gold_vu_min" value="2"> 2</label>
+            <label><input type="radio" name="gold_vu_min" value="3"> 3</label>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:11px;color:var(--text3)">
+          VuManChu components: <b>WT</b> (oversold/overbought or divergence) · <b>Money Flow</b> (exhaustion or directional) · <b>VWAP</b> (slope exhaustion or divergence)
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Row: SL / TP | Position Sizing -->
+    <div class="grid">
+
+      <!-- SL / TP -->
+      <div class="card">
+        <div class="card-title">Stop Loss &amp; Take Profit</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+          SL is placed structurally (just beyond the zone's .886 level). ATR multiplier is the fallback when the structural distance is too tight.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">SL ATR multiplier <small>SL = ATR(14) × this if structural SL is too tight</small></span>
+          <input type="number" id="gold_sl_atr_mult" min="0.5" max="5" step="0.1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max SL pips <small>hard cap on SL distance in $ pips</small></span>
+          <input type="number" id="gold_max_sl_pips" min="10" max="100" step="5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">TP1 R-multiple <small>first target at entry + SL × this</small></span>
+          <input type="number" id="gold_tp1_r" min="0.5" max="5" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">TP2 R-multiple <small>runner target at entry + SL × this</small></span>
+          <input type="number" id="gold_tp2_r" min="1" max="10" step="0.5" style="width:80px">
+        </div>
+      </div>
+
+      <!-- Position Sizing -->
+      <div class="card">
+        <div class="card-title">Position Sizing</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+          Lot size is calculated so that hitting the SL loses exactly <b>risk %</b> of account balance.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Risk % per trade <small>% of balance if SL is hit</small></span>
+          <input type="number" id="gold_risk_pct" min="0.1" max="5" step="0.1" style="width:80px">
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Save / Reset -->
+    <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
+      <button class="btn-save" style="background:#f4c430;color:#111;max-width:180px;padding:9px" onclick="saveGoldConfig()">Save Gold Config</button>
+      <button class="btn-save" style="background:var(--s2);color:var(--text1);max-width:160px;padding:9px;border:1px solid var(--bd)" onclick="resetGoldDefaults()">Reset Defaults</button>
+      <span id="goldSaveStatus" class="inline-status"></span>
+    </div>
+
+  </div><!-- /tab-gold -->
 
   <!-- ══════════════════════════════════════════════════════ POSITIONS TAB -->
   <div class="tab-pane" id="tab-positions">

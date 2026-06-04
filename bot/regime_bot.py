@@ -451,7 +451,7 @@ def position_size(balance: float, risk_pct: float,
     raw_lots = risk_amt / (sl_pips * pv)
     # Decay discount: lots shrink linearly as decay approaches 1
     lots = raw_lots * (1.0 - decay_score)
-    return max(0.01, min(round(lots, 2), max_lot))
+    return float(max(0.01, min(round(lots, 2), float(max_lot))))
 
 
 # ── MT5 execution ─────────────────────────────────────────────────────────────
@@ -578,7 +578,7 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
     res = mt5.order_send({
         'action':       mt5.TRADE_ACTION_DEAL,
         'symbol':       mt5_sym,
-        'volume':       pos.volume,
+        'volume':       float(pos.volume),
         'type':         close_type,
         'position':     ticket,
         'price':        close_price,
@@ -589,13 +589,16 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
         'type_filling': _filling_mode(mt5_sym),
     })
 
-    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+    if res is None:
+        log.error(f'Close failed: order_send returned None  last_error={mt5.last_error()}')
+        return False
+
+    if res.retcode == mt5.TRADE_RETCODE_DONE:
         log.info(f'Position {ticket} closed at {close_price}')
         return True
 
     log.error(
-        f'Close failed: retcode={getattr(res, "retcode", "?")} '
-        f'{getattr(res, "comment", "")}'
+        f'Close failed: retcode={res.retcode}  comment={res.comment}  last_error={mt5.last_error()}'
     )
     return False
 

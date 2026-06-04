@@ -1580,6 +1580,136 @@ window.resetDaDefaults  = resetDaDefaults;
 window.saveDaCreds      = saveDaCreds;
 window.daForceUnlock    = daForceUnlock;
 
+// ── Gold Bot ──────────────────────────────────────────────────────────────────
+
+const GOLD_DEFAULTS = {
+  enabled:              true,
+  paper_mode:           true,
+  min_zone_score:       3.0,
+  proximity_pips:       5.0,
+  vu_min_components:    2,
+  risk_pct:             0.5,
+  tp1_r:                1.0,
+  tp2_r:                2.0,
+  sl_atr_mult:          1.5,
+  max_sl_pips:          40,
+  max_trades_per_day:   2,
+  trade_window_start:   '07:00',
+  trade_window_end:     '20:00',
+  cooldown_minutes:     30,
+  gold_macro_gate:      true,
+};
+
+let _goldCfg = JSON.parse(JSON.stringify(GOLD_DEFAULTS));
+
+function readGoldForm() {
+  _goldCfg.enabled             = chk('gold_enabled');
+  _goldCfg.paper_mode          = chk('gold_paper_mode');
+  _goldCfg.gold_macro_gate     = chk('gold_macro_gate');
+  _goldCfg.min_zone_score      = num('gold_min_zone_score',      3.0);
+  _goldCfg.proximity_pips      = num('gold_proximity_pips',      5.0);
+  _goldCfg.vu_min_components   = parseInt(radio('gold_vu_min',   '2'), 10);
+  _goldCfg.sl_atr_mult         = num('gold_sl_atr_mult',         1.5);
+  _goldCfg.max_sl_pips         = num('gold_max_sl_pips',         40);
+  _goldCfg.tp1_r               = num('gold_tp1_r',               1.0);
+  _goldCfg.tp2_r               = num('gold_tp2_r',               2.0);
+  _goldCfg.risk_pct            = num('gold_risk_pct',            0.5);
+  _goldCfg.max_trades_per_day  = num('gold_max_trades_per_day',  2);
+  _goldCfg.trade_window_start  = str('gold_window_start',        '07:00');
+  _goldCfg.trade_window_end    = str('gold_window_end',          '20:00');
+  _goldCfg.cooldown_minutes    = num('gold_cooldown_minutes',    30);
+}
+
+function renderGoldForm() {
+  setChk('gold_enabled',           _goldCfg.enabled           ?? true);
+  setChk('gold_paper_mode',        _goldCfg.paper_mode        ?? true);
+  setChk('gold_macro_gate',        _goldCfg.gold_macro_gate   ?? true);
+  setVal('gold_min_zone_score',    _goldCfg.min_zone_score    ?? 3.0);
+  setVal('gold_proximity_pips',    _goldCfg.proximity_pips    ?? 5.0);
+  setRadio('gold_vu_min',          String(_goldCfg.vu_min_components ?? 2));
+  setVal('gold_sl_atr_mult',       _goldCfg.sl_atr_mult       ?? 1.5);
+  setVal('gold_max_sl_pips',       _goldCfg.max_sl_pips       ?? 40);
+  setVal('gold_tp1_r',             _goldCfg.tp1_r             ?? 1.0);
+  setVal('gold_tp2_r',             _goldCfg.tp2_r             ?? 2.0);
+  setVal('gold_risk_pct',          _goldCfg.risk_pct          ?? 0.5);
+  setVal('gold_max_trades_per_day',_goldCfg.max_trades_per_day ?? 2);
+  setVal('gold_window_start',      _goldCfg.trade_window_start ?? '07:00');
+  setVal('gold_window_end',        _goldCfg.trade_window_end   ?? '20:00');
+  setVal('gold_cooldown_minutes',  _goldCfg.cooldown_minutes  ?? 30);
+}
+
+async function loadGoldConfig() {
+  try {
+    const stored = await kvGet('gold_bot_config');
+    if (stored) { _goldCfg = { ...JSON.parse(JSON.stringify(GOLD_DEFAULTS)), ...stored }; }
+    renderGoldForm();
+  } catch (e) { /* non-critical */ }
+}
+
+async function saveGoldConfig() {
+  readGoldForm();
+  const el = document.getElementById('goldSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('gold_bot_config', _goldCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#f4c430'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetGoldDefaults() {
+  _goldCfg = JSON.parse(JSON.stringify(GOLD_DEFAULTS));
+  renderGoldForm();
+  const el = document.getElementById('goldSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+async function loadGoldStatus() {
+  try {
+    const data = await kvGet('gold_bot_status');
+    if (!data) { setText('goldBsAge', 'No status — bot has not run yet'); return; }
+
+    const ts  = data.timestamp ? new Date(data.timestamp).getTime() : 0;
+    const age = Math.round((Date.now() - ts) / 60000);
+    setText('goldBsAge',   age < 2 ? 'Live' : `Last update ${age}m ago`);
+    setText('goldBsMode',  data.paper_mode ? '· paper' : '· LIVE');
+    setText('goldBsState', data.state ? `· ${data.state}` : '');
+    setText('goldBsHTF',   data.htf_bias ? `· HTF ${data.htf_bias}` : '');
+
+    const zonesEl = document.getElementById('goldBsZones');
+    if (zonesEl) {
+      const zones = data.top_zones ?? [];
+      if (zones.length) {
+        zonesEl.innerHTML = zones.map(z => {
+          const col = z.dir === 'long' ? 'bs-green' : 'bs-red';
+          return `<span class="${col}">${z.zone_id} ${z.gp} score=${z.score}</span>`;
+        }).join('');
+      } else {
+        zonesEl.innerHTML = '<span class="bs-dim">No active zones</span>';
+      }
+    }
+
+    const tradesEl = document.getElementById('goldBsTrades');
+    if (tradesEl) {
+      const parts = [];
+      if (data.trades_today != null) parts.push(`trades today: ${data.trades_today}`);
+      if (data.squeeze_ratio != null) parts.push(`squeeze: ${data.squeeze_ratio.toFixed(2)}`);
+      const pos = data.mt5_positions ?? [];
+      pos.forEach(p => {
+        const col = p.direction === 'BUY' ? 'bs-green' : 'bs-red';
+        const pnl = p.profit != null ? ` $${p.profit > 0 ? '+' : ''}${p.profit.toFixed(2)}` : '';
+        parts.push(`<span class="${col}">${p.symbol} ${p.direction} @ ${p.open_price}${pnl}</span>`);
+      });
+      tradesEl.innerHTML = parts.join(' · ') || '';
+    }
+  } catch (e) { /* non-critical */ }
+}
+
+window.saveGoldConfig   = saveGoldConfig;
+window.resetGoldDefaults = resetGoldDefaults;
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.getElementById('unlockBtn')?.addEventListener('click', forceUnlock);
@@ -1589,6 +1719,7 @@ loadBtConfig();
 loadRgConfig();
 loadRgV2Config();
 loadDaConfig();
+loadGoldConfig();
 loadCreds();
 loadBtCreds();
 loadRgCreds();
@@ -1599,10 +1730,12 @@ loadBtBotStatus();
 loadRgBotStatus();
 loadRgV2Status();
 loadDaStatus();
+loadGoldStatus();
 loadBtJournal();
 setInterval(loadBotStatus,    60_000);
 setInterval(loadBtBotStatus,  60_000);
 setInterval(loadRgBotStatus,  60_000);
 setInterval(loadRgV2Status,   30_000);
 setInterval(loadDaStatus,     60_000);
+setInterval(loadGoldStatus,   60_000);
 setInterval(loadBtJournal,   120_000);

@@ -271,7 +271,7 @@ def heartbeat_message(
     macro = macro or {}
     emoji = _emoji(regime)
     pair_disp = pair.replace('/', '')
-    vix_stress = macro.get('vix_ratio', 1.0) < 0.95
+    vix_stress = (macro.get('vix_ratio') or 1.0) < 0.95
     news_event = macro.get('next_news_name')
 
     score_total = reg_score.get('score') if reg_score else None
