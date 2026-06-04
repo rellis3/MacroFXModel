@@ -9,7 +9,7 @@ Usage:
     python3 scripts/fetch_m1_oanda.py --no-upload       # write parquet locally only
 
 Requires:
-    pip install requests pandas pyarrow boto3
+    pip install requests pyarrow boto3
 
 Env vars (same as main system):
     OANDA_KEY      — Oanda v20 API key (required)
@@ -26,7 +26,6 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import requests
-import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import boto3
@@ -119,10 +118,10 @@ def fetch_chunk(instrument: str, from_dt: datetime, count: int = BARS_PER_REQUES
     raise RuntimeError(f"Failed to fetch {instrument} after 4 attempts")
 
 
-def fetch_all(instrument: str, years: int = 5) -> pd.DataFrame:
-    """Paginate Oanda M1 history going back `years` years. Returns DataFrame."""
+def fetch_all(instrument: str, years: int = 5) -> list | None:
+    """Paginate Oanda M1 history going back `years` years. Returns list of bar dicts."""
     all_bars = []
-    start = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365 * years)
+    start  = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365 * years)
     cursor = start
     now    = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -131,7 +130,7 @@ def fetch_all(instrument: str, years: int = 5) -> pd.DataFrame:
         if chunk is None:
             return None  # fatal instrument error
         if not chunk:
-            # Empty response — skip forward a week (gaps for non-trading instruments)
+            # Empty — skip forward a week (non-trading gaps for indices)
             cursor += timedelta(days=7)
             continue
 
@@ -147,16 +146,24 @@ def fetch_all(instrument: str, years: int = 5) -> pd.DataFrame:
         time.sleep(0.05)  # Oanda rate limit buffer
 
     print()  # newline after \r progress
-    return pd.DataFrame(all_bars) if all_bars else None
+    return all_bars if all_bars else None
 
 
-def write_parquet(df: pd.DataFrame, path: Path):
+def write_parquet(bars: list, path: Path):
     """
     Write parquet in the schema the M1 engine expects (hyparquet column order):
       row[0]=open  row[1]=high  row[2]=low  row[3]=close  row[4]=volume  row[5]=time
     """
-    df = df[["open", "high", "low", "close", "volume", "time"]].copy()
-    df["time"] = pd.to_datetime(df["time"])  # ensure datetime64
+    # Deduplicate and sort by time
+    seen = set()
+    unique = []
+    for b in bars:
+        key = b["time"]
+        if key not in seen:
+            seen.add(key)
+            unique.append(b)
+    unique.sort(key=lambda b: b["time"])
+
     schema = pa.schema([
         pa.field("open",   pa.float64()),
         pa.field("high",   pa.float64()),
@@ -165,7 +172,21 @@ def write_parquet(df: pd.DataFrame, path: Path):
         pa.field("volume", pa.int64()),
         pa.field("time",   pa.timestamp("us")),
     ])
-    table = pa.Table.from_pandas(df, schema=schema, preserve_index=False)
+    # Build epoch-microsecond timestamps for pyarrow (no pandas needed)
+    epoch = datetime(1970, 1, 1)
+    ts_us = [(b["time"] - epoch).total_seconds() * 1_000_000 for b in unique]
+
+    table = pa.table(
+        {
+            "open":   pa.array([b["open"]   for b in unique], type=pa.float64()),
+            "high":   pa.array([b["high"]   for b in unique], type=pa.float64()),
+            "low":    pa.array([b["low"]    for b in unique], type=pa.float64()),
+            "close":  pa.array([b["close"]  for b in unique], type=pa.float64()),
+            "volume": pa.array([b["volume"] for b in unique], type=pa.int64()),
+            "time":   pa.array(ts_us, type=pa.timestamp("us")),
+        },
+        schema=schema,
+    )
     pq.write_table(table, str(path), compression="snappy")
 
 
@@ -193,29 +214,23 @@ def process(pair_key: str, cfg: dict, years: int, upload: bool):
     print(f"{'='*60}")
     print(f"  Fetching {years}yr M1 history from Oanda…")
 
-    df = fetch_all(oanda_sym, years=years)
+    bars = fetch_all(oanda_sym, years=years)
 
-    if df is None:
+    if bars is None:
         print(f"  SKIPPED — instrument unavailable on Oanda")
         return False
 
-    if df.empty:
+    if not bars:
         print(f"  SKIPPED — no bars returned")
         return False
 
-    # Remove duplicates (rare edge case at pagination boundaries)
-    before = len(df)
-    df = df.drop_duplicates(subset=["time"]).sort_values("time").reset_index(drop=True)
-    if len(df) < before:
-        print(f"  Removed {before - len(df)} duplicate rows")
-
-    span_days  = (df["time"].max() - df["time"].min()).days
-    size_mb    = df.memory_usage(deep=True).sum() / 1e6
-
-    print(f"  {len(df):,} bars  |  {df['time'].min().date()} → {df['time'].max().date()}  ({span_days} days)")
+    t_first = bars[0]["time"]
+    t_last  = bars[-1]["time"]
+    span_days = (t_last - t_first).days
+    print(f"  {len(bars):,} bars  |  {t_first.date()} → {t_last.date()}  ({span_days} days)")
 
     OUTDIR.mkdir(parents=True, exist_ok=True)
-    write_parquet(df, local_path)
+    write_parquet(bars, local_path)
     file_mb = local_path.stat().st_size / 1e6
     print(f"  Wrote {local_path.name}  ({file_mb:.1f} MB)")
 
