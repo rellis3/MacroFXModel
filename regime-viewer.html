@@ -441,9 +441,15 @@ function buildCharts() {
   const priceEl      = document.getElementById('priceChart');
   const metricsEl    = document.getElementById('metricsChart');
 
+  // Attach overlay canvases BEFORE createChart() so they land first in DOM
+  // order. LightweightCharts appends its own canvases after, which means
+  // LC canvases naturally sit on top without any z-index game.
+  // LC backgrounds must be transparent so the tinted bands show through.
+  setupOverlay();
+
   const commonOpts = {
     layout: {
-      background: { color: '#131722' },
+      background: { color: 'rgba(0,0,0,0)' }, // transparent — bands show through
       textColor:  '#d1d4dc',
     },
     grid: {
@@ -485,7 +491,7 @@ function buildCharts() {
   chart2 = LightweightCharts.createChart(metricsEl, {
     ...commonOpts,
     layout: {
-      background: { color: '#0e1117' },
+      background: { color: 'rgba(0,0,0,0)' }, // transparent — regime bands show through
       textColor:  '#d1d4dc',
     },
     width:  metricsEl.clientWidth,
@@ -546,8 +552,6 @@ function buildCharts() {
   });
   ro.observe(priceEl);
   ro.observe(metricsEl);
-
-  setupOverlay();
 }
 
 // ─── Hover box ───────────────────────────────────────────────────────────────
@@ -662,18 +666,19 @@ function findRegimeAt(ts) {
 // ─── Overlay: regime bands + trade lines ─────────────────────────────────────
 
 function setupOverlay() {
-  // Appended INSIDE the LightweightCharts containers (after LC has initialised)
-  // so they land after LC's own canvases in DOM order. z-index:100 ensures
-  // they stay on top regardless of any z-index LC assigns internally.
+  // Called BEFORE createChart() so overlay canvases are first in DOM order.
+  // LightweightCharts appends its canvases after, naturally sitting on top.
+  // No z-index needed — DOM order handles the stacking.
+  // LC chart backgrounds are transparent so these bands show through underneath.
   const priceEl   = document.getElementById('priceChart');
   const metricsEl = document.getElementById('metricsChart');
 
   overlayCanvas = document.createElement('canvas');
-  overlayCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:100;';
+  overlayCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
   priceEl.appendChild(overlayCanvas);
 
   overlayCanvas2 = document.createElement('canvas');
-  overlayCanvas2.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:100;';
+  overlayCanvas2.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
   metricsEl.appendChild(overlayCanvas2);
 }
 
@@ -723,10 +728,10 @@ function lookupCandleClose(ts) {
 }
 
 const BAND_COLORS = {
-  BULL:  'rgba(0,201,125,0.22)',
-  BEAR:  'rgba(239,83,80,0.22)',
-  RANGE: 'rgba(240,160,48,0.20)',
-  CHOP:  'rgba(136,136,136,0.14)',
+  BULL:  'rgba(0,201,125,0.28)',
+  BEAR:  'rgba(239,83,80,0.28)',
+  RANGE: 'rgba(240,160,48,0.25)',
+  CHOP:  'rgba(136,136,136,0.18)',
 };
 
 function _drawBands(ctx, chart, W, H) {
