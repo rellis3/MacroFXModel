@@ -387,6 +387,12 @@ let syncingFromChart2 = false;
 let regimeRecords = [];
 let activeMetrics = V2_METRICS;
 
+let currentCandles = [];
+let regimeBands    = [];
+let currentTrades  = [];
+let overlayCanvas  = null;
+let _drawPending   = false;
+
 // ─── Init ────────────────────────────────────────────────────────────────────
 
 (function init() {
@@ -501,6 +507,7 @@ function buildCharts() {
   // "Value is null" when the target chart has no data yet (e.g. chart2 is
   // empty when chart1.fitContent() fires after loading candles).
   chart1.timeScale().subscribeVisibleTimeRangeChange(range => {
+    requestDraw();
     if (syncingFromChart2 || !range || range.from == null || range.to == null) return;
     syncingFromChart1 = true;
     try { chart2.timeScale().setVisibleRange(range); } catch(e) {}
@@ -521,9 +528,12 @@ function buildCharts() {
   const ro = new ResizeObserver(() => {
     chart1.applyOptions({ width: priceEl.clientWidth,   height: priceEl.clientHeight });
     chart2.applyOptions({ width: metricsEl.clientWidth, height: metricsEl.clientHeight });
+    requestDraw();
   });
   ro.observe(priceEl);
   ro.observe(metricsEl);
+
+  setupOverlay();
 }
 
 // ─── Hover box ───────────────────────────────────────────────────────────────
@@ -634,6 +644,121 @@ function findRegimeAt(ts) {
   return result;
 }
 
+// ─── Overlay: regime bands + trade lines ─────────────────────────────────────
+
+function setupOverlay() {
+  const wrap = document.getElementById('chartWrap');
+  overlayCanvas = document.createElement('canvas');
+  overlayCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:1;';
+  wrap.appendChild(overlayCanvas);
+}
+
+function requestDraw() {
+  if (_drawPending) return;
+  _drawPending = true;
+  requestAnimationFrame(() => { _drawPending = false; drawOverlay(); });
+}
+
+function buildRegimeBands(records) {
+  if (!records.length) return [];
+  const bands = [];
+  let cur = { regime: records[0].regime, start: records[0].ts };
+  for (let i = 1; i < records.length; i++) {
+    if (records[i].regime !== cur.regime) {
+      bands.push({ regime: cur.regime, start: cur.start, end: records[i].ts });
+      cur = { regime: records[i].regime, start: records[i].ts };
+    }
+  }
+  bands.push({ regime: cur.regime, start: cur.start, end: records[records.length - 1].ts + 300 });
+  return bands;
+}
+
+function buildTradePairs(events) {
+  const trades = [];
+  let pending = null;
+  [...events].sort((a, b) => a.ts - b.ts).forEach(ev => {
+    if (ev.type === 'entry') {
+      pending = ev;
+    } else if (ev.type === 'close' && pending) {
+      trades.push({ entry: pending, close: ev, direction: pending.direction });
+      pending = null;
+    }
+  });
+  return trades;
+}
+
+function lookupCandleClose(ts) {
+  if (!currentCandles.length) return null;
+  let lo = 0, hi = currentCandles.length - 1, result = null;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (currentCandles[mid].time <= ts) { result = currentCandles[mid]; lo = mid + 1; }
+    else hi = mid - 1;
+  }
+  return result ? result.close : null;
+}
+
+const BAND_COLORS = {
+  BULL:  'rgba(0,201,125,0.12)',
+  BEAR:  'rgba(239,83,80,0.12)',
+  RANGE: 'rgba(240,160,48,0.12)',
+  CHOP:  'rgba(136,136,136,0.08)',
+};
+
+function drawOverlay() {
+  if (!overlayCanvas || !chart1) return;
+
+  const priceEl = document.getElementById('priceChart');
+  const W = priceEl.clientWidth;
+  const H = priceEl.clientHeight;
+  overlayCanvas.width  = W;
+  overlayCanvas.height = H;
+
+  const ctx = overlayCanvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  // ── Regime bands ──
+  regimeBands.forEach(band => {
+    const x1 = chart1.timeScale().timeToCoordinate(band.start);
+    const x2 = chart1.timeScale().timeToCoordinate(band.end);
+    if (x1 === null && x2 === null) return;
+    const left  = x1 !== null ? x1 : 0;
+    const right = x2 !== null ? x2 : W;
+    if (right <= left) return;
+    ctx.fillStyle = BAND_COLORS[band.regime] || 'rgba(136,136,136,0.08)';
+    ctx.fillRect(left, 0, right - left, H);
+  });
+
+  // ── Trade connecting lines ──
+  if (currentTrades.length && candleSeries) {
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+
+    currentTrades.forEach(trade => {
+      const x1 = chart1.timeScale().timeToCoordinate(trade.entry.ts);
+      const x2 = chart1.timeScale().timeToCoordinate(trade.close.ts);
+      if (x1 === null || x2 === null) return;
+
+      const entryPrice = lookupCandleClose(trade.entry.ts);
+      const closePrice = lookupCandleClose(trade.close.ts);
+      if (entryPrice === null || closePrice === null) return;
+
+      const y1 = candleSeries.priceToCoordinate(entryPrice);
+      const y2 = candleSeries.priceToCoordinate(closePrice);
+      if (y1 === null || y2 === null) return;
+
+      const isLong = (trade.direction || '').toUpperCase() === 'LONG';
+      ctx.strokeStyle = isLong ? 'rgba(0,201,125,0.75)' : 'rgba(239,83,80,0.75)';
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    });
+
+    ctx.setLineDash([]);
+  }
+}
+
 // ─── Data loading ─────────────────────────────────────────────────────────────
 
 async function loadData() {
@@ -706,9 +831,12 @@ async function loadData() {
 
     regimeRecords = records;
 
-    renderCandles(candles, records);
+    renderCandles(candles);
     renderMarkers(events);
     renderMetrics(records);
+
+    regimeBands   = buildRegimeBands(records);
+    currentTrades = buildTradePairs(events);
 
     // Explicitly set the visible range on both charts to the requested date range.
     // Without this, chart2.fitContent() at the end of renderMetrics fires its
@@ -717,6 +845,8 @@ async function loadData() {
     const targetRange = { from: fromEpoch, to: toEpoch2 };
     try { chart1.timeScale().setVisibleRange(targetRange); } catch(e) {}
     try { chart2.timeScale().setVisibleRange(targetRange); } catch(e) {}
+
+    requestDraw();
 
     const srcInfo = staticRes?.ok ? 'file+live' : 'live only';
     setStatus(`Loaded ${candles.length} candles · ${records.length} regime records · ${events.length} events (${srcInfo})`, 'ok');
@@ -730,48 +860,24 @@ async function loadData() {
 
 // ─── Render candles ───────────────────────────────────────────────────────────
 
-function renderCandles(candles, records) {
-  // Sort candles by time
+function renderCandles(candles) {
   candles.sort((a, b) => a.time - b.time);
+  currentCandles = candles;
 
-  const data = candles.map(c => {
-    const rec         = findRegimeAtFromArr(c.time, records);
-    const regimeColor = rec ? REGIME_COLORS[rec.regime] : null;
-    // Fall back to standard up/down candle coloring when no regime data
-    const isBull  = c.close >= c.open;
-    const fallback = isBull ? '#00c97d' : '#ef5350';
-    const col      = regimeColor ? regimeColor.color : fallback;
-    return {
-      time:        c.time,
-      open:        c.open,
-      high:        c.high,
-      low:         c.low,
-      close:       c.close,
-      color:       col,
-      wickColor:   col,
-      borderColor: col,
-    };
-  });
+  const data = candles.map(c => ({
+    time:  c.time,
+    open:  c.open,
+    high:  c.high,
+    low:   c.low,
+    close: c.close,
+    // Standard up/down coloring — regime shown via canvas background bands
+    color:       c.close >= c.open ? '#00c97d' : '#ef5350',
+    wickColor:   c.close >= c.open ? '#00c97d' : '#ef5350',
+    borderColor: c.close >= c.open ? '#00c97d' : '#ef5350',
+  }));
 
   candleSeries.setData(data);
   chart1.timeScale().fitContent();
-}
-
-// Standalone binary search from a provided array (before state is set)
-function findRegimeAtFromArr(ts, records) {
-  if (!records.length) return null;
-  let lo = 0, hi = records.length - 1;
-  let result = null;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (records[mid].ts <= ts) {
-      result = records[mid];
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
-    }
-  }
-  return result;
 }
 
 // ─── Render markers ───────────────────────────────────────────────────────────
