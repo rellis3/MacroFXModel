@@ -27,6 +27,7 @@ import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus } from './js/volForecastScheduler.js';
+import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS } from './js/volBacktestM1Engine.js';
 
@@ -1753,6 +1754,31 @@ app.get('/api/vol-forecast/live/export', async (_req, res) => {
   } catch (e) {
     res.status(500).type('text/plain').send(`Error: ${e.message}`);
   }
+});
+
+// ── Session Stats API ─────────────────────────────────────────────────────────
+// Serves pre-computed session consumption percentages (Asia/London % of daily range).
+// Computation is pure JavaScript (js/sessionStats.js) — no Python required.
+// Trigger once via POST /api/session-stats/refresh, then results are cached to disk.
+
+app.get('/api/session-stats', (_req, res) => {
+  if (isSessionStatsComputing()) {
+    return res.status(202).json({ ok: false, status: 'computing', message: 'Session stats computation in progress — poll again in 60s.' });
+  }
+  const data = getSessionStats();
+  if (!data) {
+    return res.status(202).json({ ok: false, message: 'Session stats not yet computed — POST /api/session-stats/refresh to start.' });
+  }
+  res.json(data);
+});
+
+app.post('/api/session-stats/refresh', (_req, res) => {
+  if (isSessionStatsComputing()) {
+    return res.json({ ok: false, message: 'Already computing — poll /api/session-stats for result.' });
+  }
+  const years = parseInt(_req.query.years) || 5;
+  res.json({ ok: true, message: `Computing session stats (${years}yr H1) — poll /api/session-stats in ~3–5 min.` });
+  computeSessionStats(years).catch(e => console.error('[SESSION-STATS] Error:', e.message));
 });
 
 // ── Vol Backtest API ──────────────────────────────────────────────────────────
