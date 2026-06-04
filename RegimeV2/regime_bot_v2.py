@@ -186,6 +186,18 @@ def _kv_put(key: str, data: dict, url: str) -> None:
         log.warning(f'kv_put({key}): {exc}')
 
 
+def push_regime_states(states: list[dict], events: list[dict], url: str) -> None:
+    """Fire-and-forget POST of per-cycle state to the regime viewer endpoint."""
+    try:
+        requests.post(
+            f'{url}/api/regime-append',
+            json={'bot': 'v2', 'ts': int(time.time()), 'states': states, 'events': events},
+            timeout=6,
+        )
+    except Exception:
+        pass
+
+
 def load_config(url: str) -> dict:
     stored = _kv_get('regime_bot_v2_config', url)
     cfg = dict(DEFAULT_CFG)
@@ -785,10 +797,14 @@ def run(url: str, paper_mode: bool) -> None:
     last_heartbeat: dict[str, float] = {p: 0.0 for p in cfg['pairs']}
     last_cfg_reload = time.time()
     cycle = 0
+    _cycle_states: list[dict] = []
+    _cycle_events: list[dict] = []
 
     while True:
         cycle += 1
         loop_start = time.time()
+        _cycle_states = []
+        _cycle_events = []
 
         # ── Reload config every 5 min ────────────────────────────────────────
         if time.time() - last_cfg_reload > 300:
@@ -978,6 +994,20 @@ def run(url: str, paper_mode: bool) -> None:
                 + (f'  1h={h1_regime}' if h1_regime else '')
             )
 
+            _cycle_states.append({
+                'pair':   pair,
+                'regime': regime,
+                'conf':   round(confidence, 1),
+                'slope':  round(conf_slope, 2),
+                'vz':     round(vol_z, 3),
+                'rl':     run_length,
+                'bocpd':  round(bocpd_prob, 1),
+                'exh':    round(exhaust_score, 3),
+                'decay':  round(decay_score, 3),
+                'score':  round(reg_score.total, 1),
+                'h1':     h1_regime or '',
+            })
+
             # ── BOCPD consecutive high counter ─────────────────────────────
             if bocpd_prob >= cfg.get('bocpd_thresh', 70.0):
                 bocpd_high_bars[pair] += 1
@@ -1125,6 +1155,7 @@ def run(url: str, paper_mode: bool) -> None:
                 if close_reason:
                     ok = close_position(pos['ticket'], pair, paper_mode, close_reason)
                     if ok:
+                        _cycle_events.append({'pair': pair, 'type': 'close', 'reason': f'{exit_code}: {close_reason}', 'direction': pos['direction']})
                         # Telegram exit alert
                         msg = exit_alert(
                             pair=pair, direction=pos['direction'],
@@ -1320,6 +1351,7 @@ def run(url: str, paper_mode: bool) -> None:
             ticket = open_position(pair, direction, sl, 0, size, cfg['max_spread_pips'], paper_mode)
 
             if ticket is not None:
+                _cycle_events.append({'pair': pair, 'type': 'entry', 'direction': direction, 'lots': size, 'sl': round(sl, 5)})
                 open_pos[pair]    = {
                     'ticket':      ticket,
                     'direction':   direction,
@@ -1366,9 +1398,10 @@ def run(url: str, paper_mode: bool) -> None:
                 log.warning(f'[{pair}] MT5 order failed — cooldown {cfg.get("entry_fail_cooldown_secs", 300)}s')
                 pairs_status[pair] = {'status': 'entry_failed', 'regime': regime}
 
-        # ── Status push + sleep ───────────────────────────────────────────────
+        # ── Status push + regime viewer + sleep ──────────────────────────────
         push_status(pairs_status, balance, paper_mode, url,
                     riskguard_locked=risk_guard.is_locked())
+        push_regime_states(_cycle_states, _cycle_events, url)
 
         elapsed = time.time() - loop_start
         sleep_t = max(0, cfg['interval_secs'] - elapsed)

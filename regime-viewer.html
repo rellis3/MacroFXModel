@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regime Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: #0e1117;
+  color: #d1d4dc;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ── Root layout ── */
+.rv-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #0e1117;
+}
+
+/* ── Toolbar ── */
+.rv-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 46px;
+  border-bottom: 1px solid #1c2133;
+  background: #131722;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.rv-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #d1d4dc;
+  white-space: nowrap;
+  margin-right: 4px;
+  min-width: 0;
+}
+
+.rv-sep {
+  width: 1px;
+  height: 20px;
+  background: #1c2133;
+  flex-shrink: 0;
+}
+
+.rv-lbl {
+  font-size: 11px;
+  color: #5a6380;
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+}
+
+.rv-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid #2a3348;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.rv-toggle-btn {
+  background: #1c2133;
+  border: none;
+  color: #7a88a8;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  outline: none;
+}
+
+.rv-toggle-btn:first-child {
+  border-right: 1px solid #2a3348;
+}
+
+.rv-toggle-btn.active {
+  background: #1e3a6b;
+  color: #4f8ef0;
+}
+
+.rv-toggle-btn:hover:not(.active) {
+  background: #242b42;
+  color: #c8d0e0;
+}
+
+.rv-sel {
+  background: #1c2133;
+  border: 1px solid #2a3348;
+  color: #c8d0e0;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  cursor: pointer;
+  outline: none;
+}
+
+.rv-sel:focus { border-color: #4f7df0; }
+
+.rv-date-input {
+  background: #1c2133;
+  border: 1px solid #2a3348;
+  color: #c8d0e0;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  cursor: pointer;
+  outline: none;
+  color-scheme: dark;
+}
+
+.rv-date-input:focus { border-color: #4f7df0; }
+
+.rv-load-btn {
+  background: #2962ff;
+  border: 1px solid #2962ff;
+  color: #fff;
+  border-radius: 4px;
+  padding: 4px 14px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  cursor: pointer;
+  transition: background .15s;
+  white-space: nowrap;
+  outline: none;
+}
+
+.rv-load-btn:hover { background: #3d77ff; }
+.rv-load-btn:active { background: #1a52e8; }
+
+.rv-status {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: #5a6380;
+  margin-left: auto;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rv-status.loading { color: #f0a030; }
+.rv-status.ok { color: #00c97d; }
+.rv-status.err { color: #ef5350; }
+
+/* ── Main area ── */
+.rv-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Chart wrap ── */
+.rv-chart-wrap {
+  flex: 6;
+  min-height: 0;
+  position: relative;
+  background: #131722;
+  border-bottom: 1px solid #1c2133;
+}
+
+#priceChart {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Hover info box ── */
+.rv-hover-box {
+  position: absolute;
+  top: 8px;
+  right: 56px;
+  background: #131722cc;
+  border: 1px solid #1c2133;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: #d1d4dc;
+  pointer-events: none;
+  z-index: 10;
+  min-width: 130px;
+  backdrop-filter: blur(4px);
+}
+
+.rv-hover-box .hb-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  line-height: 1.6;
+}
+
+.rv-hover-box .hb-key { color: #5a6380; }
+.rv-hover-box .hb-val { color: #d1d4dc; font-weight: 500; }
+
+.rv-hover-box .hb-regime-BULL { color: #00c97d; }
+.rv-hover-box .hb-regime-BEAR { color: #ef5350; }
+.rv-hover-box .hb-regime-RANGE { color: #f0a030; }
+.rv-hover-box .hb-regime-CHOP { color: #888888; }
+
+/* ── Metrics panel ── */
+.rv-metrics-wrap {
+  flex: 4;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0e1117;
+}
+
+.rv-metrics-cb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 5px 12px;
+  border-bottom: 1px solid #1c2133;
+  background: #131722;
+  flex-shrink: 0;
+}
+
+.rv-cb-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rv-cb-item input[type=checkbox] {
+  accent-color: currentColor;
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+}
+
+.rv-cb-item label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+#metricsChart {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+</style>
+</head>
+<body>
+<div class="rv-root">
+
+  <!-- Toolbar -->
+  <div class="rv-topbar">
+    <span class="rv-title">Regime Viewer</span>
+    <div class="rv-sep"></div>
+
+    <span class="rv-lbl">Bot</span>
+    <div class="rv-toggle">
+      <button class="rv-toggle-btn" id="btnV1" onclick="selectBot('v1')">V1</button>
+      <button class="rv-toggle-btn active" id="btnV2" onclick="selectBot('v2')">V2</button>
+    </div>
+
+    <div class="rv-sep"></div>
+
+    <span class="rv-lbl">Pair</span>
+    <select class="rv-sel" id="pairSel">
+      <option value="EUR/USD">EUR/USD</option>
+      <option value="GBP/USD">GBP/USD</option>
+      <option value="USD/JPY">USD/JPY</option>
+      <option value="AUD/USD">AUD/USD</option>
+      <option value="NZD/USD">NZD/USD</option>
+      <option value="USD/CAD">USD/CAD</option>
+      <option value="USD/CHF">USD/CHF</option>
+      <option value="GBP/JPY">GBP/JPY</option>
+      <option value="XAU/USD">XAU/USD</option>
+      <option value="NAS100_USD">NAS100_USD</option>
+    </select>
+
+    <div class="rv-sep"></div>
+
+    <span class="rv-lbl">From</span>
+    <input type="date" class="rv-date-input" id="fromDate">
+    <span class="rv-lbl">To</span>
+    <input type="date" class="rv-date-input" id="toDate">
+
+    <div class="rv-sep"></div>
+
+    <button class="rv-load-btn" id="loadBtn" onclick="loadData()">Load</button>
+
+    <span class="rv-status" id="statusText">Ready</span>
+  </div>
+
+  <!-- Main area: chart + metrics -->
+  <div class="rv-main">
+
+    <!-- Price chart -->
+    <div class="rv-chart-wrap" id="chartWrap">
+      <div id="priceChart"></div>
+      <div class="rv-hover-box" id="hoverBox" style="display:none">
+        <div class="hb-row"><span class="hb-key">Regime</span><span class="hb-val" id="hbRegime">—</span></div>
+        <div class="hb-row"><span class="hb-key">Conf</span><span class="hb-val" id="hbConf">—</span></div>
+        <div class="hb-row"><span class="hb-key">Score</span><span class="hb-val" id="hbScore">—</span></div>
+      </div>
+    </div>
+
+    <!-- Metrics panel -->
+    <div class="rv-metrics-wrap">
+      <div class="rv-metrics-cb-row" id="cbRow"></div>
+      <div id="metricsChart"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const REGIME_COLORS = {
+  BULL:  { color: '#00c97d', wickColor: '#00c97d', borderColor: '#00c97d' },
+  BEAR:  { color: '#ef5350', wickColor: '#ef5350', borderColor: '#ef5350' },
+  RANGE: { color: '#f0a030', wickColor: '#f0a030', borderColor: '#f0a030' },
+  CHOP:  { color: '#888888', wickColor: '#888888', borderColor: '#888888' },
+};
+
+const GREY_CANDLE = { color: '#888888', wickColor: '#888888', borderColor: '#888888' };
+
+const PAIR_SAFE = {
+  'EUR/USD':    'eurusd',
+  'GBP/USD':    'gbpusd',
+  'USD/JPY':    'usdjpy',
+  'AUD/USD':    'audusd',
+  'NZD/USD':    'nzdusd',
+  'USD/CAD':    'usdcad',
+  'USD/CHF':    'usdchf',
+  'GBP/JPY':    'gbpjpy',
+  'XAU/USD':    'xauusd',
+  'NAS100_USD': 'nas100usd',
+};
+
+const V2_METRICS = [
+  { key: 'conf',  label: 'conf',  color: '#2196f3' },
+  { key: 'slope', label: 'slope', color: '#00bcd4' },
+  { key: 'vz',    label: 'vz',    color: '#ff9800' },
+  { key: 'rl',    label: 'rl',    color: '#9c27b0' },
+  { key: 'bocpd', label: 'bocpd', color: '#ff5722' },
+  { key: 'exh',   label: 'exh',   color: '#795548' },
+  { key: 'decay', label: 'decay', color: '#f44336' },
+  { key: 'score', label: 'score', color: '#4caf50' },
+];
+
+const V1_METRICS = [
+  { key: 'conf',  label: 'conf',  color: '#2196f3' },
+  { key: 'vz',    label: 'vz',    color: '#ff9800' },
+  { key: 'rl',    label: 'rl',    color: '#9c27b0' },
+  { key: 'decay', label: 'decay', color: '#f44336' },
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+let currentBot = 'v2';
+let chart1 = null;
+let chart2 = null;
+let candleSeries = null;
+let metricSeries = {};
+let syncingFromChart1 = false;
+let syncingFromChart2 = false;
+let regimeRecords = [];
+let activeMetrics = V2_METRICS;
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+
+(function init() {
+  const today = new Date();
+  const fromDate = new Date(today);
+  fromDate.setDate(today.getDate() - 7);
+
+  document.getElementById('toDate').value   = fmtDate(today);
+  document.getElementById('fromDate').value = fmtDate(fromDate);
+
+  buildCharts();
+  buildCheckboxes();
+})();
+
+function fmtDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function toEpoch(dateStr) {
+  return Math.floor(new Date(dateStr + 'T00:00:00Z').getTime() / 1000);
+}
+
+// ─── Bot selector ────────────────────────────────────────────────────────────
+
+function selectBot(bot) {
+  currentBot = bot;
+  document.getElementById('btnV1').classList.toggle('active', bot === 'v1');
+  document.getElementById('btnV2').classList.toggle('active', bot === 'v2');
+  activeMetrics = bot === 'v1' ? V1_METRICS : V2_METRICS;
+  buildCheckboxes();
+  rebuildMetricSeries();
+}
+
+// ─── Chart creation ──────────────────────────────────────────────────────────
+
+function buildCharts() {
+  const chartWrap    = document.getElementById('chartWrap');
+  const priceEl      = document.getElementById('priceChart');
+  const metricsEl    = document.getElementById('metricsChart');
+
+  const commonOpts = {
+    layout: {
+      background: { color: '#131722' },
+      textColor:  '#d1d4dc',
+    },
+    grid: {
+      vertLines: { color: '#1c2133' },
+      horzLines: { color: '#1c2133' },
+    },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode.Normal,
+    },
+    rightPriceScale: {
+      borderColor: '#1c2133',
+    },
+    timeScale: {
+      borderColor: '#1c2133',
+      timeVisible: true,
+      secondsVisible: false,
+    },
+    handleScroll:   true,
+    handleScale:    true,
+  };
+
+  // Price chart
+  chart1 = LightweightCharts.createChart(priceEl, {
+    ...commonOpts,
+    width:  priceEl.clientWidth,
+    height: priceEl.clientHeight,
+  });
+
+  candleSeries = chart1.addCandlestickSeries({
+    upColor:   '#00c97d',
+    downColor: '#ef5350',
+    borderUpColor:   '#00c97d',
+    borderDownColor: '#ef5350',
+    wickUpColor:     '#00c97d',
+    wickDownColor:   '#ef5350',
+  });
+
+  // Metrics chart — no candlestick series, just lines
+  chart2 = LightweightCharts.createChart(metricsEl, {
+    ...commonOpts,
+    layout: {
+      background: { color: '#0e1117' },
+      textColor:  '#d1d4dc',
+    },
+    width:  metricsEl.clientWidth,
+    height: metricsEl.clientHeight,
+    rightPriceScale: {
+      borderColor: '#1c2133',
+      scaleMargins: { top: 0.05, bottom: 0.05 },
+    },
+  });
+
+  // Reference line at y=70
+  const refLine = chart2.addLineSeries({
+    color:     'rgba(255,255,255,0.25)',
+    lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    priceLineVisible: false,
+    lastValueVisible: false,
+    crosshairMarkerVisible: false,
+  });
+  // Placeholder data — will be filled once real data loads
+  window._refLineSeries = refLine;
+
+  // Sync time ranges
+  chart1.timeScale().subscribeVisibleTimeRangeChange(range => {
+    if (syncingFromChart2) return;
+    syncingFromChart1 = true;
+    if (range) chart2.timeScale().setVisibleRange(range);
+    syncingFromChart1 = false;
+  });
+
+  chart2.timeScale().subscribeVisibleTimeRangeChange(range => {
+    if (syncingFromChart1) return;
+    syncingFromChart2 = true;
+    if (range) chart1.timeScale().setVisibleRange(range);
+    syncingFromChart2 = false;
+  });
+
+  // Hover info
+  chart1.subscribeCrosshairMove(param => updateHoverBox(param));
+
+  // Resize
+  const ro = new ResizeObserver(() => {
+    chart1.applyOptions({ width: priceEl.clientWidth,   height: priceEl.clientHeight });
+    chart2.applyOptions({ width: metricsEl.clientWidth, height: metricsEl.clientHeight });
+  });
+  ro.observe(priceEl);
+  ro.observe(metricsEl);
+}
+
+// ─── Hover box ───────────────────────────────────────────────────────────────
+
+function updateHoverBox(param) {
+  const box = document.getElementById('hoverBox');
+  if (!param || !param.time || !param.seriesData) {
+    box.style.display = 'none';
+    return;
+  }
+
+  const ts = typeof param.time === 'object'
+    ? Date.UTC(param.time.year, param.time.month - 1, param.time.day) / 1000
+    : param.time;
+
+  const rec = findRegimeAt(ts);
+
+  if (!rec) {
+    box.style.display = 'none';
+    return;
+  }
+
+  box.style.display = 'block';
+
+  const regime = rec.regime || '—';
+  const conf   = rec.conf   != null ? Number(rec.conf).toFixed(1)  : '—';
+  const score  = rec.score  != null ? Number(rec.score).toFixed(1) : '—';
+
+  const regEl = document.getElementById('hbRegime');
+  regEl.textContent = regime;
+  regEl.className   = 'hb-val hb-regime-' + regime;
+
+  document.getElementById('hbConf').textContent  = conf;
+  document.getElementById('hbScore').textContent = score;
+}
+
+// ─── Checkbox row ────────────────────────────────────────────────────────────
+
+function buildCheckboxes() {
+  const row = document.getElementById('cbRow');
+  row.innerHTML = '';
+
+  activeMetrics.forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'rv-cb-item';
+    item.style.color = m.color;
+
+    const cb = document.createElement('input');
+    cb.type    = 'checkbox';
+    cb.id      = 'cb_' + m.key;
+    cb.checked = true;
+    cb.addEventListener('change', () => toggleMetric(m.key, cb.checked));
+
+    const lbl = document.createElement('label');
+    lbl.htmlFor   = 'cb_' + m.key;
+    lbl.textContent = m.label;
+    lbl.style.color = m.color;
+
+    item.appendChild(cb);
+    item.appendChild(lbl);
+    row.appendChild(item);
+  });
+}
+
+// ─── Metric series management ────────────────────────────────────────────────
+
+function rebuildMetricSeries() {
+  // Remove old series
+  Object.values(metricSeries).forEach(s => {
+    try { chart2.removeSeries(s); } catch(e) {}
+  });
+  metricSeries = {};
+
+  // Re-create for active metrics
+  activeMetrics.forEach(m => {
+    const s = chart2.addLineSeries({
+      color:     m.color,
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: true,
+    });
+    metricSeries[m.key] = s;
+  });
+}
+
+function toggleMetric(key, visible) {
+  const s = metricSeries[key];
+  if (!s) return;
+  s.applyOptions({ visible });
+}
+
+// ─── Utility: binary search ───────────────────────────────────────────────────
+
+function findRegimeAt(ts) {
+  if (!regimeRecords.length) return null;
+  let lo = 0, hi = regimeRecords.length - 1;
+  let result = null;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (regimeRecords[mid].ts <= ts) {
+      result = regimeRecords[mid];
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return result;
+}
+
+// ─── Data loading ─────────────────────────────────────────────────────────────
+
+async function loadData() {
+  const pair    = document.getElementById('pairSel').value;
+  const fromStr = document.getElementById('fromDate').value;
+  const toStr   = document.getElementById('toDate').value;
+
+  if (!fromStr || !toStr) {
+    setStatus('Please select a date range', 'err');
+    return;
+  }
+
+  const fromEpoch = toEpoch(fromStr);
+  const toEpoch2  = toEpoch(toStr) + 86400; // include full to-day
+
+  setStatus('Loading…', 'loading');
+  document.getElementById('loadBtn').disabled = true;
+
+  try {
+    const pairSafe = PAIR_SAFE[pair] || pair.toLowerCase().replace('/', '').replace('_', '');
+    const pairEnc  = encodeURIComponent(pair);
+
+    // Fetch candles + regime data in parallel.
+    // Regime data: load static backfill file (committed JSON) + KV live ring buffer,
+    // then merge so backfill covers history and KV covers recent hours.
+    const staticUrl = `/data/regime_history/${currentBot}/${pairSafe}.json`;
+    const kvUrl     = `/api/regime-history?bot=${currentBot}&pair=${pairSafe}&from=${fromEpoch}&to=${toEpoch2}`;
+
+    const [candlesRes, staticRes, kvRes] = await Promise.all([
+      fetch(`/api/regime-candles?pair=${pairEnc}&from=${fromStr}&to=${toStr}`),
+      fetch(staticUrl).catch(() => null),
+      fetch(kvUrl).catch(() => null),
+    ]);
+
+    // Handle candles
+    if (!candlesRes.ok) {
+      throw new Error(`Candles API error ${candlesRes.status}`);
+    }
+    const candles = await candlesRes.json();
+
+    // Merge regime records from both sources, dedup by ts, filter to range
+    let records = [], events = [];
+    const mergedRecs = new Map();
+    const mergedEvts = new Map();
+
+    const ingestData = (data) => {
+      for (const r of (data.records || [])) mergedRecs.set(r.ts, r);
+      for (const e of (data.events  || [])) mergedEvts.set(`${e.ts}_${e.type}_${e.pair||''}`, e);
+    };
+
+    if (staticRes && staticRes.ok) {
+      try { ingestData(await staticRes.json()); } catch {}
+    }
+    if (kvRes && kvRes.ok) {
+      try { ingestData(await kvRes.json()); } catch {}
+    }
+
+    records = [...mergedRecs.values()]
+      .filter(r => r.ts >= fromEpoch && r.ts <= toEpoch2)
+      .sort((a, b) => a.ts - b.ts);
+    events = [...mergedEvts.values()]
+      .filter(e => e.ts >= fromEpoch && e.ts <= toEpoch2)
+      .sort((a, b) => a.ts - b.ts);
+
+    if (!Array.isArray(candles) || candles.length === 0) {
+      setStatus('No data for selected range', 'err');
+      document.getElementById('loadBtn').disabled = false;
+      return;
+    }
+
+    regimeRecords = records;
+
+    renderCandles(candles, records);
+    renderMarkers(events);
+    renderMetrics(records);
+
+    const srcInfo = staticRes?.ok ? 'file+live' : 'live only';
+    setStatus(`Loaded ${candles.length} candles · ${records.length} regime records · ${events.length} events (${srcInfo})`, 'ok');
+  } catch (err) {
+    setStatus(`Error: ${err.message}`, 'err');
+    console.error(err);
+  }
+
+  document.getElementById('loadBtn').disabled = false;
+}
+
+// ─── Render candles ───────────────────────────────────────────────────────────
+
+function renderCandles(candles, records) {
+  // Sort candles by time
+  candles.sort((a, b) => a.time - b.time);
+
+  const data = candles.map(c => {
+    const rec   = findRegimeAtFromArr(c.time, records);
+    const color = rec ? (REGIME_COLORS[rec.regime] || GREY_CANDLE) : GREY_CANDLE;
+    return {
+      time:        c.time,
+      open:        c.open,
+      high:        c.high,
+      low:         c.low,
+      close:       c.close,
+      color:       color.color,
+      wickColor:   color.wickColor,
+      borderColor: color.borderColor,
+    };
+  });
+
+  candleSeries.setData(data);
+  chart1.timeScale().fitContent();
+}
+
+// Standalone binary search from a provided array (before state is set)
+function findRegimeAtFromArr(ts, records) {
+  if (!records.length) return null;
+  let lo = 0, hi = records.length - 1;
+  let result = null;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (records[mid].ts <= ts) {
+      result = records[mid];
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return result;
+}
+
+// ─── Render markers ───────────────────────────────────────────────────────────
+
+function renderMarkers(events) {
+  if (!events || !events.length) {
+    candleSeries.setMarkers([]);
+    return;
+  }
+
+  const markers = [];
+
+  events.forEach(ev => {
+    if (!ev || !ev.ts) return;
+    const ts = ev.ts;
+
+    if (ev.type === 'entry') {
+      const isLong = (ev.direction || '').toUpperCase() === 'LONG';
+      markers.push({
+        time:     ts,
+        position: isLong ? 'belowBar' : 'aboveBar',
+        color:    isLong ? '#00c97d' : '#ef5350',
+        shape:    isLong ? 'arrowUp' : 'arrowDown',
+        text:     isLong ? 'L' : 'S',
+      });
+    } else if (ev.type === 'close') {
+      markers.push({
+        time:     ts,
+        position: 'aboveBar',
+        color:    '#888888',
+        shape:    'circle',
+        text:     'X',
+      });
+    } else if (ev.type === 'gate') {
+      markers.push({
+        time:     ts,
+        position: 'aboveBar',
+        color:    '#f0a030',
+        shape:    'circle',
+        size:     0.3,
+        text:     '',
+      });
+    }
+  });
+
+  // LightweightCharts requires markers sorted by time
+  markers.sort((a, b) => a.time - b.time);
+  candleSeries.setMarkers(markers);
+}
+
+// ─── Render metrics ───────────────────────────────────────────────────────────
+
+function renderMetrics(records) {
+  // Rebuild series for current bot
+  rebuildMetricSeries();
+
+  if (!records.length) {
+    // Clear ref line
+    window._refLineSeries.setData([]);
+    return;
+  }
+
+  const maxRl = 600; // treat 600 as max run length
+
+  activeMetrics.forEach(m => {
+    const s = metricSeries[m.key];
+    if (!s) return;
+
+    const data = [];
+    records.forEach(rec => {
+      if (rec.ts == null) return;
+      let v = rec[m.key];
+      if (v == null) return;
+
+      v = Number(v);
+      if (isNaN(v)) return;
+
+      // Normalize / scale
+      if (m.key === 'rl') {
+        v = Math.min(v / maxRl * 100, 100);
+      } else if (m.key === 'exh') {
+        v = v * 100;
+      } else if (m.key === 'decay') {
+        v = v * 100;
+      }
+
+      data.push({ time: rec.ts, value: v });
+    });
+
+    // Deduplicate timestamps (keep last)
+    const seen = new Map();
+    data.forEach(pt => seen.set(pt.time, pt.value));
+    const deduped = [...seen.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([time, value]) => ({ time, value }));
+
+    s.setData(deduped);
+  });
+
+  // Reference line at y=70 spanning full range
+  const minTs = records[0].ts;
+  const maxTs = records[records.length - 1].ts;
+  window._refLineSeries.setData([
+    { time: minTs, value: 70 },
+    { time: maxTs, value: 70 },
+  ]);
+
+  chart2.timeScale().fitContent();
+}
+
+// ─── Status helper ────────────────────────────────────────────────────────────
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('statusText');
+  el.textContent = msg;
+  el.className = 'rv-status' + (cls ? ' ' + cls : '');
+}
+
+// ─── Initial metric series creation ──────────────────────────────────────────
+// Called once after charts are built so metric series exist on first load
+rebuildMetricSeries();
+</script>
+</body>
+</html>

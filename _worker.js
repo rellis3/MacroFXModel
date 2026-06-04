@@ -26,7 +26,7 @@ function err(msg, status = 500) {
 // it has its own dedicated /api/config/caps route with stricter validation.
 function isAllowedKVKey(key) {
   const EXACT = new Set(['fred', 'fred2', 'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock']);
-  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'arima_price_', 'gold_', 'beta_'];
+  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
 }
@@ -1685,6 +1685,166 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         } catch(e) {
           return json({ error: 'sentiment_unavailable', reason: e.message });
         }
+      }
+
+      // -- /api/regime-candles ---------------------------------
+      // Historical OANDA M5 candles for the regime viewer.
+      // GET ?pair=EUR/USD&from=2026-05-26&to=2026-06-04
+      // Returns [{time(epoch s), open, high, low, close}, ...]  newest-last.
+      if (path === '/api/regime-candles') {
+        if (!env.OANDA_KEY) return err('OANDA_KEY not configured', 503);
+        const pair = url.searchParams.get('pair');
+        const from = url.searchParams.get('from');
+        const to   = url.searchParams.get('to');
+        if (!pair) return err('pair param required', 400);
+
+        const instrument = pair.replace('/', '_');
+        const oandaBase  = env.OANDA_ENV === 'practice'
+          ? 'https://api-fxpractice.oanda.com'
+          : 'https://api-fxtrade.oanda.com';
+
+        let oandaUrl = `${oandaBase}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=M5&price=M&count=4800`;
+        if (from) oandaUrl += `&from=${encodeURIComponent(new Date(from).toISOString())}`;
+        if (to)   oandaUrl += `&to=${encodeURIComponent(new Date(to + 'T23:59:59Z').toISOString())}`;
+
+        const res = await fetch(oandaUrl, {
+          headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` },
+          signal: AbortSignal.timeout(25_000),
+        });
+        if (!res.ok) {
+          const errText = await res.text().catch(() => 'OANDA error');
+          return err(`OANDA candles failed (${res.status}): ${errText.slice(0, 200)}`, 502);
+        }
+        const data = await res.json();
+        if (!data.candles) return err('No candles returned', 502);
+
+        const candles = data.candles
+          .filter(c => c.mid)
+          .map(c => ({
+            time:  Math.floor(new Date(c.time).getTime() / 1000),
+            open:  parseFloat(c.mid.o),
+            high:  parseFloat(c.mid.h),
+            low:   parseFloat(c.mid.l),
+            close: parseFloat(c.mid.c),
+          }))
+          .sort((a, b) => a.time - b.time);
+
+        return json(candles);
+      }
+
+      // -- /api/regime-append ----------------------------------
+      // Bots POST their per-cycle state here.
+      // Body: { bot:"v1"|"v2", ts:epoch_s, states:[{pair,regime,conf,vz,rl,decay,...}], events:[{pair,type,...}] }
+      // Stored as rolling arrays in KV: rgv1_{pairsafe} / rgv2_{pairsafe}
+      // Each key holds up to MAX_RECORDS state records + MAX_EVENTS events.
+      if (path === '/api/regime-append' && request.method === 'POST') {
+        if (!env.FX_SCORES) return err('KV not bound', 503);
+        let body;
+        try { body = await request.json(); } catch(e) { return err('Invalid JSON', 400); }
+
+        const bot    = body.bot === 'v1' ? 'v1' : 'v2';
+        const states = Array.isArray(body.states) ? body.states : [];
+        const events = Array.isArray(body.events) ? body.events : [];
+        const ts     = body.ts || Math.floor(Date.now() / 1000);
+
+        const MAX_RECORDS = 5760;  // 48h at 30s, or 96h at 60s
+        const MAX_EVENTS  = 2000;
+
+        const pairSafe = p => p.replace('/', '').replace('_', '').toLowerCase();
+
+        const updated = [];
+        for (const state of states) {
+          if (!state.pair) continue;
+          const kvKey = `rg${bot}_${pairSafe(state.pair)}`;
+          let existing = { records: [], events: [] };
+          try {
+            const raw = await env.FX_SCORES.get(kvKey);
+            if (raw) existing = JSON.parse(raw);
+          } catch {}
+
+          // Append new record (add ts if missing)
+          const rec = { ...state, ts: state.ts || ts };
+          delete rec.pair;
+          existing.records.push(rec);
+          if (existing.records.length > MAX_RECORDS) {
+            existing.records = existing.records.slice(-MAX_RECORDS);
+          }
+
+          // Append matching events for this pair
+          const pairEvents = events.filter(e => e.pair === state.pair).map(e => ({ ...e, ts: e.ts || ts }));
+          if (pairEvents.length) {
+            existing.events.push(...pairEvents);
+            if (existing.events.length > MAX_EVENTS) {
+              existing.events = existing.events.slice(-MAX_EVENTS);
+            }
+          }
+
+          await env.FX_SCORES.put(kvKey, JSON.stringify(existing));
+          updated.push(state.pair);
+        }
+        return json({ ok: true, bot, updated, ts });
+      }
+
+      // -- /api/regime-backfill --------------------------------
+      // Parse script POSTs bulk historical data for one pair at a time.
+      // Body: { bot:"v1"|"v2", pair:"EUR/USD", records:[...], events:[...] }
+      // Merges with existing KV data (appends, deduplicates by ts, sorts).
+      if (path === '/api/regime-backfill' && request.method === 'POST') {
+        if (!env.FX_SCORES) return err('KV not bound', 503);
+        let body;
+        try { body = await request.json(); } catch(e) { return err('Invalid JSON', 400); }
+
+        const bot    = body.bot === 'v1' ? 'v1' : 'v2';
+        const pair   = body.pair;
+        const newRec = Array.isArray(body.records) ? body.records : [];
+        const newEvt = Array.isArray(body.events)  ? body.events  : [];
+        if (!pair) return err('pair required', 400);
+
+        const pairSafe = pair.replace('/', '').replace('_', '').toLowerCase();
+        const kvKey    = `rg${bot}_${pairSafe}`;
+
+        let existing = { records: [], events: [] };
+        try {
+          const raw = await env.FX_SCORES.get(kvKey);
+          if (raw) existing = JSON.parse(raw);
+        } catch {}
+
+        // Merge + dedupe records by ts
+        const recMap = new Map();
+        for (const r of [...existing.records, ...newRec]) recMap.set(r.ts, r);
+        const records = [...recMap.values()].sort((a, b) => a.ts - b.ts);
+
+        // Merge + dedupe events by ts+type+pair
+        const evtMap = new Map();
+        for (const e of [...existing.events, ...newEvt]) evtMap.set(`${e.ts}_${e.type}_${e.pair || pair}`, e);
+        const events = [...evtMap.values()].sort((a, b) => a.ts - b.ts);
+
+        await env.FX_SCORES.put(kvKey, JSON.stringify({ records, events }));
+        return json({ ok: true, bot, pair, records: records.length, events: events.length });
+      }
+
+      // -- /api/regime-history ---------------------------------
+      // Viewer fetches per-pair regime data.
+      // GET ?bot=v1&pair=eurusd&from=epoch_s&to=epoch_s
+      // Returns { pair, bot, records:[...], events:[...] }
+      if (path === '/api/regime-history') {
+        if (!env.FX_SCORES) return err('KV not bound', 503);
+        const bot      = url.searchParams.get('bot') === 'v1' ? 'v1' : 'v2';
+        const pairSafe = (url.searchParams.get('pair') || 'eurusd').toLowerCase();
+        const fromTs   = parseInt(url.searchParams.get('from') || '0');
+        const toTs     = parseInt(url.searchParams.get('to')   || '9999999999');
+
+        const kvKey = `rg${bot}_${pairSafe}`;
+        let data = { records: [], events: [] };
+        try {
+          const raw = await env.FX_SCORES.get(kvKey);
+          if (raw) data = JSON.parse(raw);
+        } catch {}
+
+        const records = data.records.filter(r => r.ts >= fromTs && r.ts <= toTs);
+        const events  = data.events.filter(e => e.ts  >= fromTs && e.ts  <= toTs);
+
+        return json({ bot, pair: pairSafe, records, events });
       }
 
       // -- Serve index.html for all other routes ----------------
