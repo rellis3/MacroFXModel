@@ -7,7 +7,7 @@
       "XAU/USD": 1780594396.406239,
       "USD/JPY": 1780298783.1707315,
       "USD/CAD": 1779914256.5022867,
-      "EUR/USD": 1780576463.324123,
+      "EUR/USD": 1780595828.4115934,
       "USD/CHF": 1779898975.0198252,
       "EUR/GBP": 1779893665.4903212,
       "GBP/JPY": 1779908245.640869,
@@ -22,6 +22,14 @@
       "tp1": 4484.965,
       "tp1_close_pct": 50,
       "trailoffset_dist": 5.25,
+      "tp1_hit": false,
+      "trail_active": false,
+      "trail_sl": null
+    },
+    "152150930253": {
+      "tp1": 1.16159,
+      "tp1_close_pct": 50,
+      "trailoffset_dist": 0.00053,
       "tp1_hit": false,
       "trail_active": false,
       "trail_sl": null

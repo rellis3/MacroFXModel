@@ -924,7 +924,8 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
 
 def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: float,
                             sl_tp_engine: SLTPEngine, paper_mode: bool,
-                            sizing_mult: float = 1.0) -> dict:
+                            sizing_mult: float = 1.0,
+                            level_cooldowns: dict | None = None) -> dict:
     """
     Enter when a KV entry matches the same criteria as the dashboard Telegram alert:
     grade ≥ min_grade, totalStars ≥ min_stars, direction set, signalScore ≥ threshold,
@@ -967,6 +968,18 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
     level_price = float(entry.get('price') or 0)
     dist_pips   = abs(live_price - level_price) / pip_size
 
+    # Per-level deduplication — prevent re-firing same level+direction within cooldown window
+    _cooldown_min = (config.get('execution') or {}).get('level_cooldown_min', 10)
+    _ck = (pair, round(level_price, 5), direction)
+    if level_cooldowns is not None:
+        _last = level_cooldowns.get(_ck, 0)
+        if time.time() - _last < _cooldown_min * 60:
+            pair_status['reason'] = (
+                f'LEVEL_COOLDOWN {direction} @ {level_price} '
+                f'({(time.time() - _last) / 60:.1f}/{_cooldown_min}m elapsed)'
+            )
+            return pair_status
+
     sl_tp = sl_tp_engine.calculate(
         entry=entry, pair=pair, pair_data=pair_snap,
         direction=entry['direction'], price=live_price,
@@ -994,6 +1007,10 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
         return pair_status
 
     ticket = execute_trade(pair, direction, entry, sl_tp, size, live_price, paper_mode, config=config)
+
+    # Record attempt so the cooldown gate blocks re-entry until window expires
+    if level_cooldowns is not None:
+        level_cooldowns[_ck] = time.time()
 
     pair_status.update({
         'action':           'trade',       'direction':       direction,
@@ -1116,6 +1133,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
     status: dict = {'loop_at': '', 'paper': paper_mode, 'pairs_evaluated': [], 'errors': []}
     risk_guard: RiskGuard | None = None
     _last_risk_config_hash: int = 0
+    level_cooldowns: dict[tuple, float] = {}  # (pair, level_price, direction) → last_attempt_ts
 
     # Position metadata — keyed by MT5 ticket int, holds TP1/trail state
     position_meta: dict[int, dict] = {
@@ -1416,6 +1434,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                     pair_status = evaluate_pair_telegram(
                         cached_state, pair, config, live_price, sl_tp_engine, paper_mode,
                         sizing_mult=risk_guard.sizing_mult,
+                        level_cooldowns=level_cooldowns,
                     )
                 else:
                     pair_status = evaluate_pair(
