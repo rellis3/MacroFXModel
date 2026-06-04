@@ -203,11 +203,15 @@ async function loadConfig() {
 async function saveConfig() {
   readForm();
   setStatus('loading', 'Saving…');
+  const inl = document.getElementById('tgSaveStatus');
+  if (inl) { inl.textContent = 'Saving…'; inl.style.color = 'var(--text3)'; }
   try {
     await kvSet('bot_config', _cfg);
     setStatus('ok', 'Saved — bot picks up on next loop');
+    if (inl) { inl.textContent = '✓ Saved'; inl.style.color = 'var(--green)'; }
   } catch (e) {
     setStatus('err', `Save failed: ${e.message}`);
+    if (inl) { inl.textContent = `✗ ${e.message}`; inl.style.color = 'var(--red)'; }
   }
 }
 
