@@ -723,17 +723,21 @@ function renderCandles(candles, records) {
   candles.sort((a, b) => a.time - b.time);
 
   const data = candles.map(c => {
-    const rec   = findRegimeAtFromArr(c.time, records);
-    const color = rec ? (REGIME_COLORS[rec.regime] || GREY_CANDLE) : GREY_CANDLE;
+    const rec         = findRegimeAtFromArr(c.time, records);
+    const regimeColor = rec ? REGIME_COLORS[rec.regime] : null;
+    // Fall back to standard up/down candle coloring when no regime data
+    const isBull  = c.close >= c.open;
+    const fallback = isBull ? '#00c97d' : '#ef5350';
+    const col      = regimeColor ? regimeColor.color : fallback;
     return {
       time:        c.time,
       open:        c.open,
       high:        c.high,
       low:         c.low,
       close:       c.close,
-      color:       color.color,
-      wickColor:   color.wickColor,
-      borderColor: color.borderColor,
+      color:       col,
+      wickColor:   col,
+      borderColor: col,
     };
   });
 

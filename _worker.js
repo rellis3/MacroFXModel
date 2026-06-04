@@ -1704,14 +1704,19 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           : 'https://api-fxtrade.oanda.com';
 
         // OANDA: count must NOT be specified when both from and to are given.
+        // Cap to at Date.now() — OANDA rejects future timestamps.
         let oandaUrl = `${oandaBase}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=M5&price=M`;
         if (from && to) {
+          const toMs  = Math.min(new Date(to + 'T23:59:59Z').getTime(), Date.now() - 5000);
           oandaUrl += `&from=${encodeURIComponent(new Date(from).toISOString())}`;
-          oandaUrl += `&to=${encodeURIComponent(new Date(to + 'T23:59:59Z').toISOString())}`;
+          oandaUrl += `&to=${encodeURIComponent(new Date(toMs).toISOString())}`;
         } else {
           oandaUrl += `&count=4800`;
           if (from) oandaUrl += `&from=${encodeURIComponent(new Date(from).toISOString())}`;
-          if (to)   oandaUrl += `&to=${encodeURIComponent(new Date(to + 'T23:59:59Z').toISOString())}`;
+          if (to) {
+            const toMs = Math.min(new Date(to + 'T23:59:59Z').getTime(), Date.now() - 5000);
+            oandaUrl += `&to=${encodeURIComponent(new Date(toMs).toISOString())}`;
+          }
         }
 
         const res = await fetch(oandaUrl, {
