@@ -399,6 +399,8 @@
   <span class="upd">Updated: <span id="vfUpdated">—</span></span>
   <button class="dark-btn" id="vfExportBtn" onclick="exportForecast()" disabled>⬇ Export</button>
   <button class="dark-btn" id="vfSessionExportBtn" onclick="exportSession()" disabled>⬇ Session</button>
+  <button class="dark-btn" id="vfV3ExportBtn" onclick="exportV3()" disabled title="Vol forecast + session consumption stats for the v3 Pine Script indicator">⬇ V+S</button>
+  <button class="dark-btn" id="vfSessionComputeBtn" onclick="triggerSessionStats()" title="Fetch 5yr Oanda H1 data and compute Asia/London session consumption stats (~3–5 min)">⟳ Session Stats</button>
   <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
   <a href="index.html" style="text-decoration:none">
     <button class="dark-btn">← Dashboard</button>
@@ -482,6 +484,18 @@
       <span class="vf-api-desc">Trigger manual recompute — responds immediately, poll /api/vol-forecast in ~30s</span>
     </div>
 
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/session-stats</span>
+      <span class="vf-api-desc">Session consumption stats — JSON (Asia/London % of daily range, P50/P75, per instrument)</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method post">POST</span>
+      <span class="vf-api-path">/api/session-stats/refresh</span>
+      <span class="vf-api-desc">Recompute session stats from Oanda H1 (~3–5 min, pure JS) — run once then cached. Optional: ?years=3</span>
+    </div>
+
   </div>
 </div>
 
@@ -500,6 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadForecast();
   loadHistory();
   loadSession();
+  loadSessionStats();
   scheduleRefresh();
 });
 
@@ -693,6 +708,92 @@ function exportSession() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href = url; a.download = `session-${currentSession.session_date}.txt`;
+    a.click(); URL.revokeObjectURL(url);
+  });
+}
+
+// ── V+S Export (Vol + Session Stats — for Pine Script v3) ─────────────────────
+let currentSessionStats = null;
+
+async function loadSessionStats() {
+  try {
+    const res  = await fetch('/api/session-stats');
+    const data = await res.json();
+    if (!data.ok) return;
+    currentSessionStats = data;
+    document.getElementById('vfV3ExportBtn').disabled = false;
+    document.getElementById('vfV3ExportBtn').title =
+      `Session stats computed ${new Date(data.computed_at).toLocaleDateString()} — ${data.years}yr H1 history`;
+  } catch { /* silent — stats are optional */ }
+}
+
+async function triggerSessionStats() {
+  const btn = document.getElementById('vfSessionComputeBtn');
+  btn.disabled = true;
+  btn.textContent = '⟳ Computing…';
+  try {
+    const res  = await fetch('/api/session-stats/refresh', { method: 'POST' });
+    const data = await res.json();
+    btn.textContent = data.ok ? '⟳ Running (~5min)' : '⟳ Session Stats';
+    if (data.ok) {
+      // Poll every 30s until stats appear
+      const poll = setInterval(async () => {
+        await loadSessionStats();
+        if (currentSessionStats) {
+          clearInterval(poll);
+          btn.disabled = false;
+          btn.textContent = '⟳ Session Stats';
+        }
+      }, 30_000);
+    } else {
+      btn.disabled = false;
+    }
+  } catch (e) {
+    btn.textContent = '⟳ Session Stats';
+    btn.disabled = false;
+  }
+}
+
+function buildV3Text(forecastData, statsData) {
+  // Start with the standard vol export block
+  const lines = buildExportText(forecastData).split('\n');
+
+  // Append the session stats block
+  const LW     = 34;
+  const divider = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+
+  lines.push('');
+  lines.push(divider('SESSION STATS'));
+  lines.push('');
+
+  const instr = statsData.instruments ?? {};
+  for (const [name, stats] of Object.entries(instr)) {
+    if (!stats?.asia || !stats?.london) continue;
+    const a = stats.asia;
+    const l = stats.london;
+    lines.push(name);
+    lines.push(`Asia range      : ${a.p50}% median · ${a.p75}% 75th`);
+    lines.push(`London range    : ${l.p50}% median · ${l.p75}% 75th`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+function exportV3() {
+  if (!currentForecast || !currentSessionStats) return;
+  const text = buildV3Text(currentForecast, currentSessionStats);
+  const btn  = document.getElementById('vfV3ExportBtn');
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `vol-v3-${currentForecast.session_date}.txt`;
     a.click(); URL.revokeObjectURL(url);
   });
 }
