@@ -45,7 +45,9 @@ const HN_P75 = 1.1503;
 // garch_omega : long-run variance floor for GARCH (index/fx only)
 //   ω = (σ_annual_target / √252)² × (1−α−β)
 //   index → 20% long-run  ω = 4.76e-6
-//   fx    → 7.5% long-run ω = 6.70e-7
+//   fx    → 5.5% long-run ω = 3.60e-7  (was 6.70e-7 / 7.5% — too high for calm
+//           regimes, was flooring EURUSD ~10% above reference; recalibrated
+//           2026-06-04: equilibrates near 5% with typical 0.30%/day FX returns)
 //
 // hl_50_corr / hl_75_corr / oc_50_corr / oc_75_corr
 //   Recalibrated 2026-06-01 against reference forecasts (back-solving from
@@ -55,7 +57,7 @@ const HN_P75 = 1.1503;
 const ASSET_PARAMS = {
   commodity: { hl_50_corr: 1.023, hl_75_corr: 0.940, oc_50_corr: 1.144, oc_75_corr: 1.092 },
   index:     { hl_50_corr: 1.010, hl_75_corr: 0.967, oc_50_corr: 1.092, oc_75_corr: 1.115, garch_omega: 4.76e-6 },
-  fx:        { hl_50_corr: 0.965, hl_75_corr: 0.912, oc_50_corr: 1.038, oc_75_corr: 1.015, garch_omega: 6.70e-7 },
+  fx:        { hl_50_corr: 0.965, hl_75_corr: 0.912, oc_50_corr: 1.038, oc_75_corr: 1.015, garch_omega: 3.60e-7 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
@@ -123,7 +125,8 @@ function garch11VolSeries(bars, omega) {
 /**
  * @param {Array<{open,high,low,close}>} ohlc  Daily bars, oldest → newest
  * @param {string}  assetClass  'commodity' | 'index' | 'fx'
- * @param {number}  newsMult    Output of detectNewsMultiplier()
+ * @param {number}  newsMult    Output of detectNewsMultiplier() — stored in output as
+ *                              informational context only, not applied to ranges.
  * @returns forecast object — all values are percentages
  */
 export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
@@ -144,12 +147,15 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
 
   const r2 = x => Math.round(x * 100) / 100;
 
+  // newsMult is NOT applied to ranges — reference methodology uses pure vol-based
+  // forecasts; event days are already embedded in the historical vol estimate.
+  // The multiplier is retained in output as informational context for the dashboard.
   return {
     vol_annual: r2(volAnnual),
-    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * newsMult),
-    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * newsMult),
-    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct * newsMult),
-    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct * newsMult),
+    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct),
+    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct),
+    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct),
+    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct),
     news_mult:  r2(newsMult),
   };
 }
@@ -196,10 +202,10 @@ export function computeForecastFromRV(dailyRVs, assetClass = 'fx', newsMult = 1.
 
   return {
     vol_annual: r2(volAnnual),
-    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * newsMult),
-    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * newsMult),
-    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct * newsMult),
-    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct * newsMult),
+    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct),
+    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct),
+    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct),
+    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct),
     news_mult:  r2(newsMult),
   };
 }

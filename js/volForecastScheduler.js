@@ -27,7 +27,11 @@ import { computeForecast, computeForecastFromRV, detectNewsMultiplier } from './
 // ticker:          Yahoo Finance ticker (fallback when OANDA_KEY not set)
 const INSTRUMENTS = [
   { name: 'GOLD',   oandaInstrument: 'XAU_USD',    ticker: 'GLD',      assetClass: 'commodity' },
-  { name: 'NQ',     oandaInstrument: 'NAS100_USD',  ticker: 'NQ=F',     assetClass: 'index'     },
+  // preferYahoo: Oanda NAS100_USD CFD closes at 22:00 UTC and prices differently
+  // from CME NQ futures (RTH close 17:00 ET). Yahoo NQ=F uses CME settlement,
+  // matching the reference system. Without this flag NQ vol diverges badly when
+  // NQ makes a big intraday move that reverses by 22:00 UTC.
+  { name: 'NQ',     oandaInstrument: 'NAS100_USD',  ticker: 'NQ=F',     assetClass: 'index', preferYahoo: true },
   { name: 'EURUSD', oandaInstrument: 'EUR_USD',     ticker: 'EURUSD=X', assetClass: 'fx'        },
   { name: 'GBPUSD', oandaInstrument: 'GBP_USD',     ticker: 'GBPUSD=X', assetClass: 'fx'        },
   { name: 'USDJPY', oandaInstrument: 'USD_JPY',     ticker: 'USDJPY=X', assetClass: 'fx'        },
@@ -128,9 +132,9 @@ async function fetchOHLCYahoo(ticker) {
   return bars;
 }
 
-// Dispatcher: Oanda if key is available, Yahoo otherwise.
+// Dispatcher: Oanda if key is available, unless instrument sets preferYahoo.
 async function fetchOHLC(cfg) {
-  if (process.env.OANDA_KEY) return fetchOHLCOanda(cfg.oandaInstrument);
+  if (process.env.OANDA_KEY && !cfg.preferYahoo) return fetchOHLCOanda(cfg.oandaInstrument);
   return fetchOHLCYahoo(cfg.ticker);
 }
 
