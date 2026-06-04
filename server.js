@@ -2544,9 +2544,9 @@ app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
 // Beta history — reads bot/data/beta_history.jsonl for the correlation dashboard.
 // Optional query params: limit (max records, default 3000), downsample (bool).
 app.get('/api/beta-history', (req, res) => {
-  const histPath = require('path').join(__dirname, 'bot', 'data', 'beta_history.jsonl');
+  const histPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'beta_history.jsonl');
   try {
-    const raw = require('fs').readFileSync(histPath, 'utf8');
+    const raw = fs.readFileSync(histPath, 'utf8');
     const lines = raw.split('\n').filter(l => l.trim());
     const limit = Math.max(100, parseInt(req.query.limit) || 3000);
     // Deterministic downsample: keep every Nth record to fit limit
@@ -2590,9 +2590,8 @@ app.get('/api/corr-history/status', (_req, res) => {
 // Correlation history — serves bot/data/corr_history.json built by build_corr_history.py
 // Optional ?lite=1 returns only avg_corr + regime_stats (strips the full records array)
 app.get('/api/corr-history', (req, res) => {
-  const p = require('path').join(__dirname, 'bot', 'data', 'corr_history.json');
-  const fs = require('fs');
-  if (!fs.existsSync(p)) return res.status(404).json({ error: 'corr_history.json not found — run scripts/build_corr_history.py first' });
+  const p = CORR_HISTORY_PATH;
+  if (!fs.existsSync(p)) return res.status(404).json({ error: 'corr_history.json not found — click "Rebuild" in the Corr Lab dashboard to generate it' });
   try {
     const raw = fs.readFileSync(p, 'utf8');
     if (req.query.lite === '1') {
