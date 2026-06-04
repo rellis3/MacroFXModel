@@ -81,7 +81,29 @@ def manage_positions(position_meta: dict, paper_mode: bool) -> list[dict]:
 
         meta = position_meta.get(pos.ticket)
         if not meta:
-            continue
+            # Bootstrap meta for orphaned positions (e.g. bot restarted after entry).
+            # Derive trail offset from existing SL distance so trailing resumes.
+            if pos.sl and pos.sl != 0.0:
+                offset = abs(pos.price_open - float(pos.sl))
+                log.warning(
+                    f'Position {pos.ticket} ({pos.symbol}) has no meta — bootstrapping trail '
+                    f'from existing SL distance ({offset:.5f})'
+                )
+                meta = {
+                    'tp1':              None,
+                    'tp1_close_pct':    50,
+                    'trailoffset_dist': offset,
+                    'tp1_hit':          True,
+                    'trail_active':     True,
+                    'trail_sl':         float(pos.sl),
+                }
+                position_meta[pos.ticket] = meta
+            else:
+                log.warning(
+                    f'Position {pos.ticket} ({pos.symbol}) has no meta and no SL — '
+                    f'cannot bootstrap trail; set an SL manually'
+                )
+                continue
 
         try:
             tick = mt5.symbol_info_tick(pos.symbol)

@@ -526,8 +526,10 @@ class RiskGuard:
     State is persisted to disk so restarts don't reset DD tracking or cooldowns.
     """
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, paper_mode: bool = False):
         ec = config.get('execution') or {}
+        self.paper_mode     = paper_mode
+        self.bypass         = bool(ec.get('bypass_risk_guard', False))
         self.dd_limit_pct   = ec.get('ddlimit', 3)
         self.monthly_dd_pct = ec.get('monthlydd', 5)
         self.lockout_hours  = ec.get('lockout', 3)
@@ -574,30 +576,46 @@ class RiskGuard:
     def block_reason(self, balance: float, pair: str = '') -> str | None:
         now = time.time()
 
-        if now < self._locked_until:
-            remaining_m = (self._locked_until - now) / 60
-            return f'Locked out — {remaining_m:.0f}m remaining'
+        skip_dd = self.paper_mode or self.bypass
 
-        # Per-pair cooldown
+        if not skip_dd:
+            if now < self._locked_until:
+                remaining_m = (self._locked_until - now) / 60
+                return f'Locked out — {remaining_m:.0f}m remaining'
+
+            if self._day_start_bal:
+                dd_pct = (self._day_start_bal - balance) / self._day_start_bal * 100
+                if dd_pct >= self.dd_limit_pct:
+                    self._locked_until = now + self.lockout_hours * 3600
+                    return (f'Daily DD {dd_pct:.1f}% ≥ limit {self.dd_limit_pct}%'
+                            f' — locked {self.lockout_hours}h')
+
+            if self._month_start_bal:
+                mdd_pct = (self._month_start_bal - balance) / self._month_start_bal * 100
+                if mdd_pct >= self.monthly_dd_pct:
+                    self._locked_until = now + self.lockout_hours * 3600
+                    return (f'Monthly DD {mdd_pct:.1f}% ≥ limit {self.monthly_dd_pct}%'
+                            f' — locked {self.lockout_hours}h')
+        else:
+            # Log what the guard *would* have blocked so it isn't silently swallowed
+            if now < self._locked_until:
+                remaining_m = (self._locked_until - now) / 60
+                log.warning(f'[RiskGuard BYPASSED] Would be locked out — {remaining_m:.0f}m remaining')
+            elif self._day_start_bal:
+                dd_pct = (self._day_start_bal - balance) / self._day_start_bal * 100
+                if dd_pct >= self.dd_limit_pct:
+                    log.warning(f'[RiskGuard BYPASSED] Daily DD {dd_pct:.1f}% ≥ limit {self.dd_limit_pct}% — would have locked')
+            if self._month_start_bal:
+                mdd_pct = (self._month_start_bal - balance) / self._month_start_bal * 100
+                if mdd_pct >= self.monthly_dd_pct:
+                    log.warning(f'[RiskGuard BYPASSED] Monthly DD {mdd_pct:.1f}% ≥ limit {self.monthly_dd_pct}% — would have locked')
+
+        # Per-pair cooldown applies regardless of bypass
         if pair and pair in self._last_trade_by_pair:
             elapsed = now - self._last_trade_by_pair[pair]
             if elapsed < self.cooldown_secs:
                 remaining_m = (self.cooldown_secs - elapsed) / 60
                 return f'[{pair}] Cooldown — {remaining_m:.1f}m remaining'
-
-        if self._day_start_bal:
-            dd_pct = (self._day_start_bal - balance) / self._day_start_bal * 100
-            if dd_pct >= self.dd_limit_pct:
-                self._locked_until = now + self.lockout_hours * 3600
-                return (f'Daily DD {dd_pct:.1f}% ≥ limit {self.dd_limit_pct}%'
-                        f' — locked {self.lockout_hours}h')
-
-        if self._month_start_bal:
-            mdd_pct = (self._month_start_bal - balance) / self._month_start_bal * 100
-            if mdd_pct >= self.monthly_dd_pct:
-                self._locked_until = now + self.lockout_hours * 3600
-                return (f'Monthly DD {mdd_pct:.1f}% ≥ limit {self.monthly_dd_pct}%'
-                        f' — locked {self.lockout_hours}h')
 
         return None
 
@@ -1187,7 +1205,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         risk_cfg_hash = hash(str(exec_cfg))
         if risk_guard is None or risk_cfg_hash != _last_risk_config_hash:
             prev = risk_guard
-            risk_guard = RiskGuard(config)
+            risk_guard = RiskGuard(config, paper_mode=paper_mode)
 
             # First creation: restore from persisted state
             if prev is None and persisted.get('risk_guard'):
@@ -1201,6 +1219,13 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                          f'ddlimit={risk_guard.dd_limit_pct}%')
 
             _last_risk_config_hash = risk_cfg_hash
+
+            if risk_guard.bypass:
+                log.warning('=' * 60)
+                log.warning('  !! RiskGuard BYPASSED — bypass_risk_guard=true in config !!')
+                log.warning('  DD lockouts and monthly limits are NOT enforced.')
+                log.warning('  Remove bypass_risk_guard from execution config when done.')
+                log.warning('=' * 60)
 
         # ── Dashboard override: force-unlock RiskGuard ───────────────────────
         if risk_guard and base_url:
