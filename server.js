@@ -14,6 +14,7 @@ import express              from 'express';
 import path                from 'path';
 import { fileURLToPath }   from 'url';
 import fs                  from 'fs';
+import { createInterface as rlCreateInterface } from 'readline';
 import { execFile, spawn } from 'child_process';
 import { promisify }       from 'util';
 import * as kv           from './kv.js';
@@ -2634,76 +2635,126 @@ app.get('/api/corr-history', (req, res) => {
   }
 });
 
-// ── Regime log backfill ──────────────────────────────────────────────────────
-// Triggers parse_regime_logs.py --upload against localhost so the user can
-// backfill historical regime data from the dashboard without SSH access.
+// ── Regime log backfill (pure Node.js) ──────────────────────────────────────
+// Native JS log parser — no Python subprocess required.
+// Reads bot log files line-by-line with readline and writes directly to KV.
+
+const _RG_V1_LOG = path.join(__dirname, 'bot',  'regime_bot.log');
+const _RG_V2_LOG = path.join(__dirname, 'logs', 'regime_bot_v2.log');
+
+// Regex patterns mirror parse_regime_logs.py
+const _RG_PAT = {
+  v1: {
+    state: /^\[([^\]]+)\] \[INFO\] \[([^\]]+)\] regime=(\w+)\s+conf=(\d+)%\s+vol_z=([+-]?\d+\.?\d*)\s+rl=(\d+)\s+decay=([+-]?\d+\.?\d*)/,
+    entry: /^\[([^\]]+)\] \[INFO\] \[([^\]]+)\] ENTRY (LONG|SHORT)/,
+    trade: /^\[([^\]]+)\] \[INFO\] TRADE (\S+) (LONG|SHORT)\s+SL=/,
+    close: /^\[([^\]]+)\] \[INFO\] CLOSE (\S+)\s+ticket=\S+\s+reason=(.+?)(?:\s+score=[\d.]+)?$/,
+  },
+  v2: {
+    state: /^\[([^\]]+)\] \[RGV2\] \[INFO\] \[([^\]]+)\] reg=(\w+)\s+conf=(\d+)%\s+slope=([+-]?\d+\.?\d*)\s+vz=([+-]?\d+\.?\d*)\s+rl=(\d+)\s+bocpd=([+-]?\d+\.?\d*)%\s+exh=([+-]?\d+\.?\d*)\s+decay=([+-]?\d+\.?\d*)\s+score=(\d+)\s+1h=(\w+)/,
+    gate:  /^\[([^\]]+)\] \[RGV2\] \[INFO\] \[([^\]]+)\] Gate: (.+)$/,
+    trade: /^\[([^\]]+)\] \[RGV2\] \[INFO\] TRADE (\S+) (LONG|SHORT)\s+SL=/,
+    close: /^\[([^\]]+)\] \[RGV2\] \[INFO\] CLOSE (\S+)\s+ticket=\S+\s+reason=(.+?)(?:\s+\[PAPER\])?$/,
+  },
+};
+
+function _rgTs(s) { return Math.floor(new Date(s.replace(' ', 'T') + 'Z').getTime() / 1000); }
+
+async function _parseRegimeLog(logPath, ver, recsByPair, evtsByPair, log) {
+  if (!fs.existsSync(logPath)) { log(`[WARN] not found: ${logPath}`); return; }
+  const P = _RG_PAT[ver];
+  const rl = rlCreateInterface({ input: fs.createReadStream(logPath), crlfDelay: Infinity });
+  let n = 0;
+  for await (const line of rl) {
+    n++;
+    let m;
+    if (ver === 'v1') {
+      if ((m = P.state.exec(line))) {
+        const [,ts,pair,regime,conf,vz,rl2,decay] = m;
+        const t = _rgTs(ts);
+        (recsByPair.get(pair) ?? (recsByPair.set(pair, new Map()), recsByPair.get(pair))).set(t, { ts:t, regime, conf:+conf, vz:+vz, rl:+rl2, decay:+decay });
+      } else if ((m = P.entry.exec(line))) {
+        const evts = evtsByPair.get(m[2]) ?? (evtsByPair.set(m[2],[]), evtsByPair.get(m[2]));
+        evts.push({ ts:_rgTs(m[1]), type:'entry', pair:m[2], direction:m[3] });
+      } else if ((m = P.trade.exec(line))) {
+        const pair = m[2]; const evts = evtsByPair.get(pair) ?? (evtsByPair.set(pair,[]), evtsByPair.get(pair));
+        evts.push({ ts:_rgTs(m[1]), type:'entry', pair, direction:m[3] });
+      } else if ((m = P.close.exec(line))) {
+        const pair = m[2]; const evts = evtsByPair.get(pair) ?? (evtsByPair.set(pair,[]), evtsByPair.get(pair));
+        evts.push({ ts:_rgTs(m[1]), type:'close', pair, reason:m[3].trim() });
+      }
+    } else {
+      if ((m = P.state.exec(line))) {
+        const [,ts,pair,regime,conf,slope,vz,rl2,bocpd,exh,decay,score,h1] = m;
+        const t = _rgTs(ts);
+        (recsByPair.get(pair) ?? (recsByPair.set(pair, new Map()), recsByPair.get(pair))).set(t, { ts:t, regime, conf:+conf, slope:+slope, vz:+vz, rl:+rl2, bocpd:+bocpd, exh:+exh, decay:+decay, score:+score, h1 });
+      } else if ((m = P.gate.exec(line))) {
+        const pair = m[2]; const evts = evtsByPair.get(pair) ?? (evtsByPair.set(pair,[]), evtsByPair.get(pair));
+        evts.push({ ts:_rgTs(m[1]), type:'gate', pair, reason:m[3] });
+      } else if ((m = P.trade.exec(line))) {
+        const pair = m[2].replace('_','/'); const evts = evtsByPair.get(pair) ?? (evtsByPair.set(pair,[]), evtsByPair.get(pair));
+        evts.push({ ts:_rgTs(m[1]), type:'entry', pair, direction:m[3] });
+      } else if ((m = P.close.exec(line))) {
+        const pair = m[2].replace('_','/'); const evts = evtsByPair.get(pair) ?? (evtsByPair.set(pair,[]), evtsByPair.get(pair));
+        evts.push({ ts:_rgTs(m[1]), type:'close', pair, reason:m[3].trim() });
+      }
+    }
+  }
+  log(`  ${path.basename(logPath)}: ${n.toLocaleString()} lines parsed`);
+}
 
 const _rgJobs = new Map();
-
 function _purgeStaleRgJobs() {
   const now = Date.now();
-  for (const [id, job] of _rgJobs) {
-    if (now - job.startedAt > 30 * 60 * 1000) _rgJobs.delete(id);
-  }
+  for (const [id, job] of _rgJobs) { if (now - job.startedAt > 30 * 60 * 1000) _rgJobs.delete(id); }
 }
 
 app.post('/api/regime-backfill-trigger', (req, res) => {
-  const SCRIPT  = path.join(__dirname, 'scripts', 'parse_regime_logs.py');
-  const baseUrl = `http://localhost:${PORT}`;
-
-  if (!fs.existsSync(SCRIPT)) {
-    return res.status(500).json({ ok: false, error: 'parse_regime_logs.py not found' });
-  }
-
   _purgeStaleRgJobs();
-
-  // Only allow one job at a time
   for (const job of _rgJobs.values()) {
-    if (job.status === 'running') {
-      return res.json({ ok: true, jobId: job.jobId, alreadyRunning: true });
-    }
+    if (job.status === 'running') return res.json({ ok: true, jobId: job.jobId, alreadyRunning: true });
   }
 
-  const jobId     = `rg_${Date.now()}`;
-  const startedAt = Date.now();
-  const lines     = [];
-  _rgJobs.set(jobId, { jobId, status: 'running', startedAt, lines });
+  const jobId = `rg_${Date.now()}`;
+  const lines = [];
+  _rgJobs.set(jobId, { jobId, status: 'running', startedAt: Date.now(), lines });
 
-  // Use PATH-resolved python3 so this works on Railway without hardcoded paths.
-  // BT_PYTHON uses execFile() try/catch which only catches synchronous errors
-  // and always returns /usr/local/bin/python3 even when that path doesn't exist.
-  // Railway Nixpacks installs Python as 'python' (see start.sh). Fall back to python3 for local dev.
-  const pyBin = process.env.PYTHON_BIN || 'python';
+  const log = msg => { lines.push(msg); if (lines.length > 400) lines.splice(0, lines.length - 400); console.log('[backfill]', msg); };
 
-  const child = spawn(
-    pyBin, [SCRIPT, '--upload', '--dashboard-url', baseUrl],
-    { cwd: __dirname }
-  );
+  (async () => {
+    try {
+      const v1r = new Map(), v1e = new Map(), v2r = new Map(), v2e = new Map();
+      log('Parsing V1 log…');
+      await _parseRegimeLog(_RG_V1_LOG, 'v1', v1r, v1e, log);
+      log('Parsing V2 log…');
+      await _parseRegimeLog(_RG_V2_LOG, 'v2', v2r, v2e, log);
 
-  child.on('error', err => {
-    lines.push(`[spawn error] ${err.message}`);
-    const job = _rgJobs.get(jobId);
-    if (job) { job.status = 'error'; job.exitCode = null; job.finishedAt = Date.now(); }
-  });
+      const allPairs = new Set([...v1r.keys(), ...v1e.keys(), ...v2r.keys(), ...v2e.keys()]);
+      log(`Writing KV for ${allPairs.size} pairs…`);
 
-  child.stdout.on('data', chunk => {
-    const text = chunk.toString();
-    text.split('\n').filter(l => l.trim()).forEach(l => lines.push(l));
-    if (lines.length > 200) lines.splice(0, lines.length - 200);
-  });
-  child.stderr.on('data', chunk => {
-    const text = chunk.toString();
-    text.split('\n').filter(l => l.trim()).forEach(l => lines.push('[err] ' + l));
-    if (lines.length > 200) lines.splice(0, lines.length - 200);
-  });
-  child.on('close', code => {
-    const job = _rgJobs.get(jobId);
-    if (job) {
-      job.status = code === 0 ? 'done' : 'error';
-      job.exitCode = code;
-      job.finishedAt = Date.now();
+      const pairSafe = p => p.replace('/','').replace('_','').toLowerCase();
+      let written = 0;
+      for (const pair of allPairs) {
+        const safe = pairSafe(pair);
+        for (const [ver, rMap, eMap] of [['v1', v1r, v1e], ['v2', v2r, v2e]]) {
+          const records = [...(rMap.get(pair)?.values() ?? [])].sort((a,b) => a.ts - b.ts);
+          const events  = (eMap.get(pair) ?? []).sort((a,b) => a.ts - b.ts);
+          if (!records.length && !events.length) continue;
+          await cfEnv.FX_SCORES.put(`rg${ver}_${safe}`, JSON.stringify({ records, events }));
+          log(`  [OK] ${ver} ${pair}  ${records.length} records  ${events.length} events`);
+          written++;
+        }
+      }
+      log(`Done — ${written} KV keys written.`);
+      const job = _rgJobs.get(jobId);
+      if (job) { job.status = 'done'; job.finishedAt = Date.now(); }
+    } catch (e) {
+      lines.push(`[ERROR] ${e.message}`);
+      console.error('[backfill]', e);
+      const job = _rgJobs.get(jobId);
+      if (job) { job.status = 'error'; job.finishedAt = Date.now(); }
     }
-  });
+  })();
 
   res.json({ ok: true, jobId });
 });
@@ -2711,13 +2762,7 @@ app.post('/api/regime-backfill-trigger', (req, res) => {
 app.get('/api/regime-backfill-status/:jobId', (req, res) => {
   const job = _rgJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
-  res.json({
-    ok:        true,
-    status:    job.status,
-    elapsed:   Math.round((Date.now() - job.startedAt) / 1000),
-    lines:     job.lines.slice(-40),
-    exitCode:  job.exitCode ?? null,
-  });
+  res.json({ ok: true, status: job.status, elapsed: Math.round((Date.now() - job.startedAt) / 1000), lines: job.lines.slice(-40), exitCode: job.exitCode ?? null });
 });
 
 // All other /api/* routes — call _worker.js and return the JSON response.
