@@ -496,14 +496,8 @@ function buildCharts() {
     },
     width:  metricsEl.clientWidth,
     height: metricsEl.clientHeight,
-    // Right axis: percentage metrics (conf, score, bocpd, rl) — natural 0-100
+    // Single right axis: all metrics normalised to 0-100
     rightPriceScale: {
-      borderColor: '#1c2133',
-      scaleMargins: { top: 0.05, bottom: 0.05 },
-    },
-    // Left axis: signal metrics (slope, vz, exh, decay) — auto-scaled to raw units
-    leftPriceScale: {
-      visible: true,
       borderColor: '#1c2133',
       scaleMargins: { top: 0.05, bottom: 0.05 },
     },
@@ -625,12 +619,12 @@ function rebuildMetricSeries() {
   });
   metricSeries = {};
 
-  // Re-create for active metrics, each on its designated price scale
+  // All series on the shared right axis (0-100 normalised scale)
   activeMetrics.forEach(m => {
     const s = chart2.addLineSeries({
-      color:        m.color,
-      lineWidth:    1,
-      priceScaleId: m.scale || 'right',
+      color:                  m.color,
+      lineWidth:              1,
+      priceScaleId:           'right',
       priceLineVisible:       false,
       lastValueVisible:       true,
       crosshairMarkerVisible: true,
@@ -979,6 +973,26 @@ function renderMetrics(records) {
 
   const maxRl = 600;
 
+  // Metrics that are already on a natural 0-100 % scale — plot as-is.
+  // All others are min-max normalised to 0-100 so every line uses the
+  // full chart height regardless of its raw unit magnitude.
+  const NATURAL = new Set(['conf', 'score', 'bocpd']);
+
+  // First pass: collect raw min/max for signal metrics
+  const ranges = {};
+  activeMetrics.filter(m => !NATURAL.has(m.key) && m.key !== 'rl').forEach(m => {
+    ranges[m.key] = { min: Infinity, max: -Infinity };
+    records.forEach(rec => {
+      const raw = rec[m.key];
+      if (raw == null) return;
+      const v = Number(raw);
+      if (isNaN(v)) return;
+      if (v < ranges[m.key].min) ranges[m.key].min = v;
+      if (v > ranges[m.key].max) ranges[m.key].max = v;
+    });
+  });
+
+  // Second pass: build normalised series data
   activeMetrics.forEach(m => {
     const s = metricSeries[m.key];
     if (!s) return;
@@ -986,15 +1000,20 @@ function renderMetrics(records) {
     const data = [];
     records.forEach(rec => {
       if (rec.ts == null) return;
-      let v = rec[m.key];
-      if (v == null) return;
-      v = Number(v);
+      const raw = rec[m.key];
+      if (raw == null) return;
+      let v = Number(raw);
       if (isNaN(v)) return;
 
-      // Right-scale metrics are naturally 0-100; only rl needs normalising.
-      // Left-scale metrics (slope, vz, exh, decay) are plotted at raw units —
-      // the auto-scaled left axis handles their range, no artificial multiply.
-      if (m.key === 'rl') v = Math.min(v / maxRl * 100, 100);
+      if (m.key === 'rl') {
+        v = Math.min(v / maxRl * 100, 100);
+      } else if (NATURAL.has(m.key)) {
+        v = Math.max(0, Math.min(100, v));
+      } else {
+        const { min, max } = ranges[m.key];
+        const span = max - min;
+        v = span > 0 ? ((v - min) / span) * 100 : 50;
+      }
 
       data.push({ time: rec.ts, value: v });
     });
@@ -1008,16 +1027,14 @@ function renderMetrics(records) {
     s.setData(deduped);
   });
 
-  // Reference line at y=70 (conf threshold) on the right axis
+  // Reference line at y=70 — meaningful for conf (the 70% confidence threshold)
+  // and a useful visual guide for the normalised signal metrics.
   const minTs = records[0].ts;
   const maxTs = records[records.length - 1].ts;
   window._refLineSeries.setData([
     { time: minTs, value: 70 },
     { time: maxTs, value: 70 },
   ]);
-  // fitContent() intentionally omitted — the explicit setVisibleRange in
-  // loadData() sets both charts to the correct range without triggering
-  // the sync loop that caused zoom override.
 }
 
 // ─── Status helper ────────────────────────────────────────────────────────────
