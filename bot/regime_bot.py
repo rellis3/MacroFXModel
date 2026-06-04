@@ -686,6 +686,18 @@ def push_status(data: dict, base_url: str) -> None:
     _kv_put('regime_bot_status', data, base_url)
 
 
+def push_regime_states(states: list[dict], events: list[dict], base_url: str) -> None:
+    """Fire-and-forget POST of per-cycle state to the regime viewer endpoint."""
+    try:
+        requests.post(
+            f'{base_url}/api/regime-append',
+            json={'bot': 'v1', 'ts': int(time.time()), 'states': states, 'events': events},
+            timeout=6,
+        )
+    except Exception:
+        pass
+
+
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
 def run(base_url: str, paper_mode: bool) -> None:
@@ -725,9 +737,13 @@ def run(base_url: str, paper_mode: bool) -> None:
         flip_counts[pair]  = 0
 
     cycle = 0
+    _cycle_states: list[dict] = []
+    _cycle_events: list[dict] = []
 
     while True:
         cycle += 1
+        _cycle_states = []
+        _cycle_events = []
         cfg = load_config(base_url)  # re-read every cycle — live changes take effect immediately
 
         if not cfg.get('enabled', True):
@@ -796,6 +812,15 @@ def run(base_url: str, paper_mode: bool) -> None:
                 f'[{pair}] regime={regime}  conf={confidence:.0f}%  '
                 f'vol_z={vol_z:+.2f}  rl={run_length}  decay={decay_score:.3f}'
             )
+
+            _cycle_states.append({
+                'pair':   pair,
+                'regime': regime,
+                'conf':   round(confidence, 1),
+                'vz':     round(vol_z, 3),
+                'rl':     run_length,
+                'decay':  round(decay_score, 3),
+            })
 
             # ── Manage existing open position ─────────────────────────────────
             if pair in open_pos:
@@ -875,6 +900,7 @@ def run(base_url: str, paper_mode: bool) -> None:
                 if should_close:
                     ok = close_position(pos['ticket'], pair, paper_mode, close_reason)
                     if ok:
+                        _cycle_events.append({'pair': pair, 'type': 'close', 'reason': close_reason, 'direction': pos['direction']})
                         del open_pos[pair]
                         entry_regime.pop(pair, None)
                         debounce[pair].clear()
@@ -987,6 +1013,7 @@ def run(base_url: str, paper_mode: bool) -> None:
             )
 
             if ticket is not None:
+                _cycle_events.append({'pair': pair, 'type': 'entry', 'direction': direction, 'lots': size, 'sl': round(sl, 5)})
                 open_pos[pair] = {
                     'ticket':      ticket,
                     'direction':   direction,
@@ -1013,7 +1040,7 @@ def run(base_url: str, paper_mode: bool) -> None:
                     'direction': direction,
                 }
 
-        # ── Push status to KV ─────────────────────────────────────────────────
+        # ── Push status to KV + regime viewer ────────────────────────────────
         push_status({
             'enabled':       cfg.get('enabled', True),
             'paper_mode':    paper_mode,
@@ -1023,6 +1050,7 @@ def run(base_url: str, paper_mode: bool) -> None:
             'positions':     status_positions,
             'mt5_positions': _serialize_open_positions(MAGIC),
         }, base_url)
+        push_regime_states(_cycle_states, _cycle_events, base_url)
 
         interval = max(cfg.get('interval_secs', 60), 10)
         log.info(f'Cycle {cycle} complete — sleeping {interval}s')
