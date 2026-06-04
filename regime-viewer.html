@@ -750,7 +750,7 @@ function _drawBands(ctx, chart, W, H) {
 function drawOverlay() {
   if (!chart1) return;
 
-  // ── Price chart bands + trade lines ──
+  // ── Price chart: trade connecting lines only (regime shown via candle colour) ──
   if (overlayCanvas) {
     const priceEl = document.getElementById('priceChart');
     const W = priceEl.clientWidth;
@@ -759,8 +759,6 @@ function drawOverlay() {
     overlayCanvas.height = H;
     const ctx = overlayCanvas.getContext('2d');
     ctx.clearRect(0, 0, W, H);
-
-    _drawBands(ctx, chart1, W, H);
 
     if (currentTrades.length && candleSeries) {
       ctx.lineWidth = 1.5;
@@ -904,17 +902,24 @@ function renderCandles(candles) {
   candles.sort((a, b) => a.time - b.time);
   currentCandles = candles;
 
-  const data = candles.map(c => ({
-    time:  c.time,
-    open:  c.open,
-    high:  c.high,
-    low:   c.low,
-    close: c.close,
-    // Standard up/down coloring — regime shown via canvas background bands
-    color:       c.close >= c.open ? '#00c97d' : '#ef5350',
-    wickColor:   c.close >= c.open ? '#00c97d' : '#ef5350',
-    borderColor: c.close >= c.open ? '#00c97d' : '#ef5350',
-  }));
+  // Colour each candle by the active regime at that timestamp.
+  // Falls back to standard green/red when no regime data is available.
+  const data = candles.map(c => {
+    const rec = findRegimeAt(c.time);
+    const col = rec ? REGIME_COLORS[rec.regime]?.color : null;
+    const fallback = c.close >= c.open ? '#00c97d' : '#ef5350';
+    const color = col || fallback;
+    return {
+      time:  c.time,
+      open:  c.open,
+      high:  c.high,
+      low:   c.low,
+      close: c.close,
+      color,
+      wickColor:   color,
+      borderColor: color,
+    };
+  });
 
   candleSeries.setData(data);
   chart1.timeScale().fitContent();
