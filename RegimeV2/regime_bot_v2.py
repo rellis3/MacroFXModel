@@ -277,6 +277,12 @@ def mt5_connect() -> bool:
             log.error(f'MT5 account mismatch: expected {account} got {info.login} — aborting')
             mt5.shutdown()
             return False
+    term = mt5.terminal_info()
+    if term:
+        if not term.trade_allowed:
+            log.error('MT5 AutoTrading is DISABLED — enable the AutoTrading button in MT5 toolbar or orders will fail')
+        else:
+            log.info(f'MT5 AutoTrading: enabled  connected={term.connected}  trade_allowed={term.trade_allowed}')
     return True
 
 
@@ -588,7 +594,11 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
         log.info(f'MT5 order placed: ticket={res.order}  price={price}')
         return res.order
     last_err = mt5.last_error()
-    log.error(f'MT5 order failed: retcode={getattr(res,"retcode","?")} {getattr(res,"comment","")}  last_error={last_err}')
+    log.error(
+        f'MT5 order failed: retcode={getattr(res, "retcode", "NONE")}  '
+        f'comment={getattr(res, "comment", "n/a")!r}  last_error={last_err}\n'
+        f'  order={order}'
+    )
     return None
 
 

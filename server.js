@@ -2323,6 +2323,33 @@ app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
   }
 });
 
+// Beta history — reads bot/data/beta_history.jsonl for the correlation dashboard.
+// Optional query params: limit (max records, default 3000), downsample (bool).
+app.get('/api/beta-history', (req, res) => {
+  const histPath = require('path').join(__dirname, 'bot', 'data', 'beta_history.jsonl');
+  try {
+    const raw = require('fs').readFileSync(histPath, 'utf8');
+    const lines = raw.split('\n').filter(l => l.trim());
+    const limit = Math.max(100, parseInt(req.query.limit) || 3000);
+    // Deterministic downsample: keep every Nth record to fit limit
+    const step = Math.max(1, Math.floor(lines.length / limit));
+    const records = [];
+    for (let i = 0; i < lines.length; i += step) {
+      try { records.push(JSON.parse(lines[i])); } catch { /* skip malformed */ }
+    }
+    // Always include the latest record
+    if (lines.length > 0) {
+      try {
+        const last = JSON.parse(lines[lines.length - 1]);
+        if (!records.length || records[records.length - 1].ts !== last.ts) records.push(last);
+      } catch { /* ignore */ }
+    }
+    res.json({ records, total: lines.length, sampled: records.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {
   try {
