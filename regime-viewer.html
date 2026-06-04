@@ -179,6 +179,7 @@ html, body {
 #priceChart {
   width: 100%;
   height: 100%;
+  position: relative;
 }
 
 /* ── Hover info box ── */
@@ -259,6 +260,7 @@ html, body {
   flex: 1;
   min-height: 0;
   width: 100%;
+  position: relative;
 }
 </style>
 </head>
@@ -357,22 +359,24 @@ const PAIR_SAFE = {
   'NAS100_USD': 'nas100usd',
 };
 
+// scale:'right' = percentage metrics (0-100, share right axis)
+// scale:'left'  = signal metrics (raw units, auto-scale on left axis)
 const V2_METRICS = [
-  { key: 'conf',  label: 'conf',  color: '#2196f3' },
-  { key: 'slope', label: 'slope', color: '#00bcd4' },
-  { key: 'vz',    label: 'vz',    color: '#ff9800' },
-  { key: 'rl',    label: 'rl',    color: '#9c27b0' },
-  { key: 'bocpd', label: 'bocpd', color: '#ff5722' },
-  { key: 'exh',   label: 'exh',   color: '#795548' },
-  { key: 'decay', label: 'decay', color: '#f44336' },
-  { key: 'score', label: 'score', color: '#4caf50' },
+  { key: 'conf',  label: 'conf',  color: '#2196f3', scale: 'right' },
+  { key: 'score', label: 'score', color: '#4caf50', scale: 'right' },
+  { key: 'bocpd', label: 'bocpd', color: '#ff5722', scale: 'right' },
+  { key: 'rl',    label: 'rl',    color: '#9c27b0', scale: 'right' },
+  { key: 'slope', label: 'slope', color: '#00bcd4', scale: 'left'  },
+  { key: 'vz',    label: 'vz',    color: '#ff9800', scale: 'left'  },
+  { key: 'exh',   label: 'exh',   color: '#795548', scale: 'left'  },
+  { key: 'decay', label: 'decay', color: '#f44336', scale: 'left'  },
 ];
 
 const V1_METRICS = [
-  { key: 'conf',  label: 'conf',  color: '#2196f3' },
-  { key: 'vz',    label: 'vz',    color: '#ff9800' },
-  { key: 'rl',    label: 'rl',    color: '#9c27b0' },
-  { key: 'decay', label: 'decay', color: '#f44336' },
+  { key: 'conf',  label: 'conf',  color: '#2196f3', scale: 'right' },
+  { key: 'rl',    label: 'rl',    color: '#9c27b0', scale: 'right' },
+  { key: 'vz',    label: 'vz',    color: '#ff9800', scale: 'left'  },
+  { key: 'decay', label: 'decay', color: '#f44336', scale: 'left'  },
 ];
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -391,6 +395,7 @@ let currentCandles = [];
 let regimeBands    = [];
 let currentTrades  = [];
 let overlayCanvas  = null;
+let overlayCanvas2 = null;
 let _drawPending   = false;
 
 // ─── Init ────────────────────────────────────────────────────────────────────
@@ -485,14 +490,22 @@ function buildCharts() {
     },
     width:  metricsEl.clientWidth,
     height: metricsEl.clientHeight,
+    // Right axis: percentage metrics (conf, score, bocpd, rl) — natural 0-100
     rightPriceScale: {
+      borderColor: '#1c2133',
+      scaleMargins: { top: 0.05, bottom: 0.05 },
+    },
+    // Left axis: signal metrics (slope, vz, exh, decay) — auto-scaled to raw units
+    leftPriceScale: {
+      visible: true,
       borderColor: '#1c2133',
       scaleMargins: { top: 0.05, bottom: 0.05 },
     },
   });
 
-  // Reference line at y=70
+  // Reference line at y=70 on right axis (conf threshold)
   const refLine = chart2.addLineSeries({
+    priceScaleId: 'right',
     color:     'rgba(255,255,255,0.25)',
     lineWidth: 1,
     lineStyle: LightweightCharts.LineStyle.Dashed,
@@ -515,6 +528,7 @@ function buildCharts() {
   });
 
   chart2.timeScale().subscribeVisibleTimeRangeChange(range => {
+    requestDraw();
     if (syncingFromChart1 || !range || range.from == null || range.to == null) return;
     syncingFromChart2 = true;
     try { chart1.timeScale().setVisibleRange(range); } catch(e) {}
@@ -607,13 +621,14 @@ function rebuildMetricSeries() {
   });
   metricSeries = {};
 
-  // Re-create for active metrics
+  // Re-create for active metrics, each on its designated price scale
   activeMetrics.forEach(m => {
     const s = chart2.addLineSeries({
-      color:     m.color,
-      lineWidth: 1,
-      priceLineVisible: false,
-      lastValueVisible: true,
+      color:        m.color,
+      lineWidth:    1,
+      priceScaleId: m.scale || 'right',
+      priceLineVisible:       false,
+      lastValueVisible:       true,
       crosshairMarkerVisible: true,
     });
     metricSeries[m.key] = s;
@@ -647,10 +662,19 @@ function findRegimeAt(ts) {
 // ─── Overlay: regime bands + trade lines ─────────────────────────────────────
 
 function setupOverlay() {
-  const wrap = document.getElementById('chartWrap');
+  // Appended INSIDE the LightweightCharts containers (after LC has initialised)
+  // so they land after LC's own canvases in DOM order. z-index:100 ensures
+  // they stay on top regardless of any z-index LC assigns internally.
+  const priceEl   = document.getElementById('priceChart');
+  const metricsEl = document.getElementById('metricsChart');
+
   overlayCanvas = document.createElement('canvas');
-  overlayCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:1;';
-  wrap.appendChild(overlayCanvas);
+  overlayCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:100;';
+  priceEl.appendChild(overlayCanvas);
+
+  overlayCanvas2 = document.createElement('canvas');
+  overlayCanvas2.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:100;';
+  metricsEl.appendChild(overlayCanvas2);
 }
 
 function requestDraw() {
@@ -699,63 +723,74 @@ function lookupCandleClose(ts) {
 }
 
 const BAND_COLORS = {
-  BULL:  'rgba(0,201,125,0.12)',
-  BEAR:  'rgba(239,83,80,0.12)',
-  RANGE: 'rgba(240,160,48,0.12)',
-  CHOP:  'rgba(136,136,136,0.08)',
+  BULL:  'rgba(0,201,125,0.22)',
+  BEAR:  'rgba(239,83,80,0.22)',
+  RANGE: 'rgba(240,160,48,0.20)',
+  CHOP:  'rgba(136,136,136,0.14)',
 };
 
-function drawOverlay() {
-  if (!overlayCanvas || !chart1) return;
-
-  const priceEl = document.getElementById('priceChart');
-  const W = priceEl.clientWidth;
-  const H = priceEl.clientHeight;
-  overlayCanvas.width  = W;
-  overlayCanvas.height = H;
-
-  const ctx = overlayCanvas.getContext('2d');
-  ctx.clearRect(0, 0, W, H);
-
-  // ── Regime bands ──
+function _drawBands(ctx, chart, W, H) {
   regimeBands.forEach(band => {
-    const x1 = chart1.timeScale().timeToCoordinate(band.start);
-    const x2 = chart1.timeScale().timeToCoordinate(band.end);
-    if (x1 === null && x2 === null) return;
-    const left  = x1 !== null ? x1 : 0;
-    const right = x2 !== null ? x2 : W;
+    const x1raw = chart.timeScale().timeToCoordinate(band.start);
+    const x2raw = chart.timeScale().timeToCoordinate(band.end);
+    if (x1raw === null && x2raw === null) return;
+    const left  = x1raw !== null ? Math.max(0, x1raw) : 0;
+    const right = x2raw !== null ? Math.min(W, x2raw) : W;
     if (right <= left) return;
-    ctx.fillStyle = BAND_COLORS[band.regime] || 'rgba(136,136,136,0.08)';
+    ctx.fillStyle = BAND_COLORS[band.regime] || 'rgba(136,136,136,0.14)';
     ctx.fillRect(left, 0, right - left, H);
   });
+}
 
-  // ── Trade connecting lines ──
-  if (currentTrades.length && candleSeries) {
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([5, 4]);
+function drawOverlay() {
+  if (!chart1) return;
 
-    currentTrades.forEach(trade => {
-      const x1 = chart1.timeScale().timeToCoordinate(trade.entry.ts);
-      const x2 = chart1.timeScale().timeToCoordinate(trade.close.ts);
-      if (x1 === null || x2 === null) return;
+  // ── Price chart bands + trade lines ──
+  if (overlayCanvas) {
+    const priceEl = document.getElementById('priceChart');
+    const W = priceEl.clientWidth;
+    const H = priceEl.clientHeight;
+    overlayCanvas.width  = W;
+    overlayCanvas.height = H;
+    const ctx = overlayCanvas.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
 
-      const entryPrice = lookupCandleClose(trade.entry.ts);
-      const closePrice = lookupCandleClose(trade.close.ts);
-      if (entryPrice === null || closePrice === null) return;
+    _drawBands(ctx, chart1, W, H);
 
-      const y1 = candleSeries.priceToCoordinate(entryPrice);
-      const y2 = candleSeries.priceToCoordinate(closePrice);
-      if (y1 === null || y2 === null) return;
+    if (currentTrades.length && candleSeries) {
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      currentTrades.forEach(trade => {
+        const x1 = chart1.timeScale().timeToCoordinate(trade.entry.ts);
+        const x2 = chart1.timeScale().timeToCoordinate(trade.close.ts);
+        if (x1 === null || x2 === null) return;
+        const entryPrice = lookupCandleClose(trade.entry.ts);
+        const closePrice = lookupCandleClose(trade.close.ts);
+        if (entryPrice === null || closePrice === null) return;
+        const y1 = candleSeries.priceToCoordinate(entryPrice);
+        const y2 = candleSeries.priceToCoordinate(closePrice);
+        if (y1 === null || y2 === null) return;
+        const isLong = (trade.direction || '').toUpperCase() === 'LONG';
+        ctx.strokeStyle = isLong ? 'rgba(0,201,125,0.80)' : 'rgba(239,83,80,0.80)';
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+    }
+  }
 
-      const isLong = (trade.direction || '').toUpperCase() === 'LONG';
-      ctx.strokeStyle = isLong ? 'rgba(0,201,125,0.75)' : 'rgba(239,83,80,0.75)';
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    });
-
-    ctx.setLineDash([]);
+  // ── Metrics chart bands (regime context behind the signals) ──
+  if (overlayCanvas2 && chart2) {
+    const metricsEl = document.getElementById('metricsChart');
+    const W2 = metricsEl.clientWidth;
+    const H2 = metricsEl.clientHeight;
+    overlayCanvas2.width  = W2;
+    overlayCanvas2.height = H2;
+    const ctx2 = overlayCanvas2.getContext('2d');
+    ctx2.clearRect(0, 0, W2, H2);
+    _drawBands(ctx2, chart2, W2, H2);
   }
 }
 
@@ -932,7 +967,7 @@ function renderMetrics(records) {
     return;
   }
 
-  const maxRl = 600; // treat 600 as max run length
+  const maxRl = 600;
 
   activeMetrics.forEach(m => {
     const s = metricSeries[m.key];
@@ -943,25 +978,17 @@ function renderMetrics(records) {
       if (rec.ts == null) return;
       let v = rec[m.key];
       if (v == null) return;
-
       v = Number(v);
       if (isNaN(v)) return;
 
-      // Normalize / scale
-      if (m.key === 'rl') {
-        v = Math.min(v / maxRl * 100, 100);
-      } else if (m.key === 'exh') {
-        v = Math.max(-100, Math.min(200, v * 100));
-      } else if (m.key === 'decay') {
-        v = Math.max(-100, Math.min(200, v * 100));
-      }
-      // Clamp all metrics to [-150, 200] so outliers don't blow the scale
-      v = Math.max(-150, Math.min(200, v));
+      // Right-scale metrics are naturally 0-100; only rl needs normalising.
+      // Left-scale metrics (slope, vz, exh, decay) are plotted at raw units —
+      // the auto-scaled left axis handles their range, no artificial multiply.
+      if (m.key === 'rl') v = Math.min(v / maxRl * 100, 100);
 
       data.push({ time: rec.ts, value: v });
     });
 
-    // Deduplicate timestamps (keep last)
     const seen = new Map();
     data.forEach(pt => seen.set(pt.time, pt.value));
     const deduped = [...seen.entries()]
@@ -971,15 +998,16 @@ function renderMetrics(records) {
     s.setData(deduped);
   });
 
-  // Reference line at y=70 spanning full range
+  // Reference line at y=70 (conf threshold) on the right axis
   const minTs = records[0].ts;
   const maxTs = records[records.length - 1].ts;
   window._refLineSeries.setData([
     { time: minTs, value: 70 },
     { time: maxTs, value: 70 },
   ]);
-
-  chart2.timeScale().fitContent();
+  // fitContent() intentionally omitted — the explicit setVisibleRange in
+  // loadData() sets both charts to the correct range without triggering
+  // the sync loop that caused zoom override.
 }
 
 // ─── Status helper ────────────────────────────────────────────────────────────
