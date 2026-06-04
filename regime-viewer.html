@@ -710,6 +710,14 @@ async function loadData() {
     renderMarkers(events);
     renderMetrics(records);
 
+    // Explicitly set the visible range on both charts to the requested date range.
+    // Without this, chart2.fitContent() at the end of renderMetrics fires its
+    // sync callback back to chart1, overriding the candle range and causing
+    // the chart to zoom in/out unexpectedly.
+    const targetRange = { from: fromEpoch, to: toEpoch2 };
+    try { chart1.timeScale().setVisibleRange(targetRange); } catch(e) {}
+    try { chart2.timeScale().setVisibleRange(targetRange); } catch(e) {}
+
     const srcInfo = staticRes?.ok ? 'file+live' : 'live only';
     setStatus(`Loaded ${candles.length} candles · ${records.length} regime records · ${events.length} events (${srcInfo})`, 'ok');
   } catch (err) {
@@ -797,16 +805,8 @@ function renderMarkers(events) {
         shape:    'circle',
         text:     'X',
       });
-    } else if (ev.type === 'gate') {
-      markers.push({
-        time:     ts,
-        position: 'aboveBar',
-        color:    '#f0a030',
-        shape:    'circle',
-        size:     0.3,
-        text:     '',
-      });
     }
+    // gate events omitted — too numerous (fires on every blocked cycle)
   });
 
   // LightweightCharts requires markers sorted by time
@@ -845,10 +845,12 @@ function renderMetrics(records) {
       if (m.key === 'rl') {
         v = Math.min(v / maxRl * 100, 100);
       } else if (m.key === 'exh') {
-        v = v * 100;
+        v = Math.max(-100, Math.min(200, v * 100));
       } else if (m.key === 'decay') {
-        v = v * 100;
+        v = Math.max(-100, Math.min(200, v * 100));
       }
+      // Clamp all metrics to [-150, 200] so outliers don't blow the scale
+      v = Math.max(-150, Math.min(200, v));
 
       data.push({ time: rec.ts, value: v });
     });
