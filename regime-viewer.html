@@ -907,7 +907,8 @@ async function triggerBackfill() {
     try {
       const r = await fetch(`/api/regime-backfill-status/${jobId}`);
       const d = await r.json();
-      const last = d.lines && d.lines.length ? d.lines[d.lines.length - 1] : '';
+      const lines = d.lines || [];
+      const last  = lines.length ? lines[lines.length - 1] : '';
       if (d.status === 'running') {
         setStatus(`Backfill running (${d.elapsed}s)… ${last}`, 'loading');
       } else if (d.status === 'done') {
@@ -917,7 +918,8 @@ async function triggerBackfill() {
       } else {
         clearInterval(poll);
         btn.disabled = false;
-        setStatus('Backfill error: ' + (last || 'see server logs'), 'err');
+        const errDetail = lines.slice(-5).join(' | ') || `exit ${d.exitCode ?? '?'}`;
+        setStatus('Backfill error: ' + errDetail, 'err');
       }
     } catch(e) {
       clearInterval(poll);
