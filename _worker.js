@@ -1703,9 +1703,16 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           ? 'https://api-fxpractice.oanda.com'
           : 'https://api-fxtrade.oanda.com';
 
-        let oandaUrl = `${oandaBase}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=M5&price=M&count=4800`;
-        if (from) oandaUrl += `&from=${encodeURIComponent(new Date(from).toISOString())}`;
-        if (to)   oandaUrl += `&to=${encodeURIComponent(new Date(to + 'T23:59:59Z').toISOString())}`;
+        // OANDA: count must NOT be specified when both from and to are given.
+        let oandaUrl = `${oandaBase}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=M5&price=M`;
+        if (from && to) {
+          oandaUrl += `&from=${encodeURIComponent(new Date(from).toISOString())}`;
+          oandaUrl += `&to=${encodeURIComponent(new Date(to + 'T23:59:59Z').toISOString())}`;
+        } else {
+          oandaUrl += `&count=4800`;
+          if (from) oandaUrl += `&from=${encodeURIComponent(new Date(from).toISOString())}`;
+          if (to)   oandaUrl += `&to=${encodeURIComponent(new Date(to + 'T23:59:59Z').toISOString())}`;
+        }
 
         const res = await fetch(oandaUrl, {
           headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` },
