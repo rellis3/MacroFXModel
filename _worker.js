@@ -26,9 +26,26 @@ function err(msg, status = 500) {
 // it has its own dedicated /api/config/caps route with stricter validation.
 function isAllowedKVKey(key) {
   const EXACT = new Set(['fred', 'fred2', 'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock']);
-  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_'];
+  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'trade_hist_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
+}
+
+// Merge a bot's today_closed_trades into the persistent per-bot-per-day KV key.
+// Uses position_id for deduplication so repeated status pushes are idempotent.
+async function mergeTradeHistory(env, botKey, trades) {
+  if (!trades || !trades.length || !env.FX_SCORES) return;
+  const date    = new Date().toISOString().slice(0, 10);
+  const histKey = `trade_hist_${botKey}_${date}`;
+  let existing  = [];
+  try {
+    const raw = await env.FX_SCORES.get(histKey);
+    if (raw) existing = JSON.parse(raw);
+  } catch(e) {}
+  const seen   = new Set(existing.map(t => t.position_id));
+  const toAdd  = trades.filter(t => t.position_id != null && !seen.has(t.position_id));
+  if (!toAdd.length) return;
+  await env.FX_SCORES.put(histKey, JSON.stringify([...existing, ...toAdd]));
 }
 
 // ── Equity symbols sourced from OANDA (not TwelveData) ───────────────────────
@@ -827,6 +844,11 @@ export default {
           const isPermanent = PERMANENT_KEYS.has(key);
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h
           await env.FX_SCORES.put(key, JSON.stringify({ data, timestamp }), kvOpts);
+          // Persist closed trade history for bot status keys
+          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'dyn_anchor_status']);
+          if (STATUS_KEYS.has(key) && data?.today_closed_trades?.length) {
+            await mergeTradeHistory(env, key, data.today_closed_trades);
+          }
           return json({ ok: true });
         } catch(e) {
           return json({ ok: false, reason: e.message });
@@ -1607,7 +1629,37 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         let body;
         try { body = await request.json(); } catch(e) { return err('Invalid JSON body', 400); }
         await env.FX_SCORES.put('bot_status', JSON.stringify({ data: body, timestamp: Date.now() }), { expirationTtl: 300 });
+        if (body.today_closed_trades?.length) {
+          await mergeTradeHistory(env, 'bot_status', body.today_closed_trades);
+        }
         return json({ ok: true });
+      }
+
+      // -- /api/trade-history ----------------------------------
+      // Returns closed trade history across all bots for a date range.
+      // GET ?from=YYYY-MM-DD&to=YYYY-MM-DD (defaults to today)
+      if (path === '/api/trade-history' && request.method === 'GET') {
+        if (!env.FX_SCORES) return json({ ok: false, trades: [], reason: 'KV not bound' });
+        const from = url.searchParams.get('from') || new Date().toISOString().slice(0, 10);
+        const to   = url.searchParams.get('to')   || from;
+        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'dyn_anchor_status'];
+        const dates = [];
+        const startD = new Date(from + 'T00:00:00Z');
+        const endD   = new Date(to   + 'T00:00:00Z');
+        for (let d = new Date(startD); d <= endD; d.setUTCDate(d.getUTCDate() + 1)) {
+          dates.push(d.toISOString().slice(0, 10));
+        }
+        if (dates.length > 90) return err('Date range too large (max 90 days)', 400);
+        const pairs = BOT_KEYS.flatMap(bk => dates.map(dt => ({ bk, dt })));
+        const fetched = await Promise.all(pairs.map(async ({ bk, dt }) => {
+          try {
+            const raw = await env.FX_SCORES.get(`trade_hist_${bk}_${dt}`);
+            if (!raw) return [];
+            return JSON.parse(raw).map(t => ({ ...t, bot_key: bk, date: dt }));
+          } catch(e) { return []; }
+        }));
+        const trades = fetched.flat().sort((a, b) => (a.time_close || 0) - (b.time_close || 0));
+        return json({ ok: true, trades, from, to });
       }
 
       // -- /api/sentiment ---------------------------------------
