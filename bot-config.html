@@ -250,6 +250,45 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .pos-empty { text-align:center; padding:40px 16px; color:var(--text3); font-size:13px; }
 .pos-stale { font-size:10px; color:var(--amber); margin-left:4px; }
 .pos-totals td { font-weight:700; border-top:2px solid var(--border2) !important; }
+/* ── Positions sub-tabs ── */
+.pos-subtabs { display:flex; gap:4px; margin-bottom:16px; border-bottom:2px solid var(--border); padding-bottom:0; }
+.pos-subtab { background:none; border:none; border-bottom:2px solid transparent; margin-bottom:-2px; padding:8px 18px; font-size:13px; font-weight:600; color:var(--text3); cursor:pointer; transition:color .15s,border-color .15s; }
+.pos-subtab:hover { color:var(--text); }
+.pos-subtab.active { color:var(--green); border-bottom-color:var(--green); }
+/* ── History view ── */
+.pos-hist-row { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
+.pos-hist-label { font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }
+.pos-hist-pills { display:flex; flex-wrap:wrap; gap:6px; }
+.pos-hist-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:600; cursor:pointer; transition:opacity .15s,filter .15s; user-select:none; }
+.pos-hist-pill.off { opacity:.35; filter:grayscale(.8); }
+.pos-preset-row { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.pos-preset-btn { background:var(--s2); border:1px solid var(--border); border-radius:6px; padding:5px 14px; font-size:12px; font-weight:600; color:var(--text3); cursor:pointer; transition:background .15s,color .15s,border-color .15s; }
+.pos-preset-btn:hover { background:var(--s3); color:var(--text); }
+.pos-preset-btn.active { background:var(--green); border-color:var(--green); color:#fff; }
+.pos-date-range { display:flex; align-items:center; gap:6px; }
+.pos-date-input { background:var(--s2); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px; color:var(--text); font-family:inherit; }
+.pos-date-sep { color:var(--text3); font-size:12px; }
+.pos-hist-stat { display:flex; flex-direction:column; align-items:center; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:8px 16px; min-width:90px; }
+.pos-hist-stat-val { font-size:16px; font-weight:700; font-family:'DM Mono',monospace; }
+.pos-hist-stat-lbl { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
+.pos-hist-stats { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+/* ── Calendar ── */
+.pos-cal-wrap { margin-top:20px; }
+.pos-cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.pos-cal-title { font-size:13px; font-weight:700; color:var(--text); }
+.pos-cal-nav { background:none; border:1px solid var(--border); border-radius:5px; padding:3px 10px; font-size:12px; color:var(--text3); cursor:pointer; }
+.pos-cal-nav:hover { color:var(--text); background:var(--s2); }
+.pos-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.pos-cal-dow { text-align:center; font-size:10px; font-weight:600; color:var(--text3); padding:3px 0; text-transform:uppercase; }
+.pos-cal-day { text-align:center; padding:5px 2px; border-radius:6px; cursor:pointer; font-size:11px; font-family:'DM Mono',monospace; min-height:40px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:2px; border:1px solid transparent; transition:background .1s; }
+.pos-cal-day:hover { background:var(--s2); }
+.pos-cal-day.today { border-color:var(--green); }
+.pos-cal-day.selected { background:var(--s3); border-color:var(--green); }
+.pos-cal-day.empty { cursor:default; pointer-events:none; }
+.pos-cal-day .cal-num { font-size:11px; color:var(--text3); }
+.pos-cal-day.has-trades .cal-num { color:var(--text); font-weight:700; }
+.pos-cal-dots { display:flex; gap:2px; flex-wrap:wrap; justify-content:center; max-width:40px; }
+.pos-cal-dot { width:6px; height:6px; border-radius:50%; }
 </style>
 </head>
 <body>
@@ -2151,7 +2190,14 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
   <!-- ══════════════════════════════════════════════════════ POSITIONS TAB -->
   <div class="tab-pane" id="tab-positions">
 
-    <div class="card">
+    <!-- Sub-tabs: Live / History -->
+    <div class="pos-subtabs">
+      <button class="pos-subtab active" id="posSubLive"    onclick="switchPosSubTab('live')">Live Positions</button>
+      <button class="pos-subtab"        id="posSubHistory" onclick="switchPosSubTab('history')">Trade History</button>
+    </div>
+
+    <!-- ── Live Positions view ── -->
+    <div id="posLiveView" class="card">
       <div class="pos-header">
         <div>
           <div class="card-title">Open Positions — All Bots</div>
@@ -2170,6 +2216,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         <span class="pos-bot-badge" style="background:#292100;border:1px solid #78610a;color:#fbbf24">Gold</span>
         <span class="pos-bot-badge" style="background:#1e1b4b;border:1px solid #4338ca;color:#a78bfa">Regime V2</span>
         <span class="pos-bot-badge pos-paper-badge" style="background:var(--s2);border:1px solid var(--border);color:var(--text3)">Backtest (paper)</span>
+        <span class="pos-bot-badge" style="background:#292100;border:1px solid #78610a;color:#f59e0b">DynAnchor</span>
       </div>
 
       <div class="pos-table-wrap">
@@ -2194,6 +2241,79 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           </tbody>
           <tfoot id="posTableFoot"></tfoot>
         </table>
+      </div>
+    </div>
+
+    <!-- ── Trade History view ── -->
+    <div id="posHistoryView" class="card" style="display:none">
+      <div class="pos-header">
+        <div>
+          <div class="card-title">Trade History</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Closed trades persisted from each bot's MT5 deal history. Updates every status push (~30s).</div>
+        </div>
+        <button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="loadHistoryTab()">↺ Refresh</button>
+      </div>
+
+      <!-- Bot filter pills -->
+      <div class="pos-hist-row">
+        <span class="pos-hist-label">Bots:</span>
+        <div class="pos-hist-pills" id="histBotPills"></div>
+      </div>
+
+      <!-- Date range presets + custom range -->
+      <div class="pos-hist-row" style="margin-bottom:14px">
+        <span class="pos-hist-label">Range:</span>
+        <div class="pos-preset-row">
+          <button class="pos-preset-btn active" id="histPresetToday" onclick="setHistPreset('today')">Today</button>
+          <button class="pos-preset-btn" id="histPresetWeek"  onclick="setHistPreset('week')">This Week</button>
+          <button class="pos-preset-btn" id="histPresetMonth" onclick="setHistPreset('month')">This Month</button>
+          <button class="pos-preset-btn" id="histPresetCustom" onclick="setHistPreset('custom')">Custom</button>
+        </div>
+        <div class="pos-date-range" id="histCustomRange" style="display:none">
+          <input class="pos-date-input" type="date" id="histDateFrom" onchange="loadHistoryTab()">
+          <span class="pos-date-sep">→</span>
+          <input class="pos-date-input" type="date" id="histDateTo"   onchange="loadHistoryTab()">
+        </div>
+      </div>
+
+      <!-- Summary stats -->
+      <div class="pos-hist-stats" id="histStats"></div>
+
+      <!-- Trades table -->
+      <div class="pos-table-wrap">
+        <table class="pos-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Pair</th>
+              <th>Bot</th>
+              <th>Dir</th>
+              <th>Lots</th>
+              <th>Entry</th>
+              <th>Close</th>
+              <th>P&amp;L</th>
+              <th>Swap</th>
+              <th>Net</th>
+              <th>Opened</th>
+              <th>Closed</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody id="histTableBody">
+            <tr><td colspan="13" class="pos-empty">Loading…</td></tr>
+          </tbody>
+          <tfoot id="histTableFoot"></tfoot>
+        </table>
+      </div>
+
+      <!-- Calendar -->
+      <div class="pos-cal-wrap">
+        <div class="pos-cal-header">
+          <button class="pos-cal-nav" onclick="shiftCalMonth(-1)">← Prev</button>
+          <div class="pos-cal-title" id="calMonthTitle"></div>
+          <button class="pos-cal-nav" onclick="shiftCalMonth(1)">Next →</button>
+        </div>
+        <div class="pos-cal-grid" id="calGrid"></div>
       </div>
     </div>
 
@@ -2466,17 +2586,284 @@ async function loadPositionsTab() {
 window.loadPositionsTab = loadPositionsTab;
 
 document.querySelector('.tab-btn[data-tab="positions"]')?.addEventListener('click', () => {
-  loadPositionsTab();
+  // Restore last sub-tab
+  const lastSub = (() => { try { return localStorage.getItem('posSubTab') || 'live'; } catch(e) { return 'live'; } })();
+  switchPosSubTab(lastSub);
+  if (lastSub === 'live') loadPositionsTab();
   // Auto-refresh every 30s while tab is visible
   clearInterval(_posRefreshTimer);
   _posRefreshTimer = setInterval(() => {
     if (document.getElementById('tab-positions')?.classList.contains('active')) {
-      loadPositionsTab();
+      const cur = document.getElementById('posSubHistory').classList.contains('active') ? 'history' : 'live';
+      if (cur === 'live') loadPositionsTab();
     } else {
       clearInterval(_posRefreshTimer);
     }
   }, 30000);
 });
+
+// ── Positions sub-tab switcher ────────────────────────────────────────────────
+
+function switchPosSubTab(view) {
+  document.getElementById('posLiveView').style.display    = view === 'live'    ? '' : 'none';
+  document.getElementById('posHistoryView').style.display = view === 'history' ? '' : 'none';
+  document.getElementById('posSubLive').classList.toggle('active',    view === 'live');
+  document.getElementById('posSubHistory').classList.toggle('active', view === 'history');
+  try { localStorage.setItem('posSubTab', view); } catch(e) {}
+  if (view === 'history') {
+    _initHistoryView();
+    loadHistoryTab();
+  }
+}
+window.switchPosSubTab = switchPosSubTab;
+
+// ── Trade History tab ─────────────────────────────────────────────────────────
+
+let _histActiveBots  = new Set(_POS_BOTS.filter(b => !b.paper).map(b => b.key));
+let _histPreset      = 'today';
+let _calYear         = new Date().getFullYear();
+let _calMonth        = new Date().getMonth(); // 0-indexed
+let _calTradeMap     = {};   // 'YYYY-MM-DD' → [{bot_key,...}, ...]
+let _histInitDone    = false;
+
+function _initHistoryView() {
+  if (_histInitDone) return;
+  _histInitDone = true;
+
+  // Build bot filter pills
+  const pillsEl = document.getElementById('histBotPills');
+  if (pillsEl) {
+    pillsEl.innerHTML = _POS_BOTS.filter(b => !b.paper).map(b => {
+      const on = _histActiveBots.has(b.key);
+      return `<span class="pos-hist-pill${on ? '' : ' off'}" id="histPill_${b.key}"
+        style="background:${b.bg};border:1px solid ${b.bd};color:${b.color}"
+        onclick="toggleHistBot('${b.key}')">${b.label}</span>`;
+    }).join('');
+  }
+
+  // Set today's date as default for custom range
+  const today = new Date().toISOString().slice(0, 10);
+  const fromEl = document.getElementById('histDateFrom');
+  const toEl   = document.getElementById('histDateTo');
+  if (fromEl) fromEl.value = today;
+  if (toEl)   toEl.value   = today;
+}
+
+function toggleHistBot(key) {
+  if (_histActiveBots.has(key)) {
+    if (_histActiveBots.size > 1) _histActiveBots.delete(key);
+  } else {
+    _histActiveBots.add(key);
+  }
+  document.getElementById(`histPill_${key}`)?.classList.toggle('off', !_histActiveBots.has(key));
+  loadHistoryTab();
+}
+window.toggleHistBot = toggleHistBot;
+
+function setHistPreset(preset) {
+  _histPreset = preset;
+  ['today','week','month','custom'].forEach(p =>
+    document.getElementById(`histPreset${p.charAt(0).toUpperCase()+p.slice(1)}`)?.classList.toggle('active', p === preset)
+  );
+  document.getElementById('histCustomRange').style.display = preset === 'custom' ? 'flex' : 'none';
+  if (preset !== 'custom') loadHistoryTab();
+}
+window.setHistPreset = setHistPreset;
+
+function _getHistDateRange() {
+  const now   = new Date();
+  const today = now.toISOString().slice(0, 10);
+  if (_histPreset === 'today') return { from: today, to: today };
+  if (_histPreset === 'week') {
+    const dow   = now.getUTCDay(); // 0=Sun
+    const mon   = new Date(now); mon.setUTCDate(now.getUTCDate() - ((dow + 6) % 7));
+    return { from: mon.toISOString().slice(0, 10), to: today };
+  }
+  if (_histPreset === 'month') {
+    const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    return { from: first.toISOString().slice(0, 10), to: today };
+  }
+  // custom
+  const from = document.getElementById('histDateFrom')?.value || today;
+  const to   = document.getElementById('histDateTo')?.value   || today;
+  return { from, to };
+}
+
+function _fmtDuration(secs) {
+  if (!secs || secs < 0) return '—';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  if (h >= 24) return `${Math.floor(h/24)}d ${h%24}h`;
+  if (h > 0)   return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function _fmtTime(ts) {
+  if (!ts) return '—';
+  return new Date(ts * 1000).toISOString().replace('T',' ').slice(0,16)+' UTC';
+}
+
+async function loadHistoryTab() {
+  const tbody = document.getElementById('histTableBody');
+  const tfoot = document.getElementById('histTableFoot');
+  const stats = document.getElementById('histStats');
+  if (!tbody) return;
+
+  const { from, to } = _getHistDateRange();
+  tbody.innerHTML = `<tr><td colspan="13" class="pos-empty">Loading…</td></tr>`;
+  if (stats) stats.innerHTML = '';
+  if (tfoot) tfoot.innerHTML = '';
+
+  let trades = [];
+  try {
+    const r = await fetch(`/api/trade-history?from=${from}&to=${to}`);
+    const j = await r.json();
+    trades = (j.trades || []).filter(t => _histActiveBots.has(t.bot_key));
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="13" class="pos-empty" style="color:var(--red)">Failed to load history. Check KV connection.</td></tr>`;
+    return;
+  }
+
+  // Build trade map for calendar
+  _calTradeMap = {};
+  trades.forEach(t => {
+    const d = t.date || (t.time_close ? new Date(t.time_close*1000).toISOString().slice(0,10) : null);
+    if (d) { if (!_calTradeMap[d]) _calTradeMap[d] = []; _calTradeMap[d].push(t); }
+  });
+  renderCal();
+
+  if (!trades.length) {
+    tbody.innerHTML = `<tr><td colspan="13" class="pos-empty">No closed trades found for this date range.</td></tr>`;
+    if (stats) stats.innerHTML = `<div class="pos-hist-stat"><span class="pos-hist-stat-val">0</span><span class="pos-hist-stat-lbl">Trades</span></div>`;
+    return;
+  }
+
+  // Stats
+  const totalPnl    = trades.reduce((s, t) => s + (t.profit || 0), 0);
+  const totalSwap   = trades.reduce((s, t) => s + (t.swap   || 0), 0);
+  const totalNet    = totalPnl + totalSwap;
+  const totalLots   = trades.reduce((s, t) => s + (t.lots   || 0), 0);
+  const winners     = trades.filter(t => (t.profit || 0) > 0).length;
+  const winRate     = trades.length ? Math.round(winners / trades.length * 100) : 0;
+  const pnlColor    = totalNet >= 0 ? 'var(--green)' : 'var(--red)';
+  if (stats) stats.innerHTML = [
+    `<div class="pos-hist-stat"><span class="pos-hist-stat-val">${trades.length}</span><span class="pos-hist-stat-lbl">Trades</span></div>`,
+    `<div class="pos-hist-stat"><span class="pos-hist-stat-val" style="color:${pnlColor}">${totalNet >= 0 ? '+' : ''}$${totalNet.toFixed(2)}</span><span class="pos-hist-stat-lbl">Net P&L</span></div>`,
+    `<div class="pos-hist-stat"><span class="pos-hist-stat-val" style="color:${winRate>=50?'var(--green)':'var(--red)'}">${winRate}%</span><span class="pos-hist-stat-lbl">Win Rate</span></div>`,
+    `<div class="pos-hist-stat"><span class="pos-hist-stat-val">${totalLots.toFixed(2)}</span><span class="pos-hist-stat-lbl">Total Lots</span></div>`,
+    `<div class="pos-hist-stat"><span class="pos-hist-stat-val" style="color:${totalPnl>=0?'var(--green)':'var(--red)'}">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span><span class="pos-hist-stat-lbl">Gross P&L</span></div>`,
+    `<div class="pos-hist-stat"><span class="pos-hist-stat-val">${winners} / ${trades.length - winners}</span><span class="pos-hist-stat-lbl">W / L</span></div>`,
+  ].join('');
+
+  // Table rows
+  const rows = trades.map(t => {
+    const bot    = _POS_BOTS.find(b => b.key === t.bot_key) || { label: t.bot_key, color:'#aaa', bg:'var(--s2)', bd:'var(--border)', paper:false };
+    const net    = (t.profit || 0) + (t.swap || 0);
+    const pClass = net >= 0 ? 'pos-profit-pos' : 'pos-profit-neg';
+    const dClass = t.direction === 'BUY' ? 'pos-buy' : 'pos-sell';
+    const dur    = (t.time_open && t.time_close) ? _fmtDuration(t.time_close - t.time_open) : '—';
+    const dateStr = t.time_close ? new Date(t.time_close*1000).toISOString().slice(5,10) : (t.date || '—');
+    const openPriceStr  = t.open_price  != null ? t.open_price.toFixed(5)  : '—';
+    const closePriceStr = t.close_price != null ? t.close_price.toFixed(5) : '—';
+    const badgeStyle = `background:${bot.bg};border:1px solid ${bot.bd};color:${bot.color}`;
+    const badgeClass = `pos-bot-badge${bot.paper ? ' pos-paper-badge' : ''}`;
+    return `<tr>` +
+      `<td style="color:var(--text3);font-size:11px">${dateStr}</td>` +
+      `<td><strong>${t.symbol || '—'}</strong></td>` +
+      `<td><span class="${badgeClass}" style="${badgeStyle}">${bot.label}</span></td>` +
+      `<td class="${dClass}">${t.direction}</td>` +
+      `<td>${(t.lots || 0).toFixed(2)}</td>` +
+      `<td>${openPriceStr}</td>` +
+      `<td>${closePriceStr}</td>` +
+      `<td class="${(t.profit||0) >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${(t.profit||0) >= 0 ? '+' : ''}${(t.profit||0).toFixed(2)}</td>` +
+      `<td class="${(t.swap||0) < 0 ? 'pos-profit-neg' : ''}">${(t.swap||0).toFixed(2)}</td>` +
+      `<td class="${pClass}">${net >= 0 ? '+' : ''}${net.toFixed(2)}</td>` +
+      `<td style="color:var(--text3);font-size:11px">${_fmtTime(t.time_open)}</td>` +
+      `<td style="color:var(--text3);font-size:11px">${_fmtTime(t.time_close)}</td>` +
+      `<td style="color:var(--text3);font-size:11px">${dur}</td>` +
+      `</tr>`;
+  });
+  tbody.innerHTML = rows.join('');
+
+  // Totals row
+  if (tfoot) tfoot.innerHTML =
+    `<tr class="pos-totals">` +
+    `<td colspan="3">Totals (${trades.length} trades)</td>` +
+    `<td>${totalLots.toFixed(2)}</td>` +
+    `<td colspan="2"></td>` +
+    `<td class="${totalPnl >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}</td>` +
+    `<td class="${totalSwap < 0 ? 'pos-profit-neg' : ''}">${totalSwap.toFixed(2)}</td>` +
+    `<td class="${totalNet >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalNet >= 0 ? '+' : ''}${totalNet.toFixed(2)}</td>` +
+    `<td colspan="3"></td>` +
+    `</tr>`;
+}
+window.loadHistoryTab = loadHistoryTab;
+
+// ── Calendar ──────────────────────────────────────────────────────────────────
+
+function shiftCalMonth(delta) {
+  _calMonth += delta;
+  if (_calMonth > 11) { _calMonth = 0; _calYear++; }
+  if (_calMonth < 0)  { _calMonth = 11; _calYear--; }
+  renderCal();
+}
+window.shiftCalMonth = shiftCalMonth;
+
+function renderCal() {
+  const titleEl = document.getElementById('calMonthTitle');
+  const gridEl  = document.getElementById('calGrid');
+  if (!gridEl) return;
+
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if (titleEl) titleEl.textContent = `${monthNames[_calMonth]} ${_calYear}`;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const firstDay = new Date(Date.UTC(_calYear, _calMonth, 1));
+  const lastDay  = new Date(Date.UTC(_calYear, _calMonth + 1, 0));
+  const startDow = (firstDay.getUTCDay() + 6) % 7; // Mon=0
+
+  const dows = ['M','T','W','T','F','S','S'];
+  let html = dows.map(d => `<div class="pos-cal-dow">${d}</div>`).join('');
+
+  // Empty cells before first day
+  for (let i = 0; i < startDow; i++) html += `<div class="pos-cal-day empty"></div>`;
+
+  for (let day = 1; day <= lastDay.getUTCDate(); day++) {
+    const iso  = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const dTrades = _calTradeMap[iso] || [];
+    const isToday = iso === today;
+    const hasTrades = dTrades.length > 0;
+
+    // Group by bot for coloured dots
+    const botDots = _POS_BOTS.filter(b => !b.paper && dTrades.some(t => t.bot_key === b.key))
+      .map(b => `<span class="pos-cal-dot" style="background:${b.color}" title="${b.label}"></span>`).join('');
+
+    const netPnl = dTrades.reduce((s,t) => s + (t.profit||0) + (t.swap||0), 0);
+    const pnlStr = hasTrades ? ` · $${netPnl >= 0 ? '+' : ''}${netPnl.toFixed(0)}` : '';
+
+    html += `<div class="pos-cal-day${isToday ? ' today' : ''}${hasTrades ? ' has-trades' : ''}"
+      title="${iso}${pnlStr} (${dTrades.length} trade${dTrades.length!==1?'s':''})"
+      onclick="calDayClick('${iso}')">
+      <span class="cal-num">${day}</span>
+      ${hasTrades ? `<div class="pos-cal-dots">${botDots}</div>` : ''}
+    </div>`;
+  }
+  gridEl.innerHTML = html;
+}
+
+function calDayClick(iso) {
+  _histPreset = 'custom';
+  ['today','week','month','custom'].forEach(p =>
+    document.getElementById(`histPreset${p.charAt(0).toUpperCase()+p.slice(1)}`)?.classList.toggle('active', p === 'custom')
+  );
+  document.getElementById('histCustomRange').style.display = 'flex';
+  const fromEl = document.getElementById('histDateFrom');
+  const toEl   = document.getElementById('histDateTo');
+  if (fromEl) fromEl.value = iso;
+  if (toEl)   toEl.value   = iso;
+  loadHistoryTab();
+}
+window.calDayClick = calDayClick;
 
 // ── Telegram mode toggle ──────────────────────────────────────────────────────
 function toggleTgSettings() {
