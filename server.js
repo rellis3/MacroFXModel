@@ -322,8 +322,9 @@ const CORR_STALE_MS  = 7 * 24 * 60 * 60 * 1000;  // rebuild if older than 7 days
 const CORR_WINDOW    = 60;   // H4 bars per rolling window (10 trading days)
 const CORR_STEP      = 6;    // snapshot every 6 bars ≈ 1 per day
 const CORR_YEARS     = 5;
-const CORR_CHUNK     = 4000; // OANDA max-safe bars per request
+const CORR_CHUNK     = 4500; // max bars per OANDA request (limit 5000)
 let   corrRunning    = false;
+let   corrProgress   = { pct: 0, msg: 'Idle', step: '', error: null };
 
 function _h4OandaSym(sym) {
   const ov = { XAUUSD:'XAU_USD', XAGUSD:'XAG_USD', NAS100:'NAS100_USD', SPX500:'SPX500_USD' };
@@ -342,9 +343,12 @@ async function fetchH4Bars(sym, years = CORR_YEARS) {
   const now = new Date();
   while (chunkFrom < now) {
     const chunkTo = new Date(Math.min(chunkFrom.getTime() + CORR_CHUNK * 4 * 3600_000, now.getTime()));
+    // OANDA rejects requests that include from, to, AND count simultaneously.
+    // Use from+to only; chunk size ensures we stay well under the 5000 bar limit.
     const url = `${base}/v3/instruments/${encodeURIComponent(osym)}/candles`
-      + `?granularity=H4&price=M&from=${chunkFrom.toISOString().slice(0,19)+'Z'}`
-      + `&to=${chunkTo.toISOString().slice(0,19)+'Z'}&count=${CORR_CHUNK}`;
+      + `?granularity=H4&price=M`
+      + `&from=${chunkFrom.toISOString().slice(0,19)+'Z'}`
+      + `&to=${chunkTo.toISOString().slice(0,19)+'Z'}`;
     try {
       const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
                                    signal: AbortSignal.timeout(30_000) });
@@ -354,6 +358,9 @@ async function fetchH4Bars(sym, years = CORR_YEARS) {
           closes.push(parseFloat(c.mid.c));
           timestamps.push(new Date(c.time));
         }
+      } else {
+        const errText = await r.text().catch(() => '');
+        console.warn(`[CORR] OANDA H4 ${sym}: HTTP ${r.status} — ${errText.slice(0,200)}`);
       }
     } catch (e) { console.warn(`[CORR] H4 chunk ${sym}: ${e.message}`); }
     chunkFrom = chunkTo;
@@ -398,20 +405,28 @@ function _regime(closes) {
 async function buildCorrHistoryJS() {
   if (corrRunning) { console.log('[CORR] Already running — skipped'); return; }
   corrRunning = true;
+  corrProgress = { pct: 0, msg: 'Starting…', step: 'init', error: null };
   const t0 = Date.now();
   console.log('[CORR] Building correlation history...');
   try {
     // Fetch all required symbols
     const allSyms = [...new Set([...CORR_PAIRS, ...Object.values(CORR_FACTOR_PROXIES).map(p => p.sym)])];
     const barData = {};
-    for (const sym of allSyms) {
+    for (let si = 0; si < allSyms.length; si++) {
+      const sym = allSyms[si];
+      corrProgress = { pct: Math.round(si / allSyms.length * 60), msg: `Fetching ${sym} bars from OANDA…`, step: 'fetch', error: null };
       const result = await fetchH4Bars(sym, CORR_YEARS);
       if (result) { barData[sym] = result; console.log(`[CORR]   ${sym}: ${result.closes.length} bars`); }
-      else { console.log(`[CORR]   ${sym}: skipped (insufficient data)`); }
+      else { console.log(`[CORR]   ${sym}: skipped (no data / OANDA error)`); }
     }
 
     const availPairs = CORR_PAIRS.filter(p => barData[p]);
-    if (!availPairs.length) { console.log('[CORR] No pairs — abort'); return; }
+    if (!availPairs.length) {
+      corrProgress = { pct: 0, msg: 'No pairs fetched — check OANDA key and account access', step: 'error', error: 'No data returned from OANDA for any pair. Check server logs.' };
+      console.log('[CORR] No pairs — abort. Check OANDA_KEY and that your account has access to all instruments.');
+      return;
+    }
+    corrProgress = { pct: 62, msg: `Computing rolling correlations for ${availPairs.length} pairs…`, step: 'compute', error: null };
 
     // Align all return series to the reference pair's timestamps
     const refPair = availPairs.find(p => ['EURUSD','GBPUSD','USDJPY'].includes(p)) || availPairs[0];
@@ -502,13 +517,16 @@ async function buildCorrHistoryJS() {
       window_bars:CORR_WINDOW, step_bars:CORR_STEP, pairs:availPairs,
       records, regime_stats:regimeStats, avg_corr:avgCorr, regime_corr:regimeCorr };
 
+    corrProgress = { pct: 95, msg: 'Saving history file…', step: 'save', error: null };
     fs.mkdirSync(path.dirname(CORR_HISTORY_PATH), { recursive: true });
     fs.writeFileSync(CORR_HISTORY_PATH, JSON.stringify(output));
     const kb = Math.round(fs.statSync(CORR_HISTORY_PATH).size / 1024);
     console.log(`[CORR] Done — ${records.length} snapshots, ${availPairs.length} pairs, ${kb} KB, ${Date.now()-t0}ms`);
+    corrProgress = { pct: 100, msg: `Done — ${records.length} snapshots · ${availPairs.length} pairs · ${kb} KB`, step: 'done', error: null };
 
   } catch (e) {
     console.error('[CORR] Build error:', e.message, e.stack?.split('\n')[1]);
+    corrProgress = { pct: 0, msg: `Build failed: ${e.message}`, step: 'error', error: e.message };
   } finally {
     corrRunning = false;
   }
@@ -2574,6 +2592,11 @@ app.post('/api/corr-history/rebuild', (_req, res) => {
   if (!process.env.OANDA_KEY) return res.status(400).json({ ok: false, message: 'OANDA_KEY not configured' });
   buildCorrHistoryJS().catch(e => console.error('[CORR/rebuild]', e.message));
   res.json({ ok: true, message: 'Correlation history build started — check server logs. Takes ~3 min.' });
+});
+
+// Build progress — polled every few seconds while corrRunning
+app.get('/api/corr-history/progress', (_req, res) => {
+  res.json({ running: corrRunning, ...corrProgress });
 });
 
 // Build status

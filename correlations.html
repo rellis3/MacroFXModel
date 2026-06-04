@@ -228,6 +228,12 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
     <div class="sb-group" style="margin-top:auto">
       <div class="sb-lbl">History Build</div>
       <div id="buildStatus" style="font-size:10px;color:var(--text3);margin-bottom:6px;line-height:1.5"></div>
+      <div id="buildProgressBar" style="display:none;margin-bottom:6px">
+        <div style="background:var(--s2);border-radius:4px;height:8px;overflow:hidden;margin-bottom:3px">
+          <div class="bp-fill" style="height:100%;background:var(--green);border-radius:4px;width:0%;transition:width .4s"></div>
+        </div>
+        <div class="bp-pct" style="font-size:9px;color:var(--text3);text-align:right">0%</div>
+      </div>
       <button class="btn-run" id="btnBuild" onclick="triggerBuild()" style="background:var(--green)">⬛ Build 5yr History</button>
       <div style="font-size:9px;color:var(--text3);margin-top:4px">Fetches OANDA H4 bars, ~3 min. Rebuilds weekly automatically.</div>
     </div>
@@ -1660,6 +1666,43 @@ function updateInsights(tabId) {
 /* ═══════════════════════════════════════════════════════════════════════════
    Build trigger + status polling
    ═══════════════════════════════════════════════════════════════════════════ */
+let _buildPollTimer = null;
+
+async function pollBuildProgress() {
+  try {
+    const res = await fetch('/api/corr-history/progress');
+    if (!res.ok) return;
+    const d = await res.json();
+    const el = document.getElementById('buildStatus');
+    const btn = document.getElementById('btnBuild');
+    const progEl = document.getElementById('buildProgressBar');
+
+    if (d.running) {
+      const pct = d.pct || 0;
+      if (el) el.innerHTML = `<span style="color:var(--amber)">● ${d.msg || 'Building…'}</span>`;
+      if (progEl) {
+        progEl.style.display = 'block';
+        progEl.querySelector('.bp-fill').style.width = `${pct}%`;
+        progEl.querySelector('.bp-pct').textContent = `${pct}%`;
+      }
+      _buildPollTimer = setTimeout(pollBuildProgress, 3000);
+    } else {
+      if (progEl) progEl.style.display = 'none';
+      if (d.step === 'done') {
+        if (el) el.innerHTML = `<span style="color:var(--green)">✓ ${d.msg}</span>`;
+        if (btn) { btn.disabled = false; btn.textContent = '⬛ Rebuild'; }
+        setTimeout(init, 2000); // reload data
+      } else if (d.step === 'error') {
+        if (el) el.innerHTML = `<span style="color:var(--red)">✗ ${d.msg}</span>`;
+        if (btn) { btn.disabled = false; btn.textContent = '⬛ Retry Build'; }
+      } else {
+        // idle — check file status
+        checkBuildStatus();
+      }
+    }
+  } catch { _buildPollTimer = setTimeout(pollBuildProgress, 5000); }
+}
+
 async function checkBuildStatus() {
   try {
     const res = await fetch('/api/corr-history/status');
@@ -1668,34 +1711,38 @@ async function checkBuildStatus() {
     const el = document.getElementById('buildStatus');
     if (!el) return;
     if (d.running) {
-      el.innerHTML = `<span style="color:var(--amber)">● Building… check back in ~2 min</span>`;
-      setTimeout(checkBuildStatus, 15_000);
+      pollBuildProgress();
     } else if (d.file?.exists) {
       const age = d.file.ageDays < 1 ? 'today' : `${d.file.ageDays}d ago`;
       const staleCol = d.file.stale ? 'var(--amber)' : 'var(--green)';
       el.innerHTML = `<span style="color:${staleCol}">● ${d.file.sizeKb} KB · built ${age}</span>`;
     } else {
-      el.innerHTML = `<span style="color:var(--text3)">No history yet</span>`;
+      el.innerHTML = `<span style="color:var(--text3)">No history yet — click Build below</span>`;
     }
   } catch { /* ignore */ }
 }
 
 async function triggerBuild() {
   const btn = document.getElementById('btnBuild');
-  btn.disabled = true;
-  btn.textContent = 'Starting…';
+  if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
+  const el = document.getElementById('buildStatus');
+  if (el) el.innerHTML = `<span style="color:var(--amber)">● Sending request…</span>`;
   try {
     const res = await fetch('/api/corr-history/rebuild', { method: 'POST' });
     const d = await res.json();
-    document.getElementById('buildStatus').innerHTML =
-      `<span style="color:var(--amber)">● ${d.message}</span>`;
-    btn.textContent = '⬛ Building…';
-    setTimeout(() => { checkBuildStatus(); setTimeout(init, 3 * 60 * 1000); }, 10_000);
+    if (!d.ok && d.message) {
+      if (el) el.innerHTML = `<span style="color:var(--red)">✗ ${d.message}</span>`;
+      if (btn) { btn.disabled = false; btn.textContent = '⬛ Build 5yr History'; }
+      return;
+    }
+    if (el) el.innerHTML = `<span style="color:var(--amber)">● Build started — fetching OANDA bars…</span>`;
+    if (btn) btn.textContent = '⬛ Building…';
+    // Start polling progress immediately
+    if (_buildPollTimer) clearTimeout(_buildPollTimer);
+    _buildPollTimer = setTimeout(pollBuildProgress, 2000);
   } catch (e) {
-    document.getElementById('buildStatus').innerHTML =
-      `<span style="color:var(--red)">Error: ${e.message}</span>`;
-    btn.disabled = false;
-    btn.textContent = '⬛ Build 5yr History';
+    if (el) el.innerHTML = `<span style="color:var(--red)">✗ ${e.message}</span>`;
+    if (btn) { btn.disabled = false; btn.textContent = '⬛ Build 5yr History'; }
   }
 }
 
