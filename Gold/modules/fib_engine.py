@@ -9,11 +9,15 @@ Direction:
   'long'  — impulse was UP (low→high). Retrace pulls back downward. Look to BUY.
   'short' — impulse was DOWN (high→low). Retrace pulls back upward. Look to SELL.
 
-Each impulse generates THREE zone variants, all independently scored:
-  'gp'  — Golden Pocket [.618–.650], tightest, highest-probability reversal
-  '786' — .786 retrace  [level ± DEEP_RETRACE_WINDOW×R], deep but still valid
-  '886' — .886 retrace  [level ± DEEP_RETRACE_WINDOW×R], near structure origin
+Each impulse generates FIVE zone variants, all independently scored:
+  'gp'   — Golden Pocket [.618–.650], tightest, highest-probability reversal
+  '50pct'— Symmetric window around .5 midpoint level
+  '382'  — Shallow pullback [level ± DEEP_RETRACE_WINDOW×R], continuation entries
+  '786'  — .786 retrace  [level ± DEEP_RETRACE_WINDOW×R], deep but still valid
+  '886'  — .886 retrace  [level ± DEEP_RETRACE_WINDOW×R], near structure origin
 
+Jay/Max usage: .382 = shallow trend continuation; GP = primary reversal;
+.786/.886 = deep retrace scalp (886 strongest per Jay backtest).
 A .786 or .886 with NPOC + pivot confluence is a tradeable setup on its own.
 """
 
@@ -33,7 +37,7 @@ PIVOT_N: dict[str, int] = {
     'D1': 3, 'H4': 4, 'H1': 4, 'M30': 4, 'M15': 3,
 }
 
-MAX_ZONES_PER_TF = 15      # up to 3 impulses × 5 variants (gp / 50pct / 786 / 886 / retest)
+MAX_ZONES_PER_TF = 18      # up to 3 impulses × 6 variants (gp / 382 / 50pct / 786 / 886 / retest)
 
 # Symmetric half-window around .786/.886 and .5 as fraction of impulse R
 DEEP_RETRACE_WINDOW = 0.016
@@ -110,13 +114,14 @@ def _make_zone(tf: str, direction: str, swing_low: float, swing_high: float,
                origin_time: int = 0, end_time: int = 0) -> FibZone:
     """
     variant: 'gp'     → golden pocket (.618–.650)
+             '382'    → symmetric window around .382 shallow pullback level
              '50pct'  → symmetric window around .5 midpoint level
              '786'    → symmetric window around .786 level
              '886'    → symmetric window around .886 level
              'retest' → tight window around the broken anchor (0 or 1 level)
     """
     r = swing_high - swing_low
-    w = DEEP_RETRACE_WINDOW * r   # half-window for .786/.886 zones
+    w = DEEP_RETRACE_WINDOW * r   # half-window for .382/.786/.886/50pct zones
 
     if direction == 'long':
         l382 = swing_high - 0.382 * r
@@ -139,7 +144,9 @@ def _make_zone(tf: str, direction: str, swing_low: float, swing_high: float,
 
     l500 = (swing_high + swing_low) / 2
 
-    if variant == '786':
+    if variant == '382':
+        gp_low, gp_high = l382 - w, l382 + w
+    elif variant == '786':
         gp_low, gp_high = l786 - w, l786 + w
     elif variant == '886':
         gp_low, gp_high = l886 - w, l886 + w
@@ -236,7 +243,7 @@ def detect_fib_zones(bars: list[dict], tf: str, current_price: float) -> list[Fi
         impulse_size = swing_high - swing_low
         if impulse_size >= min_size:
             age = length - 1 - idx
-            for variant in ('gp', '50pct', '786', '886'):
+            for variant in ('gp', '382', '50pct', '786', '886'):
                 zone = _make_zone(tf, direction, swing_low, swing_high, age, variant,
                                   origin_time=origin_time, end_time=end_time)
 

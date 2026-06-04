@@ -491,6 +491,9 @@ class GoldBot:
         price_now = self._get_price()
         log.info(f'[PRICE]  {price_now}  today_m1={len(today_m1)}  vol_m1={len(vol_m1)}  '
                  f'm30={len(m30_bars) if m30_bars else 0}')
+        if not price_now:
+            log.warning('[REFRESH] price_now is None — MT5 tick failed and dashboard unreachable; '
+                        'volume profile and fib zones will be skipped this cycle')
         if price_now and vol_m1:
             self.vol_prof = compute_volume_profile(
                 vol_m1, prev_m1, price_now,
@@ -500,6 +503,8 @@ class GoldBot:
                 ages = ', '.join(f'{n.price:.1f}({n.age_days}d)'
                                  for n in self.vol_prof.npoc_stack[:4])
                 log.info(f'[nPOC]   {len(self.vol_prof.npoc_stack)} naked POCs: {ages}')
+        elif price_now and not vol_m1:
+            log.warning('[REFRESH] vol_m1 is empty — no M1 bars for today; volume profile skipped')
 
         # ── Session levels + VWAP anchor levels ──────────────────────────────
         if h1_bars and price_now:
@@ -541,13 +546,17 @@ class GoldBot:
         all_zones: list[FibZone] = []
         for tf in zone_tfs:
             bars = tf_bar_map.get(tf)
-            if bars and price_now:
-                try:
-                    zs = detect_fib_zones(bars, tf, price_now)
-                    all_zones.extend(zs)
-                    log.info(f'[ZONES]  {tf}: {len(zs)} raw ({sum(1 for z in zs if z.active)} active)')
-                except Exception as exc:
-                    log.error(f'[ZONES]  {tf} detection failed: {exc}', exc_info=True)
+            if not bars:
+                log.warning(f'[ZONES]  {tf}: no bars returned from MT5 — skipping')
+                continue
+            if not price_now:
+                continue   # already warned above
+            try:
+                zs = detect_fib_zones(bars, tf, price_now)
+                all_zones.extend(zs)
+                log.info(f'[ZONES]  {tf}: {len(zs)} raw ({sum(1 for z in zs if z.active)} active)')
+            except Exception as exc:
+                log.error(f'[ZONES]  {tf} detection failed: {exc}', exc_info=True)
 
         # Per-TF activity check — each zone is expired against its own TF's closes.
         # Using M30 closes to expire H4 zones is too aggressive (noise-level moves
@@ -769,10 +778,14 @@ class GoldBot:
     def _push_status(self) -> None:
         zones_summary = [
             {'zone_id': z.zone_id, 'score': z.score,
-             'gp': f'{z.gp_low:.1f}–{z.gp_high:.1f}',
+             'entry_window': f'{z.gp_low:.1f}–{z.gp_high:.1f}',
+             'variant': z.zone_variant,
              'tf': z.tf, 'dir': z.direction}
             for z in self.zones[:5]
         ]
+        armed_zone_obj = next(
+            (z for z in self.zones if z.zone_id == self.bot_state.armed_zone_id), None
+        )
         status = {
             'bot': 'gold_bot',
             'timestamp': datetime.now(timezone.utc).isoformat(),
@@ -784,6 +797,10 @@ class GoldBot:
             'paper_mode':     self.cfg.get('paper_mode', True),
             'squeeze_ratio':  self.squeeze_ratio,
             'mt5_positions':  _serialize_open_positions(MAGIC) or _serialize_paper_trade(self.bot_state),
+            'armed_zone_id':      self.bot_state.armed_zone_id,
+            'armed_zone_variant': armed_zone_obj.zone_variant if armed_zone_obj else None,
+            'armed_zone_window':  (f'{armed_zone_obj.gp_low:.1f}–{armed_zone_obj.gp_high:.1f}'
+                                   if armed_zone_obj else None),
         }
         if self.sess_lvls:
             status['touched']          = _touched_pivot_levels(self.sess_lvls)

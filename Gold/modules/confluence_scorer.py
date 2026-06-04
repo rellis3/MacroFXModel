@@ -30,10 +30,10 @@ PROXIMITY_PIPS = 3.0   # $3 tolerance for XAU/USD
 
 WEIGHTS = {
     'fib_cluster':    1.5,
-    'fib_786':        1.2,   # GP centre aligns with .786 of a different impulse
-    'fib_886':        1.5,   # GP centre aligns with .886 of a different impulse (rarer/tighter)
-    'fib_382':        0.8,   # GP centre aligns with .382 of a different impulse
-    'fib_50pct':      0.6,   # GP centre aligns with .5 of a different impulse
+    'fib_786':        1.2,   # entry centre aligns with .786 of a different impulse
+    'fib_886':        1.5,   # entry centre aligns with .886 of a different impulse (rarer/tighter)
+    'fib_382':        0.8,   # entry centre aligns with .382 of a different impulse
+    'fib_50pct':      0.6,   # entry centre aligns with .5 of a different impulse
     'npoc_base':      2.0,   # + 0.1 per day old, cap 3.0
     'poc':            1.5,
     'hvn':            1.2,
