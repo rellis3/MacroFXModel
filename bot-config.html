@@ -538,6 +538,10 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
             <div class="input-wrap"><button class="help-btn" data-key="ec_cooldown">?</button><input type="number" id="ec_cooldown" min="5" max="480" step="5"></div>
           </div>
           <div class="form-row">
+            <span class="form-lbl">Bypass Risk Guard <small style="color:#f59e0b">⚠ disables DD lockouts</small></span>
+            <div class="input-wrap"><button class="help-btn" data-key="ec_bypass_risk">?</button><input type="checkbox" id="ec_bypass_risk"></div>
+          </div>
+          <div class="form-row">
             <span class="form-lbl">Trade window start <small>UTC</small></span>
             <div class="input-wrap"><button class="help-btn" data-key="tw_start">?</button><input type="time" id="tw_start"></div>
           </div>
@@ -2364,6 +2368,7 @@ const HELP = {
   ec_monthlydd:    { t:'Monthly DD Limit %', b:'Once monthly drawdown hits this %, bot halts until manually reset.', e:'5% on £10,000 = £500 monthly limit.' },
   ec_lockout:      { t:'Lockout Hours', b:'After a daily DD breach, bot pauses this many hours before resuming.', e:'3 hours: breach at 10:00 → resumes 13:00.' },
   ec_cooldown:     { t:'Cooldown (min/pair)', b:'After a trade fires on a pair, that pair is locked for this many minutes.', e:'60 min: EUR/USD trade at 09:00 → locked until 10:00.' },
+  ec_bypass_risk:  { t:'Bypass Risk Guard', b:'Disables all daily/monthly DD lockouts. Bot logs a warning each startup. Use for demo/testing only — remove before going live.', e:'Checked: bot trades freely regardless of drawdown.' },
   tw_start:        { t:'Trade Window Start (UTC)', b:'No new trades before this UTC time. Avoids thin overnight/Asian session.', e:'06:05 UTC = 5 min after London pre-market.' },
   tw_end:          { t:'Trade Window End (UTC)', b:'No new entries after this UTC time.', e:'21:00 UTC = New York session close.' },
   sl_atr_mult:     { t:'ATR Multiplier', b:'SL = entry ± (14-period ATR × multiplier). Larger = wider stop.', e:'ATR=20 pips, mult 1.5 → SL at 30 pips.' },

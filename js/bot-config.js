@@ -36,6 +36,7 @@ const DEFAULTS = {
     lockout:             3,
     cooldown:            60,
     sizing:              1.0,
+    bypass_risk_guard:   false,
   },
   position: {
     risk_pct:      1.0,
@@ -277,6 +278,7 @@ function readForm() {
   _cfg.execution.monthlydd           = num('ec_monthlydd',   5);
   _cfg.execution.lockout             = num('ec_lockout',     3);
   _cfg.execution.cooldown            = num('ec_cooldown',    60);
+  _cfg.execution.bypass_risk_guard   = chk('ec_bypass_risk');
   _cfg.execution.sizing              = num('pos_sizing',     1.0);
 
   _cfg.position = _cfg.position || {};
@@ -338,6 +340,7 @@ function renderForm() {
   setVal('ec_monthlydd',   ec.monthlydd         ?? 5);
   setVal('ec_lockout',     ec.lockout           ?? 3);
   setVal('ec_cooldown',    ec.cooldown          ?? 60);
+  setChk('ec_bypass_risk', ec.bypass_risk_guard ?? false);
   setVal('pos_sizing',     ec.sizing            ?? 1.0);
   setVal('pos_risk',       _cfg.position?.risk_pct      ?? 1.0);
   setVal('pos_hi_mult',    _cfg.position?.vol_high_mult ?? 0.5);
