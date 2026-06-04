@@ -73,6 +73,8 @@ function isCfKey(key) {
   // fredhistory_* caches (90-day yield series for spread charts) are expensive to rebuild
   // (concurrent FRED requests cause rate-limits) so persist them in CF KV
   if (key.startsWith('fredhistory_')) return true;
+  // trade_hist_* are the per-bot-per-day closed trade logs — must survive Railway redeploys
+  if (key.startsWith('trade_hist_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 
