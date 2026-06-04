@@ -216,6 +216,29 @@ def _serialize_open_positions(magic: int) -> list:
         return []
 
 
+def _serialize_paper_trade(bot_state) -> list:
+    t = bot_state.active_trade
+    if not t:
+        return []
+    now = datetime.now(timezone.utc)
+    return [{
+        'ticket':     0,
+        'symbol':     SYMBOL,
+        'direction':  'BUY' if t.direction == 'LONG' else 'SELL',
+        'lots':       t.lot_size,
+        'open_price': round(t.entry_price, 2),
+        'price':      round(t.entry_price, 2),
+        'profit':     round(t.pnl_pips, 2),
+        'swap':       0.0,
+        'time_open':  int(t.entry_time.timestamp()),
+        'comment':    f'paper {t.zone_id}',
+        'sl':         round(t.sl, 2),
+        'tp1':        round(t.tp1, 2),
+        'tp2':        round(t.tp2, 2),
+        'tp1_hit':    t.tp1_hit,
+    }]
+
+
 def _kv_put_status(key: str, data: dict, base_url: str) -> None:
     """Write bot heartbeat to its own KV key (non-critical — swallows all errors)."""
     try:
@@ -760,7 +783,7 @@ class GoldBot:
             'trades_today':   self.trades_today,
             'paper_mode':     self.cfg.get('paper_mode', True),
             'squeeze_ratio':  self.squeeze_ratio,
-            'mt5_positions':  _serialize_open_positions(MAGIC),
+            'mt5_positions':  _serialize_open_positions(MAGIC) or _serialize_paper_trade(self.bot_state),
         }
         if self.sess_lvls:
             status['touched']          = _touched_pivot_levels(self.sess_lvls)

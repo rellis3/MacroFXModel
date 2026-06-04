@@ -2591,7 +2591,7 @@ app.get('/api/corr-history/status', (_req, res) => {
 // Optional ?lite=1 returns only avg_corr + regime_stats (strips the full records array)
 app.get('/api/corr-history', (req, res) => {
   const p = CORR_HISTORY_PATH;
-  if (!fs.existsSync(p)) return res.status(404).json({ error: 'corr_history.json not found — click "Rebuild" in the Corr Lab dashboard to generate it' });
+  if (!fs.existsSync(p)) return res.json({ records: [], built: false, message: 'No history yet — click Rebuild in the dashboard to generate 5 years of OANDA H4 data.' });
   try {
     const raw = fs.readFileSync(p, 'utf8');
     if (req.query.lite === '1') {
