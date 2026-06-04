@@ -569,6 +569,18 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
         return -1
     if not HAS_MT5:
         return None
+    # Re-login before order — main bot shares this MT5 terminal and may have
+    # switched to its own account between cycles.
+    account  = os.environ.get('MT5_ACCOUNT', '')
+    password = os.environ.get('MT5_PASSWORD', '')
+    server   = os.environ.get('MT5_SERVER', '')
+    if account and password and server:
+        current = mt5.account_info()
+        if not current or str(current.login) != str(account):
+            if not mt5.login(int(account), password, server):
+                log.error(f'Re-login failed before order: {mt5.last_error()}')
+                return None
+            log.info(f'Re-logged in to account {account} before order')
     sym  = pair.replace('/', '')
     tick = mt5.symbol_info_tick(sym)
     if not tick:
@@ -585,10 +597,12 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
     price = tick.ask if direction == 'LONG' else tick.bid
     order = {
         'action': mt5.TRADE_ACTION_DEAL, 'symbol': sym, 'volume': size,
-        'type': ot, 'price': price, 'sl': round(sl, 5), 'tp': round(tp, 5) if tp else 0,
+        'type': ot, 'price': price, 'sl': round(sl, 5),
         'deviation': 20, 'magic': MAGIC, 'comment': f'RgV2 {direction[0]}',
         'type_time': mt5.ORDER_TIME_GTC, 'type_filling': _filling_mode(sym),
     }
+    if tp:
+        order['tp'] = round(tp, 5)
     res = mt5.order_send(order)
     if res and res.retcode == mt5.TRADE_RETCODE_DONE:
         log.info(f'MT5 order placed: ticket={res.order}  price={price}')
@@ -608,9 +622,19 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
         return True
     if not HAS_MT5:
         return False
+    # Re-login before close — same account-switching issue as open_position.
+    account  = os.environ.get('MT5_ACCOUNT', '')
+    password = os.environ.get('MT5_PASSWORD', '')
+    server   = os.environ.get('MT5_SERVER', '')
+    if account and password and server:
+        current = mt5.account_info()
+        if not current or str(current.login) != str(account):
+            if not mt5.login(int(account), password, server):
+                log.error(f'Re-login failed before close: {mt5.last_error()}')
+                return False
     sym  = pair.replace('/', '')
     poss = [p for p in (mt5.positions_get(symbol=sym) or [])
-            if p.ticket == ticket and p.magic == MAGIC]
+            if p.ticket == ticket]
     if not poss:
         log.warning(f'Ticket {ticket} not found — may be SL-closed')
         return True
@@ -815,6 +839,40 @@ def run(url: str, paper_mode: bool) -> None:
             time.sleep(cfg['interval_secs'])
             continue
 
+        # ── Adopt manually placed / orphaned MT5 positions ────────────────────
+        # Any position on this account for a configured pair that RegimeV2 didn't
+        # open itself (different magic or bot restart) gets adopted so exit logic
+        # (X1, X5, X13, etc.) can monitor and close it.
+        if HAS_MT5 and not paper_mode:
+            try:
+                all_mt5_pos = mt5.positions_get() or []
+                sym_to_pair = {p.replace('/', ''): p for p in cfg['pairs']}
+                for mt5p in all_mt5_pos:
+                    pair_key = sym_to_pair.get(mt5p.symbol)
+                    if not pair_key:
+                        continue
+                    if pair_key in open_pos:
+                        continue  # already tracked
+                    direction = 'LONG' if mt5p.type == 0 else 'SHORT'
+                    log.warning(
+                        f'[{pair_key}] Adopting orphaned MT5 position ticket={mt5p.ticket} '
+                        f'{direction} entry={mt5p.price_open}  magic={mt5p.magic}'
+                    )
+                    rd = all_regimes.get(pair_key) or {}
+                    open_pos[pair_key] = {
+                        'ticket':      mt5p.ticket,
+                        'direction':   direction,
+                        'entry_price': float(mt5p.price_open),
+                        'sl':          float(mt5p.sl),
+                        'opened_at':   float(mt5p.time),
+                    }
+                    entry_regime[pair_key]   = rd.get('regime', '').upper() or direction[:4]
+                    entry_scores[pair_key]   = 0.0
+                    score_low_bars[pair_key] = 0
+                    running_mfe[pair_key]    = 0.0
+            except Exception as exc:
+                log.debug(f'Orphan adoption scan failed: {exc}')
+
         pairs_status: dict[str, dict] = {}
 
         for pair in cfg['pairs']:
@@ -941,11 +999,11 @@ def run(url: str, paper_mode: bool) -> None:
                 if fav_dist > running_mfe.get(pair, 0.0):
                     running_mfe[pair] = fav_dist
 
-                # Check MT5 SL hit
+                # Check MT5 SL hit — match by ticket only so adopted orphans are tracked
                 if HAS_MT5 and not paper_mode:
                     mt5_sym = pair.replace('/', '')
                     still_open = [p for p in (mt5.positions_get(symbol=mt5_sym) or [])
-                                  if p.ticket == pos['ticket'] and p.magic == MAGIC]
+                                  if p.ticket == pos['ticket']]
                     if not still_open:
                         log.info(f'[{pair}] Ticket {pos["ticket"]} gone — SL hit (X5)')
                         del open_pos[pair]; entry_regime.pop(pair, None)

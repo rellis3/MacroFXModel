@@ -7,14 +7,15 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/index.css"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
 
-.cl-topbar{height:48px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:12px;background:var(--bg);flex-shrink:0;position:relative;z-index:10}
+.cl-topbar{height:48px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:12px;background:var(--bg);flex-shrink:0;z-index:10}
 .cl-logo{width:28px;height:28px;background:var(--purple);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.cl-logo svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cl-logo svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
 .cl-title{font-size:14px;font-weight:700;letter-spacing:-0.2px}
 .cl-sub{font-size:10px;color:var(--text3);letter-spacing:.6px;text-transform:uppercase;margin-top:1px}
 .spacer{flex:1}
@@ -24,34 +25,39 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 .dark-btn:hover{border-color:var(--blue);color:var(--blue)}
 
 #cl-app{display:flex;flex:1;min-height:0;overflow:hidden}
-#cl-sidebar{width:240px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin}
+#cl-sidebar{width:230px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin}
 #cl-main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0}
 
 /* Sidebar */
-.sb-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.sb-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .sb-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
 .sb-group{display:flex;flex-direction:column;gap:4px}
 .seg-ctrl{display:flex;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:2px;gap:2px}
 .seg-btn{flex:1;padding:4px 0;border:none;background:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);cursor:pointer;border-radius:4px;transition:all .15s}
-.seg-btn.on{background:var(--blue);color:#fff;font-weight:600}
+.seg-btn.on{background:var(--purple);color:#fff;font-weight:600}
 .pair-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px}
-.pair-cb{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);padding:2px 0;cursor:pointer;font-family:'DM Mono',monospace}
-.pair-cb input{accent-color:var(--blue);cursor:pointer;width:12px;height:12px}
+.pair-cb{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);padding:2px 0;cursor:pointer;font-family:'DM Mono',monospace}
+.pair-cb input{accent-color:var(--purple);cursor:pointer;width:12px;height:12px}
 .pair-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .bt-select{width:100%;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-size:11px;font-family:'DM Mono',monospace}
-.bt-select:focus{outline:2px solid var(--blue);border-color:transparent}
-.btn-run{width:100%;padding:8px;border-radius:7px;border:none;background:var(--blue);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s;font-family:'DM Sans',sans-serif}
+.bt-select:focus{outline:2px solid var(--purple);border-color:transparent}
+.btn-run{width:100%;padding:8px;border-radius:7px;border:none;background:var(--purple);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s;font-family:'DM Sans',sans-serif}
 .btn-run:disabled{opacity:.4;cursor:default}
-.status-row{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;display:flex;flex-direction:column;gap:2px;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:7px 9px}
-.status-row span{color:var(--text2)}
+.src-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.4px;padding:2px 7px;border-radius:4px;text-transform:uppercase;font-family:'DM Mono',monospace}
+.src-rich{background:rgba(16,185,129,.15);color:var(--green)}
+.src-live{background:rgba(79,125,240,.15);color:var(--blue)}
+.src-none{background:rgba(148,163,184,.1);color:var(--text3)}
+.status-box{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:10px;color:var(--text3);display:flex;flex-direction:column;gap:3px;font-family:'DM Mono',monospace}
+.status-box span{color:var(--text2)}
 
 /* Tab bar */
-.tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;padding:0 18px;background:var(--bg)}
-.tab-btn{padding:8px 14px;font-size:11px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;padding:0 16px;background:var(--bg);overflow-x:auto;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab-btn{padding:8px 13px;font-size:11px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap}
 .tab-btn:hover{color:var(--text2)}
 .tab-btn.on{color:var(--purple);border-bottom-color:var(--purple)}
-.tab-content{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px}
-.tab-panel{display:none;flex-direction:column;gap:14px}
+.tab-content{flex:1;overflow-y:auto;padding:14px 16px;min-width:0}
+.tab-panel{display:none;flex-direction:column;gap:12px}
 .tab-panel.on{display:flex}
 
 /* Cards */
@@ -59,71 +65,61 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 .cl-card-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .cl-card-title::after{content:'';flex:1;height:1px;background:var(--border)}
 .chart-wrap{position:relative;width:100%}
-canvas{max-width:100%}
 
 /* Heatmap */
-.hm-wrap{overflow-x:auto}
+.hm-wrap{overflow-x:auto;overflow-y:visible}
 .hm-table{border-collapse:collapse;font-size:10px;font-family:'DM Mono',monospace;white-space:nowrap}
-.hm-table th{font-size:9px;color:var(--text3);font-weight:500;padding:3px 7px;text-align:center;white-space:nowrap}
-.hm-table td{width:58px;height:30px;text-align:center;border:1px solid var(--border);font-size:10px;vertical-align:middle;transition:opacity .2s}
-.hm-table td:hover{outline:2px solid var(--blue)}
+.hm-table th{font-size:9px;color:var(--text3);font-weight:500;padding:3px 6px;text-align:center;white-space:nowrap}
+.hm-table td{width:55px;height:28px;text-align:center;border:1px solid var(--border);font-size:10px;vertical-align:middle;transition:outline .1s}
+.hm-table td:hover{outline:2px solid var(--purple);z-index:1;position:relative}
 .hm-rowlbl{font-size:10px;color:var(--text2);font-weight:600;padding:3px 8px;text-align:right;white-space:nowrap}
 
 /* Regime stats table */
 .rs-table{width:100%;border-collapse:collapse;font-size:11px}
-.rs-table th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:5px 10px;border-bottom:1px solid var(--border);text-align:center;white-space:nowrap}
+.rs-table th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;white-space:nowrap}
 .rs-table th.left{text-align:left}
-.rs-table td{padding:5px 10px;border-bottom:1px solid var(--border);text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)}
+.rs-table td{padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)}
 .rs-table td.pair{text-align:left;font-weight:600;color:var(--text)}
 .rs-table tr:last-child td{border-bottom:none}
 .rs-table tr:hover td{background:var(--s2)}
-.beta-pill{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-family:'DM Mono',monospace}
+.beta-pill{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-family:'DM Mono',monospace}
 
 /* Hedge finder */
 .hf-table{width:100%;border-collapse:collapse;font-size:11px}
-.hf-table th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
-.hf-table th:hover{color:var(--text2)}
-.hf-table td{padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text2)}
+.hf-table th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:5px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+.hf-table td{padding:5px 8px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text2)}
 .hf-table tr:hover td{background:var(--s2)}
 .hf-table tr:last-child td{border-bottom:none}
-.hedge-score{display:inline-block;width:44px;height:6px;border-radius:3px}
 
-/* Pair filter chips */
-.pair-filter{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
-.pf-chip{padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:none;font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);cursor:pointer;transition:all .15s}
-.pf-chip:hover{border-color:var(--purple);color:var(--purple)}
-.pf-chip.on{color:#fff;font-weight:600}
-
-/* Rolling corr pair picker */
-.corr-picker{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.corr-picker label{font-size:11px;color:var(--text3);white-space:nowrap}
-
-/* Factor dominance */
-.fd-row{display:flex;height:20px;border-radius:4px;overflow:hidden;margin-bottom:4px}
-.fd-seg{transition:flex .3s}
-.fd-pair-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px}
-.fd-pair-lbl{font-family:'DM Mono',monospace;font-weight:600;width:70px;color:var(--text);flex-shrink:0}
-
-/* Empty state */
-.empty{text-align:center;padding:40px 20px;color:var(--text3);font-size:12px}
-.loading-spin{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;margin-bottom:8px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.legend-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text3);font-family:'DM Mono',monospace}
-.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.legend-line{width:16px;height:2px;border-radius:1px;flex-shrink:0}
+/* Inline bar */
+.bar-wrap{display:flex;align-items:center;gap:6px;font-size:10px;font-family:'DM Mono',monospace;margin-bottom:5px}
+.bar-pair{width:72px;font-weight:600;flex-shrink:0}
+.bar-track{flex:1;background:var(--s2);border-radius:3px;height:12px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:3px;position:absolute}
+.bar-val{width:48px;text-align:right;color:var(--text3);flex-shrink:0}
+.bar-tag{width:56px;font-size:9px;font-weight:700;flex-shrink:0}
 
 /* Regime badge */
-.regime-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.5px;padding:1px 6px;border-radius:3px;text-transform:uppercase;font-family:'DM Mono',monospace}
+.regime-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.5px;padding:1px 5px;border-radius:3px;text-transform:uppercase;font-family:'DM Mono',monospace}
 .r-BULL{background:rgba(16,185,129,.15);color:var(--green)}
 .r-BEAR{background:rgba(248,113,113,.15);color:var(--red)}
 .r-RANGE{background:rgba(251,191,36,.15);color:var(--amber)}
 .r-CHOP{background:rgba(148,163,184,.15);color:var(--text3)}
+
+/* Loading / empty */
+.loading{text-align:center;padding:40px 20px;color:var(--text3);font-size:12px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.spin{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.legend-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text3);font-family:'DM Mono',monospace}
+.leg-line{width:16px;height:2px;border-radius:1px;flex-shrink:0}
+
+/* Corr picker */
+.corr-picker{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--text3)}
 </style>
 </head>
 <body>
 
-<!-- Topbar -->
 <div class="cl-topbar">
   <div class="cl-logo">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3M6.3 6.3l2.1 2.1M15.6 15.6l2.1 2.1M6.3 17.7l2.1-2.1M15.6 8.4l2.1-2.1"/></svg>
@@ -133,9 +129,9 @@ canvas{max-width:100%}
     <div class="cl-sub">Rolling Factor Sensitivity &amp; Hedge Analysis</div>
   </div>
   <div class="spacer"></div>
-  <button class="dark-btn" id="themeBtn" onclick="toggleTheme()">◑ Theme</button>
+  <button class="dark-btn" onclick="toggleTheme()">◑ Theme</button>
   <a href="./analysis.html" class="nav-link">Pattern Lab</a>
-  <a href="./index.html" class="nav-link">Dashboard</a>
+  <a href="./index.html"    class="nav-link">Dashboard</a>
 </div>
 
 <div id="cl-app">
@@ -144,12 +140,19 @@ canvas{max-width:100%}
   <div id="cl-sidebar">
 
     <div class="sb-group">
-      <div class="sb-lbl">Corr Window</div>
-      <div class="seg-ctrl" id="windowCtrl">
-        <button class="seg-btn" data-w="30" onclick="setWindow(this)">30</button>
-        <button class="seg-btn on" data-w="60" onclick="setWindow(this)">60</button>
-        <button class="seg-btn" data-w="120" onclick="setWindow(this)">120</button>
+      <div class="sb-lbl">Data Source</div>
+      <div id="srcBadge" class="src-badge src-none">checking…</div>
+      <div id="srcNote" style="font-size:10px;color:var(--text3);line-height:1.5;margin-top:3px"></div>
+    </div>
+
+    <div class="sb-group">
+      <div class="sb-lbl">Rolling Window</div>
+      <div class="seg-ctrl" id="winCtrl">
+        <button class="seg-btn" data-w="20">20d</button>
+        <button class="seg-btn on" data-w="60">60d</button>
+        <button class="seg-btn" data-w="120">120d</button>
       </div>
+      <div style="font-size:9px;color:var(--text3);margin-top:2px">window in H4 bars (4h each)</div>
     </div>
 
     <div class="sb-group">
@@ -159,972 +162,1100 @@ canvas{max-width:100%}
 
     <div class="sb-group">
       <div class="sb-lbl">Regime Filter</div>
-      <select class="bt-select" id="regimeFilter" onchange="applyFilters()">
+      <select class="bt-select" id="regimeSel" onchange="applyFilters()">
         <option value="ALL">All Regimes</option>
-        <option value="BULL">BULL only</option>
-        <option value="BEAR">BEAR only</option>
-        <option value="RANGE">RANGE only</option>
-        <option value="CHOP">CHOP only</option>
+        <option value="BULL">BULL</option>
+        <option value="BEAR">BEAR</option>
+        <option value="RANGE">RANGE</option>
+        <option value="CHOP">CHOP</option>
       </select>
     </div>
 
     <div class="sb-group">
-      <div class="sb-lbl">Corr Factor</div>
+      <div class="sb-lbl">Beta Factor</div>
       <select class="bt-select" id="factorSel" onchange="applyFilters()">
-        <option value="vix">VIX Proxy (risk)</option>
+        <option value="vix">VIX proxy (risk)</option>
         <option value="dxy">DXY (USD)</option>
-        <option value="rates">Rates</option>
+        <option value="rates">Rates differential</option>
       </select>
     </div>
 
-    <button class="btn-run" id="btnRefresh" onclick="loadData()">↻ Refresh Data</button>
+    <button class="btn-run" id="btnRefresh" onclick="init()">↻ Refresh</button>
 
-    <div class="status-row" id="statusBox">
-      <div>Records: <span id="statRecords">—</span></div>
-      <div>Range: <span id="statRange">—</span></div>
-      <div>Regime: <span id="statRegime">—</span></div>
-      <div>Updated: <span id="statTs">—</span></div>
+    <div class="status-box" id="statusBox">
+      <div>Source: <span id="stSrc">—</span></div>
+      <div>Records: <span id="stRec">—</span></div>
+      <div>Range: <span id="stRange">—</span></div>
+      <div>Regime: <span id="stRegime">—</span></div>
     </div>
 
     <div class="sb-group" style="margin-top:auto">
-      <div class="sb-lbl">Hedge Legend</div>
-      <div style="font-size:10px;color:var(--text3);line-height:1.7">
-        <div><span style="color:var(--green)">●</span> Correlated — trade same dir</div>
-        <div><span style="color:var(--red)">●</span> Inverse — hedge / spread</div>
-        <div><span style="color:var(--amber)">●</span> Weak — decorrelated</div>
-      </div>
+      <div class="sb-lbl">History Build</div>
+      <div id="buildStatus" style="font-size:10px;color:var(--text3);margin-bottom:6px;line-height:1.5"></div>
+      <button class="btn-run" id="btnBuild" onclick="triggerBuild()" style="background:var(--green)">⬛ Build 5yr History</button>
+      <div style="font-size:9px;color:var(--text3);margin-top:4px">Fetches OANDA H4 bars, ~3 min. Rebuilds weekly automatically.</div>
     </div>
 
-  </div><!-- /sidebar -->
+  </div>
 
   <!-- Main -->
   <div id="cl-main">
 
     <div class="tab-bar">
-      <button class="tab-btn on" data-tab="t-betas" onclick="switchTab(this)">Factor Betas</button>
-      <button class="tab-btn" data-tab="t-matrix" onclick="switchTab(this)">Corr Matrix</button>
-      <button class="tab-btn" data-tab="t-rolling" onclick="switchTab(this)">Rolling Corr</button>
-      <button class="tab-btn" data-tab="t-regime" onclick="switchTab(this)">Regime Breakdown</button>
-      <button class="tab-btn" data-tab="t-hedge" onclick="switchTab(this)">Hedge Finder</button>
-      <button class="tab-btn" data-tab="t-dom" onclick="switchTab(this)">Factor Dominance</button>
+      <button class="tab-btn on" data-tab="t-matrix"  onclick="switchTab(this)">Corr Matrix</button>
+      <button class="tab-btn"    data-tab="t-rolling" onclick="switchTab(this)">Rolling Corr</button>
+      <button class="tab-btn"    data-tab="t-betas"   onclick="switchTab(this)">Factor Betas</button>
+      <button class="tab-btn"    data-tab="t-regime"  onclick="switchTab(this)">Regime Breakdown</button>
+      <button class="tab-btn"    data-tab="t-hedge"   onclick="switchTab(this)">Hedge Finder</button>
+      <button class="tab-btn"    data-tab="t-dom"     onclick="switchTab(this)">Factor Dominance</button>
     </div>
 
     <div class="tab-content">
 
-      <!-- Tab 1: Factor Betas time series -->
-      <div class="tab-panel on" id="t-betas">
-        <div id="betasEmpty" class="empty"><div class="loading-spin"></div><div>Loading beta history…</div></div>
-
-        <div id="betasContent" style="display:none;flex-direction:column;gap:14px">
-          <div class="pair-filter" id="betasPairFilter"></div>
+      <!-- Tab 1: Correlation Matrix -->
+      <div class="tab-panel on" id="t-matrix">
+        <div id="matrixLoading" class="loading"><div class="spin"></div><div>Loading…</div></div>
+        <div id="matrixContent" style="display:none;flex-direction:column;gap:12px">
           <div class="cl-card">
-            <div class="cl-card-title">VIX-Proxy Beta — Risk Sensitivity Over Time</div>
-            <div class="chart-wrap" style="height:220px"><canvas id="chartVix"></canvas></div>
+            <div class="cl-card-title" id="matrixTitle">Price-Return Correlation Matrix</div>
+            <div class="hm-wrap" id="corrHeatmap"></div>
           </div>
           <div class="cl-card">
-            <div class="cl-card-title">DXY Beta — USD Sensitivity Over Time</div>
-            <div class="chart-wrap" style="height:160px"><canvas id="chartDxy"></canvas></div>
-          </div>
-          <div class="cl-card">
-            <div class="cl-card-title">Rates Beta — Rate Differential Sensitivity Over Time</div>
-            <div class="chart-wrap" style="height:160px"><canvas id="chartRates"></canvas></div>
-          </div>
-          <div class="cl-card">
-            <div class="cl-card-title">Model Fit R² — Beta Reliability</div>
-            <div class="chart-wrap" style="height:140px"><canvas id="chartR2"></canvas></div>
+            <div class="cl-card-title">Average Pair Correlation — Risk Clusters</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Sorted by mean correlation to all other pairs. High = moves together; negative = natural divergence.</div>
+            <div id="corrClusters"></div>
           </div>
         </div>
       </div>
 
-      <!-- Tab 2: Correlation Matrix -->
-      <div class="tab-panel" id="t-matrix">
-        <div class="cl-card">
-          <div class="cl-card-title">Average Beta-Vector Correlation — All Pairs</div>
-          <div class="hm-wrap" id="corrHeatmap">
-            <div class="empty">Run analysis to see correlation matrix</div>
-          </div>
-        </div>
-        <div class="cl-card">
-          <div class="cl-card-title">VIX Beta Correlation — Pair Clusters</div>
-          <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Sorted by average correlation. Green clusters = trade together; red = natural hedge pair.</div>
-          <div id="corrClusters"></div>
-        </div>
-      </div>
-
-      <!-- Tab 3: Rolling Correlation -->
+      <!-- Tab 2: Rolling Correlation -->
       <div class="tab-panel" id="t-rolling">
         <div class="cl-card">
-          <div class="cl-card-title">Rolling Pair Correlation</div>
+          <div class="cl-card-title">Rolling Pair Correlation — Over Time</div>
           <div class="corr-picker">
-            <label>Pair A:</label>
-            <select class="bt-select" id="rollPairA" style="width:130px" onchange="renderRollingCorr()"></select>
-            <label>vs Pair B:</label>
-            <select class="bt-select" id="rollPairB" style="width:130px" onchange="renderRollingCorr()"></select>
+            <span>Pair A:</span>
+            <select class="bt-select" id="rollA" style="width:120px" onchange="renderRolling()"></select>
+            <span>vs</span>
+            <select class="bt-select" id="rollB" style="width:120px" onchange="renderRolling()"></select>
           </div>
-          <div class="chart-wrap" style="height:200px"><canvas id="chartRollingCorr"></canvas></div>
+          <div id="rollingInfo" style="font-size:10px;color:var(--text3);margin-bottom:8px"></div>
+          <div class="chart-wrap" style="height:220px"><canvas id="chartRolling"></canvas></div>
         </div>
         <div class="cl-card">
-          <div class="cl-card-title">Divergence From Regime-Mean Beta</div>
-          <div style="font-size:10px;color:var(--text3);margin-bottom:8px">When a pair's VIX beta departs from its regime-average → potential regime transition or trading opportunity.</div>
+          <div class="cl-card-title">Beta Divergence From Regime Mean</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:8px">When a pair's VIX beta departs from its regime-average → potential regime transition signal.</div>
           <div class="chart-wrap" style="height:180px"><canvas id="chartDivergence"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Factor Betas -->
+      <div class="tab-panel" id="t-betas">
+        <div class="cl-card">
+          <div class="cl-card-title">VIX-Proxy Beta — Risk Sensitivity Over Time</div>
+          <div class="legend-row" id="betaLegend"></div>
+          <div class="chart-wrap" style="height:220px"><canvas id="chartVix"></canvas></div>
+        </div>
+        <div class="cl-card">
+          <div class="cl-card-title">DXY Beta — USD Sensitivity Over Time</div>
+          <div class="chart-wrap" style="height:160px"><canvas id="chartDxy"></canvas></div>
+        </div>
+        <div class="cl-card">
+          <div class="cl-card-title">Rates Beta — Rate Differential Sensitivity</div>
+          <div class="chart-wrap" style="height:160px"><canvas id="chartRates"></canvas></div>
         </div>
       </div>
 
       <!-- Tab 4: Regime Breakdown -->
       <div class="tab-panel" id="t-regime">
         <div class="cl-card">
-          <div class="cl-card-title">VIX Beta by Regime — Risk Classification</div>
-          <div id="regimeChartWrap" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
+          <div class="cl-card-title">VIX Beta Per Regime — Risk Classification</div>
+          <div id="regimeMini" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
           <div id="regimeMatrix"></div>
+        </div>
+        <div class="cl-card">
+          <div class="cl-card-title">Regime-Conditional Correlation Shifts</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:10px">How correlations change between regimes — divergence between BULL and BEAR corr = regime edge.</div>
+          <div id="regimeCorrShift"></div>
         </div>
       </div>
 
       <!-- Tab 5: Hedge Finder -->
       <div class="tab-panel" id="t-hedge">
         <div class="cl-card">
-          <div class="cl-card-title">Hedge Pair Opportunities — Ranked by Divergence</div>
-          <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Pairs with opposite VIX betas are natural hedges. Negative correlation = inverse exposure to risk sentiment.</div>
+          <div class="cl-card-title">Hedge Opportunities — Ranked by Inverse Correlation</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Pairs with negative average correlation are natural hedges. Trade opposite legs simultaneously to neutralise macro exposure.</div>
           <div id="hedgeTable"></div>
         </div>
         <div class="cl-card">
           <div class="cl-card-title">Current Risk Profile — All Pairs</div>
-          <div id="riskProfileChart" style="display:flex;flex-direction:column;gap:6px;padding-top:4px"></div>
+          <div id="riskProfile"></div>
         </div>
       </div>
 
       <!-- Tab 6: Factor Dominance -->
       <div class="tab-panel" id="t-dom">
         <div class="cl-card">
-          <div class="cl-card-title">Dominant Macro Factor Per Pair</div>
-          <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Which factor (DXY, Rates, VIX proxy) has the largest absolute beta — i.e. drives the most return variance for this pair.</div>
+          <div class="cl-card-title">Dominant Macro Factor Per Pair (Current)</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Which of DXY, Rates, or VIX proxy has the largest absolute beta — i.e. explains the most return variance.</div>
           <div class="legend-row">
-            <div class="legend-item"><div class="legend-line" style="background:#4f7df0"></div> DXY</div>
-            <div class="legend-item"><div class="legend-line" style="background:#10b981"></div> Rates</div>
-            <div class="legend-item"><div class="legend-line" style="background:#f59e0b"></div> VIX</div>
+            <div class="leg-item"><div class="leg-line" style="background:#4f7df0"></div>DXY</div>
+            <div class="leg-item"><div class="leg-line" style="background:#10b981"></div>Rates</div>
+            <div class="leg-item"><div class="leg-line" style="background:#f59e0b"></div>VIX proxy</div>
           </div>
-          <div id="factorDomChart"></div>
+          <div id="factorDomNow"></div>
         </div>
         <div class="cl-card">
-          <div class="cl-card-title">Regime-Conditional Factor Dominance %</div>
+          <div class="cl-card-title">Regime-Conditional Factor Dominance</div>
           <div id="factorDomRegime"></div>
         </div>
       </div>
 
-    </div><!-- /tab-content -->
-  </div><!-- /main -->
-</div><!-- /app -->
+    </div>
+  </div>
+</div>
 
 <script>
-/* ─────────────────────────────────────────────────────────────────────────────
-   Constants & state
-   ───────────────────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Constants
+   ═══════════════════════════════════════════════════════════════════════════ */
 const PAIR_COLORS = {
   EURUSD:'#4f7df0', GBPUSD:'#10b981', AUDUSD:'#f59e0b', NZDUSD:'#6366f1',
   USDCAD:'#ef4444', USDCHF:'#ec4899', USDJPY:'#14b8a6', GBPJPY:'#f97316',
   EURGBP:'#8b5cf6', XAUUSD:'#eab308',
 };
-const FACTOR_COLORS = { dxy:'#4f7df0', rates:'#10b981', vix:'#f59e0b' };
-const REGIME_COLORS = {
-  BULL:{ fill:'rgba(16,185,129,0.10)', text:'#10b981' },
-  BEAR:{ fill:'rgba(248,113,113,0.10)', text:'#ef4444' },
-  RANGE:{ fill:'rgba(251,191,36,0.10)',  text:'#fbbf24' },
-  CHOP:{ fill:'rgba(148,163,184,0.08)', text:'#94a3b8' },
+const REGIME_FILL = {
+  BULL:'rgba(16,185,129,0.10)', BEAR:'rgba(248,113,113,0.09)',
+  RANGE:'rgba(251,191,36,0.08)', CHOP:'rgba(148,163,184,0.06)',
 };
 
-let state = {
+/* ═══════════════════════════════════════════════════════════════════════════
+   State
+   ═══════════════════════════════════════════════════════════════════════════ */
+const S = {
+  source: null,          // 'rich' | 'live' | null
   records: [],
   pairs: [],
-  series: {},      // pair → [{ts,regime,dxy,rates,vix,r2}]
-  corrMatrix: {},  // pair → pair → corr
-  regimeStats: {}, // pair → regime → {dxy_mean,rates_mean,vix_mean,n}
+  regimeStats: {},       // pair → regime → {vix_mean, dxy_mean, rates_mean, n}
+  avgCorr: {},           // 'EURUSD_GBPUSD' → float  (full history average)
+  regimeCorr: {},        // regime → 'EURUSD_GBPUSD' → float
   window: 60,
   factor: 'vix',
-  regimeFilter: 'ALL',
   activePairs: new Set(),
 };
-
 const CHARTS = {};
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
    Theme
-   ───────────────────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function toggleTheme() {
   document.body.classList.toggle('dark');
   localStorage.setItem('cl_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-  Object.values(CHARTS).forEach(c => c && c.update());
+  Object.values(CHARTS).forEach(c => c?.update());
 }
 if (localStorage.getItem('cl_theme') === 'dark') document.body.classList.add('dark');
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Data loading
-   ───────────────────────────────────────────────────────────────────────────── */
-async function loadData() {
+/* ═══════════════════════════════════════════════════════════════════════════
+   Entry point — try corr_history first, fall back to beta_history
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function init() {
   document.getElementById('btnRefresh').disabled = true;
-  document.getElementById('betasEmpty').innerHTML =
-    '<div class="loading-spin"></div><div>Fetching beta history…</div>';
-  document.getElementById('betasContent').style.display = 'none';
+  setLoading(true);
 
   try {
-    const res = await fetch('/api/beta-history?limit=2000');
-    const { records, total, sampled } = await res.json();
-    if (!records?.length) throw new Error('No data returned');
+    const res = await fetch('/api/corr-history');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.records?.length) {
+        loadRichHistory(data);
+        return;
+      }
+    }
+  } catch (_) { /* fall through */ }
 
-    state.records = records;
-    processData(records);
-    updateStatus(records, total, sampled);
-    buildPairUI();
-    renderAll();
+  // Fallback: beta history from live bot
+  try {
+    const res = await fetch('/api/beta-history?limit=2000');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (text.trim().startsWith('<')) throw new Error('Server returned HTML — restart required after deploy');
+    const data = JSON.parse(text);
+    if (data.records?.length) {
+      loadLiveHistory(data);
+      return;
+    }
   } catch (e) {
-    document.getElementById('betasEmpty').innerHTML =
-      `<div style="color:var(--red)">Error loading data: ${e.message}</div>`;
+    showError(e.message);
   } finally {
     document.getElementById('btnRefresh').disabled = false;
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Data processing
-   ───────────────────────────────────────────────────────────────────────────── */
-function processData(records) {
-  // Extract pairs
-  state.pairs = Object.keys(records[0]?.estimates || {}).sort();
+/* ═══════════════════════════════════════════════════════════════════════════
+   Data loaders
+   ═══════════════════════════════════════════════════════════════════════════ */
+function loadRichHistory(data) {
+  // corr_history.json — years of price-return correlations from OANDA H4
+  S.source = 'rich';
+  S.pairs = data.pairs || [];
+  S.records = data.records || [];
+  S.regimeStats = data.regime_stats || {};
+  S.avgCorr = data.avg_corr || {};
 
-  // Build per-pair time series
-  state.series = {};
-  for (const p of state.pairs) state.series[p] = [];
+  // Compute per-regime average correlations from records
+  S.regimeCorr = computeRegimeCorr(S.records);
 
+  setSrcBadge('rich', `${data.years ?? '?'}y of H4 price-return correlations`);
+  updateStatus('rich', S.records, data.generated);
+  buildPairUI();
+  renderAll();
+  document.getElementById('btnRefresh').disabled = false;
+}
+
+function loadLiveHistory(data) {
+  // beta_history.jsonl — live bot betas only (~days)
+  S.source = 'live';
+  S.records = data.records || [];
+  const first = S.records[0];
+  S.pairs = Object.keys(first?.estimates || {}).sort();
+  S.regimeStats = buildRegimeStatsFromBeta(S.records);
+
+  // Approximate pair-pair corr from beta vector similarity
+  S.avgCorr = approxCorrFromBeta(S.records, S.pairs);
+  S.regimeCorr = computeRegimeCorrFromBeta(S.records, S.pairs);
+
+  setSrcBadge('live', `${data.sampled} records (${data.total} total) — live bot only`);
+  updateStatus('live', S.records, null);
+  buildPairUI();
+  renderAll();
+  document.getElementById('btnRefresh').disabled = false;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Data adapters — normalise both sources into the same shape
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Extract beta series from a rich-history record */
+function getBeta(rec, pair, factor) {
+  if (S.source === 'rich') return rec.beta?.[pair]?.[factor] ?? null;
+  return rec.estimates?.[pair]?.[`beta_${factor}`]?.mean ?? null;
+}
+
+/** Get all corr values from a record (rich only) */
+function getCorrKey(pA, pB) {
+  const k1 = `${pA}_${pB}`, k2 = `${pB}_${pA}`;
+  return (r) => r.corr?.[k1] ?? r.corr?.[k2] ?? null;
+}
+
+/** Build regime stats from beta_history.jsonl */
+function buildRegimeStatsFromBeta(records) {
+  const data = {};
   for (const r of records) {
-    for (const p of state.pairs) {
-      const e = r.estimates?.[p];
-      if (!e) continue;
-      const dxy   = e.beta_dxy?.mean   ?? null;
-      const rates = e.beta_rates?.mean ?? null;
-      const vix   = e.beta_vix?.mean   ?? null;
-      if (vix === null && dxy === null) continue;
-      state.series[p].push({ ts: r.ts, regime: r.regime, dxy, rates, vix, r2: e.r_squared ?? 0 });
+    const rg = r.regime || 'RANGE';
+    for (const [pair, est] of Object.entries(r.estimates || {})) {
+      if (!data[pair]) data[pair] = {};
+      if (!data[pair][rg]) data[pair][rg] = { dxy: [], rates: [], vix: [] };
+      const dxy   = est.beta_dxy?.mean;
+      const rates = est.beta_rates?.mean;
+      const vix   = est.beta_vix?.mean;
+      if (dxy   !== undefined) data[pair][rg].dxy.push(dxy);
+      if (rates !== undefined) data[pair][rg].rates.push(rates);
+      if (vix   !== undefined) data[pair][rg].vix.push(vix);
     }
   }
-
-  // Compute regime statistics
-  state.regimeStats = {};
-  for (const p of state.pairs) {
-    const byRegime = {};
-    for (const d of state.series[p]) {
-      const rg = d.regime || 'RANGE';
-      if (!byRegime[rg]) byRegime[rg] = { dxy: [], rates: [], vix: [] };
-      if (d.dxy   !== null) byRegime[rg].dxy.push(d.dxy);
-      if (d.rates !== null) byRegime[rg].rates.push(d.rates);
-      if (d.vix   !== null) byRegime[rg].vix.push(d.vix);
-    }
-    state.regimeStats[p] = {};
-    for (const [rg, vals] of Object.entries(byRegime)) {
-      const mean = arr => arr.length ? arr.reduce((s,v) => s+v, 0) / arr.length : null;
-      const std  = arr => {
-        if (arr.length < 2) return null;
-        const m = mean(arr);
-        return Math.sqrt(arr.reduce((s,v) => s + (v-m)**2, 0) / arr.length);
-      };
-      state.regimeStats[p][rg] = {
-        dxy_mean: mean(vals.dxy), dxy_std: std(vals.dxy), n_dxy: vals.dxy.length,
-        rates_mean: mean(vals.rates), rates_std: std(vals.rates), n_rates: vals.rates.length,
-        vix_mean: mean(vals.vix), vix_std: std(vals.vix), n: vals.vix.length,
+  const out = {};
+  for (const [pair, regimes] of Object.entries(data)) {
+    out[pair] = {};
+    for (const [rg, vals] of Object.entries(regimes)) {
+      const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
+      out[pair][rg] = {
+        dxy_mean: fmtN(mean(vals.dxy)), rates_mean: fmtN(mean(vals.rates)),
+        vix_mean: fmtN(mean(vals.vix)), n: vals.vix.length,
       };
     }
   }
-
-  // Compute pair-to-pair correlation matrix (over VIX beta series by default)
-  state.corrMatrix = buildCorrMatrix('vix');
+  return out;
 }
 
-function buildCorrMatrix(factor = 'vix') {
-  const matrix = {};
-  const pairs = state.pairs;
-  for (const a of pairs) {
-    matrix[a] = {};
-    const mapA = new Map(state.series[a].map(d => [d.ts, d[factor]]));
-    for (const b of pairs) {
-      if (a === b) { matrix[a][b] = 1.0; continue; }
-      const ys = [], xs = [];
-      for (const d of state.series[b]) {
-        if (mapA.has(d.ts) && d[factor] !== null) {
-          xs.push(mapA.get(d.ts));
-          ys.push(d[factor]);
-        }
+/** Approximate pair-pair corr from beta vector cosine similarity (beta_history only) */
+function approxCorrFromBeta(records, pairs) {
+  const sums = {}, cnts = {};
+  for (const r of records) {
+    for (let i = 0; i < pairs.length; i++) {
+      const eA = r.estimates?.[pairs[i]];
+      if (!eA) continue;
+      const vA = [eA.beta_dxy?.mean, eA.beta_rates?.mean, eA.beta_vix?.mean];
+      if (vA.some(v => v == null)) continue;
+      for (let j = i + 1; j < pairs.length; j++) {
+        const eB = r.estimates?.[pairs[j]];
+        if (!eB) continue;
+        const vB = [eB.beta_dxy?.mean, eB.beta_rates?.mean, eB.beta_vix?.mean];
+        if (vB.some(v => v == null)) continue;
+        const sim = cosineSim(vA, vB);
+        const k = `${pairs[i]}_${pairs[j]}`;
+        sums[k] = (sums[k] || 0) + sim;
+        cnts[k] = (cnts[k] || 0) + 1;
       }
-      matrix[a][b] = xs.length >= 5 ? pearsonCorr(xs, ys) : null;
     }
   }
-  return matrix;
+  const out = {};
+  for (const k of Object.keys(sums)) out[k] = fmtN(sums[k] / cnts[k]);
+  return out;
 }
 
+function computeRegimeCorr(records) {
+  const byRegime = {};
+  for (const r of records) {
+    const rg = r.regime || 'RANGE';
+    if (!byRegime[rg]) byRegime[rg] = {};
+    for (const [k, v] of Object.entries(r.corr || {})) {
+      if (!byRegime[rg][k]) byRegime[rg][k] = [];
+      byRegime[rg][k].push(v);
+    }
+  }
+  const out = {};
+  for (const [rg, corrs] of Object.entries(byRegime)) {
+    out[rg] = {};
+    for (const [k, vals] of Object.entries(corrs))
+      out[rg][k] = fmtN(vals.reduce((s, v) => s + v, 0) / vals.length);
+  }
+  return out;
+}
+
+function computeRegimeCorrFromBeta(records, pairs) {
+  const byRegime = {};
+  for (const r of records) {
+    const rg = r.regime || 'RANGE';
+    if (!byRegime[rg]) byRegime[rg] = {};
+    for (let i = 0; i < pairs.length; i++) {
+      const eA = r.estimates?.[pairs[i]];
+      if (!eA) continue;
+      const vA = [eA.beta_dxy?.mean, eA.beta_rates?.mean, eA.beta_vix?.mean];
+      if (vA.some(v => v == null)) continue;
+      for (let j = i + 1; j < pairs.length; j++) {
+        const eB = r.estimates?.[pairs[j]];
+        if (!eB) continue;
+        const vB = [eB.beta_dxy?.mean, eB.beta_rates?.mean, eB.beta_vix?.mean];
+        if (vB.some(v => v == null)) continue;
+        const k = `${pairs[i]}_${pairs[j]}`;
+        if (!byRegime[rg][k]) byRegime[rg][k] = [];
+        byRegime[rg][k].push(cosineSim(vA, vB));
+      }
+    }
+  }
+  const out = {};
+  for (const [rg, corrs] of Object.entries(byRegime)) {
+    out[rg] = {};
+    for (const [k, vals] of Object.entries(corrs))
+      out[rg][k] = fmtN(vals.reduce((s, v) => s + v, 0) / vals.length);
+  }
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Maths helpers
+   ═══════════════════════════════════════════════════════════════════════════ */
 function pearsonCorr(xs, ys) {
   const n = xs.length;
-  if (n < 3) return null;
-  const mx = xs.reduce((s,v) => s+v, 0) / n;
-  const my = ys.reduce((s,v) => s+v, 0) / n;
+  if (n < 4) return null;
+  const mx = xs.reduce((s, v) => s + v, 0) / n;
+  const my = ys.reduce((s, v) => s + v, 0) / n;
   let num = 0, da = 0, db = 0;
   for (let i = 0; i < n; i++) {
     const a = xs[i] - mx, b = ys[i] - my;
-    num += a * b; da += a*a; db += b*b;
+    num += a * b; da += a * a; db += b * b;
   }
-  const denom = Math.sqrt(da * db);
-  return denom < 1e-10 ? 0 : Math.max(-1, Math.min(1, num / denom));
+  const d = Math.sqrt(da * db);
+  return d < 1e-12 ? 0 : Math.max(-1, Math.min(1, num / d));
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Regime background plugin for Chart.js
-   ───────────────────────────────────────────────────────────────────────────── */
-const regimeBgPlugin = {
+function cosineSim(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] ** 2; nb += b[i] ** 2; }
+  const d = Math.sqrt(na * nb);
+  return d < 1e-10 ? 0 : Math.max(-1, Math.min(1, dot / d));
+}
+
+function fmtN(v, dp = 4) { return v === null || v === undefined ? null : +v.toFixed(dp); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Chart.js regime background plugin
+   ═══════════════════════════════════════════════════════════════════════════ */
+const regimeBg = {
   id: 'regimeBg',
-  beforeDraw(chart, _args, opts) {
-    if (!opts.segments?.length) return;
+  beforeDraw(chart, _, opts) {
+    if (!opts?.segs?.length) return;
     const { ctx, chartArea: { top, bottom, left, right }, scales: { x } } = chart;
     ctx.save();
-    for (const seg of opts.segments) {
-      const x1 = Math.max(left,  x.getPixelForValue(seg.ts0));
-      const x2 = Math.min(right, x.getPixelForValue(seg.ts1));
+    for (const s of opts.segs) {
+      const x1 = Math.max(left,  x.getPixelForValue(s.ts0));
+      const x2 = Math.min(right, x.getPixelForValue(s.ts1));
       if (x2 <= x1) continue;
-      ctx.fillStyle = REGIME_COLORS[seg.regime]?.fill || 'transparent';
+      ctx.fillStyle = REGIME_FILL[s.regime] || 'transparent';
       ctx.fillRect(x1, top, x2 - x1, bottom - top);
     }
     ctx.restore();
   }
 };
-Chart.register(regimeBgPlugin);
+Chart.register(regimeBg);
 
-function buildRegimeSegments(records) {
+function buildSegs(records) {
   const segs = [];
   let cur = null;
-  for (let i = 0; i < records.length; i++) {
-    const rg = records[i].regime || 'RANGE';
+  for (const r of records) {
+    const rg = r.regime || 'RANGE';
     if (!cur || rg !== cur.regime) {
-      if (cur) cur.ts1 = records[i].ts;
-      cur = { regime: rg, ts0: records[i].ts, ts1: records[i].ts };
+      if (cur) cur.ts1 = r.ts;
+      cur = { regime: rg, ts0: r.ts, ts1: r.ts + 14400000 };
       segs.push(cur);
     }
   }
-  if (cur && records.length) cur.ts1 = records[records.length - 1].ts + 120000;
+  if (cur && records.length) cur.ts1 = records[records.length - 1].ts + 14400000;
   return segs;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Chart helpers
-   ───────────────────────────────────────────────────────────────────────────── */
-function chartDefaults() {
+function lineChart(id, datasets, segs, yLabel = '', yMin, yMax) {
+  if (CHARTS[id]) { CHARTS[id].destroy(); delete CHARTS[id]; }
+  const el = document.getElementById(id);
+  if (!el) return;
   const dark = document.body.classList.contains('dark');
-  return {
-    gridColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-    textColor: dark ? '#5a6380' : '#8fa0b8',
-    tickColor: dark ? '#9ba3bf' : '#4b5a6e',
-  };
-}
-
-function makeBaseChartCfg(labels, datasets, segments, yLabel = '', zeroline = true) {
-  const { gridColor, textColor, tickColor } = chartDefaults();
-  const cfg = {
+  const gc = dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+  const tc = dark ? '#5a6380' : '#8fa0b8';
+  CHARTS[id] = new Chart(el, {
     type: 'line',
-    data: { labels, datasets },
+    data: { datasets },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 300 },
+      responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: document.body.classList.contains('dark') ? '#1a1d27' : '#fff',
-          borderColor: document.body.classList.contains('dark') ? '#2a2f45' : '#dde3ee',
-          borderWidth: 1,
-          titleColor: tickColor,
-          bodyColor: tickColor,
-          padding: 8,
-          callbacks: {
-            label: ctx => `${ctx.dataset.label}: ${(+ctx.parsed.y).toFixed(3)}`,
-          },
+          backgroundColor: dark ? '#1a1d27' : '#fff',
+          borderColor: dark ? '#2a2f45' : '#dde3ee', borderWidth: 1,
+          titleColor: tc, bodyColor: tc, padding: 8,
+          callbacks: { label: c => `${c.dataset.label}: ${(+c.parsed.y).toFixed(3)}` }
         },
-        regimeBg: { segments },
+        regimeBg: { segs },
       },
       scales: {
         x: {
           type: 'time',
-          time: { unit: 'hour', displayFormats: { hour: 'MMM d HH:mm', day: 'MMM d' } },
-          grid: { color: gridColor },
-          ticks: { color: textColor, maxTicksLimit: 8, font: { family: 'DM Mono', size: 10 } },
+          time: { tooltipFormat: 'yyyy-MM-dd HH:mm', displayFormats: { day: 'MMM d', month: 'MMM yyyy' } },
+          adapters: { date: {} },
+          grid: { color: gc },
+          ticks: { color: tc, maxTicksLimit: 8, font: { family: 'DM Mono', size: 10 } },
         },
         y: {
-          grid: { color: gridColor },
-          ticks: { color: textColor, font: { family: 'DM Mono', size: 10 } },
-          title: yLabel ? { display: true, text: yLabel, color: textColor, font: { size: 9 } } : undefined,
-        },
-      },
-    },
-  };
-  if (zeroline) {
-    cfg.options.plugins.annotation = undefined; // placeholder
-    cfg.options.scales.y.border = { dash: [2,2] };
-  }
-  return cfg;
+          grid: { color: gc },
+          ticks: { color: tc, font: { family: 'DM Mono', size: 10 } },
+          ...(yLabel ? { title: { display: true, text: yLabel, color: tc, font: { size: 9 } } } : {}),
+          ...(yMin !== undefined ? { min: yMin } : {}),
+          ...(yMax !== undefined ? { max: yMax } : {}),
+        }
+      }
+    }
+  });
 }
 
-function makeDataset(pair, pts, factor) {
+function ds(pair, data, opts = {}) {
   const col = PAIR_COLORS[pair] || '#888';
-  return {
-    label: pair,
-    data: pts.map(d => ({ x: d.ts, y: d[factor] })).filter(d => d.y !== null),
-    borderColor: col,
-    backgroundColor: col + '20',
-    borderWidth: 1.5,
-    pointRadius: 0,
-    tension: 0.3,
-  };
+  return { label: pair, data, borderColor: col, backgroundColor: col + '18',
+    borderWidth: opts.width ?? 1.5, pointRadius: 0, tension: 0.3,
+    fill: opts.fill ?? false, ...opts };
 }
 
-function destroyChart(id) {
-  if (CHARTS[id]) { CHARTS[id].destroy(); delete CHARTS[id]; }
-}
-
-function createOrUpdate(id, cfg) {
-  destroyChart(id);
-  const canvas = document.getElementById(id);
-  if (!canvas) return;
-  CHARTS[id] = new Chart(canvas, cfg);
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Build sidebar pair UI
-   ───────────────────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Sidebar UI
+   ═══════════════════════════════════════════════════════════════════════════ */
 function buildPairUI() {
-  const grid = document.getElementById('pairGrid');
-  grid.innerHTML = '';
-  state.activePairs = new Set(state.pairs);
+  const g = document.getElementById('pairGrid');
+  g.innerHTML = '';
+  S.activePairs = new Set(S.pairs);
 
-  for (const p of state.pairs) {
+  for (const p of S.pairs) {
     const col = PAIR_COLORS[p] || '#888';
     const lbl = document.createElement('label');
     lbl.className = 'pair-cb';
-    lbl.innerHTML = `<input type="checkbox" checked data-pair="${p}" onchange="togglePair('${p}',this.checked)">
+    lbl.innerHTML = `<input type="checkbox" checked onchange="togglePair('${p}',this.checked)">
       <span class="pair-dot" style="background:${col}"></span>${p}`;
-    grid.appendChild(lbl);
+    g.appendChild(lbl);
   }
 
-  // Pair filter chips for betas tab
-  const pf = document.getElementById('betasPairFilter');
-  pf.innerHTML = state.pairs.map(p => {
-    const col = PAIR_COLORS[p] || '#888';
-    return `<button class="pf-chip on" data-pair="${p}" style="border-color:${col};color:${col}"
-      onclick="toggleChip(this,'${p}')">${p}</button>`;
-  }).join('');
-
-  // Rolling corr dropdowns
-  ['rollPairA','rollPairB'].forEach((id, i) => {
+  // Rolling corr pickers
+  ['rollA', 'rollB'].forEach((id, i) => {
     const sel = document.getElementById(id);
-    sel.innerHTML = state.pairs.map((p, j) =>
-      `<option value="${p}" ${(i===0&&j===0)||(i===1&&j===1)?'selected':''}>${p}</option>`
+    sel.innerHTML = S.pairs.map((p, j) =>
+      `<option value="${p}" ${(i === 0 && j === 0) || (i === 1 && j === 1) ? 'selected' : ''}>${p}</option>`
     ).join('');
+  });
+
+  // Window control
+  document.querySelectorAll('#winCtrl .seg-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('#winCtrl .seg-btn').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      S.window = parseInt(btn.dataset.w);
+      renderRolling();
+    };
   });
 }
 
 function togglePair(pair, on) {
-  if (on) state.activePairs.add(pair);
-  else state.activePairs.delete(pair);
+  if (on) S.activePairs.add(pair); else S.activePairs.delete(pair);
   renderBetaCharts();
-  renderMatrix();
-}
-
-function toggleChip(btn, pair) {
-  btn.classList.toggle('on');
-  if (!btn.classList.contains('on')) {
-    state.activePairs.delete(pair);
-    btn.style.background = '';
-  } else {
-    state.activePairs.add(pair);
-    btn.style.background = PAIR_COLORS[pair] || '#888';
-  }
-  renderBetaCharts();
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Controls
-   ───────────────────────────────────────────────────────────────────────────── */
-function setWindow(btn) {
-  document.querySelectorAll('#windowCtrl .seg-btn').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  state.window = parseInt(btn.dataset.w);
-  renderRollingCorr();
-}
-function applyFilters() {
-  state.factor = document.getElementById('factorSel').value;
-  state.regimeFilter = document.getElementById('regimeFilter').value;
-  state.corrMatrix = buildCorrMatrix(state.factor);
-  renderAll();
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Filtered series helper
-   ───────────────────────────────────────────────────────────────────────────── */
-function filteredSeries(pair) {
-  const rg = state.regimeFilter;
-  return rg === 'ALL' ? state.series[pair] :
-    state.series[pair].filter(d => (d.regime || 'RANGE') === rg);
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Render all
-   ───────────────────────────────────────────────────────────────────────────── */
-function renderAll() {
-  if (!state.pairs.length) return;
-  document.getElementById('betasEmpty').style.display = 'none';
-  document.getElementById('betasContent').style.display = 'flex';
-  renderBetaCharts();
-  renderMatrix();
-  renderRegimeBreakdown();
-  renderHedgeFinder();
-  renderFactorDominance();
-  renderRollingCorr();
   renderDivergenceChart();
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Tab 1: Beta time series charts
-   ───────────────────────────────────────────────────────────────────────────── */
-function renderBetaCharts() {
-  const active = [...state.activePairs];
-  const allPts = state.records;
-  const segs = buildRegimeSegments(allPts);
-
-  ['vix','dxy','rates','r2'].forEach((factor, fi) => {
-    const canvasId = ['chartVix','chartDxy','chartRates','chartR2'][fi];
-    const datasets = active.map(p => {
-      const pts = filteredSeries(p);
-      return makeDataset(p, pts, factor === 'r2' ? 'r2' : factor);
-    }).filter(d => d.data.length > 0);
-
-    const labels = undefined; // using time type
-    const cfg = makeBaseChartCfg(labels, datasets, segs,
-      factor === 'vix' ? 'β_vix' : factor === 'dxy' ? 'β_dxy' : factor === 'rates' ? 'β_rates' : 'R²');
-
-    // Zero-line annotation via plugin
-    cfg.options.scales.y.afterBuildTicks = axis => {
-      if (!axis.ticks.some(t => t.value === 0)) {
-        // subtle zero line via grid emphasis only
-      }
-    };
-    createOrUpdate(canvasId, cfg);
-  });
-
-  // Build legend
-  const legend = active.map(p => {
-    const col = PAIR_COLORS[p] || '#888';
-    return `<div class="legend-item"><div class="legend-line" style="background:${col}"></div>${p}</div>`;
-  }).join('');
-  const legendEl = document.querySelector('#betasContent .legend-row');
-  if (!legendEl) {
-    const lr = document.createElement('div');
-    lr.className = 'legend-row';
-    lr.innerHTML = legend;
-    document.getElementById('betasContent').insertBefore(lr, document.getElementById('betasContent').firstChild);
-  }
+function applyFilters() {
+  S.factor = document.getElementById('factorSel').value;
+  renderAll();
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Tab 2: Correlation Matrix heatmap
-   ───────────────────────────────────────────────────────────────────────────── */
+function filteredRecords() {
+  const rg = document.getElementById('regimeSel')?.value || 'ALL';
+  return rg === 'ALL' ? S.records : S.records.filter(r => (r.regime || 'RANGE') === rg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Render orchestration
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderAll() {
+  if (!S.pairs.length) return;
+  setLoading(false);
+  renderMatrix();
+  renderBetaCharts();
+  renderRegimeBreakdown();
+  renderHedgeFinder();
+  renderFactorDominance();
+  renderRolling();
+  renderDivergenceChart();
+  updateBetaLegend();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 1: Correlation Matrix
+   ═══════════════════════════════════════════════════════════════════════════ */
 function renderMatrix() {
-  const pairs = state.pairs;
-  const matrix = state.corrMatrix;
+  const pairs = S.pairs;
   if (!pairs.length) return;
+  document.getElementById('matrixContent').style.display = 'flex';
 
-  // Rebuild with current factor
-  const newMatrix = buildCorrMatrix(state.factor);
+  const title = S.source === 'rich'
+    ? 'Price-Return Correlation (Pearson, avg over history)'
+    : 'Factor-Beta Cosine Similarity (approx. correlation)';
+  document.getElementById('matrixTitle').textContent = title;
 
-  // HTML table
+  // Build NxN matrix from S.avgCorr
+  function getCorr(a, b) {
+    if (a === b) return 1;
+    return S.avgCorr[`${a}_${b}`] ?? S.avgCorr[`${b}_${a}`] ?? null;
+  }
+
   let html = `<table class="hm-table"><thead><tr><th></th>`;
-  for (const b of pairs) html += `<th title="${b}">${b}</th>`;
+  for (const b of pairs) html += `<th title="${b}">${b.slice(0, 6)}</th>`;
   html += `</tr></thead><tbody>`;
 
   for (const a of pairs) {
     html += `<tr><td class="hm-rowlbl">${a}</td>`;
     for (const b of pairs) {
-      const v = newMatrix[a]?.[b];
-      if (v === null || v === undefined) {
-        html += `<td style="background:var(--s2);color:var(--text3)">—</td>`;
-        continue;
-      }
-      const pct = (v + 1) / 2; // 0→1
+      const v = getCorr(a, b);
+      if (v === null) { html += `<td style="background:var(--s2);color:var(--text3)">—</td>`; continue; }
       const bg = v >= 0
-        ? `rgba(16,185,129,${(v * 0.7).toFixed(2)})`
-        : `rgba(239,68,68,${(Math.abs(v) * 0.7).toFixed(2)})`;
-      const txt = Math.abs(v) > 0.5 ? '#fff' : (document.body.classList.contains('dark') ? '#9ba3bf' : '#4b5a6e');
-      html += `<td style="background:${bg};color:${txt}" title="${a}/${b}: ${v.toFixed(3)}">${v.toFixed(2)}</td>`;
+        ? `rgba(16,185,129,${(v * 0.75).toFixed(2)})`
+        : `rgba(239,68,68,${(Math.abs(v) * 0.75).toFixed(2)})`;
+      const fg = Math.abs(v) > 0.45 ? '#fff' : (document.body.classList.contains('dark') ? '#9ba3bf' : '#4b5a6e');
+      html += `<td style="background:${bg};color:${fg}" title="${a}/${b}: ${v.toFixed(4)}">${v.toFixed(2)}</td>`;
     }
     html += `</tr>`;
   }
   html += `</tbody></table>`;
-
   document.getElementById('corrHeatmap').innerHTML = html;
 
-  // Pair clusters
-  const factor = state.factor;
-  const avgCorr = pairs.map(p => {
+  // Cluster bars
+  const avgByPair = pairs.map(p => {
     const others = pairs.filter(q => q !== p);
-    const vals = others.map(q => newMatrix[p]?.[q]).filter(v => v !== null);
-    return { pair: p, avg: vals.length ? vals.reduce((s,v) => s+v, 0) / vals.length : 0 };
+    const vals = others.map(q => getCorr(p, q)).filter(v => v !== null);
+    return { pair: p, avg: vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0 };
   }).sort((a, b) => b.avg - a.avg);
 
-  const clustersHtml = avgCorr.map(({ pair, avg }) => {
+  document.getElementById('corrClusters').innerHTML = avgByPair.map(({ pair, avg }) => {
     const col = PAIR_COLORS[pair] || '#888';
-    const barPct = ((avg + 1) / 2 * 100).toFixed(1);
-    const barCol = avg > 0.3 ? 'var(--green)' : avg < -0.1 ? 'var(--red)' : 'var(--amber)';
-    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:11px">
-      <div style="font-family:'DM Mono',monospace;font-weight:600;width:70px;color:${col}">${pair}</div>
-      <div style="flex:1;background:var(--s2);border-radius:3px;height:10px;overflow:hidden">
-        <div style="width:${barPct}%;height:100%;background:${barCol};border-radius:3px"></div>
-      </div>
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);width:44px;text-align:right">${avg.toFixed(3)}</div>
-      <div style="font-size:9px;color:var(--text3);width:60px">${avg>0.3?'correlated':avg<-0.1?'divergent':'neutral'}</div>
+    const pct = ((avg + 1) / 2 * 100).toFixed(1);
+    const barCol = avg > 0.3 ? 'var(--green)' : avg < -0.05 ? 'var(--red)' : 'var(--amber)';
+    const tag = avg > 0.3 ? 'CORRELATED' : avg < -0.05 ? 'DIVERGENT' : 'NEUTRAL';
+    const tagCol = avg > 0.3 ? 'var(--green)' : avg < -0.05 ? 'var(--red)' : 'var(--amber)';
+    return `<div class="bar-wrap">
+      <div class="bar-pair" style="color:${col}">${pair}</div>
+      <div class="bar-track"><div class="bar-fill" style="left:0;width:${pct}%;background:${barCol}"></div></div>
+      <div class="bar-val">${avg >= 0 ? '+' : ''}${avg.toFixed(3)}</div>
+      <div class="bar-tag" style="color:${tagCol}">${tag}</div>
     </div>`;
   }).join('');
-
-  document.getElementById('corrClusters').innerHTML = clustersHtml;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Tab 3: Rolling correlation time series
-   ───────────────────────────────────────────────────────────────────────────── */
-function renderRollingCorr() {
-  if (!state.pairs.length) return;
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 2: Rolling correlation time series
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderRolling() {
+  if (!S.pairs.length) return;
+  const pA = document.getElementById('rollA')?.value;
+  const pB = document.getElementById('rollB')?.value;
+  if (!pA || !pB || pA === pB) return;
 
-  const pA = document.getElementById('rollPairA')?.value;
-  const pB = document.getElementById('rollPairB')?.value;
-  if (!pA || !pB) return;
+  const win = S.window;
+  const recs = filteredRecords();
 
-  const factor = state.factor;
-  const win = state.window;
-  const sA = state.series[pA] || [];
-  const sB = state.series[pB] || [];
+  if (S.source === 'rich') {
+    // Direct rolling corr from corr values in records
+    const getCkFn = getCorrKey(pA, pB);
+    const vals = recs.map(r => ({ ts: r.ts, v: getCkFn(r) })).filter(d => d.v !== null);
 
-  // Align by timestamp
-  const mapA = new Map(sA.map(d => [d.ts, d]));
-  const aligned = sB.filter(d => mapA.has(d.ts) && d[factor] !== null).map(d => ({
-    ts: d.ts,
-    regime: d.regime,
-    vA: mapA.get(d.ts)[factor],
-    vB: d[factor],
-  }));
+    // Smooth with rolling mean of window size
+    const smoothed = [];
+    for (let i = 0; i < vals.length; i++) {
+      const start = Math.max(0, i - win + 1);
+      const slice = vals.slice(start, i + 1).map(d => d.v);
+      const mean = slice.reduce((s, v) => s + v, 0) / slice.length;
+      const rec = recs.find(r => r.ts === vals[i].ts);
+      smoothed.push({ x: vals[i].ts, y: +mean.toFixed(4), regime: rec?.regime });
+    }
 
-  const rollCorr = [];
-  for (let i = win; i <= aligned.length; i++) {
-    const slice = aligned.slice(i - win, i);
-    const xs = slice.map(d => d.vA);
-    const ys = slice.map(d => d.vB);
-    const corr = pearsonCorr(xs, ys);
-    rollCorr.push({ ts: aligned[i - 1].ts, regime: aligned[i - 1].regime, corr });
+    document.getElementById('rollingInfo').textContent =
+      `${smoothed.length} snapshots · ${win}-bar rolling mean · avg = ${(smoothed.reduce((s,d)=>s+d.y,0)/smoothed.length||0).toFixed(3)}`;
+
+    lineChart('chartRolling', [ds(pA, smoothed, { label: `${pA}/${pB}`, borderColor: '#8b5cf6', fill: true, backgroundColor: 'rgba(139,92,246,0.08)' })],
+      buildSegs(recs), 'Correlation', -1, 1);
+
+  } else {
+    // From beta similarity
+    const serA = recs.map(r => ({ ts: r.ts, regime: r.regime, v: r.estimates?.[pA]?.beta_vix?.mean ?? null }));
+    const serB = recs.map(r => ({ ts: r.ts, v: r.estimates?.[pB]?.beta_vix?.mean ?? null }));
+    const mapA = new Map(serA.map(d => [d.ts, d.v]));
+    const aligned = serB.filter(d => mapA.has(d.ts) && d.v !== null).map(d => ({
+      ts: d.ts, vA: mapA.get(d.ts), vB: d.v,
+    }));
+
+    const rollCorr = [];
+    for (let i = win; i <= aligned.length; i++) {
+      const sl = aligned.slice(i - win, i);
+      const xs = sl.map(d => d.vA), ys = sl.map(d => d.vB);
+      const c = pearsonCorr(xs, ys);
+      if (c !== null) rollCorr.push({ x: aligned[i - 1].ts, y: c });
+    }
+
+    document.getElementById('rollingInfo').textContent =
+      `${rollCorr.length} windows · ${win}-bar rolling Pearson · VIX beta (approx from live betas)`;
+
+    lineChart('chartRolling', [ds(pA, rollCorr, { label: `${pA}/${pB}`, borderColor: '#8b5cf6', fill: true, backgroundColor: 'rgba(139,92,246,0.08)' })],
+      buildSegs(recs), 'Correlation', -1, 1);
   }
-
-  const segs = buildRegimeSegments(rollCorr.map(d => ({ ts: d.ts, regime: d.regime })));
-
-  const cfg = makeBaseChartCfg(undefined, [{
-    label: `${pA} / ${pB}`,
-    data: rollCorr.map(d => ({ x: d.ts, y: d.corr })),
-    borderColor: '#4f7df0',
-    backgroundColor: 'rgba(79,125,240,0.1)',
-    borderWidth: 1.5,
-    pointRadius: 0,
-    tension: 0.3,
-    fill: true,
-  }], segs, 'Correlation');
-
-  cfg.options.scales.y.min = -1;
-  cfg.options.scales.y.max = 1;
-
-  createOrUpdate('chartRollingCorr', cfg);
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Tab 3b: Divergence from regime-mean beta
-   ───────────────────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Beta divergence from regime mean
+   ═══════════════════════════════════════════════════════════════════════════ */
 function renderDivergenceChart() {
-  if (!state.pairs.length) return;
-  const factor = state.factor;
-  const active = [...state.activePairs].slice(0, 5); // top 5 to keep readable
+  if (!S.pairs.length) return;
+  const factor = S.factor;
+  const recs = filteredRecords();
+  const active = [...S.activePairs].slice(0, 6);
 
   const datasets = active.map(pair => {
-    const s = state.series[pair];
-    const pts = s.map(d => {
-      const rgStats = state.regimeStats[pair]?.[d.regime];
-      const mean = rgStats?.[`${factor}_mean`];
-      if (mean === null || mean === undefined || d[factor] === null) return null;
-      return { x: d.ts, y: d[factor] - mean };
+    const pts = recs.map(r => {
+      let val = null;
+      if (S.source === 'rich') {
+        val = r.beta?.[pair]?.[factor] ?? null;
+      } else {
+        val = r.estimates?.[pair]?.[`beta_${factor}`]?.mean ?? null;
+      }
+      if (val === null) return null;
+      const mean = S.regimeStats[pair]?.[r.regime || 'RANGE']?.[`${factor}_mean`];
+      if (mean === null || mean === undefined) return null;
+      return { x: r.ts, y: +(val - mean).toFixed(4) };
     }).filter(Boolean);
-
-    return {
-      label: pair,
-      data: pts,
-      borderColor: PAIR_COLORS[pair] || '#888',
-      borderWidth: 1.5,
-      pointRadius: 0,
-      tension: 0.3,
-      fill: false,
-    };
+    return ds(pair, pts);
   });
 
-  const segs = buildRegimeSegments(state.records);
-  const cfg = makeBaseChartCfg(undefined, datasets, segs, 'β deviation from regime-mean');
-  createOrUpdate('chartDivergence', cfg);
+  lineChart('chartDivergence', datasets, buildSegs(recs), `β_${factor} deviation`);
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 3: Factor beta time series
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderBetaCharts() {
+  const active = [...S.activePairs];
+  const recs = filteredRecords();
+  const segs = buildSegs(recs);
+
+  for (const factor of ['vix', 'dxy', 'rates']) {
+    const canvasId = { vix: 'chartVix', dxy: 'chartDxy', rates: 'chartRates' }[factor];
+    const datasets = active.map(pair => {
+      const pts = recs.map(r => {
+        const v = S.source === 'rich'
+          ? r.beta?.[pair]?.[factor] ?? null
+          : r.estimates?.[pair]?.[`beta_${factor}`]?.mean ?? null;
+        return v !== null ? { x: r.ts, y: v } : null;
+      }).filter(Boolean);
+      return ds(pair, pts);
+    }).filter(d => d.data.length > 0);
+    lineChart(canvasId, datasets, segs, `β_${factor}`);
+  }
+}
+
+function updateBetaLegend() {
+  document.getElementById('betaLegend').innerHTML = S.pairs.map(p => {
+    const col = PAIR_COLORS[p] || '#888';
+    return `<div class="leg-item"><div class="leg-line" style="background:${col}"></div>${p}</div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    Tab 4: Regime breakdown
-   ───────────────────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function renderRegimeBreakdown() {
-  const pairs = state.pairs;
+  const pairs = S.pairs;
   const regimes = ['BULL', 'BEAR', 'RANGE', 'CHOP'];
-  const factor = 'vix';
 
-  // Mini bar charts per pair (like the example images)
-  const chartWrap = document.getElementById('regimeChartWrap');
-  chartWrap.innerHTML = '';
-
-  for (const pair of pairs) {
+  // Mini visual bars per pair
+  const miniHtml = pairs.map(pair => {
     const col = PAIR_COLORS[pair] || '#888';
     const bars = regimes.map(rg => {
-      const s = state.regimeStats[pair]?.[rg];
-      const v = s?.vix_mean ?? 0;
-      const n = s?.n ?? 0;
-      return { rg, v, n };
+      const v = S.regimeStats[pair]?.[rg]?.vix_mean ?? 0;
+      return { rg, v };
     });
-
     const maxAbs = Math.max(0.01, ...bars.map(b => Math.abs(b.v)));
-    const pairEl = document.createElement('div');
-    pairEl.style.cssText = 'flex:0 0 auto;min-width:90px';
-    pairEl.innerHTML = `
+    return `<div style="min-width:88px;flex-shrink:0">
       <div style="font-size:10px;font-weight:700;font-family:'DM Mono',monospace;color:${col};margin-bottom:5px;text-align:center">${pair}</div>
-      ${bars.map(({ rg, v, n }) => {
-        const pct = Math.abs(v) / maxAbs * 44;
+      ${bars.map(({ rg, v }) => {
+        const pct = Math.abs(v) / maxAbs * 46;
         const barCol = v > 0 ? 'var(--green)' : 'var(--red)';
-        const sign = v >= 0 ? '+' : '';
-        return `<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;font-size:9px">
-          <span class="regime-badge r-${rg}" style="width:36px;text-align:center">${rg}</span>
-          <div style="flex:1;display:flex;align-items:center;justify-content:${v>=0?'flex-start':'flex-end'}">
-            <div style="width:${pct}px;height:10px;background:${barCol};border-radius:2px"></div>
+        return `<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px">
+          <span class="regime-badge r-${rg}" style="width:36px;text-align:center;font-size:8px">${rg}</span>
+          <div style="flex:1;height:9px;background:var(--s2);border-radius:2px;position:relative">
+            <div style="position:absolute;${v>=0?'left:0':'right:0'};height:100%;width:${pct}px;max-width:46px;background:${barCol};border-radius:2px"></div>
           </div>
-          <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);width:34px;text-align:right">${sign}${v.toFixed(2)}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);width:36px;text-align:right">${v>=0?'+':''}${v.toFixed(2)}</span>
         </div>`;
       }).join('')}
-    `;
-    chartWrap.appendChild(pairEl);
-  }
+    </div>`;
+  }).join('');
+  document.getElementById('regimeMini').innerHTML = miniHtml;
 
-  // Detailed regime matrix table
+  // Detailed table
   let html = `<table class="rs-table"><thead><tr>
     <th class="left">Pair</th>
     ${regimes.map(rg => `<th colspan="2"><span class="regime-badge r-${rg}">${rg}</span></th>`).join('')}
   </tr><tr>
-    <th class="left" style="color:var(--text3)">— VIX beta —</th>
-    ${regimes.map(() => '<th>Mean</th><th>n</th>').join('')}
+    <th class="left" style="color:var(--text3)"></th>
+    ${regimes.map(() => '<th style="font-size:9px;color:var(--text3)">VIX β</th><th style="font-size:9px;color:var(--text3)">n</th>').join('')}
   </tr></thead><tbody>`;
 
   for (const pair of pairs) {
     const col = PAIR_COLORS[pair] || '#888';
-    html += `<tr>
-      <td class="pair" style="color:${col}">${pair}</td>
-      ${regimes.map(rg => {
-        const s = state.regimeStats[pair]?.[rg];
-        if (!s?.vix_mean && s?.vix_mean !== 0) return '<td>—</td><td style="color:var(--text3);font-size:10px">—</td>';
-        const v = s.vix_mean;
-        const pillCol = v > 0.3 ? 'rgba(16,185,129,0.15)' : v < -0.3 ? 'rgba(248,113,113,0.15)' : 'rgba(148,163,184,0.1)';
-        const txtCol  = v > 0.3 ? 'var(--green)' : v < -0.3 ? 'var(--red)' : 'var(--text3)';
-        return `<td><span class="beta-pill" style="background:${pillCol};color:${txtCol}">${v>=0?'+':''}${v.toFixed(3)}</span></td>
-                <td style="color:var(--text3);font-size:10px">${s.n}</td>`;
-      }).join('')}
-    </tr>`;
+    html += `<tr><td class="pair" style="color:${col}">${pair}</td>`;
+    for (const rg of regimes) {
+      const s = S.regimeStats[pair]?.[rg];
+      if (!s || s.vix_mean === null) { html += `<td>—</td><td>—</td>`; continue; }
+      const v = s.vix_mean;
+      const pillBg = v > 0.3 ? 'rgba(16,185,129,.15)' : v < -0.3 ? 'rgba(248,113,113,.15)' : 'rgba(148,163,184,.1)';
+      const pillFg = v > 0.3 ? 'var(--green)' : v < -0.3 ? 'var(--red)' : 'var(--text3)';
+      html += `<td><span class="beta-pill" style="background:${pillBg};color:${pillFg}">${v>=0?'+':''}${v.toFixed(3)}</span></td>
+               <td style="color:var(--text3);font-size:10px">${s.n}</td>`;
+    }
+    html += `</tr>`;
   }
-  html += '</tbody></table>';
+  html += `</tbody></table>`;
   document.getElementById('regimeMatrix').innerHTML = html;
+
+  // Corr shift table: BULL vs BEAR corr for each pair
+  if (Object.keys(S.regimeCorr).length) {
+    const pairs2 = S.pairs;
+    let shiftHtml = `<table class="rs-table"><thead><tr>
+      <th class="left">Pair A</th><th class="left">Pair B</th>
+      <th><span class="regime-badge r-BULL">BULL</span></th>
+      <th><span class="regime-badge r-BEAR">BEAR</span></th>
+      <th>Shift</th><th>Signal</th>
+    </tr></thead><tbody>`;
+    const rows = [];
+    for (let i = 0; i < pairs2.length; i++)
+      for (let j = i + 1; j < pairs2.length; j++) {
+        const key = `${pairs2[i]}_${pairs2[j]}`;
+        const bull = S.regimeCorr['BULL']?.[key] ?? S.regimeCorr['BULL']?.[`${pairs2[j]}_${pairs2[i]}`] ?? null;
+        const bear = S.regimeCorr['BEAR']?.[key] ?? S.regimeCorr['BEAR']?.[`${pairs2[j]}_${pairs2[i]}`] ?? null;
+        if (bull === null && bear === null) continue;
+        const shift = (bull !== null && bear !== null) ? +(bull - bear).toFixed(4) : null;
+        rows.push({ a: pairs2[i], b: pairs2[j], bull, bear, shift });
+      }
+    rows.sort((x, y) => Math.abs(y.shift || 0) - Math.abs(x.shift || 0));
+    for (const { a, b, bull, bear, shift } of rows.slice(0, 15)) {
+      const shiftCol = shift === null ? 'var(--text3)' : Math.abs(shift) > 0.3 ? 'var(--purple)' : 'var(--text3)';
+      const sig = shift === null ? '—' : Math.abs(shift) > 0.4 ? 'REGIME EDGE' : Math.abs(shift) > 0.2 ? 'Moderate' : 'Stable';
+      shiftHtml += `<tr>
+        <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[a]||'#888'}">${a}</td>
+        <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[b]||'#888'}">${b}</td>
+        <td style="font-family:'DM Mono',monospace">${bull !== null ? (bull >= 0 ? '+' : '') + bull.toFixed(3) : '—'}</td>
+        <td style="font-family:'DM Mono',monospace">${bear !== null ? (bear >= 0 ? '+' : '') + bear.toFixed(3) : '—'}</td>
+        <td style="font-family:'DM Mono',monospace;color:${shiftCol}">${shift !== null ? (shift >= 0 ? '+' : '') + shift.toFixed(3) : '—'}</td>
+        <td style="font-size:10px;color:${shiftCol}">${sig}</td>
+      </tr>`;
+    }
+    shiftHtml += `</tbody></table>`;
+    document.getElementById('regimeCorrShift').innerHTML = shiftHtml;
+  }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
    Tab 5: Hedge Finder
-   ───────────────────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function renderHedgeFinder() {
-  const pairs = state.pairs;
-  const factor = state.factor;
-
-  // Get latest beta for each pair
-  const latest = {};
-  for (const p of pairs) {
-    const s = state.series[p];
-    if (s?.length) latest[p] = s[s.length - 1][factor] ?? 0;
+  const pairs = S.pairs;
+  function getC(a, b) {
+    return S.avgCorr[`${a}_${b}`] ?? S.avgCorr[`${b}_${a}`] ?? null;
   }
 
-  // Rank all pairs by absolute hedge potential (opposite factor sign)
+  // Latest beta for risk profile
+  const lastRec = S.records[S.records.length - 1];
+  const latestVix = {};
+  for (const p of pairs) {
+    const v = S.source === 'rich'
+      ? lastRec?.beta?.[p]?.vix ?? null
+      : lastRec?.estimates?.[p]?.beta_vix?.mean ?? null;
+    latestVix[p] = v;
+  }
+
+  // All pair-pairs
   const rows = [];
-  for (let i = 0; i < pairs.length; i++) {
+  for (let i = 0; i < pairs.length; i++)
     for (let j = i + 1; j < pairs.length; j++) {
       const a = pairs[i], b = pairs[j];
-      const va = latest[a] ?? 0, vb = latest[b] ?? 0;
-      const corr = state.corrMatrix[a]?.[b] ?? null;
-      const spread = Math.abs(va - vb);
-      const hedgeScore = corr !== null ? -corr : 0; // higher = better hedge
-      rows.push({ a, b, va, vb, corr, spread, hedgeScore });
+      const corr = getC(a, b);
+      const vA = latestVix[a] ?? 0, vB = latestVix[b] ?? 0;
+      const betaSpread = Math.abs(vA - vB);
+      // Hedge score: negative correlation = better hedge; also factor in beta spread
+      const hs = (corr !== null ? -corr : 0) * 0.7 + (betaSpread / 2) * 0.3;
+      rows.push({ a, b, corr, vA, vB, betaSpread, hs });
     }
-  }
-  rows.sort((x, y) => y.hedgeScore - x.hedgeScore);
+  rows.sort((x, y) => y.hs - x.hs);
 
-  const fmt = v => (v >= 0 ? '+' : '') + v.toFixed(3);
-  const scoreBar = (hedgeScore) => {
-    const pct = Math.max(0, Math.min(100, (hedgeScore + 1) / 2 * 100));
-    const col = hedgeScore > 0.3 ? 'var(--green)' : hedgeScore < -0.1 ? 'var(--red)' : 'var(--amber)';
-    return `<div class="hedge-score" style="background:var(--s2)">
-      <div style="width:${pct.toFixed(0)}%;height:100%;background:${col};border-radius:3px"></div>
+  const fmt = v => v === null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(3);
+  const scoreBar = (score) => {
+    const pct = Math.max(0, Math.min(100, (score + 1) / 2 * 100));
+    const col = score > 0.3 ? 'var(--green)' : score > 0 ? 'var(--amber)' : 'var(--red)';
+    return `<div style="display:inline-flex;align-items:center;gap:4px;width:80px">
+      <div style="flex:1;background:var(--s2);border-radius:3px;height:6px;overflow:hidden">
+        <div style="width:${pct.toFixed(0)}%;height:100%;background:${col};border-radius:3px"></div>
+      </div>
+      <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)">${score.toFixed(2)}</span>
     </div>`;
   };
 
   let html = `<table class="hf-table"><thead><tr>
-    <th>Pair A</th><th>β ${factor}</th>
-    <th>Pair B</th><th>β ${factor}</th>
-    <th>Β Spread</th><th>Corr</th><th>Hedge Score</th><th>Signal</th>
+    <th>Pair A</th><th>β vix</th><th>Pair B</th><th>β vix</th>
+    <th>β Spread</th><th>Avg Corr</th><th>Hedge Score</th><th>Signal</th>
   </tr></thead><tbody>`;
-
-  for (const { a, b, va, vb, corr, spread, hedgeScore } of rows.slice(0, 20)) {
-    const colA = PAIR_COLORS[a] || '#888';
-    const colB = PAIR_COLORS[b] || '#888';
-    const signal = hedgeScore > 0.5 ? '⬆ Strong hedge' : hedgeScore > 0.2 ? '↗ Moderate' : hedgeScore < -0.3 ? '⬆ Correlated' : '→ Neutral';
+  for (const { a, b, corr, vA, vB, betaSpread, hs } of rows.slice(0, 25)) {
+    const sig = hs > 0.5 ? '⬛ Strong hedge' : hs > 0.25 ? '▣ Moderate hedge' : hs < -0.2 ? '▪ Correlated' : '— Neutral';
     html += `<tr>
-      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${colA}">${a}</td>
-      <td style="font-family:'DM Mono',monospace">${fmt(va)}</td>
-      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${colB}">${b}</td>
-      <td style="font-family:'DM Mono',monospace">${fmt(vb)}</td>
-      <td style="font-family:'DM Mono',monospace">${spread.toFixed(3)}</td>
-      <td style="font-family:'DM Mono',monospace;color:${corr!==null?(corr>0.3?'var(--green)':corr<-0.1?'var(--red)':'var(--text3)'):'var(--text3)'}">${corr !== null ? corr.toFixed(3) : '—'}</td>
-      <td>${scoreBar(hedgeScore)}</td>
-      <td style="font-size:10px;color:var(--text3)">${signal}</td>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[a]||'#888'}">${a}</td>
+      <td style="font-family:'DM Mono',monospace;color:${vA>0?'var(--green)':vA<0?'var(--red)':'var(--text3)'}">${fmt(vA)}</td>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[b]||'#888'}">${b}</td>
+      <td style="font-family:'DM Mono',monospace;color:${vB>0?'var(--green)':vB<0?'var(--red)':'var(--text3)'}">${fmt(vB)}</td>
+      <td style="font-family:'DM Mono',monospace">${betaSpread.toFixed(3)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${corr===null?'var(--text3)':corr>0.3?'var(--green)':corr<-0.1?'var(--red)':'var(--text3)'}">${fmt(corr)}</td>
+      <td>${scoreBar(hs)}</td>
+      <td style="font-size:10px;color:var(--text3)">${sig}</td>
     </tr>`;
   }
-  html += '</tbody></table>';
+  html += `</tbody></table>`;
   document.getElementById('hedgeTable').innerHTML = html;
 
-  // Risk profile chart
-  const sortedPairs = pairs.slice().sort((a, b) => (latest[b] ?? 0) - (latest[a] ?? 0));
-  const maxAbs = Math.max(0.01, ...sortedPairs.map(p => Math.abs(latest[p] ?? 0)));
-  const profileHtml = sortedPairs.map(p => {
-    const v = latest[p] ?? 0;
+  // Risk profile
+  const sorted = [...pairs].sort((a, b) => (latestVix[b] ?? 0) - (latestVix[a] ?? 0));
+  const maxAbs = Math.max(0.01, ...sorted.map(p => Math.abs(latestVix[p] ?? 0)));
+  document.getElementById('riskProfile').innerHTML = sorted.map(p => {
+    const v = latestVix[p] ?? 0;
     const col = PAIR_COLORS[p] || '#888';
-    const barPct = Math.abs(v) / maxAbs * 100;
+    const pct50 = Math.abs(v) / maxAbs * 50;
     const barCol = v > 0 ? 'var(--green)' : 'var(--red)';
-    const label = v > 0.3 ? 'RISK-ON' : v < -0.3 ? 'RISK-OFF' : 'MIXED';
-    const labelCol = v > 0.3 ? 'var(--green)' : v < -0.3 ? 'var(--red)' : 'var(--text3)';
-    return `<div class="fd-pair-row">
-      <div class="fd-pair-lbl" style="color:${col}">${p}</div>
-      <div style="flex:1;background:var(--s2);border-radius:3px;height:14px;overflow:hidden;position:relative">
+    const tag = v > 0.3 ? 'RISK-ON' : v < -0.3 ? 'RISK-OFF' : 'MIXED';
+    const tagCol = v > 0.3 ? 'var(--green)' : v < -0.3 ? 'var(--red)' : 'var(--text3)';
+    return `<div class="bar-wrap">
+      <div class="bar-pair" style="color:${col}">${p}</div>
+      <div class="bar-track">
         <div style="position:absolute;left:50%;top:0;width:1px;height:100%;background:var(--border)"></div>
-        <div style="position:absolute;${v>=0?'left:50%':'right:50%'};top:2px;height:10px;width:${barPct/2}%;background:${barCol};border-radius:2px;max-width:50%"></div>
+        <div style="position:absolute;${v>=0?'left:50%':'right:50%'};top:1px;height:10px;width:${pct50}%;background:${barCol};border-radius:2px"></div>
       </div>
-      <div style="font-family:'DM Mono',monospace;font-size:10px;width:44px;text-align:right;color:var(--text3)">${v>=0?'+':''}${v.toFixed(3)}</div>
-      <div style="font-size:9px;font-weight:600;width:52px;color:${labelCol}">${label}</div>
+      <div class="bar-val">${v>=0?'+':''}${v.toFixed(3)}</div>
+      <div class="bar-tag" style="color:${tagCol};font-size:9px;font-weight:700">${tag}</div>
     </div>`;
   }).join('');
-  document.getElementById('riskProfileChart').innerHTML = profileHtml;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
    Tab 6: Factor Dominance
-   ───────────────────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function renderFactorDominance() {
-  const pairs = state.pairs;
+  const pairs = S.pairs;
+  const lastRec = S.records[S.records.length - 1];
+  const regimes = ['BULL', 'BEAR', 'RANGE', 'CHOP'];
 
-  // For each pair: which factor dominates at the latest timestamp?
-  const domHtml = pairs.map(pair => {
-    const s = state.series[pair];
-    if (!s?.length) return '';
-    const last = s[s.length - 1];
-    const abs = { dxy: Math.abs(last.dxy||0), rates: Math.abs(last.rates||0), vix: Math.abs(last.vix||0) };
-    const total = abs.dxy + abs.rates + abs.vix;
-    if (total < 0.01) return '';
-    const pctDxy   = abs.dxy   / total * 100;
-    const pctRates = abs.rates / total * 100;
-    const pctVix   = abs.vix   / total * 100;
+  // Current dominance
+  document.getElementById('factorDomNow').innerHTML = pairs.map(pair => {
     const col = PAIR_COLORS[pair] || '#888';
-    return `<div class="fd-pair-row">
-      <div class="fd-pair-lbl" style="color:${col}">${pair}</div>
+    let dxy, rates, vix;
+    if (S.source === 'rich') {
+      dxy   = Math.abs(lastRec?.beta?.[pair]?.dxy   ?? 0);
+      rates = Math.abs(lastRec?.beta?.[pair]?.rates ?? 0);
+      vix   = Math.abs(lastRec?.beta?.[pair]?.vix   ?? 0);
+    } else {
+      dxy   = Math.abs(lastRec?.estimates?.[pair]?.beta_dxy?.mean   ?? 0);
+      rates = Math.abs(lastRec?.estimates?.[pair]?.beta_rates?.mean ?? 0);
+      vix   = Math.abs(lastRec?.estimates?.[pair]?.beta_vix?.mean  ?? 0);
+    }
+    const total = dxy + rates + vix;
+    if (total < 0.01) return '';
+    const pD = dxy / total * 100, pR = rates / total * 100, pV = vix / total * 100;
+    return `<div class="bar-wrap">
+      <div class="bar-pair" style="color:${col}">${pair}</div>
       <div style="flex:1;display:flex;border-radius:4px;overflow:hidden;height:16px">
-        <div style="flex:${pctDxy.toFixed(1)};background:#4f7df0;display:flex;align-items:center;justify-content:center">
-          ${pctDxy > 12 ? `<span style="font-size:9px;color:#fff;font-family:'DM Mono',monospace">${pctDxy.toFixed(0)}%</span>` : ''}
+        <div style="flex:${pD.toFixed(1)};background:#4f7df0;display:flex;align-items:center;justify-content:center">
+          ${pD > 15 ? `<span style="font-size:9px;color:#fff;font-family:'DM Mono',monospace">${pD.toFixed(0)}%</span>` : ''}
         </div>
-        <div style="flex:${pctRates.toFixed(1)};background:#10b981;display:flex;align-items:center;justify-content:center">
-          ${pctRates > 12 ? `<span style="font-size:9px;color:#fff;font-family:'DM Mono',monospace">${pctRates.toFixed(0)}%</span>` : ''}
+        <div style="flex:${pR.toFixed(1)};background:#10b981;display:flex;align-items:center;justify-content:center">
+          ${pR > 15 ? `<span style="font-size:9px;color:#fff;font-family:'DM Mono',monospace">${pR.toFixed(0)}%</span>` : ''}
         </div>
-        <div style="flex:${pctVix.toFixed(1)};background:#f59e0b;display:flex;align-items:center;justify-content:center">
-          ${pctVix > 12 ? `<span style="font-size:9px;color:#fff;font-family:'DM Mono',monospace">${pctVix.toFixed(0)}%</span>` : ''}
+        <div style="flex:${pV.toFixed(1)};background:#f59e0b;display:flex;align-items:center;justify-content:center">
+          ${pV > 15 ? `<span style="font-size:9px;color:#fff;font-family:'DM Mono',monospace">${pV.toFixed(0)}%</span>` : ''}
         </div>
       </div>
     </div>`;
   }).join('');
-  document.getElementById('factorDomChart').innerHTML = domHtml;
 
-  // Regime-conditional factor dominance
-  const regimes = ['BULL', 'BEAR', 'RANGE', 'CHOP'];
-  let regHtml = `<table class="rs-table"><thead><tr>
+  // Regime conditional
+  let html = `<table class="rs-table"><thead><tr>
     <th class="left">Pair</th>
     ${regimes.map(rg => `<th><span class="regime-badge r-${rg}">${rg}</span></th>`).join('')}
   </tr></thead><tbody>`;
-
   for (const pair of pairs) {
     const col = PAIR_COLORS[pair] || '#888';
-    regHtml += `<tr><td class="pair" style="color:${col}">${pair}</td>`;
+    html += `<tr><td class="pair" style="color:${col}">${pair}</td>`;
     for (const rg of regimes) {
-      const s = state.regimeStats[pair]?.[rg];
-      if (!s?.dxy_mean && s?.dxy_mean !== 0) { regHtml += '<td>—</td>'; continue; }
-      const abs = { DXY: Math.abs(s.dxy_mean||0), Rates: Math.abs(s.rates_mean||0), VIX: Math.abs(s.vix_mean||0) };
-      const dom = Object.entries(abs).sort((a,b) => b[1]-a[1])[0][0];
-      const col2 = dom === 'DXY' ? '#4f7df0' : dom === 'Rates' ? '#10b981' : '#f59e0b';
-      regHtml += `<td><span style="color:${col2};font-weight:600;font-family:'DM Mono',monospace;font-size:10px">${dom}</span></td>`;
+      const s = S.regimeStats[pair]?.[rg];
+      if (!s) { html += `<td style="color:var(--text3)">—</td>`; continue; }
+      const abs = { DXY: Math.abs(s.dxy_mean ?? 0), Rates: Math.abs(s.rates_mean ?? 0), VIX: Math.abs(s.vix_mean ?? 0) };
+      const dom = Object.entries(abs).sort((a, b) => b[1] - a[1])[0][0];
+      const dc = { DXY: '#4f7df0', Rates: '#10b981', VIX: '#f59e0b' }[dom];
+      html += `<td><span style="color:${dc};font-weight:700;font-family:'DM Mono',monospace;font-size:10px">${dom}</span></td>`;
     }
-    regHtml += '</tr>';
+    html += `</tr>`;
   }
-  regHtml += '</tbody></table>';
-  document.getElementById('factorDomRegime').innerHTML = regHtml;
+  html += `</tbody></table>`;
+  document.getElementById('factorDomRegime').innerHTML = html;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Status bar update
-   ───────────────────────────────────────────────────────────────────────────── */
-function updateStatus(records, total, sampled) {
-  if (!records.length) return;
+/* ═══════════════════════════════════════════════════════════════════════════
+   UI helpers
+   ═══════════════════════════════════════════════════════════════════════════ */
+function setSrcBadge(type, note) {
+  const el = document.getElementById('srcBadge');
+  const noteEl = document.getElementById('srcNote');
+  if (type === 'rich') {
+    el.className = 'src-badge src-rich'; el.textContent = 'HISTORICAL';
+  } else if (type === 'live') {
+    el.className = 'src-badge src-live'; el.textContent = 'LIVE BOT';
+  } else {
+    el.className = 'src-badge src-none'; el.textContent = 'NO DATA';
+  }
+  noteEl.textContent = note || '';
+}
+
+function updateStatus(type, records, generated) {
+  if (!records?.length) return;
   const first = new Date(records[0].ts);
   const last  = new Date(records[records.length - 1].ts);
-  const fmtDate = d => d.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
-  const fmtTime = d => d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  const fmtD  = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
+  const cnts  = {};
+  records.forEach(r => cnts[r.regime || 'RANGE'] = (cnts[r.regime || 'RANGE'] || 0) + 1);
+  const dom   = Object.entries(cnts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
 
-  // Current regime counts
-  const cnts = {};
-  for (const r of records) cnts[r.regime] = (cnts[r.regime] || 0) + 1;
-  const dominant = Object.entries(cnts).sort((a,b) => b[1]-a[1])[0]?.[0] || '—';
-
-  document.getElementById('statRecords').textContent = `${sampled} (of ${total})`;
-  document.getElementById('statRange').textContent = `${fmtDate(first)} → ${fmtDate(last)}`;
-  document.getElementById('statRegime').textContent = dominant;
-  document.getElementById('statTs').textContent = `${fmtDate(last)} ${fmtTime(last)}`;
+  document.getElementById('stSrc').textContent = type === 'rich' ? 'Historical (OANDA)' : 'Live bot betas';
+  document.getElementById('stRec').textContent = records.length;
+  document.getElementById('stRange').textContent = `${fmtD(first)} → ${fmtD(last)}`;
+  document.getElementById('stRegime').textContent = `${dom} (dominant)`;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Tab switching
-   ───────────────────────────────────────────────────────────────────────────── */
+function setLoading(on) {
+  document.getElementById('matrixLoading').style.display = on ? 'flex' : 'none';
+  document.getElementById('matrixContent').style.display = on ? 'none' : 'flex';
+}
+
+function showError(msg) {
+  setSrcBadge(null, '');
+  document.getElementById('matrixLoading').innerHTML =
+    `<div style="color:var(--red);font-size:12px;text-align:center;padding:20px">
+      <div style="font-weight:600;margin-bottom:6px">Could not load data</div>
+      <div style="color:var(--text3)">${msg}</div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text3)">
+        If running locally: restart the server after deployment.<br>
+        For years of data: <code style="font-size:10px;color:var(--purple)">python scripts/build_corr_history.py --years 5</code>
+      </div>
+    </div>`;
+}
+
 function switchTab(btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('on'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('on'));
   btn.classList.add('on');
-  const panel = document.getElementById(btn.dataset.tab);
-  if (panel) panel.classList.add('on');
-
-  // Lazy-render on tab switch for rolling corr
-  if (btn.dataset.tab === 't-rolling') { renderRollingCorr(); renderDivergenceChart(); }
+  document.getElementById(btn.dataset.tab)?.classList.add('on');
+  if (btn.dataset.tab === 't-rolling') { renderRolling(); renderDivergenceChart(); }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
+   Build trigger + status polling
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function checkBuildStatus() {
+  try {
+    const res = await fetch('/api/corr-history/status');
+    if (!res.ok) return;
+    const d = await res.json();
+    const el = document.getElementById('buildStatus');
+    if (!el) return;
+    if (d.running) {
+      el.innerHTML = `<span style="color:var(--amber)">● Building… check back in ~2 min</span>`;
+      setTimeout(checkBuildStatus, 15_000);
+    } else if (d.file?.exists) {
+      const age = d.file.ageDays < 1 ? 'today' : `${d.file.ageDays}d ago`;
+      const staleCol = d.file.stale ? 'var(--amber)' : 'var(--green)';
+      el.innerHTML = `<span style="color:${staleCol}">● ${d.file.sizeKb} KB · built ${age}</span>`;
+    } else {
+      el.innerHTML = `<span style="color:var(--text3)">No history yet</span>`;
+    }
+  } catch { /* ignore */ }
+}
+
+async function triggerBuild() {
+  const btn = document.getElementById('btnBuild');
+  btn.disabled = true;
+  btn.textContent = 'Starting…';
+  try {
+    const res = await fetch('/api/corr-history/rebuild', { method: 'POST' });
+    const d = await res.json();
+    document.getElementById('buildStatus').innerHTML =
+      `<span style="color:var(--amber)">● ${d.message}</span>`;
+    btn.textContent = '⬛ Building…';
+    setTimeout(() => { checkBuildStatus(); setTimeout(init, 3 * 60 * 1000); }, 10_000);
+  } catch (e) {
+    document.getElementById('buildStatus').innerHTML =
+      `<span style="color:var(--red)">Error: ${e.message}</span>`;
+    btn.disabled = false;
+    btn.textContent = '⬛ Build 5yr History';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    Boot
-   ───────────────────────────────────────────────────────────────────────────── */
-loadData();
+   ═══════════════════════════════════════════════════════════════════════════ */
+checkBuildStatus();
+init();
 </script>
 </body>
 </html>

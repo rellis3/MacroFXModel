@@ -305,6 +305,224 @@ async function fetchHMMBars(sym, count = 300) {
   } catch { return null; }
 }
 
+// ── Correlation History Builder ───────────────────────────────────────────────
+// Fetches multi-year H4 bars from OANDA, computes rolling Pearson correlations
+// + OLS factor betas, and saves bot/data/corr_history.json.
+// Runs on startup (if file is missing or >7 days old) and weekly.
+// No external scripts needed — all pure JS maths.
+
+const CORR_PAIRS = ['EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURGBP','XAUUSD'];
+const CORR_FACTOR_PROXIES = {
+  dxy:   { sym: 'EURUSD', sign: -1.2 },
+  rates: { sym: 'USDJPY', sign:  1.0 },
+  vix:   { sym: 'USDCHF', sign: -1.0 },
+};
+const CORR_HISTORY_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'corr_history.json');
+const CORR_STALE_MS  = 7 * 24 * 60 * 60 * 1000;  // rebuild if older than 7 days
+const CORR_WINDOW    = 60;   // H4 bars per rolling window (10 trading days)
+const CORR_STEP      = 6;    // snapshot every 6 bars ≈ 1 per day
+const CORR_YEARS     = 5;
+const CORR_CHUNK     = 4000; // OANDA max-safe bars per request
+let   corrRunning    = false;
+
+function _h4OandaSym(sym) {
+  const ov = { XAUUSD:'XAU_USD', XAGUSD:'XAG_USD', NAS100:'NAS100_USD', SPX500:'SPX500_USD' };
+  if (ov[sym]) return ov[sym];
+  if (sym.length === 6 && /^[A-Z]+$/.test(sym)) return `${sym.slice(0,3)}_${sym.slice(3)}`;
+  return null;
+}
+
+async function fetchH4Bars(sym, years = CORR_YEARS) {
+  const osym = _h4OandaSym(sym);
+  if (!osym || !process.env.OANDA_KEY) return null;
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const closes = [], timestamps = [];
+  let chunkFrom = new Date(Date.now() - years * 365.25 * 86400_000);
+  const now = new Date();
+  while (chunkFrom < now) {
+    const chunkTo = new Date(Math.min(chunkFrom.getTime() + CORR_CHUNK * 4 * 3600_000, now.getTime()));
+    const url = `${base}/v3/instruments/${encodeURIComponent(osym)}/candles`
+      + `?granularity=H4&price=M&from=${chunkFrom.toISOString().slice(0,19)+'Z'}`
+      + `&to=${chunkTo.toISOString().slice(0,19)+'Z'}&count=${CORR_CHUNK}`;
+    try {
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+                                   signal: AbortSignal.timeout(30_000) });
+      if (r.ok) {
+        const d = await r.json();
+        for (const c of (d.candles || []).filter(c => c.mid)) {
+          closes.push(parseFloat(c.mid.c));
+          timestamps.push(new Date(c.time));
+        }
+      }
+    } catch (e) { console.warn(`[CORR] H4 chunk ${sym}: ${e.message}`); }
+    chunkFrom = chunkTo;
+    await new Promise(r => setTimeout(r, 250)); // polite gap between OANDA requests
+  }
+  return closes.length >= CORR_WINDOW + 1 ? { closes, timestamps } : null;
+}
+
+function _logRets(arr) {
+  const out = [];
+  for (let i = 1; i < arr.length; i++) out.push(Math.log(Math.max(arr[i],1e-10)/Math.max(arr[i-1],1e-10)));
+  return out;
+}
+function _pearson(xs, ys) {
+  const n = xs.length; if (n < 4) return null;
+  let mx=0, my=0; for (let i=0;i<n;i++){mx+=xs[i];my+=ys[i];} mx/=n; my/=n;
+  let num=0,da=0,db=0; for (let i=0;i<n;i++){const a=xs[i]-mx,b=ys[i]-my;num+=a*b;da+=a*a;db+=b*b;}
+  const d=Math.sqrt(da*db); return d<1e-12?0:Math.max(-1,Math.min(1,num/d));
+}
+function _ols(y, x) {
+  const n=y.length; if (n<3) return [0,0];
+  let mx=0,my=0; for (let i=0;i<n;i++){mx+=x[i];my+=y[i];} mx/=n;my/=n;
+  let cov=0,vx=0; for (let i=0;i<n;i++){cov+=(x[i]-mx)*(y[i]-my);vx+=(x[i]-mx)**2;}
+  if (vx<1e-12) return [0,0];
+  const b=cov/vx, a=my-b*mx;
+  let ss=0,st=0; for (let i=0;i<n;i++){ss+=(y[i]-a-b*x[i])**2;st+=(y[i]-my)**2;}
+  return [+b.toFixed(4), st<1e-12?0:+Math.max(0,Math.min(1,1-ss/st)).toFixed(4)];
+}
+function _ema(arr, p) {
+  const r=[...arr], k=2/(p+1); for (let i=1;i<r.length;i++) r[i]=arr[i]*k+r[i-1]*(1-k); return r;
+}
+function _regime(closes) {
+  const n=closes.length; if (n<25) return 'RANGE';
+  const fast=_ema(closes,20), slow=_ema(closes,Math.min(50,n));
+  const ref=Math.max(Math.abs(closes[n-1]),1e-10);
+  const spread=(fast[n-1]-slow[n-1])/ref, slope=n>=6?(fast[n-1]-fast[n-6])/ref:0;
+  if (spread>0.0025&&slope>0.00015) return 'BULL';
+  if (spread<-0.0025&&slope<-0.00015) return 'BEAR';
+  return 'RANGE';
+}
+
+async function buildCorrHistoryJS() {
+  if (corrRunning) { console.log('[CORR] Already running — skipped'); return; }
+  corrRunning = true;
+  const t0 = Date.now();
+  console.log('[CORR] Building correlation history...');
+  try {
+    // Fetch all required symbols
+    const allSyms = [...new Set([...CORR_PAIRS, ...Object.values(CORR_FACTOR_PROXIES).map(p => p.sym)])];
+    const barData = {};
+    for (const sym of allSyms) {
+      const result = await fetchH4Bars(sym, CORR_YEARS);
+      if (result) { barData[sym] = result; console.log(`[CORR]   ${sym}: ${result.closes.length} bars`); }
+      else { console.log(`[CORR]   ${sym}: skipped (insufficient data)`); }
+    }
+
+    const availPairs = CORR_PAIRS.filter(p => barData[p]);
+    if (!availPairs.length) { console.log('[CORR] No pairs — abort'); return; }
+
+    // Align all return series to the reference pair's timestamps
+    const refPair = availPairs.find(p => ['EURUSD','GBPUSD','USDJPY'].includes(p)) || availPairs[0];
+    const refTs   = barData[refPair].timestamps;
+    const n       = refTs.length - 1;
+
+    const retSeries = {};
+    for (const sym of availPairs) {
+      const { closes, timestamps } = barData[sym];
+      const rmap = new Map();
+      const rets = _logRets(closes);
+      for (let i = 0; i < rets.length; i++) rmap.set(timestamps[i+1].getTime(), rets[i]);
+      retSeries[sym] = refTs.slice(1).map(ts => rmap.get(ts.getTime()) ?? null);
+    }
+
+    // Factor return series (proxy * sign)
+    const factorRets = {};
+    for (const [fname, { sym, sign }] of Object.entries(CORR_FACTOR_PROXIES))
+      if (retSeries[sym]) factorRets[fname] = retSeries[sym].map(v => v !== null ? v * sign : null);
+
+    const refCloses = barData[refPair].closes;
+    const records   = [];
+
+    for (let end = CORR_WINDOW; end <= n; end += CORR_STEP) {
+      const s      = end - CORR_WINDOW;
+      const ts     = refTs[end];
+      const regime = _regime(refCloses.slice(Math.max(0, end - 59), end + 1));
+      const corr   = {}, beta = {};
+
+      for (let i = 0; i < availPairs.length; i++) {
+        const pa = availPairs[i];
+        beta[pa] = {};
+
+        // OLS factor betas
+        for (const [fname, frets] of Object.entries(factorRets)) {
+          const yr=[], fr=[];
+          for (let k=s;k<end;k++) if (retSeries[pa][k]!==null&&frets[k]!==null){yr.push(retSeries[pa][k]);fr.push(frets[k]);}
+          if (yr.length>=10) { const [b]=_ols(yr,fr); beta[pa][fname]=b; }
+        }
+
+        // Pair-pair Pearson correlations (lower triangle)
+        for (let j = i+1; j < availPairs.length; j++) {
+          const pb=availPairs[j], xa=[], xb=[];
+          for (let k=s;k<end;k++) if (retSeries[pa][k]!==null&&retSeries[pb][k]!==null){xa.push(retSeries[pa][k]);xb.push(retSeries[pb][k]);}
+          if (xa.length>=10) { const c=_pearson(xa,xb); if (c!==null) corr[`${pa}_${pb}`]=+c.toFixed(4); }
+        }
+      }
+      records.push({ ts: ts.getTime(), ts_str: ts.toISOString().slice(0,16).replace('T',' '), regime, corr, beta });
+    }
+
+    // ── Summary statistics ──────────────────────────────────────────────────
+    const avgSums={}, avgCnts={}, rgCorrData={}, rgStatData={};
+    for (const rec of records) {
+      const rg = rec.regime;
+      if (!rgCorrData[rg]) rgCorrData[rg]={};
+      if (!rgStatData[rg]) rgStatData[rg]={};
+      for (const [k,v] of Object.entries(rec.corr)) {
+        avgSums[k]=(avgSums[k]||0)+v; avgCnts[k]=(avgCnts[k]||0)+1;
+        if (!rgCorrData[rg][k]) rgCorrData[rg][k]=[];
+        rgCorrData[rg][k].push(v);
+      }
+      for (const [pair,betas] of Object.entries(rec.beta)) {
+        if (!rgStatData[rg][pair]) rgStatData[rg][pair]={dxy:[],rates:[],vix:[]};
+        for (const f of ['dxy','rates','vix']) if (betas[f]!==undefined) rgStatData[rg][pair][f].push(betas[f]);
+      }
+    }
+
+    const avgCorr={};
+    for (const k of Object.keys(avgSums)) avgCorr[k]=+(avgSums[k]/avgCnts[k]).toFixed(4);
+
+    const regimeCorr={};
+    for (const [rg,corrs] of Object.entries(rgCorrData)) {
+      regimeCorr[rg]={};
+      for (const [k,vals] of Object.entries(corrs))
+        regimeCorr[rg][k]=+(vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(4);
+    }
+
+    const regimeStats={};
+    for (const [rg,pairData] of Object.entries(rgStatData)) {
+      for (const [pair,vals] of Object.entries(pairData)) {
+        if (!regimeStats[pair]) regimeStats[pair]={};
+        const mean=a=>a.length?+(a.reduce((s,v)=>s+v,0)/a.length).toFixed(4):null;
+        regimeStats[pair][rg]={ dxy_mean:mean(vals.dxy), rates_mean:mean(vals.rates), vix_mean:mean(vals.vix), n:vals.vix.length };
+      }
+    }
+
+    const output = { generated:new Date().toISOString(), years:CORR_YEARS,
+      window_bars:CORR_WINDOW, step_bars:CORR_STEP, pairs:availPairs,
+      records, regime_stats:regimeStats, avg_corr:avgCorr, regime_corr:regimeCorr };
+
+    fs.mkdirSync(path.dirname(CORR_HISTORY_PATH), { recursive: true });
+    fs.writeFileSync(CORR_HISTORY_PATH, JSON.stringify(output));
+    const kb = Math.round(fs.statSync(CORR_HISTORY_PATH).size / 1024);
+    console.log(`[CORR] Done — ${records.length} snapshots, ${availPairs.length} pairs, ${kb} KB, ${Date.now()-t0}ms`);
+
+  } catch (e) {
+    console.error('[CORR] Build error:', e.message, e.stack?.split('\n')[1]);
+  } finally {
+    corrRunning = false;
+  }
+}
+
+async function runCorrHistoryRefresh() {
+  if (corrRunning || !process.env.OANDA_KEY) return;
+  try {
+    const stat = fs.statSync(CORR_HISTORY_PATH);
+    if (Date.now() - stat.mtimeMs < CORR_STALE_MS) return; // file is fresh
+  } catch { /* file missing — build it */ }
+  buildCorrHistoryJS().catch(e => console.error('[CORR]', e.message));
+}
+
 async function sendTelegram(token, chatId, text) {
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -2350,6 +2568,50 @@ app.get('/api/beta-history', (req, res) => {
   }
 });
 
+// Manual rebuild trigger — fires buildCorrHistoryJS() in background and returns immediately.
+app.post('/api/corr-history/rebuild', (_req, res) => {
+  if (corrRunning) return res.json({ ok: false, message: 'Build already in progress' });
+  if (!process.env.OANDA_KEY) return res.status(400).json({ ok: false, message: 'OANDA_KEY not configured' });
+  buildCorrHistoryJS().catch(e => console.error('[CORR/rebuild]', e.message));
+  res.json({ ok: true, message: 'Correlation history build started — check server logs. Takes ~3 min.' });
+});
+
+// Build status
+app.get('/api/corr-history/status', (_req, res) => {
+  let fileInfo = null;
+  try {
+    const stat = fs.statSync(CORR_HISTORY_PATH);
+    const ageDays = (Date.now() - stat.mtimeMs) / 86400_000;
+    fileInfo = { exists: true, sizeKb: Math.round(stat.size / 1024), ageDays: +ageDays.toFixed(1), stale: ageDays > 7 };
+  } catch { fileInfo = { exists: false }; }
+  res.json({ running: corrRunning, file: fileInfo, oandaKey: !!process.env.OANDA_KEY });
+});
+
+// Correlation history — serves bot/data/corr_history.json built by build_corr_history.py
+// Optional ?lite=1 returns only avg_corr + regime_stats (strips the full records array)
+app.get('/api/corr-history', (req, res) => {
+  const p = require('path').join(__dirname, 'bot', 'data', 'corr_history.json');
+  const fs = require('fs');
+  if (!fs.existsSync(p)) return res.status(404).json({ error: 'corr_history.json not found — run scripts/build_corr_history.py first' });
+  try {
+    const raw = fs.readFileSync(p, 'utf8');
+    if (req.query.lite === '1') {
+      const full = JSON.parse(raw);
+      return res.json({
+        generated: full.generated, years: full.years,
+        window_bars: full.window_bars, pairs: full.pairs,
+        regime_stats: full.regime_stats, avg_corr: full.avg_corr,
+        record_count: full.records?.length ?? 0,
+      });
+    }
+    // Stream the full file directly — avoids double-parse overhead for large files
+    res.setHeader('Content-Type', 'application/json');
+    res.send(raw);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {
   try {
@@ -2749,6 +3011,12 @@ setTimeout(() => {
   refreshFredHistory().catch(console.error);
   setInterval(refreshFredHistory, MACRO_REFRESH_MS);
 }, 30_000);
+
+// Correlation history — builds on startup if missing/stale, then weekly.
+// Fetches 5y of H4 OANDA bars for all pairs, computes rolling Pearson correlations + factor betas.
+// ~3 min to build, ~500-900 KB output. Stored at bot/data/corr_history.json.
+setTimeout(() => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 60_000);
+setInterval(runCorrHistoryRefresh, 7 * 24 * 60 * 60 * 1000);
 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
 startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));
