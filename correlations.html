@@ -116,6 +116,42 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 
 /* Corr picker */
 .corr-picker{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--text3)}
+
+/* Insights panel */
+#cl-insights{width:264px;flex-shrink:0;border-left:1px solid var(--border);overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin}
+.ins-section{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.ins-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--purple);margin-bottom:7px}
+.ins-body{font-size:11px;color:var(--text2);line-height:1.65}
+.ins-rule{font-size:10px;background:var(--s1);border-left:2px solid var(--purple);padding:6px 8px;border-radius:0 4px 4px 0;margin-top:7px;color:var(--text2);line-height:1.5}
+.ins-tip{font-size:10px;color:var(--amber);margin-top:6px;font-style:italic;line-height:1.5}
+.ins-divider{height:1px;background:var(--border);margin:2px 0}
+
+/* Snapshot pills */
+.snap-grid{display:flex;flex-direction:column;gap:3px}
+.snap-row{display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;background:var(--s2);cursor:pointer;transition:filter .1s}
+.snap-row:hover{filter:brightness(1.12)}
+.snap-pair{font-size:11px;font-weight:700;font-family:'DM Mono',monospace;width:66px;flex-shrink:0}
+.snap-label{font-size:8px;font-weight:700;letter-spacing:.2px;padding:2px 5px;border-radius:3px;flex-shrink:0;width:92px;text-align:center;text-transform:uppercase}
+.snap-val{font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);flex:1}
+.snap-shift{font-size:9px;font-family:'DM Mono',monospace;width:34px;text-align:right;flex-shrink:0}
+.snap-risk-on{background:rgba(16,185,129,.15);color:var(--green)}
+.snap-risk-off{background:rgba(248,113,113,.15);color:var(--red)}
+.snap-neutral{background:rgba(148,163,184,.12);color:var(--text3)}
+.shift-up{color:var(--green)}.shift-dn{color:var(--red)}
+
+/* Pair card modal */
+.pair-card-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center}
+.pair-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px 24px;max-width:390px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.pair-card-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.pair-card-emoji{font-size:22px}
+.pair-card-name{font-size:15px;font-weight:700}
+.pair-card-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.pair-card-body{font-size:12px;color:var(--text2);line-height:1.7}
+.pair-card-metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px}
+.pcm-block{background:var(--s2);border-radius:6px;padding:7px 8px;text-align:center}
+.pcm-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.pcm-val{font-size:14px;font-weight:700;font-family:'DM Mono',monospace}
+.pair-card-close{margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);line-height:1;padding:0 2px}
 </style>
 </head>
 <body>
@@ -250,17 +286,37 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 
       <!-- Tab 3: Factor Betas -->
       <div class="tab-panel" id="t-betas">
+
+        <!-- RIGHT NOW snapshot -->
+        <div class="cl-card" id="snapshotCard">
+          <div class="cl-card-title">Right Now — How Each Pair Is Behaving
+            <span style="font-size:9px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0;margin-left:4px">Click any row for full profile</span>
+          </div>
+          <div id="betaSnapshot" class="snap-grid">
+            <div style="color:var(--text3);font-size:11px;padding:6px">Loading…</div>
+          </div>
+        </div>
+
         <div class="cl-card">
-          <div class="cl-card-title">VIX-Proxy Beta — Risk Sensitivity Over Time</div>
+          <div class="cl-card-title">Fear Sensitivity Over Time
+            <span style="font-size:9px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0;margin-left:4px">(VIX proxy beta)</span>
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:6px">Positive = risk-on (gains in calm markets). Negative = safe-haven (gains when fear spikes). Grey band = normal ±1 range.</div>
           <div class="legend-row" id="betaLegend"></div>
           <div class="chart-wrap" style="height:220px"><canvas id="chartVix"></canvas></div>
         </div>
         <div class="cl-card">
-          <div class="cl-card-title">DXY Beta — USD Sensitivity Over Time</div>
+          <div class="cl-card-title">USD Sensitivity Over Time
+            <span style="font-size:9px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0;margin-left:4px">(DXY beta)</span>
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:6px">How much each pair tracks the US Dollar. Most pairs are negative here — they fall when USD strengthens.</div>
           <div class="chart-wrap" style="height:160px"><canvas id="chartDxy"></canvas></div>
         </div>
         <div class="cl-card">
-          <div class="cl-card-title">Rates Beta — Rate Differential Sensitivity</div>
+          <div class="cl-card-title">Interest Rate Sensitivity Over Time
+            <span style="font-size:9px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0;margin-left:4px">(Rates beta)</span>
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:6px">How much each pair moves with interest rate expectations. USDJPY anchors at ~1.0 — the classic rate-differential trade.</div>
           <div class="chart-wrap" style="height:160px"><canvas id="chartRates"></canvas></div>
         </div>
       </div>
@@ -312,6 +368,12 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 
     </div>
   </div>
+
+  <!-- Right insights panel -->
+  <div id="cl-insights">
+    <div id="insightsContent"></div>
+  </div>
+
 </div>
 
 <script>
@@ -598,6 +660,199 @@ const regimeBg = {
 };
 Chart.register(regimeBg);
 
+/* ±1 normal-range band drawn behind datasets */
+const normalBandPlugin = {
+  id: 'normalBand',
+  beforeDatasetsDraw(chart, _, opts) {
+    if (!opts?.show) return;
+    const { ctx, chartArea: { top, bottom, left, right }, scales: { y } } = chart;
+    if (!y) return;
+    const yHi = y.getPixelForValue(1);
+    const yLo = y.getPixelForValue(-1);
+    const bTop = Math.min(yHi, yLo), bBot = Math.max(yHi, yLo);
+    ctx.save();
+    ctx.fillStyle = 'rgba(148,163,184,0.07)';
+    ctx.fillRect(left, bTop, right - left, bBot - bTop);
+    ctx.strokeStyle = 'rgba(148,163,184,0.22)';
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+    for (const py of [yHi, yLo]) {
+      ctx.beginPath(); ctx.moveTo(left, py); ctx.lineTo(right, py); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+};
+Chart.register(normalBandPlugin);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Pair profiles — plain-English descriptions
+   ═══════════════════════════════════════════════════════════════════════════ */
+const PAIR_PROFILES = {
+  EURUSD:{ flag:'🇪🇺', name:'Euro vs US Dollar', type:'Major', driver:'USD strength',
+    note:'The most traded pair in the world. When the US Dollar strengthens, EURUSD falls. Think of it as a USD barometer flipped upside-down — great for tracking broad USD moves.',
+    typical:'Mostly USD-driven. Mildly risk-on. DXY beta is strongly negative by definition.' },
+  GBPUSD:{ flag:'🇬🇧', name:'British Pound vs US Dollar', type:'Major', driver:'USD + UK policy',
+    note:'Tracks EURUSD closely but amplified. UK-specific events (Bank of England, inflation data, political news) can push it away from EUR. More volatile than EURUSD.',
+    typical:'Similar to EURUSD but louder. Tends to show stronger fear sensitivity during UK-specific crises.' },
+  USDJPY:{ flag:'🇯🇵', name:'Dollar vs Japanese Yen', type:'Major', driver:'Rate differentials',
+    note:'Often called "the rates trade". Rises when US interest rates are high vs Japan, or when investors are risk-on. Falls sharply in crises as investors flee to the safety of JPY.',
+    typical:'Strong positive rates beta. Can flip quickly — USDJPY is a reliable crisis indicator when it drops hard.' },
+  AUDUSD:{ flag:'🇦🇺', name:'Australian Dollar vs US Dollar', type:'Commodity', driver:'Risk appetite & China',
+    note:'A classic risk-on currency. Rises when global growth is strong, commodities are rallying, and investors are confident. Falls hard in recessions or China slowdowns.',
+    typical:'Strong positive VIX beta (risk-on). Tracks commodities and Chinese growth. Great risk sentiment gauge.' },
+  NZDUSD:{ flag:'🇳🇿', name:'New Zealand Dollar vs US Dollar', type:'Commodity', driver:'Risk appetite',
+    note:'Twin to AUDUSD but smaller. Follows global risk appetite and NZ exports. More volatile than AUD. When AUDUSD and NZDUSD diverge significantly, look for mean reversion.',
+    typical:'Near-identical behaviour to AUDUSD. Small divergences between them can signal relative AU/NZ strength.' },
+  USDCAD:{ flag:'🇨🇦', name:'Dollar vs Canadian Dollar', type:'Commodity', driver:'Oil prices',
+    note:'The "oil pair". Canada is a major oil exporter — when oil prices rise, CAD strengthens (USDCAD falls). Also tracks USD broadly. Useful for commodity/energy regime signals.',
+    typical:'Inverse to crude oil. Risk-off (oil falls) → USDCAD rises. USD-driven when oil is stable.' },
+  USDCHF:{ flag:'🇨🇭', name:'Dollar vs Swiss Franc', type:'Safe Haven', driver:'Fear + USD',
+    note:'CHF is the ultimate safe haven. In any global crisis, investors buy CHF. USDCHF falls when fear spikes, even if the USD also strengthens — CHF buying overpowers USD flows.',
+    typical:'Strong negative VIX beta. This is why it is used as the VIX proxy in this model — it is highly sensitive to fear events.' },
+  GBPJPY:{ flag:'🔀', name:'Pound vs Japanese Yen', type:'Cross', driver:'Global risk mood',
+    note:'Known for its volatility — nicknamed "the widow maker" by some traders. When risk hits, JPY rallies AND GBP can fall, so GBPJPY drops sharply. It amplifies macro moves.',
+    typical:'High VIX beta in both directions. Useful as a risk barometer. Not recommended as a first trade.' },
+  EURGBP:{ flag:'🇪🇺', name:'Euro vs British Pound', type:'Cross', driver:'EU/UK divergence',
+    note:'Strips out USD — measures EUR vs GBP directly. Driven by relative central bank policy and economic data between Europe and the UK. Low correlation to USD pairs.',
+    typical:'Low macro beta overall — mainly a relative policy play. Moves on ECB vs BoE divergence, not global risk.' },
+  XAUUSD:{ flag:'🥇', name:'Gold vs US Dollar', type:'Commodity', driver:'USD + fear + inflation',
+    note:'Gold rises on USD weakness, inflation fears, or any systemic risk event. It is the original safe haven — pre-dates modern currencies. Also used as an inflation hedge.',
+    typical:'Negative DXY beta (rises when USD weakens). Strong VIX beta in major crises. Watch when correlations to equities break down.' },
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Per-tab insight panel content
+   ═══════════════════════════════════════════════════════════════════════════ */
+const TAB_INSIGHTS = {
+  't-matrix': `
+    <div class="ins-section">
+      <div class="ins-title">📊 What is correlation?</div>
+      <div class="ins-body">
+        Correlation measures how two pairs move <strong>together</strong>.<br><br>
+        <strong>+1.0</strong> = perfect sync — they move in lockstep<br>
+        <strong> 0.0</strong> = completely independent<br>
+        <strong>-1.0</strong> = perfect opposites — one rises as the other falls
+      </div>
+      <div class="ins-rule">Green = tends to move together. Red = natural opposites. The deeper the colour, the stronger the relationship.</div>
+    </div>
+    <div class="ins-section">
+      <div class="ins-title">🎯 How to use this</div>
+      <div class="ins-body">
+        Look for <strong>red cells</strong> — those are natural hedge pairs. If you are long EURUSD and want protection, find what has a negative correlation to it.<br><br>
+        Beware <strong>dark green clusters</strong> — those pairs are essentially the same trade. Holding both adds hidden risk, not diversification.
+      </div>
+      <div class="ins-tip">💡 EURUSD + GBPUSD are usually highly correlated (both USD pairs). Trading them both is one big USD trade in disguise.</div>
+    </div>`,
+
+  't-rolling': `
+    <div class="ins-section">
+      <div class="ins-title">📈 What am I looking at?</div>
+      <div class="ins-body">
+        How the correlation between two pairs has <strong>changed over time</strong>.<br><br>
+        Correlations are not fixed — they shift with market regimes. In a crisis, everything suddenly moves together (correlations spike). In calm markets, pairs are more independent.
+      </div>
+      <div class="ins-rule">When the line crosses zero, the pairs have switched from moving together to moving apart — a potential trade signal.</div>
+    </div>
+    <div class="ins-section">
+      <div class="ins-title">🔍 What to watch for</div>
+      <div class="ins-body">
+        <strong>Regime shifts</strong> (coloured bands): Watch how correlation changes at regime transitions.<br><br>
+        <strong>Correlation breakdown</strong>: When two usually-correlated pairs suddenly diverge, one of them may be mispriced relative to the other.
+      </div>
+      <div class="ins-tip">💡 A sustained divergence in rolling correlation is often the early signal of a macro regime change.</div>
+    </div>`,
+
+  't-betas': `
+    <div class="ins-section">
+      <div class="ins-title">🧪 What is a "beta"?</div>
+      <div class="ins-body">
+        Beta measures how sensitive a pair is to a specific macro driver.<br><br>
+        Think of it as volume on a dial:<br>
+        <strong>Beta +2.0</strong> = pair moves <em>twice</em> as much as the driver, in the same direction.<br>
+        <strong>Beta -1.0</strong> = pair moves equally but in the opposite direction.
+      </div>
+    </div>
+    <div class="ins-section">
+      <div class="ins-title">📖 The 3 drivers</div>
+      <div class="ins-body">
+        <strong style="color:#f59e0b">Fear (VIX) β</strong><br>
+        How risk-on or risk-off this pair is. Positive = calm-market gainer. Negative = safe haven.<br><br>
+        <strong style="color:#4f7df0">USD (DXY) β</strong><br>
+        How strongly this pair follows USD moves. Negative for most EUR/GBP pairs.<br><br>
+        <strong style="color:#10b981">Rates β</strong><br>
+        Sensitivity to interest rate expectations. USDJPY ≈ +1 is the anchor.
+      </div>
+    </div>
+    <div class="ins-section">
+      <div class="ins-title">👀 Grey band = "normal"</div>
+      <div class="ins-body">
+        The shaded ±1 zone is where most pairs spend most of their time.<br><br>
+        When a line breaks <strong>outside the band</strong> and stays there, the pair's behaviour has genuinely shifted — worth paying attention to.
+      </div>
+      <div class="ins-tip">💡 Big spikes that immediately return to the band are usually noise. Sustained moves outside ±1 are the signal.</div>
+    </div>`,
+
+  't-regime': `
+    <div class="ins-section">
+      <div class="ins-title">🌤️ What are market regimes?</div>
+      <div class="ins-body">
+        Markets cycle through states that change how all pairs behave:<br><br>
+        <span class="regime-badge r-BULL">BULL</span>&nbsp; Prices rising, fear low, momentum strong<br><br>
+        <span class="regime-badge r-BEAR">BEAR</span>&nbsp; Prices falling, fear elevated, selling pressure<br><br>
+        <span class="regime-badge r-RANGE">RANGE</span>&nbsp; Choppy but bounded, no clear trend<br><br>
+        <span class="regime-badge r-CHOP">CHOP</span>&nbsp; Random noise, no tradeable signal
+      </div>
+    </div>
+    <div class="ins-section">
+      <div class="ins-title">🎯 How to use this tab</div>
+      <div class="ins-body">
+        Look at how a pair's VIX beta <strong>changes between regimes</strong>. A pair that has +0.8 in BULL but -0.5 in BEAR flips character in crises — that is useful to know before you size a position.<br><br>
+        The <strong>Corr Shift</strong> table shows which pairs diverge most between BULL and BEAR — these are regime-edge trades.
+      </div>
+      <div class="ins-tip">💡 Pairs with high regime-conditional beta shift are better for directional regime trades. Stable pairs are better for hedges.</div>
+    </div>`,
+
+  't-hedge': `
+    <div class="ins-section">
+      <div class="ins-title">🛡️ What is a hedge?</div>
+      <div class="ins-body">
+        A hedge is a second trade that <strong>offsets risk</strong> from your main position. If your main trade loses, the hedge gains — and vice versa.<br><br>
+        The best hedges are pairs that move in <strong>opposite directions</strong> (negative correlation).
+      </div>
+      <div class="ins-rule">Example: Long EURUSD + Long USDCHF can be a hedge — when USD rises (EURUSD falls), USDCHF often rises too.</div>
+    </div>
+    <div class="ins-section">
+      <div class="ins-title">📊 Hedge Score explained</div>
+      <div class="ins-body">
+        The score combines two things:<br><br>
+        <strong>1. Avg Correlation</strong> (70% weight)<br>How inversely correlated the pairs are.<br><br>
+        <strong>2. Beta Spread</strong> (30% weight)<br>How different their risk sensitivities are.<br><br>
+        Score above 0.5 = strong hedge candidate.<br>Score near 0 = mostly neutral.<br>Score negative = they move together (bad hedge).
+      </div>
+    </div>`,
+
+  't-dom': `
+    <div class="ins-section">
+      <div class="ins-title">🔬 What drives each pair?</div>
+      <div class="ins-body">
+        Every pair is primarily moved by one macro force:<br><br>
+        <span style="color:#4f7df0;font-weight:700">DXY</span> = USD doing the driving (EUR, GBP, AUD pairs)<br><br>
+        <span style="color:#10b981;font-weight:700">Rates</span> = interest rate expectations dominate (JPY crosses)<br><br>
+        <span style="color:#f59e0b;font-weight:700">VIX</span> = fear/risk sentiment is king (safe havens, Gold)
+      </div>
+      <div class="ins-rule">The stacked bar for each pair shows the proportional mix — what percentage of its movement is explained by each factor.</div>
+    </div>
+    <div class="ins-section">
+      <div class="ins-title">🎯 Trading implication</div>
+      <div class="ins-body">
+        If a pair is 80% DXY-driven, watch the US CPI, Fed speeches, and the Dollar — not anything else.<br><br>
+        If <strong>Rates suddenly dominates</strong> a pair that was previously VIX-driven, the market narrative has shifted — the pair is now a different trade.
+      </div>
+      <div class="ins-tip">💡 Factor dominance shifts before price trends often do. A pair switching from VIX to Rates dominance can signal an upcoming regime change.</div>
+    </div>`,
+};
+
 function buildSegs(records) {
   const segs = [];
   let cur = null;
@@ -613,13 +868,15 @@ function buildSegs(records) {
   return segs;
 }
 
-function lineChart(id, datasets, segs, yLabel = '', yMin, yMax) {
+function lineChart(id, datasets, segs, yLabel = '', yMin, yMax, showBand = false) {
   if (CHARTS[id]) { CHARTS[id].destroy(); delete CHARTS[id]; }
   const el = document.getElementById(id);
   if (!el) return;
   const dark = document.body.classList.contains('dark');
   const gc = dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
   const tc = dark ? '#5a6380' : '#8fa0b8';
+
+  const isBeta = showBand; // show plain-english in tooltip for factor beta charts
   CHARTS[id] = new Chart(el, {
     type: 'line',
     data: { datasets },
@@ -632,9 +889,27 @@ function lineChart(id, datasets, segs, yLabel = '', yMin, yMax) {
           backgroundColor: dark ? '#1a1d27' : '#fff',
           borderColor: dark ? '#2a2f45' : '#dde3ee', borderWidth: 1,
           titleColor: tc, bodyColor: tc, padding: 8,
-          callbacks: { label: c => `${c.dataset.label}: ${(+c.parsed.y).toFixed(3)}` }
+          callbacks: {
+            label: c => {
+              const v = +c.parsed.y;
+              let tag = '';
+              if (isBeta && id === 'chartVix') {
+                tag = v > 1.2 ? '  ↑↑ strongly risk-on'
+                    : v > 0.3  ? '  ↑ risk-on'
+                    : v < -1.2 ? '  ↓↓ strongly safe-haven'
+                    : v < -0.3 ? '  ↓ safe-haven'
+                    : '  – neutral';
+              } else if (isBeta && id === 'chartDxy') {
+                tag = v > 0.3 ? '  moves WITH USD' : v < -0.3 ? '  moves AGAINST USD' : '';
+              } else if (isBeta && id === 'chartRates') {
+                tag = v > 0.5 ? '  rate-driven rise' : v < -0.5 ? '  rate-driven fall' : '';
+              }
+              return `${c.dataset.label}: ${v.toFixed(3)}${tag}`;
+            }
+          }
         },
         regimeBg: { segs },
+        normalBand: { show: showBand },
       },
       scales: {
         x: {
@@ -723,6 +998,7 @@ function renderAll() {
   setLoading(false);
   renderMatrix();
   renderBetaCharts();
+  renderBetaSnapshot();
   renderRegimeBreakdown();
   renderHedgeFinder();
   renderFactorDominance();
@@ -897,7 +1173,7 @@ function renderBetaCharts() {
       }).filter(Boolean);
       return ds(pair, pts);
     }).filter(d => d.data.length > 0);
-    lineChart(canvasId, datasets, segs, `β_${factor}`);
+    lineChart(canvasId, datasets, segs, `β_${factor}`, undefined, undefined, true);
   }
 }
 
@@ -1205,8 +1481,155 @@ function switchTab(btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('on'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('on'));
   btn.classList.add('on');
-  document.getElementById(btn.dataset.tab)?.classList.add('on');
-  if (btn.dataset.tab === 't-rolling') { renderRolling(); renderDivergenceChart(); }
+  const tabId = btn.dataset.tab;
+  document.getElementById(tabId)?.classList.add('on');
+  if (tabId === 't-rolling') { renderRolling(); renderDivergenceChart(); }
+  updateInsights(tabId);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Beta classification helpers
+   ═══════════════════════════════════════════════════════════════════════════ */
+function betaClassify(vix) {
+  if (vix == null) return { label:'NO DATA', cls:'snap-neutral', arrow:'?' };
+  if (vix >  1.5) return { label:'STRONGLY RISK-ON',  cls:'snap-risk-on',  arrow:'↑↑' };
+  if (vix >  0.3) return { label:'RISK-ON',            cls:'snap-risk-on',  arrow:'↑'  };
+  if (vix < -1.5) return { label:'STRONGLY SAFE-HAVEN',cls:'snap-risk-off', arrow:'↓↓' };
+  if (vix < -0.3) return { label:'SAFE-HAVEN',         cls:'snap-risk-off', arrow:'↓'  };
+  return { label:'NEUTRAL / MIXED', cls:'snap-neutral', arrow:'–' };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Right Now snapshot — rendered at top of Factor Betas tab
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderBetaSnapshot() {
+  const el = document.getElementById('betaSnapshot');
+  if (!el || !S.records.length) return;
+
+  const last   = S.records[S.records.length - 1];
+  const window = Math.min(42, S.records.length);
+  const recent = S.records.slice(-window);
+
+  const rows = S.pairs.map(pair => {
+    const getBeta = (r, f) => S.source === 'rich'
+      ? r?.beta?.[pair]?.[f] ?? null
+      : r?.estimates?.[pair]?.[`beta_${f}`]?.mean ?? null;
+
+    const vix   = getBeta(last, 'vix');
+    const dxy   = getBeta(last, 'dxy');
+    const rates = getBeta(last, 'rates');
+
+    // 7-day avg for shift indicator
+    const recentVix = recent.map(r => getBeta(r, 'vix')).filter(v => v != null);
+    const avgVix = recentVix.length ? recentVix.reduce((s, v) => s + v, 0) / recentVix.length : null;
+
+    const { label, cls, arrow } = betaClassify(vix);
+    const col = PAIR_COLORS[pair] || '#888';
+
+    const fmtB = v => v != null ? (v >= 0 ? '+' : '') + v.toFixed(2) : '—';
+
+    let shiftHtml = `<span class="snap-shift">${arrow}</span>`;
+    if (vix != null && avgVix != null) {
+      const diff = vix - avgVix;
+      if (Math.abs(diff) > 0.12) {
+        const cls2 = diff > 0 ? 'shift-up' : 'shift-dn';
+        shiftHtml = `<span class="snap-shift ${cls2}" title="Change vs recent avg">${diff > 0 ? '+' : ''}${diff.toFixed(2)}</span>`;
+      }
+    }
+
+    return { pair, vix: vix ?? 0, html: `
+      <div class="snap-row" onclick="showPairCard('${pair}')">
+        <span class="snap-pair" style="color:${col}">${pair}</span>
+        <span class="snap-label ${cls}">${label}</span>
+        <span class="snap-val">F:${fmtB(vix)} &nbsp;$:${fmtB(dxy)} &nbsp;R:${fmtB(rates)}</span>
+        ${shiftHtml}
+      </div>` };
+  });
+
+  // Sort: most risk-off at top → most risk-on at bottom
+  rows.sort((a, b) => a.vix - b.vix);
+
+  el.innerHTML = rows.map(r => r.html).join('') +
+    `<div style="font-size:9px;color:var(--text3);margin-top:5px;padding:0 2px">
+       F = Fear (VIX) beta &nbsp;·&nbsp; $ = USD (DXY) beta &nbsp;·&nbsp; R = Rates beta &nbsp;·&nbsp; Right column = change vs recent avg
+     </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Pair profile card popup
+   ═══════════════════════════════════════════════════════════════════════════ */
+function showPairCard(pair) {
+  const prof = PAIR_PROFILES[pair] || {};
+  const col  = PAIR_COLORS[pair] || '#888';
+  const last = S.records[S.records.length - 1];
+
+  const gB = (r, f) => S.source === 'rich'
+    ? r?.beta?.[pair]?.[f] ?? null
+    : r?.estimates?.[pair]?.[`beta_${f}`]?.mean ?? null;
+
+  const vix   = gB(last, 'vix');
+  const dxy   = gB(last, 'dxy');
+  const rates = gB(last, 'rates');
+
+  const fmtB = v => v != null ? (v >= 0 ? '+' : '') + v.toFixed(3) : '—';
+  const { label: vixLabel, cls: vixCls } = betaClassify(vix);
+
+  const absVix = Math.abs(vix ?? 0), absDxy = Math.abs(dxy ?? 0), absRates = Math.abs(rates ?? 0);
+  const total = absVix + absDxy + absRates;
+  const domFactor = total > 0.01
+    ? [['Fear', absVix], ['USD', absDxy], ['Rates', absRates]].sort((a, b) => b[1] - a[1])[0][0]
+    : '—';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'pair-card-overlay';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `<div class="pair-card">
+    <div class="pair-card-header">
+      <span class="pair-card-emoji">${prof.flag ?? '💱'}</span>
+      <div style="flex:1">
+        <div class="pair-card-name" style="color:${col}">${pair}</div>
+        <div class="pair-card-sub">${prof.name ?? pair}  ·  ${prof.type ?? 'FX Pair'}</div>
+      </div>
+      <button class="pair-card-close" onclick="this.closest('.pair-card-overlay').remove()">×</button>
+    </div>
+
+    <div class="pair-card-body">${prof.note ?? 'No profile available.'}</div>
+
+    <div style="margin-top:10px;font-size:10px;color:var(--text3);background:var(--s2);border-radius:5px;padding:7px 9px;line-height:1.5">
+      <strong>Typical behaviour:</strong> ${prof.typical ?? '—'}
+    </div>
+
+    <div class="pair-card-metrics">
+      <div class="pcm-block">
+        <div class="pcm-lbl">Fear β</div>
+        <div class="pcm-val" style="color:${(vix??0)>0.3?'var(--green)':(vix??0)<-0.3?'var(--red)':'var(--text2)'}">${fmtB(vix)}</div>
+      </div>
+      <div class="pcm-block">
+        <div class="pcm-lbl">USD β</div>
+        <div class="pcm-val" style="color:var(--text2)">${fmtB(dxy)}</div>
+      </div>
+      <div class="pcm-block">
+        <div class="pcm-lbl">Rates β</div>
+        <div class="pcm-val" style="color:var(--text2)">${fmtB(rates)}</div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:10px;padding:6px 8px;background:var(--s2);border-radius:5px">
+      <strong>Now:</strong>
+      <span class="snap-label ${vixCls}" style="display:inline-block">${vixLabel}</span>
+      <span style="color:var(--text3)">· Main driver: <strong style="color:var(--text)">${domFactor}</strong></span>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Insights panel — update on tab switch
+   ═══════════════════════════════════════════════════════════════════════════ */
+function updateInsights(tabId) {
+  const el = document.getElementById('insightsContent');
+  if (!el) return;
+  el.innerHTML = TAB_INSIGHTS[tabId] || `<div class="ins-section"><div class="ins-title">About this tab</div><div class="ins-body">Select a tab to see guidance.</div></div>`;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1255,6 +1678,7 @@ async function triggerBuild() {
    Boot
    ═══════════════════════════════════════════════════════════════════════════ */
 checkBuildStatus();
+updateInsights('t-matrix'); // show explainer for default tab immediately
 init();
 </script>
 </body>
