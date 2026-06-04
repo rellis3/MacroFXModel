@@ -2669,10 +2669,21 @@ app.post('/api/regime-backfill-trigger', (req, res) => {
   const lines     = [];
   _rgJobs.set(jobId, { jobId, status: 'running', startedAt, lines });
 
+  // Use PATH-resolved python3 so this works on Railway without hardcoded paths.
+  // BT_PYTHON uses execFile() try/catch which only catches synchronous errors
+  // and always returns /usr/local/bin/python3 even when that path doesn't exist.
+  const pyBin = process.env.PYTHON_BIN || 'python3';
+
   const child = spawn(
-    BT_PYTHON, [SCRIPT, '--upload', '--dashboard-url', baseUrl],
+    pyBin, [SCRIPT, '--upload', '--dashboard-url', baseUrl],
     { cwd: __dirname }
   );
+
+  child.on('error', err => {
+    lines.push(`[spawn error] ${err.message}`);
+    const job = _rgJobs.get(jobId);
+    if (job) { job.status = 'error'; job.exitCode = null; job.finishedAt = Date.now(); }
+  });
 
   child.stdout.on('data', chunk => {
     const text = chunk.toString();
