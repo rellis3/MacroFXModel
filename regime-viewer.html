@@ -493,18 +493,20 @@ function buildCharts() {
   // Placeholder data — will be filled once real data loads
   window._refLineSeries = refLine;
 
-  // Sync time ranges
+  // Sync time ranges — wrapped in try/catch because setVisibleRange throws
+  // "Value is null" when the target chart has no data yet (e.g. chart2 is
+  // empty when chart1.fitContent() fires after loading candles).
   chart1.timeScale().subscribeVisibleTimeRangeChange(range => {
-    if (syncingFromChart2) return;
+    if (syncingFromChart2 || !range || range.from == null || range.to == null) return;
     syncingFromChart1 = true;
-    if (range) chart2.timeScale().setVisibleRange(range);
+    try { chart2.timeScale().setVisibleRange(range); } catch(e) {}
     syncingFromChart1 = false;
   });
 
   chart2.timeScale().subscribeVisibleTimeRangeChange(range => {
-    if (syncingFromChart1) return;
+    if (syncingFromChart1 || !range || range.from == null || range.to == null) return;
     syncingFromChart2 = true;
-    if (range) chart1.timeScale().setVisibleRange(range);
+    try { chart1.timeScale().setVisibleRange(range); } catch(e) {}
     syncingFromChart2 = false;
   });
 
