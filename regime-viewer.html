@@ -386,8 +386,6 @@ let chart1 = null;
 let chart2 = null;
 let candleSeries = null;
 let metricSeries = {};
-let syncingFromChart1 = false;
-let syncingFromChart2 = false;
 let regimeRecords = [];
 let activeMetrics = V2_METRICS;
 
@@ -487,16 +485,19 @@ function buildCharts() {
     wickDownColor:   '#ef5350',
   });
 
-  // Metrics chart — no candlestick series, just lines
+  // Metrics chart — read-only: no scroll, no scale, no reverse sync.
+  // User interacting with chart2 must NOT affect chart1's range — that's
+  // the root cause of the "candles zoom out on click" bug.
   chart2 = LightweightCharts.createChart(metricsEl, {
     ...commonOpts,
     layout: {
-      background: { color: 'rgba(0,0,0,0)' }, // transparent — regime bands show through
+      background: { color: 'rgba(0,0,0,0)' },
       textColor:  '#d1d4dc',
     },
     width:  metricsEl.clientWidth,
     height: metricsEl.clientHeight,
-    // Single right axis: all metrics normalised to 0-100
+    handleScroll: false,  // read-only: prevent zoom reset on click
+    handleScale:  false,
     rightPriceScale: {
       borderColor: '#1c2133',
       scaleMargins: { top: 0.05, bottom: 0.05 },
@@ -516,23 +517,13 @@ function buildCharts() {
   // Placeholder data — will be filled once real data loads
   window._refLineSeries = refLine;
 
-  // Sync time ranges — wrapped in try/catch because setVisibleRange throws
-  // "Value is null" when the target chart has no data yet (e.g. chart2 is
-  // empty when chart1.fitContent() fires after loading candles).
+  // One-way sync: price chart drives metrics chart.
+  // chart2 → chart1 is intentionally absent — chart2 is read-only so
+  // clicking/hovering the metrics panel never resets the candle zoom.
   chart1.timeScale().subscribeVisibleTimeRangeChange(range => {
     requestDraw();
-    if (syncingFromChart2 || !range || range.from == null || range.to == null) return;
-    syncingFromChart1 = true;
+    if (!range || range.from == null || range.to == null) return;
     try { chart2.timeScale().setVisibleRange(range); } catch(e) {}
-    syncingFromChart1 = false;
-  });
-
-  chart2.timeScale().subscribeVisibleTimeRangeChange(range => {
-    requestDraw();
-    if (syncingFromChart1 || !range || range.from == null || range.to == null) return;
-    syncingFromChart2 = true;
-    try { chart1.timeScale().setVisibleRange(range); } catch(e) {}
-    syncingFromChart2 = false;
   });
 
   // Hover info
@@ -800,6 +791,12 @@ async function loadData() {
 
   if (!fromStr || !toStr) {
     setStatus('Please select a date range', 'err');
+    return;
+  }
+
+  const days = (new Date(toStr) - new Date(fromStr)) / 86400000;
+  if (days > 90) {
+    setStatus('Max 90 days — M5 candles beyond that crash the browser. Narrow your range.', 'err');
     return;
   }
 
