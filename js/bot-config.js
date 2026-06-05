@@ -64,6 +64,7 @@ const DEFAULTS = {
 const ALL_PAIRS = [
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD',
   'EUR/GBP', 'USD/CAD', 'USD/CHF', 'GBP/JPY', 'NAS100_USD',
+  'EUR/JPY', 'EUR/CHF', 'GBP/CHF', 'AUD/JPY', 'CAD/JPY',
 ];
 
 // ── Backtest bot defaults (mirrors Python config.py DEFAULTS exactly) ─────────
@@ -884,6 +885,11 @@ const RG_PAIRS = [
   { id: 'rg_pair_USDCHF', sym: 'USD/CHF' },
   { id: 'rg_pair_GBPJPY', sym: 'GBP/JPY' },
   { id: 'rg_pair_EURGBP', sym: 'EUR/GBP' },
+  { id: 'rg_pair_EURJPY', sym: 'EUR/JPY' },
+  { id: 'rg_pair_EURCHF', sym: 'EUR/CHF' },
+  { id: 'rg_pair_GBPCHF', sym: 'GBP/CHF' },
+  { id: 'rg_pair_AUDJPY', sym: 'AUD/JPY' },
+  { id: 'rg_pair_CADJPY', sym: 'CAD/JPY' },
   { id: 'rg_pair_XAUUSD', sym: 'XAU/USD' },
   { id: 'rg_pair_NAS100', sym: 'NAS100_USD' },
 ];
@@ -1033,6 +1039,11 @@ const RGV2_PAIRS = [
   { id: 'rgv2_pair_USDCHF', sym: 'USD/CHF' },
   { id: 'rgv2_pair_GBPJPY', sym: 'GBP/JPY' },
   { id: 'rgv2_pair_EURGBP', sym: 'EUR/GBP' },
+  { id: 'rgv2_pair_EURJPY', sym: 'EUR/JPY' },
+  { id: 'rgv2_pair_EURCHF', sym: 'EUR/CHF' },
+  { id: 'rgv2_pair_GBPCHF', sym: 'GBP/CHF' },
+  { id: 'rgv2_pair_AUDJPY', sym: 'AUD/JPY' },
+  { id: 'rgv2_pair_CADJPY', sym: 'CAD/JPY' },
   { id: 'rgv2_pair_XAUUSD', sym: 'XAU/USD' },
   { id: 'rgv2_pair_NAS100',  sym: 'NAS100_USD' },
 ];

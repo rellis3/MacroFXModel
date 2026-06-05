@@ -76,12 +76,15 @@ _PIP_SIZES = {
     'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
     'AUD/USD': 0.0001, 'NZD/USD': 0.0001, 'USD/CAD': 0.0001,
     'USD/CHF': 0.0001, 'GBP/JPY': 0.01,   'EUR/GBP': 0.0001,
+    'EUR/JPY': 0.01,   'EUR/CHF': 0.0001, 'GBP/CHF': 0.0001,
+    'AUD/JPY': 0.01,   'CAD/JPY': 0.01,
     'XAU/USD': 1.0,    'NAS100_USD': 1.0,  'USTECH100M': 1.0,
 }
 _PIP_VALUES = {
     'EUR/USD': 10.0, 'GBP/USD': 10.0, 'AUD/USD': 10.0, 'NZD/USD': 10.0,
     'USD/JPY': 9.0,  'USD/CAD': 7.5,  'USD/CHF': 10.5, 'GBP/JPY': 9.0,
-    'EUR/GBP': 12.5,
+    'EUR/GBP': 12.5, 'EUR/JPY': 6.5,  'EUR/CHF': 11.0, 'GBP/CHF': 11.0,
+    'AUD/JPY': 6.5,  'CAD/JPY': 6.5,
     'XAU/USD': 100.0, 'NAS100_USD': 1.0, 'USTECH100M': 1.0,
 }
 TRADEABLE = {'BULL', 'BEAR'}

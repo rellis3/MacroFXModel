@@ -75,18 +75,21 @@ async function callWorker(req) {
 const DEFAULT_PAIRS = [
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD',
   'NZD/USD', 'USD/CAD', 'USD/CHF', 'GBP/JPY', 'XAU/USD', 'NAS100_USD',
-  'EUR/GBP',
+  'EUR/GBP', 'EUR/JPY', 'EUR/CHF', 'GBP/CHF', 'AUD/JPY', 'CAD/JPY',
 ];
 
 const PIP_SIZE = {
   'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'AUD/USD': 0.0001,
   'NZD/USD': 0.0001, 'USD/CAD': 0.0001, 'USD/CHF': 0.0001,
   'GBP/JPY': 0.01,   'USD/JPY': 0.01,   'EUR/GBP': 0.0001,
+  'EUR/JPY': 0.01,   'AUD/JPY': 0.01,   'CAD/JPY': 0.01,
+  'EUR/CHF': 0.0001, 'GBP/CHF': 0.0001,
   'XAU/USD': 1.0,    'NAS100_USD': 1.0,
 };
 
 const PRICE_DIGITS = {
-  'USD/JPY': 3, 'GBP/JPY': 3, 'XAU/USD': 2, 'NAS100_USD': 1,
+  'USD/JPY': 3, 'GBP/JPY': 3, 'EUR/JPY': 3, 'AUD/JPY': 3, 'CAD/JPY': 3,
+  'XAU/USD': 2, 'NAS100_USD': 1,
 };
 
 // Typical OANDA spread in pips per pair — used as baseline for spread quality gate
@@ -94,6 +97,8 @@ const TYPICAL_SPREAD_PIPS = {
   'EUR/USD': 0.6, 'GBP/USD': 0.9, 'USD/JPY': 0.7,
   'AUD/USD': 0.9, 'NZD/USD': 1.1, 'USD/CAD': 1.1,
   'USD/CHF': 1.0, 'GBP/JPY': 2.0,   'EUR/GBP': 0.9,
+  'EUR/JPY': 1.0, 'EUR/CHF': 1.5,   'GBP/CHF': 2.0,
+  'AUD/JPY': 1.5, 'CAD/JPY': 2.0,
   'XAU/USD': 0.3, 'NAS100_USD': 1.0,
 };
 

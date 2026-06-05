@@ -41,6 +41,11 @@ const INSTRUMENTS = [
   { name: 'USDCHF', oandaInstrument: 'USD_CHF',     ticker: 'USDCHF=X', assetClass: 'fx'        },
   { name: 'GBPJPY', oandaInstrument: 'GBP_JPY',     ticker: 'GBPJPY=X', assetClass: 'fx'        },
   { name: 'EURGBP', oandaInstrument: 'EUR_GBP',     ticker: 'EURGBP=X', assetClass: 'fx'        },
+  { name: 'EURJPY', oandaInstrument: 'EUR_JPY',     ticker: 'EURJPY=X', assetClass: 'fx'        },
+  { name: 'EURCHF', oandaInstrument: 'EUR_CHF',     ticker: 'EURCHF=X', assetClass: 'fx'        },
+  { name: 'GBPCHF', oandaInstrument: 'GBP_CHF',     ticker: 'GBPCHF=X', assetClass: 'fx'        },
+  { name: 'AUDJPY', oandaInstrument: 'AUD_JPY',     ticker: 'AUDJPY=X', assetClass: 'fx'        },
+  { name: 'CADJPY', oandaInstrument: 'CAD_JPY',     ticker: 'CADJPY=X', assetClass: 'fx'        },
 ];
 
 const YAHOO_BASE       = 'https://query1.finance.yahoo.com/v8/finance/chart';

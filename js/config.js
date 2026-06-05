@@ -8,6 +8,11 @@ export const PAIRS = [
   { symbol: 'USD/CAD',    code: 'uc',  shortCode: 'ca',  name: 'USD/CAD', isUsdBase: true },
   { symbol: 'USD/CHF',    code: 'uf',  shortCode: 'ch',  name: 'USD/CHF', isUsdBase: true, isSafeHaven: true },
   { symbol: 'GBP/JPY',    code: 'gj',  shortCode: 'jp',  name: 'GBP/JPY', isPairCross: true, isSafeHaven: true },
+  { symbol: 'EUR/JPY',    code: 'ej',  shortCode: 'jp',  name: 'EUR/JPY', isPairCross: true },
+  { symbol: 'EUR/CHF',    code: 'ef',  shortCode: 'ch',  name: 'EUR/CHF', isPairCross: true, isSafeHaven: true },
+  { symbol: 'GBP/CHF',    code: 'gf',  shortCode: 'ch',  name: 'GBP/CHF', isPairCross: true },
+  { symbol: 'AUD/JPY',    code: 'aj',  shortCode: 'jp',  name: 'AUD/JPY', isPairCross: true },
+  { symbol: 'CAD/JPY',    code: 'cj',  shortCode: 'jp',  name: 'CAD/JPY', isPairCross: true },
   { symbol: 'NAS100_USD', code: 'nas', shortCode: 'nas', name: 'NAS100', isEquity: true },
 ];
 
@@ -41,6 +46,11 @@ export const COMPASS_CONFIG = {
   'USD/CAD': { short: 'ca_short', long: 'ca10y',  label: 'US–CA',  fxSign: +1 },
   'USD/CHF': { short: 'ch_short', long: 'ch10y',  label: 'US–CH',  fxSign: +1 },
   'GBP/JPY':    { short: 'gb_short', long: 'gb10y',  label: 'GB–JP',  fxSign: +1, crossBase: 'jp10y', crossBaseShort: 'jp_short' },
+  'EUR/JPY':    { short: 'de_short', long: 'de10y',  label: 'DE–JP',  fxSign: +1, crossBase: 'jp10y', crossBaseShort: 'jp_short' },
+  'EUR/CHF':    { short: 'de_short', long: 'de10y',  label: 'DE–CH',  fxSign: +1, crossBase: 'ch10y', crossBaseShort: 'ch_short' },
+  'GBP/CHF':    { short: 'gb_short', long: 'gb10y',  label: 'GB–CH',  fxSign: +1, crossBase: 'ch10y', crossBaseShort: 'ch_short' },
+  'AUD/JPY':    { short: 'au_short', long: 'au10y',  label: 'AU–JP',  fxSign: +1, crossBase: 'jp10y', crossBaseShort: 'jp_short' },
+  'CAD/JPY':    { short: 'ca_short', long: 'ca10y',  label: 'CA–JP',  fxSign: +1, crossBase: 'jp10y', crossBaseShort: 'jp_short' },
   'NAS100_USD': { short: null, long: null, label: 'Yield Curve', fxSign: 1, isEquity: true },
 };
 
@@ -154,4 +164,9 @@ export const TYPICAL_SPREADS = {
   'USD/CAD': 0.6,
   'USD/CHF': 0.6,
   'GBP/JPY': 0.9,
+  'EUR/JPY': 0.7,
+  'EUR/CHF': 1.0,
+  'GBP/CHF': 1.5,
+  'AUD/JPY': 1.2,
+  'CAD/JPY': 1.5,
 };
