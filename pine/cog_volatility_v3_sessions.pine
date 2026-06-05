@@ -179,10 +179,11 @@ if barstate.isfirst
             // ── Standard vol block parsing ────────────────────────────────────
             isDataLine    = str.contains(rowUp, "RANGE") or str.contains(rowUp, "MOVE") or
                  str.contains(rowUp, "VOLATILITY") or str.contains(rowUp, "PERCENTILE")
-            isKnownTicker = str.contains(rowUp, "GOLD") or str.contains(rowUp, "EURUSD") or
-                 str.contains(rowUp, "GBPUSD") or str.contains(rowUp, "AUDUSD") or
-                 str.contains(rowUp, "USDCAD") or str.contains(rowUp, "USDJPY") or
-                 str.contains(rowUp, "NQ")
+            isKnownTicker = str.contains(rowUp, "GOLD")   or str.contains(rowUp, "NQ")     or
+                 str.contains(rowUp, "EURUSD") or str.contains(rowUp, "GBPUSD") or
+                 str.contains(rowUp, "USDJPY") or str.contains(rowUp, "AUDUSD") or
+                 str.contains(rowUp, "NZDUSD") or str.contains(rowUp, "USDCAD") or
+                 str.contains(rowUp, "USDCHF") or str.contains(rowUp, "GBPJPY")
 
             if not isDataLine and isKnownTicker
                 insideVolBlock := str.contains(rowUp, symUp)
