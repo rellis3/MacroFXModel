@@ -899,15 +899,8 @@ function renderMarkers(events) {
         shape:    isLong ? 'arrowUp' : 'arrowDown',
         text:     isLong ? 'L' : 'S',
       });
-    } else if (ev.type === 'close') {
-      markers.push({
-        time:     ts,
-        position: 'aboveBar',
-        color:    '#888888',
-        shape:    'circle',
-        text:     'X',
-      });
     }
+    // close events omitted — connecting lines already show trade exits
     // gate events omitted — too numerous (fires on every blocked cycle)
   });
 
