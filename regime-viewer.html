@@ -823,11 +823,11 @@ async function loadData() {
 
     regimeRecords = records;
 
-    renderCandles(candles);
-    renderMarkers(events);
-    renderMetrics(records);
-
     currentTrades = buildTradePairs(events);
+
+    renderCandles(candles);
+    renderMarkers(events, currentTrades);
+    renderMetrics(records);
 
     const targetRange = { from: fromEpoch, to: toEpoch2 };
     try { chart1.timeScale().setVisibleRange(targetRange); } catch(e) {}
@@ -878,7 +878,7 @@ function renderCandles(candles) {
 
 // ─── Render markers ───────────────────────────────────────────────────────────
 
-function renderMarkers(events) {
+function renderMarkers(events, trades) {
   if (!events || !events.length) {
     candleSeries.setMarkers([]);
     return;
@@ -886,25 +886,30 @@ function renderMarkers(events) {
 
   const markers = [];
 
+  // Entry arrows — one per entry event
   events.forEach(ev => {
-    if (!ev || !ev.ts) return;
-    const ts = ev.ts;
-
-    if (ev.type === 'entry') {
-      const isLong = (ev.direction || '').toUpperCase() === 'LONG';
-      markers.push({
-        time:     ts,
-        position: isLong ? 'belowBar' : 'aboveBar',
-        color:    isLong ? '#00c97d' : '#ef5350',
-        shape:    isLong ? 'arrowUp' : 'arrowDown',
-        text:     isLong ? 'L' : 'S',
-      });
-    }
-    // close events omitted — connecting lines already show trade exits
-    // gate events omitted — too numerous (fires on every blocked cycle)
+    if (!ev || !ev.ts || ev.type !== 'entry') return;
+    const isLong = (ev.direction || '').toUpperCase() === 'LONG';
+    markers.push({
+      time:     ev.ts,
+      position: isLong ? 'belowBar' : 'aboveBar',
+      color:    isLong ? '#00c97d' : '#ef5350',
+      shape:    isLong ? 'arrowUp' : 'arrowDown',
+      text:     isLong ? 'L' : 'S',
+    });
   });
 
-  // LightweightCharts requires markers sorted by time
+  // Close markers — exactly one per paired trade (not per raw close event)
+  (trades || []).forEach(trade => {
+    markers.push({
+      time:     trade.close.ts,
+      position: 'aboveBar',
+      color:    '#888888',
+      shape:    'circle',
+      text:     'X',
+    });
+  });
+
   markers.sort((a, b) => a.time - b.time);
   candleSeries.setMarkers(markers);
 }
