@@ -769,11 +769,16 @@ function buildV3Text(forecastData, statsData) {
   const instr = statsData.instruments ?? {};
   for (const [name, stats] of Object.entries(instr)) {
     if (!stats?.asia || !stats?.london) continue;
-    const a = stats.asia;
-    const l = stats.london;
+    const a  = stats.asia;
+    const l  = stats.london;
+    // Look up today's vol forecast for this instrument to compute effective price %
+    const fc = forecastData.instruments?.[name];
+    const eff = (consumptionPct, volPct) =>
+      fc && volPct ? ` (≈${(consumptionPct * volPct / 100).toFixed(2)}% of price)` : '';
+
     lines.push(name);
-    lines.push(`Asia range      : ${a.p50}% median · ${a.p75}% 75th`);
-    lines.push(`London range    : ${l.p50}% median · ${l.p75}% 75th`);
+    lines.push(`Asia range      : ${a.p50}% of daily · ${a.p75}% 75th${eff(a.p50, fc?.hl_median)}`);
+    lines.push(`London range    : ${l.p50}% of daily · ${l.p75}% 75th${eff(l.p50, fc?.hl_median)}`);
     lines.push('');
   }
 
