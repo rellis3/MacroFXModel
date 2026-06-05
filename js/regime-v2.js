@@ -5,6 +5,7 @@ import { S } from './state.js';
 const DEFAULT_PAIRS = [
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD',
   'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD',
+  'EUR/GBP', 'EUR/JPY', 'EUR/CHF', 'GBP/CHF', 'AUD/JPY', 'CAD/JPY',
 ];
 
 // ── Module-scoped state ───────────────────────────────────────────────────────

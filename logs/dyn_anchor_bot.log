@@ -747,3 +747,43 @@
 [2026-06-05 18:57:41] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
 [2026-06-05 19:01:04] [DA] [INFO] Cycle 510  balance=99551.49  sleep=17.6s
 [2026-06-05 19:04:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:11:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:11:05] [DA] [INFO] Cycle 540  balance=99551.49  sleep=16.4s
+[2026-06-05 19:17:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29250.90000  sell_entry=29763.45257  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:21:06] [DA] [INFO] Cycle 570  balance=99551.49  sleep=15.2s
+[2026-06-05 19:24:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29242.10000  sell_entry=29754.49837  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:31:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29204.40000  sell_entry=29716.13777  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:31:06] [DA] [INFO] Cycle 600  balance=99551.49  sleep=16.0s
+[2026-06-05 19:37:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29176.40000  sell_entry=29687.64714  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:41:11] [DA] [INFO] Cycle 630  balance=99551.49  sleep=11.0s
+[2026-06-05 19:44:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29138.90000  sell_entry=29652.54261  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:51:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29083.10000  sell_entry=29592.71228  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:51:05] [DA] [INFO] Cycle 660  balance=99551.49  sleep=16.5s
+[2026-06-05 19:57:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29083.10000  sell_entry=29592.71228  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:01:05] [DA] [INFO] Cycle 690  balance=99551.49  sleep=16.9s
+[2026-06-05 20:04:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29083.10000  sell_entry=29592.71228  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:11:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29061.90000  sell_entry=29584.87735  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:11:04] [DA] [INFO] Cycle 720  balance=99551.49  sleep=17.4s
+[2026-06-05 20:17:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28969.90000  sell_entry=29487.39869  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:21:05] [DA] [INFO] Cycle 750  balance=99551.49  sleep=16.9s
+[2026-06-05 20:24:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:28:32] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/kv/set (Caused by ConnectTimeoutError(<HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443) at 0x16058404f50>, 'Connection to macrofxmodel-production.up.railway.app timed out. (connect timeout=10)'))
+[2026-06-05 20:31:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:31:04] [DA] [INFO] Cycle 780  balance=99551.49  sleep=17.4s
+[2026-06-05 20:37:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:41:04] [DA] [INFO] Cycle 810  balance=99551.49  sleep=17.9s
+[2026-06-05 20:44:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:51:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:51:05] [DA] [INFO] Cycle 840  balance=99551.49  sleep=17.1s
+[2026-06-05 20:57:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:01:07] [DA] [INFO] Cycle 870  balance=99551.49  sleep=14.5s
+[2026-06-05 21:04:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28870.40000  sell_entry=29376.28521  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:11:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28834.10000  sell_entry=29339.34914  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:11:05] [DA] [INFO] Cycle 900  balance=99551.49  sleep=16.4s
+[2026-06-05 21:17:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28783.10000  sell_entry=29287.45549  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:21:04] [DA] [INFO] Cycle 930  balance=99551.49  sleep=17.4s
+[2026-06-05 21:24:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28781.10000  sell_entry=29285.42044  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:31:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28781.10000  sell_entry=29285.42044  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:31:06] [DA] [INFO] Cycle 960  balance=99551.49  sleep=15.5s
+[2026-06-05 21:37:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28769.70000  sell_entry=29278.09428  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:41:04] [DA] [INFO] Cycle 990  balance=99551.49  sleep=17.3s
