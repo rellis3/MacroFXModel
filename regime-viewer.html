@@ -456,6 +456,7 @@ function selectBot(bot) {
   activeMetrics = bot === 'v1' ? V1_METRICS : V2_METRICS;
   buildCheckboxes();
   rebuildMetricSeries();
+  if (currentCandles.length) loadData();
 }
 
 // ─── Chart creation ──────────────────────────────────────────────────────────
@@ -856,7 +857,7 @@ function renderCandles(candles) {
   // Colour each candle by the active regime at that timestamp.
   // Falls back to standard green/red when no regime data is available.
   const data = candles.map(c => {
-    const rec = findRegimeAt(c.time);
+    const rec = findRegimeAt(c.time + 299);
     const col = rec ? REGIME_COLORS[rec.regime]?.color : null;
     const fallback = c.close >= c.open ? '#00c97d' : '#ef5350';
     const color = col || fallback;
