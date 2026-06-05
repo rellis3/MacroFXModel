@@ -18,7 +18,7 @@ import re
 import sys
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # ---------------------------------------------------------------------------
 # File paths
@@ -437,6 +437,16 @@ def print_summary(version: str, records_by_pair: dict, events: list):
 # Upload helper
 # ---------------------------------------------------------------------------
 
+def trim_payload(payload: dict, days: int) -> dict:
+    """Return a copy of payload with records/events trimmed to the last `days` days."""
+    cutoff = int((datetime.now(timezone.utc) - timedelta(days=days)).timestamp())
+    return {
+        **payload,
+        "records": [r for r in payload["records"] if r["ts"] >= cutoff],
+        "events":  [e for e in payload["events"]  if e["ts"] >= cutoff],
+    }
+
+
 def upload_pair(dashboard_url: str, pair: str, payload: dict):
     """
     POST payload to {dashboard_url}/api/regime-backfill as JSON.
@@ -483,6 +493,12 @@ def main():
         action="store_true",
         help="POST each pair's data to {dashboard-url}/api/regime-backfill",
     )
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=14,
+        help="Only upload records/events from the last N days (default: 14)",
+    )
     args = parser.parse_args()
 
     # --- Parse both logs ---
@@ -507,13 +523,16 @@ def main():
         all_payloads = [("v1", p) for p in v1_payloads] + [("v2", p) for p in v2_payloads]
         print(
             f"\nUploading {len(all_payloads)} pair payloads "
-            f"to {args.dashboard_url} ..."
+            f"to {args.dashboard_url} (last {args.days} days) ..."
         )
         ok_count = fail_count = 0
         for _ver, (pair, payload) in all_payloads:
-            ok, status = upload_pair(args.dashboard_url, pair, payload)
+            trimmed = trim_payload(payload, args.days)
+            ok, status = upload_pair(args.dashboard_url, pair, trimmed)
             tag = "OK  " if ok else "FAIL"
-            print(f"  [{tag}] {payload['bot']:2s}  {pair:<16}  status={status}")
+            n_rec = len(trimmed["records"])
+            n_evt = len(trimmed["events"])
+            print(f"  [{tag}] {payload['bot']:2s}  {pair:<16}  {n_rec:>6} recs  {n_evt:>4} evts  status={status}")
             if ok:
                 ok_count += 1
             else:

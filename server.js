@@ -1188,7 +1188,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
 // ── Express app ───────────────────────────────────────────────────────────────
 
 const app = express();
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '25mb' }));
 
 // Real-time monitoring + level-refresh status
 app.get('/api/monitor/status', (_req, res) => {

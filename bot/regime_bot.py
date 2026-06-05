@@ -584,7 +584,7 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
         'price':        close_price,
         'deviation':    20,
         'magic':        MAGIC,
-        'comment':      f'RegimeBot close: {reason[:30]}',
+        'comment':      (''.join(c for c in f'RgCls:{reason}' if ord(c) < 128))[:31],
         'type_time':    mt5.ORDER_TIME_GTC,
         'type_filling': _filling_mode(mt5_sym),
     })

@@ -762,7 +762,8 @@ def run_nightly_precompute(daily_state: dict, pairs: list, url: str, cfg: dict) 
         log.warning('[Precompute] No forecast data returned — bot will fall back to MT5 bars at session open')
         return
 
-    tomorrow = (datetime.now(timezone.utc).date())
+    from datetime import timedelta
+    tomorrow = datetime.now(timezone.utc).date() + timedelta(days=1)
     ok_count = 0
     for pair in pairs:
         f = forecast.get(pair)
@@ -876,7 +877,7 @@ def run(url: str, paper_mode: bool) -> None:
                             pip    = _PIP_SIZES.get(pair, 0.0001)
                             sign   = 1 if pos['direction'] == 'BUY' else -1
                             pnl_p  = (exit_p - pos['entry_price']) * sign / pip
-                            pnl_pct = pnl_p * pip * _PIP_VALUES.get(pair, 10.0) / balance * 100
+                            pnl_pct = pnl_p * _PIP_VALUES.get(pair, 10.0) * pos.get('lots', 1.0) / balance * 100
                             msg = _tg_exit(pair, pos['direction'], pos['entry_price'],
                                            exit_p, 'EOD', pnl_pct, paper_mode)
                             send_telegram(tg_t, tg_c, msg)
@@ -999,7 +1000,7 @@ def run(url: str, paper_mode: bool) -> None:
                             pip    = _PIP_SIZES.get(pair, 0.0001)
                             sign   = 1 if pos['direction'] == 'BUY' else -1
                             pnl_p  = (exit_p - pos['entry_price']) * sign / pip
-                            pnl_pct = pnl_p * pip * _PIP_VALUES.get(pair, 10.0) / balance * 100
+                            pnl_pct = pnl_p * _PIP_VALUES.get(pair, 10.0) * pos.get('lots', 1.0) / balance * 100
                             log.info(
                                 f'[{pair}] Ticket {pos["ticket"]} gone — SL/TP hit  '
                                 f'pnl={pnl_p:+.1f}p'

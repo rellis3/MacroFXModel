@@ -24,7 +24,6 @@ A .786 or .886 with NPOC + pivot confluence is a tradeable setup on its own.
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
 
 
 # Minimum impulse size as multiple of ATR before a leg is considered valid
@@ -37,7 +36,7 @@ PIVOT_N: dict[str, int] = {
     'D1': 3, 'H4': 4, 'H1': 4, 'M30': 4, 'M15': 3,
 }
 
-MAX_ZONES_PER_TF = 18      # up to 3 impulses × 6 variants (gp / 382 / 50pct / 786 / 886 / retest)
+MAX_ZONES_PER_TF = 60      # full matrix: many impulse pairs × 6 variants each
 
 # Symmetric half-window around .786/.886 and .5 as fraction of impulse R
 DEEP_RETRACE_WINDOW = 0.016
@@ -186,8 +185,21 @@ def _make_zone(tf: str, direction: str, swing_low: float, swing_high: float,
 
 def detect_fib_zones(bars: list[dict], tf: str, current_price: float) -> list[FibZone]:
     """
-    bars: chronological OHLC dicts (oldest first), at least 20 bars.
-    Returns up to MAX_ZONES_PER_TF active zones, newest first.
+    Full-matrix swing detection: pairs EVERY significant pivot low with EVERY later
+    significant pivot high (long legs), and EVERY significant pivot high with EVERY
+    later significant pivot low (short legs).
+
+    This replaces the old strict-alternating adjacent-pair approach and generates all
+    structurally valid impulse legs — matching how Max/Jay manually draw multiple fibs
+    from the same marked high to different structural lows (and vice versa).
+
+    Filters applied per pair:
+      1. Minimum impulse size: hp - lp >= ATR × MIN_ATR_MULT
+      2. Path coherence: no bar within the leg breaks below the origin by more than
+         0.4×ATR (long), or above the origin by more than 0.4×ATR (short).
+         This blocks legs where price clearly reversed through the anchor mid-leg.
+
+    The confluence scorer then separates meaningful clusters from noise via scoring.
     """
     if len(bars) < 20:
         return []
@@ -201,77 +213,85 @@ def detect_fib_zones(bars: list[dict], tf: str, current_price: float) -> list[Fi
     if not ph_idx or not pl_idx:
         return []
 
-    # Interleave pivot highs and lows by bar index, alternating types
-    pivots = sorted(
-        [(i, 'high', bars[i]['high']) for i in ph_idx] +
-        [(i, 'low',  bars[i]['low'])  for i in pl_idx],
-        key=lambda x: x[0],
-    )
+    highs = [b['high'] for b in bars]
+    lows  = [b['low']  for b in bars]
+
+    # Allow wick noise up to 0.4×ATR beyond pivot anchor without killing coherence.
+    coh_tol = atr * 0.4
 
     zones: list[FibZone] = []
-    prev: Optional[tuple] = None
+    seen_pairs: set[tuple] = set()
 
-    for idx, ptype, price in pivots:
-        if prev is None:
-            prev = (idx, ptype, price)
-            continue
+    # ── Long legs: every pivot_low → every LATER pivot_high ──────────────────
+    for li in pl_idx:
+        lp = lows[li]
+        for hi in ph_idx:
+            if hi <= li:
+                continue
+            hp = highs[hi]
+            if hp - lp < min_size:
+                continue
+            # Coherence: no bar within the leg dips below lp by more than coh_tol
+            if min(lows[li:hi + 1]) < lp - coh_tol:
+                continue
+            key = (li, hi)
+            if key in seen_pairs:
+                continue
+            seen_pairs.add(key)
 
-        pidx, pptype, pprice = prev
+            age = length - 1 - hi
+            ot  = bars[li].get('time', 0)
+            et  = bars[hi].get('time', 0)
 
-        # Same type: keep more extreme
-        if pptype == ptype:
-            if ptype == 'high':
-                prev = (idx, ptype, price) if price > pprice else prev
-            else:
-                prev = (idx, ptype, price) if price < pprice else prev
-            continue
-
-        # Alternating pair — extract swing_low and swing_high
-        if pptype == 'low':
-            swing_low, swing_high = pprice, price
-            direction = 'long'
-            # origin = pivot low bar (pidx), end = pivot high bar (idx)
-            origin_time = bars[pidx].get('time', 0)
-            end_time    = bars[idx].get('time', 0)
-        else:
-            swing_low, swing_high = price, pprice
-            direction = 'short'
-            # origin = pivot high bar (pidx), end = pivot low bar (idx)
-            origin_time = bars[pidx].get('time', 0)
-            end_time    = bars[idx].get('time', 0)
-
-        impulse_size = swing_high - swing_low
-        if impulse_size >= min_size:
-            age = length - 1 - idx
             for variant in ('gp', '382', '50pct', '786', '886'):
-                zone = _make_zone(tf, direction, swing_low, swing_high, age, variant,
-                                  origin_time=origin_time, end_time=end_time)
+                z = _make_zone(tf, 'long', lp, hp, age, variant,
+                               origin_time=ot, end_time=et)
+                if current_price < z.swing_origin * 0.999:
+                    z.active = False
+                zones.append(z)
 
-                # Invalidate if price has closed beyond the impulse origin
-                if direction == 'long' and current_price < zone.swing_origin * 0.999:
-                    zone.active = False
-                elif direction == 'short' and current_price > zone.swing_origin * 1.001:
-                    zone.active = False
+            if current_price > hp * 1.001:
+                zones.append(_make_zone(tf, 'long', lp, hp, age, 'retest',
+                                        origin_time=ot, end_time=et))
 
-                zones.append(zone)
+    # ── Short legs: every pivot_high → every LATER pivot_low ─────────────────
+    for hi in ph_idx:
+        hp = highs[hi]
+        for li in pl_idx:
+            if li <= hi:
+                continue
+            lp = lows[li]
+            if hp - lp < min_size:
+                continue
+            # Coherence: no bar within the leg spikes above hp by more than coh_tol
+            if max(highs[hi:li + 1]) > hp + coh_tol:
+                continue
+            key = (hi, li)
+            if key in seen_pairs:
+                continue
+            seen_pairs.add(key)
 
-            # Retest variant: price has broken through the "1" level (swing_end).
-            # The broken level often acts as new S/R on the first retest.
-            if direction == 'long' and current_price > swing_high * 1.001:
-                zones.append(_make_zone(tf, direction, swing_low, swing_high, age, 'retest',
-                                        origin_time=origin_time, end_time=end_time))
-            elif direction == 'short' and current_price < swing_low * 0.999:
-                zones.append(_make_zone(tf, direction, swing_low, swing_high, age, 'retest',
-                                        origin_time=origin_time, end_time=end_time))
+            age = length - 1 - li
+            ot  = bars[hi].get('time', 0)
+            et  = bars[li].get('time', 0)
 
-        prev = (idx, ptype, price)
+            for variant in ('gp', '382', '50pct', '786', '886'):
+                z = _make_zone(tf, 'short', lp, hp, age, variant,
+                               origin_time=ot, end_time=et)
+                if current_price > z.swing_origin * 1.001:
+                    z.active = False
+                zones.append(z)
 
-    # Deduplicate: keep only the first (newest) zone with each zone_id
-    seen: set[str] = set()
+            if current_price < lp * 0.999:
+                zones.append(_make_zone(tf, 'short', lp, hp, age, 'retest',
+                                        origin_time=ot, end_time=et))
+
+    # ── Deduplicate, filter active, sort newest-first, cap ────────────────────
+    seen_ids: set[str] = set()
     unique: list[FibZone] = []
     for z in zones:
-        if z.zone_id not in seen:
-            seen.add(z.zone_id)
+        if z.zone_id not in seen_ids:
+            seen_ids.add(z.zone_id)
             unique.append(z)
 
     active = [z for z in unique if z.active]
