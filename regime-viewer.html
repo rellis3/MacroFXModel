@@ -256,10 +256,39 @@ html, body {
   cursor: pointer;
 }
 
-#metricsChart {
+/* ── Metrics grid: one mini-chart per metric ── */
+#metricsGrid {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.metric-panel {
+  flex: 1;
+  min-height: 44px;
+  position: relative;
+  border-bottom: 1px solid #1c2133;
+  background: #0e1117;
+}
+
+.metric-panel-lbl {
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  pointer-events: none;
+  z-index: 2;
+  background: rgba(14,17,23,0.75);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.metric-panel-chart {
   width: 100%;
+  height: 100%;
   position: relative;
 }
 </style>
@@ -328,7 +357,7 @@ html, body {
     <!-- Metrics panel -->
     <div class="rv-metrics-wrap">
       <div class="rv-metrics-cb-row" id="cbRow"></div>
-      <div id="metricsChart"></div>
+      <div id="metricsGrid"></div>
     </div>
 
   </div>
@@ -383,17 +412,14 @@ const V1_METRICS = [
 
 let currentBot = 'v2';
 let chart1 = null;
-let chart2 = null;
 let candleSeries = null;
-let metricSeries = {};
+let metricCharts = {};  // key → { chart, series }
 let regimeRecords = [];
 let activeMetrics = V2_METRICS;
 
 let currentCandles = [];
-let regimeBands    = [];
 let currentTrades  = [];
 let overlayCanvas  = null;
-let overlayCanvas2 = null;
 let _drawPending   = false;
 
 // ─── Init ────────────────────────────────────────────────────────────────────
@@ -435,108 +461,56 @@ function selectBot(bot) {
 // ─── Chart creation ──────────────────────────────────────────────────────────
 
 function buildCharts() {
-  const chartWrap    = document.getElementById('chartWrap');
-  const priceEl      = document.getElementById('priceChart');
-  const metricsEl    = document.getElementById('metricsChart');
+  const priceEl = document.getElementById('priceChart');
 
-  // Attach overlay canvases BEFORE createChart() so they land first in DOM
-  // order. LightweightCharts appends its own canvases after, which means
-  // LC canvases naturally sit on top without any z-index game.
-  // LC backgrounds must be transparent so the tinted bands show through.
+  // Overlay canvas BEFORE createChart so LC canvases land on top via DOM order.
   setupOverlay();
 
-  const commonOpts = {
+  chart1 = LightweightCharts.createChart(priceEl, {
+    autoSize: true,
     layout: {
-      background: { color: 'rgba(0,0,0,0)' }, // transparent — bands show through
+      background: { color: 'rgba(0,0,0,0)' },
       textColor:  '#d1d4dc',
     },
     grid: {
       vertLines: { color: '#1c2133' },
       horzLines: { color: '#1c2133' },
     },
-    crosshair: {
-      mode: LightweightCharts.CrosshairMode.Normal,
-    },
-    rightPriceScale: {
-      borderColor: '#1c2133',
-    },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#1c2133' },
     timeScale: {
-      borderColor: '#1c2133',
-      timeVisible: true,
+      borderColor:    '#1c2133',
+      timeVisible:    true,
       secondsVisible: false,
     },
-    handleScroll:   true,
-    handleScale:    true,
-  };
-
-  // Price chart
-  chart1 = LightweightCharts.createChart(priceEl, {
-    ...commonOpts,
-    width:  priceEl.clientWidth,
-    height: priceEl.clientHeight,
+    handleScroll: true,
+    handleScale:  true,
   });
 
   candleSeries = chart1.addCandlestickSeries({
-    upColor:   '#00c97d',
-    downColor: '#ef5350',
+    upColor:         '#00c97d',
+    downColor:       '#ef5350',
     borderUpColor:   '#00c97d',
     borderDownColor: '#ef5350',
     wickUpColor:     '#00c97d',
     wickDownColor:   '#ef5350',
   });
 
-  // Metrics chart — read-only: no scroll, no scale, no reverse sync.
-  // User interacting with chart2 must NOT affect chart1's range — that's
-  // the root cause of the "candles zoom out on click" bug.
-  chart2 = LightweightCharts.createChart(metricsEl, {
-    ...commonOpts,
-    layout: {
-      background: { color: 'rgba(0,0,0,0)' },
-      textColor:  '#d1d4dc',
-    },
-    width:  metricsEl.clientWidth,
-    height: metricsEl.clientHeight,
-    handleScroll: false,  // read-only: prevent zoom reset on click
-    handleScale:  false,
-    rightPriceScale: {
-      borderColor: '#1c2133',
-      scaleMargins: { top: 0.05, bottom: 0.05 },
-    },
-  });
-
-  // Reference line at y=70 on right axis (conf threshold)
-  const refLine = chart2.addLineSeries({
-    priceScaleId: 'right',
-    color:     'rgba(255,255,255,0.25)',
-    lineWidth: 1,
-    lineStyle: LightweightCharts.LineStyle.Dashed,
-    priceLineVisible: false,
-    lastValueVisible: false,
-    crosshairMarkerVisible: false,
-  });
-  // Placeholder data — will be filled once real data loads
-  window._refLineSeries = refLine;
-
-  // One-way sync: price chart drives metrics chart.
-  // chart2 → chart1 is intentionally absent — chart2 is read-only so
-  // clicking/hovering the metrics panel never resets the candle zoom.
+  // One-way sync: price chart drives all metric mini-charts.
   chart1.timeScale().subscribeVisibleTimeRangeChange(range => {
     requestDraw();
     if (!range || range.from == null || range.to == null) return;
-    try { chart2.timeScale().setVisibleRange(range); } catch(e) {}
+    Object.values(metricCharts).forEach(({ chart }) => {
+      try { chart.timeScale().setVisibleRange(range); } catch(e) {}
+    });
   });
 
-  // Hover info
   chart1.subscribeCrosshairMove(param => updateHoverBox(param));
 
-  // Resize
   const ro = new ResizeObserver(() => {
-    chart1.applyOptions({ width: priceEl.clientWidth,   height: priceEl.clientHeight });
-    chart2.applyOptions({ width: metricsEl.clientWidth, height: metricsEl.clientHeight });
     requestDraw();
   });
   ro.observe(priceEl);
-  ro.observe(metricsEl);
 }
 
 // ─── Hover box ───────────────────────────────────────────────────────────────
@@ -604,30 +578,74 @@ function buildCheckboxes() {
 // ─── Metric series management ────────────────────────────────────────────────
 
 function rebuildMetricSeries() {
-  // Remove old series
-  Object.values(metricSeries).forEach(s => {
-    try { chart2.removeSeries(s); } catch(e) {}
+  // Destroy existing mini-charts and clear the grid
+  Object.values(metricCharts).forEach(({ chart }) => {
+    try { chart.remove(); } catch(e) {}
   });
-  metricSeries = {};
+  metricCharts = {};
 
-  // All series on the shared right axis (0-100 normalised scale)
+  const grid = document.getElementById('metricsGrid');
+  grid.innerHTML = '';
+
   activeMetrics.forEach(m => {
-    const s = chart2.addLineSeries({
+    const cb = document.getElementById('cb_' + m.key);
+    const hidden = cb && !cb.checked;
+
+    const panel = document.createElement('div');
+    panel.className = 'metric-panel';
+    panel.id = 'panel_' + m.key;
+    if (hidden) panel.style.display = 'none';
+
+    const lbl = document.createElement('div');
+    lbl.className  = 'metric-panel-lbl';
+    lbl.textContent = m.label;
+    lbl.style.color = m.color;
+
+    const chartEl = document.createElement('div');
+    chartEl.className = 'metric-panel-chart';
+
+    panel.appendChild(lbl);
+    panel.appendChild(chartEl);
+    grid.appendChild(panel);
+
+    const chart = LightweightCharts.createChart(chartEl, {
+      autoSize: true,
+      layout: {
+        background: { color: '#0e1117' },
+        textColor:  '#5a6380',
+      },
+      grid: {
+        vertLines: { color: '#1c2133' },
+        horzLines: { color: '#1c2133' },
+      },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+      rightPriceScale: {
+        borderColor:   '#1c2133',
+        scaleMargins:  { top: 0.1, bottom: 0.1 },
+      },
+      timeScale: {
+        borderColor:    '#1c2133',
+        visible:        false,  // hide time-axis row — saves vertical space
+      },
+      handleScroll: false,
+      handleScale:  false,
+    });
+
+    const series = chart.addLineSeries({
       color:                  m.color,
       lineWidth:              1,
-      priceScaleId:           'right',
       priceLineVisible:       false,
       lastValueVisible:       true,
       crosshairMarkerVisible: true,
     });
-    metricSeries[m.key] = s;
+
+    metricCharts[m.key] = { chart, series };
   });
 }
 
 function toggleMetric(key, visible) {
-  const s = metricSeries[key];
-  if (!s) return;
-  s.applyOptions({ visible });
+  const panel = document.getElementById('panel_' + key);
+  if (panel) panel.style.display = visible ? '' : 'none';
 }
 
 // ─── Utility: binary search ───────────────────────────────────────────────────
@@ -651,40 +669,16 @@ function findRegimeAt(ts) {
 // ─── Overlay: regime bands + trade lines ─────────────────────────────────────
 
 function setupOverlay() {
-  // Called BEFORE createChart() so overlay canvases are first in DOM order.
-  // LightweightCharts appends its canvases after, naturally sitting on top.
-  // No z-index needed — DOM order handles the stacking.
-  // LC chart backgrounds are transparent so these bands show through underneath.
-  const priceEl   = document.getElementById('priceChart');
-  const metricsEl = document.getElementById('metricsChart');
-
+  const priceEl = document.getElementById('priceChart');
   overlayCanvas = document.createElement('canvas');
   overlayCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
   priceEl.appendChild(overlayCanvas);
-
-  overlayCanvas2 = document.createElement('canvas');
-  overlayCanvas2.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
-  metricsEl.appendChild(overlayCanvas2);
 }
 
 function requestDraw() {
   if (_drawPending) return;
   _drawPending = true;
   requestAnimationFrame(() => { _drawPending = false; drawOverlay(); });
-}
-
-function buildRegimeBands(records) {
-  if (!records.length) return [];
-  const bands = [];
-  let cur = { regime: records[0].regime, start: records[0].ts };
-  for (let i = 1; i < records.length; i++) {
-    if (records[i].regime !== cur.regime) {
-      bands.push({ regime: cur.regime, start: cur.start, end: records[i].ts });
-      cur = { regime: records[i].regime, start: records[i].ts };
-    }
-  }
-  bands.push({ regime: cur.regime, start: cur.start, end: records[records.length - 1].ts + 300 });
-  return bands;
 }
 
 function buildTradePairs(events) {
@@ -710,26 +704,6 @@ function lookupCandleClose(ts) {
     else hi = mid - 1;
   }
   return result ? result.close : null;
-}
-
-const BAND_COLORS = {
-  BULL:  'rgba(0,201,125,0.28)',
-  BEAR:  'rgba(239,83,80,0.28)',
-  RANGE: 'rgba(240,160,48,0.25)',
-  CHOP:  'rgba(136,136,136,0.18)',
-};
-
-function _drawBands(ctx, chart, W, H) {
-  regimeBands.forEach(band => {
-    const x1raw = chart.timeScale().timeToCoordinate(band.start);
-    const x2raw = chart.timeScale().timeToCoordinate(band.end);
-    if (x1raw === null && x2raw === null) return;
-    const left  = x1raw !== null ? Math.max(0, x1raw) : 0;
-    const right = x2raw !== null ? Math.min(W, x2raw) : W;
-    if (right <= left) return;
-    ctx.fillStyle = BAND_COLORS[band.regime] || 'rgba(136,136,136,0.14)';
-    ctx.fillRect(left, 0, right - left, H);
-  });
 }
 
 function drawOverlay() {
@@ -769,17 +743,6 @@ function drawOverlay() {
     }
   }
 
-  // ── Metrics chart bands (regime context behind the signals) ──
-  if (overlayCanvas2 && chart2) {
-    const metricsEl = document.getElementById('metricsChart');
-    const W2 = metricsEl.clientWidth;
-    const H2 = metricsEl.clientHeight;
-    overlayCanvas2.width  = W2;
-    overlayCanvas2.height = H2;
-    const ctx2 = overlayCanvas2.getContext('2d');
-    ctx2.clearRect(0, 0, W2, H2);
-    _drawBands(ctx2, chart2, W2, H2);
-  }
 }
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
@@ -864,16 +827,13 @@ async function loadData() {
     renderMarkers(events);
     renderMetrics(records);
 
-    regimeBands   = buildRegimeBands(records);
     currentTrades = buildTradePairs(events);
 
-    // Explicitly set the visible range on both charts to the requested date range.
-    // Without this, chart2.fitContent() at the end of renderMetrics fires its
-    // sync callback back to chart1, overriding the candle range and causing
-    // the chart to zoom in/out unexpectedly.
     const targetRange = { from: fromEpoch, to: toEpoch2 };
     try { chart1.timeScale().setVisibleRange(targetRange); } catch(e) {}
-    try { chart2.timeScale().setVisibleRange(targetRange); } catch(e) {}
+    Object.values(metricCharts).forEach(({ chart }) => {
+      try { chart.timeScale().setVisibleRange(targetRange); } catch(e) {}
+    });
 
     requestDraw();
 
@@ -959,79 +919,31 @@ function renderMarkers(events) {
 // ─── Render metrics ───────────────────────────────────────────────────────────
 
 function renderMetrics(records) {
-  // Rebuild series for current bot
   rebuildMetricSeries();
 
-  if (!records.length) {
-    // Clear ref line
-    window._refLineSeries.setData([]);
-    return;
-  }
+  if (!records.length) return;
 
-  const maxRl = 600;
-
-  // Metrics that are already on a natural 0-100 % scale — plot as-is.
-  // All others are min-max normalised to 0-100 so every line uses the
-  // full chart height regardless of its raw unit magnitude.
-  const NATURAL = new Set(['conf', 'score', 'bocpd']);
-
-  // First pass: collect raw min/max for signal metrics
-  const ranges = {};
-  activeMetrics.filter(m => !NATURAL.has(m.key) && m.key !== 'rl').forEach(m => {
-    ranges[m.key] = { min: Infinity, max: -Infinity };
-    records.forEach(rec => {
-      const raw = rec[m.key];
-      if (raw == null) return;
-      const v = Number(raw);
-      if (isNaN(v)) return;
-      if (v < ranges[m.key].min) ranges[m.key].min = v;
-      if (v > ranges[m.key].max) ranges[m.key].max = v;
-    });
-  });
-
-  // Second pass: build normalised series data
+  // Each metric has its own mini-chart with an auto-scaling y-axis,
+  // so we plot raw values directly — no normalisation needed.
   activeMetrics.forEach(m => {
-    const s = metricSeries[m.key];
-    if (!s) return;
+    const mc = metricCharts[m.key];
+    if (!mc) return;
 
-    const data = [];
+    const seen = new Map();
     records.forEach(rec => {
       if (rec.ts == null) return;
       const raw = rec[m.key];
       if (raw == null) return;
-      let v = Number(raw);
-      if (isNaN(v)) return;
-
-      if (m.key === 'rl') {
-        v = Math.min(v / maxRl * 100, 100);
-      } else if (NATURAL.has(m.key)) {
-        v = Math.max(0, Math.min(100, v));
-      } else {
-        const { min, max } = ranges[m.key];
-        const span = max - min;
-        v = span > 0 ? ((v - min) / span) * 100 : 50;
-      }
-
-      data.push({ time: rec.ts, value: v });
+      const v = Number(raw);
+      if (!isNaN(v)) seen.set(rec.ts, v);
     });
 
-    const seen = new Map();
-    data.forEach(pt => seen.set(pt.time, pt.value));
-    const deduped = [...seen.entries()]
+    const data = [...seen.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([time, value]) => ({ time, value }));
 
-    s.setData(deduped);
+    mc.series.setData(data);
   });
-
-  // Reference line at y=70 — meaningful for conf (the 70% confidence threshold)
-  // and a useful visual guide for the normalised signal metrics.
-  const minTs = records[0].ts;
-  const maxTs = records[records.length - 1].ts;
-  window._refLineSeries.setData([
-    { time: minTs, value: 70 },
-    { time: maxTs, value: 70 },
-  ]);
 }
 
 // ─── Status helper ────────────────────────────────────────────────────────────
