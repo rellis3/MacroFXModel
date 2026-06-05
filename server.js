@@ -2677,7 +2677,7 @@ const _RG_PAT = {
     close: /^\[([^\]]+)\] \[INFO\] CLOSE (\S+)\s+ticket=\S+\s+reason=(.+?)(?:\s+score=[\d.]+)?$/,
   },
   v2: {
-    state: /^\[([^\]]+)\] \[RGV2\] \[INFO\] \[([^\]]+)\] reg=(\w+)\s+conf=(\d+)%\s+slope=([+-]?\d+\.?\d*)\s+vz=([+-]?\d+\.?\d*)\s+rl=(\d+)\s+bocpd=([+-]?\d+\.?\d*)%\s+exh=([+-]?\d+\.?\d*)\s+decay=([+-]?\d+\.?\d*)\s+score=(\d+)\s+1h=(\w+)/,
+    state: /^\[([^\]]+)\] \[RGV2\] \[INFO\] \[([^\]]+)\] reg=(\w+)\s+conf=(\d+)%\s+slope=([+-]?\d+\.?\d*)\s+vz=([+-]?\d+\.?\d*)\s+rl=(\d+)\s+bocpd=([+-]?\d+\.?\d*)%\s+exh=([+-]?\d+\.?\d*)\s+decay=([+-]?\d+\.?\d*)\s+score=(\d+)(?:\s+1h=(\w+))?/,
     gate:  /^\[([^\]]+)\] \[RGV2\] \[INFO\] \[([^\]]+)\] Gate: (.+)$/,
     trade: /^\[([^\]]+)\] \[RGV2\] \[INFO\] TRADE (\S+) (LONG|SHORT)\s+SL=/,
     close: /^\[([^\]]+)\] \[RGV2\] \[INFO\] CLOSE (\S+)\s+ticket=\S+\s+reason=(.+?)(?:\s+\[PAPER\])?$/,
