@@ -150,10 +150,23 @@ def load_config(url: str) -> dict:
     return cfg
 
 
-def load_credentials(url: str) -> None:
+def load_credentials(url: str) -> bool:
+    """Load MT5 credentials from env vars (highest priority) or Railway KV.
+    Returns True if all required credentials are present after the call."""
+    # If already populated (e.g. local env, or previously loaded), use as-is
+    if all(os.environ.get(k) for k in ('MT5_ACCOUNT', 'MT5_PASSWORD', 'MT5_SERVER')):
+        log.info(
+            f'Credentials already in env: '
+            f'account={os.environ["MT5_ACCOUNT"]}  server={os.environ["MT5_SERVER"]}'
+        )
+        return True
     creds = _kv_get('dyn_anchor_credentials', url)
     if not creds:
-        return
+        log.warning(
+            'No dyn_anchor_credentials found in KV '
+            '(Railway may be sleeping — will retry; or set MT5_ACCOUNT/MT5_PASSWORD/MT5_SERVER env vars locally)'
+        )
+        return False
     for env_key, cfg_key in [
         ('MT5_ACCOUNT', 'mt5_account'), ('MT5_PASSWORD', 'mt5_password'),
         ('MT5_SERVER',  'mt5_server'),  ('MT5_PATH',     'mt5_path'),
@@ -162,6 +175,7 @@ def load_credentials(url: str) -> None:
         if val:
             os.environ[env_key] = str(val)
     log.info(f'Credentials loaded: account={creds.get("mt5_account")}  server={creds.get("mt5_server")}')
+    return bool(os.environ.get('MT5_ACCOUNT') and os.environ.get('MT5_SERVER'))
 
 
 # ── MT5 connection ─────────────────────────────────────────────────────────────
@@ -828,7 +842,7 @@ def run(url: str, paper_mode: bool) -> None:
         cycle += 1
         loop_start = time.time()
 
-        # ── Config reload every 5 min ─────────────────────────────────────────
+        # ── Config + credential reload every 5 min ───────────────────────────
         if time.time() - last_cfg_reload > 300:
             cfg  = load_config(url)
             tg_t = cfg.get('tg_token', '')
@@ -837,6 +851,13 @@ def run(url: str, paper_mode: bool) -> None:
             for pair in cfg['pairs']:
                 if pair not in daily_state:
                     daily_state[pair] = DailyState()
+            # Retry credentials if Railway was unreachable at startup
+            if paper_mode and not all(os.environ.get(k) for k in ('MT5_ACCOUNT', 'MT5_PASSWORD', 'MT5_SERVER')):
+                if load_credentials(url):
+                    log.info('[DA] Credentials now available — attempting MT5 connect')
+                    if mt5_connect():
+                        paper_mode = False
+                        log.info('[DA] MT5 connected after credential retry — live mode active')
 
         # ── Nightly precompute (23:15–23:55 UTC) ─────────────────────────────
         today = datetime.now(timezone.utc).date()
@@ -936,16 +957,29 @@ def run(url: str, paper_mode: bool) -> None:
                     source  = 'forecast'
                     log.info(f'[{pair}] Using precomputed forecast params')
                 else:
-                    # Fall back: fetch D1 bars from MT5
+                    # Fall back 1: fetch D1 bars from MT5
                     n_bars = int(cfg.get('daily_bars_needed', 60))
                     bars   = get_daily_bars(pair, n_bars + 1)
-                    if bars is None or len(bars) < int(cfg.get('ema_period', 20)) + 5:
-                        log.warning(f'[{pair}] Insufficient D1 bars — skipping today')
-                        ds.setup_date = datetime.now(timezone.utc).date()
-                        ds.tradeable  = False
-                        continue
-                    hl50, hl75, regime, sigma_d, slope = compute_vol_and_regime(bars[:-1], cfg)
-                    log.info(f'[{pair}] Computed vol/regime from MT5 bars (no precompute available)')
+                    if bars is not None and len(bars) >= int(cfg.get('ema_period', 20)) + 5:
+                        hl50, hl75, regime, sigma_d, slope = compute_vol_and_regime(bars[:-1], cfg)
+                        log.info(f'[{pair}] Computed vol/regime from MT5 bars (no precompute available)')
+                    else:
+                        # Fall back 2: on-demand server forecast (works even without MT5)
+                        log.info(f'[{pair}] MT5 bars unavailable — requesting on-demand server forecast')
+                        on_demand = fetch_server_forecast([pair], url, cfg)
+                        fp = on_demand.get(pair) if on_demand else None
+                        if not fp:
+                            log.warning(f'[{pair}] No bars and no server forecast — skipping today')
+                            ds.setup_date = datetime.now(timezone.utc).date()
+                            ds.tradeable  = False
+                            continue
+                        hl50    = fp['hl50']
+                        hl75    = fp['hl75']
+                        sigma_d = fp['sigma_d']
+                        regime  = fp['regime']
+                        slope   = fp['ema_slope']
+                        source  = 'on-demand forecast'
+                        log.info(f'[{pair}] Using on-demand server forecast')
 
                 # --- session_open = today's D1 open --------------------------
                 # Always fetch from MT5/tick — cannot be precomputed since the

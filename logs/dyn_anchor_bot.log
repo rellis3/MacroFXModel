@@ -1,0 +1,17 @@
+[2026-06-05 10:48:41] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 10:48:44] [DA] [ERROR] MT5_ACCOUNT / MT5_PASSWORD / MT5_SERVER not set — aborting
+[2026-06-05 10:48:44] [DA] [WARNING] MT5 connection failed — falling back to paper mode
+[2026-06-05 10:48:48] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY']  interval=60s  risk=1.0%  window=00:00–22:00
+[2026-06-05 10:48:48] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 10:48:48] [DA] [WARNING] [EUR/USD] Insufficient D1 bars — skipping today
+[2026-06-05 10:48:48] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 10:48:48] [DA] [WARNING] [GBP/USD] Insufficient D1 bars — skipping today
+[2026-06-05 10:48:48] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 10:48:48] [DA] [WARNING] [USD/JPY] Insufficient D1 bars — skipping today
+[2026-06-05 10:48:52] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 10:56:54] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 10:57:04] [DA] [WARNING] kv_get(dyn_anchor_credentials): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/kv/get?key=dyn_anchor_credentials (Caused by ConnectTimeoutError(<HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443) at 0x2052c1f42f0>, 'Connection to macrofxmodel-production.up.railway.app timed out. (connect timeout=10)'))
+[2026-06-05 10:57:04] [DA] [WARNING] No dyn_anchor_credentials found in KV — set account/password/server in the dashboard
+[2026-06-05 10:57:04] [DA] [ERROR] MT5_ACCOUNT / MT5_PASSWORD / MT5_SERVER not set — aborting
+[2026-06-05 10:57:04] [DA] [WARNING] MT5 connection failed — falling back to paper mode
+[2026-06-05 10:57:14] [DA] [INFO] DynAnchor bot stopped by user

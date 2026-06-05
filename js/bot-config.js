@@ -1405,7 +1405,9 @@ const DA_PAIRS = [
   { id: 'da_pair_CHFJPY', sym: 'CHF/JPY'  }, { id: 'da_pair_NZDJPY', sym: 'NZD/JPY'  },
   { id: 'da_pair_AUDNZD', sym: 'AUD/NZD'  }, { id: 'da_pair_GBPNZD', sym: 'GBP/NZD'  },
   { id: 'da_pair_EURNZD', sym: 'EUR/NZD'  }, { id: 'da_pair_AUDCHF', sym: 'AUD/CHF'  },
-  { id: 'da_pair_GBPCHF', sym: 'GBP/CHF'  },
+  { id: 'da_pair_GBPCHF', sym: 'GBP/CHF'   },
+  { id: 'da_pair_XAUUSD', sym: 'XAU/USD'   },
+  { id: 'da_pair_NAS100', sym: 'NAS100_USD' },
 ];
 
 let _daCfg = JSON.parse(JSON.stringify(DA_DEFAULTS));

@@ -302,10 +302,16 @@ dailyPts_75  = not na(vol_hl_75)  ? dayOpen * vol_hl_75  / 100 : na
 asiaRangePts_med = not na(dailyPts_med) and not na(asia_med_pct) ? dailyPts_med * asia_med_pct / 100 : na
 asiaRangePts_75  = not na(dailyPts_75)  and not na(asia_75_pct)  ? dailyPts_75  * asia_75_pct  / 100 : na
 
-asiaProj_H_med = not na(asiaRangePts_med) ? dayOpen + asiaRangePts_med : na
-asiaProj_L_med = not na(asiaRangePts_med) ? dayOpen - asiaRangePts_med : na
-asiaProj_H_75  = not na(asiaRangePts_75)  ? dayOpen + asiaRangePts_75  : na
-asiaProj_L_75  = not na(asiaRangePts_75)  ? dayOpen - asiaRangePts_75  : na
+// Anchor projections from the live extremes: once Asia High is known, project the
+// Low from it (and vice versa), so the line always sits exactly one Asia-range away.
+// Fall back to dayOpen before any extreme is established.
+asiaHRef = na(asiaHigh) ? dayOpen : asiaHigh
+asiaLRef = na(asiaLow)  ? dayOpen : asiaLow
+
+asiaProj_L_med = not na(asiaRangePts_med) ? asiaHRef - asiaRangePts_med : na
+asiaProj_L_75  = not na(asiaRangePts_75)  ? asiaHRef - asiaRangePts_75  : na
+asiaProj_H_med = not na(asiaRangePts_med) ? asiaLRef + asiaRangePts_med : na
+asiaProj_H_75  = not na(asiaRangePts_75)  ? asiaLRef + asiaRangePts_75  : na
 
 // London extension — remaining daily range budget from Asia extremes
 asiaActualPts     = not na(asiaHigh) and not na(asiaLow) ? asiaHigh - asiaLow : float(na)
@@ -540,13 +546,15 @@ if barstate.islast
         apTxt        = asiaComplete ? color.new(color.white,  75) : color.white
         apStyle      = asiaComplete ? line.style_dotted           : line.style_dashed
 
+        // Proj H is asiaLow + range; Proj L is asiaHigh - range.
+        // Labels show % from the anchoring extreme (not from open).
         if not na(asiaProj_H_75)
             ln_ap_H_75 := line.new(x1, asiaProj_H_75, x2, asiaProj_H_75,
                  color=apLineCol, width=2, style=apStyle,
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
                 lb_ap_H_75 := label.new(bar_index + 2, asiaProj_H_75,
-                     "Asia Proj H 75p  " + f_pctStr(f_pct(asiaProj_H_75, dayOpen)),
+                     "Asia Proj H 75p  " + f_pctStr(f_pct(asiaProj_H_75, asiaLRef)),
                      style=label.style_label_left, color=apLbBg,
                      textcolor=apTxt, size=size.small)
 
@@ -556,7 +564,7 @@ if barstate.islast
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
                 lb_ap_H_med := label.new(bar_index + 2, asiaProj_H_med,
-                     "Asia Proj H med  " + f_pctStr(f_pct(asiaProj_H_med, dayOpen)),
+                     "Asia Proj H med  " + f_pctStr(f_pct(asiaProj_H_med, asiaLRef)),
                      style=label.style_label_left, color=apMedLbBg,
                      textcolor=apTxt, size=size.small)
 
@@ -566,7 +574,7 @@ if barstate.islast
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
                 lb_ap_L_75 := label.new(bar_index + 2, asiaProj_L_75,
-                     "Asia Proj L 75p  " + f_pctStr(f_pct(asiaProj_L_75, dayOpen)),
+                     "Asia Proj L 75p  " + f_pctStr(f_pct(asiaProj_L_75, asiaHRef)),
                      style=label.style_label_left, color=apLbBg,
                      textcolor=apTxt, size=size.small)
 
@@ -576,7 +584,7 @@ if barstate.islast
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
                 lb_ap_L_med := label.new(bar_index + 2, asiaProj_L_med,
-                     "Asia Proj L med  " + f_pctStr(f_pct(asiaProj_L_med, dayOpen)),
+                     "Asia Proj L med  " + f_pctStr(f_pct(asiaProj_L_med, asiaHRef)),
                      style=label.style_label_left, color=apMedLbBg,
                      textcolor=apTxt, size=size.small)
 
