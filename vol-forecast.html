@@ -778,7 +778,23 @@ function buildV3Text(forecastData, statsData) {
 
     lines.push(name);
     lines.push(`Asia range      : ${a.p50}% of daily · ${a.p75}% 75th${eff(a.p50, fc?.hl_median)}`);
+    if (stats.asia_oc) {
+      const ao = stats.asia_oc;
+      lines.push(`Asia O-C        : ${ao.p50}% of daily · ${ao.p75}% 75th${eff(ao.p50, fc?.hl_median)}`);
+    }
     lines.push(`London range    : ${l.p50}% of daily · ${l.p75}% 75th${eff(l.p50, fc?.hl_median)}`);
+    if (stats.london_oc) {
+      const lo = stats.london_oc;
+      lines.push(`London O-C      : ${lo.p50}% of daily · ${lo.p75}% 75th${eff(lo.p50, fc?.hl_median)}`);
+    }
+    if (stats.ny) {
+      const ny = stats.ny;
+      lines.push(`NY range        : ${ny.p50}% of daily · ${ny.p75}% 75th${eff(ny.p50, fc?.hl_median)}`);
+    }
+    if (stats.ny_oc) {
+      const nyo = stats.ny_oc;
+      lines.push(`NY O-C          : ${nyo.p50}% of daily · ${nyo.p75}% 75th${eff(nyo.p50, fc?.hl_median)}`);
+    }
     lines.push('');
   }
 

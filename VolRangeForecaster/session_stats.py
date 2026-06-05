@@ -60,8 +60,9 @@ INSTRUMENTS = {
 
 # ── Session windows (London local hour, inclusive start, exclusive end) ────────
 SESSIONS = {
-    "asia":   (0, 6),    # 00:00–06:00 London
-    "london": (8, 13),   # 08:00–13:00 London
+    "asia":   (0,  6),   # 00:00–06:00 London
+    "london": (8,  13),  # 08:00–13:00 London
+    "ny":     (13, 21),  # 13:00–21:00 London  (US open → NY close)
 }
 
 # Minimum H1 bars required for a session to be included in stats
@@ -94,8 +95,10 @@ def _fetch_chunk(instrument: str, from_dt: datetime, count: int = BARS_PER_REQUE
             r.raise_for_status()
             return [
                 {
+                    "open":  float(c["mid"]["o"]),
                     "high":  float(c["mid"]["h"]),
                     "low":   float(c["mid"]["l"]),
+                    "close": float(c["mid"]["c"]),
                     "time":  datetime.fromisoformat(
                         c["time"].replace("Z", "+00:00").replace(".000000000", "")
                     ),
@@ -136,23 +139,25 @@ def _fetch_all_h1(instrument: str, years: int) -> list:
 def _compute_stats(bars: list) -> dict:
     """
     Group H1 bars by London date.  For each date compute daily H-L and per-session
-    H-L, then return percentile stats of (session_HL / daily_HL × 100).
+    H-L and abs(O-C), then return percentile stats of each as % of daily H-L.
     """
-    # Bucket bars by London calendar date + session
     by_date: dict[str, dict] = {}
     for bar in bars:
         london_dt = bar["time"].astimezone(LONDON_TZ)
         dk        = london_dt.date().isoformat()
         h         = london_dt.hour
         if dk not in by_date:
-            by_date[dk] = {"all": [], "asia": [], "london": []}
+            by_date[dk] = {"all": [], "asia": [], "london": [], "ny": []}
         by_date[dk]["all"].append(bar)
         for sess, (h0, h1) in SESSIONS.items():
             if h0 <= h < h1:
                 by_date[dk][sess].append(bar)
 
-    asia_pcts   = []
-    london_pcts = []
+    buckets: dict[str, list] = {
+        "asia_hl": [], "asia_oc": [],
+        "london_hl": [], "london_oc": [],
+        "ny_hl": [], "ny_oc": [],
+    }
 
     for dk, grp in by_date.items():
         all_b = grp["all"]
@@ -162,15 +167,14 @@ def _compute_stats(bars: list) -> dict:
         if daily_hl < 1e-9:
             continue
 
-        asia_b = grp["asia"]
-        if len(asia_b) >= MIN_SESSION_BARS:
-            sess_hl = max(b["high"] for b in asia_b) - min(b["low"] for b in asia_b)
-            asia_pcts.append(sess_hl / daily_hl * 100)
-
-        lon_b = grp["london"]
-        if len(lon_b) >= MIN_SESSION_BARS:
-            sess_hl = max(b["high"] for b in lon_b) - min(b["low"] for b in lon_b)
-            london_pcts.append(sess_hl / daily_hl * 100)
+        for sess_name in ("asia", "london", "ny"):
+            sess_b = sorted(grp[sess_name], key=lambda b: b["time"])
+            if len(sess_b) < MIN_SESSION_BARS:
+                continue
+            sess_hl = max(b["high"] for b in sess_b) - min(b["low"] for b in sess_b)
+            sess_oc = abs(sess_b[-1]["close"] - sess_b[0]["open"])
+            buckets[f"{sess_name}_hl"].append(sess_hl / daily_hl * 100)
+            buckets[f"{sess_name}_oc"].append(sess_oc / daily_hl * 100)
 
     def _pct_stats(arr: list) -> dict | None:
         if not arr:
@@ -184,8 +188,12 @@ def _compute_stats(bars: list) -> dict:
         }
 
     return {
-        "asia":   _pct_stats(asia_pcts),
-        "london": _pct_stats(london_pcts),
+        "asia":      _pct_stats(buckets["asia_hl"]),
+        "asia_oc":   _pct_stats(buckets["asia_oc"]),
+        "london":    _pct_stats(buckets["london_hl"]),
+        "london_oc": _pct_stats(buckets["london_oc"]),
+        "ny":        _pct_stats(buckets["ny_hl"]),
+        "ny_oc":     _pct_stats(buckets["ny_oc"]),
     }
 
 
@@ -204,15 +212,23 @@ def format_session_stats_block(instruments_stats: dict) -> str:
     for name, stats in instruments_stats.items():
         if not stats or not stats.get("asia") or not stats.get("london"):
             continue
-        a = stats["asia"]
-        l = stats["london"]
+        a    = stats["asia"]
+        a_oc = stats.get("asia_oc")
+        l    = stats["london"]
+        l_oc = stats.get("london_oc")
+        ny   = stats.get("ny")
+        ny_oc = stats.get("ny_oc")
         lines.append(name)
-        lines.append(
-            f"Asia range      : {a['p50']}% median · {a['p75']}% 75th"
-        )
-        lines.append(
-            f"London range    : {l['p50']}% median · {l['p75']}% 75th"
-        )
+        lines.append(f"Asia range      : {a['p50']}% median · {a['p75']}% 75th")
+        if a_oc:
+            lines.append(f"Asia O-C        : {a_oc['p50']}% median · {a_oc['p75']}% 75th")
+        lines.append(f"London range    : {l['p50']}% median · {l['p75']}% 75th")
+        if l_oc:
+            lines.append(f"London O-C      : {l_oc['p50']}% median · {l_oc['p75']}% 75th")
+        if ny:
+            lines.append(f"NY range        : {ny['p50']}% median · {ny['p75']}% 75th")
+        if ny_oc:
+            lines.append(f"NY O-C          : {ny_oc['p50']}% median · {ny_oc['p75']}% 75th")
         lines.append("")
     return "\n".join(lines)
 
@@ -248,12 +264,12 @@ def main():
             continue
         stats = _compute_stats(bars)
         results[name] = stats
-        if stats["asia"]:
-            s = stats["asia"]
-            print(f"  Asia:   P50={s['p50']}%  P75={s['p75']}%  (n={s['n']} days)")
-        if stats["london"]:
-            s = stats["london"]
-            print(f"  London: P50={s['p50']}%  P75={s['p75']}%  (n={s['n']} days)")
+        for label, key in [("Asia H-L",   "asia"),   ("Asia O-C",   "asia_oc"),
+                            ("London H-L", "london"), ("London O-C", "london_oc"),
+                            ("NY H-L",     "ny"),     ("NY O-C",     "ny_oc")]:
+            s = stats.get(key)
+            if s:
+                print(f"  {label:<12} P50={s['p50']}%  P75={s['p75']}%  (n={s['n']})")
 
     if not results:
         print("\nNo data computed — exiting without writing output.")

@@ -42,8 +42,9 @@ const INSTRUMENTS = {
 
 // Session windows — London local time [inclusive start, exclusive end)
 const SESSIONS = {
-  asia:   [0, 6],    // 00:00–06:00
-  london: [8, 13],   // 08:00–13:00
+  asia:   [0,  6],   // 00:00–06:00
+  london: [8,  13],  // 08:00–13:00
+  ny:     [13, 21],  // 13:00–21:00  (US open → NY close)
 };
 
 const MIN_DAY_BARS     = 12;  // H1 bars required for a valid full trading day
@@ -78,9 +79,11 @@ async function _fetchChunk(instrument, fromDate) {
       return (data.candles ?? [])
         .filter(c => c.complete !== false && c.mid)
         .map(c => ({
-          high: parseFloat(c.mid.h),
-          low:  parseFloat(c.mid.l),
-          time: new Date(c.time),
+          open:  parseFloat(c.mid.o),
+          high:  parseFloat(c.mid.h),
+          low:   parseFloat(c.mid.l),
+          close: parseFloat(c.mid.c),
+          time:  new Date(c.time),
         }));
     } catch (err) {
       if (attempt === 3) throw err;
@@ -138,7 +141,7 @@ function _computeStats(bars) {
 
   for (const bar of bars) {
     const { date, hour } = _londonParts(bar.time);
-    if (!byDate.has(date)) byDate.set(date, { all: [], asia: [], london: [] });
+    if (!byDate.has(date)) byDate.set(date, { all: [], asia: [], london: [], ny: [] });
     const grp = byDate.get(date);
     grp.all.push(bar);
     for (const [sess, [h0, h1]] of Object.entries(SESSIONS)) {
@@ -146,25 +149,24 @@ function _computeStats(bars) {
     }
   }
 
-  const asiaPcts   = [];
-  const londonPcts = [];
+  const buckets = {
+    asia_hl: [], asia_oc: [],
+    london_hl: [], london_oc: [],
+    ny_hl: [], ny_oc: [],
+  };
 
   for (const grp of byDate.values()) {
     if (grp.all.length < MIN_DAY_BARS) continue;
-    const dH      = Math.max(...grp.all.map(b => b.high));
-    const dL      = Math.min(...grp.all.map(b => b.low));
-    const dailyHL = dH - dL;
+    const dailyHL = Math.max(...grp.all.map(b => b.high)) - Math.min(...grp.all.map(b => b.low));
     if (dailyHL < 1e-9) continue;
 
-    if (grp.asia.length >= MIN_SESSION_BARS) {
-      const sH = Math.max(...grp.asia.map(b => b.high));
-      const sL = Math.min(...grp.asia.map(b => b.low));
-      asiaPcts.push((sH - sL) / dailyHL * 100);
-    }
-    if (grp.london.length >= MIN_SESSION_BARS) {
-      const sH = Math.max(...grp.london.map(b => b.high));
-      const sL = Math.min(...grp.london.map(b => b.low));
-      londonPcts.push((sH - sL) / dailyHL * 100);
+    for (const sess of ['asia', 'london', 'ny']) {
+      const sb = grp[sess].slice().sort((a, b) => a.time - b.time);
+      if (sb.length < MIN_SESSION_BARS) continue;
+      const sessHL = Math.max(...sb.map(b => b.high)) - Math.min(...sb.map(b => b.low));
+      const sessOC = Math.abs(sb.at(-1).close - sb[0].open);
+      buckets[`${sess}_hl`].push(sessHL / dailyHL * 100);
+      buckets[`${sess}_oc`].push(sessOC / dailyHL * 100);
     }
   }
 
@@ -180,7 +182,14 @@ function _computeStats(bars) {
     ? { p50: _pct(arr, 50), p75: _pct(arr, 75), mean: Math.round(arr.reduce((s, v) => s + v, 0) / arr.length * 10) / 10, n: arr.length }
     : null;
 
-  return { asia: mkStats(asiaPcts), london: mkStats(londonPcts) };
+  return {
+    asia:      mkStats(buckets.asia_hl),
+    asia_oc:   mkStats(buckets.asia_oc),
+    london:    mkStats(buckets.london_hl),
+    london_oc: mkStats(buckets.london_oc),
+    ny:        mkStats(buckets.ny_hl),
+    ny_oc:     mkStats(buckets.ny_oc),
+  };
 }
 
 
@@ -195,7 +204,11 @@ export function buildSessionExportBlock(instruments) {
     if (!stats?.asia || !stats?.london) continue;
     lines.push(name);
     lines.push(`Asia range      : ${stats.asia.p50}% median · ${stats.asia.p75}% 75th`);
+    if (stats.asia_oc)   lines.push(`Asia O-C        : ${stats.asia_oc.p50}% median · ${stats.asia_oc.p75}% 75th`);
     lines.push(`London range    : ${stats.london.p50}% median · ${stats.london.p75}% 75th`);
+    if (stats.london_oc) lines.push(`London O-C      : ${stats.london_oc.p50}% median · ${stats.london_oc.p75}% 75th`);
+    if (stats.ny)        lines.push(`NY range        : ${stats.ny.p50}% median · ${stats.ny.p75}% 75th`);
+    if (stats.ny_oc)     lines.push(`NY O-C          : ${stats.ny_oc.p50}% median · ${stats.ny_oc.p75}% 75th`);
     lines.push('');
   }
   return lines.join('\n');
@@ -233,8 +246,9 @@ export async function computeSessionStats(years = DEFAULT_YEARS) {
       if (!bars.length) { console.log('  SKIPPED — no bars'); continue; }
       const stats = _computeStats(bars);
       results[name] = stats;
-      if (stats.asia)   console.log(`  Asia:   P50=${stats.asia.p50}%  P75=${stats.asia.p75}%  (n=${stats.asia.n})`);
-      if (stats.london) console.log(`  London: P50=${stats.london.p50}%  P75=${stats.london.p75}%  (n=${stats.london.n})`);
+      for (const [lbl, key] of [['Asia H-L','asia'],['Asia O-C','asia_oc'],['London H-L','london'],['London O-C','london_oc'],['NY H-L','ny'],['NY O-C','ny_oc']]) {
+        const s = stats[key]; if (s) console.log(`  ${lbl.padEnd(12)} P50=${s.p50}%  P75=${s.p75}%  (n=${s.n})`);
+      }
     }
 
     const output = {

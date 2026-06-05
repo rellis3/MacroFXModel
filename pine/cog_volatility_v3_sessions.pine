@@ -94,8 +94,8 @@ f_lastNumBefore(src, keyword) =>
         parts  = str.split(clean, " ")
         sz     = array.size(parts)
         if sz > 0
-            for j = sz - 1 to 0
-                val = str.tonumber(str.trim(array.get(parts, j)))
+            for j = 0 to sz - 1
+                val = str.tonumber(str.trim(array.get(parts, sz - 1 - j)))
                 if not na(val) and na(result)
                     result := val
     result
@@ -114,11 +114,16 @@ var float vol_hl_med     = na
 var float vol_hl_75      = na
 var float vol_oc_med     = na
 var float vol_oc_75      = na
-// Session consumption %s (% of daily H-L — set only if SESSION STATS section found in paste)
-var float asia_med_pct   = na
-var float asia_75_pct    = na
-var float london_med_pct = na
-var float london_75_pct  = na
+// Session H-L consumption %s (% of daily H-L — set only if SESSION STATS section found in paste)
+var float asia_med_pct      = na
+var float asia_75_pct       = na
+var float london_med_pct    = na
+var float london_75_pct     = na
+// Session O-C move %s (% of daily H-L — present only when V+S block includes O-C lines)
+var float asia_oc_med_pct   = na
+var float asia_oc_75_pct    = na
+var float london_oc_med_pct = na
+var float london_oc_75_pct  = na
 
 if barstate.isfirst
     sym   = f_normaliseTicker(syminfo.ticker, goldChart, nqChart)
@@ -146,17 +151,20 @@ if barstate.isfirst
 
             // ── SESSION STATS parsing ─────────────────────────────────────────
             if inSessionSection
-                isSymLine  = str.contains(rowUp, symUp) and not str.contains(rowUp, "RANGE")
-                isAsiaLine = str.contains(rowUp, "ASIA RANGE")
-                isLonLine  = str.contains(rowUp, "LONDON RANGE")
+                isAsiaLine   = str.contains(rowUp, "ASIA RANGE")
+                isLonLine    = str.contains(rowUp, "LONDON RANGE")
+                isAsiaOCLine = str.contains(rowUp, "ASIA O-C")
+                isLonOCLine  = str.contains(rowUp, "LONDON O-C")
+                isDataLine2  = isAsiaLine or isLonLine or isAsiaOCLine or isLonOCLine or
+                     str.contains(rowUp, "NY RANGE") or str.contains(rowUp, "NY O-C")
 
-                // A new known-ticker line that isn't a data line resets sym block
+                // A new known-ticker header line resets the sym block
                 isOtherTicker = (str.contains(rowUp, "GOLD") or str.contains(rowUp, "EURUSD") or
                      str.contains(rowUp, "GBPUSD") or str.contains(rowUp, "USDJPY") or
                      str.contains(rowUp, "NQ") or str.contains(rowUp, "AUDUSD") or
                      str.contains(rowUp, "NZDUSD") or str.contains(rowUp, "USDCAD") or
                      str.contains(rowUp, "USDCHF") or str.contains(rowUp, "GBPJPY")) and
-                     not isAsiaLine and not isLonLine
+                     not isDataLine2
 
                 if isOtherTicker
                     inSessionSymBlock := str.contains(rowUp, symUp)
@@ -174,6 +182,20 @@ if barstate.isfirst
                         london_med_pct := med
                     if not na(p75) and na(london_75_pct)
                         london_75_pct  := p75
+                if inSessionSymBlock and isAsiaOCLine
+                    med = f_firstNumAfter(rowRaw, ": ")
+                    p75 = f_lastNumBefore(rowRaw, "75th")
+                    if not na(med) and na(asia_oc_med_pct)
+                        asia_oc_med_pct := med
+                    if not na(p75) and na(asia_oc_75_pct)
+                        asia_oc_75_pct  := p75
+                if inSessionSymBlock and isLonOCLine
+                    med = f_firstNumAfter(rowRaw, ": ")
+                    p75 = f_lastNumBefore(rowRaw, "75th")
+                    if not na(med) and na(london_oc_med_pct)
+                        london_oc_med_pct := med
+                    if not na(p75) and na(london_oc_75_pct)
+                        london_oc_75_pct  := p75
                 continue
 
             // ── Standard vol block parsing ────────────────────────────────────
@@ -239,16 +261,19 @@ inAsia     = londonHour >= 0 and londonHour < 6
 
 var float asiaHigh     = na
 var float asiaLow      = na
+var float asiaClose    = na   // close of the last bar before 06:00 London = London session open reference
 var bool  asiaComplete = false
 
 if newDay or barstate.isfirst
     asiaHigh     := na
     asiaLow      := na
+    asiaClose    := na
     asiaComplete := false
 
 if inAsia
-    asiaHigh := na(asiaHigh) ? high : math.max(asiaHigh, high)
-    asiaLow  := na(asiaLow)  ? low  : math.min(asiaLow,  low)
+    asiaHigh  := na(asiaHigh) ? high : math.max(asiaHigh, high)
+    asiaLow   := na(asiaLow)  ? low  : math.min(asiaLow,  low)
+    asiaClose := close        // updated each bar; holds the Asia session close after session ends
 else if not na(asiaHigh)
     asiaComplete := true
 
@@ -291,6 +316,16 @@ lonExt_H_75  = not na(asiaHigh) and not na(remainingPts_75)  ? asiaHigh + remain
 lonExt_L_75  = not na(asiaLow)  and not na(remainingPts_75)  ? asiaLow  - remainingPts_75  : na
 lonExt_H_med = not na(asiaHigh) and not na(remainingPts_med) ? asiaHigh + remainingPts_med : na
 lonExt_L_med = not na(asiaLow)  and not na(remainingPts_med) ? asiaLow  - remainingPts_med : na
+
+// London O-C projections — from Asia close, using session O-C % of daily range
+// Answers: "from where Asia left off, where might London close?"
+lonOC_pts_med = not na(dailyPts_med) and not na(london_oc_med_pct) ? dailyPts_med * london_oc_med_pct / 100 : na
+lonOC_pts_75  = not na(dailyPts_75)  and not na(london_oc_75_pct)  ? dailyPts_75  * london_oc_75_pct  / 100 : na
+
+lonOC_H_med = not na(asiaClose) and not na(lonOC_pts_med) ? asiaClose + lonOC_pts_med : na
+lonOC_L_med = not na(asiaClose) and not na(lonOC_pts_med) ? asiaClose - lonOC_pts_med : na
+lonOC_H_75  = not na(asiaClose) and not na(lonOC_pts_75)  ? asiaClose + lonOC_pts_75  : na
+lonOC_L_75  = not na(asiaClose) and not na(lonOC_pts_75)  ? asiaClose - lonOC_pts_75  : na
 
 // Gate: session lines only show if session stats were found in the paste
 sessionStatsFound = not na(asia_med_pct) and not na(london_med_pct)
@@ -352,29 +387,60 @@ var label lb_aL     = na
 var label lb_lE_H75 = na
 var label lb_lE_L75 = na
 
+// — London O-C targets from Asia close (teal, shown after Asia) —
+var line  ln_lOC_H75 = na
+var line  ln_lOC_L75 = na
+var line  ln_lOC_Hmd = na
+var line  ln_lOC_Lmd = na
+var label lb_lOC_H75 = na
+var label lb_lOC_L75 = na
+
 if barstate.islast
     // ── cleanup all ──────────────────────────────────────────────────────────
-    line.delete(ln_pH_75)    line.delete(ln_pH_med)
-    line.delete(ln_pL_75)    line.delete(ln_pL_med)
-    label.delete(lb_pH_75)   label.delete(lb_pH_med)
-    label.delete(lb_pL_75)   label.delete(lb_pL_med)
-    label.delete(lb_oc_up_75)  label.delete(lb_oc_dn_75)
-    label.delete(lb_oc_up_med) label.delete(lb_oc_dn_med)
+    line.delete(ln_pH_75)
+    line.delete(ln_pH_med)
+    line.delete(ln_pL_75)
+    line.delete(ln_pL_med)
+    label.delete(lb_pH_75)
+    label.delete(lb_pH_med)
+    label.delete(lb_pL_75)
+    label.delete(lb_pL_med)
+    label.delete(lb_oc_up_75)
+    label.delete(lb_oc_dn_75)
+    label.delete(lb_oc_up_med)
+    label.delete(lb_oc_dn_med)
     label.delete(lb_open)
 
-    line.delete(ln_dayH)    line.delete(ln_dayL)
-    label.delete(lb_dayH)   label.delete(lb_dayL)
+    line.delete(ln_dayH)
+    line.delete(ln_dayL)
+    label.delete(lb_dayH)
+    label.delete(lb_dayL)
 
-    line.delete(ln_ap_H_75)  line.delete(ln_ap_H_med)
-    line.delete(ln_ap_L_75)  line.delete(ln_ap_L_med)
-    label.delete(lb_ap_H_75) label.delete(lb_ap_H_med)
-    label.delete(lb_ap_L_75) label.delete(lb_ap_L_med)
+    line.delete(ln_ap_H_75)
+    line.delete(ln_ap_H_med)
+    line.delete(ln_ap_L_75)
+    line.delete(ln_ap_L_med)
+    label.delete(lb_ap_H_75)
+    label.delete(lb_ap_H_med)
+    label.delete(lb_ap_L_75)
+    label.delete(lb_ap_L_med)
 
-    line.delete(ln_aH)      line.delete(ln_aL)
-    line.delete(ln_lE_H75)  line.delete(ln_lE_L75)
-    line.delete(ln_lE_Hmd)  line.delete(ln_lE_Lmd)
-    label.delete(lb_aH)     label.delete(lb_aL)
-    label.delete(lb_lE_H75) label.delete(lb_lE_L75)
+    line.delete(ln_aH)
+    line.delete(ln_aL)
+    line.delete(ln_lE_H75)
+    line.delete(ln_lE_L75)
+    line.delete(ln_lE_Hmd)
+    line.delete(ln_lE_Lmd)
+    label.delete(lb_aH)
+    label.delete(lb_aL)
+    label.delete(lb_lE_H75)
+    label.delete(lb_lE_L75)
+    line.delete(ln_lOC_H75)
+    line.delete(ln_lOC_L75)
+    line.delete(ln_lOC_Hmd)
+    line.delete(ln_lOC_Lmd)
+    label.delete(lb_lOC_H75)
+    label.delete(lb_lOC_L75)
 
     x1 = dayStartTime
     x2 = time
@@ -466,49 +532,55 @@ if barstate.islast
     // ── Session lines — only if toggle on AND stats found in paste ────────────
     if show_sessions and sessionStatsFound
 
-        if not asiaComplete
-            // During Asia: show projected range bands
-            if not na(asiaProj_H_75)
-                ln_ap_H_75 := line.new(x1, asiaProj_H_75, x2, asiaProj_H_75,
-                     color=col_asia, width=2, style=line.style_dashed,
-                     xloc=xloc.bar_time, extend=extend.none)
-                if show_labels
-                    lb_ap_H_75 := label.new(bar_index + 2, asiaProj_H_75,
-                         "Asia Proj H 75p  " + f_pctStr(f_pct(asiaProj_H_75, dayOpen)),
-                         style=label.style_label_left, color=color.new(col_asia, 70),
-                         textcolor=color.white, size=size.small)
+        // Asia projection lines — shown always; dulled to ghost once Asia closes
+        apLineCol    = asiaComplete ? color.new(col_asia,     75) : col_asia
+        apMedLineCol = asiaComplete ? color.new(col_asia_med, 75) : col_asia_med
+        apLbBg       = asiaComplete ? color.new(col_asia,     88) : color.new(col_asia,     70)
+        apMedLbBg    = asiaComplete ? color.new(col_asia_med, 88) : color.new(col_asia_med, 70)
+        apTxt        = asiaComplete ? color.new(color.white,  75) : color.white
+        apStyle      = asiaComplete ? line.style_dotted           : line.style_dashed
 
-            if not na(asiaProj_H_med)
-                ln_ap_H_med := line.new(x1, asiaProj_H_med, x2, asiaProj_H_med,
-                     color=col_asia_med, width=1, style=line.style_dashed,
-                     xloc=xloc.bar_time, extend=extend.none)
-                if show_labels
-                    lb_ap_H_med := label.new(bar_index + 2, asiaProj_H_med,
-                         "Asia Proj H med  " + f_pctStr(f_pct(asiaProj_H_med, dayOpen)),
-                         style=label.style_label_left, color=color.new(col_asia_med, 70),
-                         textcolor=color.white, size=size.small)
+        if not na(asiaProj_H_75)
+            ln_ap_H_75 := line.new(x1, asiaProj_H_75, x2, asiaProj_H_75,
+                 color=apLineCol, width=2, style=apStyle,
+                 xloc=xloc.bar_time, extend=extend.none)
+            if show_labels
+                lb_ap_H_75 := label.new(bar_index + 2, asiaProj_H_75,
+                     "Asia Proj H 75p  " + f_pctStr(f_pct(asiaProj_H_75, dayOpen)),
+                     style=label.style_label_left, color=apLbBg,
+                     textcolor=apTxt, size=size.small)
 
-            if not na(asiaProj_L_75)
-                ln_ap_L_75 := line.new(x1, asiaProj_L_75, x2, asiaProj_L_75,
-                     color=col_asia, width=2, style=line.style_dashed,
-                     xloc=xloc.bar_time, extend=extend.none)
-                if show_labels
-                    lb_ap_L_75 := label.new(bar_index + 2, asiaProj_L_75,
-                         "Asia Proj L 75p  " + f_pctStr(f_pct(asiaProj_L_75, dayOpen)),
-                         style=label.style_label_left, color=color.new(col_asia, 70),
-                         textcolor=color.white, size=size.small)
+        if not na(asiaProj_H_med)
+            ln_ap_H_med := line.new(x1, asiaProj_H_med, x2, asiaProj_H_med,
+                 color=apMedLineCol, width=1, style=apStyle,
+                 xloc=xloc.bar_time, extend=extend.none)
+            if show_labels
+                lb_ap_H_med := label.new(bar_index + 2, asiaProj_H_med,
+                     "Asia Proj H med  " + f_pctStr(f_pct(asiaProj_H_med, dayOpen)),
+                     style=label.style_label_left, color=apMedLbBg,
+                     textcolor=apTxt, size=size.small)
 
-            if not na(asiaProj_L_med)
-                ln_ap_L_med := line.new(x1, asiaProj_L_med, x2, asiaProj_L_med,
-                     color=col_asia_med, width=1, style=line.style_dashed,
-                     xloc=xloc.bar_time, extend=extend.none)
-                if show_labels
-                    lb_ap_L_med := label.new(bar_index + 2, asiaProj_L_med,
-                         "Asia Proj L med  " + f_pctStr(f_pct(asiaProj_L_med, dayOpen)),
-                         style=label.style_label_left, color=color.new(col_asia_med, 70),
-                         textcolor=color.white, size=size.small)
+        if not na(asiaProj_L_75)
+            ln_ap_L_75 := line.new(x1, asiaProj_L_75, x2, asiaProj_L_75,
+                 color=apLineCol, width=2, style=apStyle,
+                 xloc=xloc.bar_time, extend=extend.none)
+            if show_labels
+                lb_ap_L_75 := label.new(bar_index + 2, asiaProj_L_75,
+                     "Asia Proj L 75p  " + f_pctStr(f_pct(asiaProj_L_75, dayOpen)),
+                     style=label.style_label_left, color=apLbBg,
+                     textcolor=apTxt, size=size.small)
 
-        else
+        if not na(asiaProj_L_med)
+            ln_ap_L_med := line.new(x1, asiaProj_L_med, x2, asiaProj_L_med,
+                 color=apMedLineCol, width=1, style=apStyle,
+                 xloc=xloc.bar_time, extend=extend.none)
+            if show_labels
+                lb_ap_L_med := label.new(bar_index + 2, asiaProj_L_med,
+                     "Asia Proj L med  " + f_pctStr(f_pct(asiaProj_L_med, dayOpen)),
+                     style=label.style_label_left, color=apMedLbBg,
+                     textcolor=apTxt, size=size.small)
+
+        if asiaComplete
             // After Asia: actual Asia H/L + London extension targets
             if not na(asiaHigh)
                 ln_aH := line.new(x1, asiaHigh, x2, asiaHigh,
@@ -562,6 +634,41 @@ if barstate.islast
             if not na(lonExt_L_med)
                 ln_lE_Lmd := line.new(x1, lonExt_L_med, x2, lonExt_L_med,
                      color=color.new(col_london, 55), width=1, style=line.style_dashed,
+                     xloc=xloc.bar_time, extend=extend.none)
+
+            // London O-C targets — from Asia close, using session O-C % of daily range
+            lonOCCol75  = color.new(color.teal, 0)
+            lonOCColMed = color.new(color.teal, 55)
+            if not na(lonOC_H_75)
+                ln_lOC_H75 := line.new(x1, lonOC_H_75, x2, lonOC_H_75,
+                     color=lonOCCol75, width=2, style=line.style_solid,
+                     xloc=xloc.bar_time, extend=extend.none)
+                if show_labels
+                    ocPct = math.round(lonOC_pts_75 / dayOpen * 100, 2)
+                    lb_lOC_H75 := label.new(bar_index + 2, lonOC_H_75,
+                         "Lon O-C H 75p  +" + str.tostring(ocPct) + "% from Asia close",
+                         style=label.style_label_left, color=color.new(color.teal, 70),
+                         textcolor=color.white, size=size.small)
+
+            if not na(lonOC_L_75)
+                ln_lOC_L75 := line.new(x1, lonOC_L_75, x2, lonOC_L_75,
+                     color=lonOCCol75, width=2, style=line.style_solid,
+                     xloc=xloc.bar_time, extend=extend.none)
+                if show_labels
+                    ocPct = math.round(lonOC_pts_75 / dayOpen * 100, 2)
+                    lb_lOC_L75 := label.new(bar_index + 2, lonOC_L_75,
+                         "Lon O-C L 75p  -" + str.tostring(ocPct) + "% from Asia close",
+                         style=label.style_label_left, color=color.new(color.teal, 70),
+                         textcolor=color.white, size=size.small)
+
+            if not na(lonOC_H_med)
+                ln_lOC_Hmd := line.new(x1, lonOC_H_med, x2, lonOC_H_med,
+                     color=lonOCColMed, width=1, style=line.style_solid,
+                     xloc=xloc.bar_time, extend=extend.none)
+
+            if not na(lonOC_L_med)
+                ln_lOC_Lmd := line.new(x1, lonOC_L_med, x2, lonOC_L_med,
+                     color=lonOCColMed, width=1, style=line.style_solid,
                      xloc=xloc.bar_time, extend=extend.none)
 
 // =====================================================
