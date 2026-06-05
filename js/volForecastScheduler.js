@@ -40,6 +40,7 @@ const INSTRUMENTS = [
   { name: 'USDCAD', oandaInstrument: 'USD_CAD',     ticker: 'USDCAD=X', assetClass: 'fx'        },
   { name: 'USDCHF', oandaInstrument: 'USD_CHF',     ticker: 'USDCHF=X', assetClass: 'fx'        },
   { name: 'GBPJPY', oandaInstrument: 'GBP_JPY',     ticker: 'GBPJPY=X', assetClass: 'fx'        },
+  { name: 'EURGBP', oandaInstrument: 'EUR_GBP',     ticker: 'EURGBP=X', assetClass: 'fx'        },
 ];
 
 const YAHOO_BASE       = 'https://query1.finance.yahoo.com/v8/finance/chart';

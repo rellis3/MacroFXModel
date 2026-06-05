@@ -735,3 +735,12 @@
 [2026-06-05 18:21:07] [DA] [INFO] Cycle 390  balance=99551.49  sleep=13.9s
 [2026-06-05 18:24:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
 [2026-06-05 18:31:01] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:31:05] [DA] [INFO] Cycle 420  balance=99551.49  sleep=16.2s
+[2026-06-05 18:37:41] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:41:04] [DA] [INFO] Cycle 450  balance=99551.49  sleep=17.5s
+[2026-06-05 18:44:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:50:41] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 18:50:59] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/kv/set (Caused by ConnectTimeoutError(<HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443) at 0x16058404b90>, 'Connection to macrofxmodel-production.up.railway.app timed out. (connect timeout=10)'))
+[2026-06-05 18:51:01] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:51:13] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/kv/set (Caused by NameResolutionError("HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443): Failed to resolve 'macrofxmodel-production.up.railway.app' ([Errno 11001] getaddrinfo failed)"))
+[2026-06-05 18:51:13] [DA] [INFO] Cycle 480  balance=99551.49  sleep=8.9s

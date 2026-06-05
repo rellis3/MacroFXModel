@@ -883,6 +883,7 @@ const RG_PAIRS = [
   { id: 'rg_pair_USDCAD', sym: 'USD/CAD' },
   { id: 'rg_pair_USDCHF', sym: 'USD/CHF' },
   { id: 'rg_pair_GBPJPY', sym: 'GBP/JPY' },
+  { id: 'rg_pair_EURGBP', sym: 'EUR/GBP' },
   { id: 'rg_pair_XAUUSD', sym: 'XAU/USD' },
   { id: 'rg_pair_NAS100', sym: 'NAS100_USD' },
 ];
@@ -1031,6 +1032,7 @@ const RGV2_PAIRS = [
   { id: 'rgv2_pair_USDCAD', sym: 'USD/CAD' },
   { id: 'rgv2_pair_USDCHF', sym: 'USD/CHF' },
   { id: 'rgv2_pair_GBPJPY', sym: 'GBP/JPY' },
+  { id: 'rgv2_pair_EURGBP', sym: 'EUR/GBP' },
   { id: 'rgv2_pair_XAUUSD', sym: 'XAU/USD' },
   { id: 'rgv2_pair_NAS100',  sym: 'NAS100_USD' },
 ];
