@@ -58,7 +58,7 @@ INSTRUMENTS = {
     # Additional indices
     "dow":     {"oanda": "US30_USD",    "class": "index",     "desc": "Dow Jones 30"},
     "spx":     {"oanda": "SPX500_USD",  "class": "index",     "desc": "S&P 500"},
-    "dax":     {"oanda": "DE40_USD",    "class": "index",     "desc": "DAX 40"},
+    "dax":     {"oanda": "DE30_USD",    "class": "index",     "desc": "DAX 40"},
     "uk100":   {"oanda": "UK100_GBP",   "class": "index",     "desc": "FTSE 100"},
 
     # Additional commodities
@@ -90,11 +90,12 @@ def fetch_chunk(instrument: str, from_dt: datetime, count: int = BARS_PER_REQUES
             r = requests.get(url, headers=oanda_headers(), params=params, timeout=30)
             if r.status_code == 422:
                 # Oanda returns 422 when from_dt is before instrument's earliest bar
-                # Move start forward and retry
                 return []
-            if r.status_code == 404:
-                print(f"  Instrument {instrument} not found on Oanda (404) - check symbol")
-                return None  # None = fatal, stop fetching
+            if r.status_code in (400, 404):
+                msg = {400: "Bad Request (instrument unavailable or unsupported granularity)",
+                       404: "Not Found - check symbol"}[r.status_code]
+                print(f"  Instrument {instrument} fatal {r.status_code}: {msg}")
+                return None  # fatal, skip this instrument
             r.raise_for_status()
             candles = r.json().get("candles", [])
             return [
@@ -283,7 +284,11 @@ def main():
     failed    = []
 
     for pair_key in selected:
-        ok = process(pair_key, INSTRUMENTS[pair_key], args.years, upload=not args.no_upload)
+        try:
+            ok = process(pair_key, INSTRUMENTS[pair_key], args.years, upload=not args.no_upload)
+        except Exception as e:
+            print(f"  ERROR: {e}")
+            ok = False
         (succeeded if ok else failed).append(pair_key)
 
     print(f"\n{'='*60}")

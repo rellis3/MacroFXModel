@@ -272,6 +272,20 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .pos-hist-stat-val { font-size:16px; font-weight:700; font-family:'DM Mono',monospace; }
 .pos-hist-stat-lbl { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
 .pos-hist-stats { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+/* ── Analytics breakdown ── */
+.hist-analytics-wrap { margin-bottom:14px; }
+.hist-analytics-toggle { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; font-size:11px; font-weight:600; cursor:pointer; background:var(--s2); border:1px solid var(--border); border-radius:6px; color:var(--text2); transition:background .15s; margin-bottom:10px; }
+.hist-analytics-toggle:hover { background:var(--s3); }
+.hist-analytics-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; }
+.hist-brkdn { background:var(--s1); border:1px solid var(--border); border-radius:8px; padding:12px; }
+.hist-brkdn-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text3); margin-bottom:8px; }
+.hist-brkdn-tbl { width:100%; border-collapse:collapse; font-size:11px; font-family:'DM Mono',monospace; }
+.hist-brkdn-tbl th { font-size:9px; font-weight:600; text-transform:uppercase; color:var(--text3); letter-spacing:.05em; padding:3px 6px; border-bottom:1px solid var(--border); text-align:right; }
+.hist-brkdn-tbl th:first-child { text-align:left; }
+.hist-brkdn-tbl td { padding:4px 6px; border-bottom:1px solid var(--border); text-align:right; vertical-align:middle; }
+.hist-brkdn-tbl td:first-child { text-align:left; font-weight:600; max-width:120px; overflow:hidden; text-overflow:ellipsis; }
+.hist-brkdn-tbl tr:last-child td { border-bottom:none; }
+.hist-brkdn-bar { height:2px; border-radius:2px; margin-top:2px; min-width:1px; }
 /* ── Calendar ── */
 .pos-cal-wrap { margin-top:20px; }
 .pos-cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
@@ -2288,6 +2302,14 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       <!-- Summary stats -->
       <div class="pos-hist-stats" id="histStats"></div>
 
+      <!-- Analytics breakdown -->
+      <div class="hist-analytics-wrap">
+        <button class="hist-analytics-toggle" id="histAnalyticsToggle" onclick="toggleHistAnalytics()">▶ Analytics Breakdown</button>
+        <div id="histAnalytics" style="display:none">
+          <div class="hist-analytics-grid" id="histAnalyticsGrid"></div>
+        </div>
+      </div>
+
       <!-- Trades table -->
       <div class="pos-table-wrap">
         <table class="pos-table">
@@ -2712,6 +2734,116 @@ function _fmtTime(ts) {
   return new Date(ts * 1000).toISOString().replace('T',' ').slice(0,16)+' UTC';
 }
 
+// ── Analytics breakdown ───────────────────────────────────────────────────────
+
+let _histAnalyticsOpen = false;
+
+function toggleHistAnalytics() {
+  _histAnalyticsOpen = !_histAnalyticsOpen;
+  const el  = document.getElementById('histAnalytics');
+  const btn = document.getElementById('histAnalyticsToggle');
+  if (el)  el.style.display  = _histAnalyticsOpen ? 'block' : 'none';
+  if (btn) btn.textContent   = (_histAnalyticsOpen ? '▼' : '▶') + ' Analytics Breakdown';
+}
+window.toggleHistAnalytics = toggleHistAnalytics;
+
+function _getSession(utcHour) {
+  if (utcHour < 7)  return 'Asian  (00–07)';
+  if (utcHour < 12) return 'London (07–12)';
+  if (utcHour < 17) return 'LN/NY  (12–17)';
+  if (utcHour < 21) return 'NY     (17–21)';
+  return 'Off-hrs (21–24)';
+}
+
+function _mkBrkdnTable(rows, title) {
+  if (!rows.length) return '';
+  const maxAbs = Math.max(...rows.map(r => Math.abs(r.net)), 0.01);
+  const header = `<div class="hist-brkdn-title">${title}</div>
+    <table class="hist-brkdn-tbl">
+      <thead><tr>
+        <th></th><th>#</th><th>Win%</th><th>Net P&L</th><th>Avg</th>
+      </tr></thead><tbody>`;
+  const rowsHtml = rows.map(r => {
+    const wr       = r.count ? Math.round(r.wins / r.count * 100) : 0;
+    const avg      = r.count ? r.net / r.count : 0;
+    const nc       = r.net >= 0 ? 'var(--green)' : 'var(--red)';
+    const wc       = wr  >= 50 ? 'var(--green)' : 'var(--red)';
+    const barW     = Math.round(Math.abs(r.net) / maxAbs * 80);
+    return `<tr>
+      <td title="${r.label}">${r.label}<div class="hist-brkdn-bar" style="width:${barW}%;background:${nc};opacity:.35"></div></td>
+      <td>${r.count}</td>
+      <td style="color:${wc}">${wr}%</td>
+      <td style="color:${nc}">${r.net >= 0 ? '+' : ''}$${r.net.toFixed(2)}</td>
+      <td style="color:${nc};font-size:10px">${avg >= 0 ? '+' : ''}$${avg.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="hist-brkdn">${header}${rowsHtml}</tbody></table></div>`;
+}
+
+function renderHistAnalytics(trades) {
+  const grid = document.getElementById('histAnalyticsGrid');
+  if (!grid) return;
+  if (!trades.length) { grid.innerHTML = ''; return; }
+
+  const aggregate = (keyFn, sortFn) => {
+    const map = {};
+    trades.forEach(t => {
+      const k = keyFn(t);
+      if (k == null) return;
+      if (!map[k]) map[k] = { label: k, count: 0, wins: 0, net: 0 };
+      map[k].count++;
+      const net = (t.profit || 0) + (t.swap || 0);
+      if (net > 0) map[k].wins++;
+      map[k].net += net;
+    });
+    const arr = Object.values(map);
+    return sortFn ? arr.sort(sortFn) : arr.sort((a, b) => b.net - a.net);
+  };
+
+  // By Pair
+  const byPair = aggregate(t => t.symbol || '?');
+
+  // By Session
+  const SESSION_ORDER = ['Asian  (00–07)', 'London (07–12)', 'LN/NY  (12–17)', 'NY     (17–21)', 'Off-hrs (21–24)'];
+  const bySess = aggregate(
+    t => t.time_open ? _getSession(new Date(t.time_open * 1000).getUTCHours()) : null,
+    (a, b) => SESSION_ORDER.indexOf(a.label) - SESSION_ORDER.indexOf(b.label)
+  );
+
+  // By Day of Week
+  const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const byDow = aggregate(
+    t => t.time_open ? DOW[(new Date(t.time_open * 1000).getUTCDay() + 6) % 7] : null,
+    (a, b) => DOW.indexOf(a.label) - DOW.indexOf(b.label)
+  );
+
+  // By Direction
+  const byDir = aggregate(t => t.direction || '?');
+
+  // By Hour (UTC)
+  const byHour = aggregate(
+    t => t.time_open ? String(new Date(t.time_open * 1000).getUTCHours()).padStart(2, '0') + ':xx UTC' : null,
+    (a, b) => a.label.localeCompare(b.label)
+  );
+
+  // By Bot (only when multiple bots present)
+  const byBot = aggregate(t => {
+    const bot = _POS_BOTS.find(b => b.key === t.bot_key);
+    return bot ? bot.label : (t.bot_key || '?');
+  });
+
+  const parts = [
+    _mkBrkdnTable(byPair, 'By Pair'),
+    _mkBrkdnTable(bySess, 'By Session'),
+    _mkBrkdnTable(byDow,  'By Day of Week'),
+    _mkBrkdnTable(byHour, 'By Hour (UTC open)'),
+    _mkBrkdnTable(byDir,  'By Direction'),
+  ];
+  if (byBot.length > 1) parts.push(_mkBrkdnTable(byBot, 'By Bot'));
+
+  grid.innerHTML = parts.join('');
+}
+
 async function loadHistoryTab() {
   const tbody = document.getElementById('histTableBody');
   const tfoot = document.getElementById('histTableFoot');
@@ -2744,6 +2876,7 @@ async function loadHistoryTab() {
   if (!trades.length) {
     tbody.innerHTML = `<tr><td colspan="13" class="pos-empty">No closed trades found for this date range.</td></tr>`;
     if (stats) stats.innerHTML = `<div class="pos-hist-stat"><span class="pos-hist-stat-val">0</span><span class="pos-hist-stat-lbl">Trades</span></div>`;
+    renderHistAnalytics([]);
     return;
   }
 
@@ -2763,6 +2896,9 @@ async function loadHistoryTab() {
     `<div class="pos-hist-stat"><span class="pos-hist-stat-val" style="color:${totalPnl>=0?'var(--green)':'var(--red)'}">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span><span class="pos-hist-stat-lbl">Gross P&L</span></div>`,
     `<div class="pos-hist-stat"><span class="pos-hist-stat-val">${winners} / ${trades.length - winners}</span><span class="pos-hist-stat-lbl">W / L</span></div>`,
   ].join('');
+
+  // Analytics breakdown (always computed, shown if panel is open)
+  renderHistAnalytics(trades);
 
   // Table rows
   const rows = trades.map(t => {
