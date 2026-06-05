@@ -51,6 +51,7 @@ _DXY_USD_BULL: dict[str, bool | None] = {
     'USD/CAD':    True,
     'USD/CHF':    True,
     'GBP/JPY':    None,
+    'EUR/GBP':    None,     # cross pair — no direct USD relationship
     'XAU/USD':    False,    # gold BULL = USD weakness
     'NAS100_USD': None,
 }

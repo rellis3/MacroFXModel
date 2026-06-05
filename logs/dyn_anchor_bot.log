@@ -733,3 +733,5 @@
 [2026-06-05 18:11:05] [DA] [INFO] Cycle 360  balance=99551.49  sleep=16.0s
 [2026-06-05 18:17:41] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29343.40000  sell_entry=29857.57342  buy_entry=29243.34080  session_open=29751.00000
 [2026-06-05 18:21:07] [DA] [INFO] Cycle 390  balance=99551.49  sleep=13.9s
+[2026-06-05 18:24:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:31:01] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000

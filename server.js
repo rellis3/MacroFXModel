@@ -75,12 +75,13 @@ async function callWorker(req) {
 const DEFAULT_PAIRS = [
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD',
   'NZD/USD', 'USD/CAD', 'USD/CHF', 'GBP/JPY', 'XAU/USD', 'NAS100_USD',
+  'EUR/GBP',
 ];
 
 const PIP_SIZE = {
   'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'AUD/USD': 0.0001,
   'NZD/USD': 0.0001, 'USD/CAD': 0.0001, 'USD/CHF': 0.0001,
-  'GBP/JPY': 0.01,   'USD/JPY': 0.01,
+  'GBP/JPY': 0.01,   'USD/JPY': 0.01,   'EUR/GBP': 0.0001,
   'XAU/USD': 1.0,    'NAS100_USD': 1.0,
 };
 
@@ -92,7 +93,7 @@ const PRICE_DIGITS = {
 const TYPICAL_SPREAD_PIPS = {
   'EUR/USD': 0.6, 'GBP/USD': 0.9, 'USD/JPY': 0.7,
   'AUD/USD': 0.9, 'NZD/USD': 1.1, 'USD/CAD': 1.1,
-  'USD/CHF': 1.0, 'GBP/JPY': 2.0,
+  'USD/CHF': 1.0, 'GBP/JPY': 2.0,   'EUR/GBP': 0.9,
   'XAU/USD': 0.3, 'NAS100_USD': 1.0,
 };
 
