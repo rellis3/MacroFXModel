@@ -2447,42 +2447,85 @@ async function fetchDailyOHLC(sym, count = 70) {
   } catch { return null; }
 }
 
+// Per-asset-class parameters for the dashboard vol model (mirrors volForecast.js)
+const _DA_ASSET_CLASS = {
+  'XAU/USD':    'commodity',
+  'NAS100_USD': 'index',
+};
+const _DA_DASHBOARD_PARAMS = {
+  commodity: { hl50_corr: 1.023, hl75_corr: 0.940 },
+  index:     { hl50_corr: 1.010, hl75_corr: 0.967 },
+  fx:        { hl50_corr: 0.965, hl75_corr: 0.912 },
+};
+
+// GARCH(1,1) for fx/index or Rogers-Satchell EWMA for commodity — mirrors dashboard vol page.
+function _dashboardSigmaD(candles, assetClass) {
+  const ALPHA = 0.06, BETA = 0.91, LAMBDA = 0.94;
+  const OMEGA = assetClass === 'index' ? 4.76e-6 : 3.60e-7;
+
+  if (assetClass === 'commodity') {
+    let rsVar = null;
+    for (const { high: h, low: l, open: o, close: cl } of candles) {
+      if (!h || !l || !o || !cl) continue;
+      const rs = Math.log(h / cl) * Math.log(h / o) + Math.log(l / cl) * Math.log(l / o);
+      rsVar = rsVar === null ? Math.max(rs, 1e-12) : LAMBDA * rsVar + (1 - LAMBDA) * Math.max(rs, 0);
+    }
+    return Math.sqrt(Math.max(rsVar ?? 1e-12, 1e-12));
+  }
+
+  const closes = candles.map(c => c.close);
+  const rets   = closes.slice(1).map((c, i) => Math.log(c / closes[i]));
+  let sigma2   = OMEGA / (1 - ALPHA - BETA);
+  for (const r of rets) sigma2 = OMEGA + ALPHA * r ** 2 + BETA * sigma2;
+  return Math.sqrt(Math.max(sigma2, 1e-12));
+}
+
 function _computeDaForecast(candles, opts = {}) {
-  const lambda     = opts.lambda     ?? 0.94;
-  const emaPeriod  = opts.emaPeriod  ?? 20;
-  const slopeThresh= opts.slopeThresh?? 0.002;
+  const lambda      = opts.lambda      ?? 0.94;
+  const emaPeriod   = opts.emaPeriod   ?? 20;
+  const slopeThresh = opts.slopeThresh ?? 0.002;
+  const volModel    = opts.volModel    ?? 'ewma';
+  const assetClass  = opts.assetClass  ?? 'fx';
 
   const BM_P50 = 1.572, BM_P75 = 2.049;
-  const HL50_CORR = 0.921, HL75_CORR = 0.894;
 
   const closes = candles.map(c => c.close);
   if (closes.length < emaPeriod + 5) return null;
 
-  // EWMA variance from daily log returns
-  const rets = closes.slice(1).map((c, i) => Math.log(c / closes[i]));
-  let ewmaVar = rets[0] ** 2;
-  for (const r of rets.slice(1)) ewmaVar = lambda * ewmaVar + (1 - lambda) * r ** 2;
-  const sigmaD = Math.sqrt(Math.max(ewmaVar, 1e-12));
+  let sigmaD, hl50_corr, hl75_corr;
+
+  if (volModel === 'dashboard') {
+    sigmaD = _dashboardSigmaD(candles, assetClass);
+    const p = _DA_DASHBOARD_PARAMS[assetClass] ?? _DA_DASHBOARD_PARAMS.fx;
+    hl50_corr = p.hl50_corr;
+    hl75_corr = p.hl75_corr;
+  } else {
+    // EWMA close-to-close (default, backtest-validated)
+    const rets = closes.slice(1).map((c, i) => Math.log(c / closes[i]));
+    let ewmaVar = rets[0] ** 2;
+    for (const r of rets.slice(1)) ewmaVar = lambda * ewmaVar + (1 - lambda) * r ** 2;
+    sigmaD    = Math.sqrt(Math.max(ewmaVar, 1e-12));
+    hl50_corr = 0.921;
+    hl75_corr = 0.894;
+  }
 
   // EMA series for slope
   const alpha = 2 / (emaPeriod + 1);
-  let ema = closes[0];
-  let emaPrev = closes[0];
-  for (let i = 1; i < closes.length; i++) {
-    emaPrev = ema;
-    ema = alpha * closes[i] + (1 - alpha) * ema;
-  }
+  let ema = closes[0], emaPrev = closes[0];
+  for (let i = 1; i < closes.length; i++) { emaPrev = ema; ema = alpha * closes[i] + (1 - alpha) * ema; }
   const slope  = emaPrev !== 0 ? (ema - emaPrev) / emaPrev : 0;
   const regime = slope > slopeThresh ? 'BULL' : slope < -slopeThresh ? 'BEAR' : 'RANGE';
 
   return {
     regime,
-    sigma_d:   sigmaD,
-    hl50:      BM_P50 * HL50_CORR * sigmaD,
-    hl75:      BM_P75 * HL75_CORR * sigmaD,
-    ema_slope: slope,
-    prev_close: closes[closes.length - 1],
-    bars_used:  closes.length,
+    sigma_d:     sigmaD,
+    hl50:        BM_P50 * hl50_corr * sigmaD,
+    hl75:        BM_P75 * hl75_corr * sigmaD,
+    ema_slope:   slope,
+    prev_close:  closes[closes.length - 1],
+    bars_used:   closes.length,
+    vol_model:   volModel,
+    asset_class: assetClass,
   };
 }
 
@@ -2506,10 +2549,11 @@ app.get('/api/dyn-anchor-forecast', async (req, res) => {
     ? pairsParam.split(',').map(p => p.trim()).filter(Boolean)
     : DEFAULT_DA_PAIRS;
 
-  const lambda      = parseFloat(req.query.lambda)       || 0.94;
-  const emaPeriod   = parseInt(req.query.emaPeriod)       || 20;
+  const lambda      = parseFloat(req.query.lambda)      || 0.94;
+  const emaPeriod   = parseInt(req.query.emaPeriod)      || 20;
   const slopeThresh = parseFloat(req.query.slopeThresh)  || 0.002;
   const barCount    = Math.min(parseInt(req.query.bars) || 70, 250);
+  const volModel    = req.query.volModel ?? 'ewma';
 
   const forecast = {};
   const errors   = {};
@@ -2521,7 +2565,8 @@ app.get('/api/dyn-anchor-forecast', async (req, res) => {
         errors[pair] = `Only ${candles?.length ?? 0} bars (need ${emaPeriod + 5})`;
         return;
       }
-      const f = _computeDaForecast(candles, { lambda, emaPeriod, slopeThresh });
+      const assetClass = _DA_ASSET_CLASS[pair] ?? 'fx';
+      const f = _computeDaForecast(candles, { lambda, emaPeriod, slopeThresh, volModel, assetClass });
       if (f) forecast[pair] = f;
       else   errors[pair] = 'computation failed';
     } catch (e) {
@@ -2535,7 +2580,7 @@ app.get('/api/dyn-anchor-forecast', async (req, res) => {
     computed_at: new Date().toISOString(),
     pairs_ok:    Object.keys(forecast).length,
     pairs_err:   Object.keys(errors).length,
-    params:      { lambda, emaPeriod, slopeThresh, barCount },
+    params:      { lambda, emaPeriod, slopeThresh, barCount, volModel },
   };
 
   // Store to KV so bot can read it at session open

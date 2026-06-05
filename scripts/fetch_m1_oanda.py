@@ -12,10 +12,10 @@ Requires:
     pip install requests pyarrow boto3
 
 Env vars (same as main system):
-    OANDA_KEY      — Oanda v20 API key (required)
-    OANDA_ENV      — 'live' (default) or 'practice'
-    R2_ACCESS_KEY  — Cloudflare R2 access key (optional, needed for upload)
-    R2_SECRET_KEY  — Cloudflare R2 secret key (optional, needed for upload)
+    OANDA_KEY      -Oanda v20 API key (required)
+    OANDA_ENV      -'live' (default) or 'practice'
+    R2_ACCESS_KEY  -Cloudflare R2 access key (optional, needed for upload)
+    R2_SECRET_KEY  -Cloudflare R2 secret key (optional, needed for upload)
 """
 
 import argparse
@@ -93,7 +93,7 @@ def fetch_chunk(instrument: str, from_dt: datetime, count: int = BARS_PER_REQUES
                 # Move start forward and retry
                 return []
             if r.status_code == 404:
-                print(f"  Instrument {instrument} not found on Oanda (404) — check symbol")
+                print(f"  Instrument {instrument} not found on Oanda (404) - check symbol")
                 return None  # None = fatal, stop fetching
             r.raise_for_status()
             candles = r.json().get("candles", [])
@@ -113,7 +113,7 @@ def fetch_chunk(instrument: str, from_dt: datetime, count: int = BARS_PER_REQUES
             ]
         except requests.RequestException as e:
             wait = 2 ** attempt
-            print(f"  Attempt {attempt+1} failed: {e}  — retrying in {wait}s")
+            print(f"  Attempt {attempt+1} failed: {e}  - retrying in {wait}s")
             time.sleep(wait)
     raise RuntimeError(f"Failed to fetch {instrument} after 4 attempts")
 
@@ -130,7 +130,7 @@ def fetch_all(instrument: str, years: int = 5) -> list | None:
         if chunk is None:
             return None  # fatal instrument error
         if not chunk:
-            # Empty — skip forward a week (non-trading gaps for indices)
+            # Empty -skip forward a week (non-trading gaps for indices)
             cursor += timedelta(days=7)
             continue
 
@@ -217,11 +217,11 @@ def process(pair_key: str, cfg: dict, years: int, upload: bool):
     bars = fetch_all(oanda_sym, years=years)
 
     if bars is None:
-        print(f"  SKIPPED — instrument unavailable on Oanda")
+        print(f"  SKIPPED - instrument unavailable on Oanda")
         return False
 
     if not bars:
-        print(f"  SKIPPED — no bars returned")
+        print(f"  SKIPPED - no bars returned")
         return False
 
     t_first = bars[0]["time"]
@@ -236,7 +236,7 @@ def process(pair_key: str, cfg: dict, years: int, upload: bool):
 
     if upload:
         if not R2_SECRET_KEY:
-            print("  R2_SECRET_KEY not set — skipping upload")
+            print("  R2_SECRET_KEY not set - skipping upload")
         else:
             print(f"  Uploading to R2  ->  {r2_key}...")
             upload_to_r2(local_path, r2_key)
@@ -287,14 +287,14 @@ def main():
         (succeeded if ok else failed).append(pair_key)
 
     print(f"\n{'='*60}")
-    print(f"Done — {len(succeeded)} succeeded, {len(failed)} failed")
+    print(f"Done: {len(succeeded)} succeeded, {len(failed)} failed")
     if failed:
         print(f"Failed: {failed}")
 
     if succeeded and not args.no_upload:
         print(f"\nAdding {succeeded} to r2_download.py...")
         update_r2_download_script(succeeded)
-        print("r2_download.py updated — new pairs will auto-download at next session start")
+        print("r2_download.py updated - new pairs will auto-download at next session start")
 
 
 if __name__ == "__main__":

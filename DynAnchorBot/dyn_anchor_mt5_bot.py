@@ -45,11 +45,25 @@ MAGIC = 20260006
 # ── Brownian Motion calibration constants ─────────────────────────────────────
 _BM_P50       = 1.572   # 50th percentile BM range multiplier
 _BM_P75       = 2.049   # 75th percentile BM range multiplier
-_HL50_CORR    = 0.921   # FX empirical correction for 50th pct
-_HL75_CORR    = 0.894   # FX empirical correction for 75th pct
+_HL50_CORR    = 0.921   # EWMA model: FX 50th pct correction (backtest-validated)
+_HL75_CORR    = 0.894   # EWMA model: FX 75th pct correction (backtest-validated)
 _EWMA_LAMBDA  = 0.94    # EWMA decay factor
 _EMA_PERIOD   = 20      # EMA period for regime slope
 _SLOPE_THRESH = 0.002   # EMA slope threshold for regime classification
+
+# ── Asset class + dashboard vol model (mirrors volForecast.js / server.js) ────
+_DA_ASSET_CLASS: dict = {
+    'XAU/USD':    'commodity',
+    'NAS100_USD': 'index',
+}
+_DA_DASHBOARD_PARAMS: dict = {
+    'commodity': {'hl50_corr': 1.023, 'hl75_corr': 0.940},
+    'index':     {'hl50_corr': 1.010, 'hl75_corr': 0.967},
+    'fx':        {'hl50_corr': 0.965, 'hl75_corr': 0.912},
+}
+_GARCH_ALPHA = 0.06
+_GARCH_BETA  = 0.91
+_GARCH_OMEGA: dict = {'fx': 3.60e-7, 'index': 4.76e-6, 'commodity': 3.60e-7}
 
 # ── Broker symbol alias map ───────────────────────────────────────────────────
 # Maps internal pair names → MT5 broker symbol names.
@@ -122,6 +136,7 @@ DEFAULT_CFG: dict = {
     'max_spread_pips':     3.0,
     'daily_bars_needed':   60,        # D1 bars for vol + EMA-20 warmup
     'ewma_lambda':         0.94,
+    'vol_model':           'ewma',    # 'ewma' (backtest-validated) | 'dashboard' (GARCH/RS-EWMA)
     'ema_period':          20,
     'regime_threshold':    0.002,
     'ddlimit':             3.0,
@@ -263,7 +278,28 @@ def get_daily_bars(pair: str, n_bars: int) -> Optional[list]:
         return None
 
 
-# ── Vol model — EWMA + EMA-20 regime ─────────────────────────────────────────
+# ── Vol models ────────────────────────────────────────────────────────────────
+
+def _dashboard_sigma_d(bars, asset_class: str) -> float:
+    """GARCH(1,1) for fx/index, Rogers-Satchell EWMA for commodity — mirrors dashboard."""
+    lam = _EWMA_LAMBDA
+    if asset_class == 'commodity':
+        rs_var = None
+        for b in bars:
+            h, l, o, c = float(b['high']), float(b['low']), float(b['open']), float(b['close'])
+            if not all(x > 0 for x in (h, l, o, c)):
+                continue
+            rs = math.log(h / c) * math.log(h / o) + math.log(l / c) * math.log(l / o)
+            rs_var = max(rs, 1e-12) if rs_var is None else lam * rs_var + (1 - lam) * max(rs, 0)
+        return math.sqrt(max(rs_var or 1e-12, 1e-12))
+    omega  = _GARCH_OMEGA.get(asset_class, _GARCH_OMEGA['fx'])
+    closes = [float(b['close']) for b in bars]
+    rets   = [math.log(closes[i] / closes[i - 1]) for i in range(1, len(closes))]
+    sigma2 = omega / (1 - _GARCH_ALPHA - _GARCH_BETA)
+    for r in rets:
+        sigma2 = omega + _GARCH_ALPHA * r ** 2 + _GARCH_BETA * sigma2
+    return math.sqrt(max(sigma2, 1e-12))
+
 
 def _ema_series(values: list, period: int) -> list:
     """Compute full EMA series over values with given period."""
@@ -274,29 +310,36 @@ def _ema_series(values: list, period: int) -> list:
     return ema
 
 
-def compute_vol_and_regime(bars, cfg: dict) -> tuple:
+def compute_vol_and_regime(bars, cfg: dict, pair: str = '') -> tuple:
     """
     Returns (hl50, hl75, regime, sigma_d, ema_slope) from D1 bars.
     hl50/hl75 are price fractions (multiply by price to get distance).
     regime: 'BULL' | 'BEAR' | 'RANGE'
+    vol_model in cfg selects 'ewma' (default) or 'dashboard' (GARCH/RS-EWMA).
     """
     lam        = float(cfg.get('ewma_lambda',    _EWMA_LAMBDA))
     ema_period = int(cfg.get('ema_period',       _EMA_PERIOD))
     slope_thr  = float(cfg.get('regime_threshold', _SLOPE_THRESH))
+    vol_model  = cfg.get('vol_model', 'ewma')
 
     closes = [float(b['close']) for b in bars]
     if len(closes) < ema_period + 2:
         return None, None, 'RANGE', 0.0, 0.0
 
-    # EWMA variance from daily log returns
-    rets = [math.log(closes[i] / closes[i - 1]) for i in range(1, len(closes))]
-    ewma_var = rets[0] ** 2
-    for r in rets[1:]:
-        ewma_var = lam * ewma_var + (1 - lam) * r ** 2
-    sigma_d = math.sqrt(max(ewma_var, 1e-10))
-
-    hl50 = _BM_P50 * _HL50_CORR * sigma_d
-    hl75 = _BM_P75 * _HL75_CORR * sigma_d
+    if vol_model == 'dashboard':
+        asset_class = _DA_ASSET_CLASS.get(pair, 'fx')
+        sigma_d = _dashboard_sigma_d(bars, asset_class)
+        p = _DA_DASHBOARD_PARAMS.get(asset_class, _DA_DASHBOARD_PARAMS['fx'])
+        hl50 = _BM_P50 * p['hl50_corr'] * sigma_d
+        hl75 = _BM_P75 * p['hl75_corr'] * sigma_d
+    else:
+        rets = [math.log(closes[i] / closes[i - 1]) for i in range(1, len(closes))]
+        ewma_var = rets[0] ** 2
+        for r in rets[1:]:
+            ewma_var = lam * ewma_var + (1 - lam) * r ** 2
+        sigma_d = math.sqrt(max(ewma_var, 1e-10))
+        hl50 = _BM_P50 * _HL50_CORR * sigma_d
+        hl75 = _BM_P75 * _HL75_CORR * sigma_d
 
     # EMA-20 slope from latest two EMA values
     ema = _ema_series(closes, ema_period)
@@ -766,6 +809,7 @@ def fetch_server_forecast(pairs: list, url: str, cfg: dict) -> Optional[dict]:
             'emaPeriod':   ema_period,
             'slopeThresh': slope_thr,
             'bars':        n_bars,
+            'volModel':    cfg.get('vol_model', 'ewma'),
         }
         r = requests.get(f'{url}/api/dyn-anchor-forecast', params=params, timeout=60)
         if r.status_code != 200:
@@ -977,7 +1021,7 @@ def run(url: str, paper_mode: bool) -> None:
                     n_bars = int(cfg.get('daily_bars_needed', 60))
                     bars   = get_daily_bars(pair, n_bars + 1)
                     if bars is not None and len(bars) >= int(cfg.get('ema_period', 20)) + 5:
-                        hl50, hl75, regime, sigma_d, slope = compute_vol_and_regime(bars[:-1], cfg)
+                        hl50, hl75, regime, sigma_d, slope = compute_vol_and_regime(bars[:-1], cfg, pair)
                         log.info(f'[{pair}] Computed vol/regime from MT5 bars (no precompute available)')
                     else:
                         # Fall back 2: on-demand server forecast (works even without MT5)

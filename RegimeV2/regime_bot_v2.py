@@ -75,14 +75,22 @@ MAGIC = 20260005
 _PIP_SIZES = {
     'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
     'AUD/USD': 0.0001, 'NZD/USD': 0.0001, 'USD/CAD': 0.0001,
-    'USD/CHF': 0.0001, 'GBP/JPY': 0.01,  'XAU/USD': 1.0, 'NAS100_USD': 1.0,
+    'USD/CHF': 0.0001, 'GBP/JPY': 0.01,  'XAU/USD': 1.0, 'NAS100_USD': 1.0,'USTECH100M': 1.0,
 }
 _PIP_VALUES = {
     'EUR/USD': 10.0, 'GBP/USD': 10.0, 'AUD/USD': 10.0, 'NZD/USD': 10.0,
     'USD/JPY': 9.0,  'USD/CAD': 7.5,  'USD/CHF': 10.5, 'GBP/JPY': 9.0,
-    'XAU/USD': 100.0, 'NAS100_USD': 1.0,
+    'XAU/USD': 100.0, 'NAS100_USD': 1.0,'USTECH100M': 1.0,
 }
 TRADEABLE = {'BULL', 'BEAR'}
+
+# ── Broker symbol aliases (pair name → actual MT5 symbol) ─────────────────────
+_MT5_SYMBOL: dict[str, str] = {
+    'NAS100_USD': 'USTECH100M',
+}
+
+def _mt5_sym(pair: str) -> str:
+    return _MT5_SYMBOL.get(pair, pair.replace('/', ''))
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 os.makedirs(os.path.join(os.path.dirname(__file__), '..', 'logs'), exist_ok=True)
@@ -303,7 +311,7 @@ def mt5_connect() -> bool:
 def get_price(pair: str, url: str) -> Optional[float]:
     if HAS_MT5:
         try:
-            tick = mt5.symbol_info_tick(pair.replace('/', ''))
+            tick = mt5.symbol_info_tick(_mt5_sym(pair))
             if tick and tick.bid > 0:
                 return round((tick.bid + tick.ask) / 2, 6)
         except Exception:
@@ -320,7 +328,7 @@ def get_atr(pair: str, tf: str = '5m') -> Optional[float]:
         return None
     try:
         timeframe = mt5.TIMEFRAME_M5 if tf == '5m' else mt5.TIMEFRAME_M30
-        bars = mt5.copy_rates_from_pos(pair.replace('/', ''), timeframe, 0, 30)
+        bars = mt5.copy_rates_from_pos(_mt5_sym(pair), timeframe, 0, 30)
         if bars is None or len(bars) < 2:
             return None
         alpha = 0.15
@@ -593,7 +601,7 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
                 log.error(f'Re-login failed before order: {mt5.last_error()}')
                 return None
             log.info(f'Re-logged in to account {account} before order')
-    sym  = pair.replace('/', '')
+    sym  = _mt5_sym(pair)
     tick = mt5.symbol_info_tick(sym)
     if not tick:
         log.error(f'No tick for {sym}')
@@ -634,38 +642,57 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
         return True
     if not HAS_MT5:
         return False
-    # Re-login before close — same account-switching issue as open_position.
+
     account  = os.environ.get('MT5_ACCOUNT', '')
     password = os.environ.get('MT5_PASSWORD', '')
     server   = os.environ.get('MT5_SERVER', '')
-    if account and password and server:
-        current = mt5.account_info()
-        if not current or str(current.login) != str(account):
-            if not mt5.login(int(account), password, server):
-                log.error(f'Re-login failed before close: {mt5.last_error()}')
-                return False
-    sym  = pair.replace('/', '')
-    poss = [p for p in (mt5.positions_get(symbol=sym) or [])
-            if p.ticket == ticket]
-    if not poss:
-        log.warning(f'Ticket {ticket} not found — may be SL-closed')
-        return True
-    pos  = poss[0]
-    ct   = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
-    tick = mt5.symbol_info_tick(sym)
-    if not tick:
-        return False
-    cp = tick.bid if pos.type == mt5.ORDER_TYPE_BUY else tick.ask
-    res = mt5.order_send({
-        'action': mt5.TRADE_ACTION_DEAL, 'symbol': sym, 'volume': pos.volume,
-        'type': ct, 'position': ticket, 'price': cp, 'deviation': 20,
-        'magic': MAGIC, 'comment': (''.join(c for c in f'RgV2:{reason}' if ord(c) < 128))[:31],
-        'type_time': mt5.ORDER_TIME_GTC, 'type_filling': _filling_mode(sym),
-    })
-    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-        log.info(f'Closed ticket={ticket} at {cp}')
-        return True
-    log.error(f'Close failed: {getattr(res,"retcode","?")}')
+
+    sym = _mt5_sym(pair)
+
+    for attempt in range(3):  # up to 3 attempts: original + 2 retries
+        if attempt > 0:
+            # Re-login and re-fetch tick on every retry
+            time.sleep(0.5)
+            if account and password and server:
+                if not mt5.login(int(account), password, server):
+                    log.warning(f'Re-login failed on close attempt {attempt+1}: {mt5.last_error()}')
+                    continue
+
+        # Check if position still exists (may have been SL-closed between attempts)
+        poss = [p for p in (mt5.positions_get(symbol=sym) or []) if p.ticket == ticket]
+        if not poss:
+            log.info(f'Ticket {ticket} not found — already closed (SL/TP or prior attempt)')
+            return True
+
+        pos  = poss[0]
+        ct   = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+        tick = mt5.symbol_info_tick(sym)
+        if not tick:
+            log.warning(f'No tick for {sym} on close attempt {attempt+1}')
+            continue
+
+        cp  = tick.bid if pos.type == mt5.ORDER_TYPE_BUY else tick.ask
+        res = mt5.order_send({
+            'action': mt5.TRADE_ACTION_DEAL, 'symbol': sym, 'volume': pos.volume,
+            'type': ct, 'position': ticket, 'price': cp, 'deviation': 20,
+            'magic': MAGIC, 'comment': (''.join(c for c in f'RgV2:{reason}' if ord(c) < 128))[:31],
+            'type_time': mt5.ORDER_TIME_GTC, 'type_filling': _filling_mode(sym),
+        })
+
+        if res is None:
+            log.warning(f'Close attempt {attempt+1} — order_send returned None  last_error={mt5.last_error()}')
+            continue
+
+        if res.retcode == mt5.TRADE_RETCODE_DONE:
+            log.info(f'Closed ticket={ticket} at {cp}')
+            return True
+
+        log.warning(
+            f'Close attempt {attempt+1} failed: retcode={res.retcode}  '
+            f'comment={res.comment}  last_error={mt5.last_error()}'
+        )
+
+    log.error(f'Close FAILED after 3 attempts for ticket={ticket} ({pair}) — position remains open; SL is protection')
     return False
 
 
@@ -916,7 +943,10 @@ def run(url: str, paper_mode: bool) -> None:
         if HAS_MT5 and not paper_mode:
             try:
                 all_mt5_pos = mt5.positions_get() or []
-                sym_to_pair = {p.replace('/', ''): p for p in cfg['pairs']}
+                sym_to_pair = {}
+                for p in cfg['pairs']:
+                    sym_to_pair[_mt5_sym(p)]      = p
+                    sym_to_pair[p.replace('/', '')] = p  # fallback for pairs with slashes
                 for mt5p in all_mt5_pos:
                     pair_key = sym_to_pair.get(mt5p.symbol)
                     if not pair_key:
@@ -1085,7 +1115,7 @@ def run(url: str, paper_mode: bool) -> None:
 
                 # Check MT5 SL hit — match by ticket only so adopted orphans are tracked
                 if HAS_MT5 and not paper_mode:
-                    mt5_sym = pair.replace('/', '')
+                    mt5_sym = _mt5_sym(pair)
                     still_open = [p for p in (mt5.positions_get(symbol=mt5_sym) or [])
                                   if p.ticket == pos['ticket']]
                     if not still_open:

@@ -59,13 +59,24 @@ MAGIC = 20260002
 _PIP_SIZES = {
     'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
     'AUD/USD': 0.0001, 'NZD/USD': 0.0001, 'USD/CAD': 0.0001,
-    'USD/CHF': 0.0001, 'GBP/JPY': 0.01,  'XAU/USD': 1.0, 'NAS100_USD': 1.0,
+    'USD/CHF': 0.0001, 'GBP/JPY': 0.01,  'XAU/USD': 1.0, 'NAS100_USD': 1.0,'USTECH100M': 1.0,
 }
 _PIP_VALUES = {
     'EUR/USD': 10.0, 'GBP/USD': 10.0, 'AUD/USD': 10.0, 'NZD/USD': 10.0,
     'USD/JPY': 9.0,  'USD/CAD': 7.5,  'USD/CHF': 10.5, 'GBP/JPY': 9.0,
-    'XAU/USD': 100.0, 'NAS100_USD': 1.0,
+    'XAU/USD': 100.0, 'NAS100_USD': 1.0,'USTECH100M': 1.0,
 }
+
+# ── Broker symbol aliases (pair name → actual MT5 symbol) ─────────────────────
+# Some demo brokers use different symbol names. Map the canonical pair name used
+# in config and API to the real MT5 symbol so all positions_get / order_send
+# calls use the correct name.
+_MT5_SYMBOL: dict[str, str] = {
+    'NAS100_USD': 'USTECH100M',
+}
+
+def _mt5_sym(pair: str) -> str:
+    return _MT5_SYMBOL.get(pair, pair.replace('/', ''))
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 
@@ -100,6 +111,7 @@ DEFAULT_CFG: dict = {
     'monthlydd':           5.0,      # monthly DD % before lockout
     'lockout':             3,        # lockout duration (hours)
     'cooldown':            240,      # seconds between trades on same pair
+    'entry_fail_cooldown_secs': 300,  # cooldown after a failed MT5 order (prevents re-entry spam)
     # Decay / vol filter settings
     'vol_z_max':           2.5,      # block entry when vol_z > this (spike filter)
     'decay_window':        10,       # rolling bar count for decay computation
@@ -211,7 +223,7 @@ def get_price(pair: str, base_url: str) -> float | None:
     """MT5 tick first (sub-ms), then dashboard API fallback."""
     if HAS_MT5:
         try:
-            tick = mt5.symbol_info_tick(pair.replace('/', ''))
+            tick = mt5.symbol_info_tick(_mt5_sym(pair))
             if tick and tick.bid > 0:
                 return round((tick.bid + tick.ask) / 2, 6)
         except Exception:
@@ -229,7 +241,7 @@ def get_atr(pair: str, tf: str = '5m') -> float | None:
         return None
     try:
         timeframe = mt5.TIMEFRAME_M5 if tf == '5m' else mt5.TIMEFRAME_M30
-        bars = mt5.copy_rates_from_pos(pair.replace('/', ''), timeframe, 0, 30)
+        bars = mt5.copy_rates_from_pos(_mt5_sym(pair), timeframe, 0, 30)
         if bars is None or len(bars) < 2:
             return None
         alpha = 0.15
@@ -484,7 +496,7 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
         log.error('MetaTrader5 not installed — cannot place live order')
         return None
 
-    mt5_sym = pair.replace('/', '')
+    mt5_sym = _mt5_sym(pair)
     tick    = mt5.symbol_info_tick(mt5_sym)
     if not tick:
         log.error(f'No tick for {mt5_sym}')
@@ -559,7 +571,7 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
     if not HAS_MT5:
         return False
 
-    mt5_sym   = pair.replace('/', '')
+    mt5_sym   = _mt5_sym(pair)
     positions = [p for p in (mt5.positions_get(symbol=mt5_sym) or [])
                  if p.ticket == ticket and p.magic == MAGIC]
 
@@ -781,6 +793,7 @@ def run(base_url: str, paper_mode: bool) -> None:
     flip_counts:   dict[str, int]            = {}   # consecutive bars NOT in entry regime (for RANGE debounce)
     open_pos:      dict[str, dict]           = {}   # pair → {ticket, direction, entry_price, sl}
     entry_regime:  dict[str, str]            = {}   # pair → regime string at time of entry
+    failed_entry_t: dict[str, float]         = {}   # pair → timestamp of last failed MT5 order
 
     for pair in cfg['pairs']:
         debounce[pair]     = RegimeDebounce(cfg['candle_hold'], cfg['min_confidence'])
@@ -882,7 +895,7 @@ def run(base_url: str, paper_mode: bool) -> None:
 
                 # Check whether MT5 already closed it (SL or TP hit)
                 if not paper_mode and HAS_MT5:
-                    mt5_sym    = pair.replace('/', '')
+                    mt5_sym    = _mt5_sym(pair)
                     still_open = [
                         p for p in (mt5.positions_get(symbol=mt5_sym) or [])
                         if p.ticket == pos['ticket'] and p.magic == MAGIC
@@ -1036,6 +1049,13 @@ def run(base_url: str, paper_mode: bool) -> None:
                 continue
 
             # ── Entry ─────────────────────────────────────────────────────────
+            fail_cd = cfg.get('entry_fail_cooldown_secs', 300)
+            if time.time() - failed_entry_t.get(pair, 0) < fail_cd:
+                remaining = int(fail_cd - (time.time() - failed_entry_t[pair]))
+                log.info(f'[{pair}] Order-fail cooldown — {remaining}s remaining')
+                status_positions[pair] = {'status': 'order_fail_cooldown', 'regime': regime}
+                continue
+
             direction = 'LONG' if confirmed == 'BULL' else 'SHORT'
             price     = get_price(pair, base_url)
             if price is None:
@@ -1088,6 +1108,7 @@ def run(base_url: str, paper_mode: bool) -> None:
                     'decay':       decay_score,
                 }
             else:
+                failed_entry_t[pair] = time.time()
                 status_positions[pair] = {
                     'status': 'entry_failed', 'regime': regime,
                     'direction': direction,

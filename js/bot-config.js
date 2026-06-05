@@ -1382,6 +1382,7 @@ const DA_DEFAULTS = {
   max_spread_pips:     3.0,
   daily_bars_needed:   60,
   ewma_lambda:         0.94,
+  vol_model:           'ewma',
   ema_period:          20,
   regime_threshold:    0.002,
   ddlimit:             3.0,
@@ -1425,6 +1426,7 @@ function readDaForm() {
   _daCfg.max_spread_pips    = num('da_max_spread_pips',    3.0);
   _daCfg.daily_bars_needed  = num('da_daily_bars_needed',  60);
   _daCfg.ewma_lambda        = num('da_ewma_lambda',        0.94);
+  _daCfg.vol_model          = str('da_vol_model',          'ewma');
   _daCfg.ema_period         = num('da_ema_period',         20);
   _daCfg.regime_threshold   = num('da_regime_threshold',   0.002);
   _daCfg.ddlimit            = num('da_ddlimit',            3.0);
@@ -1449,6 +1451,7 @@ function renderDaForm() {
   setVal('da_max_spread_pips',  _daCfg.max_spread_pips  ?? 3.0);
   setVal('da_daily_bars_needed',_daCfg.daily_bars_needed ?? 60);
   setVal('da_ewma_lambda',      _daCfg.ewma_lambda      ?? 0.94);
+  setVal('da_vol_model',        _daCfg.vol_model        ?? 'ewma');
   setVal('da_ema_period',       _daCfg.ema_period       ?? 20);
   setVal('da_regime_threshold', _daCfg.regime_threshold ?? 0.002);
   setVal('da_ddlimit',          _daCfg.ddlimit          ?? 3.0);

@@ -19,6 +19,7 @@ PAIRS = [
     "gbpjpy","eurjpy","eurgbp","euraud","eurcad","eurchf","eurnzd",
     "audjpy","audnzd","audcad","audchf","gbpaud","gbpcad","gbpchf",
     "gbpnzd","cadjpy","chfjpy","nzdjpy",
+    "gold",
 ]
 
 

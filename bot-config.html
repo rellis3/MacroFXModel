@@ -1745,6 +1745,13 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <input type="number" id="da_ewma_lambda" min="0.80" max="0.99" step="0.01" style="width:80px">
         </div>
         <div class="form-row">
+          <span class="form-lbl">Vol model <small>σ_d calculation</small></span>
+          <select id="da_vol_model" style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 8px">
+            <option value="ewma">EWMA — close-to-close (backtest validated)</option>
+            <option value="dashboard">Dashboard — GARCH(1,1) / RS-EWMA (matches vol page)</option>
+          </select>
+        </div>
+        <div class="form-row">
           <span class="form-lbl">EMA period <small>for regime slope</small></span>
           <input type="number" id="da_ema_period" min="5" max="50" step="1" style="width:70px">
         </div>
