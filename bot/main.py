@@ -810,6 +810,14 @@ def execute_trade(pair: str, direction: str, entry: dict,
     if sl_tp.tp_capped:
         log.warning(f'TP capped at max_tp_pips — verify entry quality for {pair}')
 
+    # R:R gate — skip trades where reward doesn't justify the risk
+    min_rr = (config.get('execution') or {}).get('min_rr', 1.0) if config else 1.0
+    if sl_tp.rr_ratio < min_rr:
+        log.warning(
+            f'RR BLOCK {pair}: R:R={sl_tp.rr_ratio} < min_rr={min_rr} — trade skipped'
+        )
+        return False
+
     if paper_mode:
         log.info('[PAPER] Signal logged — no order sent')
         return True
@@ -1057,6 +1065,12 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
     if not size:
         log.warning(f'[{pair}] TG-mode: size=0 (sl_tp.sl={sl_tp.sl}) — trade skipped')
         pair_status['reason'] = 'size=0 — SL missing from sl_tp calculation'
+        return pair_status
+
+    min_rr = (config.get('execution') or {}).get('min_rr', 1.0) if config else 1.0
+    if sl_tp.rr_ratio < min_rr:
+        log.warning(f'[{pair}] TG-mode RR BLOCK: R:R={sl_tp.rr_ratio} < min_rr={min_rr} — trade skipped')
+        pair_status['reason'] = f'RR_BLOCK R:R={sl_tp.rr_ratio} < min_rr={min_rr}'
         return pair_status
 
     ticket = execute_trade(pair, direction, entry, sl_tp, size, live_price, paper_mode, config=config)

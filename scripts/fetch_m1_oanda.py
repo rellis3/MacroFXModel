@@ -210,9 +210,9 @@ def process(pair_key: str, cfg: dict, years: int, upload: bool):
     r2_key     = f"{R2_PREFIX}/{filename}"
 
     print(f"\n{'='*60}")
-    print(f"  {desc} ({oanda_sym})  →  {filename}")
+    print(f"  {desc} ({oanda_sym})  ->  {filename}")
     print(f"{'='*60}")
-    print(f"  Fetching {years}yr M1 history from Oanda…")
+    print(f"  Fetching {years}yr M1 history from Oanda...")
 
     bars = fetch_all(oanda_sym, years=years)
 
@@ -227,7 +227,7 @@ def process(pair_key: str, cfg: dict, years: int, upload: bool):
     t_first = bars[0]["time"]
     t_last  = bars[-1]["time"]
     span_days = (t_last - t_first).days
-    print(f"  {len(bars):,} bars  |  {t_first.date()} → {t_last.date()}  ({span_days} days)")
+    print(f"  {len(bars):,} bars  |  {t_first.date()} -> {t_last.date()}  ({span_days} days)")
 
     OUTDIR.mkdir(parents=True, exist_ok=True)
     write_parquet(bars, local_path)
@@ -238,7 +238,7 @@ def process(pair_key: str, cfg: dict, years: int, upload: bool):
         if not R2_SECRET_KEY:
             print("  R2_SECRET_KEY not set — skipping upload")
         else:
-            print(f"  Uploading to R2  →  {r2_key}…")
+            print(f"  Uploading to R2  ->  {r2_key}...")
             upload_to_r2(local_path, r2_key)
             print(f"  Upload complete")
 
@@ -292,7 +292,7 @@ def main():
         print(f"Failed: {failed}")
 
     if succeeded and not args.no_upload:
-        print(f"\nAdding {succeeded} to r2_download.py…")
+        print(f"\nAdding {succeeded} to r2_download.py...")
         update_r2_download_script(succeeded)
         print("r2_download.py updated — new pairs will auto-download at next session start")
 

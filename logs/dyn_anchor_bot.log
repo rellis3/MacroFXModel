@@ -33,3 +33,596 @@
 [2026-06-05 11:10:51] [DA] [INFO] [USD/JPY] Running daily setup…
 [2026-06-05 11:10:51] [DA] [INFO] [USD/JPY] MT5 bars unavailable — requesting on-demand server forecast
 [2026-06-05 11:10:52] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 11:14:35] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 11:14:39] [DA] [INFO] Credentials loaded: account=  server=
+[2026-06-05 11:14:39] [DA] [ERROR] MT5_ACCOUNT / MT5_PASSWORD / MT5_SERVER not set — aborting
+[2026-06-05 11:14:39] [DA] [WARNING] MT5 connection failed — falling back to paper mode
+[2026-06-05 11:14:42] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD']  interval=60s  risk=1%  window=00:00–22:00
+[2026-06-05 11:14:42] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 11:14:42] [DA] [INFO] [EUR/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:14:46] [DA] [INFO] [EUR/USD] Using on-demand server forecast
+[2026-06-05 11:14:46] [DA] [INFO] [EUR/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.264%  hl50=0.382%  hl75=0.484%  session_open=0.00000  slope=-0.000319
+[2026-06-05 11:14:46] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-05 11:14:46] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 11:14:46] [DA] [INFO] [GBP/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:14:52] [DA] [INFO] [GBP/USD] Using on-demand server forecast
+[2026-06-05 11:14:52] [DA] [INFO] [GBP/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.369%  hl50=0.534%  hl75=0.676%  session_open=0.00000  slope=-0.000246
+[2026-06-05 11:14:52] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-05 11:14:52] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 11:14:52] [DA] [INFO] [USD/JPY] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:14:55] [DA] [INFO] [USD/JPY] Using on-demand server forecast
+[2026-06-05 11:14:55] [DA] [INFO] [USD/JPY] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.371%  hl50=0.537%  hl75=0.680%  session_open=0.00000  slope=0.000567
+[2026-06-05 11:14:55] [DA] [INFO] [USD/JPY] RANGE day — no trading today
+[2026-06-05 11:14:55] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-05 11:14:55] [DA] [INFO] [AUD/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:14:58] [DA] [INFO] [AUD/USD] Using on-demand server forecast
+[2026-06-05 11:14:58] [DA] [INFO] [AUD/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.482%  hl50=0.699%  hl75=0.884%  session_open=0.00000  slope=-0.000402
+[2026-06-05 11:14:58] [DA] [INFO] [AUD/USD] RANGE day — no trading today
+[2026-06-05 11:14:58] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-05 11:14:58] [DA] [INFO] [NZD/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:15:00] [DA] [INFO] [NZD/USD] Using on-demand server forecast
+[2026-06-05 11:15:00] [DA] [INFO] [NZD/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.663%  hl50=0.960%  hl75=1.214%  session_open=0.00000  slope=-0.000503
+[2026-06-05 11:15:00] [DA] [INFO] [NZD/USD] RANGE day — no trading today
+[2026-06-05 11:15:00] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-05 11:15:00] [DA] [INFO] [USD/CAD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:15:03] [DA] [INFO] [USD/CAD] Using on-demand server forecast
+[2026-06-05 11:15:03] [DA] [INFO] [USD/CAD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.229%  hl50=0.332%  hl75=0.420%  session_open=0.00000  slope=0.000881
+[2026-06-05 11:15:03] [DA] [INFO] [USD/CAD] RANGE day — no trading today
+[2026-06-05 11:15:03] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-05 11:15:03] [DA] [INFO] [USD/CHF] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:15:06] [DA] [INFO] [USD/CHF] Using on-demand server forecast
+[2026-06-05 11:15:06] [DA] [INFO] [USD/CHF] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.407%  hl50=0.589%  hl75=0.745%  session_open=0.00000  slope=0.000490
+[2026-06-05 11:15:06] [DA] [INFO] [USD/CHF] RANGE day — no trading today
+[2026-06-05 11:15:06] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-05 11:15:06] [DA] [INFO] [XAU/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:15:09] [DA] [INFO] [XAU/USD] Using on-demand server forecast
+[2026-06-05 11:15:09] [DA] [INFO] [XAU/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=1.208%  hl50=1.749%  hl75=2.212%  session_open=0.00000  slope=-0.001474
+[2026-06-05 11:15:09] [DA] [INFO] [XAU/USD] RANGE day — no trading today
+[2026-06-05 11:15:09] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-05 11:15:09] [DA] [INFO] [NAS100_USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:15:12] [DA] [INFO] [NAS100_USD] Using on-demand server forecast
+[2026-06-05 11:15:12] [DA] [INFO] [NAS100_USD] Setup [on-demand forecast]: regime=BULL  sigma_d=0.948%  hl50=1.372%  hl75=1.736%  session_open=0.00000  slope=0.002801
+[2026-06-05 11:15:12] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:15:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:16:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:17:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:18:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:19:46] [DA] [INFO] Credentials loaded: account=  server=
+[2026-06-05 11:19:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:20:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:21:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:22:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:23:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:24:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:25:47] [DA] [WARNING] No dyn_anchor_credentials found in KV (Railway may be sleeping — will retry; or set MT5_ACCOUNT/MT5_PASSWORD/MT5_SERVER env vars locally)
+[2026-06-05 11:29:53] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 11:29:58] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 11:30:02] [DA] [INFO] Credentials loaded: account=5051355495  server=MetaQuotes-Demo
+[2026-06-05 11:30:02] [DA] [INFO] [DynAnchor] MT5 connected  account=5051355495  balance=99551.49  server=MetaQuotes-Demo
+[2026-06-05 11:30:05] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD']  interval=20s  risk=1%  window=00:00–22:00
+[2026-06-05 11:30:05] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 11:30:06] [DA] [INFO] [EUR/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:06] [DA] [INFO] [EUR/USD] Setup [MT5]: regime=RANGE  sigma_d=0.288%  hl50=0.417%  hl75=0.527%  session_open=1.16421  slope=-0.000319
+[2026-06-05 11:30:06] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-05 11:30:06] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 11:30:06] [DA] [INFO] [GBP/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:06] [DA] [INFO] [GBP/USD] Setup [MT5]: regime=RANGE  sigma_d=0.384%  hl50=0.555%  hl75=0.703%  session_open=1.34791  slope=-0.000242
+[2026-06-05 11:30:06] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-05 11:30:06] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 11:30:06] [DA] [INFO] [USD/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:06] [DA] [INFO] [USD/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.377%  hl50=0.546%  hl75=0.691%  session_open=159.91250  slope=0.000569
+[2026-06-05 11:30:06] [DA] [INFO] [USD/JPY] RANGE day — no trading today
+[2026-06-05 11:30:06] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-05 11:30:07] [DA] [INFO] [AUD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:07] [DA] [INFO] [AUD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.522%  hl50=0.756%  hl75=0.956%  session_open=0.71427  slope=-0.000394
+[2026-06-05 11:30:07] [DA] [INFO] [AUD/USD] RANGE day — no trading today
+[2026-06-05 11:30:07] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-05 11:30:08] [DA] [INFO] [NZD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:08] [DA] [INFO] [NZD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.708%  hl50=1.025%  hl75=1.297%  session_open=0.58839  slope=-0.000498
+[2026-06-05 11:30:08] [DA] [INFO] [NZD/USD] RANGE day — no trading today
+[2026-06-05 11:30:08] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-05 11:30:08] [DA] [INFO] [USD/CAD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:08] [DA] [INFO] [USD/CAD] Setup [MT5]: regime=RANGE  sigma_d=0.234%  hl50=0.339%  hl75=0.429%  session_open=1.38738  slope=0.000888
+[2026-06-05 11:30:08] [DA] [INFO] [USD/CAD] RANGE day — no trading today
+[2026-06-05 11:30:08] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-05 11:30:09] [DA] [INFO] [USD/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:09] [DA] [INFO] [USD/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.407%  hl50=0.589%  hl75=0.745%  session_open=0.78744  slope=0.000488
+[2026-06-05 11:30:09] [DA] [INFO] [USD/CHF] RANGE day — no trading today
+[2026-06-05 11:30:09] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-05 11:30:09] [DA] [INFO] [XAU/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:09] [DA] [INFO] [XAU/USD] Setup [MT5]: regime=RANGE  sigma_d=1.245%  hl50=1.802%  hl75=2.280%  session_open=4466.07500  slope=-0.001384
+[2026-06-05 11:30:09] [DA] [INFO] [XAU/USD] RANGE day — no trading today
+[2026-06-05 11:30:09] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-05 11:30:09] [DA] [INFO] [NAS100_USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:30:13] [DA] [INFO] [NAS100_USD] Using on-demand server forecast
+[2026-06-05 11:30:13] [DA] [INFO] [NAS100_USD] Setup [on-demand forecast]: regime=BULL  sigma_d=0.948%  hl50=1.372%  hl75=1.736%  session_open=0.00000  slope=0.002801
+[2026-06-05 11:30:13] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:30:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:30:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:31:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:31:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:31:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:32:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:32:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:32:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:33:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:33:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:33:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:34:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:34:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:34:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:35:08] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:35:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:35:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:36:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:36:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:36:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:37:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:37:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:37:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:38:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:38:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:38:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:39:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:39:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:39:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:39:47] [DA] [INFO] Cycle 30  balance=99551.49  sleep=18.4s
+[2026-06-05 11:40:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:40:28] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:40:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:41:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:41:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:41:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:42:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:42:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:42:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:43:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:43:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:43:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:44:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:44:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:44:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:45:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:45:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:45:49] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:46:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:46:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:46:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:47:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:47:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:47:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:48:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:48:07] [DA] [WARNING] kv_put(dyn_anchor_status): ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+[2026-06-05 11:48:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:48:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:49:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:49:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:49:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:49:48] [DA] [WARNING] kv_put(dyn_anchor_status): ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+[2026-06-05 11:49:48] [DA] [INFO] Cycle 60  balance=99551.49  sleep=17.8s
+[2026-06-05 11:50:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:50:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:50:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:51:08] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:51:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:51:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:52:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:52:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:52:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:53:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:53:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:53:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:54:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:54:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:54:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:55:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:55:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:55:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:56:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:56:30] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:56:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:57:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:57:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:57:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:58:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:58:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:58:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:59:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:59:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:59:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:59:50] [DA] [INFO] Cycle 90  balance=99551.49  sleep=15.5s
+[2026-06-05 12:00:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:00:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:00:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:01:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:01:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:01:47] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:02:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:02:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:02:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:03:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:03:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:03:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:04:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:04:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:04:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:05:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:05:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:05:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:06:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:06:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:06:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:07:08] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:07:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:07:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:08:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:08:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:08:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:09:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:09:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:09:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:09:47] [DA] [INFO] Cycle 120  balance=99551.49  sleep=18.4s
+[2026-06-05 12:10:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:10:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:10:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:11:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:11:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:11:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:12:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:12:27] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:12:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:13:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:13:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:13:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:14:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:14:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:14:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:15:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:15:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:15:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:16:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:16:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:16:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:17:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:17:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:17:48] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:18:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:18:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:18:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:19:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:19:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:19:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:19:47] [DA] [INFO] Cycle 150  balance=99551.49  sleep=18.3s
+[2026-06-05 12:20:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:20:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:20:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:21:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:21:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:21:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:22:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:22:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:22:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:23:08] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:23:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:23:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:24:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:24:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:24:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:25:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:25:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:25:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:26:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:26:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:26:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:27:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:27:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:27:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:28:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:28:29] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:28:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:29:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:29:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:29:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:29:47] [DA] [INFO] Cycle 180  balance=99551.49  sleep=18.4s
+[2026-06-05 12:30:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:30:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:30:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:31:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:31:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:31:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:32:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:32:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:32:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:33:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:33:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:33:50] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:34:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:34:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:34:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:35:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:35:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:35:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:36:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:36:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:36:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:37:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:37:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:37:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:38:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:38:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:38:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:39:10] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:39:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:39:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:39:49] [DA] [INFO] Cycle 210  balance=99551.49  sleep=16.8s
+[2026-06-05 12:40:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:40:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:40:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:41:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:41:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:41:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:42:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:42:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:42:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:43:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:43:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:43:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:44:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:44:28] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:44:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:45:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:45:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:45:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:46:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:46:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:46:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:47:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:47:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:47:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:48:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:48:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:48:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:49:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:49:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:49:47] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:49:50] [DA] [INFO] Cycle 240  balance=99551.49  sleep=15.9s
+[2026-06-05 12:50:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:50:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:50:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:51:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:51:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:51:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:52:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:52:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:52:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:53:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:53:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:53:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:54:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:54:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:54:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:55:10] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:55:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:55:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:56:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:56:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:56:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:57:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:57:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:57:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:58:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:58:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:58:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:59:00] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 12:59:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:59:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:59:37] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 12:59:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:59:49] [DA] [INFO] Cycle 270  balance=99551.49  sleep=17.0s
+[2026-06-05 13:00:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:00:29] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:00:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:00:57] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 13:01:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:01:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:01:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:02:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:02:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:02:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:02:57] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 13:03:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:03:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:03:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:04:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:04:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:04:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:04:57] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 13:05:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:05:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:05:47] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:06:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:06:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:06:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:07:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:07:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:07:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:08:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:08:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:08:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:09:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:09:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:09:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:09:48] [DA] [INFO] Cycle 300  balance=99551.49  sleep=17.2s
+[2026-06-05 13:10:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:10:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:10:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:11:07] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:11:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:11:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:12:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:12:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:12:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:13:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:13:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:13:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:14:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:14:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:14:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:15:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:15:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:15:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:16:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:16:29] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:16:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:17:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:17:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:17:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:18:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:18:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:18:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:19:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:19:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:19:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:19:48] [DA] [INFO] Cycle 330  balance=99551.49  sleep=17.4s
+[2026-06-05 13:20:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:20:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:20:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:21:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:21:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:21:48] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:22:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:22:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:22:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:23:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:23:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:23:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:24:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:24:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:24:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:25:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:25:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:25:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:26:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:26:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:26:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:27:08] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:27:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:27:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:28:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:28:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:28:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:29:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:29:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:29:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:29:47] [DA] [INFO] Cycle 360  balance=99551.49  sleep=18.4s
+[2026-06-05 13:30:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:30:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:30:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:31:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:31:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:31:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:32:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:32:29] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:32:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:33:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:33:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:33:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:34:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:34:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:34:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:35:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:35:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:35:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:36:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:36:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:36:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:37:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:37:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:37:47] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 13:37:54] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 13:37:58] [DA] [INFO] Credentials loaded: account=5051355495  server=MetaQuotes-Demo
+[2026-06-05 13:37:58] [DA] [INFO] [DynAnchor] MT5 connected  account=5051355495  balance=99551.49  server=MetaQuotes-Demo
+[2026-06-05 13:38:00] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD']  interval=20s  risk=1%  window=00:00–22:00
+[2026-06-05 13:38:00] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [EUR/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [EUR/USD] Setup [MT5]: regime=RANGE  sigma_d=0.288%  hl50=0.417%  hl75=0.527%  session_open=1.16064  slope=-0.000319
+[2026-06-05 13:38:00] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [GBP/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [GBP/USD] Setup [MT5]: regime=RANGE  sigma_d=0.384%  hl50=0.555%  hl75=0.703%  session_open=1.34325  slope=-0.000242
+[2026-06-05 13:38:00] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [USD/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [USD/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.377%  hl50=0.546%  hl75=0.691%  session_open=160.03650  slope=0.000569
+[2026-06-05 13:38:00] [DA] [INFO] [USD/JPY] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [AUD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [AUD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.522%  hl50=0.756%  hl75=0.956%  session_open=0.71221  slope=-0.000394
+[2026-06-05 13:38:00] [DA] [INFO] [AUD/USD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [NZD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [NZD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.708%  hl50=1.025%  hl75=1.297%  session_open=0.58586  slope=-0.000498
+[2026-06-05 13:38:00] [DA] [INFO] [NZD/USD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CAD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CAD] Setup [MT5]: regime=RANGE  sigma_d=0.234%  hl50=0.339%  hl75=0.429%  session_open=1.38803  slope=0.000888
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CAD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.407%  hl50=0.589%  hl75=0.745%  session_open=0.79158  slope=0.000488
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CHF] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [XAU/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [XAU/USD] Setup [MT5]: regime=RANGE  sigma_d=1.245%  hl50=1.802%  hl75=2.280%  session_open=4442.51500  slope=-0.001384
+[2026-06-05 13:38:00] [DA] [INFO] [XAU/USD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [NAS100_USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 13:38:03] [DA] [INFO] [NAS100_USD] Using on-demand server forecast
+[2026-06-05 13:38:03] [DA] [INFO] [NAS100_USD] Setup [on-demand forecast]: regime=BULL  sigma_d=0.948%  hl50=1.372%  hl75=1.736%  session_open=0.00000  slope=0.002801
+[2026-06-05 13:38:03] [DA] [WARNING] [NAS100_USD] session_open=0 — MT5 not connected or symbol name mismatch, skipping today
+[2026-06-05 13:39:56] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 13:40:01] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 13:40:04] [DA] [INFO] Credentials loaded: account=5051355495  server=MetaQuotes-Demo
+[2026-06-05 13:40:04] [DA] [INFO] [DynAnchor] MT5 connected  account=5051355495  balance=99551.49  server=MetaQuotes-Demo
+[2026-06-05 13:40:06] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD']  interval=20s  risk=1%  window=00:00–22:00
+[2026-06-05 13:40:06] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 13:40:06] [DA] [INFO] [EUR/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:06] [DA] [INFO] [EUR/USD] Setup [MT5]: regime=RANGE  sigma_d=0.288%  hl50=0.417%  hl75=0.527%  session_open=1.16110  slope=-0.000319
+[2026-06-05 13:40:06] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-05 13:40:06] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 13:40:06] [DA] [INFO] [GBP/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:06] [DA] [INFO] [GBP/USD] Setup [MT5]: regime=RANGE  sigma_d=0.384%  hl50=0.555%  hl75=0.703%  session_open=1.34398  slope=-0.000242
+[2026-06-05 13:40:06] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-05 13:40:06] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 13:40:06] [DA] [INFO] [USD/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:06] [DA] [INFO] [USD/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.377%  hl50=0.546%  hl75=0.691%  session_open=159.99250  slope=0.000569
+[2026-06-05 13:40:06] [DA] [INFO] [USD/JPY] RANGE day — no trading today
+[2026-06-05 13:40:06] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-05 13:40:07] [DA] [INFO] [AUD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:07] [DA] [INFO] [AUD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.522%  hl50=0.756%  hl75=0.956%  session_open=0.71249  slope=-0.000394
+[2026-06-05 13:40:07] [DA] [INFO] [AUD/USD] RANGE day — no trading today
+[2026-06-05 13:40:07] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-05 13:40:07] [DA] [INFO] [NZD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:07] [DA] [INFO] [NZD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.708%  hl50=1.025%  hl75=1.297%  session_open=0.58627  slope=-0.000498
+[2026-06-05 13:40:07] [DA] [INFO] [NZD/USD] RANGE day — no trading today
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CAD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CAD] Setup [MT5]: regime=RANGE  sigma_d=0.234%  hl50=0.339%  hl75=0.429%  session_open=1.38797  slope=0.000888
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CAD] RANGE day — no trading today
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.407%  hl50=0.589%  hl75=0.745%  session_open=0.79104  slope=0.000488
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CHF] RANGE day — no trading today
+[2026-06-05 13:40:07] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-05 13:40:07] [DA] [INFO] [XAU/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:07] [DA] [INFO] [XAU/USD] Setup [MT5]: regime=RANGE  sigma_d=1.245%  hl50=1.802%  hl75=2.280%  session_open=4444.84500  slope=-0.001384
+[2026-06-05 13:40:07] [DA] [INFO] [XAU/USD] RANGE day — no trading today
+[2026-06-05 13:40:07] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-05 13:40:08] [DA] [INFO] [NAS100_USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:08] [DA] [INFO] [NAS100_USD] Setup [MT5]: regime=BULL  sigma_d=1.209%  hl50=1.751%  hl75=2.215%  session_open=30063.10000  slope=0.002841
+[2026-06-05 13:46:27] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30105.50000  run_low=30061.70000  sell_entry=30588.03994  buy_entry=29578.39318  session_open=30063.10000
+[2026-06-05 13:49:47] [DA] [INFO] Cycle 30  balance=99551.49  sleep=19.0s
+[2026-06-05 13:53:07] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=30061.70000  sell_entry=30588.03994  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 13:59:47] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=30030.60000  sell_entry=30556.39543  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 13:59:48] [DA] [INFO] Cycle 60  balance=99551.49  sleep=18.9s
+[2026-06-05 14:06:29] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=30008.00000  sell_entry=30533.39973  buy_entry=29579.37567  session_open=30063.10000

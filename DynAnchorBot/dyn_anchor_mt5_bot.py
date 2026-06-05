@@ -51,6 +51,22 @@ _EWMA_LAMBDA  = 0.94    # EWMA decay factor
 _EMA_PERIOD   = 20      # EMA period for regime slope
 _SLOPE_THRESH = 0.002   # EMA slope threshold for regime classification
 
+# ── Broker symbol alias map ───────────────────────────────────────────────────
+# Maps internal pair names → MT5 broker symbol names.
+# FX pairs are handled by stripping '/', so only non-FX pairs need entries here.
+# Add your broker's exact symbol name if it differs (check with symbols_get()).
+_MT5_SYMBOL_ALIASES = {
+    'NAS100_USD': 'USTECH100M',  # MetaQuotes-Demo
+    'XAU/USD':    'XAUUSD',   # standard MT5 gold symbol (no slash)
+}
+
+def _mt5_symbol(pair: str) -> str:
+    """Convert internal pair name to MT5 broker symbol."""
+    if pair in _MT5_SYMBOL_ALIASES:
+        return _MT5_SYMBOL_ALIASES[pair]
+    return pair.replace('/', '')
+
+
 # ── Pip / pip-value tables ─────────────────────────────────────────────────────
 _PIP_SIZES = {
     'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
@@ -216,7 +232,7 @@ def get_tick(pair: str) -> Optional[object]:
     if not HAS_MT5:
         return None
     try:
-        tick = mt5.symbol_info_tick(pair.replace('/', ''))
+        tick = mt5.symbol_info_tick(_mt5_symbol(pair))
         if tick and tick.bid > 0:
             return tick
     except Exception:
@@ -237,7 +253,7 @@ def get_daily_bars(pair: str, n_bars: int) -> Optional[list]:
     if not HAS_MT5:
         return None
     try:
-        sym  = pair.replace('/', '')
+        sym  = _mt5_symbol(pair)
         bars = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_D1, 0, n_bars)
         if bars is None or len(bars) < 2:
             return None
@@ -339,7 +355,7 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
     if not HAS_MT5:
         return None
 
-    sym  = pair.replace('/', '')
+    sym  = _mt5_symbol(pair)
     tick = mt5.symbol_info_tick(sym)
     if not tick:
         log.error(f'No tick for {sym}')
@@ -392,7 +408,7 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
     if not HAS_MT5:
         return False
 
-    sym   = pair.replace('/', '')
+    sym   = _mt5_symbol(pair)
     poss  = [p for p in (mt5.positions_get(symbol=sym) or [])
              if p.ticket == ticket and p.magic == MAGIC]
     if not poss:
@@ -1002,7 +1018,7 @@ def run(url: str, paper_mode: bool) -> None:
                 ds.sigma_d      = sigma_d
                 ds.regime       = regime
                 ds.ema_slope    = slope
-                ds.tradeable    = regime in ('BULL', 'BEAR') and hl50 > 0
+                ds.tradeable    = regime in ('BULL', 'BEAR') and hl50 > 0 and today_open > 0
                 ds.daily_trade_done = False
                 # In close mode reset any tracked position; in run mode carry positions forward
                 if cfg.get('eod_close_mode', 'close') == 'close':
@@ -1015,7 +1031,10 @@ def run(url: str, paper_mode: bool) -> None:
                 )
 
                 if not ds.tradeable:
-                    log.info(f'[{pair}] RANGE day — no trading today')
+                    if today_open <= 0:
+                        log.warning(f'[{pair}] session_open=0 — MT5 not connected or symbol name mismatch, skipping today')
+                    else:
+                        log.info(f'[{pair}] RANGE day — no trading today')
 
             if not ds.is_today or not within_window(cfg):
                 continue
@@ -1025,7 +1044,7 @@ def run(url: str, paper_mode: bool) -> None:
                 remaining = []
                 for pos in ds.open_positions:
                     if not paper_mode and HAS_MT5:
-                        sym   = pair.replace('/', '')
+                        sym   = _mt5_symbol(pair)
                         still = [p for p in (mt5.positions_get(symbol=sym) or [])
                                  if p.ticket == pos['ticket'] and p.magic == MAGIC]
                         if not still:
