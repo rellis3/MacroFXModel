@@ -886,21 +886,17 @@ function renderMarkers(events, trades) {
 
   const markers = [];
 
-  // Entry arrows — one per entry event
-  events.forEach(ev => {
-    if (!ev || !ev.ts || ev.type !== 'entry') return;
-    const isLong = (ev.direction || '').toUpperCase() === 'LONG';
+  // Both entry and close markers come from paired trades only —
+  // raw events can have duplicates at the same timestamp; pairs are deduplicated.
+  (trades || []).forEach(trade => {
+    const isLong = (trade.direction || '').toUpperCase() === 'LONG';
     markers.push({
-      time:     ev.ts,
+      time:     trade.entry.ts,
       position: isLong ? 'belowBar' : 'aboveBar',
       color:    isLong ? '#00c97d' : '#ef5350',
       shape:    isLong ? 'arrowUp' : 'arrowDown',
       text:     isLong ? 'L' : 'S',
     });
-  });
-
-  // Close markers — exactly one per paired trade (not per raw close event)
-  (trades || []).forEach(trade => {
     markers.push({
       time:     trade.close.ts,
       position: 'aboveBar',
