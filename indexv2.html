@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MacroFX v2 — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════
+   Design System: Meridian
+   Deep slate navy · Electric accents · Clean type
+══════════════════════════════════════════════ */
+:root {
+  --bg:      #070b14;
+  --s1:      #0d1525;
+  --s2:      #121d32;
+  --s3:      #182438;
+  --b1:      #1d2a42;
+  --b2:      #283650;
+  --b3:      #364a6a;
+  --t1:      #e4e8f5;
+  --t2:      #8492b8;
+  --t3:      #4a5a78;
+  --blue:    #4d85f0;
+  --blue-d:  #0f2150;
+  --blue-b:  #1e3a78;
+  --green:   #22d392;
+  --green-d: #072b1c;
+  --green-b: #0f4530;
+  --red:     #ff5e70;
+  --red-d:   #2d0810;
+  --red-b:   #4a1020;
+  --amber:   #f5bc42;
+  --amber-d: #2d2000;
+  --amber-b: #4a3600;
+  --purple:  #9d7af0;
+  --purple-d:#160e38;
+  --purple-b:#2a1a5e;
+  --r:   8px;
+  --rl:  12px;
+  --rxl: 16px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--t1);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── HEADER ── */
+#v2Header {
+  position: sticky; top: 0; z-index: 300;
+  background: rgba(7,11,20,.96);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--b1);
+}
+.v2-header-inner {
+  max-width: 1800px; margin: 0 auto;
+  padding: 0 20px;
+  display: flex; align-items: center; gap: 14px;
+  height: 52px;
+}
+.v2-logo {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 700; letter-spacing: -.02em;
+  flex-shrink: 0; text-decoration: none; color: var(--t1);
+}
+.v2-logo-icon {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, #1847c2, #7c3aed);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+}
+.v2-logo-icon svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.v2-logo-v2 {
+  font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  color: var(--purple); background: var(--purple-d);
+  border: 1px solid var(--purple-b);
+  padding: 1px 6px; border-radius: 10px; margin-left: 2px;
+}
+
+/* Pulse strip */
+.v2-pulse { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; overflow: hidden; }
+.v2-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 500;
+  padding: 3px 9px; border-radius: 20px;
+  border: 1px solid var(--b2); background: var(--s2); color: var(--t3);
+  white-space: nowrap; flex-shrink: 0;
+}
+.v2-pill.bull { border-color: var(--green-b); background: var(--green-d); color: var(--green); }
+.v2-pill.bear { border-color: var(--red-b);   background: var(--red-d);   color: var(--red);   }
+.v2-pill.neu  { border-color: var(--amber-b); background: var(--amber-d); color: var(--amber); }
+.v2-pill.info { border-color: var(--blue-b);  background: var(--blue-d);  color: var(--blue);  }
+.v2-pill-dot  { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* Tab nav */
+.v2-tabs { display: flex; gap: 0; flex-shrink: 0; }
+.v2-tab {
+  padding: 6px 15px; font-size: 12px; font-weight: 500;
+  color: var(--t3); background: none; border: none; cursor: pointer;
+  position: relative; transition: color .15s; white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+}
+.v2-tab:hover { color: var(--t2); }
+.v2-tab.active { color: var(--blue); }
+.v2-tab.active::after {
+  content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+  height: 2px; background: var(--blue); border-radius: 2px 2px 0 0;
+}
+
+/* Header actions */
+.v2-hdr-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.v2-live {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 600; color: var(--green);
+  background: var(--green-d); border: 1px solid var(--green-b);
+  padding: 3px 9px; border-radius: 20px;
+}
+.v2-live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.v2-hdr-btn {
+  font-size: 11px; font-weight: 500; color: var(--t2);
+  background: var(--s2); border: 1px solid var(--b1);
+  border-radius: 7px; padding: 5px 11px; cursor: pointer;
+  transition: all .15s; white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+}
+.v2-hdr-btn:hover { border-color: var(--b3); color: var(--t1); }
+.v2-updated { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--t3); }
+
+/* ── CONTENT ── */
+.v2-content { max-width: 1800px; margin: 0 auto; padding: 20px; }
+.v2-panel { display: none; }
+.v2-panel.active { display: block; }
+
+/* Section headers */
+.sec-hdr {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px; margin-top: 24px;
+}
+.sec-hdr:first-child { margin-top: 0; }
+.sec-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--t3); white-space: nowrap; }
+.sec-line { flex: 1; height: 1px; background: var(--b1); }
+.sec-badge {
+  font-size: 10px; padding: 1px 8px; border-radius: 10px;
+  font-weight: 500; border: 1px solid var(--b2); color: var(--t3); background: var(--s2);
+  white-space: nowrap;
+}
+
+/* Cards */
+.card {
+  background: var(--s1); border: 1px solid var(--b1);
+  border-radius: var(--rl); padding: 16px 18px;
+}
+.card-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--t3); margin-bottom: 12px; }
+
+/* Divider */
+.divider { height: 1px; background: var(--b1); margin: 10px 0; }
+
+/* ── OVERVIEW TAB ── */
+.regime-dist { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+@media(max-width:700px) { .regime-dist { grid-template-columns: 1fr 1fr; } }
+
+.rd-card {
+  background: var(--s1); border: 1px solid var(--b1);
+  border-radius: var(--rl); padding: 16px 18px;
+  cursor: pointer; transition: border-color .15s;
+}
+.rd-card:hover { border-color: var(--b3); }
+
+.rd-count { font-size: 32px; font-weight: 700; font-family: 'DM Mono', monospace; line-height: 1; margin-bottom: 4px; }
+.rd-label { font-size: 11px; font-weight: 500; color: var(--t2); margin-bottom: 8px; }
+.rd-bar   { height: 3px; border-radius: 3px; }
+
+.rd-bull .rd-count, .rd-bull .rd-bar { color: var(--green); background: var(--green); }
+.rd-bear .rd-count, .rd-bear .rd-bar { color: var(--red);   background: var(--red);   }
+.rd-neu  .rd-count, .rd-neu  .rd-bar { color: var(--amber); background: var(--amber); }
+.rd-range .rd-count                  { color: var(--t2); }
+.rd-range .rd-bar                    { background: var(--t3); }
+
+/* Pairs grid */
+.pairs-wrap { background: var(--s1); border: 1px solid var(--b1); border-radius: var(--rl); overflow: hidden; }
+
+.pg-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-bottom: 1px solid var(--b1); flex-wrap: wrap;
+}
+.pg-search {
+  flex: 1; min-width: 120px; max-width: 200px;
+  font-size: 12px; font-family: 'DM Mono', monospace;
+  background: var(--s2); border: 1px solid var(--b2); color: var(--t1);
+  border-radius: 6px; padding: 5px 10px; outline: none;
+}
+.pg-search:focus { border-color: var(--blue); }
+.pg-search::placeholder { color: var(--t3); }
+
+.filter-btn {
+  font-size: 10px; font-weight: 600; padding: 3px 10px;
+  border-radius: 6px; border: 1px solid var(--b2); background: var(--s2);
+  color: var(--t3); cursor: pointer; transition: all .15s;
+  font-family: 'Inter', sans-serif;
+}
+.filter-btn:hover { color: var(--t2); }
+.filter-btn.active { color: var(--t1); border-color: var(--b3); background: var(--s3); }
+.filter-btn.fb-bull.active { color: var(--green); border-color: var(--green-b); background: var(--green-d); }
+.filter-btn.fb-bear.active { color: var(--red);   border-color: var(--red-b);   background: var(--red-d);   }
+.filter-btn.fb-neu.active  { color: var(--amber);  border-color: var(--amber-b); background: var(--amber-d); }
+
+.ptable { width: 100%; border-collapse: collapse; }
+.ptable thead th {
+  padding: 7px 12px; text-align: right;
+  font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--t3); border-bottom: 1px solid var(--b1);
+  cursor: pointer; white-space: nowrap; user-select: none;
+}
+.ptable thead th:first-child, .ptable thead th.tl { text-align: left; }
+.ptable thead th:hover { color: var(--t2); }
+.ptable thead th.sorted { color: var(--blue); }
+
+.ptable tbody tr { border-bottom: 1px solid var(--b1); cursor: pointer; transition: background .1s; }
+.ptable tbody tr:last-child { border-bottom: none; }
+.ptable tbody tr:hover { background: var(--s2); }
+.ptable tbody tr.sel { background: rgba(77,133,240,.05); border-left: 2px solid var(--blue); }
+
+.ptable td { padding: 9px 12px; font-size: 11px; color: var(--t2); white-space: nowrap; text-align: right; }
+.ptable td:first-child { text-align: left; }
+.ptable td.tl { text-align: left; }
+
+.pair-cell { display: flex; align-items: center; gap: 8px; }
+.pair-sym { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--t1); }
+
+/* Badges */
+.rbadge {
+  font-size: 9px; font-weight: 700; letter-spacing: .05em;
+  padding: 2px 7px; border-radius: 4px; display: inline-block;
+}
+.rb-BULL  { background: var(--green-d); color: var(--green); border: 1px solid var(--green-b); }
+.rb-BEAR  { background: var(--red-d);   color: var(--red);   border: 1px solid var(--red-b);   }
+.rb-RANGE,.rb-CHOP { background: var(--amber-d); color: var(--amber); border: 1px solid var(--amber-b); }
+.rb-NEU,.rb-none { background: var(--s2); color: var(--t3); border: 1px solid var(--b2); }
+
+.gbadge {
+  font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 700;
+  padding: 2px 7px; border-radius: 4px; display: inline-block;
+}
+.gb-Ap { background: var(--green-d); color: var(--green); border: 1px solid var(--green-b); }
+.gb-A  { background: rgba(34,211,146,.1); color: #5de8b2; border: 1px solid rgba(34,211,146,.2); }
+.gb-B  { background: var(--blue-d); color: var(--blue); border: 1px solid var(--blue-b); }
+.gb-C  { background: var(--amber-d); color: var(--amber); border: 1px solid var(--amber-b); }
+.gb-D  { background: var(--s2); color: var(--t3); border: 1px solid var(--b2); }
+
+.vpill {
+  font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 600;
+  padding: 2px 7px; border-radius: 4px; display: inline-block;
+}
+.vpill-hi { background: var(--red-d);   color: var(--red);   border: 1px solid var(--red-b);   }
+.vpill-lo { background: var(--green-d); color: var(--green); border: 1px solid var(--green-b); }
+.vpill-ok { background: var(--blue-d);  color: var(--blue);  border: 1px solid var(--blue-b);  }
+
+/* Progress bar */
+.prog { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.prog-track { width: 54px; height: 4px; background: var(--b2); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+.prog-fill  { height: 100%; border-radius: 2px; background: var(--blue); }
+.prog-fill.hi   { background: var(--amber); }
+.prog-fill.done { background: var(--t3); }
+.prog-val { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--t3); }
+
+/* Stars */
+.stars { font-size: 10px; letter-spacing: 1px; color: var(--amber); }
+.stars-e { color: var(--b3); }
+
+/* Detail button */
+.detail-btn {
+  background: none; border: 1px solid var(--b2); border-radius: 5px;
+  color: var(--blue); font-size: 10px; padding: 2px 8px; cursor: pointer;
+  transition: all .15s;
+}
+.detail-btn:hover { background: var(--blue-d); border-color: var(--blue); }
+
+/* ── PAIR DETAIL TAB ── */
+.pair-strip {
+  display: flex; gap: 5px; flex-wrap: wrap;
+  padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--b1);
+}
+.pchip {
+  font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+  padding: 4px 11px; border-radius: 20px;
+  border: 1px solid var(--b2); background: var(--s2); color: var(--t2);
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.pchip:hover { border-color: var(--b3); color: var(--t1); }
+.pchip.active { background: var(--blue-d); border-color: var(--blue); color: var(--blue); }
+.pchip.bull { border-color: var(--green-b); color: var(--green); }
+.pchip.bull.active { background: var(--green-d); }
+.pchip.bear { border-color: var(--red-b); color: var(--red); }
+.pchip.bear.active { background: var(--red-d); }
+
+/* Pair detail layout */
+.pair-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+@media(max-width:1100px) { .pair-layout { grid-template-columns: 1fr; } }
+
+/* Hero card */
+.hero-card {
+  background: var(--s1); border: 1px solid var(--b1);
+  border-radius: var(--rxl); padding: 22px 24px; margin-bottom: 14px;
+  background-image: radial-gradient(ellipse at top right, rgba(77,133,240,.06) 0%, transparent 60%);
+}
+.hero-top { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.hero-sym { font-family: 'DM Mono', monospace; font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+.hero-price { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 600; color: var(--blue); margin-top: 5px; }
+.hero-meta { font-size: 10px; color: var(--t3); font-family: 'DM Mono', monospace; margin-top: 3px; }
+.hero-right { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+.rbadge-lg {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  padding: 5px 14px; border-radius: 6px;
+}
+.rbl-BULL  { background: var(--green-d); color: var(--green); border: 1px solid var(--green-b); }
+.rbl-BEAR  { background: var(--red-d);   color: var(--red);   border: 1px solid var(--red-b);   }
+.rbl-RANGE,.rbl-CHOP { background: var(--amber-d); color: var(--amber); border: 1px solid var(--amber-b); }
+.rbl-NEU,.rbl-none { background: var(--s2); color: var(--t2); border: 1px solid var(--b2); }
+
+/* Levels table */
+.lvl-table { width: 100%; border-collapse: collapse; }
+.lvl-table th { text-align: left; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--t3); padding: 6px 10px; border-bottom: 1px solid var(--b1); }
+.lvl-table th:not(:first-child) { text-align: right; }
+.lvl-table td { padding: 8px 10px; font-size: 11px; font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--b1); color: var(--t2); }
+.lvl-table td:not(:first-child) { text-align: right; }
+.lvl-table tr:last-child td { border-bottom: none; }
+.lvl-table tr:hover td { background: var(--s2); }
+.lvl-price { color: var(--t1); font-weight: 500; }
+
+.dir-chip { font-size: 9px; padding: 1px 7px; border-radius: 3px; }
+.dir-long  { color: var(--green); background: var(--green-d); border: 1px solid var(--green-b); }
+.dir-short { color: var(--red);   background: var(--red-d);   border: 1px solid var(--red-b);   }
+
+/* Vol bars */
+.vol-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.vol-lbl { font-size: 10px; color: var(--t3); font-family: 'DM Mono', monospace; width: 34px; flex-shrink: 0; }
+.vol-bar { flex: 1; height: 5px; background: var(--b1); border-radius: 3px; overflow: hidden; }
+.vol-fill { height: 100%; border-radius: 3px; }
+.vf-med { background: var(--blue); }
+.vf-p75 { background: var(--amber); }
+.vol-val { font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 500; color: var(--t1); width: 42px; text-align: right; flex-shrink: 0; }
+
+/* Session rows */
+.sess-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.sess-lbl { font-size: 10px; color: var(--t3); font-family: 'DM Mono', monospace; width: 28px; flex-shrink: 0; }
+.sess-val { font-size: 12px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--t1); min-width: 44px; }
+.sess-fc  { font-size: 10px; color: var(--t3); font-family: 'DM Mono', monospace; flex: 1; }
+.sess-rem { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--blue); }
+
+/* ── SESSION TAB ── */
+.sess-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media(max-width:1100px) { .sess-grid { grid-template-columns: 1fr 1fr; } }
+@media(max-width:650px)  { .sess-grid { grid-template-columns: 1fr; } }
+
+.sess-card {
+  background: var(--s1); border: 1px solid var(--b1);
+  border-radius: var(--rl); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+  transition: border-color .15s;
+}
+.sess-card:hover { border-color: var(--b2); }
+.sess-card-hdr { display: flex; align-items: center; justify-content: space-between; }
+.sess-card-name { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 700; }
+.sess-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--t3); margin-bottom: 5px; }
+
+/* ── MACRO TAB ── */
+.macro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media(max-width:900px) { .macro-grid { grid-template-columns: 1fr; } }
+
+/* Beta rows */
+.beta-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; border-bottom: 1px solid var(--b1);
+}
+.beta-row:last-child { border-bottom: none; }
+.beta-icon { font-size: 14px; }
+.beta-lbl  { font-size: 11px; font-weight: 500; color: var(--t1); flex: 1; }
+.beta-val  { font-size: 11px; color: var(--t2); font-family: 'DM Mono', monospace; }
+
+/* ── BOT TAB ── */
+.bot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media(max-width:900px) { .bot-grid { grid-template-columns: 1fr; } }
+
+.bot-card { background: var(--s1); border: 1px solid var(--b1); border-radius: var(--rl); padding: 16px 18px; }
+.bot-hdr  { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.bot-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.bot-dot.green { background: var(--green); box-shadow: 0 0 6px rgba(34,211,146,.5); }
+.bot-dot.amber { background: var(--amber); }
+.bot-dot.gray  { background: var(--t3); }
+.bot-dot.red   { background: var(--red); }
+.bot-name  { font-size: 13px; font-weight: 600; color: var(--t1); }
+.bot-state { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--t2); margin-left: auto; }
+.bot-stat  { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--b1); font-size: 11px; }
+.bot-stat:last-child { border-bottom: none; }
+.bot-sl { color: var(--t2); }
+.bot-sv { font-family: 'DM Mono', monospace; color: var(--t1); font-weight: 500; }
+
+/* Links grid */
+.links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+
+.link-card {
+  background: var(--s1); border: 1px solid var(--b1);
+  border-radius: var(--rl); padding: 14px 16px;
+  text-decoration: none; display: flex; flex-direction: column; gap: 5px;
+  transition: border-color .15s, background .15s; cursor: pointer;
+}
+.link-card:hover { border-color: var(--b3); background: var(--s2); }
+.link-icon  { font-size: 20px; }
+.link-title { font-size: 12px; font-weight: 600; color: var(--t1); }
+.link-desc  { font-size: 10px; color: var(--t3); line-height: 1.4; }
+
+/* ── UTILITIES ── */
+.empty { text-align: center; padding: 24px; color: var(--t3); font-size: 12px; }
+.loading { display: flex; align-items: center; gap: 8px; color: var(--t3); font-size: 12px; padding: 12px 0; }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--b2); border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.ann { font-size: 10px; color: var(--t3); font-family: 'DM Mono', monospace; }
+.mono { font-family: 'DM Mono', monospace; }
+.pos  { color: var(--green); }
+.neg  { color: var(--red); }
+.neu  { color: var(--amber); }
+.c-blue { color: var(--blue); }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media(max-width:700px) { .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════ -->
+<header id="v2Header">
+  <div class="v2-header-inner">
+
+    <a href="index.html" class="v2-logo">
+      <div class="v2-logo-icon"><svg viewBox="0 0 17 17"><polyline points="1,13 5,8 9,11 16,3"/><line x1="12" y1="3" x2="16" y2="3"/><line x1="16" y1="3" x2="16" y2="7"/></svg></div>
+      MacroFX<span class="v2-logo-v2">v2</span>
+    </a>
+
+    <div class="v2-pulse">
+      <span class="v2-pill" id="pillRegime" style="display:none"></span>
+      <span class="v2-pill info" id="pillVol" style="display:none"></span>
+      <span class="v2-pill" id="pillBot" style="display:none"></span>
+    </div>
+
+    <div class="v2-tabs">
+      <button class="v2-tab active" onclick="showTab('overview',this)">Overview</button>
+      <button class="v2-tab"        onclick="showTab('pair',this)">Pair</button>
+      <button class="v2-tab"        onclick="showTab('session',this)">Session</button>
+      <button class="v2-tab"        onclick="showTab('macro',this)">Macro</button>
+      <button class="v2-tab"        onclick="showTab('bot',this)">Bot &amp; System</button>
+    </div>
+
+    <div class="v2-hdr-actions">
+      <div class="v2-live"><div class="v2-live-dot"></div>Live</div>
+      <span class="v2-updated" id="v2Updated">—</span>
+      <button class="v2-hdr-btn" onclick="refreshAll()">↻ Refresh</button>
+    </div>
+
+  </div>
+</header>
+
+<!-- ═══ CONTENT ══════════════════════════════════════════════════════ -->
+<div class="v2-content">
+
+  <!-- ── OVERVIEW ───────────────────────────────────────────────── -->
+  <div id="panel-overview" class="v2-panel active">
+
+    <div class="sec-hdr">
+      <div class="sec-title">Market Environment</div>
+      <div class="sec-line"></div>
+      <div class="sec-badge" id="envUpdated">Loading…</div>
+    </div>
+
+    <div class="regime-dist" id="regimeDist">
+      <div class="rd-card rd-bull"><div class="rd-count">—</div><div class="rd-label">Bullish Pairs</div><div class="rd-bar" style="width:0"></div></div>
+      <div class="rd-card rd-bear"><div class="rd-count">—</div><div class="rd-label">Bearish Pairs</div><div class="rd-bar" style="width:0"></div></div>
+      <div class="rd-card rd-neu"> <div class="rd-count">—</div><div class="rd-label">Neutral</div><div class="rd-bar" style="width:0"></div></div>
+      <div class="rd-card rd-range"><div class="rd-count">—</div><div class="rd-label">Range / Chop</div><div class="rd-bar" style="width:0"></div></div>
+    </div>
+
+    <div class="sec-hdr">
+      <div class="sec-title">All Pairs</div>
+      <div class="sec-line"></div>
+    </div>
+
+    <div class="pairs-wrap">
+      <div class="pg-toolbar">
+        <input class="pg-search" id="pgSearch" type="text" placeholder="Filter pairs…" oninput="filterGrid()">
+        <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+        <button class="filter-btn fb-bull" onclick="setFilter('bull',this)">Bull</button>
+        <button class="filter-btn fb-bear" onclick="setFilter('bear',this)">Bear</button>
+        <button class="filter-btn fb-neu"  onclick="setFilter('neu',this)">Neutral</button>
+        <button class="filter-btn"         onclick="setFilter('range',this)">Range</button>
+        <div style="flex:1"></div>
+        <span class="ann" id="pgCount">—</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="ptable" id="ptable">
+          <thead><tr>
+            <th class="tl" onclick="sortBy('sym')">Pair ↕</th>
+            <th onclick="sortBy('regime')">Regime</th>
+            <th onclick="sortBy('vol')">Vol</th>
+            <th onclick="sortBy('hl')">H-L Range</th>
+            <th onclick="sortBy('sess')">Session Used</th>
+            <th class="tl" onclick="sortBy('level')">Top Level</th>
+            <th onclick="sortBy('stars')">Stars</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="ptbody"><tr><td colspan="8" class="empty">Loading pairs…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAIR DETAIL ─────────────────────────────────────────────── -->
+  <div id="panel-pair" class="v2-panel">
+
+    <div class="pair-strip" id="pairStrip">
+      <span class="ann">Loading pairs…</span>
+    </div>
+
+    <div id="pairContent">
+      <div class="empty">Select a pair above to view its analysis</div>
+    </div>
+
+  </div>
+
+  <!-- ── SESSION ─────────────────────────────────────────────────── -->
+  <div id="panel-session" class="v2-panel">
+
+    <div class="sec-hdr">
+      <div class="sec-title">Live Session Tracker</div>
+      <div class="sec-line"></div>
+      <div class="sec-badge" id="sessDate">—</div>
+    </div>
+
+    <div class="sess-grid" id="sessGrid">
+      <div class="loading"><div class="spinner"></div>Loading session data…</div>
+    </div>
+
+    <div class="sec-hdr" style="margin-top:24px">
+      <div class="sec-title">Recent Annualised Vol</div>
+      <div class="sec-line"></div>
+    </div>
+
+    <div class="card" id="histCard">
+      <div class="loading"><div class="spinner"></div>Loading history…</div>
+    </div>
+
+  </div>
+
+  <!-- ── MACRO ───────────────────────────────────────────────────── -->
+  <div id="panel-macro" class="v2-panel">
+
+    <div class="sec-hdr">
+      <div class="sec-title">Portfolio Factor Exposure</div>
+      <div class="sec-line"></div>
+    </div>
+
+    <div class="macro-grid">
+      <div class="card" id="macroExpCard">
+        <div class="loading"><div class="spinner"></div>Loading factor data…</div>
+      </div>
+      <div class="card" id="macroPairCard">
+        <div class="loading"><div class="spinner"></div>Loading pair betas…</div>
+      </div>
+    </div>
+
+    <div class="sec-hdr">
+      <div class="sec-title">Analysis Tools</div>
+      <div class="sec-line"></div>
+    </div>
+
+    <div class="links-grid">
+      <a href="correlations.html"   target="_blank" class="link-card"><div class="link-icon">⬡</div><div class="link-title">Correlation Lab</div><div class="link-desc">Rolling matrix · Hedge finder</div></a>
+      <a href="regime-viewer.html"  target="_blank" class="link-card"><div class="link-icon">🔍</div><div class="link-title">Regime Viewer</div><div class="link-desc">V1/V2 history on price chart</div></a>
+      <a href="analysis.html"       target="_blank" class="link-card"><div class="link-icon">📊</div><div class="link-title">Pattern Lab</div><div class="link-desc">5-year Fibonacci analysis</div></a>
+      <a href="gold.html"           target="_blank" class="link-card"><div class="link-icon">🥇</div><div class="link-title">Gold Model</div><div class="link-desc">XAU/USD two-layer regime</div></a>
+    </div>
+
+  </div>
+
+  <!-- ── BOT & SYSTEM ────────────────────────────────────────────── -->
+  <div id="panel-bot" class="v2-panel">
+
+    <div class="sec-hdr">
+      <div class="sec-title">Bot Heartbeats</div>
+      <div class="sec-line"></div>
+    </div>
+
+    <div class="bot-grid" id="botCards">
+      <div class="bot-card"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+      <div class="bot-card"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+      <div class="bot-card"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+    </div>
+
+    <div class="sec-hdr">
+      <div class="sec-title">Dashboard Pages</div>
+      <div class="sec-line"></div>
+    </div>
+
+    <div class="links-grid">
+      <a href="index.html"          class="link-card"><div class="link-icon">📈</div><div class="link-title">Main Dashboard</div><div class="link-desc">Full regime + confluence</div></a>
+      <a href="journal.html"        target="_blank" class="link-card"><div class="link-icon">📓</div><div class="link-title">Trade Journal</div><div class="link-desc">Levels · Outcomes · Replay</div></a>
+      <a href="vol-forecast.html"   target="_blank" class="link-card"><div class="link-icon">📐</div><div class="link-title">Vol Forecast</div><div class="link-desc">EWMA range · Session stats</div></a>
+      <a href="backtest.html"       target="_blank" class="link-card"><div class="link-icon">🔬</div><div class="link-title">Backtest</div><div class="link-desc">Strategy · IS/OOS · Equity curve</div></a>
+      <a href="vol-backtest.html"   target="_blank" class="link-card"><div class="link-icon">📊</div><div class="link-title">Vol Backtest</div><div class="link-desc">Walk-forward · Range strategies</div></a>
+      <a href="bot-config.html"     target="_blank" class="link-card"><div class="link-icon">🤖</div><div class="link-title">Bot Config</div><div class="link-desc">HMM · Risk · Position sizing</div></a>
+      <a href="performance.html"    target="_blank" class="link-card"><div class="link-icon">📉</div><div class="link-title">Performance</div><div class="link-desc">Live P&amp;L · ML zones</div></a>
+      <a href="claude-backtest.html" target="_blank" class="link-card"><div class="link-icon">🧠</div><div class="link-title">Asia BT</div><div class="link-desc">Asia confluence backtester</div></a>
+    </div>
+
+  </div>
+
+</div><!-- /v2-content -->
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  MacroFX v2 — Data & Rendering
+// ══════════════════════════════════════════════════════════
+
+const PAIRS = [
+  'EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD',
+  'EUR/GBP','USD/CAD','USD/CHF','GBP/JPY','EUR/JPY',
+  'EUR/CHF','GBP/CHF','AUD/JPY','CAD/JPY','NAS100_USD',
+];
+
+const ST = {
+  regimes: null, volData: null, sessionData: null,
+  histData: null, levels: null,
+  botMain: null, botGold: null, botRegime: null,
+  betaDev: null, betaEst: null,
+  activePair: null,
+};
+
+let _sortKey = 'sym', _sortAsc = true, _filter = 'all', _search = '';
+let _pairsData = [];
+
+// ── API helpers ──────────────────────────────────────────
+async function api(url) {
+  try { const r = await fetch(url); return r.ok ? r.json() : null; }
+  catch { return null; }
+}
+async function kv(key) {
+  const d = await api('/api/kv/get?key=' + encodeURIComponent(key));
+  return (!d || d.miss) ? null : (d.data ?? null);
+}
+
+// ── Formatters ───────────────────────────────────────────
+const p2 = v => v != null ? v.toFixed(2) : '—';
+const p1 = v => v != null ? v.toFixed(1) : '—';
+function age(ts) {
+  if (!ts) return '—';
+  const s = (Date.now() - new Date(ts)) / 1000;
+  if (s < 60) return Math.floor(s) + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  return Math.floor(s/3600) + 'h ago';
+}
+function stale(ts, mins=10) {
+  return !ts || (Date.now() - new Date(ts)) > mins*60000;
+}
+
+// Map instrument name to vol forecast key
+function volKey(sym) {
+  if (sym === 'NAS100_USD') return 'NAS100';
+  if (sym === 'XAU/USD')    return 'XAUUSD';
+  return sym.replace('/', '');
+}
+
+// Normalise regime string
+function normRegime(r) {
+  if (!r) return '';
+  r = r.toUpperCase().trim();
+  if (r === 'RANGING' || r === 'CHOP') return 'RANGE';
+  return r;
+}
+
+// Stars HTML
+function stars(n) {
+  const f = Math.min(n||0, 7);
+  return `<span class="stars">${'★'.repeat(f)}</span><span class="stars-e">${'★'.repeat(7-f)}</span>`;
+}
+
+// Regime badge
+function rb(regime, large=false) {
+  const r = normRegime(regime) || 'none';
+  const cls = large
+    ? `rbadge-lg rbl-${r}`
+    : `rbadge rb-${r}`;
+  const lbl = r === 'none' ? '—' : r;
+  return `<span class="${cls}">${lbl}</span>`;
+}
+
+// Grade from signal score
+function gradeSig(sig) {
+  if (sig == null) return null;
+  if (sig >= 8) return 'A+';
+  if (sig >= 6) return 'A';
+  if (sig >= 4) return 'B';
+  if (sig >= 2) return 'C';
+  return 'D';
+}
+
+// Grade badge HTML
+function gb(grade) {
+  if (!grade) return '';
+  const cls = grade === 'A+' ? 'gb-Ap' : `gb-${grade}`;
+  return `<span class="gbadge ${cls}">${grade}</span>`;
+}
+
+// Vol pill
+function vp(vol) {
+  if (vol == null) return '—';
+  const cls = vol > 20 ? 'vpill-hi' : vol < 8 ? 'vpill-lo' : 'vpill-ok';
+  return `<span class="vpill ${cls}">${p2(vol)}%</span>`;
+}
+
+// Progress bar
+function prog(pct, maxPct) {
+  if (pct == null) return '—';
+  const w = Math.min(100, pct);
+  const cls = pct > 85 ? 'done' : pct > 65 ? 'hi' : '';
+  return `<div class="prog">
+    <div class="prog-track"><div class="prog-fill ${cls}" style="width:${w}%"></div></div>
+    <span class="prog-val">${Math.round(pct)}%</span>
+  </div>`;
+}
+
+// Vol bar row
+function volRow(label, val, max, cls) {
+  if (val == null) return '';
+  const w = Math.min(100, (val / Math.max(max, .01)) * 100).toFixed(1);
+  return `<div class="vol-row">
+    <div class="vol-lbl">${label}</div>
+    <div class="vol-bar"><div class="vol-fill ${cls}" style="width:${w}%"></div></div>
+    <div class="vol-val">${p2(val)}%</div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ══════════════════════════════════════════════════════════
+function showTab(id, btn) {
+  document.querySelectorAll('.v2-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.v2-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+
+  if (id === 'session' && !ST.sessionData) loadSession();
+  if (id === 'macro'   && !ST.betaDev)     loadMacro();
+  if (id === 'bot'     && !ST.botMain)     loadBot();
+  if (id === 'pair')   buildPairStrip();
+}
+
+// ══════════════════════════════════════════════════════════
+//  DATA LOADING
+// ══════════════════════════════════════════════════════════
+async function refreshAll() {
+  document.getElementById('v2Updated').textContent = 'Refreshing…';
+  ST.sessionData = null; // force reload session
+  await Promise.all([loadOverview(), loadSession()]);
+}
+
+async function loadOverview() {
+  const [regimes, vol, levels] = await Promise.all([
+    api('/api/hmm/regimes'),
+    api('/api/vol-forecast'),
+    api('/api/levels'),
+  ]);
+  ST.regimes = regimes;
+  ST.volData  = vol?.ok ? vol : null;
+  ST.levels   = levels;
+
+  renderRegimeDist();
+  buildPairsData();
+  renderPairsTable();
+  buildPairStrip();
+  updatePulse();
+
+  const t = new Date().toLocaleTimeString();
+  document.getElementById('envUpdated').textContent = 'Updated ' + t;
+  document.getElementById('v2Updated').textContent = t;
+}
+
+async function loadSession() {
+  const [live, hist] = await Promise.all([
+    api('/api/vol-forecast/live'),
+    api('/api/vol-forecast/history'),
+  ]);
+  ST.sessionData = live?.ok ? live : null;
+  ST.histData    = hist?.ok ? hist : null;
+  renderSessGrid();
+  renderHistory();
+  const d = live?.session_label || live?.session_date || '—';
+  const el = document.getElementById('sessDate');
+  if (el) el.textContent = d;
+
+  // Update session column in pair detail if open
+  if (ST.activePair) renderPairDetail(ST.activePair);
+}
+
+async function loadBot() {
+  const [main, gold, regime] = await Promise.all([
+    kv('bot_status'), kv('gold_bot_status'), kv('regime_bot_status'),
+  ]);
+  ST.botMain   = main;
+  ST.botGold   = gold;
+  ST.botRegime = regime;
+  renderBotCards();
+  updatePulse();
+}
+
+async function loadMacro() {
+  const [dev, est] = await Promise.all([kv('beta_deviation'), kv('beta_estimates')]);
+  ST.betaDev = dev;
+  ST.betaEst = est;
+  renderMacroCards();
+}
+
+// ══════════════════════════════════════════════════════════
+//  OVERVIEW: REGIME DISTRIBUTION
+// ══════════════════════════════════════════════════════════
+function renderRegimeDist() {
+  const r = ST.regimes || {};
+  const c = { BULL:0, BEAR:0, NEU:0, RANGE:0 };
+  Object.values(r).forEach(d => {
+    const v = normRegime(d?.regime || d?.state || '');
+    if (v === 'BULL') c.BULL++;
+    else if (v === 'BEAR') c.BEAR++;
+    else if (v === 'RANGE') c.RANGE++;
+    else c.NEU++;
+  });
+  const total = Math.max(1, Object.keys(r).length);
+  const cards = [
+    { k:'bull', count:c.BULL,  lbl:'Bullish Pairs',  cls:'rd-bull',  f:'bull'  },
+    { k:'bear', count:c.BEAR,  lbl:'Bearish Pairs',  cls:'rd-bear',  f:'bear'  },
+    { k:'neu',  count:c.NEU,   lbl:'Neutral',         cls:'rd-neu',   f:'neu'   },
+    { k:'range',count:c.RANGE, lbl:'Range / Chop',    cls:'rd-range', f:'range' },
+  ];
+  document.getElementById('regimeDist').innerHTML = cards.map(d => `
+    <div class="rd-card ${d.cls}" onclick="setFilter('${d.f}',null)">
+      <div class="rd-count">${d.count}</div>
+      <div class="rd-label">${d.lbl}</div>
+      <div class="rd-bar" style="width:${Math.round(d.count/total*100)}%"></div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+//  OVERVIEW: PAIRS TABLE
+// ══════════════════════════════════════════════════════════
+function buildPairsData() {
+  const reg  = ST.regimes || {};
+  const vol  = ST.volData?.instruments || {};
+  const lvls = ST.levels?.pairs || {};
+  const sess = ST.sessionData?.instruments || {};
+
+  // Merge PAIRS with any extras from vol data
+  const allSyms = new Set(PAIRS);
+  Object.keys(vol).forEach(k => {
+    // convert vol key back to display sym
+    let sym = k;
+    if (k === 'XAUUSD') sym = 'XAU/USD';
+    else if (k === 'NAS100') sym = 'NAS100_USD';
+    else if (k.length === 6) sym = k.slice(0,3) + '/' + k.slice(3);
+    allSyms.add(sym);
+  });
+
+  _pairsData = [...allSyms].map(sym => {
+    const vk    = volKey(sym);
+    const rk    = sym.replace('/','');
+
+    // Regime
+    const rd    = reg[sym] || reg[rk] || reg[sym.replace('/','_')] || {};
+    const regime = normRegime(rd.regime || rd.state || '');
+    const conf  = rd.confidence != null ? (rd.confidence * 100).toFixed(0) + '%' : null;
+    const v2r   = rd.v2_regime || rd.v2State || '';
+    const durDays = rd.duration_days ?? null;
+    const lastChg = rd.last_change ?? null;
+
+    // Vol forecast
+    const vf    = vol[vk] || vol[sym] || vol[rk] || null;
+    const volAnn = vf?.vol_annual ?? null;
+    const hlMed  = vf?.hl_median  ?? null;
+    const hlP75  = vf?.hl_75      ?? null;
+    const ocMed  = vf?.oc_median  ?? null;
+    const ocP75  = vf?.oc_75      ?? null;
+
+    // Session
+    const sd  = sess[vk] || sess[sym] || sess[rk] || null;
+    const hlConsumed = sd?.hl ?? null;
+    const sessPct    = (hlConsumed != null && hlMed != null && hlMed > 0)
+      ? Math.min(100, hlConsumed / hlMed * 100) : null;
+
+    // Levels
+    const pairLvls = lvls[sym] || lvls[rk] || lvls[sym.replace('//','')] || [];
+    const topLvl   = pairLvls.length ? pairLvls[0] : null;
+    const grade    = topLvl ? gradeSig(topLvl.signal) : null;
+
+    return { sym, regime, conf, v2r, durDays, lastChg,
+             volAnn, hlMed, hlP75, ocMed, ocP75,
+             sessPct, hlConsumed, topLvl, grade, sd, vf, pairLvls };
+  });
+}
+
+function renderPairsTable() {
+  const search = _search.toLowerCase();
+  const filt   = _filter;
+
+  let data = _pairsData.slice().filter(r => {
+    if (search && !r.sym.toLowerCase().includes(search)) return false;
+    if (filt === 'bull')  return r.regime === 'BULL';
+    if (filt === 'bear')  return r.regime === 'BEAR';
+    if (filt === 'neu')   return r.regime === 'NEU' || !r.regime;
+    if (filt === 'range') return r.regime === 'RANGE';
+    return true;
+  });
+
+  data.sort((a, b) => {
+    let av, bv;
+    switch (_sortKey) {
+      case 'regime': av = a.regime||''; bv = b.regime||''; break;
+      case 'vol':    av = a.volAnn ?? -Infinity; bv = b.volAnn ?? -Infinity; break;
+      case 'hl':     av = a.hlMed  ?? -Infinity; bv = b.hlMed  ?? -Infinity; break;
+      case 'sess':   av = a.sessPct ?? -1;       bv = b.sessPct ?? -1;       break;
+      case 'stars':  av = a.topLvl?.stars ?? 0;  bv = b.topLvl?.stars ?? 0;  break;
+      case 'level':  av = a.topLvl?.price ?? 0;  bv = b.topLvl?.price ?? 0;  break;
+      default:       av = a.sym; bv = b.sym;
+    }
+    if (typeof av === 'string') return _sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    return _sortAsc ? av - bv : bv - av;
+  });
+
+  document.getElementById('pgCount').textContent = data.length + ' pairs';
+
+  if (!data.length) {
+    document.getElementById('ptbody').innerHTML = '<tr><td colspan="8" class="empty">No pairs match filter</td></tr>';
+    return;
+  }
+
+  document.getElementById('ptbody').innerHTML = data.map(r => {
+    const isActive = ST.activePair === r.sym;
+    const hlTxt = r.hlMed != null
+      ? `<span class="mono" style="color:var(--t1)">${p2(r.hlMed)}%</span> <span class="ann">med · ${p2(r.hlP75)}% 75th</span>`
+      : '—';
+    const topLvlTxt = r.topLvl
+      ? `<span class="mono" style="color:var(--t1);font-size:11px">${r.topLvl.price}</span><span class="ann"> ${(r.topLvl.tags||'').split(',')[0]||''}</span>`
+      : '<span class="ann">—</span>';
+    return `<tr class="${isActive?'sel':''}" onclick="selectPair('${r.sym}')">
+      <td><div class="pair-cell"><span class="pair-sym">${r.sym}</span></div></td>
+      <td>${r.regime ? rb(r.regime) : '<span class="ann">—</span>'}</td>
+      <td>${vp(r.volAnn)}</td>
+      <td>${hlTxt}</td>
+      <td>${prog(r.sessPct)}</td>
+      <td class="tl">${topLvlTxt}</td>
+      <td>${r.topLvl ? stars(r.topLvl.stars) : '<span class="ann">—</span>'}</td>
+      <td><button class="detail-btn" onclick="event.stopPropagation();goToPair('${r.sym}')">Detail →</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function setFilter(f, btn) {
+  _filter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else {
+    // activate the matching button
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      if ((b.onclick+'').includes(`'${f}'`)) b.classList.add('active');
+    });
+  }
+  renderPairsTable();
+}
+
+function filterGrid() {
+  _search = document.getElementById('pgSearch').value;
+  renderPairsTable();
+}
+
+function sortBy(key) {
+  _sortAsc = (_sortKey === key) ? !_sortAsc : (key === 'sym');
+  _sortKey = key;
+  document.querySelectorAll('.ptable thead th').forEach(th => th.classList.remove('sorted'));
+  renderPairsTable();
+}
+
+// ══════════════════════════════════════════════════════════
+//  PAIR DETAIL
+// ══════════════════════════════════════════════════════════
+function buildPairStrip() {
+  const reg = ST.regimes || {};
+  document.getElementById('pairStrip').innerHTML = PAIRS.map(sym => {
+    const rk = sym.replace('/','');
+    const rd = reg[sym] || reg[rk] || reg[sym.replace('/','_')] || {};
+    const r  = normRegime(rd.regime || rd.state || '');
+    const rc = r === 'BULL' ? 'bull' : r === 'BEAR' ? 'bear' : '';
+    const active = ST.activePair === sym ? 'active' : '';
+    return `<button class="pchip ${rc} ${active}" onclick="selectPair('${sym}')">${sym}</button>`;
+  }).join('');
+}
+
+function selectPair(sym) {
+  ST.activePair = sym;
+  // Update chips
+  document.querySelectorAll('.pchip').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === sym);
+  });
+  // Update table row highlight
+  document.querySelectorAll('#ptbody tr').forEach(tr => {
+    const cell = tr.querySelector('.pair-sym');
+    tr.classList.toggle('sel', cell?.textContent === sym);
+  });
+  renderPairDetail(sym);
+}
+
+function goToPair(sym) {
+  selectPair(sym);
+  document.querySelectorAll('.v2-tab')[1].click();
+}
+
+function renderPairDetail(sym) {
+  const row = _pairsData.find(r => r.sym === sym);
+  if (!row) { document.getElementById('pairContent').innerHTML = '<div class="empty">No data for ' + sym + '</div>'; return; }
+
+  const { regime, conf, v2r, durDays, lastChg, volAnn, hlMed, hlP75, ocMed, ocP75, sd, vf, pairLvls } = row;
+  const sess = ST.sessionData?.instruments?.[volKey(sym)] || null;
+  const fc   = sess?.forecast || vf ? { hl_median: vf?.hl_median, hl_75: vf?.hl_75, oc_median: vf?.oc_median, oc_75: vf?.oc_75 } : {};
+  const s    = (sess && !sess.error) ? sess : null;
+
+  // Level table
+  const lvlRows = pairLvls.slice(0, 15).map(lv => {
+    const dir = (lv.direction || '').toLowerCase();
+    const dirHtml = dir ? `<span class="dir-chip dir-${dir}">${dir}</span>` : '—';
+    return `<tr>
+      <td class="lvl-price">${lv.price}</td>
+      <td>${dirHtml}</td>
+      <td>${stars(lv.stars)}</td>
+      <td class="ann">${(lv.tags||'').split(',').slice(0,2).join(' · ')}</td>
+      <td>${lv.signal != null ? gb(gradeSig(lv.signal)) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Session block
+  const sessHtml = s ? (() => {
+    const oc = s.oc ?? 0;
+    const ocSign = oc >= 0 ? '+' : '';
+    const ocCls  = oc >= 0 ? 'pos' : 'neg';
+    const biasCls= (s.bias||'').toLowerCase().includes('bear') ? 'neg' : (s.bias||'').toLowerCase().includes('bull') ? 'pos' : 'neu';
+    const remTxt = (rem, actual, fc75) => {
+      if (actual >= fc75) return '<span style="color:var(--amber);font-size:10px">75th reached</span>';
+      if (rem <= 0)       return '<span style="color:var(--amber);font-size:10px">reached</span>';
+      return `<span class="sess-rem">${p2(rem)}% rem</span>`;
+    };
+    return `<div class="card-title" style="margin-bottom:8px">Live Session
+      <span class="ann" style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">as of ${s.bar_time ? new Date(s.bar_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/,'$1 UTC') : '—'}</span>
+    </div>
+    <div class="sess-row">
+      <span class="sess-lbl">H-L</span>
+      <span class="sess-val">${p2(s.hl)}%</span>
+      <span class="sess-fc">med ${p2(fc.hl_median)}% · 75th ${p2(fc.hl_75)}%</span>
+    </div>
+    <div class="sess-row">
+      <span class="sess-lbl">O-C</span>
+      <span class="sess-val ${ocCls}">${ocSign}${p2(s.oc)}%</span>
+      <span class="sess-fc">med ${p2(fc.oc_median)}%</span>
+      ${remTxt(s.oc_rem, Math.abs(s.oc||0), fc.oc_75||1)}
+    </div>
+    <div class="sess-row">
+      <span class="sess-lbl">O-H</span>
+      <span class="sess-val">${p2(s.oh)}%</span>
+      <span class="sess-fc">75th ${p2(fc.oc_75)}%</span>
+      ${remTxt(s.oh_rem, s.oh||0, fc.oc_75||1)}
+    </div>
+    <div class="divider"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <span class="${biasCls}" style="font-size:11px;font-weight:600">${s.bias||'—'}</span>
+      <span class="ann">${s.bias_detail||''}</span>
+    </div>
+    ${s.outlook ? `<div class="ann" style="line-height:1.5">${s.outlook}</div>` : ''}`;
+  })() : '<div class="empty" style="padding:12px 0">Session data loading…<br><span class="ann">Switch to Session tab to load</span></div>';
+
+  document.getElementById('pairContent').innerHTML = `
+    <div class="pair-layout">
+
+      <!-- LEFT: Main analysis -->
+      <div>
+        <!-- Hero -->
+        <div class="hero-card">
+          <div class="hero-top">
+            <div>
+              <div class="hero-sym">${sym}</div>
+              <div class="hero-price mono" id="pd-price">—</div>
+              <div class="hero-meta">Spread: <span id="pd-spread">—</span></div>
+            </div>
+            <div class="hero-right">
+              ${rb(regime, true)}
+              ${v2r ? `<span class="ann" style="color:var(--purple)">V2: ${v2r}</span>` : ''}
+              ${conf ? `<span class="ann">Confidence: ${conf}</span>` : ''}
+              ${durDays != null ? `<span class="ann">${durDays} days in regime</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+            ${lastChg ? `<span class="ann">Regime since: ${new Date(lastChg).toLocaleDateString()}</span>` : ''}
+            <div style="flex:1"></div>
+            <a href="index.html" target="_blank" class="ann c-blue" style="text-decoration:none">Full macro analysis → </a>
+            <a href="regime-viewer.html" target="_blank" class="ann" style="text-decoration:none;color:var(--purple)">Regime history →</a>
+          </div>
+        </div>
+
+        <!-- Key levels -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-title">Key Fibonacci Levels</div>
+          ${pairLvls.length ? `
+            <div style="overflow-x:auto">
+              <table class="lvl-table">
+                <thead><tr>
+                  <th>Price</th><th style="text-align:right">Direction</th>
+                  <th style="text-align:right">Stars</th><th style="text-align:right">Type</th>
+                  <th style="text-align:right">Grade</th>
+                </tr></thead>
+                <tbody>${lvlRows}</tbody>
+              </table>
+            </div>
+          ` : `<div class="empty">No levels loaded — levels are computed server-side by the bot</div>`}
+        </div>
+
+        <!-- Vol forecast left column detail -->
+        ${vf ? `<div class="card" style="margin-bottom:14px">
+          <div class="card-title">Volatility Forecast Detail</div>
+          <div class="grid2" style="gap:18px">
+            <div>
+              <div class="sess-label">High ↔ Low Range</div>
+              ${volRow('50th', vf.hl_median, vf.hl_75*1.1, 'vf-med')}
+              ${volRow('75th', vf.hl_75,     vf.hl_75*1.1, 'vf-p75')}
+            </div>
+            <div>
+              <div class="sess-label">Open → Close Move</div>
+              ${volRow('50th', vf.oc_median, vf.oc_75*1.1, 'vf-med')}
+              ${volRow('75th', vf.oc_75,     vf.oc_75*1.1, 'vf-p75')}
+            </div>
+          </div>
+        </div>` : ''}
+      </div>
+
+      <!-- RIGHT: Context -->
+      <div>
+
+        <!-- Vol summary -->
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-title">Today's Vol</div>
+          ${vf ? `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <span class="ann">Annualised volatility</span>
+              ${vp(vf.vol_annual)}
+            </div>
+            <div class="sess-label" style="margin-bottom:5px">H-L Range</div>
+            ${volRow('50th', vf.hl_median, vf.hl_75*1.1, 'vf-med')}
+            ${volRow('75th', vf.hl_75,     vf.hl_75*1.1, 'vf-p75')}
+          ` : '<div class="empty" style="padding:8px 0">No vol data</div>'}
+        </div>
+
+        <!-- Live session -->
+        <div class="card" style="margin-bottom:12px">
+          ${sessHtml}
+        </div>
+
+        <!-- Quick links -->
+        <div class="card">
+          <div class="card-title">Deep Dive Links</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <a href="index.html" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none;padding:5px 0;border-bottom:1px solid var(--b1);display:block">📈 Main Dashboard — Macro Tiers · Entry Signal</a>
+            <a href="regime-viewer.html" target="_blank" style="font-size:11px;color:var(--t2);text-decoration:none;padding:5px 0;border-bottom:1px solid var(--b1);display:block">🔍 Regime Viewer — V1/V2 History</a>
+            <a href="vol-forecast.html" target="_blank" style="font-size:11px;color:var(--t2);text-decoration:none;padding:5px 0;border-bottom:1px solid var(--b1);display:block">📐 Vol Forecast — Session Detail</a>
+            <a href="journal.html" target="_blank" style="font-size:11px;color:var(--t2);text-decoration:none;padding:5px 0;display:block">📓 Trade Journal — Add Levels</a>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+
+  fetchQuote(sym);
+}
+
+async function fetchQuote(sym) {
+  try {
+    const oSym = sym.replace('/','_');
+    const r = await fetch('/api/quote?sym=' + encodeURIComponent(oSym));
+    if (!r.ok) return;
+    const d = await r.json();
+    const price = d.bid || d.mid || d.ask || d.price || d.close;
+    const spread = d.spread != null ? d.spread.toFixed(1) + ' pips' : '—';
+    if (price) {
+      const el = document.getElementById('pd-price');
+      if (el) el.textContent = typeof price === 'number' ? price.toFixed(price > 100 ? 2 : 5) : price;
+    }
+    const se = document.getElementById('pd-spread');
+    if (se) se.textContent = spread;
+  } catch {}
+}
+
+// ══════════════════════════════════════════════════════════
+//  SESSION TAB
+// ══════════════════════════════════════════════════════════
+function renderSessGrid() {
+  const live = ST.sessionData?.instruments || {};
+  const vol  = ST.volData?.instruments    || {};
+  const keys = Object.keys(vol);
+
+  if (!keys.length) {
+    document.getElementById('sessGrid').innerHTML = '<div class="empty">No vol data — check if forecast has been computed</div>';
+    return;
+  }
+
+  document.getElementById('sessGrid').innerHTML = keys.map(name => {
+    const f    = vol[name];
+    const s    = live[name] || null;
+    const vc   = f.vol_annual > 20 ? 'vpill-hi' : f.vol_annual < 8 ? 'vpill-lo' : 'vpill-ok';
+    const hlM  = f.hl_75 * 1.1;
+    const ocM  = f.oc_75 * 1.1;
+
+    let liveBlk = '';
+    if (s && !s.error) {
+      const fc  = s.forecast || {};
+      const oc  = s.oc ?? 0;
+      const ocS = oc >= 0 ? '+' : '';
+      const ocC = oc >= 0 ? 'pos' : 'neg';
+      const hlPct = (s.hl && f.hl_75) ? Math.min(100, s.hl / f.hl_75 * 100) : 0;
+      const biasCls = (s.bias||'').toLowerCase().includes('bear') ? 'neg'
+                    : (s.bias||'').toLowerCase().includes('bull') ? 'pos' : 'neu';
+      liveBlk = `
+        <div class="divider"></div>
+        <div class="sess-label" style="margin-bottom:5px">Live Session</div>
+        <div style="margin-bottom:5px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+            <span class="ann">H-L</span>
+            <div style="flex:1;height:4px;background:var(--b1);border-radius:2px;overflow:hidden">
+              <div style="width:${hlPct.toFixed(0)}%;height:100%;background:${hlPct>80?'var(--amber)':'var(--blue)'};border-radius:2px"></div>
+            </div>
+            <span class="ann">${p2(s.hl)}% / ${p2(f.hl_75)}% 75th</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="ann">O-C</span>
+            <span class="${ocC}" style="font-size:11px;font-family:'DM Mono',monospace;font-weight:600">${ocS}${p2(oc)}%</span>
+            <span class="${biasCls}" style="font-size:10px;margin-left:auto">${s.bias||'—'}</span>
+          </div>
+        </div>
+        ${s.outlook ? `<div class="ann" style="font-size:9px;line-height:1.4">${s.outlook}</div>` : ''}`;
+    }
+
+    return `<div class="sess-card">
+      <div class="sess-card-hdr">
+        <div class="sess-card-name">${name}</div>
+        <span class="vpill ${vc}">${p2(f.vol_annual)}%</span>
+      </div>
+      <div>
+        <div class="sess-label">High ↔ Low Range</div>
+        ${volRow('50th', f.hl_median, hlM, 'vf-med')}
+        ${volRow('75th', f.hl_75,     hlM, 'vf-p75')}
+      </div>
+      <div>
+        <div class="sess-label">Open → Close</div>
+        ${volRow('50th', f.oc_median, ocM, 'vf-med')}
+        ${volRow('75th', f.oc_75,     ocM, 'vf-p75')}
+      </div>
+      ${liveBlk}
+    </div>`;
+  }).join('');
+}
+
+function renderHistory() {
+  const hist = ST.histData;
+  const el   = document.getElementById('histCard');
+  if (!hist?.forecasts?.length) { el.innerHTML = '<div class="empty">No history available</div>'; return; }
+
+  const names = Object.keys(hist.forecasts[0]?.instruments || {});
+  el.innerHTML = `<div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:10px;font-family:'DM Mono',monospace">
+      <thead><tr>
+        <th style="text-align:left;padding:5px 10px;color:var(--t3);border-bottom:1px solid var(--b1)">Session</th>
+        ${names.map(n=>`<th style="text-align:right;padding:5px 10px;color:var(--t3);border-bottom:1px solid var(--b1)">${n}</th>`).join('')}
+      </tr></thead>
+      <tbody>
+        ${hist.forecasts.map(fc=>`<tr>
+          <td style="padding:6px 10px;color:var(--t2);border-bottom:1px solid var(--b1)">${fc.session_date}</td>
+          ${names.map(n=>{
+            const v = fc.instruments?.[n]?.vol_annual;
+            const c = v > 20 ? 'color:var(--red)' : v < 8 ? 'color:var(--green)' : 'color:var(--t1)';
+            return `<td style="text-align:right;padding:6px 10px;border-bottom:1px solid var(--b1);${c}">${v!=null?p2(v)+'%':'—'}</td>`;
+          }).join('')}
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  MACRO TAB
+// ══════════════════════════════════════════════════════════
+function renderMacroCards() {
+  const dev = ST.betaDev;
+  const est = ST.betaEst;
+
+  const expCard = document.getElementById('macroExpCard');
+  const FLABELS = { beta_dxy:'Dollar Exposure', beta_rates:'Rate Exposure', beta_vix:'Safe-haven Exposure' };
+  const SICONS  = { ON_TARGET:'✅', OVEREXPOSED:'🔴', UNDEREXPOSED:'🔴', SLIGHT_OVER:'🟡', SLIGHT_UNDER:'🟡' };
+
+  if (!dev) {
+    expCard.innerHTML = `<div class="card-title">Portfolio Factor Exposure</div>
+      <div class="empty">Beta bot not running — start the bot to see exposures</div>`;
+  } else {
+    const regime = (dev.regime||'—').toUpperCase();
+    const align  = parseFloat(dev.overall_alignment||0);
+    const rc     = regime==='BULL' ? 'pos' : regime==='BEAR' ? 'neg' : 'neu';
+    expCard.innerHTML = `<div class="card-title">Portfolio Factor Exposure</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:var(--s2);border-radius:8px">
+        <span class="${rc}" style="font-size:18px;font-weight:700">${regime}</span>
+        <div>
+          <div style="font-size:11px;color:var(--t1);font-weight:500">Macro Regime</div>
+          <div class="ann">Portfolio ${Math.round(align*100)}% aligned with targets</div>
+        </div>
+      </div>
+      ${dev.deviations ? Object.entries(dev.deviations).map(([f,d])=>`
+        <div class="beta-row">
+          <span class="beta-icon">${SICONS[d.status?.toUpperCase()]||'⚪'}</span>
+          <span class="beta-lbl">${FLABELS[f]||f}</span>
+          <span class="beta-val">${(d.status||'—').replace(/_/g,' ')}</span>
+        </div>`).join('') : '<div class="empty">No deviation data</div>'}`;
+  }
+
+  const pCard = document.getElementById('macroPairCard');
+  if (!est || !Object.keys(est).length) {
+    pCard.innerHTML = `<div class="card-title">Pair Factor Betas</div>
+      <div class="empty">No estimates — bot must be running with MT5</div>`;
+  } else {
+    const sens = (mean) => {
+      if (!mean || Math.abs(mean) < 0.05) return '<span class="ann">Neutral</span>';
+      const mag = Math.abs(mean)>0.5 ? 'Strong' : Math.abs(mean)>0.2 ? 'Mod' : 'Slight';
+      const c   = mean > 0 ? 'c-blue' : 'pos';
+      return `<span class="${c}" style="font-size:10px">${mag} ${mean>0?'↑':'↓'}</span>`;
+    };
+    pCard.innerHTML = `<div class="card-title">Pair Factor Betas</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:10px">
+          <thead><tr>
+            <th style="text-align:left;padding:5px 8px;color:var(--t3);border-bottom:1px solid var(--b1)">Pair</th>
+            <th style="text-align:center;padding:5px 8px;color:var(--t3);border-bottom:1px solid var(--b1)">DXY</th>
+            <th style="text-align:center;padding:5px 8px;color:var(--t3);border-bottom:1px solid var(--b1)">Rates</th>
+            <th style="text-align:center;padding:5px 8px;color:var(--t3);border-bottom:1px solid var(--b1)">VIX</th>
+          </tr></thead>
+          <tbody>
+            ${Object.entries(est).sort((a,b)=>a[0].localeCompare(b[0])).map(([sym,d])=>`
+              <tr>
+                <td style="padding:5px 8px;color:var(--t1);font-weight:500;font-family:'DM Mono',monospace;border-bottom:1px solid var(--b1)">${sym}</td>
+                <td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--b1)">${sens(d.beta_dxy?.mean)}</td>
+                <td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--b1)">${sens(d.beta_rates?.mean)}</td>
+                <td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--b1)">${sens(d.beta_vix?.mean)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  BOT TAB
+// ══════════════════════════════════════════════════════════
+function renderBotCards() {
+  const bots = [
+    { title:'Main Bot (Levels)',  data:ST.botMain,   key:'bot_status'        },
+    { title:'Regime Bot (HMM)',   data:ST.botRegime, key:'regime_bot_status' },
+    { title:'Gold Bot (XAU/USD)', data:ST.botGold,   key:'gold_bot_status'   },
+  ];
+
+  document.getElementById('botCards').innerHTML = bots.map(({ title, data, key }) => {
+    if (!data) return `<div class="bot-card">
+      <div class="bot-hdr"><div class="bot-dot gray"></div><div class="bot-name">${title}</div><div class="bot-state" style="color:var(--t3)">Offline</div></div>
+      <div class="ann">No status in KV (${key})</div>
+    </div>`;
+
+    const ts   = data.timestamp || data.loop_at || '';
+    const is_s = stale(ts, 10);
+    const dotC = is_s ? 'amber' : 'green';
+    const state = data.state || data.regime || '—';
+    const mode  = data.paper_mode === false ? 'LIVE' : 'PAPER';
+    const mc    = data.paper_mode === false ? 'neu' : '';
+
+    const rows = [{ l:'Last seen', v: age(ts) }, { l:'Mode', v: mode }];
+    if (data.bot === 'gold_bot') {
+      if (data.zones_active != null) rows.push({ l:'Zones active', v:data.zones_active });
+      if (data.trades_today != null) rows.push({ l:'Trades today', v:data.trades_today });
+      if (data.htf_bias)             rows.push({ l:'HTF bias', v:data.htf_bias });
+    }
+    if (data.pairs) {
+      const p = Array.isArray(data.pairs) ? data.pairs.join(', ') : String(data.pairs);
+      rows.push({ l:'Pairs', v:p.slice(0,50) });
+    }
+
+    return `<div class="bot-card">
+      <div class="bot-hdr">
+        <div class="bot-dot ${dotC}"></div>
+        <div class="bot-name">${title}</div>
+        <div class="bot-state ${mc}">${mode}</div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:8px">${state}</div>
+      ${rows.map(r=>`<div class="bot-stat"><span class="bot-sl">${r.l}</span><span class="bot-sv">${r.v}</span></div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+//  PULSE HEADER UPDATE
+// ══════════════════════════════════════════════════════════
+function updatePulse() {
+  const reg = ST.regimes || {};
+  const c = { BULL:0, BEAR:0, OTHER:0 };
+  Object.values(reg).forEach(d => {
+    const v = normRegime(d?.regime || d?.state || '');
+    if (v === 'BULL') c.BULL++;
+    else if (v === 'BEAR') c.BEAR++;
+    else c.OTHER++;
+  });
+  const total = Object.keys(reg).length;
+
+  if (total > 0) {
+    const el   = document.getElementById('pillRegime');
+    const bPct = Math.round(c.BULL / total * 100);
+    const rPct = Math.round(c.BEAR / total * 100);
+    let cls = 'neu', lbl = 'Mixed Market';
+    if (bPct > 55) { cls = 'bull'; lbl = 'Risk On'; }
+    else if (rPct > 55) { cls = 'bear'; lbl = 'Risk Off'; }
+    el.className = 'v2-pill ' + cls;
+    el.innerHTML = `<span class="v2-pill-dot"></span> ${lbl} · ${c.BULL}B ${c.BEAR}Br`;
+    el.style.display = '';
+  }
+
+  if (ST.volData) {
+    const vols = Object.values(ST.volData.instruments||{}).map(f=>f.vol_annual).filter(Boolean);
+    if (vols.length) {
+      const avg = (vols.reduce((a,b)=>a+b,0)/vols.length).toFixed(1);
+      const el  = document.getElementById('pillVol');
+      el.textContent = `Vol avg ${avg}%`;
+      el.style.display = '';
+    }
+  }
+
+  const anyBot = ST.botMain || ST.botGold || ST.botRegime;
+  if (anyBot) {
+    const ts   = anyBot.timestamp || anyBot.loop_at || '';
+    const live = !stale(ts, 15);
+    const el   = document.getElementById('pillBot');
+    el.className = 'v2-pill ' + (live ? 'bull' : 'neu');
+    el.innerHTML = `<span class="v2-pill-dot"></span> Bot ${live ? 'Online' : 'Stale'}`;
+    el.style.display = '';
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadOverview();
+  await loadSession();
+
+  // Auto-refresh every 5 minutes
+  setInterval(async () => {
+    await loadOverview();
+    await loadSession();
+  }, 5 * 60 * 1000);
+});
+</script>
+</body>
+</html>
