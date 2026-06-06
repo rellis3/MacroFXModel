@@ -27,13 +27,25 @@
 }
 .rb-param {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 3px 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 0;
   border-bottom: 1px solid rgba(28,33,51,.5);
 }
 .rb-param:last-child { border-bottom: none; }
+.rb-param-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rb-param-help {
+  font-size: 9.5px;
+  color: #3d4a6a;
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.45;
+  padding-left: 1px;
+}
 .rb-param-lbl {
   font-size: 10px;
   font-weight: 600;
@@ -834,15 +846,26 @@ const pairSafe = p => PAIR_SAFE_MAP[p] || p.toLowerCase().replace('/', '').repla
 // ─── V1 Config ───────────────────────────────────────────────────────────────
 
 const V1_PARAMS = [
-  { key:'min_confidence',  label:'Min Confidence (%)',    min:50,  max:90,   step:5,    def:65   },
-  { key:'candle_hold',     label:'Entry Hold (polls)',    min:1,   max:6,    step:1,    def:3    },
-  { key:'vol_z_max',       label:'Max Vol-Z',             min:1.0, max:5.0,  step:0.5,  def:2.5  },
-  { key:'entry_decay_max', label:'Entry Decay Max',       min:0.05,max:0.50, step:0.05, def:0.25 },
-  { key:'decay_exit',      label:'Decay Exit Threshold',  min:0.40,max:0.90, step:0.05, def:0.70 },
-  { key:'sl_atr_mult',     label:'SL ATR Multiplier',     min:0.5, max:4.0,  step:0.1,  def:1.8  },
-  { key:'range_exit_hold', label:'Range Exit Hold',       min:1,   max:5,    step:1,    def:2    },
-  { key:'window_start',    label:'Window Start (UTC h)',  min:0,   max:12,   step:1,    def:7    },
-  { key:'window_end',      label:'Window End (UTC h)',    min:12,  max:23,   step:1,    def:20   },
+  { key:'min_confidence',  label:'Min Confidence (%)',    min:50,  max:90,   step:1,    def:65,
+    help:'How certain the model must be that a real trend (BULL or BEAR) exists before placing a trade. Higher → fewer entries but cleaner signals. Lower → more trades, more noise and false starts.' },
+  { key:'candle_hold',     label:'Entry Hold (bars)',     min:1,   max:20,   step:1,    def:3,
+    help:'Number of consecutive M1 bars the regime must stay confirmed before the bot enters. Acts as a fake-out filter — prevents jumping in on a single spike bar. Higher → slower entry, far fewer whipsaws.' },
+  { key:'vol_z_max',       label:'Max Vol-Z',             min:0.5, max:5.0,  step:0.1,  def:2.5,
+    help:'Volatility filter. Vol-Z measures how many standard deviations above its normal level current volatility is. Blocks entry during news spikes. Lower (e.g. 1.2) = only trades in calm, trending conditions.' },
+  { key:'entry_decay_max', label:'Entry Decay Max',       min:0.01,max:0.50, step:0.01, def:0.25,
+    help:'Regime freshness gate. Decay rises from 0 (brand new regime) to 1 (fully stale) as bars pass. Lower = only enters very fresh regime starts, preventing re-entry into an ageing trend. 0.08 ≈ first 15 bars, 0.25 ≈ first 50 bars.' },
+  { key:'decay_exit',      label:'Decay Exit Threshold',  min:0.30,max:0.99, step:0.01, def:0.70,
+    help:'Exits the trade when the regime becomes too old regardless of P&L. Lower = cuts out earlier, shorter trades. Higher = rides the regime longer. Should always be above entry_decay_max or you\'d exit immediately after entry.' },
+  { key:'sl_atr_mult',     label:'SL ATR Multiplier',     min:0.5, max:4.0,  step:0.1,  def:1.8,
+    help:'Stop-loss distance = ATR(70 M1 bars) × this number. Wider → survives normal price noise but a larger loss when it does hit. Tighter → smaller individual losses but gets stopped out more often by normal candle fluctuation.' },
+  { key:'range_exit_hold', label:'Range Exit Hold (bars)', min:0,  max:10,   step:1,    def:2,
+    help:'When the regime flips to RANGE while in a trade, wait this many bars before exiting — in case it is just a brief sideways blip before the trend resumes. 0 = exit immediately. Higher = more tolerant of temporary ranging.' },
+  { key:'window_start',    label:'Window Start (UTC h)',  min:0,   max:12,   step:1,    def:7,
+    help:'Earliest UTC hour new trades can open. Outside this window the bot watches but will not enter. London open (07:00) is the standard start — trends are clearest when European liquidity arrives.' },
+  { key:'window_end',      label:'Window End (UTC h)',    min:12,  max:23,   step:1,    def:20,
+    help:'Latest UTC hour new trades can open. Existing trades can still exit after this. 16:00 = London close only. 20:00 includes full NY session. Late NY (after 18:00) tends to have thinner, choppier price action.' },
+  { key:'post_exit_cooldown', label:'Post-Exit Cooldown (bars)', min:0, max:240, step:1, def:0,
+    help:'After any trade closes (win or loss), block all new entries for this many M1 bars. 60 = 1 hour cooldown. Prevents rapid re-entry into the same choppy regime after a stop-out. One of the most effective tools for cutting trade count without hurting quality.' },
 ];
 const V1_BOOLS = [
   { key:'exit_on_range', label:'Exit on RANGE', def:true },
@@ -852,27 +875,50 @@ const V1_DEFAULTS = Object.fromEntries([...V1_PARAMS.map(p=>[p.key,p.def]),...V1
 // ─── V2 Config ───────────────────────────────────────────────────────────────
 
 const V2_PARAMS = [
-  { key:'entry_conf',      label:'Entry Conf (%)',        min:50,  max:90,   step:5,    def:70   },
-  { key:'candle_hold',     label:'Entry Hold (polls)',    min:1,   max:5,    step:1,    def:2    },
-  { key:'vol_z_max',       label:'Max Vol-Z',             min:1.0, max:5.0,  step:0.5,  def:2.5  },
-  { key:'entry_decay_max', label:'Entry Decay Max',       min:0.05,max:0.50, step:0.05, def:0.25 },
-  { key:'entry_score_min', label:'Entry Score Min',       min:30,  max:80,   step:5,    def:55   },
-  { key:'sl_atr_mult',     label:'SL ATR Multiplier',     min:0.5, max:4.0,  step:0.1,  def:1.8  },
-  { key:'conf_floor',      label:'Conf Floor (%)',        min:30,  max:60,   step:5,    def:45   },
-  { key:'drop_thresh',     label:'Conf Drop Thresh (%)',  min:5,   max:30,   step:5,    def:15   },
-  { key:'slope_thresh',    label:'Slope Thresh',          min:-15, max:-1,   step:1,    def:-5   },
-  { key:'slope_bars',      label:'Slope Bars',            min:1,   max:6,    step:1,    def:3    },
-  { key:'bocpd_thresh',    label:'BOCPD Thresh (%)',      min:50,  max:90,   step:5,    def:70   },
-  { key:'bocpd_exit_bars', label:'BOCPD Exit Bars',       min:1,   max:4,    step:1,    def:2    },
-  { key:'decay_exit',      label:'Decay Exit Threshold',  min:0.40,max:0.90, step:0.05, def:0.70 },
-  { key:'hold_score_min',  label:'Hold Score Min',        min:20,  max:60,   step:5,    def:40   },
-  { key:'score_drop_exit', label:'Score Drop Exit Pts',   min:10,  max:50,   step:5,    def:30   },
-  { key:'score_drop_bars', label:'Score Drop Bars',       min:1,   max:4,    step:1,    def:2    },
-  { key:'mfe_retrace_pct', label:'MFE Retrace %',         min:0.10,max:0.50, step:0.05, def:0.25 },
-  { key:'mfe_min_r',       label:'MFE Min (R)',           min:0.5, max:3.0,  step:0.5,  def:1.0  },
-  { key:'range_exit_hold', label:'Range Exit Hold',       min:1,   max:5,    step:1,    def:2    },
-  { key:'window_start',    label:'Window Start (UTC h)',  min:0,   max:12,   step:1,    def:7    },
-  { key:'window_end',      label:'Window End (UTC h)',    min:12,  max:23,   step:1,    def:20   },
+  { key:'entry_conf',      label:'Entry Conf (%)',        min:50,  max:95,   step:1,    def:70,
+    help:'HMM confidence gate, session-adjusted. During thin overnight hours the effective bar is automatically raised by the model. Higher → only the clearest directional regimes qualify. Same concept as V1 Min Confidence.' },
+  { key:'candle_hold',     label:'Entry Hold (bars)',     min:1,   max:20,   step:1,    def:2,
+    help:'Consecutive M1 bars the regime and composite score must stay above threshold before entry. V2 already has 13 entry gates so this can be lower than V1. Higher → slower, more confirmed entry.' },
+  { key:'vol_z_max',       label:'Max Vol-Z',             min:0.5, max:5.0,  step:0.1,  def:2.5,
+    help:'Volatility filter — same as V1. Blocks entry when vol is too far above its normal level. Lower = calmer conditions only. Avoids trading into news spikes or erratic, whippy price action.' },
+  { key:'entry_decay_max', label:'Entry Decay Max',       min:0.01,max:0.50, step:0.01, def:0.25,
+    help:'Regime freshness gate — same as V1. 0 = brand new regime, 1 = fully stale. Lower = only enters very fresh regime starts. Prevents re-entry into an ageing trend after an early stop-out.' },
+  { key:'entry_score_min', label:'Entry Score Min',       min:30,  max:80,   step:1,    def:55,
+    help:'The composite score (0–100) that combines HMM confidence, BOCPD stability, session quality, momentum, and volatility into a single entry quality number. Higher → all 13 gates must agree more strongly. The single most important V2 filter.' },
+  { key:'sl_atr_mult',     label:'SL ATR Multiplier',     min:0.5, max:4.0,  step:0.1,  def:1.8,
+    help:'Stop-loss = ATR(70 M1 bars) × this. Same as V1. Wider → survives M1 noise better. Tighter → smaller loss per trade but stopped out more by normal candle movement. 1.8–2.2 is the typical range.' },
+  { key:'conf_floor',      label:'Conf Floor (%)',        min:20,  max:70,   step:1,    def:45,
+    help:'EXIT gate: if HMM confidence drops BELOW this while in a trade, close immediately — the model is losing conviction. Higher (e.g. 58%) → exits quickly on any doubt. Lower (35%) → rides through softer confidence patches.' },
+  { key:'drop_thresh',     label:'Conf Drop Thresh (%)',  min:1,   max:30,   step:1,    def:15,
+    help:'EXIT gate: exits if confidence has fallen by this many percentage points from its recent level — even if still above the floor. Catches a deteriorating regime before it hits the floor. Lower (8%) = very sensitive to any decline.' },
+  { key:'slope_thresh',    label:'Slope Thresh',          min:-15, max:-1,   step:1,    def:-5,
+    help:'EXIT gate: the trend slope (rate of price change). If slope is below this value for slope_bars consecutive bars, exit — momentum is fading. More negative threshold = only exits on sharper momentum drops.' },
+  { key:'slope_bars',      label:'Slope Bars',            min:1,   max:10,   step:1,    def:3,
+    help:'How many consecutive bars slope must be below threshold before the slope exit triggers. Higher = requires sustained momentum loss, not just a single slow bar. Works together with Slope Thresh.' },
+  { key:'bocpd_thresh',    label:'BOCPD Thresh (%)',      min:40,  max:95,   step:1,    def:70,
+    help:'EXIT gate: BOCPD detects sudden structural breaks in price behaviour — sharp changes that suggest a new regime. If the change-point probability exceeds this, exit. Higher (85%) = only exits on very confident break signals.' },
+  { key:'bocpd_exit_bars', label:'BOCPD Exit Bars',       min:1,   max:5,    step:1,    def:2,
+    help:'How many consecutive bars BOCPD must be above threshold before the exit triggers. Prevents exiting on single-bar false alarms. Works together with BOCPD Thresh.' },
+  { key:'decay_exit',      label:'Decay Exit Threshold',  min:0.30,max:0.99, step:0.01, def:0.70,
+    help:'EXIT gate: exits when the current regime becomes too old, regardless of P&L. Same concept as V1 but V2 also has score/conf exits so this is a last-resort staleness cut. Lower = shorter maximum trade duration.' },
+  { key:'hold_score_min',  label:'Hold Score Min',        min:10,  max:70,   step:1,    def:40,
+    help:'EXIT gate: if the composite score falls below this level for score_drop_bars consecutive bars, exit — the trade\'s ongoing health is too poor to hold. Higher = exits sooner when conditions deteriorate post-entry.' },
+  { key:'score_drop_exit', label:'Score Drop Exit (pts)', min:5,   max:60,   step:1,    def:30,
+    help:'EXIT gate: exits if the composite score has fallen by this many points from the score at entry. Catches worsening conditions even when the absolute score still looks acceptable. Lower (15pts) = very sensitive.' },
+  { key:'score_drop_bars', label:'Score Drop Bars',       min:1,   max:5,    step:1,    def:2,
+    help:'How many consecutive bars the score must be below hold_score_min before the hold-score exit triggers. Same debounce concept as BOCPD Exit Bars. Prevents exiting on a single noisy bar.' },
+  { key:'mfe_retrace_pct', label:'MFE Retrace %',         min:0.05,max:0.60, step:0.01, def:0.25,
+    help:'Profit protection: once the trade has moved MFE Min R in your favour, exit if price retraces this fraction back from the peak profit. 0.25 = exit if you give back 25% of your best profit. Lower = locks in gains tightly.' },
+  { key:'mfe_min_r',       label:'MFE Min (R)',           min:0.2, max:5.0,  step:0.1,  def:1.0,
+    help:'The minimum peak profit (in multiples of your stop-loss distance) before the MFE retrace exit can trigger. 1.0R = retrace exit only kicks in once you\'ve been at least 1× your risk in profit. Higher = lets small winners run further.' },
+  { key:'range_exit_hold', label:'Range Exit Hold (bars)', min:0,  max:10,   step:1,    def:2,
+    help:'When regime flips to RANGE while in trade, wait this many bars before exiting. Same as V1 — prevents closing on brief sideways noise. V2 has other exit gates so this can be lower than V1.' },
+  { key:'window_start',    label:'Window Start (UTC h)',  min:0,   max:12,   step:1,    def:7,
+    help:'Earliest UTC hour new trades can open. Same as V1. 07:00 = London open. V2\'s composite score naturally filters out poor-session entries so the window can be slightly wider than V1.' },
+  { key:'window_end',      label:'Window End (UTC h)',    min:12,  max:23,   step:1,    def:20,
+    help:'Latest UTC hour new trades can open. Same as V1. V2\'s score gate includes a session-quality component so it degrades automatically in thin hours — you can leave this wider and let the score filter do the work.' },
+  { key:'post_exit_cooldown', label:'Post-Exit Cooldown (bars)', min:0, max:240, step:1, def:0,
+    help:'After any trade closes (win or loss), block all new entries for this many M1 bars. 60 = 1 hour cooldown. V2 has more exit gates than V1 so exits are more frequent — a cooldown of 30–60 bars is often very effective at cutting noise re-entries.' },
 ];
 const V2_BOOLS = [
   { key:'exit_on_range',        label:'Exit on RANGE',          def:true  },
@@ -959,14 +1005,17 @@ function buildConfigPanel() {
     const el = document.createElement('div');
     el.className = 'rb-param';
     el.innerHTML = `
-      <span class="rb-param-lbl">${p.label}</span>
-      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-        <button class="rb-reset-btn" onclick="resetParam('${p.key}',${p.def})" title="Reset to default">↺</button>
-        <input type="number" class="rb-num-input" id="sl_${p.key}"
-          min="${p.min}" max="${p.max}" step="${p.step}" value="${cfg[p.key]}"
-          onchange="onSlider('${p.key}', this.value, ${p.step})"
-          oninput="onSlider('${p.key}', this.value, ${p.step})">
+      <div class="rb-param-row">
+        <span class="rb-param-lbl">${p.label}</span>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <button class="rb-reset-btn" onclick="resetParam('${p.key}',${p.def})" title="Reset to default">↺</button>
+          <input type="number" class="rb-num-input" id="sl_${p.key}"
+            min="${p.min}" max="${p.max}" step="${p.step}" value="${cfg[p.key]}"
+            onchange="onSlider('${p.key}', this.value, ${p.step})"
+            oninput="onSlider('${p.key}', this.value, ${p.step})">
+        </div>
       </div>
+      ${p.help ? `<div class="rb-param-help">${p.help}</div>` : ''}
     `;
     grid.appendChild(el);
   });
@@ -1448,7 +1497,8 @@ function computeHMMSignalsV1(bars, sym) {
   const dirAdxT = cfg.dirAdxTarget ?? 0.5;
 
   const closes = bars.map(b => b.close);
-  const atr    = buildATR_hmm(bars, 20);
+  const atr    = buildATR_hmm(bars, 20);  // ATR(20 M1) — HMM vol feature only
+  const atrSL  = buildATR_hmm(bars, 70); // ATR(70 M1) ≈ ATR(14 M5) — matches live bot SL distance
   const adx    = buildADX_hmm(bars, cfg.adxN ?? 50);
 
   const trend = new Float64Array(N);
@@ -1500,7 +1550,8 @@ function computeHMMSignalsV1(bars, sym) {
 
     signals[i] = { ts: bars[i].time, regime, conf,
       pBull: pb*100, pBear: pbr*100, pRange: pr*100,
-      vz, adxZ: az, trendZ: tz, rl, decay, slope, bocpd, exh, score, atr: atr[i] };
+      vz, adxZ: az, trendZ: tz, rl, decay, slope, bocpd, exh, score,
+      atr: atr[i], atrSL: atrSL[i] };
   }
   return signals;
 }
@@ -1527,7 +1578,8 @@ function computeHMMSignalsV2(bars, sym, trainedParams) {
   }
 
   const closes = bars.map(b => b.close);
-  const atr    = buildATR_hmm(bars, 20);
+  const atr    = buildATR_hmm(bars, 20);  // ATR(20 M1) — HMM vol feature only
+  const atrSL  = buildATR_hmm(bars, 70); // ATR(70 M1) ≈ ATR(14 M5) — matches live bot SL distance
   const adx    = buildADX_hmm(bars, cfg.adxN ?? 50);
 
   const trend = new Float64Array(N);
@@ -1586,8 +1638,8 @@ function computeHMMSignalsV2(bars, sym, trainedParams) {
 
     signals[i] = { ts: bars[i].time, regime, conf,
       pBull: probs[0]*100, pBear: probs[1]*100, pRange: probs[2]*100, pChop: probs[3]*100,
-      vz: vZ[i], adxZ: aZ[i], trendZ: tZ[i], rl, decay, slope, bocpd, exh, score, atr: atr[i],
-      isLearned };
+      vz: vZ[i], adxZ: aZ[i], trendZ: tZ[i], rl, decay, slope, bocpd, exh, score,
+      atr: atr[i], atrSL: atrSL[i], isLearned };
   }
   return signals;
 }
@@ -1724,7 +1776,7 @@ async function loadAndRun() {
 
 function simulateV1(candles, signals, c) {
   const trades = [];
-  let pos = null, debounce = 0, rangeHold = 0;
+  let pos = null, debounce = 0, rangeHold = 0, cooldown = 0;
 
   for (let i = WARMUP; i < candles.length; i++) {
     const sig = signals[i];
@@ -1739,7 +1791,7 @@ function simulateV1(candles, signals, c) {
                  || (pos.direction === 'SHORT' && bar.high >= pos.sl);
       if (slHit) {
         trades.push(mkTrade(pos, bar.time, pos.sl, 'SL'));
-        pos = null; debounce = 0; rangeHold = 0; continue;
+        pos = null; debounce = 0; rangeHold = 0; cooldown = c.post_exit_cooldown || 0; continue;
       }
       // Update MFE
       const fav = pos.direction === 'LONG' ? bar.high - pos.entry_price : pos.entry_price - bar.low;
@@ -1748,37 +1800,40 @@ function simulateV1(candles, signals, c) {
       // Outside window → flat
       if (!inWin) {
         trades.push(mkTrade(pos, bar.time, bar.close, 'WINDOW'));
-        pos = null; debounce = 0; rangeHold = 0; continue;
+        pos = null; debounce = 0; rangeHold = 0; cooldown = c.post_exit_cooldown || 0; continue;
       }
 
       const flipped = pos.regime !== sig.regime;
       if (flipped && (sig.regime === 'BULL' || sig.regime === 'BEAR')) {
         trades.push(mkTrade(pos, bar.time, bar.close, 'REGIME_FLIP'));
-        pos = null; debounce = 0; rangeHold = 0;
+        pos = null; debounce = 0; rangeHold = 0; cooldown = c.post_exit_cooldown || 0;
       } else if (flipped && c.exit_on_range && (sig.regime === 'RANGE' || sig.regime === 'CHOP')) {
         if (++rangeHold >= c.range_exit_hold) {
           trades.push(mkTrade(pos, bar.time, bar.close, 'RANGE_EXIT'));
-          pos = null; debounce = 0; rangeHold = 0;
+          pos = null; debounce = 0; rangeHold = 0; cooldown = c.post_exit_cooldown || 0;
         }
       } else if (!flipped) {
         rangeHold = 0;
         if (sig.decay >= c.decay_exit) {
           trades.push(mkTrade(pos, bar.time, bar.close, 'DECAY'));
-          pos = null; debounce = 0;
+          pos = null; debounce = 0; cooldown = c.post_exit_cooldown || 0;
         }
       }
     }
+
+    if (cooldown > 0) { cooldown--; continue; }
 
     if (!pos && inWin) {
       const isDir = sig.regime === 'BULL' || sig.regime === 'BEAR';
       const ok    = isDir && sig.conf >= c.min_confidence && sig.vz <= c.vol_z_max && sig.decay < c.entry_decay_max;
       if (ok) {
-        if (++debounce >= c.candle_hold && sig.atr) {
-          const dir2 = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
-          const ep   = bar.close;
-          const sl   = dir2 === 'LONG' ? ep - sig.atr * c.sl_atr_mult : ep + sig.atr * c.sl_atr_mult;
+        if (++debounce >= c.candle_hold && sig.atrSL) {
+          const dir2  = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
+          const ep    = bar.close;
+          const slDist = sig.atrSL * c.sl_atr_mult;
+          const sl    = dir2 === 'LONG' ? ep - slDist : ep + slDist;
           pos = { regime: sig.regime, direction: dir2, entry_ts: bar.time, entry_price: ep,
-                  sl, atr: sig.atr, mfe_price: 0, conf_at_entry: sig.conf, decay_at_entry: sig.decay };
+                  sl, atr: sig.atrSL, mfe_price: 0, conf_at_entry: sig.conf, decay_at_entry: sig.decay };
           debounce = 0; rangeHold = 0;
         }
       } else { debounce = 0; }
@@ -1796,7 +1851,7 @@ function simulateV1(candles, signals, c) {
 
 function simulateV2(candles, signals, c) {
   const trades = [];
-  let pos = null, debounce = 0, rangeHold = 0;
+  let pos = null, debounce = 0, rangeHold = 0, cooldown = 0;
   let prevConf = null;
 
   for (let i = WARMUP; i < candles.length; i++) {
@@ -1814,7 +1869,7 @@ function simulateV2(candles, signals, c) {
                  || (pos.direction === 'SHORT' && bar.high >= pos.sl);
       if (slHit) {
         trades.push(mkTrade(pos, bar.time, pos.sl, 'SL'));
-        pos = null; debounce = 0; rangeHold = 0; prevConf = sig.conf; continue;
+        pos = null; debounce = 0; rangeHold = 0; cooldown = c.post_exit_cooldown || 0; prevConf = sig.conf; continue;
       }
 
       // Update MFE
@@ -1870,8 +1925,10 @@ function simulateV2(candles, signals, c) {
       if (!exited && sig.decay >= c.decay_exit) {
         trades.push(mkTrade(pos, bar.time, xp, 'DECAY')); exited = true;
       }
-      if (exited) { pos = null; debounce = 0; rangeHold = 0; }
+      if (exited) { pos = null; debounce = 0; rangeHold = 0; cooldown = c.post_exit_cooldown || 0; }
     }
+
+    if (cooldown > 0) { cooldown--; prevConf = sig.conf; continue; }
 
     if (!pos && inWin) {
       const isDir   = sig.regime === 'BULL' || sig.regime === 'BEAR';
@@ -1882,13 +1939,14 @@ function simulateV2(candles, signals, c) {
       const okScore = sig.score >= c.entry_score_min;
 
       if (isDir && okConf && okRise && okVz && okDecay && okScore) {
-        if (++debounce >= c.candle_hold && sig.atr) {
-          const dir2 = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
-          const ep   = bar.close;
-          const sl   = dir2 === 'LONG' ? ep - sig.atr * c.sl_atr_mult : ep + sig.atr * c.sl_atr_mult;
+        if (++debounce >= c.candle_hold && sig.atrSL) {
+          const dir2   = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
+          const ep     = bar.close;
+          const slDist = sig.atrSL * c.sl_atr_mult;
+          const sl     = dir2 === 'LONG' ? ep - slDist : ep + slDist;
           pos = {
             regime: sig.regime, direction: dir2, entry_ts: bar.time, entry_price: ep,
-            entry_score: sig.score, sl, atr: sig.atr, mfe_price: 0, mfe_r: 0,
+            entry_score: sig.score, sl, atr: sig.atrSL, mfe_price: 0, mfe_r: 0,
             conf_at_entry: sig.conf, decay_at_entry: sig.decay,
             slope_ct: 0, bocpd_ct: 0, score_low_ct: 0,
           };
