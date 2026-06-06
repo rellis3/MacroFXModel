@@ -3,392 +3,500 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>MacroFX — Market Intelligence</title>
+<title>MacroFX — Market State</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#090d18;--s1:#0d1422;--s2:#111929;--s3:#162030;
-  --b1:#1c2a3f;--b2:#243350;
-  --t1:#c8d6e8;--t2:#7a93b8;--t3:#3d5270;
-  --gold:#f0a830;--blue:#4a9eff;--green:#26c87a;
-  --red:#e84d5f;--purple:#8b7cf6;--border:#1a2a40;
-  --ui:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+  --bg:   #020810;
+  --s1:   #060f24;
+  --s2:   #091630;
+  --s3:   #0e1e3e;
+  --b1:   #152448;
+  --b2:   #1c2e58;
+  --t1:   #eee8d8;
+  --t2:   #8899b4;
+  --t3:   #445270;
+  --gold: #c89820;
+  --goldl:#e8b438;
+  --green:#1c9058;
+  --red:  #b82830;
+  --blue: #2858d8;
+  --border:#132040;
+  --ui:   'Inter',system-ui,sans-serif;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --mono: 'JetBrains Mono',monospace;
 }
-body{font-family:var(--ui);background:var(--bg);color:var(--t1);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--ui);background:var(--bg);color:var(--t1);display:flex;flex-direction:column}
 
-/* ── TOP BAR ── */
-.topbar{height:52px;background:var(--s1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:100}
-.tb-logo{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:2px;color:var(--t2)}
-.tb-logo span{color:var(--gold)}
-.tb-sep{width:1px;height:22px;background:var(--border)}
-.tb-breadth{display:flex;gap:5px}
-.bc{font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 8px;border-radius:2px;border:1px solid;letter-spacing:.4px}
-.bc.bull{color:var(--green);border-color:rgba(38,200,122,.3);background:rgba(38,200,122,.07)}
-.bc.bear{color:var(--red);border-color:rgba(232,77,95,.3);background:rgba(232,77,95,.07)}
-.bc.range{color:var(--blue);border-color:rgba(74,158,255,.3);background:rgba(74,158,255,.07)}
-.bc.chop{color:var(--purple);border-color:rgba(139,124,246,.3);background:rgba(139,124,246,.07)}
-.bc.neu{color:var(--t2);border-color:rgba(122,147,184,.25);background:rgba(122,147,184,.05)}
-.tb-sess{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);padding:3px 10px;border:1px solid rgba(240,168,48,.3);background:rgba(240,168,48,.07);border-radius:2px;letter-spacing:1px}
-.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-.tb-links{display:flex;gap:4px}
-.tb-link{font-size:11px;color:var(--t3);text-decoration:none;padding:4px 9px;border-radius:2px;transition:color .15s,background .15s}
-.tb-link:hover{color:var(--t1);background:var(--s3)}
+/* ── TOP BAR ─────────────────────────────────────── */
+.topbar{
+  height:56px;background:var(--s1);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:14px;flex-shrink:0
+}
+.logo{font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:1px;color:var(--t1);white-space:nowrap}
+.logo em{color:var(--gold);font-style:normal}
+.tb-div{width:1px;height:26px;background:var(--border)}
+
+/* Currency strength pills */
+.ccy-strip{display:flex;gap:5px;flex:1;overflow:hidden}
+.ccy-pill{
+  display:flex;align-items:center;gap:4px;
+  padding:4px 9px;border-radius:2px;border:1px solid;
+  font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.3px;
+  white-space:nowrap;transition:opacity .2s
+}
+.ccy-pill.strong{color:var(--green);border-color:rgba(28,144,88,.35);background:rgba(28,144,88,.08)}
+.ccy-pill.weak  {color:var(--red);border-color:rgba(184,40,48,.35);background:rgba(184,40,48,.08)}
+.ccy-pill.flat  {color:var(--t2);border-color:rgba(136,153,180,.2);background:rgba(136,153,180,.05)}
+.ccy-arrow{font-size:9px}
+
+.tb-sess{
+  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1.2px;
+  color:var(--gold);padding:4px 11px;border:1px solid rgba(200,152,32,.35);
+  background:rgba(200,152,32,.08);border-radius:2px;white-space:nowrap
+}
+.tb-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .tb-clock{font-family:var(--mono);font-size:11px;color:var(--t2)}
-.tb-btn{font-size:11px;color:var(--t2);background:var(--s3);border:1px solid var(--border);padding:5px 11px;border-radius:2px;cursor:pointer;transition:color .15s,border-color .15s}
-.tb-btn:hover{color:var(--t1);border-color:var(--b2)}
+.tb-links{display:flex;gap:2px}
+.tb-a{font-size:11px;color:var(--t3);text-decoration:none;padding:4px 8px;border-radius:2px;transition:color .15s,background .15s}
+.tb-a:hover{color:var(--t1);background:var(--s3)}
+.tb-btn{font-size:11px;color:var(--t2);background:var(--s3);border:1px solid var(--border);padding:5px 11px;border-radius:2px;cursor:pointer;transition:color .15s}
+.tb-btn:hover{color:var(--t1)}
 
-/* ── LAYOUT ── */
-.layout{display:flex;flex:1;overflow:hidden}
-
-/* ── SIDEBAR ── */
-.sidebar{width:210px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.sb-head{padding:9px 14px;font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--t3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.sb-list{flex:1;overflow-y:auto;padding:3px 0}
-.sb-list::-webkit-scrollbar{width:3px}
-.sb-list::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
-
-.pair-row{padding:7px 12px;cursor:pointer;border-left:2px solid transparent;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto auto;gap:1px 6px;transition:background .1s,border-color .12s}
-.pair-row:hover{background:var(--s2)}
-.pair-row.active{background:var(--s2);border-left-color:var(--gold)}
-.pr-name{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--t1);grid-row:1;grid-column:1}
-.pr-reg{font-size:9px;font-weight:700;letter-spacing:.5px;grid-row:1;grid-column:2;align-self:center;text-align:right}
-.pr-reg.bull{color:var(--green)}.pr-reg.bear{color:var(--red)}.pr-reg.range{color:var(--blue)}.pr-reg.chop{color:var(--purple)}.pr-reg.neu{color:var(--t3)}
-.pr-vol{font-family:var(--mono);font-size:10px;color:var(--t2);grid-row:2;grid-column:1}
-.pr-sess{font-size:9px;color:var(--t3);grid-row:2;grid-column:2;text-align:right}
-.pr-bar{grid-column:1/-1;height:2px;background:var(--b1);border-radius:1px;margin-top:3px;overflow:hidden}
-.pr-bar-fill{height:100%;border-radius:1px;transition:width .3s}
-
-/* ── CONTENT ── */
-.content{flex:1;display:flex;flex-direction:column;overflow:hidden}
-
-/* ── PAIR HERO ── */
-.pair-hero{background:var(--s2);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:20px;flex-shrink:0}
-.ph-name{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--t1);min-width:90px}
-.ph-sep{width:1px;height:34px;background:var(--border)}
-.ph-blk .ph-lbl{font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3);margin-bottom:3px}
-.ph-blk .ph-val{font-family:var(--mono);font-size:17px;font-weight:700}
-.ph-val.bull{color:var(--green)}.ph-val.bear{color:var(--red)}.ph-val.range{color:var(--blue)}.ph-val.chop{color:var(--purple)}.ph-val.gold{color:var(--gold)}.ph-val.def{color:var(--t1)}
-.ph-right{margin-left:auto}
-
-/* ── TAB NAV ── */
-.tab-nav{background:var(--s1);border-bottom:1px solid var(--border);display:flex;padding:0 20px;flex-shrink:0}
-.tab-btn{font-size:12px;font-weight:500;color:var(--t3);background:none;border:none;padding:13px 15px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s}
+/* ── TABS ─────────────────────────────────────────── */
+.tab-nav{
+  background:var(--s1);border-bottom:1px solid var(--border);
+  display:flex;padding:0 20px;flex-shrink:0
+}
+.tab-btn{
+  font-size:12px;font-weight:500;color:var(--t3);
+  background:none;border:none;padding:13px 18px;cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+  transition:color .15s,border-color .15s;letter-spacing:.2px
+}
 .tab-btn:hover{color:var(--t2)}
-.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab-btn.active{color:var(--goldl);border-bottom-color:var(--gold)}
 
-/* ── PANELS ── */
-.panel{display:none;flex:1;overflow-y:auto;padding:18px}
-.panel.active{display:block}
-.panel::-webkit-scrollbar{width:4px}
-.panel::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+/* ── PANELS ───────────────────────────────────────── */
+.panels{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.panel{display:none;flex:1;overflow:hidden}
+.panel.active{display:flex}
 
-#panel-pair{display:none;flex-direction:column;overflow:hidden;padding:0}
-#panel-pair.active{display:flex}
-#pair-scroll{flex:1;overflow-y:auto;padding:18px}
-#pair-scroll::-webkit-scrollbar{width:4px}
-#pair-scroll::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+/* Market state: 2-column */
+#p-state{flex-direction:row}
+.state-left{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
+.state-left::-webkit-scrollbar{width:3px}
+.state-left::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+.state-right{width:320px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
 
-/* ── CARDS ── */
+/* Matrix: full */
+#p-matrix{overflow:auto;padding:18px;display:block}
+#p-matrix::-webkit-scrollbar{width:4px;height:4px}
+#p-matrix::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+
+/* Pair detail */
+#p-pair{flex-direction:column;overflow:hidden}
+.pair-scroll{flex:1;overflow-y:auto;padding:18px}
+.pair-scroll::-webkit-scrollbar{width:3px}
+.pair-scroll::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+
+/* Bot: scroll */
+#p-bot{overflow-y:auto;padding:18px;display:block}
+#p-bot::-webkit-scrollbar{width:3px}
+#p-bot::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+
+/* ── CARD ATOMS ───────────────────────────────────── */
 .card{background:var(--s2);border:1px solid var(--border);border-radius:3px}
-.card-hd{padding:9px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.card-title{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--t3)}
-.card-badge{font-family:var(--mono);font-size:10px;color:var(--t2)}
-.mt{margin-top:14px}
+.card-hd{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-ttl{font-size:9px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:var(--t3)}
+.card-sub{font-family:var(--mono);font-size:10px;color:var(--t2)}
 
-/* ── GRIDS ── */
-.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:900px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}}
+/* ── QUADRANT GRID ────────────────────────────────── */
+.quad-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.quad{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:16px;position:relative;overflow:hidden}
+.quad::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.quad.regime::before{background:linear-gradient(90deg,var(--blue),transparent)}
+.quad.risk::before  {background:linear-gradient(90deg,var(--green),transparent)}
+.quad.vol::before   {background:linear-gradient(90deg,var(--gold),transparent)}
+.quad.session::before{background:linear-gradient(90deg,var(--t2),transparent)}
+.quad-lbl{font-size:9px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:var(--t3);margin-bottom:8px}
+.quad-val{font-family:var(--serif);font-size:32px;font-weight:700;line-height:1;margin-bottom:6px}
+.quad-val.bull  {color:var(--green)}.quad-val.bear{color:var(--red)}
+.quad-val.range {color:var(--blue)}.quad-val.chop{color:var(--t2)}
+.quad-val.gold  {color:var(--goldl)}.quad-val.neu{color:var(--t2)}
+.quad-sub{font-size:11px;color:var(--t2);line-height:1.4}
+.quad-bar{height:4px;background:var(--b1);border-radius:2px;margin-top:12px;overflow:hidden}
+.quad-bar-fill{height:100%;border-radius:2px}
 
-/* ── STAT BLOCKS ── */
-.stat-blk{padding:14px 15px}
-.stat-lbl{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--t3);margin-bottom:5px}
-.stat-val{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1}
-.stat-val.bull{color:var(--green)}.stat-val.bear{color:var(--red)}.stat-val.range{color:var(--blue)}.stat-val.chop,.stat-val.purple{color:var(--purple)}.stat-val.gold{color:var(--gold)}
-.stat-sub{font-size:10px;color:var(--t3);margin-top:4px}
-
-/* ── REGIME BAR ── */
-.reg-bar{height:5px;display:flex;border-radius:2px;overflow:hidden;margin:12px 15px 14px}
-.rb-seg{height:100%;transition:width .4s}
-
-/* ── PAIR GRID ── */
-.pair-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;padding:14px}
-.pg-card{background:var(--s3);border:1px solid var(--border);border-radius:2px;padding:10px 11px;cursor:pointer;border-top:2px solid transparent;transition:background .12s}
-.pg-card:hover{background:var(--b1)}
-.pg-card.bull{border-top-color:var(--green)}.pg-card.bear{border-top-color:var(--red)}.pg-card.range{border-top-color:var(--blue)}.pg-card.chop{border-top-color:var(--purple)}.pg-card.neu{border-top-color:var(--t3)}
-.pgc-name{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:6px}
-.pgc-reg{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px}
-.pgc-reg.bull{color:var(--green)}.pgc-reg.bear{color:var(--red)}.pgc-reg.range{color:var(--blue)}.pgc-reg.chop{color:var(--purple)}.pgc-reg.neu{color:var(--t2)}
-.pgc-row{display:flex;justify-content:space-between;align-items:baseline}
-.pgc-vol{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--t1)}
-.pgc-pip{font-size:9px;color:var(--t3)}
-
-/* ── TABLES ── */
+/* ── PAIRS COMPACT TABLE ──────────────────────────── */
 .tbl{width:100%;border-collapse:collapse;font-size:12px}
-.tbl th{font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3);padding:7px 15px;text-align:left;border-bottom:1px solid var(--border)}
-.tbl td{padding:8px 15px;border-bottom:1px solid rgba(26,42,64,.5);color:var(--t1)}
+.tbl th{font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3);padding:7px 14px;text-align:left;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--s2);z-index:1}
+.tbl td{padding:7px 14px;border-bottom:1px solid rgba(19,32,64,.6);color:var(--t1);vertical-align:middle}
 .tbl tr:last-child td{border-bottom:none}
-.tbl tr:hover td{background:rgba(255,255,255,.018)}
+.tbl tr:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 .mono{font-family:var(--mono)}
-.clickable{cursor:pointer;color:var(--gold)!important}
-.clickable:hover{text-decoration:underline}
+.pair-link{color:var(--goldl);cursor:pointer;font-family:var(--mono);font-weight:600}
+.pair-link:hover{text-decoration:underline}
 
-/* ── VOL RANGE BARS ── */
-.vrr{padding:10px 15px;border-bottom:1px solid rgba(26,42,64,.4)}
+/* regime chips */
+.chip{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:1px;border:1px solid;letter-spacing:.6px}
+.chip.bull{color:var(--green);border-color:rgba(28,144,88,.4);background:rgba(28,144,88,.1)}
+.chip.bear{color:var(--red);border-color:rgba(184,40,48,.4);background:rgba(184,40,48,.1)}
+.chip.range{color:var(--blue);border-color:rgba(40,88,216,.4);background:rgba(40,88,216,.1)}
+.chip.chop{color:var(--t2);border-color:rgba(136,153,180,.3);background:rgba(136,153,180,.06)}
+.chip.neu{color:var(--t3);border-color:rgba(68,82,112,.4);background:rgba(68,82,112,.08)}
+
+/* ── REGIME BAR ───────────────────────────────────── */
+.reg-bar{height:4px;display:flex;border-radius:2px;overflow:hidden}
+.rb-seg{height:100%}
+
+/* ── INTEL FEED ───────────────────────────────────── */
+.feed-hd{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.feed-hd-ttl{font-size:9px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:var(--t3)}
+.feed-list{flex:1;overflow-y:auto;padding:8px 0}
+.feed-list::-webkit-scrollbar{width:3px}
+.feed-list::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+
+.feed-item{
+  padding:10px 16px;border-bottom:1px solid rgba(19,32,64,.5);
+  display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;
+  cursor:pointer;transition:background .1s
+}
+.feed-item:hover{background:rgba(255,255,255,.02)}
+.feed-item:last-child{border-bottom:none}
+.fi-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.fi-dot.vol   {background:var(--gold)}
+.fi-dot.regime{background:var(--blue)}
+.fi-dot.macro {background:var(--red)}
+.fi-dot.session{background:var(--green)}
+.fi-body{min-width:0}
+.fi-pair{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--goldl);margin-bottom:2px}
+.fi-msg{font-size:10px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fi-sev{width:36px;text-align:right;flex-shrink:0}
+.fi-sev-bar{height:3px;border-radius:1px;margin-top:3px;background:var(--b1);overflow:hidden}
+.fi-sev-fill{height:100%;border-radius:1px}
+
+.feed-empty{padding:40px 20px;text-align:center;color:var(--t3);font-size:11px}
+
+/* ── PAIR HERO ────────────────────────────────────── */
+.pair-hero{
+  background:var(--s2);border-bottom:1px solid var(--border);
+  padding:16px 20px;display:flex;align-items:center;gap:20px;flex-shrink:0
+}
+.ph-name{font-family:var(--serif);font-size:26px;font-weight:700;color:var(--t1);letter-spacing:.5px}
+.ph-sep{width:1px;height:36px;background:var(--border)}
+.ph-blk .ph-lbl{font-size:9px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--t3);margin-bottom:4px}
+.ph-blk .ph-val{font-family:var(--serif);font-size:20px;font-weight:700;line-height:1}
+.ph-val.bull{color:var(--green)}.ph-val.bear{color:var(--red)}.ph-val.range{color:var(--blue)}.ph-val.chop,.ph-val.neu{color:var(--t2)}.ph-val.gold{color:var(--goldl)}.ph-val.def{color:var(--t1)}
+.ph-right{margin-left:auto}
+.btn-sm{font-size:11px;color:var(--t2);background:var(--s3);border:1px solid var(--border);padding:5px 12px;border-radius:2px;text-decoration:none;transition:color .15s,border-color .15s}
+.btn-sm:hover{color:var(--t1);border-color:var(--b2)}
+
+/* ── VOL BARS ─────────────────────────────────────── */
+.vrr{padding:10px 16px;border-bottom:1px solid rgba(19,32,64,.5)}
 .vrr:last-child{border-bottom:none}
 .vrr-hd{font-size:10px;color:var(--t3);display:flex;justify-content:space-between;margin-bottom:6px}
 .vrr-hd b{color:var(--t2)}
-.vrr-track{height:8px;background:var(--s3);border-radius:2px;overflow:hidden;position:relative}
-.vrr-p75{position:absolute;height:100%;border-radius:2px;background:rgba(240,168,48,.18);border-right:1px solid var(--gold)}
-.vrr-med{position:absolute;height:100%;border-radius:2px;background:rgba(74,158,255,.22);border-right:1px solid var(--blue)}
+.vrr-track{height:8px;background:var(--s3);border-radius:2px;position:relative;overflow:hidden}
+.vrr-p75{position:absolute;height:100%;background:rgba(200,152,32,.18);border-right:1px solid var(--gold)}
+.vrr-med{position:absolute;height:100%;background:rgba(40,88,216,.2);border-right:1px solid var(--blue)}
 .vrr-live{position:absolute;width:2px;height:100%;background:var(--green);top:0}
 
-/* ── SESSION PILLS ── */
-.sess-row{display:flex;gap:8px;padding:12px 15px}
-.sess-pill{flex:1;background:var(--s3);border:1px solid var(--border);border-radius:2px;padding:9px 10px}
-.sp-name{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin-bottom:4px}
-.sp-val{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--t1)}
-.sp-track{height:3px;background:var(--b1);border-radius:1px;margin-top:5px;overflow:hidden}
-.sp-fill{height:100%;background:var(--gold);border-radius:1px;transition:width .3s}
+/* ── SESSION PILLS ────────────────────────────────── */
+.sess-row{display:flex;gap:8px;padding:12px 16px}
+.sess-p{flex:1;background:var(--s3);border:1px solid var(--border);border-radius:2px;padding:9px 10px}
+.sp-n{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin-bottom:4px}
+.sp-v{font-family:var(--serif);font-size:20px;font-weight:700;color:var(--t1)}
+.sp-t{height:3px;background:var(--b1);border-radius:1px;margin-top:5px;overflow:hidden}
+.sp-f{height:100%;background:var(--gold);border-radius:1px;transition:width .3s}
 
-/* ── FACTOR ROWS ── */
-.frow{display:flex;align-items:center;padding:8px 15px;border-bottom:1px solid rgba(26,42,64,.4);gap:10px}
-.frow:last-child{border-bottom:none}
-.fr-name{font-size:11px;color:var(--t2);width:72px;flex-shrink:0}
-.fr-val{font-family:var(--mono);font-size:12px;font-weight:600;width:58px;text-align:right;flex-shrink:0}
-.fr-track{flex:1;height:6px;background:var(--s3);border-radius:2px;position:relative}
-.fr-center{position:absolute;left:50%;top:0;width:1px;height:100%;background:var(--t3)}
-.fr-fill{position:absolute;height:100%;border-radius:1px}
-.fr-sig{font-size:9px;width:72px;text-align:right;flex-shrink:0;letter-spacing:.5px;font-weight:600}
+/* ── MATRIX ───────────────────────────────────────── */
+.matrix-wrap{overflow:auto;min-width:600px}
+.matrix-grid{border-collapse:collapse;border:1px solid var(--border)}
+.matrix-grid th,.matrix-grid td{border:1px solid var(--border);text-align:center;padding:0}
+.matrix-grid th{
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.5px;
+  color:var(--t2);background:var(--s2);padding:8px 12px;white-space:nowrap
+}
+.m-cell{
+  width:90px;height:64px;cursor:pointer;transition:filter .15s;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  padding:6px
+}
+.m-cell:hover{filter:brightness(1.3)}
+.m-cell.bull{background:rgba(28,144,88,.14)}
+.m-cell.bear{background:rgba(184,40,48,.14)}
+.m-cell.range{background:rgba(40,88,216,.12)}
+.m-cell.chop{background:rgba(136,153,180,.07)}
+.m-cell.neu{background:rgba(68,82,112,.06)}
+.m-cell.none{background:transparent;cursor:default}
+.mc-pair{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--t3)}
+.mc-reg{font-size:10px;font-weight:700;letter-spacing:.5px}
+.mc-reg.bull{color:var(--green)}.mc-reg.bear{color:var(--red)}.mc-reg.range{color:var(--blue)}.mc-reg.chop{color:var(--t2)}.mc-reg.neu{color:var(--t3)}
+.mc-vol{font-family:var(--mono);font-size:9px;color:var(--t3)}
+.m-dash{color:var(--border);font-size:16px}
 
-/* ── BOT CARDS ── */
-.bot-card{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:15px}
-.bc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.bc-name{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t1)}
-.bc-status{font-size:10px;font-weight:700;padding:3px 8px;border-radius:2px;letter-spacing:.5px}
-.bc-status.live{color:var(--green);background:rgba(38,200,122,.1);border:1px solid rgba(38,200,122,.3)}
-.bc-status.off{color:var(--t3);background:var(--s3);border:1px solid var(--border)}
-.bc-status.err{color:var(--red);background:rgba(232,77,95,.1);border:1px solid rgba(232,77,95,.3)}
-.bc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.bs-lbl{font-size:9px;color:var(--t3);letter-spacing:.8px;margin-bottom:3px;text-transform:uppercase}
-.bs-val{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--t1)}
+/* ── BOT CARDS ────────────────────────────────────── */
+.bot-card{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:16px}
+.bc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.bc-name{font-family:var(--serif);font-size:16px;font-weight:700;color:var(--t1)}
+.bc-st{font-size:10px;font-weight:700;padding:3px 9px;border-radius:2px;letter-spacing:.6px}
+.bc-st.live{color:var(--green);background:rgba(28,144,88,.12);border:1px solid rgba(28,144,88,.35)}
+.bc-st.off{color:var(--t3);background:var(--s3);border:1px solid var(--border)}
+.bc-st.err{color:var(--red);background:rgba(184,40,48,.1);border:1px solid rgba(184,40,48,.35)}
+.bc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.bs-l{font-size:9px;color:var(--t3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:3px}
+.bs-v{font-family:var(--serif);font-size:17px;font-weight:600;color:var(--t1)}
 
-/* ── LINK CARDS ── */
-.link-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px}
-.lnk{display:block;background:var(--s3);border:1px solid var(--border);border-radius:2px;padding:11px 13px;text-decoration:none;color:var(--t2);transition:border-color .15s,color .15s,background .15s}
+/* ── LINKS ────────────────────────────────────────── */
+.lnk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px}
+.lnk{display:block;background:var(--s3);border:1px solid var(--border);border-radius:2px;padding:12px 14px;text-decoration:none;color:var(--t2);transition:border-color .15s,color .15s,background .15s}
 .lnk:hover{border-color:var(--gold);color:var(--t1);background:var(--b1)}
-.lnk-title{font-size:12px;font-weight:600;margin-bottom:3px}
-.lnk-desc{font-size:10px;color:var(--t3)}
+.lnk-t{font-size:12px;font-weight:600;margin-bottom:3px}
+.lnk-d{font-size:10px;color:var(--t3)}
 
-/* ── TAGS / STARS ── */
-.tag{display:inline-block;font-size:9px;font-weight:500;padding:2px 5px;border-radius:2px;border:1px solid;margin:1px}
-.tag.bull{color:var(--green);border-color:rgba(38,200,122,.3);background:rgba(38,200,122,.07)}
-.tag.bear{color:var(--red);border-color:rgba(232,77,95,.3);background:rgba(232,77,95,.07)}
+/* ── GRID/UTIL ────────────────────────────────────── */
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mt{margin-top:14px}
+.load-row{display:flex;align-items:center;gap:8px;padding:18px 16px;color:var(--t3);font-size:11px}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--b2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tag{display:inline-block;font-size:9px;padding:2px 5px;border-radius:2px;border:1px solid;margin:1px}
+.tag.bull{color:var(--green);border-color:rgba(28,144,88,.35);background:rgba(28,144,88,.08)}
+.tag.bear{color:var(--red);border-color:rgba(184,40,48,.35);background:rgba(184,40,48,.08)}
 .tag.neu{color:var(--t2);border-color:var(--border);background:var(--s3)}
 .stars{color:var(--gold);font-size:11px;letter-spacing:-1px}
-
-/* ── MISC ── */
-.empty{display:flex;align-items:center;justify-content:center;padding:40px 20px;color:var(--t3);font-size:12px;flex:1}
-.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--b2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.load-row{display:flex;align-items:center;gap:8px;padding:18px 15px;color:var(--t3);font-size:11px}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+@media(max-width:1100px){.state-right{width:260px}}
+@media(max-width:900px){.state-right{display:none}}
 </style>
 </head>
 <body>
 
-<!-- ═══ TOP BAR ═══ -->
+<!-- ════════ TOP BAR ════════ -->
 <header class="topbar">
-  <div class="tb-logo">MACRO<span>FX</span></div>
-  <div class="tb-sep"></div>
-  <div class="tb-breadth">
-    <span class="bc bull">BULL <b id="cnt-bull">—</b></span>
-    <span class="bc bear">BEAR <b id="cnt-bear">—</b></span>
-    <span class="bc range">RANGE <b id="cnt-range">—</b></span>
-    <span class="bc chop">CHOP <b id="cnt-chop">—</b></span>
-    <span class="bc neu">NEU <b id="cnt-neu">—</b></span>
+  <div class="logo">MACRO<em>FX</em></div>
+  <div class="tb-div"></div>
+  <div class="ccy-strip" id="ccy-strip">
+    <div class="load-row" style="padding:0"><span class="spin"></span></div>
   </div>
-  <div class="tb-sep"></div>
+  <div class="tb-div"></div>
   <div class="tb-sess" id="sess-badge">—</div>
   <div class="tb-right">
-    <nav class="tb-links">
-      <a href="index.html" class="tb-link">v1 Dashboard</a>
-      <a href="vol-forecast.html" class="tb-link">Vol Forecast</a>
-      <a href="performance.html" class="tb-link">Performance</a>
-      <a href="journal.html" class="tb-link">Journal</a>
-      <a href="bot-config.html" class="tb-link">Bot Config</a>
-    </nav>
-    <div class="tb-sep"></div>
     <div class="tb-clock" id="clock">—</div>
-    <button class="tb-btn" onclick="refreshAll()">↻ Refresh</button>
+    <div class="tb-div"></div>
+    <nav class="tb-links">
+      <a href="index.html" class="tb-a">v1 Dashboard</a>
+      <a href="vol-forecast.html" class="tb-a">Vol</a>
+      <a href="performance.html" class="tb-a">Performance</a>
+      <a href="journal.html" class="tb-a">Journal</a>
+      <a href="bot-config.html" class="tb-a">Bot Config</a>
+    </nav>
+    <button class="tb-btn" onclick="refreshAll()">↻</button>
   </div>
 </header>
 
-<!-- ═══ LAYOUT ═══ -->
-<div class="layout">
+<!-- ════════ TABS ════════ -->
+<nav class="tab-nav">
+  <button class="tab-btn active" data-tab="state"  onclick="switchTab('state')">Market State</button>
+  <button class="tab-btn"        data-tab="matrix" onclick="switchTab('matrix')">Currency Matrix</button>
+  <button class="tab-btn"        data-tab="pair"   onclick="switchTab('pair')">Pair Detail</button>
+  <button class="tab-btn"        data-tab="bot"    onclick="switchTab('bot')">Bot &amp; Links</button>
+</nav>
 
-  <!-- SIDEBAR: pair scanner -->
-  <aside class="sidebar">
-    <div class="sb-head">
-      <span>PAIRS</span>
-      <span class="spin" id="sb-spin" style="display:none"></span>
-    </div>
-    <div class="sb-list" id="sb-list"></div>
-  </aside>
+<!-- ════════ PANELS ════════ -->
+<div class="panels">
 
-  <!-- MAIN CONTENT -->
-  <div class="content">
+  <!-- ── MARKET STATE ── -->
+  <div class="panel active" id="p-state">
 
-    <nav class="tab-nav">
-      <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')">Market Overview</button>
-      <button class="tab-btn" data-tab="pair"     onclick="switchTab('pair')">Pair Detail</button>
-      <button class="tab-btn" data-tab="session"  onclick="switchTab('session')">Session Intel</button>
-      <button class="tab-btn" data-tab="macro"    onclick="switchTab('macro')">Macro &amp; Beta</button>
-      <button class="tab-btn" data-tab="bot"      onclick="switchTab('bot')">Bot Status</button>
-    </nav>
+    <!-- LEFT: macro state + pairs -->
+    <div class="state-left">
 
-    <!-- OVERVIEW -->
-    <div class="panel active" id="panel-overview">
-      <div class="g4">
-        <div class="card"><div class="stat-blk"><div class="stat-lbl">Bullish</div><div class="stat-val bull" id="ov-bull">—</div><div class="stat-sub">pairs trending up</div></div></div>
-        <div class="card"><div class="stat-blk"><div class="stat-lbl">Bearish</div><div class="stat-val bear" id="ov-bear">—</div><div class="stat-sub">pairs trending down</div></div></div>
-        <div class="card"><div class="stat-blk"><div class="stat-lbl">Ranging</div><div class="stat-val range" id="ov-range">—</div><div class="stat-sub">pairs in range</div></div></div>
-        <div class="card"><div class="stat-blk"><div class="stat-lbl">Choppy / Neutral</div><div class="stat-val chop" id="ov-chop">—</div><div class="stat-sub">no clear trend</div></div></div>
-      </div>
-      <div class="card mt">
-        <div class="card-hd">
-          <span class="card-title">Regime Distribution</span>
-          <span class="card-badge" id="ov-total">— pairs</span>
+      <!-- Quadrants -->
+      <div class="quad-grid" id="quad-grid">
+        <div class="quad regime">
+          <div class="quad-lbl">Market Regime</div>
+          <div class="quad-val" id="q-dom-val">—</div>
+          <div class="quad-sub" id="q-dom-sub">loading…</div>
+          <div class="quad-bar mt"><div class="quad-bar-fill" id="q-dom-bar" style="width:0%;background:var(--blue)"></div></div>
         </div>
-        <div class="reg-bar" id="reg-bar"></div>
-        <div class="pair-grid" id="ov-pair-grid"><div class="load-row"><span class="spin"></span>&nbsp;Loading…</div></div>
-      </div>
-      <div class="card mt">
-        <div class="card-hd">
-          <span class="card-title">Volatility Overview</span>
-          <span class="card-badge">Daily Vol %  ·  click any pair to drill in</span>
+        <div class="quad risk">
+          <div class="quad-lbl">Risk Environment</div>
+          <div class="quad-val" id="q-risk-val">—</div>
+          <div class="quad-sub" id="q-risk-sub">loading…</div>
+          <div class="quad-bar mt"><div class="quad-bar-fill" id="q-risk-bar" style="width:50%;background:var(--green)"></div></div>
         </div>
-        <div style="overflow-x:auto">
+        <div class="quad vol">
+          <div class="quad-lbl">Vol Environment</div>
+          <div class="quad-val gold" id="q-vol-val">—</div>
+          <div class="quad-sub" id="q-vol-sub">loading…</div>
+          <div class="quad-bar mt"><div class="quad-bar-fill" id="q-vol-bar" style="width:0%;background:var(--gold)"></div></div>
+        </div>
+        <div class="quad session">
+          <div class="quad-lbl">Active Session</div>
+          <div class="quad-val gold" id="q-sess-val">—</div>
+          <div class="quad-sub" id="q-sess-sub">loading…</div>
+          <div class="quad-bar mt"><div class="quad-bar-fill" id="q-sess-bar" style="width:0%;background:var(--t2)"></div></div>
+        </div>
+      </div>
+
+      <!-- Regime distribution -->
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-ttl">Regime Distribution</span>
+          <span class="card-sub" id="reg-total">— pairs</span>
+        </div>
+        <div style="padding:10px 16px 14px">
+          <div class="reg-bar" id="reg-bar"></div>
+          <div style="display:flex;gap:12px;font-size:9px;color:var(--t3);margin-top:4px">
+            <span style="color:var(--green)">■ BULL <b id="cnt-bull">—</b></span>
+            <span style="color:var(--red)">■ BEAR <b id="cnt-bear">—</b></span>
+            <span style="color:var(--blue)">■ RANGE <b id="cnt-range">—</b></span>
+            <span style="color:var(--t2)">■ CHOP <b id="cnt-chop">—</b></span>
+            <span style="color:var(--t3)">■ NEU <b id="cnt-neu">—</b></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- All pairs compact table -->
+      <div class="card" style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column">
+        <div class="card-hd">
+          <span class="card-ttl">All Pairs</span>
+          <span class="card-sub">click to open detail</span>
+        </div>
+        <div style="overflow:auto;flex:1">
           <table class="tbl">
-            <thead><tr><th>Pair</th><th>Vol %</th><th>Median H-L</th><th>75th H-L</th><th>Median O-C</th><th>Regime</th></tr></thead>
-            <tbody id="vol-tbl"><tr><td colspan="6"><div class="load-row"><span class="spin"></span>&nbsp;Loading…</div></td></tr></tbody>
+            <thead><tr>
+              <th>Pair</th><th>Regime</th><th>Vol %</th>
+              <th>H-L Med</th><th>75th</th><th>Session %</th>
+            </tr></thead>
+            <tbody id="pairs-tbl-body">
+              <tr><td colspan="6"><div class="load-row"><span class="spin"></span>&nbsp;Loading…</div></td></tr>
+            </tbody>
           </table>
         </div>
       </div>
-    </div>
 
-    <!-- PAIR DETAIL -->
-    <div class="panel" id="panel-pair">
-      <div class="pair-hero" id="pair-hero">
-        <div class="empty">← Select a pair from the scanner</div>
-      </div>
-      <div id="pair-scroll"><div id="pair-body"></div></div>
-    </div>
+    </div><!-- /state-left -->
 
-    <!-- SESSION INTEL -->
-    <div class="panel" id="panel-session">
-      <div class="card">
-        <div class="card-hd"><span class="card-title">Live Session Consumption</span><span class="card-badge" id="sess-ts">—</span></div>
-        <div id="sess-grid"><div class="load-row"><span class="spin"></span>&nbsp;Loading…</div></div>
+    <!-- RIGHT: intel feed -->
+    <div class="state-right">
+      <div class="feed-hd">
+        <span class="feed-hd-ttl">Intelligence Feed</span>
+        <span class="spin" id="feed-spin" style="display:none"></span>
       </div>
-      <div class="card mt">
-        <div class="card-hd"><span class="card-title">Vol Forecast History</span><span class="card-badge">Recent entries</span></div>
-        <div id="hist-body"><div class="load-row"><span class="spin"></span>&nbsp;Loading…</div></div>
+      <div class="feed-list" id="feed-list">
+        <div class="feed-empty">Loading signals…</div>
       </div>
     </div>
 
-    <!-- MACRO & BETA -->
-    <div class="panel" id="panel-macro">
-      <div class="g2">
-        <div class="card">
-          <div class="card-hd"><span class="card-title">Beta Deviations</span><span class="card-badge">vs Expected</span></div>
-          <div id="beta-dev-body"><div class="load-row"><span class="spin"></span>&nbsp;Loading…</div></div>
-        </div>
-        <div class="card">
-          <div class="card-hd"><span class="card-title">Factor Exposures</span><span class="card-badge">DXY · Rates · VIX</span></div>
-          <div id="beta-est-body"><div class="load-row"><span class="spin"></span>&nbsp;Loading…</div></div>
+  </div><!-- /p-state -->
+
+  <!-- ── CURRENCY MATRIX ── -->
+  <div class="panel" id="p-matrix">
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-ttl">Currency Cross Matrix</span>
+        <span class="card-sub">8 major currencies · click a cell for pair detail</span>
+      </div>
+      <div class="matrix-wrap">
+        <table class="matrix-grid" id="matrix-tbl">
+          <thead><tr id="matrix-head-row"></tr></thead>
+          <tbody id="matrix-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card mt">
+      <div class="card-hd"><span class="card-ttl">Legend</span></div>
+      <div style="display:flex;gap:16px;padding:12px 16px;font-size:10px">
+        <span><span class="chip bull">BULL</span> Base currency stronger</span>
+        <span><span class="chip bear">BEAR</span> Base currency weaker</span>
+        <span><span class="chip range">RANGE</span> Oscillating</span>
+        <span><span class="chip chop">CHOP</span> No clear bias</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAIR DETAIL ── -->
+  <div class="panel" id="p-pair">
+    <div class="pair-hero" id="pair-hero">
+      <div style="color:var(--t3);font-size:12px">Select a pair from Market State or the Matrix</div>
+    </div>
+    <div class="pair-scroll">
+      <div id="pair-body"></div>
+    </div>
+  </div>
+
+  <!-- ── BOT & LINKS ── -->
+  <div class="panel" id="p-bot">
+    <div class="g3" id="bot-cards">
+      <div class="bot-card">
+        <div class="bc-hd"><span class="bc-name">Main Bot</span><span class="bc-st off" id="bs-main">—</span></div>
+        <div class="bc-stats">
+          <div><div class="bs-l">Today P&amp;L</div><div class="bs-v" id="bm-pnl">—</div></div>
+          <div><div class="bs-l">Trades</div><div class="bs-v" id="bm-tr">—</div></div>
+          <div><div class="bs-l">Last Seen</div><div class="bs-v" id="bm-seen" style="font-size:11px">—</div></div>
         </div>
       </div>
-      <div class="card mt">
-        <div class="card-hd"><span class="card-title">Analysis Tools</span></div>
-        <div class="link-grid">
-          <a href="index.html" class="lnk"><div class="lnk-title">Main Dashboard</div><div class="lnk-desc">Confluence, signals, OI, COT</div></a>
-          <a href="vol-forecast.html" class="lnk"><div class="lnk-title">Vol Forecast</div><div class="lnk-desc">Full EWMA range forecast</div></a>
-          <a href="index.html" class="lnk"><div class="lnk-title">HMM V2 Regime</div><div class="lnk-desc">Baum-Welch model detail</div></a>
-          <a href="index.html" class="lnk"><div class="lnk-title">Beta Factor Panel</div><div class="lnk-desc">Kalman filter exposures</div></a>
-          <a href="index.html" class="lnk"><div class="lnk-title">Macro Compass</div><div class="lnk-desc">Yield spread confluence</div></a>
-          <a href="index.html" class="lnk"><div class="lnk-title">COT Analysis</div><div class="lnk-desc">Commitment of traders</div></a>
+      <div class="bot-card">
+        <div class="bc-hd"><span class="bc-name">Gold Bot</span><span class="bc-st off" id="bs-gold">—</span></div>
+        <div class="bc-stats">
+          <div><div class="bs-l">Today P&amp;L</div><div class="bs-v" id="bg-pnl">—</div></div>
+          <div><div class="bs-l">Trades</div><div class="bs-v" id="bg-tr">—</div></div>
+          <div><div class="bs-l">Last Seen</div><div class="bs-v" id="bg-seen" style="font-size:11px">—</div></div>
+        </div>
+      </div>
+      <div class="bot-card">
+        <div class="bc-hd"><span class="bc-name">Regime Bot</span><span class="bc-st off" id="bs-reg">—</span></div>
+        <div class="bc-stats">
+          <div><div class="bs-l">Today P&amp;L</div><div class="bs-v" id="br-pnl">—</div></div>
+          <div><div class="bs-l">Trades</div><div class="bs-v" id="br-tr">—</div></div>
+          <div><div class="bs-l">Last Seen</div><div class="bs-v" id="br-seen" style="font-size:11px">—</div></div>
         </div>
       </div>
     </div>
-
-    <!-- BOT STATUS -->
-    <div class="panel" id="panel-bot">
-      <div class="g3">
-        <div class="bot-card">
-          <div class="bc-hd"><span class="bc-name">Main Bot</span><span class="bc-status off" id="bs-main">—</span></div>
-          <div class="bc-stats">
-            <div><div class="bs-lbl">Today P&amp;L</div><div class="bs-val" id="bm-pnl">—</div></div>
-            <div><div class="bs-lbl">Trades</div><div class="bs-val" id="bm-trades">—</div></div>
-            <div><div class="bs-lbl">Last Seen</div><div class="bs-val" id="bm-seen">—</div></div>
-          </div>
-        </div>
-        <div class="bot-card">
-          <div class="bc-hd"><span class="bc-name">Gold Bot</span><span class="bc-status off" id="bs-gold">—</span></div>
-          <div class="bc-stats">
-            <div><div class="bs-lbl">Today P&amp;L</div><div class="bs-val" id="bg-pnl">—</div></div>
-            <div><div class="bs-lbl">Trades</div><div class="bs-val" id="bg-trades">—</div></div>
-            <div><div class="bs-lbl">Last Seen</div><div class="bs-val" id="bg-seen">—</div></div>
-          </div>
-        </div>
-        <div class="bot-card">
-          <div class="bc-hd"><span class="bc-name">Regime Bot</span><span class="bc-status off" id="bs-reg">—</span></div>
-          <div class="bc-stats">
-            <div><div class="bs-lbl">Today P&amp;L</div><div class="bs-val" id="br-pnl">—</div></div>
-            <div><div class="bs-lbl">Trades</div><div class="bs-val" id="br-trades">—</div></div>
-            <div><div class="bs-lbl">Last Seen</div><div class="bs-val" id="br-seen">—</div></div>
-          </div>
-        </div>
-      </div>
-      <div class="card mt">
-        <div class="card-hd"><span class="card-title">Dashboard Pages</span></div>
-        <div class="link-grid">
-          <a href="index.html" class="lnk"><div class="lnk-title">Main Dashboard</div><div class="lnk-desc">Signal analysis &amp; entries</div></a>
-          <a href="vol-forecast.html" class="lnk"><div class="lnk-title">Vol Forecast</div><div class="lnk-desc">EWMA range forecasting</div></a>
-          <a href="performance.html" class="lnk"><div class="lnk-title">Performance</div><div class="lnk-desc">Bot P&amp;L and ML stats</div></a>
-          <a href="journal.html" class="lnk"><div class="lnk-title">Trade Journal</div><div class="lnk-desc">Calendar, replay, export</div></a>
-          <a href="bot-config.html" class="lnk"><div class="lnk-title">Bot Config</div><div class="lnk-desc">Kill switch &amp; parameters</div></a>
-          <a href="indexv2.html" class="lnk" style="border-color:rgba(240,168,48,.35)"><div class="lnk-title" style="color:var(--gold)">Market Intel v2</div><div class="lnk-desc">This page</div></a>
-        </div>
+    <div class="card mt">
+      <div class="card-hd"><span class="card-ttl">Dashboard Pages</span></div>
+      <div class="lnk-grid">
+        <a href="index.html" class="lnk"><div class="lnk-t">Main Dashboard</div><div class="lnk-d">Confluence, signals, OI, COT</div></a>
+        <a href="vol-forecast.html" class="lnk"><div class="lnk-t">Vol Forecast</div><div class="lnk-d">EWMA range forecasting</div></a>
+        <a href="performance.html" class="lnk"><div class="lnk-t">Performance</div><div class="lnk-d">Bot P&amp;L and ML stats</div></a>
+        <a href="journal.html" class="lnk"><div class="lnk-t">Trade Journal</div><div class="lnk-d">Calendar, replay, export</div></a>
+        <a href="bot-config.html" class="lnk"><div class="lnk-t">Bot Config</div><div class="lnk-d">Kill switch &amp; parameters</div></a>
+        <a href="indexv2.html" class="lnk" style="border-color:rgba(200,152,32,.4)"><div class="lnk-t" style="color:var(--goldl)">Market Intel v2</div><div class="lnk-d">This page</div></a>
       </div>
     </div>
+  </div>
 
-  </div><!-- /content -->
-</div><!-- /layout -->
+</div><!-- /panels -->
 
 <script>
-// ── CONFIG ──────────────────────────────────────────────────────────
+// ── CONFIG ──────────────────────────────────────────
 const PAIRS = [
   'EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD',
   'EUR/GBP','USD/CAD','USD/CHF','GBP/JPY','EUR/JPY',
-  'EUR/CHF','GBP/CHF','AUD/JPY','CAD/JPY','NZD/USD','NAS100_USD'
+  'EUR/CHF','GBP/CHF','AUD/JPY','CAD/JPY','NZD/USD',
+  'EUR/AUD','EUR/NZD','EUR/CAD','GBP/AUD','GBP/NZD',
+  'GBP/CAD','AUD/NZD','AUD/CHF','AUD/CAD','NZD/JPY',
+  'CAD/JPY','CHF/JPY'
 ];
+const CCY8 = ['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF'];
 
-// ── STATE ───────────────────────────────────────────────────────────
+// ── STATE ───────────────────────────────────────────
 const ST = { regimes:{}, vol:{}, sess:{}, hist:[], levels:{}, betaDev:null, betaEst:null, activePair:null, loaded:new Set() };
 
-// ── UTILS ───────────────────────────────────────────────────────────
-const $  = id => document.getElementById(id);
+// ── UTILS ───────────────────────────────────────────
+const $ = id => document.getElementById(id);
 const mk = (tag,cls,html) => { const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; };
-
 async function api(p){ const r=await fetch(p); if(!r.ok)throw new Error(r.statusText); return r.json(); }
 async function kv(k){ return api('/api/kv/get?key='+k); }
-function vk(p){ return p==='NAS100_USD'?'NAS100':p.replace('/',''); }
+function vk(p){ if(p==='NAS100_USD')return 'NAS100'; if(p==='XAU/USD')return 'XAUUSD'; return p.replace('/',''); }
 function normR(r){
   if(!r)return 'NEU';
   const s=String(r).toUpperCase();
@@ -403,62 +511,270 @@ function pct(v,d=2){ return v!=null?`${(+v).toFixed(d)}%`:'—'; }
 function num(v,d=2){ return v!=null?(+v).toFixed(d):'—'; }
 function ago(ts){ if(!ts)return '—'; const s=(Date.now()-new Date(ts).getTime())/1e3; return s<60?Math.round(s)+'s ago':s<3600?Math.round(s/60)+'m ago':Math.round(s/3600)+'h ago'; }
 function starz(n){ return n?'★'.repeat(Math.min(n,5)):''; }
+function flip(r){ if(r==='BULL')return 'BEAR'; if(r==='BEAR')return 'BULL'; return r; }
 
-// ── CLOCK ───────────────────────────────────────────────────────────
+// ── CLOCK ───────────────────────────────────────────
 function tick(){
   const now=new Date(), h=now.getUTCHours();
   $('clock').textContent=now.toUTCString().slice(17,25)+' UTC';
   let s='PACIFIC';
   if(h<3)s='SYDNEY'; else if(h<8)s='TOKYO'; else if(h<13)s='LONDON'; else if(h<22)s='NEW YORK';
   $('sess-badge').textContent=s;
+  // Session quad
+  $('q-sess-val').textContent=s;
+  const prog={TOKYO:30,LONDON:65,NEWYORK:55,'NEW YORK':55,SYDNEY:20,PACIFIC:5}[s.replace(' ','')]||10;
+  $('q-sess-bar').style.width=prog+'%';
+  const sessDesc={SYDNEY:'Quiet open. Asian majors warming up.',TOKYO:'Asian session active. JPY pairs in focus.','NEW YORK':'NY overlap with London. Highest liquidity.',LONDON:'European session. EUR, GBP most active.',PACIFIC:'Minimal volume. Overnight gaps possible.'};
+  $('q-sess-sub').textContent=sessDesc[s]||'Markets open.';
 }
 setInterval(tick,1000); tick();
 
-// ── TABS ────────────────────────────────────────────────────────────
+// ── TABS ────────────────────────────────────────────
 function switchTab(id){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  $('panel-'+id).classList.add('active');
+  $('p-'+id).classList.add('active');
   if(!ST.loaded.has(id)){
     ST.loaded.add(id);
-    if(id==='session')loadSession();
-    if(id==='macro')loadMacro();
     if(id==='bot')loadBot();
+    if(id==='matrix')renderMatrix();
   }
 }
 
-// ── SIDEBAR ─────────────────────────────────────────────────────────
-function buildSidebar(){
-  const list=$('sb-list'); list.innerHTML='';
+// ── CURRENCY STRENGTH ───────────────────────────────
+function computeStrengths(){
+  const scores={};
+  CCY8.forEach(c=>scores[c]=0);
   PAIRS.forEach(pair=>{
-    const k=vk(pair), reg=normR(ST.regimes[pair]||ST.regimes[k]), cls=rc(reg);
-    const vd=ST.vol[k]||{}, s=ST.sess[k], con=s?.total_consumed_pct||0;
-    const col={bull:'var(--green)',bear:'var(--red)',range:'var(--blue)',chop:'var(--purple)',neu:'var(--t3)'}[cls];
-    const row=mk('div','pair-row'+(ST.activePair===pair?' active':''));
-    row.innerHTML=`
-      <div class="pr-name">${pair}</div>
-      <div class="pr-reg ${cls}">${reg}</div>
-      <div class="pr-vol">${vd.vol_pct!=null?pct(vd.vol_pct):'—'}</div>
-      <div class="pr-sess">${con?pct(con,0)+' sess':''}</div>
-      <div class="pr-bar"><div class="pr-bar-fill" style="width:${Math.min(con,100)}%;background:${col}"></div></div>`;
-    row.addEventListener('click',()=>selectPair(pair));
-    list.appendChild(row);
+    if(pair==='XAU/USD')return;
+    const parts=pair.split('/');
+    const base=parts[0], quote=parts[1];
+    const reg=normR(ST.regimes[pair]||ST.regimes[vk(pair)]);
+    const s={BULL:2,BEAR:-2,RANGE:0.5,CHOP:0,NEU:0}[reg]||0;
+    if(CCY8.includes(base))scores[base]+=s;
+    if(CCY8.includes(quote))scores[quote]-=s;
+  });
+  return CCY8.map(c=>({c,s:scores[c]})).sort((a,b)=>b.s-a.s);
+}
+
+function renderCcyStrip(strengths){
+  const strip=$('ccy-strip'); strip.innerHTML='';
+  const max=Math.max(...strengths.map(x=>Math.abs(x.s)),1);
+  strengths.forEach(({c,s})=>{
+    const cls=s>1?'strong':s<-1?'weak':'flat';
+    const arrow=s>1?'▲':s<-1?'▼':'—';
+    const pill=mk('div','ccy-pill '+cls);
+    pill.innerHTML=`<span>${c}</span><span class="ccy-arrow">${arrow}</span>`;
+    pill.title=`${c} score: ${s.toFixed(1)}`;
+    strip.appendChild(pill);
   });
 }
 
-// ── SELECT PAIR ─────────────────────────────────────────────────────
-function selectPair(pair){
-  ST.activePair=pair;
-  document.querySelectorAll('.pair-row').forEach((el,i)=>el.classList.toggle('active',PAIRS[i]===pair));
-  switchTab('pair'); ST.loaded.add('pair');
-  renderPair(pair);
+// ── LOAD OVERVIEW ───────────────────────────────────
+async function loadOverview(){
+  $('feed-spin').style.display='inline-block';
+  const [rr,vv,ll,lv]=await Promise.allSettled([
+    api('/api/hmm/regimes'),
+    api('/api/vol-forecast'),
+    api('/api/levels'),
+    api('/api/vol-forecast/live')
+  ]);
+  if(rr.status==='fulfilled'){ const d=rr.value; Object.assign(ST.regimes,d.pairs||d.regimes||d||{}); }
+  if(vv.status==='fulfilled'){ const d=vv.value; Object.assign(ST.vol,d.pairs||d||{}); }
+  if(ll.status==='fulfilled'){ const d=ll.value; Object.assign(ST.levels,d.pairs||d||{}); }
+  if(lv.status==='fulfilled'){ const d=lv.value; Object.assign(ST.sess,d.pairs||d||{}); }
+
+  // Also try kv for beta
+  try { ST.betaDev=await kv('beta_deviation'); } catch(e){}
+
+  updateQuads();
+  renderRegBar();
+  renderPairsTable();
+  renderCcyStrip(computeStrengths());
+  renderFeed();
+  $('feed-spin').style.display='none';
 }
 
-function renderPair(pair){
+// ── QUADRANT UPDATE ─────────────────────────────────
+function updateQuads(){
+  const c={BULL:0,BEAR:0,RANGE:0,CHOP:0,NEU:0};
+  const tracked=PAIRS.filter(p=>p!=='XAU/USD'&&p!=='NAS100_USD');
+  tracked.forEach(p=>{ const n=normR(ST.regimes[p]||ST.regimes[vk(p)]); c[n]=(c[n]||0)+1; });
+  const tot=tracked.length||1;
+
+  // Dominant regime
+  const dom=Object.entries(c).sort((a,b)=>b[1]-a[1])[0];
+  const domEl=$('q-dom-val'); domEl.textContent=dom[0]; domEl.className='quad-val '+rc(dom[0]);
+  $('q-dom-sub').textContent=`${dom[1]} of ${tot} pairs · BULL:${c.BULL} BEAR:${c.BEAR} RANGE:${c.RANGE}`;
+  $('q-dom-bar').style.width=(dom[1]/tot*100).toFixed(0)+'%';
+  $('q-dom-bar').style.background={BULL:'var(--green)',BEAR:'var(--red)',RANGE:'var(--blue)',CHOP:'var(--t2)',NEU:'var(--t3)'}[dom[0]]||'var(--blue)';
+
+  // Risk environment
+  const bullBias=c.BULL-c.BEAR;
+  const riskEl=$('q-risk-val');
+  if(bullBias>4){ riskEl.textContent='RISK-ON'; riskEl.className='quad-val bull'; $('q-risk-sub').textContent=`${c.BULL} bull pairs dominating. Risk assets favoured.`; $('q-risk-bar').style.cssText='width:80%;background:var(--green)'; }
+  else if(bullBias<-4){ riskEl.textContent='RISK-OFF'; riskEl.className='quad-val bear'; $('q-risk-sub').textContent=`${c.BEAR} bear pairs dominating. Defensives & JPY likely bid.`; $('q-risk-bar').style.cssText='width:20%;background:var(--red)'; }
+  else{ riskEl.textContent='NEUTRAL'; riskEl.className='quad-val neu'; $('q-risk-sub').textContent=`Mixed signals. No dominant risk bias. Wait for clarity.`; $('q-risk-bar').style.cssText='width:50%;background:var(--t2)'; }
+
+  // Vol environment
+  const vols=PAIRS.map(p=>ST.vol[vk(p)]?.vol_pct).filter(v=>v!=null).map(Number);
+  if(vols.length){
+    const avg=vols.reduce((a,b)=>a+b,0)/vols.length;
+    const volEl=$('q-vol-val'); volEl.textContent=avg.toFixed(2)+'%';
+    const level=avg<0.4?'Low':avg<0.7?'Normal':avg<1?'Elevated':'High';
+    $('q-vol-sub').textContent=`${level} volatility environment. Avg ${avg.toFixed(2)}% daily range.`;
+    $('q-vol-bar').style.width=Math.min(avg/1.2*100,100).toFixed(0)+'%';
+    $('q-vol-bar').style.background=avg>0.8?'var(--red)':avg>0.6?'var(--gold)':'var(--green)';
+  }
+
+  // Counts for reg bar legend
+  $('cnt-bull').textContent=c.BULL; $('cnt-bear').textContent=c.BEAR;
+  $('cnt-range').textContent=c.RANGE; $('cnt-chop').textContent=c.CHOP; $('cnt-neu').textContent=c.NEU;
+  $('reg-total').textContent=`${tot} pairs`;
+}
+
+// ── REGIME BAR ──────────────────────────────────────
+function renderRegBar(){
+  const bar=$('reg-bar'); bar.innerHTML='';
+  const pairs=PAIRS.filter(p=>p!=='XAU/USD'&&p!=='NAS100_USD');
+  const c={BULL:0,BEAR:0,RANGE:0,CHOP:0,NEU:0};
+  pairs.forEach(p=>{ const n=normR(ST.regimes[p]||ST.regimes[vk(p)]); c[n]=(c[n]||0)+1; });
+  const tot=pairs.length||1;
+  const cols={BULL:'var(--green)',BEAR:'var(--red)',RANGE:'var(--blue)',CHOP:'var(--t2)',NEU:'var(--t3)'};
+  Object.entries(c).forEach(([k,v])=>{ if(!v)return; const s=mk('div','rb-seg'); s.style.cssText=`width:${(v/tot*100).toFixed(1)}%;background:${cols[k]}`; s.title=`${k}: ${v}`; bar.appendChild(s); });
+}
+
+// ── PAIRS TABLE ─────────────────────────────────────
+function renderPairsTable(){
+  const tb=$('pairs-tbl-body'); tb.innerHTML='';
+  PAIRS.forEach(pair=>{
+    const k=vk(pair), reg=normR(ST.regimes[pair]||ST.regimes[k]), cls=rc(reg);
+    const vd=ST.vol[k]||{}, sd=ST.sess[k]||{};
+    const tr=mk('tr');
+    tr.innerHTML=`
+      <td class="pair-link" onclick="openPair('${pair}')">${pair}</td>
+      <td><span class="chip ${cls}">${reg}</span></td>
+      <td class="mono">${vd.vol_pct!=null?pct(vd.vol_pct):'—'}</td>
+      <td class="mono">${vd.hl_median!=null?num(vd.hl_median,0):'—'}</td>
+      <td class="mono">${vd.hl_p75!=null?num(vd.hl_p75,0):'—'}</td>
+      <td class="mono">${sd.total_consumed_pct!=null?pct(sd.total_consumed_pct,0):'—'}</td>
+    `;
+    tr.addEventListener('click',()=>openPair(pair));
+    tb.appendChild(tr);
+  });
+}
+
+// ── INTEL FEED ──────────────────────────────────────
+function renderFeed(){
+  const items=[];
+  PAIRS.forEach(pair=>{
+    const k=vk(pair);
+    const reg=normR(ST.regimes[pair]||ST.regimes[k]);
+    const vd=ST.vol[k]||{}, sd=ST.sess[k]||{};
+    const dev=ST.betaDev?.[pair]||ST.betaDev?.[k];
+
+    // Vol extremes
+    if(vd.hl_p75&&sd.live_hl){
+      const ratio=sd.live_hl/vd.hl_p75;
+      if(ratio>1.05)  items.push({pair,type:'vol',msg:`Range exceeded 75th pct forecast`,sev:Math.min(ratio-1,1),score:ratio*6});
+      else if(ratio>0.8) items.push({pair,type:'vol',msg:`Near 75th pct (${(ratio*100).toFixed(0)}%)`,sev:ratio-0.8,score:ratio*3});
+    }
+
+    // High session consumption
+    const con=sd.total_consumed_pct||0;
+    if(con>80) items.push({pair,type:'session',msg:`${con.toFixed(0)}% of daily range consumed`,sev:Math.min((con-80)/20,1),score:con/8});
+
+    // Beta deviations
+    if(dev!=null){
+      const v=typeof dev==='object'?(dev.deviation??dev.value??0):+dev;
+      if(Math.abs(v)>1.5) items.push({pair,type:'macro',msg:`Beta deviation ${v>0?'+':''}${v.toFixed(2)} — ${Math.abs(v)>2?'extreme':'elevated'}`,sev:Math.min(Math.abs(v)/3,1),score:Math.abs(v)*3});
+    }
+
+    // Strong trending pairs (high conviction)
+    if(reg==='BULL'||reg==='BEAR'){
+      const score=vd.vol_pct?+vd.vol_pct:0.5;
+      items.push({pair,type:'regime',msg:`${reg} regime · ${vd.vol_pct?pct(vd.vol_pct)+' vol':''}`,sev:0.4,score:score*1.5});
+    }
+  });
+
+  // Sort by score, deduplicate pair to top item per pair
+  const seen=new Set();
+  const deduped=items.sort((a,b)=>b.score-a.score).filter(i=>{ if(seen.has(i.pair))return false; seen.add(i.pair); return true; }).slice(0,18);
+
+  const list=$('feed-list'); list.innerHTML='';
+  if(!deduped.length){ list.innerHTML='<div class="feed-empty">No notable signals — market appears calm</div>'; return; }
+
+  const typeColor={vol:'var(--gold)',regime:'var(--blue)',macro:'var(--red)',session:'var(--green)'};
+  deduped.forEach(item=>{
+    const div=mk('div','feed-item');
+    div.innerHTML=`
+      <div class="fi-dot ${item.type}" style="background:${typeColor[item.type]}"></div>
+      <div class="fi-body">
+        <div class="fi-pair">${item.pair}</div>
+        <div class="fi-msg">${item.msg}</div>
+      </div>
+      <div class="fi-sev">
+        <div class="fi-sev-bar"><div class="fi-sev-fill" style="width:${(item.sev*100).toFixed(0)}%;background:${typeColor[item.type]}"></div></div>
+      </div>
+    `;
+    div.addEventListener('click',()=>openPair(item.pair));
+    list.appendChild(div);
+  });
+}
+
+// ── CURRENCY MATRIX ─────────────────────────────────
+function getCross(base,quote){
+  if(base===quote)return null;
+  const p1=`${base}/${quote}`, p2=`${quote}/${base}`;
+  const r1=ST.regimes[p1]||ST.regimes[vk(p1)];
+  const r2=ST.regimes[p2]||ST.regimes[vk(p2)];
+  const v1=ST.vol[vk(p1)], v2=ST.vol[vk(p2)];
+  if(r1!=null)return{pair:p1,reg:normR(r1),vol:v1};
+  if(r2!=null)return{pair:p2,reg:flip(normR(r2)),vol:v2,inv:true};
+  return null;
+}
+
+function renderMatrix(){
+  const head=$('matrix-head-row'); head.innerHTML='<th></th>';
+  CCY8.forEach(c=>{ const th=mk('th'); th.textContent=c; head.appendChild(th); });
+
+  const body=$('matrix-body'); body.innerHTML='';
+  CCY8.forEach(base=>{
+    const tr=mk('tr');
+    const th=mk('th'); th.textContent=base; tr.appendChild(th);
+    CCY8.forEach(quote=>{
+      const td=mk('td');
+      if(base===quote){
+        const cell=mk('div','m-cell none'); cell.innerHTML='<span class="m-dash">·</span>'; td.appendChild(cell);
+      } else {
+        const cross=getCross(base,quote);
+        if(cross){
+          const cls=rc(cross.reg);
+          const cell=mk('div',`m-cell ${cls}`);
+          const vd=cross.vol||{};
+          cell.innerHTML=`
+            <div class="mc-pair">${cross.pair}</div>
+            <div class="mc-reg ${cls}">${cross.reg}</div>
+            <div class="mc-vol">${vd.vol_pct!=null?pct(vd.vol_pct):''}</div>
+          `;
+          cell.addEventListener('click',()=>openPair(cross.pair));
+          td.appendChild(cell);
+        } else {
+          const cell=mk('div','m-cell none'); cell.innerHTML='<span class="m-dash" style="font-size:10px;color:var(--border)">—</span>'; td.appendChild(cell);
+        }
+      }
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+}
+
+// ── PAIR DETAIL ─────────────────────────────────────
+function openPair(pair){
+  ST.activePair=pair; switchTab('pair'); ST.loaded.add('pair');
   const k=vk(pair), reg=normR(ST.regimes[pair]||ST.regimes[k]), cls=rc(reg);
   const vd=ST.vol[k]||{}, sd=ST.sess[k]||{}, lvls=ST.levels[pair]||ST.levels[k]||[];
 
-  // Hero
   $('pair-hero').innerHTML=`
     <div class="ph-name">${pair}</div>
     <div class="ph-sep"></div>
@@ -466,205 +782,84 @@ function renderPair(pair){
     <div class="ph-sep"></div>
     <div class="ph-blk"><div class="ph-lbl">Daily Vol</div><div class="ph-val gold">${vd.vol_pct!=null?pct(vd.vol_pct):'—'}</div></div>
     <div class="ph-sep"></div>
-    <div class="ph-blk"><div class="ph-lbl">Median Range</div><div class="ph-val def">${vd.hl_median!=null?num(vd.hl_median,0)+' pips':'—'}</div></div>
+    <div class="ph-blk"><div class="ph-lbl">H-L Median</div><div class="ph-val def">${vd.hl_median!=null?num(vd.hl_median,0)+' pips':'—'}</div></div>
     <div class="ph-sep"></div>
-    <div class="ph-blk"><div class="ph-lbl">75th Range</div><div class="ph-val def">${vd.hl_p75!=null?num(vd.hl_p75,0)+' pips':'—'}</div></div>
-    <div class="ph-right"><a href="index.html" class="tb-link" style="padding:6px 12px;background:var(--s3);border:1px solid var(--border);border-radius:2px">Full Analysis →</a></div>`;
+    <div class="ph-blk"><div class="ph-lbl">75th H-L</div><div class="ph-val def">${vd.hl_p75!=null?num(vd.hl_p75,0)+' pips':'—'}</div></div>
+    <div class="ph-right"><a href="index.html" class="btn-sm">Full Analysis →</a></div>
+  `;
 
   const body=$('pair-body'); body.innerHTML='';
 
   // Vol card
   const vc=mk('div','card');
-  vc.innerHTML=`<div class="card-hd"><span class="card-title">Volatility Forecast</span><span class="card-badge">${pair}</span></div>`;
+  vc.innerHTML=`<div class="card-hd"><span class="card-ttl">Volatility Forecast</span><span class="card-sub">${pair}</span></div>`;
   if(Object.keys(vd).length){
-    const mHL=Math.max(vd.hl_p75||0,vd.hl_median||0)*1.25||100;
-    const mOC=Math.max(vd.oc_p75||0,vd.oc_median||0)*1.25||100;
+    const mHL=Math.max(vd.hl_p75||0,vd.hl_median||0)*1.3||100;
+    const mOC=Math.max(vd.oc_p75||0,vd.oc_median||0)*1.3||100;
     const live=sd.live_hl||0;
-    const pw=w=>(w/mHL*100).toFixed(1), ow=w=>(w/mOC*100).toFixed(1);
+    const pw=w=>(Math.min(w/mHL,1)*100).toFixed(1), ow=w=>(Math.min(w/mOC,1)*100).toFixed(1);
     vc.innerHTML+=`
       <div class="vrr">
         <div class="vrr-hd"><span>H-L Range (pips)</span><span>Live: <b>${num(live,0)}</b> &nbsp;·&nbsp; Median: <b>${num(vd.hl_median,0)}</b> &nbsp;·&nbsp; 75th: <b>${num(vd.hl_p75,0)}</b></span></div>
-        <div class="vrr-track">
-          <div class="vrr-p75" style="width:${pw(vd.hl_p75||0)}%"></div>
-          <div class="vrr-med" style="width:${pw(vd.hl_median||0)}%"></div>
-          <div class="vrr-live" style="left:${pw(live)}%"></div>
-        </div>
+        <div class="vrr-track"><div class="vrr-p75" style="width:${pw(vd.hl_p75||0)}%"></div><div class="vrr-med" style="width:${pw(vd.hl_median||0)}%"></div><div class="vrr-live" style="left:${pw(live)}%"></div></div>
       </div>
       <div class="vrr">
         <div class="vrr-hd"><span>O-C Move (pips)</span><span>Median: <b>${num(vd.oc_median,0)}</b> &nbsp;·&nbsp; 75th: <b>${num(vd.oc_p75,0)}</b></span></div>
-        <div class="vrr-track">
-          <div class="vrr-p75" style="width:${ow(vd.oc_p75||0)}%"></div>
-          <div class="vrr-med" style="width:${ow(vd.oc_median||0)}%"></div>
-        </div>
+        <div class="vrr-track"><div class="vrr-p75" style="width:${ow(vd.oc_p75||0)}%"></div><div class="vrr-med" style="width:${ow(vd.oc_median||0)}%"></div></div>
       </div>
       <div class="sess-row">${['asia','london','ny'].map(s=>{
         const d=sd[s]||{}, p=d.pct_consumed||0;
-        return `<div class="sess-pill"><div class="sp-name">${s.toUpperCase()}</div><div class="sp-val">${pct(p,0)}</div><div class="sp-track"><div class="sp-fill" style="width:${Math.min(p,100)}%"></div></div></div>`;
+        return `<div class="sess-p"><div class="sp-n">${s.toUpperCase()}</div><div class="sp-v">${pct(p,0)}</div><div class="sp-t"><div class="sp-f" style="width:${Math.min(p,100)}%"></div></div></div>`;
       }).join('')}</div>`;
   } else {
-    vc.innerHTML+=`<div class="load-row">No vol data available</div>`;
+    vc.innerHTML+=`<div class="load-row">No vol data available for ${pair}</div>`;
   }
   body.appendChild(vc);
 
   // Levels card
   const lc=mk('div','card mt');
-  lc.innerHTML=`<div class="card-hd"><span class="card-title">Key Levels</span><span class="card-badge">${lvls.length} levels</span></div>`;
+  lc.innerHTML=`<div class="card-hd"><span class="card-ttl">Key Levels</span><span class="card-sub">${lvls.length} levels</span></div>`;
   if(lvls.length){
     const tbl=mk('table','tbl'); tbl.innerHTML=`<thead><tr><th>Price</th><th>Direction</th><th>Stars</th><th>Signal</th><th>Tags</th></tr></thead>`;
     const tb=mk('tbody');
     lvls.slice(0,12).forEach(l=>{
       const d=(l.direction||'').toLowerCase(), dcls=d.includes('bull')?'bull':d.includes('bear')?'bear':'neu';
-      const tr=mk('tr');
-      tr.innerHTML=`<td class="mono">${l.price||'—'}</td><td><span class="tag ${dcls}">${l.direction||'—'}</span></td><td class="stars">${starz(l.stars)}</td><td class="mono" style="font-size:11px;color:var(--t2)">${l.signal||'—'}</td><td>${(l.tags||[]).map(t=>`<span class="tag neu">${t}</span>`).join('')}</td>`;
+      const tr=mk('tr'); tr.innerHTML=`<td class="mono">${l.price||'—'}</td><td><span class="tag ${dcls}">${l.direction||'—'}</span></td><td class="stars">${starz(l.stars)}</td><td class="mono" style="font-size:11px;color:var(--t2)">${l.signal||'—'}</td><td>${(l.tags||[]).map(t=>`<span class="tag neu">${t}</span>`).join('')}</td>`;
       tb.appendChild(tr);
     });
     tbl.appendChild(tb); lc.appendChild(tbl);
   } else {
-    lc.innerHTML+=`<div class="load-row">No levels data — open <a href="index.html" style="color:var(--gold)">Main Dashboard</a> to compute</div>`;
+    lc.innerHTML+=`<div class="load-row">No levels — open <a href="index.html" style="color:var(--goldl)">Main Dashboard</a> to compute</div>`;
   }
   body.appendChild(lc);
 }
 
-// ── LOAD OVERVIEW ───────────────────────────────────────────────────
-async function loadOverview(){
-  $('sb-spin').style.display='inline-block';
-  const [rr,vv,ll]=await Promise.allSettled([api('/api/hmm/regimes'),api('/api/vol-forecast'),api('/api/levels')]);
-  if(rr.status==='fulfilled'){ const d=rr.value; Object.assign(ST.regimes,d.pairs||d.regimes||d||{}); }
-  if(vv.status==='fulfilled'){ const d=vv.value; Object.assign(ST.vol,d.pairs||d||{}); }
-  if(ll.status==='fulfilled'){ const d=ll.value; Object.assign(ST.levels,d.pairs||d||{}); }
-  updateBreadth(); buildSidebar(); renderOvGrid(); renderVolTbl();
-  $('sb-spin').style.display='none';
-}
-
-function updateBreadth(){
-  const c={BULL:0,BEAR:0,RANGE:0,CHOP:0,NEU:0};
-  Object.values(ST.regimes).forEach(r=>{ const n=normR(r); c[n]=(c[n]||0)+1; });
-  $('cnt-bull').textContent=c.BULL; $('cnt-bear').textContent=c.BEAR;
-  $('cnt-range').textContent=c.RANGE; $('cnt-chop').textContent=c.CHOP; $('cnt-neu').textContent=c.NEU;
-  $('ov-bull').textContent=c.BULL; $('ov-bear').textContent=c.BEAR;
-  $('ov-range').textContent=c.RANGE; $('ov-chop').textContent=c.CHOP+c.NEU;
-  const tot=Math.max(Object.keys(ST.regimes).length,PAIRS.length);
-  $('ov-total').textContent=`${tot} pairs`;
-  const bar=$('reg-bar'); bar.innerHTML='';
-  const cols={BULL:'var(--green)',BEAR:'var(--red)',RANGE:'var(--blue)',CHOP:'var(--purple)',NEU:'var(--t3)'};
-  Object.entries(c).forEach(([k,v])=>{ if(!v)return; const s=mk('div','rb-seg'); s.style.cssText=`width:${(v/tot*100).toFixed(1)}%;background:${cols[k]}`; s.title=`${k}: ${v}`; bar.appendChild(s); });
-}
-
-function renderOvGrid(){
-  const g=$('ov-pair-grid'); g.innerHTML='';
-  PAIRS.forEach(pair=>{
-    const k=vk(pair), reg=normR(ST.regimes[pair]||ST.regimes[k]), cls=rc(reg), vd=ST.vol[k]||{};
-    const card=mk('div',`pg-card ${cls}`);
-    card.innerHTML=`<div class="pgc-name">${pair}</div><div class="pgc-reg ${cls}">${reg}</div><div class="pgc-row"><div class="pgc-vol">${vd.vol_pct!=null?pct(vd.vol_pct):'—'}</div><div class="pgc-pip">${vd.hl_median!=null?num(vd.hl_median,0)+' pips':''}</div></div>`;
-    card.addEventListener('click',()=>selectPair(pair));
-    g.appendChild(card);
-  });
-}
-
-function renderVolTbl(){
-  const tb=$('vol-tbl'); tb.innerHTML='';
-  PAIRS.forEach(pair=>{
-    const k=vk(pair), vd=ST.vol[k]||{}, reg=normR(ST.regimes[pair]||ST.regimes[k]), cls=rc(reg);
-    const tr=mk('tr');
-    tr.innerHTML=`<td class="mono clickable" onclick="selectPair('${pair}')">${pair}</td><td class="mono">${vd.vol_pct!=null?pct(vd.vol_pct):'—'}</td><td class="mono">${vd.hl_median!=null?num(vd.hl_median,0):'—'}</td><td class="mono">${vd.hl_p75!=null?num(vd.hl_p75,0):'—'}</td><td class="mono">${vd.oc_median!=null?num(vd.oc_median,0):'—'}</td><td><span class="pr-reg ${cls}">${reg}</span></td>`;
-    tb.appendChild(tr);
-  });
-}
-
-// ── LOAD SESSION ────────────────────────────────────────────────────
-async function loadSession(){
-  const [lv,hi]=await Promise.allSettled([api('/api/vol-forecast/live'),api('/api/vol-forecast/history')]);
-  if(lv.status==='fulfilled'){ Object.assign(ST.sess,lv.value.pairs||lv.value||{}); $('sess-ts').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false,hour:'2-digit',minute:'2-digit'})+' UTC'; renderSessGrid(); }
-  if(hi.status==='fulfilled'){ ST.hist=hi.value?.history||hi.value||[]; renderHistTbl(); }
-  buildSidebar();
-  if(ST.activePair)renderPair(ST.activePair);
-}
-
-function renderSessGrid(){
-  const div=$('sess-grid'); div.innerHTML='';
-  const tbl=mk('table','tbl'); tbl.innerHTML=`<thead><tr><th>Pair</th><th>Live H-L</th><th>Asia %</th><th>London %</th><th>NY %</th><th>Total %</th></tr></thead>`;
-  const tb=mk('tbody');
-  PAIRS.forEach(pair=>{
-    const k=vk(pair), s=ST.sess[k], tr=mk('tr');
-    if(!s){ tr.innerHTML=`<td class="mono" style="color:var(--t3)">${pair}</td><td colspan="5" style="color:var(--t3)">—</td>`; }
-    else { tr.innerHTML=`<td class="mono clickable" onclick="selectPair('${pair}')">${pair}</td><td class="mono">${num(s.live_hl,0)}</td><td class="mono">${s.asia?.pct_consumed!=null?pct(s.asia.pct_consumed):'—'}</td><td class="mono">${s.london?.pct_consumed!=null?pct(s.london.pct_consumed):'—'}</td><td class="mono">${s.ny?.pct_consumed!=null?pct(s.ny.pct_consumed):'—'}</td><td class="mono">${s.total_consumed_pct!=null?pct(s.total_consumed_pct):'—'}</td>`; }
-    tb.appendChild(tr);
-  });
-  tbl.appendChild(tb); div.appendChild(tbl);
-}
-
-function renderHistTbl(){
-  const div=$('hist-body'); div.innerHTML='';
-  if(!ST.hist.length){ div.innerHTML='<div class="load-row">No history data available</div>'; return; }
-  const tbl=mk('table','tbl'); tbl.innerHTML=`<thead><tr><th>Pair</th><th>Date</th><th>Vol %</th><th>H-L</th><th>O-C</th></tr></thead>`;
-  const tb=mk('tbody');
-  ST.hist.slice(0,50).forEach(r=>{ const tr=mk('tr'); tr.innerHTML=`<td class="mono">${r.pair||'—'}</td><td class="mono" style="color:var(--t2)">${r.date||'—'}</td><td class="mono">${r.vol_pct!=null?pct(r.vol_pct):'—'}</td><td class="mono">${r.hl!=null?num(r.hl,0):'—'}</td><td class="mono">${r.oc!=null?num(r.oc,0):'—'}</td>`; tb.appendChild(tr); });
-  tbl.appendChild(tb); div.appendChild(tbl);
-}
-
-// ── LOAD MACRO ──────────────────────────────────────────────────────
-async function loadMacro(){
-  const [dv,es]=await Promise.allSettled([kv('beta_deviation'),kv('beta_estimates')]);
-  if(dv.status==='fulfilled'){ ST.betaDev=dv.value; renderBetaDev(); }
-  if(es.status==='fulfilled'){ ST.betaEst=es.value; renderBetaEst(); }
-}
-
-function renderBetaDev(){
-  const div=$('beta-dev-body'); div.innerHTML='';
-  const d=ST.betaDev;
-  if(!d||typeof d!=='object'){ div.innerHTML='<div class="load-row">No beta deviation data</div>'; return; }
-  Object.entries(d).slice(0,15).forEach(([pair,val])=>{
-    const v=typeof val==='object'?(val.deviation??val.value??0):+val, pos=v>=0;
-    const bw=Math.min(Math.abs(v)/2*50,50);
-    const row=mk('div','frow');
-    row.innerHTML=`<div class="fr-name">${pair}</div><div class="fr-val" style="color:${pos?'var(--green)':'var(--red)'}">${v>0?'+':''}${v.toFixed(3)}</div><div class="fr-track"><div class="fr-center"></div><div class="fr-fill" style="width:${bw}%;${pos?'left:50%':'right:50%'};background:${pos?'rgba(38,200,122,.35)':'rgba(232,77,95,.35)'}"></div></div><div class="fr-sig" style="color:${Math.abs(v)>1?'var(--gold)':'var(--t3)'}">${Math.abs(v)>1?'DEVIATED':'normal'}</div>`;
-    div.appendChild(row);
-  });
-}
-
-function renderBetaEst(){
-  const div=$('beta-est-body'); div.innerHTML='';
-  const d=ST.betaEst;
-  if(!d||typeof d!=='object'){ div.innerHTML='<div class="load-row">No beta estimates — requires Kalman filter data</div>'; return; }
-  Object.entries(d).slice(0,12).forEach(([pair,betas])=>{
-    if(typeof betas!=='object')return;
-    const row=mk('div','frow');
-    row.innerHTML=`<div class="fr-name">${pair}</div>${['dxy','rates','vix'].map(f=>{
-      const v=betas[f]??betas[f.toUpperCase()];
-      if(v==null)return `<div style="flex:1;text-align:center;font-size:10px;color:var(--t3)">—</div>`;
-      const pos=+v>=0;
-      return `<div style="flex:1;text-align:center"><div style="font-size:8px;color:var(--t3);margin-bottom:2px;letter-spacing:.8px">${f.toUpperCase()}</div><div class="mono" style="font-size:11px;font-weight:700;color:${pos?'var(--green)':'var(--red)'}">${(+v).toFixed(2)}</div></div>`;
-    }).join('')}`;
-    div.appendChild(row);
-  });
-}
-
-// ── LOAD BOT ────────────────────────────────────────────────────────
+// ── LOAD BOT ────────────────────────────────────────
 async function loadBot(){
   const [ma,go,re]=await Promise.allSettled([kv('bot_status'),kv('gold_bot_status'),kv('regime_bot_status')]);
   if(ma.status==='fulfilled')renderBot('main','m',ma.value);
   if(go.status==='fulfilled')renderBot('gold','g',go.value);
   if(re.status==='fulfilled')renderBot('reg','r',re.value);
 }
-
 function renderBot(id,k,d){
   if(!d)return;
   const se=$('bs-'+id), alive=d.alive??d.running??d.active??false;
   se.textContent=alive?'LIVE':d.error?'ERROR':'OFF';
-  se.className='bc-status '+(alive?'live':d.error?'err':'off');
+  se.className='bc-st '+(alive?'live':d.error?'err':'off');
   const p=$('b'+k+'-pnl'); if(p)p.textContent=d.pnl!=null?((d.pnl>0?'+':'')+d.pnl.toFixed(2)):'—';
-  const t=$('b'+k+'-trades'); if(t)t.textContent=d.trades??d.trade_count??'—';
+  const t=$('b'+k+'-tr'); if(t)t.textContent=d.trades??d.trade_count??'—';
   const s=$('b'+k+'-seen'); if(s)s.textContent=ago(d.last_heartbeat||d.ts||d.timestamp);
 }
 
-// ── REFRESH ─────────────────────────────────────────────────────────
+// ── REFRESH ─────────────────────────────────────────
 function refreshAll(){
   ST.loaded=new Set(); loadOverview();
-  const ap=document.querySelector('.panel.active')?.id?.replace('panel-','');
-  if(ap&&ap!=='overview'){ ST.loaded.add(ap); if(ap==='session')loadSession(); if(ap==='macro')loadMacro(); if(ap==='bot')loadBot(); if(ap==='pair'&&ST.activePair)renderPair(ST.activePair); }
+  const ap=document.querySelector('.panel.active')?.id?.replace('p-','');
+  if(ap==='bot'){ ST.loaded.add('bot'); loadBot(); }
+  if(ap==='matrix'){ ST.loaded.add('matrix'); }
 }
 
-// ── INIT ─────────────────────────────────────────────────────────────
+// ── INIT ─────────────────────────────────────────────
 loadOverview();
 </script>
 </body>
