@@ -86,6 +86,8 @@
   border-radius: var(--rl);
   overflow: hidden;
   margin-top: 12px;
+  display: flex;
+  flex-direction: column;
 }
 .rb-chart-topbar {
   display: flex;
@@ -117,10 +119,41 @@
 }
 .rb-chart-price-wrap {
   position: relative;
-  height: 300px;
+  height: 420px;
   background: #131722;
-  border-bottom: 1px solid #1c2133;
 }
+.rb-resize-handle {
+  height: 6px;
+  background: #1c2133;
+  cursor: ns-resize;
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.rb-resize-handle:hover, .rb-resize-handle.dragging { background: #4f7df0; }
+.rb-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 36px; height: 2px;
+  background: rgba(255,255,255,.18);
+  border-radius: 1px;
+}
+.rb-metrics-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #5a6380;
+  background: none;
+  border: 1px solid #1c2133;
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.rb-metrics-btn:hover { color: #d1d4dc; border-color: #4f7df0; }
 #rbPriceChart { width: 100%; height: 100%; }
 .rb-hover-box {
   position: absolute;
@@ -510,6 +543,8 @@
       <span class="rb-lbl">BEAR</span>
       <span style="width:8px;height:8px;background:#f0a030;border-radius:50%;display:inline-block"></span>
       <span class="rb-lbl">RANGE</span>
+      <div style="width:1px;height:16px;background:#1c2133;flex-shrink:0"></div>
+      <button class="rb-metrics-btn" id="metricsToggle" onclick="toggleMetrics()">Hide metrics</button>
     </div>
   </div>
   <div class="rb-chart-price-wrap" id="chartWrap">
@@ -522,6 +557,7 @@
       <div class="hb-row" id="hbDecayRow"><span class="hb-key">Decay</span><span class="hb-val" id="hbDecay">—</span></div>
     </div>
   </div>
+  <div class="rb-resize-handle" id="chartResizeHandle" title="Drag to resize chart"></div>
   <div id="rbMetricsGrid"></div>
   <div class="trade-nav-bar" id="tradeNavBar" style="display:none">
     <button class="trade-nav-btn" id="navPrev" onclick="walkTrade(-1)">← Prev trade</button>
@@ -2236,6 +2272,48 @@ function jumpToTrade(tradeIdx) {
     row.classList.toggle('selected-row', allTrades.indexOf(filteredTrades[pageStart + i]) === tradeIdx);
   });
 }
+
+// ─── Chart resize & metrics toggle ───────────────────────────────────────────
+function toggleMetrics() {
+  const grid = document.getElementById('rbMetricsGrid');
+  const btn  = document.getElementById('metricsToggle');
+  const hide = grid.style.display !== 'none';
+  grid.style.display = hide ? 'none' : 'flex';
+  btn.textContent = hide ? 'Show metrics' : 'Hide metrics';
+}
+
+function initChartDrag() {
+  const handle    = document.getElementById('chartResizeHandle');
+  const chartWrap = document.getElementById('chartWrap');
+  if (!handle || !chartWrap) return;
+  let startY = 0, startH = 0;
+
+  handle.addEventListener('mousedown', e => {
+    startY = e.clientY;
+    startH = chartWrap.offsetHeight;
+    handle.classList.add('dragging');
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'ns-resize';
+
+    const onMove = mv => {
+      const newH = Math.max(180, Math.min(900, startH + mv.clientY - startY));
+      chartWrap.style.height = newH + 'px';
+      if (typeof chart1 !== 'undefined' && chart1)
+        chart1.resize(chartWrap.offsetWidth, newH);
+    };
+    const onUp = () => {
+      handle.classList.remove('dragging');
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initChartDrag);
 
 function walkTrade(dir) {
   const next = selectedTradeIdx + dir;
