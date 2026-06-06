@@ -611,6 +611,152 @@
 </div>
 
 </div><!-- /analyticsSection -->
+
+<!-- ── Help & Setup ──────────────────────────────────────────────────────────── -->
+<div style="margin-top:16px;margin-bottom:40px">
+  <button onclick="toggleHelp()" id="helpToggleBtn" style="
+    width:100%;display:flex;align-items:center;justify-content:space-between;
+    background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);
+    padding:10px 16px;cursor:pointer;color:var(--text2);font-family:'DM Sans',sans-serif;
+    font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">
+    <span>⚙ Setup &amp; Reference — data pipeline, R2 seeding, config guide, troubleshooting</span>
+    <span id="helpArrow" style="font-size:10px;opacity:.5;margin-left:8px;transition:transform .2s">▼</span>
+  </button>
+  <div id="helpBody" style="display:none;background:var(--s1);border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--rl) var(--rl);padding:20px 22px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text2);line-height:1.7">
+
+    <!-- Seed R2 -->
+    <div style="background:#1a2236;border:1.5px solid #3b82f6;border-radius:8px;padding:16px 18px;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:#60a5fa;margin-bottom:4px">⚡ One-time R2 Seed — do this after every backfill</div>
+      <div style="color:var(--text3);margin-bottom:12px;font-size:11px">
+        Regime records from the local <code style="background:#0d1117;padding:1px 5px;border-radius:3px;color:#a78bfa">data/regime_history/</code> files
+        need to be uploaded to R2 once so they survive Railway redeploys.
+        After seeding, the backtester reads history from R2 permanently.
+        Repeat this whenever you run a fresh backfill from the Regime Viewer.
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button id="seedBtn" onclick="seedR2()" style="
+          background:#3b82f6;border:none;border-radius:6px;padding:8px 18px;
+          color:#fff;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap">
+          Upload local files → R2
+        </button>
+        <span id="seedOut" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3)"></span>
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:#5a6380;font-family:'DM Mono',monospace">
+        Equivalent curl: <code style="color:#a78bfa">curl -X POST https://&lt;railway-url&gt;/api/regime-history-export</code>
+      </div>
+    </div>
+
+    <!-- Data pipeline -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--text1);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">Data Pipeline</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-weight:700;color:#00c97d;margin-bottom:4px;font-size:11px">① Bots run → local KV ring buffer</div>
+          <div style="color:var(--text3);font-size:11px">Every bot poll writes regime state (conf, decay, vz, rl, regime…) to <code style="color:#a78bfa">data/kv.json</code> on Railway. Holds last 48-96h. <strong style="color:#f87171">Wiped on every Railway redeploy.</strong></div>
+        </div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-weight:700;color:#f0a030;margin-bottom:4px;font-size:11px">② Regime Viewer → Backfill logs</div>
+          <div style="color:var(--text3);font-size:11px">The "Backfill logs" button in Regime Viewer reads bot log files and exports all regime records to <code style="color:#a78bfa">data/regime_history/v1/*.json</code> and <code style="color:#a78bfa">v2/*.json</code> locally. Covers the bot's full run history.</div>
+        </div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-weight:700;color:#60a5fa;margin-bottom:4px;font-size:11px">③ Seed R2 (button above)</div>
+          <div style="color:var(--text3);font-size:11px">Uploads the <code style="color:#a78bfa">data/regime_history/</code> JSON files to R2 (<code style="color:#a78bfa">regime_history/{bot}/{pair}.json</code>). These survive redeploys. Do this after every backfill run.</div>
+        </div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+          <div style="font-weight:700;color:#a78bfa;margin-bottom:4px;font-size:11px">④ Backtester reads R2 + local KV</div>
+          <div style="color:var(--text3);font-size:11px"><code style="color:#a78bfa">GET /api/regime-history</code> merges R2 (full history) with the local KV ring buffer (current run's recent records), deduplicates by timestamp, then filters to your selected date range.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Maintenance checklist -->
+    <div style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--text1);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">Maintenance Checklist</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;font-size:11px;font-family:'DM Mono',monospace">
+        <div><span style="color:#00c97d">✓</span> After every Railway redeploy → re-run Regime Viewer backfill → then Seed R2</div>
+        <div><span style="color:#00c97d">✓</span> M1 candle data (R2 parquets) is permanent — no maintenance needed</div>
+        <div><span style="color:#00c97d">✓</span> Regime data only exists for periods when a bot was actually running</div>
+        <div><span style="color:#00c97d">✓</span> ATR period default is 70 bars (= ATR(14) on M5 expressed in M1 bars)</div>
+        <div><span style="color:#f87171">✗</span> <code>data/regime_history/</code> is gitignored — never automatically deployed</div>
+        <div><span style="color:#f87171">✗</span> <code>data/kv.json</code> (local KV) is gitignored — lost on every Railway redeploy</div>
+      </div>
+    </div>
+
+    <!-- Troubleshooting -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--text1);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">Troubleshooting</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:5px 8px;color:var(--text3);font-weight:600;width:30%">Symptom</th>
+            <th style="text-align:left;padding:5px 8px;color:var(--text3);font-weight:600">Likely cause &amp; fix</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #1c2133">
+            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">0 regime records</td>
+            <td style="padding:6px 8px;color:var(--text2)">R2 not seeded yet → click "Upload local files → R2" above. Or the bots weren't running in the selected date range.</td>
+          </tr>
+          <tr style="border-bottom:1px solid #1c2133">
+            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">0 simulated trades</td>
+            <td style="padding:6px 8px;color:var(--text2)">Regime records exist but no entry gates triggered. Try lowering Min Confidence (V1: 65 → 55) or Entry Conf (V2: 70 → 60). Check that BULL/BEAR regimes appear in the chart — if it's all RANGE/CHOP, the bots wouldn't trade.</td>
+          </tr>
+          <tr style="border-bottom:1px solid #1c2133">
+            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">No M1 candles</td>
+            <td style="padding:6px 8px;color:var(--text2)">Railway server not running, or R2_ACCESS_KEY / R2_SECRET_KEY not set. Check <a href="/api/vol-backtest/diagnose" target="_blank" style="color:#60a5fa">/api/vol-backtest/diagnose</a>.</td>
+          </tr>
+          <tr style="border-bottom:1px solid #1c2133">
+            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">Trades but wrong SL</td>
+            <td style="padding:6px 8px;color:var(--text2)">ATR period is 70 M1 bars by default (= ATR(14) M5). If the bot uses a different period, adjust SL ATR Multiplier in config to compensate.</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">Chart is blank</td>
+            <td style="padding:6px 8px;color:var(--text2)">M1 candles loaded but no regime records → no regime colouring. The chart still shows candles — scroll/zoom to confirm. Run again with a shorter date range first.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Config reference -->
+    <div>
+      <div style="font-size:12px;font-weight:700;color:var(--text1);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">Config Reference</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 32px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#00c97d;margin-bottom:6px">V1 — HMM Regime Bot</div>
+          <table style="width:100%;border-collapse:collapse;font-size:10px;font-family:'DM Mono',monospace">
+            <tr><td style="padding:3px 6px;color:#a78bfa;width:45%">min_confidence</td><td style="padding:3px 6px;color:var(--text3)">HMM conf % to allow entry (default 65)</td></tr>
+            <tr style="background:#1a2236"><td style="padding:3px 6px;color:#a78bfa">candle_hold</td><td style="padding:3px 6px;color:var(--text3)">Consecutive polls regime must hold before entry (default 3)</td></tr>
+            <tr><td style="padding:3px 6px;color:#a78bfa">vol_z_max</td><td style="padding:3px 6px;color:var(--text3)">Max vol-Z at entry — blocks during vol spikes (default 2.5)</td></tr>
+            <tr style="background:#1a2236"><td style="padding:3px 6px;color:#a78bfa">entry_decay_max</td><td style="padding:3px 6px;color:var(--text3)">Max decay score at entry (default 0.25 = fresh regime)</td></tr>
+            <tr><td style="padding:3px 6px;color:#a78bfa">decay_exit</td><td style="padding:3px 6px;color:var(--text3)">Exit when decay hits this level (default 0.70)</td></tr>
+            <tr style="background:#1a2236"><td style="padding:3px 6px;color:#a78bfa">sl_atr_mult</td><td style="padding:3px 6px;color:var(--text3)">SL = ATR(70) × this multiplier (default 1.80)</td></tr>
+            <tr><td style="padding:3px 6px;color:#a78bfa">range_exit_hold</td><td style="padding:3px 6px;color:var(--text3)">Polls in RANGE before exit (default 2)</td></tr>
+            <tr style="background:#1a2236"><td style="padding:3px 6px;color:#a78bfa">window_start/end</td><td style="padding:3px 6px;color:var(--text3)">UTC trading window (default 07-20h)</td></tr>
+          </table>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#ef5350;margin-bottom:6px">V2 — Composite Score Bot</div>
+          <table style="width:100%;border-collapse:collapse;font-size:10px;font-family:'DM Mono',monospace">
+            <tr><td style="padding:3px 6px;color:#a78bfa;width:45%">entry_conf</td><td style="padding:3px 6px;color:var(--text3)">Session-adjusted confidence gate (default 70)</td></tr>
+            <tr style="background:#1a2236"><td style="padding:3px 6px;color:#a78bfa">entry_score_min</td><td style="padding:3px 6px;color:var(--text3)">Composite score needed to enter (default 55)</td></tr>
+            <tr><td style="padding:3px 6px;color:#a78bfa">bocpd_thresh</td><td style="padding:3px 6px;color:var(--text3)">Block entry if BOCPD change-point prob ≥ this (default 70%)</td></tr>
+            <tr style="background:#1a2236"><td style="padding:3px 6px;color:#a78bfa">conf_floor</td><td style="padding:3px 6px;color:var(--text3)">Exit X2: conf drops below this (default 45)</td></tr>
+            <tr><td style="padding:3px 6px;color:#a78bfa">decay_exit</td><td style="padding:3px 6px;color:var(--text3)">Exit X5: decay hits this threshold (default 0.70)</td></tr>
+            <tr style="background:#1a2236"><td style="padding:3px 6px;color:#a78bfa">hold_score_min</td><td style="padding:3px 6px;color:var(--text3)">Exit X11: score below this for N bars (default 40)</td></tr>
+            <tr><td style="padding:3px 6px;color:#a78bfa">score_drop_thresh</td><td style="padding:3px 6px;color:var(--text3)">Exit X12: score drops ≥ this from entry score (default 20)</td></tr>
+            <tr style="background:#1a2236"><td style="padding:3px 6px;color:#a78bfa">mfe_retrace</td><td style="padding:3px 6px;color:var(--text3)">Exit X13: retrace 25% of peak when MFE ≥ 1R (default 0.25)</td></tr>
+          </table>
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:#5a6380;font-family:'DM Mono',monospace">
+        Decay score = conf_decay×0.40 + volz_decay×0.35 + rl_stall×0.25. Mixed-regime window → 0.90 immediately.
+        V2 composite score weights: HMM 35% · BOCPD 20% · Session 15% · DXY 10% · Consensus 10% · ImplVol 5% · Credit 5%.
+      </div>
+    </div>
+
+  </div><!-- /helpBody -->
+</div><!-- /help section -->
+
 </div><!-- /rbApp -->
 
 <script>
@@ -1054,12 +1200,11 @@ async function loadAndRun() {
     const fromEp = toEpoch(fromStr);
     const toEp   = toEpoch(toStr) + 86400;
 
-    const staticUrl = `/data/regime_history/${currentBot}/${ps}.json`;
-    const kvUrl     = `/api/regime-history?bot=${currentBot}&pair=${ps}&from=${fromEp}&to=${toEp}`;
+    const histUrl = `/api/regime-history?bot=${currentBot}&pair=${ps}&from=${fromEp}&to=${toEp}`;
 
     // Regime data and M1 candles load concurrently
-    const [[staticRes, kvRes], m1Raw] = await Promise.all([
-      Promise.all([fetch(staticUrl).catch(() => null), fetch(kvUrl).catch(() => null)]),
+    const [histRes, m1Raw] = await Promise.all([
+      fetch(histUrl).catch(() => null),
       fetchM1CandlesChunked(ps, fromStr, toStr, (idx, total) => {
         setStatus('spin', `Loading M1 candles from R2… chunk ${idx}/${total}`);
       }),
@@ -1068,24 +1213,20 @@ async function loadAndRun() {
     if (!m1Raw.length) throw new Error('No M1 candle data for this pair/range — check Railway server and R2 credentials');
     m5Candles = m1Raw; // raw M1 — no resampling
 
-    // Regime records (merge static backfill + KV)
-    const mergedRecs = new Map();
-    const mergedEvts = new Map();
-    const ingest = data => {
-      for (const r of (data.records || [])) mergedRecs.set(r.ts, r);
-      for (const e of (data.events  || [])) mergedEvts.set(`${e.ts}_${e.type}`, e);
-    };
-    if (staticRes?.ok) { try { ingest(await staticRes.json()); } catch {} }
-    if (kvRes?.ok)     { try { ingest(await kvRes.json());     } catch {} }
+    // Regime records — Railway endpoint merges R2 backfill + local KV ring buffer
+    let regimeData = { records: [], events: [] };
+    if (histRes?.ok) {
+      try { regimeData = await histRes.json(); } catch {}
+    }
 
-    regimeRecords = [...mergedRecs.values()]
+    regimeRecords = (regimeData.records || [])
       .filter(r => r.ts >= fromEp && r.ts <= toEp)
       .sort((a, b) => a.ts - b.ts);
 
     // Coverage banner
     const banner = document.getElementById('covBanner');
     if (regimeRecords.length < 10) {
-      banner.textContent = `⚠ Only ${regimeRecords.length} regime records found for this period. The simulation requires historical regime data (conf, decay, vz) recorded while the bot was running. Use the "Backfill logs" button in Regime Viewer to upload bot logs, or select a period when the bot was active.`;
+      banner.textContent = `⚠ Only ${regimeRecords.length} regime records in this range. Regime data comes from R2 backfill (seed it with POST /api/regime-history-export) + the live KV ring buffer (last 48-96h while the bot is running). Select a period when the bot was active and R2 has been seeded.`;
       banner.style.display = '';
     } else {
       banner.style.display = 'none';
@@ -1112,8 +1253,7 @@ async function loadAndRun() {
       document.getElementById('analyticsSection').style.display = 'none';
     }
 
-    const dataSrc = (staticRes?.ok ? 'backfill' : '') + (kvRes?.ok ? '+live' : '');
-    setStatus('ok', `${m5Candles.length} M1 candles · ${regimeRecords.length} regime records (${dataSrc}) · ${allTrades.length} simulated trades`);
+    setStatus('ok', `${m5Candles.length} M1 candles · ${regimeRecords.length} regime records · ${allTrades.length} simulated trades`);
   } catch (err) {
     setStatus('err', `Error: ${err.message}`);
     console.error(err);
@@ -1761,6 +1901,37 @@ function toEpoch(dateStr) {
 }
 
 function el(id) { return document.getElementById(id); }
+
+function toggleHelp() {
+  const body = document.getElementById('helpBody');
+  const arrow = document.getElementById('helpArrow');
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  arrow.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+async function seedR2() {
+  const btn = document.getElementById('seedBtn');
+  const out = document.getElementById('seedOut');
+  btn.disabled = true;
+  out.style.color = 'var(--text3)';
+  out.textContent = 'Uploading to R2…';
+  try {
+    const r = await fetch('/api/regime-history-export', { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      out.textContent = `✓ Uploaded ${d.uploaded} file(s) to R2. Backtester will now have data for seeded pairs.`;
+      out.style.color = '#00c97d';
+    } else {
+      out.textContent = `✗ ${d.error || 'Unknown error'}`;
+      out.style.color = '#ef5350';
+    }
+  } catch (e) {
+    out.textContent = `✗ ${e.message}`;
+    out.style.color = '#ef5350';
+  }
+  btn.disabled = false;
+}
 </script>
 </body>
 </html>

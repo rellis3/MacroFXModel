@@ -29,7 +29,7 @@ import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus } from './js/volForecastScheduler.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
-import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS } from './js/volBacktestM1Engine.js';
+import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -3058,6 +3058,68 @@ app.get('/api/regime-backfill-status/:jobId', (req, res) => {
   const job = _rgJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   res.json({ ok: true, status: job.status, elapsed: Math.round((Date.now() - job.startedAt) / 1000), lines: job.lines.slice(-40), exitCode: job.exitCode ?? null });
+});
+
+// ── Regime history — R2 backfill + local KV ring buffer ──────────────────────
+// Must sit BEFORE the catch-all so Railway doesn't forward this to callWorker
+// (callWorker reads the local file-KV which is wiped on every redeploy).
+// R2 provides durable history; local KV provides data from the current run.
+
+app.get('/api/regime-history', async (req, res) => {
+  const bot    = req.query.bot === 'v1' ? 'v1' : 'v2';
+  const pair   = (req.query.pair || 'eurusd').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const fromTs = parseInt(req.query.from || '0');
+  const toTs   = parseInt(req.query.to   || '9999999999');
+
+  const recMap = new Map();
+  const evMap  = new Map();
+
+  // 1. R2 backfill (persistent across redeploys)
+  try {
+    const d = await loadRegimeHistoryFromR2(bot, pair);
+    if (d) {
+      for (const r of (d.records || [])) recMap.set(r.ts, r);
+      for (const e of (d.events  || [])) evMap.set(`${e.ts}_${e.type}`, e);
+    }
+  } catch {}
+
+  // 2. Local KV ring buffer (current Railway run — last 48-96h)
+  try {
+    const raw = await kv.get(`rg${bot}_${pair}`);
+    if (raw) {
+      const d = JSON.parse(raw);
+      for (const r of (d.records || [])) recMap.set(r.ts, r);
+      for (const e of (d.events  || [])) evMap.set(`${e.ts}_${e.type}`, e);
+    }
+  } catch {}
+
+  const records = [...recMap.values()].filter(r => r.ts >= fromTs && r.ts <= toTs).sort((a, b) => a.ts - b.ts);
+  const events  = [...evMap.values()].filter(e => e.ts >= fromTs && e.ts <= toTs).sort((a, b) => a.ts - b.ts);
+  res.json({ bot, pair, records, events });
+});
+
+// Export local data/regime_history JSON files to R2 (run once to seed history).
+// POST /api/regime-history-export  →  { uploaded: N, results: [...] }
+app.post('/api/regime-history-export', async (req, res) => {
+  const histDir = path.join(__dirname, 'data', 'regime_history');
+  if (!fs.existsSync(histDir)) return res.json({ ok: false, error: 'data/regime_history not found' });
+  const results = [];
+  for (const bot of ['v1', 'v2']) {
+    const botDir = path.join(histDir, bot);
+    if (!fs.existsSync(botDir)) continue;
+    for (const file of fs.readdirSync(botDir).filter(f => f.endsWith('.json'))) {
+      const pair    = file.replace('.json', '');
+      const content = fs.readFileSync(path.join(botDir, file), 'utf8');
+      try {
+        const data = JSON.parse(content);
+        await saveRegimeHistoryToR2(bot, pair, data);
+        results.push({ ok: true, bot, pair, bytes: content.length });
+      } catch (e) {
+        results.push({ ok: false, bot, pair, error: e.message });
+      }
+    }
+  }
+  res.json({ ok: true, uploaded: results.filter(r => r.ok).length, results });
 });
 
 // All other /api/* routes — call _worker.js and return the JSON response.
