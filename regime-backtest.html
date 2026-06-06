@@ -1069,17 +1069,21 @@ function buildCheckboxes() {
   });
 }
 
+const METRIC_H = 58; // px per metric subchart panel
+
 function rebuildMetricPanels() {
   Object.values(metricCharts).forEach(({ chart }) => { try { chart.remove(); } catch(e) {} });
   metricCharts = {};
   const grid = document.getElementById('rbMetricsGrid');
   grid.innerHTML = '';
+  const gridW = Math.max(300, grid.offsetWidth || 800);
 
   activeMetrics.forEach(m => {
     const panel = document.createElement('div');
     panel.className = 'rb-metric-panel';
     panel.id = 'rbPanel_' + m.key;
-    panel.style.height = '52px';
+    panel.style.height = METRIC_H + 'px';
+    panel.style.flexShrink = '0';
 
     const lbl = document.createElement('div');
     lbl.className = 'rb-metric-lbl';
@@ -1087,14 +1091,19 @@ function rebuildMetricPanels() {
 
     const chartEl = document.createElement('div');
     chartEl.className = 'rb-metric-chart';
+    chartEl.style.width  = '100%';
+    chartEl.style.height = METRIC_H + 'px';
 
     panel.appendChild(lbl); panel.appendChild(chartEl);
     grid.appendChild(panel);
 
+    // Use explicit width/height — autoSize fails when parent height is
+    // resolved by flex layout (ResizeObserver fires after initial 0×0 render)
     const chart = LightweightCharts.createChart(chartEl, {
-      autoSize: true,
+      width: gridW,
+      height: METRIC_H,
       layout: { background: { color: '#0e1117' }, textColor: '#5a6380' },
-      grid: { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+      grid: { vertLines: { color: 'rgba(28,33,51,.6)' }, horzLines: { color: 'rgba(28,33,51,.4)' } },
       crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
       rightPriceScale: { borderColor: '#1c2133', scaleMargins: { top: 0.05, bottom: 0.05 } },
       timeScale: { borderColor: '#1c2133', visible: false },
@@ -1106,6 +1115,18 @@ function rebuildMetricPanels() {
     });
     metricCharts[m.key] = { chart, series };
   });
+
+  // Keep metric charts sized to grid width on window resize
+  if (!rebuildMetricPanels._resizeReg) {
+    rebuildMetricPanels._resizeReg = true;
+    window.addEventListener('resize', () => {
+      const g = document.getElementById('rbMetricsGrid');
+      const w = Math.max(300, g ? g.offsetWidth : 800);
+      Object.values(metricCharts).forEach(({ chart }) => {
+        try { chart.resize(w, METRIC_H); } catch(e) {}
+      });
+    });
+  }
 }
 
 // ─── Hover box ────────────────────────────────────────────────────────────────
@@ -2013,9 +2034,16 @@ function renderMetricsData() {
   rebuildMetricPanels();
   if (!allSignals.length) return;
 
+  // Re-size to actual DOM width now that backtest section is visible
+  const grid = document.getElementById('rbMetricsGrid');
+  const gridW = Math.max(300, grid ? grid.offsetWidth : 800);
+
   activeMetrics.forEach(m => {
     const mc = metricCharts[m.key];
     if (!mc) return;
+
+    mc.chart.resize(gridW, METRIC_H);
+
     const pts = [];
     allSignals.forEach(s => {
       if (!s || s[m.key] == null) return;
