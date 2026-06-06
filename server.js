@@ -562,6 +562,178 @@ async function runCorrHistoryRefresh() {
   buildCorrHistoryJS().catch(e => console.error('[CORR]', e.message));
 }
 
+// ── Beta Estimation (Kalman OLS) ─────────────────────────────────────────────
+// Mirrors bot/modules/beta_estimator.py — runs server-side via OANDA H4 bars.
+// Pushes `beta_estimates` to KV every 2 hours so the dashboard beta panel works
+// without a local bot. portfolio_beta/deviation/rebalance still need MT5 locally.
+
+const BETA_WINDOW      = 60;          // rolling OLS window (bars)
+const BETA_MIN_WINDOW  = 20;          // minimum bars for valid regression
+const BETA_BAR_COUNT   = 80;          // H4 bars to fetch per symbol (~13 days)
+const BETA_Q           = 1e-4;        // Kalman process noise — beta drift rate
+const BETA_R_DEFAULT   = 0.10;        // Kalman observation noise fallback
+const BETA_INTERVAL_MS = 2 * 60 * 60 * 1000; // rebuild every 2 hours
+
+const BETA_FACTOR_PROXIES = {
+  beta_dxy:   { sym: 'EURUSD', sign: -1.2 },  // DXY proxy (EUR ~57% weight, inverted)
+  beta_rates: { sym: 'USDJPY', sign:  1.0 },  // US-Japan rates differential
+  beta_vix:   { sym: 'USDCHF', sign: -1.0 },  // Risk-off proxy (CHF safe-haven, inverted)
+};
+
+// All pairs to estimate beta for (factor proxy pairs are also in this list)
+const BETA_PAIRS = [
+  'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURGBP','XAUUSD',
+  'EURJPY','EURCHF','GBPCHF','AUDJPY','CADJPY',
+  'NAS100_USD','SPX500_USD','DE30_USD','UK100_GBP','US30_USD','US2000_USD',
+];
+
+function _betaLogReturns(closes) {
+  const r = [];
+  for (let i = 1; i < closes.length; i++) {
+    r.push(Math.log(Math.max(closes[i], 1e-10)) - Math.log(Math.max(closes[i-1], 1e-10)));
+  }
+  return r;
+}
+
+function _olsBeta(pr, fr) {
+  const n = Math.min(BETA_WINDOW, pr.length, fr.length);
+  if (n < BETA_MIN_WINDOW) return { beta: 0, rSq: 0 };
+  const pairs = pr.slice(-n).map((y, i) => [y, fr[fr.length - n + i]])
+    .filter(([y, x]) => isFinite(y) && isFinite(x));
+  if (pairs.length < BETA_MIN_WINDOW) return { beta: 0, rSq: 0 };
+  const yA = pairs.map(p => p[0]), xA = pairs.map(p => p[1]);
+  const xM = xA.reduce((s, v) => s + v, 0) / xA.length;
+  const yM = yA.reduce((s, v) => s + v, 0) / yA.length;
+  const num = xA.reduce((s, x, i) => s + (x - xM) * (yA[i] - yM), 0);
+  const den = xA.reduce((s, x) => s + (x - xM) ** 2, 0);
+  if (Math.abs(den) < 1e-12) return { beta: 0, rSq: 0 };
+  const beta = num / den;
+  const alpha = yM - beta * xM;
+  const ssRes = yA.reduce((s, y, i) => s + (y - alpha - beta * xA[i]) ** 2, 0);
+  const ssTot = yA.reduce((s, y) => s + (y - yM) ** 2, 0);
+  return { beta, rSq: ssTot > 1e-12 ? Math.max(0, Math.min(1, 1 - ssRes / ssTot)) : 0 };
+}
+
+// Kalman states persist in memory across 2-hour rebuild cycles
+const _betaKalmans = {};
+
+function _kalmanStep(kf, pairRet, factorRet) {
+  const pPred = kf.p + kf.q;
+  if (Math.abs(factorRet) < 1e-10) { kf.p = pPred; return; }
+  const h = factorRet;
+  const k = pPred * h / (h * h * pPred + kf.r);
+  kf.x = kf.x + k * (pairRet - h * kf.x);
+  kf.p = Math.max((1 - k * h) * pPred, 1e-8);
+}
+
+async function fetchH4BarsShort(sym) {
+  const osym = _h4OandaSym(sym);
+  if (!osym || !process.env.OANDA_KEY) return null;
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  try {
+    const r = await fetch(
+      `${base}/v3/instruments/${encodeURIComponent(osym)}/candles?granularity=H4&price=M&count=${BETA_BAR_COUNT}`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(15_000) }
+    );
+    if (!r.ok) return null;
+    const data = await r.json();
+    const closes = (data.candles || [])
+      .filter(c => c.complete !== false)
+      .map(c => parseFloat(c.mid?.c))
+      .filter(v => isFinite(v) && v > 0);
+    return closes.length >= BETA_MIN_WINDOW + 1 ? closes : null;
+  } catch { return null; }
+}
+
+let _betaRunning = false;
+
+async function buildBetaEstimates() {
+  if (_betaRunning || !process.env.OANDA_KEY) return;
+  _betaRunning = true;
+  console.log('[BETA] Building beta estimates from OANDA H4 bars…');
+  try {
+    // Fetch bars — factor proxies must always be fetched
+    const allSyms = [...new Set([...BETA_PAIRS, ...Object.values(BETA_FACTOR_PROXIES).map(p => p.sym)])];
+    const barData = {};
+    for (const sym of allSyms) {
+      const closes = await fetchH4BarsShort(sym);
+      if (closes) barData[sym] = closes;
+    }
+
+    // Build factor return series
+    const factorRets = {};
+    for (const [factor, { sym, sign }] of Object.entries(BETA_FACTOR_PROXIES)) {
+      if (barData[sym]) factorRets[factor] = _betaLogReturns(barData[sym]).map(r => r * sign);
+    }
+    if (!Object.keys(factorRets).length) {
+      console.log('[BETA] No factor proxy bars — aborting');
+      return;
+    }
+
+    const results = {};
+    const ts = Date.now();
+
+    for (const sym of BETA_PAIRS) {
+      if (!barData[sym]) continue;
+      const pairRets = _betaLogReturns(barData[sym]);
+      const symFactors = {};
+      const rSqVals = [];
+
+      for (const [factor, fr] of Object.entries(factorRets)) {
+        const n = Math.min(pairRets.length, fr.length);
+        if (n < BETA_MIN_WINDOW) continue;
+        const pr = pairRets.slice(-n), frN = fr.slice(-n);
+
+        const { beta: olsBeta, rSq } = _olsBeta(pr, frN);
+        rSqVals.push(rSq);
+
+        // Init Kalman state on first run
+        _betaKalmans[sym] = _betaKalmans[sym] || {};
+        if (!_betaKalmans[sym][factor]) {
+          const nW = Math.min(BETA_WINDOW, n);
+          const resids = pr.slice(-nW).map((y, i) => y - olsBeta * frN[frN.length - nW + i]);
+          const mean = resids.reduce((s, v) => s + v, 0) / resids.length;
+          const obsVar = resids.length > 2
+            ? resids.reduce((s, v) => s + (v - mean) ** 2, 0) / resids.length
+            : BETA_R_DEFAULT;
+          _betaKalmans[sym][factor] = { x: olsBeta, p: 0.05, q: BETA_Q, r: Math.max(obsVar, 1e-6) };
+        }
+        const kf = _betaKalmans[sym][factor];
+        // Incremental update on last 5 bars only (matches Python behaviour)
+        const inc = Math.min(5, n);
+        for (let i = pr.length - inc; i < pr.length; i++) _kalmanStep(kf, pr[i], frN[i]);
+
+        const variance = kf.p;
+        symFactors[factor] = {
+          mean:        +kf.x.toFixed(4),
+          variance:    +variance.toFixed(6),
+          ols:         +olsBeta.toFixed(4),
+          uncertainty: variance < 0.01 ? 'LOW' : variance < 0.05 ? 'MEDIUM' : 'HIGH',
+        };
+      }
+
+      if (Object.keys(symFactors).length) {
+        results[sym] = {
+          ...symFactors,
+          r_squared: rSqVals.length ? +(rSqVals.reduce((s, v) => s + v, 0) / rSqVals.length).toFixed(4) : 0,
+          window:    BETA_WINDOW,
+          timestamp: ts,
+        };
+      }
+    }
+
+    await kv.put('beta_estimates', JSON.stringify({ data: results, timestamp: ts }));
+    console.log(`[BETA] Done — ${Object.keys(results).length} pairs · ${new Date(ts).toISOString()}`);
+  } catch (e) {
+    console.error('[BETA] Error:', e.message);
+  } finally {
+    _betaRunning = false;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function sendTelegram(token, chatId, text) {
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -2702,6 +2874,14 @@ app.get('/api/oanda-instruments', async (req, res) => {
   }
 });
 
+// Manual beta rebuild trigger
+app.post('/api/beta/rebuild', (_req, res) => {
+  if (_betaRunning) return res.json({ ok: false, message: 'Already running' });
+  if (!process.env.OANDA_KEY) return res.status(400).json({ ok: false, message: 'OANDA_KEY not configured' });
+  buildBetaEstimates().catch(e => console.error('[BETA/rebuild]', e.message));
+  res.json({ ok: true, message: 'Beta estimation started — takes ~30s. Refresh beta panel when done.' });
+});
+
 // Manual rebuild trigger — fires buildCorrHistoryJS() in background and returns immediately.
 app.post('/api/corr-history/rebuild', (_req, res) => {
   if (corrRunning) return res.json({ ok: false, message: 'Build already in progress' });
@@ -3285,6 +3465,10 @@ setTimeout(() => {
 // ~3 min to build, ~500-900 KB output. Stored at bot/data/corr_history.json.
 setTimeout(() => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 60_000);
 setInterval(runCorrHistoryRefresh, 7 * 24 * 60 * 60 * 1000);
+
+// Beta estimation — runs every 2 hours; first run 90s after startup (after corr fetch begins)
+setTimeout(() => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), 90_000);
+setInterval(() => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), BETA_INTERVAL_MS);
 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
 startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));

@@ -28,16 +28,27 @@ const DEFAULT_YEARS    = 5;
 // ── Instruments to analyse ────────────────────────────────────────────────────
 // Key = name used in the Pine Script paste;  value = Oanda instrument symbol
 const INSTRUMENTS = {
-  GOLD:   'XAU_USD',
-  NQ:     'NAS100_USD',
-  EURUSD: 'EUR_USD',
-  GBPUSD: 'GBP_USD',
-  USDJPY: 'USD_JPY',
-  AUDUSD: 'AUD_USD',
-  NZDUSD: 'NZD_USD',
-  USDCAD: 'USD_CAD',
-  USDCHF: 'USD_CHF',
-  GBPJPY: 'GBP_JPY',
+  GOLD:    'XAU_USD',
+  NQ:      'NAS100_USD',
+  SPX500:  'SPX500_USD',
+  DE30:    'DE30_EUR',
+  UK100:   'UK100_GBP',
+  US30:    'US30_USD',
+  US2000:  'US2000_USD',
+  EURUSD:  'EUR_USD',
+  GBPUSD:  'GBP_USD',
+  USDJPY:  'USD_JPY',
+  AUDUSD:  'AUD_USD',
+  NZDUSD:  'NZD_USD',
+  USDCAD:  'USD_CAD',
+  USDCHF:  'USD_CHF',
+  GBPJPY:  'GBP_JPY',
+  EURGBP:  'EUR_GBP',
+  EURJPY:  'EUR_JPY',
+  EURCHF:  'EUR_CHF',
+  GBPCHF:  'GBP_CHF',
+  AUDJPY:  'AUD_JPY',
+  CADJPY:  'CAD_JPY',
 };
 
 // Session windows — London local time [inclusive start, exclusive end)
