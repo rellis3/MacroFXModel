@@ -965,7 +965,7 @@ function buildConfigPanel() {
       </div>
       <input type="range" class="rb-slider" id="sl_${p.key}"
         min="${p.min}" max="${p.max}" step="${p.step}" value="${cfg[p.key]}"
-        oninput="onSlider('${p.key}', this.value, ${JSON.stringify(p)})">
+        oninput="onSlider('${p.key}', this.value, ${p.step})">
     `;
     grid.appendChild(el);
   });
@@ -984,9 +984,11 @@ function buildConfigPanel() {
   });
 }
 
-function onSlider(key, val, p) {
-  cfg[key] = p.step % 1 === 0 ? parseInt(val) : parseFloat(val);
-  document.getElementById(`pv_${key}`).textContent = fmtParamVal(p, cfg[key]);
+function onSlider(key, val, step) {
+  cfg[key] = step % 1 === 0 ? parseInt(val) : parseFloat(val);
+  const params = currentBot === 'v1' ? V1_PARAMS : V2_PARAMS;
+  const p = params.find(pp => pp.key === key);
+  document.getElementById(`pv_${key}`).textContent = p ? fmtParamVal(p, cfg[key]) : cfg[key];
 }
 
 function resetParam(key, def) {
