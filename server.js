@@ -3102,7 +3102,7 @@ app.get('/api/regime-history', async (req, res) => {
 // POST /api/regime-history-export  →  { uploaded: N, results: [...] }
 app.post('/api/regime-history-export', async (req, res) => {
   const histDir = path.join(__dirname, 'data', 'regime_history');
-  if (!fs.existsSync(histDir)) return res.json({ ok: false, error: 'data/regime_history not found' });
+  if (!fs.existsSync(histDir)) return res.json({ ok: false, error: 'data/regime_history not found — this endpoint must be called against your LOCAL server (localhost:3000), not Railway. Railway does not have these gitignored files.' });
   const results = [];
   for (const bot of ['v1', 'v2']) {
     const botDir = path.join(histDir, bot);

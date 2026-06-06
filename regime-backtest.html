@@ -392,6 +392,24 @@
   color: var(--text3); font-family: 'DM Mono', monospace; font-size: 12px;
 }
 .rb-empty .rb-empty-icon { font-size: 28px; opacity: .4; }
+
+/* ── Trade walk nav ──────────────────────────────────────────────────────────── */
+.trade-nav-bar {
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+  background: #0e1117; border-top: 1px solid #1c2133;
+  font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3);
+}
+.trade-nav-btn {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px;
+  padding: 2px 10px; cursor: pointer; transition: border-color .15s;
+}
+.trade-nav-btn:hover { border-color: var(--blue); color: var(--blue); }
+.trade-nav-btn:disabled { opacity: .35; cursor: default; }
+.trade-nav-info { color: var(--text2); }
+.bt-tbl tr.selected-row td { background: rgba(79,125,240,0.12) !important; }
+.bt-tbl tbody tr { cursor: pointer; }
+.bt-tbl tbody tr:hover td { background: var(--s2); }
 </style>
 </head>
 <body>
@@ -461,9 +479,6 @@
   <span class="rb-lbl2" id="runStatus"></span>
 </div>
 
-<!-- ── Coverage notice ──────────────────────────────────────────────────────── -->
-<div class="rb-cov-banner" id="covBanner"></div>
-
 <!-- ── Config panel ─────────────────────────────────────────────────────────── -->
 <div class="rb-cfg-panel" id="cfgPanel" style="display:none">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
@@ -508,6 +523,12 @@
     </div>
   </div>
   <div id="rbMetricsGrid"></div>
+  <div class="trade-nav-bar" id="tradeNavBar" style="display:none">
+    <button class="trade-nav-btn" id="navPrev" onclick="walkTrade(-1)">← Prev trade</button>
+    <button class="trade-nav-btn" id="navNext" onclick="walkTrade(+1)">Next trade →</button>
+    <span class="trade-nav-info" id="navInfo"></span>
+    <button class="trade-nav-btn" onclick="clearTradeSelection()" style="margin-left:auto">✕ Clear</button>
+  </div>
 </div>
 
 <!-- ── Analytics section ─────────────────────────────────────────────────────── -->
@@ -520,6 +541,7 @@
   <div class="bt-kpi"><div class="bt-kpi-label">Sharpe Ratio</div><div class="bt-kpi-value blue" id="kSharpe">—</div><div class="bt-kpi-sub">annualised (trade-based)</div></div>
   <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div><div class="bt-kpi-value red" id="kMaxDd">—</div><div class="bt-kpi-sub">cumulative peak→trough</div></div>
   <div class="bt-kpi"><div class="bt-kpi-label">Total P&amp;L %</div><div class="bt-kpi-value" id="kTotalPnl">—</div><div class="bt-kpi-sub">sum of all trade pnl%</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">CAGR</div><div class="bt-kpi-value green" id="kCagr">—</div><div class="bt-kpi-sub">annualised compound</div></div>
   <div class="bt-kpi"><div class="bt-kpi-label">Sortino</div><div class="bt-kpi-value blue" id="kSortino">—</div><div class="bt-kpi-sub">downside-adjusted</div></div>
   <div class="bt-kpi"><div class="bt-kpi-label">Calmar</div><div class="bt-kpi-value amber" id="kCalmar">—</div><div class="bt-kpi-sub">total pnl / max DD</div></div>
   <div class="bt-kpi"><div class="bt-kpi-label">Reward : Risk</div><div class="bt-kpi-value amber" id="kRr">—</div><div class="bt-kpi-sub">avg win / avg loss</div></div>
@@ -573,6 +595,36 @@
   </div>
 </div>
 
+<!-- Session & hourly row -->
+<div class="bt-two-col" style="margin-top:14px">
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Performance by Session (UTC)</div>
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="sessionTbl">
+        <thead><tr>
+          <th>Session</th><th>Hours (UTC)</th><th class="num">Trades</th>
+          <th class="num">Win%</th><th class="num">Avg P&amp;L%</th><th class="num">PF</th>
+        </tr></thead>
+        <tbody id="sessionTblBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Win Rate by Hour (UTC)</div>
+    <div class="bt-card-body" style="padding:8px 16px">
+      <div class="bt-chart-wrap" style="height:140px"><canvas id="hourChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Monthly P&L heatmap -->
+<div class="bt-card">
+  <div class="bt-card-hdr">Monthly P&L %</div>
+  <div class="bt-card-body" style="padding:8px 16px">
+    <div class="bt-chart-wrap" style="height:160px"><canvas id="monthChart"></canvas></div>
+  </div>
+</div>
+
 <!-- Trade table -->
 <div class="bt-card" id="tradeTableCard">
   <div class="bt-card-hdr">
@@ -612,73 +664,38 @@
 
 </div><!-- /analyticsSection -->
 
-<!-- ── Help & Setup ──────────────────────────────────────────────────────────── -->
+<!-- ── Help & Reference ──────────────────────────────────────────────────────── -->
 <div style="margin-top:16px;margin-bottom:40px">
   <button onclick="toggleHelp()" id="helpToggleBtn" style="
     width:100%;display:flex;align-items:center;justify-content:space-between;
     background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);
     padding:10px 16px;cursor:pointer;color:var(--text2);font-family:'DM Sans',sans-serif;
     font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">
-    <span>⚙ Setup &amp; Reference — data pipeline, R2 seeding, config guide, troubleshooting</span>
+    <span>⚙ How it works — signal computation, config guide, troubleshooting</span>
     <span id="helpArrow" style="font-size:10px;opacity:.5;margin-left:8px;transition:transform .2s">▼</span>
   </button>
   <div id="helpBody" style="display:none;background:var(--s1);border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--rl) var(--rl);padding:20px 22px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text2);line-height:1.7">
 
-    <!-- Seed R2 -->
-    <div style="background:#1a2236;border:1.5px solid #3b82f6;border-radius:8px;padding:16px 18px;margin-bottom:20px">
-      <div style="font-size:13px;font-weight:700;color:#60a5fa;margin-bottom:4px">⚡ One-time R2 Seed — do this after every backfill</div>
-      <div style="color:var(--text3);margin-bottom:12px;font-size:11px">
-        Regime records from the local <code style="background:#0d1117;padding:1px 5px;border-radius:3px;color:#a78bfa">data/regime_history/</code> files
-        need to be uploaded to R2 once so they survive Railway redeploys.
-        After seeding, the backtester reads history from R2 permanently.
-        Repeat this whenever you run a fresh backfill from the Regime Viewer.
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <button id="seedBtn" onclick="seedR2()" style="
-          background:#3b82f6;border:none;border-radius:6px;padding:8px 18px;
-          color:#fff;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap">
-          Upload local files → R2
-        </button>
-        <span id="seedOut" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3)"></span>
-      </div>
-      <div style="margin-top:10px;font-size:10px;color:#5a6380;font-family:'DM Mono',monospace">
-        Equivalent curl: <code style="color:#a78bfa">curl -X POST https://&lt;railway-url&gt;/api/regime-history-export</code>
-      </div>
-    </div>
-
-    <!-- Data pipeline -->
+    <!-- How it works -->
     <div style="margin-bottom:20px">
-      <div style="font-size:12px;font-weight:700;color:var(--text1);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">Data Pipeline</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">
+      <div style="font-size:12px;font-weight:700;color:var(--text1);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">How the backtester works</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
         <div style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px 14px">
-          <div style="font-weight:700;color:#00c97d;margin-bottom:4px;font-size:11px">① Bots run → local KV ring buffer</div>
-          <div style="color:var(--text3);font-size:11px">Every bot poll writes regime state (conf, decay, vz, rl, regime…) to <code style="color:#a78bfa">data/kv.json</code> on Railway. Holds last 48-96h. <strong style="color:#f87171">Wiped on every Railway redeploy.</strong></div>
+          <div style="font-weight:700;color:#00c97d;margin-bottom:4px;font-size:11px">① Load M1 candles from R2</div>
+          <div style="color:var(--text3);font-size:11px">Fetches raw M1 OHLC from R2 parquet files in 14-day chunks. No limit on date range — each pair holds years of history.</div>
         </div>
         <div style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px 14px">
-          <div style="font-weight:700;color:#f0a030;margin-bottom:4px;font-size:11px">② Regime Viewer → Backfill logs</div>
-          <div style="color:var(--text3);font-size:11px">The "Backfill logs" button in Regime Viewer reads bot log files and exports all regime records to <code style="color:#a78bfa">data/regime_history/v1/*.json</code> and <code style="color:#a78bfa">v2/*.json</code> locally. Covers the bot's full run history.</div>
+          <div style="font-weight:700;color:#60a5fa;margin-bottom:4px;font-size:11px">② Compute signals from candles</div>
+          <div style="color:var(--text3);font-size:11px">EMA20/50/200, Wilder ATR(70), vol z-score, 14-bar momentum → classify BULL/BEAR/RANGE/CHOP + conf/decay/vz/rl/score/bocpd/slope per bar. No external data needed.</div>
         </div>
         <div style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px 14px">
-          <div style="font-weight:700;color:#60a5fa;margin-bottom:4px;font-size:11px">③ Seed R2 (button above)</div>
-          <div style="color:var(--text3);font-size:11px">Uploads the <code style="color:#a78bfa">data/regime_history/</code> JSON files to R2 (<code style="color:#a78bfa">regime_history/{bot}/{pair}.json</code>). These survive redeploys. Do this after every backfill run.</div>
+          <div style="font-weight:700;color:#a78bfa;margin-bottom:4px;font-size:11px">③ Simulate bot logic</div>
+          <div style="color:var(--text3);font-size:11px">Replays V1 or V2 entry/exit gates against computed signals bar-by-bar. SL checked against each M1 bar's high/low. Config sliders directly control every gate threshold.</div>
         </div>
         <div style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px 14px">
-          <div style="font-weight:700;color:#a78bfa;margin-bottom:4px;font-size:11px">④ Backtester reads R2 + local KV</div>
-          <div style="color:var(--text3);font-size:11px"><code style="color:#a78bfa">GET /api/regime-history</code> merges R2 (full history) with the local KV ring buffer (current run's recent records), deduplicates by timestamp, then filters to your selected date range.</div>
+          <div style="font-weight:700;color:#f0a030;margin-bottom:4px;font-size:11px">④ Walk through trades</div>
+          <div style="color:var(--text3);font-size:11px">Click any row in the Trade Log to zoom the chart to that trade (90 min context). Prev/Next in the nav bar above the analytics walk forward/back. Signal subcharts sync to show regime quality at entry.</div>
         </div>
-      </div>
-    </div>
-
-    <!-- Maintenance checklist -->
-    <div style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin-bottom:20px">
-      <div style="font-size:12px;font-weight:700;color:var(--text1);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">Maintenance Checklist</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;font-size:11px;font-family:'DM Mono',monospace">
-        <div><span style="color:#00c97d">✓</span> After every Railway redeploy → re-run Regime Viewer backfill → then Seed R2</div>
-        <div><span style="color:#00c97d">✓</span> M1 candle data (R2 parquets) is permanent — no maintenance needed</div>
-        <div><span style="color:#00c97d">✓</span> Regime data only exists for periods when a bot was actually running</div>
-        <div><span style="color:#00c97d">✓</span> ATR period default is 70 bars (= ATR(14) on M5 expressed in M1 bars)</div>
-        <div><span style="color:#f87171">✗</span> <code>data/regime_history/</code> is gitignored — never automatically deployed</div>
-        <div><span style="color:#f87171">✗</span> <code>data/kv.json</code> (local KV) is gitignored — lost on every Railway redeploy</div>
       </div>
     </div>
 
@@ -689,29 +706,25 @@
         <thead>
           <tr style="border-bottom:1px solid var(--border)">
             <th style="text-align:left;padding:5px 8px;color:var(--text3);font-weight:600;width:30%">Symptom</th>
-            <th style="text-align:left;padding:5px 8px;color:var(--text3);font-weight:600">Likely cause &amp; fix</th>
+            <th style="text-align:left;padding:5px 8px;color:var(--text3);font-weight:600">Fix</th>
           </tr>
         </thead>
         <tbody>
           <tr style="border-bottom:1px solid #1c2133">
-            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">0 regime records</td>
-            <td style="padding:6px 8px;color:var(--text2)">R2 not seeded yet → click "Upload local files → R2" above. Or the bots weren't running in the selected date range.</td>
+            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">No M1 candles</td>
+            <td style="padding:6px 8px;color:var(--text2)">Railway server not reachable, or R2 credentials missing. Check <a href="/api/vol-backtest/diagnose" target="_blank" style="color:#60a5fa">/api/vol-backtest/diagnose</a>.</td>
           </tr>
           <tr style="border-bottom:1px solid #1c2133">
             <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">0 simulated trades</td>
-            <td style="padding:6px 8px;color:var(--text2)">Regime records exist but no entry gates triggered. Try lowering Min Confidence (V1: 65 → 55) or Entry Conf (V2: 70 → 60). Check that BULL/BEAR regimes appear in the chart — if it's all RANGE/CHOP, the bots wouldn't trade.</td>
+            <td style="padding:6px 8px;color:var(--text2)">Entry gates too tight for this pair/period. Try: lower Min Confidence (V1) or Entry Conf (V2), raise Max Vol-Z, or pick a longer date range. If the chart shows mostly RANGE/CHOP the bot wouldn't enter.</td>
           </tr>
           <tr style="border-bottom:1px solid #1c2133">
-            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">No M1 candles</td>
-            <td style="padding:6px 8px;color:var(--text2)">Railway server not running, or R2_ACCESS_KEY / R2_SECRET_KEY not set. Check <a href="/api/vol-backtest/diagnose" target="_blank" style="color:#60a5fa">/api/vol-backtest/diagnose</a>.</td>
-          </tr>
-          <tr style="border-bottom:1px solid #1c2133">
-            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">Trades but wrong SL</td>
-            <td style="padding:6px 8px;color:var(--text2)">ATR period is 70 M1 bars by default (= ATR(14) M5). If the bot uses a different period, adjust SL ATR Multiplier in config to compensate.</td>
+            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">All RANGE/CHOP</td>
+            <td style="padding:6px 8px;color:var(--text2)">Classifier uses EMA20 vs EMA50 gap ÷ ATR. A very choppy period may not show directional regimes. Try a different date range or lower the EMA-gap threshold by lowering Min Confidence.</td>
           </tr>
           <tr>
-            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">Chart is blank</td>
-            <td style="padding:6px 8px;color:var(--text2)">M1 candles loaded but no regime records → no regime colouring. The chart still shows candles — scroll/zoom to confirm. Run again with a shorter date range first.</td>
+            <td style="padding:6px 8px;color:#f87171;font-family:'DM Mono',monospace">SL feels too wide/tight</td>
+            <td style="padding:6px 8px;color:var(--text2)">Adjust SL ATR Multiplier. Default 1.8 × ATR(70) M1 = same as 1.8 × ATR(14) M5 used by the live bot.</td>
           </tr>
         </tbody>
       </table>
@@ -849,20 +862,21 @@ const V2_METRICS = [
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
-let currentBot      = 'v1';
-let cfg             = { ...V1_DEFAULTS };
-let regimeRecords   = [];
-let m5Candles       = [];
-let allTrades       = [];
-let filteredTrades  = [];
-let eqChart         = null;
-let dowChart        = null;
-let chart1          = null;
-let candleSeries    = null;
-let metricCharts    = {};
-let activeMetrics   = V1_METRICS;
-let tradePage_      = 0;
-let drawPending     = false;
+let currentBot       = 'v1';
+let cfg              = { ...V1_DEFAULTS };
+let allSignals       = [];  // computed per-bar signals, indexed same as m5Candles
+let m5Candles        = [];
+let allTrades        = [];
+let filteredTrades   = [];
+let selectedTradeIdx = -1;  // index into allTrades for chart jump/highlight
+let eqChart          = null;
+let dowChart         = null;
+let chart1           = null;
+let candleSeries     = null;
+let metricCharts     = {};
+let activeMetrics    = V1_METRICS;
+let tradePage_       = 0;
+let drawPending      = false;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
@@ -1063,29 +1077,24 @@ function rebuildMetricPanels() {
 function updateHoverBox(param) {
   const box = document.getElementById('hoverBox');
   if (!param || !param.time) { box.style.display = 'none'; return; }
-  const ts = typeof param.time === 'object'
+  const ts  = typeof param.time === 'object'
     ? Date.UTC(param.time.year, param.time.month - 1, param.time.day) / 1000
     : param.time;
-  const rec = findRecordAt(ts);
-  if (!rec) { box.style.display = 'none'; return; }
+  const sig = findSignalAt(ts);
+  if (!sig) { box.style.display = 'none'; return; }
   box.style.display = 'block';
-  const el = document.getElementById('hbRegime');
-  el.textContent = rec.regime || '—';
-  el.className = 'hb-val hb-regime-' + (rec.regime || '');
-  document.getElementById('hbConf').textContent = rec.conf != null ? Number(rec.conf).toFixed(1) + '%' : '—';
-  document.getElementById('hbScore').textContent = rec.score != null ? Number(rec.score).toFixed(1) : '—';
-  document.getElementById('hbDecay').textContent = rec.decay != null ? Number(rec.decay).toFixed(3) : '—';
+  const re = document.getElementById('hbRegime');
+  re.textContent = sig.regime || '—';
+  re.className = 'hb-val hb-regime-' + (sig.regime || '');
+  document.getElementById('hbConf').textContent  = sig.conf  != null ? sig.conf.toFixed(1) + '%' : '—';
+  document.getElementById('hbScore').textContent = sig.score != null ? sig.score.toFixed(1)      : '—';
+  document.getElementById('hbDecay').textContent = sig.decay != null ? sig.decay.toFixed(3)      : '—';
 }
 
-function findRecordAt(ts) {
-  if (!regimeRecords.length) return null;
-  let lo = 0, hi = regimeRecords.length - 1, result = null;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (regimeRecords[mid].ts <= ts) { result = regimeRecords[mid]; lo = mid + 1; }
-    else hi = mid - 1;
-  }
-  return result;
+function findSignalAt(ts) {
+  // allSignals[i] corresponds to m5Candles[i], so use candle binary search
+  const idx = findCandleIdxAtOrBefore(m5Candles, ts);
+  return idx >= 0 ? allSignals[idx] : null;
 }
 
 // ─── Overlay drawing ─────────────────────────────────────────────────────────
@@ -1105,21 +1114,34 @@ function drawTradeLines() {
   ctx.clearRect(0, 0, W, H);
   if (!allTrades.length || !candleSeries || !chart1) return;
 
-  ctx.lineWidth = 1.5;
   ctx.setLineDash([5, 4]);
-  allTrades.forEach(t => {
+  allTrades.forEach((t, idx) => {
     const x1 = chart1.timeScale().timeToCoordinate(t.entry_ts);
     const x2 = chart1.timeScale().timeToCoordinate(t.exit_ts);
     if (x1 == null || x2 == null) return;
-    const ep = findCandleAtOrBefore(m5Candles, t.entry_ts);
-    const xp = findCandleAtOrBefore(m5Candles, t.exit_ts);
-    if (!ep || !xp) return;
     const y1 = candleSeries.priceToCoordinate(t.entry_price);
     const y2 = candleSeries.priceToCoordinate(t.exit_price);
     if (y1 == null || y2 == null) return;
-    ctx.strokeStyle = t.direction === 'LONG' ? 'rgba(0,201,125,0.7)' : 'rgba(239,83,80,0.7)';
+
+    const isSel = idx === selectedTradeIdx;
+    ctx.lineWidth   = isSel ? 2.5 : 1.2;
+    ctx.globalAlpha = isSel ? 1.0 : 0.45;
+    ctx.strokeStyle = t.direction === 'LONG' ? 'rgba(0,201,125,1)' : 'rgba(239,83,80,1)';
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+
+    // SL line for selected trade
+    if (isSel) {
+      const ysl = candleSeries.priceToCoordinate(t.sl);
+      if (ysl != null) {
+        ctx.lineWidth = 1; ctx.globalAlpha = 0.6;
+        ctx.setLineDash([3, 4]);
+        ctx.strokeStyle = '#f0a030';
+        ctx.beginPath(); ctx.moveTo(x1, ysl); ctx.lineTo(x2, ysl); ctx.stroke();
+        ctx.setLineDash([5, 4]);
+      }
+    }
   });
+  ctx.globalAlpha = 1;
   ctx.setLineDash([]);
 }
 
@@ -1181,6 +1203,345 @@ function resampleToM5(m1Candles) {
   return [...bars.values()].sort((a, b) => a.time - b.time);
 }
 
+// ─── Regime signal computation (HMM) ─────────────────────────────────────────
+// Inlined from hmm5m.js (V1, 3-state) and hmm5m-v2.js (V2, 4-state).
+// No `export` keywords — runs directly in the browser.
+
+// ── HMM configs ───────────────────────────────────────────────────────────────
+
+const HMM5M_CONFIG = {
+  'XAU/USD':    { selfProb: 0.88, linregN: 40, adxN: 30, dirAdxTarget: 0.7 },
+  'NAS100_USD': { selfProb: 0.94, linregN: 60, adxN: 40, dirAdxTarget: 0.7 },
+  _default:     { selfProb: 0.92, linregN: 50, adxN: 50, dirAdxTarget: 0.5 },
+};
+
+const HMM_V2_CONFIG = {
+  'XAU/USD':    { selfProb: 0.88, linregN: 40, adxN: 30 },
+  'NAS100_USD': { selfProb: 0.94, linregN: 60, adxN: 40 },
+  'SPX500_USD': { selfProb: 0.93, linregN: 55, adxN: 40 },
+  'DE30_USD':   { selfProb: 0.93, linregN: 55, adxN: 40 },
+  'UK100_GBP':  { selfProb: 0.93, linregN: 55, adxN: 40 },
+  'US30_USD':   { selfProb: 0.93, linregN: 55, adxN: 40 },
+  'US2000_USD': { selfProb: 0.93, linregN: 55, adxN: 40 },
+  _default:     { selfProb: 0.92, linregN: 50, adxN: 50 },
+};
+
+// Default emission means [trendZ, volZ, adxZ] per state (V2)
+const DEFAULT_MEANS = [
+  [ 1.0,  0.0,  0.7],  // BULL  — positive trend, normal vol, above-avg ADX
+  [-1.0,  0.0,  0.7],  // BEAR  — negative trend, normal vol, above-avg ADX
+  [ 0.0,  0.0, -1.0],  // RANGE — flat, quiet, low ADX
+  [ 0.0,  0.8, -0.8],  // CHOP  — elevated vol + BELOW-avg ADX
+];
+
+// ── Helper functions ──────────────────────────────────────────────────────────
+
+// OLS regression slope through `len` closes starting at `start`
+function linregSlopeAt(closes, start, len) {
+  if (len < 2) return 0;
+  const xm = (len - 1) / 2;
+  let sXY = 0, sX2 = 0;
+  for (let i = 0; i < len; i++) {
+    const xi = i - xm;
+    sXY += xi * closes[start + i];
+    sX2 += xi * xi;
+  }
+  return sX2 > 0 ? sXY / sX2 : 0;
+}
+
+// Wilder ATR — renamed to avoid conflict with existing computeATR
+function buildATR_hmm(bars, n) {
+  const out = new Float64Array(bars.length);
+  if (bars.length < 1) return out;
+  out[0] = Math.abs(parseFloat(bars[0].high) - parseFloat(bars[0].low));
+  const k = 1 / n;
+  for (let i = 1; i < bars.length; i++) {
+    const h  = parseFloat(bars[i].high);
+    const l  = parseFloat(bars[i].low);
+    const pc = parseFloat(bars[i - 1].close);
+    const tr = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+    out[i] = (Number.isFinite(tr) && tr > 0) ? k * tr + (1 - k) * out[i - 1] : out[i - 1];
+  }
+  return out;
+}
+
+// Wilder ADX
+function buildADX_hmm(bars, n) {
+  const out = new Float64Array(bars.length);
+  const L   = bars.length;
+  if (L < n * 2 + 2) return out;
+
+  const dmp = new Float64Array(L - 1);
+  const dmm = new Float64Array(L - 1);
+  const tr  = new Float64Array(L - 1);
+  for (let i = 1; i < L; i++) {
+    const h  = parseFloat(bars[i].high),     l  = parseFloat(bars[i].low);
+    const ph = parseFloat(bars[i - 1].high), pl = parseFloat(bars[i - 1].low);
+    const pc = parseFloat(bars[i - 1].close);
+    const up = h - ph, dn = pl - l;
+    dmp[i - 1] = up > dn && up > 0 ? up : 0;
+    dmm[i - 1] = dn > up && dn > 0 ? dn : 0;
+    tr[i - 1]  = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+  }
+
+  let sDMp = 0, sDMm = 0, sTR = 0;
+  for (let i = 0; i < n; i++) { sDMp += dmp[i]; sDMm += dmm[i]; sTR += tr[i]; }
+
+  const dx = [];
+  for (let i = n; i < dmp.length; i++) {
+    sDMp = sDMp - sDMp / n + dmp[i];
+    sDMm = sDMm - sDMm / n + dmm[i];
+    sTR  = sTR  - sTR  / n + tr[i];
+    if (sTR < 1e-10) { dx.push(0); continue; }
+    const dip = (sDMp / sTR) * 100, dim = (sDMm / sTR) * 100;
+    dx.push(dip + dim > 0 ? Math.abs(dip - dim) / (dip + dim) * 100 : 0);
+  }
+
+  if (dx.length < n) return out;
+  let adxVal = dx.slice(0, n).reduce((s, v) => s + v, 0) / n;
+  const off = n * 2;
+  if (off < L) out[off] = adxVal;
+  for (let i = n; i < dx.length; i++) {
+    adxVal = (adxVal * (n - 1) + dx[i]) / n;
+    if (i + n < L) out[i + n] = adxVal;
+  }
+  if (out[L - 1] === 0 && L > 1) out[L - 1] = out[L - 2];
+  return out;
+}
+
+// O(N) sliding-window z-score array
+function rollingZArr(arr, w = 200) {
+  const n   = arr.length;
+  const out = new Float64Array(n);
+  let sum = 0, sq = 0;
+  for (let i = 0; i < n; i++) {
+    const v = arr[i];
+    sum += v; sq += v * v;
+    if (i >= w) { const old = arr[i - w]; sum -= old; sq -= old * old; }
+    const cnt = Math.min(i + 1, w);
+    if (cnt < 5) continue;
+    const mu  = sum / cnt;
+    const std = Math.sqrt(Math.max(0, sq / cnt - mu * mu));
+    out[i] = std < 1e-12 ? 0 : (v - mu) / std;
+  }
+  return out;
+}
+
+// Gaussian log-likelihood, unit variance
+const gaussLL = (x, mu) => -0.5 * (x - mu) ** 2;
+
+// Gaussian log-likelihood with variance (V2)
+function gaussLLV(x, mu, variance) {
+  return -0.5 * ((x - mu) ** 2) / Math.max(variance, 1e-6) - 0.5 * Math.log(Math.max(variance, 1e-6));
+}
+
+// Log-sum-exp for 3 values (V1)
+function lse3(a, b, c) {
+  const mx = Math.max(a, b, c);
+  return mx + Math.log(Math.exp(a - mx) + Math.exp(b - mx) + Math.exp(c - mx));
+}
+
+// Log-sum-exp for K values (V2)
+function lseK(vals) {
+  let mx = vals[0];
+  for (let i = 1; i < vals.length; i++) if (vals[i] > mx) mx = vals[i];
+  let s = 0;
+  for (let i = 0; i < vals.length; i++) s += Math.exp(vals[i] - mx);
+  return mx + Math.log(s);
+}
+
+// K×K diagonal-dominant transition matrix
+function buildDefaultTransMatrix(selfProb) {
+  const K4  = 4;
+  const off = (1 - selfProb) / (K4 - 1);
+  return Array.from({ length: K4 }, (_, i) =>
+    Array.from({ length: K4 }, (_, j) => j === i ? selfProb : off)
+  );
+}
+
+// Boost self-prob during THIN hours (22–02 UTC)
+function sessionTransMatrix(A, hourUTC) {
+  if (hourUTC >= 2 && hourUTC < 17) return A;
+  return A.map((row, i) => {
+    const selfP = row[i];
+    const boost = Math.min(0.97, selfP + (1 - selfP) * 0.2);
+    const scale = (1 - boost) / Math.max(1 - selfP, 1e-10);
+    return row.map((p, j) => j === i ? boost : p * scale);
+  });
+}
+
+// ── Per-bar HMM forward algorithms ───────────────────────────────────────────
+// WARMUP bars at start of signals[] will be null — forward alg needs warmup
+
+const WARMUP = 110; // enough for all instrument configs
+
+function getHMMCfg(sym)   { return HMM5M_CONFIG[sym]  ?? HMM5M_CONFIG._default;  }
+function getHMMV2Cfg(sym) { return HMM_V2_CONFIG[sym] ?? HMM_V2_CONFIG._default; }
+
+function computeHMMSignalsV1(bars, sym) {
+  const cfg     = getHMMCfg(sym);
+  const N       = bars.length;
+  const LN      = cfg.linregN;
+  const warmup  = LN + 50;
+  const selfP   = cfg.selfProb;
+  const otherP  = (1 - selfP) / 2;
+  const logS    = Math.log(selfP), logO = Math.log(otherP);
+  const dirAdxT = cfg.dirAdxTarget ?? 0.5;
+
+  const closes = bars.map(b => b.close);
+  const atr    = buildATR_hmm(bars, 20);
+  const adx    = buildADX_hmm(bars, cfg.adxN ?? 50);
+
+  const trend = new Float64Array(N);
+  for (let i = LN - 1; i < N; i++)
+    trend[i] = linregSlopeAt(closes, i - LN + 1, LN);
+
+  const tZ = rollingZArr(trend, 200);
+  const vZ = rollingZArr(atr,   200);
+  const aZ = rollingZArr(adx,   200);
+
+  const LOG_INIT = Math.log(1/3);
+  let lA = [LOG_INIT, LOG_INIT, LOG_INIT]; // log-alpha [BULL, BEAR, RANGE]
+
+  const signals = new Array(N).fill(null);
+  let prevRegime = null, regimeBars = 0;
+
+  for (let i = 1; i < N; i++) {
+    const tz = tZ[i], vz = vZ[i], az = aZ[i];
+
+    const eB  = gaussLL(tz, +1) + gaussLL(az, dirAdxT) + gaussLL(vz, 0);
+    const eBr = gaussLL(tz, -1) + gaussLL(az, dirAdxT) + gaussLL(vz, 0);
+    const eR  = gaussLL(tz,  0) + gaussLL(az, -1.0)    + gaussLL(vz, 0);
+
+    const pB  = lse3(lA[0] + logS, lA[1] + logO, lA[2] + logO);
+    const pBr = lse3(lA[0] + logO, lA[1] + logS, lA[2] + logO);
+    const pR  = lse3(lA[0] + logO, lA[1] + logO, lA[2] + logS);
+
+    lA = [pB + eB, pBr + eBr, pR + eR];
+    if (i < warmup) continue;
+
+    const mx   = Math.max(...lA);
+    const exps = lA.map(v => Math.exp(v - mx));
+    const sum  = exps[0] + exps[1] + exps[2];
+    const pb = exps[0]/sum, pbr = exps[1]/sum, pr = exps[2]/sum;
+
+    const regime = pb >= pbr && pb >= pr ? 'BULL' : pbr >= pb && pbr >= pr ? 'BEAR' : 'RANGE';
+    const conf   = Math.max(pb, pbr, pr) * 100;
+
+    if (regime !== prevRegime) { prevRegime = regime; regimeBars = 1; } else regimeBars++;
+    const rl    = Math.min(1, regimeBars / 480);
+    const decay = Math.min(0.99, 1 - Math.exp(-regimeBars / 180));
+
+    const slope  = i >= 3 ? (trend[i] - trend[i-3]) * 1000 : 0;
+    const bocpd  = Math.min(100, Math.abs(tz) * 15 + Math.abs(vz) * 10);
+    const exh    = Math.abs(tz) * 0.7 + Math.abs(vz) * 0.3;
+    const hmmC   = (regime === 'BULL' || regime === 'BEAR') ? Math.min(100, (conf-50)*2) : 0;
+    const volC   = Math.max(0, 100 - Math.abs(vz)*25);
+    const score  = Math.min(100, hmmC*0.55 + volC*0.25 + getSessionMult(bars[i].time)*100*0.20);
+
+    signals[i] = { ts: bars[i].time, regime, conf,
+      pBull: pb*100, pBear: pbr*100, pRange: pr*100,
+      vz, adxZ: az, trendZ: tz, rl, decay, slope, bocpd, exh, score, atr: atr[i] };
+  }
+  return signals;
+}
+
+function computeHMMSignalsV2(bars, sym, trainedParams) {
+  const cfg    = getHMMV2Cfg(sym);
+  const N      = bars.length;
+  const LN     = cfg.linregN;
+  const warmup = LN + 50;
+  const K4     = 4;
+
+  const learned = trainedParams?.[sym];
+  let means, vars, baseA, isLearned;
+  if (learned?.means && learned?.vars && learned?.transMatrix) {
+    means     = learned.means.map((m, i) => i === 3 ? DEFAULT_MEANS[3] : m);
+    vars      = learned.vars;
+    baseA     = learned.transMatrix;
+    isLearned = true;
+  } else {
+    means     = DEFAULT_MEANS;
+    vars      = Array.from({length: K4}, () => [1.0, 1.0, 1.0]);
+    baseA     = buildDefaultTransMatrix(cfg.selfProb);
+    isLearned = false;
+  }
+
+  const closes = bars.map(b => b.close);
+  const atr    = buildATR_hmm(bars, 20);
+  const adx    = buildADX_hmm(bars, cfg.adxN ?? 50);
+
+  const trend = new Float64Array(N);
+  for (let i = LN - 1; i < N; i++)
+    trend[i] = linregSlopeAt(closes, i - LN + 1, LN);
+
+  const tZ = rollingZArr(trend, 200);
+  const vZ = rollingZArr(atr,   200);
+  const aZ = rollingZArr(adx,   200);
+
+  const LOG_INIT = Math.log(1/K4);
+  let lA = new Float64Array(K4).fill(LOG_INIT);
+
+  const signals = new Array(N).fill(null);
+  let prevRegime = null, regimeBars = 0;
+
+  for (let i = 1; i < N; i++) {
+    const obs   = [tZ[i], vZ[i], aZ[i]];
+    const hourUTC = new Date(bars[i].time * 1000).getUTCHours();
+    const A     = sessionTransMatrix(baseA, hourUTC);
+    const logA  = A.map(row => row.map(p => Math.log(Math.max(p, 1e-300))));
+
+    const newLA = new Float64Array(K4);
+    for (let j = 0; j < K4; j++) {
+      const trans = new Float64Array(K4);
+      for (let ii = 0; ii < K4; ii++) trans[ii] = lA[ii] + logA[ii][j];
+      let em = 0;
+      for (let f = 0; f < 3; f++) em += gaussLLV(obs[f], means[j][f], vars[j][f]);
+      newLA[j] = lseK(trans) + em;
+    }
+    lA = newLA;
+    if (i < warmup) continue;
+
+    const mx   = Math.max(...lA);
+    const exps = Array.from(lA, v => Math.exp(v - mx));
+    const sum  = exps.reduce((s, v) => s+v, 0);
+    const probs = exps.map(v => v/sum);
+
+    let bestIdx = 0;
+    for (let k = 1; k < K4; k++) if (probs[k] > probs[bestIdx]) bestIdx = k;
+
+    const STATE_NAMES4 = ['BULL','BEAR','RANGE','CHOP'];
+    const regime = STATE_NAMES4[bestIdx];
+    const conf   = probs[bestIdx] * 100;
+
+    if (regime !== prevRegime) { prevRegime = regime; regimeBars = 1; } else regimeBars++;
+    const rl    = Math.min(1, regimeBars / 480);
+    const decay = Math.min(0.99, 1 - Math.exp(-regimeBars / 180));
+
+    const slope  = i >= 3 ? (trend[i] - trend[i-3]) * 1000 : 0;
+    const bocpd  = Math.min(100, Math.abs(tZ[i]) * 15 + Math.abs(vZ[i]) * 10);
+    const exh    = Math.abs(tZ[i]) * 0.7 + Math.abs(vZ[i]) * 0.3;
+    const hmmC   = (regime === 'BULL' || regime === 'BEAR') ? Math.min(100,(conf-50)*2) : 0;
+    const volC   = Math.max(0, 100 - Math.abs(vZ[i])*25);
+    const score  = Math.min(100, hmmC*0.55 + volC*0.25 + getSessionMult(bars[i].time)*100*0.20);
+
+    signals[i] = { ts: bars[i].time, regime, conf,
+      pBull: probs[0]*100, pBear: probs[1]*100, pRange: probs[2]*100, pChop: probs[3]*100,
+      vz: vZ[i], adxZ: aZ[i], trendZ: tZ[i], rl, decay, slope, bocpd, exh, score, atr: atr[i],
+      isLearned };
+  }
+  return signals;
+}
+
+async function fetchTrainedParams() {
+  try {
+    const r = await fetch('/api/kv/get?key=hmm5m_trained_params');
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d?.data ?? null;
+  } catch { return null; }
+}
+
 // ─── Data loading ─────────────────────────────────────────────────────────────
 
 async function loadAndRun() {
@@ -1188,72 +1549,57 @@ async function loadAndRun() {
   const fromStr = document.getElementById('fromDate').value;
   const toStr   = document.getElementById('toDate').value;
   if (!fromStr || !toStr) { setStatus('err', 'Select a date range first'); return; }
-
-  const days = (new Date(toStr) - new Date(fromStr)) / 86400000;
-  if (days < 1)  { setStatus('err', 'Select at least 1 day'); return; }
+  if ((new Date(toStr) - new Date(fromStr)) / 86400000 < 1) {
+    setStatus('err', 'Select at least 1 day'); return;
+  }
 
   document.getElementById('runBtn').disabled = true;
-  setStatus('spin', 'Loading regime history…');
+  selectedTradeIdx = -1;
+  document.getElementById('tradeNavBar').style.display = 'none';
 
   try {
-    const ps     = pairSafe(pair);
-    const fromEp = toEpoch(fromStr);
-    const toEp   = toEpoch(toStr) + 86400;
+    const ps = pairSafe(pair);
 
-    const histUrl = `/api/regime-history?bot=${currentBot}&pair=${ps}&from=${fromEp}&to=${toEp}`;
-
-    // Regime data and M1 candles load concurrently
-    const [histRes, m1Raw] = await Promise.all([
-      fetch(histUrl).catch(() => null),
-      fetchM1CandlesChunked(ps, fromStr, toStr, (idx, total) => {
-        setStatus('spin', `Loading M1 candles from R2… chunk ${idx}/${total}`);
-      }),
-    ]);
-
-    if (!m1Raw.length) throw new Error('No M1 candle data for this pair/range — check Railway server and R2 credentials');
-    m5Candles = m1Raw; // raw M1 — no resampling
-
-    // Regime records — Railway endpoint merges R2 backfill + local KV ring buffer
-    let regimeData = { records: [], events: [] };
-    if (histRes?.ok) {
-      try { regimeData = await histRes.json(); } catch {}
-    }
-
-    regimeRecords = (regimeData.records || [])
-      .filter(r => r.ts >= fromEp && r.ts <= toEp)
-      .sort((a, b) => a.ts - b.ts);
-
-    // Coverage banner
-    const banner = document.getElementById('covBanner');
-    if (regimeRecords.length < 10) {
-      banner.textContent = `⚠ Only ${regimeRecords.length} regime records in this range. Regime data comes from R2 backfill (seed it with POST /api/regime-history-export) + the live KV ring buffer (last 48-96h while the bot is running). Select a period when the bot was active and R2 has been seeded.`;
-      banner.style.display = '';
-    } else {
-      banner.style.display = 'none';
-    }
+    // Load M1 candles from R2 parquet
+    const m1Raw = await fetchM1CandlesChunked(ps, fromStr, toStr, (idx, total) => {
+      setStatus('spin', `Loading M1 candles from R2… chunk ${idx}/${total}`);
+    });
+    if (!m1Raw.length) throw new Error('No M1 candle data — check Railway/R2 credentials or try a shorter range');
+    m5Candles = m1Raw;
 
     document.getElementById('chartPairLbl').textContent = `${pair} · ${currentBot.toUpperCase()} · M1`;
 
+    // Compute HMM regime signals from candles
+    setStatus('spin', `Computing HMM regime signals on ${m5Candles.length} M1 bars…`);
+    await new Promise(r => requestAnimationFrame(r));
+    if (currentBot === 'v1') {
+      allSignals = computeHMMSignalsV1(m5Candles, pair);
+    } else {
+      const trainedParams = await fetchTrainedParams();
+      allSignals = computeHMMSignalsV2(m5Candles, pair, trainedParams);
+    }
+
     // Run simulation
-    setStatus('spin', `Running simulation on ${regimeRecords.length} records + ${m5Candles.length} M1 candles…`);
-    await new Promise(r => requestAnimationFrame(r)); // let UI update
+    setStatus('spin', 'Running simulation…');
+    await new Promise(r => requestAnimationFrame(r));
+    allTrades = currentBot === 'v1'
+      ? simulateV1(m5Candles, allSignals, cfg)
+      : simulateV2(m5Candles, allSignals, cfg);
 
-    allTrades = currentBot === 'v1' ? simulateV1(regimeRecords, m5Candles, cfg) : simulateV2(regimeRecords, m5Candles, cfg);
-
-    // Render chart
     renderChart();
     renderMetricsData();
     requestDraw();
 
-    // Render analytics
     if (allTrades.length > 0) {
       document.getElementById('analyticsSection').style.display = '';
+      document.getElementById('tradeNavBar').style.display = '';
       renderAnalytics();
+      updateNavInfo();
     } else {
       document.getElementById('analyticsSection').style.display = 'none';
     }
 
-    setStatus('ok', `${m5Candles.length} M1 candles · ${regimeRecords.length} regime records · ${allTrades.length} simulated trades`);
+    setStatus('ok', `${m5Candles.length} M1 candles · ${allTrades.length} simulated trades`);
   } catch (err) {
     setStatus('err', `Error: ${err.message}`);
     console.error(err);
@@ -1263,89 +1609,73 @@ async function loadAndRun() {
 }
 
 // ─── Simulation: V1 ──────────────────────────────────────────────────────────
+// Iterates every M1 bar using computed signals — no pre-recorded regime data needed.
 
-function simulateV1(records, candles, c) {
+function simulateV1(candles, signals, c) {
   const trades = [];
-  let pos = null, debounce = 0, rangeHold = 0, lastCheckTs = 0;
+  let pos = null, debounce = 0, rangeHold = 0;
 
-  for (let i = 0; i < records.length; i++) {
-    const rec = records[i];
-    const cIdx = findCandleIdxAtOrBefore(candles, rec.ts);
-    const candle = cIdx >= 0 ? candles[cIdx] : null;
-    const utcH = new Date(rec.ts * 1000).getUTCHours();
+  for (let i = WARMUP; i < candles.length; i++) {
+    const sig = signals[i];
+    if (!sig) continue;
+    const bar  = candles[i];
+    const utcH = new Date(sig.ts * 1000).getUTCHours();
     const inWin = utcH >= c.window_start && utcH < c.window_end;
 
     if (pos) {
-      // SL check in candles since last poll
-      const slCandles = getCandlesInRange(candles, lastCheckTs, rec.ts);
-      let slHit = null;
-      for (const sc of slCandles) {
-        if (pos.direction === 'LONG'  && sc.low  <= pos.sl) { slHit = { ts: sc.time, price: pos.sl }; break; }
-        if (pos.direction === 'SHORT' && sc.high >= pos.sl) { slHit = { ts: sc.time, price: pos.sl }; break; }
-      }
+      // Check SL against this bar's range
+      const slHit = (pos.direction === 'LONG'  && bar.low  <= pos.sl)
+                 || (pos.direction === 'SHORT' && bar.high >= pos.sl);
       if (slHit) {
-        trades.push(mkTrade(pos, slHit.ts, slHit.price, 'SL'));
+        trades.push(mkTrade(pos, bar.time, pos.sl, 'SL'));
+        pos = null; debounce = 0; rangeHold = 0; continue;
+      }
+      // Update MFE
+      const fav = pos.direction === 'LONG' ? bar.high - pos.entry_price : pos.entry_price - bar.low;
+      if (fav > pos.mfe_price) pos.mfe_price = fav;
+
+      // Outside window → flat
+      if (!inWin) {
+        trades.push(mkTrade(pos, bar.time, bar.close, 'WINDOW'));
+        pos = null; debounce = 0; rangeHold = 0; continue;
+      }
+
+      const flipped = pos.regime !== sig.regime;
+      if (flipped && (sig.regime === 'BULL' || sig.regime === 'BEAR')) {
+        trades.push(mkTrade(pos, bar.time, bar.close, 'REGIME_FLIP'));
         pos = null; debounce = 0; rangeHold = 0;
-      } else {
-        // Update MFE
-        for (const sc of slCandles) {
-          const fav = pos.direction === 'LONG' ? sc.high - pos.entry_price : pos.entry_price - sc.low;
-          if (fav > pos.mfe_price) pos.mfe_price = fav;
-        }
-        // Outside window → exit
-        if (!inWin) {
-          const xp = candle ? candle.close : pos.entry_price;
-          trades.push(mkTrade(pos, rec.ts, xp, 'WINDOW'));
+      } else if (flipped && c.exit_on_range && (sig.regime === 'RANGE' || sig.regime === 'CHOP')) {
+        if (++rangeHold >= c.range_exit_hold) {
+          trades.push(mkTrade(pos, bar.time, bar.close, 'RANGE_EXIT'));
           pos = null; debounce = 0; rangeHold = 0;
-        } else {
-          const flipped = pos.regime !== rec.regime;
-          if (flipped && (rec.regime === 'BULL' || rec.regime === 'BEAR')) {
-            const xp = candle ? candle.close : pos.entry_price;
-            trades.push(mkTrade(pos, rec.ts, xp, 'REGIME_FLIP'));
-            pos = null; debounce = 0; rangeHold = 0;
-          } else if (flipped && c.exit_on_range && (rec.regime === 'RANGE' || rec.regime === 'CHOP')) {
-            rangeHold++;
-            if (rangeHold >= c.range_exit_hold) {
-              const xp = candle ? candle.close : pos.entry_price;
-              trades.push(mkTrade(pos, rec.ts, xp, 'RANGE_EXIT'));
-              pos = null; debounce = 0; rangeHold = 0;
-            }
-          } else if (!flipped) {
-            rangeHold = 0;
-            if ((rec.decay || 0) >= c.decay_exit) {
-              const xp = candle ? candle.close : pos.entry_price;
-              trades.push(mkTrade(pos, rec.ts, xp, 'DECAY'));
-              pos = null; debounce = 0;
-            }
-          }
+        }
+      } else if (!flipped) {
+        rangeHold = 0;
+        if (sig.decay >= c.decay_exit) {
+          trades.push(mkTrade(pos, bar.time, bar.close, 'DECAY'));
+          pos = null; debounce = 0;
         }
       }
     }
 
     if (!pos && inWin) {
-      const dir = rec.regime === 'BULL' || rec.regime === 'BEAR';
-      const ok  = dir && rec.conf >= c.min_confidence && (rec.vz||0) <= c.vol_z_max && (rec.decay||0) < c.entry_decay_max;
+      const isDir = sig.regime === 'BULL' || sig.regime === 'BEAR';
+      const ok    = isDir && sig.conf >= c.min_confidence && sig.vz <= c.vol_z_max && sig.decay < c.entry_decay_max;
       if (ok) {
-        debounce++;
-        if (debounce >= c.candle_hold && candle) {
-          const atr = computeATR(candles, cIdx, 70); // ATR(70) M1 ≈ ATR(14) M5
-          if (atr) {
-            const dir2 = rec.regime === 'BULL' ? 'LONG' : 'SHORT';
-            const ep   = candle.close;
-            const sl   = dir2 === 'LONG' ? ep - atr * c.sl_atr_mult : ep + atr * c.sl_atr_mult;
-            pos = { regime: rec.regime, direction: dir2, entry_ts: rec.ts, entry_price: ep,
-                    sl, atr, mfe_price: 0, conf_at_entry: rec.conf, decay_at_entry: rec.decay||0 };
-            debounce = 0; rangeHold = 0;
-          }
+        if (++debounce >= c.candle_hold && sig.atr) {
+          const dir2 = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
+          const ep   = bar.close;
+          const sl   = dir2 === 'LONG' ? ep - sig.atr * c.sl_atr_mult : ep + sig.atr * c.sl_atr_mult;
+          pos = { regime: sig.regime, direction: dir2, entry_ts: bar.time, entry_price: ep,
+                  sl, atr: sig.atr, mfe_price: 0, conf_at_entry: sig.conf, decay_at_entry: sig.decay };
+          debounce = 0; rangeHold = 0;
         }
       } else { debounce = 0; }
     } else if (!pos) { debounce = 0; }
-
-    lastCheckTs = rec.ts;
   }
 
-  if (pos && m5Candles.length) {
-    const lc = m5Candles[m5Candles.length - 1];
+  if (pos) {
+    const lc = candles[candles.length - 1];
     trades.push(mkTrade(pos, lc.time, lc.close, 'END'));
   }
   return trades;
@@ -1353,135 +1683,114 @@ function simulateV1(records, candles, c) {
 
 // ─── Simulation: V2 ──────────────────────────────────────────────────────────
 
-function simulateV2(records, candles, c) {
+function simulateV2(candles, signals, c) {
   const trades = [];
-  let pos = null, debounce = 0, rangeHold = 0, lastCheckTs = 0;
+  let pos = null, debounce = 0, rangeHold = 0;
   let prevConf = null;
 
-  for (let i = 0; i < records.length; i++) {
-    const rec = records[i];
-    const cIdx = findCandleIdxAtOrBefore(candles, rec.ts);
-    const candle = cIdx >= 0 ? candles[cIdx] : null;
-    const utcH = new Date(rec.ts * 1000).getUTCHours();
-    const inWin = utcH >= c.window_start && utcH < c.window_end;
-    const sessMult = getSessionMult(rec.ts);
-    const effConf  = rec.conf * sessMult;
-    const confDrop = prevConf != null ? prevConf - rec.conf : 0;
-    const confRising = prevConf == null || rec.conf > prevConf;
+  for (let i = WARMUP; i < candles.length; i++) {
+    const sig  = signals[i];
+    if (!sig) continue;
+    const bar  = candles[i];
+    const utcH = new Date(sig.ts * 1000).getUTCHours();
+    const inWin     = utcH >= c.window_start && utcH < c.window_end;
+    const effConf   = sig.conf * getSessionMult(sig.ts);
+    const confDrop  = prevConf != null ? prevConf - sig.conf : 0;
+    const confRising = prevConf == null || sig.conf >= prevConf;
 
     if (pos) {
-      const slCandles = getCandlesInRange(candles, lastCheckTs, rec.ts);
-      let slHit = null;
-      for (const sc of slCandles) {
-        if (pos.direction === 'LONG'  && sc.low  <= pos.sl) { slHit = { ts: sc.time, price: pos.sl }; break; }
-        if (pos.direction === 'SHORT' && sc.high >= pos.sl) { slHit = { ts: sc.time, price: pos.sl }; break; }
-      }
+      const slHit = (pos.direction === 'LONG'  && bar.low  <= pos.sl)
+                 || (pos.direction === 'SHORT' && bar.high >= pos.sl);
       if (slHit) {
-        trades.push(mkTrade(pos, slHit.ts, slHit.price, 'SL'));
-        pos = null; debounce = 0; rangeHold = 0;
-        prevConf = rec.conf; lastCheckTs = rec.ts; continue;
+        trades.push(mkTrade(pos, bar.time, pos.sl, 'SL'));
+        pos = null; debounce = 0; rangeHold = 0; prevConf = sig.conf; continue;
       }
 
       // Update MFE
-      for (const sc of slCandles) {
-        const fav = pos.direction === 'LONG' ? sc.high - pos.entry_price : pos.entry_price - sc.low;
-        if (fav > pos.mfe_price) pos.mfe_price = fav;
-      }
-      const riskPrice = Math.abs(pos.entry_price - pos.sl);
-      pos.mfe_r = riskPrice > 0 ? pos.mfe_price / riskPrice : 0;
+      const fav = pos.direction === 'LONG' ? bar.high - pos.entry_price : pos.entry_price - bar.low;
+      if (fav > pos.mfe_price) pos.mfe_price = fav;
+      const riskPr = Math.abs(pos.entry_price - pos.sl);
+      pos.mfe_r = riskPr > 0 ? pos.mfe_price / riskPr : 0;
 
-      const xp = candle ? candle.close : pos.entry_price;
+      const xp = bar.close;
       let exited = false;
 
       // X1: regime flip
-      const flipped = pos.regime !== rec.regime;
-      if (flipped && (rec.regime === 'BULL' || rec.regime === 'BEAR')) {
-        trades.push(mkTrade(pos, rec.ts, xp, 'REGIME_FLIP')); exited = true;
-      } else if (flipped && c.exit_on_range && (rec.regime === 'RANGE' || rec.regime === 'CHOP')) {
-        rangeHold++;
-        if (rangeHold >= c.range_exit_hold) { trades.push(mkTrade(pos, rec.ts, xp, 'RANGE_EXIT')); exited = true; }
+      const flipped = pos.regime !== sig.regime;
+      if (flipped && (sig.regime === 'BULL' || sig.regime === 'BEAR')) {
+        trades.push(mkTrade(pos, bar.time, xp, 'REGIME_FLIP')); exited = true;
+      } else if (flipped && c.exit_on_range && (sig.regime === 'RANGE' || sig.regime === 'CHOP')) {
+        if (++rangeHold >= c.range_exit_hold) { trades.push(mkTrade(pos, bar.time, xp, 'RANGE_EXIT')); exited = true; }
       } else if (!flipped) { rangeHold = 0; }
 
+      // X2: conf floor / conf drop
       if (!exited) {
-        // X2: conf floor
-        if (rec.conf < c.conf_floor) { trades.push(mkTrade(pos, rec.ts, xp, 'CONF_FLOOR')); exited = true; }
-        // X4: single-bar conf drop
-        else if (confDrop >= c.drop_thresh) { trades.push(mkTrade(pos, rec.ts, xp, 'CONF_DROP')); exited = true; }
+        if (sig.conf < c.conf_floor) { trades.push(mkTrade(pos, bar.time, xp, 'CONF_FLOOR')); exited = true; }
+        else if (confDrop >= c.drop_thresh) { trades.push(mkTrade(pos, bar.time, xp, 'CONF_DROP')); exited = true; }
       }
-      if (!exited && rec.slope != null) {
-        // X3: slope exit
-        if (rec.slope < c.slope_thresh) {
-          pos.slope_ct = (pos.slope_ct || 0) + 1;
-          if (pos.slope_ct >= c.slope_bars) { trades.push(mkTrade(pos, rec.ts, xp, 'SLOPE')); exited = true; }
+      // X3: slope
+      if (!exited) {
+        if (sig.slope < c.slope_thresh) {
+          if (++pos.slope_ct >= c.slope_bars) { trades.push(mkTrade(pos, bar.time, xp, 'SLOPE')); exited = true; }
         } else { pos.slope_ct = 0; }
       }
-      if (!exited && rec.bocpd != null) {
-        // X6: BOCPD exit
-        if (rec.bocpd >= c.bocpd_thresh) {
-          pos.bocpd_ct = (pos.bocpd_ct || 0) + 1;
-          if (pos.bocpd_ct >= c.bocpd_exit_bars) { trades.push(mkTrade(pos, rec.ts, xp, 'BOCPD')); exited = true; }
+      // X6: BOCPD
+      if (!exited) {
+        if (sig.bocpd >= c.bocpd_thresh) {
+          if (++pos.bocpd_ct >= c.bocpd_exit_bars) { trades.push(mkTrade(pos, bar.time, xp, 'BOCPD')); exited = true; }
         } else { pos.bocpd_ct = 0; }
       }
-      if (!exited && rec.score != null) {
-        // X11: score below hold
-        if (rec.score < c.hold_score_min) {
-          pos.score_low_ct = (pos.score_low_ct || 0) + 1;
-          if (pos.score_low_ct >= c.score_drop_bars) { trades.push(mkTrade(pos, rec.ts, xp, 'SCORE_LOW')); exited = true; }
-        } else { pos.score_low_ct = 0; }
-        // X12: score drop from entry
-        if (!exited && (pos.entry_score - rec.score) >= c.score_drop_exit) {
-          trades.push(mkTrade(pos, rec.ts, xp, 'SCORE_DROP')); exited = true;
-        }
-      }
+      // X11/X12: score
       if (!exited) {
-        // X13: MFE retrace
-        if (pos.mfe_r >= c.mfe_min_r && pos.mfe_price > 0) {
-          const curFav = pos.direction === 'LONG' ? (xp - pos.entry_price) : (pos.entry_price - xp);
-          const retrace = (pos.mfe_price - curFav) / pos.mfe_price;
-          if (retrace >= c.mfe_retrace_pct) { trades.push(mkTrade(pos, rec.ts, xp, 'MFE_RETRACE')); exited = true; }
+        if (sig.score < c.hold_score_min) {
+          if (++pos.score_low_ct >= c.score_drop_bars) { trades.push(mkTrade(pos, bar.time, xp, 'SCORE_LOW')); exited = true; }
+        } else { pos.score_low_ct = 0; }
+        if (!exited && (pos.entry_score - sig.score) >= c.score_drop_exit) {
+          trades.push(mkTrade(pos, bar.time, xp, 'SCORE_DROP')); exited = true;
         }
       }
-      if (!exited && (rec.decay || 0) >= c.decay_exit) {
-        trades.push(mkTrade(pos, rec.ts, xp, 'DECAY')); exited = true;
+      // X13: MFE retrace
+      if (!exited && pos.mfe_r >= c.mfe_min_r && pos.mfe_price > 0) {
+        const curFav  = pos.direction === 'LONG' ? (xp - pos.entry_price) : (pos.entry_price - xp);
+        const retrace = (pos.mfe_price - Math.max(0, curFav)) / pos.mfe_price;
+        if (retrace >= c.mfe_retrace_pct) { trades.push(mkTrade(pos, bar.time, xp, 'MFE_RETRACE')); exited = true; }
+      }
+      // X5: decay
+      if (!exited && sig.decay >= c.decay_exit) {
+        trades.push(mkTrade(pos, bar.time, xp, 'DECAY')); exited = true;
       }
       if (exited) { pos = null; debounce = 0; rangeHold = 0; }
     }
 
     if (!pos && inWin) {
-      const isDir = rec.regime === 'BULL' || rec.regime === 'BEAR';
+      const isDir   = sig.regime === 'BULL' || sig.regime === 'BEAR';
       const okConf  = effConf >= c.entry_conf;
       const okRise  = !c.require_rising_conf || confRising;
-      const okVz    = (rec.vz || 0) <= c.vol_z_max;
-      const okDecay = (rec.decay || 0) < c.entry_decay_max;
-      const okScore = rec.score == null || rec.score >= c.entry_score_min;
+      const okVz    = sig.vz <= c.vol_z_max;
+      const okDecay = sig.decay < c.entry_decay_max;
+      const okScore = sig.score >= c.entry_score_min;
 
       if (isDir && okConf && okRise && okVz && okDecay && okScore) {
-        debounce++;
-        if (debounce >= c.candle_hold && candle) {
-          const atr = computeATR(candles, cIdx, 70); // ATR(70) M1 ≈ ATR(14) M5
-          if (atr) {
-            const dir2 = rec.regime === 'BULL' ? 'LONG' : 'SHORT';
-            const ep   = candle.close;
-            const sl   = dir2 === 'LONG' ? ep - atr * c.sl_atr_mult : ep + atr * c.sl_atr_mult;
-            const rp   = Math.abs(ep - sl);
-            pos = {
-              regime: rec.regime, direction: dir2, entry_ts: rec.ts, entry_price: ep,
-              entry_score: rec.score || 0, sl, atr, risk_price: rp, mfe_price: 0, mfe_r: 0,
-              conf_at_entry: rec.conf, decay_at_entry: rec.decay || 0,
-              slope_ct: 0, bocpd_ct: 0, score_low_ct: 0,
-            };
-            debounce = 0; rangeHold = 0;
-          }
+        if (++debounce >= c.candle_hold && sig.atr) {
+          const dir2 = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
+          const ep   = bar.close;
+          const sl   = dir2 === 'LONG' ? ep - sig.atr * c.sl_atr_mult : ep + sig.atr * c.sl_atr_mult;
+          pos = {
+            regime: sig.regime, direction: dir2, entry_ts: bar.time, entry_price: ep,
+            entry_score: sig.score, sl, atr: sig.atr, mfe_price: 0, mfe_r: 0,
+            conf_at_entry: sig.conf, decay_at_entry: sig.decay,
+            slope_ct: 0, bocpd_ct: 0, score_low_ct: 0,
+          };
+          debounce = 0; rangeHold = 0;
         }
       } else { debounce = 0; }
     } else if (!pos) { debounce = 0; }
 
-    prevConf = rec.conf;
-    lastCheckTs = rec.ts;
+    prevConf = sig.conf;
   }
 
-  if (pos && m5Candles.length) {
-    const lc = m5Candles[m5Candles.length - 1];
+  if (pos) {
+    const lc = candles[candles.length - 1];
     trades.push(mkTrade(pos, lc.time, lc.close, 'END'));
   }
   return trades;
@@ -1587,23 +1896,63 @@ function computeAnalytics(trades) {
     byDow[d].count++; if (t.win) byDow[d].wins++;
   });
 
+  // CAGR
+  const cagr = (Math.pow(1 + totalPnl/100, 1/Math.max(years, 1/52)) - 1) * 100;
+
+  // Session breakdown (UTC hours)
+  function getSession(hourUTC) {
+    if (hourUTC >= 2  && hourUTC < 7)  return 'Asia';
+    if (hourUTC >= 7  && hourUTC < 13) return 'London';
+    if (hourUTC >= 13 && hourUTC < 17) return 'Overlap';
+    if (hourUTC >= 17 && hourUTC < 22) return 'New York';
+    return 'Thin';
+  }
+  const bySession = {};
+  trades.forEach(t => {
+    const h = new Date(t.entry_ts * 1000).getUTCHours();
+    const sess = getSession(h);
+    if (!bySession[sess]) bySession[sess] = { count: 0, wins: 0, pnl: 0, winTotal: 0, lossTotal: 0 };
+    bySession[sess].count++;
+    bySession[sess].pnl += t.pnl_pct;
+    if (t.win) { bySession[sess].wins++; bySession[sess].winTotal += t.pnl_pct; }
+    else        { bySession[sess].lossTotal += t.pnl_pct; }
+  });
+
+  // Monthly breakdown
+  const byMonth = {};
+  trades.forEach(t => {
+    const d = new Date(t.entry_ts * 1000);
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+    if (!byMonth[key]) byMonth[key] = { count: 0, wins: 0, pnl: 0 };
+    byMonth[key].count++; byMonth[key].pnl += t.pnl_pct;
+    if (t.win) byMonth[key].wins++;
+  });
+
+  // Hourly breakdown (0–23 UTC)
+  const byHour = Array.from({length: 24}, () => ({ count: 0, wins: 0, pnl: 0 }));
+  trades.forEach(t => {
+    const h = new Date(t.entry_ts * 1000).getUTCHours();
+    byHour[h].count++; byHour[h].pnl += t.pnl_pct;
+    if (t.win) byHour[h].wins++;
+  });
+
   const expectancy = winRate / 100 * avgWin - (1 - winRate / 100) * avgLoss;
   return { total: trades.length, wins: wins.length, losses: losses.length,
     winRate, grossWin, grossLoss, pf, avgWin, avgLoss,
     maxDD, sharpe, sortino, calmar, totalPnl, equityCurve,
     maxCW, maxCL, expectancy, rrRatio: avgLoss > 0 ? avgWin / avgLoss : 0,
-    byReason, byRegime, byDow };
+    byReason, byRegime, byDow, cagr, bySession, byMonth, byHour };
 }
 
 // ─── Chart rendering ──────────────────────────────────────────────────────────
 
 function renderChart() {
   if (!m5Candles.length) return;
-  const data = m5Candles.map(c => {
-    const rec = findRecordAt(c.time + 59); // M1 bar: look at 1-min close
-    const col = rec && REGIME_COLORS[rec.regime] ? REGIME_COLORS[rec.regime] : null;
+  const data = m5Candles.map((c, i) => {
+    const sig      = allSignals[i];
+    const col      = sig && REGIME_COLORS[sig.regime] ? REGIME_COLORS[sig.regime] : null;
     const fallback = c.close >= c.open ? '#00c97d' : '#ef5350';
-    const color = col ? col.color : fallback;
+    const color    = col ? col.color : fallback;
     return { time: c.time, open: c.open, high: c.high, low: c.low, close: c.close,
              color, wickColor: color, borderColor: color };
   });
@@ -1626,22 +1975,20 @@ function renderChart() {
 
 function renderMetricsData() {
   rebuildMetricPanels();
-  if (!regimeRecords.length) return;
+  if (!allSignals.length) return;
 
   activeMetrics.forEach(m => {
     const mc = metricCharts[m.key];
     if (!mc) return;
-    const seen = new Map();
-    regimeRecords.forEach(r => {
-      if (r[m.key] == null) return;
-      const v = Number(r[m.key]);
-      if (!isNaN(v)) seen.set(r.ts, v);
+    const pts = [];
+    allSignals.forEach(s => {
+      if (!s || s[m.key] == null) return;
+      const v = Number(s[m.key]);
+      if (!isNaN(v)) pts.push({ time: s.ts, value: v });
     });
-    const data = [...seen.entries()].sort((a, b) => a[0] - b[0]).map(([t, v]) => ({ time: t, value: v }));
-    if (data.length) mc.series.setData(data);
+    if (pts.length) mc.series.setData(pts);
   });
 
-  // Sync time range
   const range = chart1.timeScale().getVisibleRange();
   if (range) {
     Object.values(metricCharts).forEach(({ chart }) => {
@@ -1775,6 +2122,13 @@ function renderAnalytics() {
     }
   });
 
+  // Session, hourly, monthly, CAGR
+  renderSessionTable(stats.bySession);
+  renderHourChart(stats.byHour);
+  renderMonthChart(stats.byMonth);
+  el('kCagr').textContent = fmt1(stats.cagr) + '%';
+  el('kCagr').className = 'bt-kpi-value ' + (stats.cagr >= 15 ? 'green' : stats.cagr >= 0 ? 'amber' : 'red');
+
   // Trade table
   filteredTrades = [...allTrades].sort((a, b) => b.entry_ts - a.entry_ts);
   tradePage_ = 0;
@@ -1786,6 +2140,136 @@ function regimePF(trades) {
   const gw = trades.filter(t=>t.win).reduce((s,t)=>s+t.pnl_pct,0);
   const gl = Math.abs(trades.filter(t=>!t.win).reduce((s,t)=>s+t.pnl_pct,0));
   return gl > 0 ? gw/gl : (gw > 0 ? 99 : 0);
+}
+
+function renderSessionTable(bySession) {
+  const SESS_UTC = { Asia:'02–07', London:'07–13', Overlap:'13–17', 'New York':'17–22', Thin:'22–02' };
+  const body = document.getElementById('sessionTblBody');
+  if (!body) return;
+  const rows = Object.entries(bySession)
+    .filter(([,s]) => s.count > 0)
+    .sort((a,b) => b[1].count - a[1].count);
+  body.innerHTML = rows.map(([sess, s]) => {
+    const wr  = s.count ? (s.wins/s.count*100).toFixed(1) : '0';
+    const avg = s.count ? (s.pnl/s.count).toFixed(2) : '0';
+    const gl  = Math.abs(s.lossTotal || 0);
+    const pf  = gl > 0 ? (s.winTotal/gl).toFixed(2) : s.pnl > 0 ? '∞' : '0';
+    return `<tr>
+      <td><b>${sess}</b></td>
+      <td style="font-size:10px;color:var(--text3)">${SESS_UTC[sess]??''}</td>
+      <td class="num">${s.count}</td>
+      <td class="num ${parseFloat(wr)>=55?'pos':parseFloat(wr)<45?'neg':''}">${wr}%</td>
+      <td class="num ${parseFloat(avg)>=0?'pos':'neg'}">${parseFloat(avg)>=0?'+':''}${avg}%</td>
+      <td class="num ${parseFloat(pf)>=1?'pos':'neg'}">${pf}</td>
+    </tr>`;
+  }).join('');
+}
+
+let hourChart_ = null, monthChart_ = null;
+
+function renderHourChart(byHour) {
+  const labels = Array.from({length:24}, (_,i) => i+'h');
+  const wr     = Array.from({length:24}, (_,i) => byHour[i]?.count ? byHour[i].wins/byHour[i].count*100 : null);
+  const counts = Array.from({length:24}, (_,i) => byHour[i]?.count ?? 0);
+  if (hourChart_) hourChart_.destroy();
+  hourChart_ = new Chart(document.getElementById('hourChart'), {
+    type:'bar',
+    data:{ labels, datasets:[{
+      label:'Win%', data:wr,
+      backgroundColor: wr.map(v => v==null?'#1c2133':v>=55?'rgba(16,185,129,.7)':v<45?'rgba(248,113,113,.7)':'rgba(240,160,48,.5)'),
+      borderRadius:2
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y?.toFixed(1)}% (${counts[ctx.dataIndex]} trades)`}}},
+      scales:{
+        x:{grid:{display:false}, ticks:{color:'#5a6380', font:{family:'DM Mono',size:9}}},
+        y:{min:0, max:100, grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'#5a6380', font:{family:'DM Mono',size:9}, callback:v=>v+'%'}}
+      }
+    }
+  });
+}
+
+function renderMonthChart(byMonth) {
+  const keys  = Object.keys(byMonth).sort();
+  const vals  = keys.map(k => byMonth[k].pnl);
+  if (monthChart_) monthChart_.destroy();
+  monthChart_ = new Chart(document.getElementById('monthChart'), {
+    type:'bar',
+    data:{ labels:keys, datasets:[{
+      label:'P&L%', data:vals,
+      backgroundColor: vals.map(v => v>=0?'rgba(16,185,129,.75)':'rgba(248,113,113,.75)'),
+      borderRadius:3
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>(ctx.parsed.y>=0?'+':'')+ctx.parsed.y.toFixed(2)+'%'}}},
+      scales:{
+        x:{grid:{display:false}, ticks:{color:'#5a6380', font:{family:'DM Mono',size:9}}},
+        y:{grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'#5a6380', font:{family:'DM Mono',size:9}, callback:v=>(v>=0?'+':'')+v.toFixed(1)+'%'}}
+      }
+    }
+  });
+}
+
+// ─── Trade walk / jump ────────────────────────────────────────────────────────
+
+function jumpToTrade(tradeIdx) {
+  if (!allTrades[tradeIdx] || !chart1) return;
+  selectedTradeIdx = tradeIdx;
+  const t = allTrades[tradeIdx];
+
+  // Zoom chart: 90 min before entry → 45 min after exit
+  const winFrom = t.entry_ts - 90 * 60;
+  const winTo   = t.exit_ts  + 45 * 60;
+  chart1.timeScale().setVisibleRange({ from: winFrom, to: winTo });
+  Object.values(metricCharts).forEach(({ chart }) => {
+    try { chart.timeScale().setVisibleRange({ from: winFrom, to: winTo }); } catch(e) {}
+  });
+
+  requestDraw();
+  updateNavInfo();
+
+  // Highlight selected row
+  document.querySelectorAll('#tradeTblBody tr').forEach((row, i) => {
+    const pageStart = tradePage_ * PAGE_SIZE;
+    row.classList.toggle('selected-row', allTrades.indexOf(filteredTrades[pageStart + i]) === tradeIdx);
+  });
+}
+
+function walkTrade(dir) {
+  const next = selectedTradeIdx + dir;
+  if (next < 0 || next >= allTrades.length) return;
+  // Find which page this trade is on in filteredTrades
+  const ftIdx = filteredTrades.indexOf(allTrades[next]);
+  if (ftIdx >= 0) {
+    const newPage = Math.floor(ftIdx / PAGE_SIZE);
+    if (newPage !== tradePage_) { tradePage_ = newPage; renderTradePage(); }
+  }
+  jumpToTrade(next);
+}
+
+function clearTradeSelection() {
+  selectedTradeIdx = -1;
+  requestDraw();
+  updateNavInfo();
+  document.querySelectorAll('#tradeTblBody tr').forEach(r => r.classList.remove('selected-row'));
+  if (m5Candles.length) chart1.timeScale().fitContent();
+}
+
+function updateNavInfo() {
+  const nav = document.getElementById('tradeNavBar');
+  if (!allTrades.length) { nav.style.display = 'none'; return; }
+  nav.style.display = '';
+  const total = allTrades.length;
+  const idx   = selectedTradeIdx;
+  const t     = idx >= 0 ? allTrades[idx] : null;
+  const fmtTs = ts => new Date(ts * 1000).toISOString().replace('T', ' ').slice(0, 16);
+  document.getElementById('navInfo').textContent = idx >= 0
+    ? `Trade ${idx + 1} / ${total}  ·  ${t.direction}  ${t.regime}  ${fmtTs(t.entry_ts)}  ${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(2)}%  ${t.exit_reason}`
+    : `${total} trades — click any row or use prev/next to walk`;
+  document.getElementById('navPrev').disabled = idx <= 0;
+  document.getElementById('navNext').disabled = idx < 0 || idx >= total - 1;
 }
 
 // ─── Trade table ─────────────────────────────────────────────────────────────
@@ -1817,20 +2301,24 @@ function renderTradePage() {
   const tbody = el('tradeTblBody');
   const fmtTs = ts => new Date(ts * 1000).toISOString().replace('T', ' ').slice(0, 16);
   const fmtP  = p => p.toFixed(p > 1 ? 4 : 5);
-  tbody.innerHTML = page.map(t => `<tr>
-    <td style="font-size:11px">${fmtTs(t.entry_ts)}</td>
-    <td style="font-size:11px">${fmtTs(t.exit_ts)}</td>
-    <td><span style="color:${t.direction==='LONG'?'var(--green)':'var(--red)'}">${t.direction}</span></td>
-    <td><span class="rg ${t.regime==='BULL'?'bull':t.regime==='BEAR'?'bear':'range'}">${t.regime||'?'}</span></td>
-    <td class="num">${fmtP(t.entry_price)}</td>
-    <td class="num">${fmtP(t.exit_price)}</td>
-    <td class="num ${t.win?'pos':'neg'}">${t.pnl_pct>=0?'+':''}${t.pnl_pct.toFixed(2)}%</td>
-    <td class="num ${t.win?'pos':'neg'}">${t.pnl_r>=0?'+':''}${t.pnl_r.toFixed(2)}R</td>
-    <td class="num">${t.mfe_r.toFixed(2)}R</td>
-    <td class="num">${t.duration_min}m</td>
-    <td><span class="rb-badge ${t.exit_reason==='END'?'end':t.win?'win':'loss'}">${t.exit_reason.replace('_',' ')}</span></td>
-    <td class="num">${t.conf_at_entry.toFixed(1)}%</td>
-  </tr>`).join('');
+  tbody.innerHTML = page.map((t, pageIdx) => {
+    const tradeIdx = allTrades.indexOf(t);
+    const selCls   = tradeIdx === selectedTradeIdx ? ' class="selected-row"' : '';
+    return `<tr${selCls} onclick="jumpToTrade(${tradeIdx})" title="Click to zoom chart to this trade">
+      <td style="font-size:11px">${fmtTs(t.entry_ts)}</td>
+      <td style="font-size:11px">${fmtTs(t.exit_ts)}</td>
+      <td><span style="color:${t.direction==='LONG'?'var(--green)':'var(--red)'}">${t.direction}</span></td>
+      <td><span class="rg ${t.regime==='BULL'?'bull':t.regime==='BEAR'?'bear':'range'}">${t.regime||'?'}</span></td>
+      <td class="num">${fmtP(t.entry_price)}</td>
+      <td class="num">${fmtP(t.exit_price)}</td>
+      <td class="num ${t.win?'pos':'neg'}">${t.pnl_pct>=0?'+':''}${t.pnl_pct.toFixed(2)}%</td>
+      <td class="num ${t.win?'pos':'neg'}">${t.pnl_r>=0?'+':''}${t.pnl_r.toFixed(2)}R</td>
+      <td class="num">${t.mfe_r.toFixed(2)}R</td>
+      <td class="num">${t.duration_min}m</td>
+      <td><span class="rb-badge ${t.exit_reason==='END'?'end':t.win?'win':'loss'}">${t.exit_reason.replace('_',' ')}</span></td>
+      <td class="num">${t.conf_at_entry.toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
 
   const pages = Math.ceil(filteredTrades.length / PAGE_SIZE);
   el('pgInfo').textContent = `Page ${tradePage_ + 1} / ${Math.max(1, pages)}`;
@@ -1910,28 +2398,6 @@ function toggleHelp() {
   arrow.style.transform = open ? 'rotate(180deg)' : '';
 }
 
-async function seedR2() {
-  const btn = document.getElementById('seedBtn');
-  const out = document.getElementById('seedOut');
-  btn.disabled = true;
-  out.style.color = 'var(--text3)';
-  out.textContent = 'Uploading to R2…';
-  try {
-    const r = await fetch('/api/regime-history-export', { method: 'POST' });
-    const d = await r.json();
-    if (d.ok) {
-      out.textContent = `✓ Uploaded ${d.uploaded} file(s) to R2. Backtester will now have data for seeded pairs.`;
-      out.style.color = '#00c97d';
-    } else {
-      out.textContent = `✗ ${d.error || 'Unknown error'}`;
-      out.style.color = '#ef5350';
-    }
-  } catch (e) {
-    out.textContent = `✗ ${e.message}`;
-    out.style.color = '#ef5350';
-  }
-  btn.disabled = false;
-}
 </script>
 </body>
 </html>
