@@ -12,7 +12,7 @@ export async function loadCaps() {
   }
 }
 
-const _EQUITY_CAP = { 'NAS100_USD': 'nas100', 'SPX500_USD': 'spx500', 'DE30_USD': 'de30', 'UK100_GBP': 'uk100' };
+const _EQUITY_CAP = { 'NAS100_USD': 'nas100', 'SPX500_USD': 'spx500', 'DE30_USD': 'de30', 'UK100_GBP': 'uk100', 'US30_USD': 'us30', 'US2000_USD': 'us2000' };
 
 export function getCaps(sym) {
   const cfg = S._caps || CAP_DEFAULTS;

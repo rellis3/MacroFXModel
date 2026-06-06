@@ -41,7 +41,7 @@ export function mergeCrossSources(confluences, symbol) {
 
   const pipSize = getPipSize(symbol);
   const caps    = getCaps(symbol);
-  const _eqCapMap = { NAS100_USD: 'nas100', SPX500_USD: 'spx500', DE30_USD: 'de30', UK100_GBP: 'uk100' };
+  const _eqCapMap = { NAS100_USD: 'nas100', SPX500_USD: 'spx500', DE30_USD: 'de30', UK100_GBP: 'uk100', US30_USD: 'us30', US2000_USD: 'us2000' };
   const bucket  = symbol.includes('XAU') ? caps.gold : _eqCapMap[symbol] ? caps[_eqCapMap[symbol]] : caps.fx;
   // Use same merge distance as within-source clustering in confluence-core.js
   const mergeDist = (bucket?.confluencePips ?? 4) * (bucket?.mergeFactor ?? 0.30) * pipSize;

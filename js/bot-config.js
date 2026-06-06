@@ -66,6 +66,7 @@ const ALL_PAIRS = [
   'EUR/GBP', 'USD/CAD', 'USD/CHF', 'GBP/JPY', 'NAS100_USD',
   'EUR/JPY', 'EUR/CHF', 'GBP/CHF', 'AUD/JPY', 'CAD/JPY',
   'SPX500_USD', 'DE30_USD', 'UK100_GBP',
+  'US30_USD', 'US2000_USD',
 ];
 
 // ── Backtest bot defaults (mirrors Python config.py DEFAULTS exactly) ─────────
@@ -896,6 +897,8 @@ const RG_PAIRS = [
   { id: 'rg_pair_SPX500', sym: 'SPX500_USD' },
   { id: 'rg_pair_DE30',   sym: 'DE30_USD'   },
   { id: 'rg_pair_UK100',  sym: 'UK100_GBP'  },
+  { id: 'rg_pair_US30',   sym: 'US30_USD'   },
+  { id: 'rg_pair_US2000', sym: 'US2000_USD' },
 ];
 
 let _rgCfg = JSON.parse(JSON.stringify(RG_DEFAULTS));
@@ -1053,6 +1056,8 @@ const RGV2_PAIRS = [
   { id: 'rgv2_pair_SPX500',  sym: 'SPX500_USD' },
   { id: 'rgv2_pair_DE30',    sym: 'DE30_USD'   },
   { id: 'rgv2_pair_UK100',   sym: 'UK100_GBP'  },
+  { id: 'rgv2_pair_US30',    sym: 'US30_USD'   },
+  { id: 'rgv2_pair_US2000',  sym: 'US2000_USD' },
 ];
 
 let _rgv2Cfg = JSON.parse(JSON.stringify(RGV2_DEFAULTS));

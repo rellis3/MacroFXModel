@@ -77,6 +77,7 @@ const DEFAULT_PAIRS = [
   'NZD/USD', 'USD/CAD', 'USD/CHF', 'GBP/JPY', 'XAU/USD', 'NAS100_USD',
   'EUR/GBP', 'EUR/JPY', 'EUR/CHF', 'GBP/CHF', 'AUD/JPY', 'CAD/JPY',
   'SPX500_USD', 'DE30_USD', 'UK100_GBP',
+  'US30_USD', 'US2000_USD',
 ];
 
 const PIP_SIZE = {
@@ -87,11 +88,13 @@ const PIP_SIZE = {
   'EUR/CHF': 0.0001, 'GBP/CHF': 0.0001,
   'XAU/USD': 1.0,    'NAS100_USD': 1.0,
   'SPX500_USD': 1.0, 'DE30_USD': 1.0,   'UK100_GBP': 1.0,
+  'US30_USD': 1.0, 'US2000_USD': 1.0,
 };
 
 const PRICE_DIGITS = {
   'USD/JPY': 3, 'GBP/JPY': 3, 'EUR/JPY': 3, 'AUD/JPY': 3, 'CAD/JPY': 3,
   'XAU/USD': 2, 'NAS100_USD': 1, 'SPX500_USD': 1, 'DE30_USD': 1, 'UK100_GBP': 1,
+  'US30_USD': 1, 'US2000_USD': 1,
 };
 
 // Typical OANDA spread in pips per pair — used as baseline for spread quality gate
@@ -103,6 +106,7 @@ const TYPICAL_SPREAD_PIPS = {
   'AUD/JPY': 1.5, 'CAD/JPY': 2.0,
   'XAU/USD': 0.3, 'NAS100_USD': 1.0,
   'SPX500_USD': 0.3, 'DE30_USD': 0.8, 'UK100_GBP': 0.8,
+  'US30_USD': 0.5, 'US2000_USD': 0.5,
 };
 
 const DEFAULT_CFG = {
@@ -326,6 +330,7 @@ const CORR_PAIRS = [
   'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURGBP','XAUUSD',
   'EURJPY','EURCHF','GBPCHF','AUDJPY','CADJPY',
   'NAS100_USD','SPX500_USD','DE30_USD','UK100_GBP',
+  'US30_USD','US2000_USD',
 ];
 const CORR_FACTOR_PROXIES = {
   dxy:   { sym: 'EURUSD', sign: -1.2 },
@@ -342,7 +347,7 @@ let   corrRunning    = false;
 let   corrProgress   = { pct: 0, msg: 'Idle', step: '', error: null };
 
 function _h4OandaSym(sym) {
-  const ov = { XAUUSD:'XAU_USD', XAGUSD:'XAG_USD', NAS100:'NAS100_USD', SPX500:'SPX500_USD' };
+  const ov = { XAUUSD:'XAU_USD', XAGUSD:'XAG_USD', NAS100:'NAS100_USD', SPX500:'SPX500_USD', 'DE30_USD':'DE30_EUR' };
   if (ov[sym]) return ov[sym];
   if (sym.includes('_')) return sym;  // already in OANDA format (e.g. NAS100_USD, DE30_USD)
   if (sym.length === 6 && /^[A-Z]+$/.test(sym)) return `${sym.slice(0,3)}_${sym.slice(3)}`;

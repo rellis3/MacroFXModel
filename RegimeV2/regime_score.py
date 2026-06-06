@@ -62,6 +62,8 @@ _DXY_USD_BULL: dict[str, bool | None] = {
     'SPX500_USD': None,
     'DE30_USD':   None,
     'UK100_GBP':  None,
+    'US30_USD':   None,
+    'US2000_USD': None,
 }
 
 

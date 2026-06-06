@@ -24,6 +24,8 @@ export const HMM_V2_CONFIG = {
   'SPX500_USD': { selfProb: 0.93, linregN: 55, adxN: 40 },
   'DE30_USD':   { selfProb: 0.93, linregN: 55, adxN: 40 },
   'UK100_GBP':  { selfProb: 0.93, linregN: 55, adxN: 40 },
+  'US30_USD':   { selfProb: 0.93, linregN: 55, adxN: 40 },
+  'US2000_USD': { selfProb: 0.93, linregN: 55, adxN: 40 },
   _default:     { selfProb: 0.92, linregN: 50, adxN: 50 },
 };
 

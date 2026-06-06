@@ -1,5 +1,5 @@
 const JOURNAL_KEY = 'journal_store';
-const PAIRS_ALL   = ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD','EUR/GBP','USD/CAD','USD/CHF','GBP/JPY','NAS100_USD','EUR/JPY','EUR/CHF','GBP/CHF','AUD/JPY','CAD/JPY','SPX500_USD','DE30_USD','UK100_GBP'];
+const PAIRS_ALL   = ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','XAU/USD','EUR/GBP','USD/CAD','USD/CHF','GBP/JPY','NAS100_USD','EUR/JPY','EUR/CHF','GBP/CHF','AUD/JPY','CAD/JPY','SPX500_USD','DE30_USD','UK100_GBP','US30_USD','US2000_USD'];
 
 // Pip value per standard lot in USD — JPY pairs are approximate at ~110 rate
 const PIP_VALUE_PER_LOT = {
@@ -8,6 +8,7 @@ const PIP_VALUE_PER_LOT = {
   'USD/JPY':9, 'GBP/JPY':9, 'EUR/JPY':6.5,'AUD/JPY':6.5,'CAD/JPY':6.5,
   'XAU/USD':10,'NAS100_USD':1,
   'SPX500_USD':1,'DE30_USD':1,'UK100_GBP':1,
+  'US30_USD':1,'US2000_USD':1,
 };
 
 // Realistic ECN broker defaults per pair: spread + round-trip slippage in pips, commission $/lot RT
@@ -30,6 +31,8 @@ const COST_DEFAULTS = {
   'SPX500_USD': { spread:0.5, slip:0.2, comm:2.0, lots:1 },
   'DE30_USD':   { spread:1.5, slip:0.5, comm:2.0, lots:1 },
   'UK100_GBP':  { spread:1.0, slip:0.3, comm:2.0, lots:1 },
+  'US30_USD':   { spread:0.5, slip:0.2, comm:2.0, lots:1 },
+  'US2000_USD': { spread:0.5, slip:0.2, comm:2.0, lots:1 },
 };
 
 let journalData  = {};

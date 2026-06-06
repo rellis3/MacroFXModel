@@ -105,7 +105,7 @@ function runEquitySignalEngine() {
 export function runSignalEngine(compassData, volRegime) {
   const sym    = S.currentPair.symbol;
 
-  const _EQUITY = new Set(['NAS100_USD', 'SPX500_USD', 'DE30_USD', 'UK100_GBP']);
+  const _EQUITY = new Set(['NAS100_USD', 'SPX500_USD', 'DE30_USD', 'UK100_GBP', 'US30_USD', 'US2000_USD']);
   if (_EQUITY.has(sym)) return runEquitySignalEngine();
 
   const data   = compassData[sym];

@@ -17,6 +17,8 @@ export const PAIRS = [
   { symbol: 'SPX500_USD', code: 'spx', shortCode: 'us',  name: 'SPX500',   isEquity: true },
   { symbol: 'DE30_USD',   code: 'dax', shortCode: 'de',  name: 'DAX',      isEquity: true },
   { symbol: 'UK100_GBP',  code: 'ftse', shortCode: 'gb', name: 'FTSE100',  isEquity: true },
+  { symbol: 'US30_USD',   code: 'dji',  shortCode: 'us',  name: 'DOW30',   isEquity: true },
+  { symbol: 'US2000_USD', code: 'rut',  shortCode: 'us',  name: 'RUS2000', isEquity: true },
 ];
 
 // 45 Fib levels — exact match to Pine Script indicator.
@@ -58,6 +60,8 @@ export const COMPASS_CONFIG = {
   'SPX500_USD': { short: null, long: 'us10y', label: 'US10Y',      fxSign:-1, isEquity: true },
   'DE30_USD':   { short: null, long: 'de10y', label: 'DE10Y',      fxSign:-1, isEquity: true },
   'UK100_GBP':  { short: null, long: 'gb10y', label: 'GB10Y',      fxSign:-1, isEquity: true },
+  'US30_USD':   { short: null, long: 'us10y', label: 'US10Y', fxSign:-1, isEquity: true },
+  'US2000_USD': { short: null, long: 'us10y', label: 'US10Y', fxSign:-1, isEquity: true },
 };
 
 export const COMPASS_TTL = 6 * 60 * 60 * 1000;
@@ -148,6 +152,20 @@ export const CAP_DEFAULTS = {
     gexAtrFrac: 0.15, gexPipCap: 100,
     enhPivAtrFrac: 0.10, enhPivPipCap: 60,
   },
+  us30: {
+    confluencePips: 60, mergeFactor: 0.30, asiaMinPips: 30,
+    structuralLookbackDays: 30, structuralPivotN: 5,
+    oiAtrFrac: 0.12, oiPipCap: 100, pivAtrFrac: 0.10, pivPipCap: 80,
+    rngAtrFrac: 0.08, rngPipCap: 60, gexAtrFrac: 0.15, gexPipCap: 120,
+    enhPivAtrFrac: 0.10, enhPivPipCap: 80,
+  },
+  us2000: {
+    confluencePips: 15, mergeFactor: 0.30, asiaMinPips: 10,
+    structuralLookbackDays: 30, structuralPivotN: 5,
+    oiAtrFrac: 0.12, oiPipCap: 30, pivAtrFrac: 0.10, pivPipCap: 25,
+    rngAtrFrac: 0.08, rngPipCap: 15, gexAtrFrac: 0.15, gexPipCap: 35,
+    enhPivAtrFrac: 0.10, enhPivPipCap: 25,
+  },
   updatedAt: null,
 };
 
@@ -214,4 +232,6 @@ export const TYPICAL_SPREADS = {
   'SPX500_USD': 0.3,
   'DE30_USD':   0.8,
   'UK100_GBP':  0.8,
+  'US30_USD':   0.5,
+  'US2000_USD': 0.5,
 };
