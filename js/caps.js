@@ -12,10 +12,13 @@ export async function loadCaps() {
   }
 }
 
+const _EQUITY_CAP = { 'NAS100_USD': 'nas100', 'SPX500_USD': 'spx500', 'DE30_USD': 'de30', 'UK100_GBP': 'uk100' };
+
 export function getCaps(sym) {
   const cfg = S._caps || CAP_DEFAULTS;
   if (sym && sym.includes('XAU')) return cfg.gold;
-  if (sym === 'NAS100_USD') return cfg.nas100 || CAP_DEFAULTS.nas100;
+  const eqKey = _EQUITY_CAP[sym];
+  if (eqKey) return cfg[eqKey] || CAP_DEFAULTS[eqKey] || cfg.nas100;
   return cfg.fx;
 }
 

@@ -59,6 +59,9 @@ _DXY_USD_BULL: dict[str, bool | None] = {
     'CAD/JPY':    None,
     'XAU/USD':    False,    # gold BULL = USD weakness
     'NAS100_USD': None,
+    'SPX500_USD': None,
+    'DE30_USD':   None,
+    'UK100_GBP':  None,
 }
 
 

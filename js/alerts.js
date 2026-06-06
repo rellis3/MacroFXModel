@@ -389,7 +389,7 @@ export function invalidateAlertCache(sym) {
 // ── Format + dispatch ─────────────────────────────────────────────────────────
 
 async function sendTelegramAlert(sym, entry, currentPrice, distPips, digits, approachArrow, kalmanDev, tierData, arimaCtx, decisionState) {
-  const unit     = sym === 'NAS100_USD' ? 'pts' : 'p';
+  const unit     = S.currentPair.isEquity ? 'pts' : 'p';
   const arrowStr = approachArrow ?? '';
   const dir      = entry.direction === 'long' ? '↑ BUY' : '↓ SELL';
   const stars    = entry.grade ? `[${entry.grade}]` : '';

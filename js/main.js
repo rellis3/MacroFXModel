@@ -249,7 +249,7 @@ async function loadHMM5m() {
 }
 
 // Proximity thresholds (pips / points from the level)
-const _PROX_PIPS = { 'NAS100_USD': 20, 'XAU/USD': 5 };
+const _PROX_PIPS = { 'NAS100_USD': 20, 'SPX500_USD': 10, 'DE30_USD': 20, 'UK100_GBP': 15, 'XAU/USD': 5 };
 
 function checkProximityAlerts() {
   const entries = window._lastEntries;
@@ -271,7 +271,7 @@ function checkProximityAlerts() {
 
   const e      = nearby[0];
   const digits = getDigits(sym);
-  const unit   = sym === 'NAS100_USD' ? 'pts' : 'p';
+  const unit   = S.currentPair.isEquity ? 'pts' : 'p';
   const dist   = Math.round(Math.abs(e.price - price) / pipSz);
   const urgency = dist <= 1 ? 'red' : dist <= 2 ? 'amber' : 'green';
 

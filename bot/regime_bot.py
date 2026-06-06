@@ -63,6 +63,7 @@ _PIP_SIZES = {
     'EUR/JPY': 0.01,   'EUR/CHF': 0.0001, 'GBP/CHF': 0.0001,
     'AUD/JPY': 0.01,   'CAD/JPY': 0.01,
     'XAU/USD': 1.0,    'NAS100_USD': 1.0,  'USTECH100M': 1.0,
+    'SPX500_USD': 1.0, 'DE30_USD': 1.0,    'UK100_GBP': 1.0,
 }
 _PIP_VALUES = {
     'EUR/USD': 10.0, 'GBP/USD': 10.0, 'AUD/USD': 10.0, 'NZD/USD': 10.0,
@@ -70,6 +71,7 @@ _PIP_VALUES = {
     'EUR/GBP': 12.5, 'EUR/JPY': 6.5,  'EUR/CHF': 11.0, 'GBP/CHF': 11.0,
     'AUD/JPY': 6.5,  'CAD/JPY': 6.5,
     'XAU/USD': 100.0, 'NAS100_USD': 1.0, 'USTECH100M': 1.0,
+    'SPX500_USD': 1.0, 'DE30_USD': 1.0,  'UK100_GBP': 1.0,
 }
 
 # ── Broker symbol aliases (pair name → actual MT5 symbol) ─────────────────────

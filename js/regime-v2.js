@@ -6,6 +6,7 @@ const DEFAULT_PAIRS = [
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD',
   'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD',
   'EUR/GBP', 'EUR/JPY', 'EUR/CHF', 'GBP/CHF', 'AUD/JPY', 'CAD/JPY',
+  'SPX500_USD', 'DE30_USD', 'UK100_GBP',
 ];
 
 // ── Module-scoped state ───────────────────────────────────────────────────────

@@ -13,7 +13,10 @@ export const PAIRS = [
   { symbol: 'GBP/CHF',    code: 'gf',  shortCode: 'ch',  name: 'GBP/CHF', isPairCross: true },
   { symbol: 'AUD/JPY',    code: 'aj',  shortCode: 'jp',  name: 'AUD/JPY', isPairCross: true },
   { symbol: 'CAD/JPY',    code: 'cj',  shortCode: 'jp',  name: 'CAD/JPY', isPairCross: true },
-  { symbol: 'NAS100_USD', code: 'nas', shortCode: 'nas', name: 'NAS100', isEquity: true },
+  { symbol: 'NAS100_USD', code: 'nas', shortCode: 'nas', name: 'NAS100',   isEquity: true },
+  { symbol: 'SPX500_USD', code: 'spx', shortCode: 'us',  name: 'SPX500',   isEquity: true },
+  { symbol: 'DE30_USD',   code: 'dax', shortCode: 'de',  name: 'DAX',      isEquity: true },
+  { symbol: 'UK100_GBP',  code: 'ftse', shortCode: 'gb', name: 'FTSE100',  isEquity: true },
 ];
 
 // 45 Fib levels — exact match to Pine Script indicator.
@@ -51,7 +54,10 @@ export const COMPASS_CONFIG = {
   'GBP/CHF':    { short: 'gb_short', long: 'gb10y',  label: 'GB–CH',  fxSign: +1, crossBase: 'ch10y', crossBaseShort: 'ch_short' },
   'AUD/JPY':    { short: 'au_short', long: 'au10y',  label: 'AU–JP',  fxSign: +1, crossBase: 'jp10y', crossBaseShort: 'jp_short' },
   'CAD/JPY':    { short: 'ca_short', long: 'ca10y',  label: 'CA–JP',  fxSign: +1, crossBase: 'jp10y', crossBaseShort: 'jp_short' },
-  'NAS100_USD': { short: null, long: null, label: 'Yield Curve', fxSign: 1, isEquity: true },
+  'NAS100_USD': { short: null, long: null,    label: 'Yield Curve', fxSign: 1, isEquity: true },
+  'SPX500_USD': { short: null, long: 'us10y', label: 'US10Y',      fxSign:-1, isEquity: true },
+  'DE30_USD':   { short: null, long: 'de10y', label: 'DE10Y',      fxSign:-1, isEquity: true },
+  'UK100_GBP':  { short: null, long: 'gb10y', label: 'GB10Y',      fxSign:-1, isEquity: true },
 };
 
 export const COMPASS_TTL = 6 * 60 * 60 * 1000;
@@ -105,6 +111,42 @@ export const CAP_DEFAULTS = {
     rngAtrFrac: 0.08, rngPipCap: 100,
     gexAtrFrac: 0.15, gexPipCap: 250,
     enhPivAtrFrac: 0.10, enhPivPipCap: 150,
+  },
+  spx500: {
+    confluencePips: 25,   // 25 points (~0.5% at 5000)
+    mergeFactor:    0.30,
+    asiaMinPips:           15,
+    structuralLookbackDays: 30,
+    structuralPivotN:       5,
+    oiAtrFrac: 0.12, oiPipCap: 50,
+    pivAtrFrac: 0.10, pivPipCap: 40,
+    rngAtrFrac: 0.08, rngPipCap: 25,
+    gexAtrFrac: 0.15, gexPipCap: 60,
+    enhPivAtrFrac: 0.10, enhPivPipCap: 40,
+  },
+  de30: {
+    confluencePips: 80,   // 80 points (~0.45% at 18000)
+    mergeFactor:    0.30,
+    asiaMinPips:           40,
+    structuralLookbackDays: 30,
+    structuralPivotN:       5,
+    oiAtrFrac: 0.12, oiPipCap: 150,
+    pivAtrFrac: 0.10, pivPipCap: 120,
+    rngAtrFrac: 0.08, rngPipCap: 80,
+    gexAtrFrac: 0.15, gexPipCap: 200,
+    enhPivAtrFrac: 0.10, enhPivPipCap: 120,
+  },
+  uk100: {
+    confluencePips: 40,   // 40 points (~0.5% at 8000)
+    mergeFactor:    0.30,
+    asiaMinPips:           25,
+    structuralLookbackDays: 30,
+    structuralPivotN:       5,
+    oiAtrFrac: 0.12, oiPipCap: 80,
+    pivAtrFrac: 0.10, pivPipCap: 60,
+    rngAtrFrac: 0.08, rngPipCap: 40,
+    gexAtrFrac: 0.15, gexPipCap: 100,
+    enhPivAtrFrac: 0.10, enhPivPipCap: 60,
   },
   updatedAt: null,
 };
@@ -169,4 +211,7 @@ export const TYPICAL_SPREADS = {
   'GBP/CHF': 1.5,
   'AUD/JPY': 1.2,
   'CAD/JPY': 1.5,
+  'SPX500_USD': 0.3,
+  'DE30_USD':   0.8,
+  'UK100_GBP':  0.8,
 };
