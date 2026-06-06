@@ -1587,11 +1587,6 @@ function renderAnalytics() {
   renderTradeTable();
 }
 
-function computePF(d) {
-  const wins = allTrades.filter(t => t.win && t.regime === (Object.entries(d).length ? undefined : undefined));
-  return 1;
-}
-
 // Per-regime PF helper: called inline with regime trades
 function regimePF(trades) {
   const gw = trades.filter(t=>t.win).reduce((s,t)=>s+t.pnl_pct,0);
@@ -1631,7 +1626,7 @@ function renderTradePage() {
   tbody.innerHTML = page.map(t => `<tr>
     <td style="font-size:11px">${fmtTs(t.entry_ts)}</td>
     <td style="font-size:11px">${fmtTs(t.exit_ts)}</td>
-    <td><span style="color:${t.direction==='LONG'?'var(--green)':'var(--red)';}">${t.direction}</span></td>
+    <td><span style="color:${t.direction==='LONG'?'var(--green)':'var(--red)'}">${t.direction}</span></td>
     <td><span class="rg ${t.regime==='BULL'?'bull':t.regime==='BEAR'?'bear':'range'}">${t.regime||'?'}</span></td>
     <td class="num">${fmtP(t.entry_price)}</td>
     <td class="num">${fmtP(t.exit_price)}</td>
