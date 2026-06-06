@@ -977,6 +977,64 @@ function drawTradeLines() {
   ctx.setLineDash([]);
 }
 
+// ─── M1 candle helpers ────────────────────────────────────────────────────────
+
+// Fetch M1 candles from Railway (/api/vol-backtest/candles/:pair), chunked into
+// 14-day windows to stay under the server's 20 000-bar-per-request cap.
+// Returns an array of {time (Unix s), open, high, low, close} sorted asc.
+async function fetchM1CandlesChunked(pairKey, fromStr, toStr, onProgress) {
+  const CHUNK_DAYS = 14;
+  const allCandles = [];
+  let chunkStart = new Date(fromStr + 'T00:00:00Z');
+  const endMs = new Date(toStr + 'T23:59:59Z').getTime();
+  const totalChunks = Math.ceil((endMs - chunkStart.getTime()) / (CHUNK_DAYS * 86400000)) || 1;
+  let chunkIdx = 0;
+
+  while (chunkStart.getTime() < endMs) {
+    chunkIdx++;
+    if (onProgress) onProgress(chunkIdx, totalChunks);
+    const chunkEnd = new Date(Math.min(chunkStart.getTime() + CHUNK_DAYS * 86400000, endMs));
+    const cf = chunkStart.toISOString().slice(0, 10);
+    const ct = chunkEnd.toISOString().slice(0, 10);
+    const res = await fetch(`/api/vol-backtest/candles/${pairKey}?from=${cf}&to=${ct}`);
+    if (!res.ok) throw new Error(`M1 candles API ${res.status} for ${pairKey} (${cf}→${ct})`);
+    const data = await res.json();
+    if (data.ok && Array.isArray(data.candles)) {
+      for (const c of data.candles) {
+        allCandles.push({
+          time:  Math.floor(new Date(c.time + 'Z').getTime() / 1000),
+          open:  c.open, high: c.high, low: c.low, close: c.close,
+        });
+      }
+    }
+    chunkStart = new Date(chunkEnd.getTime() + 60000); // advance by 1 minute
+  }
+
+  // Deduplicate by timestamp and sort ascending
+  const seen = new Map();
+  for (const c of allCandles) seen.set(c.time, c);
+  return [...seen.values()].sort((a, b) => a.time - b.time);
+}
+
+// Utility: resample M1 candles to a coarser bar size (unused in main flow — kept for debugging).
+function resampleToM5(m1Candles) {
+  if (!m1Candles.length) return [];
+  const PERIOD = 300;
+  const bars = new Map();
+  for (const c of m1Candles) {
+    const barTime = Math.floor(c.time / PERIOD) * PERIOD;
+    const b = bars.get(barTime);
+    if (!b) {
+      bars.set(barTime, { time: barTime, open: c.open, high: c.high, low: c.low, close: c.close });
+    } else {
+      b.high  = Math.max(b.high, c.high);
+      b.low   = Math.min(b.low,  c.low);
+      b.close = c.close;
+    }
+  }
+  return [...bars.values()].sort((a, b) => a.time - b.time);
+}
+
 // ─── Data loading ─────────────────────────────────────────────────────────────
 
 async function loadAndRun() {
@@ -986,33 +1044,29 @@ async function loadAndRun() {
   if (!fromStr || !toStr) { setStatus('err', 'Select a date range first'); return; }
 
   const days = (new Date(toStr) - new Date(fromStr)) / 86400000;
-  if (days > 30) { setStatus('err', 'Max 30-day window for M5 candles — OANDA returns up to 5000 bars'); return; }
   if (days < 1)  { setStatus('err', 'Select at least 1 day'); return; }
 
   document.getElementById('runBtn').disabled = true;
-  setStatus('spin', 'Loading M5 candles + regime history…');
+  setStatus('spin', 'Loading regime history…');
 
   try {
-    const ps       = pairSafe(pair);
-    const fromEp   = toEpoch(fromStr);
-    const toEp     = toEpoch(toStr) + 86400;
-    const pairEnc  = encodeURIComponent(pair);
+    const ps     = pairSafe(pair);
+    const fromEp = toEpoch(fromStr);
+    const toEp   = toEpoch(toStr) + 86400;
 
     const staticUrl = `/data/regime_history/${currentBot}/${ps}.json`;
     const kvUrl     = `/api/regime-history?bot=${currentBot}&pair=${ps}&from=${fromEp}&to=${toEp}`;
-    const candlesUrl = `/api/regime-candles?pair=${pairEnc}&from=${fromStr}&to=${toStr}`;
 
-    const [candlesRes, staticRes, kvRes] = await Promise.all([
-      fetch(candlesUrl),
-      fetch(staticUrl).catch(() => null),
-      fetch(kvUrl).catch(() => null),
+    // Regime data and M1 candles load concurrently
+    const [[staticRes, kvRes], m1Raw] = await Promise.all([
+      Promise.all([fetch(staticUrl).catch(() => null), fetch(kvUrl).catch(() => null)]),
+      fetchM1CandlesChunked(ps, fromStr, toStr, (idx, total) => {
+        setStatus('spin', `Loading M1 candles from R2… chunk ${idx}/${total}`);
+      }),
     ]);
 
-    // Candles (required)
-    if (!candlesRes.ok) throw new Error(`Candles API ${candlesRes.status}: ${await candlesRes.text().then(t=>t.slice(0,150))}`);
-    const candlesRaw = await candlesRes.json();
-    if (!Array.isArray(candlesRaw) || candlesRaw.length === 0) throw new Error('No candle data returned for this pair/date range');
-    m5Candles = candlesRaw.sort((a, b) => a.time - b.time);
+    if (!m1Raw.length) throw new Error('No M1 candle data for this pair/range — check Railway server and R2 credentials');
+    m5Candles = m1Raw; // raw M1 — no resampling
 
     // Regime records (merge static backfill + KV)
     const mergedRecs = new Map();
@@ -1037,10 +1091,10 @@ async function loadAndRun() {
       banner.style.display = 'none';
     }
 
-    document.getElementById('chartPairLbl').textContent = `${pair} · ${currentBot.toUpperCase()} · M5`;
+    document.getElementById('chartPairLbl').textContent = `${pair} · ${currentBot.toUpperCase()} · M1`;
 
     // Run simulation
-    setStatus('spin', `Running simulation on ${regimeRecords.length} records + ${m5Candles.length} M5 candles…`);
+    setStatus('spin', `Running simulation on ${regimeRecords.length} records + ${m5Candles.length} M1 candles…`);
     await new Promise(r => requestAnimationFrame(r)); // let UI update
 
     allTrades = currentBot === 'v1' ? simulateV1(regimeRecords, m5Candles, cfg) : simulateV2(regimeRecords, m5Candles, cfg);
@@ -1059,7 +1113,7 @@ async function loadAndRun() {
     }
 
     const dataSrc = (staticRes?.ok ? 'backfill' : '') + (kvRes?.ok ? '+live' : '');
-    setStatus('ok', `${m5Candles.length} M5 candles · ${regimeRecords.length} regime records (${dataSrc}) · ${allTrades.length} simulated trades`);
+    setStatus('ok', `${m5Candles.length} M1 candles · ${regimeRecords.length} regime records (${dataSrc}) · ${allTrades.length} simulated trades`);
   } catch (err) {
     setStatus('err', `Error: ${err.message}`);
     console.error(err);
@@ -1134,7 +1188,7 @@ function simulateV1(records, candles, c) {
       if (ok) {
         debounce++;
         if (debounce >= c.candle_hold && candle) {
-          const atr = computeATR(candles, cIdx);
+          const atr = computeATR(candles, cIdx, 70); // ATR(70) M1 ≈ ATR(14) M5
           if (atr) {
             const dir2 = rec.regime === 'BULL' ? 'LONG' : 'SHORT';
             const ep   = candle.close;
@@ -1264,7 +1318,7 @@ function simulateV2(records, candles, c) {
       if (isDir && okConf && okRise && okVz && okDecay && okScore) {
         debounce++;
         if (debounce >= c.candle_hold && candle) {
-          const atr = computeATR(candles, cIdx);
+          const atr = computeATR(candles, cIdx, 70); // ATR(70) M1 ≈ ATR(14) M5
           if (atr) {
             const dir2 = rec.regime === 'BULL' ? 'LONG' : 'SHORT';
             const ep   = candle.close;
@@ -1406,7 +1460,7 @@ function computeAnalytics(trades) {
 function renderChart() {
   if (!m5Candles.length) return;
   const data = m5Candles.map(c => {
-    const rec = findRecordAt(c.time + 299);
+    const rec = findRecordAt(c.time + 59); // M1 bar: look at 1-min close
     const col = rec && REGIME_COLORS[rec.regime] ? REGIME_COLORS[rec.regime] : null;
     const fallback = c.close >= c.open ? '#00c97d' : '#ef5350';
     const color = col ? col.color : fallback;

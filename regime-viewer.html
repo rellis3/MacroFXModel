@@ -757,6 +757,53 @@ function drawOverlay() {
 
 }
 
+// ─── M1 candle helpers ────────────────────────────────────────────────────────
+
+async function fetchM1CandlesChunked(pairKey, fromStr, toStr) {
+  const CHUNK_DAYS = 14;
+  const allCandles = [];
+  let chunkStart = new Date(fromStr + 'T00:00:00Z');
+  const endMs = new Date(toStr + 'T23:59:59Z').getTime();
+  while (chunkStart.getTime() < endMs) {
+    const chunkEnd = new Date(Math.min(chunkStart.getTime() + CHUNK_DAYS * 86400000, endMs));
+    const cf = chunkStart.toISOString().slice(0, 10);
+    const ct = chunkEnd.toISOString().slice(0, 10);
+    const res = await fetch(`/api/vol-backtest/candles/${pairKey}?from=${cf}&to=${ct}`);
+    if (!res.ok) throw new Error(`M1 candles API ${res.status} for ${pairKey} (${cf}→${ct})`);
+    const data = await res.json();
+    if (data.ok && Array.isArray(data.candles)) {
+      for (const c of data.candles) {
+        allCandles.push({
+          time:  Math.floor(new Date(c.time + 'Z').getTime() / 1000),
+          open:  c.open, high: c.high, low: c.low, close: c.close,
+        });
+      }
+    }
+    chunkStart = new Date(chunkEnd.getTime() + 60000);
+  }
+  const seen = new Map();
+  for (const c of allCandles) seen.set(c.time, c);
+  return [...seen.values()].sort((a, b) => a.time - b.time);
+}
+
+function resampleToM5(m1Candles) {
+  if (!m1Candles.length) return [];
+  const PERIOD = 300;
+  const bars = new Map();
+  for (const c of m1Candles) {
+    const barTime = Math.floor(c.time / PERIOD) * PERIOD;
+    const b = bars.get(barTime);
+    if (!b) {
+      bars.set(barTime, { time: barTime, open: c.open, high: c.high, low: c.low, close: c.close });
+    } else {
+      b.high  = Math.max(b.high, c.high);
+      b.low   = Math.min(b.low,  c.low);
+      b.close = c.close;
+    }
+  }
+  return [...bars.values()].sort((a, b) => a.time - b.time);
+}
+
 // ─── Data loading ─────────────────────────────────────────────────────────────
 
 async function loadData() {
@@ -769,12 +816,6 @@ async function loadData() {
     return;
   }
 
-  const days = (new Date(toStr) - new Date(fromStr)) / 86400000;
-  if (days > 90) {
-    setStatus('Max 90 days — M5 candles beyond that crash the browser. Narrow your range.', 'err');
-    return;
-  }
-
   const fromEpoch = toEpoch(fromStr);
   const toEpoch2  = toEpoch(toStr) + 86400; // include full to-day
 
@@ -783,25 +824,17 @@ async function loadData() {
 
   try {
     const pairSafe = PAIR_SAFE[pair] || pair.toLowerCase().replace('/', '').replace('_', '');
-    const pairEnc  = encodeURIComponent(pair);
 
-    // Fetch candles + regime data in parallel.
-    // Regime data: load static backfill file (committed JSON) + KV live ring buffer,
-    // then merge so backfill covers history and KV covers recent hours.
     const staticUrl = `/data/regime_history/${currentBot}/${pairSafe}.json`;
     const kvUrl     = `/api/regime-history?bot=${currentBot}&pair=${pairSafe}&from=${fromEpoch}&to=${toEpoch2}`;
 
-    const [candlesRes, staticRes, kvRes] = await Promise.all([
-      fetch(`/api/regime-candles?pair=${pairEnc}&from=${fromStr}&to=${toStr}`),
-      fetch(staticUrl).catch(() => null),
-      fetch(kvUrl).catch(() => null),
+    // Fetch regime data and M1 candles concurrently
+    const [[staticRes, kvRes], m1Raw] = await Promise.all([
+      Promise.all([fetch(staticUrl).catch(() => null), fetch(kvUrl).catch(() => null)]),
+      fetchM1CandlesChunked(pairSafe, fromStr, toStr),
     ]);
 
-    // Handle candles
-    if (!candlesRes.ok) {
-      throw new Error(`Candles API error ${candlesRes.status}`);
-    }
-    const candles = await candlesRes.json();
+    const candles = m1Raw; // raw M1 — no resampling
 
     // Merge regime records from both sources, dedup by ts, filter to range
     let records = [], events = [];
@@ -827,8 +860,8 @@ async function loadData() {
       .filter(e => e.ts >= fromEpoch && e.ts <= toEpoch2)
       .sort((a, b) => a.ts - b.ts);
 
-    if (!Array.isArray(candles) || candles.length === 0) {
-      setStatus('No data for selected range', 'err');
+    if (!candles.length) {
+      setStatus('No M1 candle data for this pair/range — check Railway server and R2 credentials', 'err');
       document.getElementById('loadBtn').disabled = false;
       return;
     }
@@ -868,7 +901,7 @@ function renderCandles(candles) {
   // Colour each candle by the active regime at that timestamp.
   // Falls back to standard green/red when no regime data is available.
   const data = candles.map(c => {
-    const rec = findRegimeAt(c.time + 299);
+    const rec = findRegimeAt(c.time + 59); // M1 bar: look at 1-min close
     const col = rec ? REGIME_COLORS[rec.regime]?.color : null;
     const fallback = c.close >= c.open ? '#00c97d' : '#ef5350';
     const color = col || fallback;
