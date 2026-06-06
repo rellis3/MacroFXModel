@@ -322,7 +322,11 @@ async function fetchHMMBars(sym, count = 300) {
 // Runs on startup (if file is missing or >7 days old) and weekly.
 // No external scripts needed — all pure JS maths.
 
-const CORR_PAIRS = ['EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURGBP','XAUUSD'];
+const CORR_PAIRS = [
+  'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURGBP','XAUUSD',
+  'EURJPY','EURCHF','GBPCHF','AUDJPY','CADJPY',
+  'NAS100_USD','SPX500_USD','DE30_USD','UK100_GBP',
+];
 const CORR_FACTOR_PROXIES = {
   dxy:   { sym: 'EURUSD', sign: -1.2 },
   rates: { sym: 'USDJPY', sign:  1.0 },
@@ -340,6 +344,7 @@ let   corrProgress   = { pct: 0, msg: 'Idle', step: '', error: null };
 function _h4OandaSym(sym) {
   const ov = { XAUUSD:'XAU_USD', XAGUSD:'XAG_USD', NAS100:'NAS100_USD', SPX500:'SPX500_USD' };
   if (ov[sym]) return ov[sym];
+  if (sym.includes('_')) return sym;  // already in OANDA format (e.g. NAS100_USD, DE30_USD)
   if (sym.length === 6 && /^[A-Z]+$/.test(sym)) return `${sym.slice(0,3)}_${sym.slice(3)}`;
   return null;
 }
@@ -2662,6 +2667,31 @@ app.get('/api/beta-history', (req, res) => {
       } catch { /* ignore */ }
     }
     res.json({ records, total: lines.length, sampled: records.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// List available OANDA instruments — useful for finding exact index/CFD names on this account.
+app.get('/api/oanda-instruments', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(400).json({ error: 'OANDA_KEY not set' });
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const accountId = process.env.OANDA_ACCOUNT_ID;
+  if (!accountId) return res.status(400).json({ error: 'OANDA_ACCOUNT_ID not set' });
+  try {
+    const r = await fetch(`${base}/v3/accounts/${accountId}/instruments`, {
+      headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!r.ok) return res.status(r.status).json({ error: await r.text() });
+    const data = await r.json();
+    const filter = (req.query.q || '').toLowerCase();
+    const instruments = (data.instruments || [])
+      .filter(i => !filter || i.name.toLowerCase().includes(filter) || i.displayName.toLowerCase().includes(filter))
+      .map(i => ({ name: i.name, displayName: i.displayName, type: i.type }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    res.json({ count: instruments.length, instruments });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
