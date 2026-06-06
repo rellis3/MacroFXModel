@@ -1651,7 +1651,22 @@ function computeHMMSignalsV2(bars, sym, trainedParams) {
     const exh    = Math.abs(tZ[i]) * 0.7 + Math.abs(vZ[i]) * 0.3;
     const hmmC   = (regime === 'BULL' || regime === 'BEAR') ? Math.min(100,(conf-50)*2) : 0;
     const volC   = Math.max(0, 100 - Math.abs(vZ[i])*25);
-    const score  = Math.min(100, hmmC*0.55 + volC*0.25 + getSessionMult(bars[i].time)*100*0.20);
+    // Regime structural stability: penalise high BOCPD (regime in flux)
+    const bocpdStab = Math.max(0, 100 - bocpd);
+    // Slope direction match: does momentum agree with regime direction?
+    const slopeMatch = (regime === 'BULL' && slope > 0) || (regime === 'BEAR' && slope < 0);
+    const slopeC = slopeMatch ? Math.min(100, Math.abs(slope) * 8) : 0;
+    // ADX strength: raw ADX confirms a real trend (not just HMM-labelled)
+    const adxC = Math.min(100, adx[i] * 4);
+    // Composite: HMM conf 40%, vol 15%, session 15%, BOCPD stability 15%, slope match 10%, ADX 5%
+    const score = Math.min(100,
+      hmmC       * 0.40 +
+      volC       * 0.15 +
+      getSessionMult(bars[i].time) * 100 * 0.15 +
+      bocpdStab  * 0.15 +
+      slopeC     * 0.10 +
+      adxC       * 0.05
+    );
 
     signals[i] = { ts: bars[i].time, regime, conf,
       pBull: probs[0]*100, pBear: probs[1]*100, pRange: probs[2]*100, pChop: probs[3]*100,
@@ -1958,8 +1973,12 @@ function simulateV2(candles, signals, c) {
       const okVz    = sig.vz <= c.vol_z_max;
       const okDecay = sig.decay < c.entry_decay_max;
       const okScore = sig.score >= c.entry_score_min;
+      // Block entry if regime is structurally unstable (high change-point probability)
+      const okBocpd = sig.bocpd < 55;
+      // Require slope momentum to agree with regime direction
+      const okSlope = (sig.regime === 'BULL' && sig.slope > 0) || (sig.regime === 'BEAR' && sig.slope < 0);
 
-      if (isDir && okConf && okRise && okVz && okDecay && okScore) {
+      if (isDir && okConf && okRise && okVz && okDecay && okScore && okBocpd && okSlope) {
         if (++debounce >= c.candle_hold && sig.atrSL) {
           const dir2   = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
           const ep     = bar.close;
