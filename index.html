@@ -457,17 +457,82 @@ window.refreshBetaPanel = async function() {
   await _loadBetaPanel();
 };
 
+const _BETA_MT5_ALIAS = { USTECH100M: 'NAS100_USD', NAS100M: 'NAS100_USD', XAUUSD: 'XAUUSD' };
+const _BETA_DEFAULT_TARGETS = {
+  BULL:  { beta_dxy: -0.65, beta_rates:  0.40, beta_vix: -0.20 },
+  BEAR:  { beta_dxy:  0.55, beta_rates: -0.35, beta_vix:  0.30 },
+  RANGE: { beta_dxy:  0.00, beta_rates:  0.00, beta_vix:  0.00 },
+  CHOP:  { beta_dxy:  0.00, beta_rates:  0.00, beta_vix:  0.00 },
+};
+
+function _poolPositions(...statuses) {
+  const positions = [], seen = new Set();
+  for (const s of statuses) {
+    if (!s?.mt5_positions) continue;
+    for (const p of s.mt5_positions) {
+      const key = p.ticket ?? `${p.symbol}_${p.direction}_${p.lots}`;
+      if (!seen.has(key)) { seen.add(key); positions.push(p); }
+    }
+  }
+  return positions;
+}
+
+function _computePortfolioBeta(positions, estimates) {
+  if (!estimates || !positions.length) return null;
+  let bDxy = 0, bRates = 0, bVix = 0, count = 0;
+  for (const pos of positions) {
+    const rawSym = (pos.symbol || '').toUpperCase();
+    const sym = _BETA_MT5_ALIAS[rawSym] || rawSym;
+    const betas = estimates[sym];
+    if (!betas) continue;
+    const dir  = (pos.direction || (pos.type === 0 ? 'BUY' : 'SELL')).toUpperCase();
+    const sign = dir === 'BUY' ? 1 : -1;
+    const lots = parseFloat(pos.volume || pos.lots || 1);
+    bDxy   += sign * lots * (parseFloat(betas.beta_dxy?.mean)   || 0);
+    bRates += sign * lots * (parseFloat(betas.beta_rates?.mean)  || 0);
+    bVix   += sign * lots * (parseFloat(betas.beta_vix?.mean)    || 0);
+    count++;
+  }
+  if (!count) return null;
+  return { beta_dxy: +bDxy.toFixed(4), beta_rates: +bRates.toFixed(4), beta_vix: +bVix.toFixed(4), position_count: count, timestamp: Date.now() };
+}
+
+function _computeBetaDeviation(portfolioBeta, regime) {
+  if (!portfolioBeta) return null;
+  const rk = (regime || 'RANGE').toUpperCase();
+  const targets = _BETA_DEFAULT_TARGETS[rk] || _BETA_DEFAULT_TARGETS.RANGE;
+  const FACTORS = ['beta_dxy', 'beta_rates', 'beta_vix'];
+  const deviations = {};
+  for (const f of FACTORS) {
+    const current = portfolioBeta[f] || 0;
+    const target  = targets[f] || 0;
+    const dev = +(current - target).toFixed(4);
+    const abs = Math.abs(dev);
+    deviations[f] = { current, target, deviation: dev,
+      status: abs <= 0.15 ? 'ON_TARGET' : abs <= 0.30 ? 'SLIGHT_OVER' : 'OVEREXPOSED' };
+  }
+  const scores = FACTORS.map(f => Math.max(0, 1 - Math.abs(deviations[f].deviation) / 0.5));
+  return { regime: rk, deviations, overall_alignment: +(scores.reduce((s,v)=>s+v,0)/scores.length).toFixed(3), timestamp: Date.now() };
+}
+
 async function _loadBetaPanel() {
-  const [estimates, portfolio, deviation, rebalance, botStatus] = await Promise.all([
+  const [estimates, rebalance, s1, s2, s3, s4, s5] = await Promise.all([
     kvGet('beta_estimates'),
-    kvGet('portfolio_beta'),
-    kvGet('beta_deviation'),
     kvGet('beta_rebalance'),
     kvGet('bot_status'),
+    kvGet('regime_bot_status'),
+    kvGet('regime_bot_v2_status'),
+    kvGet('gold_bot_status'),
+    kvGet('dyn_anchor_status'),
   ]);
   const el = document.getElementById('betaPanelContent');
   if (!el) return;
-  const positions = (botStatus && botStatus.mt5_positions) ? botStatus.mt5_positions : [];
+
+  const positions = _poolPositions(s1, s2, s3, s4, s5);
+  const regime = (s3?.current_regime || s2?.current_regime || s1?.current_regime || s1?.regime || 'RANGE').toUpperCase();
+  const portfolio = _computePortfolioBeta(positions, estimates);
+  const deviation = _computeBetaDeviation(portfolio, regime);
+
   el.innerHTML = _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions);
 }
 
