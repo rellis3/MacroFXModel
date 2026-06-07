@@ -152,6 +152,52 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 .pcm-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
 .pcm-val{font-size:14px;font-weight:700;font-family:'DM Mono',monospace}
 .pair-card-close{margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);line-height:1;padding:0 2px}
+
+/* ── Hedge Help Guide ─────────────────────────────────────────────────── */
+.hh-intro{font-size:11px;color:var(--text2);line-height:1.8;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.hh-section{display:flex;gap:14px;padding:18px 0;border-bottom:1px solid var(--border)}
+.hh-section:last-child{border-bottom:none;padding-bottom:4px}
+.hh-step-num{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--purple);color:var(--purple);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'DM Mono',monospace;margin-top:2px}
+.hh-step-body{flex:1;min-width:0}
+.hh-step-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;letter-spacing:-.1px}
+.hh-text{font-size:11px;color:var(--text2);line-height:1.75;margin-bottom:9px}
+.hh-equation{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin:10px 0;text-align:center;letter-spacing:.3px}
+.hh-equation-block{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin:10px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.hh-eq-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--purple);flex-shrink:0;min-width:70px}
+.hh-eq-formula{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text)}
+.hh-eq-formula-text{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);letter-spacing:.2px}
+.hh-eq-large{font-size:13px;font-weight:600;letter-spacing:.1px}
+.hh-eq-big{font-size:13px;color:var(--text)}
+.hh-fraction{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 4px;line-height:1.3}
+.hh-numerator{padding:0 6px 3px;border-bottom:1.5px solid var(--text2);font-family:'DM Mono',monospace;font-size:11px;text-align:center;white-space:nowrap}
+.hh-denominator{padding:3px 6px 0;font-family:'DM Mono',monospace;font-size:11px;text-align:center;white-space:nowrap}
+.hh-callout{background:rgba(79,125,240,.07);border-left:2px solid var(--purple);border-radius:0 6px 6px 0;padding:9px 12px;margin:10px 0;font-size:11px;color:var(--text2);line-height:1.75}
+.hh-callout-green{background:rgba(16,185,129,.07);border-left-color:var(--green)}
+.hh-callout-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--purple);margin-bottom:5px}
+.hh-callout-green .hh-callout-label{color:var(--green)}
+.hh-worked{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin:10px 0}
+.hh-worked-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px}
+.hh-table{width:100%;border-collapse:collapse;font-size:10px;font-family:'DM Mono',monospace}
+.hh-table th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--text3);padding:4px 8px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+.hh-table td{padding:4px 8px;border-bottom:1px solid var(--border);color:var(--text2)}
+.hh-table tr:last-child td{border-bottom:none}
+.hh-sum-row td{font-weight:700;color:var(--text);border-top:1px solid var(--border);background:rgba(79,125,240,.05)}
+.hh-calc-steps{display:flex;flex-direction:column;gap:0;margin-top:8px;border:1px solid var(--border);border-radius:5px;overflow:hidden}
+.hh-calc-step{font-size:10px;font-family:'DM Mono',monospace;color:var(--text2);padding:5px 10px;border-bottom:1px solid var(--border);line-height:1.5}
+.hh-calc-step:last-child{border-bottom:none}
+.hh-calc-total{color:var(--text);font-weight:600;background:rgba(16,185,129,.07);padding:7px 10px}
+.hh-result-box{border:1px solid var(--border);border-radius:5px;padding:7px 10px;margin-top:8px;font-size:11px;color:var(--text2);line-height:1.6;font-style:italic}
+.hh-defs{display:flex;flex-direction:column;gap:4px;margin:8px 0 2px}
+.hh-def{font-size:11px;color:var(--text2);display:flex;gap:10px;align-items:flex-start;line-height:1.65;padding:3px 0;border-bottom:1px solid var(--border)}
+.hh-def:last-child{border-bottom:none}
+.hh-sym{font-family:'DM Mono',monospace;font-size:10px;color:var(--text);flex-shrink:0;min-width:110px;padding-top:2px}
+.hh-interp-table{margin:0}
+.hh-interp-table td:first-child{font-weight:600}
+.hh-toggle-btn{display:flex;align-items:center;gap:8px;background:none;border:1px solid var(--border);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:11px;font-weight:500;color:var(--text3);font-family:'DM Sans',sans-serif;transition:all .15s;margin-bottom:0}
+.hh-toggle-btn:hover{color:var(--text);border-color:var(--purple)}
+.hh-toggle-btn .hh-chevron{font-size:10px;transition:transform .2s}
+.hh-toggle-btn.open .hh-chevron{transform:rotate(180deg)}
+.hh-body{overflow:hidden;transition:max-height .35s ease}
 </style>
 </head>
 <body>
@@ -353,6 +399,227 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
           <div class="cl-card-title">Current Risk Profile — All Pairs</div>
           <div id="riskProfile"></div>
         </div>
+
+        <!-- ── Hedge Score: How It Works ─────────────────────────────────── -->
+        <div class="cl-card">
+          <div class="cl-card-title" style="cursor:pointer;user-select:none" onclick="(function(btn,body){btn.classList.toggle('open');body.style.maxHeight=btn.classList.contains('open')?body.scrollHeight+'px':'0'})(this.nextElementSibling,document.getElementById('hh-body'))">
+            How the Hedge Score is Calculated
+            <button class="hh-toggle-btn" style="margin-left:auto;pointer-events:none"><span class="hh-chevron">▼</span> Show / Hide</button>
+          </div>
+          <div id="hh-body" class="hh-body" style="max-height:0">
+
+            <p class="hh-intro">A hedge pair is two FX instruments that move in <strong>opposite directions</strong> when macro risk conditions shift. This page scores every possible pair-pair combination — below is a complete walkthrough of every calculation, with worked numbers you can verify in a spreadsheet.</p>
+
+            <!-- Step 1: Log Returns -->
+            <div class="hh-section">
+              <div class="hh-step-num">1</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">Log Returns — Why Not Simple % Changes?</div>
+                <p class="hh-text">Every calculation in this model starts with <strong>log returns</strong> (also called continuously compounded returns). For a price series P, the log return at time t is:</p>
+                <div class="hh-equation">r<sub>t</sub> &nbsp;=&nbsp; ln( P<sub>t</sub> &nbsp;/&nbsp; P<sub>t−1</sub> )</div>
+                <p class="hh-text">For a 4-hour bar close of 1.0851 after a previous close of 1.0823:<br>r = ln(1.0851 / 1.0823) = ln(1.002587) ≈ <strong>+0.002584</strong></p>
+                <div class="hh-callout">
+                  <div class="hh-callout-label">Why log returns and not % returns?</div>
+                  Two reasons. First, log returns are <strong>time-additive</strong>: a 10-day log return equals the sum of ten daily log returns, making rolling windows mathematically clean. Second, they are <strong>symmetric</strong>: a +5% move and a −5% reversal are equal in magnitude in log space (both ≈ 0.0488), whereas simple returns are asymmetric (+5% then −4.76% to return to start). Pearson correlation and OLS regression both assume symmetric error distributions, so log returns are the correct input.
+                </div>
+                <div class="hh-worked">
+                  <div class="hh-worked-label">Worked Example — EURUSD log returns over 5 H4 bars</div>
+                  <table class="hh-table">
+                    <thead><tr><th>Bar</th><th>Close (P)</th><th>r = ln(Pₜ / Pₜ₋₁)</th></tr></thead>
+                    <tbody>
+                      <tr><td>t−4</td><td>1.0823</td><td>— (first bar, no prior)</td></tr>
+                      <tr><td>t−3</td><td>1.0851</td><td>ln(1.0851/1.0823) = <strong>+0.002584</strong></td></tr>
+                      <tr><td>t−2</td><td>1.0838</td><td>ln(1.0838/1.0851) = <strong>−0.001199</strong></td></tr>
+                      <tr><td>t−1</td><td>1.0871</td><td>ln(1.0871/1.0838) = <strong>+0.003046</strong></td></tr>
+                      <tr><td>t₀</td><td>1.0856</td><td>ln(1.0856/1.0871) = <strong>−0.001381</strong></td></tr>
+                    </tbody>
+                  </table>
+                  <p class="hh-text" style="margin-top:8px;margin-bottom:0;font-size:10px;color:var(--text3)">These four return values [+0.002584, −0.001199, +0.003046, −0.001381] become the X series fed into Step 2. In production the model uses a 60-bar rolling window (~10 trading days on H4).</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2: Pearson Correlation -->
+            <div class="hh-section">
+              <div class="hh-step-num">2</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">Pearson Correlation of Log Returns</div>
+                <p class="hh-text">Once we have log return series for two pairs — call them <strong>X</strong> (e.g. EURUSD) and <strong>Y</strong> (e.g. USDCHF) — over the rolling window, we compute the Pearson correlation coefficient <em>r</em>. This measures the <em>linear co-movement</em> between the two series and ranges from −1 to +1.</p>
+                <div class="hh-equation-block">
+                  <div class="hh-eq-label">Pearson r</div>
+                  <div class="hh-eq-formula">
+                    <span class="hh-eq-big">r<sub>XY</sub>&nbsp;=</span>
+                    <div class="hh-fraction">
+                      <div class="hh-numerator">Σᵢ (xᵢ − x̄)(yᵢ − ȳ)</div>
+                      <div class="hh-denominator">√[ Σᵢ(xᵢ − x̄)² &nbsp;·&nbsp; Σᵢ(yᵢ − ȳ)² ]</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="hh-defs">
+                  <div class="hh-def"><span class="hh-sym">xᵢ , yᵢ</span>Log return of pair X and pair Y at bar i</div>
+                  <div class="hh-def"><span class="hh-sym">x̄ , ȳ</span>Mean log return of each series over the full window</div>
+                  <div class="hh-def"><span class="hh-sym">Σᵢ ( · )</span>Sum over all N bars (model requires N ≥ 10)</div>
+                  <div class="hh-def"><span class="hh-sym">r ∈ [−1, +1]</span>Result is clamped — if numerical noise pushes it outside ±1 it is clipped</div>
+                </div>
+                <div class="hh-callout">
+                  <div class="hh-callout-label">What each part does</div>
+                  The <strong>numerator</strong> is the covariance (un-normalised): positive when both series move in the same direction, negative when they move opposite. The <strong>denominator</strong> is the product of both series' standard deviations — it scales the covariance to [−1, +1] so the result is comparable across pairs with different volatilities.
+                </div>
+
+                <div class="hh-worked">
+                  <div class="hh-worked-label">Full Manual Calculation — 4 bars (values ×10⁴ for readability; r is unchanged by scaling)</div>
+                  <table class="hh-table">
+                    <thead>
+                      <tr>
+                        <th>i</th>
+                        <th>xᵢ (EURUSD ×10⁴)</th>
+                        <th>yᵢ (USDCHF ×10⁴)</th>
+                        <th>xᵢ − x̄</th>
+                        <th>yᵢ − ȳ</th>
+                        <th>(x−x̄)(y−ȳ)</th>
+                        <th>(x−x̄)²</th>
+                        <th>(y−ȳ)²</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>1</td><td>+25</td><td>−24</td><td>+17.5</td><td>−16.5</td><td>−288.75</td><td>306.25</td><td>272.25</td></tr>
+                      <tr><td>2</td><td>−10</td><td>+9</td><td>−17.5</td><td>+16.5</td><td>−288.75</td><td>306.25</td><td>272.25</td></tr>
+                      <tr><td>3</td><td>+30</td><td>−29</td><td>+22.5</td><td>−21.5</td><td>−483.75</td><td>506.25</td><td>462.25</td></tr>
+                      <tr><td>4</td><td>−15</td><td>+14</td><td>−22.5</td><td>+21.5</td><td>−483.75</td><td>506.25</td><td>462.25</td></tr>
+                      <tr class="hh-sum-row"><td>Σ</td><td></td><td></td><td></td><td></td><td><strong>−1545.00</strong></td><td><strong>1625.00</strong></td><td><strong>1469.00</strong></td></tr>
+                    </tbody>
+                  </table>
+                  <div class="hh-calc-steps" style="margin-top:10px">
+                    <div class="hh-calc-step">x̄ = (25 − 10 + 30 − 15) / 4 = 30 / 4 = <strong>+7.5</strong></div>
+                    <div class="hh-calc-step">ȳ = (−24 + 9 − 29 + 14) / 4 = −30 / 4 = <strong>−7.5</strong></div>
+                    <div class="hh-calc-step">Numerator  = −1545.00</div>
+                    <div class="hh-calc-step">Denominator = √(1625.00 × 1469.00) = √2,387,125 = <strong>1545.03</strong></div>
+                    <div class="hh-calc-total">r = −1545.00 / 1545.03 = <strong>−0.9999 ≈ −1.00</strong></div>
+                  </div>
+                  <div class="hh-result-box">r ≈ −1.0 confirms that EURUSD and USDCHF move almost perfectly in opposite directions over this window — a textbook natural hedge. In practice, stable pairs typically show r in the range −0.7 to −0.9.</div>
+                </div>
+
+                <div class="hh-callout">
+                  <div class="hh-callout-label">Interpreting r for hedging</div>
+                  <table class="hh-table hh-interp-table" style="margin-top:4px">
+                    <thead><tr><th>r value</th><th>Meaning</th></tr></thead>
+                    <tbody>
+                      <tr><td style="color:var(--green)">−1.0 to −0.5</td><td>Strong negative co-movement — excellent hedge candidate</td></tr>
+                      <tr><td style="color:var(--amber)">−0.5 to 0.0</td><td>Weak negative — partial hedge benefit</td></tr>
+                      <tr><td style="color:var(--text3)">0.0 to +0.3</td><td>Neutral — little or no hedging value</td></tr>
+                      <tr><td style="color:var(--red)">+0.3 to +1.0</td><td>Positive — pairs move together, trading both amplifies risk</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3: VIX Beta -->
+            <div class="hh-section">
+              <div class="hh-step-num">3</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">VIX Beta — OLS Regression Against a Fear Proxy</div>
+                <p class="hh-text">The <strong>VIX beta (β<sub>vix</sub>)</strong> measures how sensitively a pair responds to changes in market fear. It is estimated by regressing each pair's log returns against a <em>VIX proxy</em> using Ordinary Least Squares (OLS).</p>
+                <div class="hh-equation-block">
+                  <div class="hh-eq-label">VIX proxy</div>
+                  <div class="hh-eq-formula-text">VIX proxy returnₜ = −1 × ln( USDCHF<sub>t</sub> / USDCHF<sub>t−1</sub> )</div>
+                </div>
+                <div class="hh-callout">
+                  <div class="hh-callout-label">Why USDCHF × −1?</div>
+                  The Swiss Franc is a classic safe-haven currency. When fear spikes, capital flows into CHF, causing USDCHF to <em>fall</em>. Multiplying by −1 inverts the series so the proxy <em>rises</em> when fear rises — mirroring the intuition of VIX (where a higher reading = more fear / risk-off).
+                </div>
+                <p class="hh-text">The OLS formula gives the <em>slope</em> of the regression line — how many units the pair return moves for each unit move in the fear proxy:</p>
+                <div class="hh-equation-block">
+                  <div class="hh-eq-label">OLS beta</div>
+                  <div class="hh-eq-formula">
+                    <span class="hh-eq-big">β &nbsp;=</span>
+                    <div class="hh-fraction">
+                      <div class="hh-numerator">Σᵢ (xᵢ − x̄)(yᵢ − ȳ)</div>
+                      <div class="hh-denominator">Σᵢ (xᵢ − x̄)²</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="hh-defs">
+                  <div class="hh-def"><span class="hh-sym">x</span>VIX proxy log returns (the independent variable / "input")</div>
+                  <div class="hh-def"><span class="hh-sym">y</span>Pair log returns (the dependent variable / "output")</div>
+                  <div class="hh-def"><span class="hh-sym">β &gt; 0</span><span style="color:var(--green)">Risk-ON</span> — pair rises when fear rises (e.g. GBPUSD tends to rally with equities)</div>
+                  <div class="hh-def"><span class="hh-sym">β &lt; 0</span><span style="color:var(--red)">Risk-OFF / Safe-haven</span> — pair falls when fear rises (e.g. USDJPY falls because JPY is bid)</div>
+                  <div class="hh-def"><span class="hh-sym">β ≈ 0</span>Macro-neutral — pair is driven by idiosyncratic factors, not risk sentiment</div>
+                </div>
+                <p class="hh-text" style="margin-top:6px">The same 60-bar rolling window and 10-bar minimum used for Pearson also applies to OLS beta.</p>
+              </div>
+            </div>
+
+            <!-- Step 4: Beta Spread -->
+            <div class="hh-section">
+              <div class="hh-step-num">4</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">Beta Spread — Quantifying Opposite Risk Profiles</div>
+                <p class="hh-text">The beta spread captures how <em>differently</em> two pairs respond to fear. A large spread means one pair is strongly risk-on and the other is strongly risk-off — exactly what a macro hedge needs.</p>
+                <div class="hh-equation">β Spread &nbsp;=&nbsp; | β<sub>vix</sub>(A) &nbsp;−&nbsp; β<sub>vix</sub>(B) |</div>
+                <div class="hh-worked">
+                  <div class="hh-worked-label">Example — EURUSD (A) vs USDCHF (B)</div>
+                  <div class="hh-calc-steps">
+                    <div class="hh-calc-step">EURUSD β<sub>vix</sub> = +0.82 &nbsp; (risk-on, rises with equity / risk sentiment)</div>
+                    <div class="hh-calc-step">USDCHF β<sub>vix</sub> = −0.71 &nbsp; (safe-haven, falls when fear rises)</div>
+                    <div class="hh-calc-total">β Spread = | 0.82 − (−0.71) | = | 1.53 | = <strong>1.53</strong></div>
+                  </div>
+                </div>
+                <p class="hh-text">A spread of 1.53 is large — these pairs sit on opposite ends of the risk-sentiment spectrum. A spread near zero means both pairs have similar risk profiles and offer little hedging benefit beyond what the correlation already captures.</p>
+              </div>
+            </div>
+
+            <!-- Step 5: Hedge Score -->
+            <div class="hh-section">
+              <div class="hh-step-num">5</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">The Hedge Score — Combining Both Signals</div>
+                <p class="hh-text">The hedge score blends correlation (70% weight) and beta spread (30% weight) into a single ranking number. A high score means the two pairs are both statistically opposite <em>and</em> have opposite macro risk profiles.</p>
+                <div class="hh-equation-block">
+                  <div class="hh-eq-label">Hedge Score</div>
+                  <div class="hh-eq-formula-text hh-eq-large">Score &nbsp;=&nbsp; (−r &nbsp;×&nbsp; 0.7) &nbsp;+&nbsp; ( β&nbsp;Spread &nbsp;÷&nbsp; 2 &nbsp;×&nbsp; 0.3 )</div>
+                </div>
+                <div class="hh-defs">
+                  <div class="hh-def"><span class="hh-sym">−r × 0.7</span>Correlation component. Sign is negated so r = −1 (perfect negative correlation) contributes +0.70 (maximum). r = +1 contributes −0.70 (worst possible).</div>
+                  <div class="hh-def"><span class="hh-sym">β Spread ÷ 2 × 0.3</span>Beta spread component. Divided by 2 to normalise — a spread of 2.0 contributes +0.30. A spread of 0 contributes nothing.</div>
+                </div>
+                <div class="hh-worked">
+                  <div class="hh-worked-label">Full Worked Example — EURUSD vs USDCHF</div>
+                  <div class="hh-calc-steps">
+                    <div class="hh-calc-step">Average Pearson r (over full history) = <strong>−0.82</strong></div>
+                    <div class="hh-calc-step">EURUSD β<sub>vix</sub> = +0.82 &nbsp;|&nbsp; USDCHF β<sub>vix</sub> = −0.71</div>
+                    <div class="hh-calc-step">β Spread = | 0.82 − (−0.71) | = <strong>1.53</strong></div>
+                    <div class="hh-calc-step">Correlation component: −(−0.82) × 0.7 = <strong>+0.574</strong></div>
+                    <div class="hh-calc-step">Beta spread component: (1.53 / 2) × 0.3 = <strong>+0.230</strong></div>
+                    <div class="hh-calc-total">Score = 0.574 + 0.230 = <strong>0.804 → Strong Hedge</strong></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 6: Reading Signals -->
+            <div class="hh-section">
+              <div class="hh-step-num">6</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">Reading the Signal Column</div>
+                <table class="hh-table hh-interp-table" style="width:100%">
+                  <thead><tr><th>Score</th><th>Signal</th><th>What it means in practice</th></tr></thead>
+                  <tbody>
+                    <tr><td style="color:var(--green)">≥ 0.50</td><td>⬛ Strong hedge</td><td>High negative correlation AND opposite beta profiles. Best candidates for simultaneous opposite-direction trades.</td></tr>
+                    <tr><td style="color:var(--amber)">0.25 – 0.49</td><td>▣ Moderate hedge</td><td>Useful diversification but not a perfect offset. Size positions carefully — the hedge is partial.</td></tr>
+                    <tr><td style="color:var(--text3)">−0.20 – 0.24</td><td>— Neutral</td><td>Insufficient differentiation. Neither a hedge nor a correlated pair. Avoid relying on this pair-pair for risk management.</td></tr>
+                    <tr><td style="color:var(--red)">below −0.20</td><td>▪ Correlated</td><td>These pairs move together. Holding both in the same direction doubles macro exposure; holding them opposite creates an unnecessary drag.</td></tr>
+                  </tbody>
+                </table>
+                <div class="hh-callout hh-callout-green" style="margin-top:12px">
+                  <div class="hh-callout-label">Practical trading note</div>
+                  A high hedge score means you trade the two pairs in <strong>opposite directions</strong> — long A and short B (or vice versa), sized so that the notional dollar exposure is approximately equal on both legs. This cancels out macro factor risk (DXY, rates, risk sentiment) while preserving alpha from the relative mispricing between the two pairs. The score does <em>not</em> tell you which direction to trade — it only tells you which pairs offset each other.
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /#hh-body -->
+        </div><!-- /.cl-card guide -->
       </div>
 
       <!-- Tab 6: Factor Dominance -->
