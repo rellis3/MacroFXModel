@@ -78,6 +78,22 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 .sig-empty{text-align:center;padding:40px 20px;color:var(--muted)}
 .sig-empty .icon{font-size:32px;margin-bottom:8px}
 
+/* ── Trade Levels ── */
+.sig-trade-levels{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tl-leg{display:flex;flex-direction:column;gap:3px}
+.tl-pair-hd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px}
+.tl-row{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.tl-label{color:var(--muted);font-size:11px}
+.tl-val{font-family:monospace;font-weight:600;color:var(--text)}
+.tl-val.entry-px{color:var(--cyan)}
+.tl-val.live-px{color:var(--text)}
+.tl-sl-row{display:flex;justify-content:space-between;align-items:center;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:5px;padding:4px 7px;margin-top:2px}
+.tl-sl-label{font-size:11px;color:var(--red);font-weight:600}
+.tl-sl-val{font-family:monospace;font-size:12px;font-weight:700;color:var(--red)}
+.tl-sl-dist{font-size:10px;color:var(--muted);font-family:monospace}
+.tl-stale{font-size:10px;color:var(--yellow);margin-top:2px}
+.tl-divider{grid-column:1/-1;height:1px;background:var(--border);margin:2px 0}
+
 /* ── History Table ── */
 .hist-table{width:100%;border-collapse:collapse;font-size:12px}
 .hist-table th{text-align:left;padding:6px 10px;color:var(--muted);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em;border-bottom:1px solid var(--border)}
@@ -439,11 +455,45 @@ MT5_PAIRS = {
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
 let _signals = [], _cfg = {}, _refreshTimer = null;
+let _prices = {}, _vol = {};
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function _pairToSlash(sym) {
+  if (sym.includes('/') || sym.includes('_')) return sym;
+  if (sym === 'XAUUSD') return 'XAU/USD';
+  if (sym.length === 6) return `${sym.slice(0,3)}/${sym.slice(3)}`;
+  return sym;
+}
+
+function _slInfo(pair, direction, slAtrMult) {
+  const key = _pairToSlash(pair);
+  const pd  = _prices[key];
+  if (!pd) return null;
+  const price = pd.price;
+  const pip   = pd.pip ?? 0.0001;
+  // H4 ATR estimate: vol forecast hl_median (% daily) ÷ 5 H4 sessions, else fallback pips
+  let h4AtrPips;
+  const vn = pair.replace('XAUUSD','GOLD');
+  if (_vol[vn]?.hl_median) {
+    const dailyRangePx = (_vol[vn].hl_median / 100) * price;
+    h4AtrPips = (dailyRangePx / pip) / 5;
+  } else if (_vol[pair]?.hl_median) {
+    const dailyRangePx = (_vol[pair].hl_median / 100) * price;
+    h4AtrPips = (dailyRangePx / pip) / 5;
+  } else {
+    // fallback: typical H4 ATR by pair class
+    h4AtrPips = key.includes('JPY') ? 22 : pair === 'XAUUSD' ? 8 : 16;
+  }
+  const slDistPips = h4AtrPips * (slAtrMult ?? 2.5);
+  const slDistPx   = slDistPips * pip;
+  const slPrice    = direction === 'LONG' ? price - slDistPx : price + slDistPx;
+  return { price, slPrice, slDistPips: Math.round(slDistPips), digits: pd.digits ?? 5, pip, ageS: pd.ageS };
+}
 
 // ── Init ───────────────────────────────────────────────────────────────────
 (async function init() {
-  await Promise.all([loadSignals(), loadConfig(), loadTgConfig()]);
-  _refreshTimer = setInterval(loadSignals, 60_000);
+  await Promise.all([loadSignals(), loadConfig(), loadTgConfig(), loadPrices()]);
+  _refreshTimer = setInterval(async () => { await loadSignals(); await loadPrices(); }, 60_000);
 })();
 
 // ── Data loading ───────────────────────────────────────────────────────────
@@ -469,6 +519,15 @@ async function loadTgConfig() {
     const tg = await fetch('/api/hedge-signals/tg-config').then(r => r.json());
     if (tg.token)  document.getElementById('tg-token').value  = tg.token;
     if (tg.chatId) document.getElementById('tg-chat-id').value = tg.chatId;
+  } catch {}
+}
+
+async function loadPrices() {
+  try {
+    const d = await fetch('/api/hedge-signals/prices').then(r => r.json());
+    _prices = d.prices || {};
+    _vol    = d.vol    || {};
+    renderSignals();
   } catch {}
 }
 
@@ -549,6 +608,41 @@ function signalCard(s, showAck) {
     <button class="ack-btn" onclick="ackSignal('${s.id}','DISMISSED')">Dismiss</button>
     <button class="ack-btn" onclick="ackSignal('${s.id}','EXITED')">Mark Exited</button>
   </div>` : '';
+  const slAtrMult = _cfg?.sl_atr_mult ?? 2.5;
+  const tlA = _slInfo(s.pair_a, s.direction_a, slAtrMult);
+  const tlB = _slInfo(s.pair_b, s.direction_b, slAtrMult);
+
+  function legHtml(pair, dir, tl, entryPx) {
+    const dirCls = dir === 'LONG' ? 'long' : 'short';
+    const dirArrow = dir === 'LONG' ? '▲' : '▼';
+    if (!tl) {
+      return `<div class="tl-leg">
+        <div class="tl-pair-hd">${pair} <span class="dir-val ${dirCls}" style="font-size:10px">${dirArrow} ${dir}</span></div>
+        <div class="tl-row"><span class="tl-label">Price</span><span class="tl-val" style="color:var(--muted)">—</span></div>
+      </div>`;
+    }
+    const staleNote = tl.ageS > 120 ? `<div class="tl-stale">⚠ price ${tl.ageS}s old</div>` : '';
+    const entryRow  = entryPx != null ? `<div class="tl-row"><span class="tl-label">Entry</span><span class="tl-val entry-px">${entryPx.toFixed(tl.digits)}</span></div>` : '';
+    return `<div class="tl-leg">
+      <div class="tl-pair-hd">${pair} <span class="dir-val ${dirCls}" style="font-size:10px">${dirArrow} ${dir}</span></div>
+      <div class="tl-row"><span class="tl-label">Live</span><span class="tl-val live-px">${tl.price.toFixed(tl.digits)}</span></div>
+      ${entryRow}
+      <div class="tl-sl-row">
+        <span class="tl-sl-label">SL</span>
+        <span class="tl-sl-val">${tl.slPrice.toFixed(tl.digits)}</span>
+        <span class="tl-sl-dist">${tl.slDistPips}p</span>
+      </div>
+      ${staleNote}
+    </div>`;
+  }
+
+  const tradeLevels = (showAck && (tlA || tlB)) ? `<div class="sig-trade-levels">
+    ${legHtml(s.pair_a, s.direction_a, tlA, s.entry_price_a ?? null)}
+    ${legHtml(s.pair_b, s.direction_b, tlB, s.entry_price_b ?? null)}
+    <div class="tl-divider"></div>
+    <div style="grid-column:1/-1;font-size:10px;color:var(--muted)">SL = H4 ATR × ${slAtrMult}  ·  exit when z &lt; ${s.exit_z_target ?? 0.5}  ·  stop when z &gt; ${s.stop_z ?? 3.5}</div>
+  </div>` : '';
+
   return `<div class="sig-card ${s.status.toLowerCase()}" id="sig-${s.id}">
     <div class="sig-card-top">
       <div class="sig-pair">${s.pair_a}<span>/</span>${s.pair_b}</div>
@@ -569,6 +663,7 @@ function signalCard(s, showAck) {
         <div class="dir-val ${s.direction_b.toLowerCase()}">${s.direction_b === 'LONG' ? '▲' : '▼'} ${s.direction_b}</div>
       </div>
     </div>
+    ${tradeLevels}
     <div class="sig-meta">
       <span>Regime: <b>${s.regime||'—'}</b></span>
       <span>Corr μ=${s.corr_mean?.toFixed(3)??'—'} σ=${s.corr_std?.toFixed(3)??'—'}</span>

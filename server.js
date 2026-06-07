@@ -348,6 +348,14 @@ const CORR_CHUNK     = 4500; // max bars per OANDA request (limit 5000)
 let   corrRunning    = false;
 let   corrProgress   = { pct: 0, msg: 'Idle', step: '', error: null };
 
+// Convert CORR_PAIRS format (EURUSD) to state.prices key format (EUR/USD)
+function _pairToSlash(sym) {
+  if (sym.includes('/') || sym.includes('_')) return sym;
+  if (sym === 'XAUUSD') return 'XAU/USD';
+  if (sym.length === 6) return `${sym.slice(0,3)}/${sym.slice(3)}`;
+  return sym;
+}
+
 function _h4OandaSym(sym) {
   const ov = { XAUUSD:'XAU_USD', XAGUSD:'XAG_USD', NAS100:'NAS100_USD', SPX500:'SPX500_USD', 'DE30_USD':'DE30_EUR' };
   if (ov[sym]) return ov[sym];
@@ -680,6 +688,8 @@ async function computeHedgeSignals() {
           exit_z_target: cfg.exit_z,
           stop_z: cfg.stop_z,
           last_updated: now,
+          entry_price_a: (() => { const p = state.prices[_pairToSlash(pa)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pa)] ?? 5) : null; })(),
+          entry_price_b: (() => { const p = state.prices[_pairToSlash(pb)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pb)] ?? 5) : null; })(),
         };
         newSigs.push(sig);
         sigData.signals.push(sig);
@@ -3167,6 +3177,27 @@ app.post('/api/hedge-signals/tg-test', async (_req, res) => {
   const ok = await sendTelegram(cfg.token, cfg.chatId,
     '✅ <b>MacroFX Hedge Signals</b> — bot connected!\n<i>You will receive alerts when hedge pair correlations diverge.</i>');
   res.json({ ok, error: ok ? null : 'Telegram API returned error' });
+});
+
+// Live prices + vol forecast ATR estimates for hedge signal SL display
+app.get('/api/hedge-signals/prices', (_req, res) => {
+  const prices = {};
+  for (const [sym, v] of Object.entries(state.prices)) {
+    prices[sym] = {
+      price:  v.price,
+      digits: PRICE_DIGITS[sym] ?? 5,
+      pip:    PIP_SIZE[sym] ?? 0.0001,
+      ageS:   Math.round((Date.now() - v.at) / 1_000),
+    };
+  }
+  const vol = {};
+  const fc = forecastState.latest?.instruments;
+  if (fc) {
+    for (const [name, data] of Object.entries(fc)) {
+      if (data?.hl_median) vol[name] = { hl_median: data.hl_median };
+    }
+  }
+  res.json({ prices, vol });
 });
 
 // ── Regime log backfill (pure Node.js) ──────────────────────────────────────
