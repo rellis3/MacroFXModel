@@ -1,19 +1,24 @@
 """
-optimizer.py — Bayesian (Optuna/TPE) parameter search for V4 regime bot.
+optimizer.py — Bayesian (Optuna/TPE) parameter search for V4/V5 regime bot.
 
 Usage:
-    python optimizer.py --pair EURUSD --trials 1000 --jobs 4
+    python optimizer.py --pair EURUSD --trials 1000 --jobs 4 --mtf 30
 
 Walk-forward splits (applied to the date range in the fetched data):
     Train 60% | Validate 20% | Test 20% (blind — only evaluated for the top-20)
 
-Objective:
-    0.7 * validate_sharpe + 0.3 * train_sharpe
+Objective (v2 — anti-gaming):
+    0.7 * _qs(validate) + 0.3 * _qs(train)
+    where _qs = sortino + WR_bonus(above 50%)
 
-Pruning rules (trial returns -inf):
+Pruning rules (trial rejected):
     - < 20 trades on train or validate split
-    - max drawdown > 30% on validate
-    - validate_sharpe < 0.4 * train_sharpe  (overfit guard)
+    - validate max drawdown > 30%
+    - validate Sortino < 0.4 × train Sortino  (overfit guard)
+    - validate win rate < 48%  or  train win rate < 45%   (no coin-flip configs)
+    - validate RR ratio (avg_win/avg_loss) < 1.1           (wins must exceed losses)
+    - validate TPY exceeds per-MTF limit
+    - validate avg duration below per-MTF minimum
 
 Results are written to:
     results/<pair>_<timestamp>.json   — top-20 configs + analytics
@@ -248,12 +253,13 @@ def _cfg_from_trial(trial: optuna.Trial, mtf: int = 1) -> dict:
     For MTF == 1 (V4 mode), bar-count params are already in M1 bars.
     """
     if mtf > 1:
-        # V5: bar-count params in MTF-bar units, small numeric ranges
+        # V5: bar-count params in MTF-bar units, small numeric ranges.
+        # Floors are deliberately strict to prevent tiny-SL / quick-breakeven variance gaming.
         return {
-            "entry_conf":            trial.suggest_int("entry_conf",            60, 90),
+            "entry_conf":            trial.suggest_int("entry_conf",            65, 90),
             "candle_hold":           trial.suggest_int("candle_hold",            1,  8),
-            "entry_score_min":       trial.suggest_int("entry_score_min",       55, 85),
-            "sl_atr_mult":           trial.suggest_float("sl_atr_mult",         1.0, 4.0, step=0.1),
+            "entry_score_min":       trial.suggest_int("entry_score_min",       60, 85),
+            "sl_atr_mult":           trial.suggest_float("sl_atr_mult",         1.5, 4.0, step=0.1),
             "window_start":          trial.suggest_int("window_start",           0, 12),
             "window_end":            trial.suggest_int("window_end",            12, 23),
             "post_exit_cooldown":    trial.suggest_int("post_exit_cooldown",     1, 16),
@@ -270,7 +276,7 @@ def _cfg_from_trial(trial: optuna.Trial, mtf: int = 1) -> dict:
             "hold_score_min":        trial.suggest_int("hold_score_min",        10, 60),
             "score_drop_exit":       trial.suggest_int("score_drop_exit",       10, 60),
             "score_drop_bars":       trial.suggest_int("score_drop_bars",        1,  4),
-            "mfe_retrace_pct":       trial.suggest_float("mfe_retrace_pct",     0.10, 0.60, step=0.01),
+            "mfe_retrace_pct":       trial.suggest_float("mfe_retrace_pct",     0.15, 0.60, step=0.01),
             "mfe_min_r":             trial.suggest_float("mfe_min_r",           0.5, 4.0, step=0.1),
             "decay_exit":            trial.suggest_float("decay_exit",          0.50, 0.99, step=0.01),
         }
@@ -315,10 +321,20 @@ def _run_split(bars: dict, signals: list, cfg: dict,
     return compute_analytics(trades)
 
 
-def _sharpe(an: Optional[dict]) -> float:
+def _qs(an: Optional[dict]) -> float:
+    """
+    Quality score — anti-gaming objective.
+
+    Uses Sortino (penalises downside variance, not total variance like Sharpe)
+    plus a win-rate bonus above 50%.  Sortino alone can still be suppressed by
+    near-zero-loss configs, but the WR and RR hard gates in make_objective
+    prevent those from reaching this scoring step.
+    """
     if an is None:
         return -999.0
-    return float(an.get("sharpe", -999.0))
+    sortino  = float(an.get("sortino", -999.0))
+    wr_bonus = max(0.0, an["win_rate"] - 50.0) * 0.05   # +0.05 per % above 50%
+    return sortino + wr_bonus
 
 
 def make_objective(bars_train, bars_val, sigs_train, sigs_val,
@@ -333,23 +349,42 @@ def make_objective(bars_train, bars_val, sigs_train, sigs_val,
         an_tr = _run_split(bars_train, sigs_train, cfg, spread_pips, mtf)
         an_va = _run_split(bars_val,   sigs_val,   cfg, spread_pips, mtf)
 
-        tr_sh = _sharpe(an_tr)
-        va_sh = _sharpe(an_va)
-
+        # ── Hard gates — prune immediately ────────────────────────────────────
         if an_tr is None or an_tr["total"] < MIN_TRADES:
             return -1_000.0
         if an_va is None or an_va["total"] < MIN_TRADES:
             return -1_000.0
         if an_va["max_dd"] > MAX_DD_LIMIT:
             return -1_000.0
-        if tr_sh > 0 and va_sh < OVERFIT_GUARD * tr_sh:
+
+        tr_so = _qs(an_tr)
+        va_so = _qs(an_va)
+
+        # Require training data to be at least weakly profitable.
+        # Without this, the optimizer finds val-period-specific patterns that lose
+        # everywhere else — the guard "if tr_so > 0 ..." never fires when train is negative.
+        if tr_so < 0.0:
+            return -350.0
+
+        # Overfit guard: val must be a reasonable fraction of train
+        if tr_so > 0 and va_so < OVERFIT_GUARD * tr_so:
             return -500.0
+
+        # Frequency / duration limits (scale with MTF)
         if an_va["tpy"] > max_tpy:
             return -200.0
         if an_va.get("avg_duration_min", 0) < min_avg_dur:
             return -200.0
 
-        return 0.7 * va_sh + 0.3 * tr_sh
+        # Win rate floor — eliminates coin-flip + tiny-SL variance-gaming configs
+        if an_va["win_rate"] < 48.0 or an_tr["win_rate"] < 45.0:
+            return -300.0
+
+        # RR ratio floor — avg win must exceed avg loss; prevents breakeven-only configs
+        if an_va.get("rr_ratio", 0.0) < 1.1:
+            return -150.0
+
+        return 0.7 * va_so + 0.3 * tr_so
 
     return objective
 
@@ -364,11 +399,14 @@ def run_optimisation(pair: str, n_trials: int = 1000, n_jobs: int = 1, months: i
     tag    = f"{pair.replace('/', '')}_{ts_str}"
     db_path = RESULTS_DIR / f"{tag}.db"
 
+    mode_str = f"V5 ({mtf}m regime)" if mtf > 1 else "V4 (M1)"
     print(f"\n{'='*60}")
-    print(f"  V4 Regime Optimizer — {pair}")
+    print(f"  Regime Optimizer [{mode_str}] — {pair}")
     if from_date or to_date:
         print(f"  Range:  {from_date or 'auto'} → {to_date or 'now'}")
-    print(f"  Trials: {n_trials}  |  Jobs: {n_jobs}  |  Data: {months}m")
+    lim = _mtf_limits(mtf)
+    print(f"  Trials: {n_trials}  |  Jobs: {n_jobs}  |  Spread: {spread_pips}pip")
+    print(f"  MaxTPY: {lim['max_tpy']}  |  MinDur: {lim['min_avg_dur']}min")
     print(f"{'='*60}")
 
     # Load data
@@ -383,10 +421,14 @@ def run_optimisation(pair: str, n_trials: int = 1000, n_jobs: int = 1, months: i
 
     print(f"  Bars — train: {ti:,}  val: {vi-ti:,}  test: {N-vi:,}")
 
-    # Pre-compute signals for each split (expensive, but done once per study)
-    print("  Pre-computing HMM signals …")
+    # Pre-compute signals once — expensive, reused across all trials
+    tf_str = f"{mtf}m MTF" if mtf > 1 else "M1"
+    print(f"  Pre-computing HMM signals ({tf_str}) …")
     t0 = time.time()
-    sigs_all   = compute_signals_v4(bars, pair)
+    if mtf > 1:
+        sigs_all = compute_signals_v5(bars, pair, mtf_minutes=mtf)
+    else:
+        sigs_all = compute_signals_v4(bars, pair)
     sigs_train = sigs_all[:ti]
     sigs_val   = sigs_all[ti:vi]
     sigs_test  = sigs_all[vi:]
@@ -402,7 +444,7 @@ def run_optimisation(pair: str, n_trials: int = 1000, n_jobs: int = 1, months: i
         study_name=tag,
         load_if_exists=True,
     )
-    objective = make_objective(bars_train, bars_val, sigs_train, sigs_val, spread_pips)
+    objective = make_objective(bars_train, bars_val, sigs_train, sigs_val, spread_pips, mtf)
 
     print(f"\n  Starting optimisation (n_trials={n_trials}) …")
     t1 = time.time()
@@ -430,9 +472,9 @@ def run_optimisation(pair: str, n_trials: int = 1000, n_jobs: int = 1, months: i
             if ip in cfg:
                 cfg[ip] = int(cfg[ip])
 
-        an_tr = _run_split(bars_train, sigs_train, cfg, spread_pips)
-        an_va = _run_split(bars_val,   sigs_val,   cfg, spread_pips)
-        an_te = _run_split(bars_test,  sigs_test,  cfg, spread_pips)
+        an_tr = _run_split(bars_train, sigs_train, cfg, spread_pips, mtf)
+        an_va = _run_split(bars_val,   sigs_val,   cfg, spread_pips, mtf)
+        an_te = _run_split(bars_test,  sigs_test,  cfg, spread_pips, mtf)
 
         diff = {k: round(cfg.get(k, V4_DEFAULTS.get(k)) - V4_DEFAULTS.get(k, 0), 4)
                 for k in cfg if k in V4_DEFAULTS}
@@ -463,6 +505,7 @@ def run_optimisation(pair: str, n_trials: int = 1000, n_jobs: int = 1, months: i
         "generated_at":  ts_str,
         "n_trials":      n_trials,
         "months_data":   months,
+        "mtf_minutes":   mtf,
         "split_bars":    {"train": ti, "val": vi - ti, "test": N - vi},
         "param_importances": imp_list,
         "top_results":   results,
@@ -486,6 +529,7 @@ def _summarise(an: Optional[dict]) -> dict:
         "sharpe":        round(an["sharpe"], 3),
         "sortino":       round(an.get("sortino", 0), 3),
         "pf":            round(an["pf"], 2),
+        "rr_ratio":      round(an.get("rr_ratio", 0), 2),
         "max_dd":        round(an["max_dd"], 2),
         "total_pnl":     round(an["total_pnl"], 2),
         "calmar":        round(an.get("calmar", 0), 3),
@@ -497,8 +541,8 @@ def _print_row(rank, cfg, an_tr, an_va, an_te):
     def fmt(an):
         if not an:
             return "  n/a  "
-        return (f"  sh={an['sharpe']:.2f}  wr={an['win_rate']:.0f}%"
-                f"  dd={an['max_dd']:.1f}%  n={an['total']}")
+        return (f"  so={an.get('sortino',0):.2f}  wr={an['win_rate']:.0f}%"
+                f"  rr={an.get('rr_ratio',0):.2f}  dd={an['max_dd']:.1f}%  n={an['total']}")
     print(f"  #{rank:02d}  TR:{fmt(an_tr)}  VA:{fmt(an_va)}  TE:{fmt(an_te)}")
 
 
@@ -528,6 +572,8 @@ if __name__ == "__main__":
                     help="End date for data window (e.g. 2024-12-01)")
     ap.add_argument("--spread",  type=float, default=1.0, metavar="PIPS",
                     help="Round-trip spread cost in pips (default 1.0 — EUR/USD typical; use 2.0 for Gold)")
+    ap.add_argument("--mtf",     type=int, default=1, choices=[1, 15, 30, 60, 240],
+                    help="Regime timeframe in minutes: 1=V4 M1 mode, 15/30/60/240=V5 MTF mode (default 1)")
     ap.add_argument("--report",  action="store_true",    help="Auto-generate HTML report after optimisation")
     args = ap.parse_args()
 
@@ -537,7 +583,7 @@ if __name__ == "__main__":
 
     json_path = run_optimisation(pair, args.trials, args.jobs, args.months,
                                  from_date=args.from_date, to_date=args.to_date,
-                                 spread_pips=args.spread)
+                                 spread_pips=args.spread, mtf=args.mtf)
 
     if args.report:
         from reporter import generate_report

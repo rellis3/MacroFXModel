@@ -1,6 +1,9 @@
-# RegimeOptimizer — V4 Parameter Search
+# RegimeOptimizer — V4/V5 Parameter Search
 
-Bayesian parameter optimizer for the V4 Regime Bot. Finds the best combination of 23 config parameters by running thousands of backtests using Optuna's TPE (Tree-structured Parzen Estimator) sampler — far more efficient than brute-force grid search.
+Bayesian parameter optimizer for the V4/V5 Regime Bot. Finds the best combination of 23 config parameters by running thousands of backtests using Optuna's TPE (Tree-structured Parzen Estimator) sampler — far more efficient than brute-force grid search.
+
+**V4 mode** (`--mtf 1`): HMM runs on M1 bars directly. Fast but noisy regime signals.  
+**V5 mode** (`--mtf 30` etc.): M1 bars are aggregated to the chosen timeframe (15m/30m/1h/4h), HMM runs on those MTF bars for more stable regime signals, signals are mapped back to M1 with strict no-look-ahead (only completed bars). Bar-count params are expressed in MTF-bar units and scaled internally.
 
 ---
 
@@ -10,15 +13,24 @@ Bayesian parameter optimizer for the V4 Regime Bot. Finds the best combination o
 cd RegimeOptimizer
 pip install -r requirements.txt
 
-# Basic run (target known-good data range)
-python optimizer.py --pair EURUSD --from 2023-01-01 --to 2024-12-01 --trials 1000
+# V4 mode — HMM on M1 bars (original)
+python optimizer.py --pair EURUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --report
 
-# With HTML report auto-generated at the end
-python optimizer.py --pair EURUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --jobs 4 --report
+# V5 mode — HMM on 30m bars, entries on M1 (recommended starting point)
+python optimizer.py --pair EURUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --jobs 4 --mtf 30 --spread 1.0 --report
+
+# V5 mode — compare at different timeframes
+python optimizer.py --pair EURUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --jobs 4 --mtf 15 --report
+python optimizer.py --pair EURUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --jobs 4 --mtf 60 --report
+python optimizer.py --pair EURUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --jobs 4 --mtf 240 --report
 
 # Generate report from a previous results file
 python reporter.py results/EURUSD_20260607T120000.json
 ```
+
+**`--mtf` choices:** `1` (V4 M1 mode), `15`, `30`, `60`, `240` (V5 MTF modes in minutes)  
+**`--spread`:** Round-trip spread in pips — `1.0` for EUR/USD, `2.0` for Gold  
+**`--jobs`:** Parallel Optuna workers — `4` is safe on most machines
 
 **Note on data:** M1 candles are served from the Railway server (`macrofxmodel-production.up.railway.app`) which loads them from a static R2 parquet file. The data currently covers roughly 2022–late 2024. Use `--from` and `--to` to target this window. Fetched data is cached locally in `.cache/` for 24h so repeat runs are fast.
 
@@ -123,9 +135,9 @@ All results land in `results/`:
 Run separately, one at a time. Each pair gets its own results files:
 
 ```bash
-python optimizer.py --pair EURUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --report
-python optimizer.py --pair XAUUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --report
-python optimizer.py --pair GBPUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --report
+python optimizer.py --pair EURUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --mtf 30 --report
+python optimizer.py --pair XAUUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --mtf 30 --spread 2.0 --report
+python optimizer.py --pair GBPUSD --from 2023-01-01 --to 2024-12-01 --trials 1000 --mtf 30 --report
 ```
 
 Each pair may need different optimal params — the regime dynamics of Gold vs EUR/USD are very different.

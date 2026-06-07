@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>V4 Optimizer Report — EUR/USD</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5}
+  h1{font-size:20px;padding:18px 24px;background:#161b22;border-bottom:1px solid #30363d;color:#f0f6fc}
+  h2{font-size:13px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin:20px 24px 8px}
+  .meta{padding:8px 24px;background:#161b22;color:#8b949e;font-size:12px;border-bottom:1px solid #30363d}
+  .section{margin:0 24px 24px}
+  /* Results table */
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{background:#161b22;color:#8b949e;padding:6px 10px;text-align:right;font-weight:500;border-bottom:1px solid #30363d;white-space:nowrap}
+  th:first-child,th:nth-child(2){text-align:left}
+  td{padding:5px 10px;border-bottom:1px solid #21262d;text-align:right;vertical-align:top}
+  td:first-child,td:nth-child(2){text-align:left;font-weight:500}
+  tr:hover td{background:#161b22}
+  .pos{color:#3fb950} .neg{color:#f85149} .neu{color:#c9d1d9}
+  .split-hdr{color:#8b949e;font-size:10px;display:block;margin-bottom:1px}
+  /* Equity chart grid */
+  .chart-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px}
+  .chart-card{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:12px}
+  .chart-title{font-size:11px;color:#8b949e;margin-bottom:8px}
+  canvas{width:100%!important;height:180px!important}
+  /* Importance bars */
+  .imp-list{display:flex;flex-direction:column;gap:5px}
+  .imp-row{display:flex;align-items:center;gap:8px}
+  .imp-label{width:180px;font-size:12px;color:#c9d1d9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .imp-bar-bg{flex:1;background:#21262d;border-radius:2px;height:12px}
+  .imp-bar-fill{height:12px;border-radius:2px;background:#388bfd}
+  .imp-val{width:45px;text-align:right;font-size:11px;color:#8b949e}
+  /* Config diff panel */
+  .diff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px}
+  .diff-item{background:#161b22;border:1px solid #30363d;border-radius:4px;padding:8px 10px;font-size:12px}
+  .diff-key{color:#8b949e;margin-bottom:2px}
+  .diff-val{font-weight:600;color:#f0f6fc}
+  .diff-delta.up{color:#3fb950} .diff-delta.dn{color:#f85149} .diff-delta.no{color:#8b949e}
+  /* Tabs */
+  .tabs{display:flex;gap:2px;margin:0 24px 0;border-bottom:1px solid #30363d}
+  .tab{padding:7px 14px;cursor:pointer;border-radius:4px 4px 0 0;font-size:12px;font-weight:500;color:#8b949e;background:none;border:none;border-bottom:2px solid transparent}
+  .tab.active{color:#f0f6fc;border-bottom-color:#388bfd;background:#161b22}
+  .tab-pane{display:none} .tab-pane.active{display:block}
+</style>
+</head>
+<body>
+<h1>V4 Regime Optimizer Report — EUR/USD</h1>
+<div class="meta">
+  Generated: 20260607T120345 &nbsp;|&nbsp; Trials: 1,000 &nbsp;|&nbsp;
+  Data: 18m &nbsp;|&nbsp;
+  Train: 425,634 bars &nbsp;|&nbsp; Val: 141,878 bars &nbsp;|&nbsp; Test: 141,878 bars
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="overview">Overview</button>
+  <button class="tab" data-tab="equity">Equity Curves</button>
+  <button class="tab" data-tab="params">Best Config</button>
+  <button class="tab" data-tab="importance">Param Importance</button>
+</div>
+
+<!-- OVERVIEW TAB -->
+<div id="tab-overview" class="tab-pane active" style="margin-top:16px">
+  <div class="section">
+  <h2>Top 20 Results</h2>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Trial</th>
+      <th>Train Sh</th><th>Train WR</th><th>Train PF</th><th>Train DD</th><th>Train N</th>
+      <th>Val Sh</th><th>Val WR</th><th>Val PF</th><th>Val DD</th><th>Val N</th>
+      <th>Test Sh</th><th>Test WR</th><th>Test PF</th><th>Test DD</th><th>Test N</th>
+      <th>Obj</th>
+    </tr></thead>
+    <tbody id="results-tbody"></tbody>
+  </table>
+  </div>
+</div>
+
+<!-- EQUITY TAB -->
+<div id="tab-equity" class="tab-pane" style="margin-top:16px">
+  <div class="section">
+  <h2>Top 5 Equity Curves (Train | Val | Test)</h2>
+  <div class="chart-grid" id="chart-grid"></div>
+  </div>
+</div>
+
+<!-- PARAMS TAB -->
+<div id="tab-params" class="tab-pane" style="margin-top:16px">
+  <div class="section">
+  <h2>Best Config vs Defaults</h2>
+  <div class="diff-grid" id="diff-grid"></div>
+  </div>
+</div>
+
+<!-- IMPORTANCE TAB -->
+<div id="tab-importance" class="tab-pane" style="margin-top:16px">
+  <div class="section">
+  <h2>Parameter Importance (Fanova)</h2>
+  <div class="imp-list" id="imp-list"></div>
+  </div>
+</div>
+
+<script>
+const DATA = {"pair": "EUR/USD", "generated_at": "20260607T120345", "n_trials": 1000, "months_data": 18, "mtf_minutes": 30, "split_bars": {"train": 425634, "val": 141878, "test": 141878}, "param_importances": [{"param": "window_end", "importance": 0.3392}, {"param": "entry_score_min", "importance": 0.1737}, {"param": "candle_hold", "importance": 0.156}, {"param": "mfe_retrace_pct", "importance": 0.0632}, {"param": "bocpd_exit_bars", "importance": 0.0403}, {"param": "conf_floor", "importance": 0.0382}, {"param": "window_start", "importance": 0.0309}, {"param": "decay_exit", "importance": 0.0282}, {"param": "mfe_min_r", "importance": 0.0246}, {"param": "bocpd_exit_bars_range", "importance": 0.0163}, {"param": "mfe_suppress_r", "importance": 0.0152}, {"param": "drop_thresh", "importance": 0.0115}, {"param": "entry_conf", "importance": 0.0108}, {"param": "mfe_trail_r", "importance": 0.0099}, {"param": "bocpd_thresh", "importance": 0.0096}, {"param": "hold_score_min", "importance": 0.007}, {"param": "score_drop_exit", "importance": 0.0068}, {"param": "slope_thresh", "importance": 0.0045}, {"param": "slope_bars", "importance": 0.0045}, {"param": "post_exit_cooldown", "importance": 0.0036}, {"param": "sl_atr_mult", "importance": 0.0032}, {"param": "max_range_hold_bars", "importance": 0.0019}, {"param": "score_drop_bars", "importance": 0.0011}], "top_results": [{"rank": 1, "trial_number": 986, "objective": 5.3542, "config": {"entry_conf": 60, "candle_hold": 7, "entry_score_min": 57, "sl_atr_mult": 1.1, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 7, "mfe_trail_r": 2.5, "mfe_suppress_r": 4.300000000000001, "conf_floor": 44, "drop_thresh": 13, "slope_thresh": -14, "slope_bars": 3, "bocpd_thresh": 50, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 8, "hold_score_min": 12, "score_drop_exit": 22, "score_drop_bars": 3, "mfe_retrace_pct": 0.1, "mfe_min_r": 0.9, "decay_exit": 0.72}, "diff_from_default": {"entry_conf": -10.0, "candle_hold": 5, "entry_score_min": -8.0, "sl_atr_mult": -0.7, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -23, "mfe_trail_r": 1.5, "mfe_suppress_r": 2.8, "conf_floor": -1.0, "drop_thresh": -2.0, "slope_thresh": -9.0, "slope_bars": 0, "bocpd_thresh": -20.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 0, "hold_score_min": -28.0, "score_drop_exit": -8.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.15, "mfe_min_r": -0.1, "decay_exit": 0.02}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 151.0, "win_rate": 53.3, "sharpe": -1.192, "sortino": -1.076, "pf": 0.87, "max_dd": 0.78, "total_pnl": -0.38, "calmar": -0.481, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 186.0, "win_rate": 74.1, "sharpe": 8.16, "sortino": 14.688, "pf": 3.58, "max_dd": 0.13, "total_pnl": 1.36, "calmar": 10.354, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 68.0, "win_rate": 70.0, "sharpe": 2.636, "sortino": 2.129, "pf": 1.37, "max_dd": 0.15, "total_pnl": 0.25, "calmar": 1.664, "range_holds": 0}}, {"rank": 2, "trial_number": 842, "objective": 5.2466, "config": {"entry_conf": 61, "candle_hold": 7, "entry_score_min": 56, "sl_atr_mult": 1.2, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 9, "mfe_trail_r": 2.8000000000000003, "mfe_suppress_r": 3.9000000000000004, "conf_floor": 44, "drop_thresh": 13, "slope_thresh": -14, "slope_bars": 4, "bocpd_thresh": 81, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 7, "hold_score_min": 10, "score_drop_exit": 14, "score_drop_bars": 3, "mfe_retrace_pct": 0.11, "mfe_min_r": 0.8, "decay_exit": 0.72}, "diff_from_default": {"entry_conf": -9.0, "candle_hold": 5, "entry_score_min": -9.0, "sl_atr_mult": -0.6, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -21, "mfe_trail_r": 1.8, "mfe_suppress_r": 2.4, "conf_floor": -1.0, "drop_thresh": -2.0, "slope_thresh": -9.0, "slope_bars": 1, "bocpd_thresh": 11.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": -1, "hold_score_min": -30.0, "score_drop_exit": -16.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.14, "mfe_min_r": -0.2, "decay_exit": 0.02}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 168.0, "win_rate": 53.3, "sharpe": -2.198, "sortino": -1.889, "pf": 0.76, "max_dd": 0.92, "total_pnl": -0.74, "calmar": -0.806, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 194.0, "win_rate": 77.8, "sharpe": 8.437, "sortino": 14.135, "pf": 3.82, "max_dd": 0.14, "total_pnl": 1.38, "calmar": 9.753, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 76.0, "win_rate": 70.0, "sharpe": 1.077, "sortino": 0.771, "pf": 1.13, "max_dd": 0.17, "total_pnl": 0.1, "calmar": 0.581, "range_holds": 0}}, {"rank": 3, "trial_number": 836, "objective": 5.0733, "config": {"entry_conf": 61, "candle_hold": 7, "entry_score_min": 56, "sl_atr_mult": 1.2, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 10, "mfe_trail_r": 2.7, "mfe_suppress_r": 4.0, "conf_floor": 43, "drop_thresh": 13, "slope_thresh": -13, "slope_bars": 3, "bocpd_thresh": 82, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 7, "hold_score_min": 11, "score_drop_exit": 19, "score_drop_bars": 3, "mfe_retrace_pct": 0.12000000000000001, "mfe_min_r": 0.8, "decay_exit": 0.72}, "diff_from_default": {"entry_conf": -9.0, "candle_hold": 5, "entry_score_min": -9.0, "sl_atr_mult": -0.6, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -20, "mfe_trail_r": 1.7, "mfe_suppress_r": 2.5, "conf_floor": -2.0, "drop_thresh": -2.0, "slope_thresh": -8.0, "slope_bars": 0, "bocpd_thresh": 12.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": -1, "hold_score_min": -29.0, "score_drop_exit": -11.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.13, "mfe_min_r": -0.2, "decay_exit": 0.02}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 175.0, "win_rate": 53.3, "sharpe": -2.513, "sortino": -2.129, "pf": 0.73, "max_dd": 1.04, "total_pnl": -0.86, "calmar": -0.829, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 194.0, "win_rate": 77.8, "sharpe": 8.324, "sortino": 13.802, "pf": 3.79, "max_dd": 0.14, "total_pnl": 1.36, "calmar": 9.655, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 77.0, "win_rate": 70.0, "sharpe": 0.722, "sortino": 0.509, "pf": 1.09, "max_dd": 0.19, "total_pnl": 0.06, "calmar": 0.342, "range_holds": 0}}, {"rank": 4, "trial_number": 896, "objective": 5.0702, "config": {"entry_conf": 61, "candle_hold": 7, "entry_score_min": 56, "sl_atr_mult": 1.1, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 10, "mfe_trail_r": 2.6, "mfe_suppress_r": 4.1, "conf_floor": 45, "drop_thresh": 11, "slope_thresh": -13, "slope_bars": 3, "bocpd_thresh": 84, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 7, "hold_score_min": 12, "score_drop_exit": 20, "score_drop_bars": 3, "mfe_retrace_pct": 0.1, "mfe_min_r": 0.9, "decay_exit": 0.73}, "diff_from_default": {"entry_conf": -9.0, "candle_hold": 5, "entry_score_min": -9.0, "sl_atr_mult": -0.7, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -20, "mfe_trail_r": 1.6, "mfe_suppress_r": 2.6, "conf_floor": 0.0, "drop_thresh": -4.0, "slope_thresh": -8.0, "slope_bars": 0, "bocpd_thresh": 14.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": -1, "hold_score_min": -28.0, "score_drop_exit": -10.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.15, "mfe_min_r": -0.1, "decay_exit": 0.03}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 173.0, "win_rate": 53.3, "sharpe": -1.596, "sortino": -1.417, "pf": 0.82, "max_dd": 0.84, "total_pnl": -0.53, "calmar": -0.63, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 324.0, "win_rate": 74.1, "sharpe": 7.927, "sortino": 14.329, "pf": 3.52, "max_dd": 0.13, "total_pnl": 1.32, "calmar": 10.101, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 68.0, "win_rate": 70.0, "sharpe": 2.636, "sortino": 2.129, "pf": 1.37, "max_dd": 0.15, "total_pnl": 0.25, "calmar": 1.664, "range_holds": 0}}, {"rank": 5, "trial_number": 984, "objective": 5.0702, "config": {"entry_conf": 60, "candle_hold": 7, "entry_score_min": 57, "sl_atr_mult": 1.1, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 6, "mfe_trail_r": 2.5, "mfe_suppress_r": 4.300000000000001, "conf_floor": 44, "drop_thresh": 13, "slope_thresh": -14, "slope_bars": 3, "bocpd_thresh": 82, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 8, "hold_score_min": 12, "score_drop_exit": 22, "score_drop_bars": 3, "mfe_retrace_pct": 0.1, "mfe_min_r": 0.9, "decay_exit": 0.72}, "diff_from_default": {"entry_conf": -10.0, "candle_hold": 5, "entry_score_min": -8.0, "sl_atr_mult": -0.7, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -24, "mfe_trail_r": 1.5, "mfe_suppress_r": 2.8, "conf_floor": -1.0, "drop_thresh": -2.0, "slope_thresh": -9.0, "slope_bars": 0, "bocpd_thresh": 12.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 0, "hold_score_min": -28.0, "score_drop_exit": -8.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.15, "mfe_min_r": -0.1, "decay_exit": 0.02}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 173.0, "win_rate": 53.3, "sharpe": -1.596, "sortino": -1.417, "pf": 0.82, "max_dd": 0.84, "total_pnl": -0.53, "calmar": -0.63, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 324.0, "win_rate": 74.1, "sharpe": 7.927, "sortino": 14.329, "pf": 3.52, "max_dd": 0.13, "total_pnl": 1.32, "calmar": 10.101, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 68.0, "win_rate": 70.0, "sharpe": 2.636, "sortino": 2.129, "pf": 1.37, "max_dd": 0.15, "total_pnl": 0.25, "calmar": 1.664, "range_holds": 0}}, {"rank": 6, "trial_number": 985, "objective": 5.0702, "config": {"entry_conf": 60, "candle_hold": 7, "entry_score_min": 57, "sl_atr_mult": 1.1, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 6, "mfe_trail_r": 2.5, "mfe_suppress_r": 4.300000000000001, "conf_floor": 44, "drop_thresh": 13, "slope_thresh": -14, "slope_bars": 3, "bocpd_thresh": 82, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 8, "hold_score_min": 12, "score_drop_exit": 22, "score_drop_bars": 3, "mfe_retrace_pct": 0.1, "mfe_min_r": 0.9, "decay_exit": 0.72}, "diff_from_default": {"entry_conf": -10.0, "candle_hold": 5, "entry_score_min": -8.0, "sl_atr_mult": -0.7, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -24, "mfe_trail_r": 1.5, "mfe_suppress_r": 2.8, "conf_floor": -1.0, "drop_thresh": -2.0, "slope_thresh": -9.0, "slope_bars": 0, "bocpd_thresh": 12.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 0, "hold_score_min": -28.0, "score_drop_exit": -8.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.15, "mfe_min_r": -0.1, "decay_exit": 0.02}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 173.0, "win_rate": 53.3, "sharpe": -1.596, "sortino": -1.417, "pf": 0.82, "max_dd": 0.84, "total_pnl": -0.53, "calmar": -0.63, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 324.0, "win_rate": 74.1, "sharpe": 7.927, "sortino": 14.329, "pf": 3.52, "max_dd": 0.13, "total_pnl": 1.32, "calmar": 10.101, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 68.0, "win_rate": 70.0, "sharpe": 2.636, "sortino": 2.129, "pf": 1.37, "max_dd": 0.15, "total_pnl": 0.25, "calmar": 1.664, "range_holds": 0}}, {"rank": 7, "trial_number": 733, "objective": 5.0182, "config": {"entry_conf": 66, "candle_hold": 7, "entry_score_min": 57, "sl_atr_mult": 1.8, "window_start": 9, "window_end": 19, "post_exit_cooldown": 2, "max_range_hold_bars": 22, "mfe_trail_r": 1.7000000000000002, "mfe_suppress_r": 1.8, "conf_floor": 42, "drop_thresh": 28, "slope_thresh": -15, "slope_bars": 1, "bocpd_thresh": 58, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 4, "hold_score_min": 18, "score_drop_exit": 16, "score_drop_bars": 4, "mfe_retrace_pct": 0.19, "mfe_min_r": 0.6, "decay_exit": 0.8300000000000001}, "diff_from_default": {"entry_conf": -4.0, "candle_hold": 5, "entry_score_min": -8.0, "sl_atr_mult": 0.0, "window_start": 2, "window_end": -1, "post_exit_cooldown": 2, "max_range_hold_bars": -8, "mfe_trail_r": 0.7, "mfe_suppress_r": 0.3, "conf_floor": -3.0, "drop_thresh": 13.0, "slope_thresh": -10.0, "slope_bars": -2, "bocpd_thresh": -12.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": -4, "hold_score_min": -22.0, "score_drop_exit": -14.0, "score_drop_bars": 2, "mfe_retrace_pct": -0.06, "mfe_min_r": -0.4, "decay_exit": 0.13}, "train": {"trades": 74, "tpy": 66.0, "avg_dur_min": 462.0, "win_rate": 58.1, "sharpe": -1.905, "sortino": -1.558, "pf": 0.79, "max_dd": 1.45, "total_pnl": -0.96, "calmar": -0.657, "range_holds": 0}, "val": {"trades": 30, "tpy": 81.0, "avg_dur_min": 221.0, "win_rate": 76.7, "sharpe": 7.985, "sortino": 11.242, "pf": 3.11, "max_dd": 0.2, "total_pnl": 1.39, "calmar": 6.848, "range_holds": 0}, "test": {"trades": 24, "tpy": 67.0, "avg_dur_min": 401.0, "win_rate": 66.7, "sharpe": 0.351, "sortino": 0.273, "pf": 1.05, "max_dd": 0.41, "total_pnl": 0.05, "calmar": 0.128, "range_holds": 0}}, {"rank": 8, "trial_number": 900, "objective": 5.011, "config": {"entry_conf": 61, "candle_hold": 7, "entry_score_min": 56, "sl_atr_mult": 1.1, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 10, "mfe_trail_r": 2.5, "mfe_suppress_r": 3.9000000000000004, "conf_floor": 45, "drop_thresh": 12, "slope_thresh": -13, "slope_bars": 3, "bocpd_thresh": 84, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 7, "hold_score_min": 10, "score_drop_exit": 19, "score_drop_bars": 3, "mfe_retrace_pct": 0.11, "mfe_min_r": 0.9, "decay_exit": 0.72}, "diff_from_default": {"entry_conf": -9.0, "candle_hold": 5, "entry_score_min": -9.0, "sl_atr_mult": -0.7, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -20, "mfe_trail_r": 1.5, "mfe_suppress_r": 2.4, "conf_floor": 0.0, "drop_thresh": -3.0, "slope_thresh": -8.0, "slope_bars": 0, "bocpd_thresh": 14.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": -1, "hold_score_min": -30.0, "score_drop_exit": -11.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.14, "mfe_min_r": -0.1, "decay_exit": 0.02}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 172.0, "win_rate": 53.3, "sharpe": -1.611, "sortino": -1.429, "pf": 0.82, "max_dd": 0.85, "total_pnl": -0.53, "calmar": -0.63, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 324.0, "win_rate": 74.1, "sharpe": 7.849, "sortino": 14.186, "pf": 3.49, "max_dd": 0.13, "total_pnl": 1.31, "calmar": 10.001, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 68.0, "win_rate": 70.0, "sharpe": 2.636, "sortino": 2.129, "pf": 1.37, "max_dd": 0.15, "total_pnl": 0.25, "calmar": 1.664, "range_holds": 0}}, {"rank": 9, "trial_number": 902, "objective": 5.011, "config": {"entry_conf": 61, "candle_hold": 7, "entry_score_min": 56, "sl_atr_mult": 1.1, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 8, "mfe_trail_r": 2.5, "mfe_suppress_r": 3.9000000000000004, "conf_floor": 44, "drop_thresh": 11, "slope_thresh": -13, "slope_bars": 3, "bocpd_thresh": 84, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 7, "hold_score_min": 10, "score_drop_exit": 18, "score_drop_bars": 3, "mfe_retrace_pct": 0.11, "mfe_min_r": 0.9, "decay_exit": 0.72}, "diff_from_default": {"entry_conf": -9.0, "candle_hold": 5, "entry_score_min": -9.0, "sl_atr_mult": -0.7, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -22, "mfe_trail_r": 1.5, "mfe_suppress_r": 2.4, "conf_floor": -1.0, "drop_thresh": -4.0, "slope_thresh": -8.0, "slope_bars": 0, "bocpd_thresh": 14.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": -1, "hold_score_min": -30.0, "score_drop_exit": -12.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.14, "mfe_min_r": -0.1, "decay_exit": 0.02}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 172.0, "win_rate": 53.3, "sharpe": -1.611, "sortino": -1.429, "pf": 0.82, "max_dd": 0.85, "total_pnl": -0.53, "calmar": -0.63, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 324.0, "win_rate": 74.1, "sharpe": 7.849, "sortino": 14.186, "pf": 3.49, "max_dd": 0.13, "total_pnl": 1.31, "calmar": 10.001, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 68.0, "win_rate": 70.0, "sharpe": 2.636, "sortino": 2.129, "pf": 1.37, "max_dd": 0.15, "total_pnl": 0.25, "calmar": 1.664, "range_holds": 0}}, {"rank": 10, "trial_number": 792, "objective": 4.9712, "config": {"entry_conf": 63, "candle_hold": 7, "entry_score_min": 57, "sl_atr_mult": 1.4, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 13, "mfe_trail_r": 1.7000000000000002, "mfe_suppress_r": 3.7, "conf_floor": 43, "drop_thresh": 15, "slope_thresh": -13, "slope_bars": 1, "bocpd_thresh": 80, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 7, "hold_score_min": 11, "score_drop_exit": 16, "score_drop_bars": 4, "mfe_retrace_pct": 0.15000000000000002, "mfe_min_r": 0.7, "decay_exit": 0.69}, "diff_from_default": {"entry_conf": -7.0, "candle_hold": 5, "entry_score_min": -8.0, "sl_atr_mult": -0.4, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -17, "mfe_trail_r": 0.7, "mfe_suppress_r": 2.2, "conf_floor": -2.0, "drop_thresh": 0.0, "slope_thresh": -8.0, "slope_bars": -2, "bocpd_thresh": 10.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": -1, "hold_score_min": -29.0, "score_drop_exit": -14.0, "score_drop_bars": 2, "mfe_retrace_pct": -0.1, "mfe_min_r": -0.3, "decay_exit": -0.01}, "train": {"trades": 59, "tpy": 53.0, "avg_dur_min": 244.0, "win_rate": 55.9, "sharpe": -1.558, "sortino": -1.283, "pf": 0.81, "max_dd": 0.93, "total_pnl": -0.6, "calmar": -0.64, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 334.0, "win_rate": 77.8, "sharpe": 7.77, "sortino": 11.209, "pf": 3.28, "max_dd": 0.16, "total_pnl": 1.28, "calmar": 7.921, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 241.0, "win_rate": 75.0, "sharpe": 0.773, "sortino": 0.482, "pf": 1.1, "max_dd": 0.24, "total_pnl": 0.07, "calmar": 0.304, "range_holds": 0}}, {"rank": 11, "trial_number": 910, "objective": 4.9628, "config": {"entry_conf": 61, "candle_hold": 7, "entry_score_min": 56, "sl_atr_mult": 1.1, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 7, "mfe_trail_r": 2.5, "mfe_suppress_r": 3.9000000000000004, "conf_floor": 45, "drop_thresh": 11, "slope_thresh": -13, "slope_bars": 3, "bocpd_thresh": 84, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 8, "hold_score_min": 10, "score_drop_exit": 19, "score_drop_bars": 3, "mfe_retrace_pct": 0.12000000000000001, "mfe_min_r": 0.9, "decay_exit": 0.74}, "diff_from_default": {"entry_conf": -9.0, "candle_hold": 5, "entry_score_min": -9.0, "sl_atr_mult": -0.7, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -23, "mfe_trail_r": 1.5, "mfe_suppress_r": 2.4, "conf_floor": 0.0, "drop_thresh": -4.0, "slope_thresh": -8.0, "slope_bars": 0, "bocpd_thresh": 14.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 0, "hold_score_min": -30.0, "score_drop_exit": -11.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.13, "mfe_min_r": -0.1, "decay_exit": 0.04}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 173.0, "win_rate": 53.3, "sharpe": -1.635, "sortino": -1.449, "pf": 0.82, "max_dd": 0.84, "total_pnl": -0.54, "calmar": -0.641, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 324.0, "win_rate": 74.1, "sharpe": 7.79, "sortino": 14.025, "pf": 3.48, "max_dd": 0.13, "total_pnl": 1.3, "calmar": 9.944, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 68.0, "win_rate": 70.0, "sharpe": 2.636, "sortino": 2.129, "pf": 1.37, "max_dd": 0.15, "total_pnl": 0.25, "calmar": 1.664, "range_holds": 0}}, {"rank": 12, "trial_number": 995, "objective": 4.9226, "config": {"entry_conf": 60, "candle_hold": 7, "entry_score_min": 58, "sl_atr_mult": 1.1, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 6, "mfe_trail_r": 2.5, "mfe_suppress_r": 4.300000000000001, "conf_floor": 43, "drop_thresh": 13, "slope_thresh": -14, "slope_bars": 3, "bocpd_thresh": 86, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 9, "hold_score_min": 13, "score_drop_exit": 25, "score_drop_bars": 3, "mfe_retrace_pct": 0.1, "mfe_min_r": 0.9, "decay_exit": 0.72}, "diff_from_default": {"entry_conf": -10.0, "candle_hold": 5, "entry_score_min": -7.0, "sl_atr_mult": -0.7, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -24, "mfe_trail_r": 1.5, "mfe_suppress_r": 2.8, "conf_floor": -2.0, "drop_thresh": -2.0, "slope_thresh": -9.0, "slope_bars": 0, "bocpd_thresh": 16.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 1, "hold_score_min": -27.0, "score_drop_exit": -5.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.15, "mfe_min_r": -0.1, "decay_exit": 0.02}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 166.0, "win_rate": 53.3, "sharpe": -1.541, "sortino": -1.357, "pf": 0.82, "max_dd": 0.82, "total_pnl": -0.52, "calmar": -0.637, "range_holds": 0}, "val": {"trades": 26, "tpy": 70.0, "avg_dur_min": 221.0, "win_rate": 73.1, "sharpe": 7.693, "sortino": 14.12, "pf": 3.37, "max_dd": 0.13, "total_pnl": 1.25, "calmar": 9.521, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 73.0, "win_rate": 65.0, "sharpe": 0.533, "sortino": 0.435, "pf": 1.07, "max_dd": 0.27, "total_pnl": 0.05, "calmar": 0.197, "range_holds": 0}}, {"rank": 13, "trial_number": 932, "objective": 4.881, "config": {"entry_conf": 60, "candle_hold": 7, "entry_score_min": 55, "sl_atr_mult": 1.2, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 8, "mfe_trail_r": 2.6, "mfe_suppress_r": 4.2, "conf_floor": 44, "drop_thresh": 13, "slope_thresh": -13, "slope_bars": 3, "bocpd_thresh": 85, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 8, "hold_score_min": 13, "score_drop_exit": 19, "score_drop_bars": 3, "mfe_retrace_pct": 0.1, "mfe_min_r": 0.9, "decay_exit": 0.73}, "diff_from_default": {"entry_conf": -10.0, "candle_hold": 5, "entry_score_min": -10.0, "sl_atr_mult": -0.6, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -22, "mfe_trail_r": 1.6, "mfe_suppress_r": 2.7, "conf_floor": -1.0, "drop_thresh": -2.0, "slope_thresh": -8.0, "slope_bars": 0, "bocpd_thresh": 15.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 0, "hold_score_min": -27.0, "score_drop_exit": -11.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.15, "mfe_min_r": -0.1, "decay_exit": 0.03}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 181.0, "win_rate": 55.0, "sharpe": -1.179, "sortino": -1.036, "pf": 0.87, "max_dd": 0.95, "total_pnl": -0.42, "calmar": -0.442, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 333.0, "win_rate": 74.1, "sharpe": 7.478, "sortino": 12.078, "pf": 3.18, "max_dd": 0.14, "total_pnl": 1.27, "calmar": 8.987, "range_holds": 0}, "test": {"trades": 21, "tpy": 61.0, "avg_dur_min": 83.0, "win_rate": 57.1, "sharpe": -1.712, "sortino": -1.427, "pf": 0.81, "max_dd": 0.47, "total_pnl": -0.2, "calmar": -0.427, "range_holds": 0}}, {"rank": 14, "trial_number": 805, "objective": 4.8479, "config": {"entry_conf": 62, "candle_hold": 7, "entry_score_min": 57, "sl_atr_mult": 1.4, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 12, "mfe_trail_r": 1.7000000000000002, "mfe_suppress_r": 3.5, "conf_floor": 43, "drop_thresh": 13, "slope_thresh": -12, "slope_bars": 1, "bocpd_thresh": 83, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 8, "hold_score_min": 10, "score_drop_exit": 15, "score_drop_bars": 4, "mfe_retrace_pct": 0.17, "mfe_min_r": 0.7, "decay_exit": 0.7}, "diff_from_default": {"entry_conf": -8.0, "candle_hold": 5, "entry_score_min": -8.0, "sl_atr_mult": -0.4, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -18, "mfe_trail_r": 0.7, "mfe_suppress_r": 2.0, "conf_floor": -2.0, "drop_thresh": -2.0, "slope_thresh": -7.0, "slope_bars": -2, "bocpd_thresh": 13.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 0, "hold_score_min": -30.0, "score_drop_exit": -15.0, "score_drop_bars": 2, "mfe_retrace_pct": -0.08, "mfe_min_r": -0.3, "decay_exit": 0.0}, "train": {"trades": 59, "tpy": 53.0, "avg_dur_min": 242.0, "win_rate": 55.9, "sharpe": -2.125, "sortino": -1.696, "pf": 0.75, "max_dd": 0.99, "total_pnl": -0.81, "calmar": -0.822, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 334.0, "win_rate": 77.8, "sharpe": 7.836, "sortino": 11.285, "pf": 3.3, "max_dd": 0.16, "total_pnl": 1.29, "calmar": 7.974, "range_holds": 0}, "test": {"trades": 20, "tpy": 59.0, "avg_dur_min": 241.0, "win_rate": 75.0, "sharpe": 0.671, "sortino": 0.417, "pf": 1.09, "max_dd": 0.24, "total_pnl": 0.06, "calmar": 0.265, "range_holds": 0}}, {"rank": 15, "trial_number": 944, "objective": 4.7912, "config": {"entry_conf": 60, "candle_hold": 7, "entry_score_min": 55, "sl_atr_mult": 1.0, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 7, "mfe_trail_r": 2.4000000000000004, "mfe_suppress_r": 4.300000000000001, "conf_floor": 45, "drop_thresh": 14, "slope_thresh": -13, "slope_bars": 3, "bocpd_thresh": 84, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 8, "hold_score_min": 12, "score_drop_exit": 20, "score_drop_bars": 3, "mfe_retrace_pct": 0.13, "mfe_min_r": 1.0, "decay_exit": 0.74}, "diff_from_default": {"entry_conf": -10.0, "candle_hold": 5, "entry_score_min": -10.0, "sl_atr_mult": -0.8, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -23, "mfe_trail_r": 1.4, "mfe_suppress_r": 2.8, "conf_floor": 0.0, "drop_thresh": -1.0, "slope_thresh": -8.0, "slope_bars": 0, "bocpd_thresh": 14.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 0, "hold_score_min": -28.0, "score_drop_exit": -10.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.12, "mfe_min_r": 0.0, "decay_exit": 0.04}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 160.0, "win_rate": 53.3, "sharpe": -0.806, "sortino": -0.737, "pf": 0.91, "max_dd": 0.73, "total_pnl": -0.26, "calmar": -0.35, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 325.0, "win_rate": 70.4, "sharpe": 7.19, "sortino": 12.547, "pf": 3.17, "max_dd": 0.12, "total_pnl": 1.22, "calmar": 10.133, "range_holds": 0}, "test": {"trades": 21, "tpy": 61.0, "avg_dur_min": 63.0, "win_rate": 66.7, "sharpe": 2.384, "sortino": 2.066, "pf": 1.33, "max_dd": 0.18, "total_pnl": 0.23, "calmar": 1.252, "range_holds": 0}}, {"rank": 16, "trial_number": 945, "objective": 4.7912, "config": {"entry_conf": 60, "candle_hold": 7, "entry_score_min": 55, "sl_atr_mult": 1.0, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 7, "mfe_trail_r": 2.4000000000000004, "mfe_suppress_r": 4.5, "conf_floor": 45, "drop_thresh": 14, "slope_thresh": -13, "slope_bars": 3, "bocpd_thresh": 84, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 8, "hold_score_min": 12, "score_drop_exit": 20, "score_drop_bars": 3, "mfe_retrace_pct": 0.13, "mfe_min_r": 1.0, "decay_exit": 0.76}, "diff_from_default": {"entry_conf": -10.0, "candle_hold": 5, "entry_score_min": -10.0, "sl_atr_mult": -0.8, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -23, "mfe_trail_r": 1.4, "mfe_suppress_r": 3.0, "conf_floor": 0.0, "drop_thresh": -1.0, "slope_thresh": -8.0, "slope_bars": 0, "bocpd_thresh": 14.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 0, "hold_score_min": -28.0, "score_drop_exit": -10.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.12, "mfe_min_r": 0.0, "decay_exit": 0.06}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 160.0, "win_rate": 53.3, "sharpe": -0.806, "sortino": -0.737, "pf": 0.91, "max_dd": 0.73, "total_pnl": -0.26, "calmar": -0.35, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 325.0, "win_rate": 70.4, "sharpe": 7.19, "sortino": 12.547, "pf": 3.17, "max_dd": 0.12, "total_pnl": 1.22, "calmar": 10.133, "range_holds": 0}, "test": {"trades": 21, "tpy": 61.0, "avg_dur_min": 63.0, "win_rate": 66.7, "sharpe": 2.384, "sortino": 2.066, "pf": 1.33, "max_dd": 0.18, "total_pnl": 0.23, "calmar": 1.252, "range_holds": 0}}, {"rank": 17, "trial_number": 946, "objective": 4.7912, "config": {"entry_conf": 60, "candle_hold": 7, "entry_score_min": 55, "sl_atr_mult": 1.0, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 7, "mfe_trail_r": 2.4000000000000004, "mfe_suppress_r": 4.5, "conf_floor": 45, "drop_thresh": 12, "slope_thresh": -13, "slope_bars": 3, "bocpd_thresh": 84, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 8, "hold_score_min": 12, "score_drop_exit": 20, "score_drop_bars": 3, "mfe_retrace_pct": 0.13, "mfe_min_r": 1.0, "decay_exit": 0.74}, "diff_from_default": {"entry_conf": -10.0, "candle_hold": 5, "entry_score_min": -10.0, "sl_atr_mult": -0.8, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -23, "mfe_trail_r": 1.4, "mfe_suppress_r": 3.0, "conf_floor": 0.0, "drop_thresh": -3.0, "slope_thresh": -8.0, "slope_bars": 0, "bocpd_thresh": 14.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 0, "hold_score_min": -28.0, "score_drop_exit": -10.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.12, "mfe_min_r": 0.0, "decay_exit": 0.04}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 160.0, "win_rate": 53.3, "sharpe": -0.806, "sortino": -0.737, "pf": 0.91, "max_dd": 0.73, "total_pnl": -0.26, "calmar": -0.35, "range_holds": 0}, "val": {"trades": 27, "tpy": 73.0, "avg_dur_min": 325.0, "win_rate": 70.4, "sharpe": 7.19, "sortino": 12.547, "pf": 3.17, "max_dd": 0.12, "total_pnl": 1.22, "calmar": 10.133, "range_holds": 0}, "test": {"trades": 21, "tpy": 61.0, "avg_dur_min": 63.0, "win_rate": 66.7, "sharpe": 2.384, "sortino": 2.066, "pf": 1.33, "max_dd": 0.18, "total_pnl": 0.23, "calmar": 1.252, "range_holds": 0}}, {"rank": 18, "trial_number": 998, "objective": 4.782, "config": {"entry_conf": 60, "candle_hold": 7, "entry_score_min": 59, "sl_atr_mult": 1.1, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 4, "mfe_trail_r": 2.5, "mfe_suppress_r": 4.300000000000001, "conf_floor": 44, "drop_thresh": 12, "slope_thresh": -14, "slope_bars": 3, "bocpd_thresh": 86, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 9, "hold_score_min": 13, "score_drop_exit": 25, "score_drop_bars": 3, "mfe_retrace_pct": 0.1, "mfe_min_r": 0.9, "decay_exit": 0.72}, "diff_from_default": {"entry_conf": -10.0, "candle_hold": 5, "entry_score_min": -6.0, "sl_atr_mult": -0.7, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -26, "mfe_trail_r": 1.5, "mfe_suppress_r": 2.8, "conf_floor": -1.0, "drop_thresh": -3.0, "slope_thresh": -9.0, "slope_bars": 0, "bocpd_thresh": 16.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 1, "hold_score_min": -27.0, "score_drop_exit": -5.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.15, "mfe_min_r": -0.1, "decay_exit": 0.02}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 167.0, "win_rate": 51.7, "sharpe": -2.005, "sortino": -1.773, "pf": 0.78, "max_dd": 0.86, "total_pnl": -0.68, "calmar": -0.798, "range_holds": 0}, "val": {"trades": 26, "tpy": 70.0, "avg_dur_min": 223.0, "win_rate": 73.1, "sharpe": 7.691, "sortino": 14.109, "pf": 3.37, "max_dd": 0.13, "total_pnl": 1.25, "calmar": 9.52, "range_holds": 0}, "test": {"trades": 19, "tpy": 56.0, "avg_dur_min": 76.0, "win_rate": 63.2, "sharpe": 0.15, "sortino": 0.125, "pf": 1.02, "max_dd": 0.27, "total_pnl": 0.01, "calmar": 0.054, "range_holds": 0}}, {"rank": 19, "trial_number": 994, "objective": 4.7654, "config": {"entry_conf": 60, "candle_hold": 7, "entry_score_min": 59, "sl_atr_mult": 1.1, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 4, "mfe_trail_r": 2.5, "mfe_suppress_r": 4.300000000000001, "conf_floor": 43, "drop_thresh": 12, "slope_thresh": -14, "slope_bars": 3, "bocpd_thresh": 86, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 9, "hold_score_min": 13, "score_drop_exit": 23, "score_drop_bars": 3, "mfe_retrace_pct": 0.1, "mfe_min_r": 0.9, "decay_exit": 0.72}, "diff_from_default": {"entry_conf": -10.0, "candle_hold": 5, "entry_score_min": -6.0, "sl_atr_mult": -0.7, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -26, "mfe_trail_r": 1.5, "mfe_suppress_r": 2.8, "conf_floor": -2.0, "drop_thresh": -3.0, "slope_thresh": -9.0, "slope_bars": 0, "bocpd_thresh": 16.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 1, "hold_score_min": -27.0, "score_drop_exit": -7.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.15, "mfe_min_r": -0.1, "decay_exit": 0.02}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 167.0, "win_rate": 51.7, "sharpe": -2.061, "sortino": -1.82, "pf": 0.77, "max_dd": 0.87, "total_pnl": -0.7, "calmar": -0.803, "range_holds": 0}, "val": {"trades": 26, "tpy": 70.0, "avg_dur_min": 223.0, "win_rate": 73.1, "sharpe": 7.691, "sortino": 14.109, "pf": 3.37, "max_dd": 0.13, "total_pnl": 1.25, "calmar": 9.52, "range_holds": 0}, "test": {"trades": 19, "tpy": 56.0, "avg_dur_min": 76.0, "win_rate": 63.2, "sharpe": 0.15, "sortino": 0.125, "pf": 1.02, "max_dd": 0.27, "total_pnl": 0.01, "calmar": 0.054, "range_holds": 0}}, {"rank": 20, "trial_number": 999, "objective": 4.7654, "config": {"entry_conf": 60, "candle_hold": 7, "entry_score_min": 59, "sl_atr_mult": 1.1, "window_start": 9, "window_end": 18, "post_exit_cooldown": 2, "max_range_hold_bars": 4, "mfe_trail_r": 2.5, "mfe_suppress_r": 4.4, "conf_floor": 43, "drop_thresh": 12, "slope_thresh": -14, "slope_bars": 3, "bocpd_thresh": 86, "bocpd_exit_bars": 2, "bocpd_exit_bars_range": 9, "hold_score_min": 14, "score_drop_exit": 23, "score_drop_bars": 3, "mfe_retrace_pct": 0.1, "mfe_min_r": 0.9, "decay_exit": 0.72}, "diff_from_default": {"entry_conf": -10.0, "candle_hold": 5, "entry_score_min": -6.0, "sl_atr_mult": -0.7, "window_start": 2, "window_end": -2, "post_exit_cooldown": 2, "max_range_hold_bars": -26, "mfe_trail_r": 1.5, "mfe_suppress_r": 2.9, "conf_floor": -2.0, "drop_thresh": -3.0, "slope_thresh": -9.0, "slope_bars": 0, "bocpd_thresh": 16.0, "bocpd_exit_bars": -2, "bocpd_exit_bars_range": 1, "hold_score_min": -26.0, "score_drop_exit": -7.0, "score_drop_bars": 1, "mfe_retrace_pct": -0.15, "mfe_min_r": -0.1, "decay_exit": 0.02}, "train": {"trades": 60, "tpy": 54.0, "avg_dur_min": 167.0, "win_rate": 51.7, "sharpe": -2.061, "sortino": -1.82, "pf": 0.77, "max_dd": 0.87, "total_pnl": -0.7, "calmar": -0.803, "range_holds": 0}, "val": {"trades": 26, "tpy": 70.0, "avg_dur_min": 223.0, "win_rate": 73.1, "sharpe": 7.691, "sortino": 14.109, "pf": 3.37, "max_dd": 0.13, "total_pnl": 1.25, "calmar": 9.52, "range_holds": 0}, "test": {"trades": 19, "tpy": 56.0, "avg_dur_min": 76.0, "win_rate": 63.2, "sharpe": 0.15, "sortino": 0.125, "pf": 1.02, "max_dd": 0.27, "total_pnl": 0.01, "calmar": 0.054, "range_holds": 0}}]};
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Results table ─────────────────────────────────────────────────────────────
+function colorSh(v) {
+  if (v == null || v === '') return '<span class="neu">—</span>';
+  const c = v > 0.5 ? 'pos' : v > 0 ? 'neu' : 'neg';
+  return `<span class="${c}">${(+v).toFixed(2)}</span>`;
+}
+function colorDd(v) {
+  if (v == null || v === '') return '<span class="neu">—</span>';
+  const c = v < 10 ? 'pos' : v < 20 ? 'neu' : 'neg';
+  return `<span class="${c}">${(+v).toFixed(1)}%</span>`;
+}
+function colorWr(v) {
+  if (v == null || v === '') return '<span class="neu">—</span>';
+  const c = v >= 55 ? 'pos' : v >= 45 ? 'neu' : 'neg';
+  return `<span class="${c}">${(+v).toFixed(0)}%</span>`;
+}
+function colorPf(v) {
+  if (v == null || v === '') return '<span class="neu">—</span>';
+  const c = v > 1.5 ? 'pos' : v > 1.0 ? 'neu' : 'neg';
+  return `<span class="${c}">${(+v).toFixed(2)}</span>`;
+}
+
+const tbody = document.getElementById('results-tbody');
+DATA.top_results.forEach(r => {
+  const tr = r.train || {}, va = r.val || {}, te = r.test || {};
+  const row = document.createElement('tr');
+  row.innerHTML = [
+    `<td>${r.rank}</td>`,
+    `<td>#${r.trial_number}</td>`,
+    `<td>${colorSh(tr.sharpe)}</td>`,
+    `<td>${colorWr(tr.win_rate)}</td>`,
+    `<td>${colorPf(tr.pf)}</td>`,
+    `<td>${colorDd(tr.max_dd)}</td>`,
+    `<td>${tr.trades ?? '—'}</td>`,
+    `<td>${colorSh(va.sharpe)}</td>`,
+    `<td>${colorWr(va.win_rate)}</td>`,
+    `<td>${colorPf(va.pf)}</td>`,
+    `<td>${colorDd(va.max_dd)}</td>`,
+    `<td>${va.trades ?? '—'}</td>`,
+    `<td>${colorSh(te.sharpe)}</td>`,
+    `<td>${colorWr(te.win_rate)}</td>`,
+    `<td>${colorPf(te.pf)}</td>`,
+    `<td>${colorDd(te.max_dd)}</td>`,
+    `<td>${te.trades ?? '—'}</td>`,
+    `<td><strong>${(+r.objective).toFixed(3)}</strong></td>`,
+  ].join('');
+  tbody.appendChild(row);
+});
+
+// ── Equity curves ─────────────────────────────────────────────────────────────
+const SPLIT_COLORS = { train: '#388bfd', val: '#3fb950', test: '#e3b341' };
+
+function buildEquityChart(container, tradesSets, labels) {
+  const canvas = document.createElement('canvas');
+  container.appendChild(canvas);
+  const datasets = tradesSets.map((trades, i) => {
+    const eq = [];
+    let acc = 0;
+    (trades || []).forEach(p => { acc += p; eq.push(acc); });
+    return {
+      label: labels[i],
+      data: eq,
+      borderColor: Object.values(SPLIT_COLORS)[i],
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0,
+    };
+  });
+  new Chart(canvas, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      animation: false,
+      plugins: {
+        legend: { labels: { color: '#8b949e', boxWidth: 12, font: { size: 11 } } },
+      },
+      scales: {
+        x: { display: false },
+        y: {
+          grid: { color: '#21262d' },
+          ticks: { color: '#8b949e', font: { size: 10 } },
+        },
+      },
+    },
+  });
+}
+
+const grid = document.getElementById('chart-grid');
+DATA.top_results.slice(0, 5).forEach((r, idx) => {
+  const card = document.createElement('div');
+  card.className = 'chart-card';
+  const title = document.createElement('div');
+  title.className = 'chart-title';
+  title.textContent = `#${r.rank} — trial ${r.trial_number}  |  obj ${(+r.objective).toFixed(3)}`;
+  card.appendChild(title);
+  // We stored equity arrays in analytics but they were stripped for top-20 JSON.
+  // We'll show a placeholder message if equity data isn't available.
+  const msg = document.createElement('div');
+  msg.style.cssText = 'color:#8b949e;font-size:11px;padding:40px 0;text-align:center';
+  msg.textContent = 'Equity curves require --equity flag (re-run with --report --equity)';
+  card.appendChild(msg);
+  grid.appendChild(card);
+});
+
+// ── Best config diff ───────────────────────────────────────────────────────────
+const V4_DEFAULTS = {"entry_conf": 70, "candle_hold": 2, "entry_score_min": 65, "sl_atr_mult": 1.8, "window_start": 7, "window_end": 20, "post_exit_cooldown": 0, "max_range_hold_bars": 30, "mfe_trail_r": 1.0, "mfe_suppress_r": 1.5, "conf_floor": 45, "drop_thresh": 15, "slope_thresh": -5, "slope_bars": 3, "bocpd_thresh": 70, "bocpd_exit_bars": 4, "bocpd_exit_bars_range": 8, "hold_score_min": 40, "score_drop_exit": 30, "score_drop_bars": 2, "mfe_retrace_pct": 0.25, "mfe_min_r": 1.0, "decay_exit": 0.7};
+const best = DATA.top_results[0];
+const diffGrid = document.getElementById('diff-grid');
+if (best) {
+  Object.entries(best.config).forEach(([k, v]) => {
+    const def = V4_DEFAULTS[k];
+    const delta = def != null ? v - def : null;
+    let cls = 'no', symbol = '=';
+    if (delta != null && delta > 0) { cls = 'up'; symbol = '+' + delta.toFixed(2).replace(/\.?0+$/, ''); }
+    if (delta != null && delta < 0) { cls = 'dn'; symbol = delta.toFixed(2).replace(/\.?0+$/, ''); }
+    const item = document.createElement('div');
+    item.className = 'diff-item';
+    item.innerHTML = `
+      <div class="diff-key">${k.replace(/_/g,' ')}</div>
+      <div class="diff-val">${typeof v === 'number' ? v.toFixed(2).replace(/\.?0+$/,'') : v}
+        <span class="diff-delta ${cls}" style="font-size:11px;margin-left:6px">${symbol}</span>
+      </div>`;
+    diffGrid.appendChild(item);
+  });
+}
+
+// ── Param importance ──────────────────────────────────────────────────────────
+const impList = document.getElementById('imp-list');
+const imps = DATA.param_importances || [];
+const maxImp = imps.length ? Math.max(...imps.map(x => x.importance)) : 1;
+imps.forEach(p => {
+  const row = document.createElement('div');
+  row.className = 'imp-row';
+  row.innerHTML = `
+    <div class="imp-label">${p.param.replace(/_/g,' ')}</div>
+    <div class="imp-bar-bg"><div class="imp-bar-fill" style="width:${(p.importance/maxImp*100).toFixed(1)}%"></div></div>
+    <div class="imp-val">${(p.importance*100).toFixed(1)}%</div>`;
+  impList.appendChild(row);
+});
+if (!imps.length) {
+  const msg = document.createElement('div');
+  msg.style.cssText = 'color:#8b949e;padding:12px;font-size:12px';
+  msg.textContent = 'Importance data not available (requires ≥ 4 completed trials with optuna.importance).';
+  impList.appendChild(msg);
+}
+</script>
+</body>
+</html>
