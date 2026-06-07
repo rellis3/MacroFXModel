@@ -387,30 +387,35 @@ def compute_score_v2(
 
 @dataclass
 class Trade:
-    pair:          str
-    direction:     str        # LONG | SHORT
-    entry_time:    pd.Timestamp
-    entry_price:   float
-    sl:            float
-    atr_at_entry:  float
-    pip:           float
-    session:       str
-    exit_time:     Optional[pd.Timestamp] = None
-    exit_price:    Optional[float]        = None
-    exit_reason:   str                    = ""
-    mfe:           float                  = 0.0  # in price units (same direction as trade)
-    r_multiple:    Optional[float]        = None
+    pair:            str
+    direction:       str        # LONG | SHORT
+    entry_time:      pd.Timestamp
+    entry_price:     float
+    sl:              float
+    atr_at_entry:    float
+    pip:             float
+    session:         str
+    score_at_entry:  float                 = 0.0
+    size_pct:        float                 = 100.0  # 50–100 based on score (same as live bot)
+    exit_time:       Optional[pd.Timestamp] = None
+    exit_price:      Optional[float]        = None
+    exit_reason:     str                    = ""
+    mfe:             float                  = 0.0   # in price units (same direction as trade)
+    r_multiple:      Optional[float]        = None
+    r_weighted:      Optional[float]        = None  # r_multiple × size_pct / 100
 
 
 def _finalise_trade(t: Trade) -> None:
-    """Compute R-multiple once exit_price is set."""
+    """Compute R-multiple and size-weighted R once exit_price is set."""
     if t.exit_price is None or t.atr_at_entry <= 0:
         t.r_multiple = None
+        t.r_weighted = None
         return
     sign     = 1 if t.direction == "LONG" else -1
     sl_dist  = abs(t.entry_price - t.sl)
     pnl      = (t.exit_price - t.entry_price) * sign
     t.r_multiple = pnl / sl_dist if sl_dist > 0 else 0.0
+    t.r_weighted = t.r_multiple * t.size_pct / 100.0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -774,7 +779,8 @@ def run_pair_backtest(
                 close_reason = "window"
 
             if close_reason:
-                exit_px = cl - (spread_price / 2) if direction == "SHORT" else cl + (spread_price / 2)
+                # LONG exit → sell at bid (cl − half-spread); SHORT exit → buy at ask (cl + half-spread)
+                exit_px = cl - (spread_price / 2) if direction == "LONG" else cl + (spread_price / 2)
                 t = position["trade"]
                 t.exit_time   = ts
                 t.exit_price  = exit_px
@@ -902,19 +908,26 @@ def run_pair_backtest(
 
         # ── Open position ─────────────────────────────────────────────────────
         direction  = "LONG" if regime == "BULL" else "SHORT"
+        # LONG entry → buy at ask (cl + half-spread); SHORT entry → sell at bid (cl − half-spread)
         entry_px   = cl + (spread_price / 2) if direction == "LONG" else cl - (spread_price / 2)
         sl_dist    = atr * SL_ATR_MULT if atr > 0 else 20 * pip
         sl         = (entry_px - sl_dist) if direction == "LONG" else (entry_px + sl_dist)
 
+        # Score-based position sizing (mirrors live bot: 50% at entry_score_min, 100% at 100)
+        esm = entry_score_min
+        size_pct_val = round(min(100.0, max(0.0, 50.0 + (score - esm) / max(1.0, 100.0 - esm) * 50.0)), 1)
+
         trade = Trade(
-            pair         = pair,
-            direction    = direction,
-            entry_time   = ts,
-            entry_price  = entry_px,
-            sl           = sl,
-            atr_at_entry = atr,
-            pip          = pip,
-            session      = sess,
+            pair           = pair,
+            direction      = direction,
+            entry_time     = ts,
+            entry_price    = entry_px,
+            sl             = sl,
+            atr_at_entry   = atr,
+            pip            = pip,
+            session        = sess,
+            score_at_entry = round(score, 1),
+            size_pct       = size_pct_val,
         )
 
         position = {
@@ -953,14 +966,16 @@ def run_pair_backtest(
 
 @dataclass
 class Stats:
-    n:          int   = 0
-    wins:       int   = 0
-    losses:     int   = 0
-    gross_win:  float = 0.0
-    gross_loss: float = 0.0
-    total_r:    float = 0.0
-    r_values:   List[float] = field(default_factory=list)
-    max_dd:     float = 0.0   # in R units
+    n:                int   = 0
+    wins:             int   = 0
+    losses:           int   = 0
+    gross_win:        float = 0.0
+    gross_loss:       float = 0.0
+    total_r:          float = 0.0   # equal-weight R sum
+    weighted_total_r: float = 0.0   # size_pct-weighted R sum (realistic lot scaling)
+    r_values:         List[float] = field(default_factory=list)
+    max_dd:           float = 0.0   # in R units (equal-weight)
+    avg_score:        float = 0.0
 
     @property
     def win_rate(self) -> float:
@@ -974,16 +989,23 @@ class Stats:
     def avg_r(self) -> float:
         return self.total_r / self.n if self.n > 0 else 0.0
 
+    @property
+    def weighted_avg_r(self) -> float:
+        return self.weighted_total_r / self.n if self.n > 0 else 0.0
+
     def to_dict(self) -> dict:
         return {
-            "n":       self.n,
-            "wins":    self.wins,
-            "losses":  self.losses,
-            "win_rate":round(self.win_rate, 1),
-            "pf":      round(self.profit_factor, 3),
-            "avg_r":   round(self.avg_r, 4),
-            "total_r": round(self.total_r, 3),
-            "max_dd":  round(self.max_dd, 3),
+            "n":                self.n,
+            "wins":             self.wins,
+            "losses":           self.losses,
+            "win_rate":         round(self.win_rate, 1),
+            "pf":               round(self.profit_factor, 3),
+            "avg_r":            round(self.avg_r, 4),
+            "total_r":          round(self.total_r, 3),
+            "weighted_avg_r":   round(self.weighted_avg_r, 4),
+            "weighted_total_r": round(self.weighted_total_r, 3),
+            "max_dd":           round(self.max_dd, 3),
+            "avg_score":        round(self.avg_score, 1),
         }
 
 
@@ -1005,17 +1027,22 @@ def _compute_max_dd_r(r_values: List[float]) -> float:
 def compute_stats(trades: List[Trade]) -> Stats:
     s = Stats()
     s.n = len(trades)
+    scores = []
     for t in trades:
-        r = t.r_multiple if t.r_multiple is not None else 0.0
+        r  = t.r_multiple if t.r_multiple is not None else 0.0
+        rw = t.r_weighted  if t.r_weighted  is not None else 0.0
         s.r_values.append(r)
-        s.total_r += r
+        s.total_r          += r
+        s.weighted_total_r += rw
+        scores.append(t.score_at_entry)
         if r > 0:
             s.wins += 1
             s.gross_win += r
         else:
             s.losses += 1
             s.gross_loss += abs(r)
-    s.max_dd = _compute_max_dd_r(s.r_values)
+    s.max_dd    = _compute_max_dd_r(s.r_values)
+    s.avg_score = sum(scores) / len(scores) if scores else 0.0
     return s
 
 
@@ -1036,8 +1063,8 @@ def _fmt_stats(s: Stats, label: str = "All") -> str:
     pf = f"{s.profit_factor:.2f}" if s.profit_factor < 999 else "∞"
     return (
         f"  {label:<6} n={s.n:<4}  WR={s.win_rate:5.1f}%  "
-        f"PF={pf}  avgR={s.avg_r:+.3f}  "
-        f"totalR={s.total_r:+.2f}  maxDD={s.max_dd:.2f}R"
+        f"PF={pf}  avgR={s.avg_r:+.3f}  wAvgR={s.weighted_avg_r:+.3f}  "
+        f"totalR={s.total_r:+.2f}  maxDD={s.max_dd:.2f}R  score={s.avg_score:.0f}"
     )
 
 
@@ -1253,16 +1280,19 @@ def main() -> None:
             out = []
             for t in trades:
                 out.append({
-                    "pair":        t.pair,
-                    "direction":   t.direction,
-                    "entry_time":  str(t.entry_time),
-                    "exit_time":   str(t.exit_time) if t.exit_time else None,
-                    "entry_price": t.entry_price,
-                    "exit_price":  t.exit_price,
-                    "exit_reason": t.exit_reason,
-                    "r_multiple":  round(t.r_multiple, 4) if t.r_multiple is not None else None,
-                    "mfe":         round(t.mfe, 6),
-                    "session":     t.session,
+                    "pair":           t.pair,
+                    "direction":      t.direction,
+                    "entry_time":     str(t.entry_time),
+                    "exit_time":      str(t.exit_time) if t.exit_time else None,
+                    "entry_price":    t.entry_price,
+                    "exit_price":     t.exit_price,
+                    "exit_reason":    t.exit_reason,
+                    "r_multiple":     round(t.r_multiple, 4) if t.r_multiple is not None else None,
+                    "r_weighted":     round(t.r_weighted,  4) if t.r_weighted  is not None else None,
+                    "mfe":            round(t.mfe, 6),
+                    "session":        t.session,
+                    "score_at_entry": t.score_at_entry,
+                    "size_pct":       t.size_pct,
                 })
             return out
 

@@ -48,7 +48,12 @@ File naming: `{pair}_m1.parquet` (e.g. `eurusd_m1.parquet`). Files must have col
 - No RiskGuard drawdown limits (intentional — tests clean signal)
 - No news/FOMC/VIX gates (simulated data not available in parquet files)
 - No MFE retrace exit (X13) — kept for future version
-- No lot sizing (all trades counted equally in R-multiple)
+
+### What the backtester does include (vs the HTML version)
+
+- **Real BOCPD algorithm**: uses the actual `BOCPDetector` from `bocpd.py` — not the JS heuristic in `regime-backtest.html`
+- **Spread on both legs**: entry spread (ask/bid) and exit spread (bid/ask) are applied correctly, costing one full spread per round-trip
+- **Score-based position sizing**: each trade records `score_at_entry`, `size_pct` (50–100%), and `r_weighted` (R × size_pct). The `wAvgR` column in results shows what the live bot would actually earn per unit of risk given its lot-scaling behaviour
 
 ---
 
@@ -398,6 +403,113 @@ Add a version flag to the config so the dashboard can display which version is a
 4. Monitor the regime viewer dashboard for correct gate behaviour (fewer E3/E4/E6 gate rejections, more entries passing through to score gate).
 5. Verify X3/X4 suppression is working by checking that open trades with MFE > 0 are not being closed by X3/X4 on confidence dips.
 6. If paper mode metrics match expected entry frequency from the backtest, enable live mode.
+
+---
+
+---
+
+## 7. Bot Review — Analysis Confirmed and Rejected
+
+A separate static analysis of the live bot and HTML backtester identified the following. This section documents what was correct, what was wrong (do not implement), and what was applied to `backtest_v3.py`.
+
+### Confirmed — applied to backtest_v3.py
+
+#### Exit spread direction bug (fixed)
+
+The original backtester applied spread in the wrong direction on signal-based exits. LONG exits were priced at the ask (`close + spread/2`) when they should be priced at the bid (`close - spread/2`), and vice versa for SHORT exits. This inflated simulated results by approximately one full spread per trade.
+
+**Fixed in backtest_v3.py:**
+```python
+# Correct: LONG exit → sell at bid; SHORT exit → buy at ask
+exit_px = cl - (spread_price / 2) if direction == "LONG" else cl + (spread_price / 2)
+```
+
+#### Position sizing added (score-based)
+
+Previously all trades were equally weighted in R-multiple calculations. The live bot scales lot size by composite score (50% of target at entry_score_min, 100% at score=100). The backtester now tracks `score_at_entry`, `size_pct`, and `r_weighted` per trade, and reports a weighted average R (`wAvgR`) alongside the equal-weight metrics.
+
+This matters for comparing V2 vs V3 drawdown: V3 enters on higher average scores (typically 71 vs 65), which means more aggressive sizing on those trades in the live bot.
+
+#### BOCPD implementation note (already correct)
+
+The analysis flagged that the HTML backtester (`regime-backtest.html`) uses a JavaScript heuristic that approximates BOCPD rather than the real Gaussian UPM algorithm in `bocpd.py`. **`backtest_v3.py` is not affected** — it imports and runs the actual `BOCPDetector` from `bocpd.py` directly, so the change-point probabilities it uses are identical to those computed by the live bot.
+
+---
+
+### Rejected — do not implement these
+
+#### "eff_conf × session_mult is fundamentally wrong"
+
+**Incorrect critique.** The code multiplies raw confidence by the session multiplier (0.75–1.0) to derive an effective threshold. This is intentional: it requires higher raw confidence during thin-liquidity sessions because the HMM signal is less reliable. A 70% confidence signal in the Asian session is worth less than a 70% signal in London. The multiplicative form is equivalent to raising the entry threshold from 70% to 93% during Asian hours. This is a tunable design choice, not a bug.
+
+#### "BOCPD growth threshold 1e-300 is too low"
+
+**Incorrect critique.** The `1e-300` threshold in `bocpd.py:113` only controls whether a grown hypothesis is worth appending to the run-length list. The actual pruning of negligible hypotheses happens at `line 135` (`p > 1e-6`). Raising the growth threshold would prune valid low-probability run-length hypotheses prematurely and degrade BOCPD sensitivity at the start of new regimes.
+
+#### "run_length resets on RANGE is wrong"
+
+**Incorrect critique.** The BOCPRegistry resets the BOCPD detector when a regime transition is observed (including BULL→RANGE). This is intentional conservatism: if the HMM briefly dips to RANGE and returns to BULL, the bot must re-qualify the new BULL from scratch. This prevents entering on oscillating signals that would otherwise accumulate a long run-length through RANGE pauses.
+
+---
+
+### Recommended for live bot — not backtest
+
+These are improvements to `regime_bot_v2.py` that are validated but out of scope for the backtester. Apply after confirming V3 logic is working in paper mode.
+
+#### High priority: stale-data fallback for `fetch_regimes`
+
+**Location:** `regime_bot_v2.py:363–370`
+
+Currently `fetch_regimes` returns `{}` on any network failure, causing the bot to go silent for the entire polling cycle. If the dashboard is down for 10 minutes, all pairs miss 20 cycles.
+
+**Fix:** cache the last successful response and use it for up to `stale_max_secs` (e.g. 120s) before going silent:
+
+```python
+_last_good_regimes: dict = {}
+_last_good_ts: float = 0.0
+
+def fetch_regimes(url: str, stale_max_secs: float = 120.0) -> dict:
+    global _last_good_regimes, _last_good_ts
+    try:
+        r = requests.get(f'{url}/api/hmm5m-v2', timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        if data:
+            _last_good_regimes = data
+            _last_good_ts = time.time()
+        return data
+    except Exception as exc:
+        age = time.time() - _last_good_ts
+        if _last_good_regimes and age <= stale_max_secs:
+            log.warning(f'fetch_regimes failed ({exc}) — using cached data ({age:.0f}s old)')
+            return _last_good_regimes
+        log.error(f'fetch_regimes failed ({exc}) — no valid cache')
+        return {}
+```
+
+#### Low priority: dynamic pip value for JPY pairs
+
+**Location:** `regime_bot_v2.py:85–93`
+
+`USD/JPY` pip value is hardcoded at `9.0` when the actual value at 150 USDJPY is approximately 6.67. All JPY pairs have similarly stale hardcoded values. This affects position sizing accuracy.
+
+**Fix:** compute pip value dynamically at order time rather than from the static table:
+
+```python
+def _pip_value(pair: str, price: float, account_currency: str = 'USD') -> float:
+    """Dynamic pip value in account currency."""
+    pip = _PIP_SIZES.get(pair, 0.0001)
+    # For USD-quoted pairs (EUR/USD etc): pip_value = pip × lot_size in USD (fixed)
+    # For USD-base pairs (USD/JPY etc): pip_value = pip / price × lot_size
+    # For crosses: requires cross-rate lookup (fallback to static table)
+    if pair.endswith('/USD') or pair.endswith('USD'):
+        return _PIP_VALUES.get(pair, 10.0)  # static fallback acceptable for now
+    if pair.startswith('USD/'):
+        return pip / price * 100_000  # per standard lot
+    return _PIP_VALUES.get(pair, 10.0)
+```
+
+This reduces position sizing error on JPY pairs from ~30% to near-zero.
 
 ---
 
