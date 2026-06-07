@@ -495,6 +495,7 @@
   <div class="rb-toggle">
     <button class="rb-toggle-btn active" id="btnV1" onclick="selectBot('v1')">V1</button>
     <button class="rb-toggle-btn" id="btnV2" onclick="selectBot('v2')">V2</button>
+    <button class="rb-toggle-btn" id="btnV3" onclick="selectBot('v3')">V3</button>
   </div>
 
   <span class="rb-lbl2">Pair</span>
@@ -943,7 +944,61 @@ const V2_BOOLS = [
 ];
 const V2_DEFAULTS = Object.fromEntries([...V2_PARAMS.map(p=>[p.key,p.def]),...V2_BOOLS.map(b=>[b.key,b.def])]);
 
-// ─── V1/V2 Metrics ───────────────────────────────────────────────────────────
+// ─── V3 Config ───────────────────────────────────────────────────────────────
+// V3 collapses 13 hard entry gates → 4 (conf×session, debounce, slope direction, score≥65).
+// BOCPD/vol-z/decay/rising-conf are no longer hard gates — BOCPD penalises the composite
+// score instead. X3 (slope) and X4 (conf-drop) exits are suppressed once MFE ≥ 1R.
+
+const V3_PARAMS = [
+  { key:'entry_conf',           label:'Entry Conf (%)',            min:50,  max:95,   step:1,    def:70,
+    help:'HMM confidence × session multiplier must reach this threshold. V3 keeps this as a hard gate but drops vol-z, decay, BOCPD, and rising-conf hard gates. The composite score gate (Entry Score Min, raised to 65) replaces most of them.' },
+  { key:'candle_hold',          label:'Entry Hold (bars)',          min:1,   max:20,   step:1,    def:2,
+    help:'Consecutive M1 bars that regime + score must stay above thresholds before entry. V3 has only 4 hard gates so a hold of 2–3 bars is usually sufficient.' },
+  { key:'entry_score_min',      label:'Entry Score Min',            min:40,  max:90,   step:1,    def:65,
+    help:'Composite score gate (0–100). Raised from V2\'s 55 → 65 in V3 to compensate for removing the vol-z, decay, BOCPD, and rising-conf hard gates. BOCPD instability now reduces this score rather than being a binary block.' },
+  { key:'sl_atr_mult',          label:'SL ATR Multiplier',          min:0.5, max:4.0,  step:0.1,  def:1.8,
+    help:'Stop-loss = ATR(70 M1 bars) × this. Same as V1/V2.' },
+  { key:'conf_floor',           label:'Conf Floor (%)',             min:20,  max:70,   step:1,    def:45,
+    help:'EXIT: if HMM confidence drops below this level while in trade, close immediately.' },
+  { key:'drop_thresh',          label:'Conf Drop Thresh (%)',       min:1,   max:30,   step:1,    def:15,
+    help:'EXIT (X4): exits if confidence has fallen by this many percentage points from its recent level. V3: suppressed once MFE ≥ X3/X4 Suppress MFE — allows winning trades to survive temporary confidence dips.' },
+  { key:'slope_thresh',         label:'Slope Thresh',               min:-15, max:-1,   step:1,    def:-5,
+    help:'EXIT (X3): momentum slope exit threshold. V3: this exit is suppressed once MFE ≥ X3/X4 Suppress MFE, so profitable trades are not cut by temporary momentum fades.' },
+  { key:'slope_bars',           label:'Slope Bars',                 min:1,   max:10,   step:1,    def:3,
+    help:'How many consecutive bars slope must be below threshold before the slope exit triggers. Works together with Slope Thresh.' },
+  { key:'x3x4_mfe_suppress_r',  label:'X3/X4 Suppress MFE (R)',    min:0.2, max:5.0,  step:0.1,  def:1.0,
+    help:'V3 key parameter. Once a trade\'s peak profit (MFE) reaches this many R multiples, the slope (X3) and conf-drop (X4) exits are disabled. Prevents cutting winners on temporary HMM confidence dips or slope fades after the trade is already profitable.' },
+  { key:'bocpd_thresh',         label:'BOCPD Thresh (%)',           min:40,  max:95,   step:1,    def:70,
+    help:'EXIT (X6): BOCPD structural break probability. If above this for bocpd_exit_bars consecutive bars, exit. In V3 BOCPD is no longer an entry hard gate — it penalises the composite score instead.' },
+  { key:'bocpd_exit_bars',      label:'BOCPD Exit Bars',            min:1,   max:5,    step:1,    def:2,
+    help:'How many consecutive bars BOCPD must exceed threshold before the exit triggers. Prevents single-bar false alarms.' },
+  { key:'decay_exit',           label:'Decay Exit Threshold',       min:0.30,max:0.99, step:0.01, def:0.70,
+    help:'EXIT (X5): exits when the current regime becomes too old. V3: decay is no longer an entry hard gate but still used as a last-resort exit.' },
+  { key:'hold_score_min',       label:'Hold Score Min',             min:10,  max:70,   step:1,    def:40,
+    help:'EXIT (X11): if composite score falls below this for score_drop_bars consecutive bars, exit.' },
+  { key:'score_drop_exit',      label:'Score Drop Exit (pts)',      min:5,   max:60,   step:1,    def:30,
+    help:'EXIT (X12): exits if composite score has fallen by this many points from entry score.' },
+  { key:'score_drop_bars',      label:'Score Drop Bars',            min:1,   max:5,    step:1,    def:2,
+    help:'Debounce for hold-score exit. How many consecutive bars score must be below hold_score_min before exit triggers.' },
+  { key:'mfe_retrace_pct',      label:'MFE Retrace %',              min:0.05,max:0.60, step:0.01, def:0.25,
+    help:'EXIT (X13): profit protection. Once MFE ≥ MFE Min R, exit if price retraces this fraction of peak profit. Works together with the X3/X4 suppression to let trades run.' },
+  { key:'mfe_min_r',            label:'MFE Min (R)',                min:0.2, max:5.0,  step:0.1,  def:1.0,
+    help:'Minimum peak profit (in R multiples) before the MFE retrace exit can trigger. Same as V2.' },
+  { key:'range_exit_hold',      label:'Range Exit Hold (bars)',     min:0,   max:10,   step:1,    def:2,
+    help:'When regime flips to RANGE, wait this many bars before exiting. Prevents closing on brief sideways noise.' },
+  { key:'window_start',         label:'Window Start (UTC h)',       min:0,   max:12,   step:1,    def:7,
+    help:'Earliest UTC hour new trades can open. 07:00 = London open.' },
+  { key:'window_end',           label:'Window End (UTC h)',         min:12,  max:23,   step:1,    def:20,
+    help:'Latest UTC hour new trades can open. The composite score degrades in thin hours so this can be left wide.' },
+  { key:'post_exit_cooldown',   label:'Post-Exit Cooldown (bars)',  min:0,   max:240,  step:1,    def:0,
+    help:'After any trade closes, block all new entries for this many M1 bars.' },
+];
+const V3_BOOLS = [
+  { key:'exit_on_range', label:'Exit on RANGE', def:true },
+];
+const V3_DEFAULTS = Object.fromEntries([...V3_PARAMS.map(p=>[p.key,p.def]),...V3_BOOLS.map(b=>[b.key,b.def])]);
+
+// ─── V1/V2/V3 Metrics ────────────────────────────────────────────────────────
 
 const V1_METRICS = [
   { key:'conf',  label:'conf',  color:'#2196f3' },
@@ -952,6 +1007,16 @@ const V1_METRICS = [
   { key:'decay', label:'decay', color:'#f44336' },
 ];
 const V2_METRICS = [
+  { key:'conf',  label:'conf',  color:'#2196f3' },
+  { key:'score', label:'score', color:'#4caf50' },
+  { key:'bocpd', label:'bocpd', color:'#ff5722' },
+  { key:'rl',    label:'rl',    color:'#9c27b0' },
+  { key:'slope', label:'slope', color:'#00bcd4' },
+  { key:'vz',    label:'vz',    color:'#ff9800' },
+  { key:'exh',   label:'exh',   color:'#795548' },
+  { key:'decay', label:'decay', color:'#f44336' },
+];
+const V3_METRICS = [
   { key:'conf',  label:'conf',  color:'#2196f3' },
   { key:'score', label:'score', color:'#4caf50' },
   { key:'bocpd', label:'bocpd', color:'#ff5722' },
@@ -1001,10 +1066,12 @@ function selectBot(bot) {
   currentBot = bot;
   document.getElementById('btnV1').classList.toggle('active', bot === 'v1');
   document.getElementById('btnV2').classList.toggle('active', bot === 'v2');
-  document.getElementById('cfgTitle').textContent = bot === 'v1' ? 'V1 Configuration' : 'V2 Configuration';
-  document.getElementById('hbScoreRow').style.display = bot === 'v2' ? '' : 'none';
-  activeMetrics = bot === 'v1' ? V1_METRICS : V2_METRICS;
-  cfg = { ...(bot === 'v1' ? V1_DEFAULTS : V2_DEFAULTS) };
+  document.getElementById('btnV3').classList.toggle('active', bot === 'v3');
+  const titles = { v1: 'V1 Configuration', v2: 'V2 Configuration', v3: 'V3 Configuration' };
+  document.getElementById('cfgTitle').textContent = titles[bot] || 'Configuration';
+  document.getElementById('hbScoreRow').style.display = (bot === 'v2' || bot === 'v3') ? '' : 'none';
+  activeMetrics = bot === 'v1' ? V1_METRICS : bot === 'v3' ? V3_METRICS : V2_METRICS;
+  cfg = { ...(bot === 'v1' ? V1_DEFAULTS : bot === 'v3' ? V3_DEFAULTS : V2_DEFAULTS) };
   buildConfigPanel();
   buildCheckboxes();
   rebuildMetricPanels();
@@ -1013,8 +1080,8 @@ function selectBot(bot) {
 // ─── Config panel ─────────────────────────────────────────────────────────────
 
 function buildConfigPanel() {
-  const params = currentBot === 'v1' ? V1_PARAMS : V2_PARAMS;
-  const bools  = currentBot === 'v1' ? V1_BOOLS  : V2_BOOLS;
+  const params = currentBot === 'v1' ? V1_PARAMS : currentBot === 'v3' ? V3_PARAMS : V2_PARAMS;
+  const bools  = currentBot === 'v1' ? V1_BOOLS  : currentBot === 'v3' ? V3_BOOLS  : V2_BOOLS;
 
   const grid = document.getElementById('cfgGrid');
   grid.innerHTML = '';
@@ -1054,7 +1121,7 @@ function buildConfigPanel() {
 function onSlider(key, val, step) {
   let num = step % 1 === 0 ? parseInt(val) : parseFloat(val);
   if (isNaN(num)) return;
-  const params = currentBot === 'v1' ? V1_PARAMS : V2_PARAMS;
+  const params = currentBot === 'v1' ? V1_PARAMS : currentBot === 'v3' ? V3_PARAMS : V2_PARAMS;
   const p = params.find(pp => pp.key === key);
   if (p) num = Math.max(p.min, Math.min(p.max, num));
   cfg[key] = num;
@@ -1067,7 +1134,7 @@ function resetParam(key, def) {
 }
 
 function resetAllParams() {
-  cfg = { ...(currentBot === 'v1' ? V1_DEFAULTS : V2_DEFAULTS) };
+  cfg = { ...(currentBot === 'v1' ? V1_DEFAULTS : currentBot === 'v3' ? V3_DEFAULTS : V2_DEFAULTS) };
   buildConfigPanel();
 }
 
@@ -1754,7 +1821,9 @@ async function loadAndRun() {
     await new Promise(r => requestAnimationFrame(r));
     allTrades = currentBot === 'v1'
       ? simulateV1(rawCandles, rawSignals, cfg)
-      : simulateV2(rawCandles, rawSignals, cfg);
+      : currentBot === 'v3'
+        ? simulateV3(rawCandles, rawSignals, cfg)
+        : simulateV2(rawCandles, rawSignals, cfg);
 
     // ── 4. Downsample for display if dataset is large ────────────────────────
     // Picks the smallest step (1/5/15/25) that keeps display candles ≤ DISPLAY_CAP
@@ -1979,6 +2048,129 @@ function simulateV2(candles, signals, c) {
       const okSlope = (sig.regime === 'BULL' && sig.slope > 0) || (sig.regime === 'BEAR' && sig.slope < 0);
 
       if (isDir && okConf && okRise && okVz && okDecay && okScore && okBocpd && okSlope) {
+        if (++debounce >= c.candle_hold && sig.atrSL) {
+          const dir2   = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
+          const ep     = bar.close;
+          const slDist = sig.atrSL * c.sl_atr_mult;
+          const sl     = dir2 === 'LONG' ? ep - slDist : ep + slDist;
+          pos = {
+            regime: sig.regime, direction: dir2, entry_ts: bar.time, entry_price: ep,
+            entry_score: sig.score, sl, atr: sig.atrSL, mfe_price: 0, mfe_r: 0,
+            conf_at_entry: sig.conf, decay_at_entry: sig.decay,
+            slope_ct: 0, bocpd_ct: 0, score_low_ct: 0,
+          };
+          debounce = 0; rangeHold = 0;
+        }
+      } else { debounce = 0; }
+    } else if (!pos) { debounce = 0; }
+
+    prevConf = sig.conf;
+  }
+
+  if (pos) {
+    const lc = candles[candles.length - 1];
+    trades.push(mkTrade(pos, lc.time, lc.close, 'END'));
+  }
+  return trades;
+}
+
+// ─── Simulation: V3 ──────────────────────────────────────────────────────────
+// Differences from V2:
+//   Entry: 13 hard gates → 4 (conf×session, debounce, slope-direction, score≥65)
+//          okRise / okVz / okDecay / okBocpd removed as hard gates
+//   Exit X3 (slope): suppressed when pos.mfe_r >= x3x4_mfe_suppress_r
+//   Exit X4 (conf-drop): suppressed when pos.mfe_r >= x3x4_mfe_suppress_r
+
+function simulateV3(candles, signals, c) {
+  const trades = [];
+  let pos = null, debounce = 0, rangeHold = 0, cooldown = 0;
+  let prevConf = null;
+
+  for (let i = WARMUP; i < candles.length; i++) {
+    const sig  = signals[i];
+    if (!sig) continue;
+    const bar  = candles[i];
+    const utcH = new Date(sig.ts * 1000).getUTCHours();
+    const inWin     = utcH >= c.window_start && utcH < c.window_end;
+    const effConf   = sig.conf * getSessionMult(sig.ts);
+    const confDrop  = prevConf != null ? prevConf - sig.conf : 0;
+
+    if (pos) {
+      const slHit = (pos.direction === 'LONG'  && bar.low  <= pos.sl)
+                 || (pos.direction === 'SHORT' && bar.high >= pos.sl);
+      if (slHit) {
+        trades.push(mkTrade(pos, bar.time, pos.sl, 'SL'));
+        pos = null; debounce = 0; rangeHold = 0; cooldown = c.post_exit_cooldown || 0; prevConf = sig.conf; continue;
+      }
+
+      // Update MFE
+      const fav = pos.direction === 'LONG' ? bar.high - pos.entry_price : pos.entry_price - bar.low;
+      if (fav > pos.mfe_price) pos.mfe_price = fav;
+      const riskPr = Math.abs(pos.entry_price - pos.sl);
+      pos.mfe_r = riskPr > 0 ? pos.mfe_price / riskPr : 0;
+
+      const xp = bar.close;
+      let exited = false;
+
+      // X1: regime flip
+      const flipped = pos.regime !== sig.regime;
+      if (flipped && (sig.regime === 'BULL' || sig.regime === 'BEAR')) {
+        trades.push(mkTrade(pos, bar.time, xp, 'REGIME_FLIP')); exited = true;
+      } else if (flipped && c.exit_on_range && (sig.regime === 'RANGE' || sig.regime === 'CHOP')) {
+        if (++rangeHold >= c.range_exit_hold) { trades.push(mkTrade(pos, bar.time, xp, 'RANGE_EXIT')); exited = true; }
+      } else if (!flipped) { rangeHold = 0; }
+
+      // X2: conf floor; X4: conf drop (suppressed when MFE ≥ x3x4_mfe_suppress_r)
+      if (!exited) {
+        if (sig.conf < c.conf_floor) { trades.push(mkTrade(pos, bar.time, xp, 'CONF_FLOOR')); exited = true; }
+        else if (confDrop >= c.drop_thresh && pos.mfe_r < c.x3x4_mfe_suppress_r) {
+          trades.push(mkTrade(pos, bar.time, xp, 'CONF_DROP')); exited = true;
+        }
+      }
+      // X3: slope (suppressed when MFE ≥ x3x4_mfe_suppress_r)
+      if (!exited) {
+        if (sig.slope < c.slope_thresh && pos.mfe_r < c.x3x4_mfe_suppress_r) {
+          if (++pos.slope_ct >= c.slope_bars) { trades.push(mkTrade(pos, bar.time, xp, 'SLOPE')); exited = true; }
+        } else { pos.slope_ct = 0; }
+      }
+      // X6: BOCPD
+      if (!exited) {
+        if (sig.bocpd >= c.bocpd_thresh) {
+          if (++pos.bocpd_ct >= c.bocpd_exit_bars) { trades.push(mkTrade(pos, bar.time, xp, 'BOCPD')); exited = true; }
+        } else { pos.bocpd_ct = 0; }
+      }
+      // X11/X12: score
+      if (!exited) {
+        if (sig.score < c.hold_score_min) {
+          if (++pos.score_low_ct >= c.score_drop_bars) { trades.push(mkTrade(pos, bar.time, xp, 'SCORE_LOW')); exited = true; }
+        } else { pos.score_low_ct = 0; }
+        if (!exited && (pos.entry_score - sig.score) >= c.score_drop_exit) {
+          trades.push(mkTrade(pos, bar.time, xp, 'SCORE_DROP')); exited = true;
+        }
+      }
+      // X13: MFE retrace
+      if (!exited && pos.mfe_r >= c.mfe_min_r && pos.mfe_price > 0) {
+        const curFav  = pos.direction === 'LONG' ? (xp - pos.entry_price) : (pos.entry_price - xp);
+        const retrace = (pos.mfe_price - Math.max(0, curFav)) / pos.mfe_price;
+        if (retrace >= c.mfe_retrace_pct) { trades.push(mkTrade(pos, bar.time, xp, 'MFE_RETRACE')); exited = true; }
+      }
+      // X5: decay
+      if (!exited && sig.decay >= c.decay_exit) {
+        trades.push(mkTrade(pos, bar.time, xp, 'DECAY')); exited = true;
+      }
+      if (exited) { pos = null; debounce = 0; rangeHold = 0; cooldown = c.post_exit_cooldown || 0; }
+    }
+
+    if (cooldown > 0) { cooldown--; prevConf = sig.conf; continue; }
+
+    if (!pos && inWin) {
+      const isDir  = sig.regime === 'BULL' || sig.regime === 'BEAR';
+      const okConf = effConf >= c.entry_conf;
+      const okScore = sig.score >= c.entry_score_min;
+      // Slope direction must agree with regime (kept as hard gate in V3)
+      const okSlope = (sig.regime === 'BULL' && sig.slope > 0) || (sig.regime === 'BEAR' && sig.slope < 0);
+
+      if (isDir && okConf && okScore && okSlope) {
         if (++debounce >= c.candle_hold && sig.atrSL) {
           const dir2   = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
           const ep     = bar.close;
