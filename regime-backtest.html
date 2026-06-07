@@ -476,7 +476,7 @@
   </div>
   <div class="title-block">
     <div class="title" style="font-size:15px;font-weight:700;">Regime Bot Backtester</div>
-    <div class="sub">Replay V1 · V2 · V3 · V4 bot logic · regime-colored candles · full analytics</div>
+    <div class="sub">Replay V1 · V2 · V3 · V4 · V5 (30m regime) bot logic · regime-colored candles · full analytics</div>
   </div>
   <div style="flex:1"></div>
   <a href="regime-viewer.html" style="text-decoration:none"><button class="dark-btn">Regime Viewer →</button></a>
@@ -497,6 +497,14 @@
     <button class="rb-toggle-btn" id="btnV2" onclick="selectBot('v2')">V2</button>
     <button class="rb-toggle-btn" id="btnV3" onclick="selectBot('v3')">V3</button>
     <button class="rb-toggle-btn" id="btnV4" onclick="selectBot('v4')">V4</button>
+    <button class="rb-toggle-btn" id="btnV5" onclick="selectBot('v5')">V5</button>
+  </div>
+  <span class="rb-lbl2" id="v5TfLabel" style="display:none">Regime TF</span>
+  <div class="rb-toggle" id="v5TfToggle" style="display:none">
+    <button class="rb-toggle-btn active" id="btnTf15"  onclick="setV5TF(15)">15m</button>
+    <button class="rb-toggle-btn"        id="btnTf30"  onclick="setV5TF(30)">30m</button>
+    <button class="rb-toggle-btn"        id="btnTf60"  onclick="setV5TF(60)">1h</button>
+    <button class="rb-toggle-btn"        id="btnTf240" onclick="setV5TF(240)">4h</button>
   </div>
 
   <span class="rb-lbl2">Pair</span>
@@ -1085,7 +1093,42 @@ const V4_PARAMS = [
 const V4_BOOLS = [];  // No exit_on_range — V4 always holds through RANGE/CHOP (core V4 strategy)
 const V4_DEFAULTS = Object.fromEntries([...V4_PARAMS.map(p=>[p.key,p.def])]);
 
-// ─── V1/V2/V3/V4 Metrics ─────────────────────────────────────────────────────
+// ─── V5 Config ────────────────────────────────────────────────────────────────
+// V5 = V4 strategy but regime/signals computed on 30-minute aggregated bars.
+// All bar-count params are expressed in 30m bars in the UI; scaled to M1 internally.
+// SL uses M30 ATR (~5× M1 ATR) — gives proper regime-scale pip distances.
+
+let V5_MTF = 15;  // minutes per aggregated bar — changeable via UI
+
+const V5_PARAMS = [
+  { key:'entry_conf',            label:'Entry Conf (%)',           min:50, max:95, step:1,    def:72,  help:'HMM confidence threshold, computed on 30m bars. 30m regimes are much more stable than M1 — can use a slightly lower threshold for similar signal quality.' },
+  { key:'candle_hold',           label:'Entry Hold (30m bars)',    min:1,  max:10, step:1,    def:2,   help:'Completed 30-min bars regime+score must persist before entry fires. 2 bars = 60 min of confirmation.' },
+  { key:'entry_score_min',       label:'Entry Score Min',          min:40, max:90, step:1,    def:65,  help:'V5 composite score gate (0–100). Computed from 30m bar features. Same 7-component weighting as V4.' },
+  { key:'sl_atr_mult',           label:'SL ATR Multiplier',        min:0.5,max:5.0,step:0.1,  def:2.0, help:'Stop-loss = ATR(70 M30 bars) × this. M30 ATR is ~5× larger than M1 ATR, so 2.0 gives ~30–60 pip SL on EUR/USD — meaningful for regime trades.' },
+  { key:'max_range_hold_bars',   label:'Max Range Hold (30m bars)',min:1,  max:48, step:1,    def:16,  help:'V5 KEY PARAM. Max completed 30m bars to hold through RANGE/CHOP before timeout exit. 16 = 8 hours of range tolerance.' },
+  { key:'mfe_trail_r',           label:'Breakeven Trail (R)',       min:0.2,max:3.0,step:0.1,  def:1.0, help:'Move SL to entry when MFE ≥ this R. Same logic as V4 but MFE and SL measured with M30 ATR.' },
+  { key:'mfe_suppress_r',        label:'X3/X4 Suppress MFE (R)',   min:0.2,max:5.0,step:0.1,  def:1.5, help:'Suppress slope/conf-drop exits in TREND_HOLD once MFE ≥ this R. Always suppressed in RANGE_HOLD.' },
+  { key:'conf_floor',            label:'Conf Floor (%)',            min:20, max:70, step:1,    def:38,  help:'Emergency exit if M30 confidence falls below this. Active in both TREND_HOLD and RANGE_HOLD.' },
+  { key:'drop_thresh',           label:'Conf Drop Thresh (%)',      min:1,  max:30, step:1,    def:20,  help:'Exit X4: exit if M30 confidence drops by this many points. TREND_HOLD only, suppressed past mfe_suppress_r.' },
+  { key:'slope_thresh',          label:'Slope Thresh',              min:-15,max:-1, step:1,    def:-5,  help:'Exit X3: M30 slope threshold. TREND_HOLD only, suppressed past mfe_suppress_r.' },
+  { key:'slope_bars',            label:'Slope Bars (30m)',          min:1,  max:10, step:1,    def:3,   help:'M30 bars slope must persist below threshold before X3 fires. 3 = 90 minutes of adverse slope.' },
+  { key:'bocpd_thresh',          label:'BOCPD Thresh (%)',          min:40, max:95, step:1,    def:70,  help:'BOCPD change-point probability threshold, computed on M30. A sustained high BOCPD on M30 is a strong structural signal.' },
+  { key:'bocpd_exit_bars',       label:'BOCPD Exit Bars (trend)',   min:1,  max:12, step:1,    def:4,   help:'M30 bars BOCPD must exceed threshold in TREND_HOLD. 4 bars = 2 hours of elevated change-point probability.' },
+  { key:'bocpd_exit_bars_range', label:'BOCPD Exit Bars (range)',   min:2,  max:24, step:1,    def:8,   help:'M30 bars BOCPD must exceed threshold in RANGE_HOLD before exit. 8 bars = 4 hours.' },
+  { key:'hold_score_min',        label:'Hold Score Min',            min:10, max:70, step:1,    def:35,  help:'Exit X11 (TREND_HOLD): exit if M30 score falls below this for score_drop_bars consecutive M30 bars.' },
+  { key:'score_drop_exit',       label:'Score Drop Exit (pts)',     min:5,  max:60, step:1,    def:25,  help:'Exit X12 (TREND_HOLD): exits if score has fallen this many points from entry score.' },
+  { key:'score_drop_bars',       label:'Score Drop Bars (30m)',     min:1,  max:5,  step:1,    def:2,   help:'Debounce for X11 score exit, in M30 bars.' },
+  { key:'mfe_retrace_pct',       label:'MFE Retrace %',             min:0.05,max:0.60,step:0.01,def:0.30,help:'Exit X13: exit if price retraces this fraction of peak MFE. Active in both states.' },
+  { key:'mfe_min_r',             label:'MFE Min (R)',               min:0.2,max:5.0,step:0.1,  def:1.0, help:'Minimum MFE in R before retrace exit can trigger.' },
+  { key:'decay_exit',            label:'Decay Exit Threshold',      min:0.30,max:0.99,step:0.01,def:0.75,help:'Exit X5: exits when regime decay (regime age proxy) exceeds this.' },
+  { key:'window_start',          label:'Window Start (UTC h)',      min:0,  max:12, step:1,    def:7,   help:'Earliest UTC hour new entries can open.' },
+  { key:'window_end',            label:'Window End (UTC h)',        min:12, max:23, step:1,    def:20,  help:'Latest UTC hour new entries can open. Open trades continue past this.' },
+  { key:'post_exit_cooldown',    label:'Post-Exit Cooldown (30m)',  min:0,  max:48, step:1,    def:4,   help:'Block new entries for this many M30 bars after any trade closes. 4 = 2 hour minimum gap between trades.' },
+];
+const V5_BOOLS = [];
+const V5_DEFAULTS = Object.fromEntries([...V5_PARAMS.map(p => [p.key, p.def])]);
+
+// ─── V1/V2/V3/V4/V5 Metrics ──────────────────────────────────────────────────
 
 const V1_METRICS = [
   { key:'conf',  label:'conf',  color:'#2196f3' },
@@ -1121,6 +1164,16 @@ const V4_METRICS = [
   { key:'rl',          label:'rl',      color:'#9c27b0' },
   { key:'slope',       label:'slope',   color:'#00bcd4' },
   { key:'vz',          label:'vz',      color:'#ff9800' },
+  { key:'decay',       label:'decay',   color:'#f44336' },
+];
+const V5_METRICS = [
+  { key:'conf',        label:'m30conf', color:'#2196f3' },
+  { key:'v4_score',    label:'v5scr',   color:'#4caf50' },
+  { key:'bocpd',       label:'m30bcp',  color:'#ff5722' },
+  { key:'bocpd_trend', label:'btrend',  color:'#ff9500' },
+  { key:'rl',          label:'rl',      color:'#9c27b0' },
+  { key:'slope',       label:'m30slp',  color:'#00bcd4' },
+  { key:'vz',          label:'m30vz',   color:'#ff9800' },
   { key:'decay',       label:'decay',   color:'#f44336' },
 ];
 
@@ -1159,17 +1212,32 @@ let drawPending      = false;
 
 // ─── Bot selector ─────────────────────────────────────────────────────────────
 
+function setV5TF(minutes) {
+  V5_MTF = minutes;
+  [15, 30, 60, 240].forEach(m =>
+    document.getElementById('btnTf' + m).classList.toggle('active', m === minutes));
+  // Update config panel title to reflect selected TF
+  if (currentBot === 'v5') {
+    const lbl = minutes >= 60 ? (minutes / 60) + 'h' : minutes + 'm';
+    document.getElementById('cfgTitle').textContent = `V5 Configuration (${lbl} Regime on M1 bars)`;
+  }
+}
+
 function selectBot(bot) {
   currentBot = bot;
-  document.getElementById('btnV1').classList.toggle('active', bot === 'v1');
-  document.getElementById('btnV2').classList.toggle('active', bot === 'v2');
-  document.getElementById('btnV3').classList.toggle('active', bot === 'v3');
-  document.getElementById('btnV4').classList.toggle('active', bot === 'v4');
-  const titles = { v1: 'V1 Configuration', v2: 'V2 Configuration', v3: 'V3 Configuration', v4: 'V4 Configuration' };
+  ['v1','v2','v3','v4','v5'].forEach(v =>
+    document.getElementById('btn' + v.toUpperCase()).classList.toggle('active', bot === v));
+  const isV5  = bot === 'v5';
+  const tfMin = V5_MTF;
+  const tfLbl = tfMin >= 60 ? (tfMin / 60) + 'h' : tfMin + 'm';
+  const titles = { v1:'V1 Configuration', v2:'V2 Configuration', v3:'V3 Configuration', v4:'V4 Configuration',
+                   v5:`V5 Configuration (${tfLbl} Regime on M1 bars)` };
   document.getElementById('cfgTitle').textContent = titles[bot] || 'Configuration';
   document.getElementById('hbScoreRow').style.display = (bot === 'v1') ? 'none' : '';
-  activeMetrics = bot === 'v1' ? V1_METRICS : bot === 'v3' ? V3_METRICS : bot === 'v4' ? V4_METRICS : V2_METRICS;
-  cfg = { ...(bot === 'v1' ? V1_DEFAULTS : bot === 'v3' ? V3_DEFAULTS : bot === 'v4' ? V4_DEFAULTS : V2_DEFAULTS) };
+  document.getElementById('v5TfLabel').style.display  = isV5 ? '' : 'none';
+  document.getElementById('v5TfToggle').style.display = isV5 ? '' : 'none';
+  activeMetrics = bot === 'v1' ? V1_METRICS : bot === 'v3' ? V3_METRICS : bot === 'v4' ? V4_METRICS : bot === 'v5' ? V5_METRICS : V2_METRICS;
+  cfg = { ...(bot === 'v1' ? V1_DEFAULTS : bot === 'v3' ? V3_DEFAULTS : bot === 'v4' ? V4_DEFAULTS : bot === 'v5' ? V5_DEFAULTS : V2_DEFAULTS) };
   buildConfigPanel();
   buildCheckboxes();
   rebuildMetricPanels();
@@ -1178,8 +1246,8 @@ function selectBot(bot) {
 // ─── Config panel ─────────────────────────────────────────────────────────────
 
 function buildConfigPanel() {
-  const params = currentBot === 'v1' ? V1_PARAMS : currentBot === 'v3' ? V3_PARAMS : currentBot === 'v4' ? V4_PARAMS : V2_PARAMS;
-  const bools  = currentBot === 'v1' ? V1_BOOLS  : currentBot === 'v3' ? V3_BOOLS  : currentBot === 'v4' ? V4_BOOLS  : V2_BOOLS;
+  const params = currentBot === 'v1' ? V1_PARAMS : currentBot === 'v3' ? V3_PARAMS : currentBot === 'v4' ? V4_PARAMS : currentBot === 'v5' ? V5_PARAMS : V2_PARAMS;
+  const bools  = currentBot === 'v1' ? V1_BOOLS  : currentBot === 'v3' ? V3_BOOLS  : currentBot === 'v4' ? V4_BOOLS  : currentBot === 'v5' ? V5_BOOLS  : V2_BOOLS;
 
   const grid = document.getElementById('cfgGrid');
   grid.innerHTML = '';
@@ -1219,7 +1287,7 @@ function buildConfigPanel() {
 function onSlider(key, val, step) {
   let num = step % 1 === 0 ? parseInt(val) : parseFloat(val);
   if (isNaN(num)) return;
-  const params = currentBot === 'v1' ? V1_PARAMS : currentBot === 'v3' ? V3_PARAMS : currentBot === 'v4' ? V4_PARAMS : V2_PARAMS;
+  const params = currentBot === 'v1' ? V1_PARAMS : currentBot === 'v3' ? V3_PARAMS : currentBot === 'v4' ? V4_PARAMS : currentBot === 'v5' ? V5_PARAMS : V2_PARAMS;
   const p = params.find(pp => pp.key === key);
   if (p) num = Math.max(p.min, Math.min(p.max, num));
   cfg[key] = num;
@@ -1232,7 +1300,7 @@ function resetParam(key, def) {
 }
 
 function resetAllParams() {
-  cfg = { ...(currentBot === 'v1' ? V1_DEFAULTS : currentBot === 'v3' ? V3_DEFAULTS : currentBot === 'v4' ? V4_DEFAULTS : V2_DEFAULTS) };
+  cfg = { ...(currentBot === 'v1' ? V1_DEFAULTS : currentBot === 'v3' ? V3_DEFAULTS : currentBot === 'v4' ? V4_DEFAULTS : currentBot === 'v5' ? V5_DEFAULTS : V2_DEFAULTS) };
   buildConfigPanel();
 }
 
@@ -1962,9 +2030,11 @@ async function loadAndRun() {
       rawSignals = computeHMMSignalsV1(rawCandles, pair);
     } else {
       const trainedParams = await fetchTrainedParams();
-      rawSignals = currentBot === 'v4'
-        ? computeHMMSignalsV4(rawCandles, pair, trainedParams)
-        : computeHMMSignalsV2(rawCandles, pair, trainedParams);
+      rawSignals = currentBot === 'v5'
+        ? computeHMMSignalsV5(rawCandles, pair, trainedParams)
+        : currentBot === 'v4'
+          ? computeHMMSignalsV4(rawCandles, pair, trainedParams)
+          : computeHMMSignalsV2(rawCandles, pair, trainedParams);
     }
 
     // ── 3. Simulate on full M1 ───────────────────────────────────────────────
@@ -1976,7 +2046,9 @@ async function loadAndRun() {
         ? simulateV3(rawCandles, rawSignals, cfg)
         : currentBot === 'v4'
           ? simulateV4(rawCandles, rawSignals, cfg)
-          : simulateV2(rawCandles, rawSignals, cfg);
+          : currentBot === 'v5'
+            ? simulateV5(rawCandles, rawSignals, cfg)
+            : simulateV2(rawCandles, rawSignals, cfg);
 
     // ── 4. Downsample for display if dataset is large ────────────────────────
     // Picks the smallest step (1/5/15/25) that keeps display candles ≤ DISPLAY_CAP
@@ -2543,6 +2615,67 @@ function simulateV4(candles, signals, c) {
 }
 
 // ─── Trade builder ────────────────────────────────────────────────────────────
+
+// ─── V5: 30-minute regime aggregation ────────────────────────────────────────
+
+// Aggregate M1 bars → M30 (or any N-minute bar). Returns sorted OHLCV array.
+function aggregateToMTF(m1Bars, minutes) {
+  const periodSec = minutes * 60;
+  const map = new Map();
+  for (const b of m1Bars) {
+    const ps = Math.floor(b.time / periodSec) * periodSec;
+    if (!map.has(ps)) {
+      map.set(ps, { time: ps, open: b.open, high: b.high, low: b.low, close: b.close });
+    } else {
+      const m = map.get(ps);
+      if (b.high > m.high) m.high = b.high;
+      if (b.low  < m.low)  m.low  = b.low;
+      m.close = b.close;
+    }
+  }
+  return [...map.values()].sort((a, b) => a.time - b.time);
+}
+
+// Compute V5 signals: HMM/V4 score on M30, mapped back to M1 with no look-ahead.
+// A 30m bar closing at T is only available for M1 bars where m1.time >= T + 60s.
+function computeHMMSignalsV5(m1Bars, sym, trainedParams) {
+  const m30Bars    = aggregateToMTF(m1Bars, V5_MTF);
+  const m30Signals = computeHMMSignalsV4(m30Bars, sym, trainedParams);
+  const periodSec  = V5_MTF * 60;
+
+  // Build list of (validFrom, signal) — signal valid from the bar AFTER its period closes
+  const valid = [];
+  for (let i = 0; i < m30Signals.length; i++) {
+    if (!m30Signals[i]) continue;
+    valid.push({ validFrom: m30Signals[i].ts + periodSec, sig: m30Signals[i] });
+  }
+
+  const N   = m1Bars.length;
+  const out = new Array(N).fill(null);
+  let vi    = -1;
+  for (let i = 0; i < N; i++) {
+    const t = m1Bars[i].time;
+    while (vi + 1 < valid.length && valid[vi + 1].validFrom <= t) vi++;
+    if (vi >= 0) out[i] = { ...valid[vi].sig, ts: t };
+  }
+  return out;
+}
+
+// V5 simulation: same state machine as V4 but bar-count params scaled M30→M1
+function simulateV5(candles, signals, c) {
+  const S = V5_MTF;   // scale factor: 1 UI bar = S M1 bars
+  const scaled = {
+    ...c,
+    candle_hold:           (c.candle_hold           || 1) * S,
+    post_exit_cooldown:    (c.post_exit_cooldown     || 0) * S,
+    max_range_hold_bars:   (c.max_range_hold_bars    || 16) * S,
+    bocpd_exit_bars:       (c.bocpd_exit_bars        || 4) * S,
+    bocpd_exit_bars_range: (c.bocpd_exit_bars_range  || 8) * S,
+    slope_bars:            (c.slope_bars             || 3) * S,
+    score_drop_bars:       (c.score_drop_bars        || 2) * S,
+  };
+  return simulateV4(candles, signals, scaled);
+}
 
 function mkTrade(pos, exitTs, exitPrice, reason) {
   const sign   = pos.direction === 'LONG' ? 1 : -1;
