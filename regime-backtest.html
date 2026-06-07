@@ -476,7 +476,7 @@
   </div>
   <div class="title-block">
     <div class="title" style="font-size:15px;font-weight:700;">Regime Bot Backtester</div>
-    <div class="sub">Replay V1 &amp; V2 bot logic · regime-colored candles · full analytics</div>
+    <div class="sub">Replay V1 · V2 · V3 · V4 · V5 (30m regime) bot logic · regime-colored candles · full analytics</div>
   </div>
   <div style="flex:1"></div>
   <a href="regime-viewer.html" style="text-decoration:none"><button class="dark-btn">Regime Viewer →</button></a>
@@ -496,6 +496,16 @@
     <button class="rb-toggle-btn active" id="btnV1" onclick="selectBot('v1')">V1</button>
     <button class="rb-toggle-btn" id="btnV2" onclick="selectBot('v2')">V2</button>
     <button class="rb-toggle-btn" id="btnV3" onclick="selectBot('v3')">V3</button>
+    <button class="rb-toggle-btn" id="btnV4" onclick="selectBot('v4')">V4</button>
+    <button class="rb-toggle-btn" id="btnV5" onclick="selectBot('v5')">V5</button>
+    <button class="rb-toggle-btn" id="btnV6" onclick="selectBot('v6')">V6</button>
+  </div>
+  <span class="rb-lbl2" id="v5TfLabel" style="display:none">Regime TF</span>
+  <div class="rb-toggle" id="v5TfToggle" style="display:none">
+    <button class="rb-toggle-btn active" id="btnTf15"  onclick="setV5TF(15)">15m</button>
+    <button class="rb-toggle-btn"        id="btnTf30"  onclick="setV5TF(30)">30m</button>
+    <button class="rb-toggle-btn"        id="btnTf60"  onclick="setV5TF(60)">1h</button>
+    <button class="rb-toggle-btn"        id="btnTf240" onclick="setV5TF(240)">4h</button>
   </div>
   <div id="hmmTrainWrap" style="display:none;align-items:center;gap:6px">
     <span class="rb-lbl2" style="color:#a78bfa">HMM Train</span>
@@ -845,7 +855,27 @@
       </div>
       <div style="margin-top:8px;font-size:10px;color:#5a6380;font-family:'DM Mono',monospace">
         Decay score = conf_decay×0.40 + volz_decay×0.35 + rl_stall×0.25. Mixed-regime window → 0.90 immediately.
-        V2 composite score weights: HMM 35% · BOCPD 20% · Session 15% · DXY 10% · Consensus 10% · ImplVol 5% · Credit 5%.
+        V2/V3 composite score weights: HMM 35% · BOCPD 20% · Session 15% · DXY 10% · Consensus 10% · ImplVol 5% · Credit 5%.
+      </div>
+      <!-- V4 config reference -->
+      <div style="margin-top:14px">
+        <div style="font-size:11px;font-weight:700;color:#a78bfa;margin-bottom:6px">V4 — RANGE-Hold State Machine Bot</div>
+        <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px">
+          Core change: RANGE/CHOP no longer closes the trade. V4 switches to RANGE_HOLD state and waits for continuation or a genuine reversal.
+          Exit gates differ by state — TREND_HOLD has full gates; RANGE_HOLD keeps only X2/X6/X13/X5/X_rt.
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:10px;font-family:'DM Mono',monospace">
+          <tr><td style="padding:3px 6px;color:#a78bfa;width:40%">max_range_hold_bars</td><td style="padding:3px 6px;color:var(--text3)">Max M1 bars in RANGE_HOLD before X_rt timeout exit (default 30)</td></tr>
+          <tr style="background:#1a2236"><td style="padding:3px 6px;color:#a78bfa">mfe_trail_r</td><td style="padding:3px 6px;color:var(--text3)">MFE (in R) at which SL moves to breakeven — capital protection during RANGE hold (default 1.0R)</td></tr>
+          <tr><td style="padding:3px 6px;color:#a78bfa">mfe_suppress_r</td><td style="padding:3px 6px;color:var(--text3)">MFE (in R) above which X3+X4 are suppressed in TREND_HOLD (default 1.5R)</td></tr>
+          <tr style="background:#1a2236"><td style="padding:3px 6px;color:#a78bfa">bocpd_exit_bars</td><td style="padding:3px 6px;color:var(--text3)">BOCPD consecutive bars to trigger exit in TREND_HOLD (default 4)</td></tr>
+          <tr><td style="padding:3px 6px;color:#a78bfa">bocpd_exit_bars_range</td><td style="padding:3px 6px;color:var(--text3)">BOCPD consecutive bars to exit in RANGE_HOLD (default 8 — higher because sideways naturally raises BOCPD)</td></tr>
+          <tr style="background:#1a2236"><td style="padding:3px 6px;color:#a78bfa">v4_score (btrend metric)</td><td style="padding:3px 6px;color:var(--text3)">V4 score uses BOCPD trend penalty: if BOCPD is rising fast (OLS slope > 10), the stability component is reduced — early warning</td></tr>
+        </table>
+        <div style="margin-top:6px;font-size:10px;color:#5a6380;font-family:'DM Mono',monospace">
+          RANGE_HOLD exits: X2 conf-floor · X6 BOCPD (extended) · X13 MFE retrace · X5 decay · X_rt timeout · X1_reverse full-flip.
+          DXY/Consensus/Vol/Credit default neutral (50/50/75/50) in backtest — no live multi-pair data. Score neutral contribution = 16.25 pts.
+        </div>
       </div>
     </div>
 
@@ -1011,7 +1041,127 @@ const V3_BOOLS = [
 ];
 const V3_DEFAULTS = Object.fromEntries([...V3_PARAMS.map(p=>[p.key,p.def]),...V3_BOOLS.map(b=>[b.key,b.def])]);
 
-// ─── V1/V2/V3 Metrics ────────────────────────────────────────────────────────
+// ─── V4 Config ───────────────────────────────────────────────────────────────
+// V4 core innovation: RANGE-hold state machine — instead of closing on RANGE/CHOP,
+// the bot holds and only exits on full reversal, extended BOCPD alarm, or timeout.
+// Also: breakeven trail at mfe_trail_r, X3/X4 suppressed in RANGE_HOLD entirely,
+// BOCPD trend penalty in score (rising BOCPD early-warning), 4 hard entry gates.
+
+const V4_PARAMS = [
+  // ── Entry ──
+  { key:'entry_conf',            label:'Entry Conf (%)',            min:50,  max:95,   step:1,    def:70,
+    help:'HMM confidence × session multiplier gate. V4 keeps 4 hard entry gates: conf×session, debounce, slope-direction, score≥65. BOCPD is no longer an entry hard gate — a rising BOCPD trend penalises the composite score instead.' },
+  { key:'candle_hold',           label:'Entry Hold (bars)',          min:1,   max:20,   step:1,    def:2,
+    help:'Consecutive M1 bars that regime + score must stay above thresholds before entry. Same concept as V2/V3.' },
+  { key:'entry_score_min',       label:'Entry Score Min',            min:40,  max:90,   step:1,    def:65,
+    help:'V4 composite score gate (0–100). Uses 7-component weighting: HMM 35%, BOCPD stability 20% (with rising-trend penalty), Session 15%. DXY/Consensus/Vol/Credit default to neutral in the backtest. Score must reach this before entry.' },
+  { key:'sl_atr_mult',           label:'SL ATR Multiplier',          min:0.5, max:4.0,  step:0.1,  def:1.8,
+    help:'Stop-loss = ATR(70 M1 bars) × this. Same as V1/V2/V3.' },
+  // ── RANGE-hold state machine (V4 core) ──
+  { key:'max_range_hold_bars',   label:'Max Range Hold (bars)',      min:5,   max:300,  step:5,    def:30,
+    help:'V4 KEY PARAM. When regime flips to RANGE/CHOP, V4 holds the position instead of closing — waiting for trend continuation. This is the maximum M1 bars to hold before a timeout exit (X_rt). 30 bars ≈ 30 minutes at M1.' },
+  { key:'mfe_trail_r',           label:'Breakeven Trail (R)',        min:0.2, max:3.0,  step:0.1,  def:1.0,
+    help:'Once the trade peaks at this many R multiples, SL is moved to entry price (breakeven). Locks capital protection while the trade rides through the RANGE consolidation phase. 1.0R = move to BE after reaching 1× risk in profit.' },
+  { key:'mfe_suppress_r',        label:'X3/X4 Suppress MFE (R)',    min:0.2, max:5.0,  step:0.1,  def:1.5,
+    help:'In TREND_HOLD: once MFE ≥ this R multiple, slope (X3) and conf-drop (X4) exits are disabled. Raised from V3\'s 1.0R → 1.5R. Note: in RANGE_HOLD, X3/X4 are always suppressed regardless of MFE.' },
+  // ── Exit: confidence ──
+  { key:'conf_floor',            label:'Conf Floor (%)',             min:20,  max:70,   step:1,    def:45,
+    help:'EXIT (X2): immediate exit if HMM confidence drops below this level. Active in BOTH TREND_HOLD and RANGE_HOLD — a hard emergency exit when the model loses conviction entirely.' },
+  { key:'drop_thresh',           label:'Conf Drop Thresh (%)',       min:1,   max:30,   step:1,    def:15,
+    help:'EXIT (X4): exits if confidence drops by this many points from recent level. In TREND_HOLD only, and suppressed when MFE ≥ X3/X4 Suppress MFE. Completely off in RANGE_HOLD (sideways price naturally dips conf).' },
+  // ── Exit: slope ──
+  { key:'slope_thresh',          label:'Slope Thresh',               min:-15, max:-1,   step:1,    def:-5,
+    help:'EXIT (X3): momentum slope exit. In TREND_HOLD only, suppressed when MFE ≥ X3/X4 Suppress MFE. Completely off in RANGE_HOLD (slope is irrelevant when regime is sideways consolidation).' },
+  { key:'slope_bars',            label:'Slope Bars',                 min:1,   max:10,   step:1,    def:3,
+    help:'Consecutive bars slope must be below threshold before X3 fires. Works with Slope Thresh.' },
+  // ── Exit: BOCPD ──
+  { key:'bocpd_thresh',          label:'BOCPD Thresh (%)',           min:40,  max:95,   step:1,    def:70,
+    help:'EXIT (X6): BOCPD structural break probability. Threshold is the same in both states but the required consecutive bars is different: bocpd_exit_bars in TREND_HOLD (fast), bocpd_exit_bars_range in RANGE_HOLD (slow).' },
+  { key:'bocpd_exit_bars',       label:'BOCPD Exit Bars (trend)',    min:1,   max:10,   step:1,    def:4,
+    help:'Bars BOCPD must exceed threshold while in TREND_HOLD before exit. V4 raises this from V2/V3\'s 2 → 4 to cut false exits from brief regime wobbles.' },
+  { key:'bocpd_exit_bars_range', label:'BOCPD Exit Bars (range)',    min:2,   max:30,   step:1,    def:8,
+    help:'Bars BOCPD must exceed threshold while in RANGE_HOLD before exit. Intentionally much higher than TREND_HOLD — sideways consolidation naturally raises BOCPD, so we need a sustained signal to exit a held position.' },
+  // ── Exit: score ──
+  { key:'hold_score_min',        label:'Hold Score Min',             min:10,  max:70,   step:1,    def:40,
+    help:'EXIT (X11): TREND_HOLD only. If V4 composite score falls below this for score_drop_bars consecutive bars, exit. Not active in RANGE_HOLD where score naturally drops.' },
+  { key:'score_drop_exit',       label:'Score Drop Exit (pts)',      min:5,   max:60,   step:1,    def:30,
+    help:'EXIT (X12): TREND_HOLD only. Exits if score has fallen by this many points from the score at entry.' },
+  { key:'score_drop_bars',       label:'Score Drop Bars',            min:1,   max:5,    step:1,    def:2,
+    help:'Debounce for X11 hold-score exit.' },
+  // ── Exit: MFE retrace ──
+  { key:'mfe_retrace_pct',       label:'MFE Retrace %',              min:0.05,max:0.60, step:0.01, def:0.25,
+    help:'EXIT (X13): profit protection. Once MFE ≥ MFE Min R, exit if price retraces this fraction of peak profit back. Active in BOTH TREND_HOLD and RANGE_HOLD — the primary winner-protection gate while holding through consolidation.' },
+  { key:'mfe_min_r',             label:'MFE Min (R)',                min:0.2, max:5.0,  step:0.1,  def:1.0,
+    help:'Minimum MFE (in original-SL R multiples) before the retrace exit can trigger. Prevents exiting tiny floaters on normal noise.' },
+  // ── Exit: staleness ──
+  { key:'decay_exit',            label:'Decay Exit Threshold',       min:0.30,max:0.99, step:0.01, def:0.70,
+    help:'EXIT (X5): exits when the current regime becomes too old regardless of P&L. Active in both states as a last-resort time-based cut.' },
+  // ── Window ──
+  { key:'window_start',          label:'Window Start (UTC h)',       min:0,   max:12,   step:1,    def:7,
+    help:'Earliest UTC hour new trades can open. Same as V2/V3. Open trades can remain beyond this window.' },
+  { key:'window_end',            label:'Window End (UTC h)',         min:12,  max:23,   step:1,    def:20,
+    help:'Latest UTC hour new trades can open. Open trades continue past this time.' },
+  { key:'post_exit_cooldown',    label:'Post-Exit Cooldown (bars)',  min:0,   max:240,  step:1,    def:0,
+    help:'Block new entries for this many M1 bars after any trade closes.' },
+];
+const V4_BOOLS = [];  // No exit_on_range — V4 always holds through RANGE/CHOP (core V4 strategy)
+const V4_DEFAULTS = Object.fromEntries([...V4_PARAMS.map(p=>[p.key,p.def])]);
+
+// ─── V5 Config ────────────────────────────────────────────────────────────────
+// V5 = V4 strategy but regime/signals computed on 30-minute aggregated bars.
+// All bar-count params are expressed in 30m bars in the UI; scaled to M1 internally.
+// SL uses M30 ATR (~5× M1 ATR) — gives proper regime-scale pip distances.
+
+let V5_MTF = 15;  // minutes per aggregated bar — changeable via UI
+
+const V5_PARAMS = [
+  { key:'entry_conf',            label:'Entry Conf (%)',           min:50, max:95, step:1,    def:72,  help:'HMM confidence threshold, computed on 30m bars. 30m regimes are much more stable than M1 — can use a slightly lower threshold for similar signal quality.' },
+  { key:'candle_hold',           label:'Entry Hold (30m bars)',    min:1,  max:10, step:1,    def:2,   help:'Completed 30-min bars regime+score must persist before entry fires. 2 bars = 60 min of confirmation.' },
+  { key:'entry_score_min',       label:'Entry Score Min',          min:40, max:90, step:1,    def:65,  help:'V5 composite score gate (0–100). Computed from 30m bar features. Same 7-component weighting as V4.' },
+  { key:'sl_atr_mult',           label:'SL ATR Multiplier',        min:0.5,max:5.0,step:0.1,  def:2.0, help:'Stop-loss = ATR(70 M30 bars) × this. M30 ATR is ~5× larger than M1 ATR, so 2.0 gives ~30–60 pip SL on EUR/USD — meaningful for regime trades.' },
+  { key:'max_range_hold_bars',   label:'Max Range Hold (30m bars)',min:1,  max:48, step:1,    def:16,  help:'V5 KEY PARAM. Max completed 30m bars to hold through RANGE/CHOP before timeout exit. 16 = 8 hours of range tolerance.' },
+  { key:'mfe_trail_r',           label:'Breakeven Trail (R)',       min:0.2,max:3.0,step:0.1,  def:1.0, help:'Move SL to entry when MFE ≥ this R. Same logic as V4 but MFE and SL measured with M30 ATR.' },
+  { key:'mfe_suppress_r',        label:'X3/X4 Suppress MFE (R)',   min:0.2,max:5.0,step:0.1,  def:1.5, help:'Suppress slope/conf-drop exits in TREND_HOLD once MFE ≥ this R. Always suppressed in RANGE_HOLD.' },
+  { key:'conf_floor',            label:'Conf Floor (%)',            min:20, max:70, step:1,    def:38,  help:'Emergency exit if M30 confidence falls below this. Active in both TREND_HOLD and RANGE_HOLD.' },
+  { key:'drop_thresh',           label:'Conf Drop Thresh (%)',      min:1,  max:30, step:1,    def:20,  help:'Exit X4: exit if M30 confidence drops by this many points. TREND_HOLD only, suppressed past mfe_suppress_r.' },
+  { key:'slope_thresh',          label:'Slope Thresh',              min:-15,max:-1, step:1,    def:-5,  help:'Exit X3: M30 slope threshold. TREND_HOLD only, suppressed past mfe_suppress_r.' },
+  { key:'slope_bars',            label:'Slope Bars (30m)',          min:1,  max:10, step:1,    def:3,   help:'M30 bars slope must persist below threshold before X3 fires. 3 = 90 minutes of adverse slope.' },
+  { key:'bocpd_thresh',          label:'BOCPD Thresh (%)',          min:40, max:95, step:1,    def:70,  help:'BOCPD change-point probability threshold, computed on M30. A sustained high BOCPD on M30 is a strong structural signal.' },
+  { key:'bocpd_exit_bars',       label:'BOCPD Exit Bars (trend)',   min:1,  max:12, step:1,    def:4,   help:'M30 bars BOCPD must exceed threshold in TREND_HOLD. 4 bars = 2 hours of elevated change-point probability.' },
+  { key:'bocpd_exit_bars_range', label:'BOCPD Exit Bars (range)',   min:2,  max:24, step:1,    def:8,   help:'M30 bars BOCPD must exceed threshold in RANGE_HOLD before exit. 8 bars = 4 hours.' },
+  { key:'hold_score_min',        label:'Hold Score Min',            min:10, max:70, step:1,    def:35,  help:'Exit X11 (TREND_HOLD): exit if M30 score falls below this for score_drop_bars consecutive M30 bars.' },
+  { key:'score_drop_exit',       label:'Score Drop Exit (pts)',     min:5,  max:60, step:1,    def:25,  help:'Exit X12 (TREND_HOLD): exits if score has fallen this many points from entry score.' },
+  { key:'score_drop_bars',       label:'Score Drop Bars (30m)',     min:1,  max:5,  step:1,    def:2,   help:'Debounce for X11 score exit, in M30 bars.' },
+  { key:'mfe_retrace_pct',       label:'MFE Retrace %',             min:0.05,max:0.60,step:0.01,def:0.30,help:'Exit X13: exit if price retraces this fraction of peak MFE. Active in both states.' },
+  { key:'mfe_min_r',             label:'MFE Min (R)',               min:0.2,max:5.0,step:0.1,  def:1.0, help:'Minimum MFE in R before retrace exit can trigger.' },
+  { key:'decay_exit',            label:'Decay Exit Threshold',      min:0.30,max:0.99,step:0.01,def:0.75,help:'Exit X5: exits when regime decay (regime age proxy) exceeds this.' },
+  { key:'window_start',          label:'Window Start (UTC h)',      min:0,  max:12, step:1,    def:7,   help:'Earliest UTC hour new entries can open.' },
+  { key:'window_end',            label:'Window End (UTC h)',        min:12, max:23, step:1,    def:20,  help:'Latest UTC hour new entries can open. Open trades continue past this.' },
+  { key:'post_exit_cooldown',    label:'Post-Exit Cooldown (30m)',  min:0,  max:48, step:1,    def:4,   help:'Block new entries for this many M30 bars after any trade closes. 4 = 2 hour minimum gap between trades.' },
+];
+const V5_BOOLS = [];
+const V5_DEFAULTS = Object.fromEntries([...V5_PARAMS.map(p => [p.key, p.def])]);
+
+// ─── V6 config — stripped-back exits: SL/BE, regime flip, conf floor, MFE retrace, timeout ─
+// 11 params (down from 23). Bar-count params in MTF-bar units, scaled by V5_MTF internally.
+// Breakeven at 1.0R is hardcoded — always fires, not a tunable param.
+const V6_PARAMS = [
+  { key:'entry_conf',        label:'Entry Conf (%)',       min:50,  max:95,  step:1,    def:70,   help:'Minimum HMM regime confidence (computed on MTF bars) to enter. Only BULL or BEAR regimes considered.' },
+  { key:'entry_score_min',   label:'Entry Score Min',      min:40,  max:90,  step:1,    def:62,   help:'Minimum V5 composite score to enter. Same 7-component score as V5, computed on MTF bars.' },
+  { key:'sl_atr_mult',       label:'SL ATR Multiplier',    min:0.5, max:5.0, step:0.1,  def:2.0,  help:'Stop-loss = MTF ATR × this. 2.0 → ~30–60 pip SL on EUR/USD 30m. Breakeven fires automatically at 1.0R.' },
+  { key:'candle_hold',       label:'Entry Hold (MTF bars)',min:1,   max:10,  step:1,    def:2,    help:'MTF bars the regime signal must persist before entry fires. 2 bars = 1 hour on 30m.' },
+  { key:'conf_floor',        label:'Conf Floor (%)',       min:20,  max:70,  step:1,    def:45,   help:'Exit if MTF confidence drops below this. Emergency exit only — should be well below entry_conf.' },
+  { key:'mfe_retrace_pct',   label:'MFE Retrace %',        min:0.05,max:0.60,step:0.01, def:0.25, help:'Exit when price gives back this fraction of peak MFE. Only activates once mfe_min_r is hit.' },
+  { key:'mfe_min_r',         label:'MFE Min R (retrace)',  min:0.5, max:4.0, step:0.1,  def:1.5,  help:'MFE retrace exit only arms once MFE ≥ this R. Set higher to let trades run before trailing.' },
+  { key:'max_hold_bars',     label:'Max Hold (MTF bars)',  min:4,   max:96,  step:1,    def:24,   help:'Force-close after this many MTF bars. 24 bars = 12h on 30m. Caps exposure if exits never fire.' },
+  { key:'window_start',      label:'Window Start (UTC h)', min:0,   max:12,  step:1,    def:7,    help:'Earliest UTC hour for new entries.' },
+  { key:'window_end',        label:'Window End (UTC h)',   min:12,  max:23,  step:1,    def:20,   help:'Latest UTC hour for new entries. Open trades continue after this.' },
+  { key:'post_exit_cooldown',label:'Cooldown (MTF bars)',  min:0,   max:24,  step:1,    def:4,    help:'Block re-entry for this many MTF bars after any close. 4 = 2h on 30m.' },
+];
+const V6_BOOLS = [];
+const V6_DEFAULTS = Object.fromEntries([...V6_PARAMS.map(p => [p.key, p.def])]);
+
+// ─── V1/V2/V3/V4/V5 Metrics ──────────────────────────────────────────────────
 
 const V1_METRICS = [
   { key:'conf',  label:'conf',  color:'#2196f3' },
@@ -1038,6 +1188,33 @@ const V3_METRICS = [
   { key:'vz',    label:'vz',    color:'#ff9800' },
   { key:'exh',   label:'exh',   color:'#795548' },
   { key:'decay', label:'decay', color:'#f44336' },
+];
+const V4_METRICS = [
+  { key:'conf',        label:'conf',    color:'#2196f3' },
+  { key:'v4_score',    label:'v4scr',   color:'#4caf50' },
+  { key:'bocpd',       label:'bocpd',   color:'#ff5722' },
+  { key:'bocpd_trend', label:'btrend',  color:'#ff9500' },
+  { key:'rl',          label:'rl',      color:'#9c27b0' },
+  { key:'slope',       label:'slope',   color:'#00bcd4' },
+  { key:'vz',          label:'vz',      color:'#ff9800' },
+  { key:'decay',       label:'decay',   color:'#f44336' },
+];
+const V5_METRICS = [
+  { key:'conf',        label:'m30conf', color:'#2196f3' },
+  { key:'v4_score',    label:'v5scr',   color:'#4caf50' },
+  { key:'bocpd',       label:'m30bcp',  color:'#ff5722' },
+  { key:'bocpd_trend', label:'btrend',  color:'#ff9500' },
+  { key:'rl',          label:'rl',      color:'#9c27b0' },
+  { key:'slope',       label:'m30slp',  color:'#00bcd4' },
+  { key:'vz',          label:'m30vz',   color:'#ff9800' },
+  { key:'decay',       label:'decay',   color:'#f44336' },
+];
+const V6_METRICS = [
+  { key:'conf',        label:'m30conf', color:'#2196f3' },
+  { key:'v4_score',    label:'v6scr',   color:'#4caf50' },
+  { key:'slope',       label:'m30slp',  color:'#00bcd4' },
+  { key:'bocpd',       label:'m30bcp',  color:'#ff5722' },
+  { key:'decay',       label:'decay',   color:'#f44336' },
 ];
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -1075,18 +1252,40 @@ let drawPending      = false;
 
 // ─── Bot selector ─────────────────────────────────────────────────────────────
 
+function setV5TF(minutes) {
+  V5_MTF = minutes;
+  [15, 30, 60, 240].forEach(m =>
+    document.getElementById('btnTf' + m).classList.toggle('active', m === minutes));
+  if (currentBot === 'v5' || currentBot === 'v6') {
+    const lbl = minutes >= 60 ? (minutes / 60) + 'h' : minutes + 'm';
+    const ver = currentBot === 'v6' ? 'V6' : 'V5';
+    document.getElementById('cfgTitle').textContent = `${ver} Configuration (${lbl} Regime on M1 bars)`;
+  }
+}
+
 function selectBot(bot) {
   currentBot = bot;
-  document.getElementById('btnV1').classList.toggle('active', bot === 'v1');
-  document.getElementById('btnV2').classList.toggle('active', bot === 'v2');
-  document.getElementById('btnV3').classList.toggle('active', bot === 'v3');
-  const titles = { v1: 'V1 Configuration', v2: 'V2 Configuration', v3: 'V3 Configuration' };
+  ['v1','v2','v3','v4','v5','v6'].forEach(v =>
+    document.getElementById('btn' + v.toUpperCase()).classList.toggle('active', bot === v));
+  const isMTF = bot === 'v5' || bot === 'v6';
+  const tfMin = V5_MTF;
+  const tfLbl = tfMin >= 60 ? (tfMin / 60) + 'h' : tfMin + 'm';
+  const titles = {
+    v1: 'V1 Configuration', v2: 'V2 Configuration', v3: 'V3 Configuration',
+    v4: 'V4 Configuration',
+    v5: `V5 Configuration (${tfLbl} Regime on M1 bars)`,
+    v6: `V6 Configuration (${tfLbl} Regime on M1 bars)`,
+  };
   document.getElementById('cfgTitle').textContent = titles[bot] || 'Configuration';
-  document.getElementById('hbScoreRow').style.display    = (bot === 'v2' || bot === 'v3') ? '' : 'none';
+  document.getElementById('hbScoreRow').style.display  = (bot === 'v1') ? 'none' : '';
+  document.getElementById('v5TfLabel').style.display   = isMTF ? '' : 'none';
+  document.getElementById('v5TfToggle').style.display  = isMTF ? '' : 'none';
   document.getElementById('hmmTrainWrap').style.display  = (bot === 'v2' || bot === 'v3') ? 'flex' : 'none';
   document.getElementById('hmmTrainBadge').style.display = 'none';
-  activeMetrics = bot === 'v1' ? V1_METRICS : bot === 'v3' ? V3_METRICS : V2_METRICS;
-  cfg = { ...(bot === 'v1' ? V1_DEFAULTS : bot === 'v3' ? V3_DEFAULTS : V2_DEFAULTS) };
+  const metricsMap = { v1:V1_METRICS, v2:V2_METRICS, v3:V3_METRICS, v4:V4_METRICS, v5:V5_METRICS, v6:V6_METRICS };
+  activeMetrics = metricsMap[bot] || V2_METRICS;
+  const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS };
+  cfg = { ...(defaultsMap[bot] || V2_DEFAULTS) };
   buildConfigPanel();
   buildCheckboxes();
   rebuildMetricPanels();
@@ -1095,8 +1294,10 @@ function selectBot(bot) {
 // ─── Config panel ─────────────────────────────────────────────────────────────
 
 function buildConfigPanel() {
-  const params = currentBot === 'v1' ? V1_PARAMS : currentBot === 'v3' ? V3_PARAMS : V2_PARAMS;
-  const bools  = currentBot === 'v1' ? V1_BOOLS  : currentBot === 'v3' ? V3_BOOLS  : V2_BOOLS;
+  const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS };
+  const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS  };
+  const params = paramsMap[currentBot] || V2_PARAMS;
+  const bools  = boolsMap[currentBot]  || V2_BOOLS;
 
   const grid = document.getElementById('cfgGrid');
   grid.innerHTML = '';
@@ -1136,7 +1337,8 @@ function buildConfigPanel() {
 function onSlider(key, val, step) {
   let num = step % 1 === 0 ? parseInt(val) : parseFloat(val);
   if (isNaN(num)) return;
-  const params = currentBot === 'v1' ? V1_PARAMS : currentBot === 'v3' ? V3_PARAMS : V2_PARAMS;
+  const paramsMap2 = { v1:V1_PARAMS, v2:V2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS };
+  const params = paramsMap2[currentBot] || V2_PARAMS;
   const p = params.find(pp => pp.key === key);
   if (p) num = Math.max(p.min, Math.min(p.max, num));
   cfg[key] = num;
@@ -1149,7 +1351,8 @@ function resetParam(key, def) {
 }
 
 function resetAllParams() {
-  cfg = { ...(currentBot === 'v1' ? V1_DEFAULTS : currentBot === 'v3' ? V3_DEFAULTS : V2_DEFAULTS) };
+  const resetMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS };
+  cfg = { ...(resetMap[currentBot] || V2_DEFAULTS) };
   buildConfigPanel();
 }
 
@@ -1294,7 +1497,8 @@ function updateHoverBox(param) {
   re.textContent = sig.regime || '—';
   re.className = 'hb-val hb-regime-' + (sig.regime || '');
   document.getElementById('hbConf').textContent  = sig.conf  != null ? sig.conf.toFixed(1) + '%' : '—';
-  document.getElementById('hbScore').textContent = sig.score != null ? sig.score.toFixed(1)      : '—';
+  const displayScore = sig.v4_score != null ? sig.v4_score : sig.score;
+  document.getElementById('hbScore').textContent = displayScore != null ? displayScore.toFixed(1) : '—';
   document.getElementById('hbDecay').textContent = sig.decay != null ? sig.decay.toFixed(3)      : '—';
 }
 
@@ -1984,6 +2188,56 @@ async function fetchTrainedParams() {
   } catch { return null; }
 }
 
+// ─── V4 signal computation ────────────────────────────────────────────────────
+// Extends V2 HMM signals with two V4-specific fields:
+//   bocpd_trend — OLS slope of the last 5 BOCPD values (positive = rising instability)
+//   v4_score    — 7-component composite score with BOCPD trend penalty and proper weights
+
+function computeHMMSignalsV4(bars, sym, trainedParams) {
+  const signals = computeHMMSignalsV2(bars, sym, trainedParams);
+  const N = signals.length;
+  const BTRENDW = 5;
+
+  for (let i = 0; i < N; i++) {
+    const sig = signals[i];
+    if (!sig) continue;
+
+    // BOCPD trend: OLS slope of last BTRENDW non-null bocpd values
+    const bvals = [];
+    for (let j = Math.max(0, i - BTRENDW + 1); j <= i; j++) {
+      if (signals[j]) bvals.push(signals[j].bocpd);
+    }
+    let bocpd_trend = 0;
+    if (bvals.length >= 2) {
+      const n = bvals.length, xm = (n - 1) / 2;
+      let sXY = 0, sX2 = 0;
+      for (let k = 0; k < n; k++) { const xi = k - xm; sXY += xi * bvals[k]; sX2 += xi * xi; }
+      bocpd_trend = sX2 > 0 ? sXY / sX2 : 0;
+    }
+    sig.bocpd_trend = bocpd_trend;
+
+    // V4 composite score — 7 components, neutral fallbacks for DXY/consensus/vol/credit
+    // (those components require live multi-pair data unavailable in single-pair backtest)
+    const hmm_s = Math.max(0, Math.min(100, (sig.conf - 65) / 35 * 100));
+
+    let bocpd_s = Math.max(0, 100 - sig.bocpd);
+    if (bocpd_trend > 10) bocpd_s = Math.max(0, bocpd_s - bocpd_trend);  // rising-trend penalty
+
+    const sessMult = getSessionMult(sig.ts);
+    const sess_s = Math.max(0, Math.min(100, (sessMult - 0.70) / 0.30 * 100));
+
+    // Neutral components: DXY=50, consensus=50, vol=75, credit=50
+    // Fixed contribution: 50*0.10 + 50*0.10 + 75*0.05 + 50*0.05 = 16.25
+    sig.v4_score = Math.min(100,
+      hmm_s   * 0.35 +
+      bocpd_s * 0.20 +
+      sess_s  * 0.15 +
+      16.25                // neutral DXY + consensus + vol + credit
+    );
+  }
+  return signals;
+}
+
 // ─── Data loading ─────────────────────────────────────────────────────────────
 
 // Aggregate M1 candles + signals to a coarser timeframe for memory-safe display.
@@ -2044,32 +2298,35 @@ async function loadAndRun() {
     if (currentBot === 'v1') {
       rawSignals = computeHMMSignalsV1(rawCandles, pair);
     } else {
-      const trainedParams  = await fetchTrainedParams();
-      const trainDays      = parseInt(document.getElementById('hmmTrainDays')?.value  ?? '0');
-      const retrainEvery   = parseInt(document.getElementById('hmmRetrainEvery')?.value ?? '0');
-      let schedule = null, features = null;
-      if (trainDays > 0) {
-        setStatus('spin', 'Computing HMM features…');
-        await new Promise(r => requestAnimationFrame(r));
-        features = computeHMMFeatures(rawCandles, pair);
-        schedule = await buildWalkForwardSchedule(rawCandles, pair, features, trainDays, retrainEvery,
-          msg => setStatus('spin', msg));
-        const badge = document.getElementById('hmmTrainBadge');
-        if (badge) badge.style.display = '';
-        setStatus('spin', 'Running HMM forward pass with learned parameters…');
-        await new Promise(r => requestAnimationFrame(r));
+      const trainedParams = await fetchTrainedParams();
+      if (currentBot === 'v5' || currentBot === 'v6') {
+        rawSignals = computeHMMSignalsV5(rawCandles, pair, trainedParams);
+      } else if (currentBot === 'v4') {
+        rawSignals = computeHMMSignalsV4(rawCandles, pair, trainedParams);
+      } else {
+        const trainDays    = parseInt(document.getElementById('hmmTrainDays')?.value  ?? '0');
+        const retrainEvery = parseInt(document.getElementById('hmmRetrainEvery')?.value ?? '0');
+        let schedule = null, features = null;
+        if (trainDays > 0) {
+          setStatus('spin', 'Computing HMM features…');
+          await new Promise(r => requestAnimationFrame(r));
+          features = computeHMMFeatures(rawCandles, pair);
+          schedule = await buildWalkForwardSchedule(rawCandles, pair, features, trainDays, retrainEvery,
+            msg => setStatus('spin', msg));
+          const badge = document.getElementById('hmmTrainBadge');
+          if (badge) badge.style.display = '';
+          setStatus('spin', 'Running HMM forward pass with learned parameters…');
+          await new Promise(r => requestAnimationFrame(r));
+        }
+        rawSignals = computeHMMSignalsV2(rawCandles, pair, trainedParams, features, schedule);
       }
-      rawSignals = computeHMMSignalsV2(rawCandles, pair, trainedParams, features, schedule);
     }
 
     // ── 3. Simulate on full M1 ───────────────────────────────────────────────
     setStatus('spin', 'Running simulation…');
     await new Promise(r => requestAnimationFrame(r));
-    allTrades = currentBot === 'v1'
-      ? simulateV1(rawCandles, rawSignals, cfg)
-      : currentBot === 'v3'
-        ? simulateV3(rawCandles, rawSignals, cfg)
-        : simulateV2(rawCandles, rawSignals, cfg);
+    const simMap = { v1:simulateV1, v2:simulateV2, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
+    allTrades = (simMap[currentBot] || simulateV2)(rawCandles, rawSignals, cfg);
 
     // ── 4. Downsample for display if dataset is large ────────────────────────
     // Picks the smallest step (1/5/15/25) that keeps display candles ≤ DISPLAY_CAP
@@ -2443,14 +2700,420 @@ function simulateV3(candles, signals, c) {
   return trades;
 }
 
+// ─── Simulation: V4 ──────────────────────────────────────────────────────────
+// Core differences from V3:
+//   Entry: same 4 hard gates (conf×session, debounce, slope-direction, score≥65)
+//          Score uses V4 7-component weights with BOCPD trend penalty
+//   RANGE-hold state machine: TREND_HOLD ↔ RANGE_HOLD
+//     - On RANGE/CHOP: switch to RANGE_HOLD (do NOT close)
+//     - RANGE_HOLD exits: X1_reverse (regime flip to opposite), X2 (conf floor),
+//                         X6 BOCPD (extended bars), X5 (decay), X13 (MFE retrace),
+//                         X_rt (timeout after max_range_hold_bars)
+//     - RANGE_HOLD suppresses X3/X4/X11/X12 entirely
+//     - On return to original regime: switch back to TREND_HOLD
+//   Breakeven trail: SL → entry price when MFE ≥ mfe_trail_r (using original SL distance)
+//   X3/X4 in TREND_HOLD suppressed when MFE ≥ mfe_suppress_r (raised to 1.5R from V3's 1.0R)
+
+function simulateV4(candles, signals, c) {
+  const trades = [];
+  let pos = null, debounce = 0, cooldown = 0;
+  let prevConf = null;
+
+  for (let i = WARMUP; i < candles.length; i++) {
+    const sig  = signals[i];
+    if (!sig) continue;
+    const bar  = candles[i];
+    const utcH = new Date(sig.ts * 1000).getUTCHours();
+    const inWin    = utcH >= c.window_start && utcH < c.window_end;
+    const effConf  = sig.conf * getSessionMult(sig.ts);
+    const confDrop = prevConf != null ? prevConf - sig.conf : 0;
+    const score    = sig.v4_score ?? sig.score;
+
+    if (pos) {
+      // ── SL hit check ──────────────────────────────────────────────────────
+      const slHit = (pos.direction === 'LONG'  && bar.low  <= pos.sl)
+                 || (pos.direction === 'SHORT' && bar.high >= pos.sl);
+      if (slHit) {
+        trades.push(mkTrade(pos, bar.time, pos.sl, 'SL'));
+        pos = null; debounce = 0; cooldown = c.post_exit_cooldown || 0; prevConf = sig.conf; continue;
+      }
+
+      // ── MFE update (always use original SL distance so mfe_r stays valid after breakeven trail) ──
+      const fav = pos.direction === 'LONG' ? bar.high - pos.entry_price : pos.entry_price - bar.low;
+      if (fav > pos.mfe_price) pos.mfe_price = fav;
+      pos.mfe_r = pos.orig_sl_dist > 0 ? pos.mfe_price / pos.orig_sl_dist : 0;
+
+      // ── Breakeven trail ───────────────────────────────────────────────────
+      if (pos.mfe_r >= c.mfe_trail_r) {
+        if (pos.direction === 'LONG'  && pos.sl < pos.entry_price) pos.sl = pos.entry_price;
+        if (pos.direction === 'SHORT' && pos.sl > pos.entry_price) pos.sl = pos.entry_price;
+      }
+
+      const xp = bar.close;
+      let exited = false;
+
+      // ── State-dependent exit logic ─────────────────────────────────────────
+      const flipped    = pos.regime !== sig.regime;
+      const isRange    = sig.regime === 'RANGE' || sig.regime === 'CHOP';
+      const oppositeDir = (pos.direction === 'LONG'  && sig.regime === 'BEAR')
+                       || (pos.direction === 'SHORT' && sig.regime === 'BULL');
+
+      if (pos.state === 'TREND_HOLD') {
+
+        if (flipped && isRange) {
+          // Regime went sideways — switch to RANGE_HOLD, do NOT exit
+          pos.state = 'RANGE_HOLD';
+          pos.range_bars = 0;
+          pos.bocpd_ct   = 0;
+
+        } else if (flipped && oppositeDir) {
+          // Full reversal — exit immediately
+          trades.push(mkTrade(pos, bar.time, xp, 'REGIME_FLIP')); exited = true;
+
+        } else {
+          // Same regime — apply normal TREND_HOLD exit gates
+          // X2: conf floor
+          if (!exited && sig.conf < c.conf_floor) {
+            trades.push(mkTrade(pos, bar.time, xp, 'CONF_FLOOR')); exited = true;
+          }
+          // X4: conf drop (suppressed when MFE ≥ mfe_suppress_r)
+          if (!exited && confDrop >= c.drop_thresh && pos.mfe_r < c.mfe_suppress_r) {
+            trades.push(mkTrade(pos, bar.time, xp, 'CONF_DROP')); exited = true;
+          }
+          // X3: slope (suppressed when MFE ≥ mfe_suppress_r)
+          if (!exited) {
+            if (sig.slope < c.slope_thresh && pos.mfe_r < c.mfe_suppress_r) {
+              if (++pos.slope_ct >= c.slope_bars) { trades.push(mkTrade(pos, bar.time, xp, 'SLOPE')); exited = true; }
+            } else { pos.slope_ct = 0; }
+          }
+          // X6: BOCPD (trend threshold — needs bocpd_exit_bars consecutive bars)
+          if (!exited) {
+            if (sig.bocpd >= c.bocpd_thresh) {
+              if (++pos.bocpd_ct >= c.bocpd_exit_bars) { trades.push(mkTrade(pos, bar.time, xp, 'BOCPD')); exited = true; }
+            } else { pos.bocpd_ct = 0; }
+          }
+          // X11/X12: score exits
+          if (!exited) {
+            if (score < c.hold_score_min) {
+              if (++pos.score_low_ct >= c.score_drop_bars) { trades.push(mkTrade(pos, bar.time, xp, 'SCORE_LOW')); exited = true; }
+            } else { pos.score_low_ct = 0; }
+            if (!exited && (pos.entry_score - score) >= c.score_drop_exit) {
+              trades.push(mkTrade(pos, bar.time, xp, 'SCORE_DROP')); exited = true;
+            }
+          }
+          // X13: MFE retrace
+          if (!exited && pos.mfe_r >= c.mfe_min_r && pos.mfe_price > 0) {
+            const curFav  = pos.direction === 'LONG' ? (xp - pos.entry_price) : (pos.entry_price - xp);
+            const retrace = (pos.mfe_price - Math.max(0, curFav)) / pos.mfe_price;
+            if (retrace >= c.mfe_retrace_pct) { trades.push(mkTrade(pos, bar.time, xp, 'MFE_RETRACE')); exited = true; }
+          }
+          // X5: decay
+          if (!exited && sig.decay >= c.decay_exit) {
+            trades.push(mkTrade(pos, bar.time, xp, 'DECAY')); exited = true;
+          }
+        }
+
+      } else if (pos.state === 'RANGE_HOLD') {
+        pos.range_bars++;
+
+        // X1_reverse: regime flipped to the opposite direction → exit
+        if (!exited && oppositeDir) {
+          trades.push(mkTrade(pos, bar.time, xp, 'REGIME_FLIP')); exited = true;
+        }
+        // X2: conf floor (emergency exit — active in RANGE_HOLD)
+        if (!exited && sig.conf < c.conf_floor) {
+          trades.push(mkTrade(pos, bar.time, xp, 'CONF_FLOOR')); exited = true;
+        }
+        // X6: BOCPD with extended bars (bocpd_exit_bars_range — much higher than TREND_HOLD)
+        if (!exited) {
+          if (sig.bocpd >= c.bocpd_thresh) {
+            if (++pos.bocpd_ct >= c.bocpd_exit_bars_range) { trades.push(mkTrade(pos, bar.time, xp, 'BOCPD')); exited = true; }
+          } else { pos.bocpd_ct = 0; }
+        }
+        // X13: MFE retrace (active in RANGE_HOLD — primary profit protection while holding)
+        if (!exited && pos.mfe_r >= c.mfe_min_r && pos.mfe_price > 0) {
+          const curFav  = pos.direction === 'LONG' ? (xp - pos.entry_price) : (pos.entry_price - xp);
+          const retrace = (pos.mfe_price - Math.max(0, curFav)) / pos.mfe_price;
+          if (retrace >= c.mfe_retrace_pct) { trades.push(mkTrade(pos, bar.time, xp, 'MFE_RETRACE')); exited = true; }
+        }
+        // X5: decay
+        if (!exited && sig.decay >= c.decay_exit) {
+          trades.push(mkTrade(pos, bar.time, xp, 'DECAY')); exited = true;
+        }
+        // X_rt: range timeout — held in RANGE too long
+        if (!exited && pos.range_bars >= c.max_range_hold_bars) {
+          trades.push(mkTrade(pos, bar.time, xp, 'RANGE_TIMEOUT')); exited = true;
+        }
+        // Return to original regime → switch back to TREND_HOLD
+        if (!exited && sig.regime === pos.regime) {
+          pos.state = 'TREND_HOLD';
+          pos.range_bars = 0;
+          pos.bocpd_ct   = 0;
+        }
+      }
+
+      if (exited) { pos = null; debounce = 0; cooldown = c.post_exit_cooldown || 0; }
+    }
+
+    if (cooldown > 0) { cooldown--; prevConf = sig.conf; continue; }
+
+    if (!pos && inWin) {
+      const isDir  = sig.regime === 'BULL' || sig.regime === 'BEAR';
+      const okConf = effConf >= c.entry_conf;
+      const okScore = score >= c.entry_score_min;
+      const okSlope = (sig.regime === 'BULL' && sig.slope > 0) || (sig.regime === 'BEAR' && sig.slope < 0);
+
+      if (isDir && okConf && okScore && okSlope) {
+        if (++debounce >= c.candle_hold && sig.atrSL) {
+          const dir2   = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
+          const ep     = bar.close;
+          const slDist = sig.atrSL * c.sl_atr_mult;
+          const sl     = dir2 === 'LONG' ? ep - slDist : ep + slDist;
+          pos = {
+            regime: sig.regime, direction: dir2, entry_ts: bar.time, entry_price: ep,
+            entry_score: score, sl, atr: sig.atrSL,
+            orig_sl_dist: slDist,  // kept fixed for R calculations even after breakeven trail
+            mfe_price: 0, mfe_r: 0, conf_at_entry: sig.conf, decay_at_entry: sig.decay,
+            slope_ct: 0, bocpd_ct: 0, score_low_ct: 0,
+            state: 'TREND_HOLD', range_bars: 0,
+          };
+          debounce = 0;
+        }
+      } else { debounce = 0; }
+    } else if (!pos) { debounce = 0; }
+
+    prevConf = sig.conf;
+  }
+
+  if (pos) {
+    const lc = candles[candles.length - 1];
+    trades.push(mkTrade(pos, lc.time, lc.close, 'END'));
+  }
+  return trades;
+}
+
 // ─── Trade builder ────────────────────────────────────────────────────────────
+
+// ─── V5: 30-minute regime aggregation ────────────────────────────────────────
+
+// Aggregate M1 bars → M30 (or any N-minute bar). Returns sorted OHLCV array.
+function aggregateToMTF(m1Bars, minutes) {
+  const periodSec = minutes * 60;
+  const map = new Map();
+  for (const b of m1Bars) {
+    const ps = Math.floor(b.time / periodSec) * periodSec;
+    if (!map.has(ps)) {
+      map.set(ps, { time: ps, open: b.open, high: b.high, low: b.low, close: b.close });
+    } else {
+      const m = map.get(ps);
+      if (b.high > m.high) m.high = b.high;
+      if (b.low  < m.low)  m.low  = b.low;
+      m.close = b.close;
+    }
+  }
+  return [...map.values()].sort((a, b) => a.time - b.time);
+}
+
+// Compute V5 signals: HMM/V4 score on M30, mapped back to M1 with no look-ahead.
+// A 30m bar closing at T is only available for M1 bars where m1.time >= T + 60s.
+function computeHMMSignalsV5(m1Bars, sym, trainedParams) {
+  const m30Bars    = aggregateToMTF(m1Bars, V5_MTF);
+  const m30Signals = computeHMMSignalsV4(m30Bars, sym, trainedParams);
+  const periodSec  = V5_MTF * 60;
+
+  // Build list of (validFrom, signal) — signal valid from the bar AFTER its period closes
+  const valid = [];
+  for (let i = 0; i < m30Signals.length; i++) {
+    if (!m30Signals[i]) continue;
+    valid.push({ validFrom: m30Signals[i].ts + periodSec, sig: m30Signals[i] });
+  }
+
+  const N   = m1Bars.length;
+  const out = new Array(N).fill(null);
+  let vi    = -1;
+  for (let i = 0; i < N; i++) {
+    const t = m1Bars[i].time;
+    while (vi + 1 < valid.length && valid[vi + 1].validFrom <= t) vi++;
+    if (vi >= 0) out[i] = { ...valid[vi].sig, ts: t };
+  }
+  return out;
+}
+
+// V5 simulation: same state machine as V4 but bar-count params scaled M30→M1
+function simulateV5(candles, signals, c) {
+  const S = V5_MTF;   // scale factor: 1 UI bar = S M1 bars
+  const scaled = {
+    ...c,
+    candle_hold:           (c.candle_hold           || 1) * S,
+    post_exit_cooldown:    (c.post_exit_cooldown     || 0) * S,
+    max_range_hold_bars:   (c.max_range_hold_bars    || 16) * S,
+    bocpd_exit_bars:       (c.bocpd_exit_bars        || 4) * S,
+    bocpd_exit_bars_range: (c.bocpd_exit_bars_range  || 8) * S,
+    slope_bars:            (c.slope_bars             || 3) * S,
+    score_drop_bars:       (c.score_drop_bars        || 2) * S,
+  };
+  return simulateV4(candles, signals, scaled);
+}
+
+// ─── Simulation: V6 ──────────────────────────────────────────────────────────
+// Stripped-back exits vs V5. Same MTF signal aggregation.
+// Exits:
+//   1. SL hit  (original stop, OR breakeven after 1.0R — hardcoded, always on)
+//   2. Regime flip to OPPOSITE direction (BULL→BEAR or BEAR→BULL)
+//   3. Confidence drops below conf_floor
+//   4. MFE retrace: once MFE ≥ mfe_min_r, exit if price gives back mfe_retrace_pct of peak
+//   5. Max hold timeout (max_hold_bars MTF bars)
+// RANGE/CHOP signal: hold, do not exit. Wait for trend to resume or timeout.
+
+function simulateV6(candles, signals, c) {
+  const S     = V5_MTF;
+  const ch    = Math.max(1, Math.round((c.candle_hold        || 2) * S));
+  const coolN = Math.max(0, Math.round((c.post_exit_cooldown || 4) * S));
+  const maxHN = Math.max(1, Math.round((c.max_hold_bars      || 24) * S));
+
+  const ec  = c.entry_conf        || 70;
+  const esm = c.entry_score_min   || 62;
+  const slM = c.sl_atr_mult       || 2.0;
+  const ws  = c.window_start      || 7;
+  const we  = c.window_end        || 20;
+  const cf  = c.conf_floor        || 45;
+  const mrp = c.mfe_retrace_pct   || 0.25;
+  const mmr = c.mfe_min_r         || 1.5;
+
+  const trades = [];
+  let pos      = null;
+  let debounce = 0;
+  let cooldown = 0;
+
+  for (let i = WARMUP; i < candles.length; i++) {
+    const sig = signals[i];
+    if (!sig) continue;
+
+    const bar     = candles[i];
+    const effConf = sig.conf * getSessionMult(sig.ts);
+    const score   = sig.v4_score ?? sig.score ?? 0;
+    const utcH    = Math.floor(sig.ts % 86400 / 3600);
+    const inWin   = utcH >= ws && utcH < we;
+
+    if (cooldown > 0) { cooldown--; continue; }
+
+    if (pos) {
+      // ── SL check ────────────────────────────────────────────────────────────
+      const slHit = (pos.direction === 'LONG'  && bar.low  <= pos.sl) ||
+                    (pos.direction === 'SHORT' && bar.high >= pos.sl);
+      if (slHit) {
+        trades.push(mkTrade(pos, bar.time, pos.sl, 'SL'));
+        pos = null; debounce = 0; cooldown = coolN;
+        continue;
+      }
+
+      // ── MFE update (distance from entry, not absolute price) ────────────────
+      const fav = pos.direction === 'LONG'
+        ? bar.high - pos.entry_price
+        : pos.entry_price - bar.low;
+      if (fav > pos.mfe_price) pos.mfe_price = fav;
+      const mfe_r = pos.orig_sl_dist > 0 ? pos.mfe_price / pos.orig_sl_dist : 0;
+
+      // ── Breakeven at 1.0R (hardcoded) ───────────────────────────────────────
+      if (mfe_r >= 1.0) {
+        if (pos.direction === 'LONG'  && pos.sl < pos.entry_price) pos.sl = pos.entry_price;
+        if (pos.direction === 'SHORT' && pos.sl > pos.entry_price) pos.sl = pos.entry_price;
+      }
+
+      const xp = bar.close;
+      let exited = false;
+
+      // ── Exit 1: Regime flips to OPPOSITE direction ───────────────────────────
+      const oppFlip = (pos.direction === 'LONG'  && sig.regime === 'BEAR') ||
+                      (pos.direction === 'SHORT' && sig.regime === 'BULL');
+      if (oppFlip) {
+        trades.push(mkTrade(pos, bar.time, xp, 'REGIME_FLIP'));
+        exited = true;
+      }
+
+      // ── Exit 2: Confidence floor ─────────────────────────────────────────────
+      if (!exited && sig.conf < cf) {
+        trades.push(mkTrade(pos, bar.time, xp, 'CONF_FLOOR'));
+        exited = true;
+      }
+
+      // ── Exit 3: MFE retrace trailing stop (arms once mfe_r ≥ mfe_min_r) ─────
+      if (!exited && mfe_r >= mmr && pos.mfe_price > 0) {
+        const peakPrice  = pos.direction === 'LONG'
+          ? pos.entry_price + pos.mfe_price
+          : pos.entry_price - pos.mfe_price;
+        const retraceDist = pos.direction === 'LONG'
+          ? peakPrice - bar.close
+          : bar.close - peakPrice;
+        if (retraceDist / pos.mfe_price >= mrp) {
+          trades.push(mkTrade(pos, bar.time, xp, 'MFE_RETRACE'));
+          exited = true;
+        }
+      }
+
+      // ── Exit 4: Max hold timeout ─────────────────────────────────────────────
+      if (!exited) {
+        pos.bars_held++;
+        if (pos.bars_held >= maxHN) {
+          trades.push(mkTrade(pos, bar.time, xp, 'MAX_HOLD'));
+          exited = true;
+        }
+      }
+
+      if (exited) { pos = null; debounce = 0; cooldown = coolN; continue; }
+    }
+
+    // ── Entry ──────────────────────────────────────────────────────────────────
+    if (!pos && inWin) {
+      const isDir   = sig.regime === 'BULL' || sig.regime === 'BEAR';
+      const okConf  = effConf >= ec;
+      const okScore = score   >= esm;
+      const okSlope = (sig.regime === 'BULL' && sig.slope > 0) ||
+                      (sig.regime === 'BEAR' && sig.slope < 0);
+
+      if (isDir && okConf && okScore && okSlope) {
+        debounce++;
+        if (debounce >= ch && sig.atrSL > 0) {
+          const dir = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
+          const ep  = bar.close;
+          const osd = sig.atrSL * slM;
+          pos = {
+            direction:     dir,
+            entry_price:   ep,
+            entry_ts:      bar.time,
+            sl:            dir === 'LONG' ? ep - osd : ep + osd,
+            orig_sl_dist:  osd,
+            mfe_price:     0,
+            bars_held:     0,
+            regime:        sig.regime,
+            conf_at_entry: sig.conf,
+            decay_at_entry: sig.decay || 0,
+            entry_score:   score,
+          };
+          debounce = 0;
+        }
+      } else {
+        debounce = 0;
+      }
+    } else if (!pos) {
+      debounce = 0;
+    }
+  }
+
+  if (pos) {
+    const last = candles[candles.length - 1];
+    trades.push(mkTrade(pos, last.time, last.close, 'END'));
+  }
+  return trades;
+}
 
 function mkTrade(pos, exitTs, exitPrice, reason) {
   const sign   = pos.direction === 'LONG' ? 1 : -1;
   const pnlPct = (exitPrice - pos.entry_price) / pos.entry_price * sign * 100;
-  const risk   = Math.abs(pos.entry_price - pos.sl) / pos.entry_price * 100;
+  // Use orig_sl_dist when available (V4 breakeven trail mutates pos.sl to entry_price)
+  const riskPr = pos.orig_sl_dist != null ? pos.orig_sl_dist : Math.abs(pos.entry_price - pos.sl);
+  const risk   = riskPr / pos.entry_price * 100;
   const pnlR   = risk > 0 ? pnlPct / risk : 0;
-  const riskPr = Math.abs(pos.entry_price - pos.sl);
   const mfeR   = riskPr > 0 ? (pos.mfe_price / pos.entry_price * 100) / risk : 0;
   return {
     direction:     pos.direction,
@@ -2758,7 +3421,7 @@ function renderChart() {
     SL: 'SL', REGIME_FLIP: 'FLIP', RANGE_EXIT: 'RNG', DECAY: 'DCY',
     WINDOW: 'WIN', CONF_FLOOR: 'CF', CONF_DROP: 'CD', SLOPE: 'SLP',
     BOCPD: 'BCP', SCORE_LOW: 'SLC', SCORE_DROP: 'SDP', MFE_RETRACE: 'MFE',
-    END: 'END',
+    RANGE_TIMEOUT: 'RT', END: 'END',
   };
 
   const markers = [];
@@ -2887,7 +3550,7 @@ function renderAnalytics() {
     SL: '#ef5350', REGIME_FLIP: '#ff9800', RANGE_EXIT: '#fbbf24', DECAY: '#a78bfa',
     CONF_FLOOR: '#60a5fa', CONF_DROP: '#34d399', SLOPE: '#22d3ee', BOCPD: '#f472b6',
     SCORE_LOW: '#818cf8', SCORE_DROP: '#c084fc', MFE_RETRACE: '#4ade80',
-    WINDOW: '#6b7280', END: '#374151',
+    RANGE_TIMEOUT: '#64748b', WINDOW: '#6b7280', END: '#374151',
   };
   Object.entries(stats.byReason).sort((a, b) => b[1].count - a[1].count).forEach(([reason, d]) => {
     const wr = d.count > 0 ? (d.wins / d.count * 100).toFixed(0) : '0';

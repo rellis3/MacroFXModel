@@ -152,6 +152,94 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 .pcm-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
 .pcm-val{font-size:14px;font-weight:700;font-family:'DM Mono',monospace}
 .pair-card-close{margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);line-height:1;padding:0 2px}
+
+/* ── Hedge Help Guide ─────────────────────────────────────────────────── */
+.hh-intro{font-size:11px;color:var(--text2);line-height:1.8;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.hh-section{display:flex;gap:14px;padding:18px 0;border-bottom:1px solid var(--border)}
+.hh-section:last-child{border-bottom:none;padding-bottom:4px}
+.hh-step-num{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--purple);color:var(--purple);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'DM Mono',monospace;margin-top:2px}
+.hh-step-body{flex:1;min-width:0}
+.hh-step-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;letter-spacing:-.1px}
+.hh-text{font-size:11px;color:var(--text2);line-height:1.75;margin-bottom:9px}
+.hh-equation{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin:10px 0;text-align:center;letter-spacing:.3px}
+.hh-equation-block{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin:10px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.hh-eq-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--purple);flex-shrink:0;min-width:70px}
+.hh-eq-formula{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text)}
+.hh-eq-formula-text{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);letter-spacing:.2px}
+.hh-eq-large{font-size:13px;font-weight:600;letter-spacing:.1px}
+.hh-eq-big{font-size:13px;color:var(--text)}
+.hh-fraction{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 4px;line-height:1.3}
+.hh-numerator{padding:0 6px 3px;border-bottom:1.5px solid var(--text2);font-family:'DM Mono',monospace;font-size:11px;text-align:center;white-space:nowrap}
+.hh-denominator{padding:3px 6px 0;font-family:'DM Mono',monospace;font-size:11px;text-align:center;white-space:nowrap}
+.hh-callout{background:rgba(79,125,240,.07);border-left:2px solid var(--purple);border-radius:0 6px 6px 0;padding:9px 12px;margin:10px 0;font-size:11px;color:var(--text2);line-height:1.75}
+.hh-callout-green{background:rgba(16,185,129,.07);border-left-color:var(--green)}
+.hh-callout-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--purple);margin-bottom:5px}
+.hh-callout-green .hh-callout-label{color:var(--green)}
+.hh-worked{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin:10px 0}
+.hh-worked-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px}
+.hh-table{width:100%;border-collapse:collapse;font-size:10px;font-family:'DM Mono',monospace}
+.hh-table th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--text3);padding:4px 8px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+.hh-table td{padding:4px 8px;border-bottom:1px solid var(--border);color:var(--text2)}
+.hh-table tr:last-child td{border-bottom:none}
+.hh-sum-row td{font-weight:700;color:var(--text);border-top:1px solid var(--border);background:rgba(79,125,240,.05)}
+.hh-calc-steps{display:flex;flex-direction:column;gap:0;margin-top:8px;border:1px solid var(--border);border-radius:5px;overflow:hidden}
+.hh-calc-step{font-size:10px;font-family:'DM Mono',monospace;color:var(--text2);padding:5px 10px;border-bottom:1px solid var(--border);line-height:1.5}
+.hh-calc-step:last-child{border-bottom:none}
+.hh-calc-total{color:var(--text);font-weight:600;background:rgba(16,185,129,.07);padding:7px 10px}
+.hh-result-box{border:1px solid var(--border);border-radius:5px;padding:7px 10px;margin-top:8px;font-size:11px;color:var(--text2);line-height:1.6;font-style:italic}
+.hh-defs{display:flex;flex-direction:column;gap:4px;margin:8px 0 2px}
+.hh-def{font-size:11px;color:var(--text2);display:flex;gap:10px;align-items:flex-start;line-height:1.65;padding:3px 0;border-bottom:1px solid var(--border)}
+.hh-def:last-child{border-bottom:none}
+.hh-sym{font-family:'DM Mono',monospace;font-size:10px;color:var(--text);flex-shrink:0;min-width:110px;padding-top:2px}
+.hh-interp-table{margin:0}
+.hh-interp-table td:first-child{font-weight:600}
+.hh-toggle-btn{display:flex;align-items:center;gap:8px;background:none;border:1px solid var(--border);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:11px;font-weight:500;color:var(--text3);font-family:'DM Sans',sans-serif;transition:all .15s;margin-bottom:0}
+.hh-toggle-btn:hover{color:var(--text);border-color:var(--purple)}
+.hh-toggle-btn .hh-chevron{font-size:10px;transition:transform .2s}
+.hh-toggle-btn.open .hh-chevron{transform:rotate(180deg)}
+.hh-body{overflow:hidden;transition:max-height .35s ease}
+
+/* ── Hedge sub-tabs ───────────────────────────────────────────────────── */
+.htab-bar{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--s2);flex-shrink:0}
+.htab-btn{flex:1;padding:7px 10px;font-size:11px;font-weight:500;cursor:pointer;border:none;border-right:1px solid var(--border);background:none;color:var(--text3);transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap;text-align:center}
+.htab-btn:last-child{border-right:none}
+.htab-btn:hover{color:var(--text2);background:var(--s1)}
+.htab-btn.on{color:#fff;background:var(--purple);font-weight:600}
+.htab-panel{display:none;flex-direction:column;gap:12px}
+.htab-panel.on{display:flex}
+
+/* Weight lab controls */
+.wl-controls{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;padding:12px 14px;background:var(--s2);border:1px solid var(--border);border-radius:8px}
+.wl-ctrl-grp{display:flex;flex-direction:column;gap:5px}
+.wl-ctrl-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)}
+.wl-slider{width:150px;accent-color:var(--purple);cursor:pointer;height:4px}
+.wl-val{font-family:'DM Mono',monospace;font-size:12px;color:var(--purple);font-weight:700;min-width:40px}
+.wl-sel{padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-size:11px;font-family:'DM Mono',monospace;cursor:pointer}
+
+/* Stat boxes */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.stat-box{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center}
+.stat-val{font-size:20px;font-weight:700;font-family:'DM Mono',monospace;margin-bottom:3px}
+.stat-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);font-weight:600;line-height:1.4}
+
+/* Sweep chart */
+.ht-chart-wrap{position:relative}
+
+/* Regime filter buttons */
+.rf-btns{display:flex;gap:6px;flex-wrap:wrap}
+.rf-btn{padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);background:none;font-size:11px;font-weight:600;cursor:pointer;color:var(--text3);transition:all .15s;font-family:'DM Mono',monospace;letter-spacing:.3px}
+.rf-btn:hover{color:var(--text)}
+.rf-btn.on{color:#fff;border-color:transparent}
+.rf-ALL.on{background:var(--purple)}
+.rf-BULL.on{background:var(--green)}
+.rf-BEAR.on{background:var(--red)}
+.rf-RANGE.on{background:var(--amber);color:#000}
+.rf-CHOP.on{background:var(--text3)}
+
+/* Validator */
+.vl-good{color:var(--green);font-weight:600}
+.vl-bad{color:var(--red);font-weight:600}
+.vl-neutral{color:var(--text3)}
 </style>
 </head>
 <body>
@@ -167,6 +255,8 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
   <div class="spacer"></div>
   <button class="dark-btn" onclick="toggleTheme()">◑ Theme</button>
   <a href="./analysis.html" class="nav-link">Pattern Lab</a>
+  <a href="./hedge-signals.html" class="nav-link" style="color:#f59e0b;border-color:rgba(245,158,11,.3)">⚡ Signals</a>
+  <a href="./hedge-backtest.html" class="nav-link" style="color:#06b6d4;border-color:rgba(6,182,212,.3)">📊 Hedge BT</a>
   <a href="./index.html"    class="nav-link">Dashboard</a>
 </div>
 
@@ -344,16 +434,361 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 
       <!-- Tab 5: Hedge Finder -->
       <div class="tab-panel" id="t-hedge">
-        <div class="cl-card">
-          <div class="cl-card-title">Hedge Opportunities — Ranked by Inverse Correlation</div>
-          <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Pairs with negative average correlation are natural hedges. Trade opposite legs simultaneously to neutralise macro exposure.</div>
-          <div id="hedgeTable"></div>
+
+        <!-- ── Secondary tab bar ─────────────────────────────────────────── -->
+        <div class="htab-bar">
+          <button class="htab-btn on" data-htab="htp-ranked"   onclick="switchHTab(this)">Ranked Pairs</button>
+          <button class="htab-btn"    data-htab="htp-weights"  onclick="switchHTab(this)">Weight Lab</button>
+          <button class="htab-btn"    data-htab="htp-validate" onclick="switchHTab(this)">Score Validator</button>
+          <button class="htab-btn"    data-htab="htp-regime"   onclick="switchHTab(this)">Regime Filter</button>
+          <button class="htab-btn"    data-htab="htp-spread"   onclick="switchHTab(this)">Spread Monitor</button>
         </div>
+
+        <!-- ── Sub-panel 1: Ranked Pairs (existing) ──────────────────────── -->
+        <div class="htab-panel on" id="htp-ranked">
+          <div class="cl-card">
+            <div class="cl-card-title">Hedge Opportunities — Ranked by Inverse Correlation</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Pairs with negative average correlation are natural hedges. Trade opposite legs simultaneously to neutralise macro exposure.</div>
+            <div id="hedgeTable"></div>
+          </div>
+          <div class="cl-card">
+            <div class="cl-card-title">Current Risk Profile — All Pairs</div>
+            <div id="riskProfile"></div>
+          </div>
+
+        <!-- ── Hedge Score: How It Works ─────────────────────────────────── -->
         <div class="cl-card">
-          <div class="cl-card-title">Current Risk Profile — All Pairs</div>
-          <div id="riskProfile"></div>
-        </div>
-      </div>
+          <div class="cl-card-title" style="cursor:pointer;user-select:none" onclick="(function(btn,body){btn.classList.toggle('open');body.style.maxHeight=btn.classList.contains('open')?body.scrollHeight+'px':'0'})(this.nextElementSibling,document.getElementById('hh-body'))">
+            How the Hedge Score is Calculated
+            <button class="hh-toggle-btn" style="margin-left:auto;pointer-events:none"><span class="hh-chevron">▼</span> Show / Hide</button>
+          </div>
+          <div id="hh-body" class="hh-body" style="max-height:0">
+
+            <p class="hh-intro">A hedge pair is two FX instruments that move in <strong>opposite directions</strong> when macro risk conditions shift. This page scores every possible pair-pair combination — below is a complete walkthrough of every calculation, with worked numbers you can verify in a spreadsheet.</p>
+
+            <!-- Step 1: Log Returns -->
+            <div class="hh-section">
+              <div class="hh-step-num">1</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">Log Returns — Why Not Simple % Changes?</div>
+                <p class="hh-text">Every calculation in this model starts with <strong>log returns</strong> (also called continuously compounded returns). For a price series P, the log return at time t is:</p>
+                <div class="hh-equation">r<sub>t</sub> &nbsp;=&nbsp; ln( P<sub>t</sub> &nbsp;/&nbsp; P<sub>t−1</sub> )</div>
+                <p class="hh-text">For a 4-hour bar close of 1.0851 after a previous close of 1.0823:<br>r = ln(1.0851 / 1.0823) = ln(1.002587) ≈ <strong>+0.002584</strong></p>
+                <div class="hh-callout">
+                  <div class="hh-callout-label">Why log returns and not % returns?</div>
+                  Two reasons. First, log returns are <strong>time-additive</strong>: a 10-day log return equals the sum of ten daily log returns, making rolling windows mathematically clean. Second, they are <strong>symmetric</strong>: a +5% move and a −5% reversal are equal in magnitude in log space (both ≈ 0.0488), whereas simple returns are asymmetric (+5% then −4.76% to return to start). Pearson correlation and OLS regression both assume symmetric error distributions, so log returns are the correct input.
+                </div>
+                <div class="hh-worked">
+                  <div class="hh-worked-label">Worked Example — EURUSD log returns over 5 H4 bars</div>
+                  <table class="hh-table">
+                    <thead><tr><th>Bar</th><th>Close (P)</th><th>r = ln(Pₜ / Pₜ₋₁)</th></tr></thead>
+                    <tbody>
+                      <tr><td>t−4</td><td>1.0823</td><td>— (first bar, no prior)</td></tr>
+                      <tr><td>t−3</td><td>1.0851</td><td>ln(1.0851/1.0823) = <strong>+0.002584</strong></td></tr>
+                      <tr><td>t−2</td><td>1.0838</td><td>ln(1.0838/1.0851) = <strong>−0.001199</strong></td></tr>
+                      <tr><td>t−1</td><td>1.0871</td><td>ln(1.0871/1.0838) = <strong>+0.003046</strong></td></tr>
+                      <tr><td>t₀</td><td>1.0856</td><td>ln(1.0856/1.0871) = <strong>−0.001381</strong></td></tr>
+                    </tbody>
+                  </table>
+                  <p class="hh-text" style="margin-top:8px;margin-bottom:0;font-size:10px;color:var(--text3)">These four return values [+0.002584, −0.001199, +0.003046, −0.001381] become the X series fed into Step 2. In production the model uses a 60-bar rolling window (~10 trading days on H4).</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2: Pearson Correlation -->
+            <div class="hh-section">
+              <div class="hh-step-num">2</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">Pearson Correlation of Log Returns</div>
+                <p class="hh-text">Once we have log return series for two pairs — call them <strong>X</strong> (e.g. EURUSD) and <strong>Y</strong> (e.g. USDCHF) — over the rolling window, we compute the Pearson correlation coefficient <em>r</em>. This measures the <em>linear co-movement</em> between the two series and ranges from −1 to +1.</p>
+                <div class="hh-equation-block">
+                  <div class="hh-eq-label">Pearson r</div>
+                  <div class="hh-eq-formula">
+                    <span class="hh-eq-big">r<sub>XY</sub>&nbsp;=</span>
+                    <div class="hh-fraction">
+                      <div class="hh-numerator">Σᵢ (xᵢ − x̄)(yᵢ − ȳ)</div>
+                      <div class="hh-denominator">√[ Σᵢ(xᵢ − x̄)² &nbsp;·&nbsp; Σᵢ(yᵢ − ȳ)² ]</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="hh-defs">
+                  <div class="hh-def"><span class="hh-sym">xᵢ , yᵢ</span>Log return of pair X and pair Y at bar i</div>
+                  <div class="hh-def"><span class="hh-sym">x̄ , ȳ</span>Mean log return of each series over the full window</div>
+                  <div class="hh-def"><span class="hh-sym">Σᵢ ( · )</span>Sum over all N bars (model requires N ≥ 10)</div>
+                  <div class="hh-def"><span class="hh-sym">r ∈ [−1, +1]</span>Result is clamped — if numerical noise pushes it outside ±1 it is clipped</div>
+                </div>
+                <div class="hh-callout">
+                  <div class="hh-callout-label">What each part does</div>
+                  The <strong>numerator</strong> is the covariance (un-normalised): positive when both series move in the same direction, negative when they move opposite. The <strong>denominator</strong> is the product of both series' standard deviations — it scales the covariance to [−1, +1] so the result is comparable across pairs with different volatilities.
+                </div>
+
+                <div class="hh-worked">
+                  <div class="hh-worked-label">Full Manual Calculation — 4 bars (values ×10⁴ for readability; r is unchanged by scaling)</div>
+                  <table class="hh-table">
+                    <thead>
+                      <tr>
+                        <th>i</th>
+                        <th>xᵢ (EURUSD ×10⁴)</th>
+                        <th>yᵢ (USDCHF ×10⁴)</th>
+                        <th>xᵢ − x̄</th>
+                        <th>yᵢ − ȳ</th>
+                        <th>(x−x̄)(y−ȳ)</th>
+                        <th>(x−x̄)²</th>
+                        <th>(y−ȳ)²</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>1</td><td>+25</td><td>−24</td><td>+17.5</td><td>−16.5</td><td>−288.75</td><td>306.25</td><td>272.25</td></tr>
+                      <tr><td>2</td><td>−10</td><td>+9</td><td>−17.5</td><td>+16.5</td><td>−288.75</td><td>306.25</td><td>272.25</td></tr>
+                      <tr><td>3</td><td>+30</td><td>−29</td><td>+22.5</td><td>−21.5</td><td>−483.75</td><td>506.25</td><td>462.25</td></tr>
+                      <tr><td>4</td><td>−15</td><td>+14</td><td>−22.5</td><td>+21.5</td><td>−483.75</td><td>506.25</td><td>462.25</td></tr>
+                      <tr class="hh-sum-row"><td>Σ</td><td></td><td></td><td></td><td></td><td><strong>−1545.00</strong></td><td><strong>1625.00</strong></td><td><strong>1469.00</strong></td></tr>
+                    </tbody>
+                  </table>
+                  <div class="hh-calc-steps" style="margin-top:10px">
+                    <div class="hh-calc-step">x̄ = (25 − 10 + 30 − 15) / 4 = 30 / 4 = <strong>+7.5</strong></div>
+                    <div class="hh-calc-step">ȳ = (−24 + 9 − 29 + 14) / 4 = −30 / 4 = <strong>−7.5</strong></div>
+                    <div class="hh-calc-step">Numerator  = −1545.00</div>
+                    <div class="hh-calc-step">Denominator = √(1625.00 × 1469.00) = √2,387,125 = <strong>1545.03</strong></div>
+                    <div class="hh-calc-total">r = −1545.00 / 1545.03 = <strong>−0.9999 ≈ −1.00</strong></div>
+                  </div>
+                  <div class="hh-result-box">r ≈ −1.0 confirms that EURUSD and USDCHF move almost perfectly in opposite directions over this window — a textbook natural hedge. In practice, stable pairs typically show r in the range −0.7 to −0.9.</div>
+                </div>
+
+                <div class="hh-callout">
+                  <div class="hh-callout-label">Interpreting r for hedging</div>
+                  <table class="hh-table hh-interp-table" style="margin-top:4px">
+                    <thead><tr><th>r value</th><th>Meaning</th></tr></thead>
+                    <tbody>
+                      <tr><td style="color:var(--green)">−1.0 to −0.5</td><td>Strong negative co-movement — excellent hedge candidate</td></tr>
+                      <tr><td style="color:var(--amber)">−0.5 to 0.0</td><td>Weak negative — partial hedge benefit</td></tr>
+                      <tr><td style="color:var(--text3)">0.0 to +0.3</td><td>Neutral — little or no hedging value</td></tr>
+                      <tr><td style="color:var(--red)">+0.3 to +1.0</td><td>Positive — pairs move together, trading both amplifies risk</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3: VIX Beta -->
+            <div class="hh-section">
+              <div class="hh-step-num">3</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">VIX Beta — OLS Regression Against a Fear Proxy</div>
+                <p class="hh-text">The <strong>VIX beta (β<sub>vix</sub>)</strong> measures how sensitively a pair responds to changes in market fear. It is estimated by regressing each pair's log returns against a <em>VIX proxy</em> using Ordinary Least Squares (OLS).</p>
+                <div class="hh-equation-block">
+                  <div class="hh-eq-label">VIX proxy</div>
+                  <div class="hh-eq-formula-text">VIX proxy returnₜ = −1 × ln( USDCHF<sub>t</sub> / USDCHF<sub>t−1</sub> )</div>
+                </div>
+                <div class="hh-callout">
+                  <div class="hh-callout-label">Why USDCHF × −1?</div>
+                  The Swiss Franc is a classic safe-haven currency. When fear spikes, capital flows into CHF, causing USDCHF to <em>fall</em>. Multiplying by −1 inverts the series so the proxy <em>rises</em> when fear rises — mirroring the intuition of VIX (where a higher reading = more fear / risk-off).
+                </div>
+                <p class="hh-text">The OLS formula gives the <em>slope</em> of the regression line — how many units the pair return moves for each unit move in the fear proxy:</p>
+                <div class="hh-equation-block">
+                  <div class="hh-eq-label">OLS beta</div>
+                  <div class="hh-eq-formula">
+                    <span class="hh-eq-big">β &nbsp;=</span>
+                    <div class="hh-fraction">
+                      <div class="hh-numerator">Σᵢ (xᵢ − x̄)(yᵢ − ȳ)</div>
+                      <div class="hh-denominator">Σᵢ (xᵢ − x̄)²</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="hh-defs">
+                  <div class="hh-def"><span class="hh-sym">x</span>VIX proxy log returns (the independent variable / "input")</div>
+                  <div class="hh-def"><span class="hh-sym">y</span>Pair log returns (the dependent variable / "output")</div>
+                  <div class="hh-def"><span class="hh-sym">β &gt; 0</span><span style="color:var(--green)">Risk-ON</span> — pair rises when fear rises (e.g. GBPUSD tends to rally with equities)</div>
+                  <div class="hh-def"><span class="hh-sym">β &lt; 0</span><span style="color:var(--red)">Risk-OFF / Safe-haven</span> — pair falls when fear rises (e.g. USDJPY falls because JPY is bid)</div>
+                  <div class="hh-def"><span class="hh-sym">β ≈ 0</span>Macro-neutral — pair is driven by idiosyncratic factors, not risk sentiment</div>
+                </div>
+                <p class="hh-text" style="margin-top:6px">The same 60-bar rolling window and 10-bar minimum used for Pearson also applies to OLS beta.</p>
+              </div>
+            </div>
+
+            <!-- Step 4: Beta Spread -->
+            <div class="hh-section">
+              <div class="hh-step-num">4</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">Beta Spread — Quantifying Opposite Risk Profiles</div>
+                <p class="hh-text">The beta spread captures how <em>differently</em> two pairs respond to fear. A large spread means one pair is strongly risk-on and the other is strongly risk-off — exactly what a macro hedge needs.</p>
+                <div class="hh-equation">β Spread &nbsp;=&nbsp; | β<sub>vix</sub>(A) &nbsp;−&nbsp; β<sub>vix</sub>(B) |</div>
+                <div class="hh-worked">
+                  <div class="hh-worked-label">Example — EURUSD (A) vs USDCHF (B)</div>
+                  <div class="hh-calc-steps">
+                    <div class="hh-calc-step">EURUSD β<sub>vix</sub> = +0.82 &nbsp; (risk-on, rises with equity / risk sentiment)</div>
+                    <div class="hh-calc-step">USDCHF β<sub>vix</sub> = −0.71 &nbsp; (safe-haven, falls when fear rises)</div>
+                    <div class="hh-calc-total">β Spread = | 0.82 − (−0.71) | = | 1.53 | = <strong>1.53</strong></div>
+                  </div>
+                </div>
+                <p class="hh-text">A spread of 1.53 is large — these pairs sit on opposite ends of the risk-sentiment spectrum. A spread near zero means both pairs have similar risk profiles and offer little hedging benefit beyond what the correlation already captures.</p>
+              </div>
+            </div>
+
+            <!-- Step 5: Hedge Score -->
+            <div class="hh-section">
+              <div class="hh-step-num">5</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">The Hedge Score — Combining Both Signals</div>
+                <p class="hh-text">The hedge score blends correlation (70% weight) and beta spread (30% weight) into a single ranking number. A high score means the two pairs are both statistically opposite <em>and</em> have opposite macro risk profiles.</p>
+                <div class="hh-equation-block">
+                  <div class="hh-eq-label">Hedge Score</div>
+                  <div class="hh-eq-formula-text hh-eq-large">Score &nbsp;=&nbsp; (−r &nbsp;×&nbsp; 0.7) &nbsp;+&nbsp; ( β&nbsp;Spread &nbsp;÷&nbsp; 2 &nbsp;×&nbsp; 0.3 )</div>
+                </div>
+                <div class="hh-defs">
+                  <div class="hh-def"><span class="hh-sym">−r × 0.7</span>Correlation component. Sign is negated so r = −1 (perfect negative correlation) contributes +0.70 (maximum). r = +1 contributes −0.70 (worst possible).</div>
+                  <div class="hh-def"><span class="hh-sym">β Spread ÷ 2 × 0.3</span>Beta spread component. Divided by 2 to normalise — a spread of 2.0 contributes +0.30. A spread of 0 contributes nothing.</div>
+                </div>
+                <div class="hh-worked">
+                  <div class="hh-worked-label">Full Worked Example — EURUSD vs USDCHF</div>
+                  <div class="hh-calc-steps">
+                    <div class="hh-calc-step">Average Pearson r (over full history) = <strong>−0.82</strong></div>
+                    <div class="hh-calc-step">EURUSD β<sub>vix</sub> = +0.82 &nbsp;|&nbsp; USDCHF β<sub>vix</sub> = −0.71</div>
+                    <div class="hh-calc-step">β Spread = | 0.82 − (−0.71) | = <strong>1.53</strong></div>
+                    <div class="hh-calc-step">Correlation component: −(−0.82) × 0.7 = <strong>+0.574</strong></div>
+                    <div class="hh-calc-step">Beta spread component: (1.53 / 2) × 0.3 = <strong>+0.230</strong></div>
+                    <div class="hh-calc-total">Score = 0.574 + 0.230 = <strong>0.804 → Strong Hedge</strong></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 6: Reading Signals -->
+            <div class="hh-section">
+              <div class="hh-step-num">6</div>
+              <div class="hh-step-body">
+                <div class="hh-step-title">Reading the Signal Column</div>
+                <table class="hh-table hh-interp-table" style="width:100%">
+                  <thead><tr><th>Score</th><th>Signal</th><th>What it means in practice</th></tr></thead>
+                  <tbody>
+                    <tr><td style="color:var(--green)">≥ 0.50</td><td>⬛ Strong hedge</td><td>High negative correlation AND opposite beta profiles. Best candidates for simultaneous opposite-direction trades.</td></tr>
+                    <tr><td style="color:var(--amber)">0.25 – 0.49</td><td>▣ Moderate hedge</td><td>Useful diversification but not a perfect offset. Size positions carefully — the hedge is partial.</td></tr>
+                    <tr><td style="color:var(--text3)">−0.20 – 0.24</td><td>— Neutral</td><td>Insufficient differentiation. Neither a hedge nor a correlated pair. Avoid relying on this pair-pair for risk management.</td></tr>
+                    <tr><td style="color:var(--red)">below −0.20</td><td>▪ Correlated</td><td>These pairs move together. Holding both in the same direction doubles macro exposure; holding them opposite creates an unnecessary drag.</td></tr>
+                  </tbody>
+                </table>
+                <div class="hh-callout hh-callout-green" style="margin-top:12px">
+                  <div class="hh-callout-label">Practical trading note</div>
+                  A high hedge score means you trade the two pairs in <strong>opposite directions</strong> — long A and short B (or vice versa), sized so that the notional dollar exposure is approximately equal on both legs. This cancels out macro factor risk (DXY, rates, risk sentiment) while preserving alpha from the relative mispricing between the two pairs. The score does <em>not</em> tell you which direction to trade — it only tells you which pairs offset each other.
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /#hh-body -->
+        </div><!-- /.cl-card guide -->
+        </div><!-- /#htp-ranked -->
+
+        <!-- ── Sub-panel 2: Weight Lab ───────────────────────────────────── -->
+        <div class="htab-panel" id="htp-weights">
+          <div class="cl-card">
+            <div class="cl-card-title">Weight Lab — Find the Optimal Formula</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Adjust how much each component contributes to the hedge score, then see how well that weighting historically predicted a negative forward correlation. Lower avg forward corr = better predictor.</div>
+            <div class="wl-controls">
+              <div class="wl-ctrl-grp">
+                <div class="wl-ctrl-label">Correlation weight &nbsp;<span class="wl-val" id="wl-corr-val">70%</span></div>
+                <input type="range" class="wl-slider" id="wl-corr" min="0" max="100" step="5" value="70" oninput="onWLSlider()">
+              </div>
+              <div class="wl-ctrl-grp">
+                <div class="wl-ctrl-label">Beta spread weight &nbsp;<span class="wl-val" id="wl-beta-val">30%</span></div>
+                <input type="range" class="wl-slider" id="wl-beta" min="0" max="100" step="5" value="30" oninput="onWLSlider()" style="opacity:.4;pointer-events:none">
+              </div>
+              <div class="wl-ctrl-grp">
+                <div class="wl-ctrl-label">Beta factor</div>
+                <select class="wl-sel" id="wl-factor" onchange="updateWeightLab()">
+                  <option value="vix">VIX proxy</option>
+                  <option value="dxy">DXY</option>
+                  <option value="rates">Rates</option>
+                </select>
+              </div>
+              <div class="wl-ctrl-grp">
+                <div class="wl-ctrl-label">Lookahead</div>
+                <select class="wl-sel" id="wl-look" onchange="updateWeightLab()">
+                  <option value="20">20 bars (~20 days)</option>
+                  <option value="60" selected>60 bars (~60 days)</option>
+                  <option value="120">120 bars (~4 months)</option>
+                </select>
+              </div>
+            </div>
+            <div class="stat-grid" id="wl-stats" style="margin:10px 0"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+              <div>
+                <div class="cl-card-title" style="margin-bottom:8px">Avg forward corr by score bucket</div>
+                <div class="ht-chart-wrap" style="height:160px"><canvas id="wl-bucket-chart"></canvas></div>
+              </div>
+              <div>
+                <div class="cl-card-title" style="margin-bottom:8px">Hit rate vs correlation weight sweep</div>
+                <div class="ht-chart-wrap" style="height:160px"><canvas id="wl-sweep-chart"></canvas></div>
+              </div>
+            </div>
+            <div style="margin-top:12px">
+              <div class="cl-card-title" style="margin-bottom:8px">Top pairs under this weighting</div>
+              <div id="wl-table"></div>
+            </div>
+          </div>
+        </div><!-- /#htp-weights -->
+
+        <!-- ── Sub-panel 3: Score Validator ──────────────────────────────── -->
+        <div class="htab-panel" id="htp-validate">
+          <div class="cl-card">
+            <div class="cl-card-title">Score Validator — Does a High Score Predict a Good Hedge?</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">For every pair-pair and every point in history: score at time T vs realised correlation 60 bars later. A reliable formula shows high-scoring pairs consistently achieving negative forward correlations.</div>
+            <div class="stat-grid" id="vl-stats" style="margin-bottom:12px"></div>
+            <div class="ht-chart-wrap" style="height:170px;margin-bottom:12px"><canvas id="vl-decile-chart"></canvas></div>
+            <div id="vl-table"></div>
+          </div>
+        </div><!-- /#htp-validate -->
+
+        <!-- ── Sub-panel 4: Regime Filter ────────────────────────────────── -->
+        <div class="htab-panel" id="htp-regime">
+          <div class="cl-card">
+            <div class="cl-card-title">Regime Filter — Which Regimes Produce the Most Reliable Hedges?</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Hedge scores recalculated using only correlations and betas observed during a specific regime. Hedges are most reliable when correlation estimates come from the regime you are actually trading in.</div>
+            <div class="rf-btns" id="rf-btns" style="margin-bottom:12px">
+              <button class="rf-btn rf-ALL on" onclick="switchRegimeFilter(this,'ALL')">ALL</button>
+              <button class="rf-btn rf-BULL" onclick="switchRegimeFilter(this,'BULL')">BULL</button>
+              <button class="rf-btn rf-BEAR" onclick="switchRegimeFilter(this,'BEAR')">BEAR</button>
+              <button class="rf-btn rf-RANGE" onclick="switchRegimeFilter(this,'RANGE')">RANGE</button>
+              <button class="rf-btn rf-CHOP" onclick="switchRegimeFilter(this,'CHOP')">CHOP</button>
+            </div>
+            <div id="rf-note" style="font-size:10px;color:var(--text3);margin-bottom:8px"></div>
+            <div id="rf-table"></div>
+          </div>
+          <div class="cl-card">
+            <div class="cl-card-title">Regime Ranking Shift</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">How much does each pair-pair's rank change between ALL-regime and the selected regime? Large shifts suggest the hedge is regime-dependent.</div>
+            <div id="rf-shift-table"></div>
+          </div>
+        </div><!-- /#htp-regime -->
+
+        <!-- ── Sub-panel 5: Spread Monitor ──────────────────────────────── -->
+        <div class="htab-panel" id="htp-spread">
+          <div class="cl-card">
+            <div class="cl-card-title">Spread Monitor — Is the Relationship Stretched Right Now?</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">
+              For each high-scoring hedge pair, this tracks the rolling correlation over time and flags when it has deviated significantly from its own average. A z-score above +1.5 means the relationship has weakened more than usual — one pair has moved relative to the other — which is the earliest systematic signal to consider an entry.
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px;padding:8px 10px;background:var(--s2);border-radius:6px;border:1px solid var(--border)">
+              <strong style="color:var(--text2)">How to read the chart:</strong> the band shows mean ±2σ of the rolling correlation. When the line leaves the top of the band (corr moving toward 0 or positive), the hedge relationship has temporarily weakened — potential entry. When it's at the bottom, the hedge is especially tight.
+            </div>
+            <div id="sm-controls" style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+              <div class="wl-ctrl-label">Min hedge score:</div>
+              <select class="wl-sel" id="sm-min-score" onchange="renderSpreadMonitor()">
+                <option value="0.3">0.30+</option>
+                <option value="0.5" selected>0.50+ (Strong only)</option>
+                <option value="0.25">0.25+</option>
+              </select>
+              <div class="wl-ctrl-label" style="margin-left:8px">Sort by:</div>
+              <select class="wl-sel" id="sm-sort" onchange="renderSpreadMonitor()">
+                <option value="z_abs">Most stretched (|z|)</option>
+                <option value="z_pos">Weakening (z → +∞)</option>
+                <option value="score">Hedge score</option>
+              </select>
+            </div>
+            <div id="sm-table"></div>
+          </div>
+        </div><!-- /#htp-spread -->
+
+      </div><!-- /#t-hedge -->
 
       <!-- Tab 6: Factor Dominance -->
       <div class="tab-panel" id="t-dom">
@@ -1383,6 +1818,468 @@ function renderHedgeFinder() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   Hedge sub-tab navigation
+   ═══════════════════════════════════════════════════════════════════════════ */
+function switchHTab(btn) {
+  document.querySelectorAll('.htab-btn').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.htab-panel').forEach(p => p.classList.remove('on'));
+  btn.classList.add('on');
+  const panelId = btn.dataset.htab;
+  document.getElementById(panelId)?.classList.add('on');
+  if (panelId === 'htp-weights')  renderWeightLab();
+  if (panelId === 'htp-validate') renderScoreValidator();
+  if (panelId === 'htp-regime')   renderRegimeFilter('ALL');
+  if (panelId === 'htp-spread')   renderSpreadMonitor();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Hedge lab — shared data cache
+   ═══════════════════════════════════════════════════════════════════════════ */
+const HLab = { ready: false, entries: [], sweepVix: null, sweepDxy: null, sweepRates: null,
+               charts: {} };
+
+function getBeta(rec, pair, factor) {
+  return S.source === 'rich'
+    ? (rec?.beta?.[pair]?.[factor] ?? 0)
+    : (rec?.estimates?.[pair]?.[`beta_${factor}`]?.mean ?? 0);
+}
+
+function precomputeHLab() {
+  if (HLab.ready) return;
+  const pairs = S.pairs;
+  const recs  = S.records;
+  HLab.entries = [];
+
+  for (let i = 0; i < recs.length; i++) {
+    const r = recs[i];
+    for (let pi = 0; pi < pairs.length; pi++) {
+      for (let pj = pi + 1; pj < pairs.length; pj++) {
+        const a = pairs[pi], b = pairs[pj];
+        const key  = `${a}_${b}`;
+        const corr = r.corr?.[key] ?? null;
+        if (corr === null) continue;
+        HLab.entries.push({
+          a, b, i,
+          corr,
+          vixS:   Math.abs(getBeta(r, a, 'vix')   - getBeta(r, b, 'vix')),
+          dxyS:   Math.abs(getBeta(r, a, 'dxy')   - getBeta(r, b, 'dxy')),
+          ratesS: Math.abs(getBeta(r, a, 'rates') - getBeta(r, b, 'rates')),
+          regime: r.regime || 'RANGE'
+        });
+      }
+    }
+  }
+
+  // Pre-compute hit-rate sweep for each beta factor (corr weight 0..100 in steps of 5)
+  const factors = { vix: 'vixS', dxy: 'dxyS', rates: 'ratesS' };
+  for (const [fName, fKey] of Object.entries(factors)) {
+    const sweep = [];
+    for (let w = 0; w <= 100; w += 5) {
+      const cW = w / 100, bW = 1 - cW;
+      let hi = 0, hit = 0;
+      for (const e of HLab.entries) {
+        const fwdIdx = e.i + 60;
+        if (fwdIdx >= S.records.length) continue;
+        const fwdCorr = S.records[fwdIdx].corr?.[`${e.a}_${e.b}`] ?? null;
+        if (fwdCorr === null) continue;
+        const score = (-e.corr * cW) + (e[fKey] / 2 * bW);
+        if (score > 0.5) { hi++; if (fwdCorr < 0) hit++; }
+      }
+      sweep.push({ w, hitRate: hi > 0 ? hit / hi : null, n: hi });
+    }
+    HLab[`sweep${fName.charAt(0).toUpperCase() + fName.slice(1)}`] = sweep;
+  }
+
+  HLab.ready = true;
+}
+
+function hlabScore(e, cW, fKey) {
+  return (-e.corr * cW) + (e[fKey] / 2 * (1 - cW));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 5b: Weight Lab
+   ═══════════════════════════════════════════════════════════════════════════ */
+function onWLSlider() {
+  const cW = parseInt(document.getElementById('wl-corr').value);
+  document.getElementById('wl-corr-val').textContent = cW + '%';
+  document.getElementById('wl-beta-val').textContent = (100 - cW) + '%';
+  document.getElementById('wl-beta').value = 100 - cW;
+  updateWeightLab();
+}
+
+function renderWeightLab() {
+  if (!S.pairs.length) return;
+  precomputeHLab();
+  updateWeightLab();
+}
+
+function updateWeightLab() {
+  if (!HLab.ready) return;
+  const cW     = parseInt(document.getElementById('wl-corr').value) / 100;
+  const factor = document.getElementById('wl-factor').value;
+  const look   = parseInt(document.getElementById('wl-look').value);
+  const fKey   = factor + 'S';
+
+  // Bucket analysis
+  const buckets = [
+    { label: '< 0\n(Correlated)', min: -Infinity, max: 0,    sumFwd: 0, n: 0 },
+    { label: '0–0.25\n(Neutral)',  min: 0,         max: 0.25, sumFwd: 0, n: 0 },
+    { label: '0.25–0.5\n(Moderate)',min:0.25,      max: 0.5,  sumFwd: 0, n: 0 },
+    { label: '> 0.5\n(Strong)',    min: 0.5,       max: Infinity, sumFwd: 0, n: 0 }
+  ];
+  let hiN = 0, hiHit = 0, hiSumFwd = 0;
+
+  for (const e of HLab.entries) {
+    const fwdIdx = e.i + look;
+    if (fwdIdx >= S.records.length) continue;
+    const fwdCorr = S.records[fwdIdx].corr?.[`${e.a}_${e.b}`] ?? null;
+    if (fwdCorr === null) continue;
+    const score = hlabScore(e, cW, fKey);
+    const bk = buckets.find(b => score >= b.min && score < b.max);
+    if (bk) { bk.sumFwd += fwdCorr; bk.n++; }
+    if (score > 0.5) { hiN++; hiSumFwd += fwdCorr; if (fwdCorr < 0) hiHit++; }
+  }
+
+  const hitRate    = hiN > 0 ? (hiHit / hiN * 100).toFixed(1) : '—';
+  const avgFwdHigh = hiN > 0 ? (hiSumFwd / hiN).toFixed(3) : '—';
+  const hitCol     = hiN > 0 && hiHit / hiN > 0.6 ? 'var(--green)' : hiN > 0 && hiHit / hiN > 0.4 ? 'var(--amber)' : 'var(--red)';
+
+  document.getElementById('wl-stats').innerHTML = `
+    <div class="stat-box"><div class="stat-val" style="color:${hitCol}">${hitRate}%</div><div class="stat-lbl">Hit rate<br>(score>0.5 → fwd corr<0)</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:${parseFloat(avgFwdHigh)<0?'var(--green)':'var(--red)'}">${avgFwdHigh}</div><div class="stat-lbl">Avg fwd corr<br>high-score pairs</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--text2)">${hiN.toLocaleString()}</div><div class="stat-lbl">High-score<br>data points</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--text2)">${HLab.entries.length.toLocaleString()}</div><div class="stat-lbl">Total<br>observations</div></div>`;
+
+  // Bucket chart
+  const bLabels = buckets.map(b => b.label.replace('\n', ' '));
+  const bData   = buckets.map(b => b.n > 0 ? +(b.sumFwd / b.n).toFixed(4) : 0);
+  const bColors = bData.map(v => v < -0.2 ? 'rgba(16,185,129,.7)' : v < 0 ? 'rgba(251,191,36,.7)' : 'rgba(248,113,113,.7)');
+  renderHLabChart('wl-bucket-chart', 'bar', bLabels, bData, bColors,
+    'Avg Forward Correlation by Score Bucket', true);
+
+  // Sweep chart
+  const sweepKey = `sweep${factor.charAt(0).toUpperCase() + factor.slice(1)}`;
+  const sweep = HLab[sweepKey] || [];
+  const sLabels = sweep.map(s => s.w + '%');
+  const sData   = sweep.map(s => s.hitRate !== null ? +(s.hitRate * 100).toFixed(1) : null);
+  const optIdx  = sData.reduce((bi, v, i) => (v !== null && (sData[bi] === null || v > sData[bi])) ? i : bi, 0);
+  const sColors = sData.map((_, i) => i === optIdx ? 'rgba(79,125,240,.9)' : 'rgba(79,125,240,.3)');
+  renderHLabChart('wl-sweep-chart', 'bar', sLabels, sData, sColors,
+    `Hit Rate vs Correlation Weight (optimal: ${sLabels[optIdx]})`, false);
+
+  // Top pairs table under this weighting
+  const pairs = S.pairs;
+  function getAvgCorr(a, b) { return S.avgCorr[`${a}_${b}`] ?? S.avgCorr[`${b}_${a}`] ?? null; }
+  const lastRec = S.records[S.records.length - 1];
+  const rows = [];
+  for (let i = 0; i < pairs.length; i++)
+    for (let j = i + 1; j < pairs.length; j++) {
+      const a = pairs[i], b = pairs[j];
+      const corr = getAvgCorr(a, b);
+      const bA = getBeta(lastRec, a, factor), bB = getBeta(lastRec, b, factor);
+      const spread = Math.abs(bA - bB);
+      const score = (corr !== null ? -corr * cW : 0) + (spread / 2 * (1 - cW));
+      rows.push({ a, b, corr, bA, bB, spread, score });
+    }
+  rows.sort((x, y) => y.score - x.score);
+  const fmt = v => v === null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(3);
+  const fLabel = { vix: 'β vix', dxy: 'β dxy', rates: 'β rates' }[factor];
+  let tHtml = `<table class="hf-table"><thead><tr>
+    <th>Pair A</th><th>${fLabel}</th><th>Pair B</th><th>${fLabel}</th>
+    <th>Spread</th><th>Avg Corr</th><th>Score (${Math.round(cW*100)}/${Math.round((1-cW)*100)})</th>
+  </tr></thead><tbody>`;
+  for (const { a, b, corr, bA, bB, spread, score } of rows.slice(0, 20)) {
+    const scoreCol = score > 0.5 ? 'var(--green)' : score > 0.25 ? 'var(--amber)' : score < -0.1 ? 'var(--red)' : 'var(--text3)';
+    tHtml += `<tr>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[a]||'#888'}">${a}</td>
+      <td style="font-family:'DM Mono',monospace;color:${bA>0?'var(--green)':bA<0?'var(--red)':'var(--text3)'}">${fmt(bA)}</td>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[b]||'#888'}">${b}</td>
+      <td style="font-family:'DM Mono',monospace;color:${bB>0?'var(--green)':bB<0?'var(--red)':'var(--text3)'}">${fmt(bB)}</td>
+      <td style="font-family:'DM Mono',monospace">${spread.toFixed(3)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${corr===null?'var(--text3)':corr<-0.1?'var(--red)':corr>0.3?'var(--green)':'var(--text3)'}">${fmt(corr)}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:700;color:${scoreCol}">${score.toFixed(3)}</td>
+    </tr>`;
+  }
+  tHtml += '</tbody></table>';
+  document.getElementById('wl-table').innerHTML = tHtml;
+}
+
+function renderHLabChart(canvasId, type, labels, data, colors, title, zeroLine) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (HLab.charts[canvasId]) { HLab.charts[canvasId].destroy(); }
+  HLab.charts[canvasId] = new Chart(canvas, {
+    type,
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0, borderRadius: 3 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: title, color: 'var(--text3)',
+                 font: { size: 9, family: "'DM Mono',monospace", weight: '600' },
+                 padding: { bottom: 6 } }
+      },
+      scales: {
+        x: { ticks: { color: 'var(--text3)', font: { size: 9 } }, grid: { color: 'var(--border)' } },
+        y: { ticks: { color: 'var(--text3)', font: { size: 9 } }, grid: { color: 'var(--border)' },
+             ...(zeroLine ? { afterDataLimits(ax){ if(ax.max<0.05) ax.max=0.05; if(ax.min>-0.05) ax.min=-0.05; } } : {}) }
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 5c: Score Validator
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderScoreValidator() {
+  if (!S.pairs.length) return;
+  precomputeHLab();
+
+  const LOOK = 60;
+  // Compute (score, fwdCorr) with default 70/30 VIX weighting
+  const pts = [];
+  for (const e of HLab.entries) {
+    const fwdIdx = e.i + LOOK;
+    if (fwdIdx >= S.records.length) continue;
+    const fwdCorr = S.records[fwdIdx].corr?.[`${e.a}_${e.b}`] ?? null;
+    if (fwdCorr === null) continue;
+    pts.push({ score: hlabScore(e, 0.7, 'vixS'), fwdCorr, a: e.a, b: e.b });
+  }
+
+  // Decile analysis — 10 buckets of score
+  const sorted = [...pts].sort((a, b) => a.score - b.score);
+  const sz = Math.floor(sorted.length / 10);
+  const deciles = Array.from({ length: 10 }, (_, d) => {
+    const slice = sorted.slice(d * sz, (d + 1) * sz);
+    const avgScore = slice.reduce((s, p) => s + p.score, 0) / slice.length;
+    const avgFwd   = slice.reduce((s, p) => s + p.fwdCorr, 0) / slice.length;
+    const hitRate  = slice.filter(p => p.fwdCorr < 0).length / slice.length;
+    return { avgScore, avgFwd, hitRate, n: slice.length };
+  });
+
+  // Spearman rank correlation between score and -fwdCorr
+  const n = pts.length;
+  const scoreRanks = rankArray(pts.map(p => p.score));
+  const fwdRanks   = rankArray(pts.map(p => -p.fwdCorr));
+  const spearman   = pearson(scoreRanks, fwdRanks);
+
+  // Stats
+  const allHigh = pts.filter(p => p.score > 0.5);
+  const hrHigh  = allHigh.length > 0 ? allHigh.filter(p => p.fwdCorr < 0).length / allHigh.length : 0;
+  const allLow  = pts.filter(p => p.score < 0);
+  const hrLow   = allLow.length > 0 ? allLow.filter(p => p.fwdCorr < 0).length / allLow.length : 0;
+  const spCol   = spearman > 0.3 ? 'var(--green)' : spearman > 0.1 ? 'var(--amber)' : 'var(--red)';
+
+  document.getElementById('vl-stats').innerHTML = `
+    <div class="stat-box"><div class="stat-val" style="color:${spCol}">${spearman.toFixed(3)}</div><div class="stat-lbl">Spearman r<br>score vs future hedge</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:${hrHigh>0.6?'var(--green)':hrHigh>0.4?'var(--amber)':'var(--red)'}">${(hrHigh*100).toFixed(1)}%</div><div class="stat-lbl">Hit rate<br>score > 0.5</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--text2)">${(hrLow*100).toFixed(1)}%</div><div class="stat-lbl">Hit rate<br>score &lt; 0 (baseline)</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--text2)">${n.toLocaleString()}</div><div class="stat-lbl">Total<br>observations</div></div>`;
+
+  // Decile chart
+  const dLabels = deciles.map((d, i) => `D${i+1}\n${d.avgScore.toFixed(2)}`);
+  const dData   = deciles.map(d => +d.avgFwd.toFixed(4));
+  const dColors = dData.map(v => v < -0.15 ? 'rgba(16,185,129,.75)' : v < 0 ? 'rgba(251,191,36,.75)' : 'rgba(248,113,113,.75)');
+  renderHLabChart('vl-decile-chart', 'bar', dLabels, dData, dColors,
+    'Avg forward correlation by score decile (D1=lowest score, D10=highest). Should slope downward.', true);
+
+  // Per-pair-pair aggregated validator table
+  const pairMap = {};
+  for (const p of pts) {
+    const key = `${p.a}_${p.b}`;
+    if (!pairMap[key]) pairMap[key] = { a: p.a, b: p.b, scores: [], fwds: [], hits: 0, n: 0 };
+    const pm = pairMap[key];
+    pm.scores.push(p.score); pm.fwds.push(p.fwdCorr); pm.n++;
+    if (p.score > 0.3 && p.fwdCorr < 0) pm.hits++;
+  }
+  const pairRows = Object.values(pairMap).map(pm => ({
+    a: pm.a, b: pm.b,
+    avgScore: pm.scores.reduce((s, v) => s + v, 0) / pm.n,
+    avgFwd:   pm.fwds.reduce((s, v) => s + v, 0) / pm.n,
+    hitRate:  pm.n > 0 ? pm.hits / pm.n : 0,
+    n: pm.n
+  })).filter(r => r.n >= 10).sort((a, b) => b.avgScore - a.avgScore);
+
+  let vHtml = `<table class="hf-table"><thead><tr>
+    <th>Pair A</th><th>Pair B</th><th>Avg Score</th><th>Avg Fwd Corr (60 bars)</th><th>Hit Rate</th><th>Obs</th><th>Verdict</th>
+  </tr></thead><tbody>`;
+  for (const r of pairRows.slice(0, 30)) {
+    const hrCol  = r.hitRate > 0.65 ? 'var(--green)' : r.hitRate > 0.45 ? 'var(--amber)' : 'var(--red)';
+    const fwdCol = r.avgFwd < -0.2 ? 'var(--green)' : r.avgFwd < 0 ? 'var(--amber)' : 'var(--red)';
+    const verdict = r.hitRate > 0.65 && r.avgFwd < -0.1 ? '✓ Reliable' : r.hitRate > 0.5 ? '~ Partial' : '✗ Unreliable';
+    const vCol = r.hitRate > 0.65 && r.avgFwd < -0.1 ? 'var(--green)' : r.hitRate > 0.5 ? 'var(--amber)' : 'var(--red)';
+    vHtml += `<tr>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[r.a]||'#888'}">${r.a}</td>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[r.b]||'#888'}">${r.b}</td>
+      <td style="font-family:'DM Mono',monospace">${r.avgScore.toFixed(3)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${fwdCol}">${r.avgFwd >= 0 ? '+' : ''}${r.avgFwd.toFixed(3)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${hrCol}">${(r.hitRate*100).toFixed(1)}%</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--text3)">${r.n}</td>
+      <td style="font-size:10px;color:${vCol}">${verdict}</td>
+    </tr>`;
+  }
+  vHtml += '</tbody></table>';
+  document.getElementById('vl-table').innerHTML = vHtml;
+}
+
+function rankArray(arr) {
+  const idx = arr.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v);
+  const ranks = new Array(arr.length);
+  idx.forEach(({ i }, rank) => { ranks[i] = rank + 1; });
+  return ranks;
+}
+
+function pearson(xs, ys) {
+  const n = xs.length;
+  const mx = xs.reduce((s, v) => s + v, 0) / n;
+  const my = ys.reduce((s, v) => s + v, 0) / n;
+  let num = 0, da = 0, db = 0;
+  for (let i = 0; i < n; i++) {
+    const a = xs[i] - mx, b = ys[i] - my;
+    num += a * b; da += a * a; db += b * b;
+  }
+  const denom = Math.sqrt(da * db);
+  return denom < 1e-12 ? 0 : Math.max(-1, Math.min(1, num / denom));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 5d: Regime Filter
+   ═══════════════════════════════════════════════════════════════════════════ */
+function switchRegimeFilter(btn, regime) {
+  document.querySelectorAll('#rf-btns .rf-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderRegimeFilter(regime);
+}
+
+function renderRegimeFilter(regime) {
+  if (!S.pairs.length) return;
+  const pairs = S.pairs;
+  const fmt   = v => v === null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(3);
+
+  // Get regime-specific correlations
+  function getRegimeCorr(a, b) {
+    if (regime === 'ALL') return S.avgCorr[`${a}_${b}`] ?? S.avgCorr[`${b}_${a}`] ?? null;
+    return S.regimeCorr[regime]?.[`${a}_${b}`] ?? S.regimeCorr[regime]?.[`${b}_${a}`] ?? null;
+  }
+
+  // Get regime-specific beta (use regimeStats for 'rich' source)
+  function getRegimeBeta(pair, factor) {
+    if (regime === 'ALL') {
+      const lastRec = S.records[S.records.length - 1];
+      return getBeta(lastRec, pair, factor);
+    }
+    return S.regimeStats?.[pair]?.[regime]?.[`${factor}_mean`] ?? 0;
+  }
+
+  const rows = [];
+  for (let i = 0; i < pairs.length; i++)
+    for (let j = i + 1; j < pairs.length; j++) {
+      const a = pairs[i], b = pairs[j];
+      const corr   = getRegimeCorr(a, b);
+      const vA     = getRegimeBeta(a, 'vix'), vB = getRegimeBeta(b, 'vix');
+      const spread = Math.abs(vA - vB);
+      const score  = (corr !== null ? -corr : 0) * 0.7 + (spread / 2) * 0.3;
+      rows.push({ a, b, corr, vA, vB, spread, score });
+    }
+  rows.sort((x, y) => y.score - x.score);
+
+  // Count records in this regime
+  const regimeCount = regime === 'ALL'
+    ? S.records.length
+    : S.records.filter(r => (r.regime || 'RANGE') === regime).length;
+  const pct = S.records.length > 0 ? ((regimeCount / S.records.length) * 100).toFixed(0) : 0;
+
+  const regimeDesc = {
+    ALL:   'All historical data combined.',
+    BULL:  'Risk-on / trending up — equity bull, USD typically weak.',
+    BEAR:  'Risk-off / trending down — fear rising, safe-havens bid.',
+    RANGE: 'Ranging markets — no clear directional trend.',
+    CHOP:  'Choppy / indecisive — high noise, low signal.'
+  };
+  document.getElementById('rf-note').textContent =
+    `${regimeDesc[regime]}  ${regimeCount.toLocaleString()} records (${pct}% of history).`;
+
+  const scoreBar = (score) => {
+    const pct = Math.max(0, Math.min(100, (score + 1) / 2 * 100));
+    const col = score > 0.3 ? 'var(--green)' : score > 0 ? 'var(--amber)' : 'var(--red)';
+    return `<div style="display:inline-flex;align-items:center;gap:4px;width:80px">
+      <div style="flex:1;background:var(--s2);border-radius:3px;height:6px;overflow:hidden">
+        <div style="width:${pct.toFixed(0)}%;height:100%;background:${col};border-radius:3px"></div>
+      </div>
+      <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)">${score.toFixed(2)}</span>
+    </div>`;
+  };
+
+  let html = `<table class="hf-table"><thead><tr>
+    <th>Pair A</th><th>β vix</th><th>Pair B</th><th>β vix</th>
+    <th>β Spread</th><th>Corr (${regime})</th><th>Score</th><th>Signal</th>
+  </tr></thead><tbody>`;
+  for (const { a, b, corr, vA, vB, spread, score } of rows.slice(0, 25)) {
+    const sig = score > 0.5 ? '⬛ Strong' : score > 0.25 ? '▣ Moderate' : score < -0.2 ? '▪ Correlated' : '— Neutral';
+    html += `<tr>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[a]||'#888'}">${a}</td>
+      <td style="font-family:'DM Mono',monospace;color:${vA>0?'var(--green)':vA<0?'var(--red)':'var(--text3)'}">${fmt(vA)}</td>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[b]||'#888'}">${b}</td>
+      <td style="font-family:'DM Mono',monospace;color:${vB>0?'var(--green)':vB<0?'var(--red)':'var(--text3)'}">${fmt(vB)}</td>
+      <td style="font-family:'DM Mono',monospace">${spread.toFixed(3)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${corr===null?'var(--text3)':corr<-0.1?'var(--green)':corr>0.3?'var(--red)':'var(--text3)'}">${fmt(corr)}</td>
+      <td>${scoreBar(score)}</td>
+      <td style="font-size:10px;color:var(--text3)">${sig}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('rf-table').innerHTML = html;
+
+  // Rank-shift table vs ALL
+  if (regime !== 'ALL') {
+    const allRows = [];
+    for (let i = 0; i < pairs.length; i++)
+      for (let j = i + 1; j < pairs.length; j++) {
+        const a = pairs[i], b = pairs[j];
+        const corr   = S.avgCorr[`${a}_${b}`] ?? S.avgCorr[`${b}_${a}`] ?? null;
+        const lastRec = S.records[S.records.length - 1];
+        const vA = getBeta(lastRec, a, 'vix'), vB = getBeta(lastRec, b, 'vix');
+        const spread = Math.abs(vA - vB);
+        const score  = (corr !== null ? -corr : 0) * 0.7 + (spread / 2) * 0.3;
+        allRows.push({ key: `${a}_${b}`, score });
+      }
+    allRows.sort((x, y) => y.score - x.score);
+    const allRankMap = Object.fromEntries(allRows.map((r, i) => [r.key, i + 1]));
+
+    const shiftRows = rows.slice(0, 20).map((r, i) => {
+      const key = `${r.a}_${r.b}`;
+      const allRank = allRankMap[key] ?? allRankMap[`${r.b}_${r.a}`] ?? '—';
+      const shift = typeof allRank === 'number' ? allRank - (i + 1) : null;
+      return { ...r, rank: i + 1, allRank, shift };
+    }).sort((a, b) => Math.abs(b.shift ?? 0) - Math.abs(a.shift ?? 0));
+
+    let sHtml = `<table class="hf-table"><thead><tr>
+      <th>Pair A</th><th>Pair B</th><th>Rank (ALL)</th><th>Rank (${regime})</th><th>Shift</th><th>Interpretation</th>
+    </tr></thead><tbody>`;
+    for (const r of shiftRows) {
+      const shiftCol = r.shift === null ? 'var(--text3)' : Math.abs(r.shift) > 5 ? 'var(--purple)' : 'var(--text3)';
+      const shiftStr = r.shift === null ? '—' : (r.shift > 0 ? '↑+' : '↓') + Math.abs(r.shift);
+      const interp = r.shift === null ? '—' : Math.abs(r.shift) > 10 ? 'Strongly regime-dependent'
+        : Math.abs(r.shift) > 5 ? 'Moderate regime sensitivity' : 'Stable across regimes';
+      sHtml += `<tr>
+        <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[r.a]||'#888'}">${r.a}</td>
+        <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[r.b]||'#888'}">${r.b}</td>
+        <td style="font-family:'DM Mono',monospace;color:var(--text3)">#${r.allRank}</td>
+        <td style="font-family:'DM Mono',monospace">#${r.rank}</td>
+        <td style="font-family:'DM Mono',monospace;color:${shiftCol};font-weight:600">${shiftStr}</td>
+        <td style="font-size:10px;color:var(--text3)">${interp}</td>
+      </tr>`;
+    }
+    sHtml += '</tbody></table>';
+    document.getElementById('rf-shift-table').innerHTML = sHtml;
+  } else {
+    document.getElementById('rf-shift-table').innerHTML =
+      `<div style="font-size:11px;color:var(--text3);padding:8px 0">Select a specific regime to see rank shifts vs all-history baseline.</div>`;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    Tab 6: Factor Dominance
    ═══════════════════════════════════════════════════════════════════════════ */
 function renderFactorDominance() {
@@ -1509,6 +2406,129 @@ function showError(msg) {
         If running locally: restart the server after deployment.
       </div>
     </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 5e: Spread Monitor
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderSpreadMonitor() {
+  if (!S.pairs.length) return;
+  const el = document.getElementById('sm-table');
+  if (!el) return;
+
+  const minScore  = parseFloat(document.getElementById('sm-min-score')?.value ?? 0.5);
+  const sortMode  = document.getElementById('sm-sort')?.value ?? 'z_abs';
+  const pairs     = S.pairs;
+  const records   = S.records;
+
+  // Build per-pair-pair stats from the full records time series
+  const stats = [];
+  for (let pi = 0; pi < pairs.length; pi++) {
+    for (let pj = pi + 1; pj < pairs.length; pj++) {
+      const a = pairs[pi], b = pairs[pj];
+      const key   = `${a}_${b}`;
+      const serie = records.map(r => r.corr?.[key] ?? null).filter(v => v !== null);
+      if (serie.length < 10) continue;
+
+      const avgC  = serie.reduce((s, v) => s + v, 0) / serie.length;
+      const varC  = serie.reduce((s, v) => s + (v - avgC) ** 2, 0) / serie.length;
+      const stdC  = Math.sqrt(varC);
+      const curC  = serie[serie.length - 1];
+      const zScore = stdC > 0 ? (curC - avgC) / stdC : 0;
+
+      // Current hedge score (70/30 VIX, latest betas)
+      const lastRec = records[records.length - 1];
+      const vA = getBeta(lastRec, a, 'vix'), vB = getBeta(lastRec, b, 'vix');
+      const spread = Math.abs(vA - vB);
+      const score  = (-avgC * 0.7) + (spread / 2 * 0.3);
+
+      if (score < minScore) continue;
+
+      // Full series for sparkline (last 90 values, or all if fewer)
+      const sparkSerie = serie.slice(-90);
+      stats.push({ a, b, avgC, stdC, curC, zScore, score, vA, vB, spread, sparkSerie });
+    }
+  }
+
+  // Sort
+  if (sortMode === 'z_abs')  stats.sort((x, y) => Math.abs(y.zScore) - Math.abs(x.zScore));
+  else if (sortMode === 'z_pos') stats.sort((x, y) => y.zScore - x.zScore);
+  else stats.sort((x, y) => y.score - x.score);
+
+  if (!stats.length) {
+    el.innerHTML = `<div style="color:var(--text3);font-size:11px;padding:12px 0">No pairs meet the minimum hedge score threshold. Try lowering the filter.</div>`;
+    return;
+  }
+
+  // SVG sparkline builder
+  function sparkline(serie, avgC, stdC) {
+    const N = serie.length;
+    if (N < 2) return '';
+    const W = 130, H = 44;
+    const lo = avgC - 2.5 * stdC, hi = avgC + 2.5 * stdC;
+    const range = hi - lo || 0.01;
+    const yOf  = v => H - ((v - lo) / range * H);
+    const xOf  = i => (i / (N - 1)) * W;
+    const pts  = serie.map((v, i) => `${xOf(i).toFixed(1)},${Math.max(0, Math.min(H, yOf(v))).toFixed(1)}`).join(' ');
+    const yMean = yOf(avgC).toFixed(1);
+    const y1up  = Math.max(0, yOf(avgC + stdC)).toFixed(1);
+    const y1dn  = Math.min(H, yOf(avgC - stdC)).toFixed(1);
+    const y2up  = Math.max(0, yOf(avgC + 2 * stdC)).toFixed(1);
+    const y2dn  = Math.min(H, yOf(avgC - 2 * stdC)).toFixed(1);
+    const curX  = xOf(N - 1).toFixed(1);
+    const curY  = Math.max(0, Math.min(H, yOf(serie[N - 1]))).toFixed(1);
+    const z     = stdC > 0 ? (serie[N - 1] - avgC) / stdC : 0;
+    const dotCol = Math.abs(z) > 2 ? '#ef4444' : Math.abs(z) > 1.2 ? '#f59e0b' : '#10b981';
+    const lineCol = 'rgba(79,125,240,.75)';
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:130px;height:44px;display:block;overflow:visible">
+      <rect x="0" y="${y2up}" width="${W}" height="${Math.max(0,parseFloat(y2dn)-parseFloat(y2up)).toFixed(1)}" fill="rgba(79,125,240,.05)"/>
+      <rect x="0" y="${y1up}" width="${W}" height="${Math.max(0,parseFloat(y1dn)-parseFloat(y1up)).toFixed(1)}" fill="rgba(79,125,240,.09)"/>
+      <line x1="0" y1="${y2up}" x2="${W}" y2="${y2up}" stroke="rgba(248,113,113,.35)" stroke-width="0.7" stroke-dasharray="3,2"/>
+      <line x1="0" y1="${y2dn}" x2="${W}" y2="${y2dn}" stroke="rgba(16,185,129,.35)" stroke-width="0.7" stroke-dasharray="3,2"/>
+      <line x1="0" y1="${yMean}" x2="${W}" y2="${yMean}" stroke="rgba(148,163,184,.45)" stroke-width="0.8" stroke-dasharray="4,3"/>
+      <polyline points="${pts}" fill="none" stroke="${lineCol}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${curX}" cy="${curY}" r="3" fill="${dotCol}" stroke="var(--bg)" stroke-width="1.5"/>
+    </svg>`;
+  }
+
+  const fmt = v => (v >= 0 ? '+' : '') + v.toFixed(3);
+  const zFmt = v => (v >= 0 ? '+' : '') + v.toFixed(2);
+
+  let html = `<table class="hf-table" style="table-layout:fixed">
+    <colgroup>
+      <col style="width:72px"><col style="width:54px"><col style="width:72px"><col style="width:54px">
+      <col style="width:62px"><col style="width:62px"><col style="width:62px"><col style="width:148px"><col style="width:110px">
+    </colgroup>
+    <thead><tr>
+      <th>Pair A</th><th>β vix</th><th>Pair B</th><th>β vix</th>
+      <th>Score</th><th>Avg Corr</th><th>Z-Score</th><th>Rolling Corr (90 days)</th><th>Signal</th>
+    </tr></thead><tbody>`;
+
+  for (const { a, b, avgC, stdC, curC, zScore, score, vA, vB, sparkSerie } of stats.slice(0, 30)) {
+    const zCol = Math.abs(zScore) > 2 ? 'var(--red)' : Math.abs(zScore) > 1.2 ? 'var(--amber)' : 'var(--green)';
+    const zBg  = Math.abs(zScore) > 2 ? 'rgba(248,113,113,.08)' : Math.abs(zScore) > 1.2 ? 'rgba(245,158,11,.08)' : 'rgba(16,185,129,.06)';
+    let signal, sigCol;
+    if      (zScore >  2.0) { signal = '⚡ Diverged — watch entry'; sigCol = 'var(--red)'; }
+    else if (zScore >  1.2) { signal = '↗ Weakening — monitor';    sigCol = 'var(--amber)'; }
+    else if (zScore < -2.0) { signal = '↙ Very tight';             sigCol = 'var(--purple)'; }
+    else if (zScore < -1.2) { signal = '↘ Tightening';             sigCol = '#818cf8'; }
+    else                    { signal = '— Normal range';            sigCol = 'var(--text3)'; }
+
+    const scoreCol = score > 0.5 ? 'var(--green)' : score > 0.3 ? 'var(--amber)' : 'var(--text3)';
+    html += `<tr style="background:${zBg}">
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[a]||'#888'}">${a}</td>
+      <td style="font-family:'DM Mono',monospace;color:${vA>0?'var(--green)':vA<0?'var(--red)':'var(--text3)'};font-size:10px">${fmt(vA)}</td>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[b]||'#888'}">${b}</td>
+      <td style="font-family:'DM Mono',monospace;color:${vB>0?'var(--green)':vB<0?'var(--red)':'var(--text3)'};font-size:10px">${fmt(vB)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${scoreCol};font-weight:600">${score.toFixed(2)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${avgC<-0.3?'var(--green)':avgC>0.1?'var(--red)':'var(--text3)'}">${fmt(avgC)}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:700;color:${zCol}">${zFmt(zScore)}σ</td>
+      <td style="padding:4px 6px">${sparkline(sparkSerie, avgC, stdC)}</td>
+      <td style="font-size:10px;color:${sigCol};white-space:nowrap">${signal}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
 }
 
 function switchTab(btn) {
