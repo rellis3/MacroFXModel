@@ -56,6 +56,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 .sdot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:.2s}
 .sdot.ok{background:var(--green)}
 .sdot.err{background:var(--red)}
+.sdot.warn{background:var(--yellow)}
 .sdot.spin{background:var(--yellow);animation:pulse .8s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .smsg{font-size:12px;color:var(--muted);flex:1}
@@ -689,10 +690,9 @@ function initCharts(pA, pB) {
     grid: { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: { borderColor: '#1c2133' },
-    timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false, lockVisibleTimeRangeOnResize: true },
-    // Disable axis-drag zoom (main cause of accidental zoom-in on touch/click).
-    // Mouse wheel still pans; use pinch or Ctrl+scroll to zoom. Reset button restores fit.
-    handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: true },
+    timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false },
+    handleScroll: true,
+    handleScale: true,
   };
 
   ['chartA','chartB','chartZ'].forEach(id => { const e = el(id); e.innerHTML=''; e.className=''; e.style.height=''; });
@@ -712,17 +712,21 @@ function initCharts(pA, pB) {
   el('labelA').textContent = pA + ' — Price';
   el('labelB').textContent = pB + ' — Price';
 
-  // Sync x-axis: candle charts (A, B) drive all three; z-chart follows but never drives
-  // (z has sparse daily points — letting it drive causes whipping back when zoomed in)
-  const allCharts = [S.chartA, S.chartB, S.chartZ];
-  allCharts.forEach((src, si) => {
-    src.timeScale().subscribeVisibleTimeRangeChange(r => {
-      if (S.syncing || !r || si === 2) return;  // index 2 = chartZ, one-directional only
-      S.syncing = true;
-      allCharts.forEach((tgt, ti) => { if (ti !== si) { try { tgt.timeScale().setVisibleRange(r); } catch {} } });
-      S.syncing = false;
-    });
+  // Sync x-axis using same pattern as regime-backtest: direct subscriptions, no guard flag.
+  // setVisibleRange is idempotent when the range hasn't changed so no feedback loop occurs.
+  // Z-chart follows candles but has no subscription of its own — prevents the sparse daily
+  // z-series from snapping the candle charts back when the user zooms into M1 detail.
+  S.chartA.timeScale().subscribeVisibleTimeRangeChange(r => {
+    if (!r) return;
+    try { S.chartB.timeScale().setVisibleRange(r); } catch {}
+    try { S.chartZ.timeScale().setVisibleRange(r); } catch {}
   });
+  S.chartB.timeScale().subscribeVisibleTimeRangeChange(r => {
+    if (!r) return;
+    try { S.chartA.timeScale().setVisibleRange(r); } catch {}
+    try { S.chartZ.timeScale().setVisibleRange(r); } catch {}
+  });
+  // chartZ intentionally has no subscription — it receives range updates but never drives
 }
 
 function renderCharts(dispA, dispB, trades, zSeries, cfg) {
@@ -913,6 +917,17 @@ async function loadAndRun() {
   if (!S.corrData)       { setSt('err','Corr history not loaded — refresh page'); return; }
 
   const cfg = getCfg();
+
+  // Warn about common misconfigurations before running
+  const cfgWarns = [];
+  if (cfg.stop_z <= cfg.entry_z)
+    cfgWarns.push(`Stop Z (${cfg.stop_z}) must be > Entry Z (${cfg.entry_z}) — trades will stop immediately`);
+  if (cfg.stop_z - cfg.entry_z < 0.8)
+    cfgWarns.push(`Stop Z gap too tight (${(cfg.stop_z-cfg.entry_z).toFixed(1)}σ) — expect near-instant stop-outs; recommend ≥1.5σ gap`);
+  if (cfg.min_score > 0.3)
+    cfgWarns.push(`Min Score ${cfg.min_score} may block most pairs — score is negative for positively-correlated pairs; try 0.1–0.2`);
+  if (cfgWarns.length) { setSt('warn', '⚠ Config: ' + cfgWarns.join(' · ')); }
+
   el('runBtn').disabled = true;
   el('analytics').style.display = 'none';
 
