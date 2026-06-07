@@ -45,19 +45,21 @@ const HN_P75 = 1.1503;
 // garch_omega : long-run variance floor for GARCH (index/fx only)
 //   ω = (σ_annual_target / √252)² × (1−α−β)
 //   index → 20% long-run  ω = 4.76e-6
-//   fx    → 5.5% long-run ω = 3.60e-7  (was 6.70e-7 / 7.5% — too high for calm
-//           regimes, was flooring EURUSD ~10% above reference; recalibrated
+//   fx    → 5.5% long-run ω = 3.60e-7  (was 6.70e-7 / 7.5% — recalibrated
 //           2026-06-04: equilibrates near 5% with typical 0.30%/day FX returns)
 //
 // hl_50_corr / hl_75_corr / oc_50_corr / oc_75_corr
-//   Recalibrated 2026-06-01 against reference forecasts (back-solving from
-//   published HL/OC levels at known σ via BM/HN quantile formulas).
-//   Key change: Gold oc_50_corr raised 0.991→1.14 (was 15% below reference;
-//   backtest engine already used 1.163). FX and NQ aligned to within ~1%.
+//   Recalibrated 2026-06-08 from reference back-solves (3-day post-omega-fix avg
+//   Jun 4–8, reference vol as basis). Key changes:
+//   FX oc_50_corr: 1.038→0.956 (was ~10% above reference on every day; omega fix
+//     alone corrects vol level but the OC distribution correction also ran high)
+//   FX hl_75_corr: 0.912→0.888, FX oc_75_corr: 1.015→0.954 — same direction
+//   index: hl/oc corrections reduced 2–3% toward reference 3-day averages
+//   commodity: oc_50_corr 1.144→1.126 (minor, 4-day avg excl Jun 8 OC anomaly)
 const ASSET_PARAMS = {
-  commodity: { hl_50_corr: 1.023, hl_75_corr: 0.940, oc_50_corr: 1.144, oc_75_corr: 1.092 },
-  index:     { hl_50_corr: 1.010, hl_75_corr: 0.967, oc_50_corr: 1.092, oc_75_corr: 1.115, garch_omega: 4.76e-6 },
-  fx:        { hl_50_corr: 0.965, hl_75_corr: 0.912, oc_50_corr: 1.038, oc_75_corr: 1.015, garch_omega: 3.60e-7 },
+  commodity: { hl_50_corr: 1.018, hl_75_corr: 0.940, oc_50_corr: 1.126, oc_75_corr: 1.085 },
+  index:     { hl_50_corr: 0.993, hl_75_corr: 0.947, oc_50_corr: 1.061, oc_75_corr: 1.112, garch_omega: 4.76e-6 },
+  fx:        { hl_50_corr: 0.955, hl_75_corr: 0.888, oc_50_corr: 0.956, oc_75_corr: 0.954, garch_omega: 3.60e-7 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────

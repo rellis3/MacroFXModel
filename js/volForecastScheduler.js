@@ -40,17 +40,23 @@ const INSTRUMENTS = [
   { name: 'USDCAD', oandaInstrument: 'USD_CAD',     ticker: 'USDCAD=X', assetClass: 'fx'        },
   { name: 'USDCHF', oandaInstrument: 'USD_CHF',     ticker: 'USDCHF=X', assetClass: 'fx'        },
   { name: 'GBPJPY', oandaInstrument: 'GBP_JPY',     ticker: 'GBPJPY=X', assetClass: 'fx'        },
+  // ── FX crosses ───────────────────────────────────────────────────────────────
   { name: 'EURGBP', oandaInstrument: 'EUR_GBP',     ticker: 'EURGBP=X', assetClass: 'fx'        },
   { name: 'EURJPY', oandaInstrument: 'EUR_JPY',     ticker: 'EURJPY=X', assetClass: 'fx'        },
   { name: 'EURCHF', oandaInstrument: 'EUR_CHF',     ticker: 'EURCHF=X', assetClass: 'fx'        },
   { name: 'GBPCHF', oandaInstrument: 'GBP_CHF',     ticker: 'GBPCHF=X', assetClass: 'fx'        },
   { name: 'AUDJPY', oandaInstrument: 'AUD_JPY',     ticker: 'AUDJPY=X', assetClass: 'fx'        },
-  { name: 'CADJPY',   oandaInstrument: 'CAD_JPY',    ticker: 'CADJPY=X',  assetClass: 'fx'        },
-  { name: 'SPX500',   oandaInstrument: 'SPX500_USD', ticker: 'ES=F',      assetClass: 'equity', preferYahoo: true },
-  { name: 'DE30',     oandaInstrument: 'DE30_EUR',   ticker: '^GDAXI',    assetClass: 'equity', preferYahoo: true },
-  { name: 'UK100',    oandaInstrument: 'UK100_GBP',  ticker: '^FTSE',     assetClass: 'equity', preferYahoo: true },
-  { name: 'US30',   oandaInstrument: 'US30_USD',   ticker: 'YM=F',   assetClass: 'equity' },
-  { name: 'US2000', oandaInstrument: 'US2000_USD',  ticker: 'RTY=F',  assetClass: 'equity' },
+  { name: 'CADJPY', oandaInstrument: 'CAD_JPY',     ticker: 'CADJPY=X', assetClass: 'fx'        },
+  // ── Equity indices ───────────────────────────────────────────────────────────
+  // preferYahoo: Oanda CFDs settle at 22:00 UTC; Yahoo uses exchange RTH close
+  // (^GSPC/^DJI/^RUT = NYSE 16:00 ET, ^GDAXI = Xetra 17:30 CET, ^FTSE = LSE 16:30 BST)
+  // matching the reference system's data source convention.
+  // assetClass 'index' (not 'equity') — maps to defined ASSET_PARAMS.index corrections.
+  { name: 'SPX500', oandaInstrument: 'SPX500_USD',  ticker: '^GSPC',   assetClass: 'index', preferYahoo: true },
+  { name: 'DE30',   oandaInstrument: 'DE30_EUR',     ticker: '^GDAXI',  assetClass: 'index', preferYahoo: true },
+  { name: 'UK100',  oandaInstrument: 'UK100_GBP',    ticker: '^FTSE',   assetClass: 'index', preferYahoo: true },
+  { name: 'US30',   oandaInstrument: 'US30_USD',     ticker: '^DJI',    assetClass: 'index', preferYahoo: true },
+  { name: 'US2000', oandaInstrument: 'US2000_USD',   ticker: '^RUT',    assetClass: 'index', preferYahoo: true },
 ];
 
 const YAHOO_BASE       = 'https://query1.finance.yahoo.com/v8/finance/chart';
