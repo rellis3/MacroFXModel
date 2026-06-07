@@ -107,6 +107,29 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 .ep-EXIT_Z{background:rgba(34,197,94,.15);color:var(--green)}
 .ep-STOP_Z{background:rgba(245,158,11,.15);color:var(--yellow)}
 
+/* Suggestions panel */
+.sug-panel{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 20px}
+.sug-hdr{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.sug-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.sug-sections{display:flex;flex-direction:column;gap:8px}
+.sug-section-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.sug-active-lbl{color:var(--yellow)}
+.sug-top-lbl{color:var(--muted)}
+.sug-row{display:flex;gap:5px;flex-wrap:wrap}
+.sug-chip{display:flex;align-items:center;gap:5px;padding:5px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;cursor:pointer;transition:.15s;user-select:none}
+.sug-chip:hover{border-color:var(--accent);background:var(--bg4)}
+.sug-chip.active{border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.06)}
+.sug-chip.active:hover{border-color:var(--yellow)}
+.sug-chip.selected{border-color:var(--accent);background:rgba(79,142,247,.1)}
+.sug-pairs{font-size:12px;font-weight:700;color:var(--text)}
+.sug-sep{font-size:10px;color:var(--muted)}
+.sug-score{font-size:10px;font-family:var(--mono);padding:1px 5px;border-radius:4px;background:var(--bg4)}
+.sug-z{font-size:10px;font-family:var(--mono);padding:1px 5px;border-radius:4px}
+.sug-z.z-hot{background:rgba(239,68,68,.15);color:var(--red)}
+.sug-z.z-warm{background:rgba(245,158,11,.15);color:var(--yellow)}
+.sug-z.z-cool{background:var(--bg4);color:var(--muted)}
+.sug-loading{font-size:11px;color:var(--muted);font-style:italic}
+
 /* Trade log */
 .trade-log{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
 .tl-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)}
@@ -137,6 +160,25 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
   <input type="date" id="toDate"/>
   <button class="cfg-toggle" onclick="toggleCfg()">⚙ Config</button>
   <button class="run-btn" id="runBtn" onclick="loadAndRun()">▶ Run</button>
+</div>
+
+<!-- Suggested pairs — populated from live hedge scores after corr history loads -->
+<div class="sug-panel" id="sugPanel" style="display:none">
+  <div class="sug-hdr">
+    <span class="sug-title">Suggested Pairs</span>
+    <span style="font-size:10px;color:var(--muted)" id="sugNote">from live hedge scores</span>
+    <span style="margin-left:auto;font-size:10px;color:var(--muted)">Click any pair to load it → then Run</span>
+  </div>
+  <div class="sug-sections">
+    <div id="sugActive" style="display:none">
+      <div class="sug-section-lbl sug-active-lbl">⚡ Active Divergence  <span style="font-weight:400;color:var(--muted)">(|z| &gt; 2 right now)</span></div>
+      <div class="sug-row" id="sugActiveRow"></div>
+    </div>
+    <div>
+      <div class="sug-section-lbl sug-top-lbl">Top by Hedge Score</div>
+      <div class="sug-row" id="sugTopRow"></div>
+    </div>
+  </div>
 </div>
 
 <div class="cfg-panel" id="cfgPanel">
@@ -298,6 +340,85 @@ function getCfg() {
 document.querySelectorAll('#regimeChips .regime-chip').forEach(c =>
   c.addEventListener('click', () => c.classList.toggle('on')));
 
+// ── Suggestions ───────────────────────────────────────────────────────────────
+function renderSuggestions(alertData, pairs) {
+  // For each pair-pair key, compute current score and z-score
+  const suggestions = [];
+  for (const [key, curCorr] of Object.entries(alertData.last_corr || {})) {
+    const mu  = alertData.avg_corr?.[key];
+    const std = alertData.corr_std?.[key];
+    if (mu == null || std == null || std < 0.01) continue;
+    const z = (curCorr - mu) / std;
+
+    // Resolve pair names: keys built as `${pa}_${pb}` in corr build
+    let pA = null, pB = null;
+    for (const p of pairs) {
+      if (key.startsWith(p + '_')) {
+        pA = p; pB = key.slice(p.length + 1);
+        break;
+      }
+    }
+    if (!pA || !pB || !pairs.includes(pB)) continue;
+
+    const betaA = alertData.last_betas?.[pA]?.vix ?? 0;
+    const betaB = alertData.last_betas?.[pB]?.vix ?? 0;
+    const score = hScore(curCorr, betaA, betaB);
+    if (score < 0.3) continue; // skip very low quality pairs
+
+    suggestions.push({ pA, pB, score, z, corr: curCorr });
+  }
+
+  suggestions.sort((a, b) => b.score - a.score);
+
+  const active = suggestions.filter(s => Math.abs(s.z) >= 2.0).sort((a,b) => Math.abs(b.z)-Math.abs(a.z));
+  const top    = suggestions.slice(0, 14);
+
+  function chip(s) {
+    const abz    = Math.abs(s.z);
+    const zCls   = abz >= 3 ? 'z-hot' : abz >= 2 ? 'z-warm' : 'z-cool';
+    const zText  = (s.z >= 0 ? '+' : '') + s.z.toFixed(2);
+    const isAct  = abz >= 2;
+    return `<div class="sug-chip${isAct?' active':''}" onclick="selectPair('${s.pA}','${s.pB}')" title="Score: ${s.score.toFixed(3)} · Corr: ${s.corr.toFixed(3)} · Z: ${s.z.toFixed(2)}">
+      <span class="sug-pairs">${s.pA}</span>
+      <span class="sug-sep">/</span>
+      <span class="sug-pairs">${s.pB}</span>
+      <span class="sug-score">${s.score.toFixed(2)}</span>
+      <span class="sug-z ${zCls}">${zText}</span>
+    </div>`;
+  }
+
+  const activeEl = el('sugActive'), activeRow = el('sugActiveRow'), topRow = el('sugTopRow');
+
+  if (active.length > 0) {
+    activeEl.style.display = '';
+    activeRow.innerHTML = active.slice(0, 8).map(chip).join('');
+  } else {
+    activeEl.style.display = 'none';
+  }
+
+  topRow.innerHTML = top.map(chip).join('');
+
+  const generated = alertData.generated ? new Date(alertData.generated).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : 'unknown';
+  el('sugNote').textContent = `${suggestions.length} pair-pairs · data as of ${generated}`;
+  el('sugPanel').style.display = '';
+}
+
+function selectPair(pA, pB) {
+  el('pairA').value = pA;
+  el('pairB').value = pB;
+  // Highlight selected chip
+  document.querySelectorAll('.sug-chip').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.sug-chip').forEach(c => {
+    if (c.textContent.includes(pA) && c.textContent.includes(pB)) c.classList.add('selected');
+  });
+  // Scroll to run button and briefly highlight it
+  const btn = el('runBtn');
+  btn.style.background = '#22c55e';
+  btn.textContent = `▶ Run  ${pA} / ${pB}`;
+  setTimeout(() => { btn.style.background=''; btn.textContent='▶ Run'; }, 2500);
+  btn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
   setSt('spin', 'Loading correlation history…');
@@ -306,16 +427,25 @@ async function init() {
   el('fromDate').value = y2.toISOString().slice(0,10);
   el('toDate').value   = now.toISOString().slice(0,10);
   try {
-    const res = await fetch('/api/corr-history');
-    S.corrData = await res.json();
-    const pairs = S.corrData.pairs || [];
+    // Load both in parallel: corr history (full records) + hedge alerts (compact stats)
+    const [corrRes, alertRes] = await Promise.all([
+      fetch('/api/corr-history'),
+      fetch('/api/hedge-alerts'),
+    ]);
+    S.corrData       = await corrRes.json();
+    const alertData  = alertRes.ok ? await alertRes.json() : null;
+    const pairs      = S.corrData.pairs || [];
+
     [el('pairA'), el('pairB')].forEach(sel => {
       sel.innerHTML = pairs.map(p => `<option value="${p}">${p}</option>`).join('');
     });
     el('pairA').value = pairs.includes('EURUSD') ? 'EURUSD' : pairs[0];
     el('pairB').value = pairs.includes('USDJPY') ? 'USDJPY' : pairs[1] || pairs[0];
+
+    if (alertData && pairs.length) renderSuggestions(alertData, pairs);
+
     const n = S.corrData.records?.length ?? 0;
-    setSt('ok', `${n} corr snapshots loaded · ${pairs.length} pairs. Select pairs and click Run.`);
+    setSt('ok', `${n} corr snapshots · ${pairs.length} pairs. Pick a suggestion or select manually, then Run.`);
   } catch(e) {
     setSt('err', 'Could not load corr history — is the server running? ' + e.message);
   }
