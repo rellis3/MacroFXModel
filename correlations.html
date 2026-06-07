@@ -198,6 +198,48 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 .hh-toggle-btn .hh-chevron{font-size:10px;transition:transform .2s}
 .hh-toggle-btn.open .hh-chevron{transform:rotate(180deg)}
 .hh-body{overflow:hidden;transition:max-height .35s ease}
+
+/* ── Hedge sub-tabs ───────────────────────────────────────────────────── */
+.htab-bar{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--s2);flex-shrink:0}
+.htab-btn{flex:1;padding:7px 10px;font-size:11px;font-weight:500;cursor:pointer;border:none;border-right:1px solid var(--border);background:none;color:var(--text3);transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap;text-align:center}
+.htab-btn:last-child{border-right:none}
+.htab-btn:hover{color:var(--text2);background:var(--s1)}
+.htab-btn.on{color:#fff;background:var(--purple);font-weight:600}
+.htab-panel{display:none;flex-direction:column;gap:12px}
+.htab-panel.on{display:flex}
+
+/* Weight lab controls */
+.wl-controls{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;padding:12px 14px;background:var(--s2);border:1px solid var(--border);border-radius:8px}
+.wl-ctrl-grp{display:flex;flex-direction:column;gap:5px}
+.wl-ctrl-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)}
+.wl-slider{width:150px;accent-color:var(--purple);cursor:pointer;height:4px}
+.wl-val{font-family:'DM Mono',monospace;font-size:12px;color:var(--purple);font-weight:700;min-width:40px}
+.wl-sel{padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-size:11px;font-family:'DM Mono',monospace;cursor:pointer}
+
+/* Stat boxes */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.stat-box{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center}
+.stat-val{font-size:20px;font-weight:700;font-family:'DM Mono',monospace;margin-bottom:3px}
+.stat-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);font-weight:600;line-height:1.4}
+
+/* Sweep chart */
+.ht-chart-wrap{position:relative}
+
+/* Regime filter buttons */
+.rf-btns{display:flex;gap:6px;flex-wrap:wrap}
+.rf-btn{padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);background:none;font-size:11px;font-weight:600;cursor:pointer;color:var(--text3);transition:all .15s;font-family:'DM Mono',monospace;letter-spacing:.3px}
+.rf-btn:hover{color:var(--text)}
+.rf-btn.on{color:#fff;border-color:transparent}
+.rf-ALL.on{background:var(--purple)}
+.rf-BULL.on{background:var(--green)}
+.rf-BEAR.on{background:var(--red)}
+.rf-RANGE.on{background:var(--amber);color:#000}
+.rf-CHOP.on{background:var(--text3)}
+
+/* Validator */
+.vl-good{color:var(--green);font-weight:600}
+.vl-bad{color:var(--red);font-weight:600}
+.vl-neutral{color:var(--text3)}
 </style>
 </head>
 <body>
@@ -390,15 +432,26 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 
       <!-- Tab 5: Hedge Finder -->
       <div class="tab-panel" id="t-hedge">
-        <div class="cl-card">
-          <div class="cl-card-title">Hedge Opportunities — Ranked by Inverse Correlation</div>
-          <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Pairs with negative average correlation are natural hedges. Trade opposite legs simultaneously to neutralise macro exposure.</div>
-          <div id="hedgeTable"></div>
+
+        <!-- ── Secondary tab bar ─────────────────────────────────────────── -->
+        <div class="htab-bar">
+          <button class="htab-btn on" data-htab="htp-ranked"   onclick="switchHTab(this)">Ranked Pairs</button>
+          <button class="htab-btn"    data-htab="htp-weights"  onclick="switchHTab(this)">Weight Lab</button>
+          <button class="htab-btn"    data-htab="htp-validate" onclick="switchHTab(this)">Score Validator</button>
+          <button class="htab-btn"    data-htab="htp-regime"   onclick="switchHTab(this)">Regime Filter</button>
         </div>
-        <div class="cl-card">
-          <div class="cl-card-title">Current Risk Profile — All Pairs</div>
-          <div id="riskProfile"></div>
-        </div>
+
+        <!-- ── Sub-panel 1: Ranked Pairs (existing) ──────────────────────── -->
+        <div class="htab-panel on" id="htp-ranked">
+          <div class="cl-card">
+            <div class="cl-card-title">Hedge Opportunities — Ranked by Inverse Correlation</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Pairs with negative average correlation are natural hedges. Trade opposite legs simultaneously to neutralise macro exposure.</div>
+            <div id="hedgeTable"></div>
+          </div>
+          <div class="cl-card">
+            <div class="cl-card-title">Current Risk Profile — All Pairs</div>
+            <div id="riskProfile"></div>
+          </div>
 
         <!-- ── Hedge Score: How It Works ─────────────────────────────────── -->
         <div class="cl-card">
@@ -620,7 +673,91 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 
           </div><!-- /#hh-body -->
         </div><!-- /.cl-card guide -->
-      </div>
+        </div><!-- /#htp-ranked -->
+
+        <!-- ── Sub-panel 2: Weight Lab ───────────────────────────────────── -->
+        <div class="htab-panel" id="htp-weights">
+          <div class="cl-card">
+            <div class="cl-card-title">Weight Lab — Find the Optimal Formula</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Adjust how much each component contributes to the hedge score, then see how well that weighting historically predicted a negative forward correlation. Lower avg forward corr = better predictor.</div>
+            <div class="wl-controls">
+              <div class="wl-ctrl-grp">
+                <div class="wl-ctrl-label">Correlation weight &nbsp;<span class="wl-val" id="wl-corr-val">70%</span></div>
+                <input type="range" class="wl-slider" id="wl-corr" min="0" max="100" step="5" value="70" oninput="onWLSlider()">
+              </div>
+              <div class="wl-ctrl-grp">
+                <div class="wl-ctrl-label">Beta spread weight &nbsp;<span class="wl-val" id="wl-beta-val">30%</span></div>
+                <input type="range" class="wl-slider" id="wl-beta" min="0" max="100" step="5" value="30" oninput="onWLSlider()" style="opacity:.4;pointer-events:none">
+              </div>
+              <div class="wl-ctrl-grp">
+                <div class="wl-ctrl-label">Beta factor</div>
+                <select class="wl-sel" id="wl-factor" onchange="updateWeightLab()">
+                  <option value="vix">VIX proxy</option>
+                  <option value="dxy">DXY</option>
+                  <option value="rates">Rates</option>
+                </select>
+              </div>
+              <div class="wl-ctrl-grp">
+                <div class="wl-ctrl-label">Lookahead</div>
+                <select class="wl-sel" id="wl-look" onchange="updateWeightLab()">
+                  <option value="20">20 bars (~20 days)</option>
+                  <option value="60" selected>60 bars (~60 days)</option>
+                  <option value="120">120 bars (~4 months)</option>
+                </select>
+              </div>
+            </div>
+            <div class="stat-grid" id="wl-stats" style="margin:10px 0"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+              <div>
+                <div class="cl-card-title" style="margin-bottom:8px">Avg forward corr by score bucket</div>
+                <div class="ht-chart-wrap" style="height:160px"><canvas id="wl-bucket-chart"></canvas></div>
+              </div>
+              <div>
+                <div class="cl-card-title" style="margin-bottom:8px">Hit rate vs correlation weight sweep</div>
+                <div class="ht-chart-wrap" style="height:160px"><canvas id="wl-sweep-chart"></canvas></div>
+              </div>
+            </div>
+            <div style="margin-top:12px">
+              <div class="cl-card-title" style="margin-bottom:8px">Top pairs under this weighting</div>
+              <div id="wl-table"></div>
+            </div>
+          </div>
+        </div><!-- /#htp-weights -->
+
+        <!-- ── Sub-panel 3: Score Validator ──────────────────────────────── -->
+        <div class="htab-panel" id="htp-validate">
+          <div class="cl-card">
+            <div class="cl-card-title">Score Validator — Does a High Score Predict a Good Hedge?</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">For every pair-pair and every point in history: score at time T vs realised correlation 60 bars later. A reliable formula shows high-scoring pairs consistently achieving negative forward correlations.</div>
+            <div class="stat-grid" id="vl-stats" style="margin-bottom:12px"></div>
+            <div class="ht-chart-wrap" style="height:170px;margin-bottom:12px"><canvas id="vl-decile-chart"></canvas></div>
+            <div id="vl-table"></div>
+          </div>
+        </div><!-- /#htp-validate -->
+
+        <!-- ── Sub-panel 4: Regime Filter ────────────────────────────────── -->
+        <div class="htab-panel" id="htp-regime">
+          <div class="cl-card">
+            <div class="cl-card-title">Regime Filter — Which Regimes Produce the Most Reliable Hedges?</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Hedge scores recalculated using only correlations and betas observed during a specific regime. Hedges are most reliable when correlation estimates come from the regime you are actually trading in.</div>
+            <div class="rf-btns" id="rf-btns" style="margin-bottom:12px">
+              <button class="rf-btn rf-ALL on" onclick="switchRegimeFilter(this,'ALL')">ALL</button>
+              <button class="rf-btn rf-BULL" onclick="switchRegimeFilter(this,'BULL')">BULL</button>
+              <button class="rf-btn rf-BEAR" onclick="switchRegimeFilter(this,'BEAR')">BEAR</button>
+              <button class="rf-btn rf-RANGE" onclick="switchRegimeFilter(this,'RANGE')">RANGE</button>
+              <button class="rf-btn rf-CHOP" onclick="switchRegimeFilter(this,'CHOP')">CHOP</button>
+            </div>
+            <div id="rf-note" style="font-size:10px;color:var(--text3);margin-bottom:8px"></div>
+            <div id="rf-table"></div>
+          </div>
+          <div class="cl-card">
+            <div class="cl-card-title">Regime Ranking Shift</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">How much does each pair-pair's rank change between ALL-regime and the selected regime? Large shifts suggest the hedge is regime-dependent.</div>
+            <div id="rf-shift-table"></div>
+          </div>
+        </div><!-- /#htp-regime -->
+
+      </div><!-- /#t-hedge -->
 
       <!-- Tab 6: Factor Dominance -->
       <div class="tab-panel" id="t-dom">
@@ -1647,6 +1784,467 @@ function renderHedgeFinder() {
       <div class="bar-tag" style="color:${tagCol};font-size:9px;font-weight:700">${tag}</div>
     </div>`;
   }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Hedge sub-tab navigation
+   ═══════════════════════════════════════════════════════════════════════════ */
+function switchHTab(btn) {
+  document.querySelectorAll('.htab-btn').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.htab-panel').forEach(p => p.classList.remove('on'));
+  btn.classList.add('on');
+  const panelId = btn.dataset.htab;
+  document.getElementById(panelId)?.classList.add('on');
+  if (panelId === 'htp-weights')  renderWeightLab();
+  if (panelId === 'htp-validate') renderScoreValidator();
+  if (panelId === 'htp-regime')   renderRegimeFilter('ALL');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Hedge lab — shared data cache
+   ═══════════════════════════════════════════════════════════════════════════ */
+const HLab = { ready: false, entries: [], sweepVix: null, sweepDxy: null, sweepRates: null,
+               charts: {} };
+
+function getBeta(rec, pair, factor) {
+  return S.source === 'rich'
+    ? (rec?.beta?.[pair]?.[factor] ?? 0)
+    : (rec?.estimates?.[pair]?.[`beta_${factor}`]?.mean ?? 0);
+}
+
+function precomputeHLab() {
+  if (HLab.ready) return;
+  const pairs = S.pairs;
+  const recs  = S.records;
+  HLab.entries = [];
+
+  for (let i = 0; i < recs.length; i++) {
+    const r = recs[i];
+    for (let pi = 0; pi < pairs.length; pi++) {
+      for (let pj = pi + 1; pj < pairs.length; pj++) {
+        const a = pairs[pi], b = pairs[pj];
+        const key  = `${a}_${b}`;
+        const corr = r.corr?.[key] ?? null;
+        if (corr === null) continue;
+        HLab.entries.push({
+          a, b, i,
+          corr,
+          vixS:   Math.abs(getBeta(r, a, 'vix')   - getBeta(r, b, 'vix')),
+          dxyS:   Math.abs(getBeta(r, a, 'dxy')   - getBeta(r, b, 'dxy')),
+          ratesS: Math.abs(getBeta(r, a, 'rates') - getBeta(r, b, 'rates')),
+          regime: r.regime || 'RANGE'
+        });
+      }
+    }
+  }
+
+  // Pre-compute hit-rate sweep for each beta factor (corr weight 0..100 in steps of 5)
+  const factors = { vix: 'vixS', dxy: 'dxyS', rates: 'ratesS' };
+  for (const [fName, fKey] of Object.entries(factors)) {
+    const sweep = [];
+    for (let w = 0; w <= 100; w += 5) {
+      const cW = w / 100, bW = 1 - cW;
+      let hi = 0, hit = 0;
+      for (const e of HLab.entries) {
+        const fwdIdx = e.i + 60;
+        if (fwdIdx >= S.records.length) continue;
+        const fwdCorr = S.records[fwdIdx].corr?.[`${e.a}_${e.b}`] ?? null;
+        if (fwdCorr === null) continue;
+        const score = (-e.corr * cW) + (e[fKey] / 2 * bW);
+        if (score > 0.5) { hi++; if (fwdCorr < 0) hit++; }
+      }
+      sweep.push({ w, hitRate: hi > 0 ? hit / hi : null, n: hi });
+    }
+    HLab[`sweep${fName.charAt(0).toUpperCase() + fName.slice(1)}`] = sweep;
+  }
+
+  HLab.ready = true;
+}
+
+function hlabScore(e, cW, fKey) {
+  return (-e.corr * cW) + (e[fKey] / 2 * (1 - cW));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 5b: Weight Lab
+   ═══════════════════════════════════════════════════════════════════════════ */
+function onWLSlider() {
+  const cW = parseInt(document.getElementById('wl-corr').value);
+  document.getElementById('wl-corr-val').textContent = cW + '%';
+  document.getElementById('wl-beta-val').textContent = (100 - cW) + '%';
+  document.getElementById('wl-beta').value = 100 - cW;
+  updateWeightLab();
+}
+
+function renderWeightLab() {
+  if (!S.pairs.length) return;
+  precomputeHLab();
+  updateWeightLab();
+}
+
+function updateWeightLab() {
+  if (!HLab.ready) return;
+  const cW     = parseInt(document.getElementById('wl-corr').value) / 100;
+  const factor = document.getElementById('wl-factor').value;
+  const look   = parseInt(document.getElementById('wl-look').value);
+  const fKey   = factor + 'S';
+
+  // Bucket analysis
+  const buckets = [
+    { label: '< 0\n(Correlated)', min: -Infinity, max: 0,    sumFwd: 0, n: 0 },
+    { label: '0–0.25\n(Neutral)',  min: 0,         max: 0.25, sumFwd: 0, n: 0 },
+    { label: '0.25–0.5\n(Moderate)',min:0.25,      max: 0.5,  sumFwd: 0, n: 0 },
+    { label: '> 0.5\n(Strong)',    min: 0.5,       max: Infinity, sumFwd: 0, n: 0 }
+  ];
+  let hiN = 0, hiHit = 0, hiSumFwd = 0;
+
+  for (const e of HLab.entries) {
+    const fwdIdx = e.i + look;
+    if (fwdIdx >= S.records.length) continue;
+    const fwdCorr = S.records[fwdIdx].corr?.[`${e.a}_${e.b}`] ?? null;
+    if (fwdCorr === null) continue;
+    const score = hlabScore(e, cW, fKey);
+    const bk = buckets.find(b => score >= b.min && score < b.max);
+    if (bk) { bk.sumFwd += fwdCorr; bk.n++; }
+    if (score > 0.5) { hiN++; hiSumFwd += fwdCorr; if (fwdCorr < 0) hiHit++; }
+  }
+
+  const hitRate    = hiN > 0 ? (hiHit / hiN * 100).toFixed(1) : '—';
+  const avgFwdHigh = hiN > 0 ? (hiSumFwd / hiN).toFixed(3) : '—';
+  const hitCol     = hiN > 0 && hiHit / hiN > 0.6 ? 'var(--green)' : hiN > 0 && hiHit / hiN > 0.4 ? 'var(--amber)' : 'var(--red)';
+
+  document.getElementById('wl-stats').innerHTML = `
+    <div class="stat-box"><div class="stat-val" style="color:${hitCol}">${hitRate}%</div><div class="stat-lbl">Hit rate<br>(score>0.5 → fwd corr<0)</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:${parseFloat(avgFwdHigh)<0?'var(--green)':'var(--red)'}">${avgFwdHigh}</div><div class="stat-lbl">Avg fwd corr<br>high-score pairs</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--text2)">${hiN.toLocaleString()}</div><div class="stat-lbl">High-score<br>data points</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--text2)">${HLab.entries.length.toLocaleString()}</div><div class="stat-lbl">Total<br>observations</div></div>`;
+
+  // Bucket chart
+  const bLabels = buckets.map(b => b.label.replace('\n', ' '));
+  const bData   = buckets.map(b => b.n > 0 ? +(b.sumFwd / b.n).toFixed(4) : 0);
+  const bColors = bData.map(v => v < -0.2 ? 'rgba(16,185,129,.7)' : v < 0 ? 'rgba(251,191,36,.7)' : 'rgba(248,113,113,.7)');
+  renderHLabChart('wl-bucket-chart', 'bar', bLabels, bData, bColors,
+    'Avg Forward Correlation by Score Bucket', true);
+
+  // Sweep chart
+  const sweepKey = `sweep${factor.charAt(0).toUpperCase() + factor.slice(1)}`;
+  const sweep = HLab[sweepKey] || [];
+  const sLabels = sweep.map(s => s.w + '%');
+  const sData   = sweep.map(s => s.hitRate !== null ? +(s.hitRate * 100).toFixed(1) : null);
+  const optIdx  = sData.reduce((bi, v, i) => (v !== null && (sData[bi] === null || v > sData[bi])) ? i : bi, 0);
+  const sColors = sData.map((_, i) => i === optIdx ? 'rgba(79,125,240,.9)' : 'rgba(79,125,240,.3)');
+  renderHLabChart('wl-sweep-chart', 'bar', sLabels, sData, sColors,
+    `Hit Rate vs Correlation Weight (optimal: ${sLabels[optIdx]})`, false);
+
+  // Top pairs table under this weighting
+  const pairs = S.pairs;
+  function getAvgCorr(a, b) { return S.avgCorr[`${a}_${b}`] ?? S.avgCorr[`${b}_${a}`] ?? null; }
+  const lastRec = S.records[S.records.length - 1];
+  const rows = [];
+  for (let i = 0; i < pairs.length; i++)
+    for (let j = i + 1; j < pairs.length; j++) {
+      const a = pairs[i], b = pairs[j];
+      const corr = getAvgCorr(a, b);
+      const bA = getBeta(lastRec, a, factor), bB = getBeta(lastRec, b, factor);
+      const spread = Math.abs(bA - bB);
+      const score = (corr !== null ? -corr * cW : 0) + (spread / 2 * (1 - cW));
+      rows.push({ a, b, corr, bA, bB, spread, score });
+    }
+  rows.sort((x, y) => y.score - x.score);
+  const fmt = v => v === null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(3);
+  const fLabel = { vix: 'β vix', dxy: 'β dxy', rates: 'β rates' }[factor];
+  let tHtml = `<table class="hf-table"><thead><tr>
+    <th>Pair A</th><th>${fLabel}</th><th>Pair B</th><th>${fLabel}</th>
+    <th>Spread</th><th>Avg Corr</th><th>Score (${Math.round(cW*100)}/${Math.round((1-cW)*100)})</th>
+  </tr></thead><tbody>`;
+  for (const { a, b, corr, bA, bB, spread, score } of rows.slice(0, 20)) {
+    const scoreCol = score > 0.5 ? 'var(--green)' : score > 0.25 ? 'var(--amber)' : score < -0.1 ? 'var(--red)' : 'var(--text3)';
+    tHtml += `<tr>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[a]||'#888'}">${a}</td>
+      <td style="font-family:'DM Mono',monospace;color:${bA>0?'var(--green)':bA<0?'var(--red)':'var(--text3)'}">${fmt(bA)}</td>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[b]||'#888'}">${b}</td>
+      <td style="font-family:'DM Mono',monospace;color:${bB>0?'var(--green)':bB<0?'var(--red)':'var(--text3)'}">${fmt(bB)}</td>
+      <td style="font-family:'DM Mono',monospace">${spread.toFixed(3)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${corr===null?'var(--text3)':corr<-0.1?'var(--red)':corr>0.3?'var(--green)':'var(--text3)'}">${fmt(corr)}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:700;color:${scoreCol}">${score.toFixed(3)}</td>
+    </tr>`;
+  }
+  tHtml += '</tbody></table>';
+  document.getElementById('wl-table').innerHTML = tHtml;
+}
+
+function renderHLabChart(canvasId, type, labels, data, colors, title, zeroLine) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (HLab.charts[canvasId]) { HLab.charts[canvasId].destroy(); }
+  HLab.charts[canvasId] = new Chart(canvas, {
+    type,
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0, borderRadius: 3 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: title, color: 'var(--text3)',
+                 font: { size: 9, family: "'DM Mono',monospace", weight: '600' },
+                 padding: { bottom: 6 } }
+      },
+      scales: {
+        x: { ticks: { color: 'var(--text3)', font: { size: 9 } }, grid: { color: 'var(--border)' } },
+        y: { ticks: { color: 'var(--text3)', font: { size: 9 } }, grid: { color: 'var(--border)' },
+             ...(zeroLine ? { afterDataLimits(ax){ if(ax.max<0.05) ax.max=0.05; if(ax.min>-0.05) ax.min=-0.05; } } : {}) }
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 5c: Score Validator
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderScoreValidator() {
+  if (!S.pairs.length) return;
+  precomputeHLab();
+
+  const LOOK = 60;
+  // Compute (score, fwdCorr) with default 70/30 VIX weighting
+  const pts = [];
+  for (const e of HLab.entries) {
+    const fwdIdx = e.i + LOOK;
+    if (fwdIdx >= S.records.length) continue;
+    const fwdCorr = S.records[fwdIdx].corr?.[`${e.a}_${e.b}`] ?? null;
+    if (fwdCorr === null) continue;
+    pts.push({ score: hlabScore(e, 0.7, 'vixS'), fwdCorr, a: e.a, b: e.b });
+  }
+
+  // Decile analysis — 10 buckets of score
+  const sorted = [...pts].sort((a, b) => a.score - b.score);
+  const sz = Math.floor(sorted.length / 10);
+  const deciles = Array.from({ length: 10 }, (_, d) => {
+    const slice = sorted.slice(d * sz, (d + 1) * sz);
+    const avgScore = slice.reduce((s, p) => s + p.score, 0) / slice.length;
+    const avgFwd   = slice.reduce((s, p) => s + p.fwdCorr, 0) / slice.length;
+    const hitRate  = slice.filter(p => p.fwdCorr < 0).length / slice.length;
+    return { avgScore, avgFwd, hitRate, n: slice.length };
+  });
+
+  // Spearman rank correlation between score and -fwdCorr
+  const n = pts.length;
+  const scoreRanks = rankArray(pts.map(p => p.score));
+  const fwdRanks   = rankArray(pts.map(p => -p.fwdCorr));
+  const spearman   = pearson(scoreRanks, fwdRanks);
+
+  // Stats
+  const allHigh = pts.filter(p => p.score > 0.5);
+  const hrHigh  = allHigh.length > 0 ? allHigh.filter(p => p.fwdCorr < 0).length / allHigh.length : 0;
+  const allLow  = pts.filter(p => p.score < 0);
+  const hrLow   = allLow.length > 0 ? allLow.filter(p => p.fwdCorr < 0).length / allLow.length : 0;
+  const spCol   = spearman > 0.3 ? 'var(--green)' : spearman > 0.1 ? 'var(--amber)' : 'var(--red)';
+
+  document.getElementById('vl-stats').innerHTML = `
+    <div class="stat-box"><div class="stat-val" style="color:${spCol}">${spearman.toFixed(3)}</div><div class="stat-lbl">Spearman r<br>score vs future hedge</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:${hrHigh>0.6?'var(--green)':hrHigh>0.4?'var(--amber)':'var(--red)'}">${(hrHigh*100).toFixed(1)}%</div><div class="stat-lbl">Hit rate<br>score > 0.5</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--text2)">${(hrLow*100).toFixed(1)}%</div><div class="stat-lbl">Hit rate<br>score &lt; 0 (baseline)</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--text2)">${n.toLocaleString()}</div><div class="stat-lbl">Total<br>observations</div></div>`;
+
+  // Decile chart
+  const dLabels = deciles.map((d, i) => `D${i+1}\n${d.avgScore.toFixed(2)}`);
+  const dData   = deciles.map(d => +d.avgFwd.toFixed(4));
+  const dColors = dData.map(v => v < -0.15 ? 'rgba(16,185,129,.75)' : v < 0 ? 'rgba(251,191,36,.75)' : 'rgba(248,113,113,.75)');
+  renderHLabChart('vl-decile-chart', 'bar', dLabels, dData, dColors,
+    'Avg forward correlation by score decile (D1=lowest score, D10=highest). Should slope downward.', true);
+
+  // Per-pair-pair aggregated validator table
+  const pairMap = {};
+  for (const p of pts) {
+    const key = `${p.a}_${p.b}`;
+    if (!pairMap[key]) pairMap[key] = { a: p.a, b: p.b, scores: [], fwds: [], hits: 0, n: 0 };
+    const pm = pairMap[key];
+    pm.scores.push(p.score); pm.fwds.push(p.fwdCorr); pm.n++;
+    if (p.score > 0.3 && p.fwdCorr < 0) pm.hits++;
+  }
+  const pairRows = Object.values(pairMap).map(pm => ({
+    a: pm.a, b: pm.b,
+    avgScore: pm.scores.reduce((s, v) => s + v, 0) / pm.n,
+    avgFwd:   pm.fwds.reduce((s, v) => s + v, 0) / pm.n,
+    hitRate:  pm.n > 0 ? pm.hits / pm.n : 0,
+    n: pm.n
+  })).filter(r => r.n >= 10).sort((a, b) => b.avgScore - a.avgScore);
+
+  let vHtml = `<table class="hf-table"><thead><tr>
+    <th>Pair A</th><th>Pair B</th><th>Avg Score</th><th>Avg Fwd Corr (60 bars)</th><th>Hit Rate</th><th>Obs</th><th>Verdict</th>
+  </tr></thead><tbody>`;
+  for (const r of pairRows.slice(0, 30)) {
+    const hrCol  = r.hitRate > 0.65 ? 'var(--green)' : r.hitRate > 0.45 ? 'var(--amber)' : 'var(--red)';
+    const fwdCol = r.avgFwd < -0.2 ? 'var(--green)' : r.avgFwd < 0 ? 'var(--amber)' : 'var(--red)';
+    const verdict = r.hitRate > 0.65 && r.avgFwd < -0.1 ? '✓ Reliable' : r.hitRate > 0.5 ? '~ Partial' : '✗ Unreliable';
+    const vCol = r.hitRate > 0.65 && r.avgFwd < -0.1 ? 'var(--green)' : r.hitRate > 0.5 ? 'var(--amber)' : 'var(--red)';
+    vHtml += `<tr>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[r.a]||'#888'}">${r.a}</td>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[r.b]||'#888'}">${r.b}</td>
+      <td style="font-family:'DM Mono',monospace">${r.avgScore.toFixed(3)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${fwdCol}">${r.avgFwd >= 0 ? '+' : ''}${r.avgFwd.toFixed(3)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${hrCol}">${(r.hitRate*100).toFixed(1)}%</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--text3)">${r.n}</td>
+      <td style="font-size:10px;color:${vCol}">${verdict}</td>
+    </tr>`;
+  }
+  vHtml += '</tbody></table>';
+  document.getElementById('vl-table').innerHTML = vHtml;
+}
+
+function rankArray(arr) {
+  const idx = arr.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v);
+  const ranks = new Array(arr.length);
+  idx.forEach(({ i }, rank) => { ranks[i] = rank + 1; });
+  return ranks;
+}
+
+function pearson(xs, ys) {
+  const n = xs.length;
+  const mx = xs.reduce((s, v) => s + v, 0) / n;
+  const my = ys.reduce((s, v) => s + v, 0) / n;
+  let num = 0, da = 0, db = 0;
+  for (let i = 0; i < n; i++) {
+    const a = xs[i] - mx, b = ys[i] - my;
+    num += a * b; da += a * a; db += b * b;
+  }
+  const denom = Math.sqrt(da * db);
+  return denom < 1e-12 ? 0 : Math.max(-1, Math.min(1, num / denom));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 5d: Regime Filter
+   ═══════════════════════════════════════════════════════════════════════════ */
+function switchRegimeFilter(btn, regime) {
+  document.querySelectorAll('#rf-btns .rf-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderRegimeFilter(regime);
+}
+
+function renderRegimeFilter(regime) {
+  if (!S.pairs.length) return;
+  const pairs = S.pairs;
+  const fmt   = v => v === null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(3);
+
+  // Get regime-specific correlations
+  function getRegimeCorr(a, b) {
+    if (regime === 'ALL') return S.avgCorr[`${a}_${b}`] ?? S.avgCorr[`${b}_${a}`] ?? null;
+    return S.regimeCorr[regime]?.[`${a}_${b}`] ?? S.regimeCorr[regime]?.[`${b}_${a}`] ?? null;
+  }
+
+  // Get regime-specific beta (use regimeStats for 'rich' source)
+  function getRegimeBeta(pair, factor) {
+    if (regime === 'ALL') {
+      const lastRec = S.records[S.records.length - 1];
+      return getBeta(lastRec, pair, factor);
+    }
+    return S.regimeStats?.[pair]?.[regime]?.[`${factor}_mean`] ?? 0;
+  }
+
+  const rows = [];
+  for (let i = 0; i < pairs.length; i++)
+    for (let j = i + 1; j < pairs.length; j++) {
+      const a = pairs[i], b = pairs[j];
+      const corr   = getRegimeCorr(a, b);
+      const vA     = getRegimeBeta(a, 'vix'), vB = getRegimeBeta(b, 'vix');
+      const spread = Math.abs(vA - vB);
+      const score  = (corr !== null ? -corr : 0) * 0.7 + (spread / 2) * 0.3;
+      rows.push({ a, b, corr, vA, vB, spread, score });
+    }
+  rows.sort((x, y) => y.score - x.score);
+
+  // Count records in this regime
+  const regimeCount = regime === 'ALL'
+    ? S.records.length
+    : S.records.filter(r => (r.regime || 'RANGE') === regime).length;
+  const pct = S.records.length > 0 ? ((regimeCount / S.records.length) * 100).toFixed(0) : 0;
+
+  const regimeDesc = {
+    ALL:   'All historical data combined.',
+    BULL:  'Risk-on / trending up — equity bull, USD typically weak.',
+    BEAR:  'Risk-off / trending down — fear rising, safe-havens bid.',
+    RANGE: 'Ranging markets — no clear directional trend.',
+    CHOP:  'Choppy / indecisive — high noise, low signal.'
+  };
+  document.getElementById('rf-note').textContent =
+    `${regimeDesc[regime]}  ${regimeCount.toLocaleString()} records (${pct}% of history).`;
+
+  const scoreBar = (score) => {
+    const pct = Math.max(0, Math.min(100, (score + 1) / 2 * 100));
+    const col = score > 0.3 ? 'var(--green)' : score > 0 ? 'var(--amber)' : 'var(--red)';
+    return `<div style="display:inline-flex;align-items:center;gap:4px;width:80px">
+      <div style="flex:1;background:var(--s2);border-radius:3px;height:6px;overflow:hidden">
+        <div style="width:${pct.toFixed(0)}%;height:100%;background:${col};border-radius:3px"></div>
+      </div>
+      <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)">${score.toFixed(2)}</span>
+    </div>`;
+  };
+
+  let html = `<table class="hf-table"><thead><tr>
+    <th>Pair A</th><th>β vix</th><th>Pair B</th><th>β vix</th>
+    <th>β Spread</th><th>Corr (${regime})</th><th>Score</th><th>Signal</th>
+  </tr></thead><tbody>`;
+  for (const { a, b, corr, vA, vB, spread, score } of rows.slice(0, 25)) {
+    const sig = score > 0.5 ? '⬛ Strong' : score > 0.25 ? '▣ Moderate' : score < -0.2 ? '▪ Correlated' : '— Neutral';
+    html += `<tr>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[a]||'#888'}">${a}</td>
+      <td style="font-family:'DM Mono',monospace;color:${vA>0?'var(--green)':vA<0?'var(--red)':'var(--text3)'}">${fmt(vA)}</td>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[b]||'#888'}">${b}</td>
+      <td style="font-family:'DM Mono',monospace;color:${vB>0?'var(--green)':vB<0?'var(--red)':'var(--text3)'}">${fmt(vB)}</td>
+      <td style="font-family:'DM Mono',monospace">${spread.toFixed(3)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${corr===null?'var(--text3)':corr<-0.1?'var(--green)':corr>0.3?'var(--red)':'var(--text3)'}">${fmt(corr)}</td>
+      <td>${scoreBar(score)}</td>
+      <td style="font-size:10px;color:var(--text3)">${sig}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('rf-table').innerHTML = html;
+
+  // Rank-shift table vs ALL
+  if (regime !== 'ALL') {
+    const allRows = [];
+    for (let i = 0; i < pairs.length; i++)
+      for (let j = i + 1; j < pairs.length; j++) {
+        const a = pairs[i], b = pairs[j];
+        const corr   = S.avgCorr[`${a}_${b}`] ?? S.avgCorr[`${b}_${a}`] ?? null;
+        const lastRec = S.records[S.records.length - 1];
+        const vA = getBeta(lastRec, a, 'vix'), vB = getBeta(lastRec, b, 'vix');
+        const spread = Math.abs(vA - vB);
+        const score  = (corr !== null ? -corr : 0) * 0.7 + (spread / 2) * 0.3;
+        allRows.push({ key: `${a}_${b}`, score });
+      }
+    allRows.sort((x, y) => y.score - x.score);
+    const allRankMap = Object.fromEntries(allRows.map((r, i) => [r.key, i + 1]));
+
+    const shiftRows = rows.slice(0, 20).map((r, i) => {
+      const key = `${r.a}_${r.b}`;
+      const allRank = allRankMap[key] ?? allRankMap[`${r.b}_${r.a}`] ?? '—';
+      const shift = typeof allRank === 'number' ? allRank - (i + 1) : null;
+      return { ...r, rank: i + 1, allRank, shift };
+    }).sort((a, b) => Math.abs(b.shift ?? 0) - Math.abs(a.shift ?? 0));
+
+    let sHtml = `<table class="hf-table"><thead><tr>
+      <th>Pair A</th><th>Pair B</th><th>Rank (ALL)</th><th>Rank (${regime})</th><th>Shift</th><th>Interpretation</th>
+    </tr></thead><tbody>`;
+    for (const r of shiftRows) {
+      const shiftCol = r.shift === null ? 'var(--text3)' : Math.abs(r.shift) > 5 ? 'var(--purple)' : 'var(--text3)';
+      const shiftStr = r.shift === null ? '—' : (r.shift > 0 ? '↑+' : '↓') + Math.abs(r.shift);
+      const interp = r.shift === null ? '—' : Math.abs(r.shift) > 10 ? 'Strongly regime-dependent'
+        : Math.abs(r.shift) > 5 ? 'Moderate regime sensitivity' : 'Stable across regimes';
+      sHtml += `<tr>
+        <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[r.a]||'#888'}">${r.a}</td>
+        <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[r.b]||'#888'}">${r.b}</td>
+        <td style="font-family:'DM Mono',monospace;color:var(--text3)">#${r.allRank}</td>
+        <td style="font-family:'DM Mono',monospace">#${r.rank}</td>
+        <td style="font-family:'DM Mono',monospace;color:${shiftCol};font-weight:600">${shiftStr}</td>
+        <td style="font-size:10px;color:var(--text3)">${interp}</td>
+      </tr>`;
+    }
+    sHtml += '</tbody></table>';
+    document.getElementById('rf-shift-table').innerHTML = sHtml;
+  } else {
+    document.getElementById('rf-shift-table').innerHTML =
+      `<div style="font-size:11px;color:var(--text3);padding:8px 0">Select a specific regime to see rank shifts vs all-history baseline.</div>`;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
