@@ -2930,6 +2930,42 @@ app.get('/api/corr-history', (req, res) => {
   }
 });
 
+// Hedge alerts — compact summary for the dashboard beta panel.
+// Returns avg_corr, corr_std (computed from records), last rolling corr, and last betas.
+// Much smaller than the full corr-history response.
+app.get('/api/hedge-alerts', (req, res) => {
+  const p = CORR_HISTORY_PATH;
+  if (!fs.existsSync(p)) return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {} });
+  try {
+    const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+    const records = data.records || [];
+    const sums = {}, sums2 = {}, cnts = {}, lastCorr = {};
+    for (const r of records) {
+      for (const [k, v] of Object.entries(r.corr || {})) {
+        if (!sums[k]) { sums[k] = 0; sums2[k] = 0; cnts[k] = 0; }
+        sums[k] += v; sums2[k] += v * v; cnts[k]++;
+        lastCorr[k] = v;
+      }
+    }
+    const corr_std = {};
+    for (const k of Object.keys(sums)) {
+      const n = cnts[k], mu = sums[k] / n;
+      corr_std[k] = n > 1 ? +(Math.sqrt(Math.max(0, sums2[k] / n - mu * mu))).toFixed(5) : 0;
+    }
+    const lastRec = records[records.length - 1] || {};
+    res.json({
+      generated: data.generated,
+      pairs: data.pairs || [],
+      avg_corr: data.avg_corr || {},
+      corr_std,
+      last_corr: lastCorr,
+      last_betas: lastRec.beta || {}
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Regime log backfill (pure Node.js) ──────────────────────────────────────
 // Native JS log parser — no Python subprocess required.
 // Reads bot log files line-by-line with readline and writes directly to KV.

@@ -439,6 +439,7 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
           <button class="htab-btn"    data-htab="htp-weights"  onclick="switchHTab(this)">Weight Lab</button>
           <button class="htab-btn"    data-htab="htp-validate" onclick="switchHTab(this)">Score Validator</button>
           <button class="htab-btn"    data-htab="htp-regime"   onclick="switchHTab(this)">Regime Filter</button>
+          <button class="htab-btn"    data-htab="htp-spread"   onclick="switchHTab(this)">Spread Monitor</button>
         </div>
 
         <!-- ── Sub-panel 1: Ranked Pairs (existing) ──────────────────────── -->
@@ -756,6 +757,34 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
             <div id="rf-shift-table"></div>
           </div>
         </div><!-- /#htp-regime -->
+
+        <!-- ── Sub-panel 5: Spread Monitor ──────────────────────────────── -->
+        <div class="htab-panel" id="htp-spread">
+          <div class="cl-card">
+            <div class="cl-card-title">Spread Monitor — Is the Relationship Stretched Right Now?</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">
+              For each high-scoring hedge pair, this tracks the rolling correlation over time and flags when it has deviated significantly from its own average. A z-score above +1.5 means the relationship has weakened more than usual — one pair has moved relative to the other — which is the earliest systematic signal to consider an entry.
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px;padding:8px 10px;background:var(--s2);border-radius:6px;border:1px solid var(--border)">
+              <strong style="color:var(--text2)">How to read the chart:</strong> the band shows mean ±2σ of the rolling correlation. When the line leaves the top of the band (corr moving toward 0 or positive), the hedge relationship has temporarily weakened — potential entry. When it's at the bottom, the hedge is especially tight.
+            </div>
+            <div id="sm-controls" style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+              <div class="wl-ctrl-label">Min hedge score:</div>
+              <select class="wl-sel" id="sm-min-score" onchange="renderSpreadMonitor()">
+                <option value="0.3">0.30+</option>
+                <option value="0.5" selected>0.50+ (Strong only)</option>
+                <option value="0.25">0.25+</option>
+              </select>
+              <div class="wl-ctrl-label" style="margin-left:8px">Sort by:</div>
+              <select class="wl-sel" id="sm-sort" onchange="renderSpreadMonitor()">
+                <option value="z_abs">Most stretched (|z|)</option>
+                <option value="z_pos">Weakening (z → +∞)</option>
+                <option value="score">Hedge score</option>
+              </select>
+            </div>
+            <div id="sm-table"></div>
+          </div>
+        </div><!-- /#htp-spread -->
 
       </div><!-- /#t-hedge -->
 
@@ -1798,6 +1827,7 @@ function switchHTab(btn) {
   if (panelId === 'htp-weights')  renderWeightLab();
   if (panelId === 'htp-validate') renderScoreValidator();
   if (panelId === 'htp-regime')   renderRegimeFilter('ALL');
+  if (panelId === 'htp-spread')   renderSpreadMonitor();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2374,6 +2404,129 @@ function showError(msg) {
         If running locally: restart the server after deployment.
       </div>
     </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tab 5e: Spread Monitor
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderSpreadMonitor() {
+  if (!S.pairs.length) return;
+  const el = document.getElementById('sm-table');
+  if (!el) return;
+
+  const minScore  = parseFloat(document.getElementById('sm-min-score')?.value ?? 0.5);
+  const sortMode  = document.getElementById('sm-sort')?.value ?? 'z_abs';
+  const pairs     = S.pairs;
+  const records   = S.records;
+
+  // Build per-pair-pair stats from the full records time series
+  const stats = [];
+  for (let pi = 0; pi < pairs.length; pi++) {
+    for (let pj = pi + 1; pj < pairs.length; pj++) {
+      const a = pairs[pi], b = pairs[pj];
+      const key   = `${a}_${b}`;
+      const serie = records.map(r => r.corr?.[key] ?? null).filter(v => v !== null);
+      if (serie.length < 10) continue;
+
+      const avgC  = serie.reduce((s, v) => s + v, 0) / serie.length;
+      const varC  = serie.reduce((s, v) => s + (v - avgC) ** 2, 0) / serie.length;
+      const stdC  = Math.sqrt(varC);
+      const curC  = serie[serie.length - 1];
+      const zScore = stdC > 0 ? (curC - avgC) / stdC : 0;
+
+      // Current hedge score (70/30 VIX, latest betas)
+      const lastRec = records[records.length - 1];
+      const vA = getBeta(lastRec, a, 'vix'), vB = getBeta(lastRec, b, 'vix');
+      const spread = Math.abs(vA - vB);
+      const score  = (-avgC * 0.7) + (spread / 2 * 0.3);
+
+      if (score < minScore) continue;
+
+      // Full series for sparkline (last 90 values, or all if fewer)
+      const sparkSerie = serie.slice(-90);
+      stats.push({ a, b, avgC, stdC, curC, zScore, score, vA, vB, spread, sparkSerie });
+    }
+  }
+
+  // Sort
+  if (sortMode === 'z_abs')  stats.sort((x, y) => Math.abs(y.zScore) - Math.abs(x.zScore));
+  else if (sortMode === 'z_pos') stats.sort((x, y) => y.zScore - x.zScore);
+  else stats.sort((x, y) => y.score - x.score);
+
+  if (!stats.length) {
+    el.innerHTML = `<div style="color:var(--text3);font-size:11px;padding:12px 0">No pairs meet the minimum hedge score threshold. Try lowering the filter.</div>`;
+    return;
+  }
+
+  // SVG sparkline builder
+  function sparkline(serie, avgC, stdC) {
+    const N = serie.length;
+    if (N < 2) return '';
+    const W = 130, H = 44;
+    const lo = avgC - 2.5 * stdC, hi = avgC + 2.5 * stdC;
+    const range = hi - lo || 0.01;
+    const yOf  = v => H - ((v - lo) / range * H);
+    const xOf  = i => (i / (N - 1)) * W;
+    const pts  = serie.map((v, i) => `${xOf(i).toFixed(1)},${Math.max(0, Math.min(H, yOf(v))).toFixed(1)}`).join(' ');
+    const yMean = yOf(avgC).toFixed(1);
+    const y1up  = Math.max(0, yOf(avgC + stdC)).toFixed(1);
+    const y1dn  = Math.min(H, yOf(avgC - stdC)).toFixed(1);
+    const y2up  = Math.max(0, yOf(avgC + 2 * stdC)).toFixed(1);
+    const y2dn  = Math.min(H, yOf(avgC - 2 * stdC)).toFixed(1);
+    const curX  = xOf(N - 1).toFixed(1);
+    const curY  = Math.max(0, Math.min(H, yOf(serie[N - 1]))).toFixed(1);
+    const z     = stdC > 0 ? (serie[N - 1] - avgC) / stdC : 0;
+    const dotCol = Math.abs(z) > 2 ? '#ef4444' : Math.abs(z) > 1.2 ? '#f59e0b' : '#10b981';
+    const lineCol = 'rgba(79,125,240,.75)';
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:130px;height:44px;display:block;overflow:visible">
+      <rect x="0" y="${y2up}" width="${W}" height="${Math.max(0,parseFloat(y2dn)-parseFloat(y2up)).toFixed(1)}" fill="rgba(79,125,240,.05)"/>
+      <rect x="0" y="${y1up}" width="${W}" height="${Math.max(0,parseFloat(y1dn)-parseFloat(y1up)).toFixed(1)}" fill="rgba(79,125,240,.09)"/>
+      <line x1="0" y1="${y2up}" x2="${W}" y2="${y2up}" stroke="rgba(248,113,113,.35)" stroke-width="0.7" stroke-dasharray="3,2"/>
+      <line x1="0" y1="${y2dn}" x2="${W}" y2="${y2dn}" stroke="rgba(16,185,129,.35)" stroke-width="0.7" stroke-dasharray="3,2"/>
+      <line x1="0" y1="${yMean}" x2="${W}" y2="${yMean}" stroke="rgba(148,163,184,.45)" stroke-width="0.8" stroke-dasharray="4,3"/>
+      <polyline points="${pts}" fill="none" stroke="${lineCol}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${curX}" cy="${curY}" r="3" fill="${dotCol}" stroke="var(--bg)" stroke-width="1.5"/>
+    </svg>`;
+  }
+
+  const fmt = v => (v >= 0 ? '+' : '') + v.toFixed(3);
+  const zFmt = v => (v >= 0 ? '+' : '') + v.toFixed(2);
+
+  let html = `<table class="hf-table" style="table-layout:fixed">
+    <colgroup>
+      <col style="width:72px"><col style="width:54px"><col style="width:72px"><col style="width:54px">
+      <col style="width:62px"><col style="width:62px"><col style="width:62px"><col style="width:148px"><col style="width:110px">
+    </colgroup>
+    <thead><tr>
+      <th>Pair A</th><th>β vix</th><th>Pair B</th><th>β vix</th>
+      <th>Score</th><th>Avg Corr</th><th>Z-Score</th><th>Rolling Corr (90 days)</th><th>Signal</th>
+    </tr></thead><tbody>`;
+
+  for (const { a, b, avgC, stdC, curC, zScore, score, vA, vB, sparkSerie } of stats.slice(0, 30)) {
+    const zCol = Math.abs(zScore) > 2 ? 'var(--red)' : Math.abs(zScore) > 1.2 ? 'var(--amber)' : 'var(--green)';
+    const zBg  = Math.abs(zScore) > 2 ? 'rgba(248,113,113,.08)' : Math.abs(zScore) > 1.2 ? 'rgba(245,158,11,.08)' : 'rgba(16,185,129,.06)';
+    let signal, sigCol;
+    if      (zScore >  2.0) { signal = '⚡ Diverged — watch entry'; sigCol = 'var(--red)'; }
+    else if (zScore >  1.2) { signal = '↗ Weakening — monitor';    sigCol = 'var(--amber)'; }
+    else if (zScore < -2.0) { signal = '↙ Very tight';             sigCol = 'var(--purple)'; }
+    else if (zScore < -1.2) { signal = '↘ Tightening';             sigCol = '#818cf8'; }
+    else                    { signal = '— Normal range';            sigCol = 'var(--text3)'; }
+
+    const scoreCol = score > 0.5 ? 'var(--green)' : score > 0.3 ? 'var(--amber)' : 'var(--text3)';
+    html += `<tr style="background:${zBg}">
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[a]||'#888'}">${a}</td>
+      <td style="font-family:'DM Mono',monospace;color:${vA>0?'var(--green)':vA<0?'var(--red)':'var(--text3)'};font-size:10px">${fmt(vA)}</td>
+      <td style="font-weight:600;font-family:'DM Mono',monospace;color:${PAIR_COLORS[b]||'#888'}">${b}</td>
+      <td style="font-family:'DM Mono',monospace;color:${vB>0?'var(--green)':vB<0?'var(--red)':'var(--text3)'};font-size:10px">${fmt(vB)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${scoreCol};font-weight:600">${score.toFixed(2)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${avgC<-0.3?'var(--green)':avgC>0.1?'var(--red)':'var(--text3)'}">${fmt(avgC)}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:700;color:${zCol}">${zFmt(zScore)}σ</td>
+      <td style="padding:4px 6px">${sparkline(sparkSerie, avgC, stdC)}</td>
+      <td style="font-size:10px;color:${sigCol};white-space:nowrap">${signal}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
 }
 
 function switchTab(btn) {
