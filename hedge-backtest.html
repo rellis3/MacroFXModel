@@ -68,6 +68,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 .chart-hd{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:rgba(0,0,0,.25);border-bottom:1px solid var(--border)}
 .chart-lbl{font-size:12px;font-weight:600;color:var(--text)}
 .chart-meta{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.chart-reset{padding:3px 9px;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;transition:.15s;margin-left:8px}
+.chart-reset:hover{color:var(--text);border-color:var(--accent)}
 #chartA,#chartB{height:240px}
 #chartZ{height:140px}
 .no-data-msg{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
@@ -218,6 +220,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
     <div class="chart-hd">
       <span class="chart-lbl" id="labelA">Pair A</span>
       <span class="chart-meta" id="metaA"></span>
+      <button class="chart-reset" onclick="resetChartView()" title="Reset all charts to fit full data range">⟲ Reset View</button>
     </div>
     <div id="chartA" class="empty no-data-msg" style="height:240px">Run backtest to load chart</div>
   </div>
@@ -674,6 +677,10 @@ function destroyCharts() {
   S.zRefLines = [];
 }
 
+function resetChartView() {
+  if (S.chartA) S.chartA.timeScale().fitContent();  // sync propagates to B and Z
+}
+
 function initCharts(pA, pB) {
   destroyCharts();
   const opts = {
@@ -682,7 +689,10 @@ function initCharts(pA, pB) {
     grid: { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: { borderColor: '#1c2133' },
-    timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false },
+    timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false, lockVisibleTimeRangeOnResize: true },
+    // Disable axis-drag zoom (main cause of accidental zoom-in on touch/click).
+    // Mouse wheel still pans; use pinch or Ctrl+scroll to zoom. Reset button restores fit.
+    handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: true },
   };
 
   ['chartA','chartB','chartZ'].forEach(id => { const e = el(id); e.innerHTML=''; e.className=''; e.style.height=''; });
