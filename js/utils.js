@@ -157,35 +157,47 @@ export function filterTradingDays(bars) {
 
 // ── Pip / digit helpers ──────────────────────────────────────────────────────
 
+const _EQUITY_SYMS = new Set(['NAS100_USD', 'SPX500_USD', 'DE30_USD', 'UK100_GBP', 'US30_USD', 'US2000_USD']);
+
 export function getPipSize(symbol) {
   if (symbol.includes('JPY')) return 0.01;
   if (symbol.includes('XAU') || symbol.includes('GOLD')) return 0.1;
-  if (symbol === 'NAS100_USD') return 1.0;
+  if (_EQUITY_SYMS.has(symbol)) return 1.0;
   return 0.0001;
 }
 
 export function getDigits(symbol) {
   if (symbol.includes('JPY')) return 3;
   if (symbol.includes('XAU') || symbol.includes('GOLD')) return 2;
-  if (symbol === 'NAS100_USD') return 1;
+  if (_EQUITY_SYMS.has(symbol)) return 1;
   return 5;
 }
 
 export function getConfluenceThreshold(symbol) {
   if (symbol.includes('XAU') || symbol.includes('GOLD')) return S._caps?.gold?.confluencePips ?? 200;
   if (symbol === 'NAS100_USD') return S._caps?.nas100?.confluencePips ?? 100;
+  if (symbol === 'SPX500_USD') return S._caps?.spx500?.confluencePips ?? 25;
+  if (symbol === 'DE30_USD')   return S._caps?.de30?.confluencePips   ?? 80;
+  if (symbol === 'UK100_GBP')  return S._caps?.uk100?.confluencePips  ?? 40;
+  if (symbol === 'US30_USD')   return S._caps?.us30?.confluencePips   ?? 60;
+  if (symbol === 'US2000_USD') return S._caps?.us2000?.confluencePips ?? 15;
   return S._caps?.fx?.confluencePips ?? 2;
 }
 
 export function getMergeFactor(symbol) {
   if (symbol.includes('XAU') || symbol.includes('GOLD')) return S._caps?.gold?.mergeFactor ?? 0.30;
-  if (symbol === 'NAS100_USD') return S._caps?.nas100?.mergeFactor ?? 0.30;
+  if (_EQUITY_SYMS.has(symbol)) return 0.30;
   return S._caps?.fx?.mergeFactor ?? 0.30;
 }
 
 export function getAsiaMinPips(symbol) {
   if (symbol.includes('XAU') || symbol.includes('GOLD')) return S._caps?.gold?.asiaMinPips ?? 150;
   if (symbol === 'NAS100_USD') return S._caps?.nas100?.asiaMinPips ?? 50;
+  if (symbol === 'SPX500_USD') return S._caps?.spx500?.asiaMinPips ?? 15;
+  if (symbol === 'DE30_USD')   return S._caps?.de30?.asiaMinPips   ?? 40;
+  if (symbol === 'UK100_GBP')  return S._caps?.uk100?.asiaMinPips  ?? 25;
+  if (symbol === 'US30_USD')   return S._caps?.us30?.asiaMinPips   ?? 30;
+  if (symbol === 'US2000_USD') return S._caps?.us2000?.asiaMinPips ?? 10;
   return S._caps?.fx?.asiaMinPips ?? 15;
 }
 

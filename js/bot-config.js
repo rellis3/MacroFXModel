@@ -36,6 +36,7 @@ const DEFAULTS = {
     lockout:             3,
     cooldown:            60,
     sizing:              1.0,
+    bypass_risk_guard:   false,
   },
   position: {
     risk_pct:      1.0,
@@ -63,6 +64,9 @@ const DEFAULTS = {
 const ALL_PAIRS = [
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD',
   'EUR/GBP', 'USD/CAD', 'USD/CHF', 'GBP/JPY', 'NAS100_USD',
+  'EUR/JPY', 'EUR/CHF', 'GBP/CHF', 'AUD/JPY', 'CAD/JPY',
+  'SPX500_USD', 'DE30_USD', 'UK100_GBP',
+  'US30_USD', 'US2000_USD',
 ];
 
 // ── Backtest bot defaults (mirrors Python config.py DEFAULTS exactly) ─────────
@@ -202,11 +206,15 @@ async function loadConfig() {
 async function saveConfig() {
   readForm();
   setStatus('loading', 'Saving…');
+  const inl = document.getElementById('tgSaveStatus');
+  if (inl) { inl.textContent = 'Saving…'; inl.style.color = 'var(--text3)'; }
   try {
     await kvSet('bot_config', _cfg);
     setStatus('ok', 'Saved — bot picks up on next loop');
+    if (inl) { inl.textContent = '✓ Saved'; inl.style.color = 'var(--green)'; }
   } catch (e) {
     setStatus('err', `Save failed: ${e.message}`);
+    if (inl) { inl.textContent = `✗ ${e.message}`; inl.style.color = 'var(--red)'; }
   }
 }
 
@@ -277,6 +285,7 @@ function readForm() {
   _cfg.execution.monthlydd           = num('ec_monthlydd',   5);
   _cfg.execution.lockout             = num('ec_lockout',     3);
   _cfg.execution.cooldown            = num('ec_cooldown',    60);
+  _cfg.execution.bypass_risk_guard   = chk('ec_bypass_risk');
   _cfg.execution.sizing              = num('pos_sizing',     1.0);
 
   _cfg.position = _cfg.position || {};
@@ -338,6 +347,7 @@ function renderForm() {
   setVal('ec_monthlydd',   ec.monthlydd         ?? 5);
   setVal('ec_lockout',     ec.lockout           ?? 3);
   setVal('ec_cooldown',    ec.cooldown          ?? 60);
+  setChk('ec_bypass_risk', ec.bypass_risk_guard ?? false);
   setVal('pos_sizing',     ec.sizing            ?? 1.0);
   setVal('pos_risk',       _cfg.position?.risk_pct      ?? 1.0);
   setVal('pos_hi_mult',    _cfg.position?.vol_high_mult ?? 0.5);
@@ -876,8 +886,19 @@ const RG_PAIRS = [
   { id: 'rg_pair_USDCAD', sym: 'USD/CAD' },
   { id: 'rg_pair_USDCHF', sym: 'USD/CHF' },
   { id: 'rg_pair_GBPJPY', sym: 'GBP/JPY' },
+  { id: 'rg_pair_EURGBP', sym: 'EUR/GBP' },
+  { id: 'rg_pair_EURJPY', sym: 'EUR/JPY' },
+  { id: 'rg_pair_EURCHF', sym: 'EUR/CHF' },
+  { id: 'rg_pair_GBPCHF', sym: 'GBP/CHF' },
+  { id: 'rg_pair_AUDJPY', sym: 'AUD/JPY' },
+  { id: 'rg_pair_CADJPY', sym: 'CAD/JPY' },
   { id: 'rg_pair_XAUUSD', sym: 'XAU/USD' },
   { id: 'rg_pair_NAS100', sym: 'NAS100_USD' },
+  { id: 'rg_pair_SPX500', sym: 'SPX500_USD' },
+  { id: 'rg_pair_DE30',   sym: 'DE30_USD'   },
+  { id: 'rg_pair_UK100',  sym: 'UK100_GBP'  },
+  { id: 'rg_pair_US30',   sym: 'US30_USD'   },
+  { id: 'rg_pair_US2000', sym: 'US2000_USD' },
 ];
 
 let _rgCfg = JSON.parse(JSON.stringify(RG_DEFAULTS));
@@ -1024,8 +1045,19 @@ const RGV2_PAIRS = [
   { id: 'rgv2_pair_USDCAD', sym: 'USD/CAD' },
   { id: 'rgv2_pair_USDCHF', sym: 'USD/CHF' },
   { id: 'rgv2_pair_GBPJPY', sym: 'GBP/JPY' },
+  { id: 'rgv2_pair_EURGBP', sym: 'EUR/GBP' },
+  { id: 'rgv2_pair_EURJPY', sym: 'EUR/JPY' },
+  { id: 'rgv2_pair_EURCHF', sym: 'EUR/CHF' },
+  { id: 'rgv2_pair_GBPCHF', sym: 'GBP/CHF' },
+  { id: 'rgv2_pair_AUDJPY', sym: 'AUD/JPY' },
+  { id: 'rgv2_pair_CADJPY', sym: 'CAD/JPY' },
   { id: 'rgv2_pair_XAUUSD', sym: 'XAU/USD' },
   { id: 'rgv2_pair_NAS100',  sym: 'NAS100_USD' },
+  { id: 'rgv2_pair_SPX500',  sym: 'SPX500_USD' },
+  { id: 'rgv2_pair_DE30',    sym: 'DE30_USD'   },
+  { id: 'rgv2_pair_UK100',   sym: 'UK100_GBP'  },
+  { id: 'rgv2_pair_US30',    sym: 'US30_USD'   },
+  { id: 'rgv2_pair_US2000',  sym: 'US2000_USD' },
 ];
 
 let _rgv2Cfg = JSON.parse(JSON.stringify(RGV2_DEFAULTS));
@@ -1375,6 +1407,7 @@ const DA_DEFAULTS = {
   max_spread_pips:     3.0,
   daily_bars_needed:   60,
   ewma_lambda:         0.94,
+  vol_model:           'ewma',
   ema_period:          20,
   regime_threshold:    0.002,
   ddlimit:             3.0,
@@ -1398,7 +1431,9 @@ const DA_PAIRS = [
   { id: 'da_pair_CHFJPY', sym: 'CHF/JPY'  }, { id: 'da_pair_NZDJPY', sym: 'NZD/JPY'  },
   { id: 'da_pair_AUDNZD', sym: 'AUD/NZD'  }, { id: 'da_pair_GBPNZD', sym: 'GBP/NZD'  },
   { id: 'da_pair_EURNZD', sym: 'EUR/NZD'  }, { id: 'da_pair_AUDCHF', sym: 'AUD/CHF'  },
-  { id: 'da_pair_GBPCHF', sym: 'GBP/CHF'  },
+  { id: 'da_pair_GBPCHF', sym: 'GBP/CHF'   },
+  { id: 'da_pair_XAUUSD', sym: 'XAU/USD'   },
+  { id: 'da_pair_NAS100', sym: 'NAS100_USD' },
 ];
 
 let _daCfg = JSON.parse(JSON.stringify(DA_DEFAULTS));
@@ -1416,6 +1451,7 @@ function readDaForm() {
   _daCfg.max_spread_pips    = num('da_max_spread_pips',    3.0);
   _daCfg.daily_bars_needed  = num('da_daily_bars_needed',  60);
   _daCfg.ewma_lambda        = num('da_ewma_lambda',        0.94);
+  _daCfg.vol_model          = str('da_vol_model',          'ewma');
   _daCfg.ema_period         = num('da_ema_period',         20);
   _daCfg.regime_threshold   = num('da_regime_threshold',   0.002);
   _daCfg.ddlimit            = num('da_ddlimit',            3.0);
@@ -1440,6 +1476,7 @@ function renderDaForm() {
   setVal('da_max_spread_pips',  _daCfg.max_spread_pips  ?? 3.0);
   setVal('da_daily_bars_needed',_daCfg.daily_bars_needed ?? 60);
   setVal('da_ewma_lambda',      _daCfg.ewma_lambda      ?? 0.94);
+  setVal('da_vol_model',        _daCfg.vol_model        ?? 'ewma');
   setVal('da_ema_period',       _daCfg.ema_period       ?? 20);
   setVal('da_regime_threshold', _daCfg.regime_threshold ?? 0.002);
   setVal('da_ddlimit',          _daCfg.ddlimit          ?? 3.0);
@@ -1573,6 +1610,136 @@ window.resetDaDefaults  = resetDaDefaults;
 window.saveDaCreds      = saveDaCreds;
 window.daForceUnlock    = daForceUnlock;
 
+// ── Gold Bot ──────────────────────────────────────────────────────────────────
+
+const GOLD_DEFAULTS = {
+  enabled:              true,
+  paper_mode:           true,
+  min_zone_score:       3.0,
+  proximity_pips:       5.0,
+  vu_min_components:    2,
+  risk_pct:             0.5,
+  tp1_r:                1.0,
+  tp2_r:                2.0,
+  sl_atr_mult:          1.5,
+  max_sl_pips:          40,
+  max_trades_per_day:   2,
+  trade_window_start:   '07:00',
+  trade_window_end:     '20:00',
+  cooldown_minutes:     30,
+  gold_macro_gate:      true,
+};
+
+let _goldCfg = JSON.parse(JSON.stringify(GOLD_DEFAULTS));
+
+function readGoldForm() {
+  _goldCfg.enabled             = chk('gold_enabled');
+  _goldCfg.paper_mode          = chk('gold_paper_mode');
+  _goldCfg.gold_macro_gate     = chk('gold_macro_gate');
+  _goldCfg.min_zone_score      = num('gold_min_zone_score',      3.0);
+  _goldCfg.proximity_pips      = num('gold_proximity_pips',      5.0);
+  _goldCfg.vu_min_components   = parseInt(radio('gold_vu_min',   '2'), 10);
+  _goldCfg.sl_atr_mult         = num('gold_sl_atr_mult',         1.5);
+  _goldCfg.max_sl_pips         = num('gold_max_sl_pips',         40);
+  _goldCfg.tp1_r               = num('gold_tp1_r',               1.0);
+  _goldCfg.tp2_r               = num('gold_tp2_r',               2.0);
+  _goldCfg.risk_pct            = num('gold_risk_pct',            0.5);
+  _goldCfg.max_trades_per_day  = num('gold_max_trades_per_day',  2);
+  _goldCfg.trade_window_start  = str('gold_window_start',        '07:00');
+  _goldCfg.trade_window_end    = str('gold_window_end',          '20:00');
+  _goldCfg.cooldown_minutes    = num('gold_cooldown_minutes',    30);
+}
+
+function renderGoldForm() {
+  setChk('gold_enabled',           _goldCfg.enabled           ?? true);
+  setChk('gold_paper_mode',        _goldCfg.paper_mode        ?? true);
+  setChk('gold_macro_gate',        _goldCfg.gold_macro_gate   ?? true);
+  setVal('gold_min_zone_score',    _goldCfg.min_zone_score    ?? 3.0);
+  setVal('gold_proximity_pips',    _goldCfg.proximity_pips    ?? 5.0);
+  setRadio('gold_vu_min',          String(_goldCfg.vu_min_components ?? 2));
+  setVal('gold_sl_atr_mult',       _goldCfg.sl_atr_mult       ?? 1.5);
+  setVal('gold_max_sl_pips',       _goldCfg.max_sl_pips       ?? 40);
+  setVal('gold_tp1_r',             _goldCfg.tp1_r             ?? 1.0);
+  setVal('gold_tp2_r',             _goldCfg.tp2_r             ?? 2.0);
+  setVal('gold_risk_pct',          _goldCfg.risk_pct          ?? 0.5);
+  setVal('gold_max_trades_per_day',_goldCfg.max_trades_per_day ?? 2);
+  setVal('gold_window_start',      _goldCfg.trade_window_start ?? '07:00');
+  setVal('gold_window_end',        _goldCfg.trade_window_end   ?? '20:00');
+  setVal('gold_cooldown_minutes',  _goldCfg.cooldown_minutes  ?? 30);
+}
+
+async function loadGoldConfig() {
+  try {
+    const stored = await kvGet('gold_bot_config');
+    if (stored) { _goldCfg = { ...JSON.parse(JSON.stringify(GOLD_DEFAULTS)), ...stored }; }
+    renderGoldForm();
+  } catch (e) { /* non-critical */ }
+}
+
+async function saveGoldConfig() {
+  readGoldForm();
+  const el = document.getElementById('goldSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('gold_bot_config', _goldCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#f4c430'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetGoldDefaults() {
+  _goldCfg = JSON.parse(JSON.stringify(GOLD_DEFAULTS));
+  renderGoldForm();
+  const el = document.getElementById('goldSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+async function loadGoldStatus() {
+  try {
+    const data = await kvGet('gold_bot_status');
+    if (!data) { setText('goldBsAge', 'No status — bot has not run yet'); return; }
+
+    const ts  = data.timestamp ? new Date(data.timestamp).getTime() : 0;
+    const age = Math.round((Date.now() - ts) / 60000);
+    setText('goldBsAge',   age < 2 ? 'Live' : `Last update ${age}m ago`);
+    setText('goldBsMode',  data.paper_mode ? '· paper' : '· LIVE');
+    setText('goldBsState', data.state ? `· ${data.state}` : '');
+    setText('goldBsHTF',   data.htf_bias ? `· HTF ${data.htf_bias}` : '');
+
+    const zonesEl = document.getElementById('goldBsZones');
+    if (zonesEl) {
+      const zones = data.top_zones ?? [];
+      if (zones.length) {
+        zonesEl.innerHTML = zones.map(z => {
+          const col = z.dir === 'long' ? 'bs-green' : 'bs-red';
+          return `<span class="${col}">${z.zone_id} ${z.gp} score=${z.score}</span>`;
+        }).join('');
+      } else {
+        zonesEl.innerHTML = '<span class="bs-dim">No active zones</span>';
+      }
+    }
+
+    const tradesEl = document.getElementById('goldBsTrades');
+    if (tradesEl) {
+      const parts = [];
+      if (data.trades_today != null) parts.push(`trades today: ${data.trades_today}`);
+      if (data.squeeze_ratio != null) parts.push(`squeeze: ${data.squeeze_ratio.toFixed(2)}`);
+      const pos = data.mt5_positions ?? [];
+      pos.forEach(p => {
+        const col = p.direction === 'BUY' ? 'bs-green' : 'bs-red';
+        const pnl = p.profit != null ? ` $${p.profit > 0 ? '+' : ''}${p.profit.toFixed(2)}` : '';
+        parts.push(`<span class="${col}">${p.symbol} ${p.direction} @ ${p.open_price}${pnl}</span>`);
+      });
+      tradesEl.innerHTML = parts.join(' · ') || '';
+    }
+  } catch (e) { /* non-critical */ }
+}
+
+window.saveGoldConfig   = saveGoldConfig;
+window.resetGoldDefaults = resetGoldDefaults;
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.getElementById('unlockBtn')?.addEventListener('click', forceUnlock);
@@ -1582,6 +1749,7 @@ loadBtConfig();
 loadRgConfig();
 loadRgV2Config();
 loadDaConfig();
+loadGoldConfig();
 loadCreds();
 loadBtCreds();
 loadRgCreds();
@@ -1592,10 +1760,12 @@ loadBtBotStatus();
 loadRgBotStatus();
 loadRgV2Status();
 loadDaStatus();
+loadGoldStatus();
 loadBtJournal();
 setInterval(loadBotStatus,    60_000);
 setInterval(loadBtBotStatus,  60_000);
 setInterval(loadRgBotStatus,  60_000);
 setInterval(loadRgV2Status,   30_000);
 setInterval(loadDaStatus,     60_000);
+setInterval(loadGoldStatus,   60_000);
 setInterval(loadBtJournal,   120_000);

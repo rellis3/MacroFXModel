@@ -45,11 +45,41 @@ MAGIC = 20260006
 # ── Brownian Motion calibration constants ─────────────────────────────────────
 _BM_P50       = 1.572   # 50th percentile BM range multiplier
 _BM_P75       = 2.049   # 75th percentile BM range multiplier
-_HL50_CORR    = 0.921   # FX empirical correction for 50th pct
-_HL75_CORR    = 0.894   # FX empirical correction for 75th pct
+_HL50_CORR    = 0.921   # EWMA model: FX 50th pct correction (backtest-validated)
+_HL75_CORR    = 0.894   # EWMA model: FX 75th pct correction (backtest-validated)
 _EWMA_LAMBDA  = 0.94    # EWMA decay factor
 _EMA_PERIOD   = 20      # EMA period for regime slope
 _SLOPE_THRESH = 0.002   # EMA slope threshold for regime classification
+
+# ── Asset class + dashboard vol model (mirrors volForecast.js / server.js) ────
+_DA_ASSET_CLASS: dict = {
+    'XAU/USD':    'commodity',
+    'NAS100_USD': 'index',
+}
+_DA_DASHBOARD_PARAMS: dict = {
+    'commodity': {'hl50_corr': 1.023, 'hl75_corr': 0.940},
+    'index':     {'hl50_corr': 1.010, 'hl75_corr': 0.967},
+    'fx':        {'hl50_corr': 0.965, 'hl75_corr': 0.912},
+}
+_GARCH_ALPHA = 0.06
+_GARCH_BETA  = 0.91
+_GARCH_OMEGA: dict = {'fx': 3.60e-7, 'index': 4.76e-6, 'commodity': 3.60e-7}
+
+# ── Broker symbol alias map ───────────────────────────────────────────────────
+# Maps internal pair names → MT5 broker symbol names.
+# FX pairs are handled by stripping '/', so only non-FX pairs need entries here.
+# Add your broker's exact symbol name if it differs (check with symbols_get()).
+_MT5_SYMBOL_ALIASES = {
+    'NAS100_USD': 'USTECH100M',  # MetaQuotes-Demo
+    'XAU/USD':    'XAUUSD',   # standard MT5 gold symbol (no slash)
+}
+
+def _mt5_symbol(pair: str) -> str:
+    """Convert internal pair name to MT5 broker symbol."""
+    if pair in _MT5_SYMBOL_ALIASES:
+        return _MT5_SYMBOL_ALIASES[pair]
+    return pair.replace('/', '')
+
 
 # ── Pip / pip-value tables ─────────────────────────────────────────────────────
 _PIP_SIZES = {
@@ -106,6 +136,7 @@ DEFAULT_CFG: dict = {
     'max_spread_pips':     3.0,
     'daily_bars_needed':   60,        # D1 bars for vol + EMA-20 warmup
     'ewma_lambda':         0.94,
+    'vol_model':           'ewma',    # 'ewma' (backtest-validated) | 'dashboard' (GARCH/RS-EWMA)
     'ema_period':          20,
     'regime_threshold':    0.002,
     'ddlimit':             3.0,
@@ -150,10 +181,23 @@ def load_config(url: str) -> dict:
     return cfg
 
 
-def load_credentials(url: str) -> None:
+def load_credentials(url: str) -> bool:
+    """Load MT5 credentials from env vars (highest priority) or Railway KV.
+    Returns True if all required credentials are present after the call."""
+    # If already populated (e.g. local env, or previously loaded), use as-is
+    if all(os.environ.get(k) for k in ('MT5_ACCOUNT', 'MT5_PASSWORD', 'MT5_SERVER')):
+        log.info(
+            f'Credentials already in env: '
+            f'account={os.environ["MT5_ACCOUNT"]}  server={os.environ["MT5_SERVER"]}'
+        )
+        return True
     creds = _kv_get('dyn_anchor_credentials', url)
     if not creds:
-        return
+        log.warning(
+            'No dyn_anchor_credentials found in KV '
+            '(Railway may be sleeping — will retry; or set MT5_ACCOUNT/MT5_PASSWORD/MT5_SERVER env vars locally)'
+        )
+        return False
     for env_key, cfg_key in [
         ('MT5_ACCOUNT', 'mt5_account'), ('MT5_PASSWORD', 'mt5_password'),
         ('MT5_SERVER',  'mt5_server'),  ('MT5_PATH',     'mt5_path'),
@@ -162,6 +206,7 @@ def load_credentials(url: str) -> None:
         if val:
             os.environ[env_key] = str(val)
     log.info(f'Credentials loaded: account={creds.get("mt5_account")}  server={creds.get("mt5_server")}')
+    return bool(os.environ.get('MT5_ACCOUNT') and os.environ.get('MT5_SERVER'))
 
 
 # ── MT5 connection ─────────────────────────────────────────────────────────────
@@ -202,7 +247,7 @@ def get_tick(pair: str) -> Optional[object]:
     if not HAS_MT5:
         return None
     try:
-        tick = mt5.symbol_info_tick(pair.replace('/', ''))
+        tick = mt5.symbol_info_tick(_mt5_symbol(pair))
         if tick and tick.bid > 0:
             return tick
     except Exception:
@@ -223,7 +268,7 @@ def get_daily_bars(pair: str, n_bars: int) -> Optional[list]:
     if not HAS_MT5:
         return None
     try:
-        sym  = pair.replace('/', '')
+        sym  = _mt5_symbol(pair)
         bars = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_D1, 0, n_bars)
         if bars is None or len(bars) < 2:
             return None
@@ -233,7 +278,28 @@ def get_daily_bars(pair: str, n_bars: int) -> Optional[list]:
         return None
 
 
-# ── Vol model — EWMA + EMA-20 regime ─────────────────────────────────────────
+# ── Vol models ────────────────────────────────────────────────────────────────
+
+def _dashboard_sigma_d(bars, asset_class: str) -> float:
+    """GARCH(1,1) for fx/index, Rogers-Satchell EWMA for commodity — mirrors dashboard."""
+    lam = _EWMA_LAMBDA
+    if asset_class == 'commodity':
+        rs_var = None
+        for b in bars:
+            h, l, o, c = float(b['high']), float(b['low']), float(b['open']), float(b['close'])
+            if not all(x > 0 for x in (h, l, o, c)):
+                continue
+            rs = math.log(h / c) * math.log(h / o) + math.log(l / c) * math.log(l / o)
+            rs_var = max(rs, 1e-12) if rs_var is None else lam * rs_var + (1 - lam) * max(rs, 0)
+        return math.sqrt(max(rs_var or 1e-12, 1e-12))
+    omega  = _GARCH_OMEGA.get(asset_class, _GARCH_OMEGA['fx'])
+    closes = [float(b['close']) for b in bars]
+    rets   = [math.log(closes[i] / closes[i - 1]) for i in range(1, len(closes))]
+    sigma2 = omega / (1 - _GARCH_ALPHA - _GARCH_BETA)
+    for r in rets:
+        sigma2 = omega + _GARCH_ALPHA * r ** 2 + _GARCH_BETA * sigma2
+    return math.sqrt(max(sigma2, 1e-12))
+
 
 def _ema_series(values: list, period: int) -> list:
     """Compute full EMA series over values with given period."""
@@ -244,29 +310,36 @@ def _ema_series(values: list, period: int) -> list:
     return ema
 
 
-def compute_vol_and_regime(bars, cfg: dict) -> tuple:
+def compute_vol_and_regime(bars, cfg: dict, pair: str = '') -> tuple:
     """
     Returns (hl50, hl75, regime, sigma_d, ema_slope) from D1 bars.
     hl50/hl75 are price fractions (multiply by price to get distance).
     regime: 'BULL' | 'BEAR' | 'RANGE'
+    vol_model in cfg selects 'ewma' (default) or 'dashboard' (GARCH/RS-EWMA).
     """
     lam        = float(cfg.get('ewma_lambda',    _EWMA_LAMBDA))
     ema_period = int(cfg.get('ema_period',       _EMA_PERIOD))
     slope_thr  = float(cfg.get('regime_threshold', _SLOPE_THRESH))
+    vol_model  = cfg.get('vol_model', 'ewma')
 
     closes = [float(b['close']) for b in bars]
     if len(closes) < ema_period + 2:
         return None, None, 'RANGE', 0.0, 0.0
 
-    # EWMA variance from daily log returns
-    rets = [math.log(closes[i] / closes[i - 1]) for i in range(1, len(closes))]
-    ewma_var = rets[0] ** 2
-    for r in rets[1:]:
-        ewma_var = lam * ewma_var + (1 - lam) * r ** 2
-    sigma_d = math.sqrt(max(ewma_var, 1e-10))
-
-    hl50 = _BM_P50 * _HL50_CORR * sigma_d
-    hl75 = _BM_P75 * _HL75_CORR * sigma_d
+    if vol_model == 'dashboard':
+        asset_class = _DA_ASSET_CLASS.get(pair, 'fx')
+        sigma_d = _dashboard_sigma_d(bars, asset_class)
+        p = _DA_DASHBOARD_PARAMS.get(asset_class, _DA_DASHBOARD_PARAMS['fx'])
+        hl50 = _BM_P50 * p['hl50_corr'] * sigma_d
+        hl75 = _BM_P75 * p['hl75_corr'] * sigma_d
+    else:
+        rets = [math.log(closes[i] / closes[i - 1]) for i in range(1, len(closes))]
+        ewma_var = rets[0] ** 2
+        for r in rets[1:]:
+            ewma_var = lam * ewma_var + (1 - lam) * r ** 2
+        sigma_d = math.sqrt(max(ewma_var, 1e-10))
+        hl50 = _BM_P50 * _HL50_CORR * sigma_d
+        hl75 = _BM_P75 * _HL75_CORR * sigma_d
 
     # EMA-20 slope from latest two EMA values
     ema = _ema_series(closes, ema_period)
@@ -325,7 +398,7 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
     if not HAS_MT5:
         return None
 
-    sym  = pair.replace('/', '')
+    sym  = _mt5_symbol(pair)
     tick = mt5.symbol_info_tick(sym)
     if not tick:
         log.error(f'No tick for {sym}')
@@ -378,7 +451,7 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
     if not HAS_MT5:
         return False
 
-    sym   = pair.replace('/', '')
+    sym   = _mt5_symbol(pair)
     poss  = [p for p in (mt5.positions_get(symbol=sym) or [])
              if p.ticket == ticket and p.magic == MAGIC]
     if not poss:
@@ -613,6 +686,59 @@ def _serialize_open_positions() -> list:
         return []
 
 
+def _serialize_closed_trades() -> list:
+    """Return today's closed positions from MT5 deal history for this bot."""
+    if not HAS_MT5:
+        return []
+    try:
+        from datetime import timedelta
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
+        by_pos: dict = {}
+        for d in deals:
+            if d.magic != MAGIC:
+                continue
+            pid = int(d.position_id)
+            if pid not in by_pos:
+                by_pos[pid] = {'in': None, 'out': []}
+            if d.entry == 0:
+                by_pos[pid]['in'] = d
+            elif d.entry in (1, 3):
+                by_pos[pid]['out'].append(d)
+        result = []
+        for pid, grp in by_pos.items():
+            outs = grp['out']
+            if not outs:
+                continue
+            ind      = grp['in']
+            last_out = max(outs, key=lambda d: d.time)
+            if ind:
+                direction  = 'BUY' if ind.type == 0 else 'SELL'
+                open_price = round(float(ind.price), 5)
+                time_open  = int(ind.time)
+            else:
+                direction  = 'BUY' if last_out.type == 1 else 'SELL'
+                open_price = None
+                time_open  = None
+            result.append({
+                'position_id': pid,
+                'symbol':      last_out.symbol,
+                'direction':   direction,
+                'lots':        round(sum(d.volume     for d in outs), 2),
+                'open_price':  open_price,
+                'close_price': round(float(last_out.price), 5),
+                'profit':      round(sum(d.profit     for d in outs), 2),
+                'swap':        round(sum(d.swap       for d in outs), 2),
+                'commission':  round(sum(d.commission for d in outs), 2),
+                'time_open':   time_open,
+                'time_close':  int(last_out.time),
+                'comment':     str(ind.comment if ind else last_out.comment or ''),
+            })
+        return sorted(result, key=lambda t: t['time_close'])
+    except Exception:
+        return []
+
+
 def push_status(pairs_state: dict, balance: float,
                 paper_mode: bool, url: str) -> None:
     pairs_summary = {}
@@ -650,7 +776,8 @@ def push_status(pairs_state: dict, balance: float,
         'balance':        round(balance, 2),
         'paper_mode':     paper_mode,
         'pushed_at':      time.time(),
-        'mt5_positions':  _serialize_open_positions(),
+        'mt5_positions':        _serialize_open_positions(),
+        'today_closed_trades': _serialize_closed_trades(),
     }, url)
 
 
@@ -682,6 +809,7 @@ def fetch_server_forecast(pairs: list, url: str, cfg: dict) -> Optional[dict]:
             'emaPeriod':   ema_period,
             'slopeThresh': slope_thr,
             'bars':        n_bars,
+            'volModel':    cfg.get('vol_model', 'ewma'),
         }
         r = requests.get(f'{url}/api/dyn-anchor-forecast', params=params, timeout=60)
         if r.status_code != 200:
@@ -708,7 +836,8 @@ def run_nightly_precompute(daily_state: dict, pairs: list, url: str, cfg: dict) 
         log.warning('[Precompute] No forecast data returned — bot will fall back to MT5 bars at session open')
         return
 
-    tomorrow = (datetime.now(timezone.utc).date())
+    from datetime import timedelta
+    tomorrow = datetime.now(timezone.utc).date() + timedelta(days=1)
     ok_count = 0
     for pair in pairs:
         f = forecast.get(pair)
@@ -773,7 +902,7 @@ def run(url: str, paper_mode: bool) -> None:
         cycle += 1
         loop_start = time.time()
 
-        # ── Config reload every 5 min ─────────────────────────────────────────
+        # ── Config + credential reload every 5 min ───────────────────────────
         if time.time() - last_cfg_reload > 300:
             cfg  = load_config(url)
             tg_t = cfg.get('tg_token', '')
@@ -782,6 +911,13 @@ def run(url: str, paper_mode: bool) -> None:
             for pair in cfg['pairs']:
                 if pair not in daily_state:
                     daily_state[pair] = DailyState()
+            # Retry credentials if Railway was unreachable at startup
+            if paper_mode and not all(os.environ.get(k) for k in ('MT5_ACCOUNT', 'MT5_PASSWORD', 'MT5_SERVER')):
+                if load_credentials(url):
+                    log.info('[DA] Credentials now available — attempting MT5 connect')
+                    if mt5_connect():
+                        paper_mode = False
+                        log.info('[DA] MT5 connected after credential retry — live mode active')
 
         # ── Nightly precompute (23:15–23:55 UTC) ─────────────────────────────
         today = datetime.now(timezone.utc).date()
@@ -822,7 +958,7 @@ def run(url: str, paper_mode: bool) -> None:
                             pip    = _PIP_SIZES.get(pair, 0.0001)
                             sign   = 1 if pos['direction'] == 'BUY' else -1
                             pnl_p  = (exit_p - pos['entry_price']) * sign / pip
-                            pnl_pct = pnl_p * pip * _PIP_VALUES.get(pair, 10.0) / balance * 100
+                            pnl_pct = pnl_p * _PIP_VALUES.get(pair, 10.0) * pos.get('lots', 1.0) / balance * 100
                             msg = _tg_exit(pair, pos['direction'], pos['entry_price'],
                                            exit_p, 'EOD', pnl_pct, paper_mode)
                             send_telegram(tg_t, tg_c, msg)
@@ -881,16 +1017,29 @@ def run(url: str, paper_mode: bool) -> None:
                     source  = 'forecast'
                     log.info(f'[{pair}] Using precomputed forecast params')
                 else:
-                    # Fall back: fetch D1 bars from MT5
+                    # Fall back 1: fetch D1 bars from MT5
                     n_bars = int(cfg.get('daily_bars_needed', 60))
                     bars   = get_daily_bars(pair, n_bars + 1)
-                    if bars is None or len(bars) < int(cfg.get('ema_period', 20)) + 5:
-                        log.warning(f'[{pair}] Insufficient D1 bars — skipping today')
-                        ds.setup_date = datetime.now(timezone.utc).date()
-                        ds.tradeable  = False
-                        continue
-                    hl50, hl75, regime, sigma_d, slope = compute_vol_and_regime(bars[:-1], cfg)
-                    log.info(f'[{pair}] Computed vol/regime from MT5 bars (no precompute available)')
+                    if bars is not None and len(bars) >= int(cfg.get('ema_period', 20)) + 5:
+                        hl50, hl75, regime, sigma_d, slope = compute_vol_and_regime(bars[:-1], cfg, pair)
+                        log.info(f'[{pair}] Computed vol/regime from MT5 bars (no precompute available)')
+                    else:
+                        # Fall back 2: on-demand server forecast (works even without MT5)
+                        log.info(f'[{pair}] MT5 bars unavailable — requesting on-demand server forecast')
+                        on_demand = fetch_server_forecast([pair], url, cfg)
+                        fp = on_demand.get(pair) if on_demand else None
+                        if not fp:
+                            log.warning(f'[{pair}] No bars and no server forecast — skipping today')
+                            ds.setup_date = datetime.now(timezone.utc).date()
+                            ds.tradeable  = False
+                            continue
+                        hl50    = fp['hl50']
+                        hl75    = fp['hl75']
+                        sigma_d = fp['sigma_d']
+                        regime  = fp['regime']
+                        slope   = fp['ema_slope']
+                        source  = 'on-demand forecast'
+                        log.info(f'[{pair}] Using on-demand server forecast')
 
                 # --- session_open = today's D1 open --------------------------
                 # Always fetch from MT5/tick — cannot be precomputed since the
@@ -913,7 +1062,7 @@ def run(url: str, paper_mode: bool) -> None:
                 ds.sigma_d      = sigma_d
                 ds.regime       = regime
                 ds.ema_slope    = slope
-                ds.tradeable    = regime in ('BULL', 'BEAR') and hl50 > 0
+                ds.tradeable    = regime in ('BULL', 'BEAR') and hl50 > 0 and today_open > 0
                 ds.daily_trade_done = False
                 # In close mode reset any tracked position; in run mode carry positions forward
                 if cfg.get('eod_close_mode', 'close') == 'close':
@@ -926,7 +1075,10 @@ def run(url: str, paper_mode: bool) -> None:
                 )
 
                 if not ds.tradeable:
-                    log.info(f'[{pair}] RANGE day — no trading today')
+                    if today_open <= 0:
+                        log.warning(f'[{pair}] session_open=0 — MT5 not connected or symbol name mismatch, skipping today')
+                    else:
+                        log.info(f'[{pair}] RANGE day — no trading today')
 
             if not ds.is_today or not within_window(cfg):
                 continue
@@ -936,7 +1088,7 @@ def run(url: str, paper_mode: bool) -> None:
                 remaining = []
                 for pos in ds.open_positions:
                     if not paper_mode and HAS_MT5:
-                        sym   = pair.replace('/', '')
+                        sym   = _mt5_symbol(pair)
                         still = [p for p in (mt5.positions_get(symbol=sym) or [])
                                  if p.ticket == pos['ticket'] and p.magic == MAGIC]
                         if not still:
@@ -945,7 +1097,7 @@ def run(url: str, paper_mode: bool) -> None:
                             pip    = _PIP_SIZES.get(pair, 0.0001)
                             sign   = 1 if pos['direction'] == 'BUY' else -1
                             pnl_p  = (exit_p - pos['entry_price']) * sign / pip
-                            pnl_pct = pnl_p * pip * _PIP_VALUES.get(pair, 10.0) / balance * 100
+                            pnl_pct = pnl_p * _PIP_VALUES.get(pair, 10.0) * pos.get('lots', 1.0) / balance * 100
                             log.info(
                                 f'[{pair}] Ticket {pos["ticket"]} gone — SL/TP hit  '
                                 f'pnl={pnl_p:+.1f}p'

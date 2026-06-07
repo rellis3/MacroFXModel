@@ -21,6 +21,11 @@ const STATE_NAMES = ['BULL', 'BEAR', 'RANGE', 'CHOP'];
 export const HMM_V2_CONFIG = {
   'XAU/USD':    { selfProb: 0.88, linregN: 40, adxN: 30 },
   'NAS100_USD': { selfProb: 0.94, linregN: 60, adxN: 40 },
+  'SPX500_USD': { selfProb: 0.93, linregN: 55, adxN: 40 },
+  'DE30_USD':   { selfProb: 0.93, linregN: 55, adxN: 40 },
+  'UK100_GBP':  { selfProb: 0.93, linregN: 55, adxN: 40 },
+  'US30_USD':   { selfProb: 0.93, linregN: 55, adxN: 40 },
+  'US2000_USD': { selfProb: 0.93, linregN: 55, adxN: 40 },
   _default:     { selfProb: 0.92, linregN: 50, adxN: 50 },
 };
 

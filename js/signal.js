@@ -105,7 +105,8 @@ function runEquitySignalEngine() {
 export function runSignalEngine(compassData, volRegime) {
   const sym    = S.currentPair.symbol;
 
-  if (sym === 'NAS100_USD') return runEquitySignalEngine();
+  const _EQUITY = new Set(['NAS100_USD', 'SPX500_USD', 'DE30_USD', 'UK100_GBP', 'US30_USD', 'US2000_USD']);
+  if (_EQUITY.has(sym)) return runEquitySignalEngine();
 
   const data   = compassData[sym];
   const cfg    = COMPASS_CONFIG[sym] || null;
@@ -493,7 +494,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
   const price  = quote.price;
 
   const caps       = getCaps(sym);
-  const unit       = sym === 'NAS100_USD' ? 'pts' : 'p';
+  const unit       = S.currentPair.isEquity ? 'pts' : 'p';
   const isGoldScan = pipSz >= 0.1 && sym.includes('XAU');
   const _pipMult   = isGoldScan ? 1.0 : pipSz;
   const oiProx     = Math.min(atr * caps.oiAtrFrac,  caps.oiPipCap  * _pipMult);
@@ -1021,7 +1022,7 @@ export function renderEntryScanner(entries, quote, signal, volRegime, asia, mond
   const sym    = S.currentPair.symbol;
   const digits = getDigits(sym);
   const pipSz  = getPipSize(sym);
-  const unit   = sym === 'NAS100_USD' ? 'pts' : 'p';
+  const unit   = S.currentPair.isEquity ? 'pts' : 'p';
 
   // Compute gravity regime for the badge (independent of per-entry computation in runEntryScanner)
   const _oiStoreRender = (() => { try { return JSON.parse(localStorage.getItem('oi_store') || '{}'); } catch(e) { return {}; } })();

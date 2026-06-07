@@ -48,6 +48,7 @@ import yfinance as yf
 TRADING_DAYS = 252
 EWMA_LAMBDA  = 0.94
 FETCH_DAYS   = 620     # calendar days to fetch
+VOL_MODEL    = 'ewma'  # 'ewma' (default, backtest-validated) | 'dashboard' (GARCH/RS-EWMA)
 
 INSTRUMENTS = [
     {'name': 'GOLD',   'ticker': 'GLD',      'asset_class': 'commodity'},
@@ -89,7 +90,16 @@ NEWS_PATTERNS = [
 ]
 
 
-# ── Volatility model ─────────────────────────────────────────────────────────────
+# ── Volatility models ─────────────────────────────────────────────────────────────
+
+GARCH_ALPHA = 0.06
+GARCH_BETA  = 0.91
+GARCH_OMEGA = {  # per-asset-class GARCH intercept, calibrated from market data
+    'fx':        3.60e-7,
+    'index':     4.76e-6,
+    'commodity': 3.60e-7,  # unused — RS-EWMA is used for commodity
+}
+
 
 def ewma_vol_series(log_returns: np.ndarray, lam: float = EWMA_LAMBDA) -> np.ndarray:
     n   = len(log_returns)
@@ -101,6 +111,28 @@ def ewma_vol_series(log_returns: np.ndarray, lam: float = EWMA_LAMBDA) -> np.nda
         v = lam * v + (1 - lam) * r * r
         out[i] = math.sqrt(v)
     return out
+
+
+def garch11_vol(log_returns: np.ndarray, asset_class: str) -> float:
+    """GARCH(1,1) one-step-ahead sigma from close-to-close log returns."""
+    omega  = GARCH_OMEGA.get(asset_class, GARCH_OMEGA['fx'])
+    sigma2 = omega / (1 - GARCH_ALPHA - GARCH_BETA)
+    for r in log_returns:
+        sigma2 = omega + GARCH_ALPHA * r ** 2 + GARCH_BETA * sigma2
+    return math.sqrt(max(sigma2, 1e-12))
+
+
+def rs_ewma_vol(df: pd.DataFrame, lam: float = EWMA_LAMBDA) -> float:
+    """Rogers-Satchell EWMA estimator from OHLC data (commodity-optimised)."""
+    h, l, o, c = _flatten(df['High']), _flatten(df['Low']), _flatten(df['Open']), _flatten(df['Close'])
+    rs_var = None
+    for i in range(len(c)):
+        if not all(x > 0 for x in (h[i], l[i], o[i], c[i])):
+            continue
+        rs = math.log(h[i] / c[i]) * math.log(h[i] / o[i]) \
+           + math.log(l[i] / c[i]) * math.log(l[i] / o[i])
+        rs_var = max(rs, 1e-12) if rs_var is None else lam * rs_var + (1 - lam) * max(rs, 0)
+    return math.sqrt(max(rs_var or 1e-12, 1e-12))
 
 
 # ── Data fetching ────────────────────────────────────────────────────────────────
@@ -133,15 +165,26 @@ def fetch_ohlc(ticker: str) -> pd.DataFrame:
 
 def compute_forecast(df: pd.DataFrame,
                      asset_class: str = 'fx',
-                     news_mult: float = 1.0) -> dict:
+                     news_mult: float = 1.0,
+                     vol_model: str = VOL_MODEL) -> dict:
     """
     Returns forecast dict (all values are percentages):
-      vol_annual, hl_median, hl_75, oc_median, oc_75, news_mult
+      vol_annual, hl_median, hl_75, oc_median, oc_75, news_mult, vol_model
+
+    vol_model: 'ewma' — EWMA(λ=0.94) close-to-close (default, backtest-validated)
+               'dashboard' — GARCH(1,1) for fx/index, Rogers-Satchell EWMA for commodity
     """
     close   = _flatten(df['Close'])
     log_ret = np.log(close[1:] / close[:-1])
 
-    sigma_fwd     = ewma_vol_series(log_ret)[-1]
+    if vol_model == 'dashboard':
+        if asset_class == 'commodity':
+            sigma_fwd = rs_ewma_vol(df)
+        else:
+            sigma_fwd = garch11_vol(log_ret, asset_class)
+    else:
+        sigma_fwd = ewma_vol_series(log_ret)[-1]
+
     sigma_fwd_pct = sigma_fwd * 100
     vol_annual    = sigma_fwd_pct * math.sqrt(TRADING_DAYS)
 
@@ -155,6 +198,7 @@ def compute_forecast(df: pd.DataFrame,
         'oc_median':  r2(HALFNORM_P50 * p['oc_corr']    * sigma_fwd_pct * news_mult),
         'oc_75':      r2(HALFNORM_P75 * p['oc_corr']    * sigma_fwd_pct * news_mult),
         'news_mult':  r2(news_mult),
+        'vol_model':  vol_model,
     }
 
 
@@ -197,7 +241,7 @@ def next_trading_day(dt: datetime) -> datetime:
     return dt
 
 
-def run_forecast(target_date: Optional[datetime] = None) -> str:
+def run_forecast(target_date: Optional[datetime] = None, vol_model: str = VOL_MODEL) -> str:
     if target_date is None:
         target_date = next_trading_day(datetime.now(timezone.utc))
     session_label = target_date.strftime('%A').upper() + target_date.strftime(', %B %-d, %Y')
@@ -206,7 +250,7 @@ def run_forecast(target_date: Optional[datetime] = None) -> str:
     for cfg in INSTRUMENTS:
         try:
             df = fetch_ohlc(cfg['ticker'])
-            f  = compute_forecast(df, asset_class=cfg['asset_class'])
+            f  = compute_forecast(df, asset_class=cfg['asset_class'], vol_model=vol_model)
             f['name'] = cfg['name']
             results.append(f)
         except Exception as exc:
@@ -218,8 +262,11 @@ def run_forecast(target_date: Optional[datetime] = None) -> str:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        dt = datetime.strptime(sys.argv[1], '%Y-%m-%d').replace(tzinfo=timezone.utc)
-    else:
-        dt = None
-    print(run_forecast(dt))
+    dt        = None
+    vol_model = VOL_MODEL
+    for arg in sys.argv[1:]:
+        if arg in ('ewma', 'dashboard'):
+            vol_model = arg
+        else:
+            dt = datetime.strptime(arg, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+    print(run_forecast(dt, vol_model=vol_model))

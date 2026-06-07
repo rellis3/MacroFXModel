@@ -51,6 +51,7 @@ const INSTRUMENTS = [
   // preferYahoo: Oanda CFDs settle at 22:00 UTC; Yahoo uses exchange RTH close
   // (^GSPC/^DJI/^RUT = NYSE 16:00 ET, ^GDAXI = Xetra 17:30 CET, ^FTSE = LSE 16:30 BST)
   // matching the reference system's data source convention.
+  // assetClass 'index' (not 'equity') — maps to defined ASSET_PARAMS.index corrections.
   { name: 'SPX500', oandaInstrument: 'SPX500_USD',  ticker: '^GSPC',   assetClass: 'index', preferYahoo: true },
   { name: 'DE30',   oandaInstrument: 'DE30_EUR',     ticker: '^GDAXI',  assetClass: 'index', preferYahoo: true },
   { name: 'UK100',  oandaInstrument: 'UK100_GBP',    ticker: '^FTSE',   assetClass: 'index', preferYahoo: true },

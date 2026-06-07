@@ -271,7 +271,7 @@ def heartbeat_message(
     macro = macro or {}
     emoji = _emoji(regime)
     pair_disp = pair.replace('/', '')
-    vix_stress = macro.get('vix_ratio', 1.0) < 0.95
+    vix_stress = (macro.get('vix_ratio') or 1.0) < 0.95
     news_event = macro.get('next_news_name')
 
     score_total = reg_score.get('score') if reg_score else None
@@ -305,11 +305,18 @@ def heartbeat_message(
         lines.append(f'  Vol exhaustion  : {exhaustion_score:.2f} ⚠️')
 
     if open_pos:
-        direction = open_pos.get('direction', '')
-        pnl = open_pos.get('pnl_pips', 0)
-        dur = open_pos.get('duration_secs', 0)
-        sign = '+' if pnl >= 0 else ''
-        lines.append(f'  Position        : {direction} {_fmt_mins(dur)}  {sign}{pnl:.1f}p')
+        direction  = open_pos.get('direction', '')
+        pnl        = open_pos.get('pnl_pips', 0)
+        dur        = open_pos.get('duration_secs', 0)
+        entry      = open_pos.get('entry_price')
+        opened_at  = open_pos.get('opened_at', 0)
+        sign       = '+' if pnl >= 0 else ''
+        entry_str  = f'  entry={_fmt_price(entry, pair)}' if entry else ''
+        time_str   = ''
+        if opened_at:
+            dt = datetime.fromtimestamp(float(opened_at), tz=timezone.utc)
+            time_str = f' since {dt.strftime("%H:%M")} UTC'
+        lines.append(f'  Position        : {direction}{time_str}{entry_str}  {sign}{pnl:.1f}p')
 
     if vix_stress:
         lines.append(f'  ⚠️ VIX          : backwardation — macro stress')
@@ -394,6 +401,9 @@ def exit_alert(
     conf_at_exit: float, regime_at_exit: str,
     pnl_pips: float, duration_secs: float,
     paper_mode: bool,
+    entry_price: Optional[float] = None,
+    close_price: Optional[float] = None,
+    opened_at: Optional[float] = None,
 ) -> str:
     pnl_emoji = '✅' if pnl_pips >= 0 else '❌'
     sign = '+' if pnl_pips >= 0 else ''
@@ -405,9 +415,23 @@ def exit_alert(
         f'  Regime    : {_label(regime_at_exit)} — regime flipped\n'
     )
 
+    entry_line = ''
+    if entry_price is not None:
+        open_time = ''
+        if opened_at:
+            dt = datetime.fromtimestamp(float(opened_at), tz=timezone.utc)
+            open_time = f'  @ {dt.strftime("%H:%M")} UTC'
+        entry_line = f'  Entry     : {_fmt_price(entry_price, pair)}{open_time}\n'
+
+    close_line = ''
+    if close_price is not None:
+        close_line = f'  Close     : {_fmt_price(close_price, pair)}\n'
+
     return (
         f'{pnl_emoji} <b>[V2] {pair_disp} — CLOSED {direction}{paper_tag}</b>\n'
         f'  Exit      : {exit_reason}\n'
+        f'{entry_line}'
+        f'{close_line}'
         f'  Conf      : {conf_at_exit:.1f}%\n'
         f'{regime_note}'
         f'  P&L       : {sign}{pnl_pips:.1f} pips\n'

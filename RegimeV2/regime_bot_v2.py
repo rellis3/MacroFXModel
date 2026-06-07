@@ -75,14 +75,31 @@ MAGIC = 20260005
 _PIP_SIZES = {
     'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
     'AUD/USD': 0.0001, 'NZD/USD': 0.0001, 'USD/CAD': 0.0001,
-    'USD/CHF': 0.0001, 'GBP/JPY': 0.01,  'XAU/USD': 1.0, 'NAS100_USD': 1.0,
+    'USD/CHF': 0.0001, 'GBP/JPY': 0.01,   'EUR/GBP': 0.0001,
+    'EUR/JPY': 0.01,   'EUR/CHF': 0.0001, 'GBP/CHF': 0.0001,
+    'AUD/JPY': 0.01,   'CAD/JPY': 0.01,
+    'XAU/USD': 1.0,    'NAS100_USD': 1.0,  'USTECH100M': 1.0,
+    'SPX500_USD': 1.0, 'DE30_USD': 1.0,    'UK100_GBP': 1.0,
+    'US30_USD': 1.0, 'US2000_USD': 1.0,
 }
 _PIP_VALUES = {
     'EUR/USD': 10.0, 'GBP/USD': 10.0, 'AUD/USD': 10.0, 'NZD/USD': 10.0,
     'USD/JPY': 9.0,  'USD/CAD': 7.5,  'USD/CHF': 10.5, 'GBP/JPY': 9.0,
-    'XAU/USD': 100.0, 'NAS100_USD': 1.0,
+    'EUR/GBP': 12.5, 'EUR/JPY': 6.5,  'EUR/CHF': 11.0, 'GBP/CHF': 11.0,
+    'AUD/JPY': 6.5,  'CAD/JPY': 6.5,
+    'XAU/USD': 100.0, 'NAS100_USD': 1.0, 'USTECH100M': 1.0,
+    'SPX500_USD': 1.0, 'DE30_USD': 1.0,  'UK100_GBP': 1.0,
+    'US30_USD': 1.0, 'US2000_USD': 1.0,
 }
 TRADEABLE = {'BULL', 'BEAR'}
+
+# ── Broker symbol aliases (pair name → actual MT5 symbol) ─────────────────────
+_MT5_SYMBOL: dict[str, str] = {
+    'NAS100_USD': 'USTECH100M',
+}
+
+def _mt5_sym(pair: str) -> str:
+    return _MT5_SYMBOL.get(pair, pair.replace('/', ''))
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 os.makedirs(os.path.join(os.path.dirname(__file__), '..', 'logs'), exist_ok=True)
@@ -186,6 +203,18 @@ def _kv_put(key: str, data: dict, url: str) -> None:
         log.warning(f'kv_put({key}): {exc}')
 
 
+def push_regime_states(states: list[dict], events: list[dict], url: str) -> None:
+    """Fire-and-forget POST of per-cycle state to the regime viewer endpoint."""
+    try:
+        requests.post(
+            f'{url}/api/regime-append',
+            json={'bot': 'v2', 'ts': int(time.time()), 'states': states, 'events': events},
+            timeout=6,
+        )
+    except Exception:
+        pass
+
+
 def load_config(url: str) -> dict:
     stored = _kv_get('regime_bot_v2_config', url)
     cfg = dict(DEFAULT_CFG)
@@ -277,6 +306,12 @@ def mt5_connect() -> bool:
             log.error(f'MT5 account mismatch: expected {account} got {info.login} — aborting')
             mt5.shutdown()
             return False
+    term = mt5.terminal_info()
+    if term:
+        if not term.trade_allowed:
+            log.error('MT5 AutoTrading is DISABLED — enable the AutoTrading button in MT5 toolbar or orders will fail')
+        else:
+            log.info(f'MT5 AutoTrading: enabled  connected={term.connected}  trade_allowed={term.trade_allowed}')
     return True
 
 
@@ -285,7 +320,7 @@ def mt5_connect() -> bool:
 def get_price(pair: str, url: str) -> Optional[float]:
     if HAS_MT5:
         try:
-            tick = mt5.symbol_info_tick(pair.replace('/', ''))
+            tick = mt5.symbol_info_tick(_mt5_sym(pair))
             if tick and tick.bid > 0:
                 return round((tick.bid + tick.ask) / 2, 6)
         except Exception:
@@ -302,7 +337,7 @@ def get_atr(pair: str, tf: str = '5m') -> Optional[float]:
         return None
     try:
         timeframe = mt5.TIMEFRAME_M5 if tf == '5m' else mt5.TIMEFRAME_M30
-        bars = mt5.copy_rates_from_pos(pair.replace('/', ''), timeframe, 0, 30)
+        bars = mt5.copy_rates_from_pos(_mt5_sym(pair), timeframe, 0, 30)
         if bars is None or len(bars) < 2:
             return None
         alpha = 0.15
@@ -563,7 +598,19 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
         return -1
     if not HAS_MT5:
         return None
-    sym  = pair.replace('/', '')
+    # Re-login before order — main bot shares this MT5 terminal and may have
+    # switched to its own account between cycles.
+    account  = os.environ.get('MT5_ACCOUNT', '')
+    password = os.environ.get('MT5_PASSWORD', '')
+    server   = os.environ.get('MT5_SERVER', '')
+    if account and password and server:
+        current = mt5.account_info()
+        if not current or str(current.login) != str(account):
+            if not mt5.login(int(account), password, server):
+                log.error(f'Re-login failed before order: {mt5.last_error()}')
+                return None
+            log.info(f'Re-logged in to account {account} before order')
+    sym  = _mt5_sym(pair)
     tick = mt5.symbol_info_tick(sym)
     if not tick:
         log.error(f'No tick for {sym}')
@@ -579,15 +626,22 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
     price = tick.ask if direction == 'LONG' else tick.bid
     order = {
         'action': mt5.TRADE_ACTION_DEAL, 'symbol': sym, 'volume': size,
-        'type': ot, 'price': price, 'sl': round(sl, 5), 'tp': round(tp, 5) if tp else 0,
+        'type': ot, 'price': price, 'sl': round(sl, 5),
         'deviation': 20, 'magic': MAGIC, 'comment': f'RgV2 {direction[0]}',
         'type_time': mt5.ORDER_TIME_GTC, 'type_filling': _filling_mode(sym),
     }
+    if tp:
+        order['tp'] = round(tp, 5)
     res = mt5.order_send(order)
     if res and res.retcode == mt5.TRADE_RETCODE_DONE:
         log.info(f'MT5 order placed: ticket={res.order}  price={price}')
         return res.order
-    log.error(f'MT5 order failed: retcode={getattr(res,"retcode","?")} {getattr(res,"comment","")}')
+    last_err = mt5.last_error()
+    log.error(
+        f'MT5 order failed: retcode={getattr(res, "retcode", "NONE")}  '
+        f'comment={getattr(res, "comment", "n/a")!r}  last_error={last_err}\n'
+        f'  order={order}'
+    )
     return None
 
 
@@ -597,28 +651,57 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
         return True
     if not HAS_MT5:
         return False
-    sym  = pair.replace('/', '')
-    poss = [p for p in (mt5.positions_get(symbol=sym) or [])
-            if p.ticket == ticket and p.magic == MAGIC]
-    if not poss:
-        log.warning(f'Ticket {ticket} not found — may be SL-closed')
-        return True
-    pos  = poss[0]
-    ct   = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
-    tick = mt5.symbol_info_tick(sym)
-    if not tick:
-        return False
-    cp = tick.bid if pos.type == mt5.ORDER_TYPE_BUY else tick.ask
-    res = mt5.order_send({
-        'action': mt5.TRADE_ACTION_DEAL, 'symbol': sym, 'volume': pos.volume,
-        'type': ct, 'position': ticket, 'price': cp, 'deviation': 20,
-        'magic': MAGIC, 'comment': f'RgV2 close: {reason[:28]}',
-        'type_time': mt5.ORDER_TIME_GTC, 'type_filling': _filling_mode(sym),
-    })
-    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-        log.info(f'Closed ticket={ticket} at {cp}')
-        return True
-    log.error(f'Close failed: {getattr(res,"retcode","?")}')
+
+    account  = os.environ.get('MT5_ACCOUNT', '')
+    password = os.environ.get('MT5_PASSWORD', '')
+    server   = os.environ.get('MT5_SERVER', '')
+
+    sym = _mt5_sym(pair)
+
+    for attempt in range(3):  # up to 3 attempts: original + 2 retries
+        if attempt > 0:
+            # Re-login and re-fetch tick on every retry
+            time.sleep(0.5)
+            if account and password and server:
+                if not mt5.login(int(account), password, server):
+                    log.warning(f'Re-login failed on close attempt {attempt+1}: {mt5.last_error()}')
+                    continue
+
+        # Check if position still exists (may have been SL-closed between attempts)
+        poss = [p for p in (mt5.positions_get(symbol=sym) or []) if p.ticket == ticket]
+        if not poss:
+            log.info(f'Ticket {ticket} not found — already closed (SL/TP or prior attempt)')
+            return True
+
+        pos  = poss[0]
+        ct   = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+        tick = mt5.symbol_info_tick(sym)
+        if not tick:
+            log.warning(f'No tick for {sym} on close attempt {attempt+1}')
+            continue
+
+        cp  = tick.bid if pos.type == mt5.ORDER_TYPE_BUY else tick.ask
+        res = mt5.order_send({
+            'action': mt5.TRADE_ACTION_DEAL, 'symbol': sym, 'volume': pos.volume,
+            'type': ct, 'position': ticket, 'price': cp, 'deviation': 20,
+            'magic': MAGIC, 'comment': (''.join(c for c in f'RgV2:{reason}' if ord(c) < 128))[:31],
+            'type_time': mt5.ORDER_TIME_GTC, 'type_filling': _filling_mode(sym),
+        })
+
+        if res is None:
+            log.warning(f'Close attempt {attempt+1} — order_send returned None  last_error={mt5.last_error()}')
+            continue
+
+        if res.retcode == mt5.TRADE_RETCODE_DONE:
+            log.info(f'Closed ticket={ticket} at {cp}')
+            return True
+
+        log.warning(
+            f'Close attempt {attempt+1} failed: retcode={res.retcode}  '
+            f'comment={res.comment}  last_error={mt5.last_error()}'
+        )
+
+    log.error(f'Close FAILED after 3 attempts for ticket={ticket} ({pair}) — position remains open; SL is protection')
     return False
 
 
@@ -666,6 +749,59 @@ def _serialize_open_positions(magic: int) -> list:
         return []
 
 
+def _serialize_closed_trades(magic: int) -> list:
+    """Return today's closed positions from MT5 deal history for this bot."""
+    if not HAS_MT5:
+        return []
+    try:
+        from datetime import timedelta
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
+        by_pos: dict = {}
+        for d in deals:
+            if d.magic != magic:
+                continue
+            pid = int(d.position_id)
+            if pid not in by_pos:
+                by_pos[pid] = {'in': None, 'out': []}
+            if d.entry == 0:
+                by_pos[pid]['in'] = d
+            elif d.entry in (1, 3):
+                by_pos[pid]['out'].append(d)
+        result = []
+        for pid, grp in by_pos.items():
+            outs = grp['out']
+            if not outs:
+                continue
+            ind      = grp['in']
+            last_out = max(outs, key=lambda d: d.time)
+            if ind:
+                direction  = 'BUY' if ind.type == 0 else 'SELL'
+                open_price = round(float(ind.price), 5)
+                time_open  = int(ind.time)
+            else:
+                direction  = 'BUY' if last_out.type == 1 else 'SELL'
+                open_price = None
+                time_open  = None
+            result.append({
+                'position_id': pid,
+                'symbol':      last_out.symbol,
+                'direction':   direction,
+                'lots':        round(sum(d.volume     for d in outs), 2),
+                'open_price':  open_price,
+                'close_price': round(float(last_out.price), 5),
+                'profit':      round(sum(d.profit     for d in outs), 2),
+                'swap':        round(sum(d.swap       for d in outs), 2),
+                'commission':  round(sum(d.commission for d in outs), 2),
+                'time_open':   time_open,
+                'time_close':  int(last_out.time),
+                'comment':     str(ind.comment if ind else last_out.comment or ''),
+            })
+        return sorted(result, key=lambda t: t['time_close'])
+    except Exception:
+        return []
+
+
 # ── Status push ────────────────────────────────────────────────────────────────
 
 def push_status(pairs_status: dict, balance: float,
@@ -678,7 +814,8 @@ def push_status(pairs_status: dict, balance: float,
         'riskguard_locked': riskguard_locked,
         'pushed_at':        time.time(),
         'version':          'v2',
-        'mt5_positions':    _serialize_open_positions(MAGIC),
+        'mt5_positions':        _serialize_open_positions(MAGIC),
+        'today_closed_trades': _serialize_closed_trades(MAGIC),
     }, url)
 
 
@@ -750,10 +887,14 @@ def run(url: str, paper_mode: bool) -> None:
     last_heartbeat: dict[str, float] = {p: 0.0 for p in cfg['pairs']}
     last_cfg_reload = time.time()
     cycle = 0
+    _cycle_states: list[dict] = []
+    _cycle_events: list[dict] = []
 
     while True:
         cycle += 1
         loop_start = time.time()
+        _cycle_states = []
+        _cycle_events = []
 
         # ── Reload config every 5 min ────────────────────────────────────────
         if time.time() - last_cfg_reload > 300:
@@ -803,6 +944,43 @@ def run(url: str, paper_mode: bool) -> None:
             log.warning(f'Cycle {cycle}: no regime data — skipping')
             time.sleep(cfg['interval_secs'])
             continue
+
+        # ── Adopt manually placed / orphaned MT5 positions ────────────────────
+        # Any position on this account for a configured pair that RegimeV2 didn't
+        # open itself (different magic or bot restart) gets adopted so exit logic
+        # (X1, X5, X13, etc.) can monitor and close it.
+        if HAS_MT5 and not paper_mode:
+            try:
+                all_mt5_pos = mt5.positions_get() or []
+                sym_to_pair = {}
+                for p in cfg['pairs']:
+                    sym_to_pair[_mt5_sym(p)]      = p
+                    sym_to_pair[p.replace('/', '')] = p  # fallback for pairs with slashes
+                for mt5p in all_mt5_pos:
+                    pair_key = sym_to_pair.get(mt5p.symbol)
+                    if not pair_key:
+                        continue
+                    if pair_key in open_pos:
+                        continue  # already tracked
+                    direction = 'LONG' if mt5p.type == 0 else 'SHORT'
+                    log.warning(
+                        f'[{pair_key}] Adopting orphaned MT5 position ticket={mt5p.ticket} '
+                        f'{direction} entry={mt5p.price_open}  magic={mt5p.magic}'
+                    )
+                    rd = all_regimes.get(pair_key) or {}
+                    open_pos[pair_key] = {
+                        'ticket':      mt5p.ticket,
+                        'direction':   direction,
+                        'entry_price': float(mt5p.price_open),
+                        'sl':          float(mt5p.sl),
+                        'opened_at':   float(mt5p.time),
+                    }
+                    entry_regime[pair_key]   = rd.get('regime', '').upper() or direction[:4]
+                    entry_scores[pair_key]   = 0.0
+                    score_low_bars[pair_key] = 0
+                    running_mfe[pair_key]    = 0.0
+            except Exception as exc:
+                log.debug(f'Orphan adoption scan failed: {exc}')
 
         pairs_status: dict[str, dict] = {}
 
@@ -909,6 +1087,20 @@ def run(url: str, paper_mode: bool) -> None:
                 + (f'  1h={h1_regime}' if h1_regime else '')
             )
 
+            _cycle_states.append({
+                'pair':   pair,
+                'regime': regime,
+                'conf':   round(confidence, 1),
+                'slope':  round(conf_slope, 2),
+                'vz':     round(vol_z, 3),
+                'rl':     run_length,
+                'bocpd':  round(bocpd_prob, 1),
+                'exh':    round(exhaust_score, 3),
+                'decay':  round(decay_score, 3),
+                'score':  round(reg_score.total, 1),
+                'h1':     h1_regime or '',
+            })
+
             # ── BOCPD consecutive high counter ─────────────────────────────
             if bocpd_prob >= cfg.get('bocpd_thresh', 70.0):
                 bocpd_high_bars[pair] += 1
@@ -930,11 +1122,11 @@ def run(url: str, paper_mode: bool) -> None:
                 if fav_dist > running_mfe.get(pair, 0.0):
                     running_mfe[pair] = fav_dist
 
-                # Check MT5 SL hit
+                # Check MT5 SL hit — match by ticket only so adopted orphans are tracked
                 if HAS_MT5 and not paper_mode:
-                    mt5_sym = pair.replace('/', '')
+                    mt5_sym = _mt5_sym(pair)
                     still_open = [p for p in (mt5.positions_get(symbol=mt5_sym) or [])
-                                  if p.ticket == pos['ticket'] and p.magic == MAGIC]
+                                  if p.ticket == pos['ticket']]
                     if not still_open:
                         log.info(f'[{pair}] Ticket {pos["ticket"]} gone — SL hit (X5)')
                         del open_pos[pair]; entry_regime.pop(pair, None)
@@ -1056,6 +1248,7 @@ def run(url: str, paper_mode: bool) -> None:
                 if close_reason:
                     ok = close_position(pos['ticket'], pair, paper_mode, close_reason)
                     if ok:
+                        _cycle_events.append({'pair': pair, 'type': 'close', 'reason': f'{exit_code}: {close_reason}', 'direction': pos['direction']})
                         # Telegram exit alert
                         msg = exit_alert(
                             pair=pair, direction=pos['direction'],
@@ -1063,6 +1256,9 @@ def run(url: str, paper_mode: bool) -> None:
                             conf_at_exit=confidence, regime_at_exit=regime,
                             pnl_pips=pnl_pips, duration_secs=dur_secs,
                             paper_mode=paper_mode,
+                            entry_price=pos['entry_price'],
+                            close_price=price_now,
+                            opened_at=pos.get('opened_at'),
                         )
                         send_telegram(tg['token'], tg['chat_id'], msg)
                         del open_pos[pair]
@@ -1108,7 +1304,13 @@ def run(url: str, paper_mode: bool) -> None:
                 hb_interval = cfg.get('heartbeat_min', 120) * 60
                 if hb_interval > 0 and now_t - last_heartbeat.get(pair, 0) >= hb_interval:
                     cons, cons_total = consensus_score(cfg['pairs'], all_regimes, regime)
-                    pos_info = {'direction': pos['direction'], 'pnl_pips': pnl_pips, 'duration_secs': dur_secs}
+                    pos_info = {
+                        'direction':   pos['direction'],
+                        'pnl_pips':    pnl_pips,
+                        'duration_secs': dur_secs,
+                        'entry_price': pos['entry_price'],
+                        'opened_at':   pos.get('opened_at', 0),
+                    }
                     msg = heartbeat_message(
                         pair=pair, regime=regime, confidence=confidence,
                         slope=conf_slope, vol_z=vol_z,
@@ -1242,6 +1444,7 @@ def run(url: str, paper_mode: bool) -> None:
             ticket = open_position(pair, direction, sl, 0, size, cfg['max_spread_pips'], paper_mode)
 
             if ticket is not None:
+                _cycle_events.append({'pair': pair, 'type': 'entry', 'direction': direction, 'lots': size, 'sl': round(sl, 5)})
                 open_pos[pair]    = {
                     'ticket':      ticket,
                     'direction':   direction,
@@ -1288,9 +1491,10 @@ def run(url: str, paper_mode: bool) -> None:
                 log.warning(f'[{pair}] MT5 order failed — cooldown {cfg.get("entry_fail_cooldown_secs", 300)}s')
                 pairs_status[pair] = {'status': 'entry_failed', 'regime': regime}
 
-        # ── Status push + sleep ───────────────────────────────────────────────
+        # ── Status push + regime viewer + sleep ──────────────────────────────
         push_status(pairs_status, balance, paper_mode, url,
                     riskguard_locked=risk_guard.is_locked())
+        push_regime_states(_cycle_states, _cycle_events, url)
 
         elapsed = time.time() - loop_start
         sleep_t = max(0, cfg['interval_secs'] - elapsed)

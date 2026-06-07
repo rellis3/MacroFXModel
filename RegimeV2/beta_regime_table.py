@@ -31,6 +31,29 @@ import time
 import urllib.request
 from collections import defaultdict
 
+# Load .env from the same directory as this script (or parent) so OANDA_KEY etc.
+# are available without the user needing to export them manually.
+def _load_dotenv():
+    for candidate in (
+        os.path.join(os.path.dirname(__file__), '.env'),
+        os.path.join(os.path.dirname(__file__), '..', '.env'),
+    ):
+        if not os.path.isfile(candidate):
+            continue
+        with open(candidate, encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                k, _, v = line.partition('=')
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+        break
+
+_load_dotenv()
+
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), '..', 'bot', 'data', 'beta_history.jsonl')
 DASHBOARD_URL = os.environ.get('DASHBOARD_URL', 'https://macrofxmodel-production.up.railway.app')
 

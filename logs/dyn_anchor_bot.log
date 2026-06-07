@@ -1,0 +1,1037 @@
+[2026-06-05 10:48:41] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 10:48:44] [DA] [ERROR] MT5_ACCOUNT / MT5_PASSWORD / MT5_SERVER not set — aborting
+[2026-06-05 10:48:44] [DA] [WARNING] MT5 connection failed — falling back to paper mode
+[2026-06-05 10:48:48] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY']  interval=60s  risk=1.0%  window=00:00–22:00
+[2026-06-05 10:48:48] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 10:48:48] [DA] [WARNING] [EUR/USD] Insufficient D1 bars — skipping today
+[2026-06-05 10:48:48] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 10:48:48] [DA] [WARNING] [GBP/USD] Insufficient D1 bars — skipping today
+[2026-06-05 10:48:48] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 10:48:48] [DA] [WARNING] [USD/JPY] Insufficient D1 bars — skipping today
+[2026-06-05 10:48:52] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 10:56:54] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 10:57:04] [DA] [WARNING] kv_get(dyn_anchor_credentials): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/kv/get?key=dyn_anchor_credentials (Caused by ConnectTimeoutError(<HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443) at 0x2052c1f42f0>, 'Connection to macrofxmodel-production.up.railway.app timed out. (connect timeout=10)'))
+[2026-06-05 10:57:04] [DA] [WARNING] No dyn_anchor_credentials found in KV — set account/password/server in the dashboard
+[2026-06-05 10:57:04] [DA] [ERROR] MT5_ACCOUNT / MT5_PASSWORD / MT5_SERVER not set — aborting
+[2026-06-05 10:57:04] [DA] [WARNING] MT5 connection failed — falling back to paper mode
+[2026-06-05 10:57:14] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 11:10:39] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 11:10:42] [DA] [INFO] Credentials loaded: account=  server=
+[2026-06-05 11:10:43] [DA] [ERROR] MT5_ACCOUNT / MT5_PASSWORD / MT5_SERVER not set — aborting
+[2026-06-05 11:10:43] [DA] [WARNING] MT5 connection failed — falling back to paper mode
+[2026-06-05 11:10:45] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD']  interval=60s  risk=1%  window=00:00–22:00
+[2026-06-05 11:10:45] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 11:10:45] [DA] [INFO] [EUR/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:10:48] [DA] [INFO] [EUR/USD] Using on-demand server forecast
+[2026-06-05 11:10:48] [DA] [INFO] [EUR/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.264%  hl50=0.382%  hl75=0.484%  session_open=0.00000  slope=-0.000319
+[2026-06-05 11:10:48] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-05 11:10:48] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 11:10:48] [DA] [INFO] [GBP/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:10:51] [DA] [INFO] [GBP/USD] Using on-demand server forecast
+[2026-06-05 11:10:51] [DA] [INFO] [GBP/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.369%  hl50=0.534%  hl75=0.676%  session_open=0.00000  slope=-0.000246
+[2026-06-05 11:10:51] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-05 11:10:51] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 11:10:51] [DA] [INFO] [USD/JPY] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:10:52] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 11:14:35] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 11:14:39] [DA] [INFO] Credentials loaded: account=  server=
+[2026-06-05 11:14:39] [DA] [ERROR] MT5_ACCOUNT / MT5_PASSWORD / MT5_SERVER not set — aborting
+[2026-06-05 11:14:39] [DA] [WARNING] MT5 connection failed — falling back to paper mode
+[2026-06-05 11:14:42] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD']  interval=60s  risk=1%  window=00:00–22:00
+[2026-06-05 11:14:42] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 11:14:42] [DA] [INFO] [EUR/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:14:46] [DA] [INFO] [EUR/USD] Using on-demand server forecast
+[2026-06-05 11:14:46] [DA] [INFO] [EUR/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.264%  hl50=0.382%  hl75=0.484%  session_open=0.00000  slope=-0.000319
+[2026-06-05 11:14:46] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-05 11:14:46] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 11:14:46] [DA] [INFO] [GBP/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:14:52] [DA] [INFO] [GBP/USD] Using on-demand server forecast
+[2026-06-05 11:14:52] [DA] [INFO] [GBP/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.369%  hl50=0.534%  hl75=0.676%  session_open=0.00000  slope=-0.000246
+[2026-06-05 11:14:52] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-05 11:14:52] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 11:14:52] [DA] [INFO] [USD/JPY] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:14:55] [DA] [INFO] [USD/JPY] Using on-demand server forecast
+[2026-06-05 11:14:55] [DA] [INFO] [USD/JPY] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.371%  hl50=0.537%  hl75=0.680%  session_open=0.00000  slope=0.000567
+[2026-06-05 11:14:55] [DA] [INFO] [USD/JPY] RANGE day — no trading today
+[2026-06-05 11:14:55] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-05 11:14:55] [DA] [INFO] [AUD/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:14:58] [DA] [INFO] [AUD/USD] Using on-demand server forecast
+[2026-06-05 11:14:58] [DA] [INFO] [AUD/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.482%  hl50=0.699%  hl75=0.884%  session_open=0.00000  slope=-0.000402
+[2026-06-05 11:14:58] [DA] [INFO] [AUD/USD] RANGE day — no trading today
+[2026-06-05 11:14:58] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-05 11:14:58] [DA] [INFO] [NZD/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:15:00] [DA] [INFO] [NZD/USD] Using on-demand server forecast
+[2026-06-05 11:15:00] [DA] [INFO] [NZD/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.663%  hl50=0.960%  hl75=1.214%  session_open=0.00000  slope=-0.000503
+[2026-06-05 11:15:00] [DA] [INFO] [NZD/USD] RANGE day — no trading today
+[2026-06-05 11:15:00] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-05 11:15:00] [DA] [INFO] [USD/CAD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:15:03] [DA] [INFO] [USD/CAD] Using on-demand server forecast
+[2026-06-05 11:15:03] [DA] [INFO] [USD/CAD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.229%  hl50=0.332%  hl75=0.420%  session_open=0.00000  slope=0.000881
+[2026-06-05 11:15:03] [DA] [INFO] [USD/CAD] RANGE day — no trading today
+[2026-06-05 11:15:03] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-05 11:15:03] [DA] [INFO] [USD/CHF] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:15:06] [DA] [INFO] [USD/CHF] Using on-demand server forecast
+[2026-06-05 11:15:06] [DA] [INFO] [USD/CHF] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.407%  hl50=0.589%  hl75=0.745%  session_open=0.00000  slope=0.000490
+[2026-06-05 11:15:06] [DA] [INFO] [USD/CHF] RANGE day — no trading today
+[2026-06-05 11:15:06] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-05 11:15:06] [DA] [INFO] [XAU/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:15:09] [DA] [INFO] [XAU/USD] Using on-demand server forecast
+[2026-06-05 11:15:09] [DA] [INFO] [XAU/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=1.208%  hl50=1.749%  hl75=2.212%  session_open=0.00000  slope=-0.001474
+[2026-06-05 11:15:09] [DA] [INFO] [XAU/USD] RANGE day — no trading today
+[2026-06-05 11:15:09] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-05 11:15:09] [DA] [INFO] [NAS100_USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:15:12] [DA] [INFO] [NAS100_USD] Using on-demand server forecast
+[2026-06-05 11:15:12] [DA] [INFO] [NAS100_USD] Setup [on-demand forecast]: regime=BULL  sigma_d=0.948%  hl50=1.372%  hl75=1.736%  session_open=0.00000  slope=0.002801
+[2026-06-05 11:15:12] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:15:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:16:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:17:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:18:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:19:46] [DA] [INFO] Credentials loaded: account=  server=
+[2026-06-05 11:19:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:20:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:21:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:22:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:23:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:24:42] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:25:47] [DA] [WARNING] No dyn_anchor_credentials found in KV (Railway may be sleeping — will retry; or set MT5_ACCOUNT/MT5_PASSWORD/MT5_SERVER env vars locally)
+[2026-06-05 11:29:53] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 11:29:58] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 11:30:02] [DA] [INFO] Credentials loaded: account=5051355495  server=MetaQuotes-Demo
+[2026-06-05 11:30:02] [DA] [INFO] [DynAnchor] MT5 connected  account=5051355495  balance=99551.49  server=MetaQuotes-Demo
+[2026-06-05 11:30:05] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD']  interval=20s  risk=1%  window=00:00–22:00
+[2026-06-05 11:30:05] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 11:30:06] [DA] [INFO] [EUR/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:06] [DA] [INFO] [EUR/USD] Setup [MT5]: regime=RANGE  sigma_d=0.288%  hl50=0.417%  hl75=0.527%  session_open=1.16421  slope=-0.000319
+[2026-06-05 11:30:06] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-05 11:30:06] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 11:30:06] [DA] [INFO] [GBP/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:06] [DA] [INFO] [GBP/USD] Setup [MT5]: regime=RANGE  sigma_d=0.384%  hl50=0.555%  hl75=0.703%  session_open=1.34791  slope=-0.000242
+[2026-06-05 11:30:06] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-05 11:30:06] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 11:30:06] [DA] [INFO] [USD/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:06] [DA] [INFO] [USD/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.377%  hl50=0.546%  hl75=0.691%  session_open=159.91250  slope=0.000569
+[2026-06-05 11:30:06] [DA] [INFO] [USD/JPY] RANGE day — no trading today
+[2026-06-05 11:30:06] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-05 11:30:07] [DA] [INFO] [AUD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:07] [DA] [INFO] [AUD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.522%  hl50=0.756%  hl75=0.956%  session_open=0.71427  slope=-0.000394
+[2026-06-05 11:30:07] [DA] [INFO] [AUD/USD] RANGE day — no trading today
+[2026-06-05 11:30:07] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-05 11:30:08] [DA] [INFO] [NZD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:08] [DA] [INFO] [NZD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.708%  hl50=1.025%  hl75=1.297%  session_open=0.58839  slope=-0.000498
+[2026-06-05 11:30:08] [DA] [INFO] [NZD/USD] RANGE day — no trading today
+[2026-06-05 11:30:08] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-05 11:30:08] [DA] [INFO] [USD/CAD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:08] [DA] [INFO] [USD/CAD] Setup [MT5]: regime=RANGE  sigma_d=0.234%  hl50=0.339%  hl75=0.429%  session_open=1.38738  slope=0.000888
+[2026-06-05 11:30:08] [DA] [INFO] [USD/CAD] RANGE day — no trading today
+[2026-06-05 11:30:08] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-05 11:30:09] [DA] [INFO] [USD/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:09] [DA] [INFO] [USD/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.407%  hl50=0.589%  hl75=0.745%  session_open=0.78744  slope=0.000488
+[2026-06-05 11:30:09] [DA] [INFO] [USD/CHF] RANGE day — no trading today
+[2026-06-05 11:30:09] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-05 11:30:09] [DA] [INFO] [XAU/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 11:30:09] [DA] [INFO] [XAU/USD] Setup [MT5]: regime=RANGE  sigma_d=1.245%  hl50=1.802%  hl75=2.280%  session_open=4466.07500  slope=-0.001384
+[2026-06-05 11:30:09] [DA] [INFO] [XAU/USD] RANGE day — no trading today
+[2026-06-05 11:30:09] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-05 11:30:09] [DA] [INFO] [NAS100_USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 11:30:13] [DA] [INFO] [NAS100_USD] Using on-demand server forecast
+[2026-06-05 11:30:13] [DA] [INFO] [NAS100_USD] Setup [on-demand forecast]: regime=BULL  sigma_d=0.948%  hl50=1.372%  hl75=1.736%  session_open=0.00000  slope=0.002801
+[2026-06-05 11:30:13] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:30:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:30:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:31:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:31:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:31:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:32:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:32:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:32:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:33:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:33:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:33:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:34:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:34:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:34:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:35:08] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:35:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:35:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:36:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:36:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:36:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:37:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:37:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:37:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:38:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:38:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:38:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:39:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:39:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:39:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:39:47] [DA] [INFO] Cycle 30  balance=99551.49  sleep=18.4s
+[2026-06-05 11:40:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:40:28] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:40:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:41:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:41:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:41:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:42:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:42:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:42:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:43:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:43:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:43:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:44:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:44:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:44:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:45:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:45:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:45:49] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:46:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:46:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:46:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:47:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:47:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:47:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:48:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:48:07] [DA] [WARNING] kv_put(dyn_anchor_status): ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+[2026-06-05 11:48:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:48:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:49:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:49:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:49:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:49:48] [DA] [WARNING] kv_put(dyn_anchor_status): ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+[2026-06-05 11:49:48] [DA] [INFO] Cycle 60  balance=99551.49  sleep=17.8s
+[2026-06-05 11:50:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:50:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:50:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:51:08] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:51:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:51:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:52:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:52:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:52:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:53:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:53:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:53:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:54:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:54:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:54:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:55:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:55:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:55:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:56:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:56:30] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:56:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:57:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:57:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:57:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:58:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:58:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:58:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:59:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:59:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:59:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 11:59:50] [DA] [INFO] Cycle 90  balance=99551.49  sleep=15.5s
+[2026-06-05 12:00:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:00:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:00:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:01:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:01:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:01:47] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:02:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:02:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:02:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:03:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:03:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:03:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:04:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:04:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:04:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:05:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:05:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:05:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:06:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:06:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:06:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:07:08] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:07:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:07:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:08:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:08:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:08:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:09:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:09:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:09:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:09:47] [DA] [INFO] Cycle 120  balance=99551.49  sleep=18.4s
+[2026-06-05 12:10:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:10:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:10:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:11:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:11:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:11:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:12:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:12:27] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:12:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:13:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:13:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:13:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:14:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:14:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:14:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:15:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:15:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:15:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:16:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:16:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:16:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:17:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:17:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:17:48] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:18:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:18:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:18:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:19:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:19:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:19:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:19:47] [DA] [INFO] Cycle 150  balance=99551.49  sleep=18.3s
+[2026-06-05 12:20:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:20:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:20:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:21:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:21:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:21:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:22:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:22:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:22:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:23:08] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:23:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:23:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:24:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:24:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:24:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:25:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:25:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:25:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:26:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:26:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:26:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:27:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:27:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:27:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:28:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:28:29] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:28:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:29:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:29:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:29:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:29:47] [DA] [INFO] Cycle 180  balance=99551.49  sleep=18.4s
+[2026-06-05 12:30:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:30:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:30:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:31:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:31:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:31:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:32:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:32:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:32:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:33:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:33:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:33:50] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:34:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:34:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:34:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:35:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:35:25] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:35:45] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:36:05] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:36:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:36:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:37:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:37:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:37:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:38:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:38:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:38:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:39:10] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:39:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:39:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:39:49] [DA] [INFO] Cycle 210  balance=99551.49  sleep=16.8s
+[2026-06-05 12:40:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:40:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:40:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:41:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:41:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:41:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:42:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:42:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:42:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:43:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:43:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:43:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:44:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:44:28] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:44:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:45:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:45:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:45:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:46:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:46:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:46:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:47:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:47:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:47:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:48:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:48:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:48:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:49:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:49:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:49:47] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:49:50] [DA] [INFO] Cycle 240  balance=99551.49  sleep=15.9s
+[2026-06-05 12:50:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:50:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:50:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:51:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:51:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:51:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:52:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:52:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:52:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:53:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:53:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:53:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:54:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:54:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:54:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:55:10] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:55:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:55:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:56:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:56:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:56:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:57:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:57:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:57:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:58:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:58:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:58:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:59:00] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 12:59:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:59:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:59:37] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 12:59:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 12:59:49] [DA] [INFO] Cycle 270  balance=99551.49  sleep=17.0s
+[2026-06-05 13:00:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:00:29] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:00:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:00:57] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 13:01:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:01:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:01:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:02:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:02:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:02:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:02:57] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 13:03:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:03:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:03:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:04:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:04:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:04:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:04:57] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 13:05:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:05:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:05:47] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:06:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:06:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:06:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:07:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:07:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:07:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:08:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:08:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:08:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:09:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:09:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:09:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:09:48] [DA] [INFO] Cycle 300  balance=99551.49  sleep=17.2s
+[2026-06-05 13:10:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:10:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:10:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:11:07] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:11:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:11:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:12:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:12:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:12:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:13:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:13:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:13:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:14:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:14:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:14:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:15:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:15:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:15:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:16:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:16:29] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:16:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:17:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:17:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:17:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:18:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:18:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:18:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:19:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:19:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:19:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:19:48] [DA] [INFO] Cycle 330  balance=99551.49  sleep=17.4s
+[2026-06-05 13:20:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:20:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:20:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:21:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:21:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:21:48] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:22:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:22:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:22:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:23:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:23:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:23:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:24:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:24:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:24:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:25:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:25:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:25:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:26:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:26:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:26:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:27:08] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:27:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:27:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:28:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:28:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:28:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:29:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:29:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:29:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:29:47] [DA] [INFO] Cycle 360  balance=99551.49  sleep=18.4s
+[2026-06-05 13:30:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:30:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:30:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:31:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:31:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:31:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:32:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:32:29] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:32:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:33:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:33:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:33:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:34:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:34:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:34:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:35:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:35:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:35:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:36:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:36:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:36:46] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:37:06] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:37:26] [DA] [WARNING] [NAS100_USD] No tick — skipping
+[2026-06-05 13:37:47] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 13:37:54] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 13:37:58] [DA] [INFO] Credentials loaded: account=5051355495  server=MetaQuotes-Demo
+[2026-06-05 13:37:58] [DA] [INFO] [DynAnchor] MT5 connected  account=5051355495  balance=99551.49  server=MetaQuotes-Demo
+[2026-06-05 13:38:00] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD']  interval=20s  risk=1%  window=00:00–22:00
+[2026-06-05 13:38:00] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [EUR/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [EUR/USD] Setup [MT5]: regime=RANGE  sigma_d=0.288%  hl50=0.417%  hl75=0.527%  session_open=1.16064  slope=-0.000319
+[2026-06-05 13:38:00] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [GBP/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [GBP/USD] Setup [MT5]: regime=RANGE  sigma_d=0.384%  hl50=0.555%  hl75=0.703%  session_open=1.34325  slope=-0.000242
+[2026-06-05 13:38:00] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [USD/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [USD/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.377%  hl50=0.546%  hl75=0.691%  session_open=160.03650  slope=0.000569
+[2026-06-05 13:38:00] [DA] [INFO] [USD/JPY] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [AUD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [AUD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.522%  hl50=0.756%  hl75=0.956%  session_open=0.71221  slope=-0.000394
+[2026-06-05 13:38:00] [DA] [INFO] [AUD/USD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [NZD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [NZD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.708%  hl50=1.025%  hl75=1.297%  session_open=0.58586  slope=-0.000498
+[2026-06-05 13:38:00] [DA] [INFO] [NZD/USD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CAD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CAD] Setup [MT5]: regime=RANGE  sigma_d=0.234%  hl50=0.339%  hl75=0.429%  session_open=1.38803  slope=0.000888
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CAD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.407%  hl50=0.589%  hl75=0.745%  session_open=0.79158  slope=0.000488
+[2026-06-05 13:38:00] [DA] [INFO] [USD/CHF] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [XAU/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:38:00] [DA] [INFO] [XAU/USD] Setup [MT5]: regime=RANGE  sigma_d=1.245%  hl50=1.802%  hl75=2.280%  session_open=4442.51500  slope=-0.001384
+[2026-06-05 13:38:00] [DA] [INFO] [XAU/USD] RANGE day — no trading today
+[2026-06-05 13:38:00] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-05 13:38:00] [DA] [INFO] [NAS100_USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-05 13:38:03] [DA] [INFO] [NAS100_USD] Using on-demand server forecast
+[2026-06-05 13:38:03] [DA] [INFO] [NAS100_USD] Setup [on-demand forecast]: regime=BULL  sigma_d=0.948%  hl50=1.372%  hl75=1.736%  session_open=0.00000  slope=0.002801
+[2026-06-05 13:38:03] [DA] [WARNING] [NAS100_USD] session_open=0 — MT5 not connected or symbol name mismatch, skipping today
+[2026-06-05 13:39:56] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 13:40:01] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 13:40:04] [DA] [INFO] Credentials loaded: account=5051355495  server=MetaQuotes-Demo
+[2026-06-05 13:40:04] [DA] [INFO] [DynAnchor] MT5 connected  account=5051355495  balance=99551.49  server=MetaQuotes-Demo
+[2026-06-05 13:40:06] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD']  interval=20s  risk=1%  window=00:00–22:00
+[2026-06-05 13:40:06] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 13:40:06] [DA] [INFO] [EUR/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:06] [DA] [INFO] [EUR/USD] Setup [MT5]: regime=RANGE  sigma_d=0.288%  hl50=0.417%  hl75=0.527%  session_open=1.16110  slope=-0.000319
+[2026-06-05 13:40:06] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-05 13:40:06] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 13:40:06] [DA] [INFO] [GBP/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:06] [DA] [INFO] [GBP/USD] Setup [MT5]: regime=RANGE  sigma_d=0.384%  hl50=0.555%  hl75=0.703%  session_open=1.34398  slope=-0.000242
+[2026-06-05 13:40:06] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-05 13:40:06] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 13:40:06] [DA] [INFO] [USD/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:06] [DA] [INFO] [USD/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.377%  hl50=0.546%  hl75=0.691%  session_open=159.99250  slope=0.000569
+[2026-06-05 13:40:06] [DA] [INFO] [USD/JPY] RANGE day — no trading today
+[2026-06-05 13:40:06] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-05 13:40:07] [DA] [INFO] [AUD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:07] [DA] [INFO] [AUD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.522%  hl50=0.756%  hl75=0.956%  session_open=0.71249  slope=-0.000394
+[2026-06-05 13:40:07] [DA] [INFO] [AUD/USD] RANGE day — no trading today
+[2026-06-05 13:40:07] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-05 13:40:07] [DA] [INFO] [NZD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:07] [DA] [INFO] [NZD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.708%  hl50=1.025%  hl75=1.297%  session_open=0.58627  slope=-0.000498
+[2026-06-05 13:40:07] [DA] [INFO] [NZD/USD] RANGE day — no trading today
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CAD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CAD] Setup [MT5]: regime=RANGE  sigma_d=0.234%  hl50=0.339%  hl75=0.429%  session_open=1.38797  slope=0.000888
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CAD] RANGE day — no trading today
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.407%  hl50=0.589%  hl75=0.745%  session_open=0.79104  slope=0.000488
+[2026-06-05 13:40:07] [DA] [INFO] [USD/CHF] RANGE day — no trading today
+[2026-06-05 13:40:07] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-05 13:40:07] [DA] [INFO] [XAU/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:07] [DA] [INFO] [XAU/USD] Setup [MT5]: regime=RANGE  sigma_d=1.245%  hl50=1.802%  hl75=2.280%  session_open=4444.84500  slope=-0.001384
+[2026-06-05 13:40:07] [DA] [INFO] [XAU/USD] RANGE day — no trading today
+[2026-06-05 13:40:07] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-05 13:40:08] [DA] [INFO] [NAS100_USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 13:40:08] [DA] [INFO] [NAS100_USD] Setup [MT5]: regime=BULL  sigma_d=1.209%  hl50=1.751%  hl75=2.215%  session_open=30063.10000  slope=0.002841
+[2026-06-05 13:46:27] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30105.50000  run_low=30061.70000  sell_entry=30588.03994  buy_entry=29578.39318  session_open=30063.10000
+[2026-06-05 13:49:47] [DA] [INFO] Cycle 30  balance=99551.49  sleep=19.0s
+[2026-06-05 13:53:07] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=30061.70000  sell_entry=30588.03994  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 13:59:47] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=30030.60000  sell_entry=30556.39543  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 13:59:48] [DA] [INFO] Cycle 60  balance=99551.49  sleep=18.9s
+[2026-06-05 14:06:29] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=30008.00000  sell_entry=30533.39973  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 14:09:57] [DA] [INFO] Cycle 90  balance=99551.49  sleep=9.8s
+[2026-06-05 14:13:07] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=30008.00000  sell_entry=30533.39973  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 14:19:47] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=30000.00000  sell_entry=30525.25966  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 14:19:52] [DA] [INFO] Cycle 120  balance=99551.49  sleep=14.9s
+[2026-06-05 14:26:27] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29992.00000  sell_entry=30517.11959  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 14:29:54] [DA] [INFO] Cycle 150  balance=99551.49  sleep=13.1s
+[2026-06-05 14:33:11] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29977.00000  sell_entry=30501.85696  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 14:39:47] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29946.60000  sell_entry=30470.92470  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 14:39:52] [DA] [INFO] Cycle 180  balance=99551.49  sleep=14.7s
+[2026-06-05 14:46:27] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29882.40000  sell_entry=30405.60064  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 14:49:51] [DA] [INFO] Cycle 210  balance=99551.49  sleep=16.1s
+[2026-06-05 14:53:07] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29822.90000  sell_entry=30345.05888  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 14:59:53] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29753.10000  sell_entry=30281.97334  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 15:00:01] [DA] [INFO] Cycle 240  balance=99551.49  sleep=5.9s
+[2026-06-05 15:06:27] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29733.60000  sell_entry=30254.19536  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 15:09:53] [DA] [INFO] Cycle 270  balance=99551.49  sleep=13.8s
+[2026-06-05 15:13:07] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29733.60000  sell_entry=30254.19536  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 15:19:47] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29733.60000  sell_entry=30254.19536  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 15:19:51] [DA] [INFO] Cycle 300  balance=99551.49  sleep=15.6s
+[2026-06-05 15:26:32] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29733.60000  sell_entry=30254.19536  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 15:29:51] [DA] [INFO] Cycle 330  balance=99551.49  sleep=15.8s
+[2026-06-05 15:33:07] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29733.60000  sell_entry=30254.19536  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 15:39:47] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29733.60000  sell_entry=30254.19536  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 15:39:51] [DA] [INFO] Cycle 360  balance=99551.49  sleep=16.3s
+[2026-06-05 15:46:27] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29733.60000  sell_entry=30254.19536  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 15:49:51] [DA] [INFO] Cycle 390  balance=99551.49  sleep=16.3s
+[2026-06-05 15:53:11] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29733.60000  sell_entry=30254.19536  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 15:59:47] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29733.60000  sell_entry=30254.19536  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 15:59:51] [DA] [INFO] Cycle 420  balance=99551.49  sleep=16.2s
+[2026-06-05 16:06:27] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=30106.50000  run_low=29733.60000  sell_entry=30254.19536  buy_entry=29579.37567  session_open=30063.10000
+[2026-06-05 16:07:05] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-05 16:07:13] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-05 16:07:17] [DA] [INFO] Credentials loaded: account=5051355495  server=MetaQuotes-Demo
+[2026-06-05 16:07:17] [DA] [INFO] [DynAnchor] MT5 connected  account=5051355495  balance=99551.49  server=MetaQuotes-Demo
+[2026-06-05 16:07:21] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF', 'XAU/USD', 'NAS100_USD']  interval=20s  risk=1%  window=00:00–22:00
+[2026-06-05 16:07:21] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-05 16:07:21] [DA] [INFO] [EUR/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 16:07:21] [DA] [INFO] [EUR/USD] Setup [MT5]: regime=RANGE  sigma_d=0.279%  hl50=0.424%  hl75=0.522%  session_open=1.15528  slope=-0.000319
+[2026-06-05 16:07:21] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-05 16:07:21] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-05 16:07:21] [DA] [INFO] [GBP/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 16:07:21] [DA] [INFO] [GBP/USD] Setup [MT5]: regime=RANGE  sigma_d=0.343%  hl50=0.521%  hl75=0.641%  session_open=1.33804  slope=-0.000242
+[2026-06-05 16:07:21] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-05 16:07:21] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-05 16:07:21] [DA] [INFO] [USD/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 16:07:21] [DA] [INFO] [USD/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.324%  hl50=0.492%  hl75=0.606%  session_open=160.27050  slope=0.000569
+[2026-06-05 16:07:21] [DA] [INFO] [USD/JPY] RANGE day — no trading today
+[2026-06-05 16:07:21] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-05 16:07:21] [DA] [INFO] [AUD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 16:07:21] [DA] [INFO] [AUD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.431%  hl50=0.654%  hl75=0.806%  session_open=0.70779  slope=-0.000394
+[2026-06-05 16:07:21] [DA] [INFO] [AUD/USD] RANGE day — no trading today
+[2026-06-05 16:07:21] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-05 16:07:21] [DA] [INFO] [NZD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 16:07:21] [DA] [INFO] [NZD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.597%  hl50=0.905%  hl75=1.115%  session_open=0.58222  slope=-0.000498
+[2026-06-05 16:07:21] [DA] [INFO] [NZD/USD] RANGE day — no trading today
+[2026-06-05 16:07:21] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-05 16:07:21] [DA] [INFO] [USD/CAD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 16:07:21] [DA] [INFO] [USD/CAD] Setup [MT5]: regime=RANGE  sigma_d=0.277%  hl50=0.420%  hl75=0.518%  session_open=1.39177  slope=0.000888
+[2026-06-05 16:07:21] [DA] [INFO] [USD/CAD] RANGE day — no trading today
+[2026-06-05 16:07:21] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-05 16:07:21] [DA] [INFO] [USD/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 16:07:21] [DA] [INFO] [USD/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.387%  hl50=0.586%  hl75=0.722%  session_open=0.79445  slope=0.000488
+[2026-06-05 16:07:21] [DA] [INFO] [USD/CHF] RANGE day — no trading today
+[2026-06-05 16:07:21] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-05 16:07:21] [DA] [INFO] [XAU/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 16:07:21] [DA] [INFO] [XAU/USD] Setup [MT5]: regime=RANGE  sigma_d=1.567%  hl50=2.520%  hl75=3.018%  session_open=4365.59500  slope=-0.001384
+[2026-06-05 16:07:21] [DA] [INFO] [XAU/USD] RANGE day — no trading today
+[2026-06-05 16:07:21] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-05 16:07:21] [DA] [INFO] [NAS100_USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-05 16:07:21] [DA] [INFO] [NAS100_USD] Setup [MT5]: regime=BULL  sigma_d=1.104%  hl50=1.752%  hl75=2.187%  session_open=29751.00000  slope=0.002841
+[2026-06-05 16:13:41] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29715.60000  sell_entry=30243.72325  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 16:17:03] [DA] [INFO] Cycle 30  balance=99551.49  sleep=17.2s
+[2026-06-05 16:20:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29698.90000  sell_entry=30219.30271  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 16:27:01] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29674.40000  sell_entry=30194.37341  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 16:27:08] [DA] [INFO] Cycle 60  balance=99551.49  sleep=13.0s
+[2026-06-05 16:33:44] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29669.60000  sell_entry=30194.37341  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 16:37:04] [DA] [INFO] Cycle 90  balance=99551.49  sleep=16.8s
+[2026-06-05 16:40:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29609.90000  sell_entry=30131.28700  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 16:47:01] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29596.90000  sell_entry=30115.51540  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 16:47:05] [DA] [INFO] Cycle 120  balance=99551.49  sleep=16.3s
+[2026-06-05 16:53:41] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29596.90000  sell_entry=30115.51540  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 16:57:04] [DA] [INFO] Cycle 150  balance=99551.49  sleep=16.5s
+[2026-06-05 17:00:24] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29596.90000  sell_entry=30115.51540  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 17:07:01] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29565.40000  sell_entry=30083.46344  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 17:07:04] [DA] [INFO] Cycle 180  balance=99551.49  sleep=16.4s
+[2026-06-05 17:13:41] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29545.60000  sell_entry=30063.31649  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 17:17:04] [DA] [INFO] Cycle 210  balance=99551.49  sleep=17.3s
+[2026-06-05 17:20:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29516.90000  sell_entry=30034.11359  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 17:27:06] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29509.60000  sell_entry=30026.68568  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 17:27:10] [DA] [INFO] Cycle 240  balance=99551.49  sleep=11.3s
+[2026-06-05 17:33:41] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29463.40000  sell_entry=29990.66538  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 17:37:05] [DA] [INFO] Cycle 270  balance=99551.49  sleep=16.1s
+[2026-06-05 17:40:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29450.10000  sell_entry=29966.14308  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 17:47:01] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29371.60000  sell_entry=29886.26755  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 17:47:04] [DA] [INFO] Cycle 300  balance=99551.49  sleep=17.1s
+[2026-06-05 17:53:44] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29366.90000  sell_entry=29881.48520  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 17:57:04] [DA] [INFO] Cycle 330  balance=99551.49  sleep=16.7s
+[2026-06-05 18:00:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29366.90000  sell_entry=29881.48520  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:01:33] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 18:02:14] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 18:03:14] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 18:03:55] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 18:04:35] [DA] [WARNING] kv_get(dyn_anchor_config): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 18:11:01] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29366.90000  sell_entry=29881.48520  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:11:05] [DA] [INFO] Cycle 360  balance=99551.49  sleep=16.0s
+[2026-06-05 18:17:41] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29343.40000  sell_entry=29857.57342  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:21:07] [DA] [INFO] Cycle 390  balance=99551.49  sleep=13.9s
+[2026-06-05 18:24:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:31:01] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:31:05] [DA] [INFO] Cycle 420  balance=99551.49  sleep=16.2s
+[2026-06-05 18:37:41] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:41:04] [DA] [INFO] Cycle 450  balance=99551.49  sleep=17.5s
+[2026-06-05 18:44:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:50:41] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-05 18:50:59] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/kv/set (Caused by ConnectTimeoutError(<HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443) at 0x16058404b90>, 'Connection to macrofxmodel-production.up.railway.app timed out. (connect timeout=10)'))
+[2026-06-05 18:51:01] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 18:51:13] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/kv/set (Caused by NameResolutionError("HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443): Failed to resolve 'macrofxmodel-production.up.railway.app' ([Errno 11001] getaddrinfo failed)"))
+[2026-06-05 18:51:13] [DA] [INFO] Cycle 480  balance=99551.49  sleep=8.9s
+[2026-06-05 18:57:41] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:01:04] [DA] [INFO] Cycle 510  balance=99551.49  sleep=17.6s
+[2026-06-05 19:04:21] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:11:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29342.10000  sell_entry=29856.25064  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:11:05] [DA] [INFO] Cycle 540  balance=99551.49  sleep=16.4s
+[2026-06-05 19:17:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29250.90000  sell_entry=29763.45257  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:21:06] [DA] [INFO] Cycle 570  balance=99551.49  sleep=15.2s
+[2026-06-05 19:24:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29242.10000  sell_entry=29754.49837  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:31:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29204.40000  sell_entry=29716.13777  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:31:06] [DA] [INFO] Cycle 600  balance=99551.49  sleep=16.0s
+[2026-06-05 19:37:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29176.40000  sell_entry=29687.64714  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:41:11] [DA] [INFO] Cycle 630  balance=99551.49  sleep=11.0s
+[2026-06-05 19:44:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29138.90000  sell_entry=29652.54261  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:51:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29083.10000  sell_entry=29592.71228  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 19:51:05] [DA] [INFO] Cycle 660  balance=99551.49  sleep=16.5s
+[2026-06-05 19:57:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29083.10000  sell_entry=29592.71228  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:01:05] [DA] [INFO] Cycle 690  balance=99551.49  sleep=16.9s
+[2026-06-05 20:04:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29083.10000  sell_entry=29592.71228  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:11:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=29061.90000  sell_entry=29584.87735  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:11:04] [DA] [INFO] Cycle 720  balance=99551.49  sleep=17.4s
+[2026-06-05 20:17:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28969.90000  sell_entry=29487.39869  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:21:05] [DA] [INFO] Cycle 750  balance=99551.49  sleep=16.9s
+[2026-06-05 20:24:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:28:32] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Max retries exceeded with url: /api/kv/set (Caused by ConnectTimeoutError(<HTTPSConnection(host='macrofxmodel-production.up.railway.app', port=443) at 0x16058404f50>, 'Connection to macrofxmodel-production.up.railway.app timed out. (connect timeout=10)'))
+[2026-06-05 20:31:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:31:04] [DA] [INFO] Cycle 780  balance=99551.49  sleep=17.4s
+[2026-06-05 20:37:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:41:04] [DA] [INFO] Cycle 810  balance=99551.49  sleep=17.9s
+[2026-06-05 20:44:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:51:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 20:51:05] [DA] [INFO] Cycle 840  balance=99551.49  sleep=17.1s
+[2026-06-05 20:57:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28957.10000  sell_entry=29464.50443  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:01:07] [DA] [INFO] Cycle 870  balance=99551.49  sleep=14.5s
+[2026-06-05 21:04:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28870.40000  sell_entry=29376.28521  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:11:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28834.10000  sell_entry=29339.34914  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:11:05] [DA] [INFO] Cycle 900  balance=99551.49  sleep=16.4s
+[2026-06-05 21:17:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28783.10000  sell_entry=29287.45549  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:21:04] [DA] [INFO] Cycle 930  balance=99551.49  sleep=17.4s
+[2026-06-05 21:24:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28781.10000  sell_entry=29285.42044  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:31:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28781.10000  sell_entry=29285.42044  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:31:06] [DA] [INFO] Cycle 960  balance=99551.49  sleep=15.5s
+[2026-06-05 21:37:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28769.70000  sell_entry=29278.09428  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:41:04] [DA] [INFO] Cycle 990  balance=99551.49  sleep=17.3s
+[2026-06-05 21:44:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28769.70000  sell_entry=29273.82069  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:51:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28765.10000  sell_entry=29269.14008  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 21:51:04] [DA] [INFO] Cycle 1020  balance=99551.49  sleep=18.0s
+[2026-06-05 21:57:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28765.10000  sell_entry=29269.14008  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 22:01:03] [DA] [INFO] Cycle 1050  balance=99551.49  sleep=18.7s
+[2026-06-05 22:04:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28765.10000  sell_entry=29269.14008  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 22:11:02] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28765.10000  sell_entry=29269.14008  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 22:11:04] [DA] [INFO] Cycle 1080  balance=99551.49  sleep=17.6s
+[2026-06-05 22:17:42] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28765.10000  sell_entry=29269.14008  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-05 22:21:07] [DA] [INFO] Cycle 1110  balance=99551.49  sleep=15.1s
+[2026-06-05 22:24:22] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29764.90000  run_low=28765.10000  sell_entry=29269.14008  buy_entry=29243.34080  session_open=29751.00000
+[2026-06-06 00:15:08] [DA] [INFO] [Precompute] Running nightly forecast for 9 pairs…
+[2026-06-06 00:15:10] [DA] [INFO] [Precompute] EUR/USD  regime=RANGE  sigma_d=0.332%  hl50=0.503%  hl75=0.620%  slope=-0.001012
+[2026-06-06 00:15:10] [DA] [INFO] [Precompute] GBP/USD  regime=RANGE  sigma_d=0.368%  hl50=0.559%  hl75=0.688%  slope=-0.000824
+[2026-06-06 00:15:10] [DA] [INFO] [Precompute] USD/JPY  regime=RANGE  sigma_d=0.318%  hl50=0.483%  hl75=0.595%  slope=0.000686
+[2026-06-06 00:15:10] [DA] [INFO] [Precompute] AUD/USD  regime=RANGE  sigma_d=0.512%  hl50=0.777%  hl75=0.957%  slope=-0.001534
+[2026-06-06 00:15:10] [DA] [INFO] [Precompute] NZD/USD  regime=RANGE  sigma_d=0.646%  hl50=0.979%  hl75=1.206%  slope=-0.001612
+[2026-06-06 00:15:10] [DA] [INFO] [Precompute] USD/CAD  regime=RANGE  sigma_d=0.275%  hl50=0.418%  hl75=0.515%  slope=0.001000
+[2026-06-06 00:15:10] [DA] [INFO] [Precompute] USD/CHF  regime=RANGE  sigma_d=0.430%  hl50=0.652%  hl75=0.803%  slope=0.001259
+[2026-06-06 00:15:10] [DA] [INFO] [Precompute] XAU/USD  regime=BEAR  sigma_d=1.547%  hl50=2.488%  hl75=2.980%  slope=-0.004429
+[2026-06-06 00:15:10] [DA] [INFO] [Precompute] NAS100_USD  regime=BEAR  sigma_d=1.645%  hl50=2.612%  hl75=3.259%  slope=-0.002575
+[2026-06-06 00:15:10] [DA] [INFO] [Precompute] Done — 9/9 pairs cached
+[2026-06-06 01:00:23] [DA] [INFO] Daily reset: 99551.49 → 99551.49
+[2026-06-06 01:00:23] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-06 01:00:23] [DA] [INFO] [EUR/USD] Using precomputed forecast params
+[2026-06-06 01:00:23] [DA] [INFO] [EUR/USD] Setup [forecast]: regime=RANGE  sigma_d=0.332%  hl50=0.503%  hl75=0.620%  session_open=1.15220  slope=-0.001012
+[2026-06-06 01:00:23] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-06 01:00:23] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-06 01:00:23] [DA] [INFO] [GBP/USD] Using precomputed forecast params
+[2026-06-06 01:00:23] [DA] [INFO] [GBP/USD] Setup [forecast]: regime=RANGE  sigma_d=0.368%  hl50=0.559%  hl75=0.688%  session_open=1.33411  slope=-0.000824
+[2026-06-06 01:00:23] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-06 01:00:23] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-06 01:00:23] [DA] [INFO] [USD/JPY] Using precomputed forecast params
+[2026-06-06 01:00:23] [DA] [INFO] [USD/JPY] Setup [forecast]: regime=RANGE  sigma_d=0.318%  hl50=0.483%  hl75=0.595%  session_open=160.32300  slope=0.000686
+[2026-06-06 01:00:23] [DA] [INFO] [USD/JPY] RANGE day — no trading today
+[2026-06-06 01:00:23] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-06 01:00:23] [DA] [INFO] [AUD/USD] Using precomputed forecast params
+[2026-06-06 01:00:23] [DA] [INFO] [AUD/USD] Setup [forecast]: regime=RANGE  sigma_d=0.512%  hl50=0.777%  hl75=0.957%  session_open=0.70466  slope=-0.001534
+[2026-06-06 01:00:23] [DA] [INFO] [AUD/USD] RANGE day — no trading today
+[2026-06-06 01:00:23] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-06 01:00:23] [DA] [INFO] [NZD/USD] Using precomputed forecast params
+[2026-06-06 01:00:23] [DA] [INFO] [NZD/USD] Setup [forecast]: regime=RANGE  sigma_d=0.646%  hl50=0.979%  hl75=1.206%  session_open=0.57966  slope=-0.001612
+[2026-06-06 01:00:23] [DA] [INFO] [NZD/USD] RANGE day — no trading today
+[2026-06-06 01:00:23] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-06 01:00:23] [DA] [INFO] [USD/CAD] Using precomputed forecast params
+[2026-06-06 01:00:23] [DA] [INFO] [USD/CAD] Setup [forecast]: regime=RANGE  sigma_d=0.275%  hl50=0.418%  hl75=0.515%  session_open=1.39384  slope=0.001000
+[2026-06-06 01:00:23] [DA] [INFO] [USD/CAD] RANGE day — no trading today
+[2026-06-06 01:00:23] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-06 01:00:23] [DA] [INFO] [USD/CHF] Using precomputed forecast params
+[2026-06-06 01:00:23] [DA] [INFO] [USD/CHF] Setup [forecast]: regime=RANGE  sigma_d=0.430%  hl50=0.652%  hl75=0.803%  session_open=0.79607  slope=0.001259
+[2026-06-06 01:00:23] [DA] [INFO] [USD/CHF] RANGE day — no trading today
+[2026-06-06 01:00:23] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-06 01:00:23] [DA] [INFO] [XAU/USD] Using precomputed forecast params
+[2026-06-06 01:00:23] [DA] [INFO] [XAU/USD] Setup [forecast]: regime=BEAR  sigma_d=1.547%  hl50=2.488%  hl75=2.980%  session_open=4318.60500  slope=-0.004429
+[2026-06-06 01:00:23] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-06 01:00:23] [DA] [INFO] [NAS100_USD] Using precomputed forecast params
+[2026-06-06 01:00:23] [DA] [INFO] [NAS100_USD] Setup [forecast]: regime=BEAR  sigma_d=1.645%  hl50=2.612%  hl75=3.259%  session_open=28803.50000  slope=-0.002575
+[2026-06-06 01:01:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 01:01:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 01:01:44] [DA] [INFO] Cycle 1440  balance=99551.49  sleep=19.2s
+[2026-06-06 01:08:23] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 01:08:23] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 01:11:44] [DA] [INFO] Cycle 1470  balance=99551.49  sleep=19.0s
+[2026-06-06 01:15:03] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 01:15:03] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 01:21:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 01:21:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 01:21:45] [DA] [INFO] Cycle 1500  balance=99551.49  sleep=18.4s
+[2026-06-06 01:28:23] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 01:28:23] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 01:31:44] [DA] [INFO] Cycle 1530  balance=99551.49  sleep=19.0s
+[2026-06-06 01:35:03] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 01:35:03] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 01:41:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 01:41:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 01:41:45] [DA] [INFO] Cycle 1560  balance=99551.49  sleep=18.7s
+[2026-06-06 01:48:23] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 01:48:23] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 01:51:45] [DA] [INFO] Cycle 1590  balance=99551.49  sleep=18.0s
+[2026-06-06 01:55:03] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 01:55:03] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 02:01:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 02:01:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 02:01:44] [DA] [INFO] Cycle 1620  balance=99551.49  sleep=18.8s
+[2026-06-06 02:08:23] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 02:08:23] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 02:11:45] [DA] [INFO] Cycle 1650  balance=99551.49  sleep=18.1s
+[2026-06-06 02:15:03] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 02:15:03] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 02:21:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 02:21:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 02:21:51] [DA] [INFO] Cycle 1680  balance=99551.49  sleep=12.1s
+[2026-06-06 02:28:23] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 02:28:23] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 02:31:47] [DA] [INFO] Cycle 1710  balance=99551.49  sleep=16.2s
+[2026-06-06 02:35:03] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 02:35:03] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 02:41:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 02:41:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 02:41:45] [DA] [INFO] Cycle 1740  balance=99551.49  sleep=18.4s
+[2026-06-06 02:48:23] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 02:48:23] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 02:51:45] [DA] [INFO] Cycle 1770  balance=99551.49  sleep=18.2s
+[2026-06-06 02:55:03] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 02:55:03] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 03:01:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 03:01:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 03:01:45] [DA] [INFO] Cycle 1800  balance=99551.49  sleep=18.4s
+[2026-06-06 03:08:23] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 03:08:23] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 03:11:45] [DA] [INFO] Cycle 1830  balance=99551.49  sleep=18.5s
+[2026-06-06 03:15:03] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 03:15:03] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 03:21:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 03:21:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 03:21:45] [DA] [INFO] Cycle 1860  balance=99551.49  sleep=18.2s
+[2026-06-06 03:28:23] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 03:28:23] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 03:31:49] [DA] [INFO] Cycle 1890  balance=99551.49  sleep=14.3s
+[2026-06-06 03:35:03] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 03:35:03] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 03:41:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 03:41:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 03:41:45] [DA] [INFO] Cycle 1920  balance=99551.49  sleep=18.7s
+[2026-06-06 03:48:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 03:48:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 03:51:46] [DA] [INFO] Cycle 1950  balance=99551.49  sleep=17.3s
+[2026-06-06 03:55:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 03:55:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 04:01:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 04:01:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 04:01:45] [DA] [INFO] Cycle 1980  balance=99551.49  sleep=18.2s
+[2026-06-06 04:08:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 04:08:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 04:11:50] [DA] [INFO] Cycle 2010  balance=99551.49  sleep=13.8s
+[2026-06-06 04:15:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 04:15:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 04:21:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 04:21:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 04:21:45] [DA] [INFO] Cycle 2040  balance=99551.49  sleep=19.1s
+[2026-06-06 04:28:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 04:28:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 04:31:47] [DA] [INFO] Cycle 2070  balance=99551.49  sleep=16.5s
+[2026-06-06 04:35:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 04:35:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 04:41:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 04:41:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 04:41:45] [DA] [INFO] Cycle 2100  balance=99551.49  sleep=19.0s
+[2026-06-06 04:48:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 04:48:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 04:51:48] [DA] [INFO] Cycle 2130  balance=99551.49  sleep=15.2s
+[2026-06-06 04:55:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 04:55:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 05:01:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 05:01:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 05:01:45] [DA] [INFO] Cycle 2160  balance=99551.49  sleep=19.0s
+[2026-06-06 05:08:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 05:08:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 05:11:45] [DA] [INFO] Cycle 2190  balance=99551.49  sleep=18.6s
+[2026-06-06 05:15:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 05:15:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 05:21:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 05:21:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 05:21:45] [DA] [INFO] Cycle 2220  balance=99551.49  sleep=18.7s
+[2026-06-06 05:28:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 05:28:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 05:31:45] [DA] [INFO] Cycle 2250  balance=99551.49  sleep=18.8s
+[2026-06-06 05:35:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 05:35:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 05:41:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 05:41:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 05:41:45] [DA] [INFO] Cycle 2280  balance=99551.49  sleep=19.1s
+[2026-06-06 05:48:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 05:48:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 05:51:45] [DA] [INFO] Cycle 2310  balance=99551.49  sleep=18.6s
+[2026-06-06 05:55:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 05:55:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 06:01:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 06:01:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 06:01:46] [DA] [INFO] Cycle 2340  balance=99551.49  sleep=17.7s
+[2026-06-06 06:08:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 06:08:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 06:11:47] [DA] [INFO] Cycle 2370  balance=99551.49  sleep=16.4s
+[2026-06-06 06:15:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 06:15:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 06:21:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 06:21:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 06:21:47] [DA] [INFO] Cycle 2400  balance=99551.49  sleep=17.3s
+[2026-06-06 06:28:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 06:28:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 06:31:45] [DA] [INFO] Cycle 2430  balance=99551.49  sleep=19.0s
+[2026-06-06 06:35:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 06:35:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 06:41:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 06:41:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 06:41:45] [DA] [INFO] Cycle 2460  balance=99551.49  sleep=19.2s
+[2026-06-06 06:48:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 06:48:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 06:51:45] [DA] [INFO] Cycle 2490  balance=99551.49  sleep=18.4s
+[2026-06-06 06:55:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 06:55:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 07:01:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 07:01:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 07:01:46] [DA] [INFO] Cycle 2520  balance=99551.49  sleep=18.4s
+[2026-06-06 07:08:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 07:08:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 07:11:47] [DA] [INFO] Cycle 2550  balance=99551.49  sleep=16.7s
+[2026-06-06 07:15:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 07:15:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 07:21:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 07:21:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 07:21:45] [DA] [INFO] Cycle 2580  balance=99551.49  sleep=18.6s
+[2026-06-06 07:28:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 07:28:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 07:31:48] [DA] [INFO] Cycle 2610  balance=99551.49  sleep=16.2s
+[2026-06-06 07:35:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 07:35:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 07:41:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 07:41:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 07:41:46] [DA] [INFO] Cycle 2640  balance=99551.49  sleep=18.4s
+[2026-06-06 07:48:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 07:48:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 07:51:46] [DA] [INFO] Cycle 2670  balance=99551.49  sleep=18.2s
+[2026-06-06 07:55:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 07:55:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 08:01:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 08:01:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 08:01:45] [DA] [INFO] Cycle 2700  balance=99551.49  sleep=18.9s
+[2026-06-06 08:08:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 08:08:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 08:11:45] [DA] [INFO] Cycle 2730  balance=99551.49  sleep=18.6s
+[2026-06-06 08:15:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 08:15:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 08:21:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 08:21:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 08:21:45] [DA] [INFO] Cycle 2760  balance=99551.49  sleep=18.9s
+[2026-06-06 08:28:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 08:28:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 08:31:46] [DA] [INFO] Cycle 2790  balance=99551.49  sleep=18.2s
+[2026-06-06 08:35:04] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 08:35:04] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 08:41:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 08:41:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 08:41:45] [DA] [INFO] Cycle 2820  balance=99551.49  sleep=18.6s
+[2026-06-06 08:48:24] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4318.69000  run_low=4318.52000  sell_entry=4425.98355  buy_entry=4211.22222  session_open=4318.60500
+[2026-06-06 08:48:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
+[2026-06-06 08:51:49] [DA] [INFO] Cycle 2850  balance=99551.49  sleep=15.0s
+[2026-06-06 08:53:15] [DA] [INFO] DynAnchor bot stopped by user

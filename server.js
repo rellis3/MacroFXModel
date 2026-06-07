@@ -14,7 +14,8 @@ import express              from 'express';
 import path                from 'path';
 import { fileURLToPath }   from 'url';
 import fs                  from 'fs';
-import { execFile }        from 'child_process';
+import { createInterface as rlCreateInterface } from 'readline';
+import { execFile, spawn } from 'child_process';
 import { promisify }       from 'util';
 import * as kv           from './kv.js';
 import worker            from './_worker.js';
@@ -26,8 +27,9 @@ import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus } from './js/volForecastScheduler.js';
+import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
-import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS } from './js/volBacktestM1Engine.js';
+import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -73,25 +75,38 @@ async function callWorker(req) {
 const DEFAULT_PAIRS = [
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD',
   'NZD/USD', 'USD/CAD', 'USD/CHF', 'GBP/JPY', 'XAU/USD', 'NAS100_USD',
+  'EUR/GBP', 'EUR/JPY', 'EUR/CHF', 'GBP/CHF', 'AUD/JPY', 'CAD/JPY',
+  'SPX500_USD', 'DE30_USD', 'UK100_GBP',
+  'US30_USD', 'US2000_USD',
 ];
 
 const PIP_SIZE = {
   'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'AUD/USD': 0.0001,
   'NZD/USD': 0.0001, 'USD/CAD': 0.0001, 'USD/CHF': 0.0001,
-  'GBP/JPY': 0.01,   'USD/JPY': 0.01,
+  'GBP/JPY': 0.01,   'USD/JPY': 0.01,   'EUR/GBP': 0.0001,
+  'EUR/JPY': 0.01,   'AUD/JPY': 0.01,   'CAD/JPY': 0.01,
+  'EUR/CHF': 0.0001, 'GBP/CHF': 0.0001,
   'XAU/USD': 1.0,    'NAS100_USD': 1.0,
+  'SPX500_USD': 1.0, 'DE30_USD': 1.0,   'UK100_GBP': 1.0,
+  'US30_USD': 1.0, 'US2000_USD': 1.0,
 };
 
 const PRICE_DIGITS = {
-  'USD/JPY': 3, 'GBP/JPY': 3, 'XAU/USD': 2, 'NAS100_USD': 1,
+  'USD/JPY': 3, 'GBP/JPY': 3, 'EUR/JPY': 3, 'AUD/JPY': 3, 'CAD/JPY': 3,
+  'XAU/USD': 2, 'NAS100_USD': 1, 'SPX500_USD': 1, 'DE30_USD': 1, 'UK100_GBP': 1,
+  'US30_USD': 1, 'US2000_USD': 1,
 };
 
 // Typical OANDA spread in pips per pair — used as baseline for spread quality gate
 const TYPICAL_SPREAD_PIPS = {
   'EUR/USD': 0.6, 'GBP/USD': 0.9, 'USD/JPY': 0.7,
   'AUD/USD': 0.9, 'NZD/USD': 1.1, 'USD/CAD': 1.1,
-  'USD/CHF': 1.0, 'GBP/JPY': 2.0,
+  'USD/CHF': 1.0, 'GBP/JPY': 2.0,   'EUR/GBP': 0.9,
+  'EUR/JPY': 1.0, 'EUR/CHF': 1.5,   'GBP/CHF': 2.0,
+  'AUD/JPY': 1.5, 'CAD/JPY': 2.0,
   'XAU/USD': 0.3, 'NAS100_USD': 1.0,
+  'SPX500_USD': 0.3, 'DE30_USD': 0.8, 'UK100_GBP': 0.8,
+  'US30_USD': 0.5, 'US2000_USD': 0.5,
 };
 
 const DEFAULT_CFG = {
@@ -304,6 +319,575 @@ async function fetchHMMBars(sym, count = 300) {
       .map(c => ({ open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c }));
   } catch { return null; }
 }
+
+// ── Correlation History Builder ───────────────────────────────────────────────
+// Fetches multi-year H4 bars from OANDA, computes rolling Pearson correlations
+// + OLS factor betas, and saves bot/data/corr_history.json.
+// Runs on startup (if file is missing or >7 days old) and weekly.
+// No external scripts needed — all pure JS maths.
+
+const CORR_PAIRS = [
+  'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURGBP','XAUUSD',
+  'EURJPY','EURCHF','GBPCHF','AUDJPY','CADJPY',
+  'NAS100_USD','SPX500_USD','DE30_USD','UK100_GBP',
+  'US30_USD','US2000_USD',
+];
+const CORR_FACTOR_PROXIES = {
+  dxy:   { sym: 'EURUSD', sign: -1.2 },
+  rates: { sym: 'USDJPY', sign:  1.0 },
+  vix:   { sym: 'USDCHF', sign: -1.0 },
+};
+const CORR_HISTORY_PATH  = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'corr_history.json');
+const HEDGE_SIGNALS_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'hedge_signals.json');
+const HEDGE_SIGNAL_CFG_KEY = 'hedge_signal_cfg';
+const CORR_STALE_MS  = 7 * 24 * 60 * 60 * 1000;  // rebuild if older than 7 days
+const CORR_WINDOW    = 60;   // H4 bars per rolling window (10 trading days)
+const CORR_STEP      = 6;    // snapshot every 6 bars ≈ 1 per day
+const CORR_YEARS     = 5;
+const CORR_CHUNK     = 4500; // max bars per OANDA request (limit 5000)
+let   corrRunning    = false;
+let   corrProgress   = { pct: 0, msg: 'Idle', step: '', error: null };
+
+// Convert CORR_PAIRS format (EURUSD) to state.prices key format (EUR/USD)
+function _pairToSlash(sym) {
+  if (sym.includes('/') || sym.includes('_')) return sym;
+  if (sym === 'XAUUSD') return 'XAU/USD';
+  if (sym.length === 6) return `${sym.slice(0,3)}/${sym.slice(3)}`;
+  return sym;
+}
+
+function _h4OandaSym(sym) {
+  const ov = { XAUUSD:'XAU_USD', XAGUSD:'XAG_USD', NAS100:'NAS100_USD', SPX500:'SPX500_USD', 'DE30_USD':'DE30_EUR' };
+  if (ov[sym]) return ov[sym];
+  if (sym.includes('_')) return sym;  // already in OANDA format (e.g. NAS100_USD, DE30_USD)
+  if (sym.length === 6 && /^[A-Z]+$/.test(sym)) return `${sym.slice(0,3)}_${sym.slice(3)}`;
+  return null;
+}
+
+async function fetchH4Bars(sym, years = CORR_YEARS) {
+  const osym = _h4OandaSym(sym);
+  if (!osym || !process.env.OANDA_KEY) return null;
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const closes = [], timestamps = [];
+  let chunkFrom = new Date(Date.now() - years * 365.25 * 86400_000);
+  const now = new Date();
+  while (chunkFrom < now) {
+    const chunkTo = new Date(Math.min(chunkFrom.getTime() + CORR_CHUNK * 4 * 3600_000, now.getTime()));
+    // OANDA rejects requests that include from, to, AND count simultaneously.
+    // Use from+to only; chunk size ensures we stay well under the 5000 bar limit.
+    const url = `${base}/v3/instruments/${encodeURIComponent(osym)}/candles`
+      + `?granularity=H4&price=M`
+      + `&from=${chunkFrom.toISOString().slice(0,19)+'Z'}`
+      + `&to=${chunkTo.toISOString().slice(0,19)+'Z'}`;
+    try {
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+                                   signal: AbortSignal.timeout(30_000) });
+      if (r.ok) {
+        const d = await r.json();
+        for (const c of (d.candles || []).filter(c => c.mid)) {
+          closes.push(parseFloat(c.mid.c));
+          timestamps.push(new Date(c.time));
+        }
+      } else {
+        const errText = await r.text().catch(() => '');
+        console.warn(`[CORR] OANDA H4 ${sym}: HTTP ${r.status} — ${errText.slice(0,200)}`);
+      }
+    } catch (e) { console.warn(`[CORR] H4 chunk ${sym}: ${e.message}`); }
+    chunkFrom = chunkTo;
+    await new Promise(r => setTimeout(r, 250)); // polite gap between OANDA requests
+  }
+  return closes.length >= CORR_WINDOW + 1 ? { closes, timestamps } : null;
+}
+
+function _logRets(arr) {
+  const out = [];
+  for (let i = 1; i < arr.length; i++) out.push(Math.log(Math.max(arr[i],1e-10)/Math.max(arr[i-1],1e-10)));
+  return out;
+}
+function _pearson(xs, ys) {
+  const n = xs.length; if (n < 4) return null;
+  let mx=0, my=0; for (let i=0;i<n;i++){mx+=xs[i];my+=ys[i];} mx/=n; my/=n;
+  let num=0,da=0,db=0; for (let i=0;i<n;i++){const a=xs[i]-mx,b=ys[i]-my;num+=a*b;da+=a*a;db+=b*b;}
+  const d=Math.sqrt(da*db); return d<1e-12?0:Math.max(-1,Math.min(1,num/d));
+}
+function _ols(y, x) {
+  const n=y.length; if (n<3) return [0,0];
+  let mx=0,my=0; for (let i=0;i<n;i++){mx+=x[i];my+=y[i];} mx/=n;my/=n;
+  let cov=0,vx=0; for (let i=0;i<n;i++){cov+=(x[i]-mx)*(y[i]-my);vx+=(x[i]-mx)**2;}
+  if (vx<1e-12) return [0,0];
+  const b=cov/vx, a=my-b*mx;
+  let ss=0,st=0; for (let i=0;i<n;i++){ss+=(y[i]-a-b*x[i])**2;st+=(y[i]-my)**2;}
+  return [+b.toFixed(4), st<1e-12?0:+Math.max(0,Math.min(1,1-ss/st)).toFixed(4)];
+}
+function _ema(arr, p) {
+  const r=[...arr], k=2/(p+1); for (let i=1;i<r.length;i++) r[i]=arr[i]*k+r[i-1]*(1-k); return r;
+}
+function _regime(closes) {
+  const n=closes.length; if (n<25) return 'RANGE';
+  const fast=_ema(closes,20), slow=_ema(closes,Math.min(50,n));
+  const ref=Math.max(Math.abs(closes[n-1]),1e-10);
+  const spread=(fast[n-1]-slow[n-1])/ref, slope=n>=6?(fast[n-1]-fast[n-6])/ref:0;
+  if (spread>0.0025&&slope>0.00015) return 'BULL';
+  if (spread<-0.0025&&slope<-0.00015) return 'BEAR';
+  return 'RANGE';
+}
+
+async function buildCorrHistoryJS() {
+  if (corrRunning) { console.log('[CORR] Already running — skipped'); return; }
+  corrRunning = true;
+  corrProgress = { pct: 0, msg: 'Starting…', step: 'init', error: null };
+  const t0 = Date.now();
+  console.log('[CORR] Building correlation history...');
+  try {
+    // Fetch all required symbols
+    const allSyms = [...new Set([...CORR_PAIRS, ...Object.values(CORR_FACTOR_PROXIES).map(p => p.sym)])];
+    const barData = {};
+    for (let si = 0; si < allSyms.length; si++) {
+      const sym = allSyms[si];
+      corrProgress = { pct: Math.round(si / allSyms.length * 60), msg: `Fetching ${sym} bars from OANDA…`, step: 'fetch', error: null };
+      const result = await fetchH4Bars(sym, CORR_YEARS);
+      if (result) { barData[sym] = result; console.log(`[CORR]   ${sym}: ${result.closes.length} bars`); }
+      else { console.log(`[CORR]   ${sym}: skipped (no data / OANDA error)`); }
+    }
+
+    const availPairs = CORR_PAIRS.filter(p => barData[p]);
+    if (!availPairs.length) {
+      corrProgress = { pct: 0, msg: 'No pairs fetched — check OANDA key and account access', step: 'error', error: 'No data returned from OANDA for any pair. Check server logs.' };
+      console.log('[CORR] No pairs — abort. Check OANDA_KEY and that your account has access to all instruments.');
+      return;
+    }
+    corrProgress = { pct: 62, msg: `Computing rolling correlations for ${availPairs.length} pairs…`, step: 'compute', error: null };
+
+    // Align all return series to the reference pair's timestamps
+    const refPair = availPairs.find(p => ['EURUSD','GBPUSD','USDJPY'].includes(p)) || availPairs[0];
+    const refTs   = barData[refPair].timestamps;
+    const n       = refTs.length - 1;
+
+    const retSeries = {};
+    for (const sym of availPairs) {
+      const { closes, timestamps } = barData[sym];
+      const rmap = new Map();
+      const rets = _logRets(closes);
+      for (let i = 0; i < rets.length; i++) rmap.set(timestamps[i+1].getTime(), rets[i]);
+      retSeries[sym] = refTs.slice(1).map(ts => rmap.get(ts.getTime()) ?? null);
+    }
+
+    // Factor return series (proxy * sign)
+    const factorRets = {};
+    for (const [fname, { sym, sign }] of Object.entries(CORR_FACTOR_PROXIES))
+      if (retSeries[sym]) factorRets[fname] = retSeries[sym].map(v => v !== null ? v * sign : null);
+
+    const refCloses = barData[refPair].closes;
+    const records   = [];
+
+    for (let end = CORR_WINDOW; end <= n; end += CORR_STEP) {
+      const s      = end - CORR_WINDOW;
+      const ts     = refTs[end];
+      const regime = _regime(refCloses.slice(Math.max(0, end - 59), end + 1));
+      const corr   = {}, beta = {};
+
+      for (let i = 0; i < availPairs.length; i++) {
+        const pa = availPairs[i];
+        beta[pa] = {};
+
+        // OLS factor betas
+        for (const [fname, frets] of Object.entries(factorRets)) {
+          const yr=[], fr=[];
+          for (let k=s;k<end;k++) if (retSeries[pa][k]!==null&&frets[k]!==null){yr.push(retSeries[pa][k]);fr.push(frets[k]);}
+          if (yr.length>=10) { const [b]=_ols(yr,fr); beta[pa][fname]=b; }
+        }
+
+        // Pair-pair Pearson correlations (lower triangle)
+        for (let j = i+1; j < availPairs.length; j++) {
+          const pb=availPairs[j], xa=[], xb=[];
+          for (let k=s;k<end;k++) if (retSeries[pa][k]!==null&&retSeries[pb][k]!==null){xa.push(retSeries[pa][k]);xb.push(retSeries[pb][k]);}
+          if (xa.length>=10) { const c=_pearson(xa,xb); if (c!==null) corr[`${pa}_${pb}`]=+c.toFixed(4); }
+        }
+      }
+      records.push({ ts: ts.getTime(), ts_str: ts.toISOString().slice(0,16).replace('T',' '), regime, corr, beta });
+    }
+
+    // ── Summary statistics ──────────────────────────────────────────────────
+    const avgSums={}, avgCnts={}, rgCorrData={}, rgStatData={};
+    for (const rec of records) {
+      const rg = rec.regime;
+      if (!rgCorrData[rg]) rgCorrData[rg]={};
+      if (!rgStatData[rg]) rgStatData[rg]={};
+      for (const [k,v] of Object.entries(rec.corr)) {
+        avgSums[k]=(avgSums[k]||0)+v; avgCnts[k]=(avgCnts[k]||0)+1;
+        if (!rgCorrData[rg][k]) rgCorrData[rg][k]=[];
+        rgCorrData[rg][k].push(v);
+      }
+      for (const [pair,betas] of Object.entries(rec.beta)) {
+        if (!rgStatData[rg][pair]) rgStatData[rg][pair]={dxy:[],rates:[],vix:[]};
+        for (const f of ['dxy','rates','vix']) if (betas[f]!==undefined) rgStatData[rg][pair][f].push(betas[f]);
+      }
+    }
+
+    const avgCorr={};
+    for (const k of Object.keys(avgSums)) avgCorr[k]=+(avgSums[k]/avgCnts[k]).toFixed(4);
+
+    const regimeCorr={};
+    for (const [rg,corrs] of Object.entries(rgCorrData)) {
+      regimeCorr[rg]={};
+      for (const [k,vals] of Object.entries(corrs))
+        regimeCorr[rg][k]=+(vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(4);
+    }
+
+    const regimeStats={};
+    for (const [rg,pairData] of Object.entries(rgStatData)) {
+      for (const [pair,vals] of Object.entries(pairData)) {
+        if (!regimeStats[pair]) regimeStats[pair]={};
+        const mean=a=>a.length?+(a.reduce((s,v)=>s+v,0)/a.length).toFixed(4):null;
+        regimeStats[pair][rg]={ dxy_mean:mean(vals.dxy), rates_mean:mean(vals.rates), vix_mean:mean(vals.vix), n:vals.vix.length };
+      }
+    }
+
+    const output = { generated:new Date().toISOString(), years:CORR_YEARS,
+      window_bars:CORR_WINDOW, step_bars:CORR_STEP, pairs:availPairs,
+      records, regime_stats:regimeStats, avg_corr:avgCorr, regime_corr:regimeCorr };
+
+    corrProgress = { pct: 95, msg: 'Saving history file…', step: 'save', error: null };
+    fs.mkdirSync(path.dirname(CORR_HISTORY_PATH), { recursive: true });
+    fs.writeFileSync(CORR_HISTORY_PATH, JSON.stringify(output));
+    const kb = Math.round(fs.statSync(CORR_HISTORY_PATH).size / 1024);
+    console.log(`[CORR] Done — ${records.length} snapshots, ${availPairs.length} pairs, ${kb} KB, ${Date.now()-t0}ms`);
+    corrProgress = { pct: 100, msg: `Done — ${records.length} snapshots · ${availPairs.length} pairs · ${kb} KB`, step: 'done', error: null };
+
+  } catch (e) {
+    console.error('[CORR] Build error:', e.message, e.stack?.split('\n')[1]);
+    corrProgress = { pct: 0, msg: `Build failed: ${e.message}`, step: 'error', error: e.message };
+  } finally {
+    corrRunning = false;
+  }
+}
+
+async function runCorrHistoryRefresh() {
+  if (corrRunning || !process.env.OANDA_KEY) return;
+  try {
+    const stat = fs.statSync(CORR_HISTORY_PATH);
+    if (Date.now() - stat.mtimeMs < CORR_STALE_MS) return; // file is fresh
+  } catch { /* file missing — build it */ }
+  buildCorrHistoryJS().catch(e => console.error('[CORR]', e.message));
+}
+
+// ── Hedge Signal Generator ───────────────────────────────────────────────────
+// Scans corr_history for rolling-correlation z-score divergences and fires
+// Telegram alerts. Output JSON is designed to be consumed by a Python trading bot.
+
+const DEFAULT_HEDGE_CFG = {
+  enabled: true,
+  entry_z: 2.0,
+  exit_z: 0.5,
+  stop_z: 3.5,
+  min_score: 0.45,
+  allowed_regimes: ['BEAR', 'RANGE', 'BULL'],
+  check_interval_min: 30,
+};
+let _hedgeSigRunning = false;
+
+function _hedgeScore(corr, betaA, betaB) {
+  const corrPart  = -corr * 0.7;
+  const betaSpread = Math.abs((betaA ?? 0) - (betaB ?? 0));
+  const betaPart  = Math.min(betaSpread / 2, 1) * 0.3;
+  return +(corrPart + betaPart).toFixed(4);
+}
+
+async function computeHedgeSignals() {
+  if (_hedgeSigRunning) return;
+  _hedgeSigRunning = true;
+  try {
+    if (!fs.existsSync(CORR_HISTORY_PATH)) return;
+    const data    = JSON.parse(fs.readFileSync(CORR_HISTORY_PATH, 'utf8'));
+    const records = data.records || [];
+    if (records.length < 20) return;
+
+    const cfgRaw = await kv.get(HEDGE_SIGNAL_CFG_KEY);
+    const cfg    = cfgRaw ? { ...DEFAULT_HEDGE_CFG, ...JSON.parse(cfgRaw) } : { ...DEFAULT_HEDGE_CFG };
+    if (!cfg.enabled) return;
+
+    // Build rolling stats per pair-pair key
+    const sums = {}, sums2 = {}, cnts = {}, lastCorr = {}, lastBeta = {};
+    for (const rec of records) {
+      for (const [k, v] of Object.entries(rec.corr || {})) {
+        if (!sums[k]) { sums[k] = 0; sums2[k] = 0; cnts[k] = 0; }
+        sums[k] += v; sums2[k] += v * v; cnts[k]++;
+        lastCorr[k] = v;
+      }
+      Object.assign(lastBeta, rec.beta || {});
+    }
+
+    const regime  = (records[records.length - 1]?.regime) || 'UNKNOWN';
+    if (!cfg.allowed_regimes.includes(regime)) {
+      console.log(`[HEDGE-SIG] Regime ${regime} not in allowed list — skip`);
+      return;
+    }
+
+    let sigData = { signals: [], last_run: null };
+    if (fs.existsSync(HEDGE_SIGNALS_PATH)) {
+      try { sigData = JSON.parse(fs.readFileSync(HEDGE_SIGNALS_PATH, 'utf8')); } catch {}
+    }
+
+    const tgRaw = await kv.get('hedge_signal_tg');
+    const tgCfg = tgRaw ? JSON.parse(tgRaw) : null;
+    const now   = new Date().toISOString();
+    sigData.last_run = now;
+    const newSigs = [];
+
+    for (const [key, curCorr] of Object.entries(lastCorr)) {
+      const n = cnts[key];
+      if (n < 20) continue;
+      const mu  = sums[key] / n;
+      const std = Math.sqrt(Math.max(0, sums2[key] / n - mu * mu));
+      if (std < 0.01) continue;
+      const z = (curCorr - mu) / std;
+      if (Math.abs(z) < cfg.entry_z) continue;
+
+      // Resolve pair names from key (keys built as `${pa}_${pb}` in corr build)
+      let pa = null, pb = null;
+      for (const p of (data.pairs || [])) {
+        if (key.startsWith(p + '_')) { pa = p; pb = key.slice(p.length + 1); break; }
+      }
+      if (!pa || !pb || !(data.pairs || []).includes(pb)) continue;
+
+      const betaA = lastBeta[pa]?.vix ?? null;
+      const betaB = lastBeta[pb]?.vix ?? null;
+      const score = _hedgeScore(curCorr, betaA, betaB);
+      if (score < cfg.min_score) continue;
+
+      // β_vix > 0 → risk-off → LONG; β_vix < 0 → risk-on → SHORT
+      const dirA = (betaA ?? 0) >= 0 ? 'LONG'  : 'SHORT';
+      const dirB = (betaB ?? 0) >= 0 ? 'LONG'  : 'SHORT';
+
+      const existing = sigData.signals.find(s => s.pair_a === pa && s.pair_b === pb && s.status === 'ACTIVE');
+      if (existing) {
+        existing.z_score     = +z.toFixed(3);
+        existing.corr_current = +curCorr.toFixed(4);
+        existing.hedge_score  = score;
+        existing.last_updated = now;
+        if (Math.abs(z) < cfg.exit_z)  { existing.status = 'EXITED';  existing.exit_time = now; existing.exit_z = +z.toFixed(3); }
+        else if (Math.abs(z) > cfg.stop_z) { existing.status = 'STOPPED'; existing.exit_time = now; existing.exit_z = +z.toFixed(3); }
+      } else {
+        const sig = {
+          id: `${pa}-${pb}-${Date.now()}`,
+          schema_version: 1,
+          pair_a: pa, pair_b: pb,
+          direction_a: dirA, direction_b: dirB,
+          z_score: +z.toFixed(3),
+          hedge_score: score,
+          corr_current: +curCorr.toFixed(4),
+          corr_mean: +mu.toFixed(4),
+          corr_std: +std.toFixed(4),
+          beta_vix_a: betaA !== null ? +betaA.toFixed(4) : null,
+          beta_vix_b: betaB !== null ? +betaB.toFixed(4) : null,
+          regime,
+          status: 'ACTIVE',
+          entry_time: now,
+          entry_z: +z.toFixed(3),
+          exit_z_target: cfg.exit_z,
+          stop_z: cfg.stop_z,
+          last_updated: now,
+          entry_price_a: (() => { const p = state.prices[_pairToSlash(pa)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pa)] ?? 5) : null; })(),
+          entry_price_b: (() => { const p = state.prices[_pairToSlash(pb)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pb)] ?? 5) : null; })(),
+        };
+        newSigs.push(sig);
+        sigData.signals.push(sig);
+
+        if (tgCfg?.token && tgCfg?.chatId) {
+          const bullet = z > 0 ? '📈' : '📉';
+          const msg = `${bullet} <b>Hedge Signal — ${pa} / ${pb}</b>\n`
+            + `Z-Score: <b>${sig.z_score}</b>  |  Score: <b>${score}</b>\n`
+            + `<b>${pa}</b>: ${dirA}  (β_vix = ${sig.beta_vix_a ?? 'n/a'})\n`
+            + `<b>${pb}</b>: ${dirB}  (β_vix = ${sig.beta_vix_b ?? 'n/a'})\n`
+            + `Regime: ${regime}  |  Corr: ${sig.corr_current} (μ=${sig.corr_mean} σ=${sig.corr_std})\n`
+            + `<i>Entry z &gt; ${cfg.entry_z} | Exit z &lt; ${cfg.exit_z} | Stop z &gt; ${cfg.stop_z}</i>`;
+          sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
+        }
+      }
+    }
+
+    fs.mkdirSync(path.dirname(HEDGE_SIGNALS_PATH), { recursive: true });
+    fs.writeFileSync(HEDGE_SIGNALS_PATH, JSON.stringify(sigData, null, 2));
+    if (newSigs.length) console.log(`[HEDGE-SIG] ${newSigs.length} new:`, newSigs.map(s => `${s.pair_a}/${s.pair_b} z=${s.z_score}`).join(', '));
+  } catch (e) {
+    console.error('[HEDGE-SIG]', e.message);
+  } finally {
+    _hedgeSigRunning = false;
+  }
+}
+
+// ── Beta Estimation (Kalman OLS) ─────────────────────────────────────────────
+// Mirrors bot/modules/beta_estimator.py — runs server-side via OANDA H4 bars.
+// Pushes `beta_estimates` to KV every 2 hours so the dashboard beta panel works
+// without a local bot. portfolio_beta/deviation/rebalance still need MT5 locally.
+
+const BETA_WINDOW      = 60;          // rolling OLS window (bars)
+const BETA_MIN_WINDOW  = 20;          // minimum bars for valid regression
+const BETA_BAR_COUNT   = 80;          // H4 bars to fetch per symbol (~13 days)
+const BETA_Q           = 1e-4;        // Kalman process noise — beta drift rate
+const BETA_R_DEFAULT   = 0.10;        // Kalman observation noise fallback
+const BETA_INTERVAL_MS = 2 * 60 * 60 * 1000; // rebuild every 2 hours
+
+const BETA_FACTOR_PROXIES = {
+  beta_dxy:   { sym: 'EURUSD', sign: -1.2 },  // DXY proxy (EUR ~57% weight, inverted)
+  beta_rates: { sym: 'USDJPY', sign:  1.0 },  // US-Japan rates differential
+  beta_vix:   { sym: 'USDCHF', sign: -1.0 },  // Risk-off proxy (CHF safe-haven, inverted)
+};
+
+// All pairs to estimate beta for (factor proxy pairs are also in this list)
+const BETA_PAIRS = [
+  'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURGBP','XAUUSD',
+  'EURJPY','EURCHF','GBPCHF','AUDJPY','CADJPY',
+  'NAS100_USD','SPX500_USD','DE30_USD','UK100_GBP','US30_USD','US2000_USD',
+];
+
+function _betaLogReturns(closes) {
+  const r = [];
+  for (let i = 1; i < closes.length; i++) {
+    r.push(Math.log(Math.max(closes[i], 1e-10)) - Math.log(Math.max(closes[i-1], 1e-10)));
+  }
+  return r;
+}
+
+function _olsBeta(pr, fr) {
+  const n = Math.min(BETA_WINDOW, pr.length, fr.length);
+  if (n < BETA_MIN_WINDOW) return { beta: 0, rSq: 0 };
+  const pairs = pr.slice(-n).map((y, i) => [y, fr[fr.length - n + i]])
+    .filter(([y, x]) => isFinite(y) && isFinite(x));
+  if (pairs.length < BETA_MIN_WINDOW) return { beta: 0, rSq: 0 };
+  const yA = pairs.map(p => p[0]), xA = pairs.map(p => p[1]);
+  const xM = xA.reduce((s, v) => s + v, 0) / xA.length;
+  const yM = yA.reduce((s, v) => s + v, 0) / yA.length;
+  const num = xA.reduce((s, x, i) => s + (x - xM) * (yA[i] - yM), 0);
+  const den = xA.reduce((s, x) => s + (x - xM) ** 2, 0);
+  if (Math.abs(den) < 1e-12) return { beta: 0, rSq: 0 };
+  const beta = num / den;
+  const alpha = yM - beta * xM;
+  const ssRes = yA.reduce((s, y, i) => s + (y - alpha - beta * xA[i]) ** 2, 0);
+  const ssTot = yA.reduce((s, y) => s + (y - yM) ** 2, 0);
+  return { beta, rSq: ssTot > 1e-12 ? Math.max(0, Math.min(1, 1 - ssRes / ssTot)) : 0 };
+}
+
+// Kalman states persist in memory across 2-hour rebuild cycles
+const _betaKalmans = {};
+
+function _kalmanStep(kf, pairRet, factorRet) {
+  const pPred = kf.p + kf.q;
+  if (Math.abs(factorRet) < 1e-10) { kf.p = pPred; return; }
+  const h = factorRet;
+  const k = pPred * h / (h * h * pPred + kf.r);
+  kf.x = kf.x + k * (pairRet - h * kf.x);
+  kf.p = Math.max((1 - k * h) * pPred, 1e-8);
+}
+
+async function fetchH4BarsShort(sym) {
+  const osym = _h4OandaSym(sym);
+  if (!osym || !process.env.OANDA_KEY) return null;
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  try {
+    const r = await fetch(
+      `${base}/v3/instruments/${encodeURIComponent(osym)}/candles?granularity=H4&price=M&count=${BETA_BAR_COUNT}`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(15_000) }
+    );
+    if (!r.ok) return null;
+    const data = await r.json();
+    const closes = (data.candles || [])
+      .filter(c => c.complete !== false)
+      .map(c => parseFloat(c.mid?.c))
+      .filter(v => isFinite(v) && v > 0);
+    return closes.length >= BETA_MIN_WINDOW + 1 ? closes : null;
+  } catch { return null; }
+}
+
+let _betaRunning = false;
+
+async function buildBetaEstimates() {
+  if (_betaRunning || !process.env.OANDA_KEY) return;
+  _betaRunning = true;
+  console.log('[BETA] Building beta estimates from OANDA H4 bars…');
+  try {
+    // Fetch bars — factor proxies must always be fetched
+    const allSyms = [...new Set([...BETA_PAIRS, ...Object.values(BETA_FACTOR_PROXIES).map(p => p.sym)])];
+    const barData = {};
+    for (const sym of allSyms) {
+      const closes = await fetchH4BarsShort(sym);
+      if (closes) barData[sym] = closes;
+    }
+
+    // Build factor return series
+    const factorRets = {};
+    for (const [factor, { sym, sign }] of Object.entries(BETA_FACTOR_PROXIES)) {
+      if (barData[sym]) factorRets[factor] = _betaLogReturns(barData[sym]).map(r => r * sign);
+    }
+    if (!Object.keys(factorRets).length) {
+      console.log('[BETA] No factor proxy bars — aborting');
+      return;
+    }
+
+    const results = {};
+    const ts = Date.now();
+
+    for (const sym of BETA_PAIRS) {
+      if (!barData[sym]) continue;
+      const pairRets = _betaLogReturns(barData[sym]);
+      const symFactors = {};
+      const rSqVals = [];
+
+      for (const [factor, fr] of Object.entries(factorRets)) {
+        const n = Math.min(pairRets.length, fr.length);
+        if (n < BETA_MIN_WINDOW) continue;
+        const pr = pairRets.slice(-n), frN = fr.slice(-n);
+
+        const { beta: olsBeta, rSq } = _olsBeta(pr, frN);
+        rSqVals.push(rSq);
+
+        // Init Kalman state on first run
+        _betaKalmans[sym] = _betaKalmans[sym] || {};
+        if (!_betaKalmans[sym][factor]) {
+          const nW = Math.min(BETA_WINDOW, n);
+          const resids = pr.slice(-nW).map((y, i) => y - olsBeta * frN[frN.length - nW + i]);
+          const mean = resids.reduce((s, v) => s + v, 0) / resids.length;
+          const obsVar = resids.length > 2
+            ? resids.reduce((s, v) => s + (v - mean) ** 2, 0) / resids.length
+            : BETA_R_DEFAULT;
+          _betaKalmans[sym][factor] = { x: olsBeta, p: 0.05, q: BETA_Q, r: Math.max(obsVar, 1e-6) };
+        }
+        const kf = _betaKalmans[sym][factor];
+        // Incremental update on last 5 bars only (matches Python behaviour)
+        const inc = Math.min(5, n);
+        for (let i = pr.length - inc; i < pr.length; i++) _kalmanStep(kf, pr[i], frN[i]);
+
+        const variance = kf.p;
+        symFactors[factor] = {
+          mean:        +kf.x.toFixed(4),
+          variance:    +variance.toFixed(6),
+          ols:         +olsBeta.toFixed(4),
+          uncertainty: variance < 0.01 ? 'LOW' : variance < 0.05 ? 'MEDIUM' : 'HIGH',
+        };
+      }
+
+      if (Object.keys(symFactors).length) {
+        results[sym] = {
+          ...symFactors,
+          r_squared: rSqVals.length ? +(rSqVals.reduce((s, v) => s + v, 0) / rSqVals.length).toFixed(4) : 0,
+          window:    BETA_WINDOW,
+          timestamp: ts,
+        };
+      }
+    }
+
+    await kv.put('beta_estimates', JSON.stringify({ data: results, timestamp: ts }));
+    console.log(`[BETA] Done — ${Object.keys(results).length} pairs · ${new Date(ts).toISOString()}`);
+  } catch (e) {
+    console.error('[BETA] Error:', e.message);
+  } finally {
+    _betaRunning = false;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function sendTelegram(token, chatId, text) {
   try {
@@ -950,7 +1534,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
 // ── Express app ───────────────────────────────────────────────────────────────
 
 const app = express();
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '25mb' }));
 
 // Real-time monitoring + level-refresh status
 app.get('/api/monitor/status', (_req, res) => {
@@ -1516,6 +2100,31 @@ app.get('/api/vol-forecast/live/export', async (_req, res) => {
   } catch (e) {
     res.status(500).type('text/plain').send(`Error: ${e.message}`);
   }
+});
+
+// ── Session Stats API ─────────────────────────────────────────────────────────
+// Serves pre-computed session consumption percentages (Asia/London % of daily range).
+// Computation is pure JavaScript (js/sessionStats.js) — no Python required.
+// Trigger once via POST /api/session-stats/refresh, then results are cached to disk.
+
+app.get('/api/session-stats', (_req, res) => {
+  if (isSessionStatsComputing()) {
+    return res.status(202).json({ ok: false, status: 'computing', message: 'Session stats computation in progress — poll again in 60s.' });
+  }
+  const data = getSessionStats();
+  if (!data) {
+    return res.status(202).json({ ok: false, message: 'Session stats not yet computed — POST /api/session-stats/refresh to start.' });
+  }
+  res.json(data);
+});
+
+app.post('/api/session-stats/refresh', (_req, res) => {
+  if (isSessionStatsComputing()) {
+    return res.json({ ok: false, message: 'Already computing — poll /api/session-stats for result.' });
+  }
+  const years = parseInt(_req.query.years) || 5;
+  res.json({ ok: true, message: `Computing session stats (${years}yr H1) — poll /api/session-stats in ~3–5 min.` });
+  computeSessionStats(years).catch(e => console.error('[SESSION-STATS] Error:', e.message));
 });
 
 // ── Vol Backtest API ──────────────────────────────────────────────────────────
@@ -2184,42 +2793,85 @@ async function fetchDailyOHLC(sym, count = 70) {
   } catch { return null; }
 }
 
+// Per-asset-class parameters for the dashboard vol model (mirrors volForecast.js)
+const _DA_ASSET_CLASS = {
+  'XAU/USD':    'commodity',
+  'NAS100_USD': 'index',
+};
+const _DA_DASHBOARD_PARAMS = {
+  commodity: { hl50_corr: 1.023, hl75_corr: 0.940 },
+  index:     { hl50_corr: 1.010, hl75_corr: 0.967 },
+  fx:        { hl50_corr: 0.965, hl75_corr: 0.912 },
+};
+
+// GARCH(1,1) for fx/index or Rogers-Satchell EWMA for commodity — mirrors dashboard vol page.
+function _dashboardSigmaD(candles, assetClass) {
+  const ALPHA = 0.06, BETA = 0.91, LAMBDA = 0.94;
+  const OMEGA = assetClass === 'index' ? 4.76e-6 : 3.60e-7;
+
+  if (assetClass === 'commodity') {
+    let rsVar = null;
+    for (const { high: h, low: l, open: o, close: cl } of candles) {
+      if (!h || !l || !o || !cl) continue;
+      const rs = Math.log(h / cl) * Math.log(h / o) + Math.log(l / cl) * Math.log(l / o);
+      rsVar = rsVar === null ? Math.max(rs, 1e-12) : LAMBDA * rsVar + (1 - LAMBDA) * Math.max(rs, 0);
+    }
+    return Math.sqrt(Math.max(rsVar ?? 1e-12, 1e-12));
+  }
+
+  const closes = candles.map(c => c.close);
+  const rets   = closes.slice(1).map((c, i) => Math.log(c / closes[i]));
+  let sigma2   = OMEGA / (1 - ALPHA - BETA);
+  for (const r of rets) sigma2 = OMEGA + ALPHA * r ** 2 + BETA * sigma2;
+  return Math.sqrt(Math.max(sigma2, 1e-12));
+}
+
 function _computeDaForecast(candles, opts = {}) {
-  const lambda     = opts.lambda     ?? 0.94;
-  const emaPeriod  = opts.emaPeriod  ?? 20;
-  const slopeThresh= opts.slopeThresh?? 0.002;
+  const lambda      = opts.lambda      ?? 0.94;
+  const emaPeriod   = opts.emaPeriod   ?? 20;
+  const slopeThresh = opts.slopeThresh ?? 0.002;
+  const volModel    = opts.volModel    ?? 'ewma';
+  const assetClass  = opts.assetClass  ?? 'fx';
 
   const BM_P50 = 1.572, BM_P75 = 2.049;
-  const HL50_CORR = 0.921, HL75_CORR = 0.894;
 
   const closes = candles.map(c => c.close);
   if (closes.length < emaPeriod + 5) return null;
 
-  // EWMA variance from daily log returns
-  const rets = closes.slice(1).map((c, i) => Math.log(c / closes[i]));
-  let ewmaVar = rets[0] ** 2;
-  for (const r of rets.slice(1)) ewmaVar = lambda * ewmaVar + (1 - lambda) * r ** 2;
-  const sigmaD = Math.sqrt(Math.max(ewmaVar, 1e-12));
+  let sigmaD, hl50_corr, hl75_corr;
+
+  if (volModel === 'dashboard') {
+    sigmaD = _dashboardSigmaD(candles, assetClass);
+    const p = _DA_DASHBOARD_PARAMS[assetClass] ?? _DA_DASHBOARD_PARAMS.fx;
+    hl50_corr = p.hl50_corr;
+    hl75_corr = p.hl75_corr;
+  } else {
+    // EWMA close-to-close (default, backtest-validated)
+    const rets = closes.slice(1).map((c, i) => Math.log(c / closes[i]));
+    let ewmaVar = rets[0] ** 2;
+    for (const r of rets.slice(1)) ewmaVar = lambda * ewmaVar + (1 - lambda) * r ** 2;
+    sigmaD    = Math.sqrt(Math.max(ewmaVar, 1e-12));
+    hl50_corr = 0.921;
+    hl75_corr = 0.894;
+  }
 
   // EMA series for slope
   const alpha = 2 / (emaPeriod + 1);
-  let ema = closes[0];
-  let emaPrev = closes[0];
-  for (let i = 1; i < closes.length; i++) {
-    emaPrev = ema;
-    ema = alpha * closes[i] + (1 - alpha) * ema;
-  }
+  let ema = closes[0], emaPrev = closes[0];
+  for (let i = 1; i < closes.length; i++) { emaPrev = ema; ema = alpha * closes[i] + (1 - alpha) * ema; }
   const slope  = emaPrev !== 0 ? (ema - emaPrev) / emaPrev : 0;
   const regime = slope > slopeThresh ? 'BULL' : slope < -slopeThresh ? 'BEAR' : 'RANGE';
 
   return {
     regime,
-    sigma_d:   sigmaD,
-    hl50:      BM_P50 * HL50_CORR * sigmaD,
-    hl75:      BM_P75 * HL75_CORR * sigmaD,
-    ema_slope: slope,
-    prev_close: closes[closes.length - 1],
-    bars_used:  closes.length,
+    sigma_d:     sigmaD,
+    hl50:        BM_P50 * hl50_corr * sigmaD,
+    hl75:        BM_P75 * hl75_corr * sigmaD,
+    ema_slope:   slope,
+    prev_close:  closes[closes.length - 1],
+    bars_used:   closes.length,
+    vol_model:   volModel,
+    asset_class: assetClass,
   };
 }
 
@@ -2243,10 +2895,11 @@ app.get('/api/dyn-anchor-forecast', async (req, res) => {
     ? pairsParam.split(',').map(p => p.trim()).filter(Boolean)
     : DEFAULT_DA_PAIRS;
 
-  const lambda      = parseFloat(req.query.lambda)       || 0.94;
-  const emaPeriod   = parseInt(req.query.emaPeriod)       || 20;
+  const lambda      = parseFloat(req.query.lambda)      || 0.94;
+  const emaPeriod   = parseInt(req.query.emaPeriod)      || 20;
   const slopeThresh = parseFloat(req.query.slopeThresh)  || 0.002;
   const barCount    = Math.min(parseInt(req.query.bars) || 70, 250);
+  const volModel    = req.query.volModel ?? 'ewma';
 
   const forecast = {};
   const errors   = {};
@@ -2258,7 +2911,8 @@ app.get('/api/dyn-anchor-forecast', async (req, res) => {
         errors[pair] = `Only ${candles?.length ?? 0} bars (need ${emaPeriod + 5})`;
         return;
       }
-      const f = _computeDaForecast(candles, { lambda, emaPeriod, slopeThresh });
+      const assetClass = _DA_ASSET_CLASS[pair] ?? 'fx';
+      const f = _computeDaForecast(candles, { lambda, emaPeriod, slopeThresh, volModel, assetClass });
       if (f) forecast[pair] = f;
       else   errors[pair] = 'computation failed';
     } catch (e) {
@@ -2272,7 +2926,7 @@ app.get('/api/dyn-anchor-forecast', async (req, res) => {
     computed_at: new Date().toISOString(),
     pairs_ok:    Object.keys(forecast).length,
     pairs_err:   Object.keys(errors).length,
-    params:      { lambda, emaPeriod, slopeThresh, barCount },
+    params:      { lambda, emaPeriod, slopeThresh, barCount, volModel },
   };
 
   // Store to KV so bot can read it at session open
@@ -2321,6 +2975,421 @@ app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
     console.error('[candles]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// Beta history — reads bot/data/beta_history.jsonl for the correlation dashboard.
+// Optional query params: limit (max records, default 3000), downsample (bool).
+app.get('/api/beta-history', (req, res) => {
+  const histPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'beta_history.jsonl');
+  try {
+    const raw = fs.readFileSync(histPath, 'utf8');
+    const lines = raw.split('\n').filter(l => l.trim());
+    const limit = Math.max(100, parseInt(req.query.limit) || 3000);
+    // Deterministic downsample: keep every Nth record to fit limit
+    const step = Math.max(1, Math.floor(lines.length / limit));
+    const records = [];
+    for (let i = 0; i < lines.length; i += step) {
+      try { records.push(JSON.parse(lines[i])); } catch { /* skip malformed */ }
+    }
+    // Always include the latest record
+    if (lines.length > 0) {
+      try {
+        const last = JSON.parse(lines[lines.length - 1]);
+        if (!records.length || records[records.length - 1].ts !== last.ts) records.push(last);
+      } catch { /* ignore */ }
+    }
+    res.json({ records, total: lines.length, sampled: records.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// List available OANDA instruments — useful for finding exact index/CFD names on this account.
+app.get('/api/oanda-instruments', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(400).json({ error: 'OANDA_KEY not set' });
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const accountId = process.env.OANDA_ACCOUNT_ID;
+  if (!accountId) return res.status(400).json({ error: 'OANDA_ACCOUNT_ID not set' });
+  try {
+    const r = await fetch(`${base}/v3/accounts/${accountId}/instruments`, {
+      headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!r.ok) return res.status(r.status).json({ error: await r.text() });
+    const data = await r.json();
+    const filter = (req.query.q || '').toLowerCase();
+    const instruments = (data.instruments || [])
+      .filter(i => !filter || i.name.toLowerCase().includes(filter) || i.displayName.toLowerCase().includes(filter))
+      .map(i => ({ name: i.name, displayName: i.displayName, type: i.type }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    res.json({ count: instruments.length, instruments });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Manual beta rebuild trigger
+app.post('/api/beta/rebuild', (_req, res) => {
+  if (_betaRunning) return res.json({ ok: false, message: 'Already running' });
+  if (!process.env.OANDA_KEY) return res.status(400).json({ ok: false, message: 'OANDA_KEY not configured' });
+  buildBetaEstimates().catch(e => console.error('[BETA/rebuild]', e.message));
+  res.json({ ok: true, message: 'Beta estimation started — takes ~30s. Refresh beta panel when done.' });
+});
+
+// Manual rebuild trigger — fires buildCorrHistoryJS() in background and returns immediately.
+app.post('/api/corr-history/rebuild', (_req, res) => {
+  if (corrRunning) return res.json({ ok: false, message: 'Build already in progress' });
+  if (!process.env.OANDA_KEY) return res.status(400).json({ ok: false, message: 'OANDA_KEY not configured' });
+  buildCorrHistoryJS().catch(e => console.error('[CORR/rebuild]', e.message));
+  res.json({ ok: true, message: 'Correlation history build started — check server logs. Takes ~3 min.' });
+});
+
+// Build progress — polled every few seconds while corrRunning
+app.get('/api/corr-history/progress', (_req, res) => {
+  res.json({ running: corrRunning, ...corrProgress });
+});
+
+// Build status
+app.get('/api/corr-history/status', (_req, res) => {
+  let fileInfo = null;
+  try {
+    const stat = fs.statSync(CORR_HISTORY_PATH);
+    const ageDays = (Date.now() - stat.mtimeMs) / 86400_000;
+    fileInfo = { exists: true, sizeKb: Math.round(stat.size / 1024), ageDays: +ageDays.toFixed(1), stale: ageDays > 7 };
+  } catch { fileInfo = { exists: false }; }
+  res.json({ running: corrRunning, file: fileInfo, oandaKey: !!process.env.OANDA_KEY });
+});
+
+// Correlation history — serves bot/data/corr_history.json built by build_corr_history.py
+// Optional ?lite=1 returns only avg_corr + regime_stats (strips the full records array)
+app.get('/api/corr-history', (req, res) => {
+  const p = CORR_HISTORY_PATH;
+  if (!fs.existsSync(p)) return res.json({ records: [], built: false, message: 'No history yet — click Rebuild in the dashboard to generate 5 years of OANDA H4 data.' });
+  try {
+    const raw = fs.readFileSync(p, 'utf8');
+    if (req.query.lite === '1') {
+      const full = JSON.parse(raw);
+      return res.json({
+        generated: full.generated, years: full.years,
+        window_bars: full.window_bars, pairs: full.pairs,
+        regime_stats: full.regime_stats, avg_corr: full.avg_corr,
+        record_count: full.records?.length ?? 0,
+      });
+    }
+    // Stream the full file directly — avoids double-parse overhead for large files
+    res.setHeader('Content-Type', 'application/json');
+    res.send(raw);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Hedge alerts — compact summary for the dashboard beta panel.
+// Returns avg_corr, corr_std (computed from records), last rolling corr, and last betas.
+// Much smaller than the full corr-history response.
+app.get('/api/hedge-alerts', (req, res) => {
+  const p = CORR_HISTORY_PATH;
+  if (!fs.existsSync(p)) return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {} });
+  try {
+    const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+    const records = data.records || [];
+    const sums = {}, sums2 = {}, cnts = {}, lastCorr = {};
+    for (const r of records) {
+      for (const [k, v] of Object.entries(r.corr || {})) {
+        if (!sums[k]) { sums[k] = 0; sums2[k] = 0; cnts[k] = 0; }
+        sums[k] += v; sums2[k] += v * v; cnts[k]++;
+        lastCorr[k] = v;
+      }
+    }
+    const corr_std = {};
+    for (const k of Object.keys(sums)) {
+      const n = cnts[k], mu = sums[k] / n;
+      corr_std[k] = n > 1 ? +(Math.sqrt(Math.max(0, sums2[k] / n - mu * mu))).toFixed(5) : 0;
+    }
+    const lastRec = records[records.length - 1] || {};
+    res.json({
+      generated: data.generated,
+      pairs: data.pairs || [],
+      avg_corr: data.avg_corr || {},
+      corr_std,
+      last_corr: lastCorr,
+      last_betas: lastRec.beta || {}
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Hedge Signal API ─────────────────────────────────────────────────────────
+
+app.get('/api/hedge-signals', (_req, res) => {
+  if (!fs.existsSync(HEDGE_SIGNALS_PATH)) return res.json({ signals: [], last_run: null });
+  try { res.json(JSON.parse(fs.readFileSync(HEDGE_SIGNALS_PATH, 'utf8'))); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/hedge-signals/config', async (_req, res) => {
+  const raw = await kv.get(HEDGE_SIGNAL_CFG_KEY).catch(() => null);
+  res.json(raw ? { ...DEFAULT_HEDGE_CFG, ...JSON.parse(raw) } : { ...DEFAULT_HEDGE_CFG });
+});
+
+app.put('/api/hedge-signals/config', async (req, res) => {
+  const cfg = { ...DEFAULT_HEDGE_CFG, ...(req.body || {}) };
+  await kv.put(HEDGE_SIGNAL_CFG_KEY, JSON.stringify(cfg));
+  res.json({ ok: true, config: cfg });
+});
+
+app.post('/api/hedge-signals/check', (_req, res) => {
+  computeHedgeSignals().catch(e => console.error('[HEDGE-SIG] Manual check:', e.message));
+  res.json({ ok: true, message: 'Signal scan started' });
+});
+
+app.post('/api/hedge-signals/ack', (req, res) => {
+  if (!fs.existsSync(HEDGE_SIGNALS_PATH)) return res.json({ ok: false, error: 'No signals file' });
+  try {
+    const { id, status = 'DISMISSED' } = req.body || {};
+    const data = JSON.parse(fs.readFileSync(HEDGE_SIGNALS_PATH, 'utf8'));
+    const sig  = data.signals.find(s => s.id === id);
+    if (!sig) return res.json({ ok: false, error: 'Signal not found' });
+    sig.status   = status;
+    sig.ack_time = new Date().toISOString();
+    fs.writeFileSync(HEDGE_SIGNALS_PATH, JSON.stringify(data, null, 2));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/hedge-signals/tg-config', async (_req, res) => {
+  const raw = await kv.get('hedge_signal_tg').catch(() => null);
+  res.json(raw ? JSON.parse(raw) : { token: '', chatId: '' });
+});
+
+app.put('/api/hedge-signals/tg-config', async (req, res) => {
+  const { token = '', chatId = '' } = req.body || {};
+  await kv.put('hedge_signal_tg', JSON.stringify({ token, chatId }));
+  res.json({ ok: true });
+});
+
+app.post('/api/hedge-signals/tg-test', async (_req, res) => {
+  const raw = await kv.get('hedge_signal_tg').catch(() => null);
+  const cfg = raw ? JSON.parse(raw) : null;
+  if (!cfg?.token || !cfg?.chatId) return res.json({ ok: false, error: 'Telegram not configured for hedge signals' });
+  const ok = await sendTelegram(cfg.token, cfg.chatId,
+    '✅ <b>MacroFX Hedge Signals</b> — bot connected!\n<i>You will receive alerts when hedge pair correlations diverge.</i>');
+  res.json({ ok, error: ok ? null : 'Telegram API returned error' });
+});
+
+// Live prices + vol forecast ATR estimates for hedge signal SL display
+app.get('/api/hedge-signals/prices', (_req, res) => {
+  const prices = {};
+  for (const [sym, v] of Object.entries(state.prices)) {
+    prices[sym] = {
+      price:  v.price,
+      digits: PRICE_DIGITS[sym] ?? 5,
+      pip:    PIP_SIZE[sym] ?? 0.0001,
+      ageS:   Math.round((Date.now() - v.at) / 1_000),
+    };
+  }
+  const vol = {};
+  const fc = forecastState.latest?.instruments;
+  if (fc) {
+    for (const [name, data] of Object.entries(fc)) {
+      if (data?.hl_median) vol[name] = { hl_median: data.hl_median };
+    }
+  }
+  res.json({ prices, vol });
+});
+
+// ── Regime log backfill (pure Node.js) ──────────────────────────────────────
+// Native JS log parser — no Python subprocess required.
+// Reads bot log files line-by-line with readline and writes directly to KV.
+
+const _RG_V1_LOG = path.join(__dirname, 'bot',  'regime_bot.log');
+const _RG_V2_LOG = path.join(__dirname, 'logs', 'regime_bot_v2.log');
+
+// Regex patterns mirror parse_regime_logs.py
+const _RG_PAT = {
+  v1: {
+    state: /^\[([^\]]+)\] \[INFO\] \[([^\]]+)\] regime=(\w+)\s+conf=(\d+)%\s+vol_z=([+-]?\d+\.?\d*)\s+rl=(\d+)\s+decay=([+-]?\d+\.?\d*)/,
+    entry: /^\[([^\]]+)\] \[INFO\] \[([^\]]+)\] ENTRY (LONG|SHORT)/,
+    trade: /^\[([^\]]+)\] \[INFO\] TRADE (\S+) (LONG|SHORT)\s+SL=/,
+    close: /^\[([^\]]+)\] \[INFO\] CLOSE (\S+)\s+ticket=\S+\s+reason=(.+?)(?:\s+score=[\d.]+)?$/,
+  },
+  v2: {
+    state: /^\[([^\]]+)\] \[RGV2\] \[INFO\] \[([^\]]+)\] reg=(\w+)\s+conf=(\d+)%\s+slope=([+-]?\d+\.?\d*)\s+vz=([+-]?\d+\.?\d*)\s+rl=(\d+)\s+bocpd=([+-]?\d+\.?\d*)%\s+exh=([+-]?\d+\.?\d*)\s+decay=([+-]?\d+\.?\d*)\s+score=(\d+)(?:\s+1h=(\w+))?/,
+    gate:  /^\[([^\]]+)\] \[RGV2\] \[INFO\] \[([^\]]+)\] Gate: (.+)$/,
+    trade: /^\[([^\]]+)\] \[RGV2\] \[INFO\] TRADE (\S+) (LONG|SHORT)\s+SL=/,
+    close: /^\[([^\]]+)\] \[RGV2\] \[INFO\] CLOSE (\S+)\s+ticket=\S+\s+reason=(.+?)(?:\s+\[PAPER\])?$/,
+  },
+};
+
+function _rgTs(s) { return Math.floor(new Date(s.replace(' ', 'T') + 'Z').getTime() / 1000); }
+
+async function _parseRegimeLog(logPath, ver, recsByPair, evtsByPair, log) {
+  if (!fs.existsSync(logPath)) { log(`[WARN] not found: ${logPath}`); return; }
+  const P = _RG_PAT[ver];
+  const rl = rlCreateInterface({ input: fs.createReadStream(logPath), crlfDelay: Infinity });
+  let n = 0;
+  for await (const line of rl) {
+    n++;
+    let m;
+    if (ver === 'v1') {
+      if ((m = P.state.exec(line))) {
+        const [,ts,pair,regime,conf,vz,rl2,decay] = m;
+        const t = _rgTs(ts);
+        (recsByPair.get(pair) ?? (recsByPair.set(pair, new Map()), recsByPair.get(pair))).set(t, { ts:t, regime, conf:+conf, vz:+vz, rl:+rl2, decay:+decay });
+      } else if ((m = P.entry.exec(line))) {
+        const evts = evtsByPair.get(m[2]) ?? (evtsByPair.set(m[2],[]), evtsByPair.get(m[2]));
+        evts.push({ ts:_rgTs(m[1]), type:'entry', pair:m[2], direction:m[3] });
+      } else if ((m = P.trade.exec(line))) {
+        const pair = m[2]; const evts = evtsByPair.get(pair) ?? (evtsByPair.set(pair,[]), evtsByPair.get(pair));
+        evts.push({ ts:_rgTs(m[1]), type:'entry', pair, direction:m[3] });
+      } else if ((m = P.close.exec(line))) {
+        const pair = m[2]; const evts = evtsByPair.get(pair) ?? (evtsByPair.set(pair,[]), evtsByPair.get(pair));
+        evts.push({ ts:_rgTs(m[1]), type:'close', pair, reason:m[3].trim() });
+      }
+    } else {
+      if ((m = P.state.exec(line))) {
+        const [,ts,pair,regime,conf,slope,vz,rl2,bocpd,exh,decay,score,h1] = m;
+        const t = _rgTs(ts);
+        (recsByPair.get(pair) ?? (recsByPair.set(pair, new Map()), recsByPair.get(pair))).set(t, { ts:t, regime, conf:+conf, slope:+slope, vz:+vz, rl:+rl2, bocpd:+bocpd, exh:+exh, decay:+decay, score:+score, h1 });
+      } else if ((m = P.gate.exec(line))) {
+        const pair = m[2]; const evts = evtsByPair.get(pair) ?? (evtsByPair.set(pair,[]), evtsByPair.get(pair));
+        evts.push({ ts:_rgTs(m[1]), type:'gate', pair, reason:m[3] });
+      } else if ((m = P.trade.exec(line))) {
+        const pair = m[2].replace('_','/'); const evts = evtsByPair.get(pair) ?? (evtsByPair.set(pair,[]), evtsByPair.get(pair));
+        evts.push({ ts:_rgTs(m[1]), type:'entry', pair, direction:m[3] });
+      } else if ((m = P.close.exec(line))) {
+        const pair = m[2].replace('_','/'); const evts = evtsByPair.get(pair) ?? (evtsByPair.set(pair,[]), evtsByPair.get(pair));
+        evts.push({ ts:_rgTs(m[1]), type:'close', pair, reason:m[3].trim() });
+      }
+    }
+  }
+  log(`  ${path.basename(logPath)}: ${n.toLocaleString()} lines parsed`);
+}
+
+const _rgJobs = new Map();
+function _purgeStaleRgJobs() {
+  const now = Date.now();
+  for (const [id, job] of _rgJobs) { if (now - job.startedAt > 30 * 60 * 1000) _rgJobs.delete(id); }
+}
+
+app.post('/api/regime-backfill-trigger', (req, res) => {
+  _purgeStaleRgJobs();
+  for (const job of _rgJobs.values()) {
+    if (job.status === 'running') return res.json({ ok: true, jobId: job.jobId, alreadyRunning: true });
+  }
+
+  const jobId = `rg_${Date.now()}`;
+  const lines = [];
+  _rgJobs.set(jobId, { jobId, status: 'running', startedAt: Date.now(), lines });
+
+  const log = msg => { lines.push(msg); if (lines.length > 400) lines.splice(0, lines.length - 400); console.log('[backfill]', msg); };
+
+  (async () => {
+    try {
+      const v1r = new Map(), v1e = new Map(), v2r = new Map(), v2e = new Map();
+      log('Parsing V1 log…');
+      await _parseRegimeLog(_RG_V1_LOG, 'v1', v1r, v1e, log);
+      log('Parsing V2 log…');
+      await _parseRegimeLog(_RG_V2_LOG, 'v2', v2r, v2e, log);
+
+      const allPairs = new Set([...v1r.keys(), ...v1e.keys(), ...v2r.keys(), ...v2e.keys()]);
+      log(`Writing KV for ${allPairs.size} pairs…`);
+
+      const pairSafe = p => p.replace('/','').replace('_','').toLowerCase();
+      let written = 0;
+      for (const pair of allPairs) {
+        const safe = pairSafe(pair);
+        for (const [ver, rMap, eMap] of [['v1', v1r, v1e], ['v2', v2r, v2e]]) {
+          const records = [...(rMap.get(pair)?.values() ?? [])].sort((a,b) => a.ts - b.ts);
+          const events  = (eMap.get(pair) ?? []).sort((a,b) => a.ts - b.ts);
+          if (!records.length && !events.length) continue;
+          await cfEnv.FX_SCORES.put(`rg${ver}_${safe}`, JSON.stringify({ records, events }));
+          log(`  [OK] ${ver} ${pair}  ${records.length} records  ${events.length} events`);
+          written++;
+        }
+      }
+      log(`Done — ${written} KV keys written.`);
+      const job = _rgJobs.get(jobId);
+      if (job) { job.status = 'done'; job.finishedAt = Date.now(); }
+    } catch (e) {
+      lines.push(`[ERROR] ${e.message}`);
+      console.error('[backfill]', e);
+      const job = _rgJobs.get(jobId);
+      if (job) { job.status = 'error'; job.finishedAt = Date.now(); }
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/regime-backfill-status/:jobId', (req, res) => {
+  const job = _rgJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  res.json({ ok: true, status: job.status, elapsed: Math.round((Date.now() - job.startedAt) / 1000), lines: job.lines.slice(-40), exitCode: job.exitCode ?? null });
+});
+
+// ── Regime history — R2 backfill + local KV ring buffer ──────────────────────
+// Must sit BEFORE the catch-all so Railway doesn't forward this to callWorker
+// (callWorker reads the local file-KV which is wiped on every redeploy).
+// R2 provides durable history; local KV provides data from the current run.
+
+app.get('/api/regime-history', async (req, res) => {
+  const bot    = req.query.bot === 'v1' ? 'v1' : 'v2';
+  const pair   = (req.query.pair || 'eurusd').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const fromTs = parseInt(req.query.from || '0');
+  const toTs   = parseInt(req.query.to   || '9999999999');
+
+  const recMap = new Map();
+  const evMap  = new Map();
+
+  // 1. R2 backfill (persistent across redeploys)
+  try {
+    const d = await loadRegimeHistoryFromR2(bot, pair);
+    if (d) {
+      for (const r of (d.records || [])) recMap.set(r.ts, r);
+      for (const e of (d.events  || [])) evMap.set(`${e.ts}_${e.type}`, e);
+    }
+  } catch {}
+
+  // 2. Local KV ring buffer (current Railway run — last 48-96h)
+  try {
+    const raw = await kv.get(`rg${bot}_${pair}`);
+    if (raw) {
+      const d = JSON.parse(raw);
+      for (const r of (d.records || [])) recMap.set(r.ts, r);
+      for (const e of (d.events  || [])) evMap.set(`${e.ts}_${e.type}`, e);
+    }
+  } catch {}
+
+  const records = [...recMap.values()].filter(r => r.ts >= fromTs && r.ts <= toTs).sort((a, b) => a.ts - b.ts);
+  const events  = [...evMap.values()].filter(e => e.ts >= fromTs && e.ts <= toTs).sort((a, b) => a.ts - b.ts);
+  res.json({ bot, pair, records, events });
+});
+
+// Export local data/regime_history JSON files to R2 (run once to seed history).
+// POST /api/regime-history-export  →  { uploaded: N, results: [...] }
+app.post('/api/regime-history-export', async (req, res) => {
+  const histDir = path.join(__dirname, 'data', 'regime_history');
+  if (!fs.existsSync(histDir)) return res.json({ ok: false, error: 'data/regime_history not found — this endpoint must be called against your LOCAL server (localhost:3000), not Railway. Railway does not have these gitignored files.' });
+  const results = [];
+  for (const bot of ['v1', 'v2']) {
+    const botDir = path.join(histDir, bot);
+    if (!fs.existsSync(botDir)) continue;
+    for (const file of fs.readdirSync(botDir).filter(f => f.endsWith('.json'))) {
+      const pair    = file.replace('.json', '');
+      const content = fs.readFileSync(path.join(botDir, file), 'utf8');
+      try {
+        const data = JSON.parse(content);
+        await saveRegimeHistoryToR2(bot, pair, data);
+        results.push({ ok: true, bot, pair, bytes: content.length });
+      } catch (e) {
+        results.push({ ok: false, bot, pair, error: e.message });
+      }
+    }
+  }
+  res.json({ ok: true, uploaded: results.filter(r => r.ok).length, results });
 });
 
 // All other /api/* routes — call _worker.js and return the JSON response.
@@ -2722,6 +3791,20 @@ setTimeout(() => {
   refreshFredHistory().catch(console.error);
   setInterval(refreshFredHistory, MACRO_REFRESH_MS);
 }, 30_000);
+
+// Correlation history — builds on startup if missing/stale, then weekly.
+// Fetches 5y of H4 OANDA bars for all pairs, computes rolling Pearson correlations + factor betas.
+// ~3 min to build, ~500-900 KB output. Stored at bot/data/corr_history.json.
+setTimeout(() => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 60_000);
+setInterval(runCorrHistoryRefresh, 7 * 24 * 60 * 60 * 1000);
+
+// Beta estimation — runs every 2 hours; first run 90s after startup (after corr fetch begins)
+setTimeout(() => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), 90_000);
+setInterval(() => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), BETA_INTERVAL_MS);
+
+// Hedge signal scanner — first run 5 min after startup (corr history must exist), then every 30 min.
+setTimeout(() => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 5 * 60_000);
+setInterval(() => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 30 * 60_000);
 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
 startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));

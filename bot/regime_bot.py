@@ -59,13 +59,33 @@ MAGIC = 20260002
 _PIP_SIZES = {
     'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
     'AUD/USD': 0.0001, 'NZD/USD': 0.0001, 'USD/CAD': 0.0001,
-    'USD/CHF': 0.0001, 'GBP/JPY': 0.01,  'XAU/USD': 1.0, 'NAS100_USD': 1.0,
+    'USD/CHF': 0.0001, 'GBP/JPY': 0.01,   'EUR/GBP': 0.0001,
+    'EUR/JPY': 0.01,   'EUR/CHF': 0.0001, 'GBP/CHF': 0.0001,
+    'AUD/JPY': 0.01,   'CAD/JPY': 0.01,
+    'XAU/USD': 1.0,    'NAS100_USD': 1.0,  'USTECH100M': 1.0,
+    'SPX500_USD': 1.0, 'DE30_USD': 1.0,    'UK100_GBP': 1.0,
+    'US30_USD': 1.0, 'US2000_USD': 1.0,
 }
 _PIP_VALUES = {
     'EUR/USD': 10.0, 'GBP/USD': 10.0, 'AUD/USD': 10.0, 'NZD/USD': 10.0,
     'USD/JPY': 9.0,  'USD/CAD': 7.5,  'USD/CHF': 10.5, 'GBP/JPY': 9.0,
-    'XAU/USD': 100.0, 'NAS100_USD': 1.0,
+    'EUR/GBP': 12.5, 'EUR/JPY': 6.5,  'EUR/CHF': 11.0, 'GBP/CHF': 11.0,
+    'AUD/JPY': 6.5,  'CAD/JPY': 6.5,
+    'XAU/USD': 100.0, 'NAS100_USD': 1.0, 'USTECH100M': 1.0,
+    'SPX500_USD': 1.0, 'DE30_USD': 1.0,  'UK100_GBP': 1.0,
+    'US30_USD': 1.0, 'US2000_USD': 1.0,
 }
+
+# ── Broker symbol aliases (pair name → actual MT5 symbol) ─────────────────────
+# Some demo brokers use different symbol names. Map the canonical pair name used
+# in config and API to the real MT5 symbol so all positions_get / order_send
+# calls use the correct name.
+_MT5_SYMBOL: dict[str, str] = {
+    'NAS100_USD': 'USTECH100M',
+}
+
+def _mt5_sym(pair: str) -> str:
+    return _MT5_SYMBOL.get(pair, pair.replace('/', ''))
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 
@@ -100,6 +120,7 @@ DEFAULT_CFG: dict = {
     'monthlydd':           5.0,      # monthly DD % before lockout
     'lockout':             3,        # lockout duration (hours)
     'cooldown':            240,      # seconds between trades on same pair
+    'entry_fail_cooldown_secs': 300,  # cooldown after a failed MT5 order (prevents re-entry spam)
     # Decay / vol filter settings
     'vol_z_max':           2.5,      # block entry when vol_z > this (spike filter)
     'decay_window':        10,       # rolling bar count for decay computation
@@ -211,7 +232,7 @@ def get_price(pair: str, base_url: str) -> float | None:
     """MT5 tick first (sub-ms), then dashboard API fallback."""
     if HAS_MT5:
         try:
-            tick = mt5.symbol_info_tick(pair.replace('/', ''))
+            tick = mt5.symbol_info_tick(_mt5_sym(pair))
             if tick and tick.bid > 0:
                 return round((tick.bid + tick.ask) / 2, 6)
         except Exception:
@@ -229,7 +250,7 @@ def get_atr(pair: str, tf: str = '5m') -> float | None:
         return None
     try:
         timeframe = mt5.TIMEFRAME_M5 if tf == '5m' else mt5.TIMEFRAME_M30
-        bars = mt5.copy_rates_from_pos(pair.replace('/', ''), timeframe, 0, 30)
+        bars = mt5.copy_rates_from_pos(_mt5_sym(pair), timeframe, 0, 30)
         if bars is None or len(bars) < 2:
             return None
         alpha = 0.15
@@ -451,7 +472,7 @@ def position_size(balance: float, risk_pct: float,
     raw_lots = risk_amt / (sl_pips * pv)
     # Decay discount: lots shrink linearly as decay approaches 1
     lots = raw_lots * (1.0 - decay_score)
-    return max(0.01, min(round(lots, 2), max_lot))
+    return float(max(0.01, min(round(lots, 2), float(max_lot))))
 
 
 # ── MT5 execution ─────────────────────────────────────────────────────────────
@@ -484,7 +505,7 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
         log.error('MetaTrader5 not installed — cannot place live order')
         return None
 
-    mt5_sym = pair.replace('/', '')
+    mt5_sym = _mt5_sym(pair)
     tick    = mt5.symbol_info_tick(mt5_sym)
     if not tick:
         log.error(f'No tick for {mt5_sym}')
@@ -522,13 +543,30 @@ def open_position(pair: str, direction: str, sl: float, tp: float,
 
     res = mt5.order_send(order)
 
+    # order_send returns None when MT5 has a transport error (dropped connection,
+    # autotrading disabled). Capture last_error before any further MT5 calls.
+    if res is None:
+        err = mt5.last_error()
+        log.error(f'MT5 order_send returned None (transport error)  last_error={err}')
+        # Single retry after re-fetching tick price
+        import time as _time
+        _time.sleep(0.5)
+        tick = mt5.symbol_info_tick(mt5_sym)
+        if tick:
+            order['price'] = tick.ask if direction == 'LONG' else tick.bid
+            res = mt5.order_send(order)
+            if res is None:
+                log.error(f'MT5 retry also returned None  last_error={mt5.last_error()}')
+                return None
+
     if res and res.retcode == mt5.TRADE_RETCODE_DONE:
         log.info(f'MT5 order placed: ticket={res.order}  exec_price={exec_price}')
         return res.order
 
+    err = mt5.last_error()
     log.error(
         f'MT5 order failed: retcode={getattr(res, "retcode", "?")} '
-        f'{getattr(res, "comment", "")}  last_error={mt5.last_error()}'
+        f'comment={getattr(res, "comment", "")}  last_error={err}'
     )
     return None
 
@@ -542,7 +580,7 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
     if not HAS_MT5:
         return False
 
-    mt5_sym   = pair.replace('/', '')
+    mt5_sym   = _mt5_sym(pair)
     positions = [p for p in (mt5.positions_get(symbol=mt5_sym) or [])
                  if p.ticket == ticket and p.magic == MAGIC]
 
@@ -561,24 +599,27 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
     res = mt5.order_send({
         'action':       mt5.TRADE_ACTION_DEAL,
         'symbol':       mt5_sym,
-        'volume':       pos.volume,
+        'volume':       float(pos.volume),
         'type':         close_type,
         'position':     ticket,
         'price':        close_price,
         'deviation':    20,
         'magic':        MAGIC,
-        'comment':      f'RegimeBot close: {reason[:30]}',
+        'comment':      (''.join(c for c in f'RgCls:{reason}' if ord(c) < 128))[:31],
         'type_time':    mt5.ORDER_TIME_GTC,
         'type_filling': _filling_mode(mt5_sym),
     })
 
-    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+    if res is None:
+        log.error(f'Close failed: order_send returned None  last_error={mt5.last_error()}')
+        return False
+
+    if res.retcode == mt5.TRADE_RETCODE_DONE:
         log.info(f'Position {ticket} closed at {close_price}')
         return True
 
     log.error(
-        f'Close failed: retcode={getattr(res, "retcode", "?")} '
-        f'{getattr(res, "comment", "")}'
+        f'Close failed: retcode={res.retcode}  comment={res.comment}  last_error={mt5.last_error()}'
     )
     return False
 
@@ -659,11 +700,76 @@ def _serialize_open_positions(magic: int) -> list:
         return []
 
 
+def _serialize_closed_trades(magic: int) -> list:
+    """Return today's closed positions from MT5 deal history for this bot."""
+    if not HAS_MT5:
+        return []
+    try:
+        from datetime import timedelta
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
+        by_pos: dict = {}
+        for d in deals:
+            if d.magic != magic:
+                continue
+            pid = int(d.position_id)
+            if pid not in by_pos:
+                by_pos[pid] = {'in': None, 'out': []}
+            if d.entry == 0:
+                by_pos[pid]['in'] = d
+            elif d.entry in (1, 3):
+                by_pos[pid]['out'].append(d)
+        result = []
+        for pid, grp in by_pos.items():
+            outs = grp['out']
+            if not outs:
+                continue
+            ind      = grp['in']
+            last_out = max(outs, key=lambda d: d.time)
+            if ind:
+                direction  = 'BUY' if ind.type == 0 else 'SELL'
+                open_price = round(float(ind.price), 5)
+                time_open  = int(ind.time)
+            else:
+                direction  = 'BUY' if last_out.type == 1 else 'SELL'
+                open_price = None
+                time_open  = None
+            result.append({
+                'position_id': pid,
+                'symbol':      last_out.symbol,
+                'direction':   direction,
+                'lots':        round(sum(d.volume     for d in outs), 2),
+                'open_price':  open_price,
+                'close_price': round(float(last_out.price), 5),
+                'profit':      round(sum(d.profit     for d in outs), 2),
+                'swap':        round(sum(d.swap       for d in outs), 2),
+                'commission':  round(sum(d.commission for d in outs), 2),
+                'time_open':   time_open,
+                'time_close':  int(last_out.time),
+                'comment':     str(ind.comment if ind else last_out.comment or ''),
+            })
+        return sorted(result, key=lambda t: t['time_close'])
+    except Exception:
+        return []
+
+
 # ── Status push ────────────────────────────────────────────────────────────────
 
 def push_status(data: dict, base_url: str) -> None:
     data['pushed_at'] = time.time()
     _kv_put('regime_bot_status', data, base_url)
+
+
+def push_regime_states(states: list[dict], events: list[dict], base_url: str) -> None:
+    """Fire-and-forget POST of per-cycle state to the regime viewer endpoint."""
+    try:
+        requests.post(
+            f'{base_url}/api/regime-append',
+            json={'bot': 'v1', 'ts': int(time.time()), 'states': states, 'events': events},
+            timeout=6,
+        )
+    except Exception:
+        pass
 
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
@@ -696,6 +802,7 @@ def run(base_url: str, paper_mode: bool) -> None:
     flip_counts:   dict[str, int]            = {}   # consecutive bars NOT in entry regime (for RANGE debounce)
     open_pos:      dict[str, dict]           = {}   # pair → {ticket, direction, entry_price, sl}
     entry_regime:  dict[str, str]            = {}   # pair → regime string at time of entry
+    failed_entry_t: dict[str, float]         = {}   # pair → timestamp of last failed MT5 order
 
     for pair in cfg['pairs']:
         debounce[pair]     = RegimeDebounce(cfg['candle_hold'], cfg['min_confidence'])
@@ -705,9 +812,13 @@ def run(base_url: str, paper_mode: bool) -> None:
         flip_counts[pair]  = 0
 
     cycle = 0
+    _cycle_states: list[dict] = []
+    _cycle_events: list[dict] = []
 
     while True:
         cycle += 1
+        _cycle_states = []
+        _cycle_events = []
         cfg = load_config(base_url)  # re-read every cycle — live changes take effect immediately
 
         if not cfg.get('enabled', True):
@@ -777,6 +888,15 @@ def run(base_url: str, paper_mode: bool) -> None:
                 f'vol_z={vol_z:+.2f}  rl={run_length}  decay={decay_score:.3f}'
             )
 
+            _cycle_states.append({
+                'pair':   pair,
+                'regime': regime,
+                'conf':   round(confidence, 1),
+                'vz':     round(vol_z, 3),
+                'rl':     run_length,
+                'decay':  round(decay_score, 3),
+            })
+
             # ── Manage existing open position ─────────────────────────────────
             if pair in open_pos:
                 pos     = open_pos[pair]
@@ -784,7 +904,7 @@ def run(base_url: str, paper_mode: bool) -> None:
 
                 # Check whether MT5 already closed it (SL or TP hit)
                 if not paper_mode and HAS_MT5:
-                    mt5_sym    = pair.replace('/', '')
+                    mt5_sym    = _mt5_sym(pair)
                     still_open = [
                         p for p in (mt5.positions_get(symbol=mt5_sym) or [])
                         if p.ticket == pos['ticket'] and p.magic == MAGIC
@@ -855,6 +975,7 @@ def run(base_url: str, paper_mode: bool) -> None:
                 if should_close:
                     ok = close_position(pos['ticket'], pair, paper_mode, close_reason)
                     if ok:
+                        _cycle_events.append({'pair': pair, 'type': 'close', 'reason': close_reason, 'direction': pos['direction']})
                         del open_pos[pair]
                         entry_regime.pop(pair, None)
                         debounce[pair].clear()
@@ -937,6 +1058,13 @@ def run(base_url: str, paper_mode: bool) -> None:
                 continue
 
             # ── Entry ─────────────────────────────────────────────────────────
+            fail_cd = cfg.get('entry_fail_cooldown_secs', 300)
+            if time.time() - failed_entry_t.get(pair, 0) < fail_cd:
+                remaining = int(fail_cd - (time.time() - failed_entry_t[pair]))
+                log.info(f'[{pair}] Order-fail cooldown — {remaining}s remaining')
+                status_positions[pair] = {'status': 'order_fail_cooldown', 'regime': regime}
+                continue
+
             direction = 'LONG' if confirmed == 'BULL' else 'SHORT'
             price     = get_price(pair, base_url)
             if price is None:
@@ -967,6 +1095,7 @@ def run(base_url: str, paper_mode: bool) -> None:
             )
 
             if ticket is not None:
+                _cycle_events.append({'pair': pair, 'type': 'entry', 'direction': direction, 'lots': size, 'sl': round(sl, 5)})
                 open_pos[pair] = {
                     'ticket':      ticket,
                     'direction':   direction,
@@ -988,12 +1117,13 @@ def run(base_url: str, paper_mode: bool) -> None:
                     'decay':       decay_score,
                 }
             else:
+                failed_entry_t[pair] = time.time()
                 status_positions[pair] = {
                     'status': 'entry_failed', 'regime': regime,
                     'direction': direction,
                 }
 
-        # ── Push status to KV ─────────────────────────────────────────────────
+        # ── Push status to KV + regime viewer ────────────────────────────────
         push_status({
             'enabled':       cfg.get('enabled', True),
             'paper_mode':    paper_mode,
@@ -1001,8 +1131,10 @@ def run(base_url: str, paper_mode: bool) -> None:
             'balance':       round(balance, 2),
             'pairs':         cfg['pairs'],
             'positions':     status_positions,
-            'mt5_positions': _serialize_open_positions(MAGIC),
+            'mt5_positions':        _serialize_open_positions(MAGIC),
+            'today_closed_trades': _serialize_closed_trades(MAGIC),
         }, base_url)
+        push_regime_states(_cycle_states, _cycle_events, base_url)
 
         interval = max(cfg.get('interval_secs', 60), 10)
         log.info(f'Cycle {cycle} complete — sleeping {interval}s')

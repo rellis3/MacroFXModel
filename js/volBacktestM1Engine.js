@@ -16,7 +16,7 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
 import path                         from 'path';
 import { fileURLToPath }            from 'url';
 import { parquetRead, parquetMetadataAsync } from 'hyparquet';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import {
   ewmaVarSeries, classifyRegime, ASSET_PARAMS,
   BM_P50, BM_P75, HN_P50, HN_P75, fetchD1, INSTRUMENTS,
@@ -1229,3 +1229,30 @@ export async function runFullLevelAnalysis(opts = {}, instruments = INSTRUMENTS,
 }
 
 export { INSTRUMENTS };
+
+// ── R2 regime-history helpers (used by server.js) ────────────────────────────
+
+export { makeR2Client };
+export { R2_BUCKET, R2_KEY_PREFIX };
+
+export async function loadRegimeHistoryFromR2(bot, pair) {
+  const client = makeR2Client();
+  if (!client) return null;
+  const key = `regime_history/${bot}/${pair}.json`;
+  try {
+    const resp  = await client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    const bytes = await resp.Body.transformToByteArray();
+    return JSON.parse(Buffer.from(bytes).toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+export async function saveRegimeHistoryToR2(bot, pair, data) {
+  const client = makeR2Client();
+  if (!client) return false;
+  const key  = `regime_history/${bot}/${pair}.json`;
+  const body = Buffer.from(JSON.stringify(data));
+  await client.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, Body: body, ContentType: 'application/json' }));
+  return true;
+}

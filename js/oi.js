@@ -218,7 +218,7 @@ export function oiParseTable(raw) {
     }
     if (nums.length < 3) continue;
     const strike = nums[0], callOI = nums[1], putOI = nums[2];
-    if (strike < 0.001 || strike > 30000) continue;
+    if (strike < 0.001 || strike > 1000000) continue;
     if (Math.abs(callOI) > 500000 || Math.abs(putOI) > 500000) continue;
     strikes.push(strike);
     calls.push(Math.abs(callOI));

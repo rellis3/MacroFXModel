@@ -130,6 +130,59 @@ def _serialize_open_positions(magic: int) -> list:
         return []
 
 
+def _serialize_closed_trades(magic: int) -> list:
+    """Return today's closed positions from MT5 deal history for this bot."""
+    if not HAS_MT5:
+        return []
+    try:
+        from datetime import timedelta
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
+        by_pos: dict = {}
+        for d in deals:
+            if d.magic != magic:
+                continue
+            pid = int(d.position_id)
+            if pid not in by_pos:
+                by_pos[pid] = {'in': None, 'out': []}
+            if d.entry == 0:
+                by_pos[pid]['in'] = d
+            elif d.entry in (1, 3):
+                by_pos[pid]['out'].append(d)
+        result = []
+        for pid, grp in by_pos.items():
+            outs = grp['out']
+            if not outs:
+                continue
+            ind      = grp['in']
+            last_out = max(outs, key=lambda d: d.time)
+            if ind:
+                direction  = 'BUY' if ind.type == 0 else 'SELL'
+                open_price = round(float(ind.price), 5)
+                time_open  = int(ind.time)
+            else:
+                direction  = 'BUY' if last_out.type == 1 else 'SELL'
+                open_price = None
+                time_open  = None
+            result.append({
+                'position_id': pid,
+                'symbol':      last_out.symbol,
+                'direction':   direction,
+                'lots':        round(sum(d.volume     for d in outs), 2),
+                'open_price':  open_price,
+                'close_price': round(float(last_out.price), 5),
+                'profit':      round(sum(d.profit     for d in outs), 2),
+                'swap':        round(sum(d.swap       for d in outs), 2),
+                'commission':  round(sum(d.commission for d in outs), 2),
+                'time_open':   time_open,
+                'time_close':  int(last_out.time),
+                'comment':     str(ind.comment if ind else last_out.comment or ''),
+            })
+        return sorted(result, key=lambda t: t['time_close'])
+    except Exception:
+        return []
+
+
 def _dominant_regime(state: dict, enabled_pairs: list) -> str:
     """Return the mode HMM regime across enabled pairs. Falls back to RANGE."""
     snap = (state.get('regime_snapshot') or {}).get('pairs') or {}
@@ -526,8 +579,10 @@ class RiskGuard:
     State is persisted to disk so restarts don't reset DD tracking or cooldowns.
     """
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, paper_mode: bool = False):
         ec = config.get('execution') or {}
+        self.paper_mode     = paper_mode
+        self.bypass         = bool(ec.get('bypass_risk_guard', False))
         self.dd_limit_pct   = ec.get('ddlimit', 3)
         self.monthly_dd_pct = ec.get('monthlydd', 5)
         self.lockout_hours  = ec.get('lockout', 3)
@@ -574,30 +629,46 @@ class RiskGuard:
     def block_reason(self, balance: float, pair: str = '') -> str | None:
         now = time.time()
 
-        if now < self._locked_until:
-            remaining_m = (self._locked_until - now) / 60
-            return f'Locked out — {remaining_m:.0f}m remaining'
+        skip_dd = self.paper_mode or self.bypass
 
-        # Per-pair cooldown
+        if not skip_dd:
+            if now < self._locked_until:
+                remaining_m = (self._locked_until - now) / 60
+                return f'Locked out — {remaining_m:.0f}m remaining'
+
+            if self._day_start_bal:
+                dd_pct = (self._day_start_bal - balance) / self._day_start_bal * 100
+                if dd_pct >= self.dd_limit_pct:
+                    self._locked_until = now + self.lockout_hours * 3600
+                    return (f'Daily DD {dd_pct:.1f}% ≥ limit {self.dd_limit_pct}%'
+                            f' — locked {self.lockout_hours}h')
+
+            if self._month_start_bal:
+                mdd_pct = (self._month_start_bal - balance) / self._month_start_bal * 100
+                if mdd_pct >= self.monthly_dd_pct:
+                    self._locked_until = now + self.lockout_hours * 3600
+                    return (f'Monthly DD {mdd_pct:.1f}% ≥ limit {self.monthly_dd_pct}%'
+                            f' — locked {self.lockout_hours}h')
+        else:
+            # Log what the guard *would* have blocked so it isn't silently swallowed
+            if now < self._locked_until:
+                remaining_m = (self._locked_until - now) / 60
+                log.warning(f'[RiskGuard BYPASSED] Would be locked out — {remaining_m:.0f}m remaining')
+            elif self._day_start_bal:
+                dd_pct = (self._day_start_bal - balance) / self._day_start_bal * 100
+                if dd_pct >= self.dd_limit_pct:
+                    log.warning(f'[RiskGuard BYPASSED] Daily DD {dd_pct:.1f}% ≥ limit {self.dd_limit_pct}% — would have locked')
+            if self._month_start_bal:
+                mdd_pct = (self._month_start_bal - balance) / self._month_start_bal * 100
+                if mdd_pct >= self.monthly_dd_pct:
+                    log.warning(f'[RiskGuard BYPASSED] Monthly DD {mdd_pct:.1f}% ≥ limit {self.monthly_dd_pct}% — would have locked')
+
+        # Per-pair cooldown applies regardless of bypass
         if pair and pair in self._last_trade_by_pair:
             elapsed = now - self._last_trade_by_pair[pair]
             if elapsed < self.cooldown_secs:
                 remaining_m = (self.cooldown_secs - elapsed) / 60
                 return f'[{pair}] Cooldown — {remaining_m:.1f}m remaining'
-
-        if self._day_start_bal:
-            dd_pct = (self._day_start_bal - balance) / self._day_start_bal * 100
-            if dd_pct >= self.dd_limit_pct:
-                self._locked_until = now + self.lockout_hours * 3600
-                return (f'Daily DD {dd_pct:.1f}% ≥ limit {self.dd_limit_pct}%'
-                        f' — locked {self.lockout_hours}h')
-
-        if self._month_start_bal:
-            mdd_pct = (self._month_start_bal - balance) / self._month_start_bal * 100
-            if mdd_pct >= self.monthly_dd_pct:
-                self._locked_until = now + self.lockout_hours * 3600
-                return (f'Monthly DD {mdd_pct:.1f}% ≥ limit {self.monthly_dd_pct}%'
-                        f' — locked {self.lockout_hours}h')
 
         return None
 
@@ -738,6 +809,14 @@ def execute_trade(pair: str, direction: str, entry: dict,
         log.warning(f'SL capped at max_sl_pips — verify entry quality for {pair}')
     if sl_tp.tp_capped:
         log.warning(f'TP capped at max_tp_pips — verify entry quality for {pair}')
+
+    # R:R gate — skip trades where reward doesn't justify the risk
+    min_rr = (config.get('execution') or {}).get('min_rr', 1.0) if config else 1.0
+    if sl_tp.rr_ratio < min_rr:
+        log.warning(
+            f'RR BLOCK {pair}: R:R={sl_tp.rr_ratio} < min_rr={min_rr} — trade skipped'
+        )
+        return False
 
     if paper_mode:
         log.info('[PAPER] Signal logged — no order sent')
@@ -906,7 +985,8 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
 
 def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: float,
                             sl_tp_engine: SLTPEngine, paper_mode: bool,
-                            sizing_mult: float = 1.0) -> dict:
+                            sizing_mult: float = 1.0,
+                            level_cooldowns: dict | None = None) -> dict:
     """
     Enter when a KV entry matches the same criteria as the dashboard Telegram alert:
     grade ≥ min_grade, totalStars ≥ min_stars, direction set, signalScore ≥ threshold,
@@ -949,6 +1029,18 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
     level_price = float(entry.get('price') or 0)
     dist_pips   = abs(live_price - level_price) / pip_size
 
+    # Per-level deduplication — prevent re-firing same level+direction within cooldown window
+    _cooldown_min = (config.get('execution') or {}).get('level_cooldown_min', 10)
+    _ck = (pair, round(level_price, 5), direction)
+    if level_cooldowns is not None:
+        _last = level_cooldowns.get(_ck, 0)
+        if time.time() - _last < _cooldown_min * 60:
+            pair_status['reason'] = (
+                f'LEVEL_COOLDOWN {direction} @ {level_price} '
+                f'({(time.time() - _last) / 60:.1f}/{_cooldown_min}m elapsed)'
+            )
+            return pair_status
+
     sl_tp = sl_tp_engine.calculate(
         entry=entry, pair=pair, pair_data=pair_snap,
         direction=entry['direction'], price=live_price,
@@ -975,7 +1067,17 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
         pair_status['reason'] = 'size=0 — SL missing from sl_tp calculation'
         return pair_status
 
+    min_rr = (config.get('execution') or {}).get('min_rr', 1.0) if config else 1.0
+    if sl_tp.rr_ratio < min_rr:
+        log.warning(f'[{pair}] TG-mode RR BLOCK: R:R={sl_tp.rr_ratio} < min_rr={min_rr} — trade skipped')
+        pair_status['reason'] = f'RR_BLOCK R:R={sl_tp.rr_ratio} < min_rr={min_rr}'
+        return pair_status
+
     ticket = execute_trade(pair, direction, entry, sl_tp, size, live_price, paper_mode, config=config)
+
+    # Record attempt so the cooldown gate blocks re-entry until window expires
+    if level_cooldowns is not None:
+        level_cooldowns[_ck] = time.time()
 
     pair_status.update({
         'action':           'trade',       'direction':       direction,
@@ -1098,6 +1200,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
     status: dict = {'loop_at': '', 'paper': paper_mode, 'pairs_evaluated': [], 'errors': []}
     risk_guard: RiskGuard | None = None
     _last_risk_config_hash: int = 0
+    level_cooldowns: dict[tuple, float] = {}  # (pair, level_price, direction) → last_attempt_ts
 
     # Position metadata — keyed by MT5 ticket int, holds TP1/trail state
     position_meta: dict[int, dict] = {
@@ -1187,7 +1290,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
         risk_cfg_hash = hash(str(exec_cfg))
         if risk_guard is None or risk_cfg_hash != _last_risk_config_hash:
             prev = risk_guard
-            risk_guard = RiskGuard(config)
+            risk_guard = RiskGuard(config, paper_mode=paper_mode)
 
             # First creation: restore from persisted state
             if prev is None and persisted.get('risk_guard'):
@@ -1201,6 +1304,13 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                          f'ddlimit={risk_guard.dd_limit_pct}%')
 
             _last_risk_config_hash = risk_cfg_hash
+
+            if risk_guard.bypass:
+                log.warning('=' * 60)
+                log.warning('  !! RiskGuard BYPASSED — bypass_risk_guard=true in config !!')
+                log.warning('  DD lockouts and monthly limits are NOT enforced.')
+                log.warning('  Remove bypass_risk_guard from execution config when done.')
+                log.warning('=' * 60)
 
         # ── Dashboard override: force-unlock RiskGuard ───────────────────────
         if risk_guard and base_url:
@@ -1391,6 +1501,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                     pair_status = evaluate_pair_telegram(
                         cached_state, pair, config, live_price, sl_tp_engine, paper_mode,
                         sizing_mult=risk_guard.sizing_mult,
+                        level_cooldowns=level_cooldowns,
                     )
                 else:
                     pair_status = evaluate_pair(
@@ -1429,7 +1540,8 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                 'pairs_blocked':     blocked_pairs,
                 'mgmt_actions':      mgmt_actions,
                 'open_positions':    len(position_meta),
-                'mt5_positions':     _serialize_open_positions(MAGIC),
+                'mt5_positions':        _serialize_open_positions(MAGIC),
+                'today_closed_trades': _serialize_closed_trades(MAGIC),
                 'mode':              config.get('mode', 'full'),
                 'min_grade':         exec_cfg.get('min_grade', 'B'),
                 'bardir':            exec_cfg.get('bardir', 'auto'),

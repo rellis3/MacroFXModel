@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Hedge Signal Generator — MacroFX</title>
+<style>
+:root{
+  --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--bg4:#252d3e;
+  --border:#2a3347;--border2:#374160;
+  --text:#e2e8f0;--muted:#64748b;--faint:#374151;
+  --green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;--purple:#a855f7;--cyan:#06b6d4;
+  --accent:#4f8ef7;
+  --font:'Inter','SF Pro Display',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh}
+
+/* ── Topbar ── */
+.topbar{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.topbar h1{font-size:16px;font-weight:700;color:var(--text)}
+.topbar .badge{background:var(--bg3);border:1px solid var(--border2);padding:2px 10px;border-radius:999px;font-size:11px;color:var(--muted)}
+.back-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--muted);cursor:pointer;font-size:12px;text-decoration:none;transition:.15s}
+.back-btn:hover{color:var(--text);border-color:var(--accent)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.check-btn{padding:7px 16px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.check-btn:hover{opacity:.88}
+.check-btn:disabled{opacity:.4;cursor:not-allowed}
+.last-run{font-size:11px;color:var(--muted)}
+#status-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:4px}
+#status-dot.ok{background:var(--green)}
+#status-dot.warn{background:var(--yellow)}
+
+/* ── Layout ── */
+.page{display:grid;grid-template-columns:1fr 340px;gap:16px;padding:20px;max-width:1400px;margin:0 auto}
+@media(max-width:900px){.page{grid-template-columns:1fr}}
+
+/* ── Cards ── */
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.panel-hd{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.panel-hd h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.panel-hd .cnt{background:var(--bg3);border:1px solid var(--border2);padding:1px 8px;border-radius:999px;font-size:11px;color:var(--text)}
+.panel-body{padding:16px}
+
+/* ── Signal Cards ── */
+.sig-grid{display:flex;flex-direction:column;gap:10px}
+.sig-card{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:14px 16px;position:relative;transition:.15s}
+.sig-card.active{border-left:3px solid var(--yellow)}
+.sig-card.exited{border-left:3px solid var(--green);opacity:.6}
+.sig-card.stopped{border-left:3px solid var(--red);opacity:.6}
+.sig-card.dismissed{border-left:3px solid var(--faint);opacity:.45}
+.sig-card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.sig-pair{font-size:16px;font-weight:700;color:var(--text);flex:1}
+.sig-pair span{color:var(--muted);font-weight:400;font-size:13px;margin:0 4px}
+.sig-badge{padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase}
+.sig-badge.active{background:rgba(245,158,11,.15);color:var(--yellow)}
+.sig-badge.exited{background:rgba(34,197,94,.15);color:var(--green)}
+.sig-badge.stopped{background:rgba(239,68,68,.15);color:var(--red)}
+.sig-badge.dismissed{background:var(--bg4);color:var(--muted)}
+.sig-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.sig-stat{background:var(--bg4);border-radius:6px;padding:6px 10px;text-align:center}
+.sig-stat .sv{font-size:15px;font-weight:700}
+.sig-stat .sl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.sv.pos{color:var(--green)}
+.sv.neg{color:var(--red)}
+.sv.warn{color:var(--yellow)}
+.sig-dirs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.sig-dir{background:var(--bg4);border-radius:6px;padding:7px 10px;display:flex;flex-direction:column;gap:2px}
+.sig-dir .pair-name{font-size:11px;color:var(--muted);font-weight:500}
+.sig-dir .dir-val{font-size:14px;font-weight:700}
+.dir-val.long{color:var(--green)}
+.dir-val.short{color:var(--red)}
+.sig-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.sig-meta span{white-space:nowrap}
+.sig-actions{display:flex;gap:6px;margin-top:10px}
+.ack-btn{padding:4px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:11px;cursor:pointer;transition:.15s}
+.ack-btn:hover{color:var(--text);border-color:var(--accent)}
+.sig-empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.sig-empty .icon{font-size:32px;margin-bottom:8px}
+
+/* ── Trade Levels ── */
+.sig-trade-levels{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tl-leg{display:flex;flex-direction:column;gap:3px}
+.tl-pair-hd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px}
+.tl-row{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.tl-label{color:var(--muted);font-size:11px}
+.tl-val{font-family:monospace;font-weight:600;color:var(--text)}
+.tl-val.entry-px{color:var(--cyan)}
+.tl-val.live-px{color:var(--text)}
+.tl-sl-row{display:flex;justify-content:space-between;align-items:center;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:5px;padding:4px 7px;margin-top:2px}
+.tl-sl-label{font-size:11px;color:var(--red);font-weight:600}
+.tl-sl-val{font-family:monospace;font-size:12px;font-weight:700;color:var(--red)}
+.tl-sl-dist{font-size:10px;color:var(--muted);font-family:monospace}
+.tl-stale{font-size:10px;color:var(--yellow);margin-top:2px}
+.tl-divider{grid-column:1/-1;height:1px;background:var(--border);margin:2px 0}
+
+/* ── History Table ── */
+.hist-table{width:100%;border-collapse:collapse;font-size:12px}
+.hist-table th{text-align:left;padding:6px 10px;color:var(--muted);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+.hist-table td{padding:7px 10px;border-bottom:1px solid var(--border)}
+.hist-table tr:last-child td{border-bottom:none}
+.hist-table tr:hover td{background:var(--bg3)}
+.status-pill{padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;text-transform:uppercase}
+.status-pill.ACTIVE{background:rgba(245,158,11,.15);color:var(--yellow)}
+.status-pill.EXITED{background:rgba(34,197,94,.15);color:var(--green)}
+.status-pill.STOPPED{background:rgba(239,68,68,.15);color:var(--red)}
+.status-pill.DISMISSED{background:var(--bg4);color:var(--muted)}
+
+/* ── Config Panel ── */
+.cfg-section{margin-bottom:20px}
+.cfg-section h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px}
+.cfg-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.cfg-row label{font-size:12px;color:var(--text);flex:1}
+.cfg-row input[type=number]{width:70px;padding:5px 8px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:12px;text-align:right}
+.cfg-row input[type=number]:focus{outline:none;border-color:var(--accent)}
+.regime-grid{display:flex;gap:6px;flex-wrap:wrap}
+.regime-chip{padding:4px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--bg4);color:var(--muted);font-size:11px;cursor:pointer;transition:.15s;user-select:none}
+.regime-chip.on{background:rgba(79,142,247,.15);border-color:var(--accent);color:var(--accent)}
+.save-btn{width:100%;padding:9px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;margin-top:4px}
+.save-btn:hover{opacity:.88}
+.save-btn.saved{background:var(--green)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.toggle-row label{font-size:12px;color:var(--text)}
+.toggle{width:38px;height:20px;background:var(--bg4);border:1px solid var(--border2);border-radius:999px;position:relative;cursor:pointer;transition:.2s}
+.toggle.on{background:var(--accent);border-color:var(--accent)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.2s}
+.toggle.on::after{left:20px}
+
+/* ── Telegram Panel ── */
+.tg-form{display:flex;flex-direction:column;gap:8px}
+.tg-form input{padding:8px 12px;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;font-family:monospace}
+.tg-form input:focus{outline:none;border-color:var(--accent)}
+.tg-form input::placeholder{color:var(--muted)}
+.tg-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tg-save{padding:8px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer}
+.tg-test{padding:8px;border:1px solid var(--border2);border-radius:8px;background:transparent;color:var(--muted);font-size:12px;cursor:pointer;transition:.15s}
+.tg-test:hover{color:var(--text);border-color:var(--accent)}
+.tg-msg{font-size:11px;margin-top:6px;padding:6px 10px;border-radius:6px;display:none}
+.tg-msg.ok{background:rgba(34,197,94,.1);color:var(--green);display:block}
+.tg-msg.err{background:rgba(239,68,68,.1);color:var(--red);display:block}
+.tg-help{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.6}
+
+/* ── Python Integration ── */
+.py-tabs{display:flex;gap:4px;margin-bottom:12px}
+.py-tab{padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:11px;cursor:pointer;transition:.15s}
+.py-tab.on{background:var(--bg4);color:var(--text);border-color:var(--border2)}
+.py-panel{display:none}
+.py-panel.on{display:block}
+pre.code{background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;font-family:'Fira Mono','JetBrains Mono',monospace;overflow-x:auto;line-height:1.65;color:#cdd6f4}
+.code .c{color:var(--muted)}
+.code .k{color:var(--purple)}
+.code .s{color:var(--green)}
+.code .n{color:var(--cyan)}
+.code .v{color:var(--yellow)}
+.schema-table{width:100%;border-collapse:collapse;font-size:11px}
+.schema-table th{text-align:left;padding:5px 8px;color:var(--muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.schema-table td{padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.schema-table td:first-child{font-family:monospace;color:var(--cyan);font-size:11px}
+.schema-table td:nth-child(2){color:var(--yellow);font-family:monospace;font-size:10px}
+.schema-table tr:last-child td{border-bottom:none}
+
+/* ── Misc ── */
+.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
+.alert-bar{padding:8px 14px;border-radius:8px;font-size:12px;margin-bottom:12px;display:none}
+.alert-bar.info{background:rgba(79,142,247,.12);color:var(--accent);border:1px solid rgba(79,142,247,.3);display:flex}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="back-btn">← Dashboard</a>
+  <div>
+    <h1>Hedge Signal Generator</h1>
+  </div>
+  <span class="badge">Beta · H4 Divergence</span>
+  <div class="topbar-right">
+    <span id="status-dot"></span>
+    <span class="last-run" id="last-run-text">Loading…</span>
+    <button class="check-btn" id="check-btn" onclick="manualCheck()">⚡ Check Now</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- LEFT COLUMN -->
+  <div>
+
+    <!-- Active Signals -->
+    <div class="panel" style="margin-bottom:16px">
+      <div class="panel-hd">
+        <h2>Active Signals</h2>
+        <span class="cnt" id="active-count">0</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Auto-refresh every 60s</span>
+      </div>
+      <div class="panel-body">
+        <div class="alert-bar info" id="no-data-bar">
+          No corr_history.json yet — run a correlation history build first (takes ~3 min). Signals will appear automatically once data is available.
+        </div>
+        <div class="sig-grid" id="active-signals"></div>
+      </div>
+    </div>
+
+    <!-- Signal History -->
+    <div class="panel">
+      <div class="panel-hd">
+        <h2>Signal History</h2>
+        <span class="cnt" id="hist-count">0</span>
+      </div>
+      <div class="panel-body" style="padding:0;overflow-x:auto">
+        <table class="hist-table">
+          <thead>
+            <tr>
+              <th>Pair</th>
+              <th>Direction</th>
+              <th>Z-Score</th>
+              <th>Score</th>
+              <th>Regime</th>
+              <th>Status</th>
+              <th>Entry</th>
+              <th>Exit</th>
+            </tr>
+          </thead>
+          <tbody id="hist-tbody"></tbody>
+        </table>
+        <div id="hist-empty" style="text-align:center;padding:30px;color:var(--muted);font-size:12px;display:none">No historical signals yet</div>
+      </div>
+    </div>
+
+  </div><!-- /left -->
+
+  <!-- RIGHT COLUMN -->
+  <div>
+
+    <!-- Signal Config -->
+    <div class="panel" style="margin-bottom:16px">
+      <div class="panel-hd"><h2>Signal Config</h2></div>
+      <div class="panel-body">
+        <div class="toggle-row">
+          <label>Enable Scanner</label>
+          <div class="toggle on" id="enabled-toggle" onclick="toggleEnabled()"></div>
+        </div>
+
+        <div class="cfg-section">
+          <h3>Thresholds</h3>
+          <div class="cfg-row">
+            <label>Entry Z-Score <span style="color:var(--muted);font-size:11px">(|z| &gt; this fires)</span></label>
+            <input type="number" id="cfg-entry-z" value="2.0" step="0.1" min="1" max="5">
+          </div>
+          <div class="cfg-row">
+            <label>Exit Z-Score <span style="color:var(--muted);font-size:11px">(|z| &lt; this closes)</span></label>
+            <input type="number" id="cfg-exit-z" value="0.5" step="0.1" min="0" max="3">
+          </div>
+          <div class="cfg-row">
+            <label>Stop Z-Score <span style="color:var(--muted);font-size:11px">(|z| &gt; this stops)</span></label>
+            <input type="number" id="cfg-stop-z" value="3.5" step="0.1" min="2" max="6">
+          </div>
+          <div class="cfg-row">
+            <label>Min Hedge Score <span style="color:var(--muted);font-size:11px">(0–1)</span></label>
+            <input type="number" id="cfg-min-score" value="0.45" step="0.05" min="0" max="1">
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <h3>Allowed Regimes</h3>
+          <div class="regime-grid" id="regime-chips">
+            <div class="regime-chip on" data-r="BEAR">BEAR</div>
+            <div class="regime-chip on" data-r="RANGE">RANGE</div>
+            <div class="regime-chip on" data-r="BULL">BULL</div>
+            <div class="regime-chip" data-r="UNKNOWN">UNKNOWN</div>
+          </div>
+        </div>
+
+        <button class="save-btn" id="save-cfg-btn" onclick="saveConfig()">Save Config</button>
+      </div>
+    </div>
+
+    <!-- Telegram -->
+    <div class="panel" style="margin-bottom:16px">
+      <div class="panel-hd"><h2>Telegram Alerts</h2></div>
+      <div class="panel-body">
+        <div class="tg-form">
+          <input id="tg-token" type="password" placeholder="Bot Token  (from @BotFather)" autocomplete="off"/>
+          <input id="tg-chat-id" type="text" placeholder="Chat ID  (e.g. -100123456789)" autocomplete="off"/>
+          <div class="tg-btns">
+            <button class="tg-save" onclick="saveTg()">Save</button>
+            <button class="tg-test" onclick="testTg()">Test</button>
+          </div>
+          <div class="tg-msg" id="tg-msg"></div>
+          <p class="tg-help">
+            These credentials are <b>separate</b> from the main alert bot — you can use the same or a different bot.<br>
+            Get a Chat ID: message <b>@userinfobot</b> or add the bot to a group and use <b>@getmyid_bot</b>.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Python Integration -->
+    <div class="panel">
+      <div class="panel-hd"><h2>Python Bot Integration</h2></div>
+      <div class="panel-body">
+        <div class="py-tabs">
+          <button class="py-tab on" onclick="pyTab(this,'py-schema')">Schema</button>
+          <button class="py-tab" onclick="pyTab(this,'py-poll')">Polling</button>
+          <button class="py-tab" onclick="pyTab(this,'py-webhook')">Example Bot</button>
+        </div>
+
+        <!-- Schema -->
+        <div class="py-panel on" id="py-schema">
+          <p style="font-size:11px;color:var(--muted);margin-bottom:10px">Each signal object returned by <code style="color:var(--cyan)">GET /api/hedge-signals</code>:</p>
+          <table class="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>id</td><td>string</td><td>Unique signal identifier</td></tr>
+              <tr><td>schema_version</td><td>int</td><td>Schema version (1)</td></tr>
+              <tr><td>pair_a</td><td>string</td><td>First pair (e.g. EURUSD)</td></tr>
+              <tr><td>pair_b</td><td>string</td><td>Second pair (e.g. USDJPY)</td></tr>
+              <tr><td>direction_a</td><td>LONG|SHORT</td><td>Trade direction for pair_a</td></tr>
+              <tr><td>direction_b</td><td>LONG|SHORT</td><td>Trade direction for pair_b</td></tr>
+              <tr><td>z_score</td><td>float</td><td>Current rolling corr z-score</td></tr>
+              <tr><td>hedge_score</td><td>float</td><td>(-r×0.7) + (β_spread/2×0.3)</td></tr>
+              <tr><td>corr_current</td><td>float</td><td>Latest Pearson correlation</td></tr>
+              <tr><td>corr_mean</td><td>float</td><td>Historical average correlation</td></tr>
+              <tr><td>corr_std</td><td>float</td><td>Historical std dev of correlation</td></tr>
+              <tr><td>beta_vix_a</td><td>float|null</td><td>VIX β for pair_a (H4 OLS)</td></tr>
+              <tr><td>beta_vix_b</td><td>float|null</td><td>VIX β for pair_b (H4 OLS)</td></tr>
+              <tr><td>regime</td><td>string</td><td>Macro regime at signal time</td></tr>
+              <tr><td>status</td><td>ACTIVE|EXITED|STOPPED|DISMISSED</td><td>Signal lifecycle state</td></tr>
+              <tr><td>entry_time</td><td>ISO 8601</td><td>When signal was first fired</td></tr>
+              <tr><td>entry_z</td><td>float</td><td>Z-score at entry</td></tr>
+              <tr><td>exit_z_target</td><td>float</td><td>Target z-score to close</td></tr>
+              <tr><td>stop_z</td><td>float</td><td>Stop-loss z-score level</td></tr>
+              <tr><td>last_updated</td><td>ISO 8601</td><td>Last server update time</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Polling -->
+        <div class="py-panel" id="py-poll">
+<pre class="code"><span class="c">"""
+MacroFX Hedge Signal Poller
+Poll /api/hedge-signals every 30 min and act on ACTIVE signals.
+"""</span>
+<span class="k">import</span> requests, time, logging
+
+MACROFX_URL = <span class="s">"https://your-railway-url.up.railway.app"</span>
+POLL_INTERVAL = 30 * 60  <span class="c"># seconds</span>
+
+<span class="k">def</span> <span class="n">fetch_signals</span>():
+    r = requests.get(f<span class="s">"{MACROFX_URL}/api/hedge-signals"</span>, timeout=10)
+    r.raise_for_status()
+    <span class="k">return</span> r.json()
+
+<span class="k">def</span> <span class="n">handle_signal</span>(sig):
+    pair_a = sig[<span class="s">"pair_a"</span>]
+    pair_b = sig[<span class="s">"pair_b"</span>]
+    dir_a  = sig[<span class="s">"direction_a"</span>]  <span class="c"># "LONG" or "SHORT"</span>
+    dir_b  = sig[<span class="s">"direction_b"</span>]
+    z      = sig[<span class="s">"z_score"</span>]
+    score  = sig[<span class="s">"hedge_score"</span>]
+    regime = sig[<span class="s">"regime"</span>]
+
+    logging.info(
+        <span class="s">f"Signal: {pair_a} {dir_a} / {pair_b} {dir_b} "</span>
+        <span class="s">f"z={z:.2f} score={score:.2f} regime={regime}"</span>
+    )
+    <span class="c"># TODO: place_trade(pair_a, dir_a, lot_size=0.01)</span>
+    <span class="c"># TODO: place_trade(pair_b, dir_b, lot_size=0.01)</span>
+
+<span class="k">def</span> <span class="n">ack_signal</span>(signal_id):
+    <span class="s">"""Mark signal as DISMISSED after acting on it."""</span>
+    requests.post(
+        f<span class="s">"{MACROFX_URL}/api/hedge-signals/ack"</span>,
+        json={<span class="s">"id"</span>: signal_id, <span class="s">"status"</span>: <span class="s">"DISMISSED"</span>},
+        timeout=5
+    )
+
+<span class="k">while</span> True:
+    <span class="k">try</span>:
+        data = fetch_signals()
+        active = [s <span class="k">for</span> s <span class="k">in</span> data.get(<span class="s">"signals"</span>, [])
+                  <span class="k">if</span> s[<span class="s">"status"</span>] == <span class="s">"ACTIVE"</span>]
+        <span class="k">for</span> sig <span class="k">in</span> active:
+            handle_signal(sig)
+            ack_signal(sig[<span class="s">"id"</span>])
+    <span class="k">except</span> Exception <span class="k">as</span> e:
+        logging.error(f<span class="s">"Poll error: {e}"</span>)
+    time.sleep(POLL_INTERVAL)</pre>
+        </div>
+
+        <!-- Example Bot -->
+        <div class="py-panel" id="py-webhook">
+<pre class="code"><span class="c">"""
+MT5 + MacroFX Hedge Bot skeleton.
+Extend handle_signal() to place hedged trades via MetaTrader5.
+"""</span>
+<span class="k">import</span> MetaTrader5 <span class="k">as</span> mt5
+<span class="k">import</span> requests, time, logging
+
+MACROFX_URL = <span class="s">"https://your-railway-url.up.railway.app"</span>
+LOT_SIZE    = 0.01
+MAGIC       = 88001  <span class="c"># unique magic number</span>
+
+MT5_PAIRS = {
+    <span class="s">"EURUSD"</span>: <span class="s">"EURUSD"</span>, <span class="s">"USDJPY"</span>: <span class="s">"USDJPY"</span>,
+    <span class="s">"USDCHF"</span>: <span class="s">"USDCHF"</span>, <span class="s">"GBPUSD"</span>: <span class="s">"GBPUSD"</span>,
+    <span class="c"># Add all pairs your broker supports</span>
+}
+
+<span class="k">def</span> <span class="n">place_trade</span>(symbol, direction, lot):
+    mt5_sym = MT5_PAIRS.get(symbol)
+    <span class="k">if not</span> mt5_sym: <span class="k">return False</span>
+    info = mt5.symbol_info_tick(mt5_sym)
+    <span class="k">if not</span> info: <span class="k">return False</span>
+    order_type = mt5.ORDER_TYPE_BUY <span class="k">if</span> direction == <span class="s">"LONG"</span> \
+                 <span class="k">else</span> mt5.ORDER_TYPE_SELL
+    price = info.ask <span class="k">if</span> direction == <span class="s">"LONG"</span> <span class="k">else</span> info.bid
+    req = {
+        <span class="s">"action"</span>: mt5.TRADE_ACTION_DEAL,
+        <span class="s">"symbol"</span>: mt5_sym, <span class="s">"volume"</span>: lot,
+        <span class="s">"type"</span>: order_type, <span class="s">"price"</span>: price,
+        <span class="s">"magic"</span>: MAGIC, <span class="s">"comment"</span>: <span class="s">"hedge_sig"</span>,
+        <span class="s">"type_time"</span>: mt5.ORDER_TIME_GTC,
+        <span class="s">"type_filling"</span>: mt5.ORDER_FILLING_IOC,
+    }
+    result = mt5.order_send(req)
+    <span class="k">return</span> result.retcode == mt5.TRADE_RETCODE_DONE
+
+<span class="k">def</span> <span class="n">handle_signal</span>(sig):
+    ok_a = place_trade(sig[<span class="s">"pair_a"</span>], sig[<span class="s">"direction_a"</span>], LOT_SIZE)
+    ok_b = place_trade(sig[<span class="s">"pair_b"</span>], sig[<span class="s">"direction_b"</span>], LOT_SIZE)
+    logging.info(
+        <span class="s">f"Placed {sig['pair_a']} {sig['direction_a']}={ok_a} | "</span>
+        <span class="s">f"{sig['pair_b']} {sig['direction_b']}={ok_b}"</span>
+    )
+
+<span class="k">if not</span> mt5.initialize(): <span class="k">raise</span> RuntimeError(<span class="s">"MT5 init failed"</span>)
+
+<span class="k">while</span> True:
+    r = requests.get(f<span class="s">"{MACROFX_URL}/api/hedge-signals"</span>, timeout=10)
+    <span class="k">for</span> sig <span class="k">in</span> r.json().get(<span class="s">"signals"</span>, []):
+        <span class="k">if</span> sig[<span class="s">"status"</span>] == <span class="s">"ACTIVE"</span>:
+            handle_signal(sig)
+            requests.post(f<span class="s">"{MACROFX_URL}/api/hedge-signals/ack"</span>,
+                json={<span class="s">"id"</span>: sig[<span class="s">"id"</span>], <span class="s">"status"</span>: <span class="s">"DISMISSED"</span>})
+    time.sleep(30 * 60)</pre>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /right -->
+
+</div><!-- /page -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let _signals = [], _cfg = {}, _refreshTimer = null;
+let _prices = {}, _vol = {};
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function _pairToSlash(sym) {
+  if (sym.includes('/') || sym.includes('_')) return sym;
+  if (sym === 'XAUUSD') return 'XAU/USD';
+  if (sym.length === 6) return `${sym.slice(0,3)}/${sym.slice(3)}`;
+  return sym;
+}
+
+function _slInfo(pair, direction, slAtrMult) {
+  const key = _pairToSlash(pair);
+  const pd  = _prices[key];
+  if (!pd) return null;
+  const price = pd.price;
+  const pip   = pd.pip ?? 0.0001;
+  // H4 ATR estimate: vol forecast hl_median (% daily) ÷ 5 H4 sessions, else fallback pips
+  let h4AtrPips;
+  const vn = pair.replace('XAUUSD','GOLD');
+  if (_vol[vn]?.hl_median) {
+    const dailyRangePx = (_vol[vn].hl_median / 100) * price;
+    h4AtrPips = (dailyRangePx / pip) / 5;
+  } else if (_vol[pair]?.hl_median) {
+    const dailyRangePx = (_vol[pair].hl_median / 100) * price;
+    h4AtrPips = (dailyRangePx / pip) / 5;
+  } else {
+    // fallback: typical H4 ATR by pair class
+    h4AtrPips = key.includes('JPY') ? 22 : pair === 'XAUUSD' ? 8 : 16;
+  }
+  const slDistPips = h4AtrPips * (slAtrMult ?? 2.5);
+  const slDistPx   = slDistPips * pip;
+  const slPrice    = direction === 'LONG' ? price - slDistPx : price + slDistPx;
+  return { price, slPrice, slDistPips: Math.round(slDistPips), digits: pd.digits ?? 5, pip, ageS: pd.ageS };
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+(async function init() {
+  await Promise.all([loadSignals(), loadConfig(), loadTgConfig(), loadPrices()]);
+  _refreshTimer = setInterval(async () => { await loadSignals(); await loadPrices(); }, 60_000);
+})();
+
+// ── Data loading ───────────────────────────────────────────────────────────
+async function loadSignals() {
+  try {
+    const d = await fetch('/api/hedge-signals').then(r => r.json());
+    _signals = d.signals || [];
+    updateLastRun(d.last_run);
+    renderSignals();
+    renderHistory();
+  } catch { updateLastRun(null); }
+}
+
+async function loadConfig() {
+  try {
+    _cfg = await fetch('/api/hedge-signals/config').then(r => r.json());
+    applyConfigToUI(_cfg);
+  } catch {}
+}
+
+async function loadTgConfig() {
+  try {
+    const tg = await fetch('/api/hedge-signals/tg-config').then(r => r.json());
+    if (tg.token)  document.getElementById('tg-token').value  = tg.token;
+    if (tg.chatId) document.getElementById('tg-chat-id').value = tg.chatId;
+  } catch {}
+}
+
+async function loadPrices() {
+  try {
+    const d = await fetch('/api/hedge-signals/prices').then(r => r.json());
+    _prices = d.prices || {};
+    _vol    = d.vol    || {};
+    renderSignals();
+  } catch {}
+}
+
+function applyConfigToUI(cfg) {
+  document.getElementById('cfg-entry-z').value   = cfg.entry_z   ?? 2.0;
+  document.getElementById('cfg-exit-z').value    = cfg.exit_z    ?? 0.5;
+  document.getElementById('cfg-stop-z').value    = cfg.stop_z    ?? 3.5;
+  document.getElementById('cfg-min-score').value = cfg.min_score ?? 0.45;
+  const tog = document.getElementById('enabled-toggle');
+  tog.classList.toggle('on', cfg.enabled !== false);
+  // Regime chips
+  document.querySelectorAll('#regime-chips .regime-chip').forEach(c => {
+    c.classList.toggle('on', (cfg.allowed_regimes || ['BEAR','RANGE','BULL']).includes(c.dataset.r));
+  });
+}
+
+// ── Render signals ─────────────────────────────────────────────────────────
+function renderSignals() {
+  const active = _signals.filter(s => s.status === 'ACTIVE');
+  document.getElementById('active-count').textContent = active.length;
+
+  const bar = document.getElementById('no-data-bar');
+  const grid = document.getElementById('active-signals');
+
+  if (_signals.length === 0) {
+    bar.style.display = 'flex';
+    grid.innerHTML = '';
+    return;
+  }
+  bar.style.display = 'none';
+
+  if (active.length === 0) {
+    grid.innerHTML = `<div class="sig-empty"><div class="icon">🔍</div>No active signals right now.<br><span style="font-size:11px;color:var(--muted)">Next auto-scan in ~30 min, or press Check Now.</span></div>`;
+    return;
+  }
+
+  grid.innerHTML = active.map(s => signalCard(s, true)).join('');
+}
+
+function renderHistory() {
+  const all = [..._signals].reverse();
+  const tbody = document.getElementById('hist-tbody');
+  const empty = document.getElementById('hist-empty');
+  document.getElementById('hist-count').textContent = all.length;
+
+  if (all.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = all.slice(0, 50).map(s => {
+    const z    = s.z_score >= 0 ? `+${s.z_score}` : s.z_score;
+    const zCol = Math.abs(s.z_score) > s.stop_z ? 'var(--red)' : Math.abs(s.z_score) > (s.entry_z??2) ? 'var(--yellow)' : 'var(--muted)';
+    const entryDt = s.entry_time ? new Date(s.entry_time).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    const exitDt  = s.exit_time  ? new Date(s.exit_time).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<tr>
+      <td style="font-weight:600">${s.pair_a}<span style="color:var(--muted)"> / </span>${s.pair_b}</td>
+      <td><span style="color:${s.direction_a==='LONG'?'var(--green)':'var(--red)'}">${s.direction_a}</span> / <span style="color:${s.direction_b==='LONG'?'var(--green)':'var(--red)'}">${s.direction_b}</span></td>
+      <td style="font-family:monospace;color:${zCol}">${z}</td>
+      <td style="font-family:monospace">${s.hedge_score}</td>
+      <td><span style="color:var(--muted)">${s.regime||'—'}</span></td>
+      <td><span class="status-pill ${s.status}">${s.status}</span></td>
+      <td style="color:var(--muted);font-size:11px">${entryDt}</td>
+      <td style="color:var(--muted);font-size:11px">${exitDt}</td>
+    </tr>`;
+  }).join('');
+}
+
+function signalCard(s, showAck) {
+  const z = s.z_score >= 0 ? `+${s.z_score}` : `${s.z_score}`;
+  const zCls = Math.abs(s.z_score) > (s.stop_z??3.5) ? 'neg' : Math.abs(s.z_score) > (s.entry_z??2) ? 'warn' : 'pos';
+  const sCls = s.hedge_score >= 0.7 ? 'pos' : s.hedge_score >= 0.5 ? 'warn' : 'neg';
+  const entryDt = s.entry_time ? new Date(s.entry_time).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+  const betaA = s.beta_vix_a != null ? s.beta_vix_a.toFixed(3) : 'n/a';
+  const betaB = s.beta_vix_b != null ? s.beta_vix_b.toFixed(3) : 'n/a';
+  const ackBtns = showAck ? `<div class="sig-actions">
+    <button class="ack-btn" onclick="ackSignal('${s.id}','DISMISSED')">Dismiss</button>
+    <button class="ack-btn" onclick="ackSignal('${s.id}','EXITED')">Mark Exited</button>
+  </div>` : '';
+  const slAtrMult = _cfg?.sl_atr_mult ?? 2.5;
+  const tlA = _slInfo(s.pair_a, s.direction_a, slAtrMult);
+  const tlB = _slInfo(s.pair_b, s.direction_b, slAtrMult);
+
+  function legHtml(pair, dir, tl, entryPx) {
+    const dirCls = dir === 'LONG' ? 'long' : 'short';
+    const dirArrow = dir === 'LONG' ? '▲' : '▼';
+    if (!tl) {
+      return `<div class="tl-leg">
+        <div class="tl-pair-hd">${pair} <span class="dir-val ${dirCls}" style="font-size:10px">${dirArrow} ${dir}</span></div>
+        <div class="tl-row"><span class="tl-label">Price</span><span class="tl-val" style="color:var(--muted)">—</span></div>
+      </div>`;
+    }
+    const staleNote = tl.ageS > 120 ? `<div class="tl-stale">⚠ price ${tl.ageS}s old</div>` : '';
+    const entryRow  = entryPx != null ? `<div class="tl-row"><span class="tl-label">Entry</span><span class="tl-val entry-px">${entryPx.toFixed(tl.digits)}</span></div>` : '';
+    return `<div class="tl-leg">
+      <div class="tl-pair-hd">${pair} <span class="dir-val ${dirCls}" style="font-size:10px">${dirArrow} ${dir}</span></div>
+      <div class="tl-row"><span class="tl-label">Live</span><span class="tl-val live-px">${tl.price.toFixed(tl.digits)}</span></div>
+      ${entryRow}
+      <div class="tl-sl-row">
+        <span class="tl-sl-label">SL</span>
+        <span class="tl-sl-val">${tl.slPrice.toFixed(tl.digits)}</span>
+        <span class="tl-sl-dist">${tl.slDistPips}p</span>
+      </div>
+      ${staleNote}
+    </div>`;
+  }
+
+  const tradeLevels = (showAck && (tlA || tlB)) ? `<div class="sig-trade-levels">
+    ${legHtml(s.pair_a, s.direction_a, tlA, s.entry_price_a ?? null)}
+    ${legHtml(s.pair_b, s.direction_b, tlB, s.entry_price_b ?? null)}
+    <div class="tl-divider"></div>
+    <div style="grid-column:1/-1;font-size:10px;color:var(--muted)">SL = H4 ATR × ${slAtrMult}  ·  exit when z &lt; ${s.exit_z_target ?? 0.5}  ·  stop when z &gt; ${s.stop_z ?? 3.5}</div>
+  </div>` : '';
+
+  return `<div class="sig-card ${s.status.toLowerCase()}" id="sig-${s.id}">
+    <div class="sig-card-top">
+      <div class="sig-pair">${s.pair_a}<span>/</span>${s.pair_b}</div>
+      <span class="sig-badge ${s.status.toLowerCase()}">${s.status}</span>
+    </div>
+    <div class="sig-stats">
+      <div class="sig-stat"><div class="sv ${zCls}">${z}</div><div class="sl">Z-Score</div></div>
+      <div class="sig-stat"><div class="sv ${sCls}">${s.hedge_score}</div><div class="sl">Hedge Score</div></div>
+      <div class="sig-stat"><div class="sv" style="color:var(--cyan)">${s.corr_current?.toFixed(3)??'—'}</div><div class="sl">Corr Now</div></div>
+    </div>
+    <div class="sig-dirs">
+      <div class="sig-dir">
+        <div class="pair-name">${s.pair_a}  <span style="font-size:10px;color:var(--muted)">(β_vix ${betaA})</span></div>
+        <div class="dir-val ${s.direction_a.toLowerCase()}">${s.direction_a === 'LONG' ? '▲' : '▼'} ${s.direction_a}</div>
+      </div>
+      <div class="sig-dir">
+        <div class="pair-name">${s.pair_b}  <span style="font-size:10px;color:var(--muted)">(β_vix ${betaB})</span></div>
+        <div class="dir-val ${s.direction_b.toLowerCase()}">${s.direction_b === 'LONG' ? '▲' : '▼'} ${s.direction_b}</div>
+      </div>
+    </div>
+    ${tradeLevels}
+    <div class="sig-meta">
+      <span>Regime: <b>${s.regime||'—'}</b></span>
+      <span>Corr μ=${s.corr_mean?.toFixed(3)??'—'} σ=${s.corr_std?.toFixed(3)??'—'}</span>
+      <span>Entry: ${entryDt}</span>
+      <span>Exit target z&lt;${s.exit_z_target}</span>
+    </div>
+    ${ackBtns}
+  </div>`;
+}
+
+// ── Controls ───────────────────────────────────────────────────────────────
+function updateLastRun(ts) {
+  const dot  = document.getElementById('status-dot');
+  const text = document.getElementById('last-run-text');
+  if (!ts) {
+    dot.className = '';
+    text.textContent = 'No data yet';
+    return;
+  }
+  const ago = Math.round((Date.now() - new Date(ts)) / 60000);
+  dot.className = ago < 60 ? 'ok' : 'warn';
+  text.textContent = ago < 2 ? 'Just now' : ago < 60 ? `${ago}m ago` : `${Math.round(ago/60)}h ago`;
+}
+
+async function manualCheck() {
+  const btn = document.getElementById('check-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanning…';
+  try {
+    await fetch('/api/hedge-signals/check', { method: 'POST' });
+    await new Promise(r => setTimeout(r, 3000));
+    await loadSignals();
+  } catch {}
+  btn.disabled = false;
+  btn.textContent = '⚡ Check Now';
+}
+
+function toggleEnabled() {
+  const tog = document.getElementById('enabled-toggle');
+  tog.classList.toggle('on');
+}
+
+document.querySelectorAll('#regime-chips .regime-chip').forEach(c => {
+  c.addEventListener('click', () => c.classList.toggle('on'));
+});
+
+async function saveConfig() {
+  const btn = document.getElementById('save-cfg-btn');
+  const cfg = {
+    enabled:          document.getElementById('enabled-toggle').classList.contains('on'),
+    entry_z:          +document.getElementById('cfg-entry-z').value,
+    exit_z:           +document.getElementById('cfg-exit-z').value,
+    stop_z:           +document.getElementById('cfg-stop-z').value,
+    min_score:        +document.getElementById('cfg-min-score').value,
+    allowed_regimes:  [...document.querySelectorAll('#regime-chips .regime-chip.on')].map(c => c.dataset.r),
+    check_interval_min: 30,
+  };
+  btn.textContent = 'Saving…';
+  await fetch('/api/hedge-signals/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+  btn.textContent = '✓ Saved';
+  btn.classList.add('saved');
+  setTimeout(() => { btn.textContent = 'Save Config'; btn.classList.remove('saved'); }, 2000);
+  _cfg = cfg;
+}
+
+async function ackSignal(id, status) {
+  await fetch('/api/hedge-signals/ack', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, status }),
+  });
+  await loadSignals();
+}
+
+// ── Telegram ───────────────────────────────────────────────────────────────
+async function saveTg() {
+  const token  = document.getElementById('tg-token').value.trim();
+  const chatId = document.getElementById('tg-chat-id').value.trim();
+  await fetch('/api/hedge-signals/tg-config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, chatId }),
+  });
+  showTgMsg('Credentials saved', 'ok');
+}
+
+async function testTg() {
+  showTgMsg('Testing…', 'ok');
+  const r = await fetch('/api/hedge-signals/tg-test', { method: 'POST' }).then(r => r.json());
+  showTgMsg(r.ok ? '✓ Message sent to Telegram' : `✗ ${r.error}`, r.ok ? 'ok' : 'err');
+}
+
+function showTgMsg(text, cls) {
+  const el = document.getElementById('tg-msg');
+  el.textContent = text;
+  el.className = `tg-msg ${cls}`;
+}
+
+// ── Python tabs ────────────────────────────────────────────────────────────
+function pyTab(btn, panelId) {
+  document.querySelectorAll('.py-tab').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.py-panel').forEach(p => p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById(panelId).classList.add('on');
+}
+</script>
+</body>
+</html>

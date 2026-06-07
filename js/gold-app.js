@@ -1648,7 +1648,11 @@ function _ztVuManchu(bars, zoneDir, minComp = 2, gpEntryMs = null) {
   if (gpEntryMs != null) {
     const entrySec = gpEntryMs / 1000;
     for (let i = 0; i < bars.length; i++) {
-      if ((bars[i].time ?? 0) >= entrySec) { entryBarIdx = i; break; }
+      // Oanda bars use 'datetime' (London string); 'time' is absent — parse either
+      const bt = bars[i].time ?? (bars[i].datetime
+        ? new Date(bars[i].datetime.replace(' ', 'T') + 'Z').getTime() / 1000
+        : 0);
+      if (bt >= entrySec) { entryBarIdx = i; break; }
     }
   }
 
@@ -1865,7 +1869,7 @@ async function _ztStep() {
       }
 
       const gpEntryMs = _ZT.gpEntryTime[focusZone.zone_id] ?? null;
-      focusVu = _ztVuManchu(bars5m.slice(-60), focusZone.direction, 2, gpEntryMs);
+      focusVu = _ztVuManchu(bars5m.slice(0, 60).reverse(), focusZone.direction, 2, gpEntryMs);
 
       // Log once per zone approach
       if (focusZone.distPips <= ZT_PROX_PIPS && focusZone.zone_id !== _ztLastLoggedZone) {
@@ -1997,16 +2001,25 @@ function _ztFibSvg(z, price) {
     return Math.floor(new Date(t).getTime() / 1000);
   };
 
-  // Bars to display: from the swing origin bar onwards (when available), capped at 80.
-  // Fallback to the most recent 80 bars when swing_origin_time is not yet in the KV
-  // (bot hasn't restarted with updated code that exports timestamps).
+  // Bars to display: always anchor to recent context (current price visible).
+  // If the swing origin is within the last ~70 bars we show from there; otherwise
+  // show the most recent 70 bars so the current price and retrace are always visible.
+  // The swing origin/end dates are already shown as text via _ztSwingAnchor.
   const hasOriginTime = z.swing_origin_time && z.swing_origin_time > 0;
+  const CHART_BARS = 70;
   let zoneBars;
   if (hasOriginTime && allBars.length) {
-    const fromSec = z.swing_origin_time - 300; // include one bar before for context
-    zoneBars = allBars.filter(b => bt(b) >= fromSec).slice(0, 80);
+    const fromSec  = z.swing_origin_time - 300;
+    const originIdx = allBars.findIndex(b => bt(b) >= fromSec);
+    if (originIdx >= 0 && originIdx >= allBars.length - CHART_BARS) {
+      // Origin is within our window — show from 2 bars before it to now
+      zoneBars = allBars.slice(Math.max(0, originIdx - 2));
+    } else {
+      // Origin is old — show most recent bars so retrace is visible
+      zoneBars = allBars.slice(-CHART_BARS);
+    }
   } else {
-    zoneBars = allBars.slice(-60); // fallback: recent 60 bars
+    zoneBars = allBars.slice(-CHART_BARS);
   }
 
   // ── Dimensions ────────────────────────────────────────────────────────────
@@ -2028,17 +2041,25 @@ function _ztFibSvg(z, price) {
   const isLong   = z.direction === 'long';
   const dirColor = isLong ? '#22c55e' : '#ef4444';
 
+  // Entry-window highlight colour varies by variant
+  const zv = z.zone_variant ?? 'gp';
+  const entryFillColor = zv === '886' ? '#fb7185' : zv === '786' ? '#a78bfa' :
+                         zv === '382' ? '#4ade80' : zv === '50pct' ? '#60a5fa' :
+                         zv === 'retest' ? '#34d399' : dirColor;
+  const entryFillLabel = zv === 'gp' ? 'GP' : zv === '50pct' ? '.5' :
+                         zv === 'retest' ? 'RTST' : `.${zv}`;
+
   // ── Fib levels ────────────────────────────────────────────────────────────
   // Mirror TradingView colours: white/grey for 0/1, orange for .786/.886, yellow for .618/.65, green .382
   const mid = (z.swing_origin + z.swing_end) / 2;
   const fibLevels = [
     { lbl: '1',    p: z.swing_end,   color: '#e5e7eb', lw: 1.2 },
-    { lbl: '.886', p: z.level_886,   color: '#f97316', lw: 0.8 },
-    { lbl: '.786', p: z.level_786,   color: '#eab308', lw: 0.8 },
-    { lbl: '.65',  p: z.level_650,   color: dirColor,  lw: 1.5 },
-    { lbl: '.618', p: z.level_618,   color: dirColor,  lw: 1.5 },
-    { lbl: '.5',   p: mid,           color: '#60a5fa', lw: 0.8 },
-    { lbl: '.382', p: z.level_382,   color: '#4ade80', lw: 0.8 },
+    { lbl: '.886', p: z.level_886,   color: '#fb7185', lw: zv === '886' ? 1.4 : 0.8 },
+    { lbl: '.786', p: z.level_786,   color: '#a78bfa', lw: zv === '786' ? 1.4 : 0.8 },
+    { lbl: '.65',  p: z.level_650,   color: dirColor,  lw: zv === 'gp'  ? 1.5 : 0.8 },
+    { lbl: '.618', p: z.level_618,   color: dirColor,  lw: zv === 'gp'  ? 1.5 : 0.8 },
+    { lbl: '.5',   p: mid,           color: '#60a5fa', lw: zv === '50pct' ? 1.4 : 0.8 },
+    { lbl: '.382', p: z.level_382,   color: '#4ade80', lw: zv === '382' ? 1.4 : 0.8 },
     { lbl: '0',    p: z.swing_origin,color: '#9ca3af', lw: 1.0 },
   ].filter(f => f.p != null);
 
@@ -2047,12 +2068,14 @@ function _ztFibSvg(z, price) {
   // Chart area background
   svg += `<rect x="${padL}" y="${padT}" width="${chartW}" height="${chartH}" fill="rgba(15,20,30,0.7)" rx="2"/>`;
 
-  // GP zone fill
-  const gpY1 = py(z.gp_high ?? z.level_618);
-  const gpY2 = py(z.gp_low  ?? z.level_650);
+  // Entry-window zone fill (correct for any variant, not just GP)
+  const gpY1  = py(z.gp_high ?? z.level_618);
+  const gpY2  = py(z.gp_low  ?? z.level_650);
   const gpTop = Math.min(gpY1, gpY2);
   const gpHt  = Math.max(Math.abs(gpY2 - gpY1), 3);
-  svg += `<rect x="${padL}" y="${gpTop}" width="${chartW}" height="${gpHt}" fill="${dirColor}" fill-opacity="0.15"/>`;
+  svg += `<rect x="${padL}" y="${gpTop}" width="${chartW}" height="${gpHt}" fill="${entryFillColor}" fill-opacity="0.18"/>`;
+  // Small variant label at the right edge of the fill
+  svg += `<text x="${W - padR - 2}" y="${gpTop + gpHt / 2 + 3}" font-size="7" fill="${entryFillColor}" text-anchor="end" opacity="0.9">${entryFillLabel}</text>`;
 
   // Fib horizontal lines + labels
   for (const f of fibLevels) {
@@ -2092,6 +2115,30 @@ function _ztFibSvg(z, price) {
     svg += `<text x="${padL + chartW / 2}" y="${padT + chartH / 2 + 3}" font-size="8" fill="#4b5563" text-anchor="middle">bars loading…</text>`;
   }
 
+  // ── Swing origin / end vertical markers (when visible in current window) ──
+  if (hasOriginTime && zoneBars.length >= 2) {
+    const nz = zoneBars.length;
+    const sp = chartW / nz;
+    const firstBt = bt(zoneBars[0]);
+    const lastBt  = bt(zoneBars[nz - 1]);
+
+    const addMarker = (ts, label, col) => {
+      if (!ts || ts < firstBt || ts > lastBt + sp * 2) return;
+      const idx = zoneBars.findIndex((b, i) => {
+        const bts = bt(b);
+        const next = i + 1 < nz ? bt(zoneBars[i + 1]) : bts + sp;
+        return bts <= ts && ts < next;
+      });
+      if (idx < 0) return;
+      const mx = padL + (idx + 0.5) * sp;
+      svg += `<line x1="${mx.toFixed(1)}" y1="${padT}" x2="${mx.toFixed(1)}" y2="${padT + chartH}" stroke="${col}" stroke-width="0.7" stroke-dasharray="2,2" opacity="0.55"/>`;
+      svg += `<text x="${(mx + 2).toFixed(1)}" y="${padT + 8}" font-size="6" fill="${col}" opacity="0.8">${label}</text>`;
+    };
+
+    addMarker(z.swing_origin_time, 'orig', '#9ca3af');
+    addMarker(z.swing_end_time,    'end',  '#f0a500');
+  }
+
   // ── Current price ─────────────────────────────────────────────────────────
   if (price != null) {
     const priceY = py(price);
@@ -2105,6 +2152,80 @@ function _ztFibSvg(z, price) {
 
   svg += '</svg>';
   return svg;
+}
+
+// ── Confluence density map ────────────────────────────────────────────────────
+// Horizontal price-axis bar showing all zone entry windows as coloured bands.
+// Where long and short bands overlap the density darkens — visually reveals
+// the price clusters where the matrix has stacked multiple fib legs.
+function _ztConfluenceMap(zones, price) {
+  if (!zones || zones.length < 2) return '';
+
+  // Gather all relevant prices to determine axis bounds
+  const allPx = [];
+  for (const z of zones) {
+    if (z.gp_low  != null) allPx.push(z.gp_low);
+    if (z.gp_high != null) allPx.push(z.gp_high);
+    if (z.zone_low  != null) allPx.push(z.zone_low);
+    if (z.zone_high != null) allPx.push(z.zone_high);
+  }
+  if (price) allPx.push(price);
+  if (!allPx.length) return '';
+
+  const pMin  = Math.min(...allPx) - 15;
+  const pMax  = Math.max(...allPx) + 15;
+  const pSpan = pMax - pMin || 1;
+
+  const W = 560, H = 44;
+  const padL = 36, padR = 36, padT = 14, padB = 10;
+  const mapW = W - padL - padR;
+
+  const px = p => padL + (p - pMin) / pSpan * mapW;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">`;
+
+  // Track band
+  svg += `<rect x="${padL}" y="${padT}" width="${mapW}" height="${H - padT - padB}" fill="rgba(15,20,30,0.5)" rx="2"/>`;
+
+  // Draw each zone's entry window as a semi-transparent band
+  for (const z of zones) {
+    if (z.gp_low == null || z.gp_high == null) continue;
+    const x1  = px(z.gp_low);
+    const x2  = px(z.gp_high);
+    const bw  = Math.max(x2 - x1, 1.5);
+    const col = z.direction === 'long' ? '#22c55e' : '#ef4444';
+    const op  = Math.min(0.45, 0.08 + (z.score ?? 0) * 0.05);
+    svg += `<rect x="${x1.toFixed(1)}" y="${padT}" width="${bw.toFixed(1)}" height="${H - padT - padB}" fill="${col}" opacity="${op.toFixed(2)}" rx="1"/>`;
+  }
+
+  // Tick marks at round price intervals
+  const tickStep = pSpan > 200 ? 50 : pSpan > 80 ? 20 : 10;
+  const firstTick = Math.ceil(pMin / tickStep) * tickStep;
+  for (let t = firstTick; t <= pMax; t += tickStep) {
+    const tx = px(t);
+    svg += `<line x1="${tx.toFixed(1)}" y1="${padT + H - padT - padB - 3}" x2="${tx.toFixed(1)}" y2="${H - padB}" stroke="#374151" stroke-width="0.5"/>`;
+    svg += `<text x="${tx.toFixed(1)}" y="${H - 1}" font-size="7" fill="#4b5563" text-anchor="middle">${t.toFixed(0)}</text>`;
+  }
+
+  // Edge labels
+  svg += `<text x="${padL}" y="${padT - 2}" font-size="7" fill="#374151" text-anchor="middle">${pMin.toFixed(0)}</text>`;
+  svg += `<text x="${W - padR}" y="${padT - 2}" font-size="7" fill="#374151" text-anchor="middle">${pMax.toFixed(0)}</text>`;
+
+  // Current price needle
+  if (price != null) {
+    const cpx = px(price);
+    if (cpx >= padL && cpx <= W - padR) {
+      svg += `<line x1="${cpx.toFixed(1)}" y1="${padT - 2}" x2="${cpx.toFixed(1)}" y2="${H - padB}" stroke="#f59e0b" stroke-width="1.5"/>`;
+      svg += `<polygon points="${cpx.toFixed(1)},${padT - 2} ${(cpx - 4).toFixed(1)},${padT - 8} ${(cpx + 4).toFixed(1)},${padT - 8}" fill="#f59e0b"/>`;
+      svg += `<text x="${cpx.toFixed(1)}" y="${padT - 9}" font-size="7.5" fill="#f59e0b" text-anchor="middle" font-weight="700">${price.toFixed(1)}</text>`;
+    }
+  }
+
+  svg += '</svg>';
+  return `<div class="zt-conf-map">
+    <div class="zt-conf-map-label">Confluence density · ${zones.length} zones · green=long · red=short · intensity=score</div>
+    ${svg}
+  </div>`;
 }
 
 function _ztRender(price, zones, focusZone, focusVu, armedId) {
@@ -2139,14 +2260,22 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
     const badge    = isArmed ? '<span class="zt-badge zt-badge-armed">ARMED</span>'
                    : isNear  ? '<span class="zt-badge zt-badge-near">NEAR</span>' : '';
     const distStr  = z.distPips < 1 ? 'INSIDE' : `${Math.round(z.distPips)}p`;
-    // Zone variant label: GP / .5 / .786 / .886 / RETEST
-    const variant  = z.zone_variant ?? (z.zone_id?.endsWith('_786') ? '786' : z.zone_id?.endsWith('_886') ? '886' : z.zone_id?.endsWith('_50pct') ? '50pct' : z.zone_id?.endsWith('_retest') ? 'retest' : 'gp');
+    // Zone variant label: GP / .382 / .5 / .786 / .886 / RETEST
+    const variant  = z.zone_variant ?? (
+      z.zone_id?.endsWith('_886') ? '886' : z.zone_id?.endsWith('_786') ? '786' :
+      z.zone_id?.endsWith('_382') ? '382' : z.zone_id?.endsWith('_50pct') ? '50pct' :
+      z.zone_id?.endsWith('_retest') ? 'retest' : 'gp'
+    );
     const variantLabel = variant === 'gp' ? 'GP' : variant === '50pct' ? '.5' : variant === 'retest' ? 'RETEST' : `.${variant}`;
-    const variantCls   = variant === 'gp' ? 'zt-var-gp' : variant === '786' ? 'zt-var-786' : variant === '886' ? 'zt-var-886' : variant === '50pct' ? 'zt-var-50pct' : 'zt-var-retest';
+    const variantCls   = variant === 'gp' ? 'zt-var-gp' : variant === '786' ? 'zt-var-786' :
+                         variant === '886' ? 'zt-var-886' : variant === '382' ? 'zt-var-382' :
+                         variant === '50pct' ? 'zt-var-50pct' : 'zt-var-retest';
     // Fib ladder: highlight the zone's own entry level as target
     let fibLadder = '';
     if (price && z.level_382 != null) {
-      const targetKey = variant === '786' ? '.786' : variant === '886' ? '.886' : variant === '50pct' ? '.5' : variant === 'retest' ? '.retest' : null;
+      const targetKey = variant === '786' ? '.786' : variant === '886' ? '.886' :
+                        variant === '382' ? '.382' : variant === '50pct' ? '.5' :
+                        variant === 'retest' ? '.retest' : null;
       const midPrice  = (z.swing_origin != null && z.swing_end != null) ? (z.swing_origin + z.swing_end) / 2 : null;
       const fibs = [
         { label: '.382',    price: z.level_382 },
@@ -2390,6 +2519,7 @@ function _ztRender(price, zones, focusZone, focusVu, armedId) {
         <span class="zt-htf-lbl">HTF ${escHtml(htfBias)} ${(htfConf * 100).toFixed(0)}%</span>
         ${histBtn}
       </div>
+      ${_ztConfluenceMap(withDist, price)}
       <div class="zt-zones">${zoneRows}</div>
       ${_ztSummaryHtml(zones, price)}
       ${sniperHtml}

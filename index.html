@@ -47,10 +47,15 @@
   <a href="backtest.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Backtest">📈 Backtest</button></a>
   <a href="claude-backtest.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Asia Confluence Backtester">🔬 Asia BT</button></a>
   <a href="analysis.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="5-Year Pattern Analysis Engine">📊 Pattern Lab</button></a>
+  <a href="correlations.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Rolling Correlation &amp; Hedge Analysis" style="border-color:#8b5cf6;color:#8b5cf6">⬡ Corr Lab</button></a>
+  <a href="hedge-signals.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Hedge Signal Generator — live divergence alerts + Python bot integration" style="border-color:#f59e0b;color:#f59e0b">⚡ Signals</button></a>
+  <a href="hedge-backtest.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Hedge Pair Backtester — walk-forward z-score simulation on M1 data" style="border-color:#06b6d4;color:#06b6d4">📊 Hedge BT</button></a>
   <a href="bot-config.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Python Bot Config">🤖 Bot</button></a>
   <a href="gold.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Gold Macro Model — XAU/USD two-layer regime">🥇 Gold</button></a>
   <a href="vol-forecast.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Vol & Range Forecast — EWMA daily range forecaster" style="border-color:#4f7df0;color:#4f7df0">📐 Vol Forecast</button></a>
   <a href="vol-backtest.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Vol Range Backtester — walk-forward strategy results" style="border-color:#10b981;color:#10b981">📊 Vol BT</button></a>
+  <a href="regime-viewer.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Regime Viewer — V1/V2 regime & metrics overlaid on price" style="border-color:#f0a030;color:#f0a030">🔍 Regime</button></a>
+  <a href="regime-backtest.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Regime Bot Backtester — simulate V1/V2 bot logic on historical data" style="border-color:#a78bfa;color:#a78bfa">⚡ Regime BT</button></a>
   <button class="dark-btn" onclick="openBetaPanel()" id="betaBtn" title="Beta Factor Exposure Monitor — stochastic control system" style="border-color:#7c6fe0;color:#9d96f0"><span>β</span><span>Beta</span></button>
   <div class="live-pill"><div class="live-dot"></div>Live</div>
   <span class="upd" id="upd"></span>
@@ -454,18 +459,89 @@ window.refreshBetaPanel = async function() {
   await _loadBetaPanel();
 };
 
+const _BETA_MT5_ALIAS = { USTECH100M: 'NAS100_USD', NAS100M: 'NAS100_USD', XAUUSD: 'XAUUSD' };
+const _BETA_DEFAULT_TARGETS = {
+  BULL:  { beta_dxy: -0.65, beta_rates:  0.40, beta_vix: -0.20 },
+  BEAR:  { beta_dxy:  0.55, beta_rates: -0.35, beta_vix:  0.30 },
+  RANGE: { beta_dxy:  0.00, beta_rates:  0.00, beta_vix:  0.00 },
+  CHOP:  { beta_dxy:  0.00, beta_rates:  0.00, beta_vix:  0.00 },
+};
+
+function _poolPositions(...statuses) {
+  const positions = [], seen = new Set();
+  for (const s of statuses) {
+    if (!s?.mt5_positions) continue;
+    for (const p of s.mt5_positions) {
+      const key = p.ticket ?? `${p.symbol}_${p.direction}_${p.lots}`;
+      if (!seen.has(key)) { seen.add(key); positions.push(p); }
+    }
+  }
+  return positions;
+}
+
+function _computePortfolioBeta(positions, estimates) {
+  if (!estimates || !positions.length) return null;
+  let bDxy = 0, bRates = 0, bVix = 0, count = 0;
+  for (const pos of positions) {
+    const rawSym = (pos.symbol || '').toUpperCase();
+    const sym = _BETA_MT5_ALIAS[rawSym] || rawSym;
+    const betas = estimates[sym];
+    if (!betas) continue;
+    const dir  = (pos.direction || (pos.type === 0 ? 'BUY' : 'SELL')).toUpperCase();
+    const sign = dir === 'BUY' ? 1 : -1;
+    const lots = parseFloat(pos.volume || pos.lots || 1);
+    bDxy   += sign * lots * (parseFloat(betas.beta_dxy?.mean)   || 0);
+    bRates += sign * lots * (parseFloat(betas.beta_rates?.mean)  || 0);
+    bVix   += sign * lots * (parseFloat(betas.beta_vix?.mean)    || 0);
+    count++;
+  }
+  if (!count) return null;
+  return { beta_dxy: +bDxy.toFixed(4), beta_rates: +bRates.toFixed(4), beta_vix: +bVix.toFixed(4), position_count: count, timestamp: Date.now() };
+}
+
+function _computeBetaDeviation(portfolioBeta, regime) {
+  if (!portfolioBeta) return null;
+  const rk = (regime || 'RANGE').toUpperCase();
+  const targets = _BETA_DEFAULT_TARGETS[rk] || _BETA_DEFAULT_TARGETS.RANGE;
+  const FACTORS = ['beta_dxy', 'beta_rates', 'beta_vix'];
+  const deviations = {};
+  for (const f of FACTORS) {
+    const current = portfolioBeta[f] || 0;
+    const target  = targets[f] || 0;
+    const dev = +(current - target).toFixed(4);
+    const abs = Math.abs(dev);
+    deviations[f] = { current, target, deviation: dev,
+      status: abs <= 0.15 ? 'ON_TARGET' : abs <= 0.30 ? 'SLIGHT_OVER' : 'OVEREXPOSED' };
+  }
+  const scores = FACTORS.map(f => Math.max(0, 1 - Math.abs(deviations[f].deviation) / 0.5));
+  return { regime: rk, deviations, overall_alignment: +(scores.reduce((s,v)=>s+v,0)/scores.length).toFixed(3), timestamp: Date.now() };
+}
+
+let _hedgeAlertsCache = null;
+
 async function _loadBetaPanel() {
-  const [estimates, portfolio, deviation, rebalance, botStatus] = await Promise.all([
+  const [estimates, rebalance, s1, s2, s3, s4, s5, hedgeAlerts] = await Promise.all([
     kvGet('beta_estimates'),
-    kvGet('portfolio_beta'),
-    kvGet('beta_deviation'),
     kvGet('beta_rebalance'),
     kvGet('bot_status'),
+    kvGet('regime_bot_status'),
+    kvGet('regime_bot_v2_status'),
+    kvGet('gold_bot_status'),
+    kvGet('dyn_anchor_status'),
+    _hedgeAlertsCache
+      ? Promise.resolve(_hedgeAlertsCache)
+      : fetch('/api/hedge-alerts').then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
+  if (hedgeAlerts && !_hedgeAlertsCache) _hedgeAlertsCache = hedgeAlerts;
   const el = document.getElementById('betaPanelContent');
   if (!el) return;
-  const positions = (botStatus && botStatus.mt5_positions) ? botStatus.mt5_positions : [];
-  el.innerHTML = _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions);
+
+  const positions = _poolPositions(s1, s2, s3, s4, s5);
+  const regime = (s3?.current_regime || s2?.current_regime || s1?.current_regime || s1?.regime || 'RANGE').toUpperCase();
+  const portfolio = _computePortfolioBeta(positions, estimates);
+  const deviation = _computeBetaDeviation(portfolio, regime);
+
+  el.innerHTML = _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions, hedgeAlerts);
 }
 
 // ── Plain-English helpers ──────────────────────────────────────────────────
@@ -564,7 +640,7 @@ function _deviationSentence(factor, deviation, regime) {
 
 // ── Main render ────────────────────────────────────────────────────────────
 
-function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions) {
+function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions, hedgeAlerts) {
   const FACTORS = ['beta_dxy', 'beta_rates', 'beta_vix'];
   const FACTOR_ENGLISH = { beta_dxy: 'Dollar exposure', beta_rates: 'Rate exposure', beta_vix: 'Safe-haven exposure' };
   const parts = [];
@@ -744,6 +820,95 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions)
       </tr>`);
     });
     parts.push('</table></div>');
+  }
+  parts.push('</div>');
+
+  // ── Hedge Monitor ──────────────────────────────────────────────────────────
+  parts.push(`<div style="margin-top:14px">
+    <div class="bp-card-title">Hedge Monitor — Spread Z-Scores</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:10px;line-height:1.6">
+      For each pair you are watching, these are the best hedge partners right now — ranked by how stretched the rolling correlation is versus its long-run average. A high z-score means the relationship has temporarily weakened, which is where mean-reversion entries come from. <a href="correlations.html" target="_blank" style="color:var(--purple);text-decoration:none">Full analysis →</a>
+    </div>`);
+
+  if (!hedgeAlerts || !hedgeAlerts.pairs || !hedgeAlerts.pairs.length) {
+    parts.push('<div style="font-size:11px;color:var(--text3);padding:6px 0">No hedge data — Corr Lab data not yet built. Visit the Corr Lab and rebuild.</div>');
+  } else {
+    const avg   = hedgeAlerts.avg_corr   || {};
+    const std   = hedgeAlerts.corr_std   || {};
+    const lastC = hedgeAlerts.last_corr  || {};
+    const lastB = hedgeAlerts.last_betas || {};
+    const hPairs = hedgeAlerts.pairs;
+
+    // Use currently selected pair or show top pairs overall
+    const curPair = window.S?.currentPair?.toUpperCase() || null;
+
+    // Build all pair-pair scored rows
+    const rows = [];
+    for (let i = 0; i < hPairs.length; i++) {
+      for (let j = i + 1; j < hPairs.length; j++) {
+        const a = hPairs[i], b = hPairs[j];
+        const key   = `${a}_${b}`;
+        const avgC  = avg[key]  ?? avg[`${b}_${a}`]  ?? null;
+        const stdC  = std[key]  ?? std[`${b}_${a}`]  ?? null;
+        const curC  = lastC[key] ?? lastC[`${b}_${a}`] ?? null;
+        if (avgC === null || stdC === null || curC === null) continue;
+
+        const vA = lastB[a]?.vix ?? 0, vB = lastB[b]?.vix ?? 0;
+        const bSpread = Math.abs(vA - vB);
+        const score   = (-avgC * 0.7) + (bSpread / 2 * 0.3);
+        const zScore  = stdC > 0 ? (curC - avgC) / stdC : 0;
+
+        if (score < 0.3) continue;
+        // If a pair is selected, only show rows involving that pair
+        if (curPair && a !== curPair && b !== curPair) continue;
+        rows.push({ a, b, avgC, curC, zScore, score, bSpread, vA, vB });
+      }
+    }
+    rows.sort((x, y) => Math.abs(y.zScore) - Math.abs(x.zScore));
+
+    if (!rows.length) {
+      parts.push('<div style="font-size:11px;color:var(--text3);padding:6px 0">No high-scoring hedge pairs found for the current pair. Select a different pair or check the full Corr Lab.</div>');
+    } else {
+      const fmt = v => (v >= 0 ? '+' : '') + v.toFixed(3);
+      // Thermometer bar: shows where current corr sits in avg ± 2σ range
+      const thermBar = (avgC, stdC, curC) => {
+        const lo = avgC - 2 * stdC, hi = avgC + 2 * stdC, range = hi - lo || 0.01;
+        const pct = Math.max(0, Math.min(100, (curC - lo) / range * 100));
+        const z   = stdC > 0 ? (curC - avgC) / stdC : 0;
+        const col = Math.abs(z) > 2 ? '#ef4444' : Math.abs(z) > 1.2 ? '#f59e0b' : '#10b981';
+        return `<div style="position:relative;height:6px;background:var(--s2);border-radius:3px;width:80px;flex-shrink:0">
+          <div style="position:absolute;left:50%;top:0;width:1px;height:100%;background:rgba(148,163,184,.4)"></div>
+          <div style="position:absolute;left:${pct.toFixed(0)}%;top:-1px;width:8px;height:8px;border-radius:50%;background:${col};transform:translateX(-50%);border:1.5px solid var(--bg)"></div>
+        </div>`;
+      };
+
+      parts.push('<div style="display:flex;flex-direction:column;gap:7px">');
+      for (const { a, b, avgC, curC, zScore, score, vA, vB } of rows.slice(0, 8)) {
+        const zCol = Math.abs(zScore) > 2 ? '#ef4444' : Math.abs(zScore) > 1.2 ? '#f59e0b' : '#10b981';
+        let signal;
+        if      (zScore >  2.0) signal = '⚡ Diverged';
+        else if (zScore >  1.2) signal = '↗ Weakening';
+        else if (zScore < -2.0) signal = '↙ Very tight';
+        else if (zScore < -1.2) signal = '↘ Tightening';
+        else                    signal = '— Normal';
+        const stdC = (Math.abs(avgC) * 0.15) || 0.05; // fallback — shouldn't hit since we filtered above
+        // Re-compute with actual std from the data (already in the outer scope)
+        const key = `${a}_${b}`;
+        const realStd = (std[key] ?? std[`${b}_${a}`]) ?? 0.05;
+
+        parts.push(`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--s2);border-radius:6px;border:1px solid var(--border)">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:${window.PAIR_COLORS?.[a]||'#888'};min-width:54px">${a}</span>
+          <span style="font-size:9px;color:var(--text3)">↔</span>
+          <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:${window.PAIR_COLORS?.[b]||'#888'};min-width:54px">${b}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);min-width:50px">${fmt(avgC)}→${fmt(curC)}</span>
+          ${thermBar(avgC, realStd, curC)}
+          <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:${zCol};min-width:46px">${(zScore >= 0 ? '+' : '') + zScore.toFixed(1)}σ</span>
+          <span style="font-size:10px;color:${zCol};flex:1">${signal}</span>
+          <a href="correlations.html" target="_blank" style="font-size:9px;color:var(--purple);text-decoration:none;white-space:nowrap;flex-shrink:0">Full →</a>
+        </div>`);
+      }
+      parts.push('</div>');
+    }
   }
   parts.push('</div>');
 

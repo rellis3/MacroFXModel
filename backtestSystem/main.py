@@ -179,7 +179,7 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     pip = pip_size(pair)
 
     # ── Fetch bars + live price ───────────────────────────────────────────
-    bars_5m  = fetch_bars_5m(pair,  count=500)   # ~41h — covers today + yesterday Asia
+    bars_5m  = fetch_bars_5m(pair,  count=750)   # ~62h — covers today + yesterday Asia at any hour
     bars_30m = fetch_bars_30m(pair, count=500)
     daily    = fetch_bars_daily(pair, count=150)
     price    = fetch_price(pair)

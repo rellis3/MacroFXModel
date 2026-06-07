@@ -216,6 +216,81 @@ def _serialize_open_positions(magic: int) -> list:
         return []
 
 
+def _serialize_closed_trades(magic: int) -> list:
+    """Return today's closed positions from MT5 deal history for this bot."""
+    if not HAS_MT5:
+        return []
+    try:
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
+        by_pos: dict = {}
+        for d in deals:
+            if d.magic != magic:
+                continue
+            pid = int(d.position_id)
+            if pid not in by_pos:
+                by_pos[pid] = {'in': None, 'out': []}
+            if d.entry == 0:
+                by_pos[pid]['in'] = d
+            elif d.entry in (1, 3):
+                by_pos[pid]['out'].append(d)
+        result = []
+        for pid, grp in by_pos.items():
+            outs = grp['out']
+            if not outs:
+                continue
+            ind      = grp['in']
+            last_out = max(outs, key=lambda d: d.time)
+            if ind:
+                direction  = 'BUY' if ind.type == 0 else 'SELL'
+                open_price = round(float(ind.price), 5)
+                time_open  = int(ind.time)
+            else:
+                direction  = 'BUY' if last_out.type == 1 else 'SELL'
+                open_price = None
+                time_open  = None
+            result.append({
+                'position_id': pid,
+                'symbol':      last_out.symbol,
+                'direction':   direction,
+                'lots':        round(sum(d.volume     for d in outs), 2),
+                'open_price':  open_price,
+                'close_price': round(float(last_out.price), 5),
+                'profit':      round(sum(d.profit     for d in outs), 2),
+                'swap':        round(sum(d.swap       for d in outs), 2),
+                'commission':  round(sum(d.commission for d in outs), 2),
+                'time_open':   time_open,
+                'time_close':  int(last_out.time),
+                'comment':     str(ind.comment if ind else last_out.comment or ''),
+            })
+        return sorted(result, key=lambda t: t['time_close'])
+    except Exception:
+        return []
+
+
+def _serialize_paper_trade(bot_state) -> list:
+    t = bot_state.active_trade
+    if not t:
+        return []
+    now = datetime.now(timezone.utc)
+    return [{
+        'ticket':     0,
+        'symbol':     SYMBOL,
+        'direction':  'BUY' if t.direction == 'LONG' else 'SELL',
+        'lots':       t.lot_size,
+        'open_price': round(t.entry_price, 2),
+        'price':      round(t.entry_price, 2),
+        'profit':     round(t.pnl_pips, 2),
+        'swap':       0.0,
+        'time_open':  int(t.entry_time.timestamp()),
+        'comment':    f'paper {t.zone_id}',
+        'sl':         round(t.sl, 2),
+        'tp1':        round(t.tp1, 2),
+        'tp2':        round(t.tp2, 2),
+        'tp1_hit':    t.tp1_hit,
+    }]
+
+
 def _kv_put_status(key: str, data: dict, base_url: str) -> None:
     """Write bot heartbeat to its own KV key (non-critical — swallows all errors)."""
     try:
@@ -319,6 +394,11 @@ def _calc_sl_tp(zone: FibZone, direction: str, price: float,
     if sl_dist < atr_sl:
         sl = (price - atr_sl) if direction == 'LONG' else (price + atr_sl)
         sl_dist = atr_sl
+
+    # Hard cap: ATR fallback must not exceed max_sl_pips either
+    if sl_dist > max_sl:
+        sl = (price - max_sl) if direction == 'LONG' else (price + max_sl)
+        sl_dist = max_sl
 
     sign = 1 if direction == 'LONG' else -1
     tp1  = round(price + sign * sl_dist * cfg.get('tp1_r', 1.0), 2)
@@ -468,6 +548,9 @@ class GoldBot:
         price_now = self._get_price()
         log.info(f'[PRICE]  {price_now}  today_m1={len(today_m1)}  vol_m1={len(vol_m1)}  '
                  f'm30={len(m30_bars) if m30_bars else 0}')
+        if not price_now:
+            log.warning('[REFRESH] price_now is None — MT5 tick failed and dashboard unreachable; '
+                        'volume profile and fib zones will be skipped this cycle')
         if price_now and vol_m1:
             self.vol_prof = compute_volume_profile(
                 vol_m1, prev_m1, price_now,
@@ -477,6 +560,8 @@ class GoldBot:
                 ages = ', '.join(f'{n.price:.1f}({n.age_days}d)'
                                  for n in self.vol_prof.npoc_stack[:4])
                 log.info(f'[nPOC]   {len(self.vol_prof.npoc_stack)} naked POCs: {ages}')
+        elif price_now and not vol_m1:
+            log.warning('[REFRESH] vol_m1 is empty — no M1 bars for today; volume profile skipped')
 
         # ── Session levels + VWAP anchor levels ──────────────────────────────
         if h1_bars and price_now:
@@ -518,13 +603,17 @@ class GoldBot:
         all_zones: list[FibZone] = []
         for tf in zone_tfs:
             bars = tf_bar_map.get(tf)
-            if bars and price_now:
-                try:
-                    zs = detect_fib_zones(bars, tf, price_now)
-                    all_zones.extend(zs)
-                    log.info(f'[ZONES]  {tf}: {len(zs)} raw ({sum(1 for z in zs if z.active)} active)')
-                except Exception as exc:
-                    log.error(f'[ZONES]  {tf} detection failed: {exc}', exc_info=True)
+            if not bars:
+                log.warning(f'[ZONES]  {tf}: no bars returned from MT5 — skipping')
+                continue
+            if not price_now:
+                continue   # already warned above
+            try:
+                zs = detect_fib_zones(bars, tf, price_now)
+                all_zones.extend(zs)
+                log.info(f'[ZONES]  {tf}: {len(zs)} raw ({sum(1 for z in zs if z.active)} active)')
+            except Exception as exc:
+                log.error(f'[ZONES]  {tf} detection failed: {exc}', exc_info=True)
 
         # Per-TF activity check — each zone is expired against its own TF's closes.
         # Using M30 closes to expire H4 zones is too aggressive (noise-level moves
@@ -746,10 +835,14 @@ class GoldBot:
     def _push_status(self) -> None:
         zones_summary = [
             {'zone_id': z.zone_id, 'score': z.score,
-             'gp': f'{z.gp_low:.1f}–{z.gp_high:.1f}',
+             'entry_window': f'{z.gp_low:.1f}–{z.gp_high:.1f}',
+             'variant': z.zone_variant,
              'tf': z.tf, 'dir': z.direction}
             for z in self.zones[:5]
         ]
+        armed_zone_obj = next(
+            (z for z in self.zones if z.zone_id == self.bot_state.armed_zone_id), None
+        )
         status = {
             'bot': 'gold_bot',
             'timestamp': datetime.now(timezone.utc).isoformat(),
@@ -760,7 +853,12 @@ class GoldBot:
             'trades_today':   self.trades_today,
             'paper_mode':     self.cfg.get('paper_mode', True),
             'squeeze_ratio':  self.squeeze_ratio,
-            'mt5_positions':  _serialize_open_positions(MAGIC),
+            'mt5_positions':        _serialize_open_positions(MAGIC) or _serialize_paper_trade(self.bot_state),
+            'today_closed_trades': _serialize_closed_trades(MAGIC),
+            'armed_zone_id':      self.bot_state.armed_zone_id,
+            'armed_zone_variant': armed_zone_obj.zone_variant if armed_zone_obj else None,
+            'armed_zone_window':  (f'{armed_zone_obj.gp_low:.1f}–{armed_zone_obj.gp_high:.1f}'
+                                   if armed_zone_obj else None),
         }
         if self.sess_lvls:
             status['touched']          = _touched_pivot_levels(self.sess_lvls)
