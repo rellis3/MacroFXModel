@@ -702,16 +702,17 @@ function initCharts(pA, pB) {
   el('labelA').textContent = pA + ' — Price';
   el('labelB').textContent = pB + ' — Price';
 
-  // Sync x-axis across all 3 charts
-  const sync = (src, ...tgts) => src.timeScale().subscribeVisibleTimeRangeChange(r => {
-    if (S.syncing || !r) return;
-    S.syncing = true;
-    tgts.forEach(t => { try { t.timeScale().setVisibleRange(r); } catch {} });
-    S.syncing = false;
+  // Sync x-axis: candle charts (A, B) drive all three; z-chart follows but never drives
+  // (z has sparse daily points — letting it drive causes whipping back when zoomed in)
+  const allCharts = [S.chartA, S.chartB, S.chartZ];
+  allCharts.forEach((src, si) => {
+    src.timeScale().subscribeVisibleTimeRangeChange(r => {
+      if (S.syncing || !r || si === 2) return;  // index 2 = chartZ, one-directional only
+      S.syncing = true;
+      allCharts.forEach((tgt, ti) => { if (ti !== si) { try { tgt.timeScale().setVisibleRange(r); } catch {} } });
+      S.syncing = false;
+    });
   });
-  sync(S.chartA, S.chartB, S.chartZ);
-  sync(S.chartB, S.chartA, S.chartZ);
-  sync(S.chartZ, S.chartA, S.chartB);
 }
 
 function renderCharts(dispA, dispB, trades, zSeries, cfg) {
@@ -735,22 +736,33 @@ function renderCharts(dispA, dispB, trades, zSeries, cfg) {
   addRef(-cfg.stop_z,  '#ef4444', `-${cfg.stop_z}`);
   addRef(0, '#374160', '0');
 
+  // Snap a Unix-second timestamp to the nearest bar in a display candle array.
+  // Prevents Lightweight Charts from creating phantom time slots for off-grid marker times.
+  function snapTs(tsSec, disp) {
+    if (!disp.length) return tsSec;
+    let lo=0, hi=disp.length-1;
+    while(lo<hi){const m=(lo+hi)>>1; if(disp[m].time<tsSec) lo=m+1; else hi=m;}
+    if(lo>0 && Math.abs(disp[lo-1].time-tsSec) < Math.abs(disp[lo].time-tsSec)) lo--;
+    return disp[lo].time;
+  }
+
   // Trade markers
   const mkA = [], mkB = [];
   const ABBR = { EXIT_Z:'EXIT', STOP_Z:'STOP', SL_A:'SL-A', SL_B:'SL-B', SL_BOTH:'SL', END:'END' };
 
   trades.forEach(t => {
     const col = t.win ? '#00c97d' : '#ef5350';
-    const et  = Math.floor(t.entryMs/1000);
-    const xt  = Math.floor(t.exitMs/1000);
-    const ab  = t.dA === 'LONG' ? ABBR : ABBR;
+    const et  = snapTs(Math.floor(t.entryMs/1000), dispA);
+    const xt  = snapTs(Math.floor(t.exitMs/1000),  dispA);
+    const etB = snapTs(Math.floor(t.entryMs/1000), dispB);
+    const xtB = snapTs(Math.floor(t.exitMs/1000),  dispB);
     mkA.push(
-      { time:et, position: t.dA==='LONG'?'belowBar':'aboveBar', color:col, shape: t.dA==='LONG'?'arrowUp':'arrowDown', text: t.dA==='LONG'?'L':'S' },
-      { time:xt, position: t.dA==='LONG'?'aboveBar':'belowBar', color:col, shape:'circle', text: ABBR[t.why]??t.why }
+      { time:et,  position: t.dA==='LONG'?'belowBar':'aboveBar', color:col, shape: t.dA==='LONG'?'arrowUp':'arrowDown', text: t.dA==='LONG'?'L':'S' },
+      { time:xt,  position: t.dA==='LONG'?'aboveBar':'belowBar', color:col, shape:'circle', text: ABBR[t.why]??t.why }
     );
     mkB.push(
-      { time:et, position: t.dB==='LONG'?'belowBar':'aboveBar', color:col, shape: t.dB==='LONG'?'arrowUp':'arrowDown', text: t.dB==='LONG'?'L':'S' },
-      { time:xt, position: t.dB==='LONG'?'aboveBar':'belowBar', color:col, shape:'circle', text: ABBR[t.why]??t.why }
+      { time:etB, position: t.dB==='LONG'?'belowBar':'aboveBar', color:col, shape: t.dB==='LONG'?'arrowUp':'arrowDown', text: t.dB==='LONG'?'L':'S' },
+      { time:xtB, position: t.dB==='LONG'?'aboveBar':'belowBar', color:col, shape:'circle', text: ABBR[t.why]??t.why }
     );
   });
   mkA.sort((a,b) => a.time-b.time);
@@ -758,9 +770,10 @@ function renderCharts(dispA, dispB, trades, zSeries, cfg) {
   S.seriesA.setMarkers(mkA);
   S.seriesB.setMarkers(mkB);
 
+  // Single fitContent on chartA; sync propagates the same range to B and Z.
+  // Calling fitContent separately on B and Z causes a cascade where the sparser
+  // z-series range overrides the candle range on the final call.
   S.chartA.timeScale().fitContent();
-  S.chartB.timeScale().fitContent();
-  S.chartZ.timeScale().fitContent();
 }
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
@@ -906,13 +919,15 @@ async function loadAndRun() {
                   : recs.find(r => r.corr?.[kRev]!=null) ? kRev : null;
     if (!corrKey) { setSt('err',`No correlation data for ${pA} / ${pB} in range`); el('runBtn').disabled=false; return; }
 
-    // 3 ── Load M1 candles ──────────────────────────────────────────────────
-    setSt('spin', `Loading M1: ${pA}…`, 5);
-    const rawA = await fetchM1Chunked(pairToKey(pA), fromStr, toStr, (ci,ct) => el('pfill').style.width=(5+ci/ct*35)+'%');
+    // 3 ── Load M1 candles (both pairs in parallel — halves wall-clock fetch time) ──
+    setSt('spin', `Loading M1: ${pA} + ${pB} in parallel…`, 5);
+    let progA = 0, progB = 0;
+    const updateProg = () => el('pfill').style.width = (5 + (progA + progB) / 2 * 70) + '%';
+    const [rawA, rawB] = await Promise.all([
+      fetchM1Chunked(pairToKey(pA), fromStr, toStr, (ci,ct) => { progA=ci/ct; updateProg(); }),
+      fetchM1Chunked(pairToKey(pB), fromStr, toStr, (ci,ct) => { progB=ci/ct; updateProg(); }),
+    ]);
     if (!rawA.length) throw new Error(`No M1 data for ${pA}`);
-
-    setSt('spin', `Loading M1: ${pB}…`, 40);
-    const rawB = await fetchM1Chunked(pairToKey(pB), fromStr, toStr, (ci,ct) => el('pfill').style.width=(40+ci/ct*35)+'%');
     if (!rawB.length) throw new Error(`No M1 data for ${pB}`);
 
     // 4 ── Build ts indices ─────────────────────────────────────────────────
