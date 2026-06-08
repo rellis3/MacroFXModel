@@ -220,9 +220,18 @@ pre.code{background:var(--bg4);border:1px solid var(--border);border-radius:8px;
 
     <!-- Signal History -->
     <div class="panel">
-      <div class="panel-hd">
+      <div class="panel-hd" style="flex-wrap:wrap;gap:8px">
         <h2>Signal History</h2>
         <span class="cnt" id="hist-count">0</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--muted)">Account $</span>
+          <input id="hist-acct" type="number" value="10000" min="0" step="1000"
+            style="width:100px;padding:3px 7px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:12px"/>
+          <span style="font-size:11px;color:var(--muted)">× pos</span>
+          <input id="hist-pos" type="number" value="10" min="0.1" max="100" step="1"
+            style="width:55px;padding:3px 7px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:12px"/>
+          <span style="font-size:11px;color:var(--muted)">% → <b id="hist-pos-label" style="color:var(--text)">$1,000</b></span>
+        </div>
       </div>
       <div class="panel-body" style="padding:0;overflow-x:auto">
         <table class="hist-table">
@@ -230,13 +239,19 @@ pre.code{background:var(--bg4);border:1px solid var(--border);border-radius:8px;
             <tr>
               <th>Pair</th>
               <th>Direction</th>
-              <th>Z-Score</th>
+              <th>Z</th>
               <th>Score</th>
-              <th>Regime</th>
               <th>Status</th>
               <th>Entry</th>
               <th>Exit</th>
-              <th>P&amp;L</th>
+              <th title="Leg A entry price">In A</th>
+              <th title="Leg A exit price">Out A</th>
+              <th title="Leg A P&amp;L %">Δ A</th>
+              <th title="Leg B entry price">In B</th>
+              <th title="Leg B exit price">Out B</th>
+              <th title="Leg B P&amp;L %">Δ B</th>
+              <th title="Combined P&amp;L %">P&amp;L</th>
+              <th title="Monetary P&amp;L">$ P&amp;L</th>
             </tr>
           </thead>
           <tbody id="hist-tbody"></tbody>
@@ -535,6 +550,8 @@ function _slInfo(pair, direction, slAtrMult) {
 
 // ── Init ───────────────────────────────────────────────────────────────────
 (async function init() {
+  document.getElementById('hist-acct').addEventListener('input', _updateHistDollar);
+  document.getElementById('hist-pos').addEventListener('input', _updateHistDollar);
   await Promise.all([loadSignals(), loadConfig(), loadTgConfig(), loadPrices(), loadScoreboard()]);
   _refreshTimer = setInterval(async () => {
     await loadSignals();
@@ -678,6 +695,28 @@ function renderSignals() {
   grid.innerHTML = active.map(s => signalCard(s, true)).join('');
 }
 
+function _fmtPx(p) {
+  if (p == null) return '—';
+  if (p >= 1000) return p.toFixed(2);
+  if (p >= 100)  return p.toFixed(3);
+  if (p >= 10)   return p.toFixed(4);
+  return p.toFixed(5);
+}
+function _fmtPnlPct(pct) {
+  if (pct == null) return `<span style="color:var(--muted)">—</span>`;
+  const col = pct >= 0 ? 'var(--green)' : 'var(--red)';
+  return `<span style="font-family:monospace;color:${col}">${pct>=0?'+':''}${pct.toFixed(3)}%</span>`;
+}
+function _fmtDollar(pnlc) {
+  const acct = parseFloat(document.getElementById('hist-acct')?.value) || 0;
+  const pos  = parseFloat(document.getElementById('hist-pos')?.value)  || 0;
+  if (!acct || !pos || pnlc == null) return `<span style="color:var(--muted)">—</span>`;
+  const dollarPnl = acct * pos / 100 * pnlc / 100;
+  const col = dollarPnl >= 0 ? 'var(--green)' : 'var(--red)';
+  const sign = dollarPnl >= 0 ? '+' : '-';
+  return `<span style="font-family:monospace;color:${col};font-weight:600">${sign}$${Math.abs(dollarPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+}
+
 function renderHistory() {
   const all = [..._signals].reverse();
   const tbody = document.getElementById('hist-tbody');
@@ -691,28 +730,40 @@ function renderHistory() {
   }
   empty.style.display = 'none';
   tbody.innerHTML = all.slice(0, 50).map(s => {
-    const z    = s.z_score >= 0 ? `+${s.z_score}` : s.z_score;
-    const zCol = Math.abs(s.z_score) > s.stop_z ? 'var(--red)' : Math.abs(s.z_score) > (s.entry_z??2) ? 'var(--yellow)' : 'var(--muted)';
+    const z      = s.z_score >= 0 ? `+${s.z_score}` : s.z_score;
+    const zCol   = Math.abs(s.z_score) > (s.stop_z??3.5) ? 'var(--red)' : Math.abs(s.z_score) > (s.entry_z??2) ? 'var(--yellow)' : 'var(--muted)';
     const entryDt = s.entry_time ? new Date(s.entry_time).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
     const exitDt  = s.exit_time  ? new Date(s.exit_time).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
-    const pnl = s.pnl_c_pct;
-    const pnlHtml = (pnl != null)
-      ? `<span style="font-family:monospace;color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${pnl.toFixed(3)}%</span>`
-      : `<span style="color:var(--muted)">—</span>`;
     const durMs  = s.exit_time && s.entry_time ? new Date(s.exit_time) - new Date(s.entry_time) : null;
     const durStr = durMs != null ? (durMs < 3600000 ? `${Math.round(durMs/60000)}m` : `${(durMs/3600000).toFixed(1)}h`) : '';
+    const isClosed = s.status === 'EXITED' || s.status === 'STOPPED';
     return `<tr>
-      <td style="font-weight:600">${s.pair_a}<span style="color:var(--muted)"> / </span>${s.pair_b}</td>
-      <td><span style="color:${s.direction_a==='LONG'?'var(--green)':'var(--red)'}">${s.direction_a}</span> / <span style="color:${s.direction_b==='LONG'?'var(--green)':'var(--red)'}">${s.direction_b}</span></td>
+      <td style="font-weight:600;white-space:nowrap">${s.pair_a}<span style="color:var(--muted)"> / </span>${s.pair_b}</td>
+      <td style="white-space:nowrap"><span style="color:${s.direction_a==='LONG'?'var(--green)':'var(--red)'}">${s.direction_a}</span><span style="color:var(--muted)"> / </span><span style="color:${s.direction_b==='LONG'?'var(--green)':'var(--red)'}">${s.direction_b}</span></td>
       <td style="font-family:monospace;color:${zCol}">${z}</td>
-      <td style="font-family:monospace">${s.hedge_score}</td>
-      <td><span style="color:var(--muted)">${s.regime||'—'}</span></td>
+      <td style="font-family:monospace;font-size:11px">${s.hedge_score}</td>
       <td><span class="status-pill ${s.status}">${s.status}</span></td>
-      <td style="color:var(--muted);font-size:11px">${entryDt}</td>
-      <td style="color:var(--muted);font-size:11px">${exitDt}${durStr ? `<span style="color:var(--muted);margin-left:4px;font-size:10px">${durStr}</span>` : ''}</td>
-      <td style="font-size:11px">${pnlHtml}</td>
+      <td style="color:var(--muted);font-size:11px;white-space:nowrap">${entryDt}</td>
+      <td style="color:var(--muted);font-size:11px;white-space:nowrap">${exitDt}${durStr ? `<span style="color:var(--faint);margin-left:4px;font-size:10px">${durStr}</span>` : ''}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${isClosed && s.entry_price_a != null ? _fmtPx(s.entry_price_a) : '—'}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${isClosed && s.exit_price_a  != null ? _fmtPx(s.exit_price_a)  : '—'}</td>
+      <td style="font-size:11px">${isClosed ? _fmtPnlPct(s.pnl_a_pct) : '<span style="color:var(--muted)">…</span>'}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${isClosed && s.entry_price_b != null ? _fmtPx(s.entry_price_b) : '—'}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${isClosed && s.exit_price_b  != null ? _fmtPx(s.exit_price_b)  : '—'}</td>
+      <td style="font-size:11px">${isClosed ? _fmtPnlPct(s.pnl_b_pct) : '<span style="color:var(--muted)">…</span>'}</td>
+      <td style="font-size:11px">${isClosed ? _fmtPnlPct(s.pnl_c_pct) : '<span style="color:var(--muted)">…</span>'}</td>
+      <td style="font-size:11px">${isClosed ? _fmtDollar(s.pnl_c_pct) : '<span style="color:var(--muted)">…</span>'}</td>
     </tr>`;
   }).join('');
+}
+
+function _updateHistDollar() {
+  const acct = parseFloat(document.getElementById('hist-acct')?.value) || 0;
+  const pos  = parseFloat(document.getElementById('hist-pos')?.value)  || 0;
+  const posSize = acct * pos / 100;
+  const lbl = document.getElementById('hist-pos-label');
+  if (lbl) lbl.textContent = '$' + posSize.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  renderHistory();
 }
 
 function signalCard(s, showAck) {
