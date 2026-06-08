@@ -1944,9 +1944,86 @@ function computeHMMFeatures(bars, sym) {
   };
 }
 
+// ── Web Worker source for parallel Baum-Welch ────────────────────────────────
+// All required functions are inlined so the worker is fully self-contained.
+// Workers are created on-demand and terminated after use.
+const _HMM_WORKER_SRC = `
+'use strict';
+const BW_MAX_ITER=20,BW_MIN_VAR=0.05;
+const DEFAULT_MEANS=[[1,0,.7],[-1,0,.7],[0,0,-1],[0,.8,-.8]];
+function gaussLLV(x,m,v){return-0.5*(x-m)**2/Math.max(v,1e-6)-0.5*Math.log(Math.max(v,1e-6));}
+function lseK(a){let m=a[0];for(let i=1;i<a.length;i++)if(a[i]>m)m=a[i];let s=0;for(const v of a)s+=Math.exp(v-m);return m+Math.log(s);}
+function buildDefaultTransMatrix(s){const K=4,o=(1-s)/(K-1);return Array.from({length:K},(_,i)=>Array.from({length:K},(_,j)=>j===i?s:o));}
+function baumWelchStep(tZ,vZ,aZ,sb,eb,K,means,vars,A){
+  const T=eb-sb,F=3;
+  const logA=A.map(r=>r.map(p=>Math.log(Math.max(p,1e-300))));
+  const logE=new Float64Array(T*K);
+  for(let t=0;t<T;t++){const o=[tZ[sb+t],vZ[sb+t],aZ[sb+t]];for(let k=0;k<K;k++){let ll=0;for(let f=0;f<F;f++)ll+=gaussLLV(o[f],means[k][f],vars[k][f]);logE[t*K+k]=ll;}}
+  const la=new Float64Array(T*K),lp=Math.log(1/K);
+  for(let k=0;k<K;k++)la[k]=lp+logE[k];
+  for(let t=1;t<T;t++)for(let j=0;j<K;j++){const v=new Float64Array(K);for(let i=0;i<K;i++)v[i]=la[(t-1)*K+i]+logA[i][j];la[t*K+j]=lseK(v)+logE[t*K+j];}
+  const ll=lseK(Array.from({length:K},(_,k)=>la[(T-1)*K+k]));
+  const sx=new Float64Array(K*K),sg=new Float64Array(K),so=new Float64Array(K*F),so2=new Float64Array(K*F);
+  let lb=new Float64Array(K);
+  {const o=[tZ[sb+T-1],vZ[sb+T-1],aZ[sb+T-1]];for(let k=0;k<K;k++){const g=Math.exp(la[(T-1)*K+k]+lb[k]-ll);sg[k]+=g;for(let f=0;f<F;f++){so[k*F+f]+=g*o[f];so2[k*F+f]+=g*o[f]*o[f];}}}
+  for(let t=T-2;t>=0;t--){
+    const o=[tZ[sb+t],vZ[sb+t],aZ[sb+t]],nb=new Float64Array(K);
+    for(let i=0;i<K;i++){const bv=new Float64Array(K);for(let j=0;j<K;j++){const lx=la[t*K+i]+logA[i][j]+logE[(t+1)*K+j]+lb[j];sx[i*K+j]+=Math.exp(lx-ll);bv[j]=logA[i][j]+logE[(t+1)*K+j]+lb[j];}nb[i]=lseK(bv);}
+    lb=nb;
+    for(let k=0;k<K;k++){const g=Math.exp(la[t*K+k]+lb[k]-ll);sg[k]+=g;for(let f=0;f<F;f++){so[k*F+f]+=g*o[f];so2[k*F+f]+=g*o[f]*o[f];}}
+  }
+  const nm=Array.from({length:K},()=>new Array(F).fill(0)),nv=Array.from({length:K},()=>new Array(F).fill(0)),na=Array.from({length:K},()=>new Array(K).fill(0));
+  for(let i=0;i<K;i++){const n=Math.max(sg[i],1e-10);let r=0;for(let j=0;j<K;j++)r+=sx[i*K+j];for(let j=0;j<K;j++)na[i][j]=r>1e-10?sx[i*K+j]/r:A[i][j];for(let f=0;f<F;f++){const m=so[i*F+f]/n;nm[i][f]=m;nv[i][f]=Math.max(BW_MIN_VAR,so2[i*F+f]/n-m*m);}}
+  return{means:nm,vars:nv,A:na,logLik:ll};
+}
+function alignHMMStates(means,vars,A,ref){
+  const K=means.length,F=means[0].length;
+  function perms(a){if(a.length<=1)return[a.slice()];const r=[];for(let i=0;i<a.length;i++){const rest=a.filter((_,j)=>j!==i);for(const p of perms(rest))r.push([a[i],...p]);}return r;}
+  const w=[2,.5,1];let bp=null,bc=Infinity;
+  for(const p of perms(Array.from({length:K},(_,i)=>i))){let c=0;for(let i=0;i<K;i++)for(let f=0;f<F;f++)c+=w[f]*(means[p[i]][f]-ref[i][f])**2;if(c<bc){bc=c;bp=p;}}
+  const rm=bp.map(p=>[...means[p]]),rv=bp.map(p=>[...vars[p]]),ra=Array.from({length:K},()=>new Array(K).fill(0));
+  for(let i=0;i<K;i++)for(let j=0;j<K;j++)ra[i][j]=A[bp[i]][bp[j]];
+  return{means:rm,vars:rv,A:ra};
+}
+self.onmessage=function(e){
+  const{tZ,vZ,aZ,startBar,endBar,selfProb}=e.data;
+  const tz=new Float64Array(tZ),vz=new Float64Array(vZ),az=new Float64Array(aZ);
+  const K=4;
+  let means=DEFAULT_MEANS.map(m=>[...m]),vars=Array.from({length:K},()=>[1,1,1]),A=buildDefaultTransMatrix(selfProb),prevLL=-Infinity;
+  for(let iter=0;iter<BW_MAX_ITER;iter++){const r=baumWelchStep(tz,vz,az,startBar,endBar,K,means,vars,A);means=r.means;vars=r.vars;A=r.A;if(Math.abs(r.logLik-prevLL)<1)break;prevLL=r.logLik;}
+  const a=alignHMMStates(means,vars,A,DEFAULT_MEANS);
+  self.postMessage({means:a.means,vars:a.vars,transMatrix:a.A});
+};
+`;
+
+let _hmmWorkerUrl = null;
+function getHMMWorkerUrl() {
+  if (!_hmmWorkerUrl)
+    _hmmWorkerUrl = URL.createObjectURL(new Blob([_HMM_WORKER_SRC], {type: 'application/javascript'}));
+  return _hmmWorkerUrl;
+}
+
+// Spawn a Web Worker to train one Baum-Welch window.
+// Slices of tZ/vZ/aZ up to endBar are transferred (zero-copy) to the worker.
+function trainInWorker(tZ, vZ, aZ, startBar, endBar, sym) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(getHMMWorkerUrl());
+    const {selfProb} = getHMMV2Cfg(sym);
+    // slice(0, endBar) creates new Float64Array backed by a new ArrayBuffer
+    const tzSlice = tZ.slice(0, endBar);
+    const vzSlice = vZ.slice(0, endBar);
+    const azSlice = aZ.slice(0, endBar);
+    worker.onmessage = e => { resolve(e.data); worker.terminate(); };
+    worker.onerror   = e => { reject(e.message || e); worker.terminate(); };
+    worker.postMessage(
+      {tZ: tzSlice.buffer, vZ: vzSlice.buffer, aZ: azSlice.buffer, startBar, endBar, selfProb},
+      [tzSlice.buffer, vzSlice.buffer, azSlice.buffer]  // zero-copy transfer
+    );
+  });
+}
+
 async function buildWalkForwardSchedule(bars, sym, features, trainDays, retrainEvery, statusFn) {
   const {tZ, vZ, aZ, warmup} = features;
-  const schedule  = [];
   const secPerDay = 86400;
   const t0 = bars[warmup]?.time ?? 0;
 
@@ -1959,28 +2036,30 @@ async function buildWalkForwardSchedule(bars, sym, features, trainDays, retrainE
 
   const trainEndBar = barAtOffset(trainDays);
 
-  statusFn(`Training HMM: ${trainDays}d IS window (${trainEndBar - warmup} bars)…`);
-  await new Promise(r => requestAnimationFrame(r));
-
-  const firstParams = trainHMMParams(tZ, vZ, aZ, warmup, trainEndBar, sym);
-  schedule.push({startBar: 0, params: firstParams});
-
+  // Build all window definitions upfront so we can launch them in parallel
+  // Each entry: {startBar (when to switch params), trainEnd (last bar to train on)}
+  const windows = [{startBar: 0, trainEnd: trainEndBar}];
   if (retrainEvery > 0 && trainEndBar < bars.length) {
-    let retrainNum = 1;
+    let n = 1;
     while (true) {
-      const oosStart  = barAtOffset(trainDays + (retrainNum - 1) * retrainEvery);
-      const windowEnd = barAtOffset(trainDays +  retrainNum      * retrainEvery);
-      if (oosStart >= bars.length) break;
-      const totalDays = trainDays + (retrainNum - 1) * retrainEvery;
-      statusFn(`Walk-fwd retrain ${retrainNum}: expanding IS to ${totalDays}d (${oosStart - warmup} bars)…`);
-      await new Promise(r => requestAnimationFrame(r));
-      const params = trainHMMParams(tZ, vZ, aZ, warmup, oosStart, sym);
-      schedule.push({startBar: oosStart, params});
-      retrainNum++;
-      if (windowEnd >= bars.length) break;
+      const boundary = barAtOffset(trainDays + n * retrainEvery);
+      if (boundary >= bars.length) break;
+      windows.push({startBar: boundary, trainEnd: boundary});
+      n++;
+      if (barAtOffset(trainDays + (n) * retrainEvery) >= bars.length) break;
     }
   }
-  return schedule;
+
+  const plural = windows.length > 1 ? 's' : '';
+  statusFn(`Training HMM: ${windows.length} window${plural} in parallel…`);
+  await new Promise(r => requestAnimationFrame(r));
+
+  // All windows train simultaneously in Web Workers
+  const results = await Promise.all(
+    windows.map(w => trainInWorker(tZ, vZ, aZ, warmup, w.trainEnd, sym))
+  );
+
+  return windows.map((w, i) => ({startBar: w.startBar, params: results[i]}));
 }
 
 // ── Per-bar HMM forward algorithms ───────────────────────────────────────────
