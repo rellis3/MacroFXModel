@@ -650,6 +650,12 @@ async function computeHedgeSignals(force = false) {
     const cfg    = cfgRaw ? { ...DEFAULT_HEDGE_CFG, ...JSON.parse(cfgRaw) } : { ...DEFAULT_HEDGE_CFG };
     if (!cfg.enabled && !force) return { status: 'disabled' };
 
+    // Ensure live prices exist for ALL corr pairs, not just bot-monitored pairs.
+    // fetchAllPrices normally runs only for the bot's pair list — corr pairs like
+    // EURGBP, EURJPY, AUDJPY, SPX500_USD etc. may be missing without this call.
+    const corrPricePairs = (data.pairs || []).map(_pairToSlash);
+    await fetchAllPrices(corrPricePairs).catch(() => {});
+
     // Build rolling stats per pair-pair key
     const sums = {}, sums2 = {}, cnts = {}, lastCorr = {}, lastBeta = {};
     for (const rec of records) {
@@ -748,38 +754,43 @@ async function computeHedgeSignals(force = false) {
         continue; // active signal managed — skip new-entry check
       }
 
-      // ── New entry: requires spread_z available and above threshold ─────────
-      if (spreadResult === null) continue;          // history still building — no entry
-      if (Math.abs(spreadResult.z) < cfg.entry_z) continue;
+      // ── New entry: use spread_z if warmed up, fall back to corr_z ────────────
+      // Mirrors the exit logic: spreadResult is null until _spreadWelford has ≥10
+      // observations (resets on restart). Corr_z from full history is always available
+      // and is equivalent — once spread Welford warms up it takes over automatically.
+      const entryZ = spreadResult !== null ? spreadResult.z : z;
+      if (Math.abs(entryZ) < cfg.entry_z) continue;
       if (score < cfg.min_score) continue;
 
-      // Direction: sign of spread deviation (same as z sign)
-      // spread_dev > 0 → A overvalued vs B → SHORT A, LONG B
-      const dirA = spreadResult.dev >= 0 ? 'SHORT' : 'LONG';
-      const dirB = spreadResult.dev >= 0 ? 'LONG'  : 'SHORT';
+      // Direction: spread_dev sign if available, else corr_z sign (negative = pairs
+      // have diverged below mean → expect reversion up → LONG A, SHORT B)
+      const devPositive = spreadResult !== null ? spreadResult.dev >= 0 : z > 0;
+      const dirA = devPositive ? 'SHORT' : 'LONG';
+      const dirB = devPositive ? 'LONG'  : 'SHORT';
 
       const sig = {
         id: `${pa}-${pb}-${Date.now()}`,
         schema_version: 2,
         pair_a: pa, pair_b: pb,
         direction_a: dirA, direction_b: dirB,
-        z_score: +spreadResult.z.toFixed(3),
+        z_score: +entryZ.toFixed(3),
         hedge_score: score,
         corr_current: +curCorr.toFixed(4),
         corr_mean: +mu.toFixed(4),
         corr_std: +std.toFixed(4),
         beta_vix_a: betaA !== null ? +betaA.toFixed(4) : null,
         beta_vix_b: betaB !== null ? +betaB.toFixed(4) : null,
+        z_source: spreadResult !== null ? 'spread' : 'corr',
         regime,
         status: 'ACTIVE',
         entry_time: now,
-        entry_z: +spreadResult.z.toFixed(3),
+        entry_z: +entryZ.toFixed(3),
         exit_z_target: cfg.exit_z,
         stop_z: cfg.stop_z,
         last_updated: now,
         entry_price_a: (() => { const p = state.prices[_pairToSlash(pa)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pa)] ?? 5) : null; })(),
         entry_price_b: (() => { const p = state.prices[_pairToSlash(pb)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pb)] ?? 5) : null; })(),
-        spread_dev: +spreadResult.dev.toFixed(6),
+        spread_dev: spreadResult !== null ? +spreadResult.dev.toFixed(6) : null,
       };
       newSigs.push(sig);
       sigData.signals.push(sig);
