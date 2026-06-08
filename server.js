@@ -693,8 +693,12 @@ async function computeHedgeSignals() {
       if (Math.abs(z) < cfg.entry_z) continue;
       if (score < cfg.min_score) continue;
 
-      const dirA = (betaA ?? 0) >= 0 ? 'LONG'  : 'SHORT';
-      const dirB = (betaB ?? 0) >= 0 ? 'LONG'  : 'SHORT';
+      // Direction flips based on z sign:
+      //   z > 0 = pairs over-converged → bet on divergence (beta sign drives which leg is which)
+      //   z < 0 = pairs over-diverged  → bet on convergence (opposite legs)
+      const zSign = z > 0 ? 1 : -1;
+      const dirA = ((betaA ?? 0) * zSign) >= 0 ? 'LONG'  : 'SHORT';
+      const dirB = ((betaB ?? 0) * zSign) >= 0 ? 'LONG'  : 'SHORT';
 
       const sig = {
         id: `${pa}-${pb}-${Date.now()}`,

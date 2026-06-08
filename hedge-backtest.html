@@ -673,8 +673,9 @@ function simulate(corrRecs, corrKey, pA, pB, cA, tA, cB, tB, cfg) {
       if (score >= cfg.min_score) {
         const bA = barAtOrAfter(rec.ts, cA, tA), bB = barAtOrAfter(rec.ts, cB, tB);
         if (bA && bB) {
-          const dA  = betaA >= 0 ? 'LONG' : 'SHORT';
-          const dB  = betaB >= 0 ? 'LONG' : 'SHORT';
+          const zSign = z > 0 ? 1 : -1;
+          const dA  = (betaA * zSign) >= 0 ? 'LONG' : 'SHORT';
+          const dB  = (betaB * zSign) >= 0 ? 'LONG' : 'SHORT';
           const aA  = atr(cA, tA, rec.ts, 70) ?? bA.close*0.002;
           const aB  = atr(cB, tB, rec.ts, 70) ?? bB.close*0.002;
           pos = {
