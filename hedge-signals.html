@@ -256,7 +256,7 @@ pre.code{background:var(--bg4);border:1px solid var(--border);border-radius:8px;
           </div>
           <div class="cfg-row">
             <label>Min Hedge Score <span style="color:var(--muted);font-size:11px">(0–1)</span></label>
-            <input type="number" id="cfg-min-score" value="0.45" step="0.05" min="0" max="1">
+            <input type="number" id="cfg-min-score" value="0.1" step="0.05" min="-1" max="1">
           </div>
         </div>
 
@@ -535,7 +535,7 @@ function applyConfigToUI(cfg) {
   document.getElementById('cfg-entry-z').value   = cfg.entry_z   ?? 2.0;
   document.getElementById('cfg-exit-z').value    = cfg.exit_z    ?? 0.5;
   document.getElementById('cfg-stop-z').value    = cfg.stop_z    ?? 3.5;
-  document.getElementById('cfg-min-score').value = cfg.min_score ?? 0.45;
+  document.getElementById('cfg-min-score').value = cfg.min_score ?? 0.1;
   const tog = document.getElementById('enabled-toggle');
   tog.classList.toggle('on', cfg.enabled !== false);
   // Regime chips
