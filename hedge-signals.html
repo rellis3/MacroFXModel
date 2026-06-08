@@ -159,6 +159,24 @@ pre.code{background:var(--bg4);border:1px solid var(--border);border-radius:8px;
 .schema-table td:nth-child(2){color:var(--yellow);font-family:monospace;font-size:10px}
 .schema-table tr:last-child td{border-bottom:none}
 
+/* ── Hedge Scoreboard ── */
+.sb-table{width:100%;border-collapse:collapse;font-size:12px}
+.sb-table th{text-align:left;padding:5px 8px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap}
+.sb-table td{padding:5px 8px;border-bottom:1px solid rgba(42,51,71,.35);white-space:nowrap;vertical-align:middle}
+.sb-table tr:last-child td{border-bottom:none}
+.sb-table tr:hover td{background:var(--bg3)}
+.sb-score{display:inline-block;padding:1px 6px;border-radius:4px;font-family:monospace;font-size:11px;font-weight:700}
+.sb-score.hi{background:rgba(34,197,94,.15);color:var(--green)}
+.sb-score.md{background:rgba(245,158,11,.12);color:var(--yellow)}
+.sb-score.lo{background:rgba(100,116,139,.15);color:var(--muted)}
+.sb-z{font-family:monospace;font-size:11px}
+.sb-z.hot{color:var(--red);font-weight:700}
+.sb-z.warm{color:var(--yellow);font-weight:600}
+.sb-z.cool{color:var(--muted)}
+.sb-pairs{font-weight:600;font-size:12px}
+.sb-pairs small{color:var(--muted);font-weight:400;font-size:10px}
+.sb-active-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--yellow);margin-right:4px;vertical-align:middle}
+
 /* ── Misc ── */
 .divider{border:none;border-top:1px solid var(--border);margin:16px 0}
 .alert-bar{padding:8px 14px;border-radius:8px;font-size:12px;margin-bottom:12px;display:none}
@@ -448,6 +466,30 @@ MT5_PAIRS = {
       </div>
     </div>
 
+    <!-- Hedge Scoreboard -->
+    <div class="panel" style="margin-bottom:16px">
+      <div class="panel-hd">
+        <h2>Hedge Scoreboard</h2>
+        <span class="cnt" id="sb-count">—</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--muted)">higher = better hedge quality</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="sb-table">
+          <thead>
+            <tr>
+              <th>Pair-Pair</th>
+              <th>Score</th>
+              <th>Corr</th>
+              <th>Z Now</th>
+            </tr>
+          </thead>
+          <tbody id="sb-tbody">
+            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px;font-size:11px">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div><!-- /right -->
 
 </div><!-- /page -->
@@ -455,7 +497,7 @@ MT5_PAIRS = {
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
 let _signals = [], _cfg = {}, _refreshTimer = null;
-let _prices = {}, _vol = {};
+let _prices = {}, _vol = {}, _alertData = null;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function _pairToSlash(sym) {
@@ -492,8 +534,12 @@ function _slInfo(pair, direction, slAtrMult) {
 
 // ── Init ───────────────────────────────────────────────────────────────────
 (async function init() {
-  await Promise.all([loadSignals(), loadConfig(), loadTgConfig(), loadPrices()]);
-  _refreshTimer = setInterval(async () => { await loadSignals(); await loadPrices(); }, 60_000);
+  await Promise.all([loadSignals(), loadConfig(), loadTgConfig(), loadPrices(), loadScoreboard()]);
+  _refreshTimer = setInterval(async () => {
+    await loadSignals();
+    await loadPrices();
+    await loadScoreboard();
+  }, 60_000);
 })();
 
 // ── Data loading ───────────────────────────────────────────────────────────
@@ -529,6 +575,70 @@ async function loadPrices() {
     _vol    = d.vol    || {};
     renderSignals();
   } catch {}
+}
+
+async function loadScoreboard() {
+  try {
+    _alertData = await fetch('/api/hedge-alerts').then(r => r.json());
+    renderScoreboard();
+  } catch {}
+}
+
+function _hedgeScore(corr, bA, bB) {
+  return +((-corr * 0.7) + (Math.min(Math.abs(((bA??0)-(bB??0)))/2, 1) * 0.3)).toFixed(4);
+}
+
+function renderScoreboard() {
+  if (!_alertData) return;
+  const { last_corr, avg_corr, corr_std, last_betas, pairs = [] } = _alertData;
+  if (!last_corr) return;
+
+  const rows = [];
+  const activePairs = new Set(_signals.filter(s => s.status === 'ACTIVE').map(s => `${s.pair_a}_${s.pair_b}`));
+
+  for (const [key, curCorr] of Object.entries(last_corr)) {
+    const mu  = avg_corr?.[key];
+    const std = corr_std?.[key];
+    if (mu == null || std == null || std < 0.01) continue;
+    const z = (curCorr - mu) / std;
+
+    let pA = null, pB = null;
+    for (const p of pairs) {
+      if (key.startsWith(p + '_')) { pA = p; pB = key.slice(p.length + 1); break; }
+    }
+    if (!pA || !pB || !pairs.includes(pB)) continue;
+
+    const betaA = last_betas?.[pA]?.vix ?? 0;
+    const betaB = last_betas?.[pB]?.vix ?? 0;
+    const score = _hedgeScore(curCorr, betaA, betaB);
+    const isActive = activePairs.has(`${pA}_${pB}`) || activePairs.has(`${pB}_${pA}`);
+
+    rows.push({ pA, pB, score, corr: curCorr, z, isActive });
+  }
+
+  rows.sort((a, b) => b.score - a.score);
+
+  document.getElementById('sb-count').textContent = rows.length;
+
+  const tbody = document.getElementById('sb-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px;font-size:11px">No corr data yet</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.slice(0, 30).map(r => {
+    const scoreCls = r.score >= 0.5 ? 'hi' : r.score >= 0.2 ? 'md' : 'lo';
+    const absZ = Math.abs(r.z);
+    const zCls = absZ >= 2.5 ? 'hot' : absZ >= 1.5 ? 'warm' : 'cool';
+    const zStr = (r.z >= 0 ? '+' : '') + r.z.toFixed(2);
+    const dot  = r.isActive ? `<span class="sb-active-dot" title="Active signal"></span>` : '';
+    return `<tr>
+      <td class="sb-pairs">${dot}${r.pA} <small>/</small> ${r.pB}</td>
+      <td><span class="sb-score ${scoreCls}">${r.score.toFixed(3)}</span></td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${r.corr.toFixed(3)}</td>
+      <td class="sb-z ${zCls}">${zStr}σ</td>
+    </tr>`;
+  }).join('');
 }
 
 function applyConfigToUI(cfg) {
