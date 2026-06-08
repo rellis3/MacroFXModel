@@ -211,8 +211,20 @@ pre.code{background:var(--bg4);border:1px solid var(--border);border-radius:8px;
         <span style="margin-left:auto;font-size:11px;color:var(--muted)">Auto-refresh every 60s</span>
       </div>
       <div class="panel-body">
-        <div class="alert-bar info" id="no-data-bar">
-          No corr_history.json yet — run a correlation history build first (takes ~3 min). Signals will appear automatically once data is available.
+        <div class="alert-bar info" id="no-data-bar" style="flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>No correlation history yet — build it first (~3 min). Signals appear automatically once complete.</span>
+            <button id="build-corr-btn" onclick="triggerCorrBuild()" style="flex-shrink:0;padding:5px 14px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:600;cursor:pointer">Build Now</button>
+          </div>
+          <div id="corr-progress-bar" style="display:none;flex-direction:column;gap:4px">
+            <div style="display:flex;justify-content:space-between;font-size:11px">
+              <span id="corr-progress-msg" style="color:var(--muted)">Starting…</span>
+              <span id="corr-progress-pct" style="color:var(--text);font-family:monospace">0%</span>
+            </div>
+            <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden">
+              <div id="corr-progress-fill" style="height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width .4s"></div>
+            </div>
+          </div>
         </div>
         <div class="sig-grid" id="active-signals"></div>
       </div>
@@ -561,14 +573,52 @@ function _slInfo(pair, direction, slAtrMult) {
 })();
 
 // ── Data loading ───────────────────────────────────────────────────────────
+let _noDataStatus = false;
 async function loadSignals() {
   try {
     const d = await fetch('/api/hedge-signals').then(r => r.json());
+    _noDataStatus = d.status === 'no_data';
     _signals = d.signals || [];
     updateLastRun(d.last_run);
     renderSignals();
     renderHistory();
   } catch { updateLastRun(null); }
+}
+
+// ── Corr history build ──────────────────────────────────────────────────────
+let _corrPollTimer = null;
+async function triggerCorrBuild() {
+  const btn = document.getElementById('build-corr-btn');
+  btn.disabled = true; btn.textContent = 'Building…';
+  try {
+    const r = await fetch('/api/corr-history/rebuild', { method: 'POST' }).then(x => x.json());
+    if (!r.ok) { alert(r.message || 'Build failed'); btn.disabled = false; btn.textContent = 'Build Now'; return; }
+    document.getElementById('corr-progress-bar').style.display = 'flex';
+    _pollCorrProgress();
+  } catch(e) { alert('Error: ' + e.message); btn.disabled = false; btn.textContent = 'Build Now'; }
+}
+async function _pollCorrProgress() {
+  clearTimeout(_corrPollTimer);
+  try {
+    const p = await fetch('/api/corr-history/progress').then(r => r.json());
+    const pct = p.pct ?? 0;
+    const msg = p.msg || (p.running ? 'Building…' : 'Done');
+    document.getElementById('corr-progress-msg').textContent  = msg;
+    document.getElementById('corr-progress-pct').textContent  = pct + '%';
+    document.getElementById('corr-progress-fill').style.width = pct + '%';
+    if (p.step === 'error') {
+      document.getElementById('corr-progress-msg').textContent = '⚠ ' + (p.error || 'Build failed');
+      document.getElementById('build-corr-btn').disabled = false;
+      document.getElementById('build-corr-btn').textContent = 'Retry';
+    } else if (p.running) {
+      _corrPollTimer = setTimeout(_pollCorrProgress, 2500);
+    } else {
+      document.getElementById('corr-progress-fill').style.width = '100%';
+      document.getElementById('corr-progress-msg').textContent  = 'Complete — loading signals…';
+      document.getElementById('corr-progress-pct').textContent  = '100%';
+      setTimeout(() => loadSignals(), 1500);
+    }
+  } catch { _corrPollTimer = setTimeout(_pollCorrProgress, 3000); }
 }
 
 async function loadConfig() {
@@ -680,7 +730,7 @@ function renderSignals() {
   const bar = document.getElementById('no-data-bar');
   const grid = document.getElementById('active-signals');
 
-  if (_signals.length === 0) {
+  if (_noDataStatus) {
     bar.style.display = 'flex';
     grid.innerHTML = '';
     return;
