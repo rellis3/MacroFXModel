@@ -340,7 +340,7 @@ const CORR_FACTOR_PROXIES = {
 const CORR_HISTORY_PATH  = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'corr_history.json');
 const HEDGE_SIGNALS_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bot', 'data', 'hedge_signals.json');
 const HEDGE_SIGNAL_CFG_KEY = 'hedge_signal_cfg';
-const CORR_STALE_MS  = 7 * 24 * 60 * 60 * 1000;  // rebuild if older than 7 days
+const CORR_STALE_MS  = 6 * 60 * 60 * 1000;  // rebuild if older than 6 hours
 const CORR_WINDOW    = 60;   // H4 bars per rolling window (10 trading days)
 const CORR_STEP      = 6;    // snapshot every 6 bars ≈ 1 per day
 const CORR_YEARS     = 5;
@@ -581,9 +581,9 @@ const DEFAULT_HEDGE_CFG = {
   entry_z: 2.0,
   exit_z: 0.5,
   stop_z: 3.5,
-  min_score: 0.45,
+  min_score: 0.1,
   allowed_regimes: ['BEAR', 'RANGE', 'BULL'],
-  check_interval_min: 30,
+  check_interval_min: 15,
 };
 let _hedgeSigRunning = false;
 
@@ -3171,6 +3171,35 @@ app.post('/api/hedge-signals/check', (_req, res) => {
   res.json({ ok: true, message: 'Signal scan started' });
 });
 
+// List R2 bucket contents under a prefix — useful to confirm which M1 parquets are uploaded
+app.get('/api/r2/list', async (req, res) => {
+  const prefix = (req.query.prefix ?? 'm1') + '/';
+  try {
+    if (!process.env.R2_ACCESS_KEY || !process.env.R2_SECRET_KEY) {
+      return res.json({ ok: false, error: 'R2 credentials not configured (R2_ACCESS_KEY / R2_SECRET_KEY)' });
+    }
+    const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+    const r2 = new S3Client({
+      endpoint:    process.env.R2_ENDPOINT    || 'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com',
+      region:      'auto',
+      credentials: { accessKeyId: process.env.R2_ACCESS_KEY, secretAccessKey: process.env.R2_SECRET_KEY },
+      requestHandler: { requestTimeout: 10_000 },
+    });
+    const bucket = process.env.R2_BUCKET || 'r2-storage';
+    let files = [], token;
+    do {
+      const cmd  = new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, MaxKeys: 1000, ContinuationToken: token });
+      const resp = await r2.send(cmd);
+      (resp.Contents || []).forEach(o => files.push({ key: o.Key, sizeMB: +(o.Size / 1e6).toFixed(2), lastModified: o.LastModified }));
+      token = resp.IsTruncated ? resp.NextContinuationToken : null;
+    } while (token);
+    files.sort((a, b) => a.key.localeCompare(b.key));
+    res.json({ ok: true, bucket, prefix, count: files.length, files });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/hedge-signals/ack', (req, res) => {
   if (!fs.existsSync(HEDGE_SIGNALS_PATH)) return res.json({ ok: false, error: 'No signals file' });
   try {
@@ -3818,19 +3847,21 @@ setTimeout(() => {
   setInterval(refreshFredHistory, MACRO_REFRESH_MS);
 }, 30_000);
 
-// Correlation history — builds on startup if missing/stale, then weekly.
+// Correlation history — builds on startup if missing/stale, then every 6 hours.
 // Fetches 5y of H4 OANDA bars for all pairs, computes rolling Pearson correlations + factor betas.
 // ~3 min to build, ~500-900 KB output. Stored at bot/data/corr_history.json.
+// 6-hour cadence keeps z-scores fresh: each H4 bar advances the rolling window by one step.
 setTimeout(() => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 60_000);
-setInterval(runCorrHistoryRefresh, 7 * 24 * 60 * 60 * 1000);
+setInterval(() => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 6 * 60 * 60 * 1000);
 
 // Beta estimation — runs every 2 hours; first run 90s after startup (after corr fetch begins)
 setTimeout(() => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), 90_000);
 setInterval(() => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), BETA_INTERVAL_MS);
 
-// Hedge signal scanner — first run 5 min after startup (corr history must exist), then every 30 min.
+// Hedge signal scanner — first run 5 min after startup (corr history must exist), then every 15 min.
+// Reduced from 30 min: exits now fire within 15 min of z-score reverting, not up to 30 min.
 setTimeout(() => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 5 * 60_000);
-setInterval(() => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 30 * 60_000);
+setInterval(() => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 15 * 60_000);
 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
 startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));
