@@ -642,6 +642,7 @@ async function loadPrices() {
     _prices = d.prices || {};
     _vol    = d.vol    || {};
     renderSignals();
+    renderHistory();
   } catch {}
 }
 
@@ -787,6 +788,27 @@ function renderHistory() {
     const durMs  = s.exit_time && s.entry_time ? new Date(s.exit_time) - new Date(s.entry_time) : null;
     const durStr = durMs != null ? (durMs < 3600000 ? `${Math.round(durMs/60000)}m` : `${(durMs/3600000).toFixed(1)}h`) : '';
     const isClosed = s.status === 'EXITED' || s.status === 'STOPPED';
+
+    // Entry prices — always stored at signal creation
+    const epA = s.entry_price_a, epB = s.entry_price_b;
+
+    // Exit / live prices
+    let xpA, xpB, pnlA, pnlB, pnlC;
+    if (isClosed) {
+      xpA = s.exit_price_a; xpB = s.exit_price_b;
+      pnlA = s.pnl_a_pct; pnlB = s.pnl_b_pct; pnlC = s.pnl_c_pct;
+    } else {
+      // Unrealized: use live prices from _prices
+      const liveA = _prices[_pairToSlash(s.pair_a)]?.price;
+      const liveB = _prices[_pairToSlash(s.pair_b)]?.price;
+      xpA = liveA ?? null; xpB = liveB ?? null;
+      pnlA = (epA != null && xpA != null) ? (xpA - epA) / epA * 100 * (s.direction_a === 'LONG' ? 1 : -1) : null;
+      pnlB = (epB != null && xpB != null) ? (xpB - epB) / epB * 100 * (s.direction_b === 'LONG' ? 1 : -1) : null;
+      pnlC = (pnlA != null && pnlB != null) ? (pnlA + pnlB) / 2 : null;
+    }
+
+    const liveTag = !isClosed ? `<span style="font-size:9px;color:var(--accent);margin-left:3px">live</span>` : '';
+
     return `<tr>
       <td style="font-weight:600;white-space:nowrap">${s.pair_a}<span style="color:var(--muted)"> / </span>${s.pair_b}</td>
       <td style="white-space:nowrap"><span style="color:${s.direction_a==='LONG'?'var(--green)':'var(--red)'}">${s.direction_a}</span><span style="color:var(--muted)"> / </span><span style="color:${s.direction_b==='LONG'?'var(--green)':'var(--red)'}">${s.direction_b}</span></td>
@@ -795,14 +817,14 @@ function renderHistory() {
       <td><span class="status-pill ${s.status}">${s.status}</span></td>
       <td style="color:var(--muted);font-size:11px;white-space:nowrap">${entryDt}</td>
       <td style="color:var(--muted);font-size:11px;white-space:nowrap">${exitDt}${durStr ? `<span style="color:var(--faint);margin-left:4px;font-size:10px">${durStr}</span>` : ''}</td>
-      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${isClosed && s.entry_price_a != null ? _fmtPx(s.entry_price_a) : '—'}</td>
-      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${isClosed && s.exit_price_a  != null ? _fmtPx(s.exit_price_a)  : '—'}</td>
-      <td style="font-size:11px">${isClosed ? _fmtPnlPct(s.pnl_a_pct) : '<span style="color:var(--muted)">…</span>'}</td>
-      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${isClosed && s.entry_price_b != null ? _fmtPx(s.entry_price_b) : '—'}</td>
-      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${isClosed && s.exit_price_b  != null ? _fmtPx(s.exit_price_b)  : '—'}</td>
-      <td style="font-size:11px">${isClosed ? _fmtPnlPct(s.pnl_b_pct) : '<span style="color:var(--muted)">…</span>'}</td>
-      <td style="font-size:11px">${isClosed ? _fmtPnlPct(s.pnl_c_pct) : '<span style="color:var(--muted)">…</span>'}</td>
-      <td style="font-size:11px">${isClosed ? _fmtDollar(s.pnl_c_pct) : '<span style="color:var(--muted)">…</span>'}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${epA != null ? _fmtPx(epA) : '—'}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${xpA != null ? _fmtPx(xpA) : '—'}${liveTag}</td>
+      <td style="font-size:11px">${_fmtPnlPct(pnlA)}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${epB != null ? _fmtPx(epB) : '—'}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${xpB != null ? _fmtPx(xpB) : '—'}${liveTag}</td>
+      <td style="font-size:11px">${_fmtPnlPct(pnlB)}</td>
+      <td style="font-size:11px">${_fmtPnlPct(pnlC)}</td>
+      <td style="font-size:11px">${_fmtDollar(pnlC)}</td>
     </tr>`;
   }).join('');
 }
