@@ -519,6 +519,88 @@ function _d1Atr(d1Bars, idx, period = 14) {
 //
 // Returns an array of trade records (can be >1 per day when blowThrough fires).
 
+// Simulate a single exhaustion entry level for one side independently.
+// Each (level × side) is run separately so every level can trade once per day
+// without blocking other levels.  Returns one record (filled or no_fill).
+function _simExhaustionLevel(m1Bars, side, entry, sl, sessionOpen, open, tpOpts) {
+  const { tpMode, rrRatio, mfeRetracePct, maxRR } = tpOpts;
+  const slDist = Math.abs(entry - sl);
+
+  function calcPnl(exitPrice) {
+    return side === 'SELL'
+      ? (entry - exitPrice) / open * 100
+      : (exitPrice - entry) / open * 100;
+  }
+
+  function tpHit(barHigh, barLow, mfePts) {
+    if (tpMode === 'tpOpen') {
+      return side === 'SELL'
+        ? (barLow  <= sessionOpen ? sessionOpen : null)
+        : (barHigh >= sessionOpen ? sessionOpen : null);
+    }
+    if (side === 'SELL') {
+      const tpFixed = entry - slDist * rrRatio;
+      const tpMax   = entry - slDist * maxRR;
+      const chan     = mfePts > slDist * 0.5 ? (entry - mfePts) + mfePts * mfeRetracePct : null;
+      if (tpMode === 'fixedRR')    return barLow <= tpFixed ? tpFixed : null;
+      if (tpMode === 'chandelier') return chan !== null && barHigh >= chan ? chan : null;
+      if (barLow <= tpMax) return tpMax;
+      if (chan !== null && barHigh >= chan) return chan;
+    } else {
+      const tpFixed = entry + slDist * rrRatio;
+      const tpMax   = entry + slDist * maxRR;
+      const chan     = mfePts > slDist * 0.5 ? (entry + mfePts) - mfePts * mfeRetracePct : null;
+      if (tpMode === 'fixedRR')    return barHigh >= tpFixed ? tpFixed : null;
+      if (tpMode === 'chandelier') return chan !== null && barLow <= chan ? chan : null;
+      if (barHigh >= tpMax) return tpMax;
+      if (chan !== null && barLow <= chan) return chan;
+    }
+    return null;
+  }
+
+  const mk = (outcome, exitPrice, fillTime, exitTime) => ({
+    side, filled: true, outcome,
+    pnlPct: +calcPnl(exitPrice).toFixed(5),
+    leg: 'exhaustion', fillTime, exitTime,
+  });
+
+  let fillTime = null;
+  let mfePts   = 0;
+
+  for (const bar of m1Bars) {
+    if (fillTime === null) {
+      // Waiting for entry level to be touched
+      const hit = side === 'SELL' ? bar.high >= entry : bar.low <= entry;
+      if (!hit) continue;
+      fillTime = bar.time;
+      // Immediate SL on the same bar as entry (price blew straight through)
+      const immSl = side === 'SELL' ? bar.high >= sl : bar.low <= sl;
+      if (immSl) return mk('loss', sl, bar.time, bar.time);
+      continue;
+    }
+
+    // In trade — update MFE, then check SL, then check TP
+    if (side === 'SELL') mfePts = Math.max(mfePts, entry - bar.low);
+    else                 mfePts = Math.max(mfePts, bar.high - entry);
+
+    const slHit = side === 'SELL' ? bar.high >= sl : bar.low <= sl;
+    if (slHit) return mk('loss', sl, fillTime, bar.time);
+
+    const tp = tpHit(bar.high, bar.low, mfePts);
+    if (tp !== null) return mk('win', tp, fillTime, bar.time);
+  }
+
+  // EOD — close at last bar's price
+  if (fillTime !== null) {
+    const eodClose = m1Bars.at(-1)?.close ?? entry;
+    return mk('open', eodClose, fillTime, m1Bars.at(-1)?.time ?? null);
+  }
+
+  return { side, filled: false, outcome: 'no_fill', pnlPct: 0, leg: 'exhaustion', fillTime: null, exitTime: null };
+}
+
+// Each (level × side) fires independently — one trade per level per direction per day.
+// blowThrough is no longer needed: each level is already independent.
 function simulateExhaustionM1(m1Bars, open, atr, hl50pct, hl75pct, ocMedPct, oc75pct, opts = {}) {
   const {
     atrMult       = 1.5,
@@ -526,7 +608,6 @@ function simulateExhaustionM1(m1Bars, open, atr, hl50pct, hl75pct, ocMedPct, oc7
     rrRatio       = 3.0,
     mfeRetracePct = 0.40,
     maxRR         = 4.0,
-    blowThrough   = true,
     useHL50       = true,
     useHL75       = true,
     useOCmed      = false,
@@ -536,12 +617,12 @@ function simulateExhaustionM1(m1Bars, open, atr, hl50pct, hl75pct, ocMedPct, oc7
   const slDist = atr * atrMult;
   if (slDist <= 0) return [{ side: '', filled: false, outcome: 'no_fill', pnlPct: 0, leg: 'exhaustion', fillTime: null, exitTime: null }];
 
-  // D1 open is at 22:00 UTC; M1 bars start at 00:00 UTC (2 h later). Use the
-  // first M1 bar's open as the session anchor so entry levels and TP = open both
-  // reference the same baseline the trader sees on their chart.
+  // D1 open is at 22:00 UTC; M1 bars start at 00:00 UTC (2 h later). Anchor
+  // entry levels and tpOpen target to the first M1 bar's open so the backtest
+  // references the same price the trader sees as "open" on their chart.
   const sessionOpen = m1Bars.length > 0 ? m1Bars[0].open : open;
 
-  // Build sorted levels (ascending % distance from session open); dedup by rounding to 4dp
+  // Build levels (ascending % from session open); dedup by rounding to 4dp
   const raw = [];
   if (useOCmed && ocMedPct > 0) raw.push(ocMedPct);
   if (useHL50  && hl50pct  > 0) raw.push(hl50pct);
@@ -551,131 +632,21 @@ function simulateExhaustionM1(m1Bars, open, atr, hl50pct, hl75pct, ocMedPct, oc7
 
   if (sortedPcts.length === 0) return [{ side: '', filled: false, outcome: 'no_fill', pnlPct: 0, leg: 'exhaustion', fillTime: null, exitTime: null }];
 
-  // sellPrices[0] = closest sell level (lowest price above session open)
-  // buyPrices[0]  = closest buy level  (highest price below session open)
-  const sellPrices = sortedPcts.map(pct => sessionOpen * (1 + pct / 100));
-  const buyPrices  = sortedPcts.map(pct => sessionOpen * (1 - pct / 100));
-
-  let sellIdx = 0, buyIdx = 0;
-  let sellDone = false, buyDone = false;
-
-  let pos = null; // { side, entry, sl, mfePts, fillTime }
+  const tpOpts = { tpMode, rrRatio, mfeRetracePct, maxRR };
   const records = [];
 
-  // Compute TP price given current pos state and bar OHLC
-  function tpHit(pos, barHigh, barLow) {
-    const slD = Math.abs(pos.entry - pos.sl);
-    if (pos.side === 'SELL') {
-      // tpOpen: price reverts back to the session open (first M1 bar's open)
-      if (tpMode === 'tpOpen') return barLow <= sessionOpen ? sessionOpen : null;
-      const tpFixed = pos.entry - slD * rrRatio;
-      const tpMax   = pos.entry - slD * maxRR;
-      const chan     = pos.mfePts > slD * 0.5
-        ? (pos.entry - pos.mfePts) + pos.mfePts * mfeRetracePct : null;
-      if (tpMode === 'fixedRR')    return barLow <= tpFixed ? tpFixed : null;
-      if (tpMode === 'chandelier') return chan !== null && barHigh >= chan ? chan : null;
-      // hybrid: hard cap OR chandelier, whichever fires first
-      if (barLow <= tpMax)  return tpMax;
-      if (chan !== null && barHigh >= chan) return chan;
-      return null;
-    } else {
-      // tpOpen: price reverts back to the session open (first M1 bar's open)
-      if (tpMode === 'tpOpen') return barHigh >= sessionOpen ? sessionOpen : null;
-      const tpFixed = pos.entry + slD * rrRatio;
-      const tpMax   = pos.entry + slD * maxRR;
-      const chan     = pos.mfePts > slD * 0.5
-        ? (pos.entry + pos.mfePts) - pos.mfePts * mfeRetracePct : null;
-      if (tpMode === 'fixedRR')    return barHigh >= tpFixed ? tpFixed : null;
-      if (tpMode === 'chandelier') return chan !== null && barLow <= chan ? chan : null;
-      if (barHigh >= tpMax) return tpMax;
-      if (chan !== null && barLow <= chan) return chan;
-      return null;
-    }
+  for (const pct of sortedPcts) {
+    const sellEntry = sessionOpen * (1 + pct / 100);
+    const buyEntry  = sessionOpen * (1 - pct / 100);
+
+    const sellR = _simExhaustionLevel(m1Bars, 'SELL', sellEntry, sellEntry + slDist, sessionOpen, open, tpOpts);
+    if (sellR.filled) records.push(sellR);
+
+    const buyR  = _simExhaustionLevel(m1Bars, 'BUY',  buyEntry,  buyEntry  - slDist, sessionOpen, open, tpOpts);
+    if (buyR.filled)  records.push(buyR);
   }
 
-  function recordExit(side, entry, exitPrice, outcome, fillTime, exitTime) {
-    const pnl = side === 'SELL'
-      ? (entry - exitPrice) / open * 100
-      : (exitPrice - entry) / open * 100;
-    records.push({ side, filled: true, outcome, pnlPct: +pnl.toFixed(5), leg: 'exhaustion', fillTime, exitTime });
-  }
-
-  function advanceSell() {
-    if (blowThrough) { sellIdx++; if (sellIdx >= sellPrices.length) sellDone = true; }
-    else sellDone = true;
-  }
-  function advanceBuy() {
-    if (blowThrough) { buyIdx++; if (buyIdx  >= buyPrices.length)  buyDone  = true; }
-    else buyDone = true;
-  }
-
-  for (const bar of m1Bars) {
-    if (pos) {
-      // Update MFE
-      if (pos.side === 'SELL') {
-        const fav = pos.entry - bar.low;
-        if (fav > pos.mfePts) pos.mfePts = fav;
-
-        if (bar.high >= pos.sl) {   // SL hit
-          recordExit('SELL', pos.entry, pos.sl, 'loss', pos.fillTime, bar.time);
-          advanceSell(); pos = null; continue;
-        }
-        const tp = tpHit(pos, bar.high, bar.low);
-        if (tp !== null) {
-          recordExit('SELL', pos.entry, tp, 'win', pos.fillTime, bar.time);
-          sellDone = true; pos = null; continue;
-        }
-      } else {
-        const fav = bar.high - pos.entry;
-        if (fav > pos.mfePts) pos.mfePts = fav;
-
-        if (bar.low <= pos.sl) {    // SL hit
-          recordExit('BUY', pos.entry, pos.sl, 'loss', pos.fillTime, bar.time);
-          advanceBuy(); pos = null; continue;
-        }
-        const tp = tpHit(pos, bar.high, bar.low);
-        if (tp !== null) {
-          recordExit('BUY', pos.entry, tp, 'win', pos.fillTime, bar.time);
-          buyDone = true; pos = null; continue;
-        }
-      }
-    } else {
-      const sellHit = !sellDone && sellIdx < sellPrices.length && bar.high >= sellPrices[sellIdx];
-      const buyHit  = !buyDone  && buyIdx  < buyPrices.length  && bar.low  <= buyPrices[buyIdx];
-
-      if (sellHit || buyHit) {
-        // If both triggered on the same bar, pick the level closest to open
-        let side;
-        if (sellHit && buyHit) {
-          const sd = sellPrices[sellIdx] - open;
-          const bd = open - buyPrices[buyIdx];
-          side = bd <= sd ? 'BUY' : 'SELL';
-        } else {
-          side = sellHit ? 'SELL' : 'BUY';
-        }
-
-        if (side === 'SELL') {
-          const entry = sellPrices[sellIdx];
-          pos = { side: 'SELL', entry, sl: entry + slDist, mfePts: 0, fillTime: bar.time };
-          if (bar.high >= pos.sl) { recordExit('SELL', entry, pos.sl, 'loss', bar.time, bar.time); advanceSell(); pos = null; }
-        } else {
-          const entry = buyPrices[buyIdx];
-          pos = { side: 'BUY', entry, sl: entry - slDist, mfePts: 0, fillTime: bar.time };
-          if (bar.low <= pos.sl) { recordExit('BUY', entry, pos.sl, 'loss', bar.time, bar.time); advanceBuy(); pos = null; }
-        }
-      }
-    }
-  }
-
-  // EOD close
-  if (pos) {
-    const eodClose = m1Bars.at(-1)?.close ?? pos.entry;
-    recordExit(pos.side, pos.entry, eodClose, 'open', pos.fillTime, m1Bars.at(-1)?.time ?? null);
-  }
-
-  if (records.length === 0) {
-    return [{ side: '', filled: false, outcome: 'no_fill', pnlPct: 0, leg: 'exhaustion', fillTime: null, exitTime: null }];
-  }
+  if (records.length === 0) return [{ side: '', filled: false, outcome: 'no_fill', pnlPct: 0, leg: 'exhaustion', fillTime: null, exitTime: null }];
   return records;
 }
 

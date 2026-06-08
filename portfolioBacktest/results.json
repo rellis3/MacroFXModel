@@ -2,7 +2,7 @@
   "params": {
     "entry_z": 1.5,
     "exit_z": 0.3,
-    "stop_z": 3.5,
+    "stop_z": 3.0,
     "min_score": 0.1,
     "min_corr": 0.3,
     "risk_pct": 1.0,
