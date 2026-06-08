@@ -484,6 +484,18 @@ class GoldBot:
             log.info('[REFRESH] Bot disabled via config — skipping')
             return
 
+        # Expire any paper trade left over from a previous calendar day.
+        if (self.bot_state.state == State.MANAGING
+                and self.bot_state.active_trade
+                and self.bot_state.active_trade.entry_time.date()
+                    < datetime.now(timezone.utc).date()):
+            price = self._get_price() or self.bot_state.active_trade.entry_price
+            log.info('[EXPIRE]  Paper trade from previous day — closing as EXPIRED')
+            self.journal.log_trade_closed(
+                self.bot_state.active_trade.zone_id, price, 'EXPIRED'
+            )
+            self._enter_cooldown()
+
         log.info('[REFRESH] Fetching bars and recomputing zones...')
 
         # ── Bars ──────────────────────────────────────────────────────────────

@@ -1184,3 +1184,22 @@
 [2026-06-08 13:48:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4337.48000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4243.53401  session_open=4293.42500
 [2026-06-08 13:48:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29480.00000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28728.38177  session_open=29171.20000
 [2026-06-08 13:48:46] [DA] [INFO] Cycle 300  balance=99551.49  sleep=56.6s
+[2026-06-08 14:08:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4337.48000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4243.53401  session_open=4293.42500
+[2026-06-08 14:08:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29525.80000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28765.90018  session_open=29171.20000
+[2026-06-08 14:18:47] [DA] [INFO] Cycle 330  balance=99551.49  sleep=55.5s
+[2026-06-08 14:28:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4337.48000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4243.53401  session_open=4293.42500
+[2026-06-08 14:28:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29573.50000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28819.49790  session_open=29171.20000
+[2026-06-08 14:48:45] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4343.82000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4249.73669  session_open=4293.42500
+[2026-06-08 14:48:45] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29573.50000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28819.49790  session_open=29171.20000
+[2026-06-08 14:48:47] [DA] [INFO] Cycle 360  balance=99551.49  sleep=55.8s
+[2026-06-08 15:08:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4343.82000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4249.73669  session_open=4293.42500
+[2026-06-08 15:08:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29573.50000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28819.49790  session_open=29171.20000
+[2026-06-08 15:10:54] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 15:14:54] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 15:15:54] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 15:18:01] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 15:18:54] [DA] [WARNING] kv_get(dyn_anchor_config): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 15:19:05] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 15:19:05] [DA] [INFO] Cycle 390  balance=99551.49  sleep=38.2s
+[2026-06-08 15:28:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4343.82000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4249.73669  session_open=4293.42500
+[2026-06-08 15:28:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29573.50000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28819.49790  session_open=29171.20000

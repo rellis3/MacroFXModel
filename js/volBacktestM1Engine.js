@@ -865,13 +865,13 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
     };
 
     const legResults = [];
-    if (strategy !== 'momentum' && strategy !== 'momentum50' && strategy !== 'reversal50' && strategy !== 'revHL50' && strategy !== 'dynamicAnchor') {
+    if (strategy !== 'momentum' && strategy !== 'momentum50' && strategy !== 'reversal50' && strategy !== 'revHL50' && strategy !== 'dynamicAnchor' && strategy !== 'exhaustion') {
       const r = useM1
         ? simulateDayM1(m1Bars, open, hl75pct, ocMedPct, regime, slMult, dynHlCorr, rangeMode)
         : _simulateDayD1(open, high, low, close, hl75pct, ocMedPct, regime, slMult, rangeMode);
       legResults.push(r);
     }
-    if (strategy !== 'reversal' && strategy !== 'momentum50' && strategy !== 'reversal50' && strategy !== 'revHL50' && strategy !== 'dynamicAnchor') {
+    if (strategy !== 'reversal' && strategy !== 'momentum50' && strategy !== 'reversal50' && strategy !== 'revHL50' && strategy !== 'dynamicAnchor' && strategy !== 'exhaustion') {
       const r = useM1
         ? simulateMomentumM1(m1Bars, open, hl75pct, ocMedPct, regime, moOpts)
         : _simulateMomentumD1(open, high, low, close, hl75pct, ocMedPct, regime, moOpts);

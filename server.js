@@ -594,6 +594,28 @@ function _hedgeScore(corr, betaA, betaB) {
   return +(corrPart + betaPart).toFixed(4);
 }
 
+// In-memory log-spread history keyed by "pairA__pairB".
+// Resets on server restart; builds up as computeHedgeSignals runs every 15 min.
+// Keeps the last LOG_SPREAD_MAX observations (~25h at 15-min cadence).
+const _logSpreadHistory = {};
+const LOG_SPREAD_MAX = 100;
+
+// Track current log-spread (log(pxA) − log(pxB)) and return its deviation from the
+// rolling mean.  Returns null when fewer than 10 observations have accumulated.
+// spread_dev > 0 → A overvalued vs B → SHORT A, LONG B
+// spread_dev < 0 → A undervalued vs B → LONG A, SHORT B
+function _spreadDeviation(pa, pb, pxA, pxB) {
+  const k = `${pa}__${pb}`;
+  if (!_logSpreadHistory[k]) _logSpreadHistory[k] = [];
+  const s = Math.log(pxA) - Math.log(pxB);
+  _logSpreadHistory[k].push(s);
+  if (_logSpreadHistory[k].length > LOG_SPREAD_MAX) _logSpreadHistory[k].shift();
+  const hist = _logSpreadHistory[k];
+  if (hist.length < 10) return null;
+  const mean = hist.reduce((acc, v) => acc + v, 0) / hist.length;
+  return s - mean;
+}
+
 // Capture exit prices from live state and compute equal-weight P&L for a closing signal.
 function _attachExitPnl(sig, pa, pb) {
   const keyA = _pairToSlash(pa);
@@ -715,12 +737,24 @@ async function computeHedgeSignals(force = false) {
       if (Math.abs(z) < cfg.entry_z) continue;
       if (score < cfg.min_score) continue;
 
-      // Direction flips based on z sign:
-      //   z > 0 = pairs over-converged → bet on divergence (beta sign drives which leg is which)
-      //   z < 0 = pairs over-diverged  → bet on convergence (opposite legs)
-      const zSign = z > 0 ? 1 : -1;
-      const dirA = ((betaA ?? 0) * zSign) >= 0 ? 'LONG'  : 'SHORT';
-      const dirB = ((betaB ?? 0) * zSign) >= 0 ? 'LONG'  : 'SHORT';
+      // Direction: log-spread level vs its rolling mean (cointegration spread signal).
+      // Fallback to z-sign while spread history is building (<10 observations).
+      const pxA = state.prices[_pairToSlash(pa)]?.price;
+      const pxB = state.prices[_pairToSlash(pb)]?.price;
+      let dirA, dirB, spreadDev = null;
+      if (pxA && pxB) {
+        spreadDev = _spreadDeviation(pa, pb, pxA, pxB);
+      }
+      if (spreadDev !== null) {
+        // spread_dev > 0 → A overvalued vs B → SHORT A, LONG B
+        dirA = spreadDev >= 0 ? 'SHORT' : 'LONG';
+        dirB = spreadDev >= 0 ? 'LONG'  : 'SHORT';
+      } else {
+        // Fallback until spread history accumulates
+        const zSign = z > 0 ? 1 : -1;
+        dirA = ((betaA ?? 0) * zSign) >= 0 ? 'LONG' : 'SHORT';
+        dirB = ((betaB ?? 0) * zSign) >= 0 ? 'LONG' : 'SHORT';
+      }
 
       const sig = {
         id: `${pa}-${pb}-${Date.now()}`,
@@ -743,6 +777,8 @@ async function computeHedgeSignals(force = false) {
         last_updated: now,
         entry_price_a: (() => { const p = state.prices[_pairToSlash(pa)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pa)] ?? 5) : null; })(),
         entry_price_b: (() => { const p = state.prices[_pairToSlash(pb)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pb)] ?? 5) : null; })(),
+        spread_dev: spreadDev !== null ? +spreadDev.toFixed(6) : null,
+        direction_basis: spreadDev !== null ? 'spread' : 'z_fallback',
       };
       newSigs.push(sig);
       sigData.signals.push(sig);

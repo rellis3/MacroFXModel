@@ -369,6 +369,8 @@ pre.code{background:var(--bg4);border:1px solid var(--border);border-radius:8px;
               <tr><td>corr_std</td><td>float</td><td>Historical std dev of correlation</td></tr>
               <tr><td>beta_vix_a</td><td>float|null</td><td>VIX β for pair_a (H4 OLS)</td></tr>
               <tr><td>beta_vix_b</td><td>float|null</td><td>VIX β for pair_b (H4 OLS)</td></tr>
+              <tr><td>spread_dev</td><td>float|null</td><td>log(A)−log(B) minus rolling mean; positive → SHORT A</td></tr>
+              <tr><td>direction_basis</td><td>spread|z_fallback</td><td>spread = spread-level signal; z_fallback = history still building</td></tr>
               <tr><td>regime</td><td>string</td><td>Macro regime at signal time</td></tr>
               <tr><td>status</td><td>ACTIVE|EXITED|STOPPED|DISMISSED</td><td>Signal lifecycle state</td></tr>
               <tr><td>entry_time</td><td>ISO 8601</td><td>When signal was first fired</td></tr>
@@ -944,6 +946,7 @@ function signalCard(s, showAck) {
         <div class="dir-val ${s.direction_b.toLowerCase()}">${s.direction_b === 'LONG' ? '▲' : '▼'} ${s.direction_b}</div>
       </div>
     </div>
+    ${s.spread_dev != null ? `<div style="font-size:10px;color:var(--muted);margin:-4px 0 8px;text-align:center">Spread Δ <b style="color:${s.spread_dev>=0?'var(--red)':'var(--green)'}">${s.spread_dev>=0?'+':''}${(s.spread_dev*10000).toFixed(1)}bp</b> vs mean&nbsp; <span style="color:${s.direction_basis==='spread'?'var(--cyan)':'var(--yellow)'}">[${s.direction_basis==='spread'?'spread basis':'z-fallback'}]</span></div>` : ''}
     ${zProgressBar}
     ${tradeLevels}
     <div class="sig-meta">

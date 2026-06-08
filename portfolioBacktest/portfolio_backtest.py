@@ -11,7 +11,7 @@ Mirrors how a stat-arb desk operates:
 
 Entry trigger : rolling correlation z-score (Welford online, no lookahead)
 Pair screen   : Engle-Granger cointegration test (p < coint_pval)
-Direction     : SHORT outperformer / LONG underperformer (dir_window H1 return)
+Direction     : cointegration spread deviation — SHORT A when log(A)−β·log(B) is above its rolling mean
 Sizing        : beta-neutral — Leg B weighted by OLS hedge ratio |beta|
 Exit          : z-score reverts to ±exit_z  |  z-score breaches ±stop_z  |  time stop
 
@@ -148,12 +148,11 @@ def compute_pair_features(
     Compute per-bar features for a pair combination on aligned H1 data.
 
     Returns DataFrame with columns:
-      corr    – rolling Pearson correlation of log-returns
-      corr_z  – Welford online z-score of corr (no lookahead)
-      score   – hedge score: -corr*0.7 + |beta_spread|*0.3
-      beta    – rolling OLS beta (log_ret_a ~ beta * log_ret_b), used for beta-neutral sizing
-      ret_a   – rolling dir_window cumulative log-return for A
-      ret_b   – rolling dir_window cumulative log-return for B
+      corr       – rolling Pearson correlation of log-returns
+      corr_z     – Welford online z-score of corr (no lookahead)
+      score      – hedge score: -corr*0.7 + |beta_spread|*0.3
+      beta       – rolling OLS beta (log_ret_a ~ beta * log_ret_b), used for beta-neutral sizing
+      spread_dev – log(A) − β·log(B) minus its rolling mean; sign drives entry direction
     """
     df = pd.DataFrame({"a": close_a, "b": close_b}).dropna()
     if len(df) < corr_window + 10:
@@ -182,16 +181,19 @@ def compute_pair_features(
     beta_spread = np.minimum(np.abs(beta - 1) / 2, 1.0)
     score_arr = (-corr.values * 0.7) + (beta_spread * 0.3)
 
-    cum_ret_a = ret_a.rolling(dir_window, min_periods=1).sum()
-    cum_ret_b = ret_b.rolling(dir_window, min_periods=1).sum()
+    # Spread S(t) = log(A) − β(t)·log(B); deviation from rolling mean determines direction.
+    # spread_dev > 0 → A overvalued vs B → SHORT A, LONG B
+    # spread_dev < 0 → A undervalued vs B → LONG A, SHORT B
+    spread_s    = pd.Series(log_a.values - beta * log_b.values, index=df.index)
+    spread_mean = spread_s.rolling(corr_window, min_periods=corr_window // 2).mean()
+    spread_dev  = (spread_s - spread_mean).values
 
     return pd.DataFrame({
-        "corr":   corr.values,
-        "corr_z": z_vals,
-        "beta":   beta,
-        "score":  score_arr,
-        "ret_a":  cum_ret_a.values,
-        "ret_b":  cum_ret_b.values,
+        "corr":       corr.values,
+        "corr_z":     z_vals,
+        "beta":       beta,
+        "score":      score_arr,
+        "spread_dev": spread_dev,
     }, index=df.index)
 
 
@@ -370,21 +372,20 @@ def simulate_portfolio(
             if len(feat_at) < warmup:
                 continue
 
-            row   = feat_at.iloc[-1]
-            z     = row["corr_z"]
-            score = row["score"]
-            ret_a = row["ret_a"]
-            ret_b = row["ret_b"]
-            beta  = row["beta"]
+            row        = feat_at.iloc[-1]
+            z          = row["corr_z"]
+            score      = row["score"]
+            beta       = row["beta"]
+            spread_dev = row["spread_dev"]
 
-            if np.isnan(z) or np.isnan(score) or np.isnan(beta):
+            if np.isnan(z) or np.isnan(score) or np.isnan(beta) or np.isnan(spread_dev):
                 continue
             if abs(z) < params["entry_z"] or score < params["min_score"]:
                 continue
 
             candidates.append(dict(
                 pair_a=pair_a, pair_b=pair_b, fk=fk,
-                z=z, score=score, ret_a=ret_a, ret_b=ret_b, beta=beta,
+                z=z, score=score, beta=beta, spread_dev=spread_dev,
                 priority=abs(z) * max(score, 0.01),
             ))
 
@@ -409,9 +410,10 @@ def simulate_portfolio(
             if ea is None or eb is None:
                 continue
 
-            # Direction: SHORT outperformer / LONG underperformer (mean-reversion bet)
-            ret_a, ret_b = cand["ret_a"], cand["ret_b"]
-            if ret_a >= ret_b:
+            # Direction: cointegration spread level vs its rolling mean.
+            # spread_dev > 0 → A overvalued relative to B → SHORT A, LONG B (expect reversion down)
+            # spread_dev < 0 → A undervalued relative to B → LONG A, SHORT B (expect reversion up)
+            if cand["spread_dev"] >= 0:
                 dir_a, dir_b = "SHORT", "LONG"
             else:
                 dir_a, dir_b = "LONG", "SHORT"
