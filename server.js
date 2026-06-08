@@ -642,7 +642,6 @@ async function computeHedgeSignals() {
       const std = Math.sqrt(Math.max(0, sums2[key] / n - mu * mu));
       if (std < 0.01) continue;
       const z = (curCorr - mu) / std;
-      if (Math.abs(z) < cfg.entry_z) continue;
 
       // Resolve pair names from key (keys built as `${pa}_${pb}` in corr build)
       let pa = null, pb = null;
@@ -654,56 +653,83 @@ async function computeHedgeSignals() {
       const betaA = lastBeta[pa]?.vix ?? null;
       const betaB = lastBeta[pb]?.vix ?? null;
       const score = _hedgeScore(curCorr, betaA, betaB);
-      if (score < cfg.min_score) continue;
 
-      // β_vix > 0 → risk-off → LONG; β_vix < 0 → risk-on → SHORT
-      const dirA = (betaA ?? 0) >= 0 ? 'LONG'  : 'SHORT';
-      const dirB = (betaB ?? 0) >= 0 ? 'LONG'  : 'SHORT';
-
+      // ── Always manage ACTIVE signals first — exits must check z regardless of entry_z ──
+      // Bug-fix: the original code had `if (Math.abs(z) < cfg.entry_z) continue` BEFORE
+      // the existing-signal check, so signals whose z reverted below entry_z were never exited.
       const existing = sigData.signals.find(s => s.pair_a === pa && s.pair_b === pb && s.status === 'ACTIVE');
       if (existing) {
-        existing.z_score     = +z.toFixed(3);
+        existing.z_score      = +z.toFixed(3);
         existing.corr_current = +curCorr.toFixed(4);
         existing.hedge_score  = score;
         existing.last_updated = now;
-        if (Math.abs(z) < cfg.exit_z)  { existing.status = 'EXITED';  existing.exit_time = now; existing.exit_z = +z.toFixed(3); }
-        else if (Math.abs(z) > cfg.stop_z) { existing.status = 'STOPPED'; existing.exit_time = now; existing.exit_z = +z.toFixed(3); }
-      } else {
-        const sig = {
-          id: `${pa}-${pb}-${Date.now()}`,
-          schema_version: 1,
-          pair_a: pa, pair_b: pb,
-          direction_a: dirA, direction_b: dirB,
-          z_score: +z.toFixed(3),
-          hedge_score: score,
-          corr_current: +curCorr.toFixed(4),
-          corr_mean: +mu.toFixed(4),
-          corr_std: +std.toFixed(4),
-          beta_vix_a: betaA !== null ? +betaA.toFixed(4) : null,
-          beta_vix_b: betaB !== null ? +betaB.toFixed(4) : null,
-          regime,
-          status: 'ACTIVE',
-          entry_time: now,
-          entry_z: +z.toFixed(3),
-          exit_z_target: cfg.exit_z,
-          stop_z: cfg.stop_z,
-          last_updated: now,
-          entry_price_a: (() => { const p = state.prices[_pairToSlash(pa)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pa)] ?? 5) : null; })(),
-          entry_price_b: (() => { const p = state.prices[_pairToSlash(pb)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pb)] ?? 5) : null; })(),
-        };
-        newSigs.push(sig);
-        sigData.signals.push(sig);
-
-        if (tgCfg?.token && tgCfg?.chatId) {
-          const bullet = z > 0 ? '📈' : '📉';
-          const msg = `${bullet} <b>Hedge Signal — ${pa} / ${pb}</b>\n`
-            + `Z-Score: <b>${sig.z_score}</b>  |  Score: <b>${score}</b>\n`
-            + `<b>${pa}</b>: ${dirA}  (β_vix = ${sig.beta_vix_a ?? 'n/a'})\n`
-            + `<b>${pb}</b>: ${dirB}  (β_vix = ${sig.beta_vix_b ?? 'n/a'})\n`
-            + `Regime: ${regime}  |  Corr: ${sig.corr_current} (μ=${sig.corr_mean} σ=${sig.corr_std})\n`
-            + `<i>Entry z &gt; ${cfg.entry_z} | Exit z &lt; ${cfg.exit_z} | Stop z &gt; ${cfg.stop_z}</i>`;
-          sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
+        if (Math.abs(z) < cfg.exit_z) {
+          existing.status    = 'EXITED';
+          existing.exit_time = now;
+          existing.exit_z    = +z.toFixed(3);
+          if (tgCfg?.token && tgCfg?.chatId) {
+            const msg = `✅ <b>Hedge Exit — ${pa} / ${pb}</b>\n`
+              + `Z reverted to <b>${existing.z_score}</b> (target &lt; ${cfg.exit_z})\n`
+              + `Close: <b>${pa}</b> ${existing.direction_a}  ·  <b>${pb}</b> ${existing.direction_b}\n`
+              + `Regime: ${regime}`;
+            sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
+          }
+        } else if (Math.abs(z) > cfg.stop_z) {
+          existing.status    = 'STOPPED';
+          existing.exit_time = now;
+          existing.exit_z    = +z.toFixed(3);
+          if (tgCfg?.token && tgCfg?.chatId) {
+            const msg = `🛑 <b>Hedge Stop — ${pa} / ${pb}</b>\n`
+              + `Z extended to <b>${existing.z_score}</b> (stop &gt; ${cfg.stop_z})\n`
+              + `Close: <b>${pa}</b> ${existing.direction_a}  ·  <b>${pb}</b> ${existing.direction_b}\n`
+              + `Regime: ${regime}`;
+            sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
+          }
         }
+        continue; // active signal managed — skip new-entry check
+      }
+
+      // ── New entry check ────────────────────────────────────────────────────
+      if (Math.abs(z) < cfg.entry_z) continue;
+      if (score < cfg.min_score) continue;
+
+      const dirA = (betaA ?? 0) >= 0 ? 'LONG'  : 'SHORT';
+      const dirB = (betaB ?? 0) >= 0 ? 'LONG'  : 'SHORT';
+
+      const sig = {
+        id: `${pa}-${pb}-${Date.now()}`,
+        schema_version: 1,
+        pair_a: pa, pair_b: pb,
+        direction_a: dirA, direction_b: dirB,
+        z_score: +z.toFixed(3),
+        hedge_score: score,
+        corr_current: +curCorr.toFixed(4),
+        corr_mean: +mu.toFixed(4),
+        corr_std: +std.toFixed(4),
+        beta_vix_a: betaA !== null ? +betaA.toFixed(4) : null,
+        beta_vix_b: betaB !== null ? +betaB.toFixed(4) : null,
+        regime,
+        status: 'ACTIVE',
+        entry_time: now,
+        entry_z: +z.toFixed(3),
+        exit_z_target: cfg.exit_z,
+        stop_z: cfg.stop_z,
+        last_updated: now,
+        entry_price_a: (() => { const p = state.prices[_pairToSlash(pa)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pa)] ?? 5) : null; })(),
+        entry_price_b: (() => { const p = state.prices[_pairToSlash(pb)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pb)] ?? 5) : null; })(),
+      };
+      newSigs.push(sig);
+      sigData.signals.push(sig);
+
+      if (tgCfg?.token && tgCfg?.chatId) {
+        const bullet = z > 0 ? '📈' : '📉';
+        const msg = `${bullet} <b>Hedge Signal — ${pa} / ${pb}</b>\n`
+          + `Z-Score: <b>${sig.z_score}</b>  |  Score: <b>${score}</b>\n`
+          + `<b>${pa}</b>: ${dirA}  (β_vix = ${sig.beta_vix_a ?? 'n/a'})\n`
+          + `<b>${pb}</b>: ${dirB}  (β_vix = ${sig.beta_vix_b ?? 'n/a'})\n`
+          + `Regime: ${regime}  |  Corr: ${sig.corr_current} (μ=${sig.corr_mean} σ=${sig.corr_std})\n`
+          + `<i>Entry z &gt; ${cfg.entry_z} | Exit z &lt; ${cfg.exit_z} | Stop z &gt; ${cfg.stop_z}</i>`;
+        sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
       }
     }
 

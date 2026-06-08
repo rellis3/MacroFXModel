@@ -304,12 +304,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 const DISPLAY_CAP   = 50_000;
 const WARMUP        = 20;     // min corr records before signals
 
-// Pairs that have M1 parquet data in R2 (matches M1_DRIVE_IDS in volBacktestM1Engine.js)
+// Pairs that have M1 parquet data in R2 (matches M1_DRIVE_IDS + XAUUSD uploaded to R2)
 const M1_FX_PAIRS = new Set([
   'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF',
   'GBPJPY','EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD',
   'AUDJPY','AUDNZD','AUDCAD','AUDCHF','GBPAUD','GBPCAD','GBPCHF',
   'GBPNZD','CADJPY','CHFJPY','NZDJPY',
+  'XAUUSD', // gold M1 data uploaded to R2 directly (no Drive fallback)
 ]);
 
 // ── State ────────────────────────────────────────────────────────────────────
