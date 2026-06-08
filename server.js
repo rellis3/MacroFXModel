@@ -594,6 +594,23 @@ function _hedgeScore(corr, betaA, betaB) {
   return +(corrPart + betaPart).toFixed(4);
 }
 
+// Capture exit prices from live state and compute equal-weight P&L for a closing signal.
+function _attachExitPnl(sig, pa, pb) {
+  const keyA = _pairToSlash(pa);
+  const keyB = _pairToSlash(pb);
+  const xA = state.prices[keyA]?.price;
+  const xB = state.prices[keyB]?.price;
+  sig.exit_price_a = xA != null ? +xA.toFixed(PRICE_DIGITS[keyA] ?? 5) : null;
+  sig.exit_price_b = xB != null ? +xB.toFixed(PRICE_DIGITS[keyB] ?? 5) : null;
+  const pA = (sig.entry_price_a != null && sig.exit_price_a != null)
+    ? (sig.exit_price_a - sig.entry_price_a) / sig.entry_price_a * 100 * (sig.direction_a === 'LONG' ? 1 : -1) : null;
+  const pB = (sig.entry_price_b != null && sig.exit_price_b != null)
+    ? (sig.exit_price_b - sig.entry_price_b) / sig.entry_price_b * 100 * (sig.direction_b === 'LONG' ? 1 : -1) : null;
+  if (pA != null) sig.pnl_a_pct = +pA.toFixed(4);
+  if (pB != null) sig.pnl_b_pct = +pB.toFixed(4);
+  if (pA != null && pB != null) sig.pnl_c_pct = +((pA + pB) / 2).toFixed(4);
+}
+
 // force=true bypasses the enabled flag and regime gate (used by the manual Check Now button).
 async function computeHedgeSignals(force = false) {
   if (_hedgeSigRunning) return { status: 'busy' };
@@ -668,9 +685,11 @@ async function computeHedgeSignals(force = false) {
           existing.status    = 'EXITED';
           existing.exit_time = now;
           existing.exit_z    = +z.toFixed(3);
+          _attachExitPnl(existing, pa, pb);
           if (tgCfg?.token && tgCfg?.chatId) {
+            const pnlStr = existing.pnl_c_pct != null ? `  |  P&L: <b>${existing.pnl_c_pct >= 0 ? '+' : ''}${existing.pnl_c_pct.toFixed(3)}%</b>` : '';
             const msg = `✅ <b>Hedge Exit — ${pa} / ${pb}</b>\n`
-              + `Z reverted to <b>${existing.z_score}</b> (target &lt; ${cfg.exit_z})\n`
+              + `Z reverted to <b>${existing.z_score}</b> (target &lt; ${cfg.exit_z})${pnlStr}\n`
               + `Close: <b>${pa}</b> ${existing.direction_a}  ·  <b>${pb}</b> ${existing.direction_b}\n`
               + `Regime: ${regime}`;
             sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
@@ -679,9 +698,11 @@ async function computeHedgeSignals(force = false) {
           existing.status    = 'STOPPED';
           existing.exit_time = now;
           existing.exit_z    = +z.toFixed(3);
+          _attachExitPnl(existing, pa, pb);
           if (tgCfg?.token && tgCfg?.chatId) {
+            const pnlStr = existing.pnl_c_pct != null ? `  |  P&L: <b>${existing.pnl_c_pct >= 0 ? '+' : ''}${existing.pnl_c_pct.toFixed(3)}%</b>` : '';
             const msg = `🛑 <b>Hedge Stop — ${pa} / ${pb}</b>\n`
-              + `Z extended to <b>${existing.z_score}</b> (stop &gt; ${cfg.stop_z})\n`
+              + `Z extended to <b>${existing.z_score}</b> (stop &gt; ${cfg.stop_z})${pnlStr}\n`
               + `Close: <b>${pa}</b> ${existing.direction_a}  ·  <b>${pb}</b> ${existing.direction_b}\n`
               + `Regime: ${regime}`;
             sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});

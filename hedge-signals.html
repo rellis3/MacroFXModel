@@ -236,6 +236,7 @@ pre.code{background:var(--bg4);border:1px solid var(--border);border-radius:8px;
               <th>Status</th>
               <th>Entry</th>
               <th>Exit</th>
+              <th>P&amp;L</th>
             </tr>
           </thead>
           <tbody id="hist-tbody"></tbody>
@@ -694,6 +695,12 @@ function renderHistory() {
     const zCol = Math.abs(s.z_score) > s.stop_z ? 'var(--red)' : Math.abs(s.z_score) > (s.entry_z??2) ? 'var(--yellow)' : 'var(--muted)';
     const entryDt = s.entry_time ? new Date(s.entry_time).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
     const exitDt  = s.exit_time  ? new Date(s.exit_time).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    const pnl = s.pnl_c_pct;
+    const pnlHtml = (pnl != null)
+      ? `<span style="font-family:monospace;color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${pnl.toFixed(3)}%</span>`
+      : `<span style="color:var(--muted)">—</span>`;
+    const durMs  = s.exit_time && s.entry_time ? new Date(s.exit_time) - new Date(s.entry_time) : null;
+    const durStr = durMs != null ? (durMs < 3600000 ? `${Math.round(durMs/60000)}m` : `${(durMs/3600000).toFixed(1)}h`) : '';
     return `<tr>
       <td style="font-weight:600">${s.pair_a}<span style="color:var(--muted)"> / </span>${s.pair_b}</td>
       <td><span style="color:${s.direction_a==='LONG'?'var(--green)':'var(--red)'}">${s.direction_a}</span> / <span style="color:${s.direction_b==='LONG'?'var(--green)':'var(--red)'}">${s.direction_b}</span></td>
@@ -702,7 +709,8 @@ function renderHistory() {
       <td><span style="color:var(--muted)">${s.regime||'—'}</span></td>
       <td><span class="status-pill ${s.status}">${s.status}</span></td>
       <td style="color:var(--muted);font-size:11px">${entryDt}</td>
-      <td style="color:var(--muted);font-size:11px">${exitDt}</td>
+      <td style="color:var(--muted);font-size:11px">${exitDt}${durStr ? `<span style="color:var(--muted);margin-left:4px;font-size:10px">${durStr}</span>` : ''}</td>
+      <td style="font-size:11px">${pnlHtml}</td>
     </tr>`;
   }).join('');
 }
