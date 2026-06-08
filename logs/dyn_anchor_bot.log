@@ -1035,3 +1035,37 @@
 [2026-06-06 08:48:24] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=28805.10000  run_low=28801.90000  sell_entry=29554.10451  buy_entry=28052.81192  session_open=28803.50000
 [2026-06-06 08:51:49] [DA] [INFO] Cycle 2850  balance=99551.49  sleep=15.0s
 [2026-06-06 08:53:15] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-08 08:48:34] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-08 08:48:37] [DA] [WARNING] No dyn_anchor_credentials found in KV (Railway may be sleeping — will retry; or set MT5_ACCOUNT/MT5_PASSWORD/MT5_SERVER env vars locally)
+[2026-06-08 08:48:37] [DA] [ERROR] MT5_ACCOUNT / MT5_PASSWORD / MT5_SERVER not set — aborting
+[2026-06-08 08:48:37] [DA] [WARNING] MT5 connection failed — falling back to paper mode
+[2026-06-08 08:48:39] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY']  interval=60s  risk=1.0%  window=00:00–22:00
+[2026-06-08 08:48:39] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-08 08:48:39] [DA] [INFO] [EUR/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-08 08:48:41] [DA] [INFO] [EUR/USD] Using on-demand server forecast
+[2026-06-08 08:48:41] [DA] [INFO] [EUR/USD] Setup [on-demand forecast]: regime=RANGE  sigma_d=0.338%  hl50=0.490%  hl75=0.620%  session_open=0.00000  slope=-0.001013
+[2026-06-08 08:48:41] [DA] [WARNING] [EUR/USD] session_open=0 — MT5 not connected or symbol name mismatch, skipping today
+[2026-06-08 08:48:41] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-08 08:48:41] [DA] [INFO] [GBP/USD] MT5 bars unavailable — requesting on-demand server forecast
+[2026-06-08 08:48:43] [DA] [INFO] DynAnchor bot stopped by user
+[2026-06-08 08:49:28] [DA] [INFO] DynAnchor bot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-08 08:49:30] [DA] [INFO] Credentials loaded: account=5051355495  server=MetaQuotes-Demo
+[2026-06-08 08:49:40] [DA] [INFO] [DynAnchor] MT5 connected  account=5051355495  balance=99551.49  server=MetaQuotes-Demo
+[2026-06-08 08:49:43] [DA] [INFO] Config: pairs=['EUR/USD', 'GBP/USD', 'USD/JPY']  interval=60s  risk=1.0%  window=00:00–22:00
+[2026-06-08 08:49:43] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-08 08:49:43] [DA] [INFO] [EUR/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 08:49:43] [DA] [INFO] [EUR/USD] Setup [MT5]: regime=RANGE  sigma_d=0.317%  hl50=0.459%  hl75=0.580%  session_open=1.15251  slope=-0.001029
+[2026-06-08 08:49:43] [DA] [INFO] [EUR/USD] RANGE day — no trading today
+[2026-06-08 08:49:43] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-08 08:49:43] [DA] [INFO] [GBP/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 08:49:43] [DA] [INFO] [GBP/USD] Setup [MT5]: regime=RANGE  sigma_d=0.387%  hl50=0.560%  hl75=0.709%  session_open=1.33389  slope=-0.000809
+[2026-06-08 08:49:43] [DA] [INFO] [GBP/USD] RANGE day — no trading today
+[2026-06-08 08:49:43] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-08 08:49:43] [DA] [INFO] [USD/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 08:49:43] [DA] [INFO] [USD/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.361%  hl50=0.523%  hl75=0.662%  session_open=160.18150  slope=0.000696
+[2026-06-08 08:49:43] [DA] [INFO] [USD/JPY] RANGE day — no trading today
+[2026-06-08 09:18:46] [DA] [INFO] Cycle 30  balance=99551.49  sleep=56.3s
+[2026-06-08 09:35:54] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 09:48:45] [DA] [INFO] Cycle 60  balance=99551.49  sleep=58.2s
+[2026-06-08 10:18:46] [DA] [INFO] Cycle 90  balance=99551.49  sleep=56.9s
+[2026-06-08 10:48:45] [DA] [INFO] Cycle 120  balance=99551.49  sleep=57.2s

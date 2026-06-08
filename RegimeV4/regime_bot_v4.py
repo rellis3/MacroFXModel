@@ -583,7 +583,7 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
             'action':       mt5.TRADE_ACTION_DEAL, 'symbol': sym, 'volume': pos.volume,
             'type':         ct,                    'position': ticket, 'price': cp,
             'deviation':    20,                    'magic': MAGIC,
-            'comment':      (''.join(c for c in f'RgV4:{reason}' if ord(c) < 128))[:31],
+            'comment':      (''.join(c for c in f'RgV4 {reason}' if c.isalnum() or c == ' '))[:31],
             'type_time':    mt5.ORDER_TIME_GTC,
             'type_filling': _filling_mode(sym),
         })

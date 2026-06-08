@@ -2860,11 +2860,12 @@ function _dashboardSigmaD(candles, assetClass) {
 }
 
 function _computeDaForecast(candles, opts = {}) {
-  const lambda      = opts.lambda      ?? 0.94;
-  const emaPeriod   = opts.emaPeriod   ?? 20;
-  const slopeThresh = opts.slopeThresh ?? 0.002;
-  const volModel    = opts.volModel    ?? 'ewma';
-  const assetClass  = opts.assetClass  ?? 'fx';
+  const lambda       = opts.lambda       ?? 0.94;
+  const emaPeriod    = opts.emaPeriod    ?? 20;
+  const slopeThresh  = opts.slopeThresh  ?? 0.002;
+  const slopeWindow  = opts.slopeWindow  ?? 5;   // must match backtest classifyRegime slopeWindow=5
+  const volModel     = opts.volModel     ?? 'ewma';
+  const assetClass   = opts.assetClass   ?? 'fx';
 
   const BM_P50 = 1.572, BM_P75 = 2.049;
 
@@ -2888,12 +2889,15 @@ function _computeDaForecast(candles, opts = {}) {
     hl75_corr = 0.894;
   }
 
-  // EMA series for slope
+  // EMA series for slope — 5-bar window matches backtest classifyRegime(slopeWindow=5)
+  if (closes.length < emaPeriod + slopeWindow + 1) return null;
   const alpha = 2 / (emaPeriod + 1);
-  let ema = closes[0], emaPrev = closes[0];
-  for (let i = 1; i < closes.length; i++) { emaPrev = ema; ema = alpha * closes[i] + (1 - alpha) * ema; }
-  const slope  = emaPrev !== 0 ? (ema - emaPrev) / emaPrev : 0;
-  const regime = slope > slopeThresh ? 'BULL' : slope < -slopeThresh ? 'BEAR' : 'RANGE';
+  const emaSeries = [closes[0]];
+  for (let i = 1; i < closes.length; i++) emaSeries.push(alpha * closes[i] + (1 - alpha) * emaSeries[i - 1]);
+  const emaNow  = emaSeries[emaSeries.length - 1];
+  const emaPast = emaSeries[emaSeries.length - 1 - slopeWindow];
+  const slope   = emaNow !== 0 ? (emaNow - emaPast) / emaNow : 0;
+  const regime  = slope > slopeThresh ? 'BULL' : slope < -slopeThresh ? 'BEAR' : 'RANGE';
 
   return {
     regime,
@@ -2928,11 +2932,12 @@ app.get('/api/dyn-anchor-forecast', async (req, res) => {
     ? pairsParam.split(',').map(p => p.trim()).filter(Boolean)
     : DEFAULT_DA_PAIRS;
 
-  const lambda      = parseFloat(req.query.lambda)      || 0.94;
-  const emaPeriod   = parseInt(req.query.emaPeriod)      || 20;
-  const slopeThresh = parseFloat(req.query.slopeThresh)  || 0.002;
-  const barCount    = Math.min(parseInt(req.query.bars) || 70, 250);
-  const volModel    = req.query.volModel ?? 'ewma';
+  const lambda       = parseFloat(req.query.lambda)       || 0.94;
+  const emaPeriod    = parseInt(req.query.emaPeriod)       || 20;
+  const slopeThresh  = parseFloat(req.query.slopeThresh)   || 0.002;
+  const slopeWindow  = parseInt(req.query.slopeWindow)     || 5;
+  const barCount     = Math.min(parseInt(req.query.bars) || 70, 250);
+  const volModel     = req.query.volModel ?? 'ewma';
 
   const forecast = {};
   const errors   = {};
@@ -2940,12 +2945,12 @@ app.get('/api/dyn-anchor-forecast', async (req, res) => {
   await Promise.all(pairs.map(async pair => {
     try {
       const candles = await fetchDailyOHLC(pair, barCount);
-      if (!candles || candles.length < emaPeriod + 5) {
-        errors[pair] = `Only ${candles?.length ?? 0} bars (need ${emaPeriod + 5})`;
+      if (!candles || candles.length < emaPeriod + slopeWindow + 1) {
+        errors[pair] = `Only ${candles?.length ?? 0} bars (need ${emaPeriod + slopeWindow + 1})`;
         return;
       }
       const assetClass = _DA_ASSET_CLASS[pair] ?? 'fx';
-      const f = _computeDaForecast(candles, { lambda, emaPeriod, slopeThresh, volModel, assetClass });
+      const f = _computeDaForecast(candles, { lambda, emaPeriod, slopeThresh, slopeWindow, volModel, assetClass });
       if (f) forecast[pair] = f;
       else   errors[pair] = 'computation failed';
     } catch (e) {
@@ -2959,7 +2964,7 @@ app.get('/api/dyn-anchor-forecast', async (req, res) => {
     computed_at: new Date().toISOString(),
     pairs_ok:    Object.keys(forecast).length,
     pairs_err:   Object.keys(errors).length,
-    params:      { lambda, emaPeriod, slopeThresh, barCount, volModel },
+    params:      { lambda, emaPeriod, slopeThresh, slopeWindow, barCount, volModel },
   };
 
   // Store to KV so bot can read it at session open

@@ -317,13 +317,14 @@ def compute_vol_and_regime(bars, cfg: dict, pair: str = '') -> tuple:
     regime: 'BULL' | 'BEAR' | 'RANGE'
     vol_model in cfg selects 'ewma' (default) or 'dashboard' (GARCH/RS-EWMA).
     """
-    lam        = float(cfg.get('ewma_lambda',    _EWMA_LAMBDA))
-    ema_period = int(cfg.get('ema_period',       _EMA_PERIOD))
-    slope_thr  = float(cfg.get('regime_threshold', _SLOPE_THRESH))
-    vol_model  = cfg.get('vol_model', 'ewma')
+    lam          = float(cfg.get('ewma_lambda',      _EWMA_LAMBDA))
+    ema_period   = int(cfg.get('ema_period',         _EMA_PERIOD))
+    slope_thr    = float(cfg.get('regime_threshold', _SLOPE_THRESH))
+    slope_window = int(cfg.get('slope_window',       5))   # must match backtest slopeWindow=5
+    vol_model    = cfg.get('vol_model', 'ewma')
 
     closes = [float(b['close']) for b in bars]
-    if len(closes) < ema_period + 2:
+    if len(closes) < ema_period + slope_window + 1:
         return None, None, 'RANGE', 0.0, 0.0
 
     if vol_model == 'dashboard':
@@ -341,12 +342,14 @@ def compute_vol_and_regime(bars, cfg: dict, pair: str = '') -> tuple:
         hl50 = _BM_P50 * _HL50_CORR * sigma_d
         hl75 = _BM_P75 * _HL75_CORR * sigma_d
 
-    # EMA-20 slope from latest two EMA values
+    # EMA-20 slope: (ema_now - ema_N_bars_ago) / ema_now — matches backtest slopeWindow=5
     ema = _ema_series(closes, ema_period)
-    if len(ema) < 2:
+    if len(ema) < slope_window + 1:
         return hl50, hl75, 'RANGE', sigma_d, 0.0
 
-    slope = (ema[-1] - ema[-2]) / ema[-2] if ema[-2] != 0 else 0.0
+    ema_now  = ema[-1]
+    ema_prev = ema[-1 - slope_window]
+    slope = (ema_now - ema_prev) / ema_now if ema_now != 0 else 0.0
 
     if slope > slope_thr:
         regime = 'BULL'
@@ -474,7 +477,7 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
         'price':        cp,
         'deviation':    20,
         'magic':        MAGIC,
-        'comment':      f'DA close: {reason[:28]}',
+        'comment':      (''.join(c for c in f'DA close {reason}' if c.isalnum() or c == ' '))[:31],
         'type_time':    mt5.ORDER_TIME_GTC,
         'type_filling': _filling_mode(sym),
     })
@@ -804,12 +807,13 @@ def fetch_server_forecast(pairs: list, url: str, cfg: dict) -> Optional[dict]:
         slope_thr   = cfg.get('regime_threshold', _SLOPE_THRESH)
         n_bars      = cfg.get('daily_bars_needed', 70)
         params = {
-            'pairs':       pairs_str,
-            'lambda':      lam,
-            'emaPeriod':   ema_period,
-            'slopeThresh': slope_thr,
-            'bars':        n_bars,
-            'volModel':    cfg.get('vol_model', 'ewma'),
+            'pairs':        pairs_str,
+            'lambda':       lam,
+            'emaPeriod':    ema_period,
+            'slopeThresh':  slope_thr,
+            'slopeWindow':  cfg.get('slope_window', 5),
+            'bars':         n_bars,
+            'volModel':     cfg.get('vol_model', 'ewma'),
         }
         r = requests.get(f'{url}/api/dyn-anchor-forecast', params=params, timeout=60)
         if r.status_code != 200:
