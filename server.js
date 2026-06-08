@@ -2972,7 +2972,7 @@ const m1CandleCache = new Map();
 const M1_CACHE_MAX  = 3;
 
 app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
-  const pair = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
   const { from, to } = req.query;
   try {
     if (!m1CandleCache.has(pair)) {

@@ -304,14 +304,29 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 const DISPLAY_CAP   = 50_000;
 const WARMUP        = 20;     // min corr records before signals
 
-// Pairs that have M1 parquet data in R2 (matches M1_DRIVE_IDS + XAUUSD uploaded to R2)
+// Pairs with M1 data in R2. Keys are the CORR_PAIRS names (as they appear in the dropdowns).
+// R2 uses different filenames for some instruments — see PAIR_TO_R2_KEY below.
 const M1_FX_PAIRS = new Set([
+  // FX pairs (25) — key matches filename e.g. eurusd_m1.parquet
   'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF',
   'GBPJPY','EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD',
   'AUDJPY','AUDNZD','AUDCAD','AUDCHF','GBPAUD','GBPCAD','GBPCHF',
   'GBPNZD','CADJPY','CHFJPY','NZDJPY',
-  'XAUUSD', // gold M1 data uploaded to R2 directly (no Drive fallback)
+  // Gold & indices — R2 uses short names (see PAIR_TO_R2_KEY)
+  'XAUUSD','NAS100_USD','SPX500_USD','DE30_USD','UK100_GBP','US30_USD','US2000_USD',
 ]);
+
+// Maps CORR_PAIRS name → R2 filename stem (without _m1.parquet)
+// Only entries that differ from the default toLowerCase() conversion are listed.
+const PAIR_TO_R2_KEY = {
+  'XAUUSD':     'gold',
+  'NAS100_USD': 'nq',
+  'SPX500_USD': 'spx500',
+  'DE30_USD':   'de30',
+  'UK100_GBP':  'uk100',
+  'US30_USD':   'us30',
+  'US2000_USD': 'us2000',
+};
 
 // ── State ────────────────────────────────────────────────────────────────────
 const S = {
@@ -332,7 +347,7 @@ const fPct = v  => (v >= 0 ? '+' : '') + f1(v) + '%';
 const fR   = v  => (v >= 0 ? '+' : '') + f2(v) + 'R';
 const fDur = m  => m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m/60)}h` : `${Math.round(m/1440)}d`;
 const fDt  = ms => new Date(ms).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-const pairToKey = p => p.toLowerCase().replace(/_/g,'');
+const pairToKey = p => PAIR_TO_R2_KEY[p] ?? p.toLowerCase().replace(/[^a-z0-9]/g,'');
 
 function setSt(type, msg, pct) {
   el('sdot').className = 'sdot ' + type;
@@ -376,7 +391,7 @@ function renderSuggestions(alertData, pairs) {
       }
     }
     if (!pA || !pB || !pairs.includes(pB)) continue;
-    if (!M1_FX_PAIRS.has(pA) || !M1_FX_PAIRS.has(pB)) continue;  // no M1 data for gold/indices
+    if (!M1_FX_PAIRS.has(pA) || !M1_FX_PAIRS.has(pB)) continue;  // only show pairs we can actually backtest
 
     const betaA = alertData.last_betas?.[pA]?.vix ?? 0;
     const betaB = alertData.last_betas?.[pB]?.vix ?? 0;
