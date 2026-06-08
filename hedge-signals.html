@@ -670,7 +670,7 @@ function renderSignals() {
   bar.style.display = 'none';
 
   if (active.length === 0) {
-    grid.innerHTML = `<div class="sig-empty"><div class="icon">🔍</div>No active signals right now.<br><span style="font-size:11px;color:var(--muted)">Next auto-scan in ~30 min, or press Check Now.</span></div>`;
+    grid.innerHTML = `<div class="sig-empty"><div class="icon">🔍</div>No active signals right now.<br><span style="font-size:11px;color:var(--muted)">Next auto-scan in ~15 min, or press Check Now.</span></div>`;
     return;
   }
 
@@ -844,12 +844,27 @@ async function manualCheck() {
   btn.disabled = true;
   btn.textContent = '⏳ Scanning…';
   try {
-    await fetch('/api/hedge-signals/check', { method: 'POST' });
-    await new Promise(r => setTimeout(r, 3000));
-    await loadSignals();
-  } catch {}
-  btn.disabled = false;
-  btn.textContent = '⚡ Check Now';
+    const res = await fetch('/api/hedge-signals/check', { method: 'POST' });
+    const data = await res.json();
+    await Promise.all([loadSignals(), loadScoreboard(), loadPrices()]);
+    if (data.status === 'ok') {
+      btn.textContent = `✅ ${data.newSignals ?? 0} new`;
+    } else if (data.status === 'busy') {
+      btn.textContent = '⏳ Busy…';
+    } else if (data.status === 'error') {
+      btn.textContent = '❌ Error';
+      console.error('[Check Now]', data.error);
+    } else {
+      btn.textContent = `⚡ Done (${data.status})`;
+    }
+  } catch (e) {
+    btn.textContent = '❌ Failed';
+    console.error('[Check Now]', e);
+  }
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = '⚡ Check Now';
+  }, 3000);
 }
 
 function toggleEnabled() {

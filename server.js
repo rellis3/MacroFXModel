@@ -594,18 +594,19 @@ function _hedgeScore(corr, betaA, betaB) {
   return +(corrPart + betaPart).toFixed(4);
 }
 
-async function computeHedgeSignals() {
-  if (_hedgeSigRunning) return;
+// force=true bypasses the enabled flag and regime gate (used by the manual Check Now button).
+async function computeHedgeSignals(force = false) {
+  if (_hedgeSigRunning) return { status: 'busy' };
   _hedgeSigRunning = true;
   try {
-    if (!fs.existsSync(CORR_HISTORY_PATH)) return;
+    if (!fs.existsSync(CORR_HISTORY_PATH)) return { status: 'no_data', error: 'corr_history.json not found — run a correlation history build first' };
     const data    = JSON.parse(fs.readFileSync(CORR_HISTORY_PATH, 'utf8'));
     const records = data.records || [];
-    if (records.length < 20) return;
+    if (records.length < 20) return { status: 'no_data', error: `Only ${records.length} corr records — need ≥20` };
 
     const cfgRaw = await kv.get(HEDGE_SIGNAL_CFG_KEY);
     const cfg    = cfgRaw ? { ...DEFAULT_HEDGE_CFG, ...JSON.parse(cfgRaw) } : { ...DEFAULT_HEDGE_CFG };
-    if (!cfg.enabled) return;
+    if (!cfg.enabled && !force) return { status: 'disabled' };
 
     // Build rolling stats per pair-pair key
     const sums = {}, sums2 = {}, cnts = {}, lastCorr = {}, lastBeta = {};
@@ -619,9 +620,9 @@ async function computeHedgeSignals() {
     }
 
     const regime  = (records[records.length - 1]?.regime) || 'UNKNOWN';
-    if (!cfg.allowed_regimes.includes(regime)) {
+    if (!cfg.allowed_regimes.includes(regime) && !force) {
       console.log(`[HEDGE-SIG] Regime ${regime} not in allowed list — skip`);
-      return;
+      return { status: 'regime_blocked', regime };
     }
 
     let sigData = { signals: [], last_run: null };
@@ -740,8 +741,10 @@ async function computeHedgeSignals() {
     fs.mkdirSync(path.dirname(HEDGE_SIGNALS_PATH), { recursive: true });
     fs.writeFileSync(HEDGE_SIGNALS_PATH, JSON.stringify(sigData, null, 2));
     if (newSigs.length) console.log(`[HEDGE-SIG] ${newSigs.length} new:`, newSigs.map(s => `${s.pair_a}/${s.pair_b} z=${s.z_score}`).join(', '));
+    return { status: 'ok', newSignals: newSigs.length, totalSignals: sigData.signals?.length ?? 0 };
   } catch (e) {
     console.error('[HEDGE-SIG]', e.message);
+    return { status: 'error', error: e.message };
   } finally {
     _hedgeSigRunning = false;
   }
@@ -3170,9 +3173,9 @@ app.put('/api/hedge-signals/config', async (req, res) => {
   res.json({ ok: true, config: cfg });
 });
 
-app.post('/api/hedge-signals/check', (_req, res) => {
-  computeHedgeSignals().catch(e => console.error('[HEDGE-SIG] Manual check:', e.message));
-  res.json({ ok: true, message: 'Signal scan started' });
+app.post('/api/hedge-signals/check', async (_req, res) => {
+  const result = await computeHedgeSignals(true).catch(e => ({ status: 'error', error: e.message }));
+  res.json({ ok: true, ...result });
 });
 
 // List R2 bucket contents under a prefix — useful to confirm which M1 parquets are uploaded
