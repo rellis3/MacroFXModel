@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forecaster Backtest</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+#fbApp { padding: 0 20px 60px; max-width: 1400px; margin: 0 auto; }
+
+.fb-run-bar { display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px; }
+.fb-run-btn {
+  background:var(--green);border:none;border-radius:6px;color:#fff;
+  font-family:'DM Mono',monospace;font-size:12px;font-weight:600;
+  padding:7px 20px;cursor:pointer;transition:opacity .2s;
+}
+.fb-run-btn:hover{opacity:.85} .fb-run-btn:disabled{opacity:.5;cursor:wait}
+.fb-cfg-toggle {
+  background:none;border:1.5px solid var(--border);border-radius:20px;
+  color:var(--text2);font-family:'DM Mono',monospace;font-size:11px;
+  padding:5px 14px;cursor:pointer;transition:all .2s;
+}
+.fb-cfg-toggle:hover{border-color:var(--blue);color:var(--blue)}
+.fb-sel {
+  background:var(--s2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px;cursor:pointer;
+}
+.fb-sel:focus{outline:none;border-color:var(--blue)}
+.fb-date-inp {
+  background:var(--s2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:'DM Mono',monospace;font-size:11px;
+  padding:5px 10px;cursor:pointer;color-scheme:dark;
+}
+.fb-date-inp:focus{outline:none;border-color:var(--blue)}
+.fb-lbl{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+
+/* ── Config ───────────────────────────────────────────────────────────────────── */
+.fb-cfg-panel{background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);padding:14px 18px;margin-top:10px}
+.fb-cfg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 18px;margin-top:10px}
+.fb-param{display:flex;flex-direction:column;gap:2px;padding:5px 0;border-bottom:1px solid rgba(28,33,51,.5)}
+.fb-param:last-child{border-bottom:none}
+.fb-param-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.fb-param-help{font-size:9.5px;color:#3d4a6a;font-family:'DM Sans',sans-serif;line-height:1.45;padding-left:1px}
+.fb-param-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:'DM Mono',monospace}
+.fb-num-input{width:72px;background:#0a0d14;border:1px solid #2a3050;border-radius:4px;color:#60a5fa;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;padding:4px 6px;text-align:right;flex-shrink:0}
+.fb-num-input:focus{outline:none;border-color:#4f7df0}
+.fb-num-input::-webkit-inner-spin-button,.fb-num-input::-webkit-outer-spin-button{opacity:.4}
+
+/* ── Level grid ──────────────────────────────────────────────────────────────── */
+.fb-level-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 8px;margin-top:10px}
+@media(max-width:900px){.fb-level-grid{grid-template-columns:repeat(2,1fr)}}
+.fb-level-item{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--s2);border:1px solid var(--border);border-radius:5px;cursor:pointer;user-select:none;transition:border-color .15s}
+.fb-level-item:hover{border-color:var(--border2)}
+.fb-level-item.is-dyn{border-style:dashed}
+.fb-level-item input{cursor:pointer;flex-shrink:0}
+.fb-level-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.fb-level-name{font-size:10px;font-family:'DM Mono',monospace;color:var(--text2);flex:1}
+.fb-level-dir{font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)}
+
+/* ── Chart section ────────────────────────────────────────────────────────────── */
+.fb-chart-section{background:#131722;border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-top:12px}
+.fb-chart-topbar{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;padding:6px 12px;background:#0e1117;border-bottom:1px solid #1c2133;min-height:36px}
+.fb-chart-price-wrap{position:relative;height:400px;background:#131722}
+#fbPriceChart{width:100%;height:100%}
+#fbOverlay{position:absolute;inset:0;pointer-events:none;z-index:4}
+.fb-hover-box{position:absolute;top:8px;right:56px;background:#131722cc;border:1px solid #1c2133;border-radius:4px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:#d1d4dc;pointer-events:none;z-index:10;min-width:180px;backdrop-filter:blur(4px);display:none}
+.fb-hover-box .hb-row{display:flex;justify-content:space-between;gap:12px;line-height:1.7}
+.fb-hover-box .hb-k{color:#5a6380} .fb-hover-box .hb-v{color:#d1d4dc;font-weight:500}
+.fb-pnl-wrap{position:relative;height:100px;background:#0e1117;border-top:1px solid #1c2133}
+#fbPnlChart{width:100%;height:100%}
+.fb-pnl-lbl{position:absolute;top:3px;left:6px;font-family:'DM Mono',monospace;font-size:10px;color:#5a6380;pointer-events:none;z-index:2}
+.fb-resize-handle{height:6px;background:#1c2133;cursor:ns-resize;position:relative;z-index:5;flex-shrink:0;transition:background .15s}
+.fb-resize-handle:hover,.fb-resize-handle.dragging{background:#4f7df0}
+.fb-resize-handle::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:2px;background:rgba(255,255,255,.18);border-radius:1px}
+
+/* ── Nav bars ─────────────────────────────────────────────────────────────────── */
+.fb-nav-bar{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#0e1117;border-top:1px solid #1c2133;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+.fb-nav-btn{background:var(--s2);border:1px solid var(--border);border-radius:4px;color:var(--text2);font-family:'DM Mono',monospace;font-size:11px;padding:2px 10px;cursor:pointer;transition:border-color .15s}
+.fb-nav-btn:hover{border-color:var(--blue);color:var(--blue)} .fb-nav-btn:disabled{opacity:.35;cursor:default}
+.fb-day-chip{background:var(--s2);border:1px solid var(--blue-bd);color:var(--blue);font-size:10px;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:10px}
+
+/* ── KPI ──────────────────────────────────────────────────────────────────────── */
+.bt-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+@media(max-width:900px){.bt-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.bt-kpi{background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);padding:16px 18px 14px;display:flex;flex-direction:column;gap:4px;transition:border-color .2s}
+.bt-kpi:hover{border-color:var(--border2)}
+.bt-kpi-label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace}
+.bt-kpi-value{font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);line-height:1.1}
+.bt-kpi-value.green{color:var(--green)} .bt-kpi-value.red{color:var(--red)} .bt-kpi-value.blue{color:var(--blue)} .bt-kpi-value.amber{color:var(--amber)}
+.bt-kpi-sub{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+.bt-sec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+@media(max-width:900px){.bt-sec-grid{grid-template-columns:repeat(2,1fr)}}
+.bt-sec{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.bt-sec-lbl{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+.bt-sec-val{font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text)}
+
+/* ── Card ─────────────────────────────────────────────────────────────────────── */
+.bt-card{background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-top:14px}
+.bt-card-hdr{padding:12px 18px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.bt-card-body{padding:18px}
+.bt-chart-wrap{position:relative;height:200px}
+.bt-two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:900px){.bt-two-col{grid-template-columns:1fr}}
+
+/* ── Tables ───────────────────────────────────────────────────────────────────── */
+.bt-tbl{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px}
+.bt-tbl th{padding:7px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap}
+.bt-tbl td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap}
+.bt-tbl tr:last-child td{border-bottom:none}
+.bt-tbl tr:hover td{background:var(--s2)}
+.bt-tbl td.num{text-align:right} .bt-tbl td.pos{color:var(--green)} .bt-tbl td.neg{color:var(--red)} .bt-tbl td.neu{color:var(--text2)}
+.bt-tbl-scroll{overflow-x:auto;max-height:420px;overflow-y:auto}
+.bt-tbl tbody tr{cursor:pointer}
+.bt-tbl tr.sel-row td{background:rgba(79,125,240,.12)!important}
+.rb-badge{display:inline-block;padding:2px 7px;border-radius:9px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;border:1px solid}
+.rb-badge.win{color:var(--green);background:var(--green-bg);border-color:var(--green-bd)}
+.rb-badge.loss{color:var(--red);background:var(--red-bg);border-color:var(--red-bd)}
+.bt-pg{padding:10px 14px;display:flex;align-items:center;gap:8px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);border-top:1px solid var(--border)}
+.bt-pg button{background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-family:'DM Mono',monospace;font-size:11px;padding:3px 10px;cursor:pointer}
+.bt-pg button:hover{border-color:var(--blue);color:var(--blue)} .bt-pg button:disabled{opacity:.35;cursor:default}
+
+/* ── Level profit table ───────────────────────────────────────────────────────── */
+.lv-tbl{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:11px}
+.lv-tbl th{padding:6px 10px;text-align:right;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)}
+.lv-tbl th:first-child,.lv-tbl th:nth-child(2){text-align:left}
+.lv-tbl td{padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+.lv-tbl td:first-child,.lv-tbl td:nth-child(2){text-align:left}
+.lv-tbl tr:last-child td{border-bottom:none}
+.lv-tbl .pnl-bar-cell{width:80px}
+.lv-pnl-bar{height:5px;border-radius:2px;display:inline-block;vertical-align:middle;min-width:2px}
+
+/* ── Exit bar ─────────────────────────────────────────────────────────────────── */
+.reason-row{display:flex;align-items:center;gap:10px;padding:4px 0}
+.reason-lbl{width:80px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);flex-shrink:0}
+.reason-bar-track{flex:1;height:6px;background:var(--s2);border-radius:3px;overflow:hidden}
+.reason-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.reason-stat{width:150px;text-align:right;font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);flex-shrink:0}
+
+/* ── Heatmap ──────────────────────────────────────────────────────────────────── */
+.hm-grid{display:flex;flex-wrap:wrap;gap:4px;padding:14px 18px}
+.hm-cell{width:54px;height:40px;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;border:1px solid var(--border)}
+.hm-cell .hm-month{color:var(--text3)} .hm-cell .hm-val{font-size:11px;font-weight:600}
+
+/* ── Dyn badge ────────────────────────────────────────────────────────────────── */
+.dyn-badge{display:inline-block;font-size:8px;font-family:'DM Mono',monospace;padding:1px 5px;border-radius:6px;background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.4);color:#fb923c;margin-left:4px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="sticky-header">
+<div id="fbApp">
+<div class="topbar">
+  <div class="logo-box">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M1 13 L5 5 L9 9 L13 3" stroke="white" stroke-width="1.8" stroke-linejoin="round" fill="none"/>
+      <line x1="1" y1="13" x2="15" y2="13" stroke="white" stroke-width="1.2" opacity=".5"/>
+    </svg>
+  </div>
+  <div class="title-block">
+    <div class="title" style="font-size:15px;font-weight:700;">Forecaster Backtest</div>
+    <div class="sub">8 static + 4 dynamic vol-range levels · M1 bar-by-bar · MFE trail exit · day-by-day chart</div>
+  </div>
+  <div style="flex:1"></div>
+  <a href="vol-forecast.html" style="text-decoration:none"><button class="dark-btn" style="border-color:#4f7df0;color:#4f7df0">📐 Vol Forecast</button></a>
+  <a href="vol-backtest.html" style="text-decoration:none"><button class="dark-btn">Vol BT →</button></a>
+  <a href="regime-backtest.html" style="text-decoration:none"><button class="dark-btn">Regime BT →</button></a>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+</div>
+</div>
+</div>
+
+<div id="fbApp" style="padding-top:0">
+
+<!-- Run bar -->
+<div class="fb-run-bar">
+  <span class="fb-lbl">Pair</span>
+  <select class="fb-sel" id="pairSel">
+    <option value="EUR/USD">EUR/USD</option><option value="GBP/USD">GBP/USD</option>
+    <option value="USD/JPY">USD/JPY</option><option value="AUD/USD">AUD/USD</option>
+    <option value="NZD/USD">NZD/USD</option><option value="USD/CAD">USD/CAD</option>
+    <option value="USD/CHF">USD/CHF</option><option value="GBP/JPY">GBP/JPY</option>
+    <option value="XAU/USD">XAU/USD</option><option value="EUR/GBP">EUR/GBP</option>
+    <option value="EUR/JPY">EUR/JPY</option><option value="EUR/CAD">EUR/CAD</option>
+    <option value="EUR/AUD">EUR/AUD</option><option value="EUR/CHF">EUR/CHF</option>
+    <option value="EUR/NZD">EUR/NZD</option><option value="AUD/JPY">AUD/JPY</option>
+    <option value="AUD/CAD">AUD/CAD</option><option value="AUD/CHF">AUD/CHF</option>
+    <option value="AUD/NZD">AUD/NZD</option><option value="GBP/AUD">GBP/AUD</option>
+    <option value="GBP/CAD">GBP/CAD</option><option value="GBP/CHF">GBP/CHF</option>
+    <option value="GBP/NZD">GBP/NZD</option><option value="CAD/JPY">CAD/JPY</option>
+    <option value="CHF/JPY">CHF/JPY</option><option value="NZD/JPY">NZD/JPY</option>
+    <option value="NAS100_USD">NAS100</option><option value="SPX500_USD">SPX500</option>
+    <option value="DE30_USD">DE30</option><option value="UK100_GBP">UK100</option>
+    <option value="US30_USD">US30</option><option value="US2000_USD">US2000</option>
+  </select>
+  <span class="fb-lbl">From</span><input type="date" class="fb-date-inp" id="fromDate">
+  <span class="fb-lbl">To</span><input type="date" class="fb-date-inp" id="toDate">
+  <button class="fb-run-btn" id="runBtn" onclick="loadAndRun()">▶ Load &amp; Run</button>
+  <button class="fb-cfg-toggle" onclick="toggleConfig()">⚙ Config</button>
+  <span class="fb-lbl" id="runStatus"></span>
+</div>
+
+<!-- Config panel -->
+<div class="fb-cfg-panel" id="cfgPanel" style="display:none">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em">Strategy Configuration</span>
+    <button class="dark-btn" style="padding:2px 10px;font-size:10px" onclick="resetParams()">Reset defaults</button>
+    <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:auto">120-day warmup window is loaded automatically before the From date</span>
+  </div>
+  <div class="fb-cfg-grid" id="cfgGrid"></div>
+  <div style="margin-top:14px">
+    <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:4px">
+      Static levels (from London midnight open)
+    </div>
+    <div class="fb-level-grid" id="staticLevelGrid"></div>
+    <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#fb923c;font-family:'DM Mono',monospace;margin-top:12px;margin-bottom:4px">
+      Dynamic levels <span style="color:var(--text3);font-weight:400">(update as day H/L expands · dashed borders)</span>
+    </div>
+    <div class="fb-level-grid" id="dynLevelGrid" style="grid-template-columns:repeat(4,1fr)"></div>
+  </div>
+</div>
+
+<!-- Status -->
+<div class="status-bar" id="statusBar" style="margin-top:12px">
+  <div class="sdot" id="statusDot"></div>
+  <span class="stxt" id="statusMsg">Select a pair and date range, then click ▶ Load &amp; Run</span>
+</div>
+<div id="covBanner" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);padding:8px 14px;font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);margin-top:8px"></div>
+
+<!-- Chart section -->
+<div class="fb-chart-section" id="chartSection">
+  <div class="fb-chart-topbar">
+    <span class="fb-lbl" id="chartPairLbl" style="font-weight:600;color:#d1d4dc">—</span>
+    <div style="width:1px;height:16px;background:#1c2133;flex-shrink:0"></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap" id="legendRow"></div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <span id="dayInfoChip" style="display:none" class="fb-day-chip"></span>
+    </div>
+  </div>
+  <div class="fb-chart-price-wrap" id="chartWrap">
+    <div id="fbPriceChart"></div>
+    <canvas id="fbOverlay"></canvas>
+    <div class="fb-hover-box" id="hoverBox">
+      <div class="hb-row"><span class="hb-k">Vol annual</span><span class="hb-v" id="hbVol">—</span></div>
+      <div class="hb-row"><span class="hb-k">HL med / 75p</span><span class="hb-v" id="hbHL">—</span></div>
+      <div class="hb-row"><span class="hb-k">OC med / 75p</span><span class="hb-v" id="hbOC">—</span></div>
+      <div class="hb-row"><span class="hb-k">Open</span><span class="hb-v" id="hbOpen">—</span></div>
+      <div class="hb-row"><span class="hb-k">Day H / L</span><span class="hb-v" id="hbHL2">—</span></div>
+    </div>
+  </div>
+  <!-- Daily P&L subchart (synced) -->
+  <div class="fb-pnl-wrap">
+    <span class="fb-pnl-lbl">Daily P&amp;L %</span>
+    <div id="fbPnlChart"></div>
+  </div>
+  <div class="fb-resize-handle" id="resizeHandle"></div>
+  <!-- Day navigation -->
+  <div class="fb-nav-bar" id="dayNavBar">
+    <span class="fb-lbl" style="color:#5a6380">Day:</span>
+    <button class="fb-nav-btn" id="dayPrev" onclick="navDay(-1)" disabled>◀ Prev</button>
+    <button class="fb-nav-btn" id="dayNext" onclick="navDay(1)"  disabled>Next ▶</button>
+    <span id="dayNavInfo" class="fb-lbl" style="color:var(--text2)"></span>
+    <div style="flex:1"></div>
+    <span class="fb-lbl" style="color:#5a6380;margin-left:8px">Trade:</span>
+    <button class="fb-nav-btn" id="tradePrev" onclick="navTrade(-1)" disabled>◀</button>
+    <button class="fb-nav-btn" id="tradeNext" onclick="navTrade(1)"  disabled>▶</button>
+    <span id="tradeNavInfo" class="fb-lbl"></span>
+    <div style="flex:1"></div>
+    <button class="dark-btn" style="font-size:10px;padding:2px 10px" onclick="fitAll()">Fit All</button>
+    <button class="dark-btn" style="font-size:10px;padding:2px 10px" onclick="exportResults()">⬇ CSV</button>
+  </div>
+</div>
+
+<!-- Analytics -->
+<div id="analyticsSection" style="display:none">
+  <div class="bt-kpi-grid" id="kpiGrid"></div>
+  <div class="bt-sec-grid" id="secGrid"></div>
+
+  <div class="bt-two-col">
+    <div class="bt-card">
+      <div class="bt-card-hdr">Equity Curve <span style="font-size:9px;color:var(--text3)">(cumulative % P&amp;L)</span></div>
+      <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="equityChart"></canvas></div></div>
+    </div>
+    <div class="bt-card">
+      <div class="bt-card-hdr">Level Profit Breakdown</div>
+      <div style="overflow-x:auto">
+        <table class="lv-tbl" id="levelTable">
+          <thead><tr>
+            <th></th><th>Level</th><th>Trades</th><th>Win%</th>
+            <th>Gross P&amp;L</th><th>Avg/Trade</th><th>Avg Win</th><th>Avg Loss</th>
+            <th style="width:90px">P&amp;L Bar</th>
+          </tr></thead>
+          <tbody id="levelTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="bt-two-col">
+    <div class="bt-card">
+      <div class="bt-card-hdr">Session Breakdown</div>
+      <div class="bt-card-body" style="padding:14px 18px">
+        <table class="bt-tbl" id="sessionTable">
+          <thead><tr><th>Session</th><th class="num">Trades</th><th class="num">Win%</th><th class="num">Gross P&L</th><th class="num">Avg/Trade</th></tr></thead>
+          <tbody id="sessionTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="bt-card">
+      <div class="bt-card-hdr">Exit Reasons</div>
+      <div style="padding:14px 18px" id="exitReasons"></div>
+    </div>
+  </div>
+
+  <div class="bt-two-col">
+    <div class="bt-card">
+      <div class="bt-card-hdr">Day of Week P&amp;L</div>
+      <div class="bt-card-body"><div class="bt-chart-wrap" style="height:150px"><canvas id="dowChart"></canvas></div></div>
+    </div>
+    <div class="bt-card">
+      <div class="bt-card-hdr">Monthly Heatmap</div>
+      <div class="hm-grid" id="monthlyHeatmap"></div>
+    </div>
+  </div>
+
+  <div class="bt-card" style="margin-top:14px">
+    <div class="bt-card-hdr">
+      Trade Log
+      <span id="tradeCount" style="font-size:10px;color:var(--text3)"></span>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+        <select class="fb-sel" id="filterDir" style="font-size:10px;padding:2px 8px" onchange="renderTradeLog()">
+          <option value="">All directions</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option>
+        </select>
+        <select class="fb-sel" id="filterOut" style="font-size:10px;padding:2px 8px" onchange="renderTradeLog()">
+          <option value="">All outcomes</option><option value="win">Wins</option><option value="loss">Losses</option>
+        </select>
+        <select class="fb-sel" id="filterLv" style="font-size:10px;padding:2px 8px" onchange="renderTradeLog()">
+          <option value="">All levels</option>
+        </select>
+      </div>
+    </div>
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="tradeTable">
+        <thead><tr>
+          <th>#</th><th>Date</th><th>Level</th><th>Dir</th>
+          <th class="num">Entry</th><th class="num">Exit</th>
+          <th class="num">P&amp;L%</th><th class="num">P&amp;L R</th>
+          <th class="num">MFE R</th><th class="num">MAE R</th>
+          <th class="num">Dur</th><th>Exit</th><th>Forecast (HL/OC med)</th>
+        </tr></thead>
+        <tbody id="tradeBody"></tbody>
+      </table>
+    </div>
+    <div class="bt-pg" id="tradePg">
+      <button onclick="tradePageChange(-1)" id="pgPrev">◀ Prev</button>
+      <span id="pgInfo"></span>
+      <button onclick="tradePageChange(1)" id="pgNext">Next ▶</button>
+    </div>
+  </div>
+</div><!-- /analyticsSection -->
+</div><!-- /fbApp -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// Vol Forecast Math — inlined from js/volForecast.js (no server round-trip)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const FC_TRADING_DAYS = 252;
+const FC_EWMA_LAMBDA  = 0.94;
+const FC_G_ALPHA = 0.06, FC_G_BETA = 0.91;
+const FC_BM_P50 = 1.572, FC_BM_P75 = 2.049;
+const FC_HN_P50 = 0.6745, FC_HN_P75 = 1.1503;
+
+const FC_ASSET_PARAMS = {
+  commodity: { hl_50_corr:1.018, hl_75_corr:0.940, oc_50_corr:1.126, oc_75_corr:1.085 },
+  index:     { hl_50_corr:0.993, hl_75_corr:0.947, oc_50_corr:1.061, oc_75_corr:1.112, garch_omega:4.76e-6 },
+  fx:        { hl_50_corr:0.955, hl_75_corr:0.888, oc_50_corr:0.956, oc_75_corr:0.954, garch_omega:3.60e-7 },
+};
+
+function _rsEwmaVol(bars) {
+  const initN = Math.min(20, bars.length);
+  let v = 0;
+  for (let i = 0; i < initN; i++) {
+    v += Math.log(bars[i].high/bars[i].close)*Math.log(bars[i].high/bars[i].open)
+       + Math.log(bars[i].low /bars[i].close)*Math.log(bars[i].low /bars[i].open);
+  }
+  v = Math.max(v / initN, 1e-10);
+  for (const b of bars) {
+    const rs = Math.log(b.high/b.close)*Math.log(b.high/b.open)
+             + Math.log(b.low /b.close)*Math.log(b.low /b.open);
+    v = FC_EWMA_LAMBDA * v + (1 - FC_EWMA_LAMBDA) * rs;
+  }
+  return Math.sqrt(Math.max(v, 0));
+}
+
+function _garch11Vol(bars, omega) {
+  let s2 = omega / (1 - FC_G_ALPHA - FC_G_BETA);
+  for (let i = 1; i < bars.length; i++) {
+    const r = Math.log(bars[i].close / bars[i-1].close);
+    s2 = omega + FC_G_ALPHA * r * r + FC_G_BETA * s2;
+  }
+  return Math.sqrt(s2);
+}
+
+function computeForecastFromBars(dailyBars, assetClass) {
+  if (dailyBars.length < 60) return null;
+  const p  = FC_ASSET_PARAMS[assetClass] ?? FC_ASSET_PARAMS.fx;
+  const sf = assetClass === 'commodity' ? _rsEwmaVol(dailyBars) : _garch11Vol(dailyBars, p.garch_omega);
+  const sp = sf * 100;
+  const r2 = x => Math.round(x * 100) / 100;
+  return {
+    vol_annual: r2(sp * Math.sqrt(FC_TRADING_DAYS)),
+    hl_median:  r2(FC_BM_P50 * p.hl_50_corr * sp),
+    hl_75:      r2(FC_BM_P75 * p.hl_75_corr * sp),
+    oc_median:  r2(FC_HN_P50 * p.oc_50_corr * sp),
+    oc_75:      r2(FC_HN_P75 * p.oc_75_corr * sp),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Level definitions  — 8 static + 4 dynamic
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const LEVELS = [
+  // ── Static (from London midnight open) ────────────────────────────────────
+  { key:'PROJ_H_75',  label:'Proj H 75p',  dir:'SHORT', color:'#ef5350', dynamic:false },
+  { key:'PROJ_H_MED', label:'Proj H Med',  dir:'SHORT', color:'#f87171', dynamic:false },
+  { key:'OC_75_UP',   label:'Close 75p+',  dir:'SHORT', color:'#fbbf24', dynamic:false },
+  { key:'OC_MED_UP',  label:'Close Med+',  dir:'SHORT', color:'#f0a030', dynamic:false },
+  { key:'OC_MED_DN',  label:'Close Med−',  dir:'LONG',  color:'#34d399', dynamic:false },
+  { key:'OC_75_DN',   label:'Close 75p−',  dir:'LONG',  color:'#10b981', dynamic:false },
+  { key:'PROJ_L_MED', label:'Proj L Med',  dir:'LONG',  color:'#60a5fa', dynamic:false },
+  { key:'PROJ_L_75',  label:'Proj L 75p',  dir:'LONG',  color:'#818cf8', dynamic:false },
+  // ── Dynamic (from running day High/Low, update each bar) ──────────────────
+  // DYN_H levels: price from the high, projected down — enter LONG on pullback
+  { key:'DYN_H_75',   label:'From H 75p',  dir:'LONG',  color:'#f97316', dynamic:true },
+  { key:'DYN_H_MED',  label:'From H Med',  dir:'LONG',  color:'#fb923c', dynamic:true },
+  // DYN_L levels: price from the low, projected up — enter SHORT on recovery
+  { key:'DYN_L_MED',  label:'From L Med',  dir:'SHORT', color:'#38bdf8', dynamic:true },
+  { key:'DYN_L_75',   label:'From L 75p',  dir:'SHORT', color:'#7dd3fc', dynamic:true },
+];
+
+// Static level prices from the open
+function computeStaticLevels(open, fc) {
+  return {
+    PROJ_H_75:  open * (1 + fc.hl_75    / 100),
+    PROJ_H_MED: open * (1 + fc.hl_median / 100),
+    OC_75_UP:   open * (1 + fc.oc_75    / 100),
+    OC_MED_UP:  open * (1 + fc.oc_median / 100),
+    OC_MED_DN:  open * (1 - fc.oc_median / 100),
+    OC_75_DN:   open * (1 - fc.oc_75    / 100),
+    PROJ_L_MED: open * (1 - fc.hl_median / 100),
+    PROJ_L_75:  open * (1 - fc.hl_75    / 100),
+  };
+}
+
+// Dynamic level prices from current day high/low
+function computeDynamicLevels(dayHigh, dayLow, fc) {
+  return {
+    DYN_H_75:  dayHigh * (1 - fc.hl_75    / 100),
+    DYN_H_MED: dayHigh * (1 - fc.hl_median / 100),
+    DYN_L_MED: dayLow  * (1 + fc.hl_median / 100),
+    DYN_L_75:  dayLow  * (1 + fc.hl_75    / 100),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Instrument maps
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const PAIR_ASSET_CLASS = {
+  'EUR/USD':'fx','GBP/USD':'fx','USD/JPY':'fx','AUD/USD':'fx','NZD/USD':'fx',
+  'USD/CAD':'fx','USD/CHF':'fx','GBP/JPY':'fx','EUR/GBP':'fx','EUR/JPY':'fx',
+  'EUR/CAD':'fx','EUR/AUD':'fx','EUR/CHF':'fx','EUR/NZD':'fx','AUD/JPY':'fx',
+  'AUD/CAD':'fx','AUD/CHF':'fx','AUD/NZD':'fx','GBP/AUD':'fx','GBP/CAD':'fx',
+  'GBP/CHF':'fx','GBP/NZD':'fx','CAD/JPY':'fx','CHF/JPY':'fx','NZD/JPY':'fx',
+  'XAU/USD':'commodity',
+  'NAS100_USD':'index','SPX500_USD':'index','DE30_USD':'index',
+  'UK100_GBP':'index','US30_USD':'index','US2000_USD':'index',
+};
+const PAIR_SAFE = {
+  'EUR/USD':'eurusd','GBP/USD':'gbpusd','USD/JPY':'usdjpy','AUD/USD':'audusd',
+  'NZD/USD':'nzdusd','USD/CAD':'usdcad','USD/CHF':'usdchf','GBP/JPY':'gbpjpy',
+  'XAU/USD':'gold','NAS100_USD':'nq','EUR/GBP':'eurgbp','EUR/JPY':'eurjpy',
+  'EUR/CAD':'eurcad','EUR/AUD':'euraud','EUR/CHF':'eurchf','EUR/NZD':'eurnzd',
+  'AUD/JPY':'audjpy','AUD/CAD':'audcad','AUD/CHF':'audchf','AUD/NZD':'audnzd',
+  'GBP/AUD':'gbpaud','GBP/CAD':'gbpcad','GBP/CHF':'gbpchf','GBP/NZD':'gbpnzd',
+  'CAD/JPY':'cadjpy','CHF/JPY':'chfjpy','NZD/JPY':'nzdjpy',
+  'SPX500_USD':'spx500','DE30_USD':'de30','UK100_GBP':'uk100',
+  'US30_USD':'us30','US2000_USD':'us2000',
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Config params
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const PARAMS = [
+  { key:'slAtrMult',    label:'SL ATR Multiplier',      min:0.5, max:6.0,  step:0.1,  def:2.0,
+    help:'SL = ATR(14 M1 bars) × this. Wider → survives noise, larger per-trade loss.' },
+  { key:'atrPeriod',    label:'ATR Period (M1 bars)',    min:5,   max:100,  step:1,    def:14,
+    help:'Number of M1 bars for the ATR calc used to set stop-loss.' },
+  { key:'mfeTrailPct',  label:'MFE Trail Retrace %',    min:0.10,max:0.95, step:0.05, def:0.50,
+    help:'Exit when price retraces this fraction of peak MFE. 0.50 = give back 50% of best profit.' },
+  { key:'mfeMinR',      label:'Trail Min MFE (R)',       min:0.1, max:3.0,  step:0.1,  def:0.3,
+    help:'Trail exit only activates once MFE ≥ this many R multiples.' },
+  { key:'dynMinMove',   label:'Dyn Level Min Move (%)',  min:0.0, max:1.0,  step:0.05, def:0.25,
+    help:'Dynamic H/L levels only activate after day H or L has moved this % from open. Prevents immediate triggers at session start.' },
+  { key:'windowStartH', label:'Window Start (UTC h)',    min:0,   max:12,   step:1,    def:0,
+    help:'Earliest UTC hour new entries are allowed. 0 = London midnight open.' },
+  { key:'windowEndH',   label:'Window End (UTC h)',      min:12,  max:23,   step:1,    def:22,
+    help:'Latest UTC hour for new entries. EOD force-close fires at this hour.' },
+  { key:'eodClose',     label:'EOD Force Close (1=yes)', min:0,   max:1,    step:1,    def:1,
+    help:'1 = force-close all open trades at the window end hour.' },
+  { key:'warmupDays',   label:'GARCH Warmup Days',       min:60,  max:252,  step:10,   def:90,
+    help:'Daily bars loaded before the From date to seed the GARCH model.' },
+];
+const PARAM_DEFS = Object.fromEntries(PARAMS.map(p => [p.key, p.def]));
+let cfg = { ...PARAM_DEFS };
+let enabledLevels = new Set(LEVELS.map(l => l.key));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let m1Candles       = [];
+let allDayData      = [];
+let allTrades       = [];
+let selectedTradeIdx = -1;
+let selectedDayIdx   = -1;
+let tradePage        = 0;
+const TRADES_PER_PAGE = 50;
+
+let mainChart  = null, priceSeries  = null;
+let pnlChart   = null, pnlSeries    = null;
+let drawPending = false;
+let equityChartInst = null, dowChartInst = null;
+let syncingCharts = false;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Config UI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function initConfigUI() {
+  const grid = document.getElementById('cfgGrid');
+  grid.innerHTML = '';
+  PARAMS.forEach(p => {
+    const d = document.createElement('div');
+    d.className = 'fb-param';
+    d.innerHTML = `<div class="fb-param-row">
+        <span class="fb-param-lbl">${p.label}</span>
+        <input type="number" class="fb-num-input" id="cfg_${p.key}" min="${p.min}" max="${p.max}" step="${p.step}" value="${cfg[p.key]}">
+      </div><div class="fb-param-help">${p.help}</div>`;
+    grid.appendChild(d);
+  });
+
+  const staticGrid = document.getElementById('staticLevelGrid');
+  const dynGrid    = document.getElementById('dynLevelGrid');
+  staticGrid.innerHTML = dynGrid.innerHTML = '';
+  LEVELS.forEach(lv => {
+    const target = lv.dynamic ? dynGrid : staticGrid;
+    const lbl = document.createElement('label');
+    lbl.className = 'fb-level-item' + (lv.dynamic ? ' is-dyn' : '');
+    lbl.innerHTML = `<input type="checkbox" id="lvl_${lv.key}" ${enabledLevels.has(lv.key)?'checked':''} onchange="toggleLevel('${lv.key}',this.checked)">
+      <span class="fb-level-dot" style="background:${lv.color}"></span>
+      <span class="fb-level-name">${lv.label}${lv.dynamic?'<span class="dyn-badge">DYN</span>':''}</span>
+      <span class="fb-level-dir">${lv.dir}</span>`;
+    target.appendChild(lbl);
+  });
+}
+
+function readConfig() {
+  PARAMS.forEach(p => {
+    const el = document.getElementById('cfg_' + p.key);
+    if (el) cfg[p.key] = parseFloat(el.value) || p.def;
+  });
+}
+
+function resetParams() { cfg = { ...PARAM_DEFS }; enabledLevels = new Set(LEVELS.map(l=>l.key)); initConfigUI(); }
+function toggleLevel(key, on) { on ? enabledLevels.add(key) : enabledLevels.delete(key); }
+function toggleConfig() { const p=document.getElementById('cfgPanel'); p.style.display=p.style.display==='none'?'block':'none'; }
+
+// Default dates
+(function() {
+  const to = new Date(), from = new Date(to);
+  from.setDate(from.getDate() - 30);
+  document.getElementById('fromDate').value = from.toISOString().slice(0,10);
+  document.getElementById('toDate').value   = to.toISOString().slice(0,10);
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Status
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function setStatus(msg, type='idle') {
+  document.getElementById('statusMsg').textContent = msg;
+  const dot = document.getElementById('statusDot');
+  dot.className = 'sdot' + (type==='running'?' running':type==='ok'?' ok':type==='err'?' err':'');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// M1 loading  (same pattern as regime-backtest.html)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function fetchM1CandlesChunked(pairKey, fromStr, toStr, onProgress) {
+  const CHUNK_DAYS = 14;
+  const all = [];
+  let chunkStart = new Date(fromStr + 'T00:00:00Z');
+  const endMs = new Date(toStr + 'T23:59:59Z').getTime();
+  const totalChunks = Math.ceil((endMs - chunkStart.getTime()) / (CHUNK_DAYS * 86400000)) || 1;
+  let idx = 0;
+  while (chunkStart.getTime() < endMs) {
+    idx++;
+    if (onProgress) onProgress(idx, totalChunks);
+    const chunkEnd = new Date(Math.min(chunkStart.getTime() + CHUNK_DAYS * 86400000, endMs));
+    const cf = chunkStart.toISOString().slice(0,10);
+    const ct = chunkEnd.toISOString().slice(0,10);
+    const res = await fetch(`/api/vol-backtest/candles/${pairKey}?from=${cf}&to=${ct}`);
+    if (!res.ok) throw new Error(`API ${res.status} for ${pairKey} (${cf}→${ct})`);
+    const data = await res.json();
+    if (data.ok && Array.isArray(data.candles)) {
+      for (const c of data.candles)
+        all.push({ time: Math.floor(new Date(c.time+'Z').getTime()/1000), open:c.open, high:c.high, low:c.low, close:c.close });
+    }
+    chunkStart = new Date(chunkEnd.getTime() + 60000);
+  }
+  const seen = new Map();
+  for (const c of all) seen.set(c.time, c);
+  return [...seen.values()].sort((a,b) => a.time - b.time);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Daily aggregation + walk-forward forecasts
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function aggregateToDailyBars(m1s) {
+  const dm = new Map();
+  for (const c of m1s) {
+    const date = new Date(c.time*1000).toISOString().slice(0,10);
+    const d = dm.get(date);
+    if (!d) dm.set(date, { date, open:c.open, high:c.high, low:c.low, close:c.close, startTs:c.time, endTs:c.time });
+    else { d.high=Math.max(d.high,c.high); d.low=Math.min(d.low,c.low); d.close=c.close; d.endTs=c.time; }
+  }
+  return [...dm.values()].sort((a,b) => a.date<b.date?-1:1);
+}
+
+function computeWalkForwardForecasts(dailyBars, assetClass, minWarmup) {
+  const out = {};
+  for (let i = minWarmup; i < dailyBars.length; i++) {
+    const fc = computeForecastFromBars(dailyBars.slice(0, i), assetClass);
+    if (fc) out[dailyBars[i].date] = fc;
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Wilder ATR
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function computeATRArray(m1s, period) {
+  const n = m1s.length, atr = new Float64Array(n);
+  if (!n) return atr;
+  atr[0] = m1s[0].high - m1s[0].low;
+  const k = 1/period;
+  for (let i = 1; i < n; i++) {
+    const tr = Math.max(m1s[i].high-m1s[i].low, Math.abs(m1s[i].high-m1s[i-1].close), Math.abs(m1s[i].low-m1s[i-1].close));
+    atr[i] = tr > 0 ? k*tr + (1-k)*atr[i-1] : atr[i-1];
+  }
+  return atr;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Backtest simulation
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDate) {
+  const trades  = [];
+  const dayData = [];
+  const fromTs  = new Date(fromDate+'T00:00:00Z').getTime()/1000;
+  const toTs    = new Date(toDate  +'T23:59:59Z').getTime()/1000;
+  const { windowStartH, windowEndH, eodClose, mfeTrailPct, mfeMinR, dynMinMove } = config;
+
+  let tradeId = 0, currentDate = null, currentDay = null, activeTrade = null;
+
+  for (let i = 0; i < m1s.length; i++) {
+    const c = m1s[i];
+    if (c.time < fromTs || c.time > toTs) continue;
+
+    const barDate = new Date(c.time*1000).toISOString().slice(0,10);
+    const barHour = new Date(c.time*1000).getUTCHours();
+
+    // ── Day change ─────────────────────────────────────────────────────────
+    if (barDate !== currentDate) {
+      if (eodClose >= 1 && activeTrade && currentDay) {
+        const prev = m1s[i-1] ?? c;
+        _closeTrade(activeTrade, prev.time, prev.close, 'EOD', trades, currentDay);
+        activeTrade = null;
+      }
+      if (currentDay) {
+        currentDay.endTs = m1s[i-1]?.time ?? currentDay.startTs;
+        dayData.push(currentDay);
+      }
+      currentDate = barDate;
+      const fc = forecasts[barDate];
+      currentDay = {
+        date: barDate, open: c.open, high: c.open, low: c.open,
+        startTs: c.time, endTs: c.time,
+        forecast: fc ?? null,
+        staticLevels: fc ? computeStaticLevels(c.open, fc) : null,
+        finalDynLevels: null,  // filled at end of day
+        levelTraded: {},
+        pnl: 0,
+      };
+    }
+
+    // Update day H/L
+    if (c.high > currentDay.high) currentDay.high = c.high;
+    if (c.low  < currentDay.low)  currentDay.low  = c.low;
+
+    if (!currentDay.staticLevels) continue;
+    const fc = currentDay.forecast;
+
+    // Compute current dynamic levels from live day H/L
+    const dynLvs = computeDynamicLevels(currentDay.high, currentDay.low, fc);
+
+    // EOD close
+    if (eodClose >= 1 && activeTrade && barHour >= windowEndH) {
+      _closeTrade(activeTrade, c.time, c.open, 'EOD', trades, currentDay);
+      activeTrade = null;
+    }
+
+    // ── SL check ──────────────────────────────────────────────────────────
+    if (activeTrade) {
+      const { direction, sl } = activeTrade;
+      if (direction === 'LONG' && c.low <= sl) {
+        _closeTrade(activeTrade, c.time, sl, 'SL', trades, currentDay); activeTrade = null;
+      } else if (direction === 'SHORT' && c.high >= sl) {
+        _closeTrade(activeTrade, c.time, sl, 'SL', trades, currentDay); activeTrade = null;
+      }
+    }
+
+    // ── MFE trail exit ────────────────────────────────────────────────────
+    if (activeTrade) {
+      const { direction, entry, slDist } = activeTrade;
+      if (direction === 'LONG') {
+        const mfe = c.high - entry;
+        if (mfe > activeTrade.mfePeak) activeTrade.mfePeak = mfe;
+        if (activeTrade.mfePeak >= mfeMinR * slDist && activeTrade.mfePeak > 0) {
+          const retrace = (entry + activeTrade.mfePeak - c.close) / activeTrade.mfePeak;
+          if (retrace > mfeTrailPct) { _closeTrade(activeTrade, c.time, c.close, 'TRAIL', trades, currentDay); activeTrade = null; }
+        }
+      } else {
+        const mfe = entry - c.low;
+        if (mfe > activeTrade.mfePeak) activeTrade.mfePeak = mfe;
+        if (activeTrade.mfePeak >= mfeMinR * slDist && activeTrade.mfePeak > 0) {
+          const retrace = (c.close - (entry - activeTrade.mfePeak)) / activeTrade.mfePeak;
+          if (retrace > mfeTrailPct) { _closeTrade(activeTrade, c.time, c.close, 'TRAIL', trades, currentDay); activeTrade = null; }
+        }
+      }
+    }
+
+    // ── Entry signals ──────────────────────────────────────────────────────
+    if (!activeTrade && barHour >= windowStartH && barHour < windowEndH) {
+      const atr = atrArr[i];
+      if (atr <= 0) continue;
+
+      // Min move threshold for dynamic levels (% from open)
+      const highMovePct = (currentDay.high - currentDay.open) / currentDay.open * 100;
+      const lowMovePct  = (currentDay.open  - currentDay.low ) / currentDay.open * 100;
+      const hMoved = highMovePct >= dynMinMove;
+      const lMoved = lowMovePct  >= dynMinMove;
+
+      for (const def of LEVELS) {
+        if (!enabledLvs.has(def.key)) continue;
+        if (currentDay.levelTraded[def.key]) continue;
+
+        // Get the level price
+        let lvPrice;
+        if (def.dynamic) {
+          if (def.key === 'DYN_H_75' || def.key === 'DYN_H_MED') {
+            if (!hMoved) continue;           // high hasn't moved enough
+            lvPrice = dynLvs[def.key];
+            if (lvPrice >= currentDay.high) continue;  // must be below current high
+          } else {
+            if (!lMoved) continue;           // low hasn't moved enough
+            lvPrice = dynLvs[def.key];
+            if (lvPrice <= currentDay.low) continue;   // must be above current low
+          }
+        } else {
+          lvPrice = currentDay.staticLevels[def.key];
+        }
+
+        let touched = false;
+        if (def.dir === 'SHORT' && c.high >= lvPrice) touched = true;
+        if (def.dir === 'LONG'  && c.low  <= lvPrice) touched = true;
+        if (!touched) continue;
+
+        currentDay.levelTraded[def.key] = true;
+        const slDist = atr * config.slAtrMult;
+        const sl     = def.dir === 'SHORT' ? lvPrice + slDist : lvPrice - slDist;
+        tradeId++;
+        activeTrade = {
+          id: tradeId, date: barDate, level: def.key,
+          direction: def.dir === 'SHORT' ? 'SHORT' : 'LONG',
+          entryTs: c.time, entry: lvPrice, sl, slDist, mfePeak: 0,
+          forecast: fc, dayOpen: currentDay.open,
+          // Snapshot the dynamic level price at entry time (for display)
+          dynSnap: def.dynamic ? lvPrice : null,
+        };
+        break;
+      }
+    }
+  }
+
+  // Close final open trade
+  if (activeTrade && m1s.length > 0) {
+    const last = m1s[m1s.length-1];
+    _closeTrade(activeTrade, last.time, last.close, 'EOD', trades, currentDay);
+  }
+  if (currentDay) {
+    if (m1s.length > 0) currentDay.endTs = m1s[m1s.length-1].time;
+    // Store final dynamic levels for canvas rendering
+    if (currentDay.forecast) {
+      currentDay.finalDynLevels = computeDynamicLevels(currentDay.high, currentDay.low, currentDay.forecast);
+    }
+    dayData.push(currentDay);
+  }
+
+  // Backfill finalDynLevels for all days
+  dayData.forEach(d => {
+    if (d.forecast && !d.finalDynLevels) {
+      d.finalDynLevels = computeDynamicLevels(d.high, d.low, d.forecast);
+    }
+  });
+
+  return { trades, dayData };
+}
+
+function _closeTrade(t, exitTs, exitPrice, reason, trades, day) {
+  const pnlPts = t.direction === 'LONG' ? exitPrice - t.entry : t.entry - exitPrice;
+  const pnlPct = (pnlPts / t.dayOpen) * 100;
+  const pnlR   = t.slDist > 0 ? pnlPts / t.slDist : 0;
+  const mfeR   = t.slDist > 0 ? t.mfePeak / t.slDist : 0;
+  if (day) day.pnl += pnlPct;
+  trades.push({
+    id: t.id, date: t.date, level: t.level, direction: t.direction,
+    entryTs: t.entryTs, exitTs, entry: t.entry, exit: exitPrice,
+    sl: t.sl, pnlPct, pnlR, mfeR, maeR: Math.max(0, -pnlR),
+    durationMin: Math.round((exitTs - t.entryTs) / 60),
+    exitReason: reason, win: pnlPct > 0,
+    forecast: t.forecast, dayOpen: t.dayOpen,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Main load + run
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function loadAndRun() {
+  readConfig();
+  const pair      = document.getElementById('pairSel').value;
+  const fromDate  = document.getElementById('fromDate').value;
+  const toDate    = document.getElementById('toDate').value;
+  if (!pair || !fromDate || !toDate) { setStatus('Select pair and date range.','err'); return; }
+  if (fromDate >= toDate)            { setStatus('From must be before To.','err');       return; }
+
+  const pairKey    = PAIR_SAFE[pair] || pair.toLowerCase().replace(/[\/_]/g,'');
+  const assetClass = PAIR_ASSET_CLASS[pair] ?? 'fx';
+  const warmup     = Math.max(60, cfg.warmupDays);
+
+  // Extend data window back by warmup + buffer
+  const dataFrom = new Date(fromDate + 'T00:00:00Z');
+  dataFrom.setDate(dataFrom.getDate() - (warmup + 20));
+
+  const runBtn = document.getElementById('runBtn');
+  runBtn.disabled = true;
+  setStatus('Loading M1 data…','running');
+
+  try {
+    m1Candles = await fetchM1CandlesChunked(
+      pairKey, dataFrom.toISOString().slice(0,10), toDate,
+      (n,t) => setStatus(`Loading chunk ${n}/${t}…`,'running'),
+    );
+  } catch(err) {
+    setStatus('Error loading data: ' + err.message,'err');
+    runBtn.disabled = false; return;
+  }
+  if (m1Candles.length < 200) {
+    setStatus(`Only ${m1Candles.length} candles — not enough data.`,'err');
+    runBtn.disabled = false; return;
+  }
+
+  setStatus('Aggregating daily bars + forecasts…','running');
+  await tick();
+
+  const allDaily   = aggregateToDailyBars(m1Candles);
+  const forecasts  = computeWalkForwardForecasts(allDaily, assetClass, warmup);
+  const atrArr     = computeATRArray(m1Candles, cfg.atrPeriod);
+
+  setStatus('Running M1 simulation…','running');
+  await tick();
+
+  const result = runBacktest(m1Candles, forecasts, atrArr, cfg, enabledLevels, fromDate, toDate);
+  allTrades  = result.trades;
+  allDayData = result.dayData;
+  selectedTradeIdx = -1;
+  selectedDayIdx   = allDayData.length > 0 ? 0 : -1;
+
+  const fcDays = allDayData.filter(d => d.forecast).length;
+  const covBanner = document.getElementById('covBanner');
+  if (fcDays < allDayData.length * 0.6) {
+    covBanner.style.display = 'block';
+    covBanner.textContent = `Note: ${fcDays}/${allDayData.length} days have forecasts — extend warmup or use a longer date range.`;
+  } else { covBanner.style.display = 'none'; }
+
+  setStatus(`Complete — ${allTrades.length} trades · ${fcDays} forecast days`,'ok');
+
+  buildLegend();
+  const tradingM1 = m1Candles.filter(c => {
+    const f = new Date(fromDate+'T00:00:00Z').getTime()/1000;
+    const t = new Date(toDate  +'T23:59:59Z').getTime()/1000;
+    return c.time >= f && c.time <= t;
+  });
+  renderChart(tradingM1);
+  renderAnalytics(allTrades);
+  document.getElementById('chartPairLbl').textContent = pair;
+  document.getElementById('analyticsSection').style.display = 'block';
+  updateNavButtons();
+  runBtn.disabled = false;
+}
+
+const tick = () => new Promise(r => setTimeout(r, 0));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Legend
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function buildLegend() {
+  const row = document.getElementById('legendRow');
+  row.innerHTML = '';
+  LEVELS.filter(l => enabledLevels.has(l.key)).forEach(lv => {
+    const s = document.createElement('span');
+    s.style.cssText = 'display:flex;align-items:center;gap:4px';
+    s.innerHTML = `<span style="width:14px;height:${lv.dynamic?'0':'2'}px;border-top:${lv.dynamic?'2px dashed':'2px solid'} ${lv.color};display:inline-block"></span>
+      <span style="font-size:9px;font-family:'DM Mono',monospace;color:#5a6380">${lv.label}</span>`;
+    row.appendChild(s);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Chart
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderChart(candles) {
+  const wrap = document.getElementById('chartWrap');
+  const pnlWrap = document.getElementById('fbPnlChart');
+
+  if (mainChart) { try { mainChart.remove(); } catch(e) {} mainChart = null; priceSeries = null; }
+  if (pnlChart)  { try { pnlChart.remove();  } catch(e) {} pnlChart  = null; pnlSeries  = null; }
+
+  const chartOpts = (el, h) => ({
+    width: wrap.clientWidth, height: h,
+    layout: { background: { color: el === pnlWrap ? '#0e1117' : '#131722' }, textColor: '#d1d4dc' },
+    grid: { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#2a3050', scaleMargins: { top: 0.06, bottom: 0.06 } },
+    timeScale: { borderColor: '#2a3050', timeVisible: true, secondsVisible: false },
+    handleScroll: true, handleScale: true,
+  });
+
+  mainChart  = LightweightCharts.createChart(document.getElementById('fbPriceChart'), chartOpts(null, wrap.clientHeight));
+  priceSeries = mainChart.addCandlestickSeries({
+    upColor:'#26a69a', downColor:'#ef5350',
+    borderUpColor:'#26a69a', borderDownColor:'#ef5350',
+    wickUpColor:'#26a69a', wickDownColor:'#ef5350',
+  });
+  priceSeries.setData(candles);
+
+  // P&L subchart
+  pnlChart  = LightweightCharts.createChart(pnlWrap, chartOpts(pnlWrap, 100));
+  pnlSeries = pnlChart.addHistogramSeries({
+    priceFormat: { type: 'percent' },
+    priceLineVisible: false, lastValueVisible: false,
+  });
+  // Build daily P&L series from dayData
+  const pnlData = allDayData
+    .filter(d => d.pnl !== 0)
+    .map(d => ({ time: d.startTs, value: d.pnl, color: d.pnl >= 0 ? '#26a69a' : '#ef5350' }));
+  if (pnlData.length) pnlSeries.setData(pnlData);
+
+  // Sync time scales
+  mainChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (syncingCharts || !range) return;
+    syncingCharts = true;
+    try { pnlChart.timeScale().setVisibleLogicalRange(range); } catch(e) {}
+    syncingCharts = false;
+  });
+  pnlChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (syncingCharts || !range) return;
+    syncingCharts = true;
+    try { mainChart.timeScale().setVisibleLogicalRange(range); } catch(e) {}
+    syncingCharts = false;
+  });
+
+  // Crosshair sync
+  mainChart.subscribeCrosshairMove(param => {
+    updateHoverBox(param);
+    requestDraw();
+    if (!param || !param.time || syncingCharts) return;
+    syncingCharts = true;
+    try { pnlChart.setCrossHairXY(pnlChart.timeScale().timeToCoordinate(param.time) ?? -1, 0, true); } catch(e) {}
+    syncingCharts = false;
+  });
+
+  updateMarkers();
+  mainChart.timeScale().subscribeVisibleTimeRangeChange(requestDraw);
+  mainChart.timeScale().subscribeVisibleLogicalRangeChange(requestDraw);
+
+  requestAnimationFrame(() => { drawOverlay(); fitAll(); });
+
+  // Resize
+  if (!renderChart._obs) {
+    renderChart._obs = new ResizeObserver(() => {
+      if (!mainChart) return;
+      const w = wrap.clientWidth;
+      try { mainChart.resize(w, wrap.clientHeight); } catch(e) {}
+      try { pnlChart.resize(w, 100); } catch(e) {}
+      requestDraw();
+    });
+    renderChart._obs.observe(wrap);
+  }
+}
+
+function updateMarkers() {
+  if (!priceSeries) return;
+  const markers = [];
+  allTrades.forEach(t => {
+    const isL = t.direction === 'LONG';
+    const def = LEVELS.find(l => l.key === t.level);
+    markers.push({ time:t.entryTs, position:isL?'belowBar':'aboveBar', color:def?.color??'#aaa', shape:isL?'arrowUp':'arrowDown', text:def?.label??t.level, size:1 });
+    markers.push({ time:t.exitTs,  position:isL?'aboveBar':'belowBar', color:t.win?'#00c97d':'#f87171', shape:'circle', size:0.5, text:t.exitReason==='SL'?'SL':t.exitReason==='TRAIL'?'T':'' });
+  });
+  markers.sort((a,b)=>a.time-b.time);
+  priceSeries.setMarkers(markers);
+}
+
+function fitAll() { if(mainChart) try { mainChart.timeScale().fitContent(); } catch(e) {} }
+
+// ─── Hover box ────────────────────────────────────────────────────────────────
+
+function updateHoverBox(param) {
+  const box = document.getElementById('hoverBox');
+  if (!param || !param.time) { box.style.display='none'; return; }
+  const ts = typeof param.time==='object' ? Date.UTC(param.time.year,param.time.month-1,param.time.day)/1000 : param.time;
+  const day = allDayData.find(d => ts >= d.startTs && ts <= d.endTs);
+  if (!day || !day.forecast) { box.style.display='none'; return; }
+  box.style.display = 'block';
+  const fc = day.forecast;
+  document.getElementById('hbVol').textContent   = fc.vol_annual + '%';
+  document.getElementById('hbHL').textContent    = `${fc.hl_median}% / ${fc.hl_75}%`;
+  document.getElementById('hbOC').textContent    = `${fc.oc_median}% / ${fc.oc_75}%`;
+  document.getElementById('hbOpen').textContent  = day.open.toPrecision(6);
+  document.getElementById('hbHL2').textContent   = `${day.high.toPrecision(6)} / ${day.low.toPrecision(6)}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Canvas overlay
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function requestDraw() {
+  if (drawPending) return;
+  drawPending = true;
+  requestAnimationFrame(() => { drawPending=false; drawOverlay(); });
+}
+
+function drawOverlay() {
+  const canvas = document.getElementById('fbOverlay');
+  const wrap   = document.getElementById('chartWrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  if (!priceSeries || !mainChart || !allDayData.length) return;
+
+  ctx.font = '9px "DM Mono", monospace';
+  ctx.textBaseline = 'middle';
+
+  allDayData.forEach((day, dIdx) => {
+    if (!day.staticLevels) return;
+    const isSelDay = dIdx === selectedDayIdx;
+
+    const x1r = mainChart.timeScale().timeToCoordinate(day.startTs);
+    const x2r = mainChart.timeScale().timeToCoordinate(day.endTs);
+    const x1  = x1r ?? -1, x2 = x2r ?? W+1;
+    if (x2 < 0 || x1 > W) return;
+    const xFrom = Math.max(0, x1), xTo = Math.min(W, x2);
+
+    // Open price reference
+    const openY = priceSeries.priceToCoordinate(day.open);
+    if (openY != null && openY >= 0 && openY <= H) {
+      ctx.strokeStyle = isSelDay ? '#6b7280' : '#374151';
+      ctx.lineWidth = 0.5; ctx.setLineDash([2,6]); ctx.globalAlpha = isSelDay ? 0.7 : 0.4;
+      ctx.beginPath(); ctx.moveTo(xFrom, openY); ctx.lineTo(xTo, openY); ctx.stroke();
+    }
+
+    // ── Static level lines ─────────────────────────────────────────────────
+    LEVELS.filter(lv => !lv.dynamic && enabledLevels.has(lv.key)).forEach(lv => {
+      const lvPrice = day.staticLevels[lv.key];
+      const y = priceSeries.priceToCoordinate(lvPrice);
+      if (y == null || y < 0 || y > H) return;
+      ctx.strokeStyle = lv.color;
+      ctx.lineWidth = isSelDay ? 1.5 : 1;
+      ctx.setLineDash([4,3]);
+      ctx.globalAlpha = day.levelTraded[lv.key] ? (isSelDay?1:0.85) : (isSelDay?0.65:0.3);
+      ctx.beginPath(); ctx.moveTo(xFrom, y); ctx.lineTo(xTo, y); ctx.stroke();
+      // Label at right edge
+      if (x2 >= 0 && x2 <= W+80) {
+        ctx.setLineDash([]); ctx.fillStyle = lv.color; ctx.globalAlpha = isSelDay ? 0.9 : 0.5;
+        ctx.fillText(lv.label, Math.min(xTo+2, W-62), y);
+      }
+    });
+
+    // ── Dynamic level lines (final day H/L position) ───────────────────────
+    if (day.finalDynLevels) {
+      LEVELS.filter(lv => lv.dynamic && enabledLevels.has(lv.key)).forEach(lv => {
+        const lvPrice = day.finalDynLevels[lv.key];
+        const y = priceSeries.priceToCoordinate(lvPrice);
+        if (y == null || y < 0 || y > H) return;
+        ctx.strokeStyle = lv.color;
+        ctx.lineWidth = isSelDay ? 1.5 : 1;
+        ctx.setLineDash([7,4]);  // longer dash to distinguish from static
+        ctx.globalAlpha = day.levelTraded[lv.key] ? (isSelDay?1:0.85) : (isSelDay?0.65:0.3);
+        ctx.beginPath(); ctx.moveTo(xFrom, y); ctx.lineTo(xTo, y); ctx.stroke();
+        if (x2 >= 0 && x2 <= W+80) {
+          ctx.setLineDash([]); ctx.fillStyle = lv.color; ctx.globalAlpha = isSelDay ? 0.9 : 0.5;
+          ctx.fillText(lv.label, Math.min(xTo+2, W-62), y);
+        }
+      });
+    }
+  });
+
+  // ── Trade lines ────────────────────────────────────────────────────────────
+  ctx.setLineDash([5,4]);
+  allTrades.forEach((t, idx) => {
+    const x1 = mainChart.timeScale().timeToCoordinate(t.entryTs);
+    const x2 = mainChart.timeScale().timeToCoordinate(t.exitTs);
+    if (x1==null||x2==null) return;
+    const y1 = priceSeries.priceToCoordinate(t.entry);
+    const y2 = priceSeries.priceToCoordinate(t.exit);
+    if (y1==null||y2==null) return;
+    const isSel = idx === selectedTradeIdx;
+    ctx.strokeStyle = t.direction==='LONG'?'#26a69a':'#ef5350';
+    ctx.lineWidth   = isSel ? 2.5 : 1;
+    ctx.globalAlpha = isSel ? 1.0 : 0.4;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    if (isSel) {
+      const ysl = priceSeries.priceToCoordinate(t.sl);
+      if (ysl!=null) {
+        ctx.strokeStyle='#f0a030'; ctx.lineWidth=1; ctx.setLineDash([2,4]); ctx.globalAlpha=0.7;
+        ctx.beginPath(); ctx.moveTo(x1,ysl); ctx.lineTo(x2,ysl); ctx.stroke();
+        ctx.setLineDash([5,4]);
+      }
+    }
+  });
+  ctx.globalAlpha = 1; ctx.setLineDash([]);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Resize handle
+// ═══════════════════════════════════════════════════════════════════════════════
+
+(function() {
+  const handle = document.getElementById('resizeHandle');
+  const wrap   = document.getElementById('chartWrap');
+  let dragging=false, startY=0, startH=0;
+  handle.addEventListener('mousedown', e => {
+    dragging=true; startY=e.clientY; startH=wrap.clientHeight;
+    handle.classList.add('dragging'); document.body.style.userSelect='none';
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const newH = Math.max(200, Math.min(900, startH + e.clientY - startY));
+    wrap.style.height = newH+'px';
+    if(mainChart) try{mainChart.resize(wrap.clientWidth,newH)}catch(e){}
+    requestDraw();
+  });
+  document.addEventListener('mouseup', () => {
+    if(dragging){dragging=false;handle.classList.remove('dragging');document.body.style.userSelect='';}
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Navigation: day + trade
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function navDay(dir) {
+  if (!allDayData.length) return;
+  selectedDayIdx = Math.max(0, Math.min(allDayData.length-1, selectedDayIdx + dir));
+  zoomToDay(selectedDayIdx);
+  updateNavButtons();
+}
+
+function navTrade(dir) {
+  if (!allTrades.length) return;
+  selectedTradeIdx = Math.max(0, Math.min(allTrades.length-1, selectedTradeIdx + dir));
+  zoomToTrade(selectedTradeIdx);
+  updateNavButtons();
+  highlightTableRow(selectedTradeIdx);
+}
+
+function zoomToDay(idx) {
+  if (!mainChart || idx < 0 || idx >= allDayData.length) return;
+  const d = allDayData[idx];
+  const pad = 30 * 60;
+  mainChart.timeScale().setVisibleRange({ from: d.startTs - pad, to: d.endTs + pad });
+  requestDraw();
+  const chip = document.getElementById('dayInfoChip');
+  chip.style.display = 'inline-block';
+  const fc = d.forecast;
+  chip.textContent = fc
+    ? `${d.date} · vol ${fc.vol_annual}% · HL ${fc.hl_median}% · OC ${fc.oc_median}% · P&L ${d.pnl>=0?'+':''}${d.pnl.toFixed(2)}%`
+    : d.date + ' (no forecast)';
+}
+
+function zoomToTrade(idx) {
+  if (!mainChart || idx < 0 || idx >= allTrades.length) return;
+  const t = allTrades[idx];
+  const ctx90 = 90 * 60;
+  mainChart.timeScale().setVisibleRange({ from: t.entryTs - ctx90, to: t.exitTs + ctx90 });
+  // Also set selected day
+  const dIdx = allDayData.findIndex(d => d.date === t.date);
+  if (dIdx >= 0) { selectedDayIdx = dIdx; zoomToDay(dIdx); }
+  // Re-zoom to trade after day zoom (trade context takes priority)
+  setTimeout(() => {
+    if (mainChart) mainChart.timeScale().setVisibleRange({ from: t.entryTs - ctx90, to: t.exitTs + ctx90 });
+    requestDraw();
+  }, 0);
+}
+
+function updateNavButtons() {
+  document.getElementById('dayPrev').disabled   = selectedDayIdx  <= 0;
+  document.getElementById('dayNext').disabled   = selectedDayIdx  >= allDayData.length  - 1;
+  document.getElementById('tradePrev').disabled = selectedTradeIdx <= 0;
+  document.getElementById('tradeNext').disabled = selectedTradeIdx >= allTrades.length   - 1;
+
+  const d = allDayData[selectedDayIdx];
+  document.getElementById('dayNavInfo').textContent = d
+    ? `${d.date} · ${allTrades.filter(t=>t.date===d.date).length} trades`
+    : '';
+
+  const t = allTrades[selectedTradeIdx];
+  document.getElementById('tradeNavInfo').textContent = t
+    ? `#${t.id} ${t.level} ${t.direction} ${t.pnlPct>=0?'+':''}${t.pnlPct.toFixed(2)}% (${t.exitReason})`
+    : '';
+}
+
+function highlightTableRow(idx) {
+  document.querySelectorAll('#tradeBody tr').forEach(r =>
+    r.classList.toggle('sel-row', parseInt(r.dataset.idx)===idx));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Analytics
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function computeAnalytics(trades) {
+  if (!trades.length) return null;
+  const wins   = trades.filter(t=>t.win);
+  const losses = trades.filter(t=>!t.win);
+  const winRate   = wins.length / trades.length * 100;
+  const grossWin  = wins.reduce((s,t)=>s+t.pnlPct,0);
+  const grossLoss = Math.abs(losses.reduce((s,t)=>s+t.pnlPct,0));
+  const pf        = grossLoss>0 ? grossWin/grossLoss : Infinity;
+  const avgWin    = wins.length    ? grossWin   /wins.length    : 0;
+  const avgLoss   = losses.length  ? grossLoss  /losses.length  : 0;
+  const totalPnl  = trades.reduce((s,t)=>s+t.pnlPct,0);
+
+  const sorted = [...trades].sort((a,b)=>a.entryTs-b.entryTs);
+  let runEq=0, runPeak=0, maxDD=0;
+  const equity = sorted.map(t => { runEq+=t.pnlPct; if(runEq>runPeak)runPeak=runEq; const dd=runPeak-runEq; if(dd>maxDD)maxDD=dd; return {ts:t.exitTs,val:runEq}; });
+
+  const pnls = sorted.map(t=>t.pnlPct);
+  const n = pnls.length, mu = pnls.reduce((s,v)=>s+v,0)/n;
+  const std = Math.sqrt(pnls.reduce((s,v)=>s+(v-mu)**2,0)/Math.max(1,n-1));
+  const years = sorted.length>1 ? (sorted.at(-1).entryTs-sorted[0].entryTs)/(365.25*86400) : 1/52;
+  const tpy = years>0 ? n/years : n;
+  const sharpe  = std>0 ? mu/std*Math.sqrt(tpy) : 0;
+  const negP    = pnls.filter(p=>p<0);
+  const downStd = negP.length ? Math.sqrt(negP.reduce((s,p)=>s+p*p,0)/negP.length) : 0;
+  const sortino = downStd>0 ? mu/downStd*Math.sqrt(tpy) : 0;
+  const calmar  = maxDD>0 ? (totalPnl/years)/maxDD : 0;
+  const cagr    = years>0 ? (Math.pow(1+totalPnl/100,1/years)-1)*100 : totalPnl;
+
+  // By level
+  const byLevel = {};
+  LEVELS.forEach(l => { byLevel[l.key] = { count:0, wins:0, losses:0, grossWin:0, grossLoss:0 }; });
+  trades.forEach(t => {
+    if (!byLevel[t.level]) byLevel[t.level] = { count:0, wins:0, losses:0, grossWin:0, grossLoss:0 };
+    const b = byLevel[t.level];
+    b.count++;
+    if (t.win) { b.wins++; b.grossWin += t.pnlPct; }
+    else { b.losses++; b.grossLoss += Math.abs(t.pnlPct); }
+  });
+
+  // By exit reason
+  const byReason = {};
+  trades.forEach(t => {
+    if (!byReason[t.exitReason]) byReason[t.exitReason] = { count:0, wins:0, pnl:0 };
+    byReason[t.exitReason].count++; byReason[t.exitReason].pnl+=t.pnlPct;
+    if(t.win) byReason[t.exitReason].wins++;
+  });
+
+  // By session
+  const getSession = h => h>=2&&h<7?'Asia':h>=7&&h<13?'London':h>=13&&h<17?'Overlap':h>=17&&h<22?'New York':'Thin';
+  const bySession = {};
+  trades.forEach(t => {
+    const s = getSession(new Date(t.entryTs*1000).getUTCHours());
+    if(!bySession[s]) bySession[s]={count:0,wins:0,grossWin:0,grossLoss:0};
+    bySession[s].count++;
+    if(t.win){bySession[s].wins++;bySession[s].grossWin+=t.pnlPct;}
+    else{bySession[s].grossLoss+=Math.abs(t.pnlPct);}
+  });
+
+  // By DOW + month
+  const byDow = {}, byMonth = {};
+  trades.forEach(t => {
+    const d = new Date(t.entryTs*1000);
+    const dow = d.getUTCDay();
+    if(!byDow[dow]) byDow[dow]={count:0,pnl:0};
+    byDow[dow].pnl+=t.pnlPct; byDow[dow].count++;
+    const mk = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+    if(!byMonth[mk]) byMonth[mk]={count:0,pnl:0};
+    byMonth[mk].pnl+=t.pnlPct; byMonth[mk].count++;
+  });
+
+  const expectancy = (winRate/100)*avgWin - (1-winRate/100)*avgLoss;
+  const maxCW = Math.max(0,...trades.map(t=>t.win?t.pnlPct:0));
+  const maxCL = Math.min(0,...trades.map(t=>!t.win?t.pnlPct:0));
+
+  return { total:n, wins:wins.length, losses:losses.length, winRate, grossWin, grossLoss,
+    pf, avgWin, avgLoss, totalPnl, maxDD, sharpe, sortino, calmar, cagr, equity,
+    maxCW, maxCL, expectancy, byLevel, byReason, bySession, byDow, byMonth, years };
+}
+
+function renderAnalytics(trades) {
+  const st = computeAnalytics(trades);
+  if (!st) return;
+
+  // KPI grid
+  document.getElementById('kpiGrid').innerHTML = [
+    { label:'Win Rate',      value:st.winRate.toFixed(1)+'%',  cls:st.winRate>=50?'green':'red',   sub:`${st.wins}W / ${st.losses}L · ${st.total} total` },
+    { label:'Profit Factor', value:st.pf===Infinity?'∞':st.pf.toFixed(2), cls:st.pf>=1.5?'green':st.pf>=1?'amber':'red', sub:`Expectancy: ${st.expectancy.toFixed(3)}%` },
+    { label:'Sharpe',        value:st.sharpe.toFixed(2),        cls:st.sharpe>=1.5?'green':st.sharpe>=0.5?'amber':'red', sub:`Sortino: ${st.sortino.toFixed(2)}` },
+    { label:'Max Drawdown',  value:st.maxDD.toFixed(2)+'%',     cls:st.maxDD<=5?'green':st.maxDD<=15?'amber':'red', sub:`Calmar: ${st.calmar.toFixed(2)}` },
+    { label:'Total P&L',     value:(st.totalPnl>=0?'+':'')+st.totalPnl.toFixed(2)+'%', cls:st.totalPnl>=0?'green':'red', sub:`${st.years.toFixed(1)} yr · CAGR ${st.cagr.toFixed(1)}%` },
+    { label:'Avg Win',       value:'+'+st.avgWin.toFixed(3)+'%', cls:'green', sub:`Best: +${st.maxCW.toFixed(3)}%` },
+    { label:'Avg Loss',      value:'−'+st.avgLoss.toFixed(3)+'%', cls:'red',  sub:`Worst: ${st.maxCL.toFixed(3)}%` },
+    { label:'Trades',        value:String(st.total),             cls:'blue',  sub:`${allDayData.filter(d=>d.forecast).length} forecast days` },
+  ].map(k=>`<div class="bt-kpi"><div class="bt-kpi-label">${k.label}</div><div class="bt-kpi-value ${k.cls}">${k.value}</div><div class="bt-kpi-sub">${k.sub}</div></div>`).join('');
+
+  // Secondary stats
+  document.getElementById('secGrid').innerHTML = [
+    { lbl:'Avg MFE (R)',  val:(trades.reduce((s,t)=>s+t.mfeR,0)/trades.length).toFixed(2)+'R' },
+    { lbl:'Avg Duration', val:Math.round(trades.reduce((s,t)=>s+t.durationMin,0)/trades.length)+'m' },
+    { lbl:'R:R Ratio',    val:st.avgLoss>0?(st.avgWin/st.avgLoss).toFixed(2):'∞' },
+    { lbl:'Avg P&L (R)',  val:(trades.reduce((s,t)=>s+t.pnlR,0)/trades.length).toFixed(2)+'R' },
+  ].map(s=>`<div class="bt-sec"><span class="bt-sec-lbl">${s.lbl}</span><span class="bt-sec-val">${s.val}</span></div>`).join('');
+
+  // Equity curve
+  if (equityChartInst) { equityChartInst.destroy(); equityChartInst=null; }
+  if (st.equity.length > 1) {
+    equityChartInst = new Chart(document.getElementById('equityChart').getContext('2d'), {
+      type:'line',
+      data:{ labels:st.equity.map(e=>new Date(e.ts*1000).toLocaleDateString()),
+             datasets:[{data:st.equity.map(e=>e.val),borderColor:'#4f7df0',backgroundColor:'rgba(79,125,240,.1)',borderWidth:1.5,pointRadius:0,fill:true,tension:0.2}] },
+      options:{ responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{ x:{ticks:{color:'#5a6380',font:{family:'DM Mono',size:9},maxTicksLimit:8},grid:{color:'#1c2133'}},
+                 y:{ticks:{color:'#5a6380',font:{family:'DM Mono',size:9}},grid:{color:'#1c2133'}} } },
+    });
+  }
+
+  // Level profit table
+  const maxGross = Math.max(1, ...LEVELS.map(lv => {
+    const d = st.byLevel[lv.key];
+    return d ? Math.abs(d.grossWin - d.grossLoss) : 0;
+  }));
+  const tbody = document.getElementById('levelTbody');
+  tbody.innerHTML = '';
+  LEVELS.forEach(lv => {
+    const d = st.byLevel[lv.key] ?? { count:0, wins:0, losses:0, grossWin:0, grossLoss:0 };
+    if (d.count === 0) return;
+    const pnl    = d.grossWin - d.grossLoss;
+    const wr     = d.count ? (d.wins/d.count*100) : 0;
+    const avgT   = d.count ? pnl/d.count : 0;
+    const avgW   = d.wins   ? d.grossWin/d.wins     : 0;
+    const avgL   = d.losses ? d.grossLoss/d.losses   : 0;
+    const barW   = Math.abs(pnl) / maxGross * 80;
+    const barClr = pnl >= 0 ? '#26a69a' : '#ef5350';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span style="width:7px;height:7px;background:${lv.color};border-radius:50%;display:inline-block"></span>${lv.dynamic?'<span class="dyn-badge">DYN</span>':''}</td>
+      <td style="color:${lv.color}">${lv.label}</td>
+      <td class="num">${d.count}</td>
+      <td class="num ${wr>=50?'pos':'neg'}">${wr.toFixed(0)}%</td>
+      <td class="num ${pnl>=0?'pos':'neg'}">${pnl>=0?'+':''}${pnl.toFixed(3)}%</td>
+      <td class="num ${avgT>=0?'pos':'neg'}">${avgT>=0?'+':''}${avgT.toFixed(3)}%</td>
+      <td class="num pos">+${avgW.toFixed(3)}%</td>
+      <td class="num neg">−${avgL.toFixed(3)}%</td>
+      <td class="lv-pnl-bar-cell"><span class="lv-pnl-bar" style="width:${barW}px;background:${barClr}"></span></td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Session table
+  const sessBody = document.getElementById('sessionTbody');
+  sessBody.innerHTML = '';
+  ['Asia','London','Overlap','New York','Thin'].forEach(s => {
+    const d = st.bySession[s];
+    if (!d||!d.count) return;
+    const pnl = d.grossWin - d.grossLoss, wr = d.wins/d.count*100;
+    const avg = pnl/d.count;
+    sessBody.innerHTML += `<tr>
+      <td>${s}</td>
+      <td class="num">${d.count}</td>
+      <td class="num ${wr>=50?'pos':'neg'}">${wr.toFixed(0)}%</td>
+      <td class="num ${pnl>=0?'pos':'neg'}">${pnl>=0?'+':''}${pnl.toFixed(2)}%</td>
+      <td class="num ${avg>=0?'pos':'neg'}">${avg>=0?'+':''}${avg.toFixed(3)}%</td>
+    </tr>`;
+  });
+
+  // Exit reasons
+  const rDiv = document.getElementById('exitReasons');
+  rDiv.innerHTML = '';
+  const maxR = Math.max(1,...Object.values(st.byReason).map(v=>v.count));
+  const rColors = { SL:'#ef5350', TRAIL:'#4ade80', EOD:'#60a5fa' };
+  Object.entries(st.byReason).sort((a,b)=>b[1].count-a[1].count).forEach(([reason,d]) => {
+    const wr = (d.wins/d.count*100).toFixed(0);
+    const col = rColors[reason]||'#a78bfa';
+    const pnl = d.pnl;
+    rDiv.innerHTML += `<div class="reason-row">
+      <span class="reason-lbl" style="color:${col}">${reason}</span>
+      <div class="reason-bar-track"><div class="reason-bar-fill" style="width:${d.count/maxR*100}%;background:${col}"></div></div>
+      <span class="reason-stat">${d.count}T · ${wr}% · ${pnl>=0?'+':''}${pnl.toFixed(2)}%</span>
+    </div>`;
+  });
+
+  // DOW chart
+  if (dowChartInst) { dowChartInst.destroy(); dowChartInst=null; }
+  const DOWL = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dowData = DOWL.map((_,i)=>st.byDow[i]?.pnl??0);
+  dowChartInst = new Chart(document.getElementById('dowChart').getContext('2d'), {
+    type:'bar',
+    data:{ labels:DOWL, datasets:[{ data:dowData,
+      backgroundColor:dowData.map(v=>v>=0?'rgba(38,166,154,.6)':'rgba(239,83,80,.6)'),
+      borderColor:dowData.map(v=>v>=0?'#26a69a':'#ef5350'), borderWidth:1 }] },
+    options:{ responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{ x:{ticks:{color:'#5a6380',font:{family:'DM Mono',size:10}},grid:{color:'#1c2133'}},
+               y:{ticks:{color:'#5a6380',font:{family:'DM Mono',size:10}},grid:{color:'#1c2133'}} } },
+  });
+
+  // Monthly heatmap
+  const hmDiv = document.getElementById('monthlyHeatmap');
+  hmDiv.innerHTML = '';
+  const maxAbsPnl = Math.max(1,...Object.values(st.byMonth).map(v=>Math.abs(v.pnl)));
+  const MONTHS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  Object.entries(st.byMonth).sort((a,b)=>a[0]<b[0]?-1:1).forEach(([k,d]) => {
+    const [yr,mo] = k.split('-');
+    const pct = d.pnl/maxAbsPnl;
+    const bg  = d.pnl>=0?`rgba(38,166,154,${Math.min(0.9,0.15+0.6*pct)})`:`rgba(239,83,80,${Math.min(0.9,0.15+0.6*Math.abs(pct))})`;
+    hmDiv.innerHTML += `<div class="hm-cell" style="background:${bg}" title="${k}: ${d.pnl>=0?'+':''}${d.pnl.toFixed(2)}% (${d.count}T)">
+      <span class="hm-month">${MONTHS[parseInt(mo)]} '${yr.slice(2)}</span>
+      <span class="hm-val" style="color:${d.pnl>=0?'var(--green)':'var(--red)'}">${d.pnl>=0?'+':''}${d.pnl.toFixed(1)}%</span>
+    </div>`;
+  });
+
+  // Trade log
+  updateFilterLevelOptions();
+  renderTradeLog();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Trade log
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function updateFilterLevelOptions() {
+  const sel = document.getElementById('filterLv');
+  sel.innerHTML = '<option value="">All levels</option>';
+  [...new Set(allTrades.map(t=>t.level))].forEach(lk => {
+    const def = LEVELS.find(l=>l.key===lk);
+    sel.innerHTML += `<option value="${lk}">${def?.label??lk}${def?.dynamic?' (DYN)':''}</option>`;
+  });
+}
+
+function renderTradeLog() {
+  const dirF = document.getElementById('filterDir').value;
+  const outF = document.getElementById('filterOut').value;
+  const lvF  = document.getElementById('filterLv').value;
+  const filtered = allTrades.filter(t =>
+    (!dirF||t.direction===dirF) &&
+    (!outF||(outF==='win'?t.win:!t.win)) &&
+    (!lvF ||t.level===lvF));
+  const total = filtered.length;
+  document.getElementById('tradeCount').textContent = `${total} trades`;
+  const pages = Math.ceil(total/TRADES_PER_PAGE);
+  if (tradePage >= pages) tradePage = Math.max(0, pages-1);
+  const slice = filtered.slice(tradePage*TRADES_PER_PAGE, (tradePage+1)*TRADES_PER_PAGE);
+
+  document.getElementById('tradeBody').innerHTML = slice.map(t => {
+    const gIdx = filtered.indexOf(t);
+    const def  = LEVELS.find(l=>l.key===t.level);
+    const dot  = def ? `<span style="width:7px;height:7px;background:${def.color};border-radius:50%;display:inline-block;margin-right:3px"></span>` : '';
+    const dynBadge = def?.dynamic ? '<span class="dyn-badge">DYN</span>' : '';
+    const fc   = t.forecast;
+    return `<tr data-idx="${gIdx}" onclick="selectTrade(${gIdx})">
+      <td class="num" style="color:var(--text3)">${t.id}</td>
+      <td>${t.date}</td>
+      <td>${dot}${def?.label??t.level}${dynBadge}</td>
+      <td class="${t.direction==='LONG'?'pos':'neg'}">${t.direction}</td>
+      <td class="num">${t.entry.toPrecision(6)}</td>
+      <td class="num">${t.exit.toPrecision(6)}</td>
+      <td class="num ${t.pnlPct>=0?'pos':'neg'}">${t.pnlPct>=0?'+':''}${t.pnlPct.toFixed(3)}%</td>
+      <td class="num ${t.pnlR>=0?'pos':'neg'}">${t.pnlR>=0?'+':''}${t.pnlR.toFixed(2)}R</td>
+      <td class="num">${t.mfeR.toFixed(2)}R</td>
+      <td class="num" style="color:var(--red)">${t.maeR.toFixed(2)}R</td>
+      <td class="num">${t.durationMin}m</td>
+      <td><span class="rb-badge ${t.win?'win':'loss'}">${t.win?'WIN':'LOSS'}</span> <span style="font-size:10px;color:var(--text3)">${t.exitReason}</span></td>
+      <td style="font-size:10px;color:var(--text3)">${fc?`HL:${fc.hl_median}%·OC:${fc.oc_median}%`:'—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('pgInfo').textContent = `Page ${tradePage+1} / ${Math.max(1,pages)}`;
+  document.getElementById('pgPrev').disabled = tradePage===0;
+  document.getElementById('pgNext').disabled = tradePage>=pages-1;
+}
+
+function tradePageChange(dir) {
+  const dirF = document.getElementById('filterDir').value;
+  const outF = document.getElementById('filterOut').value;
+  const lvF  = document.getElementById('filterLv').value;
+  const total = allTrades.filter(t=>(!dirF||t.direction===dirF)&&(!outF||(outF==='win'?t.win:!t.win))&&(!lvF||t.level===lvF)).length;
+  const pages = Math.ceil(total/TRADES_PER_PAGE);
+  tradePage = Math.max(0,Math.min(pages-1, tradePage+dir));
+  renderTradeLog();
+}
+
+function selectTrade(idx) {
+  selectedTradeIdx = idx;
+  zoomToTrade(idx);
+  updateNavButtons();
+  requestDraw();
+  highlightTableRow(idx);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Export
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function exportResults() {
+  if (!allTrades.length) { alert('Run a backtest first.'); return; }
+  const pair = document.getElementById('pairSel').value;
+  const from = document.getElementById('fromDate').value;
+  const to   = document.getElementById('toDate').value;
+  const hdr  = 'id,date,level,dynamic,direction,entryTs,exitTs,entry,exit,sl,pnlPct,pnlR,mfeR,durationMin,exitReason,hlMedian,hl75,ocMedian,oc75,volAnnual\n';
+  const rows = allTrades.map(t => {
+    const def = LEVELS.find(l=>l.key===t.level);
+    return [t.id,t.date,t.level,def?.dynamic?1:0,t.direction,t.entryTs,t.exitTs,
+      t.entry.toFixed(6),t.exit.toFixed(6),t.sl.toFixed(6),
+      t.pnlPct.toFixed(4),t.pnlR.toFixed(4),t.mfeR.toFixed(4),
+      t.durationMin,t.exitReason,
+      t.forecast?.hl_median??'',t.forecast?.hl_75??'',
+      t.forecast?.oc_median??'',t.forecast?.oc_75??'',
+      t.forecast?.vol_annual??''].join(',');
+  }).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([hdr+rows],{type:'text/csv'}));
+  a.download = `fcst_bt_${pair.replace(/\//g,'')}_${from}_${to}.csv`;
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════════════════════════════
+
+initConfigUI();
+</script>
+</body>
+</html>
