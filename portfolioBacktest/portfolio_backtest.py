@@ -361,9 +361,13 @@ def simulate_portfolio(
                 blocked.add(p.pair_b)
         open_pair_keys = {_feat_key(p.pair_a, p.pair_b) for p in open_positions}
 
+        whitelist = params.get("whitelist_pairs")  # set of fk tuples or None (all pairs allowed)
+
         candidates = []
         for pair_a, pair_b in combinations(universe, 2):
             fk = _feat_key(pair_a, pair_b)
+            if whitelist is not None and fk not in whitelist:
+                continue
             if fk in open_pair_keys:
                 continue
             if params["block_same_leg"] and (pair_a in blocked or pair_b in blocked):
@@ -947,6 +951,9 @@ def main():
                     help="H1 bars to wait before re-entering same pair after close (0 = no cooldown)")
     ap.add_argument("--pair-scan",      action="store_true",
                     help="Test each cointegrated pair in isolation and rank by P&L; skips full portfolio sim")
+    ap.add_argument("--whitelist-pairs", nargs="+", default=[],
+                    metavar="A/B",
+                    help="Only trade these exact pair combos, e.g. --whitelist-pairs gbpusd/usdchf eurusd/gbpchf")
     ap.add_argument("--force-dl",       action="store_true", help="Re-download M1 data from R2")
     ap.add_argument("--output",         default="results.json")
     args = ap.parse_args()
@@ -955,13 +962,27 @@ def main():
         log.error("statsmodels not installed — run: pip install statsmodels")
         sys.exit(1)
 
+    # Parse whitelist pairs into canonical fk tuples
+    whitelist_pairs = None
+    if args.whitelist_pairs:
+        whitelist_pairs = set()
+        for spec in args.whitelist_pairs:
+            parts = spec.lower().replace("-", "/").split("/")
+            if len(parts) == 2:
+                whitelist_pairs.add(_feat_key(parts[0], parts[1]))
+            else:
+                log.warning(f"Skipping invalid whitelist entry '{spec}' — expected 'A/B' format")
+        log.info(f"Whitelist: {len(whitelist_pairs)} pairs — " +
+                 ", ".join(f"{a}/{b}" for a, b in sorted(whitelist_pairs)))
+
     params = {**DEFAULT_PARAMS,
               "entry_z": args.entry_z, "exit_z": args.exit_z, "stop_z": args.stop_z,
               "min_score": args.min_score, "min_corr": args.min_corr,
               "max_positions": args.max_pos, "risk_pct": args.risk_pct,
               "corr_window": args.corr_win, "warmup": args.warmup,
               "coint_pval": args.coint_pval, "max_hold_bars": args.max_hold_bars,
-              "pair_cooldown_bars": args.pair_cooldown}
+              "pair_cooldown_bars": args.pair_cooldown,
+              "whitelist_pairs": whitelist_pairs}
 
     from_ts  = pd.Timestamp(args.from_date, tz="UTC")
     to_ts    = pd.Timestamp(args.to_date,   tz="UTC")

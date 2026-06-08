@@ -1230,3 +1230,16 @@
 [2026-06-08 18:08:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.78000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.65424  session_open=4293.42500
 [2026-06-08 18:08:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
 [2026-06-08 18:18:45] [DA] [INFO] Cycle 570  balance=99551.49  sleep=58.1s
+[2026-06-08 18:28:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.78000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.65424  session_open=4293.42500
+[2026-06-08 18:28:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 18:48:46] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.78000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.65424  session_open=4293.42500
+[2026-06-08 18:48:46] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 18:48:47] [DA] [INFO] Cycle 600  balance=99551.49  sleep=56.1s
+[2026-06-08 19:08:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.78000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.65424  session_open=4293.42500
+[2026-06-08 19:08:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 19:18:46] [DA] [INFO] Cycle 630  balance=99551.49  sleep=57.3s
+[2026-06-08 19:28:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.81000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.68359  session_open=4293.42500
+[2026-06-08 19:28:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 19:48:47] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.81000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.68359  session_open=4293.42500
+[2026-06-08 19:48:47] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 19:48:50] [DA] [INFO] Cycle 660  balance=99551.49  sleep=53.6s
