@@ -582,6 +582,7 @@ const DEFAULT_HEDGE_CFG = {
   exit_z: 0.5,
   stop_z: 3.5,
   min_score: 0.1,
+  min_corr: 0.3,
   allowed_regimes: ['BEAR', 'RANGE', 'BULL'],
   check_interval_min: 15,
 };
@@ -594,26 +595,28 @@ function _hedgeScore(corr, betaA, betaB) {
   return +(corrPart + betaPart).toFixed(4);
 }
 
-// In-memory log-spread history keyed by "pairA__pairB".
-// Resets on server restart; builds up as computeHedgeSignals runs every 15 min.
-// Keeps the last LOG_SPREAD_MAX observations (~25h at 15-min cadence).
-const _logSpreadHistory = {};
-const LOG_SPREAD_MAX = 100;
+// Welford online state per pair-pair key — accumulates since server start (resets on restart).
+// Mirrors the backtest's Welford spread z-score: no lookahead, converges to true long-run mean.
+const _spreadWelford = {};
 
-// Track current log-spread (log(pxA) − log(pxB)) and return its deviation from the
-// rolling mean.  Returns null when fewer than 10 observations have accumulated.
-// spread_dev > 0 → A overvalued vs B → SHORT A, LONG B
-// spread_dev < 0 → A undervalued vs B → LONG A, SHORT B
-function _spreadDeviation(pa, pb, pxA, pxB) {
+// Update Welford state for the log-spread and return { z, dev } where:
+//   z   = (spread − running_mean) / running_std  — PRIMARY entry/exit/stop signal
+//   dev = spread − running_mean                  — sign determines direction
+// Returns null until ≥10 observations have accumulated.
+function _spreadZ(pa, pb, pxA, pxB) {
   const k = `${pa}__${pb}`;
-  if (!_logSpreadHistory[k]) _logSpreadHistory[k] = [];
+  if (!_spreadWelford[k]) _spreadWelford[k] = { mu: 0, M2: 0, n: 0 };
+  const st = _spreadWelford[k];
   const s = Math.log(pxA) - Math.log(pxB);
-  _logSpreadHistory[k].push(s);
-  if (_logSpreadHistory[k].length > LOG_SPREAD_MAX) _logSpreadHistory[k].shift();
-  const hist = _logSpreadHistory[k];
-  if (hist.length < 10) return null;
-  const mean = hist.reduce((acc, v) => acc + v, 0) / hist.length;
-  return s - mean;
+  st.n++;
+  const d1 = s - st.mu;
+  st.mu += d1 / st.n;
+  st.M2 += d1 * (s - st.mu);
+  if (st.n < 10) return null;
+  const std = Math.sqrt(st.M2 / (st.n - 1));
+  if (std < 1e-8) return null;
+  const dev = s - st.mu;
+  return { z: dev / std, dev };
 }
 
 // Capture exit prices from live state and compute equal-weight P&L for a closing signal.
@@ -694,37 +697,49 @@ async function computeHedgeSignals(force = false) {
       const betaB = lastBeta[pb]?.vix ?? null;
       const score = _hedgeScore(curCorr, betaA, betaB);
 
-      // ── Always manage ACTIVE signals first — exits must check z regardless of entry_z ──
-      // Bug-fix: the original code had `if (Math.abs(z) < cfg.entry_z) continue` BEFORE
-      // the existing-signal check, so signals whose z reverted below entry_z were never exited.
+      // Correlation quality gate — skip pairs with weak co-movement
+      if (Math.abs(curCorr) < (cfg.min_corr ?? 0.3)) continue;
+
+      // Compute spread z-score from live prices — this is the primary signal for all decisions
+      const pxA = state.prices[_pairToSlash(pa)]?.price;
+      const pxB = state.prices[_pairToSlash(pb)]?.price;
+      const spreadResult = (pxA && pxB) ? _spreadZ(pa, pb, pxA, pxB) : null;
+      // spreadResult = { z, dev } or null (history still building)
+
+      // ── Always manage ACTIVE signals first ─────────────────────────────────
       const existing = sigData.signals.find(s => s.pair_a === pa && s.pair_b === pb && s.status === 'ACTIVE');
       if (existing) {
-        existing.z_score      = +z.toFixed(3);
+        // Use spread_z for exit/stop; fall back to corrZ only while history builds
+        const exitZ = spreadResult !== null ? spreadResult.z : z;
+        existing.z_score      = +exitZ.toFixed(3);
         existing.corr_current = +curCorr.toFixed(4);
         existing.hedge_score  = score;
         existing.last_updated = now;
-        if (Math.abs(z) < cfg.exit_z) {
+        if (spreadResult !== null) {
+          existing.spread_dev = +spreadResult.dev.toFixed(6);
+        }
+        if (Math.abs(exitZ) < cfg.exit_z) {
           existing.status    = 'EXITED';
           existing.exit_time = now;
-          existing.exit_z    = +z.toFixed(3);
+          existing.exit_z    = +exitZ.toFixed(3);
           _attachExitPnl(existing, pa, pb);
           if (tgCfg?.token && tgCfg?.chatId) {
             const pnlStr = existing.pnl_c_pct != null ? `  |  P&L: <b>${existing.pnl_c_pct >= 0 ? '+' : ''}${existing.pnl_c_pct.toFixed(3)}%</b>` : '';
             const msg = `✅ <b>Hedge Exit — ${pa} / ${pb}</b>\n`
-              + `Z reverted to <b>${existing.z_score}</b> (target &lt; ${cfg.exit_z})${pnlStr}\n`
+              + `Spread Z reverted to <b>${existing.z_score}</b> (target &lt; ${cfg.exit_z})${pnlStr}\n`
               + `Close: <b>${pa}</b> ${existing.direction_a}  ·  <b>${pb}</b> ${existing.direction_b}\n`
               + `Regime: ${regime}`;
             sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
           }
-        } else if (Math.abs(z) > cfg.stop_z) {
+        } else if (Math.abs(exitZ) > cfg.stop_z) {
           existing.status    = 'STOPPED';
           existing.exit_time = now;
-          existing.exit_z    = +z.toFixed(3);
+          existing.exit_z    = +exitZ.toFixed(3);
           _attachExitPnl(existing, pa, pb);
           if (tgCfg?.token && tgCfg?.chatId) {
             const pnlStr = existing.pnl_c_pct != null ? `  |  P&L: <b>${existing.pnl_c_pct >= 0 ? '+' : ''}${existing.pnl_c_pct.toFixed(3)}%</b>` : '';
             const msg = `🛑 <b>Hedge Stop — ${pa} / ${pb}</b>\n`
-              + `Z extended to <b>${existing.z_score}</b> (stop &gt; ${cfg.stop_z})${pnlStr}\n`
+              + `Spread Z extended to <b>${existing.z_score}</b> (stop &gt; ${cfg.stop_z})${pnlStr}\n`
               + `Close: <b>${pa}</b> ${existing.direction_a}  ·  <b>${pb}</b> ${existing.direction_b}\n`
               + `Regime: ${regime}`;
             sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
@@ -733,35 +748,22 @@ async function computeHedgeSignals(force = false) {
         continue; // active signal managed — skip new-entry check
       }
 
-      // ── New entry check ────────────────────────────────────────────────────
-      if (Math.abs(z) < cfg.entry_z) continue;
+      // ── New entry: requires spread_z available and above threshold ─────────
+      if (spreadResult === null) continue;          // history still building — no entry
+      if (Math.abs(spreadResult.z) < cfg.entry_z) continue;
       if (score < cfg.min_score) continue;
 
-      // Direction: log-spread level vs its rolling mean (cointegration spread signal).
-      // Fallback to z-sign while spread history is building (<10 observations).
-      const pxA = state.prices[_pairToSlash(pa)]?.price;
-      const pxB = state.prices[_pairToSlash(pb)]?.price;
-      let dirA, dirB, spreadDev = null;
-      if (pxA && pxB) {
-        spreadDev = _spreadDeviation(pa, pb, pxA, pxB);
-      }
-      if (spreadDev !== null) {
-        // spread_dev > 0 → A overvalued vs B → SHORT A, LONG B
-        dirA = spreadDev >= 0 ? 'SHORT' : 'LONG';
-        dirB = spreadDev >= 0 ? 'LONG'  : 'SHORT';
-      } else {
-        // Fallback until spread history accumulates
-        const zSign = z > 0 ? 1 : -1;
-        dirA = ((betaA ?? 0) * zSign) >= 0 ? 'LONG' : 'SHORT';
-        dirB = ((betaB ?? 0) * zSign) >= 0 ? 'LONG' : 'SHORT';
-      }
+      // Direction: sign of spread deviation (same as z sign)
+      // spread_dev > 0 → A overvalued vs B → SHORT A, LONG B
+      const dirA = spreadResult.dev >= 0 ? 'SHORT' : 'LONG';
+      const dirB = spreadResult.dev >= 0 ? 'LONG'  : 'SHORT';
 
       const sig = {
         id: `${pa}-${pb}-${Date.now()}`,
-        schema_version: 1,
+        schema_version: 2,
         pair_a: pa, pair_b: pb,
         direction_a: dirA, direction_b: dirB,
-        z_score: +z.toFixed(3),
+        z_score: +spreadResult.z.toFixed(3),
         hedge_score: score,
         corr_current: +curCorr.toFixed(4),
         corr_mean: +mu.toFixed(4),
@@ -771,26 +773,25 @@ async function computeHedgeSignals(force = false) {
         regime,
         status: 'ACTIVE',
         entry_time: now,
-        entry_z: +z.toFixed(3),
+        entry_z: +spreadResult.z.toFixed(3),
         exit_z_target: cfg.exit_z,
         stop_z: cfg.stop_z,
         last_updated: now,
         entry_price_a: (() => { const p = state.prices[_pairToSlash(pa)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pa)] ?? 5) : null; })(),
         entry_price_b: (() => { const p = state.prices[_pairToSlash(pb)]?.price; return p ? +p.toFixed(PRICE_DIGITS[_pairToSlash(pb)] ?? 5) : null; })(),
-        spread_dev: spreadDev !== null ? +spreadDev.toFixed(6) : null,
-        direction_basis: spreadDev !== null ? 'spread' : 'z_fallback',
+        spread_dev: +spreadResult.dev.toFixed(6),
       };
       newSigs.push(sig);
       sigData.signals.push(sig);
 
       if (tgCfg?.token && tgCfg?.chatId) {
-        const bullet = z > 0 ? '📈' : '📉';
+        const bullet = spreadResult.dev > 0 ? '📈' : '📉';
         const msg = `${bullet} <b>Hedge Signal — ${pa} / ${pb}</b>\n`
-          + `Z-Score: <b>${sig.z_score}</b>  |  Score: <b>${score}</b>\n`
+          + `Spread Z: <b>${sig.z_score}</b>  |  Score: <b>${score}</b>\n`
           + `<b>${pa}</b>: ${dirA}  (β_vix = ${sig.beta_vix_a ?? 'n/a'})\n`
           + `<b>${pb}</b>: ${dirB}  (β_vix = ${sig.beta_vix_b ?? 'n/a'})\n`
           + `Regime: ${regime}  |  Corr: ${sig.corr_current} (μ=${sig.corr_mean} σ=${sig.corr_std})\n`
-          + `<i>Entry z &gt; ${cfg.entry_z} | Exit z &lt; ${cfg.exit_z} | Stop z &gt; ${cfg.stop_z}</i>`;
+          + `<i>Spread entry z &gt; ${cfg.entry_z} | exit z &lt; ${cfg.exit_z} | stop z &gt; ${cfg.stop_z}</i>`;
         sendTelegram(tgCfg.token, tgCfg.chatId, msg).catch(() => {});
       }
     }

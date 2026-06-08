@@ -561,6 +561,8 @@ function simulateExhaustionM1(m1Bars, open, atr, hl50pct, hl75pct, ocMedPct, oc7
   function tpHit(pos, barHigh, barLow) {
     const slD = Math.abs(pos.entry - pos.sl);
     if (pos.side === 'SELL') {
+      // tpOpen: price reverts back to the day open — natural target for exhaustion fades
+      if (tpMode === 'tpOpen') return barLow <= open ? open : null;
       const tpFixed = pos.entry - slD * rrRatio;
       const tpMax   = pos.entry - slD * maxRR;
       const chan     = pos.mfePts > slD * 0.5
@@ -572,6 +574,8 @@ function simulateExhaustionM1(m1Bars, open, atr, hl50pct, hl75pct, ocMedPct, oc7
       if (chan !== null && barHigh >= chan) return chan;
       return null;
     } else {
+      // tpOpen: price reverts back to the day open
+      if (tpMode === 'tpOpen') return barHigh >= open ? open : null;
       const tpFixed = pos.entry + slD * rrRatio;
       const tpMax   = pos.entry + slD * maxRR;
       const chan     = pos.mfePts > slD * 0.5

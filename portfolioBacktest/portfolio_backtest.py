@@ -9,9 +9,9 @@ Mirrors how a stat-arb desk operates:
   - Exits on spread z-score reversion or continuation (spread-level stops, not per-leg ATR)
   - Time stop closes positions held longer than max_hold_bars
 
-Entry trigger : rolling correlation z-score (Welford online, no lookahead)
-Pair screen   : Engle-Granger cointegration test (p < coint_pval)
-Direction     : cointegration spread deviation — SHORT A when log(A)−β·log(B) is above its rolling mean
+Entry trigger : cointegration spread z-score — (log(A)−β·log(B) − mean) / std
+Pair screen   : Engle-Granger cointegration test (p < coint_pval) + minimum |correlation|
+Direction     : sign of spread deviation — SHORT A when log(A)−β·log(B) is above its rolling mean
 Sizing        : beta-neutral — Leg B weighted by OLS hedge ratio |beta|
 Exit          : z-score reverts to ±exit_z  |  z-score breaches ±stop_z  |  time stop
 
@@ -71,18 +71,19 @@ DEFAULT_UNIVERSE = [
 ]
 
 DEFAULT_PARAMS = dict(
-    entry_z        = 2.0,
-    exit_z         = 0.5,
-    stop_z         = 3.5,
-    min_score      = 0.1,
-    risk_pct       = 1.0,    # allocation multiplier per trade (1.0 = 100% of unit)
-    corr_window    = 200,    # H1 bars for rolling correlation & OLS (~8 days)
-    dir_window     = 24,     # H1 bars to measure "recent return" for direction
-    warmup         = 300,    # H1 bars before any trading starts
-    max_positions  = 5,
-    block_same_leg = True,
-    coint_pval     = 0.05,   # Engle-Granger p-value threshold (lower = more stringent)
-    max_hold_bars  = 48,     # H1 bars before time stop fires (~2 trading days)
+    entry_z            = 2.0,
+    exit_z             = 0.5,
+    stop_z             = 3.5,
+    min_score          = 0.1,
+    min_corr           = 0.3,    # minimum |rolling correlation| to consider a pair (quality gate)
+    risk_pct           = 1.0,    # allocation multiplier per trade (1.0 = 100% of unit)
+    corr_window        = 200,    # H1 bars for rolling correlation, OLS, and spread stats (~8 days)
+    warmup             = 300,    # H1 bars before any trading starts
+    max_positions      = 5,
+    block_same_leg     = True,
+    coint_pval         = 0.05,   # Engle-Granger p-value threshold (lower = more stringent)
+    max_hold_bars      = 48,     # H1 bars before time stop fires (~2 trading days)
+    pair_cooldown_bars = 0,      # H1 bars to wait before re-entering same pair (0 = no cooldown)
 )
 
 # ── Data loading ───────────────────────────────────────────────────────────────
@@ -142,17 +143,16 @@ def compute_pair_features(
     close_a: pd.Series,
     close_b: pd.Series,
     corr_window: int,
-    dir_window: int,
 ) -> pd.DataFrame:
     """
     Compute per-bar features for a pair combination on aligned H1 data.
 
     Returns DataFrame with columns:
-      corr       – rolling Pearson correlation of log-returns
-      corr_z     – Welford online z-score of corr (no lookahead)
+      corr       – rolling Pearson correlation of log-returns (pair quality gate)
       score      – hedge score: -corr*0.7 + |beta_spread|*0.3
       beta       – rolling OLS beta (log_ret_a ~ beta * log_ret_b), used for beta-neutral sizing
-      spread_dev – log(A) − β·log(B) minus its rolling mean; sign drives entry direction
+      spread_z   – z-score of log(A)−β·log(B) vs its rolling mean/std; PRIMARY entry/exit signal
+      spread_dev – raw deviation (spread_s − mean); sign alone determines trade direction
     """
     df = pd.DataFrame({"a": close_a, "b": close_b}).dropna()
     if len(df) < corr_window + 10:
@@ -165,35 +165,36 @@ def compute_pair_features(
 
     corr = ret_a.rolling(corr_window, min_periods=corr_window // 2).corr(ret_b)
 
-    mu, M2, n = 0.0, 0.0, 0
-    z_vals = np.full(len(corr), np.nan)
-    for i, c in enumerate(corr.values):
-        if np.isnan(c):
-            continue
-        n += 1
-        d1 = c - mu
-        mu += d1 / n
-        M2 += d1 * (c - mu)
-        std = np.sqrt(M2 / (n - 1)) if n >= 2 else 0.0
-        z_vals[i] = (c - mu) / std if std > 0.01 else 0.0
-
     beta = _rolling_ols_beta(ret_a.values, ret_b.values, corr_window)
     beta_spread = np.minimum(np.abs(beta - 1) / 2, 1.0)
     score_arr = (-corr.values * 0.7) + (beta_spread * 0.3)
 
-    # Spread S(t) = log(A) − β(t)·log(B); deviation from rolling mean determines direction.
-    # spread_dev > 0 → A overvalued vs B → SHORT A, LONG B
-    # spread_dev < 0 → A undervalued vs B → LONG A, SHORT B
-    spread_s    = pd.Series(log_a.values - beta * log_b.values, index=df.index)
-    spread_mean = spread_s.rolling(corr_window, min_periods=corr_window // 2).mean()
-    spread_dev  = (spread_s - spread_mean).values
+    # Welford online z-score of the cointegration spread S(t) = log(A) − β(t)·log(B).
+    # No lookahead bias; accumulates the full series so the reference mean is the true long-run
+    # mean of the stationary spread — correct for cointegrated pairs.
+    # spread_z  → primary entry/exit/stop signal (how many σ from long-run mean)
+    # spread_dev → sign determines direction (+ve = A overvalued → SHORT A, LONG B)
+    spread_s = (log_a.values - beta * log_b.values)
+    sp_mu, sp_M2, sp_n = 0.0, 0.0, 0
+    sz_vals = np.full(len(spread_s), np.nan)
+    sd_vals = np.full(len(spread_s), np.nan)
+    for i, s in enumerate(spread_s):
+        if np.isnan(s):
+            continue
+        sp_n += 1
+        d1 = s - sp_mu
+        sp_mu += d1 / sp_n
+        sp_M2 += d1 * (s - sp_mu)
+        sp_std = np.sqrt(sp_M2 / (sp_n - 1)) if sp_n >= 2 else 0.0
+        sd_vals[i] = s - sp_mu
+        sz_vals[i] = (s - sp_mu) / sp_std if sp_std > 0.001 else 0.0
 
     return pd.DataFrame({
         "corr":       corr.values,
-        "corr_z":     z_vals,
         "beta":       beta,
         "score":      score_arr,
-        "spread_dev": spread_dev,
+        "spread_z":   sz_vals,
+        "spread_dev": sd_vals,
     }, index=df.index)
 
 
@@ -296,8 +297,10 @@ def simulate_portfolio(
 ) -> list:
     trades: list[Trade] = []
     open_positions: list[Position] = []
-    warmup   = params["warmup"]
-    max_hold = params["max_hold_bars"]
+    warmup    = params["warmup"]
+    max_hold  = params["max_hold_bars"]
+    cooldown  = params.get("pair_cooldown_bars", 0)
+    pair_last_close: dict = {}  # fk -> bar_idx of last close; enforces cooldown
 
     all_ts = sorted(
         set().union(*[set(h1_data[p].index) for p in universe if p in h1_data])
@@ -323,13 +326,13 @@ def simulate_portfolio(
                 exited = True
 
             if not exited:
-                # Spread z-score exit and stop — institutional: manage risk at spread level
+                # Spread z-score exit and stop — compare same signal used at entry
                 fk = _feat_key(pos.pair_a, pos.pair_b)
                 feat = pair_features.get(fk)
                 if feat is not None:
                     feat_at = feat.loc[:h1_ts]
                     if len(feat_at) > 0:
-                        z = feat_at["corr_z"].iloc[-1]
+                        z = feat_at["spread_z"].iloc[-1]
                         if not np.isnan(z):
                             ea = _last_close(h1_data, pos.pair_a, h1_ts, pos.entry_a)
                             eb = _last_close(h1_data, pos.pair_b, h1_ts, pos.entry_b)
@@ -342,6 +345,8 @@ def simulate_portfolio(
 
             if not exited:
                 still_open.append(pos)
+            elif cooldown > 0:
+                pair_last_close[_feat_key(pos.pair_a, pos.pair_b)] = bar_idx
 
         open_positions = still_open
 
@@ -363,6 +368,8 @@ def simulate_portfolio(
                 continue
             if params["block_same_leg"] and (pair_a in blocked or pair_b in blocked):
                 continue
+            if cooldown > 0 and bar_idx - pair_last_close.get(fk, -cooldown) < cooldown:
+                continue
 
             feat = pair_features.get(fk)
             if feat is None:
@@ -373,12 +380,15 @@ def simulate_portfolio(
                 continue
 
             row        = feat_at.iloc[-1]
-            z          = row["corr_z"]
+            z          = row["spread_z"]
             score      = row["score"]
             beta       = row["beta"]
             spread_dev = row["spread_dev"]
+            corr       = row["corr"]
 
             if np.isnan(z) or np.isnan(score) or np.isnan(beta) or np.isnan(spread_dev):
+                continue
+            if abs(corr) < params.get("min_corr", 0.3):
                 continue
             if abs(z) < params["entry_z"] or score < params["min_score"]:
                 continue
@@ -825,8 +835,10 @@ def main():
     ap = argparse.ArgumentParser(description="Multi-pair hedge portfolio backtester — institutional model")
     ap.add_argument("--from",          dest="from_date",    default="2024-01-01")
     ap.add_argument("--to",            dest="to_date",      default="2026-06-01")
-    ap.add_argument("--pairs",         nargs="+",           default=DEFAULT_UNIVERSE)
-    ap.add_argument("--entry-z",       type=float,          default=DEFAULT_PARAMS["entry_z"])
+    ap.add_argument("--pairs",          nargs="+",           default=DEFAULT_UNIVERSE)
+    ap.add_argument("--exclude",        nargs="+",           default=[],
+                    metavar="SYMBOL",    help="Exclude these instruments from pair formation (e.g. --exclude USDCHF)")
+    ap.add_argument("--entry-z",        type=float,          default=DEFAULT_PARAMS["entry_z"])
     ap.add_argument("--exit-z",        type=float,          default=DEFAULT_PARAMS["exit_z"])
     ap.add_argument("--stop-z",        type=float,          default=DEFAULT_PARAMS["stop_z"])
     ap.add_argument("--min-score",     type=float,          default=DEFAULT_PARAMS["min_score"])
@@ -836,10 +848,14 @@ def main():
     ap.add_argument("--warmup",        type=int,            default=DEFAULT_PARAMS["warmup"])
     ap.add_argument("--coint-pval",    type=float,          default=DEFAULT_PARAMS["coint_pval"],
                     help="Engle-Granger p-value threshold (default 0.05; try 0.10 if no pairs pass)")
-    ap.add_argument("--max-hold-bars", type=int,            default=DEFAULT_PARAMS["max_hold_bars"],
+    ap.add_argument("--min-corr",       type=float,          default=DEFAULT_PARAMS["min_corr"],
+                    help="Minimum |rolling correlation| to consider a pair (default 0.3)")
+    ap.add_argument("--max-hold-bars",  type=int,            default=DEFAULT_PARAMS["max_hold_bars"],
                     help="H1 bars before time stop fires (default 48 = ~2 trading days)")
-    ap.add_argument("--force-dl",      action="store_true", help="Re-download M1 data from R2")
-    ap.add_argument("--output",        default="results.json")
+    ap.add_argument("--pair-cooldown",  type=int,            default=DEFAULT_PARAMS["pair_cooldown_bars"],
+                    help="H1 bars to wait before re-entering same pair after close (0 = no cooldown)")
+    ap.add_argument("--force-dl",       action="store_true", help="Re-download M1 data from R2")
+    ap.add_argument("--output",         default="results.json")
     args = ap.parse_args()
 
     if not _HAS_STATSMODELS:
@@ -848,17 +864,21 @@ def main():
 
     params = {**DEFAULT_PARAMS,
               "entry_z": args.entry_z, "exit_z": args.exit_z, "stop_z": args.stop_z,
-              "min_score": args.min_score,
+              "min_score": args.min_score, "min_corr": args.min_corr,
               "max_positions": args.max_pos, "risk_pct": args.risk_pct,
               "corr_window": args.corr_win, "warmup": args.warmup,
-              "coint_pval": args.coint_pval, "max_hold_bars": args.max_hold_bars}
+              "coint_pval": args.coint_pval, "max_hold_bars": args.max_hold_bars,
+              "pair_cooldown_bars": args.pair_cooldown}
 
-    from_ts = pd.Timestamp(args.from_date, tz="UTC")
-    to_ts   = pd.Timestamp(args.to_date,   tz="UTC")
-    universe = [p for p in args.pairs if p in ALL_PAIRS]
+    from_ts  = pd.Timestamp(args.from_date, tz="UTC")
+    to_ts    = pd.Timestamp(args.to_date,   tz="UTC")
+    excluded = {s.lower() for s in args.exclude}
+    universe = [p for p in args.pairs if p in ALL_PAIRS and p.lower() not in excluded]
     if not universe:
         log.error(f"No valid pairs. Available: {ALL_PAIRS}")
         sys.exit(1)
+    if excluded:
+        log.info(f"Excluded instruments: {sorted(excluded)}")
 
     log.info(f"Universe: {len(universe)} pairs — {args.from_date} → {args.to_date}")
 
@@ -890,7 +910,7 @@ def main():
         try:
             feat = compute_pair_features(
                 h1_data[a]["close"], h1_data[b]["close"],
-                params["corr_window"], params["dir_window"],
+                params["corr_window"],
             )
             if len(feat):
                 pair_features[fk] = feat

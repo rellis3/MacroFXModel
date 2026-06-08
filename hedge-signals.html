@@ -362,15 +362,14 @@ pre.code{background:var(--bg4);border:1px solid var(--border);border-radius:8px;
               <tr><td>pair_b</td><td>string</td><td>Second pair (e.g. USDJPY)</td></tr>
               <tr><td>direction_a</td><td>LONG|SHORT</td><td>Trade direction for pair_a</td></tr>
               <tr><td>direction_b</td><td>LONG|SHORT</td><td>Trade direction for pair_b</td></tr>
-              <tr><td>z_score</td><td>float</td><td>Current rolling corr z-score</td></tr>
+              <tr><td>z_score</td><td>float</td><td>Current spread z-score: (log(A)−β·log(B) − mean) / std</td></tr>
               <tr><td>hedge_score</td><td>float</td><td>(-r×0.7) + (β_spread/2×0.3)</td></tr>
               <tr><td>corr_current</td><td>float</td><td>Latest Pearson correlation</td></tr>
               <tr><td>corr_mean</td><td>float</td><td>Historical average correlation</td></tr>
               <tr><td>corr_std</td><td>float</td><td>Historical std dev of correlation</td></tr>
               <tr><td>beta_vix_a</td><td>float|null</td><td>VIX β for pair_a (H4 OLS)</td></tr>
               <tr><td>beta_vix_b</td><td>float|null</td><td>VIX β for pair_b (H4 OLS)</td></tr>
-              <tr><td>spread_dev</td><td>float|null</td><td>log(A)−log(B) minus rolling mean; positive → SHORT A</td></tr>
-              <tr><td>direction_basis</td><td>spread|z_fallback</td><td>spread = spread-level signal; z_fallback = history still building</td></tr>
+              <tr><td>spread_dev</td><td>float</td><td>log(A)−β·log(B) minus rolling mean; positive → SHORT A, LONG B</td></tr>
               <tr><td>regime</td><td>string</td><td>Macro regime at signal time</td></tr>
               <tr><td>status</td><td>ACTIVE|EXITED|STOPPED|DISMISSED</td><td>Signal lifecycle state</td></tr>
               <tr><td>entry_time</td><td>ISO 8601</td><td>When signal was first fired</td></tr>
@@ -932,7 +931,7 @@ function signalCard(s, showAck) {
       <span class="sig-badge ${s.status.toLowerCase()}">${s.status}</span>
     </div>
     <div class="sig-stats">
-      <div class="sig-stat"><div class="sv ${zCls}">${zNowStr}</div><div class="sl">Z Now</div></div>
+      <div class="sig-stat"><div class="sv ${zCls}">${zNowStr}</div><div class="sl">Spread Z</div></div>
       <div class="sig-stat"><div class="sv ${sCls}">${s.hedge_score}</div><div class="sl">Hedge Score</div></div>
       <div class="sig-stat"><div class="sv" style="color:var(--cyan)">${s.corr_current?.toFixed(3)??'—'}</div><div class="sl">Corr Now</div></div>
     </div>
@@ -946,7 +945,7 @@ function signalCard(s, showAck) {
         <div class="dir-val ${s.direction_b.toLowerCase()}">${s.direction_b === 'LONG' ? '▲' : '▼'} ${s.direction_b}</div>
       </div>
     </div>
-    ${s.spread_dev != null ? `<div style="font-size:10px;color:var(--muted);margin:-4px 0 8px;text-align:center">Spread Δ <b style="color:${s.spread_dev>=0?'var(--red)':'var(--green)'}">${s.spread_dev>=0?'+':''}${(s.spread_dev*10000).toFixed(1)}bp</b> vs mean&nbsp; <span style="color:${s.direction_basis==='spread'?'var(--cyan)':'var(--yellow)'}">[${s.direction_basis==='spread'?'spread basis':'z-fallback'}]</span></div>` : ''}
+    ${s.spread_dev != null ? `<div style="font-size:10px;color:var(--muted);margin:-4px 0 8px;text-align:center">Spread Δ <b style="color:${s.spread_dev>=0?'var(--red)':'var(--green)'}">${s.spread_dev>=0?'+':''}${(s.spread_dev*10000).toFixed(1)}bp</b> vs mean</div>` : ''}
     ${zProgressBar}
     ${tradeLevels}
     <div class="sig-meta">

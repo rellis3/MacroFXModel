@@ -413,7 +413,8 @@
       <option value="2.0">SL ×2.0 ATR</option>
       <option value="2.5">SL ×2.5 ATR</option>
     </select>
-    <select id="exTpMode" class="bt-sel" title="Take-profit mode">
+    <select id="exTpMode" class="bt-sel" title="Take-profit mode" onchange="toggleExTpOpts()">
+      <option value="tpOpen">TP at Open (revert-to-open)</option>
       <option value="hybrid">Hybrid (max 4R or chandelier)</option>
       <option value="fixedRR">Fixed R:R</option>
       <option value="chandelier">Chandelier only</option>
@@ -1908,6 +1909,21 @@ function toggleMomentumOpts() {
     const el = document.getElementById(id);
     if (el) el.style.display = isEx ? 'none' : '';
   });
+
+  if (isEx) toggleExTpOpts();
+}
+
+function toggleExTpOpts() {
+  const mode = document.getElementById('exTpMode')?.value;
+  // fixedRR needs the R:R ratio; chandelier/hybrid need retrace + max cap; tpOpen needs none of these
+  const needsRr  = mode === 'fixedRR';
+  const needsChan = mode === 'chandelier' || mode === 'hybrid';
+  const rrEl   = document.getElementById('exRrRatio');
+  const retEl  = document.getElementById('exMfeRetrace');
+  const maxEl  = document.getElementById('exMaxRr');
+  if (rrEl)  rrEl.style.display  = needsRr   ? '' : 'none';
+  if (retEl) retEl.style.display = needsChan  ? '' : 'none';
+  if (maxEl) maxEl.style.display = (needsChan && mode === 'hybrid') ? '' : 'none';
 }
 
 // ── Run backtest ──────────────────────────────────────────────────────────────
