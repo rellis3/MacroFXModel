@@ -15,3 +15,15 @@ Gold/logs/gold_bot.log
 Gold/logs/gold_bot.log
 bot/regime_bot.log
 backtestSystem/backtestSystem.log
+portfolioBacktest/cache/audjpy_m1.parquet
+portfolioBacktest/cache/eurcad_m1.parquet
+portfolioBacktest/cache/eurchf_m1.parquet
+portfolioBacktest/cache/eurgbp_m1.parquet
+portfolioBacktest/cache/eurjpy_m1.parquet
+portfolioBacktest/cache/gbpcad_m1.parquet
+portfolioBacktest/cache/gbpchf_m1.parquet
+portfolioBacktest/cache/gbpjpy_m1.parquet
+portfolioBacktest/cache/gold_m1.parquet
+portfolioBacktest/cache/us30_m1.parquet
+portfolioBacktest/cache/usdjpy_m1.parquet
+portfolioBacktest/cache/us2000_m1.parquet

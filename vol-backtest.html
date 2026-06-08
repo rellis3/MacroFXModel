@@ -351,6 +351,7 @@
     <option value="0.01">Spread 0.01%</option>
   </select>
   <select id="runStrategy" class="bt-sel" onchange="toggleMomentumOpts()">
+    <option value="exhaustion">Exhaustion Fade ✦</option>
     <option value="reversal">Reversal</option>
     <option value="reversal50">Rev-50</option>
     <option value="revHL50">Rev-HL50 ★</option>
@@ -393,6 +394,53 @@
       <option value="run">EOD: run (carry)</option>
     </select>
   </span>
+  <span id="exhaustionOpts" style="display:none">
+    <select id="exLevels" class="bt-sel" title="Which vol-forecast levels to trade as exhaustion entry points">
+      <option value="hl50_hl75">HL50 + HL75 (default)</option>
+      <option value="hl75_oc75">HL75 + OC_75 (75th pct only)</option>
+      <option value="all_four">All four levels</option>
+      <option value="hl75_only">HL75 only</option>
+      <option value="oc_only">OC_med + OC_75</option>
+    </select>
+    <select id="exAtrPeriod" class="bt-sel" title="ATR period computed from daily bars — sets the SL size">
+      <option value="14">ATR 14d (default)</option>
+      <option value="10">ATR 10d</option>
+      <option value="20">ATR 20d</option>
+    </select>
+    <select id="exAtrMult" class="bt-sel" title="Stop-loss = ATR × this multiplier">
+      <option value="1.5">SL ×1.5 ATR</option>
+      <option value="1.0">SL ×1.0 ATR</option>
+      <option value="2.0">SL ×2.0 ATR</option>
+      <option value="2.5">SL ×2.5 ATR</option>
+    </select>
+    <select id="exTpMode" class="bt-sel" title="Take-profit mode">
+      <option value="hybrid">Hybrid (max 4R or chandelier)</option>
+      <option value="fixedRR">Fixed R:R</option>
+      <option value="chandelier">Chandelier only</option>
+    </select>
+    <select id="exRrRatio" class="bt-sel" title="Target R:R for fixed R:R mode">
+      <option value="3.0">TP 3R</option>
+      <option value="2.0">TP 2R</option>
+      <option value="4.0">TP 4R</option>
+      <option value="2.5">TP 2.5R</option>
+    </select>
+    <select id="exMfeRetrace" class="bt-sel" title="Chandelier: close when price retraces this % of max-favourable-excursion (activates after MFE > 0.5×SL)">
+      <option value="0.40">Retrace 40%</option>
+      <option value="0.25">Retrace 25%</option>
+      <option value="0.33">Retrace 33%</option>
+      <option value="0.50">Retrace 50%</option>
+    </select>
+    <select id="exMaxRr" class="bt-sel" title="Hard cap on R:R in hybrid mode — closes at this even if chandelier hasn't fired">
+      <option value="4.0">Max 4R cap</option>
+      <option value="3.0">Max 3R cap</option>
+      <option value="5.0">Max 5R cap</option>
+      <option value="6.0">Max 6R cap</option>
+    </select>
+    <select id="exBlowThrough" class="bt-sel" title="Blow-through: when SL is hit, watch for entry at the next extension level in the same direction">
+      <option value="true">Blow-through ON</option>
+      <option value="false">Blow-through OFF</option>
+    </select>
+  </span>
   <select id="runSlope" class="bt-sel" title="EMA-20 slope threshold: how steep the slope must be to classify as BULL or BEAR. Higher = fewer but stronger trend signals.">
     <option value="0.002">Slope ×1 (0.2%)</option>
     <option value="0.004">Slope ×2 (0.4%)</option>
@@ -425,7 +473,16 @@
 <!-- ── Strategy help panel ───────────────────────────────────────────────── -->
 <div id="stratHelp" style="display:none;margin:8px 0 0;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;color:var(--txt2)">
   <strong style="color:var(--txt);font-size:13px">Strategy modes</strong>
-  <div style="margin-top:8px;display:grid;grid-template-columns:repeat(7,1fr);gap:12px">
+  <div style="margin-top:8px;display:grid;grid-template-columns:repeat(8,1fr);gap:12px">
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Exhaustion Fade ✦</div>
+      No regime filter — fades any extension from the daily open when price hits a vol-forecast level (HL50, HL75, OC_med, OC_75).
+      Stop-loss is ATR(N)×mult (volatility-calibrated, not a fixed level).
+      TP modes: <em>fixedRR</em> (fixed reward:risk), <em>chandelier</em> (exit when price retraces X% of MFE), <em>hybrid</em> (earlier of 4R cap or chandelier).
+      Blow-through ON: if SL hit, advances to the next extension level in the same direction.
+      <div style="margin-top:6px;color:var(--red)">SELL at open+HL50/HL75/OC_75 — fade up-extension back toward open</div>
+      <div style="color:var(--green)">BUY at open−HL50/HL75/OC_75 — fade down-extension back toward open</div>
+    </div>
     <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Reversal</div>
       Waits for price to reach the 75th-pct daily range extreme (HL75) then fades back toward the median close (OC_med).
@@ -867,6 +924,7 @@
     </select>
     <select class="bt-sel" id="fLeg" onchange="filterTrades()">
       <option value="">All legs</option>
+      <option value="exhaustion">Exhaustion Fade ✦</option>
       <option value="reversal">Reversal</option>
       <option value="reversal50">Reversal 50</option>
       <option value="revHL50">Rev-HL50</option>
@@ -1832,13 +1890,24 @@ function toggleRevGuide() {
 }
 
 function toggleMomentumOpts() {
-  const strategy = document.getElementById('runStrategy').value;
+  const s = document.getElementById('runStrategy').value;
+  const isEx = s === 'exhaustion';
+
   document.getElementById('momentumOpts').style.display =
-    (strategy === 'reversal' || strategy === 'reversal50' || strategy === 'revHL50' || strategy === 'momentum50' || strategy === 'dynamicAnchor') ? 'none' : '';
+    (!isEx && s !== 'reversal' && s !== 'reversal50' && s !== 'revHL50' && s !== 'momentum50' && s !== 'dynamicAnchor') ? '' : 'none';
   document.getElementById('revHL50Opts').style.display =
-    strategy === 'revHL50' ? '' : 'none';
+    s === 'revHL50' ? '' : 'none';
   document.getElementById('dynAnchorOpts').style.display =
-    strategy === 'dynamicAnchor' ? '' : 'none';
+    s === 'dynamicAnchor' ? '' : 'none';
+  document.getElementById('exhaustionOpts').style.display =
+    isEx ? '' : 'none';
+
+  // Hide strategy-unrelated controls when exhaustion is active
+  const exHide = ['runSlope', 'runDynHl', 'runBearMult', 'runRangeMode', 'runSl'];
+  exHide.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isEx ? 'none' : '';
+  });
 }
 
 // ── Run backtest ──────────────────────────────────────────────────────────────
@@ -1852,23 +1921,42 @@ async function runBacktest() {
   setStatus('spin', 'Starting backtest…');
 
   try {
+    // Resolve exhaustion level preset → individual booleans
+    const exLevels  = document.getElementById('exLevels')?.value ?? 'hl50_hl75';
+    const exUseHL50  = exLevels !== 'hl75_only' && exLevels !== 'hl75_oc75' && exLevels !== 'oc_only';
+    const exUseHL75  = exLevels !== 'oc_only';
+    const exUseOCmed = exLevels === 'all_four' || exLevels === 'oc_only';
+    const exUseOC75  = exLevels === 'hl75_oc75' || exLevels === 'all_four' || exLevels === 'oc_only';
+
     const body = {
       dateFrom:         document.getElementById('runFrom').value,
       dateTo:           document.getElementById('runTo').value,
       pair:             document.getElementById('runPair').value,
-      slMult:           document.getElementById('runSl').value,
+      slMult:           document.getElementById('runSl')?.value ?? '1.5',
       strategy,
       momentumPullback: document.getElementById('runMoPb')?.value ?? '0',
       momentumSlMult:   document.getElementById('runMoSl')?.value ?? '1.0',
       spreadPct:        document.getElementById('runSpread').value,
-      dynHlCorr:        document.getElementById('runDynHl').value,
-      slopeThresh:      document.getElementById('runSlope').value,
-      revHL50Mode:      document.getElementById('runRevMode').value,
+      dynHlCorr:        document.getElementById('runDynHl')?.value ?? '0',
+      slopeThresh:      document.getElementById('runSlope')?.value ?? '0.002',
+      revHL50Mode:      document.getElementById('runRevMode')?.value ?? 'all',
       daRegime:         document.getElementById('runDaRegime')?.value   ?? 'all',
       daDir:            document.getElementById('runDaDir')?.value     ?? 'both',
       daEodMode:        document.getElementById('runDaEodMode')?.value ?? 'close',
-      bearMult:         document.getElementById('runBearMult').value,
-      rangeMode:        document.getElementById('runRangeMode').value,
+      bearMult:         document.getElementById('runBearMult')?.value ?? '1.0',
+      rangeMode:        document.getElementById('runRangeMode')?.value ?? 'fade_both',
+      // exhaustion opts
+      exAtrPeriod:  document.getElementById('exAtrPeriod')?.value  ?? '14',
+      exAtrMult:    document.getElementById('exAtrMult')?.value    ?? '1.5',
+      exTpMode:     document.getElementById('exTpMode')?.value     ?? 'hybrid',
+      exRrRatio:    document.getElementById('exRrRatio')?.value    ?? '3.0',
+      exMfeRetrace: document.getElementById('exMfeRetrace')?.value ?? '0.40',
+      exMaxRr:      document.getElementById('exMaxRr')?.value      ?? '4.0',
+      exBlowThrough:document.getElementById('exBlowThrough')?.value ?? 'true',
+      exUseHL50:  String(exUseHL50),
+      exUseHL75:  String(exUseHL75),
+      exUseOCmed: String(exUseOCmed),
+      exUseOC75:  String(exUseOC75),
     };
 
     // Start the job — server returns immediately with a jobId

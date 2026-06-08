@@ -2591,6 +2591,11 @@ app.post('/api/vol-backtest/run', (req, res) => {
     revHL50Mode = 'all',
     bearMult = '1.0', rangeMode = 'fade_both',
     daRegime = 'all', daDir = 'both', daEodMode = 'close',
+    // exhaustion fade opts
+    exAtrPeriod = '14', exAtrMult = '1.5', exTpMode = 'hybrid',
+    exRrRatio = '3.0', exMfeRetrace = '0.40', exMaxRr = '4.0',
+    exBlowThrough = 'true',
+    exUseHL50 = 'true', exUseHL75 = 'true', exUseOCmed = 'false', exUseOC75 = 'false',
   } = req.body || {};
   const opts = {
     dateFrom, dateTo, minLookback: 50,
@@ -2604,9 +2609,18 @@ app.post('/api/vol-backtest/run', (req, res) => {
     revHL50Mode,
     bearMult:         parseFloat(bearMult)          || 1.0,
     rangeMode,
-    daRegime,
-    daDir,
-    daEodMode,
+    daRegime, daDir, daEodMode,
+    exAtrPeriod:   parseInt(exAtrPeriod)         || 14,
+    exAtrMult:     parseFloat(exAtrMult)          || 1.5,
+    exTpMode,
+    exRrRatio:     parseFloat(exRrRatio)          || 3.0,
+    exMfeRetrace:  parseFloat(exMfeRetrace)       || 0.40,
+    exMaxRr:       parseFloat(exMaxRr)            || 4.0,
+    exBlowThrough: exBlowThrough !== 'false',
+    exUseHL50:     exUseHL50  !== 'false',
+    exUseHL75:     exUseHL75  !== 'false',
+    exUseOCmed:    exUseOCmed === 'true',
+    exUseOC75:     exUseOC75  === 'true',
   };
 
   const instFilter  = pair ? BT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : undefined;

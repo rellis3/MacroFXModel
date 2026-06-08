@@ -407,6 +407,11 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
         f'atr5m={atr_5m/pip:.1f}p  atr30m={atr_30m/pip:.1f}p  '
         f'conv={conviction:.2f}  confirms={confirms}/{confirms + conflicts}'
     )
+
+    if cfg.get('paper_mode', False):
+        log.info(f'  → PAPER MODE — order not sent to MT5')
+        return st
+
     ticket = place_order(pair, entry_dir, lots, sl, tp)
     level_entries[lkey] = level_entries.get(lkey, 0) + 1  # count attempt win or lose
     if ticket:
@@ -569,10 +574,26 @@ def main() -> None:
 
             if dashboard_url:
                 _push_status_to_kv(dashboard_url, {
-                    'timestamp': int(time.time() * 1000),
-                    'date':      today_date,
-                    'in_window': in_window,
-                    'pairs':     pair_statuses,
+                    'timestamp':     int(time.time() * 1000),
+                    'date':          today_date,
+                    'in_window':     in_window,
+                    'paper_mode':    cfg.get('paper_mode', True),
+                    'pairs':         pair_statuses,
+                    'mt5_positions': [
+                        {
+                            'ticket':     p.ticket,
+                            'symbol':     p.symbol,
+                            'direction':  'BUY' if p.type == 0 else 'SELL',
+                            'lots':       p.volume,
+                            'open_price': round(p.price_open, 5),
+                            'price':      round(p.price_current, 5),
+                            'profit':     round(p.profit, 2),
+                            'swap':       round(p.swap, 2),
+                            'time_open':  int(p.time),
+                            'comment':    str(p.comment or ''),
+                        }
+                        for p in open_pos
+                    ],
                 })
 
         except KeyboardInterrupt:

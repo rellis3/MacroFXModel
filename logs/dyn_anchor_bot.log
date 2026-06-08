@@ -1069,3 +1069,113 @@
 [2026-06-08 09:48:45] [DA] [INFO] Cycle 60  balance=99551.49  sleep=58.2s
 [2026-06-08 10:18:46] [DA] [INFO] Cycle 90  balance=99551.49  sleep=56.9s
 [2026-06-08 10:48:45] [DA] [INFO] Cycle 120  balance=99551.49  sleep=57.2s
+[2026-06-08 11:19:10] [DA] [INFO] Cycle 150  balance=99551.49  sleep=32.8s
+[2026-06-08 11:28:54] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 11:30:45] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-08 11:30:45] [DA] [INFO] [AUD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:45] [DA] [INFO] [AUD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.556%  hl50=0.805%  hl75=1.018%  session_open=0.70521  slope=-0.001507
+[2026-06-08 11:30:45] [DA] [INFO] [AUD/USD] RANGE day — no trading today
+[2026-06-08 11:30:45] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-08 11:30:45] [DA] [INFO] [NZD/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:45] [DA] [INFO] [NZD/USD] Setup [MT5]: regime=RANGE  sigma_d=0.707%  hl50=1.023%  hl75=1.294%  session_open=0.58092  slope=-0.001576
+[2026-06-08 11:30:45] [DA] [INFO] [NZD/USD] RANGE day — no trading today
+[2026-06-08 11:30:45] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-08 11:30:45] [DA] [INFO] [USD/CAD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:45] [DA] [INFO] [USD/CAD] Setup [MT5]: regime=RANGE  sigma_d=0.229%  hl50=0.332%  hl75=0.420%  session_open=1.39464  slope=0.000996
+[2026-06-08 11:30:45] [DA] [INFO] [USD/CAD] RANGE day — no trading today
+[2026-06-08 11:30:45] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-08 11:30:45] [DA] [INFO] [USD/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:45] [DA] [INFO] [USD/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.441%  hl50=0.639%  hl75=0.808%  session_open=0.79770  slope=0.001245
+[2026-06-08 11:30:45] [DA] [INFO] [USD/CHF] RANGE day — no trading today
+[2026-06-08 11:30:45] [DA] [INFO] [GBP/JPY] Running daily setup…
+[2026-06-08 11:30:46] [DA] [INFO] [GBP/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:46] [DA] [INFO] [GBP/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.339%  hl50=0.490%  hl75=0.620%  session_open=213.34150  slope=-0.000116
+[2026-06-08 11:30:46] [DA] [INFO] [GBP/JPY] RANGE day — no trading today
+[2026-06-08 11:30:46] [DA] [INFO] [EUR/JPY] Running daily setup…
+[2026-06-08 11:30:46] [DA] [INFO] [EUR/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:46] [DA] [INFO] [EUR/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.314%  hl50=0.455%  hl75=0.576%  session_open=184.32600  slope=-0.000323
+[2026-06-08 11:30:46] [DA] [INFO] [EUR/JPY] RANGE day — no trading today
+[2026-06-08 11:30:46] [DA] [INFO] [EUR/GBP] Running daily setup…
+[2026-06-08 11:30:47] [DA] [INFO] [EUR/GBP] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:47] [DA] [INFO] [EUR/GBP] Setup [MT5]: regime=RANGE  sigma_d=0.189%  hl50=0.273%  hl75=0.346%  session_open=0.86400  slope=-0.000197
+[2026-06-08 11:30:47] [DA] [INFO] [EUR/GBP] RANGE day — no trading today
+[2026-06-08 11:30:47] [DA] [INFO] [EUR/CHF] Running daily setup…
+[2026-06-08 11:30:47] [DA] [INFO] [EUR/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:47] [DA] [INFO] [EUR/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.227%  hl50=0.329%  hl75=0.416%  session_open=0.91871  slope=0.000243
+[2026-06-08 11:30:47] [DA] [INFO] [EUR/CHF] RANGE day — no trading today
+[2026-06-08 11:30:47] [DA] [INFO] [EUR/CAD] Running daily setup…
+[2026-06-08 11:30:48] [DA] [INFO] [EUR/CAD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:48] [DA] [INFO] [EUR/CAD] Setup [MT5]: regime=RANGE  sigma_d=0.265%  hl50=0.384%  hl75=0.486%  session_open=1.60618  slope=-0.000025
+[2026-06-08 11:30:48] [DA] [INFO] [EUR/CAD] RANGE day — no trading today
+[2026-06-08 11:30:48] [DA] [INFO] [EUR/AUD] Running daily setup…
+[2026-06-08 11:30:49] [DA] [INFO] [EUR/AUD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:49] [DA] [INFO] [EUR/AUD] Setup [MT5]: regime=RANGE  sigma_d=0.312%  hl50=0.452%  hl75=0.571%  session_open=1.63318  slope=0.000522
+[2026-06-08 11:30:49] [DA] [INFO] [EUR/AUD] RANGE day — no trading today
+[2026-06-08 11:30:49] [DA] [INFO] [AUD/JPY] Running daily setup…
+[2026-06-08 11:30:49] [DA] [INFO] [AUD/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:49] [DA] [INFO] [AUD/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.473%  hl50=0.685%  hl75=0.866%  session_open=112.86350  slope=-0.000844
+[2026-06-08 11:30:49] [DA] [INFO] [AUD/JPY] RANGE day — no trading today
+[2026-06-08 11:30:49] [DA] [INFO] [AUD/CAD] Running daily setup…
+[2026-06-08 11:30:50] [DA] [INFO] [AUD/CAD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:50] [DA] [INFO] [AUD/CAD] Setup [MT5]: regime=RANGE  sigma_d=0.439%  hl50=0.635%  hl75=0.803%  session_open=0.98345  slope=-0.000500
+[2026-06-08 11:30:50] [DA] [INFO] [AUD/CAD] RANGE day — no trading today
+[2026-06-08 11:30:50] [DA] [INFO] [GBP/AUD] Running daily setup…
+[2026-06-08 11:30:50] [DA] [INFO] [GBP/AUD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:50] [DA] [INFO] [GBP/AUD] Setup [MT5]: regime=RANGE  sigma_d=0.332%  hl50=0.481%  hl75=0.608%  session_open=1.89024  slope=0.000733
+[2026-06-08 11:30:50] [DA] [INFO] [GBP/AUD] RANGE day — no trading today
+[2026-06-08 11:30:50] [DA] [INFO] [GBP/CAD] Running daily setup…
+[2026-06-08 11:30:51] [DA] [INFO] [GBP/CAD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:51] [DA] [INFO] [GBP/CAD] Setup [MT5]: regime=RANGE  sigma_d=0.331%  hl50=0.479%  hl75=0.607%  session_open=1.85894  slope=0.000204
+[2026-06-08 11:30:51] [DA] [INFO] [GBP/CAD] RANGE day — no trading today
+[2026-06-08 11:30:51] [DA] [INFO] [CAD/JPY] Running daily setup…
+[2026-06-08 11:30:51] [DA] [INFO] [CAD/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:51] [DA] [INFO] [CAD/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.308%  hl50=0.446%  hl75=0.564%  session_open=114.76400  slope=-0.000293
+[2026-06-08 11:30:51] [DA] [INFO] [CAD/JPY] RANGE day — no trading today
+[2026-06-08 11:30:51] [DA] [INFO] [CHF/JPY] Running daily setup…
+[2026-06-08 11:30:52] [DA] [INFO] [CHF/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:52] [DA] [INFO] [CHF/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.360%  hl50=0.521%  hl75=0.660%  session_open=200.62650  slope=-0.000522
+[2026-06-08 11:30:52] [DA] [INFO] [CHF/JPY] RANGE day — no trading today
+[2026-06-08 11:30:52] [DA] [INFO] [NZD/JPY] Running daily setup…
+[2026-06-08 11:30:52] [DA] [INFO] [NZD/JPY] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:52] [DA] [INFO] [NZD/JPY] Setup [MT5]: regime=RANGE  sigma_d=0.610%  hl50=0.883%  hl75=1.117%  session_open=92.97400  slope=-0.000987
+[2026-06-08 11:30:52] [DA] [INFO] [NZD/JPY] RANGE day — no trading today
+[2026-06-08 11:30:52] [DA] [INFO] [AUD/NZD] Running daily setup…
+[2026-06-08 11:30:53] [DA] [INFO] [AUD/NZD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:53] [DA] [INFO] [AUD/NZD] Setup [MT5]: regime=RANGE  sigma_d=0.441%  hl50=0.639%  hl75=0.808%  session_open=1.21391  slope=-0.000007
+[2026-06-08 11:30:53] [DA] [INFO] [AUD/NZD] RANGE day — no trading today
+[2026-06-08 11:30:53] [DA] [INFO] [GBP/NZD] Running daily setup…
+[2026-06-08 11:30:53] [DA] [INFO] [GBP/NZD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:53] [DA] [INFO] [GBP/NZD] Setup [MT5]: regime=RANGE  sigma_d=0.521%  hl50=0.754%  hl75=0.954%  session_open=2.29456  slope=0.000704
+[2026-06-08 11:30:53] [DA] [INFO] [GBP/NZD] RANGE day — no trading today
+[2026-06-08 11:30:53] [DA] [INFO] [EUR/NZD] Running daily setup…
+[2026-06-08 11:30:54] [DA] [INFO] [EUR/NZD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:54] [DA] [INFO] [EUR/NZD] Setup [MT5]: regime=RANGE  sigma_d=0.497%  hl50=0.719%  hl75=0.910%  session_open=1.98249  slope=0.000522
+[2026-06-08 11:30:54] [DA] [INFO] [EUR/NZD] RANGE day — no trading today
+[2026-06-08 11:30:54] [DA] [INFO] [AUD/CHF] Running daily setup…
+[2026-06-08 11:30:54] [DA] [INFO] [AUD/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:54] [DA] [INFO] [AUD/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.312%  hl50=0.452%  hl75=0.572%  session_open=0.56255  slope=-0.000276
+[2026-06-08 11:30:54] [DA] [INFO] [AUD/CHF] RANGE day — no trading today
+[2026-06-08 11:30:54] [DA] [INFO] [GBP/CHF] Running daily setup…
+[2026-06-08 11:30:55] [DA] [INFO] [GBP/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:55] [DA] [INFO] [GBP/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.284%  hl50=0.411%  hl75=0.519%  session_open=1.06337  slope=0.000465
+[2026-06-08 11:30:55] [DA] [INFO] [GBP/CHF] RANGE day — no trading today
+[2026-06-08 11:30:55] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-08 11:30:55] [DA] [INFO] [XAU/USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:55] [DA] [INFO] [XAU/USD] Setup [MT5]: regime=BEAR  sigma_d=1.496%  hl50=2.166%  hl75=2.740%  session_open=4293.42500  slope=-0.004654
+[2026-06-08 11:30:55] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-08 11:30:55] [DA] [INFO] [NAS100_USD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-08 11:30:55] [DA] [INFO] [NAS100_USD] Setup [MT5]: regime=BEAR  sigma_d=1.761%  hl50=2.550%  hl75=3.226%  session_open=29171.20000  slope=-0.002498
+[2026-06-08 11:48:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4304.84000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4211.60096  session_open=4293.42500
+[2026-06-08 11:48:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29244.30000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28498.69114  session_open=29171.20000
+[2026-06-08 11:48:46] [DA] [INFO] Cycle 180  balance=99551.49  sleep=57.0s
+[2026-06-08 12:08:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4304.84000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4211.60096  session_open=4293.42500
+[2026-06-08 12:08:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29244.30000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28498.69114  session_open=29171.20000
+[2026-06-08 12:18:45] [DA] [INFO] Cycle 210  balance=99551.49  sleep=58.0s
+[2026-06-08 12:28:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4329.96000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4236.17689  session_open=4293.42500
+[2026-06-08 12:28:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29383.30000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28634.14722  session_open=29171.20000
+[2026-06-08 12:48:45] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4331.40000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4237.58570  session_open=4293.42500
+[2026-06-08 12:48:45] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29413.30000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28663.38234  session_open=29171.20000
+[2026-06-08 12:48:47] [DA] [INFO] Cycle 240  balance=99551.49  sleep=56.1s
+[2026-06-08 13:08:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4334.36000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4239.23909  session_open=4293.42500
+[2026-06-08 13:08:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29413.30000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28663.38234  session_open=29171.20000
+[2026-06-08 13:18:47] [DA] [INFO] Cycle 270  balance=99551.49  sleep=55.9s
