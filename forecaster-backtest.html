@@ -968,15 +968,15 @@ function buildLegend() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function renderChart(candles) {
-  const wrap = document.getElementById('chartWrap');
+  const wrap    = document.getElementById('chartWrap');
   const pnlWrap = document.getElementById('fbPnlChart');
 
   if (mainChart) { try { mainChart.remove(); } catch(e) {} mainChart = null; priceSeries = null; }
   if (pnlChart)  { try { pnlChart.remove();  } catch(e) {} pnlChart  = null; pnlSeries  = null; }
 
-  const chartOpts = (el, h) => ({
+  const mkOpts = (bg, h) => ({
     width: wrap.clientWidth, height: h,
-    layout: { background: { color: el === pnlWrap ? '#0e1117' : '#131722' }, textColor: '#d1d4dc' },
+    layout: { background: { color: bg }, textColor: '#d1d4dc' },
     grid: { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: { borderColor: '#2a3050', scaleMargins: { top: 0.06, bottom: 0.06 } },
@@ -984,7 +984,7 @@ function renderChart(candles) {
     handleScroll: true, handleScale: true,
   });
 
-  mainChart  = LightweightCharts.createChart(document.getElementById('fbPriceChart'), chartOpts(null, wrap.clientHeight));
+  mainChart   = LightweightCharts.createChart(document.getElementById('fbPriceChart'), mkOpts('#131722', wrap.clientHeight));
   priceSeries = mainChart.addCandlestickSeries({
     upColor:'#26a69a', downColor:'#ef5350',
     borderUpColor:'#26a69a', borderDownColor:'#ef5350',
@@ -992,29 +992,24 @@ function renderChart(candles) {
   });
   priceSeries.setData(candles);
 
-  // P&L subchart
-  pnlChart  = LightweightCharts.createChart(pnlWrap, chartOpts(pnlWrap, 100));
-  pnlSeries = pnlChart.addHistogramSeries({
-    priceFormat: { type: 'percent' },
-    priceLineVisible: false, lastValueVisible: false,
-  });
-  // Build daily P&L series from dayData
-  const pnlData = allDayData
-    .filter(d => d.pnl !== 0)
+  // Daily P&L subchart
+  pnlChart  = LightweightCharts.createChart(pnlWrap, mkOpts('#0e1117', 100));
+  pnlSeries = pnlChart.addHistogramSeries({ priceFormat:{type:'percent'}, priceLineVisible:false, lastValueVisible:false });
+  const pnlData = allDayData.filter(d => d.pnl !== 0)
     .map(d => ({ time: d.startTs, value: d.pnl, color: d.pnl >= 0 ? '#26a69a' : '#ef5350' }));
   if (pnlData.length) pnlSeries.setData(pnlData);
 
-  // Sync time scales
-  mainChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
-    if (syncingCharts || !range) return;
+  // ── Sync by TIME RANGE (not logical indices — charts have different bar densities) ──
+  mainChart.timeScale().subscribeVisibleTimeRangeChange(tr => {
+    if (syncingCharts || !tr) return;
     syncingCharts = true;
-    try { pnlChart.timeScale().setVisibleLogicalRange(range); } catch(e) {}
+    try { pnlChart.timeScale().setVisibleRange(tr); } catch(e) {}
     syncingCharts = false;
   });
-  pnlChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
-    if (syncingCharts || !range) return;
+  pnlChart.timeScale().subscribeVisibleTimeRangeChange(tr => {
+    if (syncingCharts || !tr) return;
     syncingCharts = true;
-    try { mainChart.timeScale().setVisibleLogicalRange(range); } catch(e) {}
+    try { mainChart.timeScale().setVisibleRange(tr); } catch(e) {}
     syncingCharts = false;
   });
 
@@ -1024,17 +1019,19 @@ function renderChart(candles) {
     requestDraw();
     if (!param || !param.time || syncingCharts) return;
     syncingCharts = true;
-    try { pnlChart.setCrossHairXY(pnlChart.timeScale().timeToCoordinate(param.time) ?? -1, 0, true); } catch(e) {}
+    try {
+      const x = pnlChart.timeScale().timeToCoordinate(param.time);
+      if (x !== null) pnlChart.setCrossHairXY(x, 0, true);
+    } catch(e) {}
     syncingCharts = false;
   });
 
   updateMarkers();
-  mainChart.timeScale().subscribeVisibleTimeRangeChange(requestDraw);
+  // Single subscription for overlay redraws — logical range fires every scroll frame
   mainChart.timeScale().subscribeVisibleLogicalRangeChange(requestDraw);
 
   requestAnimationFrame(() => { drawOverlay(); fitAll(); });
 
-  // Resize
   if (!renderChart._obs) {
     renderChart._obs = new ResizeObserver(() => {
       if (!mainChart) return;
@@ -1101,80 +1098,97 @@ function drawOverlay() {
   ctx.font = '9px "DM Mono", monospace';
   ctx.textBaseline = 'middle';
 
+  // Work out pixels-per-day so we can decide how much detail to show
+  const visTimeRange = mainChart.timeScale().getVisibleRange();
+  const visSpanSecs  = visTimeRange ? (visTimeRange.to - visTimeRange.from) : 0;
+  const secsPerPx    = visSpanSecs > 0 ? visSpanSecs / W : Infinity;
+  const dayWidthPx   = 86400 / secsPerPx;  // approximate pixels per day
+
   allDayData.forEach((day, dIdx) => {
     if (!day.staticLevels) return;
     const isSelDay = dIdx === selectedDayIdx;
 
-    const x1r = mainChart.timeScale().timeToCoordinate(day.startTs);
-    const x2r = mainChart.timeScale().timeToCoordinate(day.endTs);
-    const x1  = x1r ?? -1, x2 = x2r ?? W+1;
-    if (x2 < 0 || x1 > W) return;
-    const xFrom = Math.max(0, x1), xTo = Math.min(W, x2);
+    const x1 = mainChart.timeScale().timeToCoordinate(day.startTs) ?? -1;
+    const x2 = mainChart.timeScale().timeToCoordinate(day.endTs)   ?? (W + 1);
+    if (x2 < -60 || x1 > W + 60) return;    // outside viewport
+    if (!isSelDay && (x2 - x1) < 2) return; // too narrow to see — skip non-selected
 
-    // Open price reference
+    const xFrom = Math.max(0, x1);
+    const xTo   = Math.min(W, x2);
+
+    // Open price reference line
     const openY = priceSeries.priceToCoordinate(day.open);
     if (openY != null && openY >= 0 && openY <= H) {
-      ctx.strokeStyle = isSelDay ? '#6b7280' : '#374151';
-      ctx.lineWidth = 0.5; ctx.setLineDash([2,6]); ctx.globalAlpha = isSelDay ? 0.7 : 0.4;
+      ctx.strokeStyle = isSelDay ? '#6b7280' : '#2d3a4a';
+      ctx.lineWidth = 0.5; ctx.setLineDash([2, 6]);
+      ctx.globalAlpha = isSelDay ? 0.65 : 0.25;
       ctx.beginPath(); ctx.moveTo(xFrom, openY); ctx.lineTo(xTo, openY); ctx.stroke();
     }
 
-    // ── Static level lines ─────────────────────────────────────────────────
+    // Show labels only when zoomed in enough (≥80px per day) OR on selected day
+    const showLabel = isSelDay || dayWidthPx >= 80;
+
+    // ── Static level lines ──────────────────────────────────────────────────
     LEVELS.filter(lv => !lv.dynamic && enabledLevels.has(lv.key)).forEach(lv => {
-      const lvPrice = day.staticLevels[lv.key];
-      const y = priceSeries.priceToCoordinate(lvPrice);
-      if (y == null || y < 0 || y > H) return;
-      ctx.strokeStyle = lv.color;
-      ctx.lineWidth = isSelDay ? 1.5 : 1;
-      ctx.setLineDash([4,3]);
-      ctx.globalAlpha = day.levelTraded[lv.key] ? (isSelDay?1:0.85) : (isSelDay?0.65:0.3);
+      const y = priceSeries.priceToCoordinate(day.staticLevels[lv.key]);
+      if (y == null || y < -2 || y > H + 2) return;
+      const traded = day.levelTraded[lv.key];
+      ctx.strokeStyle  = lv.color;
+      ctx.lineWidth    = isSelDay ? (traded ? 1.8 : 1.4) : (traded ? 1.2 : 0.8);
+      ctx.setLineDash([4, 3]);
+      ctx.globalAlpha  = traded ? (isSelDay ? 1.0 : 0.7) : (isSelDay ? 0.65 : 0.22);
       ctx.beginPath(); ctx.moveTo(xFrom, y); ctx.lineTo(xTo, y); ctx.stroke();
-      // Label at right edge
-      if (x2 >= 0 && x2 <= W+80) {
-        ctx.setLineDash([]); ctx.fillStyle = lv.color; ctx.globalAlpha = isSelDay ? 0.9 : 0.5;
-        ctx.fillText(lv.label, Math.min(xTo+2, W-62), y);
+      if (showLabel && x2 > -10 && x2 < W + 80) {
+        ctx.setLineDash([]);
+        ctx.fillStyle   = lv.color;
+        ctx.globalAlpha = isSelDay ? 0.95 : 0.6;
+        ctx.fillText(lv.label, Math.min(xTo + 3, W - 64), y);
       }
     });
 
-    // ── Dynamic level lines (final day H/L position) ───────────────────────
+    // ── Dynamic level lines ─────────────────────────────────────────────────
     if (day.finalDynLevels) {
       LEVELS.filter(lv => lv.dynamic && enabledLevels.has(lv.key)).forEach(lv => {
-        const lvPrice = day.finalDynLevels[lv.key];
-        const y = priceSeries.priceToCoordinate(lvPrice);
-        if (y == null || y < 0 || y > H) return;
-        ctx.strokeStyle = lv.color;
-        ctx.lineWidth = isSelDay ? 1.5 : 1;
-        ctx.setLineDash([7,4]);  // longer dash to distinguish from static
-        ctx.globalAlpha = day.levelTraded[lv.key] ? (isSelDay?1:0.85) : (isSelDay?0.65:0.3);
+        const y = priceSeries.priceToCoordinate(day.finalDynLevels[lv.key]);
+        if (y == null || y < -2 || y > H + 2) return;
+        const traded = day.levelTraded[lv.key];
+        ctx.strokeStyle  = lv.color;
+        ctx.lineWidth    = isSelDay ? (traded ? 1.8 : 1.4) : (traded ? 1.2 : 0.8);
+        ctx.setLineDash([7, 4]);
+        ctx.globalAlpha  = traded ? (isSelDay ? 1.0 : 0.7) : (isSelDay ? 0.65 : 0.22);
         ctx.beginPath(); ctx.moveTo(xFrom, y); ctx.lineTo(xTo, y); ctx.stroke();
-        if (x2 >= 0 && x2 <= W+80) {
-          ctx.setLineDash([]); ctx.fillStyle = lv.color; ctx.globalAlpha = isSelDay ? 0.9 : 0.5;
-          ctx.fillText(lv.label, Math.min(xTo+2, W-62), y);
+        if (showLabel && x2 > -10 && x2 < W + 80) {
+          ctx.setLineDash([]);
+          ctx.fillStyle   = lv.color;
+          ctx.globalAlpha = isSelDay ? 0.95 : 0.6;
+          ctx.fillText(lv.label, Math.min(xTo + 3, W - 64), y);
         }
       });
     }
   });
 
-  // ── Trade lines ────────────────────────────────────────────────────────────
-  ctx.setLineDash([5,4]);
+  // ── Trade lines ─────────────────────────────────────────────────────────────
+  ctx.setLineDash([5, 4]);
   allTrades.forEach((t, idx) => {
     const x1 = mainChart.timeScale().timeToCoordinate(t.entryTs);
     const x2 = mainChart.timeScale().timeToCoordinate(t.exitTs);
-    if (x1==null||x2==null) return;
+    if (x1 == null || x2 == null) return;
+    if (x2 < 0 || x1 > W) return;
     const y1 = priceSeries.priceToCoordinate(t.entry);
     const y2 = priceSeries.priceToCoordinate(t.exit);
-    if (y1==null||y2==null) return;
+    if (y1 == null || y2 == null) return;
     const isSel = idx === selectedTradeIdx;
-    ctx.strokeStyle = t.direction==='LONG'?'#26a69a':'#ef5350';
+    ctx.strokeStyle = t.direction === 'LONG' ? '#26a69a' : '#ef5350';
     ctx.lineWidth   = isSel ? 2.5 : 1;
-    ctx.globalAlpha = isSel ? 1.0 : 0.4;
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    ctx.globalAlpha = isSel ? 1.0 : 0.45;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     if (isSel) {
       const ysl = priceSeries.priceToCoordinate(t.sl);
-      if (ysl!=null) {
-        ctx.strokeStyle='#f0a030'; ctx.lineWidth=1; ctx.setLineDash([2,4]); ctx.globalAlpha=0.7;
-        ctx.beginPath(); ctx.moveTo(x1,ysl); ctx.lineTo(x2,ysl); ctx.stroke();
-        ctx.setLineDash([5,4]);
+      if (ysl != null) {
+        ctx.strokeStyle = '#f0a030'; ctx.lineWidth = 1;
+        ctx.setLineDash([2, 4]); ctx.globalAlpha = 0.7;
+        ctx.beginPath(); ctx.moveTo(x1, ysl); ctx.lineTo(x2, ysl); ctx.stroke();
+        ctx.setLineDash([5, 4]);
       }
     }
   });
@@ -1241,16 +1255,22 @@ function zoomToDay(idx) {
 function zoomToTrade(idx) {
   if (!mainChart || idx < 0 || idx >= allTrades.length) return;
   const t = allTrades[idx];
+  // Update selected day marker without re-zooming the chart to day boundaries
+  const dIdx = allDayData.findIndex(d => d.date === t.date);
+  if (dIdx >= 0) {
+    selectedDayIdx = dIdx;
+    // Update day chip info without calling zoomToDay (which would override our zoom)
+    const d = allDayData[dIdx];
+    const chip = document.getElementById('dayInfoChip');
+    chip.style.display = 'inline-block';
+    const fc = d.forecast;
+    chip.textContent = fc
+      ? `${d.date} · vol ${fc.vol_annual}% · HL ${fc.hl_median}% · OC ${fc.oc_median}% · P&L ${d.pnl>=0?'+':''}${d.pnl.toFixed(2)}%`
+      : d.date + ' (no forecast)';
+  }
   const ctx90 = 90 * 60;
   mainChart.timeScale().setVisibleRange({ from: t.entryTs - ctx90, to: t.exitTs + ctx90 });
-  // Also set selected day
-  const dIdx = allDayData.findIndex(d => d.date === t.date);
-  if (dIdx >= 0) { selectedDayIdx = dIdx; zoomToDay(dIdx); }
-  // Re-zoom to trade after day zoom (trade context takes priority)
-  setTimeout(() => {
-    if (mainChart) mainChart.timeScale().setVisibleRange({ from: t.entryTs - ctx90, to: t.exitTs + ctx90 });
-    requestDraw();
-  }, 0);
+  requestDraw();
 }
 
 function updateNavButtons() {
