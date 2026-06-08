@@ -534,11 +534,27 @@
     <option value="XAU/USD">XAU/USD</option>
     <option value="EUR/GBP">EUR/GBP</option>
     <option value="EUR/JPY">EUR/JPY</option>
+    <option value="EUR/CAD">EUR/CAD</option>
+    <option value="EUR/AUD">EUR/AUD</option>
+    <option value="EUR/CHF">EUR/CHF</option>
+    <option value="EUR/NZD">EUR/NZD</option>
     <option value="AUD/JPY">AUD/JPY</option>
+    <option value="AUD/CAD">AUD/CAD</option>
+    <option value="AUD/CHF">AUD/CHF</option>
+    <option value="AUD/NZD">AUD/NZD</option>
+    <option value="GBP/AUD">GBP/AUD</option>
+    <option value="GBP/CAD">GBP/CAD</option>
+    <option value="GBP/CHF">GBP/CHF</option>
+    <option value="GBP/NZD">GBP/NZD</option>
+    <option value="CAD/JPY">CAD/JPY</option>
+    <option value="CHF/JPY">CHF/JPY</option>
+    <option value="NZD/JPY">NZD/JPY</option>
     <option value="NAS100_USD">NAS100</option>
     <option value="SPX500_USD">SPX500</option>
     <option value="DE30_USD">DE30</option>
     <option value="UK100_GBP">UK100</option>
+    <option value="US30_USD">US30</option>
+    <option value="US2000_USD">US2000</option>
   </select>
 
   <span class="rb-lbl2">From</span>
@@ -898,8 +914,13 @@ const REGIME_HEX = { BULL: '#00c97d', BEAR: '#ef5350', RANGE: '#f0a030', CHOP: '
 const PAIR_SAFE_MAP = {
   'EUR/USD':'eurusd','GBP/USD':'gbpusd','USD/JPY':'usdjpy','AUD/USD':'audusd',
   'NZD/USD':'nzdusd','USD/CAD':'usdcad','USD/CHF':'usdchf','GBP/JPY':'gbpjpy',
-  'XAU/USD':'xauusd','NAS100_USD':'nas100usd','EUR/GBP':'eurgbp','EUR/JPY':'eurjpy',
-  'AUD/JPY':'audjpy','SPX500_USD':'spx500usd','DE30_USD':'de30usd','UK100_GBP':'uk100gbp',
+  'XAU/USD':'gold','NAS100_USD':'nq','EUR/GBP':'eurgbp','EUR/JPY':'eurjpy',
+  'AUD/JPY':'audjpy','SPX500_USD':'spx500','DE30_USD':'de30','UK100_GBP':'uk100',
+  'EUR/CAD':'eurcad','EUR/AUD':'euraud','EUR/CHF':'eurchf','EUR/NZD':'eurnzd',
+  'GBP/AUD':'gbpaud','GBP/CAD':'gbpcad','GBP/CHF':'gbpchf','GBP/NZD':'gbpnzd',
+  'AUD/CAD':'audcad','AUD/CHF':'audchf','AUD/NZD':'audnzd',
+  'CAD/JPY':'cadjpy','CHF/JPY':'chfjpy','NZD/JPY':'nzdjpy',
+  'US30_USD':'us30','US2000_USD':'us2000',
 };
 
 const pairSafe = p => PAIR_SAFE_MAP[p] || p.toLowerCase().replace('/', '').replace('_','');
