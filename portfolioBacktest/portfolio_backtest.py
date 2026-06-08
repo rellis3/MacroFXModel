@@ -550,6 +550,97 @@ def _equity_curve(sorted_trades: list, risk_pct: float) -> list:
     return out
 
 
+# ── Pair scan ─────────────────────────────────────────────────────────────────
+
+def run_pair_scan(
+    active: list,
+    h1_data: dict,
+    pair_features: dict,
+    params: dict,
+    from_ts: pd.Timestamp,
+    to_ts: pd.Timestamp,
+) -> list:
+    """
+    Run the simulation for every cointegrated pair in complete isolation
+    (max_positions=1, no cross-pair interaction) and return results ranked by P&L.
+    Use this to identify which individual pairs are structurally profitable before
+    running a full portfolio backtest.
+    """
+    scan_params = {
+        **params,
+        "max_positions": 1,
+        "block_same_leg": False,
+        "pair_cooldown_bars": 0,
+    }
+    rows = []
+    pairs = sorted(pair_features.keys())
+    log.info(f"Pair scan: testing {len(pairs)} cointegrated pairs in isolation …")
+
+    for i, fk in enumerate(pairs):
+        pa, pb = fk
+        if pa not in h1_data or pb not in h1_data:
+            continue
+
+        trades = simulate_portfolio(
+            [pa, pb], h1_data, {fk: pair_features[fk]},
+            scan_params, from_ts, to_ts,
+        )
+
+        if not trades:
+            rows.append(dict(pair=f"{pa}/{pb}", n=0, wr=0.0, pf=0.0,
+                             sharpe=0.0, pnl=0.0, expect=0.0, avg_dur=0.0,
+                             by_why={}))
+            continue
+
+        a = analytics(trades, params["risk_pct"])
+        rows.append(dict(
+            pair=f"{pa}/{pb}",
+            n=a["total"], wr=a["win_rate"], pf=a["profit_factor"],
+            sharpe=a["sharpe"], pnl=a["total_pnl_pct"],
+            expect=a["expectancy_pct"], avg_dur=a["avg_duration_h"],
+            by_why=a["by_why"],
+        ))
+
+        if (i + 1) % 10 == 0:
+            log.info(f"  {i+1}/{len(pairs)} pairs scanned …")
+
+    return sorted(rows, key=lambda x: -x["pnl"])
+
+
+def print_pair_scan(rows: list) -> None:
+    winners  = [r for r in rows if r["pnl"] > 0 and r["n"] > 0]
+    no_trade = [r for r in rows if r["n"] == 0]
+    active   = [r for r in rows if r["n"] > 0]
+
+    print("\n" + "=" * 78)
+    print("  PAIR SCAN — each cointegrated pair simulated in isolation")
+    print("=" * 78)
+    hdr = f"  {'':1}  {'Pair':<22}  {'N':>4}  {'WR%':>6}  {'PF':>5}  {'Sharpe':>6}  {'P&L%':>7}  {'Exp%':>7}  {'AvgDur':>6}"
+    print(hdr)
+    print("  " + "-" * 74)
+
+    for r in active:
+        mark = "✓" if r["pnl"] > 0 else " "
+        exits = "  ".join(
+            f"{why}:{d['n']}" for why, d in sorted(r["by_why"].items())
+        )
+        print(
+            f"  {mark}  {r['pair']:<22}  {r['n']:>4}  {r['wr']:>6.1f}  "
+            f"{r['pf']:>5.2f}  {r['sharpe']:>6.2f}  {r['pnl']:>+7.2f}  "
+            f"{r['expect']:>+7.3f}  {r['avg_dur']:>5.1f}h  {exits}"
+        )
+
+    if no_trade:
+        print(f"\n  No trades: {', '.join(r['pair'] for r in no_trade)}")
+
+    print()
+    print(f"  Profitable: {len(winners)}/{len(active)} pairs with trades")
+    if winners:
+        top = ", ".join(r["pair"] for r in winners[:8])
+        print(f"  Top pairs : {top}")
+    print()
+
+
 def print_report(a: dict, trades: list):
     if not a:
         print("No trades generated — try lowering --entry-z or --coint-pval, or widening the date range.")
@@ -854,6 +945,8 @@ def main():
                     help="H1 bars before time stop fires (default 48 = ~2 trading days)")
     ap.add_argument("--pair-cooldown",  type=int,            default=DEFAULT_PARAMS["pair_cooldown_bars"],
                     help="H1 bars to wait before re-entering same pair after close (0 = no cooldown)")
+    ap.add_argument("--pair-scan",      action="store_true",
+                    help="Test each cointegrated pair in isolation and rank by P&L; skips full portfolio sim")
     ap.add_argument("--force-dl",       action="store_true", help="Re-download M1 data from R2")
     ap.add_argument("--output",         default="results.json")
     args = ap.parse_args()
@@ -949,6 +1042,12 @@ def main():
         log.warning("No cointegrated pairs found — try raising --coint-pval (e.g. 0.10) "
                     "or widening the date range")
     pair_features = cointegrated
+
+    # ── Pair scan mode: test each pair in isolation, then exit ────────────────
+    if args.pair_scan:
+        scan_rows = run_pair_scan(active, h1_data, pair_features, params, from_ts, to_ts)
+        print_pair_scan(scan_rows)
+        sys.exit(0)
 
     # Simulate
     log.info("Simulating …")

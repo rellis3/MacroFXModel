@@ -1221,3 +1221,12 @@
 [2026-06-08 17:28:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.12000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.00854  session_open=4293.42500
 [2026-06-08 17:28:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
 [2026-06-08 17:28:54] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 17:48:45] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.78000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.65424  session_open=4293.42500
+[2026-06-08 17:48:45] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 17:48:47] [DA] [INFO] Cycle 540  balance=99551.49  sleep=56.5s
+[2026-06-08 18:00:54] [DA] [WARNING] kv_get(dyn_anchor_config): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 18:01:05] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 18:02:54] [DA] [WARNING] kv_put(dyn_anchor_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-08 18:08:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.78000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.65424  session_open=4293.42500
+[2026-06-08 18:08:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 18:18:45] [DA] [INFO] Cycle 570  balance=99551.49  sleep=58.1s

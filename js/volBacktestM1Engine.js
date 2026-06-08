@@ -536,7 +536,12 @@ function simulateExhaustionM1(m1Bars, open, atr, hl50pct, hl75pct, ocMedPct, oc7
   const slDist = atr * atrMult;
   if (slDist <= 0) return [{ side: '', filled: false, outcome: 'no_fill', pnlPct: 0, leg: 'exhaustion', fillTime: null, exitTime: null }];
 
-  // Build sorted levels (ascending % distance from open); dedup by rounding to 4dp
+  // D1 open is at 22:00 UTC; M1 bars start at 00:00 UTC (2 h later). Use the
+  // first M1 bar's open as the session anchor so entry levels and TP = open both
+  // reference the same baseline the trader sees on their chart.
+  const sessionOpen = m1Bars.length > 0 ? m1Bars[0].open : open;
+
+  // Build sorted levels (ascending % distance from session open); dedup by rounding to 4dp
   const raw = [];
   if (useOCmed && ocMedPct > 0) raw.push(ocMedPct);
   if (useHL50  && hl50pct  > 0) raw.push(hl50pct);
@@ -546,10 +551,10 @@ function simulateExhaustionM1(m1Bars, open, atr, hl50pct, hl75pct, ocMedPct, oc7
 
   if (sortedPcts.length === 0) return [{ side: '', filled: false, outcome: 'no_fill', pnlPct: 0, leg: 'exhaustion', fillTime: null, exitTime: null }];
 
-  // sellPrices[0] = closest sell level (lowest price above open)
-  // buyPrices[0]  = closest buy level  (highest price below open)
-  const sellPrices = sortedPcts.map(pct => open * (1 + pct / 100));
-  const buyPrices  = sortedPcts.map(pct => open * (1 - pct / 100));
+  // sellPrices[0] = closest sell level (lowest price above session open)
+  // buyPrices[0]  = closest buy level  (highest price below session open)
+  const sellPrices = sortedPcts.map(pct => sessionOpen * (1 + pct / 100));
+  const buyPrices  = sortedPcts.map(pct => sessionOpen * (1 - pct / 100));
 
   let sellIdx = 0, buyIdx = 0;
   let sellDone = false, buyDone = false;
@@ -561,8 +566,8 @@ function simulateExhaustionM1(m1Bars, open, atr, hl50pct, hl75pct, ocMedPct, oc7
   function tpHit(pos, barHigh, barLow) {
     const slD = Math.abs(pos.entry - pos.sl);
     if (pos.side === 'SELL') {
-      // tpOpen: price reverts back to the day open — natural target for exhaustion fades
-      if (tpMode === 'tpOpen') return barLow <= open ? open : null;
+      // tpOpen: price reverts back to the session open (first M1 bar's open)
+      if (tpMode === 'tpOpen') return barLow <= sessionOpen ? sessionOpen : null;
       const tpFixed = pos.entry - slD * rrRatio;
       const tpMax   = pos.entry - slD * maxRR;
       const chan     = pos.mfePts > slD * 0.5
@@ -574,8 +579,8 @@ function simulateExhaustionM1(m1Bars, open, atr, hl50pct, hl75pct, ocMedPct, oc7
       if (chan !== null && barHigh >= chan) return chan;
       return null;
     } else {
-      // tpOpen: price reverts back to the day open
-      if (tpMode === 'tpOpen') return barHigh >= open ? open : null;
+      // tpOpen: price reverts back to the session open (first M1 bar's open)
+      if (tpMode === 'tpOpen') return barHigh >= sessionOpen ? sessionOpen : null;
       const tpFixed = pos.entry + slD * rrRatio;
       const tpMax   = pos.entry + slD * maxRR;
       const chan     = pos.mfePts > slD * 0.5
