@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forecaster Backtest</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+#fbApp { padding: 0 20px 60px; max-width: 1400px; margin: 0 auto; }
+
+/* ── Run bar ─────────────────────────────────────────────────────────────────── */
+.fb-run-bar {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px;
+}
+.fb-run-btn {
+  background: var(--green); border: none; border-radius: 6px; color: #fff;
+  font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600;
+  padding: 7px 20px; cursor: pointer; transition: opacity .2s;
+}
+.fb-run-btn:hover { opacity: .85; }
+.fb-run-btn:disabled { opacity: .5; cursor: wait; }
+.fb-cfg-toggle {
+  background: none; border: 1.5px solid var(--border); border-radius: 20px;
+  color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px;
+  padding: 5px 14px; cursor: pointer; transition: all .2s;
+}
+.fb-cfg-toggle:hover { border-color: var(--blue); color: var(--blue); }
+.fb-sel {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px;
+  padding: 5px 10px; cursor: pointer;
+}
+.fb-sel:focus { outline: none; border-color: var(--blue); }
+.fb-date-inp {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px;
+  padding: 5px 10px; cursor: pointer; color-scheme: dark;
+}
+.fb-date-inp:focus { outline: none; border-color: var(--blue); }
+.fb-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* ── Config panel ────────────────────────────────────────────────────────────── */
+.fb-cfg-panel {
+  background: var(--s1); border: 1.5px solid var(--border);
+  border-radius: var(--rl); padding: 14px 18px; margin-top: 10px;
+}
+.fb-cfg-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px 18px; margin-top: 10px;
+}
+.fb-param { display: flex; flex-direction: column; gap: 2px; padding: 5px 0; border-bottom: 1px solid rgba(28,33,51,.5); }
+.fb-param:last-child { border-bottom: none; }
+.fb-param-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fb-param-help { font-size: 9.5px; color: #3d4a6a; font-family: 'DM Sans', sans-serif; line-height: 1.45; padding-left: 1px; }
+.fb-param-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); font-family: 'DM Mono', monospace; }
+.fb-num-input {
+  width: 72px; background: #0a0d14; border: 1px solid #2a3050; border-radius: 4px;
+  color: #60a5fa; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700;
+  padding: 4px 6px; text-align: right; flex-shrink: 0;
+}
+.fb-num-input:focus { outline: none; border-color: #4f7df0; }
+.fb-num-input::-webkit-inner-spin-button, .fb-num-input::-webkit-outer-spin-button { opacity: 0.4; }
+
+/* ── Level checkboxes ────────────────────────────────────────────────────────── */
+.fb-level-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 10px; margin-top: 10px;
+}
+@media (max-width: 900px) { .fb-level-grid { grid-template-columns: repeat(2, 1fr); } }
+.fb-level-item {
+  display: flex; align-items: center; gap: 7px; padding: 5px 8px;
+  background: var(--s2); border: 1px solid var(--border); border-radius: 5px;
+  cursor: pointer; user-select: none; transition: border-color .15s;
+}
+.fb-level-item:hover { border-color: var(--border2); }
+.fb-level-item input { cursor: pointer; flex-shrink: 0; }
+.fb-level-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.fb-level-name { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text2); flex: 1; }
+.fb-level-dir { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); }
+
+/* ── Chart section ───────────────────────────────────────────────────────────── */
+.fb-chart-section {
+  background: #131722; border: 1.5px solid var(--border);
+  border-radius: var(--rl); overflow: hidden; margin-top: 12px;
+}
+.fb-chart-topbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 6px 12px; background: #0e1117; border-bottom: 1px solid #1c2133;
+  min-height: 36px;
+}
+.fb-chart-topbar .fb-lbl { color: #5a6380; }
+.fb-chart-price-wrap { position: relative; height: 440px; background: #131722; }
+.fb-resize-handle {
+  height: 6px; background: #1c2133; cursor: ns-resize; position: relative;
+  z-index: 5; flex-shrink: 0; transition: background .15s;
+}
+.fb-resize-handle:hover, .fb-resize-handle.dragging { background: #4f7df0; }
+.fb-resize-handle::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%); width: 36px; height: 2px;
+  background: rgba(255,255,255,.18); border-radius: 1px;
+}
+#fbPriceChart { width: 100%; height: 100%; }
+#fbOverlay { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+
+/* ── Trade nav ───────────────────────────────────────────────────────────────── */
+.fb-trade-nav {
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+  background: #0e1117; border-top: 1px solid #1c2133;
+  font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3);
+}
+.fb-nav-btn {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px;
+  padding: 2px 10px; cursor: pointer; transition: border-color .15s;
+}
+.fb-nav-btn:hover { border-color: var(--blue); color: var(--blue); }
+.fb-nav-btn:disabled { opacity: .35; cursor: default; }
+
+/* ── KPI grid ────────────────────────────────────────────────────────────────── */
+.bt-kpi-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px;
+}
+@media (max-width: 900px) { .bt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.bt-kpi {
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
+  padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px;
+  transition: border-color .2s;
+}
+.bt-kpi:hover { border-color: var(--border2); }
+.bt-kpi-label { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bt-kpi-value { font-size: 28px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); line-height: 1.1; }
+.bt-kpi-value.green { color: var(--green); }
+.bt-kpi-value.red   { color: var(--red);   }
+.bt-kpi-value.blue  { color: var(--blue);  }
+.bt-kpi-value.amber { color: var(--amber); }
+.bt-kpi-sub { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* ── Secondary stats ─────────────────────────────────────────────────────────── */
+.bt-sec-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px;
+}
+@media (max-width: 900px) { .bt-sec-grid { grid-template-columns: repeat(2, 1fr); } }
+.bt-sec {
+  background: var(--s1); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;
+}
+.bt-sec-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bt-sec-val { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
+
+/* ── Card ────────────────────────────────────────────────────────────────────── */
+.bt-card {
+  background: var(--s1); border: 1.5px solid var(--border);
+  border-radius: var(--rl); overflow: hidden; margin-top: 14px;
+}
+.bt-card-hdr {
+  padding: 12px 18px; font-size: 11px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text2); font-family: 'DM Mono', monospace;
+  border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;
+}
+.bt-card-body { padding: 18px; }
+.bt-chart-wrap { position: relative; height: 220px; }
+.bt-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+@media (max-width: 900px) { .bt-two-col { grid-template-columns: 1fr; } }
+
+/* ── Tables ───────────────────────────────────────────────────────────────────── */
+.bt-tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+.bt-tbl th {
+  padding: 7px 10px; text-align: left; font-size: 10px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--text3);
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.bt-tbl td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+.bt-tbl tr:last-child td { border-bottom: none; }
+.bt-tbl tr:hover td { background: var(--s2); }
+.bt-tbl td.num { text-align: right; }
+.bt-tbl td.pos { color: var(--green); }
+.bt-tbl td.neg { color: var(--red); }
+.bt-tbl td.neu { color: var(--text2); }
+.bt-tbl-scroll { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+.bt-tbl tbody tr { cursor: pointer; }
+.bt-tbl tr.sel-row td { background: rgba(79,125,240,0.12) !important; }
+
+/* ── Outcome badges ──────────────────────────────────────────────────────────── */
+.rb-badge {
+  display: inline-block; padding: 2px 7px; border-radius: 9px;
+  font-size: 10px; font-weight: 600; font-family: 'DM Mono', monospace; border: 1px solid;
+}
+.rb-badge.win  { color: var(--green); background: var(--green-bg); border-color: var(--green-bd); }
+.rb-badge.loss { color: var(--red);   background: var(--red-bg);   border-color: var(--red-bd);   }
+.rb-badge.end  { color: var(--text3); background: var(--s2);       border-color: var(--border);   }
+
+/* ── Pagination ──────────────────────────────────────────────────────────────── */
+.bt-pg {
+  padding: 10px 14px; display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3);
+  border-top: 1px solid var(--border);
+}
+.bt-pg button {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px;
+  padding: 3px 10px; cursor: pointer;
+}
+.bt-pg button:hover { border-color: var(--blue); color: var(--blue); }
+.bt-pg button:disabled { opacity: .35; cursor: default; }
+
+/* ── Level bar ───────────────────────────────────────────────────────────────── */
+.lv-bar-wrap { padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; }
+.lv-row { display: flex; align-items: center; gap: 10px; }
+.lv-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.lv-name { width: 110px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text2); flex-shrink: 0; }
+.lv-bar-track { flex: 1; height: 6px; background: var(--s2); border-radius: 3px; overflow: hidden; }
+.lv-bar-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+.lv-stat { width: 140px; text-align: right; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); flex-shrink: 0; }
+
+/* ── Heatmap ─────────────────────────────────────────────────────────────────── */
+.hm-grid { display: flex; flex-wrap: wrap; gap: 4px; padding: 14px 18px; }
+.hm-cell {
+  width: 54px; height: 40px; border-radius: 5px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace; font-size: 9px; border: 1px solid var(--border);
+}
+.hm-cell .hm-month { color: var(--text3); }
+.hm-cell .hm-val { font-size: 11px; font-weight: 600; }
+
+/* ── Empty ───────────────────────────────────────────────────────────────────── */
+.fb-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 200px; gap: 8px; color: var(--text3); font-family: 'DM Mono', monospace; font-size: 12px;
+}
+.fb-empty-icon { font-size: 28px; opacity: .4; }
+</style>
+</head>
+<body>
+
+<div class="sticky-header">
+<div id="fbApp">
+<div class="topbar">
+  <div class="logo-box">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M1 13 L5 5 L9 9 L13 3" stroke="white" stroke-width="1.8" stroke-linejoin="round" fill="none"/>
+      <line x1="1" y1="13" x2="15" y2="13" stroke="white" stroke-width="1.2" opacity=".5"/>
+    </svg>
+  </div>
+  <div class="title-block">
+    <div class="title" style="font-size:15px;font-weight:700;">Forecaster Backtest</div>
+    <div class="sub">Vol-range forecast levels · M1 bar-by-bar simulation · MFE trail exit · 8 daily levels</div>
+  </div>
+  <div style="flex:1"></div>
+  <a href="vol-forecast.html" style="text-decoration:none"><button class="dark-btn" style="border-color:#4f7df0;color:#4f7df0">📐 Vol Forecast</button></a>
+  <a href="vol-backtest.html" style="text-decoration:none"><button class="dark-btn">Vol BT →</button></a>
+  <a href="regime-backtest.html" style="text-decoration:none"><button class="dark-btn">Regime BT →</button></a>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+</div>
+</div>
+</div>
+
+<div id="fbApp" style="padding-top:0">
+
+<!-- ── Run bar ───────────────────────────────────────────────────────────────── -->
+<div class="fb-run-bar">
+  <span class="fb-lbl">Pair</span>
+  <select class="fb-sel" id="pairSel">
+    <option value="EUR/USD">EUR/USD</option>
+    <option value="GBP/USD">GBP/USD</option>
+    <option value="USD/JPY">USD/JPY</option>
+    <option value="AUD/USD">AUD/USD</option>
+    <option value="NZD/USD">NZD/USD</option>
+    <option value="USD/CAD">USD/CAD</option>
+    <option value="USD/CHF">USD/CHF</option>
+    <option value="GBP/JPY">GBP/JPY</option>
+    <option value="XAU/USD">XAU/USD</option>
+    <option value="EUR/GBP">EUR/GBP</option>
+    <option value="EUR/JPY">EUR/JPY</option>
+    <option value="EUR/CAD">EUR/CAD</option>
+    <option value="EUR/AUD">EUR/AUD</option>
+    <option value="EUR/CHF">EUR/CHF</option>
+    <option value="EUR/NZD">EUR/NZD</option>
+    <option value="AUD/JPY">AUD/JPY</option>
+    <option value="AUD/CAD">AUD/CAD</option>
+    <option value="AUD/CHF">AUD/CHF</option>
+    <option value="AUD/NZD">AUD/NZD</option>
+    <option value="GBP/AUD">GBP/AUD</option>
+    <option value="GBP/CAD">GBP/CAD</option>
+    <option value="GBP/CHF">GBP/CHF</option>
+    <option value="GBP/NZD">GBP/NZD</option>
+    <option value="CAD/JPY">CAD/JPY</option>
+    <option value="CHF/JPY">CHF/JPY</option>
+    <option value="NZD/JPY">NZD/JPY</option>
+    <option value="NAS100_USD">NAS100</option>
+    <option value="SPX500_USD">SPX500</option>
+    <option value="DE30_USD">DE30</option>
+    <option value="UK100_GBP">UK100</option>
+    <option value="US30_USD">US30</option>
+    <option value="US2000_USD">US2000</option>
+  </select>
+  <span class="fb-lbl">From</span>
+  <input type="date" class="fb-date-inp" id="fromDate">
+  <span class="fb-lbl">To</span>
+  <input type="date" class="fb-date-inp" id="toDate">
+  <button class="fb-run-btn" id="runBtn" onclick="loadAndRun()">▶ Load &amp; Run</button>
+  <button class="fb-cfg-toggle" id="cfgToggle" onclick="toggleConfig()">⚙ Config</button>
+  <span class="fb-lbl" id="runStatus"></span>
+</div>
+
+<!-- ── Config panel ──────────────────────────────────────────────────────────── -->
+<div class="fb-cfg-panel" id="cfgPanel" style="display:none">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em">Strategy Configuration</span>
+    <button class="dark-btn" style="padding:2px 10px;font-size:10px" onclick="resetParams()">Reset defaults</button>
+    <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:auto">GARCH warmup uses 120 days before the From date automatically</span>
+  </div>
+  <div class="fb-cfg-grid" id="cfgGrid"></div>
+  <div style="margin-top:12px">
+    <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px">Levels to trade (each once per day, at first touch)</div>
+    <div class="fb-level-grid" id="levelGrid"></div>
+  </div>
+</div>
+
+<!-- ── Status bar ────────────────────────────────────────────────────────────── -->
+<div class="status-bar" id="statusBar" style="margin-top:12px">
+  <div class="sdot" id="statusDot"></div>
+  <span class="stxt" id="statusMsg">Select a pair and date range, then click Load &amp; Run</span>
+</div>
+
+<!-- ── Coverage banner ───────────────────────────────────────────────────────── -->
+<div id="covBanner" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);padding:8px 14px;font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);margin-top:10px"></div>
+
+<!-- ── Chart section ─────────────────────────────────────────────────────────── -->
+<div class="fb-chart-section" id="chartSection">
+  <div class="fb-chart-topbar">
+    <span class="fb-lbl" id="chartPairLbl" style="font-weight:600;color:#d1d4dc">—</span>
+    <div style="width:1px;height:16px;background:#1c2133;flex-shrink:0"></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap" id="legendRow"></div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <span id="navInfo" style="font-size:10px;color:#5a6380;font-family:'DM Mono',monospace"></span>
+    </div>
+  </div>
+  <div class="fb-chart-price-wrap" id="chartWrap">
+    <div id="fbPriceChart"></div>
+    <canvas id="fbOverlay"></canvas>
+  </div>
+  <div class="fb-resize-handle" id="resizeHandle"></div>
+  <div class="fb-trade-nav">
+    <button class="fb-nav-btn" id="navPrev" onclick="navTrade(-1)" disabled>◀ Prev</button>
+    <button class="fb-nav-btn" id="navNext" onclick="navTrade(1)"  disabled>Next ▶</button>
+    <span id="navTradeInfo" class="fb-lbl"></span>
+    <div style="flex:1"></div>
+    <button class="dark-btn" style="font-size:10px;padding:2px 10px" onclick="fitAll()">Fit All</button>
+    <button class="dark-btn" style="font-size:10px;padding:2px 10px" onclick="exportResults()">⬇ Export CSV</button>
+  </div>
+</div>
+
+<!-- ── Analytics ─────────────────────────────────────────────────────────────── -->
+<div id="analyticsSection" style="display:none">
+
+  <!-- KPI grid -->
+  <div class="bt-kpi-grid" id="kpiGrid"></div>
+  <div class="bt-sec-grid" id="secGrid"></div>
+
+  <!-- Two-col: equity curve + level breakdown -->
+  <div class="bt-two-col">
+    <div class="bt-card">
+      <div class="bt-card-hdr">Equity Curve <span style="font-size:9px;color:var(--text3)">(cumulative % P&amp;L)</span></div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap"><canvas id="equityChart"></canvas></div>
+      </div>
+    </div>
+    <div class="bt-card">
+      <div class="bt-card-hdr">Level Breakdown</div>
+      <div class="lv-bar-wrap" id="levelBreakdown"></div>
+    </div>
+  </div>
+
+  <!-- Two-col: session breakdown + exit reasons -->
+  <div class="bt-two-col">
+    <div class="bt-card">
+      <div class="bt-card-hdr">Session Breakdown</div>
+      <div class="bt-card-body" style="padding:14px 18px">
+        <div id="sessionBreakdown"></div>
+      </div>
+    </div>
+    <div class="bt-card">
+      <div class="bt-card-hdr">Exit Reasons</div>
+      <div class="lv-bar-wrap" id="exitReasons"></div>
+    </div>
+  </div>
+
+  <!-- Two-col: day of week + monthly heatmap -->
+  <div class="bt-two-col">
+    <div class="bt-card">
+      <div class="bt-card-hdr">Day of Week</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap" style="height:160px"><canvas id="dowChart"></canvas></div>
+      </div>
+    </div>
+    <div class="bt-card">
+      <div class="bt-card-hdr">Monthly P&amp;L Heatmap</div>
+      <div class="hm-grid" id="monthlyHeatmap"></div>
+    </div>
+  </div>
+
+  <!-- Trade log -->
+  <div class="bt-card" style="margin-top:14px">
+    <div class="bt-card-hdr">
+      Trade Log
+      <span id="tradeCount" style="font-size:10px;color:var(--text3)"></span>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <select class="fb-sel" id="filterDir" style="font-size:10px;padding:2px 8px" onchange="renderTradeLog()">
+          <option value="">All directions</option>
+          <option value="LONG">LONG only</option>
+          <option value="SHORT">SHORT only</option>
+        </select>
+        <select class="fb-sel" id="filterOut" style="font-size:10px;padding:2px 8px" onchange="renderTradeLog()">
+          <option value="">All outcomes</option>
+          <option value="win">Wins</option>
+          <option value="loss">Losses</option>
+        </select>
+        <select class="fb-sel" id="filterLv" style="font-size:10px;padding:2px 8px" onchange="renderTradeLog()">
+          <option value="">All levels</option>
+        </select>
+      </div>
+    </div>
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="tradeTable">
+        <thead>
+          <tr>
+            <th>#</th><th>Date</th><th>Level</th><th>Dir</th>
+            <th class="num">Entry</th><th class="num">Exit</th>
+            <th class="num">P&amp;L %</th><th class="num">P&amp;L R</th>
+            <th class="num">MFE R</th><th class="num">MAE R</th>
+            <th class="num">Dur (m)</th><th>Exit</th><th>Forecast</th>
+          </tr>
+        </thead>
+        <tbody id="tradeBody"></tbody>
+      </table>
+    </div>
+    <div class="bt-pg" id="tradePg">
+      <button onclick="tradePageChange(-1)" id="pgPrev">◀ Prev</button>
+      <span id="pgInfo"></span>
+      <button onclick="tradePageChange(1)" id="pgNext">Next ▶</button>
+    </div>
+  </div>
+
+</div><!-- /analyticsSection -->
+</div><!-- /fbApp -->
+
+<script>
+// ─── Vol Forecast Math (inlined from js/volForecast.js — no network) ──────────
+
+const FC_TRADING_DAYS = 252;
+const FC_EWMA_LAMBDA  = 0.94;
+const FC_G_ALPHA = 0.06;
+const FC_G_BETA  = 0.91;
+const FC_BM_P50  = 1.572;
+const FC_BM_P75  = 2.049;
+const FC_HN_P50  = 0.6745;
+const FC_HN_P75  = 1.1503;
+
+const FC_ASSET_PARAMS = {
+  commodity: { hl_50_corr: 1.018, hl_75_corr: 0.940, oc_50_corr: 1.126, oc_75_corr: 1.085 },
+  index:     { hl_50_corr: 0.993, hl_75_corr: 0.947, oc_50_corr: 1.061, oc_75_corr: 1.112, garch_omega: 4.76e-6 },
+  fx:        { hl_50_corr: 0.955, hl_75_corr: 0.888, oc_50_corr: 0.956, oc_75_corr: 0.954, garch_omega: 3.60e-7 },
+};
+
+function _rsEwmaVolSeries(bars, lambda) {
+  const n = bars.length;
+  const initN = Math.min(20, n);
+  let v = 0;
+  for (let i = 0; i < initN; i++) {
+    const rs = Math.log(bars[i].high / bars[i].close) * Math.log(bars[i].high / bars[i].open)
+             + Math.log(bars[i].low  / bars[i].close) * Math.log(bars[i].low  / bars[i].open);
+    v += rs;
+  }
+  v = Math.max(v / initN, 1e-10);
+  let last = v;
+  for (let i = 0; i < n; i++) {
+    const rs = Math.log(bars[i].high / bars[i].close) * Math.log(bars[i].high / bars[i].open)
+             + Math.log(bars[i].low  / bars[i].close) * Math.log(bars[i].low  / bars[i].open);
+    last = lambda * last + (1 - lambda) * rs;
+  }
+  return Math.sqrt(Math.max(last, 0));
+}
+
+function _garch11VolSeries(bars, omega) {
+  const n = bars.length;
+  let sigma2 = omega / (1 - FC_G_ALPHA - FC_G_BETA);
+  for (let i = 1; i < n; i++) {
+    const r = Math.log(bars[i].close / bars[i - 1].close);
+    sigma2 = omega + FC_G_ALPHA * r * r + FC_G_BETA * sigma2;
+  }
+  return Math.sqrt(sigma2);
+}
+
+function computeForecastFromBars(dailyBars, assetClass) {
+  if (dailyBars.length < 60) return null;
+  const p = FC_ASSET_PARAMS[assetClass] ?? FC_ASSET_PARAMS.fx;
+  const sigmaFwd = assetClass === 'commodity'
+    ? _rsEwmaVolSeries(dailyBars, FC_EWMA_LAMBDA)
+    : _garch11VolSeries(dailyBars, p.garch_omega);
+  const sigmaFwdPct = sigmaFwd * 100;
+  const volAnnual   = sigmaFwdPct * Math.sqrt(FC_TRADING_DAYS);
+  const r2 = x => Math.round(x * 100) / 100;
+  return {
+    vol_annual: r2(volAnnual),
+    hl_median:  r2(FC_BM_P50 * p.hl_50_corr * sigmaFwdPct),
+    hl_75:      r2(FC_BM_P75 * p.hl_75_corr * sigmaFwdPct),
+    oc_median:  r2(FC_HN_P50 * p.oc_50_corr * sigmaFwdPct),
+    oc_75:      r2(FC_HN_P75 * p.oc_75_corr * sigmaFwdPct),
+  };
+}
+
+// ─── Level definitions ────────────────────────────────────────────────────────
+
+const LEVELS = [
+  { key: 'PROJ_H_75',  label: 'Proj H 75p',  dir: 'SHORT', color: '#ef5350', oc: false },
+  { key: 'PROJ_H_MED', label: 'Proj H Med',   dir: 'SHORT', color: '#f87171', oc: false },
+  { key: 'OC_75_UP',   label: 'Close 75p+',   dir: 'SHORT', color: '#fbbf24', oc: true  },
+  { key: 'OC_MED_UP',  label: 'Close Med+',   dir: 'SHORT', color: '#f0a030', oc: true  },
+  { key: 'OC_MED_DN',  label: 'Close Med−',   dir: 'LONG',  color: '#34d399', oc: true  },
+  { key: 'OC_75_DN',   label: 'Close 75p−',   dir: 'LONG',  color: '#10b981', oc: true  },
+  { key: 'PROJ_L_MED', label: 'Proj L Med',   dir: 'LONG',  color: '#60a5fa', oc: false },
+  { key: 'PROJ_L_75',  label: 'Proj L 75p',   dir: 'LONG',  color: '#818cf8', oc: false },
+];
+
+function computeDayLevels(open, fc) {
+  return {
+    PROJ_H_75:  open * (1 + fc.hl_75    / 100),
+    PROJ_H_MED: open * (1 + fc.hl_median / 100),
+    OC_75_UP:   open * (1 + fc.oc_75    / 100),
+    OC_MED_UP:  open * (1 + fc.oc_median / 100),
+    OC_MED_DN:  open * (1 - fc.oc_median / 100),
+    OC_75_DN:   open * (1 - fc.oc_75    / 100),
+    PROJ_L_MED: open * (1 - fc.hl_median / 100),
+    PROJ_L_75:  open * (1 - fc.hl_75    / 100),
+  };
+}
+
+// ─── Asset class map ──────────────────────────────────────────────────────────
+
+const PAIR_ASSET_CLASS = {
+  'EUR/USD':'fx','GBP/USD':'fx','USD/JPY':'fx','AUD/USD':'fx','NZD/USD':'fx',
+  'USD/CAD':'fx','USD/CHF':'fx','GBP/JPY':'fx','EUR/GBP':'fx','EUR/JPY':'fx',
+  'EUR/CAD':'fx','EUR/AUD':'fx','EUR/CHF':'fx','EUR/NZD':'fx','AUD/JPY':'fx',
+  'AUD/CAD':'fx','AUD/CHF':'fx','AUD/NZD':'fx','GBP/AUD':'fx','GBP/CAD':'fx',
+  'GBP/CHF':'fx','GBP/NZD':'fx','CAD/JPY':'fx','CHF/JPY':'fx','NZD/JPY':'fx',
+  'XAU/USD':'commodity',
+  'NAS100_USD':'index','SPX500_USD':'index','DE30_USD':'index',
+  'UK100_GBP':'index','US30_USD':'index','US2000_USD':'index',
+};
+
+const PAIR_SAFE = {
+  'EUR/USD':'eurusd','GBP/USD':'gbpusd','USD/JPY':'usdjpy','AUD/USD':'audusd',
+  'NZD/USD':'nzdusd','USD/CAD':'usdcad','USD/CHF':'usdchf','GBP/JPY':'gbpjpy',
+  'XAU/USD':'gold','NAS100_USD':'nq','EUR/GBP':'eurgbp','EUR/JPY':'eurjpy',
+  'EUR/CAD':'eurcad','EUR/AUD':'euraud','EUR/CHF':'eurchf','EUR/NZD':'eurnzd',
+  'AUD/JPY':'audjpy','AUD/CAD':'audcad','AUD/CHF':'audchf','AUD/NZD':'audnzd',
+  'GBP/AUD':'gbpaud','GBP/CAD':'gbpcad','GBP/CHF':'gbpchf','GBP/NZD':'gbpnzd',
+  'CAD/JPY':'cadjpy','CHF/JPY':'chfjpy','NZD/JPY':'nzdjpy',
+  'SPX500_USD':'spx500','DE30_USD':'de30','UK100_GBP':'uk100',
+  'US30_USD':'us30','US2000_USD':'us2000',
+};
+
+// ─── Config params ────────────────────────────────────────────────────────────
+
+const PARAMS = [
+  { key:'slAtrMult',     label:'SL ATR Multiplier',       min:0.5,  max:6.0,  step:0.1,  def:2.0,
+    help:'Stop-loss = ATR(14 M1 bars) × this. Wider → survives M1 noise, larger loss per trade. Tighter → stopped out more often.' },
+  { key:'atrPeriod',     label:'ATR Period (M1 bars)',     min:5,    max:100,  step:1,    def:14,
+    help:'Number of M1 bars for the ATR calculation used to set stop-loss distance. 14 = ~14 minutes of volatility context.' },
+  { key:'mfeTrailPct',   label:'MFE Trail Retrace %',     min:0.10, max:0.95, step:0.05, def:0.50,
+    help:'Exit when price retraces this fraction of the peak MFE back from the high/low. 0.50 = exit if you give back 50% of your best profit.' },
+  { key:'mfeMinR',       label:'Trail Min MFE (R)',        min:0.1,  max:3.0,  step:0.1,  def:0.3,
+    help:'Trail exit only activates once MFE ≥ this many R multiples. Prevents exits on trivial initial noise before price reaches a meaningful profit.' },
+  { key:'windowStartH',  label:'Window Start (UTC h)',     min:0,    max:12,   step:1,    def:0,
+    help:'Earliest UTC hour that new entries are allowed. 0 = London midnight open (recommended — aligns with the forecast session).' },
+  { key:'windowEndH',    label:'Window End (UTC h)',       min:12,   max:23,   step:1,    def:22,
+    help:'Latest UTC hour for new entries. Existing trades may continue beyond this. 22 = allows full London + NY session. EOD force-close applies at this hour.' },
+  { key:'eodClose',      label:'EOD Force Close (1=yes)',  min:0,    max:1,    step:1,    def:1,
+    help:'1 = Force close all open trades at the window end hour. 0 = Let trades run overnight (carries into next session, may miss next-day forecast reset).' },
+  { key:'warmupDays',    label:'GARCH Warmup Days',        min:60,   max:252,  step:10,   def:90,
+    help:'Calendar days of daily OHLC bars used to seed the GARCH vol model before the backtest starts. More = more stable initial forecasts but needs older M1 data.' },
+];
+
+const PARAM_DEFS = Object.fromEntries(PARAMS.map(p => [p.key, p.def]));
+let cfg = { ...PARAM_DEFS };
+let enabledLevels = new Set(LEVELS.map(l => l.key)); // all enabled by default
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+let m1Candles = [];
+let allDayData = [];   // [{date, startTs, endTs, open, close, high, low, levels, forecast}]
+let allTrades  = [];
+let selectedTradeIdx = -1;
+let tradePage  = 0;
+const TRADES_PER_PAGE = 50;
+
+let mainChart = null;
+let priceSeries = null;
+let drawPending = false;
+
+let equityChartInst = null;
+let dowChartInst    = null;
+
+// ─── Config UI ────────────────────────────────────────────────────────────────
+
+function initConfigUI() {
+  const grid = document.getElementById('cfgGrid');
+  grid.innerHTML = '';
+  PARAMS.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'fb-param';
+    div.innerHTML = `
+      <div class="fb-param-row">
+        <span class="fb-param-lbl">${p.label}</span>
+        <input type="number" class="fb-num-input" id="cfg_${p.key}"
+          min="${p.min}" max="${p.max}" step="${p.step}" value="${cfg[p.key]}">
+      </div>
+      <div class="fb-param-help">${p.help}</div>`;
+    grid.appendChild(div);
+  });
+
+  const lvGrid = document.getElementById('levelGrid');
+  lvGrid.innerHTML = '';
+  LEVELS.forEach(lv => {
+    const label = document.createElement('label');
+    label.className = 'fb-level-item';
+    label.innerHTML = `
+      <input type="checkbox" id="lvl_${lv.key}" ${enabledLevels.has(lv.key) ? 'checked' : ''} onchange="toggleLevel('${lv.key}',this.checked)">
+      <span class="fb-level-dot" style="background:${lv.color}"></span>
+      <span class="fb-level-name">${lv.label}</span>
+      <span class="fb-level-dir">${lv.dir}</span>`;
+    lvGrid.appendChild(label);
+  });
+}
+
+function readConfig() {
+  PARAMS.forEach(p => {
+    const el = document.getElementById('cfg_' + p.key);
+    if (el) cfg[p.key] = parseFloat(el.value) || p.def;
+  });
+}
+
+function resetParams() {
+  cfg = { ...PARAM_DEFS };
+  enabledLevels = new Set(LEVELS.map(l => l.key));
+  initConfigUI();
+}
+
+function toggleLevel(key, on) {
+  if (on) enabledLevels.add(key); else enabledLevels.delete(key);
+}
+
+function toggleConfig() {
+  const p = document.getElementById('cfgPanel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+// ─── Default dates ────────────────────────────────────────────────────────────
+
+(function setDefaultDates() {
+  const to  = new Date();
+  const from = new Date(to);
+  from.setDate(from.getDate() - 30);
+  document.getElementById('fromDate').value = from.toISOString().slice(0, 10);
+  document.getElementById('toDate').value   = to.toISOString().slice(0, 10);
+})();
+
+// ─── Status helpers ───────────────────────────────────────────────────────────
+
+function setStatus(msg, type = 'idle') {
+  document.getElementById('statusMsg').textContent = msg;
+  const dot = document.getElementById('statusDot');
+  dot.className = 'sdot' + (type === 'running' ? ' running' : type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
+}
+
+// ─── M1 candle loading ────────────────────────────────────────────────────────
+
+async function fetchM1CandlesChunked(pairKey, fromStr, toStr, onProgress) {
+  const CHUNK_DAYS = 14;
+  const allCands = [];
+  let chunkStart = new Date(fromStr + 'T00:00:00Z');
+  const endMs = new Date(toStr + 'T23:59:59Z').getTime();
+  const totalChunks = Math.ceil((endMs - chunkStart.getTime()) / (CHUNK_DAYS * 86400000)) || 1;
+  let chunkIdx = 0;
+  while (chunkStart.getTime() < endMs) {
+    chunkIdx++;
+    if (onProgress) onProgress(chunkIdx, totalChunks);
+    const chunkEnd = new Date(Math.min(chunkStart.getTime() + CHUNK_DAYS * 86400000, endMs));
+    const cf = chunkStart.toISOString().slice(0, 10);
+    const ct = chunkEnd.toISOString().slice(0, 10);
+    const res = await fetch(`/api/vol-backtest/candles/${pairKey}?from=${cf}&to=${ct}`);
+    if (!res.ok) throw new Error(`API ${res.status} for ${pairKey} (${cf}→${ct})`);
+    const data = await res.json();
+    if (data.ok && Array.isArray(data.candles)) {
+      for (const c of data.candles) {
+        allCands.push({
+          time:  Math.floor(new Date(c.time + 'Z').getTime() / 1000),
+          open:  c.open, high: c.high, low: c.low, close: c.close,
+        });
+      }
+    }
+    chunkStart = new Date(chunkEnd.getTime() + 60000);
+  }
+  const seen = new Map();
+  for (const c of allCands) seen.set(c.time, c);
+  return [...seen.values()].sort((a, b) => a.time - b.time);
+}
+
+// ─── Daily OHLC aggregation from M1 ──────────────────────────────────────────
+// Uses UTC midnight as the day boundary (≈ London midnight in winter).
+
+function aggregateToDailyBars(m1s) {
+  const dayMap = new Map();
+  for (const c of m1s) {
+    const date = new Date(c.time * 1000).toISOString().slice(0, 10);
+    const d = dayMap.get(date);
+    if (!d) {
+      dayMap.set(date, { date, open: c.open, high: c.high, low: c.low, close: c.close, startTs: c.time, endTs: c.time });
+    } else {
+      d.high   = Math.max(d.high, c.high);
+      d.low    = Math.min(d.low, c.low);
+      d.close  = c.close;
+      d.endTs  = c.time;
+    }
+  }
+  return [...dayMap.values()].sort((a, b) => a.date < b.date ? -1 : 1);
+}
+
+// ─── Walk-forward forecast computation ────────────────────────────────────────
+// For each day, uses all preceding daily bars (no lookahead).
+
+function computeWalkForwardForecasts(dailyBars, assetClass, minWarmup) {
+  const forecasts = {};
+  for (let i = minWarmup; i < dailyBars.length; i++) {
+    const window = dailyBars.slice(0, i); // up to (not including) today
+    const fc = computeForecastFromBars(window, assetClass);
+    if (fc) forecasts[dailyBars[i].date] = fc;
+  }
+  return forecasts;
+}
+
+// ─── Wilder ATR on M1 bars ────────────────────────────────────────────────────
+
+function computeATRArray(m1s, period) {
+  const n = m1s.length;
+  const atr = new Float64Array(n);
+  if (n < 1) return atr;
+  atr[0] = m1s[0].high - m1s[0].low;
+  const k = 1 / period;
+  for (let i = 1; i < n; i++) {
+    const h = m1s[i].high, l = m1s[i].low, pc = m1s[i - 1].close;
+    const tr = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+    atr[i] = tr > 0 ? k * tr + (1 - k) * atr[i - 1] : atr[i - 1];
+  }
+  return atr;
+}
+
+// ─── Backtest simulation ──────────────────────────────────────────────────────
+
+function runBacktest(m1s, forecasts, atrArr, assetClass, config, enabledLvs, fromDate, toDate) {
+  const trades = [];
+  const dayData = [];
+
+  const fromTs  = new Date(fromDate + 'T00:00:00Z').getTime() / 1000;
+  const toTs    = new Date(toDate   + 'T23:59:59Z').getTime() / 1000;
+  const winStartH = config.windowStartH;
+  const winEndH   = config.windowEndH;
+
+  let tradeId     = 0;
+  let currentDate = null;
+  let currentDay  = null; // { open, high, low, levels, forecast, startTs, endTs, levelTraded }
+  let activeTrade = null;
+
+  for (let i = 0; i < m1s.length; i++) {
+    const c = m1s[i];
+    if (c.time < fromTs || c.time > toTs) continue;
+
+    const barDate = new Date(c.time * 1000).toISOString().slice(0, 10);
+    const barHour = new Date(c.time * 1000).getUTCHours();
+
+    // ── Day change ────────────────────────────────────────────────────────────
+    if (barDate !== currentDate) {
+      if (currentDay && config.eodClose >= 1 && activeTrade) {
+        const exitP = m1s[i - 1]?.close ?? activeTrade.entry;
+        _closeTrade(activeTrade, c.time, exitP, 'EOD', trades, currentDay);
+        activeTrade = null;
+      }
+      if (currentDay) {
+        currentDay.endTs = m1s[i - 1]?.time ?? currentDay.startTs;
+        dayData.push(currentDay);
+      }
+      currentDate = barDate;
+      const fc = forecasts[barDate];
+      const levels = fc ? computeDayLevels(c.open, fc) : null;
+      currentDay = {
+        date: barDate,
+        open: c.open,
+        high: c.high, low: c.low,
+        startTs: c.time, endTs: c.time,
+        forecast: fc ?? null,
+        levels,
+        levelTraded: {},
+      };
+    }
+
+    // Update day H/L
+    if (c.high > currentDay.high) currentDay.high = c.high;
+    if (c.low  < currentDay.low)  currentDay.low  = c.low;
+
+    if (!currentDay.levels) continue;
+
+    // ── EOD close at window end ────────────────────────────────────────────────
+    if (config.eodClose >= 1 && activeTrade && barHour >= winEndH) {
+      _closeTrade(activeTrade, c.time, c.open, 'EOD', trades, currentDay);
+      activeTrade = null;
+    }
+
+    // ── Check SL on active trade ───────────────────────────────────────────────
+    if (activeTrade) {
+      const { direction, sl } = activeTrade;
+      if (direction === 'LONG' && c.low <= sl) {
+        _closeTrade(activeTrade, c.time, sl, 'SL', trades, currentDay);
+        activeTrade = null;
+      } else if (direction === 'SHORT' && c.high >= sl) {
+        _closeTrade(activeTrade, c.time, sl, 'SL', trades, currentDay);
+        activeTrade = null;
+      }
+    }
+
+    // ── Update MFE & trail exit ────────────────────────────────────────────────
+    if (activeTrade) {
+      const { direction, entry, slDist } = activeTrade;
+      const minR = config.mfeMinR;
+      if (direction === 'LONG') {
+        const mfe = c.high - entry;
+        if (mfe > activeTrade.mfePeak) activeTrade.mfePeak = mfe;
+        if (activeTrade.mfePeak >= minR * slDist && activeTrade.mfePeak > 0) {
+          const peakPrice = entry + activeTrade.mfePeak;
+          const retrace   = (peakPrice - c.close) / activeTrade.mfePeak;
+          if (retrace > config.mfeTrailPct) {
+            _closeTrade(activeTrade, c.time, c.close, 'TRAIL', trades, currentDay);
+            activeTrade = null;
+          }
+        }
+      } else {
+        const mfe = entry - c.low;
+        if (mfe > activeTrade.mfePeak) activeTrade.mfePeak = mfe;
+        if (activeTrade.mfePeak >= minR * slDist && activeTrade.mfePeak > 0) {
+          const peakPrice = entry - activeTrade.mfePeak;
+          const retrace   = (c.close - peakPrice) / activeTrade.mfePeak;
+          if (retrace > config.mfeTrailPct) {
+            _closeTrade(activeTrade, c.time, c.close, 'TRAIL', trades, currentDay);
+            activeTrade = null;
+          }
+        }
+      }
+    }
+
+    // ── Check for new entries (only within window, only if no active trade) ───
+    if (!activeTrade && barHour >= winStartH && barHour < winEndH) {
+      const lv = currentDay.levels;
+      const atr = atrArr[i];
+      if (atr <= 0) continue;
+
+      for (const def of LEVELS) {
+        if (!enabledLvs.has(def.key)) continue;
+        if (currentDay.levelTraded[def.key]) continue;
+
+        const lvPrice = lv[def.key];
+        let touched = false;
+        if (def.dir === 'SHORT' && c.high >= lvPrice) touched = true;
+        if (def.dir === 'LONG'  && c.low  <= lvPrice) touched = true;
+        if (!touched) continue;
+
+        currentDay.levelTraded[def.key] = true;
+        const slDist  = atr * config.slAtrMult;
+        const sl      = def.dir === 'SHORT' ? lvPrice + slDist : lvPrice - slDist;
+        tradeId++;
+        activeTrade = {
+          id: tradeId,
+          date: barDate,
+          level: def.key,
+          direction: def.dir === 'SHORT' ? 'SHORT' : 'LONG',
+          entryTs: c.time,
+          entry:   lvPrice,
+          sl, slDist,
+          mfePeak: 0,
+          forecast: currentDay.forecast,
+          dayOpen: currentDay.open,
+        };
+        break; // one trade at a time
+      }
+    }
+  }
+
+  // Close any final trade
+  if (activeTrade && m1s.length > 0) {
+    const last = m1s[m1s.length - 1];
+    _closeTrade(activeTrade, last.time, last.close, 'EOD', trades, currentDay);
+  }
+  if (currentDay) {
+    if (m1s.length > 0) currentDay.endTs = m1s[m1s.length - 1].time;
+    dayData.push(currentDay);
+  }
+
+  return { trades, dayData };
+}
+
+function _closeTrade(t, exitTs, exitPrice, reason, trades, day) {
+  const pnlPts = t.direction === 'LONG'
+    ? exitPrice - t.entry
+    : t.entry   - exitPrice;
+  const pnlPct = (pnlPts / t.dayOpen) * 100;
+  const pnlR   = t.slDist > 0 ? pnlPts / t.slDist : 0;
+  const mfePct = (t.mfePeak / t.dayOpen) * 100;
+  const mfeR   = t.slDist > 0 ? t.mfePeak / t.slDist : 0;
+
+  // MAE: worst adverse excursion during the trade (approximated from SL proximity)
+  const maePts = t.direction === 'LONG'
+    ? Math.max(0, t.entry - (exitPrice < t.entry ? exitPrice : t.entry))
+    : Math.max(0, (exitPrice > t.entry ? exitPrice : t.entry) - t.entry);
+  const maeR = t.slDist > 0 ? maePts / t.slDist : 0;
+
+  const durationMin = Math.round((exitTs - t.entryTs) / 60);
+
+  trades.push({
+    id:          t.id,
+    date:        t.date,
+    level:       t.level,
+    direction:   t.direction,
+    entryTs:     t.entryTs,
+    exitTs,
+    entry:       t.entry,
+    exit:        exitPrice,
+    sl:          t.sl,
+    pnlPct,
+    pnlR,
+    mfeR,
+    maeR,
+    durationMin,
+    exitReason:  reason,
+    win:         pnlPct > 0,
+    forecast:    t.forecast,
+    dayOpen:     t.dayOpen,
+  });
+}
+
+// ─── Analytics computation ────────────────────────────────────────────────────
+
+function computeAnalytics(trades) {
+  if (!trades.length) return null;
+  const wins   = trades.filter(t => t.win);
+  const losses = trades.filter(t => !t.win);
+  const winRate = wins.length / trades.length * 100;
+  const grossWin  = wins.reduce((s, t) => s + t.pnlPct, 0);
+  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnlPct, 0));
+  const pf        = grossLoss > 0 ? grossWin / grossLoss : Infinity;
+  const avgWin    = wins.length    ? grossWin    / wins.length   : 0;
+  const avgLoss   = losses.length  ? grossLoss   / losses.length : 0;
+  const totalPnl  = trades.reduce((s, t) => s + t.pnlPct, 0);
+
+  const sorted = [...trades].sort((a, b) => a.entryTs - b.entryTs);
+  const pnls   = sorted.map(t => t.pnlPct);
+  let runEq = 0, runPeak = 0, maxDD = 0;
+  const equity = [];
+  sorted.forEach(t => {
+    runEq += t.pnlPct;
+    equity.push({ ts: t.exitTs, val: runEq });
+    if (runEq > runPeak) runPeak = runEq;
+    const dd = runPeak - runEq;
+    if (dd > maxDD) maxDD = dd;
+  });
+
+  const n = pnls.length;
+  const mu  = pnls.reduce((s, v) => s + v, 0) / n;
+  const std = Math.sqrt(pnls.reduce((s, v) => s + (v - mu) ** 2, 0) / Math.max(1, n - 1));
+  const years = sorted.length > 1
+    ? (sorted.at(-1).entryTs - sorted[0].entryTs) / (365.25 * 86400)
+    : 1 / 52;
+  const tpy     = years > 0 ? n / years : n;
+  const sharpe  = std > 0 ? mu / std * Math.sqrt(tpy) : 0;
+  const negPnls = pnls.filter(p => p < 0);
+  const downStd = negPnls.length ? Math.sqrt(negPnls.reduce((s, p) => s + p * p, 0) / negPnls.length) : 0;
+  const sortino = downStd > 0 ? mu / downStd * Math.sqrt(tpy) : 0;
+  const calmar  = maxDD > 0 ? (totalPnl / years) / maxDD : 0;
+  const cagr    = years > 0 ? (Math.pow(1 + totalPnl / 100, 1 / years) - 1) * 100 : totalPnl;
+
+  // By level
+  const byLevel = {};
+  LEVELS.forEach(l => { byLevel[l.key] = { count: 0, wins: 0, pnl: 0 }; });
+  trades.forEach(t => {
+    if (!byLevel[t.level]) byLevel[t.level] = { count: 0, wins: 0, pnl: 0 };
+    byLevel[t.level].count++;
+    byLevel[t.level].pnl += t.pnlPct;
+    if (t.win) byLevel[t.level].wins++;
+  });
+
+  // By exit reason
+  const byReason = {};
+  trades.forEach(t => {
+    if (!byReason[t.exitReason]) byReason[t.exitReason] = { count: 0, wins: 0, pnl: 0 };
+    byReason[t.exitReason].count++;
+    byReason[t.exitReason].pnl += t.pnlPct;
+    if (t.win) byReason[t.exitReason].wins++;
+  });
+
+  // By session
+  function getSession(h) {
+    if (h >= 2  && h < 7)  return 'Asia';
+    if (h >= 7  && h < 13) return 'London';
+    if (h >= 13 && h < 17) return 'Overlap';
+    if (h >= 17 && h < 22) return 'New York';
+    return 'Thin';
+  }
+  const bySession = {};
+  trades.forEach(t => {
+    const h = new Date(t.entryTs * 1000).getUTCHours();
+    const s = getSession(h);
+    if (!bySession[s]) bySession[s] = { count: 0, wins: 0, pnl: 0 };
+    bySession[s].count++; bySession[s].pnl += t.pnlPct;
+    if (t.win) bySession[s].wins++;
+  });
+
+  // By DOW
+  const byDow = {};
+  trades.forEach(t => {
+    const d = new Date(t.entryTs * 1000).getUTCDay();
+    if (!byDow[d]) byDow[d] = { count: 0, wins: 0, pnl: 0 };
+    byDow[d].count++; byDow[d].pnl += t.pnlPct;
+    if (t.win) byDow[d].wins++;
+  });
+
+  // By month
+  const byMonth = {};
+  trades.forEach(t => {
+    const d = new Date(t.entryTs * 1000);
+    const k = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    if (!byMonth[k]) byMonth[k] = { count: 0, wins: 0, pnl: 0 };
+    byMonth[k].count++; byMonth[k].pnl += t.pnlPct;
+    if (t.win) byMonth[k].wins++;
+  });
+
+  const maxCW = Math.max(0, ...trades.map(t => t.win ? t.pnlPct : 0));
+  const maxCL = Math.min(0, ...trades.map(t => !t.win ? t.pnlPct : 0));
+  const expectancy = (winRate / 100) * avgWin - (1 - winRate / 100) * avgLoss;
+
+  return {
+    total: trades.length, wins: wins.length, losses: losses.length,
+    winRate, grossWin, grossLoss, pf, avgWin, avgLoss, totalPnl,
+    maxDD, sharpe, sortino, calmar, cagr, equity, maxCW, maxCL, expectancy,
+    byLevel, byReason, bySession, byDow, byMonth, years,
+  };
+}
+
+// ─── Main load + run ──────────────────────────────────────────────────────────
+
+async function loadAndRun() {
+  readConfig();
+  const pair      = document.getElementById('pairSel').value;
+  const fromDate  = document.getElementById('fromDate').value;
+  const toDate    = document.getElementById('toDate').value;
+  if (!pair || !fromDate || !toDate) { setStatus('Select pair and date range.', 'err'); return; }
+  if (fromDate >= toDate) { setStatus('From must be before To.', 'err'); return; }
+
+  const pairKey   = PAIR_SAFE[pair] || pair.toLowerCase().replace(/[\/_]/g, '');
+  const assetClass = PAIR_ASSET_CLASS[pair] ?? 'fx';
+  const warmupDays = Math.max(60, cfg.warmupDays);
+
+  // Calculate data window: warmupDays before fromDate
+  const dataFrom = new Date(fromDate + 'T00:00:00Z');
+  dataFrom.setDate(dataFrom.getDate() - (warmupDays + 20)); // +20 buffer for weekends
+  const dataFromStr = dataFrom.toISOString().slice(0, 10);
+
+  const runBtn = document.getElementById('runBtn');
+  runBtn.disabled = true;
+  setStatus('Loading M1 data…', 'running');
+
+  try {
+    m1Candles = await fetchM1CandlesChunked(
+      pairKey, dataFromStr, toDate,
+      (chunk, total) => setStatus(`Loading chunk ${chunk}/${total}…`, 'running'),
+    );
+  } catch (err) {
+    setStatus('Error loading M1 data: ' + err.message, 'err');
+    runBtn.disabled = false;
+    return;
+  }
+
+  if (m1Candles.length < 200) {
+    setStatus(`Only ${m1Candles.length} candles loaded — not enough data.`, 'err');
+    runBtn.disabled = false;
+    return;
+  }
+
+  setStatus('Aggregating daily bars + computing forecasts…', 'running');
+  await new Promise(r => setTimeout(r, 0)); // yield to UI
+
+  const allDailyBars = aggregateToDailyBars(m1Candles);
+  const forecasts    = computeWalkForwardForecasts(allDailyBars, assetClass, warmupDays);
+  const forecastDays = Object.keys(forecasts).length;
+
+  setStatus('Computing ATR…', 'running');
+  await new Promise(r => setTimeout(r, 0));
+  const atrArr = computeATRArray(m1Candles, cfg.atrPeriod);
+
+  setStatus('Running simulation…', 'running');
+  await new Promise(r => setTimeout(r, 0));
+
+  const result = runBacktest(m1Candles, forecasts, atrArr, assetClass, cfg, enabledLevels, fromDate, toDate);
+  allTrades  = result.trades;
+  allDayData = result.dayData;
+
+  // Coverage check
+  const covBanner = document.getElementById('covBanner');
+  if (forecastDays < allDayData.length * 0.5) {
+    covBanner.style.display = 'block';
+    covBanner.textContent = `Note: only ${forecastDays}/${allDayData.length} days have forecasts — the warmup period may need more historical data.`;
+  } else {
+    covBanner.style.display = 'none';
+  }
+
+  setStatus(`Simulation complete — ${allTrades.length} trades over ${allDayData.length} days.`, 'ok');
+
+  // Update legend
+  buildLegend();
+
+  // Chart
+  const tradingCandles = m1Candles.filter(c => {
+    const ts = c.time;
+    const f  = new Date(fromDate + 'T00:00:00Z').getTime() / 1000;
+    const t  = new Date(toDate   + 'T23:59:59Z').getTime() / 1000;
+    return ts >= f && ts <= t;
+  });
+  renderChart(tradingCandles);
+  renderAnalytics(allTrades);
+
+  document.getElementById('chartPairLbl').textContent = pair;
+  document.getElementById('analyticsSection').style.display = 'block';
+  selectedTradeIdx = -1;
+  updateNavButtons();
+  runBtn.disabled = false;
+}
+
+// ─── Legend ───────────────────────────────────────────────────────────────────
+
+function buildLegend() {
+  const row = document.getElementById('legendRow');
+  row.innerHTML = '';
+  LEVELS.filter(l => enabledLevels.has(l.key)).forEach(lv => {
+    const span = document.createElement('span');
+    span.style.cssText = 'display:flex;align-items:center;gap:4px;';
+    span.innerHTML = `<span style="width:16px;height:2px;background:${lv.color};display:inline-block;border-radius:1px"></span>
+      <span style="font-size:10px;font-family:'DM Mono',monospace;color:#5a6380">${lv.label}</span>`;
+    row.appendChild(span);
+  });
+}
+
+// ─── Chart rendering ──────────────────────────────────────────────────────────
+
+function renderChart(candles) {
+  const wrap = document.getElementById('chartWrap');
+
+  if (mainChart) {
+    try { mainChart.remove(); } catch(e) {}
+    mainChart = null; priceSeries = null;
+  }
+
+  mainChart = LightweightCharts.createChart(document.getElementById('fbPriceChart'), {
+    width:  wrap.clientWidth,
+    height: wrap.clientHeight,
+    layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
+    grid:   { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#2a3050', scaleMargins: { top: 0.08, bottom: 0.08 } },
+    timeScale: { borderColor: '#2a3050', timeVisible: true, secondsVisible: false },
+    handleScroll: true, handleScale: true,
+  });
+
+  priceSeries = mainChart.addCandlestickSeries({
+    upColor: '#26a69a', downColor: '#ef5350',
+    borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+    wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+  });
+  priceSeries.setData(candles);
+
+  // Markers for trade entries/exits
+  updateMarkers();
+
+  // Canvas overlay for level lines
+  mainChart.timeScale().subscribeVisibleLogicalRangeChange(requestDraw);
+  mainChart.timeScale().subscribeVisibleTimeRangeChange(requestDraw);
+  requestAnimationFrame(() => {
+    drawOverlay();
+    fitAll();
+  });
+
+  // Resize
+  if (!renderChart._resizeReg) {
+    renderChart._resizeReg = true;
+    new ResizeObserver(() => {
+      if (!mainChart) return;
+      const w = wrap.clientWidth, h = wrap.clientHeight;
+      try { mainChart.resize(w, h); } catch(e) {}
+      requestDraw();
+    }).observe(wrap);
+  }
+}
+
+function updateMarkers() {
+  if (!priceSeries) return;
+  const markers = [];
+  allTrades.forEach(t => {
+    const isLong  = t.direction === 'LONG';
+    const isWin   = t.win;
+    markers.push({
+      time: t.entryTs,
+      position: isLong ? 'belowBar' : 'aboveBar',
+      color:    isLong ? '#26a69a' : '#ef5350',
+      shape:    isLong ? 'arrowUp' : 'arrowDown',
+      text:     LEVELS.find(l => l.key === t.level)?.label ?? t.level,
+      size:     1,
+    });
+    markers.push({
+      time: t.exitTs,
+      position: isLong ? 'aboveBar' : 'belowBar',
+      color:    isWin ? '#00c97d' : '#f87171',
+      shape:    'circle',
+      size:     0.5,
+      text:     t.exitReason === 'SL' ? 'SL' : t.exitReason === 'TRAIL' ? 'T' : '',
+    });
+  });
+  markers.sort((a, b) => a.time - b.time);
+  priceSeries.setMarkers(markers);
+}
+
+function fitAll() {
+  if (mainChart) {
+    try { mainChart.timeScale().fitContent(); } catch(e) {}
+  }
+}
+
+// ─── Canvas overlay ───────────────────────────────────────────────────────────
+
+function requestDraw() {
+  if (drawPending) return;
+  drawPending = true;
+  requestAnimationFrame(() => { drawPending = false; drawOverlay(); });
+}
+
+function drawOverlay() {
+  const canvas = document.getElementById('fbOverlay');
+  const wrap   = document.getElementById('chartWrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  if (!priceSeries || !mainChart || !allDayData.length) return;
+
+  ctx.font = '9px "DM Mono", monospace';
+  ctx.textBaseline = 'middle';
+
+  // ── Draw forecast level lines ─────────────────────────────────────────────
+  allDayData.forEach(day => {
+    if (!day.levels) return;
+    const x1r = mainChart.timeScale().timeToCoordinate(day.startTs);
+    const x2r = mainChart.timeScale().timeToCoordinate(day.endTs);
+    const x1  = x1r != null ? x1r : -1;
+    const x2  = x2r != null ? x2r : W + 1;
+    if (x2 < 0 || x1 > W) return;
+    const xFrom = Math.max(0, x1);
+    const xTo   = Math.min(W, x2);
+
+    // Open price reference line (thin grey dotted)
+    const openY = priceSeries.priceToCoordinate(day.open);
+    if (openY != null && openY >= 0 && openY <= H) {
+      ctx.strokeStyle = '#4a5568';
+      ctx.lineWidth = 0.5;
+      ctx.setLineDash([2, 6]);
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(xFrom, openY); ctx.lineTo(xTo, openY);
+      ctx.stroke();
+    }
+
+    // Level lines
+    LEVELS.forEach(lv => {
+      if (!enabledLevels.has(lv.key)) return;
+      const lvPrice = day.levels[lv.key];
+      const y = priceSeries.priceToCoordinate(lvPrice);
+      if (y == null || y < 0 || y > H) return;
+
+      const traded = day.levelTraded && day.levelTraded[lv.key];
+      ctx.strokeStyle = lv.color;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.globalAlpha = traded ? 0.9 : 0.45;
+      ctx.beginPath();
+      ctx.moveTo(xFrom, y); ctx.lineTo(xTo, y);
+      ctx.stroke();
+
+      // Label at right edge of day
+      if (x2 >= 0 && x2 <= W + 60) {
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = lv.color;
+        ctx.fillText(lv.label, Math.min(xTo + 2, W - 60), y);
+      }
+    });
+  });
+
+  // ── Draw trade entry→exit lines ───────────────────────────────────────────
+  ctx.setLineDash([5, 4]);
+  allTrades.forEach((t, idx) => {
+    const x1 = mainChart.timeScale().timeToCoordinate(t.entryTs);
+    const x2 = mainChart.timeScale().timeToCoordinate(t.exitTs);
+    if (x1 == null || x2 == null) return;
+    const y1 = priceSeries.priceToCoordinate(t.entry);
+    const y2 = priceSeries.priceToCoordinate(t.exit);
+    if (y1 == null || y2 == null) return;
+
+    const isSel = idx === selectedTradeIdx;
+    ctx.strokeStyle = t.direction === 'LONG' ? '#26a69a' : '#ef5350';
+    ctx.lineWidth   = isSel ? 2.5 : 1;
+    ctx.globalAlpha = isSel ? 1.0 : 0.4;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+
+    if (isSel) {
+      const ysl = priceSeries.priceToCoordinate(t.sl);
+      if (ysl != null) {
+        ctx.strokeStyle = '#f0a030'; ctx.lineWidth = 1;
+        ctx.setLineDash([2, 4]); ctx.globalAlpha = 0.7;
+        ctx.beginPath(); ctx.moveTo(x1, ysl); ctx.lineTo(x2, ysl); ctx.stroke();
+        ctx.setLineDash([5, 4]);
+      }
+    }
+  });
+
+  ctx.globalAlpha = 1;
+  ctx.setLineDash([]);
+}
+
+// ─── Resize handle ────────────────────────────────────────────────────────────
+
+(function setupResize() {
+  const handle = document.getElementById('resizeHandle');
+  const wrap   = document.getElementById('chartWrap');
+  let dragging = false, startY = 0, startH = 0;
+  handle.addEventListener('mousedown', e => {
+    dragging = true; startY = e.clientY; startH = wrap.clientHeight;
+    handle.classList.add('dragging'); document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const newH = Math.max(200, Math.min(900, startH + e.clientY - startY));
+    wrap.style.height = newH + 'px';
+    if (mainChart) { try { mainChart.resize(wrap.clientWidth, newH); } catch(e) {} }
+    requestDraw();
+  });
+  document.addEventListener('mouseup', () => {
+    if (dragging) { dragging = false; handle.classList.remove('dragging'); document.body.style.userSelect = ''; }
+  });
+})();
+
+// ─── Trade navigation ─────────────────────────────────────────────────────────
+
+function navTrade(dir) {
+  if (!allTrades.length) return;
+  selectedTradeIdx = Math.max(0, Math.min(allTrades.length - 1, selectedTradeIdx + dir));
+  zoomToTrade(selectedTradeIdx);
+  updateNavButtons();
+  highlightTableRow(selectedTradeIdx);
+}
+
+function updateNavButtons() {
+  document.getElementById('navPrev').disabled = selectedTradeIdx <= 0;
+  document.getElementById('navNext').disabled = selectedTradeIdx >= allTrades.length - 1;
+  const t = allTrades[selectedTradeIdx];
+  document.getElementById('navTradeInfo').textContent = t
+    ? `#${t.id} · ${t.level} · ${t.direction} · ${t.pnlPct >= 0 ? '+' : ''}${t.pnlPct.toFixed(2)}% (${t.exitReason})`
+    : '';
+}
+
+function zoomToTrade(idx) {
+  if (!mainChart || idx < 0 || idx >= allTrades.length) return;
+  const t  = allTrades[idx];
+  const ctx90 = 90 * 60; // 90 minutes context
+  mainChart.timeScale().setVisibleRange({
+    from: t.entryTs - ctx90,
+    to:   t.exitTs  + ctx90,
+  });
+  requestDraw();
+}
+
+function highlightTableRow(idx) {
+  const tbody = document.getElementById('tradeBody');
+  tbody.querySelectorAll('tr').forEach((r, i) => {
+    r.classList.toggle('sel-row', parseInt(r.dataset.idx) === idx);
+  });
+}
+
+// ─── Analytics rendering ──────────────────────────────────────────────────────
+
+function renderAnalytics(trades) {
+  const st = computeAnalytics(trades);
+  if (!st) return;
+
+  // KPI grid
+  const kpis = [
+    { label: 'Win Rate',     value: st.winRate.toFixed(1) + '%',  cls: st.winRate >= 50 ? 'green' : 'red',  sub: `${st.wins}W / ${st.losses}L` },
+    { label: 'Profit Factor',value: st.pf === Infinity ? '∞' : st.pf.toFixed(2), cls: st.pf >= 1.5 ? 'green' : st.pf >= 1 ? 'amber' : 'red', sub: `Expectancy: ${st.expectancy.toFixed(3)}%` },
+    { label: 'Sharpe',       value: st.sharpe.toFixed(2), cls: st.sharpe >= 1.5 ? 'green' : st.sharpe >= 0.5 ? 'amber' : 'red', sub: `Sortino: ${st.sortino.toFixed(2)}` },
+    { label: 'Max Drawdown', value: st.maxDD.toFixed(2) + '%', cls: st.maxDD <= 5 ? 'green' : st.maxDD <= 15 ? 'amber' : 'red', sub: `Calmar: ${st.calmar.toFixed(2)}` },
+    { label: 'Total P&L',    value: (st.totalPnl >= 0 ? '+' : '') + st.totalPnl.toFixed(2) + '%', cls: st.totalPnl >= 0 ? 'green' : 'red', sub: `${st.years.toFixed(1)} yr · CAGR: ${st.cagr.toFixed(1)}%` },
+    { label: 'Avg Win',      value: '+' + st.avgWin.toFixed(3) + '%', cls: 'green', sub: `Best: +${st.maxCW.toFixed(3)}%` },
+    { label: 'Avg Loss',     value: '−' + st.avgLoss.toFixed(3) + '%', cls: 'red',  sub: `Worst: ${st.maxCL.toFixed(3)}%` },
+    { label: 'Trades',       value: String(st.total), cls: 'blue', sub: `${allDayData.filter(d=>d.levels).length} forecast days` },
+  ];
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k => `
+    <div class="bt-kpi">
+      <div class="bt-kpi-label">${k.label}</div>
+      <div class="bt-kpi-value ${k.cls}">${k.value}</div>
+      <div class="bt-kpi-sub">${k.sub}</div>
+    </div>`).join('');
+
+  // Secondary stats
+  const secs = [
+    { lbl: 'Avg MFE (R)',  val: (trades.reduce((s,t)=>s+t.mfeR,0)/trades.length).toFixed(2) + 'R' },
+    { lbl: 'Avg Duration', val: Math.round(trades.reduce((s,t)=>s+t.durationMin,0)/trades.length) + 'm' },
+    { lbl: 'R:R Ratio',    val: st.avgLoss > 0 ? (st.avgWin / st.avgLoss).toFixed(2) : '∞' },
+    { lbl: 'Avg Loss (R)', val: (trades.reduce((s,t)=>s+t.pnlR,0)/trades.length).toFixed(2) + 'R' },
+  ];
+  document.getElementById('secGrid').innerHTML = secs.map(s => `
+    <div class="bt-sec">
+      <span class="bt-sec-lbl">${s.lbl}</span>
+      <span class="bt-sec-val">${s.val}</span>
+    </div>`).join('');
+
+  // Equity curve
+  if (equityChartInst) { equityChartInst.destroy(); equityChartInst = null; }
+  if (st.equity.length > 1) {
+    const ctx = document.getElementById('equityChart').getContext('2d');
+    equityChartInst = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: st.equity.map(e => new Date(e.ts * 1000).toLocaleDateString()),
+        datasets: [{
+          data: st.equity.map(e => e.val),
+          borderColor: '#4f7df0', backgroundColor: 'rgba(79,125,240,.1)',
+          borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.2,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#5a6380', font: { family: 'DM Mono', size: 9 }, maxTicksLimit: 8 }, grid: { color: '#1c2133' } },
+          y: { ticks: { color: '#5a6380', font: { family: 'DM Mono', size: 9 } }, grid: { color: '#1c2133' } },
+        },
+      },
+    });
+  }
+
+  // Level breakdown
+  const lvDiv = document.getElementById('levelBreakdown');
+  const maxLvCount = Math.max(1, ...Object.values(st.byLevel).map(v => v.count));
+  lvDiv.innerHTML = '';
+  LEVELS.forEach(lv => {
+    const d = st.byLevel[lv.key] ?? { count: 0, wins: 0, pnl: 0 };
+    if (d.count === 0) return;
+    const wr = (d.wins / d.count * 100).toFixed(0);
+    lvDiv.innerHTML += `
+      <div class="lv-row">
+        <span class="lv-dot" style="background:${lv.color}"></span>
+        <span class="lv-name">${lv.label}</span>
+        <div class="lv-bar-track"><div class="lv-bar-fill" style="width:${d.count/maxLvCount*100}%;background:${lv.color}"></div></div>
+        <span class="lv-stat">${d.count}T · ${wr}% · ${d.pnl>=0?'+':''}${d.pnl.toFixed(2)}%</span>
+      </div>`;
+  });
+  if (!lvDiv.innerHTML) lvDiv.innerHTML = '<div style="font-size:11px;color:var(--text3);font-family:\'DM Mono\',monospace;padding:8px">No trades</div>';
+
+  // Session breakdown
+  const sessDiv = document.getElementById('sessionBreakdown');
+  sessDiv.innerHTML = '';
+  ['Asia','London','Overlap','New York','Thin'].forEach(s => {
+    const d = st.bySession[s];
+    if (!d || d.count === 0) return;
+    const wr = (d.wins / d.count * 100).toFixed(0);
+    sessDiv.innerHTML += `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text2)">${s}</span>
+        <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3)">${d.count}T</span>
+        <span style="font-size:11px;font-family:'DM Mono',monospace;color:${parseFloat(wr)>=50?'var(--green)':'var(--red)'}">${wr}%</span>
+        <span style="font-size:11px;font-family:'DM Mono',monospace;color:${d.pnl>=0?'var(--green)':'var(--red)'}">${d.pnl>=0?'+':''}${d.pnl.toFixed(2)}%</span>
+      </div>`;
+  });
+
+  // Exit reasons
+  const reasons = Object.entries(st.byReason).sort((a, b) => b[1].count - a[1].count);
+  const maxReason = Math.max(1, ...reasons.map(([,v]) => v.count));
+  const reasonColors = { SL: '#ef5350', TRAIL: '#4ade80', EOD: '#60a5fa' };
+  const exitDiv = document.getElementById('exitReasons');
+  exitDiv.innerHTML = '';
+  reasons.forEach(([reason, d]) => {
+    const wr = (d.wins / d.count * 100).toFixed(0);
+    const color = reasonColors[reason] || '#a78bfa';
+    exitDiv.innerHTML += `
+      <div class="lv-row">
+        <span class="lv-name" style="color:${color}">${reason}</span>
+        <div class="lv-bar-track"><div class="lv-bar-fill" style="width:${d.count/maxReason*100}%;background:${color}"></div></div>
+        <span class="lv-stat">${d.count}T · ${wr}% · ${d.pnl>=0?'+':''}${d.pnl.toFixed(2)}%</span>
+      </div>`;
+  });
+
+  // Day of week chart
+  if (dowChartInst) { dowChartInst.destroy(); dowChartInst = null; }
+  const DOW_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dowData = DOW_LABELS.map((_, i) => st.byDow[i]?.pnl ?? 0);
+  dowChartInst = new Chart(document.getElementById('dowChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: DOW_LABELS,
+      datasets: [{
+        data: dowData,
+        backgroundColor: dowData.map(v => v >= 0 ? 'rgba(79,125,240,.6)' : 'rgba(239,83,80,.6)'),
+        borderColor:     dowData.map(v => v >= 0 ? '#4f7df0' : '#ef5350'),
+        borderWidth: 1,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#5a6380', font: { family: 'DM Mono', size: 10 } }, grid: { color: '#1c2133' } },
+        y: { ticks: { color: '#5a6380', font: { family: 'DM Mono', size: 10 } }, grid: { color: '#1c2133' } },
+      },
+    },
+  });
+
+  // Monthly heatmap
+  const hmDiv = document.getElementById('monthlyHeatmap');
+  hmDiv.innerHTML = '';
+  const maxAbsPnl = Math.max(1, ...Object.values(st.byMonth).map(v => Math.abs(v.pnl)));
+  Object.entries(st.byMonth).sort((a, b) => a[0] < b[0] ? -1 : 1).forEach(([key, d]) => {
+    const [yr, mo] = key.split('-');
+    const pct = d.pnl / maxAbsPnl;
+    const bg  = d.pnl >= 0
+      ? `rgba(0,201,125,${Math.min(0.9, 0.15 + 0.6 * pct)})`
+      : `rgba(239,83,80,${Math.min(0.9, 0.15 + 0.6 * Math.abs(pct))})`;
+    const MONTHS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    hmDiv.innerHTML += `
+      <div class="hm-cell" style="background:${bg}" title="${key}: ${d.pnl>=0?'+':''}${d.pnl.toFixed(2)}% (${d.count}T)">
+        <span class="hm-month">${MONTHS[parseInt(mo)]} '${yr.slice(2)}</span>
+        <span class="hm-val" style="color:${d.pnl>=0?'var(--green)':'var(--red)'}">${d.pnl>=0?'+':''}${d.pnl.toFixed(1)}%</span>
+      </div>`;
+  });
+
+  // Trade log
+  updateFilterLevelOptions();
+  renderTradeLog();
+}
+
+// ─── Trade log ────────────────────────────────────────────────────────────────
+
+function updateFilterLevelOptions() {
+  const sel = document.getElementById('filterLv');
+  sel.innerHTML = '<option value="">All levels</option>';
+  const usedLevels = [...new Set(allTrades.map(t => t.level))];
+  usedLevels.forEach(lk => {
+    const def = LEVELS.find(l => l.key === lk);
+    sel.innerHTML += `<option value="${lk}">${def?.label ?? lk}</option>`;
+  });
+}
+
+function renderTradeLog() {
+  const dirF  = document.getElementById('filterDir').value;
+  const outF  = document.getElementById('filterOut').value;
+  const lvF   = document.getElementById('filterLv').value;
+  let filtered = allTrades.filter(t =>
+    (!dirF || t.direction === dirF) &&
+    (!outF || (outF === 'win' ? t.win : !t.win)) &&
+    (!lvF  || t.level === lvF),
+  );
+  const total = filtered.length;
+  document.getElementById('tradeCount').textContent = `${total} trades`;
+  const pages = Math.ceil(total / TRADES_PER_PAGE);
+  if (tradePage >= pages) tradePage = Math.max(0, pages - 1);
+  const slice = filtered.slice(tradePage * TRADES_PER_PAGE, (tradePage + 1) * TRADES_PER_PAGE);
+
+  const tbody = document.getElementById('tradeBody');
+  tbody.innerHTML = slice.map((t, i) => {
+    const gIdx   = filtered.indexOf(t);
+    const def    = LEVELS.find(l => l.key === t.level);
+    const dot    = def ? `<span style="width:7px;height:7px;background:${def.color};border-radius:50%;display:inline-block;margin-right:4px"></span>` : '';
+    const badge  = t.win ? '<span class="rb-badge win">WIN</span>' : '<span class="rb-badge loss">LOSS</span>';
+    const dirCls = t.direction === 'LONG' ? 'pos' : 'neg';
+    const fc     = t.forecast;
+    const fcStr  = fc ? `HL50:${fc.hl_median}% OC50:${fc.oc_median}%` : '—';
+    return `<tr data-idx="${gIdx}" onclick="selectTrade(${gIdx})">
+      <td class="num" style="color:var(--text3)">${t.id}</td>
+      <td>${t.date}</td>
+      <td>${dot}${def?.label ?? t.level}</td>
+      <td class="${dirCls}">${t.direction}</td>
+      <td class="num">${t.entry.toPrecision(6)}</td>
+      <td class="num">${t.exit.toPrecision(6)}</td>
+      <td class="num ${t.pnlPct>=0?'pos':'neg'}">${t.pnlPct>=0?'+':''}${t.pnlPct.toFixed(3)}%</td>
+      <td class="num ${t.pnlR>=0?'pos':'neg'}">${t.pnlR>=0?'+':''}${t.pnlR.toFixed(2)}R</td>
+      <td class="num">${t.mfeR.toFixed(2)}R</td>
+      <td class="num" style="color:var(--red)">${t.maeR.toFixed(2)}R</td>
+      <td class="num">${t.durationMin}m</td>
+      <td>${badge} <span style="font-size:10px;color:var(--text3)">${t.exitReason}</span></td>
+      <td style="font-size:10px;color:var(--text3)">${fcStr}</td>
+    </tr>`;
+  }).join('');
+
+  // Pagination
+  document.getElementById('pgInfo').textContent = `Page ${tradePage + 1} / ${Math.max(1, pages)}`;
+  document.getElementById('pgPrev').disabled = tradePage === 0;
+  document.getElementById('pgNext').disabled = tradePage >= pages - 1;
+}
+
+function tradePageChange(dir) {
+  const dirF  = document.getElementById('filterDir').value;
+  const outF  = document.getElementById('filterOut').value;
+  const lvF   = document.getElementById('filterLv').value;
+  const total = allTrades.filter(t =>
+    (!dirF || t.direction === dirF) &&
+    (!outF || (outF === 'win' ? t.win : !t.win)) &&
+    (!lvF  || t.level === lvF),
+  ).length;
+  const pages = Math.ceil(total / TRADES_PER_PAGE);
+  tradePage = Math.max(0, Math.min(pages - 1, tradePage + dir));
+  renderTradeLog();
+}
+
+function selectTrade(idx) {
+  selectedTradeIdx = idx;
+  zoomToTrade(idx);
+  updateNavButtons();
+  requestDraw();
+  highlightTableRow(idx);
+}
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+
+function exportResults() {
+  if (!allTrades.length) { alert('Run a backtest first.'); return; }
+  const pair  = document.getElementById('pairSel').value;
+  const from  = document.getElementById('fromDate').value;
+  const to    = document.getElementById('toDate').value;
+  const hdr   = 'id,date,level,direction,entryTs,exitTs,entry,exit,sl,pnlPct,pnlR,mfeR,maeR,durationMin,exitReason,hlMedian,oc_median\n';
+  const rows  = allTrades.map(t =>
+    [t.id,t.date,t.level,t.direction,t.entryTs,t.exitTs,
+     t.entry.toFixed(6),t.exit.toFixed(6),t.sl.toFixed(6),
+     t.pnlPct.toFixed(4),t.pnlR.toFixed(4),t.mfeR.toFixed(4),t.maeR.toFixed(4),
+     t.durationMin,t.exitReason,
+     t.forecast?.hl_median??'',t.forecast?.oc_median??''].join(','),
+  ).join('\n');
+  const blob = new Blob([hdr + rows], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `forecaster_bt_${pair.replace(/\//g,'')}_${from}_${to}.csv`;
+  a.click();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+initConfigUI();
+
+</script>
+</body>
+</html>
