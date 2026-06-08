@@ -56,6 +56,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 .sdot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:.2s}
 .sdot.ok{background:var(--green)}
 .sdot.err{background:var(--red)}
+.sdot.warn{background:var(--yellow)}
 .sdot.spin{background:var(--yellow);animation:pulse .8s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .smsg{font-size:12px;color:var(--muted);flex:1}
@@ -190,7 +191,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
       <div class="cfg-row"><span class="cfg-lbl">Entry Z<small>|z| above this fires</small></span><input class="cfg-num" id="cfgEntryZ" type="number" value="2.0" step="0.1" min="1" max="5"></div>
       <div class="cfg-row"><span class="cfg-lbl">Exit Z<small>|z| below this closes</small></span><input class="cfg-num" id="cfgExitZ" type="number" value="0.5" step="0.1" min="0" max="2"></div>
       <div class="cfg-row"><span class="cfg-lbl">Stop Z<small>|z| above this stops</small></span><input class="cfg-num" id="cfgStopZ" type="number" value="3.5" step="0.1" min="2" max="6"></div>
-      <div class="cfg-row"><span class="cfg-lbl">Min Score<small>hedge quality gate</small></span><input class="cfg-num" id="cfgMinScore" type="number" value="0.3" step="0.05" min="0" max="1"></div>
+      <div class="cfg-row"><span class="cfg-lbl">Min Score<small>negative OK for pos-corr pairs</small></span><input class="cfg-num" id="cfgMinScore" type="number" value="0.1" step="0.05" min="-1" max="1"></div>
     </div>
     <div>
       <div class="cfg-sec-lbl">Trade Management</div>
@@ -213,6 +214,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
   <div class="sdot" id="sdot"></div>
   <span class="smsg" id="smsg">Select two pairs and a date range, then click Run.</span>
   <div class="prog-bar"><div class="prog-fill" id="pfill" style="width:0%"></div></div>
+</div>
+
+<div id="noTradesDiag" style="display:none;padding:12px 20px">
+  <div id="noTradesMsg" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:16px 20px;color:var(--muted);font-size:13px;line-height:1.7"></div>
 </div>
 
 <div class="chart-section">
@@ -299,6 +304,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 const DISPLAY_CAP   = 50_000;
 const WARMUP        = 20;     // min corr records before signals
 
+// Pairs that have M1 parquet data in R2 (matches M1_DRIVE_IDS + XAUUSD uploaded to R2)
+const M1_FX_PAIRS = new Set([
+  'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF',
+  'GBPJPY','EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD',
+  'AUDJPY','AUDNZD','AUDCAD','AUDCHF','GBPAUD','GBPCAD','GBPCHF',
+  'GBPNZD','CADJPY','CHFJPY','NZDJPY',
+  'XAUUSD', // gold M1 data uploaded to R2 directly (no Drive fallback)
+]);
+
 // ── State ────────────────────────────────────────────────────────────────────
 const S = {
   corrData: null,
@@ -333,7 +347,7 @@ function getCfg() {
     entry_z:    +el('cfgEntryZ').value    || 2.0,
     exit_z:     +el('cfgExitZ').value     || 0.5,
     stop_z:     +el('cfgStopZ').value     || 3.5,
-    min_score:  +el('cfgMinScore').value  || 0.3,
+    min_score:  el('cfgMinScore').value !== '' ? +el('cfgMinScore').value : 0.1,
     risk_pct:   +el('cfgRisk').value      || 1.0,
     sl_atr_mult:+el('cfgSlAtr').value     || 2.5,
     allowed_regimes: [...document.querySelectorAll('#regimeChips .regime-chip.on')].map(c => c.dataset.r),
@@ -362,6 +376,7 @@ function renderSuggestions(alertData, pairs) {
       }
     }
     if (!pA || !pB || !pairs.includes(pB)) continue;
+    if (!M1_FX_PAIRS.has(pA) || !M1_FX_PAIRS.has(pB)) continue;  // no M1 data for gold/indices
 
     const betaA = alertData.last_betas?.[pA]?.vix ?? 0;
     const betaB = alertData.last_betas?.[pB]?.vix ?? 0;
@@ -438,12 +453,14 @@ async function init() {
     S.corrData       = await corrRes.json();
     const alertData  = alertRes.ok ? await alertRes.json() : null;
     const pairs      = S.corrData.pairs || [];
+    // Only show pairs with M1 parquet data — gold/indices have no M1 candles
+    const m1Pairs    = pairs.filter(p => M1_FX_PAIRS.has(p));
 
     [el('pairA'), el('pairB')].forEach(sel => {
-      sel.innerHTML = pairs.map(p => `<option value="${p}">${p}</option>`).join('');
+      sel.innerHTML = m1Pairs.map(p => `<option value="${p}">${p}</option>`).join('');
     });
-    el('pairA').value = pairs.includes('EURUSD') ? 'EURUSD' : pairs[0];
-    el('pairB').value = pairs.includes('USDJPY') ? 'USDJPY' : pairs[1] || pairs[0];
+    el('pairA').value = m1Pairs.includes('EURUSD') ? 'EURUSD' : m1Pairs[0];
+    el('pairB').value = m1Pairs.includes('USDJPY') ? 'USDJPY' : m1Pairs[1] || m1Pairs[0];
 
     if (alertData && pairs.length) renderSuggestions(alertData, pairs);
 
@@ -598,6 +615,7 @@ function dsDisplay(candles, step) {
 function simulate(corrRecs, corrKey, pA, pB, cA, tA, cB, tB, cfg) {
   const trades = [], zSeries = [];
   let mu=0, M2=0, n=0, pos=null, prevTs=0;
+  let candidateSignals=0, filteredByScore=0;
 
   for (const rec of corrRecs) {
     const corr = rec.corr?.[corrKey];
@@ -636,6 +654,7 @@ function simulate(corrRecs, corrKey, pA, pB, cA, tA, cB, tB, cfg) {
       const betaB = rec.beta?.[pB]?.vix ?? 0;
       const score = hScore(corr, betaA, betaB);
 
+      candidateSignals++;
       if (score >= cfg.min_score) {
         const bA = barAtOrAfter(rec.ts, cA, tA), bB = barAtOrAfter(rec.ts, cB, tB);
         if (bA && bB) {
@@ -651,6 +670,8 @@ function simulate(corrRecs, corrKey, pA, pB, cA, tA, cB, tB, cfg) {
             zEntry: z, score, regime, betaA, betaB,
           };
         }
+      } else {
+        filteredByScore++;
       }
     }
 
@@ -664,7 +685,7 @@ function simulate(corrRecs, corrKey, pA, pB, cA, tA, cB, tB, cfg) {
     if (bA && bB) trades.push(mkTrade(pos, lr.ts, bA.close, bB.close, 'END'));
   }
 
-  return { trades, zSeries };
+  return { trades, zSeries, candidateSignals, filteredByScore };
 }
 
 // ── Chart management ──────────────────────────────────────────────────────────
@@ -689,10 +710,9 @@ function initCharts(pA, pB) {
     grid: { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: { borderColor: '#1c2133' },
-    timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false, lockVisibleTimeRangeOnResize: true },
-    // Disable axis-drag zoom (main cause of accidental zoom-in on touch/click).
-    // Mouse wheel still pans; use pinch or Ctrl+scroll to zoom. Reset button restores fit.
-    handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: true },
+    timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false },
+    handleScroll: true,
+    handleScale: true,
   };
 
   ['chartA','chartB','chartZ'].forEach(id => { const e = el(id); e.innerHTML=''; e.className=''; e.style.height=''; });
@@ -712,17 +732,21 @@ function initCharts(pA, pB) {
   el('labelA').textContent = pA + ' — Price';
   el('labelB').textContent = pB + ' — Price';
 
-  // Sync x-axis: candle charts (A, B) drive all three; z-chart follows but never drives
-  // (z has sparse daily points — letting it drive causes whipping back when zoomed in)
-  const allCharts = [S.chartA, S.chartB, S.chartZ];
-  allCharts.forEach((src, si) => {
-    src.timeScale().subscribeVisibleTimeRangeChange(r => {
-      if (S.syncing || !r || si === 2) return;  // index 2 = chartZ, one-directional only
-      S.syncing = true;
-      allCharts.forEach((tgt, ti) => { if (ti !== si) { try { tgt.timeScale().setVisibleRange(r); } catch {} } });
-      S.syncing = false;
-    });
+  // Sync x-axis using same pattern as regime-backtest: direct subscriptions, no guard flag.
+  // setVisibleRange is idempotent when the range hasn't changed so no feedback loop occurs.
+  // Z-chart follows candles but has no subscription of its own — prevents the sparse daily
+  // z-series from snapping the candle charts back when the user zooms into M1 detail.
+  S.chartA.timeScale().subscribeVisibleTimeRangeChange(r => {
+    if (!r) return;
+    try { S.chartB.timeScale().setVisibleRange(r); } catch {}
+    try { S.chartZ.timeScale().setVisibleRange(r); } catch {}
   });
+  S.chartB.timeScale().subscribeVisibleTimeRangeChange(r => {
+    if (!r) return;
+    try { S.chartA.timeScale().setVisibleRange(r); } catch {}
+    try { S.chartZ.timeScale().setVisibleRange(r); } catch {}
+  });
+  // chartZ intentionally has no subscription — it receives range updates but never drives
 }
 
 function renderCharts(dispA, dispB, trades, zSeries, cfg) {
@@ -913,8 +937,20 @@ async function loadAndRun() {
   if (!S.corrData)       { setSt('err','Corr history not loaded — refresh page'); return; }
 
   const cfg = getCfg();
+
+  // Warn about common misconfigurations before running
+  const cfgWarns = [];
+  if (cfg.stop_z <= cfg.entry_z)
+    cfgWarns.push(`Stop Z (${cfg.stop_z}) must be > Entry Z (${cfg.entry_z}) — trades will stop immediately`);
+  if (cfg.stop_z - cfg.entry_z < 0.8)
+    cfgWarns.push(`Stop Z gap too tight (${(cfg.stop_z-cfg.entry_z).toFixed(1)}σ) — expect near-instant stop-outs; recommend ≥1.5σ gap`);
+  if (cfg.min_score > 0.3)
+    cfgWarns.push(`Min Score ${cfg.min_score} may block most pairs — score is negative for positively-correlated pairs; try 0.1–0.2`);
+  if (cfgWarns.length) { setSt('warn', '⚠ Config: ' + cfgWarns.join(' · ')); }
+
   el('runBtn').disabled = true;
   el('analytics').style.display = 'none';
+  el('noTradesDiag').style.display = 'none';
 
   try {
     // 1 ── Filter corr records ──────────────────────────────────────────────
@@ -948,7 +984,7 @@ async function loadAndRun() {
     // 5 ── Simulate ─────────────────────────────────────────────────────────
     setSt('spin', `Simulating on ${rawA.length.toLocaleString()} + ${rawB.length.toLocaleString()} bars…`, 82);
     await new Promise(r => requestAnimationFrame(r));
-    const { trades, zSeries } = simulate(recs, corrKey, pA, pB, rawA, tA, rawB, tB, cfg);
+    const { trades, zSeries, candidateSignals, filteredByScore } = simulate(recs, corrKey, pA, pB, rawA, tA, rawB, tB, cfg);
 
     // 6 ── Downsample ───────────────────────────────────────────────────────
     let step=1;
@@ -965,7 +1001,30 @@ async function loadAndRun() {
     initCharts(pA, pB);
     renderCharts(dispA, dispB, trades, zSeries, cfg);
 
-    if (trades.length > 0) renderAnalytics(trades, cfg);
+    if (trades.length > 0) {
+      renderAnalytics(trades, cfg);
+    } else {
+      // Build a specific diagnostic explaining why no trades fired
+      let diag = `<b style="color:var(--text)">No trades generated for ${pA} / ${pB}</b><br>`;
+      if (candidateSignals === 0) {
+        diag += `Z-score never reached ±${cfg.entry_z}σ in this date range. Try a wider date range or lower the Entry Z threshold.`;
+      } else if (filteredByScore > 0) {
+        const exampleCorr = recs.find(r => r.corr?.[corrKey] != null)?.corr?.[corrKey];
+        const isPosCorr   = exampleCorr != null && exampleCorr > 0.3;
+        diag += `${candidateSignals} z-score signal${candidateSignals!==1?'s':''} fired but all ${filteredByScore} ${filteredByScore===1?'was':'were'} blocked by <b style="color:var(--text)">Min Score ≥ ${cfg.min_score}</b>.`;
+        if (isPosCorr) {
+          const scoreEst = ((-exampleCorr*0.7) + 0.05).toFixed(2);
+          diag += `<br><span style="color:var(--yellow)">ℹ ${pA} / ${pB} are <b>positively correlated</b> (r ≈ ${exampleCorr.toFixed(2)})</span> — the hedge score formula rewards <em>negative</em> correlation, so this pair-pair scores ≈ ${scoreEst}.`
+                + `<br>To allow positively-correlated pairs, set <b style="color:var(--cyan)">Min Score to a negative value</b> (e.g. <b>-0.5</b>) in Config.`;
+        } else {
+          diag += `<br>Try lowering Min Score (currently ${cfg.min_score}) or use a pair with stronger negative correlation.`;
+        }
+      } else if (candidateSignals > 0) {
+        diag += `${candidateSignals} z-score signal${candidateSignals!==1?'s':''} passed the score gate but no M1 bars were available at those times. Check that M1 data covers the date range.`;
+      }
+      el('noTradesMsg').innerHTML = diag;
+      el('noTradesDiag').style.display = '';
+    }
 
     setSt('ok',
       `${rawA.length.toLocaleString()} + ${rawB.length.toLocaleString()} M1 bars · ${recs.length} corr snapshots · ${trades.length} trade${trades.length!==1?'s':''}`,
