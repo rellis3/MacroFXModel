@@ -251,7 +251,7 @@
   </div>
   <!-- Daily P&L subchart (synced) -->
   <div class="fb-pnl-wrap">
-    <span class="fb-pnl-lbl">Daily P&amp;L %</span>
+    <span class="fb-pnl-lbl">Z-Score (20)</span>
     <div id="fbPnlChart"></div>
   </div>
   <div class="fb-resize-handle" id="resizeHandle"></div>
@@ -510,9 +510,11 @@ const PARAMS = [
     help:'Earliest UTC hour new entries are allowed. 0 = London midnight open.' },
   { key:'windowEndH',   label:'Window End (UTC h)',      min:12,  max:23,   step:1,    def:22,
     help:'Latest UTC hour for new entries. EOD force-close fires at this hour.' },
-  { key:'eodClose',     label:'EOD Force Close (1=yes)', min:0,   max:1,    step:1,    def:1,
+  { key:'eodClose',       label:'EOD Force Close (1=yes)', min:0,   max:1,    step:1,    def:1,
     help:'1 = force-close all open trades at the window end hour.' },
-  { key:'warmupDays',   label:'GARCH Warmup Days',       min:60,  max:252,  step:10,   def:90,
+  { key:'maxLevelTrades', label:'Max Trades per Level/Day', min:1,   max:10,   step:1,    def:1,
+    help:'How many times each level can trigger a new entry per day. 1 = original single-entry. Allows re-entry after a trade closes.' },
+  { key:'warmupDays',     label:'GARCH Warmup Days',       min:60,  max:252,  step:10,   def:90,
     help:'Daily bars loaded before the From date to seed the GARCH model.' },
 ];
 const PARAM_DEFS = Object.fromEntries(PARAMS.map(p => [p.key, p.def]));
@@ -596,6 +598,21 @@ function setStatus(msg, type='idle') {
   document.getElementById('statusMsg').textContent = msg;
   const dot = document.getElementById('statusDot');
   dot.className = 'sdot' + (type==='running'?' running':type==='ok'?' ok':type==='err'?' err':'');
+}
+
+// ── Rolling Z-score of M1 close prices ───────────────────────────────────────
+// z_t = (close_t − rolling_mean) / rolling_std  over a 20-bar window
+function computeZScoreSeries(candles, window = 20) {
+  const out = [];
+  for (let i = window - 1; i < candles.length; i++) {
+    let sum = 0, sum2 = 0;
+    for (let j = i - window + 1; j <= i; j++) { sum += candles[j].close; sum2 += candles[j].close ** 2; }
+    const mean = sum / window;
+    const variance = sum2 / window - mean * mean;
+    const std = Math.sqrt(Math.max(variance, 0));
+    out.push({ time: candles[i].time, value: std > 1e-10 ? (candles[i].close - mean) / std : 0 });
+  }
+  return out;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -723,8 +740,9 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
         startTs: c.time, endTs: c.time,
         forecast: fc ?? null,
         staticLevels: fc ? computeStaticLevels(c.open, fc) : null,
-        finalDynLevels: null,  // filled at end of day
+        finalDynLevels: null,
         levelTraded: {},
+        levelTradeCount: {},
         pnl: 0,
       };
     }
@@ -788,7 +806,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
 
       for (const def of LEVELS) {
         if (!enabledLvs.has(def.key)) continue;
-        if (currentDay.levelTraded[def.key]) continue;
+        if ((currentDay.levelTradeCount[def.key] || 0) >= (config.maxLevelTrades || 1)) continue;
 
         // Get the level price
         let lvPrice;
@@ -812,6 +830,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
         if (!touched) continue;
 
         currentDay.levelTraded[def.key] = true;
+        currentDay.levelTradeCount[def.key] = (currentDay.levelTradeCount[def.key] || 0) + 1;
         const slDist = atr * config.slAtrMult;
         const sl     = def.dir === 'SHORT' ? lvPrice + slDist : lvPrice - slDist;
         tradeId++;
@@ -992,12 +1011,18 @@ function renderChart(candles) {
   });
   priceSeries.setData(candles);
 
-  // Daily P&L subchart
+  // Z-score subchart (rolling 20-bar price Z-score on M1)
   pnlChart  = LightweightCharts.createChart(pnlWrap, mkOpts('#0e1117', 100));
-  pnlSeries = pnlChart.addHistogramSeries({ priceFormat:{type:'percent'}, priceLineVisible:false, lastValueVisible:false });
-  const pnlData = allDayData.filter(d => d.pnl !== 0)
-    .map(d => ({ time: d.startTs, value: d.pnl, color: d.pnl >= 0 ? '#26a69a' : '#ef5350' }));
-  if (pnlData.length) pnlSeries.setData(pnlData);
+  pnlSeries = pnlChart.addLineSeries({
+    color: '#7c83f5', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
+    crosshairMarkerVisible: false,
+  });
+  const zData = computeZScoreSeries(candles);
+  if (zData.length) pnlSeries.setData(zData);
+  // Reference lines at ±2 (extremes), ±1 (1σ), 0
+  [{ p: 2, c:'#ef5350' }, { p:-2, c:'#26a69a' }, { p: 1, c:'#374151' }, { p:-1, c:'#374151' }, { p: 0, c:'#2a3050' }]
+    .forEach(r => pnlSeries.createPriceLine({ price:r.p, color:r.c, lineWidth:1,
+      lineStyle: r.p===0 ? LightweightCharts.LineStyle.Solid : LightweightCharts.LineStyle.Dashed, axisLabelVisible: r.p===2||r.p===-2||r.p===0 }));
 
   // ── Sync by TIME RANGE (not logical indices — charts have different bar densities) ──
   mainChart.timeScale().subscribeVisibleTimeRangeChange(tr => {
