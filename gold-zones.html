@@ -98,7 +98,7 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
 .gz-zone-card { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r);
   padding: 14px 16px; cursor: pointer; transition: border-color .15s; }
 .gz-zone-card:hover { border-color: var(--border2); }
-.gz-zone-card.selected { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(244,196,48,.2); }
+.gz-zone-card.selected { border-color: var(--gold) !important; box-shadow: 0 0 0 2px rgba(244,196,48,.3), inset 0 0 0 1px rgba(244,196,48,.1); background: rgba(244,196,48,.04); }
 .gz-zone-card.long { border-left: 3px solid var(--green); }
 .gz-zone-card.short { border-left: 3px solid var(--red); }
 .gz-zone-card.armed { border-color: var(--gold); animation: armedGlow 2s infinite; }
@@ -137,6 +137,14 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
 .gz-result.loss { color: var(--red); }
 .gz-result.expired { color: var(--text3); }
 .gz-result.open { color: var(--gold); }
+
+/* ── Chart hint overlay ──────────────────────────────────────────────── */
+.gz-chart-hint { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; padding: 10px 18px;
+  background: rgba(13,17,23,.85); border: 1px solid var(--border2); border-radius: 8px;
+  color: var(--text2); font-size: 12px; pointer-events: none; z-index: 5;
+  backdrop-filter: blur(4px); white-space: nowrap; }
+.gz-chart-hint.hidden { display: none; }
 
 /* ── Error / empty states ────────────────────────────────────────────── */
 .gz-msg { padding: 40px; text-align: center; color: var(--text3); font-size: 13px; }
@@ -241,6 +249,11 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
   <!-- Chart -->
   <div class="gz-chart-wrap">
     <div id="gzChartLoading" class="gz-chart-loading">Loading candles…</div>
+    <div id="gzChartHint" class="gz-chart-hint">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" style="opacity:.5"><path d="M11 2L4 19H18L11 2Z" stroke="#f4c430" stroke-width="1.5" fill="none"/><line x1="11" y1="9" x2="11" y2="14" stroke="#f4c430" stroke-width="1.5"/><circle cx="11" cy="16" r=".8" fill="#f4c430"/></svg>
+      <div>Click a zone card below to see its fib structure drawn on the chart</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">Session levels and candles are always shown</div>
+    </div>
     <div id="gzChart"></div>
   </div>
 
@@ -259,7 +272,12 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
   </div>
 
   <!-- Zone cards -->
-  <div class="gz-zones-header">Active zones</div>
+  <div class="gz-zones-header" style="justify-content:space-between;flex-wrap:wrap">
+    <span>Active zones (<span id="gzZoneCount">—</span>)</span>
+    <span style="font-size:10.5px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">
+      Click a card to draw its fibs on the chart · click again to clear
+    </span>
+  </div>
   <div class="gz-zones-grid" id="gzZonesGrid">
     <div class="gz-msg">Loading zones…</div>
   </div>
@@ -492,97 +510,114 @@ function _aggregate(m1, periodSecs) {
 function _rebuildChart() {
   if (!_cs || !_chart) return;
 
-  // Ensure we have something for the price scale; fall back to synthetic if needed
   const candleData = _candles.length ? _candles : _buildSyntheticCandles(_tf === 'H4' ? 14400 : 1800);
   try { _cs.setData(candleData); } catch {}
 
-  // Clear all price lines
   _priceLines.forEach(pl => { try { _cs.removePriceLine(pl); } catch {} });
   _priceLines = [];
-
-  // Clear markers
   _cs.setMarkers([]);
 
-  const zones = _filteredZones();
-  if (!zones.length) return;
-
-  const armedId = _zonesData?.armed_zone || _statusData?.armed_zone_id;
-
-  // Draw session levels first (behind zones)
+  // Session / anchor / trendline levels always drawn
   if (_showSession && _zonesData?.pivot_levels) _drawSessionLevels(_zonesData.pivot_levels);
-
-  // VWAP anchors
   if (_showAnchors && _zonesData?.vwap_anchors?.length) _drawVwapAnchors(_zonesData.vwap_anchors);
-
-  // Trendlines
   if (_showTl && _zonesData?.trendlines?.length) _drawTrendlines(_zonesData.trendlines);
 
-  // Zones
-  const markers = [];
-  zones.forEach(z => {
-    _drawZone(z, z.zone_id === armedId, markers);
-  });
+  const armedId = _zonesData?.armed_zone || _statusData?.armed_zone_id;
+  const allZones = _filteredZones();
 
+  // Only draw ONE zone's fibs: the selected one, falling back to armed zone
+  const focusId = _selectedZoneId || armedId;
+  const focusZone = focusId ? allZones.find(z => z.zone_id === focusId) : null;
+
+  const hint = document.getElementById('gzChartHint');
+  if (!focusZone) {
+    if (hint) hint.classList.remove('hidden');
+    _chart.timeScale().fitContent();
+    return;
+  }
+  if (hint) hint.classList.add('hidden');
+
+  const markers = [];
+  _drawZone(focusZone, true /* always show as prominent */, markers);
   if (markers.length) _cs.setMarkers(markers.sort((a, b) => a.time - b.time));
 
-  // Fit to chart
-  _chart.timeScale().fitContent();
+  _zoomToZone(focusZone);
+}
+
+// Zoom the time axis to show the full impulse + current price
+function _zoomToZone(z) {
+  if (!_chart) return;
+  const nowTs = Math.floor(Date.now() / 1000);
+  const from  = z.swing_origin_time > 0 ? z.swing_origin_time : (nowTs - 7 * 86400);
+  const to    = nowTs + 3600;
+  const buf   = (to - from) * 0.06;
+  try {
+    _chart.timeScale().setVisibleRange({ from: Math.floor(from - buf), to: Math.floor(to) });
+  } catch {
+    _chart.timeScale().fitContent();
+  }
 }
 
 // ── Draw a single zone ──────────────────────────────────────────────
-function _drawZone(z, isArmed, markers) {
-  const isLong  = z.direction === 'long';
-  const baseCol = isLong ? '#26a69a' : '#ef5350';
-  const dimCol  = isLong ? 'rgba(38,166,154,0.35)' : 'rgba(239,83,80,0.35)';
+function _drawZone(z, prominent, markers) {
+  const isLong = z.direction === 'long';
+  const vnt    = z.zone_variant ?? 'gp';
+  const tf     = z.tf ?? 'M30';
+  const suffix = `[${tf} ${vnt}]`;
 
   const add = (price, color, title, width=1, style=2) => {
     if (price == null || price <= 0) return;
     try {
-      const pl = _cs.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title });
-      _priceLines.push(pl);
+      _priceLines.push(_cs.createPriceLine({
+        price, color, lineWidth: width, lineStyle: style,
+        axisLabelVisible: true, title,
+      }));
     } catch {}
   };
 
-  const suffix = `[${z.tf} ${z.zone_variant ?? 'gp'}]`;
-
-  // Swing origin + end (structure reference)
+  // ── Swing high / low reference lines ──────────────────────────────
+  // For LONG: origin = swing LOW (green), end = swing HIGH (red)
+  // For SHORT: origin = swing HIGH (red), end = swing LOW (green)
   if (_showSwings) {
-    add(z.swing_origin, 'rgba(107,114,128,0.6)', `⬚ origin ${suffix}`, 1, LS.LargeDashed ?? 3);
-    add(z.swing_end,    'rgba(107,114,128,0.6)', `⬚ end ${suffix}`,    1, LS.LargeDashed ?? 3);
+    const originCol = isLong ? 'rgba(38,166,154,0.7)' : 'rgba(239,83,80,0.7)';
+    const endCol    = isLong ? 'rgba(239,83,80,0.7)'  : 'rgba(38,166,154,0.7)';
+    add(z.swing_origin, originCol,
+        `${isLong ? '▼ Swing LOW' : '▲ Swing HIGH'} ${tf} (origin)`, 2, 3);
+    add(z.swing_end,    endCol,
+        `${isLong ? '▲ Swing HIGH' : '▼ Swing LOW'} ${tf} (end → fib src)`, 2, 3);
   }
 
-  // Fib retracement levels
-  add(z.level_382, '#26c6da',  `.382 ${suffix}`, 1, LS.Dashed ?? 2);
-  add(z.level_500, '#fff176',  `.500 ${suffix}`, 1, LS.Dashed ?? 2);
-  add(z.level_786, '#ffa726',  `.786 ${suffix}`, 1, LS.Dashed ?? 2);
-  add(z.level_886, '#ef5350',  `.886 ${suffix}`, 1, LS.Dashed ?? 2);
+  // ── All fib retracement levels ─────────────────────────────────────
+  add(z.level_382, '#26c6da', `.382 retrace ${suffix}`, 1, 2);
+  add(z.level_500, '#fff176', `.500 retrace ${suffix}`, 1, 2);
+  add(z.level_786, '#ffa726', `.786 retrace ${suffix}`, 1, 2);
+  add(z.level_886, '#ef5350', `.886 retrace ${suffix}`, 1, 2);
 
-  // GP zone — thicker solid gold lines
-  const gpLabel = isArmed ? `⚡ GP ${suffix}` : `GP ${suffix}`;
-  add(z.gp_low,  isArmed ? '#f4c430' : dimCol, `↓ ${gpLabel}`, isArmed ? 2 : 1, LS.Solid ?? 0);
-  add(z.gp_high, isArmed ? '#f4c430' : dimCol, `↑ ${gpLabel}`, isArmed ? 2 : 1, LS.Solid ?? 0);
-  add(z.level_618, '#f4c430', `.618 ${suffix}`, 1, LS.Dotted ?? 1);
-  add(z.level_650, '#f4c430', `.650 ${suffix}`, 1, LS.Dotted ?? 1);
+  // ── GP zone — gold, thick solid (the entry window) ─────────────────
+  add(z.gp_low,    '#f4c430', `▲ GP .618 ${suffix}`, 2, 0);
+  add(z.gp_high,   '#f4c430', `▼ GP .650 ${suffix}`, 2, 0);
+  add(z.level_618, 'rgba(244,196,48,0.5)', `.618 ${suffix}`, 1, 1);
+  add(z.level_650, 'rgba(244,196,48,0.5)', `.650 ${suffix}`, 1, 1);
 
-  // Swing markers on chart
-  if (_showSwings && z.swing_origin_time > 0) {
+  // ── Swing bar markers ──────────────────────────────────────────────
+  if (z.swing_origin_time > 0) {
     markers.push({
-      time: z.swing_origin_time,
+      time:     z.swing_origin_time,
       position: isLong ? 'belowBar' : 'aboveBar',
-      color: 'rgba(107,114,128,0.7)',
-      shape: isLong ? 'arrowUp' : 'arrowDown',
-      text: `${z.tf} origin`,
-      size: 0.8,
+      color:    isLong ? '#26a69a' : '#ef5350',
+      shape:    isLong ? 'arrowUp' : 'arrowDown',
+      text:     `${tf} ${isLong ? 'Low' : 'High'} (impulse start)`,
+      size:     2,
     });
   }
-  if (_showSwings && z.swing_end_time > 0) {
+  if (z.swing_end_time > 0) {
     markers.push({
-      time: z.swing_end_time,
+      time:     z.swing_end_time,
       position: isLong ? 'aboveBar' : 'belowBar',
-      color: isLong ? 'rgba(38,166,154,0.8)' : 'rgba(239,83,80,0.8)',
-      shape: isLong ? 'arrowUp' : 'arrowDown',
-      text: `${z.tf} end (${z.zone_variant ?? 'gp'} src)`,
-      size: 1,
+      color:    isLong ? '#ef5350' : '#26a69a',
+      shape:    isLong ? 'arrowDown' : 'arrowUp',
+      text:     `${tf} ${isLong ? 'High' : 'Low'} (fib anchor · ${vnt})`,
+      size:     2,
     });
   }
 }
@@ -732,6 +767,9 @@ function _renderZoneCards() {
   const zones = _filteredZones();
   const armedId = _zonesData?.armed_zone || _statusData?.armed_zone_id;
 
+  const countEl = document.getElementById('gzZoneCount');
+  if (countEl) countEl.textContent = zones.length;
+
   if (!zones.length) {
     grid.innerHTML = '<div class="gz-msg">No zones match the current filter</div>';
     return;
@@ -813,6 +851,7 @@ function _renderZoneCards() {
           <div class="gz-zone-id">${z.zone_id}</div>
           ${distHtml}
           ${z.htf_aligned ? '<span style="font-size:9px;color:var(--cyan);border:1px solid rgba(38,198,218,.3);padding:1px 5px;border-radius:3px">HTF✓</span>' : ''}
+          ${z.zone_id === _selectedZoneId ? '<span style="font-size:9px;color:var(--gold);border:1px solid rgba(244,196,48,.4);padding:1px 6px;border-radius:3px;background:rgba(244,196,48,.08)">▲ on chart</span>' : ''}
         </div>
         <div class="gz-zone-score ${scoreClass}">${scoreStr}</div>
       </div>
@@ -829,14 +868,7 @@ function _renderZoneCards() {
 function _selectZone(zoneId) {
   _selectedZoneId = _selectedZoneId === zoneId ? null : zoneId;
   _renderZoneCards();
-  // Scroll chart to zone if possible
-  const z = _zonesData?.zones?.find(x => x.zone_id === zoneId);
-  if (z && _chart) {
-    _chart.priceScale('right').applyOptions({ autoScale: false });
-    setTimeout(() => {
-      _chart.priceScale('right').applyOptions({ autoScale: true });
-    }, 100);
-  }
+  _rebuildChart();
 }
 
 // ── Live price update ───────────────────────────────────────────────
