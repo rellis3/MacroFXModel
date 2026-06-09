@@ -123,7 +123,14 @@ _PIP_VALUES: dict[str, float] = {
 }
 TRADEABLE   = {'BULL', 'BEAR'}
 _OPPOSITE   = {'BULL': 'BEAR', 'BEAR': 'BULL'}
-_MT5_SYMBOL: dict[str, str] = {'NAS100_USD': 'USTECH100M'}
+_MT5_SYMBOL: dict[str, str] = {
+    'NAS100_USD':  'USTECH100M',
+    'US2000_USD':  'US2000',
+    'SPX500_USD':  'SP500',
+    'DE30_USD':    'DAX',
+    'UK100_GBP':   'FTSE100',
+    'US30_USD':    'US30',
+}
 
 
 def _mt5_sym(pair: str) -> str:

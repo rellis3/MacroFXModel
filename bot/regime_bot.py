@@ -81,7 +81,12 @@ _PIP_VALUES = {
 # in config and API to the real MT5 symbol so all positions_get / order_send
 # calls use the correct name.
 _MT5_SYMBOL: dict[str, str] = {
-    'NAS100_USD': 'USTECH100M',
+    'NAS100_USD':  'USTECH100M',
+    'US2000_USD':  'US2000',
+    'SPX500_USD':  'SP500',
+    'DE30_USD':    'DAX',
+    'UK100_GBP':   'FTSE100',
+    'US30_USD':    'US30',
 }
 
 def _mt5_sym(pair: str) -> str:
