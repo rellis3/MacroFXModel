@@ -1145,8 +1145,8 @@ function renderChart(candles) {
 
   // Momentum Z-score subchart (ROC-10 normalised over 20 bars, histogram)
   momChart  = LightweightCharts.createChart(document.getElementById('fbMomChart'), mkOpts('#0e1117', 90));
-  momSeries = momChart.addHistogramSeries({ priceLineVisible:false, lastValueVisible:false, base:0 });
-  const mData = computeMomentumZScore(candles);
+  momSeries = momChart.addLineSeries({ color:'#a78bfa', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
+  const mData = computeMomentumZScore(candles).map(d => ({ time: d.time, value: d.value }));
   if (mData.length) momSeries.setData(mData);
   mkRefLines(momSeries);
 
