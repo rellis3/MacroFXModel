@@ -208,6 +208,19 @@
     <button class="dark-btn" style="padding:2px 10px;font-size:10px" onclick="resetParams()">Reset defaults</button>
     <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:auto">120-day warmup window is loaded automatically before the From date</span>
   </div>
+  <!-- Strategy picker -->
+  <div style="display:flex;align-items:flex-start;gap:14px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:12px">
+    <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+      <span class="fb-param-lbl">Entry Strategy</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:2px">
+        <select class="fb-sel" id="cfg_strategy" style="min-width:160px">
+          <option value="dirop">Dir on Open</option>
+          <option value="reversal">Reversal</option>
+        </select>
+        <span id="stratHelp" style="font-size:10px;color:var(--text3);font-family:'DM Sans',sans-serif;line-height:1.5"></span>
+      </div>
+    </div>
+  </div>
   <div class="fb-cfg-grid" id="cfgGrid"></div>
   <div style="margin-top:14px">
     <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:4px">
@@ -576,9 +589,30 @@ function readConfig() {
     const el = document.getElementById('cfg_' + p.key);
     if (el) cfg[p.key] = parseFloat(el.value) || p.def;
   });
+  const stratEl = document.getElementById('cfg_strategy');
+  if (stratEl) cfg.strategy = stratEl.value;
 }
 
-function resetParams() { cfg = { ...PARAM_DEFS }; enabledLevels = new Set(LEVELS.map(l=>l.key)); initConfigUI(); }
+const STRAT_HELP = {
+  dirop:    'Fixed direction per level: levels above the day open fire SHORT, below fire LONG.',
+  reversal: 'Direction from approach side: price touching from below → SHORT, from above → LONG. Same level can fire either way depending on where price came from.',
+};
+document.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('cfg_strategy');
+  const hlp = document.getElementById('stratHelp');
+  if (sel && hlp) {
+    const upd = () => hlp.textContent = STRAT_HELP[sel.value] || '';
+    sel.addEventListener('change', upd); upd();
+  }
+});
+
+function resetParams() {
+  cfg = { ...PARAM_DEFS };
+  enabledLevels = new Set(LEVELS.map(l=>l.key));
+  const stratEl = document.getElementById('cfg_strategy');
+  if (stratEl) { stratEl.value = 'dirop'; stratEl.dispatchEvent(new Event('change')); }
+  initConfigUI();
+}
 function toggleLevel(key, on) { on ? enabledLevels.add(key) : enabledLevels.delete(key); }
 function toggleConfig() { const p=document.getElementById('cfgPanel'); p.style.display=p.style.display==='none'?'block':'none'; }
 
@@ -824,22 +858,31 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
           lvPrice = currentDay.staticLevels[def.key];
         }
 
-        let touched = false;
-        if (def.dir === 'SHORT' && c.high >= lvPrice) touched = true;
-        if (def.dir === 'LONG'  && c.low  <= lvPrice) touched = true;
-        if (!touched) continue;
+        // Determine direction from active strategy
+        let lvDir = null;
+        if ((config.strategy || 'dirop') === 'reversal') {
+          // Direction based on which side price approaches from
+          const prevClose = i > 0 ? m1s[i-1].close : c.open;
+          if (prevClose < lvPrice && c.high >= lvPrice) lvDir = 'SHORT';
+          else if (prevClose > lvPrice && c.low  <= lvPrice) lvDir = 'LONG';
+          // If prevClose === lvPrice or both conditions (inside bar), skip
+        } else {
+          // Dir on Open: direction fixed by level position relative to open
+          if (def.dir === 'SHORT' && c.high >= lvPrice) lvDir = 'SHORT';
+          else if (def.dir === 'LONG' && c.low  <= lvPrice) lvDir = 'LONG';
+        }
+        if (!lvDir) continue;
 
         currentDay.levelTraded[def.key] = true;
         currentDay.levelTradeCount[def.key] = (currentDay.levelTradeCount[def.key] || 0) + 1;
         const slDist = atr * config.slAtrMult;
-        const sl     = def.dir === 'SHORT' ? lvPrice + slDist : lvPrice - slDist;
+        const sl     = lvDir === 'SHORT' ? lvPrice + slDist : lvPrice - slDist;
         tradeId++;
         activeTrade = {
           id: tradeId, date: barDate, level: def.key,
-          direction: def.dir === 'SHORT' ? 'SHORT' : 'LONG',
+          direction: lvDir,
           entryTs: c.time, entry: lvPrice, sl, slDist, mfePeak: 0,
           forecast: fc, dayOpen: currentDay.open,
-          // Snapshot the dynamic level price at entry time (for display)
           dynSnap: def.dynamic ? lvPrice : null,
         };
         break;
