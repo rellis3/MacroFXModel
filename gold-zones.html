@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gold Zone Verifier</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+:root {
+  --gold: #f4c430; --gold2: #b8860b;
+  --green: #26a69a; --red: #ef5350;
+  --blue: #4f7df0; --purple: #ab47bc;
+  --amber: #ffa726; --cyan: #26c6da;
+  --bg: #0d1117; --bg2: #131722; --bg3: #1c2133;
+  --border: #2a3348; --border2: #3a4560;
+  --text: #d1d4dc; --text2: #9ba3b2; --text3: #6b7280;
+  --r: 6px; --rl: 10px;
+  --s1: #131722; --s2: #1c2133;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; }
+
+/* ── Header ───────────────────────────────────────────────────────── */
+.gz-topbar { display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+  background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+.gz-logo { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg,#b8860b,#f4c430);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.gz-logo svg { width: 18px; height: 18px; }
+.gz-title { font-size: 15px; font-weight: 700; color: var(--gold); }
+.gz-sub   { font-size: 10px; color: var(--text3); margin-top: 1px; }
+.gz-spacer { flex: 1; }
+.gz-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border2); background: var(--s2);
+  color: var(--text2); font-size: 11.5px; font-weight: 600; cursor: pointer; transition: all .15s; text-decoration: none; }
+.gz-btn:hover { border-color: var(--gold); color: var(--gold); }
+.gz-btn.active { border-color: var(--gold); color: var(--gold); background: rgba(244,196,48,.08); }
+.gz-status-bar { display: flex; align-items: center; gap: 8px; padding: 6px 20px;
+  background: var(--bg2); border-bottom: 1px solid var(--border); font-size: 11.5px; flex-wrap: wrap; }
+.gz-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px;
+  border: 1px solid; font-size: 10.5px; font-weight: 600; letter-spacing: .03em; }
+.gz-badge.bull { color: var(--green); border-color: rgba(38,166,154,.4); background: rgba(38,166,154,.08); }
+.gz-badge.bear { color: var(--red); border-color: rgba(239,83,80,.4); background: rgba(239,83,80,.08); }
+.gz-badge.neutral { color: var(--amber); border-color: rgba(255,167,38,.4); background: rgba(255,167,38,.08); }
+.gz-badge.gold { color: var(--gold); border-color: rgba(244,196,48,.4); background: rgba(244,196,48,.08); }
+.gz-badge.info { color: var(--blue); border-color: rgba(79,125,240,.4); background: rgba(79,125,240,.08); }
+.gz-price { font-size: 14px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--gold); }
+.gz-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; flex-shrink: 0; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── Main layout ────────────────────────────────────────────────────── */
+.gz-main { max-width: 1600px; margin: 0 auto; padding: 16px 20px 40px; }
+
+/* ── Controls ───────────────────────────────────────────────────────── */
+.gz-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.gz-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.gz-seg button { padding: 5px 12px; border: none; background: var(--s2); color: var(--text2);
+  font-size: 11.5px; font-weight: 600; cursor: pointer; transition: all .12s; border-right: 1px solid var(--border); }
+.gz-seg button:last-child { border-right: none; }
+.gz-seg button.on { background: rgba(244,196,48,.12); color: var(--gold); }
+.gz-seg button:hover:not(.on) { background: var(--bg3); }
+.gz-check { display: flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--s2); cursor: pointer; user-select: none; font-size: 11.5px; color: var(--text2); }
+.gz-check input { accent-color: var(--gold); cursor: pointer; width: 13px; height: 13px; }
+.gz-check.on { border-color: rgba(244,196,48,.4); color: var(--gold); }
+.gz-refresh-btn { padding: 5px 14px; border-radius: 6px; border: 1.5px solid var(--gold); background: rgba(244,196,48,.08);
+  color: var(--gold); font-size: 11.5px; font-weight: 600; cursor: pointer; transition: all .15s; margin-left: auto; }
+.gz-refresh-btn:hover { background: rgba(244,196,48,.15); }
+
+/* ── Stats strip ────────────────────────────────────────────────────── */
+.gz-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 14px; }
+@media (max-width: 900px) { .gz-stats { grid-template-columns: repeat(3, 1fr); } }
+.gz-stat-card { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 14px; }
+.gz-stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: .8px; color: var(--text3);
+  font-family: 'DM Mono', monospace; margin-bottom: 4px; }
+.gz-stat-val { font-size: 15px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); }
+.gz-stat-sub { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+/* ── Chart ─────────────────────────────────────────────────────────── */
+.gz-chart-wrap { background: #131722; border: 1px solid var(--border); border-radius: var(--rl);
+  overflow: hidden; margin-bottom: 14px; position: relative; }
+#gzChart { height: 560px; width: 100%; }
+.gz-chart-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(13,17,23,.7); color: var(--text2); font-size: 13px; z-index: 10; }
+.gz-chart-loading.hidden { display: none; }
+
+/* ── Legend ─────────────────────────────────────────────────────────── */
+.gz-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; padding: 12px 16px;
+  background: var(--s1); border: 1px solid var(--border); border-radius: var(--r); }
+.gz-leg-item { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--text2); }
+.gz-leg-line { width: 24px; height: 2px; border-radius: 2px; }
+.gz-leg-dash { width: 24px; height: 0; border-top: 2px dashed; }
+
+/* ── Zone panels ──────────────────────────────────────────────────────── */
+.gz-zones-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 11px;
+  font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); }
+.gz-zones-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.gz-zones-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.gz-zone-card { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 14px 16px; cursor: pointer; transition: border-color .15s; }
+.gz-zone-card:hover { border-color: var(--border2); }
+.gz-zone-card.selected { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(244,196,48,.2); }
+.gz-zone-card.long { border-left: 3px solid var(--green); }
+.gz-zone-card.short { border-left: 3px solid var(--red); }
+.gz-zone-card.armed { border-color: var(--gold); animation: armedGlow 2s infinite; }
+@keyframes armedGlow { 0%,100%{box-shadow:0 0 0 0 rgba(244,196,48,.4)} 50%{box-shadow:0 0 0 4px rgba(244,196,48,.1)} }
+.gz-zone-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+.gz-zone-id { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2); }
+.gz-zone-score { font-size: 15px; font-weight: 700; font-family: 'DM Mono', monospace; }
+.gz-zone-score.high { color: var(--gold); }
+.gz-zone-score.mid { color: var(--amber); }
+.gz-zone-score.low { color: var(--text2); }
+.gz-zone-window { font-size: 12px; font-weight: 600; font-family: 'DM Mono', monospace; margin-bottom: 8px; }
+.gz-zone-window.long { color: var(--green); }
+.gz-zone-window.short { color: var(--red); }
+.gz-zone-fibs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.gz-fib-pill { font-size: 9.5px; font-family: 'DM Mono', monospace; padding: 2px 6px; border-radius: 4px; border: 1px solid; }
+.gz-fib-pill.gp   { color: var(--gold); border-color: rgba(244,196,48,.4); background: rgba(244,196,48,.06); }
+.gz-fib-pill.r382 { color: var(--cyan); border-color: rgba(38,198,218,.3); background: rgba(38,198,218,.04); }
+.gz-fib-pill.r500 { color: #fff176; border-color: rgba(255,241,118,.3); background: rgba(255,241,118,.04); }
+.gz-fib-pill.r786 { color: var(--amber); border-color: rgba(255,167,38,.3); background: rgba(255,167,38,.04); }
+.gz-fib-pill.r886 { color: var(--red); border-color: rgba(239,83,80,.3); background: rgba(239,83,80,.04); }
+.gz-comp-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.gz-comp-tag { font-size: 9.5px; padding: 1px 5px; border-radius: 3px; background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+.gz-comp-tag.strong { background: rgba(79,125,240,.08); color: var(--blue); border-color: rgba(79,125,240,.2); }
+
+/* ── Trade history strip ─────────────────────────────────────────────── */
+.gz-trades-header { display: flex; align-items: center; gap: 8px; margin: 24px 0 10px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); }
+.gz-trades-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.gz-trades-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.gz-trades-table th { font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--text3);
+  font-weight: 600; padding: 6px 10px; text-align: left; border-bottom: 1.5px solid var(--border); }
+.gz-trades-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 11.5px; }
+.gz-trades-table tr:last-child td { border-bottom: none; }
+.gz-trades-table tr:hover td { background: var(--s2); }
+.gz-result.win { color: var(--green); font-weight: 700; }
+.gz-result.loss { color: var(--red); }
+.gz-result.expired { color: var(--text3); }
+.gz-result.open { color: var(--gold); }
+
+/* ── Error / empty states ────────────────────────────────────────────── */
+.gz-msg { padding: 40px; text-align: center; color: var(--text3); font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="gzApp">
+
+<!-- ── Top bar ──────────────────────────────────────────────────────── -->
+<div class="gz-topbar">
+  <div class="gz-logo">
+    <svg viewBox="0 0 17 17"><polygon points="8.5,2 15,13 2,13" fill="none" stroke="#fff" stroke-width="1.5"/><line x1="8.5" y1="6" x2="8.5" y2="10" stroke="#fff" stroke-width="1.5"/><circle cx="8.5" cy="11.5" r=".8" fill="#fff"/></svg>
+  </div>
+  <div>
+    <div class="gz-title">Gold Zone Verifier</div>
+    <div class="gz-sub">Live fib zones · swing origins · session levels · bot state</div>
+  </div>
+  <div class="gz-spacer"></div>
+  <span class="gz-price" id="gzLivePrice">XAU/USD —</span>
+  <div class="gz-dot"></div>
+  <a href="gold.html" class="gz-btn">Gold Macro</a>
+  <a href="index.html" class="gz-btn">← Dashboard</a>
+</div>
+
+<!-- ── Status bar ───────────────────────────────────────────────────── -->
+<div class="gz-status-bar">
+  <span id="gzBiasBadge" class="gz-badge neutral">HTF —</span>
+  <span id="gzSessionBadge" class="gz-badge info">Session —</span>
+  <span id="gzBotStateBadge" class="gz-badge info">Bot —</span>
+  <span id="gzArmedBadge" class="gz-badge gold" style="display:none">⚡ —</span>
+  <span id="gzTs" style="margin-left:auto;font-size:10.5px;color:var(--text3)">—</span>
+</div>
+
+<!-- ── Main ──────────────────────────────────────────────────────────── -->
+<div class="gz-main">
+
+  <!-- Controls -->
+  <div class="gz-controls">
+    <div class="gz-seg" id="gzTfSeg">
+      <button class="on" data-tf="M30">M30</button>
+      <button data-tf="H4">H4</button>
+    </div>
+    <div class="gz-seg" id="gzDirSeg">
+      <button class="on" data-dir="all">All</button>
+      <button data-dir="long">Long</button>
+      <button data-dir="short">Short</button>
+    </div>
+    <div class="gz-seg" id="gzCountSeg">
+      <button class="on" data-count="5">Top 5</button>
+      <button data-count="10">Top 10</button>
+      <button data-count="all">All</button>
+    </div>
+    <label class="gz-check on" id="gzChkSession">
+      <input type="checkbox" id="gzShowSession" checked> Session levels
+    </label>
+    <label class="gz-check on" id="gzChkAnchors">
+      <input type="checkbox" id="gzShowAnchors" checked> VWAP anchors
+    </label>
+    <label class="gz-check" id="gzChkTl">
+      <input type="checkbox" id="gzShowTl"> Trendlines
+    </label>
+    <label class="gz-check" id="gzChkSwings">
+      <input type="checkbox" id="gzShowSwings" checked> Swing origins
+    </label>
+    <button class="gz-refresh-btn" id="gzRefreshBtn">↺ Refresh</button>
+  </div>
+
+  <!-- Stats strip -->
+  <div class="gz-stats">
+    <div class="gz-stat-card">
+      <div class="gz-stat-label">Price</div>
+      <div class="gz-stat-val" id="gsPrice">—</div>
+      <div class="gz-stat-sub" id="gsPriceVwap">vs VWAP —</div>
+    </div>
+    <div class="gz-stat-card">
+      <div class="gz-stat-label">HTF Bias</div>
+      <div class="gz-stat-val" id="gsBias">—</div>
+      <div class="gz-stat-sub" id="gsBiasConf">—</div>
+    </div>
+    <div class="gz-stat-card">
+      <div class="gz-stat-label">VWAP / POC</div>
+      <div class="gz-stat-val" id="gsVwap">—</div>
+      <div class="gz-stat-sub" id="gsPoc">—</div>
+    </div>
+    <div class="gz-stat-card">
+      <div class="gz-stat-label">VAH / VAL</div>
+      <div class="gz-stat-val" id="gsVah">—</div>
+      <div class="gz-stat-sub" id="gsVal">—</div>
+    </div>
+    <div class="gz-stat-card">
+      <div class="gz-stat-label">Active Zones</div>
+      <div class="gz-stat-val" id="gsZones">—</div>
+      <div class="gz-stat-sub" id="gsArmed">—</div>
+    </div>
+    <div class="gz-stat-card">
+      <div class="gz-stat-label">Bot State</div>
+      <div class="gz-stat-val" id="gsBotState">—</div>
+      <div class="gz-stat-sub" id="gsBotMode">—</div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="gz-chart-wrap">
+    <div id="gzChartLoading" class="gz-chart-loading">Loading candles…</div>
+    <div id="gzChart"></div>
+  </div>
+
+  <!-- Legend -->
+  <div class="gz-legend">
+    <div class="gz-leg-item"><div class="gz-leg-line" style="background:#f4c430"></div> GP zone (.618–.650)</div>
+    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#26c6da"></div> .382 (shallow)</div>
+    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#fff176"></div> .500 midpoint</div>
+    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#ffa726"></div> .786</div>
+    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#ef5350"></div> .886 (deep)</div>
+    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#6b7280"></div> Swing origin/end</div>
+    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#4f7df0"></div> VWAP / Daily open</div>
+    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#ab47bc"></div> POC</div>
+    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#26a69a"></div> VAH (green) / VAL (red)</div>
+    <div class="gz-leg-item"><div class="gz-leg-line" style="background:rgba(244,196,48,.3);height:10px;border-radius:2px"></div> Armed zone</div>
+  </div>
+
+  <!-- Zone cards -->
+  <div class="gz-zones-header">Active zones</div>
+  <div class="gz-zones-grid" id="gzZonesGrid">
+    <div class="gz-msg">Loading zones…</div>
+  </div>
+
+  <!-- Trade history -->
+  <div class="gz-trades-header">Paper trade history</div>
+  <div id="gzTradesWrap">
+    <div class="gz-msg">Loading…</div>
+  </div>
+
+</div><!-- /.gz-main -->
+</div><!-- /#gzApp -->
+
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────────────
+let _zonesData  = null;   // gold_bot_zones KV payload
+let _statusData = null;   // gold_bot_status KV payload
+let _candles    = [];     // M30 OHLC array
+let _chart      = null;
+let _cs         = null;   // candlestick series
+let _priceLines = [];     // all active price lines
+let _markers    = [];
+let _selectedZoneId = null;
+
+let _tf       = 'M30';
+let _dirFilter = 'all';
+let _countFilter = 5;
+let _showSession = true;
+let _showAnchors = true;
+let _showTl      = false;
+let _showSwings  = true;
+
+const LS = window.LightweightCharts ? LightweightCharts.LineStyle : { Solid:0, Dotted:1, Dashed:2, LargeDashed:3, SparseDotted:4 };
+
+// ── Init ──────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  _initChart();
+  _bindControls();
+  _load();
+  setInterval(_load, 90_000);
+});
+
+// ── LightweightCharts chart setup ─────────────────────────────────────
+function _initChart() {
+  const el = document.getElementById('gzChart');
+  if (!el || !window.LightweightCharts) return;
+  _chart = LightweightCharts.createChart(el, {
+    autoSize: true,
+    layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
+    grid:   { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#2a3348' },
+    timeScale: { borderColor: '#2a3348', timeVisible: true, secondsVisible: false },
+  });
+  _cs = _chart.addCandlestickSeries({
+    upColor: '#26a69a', downColor: '#ef5350',
+    borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+    wickUpColor:   '#26a69a', wickDownColor:   '#ef5350',
+  });
+}
+
+// ── Control bindings ──────────────────────────────────────────────────
+function _bindControls() {
+  // TF selector
+  document.getElementById('gzTfSeg').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-tf]'); if (!btn) return;
+    document.querySelectorAll('#gzTfSeg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    _tf = btn.dataset.tf;
+    _rebuildChart();
+  });
+
+  // Direction filter
+  document.getElementById('gzDirSeg').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-dir]'); if (!btn) return;
+    document.querySelectorAll('#gzDirSeg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    _dirFilter = btn.dataset.dir;
+    _rebuildChart();
+    _renderZoneCards();
+  });
+
+  // Count filter
+  document.getElementById('gzCountSeg').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-count]'); if (!btn) return;
+    document.querySelectorAll('#gzCountSeg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    _countFilter = btn.dataset.count === 'all' ? 9999 : parseInt(btn.dataset.count);
+    _rebuildChart();
+    _renderZoneCards();
+  });
+
+  // Checkboxes
+  const checks = [
+    ['gzShowSession', v => { _showSession = v; document.getElementById('gzChkSession').classList.toggle('on', v); }],
+    ['gzShowAnchors', v => { _showAnchors = v; document.getElementById('gzChkAnchors').classList.toggle('on', v); }],
+    ['gzShowTl',      v => { _showTl      = v; document.getElementById('gzChkTl').classList.toggle('on', v); }],
+    ['gzShowSwings',  v => { _showSwings  = v; document.getElementById('gzChkSwings').classList.toggle('on', v); }],
+  ];
+  checks.forEach(([id, fn]) => {
+    document.getElementById(id).addEventListener('change', e => { fn(e.target.checked); _rebuildChart(); });
+  });
+
+  document.getElementById('gzRefreshBtn').addEventListener('click', _load);
+}
+
+// ── Main data load ────────────────────────────────────────────────────
+async function _load() {
+  try {
+    const [zonesRes, statusRes] = await Promise.all([
+      fetch('/api/kv/get?key=gold_bot_zones'),
+      fetch('/api/kv/get?key=gold_bot_status'),
+    ]);
+    const zonesJ  = await zonesRes.json();
+    const statusJ = await statusRes.json();
+
+    if (!zonesJ.miss && zonesJ.data) _zonesData = zonesJ.data;
+    if (!statusJ.miss && statusJ.data) _statusData = statusJ.data;
+
+    _updateStatusBar();
+    _updateStats();
+
+    // Fetch candles for the chart
+    await _fetchCandles();
+    _rebuildChart();
+    _renderZoneCards();
+
+  } catch(e) {
+    console.error('Load error', e);
+  }
+}
+
+// ── Candle fetch + aggregation ────────────────────────────────────────
+async function _fetchCandles() {
+  const days = _tf === 'H4' ? 28 : 10;
+  const to   = new Date();
+  const from = new Date(to.getTime() - days * 86400_000);
+  const fmt  = d => d.toISOString().slice(0, 10);
+
+  try {
+    document.getElementById('gzChartLoading').classList.remove('hidden');
+    const res = await fetch(`/api/vol-backtest/candles/xauusd?from=${fmt(from)}&to=${fmt(to)}`);
+    const j   = await res.json();
+    if (!j.ok || !j.candles?.length) throw new Error('No candles returned');
+
+    const m1 = j.candles;
+    _candles = _tf === 'H4' ? _aggregate(m1, 14400) : _aggregate(m1, 1800);
+  } catch(e) {
+    console.warn('Candle fetch failed:', e.message);
+    _candles = [];
+  } finally {
+    document.getElementById('gzChartLoading').classList.add('hidden');
+  }
+}
+
+function _aggregate(m1, periodSecs) {
+  const buckets = {};
+  for (const c of m1) {
+    const t = Math.floor(c.time / periodSecs) * periodSecs;
+    if (!buckets[t]) {
+      buckets[t] = { time: t, open: c.open, high: c.high, low: c.low, close: c.close };
+    } else {
+      if (c.high > buckets[t].high) buckets[t].high = c.high;
+      if (c.low  < buckets[t].low)  buckets[t].low  = c.low;
+      buckets[t].close = c.close;
+    }
+  }
+  return Object.values(buckets).sort((a, b) => a.time - b.time);
+}
+
+// ── Chart rebuild ──────────────────────────────────────────────────────
+function _rebuildChart() {
+  if (!_cs || !_chart) return;
+
+  // Candle data
+  if (_candles.length) _cs.setData(_candles);
+
+  // Clear all price lines
+  _priceLines.forEach(pl => { try { _cs.removePriceLine(pl); } catch {} });
+  _priceLines = [];
+
+  // Clear markers
+  _cs.setMarkers([]);
+
+  const zones = _filteredZones();
+  if (!zones.length) return;
+
+  const armedId = _zonesData?.armed_zone || _statusData?.armed_zone_id;
+
+  // Draw session levels first (behind zones)
+  if (_showSession && _zonesData?.pivot_levels) _drawSessionLevels(_zonesData.pivot_levels);
+
+  // VWAP anchors
+  if (_showAnchors && _zonesData?.vwap_anchors?.length) _drawVwapAnchors(_zonesData.vwap_anchors);
+
+  // Trendlines
+  if (_showTl && _zonesData?.trendlines?.length) _drawTrendlines(_zonesData.trendlines);
+
+  // Zones
+  const markers = [];
+  zones.forEach(z => {
+    _drawZone(z, z.zone_id === armedId, markers);
+  });
+
+  if (markers.length) _cs.setMarkers(markers.sort((a, b) => a.time - b.time));
+
+  // Fit to chart
+  _chart.timeScale().fitContent();
+}
+
+// ── Draw a single zone ──────────────────────────────────────────────
+function _drawZone(z, isArmed, markers) {
+  const isLong  = z.direction === 'long';
+  const baseCol = isLong ? '#26a69a' : '#ef5350';
+  const dimCol  = isLong ? 'rgba(38,166,154,0.35)' : 'rgba(239,83,80,0.35)';
+
+  const add = (price, color, title, width=1, style=2) => {
+    if (price == null || price <= 0) return;
+    try {
+      const pl = _cs.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title });
+      _priceLines.push(pl);
+    } catch {}
+  };
+
+  const suffix = `[${z.tf} ${z.zone_variant ?? 'gp'}]`;
+
+  // Swing origin + end (structure reference)
+  if (_showSwings) {
+    add(z.swing_origin, 'rgba(107,114,128,0.6)', `⬚ origin ${suffix}`, 1, LS.LargeDashed ?? 3);
+    add(z.swing_end,    'rgba(107,114,128,0.6)', `⬚ end ${suffix}`,    1, LS.LargeDashed ?? 3);
+  }
+
+  // Fib retracement levels
+  add(z.level_382, '#26c6da',  `.382 ${suffix}`, 1, LS.Dashed ?? 2);
+  add(z.level_500, '#fff176',  `.500 ${suffix}`, 1, LS.Dashed ?? 2);
+  add(z.level_786, '#ffa726',  `.786 ${suffix}`, 1, LS.Dashed ?? 2);
+  add(z.level_886, '#ef5350',  `.886 ${suffix}`, 1, LS.Dashed ?? 2);
+
+  // GP zone — thicker solid gold lines
+  const gpLabel = isArmed ? `⚡ GP ${suffix}` : `GP ${suffix}`;
+  add(z.gp_low,  isArmed ? '#f4c430' : dimCol, `↓ ${gpLabel}`, isArmed ? 2 : 1, LS.Solid ?? 0);
+  add(z.gp_high, isArmed ? '#f4c430' : dimCol, `↑ ${gpLabel}`, isArmed ? 2 : 1, LS.Solid ?? 0);
+  add(z.level_618, '#f4c430', `.618 ${suffix}`, 1, LS.Dotted ?? 1);
+  add(z.level_650, '#f4c430', `.650 ${suffix}`, 1, LS.Dotted ?? 1);
+
+  // Swing markers on chart
+  if (_showSwings && z.swing_origin_time > 0) {
+    markers.push({
+      time: z.swing_origin_time,
+      position: isLong ? 'belowBar' : 'aboveBar',
+      color: 'rgba(107,114,128,0.7)',
+      shape: isLong ? 'arrowUp' : 'arrowDown',
+      text: `${z.tf} origin`,
+      size: 0.8,
+    });
+  }
+  if (_showSwings && z.swing_end_time > 0) {
+    markers.push({
+      time: z.swing_end_time,
+      position: isLong ? 'aboveBar' : 'belowBar',
+      color: isLong ? 'rgba(38,166,154,0.8)' : 'rgba(239,83,80,0.8)',
+      shape: isLong ? 'arrowUp' : 'arrowDown',
+      text: `${z.tf} end (${z.zone_variant ?? 'gp'} src)`,
+      size: 1,
+    });
+  }
+}
+
+// ── Session levels ─────────────────────────────────────────────────────
+function _drawSessionLevels(pl) {
+  const add = (price, color, title, width=1, style=2) => {
+    if (price == null || price <= 0) return;
+    try {
+      const l = _cs.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title });
+      _priceLines.push(l);
+    } catch {}
+  };
+
+  add(pl.vwap,       '#4f7df0', 'VWAP',       2, 0);
+  add(pl.daily_open, '#4f7df0', 'Daily open', 1, 2);
+  add(pl.poc,        '#ab47bc', 'POC',        2, 0);
+  add(pl.vah,        '#26a69a', 'VAH',        1, 2);
+  add(pl.val,        '#ef5350', 'VAL',        1, 2);
+  add(pl.pp,         '#9ba3b2', 'PP',         1, 2);
+  add(pl.r1,         '#9ba3b2', 'R1',         1, 4);
+  add(pl.r2,         '#9ba3b2', 'R2',         1, 4);
+  add(pl.s1,         '#9ba3b2', 'S1',         1, 4);
+  add(pl.s2,         '#9ba3b2', 'S2',         1, 4);
+
+  // H4 pivot
+  if (pl.h4_pivot) {
+    add(pl.h4_pivot.pp, 'rgba(255,167,38,.5)', 'H4 PP', 1, 4);
+    add(pl.h4_pivot.r1, 'rgba(255,167,38,.4)', 'H4 R1', 1, 4);
+    add(pl.h4_pivot.s1, 'rgba(255,167,38,.4)', 'H4 S1', 1, 4);
+  }
+}
+
+// ── VWAP anchors ────────────────────────────────────────────────────────
+function _drawVwapAnchors(anchors) {
+  const palette = ['#4f7df0','#26c6da','#ab47bc','#ffa726'];
+  anchors.slice(0, 6).forEach((a, i) => {
+    if (!a.price || a.price <= 0) return;
+    const col = palette[i % palette.length];
+    try {
+      const pl = _cs.createPriceLine({
+        price: a.price, color: col, lineWidth: 1, lineStyle: 3,
+        axisLabelVisible: true,
+        title: `VWAP-${a.session?.[0] ?? ''}${a.age_days ?? 0}d ${a.direction?.[0] ?? ''}`,
+      });
+      _priceLines.push(pl);
+    } catch {}
+  });
+}
+
+// ── Trendlines ──────────────────────────────────────────────────────────
+function _drawTrendlines(tls) {
+  tls.forEach(tl => {
+    if (!tl.projected || tl.projected <= 0) return;
+    const col = tl.kind === 'ascending' ? 'rgba(38,166,154,.5)' : 'rgba(239,83,80,.5)';
+    try {
+      const pl = _cs.createPriceLine({
+        price: tl.projected, color: col, lineWidth: 1, lineStyle: 4,
+        axisLabelVisible: true, title: `TL ${tl.tf} ${tl.kind?.[0]?.toUpperCase() ?? ''}(${tl.touches}t)`,
+      });
+      _priceLines.push(pl);
+    } catch {}
+  });
+}
+
+// ── Zone filtering ──────────────────────────────────────────────────────
+function _filteredZones() {
+  if (!_zonesData?.zones) return [];
+  let z = [..._zonesData.zones];
+  if (_dirFilter !== 'all') z = z.filter(x => x.direction === _dirFilter);
+  z.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  if (typeof _countFilter === 'number') z = z.slice(0, _countFilter);
+  return z;
+}
+
+// ── Status bar ───────────────────────────────────────────────────────
+function _updateStatusBar() {
+  const d  = _zonesData;
+  const st = _statusData;
+
+  if (!d && !st) return;
+
+  const bias = d?.htf_bias || st?.htf_bias || '—';
+  const bEl  = document.getElementById('gzBiasBadge');
+  bEl.textContent = `HTF ${bias}`;
+  bEl.className   = `gz-badge ${bias === 'BULL' ? 'bull' : bias === 'BEAR' ? 'bear' : 'neutral'}`;
+
+  const sess = d?.session || '—';
+  document.getElementById('gzSessionBadge').textContent = `Session: ${sess}`;
+
+  const state = d?.bot_state || st?.state || '—';
+  document.getElementById('gzBotStateBadge').textContent = `Bot: ${state}`;
+
+  const armedId = d?.armed_zone || st?.armed_zone_id;
+  const armedEl = document.getElementById('gzArmedBadge');
+  if (armedId) {
+    armedEl.textContent = `⚡ ${armedId}`;
+    armedEl.style.display = '';
+  } else {
+    armedEl.style.display = 'none';
+  }
+
+  const ts = d?.timestamp || st?.timestamp;
+  if (ts) {
+    const dt = new Date(ts);
+    document.getElementById('gzTs').textContent = `Zone map: ${dt.toUTCString()}`;
+  }
+}
+
+// ── Stats strip ──────────────────────────────────────────────────────
+function _updateStats() {
+  const d  = _zonesData;
+  const st = _statusData;
+  const pl = d?.pivot_levels;
+  const price = st?.mt5_positions?.[0]?.price || null;
+
+  if (pl?.vwap && price) {
+    const diff = price - pl.vwap;
+    document.getElementById('gsPriceVwap').textContent = `${diff > 0 ? '▲ +' : '▼ '}${diff.toFixed(1)} vs VWAP`;
+  }
+
+  const bias = d?.htf_bias || '—';
+  document.getElementById('gsBias').textContent = bias;
+  document.getElementById('gsBias').style.color = bias === 'BULL' ? 'var(--green)' : bias === 'BEAR' ? 'var(--red)' : 'var(--text)';
+  document.getElementById('gsBiasConf').textContent = d?.htf_confidence != null ? `${(d.htf_confidence * 100).toFixed(0)}% confidence` : '—';
+
+  if (pl) {
+    document.getElementById('gsVwap').textContent = pl.vwap?.toFixed(2) ?? '—';
+    document.getElementById('gsPoc').textContent  = pl.poc  != null ? `POC ${pl.poc?.toFixed(2)}` : '—';
+    document.getElementById('gsVah').textContent  = pl.vah?.toFixed(2) ?? '—';
+    document.getElementById('gsVal').textContent  = pl.val?.toFixed(2) ?? '—';
+  }
+
+  const zones = d?.zones ?? [];
+  document.getElementById('gsZones').textContent = zones.length;
+  const armedId = d?.armed_zone || st?.armed_zone_id;
+  document.getElementById('gsArmed').textContent = armedId ? `Armed: ${armedId.split('_').slice(0,3).join('_')}` : 'No armed zone';
+
+  const state = d?.bot_state || st?.state || '—';
+  document.getElementById('gsBotState').textContent = state;
+  document.getElementById('gsBotMode').textContent  = st?.paper_mode === false ? 'LIVE mode' : 'Paper mode';
+}
+
+// ── Zone cards ───────────────────────────────────────────────────────
+function _renderZoneCards() {
+  const grid = document.getElementById('gzZonesGrid');
+  const zones = _filteredZones();
+  const armedId = _zonesData?.armed_zone || _statusData?.armed_zone_id;
+
+  if (!zones.length) {
+    grid.innerHTML = '<div class="gz-msg">No zones match the current filter</div>';
+    return;
+  }
+
+  grid.innerHTML = zones.map(z => {
+    const isLong   = z.direction === 'long';
+    const isArmed  = z.zone_id === armedId;
+    const scoreStr = (z.score ?? 0).toFixed(1);
+    const scoreClass = z.score >= 40 ? 'high' : z.score >= 15 ? 'mid' : 'low';
+
+    const fibPills = [
+      `<span class="gz-fib-pill r382">.382 ${z.level_382?.toFixed(1)}</span>`,
+      `<span class="gz-fib-pill r500">.500 ${z.level_500?.toFixed(1)}</span>`,
+      `<span class="gz-fib-pill gp">.618 ${z.level_618?.toFixed(1)}</span>`,
+      `<span class="gz-fib-pill gp">.650 ${z.level_650?.toFixed(1)}</span>`,
+      `<span class="gz-fib-pill r786">.786 ${z.level_786?.toFixed(1)}</span>`,
+      `<span class="gz-fib-pill r886">.886 ${z.level_886?.toFixed(1)}</span>`,
+    ].join('');
+
+    const compTags = (z.composition ?? [])
+      .filter((t,i,a) => a.indexOf(t) === i)  // deduplicate
+      .slice(0, 12)
+      .map(t => {
+        const strong = t.includes('BULL') || t.includes('BEAR') || t.includes('POC') ||
+                       t.includes('VWAP') || t.includes('VAH') || t.includes('VAL') ||
+                       t.includes('Daily') || t.includes('TL');
+        return `<span class="gz-comp-tag ${strong ? 'strong' : ''}">${t}</span>`;
+      }).join('');
+
+    const swingInfo = z.swing_origin && z.swing_end
+      ? `${isLong ? '↑' : '↓'} Swing: ${z.swing_origin?.toFixed(1)} → ${z.swing_end?.toFixed(1)} (R=${z.impulse_size?.toFixed(1)})`
+      : '';
+
+    return `
+    <div class="gz-zone-card ${isLong ? 'long' : 'short'} ${isArmed ? 'armed' : ''} ${z.zone_id === _selectedZoneId ? 'selected' : ''}"
+         onclick="_selectZone('${z.zone_id}')">
+      <div class="gz-zone-top">
+        <div>
+          <div class="gz-zone-id">${z.zone_id}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">${swingInfo}</div>
+        </div>
+        <div class="gz-zone-score ${scoreClass}">${scoreStr}</div>
+      </div>
+      <div class="gz-zone-window ${isLong ? 'long' : 'short'}">
+        ${isArmed ? '⚡ ' : ''}GP: ${z.gp_low?.toFixed(2)} – ${z.gp_high?.toFixed(2)}
+        ${z.htf_aligned ? ' ✓ HTF' : ''}
+      </div>
+      <div class="gz-zone-fibs">${fibPills}</div>
+      <div class="gz-comp-tags">${compTags}</div>
+    </div>`;
+  }).join('');
+}
+
+function _selectZone(zoneId) {
+  _selectedZoneId = _selectedZoneId === zoneId ? null : zoneId;
+  _renderZoneCards();
+  // Scroll chart to zone if possible
+  const z = _zonesData?.zones?.find(x => x.zone_id === zoneId);
+  if (z && _chart) {
+    _chart.priceScale('right').applyOptions({ autoScale: false });
+    setTimeout(() => {
+      _chart.priceScale('right').applyOptions({ autoScale: true });
+    }, 100);
+  }
+}
+
+// ── Live price update ───────────────────────────────────────────────
+async function _tickPrice() {
+  try {
+    const r = await fetch('/api/quote?symbol=XAU/USD');
+    const j = await r.json();
+    const p = j.price ?? j.close ?? j.ask;
+    if (p) {
+      document.getElementById('gzLivePrice').textContent = `XAU/USD ${parseFloat(p).toFixed(2)}`;
+      document.getElementById('gsPrice').textContent     = parseFloat(p).toFixed(2);
+    }
+  } catch {}
+}
+setInterval(_tickPrice, 5000);
+_tickPrice();
+
+// ── Trade history ────────────────────────────────────────────────────
+// Injected from journal — hardcoded from last parse for quick reference
+const PAPER_TRADES = [
+  { ts:'2026-05-25 13:48', zone:'M30_short_4535_4571_886', dir:'SHORT', entry:4561.45, sl:4578.12, tp1:4544.78, tp2:4528.11, slPips:16.7, result:'LOSS', closePx:4578.35, pnl:-16.9, closeReason:'SL_HIT' },
+  { ts:'2026-05-26 07:55', zone:'M30_long_4512_4571',      dir:'LONG',  entry:4531.81, sl:4516.61, tp1:4547.01, tp2:4562.21, slPips:15.2, result:'OPEN', closePx:null, pnl:null, closeReason:'' },
+  { ts:'2026-05-26 13:50', zone:'M30_short_4512_4543',     dir:'SHORT', entry:4526.10, sl:4541.40, tp1:4510.80, tp2:4495.50, slPips:15.3, result:'TP1↗', closePx:4509.9, pnl:16.2, closeReason:'TP1_HIT (no TP2 logged)' },
+  { ts:'2026-05-26 15:30', zone:'M30_long_4489_4543',      dir:'LONG',  entry:4506.47, sl:4491.87, tp1:4521.07, tp2:4535.67, slPips:14.6, result:'OPEN', closePx:null, pnl:null, closeReason:'' },
+  { ts:'2026-05-26 19:10', zone:'M30_long_4492_4537_786',  dir:'LONG',  entry:4500.60, sl:4491.53, tp1:4509.67, tp2:4518.74, slPips:9.1,  result:'OPEN', closePx:null, pnl:null, closeReason:'' },
+  { ts:'2026-05-29 07:01', zone:'M30_long_4501_4541_50pct',dir:'LONG',  entry:4522.26, sl:4501.85, tp1:4542.67, tp2:4563.08, slPips:20.4, result:'WIN',  closePx:4563.91, pnl:+41.6, closeReason:'TP2_HIT' },
+  { ts:'2026-06-01 10:40', zone:'M30_long_4476_4517_50pct',dir:'LONG',  entry:4503.36, sl:4477.23, tp1:4529.49, tp2:4555.62, slPips:26.1, result:'LOSS', closePx:4476.35, pnl:-27.0, closeReason:'SL_HIT' },
+  { ts:'2026-06-04 07:57', zone:'M30_long_4448_4513_786',  dir:'LONG',  entry:4461.69, sl:4444.94, tp1:4478.44, tp2:4495.19, slPips:16.8, result:'OPEN', closePx:null, pnl:null, closeReason:'' },
+  { ts:'2026-06-04 11:05', zone:'M30_long_4448_4513',      dir:'LONG',  entry:4472.27, sl:4451.02, tp1:4493.52, tp2:4514.77, slPips:21.2, result:'TP1↗', closePx:4493.6, pnl:21.3, closeReason:'TP1_HIT (no TP2 logged)' },
+  { ts:'2026-06-04 14:09', zone:'M30_long_4475_4495_50pct',dir:'LONG',  entry:4490.88, sl:4360.37, tp1:4777.99, tp2:4882.4,  slPips:130.5,result:'⚠️ BAD SL', closePx:null, pnl:null, closeReason:'SL 130.5 pips — exceeds max_sl_pips=40?' },
+  { ts:'2026-06-04 18:25', zone:'M30_long_4463_4497_50pct',dir:'LONG',  entry:4480.31, sl:4401.08, tp1:4654.62, tp2:4718.01, slPips:79.2, result:'⚠️ BAD SL', closePx:null, pnl:null, closeReason:'SL 79.2 pips — exceeds max_sl_pips=40?' },
+  { ts:'2026-06-05 07:05', zone:'M30_long_4439_4488_786',  dir:'LONG',  entry:4455.07, sl:4415.07, tp1:4543.07, tp2:4575.07, slPips:40.0, result:'OPEN', closePx:null, pnl:null, closeReason:'' },
+  { ts:'2026-06-05 09:50', zone:'M30_long_4426_4541',      dir:'LONG',  entry:4465.44, sl:4425.44, tp1:4553.44, tp2:4585.44, slPips:40.0, result:'LOSS', closePx:4423.38, pnl:-42.1, closeReason:'SL_HIT' },
+  { ts:'2026-06-08 09:15', zone:'M30_long_4269_4488_886',  dir:'LONG',  entry:4288.82, sl:4248.82, tp1:4376.82, tp2:4408.82, slPips:40.0, result:'OPEN', closePx:null, pnl:null, closeReason:'' },
+  { ts:'2026-06-08 15:50', zone:'M30_long_4269_4468',      dir:'LONG',  entry:4335.80, sl:4295.80, tp1:4423.80, tp2:4455.80, slPips:40.0, result:'EXPIRED', closePx:4317.38, pnl:-18.4, closeReason:'EXPIRED at day end' },
+];
+
+(function _renderTrades() {
+  const wrap = document.getElementById('gzTradesWrap');
+  const rows = PAPER_TRADES.map(t => {
+    const rCls = t.result === 'WIN' ? 'win' : t.result === 'LOSS' || t.result === 'EXPIRED' ? 'loss'
+               : t.result.includes('BAD') ? 'loss' : t.result === 'OPEN' ? 'open' : 'expired';
+    const pnlStr = t.pnl != null ? `${t.pnl > 0 ? '+' : ''}${t.pnl.toFixed(1)}p` : '—';
+    const closeStr = t.closePx ? t.closePx.toFixed(2) : '—';
+    const warn = t.result.includes('BAD') ? ' ⚠️' : '';
+    return `<tr>
+      <td style="color:var(--text3)">${t.ts}</td>
+      <td style="color:${t.dir==='LONG'?'var(--green)':'var(--red)'};">${t.dir}</td>
+      <td>${t.entry.toFixed(2)}</td>
+      <td>${t.sl.toFixed(2)}</td>
+      <td style="color:${t.slPips > 40 ? 'var(--red)' : 'var(--text)'}">${t.slPips}${warn}</td>
+      <td>${t.tp1.toFixed(2)} / ${t.tp2.toFixed(2)}</td>
+      <td>${closeStr}</td>
+      <td class="gz-result ${rCls}">${t.result}</td>
+      <td style="color:${t.pnl != null && t.pnl > 0 ? 'var(--green)' : 'var(--red)'};">${pnlStr}</td>
+      <td style="font-size:10px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis">${t.closeReason}</td>
+    </tr>`;
+  }).join('');
+
+  const totals = PAPER_TRADES.reduce((acc, t) => {
+    if (t.pnl != null) {
+      acc.total += t.pnl;
+      acc.count++;
+      if (t.result === 'WIN') acc.wins++;
+      else if (t.result === 'LOSS' || t.result === 'EXPIRED') acc.losses++;
+    }
+    return acc;
+  }, { total: 0, count: 0, wins: 0, losses: 0 });
+
+  const summaryColor = totals.total >= 0 ? 'var(--green)' : 'var(--red)';
+
+  wrap.innerHTML = `
+  <div style="margin-bottom:10px;padding:10px 14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);display:flex;gap:24px;flex-wrap:wrap">
+    <div><span style="color:var(--text3);font-size:10px">SIGNALS</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace">${PAPER_TRADES.length}</span></div>
+    <div><span style="color:var(--text3);font-size:10px">CLOSED</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace">${totals.count}</span></div>
+    <div><span style="color:var(--text3);font-size:10px">WINS / LOSSES</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace;color:var(--green)">${totals.wins}</span><span style="color:var(--text3)"> / </span><span style="font-weight:700;font-family:'DM Mono',monospace;color:var(--red)">${totals.losses}</span></div>
+    <div><span style="color:var(--text3);font-size:10px">NET (closed)</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace;color:${summaryColor}">${totals.total > 0 ? '+' : ''}${totals.total.toFixed(1)} pips</span></div>
+    <div style="color:var(--amber);font-size:10.5px;align-self:center">⚠ 2 entries had SL > 40 pip cap — possible bug (see orange rows)</div>
+  </div>
+  <table class="gz-trades-table">
+    <thead><tr>
+      <th>Time (UTC)</th><th>Dir</th><th>Entry</th><th>SL</th><th>SL pips</th><th>TP1 / TP2</th><th>Close px</th><th>Result</th><th>P&L</th><th>Notes</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+})();
+</script>
+</body>
+</html>

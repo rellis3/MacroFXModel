@@ -1,0 +1,17 @@
+{
+  "params": {
+    "entry_z": 2.0,
+    "exit_z": 0.5,
+    "stop_z": 2.8,
+    "min_score": 0.1,
+    "min_corr": 0.3,
+    "risk_pct": 1.0,
+    "corr_window": 200,
+    "warmup": 300,
+    "max_positions": 5,
+    "block_same_leg": true,
+    "coint_pval": 0.05,
+    "max_hold_bars": 48,
+    "pair_cooldown_bars": 0,
+    "spread_pips": 1.5,
+    "whitelist_pairs": 
