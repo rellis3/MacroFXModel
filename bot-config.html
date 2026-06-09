@@ -2534,30 +2534,40 @@ let _posRefreshTimer = null;
 // ── Hedge suggestion helpers ──────────────────────────────────────────────────
 
 function _normSym(s) {
-  return (s || '').toLowerCase().replace(/[._\s]/g, '');
+  // Strip slashes, underscores, spaces — "NAS100_USD" → "nas100usd", "GBP/JPY" → "gbpjpy"
+  return (s || '').toLowerCase().replace(/[/._\s]/g, '');
 }
 
 function _findBestHedge(symbol, hedgeData) {
   if (!hedgeData) return null;
-  const { avg_corr = {}, corr_std = {}, last_betas = {} } = hedgeData;
+  const { avg_corr = {}, corr_std = {}, pairs = [] } = hedgeData;
   const sym = _normSym(symbol);
+  if (!pairs.length) return null;
+  // Build key from known pairs list — avoids splitting on '_' which breaks
+  // symbols like NAS100_USD. Key format in corr_history is "${pa}_${pb}".
   let best = null, bestScore = 0;
-  for (const [key, corr] of Object.entries(avg_corr)) {
-    const [a, b] = key.split('__');
-    let hedgeSym = null;
-    if (a === sym) hedgeSym = b;
-    else if (b === sym) hedgeSym = a;
-    if (!hedgeSym) continue;
-    const score = Math.abs(corr);
-    if (score > bestScore) {
-      bestScore = score;
-      best = { symbol: hedgeSym.toUpperCase(), corr, std: corr_std[key] || 0, beta: last_betas[key] || 1 };
+  for (let i = 0; i < pairs.length; i++) {
+    for (let j = i + 1; j < pairs.length; j++) {
+      const pa = pairs[i], pb = pairs[j];
+      const key  = `${pa}_${pb}`;
+      const corr = avg_corr[key];
+      if (corr == null) continue;
+      let hedgeSym = null;
+      if (_normSym(pa) === sym) hedgeSym = pb;
+      else if (_normSym(pb) === sym) hedgeSym = pa;
+      if (!hedgeSym) continue;
+      const score = Math.abs(corr);
+      if (score > bestScore) {
+        bestScore = score;
+        best = { symbol: hedgeSym, corr, std: corr_std[key] || 0 };
+      }
     }
   }
   return best;
 }
 
-function _hedgeCellHtml(pos, hedgeData) {
+// netLots is non-null when this hedge covers multiple positions (shows the net lot label).
+function _hedgeCellHtml(pos, hedgeData, netLots = null) {
   if (!hedgeData) return '<td style="color:var(--text3);font-size:11px;font-style:italic">—</td>';
   const h = _findBestHedge(pos.symbol, hedgeData);
   if (!h) return `<td style="color:var(--text3);font-size:11px;font-style:italic" title="No correlation pair found for ${pos.symbol}">—</td>`;
@@ -2567,10 +2577,17 @@ function _hedgeCellHtml(pos, hedgeData) {
   const hedgeDir  = hedgeLong ? 'BUY' : 'SELL';
   const dirColor  = hedgeLong ? 'var(--green)' : 'var(--red)';
   const corrSign  = h.corr >= 0 ? '+' : '';
+  const absCorr   = Math.abs(h.corr);
+  const strength  = absCorr >= 0.7 ? 'strong' : absCorr >= 0.4 ? 'mod' : 'weak';
+  const corrColor = strength === 'strong' ? 'var(--green)' : strength === 'mod' ? 'var(--amber)' : 'var(--text3)';
+  const netTag = netLots !== null
+    ? `<span style="color:var(--amber);font-size:10px" title="Net of all ${pos.symbol} positions"> net ${netLots >= 0 ? '+' : ''}${netLots.toFixed(2)}L</span>`
+    : '';
   return `<td style="font-size:11px;white-space:nowrap">` +
     `<span style="color:${dirColor};font-weight:700">${hedgeDir}</span> ` +
     `<span style="color:var(--text2)">${h.symbol}</span> ` +
-    `<span style="color:var(--text3)">${corrSign}${h.corr.toFixed(2)} β${Math.abs(h.beta).toFixed(2)}</span>` +
+    `<span style="color:${corrColor}">(${corrSign}${h.corr.toFixed(2)})</span>` +
+    netTag +
     `</td>`;
 }
 
@@ -2619,10 +2636,12 @@ async function loadPositionsTab() {
   const tfoot = document.getElementById('posTableFoot');
   if (!tbody) return;
 
-  // Fetch all bot statuses and hedge corr data in parallel
+  // Fetch all bot statuses and hedge corr data in parallel.
+  // hedge_alerts_cache is populated by Railway's /api/hedge-alerts endpoint and
+  // stored in CF KV so it's accessible from both Railway and Cloudflare Pages.
   const [results, hedgeData] = await Promise.all([
     Promise.allSettled(_POS_BOTS.map(b => _kvGet(b.key))),
-    fetch('/api/hedge-alerts').then(r => r.ok ? r.json() : null).catch(() => null),
+    _kvGet('hedge_alerts_cache'),
   ]);
   const allPositions = [];
   const staleBots = [];
@@ -2675,6 +2694,11 @@ async function loadPositionsTab() {
     const isMultiBot  = new Set(group.map(p => p._bot.key)).size > 1;
     const showConflictBadge = hasConflict || isMultiBot;
 
+    // Net out all positions for this symbol to get a single hedge suggestion.
+    // BUY adds lots, SELL subtracts — the result is the true directional exposure.
+    const netLots = group.reduce((s, p) => s + (p.direction === 'BUY' ? 1 : -1) * (p.lots || 0), 0);
+    const netPos  = { symbol: sym, direction: netLots >= 0 ? 'BUY' : 'SELL', lots: Math.abs(netLots) };
+
     group.forEach((p, idx) => {
       const bot    = p._bot;
       const net    = (p.profit || 0) + (p.swap || 0);
@@ -2695,11 +2719,21 @@ async function loadPositionsTab() {
       const firstClass = idx === 0 ? ' pos-group-first' : '';
 
       const botTitle = p._account ? `MT5 #${p._account}` : bot.label;
+
+      // Show net hedge on the first row only; subsequent rows in the group show a
+      // note so the user knows the suggestion applies to the combined net exposure.
+      let hedgeCell;
+      if (idx === 0) {
+        hedgeCell = _hedgeCellHtml(netPos, hedgeData, group.length > 1 ? netLots : null);
+      } else {
+        hedgeCell = `<td style="color:var(--text3);font-size:10px;font-style:italic">↑ net hedge above</td>`;
+      }
+
       rows.push(
         `<tr class="${firstClass}">` +
         `<td><strong>${idx === 0 ? sym : ''}</strong>${idx === 0 ? conflictHtml : ''}</td>` +
         `<td><span class="${badgeClass}" style="${badgeStyle}" title="${botTitle}">${bot.label}</span></td>` +
-        _hedgeCellHtml(p, hedgeData) +
+        hedgeCell +
         `<td class="${dClass}">${p.direction}</td>` +
         `<td>${(p.lots || 0).toFixed(2)}</td>` +
         `<td>${(p.open_price || 0).toFixed(5)}</td>` +

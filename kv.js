@@ -69,6 +69,7 @@ const _CF_EXACT = new Set([
   'dyn_anchor_config',      // DynAnchor bot settings — must survive redeploys
   'dyn_anchor_credentials', // DynAnchor bot MT5 credentials — must survive redeploys
   'hedge_audit_log',        // forward-test log for advisory hedge suggestions — must survive redeploys
+  'hedge_alerts_cache',     // summary of corr_history.json pushed by /api/hedge-alerts — survives redeploys
 ]);
 function isCfKey(key) {
   // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart

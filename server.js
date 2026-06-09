@@ -3223,7 +3223,7 @@ app.get('/api/corr-history', (req, res) => {
 // Hedge alerts — compact summary for the dashboard beta panel.
 // Returns avg_corr, corr_std (computed from records), last rolling corr, and last betas.
 // Much smaller than the full corr-history response.
-app.get('/api/hedge-alerts', (req, res) => {
+app.get('/api/hedge-alerts', async (req, res) => {
   const p = CORR_HISTORY_PATH;
   if (!fs.existsSync(p)) return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {} });
   try {
@@ -3243,14 +3243,17 @@ app.get('/api/hedge-alerts', (req, res) => {
       corr_std[k] = n > 1 ? +(Math.sqrt(Math.max(0, sums2[k] / n - mu * mu))).toFixed(5) : 0;
     }
     const lastRec = records[records.length - 1] || {};
-    res.json({
+    const result = {
       generated: data.generated,
       pairs: data.pairs || [],
       avg_corr: data.avg_corr || {},
       corr_std,
       last_corr: lastCorr,
-      last_betas: lastRec.beta || {}
-    });
+      last_betas: lastRec.beta || {},
+    };
+    // Cache in KV so the Positions tab can read it from both Railway and CF Pages
+    kv.put('hedge_alerts_cache', JSON.stringify(result), { expirationTtl: 86400 }).catch(() => {});
+    res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

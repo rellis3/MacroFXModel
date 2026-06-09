@@ -34,3 +34,9 @@ bot/data/beta_history.jsonl
 Gold/logs/gold_bot.log
 Gold/logs/gold_journal.jsonl
 logs/regime_bot_v2.log
+logs/regime_bot_v2.log
+Gold/logs/gold_journal.jsonl
+Gold/logs/gold_bot.log
+bot/data/beta_history.jsonl
+bot/regime_bot.log
+backtestSystem/backtestSystem.log
