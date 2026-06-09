@@ -208,6 +208,19 @@
     <button class="dark-btn" style="padding:2px 10px;font-size:10px" onclick="resetParams()">Reset defaults</button>
     <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:auto">120-day warmup window is loaded automatically before the From date</span>
   </div>
+  <!-- Strategy picker -->
+  <div style="display:flex;align-items:flex-start;gap:14px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:12px">
+    <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+      <span class="fb-param-lbl">Entry Strategy</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:2px">
+        <select class="fb-sel" id="cfg_strategy" style="min-width:160px">
+          <option value="dirop">Dir on Open</option>
+          <option value="reversal">Reversal</option>
+        </select>
+        <span id="stratHelp" style="font-size:10px;color:var(--text3);font-family:'DM Sans',sans-serif;line-height:1.5"></span>
+      </div>
+    </div>
+  </div>
   <div class="fb-cfg-grid" id="cfgGrid"></div>
   <div style="margin-top:14px">
     <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:4px">
@@ -251,7 +264,7 @@
   </div>
   <!-- Daily P&L subchart (synced) -->
   <div class="fb-pnl-wrap">
-    <span class="fb-pnl-lbl">Daily P&amp;L %</span>
+    <span class="fb-pnl-lbl">Z-Score (20)</span>
     <div id="fbPnlChart"></div>
   </div>
   <div class="fb-resize-handle" id="resizeHandle"></div>
@@ -510,9 +523,11 @@ const PARAMS = [
     help:'Earliest UTC hour new entries are allowed. 0 = London midnight open.' },
   { key:'windowEndH',   label:'Window End (UTC h)',      min:12,  max:23,   step:1,    def:22,
     help:'Latest UTC hour for new entries. EOD force-close fires at this hour.' },
-  { key:'eodClose',     label:'EOD Force Close (1=yes)', min:0,   max:1,    step:1,    def:1,
+  { key:'eodClose',       label:'EOD Force Close (1=yes)', min:0,   max:1,    step:1,    def:1,
     help:'1 = force-close all open trades at the window end hour.' },
-  { key:'warmupDays',   label:'GARCH Warmup Days',       min:60,  max:252,  step:10,   def:90,
+  { key:'maxLevelTrades', label:'Max Trades per Level/Day', min:1,   max:10,   step:1,    def:1,
+    help:'How many times each level can trigger a new entry per day. 1 = original single-entry. Allows re-entry after a trade closes.' },
+  { key:'warmupDays',     label:'GARCH Warmup Days',       min:60,  max:252,  step:10,   def:90,
     help:'Daily bars loaded before the From date to seed the GARCH model.' },
 ];
 const PARAM_DEFS = Object.fromEntries(PARAMS.map(p => [p.key, p.def]));
@@ -574,9 +589,30 @@ function readConfig() {
     const el = document.getElementById('cfg_' + p.key);
     if (el) cfg[p.key] = parseFloat(el.value) || p.def;
   });
+  const stratEl = document.getElementById('cfg_strategy');
+  if (stratEl) cfg.strategy = stratEl.value;
 }
 
-function resetParams() { cfg = { ...PARAM_DEFS }; enabledLevels = new Set(LEVELS.map(l=>l.key)); initConfigUI(); }
+const STRAT_HELP = {
+  dirop:    'Fixed direction per level: levels above the day open fire SHORT, below fire LONG.',
+  reversal: 'Direction from approach side: price touching from below → SHORT, from above → LONG. Same level can fire either way depending on where price came from.',
+};
+document.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('cfg_strategy');
+  const hlp = document.getElementById('stratHelp');
+  if (sel && hlp) {
+    const upd = () => hlp.textContent = STRAT_HELP[sel.value] || '';
+    sel.addEventListener('change', upd); upd();
+  }
+});
+
+function resetParams() {
+  cfg = { ...PARAM_DEFS };
+  enabledLevels = new Set(LEVELS.map(l=>l.key));
+  const stratEl = document.getElementById('cfg_strategy');
+  if (stratEl) { stratEl.value = 'dirop'; stratEl.dispatchEvent(new Event('change')); }
+  initConfigUI();
+}
 function toggleLevel(key, on) { on ? enabledLevels.add(key) : enabledLevels.delete(key); }
 function toggleConfig() { const p=document.getElementById('cfgPanel'); p.style.display=p.style.display==='none'?'block':'none'; }
 
@@ -596,6 +632,21 @@ function setStatus(msg, type='idle') {
   document.getElementById('statusMsg').textContent = msg;
   const dot = document.getElementById('statusDot');
   dot.className = 'sdot' + (type==='running'?' running':type==='ok'?' ok':type==='err'?' err':'');
+}
+
+// ── Rolling Z-score of M1 close prices ───────────────────────────────────────
+// z_t = (close_t − rolling_mean) / rolling_std  over a 20-bar window
+function computeZScoreSeries(candles, window = 20) {
+  const out = [];
+  for (let i = window - 1; i < candles.length; i++) {
+    let sum = 0, sum2 = 0;
+    for (let j = i - window + 1; j <= i; j++) { sum += candles[j].close; sum2 += candles[j].close ** 2; }
+    const mean = sum / window;
+    const variance = sum2 / window - mean * mean;
+    const std = Math.sqrt(Math.max(variance, 0));
+    out.push({ time: candles[i].time, value: std > 1e-10 ? (candles[i].close - mean) / std : 0 });
+  }
+  return out;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -723,8 +774,9 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
         startTs: c.time, endTs: c.time,
         forecast: fc ?? null,
         staticLevels: fc ? computeStaticLevels(c.open, fc) : null,
-        finalDynLevels: null,  // filled at end of day
+        finalDynLevels: null,
         levelTraded: {},
+        levelTradeCount: {},
         pnl: 0,
       };
     }
@@ -788,7 +840,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
 
       for (const def of LEVELS) {
         if (!enabledLvs.has(def.key)) continue;
-        if (currentDay.levelTraded[def.key]) continue;
+        if ((currentDay.levelTradeCount[def.key] || 0) >= (config.maxLevelTrades || 1)) continue;
 
         // Get the level price
         let lvPrice;
@@ -806,21 +858,30 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
           lvPrice = currentDay.staticLevels[def.key];
         }
 
-        let touched = false;
-        if (def.dir === 'SHORT' && c.high >= lvPrice) touched = true;
-        if (def.dir === 'LONG'  && c.low  <= lvPrice) touched = true;
-        if (!touched) continue;
+        // Determine direction from active strategy
+        let lvDir = null;
+        if ((config.strategy || 'dirop') === 'reversal') {
+          // Bar open tells us exactly which side price came from this bar
+          if (c.open < lvPrice && c.high >= lvPrice) lvDir = 'SHORT'; // opened below, moved up to level
+          else if (c.open > lvPrice && c.low  <= lvPrice) lvDir = 'LONG';  // opened above, moved down to level
+          // c.open === lvPrice is vanishingly rare — skip
+        } else {
+          // Dir on Open: direction fixed by level position relative to open
+          if (def.dir === 'SHORT' && c.high >= lvPrice) lvDir = 'SHORT';
+          else if (def.dir === 'LONG' && c.low  <= lvPrice) lvDir = 'LONG';
+        }
+        if (!lvDir) continue;
 
         currentDay.levelTraded[def.key] = true;
+        currentDay.levelTradeCount[def.key] = (currentDay.levelTradeCount[def.key] || 0) + 1;
         const slDist = atr * config.slAtrMult;
-        const sl     = def.dir === 'SHORT' ? lvPrice + slDist : lvPrice - slDist;
+        const sl     = lvDir === 'SHORT' ? lvPrice + slDist : lvPrice - slDist;
         tradeId++;
         activeTrade = {
           id: tradeId, date: barDate, level: def.key,
-          direction: def.dir === 'SHORT' ? 'SHORT' : 'LONG',
+          direction: lvDir,
           entryTs: c.time, entry: lvPrice, sl, slDist, mfePeak: 0,
           forecast: fc, dayOpen: currentDay.open,
-          // Snapshot the dynamic level price at entry time (for display)
           dynSnap: def.dynamic ? lvPrice : null,
         };
         break;
@@ -992,12 +1053,18 @@ function renderChart(candles) {
   });
   priceSeries.setData(candles);
 
-  // Daily P&L subchart
+  // Z-score subchart (rolling 20-bar price Z-score on M1)
   pnlChart  = LightweightCharts.createChart(pnlWrap, mkOpts('#0e1117', 100));
-  pnlSeries = pnlChart.addHistogramSeries({ priceFormat:{type:'percent'}, priceLineVisible:false, lastValueVisible:false });
-  const pnlData = allDayData.filter(d => d.pnl !== 0)
-    .map(d => ({ time: d.startTs, value: d.pnl, color: d.pnl >= 0 ? '#26a69a' : '#ef5350' }));
-  if (pnlData.length) pnlSeries.setData(pnlData);
+  pnlSeries = pnlChart.addLineSeries({
+    color: '#7c83f5', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
+    crosshairMarkerVisible: false,
+  });
+  const zData = computeZScoreSeries(candles);
+  if (zData.length) pnlSeries.setData(zData);
+  // Reference lines at ±2 (extremes), ±1 (1σ), 0
+  [{ p: 2, c:'#ef5350' }, { p:-2, c:'#26a69a' }, { p: 1, c:'#374151' }, { p:-1, c:'#374151' }, { p: 0, c:'#2a3050' }]
+    .forEach(r => pnlSeries.createPriceLine({ price:r.p, color:r.c, lineWidth:1,
+      lineStyle: r.p===0 ? LightweightCharts.LineStyle.Solid : LightweightCharts.LineStyle.Dashed, axisLabelVisible: r.p===2||r.p===-2||r.p===0 }));
 
   // ── Sync by TIME RANGE (not logical indices — charts have different bar densities) ──
   mainChart.timeScale().subscribeVisibleTimeRangeChange(tr => {
