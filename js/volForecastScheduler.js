@@ -319,14 +319,8 @@ export async function runVolForecast(targetDate) {
 
   for (const cfg of INSTRUMENTS) {
     try {
-      let f;
-      if (process.env.OANDA_KEY) {
-        const ohlc = await fetchOHLCOanda(cfg.oandaInstrument);
-        f = computeForecast(ohlc, cfg.assetClass, newsMult);
-      } else {
-        const ohlc = await fetchOHLCYahoo(cfg.ticker);
-        f = computeForecast(ohlc, cfg.assetClass, newsMult);
-      }
+      const ohlc = await fetchOHLC(cfg);
+      const f    = computeForecast(ohlc, cfg.assetClass, newsMult);
       instruments[cfg.name] = f;
       console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  [${dataSource}]`);
     } catch (err) {
