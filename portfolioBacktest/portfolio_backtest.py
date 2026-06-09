@@ -167,7 +167,10 @@ def compute_pair_features(
 
     beta = _rolling_ols_beta(ret_a.values, ret_b.values, corr_window)
     beta_spread = np.minimum(np.abs(beta - 1) / 2, 1.0)
-    score_arr = (-corr.values * 0.7) + (beta_spread * 0.3)
+    # Reward high |correlation| — both positively and negatively correlated pairs are valid
+    # for stat-arb as long as the spread is stationary. The old formula (-corr*0.7) rewarded
+    # NEGATIVE correlation only, which silently blocked index pairs like nq/us30 (corr≈0.9).
+    score_arr = (np.abs(corr.values) * 0.7) + (beta_spread * 0.3)
 
     # Welford online z-score of the cointegration spread S(t) = log(A) − β(t)·log(B).
     # No lookahead bias; accumulates the full series so the reference mean is the true long-run
@@ -214,6 +217,22 @@ def cointegration_pvalue(log_a: np.ndarray, log_b: np.ndarray) -> float:
         return 1.0
 
 
+# ── Transaction-cost helpers ──────────────────────────────────────────────────
+
+_PIP_SIZES = {
+    "gold": 0.01, "us30": 1.0, "nq": 1.0, "de30": 1.0, "uk100": 1.0,
+    "spx500": 0.1, "us2000": 0.01,
+}
+
+def _pip_size(pair: str) -> float:
+    """One pip in price units for this instrument."""
+    if pair in _PIP_SIZES:
+        return _PIP_SIZES[pair]
+    if "jpy" in pair:
+        return 0.01
+    return 0.0001
+
+
 # ── Data structures ────────────────────────────────────────────────────────────
 
 @dataclass
@@ -247,6 +266,7 @@ class Trade:
     z_entry: float
     score: float
     why: str
+    spread_pips: float = 0.0   # bid/ask half-spread per leg per side (in pips); applied × 2 for round-trip
 
     @property
     def pnl_a(self) -> float:
@@ -260,7 +280,15 @@ class Trade:
 
     @property
     def pnl_c(self) -> float:
-        """Beta-neutral weighted combined P&L (fraction). Leg B notional = |beta| × Leg A."""
+        """Beta-neutral combined P&L net of round-trip transaction costs. Leg B notional = |beta| × Leg A."""
+        hr = max(0.1, min(10.0, abs(self.beta)))
+        cost_a = _pip_size(self.pair_a) / self.entry_a * self.spread_pips * 2
+        cost_b = _pip_size(self.pair_b) / self.entry_b * self.spread_pips * 2
+        return ((self.pnl_a - cost_a) + (self.pnl_b - cost_b) * hr) / (1.0 + hr)
+
+    @property
+    def pnl_c_gross(self) -> float:
+        """Beta-neutral combined P&L before transaction costs."""
         hr = max(0.1, min(10.0, abs(self.beta)))
         return (self.pnl_a + self.pnl_b * hr) / (1.0 + hr)
 
@@ -297,9 +325,10 @@ def simulate_portfolio(
 ) -> list:
     trades: list[Trade] = []
     open_positions: list[Position] = []
-    warmup    = params["warmup"]
-    max_hold  = params["max_hold_bars"]
-    cooldown  = params.get("pair_cooldown_bars", 0)
+    warmup       = params["warmup"]
+    max_hold     = params["max_hold_bars"]
+    cooldown     = params.get("pair_cooldown_bars", 0)
+    spread_pips  = params.get("spread_pips", 0.0)
     pair_last_close: dict = {}  # fk -> bar_idx of last close; enforces cooldown
 
     all_ts = sorted(
@@ -322,7 +351,7 @@ def simulate_portfolio(
             if bar_idx - pos.entry_bar_idx >= max_hold:
                 ea = _last_close(h1_data, pos.pair_a, h1_ts, pos.entry_a)
                 eb = _last_close(h1_data, pos.pair_b, h1_ts, pos.entry_b)
-                trades.append(_make_trade(pos, h1_ts, ea, eb, "TIME_STOP"))
+                trades.append(_make_trade(pos, h1_ts, ea, eb, "TIME_STOP", spread_pips))
                 exited = True
 
             if not exited:
@@ -337,10 +366,10 @@ def simulate_portfolio(
                             ea = _last_close(h1_data, pos.pair_a, h1_ts, pos.entry_a)
                             eb = _last_close(h1_data, pos.pair_b, h1_ts, pos.entry_b)
                             if abs(z) <= params["exit_z"]:
-                                trades.append(_make_trade(pos, h1_ts, ea, eb, "EXIT_Z"))
+                                trades.append(_make_trade(pos, h1_ts, ea, eb, "EXIT_Z", spread_pips))
                                 exited = True
                             elif abs(z) > params["stop_z"]:
-                                trades.append(_make_trade(pos, h1_ts, ea, eb, "STOP_Z"))
+                                trades.append(_make_trade(pos, h1_ts, ea, eb, "STOP_Z", spread_pips))
                                 exited = True
 
             if not exited:
@@ -451,7 +480,7 @@ def simulate_portfolio(
         for pos in open_positions:
             ea = _last_close(h1_data, pos.pair_a, last_ts, pos.entry_a)
             eb = _last_close(h1_data, pos.pair_b, last_ts, pos.entry_b)
-            trades.append(_make_trade(pos, last_ts, ea, eb, "END"))
+            trades.append(_make_trade(pos, last_ts, ea, eb, "END", spread_pips))
 
     return trades
 
@@ -472,7 +501,8 @@ def _last_close(h1_data: dict, pair: str, ts: pd.Timestamp, fallback) -> Optiona
     return None if np.isnan(v) else v
 
 
-def _make_trade(pos: Position, exit_ts: pd.Timestamp, ea: float, eb: float, why: str) -> Trade:
+def _make_trade(pos: Position, exit_ts: pd.Timestamp, ea: float, eb: float, why: str,
+                spread_pips: float = 0.0) -> Trade:
     return Trade(
         pair_a=pos.pair_a, pair_b=pos.pair_b,
         dir_a=pos.dir_a, dir_b=pos.dir_b,
@@ -481,6 +511,7 @@ def _make_trade(pos: Position, exit_ts: pd.Timestamp, ea: float, eb: float, why:
         exit_a=ea, exit_b=eb,
         beta=pos.beta,
         z_entry=pos.z_entry, score=pos.score, why=why,
+        spread_pips=spread_pips,
     )
 
 
@@ -509,6 +540,15 @@ def analytics(trades: list, risk_pct: float = 1.0) -> dict:
         peak  = max(peak, acct)
         max_dd = max(max_dd, (peak - acct) / peak * 100)
     total_pnl = acct - 100.0
+
+    # Gross P&L (before transaction costs) — same compound curve but using pnl_c_gross
+    acct_gross = 100.0
+    for t in sorted_t:
+        acct_gross *= 1 + t.pnl_c_gross * risk_pct
+    total_pnl_gross = acct_gross - 100.0
+
+    # Avg cost per trade (as %)
+    avg_cost_pct = np.mean([(t.pnl_c_gross - t.pnl_c) * 100 for t in trades])
 
     # Sharpe (annualised, trade-based)
     rs   = [t.r_combined for t in trades]
@@ -539,7 +579,9 @@ def analytics(trades: list, risk_pct: float = 1.0) -> dict:
     return dict(
         total=len(trades), wins=len(wins), losses=len(losses),
         win_rate=wr, profit_factor=pf, expectancy_pct=expect,
-        total_pnl_pct=total_pnl, max_drawdown_pct=max_dd, sharpe=sharpe,
+        total_pnl_pct=total_pnl, total_pnl_gross_pct=total_pnl_gross,
+        avg_cost_pct=avg_cost_pct,
+        max_drawdown_pct=max_dd, sharpe=sharpe,
         avg_duration_h=np.mean([t.duration_min for t in trades]) / 60,
         by_pair=by_pair, by_why=by_why, curve=curve,
     )
@@ -657,7 +699,11 @@ def print_report(a: dict, trades: list):
     print(f"  Profit Factor {a['profit_factor']:>6.2f}")
     print(f"  Sharpe        {a['sharpe']:>6.2f}")
     print(f"  Max Drawdown  {-a['max_drawdown_pct']:>6.1f}%")
-    print(f"  Total P&L     {a['total_pnl_pct']:>+6.2f}%  (compounded, {DEFAULT_PARAMS['risk_pct']}× allocation)")
+    if a.get("avg_cost_pct", 0) > 0.0001:
+        print(f"  Gross P&L     {a['total_pnl_gross_pct']:>+6.2f}%  (before transaction costs)")
+        print(f"  Cost drag     {-a['total_pnl_gross_pct'] + a['total_pnl_pct']:>+6.2f}%  "
+              f"({a['avg_cost_pct']:+.4f}% per trade avg)")
+    print(f"  Net P&L       {a['total_pnl_pct']:>+6.2f}%  (compounded, {DEFAULT_PARAMS['risk_pct']}× allocation)")
     print(f"  Expectancy    {a['expectancy_pct']:>+6.3f}% per trade")
     print(f"  Avg Duration  {a['avg_duration_h']:>6.1f}h")
 
@@ -746,10 +792,12 @@ def generate_html_report(
 
     curve_json = _json.dumps(a.get("curve", []))
     n_total_combos = len(universe) * (len(universe) - 1) // 2
+    spread_pips = params.get("spread_pips", 0.0)
+    cost_str = f" · SpreadPips={spread_pips}" if spread_pips else ""
     param_str = (f"EntryZ={params['entry_z']} · ExitZ={params['exit_z']} · StopZ={params['stop_z']} · "
                  f"MinScore={params['min_score']} · CoIntP≤{params['coint_pval']} · "
                  f"MaxHold={params['max_hold_bars']}H · MaxPos={params['max_positions']} · "
-                 f"Risk={params['risk_pct']}×")
+                 f"Risk={params['risk_pct']}×{cost_str}")
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -832,7 +880,7 @@ body{{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1
     <div class="kpi-card"><div class="kv {pf_cls}">{pf_str}</div><div class="kl">Profit Factor</div></div>
     <div class="kpi-card"><div class="kv {sh_cls}">{a['sharpe']:.2f}</div><div class="kl">Sharpe</div></div>
     <div class="kpi-card"><div class="kv kv-r">-{a['max_drawdown_pct']:.1f}%</div><div class="kl">Max Drawdown</div></div>
-    <div class="kpi-card"><div class="kv {pnl_cls}">{a['total_pnl_pct']:+.2f}%</div><div class="kl">Total P&L</div><div class="ks">compounded</div></div>
+    <div class="kpi-card"><div class="kv {pnl_cls}">{a['total_pnl_pct']:+.2f}%</div><div class="kl">{'Net P&L' if spread_pips else 'Total P&L'}</div><div class="ks">{'gross ' + (f"{a['total_pnl_gross_pct']:+.2f}%" ) if spread_pips else 'compounded'}</div></div>
     <div class="kpi-card"><div class="kv {exp_cls}">{a['expectancy_pct']:+.3f}%</div><div class="kl">Expectancy</div><div class="ks">per trade</div></div>
     <div class="kpi-card"><div class="kv kv-m">{a['total']}</div><div class="kl">Trades</div><div class="ks">{a['wins']}W · {a['losses']}L</div></div>
     <div class="kpi-card"><div class="kv kv-m">{a['avg_duration_h']:.1f}h</div><div class="kl">Avg Duration</div></div>
@@ -954,6 +1002,10 @@ def main():
     ap.add_argument("--whitelist-pairs", nargs="+", default=[],
                     metavar="A/B",
                     help="Only trade these exact pair combos, e.g. --whitelist-pairs gbpusd/usdchf eurusd/gbpchf")
+    ap.add_argument("--spread-pips",    type=float,          default=0.0,
+                    help="Bid/ask half-spread per leg in pips — applied on entry AND exit of each leg "
+                         "(round-trip cost = spread_pips × 2 × pip_size / price, per leg). "
+                         "Default 0 (no cost). Typical: 1.0 FX majors, 2.0 minors, 5.0 gold/indices.")
     ap.add_argument("--force-dl",       action="store_true", help="Re-download M1 data from R2")
     ap.add_argument("--output",         default="results.json")
     args = ap.parse_args()
@@ -982,6 +1034,7 @@ def main():
               "corr_window": args.corr_win, "warmup": args.warmup,
               "coint_pval": args.coint_pval, "max_hold_bars": args.max_hold_bars,
               "pair_cooldown_bars": args.pair_cooldown,
+              "spread_pips": args.spread_pips,
               "whitelist_pairs": whitelist_pairs}
 
     from_ts  = pd.Timestamp(args.from_date, tz="UTC")

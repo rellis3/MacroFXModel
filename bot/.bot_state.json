@@ -1,6 +1,6 @@
 {
   "risk_guard": {
-    "day_start_bal": 96320.61,
+    "day_start_bal": 95371.85,
     "month_start_bal": 104299.24,
     "locked_until": 1780563914.5479677,
     "last_trade_by_pair": {
@@ -9,12 +9,12 @@
       "USD/CAD": 1780654778.3249414,
       "EUR/USD": 1780915565.2825933,
       "USD/CHF": 1779898975.0198252,
-      "EUR/GBP": 1780655433.4730015,
+      "EUR/GBP": 1780952262.8902957,
       "GBP/JPY": 1780652286.568657,
       "AUD/USD": 1780690229.8667438,
       "GBP/USD": 1780658870.6148307
     },
-    "last_reset_date": "2026-06-08",
+    "last_reset_date": "2026-06-09",
     "last_reset_month": "2026-06"
   },
   "position_meta": {}

@@ -1248,3 +1248,375 @@
 [2026-06-08 20:18:46] [DA] [INFO] Cycle 690  balance=99551.49  sleep=57.7s
 [2026-06-08 20:28:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.81000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.68359  session_open=4293.42500
 [2026-06-08 20:28:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 20:48:48] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.81000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.68359  session_open=4293.42500
+[2026-06-08 20:48:48] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 20:48:51] [DA] [INFO] Cycle 720  balance=99551.49  sleep=52.7s
+[2026-06-08 21:08:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.81000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.68359  session_open=4293.42500
+[2026-06-08 21:08:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 21:18:46] [DA] [INFO] Cycle 750  balance=99551.49  sleep=57.0s
+[2026-06-08 21:28:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.81000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.68359  session_open=4293.42500
+[2026-06-08 21:28:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 21:48:45] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.81000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.68359  session_open=4293.42500
+[2026-06-08 21:48:45] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 21:48:46] [DA] [INFO] Cycle 780  balance=99551.49  sleep=57.6s
+[2026-06-08 22:08:43] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.81000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.68359  session_open=4293.42500
+[2026-06-08 22:08:43] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 22:18:45] [DA] [INFO] Cycle 810  balance=99551.49  sleep=58.3s
+[2026-06-08 22:28:44] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.81000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.68359  session_open=4293.42500
+[2026-06-08 22:28:44] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 22:48:46] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4345.81000  run_low=4293.34000  sell_entry=4386.32996  buy_entry=4251.68359  session_open=4293.42500
+[2026-06-08 22:48:46] [DA] [INFO] [NAS100_USD] Watching  regime=BEAR  run_high=29718.60000  run_low=29167.30000  sell_entry=29910.94567  buy_entry=28960.89845  session_open=29171.20000
+[2026-06-08 22:48:47] [DA] [INFO] Cycle 840  balance=99551.49  sleep=56.1s
+[2026-06-08 23:18:47] [DA] [INFO] Cycle 870  balance=99551.49  sleep=57.0s
+[2026-06-09 00:15:05] [DA] [INFO] [Precompute] Running nightly forecast for 27 pairs…
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] EUR/USD  regime=BEAR  sigma_d=0.362%  hl50=0.524%  hl75=0.663%  slope=-0.002850
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] GBP/USD  regime=BEAR  sigma_d=0.432%  hl50=0.626%  hl75=0.792%  slope=-0.002128
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] USD/JPY  regime=BULL  sigma_d=0.418%  hl50=0.605%  hl75=0.765%  slope=0.003083
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] AUD/USD  regime=BEAR  sigma_d=0.555%  hl50=0.803%  hl75=1.016%  slope=-0.003669
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] NZD/USD  regime=BEAR  sigma_d=0.724%  hl50=1.048%  hl75=1.326%  slope=-0.003612
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] USD/CAD  regime=BULL  sigma_d=0.222%  hl50=0.322%  hl75=0.408%  slope=0.004261
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] USD/CHF  regime=BULL  sigma_d=0.442%  hl50=0.640%  hl75=0.810%  slope=0.004268
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] GBP/JPY  regime=RANGE  sigma_d=0.326%  hl50=0.472%  hl75=0.597%  slope=0.000962
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] EUR/JPY  regime=RANGE  sigma_d=0.308%  hl50=0.446%  hl75=0.564%  slope=0.000230
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] EUR/GBP  regime=RANGE  sigma_d=0.188%  hl50=0.272%  hl75=0.344%  slope=-0.000739
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] EUR/CHF  regime=RANGE  sigma_d=0.248%  hl50=0.360%  hl75=0.455%  slope=0.001386
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] EUR/CAD  regime=RANGE  sigma_d=0.324%  hl50=0.470%  hl75=0.594%  slope=0.001407
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] EUR/AUD  regime=RANGE  sigma_d=0.300%  hl50=0.434%  hl75=0.550%  slope=0.000824
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] AUD/JPY  regime=RANGE  sigma_d=0.457%  hl50=0.662%  hl75=0.838%  slope=-0.000603
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] AUD/CAD  regime=RANGE  sigma_d=0.456%  hl50=0.660%  hl75=0.835%  slope=0.000574
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] GBP/AUD  regime=RANGE  sigma_d=0.320%  hl50=0.464%  hl75=0.587%  slope=0.001545
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] GBP/CAD  regime=BULL  sigma_d=0.388%  hl50=0.562%  hl75=0.711%  slope=0.002129
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] CAD/JPY  regime=RANGE  sigma_d=0.386%  hl50=0.559%  hl75=0.707%  slope=-0.001173
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] CHF/JPY  regime=RANGE  sigma_d=0.371%  hl50=0.537%  hl75=0.679%  slope=-0.001154
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] NZD/JPY  regime=RANGE  sigma_d=0.582%  hl50=0.842%  hl75=1.066%  slope=-0.000524
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] AUD/NZD  regime=RANGE  sigma_d=0.415%  hl50=0.600%  hl75=0.760%  slope=-0.000088
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] GBP/NZD  regime=RANGE  sigma_d=0.498%  hl50=0.721%  hl75=0.913%  slope=0.001484
+[2026-06-09 00:15:16] [DA] [WARNING] [Precompute] No forecast for EUR/NZD: missing
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] AUD/CHF  regime=RANGE  sigma_d=0.309%  hl50=0.447%  hl75=0.566%  slope=0.000550
+[2026-06-09 00:15:16] [DA] [WARNING] [Precompute] No forecast for GBP/CHF: missing
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] XAU/USD  regime=BEAR  sigma_d=1.524%  hl50=2.206%  hl75=2.791%  slope=-0.014160
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] NAS100_USD  regime=BULL  sigma_d=1.632%  hl50=2.363%  hl75=2.990%  slope=0.007898
+[2026-06-09 00:15:16] [DA] [INFO] [Precompute] Done — 25/27 pairs cached
+[2026-06-09 01:00:25] [DA] [INFO] Daily reset: 99551.49 → 99551.49
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/USD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/USD] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/USD] Setup [forecast]: regime=BEAR  sigma_d=0.362%  hl50=0.524%  hl75=0.663%  session_open=1.15273  slope=-0.002850
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/USD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/USD] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/USD] Setup [forecast]: regime=BEAR  sigma_d=0.432%  hl50=0.626%  hl75=0.792%  session_open=1.33325  slope=-0.002128
+[2026-06-09 01:00:25] [DA] [INFO] [USD/JPY] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [USD/JPY] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [USD/JPY] Setup [forecast]: regime=BULL  sigma_d=0.418%  hl50=0.605%  hl75=0.765%  session_open=160.18950  slope=0.003083
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/USD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/USD] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/USD] Setup [forecast]: regime=BEAR  sigma_d=0.555%  hl50=0.803%  hl75=1.016%  session_open=0.70376  slope=-0.003669
+[2026-06-09 01:00:25] [DA] [INFO] [NZD/USD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [NZD/USD] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [NZD/USD] Setup [forecast]: regime=BEAR  sigma_d=0.724%  hl50=1.048%  hl75=1.326%  session_open=0.58015  slope=-0.003612
+[2026-06-09 01:00:25] [DA] [INFO] [USD/CAD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [USD/CAD] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [USD/CAD] Setup [forecast]: regime=BULL  sigma_d=0.222%  hl50=0.322%  hl75=0.408%  session_open=1.39587  slope=0.004261
+[2026-06-09 01:00:25] [DA] [INFO] [USD/CHF] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [USD/CHF] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [USD/CHF] Setup [forecast]: regime=BULL  sigma_d=0.442%  hl50=0.640%  hl75=0.810%  session_open=0.79832  slope=0.004268
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/JPY] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/JPY] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/JPY] Setup [forecast]: regime=RANGE  sigma_d=0.326%  hl50=0.472%  hl75=0.597%  session_open=213.57100  slope=0.000962
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/JPY] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/JPY] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/JPY] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/JPY] Setup [forecast]: regime=RANGE  sigma_d=0.308%  hl50=0.446%  hl75=0.564%  session_open=184.65450  slope=0.000230
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/JPY] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/GBP] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/GBP] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/GBP] Setup [forecast]: regime=RANGE  sigma_d=0.188%  hl50=0.272%  hl75=0.344%  session_open=0.86460  slope=-0.000739
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/GBP] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/CHF] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/CHF] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/CHF] Setup [forecast]: regime=RANGE  sigma_d=0.248%  hl50=0.360%  hl75=0.455%  session_open=0.92023  slope=0.001386
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/CHF] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/CAD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/CAD] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/CAD] Setup [forecast]: regime=RANGE  sigma_d=0.324%  hl50=0.470%  hl75=0.594%  session_open=1.60899  slope=0.001407
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/CAD] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/AUD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/AUD] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/AUD] Setup [forecast]: regime=RANGE  sigma_d=0.300%  hl50=0.434%  hl75=0.550%  session_open=1.63792  slope=0.000824
+[2026-06-09 01:00:25] [DA] [INFO] [EUR/AUD] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/JPY] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/JPY] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/JPY] Setup [forecast]: regime=RANGE  sigma_d=0.457%  hl50=0.662%  hl75=0.838%  session_open=112.73600  slope=-0.000603
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/JPY] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/CAD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/CAD] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/CAD] Setup [forecast]: regime=RANGE  sigma_d=0.456%  hl50=0.660%  hl75=0.835%  session_open=0.98231  slope=0.000574
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/CAD] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/AUD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/AUD] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/AUD] Setup [forecast]: regime=RANGE  sigma_d=0.320%  hl50=0.464%  hl75=0.587%  session_open=1.89443  slope=0.001545
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/AUD] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/CAD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/CAD] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/CAD] Setup [forecast]: regime=BULL  sigma_d=0.388%  hl50=0.562%  hl75=0.711%  session_open=1.86095  slope=0.002129
+[2026-06-09 01:00:25] [DA] [INFO] [CAD/JPY] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [CAD/JPY] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [CAD/JPY] Setup [forecast]: regime=RANGE  sigma_d=0.386%  hl50=0.559%  hl75=0.707%  session_open=114.76400  slope=-0.001173
+[2026-06-09 01:00:25] [DA] [INFO] [CAD/JPY] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [CHF/JPY] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [CHF/JPY] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [CHF/JPY] Setup [forecast]: regime=RANGE  sigma_d=0.371%  hl50=0.537%  hl75=0.679%  session_open=200.65750  slope=-0.001154
+[2026-06-09 01:00:25] [DA] [INFO] [CHF/JPY] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [NZD/JPY] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [NZD/JPY] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [NZD/JPY] Setup [forecast]: regime=RANGE  sigma_d=0.582%  hl50=0.842%  hl75=1.066%  session_open=92.93450  slope=-0.000524
+[2026-06-09 01:00:25] [DA] [INFO] [NZD/JPY] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/NZD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/NZD] Using precomputed forecast params
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/NZD] Setup [forecast]: regime=RANGE  sigma_d=0.415%  hl50=0.600%  hl75=0.760%  session_open=1.21307  slope=-0.000088
+[2026-06-09 01:00:25] [DA] [INFO] [AUD/NZD] RANGE day — no trading today
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/NZD] Running daily setup…
+[2026-06-09 01:00:25] [DA] [INFO] [GBP/NZD] Using precomputed forecast params
+[2026-06-09 01:00:26] [DA] [INFO] [GBP/NZD] Setup [forecast]: regime=RANGE  sigma_d=0.498%  hl50=0.721%  hl75=0.913%  session_open=2.29810  slope=0.001484
+[2026-06-09 01:00:26] [DA] [INFO] [GBP/NZD] RANGE day — no trading today
+[2026-06-09 01:00:26] [DA] [INFO] [EUR/NZD] Running daily setup…
+[2026-06-09 01:00:26] [DA] [INFO] [EUR/NZD] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-09 01:00:26] [DA] [INFO] [EUR/NZD] Setup [MT5]: regime=RANGE  sigma_d=0.497%  hl50=0.719%  hl75=0.910%  session_open=1.98691  slope=0.000522
+[2026-06-09 01:00:26] [DA] [INFO] [EUR/NZD] RANGE day — no trading today
+[2026-06-09 01:00:26] [DA] [INFO] [AUD/CHF] Running daily setup…
+[2026-06-09 01:00:26] [DA] [INFO] [AUD/CHF] Using precomputed forecast params
+[2026-06-09 01:00:26] [DA] [INFO] [AUD/CHF] Setup [forecast]: regime=RANGE  sigma_d=0.309%  hl50=0.447%  hl75=0.566%  session_open=0.56182  slope=0.000550
+[2026-06-09 01:00:26] [DA] [INFO] [AUD/CHF] RANGE day — no trading today
+[2026-06-09 01:00:26] [DA] [INFO] [GBP/CHF] Running daily setup…
+[2026-06-09 01:00:26] [DA] [INFO] [GBP/CHF] Computed vol/regime from MT5 bars (no precompute available)
+[2026-06-09 01:00:26] [DA] [INFO] [GBP/CHF] Setup [MT5]: regime=RANGE  sigma_d=0.284%  hl50=0.411%  hl75=0.519%  session_open=1.06437  slope=0.000465
+[2026-06-09 01:00:26] [DA] [INFO] [GBP/CHF] RANGE day — no trading today
+[2026-06-09 01:00:26] [DA] [INFO] [XAU/USD] Running daily setup…
+[2026-06-09 01:00:26] [DA] [INFO] [XAU/USD] Using precomputed forecast params
+[2026-06-09 01:00:26] [DA] [INFO] [XAU/USD] Setup [forecast]: regime=BEAR  sigma_d=1.524%  hl50=2.206%  hl75=2.791%  session_open=4315.98500  slope=-0.014160
+[2026-06-09 01:00:26] [DA] [INFO] [NAS100_USD] Running daily setup…
+[2026-06-09 01:00:26] [DA] [INFO] [NAS100_USD] Using precomputed forecast params
+[2026-06-09 01:00:26] [DA] [INFO] [NAS100_USD] Setup [forecast]: regime=BULL  sigma_d=1.632%  hl50=2.363%  hl75=2.990%  session_open=29403.50000  slope=0.007898
+[2026-06-09 01:09:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15299  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14695  session_open=1.15273
+[2026-06-09 01:09:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33347  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32512  session_open=1.33325
+[2026-06-09 01:09:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.20100  run_low=160.14800  sell_entry=161.12266  buy_entry=159.23206  session_open=160.18950
+[2026-06-09 01:09:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70394  run_low=0.70353  sell_entry=0.70918  buy_entry=0.69828  session_open=0.70376
+[2026-06-09 01:09:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58030  run_low=0.57998  sell_entry=0.58606  buy_entry=0.57422  session_open=0.58015
+[2026-06-09 01:09:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39590  run_low=1.39563  sell_entry=1.40013  buy_entry=1.39140  session_open=1.39587
+[2026-06-09 01:09:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79841  run_low=0.79808  sell_entry=0.80319  buy_entry=0.79330  session_open=0.79832
+[2026-06-09 01:09:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86108  run_low=1.86058  sell_entry=1.87104  buy_entry=1.85055  session_open=1.86095
+[2026-06-09 01:09:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4320.89000  run_low=4315.88000  sell_entry=4411.09202  buy_entry=4225.56746  session_open=4315.98500
+[2026-06-09 01:09:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29416.40000  run_low=29335.10000  sell_entry=30036.55731  buy_entry=28721.21042  session_open=29403.50000
+[2026-06-09 01:19:27] [DA] [INFO] Cycle 990  balance=99551.49  sleep=58.2s
+[2026-06-09 01:29:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15302  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14698  session_open=1.15273
+[2026-06-09 01:29:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33357  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32522  session_open=1.33325
+[2026-06-09 01:29:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.20100  run_low=160.13400  sell_entry=161.10254  buy_entry=159.23206  session_open=160.18950
+[2026-06-09 01:29:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70394  run_low=0.70344  sell_entry=0.70909  buy_entry=0.69828  session_open=0.70376
+[2026-06-09 01:29:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58030  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57422  session_open=0.58015
+[2026-06-09 01:29:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39563  sell_entry=1.40013  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 01:29:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79841  run_low=0.79808  sell_entry=0.80319  buy_entry=0.79330  session_open=0.79832
+[2026-06-09 01:29:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86127  run_low=1.86058  sell_entry=1.87104  buy_entry=1.85081  session_open=1.86095
+[2026-06-09 01:29:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4323.63000  run_low=4315.88000  sell_entry=4411.09202  buy_entry=4228.24701  session_open=4315.98500
+[2026-06-09 01:29:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29416.40000  run_low=29312.60000  sell_entry=30005.33651  buy_entry=28721.21042  session_open=29403.50000
+[2026-06-09 01:49:26] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15315  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14710  session_open=1.15273
+[2026-06-09 01:49:26] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33361  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32526  session_open=1.33325
+[2026-06-09 01:49:26] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.20100  run_low=160.13400  sell_entry=161.10254  buy_entry=159.23206  session_open=160.18950
+[2026-06-09 01:49:26] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70420  run_low=0.70344  sell_entry=0.70909  buy_entry=0.69854  session_open=0.70376
+[2026-06-09 01:49:26] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58041  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57433  session_open=0.58015
+[2026-06-09 01:49:26] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39526  sell_entry=1.39975  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 01:49:26] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79841  run_low=0.79797  sell_entry=0.80308  buy_entry=0.79330  session_open=0.79832
+[2026-06-09 01:49:26] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86127  run_low=1.86057  sell_entry=1.87104  buy_entry=1.85081  session_open=1.86095
+[2026-06-09 01:49:26] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4323.63000  run_low=4315.18000  sell_entry=4410.77518  buy_entry=4228.24701  session_open=4315.98500
+[2026-06-09 01:49:26] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29416.40000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28721.21042  session_open=29403.50000
+[2026-06-09 01:49:27] [DA] [INFO] Cycle 1020  balance=99551.49  sleep=58.2s
+[2026-06-09 02:09:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15338  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14730  session_open=1.15273
+[2026-06-09 02:09:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33386  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32551  session_open=1.33325
+[2026-06-09 02:09:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 02:09:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70459  run_low=0.70344  sell_entry=0.70909  buy_entry=0.69893  session_open=0.70376
+[2026-06-09 02:09:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58075  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57466  session_open=0.58015
+[2026-06-09 02:09:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39519  sell_entry=1.39968  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 02:09:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79793  sell_entry=0.80304  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 02:09:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86127  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85081  session_open=1.86095
+[2026-06-09 02:09:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4326.50000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4231.05370  session_open=4315.98500
+[2026-06-09 02:09:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29416.40000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28721.21042  session_open=29403.50000
+[2026-06-09 02:19:27] [DA] [INFO] Cycle 1050  balance=99551.49  sleep=58.1s
+[2026-06-09 02:29:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15362  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14757  session_open=1.15273
+[2026-06-09 02:29:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33444  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32609  session_open=1.33325
+[2026-06-09 02:29:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 02:29:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70517  run_low=0.70344  sell_entry=0.70909  buy_entry=0.69950  session_open=0.70376
+[2026-06-09 02:29:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58128  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57519  session_open=0.58015
+[2026-06-09 02:29:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39491  sell_entry=1.39940  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 02:29:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79761  sell_entry=0.80272  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 02:29:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86167  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85121  session_open=1.86095
+[2026-06-09 02:29:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4336.17000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4237.86993  session_open=4315.98500
+[2026-06-09 02:29:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29456.10000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28759.97220  session_open=29403.50000
+[2026-06-09 02:49:26] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15390  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14785  session_open=1.15273
+[2026-06-09 02:49:26] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33496  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32660  session_open=1.33325
+[2026-06-09 02:49:26] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 02:49:26] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70575  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70008  session_open=0.70376
+[2026-06-09 02:49:26] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58165  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57555  session_open=0.58015
+[2026-06-09 02:49:26] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39463  sell_entry=1.39912  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 02:49:26] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79738  sell_entry=0.80248  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 02:49:26] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86175  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85129  session_open=1.86095
+[2026-06-09 02:49:26] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4338.26000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4242.55426  session_open=4315.98500
+[2026-06-09 02:49:26] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29520.40000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28822.75261  session_open=29403.50000
+[2026-06-09 02:49:27] [DA] [INFO] Cycle 1080  balance=99551.49  sleep=58.1s
+[2026-06-09 03:09:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15403  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14798  session_open=1.15273
+[2026-06-09 03:09:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33530  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32692  session_open=1.33325
+[2026-06-09 03:09:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 03:09:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70589  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70022  session_open=0.70376
+[2026-06-09 03:09:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58182  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57572  session_open=0.58015
+[2026-06-09 03:09:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39447  sell_entry=1.39896  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 03:09:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79717  sell_entry=0.80227  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 03:09:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86223  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85157  session_open=1.86095
+[2026-06-09 03:09:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4338.26000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4242.55426  session_open=4315.98500
+[2026-06-09 03:09:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29520.40000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28822.75261  session_open=29403.50000
+[2026-06-09 03:19:27] [DA] [INFO] Cycle 1110  balance=99551.49  sleep=57.9s
+[2026-06-09 03:29:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15403  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14798  session_open=1.15273
+[2026-06-09 03:29:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33530  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32694  session_open=1.33325
+[2026-06-09 03:29:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 03:29:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70589  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70022  session_open=0.70376
+[2026-06-09 03:29:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58182  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57572  session_open=0.58015
+[2026-06-09 03:29:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39447  sell_entry=1.39896  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 03:29:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79717  sell_entry=0.80227  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 03:29:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86223  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85176  session_open=1.86095
+[2026-06-09 03:29:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4338.26000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4242.55426  session_open=4315.98500
+[2026-06-09 03:29:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29520.40000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28822.75261  session_open=29403.50000
+[2026-06-09 03:49:26] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15403  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14798  session_open=1.15273
+[2026-06-09 03:49:26] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33530  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32694  session_open=1.33325
+[2026-06-09 03:49:26] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 03:49:26] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70589  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70022  session_open=0.70376
+[2026-06-09 03:49:26] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58182  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57572  session_open=0.58015
+[2026-06-09 03:49:26] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39447  sell_entry=1.39896  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 03:49:26] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79717  sell_entry=0.80227  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 03:49:26] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86223  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85176  session_open=1.86095
+[2026-06-09 03:49:26] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4340.42000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4244.66661  session_open=4315.98500
+[2026-06-09 03:49:26] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29520.40000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28822.75261  session_open=29403.50000
+[2026-06-09 03:49:27] [DA] [INFO] Cycle 1140  balance=99551.49  sleep=57.9s
+[2026-06-09 04:09:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15403  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14798  session_open=1.15273
+[2026-06-09 04:09:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33530  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32694  session_open=1.33325
+[2026-06-09 04:09:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 04:09:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70589  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70022  session_open=0.70376
+[2026-06-09 04:09:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58182  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57572  session_open=0.58015
+[2026-06-09 04:09:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39447  sell_entry=1.39896  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 04:09:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79717  sell_entry=0.80227  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 04:09:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86223  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85176  session_open=1.86095
+[2026-06-09 04:09:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4340.51000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4244.75463  session_open=4315.98500
+[2026-06-09 04:09:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29520.40000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28822.75261  session_open=29403.50000
+[2026-06-09 04:19:27] [DA] [INFO] Cycle 1170  balance=99551.49  sleep=58.3s
+[2026-06-09 04:29:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15403  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14798  session_open=1.15273
+[2026-06-09 04:29:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33530  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32694  session_open=1.33325
+[2026-06-09 04:29:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 04:29:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70589  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70022  session_open=0.70376
+[2026-06-09 04:29:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58182  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57572  session_open=0.58015
+[2026-06-09 04:29:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39447  sell_entry=1.39896  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 04:29:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79717  sell_entry=0.80227  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 04:29:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86223  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85176  session_open=1.86095
+[2026-06-09 04:29:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4341.80000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4246.01617  session_open=4315.98500
+[2026-06-09 04:29:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29530.40000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28832.51628  session_open=29403.50000
+[2026-06-09 04:49:26] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15403  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14798  session_open=1.15273
+[2026-06-09 04:49:26] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33530  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32694  session_open=1.33325
+[2026-06-09 04:49:26] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 04:49:26] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70589  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70022  session_open=0.70376
+[2026-06-09 04:49:26] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58220  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57610  session_open=0.58015
+[2026-06-09 04:49:26] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39447  sell_entry=1.39896  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 04:49:26] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79717  sell_entry=0.80227  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 04:49:26] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86227  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85180  session_open=1.86095
+[2026-06-09 04:49:26] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4341.80000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4246.01617  session_open=4315.98500
+[2026-06-09 04:49:26] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29575.60000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28876.64809  session_open=29403.50000
+[2026-06-09 04:49:27] [DA] [INFO] Cycle 1200  balance=99551.49  sleep=58.2s
+[2026-06-09 05:09:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15403  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14798  session_open=1.15273
+[2026-06-09 05:09:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33530  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32694  session_open=1.33325
+[2026-06-09 05:09:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 05:09:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70589  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70022  session_open=0.70376
+[2026-06-09 05:09:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58220  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57610  session_open=0.58015
+[2026-06-09 05:09:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39447  sell_entry=1.39896  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 05:09:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79717  sell_entry=0.80227  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 05:09:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86227  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85180  session_open=1.86095
+[2026-06-09 05:09:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4341.80000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4246.01617  session_open=4315.98500
+[2026-06-09 05:09:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29588.40000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28876.64809  session_open=29403.50000
+[2026-06-09 05:19:27] [DA] [INFO] Cycle 1230  balance=99551.49  sleep=58.2s
+[2026-06-09 05:29:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15413  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14808  session_open=1.15273
+[2026-06-09 05:29:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33530  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32694  session_open=1.33325
+[2026-06-09 05:29:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 05:29:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70589  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70022  session_open=0.70376
+[2026-06-09 05:29:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58220  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57610  session_open=0.58015
+[2026-06-09 05:29:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39447  sell_entry=1.39896  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 05:29:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79717  sell_entry=0.80227  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 05:29:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86227  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85180  session_open=1.86095
+[2026-06-09 05:29:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4341.80000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4246.01617  session_open=4315.98500
+[2026-06-09 05:29:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29604.10000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28904.47455  session_open=29403.50000
+[2026-06-09 05:49:26] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15483  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14875  session_open=1.15273
+[2026-06-09 05:49:26] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33612  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32773  session_open=1.33325
+[2026-06-09 05:49:26] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 05:49:26] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70589  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70022  session_open=0.70376
+[2026-06-09 05:49:26] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58299  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57688  session_open=0.58015
+[2026-06-09 05:49:26] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39425  sell_entry=1.39874  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 05:49:26] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79681  sell_entry=0.80192  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 05:49:26] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86284  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85235  session_open=1.86095
+[2026-06-09 05:49:26] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4341.80000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4246.01617  session_open=4315.98500
+[2026-06-09 05:49:26] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29609.90000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28910.13748  session_open=29403.50000
+[2026-06-09 05:49:27] [DA] [INFO] Cycle 1260  balance=99551.49  sleep=58.3s
+[2026-06-09 06:09:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15484  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14879  session_open=1.15273
+[2026-06-09 06:09:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33629  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32793  session_open=1.33325
+[2026-06-09 06:09:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 06:09:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70589  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70022  session_open=0.70376
+[2026-06-09 06:09:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58304  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57693  session_open=0.58015
+[2026-06-09 06:09:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39425  sell_entry=1.39874  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 06:09:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79681  sell_entry=0.80191  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 06:09:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86311  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85264  session_open=1.86095
+[2026-06-09 06:09:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4341.80000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4246.01617  session_open=4315.98500
+[2026-06-09 06:09:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29609.90000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28910.13748  session_open=29403.50000
+[2026-06-09 06:19:28] [DA] [INFO] Cycle 1290  balance=99551.49  sleep=57.5s
+[2026-06-09 06:29:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15484  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14879  session_open=1.15273
+[2026-06-09 06:29:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33629  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32793  session_open=1.33325
+[2026-06-09 06:29:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.13400  sell_entry=161.10254  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 06:29:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70589  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70022  session_open=0.70376
+[2026-06-09 06:29:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58325  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57714  session_open=0.58015
+[2026-06-09 06:29:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39425  sell_entry=1.39874  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 06:29:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79681  sell_entry=0.80191  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 06:29:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86311  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85264  session_open=1.86095
+[2026-06-09 06:29:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4341.80000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4246.01617  session_open=4315.98500
+[2026-06-09 06:29:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29609.90000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28910.13748  session_open=29403.50000
+[2026-06-09 06:49:26] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15484  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14879  session_open=1.15273
+[2026-06-09 06:49:26] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33647  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32811  session_open=1.33325
+[2026-06-09 06:49:26] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.12900  sell_entry=161.09751  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 06:49:26] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70603  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70036  session_open=0.70376
+[2026-06-09 06:49:26] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58397  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57785  session_open=0.58015
+[2026-06-09 06:49:26] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39394  sell_entry=1.39843  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 06:49:26] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79632  sell_entry=0.80142  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 06:49:26] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86311  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85264  session_open=1.86095
+[2026-06-09 06:49:26] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4349.34000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4253.38983  session_open=4315.98500
+[2026-06-09 06:49:26] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29628.90000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28928.68846  session_open=29403.50000
+[2026-06-09 06:49:27] [DA] [INFO] Cycle 1320  balance=99551.49  sleep=58.1s
+[2026-06-09 07:09:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15484  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14879  session_open=1.15273
+[2026-06-09 07:09:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33650  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32814  session_open=1.33325
+[2026-06-09 07:09:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.09700  sell_entry=161.06531  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 07:09:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70627  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70060  session_open=0.70376
+[2026-06-09 07:09:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58439  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57826  session_open=0.58015
+[2026-06-09 07:09:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39314  sell_entry=1.39763  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 07:09:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79628  sell_entry=0.80138  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 07:09:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86311  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85264  session_open=1.86095
+[2026-06-09 07:09:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4349.34000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4253.38983  session_open=4315.98500
+[2026-06-09 07:09:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29637.40000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28936.98758  session_open=29403.50000
+[2026-06-09 07:19:28] [DA] [INFO] Cycle 1350  balance=99551.49  sleep=57.0s
+[2026-06-09 07:29:25] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15527  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14921  session_open=1.15273
+[2026-06-09 07:29:25] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33744  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32907  session_open=1.33325
+[2026-06-09 07:29:25] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.06100  sell_entry=161.02909  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 07:29:25] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70702  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70134  session_open=0.70376
+[2026-06-09 07:29:25] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58465  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57852  session_open=0.58015
+[2026-06-09 07:29:25] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39308  sell_entry=1.39757  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 07:29:25] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79587  sell_entry=0.80096  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 07:29:25] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86326  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85279  session_open=1.86095
+[2026-06-09 07:29:25] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4349.34000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4253.38983  session_open=4315.98500
+[2026-06-09 07:29:25] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29651.60000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28950.85200  session_open=29403.50000
+[2026-06-09 07:49:27] [DA] [INFO] [EUR/USD] Watching  regime=BEAR  run_high=1.15527  run_low=1.15272  sell_entry=1.15876  buy_entry=1.14921  session_open=1.15273
+[2026-06-09 07:49:27] [DA] [INFO] [GBP/USD] Watching  regime=BEAR  run_high=1.33744  run_low=1.33312  sell_entry=1.34146  buy_entry=1.32907  session_open=1.33325
+[2026-06-09 07:49:27] [DA] [INFO] [USD/JPY] Watching  regime=BULL  run_high=160.26700  run_low=160.06100  sell_entry=161.02909  buy_entry=159.29766  session_open=160.18950
+[2026-06-09 07:49:27] [DA] [INFO] [AUD/USD] Watching  regime=BEAR  run_high=0.70702  run_low=0.70344  sell_entry=0.70909  buy_entry=0.70134  session_open=0.70376
+[2026-06-09 07:49:27] [DA] [INFO] [NZD/USD] Watching  regime=BEAR  run_high=0.58465  run_low=0.57990  sell_entry=0.58598  buy_entry=0.57852  session_open=0.58015
+[2026-06-09 07:49:27] [DA] [INFO] [USD/CAD] Watching  regime=BULL  run_high=1.39595  run_low=1.39308  sell_entry=1.39757  buy_entry=1.39145  session_open=1.39587
+[2026-06-09 07:49:27] [DA] [INFO] [USD/CHF] Watching  regime=BULL  run_high=0.79844  run_low=0.79587  sell_entry=0.80096  buy_entry=0.79333  session_open=0.79832
+[2026-06-09 07:49:27] [DA] [INFO] [GBP/CAD] Watching  regime=BULL  run_high=1.86326  run_low=1.86027  sell_entry=1.87073  buy_entry=1.85279  session_open=1.86095
+[2026-06-09 07:49:27] [DA] [INFO] [XAU/USD] Watching  regime=BEAR  run_high=4349.34000  run_low=4315.18000  sell_entry=4410.37657  buy_entry=4253.38983  session_open=4315.98500
+[2026-06-09 07:49:27] [DA] [INFO] [NAS100_USD] Watching  regime=BULL  run_high=29651.60000  run_low=29291.10000  sell_entry=29983.32840  buy_entry=28950.85200  session_open=29403.50000
+[2026-06-09 07:49:29] [DA] [INFO] Cycle 1380  balance=99551.49  sleep=56.1s
