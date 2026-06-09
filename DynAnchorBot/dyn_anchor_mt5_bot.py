@@ -70,8 +70,13 @@ _GARCH_OMEGA: dict = {'fx': 3.60e-7, 'index': 4.76e-6, 'commodity': 3.60e-7}
 # FX pairs are handled by stripping '/', so only non-FX pairs need entries here.
 # Add your broker's exact symbol name if it differs (check with symbols_get()).
 _MT5_SYMBOL_ALIASES = {
-    'NAS100_USD': 'USTECH100M',  # MetaQuotes-Demo
-    'XAU/USD':    'XAUUSD',   # standard MT5 gold symbol (no slash)
+    'NAS100_USD':  'USTECH100M',
+    'XAU/USD':     'XAUUSD',
+    'US2000_USD':  'US2000',
+    'SPX500_USD':  'SP500',
+    'DE30_USD':    'DAX',
+    'UK100_GBP':   'FTSE100',
+    'US30_USD':    'US30',
 }
 
 def _mt5_symbol(pair: str) -> str:

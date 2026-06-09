@@ -92,7 +92,21 @@ _PIP_SIZES = {
     'AUD/USD': 0.0001, 'XAU/USD': 1.0,   'EUR/GBP': 0.0001,
     'USD/CAD': 0.0001, 'USD/CHF': 0.0001, 'GBP/JPY': 0.01,
     'NAS100_USD': 1.0,
+    'SPX500_USD': 1.0, 'DE30_USD': 1.0, 'UK100_GBP': 1.0,
+    'US30_USD': 1.0,   'US2000_USD': 1.0,
 }
+
+_MT5_SYMBOL: dict[str, str] = {
+    'NAS100_USD':  'USTECH100M',
+    'US2000_USD':  'US2000',
+    'SPX500_USD':  'SP500',
+    'DE30_USD':    'DAX',
+    'UK100_GBP':   'FTSE100',
+    'US30_USD':    'US30',
+}
+
+def _mt5_sym(pair: str) -> str:
+    return _MT5_SYMBOL.get(pair, pair.replace('/', ''))
 
 # resolve_grade_thresholds and session_threshold_mult live in utils/config_helpers.py
 
@@ -219,7 +233,7 @@ def _run_beta_estimation(
     bars_by_symbol: dict = {}
 
     for pair in all_pairs:
-        sym  = pair.replace('/', '')
+        sym  = _mt5_sym(pair)
         bars = None
 
         # Primary: MT5 bars
@@ -367,7 +381,7 @@ def fetch_current_price(pair: str, base_url: str) -> float | None:
     """
     if HAS_MT5:
         try:
-            tick = mt5.symbol_info_tick(pair.replace('/', ''))
+            tick = mt5.symbol_info_tick(_mt5_sym(pair))
             if tick and tick.bid > 0:
                 return round((tick.bid + tick.ask) / 2, 6)
         except Exception:
@@ -385,7 +399,7 @@ def fetch_bars(pair: str, count: int = 30, timeframe=None):
         return None
     try:
         tf   = timeframe if timeframe is not None else mt5.TIMEFRAME_M5
-        bars = mt5.copy_rates_from_pos(pair.replace('/', ''), tf, 0, count)
+        bars = mt5.copy_rates_from_pos(_mt5_sym(pair), tf, 0, count)
         if bars is not None and len(bars) >= 2:
             return bars
     except Exception:
@@ -826,7 +840,7 @@ def execute_trade(pair: str, direction: str, entry: dict,
         log.error('MetaTrader5 not installed and --live mode is on')
         return False
 
-    mt5_sym = pair.replace('/', '')
+    mt5_sym = _mt5_sym(pair)
     tick    = mt5.symbol_info_tick(mt5_sym)
     if not tick:
         log.error(f'MT5: no tick for {mt5_sym}')
