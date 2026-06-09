@@ -153,6 +153,15 @@ function renderAllInner() {
     filterTradingDays(S.ohlcData[S.currentPair.symbol]?.values),
     volRegime, tierData.totalScore, S.currentPair.symbol
   );
+  // Attach GARCH hl_median from server forecast so deriveRangeUtil uses the
+  // properly BM-scaled P50 range rather than falling back to ci68Range (1σ).
+  const _GARCH_INSTRUMENT = {
+    'EUR/USD': 'EURUSD', 'GBP/USD': 'GBPUSD', 'USD/JPY': 'USDJPY',
+    'XAU/USD': 'GOLD',   'NAS100_USD': 'NQ',
+  };
+  const _garchInstr   = _GARCH_INSTRUMENT[S.currentPair.symbol];
+  const _garchMedian  = _garchInstr ? S.garchForecast?.[_garchInstr]?.hl_median : null;
+  if (otcForecast && _garchMedian) otcForecast.hl_median = _garchMedian;
   S.otcForecast = otcForecast;
 
   // Compute decision state once here so entry scanner and level map can both use it

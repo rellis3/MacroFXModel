@@ -657,6 +657,14 @@ async function loadAll() {
         .catch(() => {});
     }
 
+    // GARCH vol forecast — computed once per day server-side, fetch once per session
+    if (!S.garchForecast) {
+      fetch('/api/vol-forecast')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.instruments) { S.garchForecast = data.instruments; renderAllDebounced(); } })
+        .catch(() => {});
+    }
+
 
     window._exportWatchlist = (pair, topN, btn) => {
       const csv = exportWatchlistCSV(pair, topN);

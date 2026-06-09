@@ -185,9 +185,9 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
       <button data-dir="short">Short</button>
     </div>
     <div class="gz-seg" id="gzCountSeg">
-      <button class="on" data-count="5">Top 5</button>
+      <button data-count="5">Top 5</button>
       <button data-count="10">Top 10</button>
-      <button data-count="all">All</button>
+      <button class="on" data-count="all">All</button>
     </div>
     <label class="gz-check on" id="gzChkSession">
       <input type="checkbox" id="gzShowSession" checked> Session levels
@@ -289,7 +289,8 @@ let _selectedZoneId = null;
 
 let _tf       = 'M30';
 let _dirFilter = 'all';
-let _countFilter = 5;
+let _countFilter = 9999;
+let _currentPrice = null;
 let _showSession = true;
 let _showAnchors = true;
 let _showTl      = false;
@@ -397,25 +398,79 @@ async function _load() {
 
 // ── Candle fetch + aggregation ────────────────────────────────────────
 async function _fetchCandles() {
-  const days = _tf === 'H4' ? 28 : 10;
-  const to   = new Date();
-  const from = new Date(to.getTime() - days * 86400_000);
-  const fmt  = d => d.toISOString().slice(0, 10);
+  const days   = _tf === 'H4' ? 28 : 10;
+  const to     = new Date();
+  const from   = new Date(to.getTime() - days * 86400_000);
+  const fmt    = d => d.toISOString().slice(0, 10);
+  const period = _tf === 'H4' ? 14400 : 1800;
+  const el     = document.getElementById('gzChartLoading');
 
+  el.textContent = 'Loading candles…';
+  el.classList.remove('hidden');
+
+  // 1. vol-backtest endpoint (works when a backtest has run recently and data is in memory)
   try {
-    document.getElementById('gzChartLoading').classList.remove('hidden');
     const res = await fetch(`/api/vol-backtest/candles/xauusd?from=${fmt(from)}&to=${fmt(to)}`);
-    const j   = await res.json();
-    if (!j.ok || !j.candles?.length) throw new Error('No candles returned');
+    if (res.ok) {
+      const j = await res.json();
+      if (j.ok && j.candles?.length) {
+        _candles = _aggregate(j.candles, period);
+        el.classList.add('hidden');
+        return;
+      }
+    }
+  } catch {}
 
-    const m1 = j.candles;
-    _candles = _tf === 'H4' ? _aggregate(m1, 14400) : _aggregate(m1, 1800);
-  } catch(e) {
-    console.warn('Candle fetch failed:', e.message);
-    _candles = [];
-  } finally {
-    document.getElementById('gzChartLoading').classList.add('hidden');
+  // 2. /api/state 5m OHLC bars — always available while the bots are running
+  try {
+    el.textContent = 'Loading live 5m bars…';
+    const res = await fetch('/api/state');
+    if (res.ok) {
+      const j  = await res.json();
+      const raw = j?.ohlc5m?.['XAU/USD']?.values ?? [];
+      if (raw.length) {
+        const m5 = raw.map(b => ({
+          time:  typeof b.time === 'number' ? b.time : Math.floor(new Date(b.time).getTime() / 1000),
+          open:  b.open, high: b.high, low: b.low, close: b.close,
+        })).filter(b => b.time > 0 && b.high > 0);
+        _candles = _aggregate(m5, period);
+        if (_candles.length) { el.classList.add('hidden'); return; }
+      }
+    }
+  } catch {}
+
+  // 3. Synthetic phantom candles spanning all zone levels so price lines are visible
+  el.textContent = 'No candle feed — using zone-range anchor';
+  _candles = _buildSyntheticCandles(period);
+  el.classList.add('hidden');
+}
+
+// Build minimal ghost candles spanning the zone price range so the chart
+// has a valid price scale even with no real OHLC data.
+function _buildSyntheticCandles(period) {
+  const zones = _zonesData?.zones ?? [];
+  const now   = Math.floor(Date.now() / 1000);
+  if (!zones.length && !_currentPrice) return [];
+
+  let lo = _currentPrice ? _currentPrice * 0.97 : Infinity;
+  let hi = _currentPrice ? _currentPrice * 1.03 : -Infinity;
+  for (const z of zones) {
+    const lvls = [z.gp_low, z.gp_high, z.level_382, z.level_886, z.swing_origin, z.swing_end].filter(Boolean);
+    if (lvls.length) {
+      lo = Math.min(lo, ...lvls);
+      hi = Math.max(hi, ...lvls);
+    }
   }
+  if (!isFinite(lo) || !isFinite(hi) || lo >= hi) return [];
+  const pad = (hi - lo) * 0.04;
+  lo -= pad; hi += pad;
+  const mid = (lo + hi) / 2;
+  const out = [];
+  const p   = period || 1800;
+  for (let i = 59; i >= 0; i--) {
+    out.push({ time: Math.floor((now - i * p) / p) * p, open: mid, high: hi, low: lo, close: mid });
+  }
+  return out;
 }
 
 function _aggregate(m1, periodSecs) {
@@ -437,8 +492,9 @@ function _aggregate(m1, periodSecs) {
 function _rebuildChart() {
   if (!_cs || !_chart) return;
 
-  // Candle data
-  if (_candles.length) _cs.setData(_candles);
+  // Ensure we have something for the price scale; fall back to synthetic if needed
+  const candleData = _candles.length ? _candles : _buildSyntheticCandles(_tf === 'H4' ? 14400 : 1800);
+  try { _cs.setData(candleData); } catch {}
 
   // Clear all price lines
   _priceLines.forEach(pl => { try { _cs.removePriceLine(pl); } catch {} });
@@ -641,7 +697,7 @@ function _updateStats() {
   const d  = _zonesData;
   const st = _statusData;
   const pl = d?.pivot_levels;
-  const price = st?.mt5_positions?.[0]?.price || null;
+  const price = _currentPrice || st?.mt5_positions?.[0]?.price || null;
 
   if (pl?.vwap && price) {
     const diff = price - pl.vwap;
@@ -681,23 +737,44 @@ function _renderZoneCards() {
     return;
   }
 
+  const fmtTs = ts => {
+    if (!ts || ts <= 0) return '—';
+    const d = new Date(ts * 1000);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' +
+           d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
   grid.innerHTML = zones.map(z => {
     const isLong   = z.direction === 'long';
     const isArmed  = z.zone_id === armedId;
     const scoreStr = (z.score ?? 0).toFixed(1);
     const scoreClass = z.score >= 40 ? 'high' : z.score >= 15 ? 'mid' : 'low';
 
+    // Distance from current price
+    let distHtml = '';
+    if (_currentPrice && z.gp_low && z.gp_high) {
+      const px = _currentPrice;
+      if (px >= z.gp_low && px <= z.gp_high) {
+        distHtml = `<span style="color:var(--gold);font-weight:700;font-size:10px">● INSIDE GP</span>`;
+      } else {
+        const dist = px > z.gp_high ? px - z.gp_high : z.gp_low - px;
+        const dir  = px > z.gp_high ? (isLong ? '↓ ' : '↑ ') : (isLong ? '↑ ' : '↓ ');
+        const col  = dist < 15 ? 'var(--amber)' : dist < 40 ? 'var(--text2)' : 'var(--text3)';
+        distHtml = `<span style="color:${col};font-size:10px">${dir}${dist.toFixed(1)}p</span>`;
+      }
+    }
+
     const fibPills = [
-      `<span class="gz-fib-pill r382">.382 ${z.level_382?.toFixed(1)}</span>`,
-      `<span class="gz-fib-pill r500">.500 ${z.level_500?.toFixed(1)}</span>`,
-      `<span class="gz-fib-pill gp">.618 ${z.level_618?.toFixed(1)}</span>`,
-      `<span class="gz-fib-pill gp">.650 ${z.level_650?.toFixed(1)}</span>`,
-      `<span class="gz-fib-pill r786">.786 ${z.level_786?.toFixed(1)}</span>`,
-      `<span class="gz-fib-pill r886">.886 ${z.level_886?.toFixed(1)}</span>`,
+      `<span class="gz-fib-pill r382">.382 ${z.level_382?.toFixed(1) ?? '—'}</span>`,
+      `<span class="gz-fib-pill r500">.500 ${z.level_500?.toFixed(1) ?? '—'}</span>`,
+      `<span class="gz-fib-pill gp">.618 ${z.level_618?.toFixed(1) ?? '—'}</span>`,
+      `<span class="gz-fib-pill gp">.650 ${z.level_650?.toFixed(1) ?? '—'}</span>`,
+      `<span class="gz-fib-pill r786">.786 ${z.level_786?.toFixed(1) ?? '—'}</span>`,
+      `<span class="gz-fib-pill r886">.886 ${z.level_886?.toFixed(1) ?? '—'}</span>`,
     ].join('');
 
     const compTags = (z.composition ?? [])
-      .filter((t,i,a) => a.indexOf(t) === i)  // deduplicate
+      .filter((t,i,a) => a.indexOf(t) === i)
       .slice(0, 12)
       .map(t => {
         const strong = t.includes('BULL') || t.includes('BEAR') || t.includes('POC') ||
@@ -706,26 +783,45 @@ function _renderZoneCards() {
         return `<span class="gz-comp-tag ${strong ? 'strong' : ''}">${t}</span>`;
       }).join('');
 
-    const swingInfo = z.swing_origin && z.swing_end
-      ? `${isLong ? '↑' : '↓'} Swing: ${z.swing_origin?.toFixed(1)} → ${z.swing_end?.toFixed(1)} (R=${z.impulse_size?.toFixed(1)})`
-      : '';
+    // Impulse detail — origin date/price → end date/price
+    const hasSwing = z.swing_origin && z.swing_end;
+    const impulseHtml = hasSwing ? (() => {
+      const originDate = fmtTs(z.swing_origin_time);
+      const endDate    = fmtTs(z.swing_end_time);
+      const sz = z.impulse_size?.toFixed(1) ?? ((Math.abs(z.swing_end - z.swing_origin)).toFixed(1));
+      return `
+        <div style="font-size:10px;color:var(--text3);margin-top:6px;padding:5px 8px;background:var(--bg3);border-radius:4px;line-height:1.6">
+          <span style="color:var(--text2)">${isLong ? '▲ Impulse' : '▼ Impulse'}</span>
+          <span style="color:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px;margin-left:6px">${z.tf}</span><br>
+          <span style="font-family:'DM Mono',monospace;color:${isLong ? 'var(--red)' : 'var(--green)'}">
+            ${z.swing_origin.toFixed(2)}</span>
+          <span style="color:var(--text3);font-size:9px"> ${originDate}</span>
+          <br>→&nbsp;
+          <span style="font-family:'DM Mono',monospace;color:${isLong ? 'var(--green)' : 'var(--red)'}">
+            ${z.swing_end.toFixed(2)}</span>
+          <span style="color:var(--text3);font-size:9px"> ${endDate}</span>
+          <span style="color:var(--amber);font-size:9.5px;margin-left:6px">${sz}pts</span>
+          <span style="color:var(--text3);font-size:9px;margin-left:4px">→ .${z.zone_variant === 'gp' ? '618/.650 GP' : z.zone_variant} retrace</span>
+        </div>`;
+    })() : '';
 
     return `
     <div class="gz-zone-card ${isLong ? 'long' : 'short'} ${isArmed ? 'armed' : ''} ${z.zone_id === _selectedZoneId ? 'selected' : ''}"
          onclick="_selectZone('${z.zone_id}')">
       <div class="gz-zone-top">
-        <div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <div class="gz-zone-id">${z.zone_id}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:2px">${swingInfo}</div>
+          ${distHtml}
+          ${z.htf_aligned ? '<span style="font-size:9px;color:var(--cyan);border:1px solid rgba(38,198,218,.3);padding:1px 5px;border-radius:3px">HTF✓</span>' : ''}
         </div>
         <div class="gz-zone-score ${scoreClass}">${scoreStr}</div>
       </div>
       <div class="gz-zone-window ${isLong ? 'long' : 'short'}">
-        ${isArmed ? '⚡ ' : ''}GP: ${z.gp_low?.toFixed(2)} – ${z.gp_high?.toFixed(2)}
-        ${z.htf_aligned ? ' ✓ HTF' : ''}
+        ${isArmed ? '⚡ ' : ''}GP: ${z.gp_low?.toFixed(2) ?? '—'} – ${z.gp_high?.toFixed(2) ?? '—'}
       </div>
       <div class="gz-zone-fibs">${fibPills}</div>
-      <div class="gz-comp-tags">${compTags}</div>
+      ${impulseHtml}
+      <div class="gz-comp-tags" style="margin-top:6px">${compTags}</div>
     </div>`;
   }).join('');
 }
@@ -750,8 +846,12 @@ async function _tickPrice() {
     const j = await r.json();
     const p = j.price ?? j.close ?? j.ask;
     if (p) {
-      document.getElementById('gzLivePrice').textContent = `XAU/USD ${parseFloat(p).toFixed(2)}`;
-      document.getElementById('gsPrice').textContent     = parseFloat(p).toFixed(2);
+      const px = parseFloat(p);
+      document.getElementById('gzLivePrice').textContent = `XAU/USD ${px.toFixed(2)}`;
+      document.getElementById('gsPrice').textContent     = px.toFixed(2);
+      const changed = _currentPrice !== px;
+      _currentPrice = px;
+      if (changed && _zonesData) _renderZoneCards();
     }
   } catch {}
 }

@@ -362,7 +362,7 @@ export function aiCollectSnapshot() {
 
   // Macro Surprise Index
   if (S.surpriseIndex && Object.keys(S.surpriseIndex).length > 0) {
-    s.surpriseIndex = S.surpriseIndex;
+    s.surpriseIndex = Object.fromEntries(Object.entries(S.surpriseIndex).filter(([k, v]) => typeof v === 'number'));
     try {
       const ps = getPairSurpriseScore();
       if (ps) s.pairSurprise = ps.net;

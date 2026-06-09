@@ -436,20 +436,16 @@ function computeSessionMetrics(bar, fc, bars = []) {
   const ohRatio = r2(fc.oc_median > 0 ? oh / fc.oc_median * 100 : 0);
   const olRatio = r2(fc.oc_median > 0 ? ol / fc.oc_median * 100 : 0);
 
-  // Reach times — walk H1 bars chronologically, record first bar where each
-  // threshold was crossed. Time is bar open (start of that hour).
+  // Reach times — walk H1 bars chronologically, record first bar whose CLOSE
+  // crossed the threshold. Using close (not intrabar high/low) avoids false
+  // triggers from brief spikes that don't appear on retail chart feeds.
   let ohReachedAt = null, olReachedAt = null, ocReachedAt = null;
   if (bars.length > 0 && fc.oc_median > 0) {
     const medPrice = fc.oc_median / 100 * o;   // threshold in price units
-    let runHigh = o, runLow = o;
     for (const b of bars) {
-      const bH = parseFloat(b.mid.h);
-      const bL = parseFloat(b.mid.l);
       const bC = parseFloat(b.mid.c);
-      if (bH > runHigh) runHigh = bH;
-      if (bL < runLow ) runLow  = bL;
-      if (!ohReachedAt && (runHigh - o) >= medPrice) ohReachedAt = b.time;
-      if (!olReachedAt && (o - runLow)  >= medPrice) olReachedAt = b.time;
+      if (!ohReachedAt && (bC - o) >= medPrice)        ohReachedAt = b.time;
+      if (!olReachedAt && (o - bC) >= medPrice)        olReachedAt = b.time;
       if (!ocReachedAt && Math.abs(bC - o) >= medPrice) ocReachedAt = b.time;
     }
   }
@@ -539,6 +535,23 @@ export async function getSessionStatus() {
   return result;
 }
 
+// ── Session audit ─────────────────────────────────────────────────────────────
+// Captures the final intraday session metrics just before the daily forecast
+// re-run. Stored as vol_session_YYYY-MM-DD in KV (CF-persisted) so historical
+// sessions can be extracted for any captured date.
+
+async function _auditSession(sessionDate) {
+  try {
+    const status = await getSessionStatus();
+    if (!status?.ok) return;
+    const record = { ...status, audited_at: new Date().toISOString() };
+    await kv.put(`vol_session_${sessionDate}`, JSON.stringify(record));
+    console.log(`[VOL-FORECAST] Session audit saved: vol_session_${sessionDate}`);
+  } catch (e) {
+    console.error('[VOL-FORECAST] Session audit failed:', e.message);
+  }
+}
+
 // ── Daily scheduler ───────────────────────────────────────────────────────────
 // Polls every 5 minutes. Fires the run once per calendar day after TARGET_HOUR_UTC.
 
@@ -554,6 +567,8 @@ async function _schedulerTick() {
   _lastRunDate = todayStr;
 
   console.log(`[VOL-FORECAST] Daily trigger at ${now.toISOString()}`);
+  // Audit today's session before computing tomorrow's forecast
+  await _auditSession(todayStr);
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Daily run failed:', e.message));
 }
 

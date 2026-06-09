@@ -68,6 +68,7 @@ const _CF_EXACT = new Set([
   'fred_data_v3',           // FRED dashboard cache (31 series) — survives Railway restarts
   'dyn_anchor_config',      // DynAnchor bot settings — must survive redeploys
   'dyn_anchor_credentials', // DynAnchor bot MT5 credentials — must survive redeploys
+  'hedge_audit_log',        // forward-test log for advisory hedge suggestions — must survive redeploys
 ]);
 function isCfKey(key) {
   // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart
@@ -77,6 +78,8 @@ function isCfKey(key) {
   if (key.startsWith('fredhistory_')) return true;
   // trade_hist_* are the per-bot-per-day closed trade logs — must survive Railway redeploys
   if (key.startsWith('trade_hist_')) return true;
+  // vol_session_* are daily session audit snapshots — must survive Railway redeploys
+  if (key.startsWith('vol_session_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 

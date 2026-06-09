@@ -1551,6 +1551,7 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                 'monthlydd':         risk_guard.monthly_dd_pct,
                 'cooldown_min':      exec_cfg.get('cooldown', 60),
                 'balance':           live_balance,
+                'account_login':     acct.login if has_real_balance else None,
                 'errors':            [],
             }
             push_bot_status(status, base_url)

@@ -2235,10 +2235,11 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
   <!-- ══════════════════════════════════════════════════════ POSITIONS TAB -->
   <div class="tab-pane" id="tab-positions">
 
-    <!-- Sub-tabs: Live / History -->
+    <!-- Sub-tabs: Live / History / Hedge Audit -->
     <div class="pos-subtabs">
       <button class="pos-subtab active" id="posSubLive"    onclick="switchPosSubTab('live')">Live Positions</button>
       <button class="pos-subtab"        id="posSubHistory" onclick="switchPosSubTab('history')">Trade History</button>
+      <button class="pos-subtab"        id="posSubHedge"   onclick="switchPosSubTab('hedge')">Hedge Audit</button>
     </div>
 
     <!-- ── Live Positions view ── -->
@@ -2270,6 +2271,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
             <tr>
               <th>Pair</th>
               <th>Bot</th>
+              <th>Suggested Hedge</th>
               <th>Dir</th>
               <th>Lots</th>
               <th>Entry</th>
@@ -2282,7 +2284,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
             </tr>
           </thead>
           <tbody id="posTableBody">
-            <tr><td colspan="11" class="pos-empty">Loading positions…</td></tr>
+            <tr><td colspan="12" class="pos-empty">Loading positions…</td></tr>
           </tbody>
           <tfoot id="posTableFoot"></tfoot>
         </table>
@@ -2367,6 +2369,13 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <button class="pos-cal-nav" onclick="shiftCalMonth(1)">Next →</button>
         </div>
         <div class="pos-cal-grid" id="calGrid"></div>
+      </div>
+    </div>
+
+    <!-- ── Hedge Audit view ── -->
+    <div id="posHedgeView" class="card" style="display:none">
+      <div id="posHedgeContent">
+        <p style="color:var(--text3);padding:20px">Loading hedge audit log…</p>
       </div>
     </div>
 
@@ -2522,13 +2531,99 @@ const _POS_BOTS = [
 
 let _posRefreshTimer = null;
 
+// ── Hedge suggestion helpers ──────────────────────────────────────────────────
+
+function _normSym(s) {
+  return (s || '').toLowerCase().replace(/[._\s]/g, '');
+}
+
+function _findBestHedge(symbol, hedgeData) {
+  if (!hedgeData) return null;
+  const { avg_corr = {}, corr_std = {}, last_betas = {} } = hedgeData;
+  const sym = _normSym(symbol);
+  let best = null, bestScore = 0;
+  for (const [key, corr] of Object.entries(avg_corr)) {
+    const [a, b] = key.split('__');
+    let hedgeSym = null;
+    if (a === sym) hedgeSym = b;
+    else if (b === sym) hedgeSym = a;
+    if (!hedgeSym) continue;
+    const score = Math.abs(corr);
+    if (score > bestScore) {
+      bestScore = score;
+      best = { symbol: hedgeSym.toUpperCase(), corr, std: corr_std[key] || 0, beta: last_betas[key] || 1 };
+    }
+  }
+  return best;
+}
+
+function _hedgeCellHtml(pos, hedgeData) {
+  if (!hedgeData) return '<td style="color:var(--text3);font-size:11px;font-style:italic">—</td>';
+  const h = _findBestHedge(pos.symbol, hedgeData);
+  if (!h) return `<td style="color:var(--text3);font-size:11px;font-style:italic" title="No correlation pair found for ${pos.symbol}">—</td>`;
+  const isLong = pos.direction === 'BUY';
+  // positive corr → pairs move together → hedge is opposite direction
+  const hedgeLong = h.corr > 0 ? !isLong : isLong;
+  const hedgeDir  = hedgeLong ? 'BUY' : 'SELL';
+  const dirColor  = hedgeLong ? 'var(--green)' : 'var(--red)';
+  const corrSign  = h.corr >= 0 ? '+' : '';
+  return `<td style="font-size:11px;white-space:nowrap">` +
+    `<span style="color:${dirColor};font-weight:700">${hedgeDir}</span> ` +
+    `<span style="color:var(--text2)">${h.symbol}</span> ` +
+    `<span style="color:var(--text3)">${corrSign}${h.corr.toFixed(2)} β${Math.abs(h.beta).toFixed(2)}</span>` +
+    `</td>`;
+}
+
+async function _auditNewPositions(allPositions, hedgeData) {
+  let seen;
+  try { seen = new Set(JSON.parse(localStorage.getItem('hedge_audit_seen') || '[]')); }
+  catch(e) { seen = new Set(); }
+
+  const newEntries = [];
+  for (const p of allPositions) {
+    if (!p.ticket || seen.has(p.ticket)) continue;
+    seen.add(p.ticket);
+    const h = _findBestHedge(p.symbol, hedgeData);
+    const isLong = p.direction === 'BUY';
+    const hedgeLong = h ? (h.corr > 0 ? !isLong : isLong) : null;
+    newEntries.push({
+      ticket:          p.ticket,
+      symbol:          p.symbol,
+      direction:       p.direction,
+      lots:            p.lots,
+      open_price:      p.open_price,
+      bot:             p._bot?.label || 'Unknown',
+      bot_key:         p._bot?.key   || '',
+      account_login:   p._account    || null,
+      hedge_symbol:    h?.symbol     || null,
+      hedge_direction: h ? (hedgeLong ? 'BUY' : 'SELL') : null,
+      hedge_corr:      h?.corr       ?? null,
+      hedge_corr_std:  h?.std        ?? null,
+      hedge_beta:      h?.beta       ?? null,
+    });
+  }
+
+  if (!newEntries.length) return;
+  try { localStorage.setItem('hedge_audit_seen', JSON.stringify([...seen])); } catch(e) {}
+  try {
+    await fetch('/api/hedge-audit/entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newEntries),
+    });
+  } catch(e) {}
+}
+
 async function loadPositionsTab() {
   const tbody = document.getElementById('posTableBody');
   const tfoot = document.getElementById('posTableFoot');
   if (!tbody) return;
 
-  // Fetch all bot statuses in parallel
-  const results = await Promise.allSettled(_POS_BOTS.map(b => _kvGet(b.key)));
+  // Fetch all bot statuses and hedge corr data in parallel
+  const [results, hedgeData] = await Promise.all([
+    Promise.allSettled(_POS_BOTS.map(b => _kvGet(b.key))),
+    fetch('/api/hedge-alerts').then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
   const allPositions = [];
   const staleBots = [];
 
@@ -2540,7 +2635,7 @@ async function loadPositionsTab() {
       : (data.timestamp ? Math.round((Date.now() - data.timestamp) / 1000) : null);
     if (ageSecs !== null && ageSecs > 300) staleBots.push(bot.label);
     const positions = data.mt5_positions || [];
-    positions.forEach(p => allPositions.push({ ...p, _bot: bot }));
+    positions.forEach(p => allPositions.push({ ...p, _bot: bot, _account: data.account_login || null }));
   });
 
   // Group by symbol
@@ -2564,7 +2659,7 @@ async function loadPositionsTab() {
   }
 
   if (!allPositions.length) {
-    tbody.innerHTML = '<tr><td colspan="11" class="pos-empty">No open positions across all bots</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="pos-empty">No open positions across all bots</td></tr>';
     tfoot.innerHTML = '';
     return;
   }
@@ -2599,10 +2694,12 @@ async function loadPositionsTab() {
       const badgeClass = `pos-bot-badge${bot.paper ? ' pos-paper-badge' : ''}`;
       const firstClass = idx === 0 ? ' pos-group-first' : '';
 
+      const botTitle = p._account ? `MT5 #${p._account}` : bot.label;
       rows.push(
         `<tr class="${firstClass}">` +
         `<td><strong>${idx === 0 ? sym : ''}</strong>${idx === 0 ? conflictHtml : ''}</td>` +
-        `<td><span class="${badgeClass}" style="${badgeStyle}">${bot.label}</span></td>` +
+        `<td><span class="${badgeClass}" style="${badgeStyle}" title="${botTitle}">${bot.label}</span></td>` +
+        _hedgeCellHtml(p, hedgeData) +
         `<td class="${dClass}">${p.direction}</td>` +
         `<td>${(p.lots || 0).toFixed(2)}</td>` +
         `<td>${(p.open_price || 0).toFixed(5)}</td>` +
@@ -2624,9 +2721,11 @@ async function loadPositionsTab() {
   const totalSwap   = allPositions.reduce((s, p) => s + (p.swap   || 0), 0);
   const totalNet    = totalProfit + totalSwap;
   const totalLots   = allPositions.reduce((s, p) => s + (p.lots   || 0), 0);
+  // Column order: Pair | Bot | Hedge | Dir | Lots | Entry | Current | P&L | Swap | Net | Opened | Ticket
   tfoot.innerHTML =
     `<tr class="pos-totals">` +
     `<td colspan="3">Totals (${allPositions.length} positions)</td>` +
+    `<td></td>` +
     `<td>${totalLots.toFixed(2)}</td>` +
     `<td colspan="2"></td>` +
     `<td class="${totalProfit >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}</td>` +
@@ -2634,6 +2733,9 @@ async function loadPositionsTab() {
     `<td class="${totalNet >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalNet >= 0 ? '+' : ''}${totalNet.toFixed(2)}</td>` +
     `<td colspan="2"></td>` +
     `</tr>`;
+
+  // Log any new positions to the hedge audit trail (fire-and-forget)
+  _auditNewPositions(allPositions, hedgeData);
 }
 
 window.loadPositionsTab = loadPositionsTab;
@@ -2643,12 +2745,13 @@ document.querySelector('.tab-btn[data-tab="positions"]')?.addEventListener('clic
   const lastSub = (() => { try { return localStorage.getItem('posSubTab') || 'live'; } catch(e) { return 'live'; } })();
   switchPosSubTab(lastSub);
   if (lastSub === 'live') loadPositionsTab();
-  // Auto-refresh every 30s while tab is visible
+  // Auto-refresh every 30s while live sub-tab is visible
   clearInterval(_posRefreshTimer);
   _posRefreshTimer = setInterval(() => {
     if (document.getElementById('tab-positions')?.classList.contains('active')) {
-      const cur = document.getElementById('posSubHistory').classList.contains('active') ? 'history' : 'live';
-      if (cur === 'live') loadPositionsTab();
+      const isHistory = document.getElementById('posSubHistory')?.classList.contains('active');
+      const isHedge   = document.getElementById('posSubHedge')?.classList.contains('active');
+      if (!isHistory && !isHedge) loadPositionsTab();
     } else {
       clearInterval(_posRefreshTimer);
     }
@@ -2660,15 +2763,102 @@ document.querySelector('.tab-btn[data-tab="positions"]')?.addEventListener('clic
 function switchPosSubTab(view) {
   document.getElementById('posLiveView').style.display    = view === 'live'    ? '' : 'none';
   document.getElementById('posHistoryView').style.display = view === 'history' ? '' : 'none';
+  document.getElementById('posHedgeView').style.display   = view === 'hedge'   ? '' : 'none';
   document.getElementById('posSubLive').classList.toggle('active',    view === 'live');
   document.getElementById('posSubHistory').classList.toggle('active', view === 'history');
+  document.getElementById('posSubHedge').classList.toggle('active',   view === 'hedge');
   try { localStorage.setItem('posSubTab', view); } catch(e) {}
-  if (view === 'history') {
-    _initHistoryView();
-    loadHistoryTab();
-  }
+  if (view === 'history') { _initHistoryView(); loadHistoryTab(); }
+  if (view === 'hedge')   { loadHedgeAuditTab(); }
 }
 window.switchPosSubTab = switchPosSubTab;
+
+// ── Hedge Audit tab ───────────────────────────────────────────────────────────
+
+async function loadHedgeAuditTab() {
+  const container = document.getElementById('posHedgeContent');
+  if (!container) return;
+  try {
+    const r = await fetch('/api/hedge-audit');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const { entries = [] } = await r.json();
+
+    if (!entries.length) {
+      container.innerHTML = `
+        <div style="padding:40px;text-align:center;color:var(--text3)">
+          <div style="font-size:14px;font-weight:600;margin-bottom:8px">No audit entries yet</div>
+          <div style="font-size:12px;line-height:1.7">
+            Advisory hedge suggestions are logged here each time a new position opens.<br>
+            Open the <strong style="color:var(--text)">Live Positions</strong> tab to generate the first entries.<br>
+            Use this log to forward-test hedge signal quality before building automation.
+          </div>
+        </div>`;
+      return;
+    }
+
+    const rows = entries.map(e => {
+      const corrSign  = (e.hedge_corr || 0) >= 0 ? '+' : '';
+      const loggedAt  = e.logged_at ? e.logged_at.replace('T', ' ').slice(0, 16) + ' UTC' : '—';
+      const acctStr   = e.account_login ? `#${e.account_login}` : '—';
+      const noHedge   = !e.hedge_symbol;
+      return `<tr>
+        <td style="color:var(--text3);font-size:11px">${loggedAt}</td>
+        <td><strong>${e.symbol || '—'}</strong></td>
+        <td class="${e.direction === 'BUY' ? 'pos-buy' : 'pos-sell'}">${e.direction || '—'}</td>
+        <td>${(e.lots || 0).toFixed(2)}</td>
+        <td style="color:var(--text3)">${e.bot || '—'}</td>
+        <td style="color:var(--text3);font-size:11px">${acctStr}</td>
+        <td style="${noHedge ? 'color:var(--text3)' : ''}"><strong>${e.hedge_symbol || 'No corr data'}</strong></td>
+        <td class="${e.hedge_direction === 'BUY' ? 'pos-buy' : e.hedge_direction === 'SELL' ? 'pos-sell' : ''}">${e.hedge_direction || '—'}</td>
+        <td style="color:var(--text3)">${e.hedge_corr != null ? corrSign + e.hedge_corr.toFixed(3) : '—'}</td>
+        <td style="color:var(--text3)">${e.hedge_beta != null ? Math.abs(e.hedge_beta).toFixed(2) + 'x' : '—'}</td>
+        <td style="color:var(--amber);font-size:11px">Pending</td>
+        <td style="color:var(--text3);font-size:11px">${e.ticket || '—'}</td>
+      </tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="pos-header" style="margin-bottom:14px">
+        <div>
+          <div class="card-title">Hedge Audit Log</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">
+            Advisory suggestions logged when each position opens. Forward-test these before building automated execution.
+          </div>
+        </div>
+        <button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="loadHedgeAuditTab()">↺ Refresh</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;padding:8px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px">
+        <strong style="color:var(--text2)">How to read this:</strong>
+        Hedge direction is the position that would <em>reduce</em> the risk of the open position.
+        Positive correlation → opposite direction; negative correlation → same direction.
+        β shows the lot-size ratio (hedge lots = position lots ÷ β).
+      </div>
+      <div class="pos-table-wrap">
+        <table class="pos-table">
+          <thead>
+            <tr>
+              <th>Logged</th>
+              <th>Symbol</th>
+              <th>Dir</th>
+              <th>Lots</th>
+              <th>Bot</th>
+              <th>Account</th>
+              <th>Hedge Symbol</th>
+              <th>Hedge Dir</th>
+              <th>Correlation</th>
+              <th>Beta</th>
+              <th>Outcome</th>
+              <th>Ticket</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    container.innerHTML = `<p style="color:var(--red);padding:20px">Error: ${e.message}. Is the Railway server running?</p>`;
+  }
+}
+window.loadHedgeAuditTab = loadHedgeAuditTab;
 
 // ── Trade History tab ─────────────────────────────────────────────────────────
 

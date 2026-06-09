@@ -33,6 +33,7 @@ class ActiveTrade:
     result: Optional[str] = None
     close_price: Optional[float] = None
     pnl_pips: float = 0.0
+    ticket: Optional[int] = None    # MT5 position ticket (live mode only)
 
     def check_outcome(self, price: float) -> Optional[str]:
         if self.direction == 'LONG':

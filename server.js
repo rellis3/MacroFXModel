@@ -1605,7 +1605,7 @@ ${Object.keys(s.eventRisk.currencyRisk || {}).length > 0
 
 MACRO SURPRISE INDEX (30-day actual vs forecast)
 ${s.surpriseIndex && Object.keys(s.surpriseIndex).length > 0
-  ? Object.entries(s.surpriseIndex).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([c, v]) => `${c}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}`).join('  |  ') +
+  ? Object.entries(s.surpriseIndex).filter(([, v]) => typeof v === 'number').sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([c, v]) => `${c}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}`).join('  |  ') +
     (s.pairSurprise != null ? `\nPair net surprise: ${s.pairSurprise >= 0 ? '+' : ''}${s.pairSurprise.toFixed(2)} (positive = bullish base ccy)` : '')
   : '  Surprise index unavailable (Finnhub not configured or no data with estimates)'}
 
@@ -2201,6 +2201,20 @@ app.get('/api/vol-forecast/live/export', async (_req, res) => {
     res.type('text/plain').send(_fmtSessionText(status));
   } catch (e) {
     res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
+// Session audit — retrieve a saved end-of-day session snapshot from KV.
+// GET /api/vol-forecast/audit/:date  (date = YYYY-MM-DD, defaults to today)
+app.get('/api/vol-forecast/audit/:date?', async (req, res) => {
+  try {
+    const date = req.params.date ?? new Date().toISOString().split('T')[0];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+    const raw = await kv.get(`vol_session_${date}`);
+    if (!raw) return res.status(404).json({ ok: false, error: `No session audit found for ${date}` });
+    res.json({ ok: true, date, ...JSON.parse(raw) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
@@ -3264,6 +3278,42 @@ app.put('/api/hedge-signals/config', async (req, res) => {
 app.post('/api/hedge-signals/check', async (_req, res) => {
   const result = await computeHedgeSignals(true).catch(e => ({ status: 'error', error: e.message }));
   res.json({ ok: true, ...result });
+});
+
+// ── Hedge Audit Log ──────────────────────────────────────────────────────────
+// Advisory hedge suggestions logged when new positions open — used for forward-testing
+// signal quality before building Option C (automated execution).
+
+app.get('/api/hedge-audit', async (_req, res) => {
+  try {
+    const raw = await kv.get('hedge_audit_log');
+    const entries = raw ? JSON.parse(raw) : [];
+    res.json({ ok: true, entries });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST body: array of { ticket, symbol, direction, lots, open_price, bot, bot_key,
+//   hedge_symbol, hedge_direction, hedge_corr, hedge_corr_std, hedge_beta, account_login }
+app.post('/api/hedge-audit/entries', async (req, res) => {
+  try {
+    const newEntries = req.body;
+    if (!Array.isArray(newEntries) || !newEntries.length) return res.json({ ok: true, added: 0 });
+    const raw = await kv.get('hedge_audit_log');
+    const existing = raw ? JSON.parse(raw) : [];
+    const existingTickets = new Set(existing.map(e => e.ticket));
+    const ts = new Date().toISOString();
+    const toAdd = newEntries
+      .filter(e => e.ticket && !existingTickets.has(e.ticket))
+      .map(e => ({ ...e, logged_at: ts }));
+    if (!toAdd.length) return res.json({ ok: true, added: 0 });
+    const updated = [...toAdd, ...existing].slice(0, 500);
+    await kv.put('hedge_audit_log', JSON.stringify(updated));
+    res.json({ ok: true, added: toAdd.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // List R2 bucket contents under a prefix — useful to confirm which M1 parquets are uploaded

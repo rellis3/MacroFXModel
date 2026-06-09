@@ -798,18 +798,33 @@ class GoldBot:
                 return
             log.info(f'[ML]     {ml_reason}')
 
-        # Calculate SL / TP
+        # Calculate SL / TP + lot size
         sl, tp1, tp2 = _calc_sl_tp(zone, direction, price, self.atr_15m, self.cfg)
+        balance  = _mt5_balance()
+        sl_pips  = abs(price - sl)
+        lot_size = _calc_lot_size(balance, self.cfg.get('risk_pct', 0.5), sl_pips)
 
-        # Log the paper entry
-        self.journal.log_entry(zone, direction, price, sl, tp1, tp2, vu)
+        paper_mode = self.cfg.get('paper_mode', True)
+        ticket = None
+        if not paper_mode and self._mt5_ok:
+            ticket = _place_live_order(direction, sl, tp2, lot_size, zone.zone_id)
+            if not ticket:
+                log.warning('[LIVE] Order placement failed — signal skipped')
+                self.bot_state.transition(State.COOLDOWN)
+                self.bot_state.cooldown_until = (
+                    datetime.now(timezone.utc) + timedelta(minutes=5)
+                )
+                return
 
-        # Open paper trade
+        mode = 'LIVE' if ticket else 'PAPER'
+        self.journal.log_entry(zone, direction, price, sl, tp1, tp2, vu, mode=mode)
+
         trade = ActiveTrade(
             zone_id=zone.zone_id, direction=direction,
             entry_price=price, sl=sl, tp1=tp1, tp2=tp2,
-            lot_size=0.01,  # paper placeholder
+            lot_size=lot_size,
             entry_time=datetime.now(timezone.utc),
+            ticket=ticket,
         )
         self.bot_state.active_trade = trade
         self.bot_state.transition(State.MANAGING)
@@ -820,6 +835,12 @@ class GoldBot:
         if not trade:
             return
 
+        # Live mode: use MT5 positions/deals to track outcome
+        if trade.ticket and not self.cfg.get('paper_mode', True) and self._mt5_ok:
+            self._check_live_outcome(trade, price)
+            return
+
+        # Paper mode: track by price
         event = trade.check_outcome(price)
         if event == 'TP1_HIT':
             self.journal.log_tp1_hit(trade.zone_id, price)
@@ -828,6 +849,63 @@ class GoldBot:
         if event in ('TP2_HIT', 'SL_HIT'):
             self.journal.log_trade_closed(trade.zone_id, price, event)
             self._enter_cooldown()
+
+    def _check_live_outcome(self, trade: 'ActiveTrade', price: float) -> None:
+        """Manage live MT5 position: move SL to BE at TP1, detect close via deals."""
+        ticket = trade.ticket
+
+        # TP1: move SL to breakeven when price reaches first target
+        if not trade.tp1_hit:
+            tp1_hit = (trade.direction == 'LONG'  and price >= trade.tp1) or \
+                      (trade.direction == 'SHORT' and price <= trade.tp1)
+            if tp1_hit:
+                trade.tp1_hit = True
+                self.journal.log_tp1_hit(trade.zone_id, price)
+                try:
+                    mt5.order_send({
+                        'action':   mt5.TRADE_ACTION_SLTP,
+                        'position': ticket,
+                        'sl':       round(trade.entry_price, 2),
+                        'tp':       round(trade.tp2, 2),
+                    })
+                    log.info(f'[LIVE] TP1 hit — SL moved to breakeven {trade.entry_price:.2f}')
+                except Exception as exc:
+                    log.warning(f'[LIVE] SL breakeven move failed: {exc}')
+
+        # Check if position is still open
+        open_pos = mt5.positions_get(ticket=ticket) or []
+        if open_pos:
+            return   # still running
+
+        # Position gone — find exit deal
+        from datetime import timedelta as _td
+        deals = mt5.history_deals_get(
+            trade.entry_time - _td(minutes=1),
+            datetime.now(timezone.utc) + _td(minutes=1),
+        ) or []
+        exit_deals = [d for d in deals if d.position_id == ticket and d.entry in (1, 3)]
+        if exit_deals:
+            last_deal = max(exit_deals, key=lambda d: d.time)
+            exit_px   = float(last_deal.price)
+            sign      = 1 if trade.direction == 'LONG' else -1
+            pnl_pips  = round(sign * (exit_px - trade.entry_price), 1)
+            # Classify outcome
+            if trade.direction == 'LONG':
+                reason = 'TP2_HIT' if exit_px >= trade.tp2 * 0.999 else 'SL_HIT'
+            else:
+                reason = 'TP2_HIT' if exit_px <= trade.tp2 * 1.001 else 'SL_HIT'
+            log.info(f'[LIVE] Position {ticket} closed  exit={exit_px:.2f}  '
+                     f'pnl={pnl_pips:+.1f}p  reason={reason}')
+            self.journal.log_trade_closed(trade.zone_id, exit_px, reason)
+        else:
+            # No deal found yet — fall back to price-based detection
+            event = trade.check_outcome(price)
+            if event in ('TP2_HIT', 'SL_HIT'):
+                self.journal.log_trade_closed(trade.zone_id, price, event)
+            else:
+                return   # not closed yet per price, wait for next tick
+
+        self._enter_cooldown()
 
     def _enter_cooldown(self) -> None:
         mins = self.cfg.get('cooldown_minutes', 30)
@@ -974,7 +1052,69 @@ class GoldBot:
             pass
 
 
-# ── ATR helpers ──────────────────────────────────────────────────────────────
+# ── Lot sizing ───────────────────────────────────────────────────────────────
+
+def _calc_lot_size(balance: float, risk_pct: float, sl_pips: float) -> float:
+    """
+    XAU/USD: 1 standard lot = 100 oz.  Each $1 pip move = $100 P&L per lot.
+    lots = (balance × risk_pct%) / (sl_pips × $100_per_pip_per_lot)
+    Rounded to nearest 0.01 lot min.
+    """
+    if sl_pips <= 0:
+        return 0.01
+    risk_dollars = balance * (risk_pct / 100.0)
+    lots = risk_dollars / (sl_pips * 100.0)
+    return round(max(0.01, round(lots / 0.01) * 0.01), 2)
+
+
+# ── Live order placement ──────────────────────────────────────────────────────
+
+def _place_live_order(direction: str, sl: float, tp: float,
+                      lots: float, zone_id: str) -> Optional[int]:
+    """Place a live market order. Returns MT5 ticket on success, None on failure."""
+    if not HAS_MT5:
+        return None
+    tick = mt5.symbol_info_tick(SYMBOL)
+    if not tick:
+        log.error('[LIVE] Cannot get tick — order skipped')
+        return None
+    exec_price = tick.ask if direction == 'LONG' else tick.bid
+    order_type = mt5.ORDER_TYPE_BUY if direction == 'LONG' else mt5.ORDER_TYPE_SELL
+
+    info = mt5.symbol_info(SYMBOL)
+    filling_mode = mt5.ORDER_FILLING_IOC
+    if info:
+        f = info.filling_mode
+        if   f & 1: filling_mode = mt5.ORDER_FILLING_FOK
+        elif f & 2: filling_mode = mt5.ORDER_FILLING_IOC
+        elif f & 4: filling_mode = mt5.ORDER_FILLING_RETURN
+
+    res = mt5.order_send({
+        'action':       mt5.TRADE_ACTION_DEAL,
+        'symbol':       SYMBOL,
+        'volume':       float(lots),
+        'type':         order_type,
+        'price':        exec_price,
+        'sl':           round(sl, 2),
+        'tp':           round(tp, 2),
+        'deviation':    30,
+        'magic':        MAGIC,
+        'comment':      f'GoldBot {direction[0]} {zone_id[:18]}',
+        'type_time':    mt5.ORDER_TIME_GTC,
+        'type_filling': filling_mode,
+    })
+    if res is None:
+        log.error(f'[LIVE] order_send returned None: {mt5.last_error()}')
+        return None
+    if res.retcode != mt5.TRADE_RETCODE_DONE:
+        log.error(f'[LIVE] order failed retcode={res.retcode} {res.comment}')
+        return None
+    log.info(f'[LIVE] Order placed ticket={res.order}  exec={exec_price:.2f}  '
+             f'sl={sl:.2f}  tp={tp:.2f}  lots={lots}')
+    return int(res.order)
+
+
+# ── ATR helpers ───────────────────────────────────────────────────────────────
 
 def _atr_from_list(bars: list[dict], period: int = 14) -> float:
     """EMA-smoothed ATR from plain list[dict]. Adapter for bot/utils compute_atr."""

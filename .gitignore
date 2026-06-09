@@ -27,3 +27,10 @@ portfolioBacktest/cache/gold_m1.parquet
 portfolioBacktest/cache/us30_m1.parquet
 portfolioBacktest/cache/usdjpy_m1.parquet
 portfolioBacktest/cache/us2000_m1.parquet
+backtestSystem/backtestSystem.log
+bot/.bot_state.json
+bot/regime_bot.log
+bot/data/beta_history.jsonl
+Gold/logs/gold_bot.log
+Gold/logs/gold_journal.jsonl
+logs/regime_bot_v2.log
