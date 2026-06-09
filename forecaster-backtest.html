@@ -861,11 +861,10 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
         // Determine direction from active strategy
         let lvDir = null;
         if ((config.strategy || 'dirop') === 'reversal') {
-          // Direction based on which side price approaches from
-          const prevClose = i > 0 ? m1s[i-1].close : c.open;
-          if (prevClose < lvPrice && c.high >= lvPrice) lvDir = 'SHORT';
-          else if (prevClose > lvPrice && c.low  <= lvPrice) lvDir = 'LONG';
-          // If prevClose === lvPrice or both conditions (inside bar), skip
+          // Bar open tells us exactly which side price came from this bar
+          if (c.open < lvPrice && c.high >= lvPrice) lvDir = 'SHORT'; // opened below, moved up to level
+          else if (c.open > lvPrice && c.low  <= lvPrice) lvDir = 'LONG';  // opened above, moved down to level
+          // c.open === lvPrice is vanishingly rare — skip
         } else {
           // Dir on Open: direction fixed by level position relative to open
           if (def.dir === 'SHORT' && c.high >= lvPrice) lvDir = 'SHORT';
