@@ -2728,13 +2728,14 @@ async function loadPositionsTab() {
   const tfoot = document.getElementById('posTableFoot');
   if (!tbody) return;
 
-  // Fetch all bot statuses and hedge corr data in parallel.
+  // Fetch all bot statuses, hedge corr data, and live prices in parallel.
   // Primary: hedge_alerts_cache KV key (works on both Railway and CF Pages).
   // Fallback: /api/hedge-alerts directly (Railway only, also writes the cache).
-  const [results, hedgeDataRaw] = await Promise.all([
+  const [results, hedgeDataRaw, sigPricesRaw] = await Promise.all([
     Promise.allSettled(_POS_BOTS.map(b => _kvGet(b.key))),
     _kvGet('hedge_alerts_cache')
       .then(d => d || fetch('/api/hedge-alerts').then(r => r.ok ? r.json() : null).catch(() => null)),
+    fetch('/api/hedge-signals/prices').then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
   const hedgeData = hedgeDataRaw;
   const allPositions   = [];
@@ -2755,8 +2756,16 @@ async function loadPositionsTab() {
     });
   });
 
-  // symbol → current price from any open position (used for hedge price tracking)
+  // symbol → current price. Seed from the server's live price feed first so hedge
+  // symbols are covered even when they have no open bot position, then overlay any
+  // position's current price (more recent for actively traded pairs).
   const priceMap = {};
+  if (sigPricesRaw?.prices) {
+    for (const [sym, v] of Object.entries(sigPricesRaw.prices)) {
+      const norm = sym.replace('/', '').toUpperCase();
+      if (v?.price != null) priceMap[norm] = v.price;
+    }
+  }
   allPositions.forEach(p => { if (p.symbol && p.price != null) priceMap[p.symbol.toUpperCase()] = p.price; });
 
   // Group by symbol
