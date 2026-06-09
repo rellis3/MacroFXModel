@@ -69,8 +69,8 @@
 .fb-hover-box{position:absolute;top:8px;right:56px;background:#131722cc;border:1px solid #1c2133;border-radius:4px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;color:#d1d4dc;pointer-events:none;z-index:10;min-width:180px;backdrop-filter:blur(4px);display:none}
 .fb-hover-box .hb-row{display:flex;justify-content:space-between;gap:12px;line-height:1.7}
 .fb-hover-box .hb-k{color:#5a6380} .fb-hover-box .hb-v{color:#d1d4dc;font-weight:500}
-.fb-pnl-wrap{position:relative;height:100px;background:#0e1117;border-top:1px solid #1c2133}
-#fbPnlChart{width:100%;height:100%}
+.fb-pnl-wrap{position:relative;background:#0e1117;border-top:1px solid #1c2133}
+.fb-pnl-wrap>div{width:100%;height:100%}
 .fb-pnl-lbl{position:absolute;top:3px;left:6px;font-family:'DM Mono',monospace;font-size:10px;color:#5a6380;pointer-events:none;z-index:2}
 .fb-resize-handle{height:6px;background:#1c2133;cursor:ns-resize;position:relative;z-index:5;flex-shrink:0;transition:background .15s}
 .fb-resize-handle:hover,.fb-resize-handle.dragging{background:#4f7df0}
@@ -262,10 +262,15 @@
       <div class="hb-row"><span class="hb-k">Day H / L</span><span class="hb-v" id="hbHL2">—</span></div>
     </div>
   </div>
-  <!-- Daily P&L subchart (synced) -->
-  <div class="fb-pnl-wrap">
-    <span class="fb-pnl-lbl">Z-Score (20)</span>
+  <!-- Z-score subchart -->
+  <div class="fb-pnl-wrap" style="height:90px">
+    <span class="fb-pnl-lbl">Price Z-Score (20)</span>
     <div id="fbPnlChart"></div>
+  </div>
+  <!-- Momentum Z-score subchart -->
+  <div class="fb-pnl-wrap" style="height:90px">
+    <span class="fb-pnl-lbl">Momentum Z (ROC-10, window-20)</span>
+    <div id="fbMomChart"></div>
   </div>
   <div class="fb-resize-handle" id="resizeHandle"></div>
   <!-- Day navigation -->
@@ -548,6 +553,7 @@ const TRADES_PER_PAGE = 50;
 
 let mainChart  = null, priceSeries  = null;
 let pnlChart   = null, pnlSeries    = null;
+let momChart   = null, momSeries    = null;
 let drawPending = false;
 let equityChartInst = null, dowChartInst = null;
 let syncingCharts = false;
@@ -632,6 +638,27 @@ function setStatus(msg, type='idle') {
   document.getElementById('statusMsg').textContent = msg;
   const dot = document.getElementById('statusDot');
   dot.className = 'sdot' + (type==='running'?' running':type==='ok'?' ok':type==='err'?' err':'');
+}
+
+// ── Momentum Z-score ──────────────────────────────────────────────────────────
+// 1. Compute ROC over rocPeriod bars: roc_t = (close_t − close_{t-N}) / close_{t-N}
+// 2. Z-score that ROC over zWindow bars: z = (roc_t − mean_roc) / std_roc
+// Green bars = price accelerating upward, red = downward.
+// Extreme readings (±2) at a level touch signal momentum exhaustion.
+function computeMomentumZScore(candles, rocPeriod = 10, zWindow = 20) {
+  const out = [];
+  const need = rocPeriod + zWindow;
+  for (let i = need - 1; i < candles.length; i++) {
+    const rocs = [];
+    for (let j = i - zWindow + 1; j <= i; j++) {
+      rocs.push((candles[j].close - candles[j - rocPeriod].close) / candles[j - rocPeriod].close);
+    }
+    const mean = rocs.reduce((s, v) => s + v, 0) / zWindow;
+    const std  = Math.sqrt(rocs.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(1, zWindow - 1));
+    const z    = std > 1e-10 ? (rocs[zWindow - 1] - mean) / std : 0;
+    out.push({ time: candles[i].time, value: z, color: z >= 0 ? '#26a69a88' : '#ef535088' });
+  }
+  return out;
 }
 
 // ── Rolling Z-score of M1 close prices ───────────────────────────────────────
@@ -1029,11 +1056,11 @@ function buildLegend() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function renderChart(candles) {
-  const wrap    = document.getElementById('chartWrap');
-  const pnlWrap = document.getElementById('fbPnlChart');
+  const wrap = document.getElementById('chartWrap');
 
   if (mainChart) { try { mainChart.remove(); } catch(e) {} mainChart = null; priceSeries = null; }
   if (pnlChart)  { try { pnlChart.remove();  } catch(e) {} pnlChart  = null; pnlSeries  = null; }
+  if (momChart)  { try { momChart.remove();  } catch(e) {} momChart  = null; momSeries  = null; }
 
   const mkOpts = (bg, h) => ({
     width: wrap.clientWidth, height: h,
@@ -1053,50 +1080,54 @@ function renderChart(candles) {
   });
   priceSeries.setData(candles);
 
-  // Z-score subchart (rolling 20-bar price Z-score on M1)
-  pnlChart  = LightweightCharts.createChart(pnlWrap, mkOpts('#0e1117', 100));
-  pnlSeries = pnlChart.addLineSeries({
-    color: '#7c83f5', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
-    crosshairMarkerVisible: false,
-  });
+  const mkRefLines = (series) => {
+    [{ p:2,c:'#ef5350'},{p:-2,c:'#26a69a'},{p:1,c:'#374151'},{p:-1,c:'#374151'},{p:0,c:'#2a3050'}]
+      .forEach(r => series.createPriceLine({ price:r.p, color:r.c, lineWidth:1,
+        lineStyle: r.p===0 ? LightweightCharts.LineStyle.Solid : LightweightCharts.LineStyle.Dashed,
+        axisLabelVisible: r.p===2||r.p===-2||r.p===0 }));
+  };
+
+  // Price Z-score subchart
+  pnlChart  = LightweightCharts.createChart(document.getElementById('fbPnlChart'), mkOpts('#0e1117', 90));
+  pnlSeries = pnlChart.addLineSeries({ color:'#7c83f5', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
   const zData = computeZScoreSeries(candles);
   if (zData.length) pnlSeries.setData(zData);
-  // Reference lines at ±2 (extremes), ±1 (1σ), 0
-  [{ p: 2, c:'#ef5350' }, { p:-2, c:'#26a69a' }, { p: 1, c:'#374151' }, { p:-1, c:'#374151' }, { p: 0, c:'#2a3050' }]
-    .forEach(r => pnlSeries.createPriceLine({ price:r.p, color:r.c, lineWidth:1,
-      lineStyle: r.p===0 ? LightweightCharts.LineStyle.Solid : LightweightCharts.LineStyle.Dashed, axisLabelVisible: r.p===2||r.p===-2||r.p===0 }));
+  mkRefLines(pnlSeries);
 
-  // ── Sync by TIME RANGE (not logical indices — charts have different bar densities) ──
-  mainChart.timeScale().subscribeVisibleTimeRangeChange(tr => {
+  // Momentum Z-score subchart (ROC-10 normalised over 20 bars, histogram)
+  momChart  = LightweightCharts.createChart(document.getElementById('fbMomChart'), mkOpts('#0e1117', 90));
+  momSeries = momChart.addHistogramSeries({ priceLineVisible:false, lastValueVisible:false, base:0 });
+  const mData = computeMomentumZScore(candles);
+  if (mData.length) momSeries.setData(mData);
+  mkRefLines(momSeries);
+
+  // ── Sync all three charts by time range ────────────────────────────────────
+  const syncAll = (source, tr) => {
     if (syncingCharts || !tr) return;
     syncingCharts = true;
-    try { pnlChart.timeScale().setVisibleRange(tr); } catch(e) {}
+    for (const c of [mainChart, pnlChart, momChart]) {
+      if (c !== source) try { c.timeScale().setVisibleRange(tr); } catch(e) {}
+    }
     syncingCharts = false;
-  });
-  pnlChart.timeScale().subscribeVisibleTimeRangeChange(tr => {
-    if (syncingCharts || !tr) return;
-    syncingCharts = true;
-    try { mainChart.timeScale().setVisibleRange(tr); } catch(e) {}
-    syncingCharts = false;
-  });
+  };
+  mainChart.timeScale().subscribeVisibleTimeRangeChange(tr => syncAll(mainChart, tr));
+  pnlChart.timeScale().subscribeVisibleTimeRangeChange(tr  => syncAll(pnlChart,  tr));
+  momChart.timeScale().subscribeVisibleTimeRangeChange(tr  => syncAll(momChart,  tr));
 
-  // Crosshair sync
+  // Crosshair sync to both subcharts
   mainChart.subscribeCrosshairMove(param => {
     updateHoverBox(param);
     requestDraw();
     if (!param || !param.time || syncingCharts) return;
     syncingCharts = true;
-    try {
-      const x = pnlChart.timeScale().timeToCoordinate(param.time);
-      if (x !== null) pnlChart.setCrossHairXY(x, 0, true);
-    } catch(e) {}
+    for (const c of [pnlChart, momChart]) {
+      try { const x = c.timeScale().timeToCoordinate(param.time); if (x !== null) c.setCrossHairXY(x, 0, true); } catch(e) {}
+    }
     syncingCharts = false;
   });
 
   updateMarkers();
-  // Single subscription for overlay redraws — logical range fires every scroll frame
   mainChart.timeScale().subscribeVisibleLogicalRangeChange(requestDraw);
-
   requestAnimationFrame(() => { drawOverlay(); fitAll(); });
 
   if (!renderChart._obs) {
@@ -1104,7 +1135,8 @@ function renderChart(candles) {
       if (!mainChart) return;
       const w = wrap.clientWidth;
       try { mainChart.resize(w, wrap.clientHeight); } catch(e) {}
-      try { pnlChart.resize(w, 100); } catch(e) {}
+      try { pnlChart.resize(w, 90); } catch(e) {}
+      try { momChart.resize(w, 90); } catch(e) {}
       requestDraw();
     });
     renderChart._obs.observe(wrap);
