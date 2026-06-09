@@ -517,17 +517,15 @@ function _rebuildChart() {
   _priceLines = [];
   _cs.setMarkers([]);
 
-  // Session / anchor / trendline levels always drawn
-  if (_showSession && _zonesData?.pivot_levels) _drawSessionLevels(_zonesData.pivot_levels);
-  if (_showAnchors && _zonesData?.vwap_anchors?.length) _drawVwapAnchors(_zonesData.vwap_anchors);
-  if (_showTl && _zonesData?.trendlines?.length) _drawTrendlines(_zonesData.trendlines);
-
-  const armedId = _zonesData?.armed_zone || _statusData?.armed_zone_id;
+  const armedId  = _zonesData?.armed_zone || _statusData?.armed_zone_id;
   const allZones = _filteredZones();
-
-  // Only draw ONE zone's fibs: the selected one, falling back to armed zone
-  const focusId = _selectedZoneId || armedId;
+  const focusId  = _selectedZoneId || armedId;
   const focusZone = focusId ? allZones.find(z => z.zone_id === focusId) : null;
+
+  // Session / anchor / trendline levels — filtered to zone price range when focused
+  if (_showSession && _zonesData?.pivot_levels) _drawSessionLevels(_zonesData.pivot_levels, focusZone);
+  if (_showAnchors && _zonesData?.vwap_anchors?.length) _drawVwapAnchors(_zonesData.vwap_anchors, focusZone);
+  if (_showTl && _zonesData?.trendlines?.length) _drawTrendlines(_zonesData.trendlines);
 
   const hint = document.getElementById('gzChartHint');
   if (!focusZone) {
@@ -544,15 +542,18 @@ function _rebuildChart() {
   _zoomToZone(focusZone);
 }
 
-// Zoom the time axis to show the full impulse + current price
+// Zoom the time axis to show the swing impulse + current price, capped to a sensible bar count
 function _zoomToZone(z) {
   if (!_chart) return;
-  const nowTs = Math.floor(Date.now() / 1000);
-  const from  = z.swing_origin_time > 0 ? z.swing_origin_time : (nowTs - 7 * 86400);
-  const to    = nowTs + 3600;
-  const buf   = (to - from) * 0.06;
+  const nowTs  = Math.floor(Date.now() / 1000);
+  const period = _tf === 'H4' ? 14400 : 1800;
+  // Max bars visible: 100 M30 (3 days) or 80 H4 (13 days)
+  const maxBack = period * (_tf === 'H4' ? 80 : 100);
+  const swingTs = z.swing_origin_time > 0 ? z.swing_origin_time : (nowTs - maxBack);
+  const from    = Math.max(swingTs - 8 * period, nowTs - maxBack);
+  const to      = nowTs + 6 * period;
   try {
-    _chart.timeScale().setVisibleRange({ from: Math.floor(from - buf), to: Math.floor(to) });
+    _chart.timeScale().setVisibleRange({ from, to });
   } catch {
     _chart.timeScale().fitContent();
   }
@@ -623,12 +624,15 @@ function _drawZone(z, prominent, markers) {
 }
 
 // ── Session levels ─────────────────────────────────────────────────────
-function _drawSessionLevels(pl) {
+function _drawSessionLevels(pl, focusZone) {
+  // When a zone is focused, only draw levels within ±80 pts of its GP window
+  const zoneMid  = focusZone ? (focusZone.gp_low + focusZone.gp_high) / 2 : null;
+  const inRange  = p => !zoneMid || (p != null && Math.abs(p - zoneMid) < 80);
+
   const add = (price, color, title, width=1, style=2) => {
-    if (price == null || price <= 0) return;
+    if (price == null || price <= 0 || !inRange(price)) return;
     try {
-      const l = _cs.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title });
-      _priceLines.push(l);
+      _priceLines.push(_cs.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title }));
     } catch {}
   };
 
@@ -643,7 +647,6 @@ function _drawSessionLevels(pl) {
   add(pl.s1,         '#9ba3b2', 'S1',         1, 4);
   add(pl.s2,         '#9ba3b2', 'S2',         1, 4);
 
-  // H4 pivot
   if (pl.h4_pivot) {
     add(pl.h4_pivot.pp, 'rgba(255,167,38,.5)', 'H4 PP', 1, 4);
     add(pl.h4_pivot.r1, 'rgba(255,167,38,.4)', 'H4 R1', 1, 4);
@@ -652,18 +655,19 @@ function _drawSessionLevels(pl) {
 }
 
 // ── VWAP anchors ────────────────────────────────────────────────────────
-function _drawVwapAnchors(anchors) {
+function _drawVwapAnchors(anchors, focusZone) {
+  const zoneMid = focusZone ? (focusZone.gp_low + focusZone.gp_high) / 2 : null;
   const palette = ['#4f7df0','#26c6da','#ab47bc','#ffa726'];
-  anchors.slice(0, 6).forEach((a, i) => {
+  anchors.slice(0, 8).forEach((a, i) => {
     if (!a.price || a.price <= 0) return;
-    const col = palette[i % palette.length];
+    // Skip anchors more than 80pts from the focused zone's GP midpoint
+    if (zoneMid && Math.abs(a.price - zoneMid) > 80) return;
     try {
-      const pl = _cs.createPriceLine({
-        price: a.price, color: col, lineWidth: 1, lineStyle: 3,
+      _priceLines.push(_cs.createPriceLine({
+        price: a.price, color: palette[i % palette.length], lineWidth: 1, lineStyle: 3,
         axisLabelVisible: true,
-        title: `VWAP-${a.session?.[0] ?? ''}${a.age_days ?? 0}d ${a.direction?.[0] ?? ''}`,
-      });
-      _priceLines.push(pl);
+        title: `VWAP-${a.session?.[0] ?? ''}${a.age_days ?? 0}d`,
+      }));
     } catch {}
   });
 }

@@ -2591,7 +2591,18 @@ function _hedgeCellHtml(pos, hedgeData, netLots = null) {
     `</td>`;
 }
 
-async function _auditNewPositions(allPositions, hedgeData) {
+function _calcHedgePips(hedgeSymbol, entryPrice, closePrice, direction) {
+  if (entryPrice == null || closePrice == null) return null;
+  const sym = (hedgeSymbol || '').toUpperCase();
+  let pipSize;
+  if (sym.includes('JPY')) pipSize = 0.01;
+  else if (/XAU|GOLD/.test(sym)) pipSize = 0.1;
+  else if (/NAS|SPX|US30|DAX|FTSE|CAC|GER|UK|JP225|AUS200/.test(sym)) pipSize = 1;
+  else pipSize = 0.0001;
+  return Math.round(((closePrice - entryPrice) / pipSize) * (direction === 'BUY' ? 1 : -1) * 10) / 10;
+}
+
+async function _auditNewPositions(allPositions, hedgeData, priceMap) {
   let seen;
   try { seen = new Set(JSON.parse(localStorage.getItem('hedge_audit_seen') || '[]')); }
   catch(e) { seen = new Set(); }
@@ -2603,20 +2614,22 @@ async function _auditNewPositions(allPositions, hedgeData) {
     const h = _findBestHedge(p.symbol, hedgeData);
     const isLong = p.direction === 'BUY';
     const hedgeLong = h ? (h.corr > 0 ? !isLong : isLong) : null;
+    const hedgeSym = h?.symbol?.toUpperCase() || null;
     newEntries.push({
-      ticket:          p.ticket,
-      symbol:          p.symbol,
-      direction:       p.direction,
-      lots:            p.lots,
-      open_price:      p.open_price,
-      bot:             p._bot?.label || 'Unknown',
-      bot_key:         p._bot?.key   || '',
-      account_login:   p._account    || null,
-      hedge_symbol:    h?.symbol     || null,
-      hedge_direction: h ? (hedgeLong ? 'BUY' : 'SELL') : null,
-      hedge_corr:      h?.corr       ?? null,
-      hedge_corr_std:  h?.std        ?? null,
-      hedge_beta:      h?.beta       ?? null,
+      ticket:             p.ticket,
+      symbol:             p.symbol,
+      direction:          p.direction,
+      lots:               p.lots,
+      open_price:         p.open_price,
+      bot:                p._bot?.label || 'Unknown',
+      bot_key:            p._bot?.key   || '',
+      account_login:      p._account    || null,
+      hedge_symbol:       h?.symbol     || null,
+      hedge_direction:    h ? (hedgeLong ? 'BUY' : 'SELL') : null,
+      hedge_corr:         h?.corr       ?? null,
+      hedge_corr_std:     h?.std        ?? null,
+      hedge_beta:         h?.beta       ?? null,
+      hedge_entry_price:  hedgeSym ? (priceMap[hedgeSym] ?? null) : null,
     });
   }
 
@@ -2631,20 +2644,68 @@ async function _auditNewPositions(allPositions, hedgeData) {
   } catch(e) {}
 }
 
+async function _checkHedgeClosures(openTickets, closedTodayMap, priceMap) {
+  let seen;
+  try { seen = new Set(JSON.parse(localStorage.getItem('hedge_audit_seen') || '[]')); }
+  catch(e) { seen = new Set(); }
+  let closed;
+  try { closed = new Set(JSON.parse(localStorage.getItem('hedge_audit_closed') || '[]')); }
+  catch(e) { closed = new Set(); }
+
+  const toClose = [...seen].filter(t => !openTickets.has(t) && !closed.has(t));
+  if (!toClose.length) return;
+
+  let entries;
+  try {
+    const r = await fetch('/api/hedge-audit');
+    const j = await r.json();
+    entries = j.entries || [];
+  } catch(e) { return; }
+
+  const entryMap = {};
+  entries.forEach(e => { if (e.ticket) entryMap[String(e.ticket)] = e; });
+
+  for (const ticket of toClose) {
+    const entry = entryMap[String(ticket)];
+    if (!entry) { closed.add(ticket); continue; }
+    if (entry.hedge_close_price != null) { closed.add(ticket); continue; }
+
+    const closedDeal  = closedTodayMap[ticket];
+    const closed_at   = closedDeal
+      ? new Date(closedDeal.time_close * 1000).toISOString()
+      : new Date().toISOString();
+    const hedgeSym    = (entry.hedge_symbol || '').toUpperCase();
+    const hedge_close_price = hedgeSym ? (priceMap[hedgeSym] ?? null) : null;
+
+    try {
+      await fetch(`/api/hedge-audit/entries/${encodeURIComponent(ticket)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hedge_close_price, closed_at }),
+      });
+      closed.add(ticket);
+    } catch(e) { /* retry next refresh */ }
+  }
+  try { localStorage.setItem('hedge_audit_closed', JSON.stringify([...closed])); } catch(e) {}
+}
+
 async function loadPositionsTab() {
   const tbody = document.getElementById('posTableBody');
   const tfoot = document.getElementById('posTableFoot');
   if (!tbody) return;
 
   // Fetch all bot statuses and hedge corr data in parallel.
-  // hedge_alerts_cache is populated by Railway's /api/hedge-alerts endpoint and
-  // stored in CF KV so it's accessible from both Railway and Cloudflare Pages.
-  const [results, hedgeData] = await Promise.all([
+  // Primary: hedge_alerts_cache KV key (works on both Railway and CF Pages).
+  // Fallback: /api/hedge-alerts directly (Railway only, also writes the cache).
+  const [results, hedgeDataRaw] = await Promise.all([
     Promise.allSettled(_POS_BOTS.map(b => _kvGet(b.key))),
-    _kvGet('hedge_alerts_cache'),
+    _kvGet('hedge_alerts_cache')
+      .then(d => d || fetch('/api/hedge-alerts').then(r => r.ok ? r.json() : null).catch(() => null)),
   ]);
-  const allPositions = [];
-  const staleBots = [];
+  const hedgeData = hedgeDataRaw;
+  const allPositions   = [];
+  const staleBots      = [];
+  const closedTodayMap = {}; // position_id → closed deal data (from today_closed_trades)
 
   _POS_BOTS.forEach((bot, i) => {
     const data = results[i].status === 'fulfilled' ? results[i].value : null;
@@ -2655,7 +2716,14 @@ async function loadPositionsTab() {
     if (ageSecs !== null && ageSecs > 300) staleBots.push(bot.label);
     const positions = data.mt5_positions || [];
     positions.forEach(p => allPositions.push({ ...p, _bot: bot, _account: data.account_login || null }));
+    (data.today_closed_trades || []).forEach(t => {
+      if (t.position_id) closedTodayMap[t.position_id] = t;
+    });
   });
+
+  // symbol → current price from any open position (used for hedge price tracking)
+  const priceMap = {};
+  allPositions.forEach(p => { if (p.symbol && p.price != null) priceMap[p.symbol.toUpperCase()] = p.price; });
 
   // Group by symbol
   const bySymbol = {};
@@ -2768,8 +2836,13 @@ async function loadPositionsTab() {
     `<td colspan="2"></td>` +
     `</tr>`;
 
-  // Log any new positions to the hedge audit trail (fire-and-forget)
-  _auditNewPositions(allPositions, hedgeData);
+  // Build set of currently open tickets (used by closure detector)
+  const openTickets = new Set(allPositions.map(p => p.ticket).filter(Boolean));
+
+  // Log any new positions to the hedge audit trail — records hedge entry price (fire-and-forget)
+  _auditNewPositions(allPositions, hedgeData, priceMap);
+  // Detect positions that just closed and record hedge close price (fire-and-forget)
+  _checkHedgeClosures(openTickets, closedTodayMap, priceMap);
 }
 
 window.loadPositionsTab = loadPositionsTab;
@@ -2813,81 +2886,133 @@ async function loadHedgeAuditTab() {
   const container = document.getElementById('posHedgeContent');
   if (!container) return;
   try {
-    const r = await fetch('/api/hedge-audit');
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const { entries = [] } = await r.json();
+    // Fetch audit log, corr data, and all live bot statuses in parallel
+    const [auditRes, hedgeData, ...botResults] = await Promise.all([
+      fetch('/api/hedge-audit').then(r => r.ok ? r.json() : { entries: [] }).catch(() => ({ entries: [] })),
+      _kvGet('hedge_alerts_cache')
+        .then(d => d || fetch('/api/hedge-alerts').then(r => r.ok ? r.json() : null).catch(() => null)),
+      ..._POS_BOTS.map(b => _kvGet(b.key)),
+    ]);
 
+    // Build set of currently open tickets across all bots
+    const openTickets = new Set();
+    botResults.forEach(data => {
+      if (!data) return;
+      (data.mt5_positions || []).forEach(p => p.ticket && openTickets.add(p.ticket));
+    });
+
+    const entries = auditRes.entries || [];
     if (!entries.length) {
       container.innerHTML = `
         <div style="padding:40px;text-align:center;color:var(--text3)">
           <div style="font-size:14px;font-weight:600;margin-bottom:8px">No audit entries yet</div>
           <div style="font-size:12px;line-height:1.7">
             Advisory hedge suggestions are logged here each time a new position opens.<br>
-            Open the <strong style="color:var(--text)">Live Positions</strong> tab to generate the first entries.<br>
-            Use this log to forward-test hedge signal quality before building automation.
+            Open the <strong style="color:var(--text)">Live Positions</strong> tab to generate the first entries.
           </div>
         </div>`;
       return;
     }
 
-    const rows = entries.map(e => {
+    // Retroactively enrich entries logged before corr data was available
+    const enriched = entries.map(e => {
+      const isActive = openTickets.has(e.ticket);
+      if (e.hedge_symbol) return { ...e, _active: isActive };
+      if (!hedgeData) return { ...e, _active: isActive };
+      const h = _findBestHedge(e.symbol, hedgeData);
+      if (!h) return { ...e, _active: isActive };
+      const isLong    = e.direction === 'BUY';
+      const hedgeLong = h.corr > 0 ? !isLong : isLong;
+      return { ...e, _active: isActive, _retro: true,
+               hedge_symbol: h.symbol, hedge_direction: hedgeLong ? 'BUY' : 'SELL',
+               hedge_corr: h.corr, hedge_corr_std: h.std };
+    });
+
+    const active    = enriched.filter(e => e._active);
+    const historical = enriched.filter(e => !e._active);
+
+    function _auditRow(e) {
       const corrSign  = (e.hedge_corr || 0) >= 0 ? '+' : '';
       const loggedAt  = e.logged_at ? e.logged_at.replace('T', ' ').slice(0, 16) + ' UTC' : '—';
-      const acctStr   = e.account_login ? `#${e.account_login}` : '—';
       const noHedge   = !e.hedge_symbol;
+      const absCorr   = Math.abs(e.hedge_corr || 0);
+      const corrColor = absCorr >= 0.7 ? 'var(--green)' : absCorr >= 0.4 ? 'var(--amber)' : 'var(--text3)';
+      const retroTag  = e._retro ? `<span style="color:var(--text3);font-size:9px;margin-left:3px" title="Enriched after corr rebuild">*</span>` : '';
+
+      // Entry / close prices and pip P&L
+      const entryStr = e.hedge_entry_price != null ? e.hedge_entry_price.toFixed(5) : '—';
+      const closeStr = e.hedge_close_price != null ? e.hedge_close_price.toFixed(5) : (e._active ? 'Open' : '—');
+      const pips     = _calcHedgePips(e.hedge_symbol, e.hedge_entry_price, e.hedge_close_price, e.hedge_direction);
+      let pipsHtml;
+      if (pips == null) {
+        pipsHtml = `<span style="color:var(--text3)">—</span>`;
+      } else {
+        const pipsColor = pips >= 0 ? 'var(--green)' : 'var(--red)';
+        pipsHtml = `<span style="color:${pipsColor};font-weight:600">${pips >= 0 ? '+' : ''}${pips}</span>`;
+      }
+
+      const outcome = e._active
+        ? `<span style="color:var(--amber)">Active</span>`
+        : `<span style="color:var(--text3)">Closed</span>`;
+
       return `<tr>
         <td style="color:var(--text3);font-size:11px">${loggedAt}</td>
         <td><strong>${e.symbol || '—'}</strong></td>
         <td class="${e.direction === 'BUY' ? 'pos-buy' : 'pos-sell'}">${e.direction || '—'}</td>
         <td>${(e.lots || 0).toFixed(2)}</td>
         <td style="color:var(--text3)">${e.bot || '—'}</td>
-        <td style="color:var(--text3);font-size:11px">${acctStr}</td>
-        <td style="${noHedge ? 'color:var(--text3)' : ''}"><strong>${e.hedge_symbol || 'No corr data'}</strong></td>
+        <td>${noHedge ? '<span style="color:var(--text3);font-style:italic">—</span>' : `<strong>${e.hedge_symbol}</strong>${retroTag}`}</td>
         <td class="${e.hedge_direction === 'BUY' ? 'pos-buy' : e.hedge_direction === 'SELL' ? 'pos-sell' : ''}">${e.hedge_direction || '—'}</td>
-        <td style="color:var(--text3)">${e.hedge_corr != null ? corrSign + e.hedge_corr.toFixed(3) : '—'}</td>
-        <td style="color:var(--text3)">${e.hedge_beta != null ? Math.abs(e.hedge_beta).toFixed(2) + 'x' : '—'}</td>
-        <td style="color:var(--amber);font-size:11px">Pending</td>
+        <td style="color:${corrColor}">${e.hedge_corr != null ? corrSign + e.hedge_corr.toFixed(3) : '—'}</td>
+        <td style="color:var(--text3);font-size:11px">${entryStr}</td>
+        <td style="color:var(--text3);font-size:11px">${closeStr}</td>
+        <td>${pipsHtml}</td>
+        <td>${outcome}</td>
         <td style="color:var(--text3);font-size:11px">${e.ticket || '—'}</td>
       </tr>`;
-    }).join('');
+    }
+
+    function _auditTable(rows, emptyMsg) {
+      if (!rows.length) return `<p style="color:var(--text3);font-size:12px;padding:12px 0">${emptyMsg}</p>`;
+      return `<div class="pos-table-wrap"><table class="pos-table">
+        <thead><tr>
+          <th>Opened</th><th>Symbol</th><th>Dir</th><th>Lots</th><th>Bot</th>
+          <th>Hedge Symbol</th><th>Hedge Dir</th><th>Corr</th>
+          <th>Entry Price</th><th>Close Price</th><th>Pips</th>
+          <th>Status</th><th>Ticket</th>
+        </tr></thead>
+        <tbody>${rows.map(_auditRow).join('')}</tbody>
+      </table></div>`;
+    }
 
     container.innerHTML = `
       <div class="pos-header" style="margin-bottom:14px">
         <div>
           <div class="card-title">Hedge Audit Log</div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px">
-            Advisory suggestions logged when each position opens. Forward-test these before building automated execution.
+            Suggestions logged at position open. Active = still open. Closed = forward-test record.
           </div>
         </div>
         <button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="loadHedgeAuditTab()">↺ Refresh</button>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;padding:8px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px">
-        <strong style="color:var(--text2)">How to read this:</strong>
-        Hedge direction is the position that would <em>reduce</em> the risk of the open position.
-        Positive correlation → opposite direction; negative correlation → same direction.
-        β shows the lot-size ratio (hedge lots = position lots ÷ β).
+      <div style="font-size:11px;color:var(--text3);margin-bottom:16px;padding:8px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px">
+        Positive corr → hedge is <em>opposite</em> direction. Negative → <em>same</em> direction.
+        Strength: <span style="color:var(--green)">green ≥0.7</span> · <span style="color:var(--amber)">amber ≥0.4</span> · grey weak.
+        Entry &amp; close prices are sampled from open positions at the refresh nearest to open/close — not guaranteed exact fills.
+        Pips = net gain/loss the hedge suggestion would have made (positive = suggestion worked).
+        * = retroactively enriched after corr rebuild.
       </div>
-      <div class="pos-table-wrap">
-        <table class="pos-table">
-          <thead>
-            <tr>
-              <th>Logged</th>
-              <th>Symbol</th>
-              <th>Dir</th>
-              <th>Lots</th>
-              <th>Bot</th>
-              <th>Account</th>
-              <th>Hedge Symbol</th>
-              <th>Hedge Dir</th>
-              <th>Correlation</th>
-              <th>Beta</th>
-              <th>Outcome</th>
-              <th>Ticket</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
+
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">
+        Active Positions (${active.length})
+      </div>
+      ${_auditTable(active, 'No active positions in the audit log. Open the Live Positions tab to log new ones.')}
+
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin:20px 0 8px">
+        Historical — Closed Positions (${historical.length})
+      </div>
+      ${_auditTable(historical, 'No closed positions yet.')}`;
+
   } catch(e) {
     container.innerHTML = `<p style="color:var(--red);padding:20px">Error: ${e.message}. Is the Railway server running?</p>`;
   }

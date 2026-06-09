@@ -553,6 +553,31 @@ async function buildCorrHistoryJS() {
     fs.writeFileSync(CORR_HISTORY_PATH, JSON.stringify(output));
     const kb = Math.round(fs.statSync(CORR_HISTORY_PATH).size / 1024);
     console.log(`[CORR] Done — ${records.length} snapshots, ${availPairs.length} pairs, ${kb} KB, ${Date.now()-t0}ms`);
+
+    // Push compact hedge-alerts summary to KV so CF Pages can read it without
+    // hitting /api/hedge-alerts directly (which is Railway-only).
+    try {
+      const sums2b = {}, sums2c = {}, cnts2 = {}, lastCorr2 = {};
+      for (const r of records) {
+        for (const [k, v] of Object.entries(r.corr || {})) {
+          if (!sums2b[k]) { sums2b[k] = 0; sums2c[k] = 0; cnts2[k] = 0; }
+          sums2b[k] += v; sums2c[k] += v * v; cnts2[k]++;
+          lastCorr2[k] = v;
+        }
+      }
+      const corr_std2 = {};
+      for (const k of Object.keys(sums2b)) {
+        const n = cnts2[k], mu = sums2b[k] / n;
+        corr_std2[k] = n > 1 ? +(Math.sqrt(Math.max(0, sums2c[k] / n - mu * mu))).toFixed(5) : 0;
+      }
+      const alertsCache = { generated: output.generated, pairs: availPairs,
+        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2 };
+      await kv.put('hedge_alerts_cache', JSON.stringify(alertsCache), { expirationTtl: 86400 * 7 });
+      console.log('[CORR] hedge_alerts_cache written to KV');
+    } catch (kvErr) {
+      console.warn('[CORR] hedge_alerts_cache KV write failed:', kvErr.message);
+    }
+
     corrProgress = { pct: 100, msg: `Done — ${records.length} snapshots · ${availPairs.length} pairs · ${kb} KB`, step: 'done', error: null };
 
   } catch (e) {
@@ -3314,6 +3339,25 @@ app.post('/api/hedge-audit/entries', async (req, res) => {
     const updated = [...toAdd, ...existing].slice(0, 500);
     await kv.put('hedge_audit_log', JSON.stringify(updated));
     res.json({ ok: true, added: toAdd.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// PATCH body: { hedge_close_price?, hedge_entry_price?, closed_at? }
+// Records actual close data on an existing audit entry for forward-test P&L tracking.
+app.patch('/api/hedge-audit/entries/:ticket', async (req, res) => {
+  try {
+    const ticket = String(req.params.ticket);
+    const updates = req.body || {};
+    const raw = await kv.get('hedge_audit_log');
+    const entries = raw ? JSON.parse(raw) : [];
+    const idx = entries.findIndex(e => String(e.ticket) === ticket);
+    if (idx === -1) return res.json({ ok: true, updated: 0 });
+    const allowed = ['hedge_close_price', 'hedge_entry_price', 'closed_at'];
+    allowed.forEach(k => { if (k in updates) entries[idx][k] = updates[k]; });
+    await kv.put('hedge_audit_log', JSON.stringify(entries));
+    res.json({ ok: true, updated: 1 });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
