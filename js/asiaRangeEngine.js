@@ -1,0 +1,375 @@
+/**
+ * Asia Range Fibonacci Confluence Backtester — engine.
+ *
+ * Asia session range:   5m body high/low  (00:00–06:00 UTC)
+ * Monday range:         15m wick high/low  (full Monday UTC)
+ * Confluence:           current session fib ≈ previous session fib within threshold
+ * Trade:                limit order at confluence levels outside (or inside) Asia range
+ *                       after Asia close (06:00 UTC), within configurable time window
+ */
+
+import path             from 'path';
+import { fileURLToPath } from 'url';
+import { loadM1ForPair, BT_M1_DIR } from './volBacktestM1Engine.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+export const FIB_LEVELS = [-2, -1.5, -1, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+const KEY_LEVELS        = new Set([0, 0.25, 0.5, 0.75, 1.0]);
+
+const PIP_SIZE = {
+  eurusd: 0.0001, gbpusd: 0.0001, audusd: 0.0001, nzdusd: 0.0001,
+  usdcad: 0.0001, usdchf: 0.0001, eurgbp: 0.0001, euraud: 0.0001,
+  eurcad: 0.0001, eurchf: 0.0001, eurnzd: 0.0001, audnzd: 0.0001,
+  audcad: 0.0001, audchf: 0.0001, gbpaud: 0.0001, gbpcad: 0.0001,
+  gbpchf: 0.0001, gbpnzd: 0.0001,
+  usdjpy: 0.01, eurjpy: 0.01, gbpjpy: 0.01, audjpy: 0.01,
+  cadjpy: 0.01, chfjpy: 0.01, nzdjpy: 0.01,
+  gold:   1.0,
+};
+
+export const ASIA_INSTRUMENTS = [
+  'eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf', 'gbpjpy',
+  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'eurnzd',
+  'audjpy', 'audnzd', 'audcad', 'audchf',
+  'gbpaud', 'gbpcad', 'gbpchf', 'gbpnzd',
+  'cadjpy', 'chfjpy', 'nzdjpy', 'gold',
+];
+
+// ── M1 packed-array helpers ───────────────────────────────────────────────────
+
+function extractBars(packed, fromEpoch, toEpoch) {
+  const { n, times, opens, highs, lows, closes } = packed;
+  const bars = [];
+  for (let i = 0; i < n; i++) {
+    const t = times[i];
+    if (t < fromEpoch) continue;
+    if (t >= toEpoch) { if (bars.length) break; continue; }
+    bars.push({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
+  }
+  return bars;
+}
+
+function resampleTo(bars, minutes) {
+  const secs = minutes * 60;
+  const buckets = new Map();
+  for (const bar of bars) {
+    const bucket = bar.time - (bar.time % secs);
+    if (!buckets.has(bucket)) {
+      buckets.set(bucket, { time: bucket, open: bar.open, high: bar.high, low: bar.low, close: bar.close });
+    } else {
+      const b    = buckets.get(bucket);
+      b.high     = Math.max(b.high, bar.high);
+      b.low      = Math.min(b.low,  bar.low);
+      b.close    = bar.close;
+    }
+  }
+  return [...buckets.values()].sort((a, b) => a.time - b.time);
+}
+
+// ── Session range calculators ─────────────────────────────────────────────────
+
+// Asia range: max(open,close) / min(open,close) across 5m resampled bars.
+function asiaBodyRange(m1Bars) {
+  if (!m1Bars.length) return null;
+  const bars5m = resampleTo(m1Bars, 5);
+  let bodyHigh = -Infinity, bodyLow = Infinity;
+  for (const bar of bars5m) {
+    bodyHigh = Math.max(bodyHigh, Math.max(bar.open, bar.close));
+    bodyLow  = Math.min(bodyLow,  Math.min(bar.open, bar.close));
+  }
+  if (!isFinite(bodyHigh) || !isFinite(bodyLow) || bodyLow >= bodyHigh) return null;
+  return { high: bodyHigh, low: bodyLow, range: bodyHigh - bodyLow };
+}
+
+// Monday range: wick high/low across 15m resampled bars (full day).
+function mondayWickRange(m1Bars) {
+  if (!m1Bars.length) return null;
+  const bars15m = resampleTo(m1Bars, 15);
+  let high = -Infinity, low = Infinity;
+  for (const bar of bars15m) {
+    high = Math.max(high, bar.high);
+    low  = Math.min(low,  bar.low);
+  }
+  if (!isFinite(high) || !isFinite(low) || low >= high) return null;
+  return { high, low, range: high - low };
+}
+
+// ── Fibonacci levels ──────────────────────────────────────────────────────────
+
+function calcFibs(sessionLow, sessionRange, levels = FIB_LEVELS) {
+  return levels.map(lv => ({
+    level:  lv,
+    price:  sessionLow + sessionRange * lv,
+    isKey:  KEY_LEVELS.has(lv),
+  }));
+}
+
+function detectConfluence(currFibs, prevFibs, threshold, tightThreshold) {
+  return currFibs.map(curr => {
+    let minDiff = Infinity, best = null;
+    for (const prev of prevFibs) {
+      const diff = Math.abs(curr.price - prev.price);
+      if (diff <= threshold && diff < minDiff) { minDiff = diff; best = prev; }
+    }
+    return {
+      ...curr,
+      hasConfluence: !!best,
+      isTight:       best ? minDiff <= tightThreshold : false,
+    };
+  });
+}
+
+// ── Trade simulation ──────────────────────────────────────────────────────────
+
+function walkLimitOrder(bars, side, entry, tp, sl, refOpen) {
+  const isSell = side === 'SELL';
+  let filled = false, fillTime = null;
+
+  for (const bar of bars) {
+    if (!filled) {
+      const hit = isSell ? bar.high >= entry : bar.low <= entry;
+      if (!hit) continue;
+      filled   = true;
+      fillTime = bar.time;
+      // Check SL/TP on the fill bar itself
+      if (isSell) {
+        if (bar.high >= sl) return { outcome: 'loss', pnlPct: -(sl - entry) / refOpen * 100, fillTime, exitTime: bar.time };
+        if (bar.low  <= tp) return { outcome: 'win',  pnlPct:  (entry - tp)  / refOpen * 100, fillTime, exitTime: bar.time };
+      } else {
+        if (bar.low  <= sl) return { outcome: 'loss', pnlPct: -(entry - sl) / refOpen * 100, fillTime, exitTime: bar.time };
+        if (bar.high >= tp) return { outcome: 'win',  pnlPct:  (tp - entry)  / refOpen * 100, fillTime, exitTime: bar.time };
+      }
+    } else {
+      if (isSell) {
+        if (bar.high >= sl) return { outcome: 'loss', pnlPct: -(sl - entry) / refOpen * 100, fillTime, exitTime: bar.time };
+        if (bar.low  <= tp) return { outcome: 'win',  pnlPct:  (entry - tp)  / refOpen * 100, fillTime, exitTime: bar.time };
+      } else {
+        if (bar.low  <= sl) return { outcome: 'loss', pnlPct: -(entry - sl) / refOpen * 100, fillTime, exitTime: bar.time };
+        if (bar.high >= tp) return { outcome: 'win',  pnlPct:  (tp - entry)  / refOpen * 100, fillTime, exitTime: bar.time };
+      }
+    }
+  }
+
+  if (!filled) return null;
+  // EOD close — still open at end of trade window
+  const eod    = bars.at(-1)?.close ?? entry;
+  const eodPnl = isSell ? (entry - eod) / refOpen * 100 : (eod - entry) / refOpen * 100;
+  return { outcome: 'open', pnlPct: eodPnl, fillTime, exitTime: bars.at(-1)?.time ?? null };
+}
+
+// ── Single-day backtest ───────────────────────────────────────────────────────
+
+function simulateDay(packed, dateStr, opts) {
+  const {
+    confluenceThreshPips = 2.0,
+    tightPct             = 10.0,
+    levelFilter          = 'tight',    // 'tight' | 'confluence' | 'all'
+    tradeZone            = 'outside',  // 'outside' | 'both'
+    slMult               = 0.5,        // SL dist = asiaRange × slMult
+    tpMode               = '0.5',      // '0.5' | 'range_edge'
+    tradeHourFrom        = 6,
+    tradeHourTo          = 14,
+    pipSize              = 0.0001,
+    fibLevels            = FIB_LEVELS,
+    showMonday           = true,
+  } = opts;
+
+  const dayEpoch = Math.floor(new Date(dateStr + 'T00:00:00Z').getTime() / 1000);
+
+  // Current Asia session bars (00:00–06:00 UTC)
+  const asiaM1 = extractBars(packed, dayEpoch, dayEpoch + 6 * 3600);
+  if (asiaM1.length < 10) return [];
+
+  const asia = asiaBodyRange(asiaM1);
+  if (!asia || asia.range < pipSize * 5) return [];
+
+  // Previous Asia session — search back up to 7 days
+  let prevAsia = null;
+  for (let d = 1; d <= 7; d++) {
+    const prevFrom = dayEpoch - d * 86400;
+    const prevBars = extractBars(packed, prevFrom, prevFrom + 6 * 3600);
+    if (prevBars.length >= 10) {
+      prevAsia = asiaBodyRange(prevBars);
+      if (prevAsia) break;
+    }
+  }
+
+  // Fibonacci levels for both sessions
+  const currFibs = calcFibs(asia.low, asia.range, fibLevels);
+  const prevFibs = prevAsia ? calcFibs(prevAsia.low, prevAsia.range, fibLevels) : [];
+
+  // Confluence thresholds in price terms
+  const threshold      = confluenceThreshPips * pipSize;
+  const tightThreshold = threshold * (tightPct / 100);
+
+  const fibs = prevFibs.length
+    ? detectConfluence(currFibs, prevFibs, threshold, tightThreshold)
+    : currFibs.map(f => ({ ...f, hasConfluence: false, isTight: false }));
+
+  // Monday range
+  let mondayRange = null;
+  if (showMonday) {
+    const date = new Date(dateStr + 'T00:00:00Z');
+    const dow  = date.getUTCDay(); // 0=Sun, 1=Mon…
+    // On Monday: use previous Monday (7d back). Other days: use this week's Monday.
+    const daysBack = dow === 1 ? 7 : (dow === 0 ? 6 : dow - 1);
+    const monEpoch = dayEpoch - daysBack * 86400;
+    const monBars  = extractBars(packed, monEpoch, monEpoch + 24 * 3600);
+    if (monBars.length >= 20) mondayRange = mondayWickRange(monBars);
+  }
+
+  // Trade window bars (06:00–14:00 UTC default)
+  const tradeFrom = dayEpoch + tradeHourFrom * 3600;
+  const tradeTo   = dayEpoch + tradeHourTo   * 3600;
+  const tradeBars = extractBars(packed, tradeFrom, tradeTo);
+  if (tradeBars.length < 5) return [];
+
+  const refOpen  = tradeBars[0]?.open ?? asia.low + asia.range * 0.5;
+  const slDist   = asia.range * slMult;
+  const asiaMid  = asia.low + asia.range * 0.5;
+
+  // Fib data for chart rendering (all levels with confluence flags)
+  const fibData = fibs.map(f => ({
+    level: f.level,
+    price: +f.price.toFixed(6),
+    hasConfluence: f.hasConfluence,
+    isTight:       f.isTight,
+    isKey:         f.isKey,
+  }));
+
+  const trades = [];
+
+  for (const fib of fibs) {
+    // Level filter
+    if (levelFilter === 'tight'      && !fib.isTight)       continue;
+    if (levelFilter === 'confluence' && !fib.hasConfluence)  continue;
+    if (levelFilter === 'all') {
+      // All levels: still skip non-key non-confluence unless explicitly requested
+      // (keep the 'all' mode truly open)
+    } else if (!fib.hasConfluence && !fib.isKey) continue;
+
+    const price      = fib.price;
+    const isAbove    = price > asia.high + pipSize;
+    const isBelow    = price < asia.low  - pipSize;
+    const isInside   = !isAbove && !isBelow;
+
+    if (tradeZone === 'outside' && isInside) continue;
+
+    let side, tp, sl;
+    if (isAbove) {
+      side = 'SELL';
+      tp   = tpMode === 'range_edge' ? asia.high : asiaMid;
+      sl   = price + slDist;
+    } else if (isBelow) {
+      side = 'BUY';
+      tp   = tpMode === 'range_edge' ? asia.low : asiaMid;
+      sl   = price - slDist;
+    } else {
+      // Inside range — fade back to midpoint
+      if (price > asiaMid) { side = 'SELL'; tp = asiaMid; sl = asia.high + slDist; }
+      else                 { side = 'BUY';  tp = asiaMid; sl = asia.low  - slDist; }
+    }
+
+    if (side === 'SELL' && tp >= price) continue;
+    if (side === 'BUY'  && tp <= price) continue;
+    if (side === 'SELL' && sl <= price) continue;
+    if (side === 'BUY'  && sl >= price) continue;
+
+    const result = walkLimitOrder(tradeBars, side, price, tp, sl, refOpen);
+    if (!result) continue;
+
+    const riskDist   = Math.abs(price - sl);
+    const rewardDist = Math.abs(tp - price);
+    const rr         = riskDist > 0 ? rewardDist / riskDist : 0;
+
+    trades.push({
+      date:          dateStr,
+      side,
+      outcome:       result.outcome,
+      pnl_pct:       +result.pnlPct.toFixed(5),
+      filled:        true,
+      fib_level:     fib.level,
+      entry_price:   +price.toFixed(6),
+      tp_price:      +tp.toFixed(6),
+      sl_price:      +sl.toFixed(6),
+      fill_time:     result.fillTime  ? new Date(result.fillTime  * 1000).toISOString().substring(0, 19) : null,
+      exit_time:     result.exitTime  ? new Date(result.exitTime  * 1000).toISOString().substring(0, 19) : null,
+      has_confluence: fib.hasConfluence,
+      is_tight:      fib.isTight,
+      is_key:        fib.isKey,
+      asia_high:     +asia.high.toFixed(6),
+      asia_low:      +asia.low.toFixed(6),
+      asia_range:    +asia.range.toFixed(6),
+      asia_mid:      +asiaMid.toFixed(6),
+      rr:            +rr.toFixed(2),
+      monday_high:   mondayRange ? +mondayRange.high.toFixed(6) : null,
+      monday_low:    mondayRange ? +mondayRange.low.toFixed(6)  : null,
+      fib_data:      fibData,
+    });
+  }
+
+  return trades;
+}
+
+// ── Public: single pair backtest ──────────────────────────────────────────────
+
+export async function runAsiaRangeBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
+  const { dateFrom = '', dateTo = '', progressCb = null } = opts;
+
+  const packed = await loadM1ForPair(pairKey, m1Dir);
+  if (!packed) throw new Error(`No M1 data for ${pairKey}`);
+
+  const pipSize = PIP_SIZE[pairKey] ?? 0.0001;
+  const config  = { ...opts, pipSize };
+
+  // Collect UTC dates that have bars in the Asia session window
+  const seenDates = new Set();
+  const { n, times } = packed;
+  for (let i = 0; i < n; i++) {
+    const h = Math.floor(times[i] / 3600) % 24;
+    if (h >= 0 && h < 6) seenDates.add(new Date(times[i] * 1000).toISOString().substring(0, 10));
+  }
+
+  const allDates = [...seenDates].sort();
+  const trades   = [];
+  let   processed = 0;
+
+  for (const date of allDates) {
+    if (dateFrom && date < dateFrom) { processed++; continue; }
+    if (dateTo   && date > dateTo)   { processed++; continue; }
+
+    const dayTrades = simulateDay(packed, date, config);
+    for (const t of dayTrades) trades.push({ instrument: pairKey.toUpperCase(), ...t });
+
+    processed++;
+    if (progressCb && processed % 50 === 0) progressCb(processed, allDates.length);
+  }
+
+  return trades;
+}
+
+// ── Public: all pairs backtest ────────────────────────────────────────────────
+
+export async function runFullAsiaRangeBacktest(opts = {}, pairs = ASIA_INSTRUMENTS, m1Dir = BT_M1_DIR) {
+  const { onProgress = null } = opts;
+  const allTrades = [];
+  const log       = [];
+
+  for (let i = 0; i < pairs.length; i++) {
+    const pair = pairs[i];
+    if (onProgress) onProgress({ pair, i, total: pairs.length });
+    try {
+      log.push(`Processing ${pair.toUpperCase()}…`);
+      const trades = await runAsiaRangeBacktest(pair, opts, m1Dir);
+      allTrades.push(...trades);
+      log.push(`  ${trades.filter(t => t.filled).length} filled trades`);
+    } catch (e) {
+      log.push(`  Error for ${pair}: ${e.message}`);
+    }
+  }
+
+  return { trades: allTrades, log };
+}

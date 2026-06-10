@@ -30,6 +30,7 @@ import { startVolForecastScheduler, forecastState, runVolForecast, getSessionSta
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
+import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -2921,6 +2922,131 @@ app.get('/api/vol-backtest/level-analysis/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Asia Range Fibonacci Confluence Backtest ──────────────────────────────────
+
+const ASIA_BT_DATA_DIR = path.join(__dirname, 'VolRangeForecaster', 'data', 'asia');
+
+function _latestAsiaBtFile() {
+  if (!fs.existsSync(ASIA_BT_DATA_DIR)) return null;
+  const files = fs.readdirSync(ASIA_BT_DATA_DIR)
+    .filter(f => f.startsWith('asia_bt_') && f.endsWith('.json'))
+    .sort().reverse();
+  return files.length ? path.join(ASIA_BT_DATA_DIR, files[0]) : null;
+}
+
+const arJobs = new Map();
+
+function _purgeStaleArJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of arJobs) if (job.startedAt < cutoff) arJobs.delete(id);
+}
+
+app.post('/api/asia-range-backtest/run', (req, res) => {
+  const {
+    dateFrom = '', dateTo = '', pair = '',
+    confluencePips = '2.0', tightPct = '10',
+    levelFilter = 'tight', tradeZone = 'outside',
+    slMult = '0.5', tpMode = '0.5',
+    tradeHourFrom = '6', tradeHourTo = '14',
+    showMonday = 'true',
+  } = req.body || {};
+
+  const opts = {
+    dateFrom, dateTo,
+    confluenceThreshPips: parseFloat(confluencePips) || 2.0,
+    tightPct:             parseFloat(tightPct)       || 10.0,
+    levelFilter,
+    tradeZone,
+    slMult:               parseFloat(slMult)         || 0.5,
+    tpMode,
+    tradeHourFrom:        parseInt(tradeHourFrom)    || 6,
+    tradeHourTo:          parseInt(tradeHourTo)      || 14,
+    showMonday:           showMonday !== 'false',
+  };
+
+  const pairsToRun = pair
+    ? [pair.toLowerCase()].filter(p => ASIA_INSTRUMENTS.includes(p))
+    : ASIA_INSTRUMENTS;
+
+  if (!pairsToRun.length) {
+    return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  }
+
+  const jobId     = `ar_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+
+  _purgeStaleArJobs();
+  arJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      let currentPair = null;
+      const { trades, log } = await runFullAsiaRangeBacktest(
+        {
+          ...opts,
+          onProgress: ({ pair: p }) => {
+            currentPair = p;
+            const job = arJobs.get(jobId);
+            if (job) arJobs.set(jobId, { ...job, currentPair: p });
+          },
+        },
+        pairsToRun,
+        BT_M1_DIR,
+      );
+
+      if (!trades.length) {
+        arJobs.set(jobId, { status: 'error', error: 'No trades generated — check M1 data availability', log, startedAt });
+        return;
+      }
+
+      if (!fs.existsSync(ASIA_BT_DATA_DIR)) fs.mkdirSync(ASIA_BT_DATA_DIR, { recursive: true });
+      const ts      = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(ASIA_BT_DATA_DIR, `asia_bt_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify(trades, null, 0) + '\n');
+
+      arJobs.set(jobId, {
+        status: 'done', startedAt,
+        result: {
+          ok:      true,
+          message: `Asia Range backtest complete — ${trades.filter(t => t.filled).length} filled trades`,
+          log,
+          file:    path.basename(outFile),
+        },
+      });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[asia-range-backtest/run]', msg, e?.stack ?? '');
+      arJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/asia-range-backtest/status/:jobId', (req, res) => {
+  const job = arJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running',
+      elapsed: Math.round((Date.now() - job.startedAt) / 1000),
+      currentPair: job.currentPair ?? null });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+app.get('/api/asia-range-backtest/trades', (_req, res) => {
+  const file = _latestAsiaBtFile();
+  if (!file) return res.json({ ok: false, error: 'No Asia Range backtest results found — run a backtest first' });
+  try {
+    const raw    = fs.readFileSync(file, 'utf8');
+    const trades = JSON.parse(raw);
+    res.json({ ok: true, trades, file: path.basename(file) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // ── Dyn Anchor nightly forecast ────────────────────────────────────────────────
