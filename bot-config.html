@@ -2929,20 +2929,40 @@ async function loadHedgeAuditTab() {
   const container = document.getElementById('posHedgeContent');
   if (!container) return;
   try {
-    // Fetch audit log, corr data, and all live bot statuses in parallel
-    const [auditRes, hedgeData, ...botResults] = await Promise.all([
+    // Fetch audit log, corr data, live prices, and all live bot statuses in parallel
+    const [auditRes, hedgeData, sigPricesRaw, ...botResults] = await Promise.all([
       fetch('/api/hedge-audit').then(r => r.ok ? r.json() : { entries: [] }).catch(() => ({ entries: [] })),
       _kvGet('hedge_alerts_cache')
         .then(d => d || fetch('/api/hedge-alerts').then(r => r.ok ? r.json() : null).catch(() => null)),
+      fetch('/api/hedge-signals/prices').then(r => r.ok ? r.json() : null).catch(() => null),
       ..._POS_BOTS.map(b => _kvGet(b.key)),
     ]);
 
-    // Build set of currently open tickets across all bots
-    const openTickets = new Set();
+    // Build open tickets, closedTodayMap, and priceMap from bot data so we can
+    // run _checkHedgeClosures here — close prices are captured whenever the
+    // Hedge Audit tab is opened, not just when the Live sub-tab is active.
+    const openTickets    = new Set();
+    const closedTodayMap = {};
+    const priceMap       = {};
+    if (sigPricesRaw?.prices) {
+      for (const [sym, v] of Object.entries(sigPricesRaw.prices)) {
+        const norm = sym.replace('/', '').toUpperCase();
+        if (v?.price != null) priceMap[norm] = v.price;
+      }
+    }
     botResults.forEach(data => {
       if (!data) return;
-      (data.mt5_positions || []).forEach(p => p.ticket && openTickets.add(p.ticket));
+      (data.mt5_positions || []).forEach(p => {
+        if (p.ticket) openTickets.add(p.ticket);
+        if (p.symbol && p.price != null) priceMap[p.symbol.toUpperCase()] = p.price;
+      });
+      (data.today_closed_trades || []).forEach(t => {
+        if (t.position_id) closedTodayMap[t.position_id] = t;
+      });
     });
+
+    // Capture close prices for any positions that closed since last visit (fire-and-forget)
+    _checkHedgeClosures(openTickets, closedTodayMap, priceMap);
 
     const entries = auditRes.entries || [];
     if (!entries.length) {
