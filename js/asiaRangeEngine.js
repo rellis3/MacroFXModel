@@ -60,14 +60,24 @@ export const ASIA_INSTRUMENTS = [
 
 // ── M1 packed-array helpers ───────────────────────────────────────────────────
 
+// Binary search: first index in times[] where times[i] >= target. O(log N).
+function _bisect(times, target) {
+  let lo = 0, hi = times.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (times[mid] < target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+// O(log N + window) instead of O(N) — the single biggest perf win.
 function extractBars(packed, fromEpoch, toEpoch) {
   const { n, times, opens, highs, lows, closes } = packed;
-  const bars = [];
-  for (let i = 0; i < n; i++) {
-    const t = times[i];
-    if (t < fromEpoch) continue;
-    if (t >= toEpoch) { if (bars.length) break; continue; }
-    bars.push({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
+  const start = _bisect(times, fromEpoch);
+  const bars  = [];
+  for (let i = start; i < n && times[i] < toEpoch; i++) {
+    bars.push({ time: times[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
   }
   return bars;
 }
@@ -129,6 +139,65 @@ function mondayWickRange(m1Bars) {
   }
   if (!isFinite(high) || !isFinite(low) || low >= high) return null;
   return { high, low, range: high - low };
+}
+
+// ── Per-pair caches (built once, used O(log N) per day) ──────────────────────
+
+// Pre-index every Asia session range across the full dataset.
+// Calling code does: _prevAsia(asiaSessions, dayEpoch) → O(log N) instead of 7 × O(N).
+function _buildAsiaSessions(packed) {
+  const { n, times } = packed;
+  const daySet = new Set();
+  for (let i = 0; i < n; i++) {
+    if ((Math.floor(times[i] / 3600) % 24) < 6) daySet.add(times[i] - (times[i] % 86400));
+  }
+  const sessions = [];
+  for (const epoch of [...daySet].sort((a, b) => a - b)) {
+    const bars = extractBars(packed, epoch, epoch + 6 * 3600);
+    if (bars.length < 10) continue;
+    const r = asiaBodyRange(bars);
+    if (r) sessions.push({ epoch, high: r.high, low: r.low, range: r.range });
+  }
+  return sessions; // sorted ascending by epoch
+}
+
+// Return the most recent Asia session entry strictly before dayEpoch.
+function _prevAsia(sessions, dayEpoch) {
+  let lo = 0, hi = sessions.length;
+  while (lo < hi) { const m = (lo + hi) >>> 1; sessions[m].epoch < dayEpoch ? lo = m + 1 : hi = m; }
+  return lo > 0 ? sessions[lo - 1] : null;
+}
+
+// Pre-index every Monday wick range across the full dataset.
+// Per-day lookup: _mondayForDay(mondayRanges, dayEpoch) → O(log N).
+function _buildMondayRanges(packed) {
+  const { n, times } = packed;
+  const monSet = new Set();
+  for (let i = 0; i < n; i++) {
+    if (new Date(times[i] * 1000).getUTCDay() === 1)
+      monSet.add(times[i] - (times[i] % 86400));
+  }
+  const ranges = [];
+  for (const epoch of [...monSet].sort((a, b) => a - b)) {
+    const bars = extractBars(packed, epoch, epoch + 86400);
+    if (bars.length < 20) continue;
+    const r = mondayWickRange(bars);
+    if (r) ranges.push({ epoch, high: r.high, low: r.low, range: r.range });
+  }
+  return ranges;
+}
+
+// Return the Monday range entry whose epoch matches this week's Monday.
+function _mondayForDay(mondayRanges, dayEpoch) {
+  const dow      = new Date(dayEpoch * 1000).getUTCDay();
+  const daysBack = dow === 1 ? 7 : (dow === 0 ? 6 : dow - 1);
+  const target   = dayEpoch - daysBack * 86400;
+  // Find nearest entry — allow ±90s for DST edge cases
+  let lo = 0, hi = mondayRanges.length;
+  while (lo < hi) { const m = (lo + hi) >>> 1; mondayRanges[m].epoch < target ? lo = m + 1 : hi = m; }
+  if (lo < mondayRanges.length && Math.abs(mondayRanges[lo].epoch - target) <= 90) return mondayRanges[lo];
+  if (lo > 0 && Math.abs(mondayRanges[lo - 1].epoch - target) <= 90) return mondayRanges[lo - 1];
+  return null;
 }
 
 // ── Fibonacci levels ──────────────────────────────────────────────────────────
@@ -227,6 +296,9 @@ function simulateDay(packed, dateStr, opts) {
     pairCaches           = {},           // pre-built pair-level caches
     zoneRadiusPips       = 3,
     minConfluenceScore   = 0,            // 0–1 gate; 0 = off
+    // Pre-built pair-level session caches (populated by runAsiaRangeBacktest)
+    _asiaSessions        = null,         // sorted array of {epoch,high,low,range}
+    _mondayRanges        = null,         // sorted array of {epoch,high,low,range}
   } = opts;
 
   const dayEpoch = Math.floor(new Date(dateStr + 'T00:00:00Z').getTime() / 1000);
@@ -238,14 +310,15 @@ function simulateDay(packed, dateStr, opts) {
   const asia = asiaBodyRange(asiaM1);
   if (!asia || asia.range < pipSize * 5) return [];
 
-  // Previous Asia session — search back up to 7 days
+  // Previous Asia session — O(log N) binary search on pre-built cache, or fallback scan
   let prevAsia = null;
-  for (let d = 1; d <= 7; d++) {
-    const prevFrom = dayEpoch - d * 86400;
-    const prevBars = extractBars(packed, prevFrom, prevFrom + 6 * 3600);
-    if (prevBars.length >= 10) {
-      prevAsia = asiaBodyRange(prevBars);
-      if (prevAsia) break;
+  if (_asiaSessions) {
+    prevAsia = _prevAsia(_asiaSessions, dayEpoch);
+  } else {
+    for (let d = 1; d <= 7; d++) {
+      const prevFrom = dayEpoch - d * 86400;
+      const prevBars = extractBars(packed, prevFrom, prevFrom + 6 * 3600);
+      if (prevBars.length >= 10) { prevAsia = asiaBodyRange(prevBars); if (prevAsia) break; }
     }
   }
 
@@ -261,17 +334,19 @@ function simulateDay(packed, dateStr, opts) {
     ? detectConfluence(currFibs, prevFibs, threshold, tightThreshold)
     : currFibs.map(f => ({ ...f, hasConfluence: false, isTight: false }));
 
-  // Monday range + Monday fibs
+  // Monday range + Monday fibs — O(log N) lookup if cache available
   let mondayRange = null;
   let mondayFibs  = [];
   {
-    const date = new Date(dateStr + 'T00:00:00Z');
-    const dow  = date.getUTCDay(); // 0=Sun, 1=Mon…
-    // On Monday: use previous Monday (7d back). Other days: use this week's Monday.
-    const daysBack = dow === 1 ? 7 : (dow === 0 ? 6 : dow - 1);
-    const monEpoch = dayEpoch - daysBack * 86400;
-    const monBars  = extractBars(packed, monEpoch, monEpoch + 24 * 3600);
-    if (monBars.length >= 20) mondayRange = mondayWickRange(monBars);
+    if (_mondayRanges) {
+      mondayRange = _mondayForDay(_mondayRanges, dayEpoch);
+    } else {
+      const dow      = new Date(dateStr + 'T00:00:00Z').getUTCDay();
+      const daysBack = dow === 1 ? 7 : (dow === 0 ? 6 : dow - 1);
+      const monEpoch = dayEpoch - daysBack * 86400;
+      const monBars  = extractBars(packed, monEpoch, monEpoch + 24 * 3600);
+      if (monBars.length >= 20) mondayRange = mondayWickRange(monBars);
+    }
     if (mondayRange) mondayFibs = calcFibs(mondayRange.low, mondayRange.range, fibLevels);
   }
 
@@ -492,11 +567,17 @@ export async function runAsiaRangeBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR
   if (!packed) throw new Error(`No M1 data for ${pairKey}`);
 
   const pipSize    = PIP_SIZE[pairKey] ?? 0.0001;
-  // Build once-per-pair module caches (e.g. swing levels for sr_level, daily extremes for ath_52wk)
+
+  // Build once-per-pair caches — O(N) upfront, then O(log N) per day in the hot loop
+  const _asiaSessions = _buildAsiaSessions(packed);
+  const _mondayRanges = _buildMondayRanges(packed);
+
+  // Confluence module caches (swing levels, daily extremes, etc.)
   const pairCaches = (opts.confluenceMods?.length > 0)
     ? buildAllPairCaches(packed, pipSize, opts.confluenceMods)
     : {};
-  const config  = { ...opts, pipSize, pairCaches };
+
+  const config = { ...opts, pipSize, pairCaches, _asiaSessions, _mondayRanges };
 
   // Collect UTC dates that have bars in the Asia session window
   const seenDates = new Set();

@@ -779,6 +779,83 @@ const dailyOpens = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+// MODULE 14 — Naked POC (NPOC)
+// A daily POC that price has never revisited since it was formed.
+// Built once per pair as a full-dataset scan; per-day lookup is O(log N).
+// ══════════════════════════════════════════════════════════════════════════════
+
+const nakedPoc = {
+  id: 'naked_poc',
+  label: 'Naked POC (NPOC)',
+  description: 'Daily POC (body-midpoint volume profile) that price has never retested since formation',
+  defaultWeight: 2.0,
+  defaultEnabled: true,
+
+  buildPairCache(packed, pipSize) {
+    const { times, opens, closes, highs, lows, n } = packed;
+
+    // Step 1: compute daily POC (body-midpoint histogram, same method as vahVal)
+    const dailyBars = new Map(); // epoch → [bars]
+    for (let i = 0; i < n; i++) {
+      const day = times[i] - (times[i] % 86400);
+      if (!dailyBars.has(day)) dailyBars.set(day, { hist: new Map(), total: 0, hi: highs[i], lo: lows[i] });
+      const d = dailyBars.get(day);
+      const key = Math.round((opens[i] + closes[i]) / 2 / pipSize);
+      d.hist.set(key, (d.hist.get(key) ?? 0) + 1);
+      d.total++;
+      d.hi = Math.max(d.hi, highs[i]);
+      d.lo = Math.min(d.lo, lows[i]);
+    }
+
+    const days = [...dailyBars.entries()].sort((a, b) => a[0] - b[0]);
+
+    // Step 2: compute POC for each day
+    const pocs = []; // { epoch, poc, hi, lo } sorted ascending
+    for (const [epoch, { hist, hi, lo }] of days) {
+      let pocKey = 0, pocCount = 0;
+      for (const [k, cnt] of hist) { if (cnt > pocCount) { pocCount = cnt; pocKey = k; } }
+      pocs.push({ epoch, poc: pocKey * pipSize, hi, lo });
+    }
+
+    // Step 3: mark each POC as filled/naked.
+    // A POC at price P formed on day D is "filled" if any subsequent day's range (hi/lo) crosses P.
+    // We scan forward — O(N days²) worst case but N≈1000-2000 so total ≈ 1M iterations per pair.
+    const naked = []; // NPOCs: { epoch, poc } sorted ascending
+    for (let i = 0; i < pocs.length; i++) {
+      const { epoch, poc } = pocs[i];
+      let touched = false;
+      for (let j = i + 1; j < pocs.length; j++) {
+        if (pocs[j].lo <= poc && pocs[j].hi >= poc) { touched = true; break; }
+      }
+      if (!touched) naked.push({ epoch, poc });
+    }
+
+    return { naked }; // sorted ascending by epoch
+  },
+
+  buildDayState(_packed, dayEpoch, pipSize, cache) {
+    if (!cache?.naked?.length) return null;
+    // Return only NPOCs formed before today (no lookahead)
+    const arr = cache.naked;
+    let lo = 0, hi = arr.length;
+    while (lo < hi) { const m = (lo + hi) >>> 1; arr[m].epoch < dayEpoch ? lo = m + 1 : hi = m; }
+    return { npocs: arr.slice(0, lo), pipSize };
+  },
+
+  check(price, _side, state, opts) {
+    if (!state?.npocs?.length) return { hit: false, detail: null };
+    const radius = (opts.zoneRadiusPips ?? 3) * state.pipSize;
+    const near = state.npocs.filter(n => Math.abs(n.poc - price) <= radius);
+    if (!near.length) return { hit: false, detail: null };
+    near.sort((a, b) => Math.abs(a.poc - price) - Math.abs(b.poc - price));
+    const best = near[0];
+    const dist = (Math.abs(best.poc - price) / state.pipSize).toFixed(1);
+    const date = new Date(best.epoch * 1000).toISOString().substring(0, 10);
+    return { hit: true, detail: `NPOC ${date} @${best.poc.toFixed(5)} (${dist}p)${near.length > 1 ? ` +${near.length - 1} more` : ''}` };
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Registry & runner
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -787,6 +864,7 @@ export const CONFLUENCE_MODULES = [
   prevReacted,
   srLevel,
   vahVal,
+  nakedPoc,
   volForecast,
   ath52wk,
   mondayRange,
