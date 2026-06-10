@@ -117,6 +117,24 @@
 .sdot.err  { background:var(--red); }
 @keyframes blink { 0%,100%{opacity:1}50%{opacity:.25} }
 .stxt { font-size:12px;color:var(--text2); }
+
+/* ── Confluence config panel ──────────────────────────────────────────────── */
+.cf-panel { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);margin-top:8px;overflow:hidden; }
+.cf-panel-hdr { padding:9px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none; }
+.cf-panel-hdr:hover { background:var(--s2); }
+.cf-toggle { font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:auto; }
+.cf-body { padding:14px 16px;border-top:1px solid var(--border);display:none; }
+.cf-body.open { display:block; }
+.cf-row { display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px; }
+.cf-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap; }
+.cf-modules-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;margin-top:12px; }
+.cf-module { background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px; }
+.cf-module label { display:flex;flex-direction:column;gap:2px;cursor:pointer;flex:1; }
+.cf-module-name { font-size:12px;font-weight:600;color:var(--text);font-family:'DM Mono',monospace; }
+.cf-module-desc { font-size:10px;color:var(--text3); }
+.cf-module input[type=checkbox] { width:14px;height:14px;flex-shrink:0;margin-top:2px;accent-color:var(--green);cursor:pointer; }
+.cf-section-title { font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px; }
+.atr-row { display:none; }
 </style>
 </head>
 <body>
@@ -220,6 +238,97 @@
 
   <button class="bt-run-btn" id="arRunBtn" onclick="runBacktest()">▶ Run</button>
   <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace" id="arRunStatus"></span>
+</div>
+
+<!-- ── Confluence / ATR config panel ────────────────────────────────────────── -->
+<div class="cf-panel" id="cfPanel">
+  <div class="cf-panel-hdr" onclick="toggleCfPanel()">
+    <span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace">⚙ Confluence Modules &amp; SL Config</span>
+    <span class="cf-toggle" id="cfToggleTxt">▶ Expand</span>
+  </div>
+  <div class="cf-body" id="cfBody">
+
+    <!-- SL Mode + ATR row -->
+    <div class="cf-section-title">Stop-loss mode</div>
+    <div class="cf-row">
+      <span class="cf-lbl">SL Mode:</span>
+      <select id="cfSlMode" class="bt-sel" onchange="onSlModeChange()" title="How the stop-loss distance is calculated">
+        <option value="range_mult">Asia Range × Mult (default)</option>
+        <option value="atr30">ATR30 (30-min ATR from Asia bars)</option>
+      </select>
+      <span class="cf-lbl" id="cfAtrSlLbl" style="display:none">ATR SL ×:</span>
+      <input type="number" id="cfAtrSlMult" value="1.5" min="0.5" max="5" step="0.1" style="width:56px;display:none" class="bt-sel" title="SL = ATR30 × this multiplier">
+      <span class="cf-lbl" id="cfAtrTpLbl" style="display:none">ATR TP ×:</span>
+      <input type="number" id="cfAtrTpMult" value="2.0" min="0.5" max="10" step="0.25" style="width:60px;display:none" class="bt-sel" title="TP = SL distance × this (e.g. 2.0 = 2:1 R:R)">
+      <span class="cf-lbl" id="cfAtrPerLbl" style="display:none">Periods:</span>
+      <input type="number" id="cfAtrPeriods" value="14" min="5" max="50" step="1" style="width:52px;display:none" class="bt-sel">
+    </div>
+
+    <!-- Zone + score row -->
+    <div class="cf-section-title" style="margin-top:12px">Module thresholds</div>
+    <div class="cf-row">
+      <span class="cf-lbl">Zone radius (pips):</span>
+      <input type="number" id="cfZoneRadius" value="3" min="1" max="20" step="0.5" style="width:56px" class="bt-sel" title="How close a confluence must be to the fib level to count as 'in zone'">
+      <span class="cf-lbl">Min confluence score %:</span>
+      <input type="number" id="cfMinScore" value="0" min="0" max="100" step="5" style="width:56px" class="bt-sel" title="Only place trades where the weighted confluence score ≥ this value. 0 = no gate.">
+      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">(0 = all trades; 50 = must pass half the enabled modules)</span>
+    </div>
+
+    <!-- Module checkboxes -->
+    <div class="cf-section-title" style="margin-top:12px">Active confluence modules</div>
+    <div class="cf-modules-grid">
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_fib_repeat" checked>
+        <label for="cfMod_fib_repeat">
+          <span class="cf-module-name">Prev Session Fib Repeat <span style="color:var(--amber);font-size:9px">w×1.5</span></span>
+          <span class="cf-module-desc">Level present in 2+ of the last 5 prior Asia sessions</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_prev_reacted" checked>
+        <label for="cfMod_prev_reacted">
+          <span class="cf-module-name">Previously Reacted <span style="color:var(--amber);font-size:9px">w×2.0</span></span>
+          <span class="cf-module-desc">Price reversed ≥5 pips at this level in a prior session</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_sr_level" checked>
+        <label for="cfMod_sr_level">
+          <span class="cf-module-name">Swing S&amp;R Level <span style="color:var(--amber);font-size:9px">w×1.0</span></span>
+          <span class="cf-module-desc">30m pivot high/low (5-bar swing) within zone radius, last 20 days</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_vah_val" checked>
+        <label for="cfMod_vah_val">
+          <span class="cf-module-name">Volume Profile VAH/VAL/POC <span style="color:var(--amber);font-size:9px">w×1.5</span></span>
+          <span class="cf-module-desc">Prior session value area high/low or point of control</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_vol_forecast" checked>
+        <label for="cfMod_vol_forecast">
+          <span class="cf-module-name">Vol Forecast HL75 Boundary <span style="color:var(--amber);font-size:9px">w×1.0</span></span>
+          <span class="cf-module-desc">Fib near EWMA 75th-percentile expected high or low</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_ath_52wk">
+        <label for="cfMod_ath_52wk">
+          <span class="cf-module-name">52-Week High / Low <span style="color:var(--amber);font-size:9px">w×1.0</span></span>
+          <span class="cf-module-desc">Fib within zone radius of 52-week extreme (most useful for Gold)</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_monday_range" checked>
+        <label for="cfMod_monday_range">
+          <span class="cf-module-name">Monday Range H/L <span style="color:var(--amber);font-size:9px">w×0.75</span></span>
+          <span class="cf-module-desc">Within 10 pips of this week's Monday high or low</span>
+        </label>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <!-- ── KPI grid ─────────────────────────────────────────────────────────────── -->
@@ -362,7 +471,7 @@
     <div class="bt-tbl-scroll">
       <table class="bt-tbl">
         <thead><tr>
-          <th>Date</th><th>Pair</th><th>Side</th><th>Fib</th><th>Conf</th>
+          <th>Date</th><th>Pair</th><th>Side</th><th>Fib</th><th>Conf</th><th>Score</th>
           <th>Entry</th><th>TP</th><th>SL</th><th>Result</th><th>P&amp;L</th><th></th>
         </tr></thead>
         <tbody id="arTradeTblBody"></tbody>
@@ -834,6 +943,32 @@ function confChip(r) {
   return '<span class="rg none">—</span>';
 }
 
+function scoreChip(r) {
+  const pct = r.confluence_pct;
+  if (pct == null || r.confluence_total === 0) return '<span style="color:var(--text3);font-size:10px;font-family:\'DM Mono\',monospace">—</span>';
+  const color = pct >= 75 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : pct >= 25 ? '#f97316' : 'var(--red)';
+  const modules = r.confluences ? Object.entries(r.confluences).filter(([,v]) => v.hit).map(([k]) => k.replace('_',' ')).join(', ') : '';
+  const tip = modules ? `title="${modules}"` : '';
+  return `<span ${tip} style="font-family:'DM Mono',monospace;font-size:10px;font-weight:600;color:${color}">${pct}%</span>`;
+}
+
+function toggleCfPanel() {
+  const body = document.getElementById('cfBody');
+  const txt  = document.getElementById('cfToggleTxt');
+  const open = body.classList.toggle('open');
+  txt.textContent = open ? '▼ Collapse' : '▶ Expand';
+}
+
+function onSlModeChange() {
+  const isAtr = document.getElementById('cfSlMode').value === 'atr30';
+  ['cfAtrSlLbl','cfAtrSlMult','cfAtrTpLbl','cfAtrTpMult','cfAtrPerLbl','cfAtrPeriods'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isAtr ? '' : 'none';
+  });
+  // Also hide/show the range SL mult in the main run bar
+  document.getElementById('arSlMult').parentElement.style.display = isAtr ? 'none' : '';
+}
+
 function renderTradePage() {
   const start = _page * PAGE_SIZE;
   const slice = _filtTrades.slice(start, start + PAGE_SIZE);
@@ -848,6 +983,7 @@ function renderTradePage() {
     <td style="color:${r.side === 'BUY' ? 'var(--green)' : 'var(--red)'};font-weight:600">${r.side || '—'}</td>
     <td style="color:var(--amber);font-family:'DM Mono',monospace;font-size:11px">${r.fib_level?.toFixed(2) ?? '—'}</td>
     <td>${confChip(r)}</td>
+    <td>${scoreChip(r)}</td>
     <td class="num" style="font-size:10px;color:var(--text3)">${r.entry_price?.toFixed(5) ?? '—'}</td>
     <td class="num" style="font-size:10px;color:var(--green)">${r.tp_price?.toFixed(5) ?? '—'}</td>
     <td class="num" style="font-size:10px;color:var(--red)">${r.sl_price?.toFixed(5) ?? '—'}</td>
@@ -867,18 +1003,34 @@ async function runBacktest() {
   setStatus('spin', 'Starting Asia Range Fib backtest…');
 
   try {
+    // Collect module enable states
+    const MODULE_IDS = ['fib_repeat','prev_reacted','sr_level','vah_val','vol_forecast','ath_52wk','monday_range'];
+    const confluenceModules = {};
+    for (const id of MODULE_IDS) {
+      const el = document.getElementById('cfMod_' + id);
+      confluenceModules[id] = el ? el.checked : false;
+    }
+
     const body = {
-      dateFrom:       document.getElementById('arFrom').value,
-      dateTo:         document.getElementById('arTo').value,
-      pair:           document.getElementById('arPair').value,
-      levelFilter:    document.getElementById('arLevelFilter').value,
-      tradeZone:      document.getElementById('arTradeZone').value,
-      tpMode:         document.getElementById('arTpMode').value,
-      slMult:         document.getElementById('arSlMult').value,
-      confluencePips: document.getElementById('arConfluencePips').value,
-      tightPct:       document.getElementById('arTightPct').value,
-      tradeHourFrom:  document.getElementById('arHourFrom').value,
-      tradeHourTo:    document.getElementById('arHourTo').value,
+      dateFrom:          document.getElementById('arFrom').value,
+      dateTo:            document.getElementById('arTo').value,
+      pair:              document.getElementById('arPair').value,
+      levelFilter:       document.getElementById('arLevelFilter').value,
+      tradeZone:         document.getElementById('arTradeZone').value,
+      tpMode:            document.getElementById('arTpMode').value,
+      slMult:            document.getElementById('arSlMult').value,
+      confluencePips:    document.getElementById('arConfluencePips').value,
+      tightPct:          document.getElementById('arTightPct').value,
+      tradeHourFrom:     document.getElementById('arHourFrom').value,
+      tradeHourTo:       document.getElementById('arHourTo').value,
+      // New opts
+      slMode:            document.getElementById('cfSlMode').value,
+      atrSlMult:         document.getElementById('cfAtrSlMult').value,
+      atrTpMult:         document.getElementById('cfAtrTpMult').value,
+      atrPeriods:        document.getElementById('cfAtrPeriods').value,
+      zoneRadiusPips:    document.getElementById('cfZoneRadius').value,
+      minConfluenceScore: parseFloat(document.getElementById('cfMinScore').value) / 100 || 0,
+      confluenceModules,
     };
 
     const startR = await fetch('/api/asia-range-backtest/run', {

@@ -540,18 +540,24 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
 
     let oiTag = null;
     if (oi) {
-      if (Math.abs(c.price - oi.callWall) <= oiProx) {
+      const _cwList = oi.callWalls?.length ? oi.callWalls : (oi.callWall ? [{ strike: oi.callWall, oi: oi.callWallOI }] : []);
+      const _pwList = oi.putWalls?.length  ? oi.putWalls  : (oi.putWall  ? [{ strike: oi.putWall,  oi: oi.putWallOI  }] : []);
+      const _cwHit = _cwList.filter(w => Math.abs(c.price - w.strike) <= oiProx)
+                            .sort((a, b) => Math.abs(c.price - a.strike) - Math.abs(c.price - b.strike))[0];
+      const _pwHit = _pwList.filter(w => Math.abs(c.price - w.strike) <= oiProx)
+                            .sort((a, b) => Math.abs(c.price - a.strike) - Math.abs(c.price - b.strike))[0];
+      if (_cwHit) {
         const above = c.direction === 'short';
         layerScore += above ? 1.5 : 0.5;
-        const cwDist = Math.round(Math.abs(c.price - oi.callWall) / pipSz);
-        oiTag = { cls: 'oi', label: `Call Wall ${oiFmtStrike(oi.callWall, sym)} (${cwDist}${unit})`, key: 'callwall' };
+        const cwDist = Math.round(Math.abs(c.price - _cwHit.strike) / pipSz);
+        oiTag = { cls: 'oi', label: `Call Wall ${oiFmtStrike(_cwHit.strike, sym)} (${cwDist}${unit})`, key: 'callwall' };
         layers.push('Near call wall');
       }
-      if (Math.abs(c.price - oi.putWall) <= oiProx) {
+      if (_pwHit) {
         const below = c.direction === 'long';
         layerScore += below ? 1.5 : 0.5;
-        const pwDist = Math.round(Math.abs(c.price - oi.putWall) / pipSz);
-        oiTag = { cls: 'oi', label: `Put Wall ${oiFmtStrike(oi.putWall, sym)} (${pwDist}${unit})`, key: 'putwall' };
+        const pwDist = Math.round(Math.abs(c.price - _pwHit.strike) / pipSz);
+        oiTag = { cls: 'oi', label: `Put Wall ${oiFmtStrike(_pwHit.strike, sym)} (${pwDist}${unit})`, key: 'putwall' };
         layers.push('Near put wall');
       }
       if (Math.abs(c.price - oi.maxPain) <= oiProx) {
@@ -683,18 +689,28 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
     let tp = c.tp, tpNote = 'Vol cap';
     if (c.tpCapped) tpNote = 'Vol capped (' + volRegime.usedPct + '% used)';
 
-    if (oi && c.direction === 'long' && oi.callWall > c.price) {
-      const wallDist = oi.callWall - c.price;
-      if (wallDist <= tpCap) { tp = oi.callWall; tpNote = 'Call wall'; }
-      else                   { tpNote = (c.tpCapped ? 'Vol cap' : 'ATR') + ' (call wall OOR)'; }
-    } else if (oi && c.direction === 'short' && oi.putWall < c.price) {
-      const wallDist = c.price - oi.putWall;
-      if (wallDist <= tpCap) { tp = oi.putWall; tpNote = 'Put wall'; }
-      else                   { tpNote = (c.tpCapped ? 'Vol cap' : 'ATR') + ' (put wall OOR)'; }
-    } else if (oi && c.direction === 'long' && oi.maxPain > c.price) {
+    // TP: find nearest call wall above (for longs) or put wall below (for shorts) within vol cap
+    if (oi && c.direction === 'long') {
+      const _cwAbove = (oi.callWalls?.length ? oi.callWalls.map(w => w.strike) : (oi.callWall ? [oi.callWall] : []))
+        .filter(s => s > c.price).sort((a, b) => a - b)[0];
+      if (_cwAbove != null) {
+        const wallDist = _cwAbove - c.price;
+        if (wallDist <= tpCap) { tp = _cwAbove; tpNote = 'Call wall'; }
+        else                   { tpNote = (c.tpCapped ? 'Vol cap' : 'ATR') + ' (call wall OOR)'; }
+      }
+    } else if (oi && c.direction === 'short') {
+      const _pwBelow = (oi.putWalls?.length ? oi.putWalls.map(w => w.strike) : (oi.putWall ? [oi.putWall] : []))
+        .filter(s => s < c.price).sort((a, b) => b - a)[0];
+      if (_pwBelow != null) {
+        const wallDist = c.price - _pwBelow;
+        if (wallDist <= tpCap) { tp = _pwBelow; tpNote = 'Put wall'; }
+        else                   { tpNote = (c.tpCapped ? 'Vol cap' : 'ATR') + ' (put wall OOR)'; }
+      }
+    }
+    if (tpNote === 'Vol cap' && oi && c.direction === 'long' && oi.maxPain > c.price) {
       const mpDist = oi.maxPain - c.price;
       if (mpDist <= tpCap) { tp = oi.maxPain; tpNote = 'Max pain'; }
-    } else if (oi && c.direction === 'short' && oi.maxPain < c.price) {
+    } else if (tpNote === 'Vol cap' && oi && c.direction === 'short' && oi.maxPain < c.price) {
       const mpDist = c.price - oi.maxPain;
       if (mpDist <= tpCap) { tp = oi.maxPain; tpNote = 'Max pain'; }
     }

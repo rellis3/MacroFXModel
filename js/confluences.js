@@ -161,12 +161,14 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       }
     });
 
-    // Phase 3: OI level within proximity boosts star rating
+    // Phase 3: OI level within proximity boosts star rating — check all ranked walls
     let oiMatch = null;
     if (_oiData) {
-      if (Math.abs(c.price - _oiData.callWall) <= oiCapDist) oiMatch = 'Call Wall';
-      else if (Math.abs(c.price - _oiData.putWall) <= oiCapDist) oiMatch = 'Put Wall';
-      else if (Math.abs(c.price - _oiData.maxPain) <= oiCapDist) oiMatch = 'Max Pain';
+      const _cwList = _oiData.callWalls?.length ? _oiData.callWalls.map(w => w.strike) : (_oiData.callWall ? [_oiData.callWall] : []);
+      const _pwList = _oiData.putWalls?.length  ? _oiData.putWalls.map(w => w.strike)  : (_oiData.putWall  ? [_oiData.putWall]  : []);
+      for (const cw of _cwList) { if (Math.abs(c.price - cw) <= oiCapDist) { oiMatch = 'Call Wall'; break; } }
+      if (!oiMatch) for (const pw of _pwList) { if (Math.abs(c.price - pw) <= oiCapDist) { oiMatch = 'Put Wall'; break; } }
+      if (!oiMatch && Math.abs(c.price - _oiData.maxPain) <= oiCapDist) oiMatch = 'Max Pain';
       if (!oiMatch && _oiData.gexProfile && _oiData.gexProfile.length > 1) {
         for (let i = 1; i < _oiData.gexProfile.length; i++) {
           if (Math.sign(_oiData.gexProfile[i].netGex) !== Math.sign(_oiData.gexProfile[i-1].netGex)) {

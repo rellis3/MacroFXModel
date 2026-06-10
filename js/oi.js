@@ -263,8 +263,8 @@ export function oiCalcMaxPain(strikes, calls, puts) {
   for (let i = 0; i < strikes.length; i++) {
     let pain = 0;
     for (let j = 0; j < strikes.length; j++) {
-      if (strikes[j] < strikes[i]) pain += puts[j] * (strikes[i] - strikes[j]);
-      else if (strikes[j] > strikes[i]) pain += calls[j] * (strikes[j] - strikes[i]);
+      if (strikes[j] < strikes[i]) pain += calls[j] * (strikes[i] - strikes[j]);
+      else if (strikes[j] > strikes[i]) pain += puts[j] * (strikes[j] - strikes[i]);
     }
     if (pain < minPain) { minPain = pain; mp = strikes[i]; }
   }
@@ -496,8 +496,17 @@ export function processOIData() {
     return { strike:s, callGex, putGex, netGex: callGex - putGex };
   }).sort((a,b) => a.strike - b.strike);
 
-  const callWallIdx = parsed.calls.indexOf(Math.max(...parsed.calls));
-  const putWallIdx  = parsed.puts.indexOf(Math.max(...parsed.puts));
+  // Ranked call walls (highest call OI first) and put walls (highest put OI first)
+  const callWalls = parsed.strikes
+    .map((s, i) => ({ strike: s, oi: parsed.calls[i], chg: parsed.callChg[i] || 0 }))
+    .filter(x => x.oi >= minOI)
+    .sort((a, b) => b.oi - a.oi)
+    .slice(0, numLevels);
+  const putWalls = parsed.strikes
+    .map((s, i) => ({ strike: s, oi: parsed.puts[i], chg: parsed.putChg[i] || 0 }))
+    .filter(x => x.oi >= minOI)
+    .sort((a, b) => b.oi - a.oi)
+    .slice(0, numLevels);
 
   const totalCallOI = parsed.calls.reduce((a,b)=>a+b,0);
   const totalPutOI  = parsed.puts.reduce((a,b)=>a+b,0);
@@ -508,8 +517,9 @@ export function processOIData() {
   const inst = {
     pair, spot, futures: futuresUsed, basis: basis || null,
     maxPain, exposures, topLevels, gexProfile,
-    callWall: parsed.strikes[callWallIdx], putWall: parsed.strikes[putWallIdx],
-    callWallOI: parsed.calls[callWallIdx], putWallOI: parsed.puts[putWallIdx],
+    callWall: callWalls[0]?.strike ?? 0, putWall: putWalls[0]?.strike ?? 0,
+    callWallOI: callWalls[0]?.oi ?? 0,  putWallOI: putWalls[0]?.oi ?? 0,
+    callWalls, putWalls,
     totalCallOI, totalPutOI, pcRatio, totalCallChg, totalPutChg,
     numRows: parsed.strikes.length, numLevels, minOI,
     savedAt: new Date().toLocaleString(),
@@ -629,6 +639,9 @@ export function renderOICard(inst) {
   const putWall     = inst.putWall     || 0;
   const callWallOI  = inst.callWallOI  || 0;
   const putWallOI   = inst.putWallOI   || 0;
+  // Full ranked wall lists — fall back to single-wall for legacy saved data
+  const callWalls   = inst.callWalls?.length ? inst.callWalls : (callWall ? [{ strike: callWall, oi: callWallOI, chg: 0 }] : []);
+  const putWalls    = inst.putWalls?.length  ? inst.putWalls  : (putWall  ? [{ strike: putWall,  oi: putWallOI,  chg: 0 }] : []);
   const totalCallOI = inst.totalCallOI || 0;
   const totalPutOI  = inst.totalPutOI  || 0;
   const pcRatio     = inst.pcRatio     || 1;
@@ -649,6 +662,34 @@ export function renderOICard(inst) {
   const gexSign = gex>0?'+':'';
   const gexClass = gex>0?'up':'dn';
   const skewPct = Math.min(100, Math.max(0, (pcRatio/3)*100)).toFixed(0);
+
+  // Side-by-side wall lists
+  const maxCallOI = callWalls.length ? callWalls[0].oi : 1;
+  const maxPutOI  = putWalls.length  ? putWalls[0].oi  : 1;
+  const callWallRows = callWalls.map((w, i) => {
+    const bw   = Math.round((w.oi / maxCallOI) * 100);
+    const chgStr = oiFmtChg(w.chg || 0);
+    const chgCol = (w.chg||0) > 0 ? 'color:var(--green)' : (w.chg||0) < 0 ? 'color:var(--red)' : 'color:var(--text3)';
+    return `<div class="oi-wall-row">
+      <span class="oi-wall-rank">${i+1}</span>
+      <div class="oi-bar-wrap"><div class="oi-bar oi-bar-red" style="width:${bw}%"></div></div>
+      <span class="oi-wall-strike">${oiFmtStrike(w.strike, pair)}</span>
+      <span class="oi-wall-oi">${oiFmtOI(w.oi)}</span>
+      <span class="oi-wall-chg" style="${chgCol}">${chgStr}</span>
+    </div>`;
+  }).join('') || '<div class="oi-wall-empty">—</div>';
+  const putWallRows = putWalls.map((w, i) => {
+    const bw   = Math.round((w.oi / maxPutOI) * 100);
+    const chgStr = oiFmtChg(w.chg || 0);
+    const chgCol = (w.chg||0) > 0 ? 'color:var(--green)' : (w.chg||0) < 0 ? 'color:var(--red)' : 'color:var(--text3)';
+    return `<div class="oi-wall-row">
+      <span class="oi-wall-rank">${i+1}</span>
+      <div class="oi-bar-wrap"><div class="oi-bar oi-bar-green" style="width:${bw}%"></div></div>
+      <span class="oi-wall-strike">${oiFmtStrike(w.strike, pair)}</span>
+      <span class="oi-wall-oi">${oiFmtOI(w.oi)}</span>
+      <span class="oi-wall-chg" style="${chgCol}">${chgStr}</span>
+    </div>`;
+  }).join('') || '<div class="oi-wall-empty">—</div>';
 
   const levelRows = topLevels.map((lvl,i)=>{
     const isAbove = lvl.strike > spot;
@@ -705,8 +746,19 @@ export function renderOICard(inst) {
     </div>
   </div>
 
+  <div class="oi-walls-grid">
+    <div class="oi-walls-col">
+      <div class="oi-walls-hd oi-walls-hd-call">Call Walls — Resistance</div>
+      ${callWallRows}
+    </div>
+    <div class="oi-walls-col">
+      <div class="oi-walls-hd oi-walls-hd-put">Put Walls — Support</div>
+      ${putWallRows}
+    </div>
+  </div>
+
   <div class="oi-levels">
-    <div class="oi-level-hd">Top ${topLevels.length} OI strikes &nbsp;·&nbsp; ${numRows} total</div>
+    <div class="oi-level-hd">Top ${topLevels.length} by combined OI &nbsp;·&nbsp; ${numRows} total strikes</div>
     ${levelRows}
   </div>
 

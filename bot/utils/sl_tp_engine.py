@@ -103,12 +103,23 @@ class SLTPEngine:
 
         if method == 'structure':
             if direction == 'long':
-                pw = oi.get('putWall') or 0
-                if pw and pw < price and (price - pw) / pip <= max_sl_pips * 1.2:
+                # Nearest put wall below price as SL anchor
+                raw_pw = oi.get('putWalls') or []
+                put_strikes = sorted(
+                    [w['strike'] for w in raw_pw if w.get('strike') and w['strike'] < price],
+                    reverse=True
+                ) if raw_pw else ([oi['putWall']] if oi.get('putWall') and oi['putWall'] < price else [])
+                pw = put_strikes[0] if put_strikes else 0
+                if pw and (price - pw) / pip <= max_sl_pips * 1.2:
                     return pw - pip * 2, 'structure_oi_put_wall'
             else:
-                cw = oi.get('callWall') or 0
-                if cw and cw > price and (cw - price) / pip <= max_sl_pips * 1.2:
+                # Nearest call wall above price as SL anchor
+                raw_cw = oi.get('callWalls') or []
+                call_strikes = sorted(
+                    [w['strike'] for w in raw_cw if w.get('strike') and w['strike'] > price]
+                ) if raw_cw else ([oi['callWall']] if oi.get('callWall') and oi['callWall'] > price else [])
+                cw = call_strikes[0] if call_strikes else 0
+                if cw and (cw - price) / pip <= max_sl_pips * 1.2:
                     return cw + pip * 2, 'structure_oi_call_wall'
 
             if entry.get('sl'):

@@ -151,6 +151,8 @@ export function aiCollectSnapshot() {
         dex:         inst.exposures?.dex ? inst.exposures.dex.toFixed(0) : 'N/A',
         gexRead:     gex > 0 ? 'Positive GEX — dealers long gamma, dampening moves, mean-reversion bias' : 'Negative GEX — dealers short gamma, amplifying moves, breakout risk',
         gammaFlip:   gammaFlip ? oiFmtStrike(gammaFlip, sym) : 'None detected',
+        callWalls:   (inst.callWalls||[]).slice(0, 6).map(w => `${oiFmtStrike(w.strike, sym)} (${oiFmtOI(w.oi)})`),
+        putWalls:    (inst.putWalls||[]).slice(0, 6).map(w => `${oiFmtStrike(w.strike, sym)} (${oiFmtOI(w.oi)})`),
         topLevels:   (inst.topLevels||[]).slice(0, 6).map(l => ({
           strike:  oiFmtStrike(l.strike, sym),
           callOI:  oiFmtOI(l.callOI),

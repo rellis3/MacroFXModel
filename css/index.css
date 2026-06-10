@@ -318,6 +318,19 @@ body.dark .oi-lvl-row{border-bottom-color:rgba(255,255,255,0.04)}
 .oi-lvl-strike{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--text);width:64px;text-align:right;flex-shrink:0}
 .oi-lvl-oi{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);width:44px;text-align:right;flex-shrink:0}
 .oi-lvl-chg{font-family:'DM Mono',monospace;font-size:9px;width:38px;text-align:right;flex-shrink:0}
+.oi-walls-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border)}
+.oi-walls-col{padding:8px 10px}
+.oi-walls-col:first-child{border-right:1px solid var(--border)}
+.oi-walls-hd{font-size:9px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.oi-walls-hd-call{color:var(--red)}.oi-walls-hd-put{color:var(--green)}
+.oi-wall-row{display:flex;align-items:center;gap:4px;padding:2px 0;border-bottom:1px solid rgba(0,0,0,0.04)}
+body.dark .oi-wall-row{border-bottom-color:rgba(255,255,255,0.04)}
+.oi-wall-row:last-child{border-bottom:none}
+.oi-wall-rank{font-size:8px;color:var(--text3);width:10px;text-align:right;flex-shrink:0;font-family:'DM Mono',monospace}
+.oi-wall-strike{font-family:'DM Mono',monospace;font-size:10px;font-weight:600;color:var(--text);flex-shrink:0}
+.oi-wall-oi{font-family:'DM Mono',monospace;font-size:9px;color:var(--text2);width:34px;text-align:right;flex-shrink:0}
+.oi-wall-chg{font-family:'DM Mono',monospace;font-size:8px;width:30px;text-align:right;flex-shrink:0}
+.oi-wall-empty{font-size:10px;color:var(--text3);text-align:center;padding:4px 0}
 .oi-skew{padding:10px 13px;border-top:1px solid var(--border)}
 .oi-skew-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .oi-skew-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}

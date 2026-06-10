@@ -300,6 +300,14 @@
         <option value="1">Yes</option>
         <option value="0">No</option>
       </select>
+      <span class="anl-lbl">Min score %:</span>
+      <select id="gfMinScore" class="anl-sel" onchange="applyGlobal()" title="Only show trades where confluence score ≥ this value">
+        <option value="0">Any</option>
+        <option value="25">≥25%</option>
+        <option value="50">≥50%</option>
+        <option value="75">≥75%</option>
+        <option value="100">100%</option>
+      </select>
       <button class="anl-btn amber" onclick="clearGlobal()">Clear</button>
     </div>
     <div class="stat-chips" id="anlGlobalStats"></div>
@@ -320,6 +328,7 @@
         <option value="session_filled">Session</option>
         <option value="dow">Day of Week</option>
         <option value="confluence_type">Confluence</option>
+        <option value="confluence_score_bucket">Score Bucket</option>
         <option value="level_zone">Zone</option>
         <option value="range_bucket">Range size</option>
         <option value="instrument">Pair</option>
@@ -330,6 +339,7 @@
         <option value="dow">Day of Week</option>
         <option value="fib_level_bucket">Fib Level</option>
         <option value="confluence_type">Confluence</option>
+        <option value="confluence_score_bucket">Score Bucket</option>
         <option value="level_zone">Zone</option>
         <option value="range_bucket">Range size</option>
         <option value="instrument">Pair</option>
@@ -380,11 +390,12 @@
     <span style="color:var(--text3);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">All combinations of selected dimensions, ranked by expectancy (min 15 trades)</span>
     <span style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span class="anl-lbl">Group by:</span>
-      <select id="bsGroup" class="anl-sel" multiple size="1" style="min-width:140px" onchange="renderBestSetups()">
+      <select id="bsGroup" class="anl-sel" multiple size="1" style="min-width:160px" onchange="renderBestSetups()">
         <option value="fib_level_bucket" selected>Fib Level</option>
         <option value="session_filled" selected>Session</option>
         <option value="dow">Day of Week</option>
         <option value="confluence_type" selected>Confluence</option>
+        <option value="confluence_score_bucket">Score Bucket</option>
         <option value="level_zone">Zone</option>
         <option value="range_bucket">Range size</option>
         <option value="monday_aligned">Mon aligned</option>
@@ -409,6 +420,30 @@
       </table>
     </div>
     <div id="bsEmpty" style="color:var(--text3);font-size:12px;text-align:center;padding:20px">Run a backtest first to load data</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     PANEL 4 — Confluence Module Audit
+  ══════════════════════════════════════════════════════════════════════════ -->
+<div class="anl-card" id="modPanel">
+  <div class="anl-card-hdr">
+    4 — Confluence Module Audit
+    <span style="color:var(--text3);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">Which modules actually lift win rate when they fire vs miss</span>
+  </div>
+  <div id="modPanelEmpty" style="color:var(--text3);font-size:12px;text-align:center;padding:28px">
+    No module data found. Enable confluence modules and re-run the backtest.
+  </div>
+  <div class="anl-tbl-scroll" id="modPanelBody" style="display:none">
+    <table class="anl-tbl" id="modTbl">
+      <thead><tr>
+        <th>Module</th>
+        <th>Hit N</th><th>Hit Win%</th><th>Hit Expect</th>
+        <th>Miss N</th><th>Miss Win%</th><th>Miss Expect</th>
+        <th>Win% Lift</th><th>Expect Lift</th>
+      </tr></thead>
+      <tbody id="modTblBody"></tbody>
+    </table>
   </div>
 </div>
 
@@ -474,29 +509,42 @@ function _confType(t) {
   return 'None';
 }
 
+function _scoreBucket(t) {
+  const pct = t.confluence_pct ?? 0;
+  const tot = t.confluence_total ?? 0;
+  if (tot === 0) return 'No modules';
+  if (pct === 0)  return '0%';
+  if (pct <= 25)  return '1–25%';
+  if (pct <= 50)  return '26–50%';
+  if (pct <= 75)  return '51–75%';
+  return '76–100%';
+}
+
 function getFeature(t, dim) {
   switch (dim) {
-    case 'fib_level_bucket': return _fibBucket(t.fib_level ?? 0);
-    case 'session_filled':   return t.session_filled ?? 'Unknown';
-    case 'dow':              return t.dow ?? '?';
-    case 'confluence_type':  return _confType(t);
-    case 'level_zone':       return t.level_zone ?? '?';
-    case 'range_bucket':     return t.range_bucket ?? '?';
-    case 'instrument':       return t.instrument ?? '?';
-    case 'monday_aligned':   return t.monday_aligned ? 'Mon-aligned' : 'Not-aligned';
+    case 'fib_level_bucket':      return _fibBucket(t.fib_level ?? 0);
+    case 'session_filled':        return t.session_filled ?? 'Unknown';
+    case 'dow':                   return t.dow ?? '?';
+    case 'confluence_type':       return _confType(t);
+    case 'confluence_score_bucket': return _scoreBucket(t);
+    case 'level_zone':            return t.level_zone ?? '?';
+    case 'range_bucket':          return t.range_bucket ?? '?';
+    case 'instrument':            return t.instrument ?? '?';
+    case 'monday_aligned':        return t.monday_aligned ? 'Mon-aligned' : 'Not-aligned';
     default: return '?';
   }
 }
 
 // ── Global filter ──────────────────────────────────────────────────────────────
 function applyGlobal() {
-  const pair    = document.getElementById('gfPair').value;
-  const conf    = document.getElementById('gfConf').value;
-  const session = document.getElementById('gfSession').value;
-  const dow     = document.getElementById('gfDow').value;
-  const range   = document.getElementById('gfRange').value;
-  const zone    = document.getElementById('gfZone').value;
-  const monday  = document.getElementById('gfMonday').value;
+  const pair     = document.getElementById('gfPair').value;
+  const conf     = document.getElementById('gfConf').value;
+  const session  = document.getElementById('gfSession').value;
+  const dow      = document.getElementById('gfDow').value;
+  const range    = document.getElementById('gfRange').value;
+  const zone     = document.getElementById('gfZone').value;
+  const monday   = document.getElementById('gfMonday').value;
+  const minScore = parseInt(document.getElementById('gfMinScore').value) || 0;
 
   _filtTrades = _allTrades.filter(t => {
     if (!t.filled) return false;
@@ -510,6 +558,7 @@ function applyGlobal() {
     if (conf === 'tight'      && !t.is_tight)                         return false;
     if (conf === 'confluence' && (!t.has_confluence || t.is_tight))   return false;
     if (conf === 'none'       && t.has_confluence)                    return false;
+    if (minScore > 0 && (t.confluence_pct ?? 0) < minScore)          return false;
     return true;
   });
 
@@ -518,10 +567,14 @@ function applyGlobal() {
   renderMFE();
   renderMAE();
   renderBestSetups();
+  renderModuleAudit();
 }
 
 function clearGlobal() {
-  ['gfPair','gfConf','gfSession','gfDow','gfRange','gfZone','gfMonday'].forEach(id => { document.getElementById(id).value = ''; });
+  ['gfPair','gfConf','gfSession','gfDow','gfRange','gfZone','gfMonday','gfMinScore'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = el.tagName === 'SELECT' ? (el.options[0]?.value ?? '') : '';
+  });
   applyGlobal();
 }
 
@@ -542,23 +595,25 @@ function renderGlobalStats() {
 }
 
 // ── Pivot table ────────────────────────────────────────────────────────────────
-const FIB_BUCKET_ORDER = ['≤−3','−2–−3','−2–−1','−1–−0.5','−0.5–0','0','0–0.5','0.5–1','1–1.5','1.5–2','2–3','≥3'];
-const SESSION_ORDER    = ['Asia','London','Overlap','NY','Unknown'];
-const DOW_ORDER        = ['Mon','Tue','Wed','Thu','Fri'];
-const CONF_ORDER       = ['Tight','Regular','None'];
-const ZONE_ORDER       = ['deep_neg','outer_neg','inner','outer_pos','deep_pos'];
-const RANGE_ORDER      = ['tiny','small','medium','large','huge'];
-const MON_ORDER        = ['Mon-aligned','Not-aligned'];
+const FIB_BUCKET_ORDER   = ['≤−3','−2–−3','−2–−1','−1–−0.5','−0.5–0','0','0–0.5','0.5–1','1–1.5','1.5–2','2–3','≥3'];
+const SESSION_ORDER      = ['Asia','London','Overlap','NY','Unknown'];
+const DOW_ORDER          = ['Mon','Tue','Wed','Thu','Fri'];
+const CONF_ORDER         = ['Tight','Regular','None'];
+const ZONE_ORDER         = ['deep_neg','outer_neg','inner','outer_pos','deep_pos'];
+const RANGE_ORDER        = ['tiny','small','medium','large','huge'];
+const MON_ORDER          = ['Mon-aligned','Not-aligned'];
+const SCORE_BUCKET_ORDER = ['No modules','0%','1–25%','26–50%','51–75%','76–100%'];
 
 function _dimOrder(dim) {
   switch (dim) {
-    case 'fib_level_bucket': return FIB_BUCKET_ORDER;
-    case 'session_filled':   return SESSION_ORDER;
-    case 'dow':              return DOW_ORDER;
-    case 'confluence_type':  return CONF_ORDER;
-    case 'level_zone':       return ZONE_ORDER;
-    case 'range_bucket':     return RANGE_ORDER;
-    case 'monday_aligned':   return MON_ORDER;
+    case 'fib_level_bucket':        return FIB_BUCKET_ORDER;
+    case 'session_filled':          return SESSION_ORDER;
+    case 'dow':                     return DOW_ORDER;
+    case 'confluence_type':         return CONF_ORDER;
+    case 'confluence_score_bucket': return SCORE_BUCKET_ORDER;
+    case 'level_zone':              return ZONE_ORDER;
+    case 'range_bucket':            return RANGE_ORDER;
+    case 'monday_aligned':          return MON_ORDER;
     default: return null;
   }
 }
@@ -788,8 +843,8 @@ function renderBestSetups() {
 
   const dim_labels = {
     fib_level_bucket: 'Fib Level', session_filled: 'Session', dow: 'DOW',
-    confluence_type: 'Confluence', level_zone: 'Zone', range_bucket: 'Range',
-    monday_aligned: 'Mon Aligned',
+    confluence_type: 'Confluence', confluence_score_bucket: 'Score',
+    level_zone: 'Zone', range_bucket: 'Range', monday_aligned: 'Mon Aligned',
   };
 
   head.innerHTML = dims.map(d => `<th>${dim_labels[d] ?? d}</th>`).join('') +
@@ -811,6 +866,82 @@ function renderBestSetups() {
   }).join('');
   tbl.style.display = '';
   empty.style.display = 'none';
+}
+
+// ── Module audit (Panel 4) ─────────────────────────────────────────────────────
+
+const _MODULE_LABELS = {
+  fib_repeat:    'Prev Session Fib Repeat',
+  prev_reacted:  'Previously Reacted Level',
+  sr_level:      'Swing S&R Level',
+  vah_val:       'Volume Profile VAH/VAL/POC',
+  vol_forecast:  'Vol Forecast HL75',
+  ath_52wk:      '52-Week High/Low',
+  monday_range:  'Monday Range H/L',
+};
+
+function renderModuleAudit() {
+  const empty = document.getElementById('modPanelEmpty');
+  const body  = document.getElementById('modPanelBody');
+  const tbody = document.getElementById('modTblBody');
+
+  // Discover modules present in the filtered trade data
+  const moduleIds = new Set();
+  for (const t of _filtTrades) {
+    if (t.confluences && typeof t.confluences === 'object') {
+      for (const id of Object.keys(t.confluences)) moduleIds.add(id);
+    }
+  }
+
+  if (!moduleIds.size) {
+    empty.style.display = ''; body.style.display = 'none'; return;
+  }
+  empty.style.display = 'none'; body.style.display = '';
+
+  const rows = [];
+  for (const id of moduleIds) {
+    const hits   = _filtTrades.filter(t => t.confluences?.[id]?.hit === true);
+    const misses = _filtTrades.filter(t => t.confluences?.[id] && t.confluences[id].hit !== true);
+    const hs = sliceStats(hits);
+    const ms = sliceStats(misses);
+    if (!hs && !ms) continue;
+    rows.push({
+      id,
+      label:    _MODULE_LABELS[id] ?? id,
+      hitN:     hs?.n ?? 0,
+      hitWr:    hs?.winRate ?? null,
+      hitEx:    hs?.expectancy ?? null,
+      missN:    ms?.n ?? 0,
+      missWr:   ms?.winRate ?? null,
+      missEx:   ms?.expectancy ?? null,
+      wrLift:   (hs?.winRate ?? 0) - (ms?.winRate ?? 0),
+      exLift:   (hs?.expectancy ?? 0) - (ms?.expectancy ?? 0),
+    });
+  }
+
+  rows.sort((a, b) => b.wrLift - a.wrLift);
+
+  const c = (v, cls) => `<td class="num ${cls}">${v}</td>`;
+  const pct  = v => v == null ? '—' : v.toFixed(1) + '%';
+  const ex   = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(4) + '%';
+  const lift = (v, isWr) => {
+    if (v == null) return '<td class="num">—</td>';
+    const cls = v > 0 ? 'pos' : v < 0 ? 'neg' : 'neu';
+    const fmt = isWr ? (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : (v >= 0 ? '+' : '') + v.toFixed(4) + '%';
+    return `<td class="num ${cls}" style="font-weight:600">${fmt}</td>`;
+  };
+
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td style="font-weight:600;font-size:12px">${r.label}</td>
+    ${c(r.hitN, '')}
+    ${c(pct(r.hitWr),  r.hitWr  >= 55 ? 'pos' : r.hitWr  < 45 ? 'neg' : 'neu')}
+    ${c(ex(r.hitEx),   r.hitEx  >= 0  ? 'pos' : 'neg')}
+    ${c(r.missN, '')}
+    ${c(pct(r.missWr), r.missWr >= 55 ? 'pos' : r.missWr < 45 ? 'neg' : 'neu')}
+    ${c(ex(r.missEx),  r.missEx >= 0  ? 'pos' : 'neg')}
+    ${lift(r.wrLift, true)}
+    ${lift(r.exLift, false)}
+  </tr>`).join('');
 }
 
 // ── Help toggle ────────────────────────────────────────────────────────────────
@@ -870,6 +1001,7 @@ async function loadData() {
     renderMFE();
     renderMAE();
     renderBestSetups();
+    renderModuleAudit();
   } catch (e) {
     setStatus('err', 'Error: ' + e.message);
   }

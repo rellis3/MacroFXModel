@@ -11,6 +11,11 @@
 import path             from 'path';
 import { fileURLToPath } from 'url';
 import { loadM1ForPair, BT_M1_DIR } from './volBacktestM1Engine.js';
+import {
+  buildAllPairCaches,
+  buildDayStates,
+  runModuleChecks,
+} from './confluenceModules.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -73,6 +78,20 @@ function resampleTo(bars, minutes) {
     }
   }
   return [...buckets.values()].sort((a, b) => a.time - b.time);
+}
+
+// ── ATR calculation ───────────────────────────────────────────────────────────
+
+function calcATR30(m1Bars, periods = 14) {
+  const bars30m = resampleTo(m1Bars, 30);
+  if (bars30m.length < 2) return null;
+  const trs = [];
+  for (let i = 1; i < bars30m.length; i++) {
+    const b = bars30m[i], p = bars30m[i - 1];
+    trs.push(Math.max(b.high - b.low, Math.abs(b.high - p.close), Math.abs(b.low - p.close)));
+  }
+  const slice = trs.slice(-Math.max(periods, 1));
+  return slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null;
 }
 
 // ── Session range calculators ─────────────────────────────────────────────────
@@ -181,13 +200,23 @@ function simulateDay(packed, dateStr, opts) {
     tightPct             = 10.0,
     levelFilter          = 'tight',    // 'tight' | 'confluence' | 'all'
     tradeZone            = 'outside',  // 'outside' | 'both'
-    slMult               = 0.5,        // SL dist = asiaRange × slMult
+    slMult               = 0.5,        // SL dist = asiaRange × slMult  (range_mult mode)
     tpMode               = '0.5',      // '0.5' | 'range_edge'
     tradeHourFrom        = 6,
     tradeHourTo          = 14,
     pipSize              = 0.0001,
     fibLevels            = FIB_LEVELS,
     showMonday           = true,
+    // ATR-based SL/TP
+    slMode               = 'range_mult', // 'range_mult' | 'atr30'
+    atrSlMult            = 1.5,          // SL = atrSlMult × ATR30
+    atrTpMult            = 2.0,          // TP = atrTpMult × SL distance
+    atrPeriods           = 14,
+    // Confluence module system
+    confluenceMods       = [],           // enabled module objects
+    pairCaches           = {},           // pre-built pair-level caches
+    zoneRadiusPips       = 3,
+    minConfluenceScore   = 0,            // 0–1 gate; 0 = off
   } = opts;
 
   const dayEpoch = Math.floor(new Date(dateStr + 'T00:00:00Z').getTime() / 1000);
@@ -241,8 +270,23 @@ function simulateDay(packed, dateStr, opts) {
   if (tradeBars.length < 5) return [];
 
   const refOpen  = tradeBars[0]?.open ?? asia.low + asia.range * 0.5;
-  const slDist   = asia.range * slMult;
   const asiaMid  = asia.low + asia.range * 0.5;
+
+  // ATR30 — computed from 24h of bars ending at Asia close
+  let atr30 = null;
+  if (slMode === 'atr30') {
+    const atrBars = extractBars(packed, dayEpoch + 6 * 3600 - 24 * 3600, dayEpoch + 6 * 3600);
+    atr30 = calcATR30(atrBars, atrPeriods);
+  }
+  const slDist = (slMode === 'atr30' && atr30 != null)
+    ? atr30 * atrSlMult
+    : asia.range * slMult;
+
+  // Confluence modules — build once-per-day states
+  const enabledIds = new Set(confluenceMods.map(m => m.id));
+  const dayStates  = confluenceMods.length > 0
+    ? buildDayStates(packed, dayEpoch, pipSize, pairCaches, { ...opts, zoneRadiusPips }, enabledIds)
+    : {};
 
   // Fib data for chart rendering (all levels with confluence flags)
   const fibData = fibs.map(f => ({
@@ -271,17 +315,27 @@ function simulateDay(packed, dateStr, opts) {
 
     if (tradeZone === 'outside' && isInside) continue;
 
+    // Run confluence modules BEFORE trade setup (score gates entry)
+    const modChecks = confluenceMods.length > 0
+      ? runModuleChecks(price, 'PENDING', dayStates, confluenceMods, { ...opts, zoneRadiusPips })
+      : { results: {}, hits: 0, total: 0, score: 0, pct: 0 };
+
+    if (confluenceMods.length > 0 && minConfluenceScore > 0 && modChecks.score < minConfluenceScore) continue;
+
     let side, tp, sl;
+    const useAtr = slMode === 'atr30' && atr30 != null;
+    const tpDist  = useAtr ? slDist * atrTpMult : null; // non-null only in ATR mode
+
     if (isAbove) {
       side = 'SELL';
-      tp   = tpMode === 'range_edge' ? asia.high : asiaMid;
+      tp   = useAtr ? price - tpDist : (tpMode === 'range_edge' ? asia.high : asiaMid);
       sl   = price + slDist;
     } else if (isBelow) {
       side = 'BUY';
-      tp   = tpMode === 'range_edge' ? asia.low : asiaMid;
+      tp   = useAtr ? price + tpDist : (tpMode === 'range_edge' ? asia.low : asiaMid);
       sl   = price - slDist;
     } else {
-      // Inside range — fade back to midpoint
+      // Inside range — fade back to midpoint (ATR mode uses same SL, midpoint TP)
       if (price > asiaMid) { side = 'SELL'; tp = asiaMid; sl = asia.high + slDist; }
       else                 { side = 'BUY';  tp = asiaMid; sl = asia.low  - slDist; }
     }
@@ -347,6 +401,15 @@ function simulateDay(packed, dateStr, opts) {
       monday_high:   mondayRange ? +mondayRange.high.toFixed(6) : null,
       monday_low:    mondayRange ? +mondayRange.low.toFixed(6)  : null,
       fib_data:      fibData,
+      // ATR / SL mode
+      sl_mode:       slMode,
+      atr30:         atr30 != null ? +atr30.toFixed(6) : null,
+      // Confluence module results
+      confluences:        modChecks.results,
+      confluence_hits:    modChecks.hits,
+      confluence_total:   modChecks.total,
+      confluence_score:   modChecks.score,
+      confluence_pct:     modChecks.pct,
     });
   }
 
@@ -361,8 +424,12 @@ export async function runAsiaRangeBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR
   const packed = await loadM1ForPair(pairKey, m1Dir);
   if (!packed) throw new Error(`No M1 data for ${pairKey}`);
 
-  const pipSize = PIP_SIZE[pairKey] ?? 0.0001;
-  const config  = { ...opts, pipSize };
+  const pipSize    = PIP_SIZE[pairKey] ?? 0.0001;
+  // Build once-per-pair module caches (e.g. swing levels for sr_level, daily extremes for ath_52wk)
+  const pairCaches = (opts.confluenceMods?.length > 0)
+    ? buildAllPairCaches(packed, pipSize)
+    : {};
+  const config  = { ...opts, pipSize, pairCaches };
 
   // Collect UTC dates that have bars in the Asia session window
   const seenDates = new Set();

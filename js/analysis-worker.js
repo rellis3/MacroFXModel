@@ -277,9 +277,11 @@ function gammaWallCheck(level, symbol, oiData, pip) {
   const oi = oiData?.[slashKey] || oiData?.[symbol];
   if (!oi) return 'na';
   const thr = 30 * pip;
-  if (oi.callWall != null && Math.abs(level - oi.callWall) < thr) return 'near_call';
-  if (oi.putWall  != null && Math.abs(level - oi.putWall)  < thr) return 'near_put';
-  if (oi.maxPain  != null && Math.abs(level - oi.maxPain)  < thr) return 'near_maxpain';
+  const cwList = oi.callWalls?.length ? oi.callWalls.map(w => w.strike) : (oi.callWall != null ? [oi.callWall] : []);
+  const pwList = oi.putWalls?.length  ? oi.putWalls.map(w => w.strike)  : (oi.putWall  != null ? [oi.putWall]  : []);
+  if (cwList.some(cw => Math.abs(level - cw) < thr)) return 'near_call';
+  if (pwList.some(pw => Math.abs(level - pw) < thr)) return 'near_put';
+  if (oi.maxPain != null && Math.abs(level - oi.maxPain) < thr) return 'near_maxpain';
   return 'clear';
 }
 

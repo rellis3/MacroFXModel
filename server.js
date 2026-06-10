@@ -31,6 +31,7 @@ import { getSessionStats, computeSessionStats, isSessionStatsComputing } from '.
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
+import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -2955,7 +2956,20 @@ app.post('/api/asia-range-backtest/run', (req, res) => {
     slMult = '0.5', tpMode = '0.5',
     tradeHourFrom = '6', tradeHourTo = '14',
     showMonday = 'true',
+    // New: ATR-based SL/TP
+    slMode = 'range_mult',
+    atrSlMult = '1.5', atrTpMult = '2.0', atrPeriods = '14',
+    // New: confluence modules
+    zoneRadiusPips = '3',
+    minConfluenceScore = '0',
+    confluenceModules: confModsCfg = {},
   } = req.body || {};
+
+  // Build enabled module list from the registry
+  const confluenceMods = CONFLUENCE_MODULES.filter(m => {
+    const v = confModsCfg[m.id];
+    return v === true || v === 'true';
+  });
 
   const opts = {
     dateFrom, dateTo,
@@ -2968,6 +2982,13 @@ app.post('/api/asia-range-backtest/run', (req, res) => {
     tradeHourFrom:        parseInt(tradeHourFrom)    || 6,
     tradeHourTo:          parseInt(tradeHourTo)      || 14,
     showMonday:           showMonday !== 'false',
+    slMode,
+    atrSlMult:            parseFloat(atrSlMult)      || 1.5,
+    atrTpMult:            parseFloat(atrTpMult)      || 2.0,
+    atrPeriods:           parseInt(atrPeriods)        || 14,
+    zoneRadiusPips:       parseFloat(zoneRadiusPips)  || 3,
+    minConfluenceScore:   parseFloat(minConfluenceScore) || 0,
+    confluenceMods,
   };
 
   const pairsToRun = pair

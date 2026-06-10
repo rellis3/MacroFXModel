@@ -45,32 +45,46 @@ class OIWallsModule(BaseModule):
 
         price       = entry.get('price') or 0
         direction   = entry.get('direction') or 'long'
-        call_wall   = oi.get('callWall') or 0
-        put_wall    = oi.get('putWall')  or 0
         pip_size    = _PIP_SIZES.get(pair, 0.0001)
         wall_thresh = (config.get('oi_walls') or {}).get('oi_wall_pips', 15)
 
-        if direction == 'long' and call_wall > price:
-            dist_pips = (call_wall - price) / pip_size
-            if dist_pips < wall_thresh:
-                return ModuleResult(
-                    passed=False, signal='BLOCK', score=0.0, confidence='HIGH',
-                    reason=f'Long blocked — call wall {call_wall} is {dist_pips:.0f}p above entry (< {wall_thresh}p threshold)',
-                    metadata={'call_wall': call_wall, 'put_wall': put_wall},
-                )
+        # Build strike lists from ranked arrays (new format) or fall back to single values
+        raw_cw = oi.get('callWalls') or []
+        raw_pw = oi.get('putWalls')  or []
+        call_strikes = [w['strike'] for w in raw_cw if w.get('strike')] if raw_cw else (
+            [oi['callWall']] if oi.get('callWall') else [])
+        put_strikes  = [w['strike'] for w in raw_pw if w.get('strike')] if raw_pw else (
+            [oi['putWall']]  if oi.get('putWall')  else [])
+        # Primary walls for logging/metadata
+        call_wall = call_strikes[0] if call_strikes else 0
+        put_wall  = put_strikes[0]  if put_strikes  else 0
 
-        if direction == 'short' and put_wall > 0 and price > put_wall:
-            dist_pips = (price - put_wall) / pip_size
-            if dist_pips < wall_thresh:
-                return ModuleResult(
-                    passed=False, signal='BLOCK', score=0.0, confidence='HIGH',
-                    reason=f'Short blocked — put wall {put_wall} is {dist_pips:.0f}p below entry (< {wall_thresh}p threshold)',
-                    metadata={'call_wall': call_wall, 'put_wall': put_wall},
-                )
+        if direction == 'long' and call_strikes:
+            walls_above = sorted([s for s in call_strikes if s > price])
+            if walls_above:
+                nearest = walls_above[0]
+                dist_pips = (nearest - price) / pip_size
+                if dist_pips < wall_thresh:
+                    return ModuleResult(
+                        passed=False, signal='BLOCK', score=0.0, confidence='HIGH',
+                        reason=f'Long blocked — call wall {nearest} is {dist_pips:.0f}p above entry (< {wall_thresh}p threshold)',
+                        metadata={'call_wall': nearest, 'put_wall': put_wall},
+                    )
 
-        signal = 'LONG' if direction == 'long' else 'SHORT'
+        if direction == 'short' and put_strikes:
+            walls_below = sorted([s for s in put_strikes if s < price], reverse=True)
+            if walls_below:
+                nearest = walls_below[0]
+                dist_pips = (price - nearest) / pip_size
+                if dist_pips < wall_thresh:
+                    return ModuleResult(
+                        passed=False, signal='BLOCK', score=0.0, confidence='HIGH',
+                        reason=f'Short blocked — put wall {nearest} is {dist_pips:.0f}p below entry (< {wall_thresh}p threshold)',
+                        metadata={'call_wall': call_wall, 'put_wall': nearest},
+                    )
+
+        signal   = 'LONG' if direction == 'long' else 'SHORT'
         max_pain = oi.get('maxPain', 0)
-        # Bonus score if max pain is on our side
         score = 0.85 if (
             (direction == 'long'  and max_pain and max_pain > price) or
             (direction == 'short' and max_pain and max_pain < price)
