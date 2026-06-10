@@ -2,10 +2,19 @@
  * Asia Range Fibonacci Confluence Backtester — engine.
  *
  * Asia session range:   5m body high/low  (00:00–06:00 UTC)
- * Monday range:         15m wick high/low  (full Monday UTC)
+ * Monday range:         15m body high/low  (full Monday UTC)
  * Confluence:           current session fib ≈ previous session fib within threshold
+ * Cross-alignment:      Asia fib ≈ Monday fib within confluenceThresh → strongest zone
  * Trade:                limit order at confluence levels outside (or inside) Asia range
  *                       after Asia close (06:00 UTC), within configurable time window
+ *
+ * levelSource:  'asia'    — trade Asia session fib levels (default)
+ *               'monday'  — trade Monday weekly fib levels
+ *               'both'    — Asia fibs + any Monday fibs not already covered by an Asia fib
+ * levelFilter:  'tight'       — Asia fib × prev-Asia fib tight alignment
+ *               'confluence'  — Asia fib × prev-Asia fib any alignment
+ *               'asia_monday' — fib must align with a level from the other set (cross-session)
+ *               'all'         — all key levels
  */
 
 import path             from 'path';
@@ -109,14 +118,14 @@ function asiaBodyRange(m1Bars) {
   return { high: bodyHigh, low: bodyLow, range: bodyHigh - bodyLow };
 }
 
-// Monday range: wick high/low across 15m resampled bars (full day).
+// Monday range: body high/low (max/min of open,close) across 15m resampled bars (full day).
 function mondayWickRange(m1Bars) {
   if (!m1Bars.length) return null;
   const bars15m = resampleTo(m1Bars, 15);
   let high = -Infinity, low = Infinity;
   for (const bar of bars15m) {
-    high = Math.max(high, bar.high);
-    low  = Math.min(low,  bar.low);
+    high = Math.max(high, Math.max(bar.open, bar.close));
+    low  = Math.min(low,  Math.min(bar.open, bar.close));
   }
   if (!isFinite(high) || !isFinite(low) || low >= high) return null;
   return { high, low, range: high - low };
@@ -198,7 +207,8 @@ function simulateDay(packed, dateStr, opts) {
   const {
     confluenceThreshPips = 2.0,
     tightPct             = 10.0,
-    levelFilter          = 'tight',    // 'tight' | 'confluence' | 'all'
+    levelFilter          = 'tight',    // 'tight' | 'confluence' | 'asia_monday' | 'all'
+    levelSource          = 'asia',    // 'asia' | 'monday' | 'both'
     tradeZone            = 'outside',  // 'outside' | 'both'
     slMult               = 0.5,        // SL dist = asiaRange × slMult  (range_mult mode)
     tpMode               = '0.5',      // '0.5' | 'range_edge'
@@ -251,9 +261,10 @@ function simulateDay(packed, dateStr, opts) {
     ? detectConfluence(currFibs, prevFibs, threshold, tightThreshold)
     : currFibs.map(f => ({ ...f, hasConfluence: false, isTight: false }));
 
-  // Monday range
+  // Monday range + Monday fibs
   let mondayRange = null;
-  if (showMonday) {
+  let mondayFibs  = [];
+  {
     const date = new Date(dateStr + 'T00:00:00Z');
     const dow  = date.getUTCDay(); // 0=Sun, 1=Mon…
     // On Monday: use previous Monday (7d back). Other days: use this week's Monday.
@@ -261,6 +272,41 @@ function simulateDay(packed, dateStr, opts) {
     const monEpoch = dayEpoch - daysBack * 86400;
     const monBars  = extractBars(packed, monEpoch, monEpoch + 24 * 3600);
     if (monBars.length >= 20) mondayRange = mondayWickRange(monBars);
+    if (mondayRange) mondayFibs = calcFibs(mondayRange.low, mondayRange.range, fibLevels);
+  }
+
+  // Cross-alignment: flag each Asia fib that sits within confluenceThresh of a Monday fib
+  // and each Monday fib that sits within confluenceThresh of an Asia fib.
+  // Re-use the same confluenceThreshPips threshold — these are the zone boundaries.
+  for (const af of fibs) {
+    af.source        = 'asia';
+    af.crossAligned  = mondayFibs.length > 0 && mondayFibs.some(mf => Math.abs(af.price - mf.price) <= threshold);
+  }
+  for (const mf of mondayFibs) {
+    const asiaMatch  = fibs.some(af => Math.abs(af.price - mf.price) <= threshold);
+    const asiaTight  = fibs.some(af => Math.abs(af.price - mf.price) <= tightThreshold);
+    // For Monday fibs: treat Asia-fib alignment as the "confluence" signal so that
+    // the existing levelFilter logic (tight/confluence/all) applies naturally.
+    mf.hasConfluence = asiaMatch;
+    mf.isTight       = asiaTight;
+    mf.crossAligned  = asiaMatch;
+    mf.source        = 'monday';
+  }
+
+  // Build candidate level list according to levelSource
+  let candidates;
+  if (levelSource === 'monday') {
+    candidates = mondayFibs;
+  } else if (levelSource === 'both') {
+    // Start with all Asia fibs, then append Monday fibs not already covered
+    candidates = [...fibs];
+    for (const mf of mondayFibs) {
+      if (!fibs.some(af => Math.abs(af.price - mf.price) <= threshold)) {
+        candidates.push(mf);
+      }
+    }
+  } else {
+    candidates = fibs; // 'asia' default
   }
 
   // Trade window bars (06:00–14:00 UTC default)
@@ -288,25 +334,30 @@ function simulateDay(packed, dateStr, opts) {
     ? buildDayStates(packed, dayEpoch, pipSize, pairCaches, { ...opts, zoneRadiusPips }, enabledIds)
     : {};
 
-  // Fib data for chart rendering (all levels with confluence flags)
-  const fibData = fibs.map(f => ({
-    level: f.level,
-    price: +f.price.toFixed(6),
-    hasConfluence: f.hasConfluence,
-    isTight:       f.isTight,
-    isKey:         f.isKey,
-  }));
+  // Fib data for chart rendering — Asia fibs + Monday fibs (tagged by source)
+  const fibData = [
+    ...fibs.map(f => ({
+      level: f.level, price: +f.price.toFixed(6),
+      hasConfluence: f.hasConfluence, isTight: f.isTight, isKey: f.isKey,
+      crossAligned: f.crossAligned, source: 'asia',
+    })),
+    ...mondayFibs.map(f => ({
+      level: f.level, price: +f.price.toFixed(6),
+      hasConfluence: f.hasConfluence, isTight: f.isTight, isKey: f.isKey,
+      crossAligned: f.crossAligned, source: 'monday',
+    })),
+  ];
 
   const trades = [];
 
-  for (const fib of fibs) {
+  for (const fib of candidates) {
     // Level filter
-    if (levelFilter === 'tight'      && !fib.isTight)       continue;
-    if (levelFilter === 'confluence' && !fib.hasConfluence)  continue;
+    if (levelFilter === 'tight'       && !fib.isTight)      continue;
+    if (levelFilter === 'confluence'  && !fib.hasConfluence) continue;
+    if (levelFilter === 'asia_monday' && !fib.crossAligned)  continue;
     if (levelFilter === 'all') {
-      // All levels: still skip non-key non-confluence unless explicitly requested
-      // (keep the 'all' mode truly open)
-    } else if (!fib.hasConfluence && !fib.isKey) continue;
+      // All levels: truly open — no additional skip
+    } else if (levelFilter !== 'asia_monday' && !fib.hasConfluence && !fib.isKey) continue;
 
     const price      = fib.price;
     const isAbove    = price > asia.high + pipSize;
@@ -370,6 +421,8 @@ function simulateDay(packed, dateStr, opts) {
       ? (Math.abs(price - mondayRange.high) <= pipSize * 10 || Math.abs(price - mondayRange.low) <= pipSize * 10)
       : false;
 
+    const monday_fib_align = fib.crossAligned ?? false;
+
     trades.push({
       date:          dateStr,
       side,
@@ -382,9 +435,11 @@ function simulateDay(packed, dateStr, opts) {
       sl_price:      +sl.toFixed(6),
       fill_time:     result.fillTime  ? new Date(result.fillTime  * 1000).toISOString().substring(0, 19) : null,
       exit_time:     result.exitTime  ? new Date(result.exitTime  * 1000).toISOString().substring(0, 19) : null,
-      has_confluence: fib.hasConfluence,
-      is_tight:      fib.isTight,
-      is_key:        fib.isKey,
+      has_confluence:   fib.hasConfluence,
+      is_tight:         fib.isTight,
+      is_key:           fib.isKey,
+      level_source:     fib.source ?? 'asia',
+      monday_fib_align: monday_fib_align,
       asia_high:     +asia.high.toFixed(6),
       asia_low:      +asia.low.toFixed(6),
       asia_range:    +asia.range.toFixed(6),

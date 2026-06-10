@@ -2952,7 +2952,7 @@ app.post('/api/asia-range-backtest/run', (req, res) => {
   const {
     dateFrom = '', dateTo = '', pair = '',
     confluencePips = '2.0', tightPct = '10',
-    levelFilter = 'tight', tradeZone = 'outside',
+    levelFilter = 'tight', levelSource = 'asia', tradeZone = 'outside',
     slMult = '0.5', tpMode = '0.5',
     tradeHourFrom = '6', tradeHourTo = '14',
     showMonday = 'true',
@@ -2976,6 +2976,7 @@ app.post('/api/asia-range-backtest/run', (req, res) => {
     confluenceThreshPips: parseFloat(confluencePips) || 2.0,
     tightPct:             parseFloat(tightPct)       || 10.0,
     levelFilter,
+    levelSource,
     tradeZone,
     slMult:               parseFloat(slMult)         || 0.5,
     tpMode,

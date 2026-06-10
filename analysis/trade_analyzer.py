@@ -509,6 +509,74 @@ def _apply_ctx(rec: dict, ctx: dict) -> None:
             rec[field] = ctx[field]
 
 
+def parse_dashboard_csv(csv_path: Path) -> list[dict]:
+    """
+    Read dashboard-format paper trade CSV and return records in same dict
+    format as pull_all_mt5_history() so they flow through the same enrichment
+    and analysis pipeline.
+
+    Expected columns: Date,Pair,Bot,Dir,Lots,Entry,Close,PnL,Swap,Net,
+                      Opened,Closed,Duration
+    Timestamps are 'YYYY-MM-DD HH:MM UTC'.
+    """
+    records = []
+    if not csv_path.exists():
+        log.warning(f"Dashboard CSV not found: {csv_path}")
+        return records
+
+    null_engine = {f: None for f in ENGINE_FIELDS}
+
+    # Dashboard shows UTC+2 (CEST) labelled as "UTC"; bot logs use machine local
+    # time which is 2 hours behind.  Shift timestamps to match log time so the
+    # sym+ts join in enrich_with_engine_context() finds the right ENTRY lines.
+    LOG_OFFSET = timedelta(hours=2)
+
+    with open(csv_path, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for i, row in enumerate(reader):
+            try:
+                opened_s   = row['Opened'].replace(' UTC', '').strip()
+                closed_s   = row['Closed'].replace(' UTC', '').strip()
+                time_open  = (datetime.strptime(opened_s, '%Y-%m-%d %H:%M')
+                              .replace(tzinfo=timezone.utc) - LOG_OFFSET)
+                time_close = (datetime.strptime(closed_s, '%Y-%m-%d %H:%M')
+                              .replace(tzinfo=timezone.utc) - LOG_OFFSET)
+
+                net = float(row['Net'].replace('+', ''))
+                if   net >  0.5: result = 'WIN'
+                elif net < -0.5: result = 'LOSS'
+                else:             result = 'BREAKEVEN'
+
+                records.append({
+                    'position_id': f'paper_{i}',
+                    'bot':         'RegimeV2',
+                    'magic':       20260005,
+                    'account':     10011001704,
+                    'ticket':      None,
+                    'symbol':      _sym_norm(row['Pair']),
+                    'direction':   row['Dir'].upper(),
+                    'lots':        float(row['Lots']),
+                    'open_price':  float(row['Entry']),
+                    'close_price': float(row['Close']),
+                    'pnl':         float(row['PnL'].replace('+', '')),
+                    'swap':        float(row['Swap'].replace('+', '')),
+                    'commission':  0.0,
+                    'net':         net,
+                    'result':      result,
+                    'time_open':   time_open.isoformat(),
+                    'time_close':  time_close.isoformat(),
+                    'session':     _session(time_close),
+                    'day_of_week': time_close.strftime('%A'),
+                    'comment':     'PAPER',
+                    **null_engine,
+                })
+            except (KeyError, ValueError) as e:
+                log.warning(f"CSV row {i + 2}: skipped -- {e}")
+
+    log.info(f"Dashboard CSV: {len(records)} V2 paper trades from {csv_path.name}")
+    return records
+
+
 def enrich_with_engine_context(records:    list[dict],
                                 v1_ctx:    dict,
                                 v2_ctx:    dict,
@@ -1115,6 +1183,14 @@ def main() -> None:
 
     # 1. MT5 history
     records = pull_all_mt5_history(from_date, to_date)
+
+    # Load V2 paper trades from dashboard CSV (paper mode trades don't reach MT5)
+    v2_csv = Path(__file__).parent / 'input' / 'v2_paper_trades.csv'
+    if v2_csv.exists():
+        paper = parse_dashboard_csv(v2_csv)
+        records.extend(paper)
+        log.info(f"Added {len(paper)} V2 paper trades from CSV (total records: {len(records)})")
+
     if not records:
         log.error("No records -- check MT5 connection and credentials.")
         return

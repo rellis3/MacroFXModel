@@ -193,9 +193,16 @@
     <option>NZDJPY</option><option>GOLD</option>
   </select>
 
+  <select id="arLevelSource" class="bt-sel" title="Which fib set to trade from">
+    <option value="asia">Asia fibs</option>
+    <option value="monday">Monday fibs</option>
+    <option value="both">Asia + Monday fibs</option>
+  </select>
+
   <select id="arLevelFilter" class="bt-sel" title="Which fib levels to trade">
     <option value="tight">Tight confluence only</option>
     <option value="confluence">Any confluence</option>
+    <option value="asia_monday">Asia + Monday align</option>
     <option value="all">All key levels</option>
   </select>
 
@@ -1015,6 +1022,7 @@ async function runBacktest() {
       dateFrom:          document.getElementById('arFrom').value,
       dateTo:            document.getElementById('arTo').value,
       pair:              document.getElementById('arPair').value,
+      levelSource:       document.getElementById('arLevelSource').value,
       levelFilter:       document.getElementById('arLevelFilter').value,
       tradeZone:         document.getElementById('arTradeZone').value,
       tpMode:            document.getElementById('arTpMode').value,
@@ -1200,16 +1208,30 @@ function openChartModal(tradeIdx) {
       if (ref.monday_high != null) addLine(ref.monday_high, '#8b5cf6', 'Mon H', LS.Dotted, 1);
       if (ref.monday_low  != null) addLine(ref.monday_low,  '#8b5cf6', 'Mon L', LS.Dotted, 1);
 
-      // All fib levels
+      // All fib levels — Asia fibs and Monday fibs rendered with distinct colours
       const KEY_LEVELS = new Set([0, 0.25, 0.5, 0.75, 1.0]);
       if (ref.fib_data?.length) {
-        for (const fd of ref.fib_data) {
+        // Render Asia fibs first, then Monday fibs (so Monday lines sit on top)
+        const asiaFibs   = ref.fib_data.filter(f => f.source !== 'monday');
+        const mondayFibs = ref.fib_data.filter(f => f.source === 'monday');
+        for (const fd of asiaFibs) {
           let color, lw, style;
-          if (fd.isTight)             { color = '#26a69a'; lw = 2;   style = LS.Solid;  }
-          else if (fd.hasConfluence)  { color = '#f59e0b'; lw = 1.5; style = LS.Dashed; }
+          if (fd.crossAligned)        { color = '#f97316'; lw = 2;   style = LS.Solid;  } // orange = Asia+Monday align
+          else if (fd.isTight)        { color = '#26a69a'; lw = 2;   style = LS.Solid;  } // teal = tight Asia
+          else if (fd.hasConfluence)  { color = '#f59e0b'; lw = 1.5; style = LS.Dashed; } // amber = confluence
           else if (KEY_LEVELS.has(fd.level)) { color = '#6b7280'; lw = 1; style = LS.Dotted; }
           else                        { color = '#374151'; lw = 0.5; style = LS.Dotted; }
           addLine(fd.price, color, fd.level.toFixed(2), style, lw);
+        }
+        // Monday fib levels in purple — only draw if not already covered by an Asia fib line
+        const asiaFibPrices = new Set(asiaFibs.map(f => f.price.toFixed(6)));
+        for (const fd of mondayFibs) {
+          if (asiaFibPrices.has(fd.price.toFixed(6))) continue; // skip exact duplicates
+          let color, lw, style;
+          if (fd.crossAligned) { color = '#f97316'; lw = 2;   style = LS.Solid; }  // orange = also has Asia align
+          else if (KEY_LEVELS.has(fd.level)) { color = '#a855f7'; lw = 1.5; style = LS.Dashed; }
+          else                 { color = '#7c3aed'; lw = 0.5; style = LS.Dotted; }
+          addLine(fd.price, color, 'M' + fd.level.toFixed(2), style, lw);
         }
       } else if (ref.asia_high != null && ref.asia_low != null) {
         const aR = ref.asia_range ?? (ref.asia_high - ref.asia_low);

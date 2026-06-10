@@ -331,6 +331,8 @@
         <option value="confluence_score_bucket">Score Bucket</option>
         <option value="level_zone">Zone</option>
         <option value="range_bucket">Range size</option>
+        <option value="level_source">Level Source</option>
+        <option value="monday_fib_align">Mon Fib Align</option>
         <option value="instrument">Pair</option>
       </select>
       <span class="anl-lbl">Y axis:</span>
@@ -342,6 +344,8 @@
         <option value="confluence_score_bucket">Score Bucket</option>
         <option value="level_zone">Zone</option>
         <option value="range_bucket">Range size</option>
+        <option value="level_source">Level Source</option>
+        <option value="monday_fib_align">Mon Fib Align</option>
         <option value="instrument">Pair</option>
       </select>
       <span class="anl-lbl">Metric:</span>
@@ -398,6 +402,8 @@
         <option value="confluence_score_bucket">Score Bucket</option>
         <option value="level_zone">Zone</option>
         <option value="range_bucket">Range size</option>
+        <option value="level_source">Level Source</option>
+        <option value="monday_fib_align">Mon Fib Align</option>
         <option value="monday_aligned">Mon aligned</option>
       </select>
       <span class="anl-lbl">Rank by:</span>
@@ -530,7 +536,9 @@ function getFeature(t, dim) {
     case 'level_zone':            return t.level_zone ?? '?';
     case 'range_bucket':          return t.range_bucket ?? '?';
     case 'instrument':            return t.instrument ?? '?';
-    case 'monday_aligned':        return t.monday_aligned ? 'Mon-aligned' : 'Not-aligned';
+    case 'monday_aligned':        return t.monday_aligned    ? 'Mon H/L aligned' : 'Not aligned';
+    case 'level_source':          return t.level_source      ?? 'asia';
+    case 'monday_fib_align':      return t.monday_fib_align  ? 'Asia+Mon fib' : 'Asia fib only';
     default: return '?';
   }
 }
@@ -614,6 +622,8 @@ function _dimOrder(dim) {
     case 'level_zone':              return ZONE_ORDER;
     case 'range_bucket':            return RANGE_ORDER;
     case 'monday_aligned':          return MON_ORDER;
+    case 'level_source':            return ['asia', 'monday'];
+    case 'monday_fib_align':        return ['Asia+Mon fib', 'Asia fib only'];
     default: return null;
   }
 }
@@ -845,6 +855,7 @@ function renderBestSetups() {
     fib_level_bucket: 'Fib Level', session_filled: 'Session', dow: 'DOW',
     confluence_type: 'Confluence', confluence_score_bucket: 'Score',
     level_zone: 'Zone', range_bucket: 'Range', monday_aligned: 'Mon Aligned',
+    level_source: 'Level Source', monday_fib_align: 'Mon Fib Align',
   };
 
   head.innerHTML = dims.map(d => `<th>${dim_labels[d] ?? d}</th>`).join('') +

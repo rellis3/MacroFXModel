@@ -1,8 +1,8 @@
 
 TRADE INTELLIGENCE REPORT
 Period  : 2026-03-12 -> 2026-06-10  (90 days)
-Generated: 2026-06-10 16:28
-Positions: 74
+Generated: 2026-06-10 18:48
+Positions: 99
 
 !  Segments flagged with ! have n < 20 -- directional signal only.
    Validate in backtester before adjusting live config.
@@ -12,102 +12,179 @@ Positions: 74
 ==============================================================
 
   Per-bot overview:
-    RegimeV1      trades=  74  WR= 21.6% (n=74)  exp=$-194.75  total=$ -14411.18
+    RegimeV2      trades=  99  WR= 35.7% (n=98)  exp=$  +1.28  total=$   +126.59
 
   Pairs traded by multiple bots (risk concentration):
     None detected in this date range
 
   Max consecutive losses per bot:
-    RegimeV1      17 consecutive
+    RegimeV2      7 consecutive
 
 
 ==============================================================
-  REGIMEV1  --  74 total trades
+  REGIMEV2  --  99 total trades
 ==============================================================
-  Overall win rate : 21.6%  (n=74 decisive)
-  Expectancy/trade : $-194.75
-  Total net P&L    : $-14,411.18
+  Overall win rate : 35.7%  (n=98 decisive)
+  Expectancy/trade : $+1.28
+  Total net P&L    : $+126.59
 
   BY PAIR:
-    AUDUSD        n=   5  WR= 40.0%  net=$ +1178.22  !
-    EURUSD        n=  10  WR= 30.0%  net=$  -943.74  !
-    GBPJPY        n=   1  WR=  0.0%  net=$  -489.95  !
-    GBPUSD        n=   5  WR= 40.0%  net=$  +780.20  !
-    USDJPY        n=   6  WR= 50.0%  net=$ +2067.84  !
-    XAUUSD        n=  47  WR= 12.8%  net=$-17003.75
+    AUDJPY        n=   8  WR= 37.5%  net=$  +329.91  !
+    AUDUSD        n=   7  WR= 57.1%  net=$  +360.87  !
+    CADJPY        n=   5  WR= 40.0%  net=$   -37.93  !
+    EURCHF        n=  10  WR= 30.0%  net=$  -157.33  !
+    EURGBP        n=   4  WR= 25.0%  net=$   -43.19  !
+    EURJPY        n=   7  WR= 42.9%  net=$   +11.72  !
+    EURUSD        n=   9  WR= 33.3%  net=$  +145.65  !
+    GBPCHF        n=   6  WR= 16.7%  net=$  -280.99  !
+    GBPJPY        n=   5  WR= 60.0%  net=$   +97.73  !
+    GBPUSD        n=   5  WR= 40.0%  net=$   +29.02  !
+    NZDUSD        n=   7  WR= 42.9%  net=$  +480.88  !
+    USDCAD        n=   3  WR=  0.0%  net=$  -234.01  !
+    USDCHF        n=   7  WR= 42.9%  net=$   -52.01  !
+    USDJPY        n=   6  WR= 33.3%  net=$   -38.59  !
+    XAUUSD        n=   9  WR= 22.2%  net=$  -485.14  !
 
   BY DIRECTION:
-    BUY     n=  40  WR= 20.0%  exp=$-204.87
-    SELL    n=  34  WR= 23.5%  exp=$-182.83
+    BUY     n=  54  WR= 35.2%  exp=$  +5.19
+    SELL    n=  44  WR= 36.4%  exp=$  -3.61
 
   BY SESSION (close time UTC):
-    ASIA        n=  14  WR= 14.3%  exp=$-209.34  !
-    LONDON      n=  14  WR= 21.4%  exp=$-199.03  !
-    NY          n=  29  WR= 24.1%  exp=$-185.65
-    NY_CLOSE    n=  13  WR= 23.1%  exp=$-136.77  !
-    ASIA_PRE    n=   4  WR= 25.0%  exp=$-383.07  !
+    LONDON      n=  27  WR= 22.2%  exp=$ -20.31
+    NY          n=  65  WR= 44.6%  exp=$ +14.62
+    NY_CLOSE    n=   6  WR=  0.0%  exp=$ -42.53  !
 
   BY DAY:
-    Monday        n=  15  WR= 26.7%  net=$ -1657.08  !
-    Tuesday       n=  11  WR=  0.0%  net=$ -7533.81  !
-    Wednesday     n=  10  WR=  0.0%  net=$ -6873.30  !
-    Thursday      n=  13  WR= 53.8%  net=$ +7153.86  !
-    Friday        n=  25  WR= 20.0%  net=$ -5500.85
+    Wednesday     n=  98  WR= 35.7%  net=$  +126.59
 
-  ENGINE SIGNAL ANALYSIS  (49 / 74 trades have context)
+  ENGINE SIGNAL ANALYSIS  (99 / 99 trades have context)
 
   -- Entry quality signals --
+  Format: trades where signal >= X -- shows what threshold maximises win rate.
 
-    Regime at entry (sorted by WR):
-      BULL                  n=  21  WR= 19.0%  exp=$-164.23
-      BEAR                  n=  28  WR=  7.1%  exp=$-497.47
+    5m Regime at entry (sorted by WR):
+      CHOP                  n=  15  WR= 40.0%  exp=$  +4.53  ! low-n
+      RANGE                 n=  23  WR= 39.1%  exp=$ +15.50
+      BEAR                  n=  17  WR= 35.3%  exp=$  -6.71  ! low-n
+      BULL                  n=   3  WR= 33.3%  exp=$  +0.22  ! low-n
+
+    1H regime (HTF alignment, sorted by WR):
+      BEAR                  n=  15  WR= 46.7%  exp=$ +33.71  ! low-n
+      BULL                  n=  40  WR= 35.0%  exp=$  -5.89
+      RANGE                 n=   3  WR= 33.3%  exp=$  +0.22  ! low-n
+
+    Consensus:
+      13/21                 n=   1  WR=100.0%  exp=$ +49.29  ! low-n
+      9/21                  n=   7  WR= 57.1%  exp=$ +44.58  ! low-n
+      11/21                 n=   4  WR= 50.0%  exp=$ +92.68  ! low-n
+      8/21                  n=  10  WR= 50.0%  exp=$ +29.59  ! low-n
+      5/21                  n=  16  WR= 43.8%  exp=$ +13.33  ! low-n
+      4/21                  n=  15  WR= 40.0%  exp=$ +13.92  ! low-n
+      2/21                  n=   6  WR= 33.3%  exp=$  -6.52  ! low-n
+      6/21                  n=   6  WR= 33.3%  exp=$  +9.15  ! low-n
+      7/21                  n=   7  WR= 28.6%  exp=$ -62.47  ! low-n
+      3/21                  n=  16  WR= 18.8%  exp=$ -22.22  ! low-n
+      1/21                  n=   6  WR= 16.7%  exp=$ -35.92  ! low-n
+      12/21                 n=   1  WR=  0.0%  exp=$ -24.81  ! low-n
+      10/21                 n=   3  WR=  0.0%  exp=$ -94.54  ! low-n
+
+    Score:
+      >=50        n=  98  WR= 35.7%  exp=$  +1.28
+      >=55        n=  98  WR= 35.7%  exp=$  +1.28
+      >=60        n=  98  WR= 35.7%  exp=$  +1.28
+      >=65        n=  98  WR= 35.7%  exp=$  +1.28
+      >=70        n=  70  WR= 40.0%  exp=$ +18.29  [*] suggested
+      >=74        n=  25  WR= 40.0%  exp=$  +5.98  <- Optuna optimal
+      >=80        n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      >=85        n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      >=90        n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+    [*]  Suggested: Score >= 70   ->  WR=40.0%  n=70
 
     Confidence %:
-      >=50        n=  49  WR= 12.2%  exp=$-354.65
-      >=60        n=  48  WR= 12.5%  exp=$-345.95
-      >=70        n=  48  WR= 12.5%  exp=$-345.95
-      >=80        n=  45  WR= 11.1%  exp=$-366.99
-      >=85        n=  42  WR= 11.9%  exp=$-349.99
-      >=90        n=  39  WR= 12.8%  exp=$-323.39  [*] suggested
-      >=95        n=  32  WR= 12.5%  exp=$-276.32
-      >=99        n=  27  WR=  7.4%  exp=$-410.79
-    [*]  Suggested: Confidence % >= 90   ->  WR=12.8%  n=39
+      >=50        n=  98  WR= 35.7%  exp=$  +1.28
+      >=60        n=  98  WR= 35.7%  exp=$  +1.28
+      >=70        n=  98  WR= 35.7%  exp=$  +1.28
+      >=80        n=  98  WR= 35.7%  exp=$  +1.28
+      >=85        n=  98  WR= 35.7%  exp=$  +1.28
+      >=90        n=  98  WR= 35.7%  exp=$  +1.28
+      >=95        n=  80  WR= 36.2%  exp=$  -3.21
+      >=99        n=  53  WR= 43.4%  exp=$ +29.61  [*] suggested
+    [*]  Suggested: Confidence % >= 99   ->  WR=43.4%  n=53
 
-    Vol Z-score at entry  (negative=quiet, positive=elevated):
-      vz 0.5-1           n=   6  WR= 33.3%  exp=$ +91.98  ! low-n
-      vz -0.5-0          n=  13  WR= 15.4%  exp=$-454.25  ! low-n
-      vz -2--1           n=   7  WR= 14.3%  exp=$ +58.62  ! low-n
-      vz 1-2             n=  10  WR= 10.0%  exp=$-514.79  ! low-n
+    BOCPD % (change-point certainty):
+      >=20        n=  95  WR= 35.8%  exp=$  +0.24  [*] suggested
+      >=30        n=  15  WR= 33.3%  exp=$ -83.62  ! low-n
+      >=40        n=   4  WR= 25.0%  exp=$-157.28  ! low-n
+      >=50        n=   1  WR=  0.0%  exp=$-170.69  ! low-n
+      >=60        n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      >=70        n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      >=80        n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      >=90        n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+    [*]  Suggested: BOCPD % >= 20   ->  WR=35.8%  n=95
+
+    Slope (momentum direction, sorted by WR):
+      slope 0-1             n=  39  WR= 43.6%  exp=$ +26.89
+      slope 5-10            n=   7  WR= 42.9%  exp=$  -7.43  ! low-n
+      slope -5--2           n=   9  WR= 22.2%  exp=$ -53.90  ! low-n
+      slope -99--10         n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      slope -10--5          n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      slope -2--1           n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      slope -1-0            n=   3  WR=  0.0%  exp=$ -78.00  ! low-n
+      slope 1-2             n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      slope 2-5             n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      slope 10-99           n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+
+    Vol Z-score at entry  (negative=quiet, positive=elevated, sorted by WR):
+      vz 0.5-1           n=   9  WR= 55.6%  exp=$ +46.04  ! low-n
+      vz -2--1           n=  14  WR= 50.0%  exp=$ +60.12  ! low-n
+      vz -0.5-0          n=   7  WR= 42.9%  exp=$  -7.43  ! low-n
+      vz 1-2             n=   6  WR= 33.3%  exp=$  -5.51  ! low-n
+      vz 2-3             n=  10  WR= 30.0%  exp=$ -14.19  ! low-n
+      vz -1--0.5         n=   9  WR= 22.2%  exp=$ -53.90  ! low-n
       vz -99--3          n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
-      vz -3--2           n=   1  WR=  0.0%  exp=$-144.86  ! low-n
-      vz -1--0.5         n=   3  WR=  0.0%  exp=$-532.10  ! low-n
-      vz 0-0.5           n=   6  WR=  0.0%  exp=$-527.22  ! low-n
-      vz 2-3             n=   3  WR=  0.0%  exp=$-794.11  ! low-n
+      vz -3--2           n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      vz 0-0.5           n=   3  WR=  0.0%  exp=$ -78.00  ! low-n
       vz 3-99            n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
-    [*]  Best vol-z range: -0.5-0  ->  WR=15.4%
 
-    Run length RL (bars in regime, more = more established):
-      >=2         n=  49  WR= 12.2%  exp=$-354.65
-      >=5         n=  44  WR= 13.6%  exp=$-321.53  [*] suggested
-      >=8         n=  42  WR= 11.9%  exp=$-328.55
-      >=12        n=  39  WR= 12.8%  exp=$-294.06
-      >=20        n=  31  WR= 12.9%  exp=$-245.66
-      >=30        n=  26  WR= 11.5%  exp=$-253.08
-    [*]  Suggested: Run length RL >= 5   ->  WR=13.6%  n=44
+    Exhaustion (lower = regime not yet overextended):
+      <=0.0       n=  38  WR= 36.8%  exp=$  +6.48
+      <=0.02      n=  41  WR= 36.6%  exp=$  +4.93
+      <=0.05      n=  41  WR= 36.6%  exp=$  +4.93
+      <=0.1       n=  43  WR= 37.2%  exp=$  +7.92
+      <=0.2       n=  53  WR= 37.7%  exp=$  +5.96
+      <=0.4       n=  58  WR= 37.9%  exp=$  +5.16  [*] suggested
+    [*]  Suggested: Exhaustion <= 0.4   ->  WR=37.9%  n=58
 
-    Decay (lower = cleaner regime):
-      <=0.0       n=  14  WR=  7.1%  exp=$-507.37  ! low-n
-      <=0.02      n=  18  WR= 16.7%  exp=$ +17.41  ! low-n
-      <=0.05      n=  24  WR= 12.5%  exp=$-173.29
-      <=0.1       n=  27  WR= 14.8%  exp=$-200.87
-      <=0.2       n=  40  WR= 12.5%  exp=$-338.89
-      <=0.4       n=  49  WR= 12.2%  exp=$-354.65
-    [*]  Suggested: Decay <= 0.02   ->  WR=16.7%  n=18
+    Decay (lower = cleaner, more sustained regime):
+      <=0.0       n=  26  WR= 42.3%  exp=$ +32.36
+      <=0.02      n=  29  WR= 41.4%  exp=$ +29.03
+      <=0.05      n=  29  WR= 41.4%  exp=$ +29.03
+      <=0.1       n=  41  WR= 43.9%  exp=$ +21.65  [*] suggested
+      <=0.2       n=  46  WR= 43.5%  exp=$ +21.78
+      <=0.4       n=  46  WR= 43.5%  exp=$ +21.78
+    [*]  Suggested: Decay <= 0.1   ->  WR=43.9%  n=41
 
-  -- Exit quality signals --
+    Run length RL (bars regime has been active):
+      >=2         n=  58  WR= 37.9%  exp=$  +5.16
+      >=5         n=  49  WR= 40.8%  exp=$ +15.79
+      >=8         n=  46  WR= 43.5%  exp=$ +21.78
+      >=12        n=  39  WR= 43.6%  exp=$ +26.89  [*] suggested
+      >=20        n=  20  WR= 35.0%  exp=$  +6.48
+      >=30        n=  17  WR= 35.3%  exp=$  +7.52  ! low-n
+    [*]  Suggested: Run length RL >= 12   ->  WR=43.6%  n=39
 
-    Exit type (what condition closed the trade):
-      regime_shift          n=  49  WR= 12.2%  exp=$-354.65
+  -- Combined filter analysis --
+  Shows what happens when multiple signals are satisfied together.
 
-    Run length vs outcome  (same signal, framed as "trade held longer in regime"):
-    (Cross-ref with RL scan above -- RL at entry predicts both entry and exit quality)
+    All enriched trades (baseline)                           n=  98  WR= 35.7%  exp=$  +1.28
+    Score >= 74  (Optuna floor)                              n=  25  WR= 40.0%  exp=$  +5.98
+    Conf >= 85%                                              n=  98  WR= 35.7%  exp=$  +1.28
+    BOCPD >= 70%                                             n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+    Decay <= 0.05                                            n=   3  WR= 33.3%  exp=$  +0.22  ! low-n
+    5m regime == 1h regime  (HTF aligned)                    n=  43  WR= 32.6%  exp=$  -4.93
+    Score >= 74  AND  Conf >= 85%                            n=  25  WR= 40.0%  exp=$  +5.98
+    Score >= 74  AND  BOCPD >= 70%                           n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+    Score >= 74  AND  HTF aligned                            n=   7  WR= 57.1%  exp=$ +10.72  ! low-n
+    Score >= 74  AND  Conf >= 85%  AND  HTF aligned          n=   7  WR= 57.1%  exp=$ +10.72  ! low-n
+    Score >= 74  AND  BOCPD >= 70%  AND  Decay <= 0.05       n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+    ALL: Score>=74, Conf>=85%, BOCPD>=70%, HTF aligned, Decay<=0.05  n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
