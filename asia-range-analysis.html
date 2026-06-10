@@ -72,6 +72,23 @@
 .anl-two-col { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px; }
 @media(max-width:900px) { .anl-two-col { grid-template-columns:1fr; } }
 
+/* ── Help card ──────────────────────────────────────────────────────────────── */
+#helpCard { display:none; }
+#helpCard.open { display:block; }
+.help-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:10px; }
+.help-section { background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px 16px; }
+.help-section h4 { font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin:0 0 10px;font-family:'DM Mono',monospace; }
+.help-section p, .help-section li { font-size:12px;color:var(--text2);line-height:1.6;margin:0 0 6px; }
+.help-section ul { margin:0;padding-left:16px; }
+.help-section li { margin-bottom:4px; }
+.help-section code { background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-family:'DM Mono',monospace;font-size:11px;color:var(--blue); }
+.help-section .ht { font-weight:600;color:var(--text); }
+.help-badge { display:inline-block;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:700;font-family:'DM Mono',monospace;margin-right:4px; }
+.help-badge.green { background:rgba(16,185,129,.18);color:#10b981;border:1px solid rgba(16,185,129,.3); }
+.help-badge.blue  { background:rgba(79,125,240,.18); color:#4f7df0;border:1px solid rgba(79,125,240,.3); }
+.help-badge.amber { background:rgba(245,158,11,.18); color:#f59e0b;border:1px solid rgba(245,158,11,.3); }
+.help-badge.red   { background:rgba(248,113,113,.18);color:#f87171;border:1px solid rgba(248,113,113,.3); }
+
 /* ── Ranking badge ──────────────────────────────────────────────────────────── */
 .rank-pill { display:inline-block;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700;font-family:'DM Mono',monospace;border:1px solid; }
 .rank-pill.s1  { color:var(--green);background:var(--green-bg);border-color:var(--green-bd); }
@@ -97,6 +114,7 @@
   </div>
   <div style="flex:1"></div>
   <span class="upd" id="anlComputedAt"></span>
+  <button class="dark-btn" onclick="toggleHelp()" id="helpToggleBtn" title="Show / hide usage guide" style="border-color:#64748b;color:#94a3b8">? Help</button>
   <a href="asia-range-backtest.html" style="text-decoration:none"><button class="dark-btn" style="border-color:#3b82f6;color:#3b82f6">📐 Backtest</button></a>
   <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
 </div>
@@ -112,6 +130,122 @@
   <span style="font-size:12px;color:var(--text2)" id="anlStatusTxt">Loading backtest data…</span>
   <span style="flex:1"></span>
   <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace" id="anlSampleSize"></span>
+</div>
+
+<!-- ── Help card ───────────────────────────────────────────────────────────── -->
+<div class="anl-card" id="helpCard">
+  <div class="anl-card-hdr">
+    How to use the Probability Engine
+    <span style="margin-left:auto;font-size:11px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">press <kbd style="background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:'DM Mono',monospace;font-size:10px">?</kbd> to toggle</span>
+  </div>
+  <div class="anl-card-body">
+
+    <!-- Quick start -->
+    <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:8px;padding:12px 16px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:#60a5fa;font-family:'DM Mono',monospace;margin-bottom:8px">⚡ Quick start</div>
+      <ol style="margin:0;padding-left:18px;font-size:12px;color:var(--text2);line-height:1.8">
+        <li>Run a backtest on the <a href="asia-range-backtest.html" style="color:#3b82f6">📐 Asia Range Backtest</a> page — it saves results server-side automatically.</li>
+        <li>Return here — the analysis page loads those results on page-open, no extra steps.</li>
+        <li>Use the <b>Global Filters</b> to narrow the universe (e.g. just GBPUSD, tight confluence, London session).</li>
+        <li>Read the three panels below to find your edge conditions and size TP/SL optimally.</li>
+      </ol>
+      <div style="margin-top:10px;font-size:11px;color:#64748b">
+        <b>Self-contained:</b> all analysis is client-side JavaScript — no extra API calls. Every backtest re-run (on the backtest page) refreshes the data automatically when you reload this page.
+      </div>
+    </div>
+
+    <div class="help-grid">
+
+      <!-- Panel 1 -->
+      <div class="help-section">
+        <h4>Panel 1 — Conditional Pivot Heat Map</h4>
+        <p>Pick any two <b>dimensions</b> for X and Y axes. Each cell shows the metric for trades matching both conditions.</p>
+        <ul>
+          <li><span class="ht">X / Y axis:</span> Fib Level, Session, Day of Week, Confluence, Zone, Range size, or Pair</li>
+          <li><span class="ht">Metric:</span> Win Rate %, Expectancy, Profit Factor, or Sample Size (N)</li>
+          <li>Cells with &lt;3 trades show <code>—</code> (statistically unreliable)</li>
+          <li><span class="help-badge green">green</span> = strong positive &nbsp; <span class="help-badge red">red</span> = negative</li>
+          <li>Intensity of colour scales with how far from the midpoint (50% for win rate, 0 for expectancy)</li>
+        </ul>
+        <p style="margin-top:8px;font-size:11px;color:var(--text3)"><b>Tip:</b> set X = Fib Level, Y = Session to see which fib bands work best in each session window.</p>
+      </div>
+
+      <!-- Panel 2 -->
+      <div class="help-section">
+        <h4>Panel 2a — MFE: Optimal Take Profit</h4>
+        <p><b>MFE</b> (Max Favourable Excursion) = how far price moved <em>in your favour</em> before the trade closed, in R multiples.</p>
+        <ul>
+          <li>Each bar = % of all filled trades that reached that R-level target</li>
+          <li>e.g. "80% reached 1R" means 80% of trades had enough room for a 1:1 TP</li>
+          <li><span class="help-badge green">Suggested TP</span> = the threshold with highest simulated expectancy under current filters</li>
+        </ul>
+        <h4 style="margin-top:12px">Panel 2b — MAE: SL Safety</h4>
+        <p><b>MAE</b> (Max Adverse Excursion) = how far price moved <em>against you</em> before resolving, in R multiples.</p>
+        <ul>
+          <li>Each bar = % of trades that <em>exceeded</em> that drawdown level</li>
+          <li><span class="help-badge amber">Tightest safe SL</span> = tightest SL where 80%+ of winners still survive</li>
+          <li>If winners regularly dip to 0.8R before recovering, a 0.5R SL will kill them — use MAE to calibrate</li>
+        </ul>
+      </div>
+
+      <!-- Panel 3 -->
+      <div class="help-section">
+        <h4>Panel 3 — Best Setup Finder</h4>
+        <p>Enumerates every combination of selected dimensions, discards combos below min-trade threshold, and ranks the rest.</p>
+        <ul>
+          <li><span class="ht">Group by:</span> Ctrl/Cmd-click to select multiple dimensions — creates one row per unique combination</li>
+          <li><span class="ht">Rank by:</span> Expectancy (recommended), Win Rate, Profit Factor, or Sharpe proxy</li>
+          <li><span class="ht">Min trades:</span> raise to filter out low-sample noise (default 15)</li>
+          <li><span class="help-badge green">★</span> #1 &nbsp; <span class="help-badge blue">▲</span> #2 &nbsp; <span class="help-badge amber">◆</span> #3</li>
+        </ul>
+        <p style="margin-top:8px;font-size:11px;color:var(--text3)"><b>Tip:</b> start with Fib Level + Confluence + Session. Then drill into your best combo using Global Filters to see its MFE/MAE profile.</p>
+      </div>
+
+      <!-- Key terms -->
+      <div class="help-section">
+        <h4>Key terms &amp; metrics</h4>
+        <ul>
+          <li><span class="ht">R multiple:</span> Entry-to-SL distance = 1R. TP at 2R = double your risk.</li>
+          <li><span class="ht">Expectancy:</span> Average P&amp;L per trade. Positive = edge. A 40% WR can still profit with high R:R.</li>
+          <li><span class="ht">Profit Factor:</span> Gross wins ÷ gross losses. &gt;1.5 good, &gt;2 excellent.</li>
+          <li><span class="ht">Sharpe proxy:</span> Mean return ÷ std dev — risk-adjusted quality score.</li>
+          <li><span class="ht">Tight confluence:</span> Current and prior session fibs within <code>tightPct%</code> of pip threshold.</li>
+          <li><span class="ht">Regular confluence:</span> Within normal pip threshold, but not tight.</li>
+          <li><span class="ht">Level zone:</span> Deep neg (&lt;−2), Outer neg (−2–0), Inner (0–1), Outer pos (1–2), Deep pos (&gt;2).</li>
+          <li><span class="ht">Range buckets:</span> Tiny &lt;20 pip, Small 20–40, Medium 40–70, Large 70–120, Huge &gt;120.</li>
+          <li><span class="ht">Monday aligned:</span> Entry within 10 pips of Monday's high or low.</li>
+        </ul>
+      </div>
+
+      <!-- Global filters -->
+      <div class="help-section">
+        <h4>Global Filters strip</h4>
+        <p>Every filter change instantly re-renders all three panels. Use this to ask conditional questions:</p>
+        <ul>
+          <li><em>"What's the MFE profile for EURUSD tight-confluence London trades only?"</em></li>
+          <li><em>"Which fib levels work best on large-range Tuesdays?"</em></li>
+          <li><em>"Do Monday-aligned trades have better win rates in the inner zone?"</em></li>
+        </ul>
+        <p>The stat chips (Filtered trades / Win rate / Expectancy / PF) update to show the overall edge for your current selection before you drill in further.</p>
+        <p style="margin-top:8px;font-size:11px;color:var(--text3)">Filters only count <b>filled</b> trades — unfilled limit orders (price never reached entry) are excluded from all calculations.</p>
+      </div>
+
+      <!-- Workflow -->
+      <div class="help-section">
+        <h4>Suggested workflow</h4>
+        <ol style="padding-left:16px;margin:0">
+          <li style="margin-bottom:6px">Run backtest over your full date range with all pairs and default settings.</li>
+          <li style="margin-bottom:6px">Open this page — check overall stats in Global Filters strip (no filters yet).</li>
+          <li style="margin-bottom:6px">Pivot: Fib Level × Session — spot which session/level combos are consistently green.</li>
+          <li style="margin-bottom:6px">Apply a Global Filter for one of those top combos (e.g. London + Inner zone).</li>
+          <li style="margin-bottom:6px">Read Panel 2 MFE to set TP; read MAE to validate SL is not too tight.</li>
+          <li style="margin-bottom:6px">Panel 3: group by Fib Level + Confluence + Session → note the ★ top setup.</li>
+          <li>Go back to backtest page and tighten parameters around that setup — observe equity curve improvement.</li>
+        </ol>
+      </div>
+
+    </div><!-- .help-grid -->
+  </div>
 </div>
 
 <!-- ── Global filter strip ─────────────────────────────────────────────────── -->
@@ -677,6 +811,15 @@ function renderBestSetups() {
   }).join('');
   tbl.style.display = '';
   empty.style.display = 'none';
+}
+
+// ── Help toggle ────────────────────────────────────────────────────────────────
+function toggleHelp() {
+  const card = document.getElementById('helpCard');
+  const btn  = document.getElementById('helpToggleBtn');
+  const open = card.classList.toggle('open');
+  btn.style.borderColor = open ? '#a78bfa' : '#64748b';
+  btn.style.color       = open ? '#a78bfa' : '#94a3b8';
 }
 
 // ── Load data ──────────────────────────────────────────────────────────────────
