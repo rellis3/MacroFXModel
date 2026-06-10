@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asia Range Probability Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+#anlApp { padding: 0 20px 40px; max-width: 1400px; margin: 0 auto; }
+
+/* ── Cards ─────────────────────────────────────────────────────────────────── */
+.anl-card { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-top:14px; }
+.anl-card-hdr { padding:12px 18px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap; }
+.anl-card-body { padding:18px; }
+
+/* ── Controls ───────────────────────────────────────────────────────────────── */
+.anl-row { display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px; }
+.anl-sel { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px;cursor:pointer; }
+.anl-sel:focus { outline:none;border-color:var(--blue); }
+.anl-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap; }
+.anl-btn { background:var(--blue);border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;padding:5px 14px;cursor:pointer;transition:opacity .15s; }
+.anl-btn:hover { opacity:.85; }
+.anl-btn.green { background:var(--green); }
+.anl-btn.amber { background:var(--amber); }
+
+/* ── Tables ─────────────────────────────────────────────────────────────────── */
+.anl-tbl { width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px; }
+.anl-tbl th { padding:7px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap; }
+.anl-tbl td { padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap; }
+.anl-tbl tr:last-child td { border-bottom:none; }
+.anl-tbl tr:hover td { background:var(--s2); }
+.anl-tbl td.num { text-align:right; }
+.anl-tbl td.pos { color:var(--green); }
+.anl-tbl td.neg { color:var(--red); }
+.anl-tbl td.neu { color:var(--text2); }
+.anl-tbl-scroll { overflow-x:auto;max-height:480px;overflow-y:auto; }
+
+/* ── Heat map ───────────────────────────────────────────────────────────────── */
+.hm-table { border-collapse:collapse;font-family:'DM Mono',monospace;font-size:11px; }
+.hm-table th { padding:5px 8px;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);text-align:center;white-space:nowrap; }
+.hm-table td { padding:0;width:64px;height:38px;text-align:center;vertical-align:middle;border:1px solid var(--bg);font-size:10px;font-weight:600;cursor:default; }
+.hm-table td.hm-row-lbl { background:transparent!important;color:var(--text2);text-align:right;padding:0 8px;width:auto;font-size:10px; }
+.hm-table td.hm-empty { background:var(--s2)!important;color:var(--text3);font-weight:400; }
+
+/* ── MFE/MAE bars ───────────────────────────────────────────────────────────── */
+.mfe-row { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
+.mfe-lbl { font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);width:44px;text-align:right;flex-shrink:0; }
+.mfe-track { flex:1;height:18px;background:var(--s2);border-radius:3px;overflow:hidden;position:relative; }
+.mfe-fill  { height:100%;border-radius:3px;display:flex;align-items:center;padding-left:6px;font-size:10px;font-family:'DM Mono',monospace;color:#fff;font-weight:600;white-space:nowrap;transition:width .3s; }
+.mfe-pct   { margin-left:6px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);width:40px;flex-shrink:0; }
+
+/* ── Stat chips ─────────────────────────────────────────────────────────────── */
+.stat-chips { display:flex;flex-wrap:wrap;gap:8px;margin-top:12px; }
+.stat-chip { background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;display:flex;flex-direction:column;gap:2px;min-width:100px; }
+.stat-chip-lbl { font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace; }
+.stat-chip-val { font-size:18px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text); }
+.stat-chip-val.green { color:var(--green); }
+.stat-chip-val.red   { color:var(--red); }
+.stat-chip-val.blue  { color:var(--blue); }
+.stat-chip-val.amber { color:var(--amber); }
+
+/* ── Status ─────────────────────────────────────────────────────────────────── */
+.sdot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+.sdot.ok   { background:var(--green); }
+.sdot.spin { background:var(--blue);animation:blink .5s infinite; }
+.sdot.err  { background:var(--red); }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.25} }
+
+/* ── Two-col ────────────────────────────────────────────────────────────────── */
+.anl-two-col { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px; }
+@media(max-width:900px) { .anl-two-col { grid-template-columns:1fr; } }
+
+/* ── Ranking badge ──────────────────────────────────────────────────────────── */
+.rank-pill { display:inline-block;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700;font-family:'DM Mono',monospace;border:1px solid; }
+.rank-pill.s1  { color:var(--green);background:var(--green-bg);border-color:var(--green-bd); }
+.rank-pill.s2  { color:var(--blue); background:var(--blue-bg); border-color:var(--blue-bd); }
+.rank-pill.s3  { color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd); }
+</style>
+</head>
+<body>
+<div class="sticky-header">
+<div id="anlApp">
+
+<!-- ── Top bar ─────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="logo-box">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="6" stroke="white" stroke-width="1.5"/>
+      <path d="M5 8h6M8 5v6" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="title-block">
+    <div class="title" style="font-size:15px;font-weight:700;">Asia Range Probability Engine</div>
+    <div class="sub">Conditional win rates · MFE/MAE distributions · Best setup finder</div>
+  </div>
+  <div style="flex:1"></div>
+  <span class="upd" id="anlComputedAt"></span>
+  <a href="asia-range-backtest.html" style="text-decoration:none"><button class="dark-btn" style="border-color:#3b82f6;color:#3b82f6">📐 Backtest</button></a>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+</div>
+
+</div>
+</div>
+
+<div id="anlApp" style="padding-top:0">
+
+<!-- ── Status bar ──────────────────────────────────────────────────────────── -->
+<div class="card" style="padding:9px 14px;margin-top:10px;display:flex;align-items:center;gap:8px">
+  <span class="sdot" id="anlDot"></span>
+  <span style="font-size:12px;color:var(--text2)" id="anlStatusTxt">Loading backtest data…</span>
+  <span style="flex:1"></span>
+  <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace" id="anlSampleSize"></span>
+</div>
+
+<!-- ── Global filter strip ─────────────────────────────────────────────────── -->
+<div class="anl-card" id="anlFilterCard">
+  <div class="anl-card-hdr">Global Filters <span style="color:var(--text3);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">— narrow the universe before all three analysis panels update</span></div>
+  <div class="anl-card-body">
+    <div class="anl-row">
+      <span class="anl-lbl">Pair:</span>
+      <select id="gfPair" class="anl-sel" onchange="applyGlobal()"><option value="">All pairs</option></select>
+      <span class="anl-lbl">Confluence:</span>
+      <select id="gfConf" class="anl-sel" onchange="applyGlobal()">
+        <option value="">All</option>
+        <option value="tight">Tight only</option>
+        <option value="confluence">Any conf</option>
+        <option value="none">No conf</option>
+      </select>
+      <span class="anl-lbl">Session:</span>
+      <select id="gfSession" class="anl-sel" onchange="applyGlobal()">
+        <option value="">All sessions</option>
+        <option value="Asia">Asia (00–05)</option>
+        <option value="London">London (06–12)</option>
+        <option value="Overlap">Overlap (13–15)</option>
+        <option value="NY">NY (16–21)</option>
+      </select>
+      <span class="anl-lbl">DOW:</span>
+      <select id="gfDow" class="anl-sel" onchange="applyGlobal()">
+        <option value="">All days</option>
+        <option value="Mon">Mon</option><option value="Tue">Tue</option>
+        <option value="Wed">Wed</option><option value="Thu">Thu</option><option value="Fri">Fri</option>
+      </select>
+      <span class="anl-lbl">Range size:</span>
+      <select id="gfRange" class="anl-sel" onchange="applyGlobal()">
+        <option value="">All sizes</option>
+        <option value="tiny">Tiny (&lt;20 pip)</option>
+        <option value="small">Small (20–40)</option>
+        <option value="medium">Medium (40–70)</option>
+        <option value="large">Large (70–120)</option>
+        <option value="huge">Huge (&gt;120)</option>
+      </select>
+      <span class="anl-lbl">Zone:</span>
+      <select id="gfZone" class="anl-sel" onchange="applyGlobal()">
+        <option value="">All zones</option>
+        <option value="deep_neg">Deep neg (&lt;−2)</option>
+        <option value="outer_neg">Outer neg (−2–0)</option>
+        <option value="inner">Inner (0–1)</option>
+        <option value="outer_pos">Outer pos (1–2)</option>
+        <option value="deep_pos">Deep pos (&gt;2)</option>
+      </select>
+      <span class="anl-lbl">Monday aligned:</span>
+      <select id="gfMonday" class="anl-sel" onchange="applyGlobal()">
+        <option value="">Either</option>
+        <option value="1">Yes</option>
+        <option value="0">No</option>
+      </select>
+      <button class="anl-btn amber" onclick="clearGlobal()">Clear</button>
+    </div>
+    <div class="stat-chips" id="anlGlobalStats"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     PANEL 1 — Conditional breakdown pivot
+  ══════════════════════════════════════════════════════════════════════════ -->
+<div class="anl-card">
+  <div class="anl-card-hdr">
+    1 — Conditional Breakdown
+    <span style="color:var(--text3);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">Pick two dimensions — see win rate / expectancy heat map</span>
+    <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <span class="anl-lbl">X axis:</span>
+      <select id="pvX" class="anl-sel" onchange="renderPivot()">
+        <option value="fib_level_bucket">Fib Level</option>
+        <option value="session_filled">Session</option>
+        <option value="dow">Day of Week</option>
+        <option value="confluence_type">Confluence</option>
+        <option value="level_zone">Zone</option>
+        <option value="range_bucket">Range size</option>
+        <option value="instrument">Pair</option>
+      </select>
+      <span class="anl-lbl">Y axis:</span>
+      <select id="pvY" class="anl-sel" onchange="renderPivot()">
+        <option value="session_filled">Session</option>
+        <option value="dow">Day of Week</option>
+        <option value="fib_level_bucket">Fib Level</option>
+        <option value="confluence_type">Confluence</option>
+        <option value="level_zone">Zone</option>
+        <option value="range_bucket">Range size</option>
+        <option value="instrument">Pair</option>
+      </select>
+      <span class="anl-lbl">Metric:</span>
+      <select id="pvMetric" class="anl-sel" onchange="renderPivot()">
+        <option value="winRate">Win Rate %</option>
+        <option value="expectancy">Expectancy</option>
+        <option value="pf">Profit Factor</option>
+        <option value="n">Sample Size</option>
+      </select>
+    </span>
+  </div>
+  <div class="anl-card-body">
+    <div id="pvGrid" style="overflow-x:auto"></div>
+    <div id="pvEmpty" style="color:var(--text3);font-size:12px;text-align:center;padding:20px">Run a backtest first to load data</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     PANEL 2 — MFE / MAE optimal TP-SL calculator
+  ══════════════════════════════════════════════════════════════════════════ -->
+<div class="anl-two-col">
+  <div class="anl-card" style="margin-top:0">
+    <div class="anl-card-hdr">2a — MFE Distribution (Optimal TP)</div>
+    <div class="anl-card-body">
+      <p style="font-size:11px;color:var(--text3);margin-bottom:14px">% of filled trades that reached each MFE threshold before hitting SL or closing EOD. Higher = more room to use a wider TP.</p>
+      <div id="mfeGrid"></div>
+      <div id="mfeRecommend" style="margin-top:12px;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace"></div>
+    </div>
+  </div>
+  <div class="anl-card" style="margin-top:0">
+    <div class="anl-card-hdr">2b — MAE Distribution (SL Safety)</div>
+    <div class="anl-card-body">
+      <p style="font-size:11px;color:var(--text3);margin-bottom:14px">% of filled trades that suffered each MAE before resolving. If 85% of winners never exceed 0.3R MAE, a tighter SL may work.</p>
+      <div id="maeGrid"></div>
+      <div id="maeRecommend" style="margin-top:12px;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     PANEL 3 — Best setup finder / condition builder
+  ══════════════════════════════════════════════════════════════════════════ -->
+<div class="anl-card">
+  <div class="anl-card-hdr">
+    3 — Best Setup Finder
+    <span style="color:var(--text3);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">All combinations of selected dimensions, ranked by expectancy (min 15 trades)</span>
+    <span style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="anl-lbl">Group by:</span>
+      <select id="bsGroup" class="anl-sel" multiple size="1" style="min-width:140px" onchange="renderBestSetups()">
+        <option value="fib_level_bucket" selected>Fib Level</option>
+        <option value="session_filled" selected>Session</option>
+        <option value="dow">Day of Week</option>
+        <option value="confluence_type" selected>Confluence</option>
+        <option value="level_zone">Zone</option>
+        <option value="range_bucket">Range size</option>
+        <option value="monday_aligned">Mon aligned</option>
+      </select>
+      <span class="anl-lbl">Rank by:</span>
+      <select id="bsRank" class="anl-sel" onchange="renderBestSetups()">
+        <option value="expectancy">Expectancy</option>
+        <option value="winRate">Win Rate</option>
+        <option value="pf">Profit Factor</option>
+        <option value="sharpe">Sharpe proxy</option>
+      </select>
+      <span class="anl-lbl">Min trades:</span>
+      <input type="number" id="bsMin" value="15" min="5" max="200" style="width:54px;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 8px" onchange="renderBestSetups()">
+      <button class="anl-btn" onclick="renderBestSetups()">Update</button>
+    </span>
+  </div>
+  <div class="anl-card-body" style="padding:0">
+    <div class="anl-tbl-scroll">
+      <table class="anl-tbl" id="bsTbl">
+        <thead><tr id="bsTblHead"></tr></thead>
+        <tbody id="bsTblBody"></tbody>
+      </table>
+    </div>
+    <div id="bsEmpty" style="color:var(--text3);font-size:12px;text-align:center;padding:20px">Run a backtest first to load data</div>
+  </div>
+</div>
+
+</div><!-- #anlApp -->
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let _allTrades   = [];
+let _filtTrades  = [];
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function setStatus(cls, txt) {
+  document.getElementById('anlDot').className = 'sdot ' + cls;
+  document.getElementById('anlStatusTxt').textContent = txt;
+}
+function fmt(v, d = 2) { return v == null ? '—' : (+v).toFixed(d); }
+function fmtPct(v)     { return v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+
+function sliceStats(trades) {
+  const filled = trades.filter(t => t.filled);
+  if (!filled.length) return null;
+  const wins   = filled.filter(t => t.pnl_pct > 0);
+  const losses = filled.filter(t => t.pnl_pct <= 0);
+  const gw     = wins.reduce((s, t) => s + t.pnl_pct, 0);
+  const gl     = Math.abs(losses.reduce((s, t) => s + t.pnl_pct, 0));
+  const pf     = gl > 0 ? gw / gl : wins.length ? 999 : 0;
+  const totalPnl = filled.reduce((s, t) => s + t.pnl_pct, 0);
+  const expect = totalPnl / filled.length;
+  const mean   = expect;
+  const stdDev = Math.sqrt(filled.reduce((s, t) => s + (t.pnl_pct - mean) ** 2, 0) / filled.length);
+  return {
+    n:          filled.length,
+    nTotal:     trades.length,
+    winRate:    +(wins.length / filled.length * 100).toFixed(1),
+    expectancy: +expect.toFixed(4),
+    pf:         +Math.min(pf, 999).toFixed(2),
+    totalPnl:   +totalPnl.toFixed(3),
+    sharpe:     stdDev > 0 ? +(mean / stdDev).toFixed(3) : 0,
+  };
+}
+
+// ── Feature extractors ─────────────────────────────────────────────────────────
+function _fibBucket(lvl) {
+  // Group into meaningful buckets for the pivot
+  if (lvl <= -3)   return '≤−3';
+  if (lvl <= -2)   return '−2–−3';
+  if (lvl <= -1)   return '−2–−1';
+  if (lvl <= -0.5) return '−1–−0.5';
+  if (lvl < 0)     return '−0.5–0';
+  if (lvl === 0)   return '0';
+  if (lvl <= 0.5)  return '0–0.5';
+  if (lvl <= 1)    return '0.5–1';
+  if (lvl <= 1.5)  return '1–1.5';
+  if (lvl <= 2)    return '1.5–2';
+  if (lvl <= 3)    return '2–3';
+  return '≥3';
+}
+
+function _confType(t) {
+  if (t.is_tight)       return 'Tight';
+  if (t.has_confluence) return 'Regular';
+  return 'None';
+}
+
+function getFeature(t, dim) {
+  switch (dim) {
+    case 'fib_level_bucket': return _fibBucket(t.fib_level ?? 0);
+    case 'session_filled':   return t.session_filled ?? 'Unknown';
+    case 'dow':              return t.dow ?? '?';
+    case 'confluence_type':  return _confType(t);
+    case 'level_zone':       return t.level_zone ?? '?';
+    case 'range_bucket':     return t.range_bucket ?? '?';
+    case 'instrument':       return t.instrument ?? '?';
+    case 'monday_aligned':   return t.monday_aligned ? 'Mon-aligned' : 'Not-aligned';
+    default: return '?';
+  }
+}
+
+// ── Global filter ──────────────────────────────────────────────────────────────
+function applyGlobal() {
+  const pair    = document.getElementById('gfPair').value;
+  const conf    = document.getElementById('gfConf').value;
+  const session = document.getElementById('gfSession').value;
+  const dow     = document.getElementById('gfDow').value;
+  const range   = document.getElementById('gfRange').value;
+  const zone    = document.getElementById('gfZone').value;
+  const monday  = document.getElementById('gfMonday').value;
+
+  _filtTrades = _allTrades.filter(t => {
+    if (!t.filled) return false;
+    if (pair    && t.instrument    !== pair)     return false;
+    if (session && t.session_filled !== session) return false;
+    if (dow     && t.dow           !== dow)      return false;
+    if (range   && t.range_bucket  !== range)    return false;
+    if (zone    && t.level_zone    !== zone)     return false;
+    if (monday === '1' && !t.monday_aligned)     return false;
+    if (monday === '0' && t.monday_aligned)      return false;
+    if (conf === 'tight'      && !t.is_tight)                         return false;
+    if (conf === 'confluence' && (!t.has_confluence || t.is_tight))   return false;
+    if (conf === 'none'       && t.has_confluence)                    return false;
+    return true;
+  });
+
+  renderGlobalStats();
+  renderPivot();
+  renderMFE();
+  renderMAE();
+  renderBestSetups();
+}
+
+function clearGlobal() {
+  ['gfPair','gfConf','gfSession','gfDow','gfRange','gfZone','gfMonday'].forEach(id => { document.getElementById(id).value = ''; });
+  applyGlobal();
+}
+
+function renderGlobalStats() {
+  const s = sliceStats(_filtTrades);
+  const el = document.getElementById('anlGlobalStats');
+  if (!s) { el.innerHTML = ''; return; }
+  const chips = [
+    { lbl: 'Filtered trades', val: s.n.toLocaleString(), cls: 'blue' },
+    { lbl: 'Win rate',         val: s.winRate + '%',      cls: s.winRate >= 55 ? 'green' : s.winRate < 45 ? 'red' : 'amber' },
+    { lbl: 'Expectancy',       val: (s.expectancy >= 0 ? '+' : '') + s.expectancy.toFixed(4) + '%', cls: s.expectancy >= 0 ? 'green' : 'red' },
+    { lbl: 'Profit factor',    val: s.pf >= 99 ? '∞' : fmt(s.pf), cls: s.pf >= 1.5 ? 'green' : s.pf >= 1 ? 'amber' : 'red' },
+    { lbl: 'Total P&L',        val: (s.totalPnl >= 0 ? '+' : '') + s.totalPnl.toFixed(2) + '%', cls: s.totalPnl >= 0 ? 'green' : 'red' },
+    { lbl: 'Sharpe proxy',     val: fmt(s.sharpe), cls: s.sharpe >= 1 ? 'green' : s.sharpe >= 0 ? 'amber' : 'red' },
+  ];
+  el.innerHTML = chips.map(c => `<div class="stat-chip"><div class="stat-chip-lbl">${c.lbl}</div><div class="stat-chip-val ${c.cls}">${c.val}</div></div>`).join('');
+  document.getElementById('anlSampleSize').textContent = `${s.n.toLocaleString()} / ${_allTrades.filter(t=>t.filled).length.toLocaleString()} filled trades`;
+}
+
+// ── Pivot table ────────────────────────────────────────────────────────────────
+const FIB_BUCKET_ORDER = ['≤−3','−2–−3','−2–−1','−1–−0.5','−0.5–0','0','0–0.5','0.5–1','1–1.5','1.5–2','2–3','≥3'];
+const SESSION_ORDER    = ['Asia','London','Overlap','NY','Unknown'];
+const DOW_ORDER        = ['Mon','Tue','Wed','Thu','Fri'];
+const CONF_ORDER       = ['Tight','Regular','None'];
+const ZONE_ORDER       = ['deep_neg','outer_neg','inner','outer_pos','deep_pos'];
+const RANGE_ORDER      = ['tiny','small','medium','large','huge'];
+const MON_ORDER        = ['Mon-aligned','Not-aligned'];
+
+function _dimOrder(dim) {
+  switch (dim) {
+    case 'fib_level_bucket': return FIB_BUCKET_ORDER;
+    case 'session_filled':   return SESSION_ORDER;
+    case 'dow':              return DOW_ORDER;
+    case 'confluence_type':  return CONF_ORDER;
+    case 'level_zone':       return ZONE_ORDER;
+    case 'range_bucket':     return RANGE_ORDER;
+    case 'monday_aligned':   return MON_ORDER;
+    default: return null;
+  }
+}
+
+function renderPivot() {
+  const xDim   = document.getElementById('pvX').value;
+  const yDim   = document.getElementById('pvY').value;
+  const metric = document.getElementById('pvMetric').value;
+  const grid   = document.getElementById('pvGrid');
+  const empty  = document.getElementById('pvEmpty');
+
+  if (!_filtTrades.length) { grid.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  // Build 2D map
+  const map = new Map();
+  const xSet = new Set(), ySet = new Set();
+  for (const t of _filtTrades) {
+    const x = getFeature(t, xDim);
+    const y = getFeature(t, yDim);
+    xSet.add(x); ySet.add(y);
+    const key = `${x}|||${y}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(t);
+  }
+
+  const xOrder = _dimOrder(xDim);
+  const yOrder = _dimOrder(yDim);
+  const xVals  = xOrder ? xOrder.filter(v => xSet.has(v)) : [...xSet].sort();
+  const yVals  = yOrder ? yOrder.filter(v => ySet.has(v)) : [...ySet].sort();
+
+  // Compute cell values
+  const cellData = {};
+  let allVals = [];
+  for (const x of xVals) for (const y of yVals) {
+    const trades = map.get(`${x}|||${y}`) ?? [];
+    const s      = sliceStats(trades);
+    const val    = s ? (metric === 'winRate' ? s.winRate : metric === 'expectancy' ? s.expectancy : metric === 'pf' ? Math.min(s.pf, 10) : s.n) : null;
+    cellData[`${x}|||${y}`] = { val, n: s?.n ?? 0 };
+    if (val != null) allVals.push(val);
+  }
+
+  const minV  = Math.min(...allVals);
+  const maxV  = Math.max(...allVals);
+  const range = maxV - minV || 1;
+
+  function cellColor(val) {
+    if (val == null) return '';
+    const norm  = (val - minV) / range;  // 0–1
+    if (metric === 'n') {
+      const a = 0.1 + norm * 0.6;
+      return `background:rgba(79,125,240,${a.toFixed(2)})`;
+    }
+    const mid = metric === 'winRate' ? 50 : 0;
+    const pos = val >= mid;
+    const a   = Math.min(0.85, Math.abs(val - mid) / Math.max(Math.abs(maxV - mid), Math.abs(minV - mid), 0.01) * 0.8 + 0.07);
+    return pos
+      ? `background:rgba(16,185,129,${a.toFixed(2)})`
+      : `background:rgba(248,113,113,${a.toFixed(2)})`;
+  }
+
+  function cellTxt(val, n) {
+    if (val == null || n < 3) return `<div style="color:#5a6380;font-size:9px">—</div>`;
+    const main = metric === 'winRate'    ? val.toFixed(0) + '%'
+               : metric === 'expectancy' ? (val >= 0 ? '+' : '') + val.toFixed(4)
+               : metric === 'pf'         ? (val >= 99 ? '∞' : val.toFixed(1))
+               : val.toLocaleString();
+    const sub  = metric !== 'n' ? `<div style="font-size:8px;opacity:.6">${n}</div>` : '';
+    const col  = metric === 'winRate' ? (val >= 55 ? '#fff' : val < 45 ? '#fff' : '#d1d4dc') : '#d1d4dc';
+    return `<div style="color:${col};font-size:10px;font-weight:600">${main}</div>${sub}`;
+  }
+
+  let html = `<table class="hm-table"><thead><tr><th></th>`;
+  for (const x of xVals) html += `<th>${x}</th>`;
+  html += '</tr></thead><tbody>';
+  for (const y of yVals) {
+    html += `<tr><td class="hm-row-lbl">${y}</td>`;
+    for (const x of xVals) {
+      const { val, n } = cellData[`${x}|||${y}`];
+      const cls = (val == null || n < 3) ? 'hm-empty' : '';
+      html += `<td class="${cls}" style="${cellColor(val)}" title="${x} × ${y}: n=${n}">${cellTxt(val, n)}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  grid.innerHTML = html;
+}
+
+// ── MFE distribution ───────────────────────────────────────────────────────────
+const MFE_BUCKETS = [
+  { label: '0.25R', key: 0.25 },
+  { label: '0.5R',  key: 0.5  },
+  { label: '0.75R', key: 0.75 },
+  { label: '1R',    key: 1.0  },
+  { label: '1.5R',  key: 1.5  },
+  { label: '2R',    key: 2.0  },
+  { label: '3R',    key: 3.0  },
+];
+
+function renderMFE() {
+  const trades = _filtTrades.filter(t => t.mfe_r != null);
+  const n      = trades.length;
+  const grid   = document.getElementById('mfeGrid');
+  const rec    = document.getElementById('mfeRecommend');
+  if (!n) { grid.innerHTML = '<div style="color:var(--text3);font-size:12px">No data — re-run backtest to capture MFE</div>'; rec.textContent = ''; return; }
+
+  // Winners only — how far did they go before closing?
+  const winners = trades.filter(t => t.pnl_pct > 0);
+  const all     = trades;
+
+  let html = '';
+  let bestTp = null, bestExpect = -Infinity;
+
+  for (const { label, key } of MFE_BUCKETS) {
+    const allReached     = all.filter(t => (t.mfe_r ?? 0) >= key).length;
+    const winnerReached  = winners.filter(t => (t.mfe_r ?? 0) >= key).length;
+    const allPct         = n ? (allReached / n * 100) : 0;
+    const winPct         = winners.length ? (winnerReached / winners.length * 100) : 0;
+
+    // Simulate: if you set TP at key×R, you capture that many wins
+    const captured  = all.filter(t => (t.mfe_r ?? 0) >= key);
+    const missed    = all.filter(t => (t.mfe_r ?? 0) < key && t.pnl_pct > 0); // winners that never reached
+    const totalPnl  = captured.reduce((s, t) => s + Math.min(t.pnl_pct, key * Math.abs(t.sl_price != null ? (t.entry_price - t.sl_price) : 0.001)), 0);
+    const expect    = captured.length ? totalPnl / n : 0;
+    if (expect > bestExpect) { bestExpect = expect; bestTp = label; }
+
+    html += `<div class="mfe-row">
+      <span class="mfe-lbl">${label}</span>
+      <div class="mfe-track">
+        <div class="mfe-fill" style="width:${allPct.toFixed(1)}%;background:#10b981">${allPct >= 12 ? allPct.toFixed(0)+'%' : ''}</div>
+      </div>
+      <span class="mfe-pct">${allPct.toFixed(1)}%</span>
+      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">(${allReached}/${n} trades · ${winPct.toFixed(0)}% of winners)</span>
+    </div>`;
+  }
+  grid.innerHTML = html;
+  rec.innerHTML  = bestTp
+    ? `<b>Suggested TP:</b> <span style="color:var(--green)">${bestTp}</span> — highest simulated expectancy under current filters`
+    : '';
+}
+
+// ── MAE distribution ───────────────────────────────────────────────────────────
+const MAE_BUCKETS = [
+  { label: '0.1R', key: 0.1 },
+  { label: '0.2R', key: 0.2 },
+  { label: '0.3R', key: 0.3 },
+  { label: '0.5R', key: 0.5 },
+  { label: '0.75R',key: 0.75 },
+  { label: '1R',   key: 1.0 },
+  { label: '1.5R', key: 1.5 },
+];
+
+function renderMAE() {
+  const trades  = _filtTrades.filter(t => t.mae_r != null);
+  const n       = trades.length;
+  const grid    = document.getElementById('maeGrid');
+  const rec     = document.getElementById('maeRecommend');
+  if (!n) { grid.innerHTML = '<div style="color:var(--text3);font-size:12px">No data — re-run backtest to capture MAE</div>'; rec.textContent = ''; return; }
+
+  const winners = trades.filter(t => t.pnl_pct > 0);
+  let html = '';
+  let tightestSafe = null;
+
+  for (const { label, key } of MAE_BUCKETS) {
+    const nExceeded      = trades.filter(t => (t.mae_r ?? 0) > key).length;
+    const winExceeded    = winners.filter(t => (t.mae_r ?? 0) > key).length;
+    const pctExceeded    = n ? (nExceeded / n * 100) : 0;
+    const winSurvived    = winners.length ? ((winners.length - winExceeded) / winners.length * 100) : 0;
+    if (winSurvived >= 80 && !tightestSafe) tightestSafe = label;
+
+    html += `<div class="mfe-row">
+      <span class="mfe-lbl">${label}</span>
+      <div class="mfe-track">
+        <div class="mfe-fill" style="width:${pctExceeded.toFixed(1)}%;background:#ef5350">${pctExceeded >= 12 ? pctExceeded.toFixed(0)+'%' : ''}</div>
+      </div>
+      <span class="mfe-pct">${pctExceeded.toFixed(1)}%</span>
+      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">(${nExceeded} exceed · ${winSurvived.toFixed(0)}% of winners survived tighter SL)</span>
+    </div>`;
+  }
+  grid.innerHTML = html;
+  rec.innerHTML  = tightestSafe
+    ? `<b>Tightest safe SL:</b> <span style="color:var(--amber)">${tightestSafe}</span> — 80%+ of winners survive without being stopped out`
+    : '<span style="color:var(--text3)">Most winners need wide SL — avoid tightening below 1R</span>';
+}
+
+// ── Best setup finder ──────────────────────────────────────────────────────────
+function renderBestSetups() {
+  const selEl  = document.getElementById('bsGroup');
+  const dims   = [...selEl.options].filter(o => o.selected).map(o => o.value);
+  const rankBy = document.getElementById('bsRank').value;
+  const minN   = parseInt(document.getElementById('bsMin').value) || 15;
+  const body   = document.getElementById('bsTblBody');
+  const head   = document.getElementById('bsTblHead');
+  const empty  = document.getElementById('bsEmpty');
+  const tbl    = document.getElementById('bsTbl');
+
+  if (!_filtTrades.length || !dims.length) {
+    body.innerHTML = ''; tbl.style.display = 'none'; empty.style.display = ''; return;
+  }
+
+  // Group by all selected dimensions
+  const map = new Map();
+  for (const t of _filtTrades) {
+    const key = dims.map(d => getFeature(t, d)).join(' | ');
+    if (!map.has(key)) map.set(key, { key, dims: dims.map(d => getFeature(t, d)), trades: [] });
+    map.get(key).trades.push(t);
+  }
+
+  const rows = [];
+  for (const { key, dims: dVals, trades } of map.values()) {
+    const s = sliceStats(trades);
+    if (!s || s.n < minN) continue;
+    rows.push({ dVals, ...s });
+  }
+
+  if (!rows.length) {
+    body.innerHTML = ''; tbl.style.display = 'none'; empty.style.display = '';
+    empty.textContent = `No combinations with ≥ ${minN} trades under current filters`;
+    return;
+  }
+
+  const sortFn = rankBy === 'expectancy' ? (a, b) => b.expectancy - a.expectancy
+               : rankBy === 'winRate'    ? (a, b) => b.winRate - a.winRate
+               : rankBy === 'pf'        ? (a, b) => b.pf - a.pf
+               :                          (a, b) => b.sharpe - a.sharpe;
+  rows.sort(sortFn);
+
+  const dim_labels = {
+    fib_level_bucket: 'Fib Level', session_filled: 'Session', dow: 'DOW',
+    confluence_type: 'Confluence', level_zone: 'Zone', range_bucket: 'Range',
+    monday_aligned: 'Mon Aligned',
+  };
+
+  head.innerHTML = dims.map(d => `<th>${dim_labels[d] ?? d}</th>`).join('') +
+    '<th>N</th><th>Win%</th><th>Expect</th><th>PF</th><th>Total P&L</th><th>Sharpe</th>';
+
+  const top = rows.slice(0, 50);
+  body.innerHTML = top.map((r, i) => {
+    const rank = i < 3 ? `<span class="rank-pill s${i+1}">${['★','▲','◆'][i]}</span> ` : `<span style="color:var(--text3);font-size:10px">${i+1}.</span> `;
+    const dimCells = r.dVals.map((v, j) => j === 0 ? `<td>${rank}${v}</td>` : `<td>${v}</td>`).join('');
+    return `<tr>
+      ${dimCells}
+      <td class="num">${r.n}</td>
+      <td class="num ${r.winRate >= 55 ? 'pos' : r.winRate < 45 ? 'neg' : 'neu'}">${r.winRate}%</td>
+      <td class="num ${r.expectancy >= 0 ? 'pos' : 'neg'}">${(r.expectancy >= 0 ? '+' : '') + r.expectancy.toFixed(4)}%</td>
+      <td class="num ${r.pf >= 1.5 ? 'pos' : r.pf >= 1 ? 'neu' : 'neg'}">${r.pf >= 99 ? '∞' : fmt(r.pf)}</td>
+      <td class="num ${r.totalPnl >= 0 ? 'pos' : 'neg'}">${(r.totalPnl >= 0 ? '+' : '') + r.totalPnl.toFixed(2)}%</td>
+      <td class="num ${r.sharpe >= 1 ? 'pos' : r.sharpe >= 0 ? 'neu' : 'neg'}">${fmt(r.sharpe, 3)}</td>
+    </tr>`;
+  }).join('');
+  tbl.style.display = '';
+  empty.style.display = 'none';
+}
+
+// ── Load data ──────────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    setStatus('spin', 'Loading backtest data…');
+    const r = await fetch('/api/asia-range-backtest/trades');
+    let d;
+    try { d = await r.json(); } catch { d = { ok: false, error: `HTTP ${r.status}` }; }
+
+    if (!d.ok || !d.trades?.length) {
+      setStatus('err', d.error || 'No backtest results found — run a backtest first from the Asia Range Backtest page');
+      return;
+    }
+
+    _allTrades = d.trades.filter(t => t.filled);
+
+    // Backfill legacy records that pre-date the analysis fields
+    for (const t of _allTrades) {
+      if (t.dow == null && t.date) {
+        const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        t.dow = DOW[new Date(t.date + 'T12:00:00Z').getUTCDay()];
+      }
+      if (t.session_filled == null && t.fill_time) {
+        const h = new Date(String(t.fill_time).substring(0,19).replace(' ','T')+'Z').getUTCHours();
+        t.session_filled = h < 6 ? 'Asia' : h < 13 ? 'London' : h < 16 ? 'Overlap' : 'NY';
+      }
+      if (t.range_bucket == null && t.asia_range_pips != null) {
+        const p = t.asia_range_pips;
+        t.range_bucket = p < 20 ? 'tiny' : p < 40 ? 'small' : p < 70 ? 'medium' : p < 120 ? 'large' : 'huge';
+      }
+    }
+
+    // Populate pair filter
+    const pairSel = document.getElementById('gfPair');
+    const pairs   = [...new Set(_allTrades.map(t => t.instrument))].sort();
+    pairSel.innerHTML = '<option value="">All pairs</option>';
+    pairs.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; pairSel.appendChild(o); });
+
+    const ts    = d.file ? d.file.replace('asia_bt_','').replace('.json','') : '';
+    const dtStr = ts ? ts.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2}).*/, '$1-$2-$3 $4:$5') : '';
+    setStatus('ok', `${_allTrades.length.toLocaleString()} filled trades loaded${dtStr ? ' · run ' + dtStr : ''}`);
+    document.getElementById('anlComputedAt').textContent = dtStr ? 'Last run: ' + dtStr : '';
+
+    _filtTrades = [..._allTrades];
+    renderGlobalStats();
+    renderPivot();
+    renderMFE();
+    renderMAE();
+    renderBestSetups();
+  } catch (e) {
+    setStatus('err', 'Error: ' + e.message);
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>

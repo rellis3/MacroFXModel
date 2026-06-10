@@ -131,8 +131,9 @@ function detectConfluence(currFibs, prevFibs, threshold, tightThreshold) {
 // ── Trade simulation ──────────────────────────────────────────────────────────
 
 function walkLimitOrder(bars, side, entry, tp, sl, refOpen) {
-  const isSell = side === 'SELL';
-  let filled = false, fillTime = null;
+  const isSell  = side === 'SELL';
+  let filled    = false, fillTime = null;
+  let mfeDist   = 0, maeDist = 0;  // track in price units after fill
 
   for (const bar of bars) {
     if (!filled) {
@@ -140,30 +141,36 @@ function walkLimitOrder(bars, side, entry, tp, sl, refOpen) {
       if (!hit) continue;
       filled   = true;
       fillTime = bar.time;
-      // Check SL/TP on the fill bar itself
       if (isSell) {
-        if (bar.high >= sl) return { outcome: 'loss', pnlPct: -(sl - entry) / refOpen * 100, fillTime, exitTime: bar.time };
-        if (bar.low  <= tp) return { outcome: 'win',  pnlPct:  (entry - tp)  / refOpen * 100, fillTime, exitTime: bar.time };
+        if (bar.high >= sl) return { outcome: 'loss', pnlPct: -(sl - entry) / refOpen * 100, fillTime, exitTime: bar.time, mfeDist: 0, maeDist: sl - entry };
+        if (bar.low  <= tp) return { outcome: 'win',  pnlPct:  (entry - tp) / refOpen * 100, fillTime, exitTime: bar.time, mfeDist: entry - tp, maeDist: 0 };
+        mfeDist = Math.max(0, entry - bar.low);
+        maeDist = Math.max(0, bar.high - entry);
       } else {
-        if (bar.low  <= sl) return { outcome: 'loss', pnlPct: -(entry - sl) / refOpen * 100, fillTime, exitTime: bar.time };
-        if (bar.high >= tp) return { outcome: 'win',  pnlPct:  (tp - entry)  / refOpen * 100, fillTime, exitTime: bar.time };
+        if (bar.low  <= sl) return { outcome: 'loss', pnlPct: -(entry - sl) / refOpen * 100, fillTime, exitTime: bar.time, mfeDist: 0, maeDist: entry - sl };
+        if (bar.high >= tp) return { outcome: 'win',  pnlPct:  (tp - entry) / refOpen * 100, fillTime, exitTime: bar.time, mfeDist: tp - entry, maeDist: 0 };
+        mfeDist = Math.max(0, bar.high - entry);
+        maeDist = Math.max(0, entry - bar.low);
       }
     } else {
       if (isSell) {
-        if (bar.high >= sl) return { outcome: 'loss', pnlPct: -(sl - entry) / refOpen * 100, fillTime, exitTime: bar.time };
-        if (bar.low  <= tp) return { outcome: 'win',  pnlPct:  (entry - tp)  / refOpen * 100, fillTime, exitTime: bar.time };
+        mfeDist = Math.max(mfeDist, entry - bar.low);
+        maeDist = Math.max(maeDist, bar.high - entry);
+        if (bar.high >= sl) return { outcome: 'loss', pnlPct: -(sl - entry) / refOpen * 100, fillTime, exitTime: bar.time, mfeDist, maeDist: sl - entry };
+        if (bar.low  <= tp) return { outcome: 'win',  pnlPct:  (entry - tp) / refOpen * 100, fillTime, exitTime: bar.time, mfeDist: entry - tp, maeDist };
       } else {
-        if (bar.low  <= sl) return { outcome: 'loss', pnlPct: -(entry - sl) / refOpen * 100, fillTime, exitTime: bar.time };
-        if (bar.high >= tp) return { outcome: 'win',  pnlPct:  (tp - entry)  / refOpen * 100, fillTime, exitTime: bar.time };
+        mfeDist = Math.max(mfeDist, bar.high - entry);
+        maeDist = Math.max(maeDist, entry - bar.low);
+        if (bar.low  <= sl) return { outcome: 'loss', pnlPct: -(entry - sl) / refOpen * 100, fillTime, exitTime: bar.time, mfeDist, maeDist: entry - sl };
+        if (bar.high >= tp) return { outcome: 'win',  pnlPct:  (tp - entry) / refOpen * 100, fillTime, exitTime: bar.time, mfeDist: tp - entry, maeDist };
       }
     }
   }
 
   if (!filled) return null;
-  // EOD close — still open at end of trade window
   const eod    = bars.at(-1)?.close ?? entry;
   const eodPnl = isSell ? (entry - eod) / refOpen * 100 : (eod - entry) / refOpen * 100;
-  return { outcome: 'open', pnlPct: eodPnl, fillTime, exitTime: bars.at(-1)?.time ?? null };
+  return { outcome: 'open', pnlPct: eodPnl, fillTime, exitTime: bars.at(-1)?.time ?? null, mfeDist, maeDist };
 }
 
 // ── Single-day backtest ───────────────────────────────────────────────────────
@@ -290,6 +297,24 @@ function simulateDay(packed, dateStr, opts) {
     const riskDist   = Math.abs(price - sl);
     const rewardDist = Math.abs(tp - price);
     const rr         = riskDist > 0 ? rewardDist / riskDist : 0;
+    const mfeR       = riskDist > 0 ? +(result.mfeDist / riskDist).toFixed(3) : 0;
+    const maeR       = riskDist > 0 ? +(result.maeDist / riskDist).toFixed(3) : 0;
+
+    // Derived analysis dimensions
+    const rangePips  = +(asia.range / pipSize).toFixed(1);
+    const rangeBucket = rangePips < 20 ? 'tiny' : rangePips < 40 ? 'small' : rangePips < 70 ? 'medium' : rangePips < 120 ? 'large' : 'huge';
+    const lvl        = fib.level;
+    const levelZone  = lvl < -2 ? 'deep_neg' : lvl < 0 ? 'outer_neg' : lvl <= 1 ? 'inner' : lvl <= 2 ? 'outer_pos' : 'deep_pos';
+
+    const fillHour   = result.fillTime ? new Date(result.fillTime * 1000).getUTCHours() : -1;
+    const sessionFilled = fillHour < 0 ? null : fillHour < 6 ? 'Asia' : fillHour < 13 ? 'London' : fillHour < 16 ? 'Overlap' : 'NY';
+
+    const DOW_NAMES  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const dow        = DOW_NAMES[new Date(dateStr + 'T12:00:00Z').getUTCDay()];
+
+    const mondayAligned = mondayRange
+      ? (Math.abs(price - mondayRange.high) <= pipSize * 10 || Math.abs(price - mondayRange.low) <= pipSize * 10)
+      : false;
 
     trades.push({
       date:          dateStr,
@@ -311,6 +336,14 @@ function simulateDay(packed, dateStr, opts) {
       asia_range:    +asia.range.toFixed(6),
       asia_mid:      +asiaMid.toFixed(6),
       rr:            +rr.toFixed(2),
+      mfe_r:         mfeR,
+      mae_r:         maeR,
+      asia_range_pips: rangePips,
+      range_bucket:  rangeBucket,
+      level_zone:    levelZone,
+      dow,
+      session_filled: sessionFilled,
+      monday_aligned: mondayAligned,
       monday_high:   mondayRange ? +mondayRange.high.toFixed(6) : null,
       monday_low:    mondayRange ? +mondayRange.low.toFixed(6)  : null,
       fib_data:      fibData,
