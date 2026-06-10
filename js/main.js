@@ -767,7 +767,37 @@ async function refreshQuote() {
   }
 }
 
-// ── Journal localStorage helper ───────────────────────────────────────────────
+// ── Journal localStorage helpers ─────────────────────────────────────────────
+// Reads plain date-keyed journal data from localStorage, handling both the plain
+// format and the { data, ts } wrapper written by journal-app.js. Rescues any
+// date-keyed entries that a previous main.js save may have added directly to the
+// wrapper object (these were silently dropped on read before this fix).
+const _JOURNAL_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function readJournalLocal(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) || {};
+    let data;
+    if (parsed?.ts != null && typeof parsed.ts === 'number' && parsed?.data && typeof parsed.data === 'object') {
+      data = { ...parsed.data };
+      // Rescue top-level date entries added by previous (buggy) main.js saves
+      for (const [k, v] of Object.entries(parsed)) {
+        if (_JOURNAL_DATE_RE.test(k)) data[k] = v;
+      }
+    } else {
+      data = parsed;
+    }
+    // Strip non-date keys so we never write garbage back to KV
+    for (const k of Object.keys(data)) {
+      if (!_JOURNAL_DATE_RE.test(k)) delete data[k];
+    }
+    return data;
+  } catch (e) {
+    return {};
+  }
+}
+
 // Attempts to write to localStorage; on QuotaExceededError, prunes dates older
 // than 30 days and retries once. Returns true if local save succeeded.
 function tryJournalLocalSave(key, data) {
@@ -888,8 +918,7 @@ window.saveToJournal = function() {
 
     // Write directly to journal_store — merge preserving existing trade status/notes
     const JKEY = 'journal_store';
-    let jData = {};
-    try { const raw = localStorage.getItem(JKEY); if (raw) jData = JSON.parse(raw) || {}; } catch(e) {}
+    const jData = readJournalLocal(JKEY);
     if (!jData[date]) jData[date] = {};
     const existing    = jData[date][sym] || { levels: [], macro: {} };
     const existingMap = {};
@@ -937,8 +966,7 @@ window.saveAllPairsToJournal = async function() {
 
   const date   = new Date().toISOString().split('T')[0];
   const JKEY   = 'journal_store';
-  let   jData  = {};
-  try { const raw = localStorage.getItem(JKEY); if (raw) jData = JSON.parse(raw) || {}; } catch(e) {}
+  const jData  = readJournalLocal(JKEY);
   if (!jData[date]) jData[date] = {};
 
   const savedPairs  = [];
