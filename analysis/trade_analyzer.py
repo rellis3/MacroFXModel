@@ -12,7 +12,7 @@ Requirements (pip install):
     MetaTrader5   (Windows only, MT5 must be installed)
 
 Note on sample size:
-    Segments with n < MIN_SAMPLE are flagged ⚠.  Treat those as directional
+    Segments with n < MIN_SAMPLE are flagged !.  Treat those as directional
     hypotheses to validate in the backtester, not rules to ship.
 """
 
@@ -26,7 +26,7 @@ from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 from pathlib import Path
 
-# ── Config ─────────────────────────────────────────────────────────────────────
+# -- Config ---------------------------------------------------------------------
 
 ROOT = Path(__file__).parent.parent
 
@@ -46,12 +46,12 @@ LOG_FILES = {
 
 MIN_SAMPLE = 20   # flag segments below this count
 
-# ── Logging ────────────────────────────────────────────────────────────────────
+# -- Logging --------------------------------------------------------------------
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s  %(message)s')
 log = logging.getLogger(__name__)
 
-# ── Helpers ─────────────────────────────────────────────────────────────────────
+# -- Helpers ---------------------------------------------------------------------
 
 def _load_env(path: Path) -> dict:
     env = {}
@@ -80,7 +80,7 @@ def _session(dt: datetime) -> str:
     elif 17 <= h < 21: return 'NY_CLOSE'
     else:               return 'ASIA_PRE'
 
-# ── MT5 history pull ────────────────────────────────────────────────────────────
+# -- MT5 history pull ------------------------------------------------------------
 
 def pull_all_mt5_history(from_date: datetime, to_date: datetime) -> list[dict]:
     """
@@ -90,7 +90,7 @@ def pull_all_mt5_history(from_date: datetime, to_date: datetime) -> list[dict]:
     try:
         import MetaTrader5 as mt5
     except ImportError:
-        log.error("MetaTrader5 not installed — run: pip install MetaTrader5")
+        log.error("MetaTrader5 not installed -- run: pip install MetaTrader5")
         return []
 
     magic_to_bot = {v['magic']: k for k, v in BOTS.items()}
@@ -128,11 +128,11 @@ def pull_all_mt5_history(from_date: datetime, to_date: datetime) -> list[dict]:
             mt5.shutdown()
             continue
 
-        log.info(f"Pulling history: account {account}  {from_date.date()} → {to_date.date()}")
+        log.info(f"Pulling history: account {account}  {from_date.date()} -> {to_date.date()}")
         deals = mt5.history_deals_get(from_date, to_date) or []
         log.info(f"  Raw deals: {len(deals)}")
 
-        # Group deals by position_id → find entry deal + exit deal(s)
+        # Group deals by position_id -> find entry deal + exit deal(s)
         by_pos: dict = defaultdict(lambda: {'in': None, 'outs': []})
         for d in deals:
             if d.magic not in magic_to_bot:
@@ -198,7 +198,7 @@ def pull_all_mt5_history(from_date: datetime, to_date: datetime) -> list[dict]:
                 'session':     _session(time_close),
                 'day_of_week': time_close.strftime('%A'),
                 'comment':     str(ind.comment if ind else last_out.comment or ''),
-                # Engine fields — filled by enrich_with_engine_context()
+                # Engine fields -- filled by enrich_with_engine_context()
                 'eng_regime':     None,
                 'eng_conf':       None,
                 'eng_score':      None,
@@ -233,14 +233,14 @@ def pull_all_mt5_history(from_date: datetime, to_date: datetime) -> list[dict]:
     log.info(f"Total positions across all bots: {len(all_records)}")
     return all_records
 
-# ── Log parsers ──────────────────────────────────────────────────────────────────
+# -- Log parsers ------------------------------------------------------------------
 
 def parse_regime_v1_log(log_path: Path) -> dict:
     """
-    Regime V1 logs the MT5 ticket at entry — use that for an exact join.
+    Regime V1 logs the MT5 ticket at entry -- use that for an exact join.
     Falls back to (norm_symbol, minute_ts) for any missed entries.
 
-    Returns {'by_ticket': {ticket→ctx}, 'by_sym_ts': {(sym,ts)→ctx}}
+    Returns {'by_ticket': {ticket->ctx}, 'by_sym_ts': {(sym,ts)->ctx}}
     """
     by_ticket:  dict[int, dict]        = {}
     by_sym_ts:  dict[tuple, dict]      = {}
@@ -268,7 +268,7 @@ def parse_regime_v1_log(log_path: Path) -> dict:
     ticket_re = re.compile(r'ticket=(\d+)')
 
     last_regimes: dict[str, dict] = {}
-    pending:      dict[str, dict] = {}   # sym → ctx awaiting ticket
+    pending:      dict[str, dict] = {}   # sym -> ctx awaiting ticket
 
     log.info(f"Parsing Regime V1 log: {log_path.name}  ({log_path.stat().st_size // 1_048_576} MB)")
     with open(log_path, errors='ignore') as f:
@@ -396,7 +396,7 @@ def parse_macrofx_log(log_path: Path) -> dict[tuple, dict]:
 
     ts_re    = re.compile(r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]')
     sig_re   = re.compile(
-        r'\[(?P<sym>[A-Z/]+)\].*?(?P<stars>\d)★'
+        r'\[(?P<sym>[A-Z/]+)\].*?(?P<stars>\d)[*]'
         r'.*?grade=(?P<grade>[A-F])'
         r'.*?sig=(?P<sig>[\d.]+)'
         r'.*?dist=(?P<dist>[\d.]+)pips'
@@ -406,7 +406,7 @@ def parse_macrofx_log(log_path: Path) -> dict[tuple, dict]:
     log.info(f"Parsing MacroFX log: {log_path.name}  ({log_path.stat().st_size // 1_048_576} MB)")
     with open(log_path, errors='ignore') as f:
         for line in f:
-            if '★' not in line:
+            if '[*]' not in line:
                 continue
             ts_m = ts_re.search(line)
             if not ts_m:
@@ -460,7 +460,7 @@ def parse_gold_journal(log_path: Path) -> dict[str, dict]:
             if rtype == 'ENTRY_SIGNAL':
                 vu   = rec.get('vumanchu', {})
                 raw  = rec.get('composition', [])
-                # Deduplicate — repeated fib lines inflate score
+                # Deduplicate -- repeated fib lines inflate score
                 seen  = set()
                 unique = []
                 for item in raw:
@@ -493,7 +493,7 @@ def parse_gold_journal(log_path: Path) -> dict[str, dict]:
     log.info(f"  Gold: {len(by_zone)} zones parsed")
     return by_zone
 
-# ── Engine context enrichment ────────────────────────────────────────────────────
+# -- Engine context enrichment ----------------------------------------------------
 
 ENGINE_FIELDS = [
     'eng_regime','eng_conf','eng_score','eng_vol_z','eng_run_len','eng_decay',
@@ -517,7 +517,7 @@ def enrich_with_engine_context(records:    list[dict],
     v1_by_ticket  = v1_ctx.get('by_ticket', {})
     v1_by_sym_ts  = v1_ctx.get('by_sym_ts', {})
 
-    # Build a ts→zone lookup for Gold (match MT5 trade open time to journal entry)
+    # Build a ts->zone lookup for Gold (match MT5 trade open time to journal entry)
     gold_by_ts: dict[str, dict] = {}
     for zid, zone in gold_jrnl.items():
         entry = zone.get('entry', {})
@@ -542,7 +542,7 @@ def enrich_with_engine_context(records:    list[dict],
 
         elif bot == 'RegimeV2':
             ctx = v2_ctx.get((sym, ts_min))
-            # Widen search ±2 minutes for clock-skew between log timestamp and MT5 deal time
+            # Widen search +/-2 minutes for clock-skew between log timestamp and MT5 deal time
             if not ctx and rec['time_open']:
                 base = datetime.fromisoformat(rec['time_open'])
                 for delta in (1, -1, 2, -2):
@@ -571,7 +571,7 @@ def enrich_with_engine_context(records:    list[dict],
     log.info(f"Engine context matched: {matched}/{len(records)} trades")
     return records
 
-# ── Analysis helpers ─────────────────────────────────────────────────────────────
+# -- Analysis helpers -------------------------------------------------------------
 
 def _win_rate(trades: list[dict]) -> tuple[float, int]:
     decisive = [t for t in trades if t['result'] in ('WIN', 'LOSS')]
@@ -591,13 +591,74 @@ def _bucket_rows(trades: list[dict], field: str, buckets: list) -> list[dict]:
         group = [t for v, t in vals if lo <= v < hi]
         wr, n = _win_rate(group)
         rows.append({
-            'label':      f'{lo}–{hi}',
+            'label':      f'{lo}-{hi}',
             'n':          n,
             'win_rate':   wr,
             'expectancy': _expectancy(group),
             'low_n':      n < MIN_SAMPLE,
         })
     return rows
+
+
+def _threshold_scan(trades: list[dict], field: str, thresholds: list,
+                    direction: str = 'ge') -> list[dict]:
+    """
+    Cumulative threshold scan -- answers "what if I only take trades where field >= X?"
+    direction='ge' : field >= threshold  (for conf, score, bocpd, rl -- higher is stricter)
+    direction='le' : field <= threshold  (for decay, exhaustion -- lower is stricter)
+    """
+    vals = [(t[field], t) for t in trades if t.get(field) is not None]
+    rows = []
+    for thresh in thresholds:
+        if direction == 'ge':
+            group = [t for v, t in vals if v >= thresh]
+        else:
+            group = [t for v, t in vals if v <= thresh]
+        wr, n = _win_rate(group)
+        rows.append({
+            'threshold': thresh,
+            'direction': direction,
+            'n':         n,
+            'win_rate':  wr,
+            'expectancy': _expectancy(group),
+            'low_n':     n < MIN_SAMPLE,
+        })
+    return rows
+
+
+def _suggest(rows: list[dict], min_n: int = 15) -> dict | None:
+    """Return threshold row with best win rate where n >= min_n."""
+    candidates = [r for r in rows if r['n'] >= min_n]
+    return max(candidates, key=lambda r: r['win_rate']) if candidates else None
+
+
+def _fmt_threshold(rows: list[dict], label: str, symbol: str = '>=',
+                   optuna_val: float | None = None) -> list[str]:
+    """Format a threshold scan block with suggestion line."""
+    out = [f'    {label}:']
+    best = _suggest(rows)
+    for r in rows:
+        direction_sym = symbol
+        marker = ''
+        if optuna_val is not None and r['threshold'] == optuna_val:
+            marker = '  <- Optuna optimal'
+        if best and r['threshold'] == best['threshold'] and not r['low_n']:
+            marker += '  [*] suggested'
+        flag = '  ! low-n' if r['low_n'] else ''
+        out.append(
+            f"      {direction_sym}{str(r['threshold']):<8}"
+            f"  n={r['n']:4d}"
+            f"  WR={r['win_rate']:5.1f}%"
+            f"  exp=${r['expectancy']:+7.2f}"
+            f"{flag}{marker}"
+        )
+    if best:
+        sym_str = '<=' if rows[0]['direction'] == 'le' else '>='
+        out.append(
+            f"    [*]  Suggested: {label.split('(')[0].strip()} {sym_str} {best['threshold']}"
+            f"   ->  WR={best['win_rate']:.1f}%  n={best['n']}"
+        )
+    return out
 
 
 def _cat_rows(trades: list[dict], field: str) -> list[dict]:
@@ -622,20 +683,20 @@ def _cat_rows(trades: list[dict], field: str) -> list[dict]:
 def _fmt_rows(rows: list[dict], label_w: int = 20) -> list[str]:
     out = []
     for r in rows:
-        flag = '  ⚠ low-n' if r['low_n'] else ''
+        flag = '  ! low-n' if r['low_n'] else ''
         out.append(
             f"      {r['label']:<{label_w}}  n={r['n']:4d}"
             f"  WR={r['win_rate']:5.1f}%  exp=${r['expectancy']:+7.2f}{flag}"
         )
     return out
 
-# ── Per-bot report ───────────────────────────────────────────────────────────────
+# -- Per-bot report ---------------------------------------------------------------
 
 def analyze_bot(bot_name: str, trades: list[dict]) -> str:
     out = []
     bar = '=' * 62
     out.append(f'\n{bar}')
-    out.append(f'  {bot_name.upper()}  —  {len(trades)} total trades')
+    out.append(f'  {bot_name.upper()}  --  {len(trades)} total trades')
     out.append(bar)
 
     wr, n     = _win_rate(trades)
@@ -645,7 +706,7 @@ def analyze_bot(bot_name: str, trades: list[dict]) -> str:
     out.append(f'  Expectancy/trade : ${exp:+.2f}')
     out.append(f'  Total net P&L    : ${total_net:+,.2f}')
 
-    # ── By pair ────────────────────────────────────────────────────────────
+    # -- By pair ------------------------------------------------------------
     out.append('\n  BY PAIR:')
     pairs: dict[str, list] = defaultdict(list)
     for t in trades:
@@ -653,28 +714,28 @@ def analyze_bot(bot_name: str, trades: list[dict]) -> str:
     for sym, grp in sorted(pairs.items()):
         pwr, pn = _win_rate(grp)
         pnet    = round(sum(t['net'] for t in grp), 2)
-        flag    = '  ⚠' if pn < MIN_SAMPLE else ''
+        flag    = '  !' if pn < MIN_SAMPLE else ''
         out.append(f'    {sym:<12}  n={pn:4d}  WR={pwr:5.1f}%  net=${pnet:+9.2f}{flag}')
 
-    # ── By direction ───────────────────────────────────────────────────────
+    # -- By direction -------------------------------------------------------
     out.append('\n  BY DIRECTION:')
     for d in ('BUY', 'SELL'):
         grp = [t for t in trades if t['direction'] == d]
         dwr, dn = _win_rate(grp)
-        flag    = '  ⚠' if dn < MIN_SAMPLE else ''
+        flag    = '  !' if dn < MIN_SAMPLE else ''
         out.append(f'    {d:<6}  n={dn:4d}  WR={dwr:5.1f}%  exp=${_expectancy(grp):+7.2f}{flag}')
 
-    # ── By session ─────────────────────────────────────────────────────────
+    # -- By session ---------------------------------------------------------
     out.append('\n  BY SESSION (close time UTC):')
     for sess in ('ASIA', 'LONDON', 'NY', 'NY_CLOSE', 'ASIA_PRE'):
         grp = [t for t in trades if t['session'] == sess]
         if not grp:
             continue
         swr, sn = _win_rate(grp)
-        flag    = '  ⚠' if sn < MIN_SAMPLE else ''
+        flag    = '  !' if sn < MIN_SAMPLE else ''
         out.append(f'    {sess:<10}  n={sn:4d}  WR={swr:5.1f}%  exp=${_expectancy(grp):+7.2f}{flag}')
 
-    # ── By day ─────────────────────────────────────────────────────────────
+    # -- By day -------------------------------------------------------------
     out.append('\n  BY DAY:')
     for day in ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'):
         grp = [t for t in trades if t['day_of_week'] == day]
@@ -682,81 +743,215 @@ def analyze_bot(bot_name: str, trades: list[dict]) -> str:
             continue
         dwr, dn = _win_rate(grp)
         dnet    = round(sum(t['net'] for t in grp), 2)
-        flag    = '  ⚠' if dn < MIN_SAMPLE else ''
+        flag    = '  !' if dn < MIN_SAMPLE else ''
         out.append(f'    {day:<12}  n={dn:4d}  WR={dwr:5.1f}%  net=${dnet:+9.2f}{flag}')
 
-    # ── Engine analysis ────────────────────────────────────────────────────
+    # -- Engine analysis ----------------------------------------------------
     enriched = [t for t in trades if any(t.get(f) is not None for f in ENGINE_FIELDS)]
     out.append(f'\n  ENGINE SIGNAL ANALYSIS  ({len(enriched)} / {len(trades)} trades have context)')
 
     if not enriched:
-        out.append('    No log context matched — logs may not cover this date range.')
+        out.append('    No log context matched -- logs may not cover this date range.')
         return '\n'.join(out)
 
-    # --- Regime V1 & V2 shared signals ---
-    if bot_name in ('RegimeV1', 'RegimeV2'):
+    # -- Regime V1 engine analysis --------------------------------------------
+    if bot_name == 'RegimeV1':
+        out.append('\n  -- Entry quality signals --')
+
+        # Regime type
         rows = _cat_rows(enriched, 'eng_regime')
         if rows:
-            out.append('\n    Regime at entry:')
-            out.extend(_fmt_rows(rows))
+            out.append('\n    Regime at entry (sorted by WR):')
+            out.extend(_fmt_rows(sorted(rows, key=lambda r: -r['win_rate'])))
 
-        rows = _bucket_rows(enriched, 'eng_conf', [0, 50, 70, 80, 90, 95, 100, 101])
+        # Confidence -- threshold scan (higher = stricter filter)
+        rows = _threshold_scan(enriched, 'eng_conf',
+                               [50, 60, 70, 80, 85, 90, 95, 99])
         if rows:
-            out.append('\n    Confidence %:')
-            out.extend(_fmt_rows(rows))
+            out.append('')
+            out.extend(_fmt_threshold(rows, 'Confidence %'))
 
-        rows = _bucket_rows(enriched, 'eng_run_len', [0, 3, 6, 10, 20, 50, 9999])
+        # Vol Z-score -- bucket (signed; we want to know which vol environment wins)
+        rows = _bucket_rows(enriched, 'eng_vol_z',
+                            [-99, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 99])
         if rows:
-            out.append('\n    Run length (bars in regime):')
-            out.extend(_fmt_rows(rows))
+            out.append('\n    Vol Z-score at entry  (negative=quiet, positive=elevated):')
+            for r in sorted(rows, key=lambda r: -r['win_rate']):
+                flag = '  ! low-n' if r['low_n'] else ''
+                out.append(
+                    f"      vz {r['label']:<14}"
+                    f"  n={r['n']:4d}  WR={r['win_rate']:5.1f}%"
+                    f"  exp=${r['expectancy']:+7.2f}{flag}"
+                )
+            # Derive best vol-z range
+            best_vz = _suggest([{**r, 'threshold': r['label']} for r in rows], min_n=10)
+            if best_vz:
+                out.append(f"    [*]  Best vol-z range: {best_vz['threshold']}  ->  WR={best_vz['win_rate']:.1f}%")
 
-        rows = _bucket_rows(enriched, 'eng_decay', [0, 0.05, 0.15, 0.3, 0.5, 1.0])
+        # Run length -- threshold scan (more bars in regime = more established)
+        rows = _threshold_scan(enriched, 'eng_run_len', [2, 5, 8, 12, 20, 30])
         if rows:
-            out.append('\n    Regime decay:')
-            out.extend(_fmt_rows(rows))
+            out.append('')
+            out.extend(_fmt_threshold(rows, 'Run length RL (bars in regime, more = more established)'))
 
+        # Decay -- threshold scan LE (lower decay = cleaner regime)
+        rows = _threshold_scan(enriched, 'eng_decay',
+                               [0.0, 0.02, 0.05, 0.1, 0.2, 0.4], direction='le')
+        if rows:
+            out.append('')
+            out.extend(_fmt_threshold(rows, 'Decay (lower = cleaner regime)', symbol='<='))
+
+        out.append('\n  -- Exit quality signals --')
+
+        # Exit type -- what exit condition leads to best outcomes?
         rows = _cat_rows(enriched, 'eng_exit_type')
         if rows:
-            out.append('\n    Exit type:')
-            out.extend(_fmt_rows(rows))
+            out.append('\n    Exit type (what condition closed the trade):')
+            out.extend(_fmt_rows(sorted(rows, key=lambda r: -r['win_rate'])))
 
-    # --- Regime V2 extra signals ---
-    if bot_name == 'RegimeV2':
-        rows = _bucket_rows(enriched, 'eng_score', [0, 50, 60, 70, 74, 80, 90, 101])
+        # RL at entry vs exit outcome (do longer-running regimes exit better?)
+        out.append('\n    Run length vs outcome  (same signal, framed as "trade held longer in regime"):')
+        out.append('    (Cross-ref with RL scan above -- RL at entry predicts both entry and exit quality)')
+
+    # -- Regime V2 engine analysis ---------------------------------------------
+    elif bot_name == 'RegimeV2':
+        out.append('\n  -- Entry quality signals --')
+        out.append('  Format: trades where signal >= X -- shows what threshold maximises win rate.')
+
+        # 5m regime type
+        rows = _cat_rows(enriched, 'eng_regime')
         if rows:
-            out.append('\n    Score  (Optuna optimal ≥ 74):')
-            for r in rows:
-                marker = '  ← Optuna optimal' if '74' in r['label'] else ''
-                flag   = '  ⚠ low-n' if r['low_n'] else ''
-                out.append(
-                    f"      {r['label']:<12}  n={r['n']:4d}"
-                    f"  WR={r['win_rate']:5.1f}%  exp=${r['expectancy']:+7.2f}{flag}{marker}"
-                )
+            out.append('\n    5m Regime at entry (sorted by WR):')
+            out.extend(_fmt_rows(sorted(rows, key=lambda r: -r['win_rate'])))
 
-        rows = _bucket_rows(enriched, 'eng_bocpd', [0, 30, 50, 70, 85, 95, 101])
+        # 1H alignment
+        rows = _cat_rows(enriched, 'eng_1h_regime')
         if rows:
-            out.append('\n    BOCPD % (change-point probability):')
-            out.extend(_fmt_rows(rows))
+            out.append('\n    1H regime (HTF alignment, sorted by WR):')
+            out.extend(_fmt_rows(sorted(rows, key=lambda r: -r['win_rate'])))
 
+        # Consensus
         rows = _cat_rows(enriched, 'eng_consensus')
         if rows:
             out.append('\n    Consensus:')
-            out.extend(_fmt_rows(rows))
+            out.extend(_fmt_rows(sorted(rows, key=lambda r: -r['win_rate'])))
 
-        rows = _cat_rows(enriched, 'eng_1h_regime')
+        # Score -- threshold scan (Optuna found >=74 optimal for EURUSD)
+        rows = _threshold_scan(enriched, 'eng_score',
+                               [50, 55, 60, 65, 70, 74, 80, 85, 90])
         if rows:
-            out.append('\n    1H regime (HTF alignment):')
-            out.extend(_fmt_rows(rows))
+            out.append('')
+            out.extend(_fmt_threshold(rows, 'Score', optuna_val=74))
 
-        rows = _bucket_rows(enriched, 'eng_slope', [-99, -5, -2, -0.5, 0.5, 2, 5, 99])
+        # Confidence -- threshold scan
+        rows = _threshold_scan(enriched, 'eng_conf',
+                               [50, 60, 70, 80, 85, 90, 95, 99])
         if rows:
-            out.append('\n    Slope (momentum):')
-            out.extend(_fmt_rows(rows))
+            out.append('')
+            out.extend(_fmt_threshold(rows, 'Confidence %'))
 
-        rows = _bucket_rows(enriched, 'eng_exhaustion', [0, 0.1, 0.3, 0.5, 1.0])
+        # BOCPD -- threshold scan (change-point certainty; higher = more committed to new regime)
+        rows = _threshold_scan(enriched, 'eng_bocpd',
+                               [20, 30, 40, 50, 60, 70, 80, 90])
         if rows:
-            out.append('\n    Exhaustion:')
-            out.extend(_fmt_rows(rows))
+            out.append('')
+            out.extend(_fmt_threshold(rows, 'BOCPD % (change-point certainty)'))
+
+        # Slope -- signed bucket (momentum direction)
+        rows = _bucket_rows(enriched, 'eng_slope',
+                            [-99, -10, -5, -2, -1, 0, 1, 2, 5, 10, 99])
+        if rows:
+            out.append('\n    Slope (momentum direction, sorted by WR):')
+            for r in sorted(rows, key=lambda r: -r['win_rate']):
+                flag = '  ! low-n' if r['low_n'] else ''
+                out.append(
+                    f"      slope {r['label']:<14}"
+                    f"  n={r['n']:4d}  WR={r['win_rate']:5.1f}%"
+                    f"  exp=${r['expectancy']:+7.2f}{flag}"
+                )
+
+        # Vol Z-score -- signed bucket
+        rows = _bucket_rows(enriched, 'eng_vol_z',
+                            [-99, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 99])
+        if rows:
+            out.append('\n    Vol Z-score at entry  (negative=quiet, positive=elevated, sorted by WR):')
+            for r in sorted(rows, key=lambda r: -r['win_rate']):
+                flag = '  ! low-n' if r['low_n'] else ''
+                out.append(
+                    f"      vz {r['label']:<14}"
+                    f"  n={r['n']:4d}  WR={r['win_rate']:5.1f}%"
+                    f"  exp=${r['expectancy']:+7.2f}{flag}"
+                )
+
+        # Exhaustion -- threshold scan LE (lower = less exhausted = fresher move)
+        rows = _threshold_scan(enriched, 'eng_exhaustion',
+                               [0.0, 0.02, 0.05, 0.1, 0.2, 0.4], direction='le')
+        if rows:
+            out.append('')
+            out.extend(_fmt_threshold(rows, 'Exhaustion (lower = regime not yet overextended)', symbol='<='))
+
+        # Decay -- threshold scan LE
+        rows = _threshold_scan(enriched, 'eng_decay',
+                               [0.0, 0.02, 0.05, 0.1, 0.2, 0.4], direction='le')
+        if rows:
+            out.append('')
+            out.extend(_fmt_threshold(rows, 'Decay (lower = cleaner, more sustained regime)', symbol='<='))
+
+        # Run length
+        rows = _threshold_scan(enriched, 'eng_run_len', [2, 5, 8, 12, 20, 30])
+        if rows:
+            out.append('')
+            out.extend(_fmt_threshold(rows, 'Run length RL (bars regime has been active)'))
+
+        # -- Combined filter analysis --------------------------------------
+        out.append('\n  -- Combined filter analysis --')
+        out.append('  Shows what happens when multiple signals are satisfied together.')
+
+        def _combined(label: str, fn) -> None:
+            grp = [t for t in enriched if fn(t)]
+            wr, n = _win_rate(grp)
+            flag  = '  ! low-n' if n < MIN_SAMPLE else ''
+            out.append(
+                f"    {label:<55}"
+                f"  n={n:4d}  WR={wr:5.1f}%  exp=${_expectancy(grp):+7.2f}{flag}"
+            )
+
+        out.append('')
+        _combined('All enriched trades (baseline)',
+                  lambda t: True)
+        _combined('Score >= 74  (Optuna floor)',
+                  lambda t: (t.get('eng_score') or 0) >= 74)
+        _combined('Conf >= 85%',
+                  lambda t: (t.get('eng_conf') or 0) >= 85)
+        _combined('BOCPD >= 70%',
+                  lambda t: (t.get('eng_bocpd') or 0) >= 70)
+        _combined('Decay <= 0.05',
+                  lambda t: (t.get('eng_decay') or 1) <= 0.05)
+        _combined('5m regime == 1h regime  (HTF aligned)',
+                  lambda t: t.get('eng_regime') == t.get('eng_1h_regime'))
+        _combined('Score >= 74  AND  Conf >= 85%',
+                  lambda t: (t.get('eng_score') or 0) >= 74
+                            and (t.get('eng_conf') or 0) >= 85)
+        _combined('Score >= 74  AND  BOCPD >= 70%',
+                  lambda t: (t.get('eng_score') or 0) >= 74
+                            and (t.get('eng_bocpd') or 0) >= 70)
+        _combined('Score >= 74  AND  HTF aligned',
+                  lambda t: (t.get('eng_score') or 0) >= 74
+                            and t.get('eng_regime') == t.get('eng_1h_regime'))
+        _combined('Score >= 74  AND  Conf >= 85%  AND  HTF aligned',
+                  lambda t: (t.get('eng_score') or 0) >= 74
+                            and (t.get('eng_conf') or 0) >= 85
+                            and t.get('eng_regime') == t.get('eng_1h_regime'))
+        _combined('Score >= 74  AND  BOCPD >= 70%  AND  Decay <= 0.05',
+                  lambda t: (t.get('eng_score') or 0) >= 74
+                            and (t.get('eng_bocpd') or 0) >= 70
+                            and (t.get('eng_decay') or 1) <= 0.05)
+        _combined('ALL: Score>=74, Conf>=85%, BOCPD>=70%, HTF aligned, Decay<=0.05',
+                  lambda t: (t.get('eng_score') or 0) >= 74
+                            and (t.get('eng_conf') or 0) >= 85
+                            and (t.get('eng_bocpd') or 0) >= 70
+                            and t.get('eng_regime') == t.get('eng_1h_regime')
+                            and (t.get('eng_decay') or 1) <= 0.05)
 
     # --- MacroFX signals ---
     elif bot_name == 'MacroFX':
@@ -764,8 +959,8 @@ def analyze_bot(bot_name: str, trades: list[dict]) -> str:
         if rows:
             out.append('\n    Signal stars:')
             for r in rows:
-                flag  = '  ⚠ low-n' if r['low_n'] else ''
-                stars = '★' * int(r['label'])
+                flag  = '  ! low-n' if r['low_n'] else ''
+                stars = '[*]' * int(r['label'])
                 out.append(
                     f"      {stars:<8}  n={r['n']:4d}"
                     f"  WR={r['win_rate']:5.1f}%  exp=${r['expectancy']:+7.2f}{flag}"
@@ -795,7 +990,7 @@ def analyze_bot(bot_name: str, trades: list[dict]) -> str:
     elif bot_name == 'Gold':
         rows = _bucket_rows(enriched, 'eng_zone_score', [0, 3, 5, 8, 12, 20, 9999])
         if rows:
-            out.append('\n    Zone score (raw — duplicates inflate this):')
+            out.append('\n    Zone score (raw -- duplicates inflate this):')
             out.extend(_fmt_rows(rows))
 
         rows = _bucket_rows(enriched, 'eng_score', [0, 3, 5, 7, 10, 15, 9999])
@@ -836,7 +1031,7 @@ def analyze_bot(bot_name: str, trades: list[dict]) -> str:
     out.append('')
     return '\n'.join(out)
 
-# ── Cross-bot summary ────────────────────────────────────────────────────────────
+# -- Cross-bot summary ------------------------------------------------------------
 
 def cross_bot_summary(records: list[dict]) -> str:
     out  = []
@@ -859,7 +1054,7 @@ def cross_bot_summary(records: list[dict]) -> str:
             f'  total=${net:+10.2f}'
         )
 
-    # Pairs traded by multiple bots — risk concentration
+    # Pairs traded by multiple bots -- risk concentration
     out.append('\n  Pairs traded by multiple bots (risk concentration):')
     pair_bots: dict[str, set] = defaultdict(set)
     for r in records:
@@ -867,7 +1062,7 @@ def cross_bot_summary(records: list[dict]) -> str:
     overlap = [(sym, bts) for sym, bts in pair_bots.items() if len(bts) > 1]
     if overlap:
         for sym, bts in sorted(overlap):
-            out.append(f'    {sym:<12}  → {", ".join(sorted(bts))}')
+            out.append(f'    {sym:<12}  -> {", ".join(sorted(bts))}')
     else:
         out.append('    None detected in this date range')
 
@@ -887,7 +1082,7 @@ def cross_bot_summary(records: list[dict]) -> str:
     out.append('')
     return '\n'.join(out)
 
-# ── CSV export ───────────────────────────────────────────────────────────────────
+# -- CSV export -------------------------------------------------------------------
 
 def export_csv(records: list[dict], out_path: Path) -> None:
     if not records:
@@ -897,9 +1092,9 @@ def export_csv(records: list[dict], out_path: Path) -> None:
         writer = csv.DictWriter(f, fieldnames=list(records[0].keys()))
         writer.writeheader()
         writer.writerows(records)
-    log.info(f"CSV saved → {out_path}")
+    log.info(f"CSV saved -> {out_path}")
 
-# ── Entry point ──────────────────────────────────────────────────────────────────
+# -- Entry point ------------------------------------------------------------------
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='Trade Intelligence Analyzer')
@@ -916,12 +1111,12 @@ def main() -> None:
     to_date   = datetime.now(tz=timezone.utc)
     from_date = to_date - timedelta(days=args.days)
 
-    log.info(f"Date range: {from_date.date()} → {to_date.date()}")
+    log.info(f"Date range: {from_date.date()} -> {to_date.date()}")
 
     # 1. MT5 history
     records = pull_all_mt5_history(from_date, to_date)
     if not records:
-        log.error("No records — check MT5 connection and credentials.")
+        log.error("No records -- check MT5 connection and credentials.")
         return
 
     # 2. Parse engine context from logs
@@ -944,11 +1139,11 @@ def main() -> None:
     header = [
         '',
         'TRADE INTELLIGENCE REPORT',
-        f'Period  : {from_date.date()} → {to_date.date()}  ({args.days} days)',
+        f'Period  : {from_date.date()} -> {to_date.date()}  ({args.days} days)',
         f'Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}',
         f'Positions: {len(records)}',
         f'',
-        f'⚠  Segments flagged with ⚠ have n < {MIN_SAMPLE} — directional signal only.',
+        f'!  Segments flagged with ! have n < {MIN_SAMPLE} -- directional signal only.',
         f'   Validate in backtester before adjusting live config.',
     ]
 
@@ -965,7 +1160,7 @@ def main() -> None:
     report_path = out_dir / 'report.txt'
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(report, encoding='utf-8')
-    log.info(f"Report saved → {report_path}")
+    log.info(f"Report saved -> {report_path}")
 
 
 if __name__ == '__main__':

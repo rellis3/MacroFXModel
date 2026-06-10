@@ -1,10 +1,10 @@
 
 TRADE INTELLIGENCE REPORT
-Period  : 2026-03-12 → 2026-06-10  (90 days)
-Generated: 2026-06-10 14:14
-Positions: 100
+Period  : 2026-03-12 -> 2026-06-10  (90 days)
+Generated: 2026-06-10 16:28
+Positions: 74
 
-⚠  Segments flagged with ⚠ have n < 20 — directional signal only.
+!  Segments flagged with ! have n < 20 -- directional signal only.
    Validate in backtester before adjusting live config.
 
 ==============================================================
@@ -12,118 +12,102 @@ Positions: 100
 ==============================================================
 
   Per-bot overview:
-    MacroFX       trades=  72  WR= 52.8% (n=72)  exp=$ -67.19  total=$  -4837.51
-    RegimeV1      trades=  28  WR= 35.7% (n=28)  exp=$ +27.50  total=$   +770.08
+    RegimeV1      trades=  74  WR= 21.6% (n=74)  exp=$-194.75  total=$ -14411.18
 
   Pairs traded by multiple bots (risk concentration):
-    AUDUSD        → MacroFX, RegimeV1
-    EURUSD        → MacroFX, RegimeV1
-    GBPUSD        → MacroFX, RegimeV1
-    USDJPY        → MacroFX, RegimeV1
-    XAUUSD        → MacroFX, RegimeV1
+    None detected in this date range
 
   Max consecutive losses per bot:
-    MacroFX       4 consecutive
-    RegimeV1      7 consecutive
+    RegimeV1      17 consecutive
 
 
 ==============================================================
-  MACROFX  —  72 total trades
+  REGIMEV1  --  74 total trades
 ==============================================================
-  Overall win rate : 52.8%  (n=72 decisive)
-  Expectancy/trade : $-67.19
-  Total net P&L    : $-4,837.51
+  Overall win rate : 21.6%  (n=74 decisive)
+  Expectancy/trade : $-194.75
+  Total net P&L    : $-14,411.18
 
   BY PAIR:
-    AUDUSD        n=   1  WR=  0.0%  net=$  -280.48  ⚠
-    EURGBP        n=   3  WR= 33.3%  net=$  -402.00  ⚠
-    EURUSD        n=  24  WR= 50.0%  net=$  -408.09
-    GBPJPY        n=   3  WR= 33.3%  net=$  -260.39  ⚠
-    GBPUSD        n=   3  WR= 66.7%  net=$  +241.55  ⚠
-    USDCAD        n=   6  WR= 50.0%  net=$   -16.91  ⚠
-    USDCHF        n=   1  WR=  0.0%  net=$  -361.35  ⚠
-    USDJPY        n=   2  WR= 50.0%  net=$    -6.84  ⚠
-    XAUUSD        n=  29  WR= 62.1%  net=$ -3343.00
+    AUDUSD        n=   5  WR= 40.0%  net=$ +1178.22  !
+    EURUSD        n=  10  WR= 30.0%  net=$  -943.74  !
+    GBPJPY        n=   1  WR=  0.0%  net=$  -489.95  !
+    GBPUSD        n=   5  WR= 40.0%  net=$  +780.20  !
+    USDJPY        n=   6  WR= 50.0%  net=$ +2067.84  !
+    XAUUSD        n=  47  WR= 12.8%  net=$-17003.75
 
   BY DIRECTION:
-    BUY     n=  30  WR= 56.7%  exp=$ +67.66
-    SELL    n=  42  WR= 50.0%  exp=$-163.50
+    BUY     n=  40  WR= 20.0%  exp=$-204.87
+    SELL    n=  34  WR= 23.5%  exp=$-182.83
 
   BY SESSION (close time UTC):
-    ASIA        n=   6  WR= 33.3%  exp=$ +94.78  ⚠
-    LONDON      n=  10  WR= 70.0%  exp=$  -9.24  ⚠
-    NY          n=  41  WR= 48.8%  exp=$-118.37
-    NY_CLOSE    n=  11  WR= 54.5%  exp=$ -52.60  ⚠
-    ASIA_PRE    n=   4  WR= 75.0%  exp=$ +29.49  ⚠
+    ASIA        n=  14  WR= 14.3%  exp=$-209.34  !
+    LONDON      n=  14  WR= 21.4%  exp=$-199.03  !
+    NY          n=  29  WR= 24.1%  exp=$-185.65
+    NY_CLOSE    n=  13  WR= 23.1%  exp=$-136.77  !
+    ASIA_PRE    n=   4  WR= 25.0%  exp=$-383.07  !
 
   BY DAY:
-    Monday        n=   5  WR= 40.0%  net=$  +197.66  ⚠
-    Tuesday       n=  19  WR= 63.2%  net=$  +990.26  ⚠
-    Wednesday     n=   5  WR= 40.0%  net=$  -206.40  ⚠
-    Thursday      n=  14  WR= 50.0%  net=$ -5140.90  ⚠
-    Friday        n=  29  WR= 51.7%  net=$  -678.13
+    Monday        n=  15  WR= 26.7%  net=$ -1657.08  !
+    Tuesday       n=  11  WR=  0.0%  net=$ -7533.81  !
+    Wednesday     n=  10  WR=  0.0%  net=$ -6873.30  !
+    Thursday      n=  13  WR= 53.8%  net=$ +7153.86  !
+    Friday        n=  25  WR= 20.0%  net=$ -5500.85
 
-  ENGINE SIGNAL ANALYSIS  (0 / 72 trades have context)
-    No log context matched — logs may not cover this date range.
+  ENGINE SIGNAL ANALYSIS  (49 / 74 trades have context)
 
-==============================================================
-  REGIMEV1  —  28 total trades
-==============================================================
-  Overall win rate : 35.7%  (n=28 decisive)
-  Expectancy/trade : $+27.50
-  Total net P&L    : $+770.08
+  -- Entry quality signals --
 
-  BY PAIR:
-    AUDUSD        n=   5  WR= 40.0%  net=$ +1178.22  ⚠
-    EURUSD        n=   7  WR= 28.6%  net=$ -1028.58  ⚠
-    GBPUSD        n=   4  WR= 50.0%  net=$ +1395.86  ⚠
-    USDJPY        n=   4  WR= 75.0%  net=$ +2315.30  ⚠
-    XAUUSD        n=   8  WR= 12.5%  net=$ -3090.72  ⚠
-
-  BY DIRECTION:
-    BUY     n=  13  WR= 38.5%  exp=$ +26.01  ⚠
-    SELL    n=  15  WR= 33.3%  exp=$ +28.79  ⚠
-
-  BY SESSION (close time UTC):
-    ASIA        n=   1  WR=  0.0%  exp=$-829.54  ⚠
-    LONDON      n=   4  WR=  0.0%  exp=$-824.17  ⚠
-    NY          n=  19  WR= 36.8%  exp=$ +63.37  ⚠
-    NY_CLOSE    n=   4  WR= 75.0%  exp=$+923.08  ⚠
-
-  BY DAY:
-    Tuesday       n=   2  WR=  0.0%  net=$ -1367.01  ⚠
-    Wednesday     n=   1  WR=  0.0%  net=$  -829.54  ⚠
-    Thursday      n=  10  WR= 70.0%  net=$ +8311.99  ⚠
-    Friday        n=  15  WR= 20.0%  net=$ -5345.36  ⚠
-
-  ENGINE SIGNAL ANALYSIS  (3 / 28 trades have context)
-
-    Regime at entry:
-      BULL                  n=   3  WR=  0.0%  exp=$-732.18  ⚠ low-n
+    Regime at entry (sorted by WR):
+      BULL                  n=  21  WR= 19.0%  exp=$-164.23
+      BEAR                  n=  28  WR=  7.1%  exp=$-497.47
 
     Confidence %:
-      0–50                  n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
-      50–70                 n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
-      70–80                 n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
-      80–90                 n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
-      90–95                 n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
-      95–100                n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
-      100–101               n=   3  WR=  0.0%  exp=$-732.18  ⚠ low-n
+      >=50        n=  49  WR= 12.2%  exp=$-354.65
+      >=60        n=  48  WR= 12.5%  exp=$-345.95
+      >=70        n=  48  WR= 12.5%  exp=$-345.95
+      >=80        n=  45  WR= 11.1%  exp=$-366.99
+      >=85        n=  42  WR= 11.9%  exp=$-349.99
+      >=90        n=  39  WR= 12.8%  exp=$-323.39  [*] suggested
+      >=95        n=  32  WR= 12.5%  exp=$-276.32
+      >=99        n=  27  WR=  7.4%  exp=$-410.79
+    [*]  Suggested: Confidence % >= 90   ->  WR=12.8%  n=39
 
-    Run length (bars in regime):
-      0–3                   n=   1  WR=  0.0%  exp=$-829.54  ⚠ low-n
-      3–6                   n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
-      6–10                  n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
-      10–20                 n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
-      20–50                 n=   1  WR=  0.0%  exp=$-612.88  ⚠ low-n
-      50–9999               n=   1  WR=  0.0%  exp=$-754.13  ⚠ low-n
+    Vol Z-score at entry  (negative=quiet, positive=elevated):
+      vz 0.5-1           n=   6  WR= 33.3%  exp=$ +91.98  ! low-n
+      vz -0.5-0          n=  13  WR= 15.4%  exp=$-454.25  ! low-n
+      vz -2--1           n=   7  WR= 14.3%  exp=$ +58.62  ! low-n
+      vz 1-2             n=  10  WR= 10.0%  exp=$-514.79  ! low-n
+      vz -99--3          n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+      vz -3--2           n=   1  WR=  0.0%  exp=$-144.86  ! low-n
+      vz -1--0.5         n=   3  WR=  0.0%  exp=$-532.10  ! low-n
+      vz 0-0.5           n=   6  WR=  0.0%  exp=$-527.22  ! low-n
+      vz 2-3             n=   3  WR=  0.0%  exp=$-794.11  ! low-n
+      vz 3-99            n=   0  WR=  0.0%  exp=$  +0.00  ! low-n
+    [*]  Best vol-z range: -0.5-0  ->  WR=15.4%
 
-    Regime decay:
-      0–0.05                n=   2  WR=  0.0%  exp=$-791.84  ⚠ low-n
-      0.05–0.15             n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
-      0.15–0.3              n=   1  WR=  0.0%  exp=$-612.88  ⚠ low-n
-      0.3–0.5               n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
-      0.5–1.0               n=   0  WR=  0.0%  exp=$  +0.00  ⚠ low-n
+    Run length RL (bars in regime, more = more established):
+      >=2         n=  49  WR= 12.2%  exp=$-354.65
+      >=5         n=  44  WR= 13.6%  exp=$-321.53  [*] suggested
+      >=8         n=  42  WR= 11.9%  exp=$-328.55
+      >=12        n=  39  WR= 12.8%  exp=$-294.06
+      >=20        n=  31  WR= 12.9%  exp=$-245.66
+      >=30        n=  26  WR= 11.5%  exp=$-253.08
+    [*]  Suggested: Run length RL >= 5   ->  WR=13.6%  n=44
 
-    Exit type:
-      regime_shift          n=   3  WR=  0.0%  exp=$-732.18  ⚠ low-n
+    Decay (lower = cleaner regime):
+      <=0.0       n=  14  WR=  7.1%  exp=$-507.37  ! low-n
+      <=0.02      n=  18  WR= 16.7%  exp=$ +17.41  ! low-n
+      <=0.05      n=  24  WR= 12.5%  exp=$-173.29
+      <=0.1       n=  27  WR= 14.8%  exp=$-200.87
+      <=0.2       n=  40  WR= 12.5%  exp=$-338.89
+      <=0.4       n=  49  WR= 12.2%  exp=$-354.65
+    [*]  Suggested: Decay <= 0.02   ->  WR=16.7%  n=18
+
+  -- Exit quality signals --
+
+    Exit type (what condition closed the trade):
+      regime_shift          n=  49  WR= 12.2%  exp=$-354.65
+
+    Run length vs outcome  (same signal, framed as "trade held longer in regime"):
+    (Cross-ref with RL scan above -- RL at entry predicts both entry and exit quality)
