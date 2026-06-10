@@ -90,7 +90,7 @@ function getRoundNumberLevels(price, symbol) {
   const pipSize = getPipSize(symbol);
   const isGold   = symbol.includes('XAU');
   const isJPY    = symbol.includes('JPY');
-  const isEquity = symbol === 'NAS100_USD';
+  const isEquity = S.currentPair?.isEquity ?? false;
   const spacing  = isGold ? 5.0 : isEquity ? 50.0 : isJPY ? 0.5 : 0.005;
   const decPlcs  = isGold || isEquity ? 0 : isJPY ? 2 : 4;
   const base = Math.floor(price / spacing) * spacing;

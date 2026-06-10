@@ -28,18 +28,27 @@ export function oiSaveStore(store) {
 
 // ── Modal ────────────────────────────────────────────────────────────────────
 
+const OI_FRIENDLY = {
+  'NAS100_USD': 'NAS100 / NQ Futures',
+  'SPX500_USD': 'SPX500 / ES Futures',
+  'DE30_USD':   'DAX / FDAX Futures',
+  'UK100_GBP':  'FTSE100 Futures',
+  'US30_USD':   'DOW30 / YM Futures',
+  'US2000_USD': 'RUS2000 / RTY Futures',
+};
+
 export function openOIModal() {
   const sym = S.currentPair ? S.currentPair.symbol : 'EUR/USD';
   const sel = document.getElementById('oiPairSelect');
   if (sel) { sel.value = sym; sel.disabled = true; }
   const lbl = document.getElementById('oiModalPairLbl');
-  if (lbl) lbl.textContent = sym;
+  if (lbl) lbl.textContent = OI_FRIENDLY[sym] || sym;
   const store = oiLoadStore();
   const existing = store[sym];
   // Auto-fill spot: prefer live OANDA quote (always fresh), fall back to saved value
   const livePrice = window._latestQuote?.price ?? window._latestQuote?.mid ?? null;
   const pair = sym;
-  const digits = pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : 5;
+  const digits = pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
   document.getElementById('oiSpotPrice').value = livePrice
     ? livePrice.toFixed(digits)
     : (existing?.spot ?? '');
@@ -138,7 +147,7 @@ export function calcOISpot() {
   if (est == null) { oiToast('Could not estimate spot from OI data', true); return; }
 
   const pair = S.currentPair?.symbol ?? 'EUR/USD';
-  const digits = pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : 5;
+  const digits = pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
   document.getElementById('oiSpotPrice').value = est.toFixed(digits);
   oiToast(`Spot estimated from OI balance: ${est.toFixed(digits)}`);
 }
@@ -158,7 +167,7 @@ export function autoEstimateBasis() {
     if (!futEl || futEl.dataset.manual === '1') return; // don't overwrite user's entry
     const pair = S.currentPair?.symbol ?? 'EUR/USD';
     const inverted = futuresIsInverted(pair);
-    const digits = inverted ? 6 : pair.includes('XAU') ? 2 : 5;
+    const digits = inverted ? 6 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
     futEl.value = est.toFixed(digits);
     futEl.dataset.estimated = '1';
     futEl.dataset.liveSymbol = '';
@@ -191,7 +200,7 @@ export function updateOIBasis() {
   let futuresSpot = futuresRaw;
   if (futuresIsInverted(pair)) futuresSpot = 1 / futuresRaw;
   const basis = futuresSpot - spotRaw;
-  const digits = isJpy ? 2 : pair.includes('XAU') ? 2 : 5;
+  const digits = isJpy ? 2 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
   const basisSign = basis >= 0 ? '+' : '';
   const src = futEl?.dataset.liveSymbol ? ` (CME ${futEl.dataset.liveSymbol})` : futEl?.dataset.estimated === '1' ? ' (OI estimate)' : '';
   el.textContent = `Basis: ${basisSign}${basis.toFixed(digits)}${src} · strikes shifted by ${(basis >= 0 ? '−' : '+') + Math.abs(basis).toFixed(digits)} → spot-equivalent levels`;
@@ -219,7 +228,7 @@ export function oiParseTable(raw) {
     if (nums.length < 3) continue;
     const strike = nums[0], callOI = nums[1], putOI = nums[2];
     if (strike < 0.001 || strike > 1000000) continue;
-    if (Math.abs(callOI) > 500000 || Math.abs(putOI) > 500000) continue;
+    if (Math.abs(callOI) > 5000000 || Math.abs(putOI) > 5000000) continue;
     strikes.push(strike);
     calls.push(Math.abs(callOI));
     puts.push(Math.abs(putOI));
@@ -240,7 +249,7 @@ export function oiParseChangeTable(raw, expectedLen) {
     if (!row || /[A-Za-z]/.test(row) && !/^\d/.test(row)) continue;
     row = row.replace(/\t/g,' ').replace(/ {2,}/g,' ').trim();
     const nums = row.split(' ').map(c => parseFloat(c.replace(/,/g,''))).filter(n => !isNaN(n));
-    if (nums.length >= 3 && Math.abs(nums[1]) < 50000 && Math.abs(nums[2]) < 50000) {
+    if (nums.length >= 3 && Math.abs(nums[1]) < 5000000 && Math.abs(nums[2]) < 5000000) {
       cc.push(nums[1]); pc.push(nums[2]);
     }
   }
@@ -269,10 +278,15 @@ export function oiErf(x) {
 }
 
 function isNQ(pair) { return pair === 'NQ' || pair === 'NAS100_USD'; }
-function isES(pair) { return pair === 'ES'; }
+function isES(pair) { return pair === 'ES' || pair === 'SPX500_USD'; }
+function isYM(pair) { return pair === 'YM' || pair === 'US30_USD'; }
+function isRTY(pair) { return pair === 'RTY' || pair === 'US2000_USD'; }
+function isFDAX(pair) { return pair === 'FDAX' || pair === 'DE30_USD'; }
+function isFTSE(pair) { return pair === 'FTSE' || pair === 'UK100_GBP'; }
+function isIndexFutures(pair) { return isNQ(pair) || isES(pair) || isYM(pair) || isRTY(pair) || isFDAX(pair) || isFTSE(pair); }
 
 export function oiGreeks(strike, spot, pair) {
-  const sigma = (isNQ(pair) || isES(pair)) ? 0.20 : pair.includes('XAU') ? 0.18 : 0.12;
+  const sigma = isIndexFutures(pair) ? 0.20 : pair.includes('XAU') ? 0.18 : 0.12;
   const T = 14/365;
   const d1 = (Math.log(spot/strike) + 0.5*sigma*sigma*T) / (sigma*Math.sqrt(T));
   const nd1 = Math.exp(-0.5*d1*d1) / Math.sqrt(2*Math.PI);
@@ -283,7 +297,8 @@ export function oiGreeks(strike, spot, pair) {
 
 export function oiCalcExposures(strikes, calls, puts, spot, pair) {
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };
-  const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : pair.includes('XAU') ? 100 : 125000;
+  const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
+           : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : pair.includes('XAU') ? 100 : 125000;
   let gex=0, dex=0;
   for (let i=0; i<strikes.length; i++) {
     const {gamma, callDelta, putDelta} = oiGreeks(strikes[i], spot, pair);
@@ -378,7 +393,7 @@ export function computeGravityRegime(oi, atr, pipSize) {
 
 export function oiFmtStrike(val, pair) {
   if (pair.includes('JPY')) return val.toFixed(3);
-  if (pair.includes('XAU')||pair==='NQ'||pair==='ES') return val.toFixed(2);
+  if (pair.includes('XAU') || isIndexFutures(pair) || pair === 'NQ' || pair === 'ES') return val.toFixed(2);
   return val.toFixed(5);
 }
 
@@ -456,7 +471,8 @@ export function processOIData() {
   const maxPain = oiCalcMaxPain(parsed.strikes, parsed.calls, parsed.puts);
   const exposures = oiCalcExposures(parsed.strikes, parsed.calls, parsed.puts, spot, pair);
 
-  const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : pair.includes('XAU') ? 100 : 125000;
+  const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
+           : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : pair.includes('XAU') ? 100 : 125000;
 
   const withOI = parsed.strikes.map((s,i) => {
     const {gamma, callDelta, putDelta} = oiGreeks(s, spot, pair);
@@ -515,8 +531,9 @@ export function processOIData() {
 
   closeOIModal();
   window.renderAll();
-  const basisNote = basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : 5)}` : '';
-  oiToast(`${pair} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${basisNote}`);
+  const basisNote = basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : isIndexFutures(pair) ? 2 : 5)}` : '';
+  const pairLabel = OI_FRIENDLY[pair] || pair;
+  oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${basisNote}`);
 
   // Push updated entry data to Railway bot immediately so OI levels are reflected
   window._forceKVSync?.().catch(() => {});

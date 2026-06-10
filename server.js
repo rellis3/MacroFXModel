@@ -1990,6 +1990,10 @@ app.get('/api/futures-quote', async (req, res) => {
     'USD/CAD':    '6C=F',
     'USD/CHF':    '6S=F',
     'NAS100_USD': 'NQ=F',
+    'SPX500_USD': 'ES=F',
+    'US30_USD':   'YM=F',
+    'US2000_USD': 'RTY=F',
+    'DE30_USD':   'FDAX=F',
   };
   const pair   = req.query.pair;
   const symbol = FUTURES_MAP[pair];
