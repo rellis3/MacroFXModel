@@ -391,15 +391,27 @@ function _bindControls() {
 // ── Main data load ────────────────────────────────────────────────────
 async function _load() {
   try {
-    const [zonesRes, statusRes] = await Promise.all([
+    const [zonesRes, statusRes, quoteRes] = await Promise.all([
       fetch('/api/kv/get?key=gold_bot_zones'),
       fetch('/api/kv/get?key=gold_bot_status'),
+      fetch('/api/quote?symbol=XAU/USD'),
     ]);
     const zonesJ  = await zonesRes.json();
     const statusJ = await statusRes.json();
 
     if (!zonesJ.miss && zonesJ.data) _zonesData = zonesJ.data;
     if (!statusJ.miss && statusJ.data) _statusData = statusJ.data;
+
+    // Seed _currentPrice before chart is built so session-level filter works on first render
+    try {
+      const qj = await quoteRes.json();
+      const px = qj.price ?? qj.close ?? qj.ask;
+      if (px) {
+        _currentPrice = parseFloat(px);
+        document.getElementById('gzLivePrice').textContent = `XAU/USD ${_currentPrice.toFixed(2)}`;
+        document.getElementById('gsPrice').textContent = _currentPrice.toFixed(2);
+      }
+    } catch {}
 
     _updateStatusBar();
     _updateStats();
@@ -625,12 +637,14 @@ function _drawZone(z, prominent, markers) {
 
 // ── Session levels ─────────────────────────────────────────────────────
 function _drawSessionLevels(pl, focusZone) {
-  // When a zone is focused, only draw levels within ±80 pts of its GP window
-  const zoneMid  = focusZone ? (focusZone.gp_low + focusZone.gp_high) / 2 : null;
-  const inRange  = p => !zoneMid || (p != null && Math.abs(p - zoneMid) < 80);
+  // Anchor the filter to: focused zone GP midpoint, or current price, or no filter
+  const anchor = focusZone
+    ? (focusZone.gp_low + focusZone.gp_high) / 2
+    : (_currentPrice || null);
+  const inRange = p => !anchor || (p != null && p > 0 && Math.abs(p - anchor) < 90);
 
   const add = (price, color, title, width=1, style=2) => {
-    if (price == null || price <= 0 || !inRange(price)) return;
+    if (!inRange(price)) return;
     try {
       _priceLines.push(_cs.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title }));
     } catch {}
@@ -641,11 +655,10 @@ function _drawSessionLevels(pl, focusZone) {
   add(pl.poc,        '#ab47bc', 'POC',        2, 0);
   add(pl.vah,        '#26a69a', 'VAH',        1, 2);
   add(pl.val,        '#ef5350', 'VAL',        1, 2);
-  add(pl.pp,         '#9ba3b2', 'PP',         1, 2);
-  add(pl.r1,         '#9ba3b2', 'R1',         1, 4);
-  add(pl.r2,         '#9ba3b2', 'R2',         1, 4);
-  add(pl.s1,         '#9ba3b2', 'S1',         1, 4);
-  add(pl.s2,         '#9ba3b2', 'S2',         1, 4);
+  // R1/S1 only — R2/S2 are typically 100+ pts away and expand the Y-axis too far
+  add(pl.pp,         '#9ba3b2', 'PP',  1, 2);
+  add(pl.r1,         '#9ba3b2', 'R1',  1, 4);
+  add(pl.s1,         '#9ba3b2', 'S1',  1, 4);
 
   if (pl.h4_pivot) {
     add(pl.h4_pivot.pp, 'rgba(255,167,38,.5)', 'H4 PP', 1, 4);
@@ -656,12 +669,13 @@ function _drawSessionLevels(pl, focusZone) {
 
 // ── VWAP anchors ────────────────────────────────────────────────────────
 function _drawVwapAnchors(anchors, focusZone) {
-  const zoneMid = focusZone ? (focusZone.gp_low + focusZone.gp_high) / 2 : null;
+  const anchor  = focusZone
+    ? (focusZone.gp_low + focusZone.gp_high) / 2
+    : (_currentPrice || null);
   const palette = ['#4f7df0','#26c6da','#ab47bc','#ffa726'];
   anchors.slice(0, 8).forEach((a, i) => {
     if (!a.price || a.price <= 0) return;
-    // Skip anchors more than 80pts from the focused zone's GP midpoint
-    if (zoneMid && Math.abs(a.price - zoneMid) > 80) return;
+    if (anchor && Math.abs(a.price - anchor) > 90) return;
     try {
       _priceLines.push(_cs.createPriceLine({
         price: a.price, color: palette[i % palette.length], lineWidth: 1, lineStyle: 3,
