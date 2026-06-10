@@ -96,8 +96,39 @@ async function loadJournal(){
     }
   }
 
-  // ── Step 4: persist merged result back to localStorage ───────────────────
+  // ── Step 4: sanitize then persist ────────────────────────────────────────
+  // Clean up any corruption caused by main.js writing the { data, ts } wrapper
+  // back to KV as its own data payload (rescues nested dates, removes garbage keys).
+  const wasDirty = _sanitizeJournalData(journalData);
   _writeLocal(journalData, Math.max(localTs, kvTs));
+  if (wasDirty) kvSet(JOURNAL_KEY, journalData); // push clean copy so KV is repaired too
+}
+
+// ── Data sanitizer ────────────────────────────────────────────────────────────
+// Fixes corruption caused by main.js reading the { data, ts } wrapper format as
+// raw journal data and writing the entire wrapper back to KV. Returns true when
+// the object was modified so the caller can decide to re-persist.
+const _DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function _sanitizeJournalData(data) {
+  let dirty = false;
+  // Rescue dates nested under a spurious 'data' key (the old { data, ts } wrapper)
+  if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+    for (const [date, dayObj] of Object.entries(data.data)) {
+      if (!_DATE_RE.test(date) || typeof dayObj !== 'object' || !dayObj) continue;
+      if (!data[date]) {
+        data[date] = dayObj; dirty = true;
+      } else if (typeof data[date] === 'object') {
+        for (const [pair, pairObj] of Object.entries(dayObj)) {
+          if (!data[date][pair]) { data[date][pair] = pairObj; dirty = true; }
+        }
+      }
+    }
+  }
+  // Remove non-date top-level keys (e.g., 'data', 'ts' leftover from the wrapper)
+  for (const key of Object.keys(data)) {
+    if (!_DATE_RE.test(key)) { delete data[key]; dirty = true; }
+  }
+  return dirty;
 }
 
 function _writeLocal(data, ts){
@@ -481,8 +512,14 @@ async function init(){
     const raw=localStorage.getItem(JOURNAL_KEY);
     if(raw){
       const parsed=JSON.parse(raw);
-      // Support new { data, ts } wrapper and legacy plain format
-      journalData=(parsed?.ts!=null&&parsed?.data)?parsed.data:parsed||{};
+      if(parsed?.ts!=null && typeof parsed.ts==='number' && parsed?.data && typeof parsed.data==='object'){
+        // { data, ts } wrapper — extract journal object and rescue top-level date entries
+        journalData = { ...parsed.data };
+        for(const [k,v] of Object.entries(parsed)){ if(_DATE_RE.test(k)) journalData[k]=v; }
+      } else {
+        journalData=parsed||{};
+      }
+      _sanitizeJournalData(journalData);
     }
   }catch(e){}
   // Load cached replay results so level cards show colours on first render
@@ -1359,8 +1396,11 @@ function exportPairDate(pair,date){
 }
 
 function populateExportSelects(){
-  const pairSet=new Set(),dateSet=new Set();
-  Object.entries(journalData).forEach(([date,dayObj])=>{Object.keys(dayObj).forEach(pair=>{pairSet.add(pair);dateSet.add(date);});});
+  const pairSet=new Set();
+  Object.entries(journalData).forEach(([date,dayObj])=>{
+    if(!_DATE_RE.test(date)||typeof dayObj!=='object'||!dayObj)return;
+    Object.keys(dayObj).forEach(pair=>{if(PAIRS_ALL.includes(pair))pairSet.add(pair);});
+  });
   const pairs=[...pairSet].sort();
   const pairSel=document.getElementById('exportPairSelect');
   pairSel.innerHTML=`<option value="__all__">All Pairs</option>`+pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
@@ -1377,19 +1417,19 @@ function _refreshExportDates(pair){
   let dates;
   if(pair==='__all__'){
     const dateSet=new Set();
-    Object.keys(journalData).forEach(d=>{if(journalData[d])dateSet.add(d);});
+    Object.keys(journalData).forEach(d=>{if(_DATE_RE.test(d)&&journalData[d])dateSet.add(d);});
     dates=[...dateSet].sort().reverse();
   }else{
     dates=Object.keys(journalData)
-      .filter(d=>journalData[d]&&journalData[d][pair]&&(journalData[d][pair].levels||[]).length>0)
+      .filter(d=>_DATE_RE.test(d)&&journalData[d]&&journalData[d][pair]&&(journalData[d][pair].levels||[]).length>0)
       .sort().reverse();
   }
   dateSel.innerHTML=dates.length
     ? dates.map(d=>`<option value="${d}">${d}</option>`).join('')
     : `<option value="">-- No data for this pair --</option>`;
-  // Restore previous selection if still valid, otherwise fall back to most recent
+  // Preserve in-session selection; otherwise default to most recent date
   if(current&&dates.includes(current))dateSel.value=current;
-  else if(selectedDate&&dates.includes(selectedDate))dateSel.value=selectedDate;
+  else dateSel.value=dates[0]||'';
 }
 
 function onExportPairChange(){_refreshExportDates(document.getElementById('exportPairSelect').value);generateCSV();}
