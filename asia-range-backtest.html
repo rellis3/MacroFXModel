@@ -392,8 +392,13 @@
     <button onclick="closeChartModal()" style="background:none;border:1px solid #2a2f45;color:#8fa0b8;cursor:pointer;padding:4px 10px;border-radius:5px;font-size:12px;font-family:'DM Mono',monospace">✕ Close</button>
     <span id="chartModalTitle"  style="color:#e8eaf2;font-size:13px;font-weight:600;font-family:'DM Mono',monospace"></span>
     <span id="chartModalBadge"  style="color:#8fa0b8;font-size:11px;font-family:'DM Mono',monospace"></span>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:12px">
+      <button id="cmPrev" onclick="navDayTrade(-1)" style="background:none;border:1px solid #2a2f45;color:#8fa0b8;cursor:pointer;padding:3px 9px;border-radius:5px;font-size:12px;font-family:'DM Mono',monospace">‹</button>
+      <span id="cmNav" style="color:#5a6380;font-size:11px;font-family:'DM Mono',monospace"></span>
+      <button id="cmNext" onclick="navDayTrade(+1)" style="background:none;border:1px solid #2a2f45;color:#8fa0b8;cursor:pointer;padding:3px 9px;border-radius:5px;font-size:12px;font-family:'DM Mono',monospace">›</button>
+    </div>
     <div style="flex:1"></div>
-    <span style="color:#5a6380;font-size:10px;font-family:'DM Mono',monospace">Green = tight confluence · Amber = regular confluence · Blue = Asia range · Purple = Monday range</span>
+    <span style="color:#5a6380;font-size:10px;font-family:'DM Mono',monospace">Green = tight · Amber = conf · Blue = Asia range · Purple = Mon range · ◆ = all day trades</span>
   </div>
   <div id="chartContainer" style="flex:1;min-height:0"></div>
 </div>
@@ -919,6 +924,9 @@ async function runBacktest() {
 
 // ── M1 Chart Modal ─────────────────────────────────────────────────────────────
 let _chartInstance = null;
+let _dayTrades     = [];   // all filled trades for the open day+pair
+let _dayTradeIdx   = 0;    // which trade is "focused" for the badge
+let _chartSeries   = null; // candlestick series ref for marker updates
 
 function _toEpochSec(timeStr) {
   const s = String(timeStr).substring(0, 19).replace(' ', 'T');
@@ -931,17 +939,63 @@ function _dateOffset(dateStr, days) {
   return d.toISOString().substring(0, 10);
 }
 
+function _updateModalBadge() {
+  const t = _dayTrades[_dayTradeIdx];
+  if (!t) return;
+  document.getElementById('chartModalBadge').textContent =
+    `${t.side} · Fib ${t.fib_level?.toFixed(2) ?? '—'} · ${(t.outcome || '').toUpperCase()} · ${t.pnl_pct != null ? (t.pnl_pct >= 0 ? '+' : '') + t.pnl_pct.toFixed(4) + '%' : '—'}`;
+  document.getElementById('cmNav').textContent =
+    `Trade ${_dayTradeIdx + 1} of ${_dayTrades.length}`;
+  document.getElementById('cmPrev').disabled = _dayTradeIdx === 0;
+  document.getElementById('cmNext').disabled = _dayTradeIdx >= _dayTrades.length - 1;
+  // Refresh markers: focused trade gets solid arrow, others get hollow diamond
+  if (_chartSeries) _chartSeries.setMarkers(_buildMarkers());
+}
+
+function _buildMarkers() {
+  return _dayTrades
+    .map((t, i) => {
+      if (!t.fill_time) return null;
+      const isSell    = t.side === 'SELL';
+      const isFocused = i === _dayTradeIdx;
+      return {
+        time:     _toEpochSec(t.fill_time),
+        position: isSell ? 'aboveBar' : 'belowBar',
+        color:    isFocused
+          ? (isSell ? '#ef5350' : '#26a69a')
+          : (isSell ? '#7f1d1d' : '#065f46'),
+        shape:    isFocused
+          ? (isSell ? 'arrowDown' : 'arrowUp')
+          : 'circle',
+        text:     isFocused ? t.side : `${t.fib_level?.toFixed(2) ?? ''}`,
+        size:     isFocused ? 1 : 0.6,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.time - b.time);
+}
+
+function navDayTrade(delta) {
+  _dayTradeIdx = Math.max(0, Math.min(_dayTradeIdx + delta, _dayTrades.length - 1));
+  _updateModalBadge();
+}
+
 function openChartModal(tradeIdx) {
   const trade = _filtTrades[tradeIdx];
   if (!trade) return;
 
+  // Collect all filled trades for this same date + instrument from the full trade list
+  _dayTrades   = _allTrades.filter(t => t.date === trade.date && t.instrument === trade.instrument && t.filled);
+  if (!_dayTrades.length) _dayTrades = [trade];
+  _dayTradeIdx = _dayTrades.findIndex(t => t === trade);
+  if (_dayTradeIdx < 0) _dayTradeIdx = 0;
+
   const modal = document.getElementById('chartModal');
   modal.style.display = 'flex';
   document.getElementById('chartModalTitle').textContent = `${trade.instrument} — ${trade.date}`;
-  document.getElementById('chartModalBadge').textContent =
-    `${trade.side} · Fib ${trade.fib_level?.toFixed(2) ?? '—'} · ${(trade.outcome || '').toUpperCase()} · ${trade.pnl_pct != null ? (trade.pnl_pct >= 0 ? '+' : '') + trade.pnl_pct.toFixed(4) + '%' : '—'}`;
+  _updateModalBadge();
 
-  if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; }
+  if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; _chartSeries = null; }
   const container = document.getElementById('chartContainer');
   container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8fa0b8;font-size:13px">Loading M1 data…</div>';
 
@@ -976,35 +1030,37 @@ function openChartModal(tradeIdx) {
         borderUpColor: '#26a69a', borderDownColor: '#ef5350',
         wickUpColor: '#26a69a', wickDownColor: '#ef5350',
       });
+      _chartSeries = cs;
       cs.setData(d.candles.map(b => ({ time: _toEpochSec(b.time), open: b.open, high: b.high, low: b.low, close: b.close })));
 
       const LS      = LightweightCharts.LineStyle;
       const addLine = (price, color, title, style, lw) =>
         cs.createPriceLine({ price, color, lineWidth: lw || 1, lineStyle: style, axisLabelVisible: true, title });
 
-      // Asia range
-      if (trade.asia_high != null) addLine(trade.asia_high, '#3b82f6', 'Asia H', LS.Solid, 2);
-      if (trade.asia_low  != null) addLine(trade.asia_low,  '#3b82f6', 'Asia L', LS.Solid, 2);
-      if (trade.asia_mid  != null) addLine(trade.asia_mid,  '#60a5fa', '0.5',    LS.Dashed, 1);
+      // Asia range (from first day trade — all share the same range)
+      const ref = _dayTrades[0] ?? trade;
+      if (ref.asia_high != null) addLine(ref.asia_high, '#3b82f6', 'Asia H', LS.Solid, 2);
+      if (ref.asia_low  != null) addLine(ref.asia_low,  '#3b82f6', 'Asia L', LS.Solid, 2);
+      if (ref.asia_mid  != null) addLine(ref.asia_mid,  '#60a5fa', '0.5',    LS.Dashed, 1);
 
       // Monday range
-      if (trade.monday_high != null) addLine(trade.monday_high, '#8b5cf6', 'Mon H', LS.Dotted, 1);
-      if (trade.monday_low  != null) addLine(trade.monday_low,  '#8b5cf6', 'Mon L', LS.Dotted, 1);
+      if (ref.monday_high != null) addLine(ref.monday_high, '#8b5cf6', 'Mon H', LS.Dotted, 1);
+      if (ref.monday_low  != null) addLine(ref.monday_low,  '#8b5cf6', 'Mon L', LS.Dotted, 1);
 
-      // All fib levels (from fib_data or reconstruct)
+      // All fib levels
       const KEY_LEVELS = new Set([0, 0.25, 0.5, 0.75, 1.0]);
-      if (trade.fib_data?.length) {
-        for (const fd of trade.fib_data) {
+      if (ref.fib_data?.length) {
+        for (const fd of ref.fib_data) {
           let color, lw, style;
-          if (fd.isTight)        { color = '#26a69a'; lw = 2;   style = LS.Solid;  }
-          else if (fd.hasConfluence) { color = '#f59e0b'; lw = 1.5; style = LS.Dashed; }
+          if (fd.isTight)             { color = '#26a69a'; lw = 2;   style = LS.Solid;  }
+          else if (fd.hasConfluence)  { color = '#f59e0b'; lw = 1.5; style = LS.Dashed; }
           else if (KEY_LEVELS.has(fd.level)) { color = '#6b7280'; lw = 1; style = LS.Dotted; }
-          else                   { color = '#374151'; lw = 0.5; style = LS.Dotted; }
+          else                        { color = '#374151'; lw = 0.5; style = LS.Dotted; }
           addLine(fd.price, color, fd.level.toFixed(2), style, lw);
         }
-      } else if (trade.asia_high != null && trade.asia_low != null) {
-        const aR = trade.asia_range ?? (trade.asia_high - trade.asia_low);
-        const aL = trade.asia_low;
+      } else if (ref.asia_high != null && ref.asia_low != null) {
+        const aR = ref.asia_range ?? (ref.asia_high - ref.asia_low);
+        const aL = ref.asia_low;
         for (const lvl of [-9.5,-9,-8.5,-8,-7.5,-7,-6.5,-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-0.5,-0.25,0,0.25,0.5,0.75,1,1.25,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10,10.5]) {
           const price = aL + aR * lvl;
           const isKey = KEY_LEVELS.has(lvl);
@@ -1012,16 +1068,23 @@ function openChartModal(tradeIdx) {
         }
       }
 
-      // Trade levels
-      const isSell = trade.side === 'SELL';
-      if (trade.entry_price != null) addLine(trade.entry_price, isSell ? '#ef5350' : '#26a69a', 'Entry', LS.Solid, 1.5);
-      if (trade.tp_price    != null) addLine(trade.tp_price,    '#26a69a', 'TP',    LS.Dotted, 1);
-      if (trade.sl_price    != null) addLine(trade.sl_price,    '#ef5350', 'SL',    LS.Dotted, 1);
-
-      // Fill marker
-      if (trade.fill_time) {
-        cs.setMarkers([{ time: _toEpochSec(trade.fill_time), position: isSell ? 'aboveBar' : 'belowBar', color: isSell ? '#ef5350' : '#26a69a', shape: isSell ? 'arrowDown' : 'arrowUp', text: trade.side }]);
+      // Entry/TP/SL lines for ALL day trades (de-duped by price)
+      const shownPrices = new Set();
+      for (const t of _dayTrades) {
+        const isSell = t.side === 'SELL';
+        const addUniq = (price, color, label, style) => {
+          const key = price?.toFixed(6) + label;
+          if (price == null || shownPrices.has(key)) return;
+          shownPrices.add(key);
+          addLine(price, color, label, style, 1);
+        };
+        addUniq(t.entry_price, isSell ? '#ef5350' : '#26a69a', `E${t.fib_level?.toFixed(2) ?? ''}`, LS.Solid);
+        addUniq(t.tp_price,    '#26a69a', `TP${t.fib_level?.toFixed(2) ?? ''}`, LS.Dotted);
+        addUniq(t.sl_price,    '#ef5350', `SL${t.fib_level?.toFixed(2) ?? ''}`, LS.Dotted);
       }
+
+      // All fill markers
+      cs.setMarkers(_buildMarkers());
 
       // Zoom: trade day −3h to +27h
       const dayStart = _toEpochSec(date + 'T00:00:00');
@@ -1032,10 +1095,14 @@ function openChartModal(tradeIdx) {
 
 function closeChartModal() {
   document.getElementById('chartModal').style.display = 'none';
-  if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; }
+  if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; _chartSeries = null; }
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChartModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape')     closeChartModal();
+  if (e.key === 'ArrowLeft')  navDayTrade(-1);
+  if (e.key === 'ArrowRight') navDayTrade(+1);
+});
 
 // ── Boot ───────────────────────────────────────────────────────────────────────
 loadData();
