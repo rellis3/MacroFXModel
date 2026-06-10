@@ -22,6 +22,8 @@ import csv
 import json
 import argparse
 import logging
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 from pathlib import Path
@@ -574,6 +576,119 @@ def parse_dashboard_csv(csv_path: Path) -> list[dict]:
                 log.warning(f"CSV row {i + 2}: skipped -- {e}")
 
     log.info(f"Dashboard CSV: {len(records)} V2 paper trades from {csv_path.name}")
+    return records
+
+
+RAILWAY_URL   = 'https://macrofxmodel-production.up.railway.app'
+BOT_KEY_MAP   = {
+    'regime_bot_v2_status': 'RegimeV2',
+    'regime_bot_status':    'RegimeV1',
+    'bot_status':           'MacroFX',
+    'gold_bot_status':      'Gold',
+}
+
+def fetch_railway_trades(from_date: datetime, to_date: datetime,
+                         bot_filter: list[str] | None = None) -> list[dict]:
+    """
+    Pull closed trade history from the Railway /api/trade-history endpoint.
+    Returns records in the same dict format as pull_all_mt5_history().
+
+    The API stores trades that bots push via today_closed_trades in their
+    status payloads; V2 paper trades are in regime_bot_v2_status.
+    Timestamps from the API are Unix UTC -- bot logs are 2h behind UTC,
+    so we subtract 2h when building the join key (same as parse_dashboard_csv).
+    """
+    from_s = from_date.strftime('%Y-%m-%d')
+    to_s   = to_date.strftime('%Y-%m-%d')
+    url    = f'{RAILWAY_URL}/api/trade-history?from={from_s}&to={to_s}'
+    LOG_OFFSET = timedelta(hours=2)
+    null_engine = {f: None for f in ENGINE_FIELDS}
+
+    # API caps at 90 dates inclusive; fetch in 30-day chunks to handle any range.
+    log.info(f"Fetching Railway trade history: {from_s} -> {to_s}")
+    raw_trades: list[dict] = []
+    chunk_days  = timedelta(days=29)   # 30 dates per request (safe margin)
+    chunk_start = from_date
+    while chunk_start <= to_date:
+        chunk_end = min(chunk_start + chunk_days, to_date)
+        url_chunk = (f'{RAILWAY_URL}/api/trade-history'
+                     f'?from={chunk_start.strftime("%Y-%m-%d")}'
+                     f'&to={chunk_end.strftime("%Y-%m-%d")}')
+        try:
+            with urllib.request.urlopen(url_chunk, timeout=30) as resp:
+                chunk_data = json.loads(resp.read())
+                raw_trades.extend(chunk_data.get('trades', []))
+        except urllib.error.URLError as e:
+            log.warning(f"Railway API unreachable ({url_chunk}): {e}  (skipping chunk)")
+        chunk_start = chunk_end + timedelta(days=1)
+    log.info(f"  Railway API: {len(raw_trades)} raw records across all bots")
+
+    records = []
+    for i, t in enumerate(raw_trades):
+        bk      = t.get('bot_key', '')
+        bot     = BOT_KEY_MAP.get(bk)
+        if not bot:
+            continue
+        if bot_filter and bot not in bot_filter:
+            continue
+
+        try:
+            t_open  = t.get('time_open')
+            t_close = t.get('time_close')
+
+            if t_open:
+                time_open  = (datetime.fromtimestamp(t_open,  tz=timezone.utc) - LOG_OFFSET)
+            else:
+                time_open  = None
+
+            if t_close:
+                time_close = (datetime.fromtimestamp(t_close, tz=timezone.utc) - LOG_OFFSET)
+            else:
+                time_close = None
+
+            net = round(float(t.get('profit', 0) or 0) +
+                        float(t.get('swap',   0) or 0) +
+                        float(t.get('commission', 0) or 0), 2)
+            if   net >  0.5: result = 'WIN'
+            elif net < -0.5: result = 'LOSS'
+            else:             result = 'BREAKEVEN'
+
+            # V2 paper trades have lots recorded at point of sizing
+            magic = {b['magic'] for k, b in BOTS.items() if k == bot}
+            magic = next(iter(magic), 0)
+
+            records.append({
+                'position_id': t.get('position_id', f'api_{i}'),
+                'bot':         bot,
+                'magic':       magic,
+                'account':     BOTS.get(bot, {}).get('account', 0),
+                'ticket':      None,
+                'symbol':      _sym_norm(t.get('symbol', '')),
+                'direction':   str(t.get('direction', '')).upper(),
+                'lots':        float(t.get('lots') or 0),
+                'open_price':  t.get('open_price'),
+                'close_price': t.get('close_price'),
+                'pnl':         float(t.get('profit', 0) or 0),
+                'swap':        float(t.get('swap',   0) or 0),
+                'commission':  float(t.get('commission', 0) or 0),
+                'net':         net,
+                'result':      result,
+                'time_open':   time_open.isoformat()  if time_open  else None,
+                'time_close':  time_close.isoformat() if time_close else None,
+                'session':     _session(time_close) if time_close else 'UNKNOWN',
+                'day_of_week': time_close.strftime('%A') if time_close else 'Unknown',
+                'comment':     str(t.get('comment', '') or ''),
+                **null_engine,
+            })
+        except (TypeError, ValueError) as e:
+            log.warning(f"Railway trade {i}: skipped -- {e}")
+
+    by_bot = defaultdict(int)
+    for r in records:
+        by_bot[r['bot']] += 1
+    for b, n in sorted(by_bot.items()):
+        log.info(f"  {b}: {n} trades from Railway API")
+
     return records
 
 
@@ -1184,12 +1299,18 @@ def main() -> None:
     # 1. MT5 history
     records = pull_all_mt5_history(from_date, to_date)
 
-    # Load V2 paper trades from dashboard CSV (paper mode trades don't reach MT5)
-    v2_csv = Path(__file__).parent / 'input' / 'v2_paper_trades.csv'
-    if v2_csv.exists():
-        paper = parse_dashboard_csv(v2_csv)
-        records.extend(paper)
-        log.info(f"Added {len(paper)} V2 paper trades from CSV (total records: {len(records)})")
+    # 2. Railway API -- pulls ALL bots' closed trades (including V2 paper mode).
+    #    We skip bots already covered by MT5 to avoid double-counting; V2 never
+    #    has MT5 deals so it's always supplemented here.
+    mt5_bots  = set(r['bot'] for r in records)
+    api_filter = None   # pull everything; we'll deduplicate below
+    api_records = fetch_railway_trades(from_date, to_date)
+    # Only keep bot/date combos not already present in MT5 records
+    for r in api_records:
+        # V2 is always paper -- add it. For other bots only add if MT5 missed them.
+        if r['bot'] == 'RegimeV2' or r['bot'] not in mt5_bots:
+            records.append(r)
+    log.info(f"Total records after Railway merge: {len(records)}")
 
     if not records:
         log.error("No records -- check MT5 connection and credentials.")

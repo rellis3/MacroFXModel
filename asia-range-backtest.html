@@ -161,21 +161,8 @@
   <a href="index.html"       style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
 </div>
 
-</div>
-</div>
-
-<div id="arApp" style="padding-top:0">
-
-<!-- ── Status bar ──────────────────────────────────────────────────────────── -->
-<div class="card" style="padding:9px 14px;margin-top:10px">
-  <div class="status-bar-inner">
-    <span class="sdot" id="arDot"></span>
-    <span class="stxt" id="arStatusTxt">Loading last backtest results…</span>
-  </div>
-</div>
-
-<!-- ── Run bar ──────────────────────────────────────────────────────────────── -->
-<div class="bt-run-bar" id="arRunBar">
+<!-- ── Run bar is inside the sticky header so it stays visible when CF panel expands ── -->
+<div class="bt-run-bar" id="arRunBar" style="margin-top:8px">
   <span class="bt-run-lbl">Run Backtest:</span>
   <input type="date" id="arFrom" placeholder="From" style="width:130px">
   <input type="date" id="arTo"   placeholder="To"   style="width:130px">
@@ -197,6 +184,7 @@
     <option value="asia">Asia fibs</option>
     <option value="monday">Monday fibs</option>
     <option value="both">Asia + Monday fibs</option>
+    <option value="asia_tight_monday">Asia tight + Monday all</option>
   </select>
 
   <select id="arLevelFilter" class="bt-sel" title="Which fib levels to trade">
@@ -245,6 +233,19 @@
 
   <button class="bt-run-btn" id="arRunBtn" onclick="runBacktest()">▶ Run</button>
   <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace" id="arRunStatus"></span>
+</div>
+
+</div><!-- close sticky #arApp -->
+</div><!-- close sticky-header -->
+
+<div id="arApp" style="padding-top:0">
+
+<!-- ── Status bar ──────────────────────────────────────────────────────────── -->
+<div class="card" style="padding:9px 14px;margin-top:10px">
+  <div class="status-bar-inner">
+    <span class="sdot" id="arDot"></span>
+    <span class="stxt" id="arStatusTxt">Loading last backtest results…</span>
+  </div>
 </div>
 
 <!-- ── Confluence / ATR config panel ────────────────────────────────────────── -->
@@ -330,7 +331,49 @@
         <input type="checkbox" id="cfMod_monday_range" checked>
         <label for="cfMod_monday_range">
           <span class="cf-module-name">Monday Range H/L <span style="color:var(--amber);font-size:9px">w×0.75</span></span>
-          <span class="cf-module-desc">Within 10 pips of this week's Monday high or low</span>
+          <span class="cf-module-desc">Within zone radius of this week's Monday body high or low</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_pdh_pdl" checked>
+        <label for="cfMod_pdh_pdl">
+          <span class="cf-module-name">Prev Day High / Low <span style="color:var(--amber);font-size:9px">w×2.0</span></span>
+          <span class="cf-module-desc">Most-watched institutional level — yesterday's high or low</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_pwh_pwl" checked>
+        <label for="cfMod_pwh_pwl">
+          <span class="cf-module-name">Prev Week High / Low <span style="color:var(--amber);font-size:9px">w×1.5</span></span>
+          <span class="cf-module-desc">Last completed week's high or low</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_round_number" checked>
+        <label for="cfMod_round_number">
+          <span class="cf-module-name">Round Number <span style="color:var(--amber);font-size:9px">w×1.0</span></span>
+          <span class="cf-module-desc">Near a big figure (100 pip) or half-figure (10 pip) — psychological order clusters</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_fvg_level">
+        <label for="cfMod_fvg_level">
+          <span class="cf-module-name">Fair Value Gap (FVG) <span style="color:var(--amber);font-size:9px">w×1.5</span></span>
+          <span class="cf-module-desc">Fib inside an unfilled 15m imbalance from the last 5 days</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_session_open_range">
+        <label for="cfMod_session_open_range">
+          <span class="cf-module-name">Asia Open Range H/L <span style="color:var(--amber);font-size:9px">w×1.0</span></span>
+          <span class="cf-module-desc">Today's 00:00–00:30 UTC opening range high or low (complete before London open)</span>
+        </label>
+      </div>
+      <div class="cf-module">
+        <input type="checkbox" id="cfMod_daily_opens" checked>
+        <label for="cfMod_daily_opens">
+          <span class="cf-module-name">Daily Opens (10d) <span style="color:var(--amber);font-size:9px">w×1.0</span></span>
+          <span class="cf-module-desc">Fib within zone radius of any of the last 10 daily open prices</span>
         </label>
       </div>
     </div>
@@ -1011,7 +1054,7 @@ async function runBacktest() {
 
   try {
     // Collect module enable states
-    const MODULE_IDS = ['fib_repeat','prev_reacted','sr_level','vah_val','vol_forecast','ath_52wk','monday_range'];
+    const MODULE_IDS = ['fib_repeat','prev_reacted','sr_level','vah_val','vol_forecast','ath_52wk','monday_range','pdh_pdl','pwh_pwl','round_number','fvg_level','session_open_range','daily_opens'];
     const confluenceModules = {};
     for (const id of MODULE_IDS) {
       const el = document.getElementById('cfMod_' + id);

@@ -295,13 +295,25 @@ function simulateDay(packed, dateStr, opts) {
 
   // Build candidate level list according to levelSource
   let candidates;
+  let _bypassLevelFilter = false; // set true when levelSource handles its own per-source filtering
   if (levelSource === 'monday') {
     candidates = mondayFibs;
   } else if (levelSource === 'both') {
-    // Start with all Asia fibs, then append Monday fibs not already covered
+    // Union: all Asia fibs + Monday fibs not already covered by an Asia fib
     candidates = [...fibs];
     for (const mf of mondayFibs) {
       if (!fibs.some(af => Math.abs(af.price - mf.price) <= threshold)) {
+        candidates.push(mf);
+      }
+    }
+  } else if (levelSource === 'asia_tight_monday') {
+    // Asia fibs filtered to tight only, PLUS Monday key fibs not already covered
+    // levelFilter is bypassed — this mode has its own built-in per-source logic
+    _bypassLevelFilter = true;
+    const asiaT = fibs.filter(f => f.isTight);
+    candidates = [...asiaT];
+    for (const mf of mondayFibs) {
+      if (mf.isKey && !asiaT.some(af => Math.abs(af.price - mf.price) <= threshold)) {
         candidates.push(mf);
       }
     }
@@ -351,13 +363,13 @@ function simulateDay(packed, dateStr, opts) {
   const trades = [];
 
   for (const fib of candidates) {
-    // Level filter
-    if (levelFilter === 'tight'       && !fib.isTight)      continue;
-    if (levelFilter === 'confluence'  && !fib.hasConfluence) continue;
-    if (levelFilter === 'asia_monday' && !fib.crossAligned)  continue;
-    if (levelFilter === 'all') {
-      // All levels: truly open — no additional skip
-    } else if (levelFilter !== 'asia_monday' && !fib.hasConfluence && !fib.isKey) continue;
+    // Level filter (skipped when levelSource manages its own per-source filtering)
+    if (!_bypassLevelFilter) {
+      if (levelFilter === 'tight'       && !fib.isTight)      continue;
+      if (levelFilter === 'confluence'  && !fib.hasConfluence) continue;
+      if (levelFilter === 'asia_monday' && !fib.crossAligned)  continue;
+      if (levelFilter !== 'all' && levelFilter !== 'asia_monday' && !fib.hasConfluence && !fib.isKey) continue;
+    }
 
     const price      = fib.price;
     const isAbove    = price > asia.high + pipSize;
@@ -482,7 +494,7 @@ export async function runAsiaRangeBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR
   const pipSize    = PIP_SIZE[pairKey] ?? 0.0001;
   // Build once-per-pair module caches (e.g. swing levels for sr_level, daily extremes for ath_52wk)
   const pairCaches = (opts.confluenceMods?.length > 0)
-    ? buildAllPairCaches(packed, pipSize)
+    ? buildAllPairCaches(packed, pipSize, opts.confluenceMods)
     : {};
   const config  = { ...opts, pipSize, pairCaches };
 

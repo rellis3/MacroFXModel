@@ -226,11 +226,16 @@ const srLevel = {
   buildDayState(_packed, dayEpoch, pipSize, cache) {
     if (!cache) return null;
     const windowStart = dayEpoch - 20 * 86400;
-    const swings = [
-      ...cache.swingH.filter(s => s.time >= windowStart && s.time < dayEpoch),
-      ...cache.swingL.filter(s => s.time >= windowStart && s.time < dayEpoch),
-    ];
-    return { swings, pipSize };
+    // Binary search instead of .filter() — O(log N + window) not O(N)
+    const slice = (arr) => {
+      let lo = 0, hi = arr.length;
+      while (lo < hi) { const m = (lo + hi) >>> 1; arr[m].time < windowStart ? lo = m + 1 : hi = m; }
+      const start = lo;
+      lo = start; hi = arr.length;
+      while (lo < hi) { const m = (lo + hi) >>> 1; arr[m].time < dayEpoch ? lo = m + 1 : hi = m; }
+      return arr.slice(start, lo);
+    };
+    return { swings: [...slice(cache.swingH), ...slice(cache.swingL)], pipSize };
   },
 
   check(price, _side, state, opts) {
@@ -259,62 +264,71 @@ const vahVal = {
   buildPairCache: null,
 
   buildDayState(packed, dayEpoch, pipSize, _cache, opts) {
-    const bars = _extractFast(packed, dayEpoch - 86400, dayEpoch);
-    if (bars.length < 20) return null;
+    const lookbackDays = opts.vahValDays ?? 5; // look back across multiple prior sessions
+    const levels = []; // collects { vah, val, poc } per session found
 
-    // Price histogram: integer pip keys → count
-    const hist = new Map();
-    let total  = 0;
-    for (const b of bars) {
-      const loKey = Math.round(b.low  / pipSize);
-      const hiKey = Math.round(b.high / pipSize);
-      for (let k = loKey; k <= hiKey; k++) {
-        hist.set(k, (hist.get(k) ?? 0) + 1);
+    for (let d = 1; d <= lookbackDays + 3 && levels.length < lookbackDays; d++) {
+      const ep   = dayEpoch - d * 86400;
+      const bars = _extractFast(packed, ep, ep + 86400);
+      if (bars.length < 20) continue;
+
+      // Body midpoint per bar — O(bars) not O(bars × pip_range), ~40x faster
+      const hist = new Map();
+      let total  = 0;
+      for (const b of bars) {
+        const key = Math.round((b.open + b.close) / 2 / pipSize);
+        hist.set(key, (hist.get(key) ?? 0) + 1);
         total++;
       }
+      if (!hist.size) continue;
+
+      let pocKey = 0, pocCount = 0;
+      for (const [k, cnt] of hist) { if (cnt > pocCount) { pocCount = cnt; pocKey = k; } }
+
+      const sorted = [...hist.entries()].sort((a, b) => a[0] - b[0]);
+      const target = total * 0.70;
+      let pocIdx   = sorted.findIndex(([k]) => k === pocKey);
+      if (pocIdx < 0) pocIdx = Math.floor(sorted.length / 2);
+      let lo = pocIdx, hi = pocIdx, captured = pocCount;
+
+      while (captured < target && (lo > 0 || hi < sorted.length - 1)) {
+        const addLo = lo > 0                  ? sorted[lo - 1][1] : -1;
+        const addHi = hi < sorted.length - 1  ? sorted[hi + 1][1] : -1;
+        if (addLo >= addHi && addLo > 0) { lo--; captured += addLo; }
+        else if (addHi > 0)              { hi++; captured += addHi; }
+        else break;
+      }
+
+      levels.push({
+        vah: sorted[hi][0] * pipSize,
+        val: sorted[lo][0] * pipSize,
+        poc: pocKey * pipSize,
+        date: new Date(ep * 1000).toISOString().substring(0, 10),
+      });
     }
-    if (!hist.size) return null;
 
-    // POC = key with highest count
-    let pocKey = 0, pocCount = 0;
-    for (const [k, cnt] of hist) { if (cnt > pocCount) { pocCount = cnt; pocKey = k; } }
-
-    // Expand from POC outward to capture 70% of volume
-    const sorted  = [...hist.entries()].sort((a, b) => a[0] - b[0]);
-    const target  = total * 0.70;
-    let   pocIdx  = sorted.findIndex(([k]) => k === pocKey);
-    if (pocIdx < 0) pocIdx = Math.floor(sorted.length / 2);
-    let lo = pocIdx, hi = pocIdx, captured = pocCount;
-
-    while (captured < target && (lo > 0 || hi < sorted.length - 1)) {
-      const addLo = lo > 0              ? sorted[lo - 1][1] : -1;
-      const addHi = hi < sorted.length - 1 ? sorted[hi + 1][1] : -1;
-      if (addLo >= addHi && addLo > 0) { lo--; captured += addLo; }
-      else if (addHi > 0)              { hi++; captured += addHi; }
-      else break;
-    }
-
-    return {
-      vah:     sorted[hi][0] * pipSize,
-      val:     sorted[lo][0] * pipSize,
-      poc:     pocKey * pipSize,
-      pipSize,
-    };
+    if (!levels.length) return null;
+    return { levels, pipSize };
   },
 
   check(price, _side, state, opts) {
-    if (!state) return { hit: false, detail: null };
+    if (!state?.levels?.length) return { hit: false, detail: null };
     const radius = (opts.zoneRadiusPips ?? 3) * state.pipSize;
-    const checks = [
-      { lbl: 'VAH', price: state.vah },
-      { lbl: 'VAL', price: state.val },
-      { lbl: 'POC', price: state.poc },
-    ];
-    const near = checks.filter(c => Math.abs(c.price - price) <= radius);
-    if (!near.length) return { hit: false, detail: null };
-    near.sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price));
-    const dist = (Math.abs(near[0].price - price) / state.pipSize).toFixed(1);
-    return { hit: true, detail: `${near.map(c => c.lbl).join('+')} @ ${near[0].price.toFixed(5)} (${dist}p)` };
+    const hits = [];
+
+    for (const sess of state.levels) {
+      for (const [lbl, lvlPrice] of [['VAH', sess.vah], ['VAL', sess.val], ['POC', sess.poc]]) {
+        if (Math.abs(lvlPrice - price) <= radius) {
+          hits.push({ lbl, price: lvlPrice, date: sess.date, dist: Math.abs(lvlPrice - price) });
+        }
+      }
+    }
+
+    if (!hits.length) return { hit: false, detail: null };
+    hits.sort((a, b) => a.dist - b.dist);
+    const best = hits[0];
+    const dist = (best.dist / state.pipSize).toFixed(1);
+    return { hit: true, detail: `${best.lbl} ${best.date} @${best.price.toFixed(5)} (${dist}p)${hits.length > 1 ? ` +${hits.length - 1}` : ''}` };
   },
 };
 
@@ -329,19 +343,38 @@ const volForecast = {
   description: 'Fib near EWMA-forecast HL 75th-percentile High or Low for the day',
   defaultWeight: 1.0,
   defaultEnabled: true,
-  buildPairCache: null,
 
-  buildDayState(packed, dayEpoch, pipSize, _cache, _opts) {
-    // Collect last 22 daily closes (close of last M1 bar each UTC day)
-    const closes = [];
-    for (let d = 28; d >= 1 && closes.length < 22; d--) {
-      const ep  = dayEpoch - d * 86400;
-      const bars = _extractFast(packed, ep, ep + 86400);
-      if (bars.length) closes.push(bars.at(-1).close);
+  // Precompute sorted [epoch, close] pairs once per pair — replaces 28 M1 extractions per day
+  buildPairCache(packed, _pipSize) {
+    const { times, closes, n } = packed;
+    const dailyClose = new Map();
+    for (let i = 0; i < n; i++) {
+      const day = times[i] - (times[i] % 86400);
+      dailyClose.set(day, closes[i]); // last close wins per day
     }
+    const arr = [...dailyClose.entries()].sort((a, b) => a[0] - b[0]);
+    return { arr }; // [[epoch, close], ...]
+  },
+
+  buildDayState(packed, dayEpoch, pipSize, cache, _opts) {
+    if (!cache?.arr?.length) return null;
+
+    // Binary-search to find last index before dayEpoch, then slice back 22 closes
+    const arr = cache.arr;
+    let hi = arr.length;
+    let lo = 0;
+    while (lo < hi) { const m = (lo + hi) >>> 1; arr[m][0] < dayEpoch ? lo = m + 1 : hi = m; }
+    const end = lo; // first index >= dayEpoch
+    if (end < 6) return null;
+    const slice = arr.slice(Math.max(0, end - 22), end);
+    const closes = slice.map(e => e[1]);
     if (closes.length < 6) return null;
 
-    // EWMA variance
+    // Asia session open as forecast anchor (more relevant than prior close)
+    const asiaOpen = _extractFast(packed, dayEpoch, dayEpoch + 300);
+    const anchor = asiaOpen.length ? asiaOpen[0].open : closes.at(-1);
+
+    // EWMA variance on prior closes
     const lambda = 0.94;
     let variance = 0;
     for (let i = 1; i < closes.length; i++) {
@@ -349,15 +382,12 @@ const volForecast = {
       variance = lambda * variance + (1 - lambda) * r * r;
     }
     const sigma = Math.sqrt(variance);
-
-    // HL 75th pct = BM_P75 × FX_correction × sigma × price
     const hl75_mult = 2.049 * 0.894; // BM P75 × FX correction
-    const refClose  = closes.at(-1);
-    const halfRange = refClose * hl75_mult * sigma / 2;
+    const halfRange = anchor * hl75_mult * sigma / 2;
 
     return {
-      forecastHigh: refClose + halfRange,
-      forecastLow:  refClose - halfRange,
+      forecastHigh: anchor + halfRange,
+      forecastLow:  anchor - halfRange,
       hl75Pct:      +(hl75_mult * sigma * 100).toFixed(3),
       pipSize,
     };
@@ -402,14 +432,22 @@ const ath52wk = {
 
   buildDayState(_packed, dayEpoch, pipSize, cache) {
     if (!cache?.arr?.length) return null;
+    const arr = cache.arr;
     const since = dayEpoch - 252 * 86400;
-    const window = cache.arr.filter(d => d.epoch >= since && d.epoch < dayEpoch);
-    if (!window.length) return null;
-    return {
-      high52wk: Math.max(...window.map(d => d.high)),
-      low52wk:  Math.min(...window.map(d => d.low)),
-      pipSize,
-    };
+    // Binary search for window bounds — O(log N + window) not O(N)
+    let lo = 0, hi = arr.length;
+    while (lo < hi) { const m = (lo + hi) >>> 1; arr[m].epoch < since ? lo = m + 1 : hi = m; }
+    const startIdx = lo;
+    lo = startIdx; hi = arr.length;
+    while (lo < hi) { const m = (lo + hi) >>> 1; arr[m].epoch < dayEpoch ? lo = m + 1 : hi = m; }
+    const endIdx = lo;
+    if (endIdx <= startIdx) return null;
+    let high52wk = -Infinity, low52wk = Infinity;
+    for (let i = startIdx; i < endIdx; i++) {
+      if (arr[i].high > high52wk) high52wk = arr[i].high;
+      if (arr[i].low  < low52wk)  low52wk  = arr[i].low;
+    }
+    return { high52wk, low52wk, pipSize };
   },
 
   check(price, _side, state, opts) {
@@ -444,16 +482,19 @@ const mondayRange = {
     const bars     = _extractFast(packed, monEpoch, monEpoch + 86400);
     if (bars.length < 10) return null;
 
-    // Resample to 15m, use wick high/low
+    // Resample to 15m, use body high/low (max/min of open,close)
     const secs = 15 * 60;
     const map  = new Map();
     for (const b of bars) {
       const t0 = b.time - (b.time % secs);
-      if (!map.has(t0)) map.set(t0, { high: b.high, low: b.low });
-      else { const r = map.get(t0); r.high = Math.max(r.high, b.high); r.low = Math.min(r.low, b.low); }
+      if (!map.has(t0)) map.set(t0, { open: b.open, close: b.close });
+      else { const r = map.get(t0); r.close = b.close; } // open stays as first bar's open
     }
     let high = -Infinity, low = Infinity;
-    for (const { high: h, low: l } of map.values()) { high = Math.max(high, h); low = Math.min(low, l); }
+    for (const { open, close } of map.values()) {
+      high = Math.max(high, Math.max(open, close));
+      low  = Math.min(low,  Math.min(open, close));
+    }
     if (!isFinite(high) || high <= low) return null;
     return { monHigh: high, monLow: low, pipSize };
   },
@@ -472,6 +513,272 @@ const mondayRange = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+// MODULE 8 — Previous Day High / Low (PDH / PDL)
+// Precomputes daily extremes once; O(log N) lookup per day
+// ══════════════════════════════════════════════════════════════════════════════
+
+const pdhPdl = {
+  id: 'pdh_pdl',
+  label: 'Prev Day High / Low',
+  description: 'Fib within zone radius of yesterday\'s high or low (most-watched institutional level)',
+  defaultWeight: 2.0,
+  defaultEnabled: true,
+
+  buildPairCache(packed, _pipSize) {
+    const { times, highs, lows, n } = packed;
+    const dailyMap = new Map();
+    for (let i = 0; i < n; i++) {
+      const day = times[i] - (times[i] % 86400);
+      if (!dailyMap.has(day)) dailyMap.set(day, { high: highs[i], low: lows[i] });
+      else { const d = dailyMap.get(day); d.high = Math.max(d.high, highs[i]); d.low = Math.min(d.low, lows[i]); }
+    }
+    return { arr: [...dailyMap.entries()].sort((a, b) => a[0] - b[0]).map(([epoch, hl]) => ({ epoch, ...hl })) };
+  },
+
+  buildDayState(_packed, dayEpoch, pipSize, cache) {
+    if (!cache?.arr?.length) return null;
+    const arr = cache.arr;
+    let lo = 0, hi = arr.length;
+    while (lo < hi) { const m = (lo + hi) >>> 1; arr[m].epoch < dayEpoch ? lo = m + 1 : hi = m; }
+    const idx = lo - 1;
+    if (idx < 0) return null;
+    return { pdh: arr[idx].high, pdl: arr[idx].low, date: new Date(arr[idx].epoch * 1000).toISOString().substring(0, 10), pipSize };
+  },
+
+  check(price, _side, state, opts) {
+    if (!state) return { hit: false, detail: null };
+    const radius = (opts.zoneRadiusPips ?? 3) * state.pipSize;
+    const nearH = Math.abs(price - state.pdh) <= radius;
+    const nearL = Math.abs(price - state.pdl) <= radius;
+    if (!nearH && !nearL) return { hit: false, detail: null };
+    const which = nearH ? 'PDH' : 'PDL', target = nearH ? state.pdh : state.pdl;
+    return { hit: true, detail: `${which} ${state.date} @${target.toFixed(5)} (${(Math.abs(price - target) / state.pipSize).toFixed(1)}p)` };
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 9 — Previous Week High / Low (PWH / PWL)
+// ══════════════════════════════════════════════════════════════════════════════
+
+const pwhPwl = {
+  id: 'pwh_pwl',
+  label: 'Prev Week High / Low',
+  description: 'Fib within zone radius of last week\'s high or low',
+  defaultWeight: 1.5,
+  defaultEnabled: true,
+
+  buildPairCache(packed, _pipSize) {
+    const { times, highs, lows, n } = packed;
+    const weekMap = new Map();
+    for (let i = 0; i < n; i++) {
+      const d    = new Date(times[i] * 1000);
+      const dow  = d.getUTCDay(); // 0=Sun
+      const dToMon = dow === 0 ? 6 : dow - 1;
+      const monEp  = Math.floor(times[i] / 86400) * 86400 - dToMon * 86400;
+      if (!weekMap.has(monEp)) weekMap.set(monEp, { high: highs[i], low: lows[i] });
+      else { const w = weekMap.get(monEp); w.high = Math.max(w.high, highs[i]); w.low = Math.min(w.low, lows[i]); }
+    }
+    return { arr: [...weekMap.entries()].sort((a, b) => a[0] - b[0]).map(([epoch, hl]) => ({ epoch, ...hl })) };
+  },
+
+  buildDayState(_packed, dayEpoch, pipSize, cache) {
+    if (!cache?.arr?.length) return null;
+    // Find Monday of current week, then look up the prior week
+    const dow     = new Date(dayEpoch * 1000).getUTCDay();
+    const dToMon  = dow === 0 ? 6 : dow - 1;
+    const thisMonEp = dayEpoch - dToMon * 86400 - ((dayEpoch - dToMon * 86400) % 86400);
+    const arr = cache.arr;
+    let lo = 0, hi = arr.length;
+    while (lo < hi) { const m = (lo + hi) >>> 1; arr[m].epoch < thisMonEp ? lo = m + 1 : hi = m; }
+    const idx = lo - 1;
+    if (idx < 0) return null;
+    return { pwh: arr[idx].high, pwl: arr[idx].low, pipSize };
+  },
+
+  check(price, _side, state, opts) {
+    if (!state) return { hit: false, detail: null };
+    const radius = (opts.zoneRadiusPips ?? 3) * state.pipSize;
+    const nearH = Math.abs(price - state.pwh) <= radius;
+    const nearL = Math.abs(price - state.pwl) <= radius;
+    if (!nearH && !nearL) return { hit: false, detail: null };
+    const which = nearH ? 'PWH' : 'PWL', target = nearH ? state.pwh : state.pwl;
+    return { hit: true, detail: `${which} @${target.toFixed(5)} (${(Math.abs(price - target) / state.pipSize).toFixed(1)}p)` };
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 10 — Round Number / Big Figure
+// ══════════════════════════════════════════════════════════════════════════════
+
+const roundNumber = {
+  id: 'round_number',
+  label: 'Round Number',
+  description: 'Fib within zone radius of a psychological big figure or half-figure',
+  defaultWeight: 1.0,
+  defaultEnabled: true,
+  buildPairCache: null,
+
+  buildDayState(_packed, _dayEpoch, pipSize, _cache, _opts) {
+    return { pipSize }; // no data needed — pure price arithmetic
+  },
+
+  check(price, _side, state, opts) {
+    if (!state) return { hit: false, detail: null };
+    const radius     = (opts.zoneRadiusPips ?? 3) * state.pipSize;
+    const majorUnit  = state.pipSize * 1000; // 100 pips — e.g. 1.3000
+    const minorUnit  = state.pipSize * 100;  // 10 pips  — e.g. 1.3050
+    const nearestMaj = Math.round(price / majorUnit) * majorUnit;
+    const nearestMin = Math.round(price / minorUnit) * minorUnit;
+    if (Math.abs(price - nearestMaj) <= radius)
+      return { hit: true, detail: `Big figure ${nearestMaj.toFixed(5)} (${(Math.abs(price - nearestMaj) / state.pipSize).toFixed(1)}p)` };
+    if (Math.abs(price - nearestMin) <= radius)
+      return { hit: true, detail: `Half-figure ${nearestMin.toFixed(5)} (${(Math.abs(price - nearestMin) / state.pipSize).toFixed(1)}p)` };
+    return { hit: false, detail: null };
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 11 — Fair Value Gap (FVG / Imbalance) on 15m bars
+// Scans recent sessions for unfilled 3-candle imbalances
+// ══════════════════════════════════════════════════════════════════════════════
+
+const fvgLevel = {
+  id: 'fvg_level',
+  label: 'Fair Value Gap (FVG)',
+  description: 'Fib sits inside an unfilled 15m imbalance from the last 5 days',
+  defaultWeight: 1.5,
+  defaultEnabled: false,
+  buildPairCache: null,
+
+  buildDayState(packed, dayEpoch, pipSize, _cache, opts) {
+    const lookbackDays = opts.fvgDays ?? 5;
+    const bars = _extractFast(packed, dayEpoch - lookbackDays * 86400, dayEpoch);
+    if (bars.length < 30) return null;
+
+    const secs = 15 * 60;
+    const map  = new Map();
+    for (const b of bars) {
+      const t0 = b.time - (b.time % secs);
+      if (!map.has(t0)) map.set(t0, { time: t0, high: b.high, low: b.low });
+      else { const r = map.get(t0); r.high = Math.max(r.high, b.high); r.low = Math.min(r.low, b.low); }
+    }
+    const bars15 = [...map.values()].sort((a, b) => a.time - b.time);
+
+    const fvgs = [];
+    for (let i = 0; i < bars15.length - 2; i++) {
+      const a = bars15[i], c = bars15[i + 2];
+      if (c.low > a.high) {
+        // Bullish FVG: gap from a.high to c.low
+        const fvgLo = a.high, fvgHi = c.low;
+        if (!bars15.slice(i + 3).some(b => b.low <= fvgHi && b.high >= fvgLo))
+          fvgs.push({ type: 'bull', lo: fvgLo, hi: fvgHi });
+      } else if (c.high < a.low) {
+        // Bearish FVG: gap from c.high to a.low
+        const fvgLo = c.high, fvgHi = a.low;
+        if (!bars15.slice(i + 3).some(b => b.high >= fvgLo && b.low <= fvgHi))
+          fvgs.push({ type: 'bear', lo: fvgLo, hi: fvgHi });
+      }
+    }
+    return { fvgs, pipSize };
+  },
+
+  check(price, _side, state, _opts) {
+    if (!state?.fvgs?.length) return { hit: false, detail: null };
+    for (const fvg of state.fvgs) {
+      if (price >= fvg.lo && price <= fvg.hi) {
+        const size = ((fvg.hi - fvg.lo) / state.pipSize).toFixed(1);
+        return { hit: true, detail: `${fvg.type === 'bull' ? 'Bull' : 'Bear'} FVG ${fvg.lo.toFixed(5)}–${fvg.hi.toFixed(5)} (${size}p)` };
+      }
+    }
+    return { hit: false, detail: null };
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 12 — Session Opening Range H/L (first 30m of Asia session, 00:00 UTC)
+// Complete before London opens — no lookahead bias
+// ══════════════════════════════════════════════════════════════════════════════
+
+const sessionOpenRange = {
+  id: 'session_open_range',
+  label: 'Asia Open Range H/L',
+  description: 'Fib within zone radius of today\'s 00:00–00:30 UTC opening range high or low',
+  defaultWeight: 1.0,
+  defaultEnabled: false,
+  buildPairCache: null,
+
+  buildDayState(packed, dayEpoch, pipSize, _cache, opts) {
+    const orMinutes = opts.orMinutes ?? 30;
+    const bars = _extractFast(packed, dayEpoch, dayEpoch + orMinutes * 60);
+    if (bars.length < 3) return null;
+    let high = -Infinity, low = Infinity;
+    for (const b of bars) { high = Math.max(high, b.high); low = Math.min(low, b.low); }
+    if (!isFinite(high) || high <= low) return null;
+    return { orH: high, orL: low, pipSize };
+  },
+
+  check(price, _side, state, opts) {
+    if (!state) return { hit: false, detail: null };
+    const radius = (opts.zoneRadiusPips ?? 3) * state.pipSize;
+    const nearH = Math.abs(price - state.orH) <= radius;
+    const nearL = Math.abs(price - state.orL) <= radius;
+    if (!nearH && !nearL) return { hit: false, detail: null };
+    const which = nearH ? 'OR-H' : 'OR-L', target = nearH ? state.orH : state.orL;
+    return { hit: true, detail: `Asia ${which} @${target.toFixed(5)} (${(Math.abs(price - target) / state.pipSize).toFixed(1)}p)` };
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 13 — Daily Opens (previous N days)
+// If a fib coincides with where price opened multiple times, it's a key level
+// ══════════════════════════════════════════════════════════════════════════════
+
+const dailyOpens = {
+  id: 'daily_opens',
+  label: 'Daily Opens (10d)',
+  description: 'Fib within zone radius of any of the last 10 daily opens',
+  defaultWeight: 1.0,
+  defaultEnabled: true,
+
+  buildPairCache(packed, _pipSize) {
+    const { times, opens, n } = packed;
+    const dailyOpen = new Map();
+    for (let i = 0; i < n; i++) {
+      const day = times[i] - (times[i] % 86400);
+      if (!dailyOpen.has(day)) dailyOpen.set(day, opens[i]);
+    }
+    return { arr: [...dailyOpen.entries()].sort((a, b) => a[0] - b[0]) }; // [[epoch, open], ...]
+  },
+
+  buildDayState(_packed, dayEpoch, pipSize, cache, opts) {
+    if (!cache?.arr?.length) return null;
+    const lookback = opts.dailyOpenDays ?? 10;
+    const arr = cache.arr;
+    let lo = 0, hi = arr.length;
+    while (lo < hi) { const m = (lo + hi) >>> 1; arr[m][0] < dayEpoch ? lo = m + 1 : hi = m; }
+    const end = lo;
+    if (end < 1) return null;
+    const slice = arr.slice(Math.max(0, end - lookback), end);
+    return {
+      opens: slice.map(([epoch, open]) => ({ date: new Date(epoch * 1000).toISOString().substring(0, 10), open })),
+      pipSize,
+    };
+  },
+
+  check(price, _side, state, opts) {
+    if (!state?.opens?.length) return { hit: false, detail: null };
+    const radius = (opts.zoneRadiusPips ?? 3) * state.pipSize;
+    const near = state.opens
+      .map(({ date, open }) => ({ date, open, dist: Math.abs(open - price) }))
+      .filter(x => x.dist <= radius)
+      .sort((a, b) => a.dist - b.dist);
+    if (!near.length) return { hit: false, detail: null };
+    const best = near[0];
+    return { hit: true, detail: `Daily open ${best.date} @${best.open.toFixed(5)} (${(best.dist / state.pipSize).toFixed(1)}p)${near.length > 1 ? ` +${near.length - 1}` : ''}` };
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Registry & runner
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -483,6 +790,12 @@ export const CONFLUENCE_MODULES = [
   volForecast,
   ath52wk,
   mondayRange,
+  pdhPdl,
+  pwhPwl,
+  roundNumber,
+  fvgLevel,
+  sessionOpenRange,
+  dailyOpens,
 ];
 
 export const MODULE_MAP = Object.fromEntries(CONFLUENCE_MODULES.map(m => [m.id, m]));
@@ -491,9 +804,10 @@ export const MODULE_MAP = Object.fromEntries(CONFLUENCE_MODULES.map(m => [m.id, 
  * Build once-per-pair caches. Call before the day loop.
  * Only modules with buildPairCache defined are included.
  */
-export function buildAllPairCaches(packed, pipSize) {
+// Only build caches for enabled modules — avoids full-dataset swing scans for disabled modules
+export function buildAllPairCaches(packed, pipSize, enabledMods = CONFLUENCE_MODULES) {
   const caches = {};
-  for (const mod of CONFLUENCE_MODULES) {
+  for (const mod of enabledMods) {
     if (mod.buildPairCache) {
       try { caches[mod.id] = mod.buildPairCache(packed, pipSize); }
       catch { caches[mod.id] = null; }
