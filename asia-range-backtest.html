@@ -120,7 +120,7 @@
 
 /* ── Confluence config panel ──────────────────────────────────────────────── */
 .cf-panel { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);margin-top:8px;overflow:hidden; }
-.cf-panel-hdr { padding:9px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none; }
+.cf-panel-hdr { padding:9px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent; }
 .cf-panel-hdr:hover { background:var(--s2); }
 .cf-toggle { font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:auto; }
 .cf-body { padding:14px 16px;border-top:1px solid var(--border);display:none; }
@@ -1163,6 +1163,15 @@ function toggleCfPanel() {
   const open = body.classList.toggle('open');
   txt.textContent = open ? '▼ Collapse' : '▶ Expand';
 }
+
+// Wire up touchend on panel headers so iOS Safari responds without the 300ms delay.
+// preventDefault() stops the subsequent ghost click from firing toggleXxx twice.
+document.addEventListener('DOMContentLoaded', () => {
+  const hdrCf   = document.querySelector('#cfPanel .cf-panel-hdr');
+  const hdrHelp = document.querySelector('#helpPanel .cf-panel-hdr');
+  if (hdrCf)   hdrCf.addEventListener('touchend',   e => { e.preventDefault(); toggleCfPanel(); },   { passive: false });
+  if (hdrHelp) hdrHelp.addEventListener('touchend',  e => { e.preventDefault(); toggleHelpPanel(); }, { passive: false });
+});
 
 function toggleHelpPanel() {
   const body = document.getElementById('helpBody');
