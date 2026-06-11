@@ -936,6 +936,7 @@
   <button class="dark-btn" id="vfLevelsBtn"  onclick="toggleLevelsView()" disabled title="Compact levels table — all instruments, today's price targets, hit times">📋 Levels</button>
   <button class="dark-btn" id="vfHitRatesBtn" onclick="toggleHitRates()" disabled title="Levels hit rates — historical % hit rate and median reach time per level per instrument">📊 Hit Rates</button>
   <button class="dark-btn" id="vfProfileBtn" onclick="toggleProfile()" disabled title="Intraday vol profile — which UTC hours historically produce the most range">📊 Profile</button>
+  <button class="dark-btn" id="vfRefDataBtn" onclick="toggleRefPanel()" title="Paste today's reference forecast to store it in KV for comparison">📌 Ref Data</button>
   <button class="dark-btn" id="vfEventBtn"   onclick="toggleEventImpact()" title="Event impact study — historical range expansion on CPI/NFP/FOMC days">📅 Events</button>
   <button class="dark-btn" id="vfSessionComputeBtn" onclick="triggerSessionStats()" title="Fetch 5yr Oanda H1 data and compute Asia/London session consumption stats (~3–5 min)">⟳ Session Stats</button>
   <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
@@ -1031,6 +1032,25 @@
   </div>
   <div class="vf-event-scroll">
     <div id="vfEventBody"><div class="vf-event-empty">Click ↻ Compute to run the event impact study against stored session audits.</div></div>
+  </div>
+</div>
+
+<!-- REFERENCE DATA PANEL -->
+<div class="vf-event-panel" id="vfRefPanel" style="display:none">
+  <div class="vf-event-nav">
+    <span class="vf-event-title">Reference Forecast Data</span>
+    <span class="vf-event-sub" id="vfRefSub">Paste today's reference export below — stored in KV alongside our forecast for permanent comparison.</span>
+    <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfRefAge"></span>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="saveRefData()" id="vfRefSaveBtn">💾 Save</button>
+  </div>
+  <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <label style="font-size:10px;color:var(--text3);white-space:nowrap">Date:</label>
+      <input type="date" id="vfRefDate" style="background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:3px 8px;border-radius:4px">
+      <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="loadRefData()" id="vfRefLoadBtn">📂 Load Saved</button>
+    </div>
+    <textarea id="vfRefText" placeholder="Paste reference export here..." style="background:var(--s1);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:8px;border-radius:4px;resize:vertical;height:200px;width:100%;box-sizing:border-box"></textarea>
+    <div id="vfRefStatus" style="font-size:10px;color:var(--text3);min-height:14px"></div>
   </div>
 </div>
 
@@ -2477,6 +2497,77 @@ async function loadEventImpact() {
     currentEventData = data;
     renderEventImpact(data);
   } catch { /* silent */ }
+}
+
+function toggleRefPanel() {
+  const panel = document.getElementById('vfRefPanel');
+  const btn   = document.getElementById('vfRefDataBtn');
+  const shown = panel.style.display !== 'none';
+  panel.style.display = shown ? 'none' : '';
+  btn.textContent = shown ? '📌 Ref Data' : '✕ Ref Data';
+  if (!shown) {
+    // Default date to today
+    const dateEl = document.getElementById('vfRefDate');
+    if (!dateEl.value) {
+      const t = new Date();
+      dateEl.value = t.toISOString().slice(0, 10);
+    }
+    loadRefData();
+  }
+}
+
+async function saveRefData() {
+  const date   = document.getElementById('vfRefDate').value;
+  const text   = document.getElementById('vfRefText').value.trim();
+  const status = document.getElementById('vfRefStatus');
+  if (!date) { status.textContent = '⚠ Select a date first'; return; }
+  if (!text) { status.textContent = '⚠ Paste reference data first'; return; }
+  const btn = document.getElementById('vfRefSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`/api/vol-forecast/reference/${date}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const j = await res.json();
+    if (j.ok) {
+      status.style.color = 'var(--green)';
+      status.textContent = `✓ Saved reference data for ${date}`;
+    } else {
+      status.style.color = 'var(--red)';
+      status.textContent = `Error: ${j.error}`;
+    }
+  } catch (e) {
+    status.style.color = 'var(--red)';
+    status.textContent = `Error: ${e.message}`;
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Save';
+  }
+}
+
+async function loadRefData() {
+  const date   = document.getElementById('vfRefDate').value;
+  const status = document.getElementById('vfRefStatus');
+  const age    = document.getElementById('vfRefAge');
+  if (!date) return;
+  try {
+    const res = await fetch(`/api/vol-forecast/reference/${date}`);
+    if (res.status === 404) {
+      document.getElementById('vfRefText').value = '';
+      status.style.color = 'var(--text3)';
+      status.textContent = 'No saved reference for this date — paste and Save.';
+      age.textContent = '';
+      return;
+    }
+    const j = await res.json();
+    document.getElementById('vfRefText').value = j.text ?? '';
+    status.style.color = 'var(--green)';
+    status.textContent = `✓ Loaded saved reference for ${date}`;
+    age.textContent = j.saved_at ? `saved ${new Date(j.saved_at).toLocaleString()}` : '';
+  } catch (e) {
+    status.style.color = 'var(--red)';
+    status.textContent = `Error: ${e.message}`;
+  }
 }
 
 function toggleEventImpact() {

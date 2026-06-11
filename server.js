@@ -2291,6 +2291,59 @@ app.get('/api/vol-forecast/archive/:date/export', async (req, res) => {
   }
 });
 
+// Bulk archive export — returns every stored forecast as plain text in one response.
+// GET /api/vol-forecast/archive/bulk-export
+app.get('/api/vol-forecast/archive/bulk-export', async (_req, res) => {
+  try {
+    const raw = await kv.get('vol_forecast_index');
+    if (!raw) return res.type('text/plain').send('No archive index found.');
+    const index = JSON.parse(raw);
+    const parts = [];
+    for (const entry of index) {
+      const dr = await kv.get(`vol_forecast_${entry.date}`).catch(() => null);
+      if (!dr) continue;
+      parts.push(`${'═'.repeat(60)}\n  ${entry.date}\n${'═'.repeat(60)}`);
+      parts.push(_fmtForecastText(JSON.parse(dr)));
+    }
+    res.type('text/plain').send(parts.join('\n\n'));
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
+// Reference data store — save/retrieve the external reference forecast for a date.
+// POST /api/vol-forecast/reference/:date  body: { text: "...raw paste..." }
+app.post('/api/vol-forecast/reference/:date', async (req, res) => {
+  try {
+    const date = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+    const text = String(req.body?.text ?? '').trim();
+    if (!text) return res.status(400).json({ ok: false, error: 'body.text required' });
+    await kv.set(`vol_reference_${date}`, JSON.stringify({ date, text, saved_at: new Date().toISOString() }));
+    // Add to reference index
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const idx = idxRaw ? JSON.parse(idxRaw) : [];
+    if (!idx.find(e => e.date === date)) { idx.unshift({ date }); if (idx.length > 120) idx.pop(); }
+    await kv.set('vol_reference_index', JSON.stringify(idx));
+    res.json({ ok: true, date });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/vol-forecast/reference/:date
+app.get('/api/vol-forecast/reference/:date', async (req, res) => {
+  try {
+    const date = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+    const raw = await kv.get(`vol_reference_${date}`);
+    if (!raw) return res.status(404).json({ ok: false, error: `No reference data for ${date}` });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Session audit — retrieve a saved end-of-day session snapshot from KV.
 // GET /api/vol-forecast/audit/:date  (date = YYYY-MM-DD, defaults to today)
 app.get('/api/vol-forecast/audit/:date?', async (req, res) => {
