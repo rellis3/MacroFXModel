@@ -166,6 +166,9 @@ function _computeStats(bars) {
     ny_hl: [], ny_oc: [],
   };
 
+  // Hourly buckets: how much of daily H-L each UTC hour historically contributes
+  const hourBuckets = Array.from({ length: 24 }, () => []);
+
   for (const grp of byDate.values()) {
     if (grp.all.length < MIN_DAY_BARS) continue;
     const dailyHL = Math.max(...grp.all.map(b => b.high)) - Math.min(...grp.all.map(b => b.low));
@@ -178,6 +181,12 @@ function _computeStats(bars) {
       const sessOC = Math.abs(sb.at(-1).close - sb[0].open);
       buckets[`${sess}_hl`].push(sessHL / dailyHL * 100);
       buckets[`${sess}_oc`].push(sessOC / dailyHL * 100);
+    }
+
+    // Per-hour: each H1 bar's H-L as fraction of daily range
+    for (const bar of grp.all) {
+      const h = _londonParts(bar.time).hour;
+      hourBuckets[h].push((bar.high - bar.low) / dailyHL * 100);
     }
   }
 
@@ -193,6 +202,13 @@ function _computeStats(bars) {
     ? { p50: _pct(arr, 50), p75: _pct(arr, 75), mean: Math.round(arr.reduce((s, v) => s + v, 0) / arr.length * 10) / 10, n: arr.length }
     : null;
 
+  const hourly = hourBuckets.map((arr, hour) => ({
+    hour,
+    mean: arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length * 10) / 10 : 0,
+    p75:  _pct(arr, 75) ?? 0,
+    n:    arr.length,
+  }));
+
   return {
     asia:      mkStats(buckets.asia_hl),
     asia_oc:   mkStats(buckets.asia_oc),
@@ -200,6 +216,7 @@ function _computeStats(bars) {
     london_oc: mkStats(buckets.london_oc),
     ny:        mkStats(buckets.ny_hl),
     ny_oc:     mkStats(buckets.ny_oc),
+    hourly,
   };
 }
 

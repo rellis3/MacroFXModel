@@ -441,17 +441,37 @@ function computeSessionMetrics(bar, fc, bars = []) {
   const ohRatio = r2(fc.oc_median > 0 ? oh / fc.oc_median * 100 : 0);
   const olRatio = r2(fc.oc_median > 0 ? ol / fc.oc_median * 100 : 0);
 
-  // Reach times — walk H1 bars chronologically, record first bar whose CLOSE
-  // crossed the threshold. Using close (not intrabar high/low) avoids false
-  // triggers from brief spikes that don't appear on retail chart feeds.
+  // Reach times — walk H1 bars chronologically.
+  // For directional levels (O-H, O-L, O-C): use bar CLOSE to avoid spike false-triggers.
+  // For range levels (H-L): use rolling high/low as the range grows bar by bar.
   let ohReachedAt = null, olReachedAt = null, ocReachedAt = null;
-  if (bars.length > 0 && fc.oc_median > 0) {
-    const medPrice = fc.oc_median / 100 * o;   // threshold in price units
+  let oh75ReachedAt = null, ol75ReachedAt = null, oc75ReachedAt = null;
+  let hlMedReachedAt = null, hl75ReachedAt = null;
+
+  if (bars.length > 0) {
+    const oc_med_p = fc.oc_median > 0 ? fc.oc_median / 100 * o : Infinity;
+    const oc_75_p  = fc.oc_75    > 0 ? fc.oc_75    / 100 * o : Infinity;
+    const hl_med_p = fc.hl_median > 0 ? fc.hl_median / 100 * o : Infinity;
+    const hl_75_p  = fc.hl_75    > 0 ? fc.hl_75    / 100 * o : Infinity;
+
+    let rollingHigh = o, rollingLow = o;
+
     for (const b of bars) {
       const bC = parseFloat(b.mid.c);
-      if (!ohReachedAt && (bC - o) >= medPrice)        ohReachedAt = b.time;
-      if (!olReachedAt && (o - bC) >= medPrice)        olReachedAt = b.time;
-      if (!ocReachedAt && Math.abs(bC - o) >= medPrice) ocReachedAt = b.time;
+      const bH = parseFloat(b.mid.h);
+      const bL = parseFloat(b.mid.l);
+      rollingHigh = Math.max(rollingHigh, bH);
+      rollingLow  = Math.min(rollingLow,  bL);
+      const rollingHL = rollingHigh - rollingLow;
+
+      if (!ohReachedAt   && (bC - o) >=  oc_med_p)            ohReachedAt   = b.time;
+      if (!olReachedAt   && (o - bC) >=  oc_med_p)            olReachedAt   = b.time;
+      if (!ocReachedAt   && Math.abs(bC - o) >= oc_med_p)     ocReachedAt   = b.time;
+      if (!oh75ReachedAt && (bC - o) >=  oc_75_p)             oh75ReachedAt = b.time;
+      if (!ol75ReachedAt && (o - bC) >=  oc_75_p)             ol75ReachedAt = b.time;
+      if (!oc75ReachedAt && Math.abs(bC - o) >= oc_75_p)      oc75ReachedAt = b.time;
+      if (!hlMedReachedAt && rollingHL >= hl_med_p)            hlMedReachedAt = b.time;
+      if (!hl75ReachedAt  && rollingHL >= hl_75_p)             hl75ReachedAt  = b.time;
     }
   }
 
@@ -488,9 +508,15 @@ function computeSessionMetrics(bar, fc, bars = []) {
     hl_vs_med: hlVsMed, hl_vs_75: hlVs75,
     oc_rem: ocRem, oh_rem: ohRem, ol_rem: olRem,
     oh_ratio: ohRatio, ol_ratio: olRatio,
-    oh_reached_at: ohReachedAt,
-    ol_reached_at: olReachedAt,
-    oc_reached_at: ocReachedAt,
+    anchor_open: r2(o),
+    oh_reached_at:    ohReachedAt,
+    ol_reached_at:    olReachedAt,
+    oc_reached_at:    ocReachedAt,
+    oh_75_reached_at: oh75ReachedAt,
+    ol_75_reached_at: ol75ReachedAt,
+    oc_75_reached_at: oc75ReachedAt,
+    hl_med_reached_at: hlMedReachedAt,
+    hl_75_reached_at:  hl75ReachedAt,
     bias, bias_detail: biasDetail, shape, outlook,
   };
 }
@@ -602,7 +628,7 @@ function _applicableSessionDate(now) {
 }
 
 export async function startVolForecastScheduler() {
-  // Warm up from KV
+  // Warm up from KV — latest entry first, then fill history from archive index
   try {
     const raw = await kv.get('vol_forecast_latest');
     if (raw) {
@@ -610,6 +636,26 @@ export async function startVolForecastScheduler() {
       forecastState.latest  = cached;
       forecastState.history = [cached];
       console.log(`[VOL-FORECAST] Warm from KV: ${cached.session_date}`);
+
+      // Restore history from archive so the history table shows on first page load.
+      // Fetch last 5 index entries (most-recent first) that aren't already loaded.
+      const idxRaw = await kv.get('vol_forecast_index');
+      if (idxRaw) {
+        const idx = JSON.parse(idxRaw).slice(0, 5);
+        const extra = await Promise.all(
+          idx
+            .filter(e => e.date !== cached.session_date)
+            .slice(0, 4)
+            .map(e => kv.get(`vol_forecast_${e.date}`)
+              .then(r => r ? JSON.parse(r) : null)
+              .catch(() => null))
+        );
+        const valid = extra.filter(Boolean);
+        if (valid.length) {
+          forecastState.history = [cached, ...valid];
+          console.log(`[VOL-FORECAST] History restored: ${forecastState.history.length} entries`);
+        }
+      }
     }
   } catch (e) {
     console.error('[VOL-FORECAST] KV warm-up error:', e.message);

@@ -2555,6 +2555,202 @@ app.get('/api/vol-forecast/weekly/export', async (_req, res) => {
   }
 });
 
+// ── Levels hit history ────────────────────────────────────────────────────────
+// Reads stored session audits and computes per-instrument, per-level hit rates
+// and median reach times. Used by the strategy model / levels history panel.
+// GET /api/vol-forecast/levels-history?days=90
+app.get('/api/vol-forecast/levels-history', async (req, res) => {
+  try {
+    const days   = Math.min(365, Math.max(7, parseInt(req.query.days ?? 90)));
+    const idxRaw = await kv.get('vol_forecast_index');
+    if (!idxRaw) return res.json({ ok: true, sessions: 0, instruments: {} });
+
+    const idx    = JSON.parse(idxRaw).slice(0, days);
+    const audits = await Promise.all(
+      idx.map(e => kv.get(`vol_session_${e.date}`)
+        .then(r => r ? { date: e.date, d: JSON.parse(r) } : null)
+        .catch(() => null))
+    );
+    const valid = audits.filter(Boolean);
+
+    const LEVELS = [
+      { key: 'hl_med',  label: 'H-L Median',   hitKey: '_hl_med_hit',  timeKey: 'hl_med_reached_at' },
+      { key: 'hl_75',   label: 'H-L 75th',     hitKey: '_hl_75_hit',   timeKey: 'hl_75_reached_at' },
+      { key: 'oh_med',  label: 'O-H Median',   hitKey: '_oh_med_hit',  timeKey: 'oh_reached_at' },
+      { key: 'oh_75',   label: 'O-H 75th',     hitKey: '_oh_75_hit',   timeKey: 'oh_75_reached_at' },
+      { key: 'ol_med',  label: 'O-L Median',   hitKey: '_ol_med_hit',  timeKey: 'ol_reached_at' },
+      { key: 'ol_75',   label: 'O-L 75th',     hitKey: '_ol_75_hit',   timeKey: 'ol_75_reached_at' },
+      { key: 'oc_med',  label: 'O-C Median',   hitKey: '_oc_med_hit',  timeKey: 'oc_reached_at' },
+      { key: 'oc_75',   label: 'O-C 75th',     hitKey: '_oc_75_hit',   timeKey: 'oc_75_reached_at' },
+    ];
+
+    const stats = {};
+
+    for (const { date, d } of valid) {
+      for (const [name, s] of Object.entries(d.instruments ?? {})) {
+        if (!stats[name]) {
+          stats[name] = {};
+          for (const lv of LEVELS) stats[name][lv.key] = { hits: 0, times: [], total: 0 };
+        }
+        const fc = s.forecast ?? {};
+        for (const lv of LEVELS) {
+          stats[name][lv.key].total++;
+          // Determine hit from available fields (old audits may lack timestamp but have vs fields)
+          let hit = false, timeVal = s[lv.timeKey] ?? null;
+          if      (lv.key === 'hl_med') hit = (s.hl_vs_med != null ? s.hl_vs_med >= 0 : !!timeVal);
+          else if (lv.key === 'hl_75')  hit = (s.hl_vs_75  != null ? s.hl_vs_75  >= 0 : !!timeVal);
+          else                          hit = !!timeVal;
+
+          if (hit) {
+            stats[name][lv.key].hits++;
+            if (timeVal) {
+              const hour = new Date(timeVal).getUTCHours() + new Date(timeVal).getUTCMinutes() / 60;
+              stats[name][lv.key].times.push({ hour, time: timeVal });
+            }
+          }
+        }
+      }
+    }
+
+    // Summarise: hit_rate, median_hour, earliest_hour, latest_hour
+    const result = {};
+    for (const [name, lvMap] of Object.entries(stats)) {
+      result[name] = {};
+      for (const lv of LEVELS) {
+        const d = lvMap[lv.key];
+        const times = d.times.map(t => t.hour).sort((a, b) => a - b);
+        const medHour = times.length
+          ? times[Math.floor(times.length / 2)]
+          : null;
+        result[name][lv.key] = {
+          label:        lv.label,
+          hit_rate:     d.total > 0 ? Math.round(d.hits / d.total * 100) : 0,
+          hits:         d.hits,
+          total:        d.total,
+          median_hour:  medHour != null ? Math.round(medHour * 10) / 10 : null,
+          earliest_hour: times.length ? Math.round(times[0] * 10) / 10 : null,
+          latest_hour:  times.length ? Math.round(times.at(-1) * 10) / 10 : null,
+          sample_times: d.times.slice(-5).map(t => t.time),  // last 5 raw timestamps
+        };
+      }
+    }
+
+    res.json({ ok: true, sessions: valid.length, days_requested: days, instruments: result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Intraday vol profile ──────────────────────────────────────────────────────
+// Extracts per-instrument hourly profile from the session-stats payload.
+// Requires session stats to have been computed (includes hourly key from the
+// updated _computeStats() in sessionStats.js).
+app.get('/api/vol-forecast/intraday-profile', (_req, res) => {
+  const ss = getSessionStats();
+  if (!ss) return res.status(404).json({ ok: false, error: 'Session stats not yet computed — run ⟳ Session Stats first' });
+  const profile = {};
+  for (const [name, stats] of Object.entries(ss.instruments ?? {})) {
+    if (stats?.hourly) profile[name] = stats.hourly;
+  }
+  if (!Object.keys(profile).length) return res.status(404).json({ ok: false, error: 'No hourly data — recompute session stats to generate hourly profile' });
+  res.json({ ok: true, computed_at: ss.computed_at, instruments: profile });
+});
+
+// ── Event vol impact study ────────────────────────────────────────────────────
+// Correlates historical session audits (KV: vol_session_YYYY-MM-DD) with the
+// Finnhub economic calendar to compute per-event-type, per-instrument range
+// expansion ratios.  Stores result in KV as event_vol_impact.
+// GET  /api/vol-forecast/event-impact         — return stored study
+// POST /api/vol-forecast/event-impact/refresh — trigger recompute (async)
+
+const EVENT_PATTERNS = [
+  { label: 'FOMC',  re: /fomc|federal\s+open|fed\s+rate|interest\s+rate.*fed/i },
+  { label: 'NFP',   re: /non.?farm|nonfarm|payroll/i },
+  { label: 'CPI',   re: /\bcpi\b|consumer\s+price\s+index/i },
+  { label: 'PCE',   re: /\bpce\b|personal\s+consumption\s+expend/i },
+  { label: 'GDP',   re: /\bgdp\b|gross\s+domestic/i },
+  { label: 'PPI',   re: /\bppi\b|producer\s+price/i },
+];
+
+async function _computeEventImpact() {
+  const key = process.env.FINNHUB_KEY;
+  if (!key) throw new Error('FINNHUB_KEY not set');
+
+  // Fetch Finnhub calendar for the past 18 months
+  const to   = new Date().toISOString().slice(0, 10);
+  const from = new Date(Date.now() - 548 * 864e5).toISOString().slice(0, 10);
+  const calUrl = `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${key}`;
+  const calRes  = await fetch(calUrl);
+  if (!calRes.ok) throw new Error(`Finnhub calendar ${calRes.status}`);
+  const calData = await calRes.json();
+  const events  = (calData.economicCalendar ?? []).filter(e =>
+    e.country === 'US' && e.impact?.toLowerCase() === 'high'
+  );
+
+  // Build a map: date → [event_label, ...]
+  const eventsByDate = new Map();
+  for (const e of events) {
+    const d = (e.time ?? e.date ?? '').slice(0, 10);
+    if (!d) continue;
+    for (const pat of EVENT_PATTERNS) {
+      if (pat.re.test(e.event ?? '')) {
+        if (!eventsByDate.has(d)) eventsByDate.set(d, new Set());
+        eventsByDate.get(d).add(pat.label);
+      }
+    }
+  }
+
+  // Gather session audits from KV that overlap with event dates
+  const eventDates = [...eventsByDate.keys()];
+  const audits = await Promise.all(
+    eventDates.map(d => kv.get(`vol_session_${d}`).then(r => r ? { date: d, data: JSON.parse(r) } : null).catch(() => null))
+  );
+
+  // Per event type, per instrument: collect expansion ratios
+  // expansion = actual H-L / forecast hl_median
+  const buckets = {};   // { 'FOMC': { 'EURUSD': [ratio, ...], ... }, ... }
+  for (const audit of audits.filter(Boolean)) {
+    const labels = [...(eventsByDate.get(audit.date) ?? [])];
+    for (const label of labels) {
+      if (!buckets[label]) buckets[label] = {};
+      for (const [name, s] of Object.entries(audit.data.instruments ?? {})) {
+        if (!s.hl || !s.forecast?.hl_median) continue;
+        if (!buckets[label][name]) buckets[label][name] = [];
+        buckets[label][name].push(s.hl / s.forecast.hl_median);
+      }
+    }
+  }
+
+  // Summarise: mean ratio and n per cell
+  const summary = {};
+  for (const [label, instMap] of Object.entries(buckets)) {
+    summary[label] = {};
+    for (const [name, ratios] of Object.entries(instMap)) {
+      const mean = ratios.reduce((s, v) => s + v, 0) / ratios.length;
+      summary[label][name] = { mean: Math.round(mean * 100) / 100, n: ratios.length };
+    }
+  }
+
+  const result = { ok: true, from, to, computed_at: new Date().toISOString(), summary, event_dates_found: eventDates.length, audits_matched: audits.filter(Boolean).length };
+  await kv.put('event_vol_impact', JSON.stringify(result));
+  return result;
+}
+
+app.get('/api/vol-forecast/event-impact', async (_req, res) => {
+  try {
+    const raw = await kv.get('event_vol_impact');
+    if (!raw) return res.status(404).json({ ok: false, error: 'Not yet computed — click Refresh in the Event Impact panel' });
+    res.json(JSON.parse(raw));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/vol-forecast/event-impact/refresh', async (_req, res) => {
+  res.json({ ok: true, message: 'Computing event impact study — takes ~10s' });
+  _computeEventImpact()
+    .then(r => console.log(`[EVENT-IMPACT] Done — ${r.audits_matched} audits matched`))
+    .catch(e => console.error('[EVENT-IMPACT] Error:', e.message));
+});
+
 // ── Session Stats API ─────────────────────────────────────────────────────────
 // Serves pre-computed session consumption percentages (Asia/London % of daily range).
 // Computation is pure JavaScript (js/sessionStats.js) — no Python required.
