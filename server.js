@@ -2360,7 +2360,9 @@ app.post('/api/session-stats/refresh', (_req, res) => {
   }
   const years = parseInt(_req.query.years) || 5;
   res.json({ ok: true, message: `Computing session stats (${years}yr H1) — poll /api/session-stats in ~3–5 min.` });
-  computeSessionStats(years).catch(e => console.error('[SESSION-STATS] Error:', e.message));
+  computeSessionStats(years)
+    .then(data => kv.put('session_stats', JSON.stringify(data)))
+    .catch(e => console.error('[SESSION-STATS] Error:', e.message));
 });
 
 // ── Vol Backtest API ──────────────────────────────────────────────────────────
@@ -4325,6 +4327,22 @@ setInterval(() => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', 
 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
 startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));
+
+// Session stats KV restore — if the local file was lost on container restart, reload from KV.
+// The local file is ephemeral (Railway wipes it); KV survives restarts.
+(async () => {
+  if (getSessionStats()) return; // file already present
+  try {
+    const raw = await kv.get('session_stats');
+    if (!raw) return;
+    const dir = path.join(__dirname, 'VolRangeForecaster', 'data');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'session_stats.json'), raw);
+    console.log('[SESSION-STATS] Restored from KV after container restart');
+  } catch (e) {
+    console.error('[SESSION-STATS] KV restore failed:', e.message);
+  }
+})();
 
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';

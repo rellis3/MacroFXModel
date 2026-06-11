@@ -557,6 +557,17 @@ async function _auditSession(sessionDate) {
   }
 }
 
+// ── Session cache warmer ──────────────────────────────────────────────────────
+// Proactively refreshes the session cache every 60 s during market hours so
+// that page loads always hit a warm cache rather than waiting for 20 Oanda calls.
+async function _warmSessionCache() {
+  if (!forecastState.latest) return;           // no forecast yet — nothing to track
+  if (!process.env.OANDA_KEY) return;          // no key — session tracking disabled
+  const day = new Date().getUTCDay();
+  if (day === 0 || day === 6) return;          // weekend — market closed
+  getSessionStatus().catch(() => {});          // refresh cache; errors are non-fatal
+}
+
 // ── Daily scheduler ───────────────────────────────────────────────────────────
 // Polls every 5 minutes. Fires the run once per calendar day after TARGET_HOUR_UTC.
 
@@ -619,6 +630,14 @@ export async function startVolForecastScheduler() {
 
   // Scheduler: check every 5 minutes
   setInterval(_schedulerTick, 5 * 60 * 1000);
+
+  // Session cache warmer: runs every 60 s so the cache is always fresh for page loads.
+  // First warm fires after 10 s to give the startup forecast run time to complete.
+  setTimeout(() => {
+    _warmSessionCache();
+    setInterval(_warmSessionCache, 60 * 1000);
+  }, 10_000);
+
   const src = process.env.OANDA_KEY ? 'oanda' : 'yahoo';
   console.log(`[VOL-FORECAST] Scheduler active — daily run at ${TARGET_HOUR_UTC}:00 UTC  source=${src}`);
 }
