@@ -855,6 +855,135 @@ const nakedPoc = {
   },
 };
 
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 15 — Z-Score Confluence (Overbought / Oversold)
+// Computes rolling Z-Score on 5m resampled closes at Asia close (06:00 UTC).
+// ══════════════════════════════════════════════════════════════════════════════
+
+const zscoreConf = {
+  id: 'zscore_conf',
+  label: 'Z-Score OB/OS',
+  description: 'BUY when Z-Score < −1.5 · SELL when > +1.5 · measured at Asia close on 5m bars',
+  defaultWeight: 1.5,
+  defaultEnabled: false,
+  buildPairCache: null,
+
+  buildDayState(packed, dayEpoch, pipSize, _cache, opts) {
+    const len  = opts.zScoreLength ?? 20;
+    const tf   = 5;  // 5-minute resampling (fixed)
+    const secs = tf * 60;
+    const from = dayEpoch + 6 * 3600 - len * secs * 4; // generous lookback
+    const m1   = _extractFast(packed, from, dayEpoch + 6 * 3600 + 60);
+    if (m1.length < len * tf) return null;
+
+    // Resample to 5m — last close per bar
+    const map = new Map();
+    for (const b of m1) {
+      const t0 = b.time - (b.time % secs);
+      map.set(t0, b.close);
+    }
+    const closes = [...map.entries()].sort((a, b) => a[0] - b[0]).map(([, c]) => c);
+    if (closes.length < len) return null;
+
+    const sl = closes.slice(-len);
+    const mu = sl.reduce((a, v) => a + v, 0) / len;
+    const sd = Math.sqrt(sl.reduce((a, v) => a + (v - mu) ** 2, 0) / len);
+    const z  = sd === 0 ? 0 : (sl.at(-1) - mu) / sd;
+
+    return { z: +z.toFixed(3), pipSize };
+  },
+
+  check(_price, side, state, opts) {
+    if (!state) return { hit: false, detail: null };
+    const buyT  = opts.zScoreBuyThresh  ?? -1.5;
+    const sellT = opts.zScoreSellThresh ??  1.5;
+    const z = state.z;
+    if (side === 'BUY'  && z <= buyT)  return { hit: true, detail: `Z=${z.toFixed(2)} ≤ ${buyT} (oversold)` };
+    if (side === 'SELL' && z >= sellT) return { hit: true, detail: `Z=${z.toFixed(2)} ≥ ${sellT} (overbought)` };
+    return { hit: false, detail: null };
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 16 — SMI Confluence (Stochastic Momentum Index OB/OS)
+// Computes SMI(10,3,3) on 5m bars at Asia close.  Range −100 … +100.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const smiConf = {
+  id: 'smi_conf',
+  label: 'SMI OB/OS',
+  description: 'BUY when SMI < −40 · SELL when > +40 · 5m bars at Asia close · range −100..+100',
+  defaultWeight: 1.5,
+  defaultEnabled: false,
+  buildPairCache: null,
+
+  buildDayState(packed, dayEpoch, pipSize, _cache, opts) {
+    const kLen = opts.smiKLength ?? 10;
+    const dLen = opts.smiDLength ??  3;
+    const eLen = opts.smiELength ??  3;
+    const secs = 5 * 60;  // 5-minute bars
+    const minBars = kLen + dLen * 6 + eLen * 6 + 15; // EMA warm-up
+    const from = dayEpoch + 6 * 3600 - minBars * secs * 2;
+    const m1   = _extractFast(packed, from, dayEpoch + 6 * 3600 + 60);
+    if (m1.length < minBars * 5) return null;
+
+    // Resample to 5m OHLC
+    const map = new Map();
+    for (const b of m1) {
+      const t0 = b.time - (b.time % secs);
+      if (!map.has(t0)) map.set(t0, { h: b.high, l: b.low, c: b.close });
+      else { const r = map.get(t0); r.h = Math.max(r.h, b.high); r.l = Math.min(r.l, b.low); r.c = b.close; }
+    }
+    const tfB = [...map.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
+    if (tfB.length < minBars) return null;
+
+    const _ema = (arr, n) => {
+      const k = 2 / (n + 1), out = new Array(arr.length).fill(NaN);
+      let p = NaN, ok = false;
+      for (let i = 0; i < arr.length; i++) {
+        if (!isFinite(arr[i])) continue;
+        if (!ok) { p = arr[i]; out[i] = p; ok = true; continue; }
+        p = arr[i] * k + p * (1 - k); out[i] = p;
+      }
+      return out;
+    };
+
+    const N = tfB.length;
+    const rr = new Array(N).fill(NaN), hl = new Array(N).fill(NaN);
+    for (let i = kLen - 1; i < N; i++) {
+      let hh = -Infinity, ll = Infinity;
+      for (let j = i - kLen + 1; j <= i; j++) {
+        if (tfB[j].h > hh) hh = tfB[j].h;
+        if (tfB[j].l < ll) ll = tfB[j].l;
+      }
+      rr[i] = tfB[i].c - (hh + ll) / 2;
+      hl[i] = hh - ll;
+    }
+    const rrEE = _ema(_ema(rr, dLen), dLen);
+    const hlEE = _ema(_ema(hl, dLen), dLen);
+    const raw  = rrEE.map((v, i) => (!isFinite(v) || !isFinite(hlEE[i]) || hlEE[i] === 0) ? NaN : 200 * (v / hlEE[i]));
+
+    // Last valid SMI value (at Asia close)
+    let smi = NaN;
+    for (let i = raw.length - 1; i >= 0; i--) {
+      if (isFinite(raw[i])) { smi = raw[i]; break; }
+    }
+    if (!isFinite(smi)) return null;
+
+    return { smi: +smi.toFixed(2), pipSize };
+  },
+
+  check(_price, side, state, opts) {
+    if (!state) return { hit: false, detail: null };
+    const buyT  = opts.smiBuyThresh  ?? -40;
+    const sellT = opts.smiSellThresh ??  40;
+    const s = state.smi;
+    if (side === 'BUY'  && s <= buyT)  return { hit: true, detail: `SMI=${s.toFixed(1)} ≤ ${buyT} (oversold)` };
+    if (side === 'SELL' && s >= sellT) return { hit: true, detail: `SMI=${s.toFixed(1)} ≥ ${sellT} (overbought)` };
+    return { hit: false, detail: null };
+  },
+};
+
 // ── Module level extractors for chart overlay ────────────────────────────────
 // Each module that produces independent structural price levels gets a
 // getLevels(state, opts) → [{price, label, minor?}]  method patched on here.
@@ -1007,6 +1136,8 @@ export const CONFLUENCE_MODULES = [
   fvgLevel,
   sessionOpenRange,
   dailyOpens,
+  zscoreConf,
+  smiConf,
 ];
 
 export const MODULE_MAP = Object.fromEntries(CONFLUENCE_MODULES.map(m => [m.id, m]));

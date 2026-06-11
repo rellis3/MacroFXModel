@@ -2235,6 +2235,34 @@ app.get('/api/vol-forecast/live/export', async (_req, res) => {
   }
 });
 
+// Archive — retrieve a stored daily forecast from KV by date.
+// GET /api/vol-forecast/archive/:date  (date = YYYY-MM-DD)
+app.get('/api/vol-forecast/archive/:date', async (req, res) => {
+  try {
+    const date = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+    const raw = await kv.get(`vol_forecast_${date}`);
+    if (!raw) return res.status(404).json({ ok: false, error: `No forecast found for ${date}` });
+    res.json(JSON.parse(raw));
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Archive plain-text export — same format as the ⬇ Export button but for a past date.
+// GET /api/vol-forecast/archive/:date/export
+app.get('/api/vol-forecast/archive/:date/export', async (req, res) => {
+  try {
+    const date = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).type('text/plain').send('date must be YYYY-MM-DD');
+    const raw = await kv.get(`vol_forecast_${date}`);
+    if (!raw) return res.status(404).type('text/plain').send(`No forecast found for ${date}`);
+    res.type('text/plain').send(_fmtForecastText(JSON.parse(raw)));
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
 // Session audit — retrieve a saved end-of-day session snapshot from KV.
 // GET /api/vol-forecast/audit/:date  (date = YYYY-MM-DD, defaults to today)
 app.get('/api/vol-forecast/audit/:date?', async (req, res) => {
@@ -2963,6 +2991,9 @@ app.post('/api/asia-range-backtest/run', (req, res) => {
     zoneRadiusPips = '3',
     minConfluenceScore = '0',
     confluenceModules: confModsCfg = {},
+    // Indicator OB/OS thresholds
+    zScoreBuyThresh  = '-1.5', zScoreSellThresh = '1.5',  zScoreLength = '20',
+    smiBuyThresh     = '-40',  smiSellThresh    = '40',   smiKLength   = '10',
   } = req.body || {};
 
   // Build enabled module list from the registry
@@ -2990,6 +3021,13 @@ app.post('/api/asia-range-backtest/run', (req, res) => {
     zoneRadiusPips:       parseFloat(zoneRadiusPips)  || 3,
     minConfluenceScore:   parseFloat(minConfluenceScore) || 0,
     confluenceMods,
+    // Indicator OB/OS thresholds
+    zScoreBuyThresh:   parseFloat(zScoreBuyThresh)  || -1.5,
+    zScoreSellThresh:  parseFloat(zScoreSellThresh) ||  1.5,
+    zScoreLength:      parseInt(zScoreLength)        ||  20,
+    smiBuyThresh:      parseFloat(smiBuyThresh)      || -40,
+    smiSellThresh:     parseFloat(smiSellThresh)     ||  40,
+    smiKLength:        parseInt(smiKLength)           ||  10,
   };
 
   const pairsToRun = pair

@@ -282,6 +282,23 @@
       <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">(0 = all trades; 50 = must pass half the enabled modules)</span>
     </div>
 
+    <!-- Indicator OB/OS thresholds (Z-Score & SMI modules) -->
+    <div class="cf-section-title" style="margin-top:12px">Indicator thresholds <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">(Z-Score &amp; SMI modules)</span></div>
+    <div class="cf-row" style="flex-wrap:wrap;gap:10px">
+      <span class="cf-lbl">Z-Score buy ≤</span>
+      <input type="number" id="cfZsBuyThresh"  value="-1.5" min="-4" max="0"  step="0.1" style="width:56px" class="bt-sel" title="BUY confluence when Z-Score ≤ this (oversold). Default −1.5.">
+      <span class="cf-lbl">sell ≥</span>
+      <input type="number" id="cfZsSellThresh" value="1.5"  min="0"  max="4"  step="0.1" style="width:56px" class="bt-sel" title="SELL confluence when Z-Score ≥ this (overbought). Default 1.5.">
+      <span class="cf-lbl" style="margin-left:8px">Z len:</span>
+      <input type="number" id="cfZsLength"     value="20"   min="5"  max="100" step="1" style="width:52px" class="bt-sel" title="Rolling window for Z-Score (5m bars). Default 20.">
+      <span class="cf-lbl" style="margin-left:12px">SMI buy ≤</span>
+      <input type="number" id="cfSmiBuyThresh"  value="-40" min="-100" max="0"   step="5" style="width:56px" class="bt-sel" title="BUY confluence when SMI ≤ this. Range −100..+100. Default −40.">
+      <span class="cf-lbl">sell ≥</span>
+      <input type="number" id="cfSmiSellThresh" value="40"  min="0"   max="100"  step="5" style="width:56px" class="bt-sel" title="SELL confluence when SMI ≥ this. Default 40.">
+      <span class="cf-lbl" style="margin-left:8px">K len:</span>
+      <input type="number" id="cfSmiKLength"    value="10"  min="3"   max="50"   step="1" style="width:52px" class="bt-sel" title="SMI %K period (5m bars). Default 10.">
+    </div>
+
     <!-- Module checkboxes -->
     <div class="cf-section-title" style="margin-top:12px">Active confluence modules</div>
     <div class="cf-modules-grid">
@@ -374,6 +391,20 @@
         <label for="cfMod_daily_opens">
           <span class="cf-module-name">Daily Opens (10d) <span style="color:var(--amber);font-size:9px">w×1.0</span></span>
           <span class="cf-module-desc">Fib within zone radius of any of the last 10 daily open prices</span>
+        </label>
+      </div>
+      <div class="cf-module" style="border-color:#6366f144">
+        <input type="checkbox" id="cfMod_zscore_conf">
+        <label for="cfMod_zscore_conf">
+          <span class="cf-module-name">Z-Score OB/OS <span style="color:var(--amber);font-size:9px">w×1.5</span></span>
+          <span class="cf-module-desc">BUY when Z-Score ≤ buy threshold · SELL when ≥ sell threshold · 5m bars at Asia close</span>
+        </label>
+      </div>
+      <div class="cf-module" style="border-color:#6366f144">
+        <input type="checkbox" id="cfMod_smi_conf">
+        <label for="cfMod_smi_conf">
+          <span class="cf-module-name">SMI OB/OS <span style="color:var(--amber);font-size:9px">w×1.5</span></span>
+          <span class="cf-module-desc">BUY when SMI ≤ buy threshold · SELL when ≥ sell threshold · range −100..+100 · 5m bars</span>
         </label>
       </div>
     </div>
@@ -1085,6 +1116,13 @@ async function runBacktest() {
       atrPeriods:        document.getElementById('cfAtrPeriods').value,
       zoneRadiusPips:    document.getElementById('cfZoneRadius').value,
       minConfluenceScore: parseFloat(document.getElementById('cfMinScore').value) / 100 || 0,
+      // Indicator OB/OS thresholds
+      zScoreBuyThresh:   document.getElementById('cfZsBuyThresh').value,
+      zScoreSellThresh:  document.getElementById('cfZsSellThresh').value,
+      zScoreLength:      document.getElementById('cfZsLength').value,
+      smiBuyThresh:      document.getElementById('cfSmiBuyThresh').value,
+      smiSellThresh:     document.getElementById('cfSmiSellThresh').value,
+      smiKLength:        document.getElementById('cfSmiKLength').value,
       confluenceModules,
     };
 
@@ -1470,19 +1508,22 @@ function openChartModal(tradeIdx) {
         }
       }
 
-      // Entry/TP/SL lines for ALL day trades (de-duped by price)
+      // Entry / TP / SL lines — drawn last so they sit on top of fib/module lines
       const shownPrices = new Set();
       for (const t of _dayTrades) {
         const isSell = t.side === 'SELL';
-        const addUniq = (price, color, label, style) => {
+        const addUniq = (price, color, label, style, lw) => {
           const key = price?.toFixed(6) + label;
           if (price == null || shownPrices.has(key)) return;
           shownPrices.add(key);
-          addLine(price, color, label, style, 1);
+          addLine(price, color, label, style, lw);
         };
-        addUniq(t.entry_price, isSell ? '#ef5350' : '#26a69a', `E${t.fib_level?.toFixed(2) ?? ''}`, LS.Solid);
-        addUniq(t.tp_price,    '#26a69a', `TP${t.fib_level?.toFixed(2) ?? ''}`, LS.Dotted);
-        addUniq(t.sl_price,    '#ef5350', `SL${t.fib_level?.toFixed(2) ?? ''}`, LS.Dotted);
+        // Entry — thick solid line; colour by direction
+        addUniq(t.entry_price, isSell ? '#f87171' : '#34d399', `▶ ${t.side} ${t.fib_level?.toFixed(2) ?? ''}`, LS.Solid, 2);
+        // TP — bright green dashed, clearly labelled
+        addUniq(t.tp_price,    '#10b981', `✓ TP ${t.fib_level?.toFixed(2) ?? ''}`,  LS.Dashed, 2);
+        // SL — bright red dashed, clearly labelled
+        addUniq(t.sl_price,    '#ef4444', `✗ SL ${t.fib_level?.toFixed(2) ?? ''}`,  LS.Dashed, 2);
       }
 
       // All fill markers

@@ -200,6 +200,36 @@
 .vf-hist-table tr:last-child td { border-bottom: none; }
 .vf-hist-table tbody tr:hover td { background: var(--s2); }
 
+/* ── Archive lookup ──────────────────────────────────────────────────────── */
+.vf-archive-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  flex-wrap: wrap;
+}
+.vf-archive-row input[type="date"] {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.vf-archive-row input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+.vf-archive-result {
+  padding: 0 18px 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text2);
+  white-space: pre;
+  overflow-x: auto;
+  line-height: 1.6;
+}
+.vf-archive-result.error { color: #e07070; }
+
 /* ── Live session tracker ────────────────────────────────────────────────── */
 .vf-live-divider {
   height: 1px;
@@ -443,6 +473,18 @@
   </div>
 </div>
 
+<!-- ARCHIVE LOOKUP -->
+<div class="vf-history" style="margin-top:22px" id="vfArchiveBox">
+  <div class="vf-history-title">Archive — Past Forecast Export</div>
+  <div class="vf-archive-row">
+    <input type="date" id="vfArchiveDate" max="">
+    <button class="dark-btn" onclick="loadArchive()">Load</button>
+    <button class="dark-btn" id="vfArchiveCopyBtn" style="display:none" onclick="copyArchive()">⬇ Copy</button>
+    <span id="vfArchiveStatus" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace"></span>
+  </div>
+  <div class="vf-archive-result" id="vfArchiveResult" style="display:none"></div>
+</div>
+
 <!-- API REFERENCE -->
 <div class="vf-history" style="margin-top:22px">
   <div class="vf-history-title">API Endpoints</div>
@@ -464,6 +506,18 @@
       <span class="vf-api-method">GET</span>
       <span class="vf-api-path">/api/vol-forecast/history</span>
       <span class="vf-api-desc">Last 5 sessions — JSON array</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/archive/:date</span>
+      <span class="vf-api-desc">Stored forecast for a past date (YYYY-MM-DD) — JSON</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/archive/:date/export</span>
+      <span class="vf-api-desc">Stored forecast for a past date — plain text (same format as ⬇ Export)</span>
     </div>
 
     <div class="vf-api-row">
@@ -815,6 +869,74 @@ function exportV3() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href = url; a.download = `vol-v3-${currentForecast.session_date}.txt`;
+    a.click(); URL.revokeObjectURL(url);
+  });
+}
+
+// ── Archive lookup ────────────────────────────────────────────────────────────
+let archiveForecast = null;
+
+(function initArchiveDatePicker() {
+  const input = document.getElementById('vfArchiveDate');
+  const today = new Date().toISOString().split('T')[0];
+  input.max = today;
+  // Default to yesterday so the picker opens on a likely-stored date
+  const yesterday = new Date(Date.now() - 864e5).toISOString().split('T')[0];
+  input.value = yesterday;
+})();
+
+async function loadArchive() {
+  const date   = document.getElementById('vfArchiveDate').value;
+  const status = document.getElementById('vfArchiveStatus');
+  const result = document.getElementById('vfArchiveResult');
+  const copyBtn = document.getElementById('vfArchiveCopyBtn');
+
+  if (!date) { status.textContent = 'Pick a date first'; return; }
+
+  status.textContent = 'Loading…';
+  result.style.display = 'none';
+  result.classList.remove('error');
+  copyBtn.style.display = 'none';
+  archiveForecast = null;
+
+  try {
+    const res  = await fetch(`/api/vol-forecast/archive/${date}`);
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      status.textContent = data.error ?? 'Not found';
+      result.textContent = '';
+      return;
+    }
+
+    archiveForecast = data;
+    const text = buildExportText(data);
+    result.textContent = text;
+    result.style.display = 'block';
+    copyBtn.style.display = '';
+    status.textContent = `Loaded — ${data.session_label}`;
+  } catch (e) {
+    status.textContent = `Error: ${e.message}`;
+    result.classList.add('error');
+    result.textContent = e.message;
+    result.style.display = 'block';
+  }
+}
+
+function copyArchive() {
+  if (!archiveForecast) return;
+  const text = buildExportText(archiveForecast);
+  const btn  = document.getElementById('vfArchiveCopyBtn');
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `vol-forecast-${archiveForecast.session_date}.txt`;
     a.click(); URL.revokeObjectURL(url);
   });
 }

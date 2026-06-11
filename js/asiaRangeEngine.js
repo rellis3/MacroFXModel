@@ -466,9 +466,12 @@ function simulateDay(packed, dateStr, opts) {
 
     if (tradeZone === 'outside' && isInside) continue;
 
+    // Determine direction upfront so directional modules (Z-Score, SMI) can use it
+    const prelimSide = isAbove ? 'SELL' : isBelow ? 'BUY' : (price > asiaMid ? 'SELL' : 'BUY');
+
     // Run confluence modules BEFORE trade setup (score gates entry)
     const modChecks = confluenceMods.length > 0
-      ? runModuleChecks(price, 'PENDING', dayStates, confluenceMods, { ...opts, zoneRadiusPips })
+      ? runModuleChecks(price, prelimSide, dayStates, confluenceMods, { ...opts, zoneRadiusPips })
       : { results: {}, hits: 0, total: 0, score: 0, pct: 0 };
 
     if (confluenceMods.length > 0 && minConfluenceScore > 0 && modChecks.score < minConfluenceScore) continue;
