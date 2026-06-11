@@ -1131,6 +1131,8 @@ let _chartInstance = null;
 let _dayTrades     = [];   // all filled trades for the open day+pair
 let _dayTradeIdx   = 0;    // which trade is "focused" for the badge
 let _chartSeries   = null; // candlestick series ref for marker updates
+let _zChart        = null; // Z-Score pane
+let _smiChart      = null; // SMI pane
 
 function _toEpochSec(timeStr) {
   const s = String(timeStr).substring(0, 19).replace(' ', 'T');
@@ -1184,6 +1186,68 @@ function navDayTrade(delta) {
   _updateModalBadge();
 }
 
+// ── Indicator helpers (Z-Score + SMI) ─────────────────────────────────────────
+function _lerpCol(c1, c2, t) {
+  t = Math.max(0, Math.min(1, t));
+  return `rgb(${Math.round(c1[0]+(c2[0]-c1[0])*t)},${Math.round(c1[1]+(c2[1]-c1[1])*t)},${Math.round(c1[2]+(c2[2]-c1[2])*t)})`;
+}
+function _ema(arr, len) {
+  const k = 2/(len+1), out = new Array(arr.length).fill(NaN);
+  let p = NaN, init = false;
+  for (let i = 0; i < arr.length; i++) {
+    if (!isFinite(arr[i])) continue;
+    if (!init) { p = arr[i]; out[i] = p; init = true; continue; }
+    p = arr[i]*k + p*(1-k); out[i] = p;
+  }
+  return out;
+}
+function _emaEma(arr, len) { return _ema(_ema(arr, len), len); }
+
+function _buildZScorePanel(chart, bars) {
+  const LS = LightweightCharts.LineStyle, len = 20;
+  const cls = bars.map(b => b.close);
+  const zs  = bars.map((b, i) => {
+    if (i < len-1) return NaN;
+    const sl = cls.slice(i-len+1, i+1);
+    const mu = sl.reduce((a,v) => a+v, 0)/len;
+    const sd = Math.sqrt(sl.reduce((a,v) => a+(v-mu)**2, 0)/len);
+    return sd === 0 ? 0 : (b.close - mu)/sd;
+  });
+  const hist = chart.addHistogramSeries({ lastValueVisible:false, priceLineVisible:false, priceFormat:{type:'price',precision:2,minMove:0.01} });
+  hist.setData(bars.map((b, i) => {
+    const z = zs[i];
+    if (!isFinite(z)) return null;
+    const color = z >= 0
+      ? _lerpCol([255,152,0],[244,67,54], z/2.8)
+      : _lerpCol([0,188,212],[255,235,59], (z+2)/2);
+    return { time: b.time, value: z, color };
+  }).filter(Boolean));
+  for (const [price, alpha] of [[2,.5],[1,.28],[-1,.28],[-2,.5]])
+    hist.createPriceLine({ price, color:`rgba(255,255,255,${alpha})`, lineStyle:LS.Dotted, lineWidth:1, axisLabelVisible:false });
+  hist.createPriceLine({ price:0, color:'rgba(255,255,255,0.6)', lineStyle:LS.Solid, lineWidth:1, axisLabelVisible:false });
+}
+
+function _buildSMIPanel(chart, bars) {
+  const LS = LightweightCharts.LineStyle, kLen=10, dLen=3, eLen=3, n=bars.length;
+  const rr = new Array(n).fill(NaN), hl = new Array(n).fill(NaN);
+  for (let i = kLen-1; i < n; i++) {
+    let hh=-Infinity, ll=Infinity;
+    for (let j = i-kLen+1; j<=i; j++) { if(bars[j].high>hh)hh=bars[j].high; if(bars[j].low<ll)ll=bars[j].low; }
+    rr[i] = bars[i].close - (hh+ll)/2;
+    hl[i] = hh - ll;
+  }
+  const rrEE=_emaEma(rr,dLen), hlEE=_emaEma(hl,dLen);
+  const raw = rrEE.map((v,i) => (!isFinite(v)||!isFinite(hlEE[i])||hlEE[i]===0) ? NaN : 200*(v/hlEE[i]));
+  const sig = _ema(raw, eLen);
+  const smiS = chart.addLineSeries({ color:'#3b82f6', lineWidth:1.5, lastValueVisible:false, priceLineVisible:false, priceFormat:{type:'price',precision:1,minMove:0.1} });
+  const sigS = chart.addLineSeries({ color:'#f97316', lineWidth:1,   lastValueVisible:false, priceLineVisible:false });
+  smiS.setData(bars.map((b,i) => isFinite(raw[i]) ? {time:b.time, value:raw[i]} : null).filter(Boolean));
+  sigS.setData(bars.map((b,i) => isFinite(sig[i]) ? {time:b.time, value:sig[i]} : null).filter(Boolean));
+  for (const price of [40,-40])
+    smiS.createPriceLine({ price, color:'rgba(255,255,255,0.35)', lineStyle:LS.Dashed, lineWidth:1, axisLabelVisible:false });
+  smiS.createPriceLine({ price:0, color:'rgba(200,200,200,0.2)', lineStyle:LS.Solid, lineWidth:1, axisLabelVisible:false });
+}
+
 function openChartModal(tradeIdx) {
   const trade = _filtTrades[tradeIdx];
   if (!trade) return;
@@ -1200,7 +1264,10 @@ function openChartModal(tradeIdx) {
   _updateModalBadge();
 
   if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; _chartSeries = null; }
+  if (_zChart)   { _zChart.remove();   _zChart   = null; }
+  if (_smiChart) { _smiChart.remove(); _smiChart = null; }
   const container = document.getElementById('chartContainer');
+  Object.assign(container.style, { display:'', flexDirection:'' });
   container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8fa0b8;font-size:13px">Loading M1 data…</div>';
 
   const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
@@ -1218,16 +1285,35 @@ function openChartModal(tradeIdx) {
         container.innerHTML = `<div style="padding:24px;font-size:13px;line-height:1.7"><div style="color:#ef5350;font-weight:600;margin-bottom:8px">No M1 candle data</div><div style="color:#8fa0b8">${d.error || 'No candles returned'}</div></div>`;
         return;
       }
+      // Three-pane layout: Price (56%) / Z-Score (22%) / SMI (22%)
       container.innerHTML = '';
+      container.style.display = 'flex';
+      container.style.flexDirection = 'column';
+      const _mkPane = (flex, label, borderTop) => {
+        const el = document.createElement('div');
+        el.style.cssText = `flex:${flex};min-height:0;position:relative;${borderTop?'border-top:1px solid #2a3348;':''}`;
+        const lbl = document.createElement('div');
+        lbl.style.cssText = 'position:absolute;top:3px;left:6px;z-index:10;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#3a4560;font-family:"DM Mono",monospace;pointer-events:none;';
+        lbl.textContent = label;
+        el.appendChild(lbl);
+        container.appendChild(el);
+        return el;
+      };
+      const _pricePane = _mkPane('0 0 56%', 'M1 · Price',    false);
+      const _zPane     = _mkPane('0 0 22%', 'Z-Score · 20',  true);
+      const _smiPane   = _mkPane('0 0 22%', 'SMI · 10/3/3',  true);
 
-      _chartInstance = LightweightCharts.createChart(container, {
+      const _cBase = {
         autoSize:  true,
         layout:    { background: { color: '#131722' }, textColor: '#d1d4dc' },
         grid:      { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
-        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        crosshair:       { mode: LightweightCharts.CrosshairMode.Normal },
         rightPriceScale: { borderColor: '#2a3348' },
-        timeScale: { borderColor: '#2a3348', timeVisible: true, secondsVisible: false },
-      });
+        timeScale:       { borderColor: '#2a3348', timeVisible: true, secondsVisible: false },
+      };
+      _chartInstance = LightweightCharts.createChart(_pricePane, _cBase);
+      _zChart   = LightweightCharts.createChart(_zPane,   { ..._cBase, timeScale: { ..._cBase.timeScale, visible: false } });
+      _smiChart = LightweightCharts.createChart(_smiPane, _cBase);
 
       const cs = _chartInstance.addCandlestickSeries({
         upColor: '#26a69a', downColor: '#ef5350',
@@ -1235,7 +1321,8 @@ function openChartModal(tradeIdx) {
         wickUpColor: '#26a69a', wickDownColor: '#ef5350',
       });
       _chartSeries = cs;
-      cs.setData(d.candles.map(b => ({ time: _toEpochSec(b.time), open: b.open, high: b.high, low: b.low, close: b.close })));
+      const bars = d.candles.map(b => ({ time: _toEpochSec(b.time), open: b.open, high: b.high, low: b.low, close: b.close }));
+      cs.setData(bars);
 
       const LS      = LightweightCharts.LineStyle;
       const addLine = (price, color, title, style, lw) =>
@@ -1304,7 +1391,23 @@ function openChartModal(tradeIdx) {
       // All fill markers
       cs.setMarkers(_buildMarkers());
 
-      // Zoom: trade day −3h to +27h
+      // Indicator sub-panels
+      _buildZScorePanel(_zChart, bars);
+      _buildSMIPanel(_smiChart, bars);
+
+      // Sync all three time scales via logical range
+      let _isSyncing = false;
+      const _allCharts = [_chartInstance, _zChart, _smiChart];
+      _allCharts.forEach((src, si) => {
+        src.timeScale().subscribeVisibleLogicalRangeChange(range => {
+          if (_isSyncing || !range) return;
+          _isSyncing = true;
+          _allCharts.forEach((tgt, ti) => { if (ti !== si) tgt.timeScale().setVisibleLogicalRange(range); });
+          _isSyncing = false;
+        });
+      });
+
+      // Zoom: trade day −3h to +27h (sync propagates to indicator panes)
       const dayStart = _toEpochSec(date + 'T00:00:00');
       _chartInstance.timeScale().setVisibleRange({ from: dayStart - 3*3600, to: dayStart + 27*3600 });
     })
@@ -1314,6 +1417,8 @@ function openChartModal(tradeIdx) {
 function closeChartModal() {
   document.getElementById('chartModal').style.display = 'none';
   if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; _chartSeries = null; }
+  if (_zChart)   { _zChart.remove();   _zChart   = null; }
+  if (_smiChart) { _smiChart.remove(); _smiChart = null; }
 }
 
 document.addEventListener('keydown', e => {
