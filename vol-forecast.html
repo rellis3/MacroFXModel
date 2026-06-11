@@ -464,6 +464,92 @@
 .vf-nday-val  { font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
 .vf-nday-sub  { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
 
+/* ── Position sizing bar ─────────────────────────────────────────────────── */
+.vf-pos-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 18px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.vf-pos-bar-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  flex-shrink: 0;
+}
+.vf-pos-bar-sub {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  flex: 1;
+}
+.vf-pos-bar-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.vf-pos-bar-inputs label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+}
+.vf-pos-input {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  outline: none;
+  width: 90px;
+}
+.vf-pos-input:focus { border-color: var(--blue-bd); }
+.vf-pos-risk-amt {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--blue);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ── Per-card position result ────────────────────────────────────────────── */
+.vf-pos-result {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  padding: 6px 0 2px;
+  border-top: 1px solid var(--border);
+}
+.vf-pos-result-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  color: var(--text3);
+  width: 100%;
+  margin-bottom: 2px;
+}
+.vf-pos-item { display: flex; align-items: baseline; gap: 4px; }
+.vf-pos-key  { color: var(--text3); }
+.vf-pos-val  { font-weight: 600; color: var(--text); }
+.vf-pos-sub  { color: var(--text3); font-size: 9px; }
+
 /* ── Skeleton / loading ──────────────────────────────────────────────────── */
 .vf-skeleton {
   background: linear-gradient(90deg, var(--s2) 25%, var(--s3) 50%, var(--s2) 75%);
@@ -522,6 +608,17 @@
   <div class="vf-session-meta" id="vfComputedAt">—</div>
   <div class="vf-spacer"></div>
   <div class="vf-news-badge" id="vfNewsBadge" style="display:none"></div>
+</div>
+
+<!-- POSITION SIZING -->
+<div class="vf-pos-bar" id="vfPosBar">
+  <span class="vf-pos-bar-lbl">Position Sizing</span>
+  <span class="vf-pos-bar-sub">Stop = H-L median from open — notional = risk ÷ hl%</span>
+  <div class="vf-pos-bar-inputs">
+    <label>Account <input id="posAccount" type="number" min="0" step="1000" placeholder="10000" class="vf-pos-input" oninput="updatePositionSizes()"></label>
+    <label>Risk&nbsp;% <input id="posRisk" type="number" min="0.1" max="20" step="0.1" placeholder="1.0" class="vf-pos-input" style="width:64px" oninput="updatePositionSizes()"></label>
+  </div>
+  <span id="posRiskAmt" class="vf-pos-risk-amt"></span>
 </div>
 
 <!-- HISTORICAL VIEW BANNER -->
@@ -666,6 +763,7 @@ const POLL_MS       = 5 * 60 * 1000;
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   document.body.classList.toggle('dark', true);
+  _loadPosSettings();
   loadForecast();
   loadHistory();
   loadSession();
@@ -695,6 +793,7 @@ async function loadForecast() {
     currentForecast = data;
     liveForecast    = data;
     renderForecast(data);
+    updatePositionSizes();
     document.getElementById('vfExportBtn').disabled    = false;
     document.getElementById('vfExtendedBtn').disabled = false;
     setStatus('ok', `Forecast ready — session ${data.session_date}`);
@@ -1142,6 +1241,8 @@ function buildCard(name, f, meta, isHistorical = false) {
       ${newsChip}
     </div>
 
+    <div id="vf-pos-${name}" class="vf-pos-result" style="display:none"></div>
+
     <div class="vf-live-divider"></div>
     ${sessHtml}
   `;
@@ -1325,6 +1426,58 @@ function exportExtended() {
   });
 }
 
+// ── Position sizing ───────────────────────────────────────────────────────────
+function _loadPosSettings() {
+  const acct = localStorage.getItem('vf_pos_account');
+  const risk = localStorage.getItem('vf_pos_risk');
+  if (acct) document.getElementById('posAccount').value = acct;
+  if (risk)  document.getElementById('posRisk').value   = risk;
+}
+
+function updatePositionSizes() {
+  const account = parseFloat(document.getElementById('posAccount').value) || 0;
+  const riskPct = parseFloat(document.getElementById('posRisk').value)    || 0;
+
+  // Persist
+  if (account) localStorage.setItem('vf_pos_account', account);
+  if (riskPct) localStorage.setItem('vf_pos_risk',    riskPct);
+
+  // Update risk $ display next to inputs
+  const riskAmt = document.getElementById('posRiskAmt');
+  if (account && riskPct) {
+    const riskDollar = account * riskPct / 100;
+    riskAmt.textContent = `= $${riskDollar.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} risk per trade`;
+  } else {
+    riskAmt.textContent = '';
+  }
+
+  if (!currentForecast || !account || !riskPct) {
+    document.querySelectorAll('.vf-pos-result').forEach(el => { el.style.display = 'none'; });
+    return;
+  }
+
+  const riskDollar = account * riskPct / 100;
+  const fmt$ = n => '$' + Math.round(n).toLocaleString('en-US');
+
+  for (const [name, f] of Object.entries(currentForecast.instruments ?? {})) {
+    const el = document.getElementById(`vf-pos-${name}`);
+    if (!el || !f.hl_median || f.hl_median <= 0) continue;
+
+    const notional = riskDollar / (f.hl_median / 100);
+    const leverage = notional / account;
+
+    el.innerHTML = `
+      <div class="vf-pos-result-lbl">Position (stop = H-L median)</div>
+      <div class="vf-pos-item"><span class="vf-pos-key">Risk</span><span class="vf-pos-val">${fmt$(riskDollar)}</span></div>
+      <span class="vf-pos-sub">·</span>
+      <div class="vf-pos-item"><span class="vf-pos-key">Notional</span><span class="vf-pos-val">${fmt$(notional)}</span></div>
+      <span class="vf-pos-sub">·</span>
+      <div class="vf-pos-item"><span class="vf-pos-val">${leverage.toFixed(2)}×</span><span class="vf-pos-sub"> of acct</span></div>
+    `;
+    el.style.display = 'flex';
+  }
+}
+
 // ── Historical navigation ─────────────────────────────────────────────────────
 function _prevTradingDay(dateStr) {
   const d = new Date(dateStr + 'T12:00:00Z');
@@ -1353,6 +1506,7 @@ async function loadDateForecast(dateStr) {
     viewingDate     = dateStr;
     currentForecast = data;
     renderForecast(data, true);
+    updatePositionSizes();
     document.getElementById('vfExtendedBtn').disabled    = false;
     document.getElementById('vfHistBannerTxt').textContent =
       `Viewing historical forecast — ${data.session_label ?? dateStr}`;
