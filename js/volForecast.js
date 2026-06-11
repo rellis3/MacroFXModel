@@ -245,10 +245,10 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
     ? rsEwmaVolSeries(ohlc)
     : garch11VolSeries(ohlc, p.garch_omega);
 
-  // newsMult is NOT applied to ranges — reference methodology uses pure vol-based
-  // forecasts; event days are already embedded in the historical vol estimate.
-  // The multiplier is retained in output as informational context for the dashboard.
-  return _buildOutput(volSeries, volSeries.at(-1), assetClass, newsMult);
+  // Apply news multiplier to forward sigma: high-impact events expand realised vol
+  // on the day (FOMC, NFP, CPI etc.) and the reference methodology captures this.
+  const sigmaFwd = newsMult > 1 ? volSeries.at(-1) * newsMult : volSeries.at(-1);
+  return _buildOutput(volSeries, sigmaFwd, assetClass, newsMult);
 }
 
 // ── Realized-variance based estimators (M15 bar pipeline) ─────────────────────
@@ -269,5 +269,6 @@ export function computeForecastFromRV(dailyRVs, assetClass = 'fx', newsMult = 1.
     ? ewmaOnRVSeries(rvValues)
     : garchOnRVSeries(rvValues, p.garch_omega);
 
-  return _buildOutput(volSeries, volSeries.at(-1), assetClass, newsMult);
+  const sigmaFwd = newsMult > 1 ? volSeries.at(-1) * newsMult : volSeries.at(-1);
+  return _buildOutput(volSeries, sigmaFwd, assetClass, newsMult);
 }
