@@ -2247,7 +2247,7 @@ app.get('/api/vol-forecast/archive', async (_req, res) => {
   }
 });
 
-// Archive — retrieve a stored daily forecast from KV by date.
+// Archive — retrieve a stored daily forecast from KV by date (path param).
 // GET /api/vol-forecast/archive/:date  (date = YYYY-MM-DD)
 app.get('/api/vol-forecast/archive/:date', async (req, res) => {
   try {
@@ -2255,6 +2255,22 @@ app.get('/api/vol-forecast/archive/:date', async (req, res) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
     const raw = await kv.get(`vol_forecast_${date}`);
     if (!raw) return res.status(404).json({ ok: false, error: `No forecast found for ${date}` });
+    res.json(JSON.parse(raw));
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Historical forecast by date — query param version used by vol-forecast.html nav.
+// GET /api/vol-forecast/by-date?date=YYYY-MM-DD
+app.get('/api/vol-forecast/by-date', async (req, res) => {
+  const date = String(req.query.date ?? '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ ok: false, error: 'Provide ?date=YYYY-MM-DD' });
+  }
+  try {
+    const raw = await kv.get(`vol_forecast_${date}`);
+    if (!raw) return res.status(404).json({ ok: false, error: `No forecast stored for ${date}` });
     res.json(JSON.parse(raw));
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -2287,6 +2303,39 @@ app.get('/api/vol-forecast/audit/:date?', async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+function _fmtExtendedText(data) {
+  const LW  = 29;
+  const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const f2  = v => (v != null ? v.toFixed(2) : '—');
+  const lines = ['**VOL & RANGE FORECAST — EXTENDED**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    const pct = f.vol_pct != null ? `  [${f.vol_pct}th percentile]` : '';
+    lines.push(
+      div(name),
+      `Volatility (annualized) : ${f.vol_annual.toFixed(2)}%${pct}`,
+      '',
+      `High to Low range       : ${f2(f.hl_median)}% median · ${f2(f.hl_75)}% 75th`,
+      `Open to Close move      : ${f2(f.oc_median)}% median · ${f2(f.oc_75)}% 75th`,
+      `Open to High (up leg)   : ${f2(f.oh_median)}% median · ${f2(f.oh_75)}% 75th`,
+      `Open to Low  (down leg) : ${f2(f.ol_median)}% median · ${f2(f.ol_75)}% 75th`,
+      `5-Day  H-L (week)       : ${f2(f.hl_5d)}% median`,
+      `5-Day  O-C (week)       : ${f2(f.oc_5d)}% median`,
+      `20-Day H-L (month)      : ${f2(f.hl_20d)}% median`,
+      `20-Day O-C (month)      : ${f2(f.oc_20d)}% median`,
+      '',
+    );
+  }
+  return lines.join('\n');
+}
+
+// Extended forecast export — vol percentile, O-H/O-L legs, weekly and monthly ranges.
+app.get('/api/vol-forecast/extended/export', (_req, res) => {
+  if (!forecastState.latest) {
+    return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
+  }
+  res.type('text/plain').send(_fmtExtendedText(forecastState.latest));
 });
 
 // ── Session Stats API ─────────────────────────────────────────────────────────

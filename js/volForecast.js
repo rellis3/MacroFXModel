@@ -22,6 +22,10 @@
  *   H-L range : BM range distribution percentiles (P50=1.572σ, P75=2.049σ)
  *               with per-asset-class correction
  *   O-C move  : Half-normal percentiles (|N(0,σ)|) with per-asset-class correction
+ *   O-H / O-L : Same distribution as O-C by BM reflection principle —
+ *               max(B_t) ~ |B_T|, so median O-H = median O-L = median O-C
+ *   N-day     : √T scaling — σ_N = σ_1 × √N (independent days)
+ *   Vol pct   : Percentile rank of current σ in trailing 252-bar history (0–100)
  *   News mult : High-impact US event overlay (FOMC, NFP, CPI etc.)
  */
 
@@ -123,6 +127,78 @@ function garch11VolSeries(bars, omega) {
   return out;
 }
 
+// ── EWMA on daily realized variances — full series ───────────────────────────
+function ewmaOnRVSeries(rvValues, lambda = EWMA_LAMBDA) {
+  const initN = Math.min(20, rvValues.length);
+  let v = rvValues.slice(0, initN).reduce((s, r) => s + r, 0) / initN;
+  v = Math.max(v, 1e-10);
+  const out = new Array(rvValues.length);
+  for (let i = 0; i < rvValues.length; i++) {
+    v = lambda * v + (1 - lambda) * rvValues[i];
+    out[i] = Math.sqrt(v);
+  }
+  return out;
+}
+
+// ── Realized GARCH(1,1) — full series ────────────────────────────────────────
+function garchOnRVSeries(rvValues, omega) {
+  let sigma2 = omega / (1 - G_ALPHA - G_BETA);
+  const out = new Array(rvValues.length);
+  for (let i = 0; i < rvValues.length; i++) {
+    sigma2 = omega + G_ALPHA * rvValues[i] + G_BETA * sigma2;
+    out[i] = Math.sqrt(Math.max(sigma2, 0));
+  }
+  return out;
+}
+
+// ── Scalar wrappers (kept for compatibility) ──────────────────────────────────
+function ewmaOnRV(rvValues, lambda = EWMA_LAMBDA) {
+  return ewmaOnRVSeries(rvValues, lambda).at(-1);
+}
+
+function garchOnRV(rvValues, omega) {
+  return garchOnRVSeries(rvValues, omega).at(-1);
+}
+
+// ── Shared output builder ─────────────────────────────────────────────────────
+function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
+  const p           = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
+  const sigmaFwdPct = sigmaFwd * 100;
+  const volAnnual   = sigmaFwdPct * Math.sqrt(TRADING_DAYS);
+
+  // Percentile rank in trailing 252 bars (strictly-less count → avoids 100th on plateau)
+  const hist252 = volSeries.slice(-252);
+  const vol_pct = Math.round(hist252.filter(v => v < sigmaFwd).length / hist252.length * 100);
+
+  const sqrt5  = Math.sqrt(5);
+  const sqrt20 = Math.sqrt(20);
+  const r2     = x => Math.round(x * 100) / 100;
+
+  // O-H and O-L have the same distribution as O-C by the BM reflection principle:
+  // max(B_t, t∈[0,T]) ~ |B_T|, so median/75th are identical to the O-C values.
+  // They are kept as explicit named fields for API clarity.
+  const oc_med = HN_P50 * p.oc_50_corr * sigmaFwdPct;
+  const oc_75v = HN_P75 * p.oc_75_corr * sigmaFwdPct;
+
+  return {
+    vol_annual: r2(volAnnual),
+    vol_pct,
+    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct),
+    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct),
+    hl_5d:      r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * sqrt5),
+    hl_20d:     r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * sqrt20),
+    oc_median:  r2(oc_med),
+    oc_75:      r2(oc_75v),
+    oc_5d:      r2(oc_med * sqrt5),
+    oc_20d:     r2(oc_med * sqrt20),
+    oh_median:  r2(oc_med),
+    oh_75:      r2(oc_75v),
+    ol_median:  r2(oc_med),
+    ol_75:      r2(oc_75v),
+    news_mult:  r2(newsMult),
+  };
+}
+
 // ── Main forecast ─────────────────────────────────────────────────────────────
 /**
  * @param {Array<{open,high,low,close}>} ohlc  Daily bars, oldest → newest
@@ -143,44 +219,13 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
     ? rsEwmaVolSeries(ohlc)
     : garch11VolSeries(ohlc, p.garch_omega);
 
-  const sigmaFwd    = volSeries.at(-1);
-  const sigmaFwdPct = sigmaFwd * 100;
-  const volAnnual   = sigmaFwdPct * Math.sqrt(TRADING_DAYS);
-
-  const r2 = x => Math.round(x * 100) / 100;
-
   // newsMult is NOT applied to ranges — reference methodology uses pure vol-based
   // forecasts; event days are already embedded in the historical vol estimate.
   // The multiplier is retained in output as informational context for the dashboard.
-  return {
-    vol_annual: r2(volAnnual),
-    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct),
-    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct),
-    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct),
-    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct),
-    news_mult:  r2(newsMult),
-  };
+  return _buildOutput(volSeries, volSeries.at(-1), assetClass, newsMult);
 }
 
 // ── Realized-variance based estimators (M15 bar pipeline) ─────────────────────
-
-// EWMA on daily realized variance — for commodity (gold).
-function ewmaOnRV(rvValues, lambda = EWMA_LAMBDA) {
-  const initN = Math.min(20, rvValues.length);
-  let v = rvValues.slice(0, initN).reduce((s, r) => s + r, 0) / initN;
-  v = Math.max(v, 1e-10);
-  for (const rv of rvValues) v = lambda * v + (1 - lambda) * rv;
-  return Math.sqrt(v);
-}
-
-// Realized GARCH(1,1) — for index/fx.
-// Uses daily RV as innovation term (more efficient than r²_{t-1}).
-// ω floor prevents quiet-period collapse.
-function garchOnRV(rvValues, omega) {
-  let sigma2 = omega / (1 - G_ALPHA - G_BETA);
-  for (const rv of rvValues) sigma2 = omega + G_ALPHA * rv + G_BETA * sigma2;
-  return Math.sqrt(Math.max(sigma2, 0));
-}
 
 /**
  * Forecast from pre-computed daily realized variances (M15 pipeline).
@@ -192,22 +237,11 @@ export function computeForecastFromRV(dailyRVs, assetClass = 'fx', newsMult = 1.
   if (dailyRVs.length < 60) throw new Error(`Need ≥60 daily RV values, got ${dailyRVs.length}`);
 
   const rvValues = dailyRVs.map(d => d.rv);
-  const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
+  const p        = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
-  const sigmaFwd = assetClass === 'commodity'
-    ? ewmaOnRV(rvValues)
-    : garchOnRV(rvValues, p.garch_omega);
+  const volSeries = assetClass === 'commodity'
+    ? ewmaOnRVSeries(rvValues)
+    : garchOnRVSeries(rvValues, p.garch_omega);
 
-  const sigmaFwdPct = sigmaFwd * 100;
-  const volAnnual   = sigmaFwdPct * Math.sqrt(TRADING_DAYS);
-  const r2 = x => Math.round(x * 100) / 100;
-
-  return {
-    vol_annual: r2(volAnnual),
-    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct),
-    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct),
-    oc_median:  r2(HN_P50       * p.oc_50_corr * sigmaFwdPct),
-    oc_75:      r2(HN_P75       * p.oc_75_corr * sigmaFwdPct),
-    news_mult:  r2(newsMult),
-  };
+  return _buildOutput(volSeries, volSeries.at(-1), assetClass, newsMult);
 }

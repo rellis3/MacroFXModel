@@ -394,6 +394,76 @@
   color: var(--text3);
 }
 
+/* ── Vol percentile pill ─────────────────────────────────────────────────── */
+.vf-pct-pill {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  flex-shrink: 0;
+}
+.vf-pct-pill.hi { color: var(--red);   border-color: var(--red-bd);   background: var(--red-bg);   }
+.vf-pct-pill.lo { color: var(--green); border-color: var(--green-bd); background: var(--green-bg); }
+
+/* ── History navigation ──────────────────────────────────────────────────── */
+.vf-hist-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.vf-hist-nav-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text2);
+  font-family: 'DM Mono', monospace;
+  flex: 1;
+}
+.vf-hist-date {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  outline: none;
+}
+.vf-hist-date:focus { border-color: var(--blue-bd); }
+
+/* ── Historical view banner ──────────────────────────────────────────────── */
+.vf-hist-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-bd);
+  border-radius: var(--r);
+  padding: 8px 16px;
+  margin-top: 14px;
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
+  color: var(--amber);
+  flex-wrap: wrap;
+}
+
+/* ── N-day range rows ────────────────────────────────────────────────────── */
+.vf-nday-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.vf-nday-lbl  { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; width: 42px; flex-shrink: 0; text-align: right; }
+.vf-nday-val  { font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
+.vf-nday-sub  { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
 /* ── Skeleton / loading ──────────────────────────────────────────────────── */
 .vf-skeleton {
   background: linear-gradient(90deg, var(--s2) 25%, var(--s3) 50%, var(--s2) 75%);
@@ -426,6 +496,7 @@
   <button class="dark-btn" id="vfExportBtn" onclick="exportForecast()" disabled>⬇ Export</button>
   <button class="dark-btn" id="vfSessionExportBtn" onclick="exportSession()" disabled>⬇ Session</button>
   <button class="dark-btn" id="vfV3ExportBtn" onclick="exportV3()" disabled title="Vol forecast + session consumption stats for the v3 Pine Script indicator">⬇ V+S</button>
+  <button class="dark-btn" id="vfExtendedBtn" onclick="exportExtended()" disabled title="Extended export: vol percentile, O-H/O-L legs, 5-day and 20-day ranges">⬇ Extended</button>
   <button class="dark-btn" id="vfSessionComputeBtn" onclick="triggerSessionStats()" title="Fetch 5yr Oanda H1 data and compute Asia/London session consumption stats (~3–5 min)">⟳ Session Stats</button>
   <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
   <a href="index.html" style="text-decoration:none">
@@ -453,6 +524,13 @@
   <div class="vf-news-badge" id="vfNewsBadge" style="display:none"></div>
 </div>
 
+<!-- HISTORICAL VIEW BANNER -->
+<div class="vf-hist-banner" id="vfHistBanner" style="display:none">
+  <span id="vfHistBannerTxt">Viewing historical forecast</span>
+  <div style="flex:1"></div>
+  <button class="dark-btn" style="padding:4px 12px;font-size:11px" onclick="returnToToday()">↩ Return to Today</button>
+</div>
+
 <!-- INSTRUMENT CARDS -->
 <div class="vf-grid" id="vfGrid">
   <!-- Populated by JS -->
@@ -460,13 +538,20 @@
 
 <!-- HISTORY TABLE -->
 <div class="vf-history" id="vfHistory" style="display:none">
-  <div class="vf-history-title">Recent Sessions — Annualised Vol%</div>
+  <div class="vf-hist-nav">
+    <span class="vf-hist-nav-title">Session History — Annualised Vol%</span>
+    <button class="dark-btn" style="padding:4px 10px;font-size:11px" onclick="histNavPrev()" title="Load previous trading day">← Older</button>
+    <input type="date" class="vf-hist-date" id="vfHistDatePicker" title="Jump to date" onchange="histNavGoto(this.value)">
+    <button class="dark-btn" style="padding:4px 10px;font-size:11px" onclick="histNavNext()" title="Load next trading day">Newer →</button>
+    <button class="dark-btn" style="padding:4px 10px;font-size:11px" onclick="histNavToday()" id="vfHistTodayBtn" title="Return to recent sessions">Today</button>
+  </div>
   <div class="vf-hist-scroll">
     <table class="vf-hist-table">
       <thead id="vfHistHead"></thead>
       <tbody id="vfHistBody"></tbody>
     </table>
   </div>
+  <div id="vfHistMsg" style="padding:8px 18px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);display:none"></div>
 </div>
 
 <!-- ARCHIVE TABLE -->
@@ -552,6 +637,18 @@
       <span class="vf-api-desc">Recompute session stats from Oanda H1 (~3–5 min, pure JS) — run once then cached. Optional: ?years=3</span>
     </div>
 
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/by-date?date=YYYY-MM-DD</span>
+      <span class="vf-api-desc">Forecast for a specific past session — JSON (loaded from KV)</span>
+    </div>
+
+    <div class="vf-api-row">
+      <span class="vf-api-method">GET</span>
+      <span class="vf-api-path">/api/vol-forecast/extended/export</span>
+      <span class="vf-api-desc">Extended plain text — vol percentile, O-H/O-L legs, 5-day and 20-day range projections (same as ⬇ Extended)</span>
+    </div>
+
   </div>
 </div>
 
@@ -560,8 +657,10 @@
 <script>
 // ── State ────────────────────────────────────────────────────────────────────
 let currentForecast = null;
+let liveForecast    = null;
 let currentSession  = null;
 let refreshTimer    = null;
+let viewingDate     = null;
 const POLL_MS       = 5 * 60 * 1000;
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
@@ -594,8 +693,10 @@ async function loadForecast() {
     }
 
     currentForecast = data;
+    liveForecast    = data;
     renderForecast(data);
-    document.getElementById('vfExportBtn').disabled = false;
+    document.getElementById('vfExportBtn').disabled    = false;
+    document.getElementById('vfExtendedBtn').disabled = false;
     setStatus('ok', `Forecast ready — session ${data.session_date}`);
   } catch (e) {
     setStatus('err', `Fetch error: ${e.message}`);
@@ -948,13 +1049,13 @@ async function exportArchiveDate(date, btn) {
 }
 
 // ── Rendering ──────────────────────────────────────────────────────────────────
-function renderForecast(data) {
+function renderForecast(data, isHistorical = false) {
   // Session bar
   document.getElementById('vfSessionLabel').textContent = data.session_label;
   const computedAt = new Date(data.computed_at);
   document.getElementById('vfComputedAt').textContent =
     `Computed ${computedAt.toUTCString().replace(/:\d\d GMT$/, ' UTC')}`;
-  document.getElementById('vfUpdated').textContent = timeAgo(computedAt);
+  document.getElementById('vfUpdated').textContent = isHistorical ? 'Historical' : timeAgo(computedAt);
 
   // News badge
   const newsBadge = document.getElementById('vfNewsBadge');
@@ -975,16 +1076,23 @@ function renderForecast(data) {
   document.getElementById('pillCount').className   = entries.length > 0 ? 'dpill ok' : 'dpill err';
 
   for (const [name, f] of entries) {
-    grid.appendChild(buildCard(name, f, data.meta));
+    grid.appendChild(buildCard(name, f, data.meta, isHistorical));
   }
 }
 
-function buildCard(name, f, meta) {
+function buildCard(name, f, meta, isHistorical = false) {
   const card = document.createElement('div');
   card.className = 'vf-card';
 
   // Vol pill colour: > 20% = hi (red), < 8% = lo (green), else default (blue)
   const volClass = f.vol_annual > 20 ? 'hi' : f.vol_annual < 8 ? 'lo' : '';
+
+  // Vol percentile pill
+  const pct = f.vol_pct ?? null;
+  const pctClass = pct != null ? (pct >= 80 ? 'hi' : pct <= 20 ? 'lo' : '') : '';
+  const pctHtml = pct != null
+    ? `<div class="vf-pct-pill ${pctClass}">${pct}th pct</div>`
+    : '';
 
   const hlMax = f.hl_75 * 1.1;
   const ocMax = f.oc_75 * 1.1;
@@ -993,10 +1101,26 @@ function buildCard(name, f, meta) {
     ? `<span class="vf-mult-chip active">📅 ${meta.news_flag} ×${(meta.news_mult ?? 1).toFixed(2)}</span>`
     : `<span class="vf-mult-chip">No news flag</span>`;
 
+  // Multi-day H-L projections (√T scaling)
+  const ndayHtml = (f.hl_5d != null && f.hl_20d != null) ? `
+    <div class="vf-section">
+      <div class="vf-section-label">Multi-Day H-L (√T scaling)</div>
+      <div class="vf-nday-row"><span class="vf-nday-lbl">5-day</span><span class="vf-nday-val">${f.hl_5d.toFixed(2)}%</span><span class="vf-nday-sub">≈ range over 5 sessions</span></div>
+      <div class="vf-nday-row"><span class="vf-nday-lbl">20-day</span><span class="vf-nday-val">${f.hl_20d.toFixed(2)}%</span><span class="vf-nday-sub">≈ range over 20 sessions</span></div>
+    </div>` : '';
+
+  // Live session area — historical mode shows placeholder (no id to prevent loadSession() wiring)
+  const sessHtml = isHistorical
+    ? `<div class="vf-session-na">Historical — no live session data</div>`
+    : `<div id="vf-sess-${name}" class="vf-sstat"><div class="vf-session-na">Loading session…</div></div>`;
+
   card.innerHTML = `
     <div class="vf-card-header">
       <div class="vf-name">${name}</div>
-      <div class="vf-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+        ${pctHtml}
+        <div class="vf-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</div>
+      </div>
     </div>
 
     <div class="vf-section">
@@ -1006,19 +1130,20 @@ function buildCard(name, f, meta) {
     </div>
 
     <div class="vf-section">
-      <div class="vf-section-label">Open → Close Move</div>
+      <div class="vf-section-label">Open → Close / High / Low</div>
       ${barRow('50th', f.oc_median, ocMax, 'median')}
       ${barRow('75th', f.oc_75,    ocMax, 'p75')}
+      <div style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);padding-left:52px;line-height:1.4">O→H and O→L have same distribution (BM reflection principle)</div>
     </div>
+
+    ${ndayHtml}
 
     <div class="vf-mults">
       ${newsChip}
     </div>
 
     <div class="vf-live-divider"></div>
-    <div id="vf-sess-${name}" class="vf-sstat">
-      <div class="vf-session-na">Loading session…</div>
-    </div>
+    ${sessHtml}
   `;
   return card;
 }
@@ -1144,10 +1269,136 @@ function renderHistory(forecasts) {
     }).join('');
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${fc.session_date}</td>${cells}`;
+    tr.style.cursor = 'pointer';
+    tr.title = `Load historical forecast for ${fc.session_date}`;
+    tr.onclick = () => loadDateForecast(fc.session_date);
     tbody.appendChild(tr);
   }
   document.getElementById('vfHistory').style.display = '';
 }
+
+// ── Extended export ───────────────────────────────────────────────────────────
+function buildExtendedText(data) {
+  const LW = 29;
+  const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const f2  = x => (typeof x === 'number' ? x.toFixed(2) : '—');
+
+  const lines = [
+    '**VOL & RANGE FORECAST — EXTENDED**',
+    `**For session: ${data.session_label}**`,
+    '',
+  ];
+
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    lines.push(div(name));
+    lines.push(`Vol (ann)       : ${f2(f.vol_annual)}%  [${f.vol_pct ?? '—'}th pct of 252-day history]`);
+    lines.push(`H-L median      : ${f2(f.hl_median)}%  (75th ${f2(f.hl_75)}%)`);
+    lines.push(`O-C median      : ${f2(f.oc_median)}%  (75th ${f2(f.oc_75)}%)`);
+    lines.push(`O-H median      : ${f2(f.oh_median)}%  (75th ${f2(f.oh_75)}%)  [= O-C by BM reflection]`);
+    lines.push(`O-L median      : ${f2(f.ol_median)}%  (75th ${f2(f.ol_75)}%)  [= O-C by BM reflection]`);
+    lines.push(`5-day H-L       : ${f2(f.hl_5d)}%  (5-session range)`);
+    lines.push(`20-day H-L      : ${f2(f.hl_20d)}%  (20-session range)`);
+    lines.push(`5-day O-C       : ${f2(f.oc_5d)}%`);
+    lines.push(`20-day O-C      : ${f2(f.oc_20d)}%`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+function exportExtended() {
+  if (!currentForecast) return;
+  const text = buildExtendedText(currentForecast);
+  const btn  = document.getElementById('vfExtendedBtn');
+  const fname = `vol-extended-${currentForecast.session_date ?? viewingDate ?? 'latest'}.txt`;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = fname;
+    a.click(); URL.revokeObjectURL(url);
+  });
+}
+
+// ── Historical navigation ─────────────────────────────────────────────────────
+function _prevTradingDay(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  do { d.setUTCDate(d.getUTCDate() - 1); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+  return d.toISOString().slice(0, 10);
+}
+
+function _nextTradingDay(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  do { d.setUTCDate(d.getUTCDate() + 1); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+  return d.toISOString().slice(0, 10);
+}
+
+async function loadDateForecast(dateStr) {
+  setStatus('spin', `Loading forecast for ${dateStr}…`);
+  try {
+    const res  = await fetch(`/api/vol-forecast/by-date?date=${encodeURIComponent(dateStr)}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setStatus('err', `No forecast for ${dateStr}: ${body.error ?? `HTTP ${res.status}`}`);
+      return;
+    }
+    const data = await res.json();
+    if (!data.ok) { setStatus('err', `No forecast stored for ${dateStr}`); return; }
+
+    viewingDate     = dateStr;
+    currentForecast = data;
+    renderForecast(data, true);
+    document.getElementById('vfExtendedBtn').disabled    = false;
+    document.getElementById('vfHistBannerTxt').textContent =
+      `Viewing historical forecast — ${data.session_label ?? dateStr}`;
+    document.getElementById('vfHistBanner').style.display = '';
+    const dp = document.getElementById('vfHistDatePicker');
+    if (dp) dp.value = dateStr;
+    setStatus('ok', `Historical — ${data.session_label ?? dateStr}`);
+  } catch (e) {
+    setStatus('err', `Load error: ${e.message}`);
+  }
+}
+
+function returnToToday() {
+  viewingDate = null;
+  document.getElementById('vfHistBanner').style.display = 'none';
+  const dp = document.getElementById('vfHistDatePicker');
+  if (dp) dp.value = '';
+  if (liveForecast) {
+    currentForecast = liveForecast;
+    renderForecast(liveForecast, false);
+    loadSession();
+    setStatus('ok', `Forecast ready — session ${liveForecast.session_date}`);
+  } else {
+    loadForecast();
+  }
+}
+
+function histNavPrev() {
+  const base = viewingDate ?? liveForecast?.session_date ?? new Date().toISOString().slice(0, 10);
+  loadDateForecast(_prevTradingDay(base));
+}
+
+function histNavNext() {
+  if (!viewingDate) return;
+  const next       = _nextTradingDay(viewingDate);
+  const latestDate = liveForecast?.session_date ?? new Date().toISOString().slice(0, 10);
+  if (next >= latestDate) { returnToToday(); } else { loadDateForecast(next); }
+}
+
+function histNavGoto(dateStr) {
+  if (!dateStr) return;
+  const latestDate = liveForecast?.session_date ?? new Date().toISOString().slice(0, 10);
+  if (dateStr >= latestDate) { returnToToday(); } else { loadDateForecast(dateStr); }
+}
+
+function histNavToday() { returnToToday(); }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function setStatus(level, msg) {
