@@ -602,7 +602,7 @@ function _applicableSessionDate(now) {
 }
 
 export async function startVolForecastScheduler() {
-  // Warm up from KV
+  // Warm up from KV — latest entry first, then fill history from archive index
   try {
     const raw = await kv.get('vol_forecast_latest');
     if (raw) {
@@ -610,6 +610,26 @@ export async function startVolForecastScheduler() {
       forecastState.latest  = cached;
       forecastState.history = [cached];
       console.log(`[VOL-FORECAST] Warm from KV: ${cached.session_date}`);
+
+      // Restore history from archive so the history table shows on first page load.
+      // Fetch last 5 index entries (most-recent first) that aren't already loaded.
+      const idxRaw = await kv.get('vol_forecast_index');
+      if (idxRaw) {
+        const idx = JSON.parse(idxRaw).slice(0, 5);
+        const extra = await Promise.all(
+          idx
+            .filter(e => e.date !== cached.session_date)
+            .slice(0, 4)
+            .map(e => kv.get(`vol_forecast_${e.date}`)
+              .then(r => r ? JSON.parse(r) : null)
+              .catch(() => null))
+        );
+        const valid = extra.filter(Boolean);
+        if (valid.length) {
+          forecastState.history = [cached, ...valid];
+          console.log(`[VOL-FORECAST] History restored: ${forecastState.history.length} entries`);
+        }
+      }
     }
   } catch (e) {
     console.error('[VOL-FORECAST] KV warm-up error:', e.message);

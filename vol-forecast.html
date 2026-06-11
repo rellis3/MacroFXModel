@@ -621,6 +621,7 @@
   <button class="dark-btn" id="vfV3ExportBtn" onclick="exportV3()" disabled title="Vol forecast + session consumption stats for the v3 Pine Script indicator">⬇ V+S</button>
   <button class="dark-btn" id="vfExtendedBtn" onclick="exportExtended()" disabled title="Extended export: vol percentile, O-H/O-L legs, 5-day and 20-day ranges">⬇ Extended</button>
   <button class="dark-btn" id="vfWeeklyBtn"   onclick="exportWeekly()"   disabled title="Weekly export: WTD range consumption, directional bias, 5-day/20-day forecasts">⬇ Weekly</button>
+  <button class="dark-btn" id="vfHistoryBtn" onclick="toggleHistory()" disabled title="Show/hide session history table — click rows to load a past day, use ← Older / Newer → to navigate">⊞ History</button>
   <button class="dark-btn" id="vfSessionComputeBtn" onclick="triggerSessionStats()" title="Fetch 5yr Oanda H1 data and compute Asia/London session consumption stats (~3–5 min)">⟳ Session Stats</button>
   <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
   <a href="index.html" style="text-decoration:none">
@@ -856,12 +857,25 @@ async function loadForecast() {
   }
 }
 
+let _historyLoaded = false;
+
 async function loadHistory() {
   try {
     const res  = await fetch('/api/vol-forecast/history');
     const data = await res.json();
-    if (data.ok && data.forecasts.length > 1) renderHistory(data.forecasts);
+    if (data.ok && data.forecasts.length) {
+      renderHistory(data.forecasts);
+      _historyLoaded = true;
+    }
   } catch { /* silent */ }
+}
+
+function toggleHistory() {
+  const panel = document.getElementById('vfHistory');
+  const btn   = document.getElementById('vfHistoryBtn');
+  const shown = panel.style.display !== 'none';
+  panel.style.display = shown ? 'none' : '';
+  btn.textContent = shown ? '⊞ History' : '✕ History';
 }
 
 async function loadSession() {
@@ -1430,7 +1444,8 @@ function renderHistory(forecasts) {
     tr.onclick = () => loadDateForecast(fc.session_date);
     tbody.appendChild(tr);
   }
-  document.getElementById('vfHistory').style.display = '';
+  // Keep panel hidden — user opens via ⊞ History button. Just enable the button.
+  document.getElementById('vfHistoryBtn').disabled = false;
 }
 
 // ── Weekly range tracker ──────────────────────────────────────────────────────
