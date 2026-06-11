@@ -710,7 +710,7 @@ export async function checkGoldMacroAlerts() {
   if (regimeChanged && regimeCooledDown) {
     cd[regimeCooldownKey] = now;
     dirty = true;
-    await sendGoldRegimeAlert(model, _prevGoldModel.regime);
+    await sendGoldRegimeAlert(model, _prevGoldModel.regimeLabel || _prevGoldModel.regime);
   }
 
   // ── 2. Signal crossing alert ─────────────────────────────────────────────
@@ -757,7 +757,7 @@ export async function checkGoldMacroAlerts() {
   if (dirty) saveGoldCooldowns(cd);
 
   // Store current model as previous for next check
-  _prevGoldModel = { regime: model.regime, signal: model.signal, strength: model.strength };
+  _prevGoldModel = { regime: model.regime, regimeLabel: model.regimeLabel, signal: model.signal, strength: model.strength };
 
   // Always sync gold model to KV so the bot can read it
   syncGoldModelToKV(model);
@@ -799,9 +799,11 @@ function syncGoldModelToKV(model) {
 
 // ── Gold Alert Message Formatters ──────────────────────────────────────────────
 
-async function sendGoldRegimeAlert(model, prevRegime) {
-  const regimeLine = `${model.regimeEmoji} Regime: <b>${prevRegime}</b> → <b>${model.regimeLabel}</b>`;
-  await _sendGoldAlert(model, regimeLine, '⚠️ GOLD MACRO REGIME CHANGE');
+async function sendGoldRegimeAlert(model, prevRegimeLabel) {
+  const biasEmoji = model.regimeBias === 'BULLISH' ? '↑' : model.regimeBias === 'BEARISH' ? '↓' : '↕';
+  const regimeLine = `${model.regimeEmoji} <b>${prevRegimeLabel}</b> → <b>${model.regimeLabel}</b>`;
+  const plainLine  = `${model.regimeDescription} Gold outlook shifts to <b>${model.regimeBias}</b> ${biasEmoji}`;
+  await _sendGoldAlert(model, regimeLine, '⚠️ GOLD MACRO REGIME CHANGE', plainLine);
 }
 
 async function sendGoldSignalAlert(model) {
@@ -812,11 +814,15 @@ async function sendGoldSignalAlert(model) {
 
 async function sendGoldTransitionAlert(model) {
   const sigList  = model.regimeConfidence.signals.slice(0, 3).join(' · ');
-  const mainLine = `⚠️ Regime transitioning — reduce size (×${model.regimeConfidence.sizeMult})`;
-  const arimaLine = model.arimaStability != null
-    ? `ARIMA residual stability: ${(model.arimaStability * 100).toFixed(0)}% ${model.arimaStability < 0.50 ? '🔴' : model.arimaStability < 0.70 ? '🟡' : '✅'}`
-    : null;
-  const detailLine = [sigList || null, arimaLine].filter(Boolean).join('\n') || null;
+  const mainLine = `⚠️ <b>${model.regimeLabel}</b> regime is showing instability — reduce size (×${model.regimeConfidence.sizeMult})`;
+  const plainLine = `Signals are conflicting within the current regime. Not a confirmed flip yet — the model is losing confidence in its own read. Stay defensive until the picture clears.`;
+  const arimaLine = model.arimaStability != null ? (() => {
+    const pct = (model.arimaStability * 100).toFixed(0);
+    const ico = model.arimaStability < 0.50 ? '🔴' : model.arimaStability < 0.70 ? '🟡' : '✅';
+    const lbl = model.arimaStability < 0.50 ? 'low — price residuals are erratic' : model.arimaStability < 0.70 ? 'moderate' : 'stable';
+    return `Price trend reliability: ${pct}% ${ico} (${lbl})`;
+  })() : null;
+  const detailLine = [plainLine, sigList || null, arimaLine].filter(Boolean).join('\n') || null;
   await _sendGoldAlert(model, mainLine, '⚠️ GOLD REGIME TRANSITION', detailLine);
 }
 
@@ -848,9 +854,9 @@ async function _sendGoldAlert(model, headline, title, extraLine) {
     ? `BEI Decomp: ${beiD.interpretation}`
     : null;
 
-  const confBadge = model.regimeConfidence.confidence === 'HIGH' ? '✅ HIGH confidence'
-                  : model.regimeConfidence.confidence === 'MEDIUM' ? '🟡 MEDIUM confidence'
-                  : '🔴 LOW confidence — regime transitioning';
+  const confBadge = model.regimeConfidence.confidence === 'HIGH'   ? '✅ Model confidence: High — signals are aligned'
+                  : model.regimeConfidence.confidence === 'MEDIUM' ? '🟡 Model confidence: Medium — some signal noise'
+                  : '🔴 Model confidence: Low — regime is in flux';
 
   const weightHighlight = (() => {
     const w = model.weights;
@@ -863,7 +869,7 @@ async function _sendGoldAlert(model, headline, title, extraLine) {
       realYieldLevel: 'Real Yield Level',
       dxyMomentum: 'DXY Momentum',
     };
-    return top ? `Primary driver: ${labels[top[0]] ?? top[0]} (${(top[1] * 100).toFixed(0)}% weight)` : null;
+    return top ? `What's driving gold: ${labels[top[0]] ?? top[0]} (${(top[1] * 100).toFixed(0)}% weight)` : null;
   })();
 
   const lines = [
