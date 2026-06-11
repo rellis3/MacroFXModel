@@ -2555,6 +2555,92 @@ app.get('/api/vol-forecast/weekly/export', async (_req, res) => {
   }
 });
 
+// ── Levels hit history ────────────────────────────────────────────────────────
+// Reads stored session audits and computes per-instrument, per-level hit rates
+// and median reach times. Used by the strategy model / levels history panel.
+// GET /api/vol-forecast/levels-history?days=90
+app.get('/api/vol-forecast/levels-history', async (req, res) => {
+  try {
+    const days   = Math.min(365, Math.max(7, parseInt(req.query.days ?? 90)));
+    const idxRaw = await kv.get('vol_forecast_index');
+    if (!idxRaw) return res.json({ ok: true, sessions: 0, instruments: {} });
+
+    const idx    = JSON.parse(idxRaw).slice(0, days);
+    const audits = await Promise.all(
+      idx.map(e => kv.get(`vol_session_${e.date}`)
+        .then(r => r ? { date: e.date, d: JSON.parse(r) } : null)
+        .catch(() => null))
+    );
+    const valid = audits.filter(Boolean);
+
+    const LEVELS = [
+      { key: 'hl_med',  label: 'H-L Median',   hitKey: '_hl_med_hit',  timeKey: 'hl_med_reached_at' },
+      { key: 'hl_75',   label: 'H-L 75th',     hitKey: '_hl_75_hit',   timeKey: 'hl_75_reached_at' },
+      { key: 'oh_med',  label: 'O-H Median',   hitKey: '_oh_med_hit',  timeKey: 'oh_reached_at' },
+      { key: 'oh_75',   label: 'O-H 75th',     hitKey: '_oh_75_hit',   timeKey: 'oh_75_reached_at' },
+      { key: 'ol_med',  label: 'O-L Median',   hitKey: '_ol_med_hit',  timeKey: 'ol_reached_at' },
+      { key: 'ol_75',   label: 'O-L 75th',     hitKey: '_ol_75_hit',   timeKey: 'ol_75_reached_at' },
+      { key: 'oc_med',  label: 'O-C Median',   hitKey: '_oc_med_hit',  timeKey: 'oc_reached_at' },
+      { key: 'oc_75',   label: 'O-C 75th',     hitKey: '_oc_75_hit',   timeKey: 'oc_75_reached_at' },
+    ];
+
+    const stats = {};
+
+    for (const { date, d } of valid) {
+      for (const [name, s] of Object.entries(d.instruments ?? {})) {
+        if (!stats[name]) {
+          stats[name] = {};
+          for (const lv of LEVELS) stats[name][lv.key] = { hits: 0, times: [], total: 0 };
+        }
+        const fc = s.forecast ?? {};
+        for (const lv of LEVELS) {
+          stats[name][lv.key].total++;
+          // Determine hit from available fields (old audits may lack timestamp but have vs fields)
+          let hit = false, timeVal = s[lv.timeKey] ?? null;
+          if      (lv.key === 'hl_med') hit = (s.hl_vs_med != null ? s.hl_vs_med >= 0 : !!timeVal);
+          else if (lv.key === 'hl_75')  hit = (s.hl_vs_75  != null ? s.hl_vs_75  >= 0 : !!timeVal);
+          else                          hit = !!timeVal;
+
+          if (hit) {
+            stats[name][lv.key].hits++;
+            if (timeVal) {
+              const hour = new Date(timeVal).getUTCHours() + new Date(timeVal).getUTCMinutes() / 60;
+              stats[name][lv.key].times.push({ hour, time: timeVal });
+            }
+          }
+        }
+      }
+    }
+
+    // Summarise: hit_rate, median_hour, earliest_hour, latest_hour
+    const result = {};
+    for (const [name, lvMap] of Object.entries(stats)) {
+      result[name] = {};
+      for (const lv of LEVELS) {
+        const d = lvMap[lv.key];
+        const times = d.times.map(t => t.hour).sort((a, b) => a - b);
+        const medHour = times.length
+          ? times[Math.floor(times.length / 2)]
+          : null;
+        result[name][lv.key] = {
+          label:        lv.label,
+          hit_rate:     d.total > 0 ? Math.round(d.hits / d.total * 100) : 0,
+          hits:         d.hits,
+          total:        d.total,
+          median_hour:  medHour != null ? Math.round(medHour * 10) / 10 : null,
+          earliest_hour: times.length ? Math.round(times[0] * 10) / 10 : null,
+          latest_hour:  times.length ? Math.round(times.at(-1) * 10) / 10 : null,
+          sample_times: d.times.slice(-5).map(t => t.time),  // last 5 raw timestamps
+        };
+      }
+    }
+
+    res.json({ ok: true, sessions: valid.length, days_requested: days, instruments: result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Intraday vol profile ──────────────────────────────────────────────────────
 // Extracts per-instrument hourly profile from the session-stats payload.
 // Requires session stats to have been computed (includes hourly key from the
