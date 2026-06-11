@@ -595,6 +595,196 @@
   border-radius: 4px;
 }
 @keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+
+/* ── Vol cone strip (card header row below name/pill) ───────────────────── */
+.vf-cone-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  padding: 3px 0 2px;
+  flex-wrap: wrap;
+}
+.vf-cone-strip b { color: var(--text2); }
+.vf-cone-strip .expanding b { color: var(--amber); }
+.vf-cone-strip .contracting b { color: var(--green); }
+.vf-cone-lbl { opacity: .55; }
+.vf-cone-sep { opacity: .3; }
+.vf-vov-badge {
+  font-size: 9px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--s2);
+  color: var(--text3);
+  white-space: nowrap;
+  margin-left: auto;
+}
+.vf-vov-badge.stable   { border-color: var(--green-bd); color: var(--green); background: var(--green-bg); }
+.vf-vov-badge.unstable { border-color: var(--red-bd);   color: var(--red);   background: var(--red-bg);   }
+.vf-vov-badge.moderate { border-color: var(--amber-bd); color: var(--amber); background: var(--amber-bg); }
+
+/* ── Breakout extension probability ─────────────────────────────────────── */
+.vf-extend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0 1px;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+}
+.vf-extend-lbl { color: var(--text3); width: 74px; flex-shrink: 0; }
+.vf-extend-pct { font-weight: 600; color: var(--text2); min-width: 28px; }
+.vf-extend-pct.hi  { color: var(--amber); }
+.vf-extend-pct.low { color: var(--green); }
+.vf-extend-note { color: var(--text3); font-size: 9px; }
+
+/* ── Currency strength strip ─────────────────────────────────────────────── */
+.vf-ccy-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 8px 16px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.vf-ccy-label {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+.vf-ccy-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--s2);
+  color: var(--text2);
+  white-space: nowrap;
+}
+.vf-ccy-pill.bull { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+.vf-ccy-pill.bear { background: var(--red-bg);   border-color: var(--red-bd);   color: var(--red); }
+.vf-ccy-pill.neut { opacity: .55; }
+.vf-ccy-score { font-size: 9px; font-weight: 400; opacity: .75; }
+
+/* ── Intraday profile panel ──────────────────────────────────────────────── */
+.vf-profile-panel {
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  margin-top: 14px;
+  overflow: hidden;
+}
+.vf-profile-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.vf-profile-title {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.vf-profile-sub {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  flex: 1;
+}
+.vf-profile-body { overflow-x: auto; padding: 12px 16px 14px; }
+.vf-profile-chart { display: flex; align-items: flex-end; gap: 2px; height: 60px; min-width: 600px; }
+.vf-profile-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; justify-content: flex-end; }
+.vf-profile-bar {
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  background: var(--blue);
+  transition: height .3s;
+  min-height: 2px;
+  cursor: default;
+}
+.vf-profile-bar.session-asia   { background: #7c3aed88; }
+.vf-profile-bar.session-london { background: var(--blue); }
+.vf-profile-bar.session-ny     { background: #0891b288; }
+.vf-profile-bar:hover { opacity: .8; }
+.vf-profile-hour { font-size: 8px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.vf-profile-legend { display: flex; gap: 14px; margin-top: 8px; font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.vf-profile-legend span::before { content: '■ '; }
+.vf-profile-legend .asia   { color: #7c3aed; }
+.vf-profile-legend .london { color: var(--blue); }
+.vf-profile-legend .ny     { color: #0891b2; }
+.vf-profile-inst-tabs { display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 16px 0; border-bottom: 1px solid var(--border); }
+.vf-profile-tab {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  padding: 3px 8px;
+  border-radius: 4px 4px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  background: var(--s2);
+  color: var(--text3);
+  cursor: pointer;
+}
+.vf-profile-tab.active { background: var(--s1); color: var(--text); font-weight: 600; }
+
+/* ── Event impact panel ──────────────────────────────────────────────────── */
+.vf-event-panel {
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  margin-top: 14px;
+}
+.vf-event-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.vf-event-title {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.vf-event-sub { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); flex: 1; }
+.vf-event-scroll { overflow-x: auto; }
+.vf-event-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: 'DM Mono', monospace; }
+.vf-event-table th { padding: 6px 10px; text-align: center; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.vf-event-table th:first-child { text-align: left; }
+.vf-event-table td { padding: 5px 10px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.vf-event-table td:first-child { text-align: left; font-weight: 600; color: var(--text2); }
+.vf-event-table tr:last-child td { border-bottom: none; }
+.vf-event-cell     { color: var(--text3); }
+.vf-event-cell.lo  { color: var(--text2); }
+.vf-event-cell.md  { color: var(--amber); font-weight: 600; }
+.vf-event-cell.hi  { color: var(--red);   font-weight: 600; }
+.vf-event-empty { padding: 20px 16px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); text-align: center; }
 </style>
 </head>
 <body class="dark">
@@ -622,6 +812,8 @@
   <button class="dark-btn" id="vfExtendedBtn" onclick="exportExtended()" disabled title="Extended export: vol percentile, O-H/O-L legs, 5-day and 20-day ranges">⬇ Extended</button>
   <button class="dark-btn" id="vfWeeklyBtn"   onclick="exportWeekly()"   disabled title="Weekly export: WTD range consumption, directional bias, 5-day/20-day forecasts">⬇ Weekly</button>
   <button class="dark-btn" id="vfHistoryBtn" onclick="toggleHistory()" disabled title="Show/hide session history table — click rows to load a past day, use ← Older / Newer → to navigate">⊞ History</button>
+  <button class="dark-btn" id="vfProfileBtn" onclick="toggleProfile()" disabled title="Intraday vol profile — which UTC hours historically produce the most range">📊 Profile</button>
+  <button class="dark-btn" id="vfEventBtn"   onclick="toggleEventImpact()" title="Event impact study — historical range expansion on CPI/NFP/FOMC days">📅 Events</button>
   <button class="dark-btn" id="vfSessionComputeBtn" onclick="triggerSessionStats()" title="Fetch 5yr Oanda H1 data and compute Asia/London session consumption stats (~3–5 min)">⟳ Session Stats</button>
   <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
   <a href="index.html" style="text-decoration:none">
@@ -678,6 +870,44 @@
       <thead id="vfWeeklyHead"></thead>
       <tbody id="vfWeeklyBody"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- CURRENCY STRENGTH STRIP -->
+<div class="vf-ccy-strip" id="vfCcyStrip" style="display:none">
+  <span class="vf-ccy-label">Currency Strength</span>
+  <span id="vfCcyPills">—</span>
+  <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);margin-left:auto" id="vfCcyNote"></span>
+</div>
+
+<!-- INTRADAY PROFILE PANEL -->
+<div class="vf-profile-panel" id="vfProfilePanel" style="display:none">
+  <div class="vf-profile-nav">
+    <span class="vf-profile-title">Intraday Vol Profile</span>
+    <span class="vf-profile-sub" id="vfProfileSub">Which UTC hours historically produce the most range</span>
+    <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfProfileAge"></span>
+  </div>
+  <div class="vf-profile-inst-tabs" id="vfProfileTabs"></div>
+  <div class="vf-profile-body">
+    <div class="vf-profile-chart" id="vfProfileChart"></div>
+    <div class="vf-profile-legend">
+      <span class="asia">Asia 00–07</span>
+      <span class="london">London 07–13</span>
+      <span class="ny">NY 13–22</span>
+    </div>
+  </div>
+</div>
+
+<!-- EVENT IMPACT PANEL -->
+<div class="vf-event-panel" id="vfEventPanel" style="display:none">
+  <div class="vf-event-nav">
+    <span class="vf-event-title">Event Vol Impact</span>
+    <span class="vf-event-sub" id="vfEventSub">Historical range expansion on high-impact US event days</span>
+    <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfEventAge"></span>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="refreshEventImpact()" id="vfEventRefreshBtn">↻ Compute</button>
+  </div>
+  <div class="vf-event-scroll">
+    <div id="vfEventBody"><div class="vf-event-empty">Click ↻ Compute to run the event impact study against stored session audits.</div></div>
   </div>
 </div>
 
@@ -806,13 +1036,15 @@
 
 <script>
 // ── State ────────────────────────────────────────────────────────────────────
-let currentForecast = null;
-let liveForecast    = null;
-let currentSession  = null;
-let currentWeekly   = null;
-let refreshTimer    = null;
-let viewingDate     = null;
-const POLL_MS       = 5 * 60 * 1000;
+let currentForecast  = null;
+let liveForecast     = null;
+let currentSession   = null;
+let currentWeekly    = null;
+let currentProfile   = null;
+let currentEventData = null;
+let refreshTimer     = null;
+let viewingDate      = null;
+const POLL_MS        = 5 * 60 * 1000;
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -824,6 +1056,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSessionStats();
   loadWeekly();
   loadArchiveTable();
+  loadIntradayProfile();
+  loadEventImpact();
   scheduleRefresh();
 });
 
@@ -1264,6 +1498,26 @@ function buildCard(name, f, meta, isHistorical = false) {
   const hlMax = f.hl_75 * 1.1;
   const ocMax = f.oc_75 * 1.1;
 
+  // Vol cone strip — shows regime direction (expanding/contracting)
+  const coneHtml = (f.cone_5d != null || f.cone_21d != null) ? (() => {
+    const c252 = f.vol_pct ?? 0;
+    const expanding  = (f.cone_5d ?? c252) > c252;
+    const contracting = (f.cone_5d ?? c252) < c252;
+    const expCls = expanding ? 'expanding' : contracting ? 'contracting' : '';
+    const items = [
+      f.cone_5d  != null ? `<span class="${expCls}"><span class="vf-cone-lbl">5d</span> <b>${f.cone_5d}th</b></span>` : null,
+      f.cone_21d != null ? `<span><span class="vf-cone-lbl">21d</span> <b>${f.cone_21d}th</b></span>` : null,
+      f.cone_63d != null ? `<span><span class="vf-cone-lbl">63d</span> <b>${f.cone_63d}th</b></span>` : null,
+      c252       != null ? `<span><span class="vf-cone-lbl">252d</span> <b>${c252}th</b></span>` : null,
+    ].filter(Boolean).join('<span class="vf-cone-sep"> · </span>');
+    const trend = expanding ? '↑ expanding' : contracting ? '↓ contracting' : '→ stable';
+    const vovCls = (f.vol_vov_label ?? '').toLowerCase();
+    const vovBadge = f.vol_vov_label
+      ? `<span class="vf-vov-badge ${vovCls}" title="Vol-of-vol: ${f.vol_vov}% CV — how much the vol estimate itself is moving">Vol ${f.vol_vov_label}</span>`
+      : '';
+    return `<div class="vf-cone-strip" title="Vol cone — percentile of today's σ across different lookback windows. ${trend} = short-term vol ${expanding ? 'above' : 'below'} long-term average.">${items}${vovBadge}</div>`;
+  })() : '';
+
   const newsChip = meta?.news_flag
     ? `<span class="vf-mult-chip active">📅 ${meta.news_flag} ×${(meta.news_mult ?? 1).toFixed(2)}</span>`
     : `<span class="vf-mult-chip">No news flag</span>`;
@@ -1290,6 +1544,7 @@ function buildCard(name, f, meta, isHistorical = false) {
         <div class="vf-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</div>
       </div>
     </div>
+    ${coneHtml}
 
     <div class="vf-section">
       <div class="vf-section-label">High ↔ Low Range <span class="vf-section-sub">— full session swing</span></div>
@@ -1370,6 +1625,7 @@ function buildSessionHtml(name, s, data) {
       <span class="vf-srow-fc">med ${p2(fc.hl_median)}% · 75th ${p2(fc.hl_75)}%</span>
     </div>
     <div class="vf-srow-vs">vs med ${vsM} · vs 75th ${vsP}</div>
+    ${_breakoutProbHtml(s, fc)}
 
     <div class="vf-srow">
       <span class="vf-srow-lbl">O-C</span>
@@ -1457,6 +1713,7 @@ async function loadWeekly() {
     currentWeekly = data;
     document.getElementById('vfWeeklyBtn').disabled = false;
     renderWeekly(data);
+    renderCurrencyStrength(data);
   } catch { /* silent */ }
 }
 
@@ -1577,6 +1834,221 @@ function _buildWeeklyText(data) {
     lines.push('');
   }
   return lines.join('\n');
+}
+
+// ── Breakout extension probability ───────────────────────────────────────────
+// Given current H-L consumed (as fraction of hl_median) and fraction of day elapsed,
+// estimates probability of extending beyond the median using BM theory.
+// P ≈ 2 * (1 - Φ(remaining / √(1-p))) where p = time fraction, remaining = 1 - consumed.
+function _breakoutProb(consumedFrac, timeFrac) {
+  const remaining = Math.max(0, 1 - consumedFrac);
+  const timeLeft  = Math.max(0.01, 1 - Math.min(0.99, timeFrac));
+  const z = remaining / Math.sqrt(timeLeft);
+  // Standard normal CDF approximation (Abramowitz & Stegun)
+  const _phi = x => {
+    if (x < 0) return 1 - _phi(-x);
+    const t = 1 / (1 + 0.2316419 * x);
+    const poly = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+    return 1 - (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * x * x) * poly;
+  };
+  return Math.max(0, Math.min(100, Math.round(2 * (1 - _phi(z)) * 100)));
+}
+
+function _breakoutProbHtml(s, fc) {
+  if (!s.hl || !fc.hl_median || s.complete) return '';
+  // Estimate time fraction from bar_time within the UTC day
+  const now = new Date(s.bar_time);
+  const dayFrac = Math.min(0.99, (now.getUTCHours() * 60 + now.getUTCMinutes()) / (24 * 60));
+  const consumedFrac = s.hl / fc.hl_median;
+  const pct = _breakoutProb(consumedFrac, dayFrac);
+  const cls = pct >= 40 ? 'hi' : pct <= 15 ? 'low' : '';
+  const note = consumedFrac >= 1 ? 'median already exceeded' : `chance of exceeding median today`;
+  return `<div class="vf-extend-row">
+    <span class="vf-extend-lbl">Extend prob</span>
+    <span class="vf-extend-pct ${cls}">${pct}%</span>
+    <span class="vf-extend-note">${note}</span>
+  </div>`;
+}
+
+// ── Currency strength strip ───────────────────────────────────────────────────
+const CCY_PAIRS = {
+  EUR: ['EURUSD','EURGBP','EURJPY','EURAUD','EURCAD','EURNZD','EURCHF'],
+  USD: ['EURUSD','GBPUSD','AUDUSD','NZDUSD','USDCAD','USDJPY','USDCHF'],
+  GBP: ['GBPUSD','EURGBP','GBPJPY','GBPAUD','GBPCAD','GBPNZD','GBPCHF'],
+  JPY: ['USDJPY','EURJPY','GBPJPY','AUDJPY','CADJPY','CHFJPY','NZDJPY'],
+  AUD: ['AUDUSD','AUDNZD','AUDCAD','AUDJPY','AUDCHF','EURAUD','GBPAUD'],
+  NZD: ['NZDUSD','AUDNZD','NZDJPY','EURNZD','GBPNZD'],
+  CHF: ['USDCHF','EURCHF','GBPCHF','AUDCHF','CHFJPY'],
+  CAD: ['USDCAD','EURCAD','GBPCAD','AUDCAD','CADJPY'],
+};
+// Which side of the pair this currency is on (base=+1, quote=-1)
+const CCY_SIDE = {
+  EUR: { EURUSD:1,EURGBP:1,EURJPY:1,EURAUD:1,EURCAD:1,EURNZD:1,EURCHF:1 },
+  USD: { EURUSD:-1,GBPUSD:-1,AUDUSD:-1,NZDUSD:-1,USDCAD:1,USDJPY:1,USDCHF:1 },
+  GBP: { GBPUSD:1,EURGBP:-1,GBPJPY:1,GBPAUD:1,GBPCAD:1,GBPNZD:1,GBPCHF:1 },
+  JPY: { USDJPY:-1,EURJPY:-1,GBPJPY:-1,AUDJPY:-1,CADJPY:-1,CHFJPY:-1,NZDJPY:-1 },
+  AUD: { AUDUSD:1,AUDNZD:1,AUDCAD:1,AUDJPY:1,AUDCHF:1,EURAUD:-1,GBPAUD:-1 },
+  NZD: { NZDUSD:1,AUDNZD:-1,NZDJPY:1,EURNZD:-1,GBPNZD:-1 },
+  CHF: { USDCHF:-1,EURCHF:-1,GBPCHF:-1,AUDCHF:-1,CHFJPY:1 },
+  CAD: { USDCAD:-1,EURCAD:-1,GBPCAD:-1,AUDCAD:-1,CADJPY:1 },
+};
+
+function renderCurrencyStrength(weeklyData) {
+  if (!weeklyData?.instruments) return;
+  const instruments = weeklyData.instruments;
+  const scores = {};
+  for (const [ccy, pairs] of Object.entries(CCY_PAIRS)) {
+    let bull = 0, bear = 0;
+    for (const pair of pairs) {
+      const w = instruments[pair];
+      if (!w || w.error) continue;
+      const side = CCY_SIDE[ccy]?.[pair] ?? 0;
+      const dir  = w.wtd_dir === 'Bullish' ? 1 : w.wtd_dir === 'Bearish' ? -1 : 0;
+      const adj  = dir * side;
+      if (adj > 0) bull++;
+      else if (adj < 0) bear++;
+    }
+    scores[ccy] = { bull, bear, net: bull - bear, total: bull + bear };
+  }
+
+  const container = document.getElementById('vfCcyPills');
+  const sorted = Object.entries(scores).sort((a, b) => b[1].net - a[1].net);
+  container.innerHTML = sorted.map(([ccy, s]) => {
+    const cls = s.net >= 2 ? 'bull' : s.net <= -2 ? 'bear' : 'neut';
+    const sign = s.net > 0 ? `+${s.net}` : `${s.net}`;
+    return `<span class="vf-ccy-pill ${cls}">${ccy} <span class="vf-ccy-score">${sign}</span></span>`;
+  }).join('');
+
+  document.getElementById('vfCcyNote').textContent = `WTD pair consensus · ${weeklyData.week_label ?? ''}`;
+  document.getElementById('vfCcyStrip').style.display = '';
+}
+
+// ── Intraday profile ──────────────────────────────────────────────────────────
+async function loadIntradayProfile() {
+  try {
+    const res  = await fetch('/api/vol-forecast/intraday-profile');
+    const data = await res.json();
+    if (!data.ok) return;
+    currentProfile = data;
+    document.getElementById('vfProfileBtn').disabled = false;
+    _buildProfileTabs(data);
+  } catch { /* silent — requires session stats to have been computed */ }
+}
+
+function toggleProfile() {
+  const panel = document.getElementById('vfProfilePanel');
+  const btn   = document.getElementById('vfProfileBtn');
+  const shown = panel.style.display !== 'none';
+  panel.style.display = shown ? 'none' : '';
+  btn.textContent = shown ? '📊 Profile' : '✕ Profile';
+}
+
+function _buildProfileTabs(data) {
+  const names = Object.keys(data.instruments ?? {});
+  if (!names.length) return;
+  const tabs = document.getElementById('vfProfileTabs');
+  tabs.innerHTML = names.map((n, i) =>
+    `<div class="vf-profile-tab${i === 0 ? ' active' : ''}" onclick="_selectProfileTab('${n}',this)">${n}</div>`
+  ).join('');
+  _renderProfileChart(data.instruments[names[0]], data);
+  const age = data.computed_at ? `computed ${new Date(data.computed_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')}` : '';
+  document.getElementById('vfProfileAge').textContent = age;
+}
+
+function _selectProfileTab(name, el) {
+  document.querySelectorAll('.vf-profile-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  if (currentProfile?.instruments?.[name]) _renderProfileChart(currentProfile.instruments[name], currentProfile);
+}
+
+function _sessionFor(hour) {
+  if (hour >= 0  && hour < 7)  return 'session-asia';
+  if (hour >= 7  && hour < 13) return 'session-london';
+  if (hour >= 13 && hour < 22) return 'session-ny';
+  return '';
+}
+
+function _renderProfileChart(hourlyArr, data) {
+  const chart = document.getElementById('vfProfileChart');
+  if (!hourlyArr?.length) { chart.innerHTML = '<span style="font-size:10px;color:var(--text3)">No hourly data</span>'; return; }
+  const maxMean = Math.max(...hourlyArr.map(h => h.mean), 0.01);
+  chart.innerHTML = hourlyArr.map(h => {
+    const heightPct = Math.max(4, (h.mean / maxMean) * 100).toFixed(1);
+    const sessCls   = _sessionFor(h.hour);
+    const lbl       = h.hour % 3 === 0 ? String(h.hour).padStart(2, '0') : '';
+    return `<div class="vf-profile-bar-wrap" title="${h.hour}:00 UTC — avg ${h.mean}% of daily range (p75: ${h.p75}%, n=${h.n})">
+      <div class="vf-profile-bar ${sessCls}" style="height:${heightPct}%"></div>
+      <div class="vf-profile-hour">${lbl}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Event impact ──────────────────────────────────────────────────────────────
+async function loadEventImpact() {
+  try {
+    const res  = await fetch('/api/vol-forecast/event-impact');
+    const data = await res.json();
+    if (!data.ok) return;
+    currentEventData = data;
+    renderEventImpact(data);
+  } catch { /* silent */ }
+}
+
+function toggleEventImpact() {
+  const panel = document.getElementById('vfEventPanel');
+  const btn   = document.getElementById('vfEventBtn');
+  const shown = panel.style.display !== 'none';
+  panel.style.display = shown ? 'none' : '';
+  btn.textContent = shown ? '📅 Events' : '✕ Events';
+}
+
+async function refreshEventImpact() {
+  const btn = document.getElementById('vfEventRefreshBtn');
+  btn.disabled = true; btn.textContent = '↻ Computing…';
+  document.getElementById('vfEventBody').innerHTML = '<div class="vf-event-empty">Computing — fetching Finnhub calendar + session audits (~10s)…</div>';
+  try {
+    await fetch('/api/vol-forecast/event-impact/refresh', { method: 'POST' });
+    await new Promise(r => setTimeout(r, 12_000));
+    const res  = await fetch('/api/vol-forecast/event-impact');
+    const data = await res.json();
+    if (data.ok) { currentEventData = data; renderEventImpact(data); }
+    else document.getElementById('vfEventBody').innerHTML = `<div class="vf-event-empty">${data.error ?? 'No data yet — more session history needed'}</div>`;
+  } catch (e) {
+    document.getElementById('vfEventBody').innerHTML = `<div class="vf-event-empty">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = '↻ Compute';
+  }
+}
+
+function renderEventImpact(data) {
+  if (!data?.summary) return;
+  const eventTypes = Object.keys(data.summary);
+  if (!eventTypes.length) {
+    document.getElementById('vfEventBody').innerHTML = '<div class="vf-event-empty">No event data yet — session audits accumulate daily. Come back after a few event days.</div>';
+    return;
+  }
+  // Collect all instrument names that appear
+  const instSet = new Set();
+  for (const e of eventTypes) Object.keys(data.summary[e]).forEach(n => instSet.add(n));
+  const insts = [...instSet].sort();
+
+  const thead = `<tr><th>Event</th>${insts.map(n => `<th>${n}</th>`).join('')}</tr>`;
+  const rows = eventTypes.map(evt => {
+    const cells = insts.map(n => {
+      const cell = data.summary[evt]?.[n];
+      if (!cell) return `<td class="vf-event-cell">—</td>`;
+      const m = cell.mean;
+      const cls = m >= 1.4 ? 'hi' : m >= 1.2 ? 'md' : m >= 1.05 ? 'lo' : '';
+      return `<td class="vf-event-cell ${cls}" title="${n} on ${evt}: avg ×${m} over ${cell.n} event day${cell.n !== 1 ? 's' : ''}">×${m.toFixed(2)} <span style="font-size:8px;opacity:.6">n=${cell.n}</span></td>`;
+    }).join('');
+    return `<tr><td>${evt}</td>${cells}</tr>`;
+  }).join('');
+
+  const note = `${data.audits_matched} session audits matched · ${data.from} → ${data.to}`;
+  document.getElementById('vfEventSub').textContent = note;
+  document.getElementById('vfEventAge').textContent = `computed ${new Date(data.computed_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')}`;
+  document.getElementById('vfEventBody').innerHTML = `<div class="vf-event-scroll"><table class="vf-event-table"><thead>${thead}</thead><tbody>${rows}</tbody></table></div>`;
+  if (document.getElementById('vfEventPanel').style.display !== 'none') return;
 }
 
 // ── Extended export ───────────────────────────────────────────────────────────

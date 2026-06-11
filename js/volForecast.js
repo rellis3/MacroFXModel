@@ -170,6 +170,27 @@ function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
   const hist252 = volSeries.slice(-252);
   const vol_pct = Math.round(hist252.filter(v => v < sigmaFwd).length / hist252.length * 100);
 
+  // Volatility cone — percentile of current σ in shorter lookback windows.
+  // Comparing 5d/21d/63d percentiles reveals whether vol is expanding (5d > 252d)
+  // or contracting (5d < 252d), which a single percentile number cannot show.
+  const _conePct = n => {
+    const w = volSeries.slice(-n);
+    return w.length >= Math.ceil(n * 0.8)
+      ? Math.round(w.filter(v => v < sigmaFwd).length / w.length * 100)
+      : null;
+  };
+  const cone_5d  = _conePct(5);
+  const cone_21d = _conePct(21);
+  const cone_63d = _conePct(63);
+
+  // Vol-of-vol: coefficient of variation of the last 20 daily σ readings.
+  // High VoV = vol itself is jumping around, forecasts are less reliable.
+  const recent = volSeries.slice(-20);
+  const vovMu  = recent.reduce((s, v) => s + v, 0) / recent.length;
+  const vovSig = Math.sqrt(recent.reduce((s, v) => s + (v - vovMu) ** 2, 0) / recent.length);
+  const vol_vov = vovMu > 0 ? Math.round(vovSig / vovMu * 100) : 0;
+  const vol_vov_label = vol_vov < 10 ? 'Stable' : vol_vov < 20 ? 'Moderate' : 'Unstable';
+
   const sqrt5  = Math.sqrt(5);
   const sqrt20 = Math.sqrt(20);
   const r2     = x => Math.round(x * 100) / 100;
@@ -183,6 +204,11 @@ function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
   return {
     vol_annual: r2(volAnnual),
     vol_pct,
+    cone_5d,
+    cone_21d,
+    cone_63d,
+    vol_vov,
+    vol_vov_label,
     hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct),
     hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct),
     hl_5d:      r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * sqrt5),

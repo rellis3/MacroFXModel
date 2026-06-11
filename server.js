@@ -2555,6 +2555,116 @@ app.get('/api/vol-forecast/weekly/export', async (_req, res) => {
   }
 });
 
+// ── Intraday vol profile ──────────────────────────────────────────────────────
+// Extracts per-instrument hourly profile from the session-stats payload.
+// Requires session stats to have been computed (includes hourly key from the
+// updated _computeStats() in sessionStats.js).
+app.get('/api/vol-forecast/intraday-profile', (_req, res) => {
+  const ss = getSessionStats();
+  if (!ss) return res.status(404).json({ ok: false, error: 'Session stats not yet computed — run ⟳ Session Stats first' });
+  const profile = {};
+  for (const [name, stats] of Object.entries(ss.instruments ?? {})) {
+    if (stats?.hourly) profile[name] = stats.hourly;
+  }
+  if (!Object.keys(profile).length) return res.status(404).json({ ok: false, error: 'No hourly data — recompute session stats to generate hourly profile' });
+  res.json({ ok: true, computed_at: ss.computed_at, instruments: profile });
+});
+
+// ── Event vol impact study ────────────────────────────────────────────────────
+// Correlates historical session audits (KV: vol_session_YYYY-MM-DD) with the
+// Finnhub economic calendar to compute per-event-type, per-instrument range
+// expansion ratios.  Stores result in KV as event_vol_impact.
+// GET  /api/vol-forecast/event-impact         — return stored study
+// POST /api/vol-forecast/event-impact/refresh — trigger recompute (async)
+
+const EVENT_PATTERNS = [
+  { label: 'FOMC',  re: /fomc|federal\s+open|fed\s+rate|interest\s+rate.*fed/i },
+  { label: 'NFP',   re: /non.?farm|nonfarm|payroll/i },
+  { label: 'CPI',   re: /\bcpi\b|consumer\s+price\s+index/i },
+  { label: 'PCE',   re: /\bpce\b|personal\s+consumption\s+expend/i },
+  { label: 'GDP',   re: /\bgdp\b|gross\s+domestic/i },
+  { label: 'PPI',   re: /\bppi\b|producer\s+price/i },
+];
+
+async function _computeEventImpact() {
+  const key = process.env.FINNHUB_KEY;
+  if (!key) throw new Error('FINNHUB_KEY not set');
+
+  // Fetch Finnhub calendar for the past 18 months
+  const to   = new Date().toISOString().slice(0, 10);
+  const from = new Date(Date.now() - 548 * 864e5).toISOString().slice(0, 10);
+  const calUrl = `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${key}`;
+  const calRes  = await fetch(calUrl);
+  if (!calRes.ok) throw new Error(`Finnhub calendar ${calRes.status}`);
+  const calData = await calRes.json();
+  const events  = (calData.economicCalendar ?? []).filter(e =>
+    e.country === 'US' && e.impact?.toLowerCase() === 'high'
+  );
+
+  // Build a map: date → [event_label, ...]
+  const eventsByDate = new Map();
+  for (const e of events) {
+    const d = (e.time ?? e.date ?? '').slice(0, 10);
+    if (!d) continue;
+    for (const pat of EVENT_PATTERNS) {
+      if (pat.re.test(e.event ?? '')) {
+        if (!eventsByDate.has(d)) eventsByDate.set(d, new Set());
+        eventsByDate.get(d).add(pat.label);
+      }
+    }
+  }
+
+  // Gather session audits from KV that overlap with event dates
+  const eventDates = [...eventsByDate.keys()];
+  const audits = await Promise.all(
+    eventDates.map(d => kv.get(`vol_session_${d}`).then(r => r ? { date: d, data: JSON.parse(r) } : null).catch(() => null))
+  );
+
+  // Per event type, per instrument: collect expansion ratios
+  // expansion = actual H-L / forecast hl_median
+  const buckets = {};   // { 'FOMC': { 'EURUSD': [ratio, ...], ... }, ... }
+  for (const audit of audits.filter(Boolean)) {
+    const labels = [...(eventsByDate.get(audit.date) ?? [])];
+    for (const label of labels) {
+      if (!buckets[label]) buckets[label] = {};
+      for (const [name, s] of Object.entries(audit.data.instruments ?? {})) {
+        if (!s.hl || !s.forecast?.hl_median) continue;
+        if (!buckets[label][name]) buckets[label][name] = [];
+        buckets[label][name].push(s.hl / s.forecast.hl_median);
+      }
+    }
+  }
+
+  // Summarise: mean ratio and n per cell
+  const summary = {};
+  for (const [label, instMap] of Object.entries(buckets)) {
+    summary[label] = {};
+    for (const [name, ratios] of Object.entries(instMap)) {
+      const mean = ratios.reduce((s, v) => s + v, 0) / ratios.length;
+      summary[label][name] = { mean: Math.round(mean * 100) / 100, n: ratios.length };
+    }
+  }
+
+  const result = { ok: true, from, to, computed_at: new Date().toISOString(), summary, event_dates_found: eventDates.length, audits_matched: audits.filter(Boolean).length };
+  await kv.put('event_vol_impact', JSON.stringify(result));
+  return result;
+}
+
+app.get('/api/vol-forecast/event-impact', async (_req, res) => {
+  try {
+    const raw = await kv.get('event_vol_impact');
+    if (!raw) return res.status(404).json({ ok: false, error: 'Not yet computed — click Refresh in the Event Impact panel' });
+    res.json(JSON.parse(raw));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/vol-forecast/event-impact/refresh', async (_req, res) => {
+  res.json({ ok: true, message: 'Computing event impact study — takes ~10s' });
+  _computeEventImpact()
+    .then(r => console.log(`[EVENT-IMPACT] Done — ${r.audits_matched} audits matched`))
+    .catch(e => console.error('[EVENT-IMPACT] Error:', e.message));
+});
+
 // ── Session Stats API ─────────────────────────────────────────────────────────
 // Serves pre-computed session consumption percentages (Asia/London % of daily range).
 // Computation is pure JavaScript (js/sessionStats.js) — no Python required.
