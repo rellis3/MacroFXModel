@@ -566,6 +566,27 @@
 .vf-pos-val  { font-weight: 600; color: var(--text); }
 .vf-pos-sub  { color: var(--text3); font-size: 9px; }
 
+/* ── Weekly tracker table extras ────────────────────────────────────────── */
+.vf-wk-bias {
+  display: inline-block;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  white-space: nowrap;
+}
+.vf-wk-bias.bull { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+.vf-wk-bias.bear { background: var(--red-bg);   border-color: var(--red-bd);   color: var(--red);   }
+.vf-wk-bar-wrap { display: flex; align-items: center; gap: 5px; min-width: 100px; }
+.vf-wk-bar-track { flex: 1; height: 5px; background: var(--s2); border-radius: 3px; overflow: hidden; }
+.vf-wk-bar-fill  { height: 100%; border-radius: 3px; background: var(--blue); transition: width .4s; }
+.vf-wk-bar-fill.hi { background: var(--amber); }
+.vf-wk-pct { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); flex-shrink: 0; }
+
 /* ── Skeleton / loading ──────────────────────────────────────────────────── */
 .vf-skeleton {
   background: linear-gradient(90deg, var(--s2) 25%, var(--s3) 50%, var(--s2) 75%);
@@ -599,6 +620,7 @@
   <button class="dark-btn" id="vfSessionExportBtn" onclick="exportSession()" disabled>⬇ Session</button>
   <button class="dark-btn" id="vfV3ExportBtn" onclick="exportV3()" disabled title="Vol forecast + session consumption stats for the v3 Pine Script indicator">⬇ V+S</button>
   <button class="dark-btn" id="vfExtendedBtn" onclick="exportExtended()" disabled title="Extended export: vol percentile, O-H/O-L legs, 5-day and 20-day ranges">⬇ Extended</button>
+  <button class="dark-btn" id="vfWeeklyBtn"   onclick="exportWeekly()"   disabled title="Weekly export: WTD range consumption, directional bias, 5-day/20-day forecasts">⬇ Weekly</button>
   <button class="dark-btn" id="vfSessionComputeBtn" onclick="triggerSessionStats()" title="Fetch 5yr Oanda H1 data and compute Asia/London session consumption stats (~3–5 min)">⟳ Session Stats</button>
   <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
   <a href="index.html" style="text-decoration:none">
@@ -642,6 +664,20 @@
   <span id="vfHistBannerTxt">Viewing historical forecast</span>
   <div style="flex:1"></div>
   <button class="dark-btn" style="padding:4px 12px;font-size:11px" onclick="returnToToday()">↩ Return to Today</button>
+</div>
+
+<!-- WEEKLY RANGE PANEL -->
+<div class="vf-history" id="vfWeeklyPanel" style="display:none;margin-top:14px">
+  <div class="vf-hist-nav">
+    <span class="vf-hist-nav-title" id="vfWeeklyLabel">Weekly Range Tracker</span>
+    <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfWeeklyStatus"></span>
+  </div>
+  <div class="vf-hist-scroll">
+    <table class="vf-hist-table" id="vfWeeklyTable">
+      <thead id="vfWeeklyHead"></thead>
+      <tbody id="vfWeeklyBody"></tbody>
+    </table>
+  </div>
 </div>
 
 <!-- INSTRUMENT CARDS -->
@@ -772,6 +808,7 @@
 let currentForecast = null;
 let liveForecast    = null;
 let currentSession  = null;
+let currentWeekly   = null;
 let refreshTimer    = null;
 let viewingDate     = null;
 const POLL_MS       = 5 * 60 * 1000;
@@ -784,13 +821,14 @@ document.addEventListener('DOMContentLoaded', () => {
   loadHistory();
   loadSession();
   loadSessionStats();
+  loadWeekly();
   loadArchiveTable();
   scheduleRefresh();
 });
 
 function scheduleRefresh() {
   clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(() => { loadForecast(); loadHistory(); loadSession(); scheduleRefresh(); }, POLL_MS);
+  refreshTimer = setTimeout(() => { loadForecast(); loadHistory(); loadSession(); loadWeekly(); scheduleRefresh(); }, POLL_MS);
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
@@ -1393,6 +1431,137 @@ function renderHistory(forecasts) {
     tbody.appendChild(tr);
   }
   document.getElementById('vfHistory').style.display = '';
+}
+
+// ── Weekly range tracker ──────────────────────────────────────────────────────
+async function loadWeekly() {
+  try {
+    const res  = await fetch('/api/vol-forecast/weekly');
+    const data = await res.json();
+    if (!data.ok) return;
+    currentWeekly = data;
+    document.getElementById('vfWeeklyBtn').disabled = false;
+    renderWeekly(data);
+  } catch { /* silent */ }
+}
+
+function renderWeekly(data) {
+  const panel = document.getElementById('vfWeeklyPanel');
+  const names = Object.keys(data.instruments ?? {}).filter(n => !data.instruments[n].error);
+  if (!names.length) return;
+
+  document.getElementById('vfWeeklyLabel').textContent =
+    `Weekly Range Tracker — ${data.week_label}`;
+  document.getElementById('vfWeeklyStatus').textContent =
+    `computed ${new Date(data.computed_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')} · 15 min cache`;
+
+  const thead = document.getElementById('vfWeeklyHead');
+  thead.innerHTML = '<tr>'
+    + '<th style="text-align:left">Pair</th>'
+    + '<th>Bias</th>'
+    + '<th>Regime</th>'
+    + '<th>WTD O-C</th>'
+    + '<th>Week consumed</th>'
+    + '<th>Remaining</th>'
+    + '<th>5d H-L</th>'
+    + '<th>20d H-L</th>'
+    + '</tr>';
+
+  const tbody = document.getElementById('vfWeeklyBody');
+  tbody.innerHTML = '';
+
+  for (const name of names) {
+    const w   = data.instruments[name];
+    const tr  = document.createElement('tr');
+    const r2  = x => (x != null ? x.toFixed(2) : '—');
+    const sgn = x => (x != null ? (x >= 0 ? '+' : '') + x.toFixed(2) : '—');
+
+    const biasCls = w.bias === 'Bullish' ? 'bull' : w.bias === 'Bearish' ? 'bear' : '';
+    const conf    = w.confidence ? ` <span style="font-size:9px;opacity:.7">${w.confidence}</span>` : '';
+
+    const regimeParts = [];
+    if (w.hmm_regime)   regimeParts.push(w.hmm_regime);
+    if (w.hmm5m_regime) regimeParts.push(`${w.hmm5m_regime} 5m`);
+    const regimeText = regimeParts.length ? regimeParts.join(' / ') : '—';
+
+    const consumed   = w.hl_consumed_pct ?? 0;
+    const isHi       = consumed > 75;
+    const barW        = Math.min(100, consumed).toFixed(0);
+    const consumedBar = `<div class="vf-wk-bar-wrap">
+      <div class="vf-wk-bar-track"><div class="vf-wk-bar-fill ${isHi ? 'hi' : ''}" style="width:${barW}%"></div></div>
+      <span class="vf-wk-pct">${consumed}%</span>
+    </div>`;
+
+    const ocCls = w.wtd_oc_pct >= 0 ? 'pos' : 'neg';
+
+    tr.innerHTML = `
+      <td style="font-weight:600;font-family:'DM Mono',monospace">${name}</td>
+      <td><span class="vf-wk-bias ${biasCls}">${w.bias}${conf}</span></td>
+      <td style="font-size:10px;color:var(--text3)">${regimeText}</td>
+      <td class="${ocCls}" style="font-weight:600">${sgn(w.wtd_oc_pct)}%</td>
+      <td>${consumedBar}</td>
+      <td>${r2(w.hl_remaining_pct)}%</td>
+      <td>${r2(w.hl_5d)}%</td>
+      <td>${r2(w.hl_20d)}%</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  panel.style.display = '';
+}
+
+function exportWeekly() {
+  if (!currentWeekly) return;
+  const text  = _buildWeeklyText(currentWeekly);
+  const btn   = document.getElementById('vfWeeklyBtn');
+  const fname = `vol-weekly-${(currentWeekly.week_label ?? 'latest').replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = fname; a.click(); URL.revokeObjectURL(url);
+  });
+}
+
+function _buildWeeklyText(data) {
+  const LW  = 29;
+  const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const f2  = x => (x != null ? x.toFixed(2) : '—');
+  const sgn = x => (x != null ? (x >= 0 ? '+' : '') + x.toFixed(2) : '—');
+
+  const lines = [
+    '**VOL & RANGE FORECAST — WEEKLY**',
+    `**${data.week_label}**`,
+    '',
+  ];
+
+  for (const [name, w] of Object.entries(data.instruments ?? {})) {
+    lines.push(div(name));
+    if (w.error) { lines.push(`Error: ${w.error}`, ''); continue; }
+    lines.push(`Bias                : ${w.bias}  [${w.confidence} confidence]`);
+    const regParts = [];
+    if (w.hmm_regime)   regParts.push(`${w.hmm_regime} (daily HMM)`);
+    if (w.hmm5m_regime) regParts.push(`${w.hmm5m_regime} (5m HMM)`);
+    if (regParts.length) lines.push(`Regime signals      : ${regParts.join(' · ')}`);
+    lines.push(`WTD momentum        : ${w.wtd_dir}  (${sgn(w.wtd_oc_pct)}% open→close)`);
+    if (w.hl_consumed_pct != null) {
+      lines.push(`Range consumed      : ${w.hl_consumed_pct}%  (${f2(w.wtd_hl_pct)}% of ${f2(w.hl_5d)}% budget)`);
+      lines.push(`Remaining budget    : ${f2(w.hl_remaining_pct)}%  (${w.wtd_days} day${w.wtd_days !== 1 ? 's' : ''} in)`);
+    }
+    lines.push('');
+    lines.push(`5-day H-L forecast  : ${f2(w.hl_5d)}%  (week range budget)`);
+    lines.push(`5-day O-C forecast  : ${f2(w.oc_5d)}%  (net weekly move expected)`);
+    lines.push(`20-day H-L forecast : ${f2(w.hl_20d)}%  (monthly range budget)`);
+    lines.push(`20-day O-C forecast : ${f2(w.oc_20d)}%  (net monthly move expected)`);
+    lines.push(`Volatility (ann)    : ${f2(w.vol_annual)}%  [${w.vol_pct ?? '—'}th pct]`);
+    if (w.note) lines.push(`Note                : ${w.note}`);
+    lines.push('');
+  }
+  return lines.join('\n');
 }
 
 // ── Extended export ───────────────────────────────────────────────────────────

@@ -2338,6 +2338,223 @@ app.get('/api/vol-forecast/extended/export', (_req, res) => {
   res.type('text/plain').send(_fmtExtendedText(forecastState.latest));
 });
 
+// ── Weekly Range Tracker API ──────────────────────────────────────────────────
+// Week-to-date range consumption vs 5-day forecast + directional bias from HMM.
+// Mirrors the daily live session tracker but at the weekly timeframe.
+
+const WEEKLY_INSTRUMENTS = [
+  { name: 'GOLD',   sym: 'XAU_USD',   hmmKey: 'XAU/USD'  },
+  { name: 'NQ',     sym: 'NAS100_USD', hmmKey: null        },
+  { name: 'EURUSD', sym: 'EUR_USD',   hmmKey: 'EUR/USD'  },
+  { name: 'GBPUSD', sym: 'GBP_USD',   hmmKey: 'GBP/USD'  },
+  { name: 'USDJPY', sym: 'USD_JPY',   hmmKey: 'USD/JPY'  },
+  { name: 'AUDUSD', sym: 'AUD_USD',   hmmKey: 'AUD/USD'  },
+  { name: 'NZDUSD', sym: 'NZD_USD',   hmmKey: 'NZD/USD'  },
+  { name: 'USDCAD', sym: 'USD_CAD',   hmmKey: 'USD/CAD'  },
+  { name: 'USDCHF', sym: 'USD_CHF',   hmmKey: 'USD/CHF'  },
+  { name: 'GBPJPY', sym: 'GBP_JPY',   hmmKey: 'GBP/JPY'  },
+  { name: 'EURGBP', sym: 'EUR_GBP',   hmmKey: null        },
+  { name: 'EURJPY', sym: 'EUR_JPY',   hmmKey: null        },
+  { name: 'EURCHF', sym: 'EUR_CHF',   hmmKey: null        },
+  { name: 'GBPCHF', sym: 'GBP_CHF',   hmmKey: null        },
+  { name: 'AUDJPY', sym: 'AUD_JPY',   hmmKey: null        },
+  { name: 'CADJPY', sym: 'CAD_JPY',   hmmKey: null        },
+  { name: 'EURCAD', sym: 'EUR_CAD',   hmmKey: null        },
+  { name: 'EURAUD', sym: 'EUR_AUD',   hmmKey: null        },
+  { name: 'EURNZD', sym: 'EUR_NZD',   hmmKey: null        },
+  { name: 'AUDNZD', sym: 'AUD_NZD',   hmmKey: null        },
+  { name: 'AUDCAD', sym: 'AUD_CAD',   hmmKey: null        },
+  { name: 'AUDCHF', sym: 'AUD_CHF',   hmmKey: null        },
+  { name: 'GBPCAD', sym: 'GBP_CAD',   hmmKey: null        },
+  { name: 'GBPAUD', sym: 'GBP_AUD',   hmmKey: null        },
+  { name: 'GBPNZD', sym: 'GBP_NZD',   hmmKey: null        },
+  { name: 'CHFJPY', sym: 'CHF_JPY',   hmmKey: null        },
+  { name: 'NZDJPY', sym: 'NZD_JPY',   hmmKey: null        },
+];
+
+function _oandaBaseW() {
+  return (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+}
+
+async function _fetchWTDBar(oandaSymbol) {
+  // Monday of the current week at 00:00 UTC
+  const now = new Date();
+  const dow = now.getUTCDay(); // 0=Sun
+  const daysBack = dow === 0 ? 6 : dow - 1;
+  const monday = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysBack,
+  ));
+  const url = `${_oandaBaseW()}/v3/instruments/${encodeURIComponent(oandaSymbol)}/candles`
+            + `?granularity=D&from=${encodeURIComponent(monday.toISOString())}&price=M`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`Oanda ${res.status}`);
+  const candles = ((await res.json()).candles ?? []).filter(c => c.mid);
+  if (!candles.length) throw new Error('No WTD bars');
+  const open  = parseFloat(candles[0].mid.o);
+  const high  = Math.max(...candles.map(c => parseFloat(c.mid.h)));
+  const low   = Math.min(...candles.map(c => parseFloat(c.mid.l)));
+  const close = parseFloat(candles.at(-1).mid.c);
+  return { open, high, low, close, days: candles.length };
+}
+
+function _weeklyBias(wtdOCPct, hlConsumedPct, hmmData, hmm5mData) {
+  const momentumDir = wtdOCPct > 0.05 ? 'Bullish' : wtdOCPct < -0.05 ? 'Bearish' : 'Flat';
+  const hmmDir   = hmmData?.regime   === 'BULL' ? 'Bullish' : hmmData?.regime   === 'BEAR' ? 'Bearish' : null;
+  const hmm5mDir = hmm5mData?.regime === 'BULL' ? 'Bullish' : hmm5mData?.regime === 'BEAR' ? 'Bearish' : null;
+  const extended = hlConsumedPct != null && hlConsumedPct > 75;
+
+  const signals  = [momentumDir, hmmDir, hmm5mDir].filter(Boolean);
+  const bulls    = signals.filter(d => d === 'Bullish').length;
+  const bears    = signals.filter(d => d === 'Bearish').length;
+
+  let bias, confidence;
+  if (bulls > bears)        { bias = 'Bullish'; confidence = bulls >= 2 ? 'High' : 'Low'; }
+  else if (bears > bulls)   { bias = 'Bearish'; confidence = bears >= 2 ? 'High' : 'Low'; }
+  else                      { bias = 'Neutral';  confidence = 'Low'; }
+
+  const consumed = hlConsumedPct != null ? `${Math.round(hlConsumedPct)}% of weekly range consumed` : '';
+  const extNote  = extended ? ' — extended, watch for mean reversion' : '';
+
+  return {
+    bias, confidence,
+    note: `${consumed}${extNote}`,
+    hmm_regime:   hmmData?.regime   ?? null,
+    hmm5m_regime: hmm5mData?.regime ?? null,
+    wtd_dir:      momentumDir,
+    extended,
+    signals: { wtd_momentum: momentumDir, hmm_daily: hmmDir, hmm_5m: hmm5mDir },
+  };
+}
+
+let _weeklyCache   = null;
+let _weeklyCacheAt = 0;
+const WEEKLY_TTL_MS = 15 * 60 * 1000;
+
+async function _getWeeklyStatus() {
+  if (_weeklyCache && (Date.now() - _weeklyCacheAt) < WEEKLY_TTL_MS) return _weeklyCache;
+  if (!forecastState.latest) return { ok: false, message: 'Forecast not yet computed' };
+  if (!process.env.OANDA_KEY) return { ok: false, message: 'Oanda API key required' };
+
+  const fc = forecastState.latest;
+  const r2 = x => Math.round(x * 100) / 100;
+  const instruments = {};
+
+  await Promise.all(WEEKLY_INSTRUMENTS.map(async cfg => {
+    try {
+      const f = fc.instruments[cfg.name];
+      if (!f) return;
+      const wtd = await _fetchWTDBar(cfg.sym);
+
+      const wtdHLPct = r2((wtd.high - wtd.low) / wtd.open * 100);
+      const wtdOCPct = r2((wtd.close - wtd.open) / wtd.open * 100);
+      const hlConsumedPct = f.hl_5d > 0 ? Math.round(wtdHLPct / f.hl_5d * 100) : null;
+      const hlRemainingPct = f.hl_5d > 0 ? r2(Math.max(f.hl_5d - wtdHLPct, 0)) : null;
+
+      const hmmData   = cfg.hmmKey ? (state.hmmRegimes[cfg.hmmKey]   ?? null) : null;
+      const hmm5mData = cfg.hmmKey ? (state.hmm5mRegimes[cfg.hmmKey] ?? null) : null;
+
+      instruments[cfg.name] = {
+        wtd_hl_pct:       wtdHLPct,
+        wtd_oc_pct:       wtdOCPct,
+        wtd_days:         wtd.days,
+        hl_5d:            f.hl_5d,
+        oc_5d:            f.oc_5d,
+        hl_20d:           f.hl_20d,
+        oc_20d:           f.oc_20d,
+        hl_consumed_pct:  hlConsumedPct,
+        hl_remaining_pct: hlRemainingPct,
+        vol_annual:       f.vol_annual,
+        vol_pct:          f.vol_pct,
+        ...(_weeklyBias(wtdOCPct, hlConsumedPct, hmmData, hmm5mData)),
+      };
+    } catch (err) {
+      instruments[cfg.name] = { error: err.message };
+    }
+  }));
+
+  // Find Monday of current week for the label
+  const now = new Date();
+  const dow = now.getUTCDay();
+  const daysBack = dow === 0 ? 6 : dow - 1;
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysBack));
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const weekLabel = `Week of ${monthNames[monday.getUTCMonth()]} ${monday.getUTCDate()}, ${monday.getUTCFullYear()}`;
+
+  const result = {
+    ok: true,
+    computed_at:   new Date().toISOString(),
+    session_label: fc.session_label,
+    week_label:    weekLabel,
+    instruments,
+  };
+  _weeklyCache   = result;
+  _weeklyCacheAt = Date.now();
+  return result;
+}
+
+function _fmtWeeklyText(data) {
+  const LW  = 29;
+  const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const f2  = x => (x != null ? x.toFixed(2) : '—');
+  const sign = x => (x != null ? (x >= 0 ? '+' : '') + x.toFixed(2) : '—');
+
+  const lines = [
+    '**VOL & RANGE FORECAST — WEEKLY**',
+    `**${data.week_label}**`,
+    '',
+  ];
+
+  for (const [name, w] of Object.entries(data.instruments ?? {})) {
+    lines.push(div(name));
+    if (w.error) { lines.push(`Error: ${w.error}`, ''); continue; }
+
+    lines.push(`Bias                : ${w.bias}  [${w.confidence} confidence]`);
+    if (w.hmm_regime || w.hmm5m_regime) {
+      const parts = [];
+      if (w.hmm_regime)   parts.push(`${w.hmm_regime} (daily HMM)`);
+      if (w.hmm5m_regime) parts.push(`${w.hmm5m_regime} (5m HMM)`);
+      lines.push(`Regime signals      : ${parts.join(' · ')}`);
+    }
+    lines.push(`WTD momentum        : ${w.wtd_dir}  (${sign(w.wtd_oc_pct)}% open→close)`);
+    if (w.hl_consumed_pct != null) {
+      lines.push(`Range consumed      : ${w.hl_consumed_pct}%  (${f2(w.wtd_hl_pct)}% of ${f2(w.hl_5d)}% budget)`);
+      lines.push(`Remaining budget    : ${f2(w.hl_remaining_pct)}%  (${w.wtd_days} day${w.wtd_days !== 1 ? 's' : ''} in)`);
+    }
+    lines.push('');
+    lines.push(`5-day H-L forecast  : ${f2(w.hl_5d)}%  (week range budget)`);
+    lines.push(`5-day O-C forecast  : ${f2(w.oc_5d)}%  (net weekly move expected)`);
+    lines.push(`20-day H-L forecast : ${f2(w.hl_20d)}%  (monthly range budget)`);
+    lines.push(`20-day O-C forecast : ${f2(w.oc_20d)}%  (net monthly move expected)`);
+    lines.push(`Volatility (ann)    : ${f2(w.vol_annual)}%  [${w.vol_pct ?? '—'}th pct]`);
+    if (w.note) lines.push(`Note                : ${w.note}`);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+app.get('/api/vol-forecast/weekly', async (_req, res) => {
+  try {
+    res.json(await _getWeeklyStatus());
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/vol-forecast/weekly/export', async (_req, res) => {
+  try {
+    const data = await _getWeeklyStatus();
+    if (!data.ok) return res.status(202).type('text/plain').send(data.message ?? 'Not available');
+    res.type('text/plain').send(_fmtWeeklyText(data));
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
 // ── Session Stats API ─────────────────────────────────────────────────────────
 // Serves pre-computed session consumption percentages (Asia/London % of daily range).
 // Computation is pure JavaScript (js/sessionStats.js) — no Python required.
