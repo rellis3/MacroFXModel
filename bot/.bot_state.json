@@ -25,14 +25,6 @@
       "tp1_hit": false,
       "trail_active": false,
       "trail_sl": null
-    },
-    "152182038410": {
-      "tp1": 1.15216,
-      "tp1_close_pct": 50,
-      "trailoffset_dist": 0.00053,
-      "tp1_hit": false,
-      "trail_active": false,
-      "trail_sl": null
     }
   }
 }

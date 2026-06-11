@@ -334,6 +334,8 @@
         <option value="level_source">Level Source</option>
         <option value="monday_fib_align">Mon Fib Align</option>
         <option value="instrument">Pair</option>
+        <option value="zscore_bucket">Z-Score Zone</option>
+        <option value="smi_bucket">SMI Zone</option>
       </select>
       <span class="anl-lbl">Y axis:</span>
       <select id="pvY" class="anl-sel" onchange="renderPivot()">
@@ -347,6 +349,8 @@
         <option value="level_source">Level Source</option>
         <option value="monday_fib_align">Mon Fib Align</option>
         <option value="instrument">Pair</option>
+        <option value="zscore_bucket">Z-Score Zone</option>
+        <option value="smi_bucket">SMI Zone</option>
       </select>
       <span class="anl-lbl">Metric:</span>
       <select id="pvMetric" class="anl-sel" onchange="renderPivot()">
@@ -405,6 +409,8 @@
         <option value="level_source">Level Source</option>
         <option value="monday_fib_align">Mon Fib Align</option>
         <option value="monday_aligned">Mon aligned</option>
+        <option value="zscore_bucket">Z-Score Zone</option>
+        <option value="smi_bucket">SMI Zone</option>
       </select>
       <span class="anl-lbl">Rank by:</span>
       <select id="bsRank" class="anl-sel" onchange="renderBestSetups()">
@@ -539,6 +545,8 @@ function getFeature(t, dim) {
     case 'monday_aligned':        return t.monday_aligned    ? 'Mon H/L aligned' : 'Not aligned';
     case 'level_source':          return t.level_source      ?? 'asia';
     case 'monday_fib_align':      return t.monday_fib_align  ? 'Asia+Mon fib' : 'Asia fib only';
+    case 'zscore_bucket':         return _zscoreBucket(_parseZScore(t));
+    case 'smi_bucket':            return _smiBucket(_parseSMI(t));
     default: return '?';
   }
 }
@@ -603,14 +611,48 @@ function renderGlobalStats() {
 }
 
 // ── Pivot table ────────────────────────────────────────────────────────────────
-const FIB_BUCKET_ORDER   = ['≤−3','−2–−3','−2–−1','−1–−0.5','−0.5–0','0','0–0.5','0.5–1','1–1.5','1.5–2','2–3','≥3'];
-const SESSION_ORDER      = ['Asia','London','Overlap','NY','Unknown'];
-const DOW_ORDER          = ['Mon','Tue','Wed','Thu','Fri'];
-const CONF_ORDER         = ['Tight','Regular','None'];
-const ZONE_ORDER         = ['deep_neg','outer_neg','inner','outer_pos','deep_pos'];
-const RANGE_ORDER        = ['tiny','small','medium','large','huge'];
-const MON_ORDER          = ['Mon-aligned','Not-aligned'];
-const SCORE_BUCKET_ORDER = ['No modules','0%','1–25%','26–50%','51–75%','76–100%'];
+const FIB_BUCKET_ORDER    = ['≤−3','−2–−3','−2–−1','−1–−0.5','−0.5–0','0','0–0.5','0.5–1','1–1.5','1.5–2','2–3','≥3'];
+const SESSION_ORDER       = ['Asia','London','Overlap','NY','Unknown'];
+const DOW_ORDER           = ['Mon','Tue','Wed','Thu','Fri'];
+const CONF_ORDER          = ['Tight','Regular','None'];
+const ZONE_ORDER          = ['deep_neg','outer_neg','inner','outer_pos','deep_pos'];
+const RANGE_ORDER         = ['tiny','small','medium','large','huge'];
+const MON_ORDER           = ['Mon-aligned','Not-aligned'];
+const SCORE_BUCKET_ORDER  = ['No modules','0%','1–25%','26–50%','51–75%','76–100%'];
+const ZSCORE_BUCKET_ORDER = ['Strong OS (<−2)','Mild OS (−2–−1)','Neutral (−1–1)','Mild OB (1–2)','Strong OB (>2)','N/A'];
+const SMI_BUCKET_ORDER    = ['Strong OS (<−40)','Mild OS (−40–−20)','Neutral (−20–20)','Mild OB (20–40)','Strong OB (>40)','N/A'];
+
+function _parseZScore(t) {
+  const d = t.confluences?.zscore_conf?.detail;
+  if (!d) return null;
+  const m = d.match(/Z=(-?\d+\.?\d*)/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+function _parseSMI(t) {
+  const d = t.confluences?.smi_conf?.detail;
+  if (!d) return null;
+  const m = d.match(/SMI=(-?\d+\.?\d*)/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+function _zscoreBucket(z) {
+  if (z === null) return 'N/A';
+  if (z < -2)  return 'Strong OS (<−2)';
+  if (z < -1)  return 'Mild OS (−2–−1)';
+  if (z <= 1)  return 'Neutral (−1–1)';
+  if (z <= 2)  return 'Mild OB (1–2)';
+  return 'Strong OB (>2)';
+}
+
+function _smiBucket(s) {
+  if (s === null) return 'N/A';
+  if (s < -40) return 'Strong OS (<−40)';
+  if (s < -20) return 'Mild OS (−40–−20)';
+  if (s <= 20) return 'Neutral (−20–20)';
+  if (s <= 40) return 'Mild OB (20–40)';
+  return 'Strong OB (>40)';
+}
 
 function _dimOrder(dim) {
   switch (dim) {
@@ -624,6 +666,8 @@ function _dimOrder(dim) {
     case 'monday_aligned':          return MON_ORDER;
     case 'level_source':            return ['asia', 'monday'];
     case 'monday_fib_align':        return ['Asia+Mon fib', 'Asia fib only'];
+    case 'zscore_bucket':           return ZSCORE_BUCKET_ORDER;
+    case 'smi_bucket':              return SMI_BUCKET_ORDER;
     default: return null;
   }
 }
@@ -895,6 +939,9 @@ const _MODULE_LABELS = {
   fvg_level:           'Fair Value Gap',
   session_open_range:  'Asia Open Range H/L',
   daily_opens:         'Daily Opens (10d)',
+  naked_poc:           'Naked POC (NPOC)',
+  zscore_conf:         'Z-Score OB/OS',
+  smi_conf:            'SMI OB/OS',
 };
 
 function renderModuleAudit() {
