@@ -349,6 +349,17 @@ export async function runVolForecast(targetDate) {
   try {
     await kv.put('vol_forecast_latest', json);
     await kv.put(`vol_forecast_${sessionDate}`, json);
+
+    // Update compact index (used by the archive table on the dashboard).
+    // Each entry: { date, label, computed_at, <instrument>: vol_annual, ... }
+    const indexEntry = { date: sessionDate, label: forecast.session_label, computed_at: forecast.computed_at };
+    for (const [sym, f] of Object.entries(instruments)) {
+      indexEntry[sym] = { vol: f.vol_annual, hl_med: f.hl_median, hl_75: f.hl_75, oc_med: f.oc_median, oc_75: f.oc_75 };
+    }
+    const rawIdx = await kv.get('vol_forecast_index');
+    const idx    = rawIdx ? JSON.parse(rawIdx) : [];
+    const deduped = [indexEntry, ...idx.filter(e => e.date !== sessionDate)].slice(0, 120);
+    await kv.put('vol_forecast_index', JSON.stringify(deduped));
   } catch (err) {
     console.error('[VOL-FORECAST] KV write error:', err.message);
   }

@@ -2235,6 +2235,18 @@ app.get('/api/vol-forecast/live/export', async (_req, res) => {
   }
 });
 
+// Archive index — list of all stored daily forecasts (compact, one read from KV).
+// GET /api/vol-forecast/archive
+app.get('/api/vol-forecast/archive', async (_req, res) => {
+  try {
+    const raw = await kv.get('vol_forecast_index');
+    if (!raw) return res.json({ ok: true, entries: [] });
+    res.json({ ok: true, entries: JSON.parse(raw) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Archive — retrieve a stored daily forecast from KV by date.
 // GET /api/vol-forecast/archive/:date  (date = YYYY-MM-DD)
 app.get('/api/vol-forecast/archive/:date', async (req, res) => {

@@ -81,6 +81,8 @@ function isCfKey(key) {
   if (key.startsWith('trade_hist_')) return true;
   // vol_session_* are daily session audit snapshots — must survive Railway redeploys
   if (key.startsWith('vol_session_')) return true;
+  // vol_forecast_* are daily vol forecasts + index — must survive Railway redeploys
+  if (key.startsWith('vol_forecast_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 
@@ -235,6 +237,25 @@ export async function put(key, value, opts = {}) {
   store[key] = value;
   if (opts?.expirationTtl) store[`__ttl_${key}`] = Date.now() + opts.expirationTtl * 1_000;
   dirty = true;
+}
+
+// List key names matching a prefix. Returns array of key name strings.
+// CF backend: uses the KV list API (one request, up to 1000 keys).
+// File backend: filters the in-memory store.
+export async function keys(prefix = '') {
+  if (USE_CF) {
+    try {
+      const url = `${CF_BASE}/keys?prefix=${encodeURIComponent(prefix)}&limit=1000`;
+      const r   = await fetch(url, { headers: CF_HEADERS });
+      if (!r.ok) throw new Error(`CF KV LIST ${prefix}: ${r.status}`);
+      const json = await r.json();
+      return (json.result ?? []).map(k => k.name);
+    } catch (e) {
+      console.error(`[KV] CF keys failed (${prefix}):`, e.message);
+      return [];
+    }
+  }
+  return Object.keys(store).filter(k => !k.startsWith('__ttl_') && k.startsWith(prefix));
 }
 
 export async function del(key) {
