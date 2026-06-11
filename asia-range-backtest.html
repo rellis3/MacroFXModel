@@ -1334,8 +1334,11 @@ function _updateModalBadge() {
     `Trade ${_dayTradeIdx + 1} of ${_dayTrades.length}`;
   document.getElementById('cmPrev').disabled = _dayTradeIdx === 0;
   document.getElementById('cmNext').disabled = _dayTradeIdx >= _dayTrades.length - 1;
-  // Refresh markers: focused trade gets solid arrow, others get hollow diamond
-  if (_chartSeries) _chartSeries.setMarkers(_buildMarkers());
+  // Refresh markers (focused = arrow, others = circle) and focused trade price lines
+  if (_chartSeries) {
+    _chartSeries.setMarkers(_buildMarkers());
+    _drawFocusedLines();
+  }
 }
 
 function _buildMarkers() {
@@ -1385,6 +1388,32 @@ const MODULE_CHART_COLORS = {
 // _modLineData: Map<modId, {name, color, levels, activeLines:[{series,pl}]}>
 let _modLineData = new Map();
 
+// _focusPriceLines: price lines for the currently focused trade (entry / TP / SL)
+// Recreated each time the user navigates prev/next within a day.
+let _focusPriceLines = [];
+
+function _drawFocusedLines() {
+  for (const { series, pl } of _focusPriceLines) try { series.removePriceLine(pl); } catch {}
+  _focusPriceLines = [];
+  if (!_chartSeries || !_dayTrades.length) return;
+  const t = _dayTrades[_dayTradeIdx];
+  if (!t) return;
+  const LS      = LightweightCharts.LineStyle;
+  const isSell  = t.side === 'SELL';
+  const outcome = t.outcome ?? '';
+  const add = (price, color, title, style, lw) => {
+    if (price == null || !isFinite(price)) return;
+    const pl = _chartSeries.createPriceLine({ price, color, lineWidth: lw, lineStyle: style, axisLabelVisible: true, title });
+    _focusPriceLines.push({ series: _chartSeries, pl });
+  };
+  add(t.entry_price, isSell ? '#f87171' : '#34d399',
+      `▶ ${t.side} ${t.fib_level?.toFixed(2) ?? ''}`, LS.Solid, 3);
+  add(t.tp_price, '#00e676',
+      `TP ${t.fib_level?.toFixed(2) ?? ''}${outcome === 'win'  ? ' ✔' : ''}`, LS.Dashed, 2);
+  add(t.sl_price, '#ff1744',
+      `SL ${t.fib_level?.toFixed(2) ?? ''}${outcome === 'loss' ? ' ✔' : ''}`, LS.Dashed, 2);
+}
+
 function _clearModLines() {
   for (const [, d] of _modLineData) {
     for (const { series, pl } of d.activeLines) try { series.removePriceLine(pl); } catch {}
@@ -1429,12 +1458,21 @@ function _renderModuleLayers(trade) {
   const mods = trade?.module_levels;
   if (!mods?.length) return;
 
+  // Only draw levels within ±1.5× Asia range of the trade's price window
+  const ep  = trade.entry_price ?? 0;
+  const tp  = trade.tp_price    ?? ep;
+  const sl  = trade.sl_price    ?? ep;
+  const rng = trade.asia_range  ?? (Math.abs(ep - sl) * 3) || Math.abs(ep - tp) * 3 || 0.01;
+  const lo  = Math.min(ep, tp, sl) - rng * 1.5;
+  const hi  = Math.max(ep, tp, sl) + rng * 1.5;
+
   const LS = LightweightCharts.LineStyle;
   for (const mod of mods) {
     const color   = MODULE_CHART_COLORS[mod.id] ?? '#6b7280';
     const activeLines = [];
     for (const lvl of mod.levels) {
       if (!isFinite(lvl.price)) continue;
+      if (lvl.price < lo || lvl.price > hi) continue; // outside proximity window
       const pl = _chartSeries.createPriceLine({
         price:            lvl.price,
         color:            lvl.minor ? color + '88' : color,
@@ -1647,28 +1685,25 @@ function openChartModal(tradeIdx) {
       }
 
       // Entry / TP / SL lines — drawn last so they sit on top of fib/module lines
-      const shownPrices = new Set();
+      // Background entry lines for all OTHER day trades (faint, no label)
+      // so the chart context shows all levels being watched that day.
+      const shownEntries = new Set();
       for (const t of _dayTrades) {
-        const isSell = t.side === 'SELL';
-        const addUniq = (price, color, label, style, lw) => {
-          const key = price?.toFixed(6) + label;
-          if (price == null || shownPrices.has(key)) return;
-          shownPrices.add(key);
-          addLine(price, color, label, style, lw);
-        };
-        // Entry — thick solid line; colour by direction
-        addUniq(t.entry_price, isSell ? '#f87171' : '#34d399', `▶ ${t.side} ${t.fib_level?.toFixed(2) ?? ''}`, LS.Solid, 2);
-        // TP — bright green dashed, clearly labelled
-        addUniq(t.tp_price,    '#10b981', `✓ TP ${t.fib_level?.toFixed(2) ?? ''}`,  LS.Dashed, 2);
-        // SL — bright red dashed, clearly labelled
-        addUniq(t.sl_price,    '#ef4444', `✗ SL ${t.fib_level?.toFixed(2) ?? ''}`,  LS.Dashed, 2);
+        if (t === trade) continue; // focused trade handled by _drawFocusedLines below
+        const key = t.entry_price?.toFixed(6);
+        if (!key || shownEntries.has(key)) continue;
+        shownEntries.add(key);
+        const col = (t.side === 'SELL' ? '#f87171' : '#34d399') + '33'; // very dim
+        cs.createPriceLine({ price: t.entry_price, color: col, lineWidth: 1, lineStyle: LS.Dotted, axisLabelVisible: false });
       }
+      // Focused trade: thick entry + TP + SL (drawn via _drawFocusedLines, updated on nav)
+      _drawFocusedLines();
 
       // All fill markers
       cs.setMarkers(_buildMarkers());
 
-      // Module confluence level overlays (togglable checkboxes)
-      _renderModuleLayers(_dayTrades[0] ?? trade);
+      // Module confluence level overlays (togglable checkboxes) — for the focused trade
+      _renderModuleLayers(trade);
 
       // Indicator sub-panels
       _buildZScorePanel(_zChart, bars);
@@ -1696,6 +1731,8 @@ function openChartModal(tradeIdx) {
 function closeChartModal() {
   document.getElementById('chartModal').style.display = 'none';
   _clearModLines();
+  for (const { series, pl } of _focusPriceLines) try { series.removePriceLine(pl); } catch {}
+  _focusPriceLines = [];
   if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; _chartSeries = null; }
   if (_zChart)   { _zChart.remove();   _zChart   = null; }
   if (_smiChart) { _smiChart.remove(); _smiChart = null; }
