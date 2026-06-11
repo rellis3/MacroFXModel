@@ -409,6 +409,126 @@
       </div>
     </div>
 
+    <!-- ── Zone Priority mode ─────────────────────────────────────────────── -->
+    <div class="cf-section-title" style="margin-top:16px">Zone Priority mode <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">(rank zones by confluence density)</span></div>
+    <div class="cf-row" style="flex-wrap:wrap;gap:10px;align-items:center">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);font-family:'DM Mono',monospace;cursor:pointer">
+        <input type="checkbox" id="cfPriorityMode" style="accent-color:var(--blue)">
+        Enable Confluence Priority
+      </label>
+      <span class="cf-lbl" style="margin-left:8px">Top N zones per day:</span>
+      <input type="number" id="cfPriorityTopN" value="5" min="1" max="30" step="1" style="width:52px" class="bt-sel" title="Score every candidate zone against modules, take the N highest-hit zones, simulate only those.">
+      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">Replaces the min-score gate — zones ranked by hit count, lowest-confluence zones dropped</span>
+    </div>
+
+    <!-- ── WaveTrend at-touch confirmation ───────────────────────────────── -->
+    <div class="cf-section-title" style="margin-top:16px">WaveTrend (WT1) at-touch confirmation <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">(entry confirmation at zone touch)</span></div>
+    <div class="cf-row" style="flex-wrap:wrap;gap:10px;align-items:center">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);font-family:'DM Mono',monospace;cursor:pointer">
+        <input type="checkbox" id="cfWtConfirmMode" style="accent-color:var(--blue)">
+        OB/OS threshold gate
+      </label>
+      <span class="cf-lbl" style="margin-left:6px">Buy ≤</span>
+      <input type="number" id="cfWtBuyThresh"  value="-40" min="-100" max="0"   step="5" style="width:56px" class="bt-sel" title="BUY only when WT1 ≤ this at the touch bar (oversold). Default −40.">
+      <span class="cf-lbl">Sell ≥</span>
+      <input type="number" id="cfWtSellThresh" value="40"  min="0"   max="100"  step="5" style="width:56px" class="bt-sel" title="SELL only when WT1 ≥ this at the touch bar (overbought). Default 40.">
+      <span class="cf-lbl" style="margin-left:8px">n1:</span>
+      <input type="number" id="cfWtN1" value="10" min="3" max="50" step="1" style="width:48px" class="bt-sel" title="EMA period for channel index (ESA / D). Default 10.">
+      <span class="cf-lbl">n2:</span>
+      <input type="number" id="cfWtN2" value="21" min="3" max="100" step="1" style="width:48px" class="bt-sel" title="EMA period for WT1 line. Default 21.">
+    </div>
+    <div class="cf-row" style="flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);font-family:'DM Mono',monospace;cursor:pointer">
+        <input type="checkbox" id="cfWtDivMode" style="accent-color:var(--blue)">
+        Divergence gate
+      </label>
+      <span class="cf-lbl" style="margin-left:8px">Lookback bars:</span>
+      <input type="number" id="cfWtDivLookback" value="30" min="5" max="120" step="5" style="width:52px" class="bt-sel" title="How many M1 bars before the touch bar to search for the prior price extreme used in divergence detection.">
+      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">Only enter when price makes a new extreme at the zone but WT1 does not confirm it (reversal divergence)</span>
+    </div>
+    <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;padding:0 2px">
+      Both gates can be stacked: OB/OS check runs first, divergence check second. Both must pass when stacked.
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Strategy Modes Help ───────────────────────────────────────────────────── -->
+<div class="cf-panel" id="helpPanel" style="margin-top:6px">
+  <div class="cf-panel-hdr" onclick="toggleHelpPanel()" style="cursor:pointer">
+    <span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace">? Strategy Modes — How They Work</span>
+    <span class="cf-toggle" id="helpToggleTxt">▶ Expand</span>
+  </div>
+  <div class="cf-body" id="helpBody" style="font-size:11px;font-family:'DM Mono',monospace;line-height:1.7;color:var(--text2)">
+
+    <div class="cf-section-title">Layer 1 — Confluence Priority Mode</div>
+    <p style="margin:6px 0 10px">
+      <strong>What it does:</strong> Instead of a min-score gate that silently drops trades, this mode
+      scores <em>every</em> candidate zone against all enabled modules, sorts them by the number of
+      module hits (highest first), then simulates only the top N for that day.<br><br>
+      <strong>Why it helps:</strong> On a given day you might have 40 fib levels across the Asia and
+      Monday ranges. Most have zero or one module hit. The top 3–5 usually cluster structural levels,
+      round numbers, PDH/PDL, and session open ranges — those are the genuinely interesting zones.
+      Trading only the top 5 by density focuses capital on the strongest setups and eliminates
+      noise trades that happened to be near a level with no additional confluence.<br><br>
+      <strong>Stacking:</strong> Works with all other filters. The level filter (tight/confluence/all)
+      still applies before scoring — Priority mode selects from whatever survives the level filter.<br><br>
+      <strong>Key difference from min-score:</strong> Min-score uses a weighted percentage gate (e.g.
+      "must hit ≥50% of module weight"). Priority mode is rank-based — it always produces exactly N
+      trades per day regardless of absolute score, which avoids low-signal days producing zero trades
+      and high-signal days producing many. Set N=1 for the single best zone per day.
+    </p>
+
+    <div class="cf-section-title" style="margin-top:12px">Layer 3A — WaveTrend OB/OS Threshold Gate</div>
+    <p style="margin:6px 0 10px">
+      <strong>What it does:</strong> At the exact M1 bar where price first touches a zone, computes
+      WT1 (WaveTrend 1, the core oscillator inside VuManchu Cipher B) and checks whether momentum is
+      exhausted in the direction of the trade.<br><br>
+      <strong>Formula:</strong> hlc3 = (H+L+C)/3 → ESA = EMA(hlc3, n1) → D = EMA(|hlc3−ESA|, n1)
+      → CI = (hlc3−ESA)/(0.015×D) → WT1 = EMA(CI, n2). Range approx −100 to +100.<br><br>
+      <strong>Entry rules:</strong><br>
+      &nbsp;· BUY at support zone: WT1 must be ≤ buy threshold (default −40 = oversold)<br>
+      &nbsp;· SELL at resistance zone: WT1 must be ≥ sell threshold (default +40 = overbought)<br><br>
+      <strong>Why this matters:</strong> Without WT confirmation, a zone touch includes both:
+      (a) price pausing at a level because momentum is exhausted — likely to reverse, and
+      (b) price blowing through a level with strong momentum — likely to continue. WT confirmation
+      filters for case (a) only by requiring momentum to already be stretched at the touch bar.<br><br>
+      <strong>Settings:</strong> n1=10 / n2=21 matches the default VuManchu Cipher B settings and the
+      live bot's compute_wt1() in bot/utils/indicators.py. Thresholds of ±40 are permissive
+      (captures more trades); ±53 or ±60 are the standard OB/OS levels used in VuManchu.
+    </p>
+
+    <div class="cf-section-title" style="margin-top:12px">Layer 3B — WaveTrend Divergence Gate</div>
+    <p style="margin:6px 0 10px">
+      <strong>What it does:</strong> At the touch bar, looks back N M1 bars within the trade window
+      to find the prior price extreme, then checks whether WT1 agrees with that extreme or diverges.<br><br>
+      <strong>Bullish divergence (BUY):</strong> Price at touch bar makes a lower low than any bar in
+      the lookback window, BUT WT1 at the touch bar is <em>higher</em> than WT1 was at the prior low.
+      Meaning: price made a new low but momentum did not — sellers are exhausted.<br><br>
+      <strong>Bearish divergence (SELL):</strong> Price at touch bar makes a higher high than any bar
+      in the lookback window, BUT WT1 at the touch bar is <em>lower</em> than WT1 was at the prior high.
+      Meaning: price made a new high but momentum did not — buyers are exhausted.<br><br>
+      <strong>Why it's stronger than OB/OS:</strong> OB/OS simply says "momentum is stretched right now."
+      Divergence says "momentum was stronger the last time price was here — this new extreme is weaker."
+      That relative weakening is the classic VuManchu red/green diamond signal and is a much higher-probability
+      reversal signal than an absolute threshold alone.<br><br>
+      <strong>Note:</strong> Divergence requires at least 5 trade-window bars before the touch bar to
+      have a meaningful lookback. Trades touched on the very first bars of the London open will be skipped
+      if the lookback window is too short. Increase the lookback (default 30 bars = 30 minutes) if you
+      want to capture more divergence patterns but accept wider context.
+    </p>
+
+    <div class="cf-section-title" style="margin-top:12px">Stacking All Three Layers</div>
+    <p style="margin:6px 0 10px">
+      The three layers are independent and can be combined:<br>
+      &nbsp;· Priority mode narrows the zone list to the highest-confluence candidates<br>
+      &nbsp;· OB/OS gate checks that momentum is already stretched when price arrives at the zone<br>
+      &nbsp;· Divergence gate confirms that this push into the zone is weaker than the last one<br><br>
+      Running all three is the most selective filter — it will dramatically reduce trade count but
+      should concentrate the highest-probability setups. Start by testing each layer in isolation,
+      then compare combined results against the baseline (all layers off) using the Analytics engine.
+    </p>
+
   </div>
 </div>
 
@@ -1044,6 +1164,13 @@ function toggleCfPanel() {
   txt.textContent = open ? '▼ Collapse' : '▶ Expand';
 }
 
+function toggleHelpPanel() {
+  const body = document.getElementById('helpBody');
+  const txt  = document.getElementById('helpToggleTxt');
+  const open = body.classList.toggle('open');
+  txt.textContent = open ? '▼ Collapse' : '▶ Expand';
+}
+
 function onSlModeChange() {
   const isAtr = document.getElementById('cfSlMode').value === 'atr30';
   ['cfAtrSlLbl','cfAtrSlMult','cfAtrTpLbl','cfAtrTpMult','cfAtrPerLbl','cfAtrPeriods'].forEach(id => {
@@ -1123,6 +1250,17 @@ async function runBacktest() {
       smiBuyThresh:      document.getElementById('cfSmiBuyThresh').value,
       smiSellThresh:     document.getElementById('cfSmiSellThresh').value,
       smiKLength:        document.getElementById('cfSmiKLength').value,
+      // Confluence Priority mode
+      confluencePriorityMode: document.getElementById('cfPriorityMode').checked.toString(),
+      priorityTopN:           document.getElementById('cfPriorityTopN').value,
+      // WaveTrend at-touch confirmation
+      wtConfirmMode:    document.getElementById('cfWtConfirmMode').checked.toString(),
+      wtDivergenceMode: document.getElementById('cfWtDivMode').checked.toString(),
+      wtBuyThresh:      document.getElementById('cfWtBuyThresh').value,
+      wtSellThresh:     document.getElementById('cfWtSellThresh').value,
+      wtN1:             document.getElementById('cfWtN1').value,
+      wtN2:             document.getElementById('cfWtN2').value,
+      wtDivLookback:    document.getElementById('cfWtDivLookback').value,
       confluenceModules,
     };
 

@@ -3006,6 +3006,12 @@ app.post('/api/asia-range-backtest/run', (req, res) => {
     // Indicator OB/OS thresholds
     zScoreBuyThresh  = '-1.5', zScoreSellThresh = '1.5',  zScoreLength = '20',
     smiBuyThresh     = '-40',  smiSellThresh    = '40',   smiKLength   = '10',
+    // Confluence Priority mode
+    confluencePriorityMode = 'false', priorityTopN = '5',
+    // WaveTrend at-touch confirmation
+    wtConfirmMode    = 'false', wtDivergenceMode = 'false',
+    wtBuyThresh      = '-40',   wtSellThresh     = '40',
+    wtN1             = '10',    wtN2             = '21',    wtDivLookback = '30',
   } = req.body || {};
 
   // Build enabled module list from the registry
@@ -3040,6 +3046,17 @@ app.post('/api/asia-range-backtest/run', (req, res) => {
     smiBuyThresh:      parseFloat(smiBuyThresh)      || -40,
     smiSellThresh:     parseFloat(smiSellThresh)     ||  40,
     smiKLength:        parseInt(smiKLength)           ||  10,
+    // Confluence Priority mode
+    confluencePriorityMode: confluencePriorityMode === 'true',
+    priorityTopN:           parseInt(priorityTopN)   ||  5,
+    // WaveTrend at-touch confirmation
+    wtConfirmMode:    wtConfirmMode    === 'true',
+    wtDivergenceMode: wtDivergenceMode === 'true',
+    wtBuyThresh:      parseFloat(wtBuyThresh)  || -40,
+    wtSellThresh:     parseFloat(wtSellThresh) ||  40,
+    wtN1:             parseInt(wtN1)            ||  10,
+    wtN2:             parseInt(wtN2)            ||  21,
+    wtDivLookback:    parseInt(wtDivLookback)   ||  30,
   };
 
   const pairsToRun = pair

@@ -336,6 +336,8 @@
         <option value="instrument">Pair</option>
         <option value="zscore_bucket">Z-Score Zone</option>
         <option value="smi_bucket">SMI Zone</option>
+        <option value="wt_bucket">WT1 at Touch</option>
+        <option value="priority_rank_bucket">Priority Rank</option>
       </select>
       <span class="anl-lbl">Y axis:</span>
       <select id="pvY" class="anl-sel" onchange="renderPivot()">
@@ -351,6 +353,8 @@
         <option value="instrument">Pair</option>
         <option value="zscore_bucket">Z-Score Zone</option>
         <option value="smi_bucket">SMI Zone</option>
+        <option value="wt_bucket">WT1 at Touch</option>
+        <option value="priority_rank_bucket">Priority Rank</option>
       </select>
       <span class="anl-lbl">Metric:</span>
       <select id="pvMetric" class="anl-sel" onchange="renderPivot()">
@@ -411,6 +415,8 @@
         <option value="monday_aligned">Mon aligned</option>
         <option value="zscore_bucket">Z-Score Zone</option>
         <option value="smi_bucket">SMI Zone</option>
+        <option value="wt_bucket">WT1 at Touch</option>
+        <option value="priority_rank_bucket">Priority Rank</option>
       </select>
       <span class="anl-lbl">Rank by:</span>
       <select id="bsRank" class="anl-sel" onchange="renderBestSetups()">
@@ -547,6 +553,8 @@ function getFeature(t, dim) {
     case 'monday_fib_align':      return t.monday_fib_align  ? 'Asia+Mon fib' : 'Asia fib only';
     case 'zscore_bucket':         return _zscoreBucket(_parseZScore(t));
     case 'smi_bucket':            return _smiBucket(_parseSMI(t));
+    case 'wt_bucket':             return _wtBucket(t.wt_at_touch ?? null);
+    case 'priority_rank_bucket':  return _priorityRankBucket(t.priority_rank ?? null);
     default: return '?';
   }
 }
@@ -619,8 +627,10 @@ const ZONE_ORDER          = ['deep_neg','outer_neg','inner','outer_pos','deep_po
 const RANGE_ORDER         = ['tiny','small','medium','large','huge'];
 const MON_ORDER           = ['Mon-aligned','Not-aligned'];
 const SCORE_BUCKET_ORDER  = ['No modules','0%','1–25%','26–50%','51–75%','76–100%'];
-const ZSCORE_BUCKET_ORDER = ['Strong OS (<−2)','Mild OS (−2–−1)','Neutral (−1–1)','Mild OB (1–2)','Strong OB (>2)','N/A'];
-const SMI_BUCKET_ORDER    = ['Strong OS (<−40)','Mild OS (−40–−20)','Neutral (−20–20)','Mild OB (20–40)','Strong OB (>40)','N/A'];
+const ZSCORE_BUCKET_ORDER  = ['Strong OS (<−2)','Mild OS (−2–−1)','Neutral (−1–1)','Mild OB (1–2)','Strong OB (>2)','N/A'];
+const SMI_BUCKET_ORDER     = ['Strong OS (<−40)','Mild OS (−40–−20)','Neutral (−20–20)','Mild OB (20–40)','Strong OB (>40)','N/A'];
+const WT_BUCKET_ORDER      = ['Strong OS (<−53)','Mid OS (−53–−30)','Neutral (−30–30)','Mid OB (30–53)','Strong OB (>53)','N/A'];
+const PRIORITY_RANK_ORDER  = ['Rank 1','Rank 2','Rank 3','Rank 4–5','Rank 6+','Unranked'];
 
 function _parseZScore(t) {
   const d = t.confluences?.zscore_conf?.detail;
@@ -654,6 +664,24 @@ function _smiBucket(s) {
   return 'Strong OB (>40)';
 }
 
+function _wtBucket(w) {
+  if (w == null) return 'N/A';
+  if (w < -53) return 'Strong OS (<−53)';
+  if (w < -30) return 'Mid OS (−53–−30)';
+  if (w <= 30) return 'Neutral (−30–30)';
+  if (w <= 53) return 'Mid OB (30–53)';
+  return 'Strong OB (>53)';
+}
+
+function _priorityRankBucket(r) {
+  if (r == null) return 'Unranked';
+  if (r === 1)   return 'Rank 1';
+  if (r === 2)   return 'Rank 2';
+  if (r === 3)   return 'Rank 3';
+  if (r <= 5)    return 'Rank 4–5';
+  return 'Rank 6+';
+}
+
 function _dimOrder(dim) {
   switch (dim) {
     case 'fib_level_bucket':        return FIB_BUCKET_ORDER;
@@ -668,6 +696,8 @@ function _dimOrder(dim) {
     case 'monday_fib_align':        return ['Asia+Mon fib', 'Asia fib only'];
     case 'zscore_bucket':           return ZSCORE_BUCKET_ORDER;
     case 'smi_bucket':              return SMI_BUCKET_ORDER;
+    case 'wt_bucket':               return WT_BUCKET_ORDER;
+    case 'priority_rank_bucket':    return PRIORITY_RANK_ORDER;
     default: return null;
   }
 }

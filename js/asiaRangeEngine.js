@@ -226,6 +226,39 @@ function detectConfluence(currFibs, prevFibs, threshold, tightThreshold) {
   });
 }
 
+// ── WaveTrend 1 (WT1) ─────────────────────────────────────────────────────────
+// Matches compute_wt1() in bot/utils/indicators.py and VuManchu Cipher B core.
+// Algorithm: hlc3 → EMA(n1) = esa → EMA(|hlc3-esa|, n1) = d → ci = (hlc3-esa)/(0.015*d) → EMA(ci, n2) = WT1
+// Returns a plain Array of WT1 values, one per bar. First n1+n2 values are EMA-warmed (not NaN).
+function _computeWT1Series(bars, n1 = 10, n2 = 21) {
+  const n  = bars.length;
+  const k1 = 2 / (n1 + 1);
+  const k2 = 2 / (n2 + 1);
+  const hlc3 = new Array(n);
+  for (let i = 0; i < n; i++) hlc3[i] = (bars[i].high + bars[i].low + bars[i].close) / 3;
+  const esa = new Array(n);
+  esa[0] = hlc3[0];
+  for (let i = 1; i < n; i++) esa[i] = hlc3[i] * k1 + esa[i - 1] * (1 - k1);
+  const d = new Array(n);
+  d[0] = Math.abs(hlc3[0] - esa[0]);
+  for (let i = 1; i < n; i++) d[i] = Math.abs(hlc3[i] - esa[i]) * k1 + d[i - 1] * (1 - k1);
+  const ci = new Array(n);
+  for (let i = 0; i < n; i++) ci[i] = d[i] > 1e-10 ? (hlc3[i] - esa[i]) / (0.015 * d[i]) : 0;
+  const wt1 = new Array(n);
+  wt1[0] = ci[0];
+  for (let i = 1; i < n; i++) wt1[i] = ci[i] * k2 + wt1[i - 1] * (1 - k2);
+  return wt1;
+}
+
+// Returns bar index of the first touch of `entry` for `side`, or -1 if never touched.
+function findFirstTouch(bars, side, entry) {
+  const isSell = side === 'SELL';
+  for (let i = 0; i < bars.length; i++) {
+    if (isSell ? bars[i].high >= entry : bars[i].low <= entry) return i;
+  }
+  return -1;
+}
+
 // ── Trade simulation ──────────────────────────────────────────────────────────
 
 function walkLimitOrder(bars, side, entry, tp, sl, refOpen) {
@@ -300,6 +333,17 @@ function simulateDay(packed, dateStr, opts) {
     // Pre-built pair-level session caches (populated by runAsiaRangeBacktest)
     _asiaSessions        = null,         // sorted array of {epoch,high,low,range}
     _mondayRanges        = null,         // sorted array of {epoch,high,low,range}
+    // ── Confluence Priority mode ─────────────────────────────────────────────
+    confluencePriorityMode = false,      // rank all zones by hit count, take top N
+    priorityTopN           = 5,          // how many top-ranked zones to simulate
+    // ── WaveTrend at-touch confirmation ──────────────────────────────────────
+    wtConfirmMode          = false,      // gate entry on WT1 OB/OS at zone touch
+    wtDivergenceMode       = false,      // gate entry on price/WT1 divergence at touch
+    wtBuyThresh            = -40,        // WT1 ≤ this → confirms BUY entry
+    wtSellThresh           =  40,        // WT1 ≥ this → confirms SELL entry
+    wtN1                   =  10,        // EMA period for ESA/D (channel index)
+    wtN2                   =  21,        // EMA period for WT1 line
+    wtDivLookback          =  30,        // bars to look back for divergence swing
   } = opts;
 
   const dayEpoch = Math.floor(new Date(dateStr + 'T00:00:00Z').getTime() / 1000);
@@ -448,37 +492,63 @@ function simulateDay(packed, dateStr, opts) {
     })),
   ];
 
+  // ── WaveTrend precomputation (one per day, shared across all fib candidates) ──
+  // Build a WT1 value for every M1 bar in the trade window, with enough warmup bars
+  // prepended so the EMA is properly seeded before the window starts.
+  let _tradeBarsWt = null;
+  if (wtConfirmMode || wtDivergenceMode) {
+    const wtWarmup  = (wtN1 + wtN2) * 4;          // extra bars before trade window
+    const wtAllBars = extractBars(packed, tradeFrom - wtWarmup * 60, tradeTo);
+    if (wtAllBars.length >= wtN1 + wtN2) {
+      const wtAll    = _computeWT1Series(wtAllBars, wtN1, wtN2);
+      const timeToWt = new Map(wtAllBars.map((b, i) => [b.time, wtAll[i]]));
+      _tradeBarsWt   = tradeBars.map(b => timeToWt.get(b.time) ?? NaN);
+    }
+  }
+
   const trades = [];
 
+  // ── PASS 1: filter candidates and score every valid zone ─────────────────────
+  // (module checks run once here; result reused in pass 3 — no double computation)
+  const _scored = [];
   for (const fib of candidates) {
-    // Level filter (skipped when levelSource manages its own per-source filtering)
     if (!_bypassLevelFilter) {
       if (levelFilter === 'tight'       && !fib.isTight)      continue;
       if (levelFilter === 'confluence'  && !fib.hasConfluence) continue;
       if (levelFilter === 'asia_monday' && !fib.crossAligned)  continue;
       if (levelFilter !== 'all' && levelFilter !== 'asia_monday' && !fib.hasConfluence && !fib.isKey) continue;
     }
-
-    const price      = fib.price;
-    const isAbove    = price > asia.high + pipSize;
-    const isBelow    = price < asia.low  - pipSize;
-    const isInside   = !isAbove && !isBelow;
-
-    if (tradeZone === 'outside' && isInside) continue;
-
-    // Determine direction upfront so directional modules (Z-Score, SMI) can use it
-    const prelimSide = isAbove ? 'SELL' : isBelow ? 'BUY' : (price > asiaMid ? 'SELL' : 'BUY');
-
-    // Run confluence modules BEFORE trade setup (score gates entry)
-    const modChecks = confluenceMods.length > 0
-      ? runModuleChecks(price, prelimSide, dayStates, confluenceMods, { ...opts, zoneRadiusPips })
+    const price   = fib.price;
+    const isAbove = price > asia.high + pipSize;
+    const isBelow = price < asia.low  - pipSize;
+    if (tradeZone === 'outside' && !isAbove && !isBelow) continue;
+    const pSide = isAbove ? 'SELL' : isBelow ? 'BUY' : (price > asiaMid ? 'SELL' : 'BUY');
+    const mc    = confluenceMods.length > 0
+      ? runModuleChecks(price, pSide, dayStates, confluenceMods, { ...opts, zoneRadiusPips })
       : { results: {}, hits: 0, total: 0, score: 0, pct: 0 };
+    _scored.push({ fib, pSide, mc, isAbove, isBelow });
+  }
 
-    if (confluenceMods.length > 0 && minConfluenceScore > 0 && modChecks.score < minConfluenceScore) continue;
+  // ── PASS 2: rank by confluence density (priority mode) or preserve order ──────
+  let _ranked;
+  if (confluencePriorityMode && confluenceMods.length > 0) {
+    _ranked = [..._scored]
+      .sort((a, b) => b.mc.hits - a.mc.hits || b.mc.score - a.mc.score)
+      .slice(0, priorityTopN)
+      .map((s, i) => ({ ...s, priorityRank: i + 1 }));
+  } else {
+    _ranked = _scored.map(s => ({ ...s, priorityRank: null }));
+  }
 
+  // ── PASS 3: simulate entry for each ranked candidate ─────────────────────────
+  for (const { fib, pSide: prelimSide, mc: modChecks, isAbove, isBelow, priorityRank } of _ranked) {
+    // Score gate applies in non-priority mode only (priority mode already selected top N)
+    if (!confluencePriorityMode && confluenceMods.length > 0 && minConfluenceScore > 0 && modChecks.score < minConfluenceScore) continue;
+
+    const price  = fib.price;
     let side, tp, sl;
     const useAtr = slMode === 'atr30' && atr30 != null;
-    const tpDist  = useAtr ? slDist * atrTpMult : null; // non-null only in ATR mode
+    const tpDist = useAtr ? slDist * atrTpMult : null;
 
     if (isAbove) {
       side = 'SELL';
@@ -489,7 +559,6 @@ function simulateDay(packed, dateStr, opts) {
       tp   = useAtr ? price + tpDist : (tpMode === 'range_edge' ? asia.low : asiaMid);
       sl   = price - slDist;
     } else {
-      // Inside range — fade back to midpoint (ATR mode uses same SL, midpoint TP)
       if (price > asiaMid) { side = 'SELL'; tp = asiaMid; sl = asia.high + slDist; }
       else                 { side = 'BUY';  tp = asiaMid; sl = asia.low  - slDist; }
     }
@@ -498,6 +567,48 @@ function simulateDay(packed, dateStr, opts) {
     if (side === 'BUY'  && tp <= price) continue;
     if (side === 'SELL' && sl <= price) continue;
     if (side === 'BUY'  && sl >= price) continue;
+
+    // ── WaveTrend at-touch confirmation ────────────────────────────────────────
+    // Checks WT1 value at the FIRST bar where price reaches the zone.
+    // wtConfirmMode: only enter if WT1 shows OB/OS (market momentum exhausted at touch).
+    // wtDivergenceMode: only enter if price makes a new extreme but WT1 does NOT confirm
+    //   (classic reversal divergence — strongest version of exhaustion signal).
+    // Both modes can be stacked: OB/OS check runs first, divergence check second.
+    let wtAtTouch = null, wtConfirmed = null, wtDivDetected = null;
+    if ((wtConfirmMode || wtDivergenceMode) && _tradeBarsWt) {
+      const touchIdx = findFirstTouch(tradeBars, side, price);
+      if (touchIdx < 0 || isNaN(_tradeBarsWt[touchIdx])) continue;
+
+      const wt  = _tradeBarsWt[touchIdx];
+      wtAtTouch = +wt.toFixed(2);
+
+      if (wtConfirmMode) {
+        wtConfirmed = side === 'BUY' ? wt <= wtBuyThresh : wt >= wtSellThresh;
+        if (!wtConfirmed) continue;
+      }
+
+      if (wtDivergenceMode) {
+        const lbStart = Math.max(0, touchIdx - wtDivLookback);
+        const pSlice  = tradeBars.slice(lbStart, touchIdx);
+        const wSlice  = _tradeBarsWt.slice(lbStart, touchIdx);
+        if (pSlice.length >= 5) {
+          if (side === 'BUY') {
+            // Bullish divergence: price lower low, WT1 higher low
+            let lIdx = 0;
+            for (let i = 1; i < pSlice.length; i++) if (pSlice[i].low < pSlice[lIdx].low) lIdx = i;
+            wtDivDetected = !isNaN(wSlice[lIdx]) && tradeBars[touchIdx].low <= pSlice[lIdx].low && wt > wSlice[lIdx];
+          } else {
+            // Bearish divergence: price higher high, WT1 lower high
+            let hIdx = 0;
+            for (let i = 1; i < pSlice.length; i++) if (pSlice[i].high > pSlice[hIdx].high) hIdx = i;
+            wtDivDetected = !isNaN(wSlice[hIdx]) && tradeBars[touchIdx].high >= pSlice[hIdx].high && wt < wSlice[hIdx];
+          }
+        } else {
+          wtDivDetected = false;
+        }
+        if (!wtDivDetected) continue;
+      }
+    }
 
     const result = walkLimitOrder(tradeBars, side, price, tp, sl, refOpen);
     if (!result) continue;
@@ -508,68 +619,68 @@ function simulateDay(packed, dateStr, opts) {
     const mfeR       = riskDist > 0 ? +(result.mfeDist / riskDist).toFixed(3) : 0;
     const maeR       = riskDist > 0 ? +(result.maeDist / riskDist).toFixed(3) : 0;
 
-    // Derived analysis dimensions
-    const rangePips  = +(asia.range / pipSize).toFixed(1);
+    const rangePips   = +(asia.range / pipSize).toFixed(1);
     const rangeBucket = rangePips < 20 ? 'tiny' : rangePips < 40 ? 'small' : rangePips < 70 ? 'medium' : rangePips < 120 ? 'large' : 'huge';
-    const lvl        = fib.level;
-    const levelZone  = lvl < -2 ? 'deep_neg' : lvl < 0 ? 'outer_neg' : lvl <= 1 ? 'inner' : lvl <= 2 ? 'outer_pos' : 'deep_pos';
+    const lvl         = fib.level;
+    const levelZone   = lvl < -2 ? 'deep_neg' : lvl < 0 ? 'outer_neg' : lvl <= 1 ? 'inner' : lvl <= 2 ? 'outer_pos' : 'deep_pos';
 
-    const fillHour   = result.fillTime ? new Date(result.fillTime * 1000).getUTCHours() : -1;
+    const fillHour      = result.fillTime ? new Date(result.fillTime * 1000).getUTCHours() : -1;
     const sessionFilled = fillHour < 0 ? null : fillHour < 6 ? 'Asia' : fillHour < 13 ? 'London' : fillHour < 16 ? 'Overlap' : 'NY';
 
-    const DOW_NAMES  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const dow        = DOW_NAMES[new Date(dateStr + 'T12:00:00Z').getUTCDay()];
+    const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const dow       = DOW_NAMES[new Date(dateStr + 'T12:00:00Z').getUTCDay()];
 
     const mondayAligned = mondayRange
       ? (Math.abs(price - mondayRange.high) <= pipSize * 10 || Math.abs(price - mondayRange.low) <= pipSize * 10)
       : false;
 
-    const monday_fib_align = fib.crossAligned ?? false;
-
     trades.push({
-      date:          dateStr,
+      date:             dateStr,
       side,
-      outcome:       result.outcome,
-      pnl_pct:       +result.pnlPct.toFixed(5),
-      filled:        true,
-      fib_level:     fib.level,
-      entry_price:   +price.toFixed(6),
-      tp_price:      +tp.toFixed(6),
-      sl_price:      +sl.toFixed(6),
-      fill_time:     result.fillTime  ? new Date(result.fillTime  * 1000).toISOString().substring(0, 19) : null,
-      exit_time:     result.exitTime  ? new Date(result.exitTime  * 1000).toISOString().substring(0, 19) : null,
+      outcome:          result.outcome,
+      pnl_pct:          +result.pnlPct.toFixed(5),
+      filled:           true,
+      fib_level:        fib.level,
+      entry_price:      +price.toFixed(6),
+      tp_price:         +tp.toFixed(6),
+      sl_price:         +sl.toFixed(6),
+      fill_time:        result.fillTime ? new Date(result.fillTime  * 1000).toISOString().substring(0, 19) : null,
+      exit_time:        result.exitTime ? new Date(result.exitTime  * 1000).toISOString().substring(0, 19) : null,
       has_confluence:   fib.hasConfluence,
       is_tight:         fib.isTight,
       is_key:           fib.isKey,
       level_source:     fib.source ?? 'asia',
-      monday_fib_align: monday_fib_align,
-      asia_high:     +asia.high.toFixed(6),
-      asia_low:      +asia.low.toFixed(6),
-      asia_range:    +asia.range.toFixed(6),
-      asia_mid:      +asiaMid.toFixed(6),
-      rr:            +rr.toFixed(2),
-      mfe_r:         mfeR,
-      mae_r:         maeR,
-      asia_range_pips: rangePips,
-      range_bucket:  rangeBucket,
-      level_zone:    levelZone,
+      monday_fib_align: fib.crossAligned ?? false,
+      asia_high:        +asia.high.toFixed(6),
+      asia_low:         +asia.low.toFixed(6),
+      asia_range:       +asia.range.toFixed(6),
+      asia_mid:         +asiaMid.toFixed(6),
+      rr:               +rr.toFixed(2),
+      mfe_r:            mfeR,
+      mae_r:            maeR,
+      asia_range_pips:  rangePips,
+      range_bucket:     rangeBucket,
+      level_zone:       levelZone,
       dow,
-      session_filled: sessionFilled,
-      monday_aligned: mondayAligned,
-      monday_high:   mondayRange ? +mondayRange.high.toFixed(6) : null,
-      monday_low:    mondayRange ? +mondayRange.low.toFixed(6)  : null,
-      fib_data:      fibData,
-      // ATR / SL mode
-      sl_mode:       slMode,
-      atr30:         atr30 != null ? +atr30.toFixed(6) : null,
-      // Confluence module results
-      confluences:        modChecks.results,
-      confluence_hits:    modChecks.hits,
-      confluence_total:   modChecks.total,
-      confluence_score:   modChecks.score,
-      confluence_pct:     modChecks.pct,
-      // Structural levels per module for chart overlay
-      module_levels:      moduleLevels,
+      session_filled:   sessionFilled,
+      monday_aligned:   mondayAligned,
+      monday_high:      mondayRange ? +mondayRange.high.toFixed(6) : null,
+      monday_low:       mondayRange ? +mondayRange.low.toFixed(6)  : null,
+      fib_data:         fibData,
+      sl_mode:          slMode,
+      atr30:            atr30 != null ? +atr30.toFixed(6) : null,
+      confluences:          modChecks.results,
+      confluence_hits:      modChecks.hits,
+      confluence_total:     modChecks.total,
+      confluence_score:     modChecks.score,
+      confluence_pct:       modChecks.pct,
+      module_levels:        moduleLevels,
+      // Confluence Priority mode
+      priority_rank:        priorityRank,
+      // WaveTrend at-touch
+      wt_at_touch:          wtAtTouch,
+      wt_confirmed:         wtConfirmed,
+      wt_divergence:        wtDivDetected,
     });
   }
 
