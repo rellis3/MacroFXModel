@@ -69,6 +69,22 @@
   color: var(--text3);
   font-family: 'DM Mono', monospace;
 }
+.vf-section-sub {
+  font-weight: 400;
+  letter-spacing: .04em;
+  text-transform: none;
+  font-size: 9px;
+  color: var(--text3);
+  opacity: .7;
+}
+.vf-section-hint {
+  font-size: 9px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  line-height: 1.5;
+  padding-left: 52px;
+  opacity: .75;
+}
 
 .vf-row {
   display: flex;
@@ -1190,7 +1206,7 @@ function buildCard(name, f, meta, isHistorical = false) {
   const pct = f.vol_pct ?? null;
   const pctClass = pct != null ? (pct >= 80 ? 'hi' : pct <= 20 ? 'lo' : '') : '';
   const pctHtml = pct != null
-    ? `<div class="vf-pct-pill ${pctClass}">${pct}th pct</div>`
+    ? `<div class="vf-pct-pill ${pctClass}" title="Vol is higher than ${pct}% of the past 252 trading days">${pct}th pct</div>`
     : '';
 
   const hlMax = f.hl_75 * 1.1;
@@ -1203,9 +1219,10 @@ function buildCard(name, f, meta, isHistorical = false) {
   // Multi-day H-L projections (√T scaling)
   const ndayHtml = (f.hl_5d != null && f.hl_20d != null) ? `
     <div class="vf-section">
-      <div class="vf-section-label">Multi-Day H-L (√T scaling)</div>
-      <div class="vf-nday-row"><span class="vf-nday-lbl">5-day</span><span class="vf-nday-val">${f.hl_5d.toFixed(2)}%</span><span class="vf-nday-sub">≈ range over 5 sessions</span></div>
-      <div class="vf-nday-row"><span class="vf-nday-lbl">20-day</span><span class="vf-nday-val">${f.hl_20d.toFixed(2)}%</span><span class="vf-nday-sub">≈ range over 20 sessions</span></div>
+      <div class="vf-section-label">Multi-Day Range <span class="vf-section-sub">— H-L across N sessions</span></div>
+      <div class="vf-nday-row"><span class="vf-nday-lbl">5-day</span><span class="vf-nday-val">${f.hl_5d.toFixed(2)}%</span><span class="vf-nday-sub">highest high to lowest low over a full week</span></div>
+      <div class="vf-nday-row"><span class="vf-nday-lbl">20-day</span><span class="vf-nday-val">${f.hl_20d.toFixed(2)}%</span><span class="vf-nday-sub">highest high to lowest low over a month</span></div>
+      <div class="vf-section-hint">Grows by √N (not N×): daily moves partially cancel — 5d ≈ 1d × 2.24, not × 5</div>
     </div>` : '';
 
   // Live session area — historical mode shows placeholder (no id to prevent loadSession() wiring)
@@ -1223,16 +1240,16 @@ function buildCard(name, f, meta, isHistorical = false) {
     </div>
 
     <div class="vf-section">
-      <div class="vf-section-label">High ↔ Low Range</div>
+      <div class="vf-section-label">High ↔ Low Range <span class="vf-section-sub">— full session swing</span></div>
       ${barRow('50th', f.hl_median, hlMax, 'median')}
       ${barRow('75th', f.hl_75,    hlMax, 'p75')}
     </div>
 
     <div class="vf-section">
-      <div class="vf-section-label">Open → Close / High / Low</div>
+      <div class="vf-section-label">Open → Close Move <span class="vf-section-sub">— net directional</span></div>
       ${barRow('50th', f.oc_median, ocMax, 'median')}
       ${barRow('75th', f.oc_75,    ocMax, 'p75')}
-      <div style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);padding-left:52px;line-height:1.4">O→H and O→L have same distribution (BM reflection principle)</div>
+      <div class="vf-section-hint">O→H (max up leg) and O→L (max down leg) have the same expected size as O→C</div>
     </div>
 
     ${ndayHtml}
@@ -1291,7 +1308,7 @@ function buildSessionHtml(name, s, data) {
   return `
     <div class="vf-live-hdr">
       <div class="${dotCls}" title="${dotTitle}"></div>
-      LIVE SESSION
+      TODAY'S SESSION — actual vs forecast
       <span class="vf-live-time">${anchorStr} · as of ${timeStr}</span>
     </div>
 
@@ -1395,8 +1412,8 @@ function buildExtendedText(data) {
     lines.push(`Vol (ann)       : ${f2(f.vol_annual)}%  [${f.vol_pct ?? '—'}th pct of 252-day history]`);
     lines.push(`H-L median      : ${f2(f.hl_median)}%  (75th ${f2(f.hl_75)}%)`);
     lines.push(`O-C median      : ${f2(f.oc_median)}%  (75th ${f2(f.oc_75)}%)`);
-    lines.push(`O-H median      : ${f2(f.oh_median)}%  (75th ${f2(f.oh_75)}%)  [= O-C by BM reflection]`);
-    lines.push(`O-L median      : ${f2(f.ol_median)}%  (75th ${f2(f.ol_75)}%)  [= O-C by BM reflection]`);
+    lines.push(`O-H median      : ${f2(f.oh_median)}%  (75th ${f2(f.oh_75)}%)  [max up leg = same dist as O-C]`);
+    lines.push(`O-L median      : ${f2(f.ol_median)}%  (75th ${f2(f.ol_75)}%)  [max down leg = same dist as O-C]`);
     lines.push(`5-day H-L       : ${f2(f.hl_5d)}%  (5-session range)`);
     lines.push(`20-day H-L      : ${f2(f.hl_20d)}%  (20-session range)`);
     lines.push(`5-day O-C       : ${f2(f.oc_5d)}%`);
