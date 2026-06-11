@@ -24,6 +24,7 @@ import {
   buildAllPairCaches,
   buildDayStates,
   runModuleChecks,
+  collectModuleLevels,
 } from './confluenceModules.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -421,6 +422,18 @@ function simulateDay(packed, dateStr, opts) {
     ? buildDayStates(packed, dayEpoch, pipSize, pairCaches, { ...opts, zoneRadiusPips }, enabledIds)
     : {};
 
+  // Collect structural levels per module for chart overlay (stored on every trade)
+  const _modOpts = {
+    ...opts, zoneRadiusPips,
+    asiaLow:    asia.low,
+    asiaHigh:   asia.high,
+    asiaCenter: asia.low + asia.range * 0.5,
+    asiaRange:  asia.range,
+  };
+  const moduleLevels = confluenceMods.length > 0
+    ? collectModuleLevels(dayStates, confluenceMods, _modOpts)
+    : [];
+
   // Fib data for chart rendering — Asia fibs + Monday fibs (tagged by source)
   const fibData = [
     ...fibs.map(f => ({
@@ -552,6 +565,8 @@ function simulateDay(packed, dateStr, opts) {
       confluence_total:   modChecks.total,
       confluence_score:   modChecks.score,
       confluence_pct:     modChecks.pct,
+      // Structural levels per module for chart overlay
+      module_levels:      moduleLevels,
     });
   }
 

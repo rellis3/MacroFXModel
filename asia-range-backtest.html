@@ -560,6 +560,10 @@
     <div style="flex:1"></div>
     <span style="color:#5a6380;font-size:10px;font-family:'DM Mono',monospace">Green = tight · Amber = conf · Blue = Asia range · Purple = Mon range · ◆ = all day trades</span>
   </div>
+  <!-- Module layer toggles — populated by JS when a trade is opened -->
+  <div id="chartModLayers" style="display:none;background:#0d0f14;border-bottom:1px solid #2a2f45;padding:5px 14px;flex-shrink:0;flex-wrap:wrap;gap:8px;align-items:center">
+    <span style="font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#3a4560;font-family:'DM Mono',monospace;flex-shrink:0">Layers:</span>
+  </div>
   <div id="chartContainer" style="flex:1;min-height:0"></div>
 </div>
 
@@ -1186,6 +1190,99 @@ function navDayTrade(delta) {
   _updateModalBadge();
 }
 
+// ── Module overlay colours & toggle state ─────────────────────────────────────
+const MODULE_CHART_COLORS = {
+  sr_level:           '#6366f1',  // indigo
+  vah_val:            '#ec4899',  // pink
+  vol_forecast:       '#f59e0b',  // amber
+  ath_52wk:           '#ef4444',  // red
+  monday_range:       '#8b5cf6',  // purple
+  pdh_pdl:            '#06b6d4',  // cyan
+  pwh_pwl:            '#0ea5e9',  // sky
+  round_number:       '#64748b',  // slate
+  fvg_level:          '#84cc16',  // lime
+  session_open_range: '#f97316',  // orange
+  daily_opens:        '#a78bfa',  // violet
+  naked_poc:          '#fb923c',  // coral
+};
+
+// _modLineData: Map<modId, {name, color, levels, activeLines:[{series,pl}]}>
+let _modLineData = new Map();
+
+function _clearModLines() {
+  for (const [, d] of _modLineData) {
+    for (const { series, pl } of d.activeLines) try { series.removePriceLine(pl); } catch {}
+  }
+  _modLineData.clear();
+  const strip = document.getElementById('chartModLayers');
+  if (strip) {
+    strip.style.display = 'none';
+    // Remove all checkboxes but keep the "Layers:" label
+    [...strip.querySelectorAll('.mod-cb-wrap')].forEach(el => el.remove());
+  }
+}
+
+function _toggleModLayer(modId, visible) {
+  const d = _modLineData.get(modId);
+  if (!d) return;
+  const LS = LightweightCharts.LineStyle;
+  if (!visible) {
+    for (const { series, pl } of d.activeLines) try { series.removePriceLine(pl); } catch {}
+    d.activeLines = [];
+  } else {
+    for (const lvl of d.levels) {
+      if (!isFinite(lvl.price)) continue;
+      const pl = _chartSeries.createPriceLine({
+        price:            lvl.price,
+        color:            lvl.minor ? d.color + '88' : d.color,
+        lineWidth:        lvl.minor ? 1 : 1,
+        lineStyle:        lvl.minor ? LS.Dotted : LS.Dashed,
+        axisLabelVisible: !lvl.minor,
+        title:            lvl.label ?? '',
+      });
+      d.activeLines.push({ series: _chartSeries, pl });
+    }
+  }
+}
+
+function _renderModuleLayers(trade) {
+  const strip = document.getElementById('chartModLayers');
+  if (!strip) return;
+  _clearModLines();
+
+  const mods = trade?.module_levels;
+  if (!mods?.length) return;
+
+  const LS = LightweightCharts.LineStyle;
+  for (const mod of mods) {
+    const color   = MODULE_CHART_COLORS[mod.id] ?? '#6b7280';
+    const activeLines = [];
+    for (const lvl of mod.levels) {
+      if (!isFinite(lvl.price)) continue;
+      const pl = _chartSeries.createPriceLine({
+        price:            lvl.price,
+        color:            lvl.minor ? color + '88' : color,
+        lineWidth:        1,
+        lineStyle:        lvl.minor ? LS.Dotted : LS.Dashed,
+        axisLabelVisible: !lvl.minor,
+        title:            lvl.label ?? '',
+      });
+      activeLines.push({ series: _chartSeries, pl });
+    }
+    _modLineData.set(mod.id, { name: mod.name, color, levels: mod.levels, activeLines });
+
+    // Checkbox toggle
+    const wrap = document.createElement('label');
+    wrap.className = 'mod-cb-wrap';
+    wrap.style.cssText = `display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:10px;font-family:'DM Mono',monospace;color:${color};white-space:nowrap;user-select:none;padding:2px 6px;border-radius:4px;border:1px solid ${color}44;background:${color}11`;
+    wrap.innerHTML = `<input type="checkbox" checked style="accent-color:${color};width:11px;height:11px;cursor:pointer;flex-shrink:0" data-mod="${mod.id}"> ${mod.name}`;
+    wrap.querySelector('input').addEventListener('change', e => _toggleModLayer(mod.id, e.target.checked));
+    strip.appendChild(wrap);
+  }
+
+  strip.style.display = 'flex';
+}
+
 // ── Indicator helpers (Z-Score + SMI) ─────────────────────────────────────────
 function _lerpCol(c1, c2, t) {
   t = Math.max(0, Math.min(1, t));
@@ -1391,6 +1488,9 @@ function openChartModal(tradeIdx) {
       // All fill markers
       cs.setMarkers(_buildMarkers());
 
+      // Module confluence level overlays (togglable checkboxes)
+      _renderModuleLayers(_dayTrades[0] ?? trade);
+
       // Indicator sub-panels
       _buildZScorePanel(_zChart, bars);
       _buildSMIPanel(_smiChart, bars);
@@ -1416,6 +1516,7 @@ function openChartModal(tradeIdx) {
 
 function closeChartModal() {
   document.getElementById('chartModal').style.display = 'none';
+  _clearModLines();
   if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; _chartSeries = null; }
   if (_zChart)   { _zChart.remove();   _zChart   = null; }
   if (_smiChart) { _smiChart.remove(); _smiChart = null; }

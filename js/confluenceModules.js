@@ -855,6 +855,139 @@ const nakedPoc = {
   },
 };
 
+// ── Module level extractors for chart overlay ────────────────────────────────
+// Each module that produces independent structural price levels gets a
+// getLevels(state, opts) → [{price, label, minor?}]  method patched on here.
+
+srLevel.getLevels = (state, opts) => {
+  if (!state?.swings?.length) return [];
+  const center = opts?.asiaCenter ?? 0, range = opts?.asiaRange ?? 0;
+  const buf = Math.max(range * 3, state.pipSize * 80);
+  const ded = state.pipSize * 3;
+  const deduped = [];
+  for (const s of state.swings) {
+    if (center && (s.price < center - buf || s.price > center + buf)) continue;
+    if (!deduped.some(d => Math.abs(d.price - s.price) <= ded)) deduped.push(s);
+  }
+  return deduped.slice(0, 20).map(s => ({ price: s.price, label: 'SR' }));
+};
+
+vahVal.getLevels = (state) => {
+  if (!state?.levels?.length) return [];
+  return state.levels.slice(0, 2).flatMap(s => [
+    { price: s.vah, label: `VAH ${s.date.slice(5)}` },
+    { price: s.poc, label: `POC ${s.date.slice(5)}` },
+    { price: s.val, label: `VAL ${s.date.slice(5)}` },
+  ]);
+};
+
+volForecast.getLevels = (state) => {
+  if (!state) return [];
+  return [
+    { price: state.forecastHigh, label: 'VF Hi' },
+    { price: state.forecastLow,  label: 'VF Lo' },
+  ];
+};
+
+ath52wk.getLevels = (state) => {
+  if (!state) return [];
+  return [
+    { price: state.high52wk, label: '52wk H' },
+    { price: state.low52wk,  label: '52wk L' },
+  ];
+};
+
+mondayRange.getLevels = (state) => {
+  if (!state) return [];
+  return [
+    { price: state.monHigh, label: 'Mon H' },
+    { price: state.monLow,  label: 'Mon L' },
+  ];
+};
+
+pdhPdl.getLevels = (state) => {
+  if (!state) return [];
+  return [
+    { price: state.pdh, label: `PDH ${state.date?.slice(5) ?? ''}` },
+    { price: state.pdl, label: `PDL ${state.date?.slice(5) ?? ''}` },
+  ];
+};
+
+pwhPwl.getLevels = (state) => {
+  if (!state) return [];
+  return [
+    { price: state.pwh, label: 'PWH' },
+    { price: state.pwl, label: 'PWL' },
+  ];
+};
+
+roundNumber.getLevels = (state, opts) => {
+  if (!state) return [];
+  const center = opts?.asiaCenter ?? 0, range = opts?.asiaRange ?? 0;
+  if (!center) return [];
+  const buf = Math.max(range * 3, state.pipSize * 150);
+  const lo = center - buf, hi = center + buf;
+  const majorUnit = state.pipSize * 1000, minorUnit = state.pipSize * 100;
+  const levels = [];
+  for (let p = Math.ceil(lo / majorUnit) * majorUnit; p <= hi + 1e-9; p += majorUnit)
+    levels.push({ price: +p.toFixed(6), label: p.toFixed(5) });
+  for (let p = Math.ceil(lo / minorUnit) * minorUnit; p <= hi + 1e-9; p += minorUnit) {
+    if (Math.abs(p - Math.round(p / majorUnit) * majorUnit) < state.pipSize * 5) continue;
+    levels.push({ price: +p.toFixed(6), label: p.toFixed(5), minor: true });
+  }
+  return levels;
+};
+
+fvgLevel.getLevels = (state) => {
+  if (!state?.fvgs?.length) return [];
+  return state.fvgs.flatMap(g => [
+    { price: g.hi, label: `FVG${g.type === 'bull' ? '▲' : '▼'}H` },
+    { price: g.lo, label: `FVG${g.type === 'bull' ? '▲' : '▼'}L` },
+  ]);
+};
+
+sessionOpenRange.getLevels = (state) => {
+  if (!state) return [];
+  return [
+    { price: state.orH, label: 'OR H' },
+    { price: state.orL, label: 'OR L' },
+  ];
+};
+
+dailyOpens.getLevels = (state) => {
+  if (!state?.opens?.length) return [];
+  return state.opens.map(o => ({ price: o.open, label: `DO ${o.date.slice(5)}` }));
+};
+
+nakedPoc.getLevels = (state, opts) => {
+  if (!state?.npocs?.length) return [];
+  const center = opts?.asiaCenter ?? 0, range = opts?.asiaRange ?? 0;
+  const buf = Math.max(range * 10, state.pipSize * 500);
+  return state.npocs
+    .filter(n => !center || Math.abs(n.poc - center) <= buf)
+    .slice(-20)
+    .map(n => ({ price: n.poc, label: `NPOC ${new Date(n.epoch * 1000).toISOString().substring(5, 10)}` }));
+};
+
+/**
+ * Collect per-module structural price levels for chart overlay rendering.
+ * Only modules that implement getLevels() are included.
+ * @returns [{id, name, levels:[{price,label,minor?}]}]
+ */
+export function collectModuleLevels(dayStates, enabledMods, opts) {
+  const out = [];
+  for (const mod of enabledMods) {
+    if (typeof mod.getLevels !== 'function') continue;
+    const state = dayStates?.[mod.id];
+    if (!state) continue;
+    try {
+      const levels = mod.getLevels(state, opts);
+      if (levels?.length) out.push({ id: mod.id, name: mod.label, levels });
+    } catch { /* skip */ }
+  }
+  return out;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // Registry & runner
 // ══════════════════════════════════════════════════════════════════════════════
