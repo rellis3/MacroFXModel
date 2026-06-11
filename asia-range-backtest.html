@@ -1015,8 +1015,8 @@ function onSlModeChange() {
     const el = document.getElementById(id);
     if (el) el.style.display = isAtr ? '' : 'none';
   });
-  // Also hide/show the range SL mult in the main run bar
-  document.getElementById('arSlMult').parentElement.style.display = isAtr ? 'none' : '';
+  // Also hide/show the range SL mult in the main run bar (hide the select itself, not its parent)
+  document.getElementById('arSlMult').style.display = isAtr ? 'none' : '';
 }
 
 function renderTradePage() {
