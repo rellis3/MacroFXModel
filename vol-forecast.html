@@ -906,6 +906,32 @@
 .vf-event-cell.md  { color: var(--amber); font-weight: 600; }
 .vf-event-cell.hi  { color: var(--red);   font-weight: 600; }
 .vf-event-empty { padding: 20px 16px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); text-align: center; }
+
+/* ── Help modal ── */
+.vfh-section {
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+.vfh-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 8px;
+}
+.vfh-section p {
+  font-size: 11px;
+  color: var(--text3);
+  margin: 0 0 6px;
+  line-height: 1.6;
+}
+.vfh-tbl { width: 100%; border-collapse: collapse; font-size: 10.5px; color: var(--text3); }
+.vfh-tbl td { padding: 4px 6px; vertical-align: top; border-bottom: 1px solid var(--border); line-height: 1.55; }
+.vfh-tbl tr:last-child td { border-bottom: none; }
+.vfh-tbl td:first-child { color: var(--text2); font-weight: 600; white-space: nowrap; padding-right: 14px; width: 140px; }
 </style>
 </head>
 <body class="dark">
@@ -936,8 +962,10 @@
   <button class="dark-btn" id="vfLevelsBtn"  onclick="toggleLevelsView()" disabled title="Compact levels table — all instruments, today's price targets, hit times">📋 Levels</button>
   <button class="dark-btn" id="vfHitRatesBtn" onclick="toggleHitRates()" disabled title="Levels hit rates — historical % hit rate and median reach time per level per instrument">📊 Hit Rates</button>
   <button class="dark-btn" id="vfProfileBtn" onclick="toggleProfile()" disabled title="Intraday vol profile — which UTC hours historically produce the most range">📊 Profile</button>
+  <button class="dark-btn" id="vfRefDataBtn" onclick="toggleRefPanel()" title="Paste today's reference forecast to store it in KV for comparison">📌 Ref Data</button>
   <button class="dark-btn" id="vfEventBtn"   onclick="toggleEventImpact()" title="Event impact study — historical range expansion on CPI/NFP/FOMC days">📅 Events</button>
   <button class="dark-btn" id="vfSessionComputeBtn" onclick="triggerSessionStats()" title="Fetch 5yr Oanda H1 data and compute Asia/London session consumption stats (~3–5 min)">⟳ Session Stats</button>
+  <button class="dark-btn" id="vfHelpBtn" onclick="toggleHelp()" title="Feature guide — explains every panel and metric on this page">? Help</button>
   <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
   <a href="index.html" style="text-decoration:none">
     <button class="dark-btn">← Dashboard</button>
@@ -1031,6 +1059,25 @@
   </div>
   <div class="vf-event-scroll">
     <div id="vfEventBody"><div class="vf-event-empty">Click ↻ Compute to run the event impact study against stored session audits.</div></div>
+  </div>
+</div>
+
+<!-- REFERENCE DATA PANEL -->
+<div class="vf-event-panel" id="vfRefPanel" style="display:none">
+  <div class="vf-event-nav">
+    <span class="vf-event-title">Reference Forecast Data</span>
+    <span class="vf-event-sub" id="vfRefSub">Paste today's reference export below — stored in KV alongside our forecast for permanent comparison.</span>
+    <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfRefAge"></span>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="saveRefData()" id="vfRefSaveBtn">💾 Save</button>
+  </div>
+  <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <label style="font-size:10px;color:var(--text3);white-space:nowrap">Date:</label>
+      <input type="date" id="vfRefDate" style="background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:3px 8px;border-radius:4px">
+      <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="loadRefData()" id="vfRefLoadBtn">📂 Load Saved</button>
+    </div>
+    <textarea id="vfRefText" placeholder="Paste reference export here..." style="background:var(--s1);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:8px;border-radius:4px;resize:vertical;height:200px;width:100%;box-sizing:border-box"></textarea>
+    <div id="vfRefStatus" style="font-size:10px;color:var(--text3);min-height:14px"></div>
   </div>
 </div>
 
@@ -1192,6 +1239,155 @@
 </div>
 
 </div><!-- /vfApp -->
+
+<!-- ── HELP MODAL ──────────────────────────────────────────────────────────── -->
+<div id="vfHelpOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);overflow-y:auto;padding:24px 16px">
+  <div style="max-width:760px;margin:0 auto;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:24px 28px;font-family:'DM Mono',monospace;color:var(--text)">
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <span style="font-size:15px;font-weight:600;letter-spacing:.03em">Vol & Range Forecaster — Feature Guide</span>
+      <button onclick="toggleHelp()" style="background:none;border:1px solid var(--border);color:var(--text);font-size:13px;padding:4px 12px;border-radius:4px;cursor:pointer">✕ Close</button>
+    </div>
+
+    <!-- CORE FORECAST -->
+    <div class="vfh-section">
+      <div class="vfh-title">Instrument Cards — Core Forecast</div>
+      <p>Each card is one instrument's daily vol forecast. All values are <strong>percentages of price</strong> (e.g. 0.65% means 65 pips on a 10,000-pip pair).</p>
+      <table class="vfh-tbl">
+        <tr><td>Vol %</td><td>Today's estimated 1-day volatility (annualised ÷ √252). This is σ — the engine behind all range forecasts.</td></tr>
+        <tr><td>H-L Median / 75th</td><td>Expected high-low range for the full day. Median = 50% of days historically exceed this. 75th = wider target reached ~25% of days.</td></tr>
+        <tr><td>O-C Median / 75th</td><td>Expected close-to-open move (directional). Same percentile logic. Use for stop/target sizing when you have a directional bias.</td></tr>
+        <tr><td>O-H / O-L</td><td>How far price is expected to travel from the open upside (O-H) or downside (O-L). Same magnitude as O-C by Brownian motion reflection principle.</td></tr>
+        <tr><td>5-day / 20-day</td><td>Multi-day range scaled by √N (random walk). Useful for swing and position sizing.</td></tr>
+        <tr><td>Vol Percentile pill</td><td>Where today's σ sits in the trailing 252-day distribution. Red = top quartile (high vol), green = bottom quartile (quiet). Grey = mid-range.</td></tr>
+        <tr><td>News chip  📅</td><td>Shown when a high-impact US event is detected today (FOMC ×1.35, NFP ×1.30, CPI ×1.25, PCE ×1.20, GDP/PPI ×1.15). The multiplier is applied to σ before computing ranges, so all forecasts on that row already reflect the expected event expansion.</td></tr>
+      </table>
+    </div>
+
+    <!-- VOL CONE + VOV -->
+    <div class="vfh-section">
+      <div class="vfh-title">Vol Cone Strip &amp; Vol-of-Vol Badge</div>
+      <p>Shown on each card beneath the percentile pill. Answers <em>"is vol expanding or contracting?"</em> and <em>"how reliable is this forecast?"</em></p>
+      <table class="vfh-tbl">
+        <tr><td>5d / 21d / 63d / 252d</td><td>Percentile of today's σ inside each lookback window. If 5d &gt; 252d the short-term is above its own history — vol is <strong>expanding</strong> (green). If 5d &lt; 252d vol is <strong>contracting</strong> (amber). Flat = no regime signal.</td></tr>
+        <tr><td>Vol Stable / Moderate / Unstable</td><td>Vol-of-vol: coefficient of variation of the last 20 daily σ readings. Stable (&lt;10% CV) = forecasts are reliable. Unstable (&gt;20% CV) = σ is jumping day-to-day and the range estimate has wider uncertainty.</td></tr>
+      </table>
+    </div>
+
+    <!-- SESSION TRACKER -->
+    <div class="vfh-section">
+      <div class="vfh-title">Session Tracker (inside each card)</div>
+      <p>The intraday progress bar and reach-time stamps track how far today's price action has moved against the forecast levels in real time.</p>
+      <table class="vfh-tbl">
+        <tr><td>Consumed bar</td><td>How much of the median H-L forecast has been used up so far today. Green dot at the median mark, amber at the 75th. Fills left-to-right as range builds.</td></tr>
+        <tr><td>Breakout probability</td><td>Brownian motion estimate of whether price will extend further given how much range is left and how much of the day has passed. High early in the day = range is not yet "used up". Falls as the session progresses and range is consumed.</td></tr>
+        <tr><td>Level reach times</td><td>The UTC time each forecast level was first hit today: O-H med/75th (upside), O-L med/75th (downside), H-L med/75th (full range). Blank = not yet reached.</td></tr>
+      </table>
+    </div>
+
+    <!-- SETUP SCORE -->
+    <div class="vfh-section">
+      <div class="vfh-title">Setup Score (0–8)</div>
+      <p>Shown in the <strong>📋 Levels</strong> table. A quick synthesis of conditions favouring a tradeable move today.</p>
+      <table class="vfh-tbl">
+        <tr><td>+2 Vol expanding</td><td>5-day cone above 63-day cone — short-term vol above medium-term average.</td></tr>
+        <tr><td>+1 VoV stable</td><td>Vol-of-vol is Stable — forecast is reliable, not noisy.</td></tr>
+        <tr><td>+1 Weekly bias</td><td>WTD pair direction aligns with the broader weekly trend.</td></tr>
+        <tr><td>+2 Range unconsumed</td><td>Less than 40% of the median H-L has been consumed — most of the day's move is still ahead.</td></tr>
+        <tr><td>+2 Session active</td><td>Current London/NY session hours are within the historically high-activity window.</td></tr>
+      </table>
+    </div>
+
+    <!-- CURRENCY STRENGTH -->
+    <div class="vfh-section">
+      <div class="vfh-title">Currency Strength Strip</div>
+      <p>Shown across the top of the card grid. Aggregates the week-to-date directional bias of all cross pairs to score each major currency (EUR, USD, GBP, JPY, AUD, NZD, CHF, CAD) from bull to bear. Helps identify which side of a pair has momentum when sizing a directional trade.</p>
+    </div>
+
+    <!-- LEVELS TABLE -->
+    <div class="vfh-section">
+      <div class="vfh-title">📋 Levels — Compact All-Instrument View</div>
+      <p>Flip between the card grid and this table with <strong>📋 Levels</strong>. All 26 instruments on one screen with actual price targets computed from today's open.</p>
+      <table class="vfh-tbl">
+        <tr><td>↑ Med / ↑ 75th</td><td>Open + O-H median/75th target in price (not %). Green highlight = already hit today.</td></tr>
+        <tr><td>↓ Med / ↓ 75th</td><td>Open − O-L median/75th target. Same hit colouring.</td></tr>
+        <tr><td>H-L vs Med / 75th</td><td>Whether today's actual high-low range has reached the median or 75th forecast yet. Shows hit time if yes.</td></tr>
+        <tr><td>Consumed bar</td><td>Visual fill of today's range consumption vs median forecast.</td></tr>
+        <tr><td>Sort options</td><td>Most opportunity (fewest levels hit — most range still available), Setup score, Least/Most consumed, Alphabetical.</td></tr>
+      </table>
+      <p style="margin-top:6px">Click any row instrument name to jump directly to that card.</p>
+    </div>
+
+    <!-- HIT RATES -->
+    <div class="vfh-section">
+      <div class="vfh-title">📊 Hit Rates — Historical Level Reach Statistics</div>
+      <p>Answers: <em>"on what % of days does price actually reach each forecast level, and how quickly?"</em></p>
+      <table class="vfh-tbl">
+        <tr><td>Hit rate %</td><td>Fraction of past trading days on which that level was reached (from stored session audits). Higher = more reliable level for entries/targets.</td></tr>
+        <tr><td>Median reach time</td><td>UTC time at which the level is typically first hit on days it is reached. Tells you when to expect the move during the session.</td></tr>
+        <tr><td>Earliest / Latest</td><td>The earliest and latest the level has been hit across the sample — range of when to watch for it.</td></tr>
+      </table>
+      <p style="margin-top:6px">Data accumulates automatically as each day's session is saved. The more days in the archive, the more reliable the hit rates.</p>
+    </div>
+
+    <!-- INTRADAY PROFILE -->
+    <div class="vfh-section">
+      <div class="vfh-title">📊 Profile — Intraday Vol Profile</div>
+      <p>Bar chart of which UTC hours historically contribute the most to daily range, computed from 5 years of H1 Oanda data. Each bar = that hour's average contribution as a % of the full-day H-L. Use it to time entries: high bars = high-activity hours where levels are typically reached fastest.</p>
+      <p style="margin-top:4px">Requires Session Stats to have been computed (click <strong>⟳ Session Stats</strong> if bars are empty).</p>
+    </div>
+
+    <!-- EVENT IMPACT -->
+    <div class="vfh-section">
+      <div class="vfh-title">📅 Events — Event Vol Impact Study</div>
+      <p>Shows how much actual range expanded vs the base forecast on historical high-impact US event days (CPI, NFP, FOMC, PCE, GDP, PPI). Built from your own stored session audits cross-referenced against the Finnhub economic calendar.</p>
+      <table class="vfh-tbl">
+        <tr><td>×1.25 n=8</td><td>On CPI days, actual range averaged 1.25× the forecast. Based on 8 stored event days in your archive.</td></tr>
+      </table>
+      <p style="margin-top:6px">Click <strong>↻ Compute</strong> to run the study. Gets more accurate as your session audit archive grows. The current-day news multiplier (applied to today's forecast) is derived from this data.</p>
+    </div>
+
+    <!-- REF DATA -->
+    <div class="vfh-section">
+      <div class="vfh-title">📌 Ref Data — Reference Forecast Storage</div>
+      <p>Paste your external reference forecast export here and hit <strong>💾 Save</strong>. It is stored in KV alongside our forecast so both are always available regardless of conversation resets. Pick any past date with the date picker to load a previously saved reference. Used for ongoing calibration: compare reference vs our export to identify systematic gaps and correct them.</p>
+    </div>
+
+    <!-- SESSION STATS -->
+    <div class="vfh-section">
+      <div class="vfh-title">⟳ Session Stats — Recompute Session Consumption</div>
+      <p>Fetches 5 years of H1 bars from Oanda for all instruments and computes what fraction of the daily H-L range each session (Asia 00:00–06:00, London 08:00–13:00, NY 13:00–21:00 London time) historically consumes. Takes 3–5 minutes. Results are stored in KV and used by the Intraday Profile panel. Run this once, or again after significant market regime changes.</p>
+    </div>
+
+    <!-- EXPORTS -->
+    <div class="vfh-section">
+      <div class="vfh-title">⬇ Export Buttons</div>
+      <table class="vfh-tbl">
+        <tr><td>⬇ Export</td><td>Plain-text vol forecast for all instruments — paste into your trading journal or Pine Script.</td></tr>
+        <tr><td>⬇ Session</td><td>Asia/London/NY session consumption stats block (median and 75th percentile % of daily range per session). For the v2 Pine Script session indicator.</td></tr>
+        <tr><td>⬇ V+S</td><td>Combined: vol forecast + session stats in one paste. For the v3 Pine Script indicator.</td></tr>
+        <tr><td>⬇ Extended</td><td>Full export: includes vol percentile, O-H/O-L legs, 5-day and 20-day ranges, vol cone, vol-of-vol.</td></tr>
+        <tr><td>⬇ Weekly</td><td>WTD range consumption, directional bias, 5-day and 20-day forecasts per instrument.</td></tr>
+      </table>
+    </div>
+
+    <!-- METHODOLOGY -->
+    <div class="vfh-section">
+      <div class="vfh-title">Methodology Notes</div>
+      <table class="vfh-tbl">
+        <tr><td>Gold (commodity)</td><td>Rogers-Satchell EWMA (λ=0.94) on daily OHLC. Handles trending markets without understating vol — unlike close-to-close estimators it doesn't subtract the directional component.</td></tr>
+        <tr><td>Indices (NQ, SPX, DE30…)</td><td>GARCH(1,1): α=0.06, β=0.91, ω=4.76e-6 (~20% long-run floor). Responds quickly to vol spikes (α), mean-reverts over ~23 days (β), and can't collapse in quiet patches (ω floor).</td></tr>
+        <tr><td>FX pairs</td><td>GARCH(1,1): same α/β, ω=3.60e-7 (~5% long-run floor). Lower floor reflects calmer FX baseline vs equity indices.</td></tr>
+        <tr><td>Range distribution</td><td>Brownian motion: H-L P50 = 1.572σ, P75 = 2.049σ. O-C P50 = 0.675σ (half-normal). Per-asset correction factors calibrated against reference system.</td></tr>
+        <tr><td>Multi-day scaling</td><td>σ_N = σ_1 × √N (independent days). Not ×N — range partially cancels across days for a random walk.</td></tr>
+      </table>
+    </div>
+
+    <div style="text-align:center;margin-top:16px">
+      <button onclick="toggleHelp()" style="background:none;border:1px solid var(--border);color:var(--text);font-size:12px;padding:6px 20px;border-radius:4px;cursor:pointer">Close</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── State ────────────────────────────────────────────────────────────────────
@@ -2478,6 +2674,90 @@ async function loadEventImpact() {
     renderEventImpact(data);
   } catch { /* silent */ }
 }
+
+function toggleRefPanel() {
+  const panel = document.getElementById('vfRefPanel');
+  const btn   = document.getElementById('vfRefDataBtn');
+  const shown = panel.style.display !== 'none';
+  panel.style.display = shown ? 'none' : '';
+  btn.textContent = shown ? '📌 Ref Data' : '✕ Ref Data';
+  if (!shown) {
+    // Default date to today
+    const dateEl = document.getElementById('vfRefDate');
+    if (!dateEl.value) {
+      const t = new Date();
+      dateEl.value = t.toISOString().slice(0, 10);
+    }
+    loadRefData();
+  }
+}
+
+async function saveRefData() {
+  const date   = document.getElementById('vfRefDate').value;
+  const text   = document.getElementById('vfRefText').value.trim();
+  const status = document.getElementById('vfRefStatus');
+  if (!date) { status.textContent = '⚠ Select a date first'; return; }
+  if (!text) { status.textContent = '⚠ Paste reference data first'; return; }
+  const btn = document.getElementById('vfRefSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`/api/vol-forecast/reference/${date}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const j = await res.json();
+    if (j.ok) {
+      status.style.color = 'var(--green)';
+      status.textContent = `✓ Saved reference data for ${date}`;
+    } else {
+      status.style.color = 'var(--red)';
+      status.textContent = `Error: ${j.error}`;
+    }
+  } catch (e) {
+    status.style.color = 'var(--red)';
+    status.textContent = `Error: ${e.message}`;
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Save';
+  }
+}
+
+async function loadRefData() {
+  const date   = document.getElementById('vfRefDate').value;
+  const status = document.getElementById('vfRefStatus');
+  const age    = document.getElementById('vfRefAge');
+  if (!date) return;
+  try {
+    const res = await fetch(`/api/vol-forecast/reference/${date}`);
+    if (res.status === 404) {
+      document.getElementById('vfRefText').value = '';
+      status.style.color = 'var(--text3)';
+      status.textContent = 'No saved reference for this date — paste and Save.';
+      age.textContent = '';
+      return;
+    }
+    const j = await res.json();
+    document.getElementById('vfRefText').value = j.text ?? '';
+    status.style.color = 'var(--green)';
+    status.textContent = `✓ Loaded saved reference for ${date}`;
+    age.textContent = j.saved_at ? `saved ${new Date(j.saved_at).toLocaleString()}` : '';
+  } catch (e) {
+    status.style.color = 'var(--red)';
+    status.textContent = `Error: ${e.message}`;
+  }
+}
+
+function toggleHelp() {
+  const overlay = document.getElementById('vfHelpOverlay');
+  const shown   = overlay.style.display !== 'none';
+  overlay.style.display = shown ? 'none' : '';
+  document.getElementById('vfHelpBtn').textContent = shown ? '? Help' : '✕ Help';
+  if (!shown) overlay.scrollTop = 0;
+}
+// Close help on backdrop click (outside the white card)
+document.addEventListener('click', e => {
+  const overlay = document.getElementById('vfHelpOverlay');
+  if (overlay && overlay.style.display !== 'none' && e.target === overlay) toggleHelp();
+});
 
 function toggleEventImpact() {
   const panel = document.getElementById('vfEventPanel');
