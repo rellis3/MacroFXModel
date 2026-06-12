@@ -2799,12 +2799,12 @@ function _hrCopyDay() {
   const LW   = 32;
   const div  = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
   const LVL_DEF = [
-    { key: 'oh_med', lbl: '↑ Upper    ', dir: +1, fcKey: 'oc_median' },
-    { key: 'oh_75',  lbl: '↑ Upp 75th ', dir: +1, fcKey: 'oc_75'     },
-    { key: 'ol_med', lbl: '↓ Lower    ', dir: -1, fcKey: 'oc_median' },
-    { key: 'ol_75',  lbl: '↓ Low 75th ', dir: -1, fcKey: 'oc_75'     },
-    { key: 'hl_med', lbl: '↔ Range    ', dir:  0, fcKey: 'hl_median'  },
-    { key: 'hl_75',  lbl: '↔ Rng 75th ', dir:  0, fcKey: 'hl_75'      },
+    { key: 'oh_med', lbl: 'O→H Med    ', dir: +1, fcKey: 'oc_median' },
+    { key: 'oh_75',  lbl: 'O→H 75th   ', dir: +1, fcKey: 'oc_75'     },
+    { key: 'ol_med', lbl: 'O→L Med    ', dir: -1, fcKey: 'oc_median' },
+    { key: 'ol_75',  lbl: 'O→L 75th   ', dir: -1, fcKey: 'oc_75'     },
+    { key: 'hl_med', lbl: 'H-L Med    ', dir:  0, fcKey: 'hl_median'  },
+    { key: 'hl_75',  lbl: 'H-L 75th   ', dir:  0, fcKey: 'hl_75'      },
   ];
 
   const lines = [`**HIT RATE LOG — ${date}**`, ''];
