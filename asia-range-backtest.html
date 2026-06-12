@@ -250,7 +250,7 @@
 
 <!-- ── Confluence / ATR config panel ────────────────────────────────────────── -->
 <div class="cf-panel" id="cfPanel">
-  <div class="cf-panel-hdr">
+  <div class="cf-panel-hdr" onclick="toggleCfPanel()">
     <span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace">⚙ Confluence Modules &amp; SL Config</span>
     <span class="cf-toggle" id="cfToggleTxt">▶ Expand</span>
   </div>
@@ -455,7 +455,7 @@
 
 <!-- ── Strategy Modes Help ───────────────────────────────────────────────────── -->
 <div class="cf-panel" id="helpPanel" style="margin-top:6px">
-  <div class="cf-panel-hdr">
+  <div class="cf-panel-hdr" onclick="toggleHelpPanel()">
     <span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace">? Strategy Modes — How They Work</span>
     <span class="cf-toggle" id="helpToggleTxt">▶ Expand</span>
   </div>
@@ -1164,25 +1164,14 @@ function toggleCfPanel() {
   txt.textContent = open ? '▼ Collapse' : '▶ Expand';
 }
 
-// iOS Safari: touchend fires before click; call the function directly and suppress
-// the 300ms ghost click so the panel doesn't immediately re-close.
-// This only affects real touch devices — mouse/trackpad clicks use onclick as normal.
-(function() {
-  let _touchFired = false;
-  function _bindTouch(sel, fn) {
-    const el = document.querySelector(sel);
-    if (!el) return;
-    el.addEventListener('touchend', e => {
-      e.preventDefault();   // suppress synthesised click
-      _touchFired = true;
-      fn();
-      setTimeout(() => { _touchFired = false; }, 600);
-    }, { passive: false });
-    el.addEventListener('click', () => { if (!_touchFired) fn(); });
-  }
-  _bindTouch('#cfPanel .cf-panel-hdr',   toggleCfPanel);
-  _bindTouch('#helpPanel .cf-panel-hdr', toggleHelpPanel);
-})();
+// Mobile Safari: touchend fires reliably on divs; preventDefault suppresses the
+// 300ms ghost click that would immediately re-close the panel.
+// Desktop/trackpad uses the onclick attributes above — this block only activates on touch.
+['#cfPanel .cf-panel-hdr', '#helpPanel .cf-panel-hdr'].forEach((sel, i) => {
+  const fns = [toggleCfPanel, toggleHelpPanel];
+  const el  = document.querySelector(sel);
+  if (el) el.addEventListener('touchend', e => { e.preventDefault(); fns[i](); }, { passive: false });
+});
 
 function toggleHelpPanel() {
   const body = document.getElementById('helpBody');

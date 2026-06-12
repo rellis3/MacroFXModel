@@ -3885,26 +3885,34 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
         pnl_pct:     r.pnl_pct,
         hl50_pct:    r.hl50_pct,
         hl75_pct:    r.hl75_pct,
+        oc_med_pct:  r.oc_med_pct,
+        oc75_pct:    r.oc75_pct,
         monday_open: r.monday_open,
         fill_date:   r.fill_date,
         entry:       r.entry,
+        tp:          r.tp,
+        sl:          r.sl,
       }));
 
-    // Compact allTrades for client-side stats
+    // Compact allTrades for client-side stats + chart modal
     const allTrades = trades.map(r => ({
-      date:       r.date?.substring(0, 10),
-      week:       r.week?.substring(0, 10),
-      filled:     r.filled,
-      pnl_pct:    r.pnl_pct,
-      outcome:    r.outcome,
-      level:      r.level,
-      side:       r.side,
-      instrument: r.instrument,
-      hl50_pct:   r.hl50_pct,
-      hl75_pct:   r.hl75_pct,
+      date:        r.date?.substring(0, 10),
+      week:        r.week?.substring(0, 10),
+      filled:      r.filled,
+      pnl_pct:     r.pnl_pct,
+      outcome:     r.outcome,
+      level:       r.level,
+      side:        r.side,
+      instrument:  r.instrument,
+      hl50_pct:    r.hl50_pct,
+      hl75_pct:    r.hl75_pct,
+      oc_med_pct:  r.oc_med_pct,
+      oc75_pct:    r.oc75_pct,
       monday_open: r.monday_open,
-      fill_date:  r.fill_date,
-      entry:      r.entry,
+      fill_date:   r.fill_date,
+      entry:       r.entry,
+      tp:          r.tp,
+      sl:          r.sl,
     }));
 
     const overall = _wbtStats(trades);
@@ -3949,6 +3957,13 @@ app.post('/api/weekly-vol-backtest/run', (req, res) => {
     strategy  = 'revHL50',
     slMult    = '1.5',
     spreadPct = '0',
+    slMode    = 'level',
+    tpMode    = 'open',
+    atrPeriod = '30',
+    atrSlMult = '1.5',
+    atrTpMult = '2.0',
+    slPips    = '30',
+    tpPips    = '50',
   } = req.body || {};
 
   const opts = {
@@ -3956,6 +3971,13 @@ app.post('/api/weekly-vol-backtest/run', (req, res) => {
     strategy,
     slMult:    parseFloat(slMult)    || 1.5,
     spreadPct: parseFloat(spreadPct) || 0,
+    slMode,
+    tpMode,
+    atrPeriod: parseInt(atrPeriod)   || 30,
+    atrSlMult: parseFloat(atrSlMult) || 1.5,
+    atrTpMult: parseFloat(atrTpMult) || 2.0,
+    slPips:    parseFloat(slPips)    || 30,
+    tpPips:    parseFloat(tpPips)    || 50,
     minLookback: 60,
   };
 

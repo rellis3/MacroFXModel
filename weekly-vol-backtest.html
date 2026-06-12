@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/index.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 #wbtApp { padding: 0 20px 40px; max-width: 1340px; margin: 0 auto; }
 
@@ -53,8 +54,20 @@
 .bt-badge.open { color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd); }
 
 .lv { display:inline-block;padding:2px 7px;border-radius:9px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;border:1px solid; }
-.lv.hl50 { color:var(--blue); background:var(--blue-bg); border-color:var(--blue-bd); }
-.lv.hl75 { color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd); }
+.lv.hl50  { color:var(--blue);  background:var(--blue-bg);  border-color:var(--blue-bd); }
+.lv.hl75  { color:var(--amber); background:var(--amber-bg); border-color:var(--amber-bd); }
+.lv.ocmed { color:#34d399;      background:#064e3b44;        border-color:#065f46; }
+.lv.oc75  { color:#2dd4bf;      background:#0f415044;        border-color:#134e4a; }
+
+.chart-btn { background:none;border:1px solid var(--border);color:var(--text3);cursor:pointer;padding:1px 6px;border-radius:3px;font-size:13px;line-height:1.4;transition:color .15s,border-color .15s; }
+.chart-btn:hover { color:var(--amber);border-color:var(--amber); }
+
+/* ── Chart modal ──────────────────────────────────────────────────────────── */
+#wbtChartModal { display:none;position:fixed;inset:0;z-index:1000;background:#0d0f14;flex-direction:column; }
+.wbt-chart-hdr { display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid #2a2f45;background:#131722;flex-shrink:0; }
+#wbtChartContainer { flex:1;min-height:0; }
+.wbt-atr-params,.wbt-pip-params { display:none;gap:6px;align-items:center;flex-wrap:wrap; }
+.wbt-atr-params.visible,.wbt-pip-params.visible { display:flex; }
 
 .bt-run-bar { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap; }
 .bt-run-bar input,.bt-run-bar select { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px; }
@@ -119,18 +132,45 @@
     <option>CHFJPY</option><option>NZDJPY</option><option>GOLD</option>
   </select>
 
-  <select id="runStrategy" class="bt-sel" title="Strategy: Rev-HL50 fades the median weekly range level back to Monday open (SL = HL75). Rev-HL75 fades the 75th pct level (SL = HL75 × slMult). Both runs both simultaneously.">
+  <select id="runStrategy" class="bt-sel" title="Strategy: Rev-HL50 fades median range. Rev-HL75 fades 75th pct. Both = HL50+HL75. OC Levels = body fades. All = all four levels.">
     <option value="revHL50">Rev-HL50 ★</option>
     <option value="revHL75">Rev-HL75</option>
-    <option value="both">Both</option>
+    <option value="both">Both HL</option>
+    <option value="ocLevels">OC Levels</option>
+    <option value="allLevels">All Levels</option>
   </select>
 
-  <select id="runSlMult" class="bt-sel" title="SL multiplier for Rev-HL75 (SL = HL75% × slMult above Monday open). Rev-HL50 always uses HL75 as SL.">
+  <select id="runSlMult" class="bt-sel" title="SL multiplier used only in Level mode for Rev-HL75.">
     <option value="1.5">SL ×1.5</option>
     <option value="1.0">SL ×1.0</option>
     <option value="2.0">SL ×2.0</option>
     <option value="2.5">SL ×2.5</option>
   </select>
+
+  <select id="runSlMode" class="bt-sel" title="How the stop-loss is calculated." onchange="updateParamVis()">
+    <option value="level">SL: Level</option>
+    <option value="atr">SL: ATR×</option>
+    <option value="pips">SL: Pips</option>
+  </select>
+
+  <select id="runTpMode" class="bt-sel" title="How the take-profit is calculated." onchange="updateParamVis()">
+    <option value="open">TP: Mon Open</option>
+    <option value="atr">TP: ATR×</option>
+    <option value="pips">TP: Pips</option>
+  </select>
+
+  <div id="atrParams" class="wbt-atr-params">
+    <span class="bt-run-lbl">ATR:</span>
+    <input type="number" id="runAtrPeriod" value="30" min="5" max="100" style="width:52px" title="ATR period (D1 bars)">
+    <input type="number" id="runAtrSlMult" value="1.5" step="0.5" min="0.5" max="5" style="width:52px" title="SL = ATR × this">
+    <input type="number" id="runAtrTpMult" value="2.0" step="0.5" min="0.5" max="10" style="width:52px" title="TP = ATR × this">
+  </div>
+
+  <div id="pipParams" class="wbt-pip-params">
+    <span class="bt-run-lbl">Pips:</span>
+    <input type="number" id="runSlPips" value="30" min="1" max="500" style="width:52px" title="SL in pips">
+    <input type="number" id="runTpPips" value="50" min="1" max="1000" style="width:52px" title="TP in pips">
+  </div>
 
   <select id="runSpread" class="bt-sel" title="Round-trip transaction cost as % of position">
     <option value="0">No cost</option>
@@ -278,6 +318,8 @@
       <option value="">All levels</option>
       <option value="HL50">HL50</option>
       <option value="HL75">HL75</option>
+      <option value="OCMed">OCMed</option>
+      <option value="OC75">OC75</option>
     </select>
     <select class="bt-sel" id="fSide" onchange="filterTrades()">
       <option value="">Both sides</option>
@@ -298,6 +340,7 @@
         <th>Week (Mon)</th><th>Pair</th><th>Level</th><th>Side</th>
         <th>Fill Day</th><th class="num">HL50%</th><th class="num">HL75%</th>
         <th class="num">Mon Open</th><th>Outcome</th><th class="num">P&amp;L%</th>
+        <th style="width:30px"></th>
       </tr></thead>
       <tbody id="tradeTblBody"></tbody>
     </table>
@@ -312,6 +355,20 @@
 </div>
 
 </div><!-- #wbtApp -->
+
+<!-- ── Trade chart modal (LightweightCharts) ──────────────────────────────── -->
+<div id="wbtChartModal">
+  <div class="wbt-chart-hdr">
+    <button onclick="closeWbtChart()" style="background:none;border:1px solid #3a4560;color:#8fa0b8;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:12px;font-family:'DM Mono',monospace">✕ Close</button>
+    <span id="wbtChartTitle"  style="color:#e8eaf2;font-size:13px;font-weight:600;font-family:'DM Mono',monospace"></span>
+    <span id="wbtChartBadge"  style="color:#8fa0b8;font-size:11px;font-family:'DM Mono',monospace"></span>
+    <span style="flex:1"></span>
+    <button id="wbtCmPrev" onclick="navWbtTrade(-1)" style="background:none;border:1px solid #3a4560;color:#8fa0b8;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:12px">‹</button>
+    <span id="wbtCmNav" style="font-size:11px;font-family:'DM Mono',monospace;color:#8fa0b8;min-width:70px;text-align:center"></span>
+    <button id="wbtCmNext" onclick="navWbtTrade(1)"  style="background:none;border:1px solid #3a4560;color:#8fa0b8;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:12px">›</button>
+  </div>
+  <div id="wbtChartContainer" style="flex:1;min-height:0"></div>
+</div>
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────────
@@ -389,7 +446,7 @@ function clientWbtStats(trades, extraSpread = 0) {
 
 const fmt    = (v, d=2) => v == null ? '—' : typeof v === 'number' ? v.toFixed(d) : v;
 const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
-const lvClass = lv => lv === 'HL50' ? 'hl50' : 'hl75';
+const lvClass = lv => ({ HL50: 'hl50', HL75: 'hl75', OCMed: 'ocmed', OC75: 'oc75' })[lv] ?? 'hl50';
 
 function setStatus(type, msg) {
   document.getElementById('wbtDot').className = 'sdot ' + type;
@@ -687,12 +744,14 @@ function renderPage() {
   const maxPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
   const slice   = _filtTrades.slice(_page * PAGE_SIZE, (_page + 1) * PAGE_SIZE);
 
-  tbody.innerHTML = slice.map(r => {
+  const start = _page * PAGE_SIZE;
+  tbody.innerHTML = slice.map((r, i) => {
     const fillDow = r.fill_date
       ? DOW_LABELS[new Date(r.fill_date + 'T12:00:00Z').getUTCDay()] : '—';
     const oc  = r.outcome;
     const bc  = oc === 'win' ? 'win' : oc === 'loss' ? 'loss' : 'open';
     const pnl = r.pnl_pct ?? 0;
+    const absIdx = start + i;
     return `<tr>
       <td>${r.date ?? '—'}</td>
       <td><strong>${r.instrument ?? '—'}</strong></td>
@@ -704,6 +763,7 @@ function renderPage() {
       <td class="num">${r.monday_open ?? '—'}</td>
       <td><span class="bt-badge ${bc}">${oc ?? '—'}</span></td>
       <td class="num ${pnl >= 0 ? 'pos' : 'neg'}">${fmtPct(pnl)}</td>
+      <td><button class="chart-btn" onclick="openWbtChart(${absIdx})" title="View M1 chart">◫</button></td>
     </tr>`;
   }).join('');
 
@@ -733,6 +793,13 @@ async function runBacktest() {
     strategy:  document.getElementById('runStrategy').value,
     slMult:    document.getElementById('runSlMult').value,
     spreadPct: document.getElementById('runSpread').value,
+    slMode:    document.getElementById('runSlMode').value,
+    tpMode:    document.getElementById('runTpMode').value,
+    atrPeriod: document.getElementById('runAtrPeriod').value,
+    atrSlMult: document.getElementById('runAtrSlMult').value,
+    atrTpMult: document.getElementById('runAtrTpMult').value,
+    slPips:    document.getElementById('runSlPips').value,
+    tpPips:    document.getElementById('runTpPips').value,
   };
 
   try {
@@ -772,6 +839,336 @@ async function runBacktest() {
     btn.disabled = false;
   }
 }
+
+// ── SL/TP mode param visibility ────────────────────────────────────────────────
+function updateParamVis() {
+  const sl = document.getElementById('runSlMode').value;
+  const tp = document.getElementById('runTpMode').value;
+  const needAtr  = sl === 'atr'  || tp === 'atr';
+  const needPips = sl === 'pips' || tp === 'pips';
+  document.getElementById('atrParams').classList.toggle('visible', needAtr);
+  document.getElementById('pipParams').classList.toggle('visible', needPips);
+}
+
+// ── Chart modal ────────────────────────────────────────────────────────────────
+let _wbtChart    = null;   // price pane
+let _wbtZChart   = null;   // Z-Score pane
+let _wbtSmiChart = null;   // SMI pane
+let _wbtSeries   = null;   // candlestick series ref
+let _wbtWeekTrades = [];   // all fills for the same week+instrument
+let _wbtTradeIdx   = 0;
+let _wbtFocusLines = [];
+
+function _wbtToEpochSec(s) {
+  return Math.floor(new Date(String(s).substring(0, 19).replace(' ', 'T') + 'Z').getTime() / 1000);
+}
+function _wbtDateOffset(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().substring(0, 10);
+}
+
+function _wbtUpdateBadge() {
+  const t = _wbtWeekTrades[_wbtTradeIdx];
+  if (!t) return;
+  document.getElementById('wbtChartBadge').textContent =
+    `${t.side} · ${t.level ?? '—'} · ${(t.outcome || '').toUpperCase()} · ${t.pnl_pct != null ? (t.pnl_pct >= 0 ? '+' : '') + t.pnl_pct.toFixed(4) + '%' : '—'}`;
+  document.getElementById('wbtCmNav').textContent =
+    `Trade ${_wbtTradeIdx + 1} of ${_wbtWeekTrades.length}`;
+  document.getElementById('wbtCmPrev').disabled = _wbtTradeIdx === 0;
+  document.getElementById('wbtCmNext').disabled = _wbtTradeIdx >= _wbtWeekTrades.length - 1;
+  if (_wbtSeries) {
+    _wbtSeries.setMarkers(_wbtBuildMarkers());
+    _wbtDrawFocusLines();
+  }
+}
+
+function navWbtTrade(delta) {
+  _wbtTradeIdx = Math.max(0, Math.min(_wbtTradeIdx + delta, _wbtWeekTrades.length - 1));
+  _wbtUpdateBadge();
+}
+
+function _wbtBuildMarkers() {
+  return _wbtWeekTrades
+    .map((t, i) => {
+      if (!t.fill_date) return null;
+      const isSell    = t.side === 'SELL';
+      const isFocused = i === _wbtTradeIdx;
+      return {
+        time:     _wbtToEpochSec(t.fill_date + 'T12:00:00'),
+        position: isSell ? 'aboveBar' : 'belowBar',
+        color:    isFocused
+          ? (isSell ? '#ef5350' : '#26a69a')
+          : (isSell ? '#7f1d1d' : '#065f46'),
+        shape:    isFocused
+          ? (isSell ? 'arrowDown' : 'arrowUp')
+          : 'circle',
+        text:     isFocused ? `${t.side} ${t.level}` : t.level ?? '',
+        size:     isFocused ? 1 : 0.6,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.time - b.time);
+}
+
+function _wbtDrawFocusLines() {
+  for (const { series, pl } of _wbtFocusLines) try { series.removePriceLine(pl); } catch {}
+  _wbtFocusLines = [];
+  const t = _wbtWeekTrades[_wbtTradeIdx];
+  if (!t || !_wbtSeries) return;
+  const LS     = LightweightCharts.LineStyle;
+  const isSell = t.side === 'SELL';
+  const add = (price, color, title, style, lw) => {
+    if (price == null || !isFinite(price)) return;
+    const pl = _wbtSeries.createPriceLine({ price, color, lineWidth: lw, lineStyle: style, axisLabelVisible: true, title });
+    _wbtFocusLines.push({ series: _wbtSeries, pl });
+  };
+  add(t.entry, isSell ? '#f87171' : '#34d399', `▶ ${t.side} ${t.level}`, LS.Solid, 3);
+  add(t.tp,    '#00e676', `TP${t.outcome === 'win'  ? ' ✔' : ''}`, LS.Dashed, 2);
+  add(t.sl,    '#ff1744', `SL${t.outcome === 'loss' ? ' ✔' : ''}`, LS.Dashed, 2);
+}
+
+function _wbtLerpCol(c1, c2, t) {
+  t = Math.max(0, Math.min(1, t));
+  return `rgb(${Math.round(c1[0]+(c2[0]-c1[0])*t)},${Math.round(c1[1]+(c2[1]-c1[1])*t)},${Math.round(c1[2]+(c2[2]-c1[2])*t)})`;
+}
+function _wbtEma(arr, len) {
+  const k = 2/(len+1), out = new Array(arr.length).fill(NaN);
+  let p = NaN, init = false;
+  for (let i = 0; i < arr.length; i++) {
+    if (!isFinite(arr[i])) continue;
+    if (!init) { p = arr[i]; out[i] = p; init = true; continue; }
+    p = arr[i]*k + p*(1-k); out[i] = p;
+  }
+  return out;
+}
+function _wbtEmaEma(arr, len) { return _wbtEma(_wbtEma(arr, len), len); }
+
+function _wbtBuildZScore(chart, bars) {
+  const LS = LightweightCharts.LineStyle, len = 20;
+  const cls = bars.map(b => b.close);
+  const zs  = bars.map((b, i) => {
+    if (i < len-1) return NaN;
+    const sl = cls.slice(i-len+1, i+1);
+    const mu = sl.reduce((a,v) => a+v, 0)/len;
+    const sd = Math.sqrt(sl.reduce((a,v) => a+(v-mu)**2, 0)/len);
+    return sd === 0 ? 0 : (b.close - mu)/sd;
+  });
+  const hist = chart.addHistogramSeries({ lastValueVisible:false, priceLineVisible:false, priceFormat:{type:'price',precision:2,minMove:0.01} });
+  hist.setData(bars.map((b, i) => {
+    const z = zs[i];
+    if (!isFinite(z)) return null;
+    const color = z >= 0
+      ? _wbtLerpCol([255,152,0],[244,67,54], z/2.8)
+      : _wbtLerpCol([0,188,212],[255,235,59], (z+2)/2);
+    return { time: b.time, value: z, color };
+  }).filter(Boolean));
+  for (const [price, alpha] of [[2,.5],[1,.28],[-1,.28],[-2,.5]])
+    hist.createPriceLine({ price, color:`rgba(255,255,255,${alpha})`, lineStyle:LS.Dotted, lineWidth:1, axisLabelVisible:false });
+  hist.createPriceLine({ price:0, color:'rgba(255,255,255,0.6)', lineStyle:LS.Solid, lineWidth:1, axisLabelVisible:false });
+}
+
+function _wbtBuildSMI(chart, bars) {
+  const LS = LightweightCharts.LineStyle, kLen=10, dLen=3, eLen=3, n=bars.length;
+  const rr = new Array(n).fill(NaN), hl = new Array(n).fill(NaN);
+  for (let i = kLen-1; i < n; i++) {
+    let hh=-Infinity, ll=Infinity;
+    for (let j = i-kLen+1; j<=i; j++) { if(bars[j].high>hh)hh=bars[j].high; if(bars[j].low<ll)ll=bars[j].low; }
+    rr[i] = bars[i].close - (hh+ll)/2;
+    hl[i] = hh - ll;
+  }
+  const rrEE=_wbtEmaEma(rr,dLen), hlEE=_wbtEmaEma(hl,dLen);
+  const raw = rrEE.map((v,i) => (!isFinite(v)||!isFinite(hlEE[i])||hlEE[i]===0) ? NaN : 200*(v/hlEE[i]));
+  const sig = _wbtEma(raw, eLen);
+  const smiS = chart.addLineSeries({ color:'#3b82f6', lineWidth:1.5, lastValueVisible:false, priceLineVisible:false, priceFormat:{type:'price',precision:1,minMove:0.1} });
+  const sigS = chart.addLineSeries({ color:'#f97316', lineWidth:1,   lastValueVisible:false, priceLineVisible:false });
+  smiS.setData(bars.map((b,i) => isFinite(raw[i]) ? {time:b.time, value:raw[i]} : null).filter(Boolean));
+  sigS.setData(bars.map((b,i) => isFinite(sig[i]) ? {time:b.time, value:sig[i]} : null).filter(Boolean));
+  for (const price of [40,-40])
+    smiS.createPriceLine({ price, color:'rgba(255,255,255,0.35)', lineStyle:LS.Dashed, lineWidth:1, axisLabelVisible:false });
+  smiS.createPriceLine({ price:0, color:'rgba(200,200,200,0.2)', lineStyle:LS.Solid, lineWidth:1, axisLabelVisible:false });
+}
+
+function openWbtChart(filtIdx) {
+  const trade = _filtTrades[filtIdx];
+  if (!trade) return;
+
+  // All fills for the same week + instrument (from full data — respects global trades)
+  _wbtWeekTrades = _allTrades.filter(t =>
+    t.week === trade.week && t.instrument === trade.instrument && t.filled
+  );
+  if (!_wbtWeekTrades.length) _wbtWeekTrades = [trade];
+  _wbtTradeIdx = _wbtWeekTrades.findIndex(t => t === trade);
+  if (_wbtTradeIdx < 0) _wbtTradeIdx = 0;
+
+  const modal = document.getElementById('wbtChartModal');
+  modal.style.display = 'flex';
+  document.getElementById('wbtChartTitle').textContent = `${trade.instrument} — Week ${trade.week}`;
+  _wbtUpdateBadge();
+
+  // Tear down any prior chart
+  if (_wbtChart)    { _wbtChart.remove();    _wbtChart    = null; _wbtSeries = null; }
+  if (_wbtZChart)   { _wbtZChart.remove();   _wbtZChart   = null; }
+  if (_wbtSmiChart) { _wbtSmiChart.remove(); _wbtSmiChart = null; }
+  _wbtFocusLines = [];
+
+  const container = document.getElementById('wbtChartContainer');
+  Object.assign(container.style, { display:'', flexDirection:'' });
+  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8fa0b8;font-size:13px">Loading M1 data…</div>';
+
+  const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
+  const week = trade.week; // Monday date (YYYY-MM-DD)
+  const from = _wbtDateOffset(week, -1); // Sunday before
+  const to   = _wbtDateOffset(week, 6);  // Sunday after (includes full Fri + context)
+
+  fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`)
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok || !d.candles?.length) {
+        container.innerHTML = `<div style="padding:24px;font-size:13px"><div style="color:#ef5350;font-weight:600;margin-bottom:8px">No M1 candle data</div><div style="color:#8fa0b8">${d.error || 'No candles returned'}</div></div>`;
+        return;
+      }
+
+      // Three-pane layout: Price 56% / Z-Score 22% / SMI 22%
+      container.innerHTML = '';
+      container.style.display      = 'flex';
+      container.style.flexDirection = 'column';
+      const mkPane = (flex, label, borderTop) => {
+        const el = document.createElement('div');
+        el.style.cssText = `flex:${flex};min-height:0;position:relative;${borderTop?'border-top:1px solid #2a3348;':''}`;
+        const lbl = document.createElement('div');
+        lbl.style.cssText = 'position:absolute;top:3px;left:6px;z-index:10;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#3a4560;font-family:"DM Mono",monospace;pointer-events:none;';
+        lbl.textContent = label;
+        el.appendChild(lbl);
+        container.appendChild(el);
+        return el;
+      };
+      const pricePane = mkPane('0 0 56%', 'M1 · Price',   false);
+      const zPane     = mkPane('0 0 22%', 'Z-Score · 20', true);
+      const smiPane   = mkPane('0 0 22%', 'SMI · 10/3/3', true);
+
+      const cBase = {
+        autoSize:  true,
+        layout:    { background: { color: '#131722' }, textColor: '#d1d4dc' },
+        grid:      { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+        crosshair:       { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { borderColor: '#2a3348' },
+        timeScale:       { borderColor: '#2a3348', timeVisible: true, secondsVisible: false },
+      };
+      _wbtChart    = LightweightCharts.createChart(pricePane, cBase);
+      _wbtZChart   = LightweightCharts.createChart(zPane,   { ...cBase, timeScale: { ...cBase.timeScale, visible: false } });
+      _wbtSmiChart = LightweightCharts.createChart(smiPane, cBase);
+
+      const cs = _wbtChart.addCandlestickSeries({
+        upColor: '#26a69a', downColor: '#ef5350',
+        borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+        wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+      });
+      _wbtSeries = cs;
+      const bars = d.candles.map(b => ({ time: _wbtToEpochSec(b.time), open: b.open, high: b.high, low: b.low, close: b.close }));
+      cs.setData(bars);
+
+      // ── Static week level lines ───────────────────────────────────────────────
+      const ref = _wbtWeekTrades[0] ?? trade;
+      const LS  = LightweightCharts.LineStyle;
+      const addLine = (price, color, title, style, lw) => {
+        if (price == null || !isFinite(price)) return;
+        cs.createPriceLine({ price, color, lineWidth: lw || 1, lineStyle: style, axisLabelVisible: true, title });
+      };
+
+      // Monday open anchor
+      addLine(ref.monday_open, '#ffffff', 'Mon Open', LS.Solid, 2);
+
+      // HL50 ± bands (blue)
+      if (ref.hl50_pct && ref.monday_open) {
+        const h50 = ref.monday_open * (1 + ref.hl50_pct / 100);
+        const l50 = ref.monday_open * (1 - ref.hl50_pct / 100);
+        addLine(h50, '#3b82f6', 'HL50↑', LS.Dashed, 1.5);
+        addLine(l50, '#3b82f6', 'HL50↓', LS.Dashed, 1.5);
+      }
+
+      // HL75 ± bands (amber)
+      if (ref.hl75_pct && ref.monday_open) {
+        const h75 = ref.monday_open * (1 + ref.hl75_pct / 100);
+        const l75 = ref.monday_open * (1 - ref.hl75_pct / 100);
+        addLine(h75, '#f59e0b', 'HL75↑', LS.Dashed, 1.5);
+        addLine(l75, '#f59e0b', 'HL75↓', LS.Dashed, 1.5);
+      }
+
+      // OC Med ± bands (green)
+      if (ref.oc_med_pct && ref.monday_open) {
+        const hOC = ref.monday_open * (1 + ref.oc_med_pct / 100);
+        const lOC = ref.monday_open * (1 - ref.oc_med_pct / 100);
+        addLine(hOC, '#34d399', 'OCMed↑', LS.Dotted, 1);
+        addLine(lOC, '#34d399', 'OCMed↓', LS.Dotted, 1);
+      }
+
+      // OC75 ± bands (teal)
+      if (ref.oc75_pct && ref.monday_open) {
+        const hO75 = ref.monday_open * (1 + ref.oc75_pct / 100);
+        const lO75 = ref.monday_open * (1 - ref.oc75_pct / 100);
+        addLine(hO75, '#2dd4bf', 'OC75↑', LS.Dotted, 1);
+        addLine(lO75, '#2dd4bf', 'OC75↓', LS.Dotted, 1);
+      }
+
+      // Dim entry lines for all other week trades
+      const shownEntries = new Set();
+      for (const t of _wbtWeekTrades) {
+        if (t === trade) continue;
+        const key = t.entry?.toFixed(6);
+        if (!key || shownEntries.has(key)) continue;
+        shownEntries.add(key);
+        const col = (t.side === 'SELL' ? '#f87171' : '#34d399') + '33';
+        cs.createPriceLine({ price: t.entry, color: col, lineWidth: 1, lineStyle: LS.Dotted, axisLabelVisible: false });
+      }
+
+      // Focused trade: thick entry + TP + SL
+      _wbtDrawFocusLines();
+
+      // Fill markers (all trades in this week)
+      cs.setMarkers(_wbtBuildMarkers());
+
+      // Indicator sub-panels
+      _wbtBuildZScore(_wbtZChart, bars);
+      _wbtBuildSMI(_wbtSmiChart, bars);
+
+      // Sync time scales
+      let _syncing = false;
+      const allC = [_wbtChart, _wbtZChart, _wbtSmiChart];
+      allC.forEach((src, si) => {
+        src.timeScale().subscribeVisibleLogicalRangeChange(range => {
+          if (_syncing || !range) return;
+          _syncing = true;
+          allC.forEach((tgt, ti) => { if (ti !== si) tgt.timeScale().setVisibleLogicalRange(range); });
+          _syncing = false;
+        });
+      });
+
+      // Zoom to the full trade week (Mon 00:00 → Sat 00:00 UTC)
+      const weekStart = _wbtToEpochSec(week + 'T00:00:00');
+      _wbtChart.timeScale().setVisibleRange({ from: weekStart, to: weekStart + 6 * 24 * 3600 });
+    })
+    .catch(e => {
+      container.innerHTML = `<div style="padding:24px;color:#ef5350;font-size:13px">Error: ${e.message}</div>`;
+    });
+}
+
+function closeWbtChart() {
+  document.getElementById('wbtChartModal').style.display = 'none';
+  for (const { series, pl } of _wbtFocusLines) try { series.removePriceLine(pl); } catch {}
+  _wbtFocusLines = [];
+  if (_wbtChart)    { _wbtChart.remove();    _wbtChart    = null; _wbtSeries = null; }
+  if (_wbtZChart)   { _wbtZChart.remove();   _wbtZChart   = null; }
+  if (_wbtSmiChart) { _wbtSmiChart.remove(); _wbtSmiChart = null; }
+}
+
+document.addEventListener('keydown', e => {
+  if (document.getElementById('wbtChartModal').style.display !== 'none') {
+    if (e.key === 'Escape')     closeWbtChart();
+    if (e.key === 'ArrowLeft')  navWbtTrade(-1);
+    if (e.key === 'ArrowRight') navWbtTrade(+1);
+  }
+});
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', loadData);

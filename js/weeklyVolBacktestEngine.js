@@ -7,12 +7,21 @@
  *   Mark 4 levels from Monday open:
  *     HL50_up/dn = open ± BM_P50 × hl_50_corr × σ_w  (median weekly range)
  *     HL75_up/dn = open ± BM_P75 × hl_75_corr × σ_w  (75th pct weekly range)
+ *     OCMed_up/dn = open ± HN_P50 × oc_corr   × σ_w  (median OC body)
+ *     OC75_up/dn  = open ± HN_P75 × oc_75_corr × σ_w (75th pct OC body)
  *   Fade: limit orders placed at those levels, TP = Monday open (mean reversion).
  *
  * Modes:
- *   revHL50 — entry HL50, TP = Mon open, SL = HL75            (~3.8:1 R:R)
- *   revHL75 — entry HL75, TP = Mon open, SL = HL75 × slMult
- *   both    — both simultaneously (up to 4 fills per week per instrument)
+ *   revHL50   — entry HL50, TP = Mon open, SL = HL75            (~3.8:1 R:R)
+ *   revHL75   — entry HL75, TP = Mon open, SL = HL75 × slMult
+ *   both      — both simultaneously (up to 4 fills per week per instrument)
+ *   ocLevels  — entry OCMed or OC75 (body fades)
+ *   allLevels — all four levels simultaneously
+ *
+ * SL/TP modes (slMode / tpMode):
+ *   'level' — use HL-geometry based levels (default)
+ *   'atr'   — ATR30 × multiplier
+ *   'pips'  — fixed pip distance
  *
  * Supports all 26 Asia-Range pairs.
  * Requires process.env.OANDA_KEY.
@@ -24,6 +33,18 @@ import {
 } from './volBacktestEngine.js';
 
 const SQRT5 = Math.sqrt(5);
+
+// ── Pip sizes for all 26 instruments ─────────────────────────────────────────
+
+export const PIP_SIZE = {
+  EURUSD: 0.0001, GBPUSD: 0.0001, USDJPY: 0.01,  AUDUSD: 0.0001,
+  NZDUSD: 0.0001, USDCAD: 0.0001, USDCHF: 0.0001, GBPJPY: 0.01,
+  EURJPY: 0.01,   EURGBP: 0.0001, EURAUD: 0.0001, EURCAD: 0.0001,
+  EURCHF: 0.0001, EURNZD: 0.0001, AUDJPY: 0.01,   AUDNZD: 0.0001,
+  AUDCAD: 0.0001, AUDCHF: 0.0001, GBPAUD: 0.0001, GBPCAD: 0.0001,
+  GBPCHF: 0.0001, GBPNZD: 0.0001, CADJPY: 0.01,   CHFJPY: 0.01,
+  NZDJPY: 0.01,   GOLD:   0.1,
+};
 
 // ── All 26 instruments (Asia Range pair set) ──────────────────────────────────
 
@@ -77,6 +98,24 @@ function getWeekKey(dateStr) {
   return mon.toISOString().substring(0, 10);
 }
 
+// ── ATR ───────────────────────────────────────────────────────────────────────
+// Average True Range over the last `period` D1 bars (requires ≥2 bars).
+function computeATR(bars, period = 30) {
+  const n = bars.length;
+  if (n < 2) return 0;
+  const start = Math.max(1, n - period);
+  let sum = 0, count = 0;
+  for (let i = start; i < n; i++) {
+    const tr = Math.max(
+      bars[i].high - bars[i].low,
+      Math.abs(bars[i].high - bars[i - 1].close),
+      Math.abs(bars[i].low  - bars[i - 1].close)
+    );
+    sum += tr; count++;
+  }
+  return count > 0 ? sum / count : 0;
+}
+
 // ── Per-bar trade resolution ───────────────────────────────────────────────────
 // Returns { outcome, pnlPct } if the trade closes on this bar, else null.
 // P&L is expressed as % of mondayOpen (anchor price, not entry).
@@ -95,55 +134,114 @@ function resolveOnBar(side, entry, tp, sl, bar, mondayOpen) {
 }
 
 // ── Weekly trade simulator ─────────────────────────────────────────────────────
-// Walks each D1 bar in the week, placing limit orders at HL50/HL75 levels and
-// resolving outcomes bar-by-bar.  Returns an array of trade objects (1–4 per week).
+// Walks each D1 bar in the week, placing limit orders at levels and resolving
+// outcomes bar-by-bar.  Returns an array of trade objects (1–8 per week max).
+//
+// levelPcts: { hl50pct, hl75pct, ocMedpct, oc75pct, atr30 }
 function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
-  const { hl50pct, hl75pct } = levelPcts;
-  const { strategy = 'revHL50', slMult = 1.5, spreadPct = 0 } = opts;
+  const { hl50pct, hl75pct, ocMedpct, oc75pct, atr30 = 0 } = levelPcts;
+  const {
+    strategy  = 'revHL50',
+    slMode    = 'level',
+    tpMode    = 'open',
+    slMult    = 1.5,
+    atrSlMult = 1.5,
+    atrTpMult = 2.0,
+    slPips    = 30,
+    tpPips    = 50,
+    spreadPct = 0,
+    pair      = '',
+  } = opts;
 
-  const hl50Up = mondayOpen * (1 + hl50pct / 100);
-  const hl75Up = mondayOpen * (1 + hl75pct / 100);
-  const hl50Dn = mondayOpen * (1 - hl50pct / 100);
-  const hl75Dn = mondayOpen * (1 - hl75pct / 100);
+  const pip     = PIP_SIZE[pair] ?? 0.0001;
+  const safeAtr = atr30 > 0 ? atr30 : null; // null → ATR mode falls back to level-based
 
-  const doHL50 = strategy === 'revHL50' || strategy === 'both';
-  const doHL75 = strategy === 'revHL75' || strategy === 'both';
+  // ── Entry price levels ────────────────────────────────────────────────────────
+  const hl50Up  = mondayOpen * (1 + hl50pct  / 100);
+  const hl75Up  = mondayOpen * (1 + hl75pct  / 100);
+  const hl50Dn  = mondayOpen * (1 - hl50pct  / 100);
+  const hl75Dn  = mondayOpen * (1 - hl75pct  / 100);
+  const ocMedUp = mondayOpen * (1 + ocMedpct / 100);
+  const ocMedDn = mondayOpen * (1 - ocMedpct / 100);
+  const oc75Up  = mondayOpen * (1 + oc75pct  / 100);
+  const oc75Dn  = mondayOpen * (1 - oc75pct  / 100);
 
-  // TP for all fades = Monday open (full mean-reversion target)
-  // SL for revHL50: HL75 (same geometry as daily Rev-HL50)
-  // SL for revHL75: HL75 × slMult above Monday open
-  const slUpFor50 = hl75Up;
-  const slDnFor50 = hl75Dn;
-  const slUpFor75 = mondayOpen * (1 + hl75pct * slMult / 100);
-  const slDnFor75 = mondayOpen * (1 - hl75pct * slMult / 100);
+  // ── SL / TP resolvers ────────────────────────────────────────────────────────
+  const getSl = (side, entry, fallback) => {
+    if (slMode === 'atr'  && safeAtr) return side === 'SELL' ? entry + safeAtr * atrSlMult : entry - safeAtr * atrSlMult;
+    if (slMode === 'pips')             return side === 'SELL' ? entry + slPips  * pip       : entry - slPips  * pip;
+    return fallback;
+  };
+  const getTp = (side, entry, fallback) => {
+    if (tpMode === 'atr'  && safeAtr) return side === 'SELL' ? entry - safeAtr * atrTpMult : entry + safeAtr * atrTpMult;
+    if (tpMode === 'pips')             return side === 'SELL' ? entry - tpPips  * pip       : entry + tpPips  * pip;
+    return fallback; // default: mondayOpen
+  };
+
+  // ── Strategy flags ────────────────────────────────────────────────────────────
+  const doHL50  = strategy === 'revHL50'  || strategy === 'both'     || strategy === 'allLevels';
+  const doHL75  = strategy === 'revHL75'  || strategy === 'both'     || strategy === 'allLevels';
+  const doOCMed = strategy === 'ocLevels' || strategy === 'allLevels';
+  const doOC75  = strategy === 'ocLevels' || strategy === 'allLevels';
+
+  // ── Pre-compute SL / TP prices per slot ──────────────────────────────────────
+  // Level-based SL defaults:
+  //   HL50  → SL at HL75 (same geometry as daily Rev-HL50)
+  //   HL75  → SL at HL75 × slMult beyond Monday open
+  //   OCMed → SL at OC75 (next level out)
+  //   OC75  → SL at HL50 (next level out)
+  const slMap = {
+    SELL_HL50:  getSl('SELL', hl50Up,  hl75Up),
+    BUY_HL50:   getSl('BUY',  hl50Dn,  hl75Dn),
+    SELL_HL75:  getSl('SELL', hl75Up,  mondayOpen * (1 + hl75pct * slMult / 100)),
+    BUY_HL75:   getSl('BUY',  hl75Dn,  mondayOpen * (1 - hl75pct * slMult / 100)),
+    SELL_OCMed: getSl('SELL', ocMedUp, oc75Up),
+    BUY_OCMed:  getSl('BUY',  ocMedDn, oc75Dn),
+    SELL_OC75:  getSl('SELL', oc75Up,  hl50Up),
+    BUY_OC75:   getSl('BUY',  oc75Dn,  hl50Dn),
+  };
+  const tpMap = {
+    SELL_HL50:  getTp('SELL', hl50Up,  mondayOpen),
+    BUY_HL50:   getTp('BUY',  hl50Dn,  mondayOpen),
+    SELL_HL75:  getTp('SELL', hl75Up,  mondayOpen),
+    BUY_HL75:   getTp('BUY',  hl75Dn,  mondayOpen),
+    SELL_OCMed: getTp('SELL', ocMedUp, mondayOpen),
+    BUY_OCMed:  getTp('BUY',  ocMedDn, mondayOpen),
+    SELL_OC75:  getTp('SELL', oc75Up,  mondayOpen),
+    BUY_OC75:   getTp('BUY',  oc75Dn,  mondayOpen),
+  };
 
   const slots = {
-    SELL_HL50: null,
-    BUY_HL50:  null,
-    SELL_HL75: null,
-    BUY_HL75:  null,
+    SELL_HL50:  null,
+    BUY_HL50:   null,
+    SELL_HL75:  null,
+    BUY_HL75:   null,
+    SELL_OCMed: null,
+    BUY_OCMed:  null,
+    SELL_OC75:  null,
+    BUY_OC75:   null,
   };
 
   for (const bar of weekBars) {
     const { date, high, low } = bar;
 
     // ── Check new fills (only first hit per slot) ────────────────────────────
-    if (doHL50 && !slots.SELL_HL50 && high >= hl50Up) {
-      const res = resolveOnBar('SELL', hl50Up, mondayOpen, slUpFor50, bar, mondayOpen);
-      slots.SELL_HL50 = { side: 'SELL', level: 'HL50', entry: hl50Up, tp: mondayOpen, sl: slUpFor50, fillDate: date, ...(res ?? { outcome: 'open', pnlPct: 0 }) };
-    }
-    if (doHL50 && !slots.BUY_HL50 && low <= hl50Dn) {
-      const res = resolveOnBar('BUY', hl50Dn, mondayOpen, slDnFor50, bar, mondayOpen);
-      slots.BUY_HL50 = { side: 'BUY', level: 'HL50', entry: hl50Dn, tp: mondayOpen, sl: slDnFor50, fillDate: date, ...(res ?? { outcome: 'open', pnlPct: 0 }) };
-    }
-    if (doHL75 && !slots.SELL_HL75 && high >= hl75Up) {
-      const res = resolveOnBar('SELL', hl75Up, mondayOpen, slUpFor75, bar, mondayOpen);
-      slots.SELL_HL75 = { side: 'SELL', level: 'HL75', entry: hl75Up, tp: mondayOpen, sl: slUpFor75, fillDate: date, ...(res ?? { outcome: 'open', pnlPct: 0 }) };
-    }
-    if (doHL75 && !slots.BUY_HL75 && low <= hl75Dn) {
-      const res = resolveOnBar('BUY', hl75Dn, mondayOpen, slDnFor75, bar, mondayOpen);
-      slots.BUY_HL75 = { side: 'BUY', level: 'HL75', entry: hl75Dn, tp: mondayOpen, sl: slDnFor75, fillDate: date, ...(res ?? { outcome: 'open', pnlPct: 0 }) };
-    }
+    const tryFill = (key, side, level, entry) => {
+      if (!slots[key]) {
+        const sl = slMap[key], tp = tpMap[key];
+        const res = resolveOnBar(side, entry, tp, sl, bar, mondayOpen);
+        slots[key] = { side, level, entry, tp, sl, fillDate: date, ...(res ?? { outcome: 'open', pnlPct: 0 }) };
+      }
+    };
+
+    if (doHL50  && high >= hl50Up)  tryFill('SELL_HL50',  'SELL', 'HL50',  hl50Up);
+    if (doHL50  && low  <= hl50Dn)  tryFill('BUY_HL50',   'BUY',  'HL50',  hl50Dn);
+    if (doHL75  && high >= hl75Up)  tryFill('SELL_HL75',  'SELL', 'HL75',  hl75Up);
+    if (doHL75  && low  <= hl75Dn)  tryFill('BUY_HL75',   'BUY',  'HL75',  hl75Dn);
+    if (doOCMed && high >= ocMedUp) tryFill('SELL_OCMed', 'SELL', 'OCMed', ocMedUp);
+    if (doOCMed && low  <= ocMedDn) tryFill('BUY_OCMed',  'BUY',  'OCMed', ocMedDn);
+    if (doOC75  && high >= oc75Up)  tryFill('SELL_OC75',  'SELL', 'OC75',  oc75Up);
+    if (doOC75  && low  <= oc75Dn)  tryFill('BUY_OC75',   'BUY',  'OC75',  oc75Dn);
 
     // ── Carry open trades into this bar ─────────────────────────────────────
     for (const t of Object.values(slots)) {
@@ -163,6 +261,7 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
         ? +((t.entry - eowClose) / mondayOpen * 100).toFixed(5)
         : +((eowClose - t.entry) / mondayOpen * 100).toFixed(5);
       t.closeDate = eowDate;
+      // outcome stays 'open' — distinguishes EOW force-close from TP/SL
     }
   }
 
@@ -179,7 +278,7 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
 // ── Walk-forward weekly backtester ────────────────────────────────────────────
 
 export function runWeeklyBacktest(bars, assetClass, opts = {}) {
-  const { dateFrom = '', dateTo = '', minLookback = 60 } = opts;
+  const { dateFrom = '', dateTo = '', minLookback = 60, atrPeriod = 30 } = opts;
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
   // Build full EWMA var series incrementally (O(n), avoids O(n²) re-computation)
@@ -221,12 +320,17 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     const sigmaD = Math.sqrt(Math.max(ewmaVars[varIdx] ?? 0, 1e-12));
     const sigmaW = sigmaD * SQRT5;
 
-    const hl50pct  = BM_P50 * p.hl_50_corr * sigmaW * 100;
-    const hl75pct  = BM_P75 * p.hl_75_corr * sigmaW * 100;
-    const ocMedpct = HN_P50 * p.oc_corr    * sigmaW * 100;
+    const hl50pct  = BM_P50 * p.hl_50_corr  * sigmaW * 100;
+    const hl75pct  = BM_P75 * p.hl_75_corr  * sigmaW * 100;
+    const ocMedpct = HN_P50 * p.oc_corr     * sigmaW * 100;
+    const oc75pct  = HN_P75 * p.oc_75_corr  * sigmaW * 100;
+
+    // ATR from bars before this Monday (for ATR-mode SL/TP)
+    const barsBeforeMonday = bars.slice(Math.max(0, mondayIdx - atrPeriod - 5), mondayIdx);
+    const atr30 = computeATR(barsBeforeMonday, atrPeriod);
 
     const mondayOpen = mondayBar.open;
-    const levelPcts  = { hl50pct, hl75pct, ocMedpct };
+    const levelPcts  = { hl50pct, hl75pct, ocMedpct, oc75pct, atr30 };
     const trades     = simulateWeek(mondayOpen, weekBars, levelPcts, opts);
 
     for (const t of trades) {
@@ -236,6 +340,8 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
         hl50_pct:    +hl50pct.toFixed(4),
         hl75_pct:    +hl75pct.toFixed(4),
         oc_med_pct:  +ocMedpct.toFixed(4),
+        oc75_pct:    +oc75pct.toFixed(4),
+        atr30:       +atr30.toFixed(6),
         monday_open: +mondayOpen.toFixed(6),
         filled:      t.filled,
         side:        t.side,
@@ -266,7 +372,7 @@ export async function runFullWeeklyBacktest(opts = {}, instruments = WEEKLY_INST
       log.push(`Fetching ${cfg.name}…`);
       const bars   = await fetchD1(cfg.oanda, 5000);
       log.push(`  ${bars.length} bars (${bars[0]?.date} → ${bars.at(-1)?.date})`);
-      const trades = runWeeklyBacktest(bars, cfg.assetClass, opts)
+      const trades = runWeeklyBacktest(bars, cfg.assetClass, { ...opts, pair: cfg.name })
         .map(r => ({ instrument: cfg.name, ...r }));
       allTrades.push(...trades);
       log.push(`  ${trades.filter(t => t.filled).length} filled`);
