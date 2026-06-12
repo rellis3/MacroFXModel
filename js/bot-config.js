@@ -1881,12 +1881,140 @@ window.saveHbConfig  = saveHbConfig;
 window.resetHbDefaults = resetHbDefaults;
 window.saveHbCreds   = saveHbCreds;
 
+// ── Position Hedge Bot ────────────────────────────────────────────────────────
+
+const PHB_BOTS = [
+  { id: 'phb_bot_bot_status',              key: 'bot_status' },
+  { id: 'phb_bot_regime_bot_status',       key: 'regime_bot_status' },
+  { id: 'phb_bot_gold_bot_status',         key: 'gold_bot_status' },
+  { id: 'phb_bot_regime_bot_v2_status',    key: 'regime_bot_v2_status' },
+  { id: 'phb_bot_backtestsystem_status',   key: 'backtestsystem_status' },
+  { id: 'phb_bot_dyn_anchor_status',       key: 'dyn_anchor_status' },
+];
+
+const PHB_DEFAULTS = {
+  enabled:          true,
+  paper_mode:       true,
+  interval_secs:    30,
+  hedge_ratio:      0.5,
+  sl_pips:          300,
+  sl_pips_gold:     2000,
+  max_lot:          5.0,
+  max_spread_pips:  3.0,
+  monitored_bots:   ['bot_status', 'regime_bot_status', 'regime_bot_v2_status', 'gold_bot_status', 'dyn_anchor_status'],
+};
+
+let _phbCfg = { ...PHB_DEFAULTS };
+
+function readPhbForm() {
+  _phbCfg.enabled         = chk('phb_enabled');
+  _phbCfg.paper_mode      = chk('phb_paper_mode');
+  _phbCfg.interval_secs   = num('phb_interval_secs',    30);
+  _phbCfg.hedge_ratio     = num('phb_hedge_ratio',      0.5);
+  _phbCfg.max_lot         = num('phb_max_lot',          5.0);
+  _phbCfg.max_spread_pips = num('phb_max_spread_pips',  3.0);
+  _phbCfg.sl_pips         = num('phb_sl_pips',          300);
+  _phbCfg.sl_pips_gold    = num('phb_sl_pips_gold',     2000);
+  _phbCfg.monitored_bots  = PHB_BOTS.filter(b => chk(b.id)).map(b => b.key);
+}
+
+function renderPhbForm() {
+  setChk('phb_enabled',         _phbCfg.enabled         ?? true);
+  setChk('phb_paper_mode',      _phbCfg.paper_mode      ?? true);
+  setVal('phb_interval_secs',   _phbCfg.interval_secs   ?? 30);
+  setVal('phb_hedge_ratio',     _phbCfg.hedge_ratio     ?? 0.5);
+  setVal('phb_max_lot',         _phbCfg.max_lot         ?? 5.0);
+  setVal('phb_max_spread_pips', _phbCfg.max_spread_pips ?? 3.0);
+  setVal('phb_sl_pips',         _phbCfg.sl_pips         ?? 300);
+  setVal('phb_sl_pips_gold',    _phbCfg.sl_pips_gold    ?? 2000);
+  const enabled = new Set(_phbCfg.monitored_bots || PHB_DEFAULTS.monitored_bots);
+  PHB_BOTS.forEach(b => setChk(b.id, enabled.has(b.key)));
+}
+
+async function loadPhbConfig() {
+  try {
+    const stored = await kvGet('position_hedge_bot_config');
+    if (stored) _phbCfg = { ...PHB_DEFAULTS, ...stored };
+    renderPhbForm();
+  } catch(e) { /* non-critical */ }
+}
+
+async function savePhbConfig() {
+  readPhbForm();
+  const el = document.getElementById('phbSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('position_hedge_bot_config', _phbCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#34d399'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+  } catch(e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetPhbDefaults() {
+  _phbCfg = { ...PHB_DEFAULTS };
+  renderPhbForm();
+  const el = document.getElementById('phbSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+async function loadPhbCreds() {
+  try { _applyCredsToForm(await kvGet('position_hedge_bot_credentials'), 'phb_', 'phb_mt5_password'); } catch(e) {}
+}
+
+async function savePhbCreds() {
+  await _saveCreds('position_hedge_bot_credentials', 'phb_', 'phb_mt5_password', 'phbCredsStatus');
+}
+
+async function loadPhbStatus() {
+  try {
+    const d = await kvGet('position_hedge_bot_status');
+    const ageEl  = document.getElementById('phbStatusAge');
+    const modeEl = document.getElementById('phbStatusMode');
+    const balEl  = document.getElementById('phbStatusBalance');
+    const bodyEl = document.getElementById('phbStatusBody');
+    if (!d) {
+      if (ageEl) ageEl.textContent = 'No data — bot not running';
+      return;
+    }
+    const ageSecs = d.pushed_at ? Math.round(Date.now() / 1000 - d.pushed_at) : null;
+    if (ageEl)  ageEl.textContent  = ageSecs != null ? `${ageSecs}s ago` : '';
+    if (modeEl) { modeEl.textContent = d.paper_mode ? '· PAPER' : '· LIVE'; modeEl.style.color = d.paper_mode ? 'var(--amber)' : 'var(--green)'; }
+    if (balEl)  balEl.textContent   = d.balance != null ? `· $${d.balance.toFixed(2)}` : '';
+    if (bodyEl) {
+      const positions = d.mt5_positions || [];
+      const hedgeCount = d.open_hedges ?? positions.length;
+      if (!positions.length) {
+        bodyEl.innerHTML = `<span class="bs-dim">${hedgeCount ? `${hedgeCount} hedge(s) tracked` : 'No open hedge positions'}</span>`;
+      } else {
+        bodyEl.innerHTML = positions.map(p => {
+          const dir = p.direction === 'BUY'
+            ? '<span class="bs-green">BUY</span>'
+            : '<span class="bs-red">SELL</span>';
+          const pnl = p.profit >= 0
+            ? `<span class="bs-green">+${p.profit.toFixed(2)}</span>`
+            : `<span class="bs-red">${p.profit.toFixed(2)}</span>`;
+          return `<span class="bs-dim">${p.symbol}</span> ${dir} <span class="bs-dim">${p.lots}L @${p.open_price}</span> ${pnl}`;
+        }).join('  ');
+      }
+    }
+  } catch(e) { /* non-critical */ }
+}
+
+window.savePhbConfig    = savePhbConfig;
+window.resetPhbDefaults = resetPhbDefaults;
+window.savePhbCreds     = savePhbCreds;
+
 loadDaStatus();
 loadGoldStatus();
 loadBtJournal();
 loadHbConfig();
 loadHbCreds();
 loadHbStatus();
+loadPhbConfig();
+loadPhbCreds();
+loadPhbStatus();
 setInterval(loadBotStatus,    60_000);
 setInterval(loadBtBotStatus,  60_000);
 setInterval(loadRgBotStatus,  60_000);
@@ -1895,3 +2023,4 @@ setInterval(loadDaStatus,     60_000);
 setInterval(loadGoldStatus,   60_000);
 setInterval(loadBtJournal,   120_000);
 setInterval(loadHbStatus,     60_000);
+setInterval(loadPhbStatus,    60_000);
