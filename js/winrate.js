@@ -1,39 +1,74 @@
 // winrate.js — Trade outcome tracking and win-rate feedback loop
 //
-// Stores a compact performance table in localStorage keyed by setup profile:
-//   stars_volRegime_session (e.g. "4_HIGH_LONDON")
+// Stores a compact performance table in the shared KV store so data is available
+// on every device (phone, laptop, bot). Key: wt_winrate_v1
 //
-// Entries are recorded automatically when the entry scanner surfaces them.
-// Outcomes are marked manually by the user from the dashboard entry cards.
-// The scanner reads historical WR to annotate and soft-gate low-WR profiles.
+// Architecture: in-memory cache loaded from KV on module init.
+// All reads are synchronous (from cache). All writes update the cache immediately
+// and fire an async KV write in the background — no blocking, no await in callers.
+//
+// Profile key: "{stars}_{volLabel}_{session}" e.g. "4_HIGH_LONDON"
+// Each bucket: { wins, losses, skips, pending: [{id, sym, price, direction, ...}] }
 
-const STORE_KEY = 'wt_winrate_v1';
-const MAX_PER_PROFILE = 200; // cap per profile bucket to avoid unbounded growth
+const KV_KEY = 'wt_winrate_v1';
+const MAX_PER_PROFILE = 200;
 
-// ── Persistence ──────────────────────────────────────────────────────────────
+// ── In-memory cache (sync interface) ─────────────────────────────────────────
+
+let _cache = {};
+
+async function _initCache() {
+  try {
+    const res = await fetch(`/api/kv/get?key=${encodeURIComponent(KV_KEY)}`);
+    if (!res.ok) return;
+    const obj = await res.json();
+    if (!obj.miss && obj.data && typeof obj.data === 'object') {
+      // Merge KV data into cache — keeps any pending entries recorded this session
+      // before the async load completed (race on very fast first-render)
+      for (const [k, v] of Object.entries(obj.data)) {
+        if (!_cache[k]) {
+          _cache[k] = v;
+        } else {
+          // Merge counters from KV (authoritative) with any session-recorded pending
+          _cache[k].wins    = v.wins    ?? _cache[k].wins;
+          _cache[k].losses  = v.losses  ?? _cache[k].losses;
+          _cache[k].skips   = v.skips   ?? _cache[k].skips;
+          // Keep pending from both; deduplicate by id
+          const kvPendingIds = new Set((v.pending ?? []).map(p => p.id));
+          const sessionOnly  = (_cache[k].pending ?? []).filter(p => !kvPendingIds.has(p.id));
+          _cache[k].pending  = [...(v.pending ?? []), ...sessionOnly];
+        }
+      }
+    }
+  } catch(e) {}
+}
+_initCache(); // fire-and-forget — no callers await this
 
 function _load() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY) ?? '{}'); }
-  catch { return {}; }
+  return _cache;
 }
 
 function _save(data) {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
-  catch {}
+  _cache = data;
+  // Async KV write — fire-and-forget. Errors logged but not thrown.
+  fetch('/api/kv/set', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ key: KV_KEY, data, timestamp: Date.now() }),
+  }).catch(e => console.warn('winrate KV write failed:', e.message));
 }
 
 // ── Profile key ──────────────────────────────────────────────────────────────
 
 export function profileKey(entry) {
   const stars   = Math.min(5, Math.max(1, Math.round(entry.totalStars ?? entry.stars ?? 1)));
-  const vol     = entry.volLabel ?? 'NORM';    // e.g. 'LOW'|'NORM'|'HIGH'|'EXTREME'
-  const session = entry.sessionName ?? 'NONE'; // e.g. 'ASIA'|'LONDON'|'NEW_YORK'
+  const vol     = entry.volLabel    ?? 'NORM';  // 'LOW'|'NORM'|'HIGH'|'EXTREME'
+  const session = entry.sessionName ?? 'NONE';  // 'ASIA'|'LONDON'|'NEW_YORK'
   return `${stars}_${vol}_${session}`;
 }
 
 // ── Record a surfaced entry ───────────────────────────────────────────────────
-// Call this whenever the entry scanner surfaces a new entry. Outcome starts
-// as null (pending). Returns the entry ID (ts_sym_price) for later resolution.
+// Returns an entry ID (ts_sym_price) for later outcome resolution.
 
 export function recordEntry(sym, entry) {
   const data = _load();
@@ -52,7 +87,6 @@ export function recordEntry(sym, entry) {
     ts:        Date.now(),
   });
 
-  // Trim pending list to prevent unbounded growth (keep most recent)
   if (data[key].pending.length > MAX_PER_PROFILE) {
     data[key].pending = data[key].pending.slice(-MAX_PER_PROFILE);
   }
@@ -62,7 +96,7 @@ export function recordEntry(sym, entry) {
 }
 
 // ── Resolve an entry outcome ──────────────────────────────────────────────────
-// outcome: 'win' | 'loss' | 'skip' (skip = did not take the trade)
+// outcome: 'win' | 'loss' | 'skip'
 
 export function resolveEntry(id, outcome) {
   const data = _load();
@@ -71,7 +105,7 @@ export function resolveEntry(id, outcome) {
     const idx    = bucket.pending?.findIndex(e => e.id === id) ?? -1;
     if (idx === -1) continue;
     bucket.pending.splice(idx, 1);
-    if (outcome === 'win')  bucket.wins++;
+    if (outcome === 'win')       bucket.wins++;
     else if (outcome === 'loss') bucket.losses++;
     else if (outcome === 'skip') bucket.skips++;
     _save(data);
@@ -81,8 +115,8 @@ export function resolveEntry(id, outcome) {
 }
 
 // ── Query win rate for a profile ─────────────────────────────────────────────
-// Returns { wr, n, wins, losses, skips, pending } or null if no data.
-// wr is 0–1 (excludes skips from denominator).
+// Returns { wr, n, wins, losses, skips, pending } or null if insufficient data.
+// wr is 0–1; skips excluded from denominator.
 
 export function getWinRate(entry) {
   const data   = _load();
@@ -101,41 +135,36 @@ export function getWinRate(entry) {
   };
 }
 
-// ── Bulk stats export (for dashboard display) ─────────────────────────────────
+// ── Bulk stats export ─────────────────────────────────────────────────────────
 
 export function getAllStats() {
   return _load();
 }
 
-// ── Session-level deduplication for auto-recording ───────────────────────────
-// Prevents the same zone from being recorded multiple times per session.
+// ── Session-level deduplication ───────────────────────────────────────────────
+// Prevents re-recording the same zone on every render tick.
 const _sessionSeen = new Set();
 
 function _entrySessionKey(sym, entry) {
-  const dir = entry.direction ?? 'none';
-  const px  = (entry.price ?? 0).toFixed(5);
-  return `${sym}_${px}_${dir}`;
+  return `${sym}_${(entry.price ?? 0).toFixed(5)}_${entry.direction ?? 'none'}`;
 }
 
 // ── Annotate an entry with WR data ───────────────────────────────────────────
-// Attaches { wrStats, wrWarning, wrBadge, _wrId } to an entry (mutates in place).
-// Also records the entry (once per session) so outcomes can be resolved later.
-// wrWarning is true when WR < 35% with n ≥ 10 — meaningful signal to reduce size.
+// Attaches { wrStats, wrWarning, wrBadge, _wrId } (mutates entry in place).
+// Auto-records the entry once per session so outcome buttons work immediately.
+// wrWarning = true when WR < 35% with ≥10 resolved trades.
 
 export function annotateEntry(sym, entry) {
   const sessionKey = _entrySessionKey(sym, entry);
 
-  // Auto-record once per session when the scanner surfaces this zone
   let entryId = null;
   if (!_sessionSeen.has(sessionKey)) {
     _sessionSeen.add(sessionKey);
     entryId = recordEntry(sym, entry);
   } else {
-    // Retrieve existing pending ID for this zone so outcome buttons stay wired
     const data   = _load();
     const key    = profileKey(entry);
-    const bucket = data[key];
-    const match  = bucket?.pending?.find(p =>
+    const match  = data[key]?.pending?.find(p =>
       p.sym === sym &&
       p.direction === entry.direction &&
       Math.abs(p.price - entry.price) < 1e-7
@@ -154,10 +183,10 @@ export function annotateEntry(sym, entry) {
   return entry;
 }
 
-// ── Purge pending entries older than N days (cleanup) ────────────────────────
+// ── Purge stale pending entries (call periodically) ───────────────────────────
 
 export function purgeStalePending(days = 7) {
-  const cutoff = Date.now() - days * 86400_000;
+  const cutoff = Date.now() - days * 86_400_000;
   const data   = _load();
   let changed  = false;
   for (const key of Object.keys(data)) {
