@@ -2467,33 +2467,38 @@ app.get('/api/vol-forecast/extended/export', (_req, res) => {
 // Mirrors the daily live session tracker but at the weekly timeframe.
 
 const WEEKLY_INSTRUMENTS = [
-  { name: 'GOLD',   sym: 'XAU_USD',   hmmKey: 'XAU/USD'  },
+  { name: 'GOLD',   sym: 'XAU_USD',    hmmKey: 'XAU/USD'  },
   { name: 'NQ',     sym: 'NAS100_USD', hmmKey: null        },
-  { name: 'EURUSD', sym: 'EUR_USD',   hmmKey: 'EUR/USD'  },
-  { name: 'GBPUSD', sym: 'GBP_USD',   hmmKey: 'GBP/USD'  },
-  { name: 'USDJPY', sym: 'USD_JPY',   hmmKey: 'USD/JPY'  },
-  { name: 'AUDUSD', sym: 'AUD_USD',   hmmKey: 'AUD/USD'  },
-  { name: 'NZDUSD', sym: 'NZD_USD',   hmmKey: 'NZD/USD'  },
-  { name: 'USDCAD', sym: 'USD_CAD',   hmmKey: 'USD/CAD'  },
-  { name: 'USDCHF', sym: 'USD_CHF',   hmmKey: 'USD/CHF'  },
-  { name: 'GBPJPY', sym: 'GBP_JPY',   hmmKey: 'GBP/JPY'  },
-  { name: 'EURGBP', sym: 'EUR_GBP',   hmmKey: null        },
-  { name: 'EURJPY', sym: 'EUR_JPY',   hmmKey: null        },
-  { name: 'EURCHF', sym: 'EUR_CHF',   hmmKey: null        },
-  { name: 'GBPCHF', sym: 'GBP_CHF',   hmmKey: null        },
-  { name: 'AUDJPY', sym: 'AUD_JPY',   hmmKey: null        },
-  { name: 'CADJPY', sym: 'CAD_JPY',   hmmKey: null        },
-  { name: 'EURCAD', sym: 'EUR_CAD',   hmmKey: null        },
-  { name: 'EURAUD', sym: 'EUR_AUD',   hmmKey: null        },
-  { name: 'EURNZD', sym: 'EUR_NZD',   hmmKey: null        },
-  { name: 'AUDNZD', sym: 'AUD_NZD',   hmmKey: null        },
-  { name: 'AUDCAD', sym: 'AUD_CAD',   hmmKey: null        },
-  { name: 'AUDCHF', sym: 'AUD_CHF',   hmmKey: null        },
-  { name: 'GBPCAD', sym: 'GBP_CAD',   hmmKey: null        },
-  { name: 'GBPAUD', sym: 'GBP_AUD',   hmmKey: null        },
-  { name: 'GBPNZD', sym: 'GBP_NZD',   hmmKey: null        },
-  { name: 'CHFJPY', sym: 'CHF_JPY',   hmmKey: null        },
-  { name: 'NZDJPY', sym: 'NZD_JPY',   hmmKey: null        },
+  { name: 'SPX500', sym: 'SPX500_USD', hmmKey: null        },
+  { name: 'DE30',   sym: 'DE30_EUR',   hmmKey: null        },
+  { name: 'UK100',  sym: 'UK100_GBP',  hmmKey: null        },
+  { name: 'US30',   sym: 'US30_USD',   hmmKey: null        },
+  { name: 'US2000', sym: 'US2000_USD', hmmKey: null        },
+  { name: 'EURUSD', sym: 'EUR_USD',    hmmKey: 'EUR/USD'  },
+  { name: 'GBPUSD', sym: 'GBP_USD',    hmmKey: 'GBP/USD'  },
+  { name: 'USDJPY', sym: 'USD_JPY',    hmmKey: 'USD/JPY'  },
+  { name: 'AUDUSD', sym: 'AUD_USD',    hmmKey: 'AUD/USD'  },
+  { name: 'NZDUSD', sym: 'NZD_USD',    hmmKey: 'NZD/USD'  },
+  { name: 'USDCAD', sym: 'USD_CAD',    hmmKey: 'USD/CAD'  },
+  { name: 'USDCHF', sym: 'USD_CHF',    hmmKey: 'USD/CHF'  },
+  { name: 'GBPJPY', sym: 'GBP_JPY',    hmmKey: 'GBP/JPY'  },
+  { name: 'EURGBP', sym: 'EUR_GBP',    hmmKey: null        },
+  { name: 'EURJPY', sym: 'EUR_JPY',    hmmKey: null        },
+  { name: 'EURCHF', sym: 'EUR_CHF',    hmmKey: null        },
+  { name: 'GBPCHF', sym: 'GBP_CHF',    hmmKey: null        },
+  { name: 'AUDJPY', sym: 'AUD_JPY',    hmmKey: null        },
+  { name: 'CADJPY', sym: 'CAD_JPY',    hmmKey: null        },
+  { name: 'EURCAD', sym: 'EUR_CAD',    hmmKey: null        },
+  { name: 'EURAUD', sym: 'EUR_AUD',    hmmKey: null        },
+  { name: 'EURNZD', sym: 'EUR_NZD',    hmmKey: null        },
+  { name: 'AUDNZD', sym: 'AUD_NZD',    hmmKey: null        },
+  { name: 'AUDCAD', sym: 'AUD_CAD',    hmmKey: null        },
+  { name: 'AUDCHF', sym: 'AUD_CHF',    hmmKey: null        },
+  { name: 'GBPCAD', sym: 'GBP_CAD',    hmmKey: null        },
+  { name: 'GBPAUD', sym: 'GBP_AUD',    hmmKey: null        },
+  { name: 'GBPNZD', sym: 'GBP_NZD',    hmmKey: null        },
+  { name: 'CHFJPY', sym: 'CHF_JPY',    hmmKey: null        },
+  { name: 'NZDJPY', sym: 'NZD_JPY',    hmmKey: null        },
 ];
 
 // Instruments that have HMM regime data (keyed by state.hmmRegimes format)
@@ -2576,42 +2581,47 @@ async function _getWeeklyStatus() {
   const r2 = x => Math.round(x * 100) / 100;
   const instruments = {};
 
-  await Promise.all(WEEKLY_INSTRUMENTS.map(async cfg => {
-    try {
-      const f = fc.instruments[cfg.name];
-      if (!f) return;
-      const wtd = await _fetchWTDBar(cfg.sym);
+  // Fetch in batches of 5 to avoid Oanda rate-limiting
+  const BATCH = 5;
+  for (let i = 0; i < WEEKLY_INSTRUMENTS.length; i += BATCH) {
+    await Promise.all(WEEKLY_INSTRUMENTS.slice(i, i + BATCH).map(async cfg => {
+      try {
+        const f = fc.instruments[cfg.name];
+        if (!f) return;
+        const wtd = await _fetchWTDBar(cfg.sym);
 
-      const wtdHLPct = r2((wtd.high - wtd.low) / wtd.open * 100);
-      const wtdOCPct = r2((wtd.close - wtd.open) / wtd.open * 100);
-      const hlConsumedPct = f.hl_5d > 0 ? Math.round(wtdHLPct / f.hl_5d * 100) : null;
-      const hlRemainingPct = f.hl_5d > 0 ? r2(Math.max(f.hl_5d - wtdHLPct, 0)) : null;
+        const wtdHLPct = r2((wtd.high - wtd.low) / wtd.open * 100);
+        const wtdOCPct = r2((wtd.close - wtd.open) / wtd.open * 100);
+        const hlConsumedPct  = f.hl_5d > 0 ? Math.round(wtdHLPct / f.hl_5d * 100) : null;
+        const hlRemainingPct = f.hl_5d > 0 ? r2(Math.max(f.hl_5d - wtdHLPct, 0)) : null;
 
-      const hmmData   = cfg.hmmKey ? (state.hmmRegimes[cfg.hmmKey]   ?? null) : null;
-      const hmm5mData = cfg.hmmKey ? (state.hmm5mRegimes[cfg.hmmKey] ?? null) : null;
+        const hmmData   = cfg.hmmKey ? (state.hmmRegimes[cfg.hmmKey]   ?? null) : null;
+        const hmm5mData = cfg.hmmKey ? (state.hmm5mRegimes[cfg.hmmKey] ?? null) : null;
 
-      instruments[cfg.name] = {
-        wtd_hl_pct:       wtdHLPct,
-        wtd_oc_pct:       wtdOCPct,
-        wtd_days:         wtd.days,
-        hl_5d:            f.hl_5d,
-        hl_5d_75:         r2(f.hl_75   * Math.sqrt(5)),
-        oc_5d:            f.oc_5d,
-        oc_5d_75:         r2(f.oc_75   * Math.sqrt(5)),
-        hl_20d:           f.hl_20d,
-        hl_20d_75:        r2(f.hl_75   * Math.sqrt(20)),
-        oc_20d:           f.oc_20d,
-        oc_20d_75:        r2(f.oc_75   * Math.sqrt(20)),
-        hl_consumed_pct:  hlConsumedPct,
-        hl_remaining_pct: hlRemainingPct,
-        vol_annual:       f.vol_annual,
-        vol_pct:          f.vol_pct,
-        ...(_weeklyBias(wtdOCPct, hlConsumedPct, hmmData, hmm5mData)),
-      };
-    } catch (err) {
-      instruments[cfg.name] = { error: err.message };
-    }
-  }));
+        instruments[cfg.name] = {
+          wtd_hl_pct:       wtdHLPct,
+          wtd_oc_pct:       wtdOCPct,
+          wtd_days:         wtd.days,
+          hl_5d:            f.hl_5d,
+          hl_5d_75:         r2(f.hl_75  * Math.sqrt(5)),
+          oc_5d:            f.oc_5d,
+          oc_5d_75:         r2(f.oc_75  * Math.sqrt(5)),
+          hl_20d:           f.hl_20d,
+          hl_20d_75:        r2(f.hl_75  * Math.sqrt(20)),
+          oc_20d:           f.oc_20d,
+          oc_20d_75:        r2(f.oc_75  * Math.sqrt(20)),
+          hl_consumed_pct:  hlConsumedPct,
+          hl_remaining_pct: hlRemainingPct,
+          vol_annual:       f.vol_annual,
+          vol_pct:          f.vol_pct,
+          ...(_weeklyBias(wtdOCPct, hlConsumedPct, hmmData, hmm5mData)),
+        };
+      } catch (err) {
+        instruments[cfg.name] = { error: err.message };
+      }
+    }));
+    if (i + BATCH < WEEKLY_INSTRUMENTS.length) await new Promise(r => setTimeout(r, 120));
+  }
 
   // Find Monday of current week for the label
   const now = new Date();
