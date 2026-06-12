@@ -2344,6 +2344,76 @@ app.get('/api/vol-forecast/reference/:date', async (req, res) => {
   }
 });
 
+// Parse plain-text forecast export (our format or reference) into { instrumentName: {vol,hl_med,hl_75,oc_med,oc_75} }
+function _parseExportText(text) {
+  const result = {};
+  let cur = null;
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    const hdr = line.match(/^────\s+(\S+)\s+─/);
+    if (hdr) { cur = hdr[1]; result[cur] = {}; continue; }
+    if (!cur) continue;
+    const vol = line.match(/Volatility.*?:\s*([\d.]+)%/);
+    if (vol) { result[cur].vol = parseFloat(vol[1]); continue; }
+    const hl = line.match(/High to Low.*?:\s*([\d.]+)%.*?([\d.]+)%/);
+    if (hl) { result[cur].hl_med = parseFloat(hl[1]); result[cur].hl_75 = parseFloat(hl[2]); continue; }
+    const oc = line.match(/Open to Close.*?:\s*([\d.]+)%.*?([\d.]+)%/);
+    if (oc) { result[cur].oc_med = parseFloat(oc[1]); result[cur].oc_75 = parseFloat(oc[2]); }
+  }
+  return result;
+}
+
+// GET /api/vol-forecast/compare/:date  — our archived forecast vs saved reference side-by-side
+app.get('/api/vol-forecast/compare/:date', async (req, res) => {
+  try {
+    const date = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+
+    const [ourRaw, refRaw] = await Promise.all([
+      kv.get(`vol_forecast_${date}`).catch(() => null),
+      kv.get(`vol_reference_${date}`).catch(() => null),
+    ]);
+
+    if (!ourRaw && !refRaw) return res.status(404).json({ ok: false, error: `No data found for ${date}` });
+
+    const ourFc   = ourRaw ? JSON.parse(ourRaw) : null;
+    const refData = refRaw ? JSON.parse(refRaw) : null;
+    const refInst = refData ? _parseExportText(refData.text) : {};
+
+    // Build per-instrument comparison rows
+    const rows = [];
+    const ourInst = ourFc?.instruments ?? {};
+    const allNames = new Set([...Object.keys(ourInst), ...Object.keys(refInst)]);
+
+    for (const name of allNames) {
+      const o = ourInst[name];
+      const r = refInst[name];
+      const gap = (ours, refs) => (ours && refs) ? Math.round((refs / ours - 1) * 1000) / 10 : null;
+      rows.push({
+        name,
+        our:  o ? { vol: o.vol_annual, hl_med: o.hl_median, hl_75: o.hl_75, oc_med: o.oc_median, oc_75: o.oc_75 } : null,
+        ref:  r ?? null,
+        gaps: (o && r) ? {
+          vol:    gap(o.vol_annual, r.vol),
+          hl_med: gap(o.hl_median,  r.hl_med),
+          hl_75:  gap(o.hl_75,      r.hl_75),
+          oc_med: gap(o.oc_median,  r.oc_med),
+          oc_75:  gap(o.oc_75,      r.oc_75),
+        } : null,
+      });
+    }
+
+    res.json({
+      ok: true, date,
+      our_label: ourFc?.session_label ?? date,
+      ref_saved_at: refData?.saved_at ?? null,
+      rows,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Session audit — retrieve a saved end-of-day session snapshot from KV.
 // GET /api/vol-forecast/audit/:date  (date = YYYY-MM-DD, defaults to today)
 app.get('/api/vol-forecast/audit/:date?', async (req, res) => {
