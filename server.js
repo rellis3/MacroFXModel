@@ -2901,6 +2901,29 @@ app.get('/api/vol-forecast/hit-rates', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// CSV export of per-day hit log: date, instrument, open, and hit/time per level
+app.get('/api/vol-forecast/hit-rates/export.csv', async (_req, res) => {
+  try {
+    const raw = await kv.get('vol_hit_rates');
+    if (!raw) return res.status(404).send('Not yet computed');
+    const data = JSON.parse(raw);
+    const LVLS = ['oh_med','oh_75','ol_med','ol_75','hl_med','hl_75'];
+    const hdr = ['date','instrument','open',
+      ...LVLS.flatMap(l => [`${l}_hit`, `${l}_time`])].join(',');
+    const rows = [hdr];
+    for (const [inst, idata] of Object.entries(data.instruments ?? {})) {
+      for (const day of (idata.daily ?? [])) {
+        const cols = [day.date, inst, day.open,
+          ...LVLS.flatMap(l => [day.hits[l] ? 1 : 0, day.hits[l] ?? ''])];
+        rows.push(cols.join(','));
+      }
+    }
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="hit_rates_${data.computed_at?.slice(0,10) ?? 'export'}.csv"`);
+    res.send(rows.join('\n'));
+  } catch (e) { res.status(500).send(e.message); }
+});
+
 app.post('/api/vol-forecast/hit-rates/compute', async (req, res) => {
   if (isHitRatesComputing()) return res.status(409).json({ ok: false, error: 'Already computing' });
   const days = Math.min(Math.max(parseInt(req.query.days ?? '90', 10), 14), 365);

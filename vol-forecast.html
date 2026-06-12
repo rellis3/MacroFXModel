@@ -1055,7 +1055,7 @@
   <button class="dark-btn" id="vfWeeklyBtn"   onclick="exportWeekly()"   disabled title="Weekly export: WTD range consumption, directional bias, 5-day/20-day forecasts">⬇ Weekly</button>
   <button class="dark-btn" id="vfHistoryBtn" onclick="toggleHistory()" disabled title="Show/hide session history table — click rows to load a past day, use ← Older / Newer → to navigate">⊞ History</button>
   <button class="dark-btn" id="vfLevelsBtn"  onclick="toggleLevelsView()" disabled title="Compact levels table — all instruments, today's price targets, hit times">📋 Levels</button>
-  <button class="dark-btn" id="vfHitRatesBtn" onclick="toggleHitRates()" disabled title="Levels hit rates — historical % hit rate and median reach time per level per instrument">📊 Hit Rates</button>
+  <button class="dark-btn" id="vfHitRatesBtn" onclick="toggleHitRates()" title="Levels hit rates — historical % hit rate and median reach time per level per instrument">📊 Hit Rates</button>
   <button class="dark-btn" id="vfBriefBtn" onclick="toggleBrief()" title="Daily Brief — today's price targets, hit probability, regime and sizing in one view">📋 Brief</button>
   <button class="dark-btn" id="vfProfileBtn" onclick="toggleProfile()" title="Intraday vol profile — which UTC hours historically produce the most range">📊 Profile</button>
   <button class="dark-btn" id="vfRefDataBtn" onclick="toggleRefPanel()" title="Paste today's reference forecast to store it in KV for comparison">📌 Ref Data</button>
@@ -1230,6 +1230,7 @@
     <span class="vf-lhist-sub" id="vfLHistSub">% of days each forecast price level was actually touched + median UTC time. Computed from historical H1 Oanda data.</span>
     <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfLHistAge"></span>
     <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="computeHitRates()" id="vfHitRatesComputeBtn">↻ Compute (90d)</button>
+    <a class="dark-btn" style="padding:3px 10px;font-size:10px;text-decoration:none" id="vfHitRatesExportBtn" href="/api/vol-forecast/hit-rates/export.csv" download title="Download per-day hit log as CSV — date, instrument, open price, hit/miss and time for each level">⬇ CSV</a>
   </div>
   <div class="vf-lhist-inst-tabs" id="vfLHistTabs"></div>
   <div class="vf-lhist-scroll">
@@ -2554,7 +2555,6 @@ async function loadHitRates() {
     const data = await res.json();
     if (!data.ok || !data.instruments) return;
     _hitRateData = data;
-    document.getElementById('vfHitRatesBtn').disabled = false;
     const age = document.getElementById('vfLHistAge');
     if (data.computed_at) age.textContent = `computed ${new Date(data.computed_at).toLocaleDateString()} · ${data.lookback_days}d lookback`;
   } catch { /* silent */ }
@@ -2587,9 +2587,20 @@ function toggleHitRates() {
   const panel = document.getElementById('vfLHistPanel');
   const btn   = document.getElementById('vfHitRatesBtn');
   const shown = panel.style.display !== 'none';
-  panel.style.display = shown ? 'none' : '';
-  btn.textContent = shown ? '📊 Hit Rates' : '✕ Hit Rates';
-  if (!shown && _hitRateData) _buildLHistTabs();
+  if (shown) { panel.style.display = 'none'; btn.textContent = '📊 Hit Rates'; return; }
+  panel.style.display = '';
+  btn.textContent = '✕ Hit Rates';
+  if (_hitRateData) {
+    _buildLHistTabs();
+  } else {
+    document.getElementById('vfLHistBody').innerHTML =
+      '<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text2)">' +
+      '<strong>No hit rate data yet.</strong><br><br>' +
+      'Click <strong>↻ Compute (90d)</strong> above to run the historical price scan.<br>' +
+      'This fetches H1 Oanda data for 21 instruments over 90 days and takes ~5–10 minutes.<br><br>' +
+      'Once computed, this panel shows the % of days each forecast level was actually touched and the typical UTC time it was reached.' +
+      '</div>';
+  }
 }
 
 function _buildLHistTabs() {

@@ -159,6 +159,7 @@ async function _computeInstrument(name, sym, ac, lookbackDays) {
   }
 
   const hitBuckets = Object.fromEntries(LEVELS.map(l => [l, []]));
+  const dailyLog   = []; // per-day records for CSV export
   let totalDays = 0;
 
   for (const [date, dayBars] of [...h1ByDate.entries()].sort()) {
@@ -199,12 +200,25 @@ async function _computeInstrument(name, sym, ac, lookbackDays) {
       if (!dayHit.hl_75  && rHL >= hl_75_abs)         dayHit.hl_75  = bT;
     }
 
+    // Aggregate into time buckets
     for (const lvl of LEVELS) {
       if (dayHit[lvl]) {
         const t = new Date(dayHit[lvl]);
         hitBuckets[lvl].push(t.getUTCHours() * 60 + t.getUTCMinutes());
       }
     }
+
+    // Per-day log entry for CSV export
+    const hitTimes = {};
+    for (const lvl of LEVELS) {
+      if (dayHit[lvl]) {
+        const t = new Date(dayHit[lvl]);
+        hitTimes[lvl] = _minsToHHMM(t.getUTCHours() * 60 + t.getUTCMinutes());
+      } else {
+        hitTimes[lvl] = null;
+      }
+    }
+    dailyLog.push({ date, open, hits: hitTimes });
   }
 
   if (!totalDays) return null;
@@ -221,7 +235,7 @@ async function _computeInstrument(name, sym, ac, lookbackDays) {
       latest_utc:   _minsToHHMM(times.length ? Math.max(...times) : null),
     };
   }
-  return { total_days: totalDays, levels };
+  return { total_days: totalDays, levels, daily: dailyLog };
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
