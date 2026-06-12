@@ -961,7 +961,7 @@
   <button class="dark-btn" id="vfHistoryBtn" onclick="toggleHistory()" disabled title="Show/hide session history table — click rows to load a past day, use ← Older / Newer → to navigate">⊞ History</button>
   <button class="dark-btn" id="vfLevelsBtn"  onclick="toggleLevelsView()" disabled title="Compact levels table — all instruments, today's price targets, hit times">📋 Levels</button>
   <button class="dark-btn" id="vfHitRatesBtn" onclick="toggleHitRates()" disabled title="Levels hit rates — historical % hit rate and median reach time per level per instrument">📊 Hit Rates</button>
-  <button class="dark-btn" id="vfProfileBtn" onclick="toggleProfile()" disabled title="Intraday vol profile — which UTC hours historically produce the most range">📊 Profile</button>
+  <button class="dark-btn" id="vfProfileBtn" onclick="toggleProfile()" title="Intraday vol profile — which UTC hours historically produce the most range">📊 Profile</button>
   <button class="dark-btn" id="vfRefDataBtn" onclick="toggleRefPanel()" title="Paste today's reference forecast to store it in KV for comparison">📌 Ref Data</button>
   <button class="dark-btn" id="vfEventBtn"   onclick="toggleEventImpact()" title="Event impact study — historical range expansion on CPI/NFP/FOMC days">📅 Events</button>
   <button class="dark-btn" id="vfSessionComputeBtn" onclick="triggerSessionStats()" title="Fetch 5yr Oanda H1 data and compute Asia/London session consumption stats (~3–5 min)">⟳ Session Stats</button>
@@ -2648,17 +2648,32 @@ async function loadIntradayProfile() {
     const data = await res.json();
     if (!data.ok) return;
     currentProfile = data;
-    document.getElementById('vfProfileBtn').disabled = false;
     _buildProfileTabs(data);
-  } catch { /* silent — requires session stats to have been computed */ }
+  } catch { /* no session stats yet — panel will show prompt */ }
 }
 
 function toggleProfile() {
   const panel = document.getElementById('vfProfilePanel');
   const btn   = document.getElementById('vfProfileBtn');
   const shown = panel.style.display !== 'none';
-  panel.style.display = shown ? 'none' : '';
-  btn.textContent = shown ? '📊 Profile' : '✕ Profile';
+  if (shown) {
+    panel.style.display = 'none';
+    btn.textContent = '📊 Profile';
+    return;
+  }
+  panel.style.display = '';
+  btn.textContent = '✕ Profile';
+  if (!currentProfile) {
+    document.getElementById('vfProfileTabs').innerHTML = '';
+    document.getElementById('vfProfileAge').textContent = '';
+    document.getElementById('vfProfileChart').innerHTML =
+      '<div style="padding:20px;font-size:11px;color:var(--text2);line-height:1.6">' +
+      '<strong>No profile data yet.</strong><br><br>' +
+      'Click <strong>⟳ Session Stats</strong> in the toolbar to compute the hourly vol profile.<br>' +
+      'This fetches 5 years of H1 data and takes ~3–5 minutes.<br><br>' +
+      'Once computed the profile shows which UTC hours historically produce the most range for each instrument.' +
+      '</div>';
+  }
 }
 
 function _buildProfileTabs(data) {
