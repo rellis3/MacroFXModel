@@ -28,7 +28,7 @@ import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus } from './js/volForecastScheduler.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
-import { computeHitRates, isHitRatesComputing } from './js/hitRateBackfill.js';
+import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -2920,6 +2920,7 @@ app.post('/api/vol-forecast/hit-rates/compute', async (req, res) => {
 // GET /api/daily-brief
 
 app.get('/api/daily-brief', async (_req, res) => {
+  try {
   const forecast = forecastState.latest;
   if (!forecast?.instruments) {
     return res.json({ ok: false, error: 'No forecast available — click ↻ Refresh first.' });
@@ -3036,6 +3037,10 @@ app.get('/api/daily-brief', async (_req, res) => {
     has_regime:    Object.keys(state.hmmRegimes).length > 0,
     instruments,
   });
+  } catch (e) {
+    console.error('[DAILY-BRIEF]', e.message);
+    res.status(500).json({ ok: false, error: `Server error: ${e.message}` });
+  }
 });
 
 // ── Session Stats API ─────────────────────────────────────────────────────────
