@@ -347,6 +347,8 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     const mondayOpen = mondayBar.open;
     const levelPcts  = { hl50pct, hl75pct, ocMedpct, oc75pct, atr30 };
     const trades     = simulateWeek(mondayOpen, weekBars, levelPcts, opts);
+    const pip        = PIP_SIZE[opts.pair ?? ''] ?? 0.0001;
+    const toPips     = pct => mondayOpen > 0 ? +(pct / 100 * mondayOpen / pip).toFixed(1) : null;
 
     for (const t of trades) {
       records.push({
@@ -369,6 +371,9 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
         fill_date:   t.fillDate ?? null,
         mfe_pct:     t.mfe != null ? +t.mfe.toFixed(5) : null,
         mae_pct:     t.mae != null ? +t.mae.toFixed(5) : null,
+        pnl_pips:    t.filled ? toPips(t.pnlPct) : null,
+        mfe_pips:    t.mfe   != null ? toPips(t.mfe) : null,
+        mae_pips:    t.mae   != null ? toPips(t.mae) : null,
       });
     }
   }

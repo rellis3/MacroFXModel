@@ -271,10 +271,37 @@
   <div class="hm-grid" id="hmGrid"></div>
 </div>
 
-<!-- ── Walk-forward IS / OOS ───────────────────────────────────────────────── -->
+<!-- ── Walk-forward IS / OOS (single split) ────────────────────────────────── -->
 <div class="bt-card" id="wfCard" style="display:none">
   <div class="bt-card-hdr">Walk-Forward Analysis <span style="color:var(--text3);font-size:11px;font-weight:400">70% In-Sample · 30% Out-of-Sample (by Monday date)</span></div>
   <div id="wfContent" style="padding:4px 0"></div>
+</div>
+
+<!-- ── Rolling walk-forward (5 expanding windows) ─────────────────────────── -->
+<div class="bt-card" id="rwfCard" style="display:none">
+  <div class="bt-card-hdr">Rolling Walk-Forward <span style="color:var(--text3);font-size:11px;font-weight:400">5 OOS periods · expanding IS window (50%→90%) · each OOS = 10% of dataset</span></div>
+  <div class="bt-card-body" style="padding:10px 0 0">
+    <div class="bt-chart-wrap" style="height:200px"><canvas id="rwfChart"></canvas></div>
+    <div id="rwfTable" style="margin-top:4px"></div>
+  </div>
+</div>
+
+<!-- ── Trade quality / near-miss card ─────────────────────────────────────── -->
+<div class="bt-card" id="nmCard" style="display:none">
+  <div class="bt-card-hdr">Trade Quality Analysis <span style="color:var(--text3);font-size:11px;font-weight:400">Near-miss, leave-on-table, and pip metrics</span></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 14px">
+    <div class="bt-sec"><span class="bt-sec-lbl">Near-Miss Trades</span><span class="bt-sec-val neg" id="nmCount">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">Near-Miss %</span><span class="bt-sec-val neg" id="nmPct">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">Leave on Table (winners)</span><span class="bt-sec-val amber" id="nmLeave">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">Best Exit (losers MFE)</span><span class="bt-sec-val amber" id="nmLoserBest">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">Avg Win (pips)</span><span class="bt-sec-val pos" id="nmPipWin">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">Avg Loss (pips)</span><span class="bt-sec-val neg" id="nmPipLoss">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">Avg MFE (pips)</span><span class="bt-sec-val pos" id="nmMfePips">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">Avg MAE (pips)</span><span class="bt-sec-val neg" id="nmMaePips">—</span></div>
+  </div>
+  <div style="padding:0 14px 10px;color:var(--text3);font-size:10px;font-family:'DM Mono',monospace">
+    Near-miss = loss where MFE &gt; 50% of avg win (had a good move but reversed). Leave-on-table = extra beyond TP for winners. Best Exit = avg peak gain on losing trades (missed early-exit opportunity). Pip averages are cross-pair so most meaningful when filtering to a single instrument.
+  </div>
 </div>
 
 <!-- ── Per-instrument & Per-level tables ──────────────────────────────────── -->
@@ -370,6 +397,7 @@
         <th>Week (Mon)</th><th>Pair</th><th>Level</th><th>Side</th>
         <th>Fill Day</th><th class="num">HL50%</th><th class="num">HL75%</th>
         <th class="num">Mon Open</th><th>Outcome</th><th class="num">P&amp;L%</th>
+        <th class="num">Pips</th><th class="num">MFE%</th><th class="num">MAE%</th>
         <th style="width:30px"></th>
       </tr></thead>
       <tbody id="tradeTblBody"></tbody>
@@ -483,6 +511,22 @@ function clientWbtStats(trades, extraSpread = 0) {
   const captureEff = mfeMean > 0 ? Math.max(0, (totalPnl / nFilled) / mfeMean * 100) : 0;
   const annReturn  = years > 0 ? normPnl / years : 0;
 
+  // Pip stats
+  const _cMean = arr => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
+  const pipWins  = filled.filter(r => r.pnl_pips != null && r.pnl_pct > 0).map(r => r.pnl_pips);
+  const pipLoss  = filled.filter(r => r.pnl_pips != null && r.pnl_pct <= 0).map(r => r.pnl_pips);
+  const mfePips  = filled.filter(r => r.mfe_pips != null).map(r => r.mfe_pips);
+  const maePips  = filled.filter(r => r.mae_pips != null).map(r => r.mae_pips);
+
+  // Near-miss & leave-on-table
+  const nearMissThresh = avgWin * 0.5;
+  const nearMissCount  = filled.filter(r => r.outcome === 'loss' && (r.mfe_pct ?? 0) > nearMissThresh).length;
+  const nearMissPct    = nFilled > 0 ? +(nearMissCount / nFilled * 100).toFixed(1) : 0;
+  const winnersLOT     = filled.filter(r => r.outcome === 'win' && r.mfe_pct != null);
+  const losersMFE      = filled.filter(r => r.outcome === 'loss' && r.mfe_pct != null);
+  const leaveMean      = _cMean(winnersLOT.map(r => Math.max(0, r.mfe_pct - r.pnl_pct)));
+  const loserBestExit  = _cMean(losersMFE.map(r => r.mfe_pct));
+
   return { nDays, nFilled,
     fillRate:       +(nFilled / nDays * 100).toFixed(1),
     winRate:        +(wins.length / nFilled * 100).toFixed(1),
@@ -506,6 +550,14 @@ function clientWbtStats(trades, extraSpread = 0) {
     maeMean:        +maeMean.toFixed(4),
     maeMed:         +maeMed.toFixed(4),
     captureEff:     +Math.min(captureEff, 999).toFixed(1),
+    avgPipWin:      +_cMean(pipWins).toFixed(1),
+    avgPipLoss:     +_cMean(pipLoss).toFixed(1),
+    avgMfePips:     +_cMean(mfePips).toFixed(1),
+    avgMaePips:     +_cMean(maePips).toFixed(1),
+    nearMissCount,
+    nearMissPct,
+    leaveMean:      +leaveMean.toFixed(4),
+    loserBestExit:  +loserBestExit.toFixed(4),
   };
 }
 
@@ -542,9 +594,11 @@ function renderAll(data) {
   renderKpis(data.overall);
   renderSecondary(data.overall);
   renderMfeCard(data.overall);
+  renderNearMissCard(data.overall);
   renderEquityCurve(data);
   renderMonthlyHeatmap(data.monthlyPnl);
   renderWalkForward(data.walkForward);
+  renderRollingWF(data.wfWindows);
   renderInstTable(data.byInstrument);
   renderLevelTable(data.byLevel);
   renderFillDayChart(data.byFillDay);
@@ -553,7 +607,7 @@ function renderAll(data) {
   initTradelog(data.recentTrades, data.instruments);
   _allTrades = data.allTrades || [];
 
-  ['kpiGrid','secGrid','mfeCard','eqCard','hmCard','wfCard','twoCol','twoCol2','pieCard','tradeCard'].forEach(id => {
+  ['kpiGrid','secGrid','mfeCard','nmCard','eqCard','hmCard','wfCard','rwfCard','twoCol','twoCol2','pieCard','tradeCard'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
@@ -600,6 +654,84 @@ function renderMfeCard(s) {
   set('mCapture',  s.captureEff != null ? fmt(s.captureEff, 1) + '%' : '—');
   const ratio = s.maeMean > 0 ? (s.mfeMean / s.maeMean) : (s.mfeMean > 0 ? 99 : 0);
   set('mMfeRatio', fmt(ratio, 2));
+}
+
+function renderNearMissCard(s) {
+  if (!s) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('nmCount',    s.nearMissCount != null ? s.nearMissCount.toLocaleString() : '—');
+  set('nmPct',      s.nearMissPct   != null ? s.nearMissPct + '%' : '—');
+  set('nmLeave',    s.leaveMean     != null ? '+' + fmt(s.leaveMean, 4) + '%' : '—');
+  set('nmLoserBest',s.loserBestExit != null ? '+' + fmt(s.loserBestExit, 4) + '%' : '—');
+  set('nmPipWin',   s.avgPipWin     != null ? '+' + s.avgPipWin + ' pip' : '—');
+  set('nmPipLoss',  s.avgPipLoss    != null ? s.avgPipLoss + ' pip' : '—');
+  set('nmMfePips',  s.avgMfePips    != null ? '+' + s.avgMfePips + ' pip' : '—');
+  set('nmMaePips',  s.avgMaePips    != null ? s.avgMaePips + ' pip' : '—');
+}
+
+let _rwfChart = null;
+
+function renderRollingWF(windows) {
+  const tbl = document.getElementById('rwfTable');
+  const ctx  = document.getElementById('rwfChart')?.getContext('2d');
+  if (!tbl || !ctx || !windows?.length) {
+    if (tbl) tbl.innerHTML = '<p style="color:var(--text3);padding:12px;font-size:12px">No rolling walk-forward data.</p>';
+    return;
+  }
+
+  const labels   = windows.map(w => w.label + '\n' + w.oosFrom + '→' + w.oosTo);
+  const sharpes  = windows.map(w => +(w.oosStats?.sharpe  ?? 0));
+  const winRates = windows.map(w => +(w.oosStats?.winRate  ?? 0));
+  const pfs      = windows.map(w => +(w.oosStats?.profitFactor ?? 0));
+
+  if (_rwfChart) _rwfChart.destroy();
+  _rwfChart = new Chart(ctx, {
+    data: {
+      labels: windows.map((w, i) => `OOS ${i+1}`),
+      datasets: [
+        { type: 'bar',  label: 'OOS Sharpe', data: sharpes,  backgroundColor: 'rgba(16,185,129,0.6)',  yAxisID: 'y',  borderRadius: 3 },
+        { type: 'bar',  label: 'OOS PF',     data: pfs,      backgroundColor: 'rgba(59,130,246,0.5)',  yAxisID: 'y',  borderRadius: 3 },
+        { type: 'line', label: 'OOS Win%',   data: winRates, borderColor: 'rgba(251,191,36,0.9)', backgroundColor: 'transparent',
+          yAxisID: 'y2', pointRadius: 4, borderWidth: 2, tension: 0.3 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      scales: {
+        y:  { ticks: { color: '#6b7280', font: { size: 10 }, callback: v => v.toFixed(1) }, grid: { color: 'rgba(255,255,255,0.05)' }, min: 0 },
+        y2: { position: 'right', min: 0, max: 100, ticks: { color: '#fbbf24', font: { size: 10 }, callback: v => v+'%' }, grid: { display: false } },
+        x:  { ticks: { color: '#6b7280', font: { size: 10 } } },
+      },
+      plugins: { legend: { labels: { color: '#9ca3af', font: { size: 10 }, boxWidth: 12 } } },
+    },
+  });
+
+  // Rolling WF table
+  tbl.innerHTML = `<div class="bt-tbl-scroll"><table class="bt-tbl">
+    <thead><tr>
+      <th>Window</th><th>IS period</th><th>OOS period</th>
+      <th class="num">OOS Fills</th><th class="num">OOS Win%</th>
+      <th class="num">OOS Sharpe</th><th class="num">OOS PF</th>
+      <th class="num">OOS Ann.Ret</th><th class="num">OOS MaxDD</th>
+    </tr></thead>
+    <tbody>
+      ${windows.map((w, i) => {
+        const o = w.oosStats ?? {};
+        const wr = o.winRate ?? 0, sh = o.sharpe ?? 0, pf = o.profitFactor ?? 0;
+        return `<tr>
+          <td><strong>OOS ${i+1}</strong></td>
+          <td style="font-size:10px;color:var(--text3)">${w.isFrom} → ${w.isTo}</td>
+          <td style="font-size:10px;color:var(--text3)">${w.oosFrom} → ${w.oosTo}</td>
+          <td class="num">${(o.nFilled ?? 0).toLocaleString()}</td>
+          <td class="num ${wr >= 50 ? 'pos' : wr >= 40 ? '' : 'neg'}">${fmt(wr)}%</td>
+          <td class="num ${sh >= 1 ? 'pos' : 'neg'}">${fmt(sh)}</td>
+          <td class="num ${pf >= 1.2 ? 'pos' : 'neg'}">${fmt(pf)}</td>
+          <td class="num ${(o.annReturn ?? 0) >= 0 ? 'pos' : 'neg'}">${fmtPct(o.annReturn ?? 0)}/yr</td>
+          <td class="num neg">${fmt(o.maxDd ?? 0)}%</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table></div>`;
 }
 
 function renderEquityCurve(data) {
@@ -897,7 +1029,10 @@ function renderPage() {
       <td class="num">${r.monday_open ?? '—'}</td>
       <td><span class="bt-badge ${bc}">${oc ?? '—'}</span></td>
       <td class="num ${pnl >= 0 ? 'pos' : 'neg'}">${fmtPct(pnl)}</td>
-      <td><button class="chart-btn" onclick="openWbtChart(${absIdx})" title="View M1 chart">◫</button></td>
+      <td class="num" style="font-size:10px;color:var(--text3)">${r.pnl_pips != null ? (r.pnl_pips >= 0 ? '+' : '') + r.pnl_pips : '—'}</td>
+      <td class="num pos" style="font-size:10px">${r.mfe_pct != null ? '+' + fmt(r.mfe_pct, 3) + '%' : '—'}</td>
+      <td class="num neg" style="font-size:10px">${r.mae_pct != null ? fmt(r.mae_pct, 3) + '%' : '—'}</td>
+      <td><button class="chart-btn" onclick="openWbtChart(${absIdx})" title="View D1 chart">◫</button></td>
     </tr>`;
   }).join('');
 

@@ -3815,6 +3815,29 @@ function _wbtStats(trades) {
   const maeMed     = _wbtMed(maeArr);
   const captureEff = mfeMean > 0 ? Math.max(0, (totalPnl / nFilled) / mfeMean * 100) : 0;
 
+  // Pip-based stats (cross-pair: only meaningful if single-pair slice)
+  const pipWinArr  = filled.filter(r => r.pnl_pips != null && r.pnl_pct > 0).map(r => r.pnl_pips);
+  const pipLossArr = filled.filter(r => r.pnl_pips != null && r.pnl_pct <= 0).map(r => r.pnl_pips);
+  const mfePipArr  = filled.filter(r => r.mfe_pips != null).map(r => r.mfe_pips);
+  const maePipArr  = filled.filter(r => r.mae_pips != null).map(r => r.mae_pips);
+  const avgPipWin  = pipWinArr.length  ? pipWinArr.reduce((s, v) => s + v, 0)  / pipWinArr.length  : 0;
+  const avgPipLoss = pipLossArr.length ? pipLossArr.reduce((s, v) => s + v, 0) / pipLossArr.length : 0;
+  const avgMfePips = mfePipArr.length  ? mfePipArr.reduce((s, v) => s + v, 0)  / mfePipArr.length  : 0;
+  const avgMaePips = maePipArr.length  ? maePipArr.reduce((s, v) => s + v, 0)  / maePipArr.length  : 0;
+
+  // Near-miss: losing trades where MFE > avgWin*0.5 — moved favorably but reversed
+  const nearMissThresh = avgWin * 0.5;
+  const nearMissCount  = filled.filter(r => r.outcome === 'loss' && (r.mfe_pct ?? 0) > nearMissThresh).length;
+  const nearMissPct    = nFilled > 0 ? +(nearMissCount / nFilled * 100).toFixed(1) : 0;
+
+  // Leave-on-table: for winning trades, how far price moved beyond TP (mfe_pct - pnl_pct)
+  const winners  = filled.filter(r => r.outcome === 'win' && r.mfe_pct != null);
+  const loserMfe = filled.filter(r => r.outcome === 'loss' && r.mfe_pct != null);
+  const leaveArr = winners.map(r => Math.max(0, r.mfe_pct - r.pnl_pct));
+  const leaveMean = leaveArr.length ? leaveArr.reduce((s, v) => s + v, 0) / leaveArr.length : 0;
+  // Best possible exit for losers (avg MFE on losing trades)
+  const loserBestExit = loserMfe.length ? loserMfe.reduce((s, r) => s + r.mfe_pct, 0) / loserMfe.length : 0;
+
   return {
     nDays, nFilled,
     fillRate:       +(nFilled / nDays * 100).toFixed(1),
@@ -3842,6 +3865,14 @@ function _wbtStats(trades) {
     maeMean:        +maeMean.toFixed(4),
     maeMed:         +maeMed.toFixed(4),
     captureEff:     +Math.min(captureEff, 999).toFixed(1),
+    avgPipWin:      +avgPipWin.toFixed(1),
+    avgPipLoss:     +avgPipLoss.toFixed(1),
+    avgMfePips:     +avgMfePips.toFixed(1),
+    avgMaePips:     +avgMaePips.toFixed(1),
+    nearMissCount,
+    nearMissPct,
+    leaveMean:      +leaveMean.toFixed(4),
+    loserBestExit:  +loserBestExit.toFixed(4),
   };
 }
 
@@ -3937,6 +3968,9 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
         sl:          r.sl,
         mfe_pct:     r.mfe_pct,
         mae_pct:     r.mae_pct,
+        pnl_pips:    r.pnl_pips,
+        mfe_pips:    r.mfe_pips,
+        mae_pips:    r.mae_pips,
       }));
 
     // Compact allTrades for client-side stats + chart modal
@@ -3960,6 +3994,9 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
       sl:          r.sl,
       mfe_pct:     r.mfe_pct,
       mae_pct:     r.mae_pct,
+      pnl_pips:    r.pnl_pips,
+      mfe_pips:    r.mfe_pips,
+      mae_pips:    r.mae_pips,
     }));
 
     const overall = _wbtStats(trades);
@@ -3976,6 +4013,26 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
       dateTo:     wfDates.at(-1) ?? '',
     };
 
+    // Rolling expanding-window walk-forward (5 OOS periods, IS grows from 50% to 90%)
+    const nWfDates = wfDates.length;
+    const wfWindows = [];
+    for (let i = 0; i < 5; i++) {
+      const isEndIdx  = Math.floor(nWfDates * (0.5 + i * 0.1));
+      const oosEndIdx = Math.min(nWfDates, isEndIdx + Math.floor(nWfDates * 0.1));
+      if (isEndIdx >= nWfDates || oosEndIdx <= isEndIdx) break;
+      const isTo    = wfDates[isEndIdx - 1];
+      const oosFrom = wfDates[isEndIdx];
+      const oosTo   = wfDates[oosEndIdx - 1];
+      const isTr    = trades.filter(r => { const d = r.date?.substring(0, 10) ?? ''; return d >= wfDates[0] && d <= isTo; });
+      const oosTr   = trades.filter(r => { const d = r.date?.substring(0, 10) ?? ''; return d >= oosFrom && d <= oosTo; });
+      wfWindows.push({
+        label: `OOS ${i + 1}`,
+        isFrom: wfDates[0], isTo, oosFrom, oosTo,
+        isStats:  _wbtStats(isTr),
+        oosStats: _wbtStats(oosTr),
+      });
+    }
+
     res.json({
       ok: true,
       file:        path.basename(filePath),
@@ -3990,6 +4047,7 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
       recentTrades,
       allTrades,
       walkForward,
+      wfWindows,
       totalTrades: trades.filter(t => t.filled).length,
       instruments,
     });
