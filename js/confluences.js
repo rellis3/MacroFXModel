@@ -28,8 +28,18 @@ export function detectCrossSessionClusters(asiaConfs, mondayConfs, symbol) {
   });
 }
 
+// Pre-enhancement structural quality filter.
+// Removes single-density loose confluences that add visual noise without trading value.
+// Keeps: tight alignment (today/yesterday fibs within 10% of threshold), density ≥ 2
+// (multiple raw fib pairs merged into this level), or cross-session (Asia+Monday agree).
+// Stars are not yet available here — only structural properties set by confluence-core.js.
 export function filterConfluences(confluences) {
-  return confluences;
+  if (!confluences.length) return confluences;
+  const quality = confluences.filter(c =>
+    c.isTight || (c.density ?? 1) >= 2 || c.crossSessionMatch
+  );
+  // Fall back to all confluences if the filter removes everything
+  return quality.length > 0 ? quality : confluences;
 }
 
 // Cross-source merge — collapses Asia + Monday levels that land within the
@@ -90,7 +100,10 @@ function _collapseCluster(cluster) {
   };
 }
 
-export function enhanceConfluences(confluences, currentPrice, bias, pivots, volRegime, macroScore) {
+// keyLevels: { pdhHigh, pdhLow, pwhHigh, pwhLow } — optional previous-day/week extremes.
+// These are the most watched institutional reference levels and earn a dedicated star bonus
+// when a confluence zone coincides with them.
+export function enhanceConfluences(confluences, currentPrice, bias, pivots, volRegime, macroScore, keyLevels = null) {
   const symbol = S.currentPair.symbol;
   const pipSize = getPipSize(symbol);
   const atr = volRegime.atr;
@@ -227,10 +240,30 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       }
     }
 
+    // Previous-day high/low and previous-week high/low checks.
+    // These are the most watched institutional reference levels (from Asia backtest confluence
+    // module system). The Asia backtest engine scores these as pdhPdl (weight 2.0) and
+    // pwhPwl (weight 1.5) — highest-weighted modules. Porting them here closes the gap
+    // between the backtest engine's zone quality and the dashboard's star rating.
+    let pdhMatch = null, pwhMatch = null;
+    if (keyLevels) {
+      const _klTol = _dfibThreshold;
+      if (keyLevels.pdhHigh != null && Math.abs(c.price - keyLevels.pdhHigh) <= _klTol)
+        pdhMatch = 'PDH';
+      else if (keyLevels.pdhLow != null && Math.abs(c.price - keyLevels.pdhLow) <= _klTol)
+        pdhMatch = 'PDL';
+      if (keyLevels.pwhHigh != null && Math.abs(c.price - keyLevels.pwhHigh) <= _klTol)
+        pwhMatch = 'PWH';
+      else if (keyLevels.pwhLow != null && Math.abs(c.price - keyLevels.pwhLow) <= _klTol)
+        pwhMatch = 'PWL';
+    }
+
     // Fix 8: track structural stars (level quality) separately from alignment stars
     let structuralStars = 1;
     if (c.isTight)                 structuralStars += 4;
     if (pivotMatch)                structuralStars++;
+    if (pdhMatch)                  structuralStars++;  // prev-day H/L — top institutional level
+    if (pwhMatch)                  structuralStars++;  // prev-week H/L — weekly extreme
     if (oiMatch)                   structuralStars++;
     if (nearDailyOpen)             structuralStars++;
     if (matchingOpens.length >= 3) structuralStars++;
@@ -414,6 +447,8 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       aligned,
       alignStatus,
       pivotMatch,
+      pdhMatch,           // 'PDH' | 'PDL' | null — previous-day high/low alignment
+      pwhMatch,           // 'PWH' | 'PWL' | null — previous-week high/low alignment
       oiMatch,
       dailyFib,           // { label, direction, strength } of matching daily Fib level, or null
       structuralFib,      // { label, direction, passType, timeLabel, count } or null

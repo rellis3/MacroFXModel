@@ -225,11 +225,33 @@ function renderAllInner() {
   detectCrossSessionClusters(_asiaConfs, _mondayConfs, S.currentPair.symbol);
   const allConfluences = mergeCrossSources([..._asiaConfs, ..._mondayConfs], S.currentPair.symbol);
   const filtered = filterConfluences(allConfluences);
-  const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, tierData.totalScore);
+  const _keyLevels = {
+    pdhHigh: yesterdayLvls.high ?? null,
+    pdhLow:  yesterdayLvls.low  ?? null,
+    pwhHigh: prevWeekLvls.high  ?? null,
+    pwhLow:  prevWeekLvls.low   ?? null,
+  };
+  const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, tierData.totalScore, _keyLevels);
   enhanced.sort((a, b) => {
     if (b.stars !== a.stars) return b.stars - a.stars;
     return a.distance - b.distance;
   });
+
+  // Post-enhancement proximity filter: drop zones beyond 4× daily ATR from price.
+  // This removes deep-extension fibs (-9.5 to -2, +2 to +10.5) that are structurally
+  // valid confluences but have no practical trading relevance for the current session.
+  // Also cap the displayed list to avoid overwhelming the level map.
+  const _zoneWindowPips = volRegime.atrPips * 4;
+  const _MAX_ZONES = 14;
+  const _rawZoneCount = enhanced.length;
+  const enhancedFiltered = enhanced
+    .filter(z => z.distance <= _zoneWindowPips)
+    .slice(0, _MAX_ZONES);
+  // Expose the raw count so the level-map badge can show "X / Y"
+  const _zoneCountLabel = `${enhancedFiltered.length}${_rawZoneCount > enhancedFiltered.length ? ` / ${_rawZoneCount}` : ''}`;
+  // Re-use `enhanced` reference downstream (avoids touching all template renders)
+  enhanced.length = 0;
+  enhancedFiltered.forEach(z => enhanced.push(z));
 
   const biasClass = macroBias === 'LONG' ? 'b-bull' : macroBias === 'SHORT' ? 'b-bear' : 'b-neu';
   const biasText = macroBias === 'LONG' ? '↑ ' : macroBias === 'SHORT' ? '↓ ' : '— ';
@@ -696,7 +718,7 @@ ${calendarCtx.warnings.length > 0 ? `
     <div class="sec-lbl">
       Level Map
       <span class="sec-badge purple">TIER 2</span>
-      <span class="count-badge">${enhanced.length}</span>
+      <span class="count-badge" title="${_rawZoneCount > enhanced.length ? `${_rawZoneCount} total zones — ${_rawZoneCount - enhanced.length} removed (outside 4× ATR window or weak density)` : ''}">${_zoneCountLabel}</span>
     </div>
     ${(() => {
       const ds = window._lastDecisionState;
@@ -721,7 +743,7 @@ ${calendarCtx.warnings.length > 0 ? `
     })()}
 
     <div class="hint">
-      <strong>How stars work:</strong> ★ Fib confluence · +★ tight · +★ macro bias · +★ pivot/OI · +★ daily Fib · +★ structural Fib · +★ RSI/WT divergence. Max 5★. Tight levels (🟢) overlap two sessions — highest-probability zones.
+      <strong>How stars work:</strong> ★ Fib confluence · +★ tight · +★ macro bias · +★ pivot/OI · +★ PDH/PDL · +★ PWH/PWL · +★ daily Fib · +★ structural Fib · +★ RSI/WT divergence. Max 5★. Tight levels (🟢) overlap two sessions — highest-probability zones.
     </div>
 
     <div class="legend">
@@ -1082,6 +1104,8 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits, ti
     : c.direction                  ? '<div class="ci-align-neutral" title="Macro is neutral — no directional conviction">◎ Neutral</div>'
     : ''}
     ${c.pivotMatch ? `<div class="ci-pivot">📍 ${c.pivotMatch}</div>` : ''}
+    ${c.pdhMatch ? `<div class="ci-pivot" title="Previous-day ${c.pdhMatch === 'PDH' ? 'high' : 'low'} — top institutional reference level">🏛 ${c.pdhMatch}</div>` : ''}
+    ${c.pwhMatch ? `<div class="ci-pivot" title="Previous-week ${c.pwhMatch === 'PWH' ? 'high' : 'low'} — weekly extreme level">📆 ${c.pwhMatch}</div>` : ''}
     ${c.dailyFib ? `<div class="ci-dfib dfib-${c.dailyFib.strength}" title="Daily Fib retracement">📊 ${c.dailyFib.label} ${c.dailyFib.direction}</div>` : ''}
     ${c.structuralFib ? `<div class="ci-dfib dfib-${c.structuralFib.strength}" title="Structural fib · ${c.structuralFib.timeLabel}">📐 ${c.structuralFib.label} ${c.structuralFib.direction}${c.structuralFib.count >= 3 ? ` ×${c.structuralFib.count}` : ''}</div>` : ''}
     ${c.retailCluster ? `<div class="ci-dfib dfib-silver" title="Retail positioning cluster (Myfxbook avg price)">👥 ${c.retailCluster.label}</div>` : ''}
