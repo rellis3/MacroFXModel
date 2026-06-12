@@ -2669,6 +2669,39 @@ function _hrLevelSLTPStats(name, lvl) {
   return { hits, tp_pct: Math.round(tps / hits * 100), sl_pct: Math.round(sls / hits * 100), both_pct: Math.round(boths / hits * 100) };
 }
 
+// Deviation of actual price from forecast level, as a multiple of the forecast distance.
+// +ve = overshoot (exceeded level), -ve = undershoot (fell short). Works for all days.
+function _hrDeviation(day, lvl) {
+  const { open, day_high: dH, day_low: dL, fc } = day;
+  if (!open || dH == null || dL == null || !fc) return null;
+  const actual_range = dH - dL;
+  switch (lvl) {
+    case 'oh_med': { const d = open * fc.oc_median / 100; return d ? (dH - (open + d)) / d : null; }
+    case 'oh_75':  { const d = open * fc.oc_75    / 100; return d ? (dH - (open + d)) / d : null; }
+    case 'ol_med': { const d = open * fc.oc_median / 100; return d ? ((open - d) - dL)  / d : null; }
+    case 'ol_75':  { const d = open * fc.oc_75    / 100; return d ? ((open - d) - dL)  / d : null; }
+    case 'hl_med': { const d = open * fc.hl_median / 100; return d ? (actual_range - d) / d : null; }
+    case 'hl_75':  { const d = open * fc.hl_75    / 100; return d ? (actual_range - d) / d : null; }
+    default: return null;
+  }
+}
+
+function _hrMedianDev(name, lvl) {
+  const daily = _hitRateData?.instruments?.[name]?.daily;
+  if (!daily?.length) return null;
+  const vals = daily.map(d => _hrDeviation(d, lvl)).filter(v => v != null);
+  if (!vals.length) return null;
+  const s = [...vals].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function _fmtDev(v) {
+  if (v == null) return null;
+  const sign = v >= 0 ? '+' : '';
+  return `${sign}${(v).toFixed(2)}×`;
+}
+
 function _buildHRPanel() {
   if (!_hitRateData?.instruments) return;
 
@@ -2734,12 +2767,19 @@ function _renderHROverview() {
       if (!d) return `<td style="padding:4px 8px;text-align:center;color:var(--text3);background:${grp.color};border-bottom:1px solid var(--border)">—</td>`;
       const cls    = d.hit_pct >= 70 ? 'hi' : d.hit_pct >= 50 ? 'med' : 'lo';
       const sltp   = _hrLevelSLTPStats(name, key);
+      const medDev = _hrMedianDev(name, key);
+      const devStr = _fmtDev(medDev);
+      const devCol = medDev == null ? '' : medDev >= 0 ? 'var(--green)' : 'var(--red)';
       const sltpHtml = sltp
         ? `<div style="font-size:8px;color:var(--green);line-height:1.2">TP ${sltp.tp_pct}%</div><div style="font-size:8px;color:var(--red);line-height:1.2">SL ${sltp.sl_pct}%</div>`
+        : '';
+      const devHtml = devStr
+        ? `<div style="font-size:8px;color:${devCol};line-height:1.4" title="Median deviation from forecast level (all days)">${devStr}</div>`
         : '';
       return `<td style="padding:3px 6px;text-align:center;border-bottom:1px solid var(--border);background:${grp.color}">
         <div class="vf-hr-rate ${cls}" style="font-size:11px">${d.hit_pct}%</div>
         <div class="vf-hr-time">${d.median_utc ?? '—'}</div>
+        ${devHtml}
         ${sltpHtml}
       </td>`;
     }).join('');
@@ -2825,6 +2865,9 @@ function _renderHRDay() {
       }
       const cls      = hit ? 'hit' : '';
       const outcome  = _hrSLTP(day, key);
+      const dayDev   = _hrDeviation(day, key);
+      const devStr   = _fmtDev(dayDev);
+      const devCol   = dayDev == null ? '' : dayDev >= 0 ? 'var(--green)' : 'var(--red)';
       const outcomeHtml = (() => {
         if (!hit || outcome === null) return '';
         if (outcome === 'nodata') return '';
@@ -2838,6 +2881,7 @@ function _renderHRDay() {
         <div class="vf-lv-cell ${cls}">
           <span class="vf-lv-price">${priceStr}</span>
           ${hit ? `<span class="vf-lv-time">✓ ${hitTime}</span>` : `<span class="vf-lv-rem">miss</span>`}
+          ${devStr ? `<span style="font-size:8px;color:${devCol}" title="Deviation: how far price went past (positive) or fell short of (negative) the forecast level">${devStr}</span>` : ''}
           ${outcomeHtml}
         </div>
       </td>`;
@@ -2889,6 +2933,7 @@ function _hrCopyDay() {
       }
       const hitTime = day.hits?.[key];
       const outcome = _hrSLTP(day, key);
+      const dayDev  = _hrDeviation(day, key);
       const outcomeStr = (() => {
         if (!hitTime) return '';
         if (!outcome || outcome === 'nodata') return '';
@@ -2898,7 +2943,8 @@ function _hrCopyDay() {
         if (outcome === 'open') return '  → Open';
         return '';
       })();
-      const status = hitTime ? `HIT  ${hitTime} UTC${outcomeStr}` : 'MISS —';
+      const devLabel = dayDev != null ? `  dev ${_fmtDev(dayDev)}` : '';
+      const status   = hitTime ? `HIT  ${hitTime} UTC${outcomeStr}${devLabel}` : `MISS —${devLabel}`;
       lines.push(`${lbl}: ${price.padEnd(12)} ${status}`);
     }
     lines.push('');

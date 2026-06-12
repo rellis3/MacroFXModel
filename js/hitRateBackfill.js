@@ -283,7 +283,7 @@ async function _computeInstrument(name, sym, ac, lookbackDays, existingInst = nu
         };
       }
     }
-    newDailyLog.push({ date, open, atr30_pct, fc: { oc_median: fc.oc_median, oc_75: fc.oc_75, hl_median: fc.hl_median, hl_75: fc.hl_75 }, hits: hitTimes });
+    newDailyLog.push({ date, open, day_high: rHigh, day_low: rLow, atr30_pct, fc: { oc_median: fc.oc_median, oc_75: fc.oc_75, hl_median: fc.hl_median, hl_75: fc.hl_75 }, hits: hitTimes });
   }
 
   // Merge existing + new, trim to lookback window, sort ascending
