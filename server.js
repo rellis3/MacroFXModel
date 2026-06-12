@@ -2496,6 +2496,14 @@ const WEEKLY_INSTRUMENTS = [
   { name: 'NZDJPY', sym: 'NZD_JPY',   hmmKey: null        },
 ];
 
+// Instruments that have HMM regime data (keyed by state.hmmRegimes format)
+const BRIEF_HMM_KEYS = {
+  GOLD:   'XAU/USD',  NQ: null,
+  EURUSD: 'EUR/USD',  GBPUSD: 'GBP/USD',  USDJPY: 'USD/JPY',
+  AUDUSD: 'AUD/USD',  NZDUSD: 'NZD/USD',  USDCAD: 'USD/CAD',
+  USDCHF: 'USD/CHF',  GBPJPY: 'GBP/JPY',
+};
+
 function _oandaBaseW() {
   return (process.env.OANDA_ENV || 'live') === 'practice'
     ? 'https://api-fxpractice.oanda.com'
@@ -2903,6 +2911,131 @@ app.post('/api/vol-forecast/hit-rates/compute', async (req, res) => {
       console.log(`[HIT-RATES] Done — stored to KV`);
     })
     .catch(e => console.error('[HIT-RATES] Error:', e.message));
+});
+
+// ── Daily Brief API ───────────────────────────────────────────────────────────
+// Joins vol forecast + hit rates + HMM regime + live prices into a single
+// per-instrument response. All data sources are optional — missing ones are
+// indicated in the response so the UI can prompt the user.
+// GET /api/daily-brief
+
+app.get('/api/daily-brief', async (_req, res) => {
+  const forecast = forecastState.latest;
+  if (!forecast?.instruments) {
+    return res.json({ ok: false, error: 'No forecast available — click ↻ Refresh first.' });
+  }
+
+  // Hit rates from KV (optional)
+  let hitRates = null;
+  try {
+    const raw = await kv.get('vol_hit_rates');
+    if (raw) hitRates = JSON.parse(raw);
+  } catch {}
+
+  // Live prices from Oanda (optional)
+  const prices = {};
+  if (process.env.OANDA_KEY && process.env.OANDA_ACCOUNT_ID) {
+    try {
+      const syms = HR_INSTRUMENTS.map(i => i.sym).join(',');
+      const oBase = (process.env.OANDA_ENV || 'live') === 'practice'
+        ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+      const r = await fetch(
+        `${oBase}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(syms)}`,
+        { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
+      );
+      if (r.ok) {
+        const d = await r.json();
+        for (const p of (d.prices ?? [])) {
+          if (p.asks?.[0] && p.bids?.[0]) {
+            prices[p.instrument] = (parseFloat(p.asks[0].price) + parseFloat(p.bids[0].price)) / 2;
+          }
+        }
+      }
+    } catch {}
+  }
+
+  const instruments = {};
+  for (const { name, sym, ac } of HR_INSTRUMENTS) {
+    const fc = forecast.instruments[name];
+    if (!fc) continue;
+
+    const livePrice = prices[sym] ?? null;
+    const hr        = hitRates?.instruments?.[name] ?? null;
+    const hmmKey    = BRIEF_HMM_KEYS[name] ?? null;
+    const regRaw    = hmmKey ? (state.hmmRegimes[hmmKey] ?? null) : null;
+    const dp        = PRICE_DIGITS[sym] ?? PRICE_DIGITS[sym.replace('_', '/')] ?? 5;
+    const pipSz     = PIP_SIZE[sym.replace('_', '/')] ?? 0.0001;
+    const fmt       = p => p != null ? parseFloat(p.toFixed(dp)) : null;
+
+    // Sizing suggestion from regime confidence
+    let sizingMult = null, sizingLabel = null;
+    if (regRaw) {
+      const conf = Math.max(regRaw.rangeProb ?? 0, regRaw.trendProb ?? 0);
+      if (!regRaw.reliable || conf < 0.55)  { sizingMult = 0.5;  sizingLabel = 'Low';      }
+      else if (conf >= 0.75)                 { sizingMult = 1.0;  sizingLabel = 'Full';     }
+      else                                   { sizingMult = 0.75; sizingLabel = 'Moderate'; }
+    }
+
+    // Build levels: merge % forecast + absolute price + hit rate data
+    const lvls = {};
+    for (const [key, pctField, dir] of [
+      ['oh_med', 'oh_median', +1],
+      ['oh_75',  'oh_75',     +1],
+      ['ol_med', 'ol_median', -1],
+      ['ol_75',  'ol_75',     -1],
+    ]) {
+      const pct = fc[pctField] ?? 0;
+      lvls[key] = {
+        pct,
+        price:       livePrice ? fmt(livePrice * (1 + dir * pct / 100)) : null,
+        hit_pct:     null, median_utc: null, earliest_utc: null, latest_utc: null,
+        ...(hr?.levels?.[key] ?? {}),
+      };
+    }
+    for (const [key, pctField] of [['hl_med', 'hl_median'], ['hl_75', 'hl_75']]) {
+      const pct = fc[pctField] ?? 0;
+      const rangePts = livePrice
+        ? parseFloat((livePrice * pct / 100 / pipSz).toFixed(1))
+        : null;
+      lvls[key] = {
+        pct,
+        range_pts:   rangePts,
+        hit_pct:     null, median_utc: null, earliest_utc: null, latest_utc: null,
+        ...(hr?.levels?.[key] ?? {}),
+      };
+    }
+
+    instruments[name] = {
+      name, sym, ac, dp,
+      current_price: livePrice,
+      news_mult:     fc.news_mult  ?? 1,
+      news_flag:     (fc.news_mult ?? 1) > 1 ? (forecast.meta?.news_flag ?? 'Event') : null,
+      vol_annual:    fc.vol_annual,
+      vol_pct:       fc.vol_pct,
+      regime: regRaw ? {
+        label:        regRaw.regime,
+        trend_dir:    regRaw.trendDir ?? null,
+        range_prob:   Math.round((regRaw.rangeProb ?? 0) * 100),
+        trend_prob:   Math.round((regRaw.trendProb ?? 0) * 100),
+        reliable:     regRaw.reliable,
+        sizing_mult:  sizingMult,
+        sizing_label: sizingLabel,
+      } : null,
+      levels: lvls,
+    };
+  }
+
+  res.json({
+    ok:            true,
+    generated_at:  new Date().toISOString(),
+    session_date:  forecast.session_date,
+    news_flag:     forecast.meta?.news_flag ?? null,
+    news_mult:     forecast.meta?.news_mult ?? 1,
+    has_hit_rates: !!hitRates,
+    hit_rates_age: hitRates?.computed_at ?? null,
+    has_regime:    Object.keys(state.hmmRegimes).length > 0,
+    instruments,
+  });
 });
 
 // ── Session Stats API ─────────────────────────────────────────────────────────
