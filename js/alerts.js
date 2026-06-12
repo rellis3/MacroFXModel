@@ -100,8 +100,10 @@ const DEFAULT_CFG = {
   cooldownMin: 60,         // minutes before re-alerting the same level
   onlyAligned: false,      // if true, only alert when signal aligned with entry direction
   flipCandles: 3,          // consecutive full-body closes beyond a level to constitute a polarity break
-  regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
-  suppressBlocked: false,  // if true, skip Telegram for NOT PERMITTED directions
+  regimeChangeAlerts:  true, // send Telegram when live 1m HMM regime changes
+  suppressBlocked:     false, // if true, skip Telegram for NOT PERMITTED directions
+  macroContextAlerts:  true,  // 📊 structural FRED regime shift alerts
+  dailyToneAlerts:     true,  // ⚡ daily tone / session alerts
 };
 
 export function loadAlertCfg() {
@@ -507,9 +509,11 @@ export function openAlertModal() {
   document.getElementById('alertProxGold').value       = cfg.proxPips?.['XAU/USD'] ?? 8;
   document.getElementById('alertProxNas').value        = cfg.proxPips?.['NAS100_USD'] ?? 30;
   document.getElementById('alertOnlyAligned').checked    = cfg.onlyAligned;
-  if (document.getElementById('alertRegimeChange'))   document.getElementById('alertRegimeChange').checked   = cfg.regimeChangeAlerts !== false;
-  if (document.getElementById('alertSuppressBlocked')) document.getElementById('alertSuppressBlocked').checked = cfg.suppressBlocked ?? false;
-  if (document.getElementById('alertVuManChu')) document.getElementById('alertVuManChu').value = cfg.vuManChu ?? 'info';
+  if (document.getElementById('alertRegimeChange'))    document.getElementById('alertRegimeChange').checked    = cfg.regimeChangeAlerts !== false;
+  if (document.getElementById('alertSuppressBlocked')) document.getElementById('alertSuppressBlocked').checked  = cfg.suppressBlocked ?? false;
+  if (document.getElementById('alertVuManChu'))        document.getElementById('alertVuManChu').value           = cfg.vuManChu ?? 'info';
+  if (document.getElementById('alertMacroContext'))    document.getElementById('alertMacroContext').checked     = cfg.macroContextAlerts !== false;
+  if (document.getElementById('alertDailyTone'))       document.getElementById('alertDailyTone').checked        = cfg.dailyToneAlerts !== false;
   document.getElementById('alertPairs').value          = (cfg.pairs ?? []).join(', ');
 
   // Load saved bot status
@@ -532,7 +536,9 @@ export function saveAlertModal() {
     onlyAligned:         document.getElementById('alertOnlyAligned').checked,
     regimeChangeAlerts:  document.getElementById('alertRegimeChange')?.checked !== false,
     suppressBlocked:     document.getElementById('alertSuppressBlocked')?.checked ?? false,
-    vuManChu:    document.getElementById('alertVuManChu')?.value ?? 'info',
+    vuManChu:            document.getElementById('alertVuManChu')?.value ?? 'info',
+    macroContextAlerts:  document.getElementById('alertMacroContext')?.checked !== false,
+    dailyToneAlerts:     document.getElementById('alertDailyTone')?.checked !== false,
     flipCandles: parseInt(document.getElementById('alertFlipCandles')?.value) || 3,
     proxPips: {
       default:        parseFloat(document.getElementById('alertProxDefault').value) || 5,
@@ -941,6 +947,7 @@ function saveFXCooldowns(cd) {
 export async function checkFXMacroAlerts() {
   const cfg = loadAlertCfg()
   if (!cfg.enabled) return
+  if (cfg.macroContextAlerts === false) return
 
   const now = Date.now()
   if (now - _fxAlertLastRun < FX_THROTTLE_MS) return
@@ -1049,6 +1056,8 @@ async function _sendFXAlert(pair, model, headline, title) {
   const biasEmoji = model.regimeBias === 'BULLISH' ? '↑' : model.regimeBias === 'BEARISH' ? '↓' : '↔'
   const biasLine  = `${biasEmoji} Pair bias: <b>${model.regimeBias}</b>`
 
+  const pairLink = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
+
   const lines = [
     `💱 <b>${title}</b>`,
     headline,
@@ -1066,6 +1075,7 @@ async function _sendFXAlert(pair, model, headline, title) {
       ? `Signals: ${model.regimeConfidence.signals.slice(0, 2).join(' · ')}`
       : null,
     `⏱ Timescale: weekly/monthly · structural backdrop`,
+    pairLink,
   ].filter(v => v != null).join('\n')
 
   try {
@@ -1104,6 +1114,7 @@ function saveFXToneCooldowns(cd) {
 export async function checkFXDailyToneAlerts() {
   const cfg = loadAlertCfg()
   if (!cfg.enabled) return
+  if (cfg.dailyToneAlerts === false) return
 
   const now = Date.now()
   if (now - _fxToneLastRun < FX_TONE_THROTTLE_MS) return
@@ -1171,6 +1182,8 @@ async function _sendFXToneAlert(pair, model, prevLabel) {
     fmt(rb.components.xauusd, 'Gold'),
   ].filter(Boolean)
 
+  const pairLink = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
+
   const lines = [
     `⚡ <b>${pair} — DAILY MARKET TONE</b>`,
     toneLine,
@@ -1181,6 +1194,7 @@ async function _sendFXToneAlert(pair, model, prevLabel) {
     ...compLines,
     ``,
     `⏱ Timescale: daily/session · updated with bar close`,
+    pairLink,
   ].filter(v => v != null).join('\n')
 
   try {
@@ -1194,4 +1208,80 @@ async function _sendFXToneAlert(pair, model, prevLabel) {
   } catch(e) {
     console.warn(`FX tone alert error (${pair}):`, e.message)
   }
+}
+
+// ── Send all macro snapshots now (bypasses cooldowns) ─────────────────────────
+// Called from the Alerts modal "Snapshot All" button. Loops every watched pair,
+// computes fresh structural + daily-tone models, and fires one combined message
+// per pair to Telegram. Rate-limited at ~500ms between sends.
+export async function sendAllMacroSnapshotsNow(onProgress) {
+  const cfg       = loadAlertCfg()
+  const allPairs  = Object.keys(PAIR_DRIVERS)
+  const watchPairs = cfg.pairs?.length
+    ? cfg.pairs.filter(p => allPairs.includes(p))
+    : allPairs
+
+  resetRiskBarometerCache()
+
+  const ts = new Date().toUTCString().replace(' GMT', ' UTC')
+  let sent = 0
+
+  for (let i = 0; i < watchPairs.length; i++) {
+    const pair = watchPairs[i]
+    if (onProgress) onProgress(`Sending ${pair} (${i + 1}/${watchPairs.length})…`)
+
+    const macro = computeFXMacroModel(pair)
+    const tone  = computeFXDailyTone(pair)
+
+    const pairLink = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
+
+    const macroLine  = macro ? `📊 Structural: ${macro.regimeEmoji} ${macro.regimeLabel}` : `📊 Structural: —`
+    const macroSumm  = macro?.regimeSummary ?? null
+    const macroBias  = macro
+      ? (macro.regimeBias === 'BULLISH' ? '↑ Structural bias: <b>BULLISH</b>'
+       : macro.regimeBias === 'BEARISH' ? '↓ Structural bias: <b>BEARISH</b>'
+       : '↔ Structural bias: NEUTRAL')
+      : null
+
+    const toneEmoji = tone?.regimeEmoji ?? '⚪'
+    const toneLabel = tone?.regimeLabel ?? '—'
+    const toneSumm  = tone?.description ?? null
+    const toneBias  = tone
+      ? (tone.bias === 'BULLISH' ? '↑ Daily bias: <b>BULLISH</b>'
+       : tone.bias === 'BEARISH' ? '↓ Daily bias: <b>BEARISH</b>'
+       : '↔ Daily bias: NEUTRAL')
+      : null
+
+    const lines = [
+      `💱 <b>${pair} — MACRO SNAPSHOT</b>`,
+      ``,
+      macroLine,
+      macroSumm,
+      macroBias,
+      ``,
+      `⚡ Daily Tone: ${toneEmoji} ${toneLabel}`,
+      toneSumm,
+      toneBias,
+      ``,
+      `⏱ Snapshot: ${ts}`,
+      pairLink,
+    ].filter(v => v != null).join('\n')
+
+    try {
+      const res = await fetch('/api/telegram', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ message: lines, parseMode: 'HTML' }),
+      })
+      const j = await res.json()
+      if (j.ok) sent++
+      else console.warn(`Snapshot failed (${pair}):`, j.error)
+    } catch(e) {
+      console.warn(`Snapshot error (${pair}):`, e.message)
+    }
+
+    if (i < watchPairs.length - 1) await new Promise(r => setTimeout(r, 500))
+  }
+
+  return sent
 }

@@ -319,6 +319,27 @@ Example:
       </label>
     </div>
 
+    <!-- Macro alert toggles -->
+    <div class="oi-modal-divider" style="margin:10px 0 12px"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px">Macro Alerts</div>
+    <div class="oi-form-row" style="gap:16px;margin-bottom:10px;align-items:flex-start;flex-wrap:wrap">
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;cursor:pointer;flex-direction:column" title="Fires when FRED-driven structural regime shifts — weekly/monthly cadence">
+        <span style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="alertMacroContext" style="width:14px;height:14px;cursor:pointer" checked>
+          📊 Macro context alerts
+        </span>
+        <span style="font-size:10px;color:var(--text3);margin-left:22px">Structural regime shifts · weekly/monthly · FRED data</span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;cursor:pointer;flex-direction:column" title="Fires when daily OHLC tone shifts — session-level signal">
+        <span style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="alertDailyTone" style="width:14px;height:14px;cursor:pointer" checked>
+          ⚡ Daily tone alerts
+        </span>
+        <span style="font-size:10px;color:var(--text3);margin-left:22px">Session tone shifts · daily bars · risk barometer</span>
+      </label>
+    </div>
+    <div class="oi-modal-divider" style="margin:10px 0 12px"></div>
+
     <div class="oi-form-row" style="gap:10px;margin-bottom:10px">
       <div>
         <label class="oi-lbl">Min Grade</label>
@@ -386,6 +407,10 @@ Example:
       <div style="display:flex;align-items:center;gap:8px">
         <button id="alertReloadBtn" class="oi-btn" onclick="window._reloadLevels()" style="min-width:130px">🔄 Refresh Data</button>
         <span id="alertReloadStatus" style="font-size:12px;color:var(--text3,#6b7280)">Pull latest levels from KV into the bot now</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="alertSnapshotAllBtn" class="oi-btn" onclick="window._snapshotAllPairs()" style="min-width:130px">📊 Snapshot All</button>
+        <span style="font-size:12px;color:var(--text3,#6b7280)">Send current macro + tone snapshot for all pairs to Telegram</span>
       </div>
     </div>
 
