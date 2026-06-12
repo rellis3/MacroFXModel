@@ -18,7 +18,7 @@ import { detectSession, computeSessionOpens, computeDailyOpens } from './session
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 import { exportWatchlistCSV } from './watchlist.js';
-import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, sendTestServerAlert, loadAlertCfg, forceKVSync, checkGoldMacroAlerts, checkFXMacroAlerts, syncGoldModelNow } from './alerts.js';
+import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, sendTestServerAlert, loadAlertCfg, forceKVSync, checkGoldMacroAlerts, checkFXMacroAlerts, checkFXDailyToneAlerts, syncGoldModelNow } from './alerts.js';
 import { runParticleFilter } from './particleFilter.js';
 
 // ── Debounced renderAll ───────────────────────────────────────────────────────
@@ -592,6 +592,9 @@ async function loadAll() {
     S.ohlc5m[sym]   = ohlc5mData; updatePill('pill5m', 'ok');
     S.ohlc30m[sym]  = ohlc30mData; updatePill('pill30m', 'ok');
     updatePill('pillQuote', 'ok');
+
+    // Daily tone alerts — independent of FRED, runs off daily bars
+    checkFXDailyToneAlerts().catch(() => {});
 
     // Particle filter regime estimate — runs on 5m bars, result stored in S.pfRegime
     S.pfRegime[sym] = runParticleFilter(ohlc5mData?.values);
