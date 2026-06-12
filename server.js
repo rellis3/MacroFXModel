@@ -3741,7 +3741,9 @@ function _latestWeeklyFile() {
 }
 
 // Weekly stats — same logic as _btStats but uses √52 for Sharpe/Sortino annualisation.
-function _wbtStats(trades) {
+// rfRate: annual risk-free rate as a decimal (e.g. 0.05 = 5%). Defaults to 0 (conventional
+// for short-term FX strategies where Rf is already embedded in the swap).
+function _wbtStats(trades, rfRate = 0) {
   const filled  = trades.filter(r => r.filled);
   const nDays   = trades.length; // = number of week-slots (opportunities)
   const nFilled = filled.length;
@@ -3767,15 +3769,23 @@ function _wbtStats(trades) {
     });
 
   const nObs     = weekPnls.length;
+  const rfWeekly = rfRate / 52;              // annual RF → weekly (in same % units as returns)
   const wMean    = weekPnls.reduce((s, p) => s + p, 0) / nObs;
   const wStd     = Math.sqrt(weekPnls.reduce((s, p) => s + (p - wMean) ** 2, 0) / Math.max(1, nObs - 1));
-  const sharpe   = wStd > 0 ? wMean / wStd * Math.sqrt(52) : 0;
+  const sharpe   = wStd > 0 ? (wMean - rfWeekly) / wStd * Math.sqrt(52) : 0;
   const downPnls = weekPnls.filter(p => p < 0);
-  const downStd  = downPnls.length > 0 ? Math.sqrt(downPnls.reduce((s, p) => s + p ** 2, 0) / downPnls.length) : 0;
-  const sortino  = downStd > 0 ? wMean / downStd * Math.sqrt(52) : 0;
+  // Sortino: semi-deviation uses ALL observations in denominator (not just negative ones)
+  const downStd  = nObs > 0 ? Math.sqrt(downPnls.reduce((s, p) => s + p ** 2, 0) / nObs) : 0;
+  const sortino  = downStd > 0 ? (wMean - rfWeekly) / downStd * Math.sqrt(52) : 0;
 
-  let peak = 0, maxDd = 0, cum = 0;
-  for (const p of weekPnls) { cum += p; if (cum > peak) peak = cum; const dd = peak - cum; if (dd > maxDd) maxDd = dd; }
+  // Max drawdown on compounded equity curve (% of peak equity)
+  let peakEq = 1.0, equity = 1.0, maxDd = 0;
+  for (const p of weekPnls) {
+    equity *= (1 + p / 100);
+    if (equity > peakEq) peakEq = equity;
+    const dd = (peakEq - equity) / peakEq * 100;
+    if (dd > maxDd) maxDd = dd;
+  }
 
   const wins      = pnls.filter(p => p > 0);
   const losses    = pnls.filter(p => p <= 0);
@@ -3788,14 +3798,16 @@ function _wbtStats(trades) {
   const dates  = [...instrPerWeek.keys()].sort();
   const years  = dates.length > 1
     ? (new Date(dates.at(-1)) - new Date(dates[0])) / (365.25 * 24 * 3600 * 1000) : 1;
-  const normPnl = weekPnls.reduce((s, p) => s + p, 0); // normalised total for CAGR
-  const cagr    = years > 0 ? (Math.pow(1 + normPnl / 100, 1 / years) - 1) * 100 : 0;
-  const calmar  = maxDd > 0 ? Math.abs(cagr / maxDd) : 0;
+  const normPnl    = weekPnls.reduce((s, p) => s + p, 0); // equal-weight portfolio return
+  // CAGR via geometric compounding of each weekly return (avoids arithmetic-sum approximation)
+  const finalEquity = weekPnls.reduce((eq, p) => eq * (1 + p / 100), 1.0);
+  const cagr        = years > 0 ? (Math.pow(finalEquity, 1 / years) - 1) * 100 : 0;
+  const calmar      = maxDd > 0 ? Math.abs(cagr / maxDd) : 0;
 
-  // Max consecutive wins/losses
+  // Max consecutive wins/losses measured on weekly portfolio returns (not individual trades)
   let maxCW = 0, maxCL = 0, curCW = 0, curCL = 0;
-  for (const r of filled) {
-    if (r.pnl_pct > 0) { curCW++; curCL = 0; } else { curCL++; curCW = 0; }
+  for (const p of weekPnls) {
+    if (p > 0) { curCW++; curCL = 0; } else { curCL++; curCW = 0; }
     if (curCW > maxCW) maxCW = curCW;
     if (curCL > maxCL) maxCL = curCL;
   }
@@ -3839,10 +3851,11 @@ function _wbtStats(trades) {
   const loserBestExit = loserMfe.length ? loserMfe.reduce((s, r) => s + r.mfe_pct, 0) / loserMfe.length : 0;
 
   return {
-    nDays, nFilled,
+    nDays, nFilled, nObs,
     fillRate:       +(nFilled / nDays * 100).toFixed(1),
     winRate:        +(wins.length / nFilled * 100).toFixed(1),
     totalPnl:       +totalPnl.toFixed(3),
+    portReturn:     +normPnl.toFixed(3),   // equal-weight portfolio total return (basis for CAGR)
     annReturn:      +(normPnl / years).toFixed(2),
     cagr:           +cagr.toFixed(2),
     sharpe:         +sharpe.toFixed(2),
@@ -3963,6 +3976,7 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
         oc75_pct:    r.oc75_pct,
         monday_open: r.monday_open,
         fill_date:   r.fill_date,
+        close_date:  r.close_date,
         entry:       r.entry,
         tp:          r.tp,
         sl:          r.sl,
@@ -3971,6 +3985,7 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
         pnl_pips:    r.pnl_pips,
         mfe_pips:    r.mfe_pips,
         mae_pips:    r.mae_pips,
+        carried:     r.carried ?? false,
       }));
 
     // Compact allTrades for client-side stats + chart modal
@@ -3989,6 +4004,7 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
       oc75_pct:    r.oc75_pct,
       monday_open: r.monday_open,
       fill_date:   r.fill_date,
+      close_date:  r.close_date,
       entry:       r.entry,
       tp:          r.tp,
       sl:          r.sl,
@@ -3997,6 +4013,7 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
       pnl_pips:    r.pnl_pips,
       mfe_pips:    r.mfe_pips,
       mae_pips:    r.mae_pips,
+      carried:     r.carried ?? false,
     }));
 
     const overall = _wbtStats(trades);
@@ -4071,32 +4088,36 @@ app.post('/api/weekly-vol-backtest/run', (req, res) => {
     return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
   }
   const {
-    dateFrom  = '', dateTo    = '', pair      = '',
-    strategy  = 'revHL50',
-    slMult    = '1.5',
-    spreadPct = '0',
-    slMode    = 'level',
-    tpMode    = 'open',
-    atrPeriod = '30',
-    atrSlMult = '1.5',
-    atrTpMult = '2.0',
-    slPips    = '30',
-    tpPips    = '50',
+    dateFrom     = '', dateTo      = '', pair        = '',
+    strategy     = 'revHL50',
+    slMult       = '1.5',
+    spreadPct    = '0',
+    slMode       = 'level',
+    tpMode       = 'open',
+    atrPeriod    = '30',
+    atrSlMult    = '1.5',
+    atrTpMult    = '2.0',
+    slPips       = '30',
+    tpPips       = '50',
+    carryMode    = 'false',
+    maxOnePerPair = 'false',
   } = req.body || {};
 
   const opts = {
     dateFrom, dateTo,
     strategy,
-    slMult:    parseFloat(slMult)    || 1.5,
-    spreadPct: parseFloat(spreadPct) || 0,
+    slMult:       parseFloat(slMult)    || 1.5,
+    spreadPct:    parseFloat(spreadPct) || 0,
     slMode,
     tpMode,
-    atrPeriod: parseInt(atrPeriod)   || 30,
-    atrSlMult: parseFloat(atrSlMult) || 1.5,
-    atrTpMult: parseFloat(atrTpMult) || 2.0,
-    slPips:    parseFloat(slPips)    || 30,
-    tpPips:    parseFloat(tpPips)    || 50,
-    minLookback: 60,
+    atrPeriod:    parseInt(atrPeriod)   || 30,
+    atrSlMult:    parseFloat(atrSlMult) || 1.5,
+    atrTpMult:    parseFloat(atrTpMult) || 2.0,
+    slPips:       parseFloat(slPips)    || 30,
+    tpPips:       parseFloat(tpPips)    || 50,
+    carryMode:    carryMode    === 'true',
+    maxOnePerPair: maxOnePerPair === 'true',
+    minLookback:  60,
   };
 
   const instFilter = pair

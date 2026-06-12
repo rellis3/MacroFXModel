@@ -27,10 +27,22 @@
  * Requires process.env.OANDA_KEY.
  */
 
+import { readFileSync, existsSync }             from 'fs';
+import path                                       from 'path';
+import { fileURLToPath }                          from 'url';
 import {
   fetchD1, ewmaVarSeries,
   ASSET_PARAMS, BM_P50, BM_P75, HN_P50, HN_P75,
 } from './volBacktestEngine.js';
+import {
+  readM1Parquet, groupByDate, fetchFromR2, fetchFromDrive, M1_DRIVE_IDS,
+} from './volBacktestM1Engine.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Local M1 parquet cache — portfolioBacktest/cache/ is populated by the portfolio
+// backtester and contains the same files used by the daily backtester.
+const BT_WEEKLY_M1_DIR = path.join(__dirname, '..', 'portfolioBacktest', 'cache');
 
 const SQRT5 = Math.sqrt(5);
 
@@ -114,6 +126,51 @@ function computeATR(bars, period = 30) {
     sum += tr; count++;
   }
   return count > 0 ? sum / count : 0;
+}
+
+// ── M1 loader ─────────────────────────────────────────────────────────────────
+// Loads M1 parquet for a pair and groups bars by ISO week (Monday date).
+// Priority: local portfolioBacktest/cache/ → R2 → Google Drive.
+// Returns Map<weekKey, m1bar[]> or null if no data available.
+export async function loadWeeklyM1(pairKey, m1Dir = BT_WEEKLY_M1_DIR) {
+  let rows = null;
+  const localFile = path.join(m1Dir, `${pairKey}_m1.parquet`);
+  if (existsSync(localFile)) {
+    console.log(`[WBT-M1] Loading ${pairKey} from disk…`);
+    rows = await readM1Parquet(localFile);
+  } else {
+    try {
+      const r2ab = await fetchFromR2(pairKey);
+      if (r2ab) {
+        console.log(`[WBT-M1] Loading ${pairKey} from R2…`);
+        rows = await readM1Parquet(r2ab);
+      }
+    } catch (e) {
+      console.warn(`[WBT-M1] R2 failed for ${pairKey}: ${e?.message}`);
+    }
+    if (!rows) {
+      const driveAb = await fetchFromDrive(pairKey, m1Dir);
+      if (driveAb) {
+        console.log(`[WBT-M1] Loaded ${pairKey} from Drive`);
+        rows = await readM1Parquet(driveAb);
+      }
+    }
+  }
+  if (!rows) return null;
+
+  // Group M1 bars by the ISO week key (Monday's date) for the weekly engine
+  const byWeek = new Map();
+  for (const row of rows) {
+    const dt = row[5] instanceof Date
+      ? row[5].toISOString().substring(0, 19)
+      : String(row[5]).substring(0, 19).replace(' ', 'T');
+    const date = dt.substring(0, 10);
+    const wk   = getWeekKey(date);
+    if (!byWeek.has(wk)) byWeek.set(wk, []);
+    byWeek.get(wk).push({ time: dt, date, open: row[0], high: row[1], low: row[2], close: row[3] });
+  }
+  console.log(`[WBT-M1] ${pairKey}: ${rows.length.toLocaleString()} M1 bars across ${byWeek.size} weeks`);
+  return byWeek; // Map<'YYYY-MM-DD' (Mon), m1bar[]>
 }
 
 // ── Per-bar trade resolution ───────────────────────────────────────────────────
@@ -270,20 +327,27 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
   // ── Force-close anything still open at EOW ────────────────────────────────
   const eowClose = weekBars.at(-1)?.close ?? mondayOpen;
   const eowDate  = weekBars.at(-1)?.date;
-  for (const t of Object.values(slots)) {
-    if (t?.outcome === 'open') {
-      t.pnlPct = t.side === 'SELL'
-        ? +((t.entry - eowClose) / mondayOpen * 100).toFixed(5)
-        : +((eowClose - t.entry) / mondayOpen * 100).toFixed(5);
-      t.closeDate = eowDate;
-      // outcome stays 'open' — distinguishes EOW force-close from TP/SL
+  if (!opts.noEowClose) {
+    for (const t of Object.values(slots)) {
+      if (t?.outcome === 'open') {
+        t.pnlPct = t.side === 'SELL'
+          ? +((t.entry - eowClose) / mondayOpen * 100).toFixed(5)
+          : +((eowClose - t.entry) / mondayOpen * 100).toFixed(5);
+        t.closeDate = eowDate;
+        // outcome stays 'open' — distinguishes EOW force-close from TP/SL
+      }
     }
   }
 
-  // ── Collect filled trades, apply spread ───────────────────────────────────
+  // ── Collect filled trades, apply spread (skip spread for open carries) ───
   const result = Object.values(slots)
     .filter(Boolean)
-    .map(t => ({ ...t, filled: true, pnlPct: +(t.pnlPct - spreadPct).toFixed(5) }));
+    .map(t => ({
+      ...t, filled: true,
+      pnlPct: (opts.noEowClose && t.outcome === 'open')
+        ? t.pnlPct  // spread applied at carry resolution to avoid double-count
+        : +(t.pnlPct - spreadPct).toFixed(5),
+    }));
 
   return result.length
     ? result
@@ -293,7 +357,10 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
 // ── Walk-forward weekly backtester ────────────────────────────────────────────
 
 export function runWeeklyBacktest(bars, assetClass, opts = {}) {
-  const { dateFrom = '', dateTo = '', minLookback = 60, atrPeriod = 30 } = opts;
+  const { dateFrom = '', dateTo = '', minLookback = 60, atrPeriod = 30,
+          carryMode = false, maxOnePerPair = false,
+          m1ByWeek = null,   // Map<weekKey, m1bar[]> — M1 simulation when provided
+        } = opts;
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
   // Build full EWMA var series incrementally (O(n), avoids O(n²) re-computation)
@@ -316,7 +383,8 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
   }
   const sortedWeeks = [...weekMap.entries()].sort(([a], [b]) => a < b ? -1 : 1);
 
-  const records = [];
+  const records     = [];
+  const carryTrades = []; // Positions held open beyond EOW in carry mode
 
   for (const [weekKey, weekBars] of sortedWeeks) {
     if (!weekBars.length) continue;
@@ -329,6 +397,56 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     if (mondayIdx < minLookback) continue;
     if (dateFrom && weekKey < dateFrom.substring(0, 10)) continue;
     if (dateTo   && weekKey > dateTo.substring(0, 10))   continue;
+
+    // M1 bars for this week (preferred) — D1 weekBars used as fallback and
+    // always for vol/ATR/Monday-open anchor computation.
+    const m1WeekBars = m1ByWeek?.get(weekKey) ?? null;
+    const simBars    = (m1WeekBars && m1WeekBars.length >= 10) ? m1WeekBars : weekBars;
+
+    // ── Resolve carried-over trades bar-by-bar against this week ─────────────
+    if (carryMode && carryTrades.length > 0) {
+      const resolved = [], stillOpen = [];
+      for (const carry of carryTrades) {
+        let closed = false;
+        for (const bar of simBars) {
+          const mfeInc = carry.side === 'SELL'
+            ? Math.max(0, carry.entry - bar.low)  / carry.mondayOpen * 100
+            : Math.max(0, bar.high - carry.entry) / carry.mondayOpen * 100;
+          const maeInc = carry.side === 'SELL'
+            ? Math.max(0, bar.high - carry.entry) / carry.mondayOpen * 100
+            : Math.max(0, carry.entry - bar.low)  / carry.mondayOpen * 100;
+          if (mfeInc > (carry.mfe ?? 0)) carry.mfe = mfeInc;
+          if (maeInc > (carry.mae ?? 0)) carry.mae = maeInc;
+          const res = resolveOnBar(carry.side, carry.entry, carry.tp, carry.sl, bar, carry.mondayOpen);
+          if (res) { Object.assign(carry, res, { closeDate: bar.date }); closed = true; break; }
+        }
+        (closed ? resolved : stillOpen).push(carry);
+      }
+      const cpip = PIP_SIZE[opts.pair ?? ''] ?? 0.0001;
+      for (const c of resolved) {
+        const cPips = pct => c.mondayOpen > 0 ? +(pct / 100 * c.mondayOpen / cpip).toFixed(1) : null;
+        const pnl   = +((c.pnlPct ?? 0) - (opts.spreadPct ?? 0)).toFixed(5);
+        records.push({
+          week: c.week, date: c.date, filled: true,
+          hl50_pct: c.hl50_pct, hl75_pct: c.hl75_pct,
+          oc_med_pct: c.oc_med_pct, oc75_pct: c.oc75_pct,
+          atr30: c.atr30, monday_open: +c.mondayOpen.toFixed(6),
+          side: c.side, level: c.level, outcome: c.outcome,
+          pnl_pct: pnl,
+          entry: c.entry != null ? +c.entry.toFixed(6) : null,
+          tp:    c.tp    != null ? +c.tp.toFixed(6)    : null,
+          sl:    c.sl    != null ? +c.sl.toFixed(6)    : null,
+          fill_date: c.fillDate ?? null, close_date: c.closeDate ?? null,
+          mfe_pct: c.mfe != null ? +c.mfe.toFixed(5) : null,
+          mae_pct: c.mae != null ? +c.mae.toFixed(5) : null,
+          pnl_pips: cPips(pnl), mfe_pips: c.mfe != null ? cPips(c.mfe) : null,
+          mae_pips: c.mae != null ? cPips(c.mae) : null,
+          carried: true, m1_sim: c.m1_sim ?? false,
+        });
+      }
+      carryTrades.length = 0;
+      carryTrades.push(...stillOpen);
+    }
 
     // EWMA var at Monday open = computed through all closes before Monday
     const varIdx = Math.max(0, mondayIdx - 2);
@@ -344,36 +462,85 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     const barsBeforeMonday = bars.slice(Math.max(0, mondayIdx - atrPeriod - 5), mondayIdx);
     const atr30 = computeATR(barsBeforeMonday, atrPeriod);
 
-    const mondayOpen = mondayBar.open;
-    const levelPcts  = { hl50pct, hl75pct, ocMedpct, oc75pct, atr30 };
-    const trades     = simulateWeek(mondayOpen, weekBars, levelPcts, opts);
-    const pip        = PIP_SIZE[opts.pair ?? ''] ?? 0.0001;
-    const toPips     = pct => mondayOpen > 0 ? +(pct / 100 * mondayOpen / pip).toFixed(1) : null;
+    const mondayOpen    = mondayBar.open;
+    const levelPcts     = { hl50pct, hl75pct, ocMedpct, oc75pct, atr30 };
+    const pip           = PIP_SIZE[opts.pair ?? ''] ?? 0.0001;
+    const toPips        = pct => mondayOpen > 0 ? +(pct / 100 * mondayOpen / pip).toFixed(1) : null;
+    // maxOnePerPair: skip new orders while any carry is still open
+    const skipNewOrders = maxOnePerPair && carryTrades.length > 0;
+    const trades        = skipNewOrders
+      ? [] : simulateWeek(mondayOpen, simBars, levelPcts, { ...opts, noEowClose: carryMode });
 
     for (const t of trades) {
+      if (carryMode && t.filled && t.outcome === 'open') {
+        // Queue carry for next week(s) — store original week context
+        carryTrades.push({
+          ...t,
+          week: weekKey, date: mondayDate, mondayOpen,
+          hl50_pct:   +hl50pct.toFixed(4),  hl75_pct:   +hl75pct.toFixed(4),
+          oc_med_pct: +ocMedpct.toFixed(4), oc75_pct:   +oc75pct.toFixed(4),
+          atr30:       +atr30.toFixed(6),
+        });
+      } else {
+        records.push({
+          week:        weekKey,
+          date:        mondayDate,
+          hl50_pct:    +hl50pct.toFixed(4),
+          hl75_pct:    +hl75pct.toFixed(4),
+          oc_med_pct:  +ocMedpct.toFixed(4),
+          oc75_pct:    +oc75pct.toFixed(4),
+          atr30:       +atr30.toFixed(6),
+          monday_open: +mondayOpen.toFixed(6),
+          filled:      t.filled,
+          side:        t.side,
+          level:       t.level,
+          outcome:     t.outcome,
+          pnl_pct:     t.pnlPct,
+          entry:       t.entry   != null ? +t.entry.toFixed(6)   : null,
+          tp:          t.tp      != null ? +t.tp.toFixed(6)      : null,
+          sl:          t.sl      != null ? +t.sl.toFixed(6)      : null,
+          fill_date:   t.fillDate ?? null,
+          close_date:  t.closeDate ?? null,
+          mfe_pct:     t.mfe != null ? +t.mfe.toFixed(5) : null,
+          mae_pct:     t.mae != null ? +t.mae.toFixed(5) : null,
+          pnl_pips:    t.filled ? toPips(t.pnlPct) : null,
+          mfe_pips:    t.mfe   != null ? toPips(t.mfe) : null,
+          mae_pips:    t.mae   != null ? toPips(t.mae) : null,
+          carried:     false,
+          m1_sim:      !!(m1WeekBars && m1WeekBars.length >= 10),
+        });
+      }
+    }
+  }
+
+  // ── Force-close remaining carries at end of dataset ───────────────────────
+  if (carryMode && carryTrades.length > 0) {
+    const lastBars = sortedWeeks.at(-1)?.[1] ?? [];
+    const eowClose = lastBars.at(-1)?.close ?? 0;
+    const eowDate  = lastBars.at(-1)?.date;
+    const fpip     = PIP_SIZE[opts.pair ?? ''] ?? 0.0001;
+    for (const c of carryTrades) {
+      const fPips = pct => c.mondayOpen > 0 ? +(pct / 100 * c.mondayOpen / fpip).toFixed(1) : null;
+      const rawPnl = c.side === 'SELL'
+        ? (c.entry - eowClose) / c.mondayOpen * 100
+        : (eowClose - c.entry) / c.mondayOpen * 100;
+      const pnl = +(rawPnl - (opts.spreadPct ?? 0)).toFixed(5);
       records.push({
-        week:        weekKey,
-        date:        mondayDate,
-        hl50_pct:    +hl50pct.toFixed(4),
-        hl75_pct:    +hl75pct.toFixed(4),
-        oc_med_pct:  +ocMedpct.toFixed(4),
-        oc75_pct:    +oc75pct.toFixed(4),
-        atr30:       +atr30.toFixed(6),
-        monday_open: +mondayOpen.toFixed(6),
-        filled:      t.filled,
-        side:        t.side,
-        level:       t.level,
-        outcome:     t.outcome,
-        pnl_pct:     t.pnlPct,
-        entry:       t.entry   != null ? +t.entry.toFixed(6)   : null,
-        tp:          t.tp      != null ? +t.tp.toFixed(6)      : null,
-        sl:          t.sl      != null ? +t.sl.toFixed(6)      : null,
-        fill_date:   t.fillDate ?? null,
-        mfe_pct:     t.mfe != null ? +t.mfe.toFixed(5) : null,
-        mae_pct:     t.mae != null ? +t.mae.toFixed(5) : null,
-        pnl_pips:    t.filled ? toPips(t.pnlPct) : null,
-        mfe_pips:    t.mfe   != null ? toPips(t.mfe) : null,
-        mae_pips:    t.mae   != null ? toPips(t.mae) : null,
+        week: c.week, date: c.date, filled: true,
+        hl50_pct: c.hl50_pct, hl75_pct: c.hl75_pct,
+        oc_med_pct: c.oc_med_pct, oc75_pct: c.oc75_pct,
+        atr30: c.atr30, monday_open: +c.mondayOpen.toFixed(6),
+        side: c.side, level: c.level, outcome: 'open',
+        pnl_pct: pnl,
+        entry: c.entry != null ? +c.entry.toFixed(6) : null,
+        tp:    c.tp    != null ? +c.tp.toFixed(6)    : null,
+        sl:    c.sl    != null ? +c.sl.toFixed(6)    : null,
+        fill_date: c.fillDate ?? null, close_date: eowDate,
+        mfe_pct: c.mfe != null ? +c.mfe.toFixed(5) : null,
+        mae_pct: c.mae != null ? +c.mae.toFixed(5) : null,
+        pnl_pips: fPips(pnl), mfe_pips: c.mfe != null ? fPips(c.mfe) : null,
+        mae_pips: c.mae != null ? fPips(c.mae) : null,
+        carried: true,
       });
     }
   }
@@ -391,13 +558,27 @@ export async function runFullWeeklyBacktest(opts = {}, instruments = WEEKLY_INST
 
   for (const cfg of instruments) {
     try {
-      log.push(`Fetching ${cfg.name}…`);
-      const bars   = await fetchD1(cfg.oanda, 5000);
-      log.push(`  ${bars.length} bars (${bars[0]?.date} → ${bars.at(-1)?.date})`);
-      const trades = runWeeklyBacktest(bars, cfg.assetClass, { ...opts, pair: cfg.name })
+      log.push(`Fetching D1 ${cfg.name}…`);
+      const bars    = await fetchD1(cfg.oanda, 5000);
+      log.push(`  ${bars.length} D1 bars (${bars[0]?.date} → ${bars.at(-1)?.date})`);
+
+      // Load M1 parquet — local cache first, then R2, then Drive
+      const pairKey  = cfg.name.toLowerCase();
+      let   m1ByWeek = null;
+      try {
+        m1ByWeek = await loadWeeklyM1(pairKey);
+        if (m1ByWeek) log.push(`  M1 loaded: ${m1ByWeek.size} weeks`);
+        else          log.push(`  No M1 data — using D1 simulation`);
+      } catch (e) {
+        log.push(`  M1 load error: ${e?.message} — using D1 simulation`);
+      }
+
+      const trades = runWeeklyBacktest(bars, cfg.assetClass, { ...opts, pair: cfg.name, m1ByWeek })
         .map(r => ({ instrument: cfg.name, ...r }));
       allTrades.push(...trades);
-      log.push(`  ${trades.filter(t => t.filled).length} filled`);
+      const nM1   = trades.filter(t => t.filled && t.m1_sim).length;
+      const nFill = trades.filter(t => t.filled).length;
+      log.push(`  ${nFill} filled (${nM1} M1, ${nFill - nM1} D1 fallback)`);
     } catch (e) {
       log.push(`  ${cfg.name}: ${e.message}`);
     }

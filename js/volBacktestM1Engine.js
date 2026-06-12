@@ -1428,6 +1428,9 @@ export async function runFullLevelAnalysis(opts = {}, instruments = INSTRUMENTS,
 
 export { INSTRUMENTS };
 
+// ── M1 loading utilities (re-exported for use in weekly backtester) ───────────
+export { readM1Parquet, groupByDate, fetchFromR2, fetchFromDrive };
+
 // ── R2 regime-history helpers (used by server.js) ────────────────────────────
 
 export { makeR2Client };

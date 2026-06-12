@@ -185,6 +185,16 @@
     <option value="0.01">Spread 0.01%</option>
   </select>
 
+  <select id="runCarryMode" class="bt-sel" title="Carry mode: keep trades open past Friday until TP or SL is hit." onchange="updateParamVis()">
+    <option value="false">Close Fri EOW</option>
+    <option value="true">Carry (hold until TP/SL)</option>
+  </select>
+
+  <select id="runMaxOnePerPair" class="bt-sel" title="Limit to one open position per pair at a time (only applies in Carry mode)." style="display:none">
+    <option value="false">Multi positions/pair</option>
+    <option value="true">Max 1 position/pair</option>
+  </select>
+
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <span id="runStatus" class="bt-run-lbl"></span>
 </div>
@@ -226,14 +236,15 @@
 <div class="bt-sec-grid" id="secGrid" style="display:none">
   <div class="bt-sec"><span class="bt-sec-lbl">Total Filled Trades</span><span class="bt-sec-val" id="sTotalFilled">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Fill Rate</span><span class="bt-sec-val" id="sFillRate">—</span></div>
-  <div class="bt-sec"><span class="bt-sec-lbl">Total P&amp;L %</span><span class="bt-sec-val" id="sTotalPnl">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl" title="Gross accounting sum of all individual trade P&Ls (not a single portfolio return)">Gross Trade P&amp;L</span><span class="bt-sec-val" id="sTotalPnl">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl" title="Equal-weight per-instrument portfolio total return — basis for CAGR">Portfolio Return</span><span class="bt-sec-val blue" id="sPortReturn">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Expectancy / trade</span><span class="bt-sec-val" id="sExpect">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Avg Win</span><span class="bt-sec-val" id="sAvgWin">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Avg Loss</span><span class="bt-sec-val" id="sAvgLoss">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Max Consec Wins</span><span class="bt-sec-val pos" id="sMaxCW">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Max Consec Losses</span><span class="bt-sec-val neg" id="sMaxCL">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Ann. Return (simple)</span><span class="bt-sec-val" id="sAnnReturn">—</span></div>
-  <div class="bt-sec"><span class="bt-sec-lbl">Weeks in Sample</span><span class="bt-sec-val" id="sWeeks">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl" title="Calendar weeks in the sample (not trade-record count)">Weeks in Sample</span><span class="bt-sec-val" id="sWeeks">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Years</span><span class="bt-sec-val" id="sYears">—</span></div>
 </div>
 
@@ -389,15 +400,21 @@
       <option value="loss">Loss</option>
       <option value="open">Open (EOW)</option>
     </select>
+    <select class="bt-sel" id="fCarried" onchange="filterTrades()">
+      <option value="">All (carry+normal)</option>
+      <option value="carried">Carried only</option>
+      <option value="normal">Normal only</option>
+    </select>
     <button class="dark-btn" onclick="clearFilters()">Clear</button>
   </div>
   <div class="bt-tbl-scroll">
     <table class="bt-tbl">
       <thead><tr>
         <th>Week (Mon)</th><th>Pair</th><th>Level</th><th>Side</th>
-        <th>Fill Day</th><th class="num">HL50%</th><th class="num">HL75%</th>
+        <th>Fill Day</th><th>Close Day</th><th class="num">HL50%</th><th class="num">HL75%</th>
         <th class="num">Mon Open</th><th>Outcome</th><th class="num">P&amp;L%</th>
         <th class="num">Pips</th><th class="num">MFE%</th><th class="num">MAE%</th>
+        <th>Carry</th>
         <th style="width:30px"></th>
       </tr></thead>
       <tbody id="tradeTblBody"></tbody>
@@ -463,16 +480,24 @@ function clientWbtStats(trades, extraSpread = 0) {
       return vals.reduce((s, p) => s + p, 0) / vals.length;
     });
   const nObs     = weekArr.length;
+  const rfWeekly = 0;                       // weekly risk-free (0 = conventional for FX short-term)
   const weekMean = weekArr.reduce((s, p) => s + p, 0) / nObs;
   const weekStd  = Math.sqrt(weekArr.reduce((s, p) => s + (p - weekMean) ** 2, 0) / Math.max(1, nObs - 1));
-  const sharpe   = weekStd > 0 ? (weekMean / weekStd) * Math.sqrt(52) : 0;
+  const sharpe   = weekStd > 0 ? (weekMean - rfWeekly) / weekStd * Math.sqrt(52) : 0;
 
   const downArr = weekArr.filter(p => p < 0);
-  const downStd = downArr.length > 0 ? Math.sqrt(downArr.reduce((s, p) => s + p ** 2, 0) / downArr.length) : 0;
-  const sortino = downStd > 0 ? (weekMean / downStd) * Math.sqrt(52) : 0;
+  // Sortino: semi-deviation uses ALL observations in denominator (not just negative weeks)
+  const downStd = nObs > 0 ? Math.sqrt(downArr.reduce((s, p) => s + p ** 2, 0) / nObs) : 0;
+  const sortino = downStd > 0 ? (weekMean - rfWeekly) / downStd * Math.sqrt(52) : 0;
 
-  let peak = 0, maxDd = 0, cum = 0;
-  for (const p of weekArr) { cum += p; if (cum > peak) peak = cum; const dd = peak - cum; if (dd > maxDd) maxDd = dd; }
+  // Max drawdown on compounded equity curve (% of peak equity)
+  let peakEq = 1.0, equity = 1.0, maxDd = 0;
+  for (const p of weekArr) {
+    equity *= (1 + p / 100);
+    if (equity > peakEq) peakEq = equity;
+    const dd = (peakEq - equity) / peakEq * 100;
+    if (dd > maxDd) maxDd = dd;
+  }
 
   const totalPnl  = adjPnls.reduce((s, p) => s + p, 0);
   const wins      = adjPnls.filter(p => p > 0);
@@ -488,14 +513,16 @@ function clientWbtStats(trades, extraSpread = 0) {
   const years  = dates.length > 1
     ? (new Date(dates.at(-1)) - new Date(dates[0])) / (365.25 * 24 * 3600 * 1000)
     : 1;
-  const normPnl = weekArr.reduce((s, p) => s + p, 0);
-  const cagr    = years > 0 ? (Math.pow(1 + normPnl / 100, 1 / years) - 1) * 100 : 0;
-  const calmar  = maxDd > 0 ? Math.abs(cagr / maxDd) : 0;
+  const normPnl     = weekArr.reduce((s, p) => s + p, 0); // equal-weight portfolio return
+  // CAGR via geometric compounding of each weekly return
+  const finalEquity = weekArr.reduce((eq, p) => eq * (1 + p / 100), 1.0);
+  const cagr        = years > 0 ? (Math.pow(finalEquity, 1 / years) - 1) * 100 : 0;
+  const calmar      = maxDd > 0 ? Math.abs(cagr / maxDd) : 0;
 
-  // Max consecutive wins/losses
+  // Max consecutive wins/losses measured on weekly portfolio returns (not individual trades)
   let maxCW = 0, maxCL = 0, curCW = 0, curCL = 0;
-  for (const r of filled) {
-    if (r.pnl_pct > 0) { curCW++; curCL = 0; } else { curCL++; curCW = 0; }
+  for (const p of weekArr) {
+    if (p > 0) { curCW++; curCL = 0; } else { curCL++; curCW = 0; }
     if (curCW > maxCW) maxCW = curCW;
     if (curCL > maxCL) maxCL = curCL;
   }
@@ -527,10 +554,11 @@ function clientWbtStats(trades, extraSpread = 0) {
   const leaveMean      = _cMean(winnersLOT.map(r => Math.max(0, r.mfe_pct - r.pnl_pct)));
   const loserBestExit  = _cMean(losersMFE.map(r => r.mfe_pct));
 
-  return { nDays, nFilled,
+  return { nDays, nFilled, nObs,
     fillRate:       +(nFilled / nDays * 100).toFixed(1),
     winRate:        +(wins.length / nFilled * 100).toFixed(1),
     totalPnl:       +totalPnl.toFixed(3),
+    portReturn:     +normPnl.toFixed(3),
     annReturn:      +annReturn.toFixed(2),
     cagr:           +cagr.toFixed(2),
     sharpe:         +sharpe.toFixed(2),
@@ -634,13 +662,14 @@ function renderSecondary(s) {
   set('sTotalFilled', s.nFilled?.toLocaleString() ?? '—');
   set('sFillRate',    fmt(s.fillRate) + '%');
   set('sTotalPnl',    fmtPct(s.totalPnl));
+  set('sPortReturn',  s.portReturn != null ? fmtPct(s.portReturn) : '—');
   set('sExpect',      fmt(s.expectancy, 4) + '%');
   set('sAvgWin',      fmt(s.avgWin, 4) + '%');
   set('sAvgLoss',     fmt(s.avgLoss, 4) + '%');
   set('sMaxCW',       s.maxConsecWins  ?? '—');
   set('sMaxCL',       s.maxConsecLosses ?? '—');
   set('sAnnReturn',   s.annReturn != null ? fmtPct(s.annReturn) + '/yr' : '—');
-  set('sWeeks',       s.nDays?.toLocaleString() ?? '—');
+  set('sWeeks',       s.nObs?.toLocaleString() ?? s.nDays?.toLocaleString() ?? '—');
   set('sYears',       fmt(s.years));
 }
 
@@ -977,18 +1006,20 @@ function filterTrades() {
   const level   = document.getElementById('fLevel')?.value   || '';
   const side    = document.getElementById('fSide')?.value    || '';
   const outcome = document.getElementById('fOutcome')?.value || '';
+  const carried = document.getElementById('fCarried')?.value || '';
   _filtTrades = _allTrades.filter(r =>
     (!pair    || r.instrument === pair) &&
     (!level   || r.level     === level) &&
     (!side    || r.side      === side) &&
-    (!outcome || r.outcome   === outcome)
+    (!outcome || r.outcome   === outcome) &&
+    (carried === '' || (carried === 'carried' ? r.carried : !r.carried))
   );
   _page = 0;
   renderPage();
 }
 
 function clearFilters() {
-  ['fPair','fLevel','fSide','fOutcome'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['fPair','fLevel','fSide','fOutcome','fCarried'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   filterTrades();
 }
 
@@ -1012,18 +1043,23 @@ function renderPage() {
 
   const start = _page * PAGE_SIZE;
   tbody.innerHTML = slice.map((r, i) => {
-    const fillDow = r.fill_date
+    const fillDow  = r.fill_date
       ? DOW_LABELS[new Date(r.fill_date + 'T12:00:00Z').getUTCDay()] : '—';
+    const closeDow = r.close_date
+      ? DOW_LABELS[new Date(r.close_date + 'T12:00:00Z').getUTCDay()] : '—';
     const oc  = r.outcome;
     const bc  = oc === 'win' ? 'win' : oc === 'loss' ? 'loss' : 'open';
     const pnl = r.pnl_pct ?? 0;
     const absIdx = start + i;
+    const carriedBadge = r.carried
+      ? '<span class="bt-badge open" style="font-size:9px;padding:1px 4px">C</span>' : '—';
     return `<tr>
       <td>${r.date ?? '—'}</td>
       <td><strong>${r.instrument ?? '—'}</strong></td>
       <td><span class="lv ${lvClass(r.level)}">${r.level ?? '—'}</span></td>
       <td>${r.side ?? '—'}</td>
       <td>${fillDow}</td>
+      <td style="font-size:10px;color:var(--text3)">${closeDow}</td>
       <td class="num">${fmt(r.hl50_pct, 3)}%</td>
       <td class="num">${fmt(r.hl75_pct, 3)}%</td>
       <td class="num">${r.monday_open ?? '—'}</td>
@@ -1032,6 +1068,7 @@ function renderPage() {
       <td class="num" style="font-size:10px;color:var(--text3)">${r.pnl_pips != null ? (r.pnl_pips >= 0 ? '+' : '') + r.pnl_pips : '—'}</td>
       <td class="num pos" style="font-size:10px">${r.mfe_pct != null ? '+' + fmt(r.mfe_pct, 3) + '%' : '—'}</td>
       <td class="num neg" style="font-size:10px">${r.mae_pct != null ? fmt(r.mae_pct, 3) + '%' : '—'}</td>
+      <td style="text-align:center">${carriedBadge}</td>
       <td><button class="chart-btn" onclick="openWbtChart(${absIdx})" title="View D1 chart">◫</button></td>
     </tr>`;
   }).join('');
@@ -1067,8 +1104,10 @@ async function runBacktest() {
     atrPeriod: document.getElementById('runAtrPeriod').value,
     atrSlMult: document.getElementById('runAtrSlMult').value,
     atrTpMult: document.getElementById('runAtrTpMult').value,
-    slPips:    document.getElementById('runSlPips').value,
-    tpPips:    document.getElementById('runTpPips').value,
+    slPips:         document.getElementById('runSlPips').value,
+    tpPips:         document.getElementById('runTpPips').value,
+    carryMode:      document.getElementById('runCarryMode').value,
+    maxOnePerPair:  document.getElementById('runMaxOnePerPair').value,
   };
 
   try {
@@ -1117,6 +1156,8 @@ function updateParamVis() {
   const needPips = sl === 'pips' || tp === 'pips';
   document.getElementById('atrParams').classList.toggle('visible', needAtr);
   document.getElementById('pipParams').classList.toggle('visible', needPips);
+  const carry = document.getElementById('runCarryMode').value === 'true';
+  document.getElementById('runMaxOnePerPair').style.display = carry ? '' : 'none';
 }
 
 // ── Chart modal ────────────────────────────────────────────────────────────────
