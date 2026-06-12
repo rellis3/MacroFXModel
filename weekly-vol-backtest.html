@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Vol Range Backtester</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+#wbtApp { padding: 0 20px 40px; max-width: 1340px; margin: 0 auto; }
+
+.bt-kpi-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px; }
+@media (max-width:900px) { .bt-kpi-grid { grid-template-columns:repeat(2,1fr); } }
+.bt-kpi { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);padding:16px 18px 14px;display:flex;flex-direction:column;gap:4px;transition:border-color .2s; }
+.bt-kpi:hover { border-color:var(--border2); }
+.bt-kpi-label { font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace; }
+.bt-kpi-value { font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);line-height:1.1; }
+.bt-kpi-value.green { color:var(--green); }
+.bt-kpi-value.red   { color:var(--red); }
+.bt-kpi-value.blue  { color:var(--blue); }
+.bt-kpi-value.amber { color:var(--amber); }
+.bt-kpi-sub { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
+
+.bt-sec-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px; }
+@media (max-width:900px) { .bt-sec-grid { grid-template-columns:repeat(2,1fr); } }
+.bt-sec { background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;justify-content:space-between; }
+.bt-sec-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
+.bt-sec-val { font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text); }
+
+.bt-card { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-top:14px; }
+.bt-card-hdr { padding:12px 18px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px; }
+.bt-card-hdr .tabs { display:flex;gap:4px;margin-left:auto; }
+.bt-card-body { padding:18px; }
+.bt-chart-wrap { position:relative;height:280px; }
+.bt-two-col { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px; }
+@media (max-width:900px) { .bt-two-col { grid-template-columns:1fr; } }
+
+.bt-tbl { width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px; }
+.bt-tbl th { padding:7px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap; }
+.bt-tbl td { padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap; }
+.bt-tbl tr:last-child td { border-bottom:none; }
+.bt-tbl tr:hover td { background:var(--s2); }
+.bt-tbl td.num { text-align:right; }
+.bt-tbl td.pos { color:var(--green); }
+.bt-tbl td.neg { color:var(--red); }
+.bt-tbl td.neu { color:var(--text2); }
+.bt-tbl-scroll { overflow-x:auto;max-height:420px;overflow-y:auto; }
+
+.bt-badge { display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;border:1px solid; }
+.bt-badge.win  { color:var(--green);background:var(--green-bg);border-color:var(--green-bd); }
+.bt-badge.loss { color:var(--red);  background:var(--red-bg);  border-color:var(--red-bd);   }
+.bt-badge.open { color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd); }
+
+.lv { display:inline-block;padding:2px 7px;border-radius:9px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;border:1px solid; }
+.lv.hl50 { color:var(--blue); background:var(--blue-bg); border-color:var(--blue-bd); }
+.lv.hl75 { color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd); }
+
+.bt-run-bar { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap; }
+.bt-run-bar input,.bt-run-bar select { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px; }
+.bt-run-btn { background:var(--green);border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;padding:6px 18px;cursor:pointer;transition:opacity .2s; }
+.bt-run-btn:hover { opacity:.85; }
+.bt-run-btn:disabled { opacity:.5;cursor:wait; }
+.bt-run-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
+
+.bt-sel { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px;cursor:pointer; }
+.bt-sel:focus { outline:none;border-color:var(--blue); }
+
+.bt-filters { padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center; }
+.bt-filter-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
+
+.bt-pg { padding:10px 14px;display:flex;align-items:center;gap:8px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);border-top:1px solid var(--border); }
+.bt-pg button { background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-family:'DM Mono',monospace;font-size:11px;padding:3px 10px;cursor:pointer; }
+.bt-pg button:hover { border-color:var(--blue);color:var(--blue); }
+.bt-pg button:disabled { opacity:.35;cursor:default; }
+
+.hm-grid { display:flex;flex-wrap:wrap;gap:4px;padding:14px 18px; }
+.hm-cell { width:54px;height:40px;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;border:1px solid var(--border);cursor:default; }
+.hm-cell .hm-month { color:var(--text3); }
+.hm-cell .hm-val { font-size:11px;font-weight:600; }
+
+.info-box { background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-top:10px;font-size:12px;line-height:1.7;color:var(--text2); }
+</style>
+</head>
+<body>
+<div class="sticky-header">
+<div id="wbtApp">
+
+<!-- ── Top bar ──────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14 L8 2 L14 14" stroke="white" stroke-width="2" stroke-linejoin="round" fill="none"/><path d="M4.5 9.5 h7" stroke="white" stroke-width="1.5"/></svg></div>
+  <div class="title-block">
+    <div class="title" style="font-size:15px;font-weight:700;">Weekly Vol Range Backtester</div>
+    <div class="sub">Monday-anchored · EWMA vol × √5 · Fade HL50/HL75 → Monday open · 26 pairs</div>
+  </div>
+  <div style="flex:1"></div>
+  <span class="upd" id="wbtComputedAt"></span>
+  <a href="vol-backtest.html" style="text-decoration:none"><button class="dark-btn" style="border-color:#10b981;color:#10b981">📊 Daily Vol BT</button></a>
+  <a href="vol-forecast.html" style="text-decoration:none"><button class="dark-btn" style="border-color:var(--blue);color:var(--blue)">📐 Vol Forecast</button></a>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+</div>
+
+<!-- ── Run bar ──────────────────────────────────────────────────────────────── -->
+<div class="bt-run-bar" id="runBar">
+  <span class="bt-run-lbl">Run Weekly Backtest:</span>
+  <input type="date" id="runFrom" style="width:130px">
+  <input type="date" id="runTo"   style="width:130px">
+
+  <select id="runPair" class="bt-sel">
+    <option value="">All pairs</option>
+    <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+    <option>AUDUSD</option><option>NZDUSD</option><option>USDCAD</option>
+    <option>USDCHF</option><option>GBPJPY</option>
+    <option>EURJPY</option><option>EURGBP</option><option>EURAUD</option>
+    <option>EURCAD</option><option>EURCHF</option><option>EURNZD</option>
+    <option>AUDJPY</option><option>AUDNZD</option><option>AUDCAD</option>
+    <option>AUDCHF</option><option>GBPAUD</option><option>GBPCAD</option>
+    <option>GBPCHF</option><option>GBPNZD</option><option>CADJPY</option>
+    <option>CHFJPY</option><option>NZDJPY</option><option>GOLD</option>
+  </select>
+
+  <select id="runStrategy" class="bt-sel" title="Strategy: Rev-HL50 fades the median weekly range level back to Monday open (SL = HL75). Rev-HL75 fades the 75th pct level (SL = HL75 × slMult). Both runs both simultaneously.">
+    <option value="revHL50">Rev-HL50 ★</option>
+    <option value="revHL75">Rev-HL75</option>
+    <option value="both">Both</option>
+  </select>
+
+  <select id="runSlMult" class="bt-sel" title="SL multiplier for Rev-HL75 (SL = HL75% × slMult above Monday open). Rev-HL50 always uses HL75 as SL.">
+    <option value="1.5">SL ×1.5</option>
+    <option value="1.0">SL ×1.0</option>
+    <option value="2.0">SL ×2.0</option>
+    <option value="2.5">SL ×2.5</option>
+  </select>
+
+  <select id="runSpread" class="bt-sel" title="Round-trip transaction cost as % of position">
+    <option value="0">No cost</option>
+    <option value="0.001">Spread 0.001%</option>
+    <option value="0.002">Spread 0.002%</option>
+    <option value="0.005">Spread 0.005%</option>
+    <option value="0.01">Spread 0.01%</option>
+  </select>
+
+  <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
+  <span id="runStatus" class="bt-run-lbl"></span>
+</div>
+
+</div><!-- close sticky #wbtApp -->
+</div><!-- close sticky-header -->
+
+<div id="wbtApp" style="padding-top:0">
+
+<!-- ── Strategy info ──────────────────────────────────────────────────────── -->
+<div class="info-box" id="stratInfo">
+  <strong style="color:var(--text)">How it works</strong> — Every Monday the engine computes EWMA volatility from all prior daily closes, scales to weekly (σ<sub>w</sub> = σ<sub>d</sub> × √5), and marks 4 levels from Monday open:
+  <span style="color:var(--blue)">HL50 ±</span> = median expected weekly range (BM 50th %ile × corr × σ<sub>w</sub>) &nbsp;|&nbsp;
+  <span style="color:var(--amber)">HL75 ±</span> = 75th %ile weekly range.
+  <strong>Rev-HL50 ★</strong>: Entry limit at HL50, TP = Monday open, SL = HL75. R:R ≈ 3.8:1 (same geometry as daily Rev-HL50).
+  &nbsp;|&nbsp; <strong>Rev-HL75</strong>: Entry at HL75, TP = Monday open, SL = HL75 × slMult.
+  Outcomes are resolved bar-by-bar through Tuesday–Friday; open trades force-close at Friday's EOD close.
+</div>
+
+<!-- ── Status bar ─────────────────────────────────────────────────────────── -->
+<div class="status-bar" id="wbtStatus" style="margin-top:10px">
+  <div class="sdot spin" id="wbtDot"></div>
+  <span class="stxt" id="wbtMsg">Loading weekly backtest results…</span>
+</div>
+
+<!-- ── Primary KPIs ───────────────────────────────────────────────────────── -->
+<div class="bt-kpi-grid" id="kpiGrid" style="display:none">
+  <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div><div class="bt-kpi-value green" id="kWin">—</div><div class="bt-kpi-sub" id="kWinSub">of filled trades</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Sharpe Ratio</div><div class="bt-kpi-value blue" id="kSharpe">—</div><div class="bt-kpi-sub">annualised (√52 weekly)</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">CAGR</div><div class="bt-kpi-value green" id="kCagr">—</div><div class="bt-kpi-sub" id="kCagrSub">compound annual return</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Profit Factor</div><div class="bt-kpi-value blue" id="kPf">—</div><div class="bt-kpi-sub">gross win / gross loss</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div><div class="bt-kpi-value red" id="kMaxDd">—</div><div class="bt-kpi-sub">peak→trough</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Sortino Ratio</div><div class="bt-kpi-value blue" id="kSortino">—</div><div class="bt-kpi-sub">downside-adjusted</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Calmar Ratio</div><div class="bt-kpi-value amber" id="kCalmar">—</div><div class="bt-kpi-sub">ann. return / max DD</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Reward : Risk</div><div class="bt-kpi-value amber" id="kRr">—</div><div class="bt-kpi-sub">avg win / avg loss</div></div>
+</div>
+
+<!-- ── Secondary stats ────────────────────────────────────────────────────── -->
+<div class="bt-sec-grid" id="secGrid" style="display:none">
+  <div class="bt-sec"><span class="bt-sec-lbl">Total Filled Trades</span><span class="bt-sec-val" id="sTotalFilled">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Fill Rate</span><span class="bt-sec-val" id="sFillRate">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Total P&amp;L %</span><span class="bt-sec-val" id="sTotalPnl">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Expectancy / trade</span><span class="bt-sec-val" id="sExpect">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Avg Win</span><span class="bt-sec-val" id="sAvgWin">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Avg Loss</span><span class="bt-sec-val" id="sAvgLoss">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Weeks in Sample</span><span class="bt-sec-val" id="sWeeks">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Years</span><span class="bt-sec-val" id="sYears">—</span></div>
+</div>
+
+<!-- ── Equity curve ────────────────────────────────────────────────────────── -->
+<div class="bt-card" id="eqCard" style="display:none">
+  <div class="bt-card-hdr">
+    Cumulative P&amp;L % (all instruments combined)
+    <div class="tabs" id="eqTabs">
+      <button class="ptab active" onclick="switchEq('combined',this)">Combined</button>
+      <button class="ptab" onclick="switchEq('instruments',this)">Per Instrument</button>
+    </div>
+  </div>
+  <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="eqChart"></canvas></div></div>
+</div>
+
+<!-- ── Monthly heatmap ─────────────────────────────────────────────────────── -->
+<div class="bt-card" id="hmCard" style="display:none">
+  <div class="bt-card-hdr">Monthly P&amp;L % (all instruments)</div>
+  <div class="hm-grid" id="hmGrid"></div>
+</div>
+
+<!-- ── Per-instrument & Per-level tables ──────────────────────────────────── -->
+<div class="bt-two-col" id="twoCol" style="display:none">
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Per Instrument</div>
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="instTbl">
+        <thead><tr>
+          <th>Pair</th><th class="num">Win%</th><th class="num">Fills</th>
+          <th class="num">Sharpe</th><th class="num">PF</th>
+          <th class="num">CAGR%</th><th class="num">MaxDD%</th>
+        </tr></thead>
+        <tbody id="instTblBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Per Level</div>
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="lvTbl">
+        <thead><tr>
+          <th>Level</th><th class="num">Win%</th><th class="num">Fills</th>
+          <th class="num">Fill%</th><th class="num">Avg P&amp;L</th>
+          <th class="num">Sharpe</th><th class="num">PF</th>
+        </tr></thead>
+        <tbody id="lvTblBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Fill-day breakdown & Year-by-year ──────────────────────────────────── -->
+<div class="bt-two-col" id="twoCol2" style="display:none">
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Fill Day of Week</div>
+    <div class="bt-card-body" style="padding:8px 0">
+      <div class="bt-chart-wrap" style="height:180px"><canvas id="fillDayChart"></canvas></div>
+    </div>
+  </div>
+  <div class="bt-card" style="margin-top:0">
+    <div class="bt-card-hdr">Year-by-Year Performance</div>
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="yearTbl">
+        <thead><tr>
+          <th>Year</th><th class="num">Fills</th><th class="num">Fill%</th>
+          <th class="num">Win%</th><th class="num">PF</th>
+          <th class="num">Total PnL%</th><th class="num">Max DD%</th>
+        </tr></thead>
+        <tbody id="yearTblBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Outcome distribution chart ─────────────────────────────────────────── -->
+<div class="bt-card" id="pieCard" style="display:none;margin-top:14px">
+  <div class="bt-card-hdr">Outcome Distribution</div>
+  <div class="bt-card-body"><div class="bt-chart-wrap" style="height:220px"><canvas id="pieChart"></canvas></div></div>
+</div>
+
+<!-- ── Trade log ──────────────────────────────────────────────────────────── -->
+<div class="bt-card" id="tradeCard" style="display:none">
+  <div class="bt-card-hdr">Trade Log <span id="tradeCount" style="color:var(--text3);font-weight:400"></span></div>
+  <div class="bt-filters">
+    <span class="bt-filter-lbl">Filter:</span>
+    <select class="bt-sel" id="fPair" onchange="filterTrades()">
+      <option value="">All pairs</option>
+    </select>
+    <select class="bt-sel" id="fLevel" onchange="filterTrades()">
+      <option value="">All levels</option>
+      <option value="HL50">HL50</option>
+      <option value="HL75">HL75</option>
+    </select>
+    <select class="bt-sel" id="fSide" onchange="filterTrades()">
+      <option value="">Both sides</option>
+      <option value="SELL">SELL (from high)</option>
+      <option value="BUY">BUY (from low)</option>
+    </select>
+    <select class="bt-sel" id="fOutcome" onchange="filterTrades()">
+      <option value="">All outcomes</option>
+      <option value="win">Win</option>
+      <option value="loss">Loss</option>
+      <option value="open">Open (EOW)</option>
+    </select>
+    <button class="dark-btn" onclick="clearFilters()">Clear</button>
+  </div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl">
+      <thead><tr>
+        <th>Week (Mon)</th><th>Pair</th><th>Level</th><th>Side</th>
+        <th>Fill Day</th><th class="num">HL50%</th><th class="num">HL75%</th>
+        <th class="num">Mon Open</th><th>Outcome</th><th class="num">P&amp;L%</th>
+      </tr></thead>
+      <tbody id="tradeTblBody"></tbody>
+    </table>
+  </div>
+  <div class="bt-pg">
+    <button id="pgPrev" onclick="changePage(-1)" disabled>‹ Prev</button>
+    <span id="pgInfo">Page 1</span>
+    <button id="pgNext" onclick="changePage(1)">Next ›</button>
+    <span style="flex:1"></span>
+    <span id="pgTotal"></span>
+  </div>
+</div>
+
+</div><!-- #wbtApp -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let _data       = null;
+let _allTrades  = [];
+let _filtTrades = [];
+let _page       = 0;
+const PAGE_SIZE = 50;
+let _eqChart = null, _pieChart = null, _fillDayChart = null;
+let _eqMode  = 'combined';
+
+// ── Weekly stats (client-side, mirrors server _wbtStats) ──────────────────────
+function clientWbtStats(trades, extraSpread = 0) {
+  const filled  = trades.filter(r => r.filled);
+  const nDays   = trades.length; // actually num weeks/opportunities
+  const nFilled = filled.length;
+  if (nFilled === 0) return { nDays, nFilled, fillRate: 0, winRate: 0, totalPnl: 0, cagr: 0, sharpe: 0, sortino: 0, calmar: 0, profitFactor: 0, maxDd: 0, rr: 0, expectancy: 0, avgWin: 0, avgLoss: 0, years: 0 };
+
+  // Group by week key (r.date = Monday date)
+  const weekMap = new Map();
+  const adjPnls = [];
+  for (const r of trades) {
+    const p = r.filled ? r.pnl_pct - extraSpread : 0;
+    weekMap.set(r.date, (weekMap.get(r.date) ?? 0) + p);
+    if (r.filled) adjPnls.push(p);
+  }
+  const weekArr  = [...weekMap.values()];
+  const nObs     = weekArr.length;
+  const weekMean = weekArr.reduce((s, p) => s + p, 0) / nObs;
+  const weekStd  = Math.sqrt(weekArr.reduce((s, p) => s + (p - weekMean) ** 2, 0) / Math.max(1, nObs - 1));
+  const sharpe   = weekStd > 0 ? (weekMean / weekStd) * Math.sqrt(52) : 0;
+
+  const downArr = weekArr.filter(p => p < 0);
+  const downStd = downArr.length > 0 ? Math.sqrt(downArr.reduce((s, p) => s + p ** 2, 0) / downArr.length) : 0;
+  const sortino = downStd > 0 ? (weekMean / downStd) * Math.sqrt(52) : 0;
+
+  const sortedWeeks = [...weekMap.entries()].sort(([a], [b]) => a < b ? -1 : 1).map(([, p]) => p);
+  let peak = 0, maxDd = 0, cum = 0;
+  for (const p of sortedWeeks) { cum += p; if (cum > peak) peak = cum; const dd = peak - cum; if (dd > maxDd) maxDd = dd; }
+
+  const totalPnl  = adjPnls.reduce((s, p) => s + p, 0);
+  const wins      = adjPnls.filter(p => p > 0);
+  const losses    = adjPnls.filter(p => p <= 0);
+  const grossWin  = wins.reduce((s, p) => s + p, 0);
+  const grossLoss = Math.abs(losses.reduce((s, p) => s + p, 0));
+  const pf        = grossLoss > 0 ? grossWin / grossLoss : wins.length > 0 ? 999 : 0;
+  const avgWin    = wins.length   > 0 ? grossWin   / wins.length   : 0;
+  const avgLoss   = losses.length > 0 ? grossLoss  / losses.length : 0;
+  const rr        = avgLoss > 0 ? avgWin / avgLoss : 0;
+
+  const dates = [...weekMap.keys()].sort();
+  const years = dates.length > 1
+    ? (new Date(dates.at(-1)) - new Date(dates[0])) / (365.25 * 24 * 3600 * 1000)
+    : 1;
+  const cagr   = years > 0 ? (Math.pow(1 + totalPnl / 100, 1 / years) - 1) * 100 : 0;
+  const calmar = maxDd > 0 ? Math.abs(cagr / maxDd) : 0;
+
+  return { nDays, nFilled,
+    fillRate:     +(nFilled / nDays * 100).toFixed(1),
+    winRate:      +(wins.length / nFilled * 100).toFixed(1),
+    totalPnl:     +totalPnl.toFixed(3),
+    cagr:         +cagr.toFixed(2),
+    sharpe:       +sharpe.toFixed(2),
+    sortino:      +sortino.toFixed(2),
+    calmar:       +calmar.toFixed(2),
+    profitFactor: +Math.min(pf, 999).toFixed(2),
+    maxDd:        +maxDd.toFixed(3),
+    rr:           +rr.toFixed(2),
+    expectancy:   +(totalPnl / nFilled).toFixed(4),
+    avgWin:       +avgWin.toFixed(4),
+    avgLoss:      +(-avgLoss).toFixed(4),
+    years:        +years.toFixed(2),
+  };
+}
+
+const fmt    = (v, d=2) => v == null ? '—' : typeof v === 'number' ? v.toFixed(d) : v;
+const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+const lvClass = lv => lv === 'HL50' ? 'hl50' : 'hl75';
+
+function setStatus(type, msg) {
+  document.getElementById('wbtDot').className = 'sdot ' + type;
+  document.getElementById('wbtMsg').textContent = msg;
+}
+
+// ── Load data ──────────────────────────────────────────────────────────────────
+async function loadData() {
+  setStatus('spin', 'Loading weekly backtest results…');
+  try {
+    const r = await fetch('/api/weekly-vol-backtest');
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({ error: r.statusText }));
+      setStatus('err', e.error || 'No data — click ▶ Run to generate.');
+      return;
+    }
+    _data = await r.json();
+    renderAll(_data);
+    setStatus('ok', `Loaded · ${_data.totalTrades.toLocaleString()} filled trades · ${_data.file}`);
+    document.getElementById('wbtComputedAt').textContent = 'computed ' + new Date(_data.computedAt).toLocaleString();
+  } catch (e) {
+    setStatus('err', 'Error: ' + e.message);
+  }
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function renderAll(data) {
+  renderKpis(data.overall);
+  renderSecondary(data.overall);
+  renderEquityCurve(data);
+  renderMonthlyHeatmap(data.monthlyPnl);
+  renderInstTable(data.byInstrument);
+  renderLevelTable(data.byLevel);
+  renderFillDayChart(data.byFillDay);
+  renderYearTable(data.allTrades);
+  renderPieChart(data.overall);
+  initTradelog(data.recentTrades, data.instruments);
+  _allTrades = data.allTrades || [];
+
+  ['kpiGrid','secGrid','eqCard','hmCard','twoCol','twoCol2','pieCard','tradeCard'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = '';
+  });
+}
+
+function renderKpis(s) {
+  if (!s) return;
+  const set = (id, val, suffix='') => { const el = document.getElementById(id); if (el) el.textContent = val + suffix; };
+  set('kWin',    fmt(s.winRate),    '%');
+  set('kSharpe', fmt(s.sharpe));
+  set('kCagr',   fmt(s.cagr),       '%');
+  set('kPf',     fmt(s.profitFactor));
+  set('kMaxDd',  fmt(s.maxDd),      '%');
+  set('kSortino',fmt(s.sortino));
+  set('kCalmar', fmt(s.calmar));
+  set('kRr',     fmt(s.rr));
+  const winEl = document.getElementById('kWin');
+  if (winEl) winEl.className = 'bt-kpi-value ' + (s.winRate >= 30 ? 'green' : s.winRate >= 20 ? 'amber' : 'red');
+}
+
+function renderSecondary(s) {
+  if (!s) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('sTotalFilled', s.nFilled?.toLocaleString() ?? '—');
+  set('sFillRate', fmt(s.fillRate) + '%');
+  set('sTotalPnl', fmtPct(s.totalPnl));
+  set('sExpect',   fmt(s.expectancy, 4) + '%');
+  set('sAvgWin',   fmt(s.avgWin, 4) + '%');
+  set('sAvgLoss',  fmt(s.avgLoss, 4) + '%');
+  set('sWeeks',    s.nDays?.toLocaleString() ?? '—');
+  set('sYears',    fmt(s.years));
+}
+
+function renderEquityCurve(data) {
+  const ctx = document.getElementById('eqChart').getContext('2d');
+  const isInst = _eqMode === 'instruments';
+
+  const datasets = [];
+  if (!isInst) {
+    const pts = data.equityCurve || [];
+    datasets.push({
+      label: 'All Pairs',
+      data: pts.map(p => ({ x: p.date, y: p.pnl })),
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59,130,246,.08)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+      borderWidth: 1.5,
+    });
+  } else {
+    const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16'];
+    const ie = data.instEquity || {};
+    Object.entries(ie).slice(0, 8).forEach(([inst, pts], i) => {
+      datasets.push({
+        label: inst,
+        data: pts.map(p => ({ x: p.date, y: p.pnl })),
+        borderColor: COLORS[i % COLORS.length],
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 1.5,
+      });
+    });
+  }
+
+  if (_eqChart) _eqChart.destroy();
+  _eqChart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: false,
+      scales: {
+        x: { type: 'category', ticks: { color: '#6b7280', font: { size: 10 }, maxTicksLimit: 12 } },
+        y: { ticks: { color: '#6b7280', font: { size: 10 }, callback: v => v.toFixed(1) + '%' } },
+      },
+      plugins: { legend: { display: isInst, labels: { color: '#9ca3af', font: { size: 10 } } } },
+    },
+  });
+}
+
+function switchEq(mode, btn) {
+  _eqMode = mode;
+  document.querySelectorAll('#eqTabs .ptab').forEach(b => b.classList.toggle('active', b === btn));
+  if (_data) renderEquityCurve(_data);
+}
+
+function renderMonthlyHeatmap(arr) {
+  const grid = document.getElementById('hmGrid');
+  if (!grid || !arr?.length) return;
+  const max = Math.max(...arr.map(m => Math.abs(m.pnl)));
+  grid.innerHTML = arr.map(({ month, pnl }) => {
+    const pct = max > 0 ? Math.abs(pnl) / max : 0;
+    const hue = pnl >= 0 ? `rgba(16,185,129,${0.12 + pct * 0.55})` : `rgba(239,68,68,${0.12 + pct * 0.55})`;
+    const cls = pnl >= 0 ? 'pos' : 'neg';
+    const lbl = month.substring(2).replace('-', '/');
+    return `<div class="hm-cell" style="background:${hue}" title="${month}: ${fmtPct(pnl)}">
+      <span class="hm-month">${lbl}</span>
+      <span class="hm-val ${cls}">${fmtPct(pnl)}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderInstTable(by) {
+  const tbody = document.getElementById('instTblBody');
+  if (!tbody || !by) return;
+  tbody.innerHTML = Object.entries(by)
+    .sort(([, a], [, b]) => (b.sharpe ?? 0) - (a.sharpe ?? 0))
+    .map(([pair, s]) => {
+      const wr = s.winRate ?? 0, pf = s.profitFactor ?? 0, cagr = s.cagr ?? 0, dd = s.maxDd ?? 0;
+      return `<tr>
+        <td><strong>${pair}</strong></td>
+        <td class="num ${wr >= 30 ? 'pos' : wr >= 20 ? '' : 'neg'}">${fmt(wr)}%</td>
+        <td class="num">${s.nFilled ?? 0}</td>
+        <td class="num ${s.sharpe >= 1 ? 'pos' : s.sharpe >= 0 ? '' : 'neg'}">${fmt(s.sharpe)}</td>
+        <td class="num ${pf >= 1.5 ? 'pos' : pf >= 1 ? '' : 'neg'}">${fmt(pf)}</td>
+        <td class="num ${cagr >= 0 ? 'pos' : 'neg'}">${fmt(cagr)}%</td>
+        <td class="num neg">${fmt(dd)}%</td>
+      </tr>`;
+    }).join('');
+}
+
+function renderLevelTable(by) {
+  const tbody = document.getElementById('lvTblBody');
+  if (!tbody || !by) return;
+  tbody.innerHTML = Object.entries(by).map(([lv, s]) => {
+    const wr = s.winRate ?? 0;
+    return `<tr>
+      <td><span class="lv ${lvClass(lv)}">${lv}</span></td>
+      <td class="num ${wr >= 30 ? 'pos' : wr >= 20 ? '' : 'neg'}">${fmt(wr)}%</td>
+      <td class="num">${s.nFilled ?? 0}</td>
+      <td class="num">${fmt(s.fillRate)}%</td>
+      <td class="num ${(s.expectancy ?? 0) >= 0 ? 'pos' : 'neg'}">${fmt(s.expectancy, 4)}%</td>
+      <td class="num ${(s.sharpe ?? 0) >= 0 ? 'pos' : 'neg'}">${fmt(s.sharpe)}</td>
+      <td class="num ${(s.profitFactor ?? 0) >= 1 ? 'pos' : 'neg'}">${fmt(s.profitFactor)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderFillDayChart(by) {
+  const ctx = document.getElementById('fillDayChart').getContext('2d');
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  const wr   = days.map(d => by?.[d]?.winRate ?? 0);
+  const fills = days.map(d => by?.[d]?.nFilled ?? 0);
+
+  if (_fillDayChart) _fillDayChart.destroy();
+  _fillDayChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: days,
+      datasets: [
+        { label: 'Win Rate %', data: wr, backgroundColor: days.map((_, i) => `rgba(16,185,129,${0.4 + i * 0.08})`), yAxisID: 'y' },
+        { label: 'Fills', data: fills, backgroundColor: 'rgba(59,130,246,0.3)', type: 'line', yAxisID: 'y2', tension: 0.3, pointRadius: 3, borderColor: '#3b82f6', borderWidth: 1.5 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      scales: {
+        y:  { ticks: { color: '#6b7280', font: { size: 10 }, callback: v => v.toFixed(0) + '%' }, min: 0 },
+        y2: { position: 'right', ticks: { color: '#6b7280', font: { size: 10 } }, grid: { drawOnChartArea: false } },
+        x:  { ticks: { color: '#6b7280', font: { size: 10 } } },
+      },
+      plugins: { legend: { labels: { color: '#9ca3af', font: { size: 10 } } } },
+    },
+  });
+}
+
+function renderYearTable(allTrades) {
+  const tbody = document.getElementById('yearTblBody');
+  if (!tbody || !allTrades?.length) return;
+  const byYear = {};
+  for (const r of allTrades) {
+    const yr = r.date?.substring(0, 4);
+    if (yr) (byYear[yr] = byYear[yr] || []).push(r);
+  }
+  tbody.innerHTML = Object.keys(byYear).sort().map(yr => {
+    const s = clientWbtStats(byYear[yr]);
+    return `<tr>
+      <td><strong>${yr}</strong></td>
+      <td class="num">${s.nFilled}</td>
+      <td class="num">${fmt(s.fillRate)}%</td>
+      <td class="num ${s.winRate >= 30 ? 'pos' : s.winRate >= 20 ? '' : 'neg'}">${fmt(s.winRate)}%</td>
+      <td class="num ${s.profitFactor >= 1 ? 'pos' : 'neg'}">${fmt(s.profitFactor)}</td>
+      <td class="num ${s.totalPnl >= 0 ? 'pos' : 'neg'}">${fmtPct(s.totalPnl)}</td>
+      <td class="num neg">${fmt(s.maxDd)}%</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPieChart(s) {
+  const ctx = document.getElementById('pieChart').getContext('2d');
+  if (!s) return;
+  if (_pieChart) _pieChart.destroy();
+  _pieChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Win', 'Loss', 'Open (EOW)'],
+      datasets: [{ data: [s.winCount ?? 0, s.lossCount ?? 0, s.openCount ?? 0], backgroundColor: ['rgba(16,185,129,.7)', 'rgba(239,68,68,.7)', 'rgba(245,158,11,.7)'], borderWidth: 0 }],
+    },
+    options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { labels: { color: '#9ca3af', font: { size: 11 } } } } },
+  });
+}
+
+// ── Trade log ──────────────────────────────────────────────────────────────────
+const DOW_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function initTradelog(trades, instruments) {
+  const sel = document.getElementById('fPair');
+  if (sel && instruments) {
+    sel.innerHTML = '<option value="">All pairs</option>' +
+      instruments.map(i => `<option>${i}</option>`).join('');
+  }
+  _allTrades  = trades || [];
+  _filtTrades = [..._allTrades];
+  _page       = 0;
+  renderPage();
+}
+
+function filterTrades() {
+  const pair    = document.getElementById('fPair')?.value    || '';
+  const level   = document.getElementById('fLevel')?.value   || '';
+  const side    = document.getElementById('fSide')?.value    || '';
+  const outcome = document.getElementById('fOutcome')?.value || '';
+  _filtTrades = _allTrades.filter(r =>
+    (!pair    || r.instrument === pair) &&
+    (!level   || r.level     === level) &&
+    (!side    || r.side      === side) &&
+    (!outcome || r.outcome   === outcome)
+  );
+  _page = 0;
+  renderPage();
+}
+
+function clearFilters() {
+  ['fPair','fLevel','fSide','fOutcome'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  filterTrades();
+}
+
+function changePage(dir) {
+  const maxPage = Math.ceil(_filtTrades.length / PAGE_SIZE) - 1;
+  _page = Math.max(0, Math.min(_page + dir, maxPage));
+  renderPage();
+}
+
+function renderPage() {
+  const tbody  = document.getElementById('tradeTblBody');
+  const pgInfo = document.getElementById('pgInfo');
+  const pgPrev = document.getElementById('pgPrev');
+  const pgNext = document.getElementById('pgNext');
+  const pgTot  = document.getElementById('pgTotal');
+  if (!tbody) return;
+
+  const total   = _filtTrades.length;
+  const maxPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
+  const slice   = _filtTrades.slice(_page * PAGE_SIZE, (_page + 1) * PAGE_SIZE);
+
+  tbody.innerHTML = slice.map(r => {
+    const fillDow = r.fill_date
+      ? DOW_LABELS[new Date(r.fill_date + 'T12:00:00Z').getUTCDay()] : '—';
+    const oc  = r.outcome;
+    const bc  = oc === 'win' ? 'win' : oc === 'loss' ? 'loss' : 'open';
+    const pnl = r.pnl_pct ?? 0;
+    return `<tr>
+      <td>${r.date ?? '—'}</td>
+      <td><strong>${r.instrument ?? '—'}</strong></td>
+      <td><span class="lv ${lvClass(r.level)}">${r.level ?? '—'}</span></td>
+      <td>${r.side ?? '—'}</td>
+      <td>${fillDow}</td>
+      <td class="num">${fmt(r.hl50_pct, 3)}%</td>
+      <td class="num">${fmt(r.hl75_pct, 3)}%</td>
+      <td class="num">${r.monday_open ?? '—'}</td>
+      <td><span class="bt-badge ${bc}">${oc ?? '—'}</span></td>
+      <td class="num ${pnl >= 0 ? 'pos' : 'neg'}">${fmtPct(pnl)}</td>
+    </tr>`;
+  }).join('');
+
+  if (pgInfo) pgInfo.textContent = `Page ${_page + 1} / ${maxPage + 1}`;
+  if (pgPrev) pgPrev.disabled = _page === 0;
+  if (pgNext) pgNext.disabled = _page >= maxPage;
+  if (pgTot)  pgTot.textContent = `${total.toLocaleString()} trades`;
+  const cnt = document.getElementById('tradeCount');
+  if (cnt) cnt.textContent = `(${total.toLocaleString()} matching)`;
+}
+
+// ── Run backtest ───────────────────────────────────────────────────────────────
+let _pollInterval = null;
+
+async function runBacktest() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('runStatus').textContent = 'Starting…';
+  setStatus('spin', 'Running weekly backtest…');
+
+  if (_pollInterval) clearInterval(_pollInterval);
+
+  const body = {
+    dateFrom:  document.getElementById('runFrom').value,
+    dateTo:    document.getElementById('runTo').value,
+    pair:      document.getElementById('runPair').value,
+    strategy:  document.getElementById('runStrategy').value,
+    slMult:    document.getElementById('runSlMult').value,
+    spreadPct: document.getElementById('runSpread').value,
+  };
+
+  try {
+    const r  = await fetch('/api/weekly-vol-backtest/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const jb = await r.json();
+    if (!jb.ok) { setStatus('err', jb.error || 'Failed to start'); btn.disabled = false; return; }
+
+    const jobId = jb.jobId;
+    document.getElementById('runStatus').textContent = `Job ${jobId} running…`;
+
+    _pollInterval = setInterval(async () => {
+      try {
+        const sr  = await fetch(`/api/weekly-vol-backtest/status/${jobId}`);
+        const sj  = await sr.json();
+        if (sj.status === 'running') {
+          document.getElementById('runStatus').textContent = `Running… ${sj.elapsed ?? 0}s`;
+          return;
+        }
+        clearInterval(_pollInterval); _pollInterval = null;
+        if (sj.status === 'done') {
+          document.getElementById('runStatus').textContent = sj.message || 'Done!';
+          setStatus('ok', 'Backtest complete — loading results…');
+          await loadData();
+        } else {
+          setStatus('err', sj.error || 'Backtest failed');
+          document.getElementById('runStatus').textContent = 'Error: ' + (sj.error || 'unknown');
+        }
+        btn.disabled = false;
+      } catch (e) {
+        clearInterval(_pollInterval); _pollInterval = null;
+        setStatus('err', 'Poll error: ' + e.message);
+        btn.disabled = false;
+      }
+    }, 3000);
+  } catch (e) {
+    setStatus('err', 'Error: ' + e.message);
+    btn.disabled = false;
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', loadData);
+</script>
+</body>
+</html>

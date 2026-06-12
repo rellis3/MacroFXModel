@@ -33,6 +33,7 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
+import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -3726,6 +3727,290 @@ app.get('/api/vol-backtest/diagnose', async (_req, res) => {
 });
 
 app.get('/api/version', (_req, res) => res.json({ version: 'r2-m1-engine', deployedAt: new Date().toISOString(), r2: !!process.env.R2_ACCESS_KEY }));
+
+// ── Weekly Vol Backtest API ───────────────────────────────────────────────────
+
+const WBT_DATA_DIR = BT_DATA_DIR; // reuse same data directory, different filename prefix
+
+function _latestWeeklyFile() {
+  if (!fs.existsSync(WBT_DATA_DIR)) return null;
+  const files = fs.readdirSync(WBT_DATA_DIR)
+    .filter(f => f.startsWith('weekly_backtest_') && f.endsWith('.json'))
+    .sort().reverse();
+  return files.length ? path.join(WBT_DATA_DIR, files[0]) : null;
+}
+
+// Weekly stats — same logic as _btStats but uses √52 for Sharpe/Sortino annualisation.
+function _wbtStats(trades) {
+  const filled  = trades.filter(r => r.filled);
+  const nDays   = trades.length; // = number of week-slots (opportunities)
+  const nFilled = filled.length;
+  if (nFilled === 0) return { nDays, nFilled, fillRate: 0, winRate: 0, totalPnl: 0 };
+
+  const pnls      = filled.map(r => r.pnl_pct);
+  const totalPnl  = pnls.reduce((s, p) => s + p, 0);
+
+  // Weekly portfolio P&L (group by week key = r.date)
+  const weekMap = new Map();
+  for (const r of trades) weekMap.set(r.date, (weekMap.get(r.date) ?? 0) + r.pnl_pct);
+  const weekPnls  = [...weekMap.values()];
+  const nObs      = weekPnls.length;
+  const wMean     = weekPnls.reduce((s, p) => s + p, 0) / nObs;
+  const wStd      = Math.sqrt(weekPnls.reduce((s, p) => s + (p - wMean) ** 2, 0) / Math.max(1, nObs - 1));
+  const sharpe    = wStd > 0 ? wMean / wStd * Math.sqrt(52) : 0;
+  const downPnls  = weekPnls.filter(p => p < 0);
+  const downStd   = downPnls.length > 0 ? Math.sqrt(downPnls.reduce((s, p) => s + p ** 2, 0) / downPnls.length) : 0;
+  const sortino   = downStd > 0 ? wMean / downStd * Math.sqrt(52) : 0;
+
+  const sorted = [...weekMap.entries()].sort(([a], [b]) => a < b ? -1 : 1).map(([, p]) => p);
+  let peak = 0, maxDd = 0, cum = 0;
+  for (const p of sorted) { cum += p; if (cum > peak) peak = cum; const dd = peak - cum; if (dd > maxDd) maxDd = dd; }
+
+  const wins      = pnls.filter(p => p > 0);
+  const losses    = pnls.filter(p => p <= 0);
+  const grossWin  = wins.reduce((s, p) => s + p, 0);
+  const grossLoss = Math.abs(losses.reduce((s, p) => s + p, 0));
+  const pf        = grossLoss > 0 ? grossWin / grossLoss : wins.length > 0 ? 999 : 0;
+  const avgWin    = wins.length   > 0 ? grossWin   / wins.length   : 0;
+  const avgLoss   = losses.length > 0 ? grossLoss  / losses.length : 0;
+
+  const dates = [...weekMap.keys()].sort();
+  const years = dates.length > 1
+    ? (new Date(dates.at(-1)) - new Date(dates[0])) / (365.25 * 24 * 3600 * 1000) : 1;
+  const cagr   = years > 0 ? (Math.pow(1 + totalPnl / 100, 1 / years) - 1) * 100 : 0;
+  const calmar = maxDd > 0 ? Math.abs(cagr / maxDd) : 0;
+
+  return {
+    nDays, nFilled,
+    fillRate:     +(nFilled / nDays * 100).toFixed(1),
+    winRate:      +(wins.length / nFilled * 100).toFixed(1),
+    totalPnl:     +totalPnl.toFixed(3),
+    cagr:         +cagr.toFixed(2),
+    sharpe:       +sharpe.toFixed(2),
+    sortino:      +sortino.toFixed(2),
+    calmar:       +calmar.toFixed(2),
+    profitFactor: +Math.min(pf, 999).toFixed(2),
+    maxDd:        +maxDd.toFixed(3),
+    rr:           +(avgLoss > 0 ? avgWin / avgLoss : 0).toFixed(2),
+    expectancy:   +(totalPnl / nFilled).toFixed(4),
+    avgWin:       +avgWin.toFixed(4),
+    avgLoss:      +(-avgLoss).toFixed(4),
+    years:        +years.toFixed(2),
+    winCount:     wins.length,
+    lossCount:    losses.length,
+    openCount:    filled.filter(r => r.outcome === 'open').length,
+  };
+}
+
+// Latest cached weekly backtest results
+app.get('/api/weekly-vol-backtest', (req, res) => {
+  const filePath = _latestWeeklyFile();
+  if (!filePath) return res.status(404).json({ ok: false, error: 'No weekly backtest data. Click ▶ Run to generate.' });
+
+  try {
+    const rawData  = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const trades   = Array.isArray(rawData) ? rawData : (rawData.trades ?? []);
+    if (!trades.length) return res.status(404).json({ ok: false, error: 'Empty backtest file.' });
+
+    const instruments = [...new Set(trades.map(r => r.instrument))].sort();
+
+    const byInstrument = Object.fromEntries(
+      instruments.map(inst => [inst, _wbtStats(trades.filter(r => r.instrument === inst))])
+    );
+
+    const levels = ['HL50', 'HL75'];
+    const byLevel = Object.fromEntries(
+      levels.map(lv => [lv, _wbtStats(trades.filter(r => r.level === lv))])
+    );
+
+    // Fill-day breakdown (which day of the week was the limit order triggered)
+    const DOW_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const byFillDay = {};
+    for (const r of trades) {
+      if (!r.filled || !r.fill_date) continue;
+      const d = DOW_LABELS[new Date(r.fill_date + 'T12:00:00Z').getUTCDay()];
+      (byFillDay[d] = byFillDay[d] || []).push(r);
+    }
+    const byFillDayStats = Object.fromEntries(
+      Object.entries(byFillDay).map(([d, ts]) => [d, _wbtStats(ts)])
+    );
+
+    // Weekly equity curve (cumulative P&L over Monday dates)
+    const weekPnl = {};
+    for (const r of trades.filter(t => t.filled)) {
+      const d = r.date?.substring(0, 10);
+      if (d) weekPnl[d] = (weekPnl[d] || 0) + r.pnl_pct;
+    }
+    let cum = 0;
+    const equityCurve = Object.keys(weekPnl).sort().map(d => {
+      cum += weekPnl[d];
+      return { date: d, pnl: +cum.toFixed(3) };
+    });
+
+    // Per-instrument equity curves
+    const instEquity = {};
+    for (const inst of instruments) {
+      const instTrades = trades.filter(r => r.instrument === inst && r.filled);
+      const byWk = {};
+      for (const r of instTrades) {
+        const d = r.date?.substring(0, 10);
+        if (d) byWk[d] = (byWk[d] || 0) + r.pnl_pct;
+      }
+      let c = 0;
+      instEquity[inst] = Object.keys(byWk).sort().map(d => {
+        c += byWk[d]; return { date: d, pnl: +c.toFixed(3) };
+      });
+    }
+
+    // Monthly P&L (group week by month of Monday date)
+    const monthly = {};
+    for (const r of trades.filter(t => t.filled)) {
+      const m = r.date?.substring(0, 7);
+      if (m) monthly[m] = (monthly[m] || 0) + r.pnl_pct;
+    }
+    const monthlyPnl = Object.entries(monthly).sort().map(([month, pnl]) => ({ month, pnl: +pnl.toFixed(3) }));
+
+    // Recent trades for log (last 200 filled, sorted newest-first)
+    const recentTrades = trades
+      .filter(t => t.filled)
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+      .slice(-200).reverse()
+      .map(r => ({
+        date:        r.date?.substring(0, 10),
+        week:        r.week?.substring(0, 10),
+        instrument:  r.instrument,
+        level:       r.level,
+        side:        r.side,
+        outcome:     r.outcome,
+        pnl_pct:     r.pnl_pct,
+        hl50_pct:    r.hl50_pct,
+        hl75_pct:    r.hl75_pct,
+        monday_open: r.monday_open,
+        fill_date:   r.fill_date,
+        entry:       r.entry,
+      }));
+
+    // Compact allTrades for client-side stats
+    const allTrades = trades.map(r => ({
+      date:       r.date?.substring(0, 10),
+      week:       r.week?.substring(0, 10),
+      filled:     r.filled,
+      pnl_pct:    r.pnl_pct,
+      outcome:    r.outcome,
+      level:      r.level,
+      side:       r.side,
+      instrument: r.instrument,
+      hl50_pct:   r.hl50_pct,
+      hl75_pct:   r.hl75_pct,
+      monday_open: r.monday_open,
+      fill_date:  r.fill_date,
+      entry:      r.entry,
+    }));
+
+    const overall = _wbtStats(trades);
+
+    res.json({
+      ok: true,
+      file:        path.basename(filePath),
+      computedAt:  fs.statSync(filePath).mtime.toISOString(),
+      overall,
+      byInstrument,
+      byLevel,
+      byFillDay:   byFillDayStats,
+      equityCurve,
+      instEquity,
+      monthlyPnl,
+      recentTrades,
+      allTrades,
+      totalTrades: trades.filter(t => t.filled).length,
+      instruments,
+    });
+  } catch (e) {
+    const msg = e?.message || String(e);
+    console.error('[weekly-vol-backtest]', msg);
+    res.status(500).json({ ok: false, error: msg });
+  }
+});
+
+// Async job queue for weekly backtest runs
+const wbtJobs = new Map();
+
+function _purgeStaleWbtJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of wbtJobs) if (job.startedAt < cutoff) wbtJobs.delete(id);
+}
+
+app.post('/api/weekly-vol-backtest/run', (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const {
+    dateFrom  = '', dateTo    = '', pair      = '',
+    strategy  = 'revHL50',
+    slMult    = '1.5',
+    spreadPct = '0',
+  } = req.body || {};
+
+  const opts = {
+    dateFrom, dateTo,
+    strategy,
+    slMult:    parseFloat(slMult)    || 1.5,
+    spreadPct: parseFloat(spreadPct) || 0,
+    minLookback: 60,
+  };
+
+  const instFilter = pair
+    ? WEEKLY_INSTRUMENTS.filter(i => i.name === pair.toUpperCase())
+    : undefined;
+
+  const jobId     = `wbt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+
+  _purgeStaleWbtJobs();
+  wbtJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { trades, log } = await runFullWeeklyBacktest(opts, instFilter ?? WEEKLY_INSTRUMENTS);
+
+      if (!trades.length) {
+        wbtJobs.set(jobId, { status: 'error', error: 'No trades generated', log, startedAt });
+        return;
+      }
+
+      if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
+      const ts      = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(WBT_DATA_DIR, `weekly_backtest_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify(trades, null, 0) + '\n');
+
+      wbtJobs.set(jobId, {
+        status: 'done', startedAt,
+        result: {
+          ok:      true,
+          message: `Weekly backtest complete — ${trades.filter(t => t.filled).length} filled trades`,
+          log,
+          file:    path.basename(outFile),
+        },
+      });
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.error('[weekly-vol-backtest/run]', msg);
+      wbtJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/weekly-vol-backtest/status/:jobId', (req, res) => {
+  const job = wbtJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
 
 // Level hit analysis — async job queue (same pattern as vol-backtest/run)
 const laJobs = new Map();
