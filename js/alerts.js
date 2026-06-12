@@ -15,6 +15,8 @@ import { calculateVolRegime, calculatePivots } from './vol.js';
 import { calculateTierScores, compute5mKalmanDev, computeBayesianScore } from './macro.js';
 import { gradeEntry } from './trade-grade.js';
 import { computeGoldMacroModel } from './gold-model.js';
+import { computeFXMacroModel, PAIR_DRIVERS } from './fx-macro-model.js';
+import { computeFXDailyTone, computeRiskBarometer, resetRiskBarometerCache, TONE_REGIMES } from './fx-daily-tone.js';
 import { computeArimaContext } from './arima-price.js';
 import { collectDecisionInputs } from '../DecisionEngine/decisionInputs.js';
 import { runDecisionEngine } from '../DecisionEngine/decisionEngine.js';
@@ -847,7 +849,7 @@ async function sendGoldRegimeAlert(model, prevRegimeLabel) {
   const biasEmoji = model.regimeBias === 'BULLISH' ? '↑' : model.regimeBias === 'BEARISH' ? '↓' : '↕';
   const regimeLine = `${model.regimeEmoji} <b>${prevRegimeLabel}</b> → <b>${model.regimeLabel}</b>`;
   const plainLine  = `${model.regimeDescription} Gold outlook shifts to <b>${model.regimeBias}</b> ${biasEmoji}`;
-  await _sendGoldAlert(model, regimeLine, '⚠️ GOLD MACRO REGIME CHANGE', plainLine);
+  await _sendGoldAlert(model, regimeLine, '📊 GOLD — MACRO CONTEXT SHIFT', plainLine);
 }
 
 async function sendGoldSignalAlert(model) {
@@ -867,7 +869,7 @@ async function sendGoldTransitionAlert(model) {
     return `Price trend reliability: ${pct}% ${ico} (${lbl})`;
   })() : null;
   const detailLine = [plainLine, sigList || null, arimaLine].filter(Boolean).join('\n') || null;
-  await _sendGoldAlert(model, mainLine, '⚠️ GOLD REGIME TRANSITION', detailLine);
+  await _sendGoldAlert(model, mainLine, '📊 GOLD — MACRO CONTEXT TRANSITION', detailLine);
 }
 
 async function sendGoldUncertaintyAlert(model) {
@@ -929,6 +931,7 @@ async function _sendGoldAlert(model, headline, title, extraLine) {
     confBadge,
     model.fedPricingSignal ? `Fed Pricing: ${model.fedPricingSignal}` : null,
     model.nfciSignal ? `NFCI: ${model.nfciSignal}` : null,
+    `⏱ Timescale: weekly/monthly · FRED macro data`,
   ].filter(v => v != null).join('\n');
 
   try {
@@ -953,4 +956,286 @@ export async function syncGoldModelNow() {
     S.goldModel = model;
   }
   return model;
+}
+
+// ── FX Macro Regime Alerts ─────────────────────────────────────────────────────
+// Fires Telegram alerts when any FX pair's macro regime or confidence crosses
+// meaningful thresholds. Separate cooldown store from gold/price alerts.
+//
+//   1. Regime flip         — fired when regime classification changes (4h cooldown per pair+regime)
+//   2. Transition warning  — fired when regime confidence drops to LOW (6h cooldown per pair)
+//
+// Cooldowns stored under 'fx_macro_cooldowns' in localStorage.
+
+const FX_COOLDOWN_KEY = 'fx_macro_cooldowns'
+const FX_THROTTLE_MS  = 60_000
+
+let _fxAlertLastRun = 0
+const _prevFXModels  = {} // { 'EUR/USD': { regime, regimeLabel, signal, strength } }
+
+function loadFXCooldowns() {
+  try { return JSON.parse(localStorage.getItem(FX_COOLDOWN_KEY) || '{}') } catch { return {} }
+}
+
+function saveFXCooldowns(cd) {
+  try { localStorage.setItem(FX_COOLDOWN_KEY, JSON.stringify(cd)) } catch {}
+}
+
+// Check FX macro alerts — call after FRED data loads (not every price tick)
+export async function checkFXMacroAlerts() {
+  const cfg = loadAlertCfg()
+  if (!cfg.enabled) return
+
+  const now = Date.now()
+  if (now - _fxAlertLastRun < FX_THROTTLE_MS) return
+  _fxAlertLastRun = now
+
+  const cd = loadFXCooldowns()
+  let dirty = false
+
+  for (const pair of Object.keys(PAIR_DRIVERS)) {
+    const watchesPair = !cfg.pairs?.length || cfg.pairs.includes(pair)
+    if (!watchesPair) continue
+
+    const model = computeFXMacroModel(pair)
+    if (!model) continue
+
+    const prev = _prevFXModels[pair]
+
+    // 1. Regime flip (4h cooldown per pair+regime)
+    const flipKey = `fx_regime_${pair}_${model.regime}`
+    const REGIME_COOLDOWN = 4 * 60 * 60 * 1000
+    if (prev && prev.regime !== model.regime && now - (cd[flipKey] ?? 0) > REGIME_COOLDOWN) {
+      cd[flipKey] = now
+      dirty = true
+      await sendFXRegimeAlert(pair, model, prev.regimeLabel)
+    }
+
+    // 2. Transition warning (6h cooldown per pair)
+    const transKey = `fx_transition_${pair}`
+    const TRANSITION_COOLDOWN = 6 * 60 * 60 * 1000
+    if (model.regimeConfidence.isTransitioning && now - (cd[transKey] ?? 0) > TRANSITION_COOLDOWN) {
+      cd[transKey] = now
+      dirty = true
+      await sendFXTransitionAlert(pair, model)
+    }
+
+    _prevFXModels[pair] = {
+      regime:      model.regime,
+      regimeLabel: model.regimeLabel,
+      signal:      model.signal,
+      strength:    model.strength,
+    }
+  }
+
+  if (dirty) saveFXCooldowns(cd)
+}
+
+// ── FX Alert Message Formatters ────────────────────────────────────────────────
+
+async function sendFXRegimeAlert(pair, model, prevLabel) {
+  const headline = `${model.regimeEmoji} ${prevLabel} → <b>${model.regimeLabel}</b>\n${model.regimeSummary}`
+  await _sendFXAlert(pair, model, headline, `📊 ${pair} — MACRO CONTEXT SHIFT`)
+}
+
+async function sendFXTransitionAlert(pair, model) {
+  const sigList  = model.regimeConfidence.signals.slice(0, 3).join(' · ')
+  const headline = [
+    `${model.regimeEmoji} <b>${model.regimeLabel}</b> — regime instability detected`,
+    `⚠️ Transitioning — reduce size (×${model.regimeConfidence.sizeMult})`,
+    model.regimeSummary,
+    sigList || null,
+  ].filter(Boolean).join('\n')
+  await _sendFXAlert(pair, model, headline, `📊 ${pair} — MACRO CONTEXT TRANSITION`)
+}
+
+async function _sendFXAlert(pair, model, headline, title) {
+  const f   = model.factors
+  const cfg = model.cfg
+
+  // ── Rate differential section ────────────────────────────────────────────
+  const base    = S.fredData?.[cfg.baseRateKey]?.value
+  const quote   = S.fredData?.[cfg.quoteRateKey]?.value
+  const baseStr  = base  != null ? `${cfg.baseName} ${base.toFixed(2)}%`  : `${cfg.baseName} —`
+  const quoteStr = quote != null ? `${cfg.quoteName} ${quote.toFixed(2)}%` : `${cfg.quoteName} —`
+
+  const rateDiffLine = f.rateDiff.label
+    ? `  ${f.rateDiff.label}`
+    : `  ${baseStr} vs ${quoteStr}`
+
+  const rateLines = [
+    `<b>Rate Differential (${cfg.baseName} vs ${cfg.quoteName})</b>`,
+    `  ${baseStr} vs ${quoteStr}`,
+    rateDiffLine !== `  ${baseStr} vs ${quoteStr}` ? rateDiffLine : null,
+  ].filter(Boolean)
+
+  // ── Market environment section ────────────────────────────────────────────
+  const vixStr = f.risk.vix != null ? `VIX ${f.risk.vix.toFixed(0)}` : 'VIX —'
+  const hyStr  = f.risk.hyBps != null ? `HY ${Math.round(f.risk.hyBps)}bp` : 'HY —'
+  const envLines = [
+    `<b>Market Environment</b>`,
+    `  ${vixStr} · ${hyStr}`,
+    f.risk.label ? `  ${f.risk.label}` : null,
+  ]
+
+  // ── Commodity section (pair-specific) ────────────────────────────────────
+  const commLines = f.commodity && f.commodity.wti != null ? [
+    ``,
+    `<b>Commodity (WTI)</b>`,
+    f.commodity.label ? `  ${f.commodity.label}` : null,
+  ] : []
+
+  // ── Confidence badge and bias ─────────────────────────────────────────────
+  const confBadge = model.regimeConfidence.confidence === 'HIGH'   ? '✅ HIGH confidence'
+                  : model.regimeConfidence.confidence === 'MEDIUM' ? '🟡 MEDIUM confidence'
+                  : '🔴 LOW confidence — regime transitioning'
+
+  const biasEmoji = model.regimeBias === 'BULLISH' ? '↑' : model.regimeBias === 'BEARISH' ? '↓' : '↔'
+  const biasLine  = `${biasEmoji} Pair bias: <b>${model.regimeBias}</b>`
+
+  const lines = [
+    `💱 <b>${title}</b>`,
+    headline,
+    ``,
+    `${model.regimeEmoji} Regime: ${model.regimeLabel}`,
+    ``,
+    ...rateLines,
+    ``,
+    ...envLines,
+    ...commLines,
+    ``,
+    confBadge,
+    biasLine,
+    model.regimeConfidence.isTransitioning && model.regimeConfidence.signals.length
+      ? `Signals: ${model.regimeConfidence.signals.slice(0, 2).join(' · ')}`
+      : null,
+    `⏱ Timescale: weekly/monthly · structural backdrop`,
+  ].filter(v => v != null).join('\n')
+
+  try {
+    const res = await fetch('/api/telegram', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ message: lines, parseMode: 'HTML' }),
+    })
+    const j = await res.json()
+    if (!j.ok) console.warn(`FX macro alert failed (${pair}):`, j.error)
+  } catch(e) {
+    console.warn(`FX macro alert error (${pair}):`, e.message)
+  }
+}
+
+// ── FX Daily Tone Alerts ────────────────────────────────────────────────────
+// Fast layer: fires when intraday/daily tone shifts using live OHLC bars.
+// Complements the slow FRED macro model. Updates at daily bar cadence.
+// Label: ⚡ — distinguishes from 📊 structural alerts.
+
+const FX_TONE_COOLDOWN_KEY = 'fx_tone_cooldowns'
+const _prevFXToneModels    = {}
+
+// 90-minute run throttle
+let _fxToneLastRun = 0
+const FX_TONE_THROTTLE_MS = 90 * 60 * 1000
+
+function loadFXToneCooldowns() {
+  try { return JSON.parse(localStorage.getItem(FX_TONE_COOLDOWN_KEY) || '{}') } catch { return {} }
+}
+
+function saveFXToneCooldowns(cd) {
+  try { localStorage.setItem(FX_TONE_COOLDOWN_KEY, JSON.stringify(cd)) } catch {}
+}
+
+export async function checkFXDailyToneAlerts() {
+  const cfg = loadAlertCfg()
+  if (!cfg.enabled) return
+
+  const now = Date.now()
+  if (now - _fxToneLastRun < FX_TONE_THROTTLE_MS) return
+  _fxToneLastRun = now
+
+  // Reset shared risk barometer cache so all pairs use same snapshot
+  resetRiskBarometerCache()
+
+  const cd = loadFXToneCooldowns()
+  let dirty = false
+
+  for (const pair of Object.keys(PAIR_DRIVERS)) {
+    const watchesPair = !cfg.pairs?.length || cfg.pairs.includes(pair)
+    if (!watchesPair) continue
+
+    const model = computeFXDailyTone(pair)
+    if (!model) continue
+
+    const prev = _prevFXToneModels[pair]
+    const prevLabel = prev?.regimeLabel ?? null
+
+    // Regime flip: 3h cooldown per pair+regime
+    const TONE_COOLDOWN = 3 * 60 * 60 * 1000
+    const flipKey = `fx_tone_${pair.replace('/', '')}_${model.regime}`
+    const regimeChanged = prev && prev.regime !== model.regime
+    const cooledDown    = now - (cd[flipKey] ?? 0) > TONE_COOLDOWN
+
+    if (regimeChanged && cooledDown) {
+      cd[flipKey] = now
+      dirty = true
+      await _sendFXToneAlert(pair, model, prevLabel)
+    }
+
+    _prevFXToneModels[pair] = {
+      regime:      model.regime,
+      regimeLabel: model.regimeLabel,
+    }
+  }
+
+  if (dirty) saveFXToneCooldowns(cd)
+}
+
+async function _sendFXToneAlert(pair, model, prevLabel) {
+  const toneEmoji = model.regimeEmoji
+  const toneLabel = model.regimeLabel
+
+  const prevLine = prevLabel ? `${prevLabel} → ` : ''
+  const toneLine = `${prevLine}${toneEmoji} ${toneLabel}`
+
+  const biasEmoji = model.bias === 'BULLISH' ? '↑' : model.bias === 'BEARISH' ? '↓' : '↔'
+  const biasLine  = `${biasEmoji} ${pair} session bias: <b>${model.bias}</b>`
+
+  // Risk barometer detail lines
+  const rb = model.riskBarometer
+  const riskScore = rb.score != null ? rb.score.toFixed(2) : '—'
+  const riskDesc  = rb.score > 0.6 ? 'risk-off flows' : rb.score < -0.6 ? 'risk-on flows' : 'mixed/neutral'
+  const riskLine  = `Risk barometer: ${riskScore} (${riskDesc})`
+
+  const fmt = (z, name) => z != null
+    ? `  ${name} 5d: ${z >= 0 ? '+' : ''}${z.toFixed(2)}σ · ${z > 0.3 ? 'rising' : z < -0.3 ? 'falling' : 'flat'}`
+    : null
+
+  const compLines = [
+    fmt(rb.components.audjpy, 'AUD/JPY'),
+    fmt(rb.components.xauusd, 'Gold'),
+  ].filter(Boolean)
+
+  const lines = [
+    `⚡ <b>${pair} — DAILY MARKET TONE</b>`,
+    toneLine,
+    model.description,
+    biasLine,
+    ``,
+    riskLine,
+    ...compLines,
+    ``,
+    `⏱ Timescale: daily/session · updated with bar close`,
+  ].filter(v => v != null).join('\n')
+
+  try {
+    const res = await fetch('/api/telegram', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ message: lines, parseMode: 'HTML' }),
+    })
+    const j = await res.json()
+    if (!j.ok) console.warn(`FX tone alert failed (${pair}):`, j.error)
+  } catch(e) {
+    console.warn(`FX tone alert error (${pair}):`, e.message)
+  }
 }
