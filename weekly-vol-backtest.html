@@ -45,6 +45,11 @@
 .bt-tbl td.num { text-align:right; }
 .bt-tbl td.pos { color:var(--green); }
 .bt-tbl td.neg { color:var(--red); }
+.bt-tbl td.amber { color:var(--amber); }
+.bt-sec-val.pos   { color:var(--green); }
+.bt-sec-val.neg   { color:var(--red); }
+.bt-sec-val.amber { color:var(--amber); }
+.bt-sec-val.blue  { color:var(--blue); }
 .bt-tbl td.neu { color:var(--text2); }
 .bt-tbl-scroll { overflow-x:auto;max-height:420px;overflow-y:auto; }
 
@@ -225,8 +230,27 @@
   <div class="bt-sec"><span class="bt-sec-lbl">Expectancy / trade</span><span class="bt-sec-val" id="sExpect">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Avg Win</span><span class="bt-sec-val" id="sAvgWin">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Avg Loss</span><span class="bt-sec-val" id="sAvgLoss">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Max Consec Wins</span><span class="bt-sec-val pos" id="sMaxCW">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Max Consec Losses</span><span class="bt-sec-val neg" id="sMaxCL">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Ann. Return (simple)</span><span class="bt-sec-val" id="sAnnReturn">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Weeks in Sample</span><span class="bt-sec-val" id="sWeeks">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Years</span><span class="bt-sec-val" id="sYears">—</span></div>
+</div>
+
+<!-- ── MFE / MAE Card ───────────────────────────────────────────────────────── -->
+<div class="bt-card" id="mfeCard" style="display:none">
+  <div class="bt-card-hdr">MFE / MAE Analysis <span style="color:var(--text3);font-size:11px;font-weight:400">Maximum Favorable / Adverse Excursion — trade level</span></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr) repeat(3,1fr);gap:6px;padding:10px 14px">
+    <div class="bt-sec"><span class="bt-sec-lbl">Avg MFE</span><span class="bt-sec-val pos" id="mMfeMean">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">Median MFE</span><span class="bt-sec-val pos" id="mMfeMed">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">MFE/MAE Ratio</span><span class="bt-sec-val blue" id="mMfeRatio">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">Avg MAE</span><span class="bt-sec-val neg" id="mMaeMean">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">Median MAE</span><span class="bt-sec-val neg" id="mMaeMed">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">Capture Efficiency</span><span class="bt-sec-val amber" id="mCapture">—</span></div>
+  </div>
+  <div style="padding:0 14px 10px;color:var(--text3);font-size:10px;font-family:'DM Mono',monospace">
+    Capture efficiency = avg trade P&amp;L ÷ avg MFE. Higher = better use of available move. MFE/MAE &gt; 1 means fills see more favorable than adverse excursion on average.
+  </div>
 </div>
 
 <!-- ── Equity curve ────────────────────────────────────────────────────────── -->
@@ -245,6 +269,12 @@
 <div class="bt-card" id="hmCard" style="display:none">
   <div class="bt-card-hdr">Monthly P&amp;L % (all instruments)</div>
   <div class="hm-grid" id="hmGrid"></div>
+</div>
+
+<!-- ── Walk-forward IS / OOS ───────────────────────────────────────────────── -->
+<div class="bt-card" id="wfCard" style="display:none">
+  <div class="bt-card-hdr">Walk-Forward Analysis <span style="color:var(--text3);font-size:11px;font-weight:400">70% In-Sample · 30% Out-of-Sample (by Monday date)</span></div>
+  <div id="wfContent" style="padding:4px 0"></div>
 </div>
 
 <!-- ── Per-instrument & Per-level tables ──────────────────────────────────── -->
@@ -387,15 +417,23 @@ function clientWbtStats(trades, extraSpread = 0) {
   const nFilled = filled.length;
   if (nFilled === 0) return { nDays, nFilled, fillRate: 0, winRate: 0, totalPnl: 0, cagr: 0, sharpe: 0, sortino: 0, calmar: 0, profitFactor: 0, maxDd: 0, rr: 0, expectancy: 0, avgWin: 0, avgLoss: 0, years: 0 };
 
-  // Group by week key (r.date = Monday date)
-  const weekMap = new Map();
+  // Equal-weight per-instrument portfolio: average across active pairs per week
+  // rather than summing — prevents 26-pair aggregation inflating Sharpe/CAGR by √N.
+  const instrPerWeek = new Map(); // weekDate → Map(instrument → pnl)
   const adjPnls = [];
   for (const r of trades) {
     const p = r.filled ? r.pnl_pct - extraSpread : 0;
-    weekMap.set(r.date, (weekMap.get(r.date) ?? 0) + p);
+    const im = instrPerWeek.get(r.date) ?? new Map();
+    instrPerWeek.set(r.date, im);
+    im.set(r.instrument, (im.get(r.instrument) ?? 0) + p);
     if (r.filled) adjPnls.push(p);
   }
-  const weekArr  = [...weekMap.values()];
+  const weekArr  = [...instrPerWeek.entries()]
+    .sort(([a], [b]) => a < b ? -1 : 1)
+    .map(([, im]) => {
+      const vals = [...im.values()];
+      return vals.reduce((s, p) => s + p, 0) / vals.length;
+    });
   const nObs     = weekArr.length;
   const weekMean = weekArr.reduce((s, p) => s + p, 0) / nObs;
   const weekStd  = Math.sqrt(weekArr.reduce((s, p) => s + (p - weekMean) ** 2, 0) / Math.max(1, nObs - 1));
@@ -405,9 +443,8 @@ function clientWbtStats(trades, extraSpread = 0) {
   const downStd = downArr.length > 0 ? Math.sqrt(downArr.reduce((s, p) => s + p ** 2, 0) / downArr.length) : 0;
   const sortino = downStd > 0 ? (weekMean / downStd) * Math.sqrt(52) : 0;
 
-  const sortedWeeks = [...weekMap.entries()].sort(([a], [b]) => a < b ? -1 : 1).map(([, p]) => p);
   let peak = 0, maxDd = 0, cum = 0;
-  for (const p of sortedWeeks) { cum += p; if (cum > peak) peak = cum; const dd = peak - cum; if (dd > maxDd) maxDd = dd; }
+  for (const p of weekArr) { cum += p; if (cum > peak) peak = cum; const dd = peak - cum; if (dd > maxDd) maxDd = dd; }
 
   const totalPnl  = adjPnls.reduce((s, p) => s + p, 0);
   const wins      = adjPnls.filter(p => p > 0);
@@ -419,28 +456,56 @@ function clientWbtStats(trades, extraSpread = 0) {
   const avgLoss   = losses.length > 0 ? grossLoss  / losses.length : 0;
   const rr        = avgLoss > 0 ? avgWin / avgLoss : 0;
 
-  const dates = [...weekMap.keys()].sort();
-  const years = dates.length > 1
+  const dates  = [...instrPerWeek.keys()].sort();
+  const years  = dates.length > 1
     ? (new Date(dates.at(-1)) - new Date(dates[0])) / (365.25 * 24 * 3600 * 1000)
     : 1;
-  const cagr   = years > 0 ? (Math.pow(1 + totalPnl / 100, 1 / years) - 1) * 100 : 0;
-  const calmar = maxDd > 0 ? Math.abs(cagr / maxDd) : 0;
+  const normPnl = weekArr.reduce((s, p) => s + p, 0);
+  const cagr    = years > 0 ? (Math.pow(1 + normPnl / 100, 1 / years) - 1) * 100 : 0;
+  const calmar  = maxDd > 0 ? Math.abs(cagr / maxDd) : 0;
+
+  // Max consecutive wins/losses
+  let maxCW = 0, maxCL = 0, curCW = 0, curCL = 0;
+  for (const r of filled) {
+    if (r.pnl_pct > 0) { curCW++; curCL = 0; } else { curCL++; curCW = 0; }
+    if (curCW > maxCW) maxCW = curCW;
+    if (curCL > maxCL) maxCL = curCL;
+  }
+
+  // MFE/MAE stats
+  const _cMed  = arr => { if (!arr.length) return 0; const s = [...arr].sort((a, b) => a - b); const m = (s.length - 1) / 2; return (s[Math.floor(m)] + s[Math.ceil(m)]) / 2; };
+  const mfeArr = filled.filter(r => r.mfe_pct != null).map(r => r.mfe_pct);
+  const maeArr = filled.filter(r => r.mae_pct != null).map(r => r.mae_pct);
+  const mfeMean = mfeArr.length ? mfeArr.reduce((s, v) => s + v, 0) / mfeArr.length : 0;
+  const mfeMed  = _cMed(mfeArr);
+  const maeMean = maeArr.length ? maeArr.reduce((s, v) => s + v, 0) / maeArr.length : 0;
+  const maeMed  = _cMed(maeArr);
+  const captureEff = mfeMean > 0 ? Math.max(0, (totalPnl / nFilled) / mfeMean * 100) : 0;
+  const annReturn  = years > 0 ? normPnl / years : 0;
 
   return { nDays, nFilled,
-    fillRate:     +(nFilled / nDays * 100).toFixed(1),
-    winRate:      +(wins.length / nFilled * 100).toFixed(1),
-    totalPnl:     +totalPnl.toFixed(3),
-    cagr:         +cagr.toFixed(2),
-    sharpe:       +sharpe.toFixed(2),
-    sortino:      +sortino.toFixed(2),
-    calmar:       +calmar.toFixed(2),
-    profitFactor: +Math.min(pf, 999).toFixed(2),
-    maxDd:        +maxDd.toFixed(3),
-    rr:           +rr.toFixed(2),
-    expectancy:   +(totalPnl / nFilled).toFixed(4),
-    avgWin:       +avgWin.toFixed(4),
-    avgLoss:      +(-avgLoss).toFixed(4),
-    years:        +years.toFixed(2),
+    fillRate:       +(nFilled / nDays * 100).toFixed(1),
+    winRate:        +(wins.length / nFilled * 100).toFixed(1),
+    totalPnl:       +totalPnl.toFixed(3),
+    annReturn:      +annReturn.toFixed(2),
+    cagr:           +cagr.toFixed(2),
+    sharpe:         +sharpe.toFixed(2),
+    sortino:        +sortino.toFixed(2),
+    calmar:         +calmar.toFixed(2),
+    profitFactor:   +Math.min(pf, 999).toFixed(2),
+    maxDd:          +maxDd.toFixed(3),
+    rr:             +rr.toFixed(2),
+    expectancy:     +(totalPnl / nFilled).toFixed(4),
+    avgWin:         +avgWin.toFixed(4),
+    avgLoss:        +(-avgLoss).toFixed(4),
+    years:          +years.toFixed(2),
+    maxConsecWins:  maxCW,
+    maxConsecLosses: maxCL,
+    mfeMean:        +mfeMean.toFixed(4),
+    mfeMed:         +mfeMed.toFixed(4),
+    maeMean:        +maeMean.toFixed(4),
+    maeMed:         +maeMed.toFixed(4),
+    captureEff:     +Math.min(captureEff, 999).toFixed(1),
   };
 }
 
@@ -476,8 +541,10 @@ async function loadData() {
 function renderAll(data) {
   renderKpis(data.overall);
   renderSecondary(data.overall);
+  renderMfeCard(data.overall);
   renderEquityCurve(data);
   renderMonthlyHeatmap(data.monthlyPnl);
+  renderWalkForward(data.walkForward);
   renderInstTable(data.byInstrument);
   renderLevelTable(data.byLevel);
   renderFillDayChart(data.byFillDay);
@@ -486,7 +553,7 @@ function renderAll(data) {
   initTradelog(data.recentTrades, data.instruments);
   _allTrades = data.allTrades || [];
 
-  ['kpiGrid','secGrid','eqCard','hmCard','twoCol','twoCol2','pieCard','tradeCard'].forEach(id => {
+  ['kpiGrid','secGrid','mfeCard','eqCard','hmCard','wfCard','twoCol','twoCol2','pieCard','tradeCard'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
@@ -511,13 +578,28 @@ function renderSecondary(s) {
   if (!s) return;
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   set('sTotalFilled', s.nFilled?.toLocaleString() ?? '—');
-  set('sFillRate', fmt(s.fillRate) + '%');
-  set('sTotalPnl', fmtPct(s.totalPnl));
-  set('sExpect',   fmt(s.expectancy, 4) + '%');
-  set('sAvgWin',   fmt(s.avgWin, 4) + '%');
-  set('sAvgLoss',  fmt(s.avgLoss, 4) + '%');
-  set('sWeeks',    s.nDays?.toLocaleString() ?? '—');
-  set('sYears',    fmt(s.years));
+  set('sFillRate',    fmt(s.fillRate) + '%');
+  set('sTotalPnl',    fmtPct(s.totalPnl));
+  set('sExpect',      fmt(s.expectancy, 4) + '%');
+  set('sAvgWin',      fmt(s.avgWin, 4) + '%');
+  set('sAvgLoss',     fmt(s.avgLoss, 4) + '%');
+  set('sMaxCW',       s.maxConsecWins  ?? '—');
+  set('sMaxCL',       s.maxConsecLosses ?? '—');
+  set('sAnnReturn',   s.annReturn != null ? fmtPct(s.annReturn) + '/yr' : '—');
+  set('sWeeks',       s.nDays?.toLocaleString() ?? '—');
+  set('sYears',       fmt(s.years));
+}
+
+function renderMfeCard(s) {
+  if (!s) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('mMfeMean',  s.mfeMean != null ? '+' + fmt(s.mfeMean, 4) + '%' : '—');
+  set('mMfeMed',   s.mfeMed  != null ? '+' + fmt(s.mfeMed,  4) + '%' : '—');
+  set('mMaeMean',  s.maeMean != null ? fmt(s.maeMean, 4) + '%' : '—');
+  set('mMaeMed',   s.maeMed  != null ? fmt(s.maeMed,  4) + '%' : '—');
+  set('mCapture',  s.captureEff != null ? fmt(s.captureEff, 1) + '%' : '—');
+  const ratio = s.maeMean > 0 ? (s.mfeMean / s.maeMean) : (s.mfeMean > 0 ? 99 : 0);
+  set('mMfeRatio', fmt(ratio, 2));
 }
 
 function renderEquityCurve(data) {
@@ -689,6 +771,58 @@ function renderPieChart(s) {
     },
     options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { labels: { color: '#9ca3af', font: { size: 11 } } } } },
   });
+}
+
+// ── Walk-forward IS/OOS panel ──────────────────────────────────────────────────
+function renderWalkForward(wf) {
+  const el = document.getElementById('wfContent');
+  if (!el || !wf) return;
+
+  const is = wf.isStats, oos = wf.oosStats;
+  if (!is || !oos || is.nFilled === 0) {
+    el.innerHTML = '<p style="color:var(--text3);padding:12px;font-size:12px">No walk-forward data available.</p>';
+    return;
+  }
+
+  const ratioCol = (oosV, isV, higherBetter = true) => {
+    if (!isV) return '—';
+    const r = oosV / isV;
+    const pct = (r * 100).toFixed(0) + '%';
+    const good = higherBetter ? r >= 0.7 : r <= 1.3;
+    const ok   = higherBetter ? r >= 0.5 : r <= 1.6;
+    const cls  = good ? 'pos' : ok ? 'amber' : 'neg';
+    return `<span class="num ${cls}">${pct}</span>`;
+  };
+
+  const row = (label, isVal, oosVal, isStr, oosStr, higherBetter = true) => `<tr>
+    <td>${label}</td>
+    <td class="num">${isStr}</td>
+    <td class="num">${oosStr}</td>
+    <td class="num">${ratioCol(oosVal, isVal, higherBetter)}</td>
+  </tr>`;
+
+  el.innerHTML = `
+  <div style="padding:8px 14px;color:var(--text3);font-size:11px;font-family:'DM Mono',monospace">
+    IS: ${wf.dateFrom} → ${wf.cutoffDate ?? '—'} &nbsp;|&nbsp; OOS: ${wf.cutoffDate ?? '—'} → ${wf.dateTo}
+    &nbsp;|&nbsp; OOS/IS &ge;70% on Sharpe/Win% = good generalisation
+  </div>
+  <div class="bt-tbl-scroll">
+  <table class="bt-tbl">
+    <thead><tr><th>Metric</th><th class="num">In-Sample (70%)</th><th class="num">Out-of-Sample (30%)</th><th class="num">OOS/IS</th></tr></thead>
+    <tbody>
+      ${row('Filled Trades', is.nFilled, oos.nFilled, is.nFilled.toLocaleString(), oos.nFilled.toLocaleString(), true)}
+      ${row('Win Rate', is.winRate, oos.winRate, fmt(is.winRate)+'%', fmt(oos.winRate)+'%', true)}
+      ${row('Sharpe Ratio', is.sharpe, oos.sharpe, fmt(is.sharpe), fmt(oos.sharpe), true)}
+      ${row('Sortino Ratio', is.sortino, oos.sortino, fmt(is.sortino), fmt(oos.sortino), true)}
+      ${row('Profit Factor', is.profitFactor, oos.profitFactor, fmt(is.profitFactor), fmt(oos.profitFactor), true)}
+      ${row('Ann. Return (simple)', is.annReturn, oos.annReturn, fmtPct(is.annReturn)+'/yr', fmtPct(oos.annReturn)+'/yr', true)}
+      ${row('CAGR', is.cagr, oos.cagr, fmt(is.cagr)+'%', fmt(oos.cagr)+'%', true)}
+      ${row('Max Drawdown', is.maxDd, oos.maxDd, fmt(is.maxDd)+'%', fmt(oos.maxDd)+'%', false)}
+      ${row('Calmar Ratio', is.calmar, oos.calmar, fmt(is.calmar), fmt(oos.calmar), true)}
+      ${row('Expectancy/trade', is.expectancy, oos.expectancy, fmt(is.expectancy,4)+'%', fmt(oos.expectancy,4)+'%', true)}
+    </tbody>
+  </table>
+  </div>`;
 }
 
 // ── Trade log ──────────────────────────────────────────────────────────────────
@@ -895,7 +1029,7 @@ function _wbtBuildMarkers() {
       const isSell    = t.side === 'SELL';
       const isFocused = i === _wbtTradeIdx;
       return {
-        time:     _wbtToEpochSec(t.fill_date + 'T12:00:00'),
+        time:     t.fill_date, // D1 chart uses YYYY-MM-DD strings as time
         position: isSell ? 'aboveBar' : 'belowBar',
         color:    isFocused
           ? (isSell ? '#ef5350' : '#26a69a')
@@ -1018,20 +1152,20 @@ function openWbtChart(filtIdx) {
 
   const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
   const week = trade.week; // Monday date (YYYY-MM-DD)
-  const from = _wbtDateOffset(week, -1); // Sunday before
-  const to   = _wbtDateOffset(week, 6);  // Sunday after (includes full Fri + context)
+  const from = _wbtDateOffset(week, -4); // ~1 week before for context
+  const to   = _wbtDateOffset(week, 9);  // ~1 week after for context
 
-  fetch(`/api/vol-backtest/candles/${pair}?from=${from}&to=${to}`)
+  fetch(`/api/weekly-vol-backtest/d1/${pair}?from=${from}&to=${to}`)
     .then(r => r.json())
     .then(d => {
       if (!d.ok || !d.candles?.length) {
-        container.innerHTML = `<div style="padding:24px;font-size:13px"><div style="color:#ef5350;font-weight:600;margin-bottom:8px">No M1 candle data</div><div style="color:#8fa0b8">${d.error || 'No candles returned'}</div></div>`;
+        container.innerHTML = `<div style="padding:24px;font-size:13px"><div style="color:#ef5350;font-weight:600;margin-bottom:8px">No D1 candle data</div><div style="color:#8fa0b8">${d.error || 'No candles returned from OANDA'}</div></div>`;
         return;
       }
 
-      // Three-pane layout: Price 56% / Z-Score 22% / SMI 22%
+      // Two-pane layout: Price 72% / SMI 28%
       container.innerHTML = '';
-      container.style.display      = 'flex';
+      container.style.display       = 'flex';
       container.style.flexDirection = 'column';
       const mkPane = (flex, label, borderTop) => {
         const el = document.createElement('div');
@@ -1043,9 +1177,8 @@ function openWbtChart(filtIdx) {
         container.appendChild(el);
         return el;
       };
-      const pricePane = mkPane('0 0 56%', 'M1 · Price',   false);
-      const zPane     = mkPane('0 0 22%', 'Z-Score · 20', true);
-      const smiPane   = mkPane('0 0 22%', 'SMI · 10/3/3', true);
+      const pricePane = mkPane('0 0 72%', 'D1 · Price', false);
+      const smiPane   = mkPane('0 0 28%', 'SMI · 10/3/3', true);
 
       const cBase = {
         autoSize:  true,
@@ -1056,7 +1189,6 @@ function openWbtChart(filtIdx) {
         timeScale:       { borderColor: '#2a3348', timeVisible: true, secondsVisible: false },
       };
       _wbtChart    = LightweightCharts.createChart(pricePane, cBase);
-      _wbtZChart   = LightweightCharts.createChart(zPane,   { ...cBase, timeScale: { ...cBase.timeScale, visible: false } });
       _wbtSmiChart = LightweightCharts.createChart(smiPane, cBase);
 
       const cs = _wbtChart.addCandlestickSeries({
@@ -1065,7 +1197,8 @@ function openWbtChart(filtIdx) {
         wickUpColor: '#26a69a', wickDownColor: '#ef5350',
       });
       _wbtSeries = cs;
-      const bars = d.candles.map(b => ({ time: _wbtToEpochSec(b.time), open: b.open, high: b.high, low: b.low, close: b.close }));
+      // D1 bars: use date string (YYYY-MM-DD) directly as LightweightCharts time
+      const bars = d.candles.map(b => ({ time: b.date, open: b.open, high: b.high, low: b.low, close: b.close }));
       cs.setData(bars);
 
       // ── Static week level lines ───────────────────────────────────────────────
@@ -1128,13 +1261,12 @@ function openWbtChart(filtIdx) {
       // Fill markers (all trades in this week)
       cs.setMarkers(_wbtBuildMarkers());
 
-      // Indicator sub-panels
-      _wbtBuildZScore(_wbtZChart, bars);
+      // SMI indicator sub-panel
       _wbtBuildSMI(_wbtSmiChart, bars);
 
-      // Sync time scales
+      // Sync time scales (price ↔ SMI)
       let _syncing = false;
-      const allC = [_wbtChart, _wbtZChart, _wbtSmiChart];
+      const allC = [_wbtChart, _wbtSmiChart];
       allC.forEach((src, si) => {
         src.timeScale().subscribeVisibleLogicalRangeChange(range => {
           if (_syncing || !range) return;
@@ -1144,9 +1276,8 @@ function openWbtChart(filtIdx) {
         });
       });
 
-      // Zoom to the full trade week (Mon 00:00 → Sat 00:00 UTC)
-      const weekStart = _wbtToEpochSec(week + 'T00:00:00');
-      _wbtChart.timeScale().setVisibleRange({ from: weekStart, to: weekStart + 6 * 24 * 3600 });
+      // Zoom to 2 weeks before the trade week → 1 week after
+      _wbtChart.timeScale().setVisibleRange({ from: from, to: to });
     })
     .catch(e => {
       container.innerHTML = `<div style="padding:24px;color:#ef5350;font-size:13px">Error: ${e.message}</div>`;

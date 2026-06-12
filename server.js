@@ -3747,24 +3747,35 @@ function _wbtStats(trades) {
   const nFilled = filled.length;
   if (nFilled === 0) return { nDays, nFilled, fillRate: 0, winRate: 0, totalPnl: 0 };
 
-  const pnls      = filled.map(r => r.pnl_pct);
-  const totalPnl  = pnls.reduce((s, p) => s + p, 0);
+  const pnls     = filled.map(r => r.pnl_pct);
+  const totalPnl = pnls.reduce((s, p) => s + p, 0);
 
-  // Weekly portfolio P&L (group by week key = r.date)
-  const weekMap = new Map();
-  for (const r of trades) weekMap.set(r.date, (weekMap.get(r.date) ?? 0) + r.pnl_pct);
-  const weekPnls  = [...weekMap.values()];
-  const nObs      = weekPnls.length;
-  const wMean     = weekPnls.reduce((s, p) => s + p, 0) / nObs;
-  const wStd      = Math.sqrt(weekPnls.reduce((s, p) => s + (p - wMean) ** 2, 0) / Math.max(1, nObs - 1));
-  const sharpe    = wStd > 0 ? wMean / wStd * Math.sqrt(52) : 0;
-  const downPnls  = weekPnls.filter(p => p < 0);
-  const downStd   = downPnls.length > 0 ? Math.sqrt(downPnls.reduce((s, p) => s + p ** 2, 0) / downPnls.length) : 0;
-  const sortino   = downStd > 0 ? wMean / downStd * Math.sqrt(52) : 0;
+  // Equal-weight per-instrument portfolio: for each Monday, average across all active
+  // instruments rather than summing. Prevents 26-pair aggregation from inflating Sharpe
+  // and CAGR by √N (uncorrelated diversification artefact, not tradeable alpha).
+  const instrPerWeek = new Map(); // weekDate → Map(instrument → pnl)
+  for (const r of trades) {
+    const im = instrPerWeek.get(r.date) ?? new Map();
+    instrPerWeek.set(r.date, im);
+    im.set(r.instrument, (im.get(r.instrument) ?? 0) + r.pnl_pct);
+  }
+  const weekPnls = [...instrPerWeek.entries()]
+    .sort(([a], [b]) => a < b ? -1 : 1)
+    .map(([, im]) => {
+      const vals = [...im.values()];
+      return vals.reduce((s, p) => s + p, 0) / vals.length;
+    });
 
-  const sorted = [...weekMap.entries()].sort(([a], [b]) => a < b ? -1 : 1).map(([, p]) => p);
+  const nObs     = weekPnls.length;
+  const wMean    = weekPnls.reduce((s, p) => s + p, 0) / nObs;
+  const wStd     = Math.sqrt(weekPnls.reduce((s, p) => s + (p - wMean) ** 2, 0) / Math.max(1, nObs - 1));
+  const sharpe   = wStd > 0 ? wMean / wStd * Math.sqrt(52) : 0;
+  const downPnls = weekPnls.filter(p => p < 0);
+  const downStd  = downPnls.length > 0 ? Math.sqrt(downPnls.reduce((s, p) => s + p ** 2, 0) / downPnls.length) : 0;
+  const sortino  = downStd > 0 ? wMean / downStd * Math.sqrt(52) : 0;
+
   let peak = 0, maxDd = 0, cum = 0;
-  for (const p of sorted) { cum += p; if (cum > peak) peak = cum; const dd = peak - cum; if (dd > maxDd) maxDd = dd; }
+  for (const p of weekPnls) { cum += p; if (cum > peak) peak = cum; const dd = peak - cum; if (dd > maxDd) maxDd = dd; }
 
   const wins      = pnls.filter(p => p > 0);
   const losses    = pnls.filter(p => p <= 0);
@@ -3774,31 +3785,63 @@ function _wbtStats(trades) {
   const avgWin    = wins.length   > 0 ? grossWin   / wins.length   : 0;
   const avgLoss   = losses.length > 0 ? grossLoss  / losses.length : 0;
 
-  const dates = [...weekMap.keys()].sort();
-  const years = dates.length > 1
+  const dates  = [...instrPerWeek.keys()].sort();
+  const years  = dates.length > 1
     ? (new Date(dates.at(-1)) - new Date(dates[0])) / (365.25 * 24 * 3600 * 1000) : 1;
-  const cagr   = years > 0 ? (Math.pow(1 + totalPnl / 100, 1 / years) - 1) * 100 : 0;
-  const calmar = maxDd > 0 ? Math.abs(cagr / maxDd) : 0;
+  const normPnl = weekPnls.reduce((s, p) => s + p, 0); // normalised total for CAGR
+  const cagr    = years > 0 ? (Math.pow(1 + normPnl / 100, 1 / years) - 1) * 100 : 0;
+  const calmar  = maxDd > 0 ? Math.abs(cagr / maxDd) : 0;
+
+  // Max consecutive wins/losses
+  let maxCW = 0, maxCL = 0, curCW = 0, curCL = 0;
+  for (const r of filled) {
+    if (r.pnl_pct > 0) { curCW++; curCL = 0; } else { curCL++; curCW = 0; }
+    if (curCW > maxCW) maxCW = curCW;
+    if (curCL > maxCL) maxCL = curCL;
+  }
+
+  // MFE/MAE trade-level stats
+  const _wbtMed = arr => {
+    if (!arr.length) return 0;
+    const s = [...arr].sort((a, b) => a - b);
+    const m = (s.length - 1) / 2;
+    return (s[Math.floor(m)] + s[Math.ceil(m)]) / 2;
+  };
+  const mfeArr     = filled.filter(r => r.mfe_pct != null).map(r => r.mfe_pct);
+  const maeArr     = filled.filter(r => r.mae_pct != null).map(r => r.mae_pct);
+  const mfeMean    = mfeArr.length ? mfeArr.reduce((s, v) => s + v, 0) / mfeArr.length : 0;
+  const mfeMed     = _wbtMed(mfeArr);
+  const maeMean    = maeArr.length ? maeArr.reduce((s, v) => s + v, 0) / maeArr.length : 0;
+  const maeMed     = _wbtMed(maeArr);
+  const captureEff = mfeMean > 0 ? Math.max(0, (totalPnl / nFilled) / mfeMean * 100) : 0;
 
   return {
     nDays, nFilled,
-    fillRate:     +(nFilled / nDays * 100).toFixed(1),
-    winRate:      +(wins.length / nFilled * 100).toFixed(1),
-    totalPnl:     +totalPnl.toFixed(3),
-    cagr:         +cagr.toFixed(2),
-    sharpe:       +sharpe.toFixed(2),
-    sortino:      +sortino.toFixed(2),
-    calmar:       +calmar.toFixed(2),
-    profitFactor: +Math.min(pf, 999).toFixed(2),
-    maxDd:        +maxDd.toFixed(3),
-    rr:           +(avgLoss > 0 ? avgWin / avgLoss : 0).toFixed(2),
-    expectancy:   +(totalPnl / nFilled).toFixed(4),
-    avgWin:       +avgWin.toFixed(4),
-    avgLoss:      +(-avgLoss).toFixed(4),
-    years:        +years.toFixed(2),
-    winCount:     wins.length,
-    lossCount:    losses.length,
-    openCount:    filled.filter(r => r.outcome === 'open').length,
+    fillRate:       +(nFilled / nDays * 100).toFixed(1),
+    winRate:        +(wins.length / nFilled * 100).toFixed(1),
+    totalPnl:       +totalPnl.toFixed(3),
+    annReturn:      +(normPnl / years).toFixed(2),
+    cagr:           +cagr.toFixed(2),
+    sharpe:         +sharpe.toFixed(2),
+    sortino:        +sortino.toFixed(2),
+    calmar:         +calmar.toFixed(2),
+    profitFactor:   +Math.min(pf, 999).toFixed(2),
+    maxDd:          +maxDd.toFixed(3),
+    rr:             +(avgLoss > 0 ? avgWin / avgLoss : 0).toFixed(2),
+    expectancy:     +(totalPnl / nFilled).toFixed(4),
+    avgWin:         +avgWin.toFixed(4),
+    avgLoss:        +(-avgLoss).toFixed(4),
+    years:          +years.toFixed(2),
+    winCount:       wins.length,
+    lossCount:      losses.length,
+    openCount:      filled.filter(r => r.outcome === 'open').length,
+    maxConsecWins:  maxCW,
+    maxConsecLosses: maxCL,
+    mfeMean:        +mfeMean.toFixed(4),
+    mfeMed:         +mfeMed.toFixed(4),
+    maeMean:        +maeMean.toFixed(4),
+    maeMed:         +maeMed.toFixed(4),
+    captureEff:     +Math.min(captureEff, 999).toFixed(1),
   };
 }
 
@@ -3818,7 +3861,7 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
       instruments.map(inst => [inst, _wbtStats(trades.filter(r => r.instrument === inst))])
     );
 
-    const levels = ['HL50', 'HL75'];
+    const levels = ['HL50', 'HL75', 'OCMed', 'OC75'];
     const byLevel = Object.fromEntries(
       levels.map(lv => [lv, _wbtStats(trades.filter(r => r.level === lv))])
     );
@@ -3892,6 +3935,8 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
         entry:       r.entry,
         tp:          r.tp,
         sl:          r.sl,
+        mfe_pct:     r.mfe_pct,
+        mae_pct:     r.mae_pct,
       }));
 
     // Compact allTrades for client-side stats + chart modal
@@ -3913,9 +3958,23 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
       entry:       r.entry,
       tp:          r.tp,
       sl:          r.sl,
+      mfe_pct:     r.mfe_pct,
+      mae_pct:     r.mae_pct,
     }));
 
     const overall = _wbtStats(trades);
+
+    // IS/OOS walk-forward split (70% in-sample, 30% out-of-sample by Monday date)
+    const wfDates  = [...new Set(trades.map(r => r.date?.substring(0, 10)).filter(Boolean))].sort();
+    const wfSplit  = Math.floor(wfDates.length * 0.7);
+    const wfCutoff = wfDates[wfSplit] ?? '';
+    const walkForward = {
+      isStats:    _wbtStats(trades.filter(r => (r.date?.substring(0, 10) ?? '') <  wfCutoff)),
+      oosStats:   _wbtStats(trades.filter(r => (r.date?.substring(0, 10) ?? '') >= wfCutoff)),
+      cutoffDate: wfCutoff,
+      dateFrom:   wfDates[0]     ?? '',
+      dateTo:     wfDates.at(-1) ?? '',
+    };
 
     res.json({
       ok: true,
@@ -3930,6 +3989,7 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
       monthlyPnl,
       recentTrades,
       allTrades,
+      walkForward,
       totalTrades: trades.filter(t => t.filled).length,
       instruments,
     });
@@ -4032,6 +4092,41 @@ app.get('/api/weekly-vol-backtest/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// Weekly backtest D1 candle viewer — fetches D1 bars from OANDA for a date range.
+// Used by the chart modal in weekly-vol-backtest.html (M1 parquets may not cover 2025+).
+const _wbtInstrMap = Object.fromEntries(WBT_INSTRUMENTS.map(i => [i.name.toLowerCase(), i.oanda]));
+
+app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
+  const name  = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
+  const oanda = _wbtInstrMap[name];
+  if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+
+  const { from, to } = req.query;
+  const base = _oandaBaseW();
+  let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=D&price=M`;
+  if (from) url += `&from=${encodeURIComponent(from + 'T00:00:00Z')}`;
+  if (to)   url += `&to=${encodeURIComponent(to + 'T23:59:59Z')}`;
+  if (!from && !to) url += '&count=20';
+
+  try {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(15_000) });
+    if (!r.ok) return res.status(502).json({ ok: false, error: `OANDA HTTP ${r.status}` });
+    const data = await r.json();
+    const candles = (data.candles ?? [])
+      .filter(c => c.complete !== false && c.mid)
+      .map(c => {
+        const t = new Date(c.time);
+        if (t.getUTCHours() >= 20) t.setUTCDate(t.getUTCDate() + 1);
+        const date = t.toISOString().substring(0, 10);
+        return { date, time: date, open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c };
+      });
+    res.json({ ok: true, pair: name, n: candles.length, candles });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // Level hit analysis — async job queue (same pattern as vol-backtest/run)

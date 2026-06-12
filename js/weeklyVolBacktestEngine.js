@@ -230,7 +230,14 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
       if (!slots[key]) {
         const sl = slMap[key], tp = tpMap[key];
         const res = resolveOnBar(side, entry, tp, sl, bar, mondayOpen);
-        slots[key] = { side, level, entry, tp, sl, fillDate: date, ...(res ?? { outcome: 'open', pnlPct: 0 }) };
+        const mfe0 = side === 'SELL'
+          ? Math.max(0, entry - bar.low)  / mondayOpen * 100
+          : Math.max(0, bar.high - entry) / mondayOpen * 100;
+        const mae0 = side === 'SELL'
+          ? Math.max(0, bar.high - entry) / mondayOpen * 100
+          : Math.max(0, entry - bar.low)  / mondayOpen * 100;
+        slots[key] = { side, level, entry, tp, sl, fillDate: date, mfe: mfe0, mae: mae0,
+                       ...(res ?? { outcome: 'open', pnlPct: 0 }) };
       }
     };
 
@@ -246,6 +253,14 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
     // ── Carry open trades into this bar ─────────────────────────────────────
     for (const t of Object.values(slots)) {
       if (t?.outcome === 'open') {
+        const mfeInc = t.side === 'SELL'
+          ? Math.max(0, t.entry - bar.low)  / mondayOpen * 100
+          : Math.max(0, bar.high - t.entry) / mondayOpen * 100;
+        const maeInc = t.side === 'SELL'
+          ? Math.max(0, bar.high - t.entry) / mondayOpen * 100
+          : Math.max(0, t.entry - bar.low)  / mondayOpen * 100;
+        if (mfeInc > (t.mfe ?? 0)) t.mfe = mfeInc;
+        if (maeInc > (t.mae ?? 0)) t.mae = maeInc;
         const res = resolveOnBar(t.side, t.entry, t.tp, t.sl, bar, mondayOpen);
         if (res) Object.assign(t, res);
       }
@@ -352,6 +367,8 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
         tp:          t.tp      != null ? +t.tp.toFixed(6)      : null,
         sl:          t.sl      != null ? +t.sl.toFixed(6)      : null,
         fill_date:   t.fillDate ?? null,
+        mfe_pct:     t.mfe != null ? +t.mfe.toFixed(5) : null,
+        mae_pct:     t.mae != null ? +t.mae.toFixed(5) : null,
       });
     }
   }
