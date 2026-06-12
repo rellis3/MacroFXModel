@@ -217,6 +217,27 @@ async function _computeInstrument(name, sym, ac, lookbackDays, existingInst = nu
     const hl_med_abs = open * fc.hl_median / 100;
     const hl_75_abs  = open * fc.hl_75    / 100;
 
+    // ATR30: average true range of last 30 D1 bars as % of open
+    const atr30_pct = (() => {
+      const r = d1Prior.slice(-31);
+      if (r.length < 2) return null;
+      let s = 0, n = 0;
+      for (let i = 1; i < r.length; i++) {
+        s += Math.max(r[i].high - r[i].low, Math.abs(r[i].high - r[i-1].close), Math.abs(r[i].low - r[i-1].close));
+        n++;
+      }
+      return n ? parseFloat(((s / n) / open * 100).toFixed(4)) : null;
+    })();
+
+    // Price at which each directional level is located
+    const hitLevelPrice = {
+      oh_med: open + oc_med_abs,
+      oh_75:  open + oc_75_abs,
+      ol_med: open - oc_med_abs,
+      ol_75:  open - oc_75_abs,
+    };
+    const postHit = {}; // { lvl: { max_cont, max_rev } } — fractions of open
+
     let rHigh = open, rLow = open;
     const dayHit = {};
     for (const bar of bars) {
@@ -230,6 +251,24 @@ async function _computeInstrument(name, sym, ac, lookbackDays, existingInst = nu
       if (!dayHit.ol_75  && bL <= open - oc_75_abs)  dayHit.ol_75  = bT;
       if (!dayHit.hl_med && rHL >= hl_med_abs)        dayHit.hl_med = bT;
       if (!dayHit.hl_75  && rHL >= hl_75_abs)         dayHit.hl_75  = bT;
+
+      // Post-hit tracking for directional levels (O→H and O→L)
+      for (const [lvl, hp] of Object.entries(hitLevelPrice)) {
+        if (!dayHit[lvl]) continue;
+        if (!postHit[lvl]) postHit[lvl] = { max_cont: 0, max_rev: 0 };
+        const isUp = lvl.startsWith('oh');
+        const cont = isUp ? Math.max(0, bH - hp) / open : Math.max(0, hp - bL) / open;
+        const rev  = isUp ? Math.max(0, hp - bL) / open : Math.max(0, bH - hp) / open;
+        if (cont > postHit[lvl].max_cont) postHit[lvl].max_cont = cont;
+        if (rev  > postHit[lvl].max_rev)  postHit[lvl].max_rev  = rev;
+      }
+      // Post-hit tracking for H-L range levels (cont = extra range beyond threshold)
+      for (const [lvl, thresh] of [['hl_med', hl_med_abs], ['hl_75', hl_75_abs]]) {
+        if (!dayHit[lvl]) continue;
+        if (!postHit[lvl]) postHit[lvl] = { max_cont: 0, max_rev: 0 };
+        const extra = Math.max(0, (rHigh - rLow - thresh) / open);
+        if (extra > postHit[lvl].max_cont) postHit[lvl].max_cont = extra;
+      }
     }
 
     const hitTimes = {};
@@ -237,8 +276,14 @@ async function _computeInstrument(name, sym, ac, lookbackDays, existingInst = nu
       hitTimes[lvl] = dayHit[lvl]
         ? _minsToHHMM(new Date(dayHit[lvl]).getUTCHours() * 60 + new Date(dayHit[lvl]).getUTCMinutes())
         : null;
+      if (postHit[lvl]) {
+        hitTimes[`${lvl}_after`] = {
+          max_cont: parseFloat(postHit[lvl].max_cont.toFixed(6)),
+          max_rev:  parseFloat(postHit[lvl].max_rev.toFixed(6)),
+        };
+      }
     }
-    newDailyLog.push({ date, open, fc: { oc_median: fc.oc_median, oc_75: fc.oc_75, hl_median: fc.hl_median, hl_75: fc.hl_75 }, hits: hitTimes });
+    newDailyLog.push({ date, open, atr30_pct, fc: { oc_median: fc.oc_median, oc_75: fc.oc_75, hl_median: fc.hl_median, hl_75: fc.hl_75 }, hits: hitTimes });
   }
 
   // Merge existing + new, trim to lookback window, sort ascending
