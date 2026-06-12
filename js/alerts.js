@@ -1163,6 +1163,36 @@ function _fxToneNarrative(pair, model) {
   }
 }
 
+function _synthesisSentence(pair, macro, tone) {
+  const structBias = macro?.regimeBias ?? 'NEUTRAL'
+  const toneBias   = tone?.bias        ?? 'NEUTRAL'
+  const structConf = macro?.regimeConfidence?.confidence ?? 'LOW'
+
+  if (!macro && !tone) return null
+
+  if (!macro)
+    return `📌 Session tone is ${toneBias.toLowerCase()} — structural FRED data not loaded to confirm direction.`
+
+  if (!tone)
+    return `📌 Structural backdrop is ${structBias.toLowerCase()} — session tone data not available to confirm timing.`
+
+  if (structBias === 'NEUTRAL' && toneBias === 'NEUTRAL')
+    return `📌 Both structural and session signals neutral — no directional conviction. Reduce size or sit on hands.`
+
+  if (structBias === toneBias && structBias !== 'NEUTRAL') {
+    const conf = structConf === 'HIGH' ? 'high' : 'moderate'
+    return `📌 Both timeframes aligned ${structBias.toLowerCase()} — ${conf} conviction. Structural backdrop and session tone confirming the same direction.`
+  }
+
+  if (structBias === 'NEUTRAL')
+    return `📌 Structural backdrop is neutral but session tone is ${toneBias.toLowerCase()} — shorter-term signal only, no multi-timeframe confirmation.`
+
+  if (toneBias === 'NEUTRAL')
+    return `📌 Structural backdrop is ${structBias.toLowerCase()} but session lacks a clear tone — backdrop provides context, wait for intraday catalyst.`
+
+  return `⚠️ Timeframe conflict: structural is ${structBias.toLowerCase()} but session tone is ${toneBias.toLowerCase()} — lean with the daily tone for near-term; expect structural to reassert over time.`
+}
+
 function _buildStructuralBlock(pair, model) {
   if (!model) return [`<b>📊 Structural</b>`, `— FRED data not loaded`]
   const f    = model.factors
@@ -1212,6 +1242,18 @@ function _buildStructuralBlock(pair, model) {
 function _buildToneBlock(pair, model) {
   if (!model) return [`<b>⚡ Daily Tone</b>`, `— OHLC not yet loaded`]
   const rb = model.riskBarometer
+
+  // Conviction: how many of the 4 barometer components confirm the direction
+  const riskDir = rb.score >= 0 ? 1 : -1
+  const compVals = [
+    rb.components.audjpy != null ? -rb.components.audjpy : null,
+    rb.components.usdjpy != null ? -rb.components.usdjpy : null,
+    rb.components.xauusd != null ?  rb.components.xauusd : null,
+    rb.components.usdchf != null ? -rb.components.usdchf : null,
+  ].filter(v => v != null)
+  const confirming = compVals.filter(v => riskDir * v > 0.3).length
+  const convictionTag = compVals.length ? ` · ${confirming}/${compVals.length} confirming` : ''
+
   const riskScore = rb.score != null ? rb.score.toFixed(2) : '—'
   const riskLabel = rb.score > 0.6 ? 'risk-off flows dominant'
     : rb.score < -0.6 ? 'risk-on / carry bid'
@@ -1236,6 +1278,56 @@ function _buildToneBlock(pair, model) {
   const pairZLine = model.pairZ != null
     ? `${pair} 5d momentum: ${model.pairZ >= 0 ? '+' : ''}${model.pairZ.toFixed(2)}σ (${Math.abs(model.pairZ) > 0.7 ? model.pairZ > 0 ? 'bullish trend' : 'bearish trend' : 'range-bound'})`
     : null
+
+  // Trend vs session alignment
+  const trendDir = model.pairZ != null ? (model.pairZ > 0.5 ? 'BULLISH' : model.pairZ < -0.5 ? 'BEARISH' : null) : null
+  const alignNote = trendDir
+    ? trendDir === model.bias
+      ? `✅ 5d trend aligns with session bias — continuation setup`
+      : `⚠️ 5d trend opposing session tone — watch for mean reversion`
+    : null
+
+  // Volatility context from daily OHLC
+  const volNote = (() => {
+    const bars = S.ohlcData?.[pair]?.values
+    if (!bars || bars.length < 22) return null
+    const tr = b => (b?.high != null && b?.low != null) ? b.high - b.low : null
+    const todayTR = tr(bars[0])
+    if (!todayTR) return null
+    const avgTRs = bars.slice(1, 21).map(tr).filter(v => v != null)
+    if (!avgTRs.length) return null
+    const avg = avgTRs.reduce((a, b) => a + b, 0) / avgTRs.length
+    const pct = (todayTR / avg) * 100
+    if (pct > 140) return `Volatility expanding — ${pct.toFixed(0)}% of 20d avg range`
+    if (pct < 60)  return `Volatility contracting — ${pct.toFixed(0)}% of 20d avg range`
+    return null
+  })()
+
+  // Session clock
+  const sessionNote = (() => {
+    const h = new Date().getUTCHours()
+    const london = h >= 7 && h < 16
+    const ny     = h >= 13 && h < 22
+    if (london && ny) return `🕐 London/NY overlap — peak liquidity window`
+    if (london)       return `🕐 London session active`
+    if (ny)           return `🕐 New York session active`
+    if (h < 8)        return `🕐 Asia session`
+    return null
+  })()
+
+  // Watch line
+  const watchLine = (() => {
+    switch (model.regime) {
+      case 'RISK_OFF_SESSION':   return `Watch: Equity bounce or VIX drop would signal risk-on reversal.`
+      case 'RISK_ON_SESSION':    return `Watch: Credit spread widening or geopolitical headline could flip quickly.`
+      case 'USD_BID_SESSION':    return `Watch: US data miss or Fed pivot signal would reverse dollar bid.`
+      case 'USD_OFFERED_SESSION':return `Watch: Risk aversion or strong US data beat could reverse USD weakness fast.`
+      case 'TRENDING_BULL':
+      case 'TRENDING_BEAR':      return `Watch: Broader risk-off or USD shift could override pair-specific trend.`
+      default:                   return `Watch: Barometer break above +0.6 or below -0.6 needed for directional conviction.`
+    }
+  })()
+
   const biasEmoji = model.bias === 'BULLISH' ? '↑' : model.bias === 'BEARISH' ? '↓' : '↔'
 
   return [
@@ -1243,12 +1335,17 @@ function _buildToneBlock(pair, model) {
     `${model.regimeEmoji} ${model.regimeLabel}`,
     _fxToneNarrative(pair, model),
     ``,
-    `<b>Risk Barometer: ${riskScore} (${riskLabel})</b>`,
+    `<b>Risk Barometer: ${riskScore} (${riskLabel}${convictionTag})</b>`,
     ...compLines,
     ``,
     usdLine,
     pairZLine,
+    alignNote,
+    volNote,
+    ``,
     `${biasEmoji} Session bias: <b>${model.bias}</b>`,
+    watchLine,
+    sessionNote,
   ]
 }
 
@@ -1304,6 +1401,7 @@ async function _sendFXAlert(pair, model, headline, title) {
     `${biasEmoji} ${pair} bias: <b>${model.regimeBias}</b>`,
     confBadge,
     sizeNote,
+    `📌 This is the slow structural signal — check ⚡ daily tone for session-level timing.`,
     `⏱ Timescale: weekly/monthly · FRED macro data`,
     pairLink,
   ].filter(v => v != null).join('\n')
@@ -1388,49 +1486,22 @@ export async function checkFXDailyToneAlerts() {
 }
 
 async function _sendFXToneAlert(pair, model, prevLabel) {
-  const prevLine  = prevLabel ? `${prevLabel} → ` : ''
-  const toneLine  = `${prevLine}${model.regimeEmoji} ${model.regimeLabel}`
-  const pairLink  = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
+  const prevLine = prevLabel ? `${prevLabel} → ` : ''
+  const pairLink = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
 
-  const rb = model.riskBarometer
-  const riskScore = rb.score != null ? rb.score.toFixed(2) : '—'
-  const riskLabel = rb.score > 0.6 ? 'risk-off flows dominant'
-    : rb.score < -0.6 ? 'risk-on / carry bid'
-    : 'mixed — no clear risk theme'
-
-  const fmtComp = (z, name, riskDir) => {
-    if (z == null) return null
-    const trend  = z > 0.3 ? 'rising' : z < -0.3 ? 'falling' : 'flat'
-    const signal = riskDir * z > 0.5 ? ' ← risk-off' : riskDir * z < -0.5 ? ' ← risk-on' : ''
-    return `  ${name}: ${z >= 0 ? '+' : ''}${z.toFixed(2)}σ · ${trend}${signal}`
-  }
-  const compLines = [
-    fmtComp(rb.components.audjpy, 'AUD/JPY 5d', -1),
-    fmtComp(rb.components.usdjpy, 'USD/JPY 5d', -1),
-    fmtComp(rb.components.xauusd, 'Gold 5d',    +1),
-    fmtComp(rb.components.usdchf, 'USD/CHF 5d', -1),
-  ].filter(Boolean)
-
-  const usdLine = model.usdScore != null
-    ? `USD session: ${model.usdScore.toFixed(2)} (${model.usdScore > 0.5 ? 'bid — dollar strength' : model.usdScore < -0.5 ? 'offered — dollar weakness' : 'flat'})`
-    : null
-  const pairZLine = model.pairZ != null
-    ? `${pair} 5d momentum: ${model.pairZ >= 0 ? '+' : ''}${model.pairZ.toFixed(2)}σ (${Math.abs(model.pairZ) > 0.7 ? model.pairZ > 0 ? 'bullish trend' : 'bearish trend' : 'range-bound'})`
-    : null
-  const biasEmoji = model.bias === 'BULLISH' ? '↑' : model.bias === 'BEARISH' ? '↓' : '↔'
+  // _buildToneBlock[0] is the section header — skip it for standalone alerts
+  // _buildToneBlock[1] is the plain regime line — replace with the transition-aware version
+  const toneBlock = _buildToneBlock(pair, model)
+  const toneContent = [
+    `${prevLine}${model.regimeEmoji} ${model.regimeLabel}`,
+    ...toneBlock.slice(2),
+  ]
 
   const lines = [
     `<b>⚡ ${pair} — DAILY MARKET TONE</b>`,
-    toneLine,
-    _fxToneNarrative(pair, model),
+    ...toneContent,
     ``,
-    `<b>Risk Barometer: ${riskScore} (${riskLabel})</b>`,
-    ...compLines,
-    ``,
-    usdLine,
-    pairZLine,
-    ``,
-    `${biasEmoji} ${pair} session bias: <b>${model.bias}</b>`,
+    `📌 Check 📊 structural backdrop for longer-term direction context.`,
     `⏱ Timescale: daily/session · updated with bar close`,
     pairLink,
   ].filter(v => v != null).join('\n')
@@ -1486,6 +1557,7 @@ export async function sendAllMacroSnapshotsNow(onProgress) {
     const pairLink   = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
     const structBlock = _buildStructuralBlock(pair, macro)
     const toneBlock   = _buildToneBlock(pair, tone)
+    const synthesis   = _synthesisSentence(pair, macro, tone)
 
     const lines = [
       `💱 <b>${pair} — MACRO SNAPSHOT</b>`,
@@ -1494,6 +1566,7 @@ export async function sendAllMacroSnapshotsNow(onProgress) {
       ``,
       ...toneBlock,
       ``,
+      synthesis,
       `⏱ Snapshot: ${ts}`,
       pairLink,
     ].filter(v => v != null).join('\n')
