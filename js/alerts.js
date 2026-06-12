@@ -1256,8 +1256,8 @@ async function _sendFXToneAlert(pair, model, prevLabel) {
 
 // ── Send all macro snapshots now (bypasses cooldowns) ─────────────────────────
 // Called from the Alerts modal "Snapshot All" button. Loops every watched pair,
-// computes fresh structural + daily-tone models, and fires one combined message
-// per pair to Telegram. Rate-limited at ~500ms between sends.
+// ensures daily OHLC is loaded, then fires one rich combined message per pair.
+// Rate-limited at ~500ms between sends.
 export async function sendAllMacroSnapshotsNow(onProgress) {
   const cfg       = loadAlertCfg()
   const allPairs  = Object.keys(PAIR_DRIVERS)
@@ -1265,51 +1265,96 @@ export async function sendAllMacroSnapshotsNow(onProgress) {
     ? cfg.pairs.filter(p => allPairs.includes(p))
     : allPairs
 
+  // ── Pass 1: pre-load daily OHLC for every pair ───────────────────────────
+  // computeFXDailyTone requires S.ohlcData[pair].values (≥35 bars).
+  // Background SSE streams only open price quotes — OHLC must be fetched here.
+  if (typeof window.loadPairDataForAnalysis === 'function') {
+    for (let i = 0; i < watchPairs.length; i++) {
+      const pair = watchPairs[i]
+      if (onProgress) onProgress(`Loading ${pair} (${i + 1}/${watchPairs.length})…`)
+      try { await window.loadPairDataForAnalysis(pair) } catch(e) {}
+    }
+  }
+
+  // Reset barometer once — all tone computations share the same market snapshot
   resetRiskBarometerCache()
 
   const ts = new Date().toUTCString().replace(' GMT', ' UTC')
   let sent = 0
 
+  // ── Pass 2: compute models and send ─────────────────────────────────────
   for (let i = 0; i < watchPairs.length; i++) {
     const pair = watchPairs[i]
-    if (onProgress) onProgress(`Sending ${pair} (${i + 1}/${watchPairs.length})…`)
 
     const macro = computeFXMacroModel(pair)
     const tone  = computeFXDailyTone(pair)
 
     const pairLink = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
 
-    const macroLine  = macro ? `📊 Structural: ${macro.regimeEmoji} ${macro.regimeLabel}` : `📊 Structural: —`
-    const macroSumm  = macro?.regimeSummary ?? null
-    const macroBias  = macro
-      ? (macro.regimeBias === 'BULLISH' ? '↑ Structural bias: <b>BULLISH</b>'
-       : macro.regimeBias === 'BEARISH' ? '↓ Structural bias: <b>BEARISH</b>'
-       : '↔ Structural bias: NEUTRAL')
-      : null
+    // ── Structural section ───────────────────────────────────────────────────
+    let structLines = []
+    if (macro) {
+      const f   = macro.factors
+      const pcfg = macro.cfg
+      const base  = S.fredData?.[pcfg.baseRateKey]?.value
+      const quote = S.fredData?.[pcfg.quoteRateKey]?.value
+      const rateStr = (base != null && quote != null)
+        ? `${pcfg.baseName} ${base.toFixed(2)}% vs ${pcfg.quoteName} ${quote.toFixed(2)}%`
+        : `${pcfg.baseName} — vs ${pcfg.quoteName} —`
+      const vixStr = f.risk.vix != null ? `VIX ${f.risk.vix.toFixed(0)}` : 'VIX —'
+      const hyStr  = f.risk.hyBps != null ? `HY ${Math.round(f.risk.hyBps)}bp` : 'HY —'
+      const conf   = macro.regimeConfidence.confidence === 'HIGH'   ? '✅ HIGH'
+                   : macro.regimeConfidence.confidence === 'MEDIUM' ? '🟡 MEDIUM'
+                   : '🔴 LOW — transitioning'
+      const biasEmoji = macro.regimeBias === 'BULLISH' ? '↑' : macro.regimeBias === 'BEARISH' ? '↓' : '↔'
+      structLines = [
+        `<b>📊 Structural</b> <i>(weekly/monthly)</i>`,
+        `${macro.regimeEmoji} ${macro.regimeLabel}`,
+        macro.regimeSummary,
+        rateStr,
+        `${vixStr} · ${hyStr}`,
+        f.risk.label ?? null,
+        f.commodity?.label ?? null,
+        `${biasEmoji} Bias: <b>${macro.regimeBias}</b> · ${conf}`,
+      ]
+    } else {
+      structLines = [`<b>📊 Structural</b>`, `— no FRED data loaded`]
+    }
 
-    const toneEmoji = tone?.regimeEmoji ?? '⚪'
-    const toneLabel = tone?.regimeLabel ?? '—'
-    const toneSumm  = tone?.description ?? null
-    const toneBias  = tone
-      ? (tone.bias === 'BULLISH' ? '↑ Daily bias: <b>BULLISH</b>'
-       : tone.bias === 'BEARISH' ? '↓ Daily bias: <b>BEARISH</b>'
-       : '↔ Daily bias: NEUTRAL')
-      : null
+    // ── Daily tone section ───────────────────────────────────────────────────
+    let toneLines = []
+    if (tone) {
+      const rb = tone.riskBarometer
+      const riskScore = rb.score != null ? rb.score.toFixed(2) : '—'
+      const riskDesc  = rb.score > 0.6 ? 'risk-off' : rb.score < -0.6 ? 'risk-on' : 'neutral'
+      const biasEmoji = tone.bias === 'BULLISH' ? '↑' : tone.bias === 'BEARISH' ? '↓' : '↔'
+      const pairZLine = tone.pairZ != null
+        ? `Pair momentum: ${tone.pairZ >= 0 ? '+' : ''}${tone.pairZ.toFixed(2)}σ`
+        : null
+      toneLines = [
+        `<b>⚡ Daily Tone</b> <i>(session)</i>`,
+        `${tone.regimeEmoji} ${tone.regimeLabel}`,
+        tone.description,
+        `${biasEmoji} Bias: <b>${tone.bias}</b>`,
+        `Risk barometer: ${riskScore} (${riskDesc})`,
+        pairZLine,
+      ]
+    } else {
+      toneLines = [`<b>⚡ Daily Tone</b>`, `— OHLC data not yet loaded`]
+    }
 
     const lines = [
       `💱 <b>${pair} — MACRO SNAPSHOT</b>`,
       ``,
-      macroLine,
-      macroSumm,
-      macroBias,
+      ...structLines,
       ``,
-      `⚡ Daily Tone: ${toneEmoji} ${toneLabel}`,
-      toneSumm,
-      toneBias,
+      ...toneLines,
       ``,
       `⏱ Snapshot: ${ts}`,
       pairLink,
     ].filter(v => v != null).join('\n')
+
+    if (onProgress) onProgress(`Sending ${pair} (${i + 1}/${watchPairs.length})…`)
 
     try {
       const res = await fetch('/api/telegram', {
