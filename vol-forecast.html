@@ -2763,7 +2763,7 @@ async function loadDailyBrief() {
   try {
     const res = await fetch('/api/daily-brief');
     const data = await res.json();
-    if (data.ok) currentBrief = data;
+    currentBrief = data; // store even if ok:false so error shows
   } catch {}
 }
 
@@ -2783,9 +2783,10 @@ async function refreshBrief() {
     '<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text3)">Fetching live prices and joining data…</div>';
   try {
     const res = await fetch('/api/daily-brief');
-    const data = await res.json();
-    if (data.ok) currentBrief = data;
-  } catch {}
+    currentBrief = await res.json(); // always store response
+  } catch (e) {
+    currentBrief = { ok: false, error: `Network error: ${e.message}` };
+  }
   _renderBrief();
 }
 
@@ -2809,7 +2810,10 @@ function _renderBrief() {
     return;
   }
   if (!currentBrief.ok) {
-    body.innerHTML = `<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${currentBrief.error ?? 'Brief not available'}</div>`;
+    body.innerHTML = `<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">
+      ${currentBrief.error ?? 'Brief not available'}<br><br>
+      <span style="font-size:10px;color:var(--text3)">If no forecast has been computed yet, click <strong>↻ Refresh</strong> in the topbar first.</span>
+    </div>`;
     return;
   }
 
