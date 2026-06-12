@@ -2655,9 +2655,9 @@ function _hrSetView(view, el) {
 // ── Overview: compact all-instruments grid ────────────────────────────────────
 // Column groups with tint colours for upside / downside / range
 const _HR_GROUPS = [
-  { label: '▲ Upside',   color: 'rgba(56,193,114,.07)',  keys: ['oh_med','oh_75'],  dirs: [+1,+1] },
-  { label: '▼ Downside', color: 'rgba(239,68,68,.07)',   keys: ['ol_med','ol_75'],  dirs: [-1,-1] },
-  { label: '↔ Range',    color: 'rgba(250,176,5,.07)',   keys: ['hl_med','hl_75'],  dirs: [ 0, 0] },
+  { label: 'O→H  Open-High',  color: 'rgba(56,193,114,.07)',  keys: ['oh_med','oh_75'],  dirs: [+1,+1] },
+  { label: 'O→L  Open-Low',   color: 'rgba(239,68,68,.07)',   keys: ['ol_med','ol_75'],  dirs: [-1,-1] },
+  { label: 'H-L  Day Range',  color: 'rgba(250,176,5,.07)',   keys: ['hl_med','hl_75'],  dirs: [ 0, 0] },
 ];
 const _HR_COLS = _HR_GROUPS.flatMap(g => g.keys.map((k,i) => ({ key:k, grp:g, sub: i===0?'Med':'75th' })));
 
