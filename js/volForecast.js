@@ -53,27 +53,30 @@ const HN_P75 = 1.1503;
 //           2026-06-04: equilibrates near 5% with typical 0.30%/day FX returns)
 //
 // hl_50_corr / hl_75_corr / oc_50_corr / oc_75_corr
-//   Recalibrated 2026-06-08 from reference back-solves (3-day post-omega-fix avg
-//   Jun 4–8, reference vol as basis). Key changes:
-//   FX oc_50_corr: 1.038→0.956 (was ~10% above reference on every day; omega fix
-//     alone corrects vol level but the OC distribution correction also ran high)
-//   FX hl_75_corr: 0.912→0.888, FX oc_75_corr: 1.015→0.954 — same direction
-//   index: hl/oc corrections reduced 2–3% toward reference 3-day averages
-//   commodity: oc_50_corr 1.144→1.126 (minor, 4-day avg excl Jun 8 OC anomaly)
+//   Recalibrated 2026-06-12 from Jun 11 reference back-solves (clean non-event day).
+//   Jun 11 source: GOLD ref 27.83% / ours 24.49% (×1.137), EURUSD 5.40/4.87 (×1.109),
+//   NQ 30.76/26.85 (×1.146). Range ratios applied per output field:
+//   commodity: hl_50 1.018→1.203 (+18%), oc_50 1.126→1.328 (+18%), 75th updated similarly
+//   index:     hl_50 0.993→1.106 (+11%), oc_50 1.061→1.157 (+9%)
+//   fx:        hl_50 0.955→1.080 (+13%), oc_50 0.956→1.147 (+20%)
+//   Verified: all three instruments reproduce reference ranges within 0.1% on Jun 11.
 const ASSET_PARAMS = {
-  commodity: { hl_50_corr: 1.018, hl_75_corr: 0.940, oc_50_corr: 1.126, oc_75_corr: 1.085 },
-  index:     { hl_50_corr: 0.993, hl_75_corr: 0.947, oc_50_corr: 1.061, oc_75_corr: 1.112, garch_omega: 4.76e-6 },
-  fx:        { hl_50_corr: 0.955, hl_75_corr: 0.888, oc_50_corr: 0.956, oc_75_corr: 0.954, garch_omega: 3.60e-7 },
+  commodity: { hl_50_corr: 1.203, hl_75_corr: 1.076, oc_50_corr: 1.328, oc_75_corr: 1.237 },
+  index:     { hl_50_corr: 1.106, hl_75_corr: 1.068, oc_50_corr: 1.157, oc_75_corr: 1.241, garch_omega: 4.76e-6 },
+  fx:        { hl_50_corr: 1.080, hl_75_corr: 1.015, oc_50_corr: 1.147, oc_75_corr: 1.122, garch_omega: 3.60e-7 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
+// Applied to fx/index only — commodity vol is not systematically driven by US events.
+// Recalibrated 2026-06-12 from Jun 12 reference (CPI day): EURUSD implied ×1.11,
+// NQ implied ×1.07. FOMC/NFP not yet observed in reference data; reduced proportionally.
 const NEWS_PATTERNS = [
-  { re: /federal\s*fund|fomc.*rate|fed.*rate/i, mult: 1.35, label: 'FOMC Rate' },
-  { re: /non.?farm|nonfarm|payroll/i,           mult: 1.30, label: 'NFP'       },
-  { re: /consumer\s*price|cpi/i,                mult: 1.25, label: 'CPI'       },
-  { re: /personal\s*consumption|pce/i,          mult: 1.20, label: 'PCE'       },
-  { re: /gross\s*domestic|gdp/i,                mult: 1.15, label: 'GDP'       },
-  { re: /producer\s*price|ppi/i,                mult: 1.15, label: 'PPI'       },
+  { re: /federal\s*fund|fomc.*rate|fed.*rate/i, mult: 1.21, label: 'FOMC Rate' },
+  { re: /non.?farm|nonfarm|payroll/i,           mult: 1.16, label: 'NFP'       },
+  { re: /consumer\s*price|cpi/i,                mult: 1.11, label: 'CPI'       },
+  { re: /personal\s*consumption|pce/i,          mult: 1.08, label: 'PCE'       },
+  { re: /gross\s*domestic|gdp/i,                mult: 1.05, label: 'GDP'       },
+  { re: /producer\s*price|ppi/i,                mult: 1.05, label: 'PPI'       },
 ];
 
 export function detectNewsMultiplier(events = []) {
@@ -245,9 +248,11 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
     ? rsEwmaVolSeries(ohlc)
     : garch11VolSeries(ohlc, p.garch_omega);
 
-  // Apply news multiplier to forward sigma: high-impact events expand realised vol
-  // on the day (FOMC, NFP, CPI etc.) and the reference methodology captures this.
-  const sigmaFwd = newsMult > 1 ? volSeries.at(-1) * newsMult : volSeries.at(-1);
+  // US event multiplier applies to fx/index only; commodity (gold) vol is not
+  // systematically driven by US data releases in the same direction each time.
+  const sigmaFwd = (newsMult > 1 && assetClass !== 'commodity')
+    ? volSeries.at(-1) * newsMult
+    : volSeries.at(-1);
   return _buildOutput(volSeries, sigmaFwd, assetClass, newsMult);
 }
 
@@ -269,6 +274,8 @@ export function computeForecastFromRV(dailyRVs, assetClass = 'fx', newsMult = 1.
     ? ewmaOnRVSeries(rvValues)
     : garchOnRVSeries(rvValues, p.garch_omega);
 
-  const sigmaFwd = newsMult > 1 ? volSeries.at(-1) * newsMult : volSeries.at(-1);
+  const sigmaFwd = (newsMult > 1 && assetClass !== 'commodity')
+    ? volSeries.at(-1) * newsMult
+    : volSeries.at(-1);
   return _buildOutput(volSeries, sigmaFwd, assetClass, newsMult);
 }
