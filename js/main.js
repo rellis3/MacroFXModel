@@ -18,7 +18,7 @@ import { detectSession, computeSessionOpens, computeDailyOpens } from './session
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 import { exportWatchlistCSV } from './watchlist.js';
-import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, sendTestServerAlert, loadAlertCfg, forceKVSync, checkGoldMacroAlerts, syncGoldModelNow } from './alerts.js';
+import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, sendTestServerAlert, loadAlertCfg, forceKVSync, checkGoldMacroAlerts, checkFXMacroAlerts, syncGoldModelNow } from './alerts.js';
 import { runParticleFilter } from './particleFilter.js';
 
 // ── Debounced renderAll ───────────────────────────────────────────────────────
@@ -703,6 +703,7 @@ async function loadAll() {
       // Non-blocking: sync gold model to KV and check macro alerts
       syncGoldModelNow().catch(() => {});
       checkGoldMacroAlerts().catch(() => {});
+      checkFXMacroAlerts().catch(() => {});
     }
 
     updateStatus('ok', `${S.currentPair.name} loaded · ${S.asiaRangeData[S.currentPair.symbol].confluences.length + S.mondayRangeData[S.currentPair.symbol].confluences.length} total confluences`);
