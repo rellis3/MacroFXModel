@@ -28,6 +28,7 @@ import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus } from './js/volForecastScheduler.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
+import { computeHitRates, isHitRatesComputing } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -2868,10 +2869,40 @@ app.get('/api/vol-forecast/event-impact', async (_req, res) => {
 });
 
 app.post('/api/vol-forecast/event-impact/refresh', async (_req, res) => {
-  res.json({ ok: true, message: 'Computing event impact study — takes ~10s' });
+  if (!process.env.FINNHUB_KEY) {
+    return res.status(400).json({ ok: false, error: 'FINNHUB_KEY not set in environment variables — add it in Railway → Variables.' });
+  }
+  res.json({ ok: true, message: 'Computing event impact study — takes ~10–15s' });
   _computeEventImpact()
-    .then(r => console.log(`[EVENT-IMPACT] Done — ${r.audits_matched} audits matched`))
+    .then(r => console.log(`[EVENT-IMPACT] Done — ${r.audits_matched} audits matched, ${r.event_dates_found} event dates found`))
     .catch(e => console.error('[EVENT-IMPACT] Error:', e.message));
+});
+
+// ── Price Level Hit Rates API ─────────────────────────────────────────────────
+// Computes historically what % of days each forecast level is actually touched,
+// and what UTC time it's typically first reached.
+// GET  /api/vol-forecast/hit-rates               — return stored results
+// POST /api/vol-forecast/hit-rates/compute?days= — trigger backfill (takes ~5-10 min)
+
+app.get('/api/vol-forecast/hit-rates', async (_req, res) => {
+  try {
+    if (isHitRatesComputing()) return res.status(202).json({ ok: false, status: 'computing', message: 'Computation in progress — check back in a few minutes.' });
+    const raw = await kv.get('vol_hit_rates');
+    if (!raw) return res.status(404).json({ ok: false, error: 'Not yet computed — POST /api/vol-forecast/hit-rates/compute to start.' });
+    res.json(JSON.parse(raw));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/vol-forecast/hit-rates/compute', async (req, res) => {
+  if (isHitRatesComputing()) return res.status(409).json({ ok: false, error: 'Already computing' });
+  const days = Math.min(Math.max(parseInt(req.query.days ?? '90', 10), 14), 365);
+  res.json({ ok: true, message: `Computing hit rates over ${days} trading days — takes 5–10 minutes. GET /api/vol-forecast/hit-rates when done.` });
+  computeHitRates(days)
+    .then(result => {
+      kv.put('vol_hit_rates', JSON.stringify(result));
+      console.log(`[HIT-RATES] Done — stored to KV`);
+    })
+    .catch(e => console.error('[HIT-RATES] Error:', e.message));
 });
 
 // ── Session Stats API ─────────────────────────────────────────────────────────
