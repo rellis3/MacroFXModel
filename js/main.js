@@ -18,7 +18,7 @@ import { detectSession, computeSessionOpens, computeDailyOpens } from './session
 import { loadEventData } from './events.js';
 import { computeDollarRegime, computeUSDStrength } from './macro.js';
 import { exportWatchlistCSV } from './watchlist.js';
-import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, sendTestServerAlert, loadAlertCfg, forceKVSync, checkGoldMacroAlerts, checkFXMacroAlerts, checkFXDailyToneAlerts, syncGoldModelNow } from './alerts.js';
+import { checkAndSendAlerts, invalidateAlertCache, openAlertModal, closeAlertModal, saveAlertModal, saveTelegramCreds, sendTestAlert, sendTestServerAlert, loadAlertCfg, forceKVSync, checkGoldMacroAlerts, checkFXMacroAlerts, checkFXDailyToneAlerts, syncGoldModelNow, sendAllMacroSnapshotsNow } from './alerts.js';
 import { runParticleFilter } from './particleFilter.js';
 
 // ── Debounced renderAll ───────────────────────────────────────────────────────
@@ -98,6 +98,28 @@ window._reloadLevels = async function() {
     if (lbl) lbl.textContent = `✗ ${e.message}`;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Data'; }
+  }
+};
+
+window._snapshotAllPairs = async function() {
+  const btn    = document.getElementById('alertSnapshotAllBtn');
+  const status = document.getElementById('alertModalStatus');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending…'; }
+  if (status) { status.textContent = 'Preparing snapshots…'; status.className = 'alert-modal-status'; }
+
+  try {
+    const sent = await sendAllMacroSnapshotsNow((msg) => {
+      if (status) status.textContent = msg;
+    });
+    if (status) {
+      status.textContent = `✓ Sent ${sent} snapshot${sent !== 1 ? 's' : ''} to Telegram`;
+      status.className = 'alert-modal-status ok';
+      setTimeout(() => { if (status) { status.textContent = ''; status.className = 'alert-modal-status'; } }, 4000);
+    }
+  } catch (e) {
+    if (status) { status.textContent = `✗ ${e.message}`; status.className = 'alert-modal-status err'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📊 Snapshot All'; }
   }
 };
 
