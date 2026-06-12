@@ -1227,14 +1227,28 @@
 <div class="vf-lhist-panel" id="vfLHistPanel" style="display:none">
   <div class="vf-lhist-nav">
     <span class="vf-lhist-title">Forecast Level Hit Rates</span>
-    <span class="vf-lhist-sub" id="vfLHistSub">% of days each forecast price level was actually touched + median UTC time. Computed from historical H1 Oanda data.</span>
+    <span class="vf-lhist-sub" id="vfLHistSub">% of days each forecast level was touched · median UTC time</span>
     <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfLHistAge"></span>
     <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="computeHitRates()" id="vfHitRatesComputeBtn">↻ Compute (90d)</button>
-    <a class="dark-btn" style="padding:3px 10px;font-size:10px;text-decoration:none" id="vfHitRatesExportBtn" href="/api/vol-forecast/hit-rates/export.txt" download title="Download per-day hit log as text — date, instrument, open, hit/miss and time per level">⬇ Export</a>
+    <a class="dark-btn" style="padding:3px 10px;font-size:10px;text-decoration:none" href="/api/vol-forecast/hit-rates/export.txt" download>⬇ TXT</a>
+    <div class="vf-lhist-inst-tabs" style="margin-left:auto">
+      <div class="vf-lhist-tab active" id="vfHRTabOverview" onclick="_hrSetView('overview',this)">Overview</div>
+      <div class="vf-lhist-tab" id="vfHRTabDay" onclick="_hrSetView('day',this)">Day Log</div>
+    </div>
   </div>
-  <div class="vf-lhist-inst-tabs" id="vfLHistTabs"></div>
-  <div class="vf-lhist-scroll">
-    <div id="vfLHistBody"><div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">Click ↻ Compute to run the historical price scan — takes ~5–10 minutes.</div></div>
+  <!-- Overview: compact all-instruments table -->
+  <div id="vfHROverview" class="vf-lhist-scroll">
+    <div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">Click ↻ Compute to run the historical price scan — takes ~5–10 minutes.</div>
+  </div>
+  <!-- Day browser -->
+  <div id="vfHRDayBrowser" style="display:none">
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      <button class="dark-btn" style="padding:2px 8px;font-size:10px" onclick="_hrDayPrev()">← Prev</button>
+      <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--text)" id="vfHRDayLabel">—</span>
+      <button class="dark-btn" style="padding:2px 8px;font-size:10px" onclick="_hrDayNext()">Next →</button>
+      <button class="dark-btn" style="padding:2px 8px;font-size:10px;margin-left:auto" onclick="_hrCopyDay()">📋 Copy</button>
+    </div>
+    <div class="vf-lhist-scroll" id="vfHRDayBody"></div>
   </div>
 </div>
 
@@ -2566,19 +2580,19 @@ async function computeHitRates() {
   try {
     const res = await fetch('/api/vol-forecast/hit-rates/compute', { method: 'POST' });
     const j   = await res.json();
-    document.getElementById('vfLHistBody').innerHTML =
+    document.getElementById('vfHROverview').innerHTML =
       `<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${j.message ?? 'Computing…'}<br><br>This fetches 90 days of H1 data for all 21 instruments. Come back in ~10 minutes and click ↻ Compute again to load results.</div>`;
     btn.textContent = '⏳ Running…';
     // Poll every 30s
     const poll = setInterval(async () => {
       try {
         const r = await fetch('/api/vol-forecast/hit-rates');
-        if (r.ok) { const d = await r.json(); if (d.ok && d.instruments) { clearInterval(poll); _hitRateData = d; _buildLHistTabs(); btn.disabled = false; btn.textContent = '↻ Compute (90d)'; } }
+        if (r.ok) { const d = await r.json(); if (d.ok && d.instruments) { clearInterval(poll); _hitRateData = d; _buildHRPanel(); btn.disabled = false; btn.textContent = '↻ Compute (90d)'; } }
       } catch { /* wait */ }
     }, 30_000);
   } catch (e) {
     btn.disabled = false; btn.textContent = '↻ Compute (90d)';
-    document.getElementById('vfLHistBody').innerHTML =
+    document.getElementById('vfHROverview').innerHTML =
       `<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red)">Error: ${e.message}</div>`;
   }
 }
@@ -2591,9 +2605,9 @@ function toggleHitRates() {
   panel.style.display = '';
   btn.textContent = '✕ Hit Rates';
   if (_hitRateData) {
-    _buildLHistTabs();
+    _buildHRPanel();
   } else {
-    document.getElementById('vfLHistBody').innerHTML =
+    document.getElementById('vfHROverview').innerHTML =
       '<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text2)">' +
       '<strong>No hit rate data yet.</strong><br><br>' +
       'Click <strong>↻ Compute (90d)</strong> above to run the historical price scan.<br>' +
@@ -2603,83 +2617,206 @@ function toggleHitRates() {
   }
 }
 
-function _buildLHistTabs() {
+let _hrDayIndex = {};  // { date: { instName: dayEntry } }
+let _hrDates    = [];  // sorted ascending
+let _hrDayPos   = 0;   // index into _hrDates (0 = oldest)
+let _hrView     = 'overview';
+
+function _buildHRPanel() {
   if (!_hitRateData?.instruments) return;
-  const names = Object.keys(_hitRateData.instruments).filter(n => _hitRateData.instruments[n]).sort();
-  if (!names.length) return;
-  const tabs = document.getElementById('vfLHistTabs');
-  tabs.innerHTML = names.map((n, i) =>
-    `<div class="vf-lhist-tab${i === 0 ? ' active' : ''}" onclick="_selectLHistTab('${n}',this)">${n}</div>`
-  ).join('');
-  _renderHRBody(names[0]);
+
+  // Build date index from per-instrument daily arrays
+  _hrDayIndex = {};
+  for (const [name, idata] of Object.entries(_hitRateData.instruments)) {
+    for (const day of (idata?.daily ?? [])) {
+      if (!_hrDayIndex[day.date]) _hrDayIndex[day.date] = {};
+      _hrDayIndex[day.date][name] = { ...day, name };
+    }
+  }
+  _hrDates  = Object.keys(_hrDayIndex).sort();
+  _hrDayPos = _hrDates.length - 1; // start on most recent
+
   const age = document.getElementById('vfLHistAge');
-  if (_hitRateData.computed_at) age.textContent = `computed ${new Date(_hitRateData.computed_at).toLocaleDateString()} · ${_hitRateData.lookback_days}d lookback`;
+  if (_hitRateData.computed_at)
+    age.textContent = `computed ${new Date(_hitRateData.computed_at).toLocaleDateString()} · ${_hitRateData.lookback_days ?? '?'}d`;
+
+  _renderHROverview();
 }
 
-function _selectLHistTab(name, el) {
-  document.querySelectorAll('.vf-lhist-tab').forEach(t => t.classList.remove('active'));
+function _hrSetView(view, el) {
+  _hrView = view;
+  document.querySelectorAll('#vfHRTabOverview,#vfHRTabDay').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  _renderHRBody(name);
+  document.getElementById('vfHROverview').style.display    = view === 'overview' ? '' : 'none';
+  document.getElementById('vfHRDayBrowser').style.display  = view === 'day'      ? '' : 'none';
+  if (view === 'day') _renderHRDay();
 }
 
-function _renderHRBody(name) {
-  const inst = _hitRateData?.instruments?.[name];
-  if (!inst?.levels) return;
+// ── Overview: compact all-instruments grid ────────────────────────────────────
+function _renderHROverview() {
+  const data = _hitRateData;
+  if (!data?.instruments) return;
 
-  const f    = currentForecast?.instruments?.[name];
-  const s    = currentSession?.instruments?.[name];
-  const open = s?.anchor_open ?? null;
-  const dp   = _priceDp(open);
-
-  const LEVELS = [
-    { key: 'hl_med', lbl: '↔ H-L Median',   dir: 'range', fc: f?.hl_median },
-    { key: 'hl_75',  lbl: '↔ H-L 75th',     dir: 'range', fc: f?.hl_75     },
-    { key: 'oh_med', lbl: '↑ Upside Median', dir: 'up',    fc: f?.oc_median },
-    { key: 'oh_75',  lbl: '↑ Upside 75th',   dir: 'up',    fc: f?.oc_75     },
-    { key: 'ol_med', lbl: '↓ Downside Med',  dir: 'down',  fc: f?.oc_median },
-    { key: 'ol_75',  lbl: '↓ Downside 75th', dir: 'down',  fc: f?.oc_75     },
+  const COLS = [
+    { key: 'oh_med', lbl: '↑Med'  },
+    { key: 'oh_75',  lbl: '↑75th' },
+    { key: 'ol_med', lbl: '↓Med'  },
+    { key: 'ol_75',  lbl: '↓75th' },
+    { key: 'hl_med', lbl: '↔Med'  },
+    { key: 'hl_75',  lbl: '↔75th' },
   ];
 
-  const rows = LEVELS.map(({ key, lbl, dir, fc: fcVal }) => {
-    const d = inst.levels[key];
-    if (!d) return '';
-    const rateCls = d.hit_pct >= 70 ? 'hi' : d.hit_pct >= 40 ? 'med' : 'lo';
+  const thCls = 'style="padding:5px 8px;text-align:center;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)"';
+  const hdr = `<tr><th style="padding:5px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)">Instrument</th>${COLS.map(c => `<th ${thCls}>${c.lbl}</th>`).join('')}</tr>`;
 
-    let priceLvl = '—';
-    if (open && fcVal) {
-      const abs = open * fcVal / 100;
-      if      (dir === 'range') priceLvl = `±${_fmtPrice(abs, dp)}`;
-      else if (dir === 'up')    priceLvl = _fmtPrice(open + abs, dp);
-      else if (dir === 'down')  priceLvl = _fmtPrice(open - abs, dp);
-    }
-
-    return `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:5px 10px;font-weight:600;color:var(--text2);white-space:nowrap">${lbl}</td>
-      <td style="padding:5px 10px;text-align:center">
-        <span class="vf-hr-rate ${rateCls}">${d.hit_pct}%</span>
-        <span class="vf-hr-time" style="margin-left:4px">${d.n_hits}/${d.n_days}d</span>
-      </td>
-      <td style="padding:5px 10px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${d.median_utc ?? '—'} UTC</td>
-      <td style="padding:5px 10px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${d.earliest_utc ?? '—'}</td>
-      <td style="padding:5px 10px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${d.latest_utc ?? '—'}</td>
-      <td style="padding:5px 10px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${priceLvl}</td>
+  const names = Object.keys(data.instruments).filter(n => data.instruments[n]);
+  const rows = names.map(name => {
+    const inst = data.instruments[name];
+    const cells = COLS.map(({ key }) => {
+      const d = inst?.levels?.[key];
+      if (!d) return '<td style="padding:4px 8px;text-align:center;color:var(--text3)">—</td>';
+      const cls = d.hit_pct >= 70 ? 'hi' : d.hit_pct >= 50 ? 'med' : 'lo';
+      return `<td style="padding:3px 8px;text-align:center;border-bottom:1px solid var(--border)">
+        <div class="vf-hr-rate ${cls}" style="font-size:11px">${d.hit_pct}%</div>
+        <div class="vf-hr-time">${d.median_utc ?? '—'}</div>
+      </td>`;
+    }).join('');
+    return `<tr style="cursor:pointer" onclick="_hrJumpToInst('${name}')"
+      onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background=''">
+      <td style="padding:4px 10px;font-weight:600;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap">${name}</td>
+      ${cells}
     </tr>`;
   }).join('');
 
-  document.getElementById('vfLHistSub').textContent =
-    `${name} · ${inst.total_days} trading days · when actual price touched each forecast level`;
-  document.getElementById('vfLHistBody').innerHTML = `
-    <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
-      <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3);font-size:9px;text-transform:uppercase;letter-spacing:.05em">
-        <th style="text-align:left;padding:4px 10px">Level</th>
-        <th style="padding:4px 10px">Hit Rate</th>
-        <th style="padding:4px 10px">Median Time</th>
-        <th style="padding:4px 10px">Earliest</th>
-        <th style="padding:4px 10px">Latest</th>
-        <th style="padding:4px 10px">Today's Price</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
+  document.getElementById('vfHROverview').innerHTML =
+    `<table style="width:100%;border-collapse:collapse;font-family:'DM Mono',monospace"><thead>${hdr}</thead><tbody>${rows}</tbody></table>`;
+}
+
+function _hrJumpToInst(name) {
+  // Switch to day view on the most recent date that has data for this instrument
+  const date = [..._hrDates].reverse().find(d => _hrDayIndex[d]?.[name]);
+  if (date) {
+    _hrDayPos = _hrDates.indexOf(date);
+    _hrSetView('day', document.getElementById('vfHRTabDay'));
+  }
+}
+
+// ── Day browser ───────────────────────────────────────────────────────────────
+function _hrDayPrev() { if (_hrDayPos > 0) { _hrDayPos--; _renderHRDay(); } }
+function _hrDayNext() { if (_hrDayPos < _hrDates.length - 1) { _hrDayPos++; _renderHRDay(); } }
+
+function _renderHRDay() {
+  if (!_hrDates.length) {
+    document.getElementById('vfHRDayBody').innerHTML =
+      '<div style="padding:20px;font-size:11px;font-family:\'DM Mono\',monospace;color:var(--text3)">No daily data — re-run ↻ Compute to generate per-day records.</div>';
+    return;
+  }
+  const date   = _hrDates[_hrDayPos];
+  const dayMap = _hrDayIndex[date] ?? {};
+  document.getElementById('vfHRDayLabel').textContent = date;
+
+  const LVL_DEF = [
+    { key: 'oh_med', lbl: '↑ Med',    dir: +1, fcKey: 'oc_median' },
+    { key: 'oh_75',  lbl: '↑ 75th',   dir: +1, fcKey: 'oc_75'     },
+    { key: 'ol_med', lbl: '↓ Med',    dir: -1, fcKey: 'oc_median' },
+    { key: 'ol_75',  lbl: '↓ 75th',   dir: -1, fcKey: 'oc_75'     },
+    { key: 'hl_med', lbl: '↔ Med',    dir:  0, fcKey: 'hl_median'  },
+    { key: 'hl_75',  lbl: '↔ 75th',   dir:  0, fcKey: 'hl_75'      },
+  ];
+
+  const names = Object.keys(_hitRateData.instruments).filter(n => dayMap[n]);
+  if (!names.length) {
+    document.getElementById('vfHRDayBody').innerHTML =
+      `<div style="padding:20px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3)">No data for ${date}</div>`;
+    return;
+  }
+
+  const thStyle = 'padding:5px 8px;text-align:center;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)';
+  const hdr = `<thead><tr>
+    <th style="padding:5px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)">Instrument</th>
+    <th style="padding:5px 8px;text-align:right;font-size:9px;color:var(--text3);border-bottom:1px solid var(--border)">Open</th>
+    ${LVL_DEF.map(d => `<th style="${thStyle}">${d.lbl}</th>`).join('')}
+  </tr></thead>`;
+
+  const rows = names.map(name => {
+    const day  = dayMap[name];
+    const open = day.open;
+    const fc   = day.fc;
+    const dp   = _priceDp(open);
+
+    const cells = LVL_DEF.map(({ key, dir, fcKey }) => {
+      const pct     = fc?.[fcKey];
+      const hitTime = day.hits?.[key];
+      const hit     = !!hitTime;
+      let priceStr  = '—';
+      if (open && pct != null) {
+        const abs = open * pct / 100;
+        priceStr  = dir === 0 ? `${_fmtPrice(abs, dp)}` : _fmtPrice(open + dir * abs, dp);
+      }
+      const cls = hit ? 'hit' : '';
+      return `<td style="padding:3px 6px;border-bottom:1px solid var(--border)">
+        <div class="vf-lv-cell ${cls}">
+          <span class="vf-lv-price">${priceStr}</span>
+          ${hit ? `<span class="vf-lv-time">✓ ${hitTime}</span>` : `<span class="vf-lv-rem">miss</span>`}
+        </div>
+      </td>`;
+    }).join('');
+
+    return `<tr onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background=''">
+      <td style="padding:4px 10px;font-weight:600;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap">${name}</td>
+      <td style="padding:4px 8px;font-size:10px;color:var(--text3);text-align:right;border-bottom:1px solid var(--border);white-space:nowrap">${_fmtPrice(open, dp)}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  document.getElementById('vfHRDayBody').innerHTML =
+    `<table style="width:100%;border-collapse:collapse;font-family:'DM Mono',monospace">${hdr}<tbody>${rows}</tbody></table>`;
+}
+
+function _hrCopyDay() {
+  if (!_hrDates.length) return;
+  const date   = _hrDates[_hrDayPos];
+  const dayMap = _hrDayIndex[date] ?? {};
+
+  const LW   = 32;
+  const div  = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const LVL_DEF = [
+    { key: 'oh_med', lbl: '↑ Upper    ', dir: +1, fcKey: 'oc_median' },
+    { key: 'oh_75',  lbl: '↑ Upp 75th ', dir: +1, fcKey: 'oc_75'     },
+    { key: 'ol_med', lbl: '↓ Lower    ', dir: -1, fcKey: 'oc_median' },
+    { key: 'ol_75',  lbl: '↓ Low 75th ', dir: -1, fcKey: 'oc_75'     },
+    { key: 'hl_med', lbl: '↔ Range    ', dir:  0, fcKey: 'hl_median'  },
+    { key: 'hl_75',  lbl: '↔ Rng 75th ', dir:  0, fcKey: 'hl_75'      },
+  ];
+
+  const lines = [`**HIT RATE LOG — ${date}**`, ''];
+  const names = Object.keys(_hitRateData.instruments).filter(n => dayMap[n]);
+  for (const name of names) {
+    const day  = dayMap[name];
+    const open = day.open;
+    const fc   = day.fc;
+    const dp   = _priceDp(open);
+    lines.push(div(name), `Open: ${_fmtPrice(open, dp)}`);
+    for (const { key, lbl, dir, fcKey } of LVL_DEF) {
+      const pct = fc?.[fcKey];
+      let price = '—';
+      if (open && pct != null) {
+        const abs = open * pct / 100;
+        price = dir === 0 ? `${_fmtPrice(abs, dp)} pts` : _fmtPrice(open + dir * abs, dp);
+      }
+      const hitTime = day.hits?.[key];
+      const status  = hitTime ? `HIT  ${hitTime} UTC` : 'MISS —';
+      lines.push(`${lbl}: ${price.padEnd(12)} ${status}`);
+    }
+    lines.push('');
+  }
+
+  navigator.clipboard.writeText(lines.join('\n'))
+    .then(() => {
+      const btn = document.querySelector('#vfHRDayBrowser button[onclick="_hrCopyDay()"]');
+      if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000); }
+    })
+    .catch(() => alert('Clipboard write failed — try HTTPS'));
 }
 
 // ── Breakout extension probability ───────────────────────────────────────────
