@@ -133,24 +133,60 @@ async function _fetchAll(sym, gran, fromMs, step) {
 
 const LEVELS = ['oh_med', 'oh_75', 'ol_med', 'ol_75', 'hl_med', 'hl_75'];
 
-async function _computeInstrument(name, sym, ac, lookbackDays) {
-  const nowMs         = Date.now();
+// Rebuild aggregate stats from a daily log array (used after incremental extension)
+function _aggregateFromDaily(daily) {
+  const hitBuckets = Object.fromEntries(LEVELS.map(l => [l, []]));
+  for (const d of daily) {
+    for (const lvl of LEVELS) {
+      if (d.hits[lvl]) {
+        const [h, m] = d.hits[lvl].split(':').map(Number);
+        hitBuckets[lvl].push(h * 60 + m);
+      }
+    }
+  }
+  const n = daily.length;
+  const levels = {};
+  for (const lvl of LEVELS) {
+    const times = hitBuckets[lvl];
+    levels[lvl] = {
+      hit_pct:      Math.round(times.length / (n || 1) * 100),
+      n_hits:       times.length,
+      n_days:       n,
+      median_utc:   _minsToHHMM(_median(times)),
+      earliest_utc: _minsToHHMM(times.length ? Math.min(...times) : null),
+      latest_utc:   _minsToHHMM(times.length ? Math.max(...times) : null),
+    };
+  }
+  return levels;
+}
+
+async function _computeInstrument(name, sym, ac, lookbackDays, existingInst = null) {
+  const nowMs          = Date.now();
   const analysisFromMs = nowMs - lookbackDays * 86400000;
   const warmupFromMs   = analysisFromMs - 400 * 86400000; // 400 days GARCH warmup
 
+  // Incremental: only fetch H1 from the day after the last stored date
+  const existingDaily  = existingInst?.daily ?? [];
+  const lastStoredDate = existingDaily.length ? existingDaily[existingDaily.length - 1].date : null;
+  const h1FromMs       = lastStoredDate
+    ? new Date(lastStoredDate + 'T00:00:00Z').getTime() + 86400000
+    : analysisFromMs;
+
+  const isIncremental = h1FromMs > analysisFromMs;
+  const mode = isIncremental ? `incremental from ${lastStoredDate}` : `full ${lookbackDays}d`;
+
   process.stdout.write(`  [${name}] fetching D1...`);
   const d1 = await _fetchAll(sym, 'D', warmupFromMs, 7 * 86400000);
-  process.stdout.write(` ${d1.length} bars  H1...`);
-  const h1 = await _fetchAll(sym, 'H1', analysisFromMs, 7 * 86400000);
+  process.stdout.write(` ${d1.length} bars  H1 (${mode})...`);
+  const h1 = await _fetchAll(sym, 'H1', h1FromMs, 7 * 86400000);
   process.stdout.write(` ${h1.length} bars\n`);
 
   if (d1.length < 60) return null;
 
-  // Sort D1 ascending, convert to OHLC format expected by computeForecast
   const d1s = d1.map(b => ({ open: b.open, high: b.high, low: b.low, close: b.close, time: b.time }))
                  .sort((a, b) => a.time.localeCompare(b.time));
 
-  // Group H1 bars by London date
+  // Group new H1 bars by London date
   const h1ByDate = new Map();
   for (const bar of h1) {
     const ld = _londonDate(new Date(bar.time));
@@ -158,40 +194,36 @@ async function _computeInstrument(name, sym, ac, lookbackDays) {
     h1ByDate.get(ld).push(bar);
   }
 
-  const hitBuckets = Object.fromEntries(LEVELS.map(l => [l, []]));
-  const dailyLog   = []; // per-day records for CSV export
-  let totalDays = 0;
+  // Existing dates set — skip any dates already in daily log
+  const existingDates = new Set(existingDaily.map(d => d.date));
+  const newDailyLog   = [];
 
   for (const [date, dayBars] of [...h1ByDate.entries()].sort()) {
-    if (dayBars.length < 4) continue; // skip very partial days
+    if (existingDates.has(date)) continue;   // already computed
+    if (dayBars.length < 4) continue;        // skip very partial days
 
-    // D1 bars strictly before this date (for retrospective vol forecast)
-    const cutoff = date + 'T00:00:00.000Z';
+    const cutoff  = date + 'T00:00:00.000Z';
     const d1Prior = d1s.filter(b => b.time < cutoff);
     if (d1Prior.length < 60) continue;
 
     let fc;
     try { fc = computeForecast(d1Prior, ac, 1.0); } catch { continue; }
 
-    const bars  = [...dayBars].sort((a, b) => a.time.localeCompare(b.time));
-    const open  = bars[0].open;
+    const bars = [...dayBars].sort((a, b) => a.time.localeCompare(b.time));
+    const open = bars[0].open;
 
-    // Absolute price distances from open
     const oc_med_abs = open * fc.oc_median / 100;
     const oc_75_abs  = open * fc.oc_75    / 100;
     const hl_med_abs = open * fc.hl_median / 100;
     const hl_75_abs  = open * fc.hl_75    / 100;
 
-    totalDays++;
     let rHigh = open, rLow = open;
     const dayHit = {};
-
     for (const bar of bars) {
       const { high: bH, low: bL, time: bT } = bar;
       rHigh = Math.max(rHigh, bH);
       rLow  = Math.min(rLow,  bL);
       const rHL = rHigh - rLow;
-
       if (!dayHit.oh_med && bH >= open + oc_med_abs) dayHit.oh_med = bT;
       if (!dayHit.oh_75  && bH >= open + oc_75_abs)  dayHit.oh_75  = bT;
       if (!dayHit.ol_med && bL <= open - oc_med_abs) dayHit.ol_med = bT;
@@ -200,42 +232,24 @@ async function _computeInstrument(name, sym, ac, lookbackDays) {
       if (!dayHit.hl_75  && rHL >= hl_75_abs)         dayHit.hl_75  = bT;
     }
 
-    // Aggregate into time buckets
-    for (const lvl of LEVELS) {
-      if (dayHit[lvl]) {
-        const t = new Date(dayHit[lvl]);
-        hitBuckets[lvl].push(t.getUTCHours() * 60 + t.getUTCMinutes());
-      }
-    }
-
-    // Per-day log entry for CSV export
     const hitTimes = {};
     for (const lvl of LEVELS) {
-      if (dayHit[lvl]) {
-        const t = new Date(dayHit[lvl]);
-        hitTimes[lvl] = _minsToHHMM(t.getUTCHours() * 60 + t.getUTCMinutes());
-      } else {
-        hitTimes[lvl] = null;
-      }
+      hitTimes[lvl] = dayHit[lvl]
+        ? _minsToHHMM(new Date(dayHit[lvl]).getUTCHours() * 60 + new Date(dayHit[lvl]).getUTCMinutes())
+        : null;
     }
-    dailyLog.push({ date, open, hits: hitTimes });
+    newDailyLog.push({ date, open, hits: hitTimes });
   }
 
-  if (!totalDays) return null;
+  // Merge existing + new, trim to lookback window, sort ascending
+  const cutoffDate = new Date(analysisFromMs).toISOString().slice(0, 10);
+  const allDaily   = [...existingDaily, ...newDailyLog]
+    .filter(d => d.date >= cutoffDate)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
-  const levels = {};
-  for (const lvl of LEVELS) {
-    const times = hitBuckets[lvl];
-    levels[lvl] = {
-      hit_pct:      Math.round(times.length / totalDays * 100),
-      n_hits:       times.length,
-      n_days:       totalDays,
-      median_utc:   _minsToHHMM(_median(times)),
-      earliest_utc: _minsToHHMM(times.length ? Math.min(...times) : null),
-      latest_utc:   _minsToHHMM(times.length ? Math.max(...times) : null),
-    };
-  }
-  return { total_days: totalDays, levels, daily: dailyLog };
+  if (!allDaily.length) return null;
+
+  return { total_days: allDaily.length, levels: _aggregateFromDaily(allDaily), daily: allDaily };
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -243,15 +257,16 @@ async function _computeInstrument(name, sym, ac, lookbackDays) {
 let _computing = false;
 export const isHitRatesComputing = () => _computing;
 
-export async function computeHitRates(lookbackDays = 90) {
+export async function computeHitRates(lookbackDays = 90, existingData = null) {
   if (_computing) throw new Error('Hit rate computation already in progress');
   _computing = true;
   try {
-    console.log(`[HIT-RATES] Starting — ${lookbackDays}-day lookback, ${HR_INSTRUMENTS.length} instruments`);
+    const mode = existingData ? 'incremental' : 'full';
+    console.log(`[HIT-RATES] Starting — ${lookbackDays}-day lookback, ${HR_INSTRUMENTS.length} instruments (${mode})`);
     const results = {};
     for (const { name, sym, ac } of HR_INSTRUMENTS) {
       console.log(`[HIT-RATES] ── ${name} ──`);
-      results[name] = await _computeInstrument(name, sym, ac, lookbackDays);
+      results[name] = await _computeInstrument(name, sym, ac, lookbackDays, existingData?.instruments?.[name] ?? null);
     }
     return {
       ok:           true,

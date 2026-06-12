@@ -2901,37 +2901,63 @@ app.get('/api/vol-forecast/hit-rates', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// CSV export of per-day hit log: date, instrument, open, and hit/time per level
-app.get('/api/vol-forecast/hit-rates/export.csv', async (_req, res) => {
+// TXT export of per-day hit log — same ──── NAME ──── style as forecast exports
+app.get('/api/vol-forecast/hit-rates/export.txt', async (_req, res) => {
   try {
     const raw = await kv.get('vol_hit_rates');
-    if (!raw) return res.status(404).send('Not yet computed');
+    if (!raw) return res.status(404).type('text/plain').send('Not yet computed — run ↻ Compute first.');
     const data = JSON.parse(raw);
     const LVLS = ['oh_med','oh_75','ol_med','ol_75','hl_med','hl_75'];
-    const hdr = ['date','instrument','open',
-      ...LVLS.flatMap(l => [`${l}_hit`, `${l}_time`])].join(',');
-    const rows = [hdr];
+    const LBL  = { oh_med:'↑ Upper (med)', oh_75:'↑ Upper (75th)', ol_med:'↓ Lower (med)', ol_75:'↓ Lower (75th)', hl_med:'↔ Range  (med)', hl_75:'↔ Range  (75th)' };
+    const LW   = 32;
+    const div  = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+    const lines = [
+      '**FORECAST LEVEL HIT RATES — DAILY LOG**',
+      `**Computed: ${data.computed_at?.slice(0,10) ?? '—'} | Lookback: ${data.lookback_days ?? '?'}d**`,
+      '',
+    ];
     for (const [inst, idata] of Object.entries(data.instruments ?? {})) {
-      for (const day of (idata.daily ?? [])) {
-        const cols = [day.date, inst, day.open,
-          ...LVLS.flatMap(l => [day.hits[l] ? 1 : 0, day.hits[l] ?? ''])];
-        rows.push(cols.join(','));
+      if (!idata) continue;
+      lines.push(div(inst));
+      // Aggregate summary
+      for (const lvl of LVLS) {
+        const s = idata.levels?.[lvl];
+        if (!s) continue;
+        lines.push(`${LBL[lvl].padEnd(18)}: ${String(s.hit_pct ?? '—').padStart(3)}% hit | med ${s.median_utc ?? '—'} | earliest ${s.earliest_utc ?? '—'} | latest ${s.latest_utc ?? '—'}`);
       }
+      // Per-day log
+      if (idata.daily?.length) {
+        lines.push('', '  date        open        ↑Med   ↑75th  ↓Med   ↓75th  ↔Med   ↔75th');
+        lines.push('  ' + '─'.repeat(70));
+        for (const d of idata.daily) {
+          const t = lvl => (d.hits[lvl] ?? '—').padEnd(6);
+          lines.push(`  ${d.date}  ${String(d.open).padEnd(10)}  ${t('oh_med')} ${t('oh_75')} ${t('ol_med')} ${t('ol_75')} ${t('hl_med')} ${t('hl_75')}`);
+        }
+      }
+      lines.push('');
     }
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="hit_rates_${data.computed_at?.slice(0,10) ?? 'export'}.csv"`);
-    res.send(rows.join('\n'));
-  } catch (e) { res.status(500).send(e.message); }
+    const filename = `hit_rates_${data.computed_at?.slice(0,10) ?? 'export'}.txt`;
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(lines.join('\n'));
+  } catch (e) { res.status(500).type('text/plain').send(e.message); }
 });
 
 app.post('/api/vol-forecast/hit-rates/compute', async (req, res) => {
   if (isHitRatesComputing()) return res.status(409).json({ ok: false, error: 'Already computing' });
   const days = Math.min(Math.max(parseInt(req.query.days ?? '90', 10), 14), 365);
-  res.json({ ok: true, message: `Computing hit rates over ${days} trading days — takes 5–10 minutes. GET /api/vol-forecast/hit-rates when done.` });
-  computeHitRates(days)
+  // Load existing data for incremental extension
+  let existingData = null;
+  try {
+    const raw = await kv.get('vol_hit_rates');
+    if (raw) existingData = JSON.parse(raw);
+  } catch {}
+  const mode = existingData ? 'incremental (extending existing data)' : 'full';
+  res.json({ ok: true, message: `Computing hit rates over ${days} days — ${mode} — takes 5–10 min. GET /api/vol-forecast/hit-rates when done.` });
+  computeHitRates(days, existingData)
     .then(result => {
       kv.put('vol_hit_rates', JSON.stringify(result));
-      console.log(`[HIT-RATES] Done — stored to KV`);
+      console.log(`[HIT-RATES] Done — stored to KV (${mode})`);
     })
     .catch(e => console.error('[HIT-RATES] Error:', e.message));
 });
