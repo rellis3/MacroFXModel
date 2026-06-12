@@ -2699,7 +2699,7 @@ function _hrMedianDev(name, lvl) {
 function _fmtDev(v) {
   if (v == null) return null;
   const sign = v >= 0 ? '+' : '';
-  return `${sign}${(v).toFixed(2)}×`;
+  return `${sign}${Math.round(v * 100)}%`;
 }
 
 function _buildHRPanel() {
