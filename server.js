@@ -33,7 +33,7 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
-import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
+import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -3960,7 +3960,7 @@ app.post('/api/weekly-vol-backtest/run', (req, res) => {
   };
 
   const instFilter = pair
-    ? WEEKLY_INSTRUMENTS.filter(i => i.name === pair.toUpperCase())
+    ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase())
     : undefined;
 
   const jobId     = `wbt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -3971,7 +3971,7 @@ app.post('/api/weekly-vol-backtest/run', (req, res) => {
 
   (async () => {
     try {
-      const { trades, log } = await runFullWeeklyBacktest(opts, instFilter ?? WEEKLY_INSTRUMENTS);
+      const { trades, log } = await runFullWeeklyBacktest(opts, instFilter ?? WBT_INSTRUMENTS);
 
       if (!trades.length) {
         wbtJobs.set(jobId, { status: 'error', error: 'No trades generated', log, startedAt });
