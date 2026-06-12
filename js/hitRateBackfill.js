@@ -238,7 +238,7 @@ async function _computeInstrument(name, sym, ac, lookbackDays, existingInst = nu
         ? _minsToHHMM(new Date(dayHit[lvl]).getUTCHours() * 60 + new Date(dayHit[lvl]).getUTCMinutes())
         : null;
     }
-    newDailyLog.push({ date, open, hits: hitTimes });
+    newDailyLog.push({ date, open, fc: { oc_median: fc.oc_median, oc_75: fc.oc_75, hl_median: fc.hl_median, hl_75: fc.hl_75 }, hits: hitTimes });
   }
 
   // Merge existing + new, trim to lookback window, sort ascending
