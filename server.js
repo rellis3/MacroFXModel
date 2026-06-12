@@ -2319,12 +2319,12 @@ app.post('/api/vol-forecast/reference/:date', async (req, res) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
     const text = String(req.body?.text ?? '').trim();
     if (!text) return res.status(400).json({ ok: false, error: 'body.text required' });
-    await kv.set(`vol_reference_${date}`, JSON.stringify({ date, text, saved_at: new Date().toISOString() }));
+    await kv.put(`vol_reference_${date}`, JSON.stringify({ date, text, saved_at: new Date().toISOString() }));
     // Add to reference index
     const idxRaw = await kv.get('vol_reference_index').catch(() => null);
     const idx = idxRaw ? JSON.parse(idxRaw) : [];
     if (!idx.find(e => e.date === date)) { idx.unshift({ date }); if (idx.length > 120) idx.pop(); }
-    await kv.set('vol_reference_index', JSON.stringify(idx));
+    await kv.put('vol_reference_index', JSON.stringify(idx));
     res.json({ ok: true, date });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
