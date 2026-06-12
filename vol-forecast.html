@@ -717,6 +717,101 @@
 }
 .vf-lhist-tab.active { background: var(--s1); color: var(--text); font-weight: 600; }
 
+/* ── Daily Brief panel ───────────────────────────────────────────────────── */
+.vf-brief-panel {
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  margin-top: 14px;
+  overflow: hidden;
+}
+.vf-brief-nav {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.vf-brief-nav-title {
+  font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--text2);
+}
+.vf-brief-filters {
+  display: flex; gap: 6px; padding: 8px 14px;
+  border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.vf-brief-filter {
+  font-size: 10px; font-family: 'DM Mono', monospace;
+  padding: 2px 9px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--s2);
+  color: var(--text3); cursor: pointer; transition: all .12s;
+}
+.vf-brief-filter.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+.vf-brief-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 10px; padding: 12px 14px;
+}
+.vf-brief-card {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+}
+.vf-brief-card-hdr {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 10px 6px; border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.vf-brief-name { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text); }
+.vf-brief-ac {
+  font-family: 'DM Mono', monospace; font-size: 9px; text-transform: uppercase;
+  padding: 1px 5px; border-radius: 3px;
+  background: var(--s1); border: 1px solid var(--border); color: var(--text3);
+}
+.vf-brief-regime {
+  font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 600;
+  padding: 2px 6px; border-radius: 3px;
+}
+.vf-brief-regime.rng  { background: #1d4ed822; color: #60a5fa; border: 1px solid #1d4ed844; }
+.vf-brief-regime.bull { background: #16653422; color: #4ade80; border: 1px solid #16653444; }
+.vf-brief-regime.bear { background: #7f1d1d22; color: #f87171; border: 1px solid #7f1d1d44; }
+.vf-brief-regime.amb  { background: var(--s1); color: var(--text3); border: 1px solid var(--border); }
+.vf-brief-news {
+  font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 600;
+  padding: 2px 6px; border-radius: 3px;
+  background: #92400e22; color: #fbbf24; border: 1px solid #92400e44;
+}
+.vf-brief-price {
+  margin-left: auto; font-family: 'DM Mono', monospace;
+  font-size: 11px; font-weight: 600; color: var(--text2);
+}
+.vf-brief-tbl {
+  width: 100%; border-collapse: collapse;
+  font-family: 'DM Mono', monospace; font-size: 10px;
+}
+.vf-brief-tbl-hdr td {
+  font-size: 9px; color: var(--text3); padding: 4px 8px 3px;
+  border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing:.04em;
+}
+.vf-brief-tbl td { padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.vf-brief-tbl tr:last-child td { border-bottom: none; }
+.vf-brief-lbl { color: var(--text3); white-space: nowrap; }
+.vf-brief-val { font-weight: 600; color: var(--text); white-space: nowrap; }
+.vf-brief-hit { text-align: right; white-space: nowrap; }
+.vf-brief-hit span { font-size: 9px; padding: 1px 4px; border-radius: 3px; }
+.vf-brief-hit .hi  { color: #4ade80; background: #16653420; }
+.vf-brief-hit .mi  { color: #fbbf24; background: #92400e20; }
+.vf-brief-hit .lo  { color: var(--text3); }
+.vf-brief-time { font-size: 9px; color: var(--text3); text-align: right; white-space: nowrap; }
+.vf-brief-divider td { padding: 0; height: 6px; border-bottom: 1px solid var(--border); background: var(--s1); }
+.vf-brief-footer {
+  display: flex; gap: 10px; align-items: center;
+  padding: 5px 10px 7px; border-top: 1px solid var(--border);
+  font-family: 'DM Mono', monospace; font-size: 9px; color: var(--text3); flex-wrap: wrap;
+}
+.vf-brief-sz {
+  font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px;
+}
+.vf-brief-sz.full { color: #4ade80; background: #16653420; }
+.vf-brief-sz.mod  { color: #fbbf24; background: #92400e20; }
+.vf-brief-sz.low  { color: #f87171; background: #7f1d1d20; }
+.vf-brief-warn { font-size: 10px; color: #fbbf24; padding: 4px 14px; }
+
 /* ── Vol cone strip (card header row below name/pill) ───────────────────── */
 .vf-cone-strip {
   display: flex;
@@ -961,6 +1056,7 @@
   <button class="dark-btn" id="vfHistoryBtn" onclick="toggleHistory()" disabled title="Show/hide session history table — click rows to load a past day, use ← Older / Newer → to navigate">⊞ History</button>
   <button class="dark-btn" id="vfLevelsBtn"  onclick="toggleLevelsView()" disabled title="Compact levels table — all instruments, today's price targets, hit times">📋 Levels</button>
   <button class="dark-btn" id="vfHitRatesBtn" onclick="toggleHitRates()" disabled title="Levels hit rates — historical % hit rate and median reach time per level per instrument">📊 Hit Rates</button>
+  <button class="dark-btn" id="vfBriefBtn" onclick="toggleBrief()" title="Daily Brief — today's price targets, hit probability, regime and sizing in one view">📋 Brief</button>
   <button class="dark-btn" id="vfProfileBtn" onclick="toggleProfile()" title="Intraday vol profile — which UTC hours historically produce the most range">📊 Profile</button>
   <button class="dark-btn" id="vfRefDataBtn" onclick="toggleRefPanel()" title="Paste today's reference forecast to store it in KV for comparison">📌 Ref Data</button>
   <button class="dark-btn" id="vfEventBtn"   onclick="toggleEventImpact()" title="Event impact study — historical range expansion on CPI/NFP/FOMC days">📅 Events</button>
@@ -1139,6 +1235,24 @@
   <div class="vf-lhist-scroll">
     <div id="vfLHistBody"><div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">Click ↻ Compute to run the historical price scan — takes ~5–10 minutes.</div></div>
   </div>
+</div>
+
+<!-- DAILY BRIEF PANEL -->
+<div class="vf-brief-panel" id="vfBriefPanel" style="display:none">
+  <div class="vf-brief-nav">
+    <span class="vf-brief-nav-title">Daily Brief</span>
+    <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);flex:1">Today's price targets · hit probability · regime · sizing</span>
+    <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfBriefAge"></span>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="refreshBrief()">↻ Refresh</button>
+  </div>
+  <div id="vfBriefWarns"></div>
+  <div class="vf-brief-filters">
+    <button class="vf-brief-filter active" onclick="_briefSetFilter('all',this)">All</button>
+    <button class="vf-brief-filter" onclick="_briefSetFilter('fx',this)">FX</button>
+    <button class="vf-brief-filter" onclick="_briefSetFilter('index',this)">Indices</button>
+    <button class="vf-brief-filter" onclick="_briefSetFilter('commodity',this)">Commodities</button>
+  </div>
+  <div id="vfBriefBody"><div style="padding:20px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">Loading…</div></div>
 </div>
 
 <!-- INSTRUMENT CARDS -->
@@ -1420,6 +1534,8 @@ let liveForecast      = null;
 let currentSession    = null;
 let currentWeekly     = null;
 let currentProfile    = null;
+let currentBrief      = null;
+let _briefFilter      = 'all';
 let currentEventData  = null;
 let currentLevelsData = null;
 let levelsViewActive  = false;
@@ -1441,6 +1557,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadIntradayProfile();
   loadEventImpact();
   loadHitRates();
+  loadDailyBrief();
   scheduleRefresh();
 });
 
@@ -2639,6 +2756,160 @@ function renderCurrencyStrength(weeklyData) {
 
   document.getElementById('vfCcyNote').textContent = `WTD pair consensus · ${weeklyData.week_label ?? ''}`;
   document.getElementById('vfCcyStrip').style.display = '';
+}
+
+// ── Daily Brief ───────────────────────────────────────────────────────────────
+async function loadDailyBrief() {
+  try {
+    const res = await fetch('/api/daily-brief');
+    const data = await res.json();
+    if (data.ok) currentBrief = data;
+  } catch {}
+}
+
+function toggleBrief() {
+  const panel = document.getElementById('vfBriefPanel');
+  const btn   = document.getElementById('vfBriefBtn');
+  const shown = panel.style.display !== 'none';
+  if (shown) { panel.style.display = 'none'; btn.textContent = '📋 Brief'; return; }
+  panel.style.display = '';
+  btn.textContent = '✕ Brief';
+  if (!currentBrief) refreshBrief();
+  else _renderBrief();
+}
+
+async function refreshBrief() {
+  document.getElementById('vfBriefBody').innerHTML =
+    '<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text3)">Fetching live prices and joining data…</div>';
+  try {
+    const res = await fetch('/api/daily-brief');
+    const data = await res.json();
+    if (data.ok) currentBrief = data;
+  } catch {}
+  _renderBrief();
+}
+
+function _briefSetFilter(f, el) {
+  _briefFilter = f;
+  document.querySelectorAll('.vf-brief-filter').forEach(b => b.classList.toggle('active', b === el));
+  _renderBrief();
+}
+
+function _hitCls(pct) {
+  if (pct == null) return 'lo';
+  return pct >= 70 ? 'hi' : pct >= 50 ? 'mi' : 'lo';
+}
+
+function _renderBrief() {
+  const body = document.getElementById('vfBriefBody');
+  const age  = document.getElementById('vfBriefAge');
+
+  if (!currentBrief) {
+    body.innerHTML = '<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text2)">No data yet — click ↻ Refresh</div>';
+    return;
+  }
+  if (!currentBrief.ok) {
+    body.innerHTML = `<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${currentBrief.error ?? 'Brief not available'}</div>`;
+    return;
+  }
+
+  const ts = currentBrief.generated_at
+    ? new Date(currentBrief.generated_at).toUTCString().replace(/:\d\d GMT$/, ' UTC') : '';
+  age.textContent = ts;
+
+  const warns = [];
+  if (!currentBrief.has_hit_rates)
+    warns.push('No hit rate data — click 📊 Hit Rates → ↻ Compute (90d) for historical hit probabilities');
+  if (!currentBrief.has_regime)
+    warns.push('No regime data — HMM refreshes automatically every 6 hours or restart the server');
+  document.getElementById('vfBriefWarns').innerHTML =
+    warns.map(w => `<div class="vf-brief-warn">⚠ ${w}</div>`).join('');
+
+  const names = Object.keys(currentBrief.instruments).filter(n => {
+    const ac = currentBrief.instruments[n].ac;
+    if (_briefFilter === 'fx')        return ac === 'fx';
+    if (_briefFilter === 'index')     return ac === 'index';
+    if (_briefFilter === 'commodity') return ac === 'commodity';
+    return true;
+  });
+
+  body.innerHTML = names.length
+    ? `<div class="vf-brief-grid">${names.map(n => _renderBriefCard(n, currentBrief.instruments[n])).join('')}</div>`
+    : '<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text3)">No instruments match filter</div>';
+}
+
+function _renderBriefCard(name, inst) {
+  const acLbl = inst.ac === 'fx' ? 'FX' : inst.ac === 'index' ? 'IDX' : 'CMDTY';
+
+  // Regime pill
+  let regPill = '';
+  if (inst.regime) {
+    const r    = inst.regime;
+    const conf = r.label === 'RANGE' ? r.range_prob : r.trend_prob;
+    const lbl  = r.label === 'RANGE' ? `RANGE ${conf}%`
+               : r.trend_dir ? `TREND ${r.trend_dir} ${conf}%` : `TREND ${conf}%`;
+    const cls  = !r.reliable ? 'amb'
+               : r.label === 'RANGE' ? 'rng'
+               : r.trend_dir === 'BULL' ? 'bull' : 'bear';
+    regPill = `<span class="vf-brief-regime ${cls}">${lbl}${!r.reliable ? ' ⚠' : ''}</span>`;
+  }
+
+  const newsPill = inst.news_flag
+    ? `<span class="vf-brief-news">${inst.news_flag} ×${(inst.news_mult ?? 1).toFixed(2)}</span>` : '';
+
+  const priceStr = inst.current_price != null ? inst.current_price.toFixed(inst.dp) : '—';
+
+  // Whether this is a TREND regime with reliable signal — marks 75th levels
+  const isTrend = inst.regime?.label === 'TREND' && inst.regime?.reliable;
+
+  function lvlRow(key, label, isRange) {
+    const l = inst.levels?.[key] ?? {};
+    const valStr = isRange
+      ? (l.range_pts != null ? `${l.range_pts} pts` : `${(l.pct ?? 0).toFixed(2)}%`)
+      : (l.price     != null ? l.price.toFixed(inst.dp) : `${(l.pct ?? 0).toFixed(2)}%`);
+    const hitPct  = l.hit_pct;
+    const hitStr  = hitPct != null ? `${hitPct}%` : '—';
+    const cls     = _hitCls(hitPct);
+    const timeStr = l.median_utc ?? '—';
+    const extHint = (key === 'oh_75' || key === 'ol_75') && isTrend
+      ? ' <span style="color:#fbbf24;font-size:8px">▶ext</span>' : '';
+    return `<tr>
+      <td class="vf-brief-lbl">${label}${extHint}</td>
+      <td class="vf-brief-val">${valStr}</td>
+      <td class="vf-brief-hit"><span class="${cls}">${hitStr}</span></td>
+      <td class="vf-brief-time">${timeStr}</td>
+    </tr>`;
+  }
+
+  // Footer
+  let footHtml = `<span>Vol ${(inst.vol_annual ?? 0).toFixed(1)}%pa</span>`;
+  if (inst.vol_pct != null) footHtml += `<span style="color:var(--text3)">P${inst.vol_pct}</span>`;
+  if (inst.regime?.sizing_label) {
+    const sc = inst.regime.sizing_label === 'Full' ? 'full' : inst.regime.sizing_label === 'Moderate' ? 'mod' : 'low';
+    footHtml += `<span class="vf-brief-sz ${sc}">Size: ${inst.regime.sizing_label} ×${inst.regime.sizing_mult}</span>`;
+  }
+
+  return `<div class="vf-brief-card">
+    <div class="vf-brief-card-hdr">
+      <span class="vf-brief-name">${name}</span>
+      <span class="vf-brief-ac">${acLbl}</span>
+      ${regPill}${newsPill}
+      <span class="vf-brief-price">${priceStr}</span>
+    </div>
+    <table class="vf-brief-tbl">
+      <tr class="vf-brief-tbl-hdr">
+        <td>Level</td><td>Price/Pts</td><td style="text-align:right">Hit%</td><td style="text-align:right">Med UTC</td>
+      </tr>
+      ${lvlRow('oh_med', '↑ Upper')}
+      ${lvlRow('oh_75',  '↑ Upp 75')}
+      ${lvlRow('ol_med', '↓ Lower')}
+      ${lvlRow('ol_75',  '↓ Low 75')}
+      <tr class="vf-brief-divider"><td colspan="4"></td></tr>
+      ${lvlRow('hl_med', '↔ Range', true)}
+      ${lvlRow('hl_75',  '↔ Rng 75', true)}
+    </table>
+    <div class="vf-brief-footer">${footHtml}</div>
+  </div>`;
 }
 
 // ── Intraday profile ──────────────────────────────────────────────────────────
