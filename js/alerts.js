@@ -1056,69 +1056,255 @@ async function sendFXTransitionAlert(pair, model) {
   await _sendFXAlert(pair, model, headline, `📊 ${pair} — MACRO CONTEXT TRANSITION`)
 }
 
-async function _sendFXAlert(pair, model, headline, title) {
+// ── Rich narrative helpers ──────────────────────────────────────────────────────
+
+function _fxStructuralNarrative(pair, model) {
+  const cfg = model.cfg
+  switch (model.regime) {
+    case 'RATE_BASE_EXPANDING':
+      return `${cfg.baseName} rate cycle diverging higher vs ${cfg.quoteName} — ${pair} structurally bid as carry differential widens in favour of base currency.`
+    case 'RATE_QUOTE_EXPANDING':
+      return `${cfg.quoteName} rate advantage expanding over ${cfg.baseName} — ${pair} under pressure as carry shifts toward quote currency.`
+    case 'RISK_OFF':
+      return cfg.riskSens < -0.3
+        ? `Risk-off conditions overriding rate differentials — ${pair} under direct selling pressure as a high-beta carry pair.`
+        : cfg.riskSens > 0.3
+        ? `Risk-off conditions active — ${pair} catching safe-haven bid as sentiment deteriorates.`
+        : `Risk-off conditions active — ${pair} has mixed sensitivity, watch for follow-through.`
+    case 'RISK_ON':
+      return cfg.riskSens < -0.3
+        ? `Risk appetite returning — ${pair} as a high-beta carry pair directly benefits from improved sentiment.`
+        : cfg.riskSens > 0.3
+        ? `Risk appetite improving but ${pair} may lag — safe-haven premium fading.`
+        : `Risk appetite improving — ${pair} caught in broader reflation trade.`
+    case 'COMMODITY_BULL':
+      return `Commodity prices rising — ${pair} supported by energy and resource tailwinds benefiting ${cfg.baseName}.`
+    case 'COMMODITY_BEAR':
+      return `Commodity prices falling — ${pair} facing structural headwind as energy weakness erodes ${cfg.baseName} support.`
+    default:
+      return `Mixed macro signals — rate differentials and risk environment not pointing to a clear dominant regime.`
+  }
+}
+
+function _fxDominantDriver(model) {
+  const cfg = model.cfg
+  switch (model.regime) {
+    case 'RATE_BASE_EXPANDING':
+      return `What's driving ${model.pair ?? ''}: Rate differential (${cfg.baseName} expanding lead over ${cfg.quoteName})`
+    case 'RATE_QUOTE_EXPANDING':
+      return `What's driving ${model.pair ?? ''}: Rate differential (${cfg.quoteName} expanding lead over ${cfg.baseName})`
+    case 'RISK_OFF':
+      return `What's driving: Risk sentiment (VIX/credit spreads overriding rate differentials)`
+    case 'RISK_ON':
+      return `What's driving: Risk appetite recovery (carry re-engagement, risk assets bid)`
+    case 'COMMODITY_BULL':
+      return `What's driving: Commodity complex (rising — tailwind for ${cfg.baseName})`
+    case 'COMMODITY_BEAR':
+      return `What's driving: Commodity complex (falling — headwind for ${cfg.baseName})`
+    default:
+      return `What's driving: No dominant factor — mixed or transitioning regime`
+  }
+}
+
+function _fxMacroContextLines(pair, model) {
+  const out = []
   const f   = model.factors
   const cfg = model.cfg
+  const vix = f.risk.vix
+  const hy  = f.risk.hyBps
 
-  // ── Rate differential section ────────────────────────────────────────────
-  const base    = S.fredData?.[cfg.baseRateKey]?.value
-  const quote   = S.fredData?.[cfg.quoteRateKey]?.value
-  const baseStr  = base  != null ? `${cfg.baseName} ${base.toFixed(2)}%`  : `${cfg.baseName} —`
-  const quoteStr = quote != null ? `${cfg.quoteName} ${quote.toFixed(2)}%` : `${cfg.quoteName} —`
+  if (model.regime === 'RISK_OFF') {
+    if (vix != null) {
+      if (vix > 30)      out.push(`VIX ${vix.toFixed(0)} — extreme fear. Potential snap-back when catalyst resolves.`)
+      else if (vix > 25) out.push(`VIX ${vix.toFixed(0)} — elevated but not panic. Risk-off in force.`)
+      else               out.push(`VIX ${vix.toFixed(0)} — fear rising. Break above 25 would accelerate.`)
+    }
+    if (hy != null && hy > 400) out.push(`HY ${Math.round(hy)}bp — credit stress reinforcing risk-off.`)
+    out.push(`Watch: Equity stabilisation or central bank comment could trigger fast reversal.`)
+  } else if (model.regime === 'RISK_ON') {
+    if (vix != null && vix < 15) out.push(`VIX ${vix.toFixed(0)} — complacency. Asymmetric risk to downside.`)
+    out.push(`Watch: Credit spread widening or geopolitical shock could reverse quickly.`)
+  } else if (model.regime === 'RATE_BASE_EXPANDING') {
+    out.push(`Watch: ${cfg.baseName} policy meetings, inflation data, and forward guidance on rate path.`)
+  } else if (model.regime === 'RATE_QUOTE_EXPANDING') {
+    out.push(`Watch: ${cfg.quoteName} rate decisions and whether divergence with ${cfg.baseName} continues to widen.`)
+  } else if (model.regime === 'COMMODITY_BULL' || model.regime === 'COMMODITY_BEAR') {
+    out.push(`Watch: OPEC supply decisions, China demand data, and global PMI for commodity direction.`)
+  } else {
+    out.push(`Watch: Next major central bank meeting or CPI print for regime confirmation.`)
+  }
+  return out
+}
 
-  const rateDiffLine = f.rateDiff.label
-    ? `  ${f.rateDiff.label}`
-    : `  ${baseStr} vs ${quoteStr}`
+function _fxToneNarrative(pair, model) {
+  const cfg = PAIR_DRIVERS[pair]
+  if (!cfg) return null
+  switch (model.regime) {
+    case 'RISK_OFF_SESSION':
+      return cfg.riskSens < -0.3
+        ? `Safe-haven bid active — JPY and CHF leading, ${pair} under direct selling pressure as a high-beta carry pair.`
+        : cfg.riskSens > 0.3
+        ? `Safe-haven flows lifting ${pair} this session — defensive currency demand benefiting base.`
+        : `Safe-haven flows active but ${pair} has mixed sensitivity — watch for follow-through.`
+    case 'RISK_ON_SESSION':
+      return cfg.riskSens < -0.3
+        ? `Risk appetite returning — ${pair} as a carry/high-beta pair is a direct beneficiary. Watch JPY and CHF weakness for confirmation.`
+        : `Risk-on tone this session — equity and commodity rally supporting reflation pairs.`
+    case 'USD_BID_SESSION':
+      return `Dollar bid broadly — USD strength overriding individual pair drivers. Cross-rate volatility likely lower.`
+    case 'USD_OFFERED_SESSION':
+      return `Dollar on the back foot — USD weakness creating tailwind for most G10 crosses. Watch USD/JPY for direction.`
+    case 'TRENDING_BULL':
+      return `${pair} showing positive 5-session momentum — pair-specific trend in play, not a broad risk theme.`
+    case 'TRENDING_BEAR':
+      return `${pair} under sustained selling pressure over 5 sessions — pair-specific bearish momentum.`
+    default:
+      return `Directionless session — no dominant risk, USD, or trend theme. Range-bound conditions likely.`
+  }
+}
 
-  const rateLines = [
-    `<b>Rate Differential (${cfg.baseName} vs ${cfg.quoteName})</b>`,
-    `  ${baseStr} vs ${quoteStr}`,
-    rateDiffLine !== `  ${baseStr} vs ${quoteStr}` ? rateDiffLine : null,
-  ].filter(Boolean)
+function _buildStructuralBlock(pair, model) {
+  if (!model) return [`<b>📊 Structural</b>`, `— FRED data not loaded`]
+  const f    = model.factors
+  const pcfg = model.cfg
+  const base  = S.fredData?.[pcfg.baseRateKey]?.value
+  const quote = S.fredData?.[pcfg.quoteRateKey]?.value
+  const diff  = (base != null && quote != null) ? (base - quote) : null
+  const diffTag = diff != null
+    ? ` · diff: ${diff > 0 ? '+' : ''}${diff.toFixed(2)}% (${diff > 0 ? pcfg.baseName : pcfg.quoteName})`
+    : ''
+  const vix = f.risk.vix
+  const hy  = f.risk.hyBps
+  const vixStr = vix != null ? `VIX ${vix.toFixed(0)} (${vix > 25 ? 'elevated' : vix > 18 ? 'moderate' : 'low'})` : 'VIX —'
+  const hyStr  = hy  != null ? `HY ${Math.round(hy)}bp (${hy > 400 ? 'stressed' : hy > 300 ? 'elevated' : 'contained'})` : 'HY —'
+  const conf   = model.regimeConfidence.confidence === 'HIGH'   ? '✅ HIGH'
+               : model.regimeConfidence.confidence === 'MEDIUM' ? '🟡 MEDIUM'
+               : '🔴 LOW — transitioning'
+  const biasEmoji = model.regimeBias === 'BULLISH' ? '↑' : model.regimeBias === 'BEARISH' ? '↓' : '↔'
+  const sizeNote = model.regimeConfidence.isTransitioning && model.regimeConfidence.sizeMult
+    ? `⚠️ Reduce size ×${model.regimeConfidence.sizeMult} — signals conflicting`
+    : null
 
-  // ── Market environment section ────────────────────────────────────────────
-  const vixStr = f.risk.vix != null ? `VIX ${f.risk.vix.toFixed(0)}` : 'VIX —'
-  const hyStr  = f.risk.hyBps != null ? `HY ${Math.round(f.risk.hyBps)}bp` : 'HY —'
-  const envLines = [
-    `<b>Market Environment</b>`,
+  return [
+    `<b>📊 Structural</b> <i>(weekly/monthly · FRED)</i>`,
+    `${model.regimeEmoji} Regime: <b>${model.regimeLabel}</b>`,
+    _fxStructuralNarrative(pair, model),
+    model.regimeConfidence.signals.length
+      ? `Signals: ${model.regimeConfidence.signals.slice(0, 3).join(' · ')}`
+      : null,
+    ``,
+    `<b>Layer 1 — Rates</b>`,
+    `  ${pcfg.baseName}: ${base != null ? base.toFixed(2)+'%' : '—'} · ${pcfg.quoteName}: ${quote != null ? quote.toFixed(2)+'%' : '—'}${diffTag}`,
+    f.rateDiff.label ? `  ${f.rateDiff.label}` : null,
+    ``,
+    `<b>Layer 2 — Market Environment</b>`,
     `  ${vixStr} · ${hyStr}`,
     f.risk.label ? `  ${f.risk.label}` : null,
-  ]
-
-  // ── Commodity section (pair-specific) ────────────────────────────────────
-  const commLines = f.commodity && f.commodity.wti != null ? [
+    f.commodity?.label ? `  Commodity: ${f.commodity.label}` : null,
     ``,
-    `<b>Commodity (WTI)</b>`,
-    f.commodity.label ? `  ${f.commodity.label}` : null,
-  ] : []
+    _fxDominantDriver({ ...model, pair }),
+    ..._fxMacroContextLines(pair, model),
+    `${biasEmoji} Bias: <b>${model.regimeBias}</b> · Model confidence: ${conf}`,
+    sizeNote,
+  ]
+}
 
-  // ── Confidence badge and bias ─────────────────────────────────────────────
+function _buildToneBlock(pair, model) {
+  if (!model) return [`<b>⚡ Daily Tone</b>`, `— OHLC not yet loaded`]
+  const rb = model.riskBarometer
+  const riskScore = rb.score != null ? rb.score.toFixed(2) : '—'
+  const riskLabel = rb.score > 0.6 ? 'risk-off flows dominant'
+    : rb.score < -0.6 ? 'risk-on / carry bid'
+    : 'mixed — no clear risk theme'
+
+  const fmtComp = (z, name, riskDir) => {
+    if (z == null) return null
+    const trend  = z > 0.3 ? 'rising' : z < -0.3 ? 'falling' : 'flat'
+    const signal = riskDir * z > 0.5 ? ' ← risk-off' : riskDir * z < -0.5 ? ' ← risk-on' : ''
+    return `  ${name}: ${z >= 0 ? '+' : ''}${z.toFixed(2)}σ · ${trend}${signal}`
+  }
+  const compLines = [
+    fmtComp(rb.components.audjpy, 'AUD/JPY 5d', -1),
+    fmtComp(rb.components.usdjpy, 'USD/JPY 5d', -1),
+    fmtComp(rb.components.xauusd, 'Gold 5d',    +1),
+    fmtComp(rb.components.usdchf, 'USD/CHF 5d', -1),
+  ].filter(Boolean)
+
+  const usdLine = model.usdScore != null
+    ? `USD session: ${model.usdScore.toFixed(2)} (${model.usdScore > 0.5 ? 'bid — dollar strength' : model.usdScore < -0.5 ? 'offered — dollar weakness' : 'flat'})`
+    : null
+  const pairZLine = model.pairZ != null
+    ? `${pair} 5d momentum: ${model.pairZ >= 0 ? '+' : ''}${model.pairZ.toFixed(2)}σ (${Math.abs(model.pairZ) > 0.7 ? model.pairZ > 0 ? 'bullish trend' : 'bearish trend' : 'range-bound'})`
+    : null
+  const biasEmoji = model.bias === 'BULLISH' ? '↑' : model.bias === 'BEARISH' ? '↓' : '↔'
+
+  return [
+    `<b>⚡ Daily Tone</b> <i>(session · daily bars)</i>`,
+    `${model.regimeEmoji} ${model.regimeLabel}`,
+    _fxToneNarrative(pair, model),
+    ``,
+    `<b>Risk Barometer: ${riskScore} (${riskLabel})</b>`,
+    ...compLines,
+    ``,
+    usdLine,
+    pairZLine,
+    `${biasEmoji} Session bias: <b>${model.bias}</b>`,
+  ]
+}
+
+async function _sendFXAlert(pair, model, headline, title) {
+  const f    = model.factors
+  const pcfg = model.cfg
+  const base  = S.fredData?.[pcfg.baseRateKey]?.value
+  const quote = S.fredData?.[pcfg.quoteRateKey]?.value
+  const diff  = (base != null && quote != null) ? (base - quote) : null
+  const diffTag = diff != null
+    ? ` · diff: ${diff > 0 ? '+' : ''}${diff.toFixed(2)}% (${diff > 0 ? pcfg.baseName : pcfg.quoteName} advantage)`
+    : ''
+
+  const vix = f.risk.vix
+  const hy  = f.risk.hyBps
+  const vixStr = vix != null ? `VIX ${vix.toFixed(0)} (${vix > 25 ? 'elevated' : vix > 18 ? 'moderate' : 'low'})` : 'VIX —'
+  const hyStr  = hy  != null ? `HY ${Math.round(hy)}bp (${hy > 400 ? 'stressed' : hy > 300 ? 'elevated' : 'contained'})` : 'HY —'
+
   const confBadge = model.regimeConfidence.confidence === 'HIGH'   ? '✅ HIGH confidence'
                   : model.regimeConfidence.confidence === 'MEDIUM' ? '🟡 MEDIUM confidence'
-                  : '🔴 LOW confidence — regime transitioning'
+                  : '🔴 LOW confidence — regime in flux'
+  const sizeNote = model.regimeConfidence.isTransitioning && model.regimeConfidence.sizeMult
+    ? `⚠️ Reduce size ×${model.regimeConfidence.sizeMult} — signals conflicting`
+    : null
 
   const biasEmoji = model.regimeBias === 'BULLISH' ? '↑' : model.regimeBias === 'BEARISH' ? '↓' : '↔'
-  const biasLine  = `${biasEmoji} Pair bias: <b>${model.regimeBias}</b>`
+  const pairLink  = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
 
-  const pairLink = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
+  const sigLine = model.regimeConfidence.signals.length
+    ? `Signals: ${model.regimeConfidence.signals.slice(0, 3).join(' · ')}`
+    : null
 
   const lines = [
-    `💱 <b>${title}</b>`,
+    `<b>${title}</b>`,
     headline,
+    _fxStructuralNarrative(pair, model),
+    sigLine,
     ``,
-    `${model.regimeEmoji} Regime: ${model.regimeLabel}`,
+    `${model.regimeEmoji} Regime: <b>${model.regimeLabel}</b>`,
     ``,
-    ...rateLines,
+    `<b>Layer 1 — Rates</b>`,
+    `  ${pcfg.baseName}: ${base != null ? base.toFixed(2)+'%' : '—'} · ${pcfg.quoteName}: ${quote != null ? quote.toFixed(2)+'%' : '—'}${diffTag}`,
+    f.rateDiff.label ? `  ${f.rateDiff.label}` : null,
     ``,
-    ...envLines,
-    ...commLines,
+    `<b>Layer 2 — Market Environment</b>`,
+    `  ${vixStr} · ${hyStr}`,
+    f.risk.label ? `  ${f.risk.label}` : null,
+    f.commodity?.label ? `  Commodity: ${f.commodity.label}` : null,
     ``,
+    _fxDominantDriver({ ...model, pair }),
+    ..._fxMacroContextLines(pair, model),
+    ``,
+    `${biasEmoji} ${pair} bias: <b>${model.regimeBias}</b>`,
     confBadge,
-    biasLine,
-    model.regimeConfidence.isTransitioning && model.regimeConfidence.signals.length
-      ? `Signals: ${model.regimeConfidence.signals.slice(0, 2).join(' · ')}`
-      : null,
-    `⏱ Timescale: weekly/monthly · structural backdrop`,
+    sizeNote,
+    `⏱ Timescale: weekly/monthly · FRED macro data`,
     pairLink,
   ].filter(v => v != null).join('\n')
 
@@ -1202,41 +1388,49 @@ export async function checkFXDailyToneAlerts() {
 }
 
 async function _sendFXToneAlert(pair, model, prevLabel) {
-  const toneEmoji = model.regimeEmoji
-  const toneLabel = model.regimeLabel
+  const prevLine  = prevLabel ? `${prevLabel} → ` : ''
+  const toneLine  = `${prevLine}${model.regimeEmoji} ${model.regimeLabel}`
+  const pairLink  = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
 
-  const prevLine = prevLabel ? `${prevLabel} → ` : ''
-  const toneLine = `${prevLine}${toneEmoji} ${toneLabel}`
-
-  const biasEmoji = model.bias === 'BULLISH' ? '↑' : model.bias === 'BEARISH' ? '↓' : '↔'
-  const biasLine  = `${biasEmoji} ${pair} session bias: <b>${model.bias}</b>`
-
-  // Risk barometer detail lines
   const rb = model.riskBarometer
   const riskScore = rb.score != null ? rb.score.toFixed(2) : '—'
-  const riskDesc  = rb.score > 0.6 ? 'risk-off flows' : rb.score < -0.6 ? 'risk-on flows' : 'mixed/neutral'
-  const riskLine  = `Risk barometer: ${riskScore} (${riskDesc})`
+  const riskLabel = rb.score > 0.6 ? 'risk-off flows dominant'
+    : rb.score < -0.6 ? 'risk-on / carry bid'
+    : 'mixed — no clear risk theme'
 
-  const fmt = (z, name) => z != null
-    ? `  ${name} 5d: ${z >= 0 ? '+' : ''}${z.toFixed(2)}σ · ${z > 0.3 ? 'rising' : z < -0.3 ? 'falling' : 'flat'}`
-    : null
-
+  const fmtComp = (z, name, riskDir) => {
+    if (z == null) return null
+    const trend  = z > 0.3 ? 'rising' : z < -0.3 ? 'falling' : 'flat'
+    const signal = riskDir * z > 0.5 ? ' ← risk-off' : riskDir * z < -0.5 ? ' ← risk-on' : ''
+    return `  ${name}: ${z >= 0 ? '+' : ''}${z.toFixed(2)}σ · ${trend}${signal}`
+  }
   const compLines = [
-    fmt(rb.components.audjpy, 'AUD/JPY'),
-    fmt(rb.components.xauusd, 'Gold'),
+    fmtComp(rb.components.audjpy, 'AUD/JPY 5d', -1),
+    fmtComp(rb.components.usdjpy, 'USD/JPY 5d', -1),
+    fmtComp(rb.components.xauusd, 'Gold 5d',    +1),
+    fmtComp(rb.components.usdchf, 'USD/CHF 5d', -1),
   ].filter(Boolean)
 
-  const pairLink = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
+  const usdLine = model.usdScore != null
+    ? `USD session: ${model.usdScore.toFixed(2)} (${model.usdScore > 0.5 ? 'bid — dollar strength' : model.usdScore < -0.5 ? 'offered — dollar weakness' : 'flat'})`
+    : null
+  const pairZLine = model.pairZ != null
+    ? `${pair} 5d momentum: ${model.pairZ >= 0 ? '+' : ''}${model.pairZ.toFixed(2)}σ (${Math.abs(model.pairZ) > 0.7 ? model.pairZ > 0 ? 'bullish trend' : 'bearish trend' : 'range-bound'})`
+    : null
+  const biasEmoji = model.bias === 'BULLISH' ? '↑' : model.bias === 'BEARISH' ? '↓' : '↔'
 
   const lines = [
-    `⚡ <b>${pair} — DAILY MARKET TONE</b>`,
+    `<b>⚡ ${pair} — DAILY MARKET TONE</b>`,
     toneLine,
-    model.description,
-    biasLine,
+    _fxToneNarrative(pair, model),
     ``,
-    riskLine,
+    `<b>Risk Barometer: ${riskScore} (${riskLabel})</b>`,
     ...compLines,
     ``,
+    usdLine,
+    pairZLine,
+    ``,
+    `${biasEmoji} ${pair} session bias: <b>${model.bias}</b>`,
     `⏱ Timescale: daily/session · updated with bar close`,
     pairLink,
   ].filter(v => v != null).join('\n')
@@ -1289,66 +1483,16 @@ export async function sendAllMacroSnapshotsNow(onProgress) {
     const macro = computeFXMacroModel(pair)
     const tone  = computeFXDailyTone(pair)
 
-    const pairLink = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
-
-    // ── Structural section ───────────────────────────────────────────────────
-    let structLines = []
-    if (macro) {
-      const f   = macro.factors
-      const pcfg = macro.cfg
-      const base  = S.fredData?.[pcfg.baseRateKey]?.value
-      const quote = S.fredData?.[pcfg.quoteRateKey]?.value
-      const rateStr = (base != null && quote != null)
-        ? `${pcfg.baseName} ${base.toFixed(2)}% vs ${pcfg.quoteName} ${quote.toFixed(2)}%`
-        : `${pcfg.baseName} — vs ${pcfg.quoteName} —`
-      const vixStr = f.risk.vix != null ? `VIX ${f.risk.vix.toFixed(0)}` : 'VIX —'
-      const hyStr  = f.risk.hyBps != null ? `HY ${Math.round(f.risk.hyBps)}bp` : 'HY —'
-      const conf   = macro.regimeConfidence.confidence === 'HIGH'   ? '✅ HIGH'
-                   : macro.regimeConfidence.confidence === 'MEDIUM' ? '🟡 MEDIUM'
-                   : '🔴 LOW — transitioning'
-      const biasEmoji = macro.regimeBias === 'BULLISH' ? '↑' : macro.regimeBias === 'BEARISH' ? '↓' : '↔'
-      structLines = [
-        `<b>📊 Structural</b> <i>(weekly/monthly)</i>`,
-        `${macro.regimeEmoji} ${macro.regimeLabel}`,
-        macro.regimeSummary,
-        rateStr,
-        `${vixStr} · ${hyStr}`,
-        f.risk.label ?? null,
-        f.commodity?.label ?? null,
-        `${biasEmoji} Bias: <b>${macro.regimeBias}</b> · ${conf}`,
-      ]
-    } else {
-      structLines = [`<b>📊 Structural</b>`, `— no FRED data loaded`]
-    }
-
-    // ── Daily tone section ───────────────────────────────────────────────────
-    let toneLines = []
-    if (tone) {
-      const rb = tone.riskBarometer
-      const riskScore = rb.score != null ? rb.score.toFixed(2) : '—'
-      const riskDesc  = rb.score > 0.6 ? 'risk-off' : rb.score < -0.6 ? 'risk-on' : 'neutral'
-      const biasEmoji = tone.bias === 'BULLISH' ? '↑' : tone.bias === 'BEARISH' ? '↓' : '↔'
-      const pairZLine = tone.pairZ != null
-        ? `Pair momentum: ${tone.pairZ >= 0 ? '+' : ''}${tone.pairZ.toFixed(2)}σ`
-        : null
-      toneLines = [
-        `<b>⚡ Daily Tone</b> <i>(session)</i>`,
-        `${tone.regimeEmoji} ${tone.regimeLabel}`,
-        tone.description,
-        `${biasEmoji} Bias: <b>${tone.bias}</b>`,
-        `Risk barometer: ${riskScore} (${riskDesc})`,
-        pairZLine,
-      ]
-    } else {
-      toneLines = [`<b>⚡ Daily Tone</b>`, `— OHLC data not yet loaded`]
-    }
+    const pairLink   = `<a href="${window.location.origin}?pair=${pair.replace('/', '')}">Open ${pair} →</a>`
+    const structBlock = _buildStructuralBlock(pair, macro)
+    const toneBlock   = _buildToneBlock(pair, tone)
 
     const lines = [
       `💱 <b>${pair} — MACRO SNAPSHOT</b>`,
       ``,
-      ...structLines,
+      ...structBlock,
       ``,
-      ...toneLines,
+      ...toneBlock,
       ``,
       `⏱ Snapshot: ${ts}`,
       pairLink,
