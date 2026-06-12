@@ -17,6 +17,14 @@ import { renderDecisionBanner } from '../DecisionEngine/decisionUI.js';
 import { collectDecisionInputs } from '../DecisionEngine/decisionInputs.js';
 import { runDecisionEngine } from '../DecisionEngine/decisionEngine.js';
 import { getSuppressedLog, loadAlertCfg } from './alerts.js';
+import { resolveEntry, getAllStats } from './winrate.js';
+
+// Expose win-rate outcome resolution for inline onclick handlers
+window._wrResolve = (id, outcome) => {
+  if (!id) return;
+  resolveEntry(id, outcome);
+  window.renderAll?.();
+};
 
 let _confSortMode = (() => { try { return localStorage.getItem('conf_sort_mode') || 'stars'; } catch(e) { return 'stars'; } })();
 window.setConfSortMode = (mode) => {
@@ -1117,7 +1125,15 @@ export function renderConfluences(confluences, currentPrice, pipSize, digits, ti
     <span><strong>SL:</strong> ${c.sl.toFixed(digits)} (${c.stopPips.toFixed(0)}p)</span>
     <span><strong>TP:</strong> ${c.tp.toFixed(digits)} (${c.tpPips.toFixed(0)}p${c.tpSource ? ' · ' + c.tpSource : ''})</span>
     <span><strong>R:R:</strong> 1:${c.rrRaw || '—'}${c.poorRR ? ' ⚠' : ''}</span>
-  </div>${regimeRow}${c.tpFibRisk ? `<div class="ci-tp-risk">⚠ Structural fib ${c.tpFibRisk.label} at ${c.tpFibRisk.price.toFixed(digits)} sits in TP path — may stall here</div>` : ''}` : `<div class="ci-trade-row" style="opacity:.6">
+    ${c.wrBadge ? `<span class="ci-wr${c.wrWarning ? ' ci-wr-warn' : ''}" title="Historical win rate for this setup profile (${c.wrStats?.wins}W / ${c.wrStats?.losses}L)">WR ${c.wrBadge}</span>` : ''}
+  </div>
+  ${c._wrId ? `<div class="ci-outcome-row">
+    <span class="ci-outcome-label">Outcome:</span>
+    <button class="ci-outcome-btn win"  onclick="window._wrResolve('${c._wrId}','win')">✓ Win</button>
+    <button class="ci-outcome-btn loss" onclick="window._wrResolve('${c._wrId}','loss')">✗ Loss</button>
+    <button class="ci-outcome-btn skip" onclick="window._wrResolve('${c._wrId}','skip')">— Skip</button>
+  </div>` : ''}
+  ${regimeRow}${c.tpFibRisk ? `<div class="ci-tp-risk">⚠ Structural fib ${c.tpFibRisk.label} at ${c.tpFibRisk.price.toFixed(digits)} sits in TP path — may stall here</div>` : ''}` : `<div class="ci-trade-row" style="opacity:.6">
     <span><em>Price sitting on level — wait for break above (BUY zone) or below (SELL zone)</em></span>
   </div>`}
 </div>`;

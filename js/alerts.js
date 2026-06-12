@@ -197,10 +197,54 @@ export function checkAndSendAlerts() {
           try { return runSignalEngine(S.compassData, volRegime).bias; }
           catch(e) { return 'NEUTRAL'; }
         })();
+        // Compute institutional key levels (PDH/PDL, PWH/PWL) so star ratings match render.js
+        const _dailyBarsKL = S.ohlcData?.[sym]?.values;
+        const _yesterdayLvls = (() => {
+          const tradingBars = _dailyBarsKL?.filter(b => {
+            const dow = new Date(b.datetime.replace(' ', 'T') + 'Z').getUTCDay();
+            return dow !== 0 && dow !== 6;
+          });
+          if (!tradingBars || tradingBars.length < 2) return { high: null, low: null };
+          return { high: parseFloat(tradingBars[1].high), low: parseFloat(tradingBars[1].low) };
+        })();
+        const _prevWeekLvls = (() => {
+          const bars30m = S.ohlc30m?.[sym]?.values;
+          if (!bars30m?.length) return { high: null, low: null };
+          const weeks = {};
+          bars30m.forEach(bar => {
+            const d   = new Date(bar.datetime.replace(' ', 'T') + 'Z');
+            const day = d.getUTCDay() || 7;
+            const mon = new Date(d);
+            mon.setUTCDate(d.getUTCDate() - (day - 1));
+            const wk  = mon.toISOString().split('T')[0];
+            if (!weeks[wk]) weeks[wk] = { high: -Infinity, low: Infinity };
+            const h = parseFloat(bar.high), l = parseFloat(bar.low);
+            if (h > weeks[wk].high) weeks[wk].high = h;
+            if (l < weeks[wk].low)  weeks[wk].low  = l;
+          });
+          const sorted = Object.keys(weeks).sort().reverse();
+          if (sorted.length < 2) return { high: null, low: null };
+          return { high: weeks[sorted[1]].high, low: weeks[sorted[1]].low };
+        })();
+        const _keyLevels = {
+          pdhHigh: _yesterdayLvls.high,
+          pdhLow:  _yesterdayLvls.low,
+          pwhHigh: _prevWeekLvls.high,
+          pwhLow:  _prevWeekLvls.low,
+        };
+
         const filtered = filterConfluences(allConfs);
-        const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, 0);
+        const enhanced = enhanceConfluences(filtered, quote.price, macroBias, pivots, volRegime, 0, _keyLevels);
+
+        // ATR proximity filter — same 4× ATR window as the dashboard display layer.
+        // Prevents far-away zones from polluting the bot's entry list.
+        const _alertAtrWindow = (volRegime?.atrPips ?? 0) * 4;
+        const enhancedFiltered = _alertAtrWindow > 0
+          ? enhanced.filter(z => z.distance <= _alertAtrWindow)
+          : enhanced;
+
         const signal   = runSignalEngine(S.compassData, volRegime);
-        entries        = runEntryScanner(signal, enhanced, pivots, asia, monday, quote, volRegime) ?? [];
+        entries        = runEntryScanner(signal, enhancedFiltered, pivots, asia, monday, quote, volRegime) ?? [];
         alertTierData  = (() => { try { return calculateTierScores(); } catch(e) { return null; } })();
         alertApproachArrow = (() => {
           const bars = S.ohlc5m?.[sym]?.values;
