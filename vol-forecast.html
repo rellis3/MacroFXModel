@@ -1131,12 +1131,13 @@
 <div class="vf-lhist-panel" id="vfLHistPanel" style="display:none">
   <div class="vf-lhist-nav">
     <span class="vf-lhist-title">Forecast Level Hit Rates</span>
-    <span class="vf-lhist-sub" id="vfLHistSub">How often each price level is reached and at what UTC time — for strategy & automation</span>
+    <span class="vf-lhist-sub" id="vfLHistSub">% of days each forecast price level was actually touched + median UTC time. Computed from historical H1 Oanda data.</span>
     <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfLHistAge"></span>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="computeHitRates()" id="vfHitRatesComputeBtn">↻ Compute (90d)</button>
   </div>
   <div class="vf-lhist-inst-tabs" id="vfLHistTabs"></div>
   <div class="vf-lhist-scroll">
-    <div id="vfLHistBody"><div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">Loading hit rate history…</div></div>
+    <div id="vfLHistBody"><div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">Click ↻ Compute to run the historical price scan — takes ~5–10 minutes.</div></div>
   </div>
 </div>
 
@@ -1439,7 +1440,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadArchiveTable();
   loadIntradayProfile();
   loadEventImpact();
-  loadLevelsHistory();
+  loadHitRates();
   scheduleRefresh();
 });
 
@@ -2425,16 +2426,44 @@ function jumpToCard(name) {
   }, 100);
 }
 
-// ── Levels hit history ────────────────────────────────────────────────────────
-async function loadLevelsHistory() {
+// ── Price-level hit rates (historical backfill) ───────────────────────────────
+
+let _hitRateData = null;
+
+async function loadHitRates() {
   try {
-    const res  = await fetch('/api/vol-forecast/levels-history?days=90');
+    const res = await fetch('/api/vol-forecast/hit-rates');
+    if (!res.ok) return; // not yet computed — silent
     const data = await res.json();
-    if (!data.ok || !Object.keys(data.instruments ?? {}).length) return;
-    currentLevelsData = data;
+    if (!data.ok || !data.instruments) return;
+    _hitRateData = data;
     document.getElementById('vfHitRatesBtn').disabled = false;
-    _buildLHistTabs(data);
+    const age = document.getElementById('vfLHistAge');
+    if (data.computed_at) age.textContent = `computed ${new Date(data.computed_at).toLocaleDateString()} · ${data.lookback_days}d lookback`;
   } catch { /* silent */ }
+}
+
+async function computeHitRates() {
+  const btn = document.getElementById('vfHitRatesComputeBtn');
+  btn.disabled = true; btn.textContent = 'Starting…';
+  try {
+    const res = await fetch('/api/vol-forecast/hit-rates/compute', { method: 'POST' });
+    const j   = await res.json();
+    document.getElementById('vfLHistBody').innerHTML =
+      `<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${j.message ?? 'Computing…'}<br><br>This fetches 90 days of H1 data for all 21 instruments. Come back in ~10 minutes and click ↻ Compute again to load results.</div>`;
+    btn.textContent = '⏳ Running…';
+    // Poll every 30s
+    const poll = setInterval(async () => {
+      try {
+        const r = await fetch('/api/vol-forecast/hit-rates');
+        if (r.ok) { const d = await r.json(); if (d.ok && d.instruments) { clearInterval(poll); _hitRateData = d; _buildLHistTabs(); btn.disabled = false; btn.textContent = '↻ Compute (90d)'; } }
+      } catch { /* wait */ }
+    }, 30_000);
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '↻ Compute (90d)';
+    document.getElementById('vfLHistBody').innerHTML =
+      `<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red)">Error: ${e.message}</div>`;
+  }
 }
 
 function toggleHitRates() {
@@ -2443,98 +2472,83 @@ function toggleHitRates() {
   const shown = panel.style.display !== 'none';
   panel.style.display = shown ? 'none' : '';
   btn.textContent = shown ? '📊 Hit Rates' : '✕ Hit Rates';
-  if (!shown && currentLevelsData) _buildLHistTabs(currentLevelsData);
+  if (!shown && _hitRateData) _buildLHistTabs();
 }
 
-function _buildLHistTabs(data) {
-  const names = Object.keys(data.instruments ?? {}).sort();
+function _buildLHistTabs() {
+  if (!_hitRateData?.instruments) return;
+  const names = Object.keys(_hitRateData.instruments).filter(n => _hitRateData.instruments[n]).sort();
   if (!names.length) return;
   const tabs = document.getElementById('vfLHistTabs');
   tabs.innerHTML = names.map((n, i) =>
     `<div class="vf-lhist-tab${i === 0 ? ' active' : ''}" onclick="_selectLHistTab('${n}',this)">${n}</div>`
   ).join('');
-  _renderLHistBody(data.instruments[names[0]], names[0], data.sessions);
-  document.getElementById('vfLHistAge').textContent = `${data.sessions} sessions analysed`;
+  _renderHRBody(names[0]);
+  const age = document.getElementById('vfLHistAge');
+  if (_hitRateData.computed_at) age.textContent = `computed ${new Date(_hitRateData.computed_at).toLocaleDateString()} · ${_hitRateData.lookback_days}d lookback`;
 }
 
 function _selectLHistTab(name, el) {
   document.querySelectorAll('.vf-lhist-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  if (currentLevelsData?.instruments?.[name])
-    _renderLHistBody(currentLevelsData.instruments[name], name, currentLevelsData.sessions);
+  _renderHRBody(name);
 }
 
-function _fmtHour(h) {
-  if (h == null) return '—';
-  const hh = Math.floor(h);
-  const mm = Math.round((h - hh) * 60);
-  return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')} UTC`;
-}
+function _renderHRBody(name) {
+  const inst = _hitRateData?.instruments?.[name];
+  if (!inst?.levels) return;
 
-function _renderLHistBody(lvMap, name, sessions) {
-  if (!lvMap) return;
-  const LEVEL_ORDER = ['hl_med','hl_75','oh_med','oh_75','ol_med','ol_75','oc_med','oc_75'];
-  const LEVEL_DESC = {
-    hl_med: 'Full daily range reaches H-L median (range budget 50th pct)',
-    hl_75:  'Full daily range reaches H-L 75th (range budget 75th pct)',
-    oh_med: 'Price moves up O→H median distance from open',
-    oh_75:  'Price moves up O→H 75th distance from open (breakout target)',
-    ol_med: 'Price moves down O→L median distance from open',
-    ol_75:  'Price moves down O→L 75th distance from open (breakout target)',
-    oc_med: 'Net O→C move equals median expected move',
-    oc_75:  'Net O→C move equals 75th percentile expected move',
-  };
+  const f    = currentForecast?.instruments?.[name];
+  const s    = currentSession?.instruments?.[name];
+  const open = s?.anchor_open ?? null;
+  const dp   = _priceDp(open);
 
-  const f = currentForecast?.instruments?.[name];
-  const rows = LEVEL_ORDER.map(key => {
-    const d = lvMap[key];
+  const LEVELS = [
+    { key: 'hl_med', lbl: '↔ H-L Median',   dir: 'range', fc: f?.hl_median },
+    { key: 'hl_75',  lbl: '↔ H-L 75th',     dir: 'range', fc: f?.hl_75     },
+    { key: 'oh_med', lbl: '↑ Upside Median', dir: 'up',    fc: f?.oc_median },
+    { key: 'oh_75',  lbl: '↑ Upside 75th',   dir: 'up',    fc: f?.oc_75     },
+    { key: 'ol_med', lbl: '↓ Downside Med',  dir: 'down',  fc: f?.oc_median },
+    { key: 'ol_75',  lbl: '↓ Downside 75th', dir: 'down',  fc: f?.oc_75     },
+  ];
+
+  const rows = LEVELS.map(({ key, lbl, dir, fc: fcVal }) => {
+    const d = inst.levels[key];
     if (!d) return '';
-    const rateCls = d.hit_rate >= 70 ? 'hi' : d.hit_rate >= 40 ? 'med' : 'lo';
+    const rateCls = d.hit_pct >= 70 ? 'hi' : d.hit_pct >= 40 ? 'med' : 'lo';
 
-    // Price level for this instrument (if we have today's open)
-    const s = currentSession?.instruments?.[name];
-    const open = s?.anchor_open ?? null;
-    const dp   = _priceDp(open);
     let priceLvl = '—';
-    if (open && f) {
-      if      (key === 'hl_med' || key === 'hl_75') priceLvl = `±${_fmtPrice(open * (key === 'hl_med' ? f.hl_median : f.hl_75) / 100, dp)} range`;
-      else if (key === 'oh_med') priceLvl = _fmtPrice(open + open * f.oc_median / 100, dp);
-      else if (key === 'oh_75')  priceLvl = _fmtPrice(open + open * f.oc_75    / 100, dp);
-      else if (key === 'ol_med') priceLvl = _fmtPrice(open - open * f.oc_median / 100, dp);
-      else if (key === 'ol_75')  priceLvl = _fmtPrice(open - open * f.oc_75    / 100, dp);
-      else if (key === 'oc_med') priceLvl = `±${_fmtPrice(open * f.oc_median / 100, dp)}`;
-      else if (key === 'oc_75')  priceLvl = `±${_fmtPrice(open * f.oc_75    / 100, dp)}`;
+    if (open && fcVal) {
+      const abs = open * fcVal / 100;
+      if      (dir === 'range') priceLvl = `±${_fmtPrice(abs, dp)}`;
+      else if (dir === 'up')    priceLvl = _fmtPrice(open + abs, dp);
+      else if (dir === 'down')  priceLvl = _fmtPrice(open - abs, dp);
     }
 
-    const session = key.startsWith('hl') ? 'range' : key.startsWith('oh') ? 'up' : key.startsWith('ol') ? 'down' : 'dir';
-    const sessionLbl = { range: '↔', up: '↑', down: '↓', dir: '→' }[session];
-
-    return `<tr>
-      <td><span style="font-size:10px;margin-right:4px;opacity:.7">${sessionLbl}</span>${d.label}</td>
-      <td><div class="vf-hr-cell">
-        <span class="vf-hr-rate ${rateCls}">${d.hit_rate}%</span>
-        <span class="vf-hr-time">${d.hits}/${d.total} days</span>
-      </div></td>
-      <td><span class="vf-hr-time">${_fmtHour(d.median_hour)}</span></td>
-      <td><span class="vf-hr-time">${_fmtHour(d.earliest_hour)}</span></td>
-      <td><span class="vf-hr-time">${_fmtHour(d.latest_hour)}</span></td>
-      <td style="font-size:10px;color:var(--text2);font-family:'DM Mono',monospace">${priceLvl}</td>
-      <td style="font-size:9px;color:var(--text3);max-width:200px;white-space:normal">${LEVEL_DESC[key] ?? ''}</td>
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:5px 10px;font-weight:600;color:var(--text2);white-space:nowrap">${lbl}</td>
+      <td style="padding:5px 10px;text-align:center">
+        <span class="vf-hr-rate ${rateCls}">${d.hit_pct}%</span>
+        <span class="vf-hr-time" style="margin-left:4px">${d.n_hits}/${d.n_days}d</span>
+      </td>
+      <td style="padding:5px 10px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${d.median_utc ?? '—'} UTC</td>
+      <td style="padding:5px 10px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${d.earliest_utc ?? '—'}</td>
+      <td style="padding:5px 10px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${d.latest_utc ?? '—'}</td>
+      <td style="padding:5px 10px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${priceLvl}</td>
     </tr>`;
   }).join('');
 
   document.getElementById('vfLHistSub').textContent =
-    `${name} · ${sessions} sessions · Hit rate + median reach time per forecast level`;
+    `${name} · ${inst.total_days} trading days · when actual price touched each forecast level`;
   document.getElementById('vfLHistBody').innerHTML = `
-    <table class="vf-lhist-tbl">
-      <thead><tr>
-        <th style="text-align:left">Level</th>
-        <th>Hit Rate</th>
-        <th>Median Time</th>
-        <th>Earliest</th>
-        <th>Latest</th>
-        <th>Today's Price</th>
-        <th style="text-align:left">What it means</th>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+      <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3);font-size:9px;text-transform:uppercase;letter-spacing:.05em">
+        <th style="text-align:left;padding:4px 10px">Level</th>
+        <th style="padding:4px 10px">Hit Rate</th>
+        <th style="padding:4px 10px">Median Time</th>
+        <th style="padding:4px 10px">Earliest</th>
+        <th style="padding:4px 10px">Latest</th>
+        <th style="padding:4px 10px">Today's Price</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
