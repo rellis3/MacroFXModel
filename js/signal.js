@@ -12,6 +12,8 @@ import { computeRangeBias, openRangeBiasModal, closeRangeBiasModal, saveRangeBia
 import { gradeEntry } from './trade-grade.js';
 import { computeRegimeConfidence } from './regime-confidence.js';
 import { computeArimaContext } from './arima-price.js';
+import { computeWT } from './vumanchu.js';
+import { annotateEntry } from './winrate.js';
 
 export { openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal };
 
@@ -779,6 +781,38 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       }
     }
 
+    // VuManChu / WaveTrend at-touch confirmation gate.
+    // Boost +0.5 when WT1 is in OB/OS territory agreeing with direction (momentum exhaustion).
+    // Penalise -0.5 when WT1 is extended against direction (momentum is running away from us).
+    // Bars must be reversed (oldest-first) for the EMA chain to compute correctly.
+    let wtVerdict = null;
+    if (_bars5m && _bars5m.length >= 35 && c.direction != null) {
+      try {
+        const _wtResult = computeWT(_bars5m.slice().reverse());
+        const _wt1      = _wtResult.wt1[_wtResult.wt1.length - 1];
+        if (!isNaN(_wt1)) {
+          const _wt1Str = _wt1.toFixed(0);
+          if (c.direction === 'long' && _wt1 <= -40) {
+            wtVerdict = 'agree';
+            layerScore += 0.5;
+            tags.push({ cls: 'signal', label: `WT OS (${_wt1Str})`, key: 'wt' });
+          } else if (c.direction === 'short' && _wt1 >= 40) {
+            wtVerdict = 'agree';
+            layerScore += 0.5;
+            tags.push({ cls: 'signal', label: `WT OB (${_wt1Str})`, key: 'wt' });
+          } else if (c.direction === 'long' && _wt1 >= 60) {
+            wtVerdict = 'oppose';
+            layerScore -= 0.5;
+            tags.push({ cls: 'warn', label: `WT OB ✗ (${_wt1Str})`, key: 'wt' });
+          } else if (c.direction === 'short' && _wt1 <= -60) {
+            wtVerdict = 'oppose';
+            layerScore -= 0.5;
+            tags.push({ cls: 'warn', label: `WT OS ✗ (${_wt1Str})`, key: 'wt' });
+          }
+        }
+      } catch(e) {}
+    }
+
     // Fix 4: 5m candle directional confirmation
     const _candleRes = get5mCandleConfirmation(_bars5m, c.direction);
     const candleConfirmed = _candleRes?.confirmed ?? null;
@@ -833,6 +867,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       regimeShockRisk,
       rangeBias,
       gravityRegime,
+      wtVerdict,
     };
   });
 
@@ -847,6 +882,7 @@ export function runEntryScanner(signal, enhanced, pivots, asia, monday, quote, v
       }
       return c;
     })
+    .map(c => annotateEntry(sym, c))
     .sort((a, b) => {
       if (b.totalStars !== a.totalStars) return b.totalStars - a.totalStars;
       return a.distance - b.distance;
