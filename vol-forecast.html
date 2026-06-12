@@ -1068,16 +1068,39 @@
     <span class="vf-event-title">Reference Forecast Data</span>
     <span class="vf-event-sub" id="vfRefSub">Paste today's reference export below — stored in KV alongside our forecast for permanent comparison.</span>
     <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfRefAge"></span>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="compareRefData()" id="vfRefCmpBtn">⇄ Compare</button>
     <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="saveRefData()" id="vfRefSaveBtn">💾 Save</button>
   </div>
   <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
     <div style="display:flex;gap:8px;align-items:center">
       <label style="font-size:10px;color:var(--text3);white-space:nowrap">Date:</label>
-      <input type="date" id="vfRefDate" style="background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:3px 8px;border-radius:4px">
-      <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="loadRefData()" id="vfRefLoadBtn">📂 Load Saved</button>
+      <input type="date" id="vfRefDate" onchange="loadRefData()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:3px 8px;border-radius:4px">
+      <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="loadRefData()" id="vfRefLoadBtn">📂 Load</button>
     </div>
-    <textarea id="vfRefText" placeholder="Paste reference export here..." style="background:var(--s1);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:8px;border-radius:4px;resize:vertical;height:200px;width:100%;box-sizing:border-box"></textarea>
+    <textarea id="vfRefText" placeholder="Paste reference export here..." style="background:var(--s1);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:8px;border-radius:4px;resize:vertical;height:160px;width:100%;box-sizing:border-box"></textarea>
     <div id="vfRefStatus" style="font-size:10px;color:var(--text3);min-height:14px"></div>
+    <!-- Comparison table rendered here -->
+    <div id="vfRefCmpWrap" style="display:none">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:6px">
+        Ours vs Reference — gap = (ref÷ours − 1) × 100.
+        <span style="color:var(--green)">Green ≤ 3%</span> ·
+        <span style="color:var(--amber)">Amber 3–8%</span> ·
+        <span style="color:var(--red)">Red &gt; 8%</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="vfRefCmpTbl" style="width:100%;border-collapse:collapse;font-size:10px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);color:var(--text3)">
+              <th style="text-align:left;padding:3px 8px">Instrument</th>
+              <th style="padding:3px 8px">Our Vol%</th><th style="padding:3px 8px">Ref Vol%</th><th style="padding:3px 8px">Gap</th>
+              <th style="padding:3px 8px">Our HL med</th><th style="padding:3px 8px">Ref HL med</th><th style="padding:3px 8px">Gap</th>
+              <th style="padding:3px 8px">Our OC med</th><th style="padding:3px 8px">Ref OC med</th><th style="padding:3px 8px">Gap</th>
+            </tr>
+          </thead>
+          <tbody id="vfRefCmpBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2743,6 +2766,59 @@ async function loadRefData() {
   } catch (e) {
     status.style.color = 'var(--red)';
     status.textContent = `Error: ${e.message}`;
+  }
+}
+
+async function compareRefData() {
+  const date   = document.getElementById('vfRefDate').value;
+  const status = document.getElementById('vfRefStatus');
+  const wrap   = document.getElementById('vfRefCmpWrap');
+  const body   = document.getElementById('vfRefCmpBody');
+  const btn    = document.getElementById('vfRefCmpBtn');
+  if (!date) { status.textContent = '⚠ Select a date first'; return; }
+  btn.disabled = true; btn.textContent = 'Loading…';
+  try {
+    const res = await fetch(`/api/vol-forecast/compare/${date}`);
+    const j   = await res.json();
+    if (!j.ok) {
+      status.style.color = 'var(--red)';
+      status.textContent = `⚠ ${j.error}`;
+      wrap.style.display = 'none';
+      return;
+    }
+    const gapCls = g => {
+      if (g === null) return '';
+      const a = Math.abs(g);
+      if (a <= 3)  return 'style="color:var(--green)"';
+      if (a <= 8)  return 'style="color:var(--amber)"';
+      return 'style="color:var(--red)"';
+    };
+    const fmt = v => v != null ? v.toFixed(2) : '—';
+    const fmtG = g => g !== null ? (g > 0 ? '+' : '') + g.toFixed(1) + '%' : '—';
+    const rows = j.rows.map(r => {
+      const o = r.our, rf = r.ref, g = r.gaps;
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:3px 8px;font-weight:600;color:var(--text2)">${r.name}</td>
+        <td style="padding:3px 8px;text-align:center">${o ? fmt(o.vol) : '—'}</td>
+        <td style="padding:3px 8px;text-align:center">${rf ? fmt(rf.vol) : '—'}</td>
+        <td style="padding:3px 8px;text-align:center" ${g ? gapCls(g.vol) : ''}>${g ? fmtG(g.vol) : '—'}</td>
+        <td style="padding:3px 8px;text-align:center">${o ? fmt(o.hl_med) : '—'}</td>
+        <td style="padding:3px 8px;text-align:center">${rf ? fmt(rf.hl_med) : '—'}</td>
+        <td style="padding:3px 8px;text-align:center" ${g ? gapCls(g.hl_med) : ''}>${g ? fmtG(g.hl_med) : '—'}</td>
+        <td style="padding:3px 8px;text-align:center">${o ? fmt(o.oc_med) : '—'}</td>
+        <td style="padding:3px 8px;text-align:center">${rf ? fmt(rf.oc_med) : '—'}</td>
+        <td style="padding:3px 8px;text-align:center" ${g ? gapCls(g.oc_med) : ''}>${g ? fmtG(g.oc_med) : '—'}</td>
+      </tr>`;
+    });
+    body.innerHTML = rows.join('');
+    wrap.style.display = '';
+    status.style.color = 'var(--green)';
+    status.textContent = `✓ Comparison for ${date} — ${j.rows.filter(r=>r.gaps).length} instruments matched`;
+  } catch (e) {
+    status.style.color = 'var(--red)';
+    status.textContent = `Error: ${e.message}`;
+  } finally {
+    btn.disabled = false; btn.textContent = '⇄ Compare';
   }
 }
 
