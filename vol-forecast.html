@@ -2858,18 +2858,34 @@ function toggleEventImpact() {
 }
 
 async function refreshEventImpact() {
-  const btn = document.getElementById('vfEventRefreshBtn');
+  const btn  = document.getElementById('vfEventRefreshBtn');
+  const body = document.getElementById('vfEventBody');
   btn.disabled = true; btn.textContent = '↻ Computing…';
-  document.getElementById('vfEventBody').innerHTML = '<div class="vf-event-empty">Computing — fetching Finnhub calendar + session audits (~10s)…</div>';
+  body.innerHTML = '<div class="vf-event-empty">Fetching Finnhub calendar…</div>';
   try {
-    await fetch('/api/vol-forecast/event-impact/refresh', { method: 'POST' });
-    await new Promise(r => setTimeout(r, 12_000));
+    const trigRes  = await fetch('/api/vol-forecast/event-impact/refresh', { method: 'POST' });
+    const trigData = await trigRes.json();
+    if (!trigData.ok) {
+      body.innerHTML = `<div class="vf-event-empty" style="color:var(--amber)">${trigData.error}</div>`;
+      return;
+    }
+    body.innerHTML = '<div class="vf-event-empty">Running — matching event dates to session audits… (~15s)</div>';
+    await new Promise(r => setTimeout(r, 15_000));
     const res  = await fetch('/api/vol-forecast/event-impact');
     const data = await res.json();
-    if (data.ok) { currentEventData = data; renderEventImpact(data); }
-    else document.getElementById('vfEventBody').innerHTML = `<div class="vf-event-empty">${data.error ?? 'No data yet — more session history needed'}</div>`;
+    if (data.ok) {
+      currentEventData = data;
+      renderEventImpact(data);
+      document.getElementById('vfEventAge').textContent =
+        `${data.audits_matched} event sessions · ${data.event_dates_found} event dates found`;
+    } else {
+      body.innerHTML = `<div class="vf-event-empty">${data.error ?? 'No matching session audits yet'}<br><br style="margin:8px 0">
+        <span style="font-size:10px;color:var(--text3)">This feature compares Finnhub event dates against your stored daily session audits.
+        Session audits accumulate going forward each trading day — it needs a few weeks of history before showing useful data.
+        The Hit Rates panel (📊 Hit Rates → ↻ Compute) gives historical event-day stats immediately using Oanda data.</span></div>`;
+    }
   } catch (e) {
-    document.getElementById('vfEventBody').innerHTML = `<div class="vf-event-empty">Error: ${e.message}</div>`;
+    body.innerHTML = `<div class="vf-event-empty">Error: ${e.message}</div>`;
   } finally {
     btn.disabled = false; btn.textContent = '↻ Compute';
   }

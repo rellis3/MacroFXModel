@@ -2869,9 +2869,12 @@ app.get('/api/vol-forecast/event-impact', async (_req, res) => {
 });
 
 app.post('/api/vol-forecast/event-impact/refresh', async (_req, res) => {
-  res.json({ ok: true, message: 'Computing event impact study — takes ~10s' });
+  if (!process.env.FINNHUB_KEY) {
+    return res.status(400).json({ ok: false, error: 'FINNHUB_KEY not set in environment variables — add it in Railway → Variables.' });
+  }
+  res.json({ ok: true, message: 'Computing event impact study — takes ~10–15s' });
   _computeEventImpact()
-    .then(r => console.log(`[EVENT-IMPACT] Done — ${r.audits_matched} audits matched`))
+    .then(r => console.log(`[EVENT-IMPACT] Done — ${r.audits_matched} audits matched, ${r.event_dates_found} event dates found`))
     .catch(e => console.error('[EVENT-IMPACT] Error:', e.message));
 });
 
