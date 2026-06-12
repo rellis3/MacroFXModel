@@ -2653,43 +2653,53 @@ function _hrSetView(view, el) {
 }
 
 // ── Overview: compact all-instruments grid ────────────────────────────────────
+// Column groups with tint colours for upside / downside / range
+const _HR_GROUPS = [
+  { label: 'O→H  Open-High',  color: 'rgba(56,193,114,.07)',  keys: ['oh_med','oh_75'],  dirs: [+1,+1] },
+  { label: 'O→L  Open-Low',   color: 'rgba(239,68,68,.07)',   keys: ['ol_med','ol_75'],  dirs: [-1,-1] },
+  { label: 'H-L  Day Range',  color: 'rgba(250,176,5,.07)',   keys: ['hl_med','hl_75'],  dirs: [ 0, 0] },
+];
+const _HR_COLS = _HR_GROUPS.flatMap(g => g.keys.map((k,i) => ({ key:k, grp:g, sub: i===0?'Med':'75th' })));
+
 function _renderHROverview() {
   const data = _hitRateData;
   if (!data?.instruments) return;
 
-  const COLS = [
-    { key: 'oh_med', lbl: '↑Med'  },
-    { key: 'oh_75',  lbl: '↑75th' },
-    { key: 'ol_med', lbl: '↓Med'  },
-    { key: 'ol_75',  lbl: '↓75th' },
-    { key: 'hl_med', lbl: '↔Med'  },
-    { key: 'hl_75',  lbl: '↔75th' },
-  ];
-
-  const thCls = 'style="padding:5px 8px;text-align:center;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)"';
-  const hdr = `<tr><th style="padding:5px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)">Instrument</th>${COLS.map(c => `<th ${thCls}>${c.lbl}</th>`).join('')}</tr>`;
+  const grpHdr = _HR_GROUPS.map(g =>
+    `<th colspan="2" style="padding:4px 8px;text-align:center;font-size:9px;font-weight:700;letter-spacing:.04em;border-bottom:1px solid var(--border);border-left:2px solid ${g.color.replace('.07','0.4')};background:${g.color};color:var(--text2)">${g.label}</th>`
+  ).join('');
+  const subHdr = _HR_COLS.map(c =>
+    `<th style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text3);letter-spacing:.04em;border-bottom:1px solid var(--border);background:${c.grp.color}">${c.sub}</th>`
+  ).join('');
+  const hdr = `<thead>
+    <tr>
+      <th rowspan="2" style="padding:5px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)">Instrument</th>
+      ${grpHdr}
+    </tr>
+    <tr>${subHdr}</tr>
+  </thead>`;
 
   const names = Object.keys(data.instruments).filter(n => data.instruments[n]);
   const rows = names.map(name => {
     const inst = data.instruments[name];
-    const cells = COLS.map(({ key }) => {
+    const cells = _HR_COLS.map(({ key, grp }) => {
       const d = inst?.levels?.[key];
-      if (!d) return '<td style="padding:4px 8px;text-align:center;color:var(--text3)">—</td>';
+      if (!d) return `<td style="padding:4px 8px;text-align:center;color:var(--text3);background:${grp.color};border-bottom:1px solid var(--border)">—</td>`;
       const cls = d.hit_pct >= 70 ? 'hi' : d.hit_pct >= 50 ? 'med' : 'lo';
-      return `<td style="padding:3px 8px;text-align:center;border-bottom:1px solid var(--border)">
+      return `<td style="padding:3px 6px;text-align:center;border-bottom:1px solid var(--border);background:${grp.color}">
         <div class="vf-hr-rate ${cls}" style="font-size:11px">${d.hit_pct}%</div>
         <div class="vf-hr-time">${d.median_utc ?? '—'}</div>
       </td>`;
     }).join('');
     return `<tr style="cursor:pointer" onclick="_hrJumpToInst('${name}')"
-      onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background=''">
+      onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''">
       <td style="padding:4px 10px;font-weight:600;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap">${name}</td>
       ${cells}
     </tr>`;
   }).join('');
 
   document.getElementById('vfHROverview').innerHTML =
-    `<table style="width:100%;border-collapse:collapse;font-family:'DM Mono',monospace"><thead>${hdr}</thead><tbody>${rows}</tbody></table>`;
+    `<table style="width:100%;border-collapse:collapse;font-family:'DM Mono',monospace">${hdr}<tbody>${rows}</tbody></table>`;
 }
 
 function _hrJumpToInst(name) {
@@ -2715,13 +2725,13 @@ function _renderHRDay() {
   const dayMap = _hrDayIndex[date] ?? {};
   document.getElementById('vfHRDayLabel').textContent = date;
 
-  const LVL_DEF = [
-    { key: 'oh_med', lbl: '↑ Med',    dir: +1, fcKey: 'oc_median' },
-    { key: 'oh_75',  lbl: '↑ 75th',   dir: +1, fcKey: 'oc_75'     },
-    { key: 'ol_med', lbl: '↓ Med',    dir: -1, fcKey: 'oc_median' },
-    { key: 'ol_75',  lbl: '↓ 75th',   dir: -1, fcKey: 'oc_75'     },
-    { key: 'hl_med', lbl: '↔ Med',    dir:  0, fcKey: 'hl_median'  },
-    { key: 'hl_75',  lbl: '↔ 75th',   dir:  0, fcKey: 'hl_75'      },
+  const LVL_DEF_DAY = [
+    { key: 'oh_med', dir: +1, fcKey: 'oc_median', grp: _HR_GROUPS[0] },
+    { key: 'oh_75',  dir: +1, fcKey: 'oc_75',     grp: _HR_GROUPS[0] },
+    { key: 'ol_med', dir: -1, fcKey: 'oc_median', grp: _HR_GROUPS[1] },
+    { key: 'ol_75',  dir: -1, fcKey: 'oc_75',     grp: _HR_GROUPS[1] },
+    { key: 'hl_med', dir:  0, fcKey: 'hl_median', grp: _HR_GROUPS[2] },
+    { key: 'hl_75',  dir:  0, fcKey: 'hl_75',     grp: _HR_GROUPS[2] },
   ];
 
   const names = Object.keys(_hitRateData.instruments).filter(n => dayMap[n]);
@@ -2731,12 +2741,20 @@ function _renderHRDay() {
     return;
   }
 
-  const thStyle = 'padding:5px 8px;text-align:center;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)';
-  const hdr = `<thead><tr>
-    <th style="padding:5px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)">Instrument</th>
-    <th style="padding:5px 8px;text-align:right;font-size:9px;color:var(--text3);border-bottom:1px solid var(--border)">Open</th>
-    ${LVL_DEF.map(d => `<th style="${thStyle}">${d.lbl}</th>`).join('')}
-  </tr></thead>`;
+  const grpHdr = _HR_GROUPS.map(g =>
+    `<th colspan="2" style="padding:4px 8px;text-align:center;font-size:9px;font-weight:700;letter-spacing:.04em;border-bottom:1px solid var(--border);border-left:2px solid ${g.color.replace('.07','0.4')};background:${g.color};color:var(--text2)">${g.label}</th>`
+  ).join('');
+  const subHdr2 = LVL_DEF_DAY.map((c,i) =>
+    `<th style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text3);border-bottom:1px solid var(--border);background:${c.grp.color}">${i%2===0?'Med':'75th'}</th>`
+  ).join('');
+  const hdr = `<thead>
+    <tr>
+      <th rowspan="2" style="padding:5px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)">Instrument</th>
+      <th rowspan="2" style="padding:5px 8px;text-align:right;font-size:9px;color:var(--text3);border-bottom:1px solid var(--border)">Open</th>
+      ${grpHdr}
+    </tr>
+    <tr>${subHdr2}</tr>
+  </thead>`;
 
   const rows = names.map(name => {
     const day  = dayMap[name];
@@ -2744,7 +2762,7 @@ function _renderHRDay() {
     const fc   = day.fc;
     const dp   = _priceDp(open);
 
-    const cells = LVL_DEF.map(({ key, dir, fcKey }) => {
+    const cells = LVL_DEF_DAY.map(({ key, dir, fcKey, grp }) => {
       const pct     = fc?.[fcKey];
       const hitTime = day.hits?.[key];
       const hit     = !!hitTime;
@@ -2754,7 +2772,7 @@ function _renderHRDay() {
         priceStr  = dir === 0 ? `${_fmtPrice(abs, dp)}` : _fmtPrice(open + dir * abs, dp);
       }
       const cls = hit ? 'hit' : '';
-      return `<td style="padding:3px 6px;border-bottom:1px solid var(--border)">
+      return `<td style="padding:3px 6px;border-bottom:1px solid var(--border);background:${grp.color}">
         <div class="vf-lv-cell ${cls}">
           <span class="vf-lv-price">${priceStr}</span>
           ${hit ? `<span class="vf-lv-time">✓ ${hitTime}</span>` : `<span class="vf-lv-rem">miss</span>`}
@@ -2762,7 +2780,7 @@ function _renderHRDay() {
       </td>`;
     }).join('');
 
-    return `<tr onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background=''">
+    return `<tr onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''">
       <td style="padding:4px 10px;font-weight:600;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap">${name}</td>
       <td style="padding:4px 8px;font-size:10px;color:var(--text3);text-align:right;border-bottom:1px solid var(--border);white-space:nowrap">${_fmtPrice(open, dp)}</td>
       ${cells}
