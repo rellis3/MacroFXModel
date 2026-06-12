@@ -1759,9 +1759,134 @@ loadBotStatus();
 loadBtBotStatus();
 loadRgBotStatus();
 loadRgV2Status();
+// ── Hedge Bot ─────────────────────────────────────────────────────────────────
+
+const HB_DEFAULTS = {
+  enabled:          true,
+  paper_mode:       true,
+  interval_secs:    30,
+  risk_pct:         0.5,
+  sl_pips:          200,
+  sl_pips_gold:     1500,
+  max_lot:          5.0,
+  max_spread_pips:  3.0,
+  min_z_score:      2.0,
+  max_open_signals: 3,
+};
+
+let _hbCfg = { ...HB_DEFAULTS };
+
+function readHbForm() {
+  _hbCfg.enabled          = chk('hb_enabled');
+  _hbCfg.paper_mode       = chk('hb_paper_mode');
+  _hbCfg.interval_secs    = num('hb_interval_secs',    30);
+  _hbCfg.risk_pct         = num('hb_risk_pct',         0.5);
+  _hbCfg.sl_pips          = num('hb_sl_pips',          200);
+  _hbCfg.sl_pips_gold     = num('hb_sl_pips_gold',     1500);
+  _hbCfg.max_lot          = num('hb_max_lot',          5.0);
+  _hbCfg.max_spread_pips  = num('hb_max_spread_pips',  3.0);
+  _hbCfg.min_z_score      = num('hb_min_z_score',      2.0);
+  _hbCfg.max_open_signals = num('hb_max_open_signals', 3);
+}
+
+function renderHbForm() {
+  setChk('hb_enabled',          _hbCfg.enabled          ?? true);
+  setChk('hb_paper_mode',       _hbCfg.paper_mode       ?? true);
+  setVal('hb_interval_secs',    _hbCfg.interval_secs    ?? 30);
+  setVal('hb_risk_pct',         _hbCfg.risk_pct         ?? 0.5);
+  setVal('hb_sl_pips',          _hbCfg.sl_pips          ?? 200);
+  setVal('hb_sl_pips_gold',     _hbCfg.sl_pips_gold     ?? 1500);
+  setVal('hb_max_lot',          _hbCfg.max_lot          ?? 5.0);
+  setVal('hb_max_spread_pips',  _hbCfg.max_spread_pips  ?? 3.0);
+  setVal('hb_min_z_score',      _hbCfg.min_z_score      ?? 2.0);
+  setVal('hb_max_open_signals', _hbCfg.max_open_signals ?? 3);
+}
+
+async function loadHbConfig() {
+  try {
+    const stored = await kvGet('hedge_bot_config');
+    if (stored) _hbCfg = { ...HB_DEFAULTS, ...stored };
+    renderHbForm();
+  } catch(e) { /* non-critical */ }
+}
+
+async function saveHbConfig() {
+  readHbForm();
+  const el = document.getElementById('hbSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('hedge_bot_config', _hbCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#06b6d4'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+  } catch(e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetHbDefaults() {
+  _hbCfg = { ...HB_DEFAULTS };
+  renderHbForm();
+  const el = document.getElementById('hbSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+async function loadHbCreds() {
+  try { _applyCredsToForm(await kvGet('hedge_bot_credentials'), 'hb_', 'hb_mt5_password'); } catch(e) {}
+}
+
+async function saveHbCreds() {
+  await _saveCreds('hedge_bot_credentials', 'hb_', 'hb_mt5_password', 'hbCredsStatus');
+}
+
+async function loadHbStatus() {
+  try {
+    const d = await kvGet('hedge_bot_status');
+    const ageEl  = document.getElementById('hbStatusAge');
+    const modeEl = document.getElementById('hbStatusMode');
+    const balEl  = document.getElementById('hbStatusBalance');
+    const bodyEl = document.getElementById('hbStatusBody');
+    if (!d) {
+      if (ageEl) ageEl.textContent = 'No data — bot not running';
+      return;
+    }
+    const ageSecs = d.pushed_at ? Math.round(Date.now() / 1000 - d.pushed_at) : null;
+    if (ageEl)  ageEl.textContent  = ageSecs != null ? `${ageSecs}s ago` : '';
+    if (modeEl) { modeEl.textContent = d.paper_mode ? 'PAPER' : 'LIVE'; modeEl.style.color = d.paper_mode ? 'var(--amber)' : 'var(--green)'; }
+    if (balEl)  balEl.textContent   = d.balance != null ? `$${d.balance.toFixed(2)}` : '';
+    if (bodyEl) {
+      const pairs  = d.pairs || [];
+      const n      = d.open_signals ?? 0;
+      const positions = (d.mt5_positions || []);
+      if (!positions.length && !n) {
+        bodyEl.innerHTML = '<span style="color:var(--text3)">No open hedge pairs</span>';
+      } else {
+        const rows = positions.map(p => {
+          const dir   = p.direction === 'BUY' ? '<span style="color:var(--green)">BUY</span>' : '<span style="color:var(--red)">SELL</span>';
+          const profit = p.profit >= 0 ? `<span style="color:var(--green)">+${p.profit.toFixed(2)}</span>` : `<span style="color:var(--red)">${p.profit.toFixed(2)}</span>`;
+          return `<div style="display:flex;gap:16px;padding:4px 0;border-bottom:1px solid var(--border)">
+            <span style="width:80px;font-weight:600">${p.symbol}</span>
+            <span style="width:50px">${dir}</span>
+            <span style="width:50px">${p.lots}L</span>
+            <span style="width:70px">${profit}</span>
+            <span style="color:var(--text3);font-size:11px">@${p.open_price}</span>
+          </div>`;
+        }).join('');
+        bodyEl.innerHTML = rows || `<span style="color:var(--text3)">${n} signal pair(s) tracked</span>`;
+      }
+    }
+  } catch(e) { /* non-critical */ }
+}
+
+window.saveHbConfig  = saveHbConfig;
+window.resetHbDefaults = resetHbDefaults;
+window.saveHbCreds   = saveHbCreds;
+
 loadDaStatus();
 loadGoldStatus();
 loadBtJournal();
+loadHbConfig();
+loadHbCreds();
+loadHbStatus();
 setInterval(loadBotStatus,    60_000);
 setInterval(loadBtBotStatus,  60_000);
 setInterval(loadRgBotStatus,  60_000);
@@ -1769,3 +1894,4 @@ setInterval(loadRgV2Status,   30_000);
 setInterval(loadDaStatus,     60_000);
 setInterval(loadGoldStatus,   60_000);
 setInterval(loadBtJournal,   120_000);
+setInterval(loadHbStatus,     60_000);

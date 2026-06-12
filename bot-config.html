@@ -332,6 +332,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="dynanchor" onclick="switchTab('dynanchor')" style="color:#f59e0b" id="daTabBtn">⚓ Dyn Anchor</button>
     <button class="tab-btn" data-tab="beta" onclick="switchTab('beta')" style="color:#9d96f0" id="betaTabBtn">β Beta Targets</button>
     <button class="tab-btn" data-tab="gold" onclick="switchTab('gold')" style="color:#f4c430" id="goldTabBtn">⚡ Gold Bot</button>
+    <button class="tab-btn" data-tab="hedgebot" onclick="switchTab('hedgebot')" style="color:#06b6d4" id="hbTabBtn">🔀 Hedge Bot</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
   </div>
 
@@ -2380,6 +2381,124 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     </div>
 
   </div><!-- /tab-positions -->
+
+  <!-- ═══════════════════════ TAB: HEDGE BOT ═══════════════════════ -->
+  <div class="tab-pane" id="tab-hedgebot">
+
+    <div class="bot-banner" style="background:#051e2a;border:1px solid #0e7490">
+      <div class="bot-banner-icon">🔀</div>
+      <div>
+        <div class="bot-banner-title" style="color:#06b6d4">Hedge Bot</div>
+        <div class="bot-banner-sub">Spread mean-reversion · Polls hedge signals · Opens both legs simultaneously · bot/hedge_bot.py · Magic 20260007</div>
+      </div>
+    </div>
+
+    <!-- Live status -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:12px;font-weight:600;color:#06b6d4">Live Status</span>
+        <span id="hbStatusAge" style="font-size:11px;color:var(--text3)">Loading…</span>
+        <span id="hbStatusMode" style="font-size:11px;font-weight:600"></span>
+        <span id="hbStatusBalance" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+      <div id="hbStatusBody" style="font-size:12px;color:var(--text3)">Waiting for bot status…</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text3)">Updates every 60s when bot is running.</div>
+    </div>
+
+    <!-- MT5 Credentials -->
+    <div class="card">
+      <div class="card-title">MT5 Credentials — Hedge Bot</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+        Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">hedge_bot_credentials</code>).
+        Can share an MT5 account with other bots — trades isolated by magic <code>20260007</code>.
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Account number</span>
+        <input type="number" id="hb_mt5_account" placeholder="e.g. 99887766" style="width:130px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Password</span>
+        <input type="password" id="hb_mt5_password" placeholder="••••••••" style="width:130px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Server <small>e.g. ICMarkets-Demo01</small></span>
+        <input type="text" id="hb_mt5_server" placeholder="BrokerName-Demo01" style="width:200px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">MT5 path <small>optional</small></span>
+        <input type="text" id="hb_mt5_path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" style="width:300px">
+      </div>
+      <div class="actions">
+        <button class="btn-save" style="background:#0e7490" onclick="saveHbCreds()">Save Credentials</button>
+        <span id="hbCredsStatus" class="inline-status" style="align-self:center"></span>
+      </div>
+    </div>
+
+    <!-- Bot Control -->
+    <div class="card">
+      <div class="card-title">Bot Control</div>
+      <div class="form-row">
+        <span class="form-lbl">Enabled</span>
+        <input type="checkbox" id="hb_enabled">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Paper mode <small>(no real orders)</small></span>
+        <input type="checkbox" id="hb_paper_mode">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Poll interval <small>seconds</small></span>
+        <input type="number" id="hb_interval_secs" min="5" max="300" step="1" style="width:80px">
+      </div>
+    </div>
+
+    <!-- Risk & Sizing -->
+    <div class="card">
+      <div class="card-title">Risk &amp; Sizing</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+        Leg A is sized by risk%. Leg B is pip-value adjusted × correlation. Wide SL is tail-risk only — exits are driven by signal status, not price.
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Risk % per trade <small>(leg A)</small></span>
+        <input type="number" id="hb_risk_pct" min="0.1" max="10" step="0.1" style="width:80px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Stop loss — FX <small>pips (tail risk)</small></span>
+        <input type="number" id="hb_sl_pips" min="50" max="2000" step="10" style="width:80px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Stop loss — Gold <small>pips</small></span>
+        <input type="number" id="hb_sl_pips_gold" min="200" max="5000" step="50" style="width:80px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Max lot size</span>
+        <input type="number" id="hb_max_lot" min="0.01" max="50" step="0.01" style="width:80px">
+      </div>
+    </div>
+
+    <!-- Signal Gate -->
+    <div class="card">
+      <div class="card-title">Signal Gate</div>
+      <div class="form-row">
+        <span class="form-lbl">Min z-score to enter <small>skip if below</small></span>
+        <input type="number" id="hb_min_z_score" min="0.5" max="5" step="0.1" style="width:80px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Max simultaneous pairs</span>
+        <input type="number" id="hb_max_open_signals" min="1" max="10" step="1" style="width:80px">
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Max spread <small>pips</small></span>
+        <input type="number" id="hb_max_spread_pips" min="0.5" max="20" step="0.5" style="width:80px">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-save" style="background:#0e7490" onclick="saveHbConfig()">Save Hedge Bot Config</button>
+      <button class="btn-reset" onclick="resetHbDefaults()">Reset Defaults</button>
+      <span id="hbSaveStatus" class="inline-status" style="align-self:center"></span>
+    </div>
+
+  </div><!-- /tab-hedgebot -->
 
 </div><!-- /page -->
 
