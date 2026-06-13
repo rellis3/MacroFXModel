@@ -128,7 +128,64 @@ function computeATR(bars, period = 30) {
   return count > 0 ? sum / count : 0;
 }
 
-// ── M1 loader ─────────────────────────────────────────────────────────────────
+// ── Indicator helpers (Z-Score + SMI on D1 bars) ──────────────────────────────
+function _ema(arr, len) {
+  const k = 2 / (len + 1), out = new Array(arr.length).fill(NaN);
+  let p = NaN, init = false;
+  for (let i = 0; i < arr.length; i++) {
+    if (!isFinite(arr[i])) continue;
+    if (!init) { p = arr[i]; out[i] = p; init = true; continue; }
+    p = arr[i] * k + p * (1 - k); out[i] = p;
+  }
+  return out;
+}
+function _emaEma(arr, len) { return _ema(_ema(arr, len), len); }
+
+function _zScoreSeries(closes, len = 20) {
+  const out = new Array(closes.length).fill(NaN);
+  for (let i = len - 1; i < closes.length; i++) {
+    const sl = closes.slice(i - len + 1, i + 1);
+    const mu = sl.reduce((a, v) => a + v, 0) / len;
+    const sd = Math.sqrt(sl.reduce((a, v) => a + (v - mu) ** 2, 0) / len);
+    out[i] = sd === 0 ? 0 : (closes[i] - mu) / sd;
+  }
+  return out;
+}
+
+function _smiSeries(bars, kLen = 10, dLen = 3, eLen = 3) {
+  const n = bars.length;
+  const rr = new Array(n).fill(NaN), hl = new Array(n).fill(NaN);
+  for (let i = kLen - 1; i < n; i++) {
+    let hh = -Infinity, ll = Infinity;
+    for (let j = i - kLen + 1; j <= i; j++) {
+      if (bars[j].high > hh) hh = bars[j].high;
+      if (bars[j].low  < ll) ll = bars[j].low;
+    }
+    rr[i] = bars[i].close - (hh + ll) / 2;
+    hl[i] = hh - ll;
+  }
+  const rrEE = _emaEma(rr, dLen), hlEE = _emaEma(hl, dLen);
+  const raw  = rrEE.map((v, i) =>
+    (!isFinite(v) || !isFinite(hlEE[i]) || hlEE[i] === 0) ? NaN : 200 * (v / hlEE[i])
+  );
+  return _ema(raw, eLen); // SMI signal line
+}
+
+// Attaches .zScore and .smi to each bar in-place before simulation.
+function _attachIndicators(bars, opts) {
+  const { zScoreFilter = false, zScoreLen = 20,
+          smiFilter    = false, smiKLen   = 10 } = opts;
+  if (zScoreFilter) {
+    const zs = _zScoreSeries(bars.map(b => b.close), zScoreLen);
+    for (let i = 0; i < bars.length; i++) bars[i].zScore = isFinite(zs[i]) ? zs[i] : null;
+  }
+  if (smiFilter) {
+    const sv = _smiSeries(bars, smiKLen, 3, 3);
+    for (let i = 0; i < bars.length; i++) bars[i].smi = isFinite(sv[i]) ? sv[i] : null;
+  }
+}
+
+
 // Loads M1 parquet for a pair and groups bars by ISO week (Monday date).
 // Priority: local portfolioBacktest/cache/ → R2 → Google Drive.
 // Returns Map<weekKey, m1bar[]> or null if no data available.
@@ -208,6 +265,12 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
     tpPips    = 50,
     spreadPct = 0,
     pair      = '',
+    zScoreFilter    = false,
+    zScoreBuyThresh = -1.5,
+    zScoreSellThresh = 1.5,
+    smiFilter       = false,
+    smiBuyThresh    = -40,
+    smiSellThresh   =  40,
   } = opts;
 
   const pip     = PIP_SIZE[pair] ?? 0.0001;
@@ -285,6 +348,16 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
     // ── Check new fills (only first hit per slot) ────────────────────────────
     const tryFill = (key, side, level, entry) => {
       if (!slots[key]) {
+        // Z-Score filter: skip fill if price isn't sufficiently extended
+        if (zScoreFilter && bar.zScore != null) {
+          if (side === 'BUY'  && bar.zScore > zScoreBuyThresh)  return;
+          if (side === 'SELL' && bar.zScore < zScoreSellThresh) return;
+        }
+        // SMI filter: skip fill if momentum isn't overbought/oversold
+        if (smiFilter && bar.smi != null) {
+          if (side === 'BUY'  && bar.smi > smiBuyThresh)  return;
+          if (side === 'SELL' && bar.smi < smiSellThresh) return;
+        }
         const sl = slMap[key], tp = tpMap[key];
         const res = resolveOnBar(side, entry, tp, sl, bar, mondayOpen);
         const mfe0 = side === 'SELL'
@@ -370,6 +443,9 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
   const ewmaVars = ewmaVarSeries(logRets);
   // ewmaVars[i] = EWMA var after observing logRets[0..i], corresponds to close of bars[i+1].
   // To predict range for bars[k]: use ewmaVars[k-2] (var through bars[k-1]).
+
+  // Pre-attach indicator values to each D1 bar if any filter is enabled
+  if (opts.zScoreFilter || opts.smiFilter) _attachIndicators(bars, opts);
 
   const dateToIdx = new Map();
   for (let i = 0; i < bars.length; i++) dateToIdx.set(bars[i].date, i);

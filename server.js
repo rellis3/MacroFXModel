@@ -4102,6 +4102,8 @@ app.post('/api/weekly-vol-backtest/run', (req, res) => {
     carryMode    = 'false',
     maxOnePerPair = 'false',
     lvHL50, lvHL75, lvOCMed, lvOC75,
+    zScoreFilter    = 'false', zScoreBuyThresh  = '-1.5', zScoreSellThresh = '1.5', zScoreLen = '20',
+    smiFilter       = 'false', smiBuyThresh     = '-40',  smiSellThresh    = '40',  smiKLen   = '10',
   } = req.body || {};
 
   const opts = {
@@ -4119,6 +4121,14 @@ app.post('/api/weekly-vol-backtest/run', (req, res) => {
     carryMode:    carryMode    === 'true',
     maxOnePerPair: maxOnePerPair === 'true',
     minLookback:  60,
+    zScoreFilter:     zScoreFilter    === 'true',
+    zScoreBuyThresh:  parseFloat(zScoreBuyThresh)  || -1.5,
+    zScoreSellThresh: parseFloat(zScoreSellThresh) ||  1.5,
+    zScoreLen:        parseInt(zScoreLen)           ||  20,
+    smiFilter:        smiFilter       === 'true',
+    smiBuyThresh:     parseFloat(smiBuyThresh)      || -40,
+    smiSellThresh:    parseFloat(smiSellThresh)     ||  40,
+    smiKLen:          parseInt(smiKLen)              ||  10,
   };
   if (lvHL50  !== undefined) opts.doHL50  = Boolean(lvHL50);
   if (lvHL75  !== undefined) opts.doHL75  = Boolean(lvHL75);

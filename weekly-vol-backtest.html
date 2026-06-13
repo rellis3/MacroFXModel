@@ -71,8 +71,8 @@
 #wbtChartModal { display:none;position:fixed;inset:0;z-index:1000;background:#0d0f14;flex-direction:column; }
 .wbt-chart-hdr { display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid #2a2f45;background:#131722;flex-shrink:0; }
 #wbtChartContainer { flex:1;min-height:0; }
-.wbt-atr-params,.wbt-pip-params { display:none;gap:6px;align-items:center;flex-wrap:wrap; }
-.wbt-atr-params.visible,.wbt-pip-params.visible { display:flex; }
+.wbt-atr-params,.wbt-pip-params,.wbt-ind-params { display:none;gap:6px;align-items:center;flex-wrap:wrap; }
+.wbt-atr-params.visible,.wbt-pip-params.visible,.wbt-ind-params.visible { display:flex; }
 
 .bt-run-bar { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap; }
 .bt-run-bar input,.bt-run-bar select { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px; }
@@ -205,6 +205,24 @@
     <option value="false">Multi positions/pair</option>
     <option value="true">Max 1 position/pair</option>
   </select>
+
+  <label class="bt-run-lbl" title="Filter entries: only fill if D1 Z-Score is extended (oversold for BUY, overbought for SELL)" style="border-left:1px solid #2a3348;padding-left:8px;margin-left:2px;display:flex;align-items:center;gap:3px;cursor:pointer">
+    <input type="checkbox" id="cbZScore" onchange="updateParamVis()"> Z-Score
+  </label>
+  <label class="bt-run-lbl" title="Filter entries: only fill if D1 SMI(10,3,3) is oversold for BUY or overbought for SELL" style="display:flex;align-items:center;gap:3px;cursor:pointer">
+    <input type="checkbox" id="cbSMI" onchange="updateParamVis()"> SMI
+  </label>
+
+  <div id="indParams" class="wbt-ind-params">
+    <span class="bt-run-lbl" style="color:var(--blue)">Z:</span>
+    <input type="number" id="runZsLen"       value="20"   min="5"   max="200" step="1"   style="width:48px" class="bt-sel" title="Z-Score rolling period (D1 bars)">
+    <input type="number" id="runZsBuyThresh"  value="-1.5" min="-5"  max="0"   step="0.5" style="width:52px" class="bt-sel" title="BUY only if Z-score ≤ this">
+    <input type="number" id="runZsSellThresh" value="1.5"  min="0"   max="5"   step="0.5" style="width:52px" class="bt-sel" title="SELL only if Z-score ≥ this">
+    <span class="bt-run-lbl" style="margin-left:6px;color:var(--amber)">SMI:</span>
+    <input type="number" id="runSmiKLen"      value="10"   min="3"   max="50"  step="1"   style="width:48px" class="bt-sel" title="SMI %K period (D1 bars)">
+    <input type="number" id="runSmiBuyThresh"  value="-40"  min="-100" max="0"  step="5"   style="width:52px" class="bt-sel" title="BUY only if SMI ≤ this">
+    <input type="number" id="runSmiSellThresh" value="40"   min="0"   max="100" step="5"   style="width:52px" class="bt-sel" title="SELL only if SMI ≥ this">
+  </div>
 
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <span id="runStatus" class="bt-run-lbl"></span>
@@ -1320,6 +1338,14 @@ async function runBacktest() {
     tpPips:         document.getElementById('runTpPips').value,
     carryMode:      document.getElementById('runCarryMode').value,
     maxOnePerPair:  document.getElementById('runMaxOnePerPair').value,
+    zScoreFilter:    document.getElementById('cbZScore').checked,
+    zScoreBuyThresh: document.getElementById('runZsBuyThresh').value,
+    zScoreSellThresh:document.getElementById('runZsSellThresh').value,
+    zScoreLen:       document.getElementById('runZsLen').value,
+    smiFilter:       document.getElementById('cbSMI').checked,
+    smiBuyThresh:    document.getElementById('runSmiBuyThresh').value,
+    smiSellThresh:   document.getElementById('runSmiSellThresh').value,
+    smiKLen:         document.getElementById('runSmiKLen').value,
   };
 
   try {
@@ -1368,6 +1394,8 @@ function updateParamVis() {
   const needPips = sl === 'pips' || tp === 'pips';
   document.getElementById('atrParams').classList.toggle('visible', needAtr);
   document.getElementById('pipParams').classList.toggle('visible', needPips);
+  const needInd = document.getElementById('cbZScore').checked || document.getElementById('cbSMI').checked;
+  document.getElementById('indParams').classList.toggle('visible', needInd);
   document.getElementById('runSlMult').style.display = sl === 'level' ? '' : 'none';
   const carry = document.getElementById('runCarryMode').value === 'true';
   document.getElementById('runMaxOnePerPair').style.display = carry ? '' : 'none';
