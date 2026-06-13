@@ -1382,6 +1382,7 @@ let _wbtSeries   = null;   // candlestick series ref
 let _wbtWeekTrades = [];   // all fills for the same week+instrument
 let _wbtTradeIdx   = 0;
 let _wbtFocusLines = [];
+let _wbtM15Bars    = [];   // M15 bars for the currently open chart week
 
 function _wbtToEpochSec(s) {
   return Math.floor(new Date(String(s).substring(0, 19).replace(' ', 'T') + 'Z').getTime() / 1000);
@@ -1418,9 +1419,20 @@ function _wbtBuildMarkers() {
       if (!t.fill_date) return null;
       const isSell    = t.side === 'SELL';
       const isFocused = i === _wbtTradeIdx;
-      const time = _wbtM15Mode
-        ? Math.floor(new Date(t.fill_date + 'T12:00:00Z').getTime() / 1000)
-        : t.fill_date;
+      let time;
+      if (_wbtM15Mode) {
+        // Find the first M15 bar on the fill date where price actually touched the entry level.
+        // Falls back to noon on the fill date if no bar found.
+        const dayStart = Math.floor(new Date(t.fill_date + 'T00:00:00Z').getTime() / 1000);
+        const dayEnd   = dayStart + 86400;
+        const fillBar  = _wbtM15Bars.find(b =>
+          b.time >= dayStart && b.time < dayEnd &&
+          (isSell ? b.high >= t.entry : b.low <= t.entry)
+        );
+        time = fillBar?.time ?? Math.floor(new Date(t.fill_date + 'T12:00:00Z').getTime() / 1000);
+      } else {
+        time = t.fill_date;
+      }
       return {
         time,
         position: isSell ? 'aboveBar' : 'belowBar',
@@ -1595,6 +1607,7 @@ function openWbtChart(filtIdx) {
       _wbtSeries = cs;
       // M15 bars: time is Unix seconds (integer)
       const bars = d.candles.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close }));
+      _wbtM15Bars = bars;
       cs.setData(bars);
 
       // ── Static week level lines ───────────────────────────────────────────────
@@ -1691,6 +1704,7 @@ function closeWbtChart() {
   if (_wbtZChart)   { _wbtZChart.remove();   _wbtZChart   = null; }
   if (_wbtSmiChart) { _wbtSmiChart.remove(); _wbtSmiChart = null; }
   _wbtM15Mode = false;
+  _wbtM15Bars = [];
 }
 
 document.addEventListener('keydown', e => {
