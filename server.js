@@ -5646,6 +5646,90 @@ startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler i
   }
 })();
 
+// ── Volatility data auto-warm ─────────────────────────────────────────────────
+// Ensures hit rates, event impact, and session stats are always pre-computed
+// so the volatility page never shows "click ↻ Compute" on first load.
+// Each block is delayed to let the forecast scheduler and FRED fetches settle.
+
+// Session stats — auto-compute once if still missing after KV restore (45s delay)
+(async () => {
+  await new Promise(r => setTimeout(r, 45_000));
+  if (getSessionStats() || isSessionStatsComputing()) return;
+  console.log('[SESSION-STATS] Not found in KV — auto-computing (5y H1 pull, ~3–5 min)…');
+  try {
+    const data = await computeSessionStats();
+    await kv.put('session_stats', JSON.stringify(data));
+    console.log('[SESSION-STATS] Auto-compute complete — stored to KV');
+  } catch (e) { console.error('[SESSION-STATS] Auto-warm failed:', e.message); }
+})();
+
+// Event impact — auto-compute on startup if missing or older than 7 days (90s delay)
+(async () => {
+  if (!process.env.FINNHUB_KEY) return;
+  await new Promise(r => setTimeout(r, 90_000));
+  try {
+    const raw = await kv.get('event_vol_impact');
+    if (raw) {
+      const age = Date.now() - new Date(JSON.parse(raw).computed_at ?? 0).getTime();
+      if (age < 7 * 864e5) return; // < 7 days old — still current
+    }
+    console.log('[EVENT-IMPACT] Auto-warming on startup%s…', raw ? ' (stale)' : ' (missing)');
+    await _computeEventImpact();
+    console.log('[EVENT-IMPACT] Auto-warm complete');
+  } catch (e) { console.error('[EVENT-IMPACT] Auto-warm failed:', e.message); }
+})();
+
+// Hit rates — auto-compute/extend on startup if missing or older than 1 day (3 min delay)
+// Incremental: only fetches H1 data for days after the last stored date (~30–60s).
+// Full run (first time): fetches 90 days × 22 instruments of H1 data (~5–10 min).
+(async () => {
+  await new Promise(r => setTimeout(r, 3 * 60_000));
+  if (isHitRatesComputing()) return;
+  try {
+    const raw = await kv.get('vol_hit_rates');
+    let existingData = null;
+    if (raw) {
+      existingData = JSON.parse(raw);
+      const age = Date.now() - new Date(existingData.computed_at ?? 0).getTime();
+      if (age < 86_400_000) return; // < 1 day old — already current
+    }
+    console.log('[HIT-RATES] Auto-warming%s…', existingData ? ' (incremental)' : ' (full 90d)');
+    const result = await computeHitRates(90, existingData);
+    await kv.put('vol_hit_rates', JSON.stringify(result));
+    console.log('[HIT-RATES] Auto-warm complete — stored to KV');
+  } catch (e) { console.error('[HIT-RATES] Auto-warm failed:', e.message); }
+})();
+
+// Daily auto-refresh at 22:30 UTC — fires after the daily vol forecast + session audit.
+// Hit rates: incremental (only the new day's H1 data, ~30–60s).
+// Event impact: re-matches all session audits against Finnhub calendar (~15s).
+let _volDataDailyDate = null;
+setInterval(async () => {
+  const now = new Date();
+  if (now.getUTCDay() === 0 || now.getUTCDay() === 6) return;
+  const h = now.getUTCHours(), m = now.getUTCMinutes();
+  if (h !== 22 || m < 30 || m >= 45) return; // window: 22:30–22:45 UTC
+  const today = now.toISOString().slice(0, 10);
+  if (_volDataDailyDate === today) return;
+  _volDataDailyDate = today;
+
+  if (!isHitRatesComputing()) {
+    const raw = await kv.get('vol_hit_rates').catch(() => null);
+    const existingData = raw ? JSON.parse(raw) : null;
+    console.log('[HIT-RATES] Daily incremental refresh…');
+    computeHitRates(90, existingData)
+      .then(r => kv.put('vol_hit_rates', JSON.stringify(r)))
+      .then(() => console.log('[HIT-RATES] Daily refresh stored to KV'))
+      .catch(e => console.error('[HIT-RATES] Daily refresh failed:', e.message));
+  }
+
+  if (process.env.FINNHUB_KEY) {
+    _computeEventImpact()
+      .then(() => console.log('[EVENT-IMPACT] Daily refresh complete'))
+      .catch(e => console.error('[EVENT-IMPACT] Daily refresh failed:', e.message));
+  }
+}, 5 * 60_000);
+
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';
   const fredKey = process.env.FRED_KEY   ? '✓' : '✗ missing — T1/T2/T4/T6 will show Data unavailable';
