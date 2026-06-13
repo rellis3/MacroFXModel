@@ -1215,7 +1215,7 @@ async function runBacktest() {
 
   try {
     // Collect module enable states
-    const MODULE_IDS = ['fib_repeat','prev_reacted','sr_level','vah_val','vol_forecast','ath_52wk','monday_range','pdh_pdl','pwh_pwl','round_number','fvg_level','session_open_range','daily_opens'];
+    const MODULE_IDS = ['fib_repeat','prev_reacted','sr_level','vah_val','vol_forecast','ath_52wk','monday_range','pdh_pdl','pwh_pwl','round_number','fvg_level','session_open_range','daily_opens','zscore_conf','smi_conf'];
     const confluenceModules = {};
     for (const id of MODULE_IDS) {
       const el = document.getElementById('cfMod_' + id);
