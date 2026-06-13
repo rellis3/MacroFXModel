@@ -26,6 +26,12 @@ const COOLDOWN_KEY   = 'tg_alert_cooldowns';
 const AUDIT_LOG_KEY  = 'decision_audit_log';
 const AUDIT_LOCAL_KEY = 'decision_audit_local';
 
+function isAlertDayActive(cfg) {
+  const days = cfg?.activeDays;
+  if (!Array.isArray(days) || days.length === 0) return true;
+  return days.includes(new Date().getUTCDay());
+}
+
 // Throttle KV entry syncs — at most once per 5 min per pair.
 // This prevents flooding KV on every SSE price tick.
 const _kvEntrySyncTimes = new Map();
@@ -104,6 +110,7 @@ const DEFAULT_CFG = {
   suppressBlocked:     false, // if true, skip Telegram for NOT PERMITTED directions
   macroContextAlerts:  true,  // 📊 structural FRED regime shift alerts
   dailyToneAlerts:     true,  // ⚡ daily tone / session alerts
+  activeDays: [1, 2, 3, 4, 5], // UTC days alerts are active: 0=Sun 1=Mon…6=Sat; default Mon-Fri
 };
 
 export function loadAlertCfg() {
@@ -168,6 +175,7 @@ export function checkAndSendAlerts() {
   _alertsLastRun = now;
 
   const cfg = loadAlertCfg();
+  if (!isAlertDayActive(cfg)) return;
   const watchSyms = cfg.pairs?.length ? cfg.pairs : PAIRS.map(p => p.symbol);
   const browserActive = cfg.enabled && cfg.browserEnabled !== false;
   let cooldowns      = browserActive ? pruneCooldowns(loadCooldowns()) : null;
@@ -560,6 +568,13 @@ export function openAlertModal() {
   if (document.getElementById('alertDailyTone'))       document.getElementById('alertDailyTone').checked        = cfg.dailyToneAlerts !== false;
   document.getElementById('alertPairs').value          = (cfg.pairs ?? []).join(', ');
 
+  // Active days checkboxes
+  const activeDays = cfg.activeDays ?? [1, 2, 3, 4, 5];
+  [0, 1, 2, 3, 4, 5, 6].forEach(d => {
+    const el = document.getElementById('alertDay' + d);
+    if (el) el.checked = activeDays.includes(d);
+  });
+
   // Load saved bot status
   loadBotStatus();
 
@@ -591,6 +606,7 @@ export function saveAlertModal() {
     },
     pairs: document.getElementById('alertPairs').value
       .split(',').map(s => s.trim()).filter(Boolean),
+    activeDays: [0, 1, 2, 3, 4, 5, 6].filter(d => document.getElementById('alertDay' + d)?.checked),
   };
   saveAlertCfg(cfg);
 
@@ -736,6 +752,7 @@ export async function checkGoldMacroAlerts() {
   const cfg = loadAlertCfg();
   // Only fire if alerts enabled and XAU/USD is in the watch list (or all pairs watched)
   if (!cfg.enabled) return;
+  if (!isAlertDayActive(cfg)) return;
   const watchesGold = !cfg.pairs?.length || cfg.pairs.includes('XAU/USD');
   if (!watchesGold) return;
 
@@ -991,6 +1008,7 @@ function saveFXCooldowns(cd) {
 export async function checkFXMacroAlerts() {
   const cfg = loadAlertCfg()
   if (!cfg.enabled) return
+  if (!isAlertDayActive(cfg)) return
   if (cfg.macroContextAlerts === false) return
 
   const now = Date.now()
@@ -1442,6 +1460,7 @@ function saveFXToneCooldowns(cd) {
 export async function checkFXDailyToneAlerts() {
   const cfg = loadAlertCfg()
   if (!cfg.enabled) return
+  if (!isAlertDayActive(cfg)) return
   if (cfg.dailyToneAlerts === false) return
 
   const now = Date.now()

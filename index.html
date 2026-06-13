@@ -392,6 +392,19 @@ Example:
       </div>
     </div>
 
+    <!-- Active days / Do Not Disturb -->
+    <div class="oi-modal-divider" style="margin:10px 0 12px"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px">Active Days <span style="font-weight:400;color:var(--text3)">— uncheck days you don't want alerts (all times UTC)</span></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="alertDay1" style="width:13px;height:13px;cursor:pointer"> Mon</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="alertDay2" style="width:13px;height:13px;cursor:pointer"> Tue</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="alertDay3" style="width:13px;height:13px;cursor:pointer"> Wed</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="alertDay4" style="width:13px;height:13px;cursor:pointer"> Thu</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="alertDay5" style="width:13px;height:13px;cursor:pointer"> Fri</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;opacity:0.55"><input type="checkbox" id="alertDay6" style="width:13px;height:13px;cursor:pointer"> Sat</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;opacity:0.55"><input type="checkbox" id="alertDay0" style="width:13px;height:13px;cursor:pointer"> Sun</label>
+    </div>
+
     <div style="margin-bottom:14px">
       <label class="oi-lbl">Pairs to watch <span style="font-weight:400;color:var(--text3)">(leave blank for all active pairs)</span></label>
       <input class="oi-input" type="text" id="alertPairs" placeholder="EUR/USD, XAU/USD, NAS100_USD" style="width:100%;box-sizing:border-box">

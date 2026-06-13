@@ -1359,6 +1359,12 @@ async function monitorTick() {
 
     if (!state.cfg?.enabled || state.cfg?.serverEnabled === false || !state.tg?.token || !state.tg?.chatId) return;
 
+    // Do-not-disturb: skip if today (UTC) is not in the active days list
+    {
+      const activeDays = state.cfg.activeDays;
+      if (Array.isArray(activeDays) && activeDays.length > 0 && !activeDays.includes(new Date().getUTCDay())) return;
+    }
+
     const pairs       = state.cfg.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
 
     // Fetch all prices in one OANDA batch call — eliminates 30s cache lag

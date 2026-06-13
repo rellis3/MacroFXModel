@@ -206,6 +206,19 @@ export default {
       return;
     }
 
+    // Do-not-disturb: skip if today (UTC) is not in the active days list
+    {
+      const activeDays = cfg.activeDays;
+      if (Array.isArray(activeDays) && activeDays.length > 0) {
+        const todayUTC = new Date().getUTCDay();
+        if (!activeDays.includes(todayUTC)) {
+          note('SKIP: today (UTC day ' + todayUTC + ') not in activeDays — do-not-disturb active');
+          await _saveLog(env, runAt, log, alerts);
+          return;
+        }
+      }
+    }
+
     // Load and prune cooldowns
     const cdRaw = await env.FX_SCORES.get('ai_cron_cooldowns').catch(() => null);
     const cooldowns = cdRaw ? JSON.parse(cdRaw) : {};
