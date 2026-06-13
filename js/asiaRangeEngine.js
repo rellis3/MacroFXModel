@@ -174,8 +174,9 @@ function _prevAsia(sessions, dayEpoch) {
 function _buildMondayRanges(packed) {
   const { n, times } = packed;
   const monSet = new Set();
+  // Epoch arithmetic: Jan 1 1970 was a Thursday (day 4). (floor(epoch/86400) + 4) % 7 → 0=Sun,1=Mon…
   for (let i = 0; i < n; i++) {
-    if (new Date(times[i] * 1000).getUTCDay() === 1)
+    if ((Math.floor(times[i] / 86400) + 4) % 7 === 1)
       monSet.add(times[i] - (times[i] % 86400));
   }
   const ranges = [];
@@ -190,7 +191,7 @@ function _buildMondayRanges(packed) {
 
 // Return the Monday range entry whose epoch matches this week's Monday.
 function _mondayForDay(mondayRanges, dayEpoch) {
-  const dow      = new Date(dayEpoch * 1000).getUTCDay();
+  const dow      = (Math.floor(dayEpoch / 86400) + 4) % 7;
   const daysBack = dow === 1 ? 7 : (dow === 0 ? 6 : dow - 1);
   const target   = dayEpoch - daysBack * 86400;
   // Find nearest entry — allow ±90s for DST edge cases
@@ -687,19 +688,47 @@ function simulateDay(packed, dateStr, opts) {
   return trades;
 }
 
+// ── Module-level pair data cache ─────────────────────────────────────────────
+// Keeps parsed M1 + session indices in memory across requests.
+// M1 data is immutable for the day — 6h TTL is a safety net against stale data.
+
+const _pairDataCache = new Map(); // pairKey → { packed, asiaSessions, mondayRanges, ts }
+const _PAIR_CACHE_TTL = 6 * 3600 * 1000; // 6 hours in ms
+
+async function _getOrBuildPairData(pairKey, m1Dir) {
+  const now    = Date.now();
+  const cached = _pairDataCache.get(pairKey);
+  if (cached && now - cached.ts < _PAIR_CACHE_TTL) return cached;
+
+  const packed = await loadM1ForPair(pairKey, m1Dir);
+  if (!packed) return null;
+
+  const entry = {
+    packed,
+    asiaSessions: _buildAsiaSessions(packed),
+    mondayRanges: _buildMondayRanges(packed),
+    ts: now,
+  };
+  _pairDataCache.set(pairKey, entry);
+  return entry;
+}
+
+/** Force-invalidate the cache for a pair (or all pairs if pairKey omitted). */
+export function clearPairDataCache(pairKey) {
+  if (pairKey) _pairDataCache.delete(pairKey);
+  else         _pairDataCache.clear();
+}
+
 // ── Public: single pair backtest ──────────────────────────────────────────────
 
 export async function runAsiaRangeBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
   const { dateFrom = '', dateTo = '', progressCb = null } = opts;
 
-  const packed = await loadM1ForPair(pairKey, m1Dir);
-  if (!packed) throw new Error(`No M1 data for ${pairKey}`);
+  const pairData = await _getOrBuildPairData(pairKey, m1Dir);
+  if (!pairData) throw new Error(`No M1 data for ${pairKey}`);
+  const { packed, asiaSessions: _asiaSessions, mondayRanges: _mondayRanges } = pairData;
 
   const pipSize    = PIP_SIZE[pairKey] ?? 0.0001;
-
-  // Build once-per-pair caches — O(N) upfront, then O(log N) per day in the hot loop
-  const _asiaSessions = _buildAsiaSessions(packed);
-  const _mondayRanges = _buildMondayRanges(packed);
 
   // Confluence module caches (swing levels, daily extremes, etc.)
   const pairCaches = (opts.confluenceMods?.length > 0)
