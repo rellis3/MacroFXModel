@@ -1278,8 +1278,6 @@ async function runBacktest() {
     while (true) {
       await new Promise(r => setTimeout(r, 3000));
       const elapsed = Math.round((Date.now() - t0) / 1000);
-      st.textContent = `Running… ${elapsed}s`;
-      setStatus('spin', `Running Asia Range backtest… ${elapsed}s`);
 
       let d;
       try {
@@ -1296,6 +1294,15 @@ async function runBacktest() {
       if (d.status === 'error' || !d.ok) {
         const err = d.error || JSON.stringify(d);
         st.textContent = 'Error: ' + err; setStatus('err', err); return;
+      }
+      // Show pair-level progress if available
+      if (d.currentPair) {
+        const pairInfo = d.pairsTotal ? ` (${d.pairsDone + 1}/${d.pairsTotal})` : '';
+        st.textContent = `Running… ${elapsed}s — ${d.currentPair.toUpperCase()}${pairInfo}`;
+        setStatus('spin', `Processing ${d.currentPair.toUpperCase()}${pairInfo} — ${elapsed}s`);
+      } else {
+        st.textContent = `Running… ${elapsed}s`;
+        setStatus('spin', `Running Asia Range backtest… ${elapsed}s`);
       }
     }
   } catch (e) {

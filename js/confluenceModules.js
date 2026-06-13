@@ -476,7 +476,7 @@ const mondayRange = {
   buildPairCache: null,
 
   buildDayState(packed, dayEpoch, pipSize, _cache, _opts) {
-    const dow      = new Date(dayEpoch * 1000).getUTCDay();
+    const dow      = (Math.floor(dayEpoch / 86400) + 4) % 7;
     const daysBack = dow === 1 ? 7 : dow === 0 ? 6 : dow - 1;
     const monEpoch = dayEpoch - daysBack * 86400;
     const bars     = _extractFast(packed, monEpoch, monEpoch + 86400);
@@ -570,11 +570,13 @@ const pwhPwl = {
   buildPairCache(packed, _pipSize) {
     const { times, highs, lows, n } = packed;
     const weekMap = new Map();
+    // Epoch arithmetic avoids creating Date objects inside the hot loop.
+    // Jan 1 1970 was Thursday (UTC day 4). (floor(t/86400) + 4) % 7 → 0=Sun,1=Mon…6=Sat.
     for (let i = 0; i < n; i++) {
-      const d    = new Date(times[i] * 1000);
-      const dow  = d.getUTCDay(); // 0=Sun
+      const daysSinceEpoch = Math.floor(times[i] / 86400);
+      const dow    = (daysSinceEpoch + 4) % 7;
       const dToMon = dow === 0 ? 6 : dow - 1;
-      const monEp  = Math.floor(times[i] / 86400) * 86400 - dToMon * 86400;
+      const monEp  = daysSinceEpoch * 86400 - dToMon * 86400;
       if (!weekMap.has(monEp)) weekMap.set(monEp, { high: highs[i], low: lows[i] });
       else { const w = weekMap.get(monEp); w.high = Math.max(w.high, highs[i]); w.low = Math.min(w.low, lows[i]); }
     }
@@ -584,7 +586,7 @@ const pwhPwl = {
   buildDayState(_packed, dayEpoch, pipSize, cache) {
     if (!cache?.arr?.length) return null;
     // Find Monday of current week, then look up the prior week
-    const dow     = new Date(dayEpoch * 1000).getUTCDay();
+    const dow     = (Math.floor(dayEpoch / 86400) + 4) % 7;
     const dToMon  = dow === 0 ? 6 : dow - 1;
     const thisMonEp = dayEpoch - dToMon * 86400 - ((dayEpoch - dToMon * 86400) % 86400);
     const arr = cache.arr;

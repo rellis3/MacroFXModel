@@ -4424,10 +4424,10 @@ app.post('/api/asia-range-backtest/run', (req, res) => {
       const { trades, log } = await runFullAsiaRangeBacktest(
         {
           ...opts,
-          onProgress: ({ pair: p }) => {
+          onProgress: ({ pair: p, i, total }) => {
             currentPair = p;
             const job = arJobs.get(jobId);
-            if (job) arJobs.set(jobId, { ...job, currentPair: p });
+            if (job) arJobs.set(jobId, { ...job, currentPair: p, pairsDone: i, pairsTotal: total });
           },
         },
         pairsToRun,
@@ -4468,8 +4468,10 @@ app.get('/api/asia-range-backtest/status/:jobId', (req, res) => {
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running',
-      elapsed: Math.round((Date.now() - job.startedAt) / 1000),
-      currentPair: job.currentPair ?? null });
+      elapsed:     Math.round((Date.now() - job.startedAt) / 1000),
+      currentPair: job.currentPair  ?? null,
+      pairsDone:   job.pairsDone   ?? 0,
+      pairsTotal:  job.pairsTotal  ?? null });
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
