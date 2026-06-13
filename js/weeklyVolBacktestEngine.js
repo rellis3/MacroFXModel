@@ -128,7 +128,7 @@ function computeATR(bars, period = 30) {
   return count > 0 ? sum / count : 0;
 }
 
-// ── Indicator helpers (Z-Score + SMI on D1 bars) ──────────────────────────────
+// ── Indicator helpers (Z-Score + SMI — computed on M1 bars at simulation time) ─
 function _ema(arr, len) {
   const k = 2 / (len + 1), out = new Array(arr.length).fill(NaN);
   let p = NaN, init = false;
@@ -143,11 +143,19 @@ function _emaEma(arr, len) { return _ema(_ema(arr, len), len); }
 
 function _zScoreSeries(closes, len = 20) {
   const out = new Array(closes.length).fill(NaN);
-  for (let i = len - 1; i < closes.length; i++) {
-    const sl = closes.slice(i - len + 1, i + 1);
-    const mu = sl.reduce((a, v) => a + v, 0) / len;
-    const sd = Math.sqrt(sl.reduce((a, v) => a + (v - mu) ** 2, 0) / len);
-    out[i] = sd === 0 ? 0 : (closes[i] - mu) / sd;
+  let sumX = 0, sumX2 = 0;
+  for (let i = 0; i < closes.length; i++) {
+    sumX  += closes[i];
+    sumX2 += closes[i] * closes[i];
+    if (i >= len) {
+      sumX  -= closes[i - len];
+      sumX2 -= closes[i - len] * closes[i - len];
+    }
+    if (i >= len - 1) {
+      const mu  = sumX / len;
+      const sd  = Math.sqrt(Math.max(0, sumX2 / len - mu * mu));
+      out[i] = sd === 0 ? 0 : (closes[i] - mu) / sd;
+    }
   }
   return out;
 }
@@ -165,10 +173,10 @@ function _smiSeries(bars, kLen = 10, dLen = 3, eLen = 3) {
     hl[i] = hh - ll;
   }
   const rrEE = _emaEma(rr, dLen), hlEE = _emaEma(hl, dLen);
-  const raw  = rrEE.map((v, i) =>
+  // Return raw SMI (not the signal-line EMA), matching Asia backtest smiConf behaviour
+  return rrEE.map((v, i) =>
     (!isFinite(v) || !isFinite(hlEE[i]) || hlEE[i] === 0) ? NaN : 200 * (v / hlEE[i])
   );
-  return _ema(raw, eLen); // SMI signal line
 }
 
 // Attaches .zScore and .smi to each bar in-place before simulation.
@@ -444,11 +452,6 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
   // ewmaVars[i] = EWMA var after observing logRets[0..i], corresponds to close of bars[i+1].
   // To predict range for bars[k]: use ewmaVars[k-2] (var through bars[k-1]).
 
-  // Pre-attach indicator values to D1 bars for D1-mode simulation.
-  // Uses the full D1 history so each week bar has the correct rolling context.
-  // M1-mode gets its own per-week computation inside the loop (see below).
-  if (opts.zScoreFilter || opts.smiFilter) _attachIndicators(bars, opts);
-
   const dateToIdx = new Map();
   for (let i = 0; i < bars.length; i++) dateToIdx.set(bars[i].date, i);
 
@@ -481,9 +484,11 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     const m1WeekBars = m1ByWeek?.get(weekKey) ?? null;
     const simBars    = (m1WeekBars && m1WeekBars.length >= 10) ? m1WeekBars : weekBars;
 
-    // M1 mode: attach indicators to the M1 bars for this week.
-    // The week's ~7200 M1 bars give plenty of warm-up even for a 20-period Z-Score.
-    // D1 mode: indicators were already attached globally above (needs full history context).
+    // When M1 data is present, attach indicators to the M1 bars for this week.
+    // A week's ~7,200 M1 bars give plenty of warmup (20-bar Z-Score warms in 20 min).
+    // When M1 data is absent the filters are not applied — bar.zScore/smi stay
+    // undefined, the != null guard in tryFill skips the check, and trades fill
+    // as normal. This prevents wrong-timeframe D1 values polluting results.
     if (m1WeekBars && m1WeekBars.length >= 10 && (opts.zScoreFilter || opts.smiFilter)) {
       _attachIndicators(m1WeekBars, opts);
     }
