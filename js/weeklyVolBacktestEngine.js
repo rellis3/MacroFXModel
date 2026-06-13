@@ -444,7 +444,9 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
   // ewmaVars[i] = EWMA var after observing logRets[0..i], corresponds to close of bars[i+1].
   // To predict range for bars[k]: use ewmaVars[k-2] (var through bars[k-1]).
 
-  // Pre-attach indicator values to each D1 bar if any filter is enabled
+  // Pre-attach indicator values to D1 bars for D1-mode simulation.
+  // Uses the full D1 history so each week bar has the correct rolling context.
+  // M1-mode gets its own per-week computation inside the loop (see below).
   if (opts.zScoreFilter || opts.smiFilter) _attachIndicators(bars, opts);
 
   const dateToIdx = new Map();
@@ -478,6 +480,13 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     // always for vol/ATR/Monday-open anchor computation.
     const m1WeekBars = m1ByWeek?.get(weekKey) ?? null;
     const simBars    = (m1WeekBars && m1WeekBars.length >= 10) ? m1WeekBars : weekBars;
+
+    // M1 mode: attach indicators to the M1 bars for this week.
+    // The week's ~7200 M1 bars give plenty of warm-up even for a 20-period Z-Score.
+    // D1 mode: indicators were already attached globally above (needs full history context).
+    if (m1WeekBars && m1WeekBars.length >= 10 && (opts.zScoreFilter || opts.smiFilter)) {
+      _attachIndicators(m1WeekBars, opts);
+    }
 
     // ── Resolve carried-over trades bar-by-bar against this week ─────────────
     if (carryMode && carryTrades.length > 0) {
