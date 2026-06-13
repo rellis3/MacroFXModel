@@ -1,6 +1,6 @@
 {
   "risk_guard": {
-    "day_start_bal": 90379.77,
+    "day_start_bal": 90791.39,
     "month_start_bal": 104299.24,
     "locked_until": 1780563914.5479677,
     "last_trade_by_pair": {
@@ -14,7 +14,7 @@
       "AUD/USD": 1780690229.8667438,
       "GBP/USD": 1781273883.5577285
     },
-    "last_reset_date": "2026-06-12",
+    "last_reset_date": "2026-06-13",
     "last_reset_month": "2026-06"
   },
   "position_meta": {

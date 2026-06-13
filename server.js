@@ -4101,6 +4101,7 @@ app.post('/api/weekly-vol-backtest/run', (req, res) => {
     tpPips       = '50',
     carryMode    = 'false',
     maxOnePerPair = 'false',
+    lvHL50, lvHL75, lvOCMed, lvOC75,
   } = req.body || {};
 
   const opts = {
@@ -4119,6 +4120,10 @@ app.post('/api/weekly-vol-backtest/run', (req, res) => {
     maxOnePerPair: maxOnePerPair === 'true',
     minLookback:  60,
   };
+  if (lvHL50  !== undefined) opts.doHL50  = Boolean(lvHL50);
+  if (lvHL75  !== undefined) opts.doHL75  = Boolean(lvHL75);
+  if (lvOCMed !== undefined) opts.doOCMed = Boolean(lvOCMed);
+  if (lvOC75  !== undefined) opts.doOC75  = Boolean(lvOC75);
 
   const instFilter = pair
     ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase())
@@ -4201,6 +4206,36 @@ app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
         if (t.getUTCHours() >= 20) t.setUTCDate(t.getUTCDate() + 1);
         const date = t.toISOString().substring(0, 10);
         return { date, time: date, open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c };
+      });
+    res.json({ ok: true, pair: name, n: candles.length, candles });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Weekly backtest M15 candle viewer — same as D1 but at M15 granularity.
+app.get('/api/weekly-vol-backtest/m15/:pair', async (req, res) => {
+  const name  = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
+  const oanda = _wbtInstrMap[name];
+  if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+
+  const { from, to } = req.query;
+  const base = _oandaBaseW();
+  let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=M15&price=M`;
+  if (from) url += `&from=${encodeURIComponent(from + 'T00:00:00Z')}`;
+  if (to)   url += `&to=${encodeURIComponent(to   + 'T23:59:59Z')}`;
+  if (!from && !to) url += '&count=200';
+
+  try {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+    if (!r.ok) return res.status(502).json({ ok: false, error: `OANDA HTTP ${r.status}` });
+    const data = await r.json();
+    const candles = (data.candles ?? [])
+      .filter(c => c.complete !== false && c.mid)
+      .map(c => {
+        const ts = Math.floor(new Date(c.time).getTime() / 1000);
+        return { time: ts, open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c };
       });
     res.json({ ok: true, pair: name, n: candles.length, candles });
   } catch (e) {

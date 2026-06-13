@@ -84,6 +84,20 @@
 .bt-sel { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px;cursor:pointer; }
 .bt-sel:focus { outline:none;border-color:var(--blue); }
 
+.sug-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:8px;padding:12px 14px; }
+.sug-chip { display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border-radius:7px;font-size:12px;line-height:1.45; }
+.sug-chip.red   { background:#2d1717;border:1px solid #5c2a2a; }
+.sug-chip.amber { background:#2d2110;border:1px solid #5c4010; }
+.sug-chip.green { background:#0f2a1c;border:1px solid #1a5c35; }
+.sug-chip.blue  { background:#0f1d35;border:1px solid #1a3660; }
+.sug-icon { font-size:14px;flex-shrink:0;margin-top:1px; }
+.sug-label { font-weight:600;display:block;margin-bottom:2px;font-family:'DM Mono',monospace;font-size:11px; }
+.sug-chip.red   .sug-label { color:#f87171; }
+.sug-chip.amber .sug-label { color:#fbbf24; }
+.sug-chip.green .sug-label { color:#34d399; }
+.sug-chip.blue  .sug-label { color:#60a5fa; }
+.sug-detail { color:var(--text2);font-size:11.5px; }
+
 .bt-filters { padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center; }
 .bt-filter-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
 
@@ -137,13 +151,10 @@
     <option>CHFJPY</option><option>NZDJPY</option><option>GOLD</option>
   </select>
 
-  <select id="runStrategy" class="bt-sel" title="Strategy: Rev-HL50 fades median range. Rev-HL75 fades 75th pct. Both = HL50+HL75. OC Levels = body fades. All = all four levels.">
-    <option value="revHL50">Rev-HL50 ★</option>
-    <option value="revHL75">Rev-HL75</option>
-    <option value="both">Both HL</option>
-    <option value="ocLevels">OC Levels</option>
-    <option value="allLevels">All Levels</option>
-  </select>
+  <label class="bt-run-lbl" title="Fade HL50 weekly range level" style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="cbHL50" checked> HL50</label>
+  <label class="bt-run-lbl" title="Fade HL75 weekly range level" style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="cbHL75" checked> HL75</label>
+  <label class="bt-run-lbl" title="Fade OC Median body level" style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="cbOCMed"> OCMed</label>
+  <label class="bt-run-lbl" title="Fade OC 75th pct body level" style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="cbOC75"> OC75</label>
 
   <select id="runSlMult" class="bt-sel" title="SL multiplier used only in Level mode for Rev-HL75.">
     <option value="1.5">SL ×1.5</option>
@@ -246,6 +257,16 @@
   <div class="bt-sec"><span class="bt-sec-lbl">Ann. Return (simple)</span><span class="bt-sec-val" id="sAnnReturn">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl" title="Calendar weeks in the sample (not trade-record count)">Weeks in Sample</span><span class="bt-sec-val" id="sWeeks">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Years</span><span class="bt-sec-val" id="sYears">—</span></div>
+</div>
+
+<!-- ── Suggestions Card ─────────────────────────────────────────────────────── -->
+<div class="bt-card" id="sugCard" style="display:none">
+  <div class="bt-card-hdr" style="cursor:pointer;user-select:none" onclick="toggleSugCard()">
+    Analysis &amp; Suggestions
+    <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:4px">auto-generated insights from run results</span>
+    <span id="sugToggleIcon" style="margin-left:auto;font-size:14px">▾</span>
+  </div>
+  <div id="sugBody" class="sug-grid"></div>
 </div>
 
 <!-- ── MFE / MAE Card ───────────────────────────────────────────────────────── -->
@@ -634,6 +655,7 @@ function renderAll(data) {
   renderPieChart(data.overall);
   initTradelog(data.recentTrades, data.instruments);
   _allTrades = data.allTrades || [];
+  renderSuggestions(data);
 
   ['kpiGrid','secGrid','mfeCard','nmCard','eqCard','hmCard','wfCard','rwfCard','twoCol','twoCol2','pieCard','tradeCard'].forEach(id => {
     const el = document.getElementById(id);
@@ -870,6 +892,193 @@ function renderLevelTable(by) {
   }).join('');
 }
 
+// ── Suggestions ────────────────────────────────────────────────────────────────
+let _sugCollapsed = false;
+function toggleSugCard() {
+  _sugCollapsed = !_sugCollapsed;
+  const body = document.getElementById('sugBody');
+  const icon = document.getElementById('sugToggleIcon');
+  if (body) body.style.display = _sugCollapsed ? 'none' : '';
+  if (icon) icon.textContent = _sugCollapsed ? '▸' : '▾';
+}
+
+function generateWbtSuggestions(data) {
+  const s   = data.overall   ?? {};
+  const by  = data.byInstrument ?? {};
+  const lv  = data.byLevel   ?? {};
+  const day = data.byFillDay ?? {};
+  const chips = [];
+
+  const add = (type, label, detail) => chips.push({ type, label, detail });
+
+  // ── Portfolio-level ─────────────────────────────────────────────────────────
+  if (s.profitFactor != null && s.profitFactor < 1.0) {
+    add('red', 'Profit factor below 1',
+      `PF ${fmt(s.profitFactor)} — strategy is losing money overall. Review level EV and pair selection.`);
+  } else if (s.profitFactor > 1.8) {
+    add('green', 'Strong profit factor', `PF ${fmt(s.profitFactor)} — gross edge is solid.`);
+  }
+
+  if (s.sharpe != null) {
+    if (s.sharpe < 0.3) {
+      add('red', 'Very low Sharpe',
+        `${fmt(s.sharpe)} — returns are weak vs weekly vol. Try removing the worst pairs or levels.`);
+    } else if (s.sharpe < 0.6) {
+      add('amber', 'Below-average Sharpe',
+        `${fmt(s.sharpe)} — consider running HL50-only to reduce noise, then add levels back one at a time.`);
+    } else if (s.sharpe > 1.2) {
+      add('green', 'Strong Sharpe', `${fmt(s.sharpe)} — good risk-adjusted return.`);
+    }
+  }
+
+  if (s.sortino != null && s.sortino < 0.4 && s.sharpe < 0.6) {
+    add('amber', 'High downside vol',
+      `Sortino ${fmt(s.sortino)} — losing weeks are large. Check if losses cluster by pair or day.`);
+  } else if (s.sortino > 1.8) {
+    add('green', 'Low downside vol', `Sortino ${fmt(s.sortino)} — losses are small and contained.`);
+  }
+
+  if (s.calmar != null) {
+    if (s.calmar < 0.5 && s.maxDd > 5) {
+      add('red', 'Calmar too low',
+        `${fmt(s.calmar)} — drawdown dominates CAGR. Enable "Max 1 position/pair" or remove weak pairs.`);
+    } else if (s.calmar > 2.5) {
+      add('green', 'Excellent Calmar', `${fmt(s.calmar)} — CAGR comfortably exceeds max drawdown.`);
+    }
+  }
+
+  if (s.maxDd != null) {
+    if (s.maxDd > 30) {
+      add('red', 'High max drawdown',
+        `${fmt(s.maxDd)}% — significant equity risk. Enable carry "Max 1/pair" or reduce active levels.`);
+    } else if (s.maxDd > 18) {
+      add('amber', 'Elevated drawdown',
+        `${fmt(s.maxDd)}% — consider sizing down or limiting to 1 position/pair.`);
+    } else if (s.maxDd < 6 && (s.cagr ?? 0) > 4) {
+      add('green', 'Contained drawdown',
+        `${fmt(s.maxDd)}% max DD with ${fmt(s.cagr)}% CAGR — excellent capital preservation.`);
+    }
+  }
+
+  if (s.winRate != null) {
+    if (s.winRate < 24) {
+      add('red', 'Win rate critically low',
+        `${fmt(s.winRate)}% — below sustainable breakeven. Check if SL is too tight or TP too far.`);
+    } else if (s.winRate < 32) {
+      add('amber', 'Low win rate',
+        `${fmt(s.winRate)}% — marginal. Try tightening TP (Mon Open mode) or widening SL (×1.5 or ATR).`);
+    } else if (s.winRate > 50) {
+      add('green', 'High win rate', `${fmt(s.winRate)}% — entries are well-placed at current levels.`);
+    }
+  }
+
+  // ── Level-level ──────────────────────────────────────────────────────────────
+  const lvArr = Object.entries(lv)
+    .map(([name, st]) => ({ name, ...st }))
+    .filter(l => (l.nFilled ?? 0) >= 15);
+  lvArr.sort((a, b) => (a.expectancy ?? 0) - (b.expectancy ?? 0));
+
+  let foundBestLv = null;
+  for (const l of lvArr) {
+    const ev = l.expectancy ?? 0;
+    const wr = l.winRate   ?? 0;
+    if (ev < -0.02) {
+      add('red', `${l.name}: negative EV`,
+        `Avg ${fmt(ev, 3)}%/trade, ${fmt(wr)}% WR (${l.nFilled} fills) — uncheck this level.`);
+    } else if (ev < 0) {
+      add('amber', `${l.name}: marginal EV`,
+        `Avg ${fmt(ev, 3)}%/trade over ${l.nFilled} fills — monitor closely or remove.`);
+    }
+    if (ev > 0.03 && !foundBestLv) foundBestLv = l;
+  }
+  if (foundBestLv) {
+    add('green', `Strongest level: ${foundBestLv.name}`,
+      `Avg +${fmt(foundBestLv.expectancy, 3)}%/trade, ${fmt(foundBestLv.winRate)}% WR — keep this.`);
+  }
+
+  // ── Instrument-level ─────────────────────────────────────────────────────────
+  const instArr = Object.entries(by)
+    .map(([pair, st]) => ({ pair, ...st }))
+    .filter(i => (i.nFilled ?? 0) >= 10);
+
+  const worstInst = [...instArr].sort((a, b) => (a.sharpe ?? 0) - (b.sharpe ?? 0));
+  const bestInst  = [...instArr].sort((a, b) => (b.sharpe ?? 0) - (a.sharpe ?? 0));
+
+  for (const inst of worstInst.slice(0, 2)) {
+    if ((inst.sharpe ?? 0) < -0.1) {
+      add('red', `Remove ${inst.pair}?`,
+        `Sharpe ${fmt(inst.sharpe)}, CAGR ${fmt(inst.cagr)}%, MaxDD ${fmt(inst.maxDd)}% — net drag on portfolio.`);
+    } else if ((inst.cagr ?? 0) < -1) {
+      add('amber', `Watch ${inst.pair}`,
+        `CAGR ${fmt(inst.cagr)}% — not contributing. Consider removing from your pair list.`);
+    }
+  }
+
+  if (bestInst.length >= 2) {
+    const top = bestInst.slice(0, 2);
+    add('green', `Best pairs: ${top.map(i => i.pair).join(', ')}`,
+      `Sharpe ${top.map(i => fmt(i.sharpe)).join(' / ')} — core of your edge.`);
+  }
+
+  // ── Day-level ─────────────────────────────────────────────────────────────────
+  const dayArr = Object.entries(day)
+    .map(([d, st]) => ({ day: d, ...st }))
+    .filter(d => (d.nFilled ?? 0) >= 5);
+  dayArr.sort((a, b) => (a.winRate ?? 0) - (b.winRate ?? 0));
+
+  if (dayArr.length >= 2) {
+    const worst = dayArr[0];
+    const best  = dayArr[dayArr.length - 1];
+    if ((worst.winRate ?? 0) < 26) {
+      add('amber', `Weak fill day: ${worst.day}`,
+        `${fmt(worst.winRate)}% WR on ${worst.nFilled} fills — a day-of-week filter could improve Sharpe.`);
+    }
+    if ((best.winRate ?? 0) > 42) {
+      add('green', `Best fill day: ${best.day}`,
+        `${fmt(best.winRate)}% WR — most edge is from ${best.day} fills.`);
+    }
+  }
+
+  // ── Parameter tips ────────────────────────────────────────────────────────────
+  if ((s.winRate ?? 0) < 30 && (s.rr ?? 0) > 3) {
+    add('blue', 'Tip: tighten TP',
+      `WR ${fmt(s.winRate)}% with R:R ${fmt(s.rr)}× — TP may be too far. Try "TP: Mon Open" if on ATR/Pips mode.`);
+  }
+  if ((s.cagr ?? 0) > 0 && (s.sharpe ?? 0) < 0.5 && lvArr.length >= 3) {
+    add('blue', 'Tip: fewer levels',
+      'Running all levels adds uncorrelated noise. Try HL50 alone first, then layer in HL75 and check if Sharpe improves.');
+  }
+  if ((s.maxDd ?? 0) > 12 && (s.calmar ?? 0) < 1) {
+    add('blue', 'Tip: carry + max 1/pair',
+      'Enabling carry mode with "Max 1 position/pair" prevents week-end force-closes and caps concentration risk.');
+  }
+  if ((s.cagr ?? 0) > 6 && (s.maxDd ?? 0) < 10 && (s.sharpe ?? 0) > 1) {
+    add('green', 'Strategy looks healthy',
+      `CAGR ${fmt(s.cagr)}%, MaxDD ${fmt(s.maxDd)}%, Sharpe ${fmt(s.sharpe)} — solid risk-adjusted profile.`);
+  }
+
+  return chips;
+}
+
+function renderSuggestions(data) {
+  const card = document.getElementById('sugCard');
+  const body = document.getElementById('sugBody');
+  if (!card || !body) return;
+
+  const chips = generateWbtSuggestions(data);
+  if (!chips.length) { card.style.display = 'none'; return; }
+
+  const icons = { red: '⚠', amber: '◆', green: '✓', blue: '💡' };
+  body.innerHTML = chips.map(c => `
+    <div class="sug-chip ${c.type}">
+      <span class="sug-icon">${icons[c.type] ?? '•'}</span>
+      <div><span class="sug-label">${c.label}</span><span class="sug-detail">${c.detail}</span></div>
+    </div>`).join('');
+
+  card.style.display = '';
+  if (_sugCollapsed) body.style.display = 'none';
+}
+
 function renderFillDayChart(by) {
   const ctx = document.getElementById('fillDayChart').getContext('2d');
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
@@ -1096,7 +1305,10 @@ async function runBacktest() {
     dateFrom:  document.getElementById('runFrom').value,
     dateTo:    document.getElementById('runTo').value,
     pair:      document.getElementById('runPair').value,
-    strategy:  document.getElementById('runStrategy').value,
+    lvHL50:    document.getElementById('cbHL50').checked,
+    lvHL75:    document.getElementById('cbHL75').checked,
+    lvOCMed:   document.getElementById('cbOCMed').checked,
+    lvOC75:    document.getElementById('cbOC75').checked,
     slMult:    document.getElementById('runSlMult').value,
     spreadPct: document.getElementById('runSpread').value,
     slMode:    document.getElementById('runSlMode').value,
@@ -1156,6 +1368,7 @@ function updateParamVis() {
   const needPips = sl === 'pips' || tp === 'pips';
   document.getElementById('atrParams').classList.toggle('visible', needAtr);
   document.getElementById('pipParams').classList.toggle('visible', needPips);
+  document.getElementById('runSlMult').style.display = sl === 'level' ? '' : 'none';
   const carry = document.getElementById('runCarryMode').value === 'true';
   document.getElementById('runMaxOnePerPair').style.display = carry ? '' : 'none';
 }
@@ -1164,6 +1377,7 @@ function updateParamVis() {
 let _wbtChart    = null;   // price pane
 let _wbtZChart   = null;   // Z-Score pane
 let _wbtSmiChart = null;   // SMI pane
+let _wbtM15Mode  = false;  // true when showing M15 bars (time = unix seconds)
 let _wbtSeries   = null;   // candlestick series ref
 let _wbtWeekTrades = [];   // all fills for the same week+instrument
 let _wbtTradeIdx   = 0;
@@ -1204,8 +1418,11 @@ function _wbtBuildMarkers() {
       if (!t.fill_date) return null;
       const isSell    = t.side === 'SELL';
       const isFocused = i === _wbtTradeIdx;
+      const time = _wbtM15Mode
+        ? Math.floor(new Date(t.fill_date + 'T12:00:00Z').getTime() / 1000)
+        : t.fill_date;
       return {
-        time:     t.fill_date, // D1 chart uses YYYY-MM-DD strings as time
+        time,
         position: isSell ? 'aboveBar' : 'belowBar',
         color:    isFocused
           ? (isSell ? '#ef5350' : '#26a69a')
@@ -1218,7 +1435,7 @@ function _wbtBuildMarkers() {
       };
     })
     .filter(Boolean)
-    .sort((a, b) => a.time - b.time);
+    .sort((a, b) => (a.time > b.time ? 1 : a.time < b.time ? -1 : 0));
 }
 
 function _wbtDrawFocusLines() {
@@ -1324,22 +1541,23 @@ function openWbtChart(filtIdx) {
 
   const container = document.getElementById('wbtChartContainer');
   Object.assign(container.style, { display:'', flexDirection:'' });
-  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8fa0b8;font-size:13px">Loading M1 data…</div>';
+  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8fa0b8;font-size:13px">Loading M15 candles…</div>';
 
+  _wbtM15Mode = true;
   const pair = trade.instrument.toLowerCase().replace(/[^a-z]/g, '');
   const week = trade.week; // Monday date (YYYY-MM-DD)
-  const from = _wbtDateOffset(week, -4); // ~1 week before for context
-  const to   = _wbtDateOffset(week, 9);  // ~1 week after for context
+  const from = _wbtDateOffset(week, -4); // ~4 days before for context
+  const to   = _wbtDateOffset(week, 9);  // ~9 days after for context
 
-  fetch(`/api/weekly-vol-backtest/d1/${pair}?from=${from}&to=${to}`)
+  fetch(`/api/weekly-vol-backtest/m15/${pair}?from=${from}&to=${to}`)
     .then(r => r.json())
     .then(d => {
       if (!d.ok || !d.candles?.length) {
-        container.innerHTML = `<div style="padding:24px;font-size:13px"><div style="color:#ef5350;font-weight:600;margin-bottom:8px">No D1 candle data</div><div style="color:#8fa0b8">${d.error || 'No candles returned from OANDA'}</div></div>`;
+        container.innerHTML = `<div style="padding:24px;font-size:13px"><div style="color:#ef5350;font-weight:600;margin-bottom:8px">No M15 candle data</div><div style="color:#8fa0b8">${d.error || 'No candles returned from OANDA'}</div></div>`;
         return;
       }
 
-      // Two-pane layout: Price 72% / SMI 28%
+      // Three-pane layout: Price 60% / Z-score 20% / SMI 20%
       container.innerHTML = '';
       container.style.display       = 'flex';
       container.style.flexDirection = 'column';
@@ -1353,8 +1571,9 @@ function openWbtChart(filtIdx) {
         container.appendChild(el);
         return el;
       };
-      const pricePane = mkPane('0 0 72%', 'D1 · Price', false);
-      const smiPane   = mkPane('0 0 28%', 'SMI · 10/3/3', true);
+      const pricePane = mkPane('0 0 60%', 'M15 · Price', false);
+      const zPane     = mkPane('0 0 20%', 'Z-Score · 20', true);
+      const smiPane   = mkPane('0 0 20%', 'SMI · 10/3/3', true);
 
       const cBase = {
         autoSize:  true,
@@ -1365,7 +1584,8 @@ function openWbtChart(filtIdx) {
         timeScale:       { borderColor: '#2a3348', timeVisible: true, secondsVisible: false },
       };
       _wbtChart    = LightweightCharts.createChart(pricePane, cBase);
-      _wbtSmiChart = LightweightCharts.createChart(smiPane, cBase);
+      _wbtZChart   = LightweightCharts.createChart(zPane,     cBase);
+      _wbtSmiChart = LightweightCharts.createChart(smiPane,   cBase);
 
       const cs = _wbtChart.addCandlestickSeries({
         upColor: '#26a69a', downColor: '#ef5350',
@@ -1373,8 +1593,8 @@ function openWbtChart(filtIdx) {
         wickUpColor: '#26a69a', wickDownColor: '#ef5350',
       });
       _wbtSeries = cs;
-      // D1 bars: use date string (YYYY-MM-DD) directly as LightweightCharts time
-      const bars = d.candles.map(b => ({ time: b.date, open: b.open, high: b.high, low: b.low, close: b.close }));
+      // M15 bars: time is Unix seconds (integer)
+      const bars = d.candles.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close }));
       cs.setData(bars);
 
       // ── Static week level lines ───────────────────────────────────────────────
@@ -1437,12 +1657,13 @@ function openWbtChart(filtIdx) {
       // Fill markers (all trades in this week)
       cs.setMarkers(_wbtBuildMarkers());
 
-      // SMI indicator sub-panel
+      // Z-Score and SMI indicator sub-panels
+      _wbtBuildZScore(_wbtZChart, bars);
       _wbtBuildSMI(_wbtSmiChart, bars);
 
-      // Sync time scales (price ↔ SMI)
+      // Sync time scales (price ↔ Z-score ↔ SMI)
       let _syncing = false;
-      const allC = [_wbtChart, _wbtSmiChart];
+      const allC = [_wbtChart, _wbtZChart, _wbtSmiChart];
       allC.forEach((src, si) => {
         src.timeScale().subscribeVisibleLogicalRangeChange(range => {
           if (_syncing || !range) return;
@@ -1452,8 +1673,10 @@ function openWbtChart(filtIdx) {
         });
       });
 
-      // Zoom to 2 weeks before the trade week → 1 week after
-      _wbtChart.timeScale().setVisibleRange({ from: from, to: to });
+      // Zoom to the context window (Unix seconds for M15)
+      const fromTs = Math.floor(new Date(from + 'T00:00:00Z').getTime() / 1000);
+      const toTs   = Math.floor(new Date(to   + 'T23:59:59Z').getTime() / 1000);
+      _wbtChart.timeScale().setVisibleRange({ from: fromTs, to: toTs });
     })
     .catch(e => {
       container.innerHTML = `<div style="padding:24px;color:#ef5350;font-size:13px">Error: ${e.message}</div>`;
@@ -1467,6 +1690,7 @@ function closeWbtChart() {
   if (_wbtChart)    { _wbtChart.remove();    _wbtChart    = null; _wbtSeries = null; }
   if (_wbtZChart)   { _wbtZChart.remove();   _wbtZChart   = null; }
   if (_wbtSmiChart) { _wbtSmiChart.remove(); _wbtSmiChart = null; }
+  _wbtM15Mode = false;
 }
 
 document.addEventListener('keydown', e => {

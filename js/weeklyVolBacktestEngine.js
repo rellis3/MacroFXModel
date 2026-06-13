@@ -235,11 +235,11 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
     return fallback; // default: mondayOpen
   };
 
-  // ── Strategy flags ────────────────────────────────────────────────────────────
-  const doHL50  = strategy === 'revHL50'  || strategy === 'both'     || strategy === 'allLevels';
-  const doHL75  = strategy === 'revHL75'  || strategy === 'both'     || strategy === 'allLevels';
-  const doOCMed = strategy === 'ocLevels' || strategy === 'allLevels';
-  const doOC75  = strategy === 'ocLevels' || strategy === 'allLevels';
+  // ── Strategy flags — explicit opts.doXX override strategy string ─────────────
+  const doHL50  = opts.doHL50  !== undefined ? opts.doHL50  : (strategy === 'revHL50'  || strategy === 'both'     || strategy === 'allLevels');
+  const doHL75  = opts.doHL75  !== undefined ? opts.doHL75  : (strategy === 'revHL75'  || strategy === 'both'     || strategy === 'allLevels');
+  const doOCMed = opts.doOCMed !== undefined ? opts.doOCMed : (strategy === 'ocLevels' || strategy === 'allLevels');
+  const doOC75  = opts.doOC75  !== undefined ? opts.doOC75  : (strategy === 'ocLevels' || strategy === 'allLevels');
 
   // ── Pre-compute SL / TP prices per slot ──────────────────────────────────────
   // Level-based SL defaults:
