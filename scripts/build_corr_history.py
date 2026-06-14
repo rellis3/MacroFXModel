@@ -55,8 +55,10 @@ OUTPUT_RAW  = os.path.join(os.path.dirname(__file__), '..', 'bot', 'data', 'corr
 PAIRS = [
     # Core FX
     'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY', 'EURGBP',
-    # Metals
-    'XAUUSD', 'XAGUSD', 'XPTUSD',
+    # EM / China / Risk barometers
+    'USDCNH', 'USDZAR',
+    # Metals (XCUUSD = copper, key China growth proxy)
+    'XAUUSD', 'XAGUSD', 'XPTUSD', 'XCUUSD',
     # Energy
     'WTICO', 'BCO',
     # Equity indices
@@ -73,6 +75,7 @@ _OANDA_OVERRIDES = {
     'XAUUSD': 'XAU_USD',
     'XAGUSD': 'XAG_USD',
     'XPTUSD': 'XPT_USD',
+    'XCUUSD': 'XCU_USD',
     'NAS100':  'NAS100_USD',
     'SPX500':  'SPX500_USD',
     'US30':    'US30_USD',

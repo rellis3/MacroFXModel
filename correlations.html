@@ -829,9 +829,11 @@ const PAIR_COLORS = {
   EURGBP:'#8b5cf6', XAUUSD:'#eab308',
   EURJPY:'#a78bfa', EURCHF:'#fb923c', GBPCHF:'#34d399', AUDJPY:'#fbbf24', CADJPY:'#60a5fa',
   // Metals & energy (added)
-  XAGUSD:'#94a3b8', XPTUSD:'#d946ef', WTICO:'#fb923c', BCO:'#f97316',
+  XAGUSD:'#94a3b8', XPTUSD:'#d946ef', XCUUSD:'#b87333', WTICO:'#fb923c', BCO:'#f97316',
   // Indices (added — keys match build_corr_history.py PAIRS list)
   NAS100:'#22d3ee', SPX500:'#0ea5e9', US30:'#38bdf8', US2000:'#a855f7',
+  // EM / China / South Africa
+  USDCNH:'#dc2626', USDZAR:'#16a34a',
 };
 const REGIME_FILL = {
   BULL:'rgba(16,185,129,0.10)', BEAR:'rgba(248,113,113,0.09)',
@@ -1198,6 +1200,15 @@ const PAIR_PROFILES = {
   US2000:{ flag:'📊', name:'Russell 2000 Index', type:'Equity Index', driver:'US domestic growth & credit conditions',
     note:'Small-cap US index with heavy domestic revenue exposure. More sensitive to credit tightening than large-caps — small companies borrow more at floating rates.',
     typical:'Underperforms large-caps when credit tightens or the dollar strengthens. Divergence between Russell 2000 and S&P 500 is an early warning of banking/credit system stress.' },
+  XCUUSD:{ flag:'🟤', name:'Copper vs US Dollar', type:'Industrial Metal', driver:'Global growth & China demand',
+    note:'Copper is one of the most reliable leading economic indicators — used in everything from construction to electronics. ~50% of global demand comes from China. When copper rises, industrial activity is accelerating. When it falls sharply, a slowdown is already underway. Watch the Copper/Gold ratio (XCUUSD / XAUUSD): rising ratio = growth over safety; falling = risk-off.',
+    typical:'High positive correlation to AUD/USD (Australia mines copper), NZD/USD, and equity indices. Inverse to JPY, CHF. When COT specs on copper hit extreme longs alongside high AUD correlation, the unwind risk compounds directly into AUD/USD.' },
+  USDCNH:{ flag:'🇨🇳', name:'US Dollar vs Chinese Offshore Yuan', type:'EM / China Risk', driver:'China credit & PBoC policy',
+    note:'CNH (offshore yuan) is the most direct, freely-traded proxy for China risk. When the PBoC lets CNH weaken, it signals domestic growth stress — AUD, NZD, and copper typically follow within 24–48 hours. Watch for sustained CNH weakness alongside cooling copper: that combination historically precedes broad EM and risk-on FX weakness.',
+    typical:'When USD/CNH rises (yuan weakens), AUD/USD, NZD/USD, and copper tend to fall. Acts as an early warning for China slowdown transmission into G10 commodity currencies.' },
+  USDZAR:{ flag:'🇿🇦', name:'US Dollar vs South African Rand', type:'EM / Commodities', driver:'EM sentiment & platinum/palladium supply',
+    note:'ZAR is a high-beta EM currency and a proxy for global risk appetite. South Africa produces ~70–75% of the world\'s platinum and ~35% of palladium — political or mining disruptions in SA affect precious metals globally. In risk-off environments, ZAR sells off sharply (high carry, low liquidity). When USD/ZAR spikes, it often leads broader EM weakness and flags commodity supply disruption risk.',
+    typical:'Strongly risk-sensitive. Inverse to gold/platinum in supply-shock scenarios. High positive correlation to other EM pairs in risk-off. Divergence between ZAR and platinum COT extremes can signal whether a platinum move is supply-driven (ZAR weak) or demand-driven (ZAR stable).' },
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
