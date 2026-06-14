@@ -198,6 +198,20 @@ export function renderCOTCard(sym) {
 
   ${crowded ? `<div class="cot-crowding">⚠ Spec positioning at ${d.crowdingPct}% of OI — watch for crowded-trade unwind risk</div>` : ''}
 
+  ${d.specPct != null ? (() => {
+    const pct = d.specPct;
+    const col = pct >= 80 ? '#34d399' : pct <= 20 ? '#f87171' : '#4f7df0';
+    const label = pct >= 90 ? 'CROWDED LONG' : pct <= 10 ? 'CROWDED SHORT' : pct >= 80 ? 'ELEVATED LONG' : pct <= 20 ? 'ELEVATED SHORT' : '';
+    return `<div style="display:flex;align-items:center;gap:6px;margin-top:7px;padding-top:7px;border-top:1px solid var(--border)">
+  <span style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;width:54px;flex-shrink:0">3yr Pctile</span>
+  <div style="flex:1;height:4px;background:var(--bg);border-radius:2px;overflow:hidden">
+    <div style="height:100%;width:${pct}%;background:${col};border-radius:2px"></div>
+  </div>
+  <span style="font-size:10px;font-weight:600;font-family:'DM Mono',monospace;color:${col};width:28px;text-align:right;flex-shrink:0">${pct}%</span>
+  ${label ? `<span style="font-size:8px;font-weight:700;letter-spacing:.4px;padding:1px 5px;border-radius:3px;background:${col}22;color:${col}">${label}</span>` : ''}
+</div>`;
+  })() : ''}
+
   <div class="cot-footer">
     Report: ${d.changeDate || '—'} · OI ${fmtK(d.openInterest)}
   </div>
