@@ -61,7 +61,7 @@ Even if the macro score is bullish, the system reduces exposure in high-volatili
 
 All free, no paid subscriptions required.
 
-**FRED API** (free key at [fred.stlouisfed.org](https://fred.stlouisfed.org/docs/api/api_key.html)):
+**FRED API** (free key at [fred.stlouisfed.org](https://fred.stlouisfed.org/docs/api/api_key.html)) — set as the `FRED_KEY` Railway environment variable, or pass `--fred-key` on the CLI:
 
 | Series ID | Description | Frequency |
 |-----------|-------------|-----------|
@@ -121,6 +121,11 @@ The script will auto-install missing packages on first run.
 
 ```bash
 cd macro-regime-conditional
+
+# If FRED_KEY is already set as an environment variable (e.g. Railway):
+python macro_equity_backtest.py
+
+# Or pass the key explicitly:
 python macro_equity_backtest.py --fred-key YOUR_FRED_KEY
 ```
 
