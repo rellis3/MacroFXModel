@@ -2310,9 +2310,9 @@ app.post('/api/macro-equity-backtest/run', express.json({ limit: '1mb' }), (req,
       realYield: parseFloat(body.wRealYield) || undefined,
       ism:       parseFloat(body.wIsm)       || undefined,
     },
-    longThreshold:  body.longThresh != null ? parseFloat(body.longThresh) : undefined,
-    flatThreshold:  body.flatThresh != null ? parseFloat(body.flatThresh) : undefined,
-    vixZMax:        body.vixZMax   != null ? parseFloat(body.vixZMax)   : undefined,
+    highBand: body.highBand != null ? parseFloat(body.highBand) : undefined,
+    midBand:  body.midBand  != null ? parseFloat(body.midBand)  : undefined,
+    lowBand:  body.lowBand  != null ? parseFloat(body.lowBand)  : undefined,
   };
   // Remove undefined keys
   Object.keys(config).forEach(k => config[k] == null && delete config[k]);

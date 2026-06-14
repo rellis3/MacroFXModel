@@ -91,7 +91,7 @@
   <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14 L8 2 L14 14" stroke="white" stroke-width="2" stroke-linejoin="round" fill="none"/><path d="M4.5 9.5 h7" stroke="white" stroke-width="1.5"/></svg></div>
   <div class="title-block">
     <div class="title" style="font-size:15px;font-weight:700;">Macro-Regime Equity Backtester</div>
-    <div class="sub">5-factor macro composite · Long/Flat QQQ &amp; SPY · Weekly rebalance · Walk-forward validated</div>
+    <div class="sub">5-factor macro composite · Multi-state QQQ &amp; SPY · Monthly rebalance · Walk-forward validated</div>
   </div>
   <div style="flex:1"></div>
   <span class="upd" id="meComputedAt"></span>
@@ -104,15 +104,15 @@
   <span class="bt-run-lbl" style="font-weight:600;color:var(--text2)">Macro Equity Backtest:</span>
   <div class="rbar-sep"></div>
   <span class="bt-run-lbl">Weights:</span>
-  <label>NetLiq <input type="number" id="wNetLiq"    value="0.30" step="0.05" min="0" max="1"></label>
+  <label>NetLiq <input type="number" id="wNetLiq"    value="0.40" step="0.05" min="0" max="1"></label>
   <label>Curve  <input type="number" id="wCurve"     value="0.20" step="0.05" min="0" max="1"></label>
   <label>Credit <input type="number" id="wCredit"    value="0.20" step="0.05" min="0" max="1"></label>
   <label>RlYld  <input type="number" id="wRealYield" value="0.15" step="0.05" min="0" max="1"></label>
-  <label>ISM    <input type="number" id="wIsm"       value="0.15" step="0.05" min="0" max="1"></label>
+  <label>ISM    <input type="number" id="wIsm"       value="0.05" step="0.05" min="0" max="1"></label>
   <div class="rbar-sep"></div>
-  <label>Long≥  <input type="number" id="longThresh" value="0.5"  step="0.1"  min="-2" max="3" style="width:52px"></label>
-  <label>Flat≤  <input type="number" id="flatThresh" value="-0.5" step="0.1"  min="-3" max="2" style="width:52px"></label>
-  <label>VIX-Z≤ <input type="number" id="vixZMax"   value="1.5"  step="0.1"  min="0.5" max="4" style="width:52px"></label>
+  <label>High≥  <input type="number" id="highBand" value="1.0"  step="0.25" min="-2" max="4" style="width:52px" title="Score above this → 100% alloc"></label>
+  <label>Mid≥   <input type="number" id="midBand"  value="0.0"  step="0.25" min="-3" max="3" style="width:52px" title="Score above this → 75% alloc"></label>
+  <label>Low≥   <input type="number" id="lowBand"  value="-1.0" step="0.25" min="-4" max="2" style="width:52px" title="Score above this → 50% alloc; below → 25%"></label>
   <div class="rbar-sep"></div>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <span id="runStatus" class="bt-run-lbl"></span>
@@ -125,7 +125,7 @@
 
 <!-- ── Info box ────────────────────────────────────────────────────────────── -->
 <div class="info-box" id="stratInfo">
-  <strong style="color:var(--text)">How it works</strong> — Every Friday the engine scores 5 macro factors (Net Liquidity momentum, Yield Curve, HY Credit Spread, 10Y TIPS Real Yield, ISM PMI) using rolling 252-day z-scores. A weighted composite score determines whether to be <strong>LONG</strong> (score &gt; 0.5, VIX-Z &lt; 1.5) or <strong>FLAT</strong>. Position size is scaled by the VIX regime (LOW=100%, NORMAL=75%, HIGH=25%). Positions enter at Monday open and exit at Friday close. Data: OANDA D1 for QQQ/SPY prices, FRED REST API for macro series, Yahoo Finance for VIX. Publication lags (5d weekly, 21d monthly) prevent lookahead bias.
+  <strong style="color:var(--text)">How it works</strong> — Each month-end the engine scores 5 macro factors (Net Liquidity momentum, Yield Curve, HY Credit Spread, 10Y TIPS Real Yield, ISM PMI) using rolling 252-day z-scores. The composite score sets a <strong>base allocation</strong>: &gt;High → 100%, &gt;Mid → 75%, &gt;Low → 50%, else 25%. A <strong>trend filter</strong> (200-day MA + 12-month momentum) scales it: both bullish = 1.0×, either = 0.8×, neither = 0.55×. A <strong>VIX sizer</strong> applies a final factor: LOW = 1.0×, NORMAL = 0.85×, HIGH = 0.60×, EXTREME = 0.30× (no hard block). Floor is 15%. Positions enter at each month's first open and exit at last close. Transaction costs (0.10% × allocation change) charged when change &gt; 5pp. Data: OANDA D1 for QQQ/SPY prices, FRED REST API for macro series, Yahoo Finance for VIX. Publication lags (5d weekly, 21d monthly) prevent lookahead bias.
 </div>
 
 <!-- ── Status bar ─────────────────────────────────────────────────────────── -->
@@ -146,18 +146,18 @@
   <div class="bt-kpi"><div class="bt-kpi-label">Sharpe Ratio</div><div class="bt-kpi-value blue" id="kSharpe">—</div><div class="bt-kpi-sub" id="kSharpeSub">vs B&amp;H —</div></div>
   <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div><div class="bt-kpi-value red" id="kMaxDD">—</div><div class="bt-kpi-sub" id="kMaxDDSub">vs B&amp;H —</div></div>
   <div class="bt-kpi"><div class="bt-kpi-label">Sortino Ratio</div><div class="bt-kpi-value blue" id="kSortino">—</div><div class="bt-kpi-sub">downside-adjusted</div></div>
-  <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div><div class="bt-kpi-value green" id="kWinRate">—</div><div class="bt-kpi-sub">invested weeks with gain</div></div>
-  <div class="bt-kpi"><div class="bt-kpi-label">Time in Market</div><div class="bt-kpi-value amber" id="kTimeMkt">—</div><div class="bt-kpi-sub">% of weeks invested</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div><div class="bt-kpi-value green" id="kWinRate">—</div><div class="bt-kpi-sub">months with positive strat return</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Avg Allocation</div><div class="bt-kpi-value amber" id="kTimeMkt">—</div><div class="bt-kpi-sub">mean allocation across all months</div></div>
   <div class="bt-kpi"><div class="bt-kpi-label">OOS Sharpe</div><div class="bt-kpi-value" id="kOosSharpe">—</div><div class="bt-kpi-sub">walk-forward out-of-sample</div></div>
   <div class="bt-kpi"><div class="bt-kpi-label">WF Efficiency</div><div class="bt-kpi-value" id="kWfe">—</div><div class="bt-kpi-sub">OOS ÷ IS Sharpe ratio</div></div>
 </div>
 
 <!-- ── Secondary stats ────────────────────────────────────────────────────── -->
 <div class="bt-sec-grid" id="secGrid" style="display:none">
-  <div class="bt-sec"><span class="bt-sec-lbl">Invested Weeks</span><span class="bt-sec-val" id="sNTrades">—</span></div>
-  <div class="bt-sec"><span class="bt-sec-lbl">Total Weeks</span><span class="bt-sec-val" id="sTotalWks">—</span></div>
-  <div class="bt-sec"><span class="bt-sec-lbl">Avg Win / week</span><span class="bt-sec-val pos" id="sAvgWin">—</span></div>
-  <div class="bt-sec"><span class="bt-sec-lbl">Avg Loss / week</span><span class="bt-sec-val neg" id="sAvgLoss">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Months Traded</span><span class="bt-sec-val" id="sNTrades">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Total Months</span><span class="bt-sec-val" id="sTotalWks">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Avg Win / month</span><span class="bt-sec-val pos" id="sAvgWin">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Avg Loss / month</span><span class="bt-sec-val neg" id="sAvgLoss">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Profit Factor</span><span class="bt-sec-val blue" id="sPF">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Calmar Ratio</span><span class="bt-sec-val" id="sCalmar">—</span></div>
   <div class="bt-sec"><span class="bt-sec-lbl">Final Equity</span><span class="bt-sec-val" id="sFinalEq">—</span></div>
@@ -206,9 +206,9 @@
     <table class="bt-tbl" id="regimeTbl">
       <thead><tr>
         <th>Regime</th>
-        <th class="num">Invested Weeks</th>
+        <th class="num">Months</th>
         <th class="num">Win Rate</th>
-        <th class="num">Avg Wk Return</th>
+        <th class="num">Avg Mo Return</th>
         <th class="num">Cum Return</th>
         <th class="num">Sharpe</th>
       </tr></thead>
@@ -219,7 +219,7 @@
 
 <!-- ── Walk-forward windows table ─────────────────────────────────────────── -->
 <div class="bt-card" id="wfCard" style="display:none">
-  <div class="bt-card-hdr">Walk-Forward Windows <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">504d train / 63d test / 21d step</span></div>
+  <div class="bt-card-hdr">Walk-Forward Windows <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">504d train / 252d test / 63d step (quarterly)</span></div>
   <div class="bt-tbl-scroll">
     <table class="bt-tbl" id="wfTbl">
       <thead><tr>
@@ -248,15 +248,16 @@
     <div class="bt-tbl-scroll">
       <table class="bt-tbl" id="tradeTbl">
         <thead><tr>
-          <th>Week End</th>
-          <th class="num">Size</th>
-          <th class="num">Mon Open</th>
-          <th class="num">Fri Close</th>
-          <th class="num">Week Ret</th>
+          <th>Month</th>
+          <th class="num">Alloc %</th>
+          <th class="num">Mo Open</th>
+          <th class="num">Mo Close</th>
+          <th class="num">Mo Ret</th>
           <th class="num">Strat Ret</th>
           <th class="num">Macro Score</th>
           <th class="num">VIX-Z</th>
           <th>Vol Regime</th>
+          <th>Trend</th>
           <th>Result</th>
         </tr></thead>
         <tbody id="tradeTblBody"></tbody>
@@ -313,14 +314,14 @@ async function runBacktest() {
   if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
 
   const body = {
-    wNetLiq:    parseFloat(document.getElementById('wNetLiq').value)    || 0.30,
+    wNetLiq:    parseFloat(document.getElementById('wNetLiq').value)    || 0.40,
     wCurve:     parseFloat(document.getElementById('wCurve').value)     || 0.20,
     wCredit:    parseFloat(document.getElementById('wCredit').value)    || 0.20,
     wRealYield: parseFloat(document.getElementById('wRealYield').value) || 0.15,
-    wIsm:       parseFloat(document.getElementById('wIsm').value)       || 0.15,
-    longThresh: parseFloat(document.getElementById('longThresh').value) || 0.5,
-    flatThresh: parseFloat(document.getElementById('flatThresh').value) || -0.5,
-    vixZMax:    parseFloat(document.getElementById('vixZMax').value)    || 1.5,
+    wIsm:       parseFloat(document.getElementById('wIsm').value)       || 0.05,
+    highBand:   parseFloat(document.getElementById('highBand').value),
+    midBand:    parseFloat(document.getElementById('midBand').value),
+    lowBand:    parseFloat(document.getElementById('lowBand').value),
   };
 
   try {
@@ -441,7 +442,7 @@ function renderSecondary(d) {
   const wf = d.walkForward;
 
   setVal('sNTrades',   m.nTrades?.toLocaleString() ?? '—');
-  setVal('sTotalWks',  m.totalWeeks?.toLocaleString() ?? '—');
+  setVal('sTotalWks',  m.totalMonths?.toLocaleString() ?? '—');
   setVal('sAvgWin',    pct(m.avgWin));
   setVal('sAvgLoss',   pct(m.avgLoss));
   setVal('sPF',        isFinite(m.profitFactor) && m.profitFactor < 100 ? num(m.profitFactor) : '∞');
@@ -595,7 +596,7 @@ function renderDrawdown(d) {
 function renderMacroScore(d) {
   const labels   = d.macroScore.map(p => p.date);
   const scores   = d.macroScore.map(p => p.score);
-  const invested = d.macroScore.map(p => p.invested ? 0.8 : null);
+  const invested = d.macroScore.map(p => p.alloc ?? null);
 
   if (_scoreChart) { _scoreChart.destroy(); _scoreChart = null; }
   _scoreChart = new Chart(document.getElementById('scoreChart'), {
@@ -709,24 +710,27 @@ function renderTradeLog(d) {
   const trades = d.trades ?? [];
   const wins   = trades.filter(t => t.win).length;
   const sumEl  = document.getElementById('tradeSummary');
-  if (sumEl) sumEl.textContent = `${trades.length} trades · ${wins} wins · ${trades.length - wins} losses`;
+  if (sumEl) sumEl.textContent = `${trades.length} months · ${wins} wins · ${trades.length - wins} losses`;
 
   const tbody = document.getElementById('tradeTblBody');
   if (!tbody) return;
 
   tbody.innerHTML = trades.map(t => {
     const resClass = t.win ? 'pos' : 'neg';
-    const vrClass  = t.volRegime === 'LOW' ? 'pos' : t.volRegime === 'HIGH' ? 'amber' : '';
+    const vrClass  = t.volRegime === 'LOW' ? 'pos' : (t.volRegime === 'HIGH' || t.volRegime === 'EXTREME') ? 'amber' : '';
+    const trClass  = t.trendState === 'ABOVE MA' ? 'pos' : t.trendState === 'BELOW MA' ? 'neg' : '';
+    const allocPct = (t.alloc * 100).toFixed(0) + '%';
     return `<tr>
-      <td>${t.weekEnd}</td>
-      <td class="num">${(t.posScalar * 100).toFixed(0)}%</td>
+      <td>${t.monthKey}</td>
+      <td class="num ${t.alloc >= 0.75 ? 'pos' : t.alloc >= 0.5 ? 'amber' : 'neg'}">${allocPct}</td>
       <td class="num">${num(t.monOpen, 0)}</td>
-      <td class="num">${num(t.friClose, 0)}</td>
-      <td class="num ${clr(t.weekRet)}">${pct(t.weekRet)}</td>
+      <td class="num">${num(t.monClose, 0)}</td>
+      <td class="num ${clr(t.monthRet)}">${pct(t.monthRet)}</td>
       <td class="num ${resClass}">${pct(t.stratRet)}</td>
-      <td class="num ${t.macroScore >= 1 ? 'pos' : 'amber'}">${num(t.macroScore)}</td>
+      <td class="num ${t.macroScore >= 1 ? 'pos' : t.macroScore >= 0 ? 'amber' : 'neg'}">${num(t.macroScore)}</td>
       <td class="num">${num(t.vixZ)}</td>
       <td><span class="${vrClass}">${t.volRegime}</span></td>
+      <td><span class="${trClass}">${t.trendState}</span></td>
       <td><span style="color:${t.win ? 'var(--green)' : 'var(--red)'}">${t.win ? '▲ WIN' : '▼ LOSS'}</span></td>
     </tr>`;
   }).join('');
