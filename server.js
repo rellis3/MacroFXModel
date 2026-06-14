@@ -333,8 +333,14 @@ async function fetchHMMBars(sym, count = 300) {
 const CORR_PAIRS = [
   'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURGBP','XAUUSD',
   'EURJPY','EURCHF','GBPCHF','AUDJPY','CADJPY',
-  'NAS100_USD','SPX500_USD','DE30_USD','UK100_GBP',
-  'US30_USD','US2000_USD',
+  // Metals
+  'XAGUSD','XPTUSD','XCUUSD',
+  // Energy
+  'WTICO_USD','BCO_USD',
+  // Equity indices
+  'NAS100_USD','SPX500_USD','US30_USD','US2000_USD',
+  // EM / China / Risk barometers
+  'USDCNH','USDZAR',
 ];
 const CORR_FACTOR_PROXIES = {
   dxy:   { sym: 'EURUSD', sign: -1.2 },
