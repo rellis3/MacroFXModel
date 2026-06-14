@@ -2218,7 +2218,8 @@ async function fetchMeRawData(fredKey) {
   // Index, monthly, Federal Reserve) which carries the same directional manufacturing signal.
   // Both are z-scored before use so the different scales don't matter.
   const FRED_SERIES = ['WALCL', 'WTREGEN', 'RRPONTSYD', 'T10Y2Y', 'BAMLH0A0HYM2', 'DFII10'];
-  const ISM_CANDIDATES = ['NAPM', 'INDPRO']; // try in order; first success wins
+  const ISM_CANDIDATES    = ['NAPM', 'INDPRO'];       // US ISM: try in order; first success wins
+  const EU_PMI_CANDIDATES = ['MPMIEZMA156N', 'NAPM']; // Eurozone Mfg PMI; fallback to US ISM
 
   console.log('[macro-equity-bt] fetching FRED series…');
   const fredMaps = {};
@@ -2245,6 +2246,20 @@ async function fetchMeRawData(fredKey) {
     }
   }
   fredMaps.napm = ismMap;
+
+  // EU PMI — Eurozone Manufacturing PMI (S&P Global / Markit, via FRED)
+  let euPmiMap = new Map();
+  for (const sid of EU_PMI_CANDIDATES) {
+    console.log(`  [macro-equity-bt] FRED ${sid} (EU PMI proxy)…`);
+    try {
+      euPmiMap = await fetchFredSeries(sid, FROM_DATE, fredKey);
+      console.log(`  [macro-equity-bt] using ${sid} for EU PMI factor (${euPmiMap.size} obs)`);
+      break;
+    } catch (e) {
+      console.warn(`  [macro-equity-bt] FRED ${sid} failed: ${e.message}`);
+    }
+  }
+  fredMaps.eupmi = euPmiMap;
 
   console.log('[macro-equity-bt] fetching OANDA US2000_USD (Russell 2000)…');
   let russellBars = [];
@@ -2311,6 +2326,7 @@ async function fetchMeRawData(fredKey) {
     bamlh0a0hym2: alignSparse(dates, fredMaps.bamlh0a0hym2),
     dfii10:       alignSparse(dates, fredMaps.dfii10),
     napm:         alignSparse(dates, fredMaps.napm),
+    eupmi:        alignSparse(dates, fredMaps.eupmi),
   };
 
   return { dates, qqq, spy, russell, bond30y, dax, vix, fred };
@@ -2395,7 +2411,7 @@ app.post('/api/macro-equity-backtest/run', express.json({ limit: '1mb' }), (req,
         instruments.TLT = { ...rawData.bond30y, label: 'TLT — Long Bond',    inverted: true };
       }
       if (includeDAX && rawData.dax.available) {
-        instruments.DAX = { ...rawData.dax, label: 'DAX — Germany 40',       inverted: false };
+        instruments.DAX = { ...rawData.dax, label: 'DAX — Germany 40', inverted: false, euMode: true };
       }
 
       const engineData = { dates: rawData.dates, instruments, vix: rawData.vix, fred: rawData.fred };
