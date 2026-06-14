@@ -12,6 +12,7 @@ export const ME_DEFAULT_CONFIG = {
   highBand:  1.0,   // score > this → 100% base allocation
   midBand:   0.0,   // score > this → 75% base allocation
   lowBand:  -1.0,   // score > this → 50%; below lowBand = 25%
+  allocFloor: 0.50, // minimum allocation — never goes below this regardless of regime
   zWindow:   252,   // rolling z-score lookback (trading days)
   vixWindow:  60,   // VIX z-score lookback
   ma200Period: 200, // moving average period for trend filter
@@ -245,7 +246,8 @@ function computeAlloc(score, vixZ, closePrice, ma200Price, mom12mVal, cfg) {
     else                  vixFactor = 0.30; // EXTREME
   }
 
-  return Math.max(0.15, Math.min(1.0, base * trendFactor * vixFactor));
+  const floor = isFinite(cfg.allocFloor) ? cfg.allocFloor : 0.50;
+  return Math.max(floor, Math.min(1.0, base * trendFactor * vixFactor));
 }
 
 // ── Monthly backtest ──────────────────────────────────────────────────────────
