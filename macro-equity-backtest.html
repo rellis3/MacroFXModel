@@ -110,9 +110,10 @@
   <label>RlYld  <input type="number" id="wRealYield" value="0.15" step="0.05" min="0" max="1"></label>
   <label>ISM    <input type="number" id="wIsm"       value="0.05" step="0.05" min="0" max="1"></label>
   <div class="rbar-sep"></div>
-  <label>High≥  <input type="number" id="highBand" value="1.0"  step="0.25" min="-2" max="4" style="width:52px" title="Score above this → 100% alloc"></label>
-  <label>Mid≥   <input type="number" id="midBand"  value="0.0"  step="0.25" min="-3" max="3" style="width:52px" title="Score above this → 75% alloc"></label>
-  <label>Low≥   <input type="number" id="lowBand"  value="-1.0" step="0.25" min="-4" max="2" style="width:52px" title="Score above this → 50% alloc; below → 25%"></label>
+  <label>High≥  <input type="number" id="highBand"   value="1.0"  step="0.25" min="-2" max="4" style="width:52px" title="Score above this → 100% alloc"></label>
+  <label>Mid≥   <input type="number" id="midBand"   value="0.0"  step="0.25" min="-3" max="3" style="width:52px" title="Score above this → 75% alloc"></label>
+  <label>Low≥   <input type="number" id="lowBand"   value="-1.0" step="0.25" min="-4" max="2" style="width:52px" title="Score above this → 50% alloc; below → 25%"></label>
+  <label>Floor% <input type="number" id="allocFloor" value="0.50" step="0.05" min="0" max="0.95" style="width:52px" title="Minimum allocation — never goes below this"></label>
   <div class="rbar-sep"></div>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <span id="runStatus" class="bt-run-lbl"></span>
@@ -125,7 +126,7 @@
 
 <!-- ── Info box ────────────────────────────────────────────────────────────── -->
 <div class="info-box" id="stratInfo">
-  <strong style="color:var(--text)">How it works</strong> — Each month-end the engine scores 5 macro factors (Net Liquidity momentum, Yield Curve, HY Credit Spread, 10Y TIPS Real Yield, ISM PMI) using rolling 252-day z-scores. The composite score sets a <strong>base allocation</strong>: &gt;High → 100%, &gt;Mid → 75%, &gt;Low → 50%, else 25%. A <strong>trend filter</strong> (200-day MA + 12-month momentum) scales it: both bullish = 1.0×, either = 0.8×, neither = 0.55×. A <strong>VIX sizer</strong> applies a final factor: LOW = 1.0×, NORMAL = 0.85×, HIGH = 0.60×, EXTREME = 0.30× (no hard block). Floor is 15%. Positions enter at each month's first open and exit at last close. Transaction costs (0.10% × allocation change) charged when change &gt; 5pp. Data: OANDA D1 for QQQ/SPY prices, FRED REST API for macro series, Yahoo Finance for VIX. Publication lags (5d weekly, 21d monthly) prevent lookahead bias.
+  <strong style="color:var(--text)">How it works</strong> — Each month-end the engine scores 5 macro factors (Net Liquidity momentum, Yield Curve, HY Credit Spread, 10Y TIPS Real Yield, ISM PMI) using rolling 252-day z-scores. The composite score sets a <strong>base allocation</strong>: &gt;High → 100%, &gt;Mid → 75%, &gt;Low → 50%, else 25%. A <strong>trend filter</strong> (200-day MA + 12-month momentum) scales it: both bullish = 1.0×, either = 0.8×, neither = 0.55×. A <strong>VIX sizer</strong> applies a final factor: LOW = 1.0×, NORMAL = 0.85×, HIGH = 0.60×, EXTREME = 0.30× (no hard block). Floor is configurable (default 50% for standalone use). Positions enter at each month's first open and exit at last close. Transaction costs (0.10% × allocation change) charged when change &gt; 5pp. Data: OANDA D1 for QQQ/SPY prices, FRED REST API for macro series, Yahoo Finance for VIX. Publication lags (5d weekly, 21d monthly) prevent lookahead bias.
 </div>
 
 <!-- ── Status bar ─────────────────────────────────────────────────────────── -->
@@ -322,6 +323,7 @@ async function runBacktest() {
     highBand:   parseFloat(document.getElementById('highBand').value),
     midBand:    parseFloat(document.getElementById('midBand').value),
     lowBand:    parseFloat(document.getElementById('lowBand').value),
+    allocFloor: parseFloat(document.getElementById('allocFloor').value),
   };
 
   try {
