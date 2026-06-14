@@ -91,7 +91,7 @@
   <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14 L8 2 L14 14" stroke="white" stroke-width="2" stroke-linejoin="round" fill="none"/><path d="M4.5 9.5 h7" stroke="white" stroke-width="1.5"/></svg></div>
   <div class="title-block">
     <div class="title" style="font-size:15px;font-weight:700;">Macro-Regime Equity Backtester</div>
-    <div class="sub">5-factor macro composite · QQQ · SPY · Russell 2000 · TLT hedge · Monthly rebalance · Walk-forward validated</div>
+    <div class="sub">5-factor macro composite · QQQ · SPY · Russell · DAX · TLT hedge · Monthly rebalance · Walk-forward validated</div>
   </div>
   <div style="flex:1"></div>
   <span class="upd" id="meComputedAt"></span>
@@ -118,6 +118,7 @@
   <span class="bt-run-lbl">Instruments:</span>
   <label><input type="checkbox" id="includeRussell" checked> Russell</label>
   <label><input type="checkbox" id="includeTLT"> TLT Hedge</label>
+  <label><input type="checkbox" id="includeDAX"> DAX 🇩🇪</label>
   <div class="rbar-sep"></div>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <span id="runStatus" class="bt-run-lbl"></span>
@@ -327,6 +328,7 @@ async function runBacktest() {
     allocFloor: parseFloat(document.getElementById('allocFloor').value),
     includeRussell: document.getElementById('includeRussell').checked,
     includeTLT:     document.getElementById('includeTLT').checked,
+    includeDAX:     document.getElementById('includeDAX').checked,
   };
 
   try {
