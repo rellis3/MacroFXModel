@@ -1513,7 +1513,6 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         ];
 
         const PRE = 'https://publicreporting.cftc.gov/resource';
-        const fmtNames = arr => arr.map(n => `'${n.replace(/'/g, "''")}'`).join(',');
 
         const pctRank = (hist, cur) => {
           if (!hist.length) return 50;
@@ -1527,56 +1526,71 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           return std > 0 ? +((cur - mean) / std).toFixed(2) : 0;
         };
 
-        // No $select — fetch all columns to avoid 400 errors from wrong field names.
-        // Field name fallbacks in processDisagg/processTFF handle API naming variations.
-        const disaggWhere = `report_date_as_yyyy_mm_dd>'${fromDate}' AND market_and_exchange_names IN (${fmtNames(DISAGG.map(d => d.name))})`;
-        const tffWhere    = `report_date_as_yyyy_mm_dd>'${fromDate}' AND market_and_exchange_names IN (${fmtNames(TFF.map(t => t.name))})`;
+        // Use Socrata's column equality URL parameter (no SoQL $where needed).
+        // This sidesteps $where 400 errors from uncertain field names / IN-clause issues.
+        // Fetch the 200 most recent rows per instrument; 200 weeks ≈ 3.8 years of weekly data.
+        const COT_LIMIT = 200;
+        async function fetchInstRows(datasetId, marketName) {
+          const params = new URLSearchParams({ market_and_exchange_names: marketName, '$limit': String(COT_LIMIT) });
+          try {
+            const res = await fetch(`${PRE}/${datasetId}.json?${params}`, { signal: AbortSignal.timeout(12000) });
+            if (!res.ok) return { rows: null, err: `HTTP ${res.status}` };
+            const d = await res.json();
+            return Array.isArray(d) ? { rows: d, err: null } : { rows: null, err: 'not array: ' + JSON.stringify(d).slice(0, 100) };
+          } catch(e) { return { rows: null, err: e.message }; }
+        }
 
-        const disaggUrl = `${PRE}/72hh-3qpy.json?$where=${encodeURIComponent(disaggWhere)}&$order=${encodeURIComponent('report_date_as_yyyy_mm_dd DESC')}&$limit=15000`;
-        const tffUrl    = `${PRE}/gpe5-46if.json?$where=${encodeURIComponent(tffWhere)}&$order=${encodeURIComponent('report_date_as_yyyy_mm_dd DESC')}&$limit=10000`;
+        // Detect the date field name from a sample row (CFTC uses different names across datasets)
+        const detectDate = row => {
+          for (const f of ['report_date_as_yyyy_mm_dd','as_of_date_in_form_yymmdd','report_date','date'])
+            if (row?.[f] !== undefined) return f;
+          return null;
+        };
 
-        let disaggRows = [], tffRows = [], fetchErrors = [];
-
-        const [dRes, tRes] = await Promise.all([
-          fetch(disaggUrl, { signal: AbortSignal.timeout(25000) }),
-          fetch(tffUrl,    { signal: AbortSignal.timeout(25000) }),
+        // Fetch all instruments in parallel (35 total, 2 datasets)
+        const fetchErrors = [];
+        const [disaggFetches, tffFetches] = await Promise.all([
+          Promise.all(DISAGG.map(inst => fetchInstRows('72hh-3qpy', inst.name).then(r => ({ inst, ...r })))),
+          Promise.all(TFF.map(inst   => fetchInstRows('gpe5-46if', inst.name).then(r => ({ inst, ...r })))),
         ]);
 
-        if (dRes.ok) {
-          try {
-            const d = await dRes.json();
-            disaggRows = Array.isArray(d) ? d : [];
-            if (!Array.isArray(d)) fetchErrors.push('disagg: response not array — ' + JSON.stringify(d).slice(0, 200));
-          } catch(e) { fetchErrors.push('disagg parse: ' + e.message); }
-        } else { fetchErrors.push(`disagg HTTP ${dRes.status}: ` + (await dRes.text().catch(()=>'')). slice(0,200)); }
+        // Collect rows and log any per-instrument errors
+        const disaggByName = {}, tffByName = {};
+        for (const { inst, rows, err } of disaggFetches) {
+          if (rows?.length) disaggByName[inst.name] = rows;
+          else fetchErrors.push(`disagg ${inst.sym}: ${err || 'empty'}`);
+        }
+        for (const { inst, rows, err } of tffFetches) {
+          if (rows?.length) tffByName[inst.name] = rows;
+          else fetchErrors.push(`tff ${inst.sym}: ${err || 'empty'}`);
+        }
 
-        if (tRes.ok) {
-          try {
-            const d = await tRes.json();
-            tffRows = Array.isArray(d) ? d : [];
-            if (!Array.isArray(d)) fetchErrors.push('tff: response not array — ' + JSON.stringify(d).slice(0, 200));
-          } catch(e) { fetchErrors.push('tff parse: ' + e.message); }
-        } else { fetchErrors.push(`tff HTTP ${tRes.status}: ` + (await tRes.text().catch(()=>'')).slice(0,200)); }
+        const disaggRows = Object.values(disaggByName).flat();
+        const tffRows    = Object.values(tffByName).flat();
 
-        const pi     = n => parseInt(n) || 0;
-        const mktNm  = r => (r.market_and_exchange_names ?? r.contract_market_name ?? '').trim();
+        const pi    = n => parseInt(n) || 0;
+        const mktNm = r => (r.market_and_exchange_names ?? r.contract_market_name ?? '').trim();
+        const _dateF = detectDate(disaggRows[0] ?? tffRows[0] ?? null);
 
-        function processDisagg(rows, instList) {
-          const byName = {};
-          for (const r of rows) { const k = mktNm(r); if (!byName[k]) byName[k] = []; byName[k].push(r); }
+        function sortByDate(recs) {
+          if (!_dateF) return recs;
+          return [...recs].sort((a, b) => (b[_dateF] ?? '').toString().localeCompare((a[_dateF] ?? '').toString()));
+        }
+
+        function processDisagg(byName, instList) {
           const results = [];
           for (const inst of instList) {
             const recs = byName[inst.name];
             if (!recs?.length) continue;
-            recs.sort((a, b) => (b.report_date_as_yyyy_mm_dd || '').localeCompare(a.report_date_as_yyyy_mm_dd || ''));
-            const cur = recs[0];
-            const mmL  = r => pi(r.m_money_positions_long_all  ?? r.managed_money_long_all);
-            const mmS  = r => pi(r.m_money_positions_short_all ?? r.managed_money_short_all);
-            const pmL  = r => pi(r.prod_merc_positions_long_all  ?? r.producer_long_all);
-            const pmS  = r => pi(r.prod_merc_positions_short_all ?? r.producer_short_all);
-            const specNets = recs.map(r => mmL(r) - mmS(r));
-            const commNets = recs.map(r => pmL(r) - pmS(r));
-            const oiSer    = recs.map(r => pi(r.open_interest_all));
+            const sorted = sortByDate(recs);
+            const cur = sorted[0];
+            const mmL  = r => pi(r.m_money_positions_long_all  ?? r.managed_money_long_all   ?? r.mm_long);
+            const mmS  = r => pi(r.m_money_positions_short_all ?? r.managed_money_short_all  ?? r.mm_short);
+            const pmL  = r => pi(r.prod_merc_positions_long_all  ?? r.producer_long_all  ?? r.prod_long);
+            const pmS  = r => pi(r.prod_merc_positions_short_all ?? r.producer_short_all ?? r.prod_short);
+            const specNets = sorted.map(r => mmL(r) - mmS(r));
+            const commNets = sorted.map(r => pmL(r) - pmS(r));
+            const oiSer    = sorted.map(r => pi(r.open_interest_all ?? r.open_interest));
             const h = a => a.slice(1);
             results.push({
               sym: inst.sym, label: inst.label, group: inst.group,
@@ -1585,31 +1599,29 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
               grossRatio: mmS(cur) > 0 ? +(mmL(cur) / mmS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
-              weeklyChg: pi(cur.change_in_m_money_long_all) - pi(cur.change_in_m_money_short_all),
-              histLen: recs.length, reportDate: cur.report_date_as_yyyy_mm_dd ?? null,
+              weeklyChg: pi(cur.change_in_m_money_long_all ?? cur.chg_mm_long) - pi(cur.change_in_m_money_short_all ?? cur.chg_mm_short),
+              histLen: sorted.length, reportDate: _dateF ? cur[_dateF] : null,
             });
           }
           return results;
         }
 
-        function processTFF(rows, instList) {
-          const byName = {};
-          for (const r of rows) { const k = mktNm(r); if (!byName[k]) byName[k] = []; byName[k].push(r); }
+        function processTFF(byName, instList) {
           const results = [];
           for (const inst of instList) {
             const recs = byName[inst.name];
             if (!recs?.length) continue;
-            recs.sort((a, b) => (b.report_date_as_yyyy_mm_dd || '').localeCompare(a.report_date_as_yyyy_mm_dd || ''));
-            const cur = recs[0];
-            const levL = r => pi(r.lev_money_positions_long_all  ?? r.leveraged_funds_long_all);
-            const levS = r => pi(r.lev_money_positions_short_all ?? r.leveraged_funds_short_all);
-            const amL  = r => pi(r.asset_mgr_positions_long_all  ?? r.asset_manager_long_all);
-            const amS  = r => pi(r.asset_mgr_positions_short_all ?? r.asset_manager_short_all);
-            const dlL  = r => pi(r.dealer_positions_long_all);
-            const dlS  = r => pi(r.dealer_positions_short_all);
-            const specNets = recs.map(r => inst.flip ? levS(r) - levL(r) : levL(r) - levS(r));
-            const commNets = recs.map(r => { const net = (amL(r) - amS(r)) + (dlL(r) - dlS(r)); return inst.flip ? -net : net; });
-            const oiSer    = recs.map(r => pi(r.open_interest_all));
+            const sorted = sortByDate(recs);
+            const cur = sorted[0];
+            const levL = r => pi(r.lev_money_positions_long_all  ?? r.leveraged_funds_long_all  ?? r.lev_long);
+            const levS = r => pi(r.lev_money_positions_short_all ?? r.leveraged_funds_short_all ?? r.lev_short);
+            const amL  = r => pi(r.asset_mgr_positions_long_all  ?? r.asset_manager_long_all    ?? r.asset_long);
+            const amS  = r => pi(r.asset_mgr_positions_short_all ?? r.asset_manager_short_all   ?? r.asset_short);
+            const dlL  = r => pi(r.dealer_positions_long_all  ?? r.dealer_long);
+            const dlS  = r => pi(r.dealer_positions_short_all ?? r.dealer_short);
+            const specNets = sorted.map(r => inst.flip ? levS(r) - levL(r) : levL(r) - levS(r));
+            const commNets = sorted.map(r => { const net = (amL(r) - amS(r)) + (dlL(r) - dlS(r)); return inst.flip ? -net : net; });
+            const oiSer    = sorted.map(r => pi(r.open_interest_all ?? r.open_interest));
             const h = a => a.slice(1);
             results.push({
               sym: inst.sym, label: inst.label, group: inst.group,
@@ -1618,15 +1630,15 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
               grossRatio: levS(cur) > 0 ? +(levL(cur) / levS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
-              weeklyChg: pi(cur.change_in_lev_money_long_all) - pi(cur.change_in_lev_money_short_all),
-              histLen: recs.length, reportDate: cur.report_date_as_yyyy_mm_dd ?? null,
+              weeklyChg: pi(cur.change_in_lev_money_long_all ?? cur.chg_lev_long) - pi(cur.change_in_lev_money_short_all ?? cur.chg_lev_short),
+              histLen: sorted.length, reportDate: _dateF ? cur[_dateF] : null,
             });
           }
           return results;
         }
 
-        const disaggResults = processDisagg(disaggRows, DISAGG);
-        const tffResults    = processTFF(tffRows, TFF);
+        const disaggResults = processDisagg(disaggByName, DISAGG);
+        const tffResults    = processTFF(tffByName, TFF);
         const allInstruments = [...tffResults, ...disaggResults];
         const reportDate2 = allInstruments.map(i => i.reportDate).filter(Boolean).sort().reverse()[0] ?? null;
 
