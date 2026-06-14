@@ -2009,18 +2009,49 @@ window.savePhbCreds     = savePhbCreds;
 // ── Macro-Regime Equity Backtest ──────────────────────────────────────────────
 
 const ME_DEFAULTS = {
+  // FRED
   fred_api_key:   '',
-  w_net_liq:      0.30,
+  // Factor weights
+  w_net_liq:      0.40,
   w_curve:        0.20,
   w_credit:       0.20,
   w_real_yield:   0.15,
-  w_ism:          0.15,
+  w_ism:          0.05,
+  // Legacy thresholds (backtester compat)
   long_threshold: 0.5,
   flat_threshold: -0.5,
   vix_z_max:      1.5,
+  // Allocation bands
+  band_high:       1.0,
+  band_mid:        0.0,
+  band_low:       -1.0,
+  alloc_floor:     0.50,
+  inverted_alloc_floor: 0.20,
+  // Walk-forward
   wf_train:       504,
-  wf_test:        63,
-  wf_step:        21,
+  wf_test:        252,
+  wf_step:        63,
+  // Instruments
+  include_qqq:     true,
+  include_spy:     true,
+  include_russell: false,
+  include_tlt:     false,
+  include_dax:     false,
+  include_gold:    false,
+  include_bil:     false,
+  portfolio_mode:  false,
+  // MT5 symbols
+  symbol_qqq:     'NAS100',
+  symbol_spy:     'SP500',
+  symbol_russell: 'US2000',
+  symbol_tlt:     'USB30Y',
+  symbol_dax:     'GER40',
+  symbol_gold:    'XAUUSD',
+  // Bot control
+  enabled:              true,
+  paper_mode:           true,
+  rebalance_threshold:  0.05,
+  poll_interval_s:      3600,
 };
 
 let _meCfg  = { ...ME_DEFAULTS };
@@ -2028,34 +2059,79 @@ let _meTrades = [];
 let _meTradeFilter = 'all';
 
 function readMeForm() {
-  _meCfg.fred_api_key   = document.getElementById('me_fred_api_key')?.value.trim() ?? '';
-  _meCfg.w_net_liq      = parseFloat(document.getElementById('me_w_net_liq')?.value)     || ME_DEFAULTS.w_net_liq;
-  _meCfg.w_curve        = parseFloat(document.getElementById('me_w_curve')?.value)       || ME_DEFAULTS.w_curve;
-  _meCfg.w_credit       = parseFloat(document.getElementById('me_w_credit')?.value)      || ME_DEFAULTS.w_credit;
-  _meCfg.w_real_yield   = parseFloat(document.getElementById('me_w_real_yield')?.value)  || ME_DEFAULTS.w_real_yield;
-  _meCfg.w_ism          = parseFloat(document.getElementById('me_w_ism')?.value)         || ME_DEFAULTS.w_ism;
-  _meCfg.long_threshold = parseFloat(document.getElementById('me_long_threshold')?.value) ?? ME_DEFAULTS.long_threshold;
-  _meCfg.flat_threshold = parseFloat(document.getElementById('me_flat_threshold')?.value) ?? ME_DEFAULTS.flat_threshold;
-  _meCfg.vix_z_max      = parseFloat(document.getElementById('me_vix_z_max')?.value)     || ME_DEFAULTS.vix_z_max;
-  _meCfg.wf_train       = parseInt(document.getElementById('me_wf_train')?.value)        || ME_DEFAULTS.wf_train;
-  _meCfg.wf_test        = parseInt(document.getElementById('me_wf_test')?.value)         || ME_DEFAULTS.wf_test;
-  _meCfg.wf_step        = parseInt(document.getElementById('me_wf_step')?.value)         || ME_DEFAULTS.wf_step;
+  const s = id => document.getElementById(id);
+  const flt = (id, def) => { const v = parseFloat(s(id)?.value); return isNaN(v) ? def : v; };
+  const int = (id, def) => { const v = parseInt(s(id)?.value);   return isNaN(v) ? def : v; };
+  const chk = id => s(id)?.checked ?? false;
+  const txt = id => s(id)?.value?.trim() ?? '';
+
+  _meCfg.fred_api_key          = txt('me_fred_api_key');
+  _meCfg.w_net_liq             = flt('me_w_net_liq',    ME_DEFAULTS.w_net_liq);
+  _meCfg.w_curve               = flt('me_w_curve',      ME_DEFAULTS.w_curve);
+  _meCfg.w_credit              = flt('me_w_credit',     ME_DEFAULTS.w_credit);
+  _meCfg.w_real_yield          = flt('me_w_real_yield', ME_DEFAULTS.w_real_yield);
+  _meCfg.w_ism                 = flt('me_w_ism',        ME_DEFAULTS.w_ism);
+  _meCfg.band_high             = flt('me_band_high',    ME_DEFAULTS.band_high);
+  _meCfg.band_mid              = flt('me_band_mid',     ME_DEFAULTS.band_mid);
+  _meCfg.band_low              = flt('me_band_low',     ME_DEFAULTS.band_low);
+  _meCfg.alloc_floor           = flt('me_alloc_floor',  ME_DEFAULTS.alloc_floor);
+  _meCfg.inverted_alloc_floor  = flt('me_inverted_alloc_floor', ME_DEFAULTS.inverted_alloc_floor);
+  _meCfg.wf_train              = int('me_wf_train',     ME_DEFAULTS.wf_train);
+  _meCfg.wf_test               = int('me_wf_test',      ME_DEFAULTS.wf_test);
+  _meCfg.wf_step               = int('me_wf_step',      ME_DEFAULTS.wf_step);
+  _meCfg.include_russell       = chk('me_include_russell');
+  _meCfg.include_tlt           = chk('me_include_tlt');
+  _meCfg.include_dax           = chk('me_include_dax');
+  _meCfg.include_gold          = chk('me_include_gold');
+  _meCfg.include_bil           = chk('me_include_bil');
+  _meCfg.portfolio_mode        = chk('me_portfolio_mode');
+  _meCfg.enabled               = chk('me_enabled');
+  _meCfg.paper_mode            = chk('me_paper_mode');
+  _meCfg.rebalance_threshold   = flt('me_rebalance_threshold', ME_DEFAULTS.rebalance_threshold);
+  _meCfg.poll_interval_s       = int('me_poll_interval_s',     ME_DEFAULTS.poll_interval_s);
+  _meCfg.symbol_qqq            = txt('me_symbol_qqq')     || ME_DEFAULTS.symbol_qqq;
+  _meCfg.symbol_spy            = txt('me_symbol_spy')     || ME_DEFAULTS.symbol_spy;
+  _meCfg.symbol_russell        = txt('me_symbol_russell') || ME_DEFAULTS.symbol_russell;
+  _meCfg.symbol_tlt            = txt('me_symbol_tlt')     || ME_DEFAULTS.symbol_tlt;
+  _meCfg.symbol_dax            = txt('me_symbol_dax')     || ME_DEFAULTS.symbol_dax;
+  _meCfg.symbol_gold           = txt('me_symbol_gold')    || ME_DEFAULTS.symbol_gold;
 }
 
 function renderMeForm() {
-  const s = id => document.getElementById(id);
-  if (s('me_fred_api_key'))   s('me_fred_api_key').value   = _meCfg.fred_api_key   ?? '';
-  if (s('me_w_net_liq'))      s('me_w_net_liq').value      = _meCfg.w_net_liq      ?? ME_DEFAULTS.w_net_liq;
-  if (s('me_w_curve'))        s('me_w_curve').value        = _meCfg.w_curve        ?? ME_DEFAULTS.w_curve;
-  if (s('me_w_credit'))       s('me_w_credit').value       = _meCfg.w_credit       ?? ME_DEFAULTS.w_credit;
-  if (s('me_w_real_yield'))   s('me_w_real_yield').value   = _meCfg.w_real_yield   ?? ME_DEFAULTS.w_real_yield;
-  if (s('me_w_ism'))          s('me_w_ism').value          = _meCfg.w_ism          ?? ME_DEFAULTS.w_ism;
-  if (s('me_long_threshold')) s('me_long_threshold').value = _meCfg.long_threshold ?? ME_DEFAULTS.long_threshold;
-  if (s('me_flat_threshold')) s('me_flat_threshold').value = _meCfg.flat_threshold ?? ME_DEFAULTS.flat_threshold;
-  if (s('me_vix_z_max'))      s('me_vix_z_max').value      = _meCfg.vix_z_max      ?? ME_DEFAULTS.vix_z_max;
-  if (s('me_wf_train'))       s('me_wf_train').value       = _meCfg.wf_train       ?? ME_DEFAULTS.wf_train;
-  if (s('me_wf_test'))        s('me_wf_test').value        = _meCfg.wf_test        ?? ME_DEFAULTS.wf_test;
-  if (s('me_wf_step'))        s('me_wf_step').value        = _meCfg.wf_step        ?? ME_DEFAULTS.wf_step;
+  const s   = id => document.getElementById(id);
+  const set = (id, v) => { if (s(id)) s(id).value = v ?? ''; };
+  const chk = (id, v) => { if (s(id)) s(id).checked = !!v; };
+
+  set('me_fred_api_key',          _meCfg.fred_api_key           ?? '');
+  set('me_w_net_liq',             _meCfg.w_net_liq              ?? ME_DEFAULTS.w_net_liq);
+  set('me_w_curve',               _meCfg.w_curve                ?? ME_DEFAULTS.w_curve);
+  set('me_w_credit',              _meCfg.w_credit               ?? ME_DEFAULTS.w_credit);
+  set('me_w_real_yield',          _meCfg.w_real_yield           ?? ME_DEFAULTS.w_real_yield);
+  set('me_w_ism',                 _meCfg.w_ism                  ?? ME_DEFAULTS.w_ism);
+  set('me_band_high',             _meCfg.band_high              ?? ME_DEFAULTS.band_high);
+  set('me_band_mid',              _meCfg.band_mid               ?? ME_DEFAULTS.band_mid);
+  set('me_band_low',              _meCfg.band_low               ?? ME_DEFAULTS.band_low);
+  set('me_alloc_floor',           _meCfg.alloc_floor            ?? ME_DEFAULTS.alloc_floor);
+  set('me_inverted_alloc_floor',  _meCfg.inverted_alloc_floor   ?? ME_DEFAULTS.inverted_alloc_floor);
+  set('me_wf_train',              _meCfg.wf_train               ?? ME_DEFAULTS.wf_train);
+  set('me_wf_test',               _meCfg.wf_test                ?? ME_DEFAULTS.wf_test);
+  set('me_wf_step',               _meCfg.wf_step                ?? ME_DEFAULTS.wf_step);
+  chk('me_include_russell',       _meCfg.include_russell);
+  chk('me_include_tlt',           _meCfg.include_tlt);
+  chk('me_include_dax',           _meCfg.include_dax);
+  chk('me_include_gold',          _meCfg.include_gold);
+  chk('me_include_bil',           _meCfg.include_bil);
+  chk('me_portfolio_mode',        _meCfg.portfolio_mode);
+  chk('me_enabled',               _meCfg.enabled ?? true);
+  chk('me_paper_mode',            _meCfg.paper_mode ?? true);
+  set('me_rebalance_threshold',   _meCfg.rebalance_threshold    ?? ME_DEFAULTS.rebalance_threshold);
+  set('me_poll_interval_s',       _meCfg.poll_interval_s        ?? ME_DEFAULTS.poll_interval_s);
+  set('me_symbol_qqq',            _meCfg.symbol_qqq             ?? ME_DEFAULTS.symbol_qqq);
+  set('me_symbol_spy',            _meCfg.symbol_spy             ?? ME_DEFAULTS.symbol_spy);
+  set('me_symbol_russell',        _meCfg.symbol_russell         ?? ME_DEFAULTS.symbol_russell);
+  set('me_symbol_tlt',            _meCfg.symbol_tlt             ?? ME_DEFAULTS.symbol_tlt);
+  set('me_symbol_dax',            _meCfg.symbol_dax             ?? ME_DEFAULTS.symbol_dax);
+  set('me_symbol_gold',           _meCfg.symbol_gold            ?? ME_DEFAULTS.symbol_gold);
 }
 
 async function loadMeConfig() {
@@ -2064,6 +2140,57 @@ async function loadMeConfig() {
     if (stored) _meCfg = { ...ME_DEFAULTS, ...stored };
     renderMeForm();
   } catch(e) { /* non-critical */ }
+}
+
+async function loadMeLiveStatus() {
+  const ageEl  = document.getElementById('meLiveAge');
+  const modeEl = document.getElementById('meLiveMode');
+  const bodyEl = document.getElementById('meLiveBody');
+  const nextEl = document.getElementById('meNextReb');
+  const fEl    = id => document.getElementById(id);
+
+  try {
+    const st = await kvGet('macro_equity_bot_status');
+    if (!st) {
+      if (bodyEl) bodyEl.innerHTML = '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text3)">Bot not running — no status yet</td></tr>';
+      return;
+    }
+    const age = st.pushed_at ? Math.round((Date.now() / 1000 - st.pushed_at) / 60) : null;
+    if (ageEl)  ageEl.textContent  = age != null ? `Updated ${age}m ago` : '';
+    if (modeEl) { modeEl.textContent = st.paper_mode ? '📄 PAPER' : '🟢 LIVE'; modeEl.style.color = st.paper_mode ? 'var(--amber)' : 'var(--green)'; }
+    if (nextEl) nextEl.textContent = st.next_rebalance ?? '—';
+
+    // Factor scores
+    const fs = st.signal?.factor_scores ?? {};
+    const fv = (id, v) => { const el = fEl(id); if (el) { el.textContent = v != null ? v.toFixed(2) : '—'; el.style.color = v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--text3)'; } };
+    fv('meFNetliq', fs.netliq_z); fv('meFCurve', fs.curve_z); fv('meFCredit', fs.credit_z);
+    fv('meFRy', fs.realyield_z); fv('meFIsm', fs.ism_z);
+
+    // Instrument rows
+    const insts = st.instruments ?? {};
+    if (!Object.keys(insts).length) {
+      if (bodyEl) bodyEl.innerHTML = '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text3)">No rebalance run yet this month</td></tr>';
+      return;
+    }
+    const regimeColor = r => r === 'BULL' ? 'var(--green)' : r === 'NEUTRAL_BULL' ? '#34d399' : r === 'NEUTRAL_BEAR' ? 'var(--amber)' : 'var(--red)';
+    const rows = Object.entries(insts).map(([key, inst]) => {
+      const alloc  = inst.target_alloc != null ? (inst.target_alloc * 100).toFixed(0) + '%' : '—';
+      const score  = inst.score != null ? inst.score.toFixed(2) : '—';
+      const action = inst.action ?? '—';
+      const actionColor = action === 'buy' ? 'var(--green)' : action === 'sell' ? 'var(--red)' : 'var(--text3)';
+      return `<tr>
+        <td style="padding:6px 10px;font-weight:600">${key}</td>
+        <td style="padding:6px 10px;color:${regimeColor(inst.regime)}">${inst.regime ?? '—'}</td>
+        <td style="padding:6px 10px;text-align:right">${score}</td>
+        <td style="padding:6px 10px;text-align:right;font-weight:600">${alloc}</td>
+        <td style="padding:6px 10px;color:var(--text3)">${inst.symbol ?? '—'}</td>
+        <td style="padding:6px 10px;color:${actionColor}">${action}</td>
+      </tr>`;
+    }).join('');
+    if (bodyEl) bodyEl.innerHTML = rows || '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text3)">—</td></tr>';
+  } catch(e) {
+    if (bodyEl) bodyEl.innerHTML = `<tr><td colspan="6" style="padding:10px;color:var(--red)">${e.message}</td></tr>`;
+  }
 }
 
 async function saveMeConfig() {
@@ -2258,16 +2385,68 @@ window.saveMeConfig    = saveMeConfig;
 window.resetMeDefaults = resetMeDefaults;
 window.saveMeCreds     = saveMeCreds;
 window.loadMeResults   = loadMeResults;
+async function loadMeLivePosTab() {
+  const posBodyEl = document.getElementById('meLivePosBody');
+  const rebBodyEl = document.getElementById('meRebLogBody');
+  try {
+    const st = await kvGet('macro_equity_bot_status');
+    if (!st) {
+      if (posBodyEl) posBodyEl.innerHTML = '<tr><td colspan="7" class="pos-empty">Bot not running — no status pushed yet</td></tr>';
+      return;
+    }
+    const positions = st.mt5_positions ?? [];
+    if (positions.length === 0) {
+      if (posBodyEl) posBodyEl.innerHTML = '<tr><td colspan="7" class="pos-empty">No open positions</td></tr>';
+    } else {
+      if (posBodyEl) posBodyEl.innerHTML = positions.map(p => {
+        const opened = p.time_open ? new Date(p.time_open * 1000).toLocaleDateString() : '—';
+        const pnlCls = p.profit >= 0 ? 'pos' : 'neg';
+        return `<tr>
+          <td>${p.symbol}</td>
+          <td style="color:var(--green)">${p.direction}</td>
+          <td>${p.lots}</td>
+          <td>${p.open_price}</td>
+          <td>${p.price}</td>
+          <td class="${pnlCls}">${p.profit >= 0 ? '+' : ''}${p.profit.toFixed(2)}</td>
+          <td>${opened}</td>
+        </tr>`;
+      }).join('');
+    }
+    const log = st.rebalance_log ?? [];
+    if (rebBodyEl) {
+      if (!log.length) {
+        rebBodyEl.innerHTML = 'No rebalances yet this session.';
+      } else {
+        rebBodyEl.innerHTML = log.slice(0, 6).map(r => {
+          const allocs = Object.entries(r.instruments ?? {})
+            .map(([k, v]) => `${k}: ${(v * 100).toFixed(0)}%`).join('  ');
+          const scoreColor = (r.score ?? 0) >= 0 ? '#34d399' : '#f87171';
+          return `<div style="margin-bottom:6px;padding:6px 10px;background:var(--s2);border-radius:5px">
+            <span style="font-weight:600">${r.date}</span>
+            <span style="margin:0 8px;color:${scoreColor}">${r.regime}</span>
+            <span style="color:var(--text3);font-size:11px">${allocs}</span>
+          </div>`;
+        }).join('');
+      }
+    }
+  } catch(e) {
+    if (posBodyEl) posBodyEl.innerHTML = `<tr><td colspan="7" class="pos-empty" style="color:var(--red)">${e.message}</td></tr>`;
+  }
+}
+window.loadMeLivePosTab = loadMeLivePosTab;
+
 window.loadMeTradesTab = loadMeTradesTab;
 window.filterMeBtTrades = filterMeBtTrades;
 
 document.querySelector('.tab-btn[data-tab="macroequity"]')?.addEventListener('click', () => {
   loadMeResults();
+  loadMeLiveStatus();
 });
 
 loadMeConfig();
 loadMeCreds();
 loadMeResults();
+loadMeLiveStatus();
 
 loadDaStatus();
 loadGoldStatus();

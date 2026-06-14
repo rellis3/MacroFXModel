@@ -2242,135 +2242,194 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <div class="bot-banner" style="background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.28)">
       <div class="bot-banner-icon">📈</div>
       <div style="flex:1">
-        <div class="bot-banner-title" style="color:#818cf8">Macro-Regime-Conditional Equity</div>
-        <div class="bot-banner-sub">Proof-of-concept backtester · NQ (QQQ) &amp; SPX (SPY) · FRED macro signals · Walk-forward validated · pure JS engine</div>
+        <div class="bot-banner-title" style="color:#818cf8">Macro-Regime Equity Bot</div>
+        <div class="bot-banner-sub">Monthly rebalance · 5-factor FRED macro signal · QQQ &amp; SPY core · MT5 live execution · MacroEquityBot/macro_equity_bot.py</div>
       </div>
-      <a href="macro-equity-backtest.html" style="text-decoration:none;flex-shrink:0">
-        <button style="background:#818cf8;border:none;border-radius:7px;color:#fff;font-weight:600;padding:8px 18px;cursor:pointer;font-size:12px">▶ Open Backtester</button>
-      </a>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <a href="macro-equity-backtest.html" style="text-decoration:none">
+          <button style="background:transparent;border:1px solid #818cf8;border-radius:7px;color:#818cf8;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Backtester</button>
+        </a>
+        <button style="background:#818cf8;border:none;border-radius:7px;color:#fff;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px" onclick="saveMeConfig();saveMeCreds()">Save All</button>
+      </div>
     </div>
 
-    <!-- Results strip (shown when results exist) -->
-    <div class="bs-strip" id="meResultsStrip" style="display:none">
-      <div class="bs-head">
-        <span class="bs-lbl">Last Backtest Run</span>
-        <span id="meRunAt" class="bs-dim"></span>
+    <!-- Live Status Panel -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
+        <span style="font-size:12px;font-weight:600;color:#818cf8">Live Status</span>
+        <span id="meLiveAge" style="font-size:11px;color:var(--text3)">Waiting for bot…</span>
+        <span id="meLiveMode" style="font-size:11px;font-weight:600"></span>
+        <span style="flex:1"></span>
+        <button onclick="loadMeLiveStatus()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
       </div>
-      <div class="bs-rows" id="meResultsSummary"></div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Instrument</th>
+              <th style="padding:6px 10px;text-align:left">Regime</th>
+              <th style="padding:6px 10px;text-align:right">Macro Score</th>
+              <th style="padding:6px 10px;text-align:right">Target Alloc</th>
+              <th style="padding:6px 10px;text-align:left">MT5 Symbol</th>
+              <th style="padding:6px 10px;text-align:left">Last Action</th>
+            </tr>
+          </thead>
+          <tbody id="meLiveBody">
+            <tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text3)">Run the bot to see live status</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:20px;padding:8px 16px 12px;font-size:11px;font-family:'DM Mono',monospace;border-top:1px solid var(--border);flex-wrap:wrap">
+        <span>NetLiq-Z: <b id="meFNetliq">—</b></span>
+        <span>Curve-Z: <b id="meFCurve">—</b></span>
+        <span>Credit-Z: <b id="meFCredit">—</b></span>
+        <span>RealYld-Z: <b id="meFRy">—</b></span>
+        <span>ISM-Z: <b id="meFIsm">—</b></span>
+        <span style="margin-left:auto">Next rebalance: <b id="meNextReb">—</b></span>
+      </div>
     </div>
 
     <div class="grid">
 
-      <!-- ── Configuration ─────────────────────────────────────────────────── -->
+      <!-- ── Signal Config ─────────────────────────────────────────────────── -->
       <div class="card">
-        <div class="card-title">Strategy Configuration</div>
+        <div class="card-title">Signal Config</div>
 
         <div class="form-row">
           <span class="form-lbl">FRED API Key <small><a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" style="color:#818cf8">get free key</a></small></span>
-          <input type="password" id="me_fred_api_key" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="width:220px;font-family:monospace">
+          <input type="password" id="me_fred_api_key" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="width:200px;font-family:monospace">
         </div>
 
-        <div style="margin-top:14px;margin-bottom:6px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Signal Weights (must sum to 1.0)</div>
+        <div style="margin-top:14px;margin-bottom:6px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Factor Weights (must sum to 1.0)</div>
+        <div class="form-row"><span class="form-lbl">Net Liquidity</span><input type="number" id="me_w_net_liq"    min="0" max="1" step="0.05" style="width:75px"></div>
+        <div class="form-row"><span class="form-lbl">Yield Curve</span>  <input type="number" id="me_w_curve"      min="0" max="1" step="0.05" style="width:75px"></div>
+        <div class="form-row"><span class="form-lbl">Credit Spread</span><input type="number" id="me_w_credit"     min="0" max="1" step="0.05" style="width:75px"></div>
+        <div class="form-row"><span class="form-lbl">Real Yield</span>   <input type="number" id="me_w_real_yield" min="0" max="1" step="0.05" style="width:75px"></div>
+        <div class="form-row"><span class="form-lbl">ISM / PMI</span>    <input type="number" id="me_w_ism"        min="0" max="1" step="0.05" style="width:75px"></div>
 
-        <div class="form-row">
-          <span class="form-lbl">Net Liquidity weight</span>
-          <input type="number" id="me_w_net_liq" min="0" max="1" step="0.05" style="width:80px">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Yield Curve weight</span>
-          <input type="number" id="me_w_curve" min="0" max="1" step="0.05" style="width:80px">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Credit Spread weight (inverted)</span>
-          <input type="number" id="me_w_credit" min="0" max="1" step="0.05" style="width:80px">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Real Yield weight (inverted)</span>
-          <input type="number" id="me_w_real_yield" min="0" max="1" step="0.05" style="width:80px">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">ISM weight</span>
-          <input type="number" id="me_w_ism" min="0" max="1" step="0.05" style="width:80px">
-        </div>
+        <div style="margin-top:14px;margin-bottom:6px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Allocation Bands</div>
+        <div class="form-row"><span class="form-lbl">Bull threshold (100%)</span><input type="number" id="me_band_high" min="-3" max="3" step="0.1" style="width:75px"></div>
+        <div class="form-row"><span class="form-lbl">Mid  threshold  (75%)</span><input type="number" id="me_band_mid"  min="-3" max="3" step="0.1" style="width:75px"></div>
+        <div class="form-row"><span class="form-lbl">Low  threshold  (50%)</span><input type="number" id="me_band_low"  min="-3" max="3" step="0.1" style="width:75px"></div>
+        <div class="form-row"><span class="form-lbl">Equity floor <small>min alloc</small></span><input type="number" id="me_alloc_floor" min="0" max="1" step="0.05" style="width:75px"></div>
+        <div class="form-row"><span class="form-lbl">Bond floor <small>portfolio mode</small></span><input type="number" id="me_inverted_alloc_floor" min="0" max="1" step="0.05" style="width:75px"></div>
 
-        <div style="margin-top:14px;margin-bottom:6px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Entry Thresholds</div>
-
-        <div class="form-row">
-          <span class="form-lbl">Long threshold (macro_score &gt;)</span>
-          <input type="number" id="me_long_threshold" min="-3" max="3" step="0.1" style="width:80px">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Flat threshold (macro_score &lt;)</span>
-          <input type="number" id="me_flat_threshold" min="-3" max="3" step="0.1" style="width:80px">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Max VIX-Z to enter</span>
-          <input type="number" id="me_vix_z_max" min="0" max="5" step="0.1" style="width:80px">
-        </div>
-
-        <div style="margin-top:14px;margin-bottom:6px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Walk-Forward Parameters</div>
-
-        <div class="form-row">
-          <span class="form-lbl">Train window (trading days)</span>
-          <input type="number" id="me_wf_train" min="100" max="1260" step="21" style="width:80px">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Test window (trading days)</span>
-          <input type="number" id="me_wf_test" min="21" max="252" step="21" style="width:80px">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Step (trading days)</span>
-          <input type="number" id="me_wf_step" min="5" max="63" step="5" style="width:80px">
-        </div>
+        <div style="margin-top:14px;margin-bottom:6px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Walk-Forward (backtester)</div>
+        <div class="form-row"><span class="form-lbl">Train window (days)</span><input type="number" id="me_wf_train" min="100" max="1260" step="21" style="width:75px"></div>
+        <div class="form-row"><span class="form-lbl">Test window  (days)</span><input type="number" id="me_wf_test"  min="21"  max="252"  step="21" style="width:75px"></div>
+        <div class="form-row"><span class="form-lbl">Step         (days)</span><input type="number" id="me_wf_step"  min="5"   max="63"   step="5"  style="width:75px"></div>
 
         <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
           <button class="btn-save" style="background:#818cf8" onclick="saveMeConfig()">Save Config</button>
           <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetMeDefaults()">Reset Defaults</button>
           <span id="meSaveStatus" style="font-size:12px;color:var(--text3)"></span>
         </div>
-
-        <div style="margin-top:18px;padding:12px;background:#0d0d1a;border:1px solid rgba(129,140,248,0.2);border-radius:6px">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Run the backtester with your saved config:</div>
-          <code style="font-size:11px;color:#a5b4fc;display:block;word-break:break-all" id="meRunCmd">python macro-regime-conditional/macro_equity_backtest.py --fred-key &lt;key&gt; --base-url http://localhost:3000</code>
-          <div style="font-size:11px;color:var(--text3);margin-top:6px">Once run, results appear here and trades appear in the Positions tab.</div>
-        </div>
       </div>
 
-      <!-- ── MT5 Credentials ───────────────────────────────────────────────── -->
+      <!-- ── Instruments + Bot Control ────────────────────────────────────── -->
       <div class="card">
-        <div class="card-title">MT5 Credentials <small style="color:var(--text3)">(for future live mode)</small></div>
-        <div class="form-row">
-          <span class="form-lbl">Account number</span>
-          <input type="number" id="me_mt5_account" placeholder="12345678" style="width:140px">
+        <div class="card-title">Instruments &amp; Bot Control</div>
+
+        <div style="margin-bottom:6px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Instruments — MT5 Symbol</div>
+
+        <!-- Always-on -->
+        <div class="form-row" style="opacity:.6">
+          <span class="form-lbl">✓ QQQ — Nasdaq-100 <small>always on</small></span>
+          <input type="text" id="me_symbol_qqq" placeholder="NAS100" style="width:100px;text-align:left">
         </div>
-        <div class="form-row">
-          <span class="form-lbl">Password</span>
-          <input type="password" id="me_mt5_password" placeholder="••••••••" style="width:140px">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Server</span>
-          <input type="text" id="me_mt5_server" placeholder="ICMarkets-Demo01" style="width:180px">
-        </div>
-        <div class="form-row">
-          <span class="form-lbl">Terminal path <small>optional</small></span>
-          <input type="text" id="me_mt5_path" placeholder="C:\Program Files\..." style="width:220px">
-        </div>
-        <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
-          <button class="btn-save" style="background:#818cf8" onclick="saveMeCreds()">Save Credentials</button>
-          <span id="meCredsStatus" style="font-size:12px;color:var(--text3)"></span>
+        <div class="form-row" style="opacity:.6">
+          <span class="form-lbl">✓ SPY — S&amp;P 500 <small>always on</small></span>
+          <input type="text" id="me_symbol_spy" placeholder="SP500" style="width:100px;text-align:left">
         </div>
 
-        <!-- Results panel -->
-        <div style="margin-top:24px" id="meResultsPanel">
-          <div class="card-title" style="margin-bottom:10px">Backtest Results</div>
-          <div id="meResultsBody" style="color:var(--text3);font-size:12px">
-            No results yet — run the backtester then click Refresh.
-          </div>
-          <button class="btn-save" style="margin-top:12px;background:transparent;border:1px solid #444;color:var(--text3);padding:5px 12px;font-size:12px" onclick="loadMeResults()">↺ Refresh Results</button>
+        <!-- Optional equity -->
+        <div class="form-row">
+          <span class="form-lbl"><input type="checkbox" id="me_include_russell" style="margin-right:6px">IWM — Russell 2000</span>
+          <input type="text" id="me_symbol_russell" placeholder="US2000" style="width:100px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl"><input type="checkbox" id="me_include_dax" style="margin-right:6px">DAX — Germany 40 <small>🇩🇪 EU PMI</small></span>
+          <input type="text" id="me_symbol_dax" placeholder="GER40" style="width:100px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl"><input type="checkbox" id="me_include_gold" style="margin-right:6px">GLD — Gold ⚡</span>
+          <input type="text" id="me_symbol_gold" placeholder="XAUUSD" style="width:100px;text-align:left">
+        </div>
+
+        <!-- Defensive / hedge -->
+        <div class="form-row">
+          <span class="form-lbl"><input type="checkbox" id="me_include_tlt" style="margin-right:6px">TLT — 20Y Bond hedge 📈</span>
+          <input type="text" id="me_symbol_tlt" placeholder="USB30Y" style="width:100px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl"><input type="checkbox" id="me_include_bil" style="margin-right:6px">BIL — T-Bills <small>cash sleeve</small></span>
+          <span style="font-size:11px;color:var(--text3);font-style:italic">cash — not traded</span>
+        </div>
+        <div class="toggle-wrap" style="margin-top:6px">
+          <input type="checkbox" id="me_portfolio_mode">
+          <label for="me_portfolio_mode">Portfolio Mode <small>equity + bond always 100% deployed</small></label>
+        </div>
+
+        <div style="margin-top:16px;margin-bottom:6px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Bot Control</div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="me_enabled">
+          <label for="me_enabled">Enabled</label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="me_paper_mode">
+          <label for="me_paper_mode">Paper mode <small>log signals, no real orders</small></label>
+        </div>
+        <div class="form-row" style="margin-top:8px">
+          <span class="form-lbl">Rebalance threshold <small>min % change</small></span>
+          <input type="number" id="me_rebalance_threshold" min="0.01" max="0.20" step="0.01" style="width:75px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Poll interval <small>seconds</small></span>
+          <input type="number" id="me_poll_interval_s" min="300" max="86400" step="300" style="width:75px">
+        </div>
+
+        <div style="margin-top:16px;padding:12px;background:#0d0d1a;border:1px solid rgba(129,140,248,0.2);border-radius:6px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Run the live bot:</div>
+          <code style="font-size:11px;color:#a5b4fc;display:block">python MacroEquityBot/macro_equity_bot.py --dashboard-url http://localhost:3000</code>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Add <code>--live</code> to disable paper mode. Add <code>--force-rebalance</code> to rebalance now.</div>
         </div>
       </div>
 
     </div><!-- /grid -->
+
+    <!-- MT5 Credentials -->
+    <div class="card">
+      <div class="card-title">MT5 Credentials — Macro Equity Bot</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+        Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">macro_equity_credentials</code>).
+        One account is sufficient — all instruments (NAS100, SP500, GER40, XAUUSD, USB30Y) can trade from a single MT5 USD account.
+      </div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <div>
+          <div class="form-row"><span class="form-lbl">Account number</span><input type="number"   id="me_mt5_account"  placeholder="12345678"         style="width:130px"></div>
+          <div class="form-row"><span class="form-lbl">Password</span>      <input type="password" id="me_mt5_password"  placeholder="••••••••"         style="width:130px"></div>
+        </div>
+        <div>
+          <div class="form-row"><span class="form-lbl">Server</span>         <input type="text" id="me_mt5_server" placeholder="ICMarkets-Demo01"       style="width:190px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">Terminal path <small>opt</small></span><input type="text" id="me_mt5_path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" style="width:280px;text-align:left"></div>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+        <button class="btn-save" style="background:#818cf8;max-width:200px;padding:9px" onclick="saveMeCreds()">Save Credentials</button>
+        <span id="meCredsStatus" class="inline-status"></span>
+      </div>
+
+      <!-- Backtest results quick view -->
+      <div style="margin-top:24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div class="card-title" style="margin:0">Last Backtest Results</div>
+          <span id="meRunAt" style="font-size:11px;color:var(--text3)"></span>
+          <button class="btn-save" style="margin-left:auto;background:transparent;border:1px solid #444;color:var(--text3);padding:4px 10px;font-size:11px" onclick="loadMeResults()">↺ Refresh</button>
+        </div>
+        <div id="meResultsBody" style="color:var(--text3);font-size:12px">No backtest results — open the <a href="macro-equity-backtest.html" style="color:#818cf8">Backtester</a> and run first.</div>
+        <div class="bs-rows" id="meResultsSummary" style="margin-top:8px"></div>
+      </div>
+    </div>
 
   </div><!-- /tab-macroequity -->
 
@@ -2521,13 +2580,41 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       </div>
     </div>
 
-    <!-- ── Macro Equity Backtest view ── -->
-    <div id="posMacroEqView" class="card" style="display:none">
+    <!-- ── Macro Equity view ── -->
+    <div id="posMacroEqView" style="display:none">
+
+      <!-- Live bot positions -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="pos-header">
+          <div>
+            <div class="card-title">Live Bot — Open Positions &amp; Rebalance Log</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">Updated by <code>MacroEquityBot/macro_equity_bot.py</code> each poll cycle</div>
+          </div>
+          <button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="loadMeLivePosTab()">↺ Refresh</button>
+        </div>
+        <div class="pos-table-wrap" id="meLivePosWrap">
+          <table class="pos-table">
+            <thead><tr>
+              <th>Symbol</th><th>Dir</th><th>Lots</th><th>Open</th><th>Current</th><th>P&amp;L</th><th>Opened</th>
+            </tr></thead>
+            <tbody id="meLivePosBody">
+              <tr><td colspan="7" class="pos-empty">No live positions — start the bot first</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px">
+          <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Rebalance History</div>
+          <div id="meRebLogBody" style="font-size:12px;color:var(--text3)">—</div>
+        </div>
+      </div>
+
+      <!-- Backtest trade log -->
+      <div class="card">
       <div class="pos-header">
         <div>
-          <div class="card-title">Macro-Regime Equity Backtest — Trade Log</div>
+          <div class="card-title">Backtest Trade Log</div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px">
-            Populated automatically when you run the backtest from <a href="macro-equity-backtest.html" style="color:#818cf8">macro-equity-backtest.html</a>. Shows all long entry/exit pairs for QQQ &amp; SPY.
+            Populated when you run the backtest from <a href="macro-equity-backtest.html" style="color:#818cf8">macro-equity-backtest.html</a>.
           </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -2563,7 +2650,9 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         </table>
       </div>
       <div id="meBtStats" style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text3)"></div>
-    </div>
+      </div><!-- /backtest card -->
+
+    </div><!-- /posMacroEqView -->
 
   </div><!-- /tab-positions -->
 
@@ -3398,7 +3487,10 @@ function switchPosSubTab(view) {
   try { localStorage.setItem('posSubTab', view); } catch(e) {}
   if (view === 'history')     { _initHistoryView(); loadHistoryTab(); }
   if (view === 'hedge')       { loadHedgeAuditTab(); }
-  if (view === 'macroequity') { if (typeof loadMeTradesTab === 'function') loadMeTradesTab(); }
+  if (view === 'macroequity') {
+    if (typeof loadMeTradesTab  === 'function') loadMeTradesTab();
+    if (typeof loadMeLivePosTab === 'function') loadMeLivePosTab();
+  }
 }
 window.switchPosSubTab = switchPosSubTab;
 
