@@ -2311,7 +2311,15 @@ async function fetchMeRawData(fredKey) {
   console.log('[macro-equity-bt] fetching OANDA DE30_EUR (DAX / Germany 40)…');
   let daxBars = [];
   try { daxBars = await fetchOandaD1Range('DE30_EUR', FROM_DATE); }
-  catch (e) { console.warn('[macro-equity-bt] DE30_EUR fetch failed (DAX unavailable):', e.message); }
+  catch (e) { console.warn('[macro-equity-bt] DE30_EUR OANDA fetch failed, will try Yahoo fallback:', e.message); }
+  if (daxBars.length === 0) {
+    console.log('[macro-equity-bt] DE30_EUR unavailable — falling back to Yahoo Finance ^GDAXI…');
+    try {
+      const daxYahooMap = await fetchYahooOHLC('^GDAXI', FROM_UNIX);
+      daxBars = [...daxYahooMap.entries()].map(([date, v]) => ({ date, open: v.open, close: v.close }));
+      console.log(`[macro-equity-bt] DAX ^GDAXI (Yahoo): ${daxBars.length} bars`);
+    } catch (e) { console.warn('[macro-equity-bt] DAX Yahoo ^GDAXI fetch also failed:', e.message); }
+  }
 
   // Build master date index from union of all instrument dates, sorted
   const allDates = new Set([
@@ -2437,6 +2445,12 @@ app.post('/api/macro-equity-backtest/run', express.json({ limit: '1mb' }), (req,
 
   (async () => {
     try {
+      // Bust cache if a newly-requested instrument has no data in the current cache
+      if (includeDAX && ME_RAW_CACHE.data && !ME_RAW_CACHE.data.dax.available) {
+        console.log('[macro-equity-bt] cache bust: DAX requested but not in cache — re-fetching…');
+        ME_RAW_CACHE.fetchedAt = null;
+      }
+
       // Use cache if fresh
       let rawData;
       if (ME_RAW_CACHE.data && ME_RAW_CACHE.fetchedAt && Date.now() - ME_RAW_CACHE.fetchedAt < ME_CACHE_TTL) {
