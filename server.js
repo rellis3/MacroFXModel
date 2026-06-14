@@ -2406,6 +2406,8 @@ app.post('/api/macro-equity-backtest/run', express.json({ limit: '1mb' }), (req,
   const includeRussell = body.includeRussell !== false && body.includeRussell !== 'false';
   const includeTLT     = body.includeTLT     === true  || body.includeTLT     === 'true';
   const includeDAX     = body.includeDAX     === true  || body.includeDAX     === 'true';
+  const portfolioMode  = body.portfolioMode  === true  || body.portfolioMode  === 'true';
+  if (portfolioMode) config.portfolioMode = true;
 
   _purgeStaleMeJobs();
   meJobs.set(jobId, { status: 'running', startedAt, phase: 'Fetching data…' });

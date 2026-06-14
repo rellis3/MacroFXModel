@@ -524,7 +524,111 @@ function regimeBreakdown(trades) {
   });
 }
 
-// ── Monthly macro score series for chart ──────────────────────────────────────
+// ── Portfolio combiner ────────────────────────────────────────────────────────
+
+// Combines equity instruments + one inverted bond instrument into a unified
+// portfolio where equity_alloc is driven by the primary equity's macro signal
+// and bond_alloc = 1 - equity_alloc (always fully deployed).
+function buildPortfolioResult(equityKeys, bondKey, result, cfg) {
+  const primaryKey = equityKeys[0];
+  const eqMaps  = Object.fromEntries(equityKeys.map(k =>
+    [k, new Map(result[k].trades.map(t => [t.monthKey, t]))]));
+  const bondMap = new Map(result[bondKey].trades.map(t => [t.monthKey, t]));
+
+  // Common months across all instruments
+  const commonMonths = [...eqMaps[primaryKey].keys()]
+    .filter(mk => equityKeys.every(k => eqMaps[k].has(mk)) && bondMap.has(mk))
+    .sort();
+
+  if (commonMonths.length < 12) return null;
+
+  const portRets   = [];
+  const bhRets     = [];
+  const portCurve  = [{ date: commonMonths[0], equity: 1 }];
+  const bhCurve    = [{ date: commonMonths[0], equity: 1 }];
+  const portTrades = [];
+  let portEq = 1, bhEq = 1, prevAlloc = null;
+
+  for (const mk of commonMonths) {
+    const primaryT  = eqMaps[primaryKey].get(mk);
+    const bondT     = bondMap.get(mk);
+    if (!primaryT || !bondT) continue;
+
+    const equityAlloc = primaryT.alloc;
+    const bondAlloc   = 1 - equityAlloc;
+
+    // Average monthly return across all equity instruments
+    let avgEqRet = 0, nEq = 0;
+    for (const k of equityKeys) {
+      const t = eqMaps[k].get(mk);
+      if (t && isFinite(t.monthRet)) { avgEqRet += t.monthRet; nEq++; }
+    }
+    if (nEq > 0) avgEqRet /= nEq;
+
+    const bondRet = isFinite(bondT.monthRet) ? bondT.monthRet : 0;
+
+    let portRet = equityAlloc * avgEqRet + bondAlloc * bondRet;
+    if (prevAlloc !== null && Math.abs(equityAlloc - prevAlloc) > 0.05)
+      portRet -= cfg.costs * Math.abs(equityAlloc - prevAlloc);
+    prevAlloc = equityAlloc;
+
+    // B&H: equal-weight static across all instruments, no rebalancing cost
+    const nInst  = equityKeys.length + 1;
+    const bhRet  = (equityKeys.reduce((s, k) => s + (eqMaps[k].get(mk)?.monthRet ?? 0), 0)
+                    + bondRet) / nInst;
+
+    portEq *= (1 + portRet);
+    bhEq   *= (1 + bhRet);
+    portRets.push(portRet);
+    bhRets.push(bhRet);
+    portCurve.push({ date: mk, equity: round4(portEq) });
+    bhCurve.push({   date: mk, equity: round4(bhEq) });
+
+    portTrades.push({
+      monthKey: mk, alloc: round4(equityAlloc),
+      monOpen: round4(primaryT.monOpen), monClose: round4(primaryT.monClose),
+      monthRet: round4(avgEqRet), stratRet: round4(portRet),
+      macroScore: round4(primaryT.macroScore), vixZ: round4(primaryT.vixZ),
+      volRegime: primaryT.volRegime, trendState: primaryT.trendState,
+      win: portRet > 0,
+    });
+  }
+
+  const totalMo = commonMonths.length;
+  const met     = metrics(portRets, portCurve, totalMo, portTrades);
+  const bh      = bhMetrics(bhRets, bhCurve, totalMo);
+  const stratDD = drawdownSeries(portCurve);
+  const bhDD    = drawdownSeries(bhCurve);
+  const regime  = regimeBreakdown(portTrades);
+
+  const eqLabels  = equityKeys.map(k => (result[k].label ?? k).split('—')[0].trim()).join('+');
+  const bondLabel = (result[bondKey].label ?? bondKey).split('—')[0].trim();
+
+  return {
+    label:       `${eqLabels} + ${bondLabel} Portfolio`,
+    inverted:    false,
+    isPortfolio: true,
+    metrics:     rndMet(met),
+    bh:          rndBH(bh),
+    equityCurve: thinEquity(portCurve),
+    bhCurve:     thinEquity(bhCurve),
+    drawdown:    thinDD(stratDD),
+    bhDrawdown:  thinDD(bhDD),
+    macroScore:  result[primaryKey].macroScore,
+    trades:      portTrades,
+    walkForward: { windows: [], meanOOSSharpe: null, meanISSharpe: null, wfe: null, oosCurve: [] },
+    regime,
+    verdict:     {
+      oosSharpe:   { value: null, pass: null, target: 0.5 },
+      wfe:         { value: null, pass: null, target: 0.5 },
+      maxDD:       { strat: round4(met.maxDD), bh: round4(bh.maxDD), pass: Math.abs(met.maxDD) < Math.abs(bh.maxDD) },
+      overallPass: null,
+      isPortfolio: true,
+    },
+  };
+}
+
+
 
 // Returns raw (non-inverted) composite score with per-instrument alloc for shading.
 function monthlyMacroScoreSeries(dates, macroScore, trades) {
@@ -659,6 +763,19 @@ export function runMacroEquityBacktest(data, config = {}) {
       regime,
       verdict:     verdictFn(met, bh, wf[key]),
     };
+  }
+
+  // Portfolio mode: combine equity instruments + TLT into a single always-deployed portfolio
+  if (cfg.portfolioMode) {
+    const equityKeys = result.instruments.filter(k => !instruments[k]?.inverted);
+    const bondKey    = result.instruments.find(k  =>  instruments[k]?.inverted);
+    if (equityKeys.length > 0 && bondKey) {
+      const portfolio = buildPortfolioResult(equityKeys, bondKey, result, cfg);
+      if (portfolio) {
+        result.PORTFOLIO = portfolio;
+        result.instruments = [...result.instruments, 'PORTFOLIO'];
+      }
+    }
   }
 
   return result;
