@@ -86,6 +86,8 @@ function isCfKey(key) {
   if (key.startsWith('vol_session_')) return true;
   // vol_forecast_* are daily vol forecasts + index — must survive Railway redeploys
   if (key.startsWith('vol_forecast_')) return true;
+  // vol_reference_* are user-pasted reference exports — cannot be auto-rebuilt
+  if (key.startsWith('vol_reference_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 
