@@ -2,13 +2,18 @@
 """
 Macro-Regime-Conditional Equity Strategy Backtester
 =====================================================
-Targets NQ (QQQ proxy) and SPX (SPY proxy) · 2005-present
+Targets NQ (NAS100_USD) and SPX (SPX500_USD) · 2005-present
 Walk-forward validated · Full performance report with regime breakdown
 
-Usage:
-    python macro_equity_backtest.py --fred-key YOUR_KEY [--base-url http://localhost:3000]
+Price data:  OANDA v20 API  (NAS100_USD, SPX500_USD daily OHLC)
+Vol regime:  yfinance        (^VIX — CBOE implied vol, kept real)
+Macro data:  FRED API        (8 series — balance sheet, yields, spreads, ISM)
 
-FRED key: get one free at https://fred.stlouisfed.org/docs/api/api_key.html
+Usage:
+    python macro_equity_backtest.py [--base-url http://localhost:3000]
+
+FRED key : set FRED_KEY env var (Railway) or pass --fred-key
+OANDA key: set OANDA_KEY env var (already in Railway)
 """
 
 import sys
@@ -65,13 +70,20 @@ FRED_SERIES = {
     'breakeven': 'T5YIE',        # 5Y breakeven inflation   (daily)
 }
 
-# yfinance tickers
-YF_TICKERS = ['QQQ', 'SPY', 'TLT', 'GLD', '^VIX']
+# OANDA instruments → internal name mapping
+# (same symbols already used by the live bot)
+OANDA_INSTRUMENTS = {
+    'NAS100_USD': 'QQQ',   # Nasdaq-100 proxy
+    'SPX500_USD': 'SPY',   # S&P 500 proxy
+}
 
-# Instruments to backtest
+# yfinance — VIX only (CBOE implied vol, not computed — kept real)
+YF_VIX_TICKER = '^VIX'
+
+# Instruments to backtest (internal names used throughout)
 INSTRUMENTS = {
-    'QQQ': 'Nasdaq-100 (QQQ)',
-    'SPY': 'S&P 500 (SPY)',
+    'QQQ': 'Nasdaq-100 (NAS100_USD)',
+    'SPY': 'S&P 500 (SPX500_USD)',
 }
 
 # ── Signal weights ────────────────────────────────────────────────────────────
@@ -214,15 +226,82 @@ def compute_metrics(returns: pd.Series, equity: pd.Series, position: pd.Series) 
 #  DATA FETCHING
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def fetch_yfinance(start: str, end: str) -> pd.DataFrame:
-    print(f"  yfinance: {', '.join(YF_TICKERS)}")
-    raw = yf.download(YF_TICKERS, start=start, end=end, auto_adjust=True,
-                      progress=False, timeout=30)
-    # Normalise column MultiIndex
-    if isinstance(raw.columns, pd.MultiIndex):
-        raw.columns = ['_'.join(c).strip() for c in raw.columns]
+def _oanda_base(env: str = 'live') -> str:
+    return ('https://api-fxtrade.oanda.com'
+            if env == 'live' else 'https://api-fxpractice.oanda.com')
+
+
+def fetch_oanda_bars(instrument: str, start: str, end: str,
+                     oanda_key: str, oanda_env: str = 'live') -> pd.DataFrame:
+    """
+    Fetch daily OHLC from OANDA v20 API, paginating in 4 500-bar chunks.
+    Returns a DataFrame indexed by date (tz-naive) with columns open, close.
+    """
+    base    = _oanda_base(oanda_env)
+    headers = {'Authorization': f'Bearer {oanda_key}'}
+    all_candles: list = []
+
+    from_dt = pd.Timestamp(start)
+    end_dt  = pd.Timestamp(end)
+
+    while from_dt < end_dt:
+        url = (f"{base}/v3/instruments/{instrument}/candles"
+               f"?granularity=D&price=M&count=4500"
+               f"&from={from_dt.strftime('%Y-%m-%dT00:00:00Z')}")
+        req = urllib.request.Request(url, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                data = json.loads(r.read())
+        except Exception as e:
+            print(f"  OANDA {instrument} fetch error: {e}")
+            break
+
+        candles = [c for c in data.get('candles', [])
+                   if c.get('complete') and c.get('mid')]
+        if not candles:
+            break
+
+        all_candles.extend(candles)
+
+        # Advance past the last returned bar
+        last_ts = pd.Timestamp(candles[-1]['time']).tz_localize(None)
+        if last_ts >= end_dt or last_ts <= from_dt:
+            break
+        from_dt = last_ts + pd.Timedelta(days=1)
+
+    if not all_candles:
+        print(f"  WARN: no OANDA bars returned for {instrument}")
+        return pd.DataFrame(columns=['open', 'close'])
+
+    records = []
+    for c in all_candles:
+        ts = pd.Timestamp(c['time']).tz_localize(None).normalize()  # date only
+        records.append({
+            'date':  ts,
+            'open':  float(c['mid']['o']),
+            'close': float(c['mid']['c']),
+        })
+
+    df = pd.DataFrame(records).drop_duplicates('date').set_index('date')
+    df.index = pd.to_datetime(df.index)
+    print(f"  OANDA {instrument}: {len(df)} bars "
+          f"({df.index[0].date()} → {df.index[-1].date()})")
+    return df
+
+
+def fetch_vix(start: str, end: str) -> pd.Series:
+    """Fetch ^VIX close from yfinance — kept real (CBOE implied vol)."""
+    print(f"  yfinance: ^VIX…", end=' ', flush=True)
+    raw = yf.download(YF_VIX_TICKER, start=start, end=end,
+                      auto_adjust=True, progress=False, timeout=30)
     raw.index = pd.to_datetime(raw.index)
-    return raw
+    # Handle both single-ticker and multi-index column formats
+    if isinstance(raw.columns, pd.MultiIndex):
+        close = raw[('Close', YF_VIX_TICKER)]
+    else:
+        close = raw['Close']
+    print(f"{len(close)} obs")
+    return close.rename('VIX_close')
 
 
 def fetch_fred(api_key: str, start: str, end: str) -> pd.DataFrame:
@@ -240,40 +319,39 @@ def fetch_fred(api_key: str, start: str, end: str) -> pd.DataFrame:
     return pd.DataFrame(frames)
 
 
-def build_dataset(yf_raw: pd.DataFrame, fred_raw: pd.DataFrame) -> pd.DataFrame:
+def build_dataset(oanda_bars: dict, vix: pd.Series,
+                  fred_raw: pd.DataFrame) -> pd.DataFrame:
     """Align all series on a business-day index; apply publication lags."""
     idx = pd.date_range(START_DATE, END_DATE, freq='B')
 
-    # ── Extract price columns from yfinance ───────────────────────────────────
-    cols = {}
-    for ticker in ['QQQ', 'SPY', 'TLT', 'GLD']:
-        for field in ['Close', 'Open']:
-            col = f'{field}_{ticker}'
-            if col in yf_raw.columns:
-                cols[f'{ticker}_{field.lower()}'] = yf_raw[col]
-    # VIX close
-    for col_try in ['Close_^VIX', 'Close_VIX', '^VIX_close']:
-        if col_try in yf_raw.columns:
-            cols['VIX_close'] = yf_raw[col_try]
-            break
+    # ── Price columns from OANDA (NAS100_USD → QQQ, SPX500_USD → SPY) ────────
+    price_cols = {}
+    for oanda_sym, alias in OANDA_INSTRUMENTS.items():
+        df_o = oanda_bars.get(oanda_sym, pd.DataFrame())
+        if not df_o.empty:
+            price_cols[f'{alias}_close'] = df_o['close']
+            price_cols[f'{alias}_open']  = df_o['open']
 
-    price_df = pd.DataFrame(cols)
+    price_df = pd.DataFrame(price_cols)
     price_df.index = pd.to_datetime(price_df.index)
 
-    # ── Reindex to business days and forward-fill ─────────────────────────────
+    # ── VIX from yfinance ─────────────────────────────────────────────────────
+    vix_df = vix.to_frame()
+    vix_df.index = pd.to_datetime(vix_df.index)
+
+    # ── Reindex everything to business days and forward-fill ─────────────────
     price_r = price_df.reindex(idx, method='ffill')
+    vix_r   = vix_df.reindex(idx,   method='ffill')
     fred_r  = fred_raw.reindex(idx, method='ffill')
 
     # ── Apply FRED publication lags ───────────────────────────────────────────
-    # Weekly series: 5-day lag
     for col in ['walcl', 'wtregen', 'rrpo', 'curve', 'credit', 'real_yld', 'breakeven']:
         if col in fred_r.columns:
             fred_r[col] = fred_r[col].shift(WEEKLY_LAG)
-    # Monthly series: 21-day lag
     if 'ism' in fred_r.columns:
         fred_r['ism'] = fred_r['ism'].shift(MONTHLY_LAG)
 
-    df = pd.concat([price_r, fred_r], axis=1)
+    df = pd.concat([price_r, vix_r, fred_r], axis=1)
     df = df.dropna(subset=['QQQ_close', 'SPY_close'])
     return df
 
@@ -893,16 +971,20 @@ def main():
     parser = argparse.ArgumentParser(
         description='Macro-Regime-Conditional Equity Backtester'
     )
-    parser.add_argument('--fred-key', default=None,
+    parser.add_argument('--fred-key',  default=None,
                         help='FRED API key (or set FRED_KEY / FRED_API_KEY env var)')
-    parser.add_argument('--base-url', default=None,
+    parser.add_argument('--oanda-key', default=None,
+                        help='OANDA API key (or set OANDA_KEY env var)')
+    parser.add_argument('--oanda-env', default=None,
+                        help='OANDA environment: live (default) or practice')
+    parser.add_argument('--base-url',  default=None,
                         help='Dashboard server URL (e.g. http://localhost:3000) '
                              'to read config and push results')
     args = parser.parse_args()
 
     base_url = args.base_url or os.environ.get('DASHBOARD_URL')
 
-    # Pull FRED key: CLI arg → FRED_KEY (Railway) → FRED_API_KEY → KV config → interactive prompt
+    # ── FRED key: CLI → FRED_KEY (Railway) → FRED_API_KEY → KV → prompt ──────
     fred_key = args.fred_key or os.environ.get('FRED_KEY') or os.environ.get('FRED_API_KEY')
     if not fred_key and base_url:
         cfg = load_config_from_server(base_url)
@@ -915,16 +997,38 @@ def main():
         print("ERROR: FRED API key is required. Exiting.")
         sys.exit(1)
 
+    # ── OANDA key: CLI → OANDA_KEY (Railway) ─────────────────────────────────
+    oanda_key = args.oanda_key or os.environ.get('OANDA_KEY')
+    if not oanda_key:
+        oanda_key = input("Enter OANDA API key (or set OANDA_KEY env var): ").strip()
+    if not oanda_key:
+        print("ERROR: OANDA API key is required for price data. Exiting.")
+        sys.exit(1)
+
+    oanda_env = args.oanda_env or os.environ.get('OANDA_ENV', 'live')
+
     out_dir = os.path.dirname(os.path.abspath(__file__))
 
     # ── 1. Fetch data ──────────────────────────────────────────────────────────
     print(f"\n[1/6] Fetching market data ({START_DATE} → {END_DATE}) …")
-    yf_raw   = fetch_yfinance(START_DATE, END_DATE)
+
+    # OANDA: price bars for each instrument
+    oanda_bars = {}
+    for oanda_sym in OANDA_INSTRUMENTS:
+        print(f"  OANDA {oanda_sym}…", end=' ', flush=True)
+        oanda_bars[oanda_sym] = fetch_oanda_bars(
+            oanda_sym, START_DATE, END_DATE, oanda_key, oanda_env
+        )
+
+    # yfinance: VIX only
+    vix = fetch_vix(START_DATE, END_DATE)
+
+    # FRED: macro series
     fred_raw = fetch_fred(fred_key, START_DATE, END_DATE)
 
     # ── 2. Build aligned dataset ───────────────────────────────────────────────
     print("\n[2/6] Aligning & applying publication lags …")
-    df = build_dataset(yf_raw, fred_raw)
+    df = build_dataset(oanda_bars, vix, fred_raw)
     print(f"  Dataset: {len(df)} trading days  "
           f"({df.index[0].date()} → {df.index[-1].date()})")
 

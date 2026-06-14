@@ -59,9 +59,18 @@ Even if the macro score is bullish, the system reduces exposure in high-volatili
 
 ## Data Sources
 
-All free, no paid subscriptions required.
+**OANDA v20 API** (`OANDA_KEY` — already in Railway) — price data for both instruments:
 
-**FRED API** (free key at [fred.stlouisfed.org](https://fred.stlouisfed.org/docs/api/api_key.html)) — set as the `FRED_KEY` Railway environment variable, or pass `--fred-key` on the CLI:
+| OANDA Symbol | Role | Internal name |
+|--------------|------|---------------|
+| NAS100_USD | Nasdaq-100 daily OHLC | QQQ |
+| SPX500_USD | S&P 500 daily OHLC | SPY |
+
+This is the **same data source the live bot uses**, so there is no discrepancy between backtest and live execution. History goes back ~20 years (up to 5 000 bars per request, paginated automatically).
+
+**yfinance** — `^VIX` (CBOE implied volatility index) only. Kept real rather than computed because implied vol spikes earlier and harder than realised vol — exactly what you need for a risk gate.
+
+**FRED API** (`FRED_KEY` — already in Railway, or pass `--fred-key`) — macro series:
 
 | Series ID | Description | Frequency |
 |-----------|-------------|-----------|
@@ -78,11 +87,7 @@ All free, no paid subscriptions required.
 
 | Ticker | Purpose |
 |--------|---------|
-| QQQ | Nasdaq-100 proxy (primary backtest instrument) |
-| SPY | S&P 500 proxy (generalisation test) |
-| TLT | 20Y bond (context signal) |
-| GLD | Gold (risk sentiment context) |
-| ^VIX | CBOE Volatility Index |
+| ^VIX | CBOE Volatility Index — real implied vol for the regime gate |
 
 ---
 
@@ -122,11 +127,14 @@ The script will auto-install missing packages on first run.
 ```bash
 cd macro-regime-conditional
 
-# If FRED_KEY is already set as an environment variable (e.g. Railway):
+# Both keys already set in Railway environment:
 python macro_equity_backtest.py
 
-# Or pass the key explicitly:
-python macro_equity_backtest.py --fred-key YOUR_FRED_KEY
+# Or pass explicitly:
+python macro_equity_backtest.py --fred-key YOUR_FRED_KEY --oanda-key YOUR_OANDA_KEY
+
+# Practice account:
+python macro_equity_backtest.py --oanda-env practice
 ```
 
 ### Run with dashboard integration
