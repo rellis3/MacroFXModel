@@ -529,15 +529,19 @@ function regimeBreakdown(trades) {
 // Combines equity instruments + one inverted bond instrument into a unified
 // portfolio where equity_alloc is driven by the primary equity's macro signal
 // and bond_alloc = 1 - equity_alloc (always fully deployed).
-function buildPortfolioResult(equityKeys, bondKey, result, cfg) {
+// bondKeys: array of all inverted instrument keys — defensive alloc split equally between them
+function buildPortfolioResult(equityKeys, bondKeys, result, cfg) {
   const primaryKey = equityKeys[0];
-  const eqMaps  = Object.fromEntries(equityKeys.map(k =>
+  const eqMaps   = Object.fromEntries(equityKeys.map(k =>
     [k, new Map(result[k].trades.map(t => [t.monthKey, t]))]));
-  const bondMap = new Map(result[bondKey].trades.map(t => [t.monthKey, t]));
+  const bondMaps = Object.fromEntries(bondKeys.map(k =>
+    [k, new Map(result[k].trades.map(t => [t.monthKey, t]))]));
 
   // Common months across all instruments
   const commonMonths = [...eqMaps[primaryKey].keys()]
-    .filter(mk => equityKeys.every(k => eqMaps[k].has(mk)) && bondMap.has(mk))
+    .filter(mk =>
+      equityKeys.every(k  => eqMaps[k].has(mk)) &&
+      bondKeys.every(k    => bondMaps[k].has(mk)))
     .sort();
 
   if (commonMonths.length < 12) return null;
@@ -568,17 +572,24 @@ function buildPortfolioResult(equityKeys, bondKey, result, cfg) {
     }
     if (nEq > 0) avgEqRet /= nEq;
 
-    const bondRet = isFinite(bondT.monthRet) ? bondT.monthRet : 0;
+    // Average defensive return across all bond/defensive instruments (equal split)
+    const perBondAlloc = bondAlloc / bondKeys.length;
+    let bondBlendRet = 0;
+    for (const bk of bondKeys) {
+      const bt = bondMaps[bk].get(mk);
+      bondBlendRet += perBondAlloc * (isFinite(bt?.monthRet) ? bt.monthRet : 0);
+    }
 
-    let portRet = equityAlloc * avgEqRet + bondAlloc * bondRet;
+    let portRet = equityAlloc * avgEqRet + bondBlendRet;
     if (prevAlloc !== null && Math.abs(equityAlloc - prevAlloc) > 0.05)
       portRet -= cfg.costs * Math.abs(equityAlloc - prevAlloc);
     prevAlloc = equityAlloc;
 
     // B&H: equal-weight static across all instruments, no rebalancing cost
-    const nInst  = equityKeys.length + 1;
-    const bhRet  = (equityKeys.reduce((s, k) => s + (eqMaps[k].get(mk)?.monthRet ?? 0), 0)
-                    + bondRet) / nInst;
+    const nInst = equityKeys.length + bondKeys.length;
+    const bhBondRet = bondKeys.reduce((s, bk) => s + (bondMaps[bk].get(mk)?.monthRet ?? 0), 0);
+    const bhRet = (equityKeys.reduce((s, k) => s + (eqMaps[k].get(mk)?.monthRet ?? 0), 0)
+                   + bhBondRet) / nInst;
 
     portEq *= (1 + portRet);
     bhEq   *= (1 + bhRet);
@@ -604,11 +615,11 @@ function buildPortfolioResult(equityKeys, bondKey, result, cfg) {
   const bhDD    = drawdownSeries(bhCurve);
   const regime  = regimeBreakdown(portTrades);
 
-  const eqLabels  = equityKeys.map(k => (result[k].label ?? k).split('—')[0].trim()).join('+');
-  const bondLabel = (result[bondKey].label ?? bondKey).split('—')[0].trim();
+  const eqLabels   = equityKeys.map(k => (result[k].label ?? k).split('—')[0].trim()).join('+');
+  const bondLabels = bondKeys.map(k   => (result[k].label ?? k).split('—')[0].trim()).join('+');
 
   return {
-    label:       `${eqLabels} + ${bondLabel} Portfolio`,
+    label:       `${eqLabels} + ${bondLabels} Portfolio`,
     inverted:    false,
     isPortfolio: true,
     metrics:     rndMet(met),
@@ -617,7 +628,7 @@ function buildPortfolioResult(equityKeys, bondKey, result, cfg) {
     bhCurve:     thinEquity(bhCurve),
     drawdown:    thinDD(stratDD),
     bhDrawdown:  thinDD(bhDD),
-    macroScore:  result[primaryKey].macroScore,
+    macroScore:  result[primaryKey]?.macroScore ?? [],
     trades:      portTrades,
     walkForward: { windows: [], meanOOSSharpe: null, meanISSharpe: null, wfe: null, oosCurve: [] },
     regime,
@@ -771,9 +782,9 @@ export function runMacroEquityBacktest(data, config = {}) {
   // Portfolio mode: combine equity instruments + TLT into a single always-deployed portfolio
   if (cfg.portfolioMode) {
     const equityKeys = result.instruments.filter(k => !instruments[k]?.inverted);
-    const bondKey    = result.instruments.find(k  =>  instruments[k]?.inverted);
-    if (equityKeys.length > 0 && bondKey) {
-      const portfolio = buildPortfolioResult(equityKeys, bondKey, result, cfg);
+    const bondKeys   = result.instruments.filter(k =>  instruments[k]?.inverted);
+    if (equityKeys.length > 0 && bondKeys.length > 0) {
+      const portfolio = buildPortfolioResult(equityKeys, bondKeys, result, cfg);
       if (portfolio) {
         result.PORTFOLIO = portfolio;
         result.instruments = [...result.instruments, 'PORTFOLIO'];

@@ -119,6 +119,8 @@
   <span class="bt-run-lbl">Instruments:</span>
   <label><input type="checkbox" id="includeRussell" checked> Russell</label>
   <label><input type="checkbox" id="includeTLT" onchange="updatePortfolioVis()"> TLT Hedge</label>
+  <label><input type="checkbox" id="includeBIL" onchange="updatePortfolioVis()"> T-Bills</label>
+  <label><input type="checkbox" id="includeGold"> Gold ⚡</label>
   <label><input type="checkbox" id="includeDAX"> DAX 🇩🇪</label>
   <div class="rbar-sep" id="portSep" style="display:none"></div>
   <label id="portLabel" style="display:none"><input type="checkbox" id="portfolioMode"> Portfolio Mode</label>
@@ -302,10 +304,11 @@ function hide(id) { const el = document.getElementById(id); if (el) el.style.dis
 
 // Show/hide Portfolio Mode checkbox depending on whether TLT is enabled
 function updatePortfolioVis() {
-  const tltOn = document.getElementById('includeTLT').checked;
-  document.getElementById('portSep').style.display   = tltOn ? '' : 'none';
-  document.getElementById('portLabel').style.display  = tltOn ? '' : 'none';
-  if (!tltOn) document.getElementById('portfolioMode').checked = false;
+  const hasDefensive = document.getElementById('includeTLT').checked
+                    || document.getElementById('includeBIL').checked;
+  document.getElementById('portSep').style.display  = hasDefensive ? '' : 'none';
+  document.getElementById('portLabel').style.display = hasDefensive ? '' : 'none';
+  if (!hasDefensive) document.getElementById('portfolioMode').checked = false;
 }
 
 // ── Instrument tab switch ─────────────────────────────────────────────────────
@@ -340,6 +343,8 @@ async function runBacktest() {
     invertedAllocFloor: parseFloat(document.getElementById('invertedAllocFloor').value),
     includeRussell: document.getElementById('includeRussell').checked,
     includeTLT:     document.getElementById('includeTLT').checked,
+    includeBIL:     document.getElementById('includeBIL').checked,
+    includeGold:    document.getElementById('includeGold').checked,
     includeDAX:     document.getElementById('includeDAX').checked,
     portfolioMode:  document.getElementById('portfolioMode').checked,
   };

@@ -2294,6 +2294,20 @@ async function fetchMeRawData(fredKey) {
     console.log(`[macro-equity-bt] TLT: ${tltMap.size} bars`);
   } catch (e) { console.warn('[macro-equity-bt] TLT Yahoo fetch failed:', e.message); }
 
+  console.log('[macro-equity-bt] fetching GLD (Gold ETF) from Yahoo Finance…');
+  let gldMap = new Map();
+  try {
+    gldMap = await fetchYahooOHLC('GLD', FROM_UNIX);
+    console.log(`[macro-equity-bt] GLD: ${gldMap.size} bars`);
+  } catch (e) { console.warn('[macro-equity-bt] GLD Yahoo fetch failed:', e.message); }
+
+  console.log('[macro-equity-bt] fetching BIL (T-Bills ETF) from Yahoo Finance…');
+  let bilMap = new Map();
+  try {
+    bilMap = await fetchYahooOHLC('BIL', FROM_UNIX);
+    console.log(`[macro-equity-bt] BIL: ${bilMap.size} bars`);
+  } catch (e) { console.warn('[macro-equity-bt] BIL Yahoo fetch failed:', e.message); }
+
   console.log('[macro-equity-bt] fetching OANDA DE30_EUR (DAX / Germany 40)…');
   let daxBars = [];
   try { daxBars = await fetchOandaD1Range('DE30_EUR', FROM_DATE); }
@@ -2305,11 +2319,13 @@ async function fetchMeRawData(fredKey) {
     ...spyBars.map(b => b.date),
     ...russellBars.map(b => b.date),
     ...[...tltMap.keys()],
+    ...[...gldMap.keys()],
+    ...[...bilMap.keys()],
     ...daxBars.map(b => b.date),
   ]);
   const dates = [...allDates].sort();
 
-  // Map OANDA bars to date index (TLT comes from Yahoo Finance Map directly)
+  // Map OANDA bars to date index (Yahoo maps used directly)
   const qqqMap     = new Map(qqqBars.map(b    => [b.date, b]));
   const spyMap     = new Map(spyBars.map(b    => [b.date, b]));
   const russellMap = new Map(russellBars.map(b => [b.date, b]));
@@ -2333,6 +2349,16 @@ async function fetchMeRawData(fredKey) {
     close: dates.map(d => tltMap.get(d)?.close ?? NaN),
     available: tltMap.size > 0,
   };
+  const gold = {
+    open:  dates.map(d => gldMap.get(d)?.open  ?? NaN),
+    close: dates.map(d => gldMap.get(d)?.close ?? NaN),
+    available: gldMap.size > 0,
+  };
+  const tbill = {
+    open:  dates.map(d => bilMap.get(d)?.open  ?? NaN),
+    close: dates.map(d => bilMap.get(d)?.close ?? NaN),
+    available: bilMap.size > 0,
+  };
   const dax = {
     open:  dates.map(d => daxMap.get(d)?.open  ?? NaN),
     close: dates.map(d => daxMap.get(d)?.close ?? NaN),
@@ -2351,7 +2377,7 @@ async function fetchMeRawData(fredKey) {
     eupmi:        alignSparse(dates, fredMaps.eupmi),
   };
 
-  return { dates, qqq, spy, russell, bond30y, dax, vix, fred };
+  return { dates, qqq, spy, russell, bond30y, gold, tbill, dax, vix, fred };
 }
 
 const meJobs = new Map();
@@ -2401,6 +2427,8 @@ app.post('/api/macro-equity-backtest/run', express.json({ limit: '1mb' }), (req,
   const includeRussell = body.includeRussell !== false && body.includeRussell !== 'false';
   const includeTLT     = body.includeTLT     === true  || body.includeTLT     === 'true';
   const includeDAX     = body.includeDAX     === true  || body.includeDAX     === 'true';
+  const includeGold    = body.includeGold    === true  || body.includeGold    === 'true';
+  const includeBIL     = body.includeBIL     === true  || body.includeBIL     === 'true';
   const portfolioMode  = body.portfolioMode  === true  || body.portfolioMode  === 'true';
   if (portfolioMode) config.portfolioMode = true;
 
@@ -2437,6 +2465,12 @@ app.post('/api/macro-equity-backtest/run', express.json({ limit: '1mb' }), (req,
       }
       if (includeDAX && rawData.dax.available) {
         instruments.DAX = { ...rawData.dax, label: 'DAX — Germany 40', inverted: false, euMode: true };
+      }
+      if (includeGold && rawData.gold.available) {
+        instruments.GOLD = { ...rawData.gold, label: 'GLD — Gold', inverted: false };
+      }
+      if (includeBIL && rawData.tbill.available) {
+        instruments.BIL = { ...rawData.tbill, label: 'BIL — T-Bills', inverted: true };
       }
 
       const engineData = { dates: rawData.dates, instruments, vix: rawData.vix, fred: rawData.fred };
