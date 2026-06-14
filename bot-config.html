@@ -334,6 +334,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="gold" onclick="switchTab('gold')" style="color:#f4c430" id="goldTabBtn">⚡ Gold Bot</button>
     <button class="tab-btn" data-tab="hedgebot" onclick="switchTab('hedgebot')" style="color:#06b6d4" id="hbTabBtn">🔀 Hedge Bot</button>
     <button class="tab-btn" data-tab="poshedgebot" onclick="switchTab('poshedgebot')" style="color:#10b981" id="phbTabBtn">🛡 Pos Hedge</button>
+    <button class="tab-btn" data-tab="macroequity" onclick="switchTab('macroequity')" style="color:#818cf8" id="meTabBtn">📈 Macro Equity</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
   </div>
 
@@ -2235,6 +2236,141 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
   </div><!-- /tab-gold -->
 
   <!-- ══════════════════════════════════════════════════════ POSITIONS TAB -->
+  <!-- ═══════════════════ TAB: MACRO-REGIME EQUITY BACKTEST ═══════════════════ -->
+  <div class="tab-pane" id="tab-macroequity">
+
+    <div class="bot-banner" style="background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.28)">
+      <div class="bot-banner-icon">📈</div>
+      <div>
+        <div class="bot-banner-title" style="color:#818cf8">Macro-Regime-Conditional Equity</div>
+        <div class="bot-banner-sub">Proof-of-concept backtester · NQ (QQQ) &amp; SPX (SPY) · FRED macro signals · Walk-forward validated · macro-regime-conditional/macro_equity_backtest.py</div>
+      </div>
+    </div>
+
+    <!-- Results strip (shown when results exist) -->
+    <div class="bs-strip" id="meResultsStrip" style="display:none">
+      <div class="bs-head">
+        <span class="bs-lbl">Last Backtest Run</span>
+        <span id="meRunAt" class="bs-dim"></span>
+      </div>
+      <div class="bs-rows" id="meResultsSummary"></div>
+    </div>
+
+    <div class="grid">
+
+      <!-- ── Configuration ─────────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Strategy Configuration</div>
+
+        <div class="form-row">
+          <span class="form-lbl">FRED API Key <small><a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" style="color:#818cf8">get free key</a></small></span>
+          <input type="password" id="me_fred_api_key" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="width:220px;font-family:monospace">
+        </div>
+
+        <div style="margin-top:14px;margin-bottom:6px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Signal Weights (must sum to 1.0)</div>
+
+        <div class="form-row">
+          <span class="form-lbl">Net Liquidity weight</span>
+          <input type="number" id="me_w_net_liq" min="0" max="1" step="0.05" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Yield Curve weight</span>
+          <input type="number" id="me_w_curve" min="0" max="1" step="0.05" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Credit Spread weight (inverted)</span>
+          <input type="number" id="me_w_credit" min="0" max="1" step="0.05" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Real Yield weight (inverted)</span>
+          <input type="number" id="me_w_real_yield" min="0" max="1" step="0.05" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">ISM weight</span>
+          <input type="number" id="me_w_ism" min="0" max="1" step="0.05" style="width:80px">
+        </div>
+
+        <div style="margin-top:14px;margin-bottom:6px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Entry Thresholds</div>
+
+        <div class="form-row">
+          <span class="form-lbl">Long threshold (macro_score &gt;)</span>
+          <input type="number" id="me_long_threshold" min="-3" max="3" step="0.1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Flat threshold (macro_score &lt;)</span>
+          <input type="number" id="me_flat_threshold" min="-3" max="3" step="0.1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max VIX-Z to enter</span>
+          <input type="number" id="me_vix_z_max" min="0" max="5" step="0.1" style="width:80px">
+        </div>
+
+        <div style="margin-top:14px;margin-bottom:6px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Walk-Forward Parameters</div>
+
+        <div class="form-row">
+          <span class="form-lbl">Train window (trading days)</span>
+          <input type="number" id="me_wf_train" min="100" max="1260" step="21" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Test window (trading days)</span>
+          <input type="number" id="me_wf_test" min="21" max="252" step="21" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Step (trading days)</span>
+          <input type="number" id="me_wf_step" min="5" max="63" step="5" style="width:80px">
+        </div>
+
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#818cf8" onclick="saveMeConfig()">Save Config</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetMeDefaults()">Reset Defaults</button>
+          <span id="meSaveStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+
+        <div style="margin-top:18px;padding:12px;background:#0d0d1a;border:1px solid rgba(129,140,248,0.2);border-radius:6px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Run the backtester with your saved config:</div>
+          <code style="font-size:11px;color:#a5b4fc;display:block;word-break:break-all" id="meRunCmd">python macro-regime-conditional/macro_equity_backtest.py --fred-key &lt;key&gt; --base-url http://localhost:3000</code>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px">Once run, results appear here and trades appear in the Positions tab.</div>
+        </div>
+      </div>
+
+      <!-- ── MT5 Credentials ───────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">MT5 Credentials <small style="color:var(--text3)">(for future live mode)</small></div>
+        <div class="form-row">
+          <span class="form-lbl">Account number</span>
+          <input type="number" id="me_mt5_account" placeholder="12345678" style="width:140px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Password</span>
+          <input type="password" id="me_mt5_password" placeholder="••••••••" style="width:140px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Server</span>
+          <input type="text" id="me_mt5_server" placeholder="ICMarkets-Demo01" style="width:180px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Terminal path <small>optional</small></span>
+          <input type="text" id="me_mt5_path" placeholder="C:\Program Files\..." style="width:220px">
+        </div>
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#818cf8" onclick="saveMeCreds()">Save Credentials</button>
+          <span id="meCredsStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+
+        <!-- Results panel -->
+        <div style="margin-top:24px" id="meResultsPanel">
+          <div class="card-title" style="margin-bottom:10px">Backtest Results</div>
+          <div id="meResultsBody" style="color:var(--text3);font-size:12px">
+            No results yet — run the backtester then click Refresh.
+          </div>
+          <button class="btn-save" style="margin-top:12px;background:transparent;border:1px solid #444;color:var(--text3);padding:5px 12px;font-size:12px" onclick="loadMeResults()">↺ Refresh Results</button>
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+  </div><!-- /tab-macroequity -->
+
   <div class="tab-pane" id="tab-positions">
 
     <!-- Sub-tabs: Live / History / Hedge Audit -->
@@ -2242,6 +2378,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       <button class="pos-subtab active" id="posSubLive"    onclick="switchPosSubTab('live')">Live Positions</button>
       <button class="pos-subtab"        id="posSubHistory" onclick="switchPosSubTab('history')">Trade History</button>
       <button class="pos-subtab"        id="posSubHedge"   onclick="switchPosSubTab('hedge')">Hedge Audit</button>
+      <button class="pos-subtab"        id="posSubMacroEq" onclick="switchPosSubTab('macroequity')" style="color:#818cf8">📈 Macro Equity BT</button>
     </div>
 
     <!-- ── Live Positions view ── -->
@@ -2379,6 +2516,50 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       <div id="posHedgeContent">
         <p style="color:var(--text3);padding:20px">Loading hedge audit log…</p>
       </div>
+    </div>
+
+    <!-- ── Macro Equity Backtest view ── -->
+    <div id="posMacroEqView" class="card" style="display:none">
+      <div class="pos-header">
+        <div>
+          <div class="card-title">Macro-Regime Equity Backtest — Trade Log</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">
+            Populated by running macro_equity_backtest.py with --base-url. Shows all entry/exit pairs for QQQ &amp; SPY.
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="meBtSavedAt" style="font-size:11px;color:var(--text3)"></span>
+          <button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="loadMeTradesTab()">↺ Refresh</button>
+        </div>
+      </div>
+      <!-- Filter pills -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="meBtFilterPills">
+        <button class="pos-subtab active" id="meBtFilterAll" onclick="filterMeBtTrades('all')">All</button>
+        <button class="pos-subtab" id="meBtFilterQQQ" onclick="filterMeBtTrades('QQQ')" style="color:#818cf8">QQQ</button>
+        <button class="pos-subtab" id="meBtFilterSPY" onclick="filterMeBtTrades('SPY')" style="color:#34d399">SPY</button>
+      </div>
+      <div class="pos-table-wrap">
+        <table class="pos-table">
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Entry Date</th>
+              <th>Exit Date</th>
+              <th>Direction</th>
+              <th>Size</th>
+              <th>Entry Price</th>
+              <th>Exit Price</th>
+              <th>P&amp;L %</th>
+              <th>Macro Score</th>
+              <th>Vol Regime</th>
+            </tr>
+          </thead>
+          <tbody id="meBtTableBody">
+            <tr><td colspan="10" class="pos-empty">No backtest trades — run macro_equity_backtest.py first</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="meBtStats" style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text3)"></div>
     </div>
 
   </div><!-- /tab-positions -->
@@ -3191,15 +3372,30 @@ document.querySelector('.tab-btn[data-tab="positions"]')?.addEventListener('clic
 // ── Positions sub-tab switcher ────────────────────────────────────────────────
 
 function switchPosSubTab(view) {
-  document.getElementById('posLiveView').style.display    = view === 'live'    ? '' : 'none';
-  document.getElementById('posHistoryView').style.display = view === 'history' ? '' : 'none';
-  document.getElementById('posHedgeView').style.display   = view === 'hedge'   ? '' : 'none';
-  document.getElementById('posSubLive').classList.toggle('active',    view === 'live');
-  document.getElementById('posSubHistory').classList.toggle('active', view === 'history');
-  document.getElementById('posSubHedge').classList.toggle('active',   view === 'hedge');
+  const viewMap = {
+    live:        'posLiveView',
+    history:     'posHistoryView',
+    hedge:       'posHedgeView',
+    macroequity: 'posMacroEqView',
+  };
+  const btnMap = {
+    live:        'posSubLive',
+    history:     'posSubHistory',
+    hedge:       'posSubHedge',
+    macroequity: 'posSubMacroEq',
+  };
+  Object.entries(viewMap).forEach(([k, vid]) => {
+    const el = document.getElementById(vid);
+    if (el) el.style.display = k === view ? '' : 'none';
+  });
+  Object.entries(btnMap).forEach(([k, bid]) => {
+    const el = document.getElementById(bid);
+    if (el) el.classList.toggle('active', k === view);
+  });
   try { localStorage.setItem('posSubTab', view); } catch(e) {}
-  if (view === 'history') { _initHistoryView(); loadHistoryTab(); }
-  if (view === 'hedge')   { loadHedgeAuditTab(); }
+  if (view === 'history')     { _initHistoryView(); loadHistoryTab(); }
+  if (view === 'hedge')       { loadHedgeAuditTab(); }
+  if (view === 'macroequity') { if (typeof loadMeTradesTab === 'function') loadMeTradesTab(); }
 }
 window.switchPosSubTab = switchPosSubTab;
 

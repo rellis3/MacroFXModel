@@ -2006,6 +2006,269 @@ window.savePhbConfig    = savePhbConfig;
 window.resetPhbDefaults = resetPhbDefaults;
 window.savePhbCreds     = savePhbCreds;
 
+// ── Macro-Regime Equity Backtest ──────────────────────────────────────────────
+
+const ME_DEFAULTS = {
+  fred_api_key:   '',
+  w_net_liq:      0.30,
+  w_curve:        0.20,
+  w_credit:       0.20,
+  w_real_yield:   0.15,
+  w_ism:          0.15,
+  long_threshold: 0.5,
+  flat_threshold: -0.5,
+  vix_z_max:      1.5,
+  wf_train:       504,
+  wf_test:        63,
+  wf_step:        21,
+};
+
+let _meCfg  = { ...ME_DEFAULTS };
+let _meTrades = [];
+let _meTradeFilter = 'all';
+
+function readMeForm() {
+  _meCfg.fred_api_key   = document.getElementById('me_fred_api_key')?.value.trim() ?? '';
+  _meCfg.w_net_liq      = parseFloat(document.getElementById('me_w_net_liq')?.value)     || ME_DEFAULTS.w_net_liq;
+  _meCfg.w_curve        = parseFloat(document.getElementById('me_w_curve')?.value)       || ME_DEFAULTS.w_curve;
+  _meCfg.w_credit       = parseFloat(document.getElementById('me_w_credit')?.value)      || ME_DEFAULTS.w_credit;
+  _meCfg.w_real_yield   = parseFloat(document.getElementById('me_w_real_yield')?.value)  || ME_DEFAULTS.w_real_yield;
+  _meCfg.w_ism          = parseFloat(document.getElementById('me_w_ism')?.value)         || ME_DEFAULTS.w_ism;
+  _meCfg.long_threshold = parseFloat(document.getElementById('me_long_threshold')?.value) ?? ME_DEFAULTS.long_threshold;
+  _meCfg.flat_threshold = parseFloat(document.getElementById('me_flat_threshold')?.value) ?? ME_DEFAULTS.flat_threshold;
+  _meCfg.vix_z_max      = parseFloat(document.getElementById('me_vix_z_max')?.value)     || ME_DEFAULTS.vix_z_max;
+  _meCfg.wf_train       = parseInt(document.getElementById('me_wf_train')?.value)        || ME_DEFAULTS.wf_train;
+  _meCfg.wf_test        = parseInt(document.getElementById('me_wf_test')?.value)         || ME_DEFAULTS.wf_test;
+  _meCfg.wf_step        = parseInt(document.getElementById('me_wf_step')?.value)         || ME_DEFAULTS.wf_step;
+}
+
+function renderMeForm() {
+  const s = id => document.getElementById(id);
+  if (s('me_fred_api_key'))   s('me_fred_api_key').value   = _meCfg.fred_api_key   ?? '';
+  if (s('me_w_net_liq'))      s('me_w_net_liq').value      = _meCfg.w_net_liq      ?? ME_DEFAULTS.w_net_liq;
+  if (s('me_w_curve'))        s('me_w_curve').value        = _meCfg.w_curve        ?? ME_DEFAULTS.w_curve;
+  if (s('me_w_credit'))       s('me_w_credit').value       = _meCfg.w_credit       ?? ME_DEFAULTS.w_credit;
+  if (s('me_w_real_yield'))   s('me_w_real_yield').value   = _meCfg.w_real_yield   ?? ME_DEFAULTS.w_real_yield;
+  if (s('me_w_ism'))          s('me_w_ism').value          = _meCfg.w_ism          ?? ME_DEFAULTS.w_ism;
+  if (s('me_long_threshold')) s('me_long_threshold').value = _meCfg.long_threshold ?? ME_DEFAULTS.long_threshold;
+  if (s('me_flat_threshold')) s('me_flat_threshold').value = _meCfg.flat_threshold ?? ME_DEFAULTS.flat_threshold;
+  if (s('me_vix_z_max'))      s('me_vix_z_max').value      = _meCfg.vix_z_max      ?? ME_DEFAULTS.vix_z_max;
+  if (s('me_wf_train'))       s('me_wf_train').value       = _meCfg.wf_train       ?? ME_DEFAULTS.wf_train;
+  if (s('me_wf_test'))        s('me_wf_test').value        = _meCfg.wf_test        ?? ME_DEFAULTS.wf_test;
+  if (s('me_wf_step'))        s('me_wf_step').value        = _meCfg.wf_step        ?? ME_DEFAULTS.wf_step;
+}
+
+async function loadMeConfig() {
+  try {
+    const stored = await kvGet('macro_equity_config');
+    if (stored) _meCfg = { ...ME_DEFAULTS, ...stored };
+    renderMeForm();
+  } catch(e) { /* non-critical */ }
+}
+
+async function saveMeConfig() {
+  readMeForm();
+  const el = document.getElementById('meSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('macro_equity_config', _meCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#818cf8'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+  } catch(e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetMeDefaults() {
+  _meCfg = { ...ME_DEFAULTS };
+  renderMeForm();
+  const el = document.getElementById('meSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+async function loadMeCreds() {
+  try { _applyCredsToForm(await kvGet('macro_equity_credentials'), 'me_', 'me_mt5_password'); } catch(e) {}
+}
+
+async function saveMeCreds() {
+  await _saveCreds('macro_equity_credentials', 'me_', 'me_mt5_password', 'meCredsStatus');
+}
+
+async function loadMeResults() {
+  const bodyEl  = document.getElementById('meResultsBody');
+  const stripEl = document.getElementById('meResultsStrip');
+  const sumEl   = document.getElementById('meResultsSummary');
+  const runAtEl = document.getElementById('meRunAt');
+  try {
+    const r = await fetch('/api/macro-equity-backtest/results');
+    if (!r.ok) {
+      if (bodyEl) bodyEl.innerHTML = '<span style="color:var(--text3)">No results yet — run <code>macro_equity_backtest.py</code> first.</span>';
+      return;
+    }
+    const { results } = await r.json();
+
+    if (runAtEl && results.run_at) {
+      runAtEl.textContent = `Run: ${new Date(results.run_at).toLocaleString()}`;
+    }
+    if (stripEl) stripEl.style.display = '';
+
+    const tickers = ['QQQ', 'SPY'];
+    const rows = tickers.map(tkr => {
+      const d = results[tkr];
+      if (!d) return '';
+      const m   = d.metrics || {};
+      const wfe = d.wfe != null ? d.wfe.toFixed(2) : 'N/A';
+      const oos = d.mean_oos_sharpe != null ? d.mean_oos_sharpe.toFixed(2) : 'N/A';
+      const sh  = m.Sharpe != null ? m.Sharpe.toFixed(2) : 'N/A';
+      const dd  = m.Max_DD  != null ? (m.Max_DD * 100).toFixed(1) + '%' : 'N/A';
+      const cg  = m.CAGR    != null ? (m.CAGR * 100).toFixed(1) + '%' : 'N/A';
+      const color = tkr === 'QQQ' ? '#818cf8' : '#34d399';
+      return `<span class="bs-dim" style="color:${color};font-weight:600">${tkr}</span>
+        CAGR <span class="bs-dim">${cg}</span>
+        Sharpe <span class="bs-dim">${sh}</span>
+        MaxDD <span class="bs-dim">${dd}</span>
+        OOS Sharpe <span class="bs-dim">${oos}</span>
+        WFE <span class="bs-dim">${wfe}</span>
+        Trades <span class="bs-dim">${d.n_windows ?? '?'} WF windows</span>`;
+    }).filter(Boolean).join('  ·  ');
+
+    if (sumEl) sumEl.innerHTML = rows;
+
+    // Detailed results in the panel
+    if (bodyEl) {
+      const html = tickers.map(tkr => {
+        const d = results[tkr];
+        if (!d) return '';
+        const m = d.metrics || {};
+        const fmt = v => (v == null || v === undefined) ? 'N/A' : (typeof v === 'number' ? v.toFixed(3) : v);
+        const fmtP = v => (v == null) ? 'N/A' : (v * 100).toFixed(2) + '%';
+        const wfe = d.wfe != null ? d.wfe.toFixed(3) : 'N/A';
+        const oos = d.mean_oos_sharpe != null ? d.mean_oos_sharpe.toFixed(3) : 'N/A';
+        const wfePass = d.wfe >= 0.5 ? '#34d399' : d.wfe >= 0.3 ? '#fbbf24' : '#f87171';
+        const oosPass = d.mean_oos_sharpe >= 0.5 ? '#34d399' : d.mean_oos_sharpe >= 0.3 ? '#fbbf24' : '#f87171';
+        return `<div style="margin-bottom:16px">
+          <div style="font-size:12px;font-weight:600;color:#818cf8;margin-bottom:6px">${tkr} — ${tkr === 'QQQ' ? 'Nasdaq-100' : 'S&P 500'}</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px 12px;font-size:11px">
+            <div>CAGR: <b>${fmtP(m.CAGR)}</b></div>
+            <div>Sharpe: <b>${fmt(m.Sharpe)}</b></div>
+            <div>Sortino: <b>${fmt(m.Sortino)}</b></div>
+            <div>Max DD: <b>${fmtP(m.Max_DD)}</b></div>
+            <div>Max DD Duration: <b>${m.Max_DD_Days ?? 'N/A'}d</b></div>
+            <div>Win Rate: <b>${fmtP(m.Win_Rate)}</b></div>
+            <div>Profit Factor: <b>${fmt(m.Profit_Factor)}</b></div>
+            <div>Total Trades: <b>${m.Total_Trades ?? 'N/A'}</b></div>
+            <div>Time in Market: <b>${fmtP(m.Time_In_Market)}</b></div>
+            <div>Calmar: <b>${fmt(m.Calmar)}</b></div>
+            <div>OOS Sharpe: <b style="color:${oosPass}">${oos}</b></div>
+            <div>WFE: <b style="color:${wfePass}">${wfe}</b></div>
+            <div>WF Windows: <b>${d.n_windows ?? 'N/A'}</b></div>
+          </div>
+        </div>`;
+      }).join('');
+      bodyEl.innerHTML = html || '<span style="color:var(--text3)">No data</span>';
+    }
+  } catch(e) {
+    if (bodyEl) bodyEl.innerHTML = `<span style="color:var(--red)">Error: ${e.message}</span>`;
+  }
+}
+
+// ── Positions sub-tab: Macro Equity Backtest trades ───────────────────────────
+
+async function loadMeTradesTab() {
+  const bodyEl  = document.getElementById('meBtTableBody');
+  const savedEl = document.getElementById('meBtSavedAt');
+  const statsEl = document.getElementById('meBtStats');
+  if (bodyEl) bodyEl.innerHTML = '<tr><td colspan="10" class="pos-empty">Loading…</td></tr>';
+  try {
+    const r = await fetch('/api/macro-equity-backtest/trades');
+    if (!r.ok) {
+      if (bodyEl) bodyEl.innerHTML = '<tr><td colspan="10" class="pos-empty">No backtest trades — run macro_equity_backtest.py first</td></tr>';
+      return;
+    }
+    const { trades, savedAt } = await r.json();
+    _meTrades = trades || [];
+    if (savedEl && savedAt) savedEl.textContent = `Saved: ${new Date(savedAt).toLocaleString()}`;
+    _renderMeBtTrades();
+  } catch(e) {
+    if (bodyEl) bodyEl.innerHTML = `<tr><td colspan="10" class="pos-empty" style="color:var(--red)">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function filterMeBtTrades(filter) {
+  _meTradeFilter = filter;
+  ['all', 'QQQ', 'SPY'].forEach(f => {
+    const btn = document.getElementById(`meBtFilter${f === 'all' ? 'All' : f}`);
+    if (btn) btn.classList.toggle('active', f === filter);
+  });
+  _renderMeBtTrades();
+}
+
+function _renderMeBtTrades() {
+  const bodyEl  = document.getElementById('meBtTableBody');
+  const statsEl = document.getElementById('meBtStats');
+  if (!bodyEl) return;
+
+  const trades = _meTradeFilter === 'all'
+    ? _meTrades
+    : _meTrades.filter(t => t.ticker === _meTradeFilter);
+
+  if (!trades.length) {
+    bodyEl.innerHTML = '<tr><td colspan="10" class="pos-empty">No trades match filter</td></tr>';
+    if (statsEl) statsEl.innerHTML = '';
+    return;
+  }
+
+  const rows = trades.map(t => {
+    const pnlColor = (t.pnl_pct ?? 0) >= 0 ? 'var(--green)' : 'var(--red)';
+    const pnlStr   = t.pnl_pct != null ? `${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(2)}%` : 'N/A';
+    const tkrColor = t.ticker === 'QQQ' ? '#818cf8' : '#34d399';
+    const regColor = t.vol_regime === 'HIGH' ? '#f87171' : t.vol_regime === 'LOW' ? '#34d399' : 'var(--text3)';
+    return `<tr>
+      <td style="color:${tkrColor};font-weight:600">${t.ticker}</td>
+      <td>${t.entry_date ?? '—'}</td>
+      <td>${t.exit_date  ?? 'Open'}</td>
+      <td style="color:var(--green)">LONG</td>
+      <td>${t.position_sz != null ? t.position_sz.toFixed(2) : '—'}</td>
+      <td>${t.entry_price ?? '—'}</td>
+      <td>${t.exit_price  ?? '—'}</td>
+      <td style="color:${pnlColor};font-weight:600">${pnlStr}</td>
+      <td>${t.macro_score != null ? t.macro_score.toFixed(2) : '—'}</td>
+      <td style="color:${regColor}">${t.vol_regime ?? '—'}</td>
+    </tr>`;
+  }).join('');
+  bodyEl.innerHTML = rows;
+
+  // Stats bar
+  if (statsEl) {
+    const wins   = trades.filter(t => (t.pnl_pct ?? 0) > 0).length;
+    const avgPnl = trades.reduce((a, t) => a + (t.pnl_pct ?? 0), 0) / trades.length;
+    const bestTr = trades.reduce((b, t) => ((t.pnl_pct ?? -Infinity) > (b?.pnl_pct ?? -Infinity)) ? t : b, null);
+    const worstT = trades.reduce((b, t) => ((t.pnl_pct ?? Infinity) < (b?.pnl_pct ?? Infinity)) ? t : b, null);
+    statsEl.innerHTML = [
+      `<span>Total trades: <b>${trades.length}</b></span>`,
+      `<span>Win rate: <b>${((wins / trades.length) * 100).toFixed(1)}%</b></span>`,
+      `<span>Avg P&L: <b style="color:${avgPnl >= 0 ? 'var(--green)' : 'var(--red)'}">${avgPnl >= 0 ? '+' : ''}${avgPnl.toFixed(2)}%</b></span>`,
+      bestTr  ? `<span>Best: <b style="color:var(--green)">+${bestTr.pnl_pct?.toFixed(2)}%</b> (${bestTr.entry_date})</span>` : '',
+      worstT  ? `<span>Worst: <b style="color:var(--red)">${worstT.pnl_pct?.toFixed(2)}%</b> (${worstT.entry_date})</span>` : '',
+    ].filter(Boolean).join('  ·  ');
+  }
+}
+
+window.saveMeConfig    = saveMeConfig;
+window.resetMeDefaults = resetMeDefaults;
+window.saveMeCreds     = saveMeCreds;
+window.loadMeResults   = loadMeResults;
+window.loadMeTradesTab = loadMeTradesTab;
+window.filterMeBtTrades = filterMeBtTrades;
+
+document.querySelector('.tab-btn[data-tab="macroequity"]')?.addEventListener('click', () => {
+  loadMeResults();
+});
+
+loadMeConfig();
+loadMeCreds();
+loadMeResults();
+
 loadDaStatus();
 loadGoldStatus();
 loadBtJournal();

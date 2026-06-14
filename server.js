@@ -2064,6 +2064,39 @@ app.get('/api/hmm5m-train-params', (_req, res) => {
   res.json({ ok: true, params: state.hmm5mTrainedParams });
 });
 
+// ── Macro-regime-equity backtest store ───────────────────────────────────────
+// In-memory; persists for the lifetime of the process.
+// Populated by running: python macro-regime-conditional/macro_equity_backtest.py --base-url <URL>
+const macroEquityStore = { trades: [], results: {}, savedAt: null };
+
+app.post('/api/macro-equity-backtest/trades', express.json({ limit: '10mb' }), (req, res) => {
+  const { trades, savedAt } = req.body ?? {};
+  if (!Array.isArray(trades)) return res.status(400).json({ ok: false, error: 'trades array required' });
+  macroEquityStore.trades  = trades;
+  macroEquityStore.savedAt = savedAt ?? new Date().toISOString();
+  console.log(`[macro-equity-bt] saved ${trades.length} trades`);
+  res.json({ ok: true, n: trades.length });
+});
+
+app.get('/api/macro-equity-backtest/trades', (_req, res) => {
+  if (!macroEquityStore.trades.length)
+    return res.status(404).json({ ok: false, error: 'No trades — run macro_equity_backtest.py first' });
+  res.json({ ok: true, trades: macroEquityStore.trades, savedAt: macroEquityStore.savedAt });
+});
+
+app.post('/api/macro-equity-backtest/results', express.json({ limit: '1mb' }), (req, res) => {
+  macroEquityStore.results = req.body ?? {};
+  macroEquityStore.savedAt = macroEquityStore.results.run_at ?? new Date().toISOString();
+  console.log('[macro-equity-bt] results summary stored');
+  res.json({ ok: true });
+});
+
+app.get('/api/macro-equity-backtest/results', (_req, res) => {
+  if (!Object.keys(macroEquityStore.results).length)
+    return res.status(404).json({ ok: false, error: 'No results — run macro_equity_backtest.py first' });
+  res.json({ ok: true, results: macroEquityStore.results });
+});
+
 // ── Gold backtest trades store ────────────────────────────────────────────────
 // In-memory store; persists for the lifetime of the process.
 const goldBacktestStore = { trades: [], savedAt: null };
