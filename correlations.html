@@ -828,10 +828,12 @@ const PAIR_COLORS = {
   USDCAD:'#ef4444', USDCHF:'#ec4899', USDJPY:'#14b8a6', GBPJPY:'#f97316',
   EURGBP:'#8b5cf6', XAUUSD:'#eab308',
   EURJPY:'#a78bfa', EURCHF:'#fb923c', GBPCHF:'#34d399', AUDJPY:'#fbbf24', CADJPY:'#60a5fa',
-  // Metals & energy (added)
-  XAGUSD:'#94a3b8', XPTUSD:'#d946ef', XCUUSD:'#b87333', WTICO:'#fb923c', BCO:'#f97316',
-  // Indices (added — keys match build_corr_history.py PAIRS list)
-  NAS100:'#22d3ee', SPX500:'#0ea5e9', US30:'#38bdf8', US2000:'#a855f7',
+  // Metals — stored as 6-char (XAGUSD etc.) matching CORR_PAIRS in server.js
+  XAGUSD:'#94a3b8', XPTUSD:'#d946ef', XCUUSD:'#b87333',
+  // Energy — stored with _USD suffix (non-6-char, already OANDA format in CORR_PAIRS)
+  WTICO_USD:'#fb923c', BCO_USD:'#f97316',
+  // Indices — stored with _USD suffix matching CORR_PAIRS in server.js
+  NAS100_USD:'#22d3ee', SPX500_USD:'#0ea5e9', US30_USD:'#38bdf8', US2000_USD:'#a855f7',
   // EM / China / South Africa
   USDCNH:'#dc2626', USDZAR:'#16a34a',
 };
@@ -1182,22 +1184,22 @@ const PAIR_PROFILES = {
   XPTUSD:{ flag:'⚗️', name:'Platinum vs US Dollar', type:'Metal', driver:'Auto catalysts & South African supply',
     note:'Straddles precious and industrial metals. Primarily used in catalytic converters and hydrogen fuel cells. ~70% of supply from South Africa — geopolitical supply risk is a genuine factor.',
     typical:'Positive to gold in safe-haven events but also tracks auto and industrial production. Can diverge from gold when manufacturing data dominates.' },
-  WTICO:{ flag:'🛢️', name:'WTI Crude Oil', type:'Commodity', driver:'Global demand & OPEC supply decisions',
+  WTICO_USD:{ flag:'🛢️', name:'WTI Crude Oil', type:'Commodity', driver:'Global demand & OPEC supply decisions',
     note:'The US crude benchmark. Simultaneously an economic growth signal and an inflation input — rising oil is bullish for growth currencies (CAD, NOK) and bearish for oil importers (JPY via inflation).',
     typical:'Positive with risk-on regimes. Inverse to USDCAD (Canada exports oil). Key input for stagflation vs growth regime identification.' },
-  BCO:{ flag:'⛽', name:'Brent Crude Oil', type:'Commodity', driver:'Global demand & geopolitics',
+  BCO_USD:{ flag:'⛽', name:'Brent Crude Oil', type:'Commodity', driver:'Global demand & geopolitics',
     note:'The international crude benchmark. More geopolitically sensitive than WTI — Middle East events affect Brent more directly. Usually trades at a premium to WTI; large spread widening signals logistical or regional stress.',
     typical:'Near-identical correlations to WTICO. Track the WTI–Brent spread for regime signals: widening = shipping stress or regional supply disruption.' },
-  NAS100:{ flag:'💻', name:'Nasdaq-100 Index', type:'Equity Index', driver:'Tech valuations & rate expectations',
+  NAS100_USD:{ flag:'💻', name:'Nasdaq-100 Index', type:'Equity Index', driver:'Tech valuations & rate expectations',
     note:'Dominated by mega-cap tech. Highly sensitive to rate expectations — rising rates compress growth-stock multiples. The most risk-on major index and the most reactive to Fed policy surprises.',
     typical:'Strong positive VIX beta. Inverse to rate hikes. Often leads FX risk pairs (AUD, NZD) by a few hours. Best equity gauge for tech-driven risk appetite.' },
-  SPX500:{ flag:'🇺🇸', name:'S&P 500 Index', type:'Equity Index', driver:'Broad US economic conditions',
+  SPX500_USD:{ flag:'🇺🇸', name:'S&P 500 Index', type:'Equity Index', driver:'Broad US economic conditions',
     note:'The benchmark US large-cap index. Less tech-concentrated than NQ — more representative of the full economy (financials, healthcare, industrials, consumer). Global risk-sentiment anchor.',
     typical:'Moderate VIX beta. Tracks broad global risk appetite. Correlates strongly with AUD/USD and inversely with safe havens (JPY, CHF, gold).' },
-  US30:{ flag:'🏭', name:'Dow Jones Industrial Average', type:'Equity Index', driver:'Blue-chip earnings & credit conditions',
+  US30_USD:{ flag:'🏭', name:'Dow Jones Industrial Average', type:'Equity Index', driver:'Blue-chip earnings & credit conditions',
     note:'30 blue-chip industrials — more value-oriented than NQ. Sensitive to banking sector health and yield curve slope because financials carry a significant weight.',
     typical:'Lower VIX beta than NQ. More sensitive to yield curve shape and credit. Divergence between DOW and NQ often signals sector rotation between value and growth.' },
-  US2000:{ flag:'📊', name:'Russell 2000 Index', type:'Equity Index', driver:'US domestic growth & credit conditions',
+  US2000_USD:{ flag:'📊', name:'Russell 2000 Index', type:'Equity Index', driver:'US domestic growth & credit conditions',
     note:'Small-cap US index with heavy domestic revenue exposure. More sensitive to credit tightening than large-caps — small companies borrow more at floating rates.',
     typical:'Underperforms large-caps when credit tightens or the dollar strengthens. Divergence between Russell 2000 and S&P 500 is an early warning of banking/credit system stress.' },
   XCUUSD:{ flag:'🟤', name:'Copper vs US Dollar', type:'Industrial Metal', driver:'Global growth & China demand',

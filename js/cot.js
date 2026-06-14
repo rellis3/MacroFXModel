@@ -3,9 +3,75 @@ import { loadCached, kvSet } from './utils.js';
 
 const COT_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days — COT is weekly
 
+// Maps COT extremes instrument sym → slash pair key used by renderCOTCard
+const EXTREMES_TO_SLASH = {
+  EUR:'EUR/USD', GBP:'GBP/USD', JPY:'USD/JPY', AUD:'AUD/USD',
+  CAD:'USD/CAD', CHF:'USD/CHF', NZD:'NZD/USD', MXN:'USD/MXN',
+  GOLD:'XAU/USD', SILVER:'XAG/USD', COPPER:'XCU/USD',
+  NQ:'NAS100_USD', ES:'SPX500_USD', YM:'US30_USD', RTY:'US2000_USD', BTC:'BTC/USD',
+};
+
+// Convert /api/cot-extremes instrument array into the S.cotData shape renderCOTCard expects.
+function extremesToCotData(instruments) {
+  const result = {};
+  for (const inst of instruments) {
+    const pair = EXTREMES_TO_SLASH[inst.sym];
+    if (!pair) continue;
+    const gr = inst.grossRatio;
+    const sn = inst.specNet || 0;
+    // Reconstruct raw longs/shorts from net + gross ratio (L = sn*gr/(gr-1), S = sn/(gr-1))
+    let levLong = 0, levShort = 0;
+    if (gr != null && gr > 0 && Math.abs(gr - 1) > 0.01) {
+      levShort = Math.round(sn / (gr - 1));
+      levLong  = levShort + sn;
+      if (levLong  < 0) { levLong  = 0; levShort = Math.abs(sn); }
+      if (levShort < 0) { levShort = 0; levLong  = Math.abs(sn); }
+    }
+    const oi = inst.openInterest || 0;
+    result[pair] = {
+      levNet:      sn,
+      levLong,
+      levShort,
+      levNetChg:   inst.weeklyChg   ?? null,
+      levPct:      oi > 0 ? +(sn / oi * 100).toFixed(1) : null,
+      amNet:       inst.commNet     ?? null,
+      amNetChg:    null,
+      dealerNet:   null,
+      grossRatio:  gr,
+      openInterest: oi,
+      crowdingPct: oi > 0 ? +(Math.abs(sn) / oi * 100).toFixed(1) : 0,
+      changeDate:  inst.reportDate  ?? null,
+      specPct:     inst.specPct,
+      commPct:     inst.commPct,
+      specZ:       inst.specZ,
+      _report:     inst.group === 'metals' || inst.group === 'energy' ? 'disagg' : 'tff',
+      _fromExtremes: true,
+    };
+  }
+  return result;
+}
+
 // ── Loading ───────────────────────────────────────────────────────────────────
 
 export async function loadCOT() {
+  // Primary: /api/cot-extremes (automatic, no manual URL needed)
+  try {
+    const res = await fetch('/api/cot-extremes');
+    if (res.ok) {
+      const j = await res.json();
+      if (j.ok && j.instruments?.length) {
+        S.cotData = extremesToCotData(j.instruments);
+        if (Object.keys(S.cotData).length) {
+          try { localStorage.setItem('cot_data', JSON.stringify({ data: S.cotData, timestamp: Date.now() })); } catch(_) {}
+          return;
+        }
+      }
+    }
+  } catch(e) {
+    console.warn('[COT] extremes source failed, falling back to manual URL:', e.message);
+  }
+
+  // Fallback: /api/cot (manual CFTC URL, cached 7 days)
   try {
     S.cotData = await loadCached('cot_data',
       async () => {
@@ -229,22 +295,29 @@ export async function refreshCOT() {
   if (btn) btn.disabled = true;
   if (statusEl) { statusEl.textContent = 'Fetching fresh COT data…'; statusEl.className = 'cot-modal-status'; }
 
-  // Bypass loadCached entirely — fetch directly from /api/cot so stale KV cannot intercept.
-  // Then write the fresh result into both caches explicitly.
+  // Try primary source first (extremes API), then fall back to manual URL.
   try {
-    const res = await fetch('/api/cot');
-    const j   = await res.json();
-    if (!j.ok) throw new Error(j.reason || 'COT fetch failed');
+    let fresh = null;
+    const extRes = await fetch('/api/cot-extremes');
+    if (extRes.ok) {
+      const j = await extRes.json();
+      if (j.ok && j.instruments?.length) fresh = extremesToCotData(j.instruments);
+    }
+    if (!fresh || !Object.keys(fresh).length) {
+      // Fall back to manual-URL endpoint
+      const res = await fetch('/api/cot');
+      const j   = await res.json();
+      if (!j.ok) throw new Error(j.reason || 'COT fetch failed');
+      fresh = j.data;
+    }
 
-    S.cotData = j.data;
-
-    // Overwrite both caches with fresh data + current timestamp
-    const entry = { data: j.data, timestamp: Date.now() };
+    S.cotData = fresh;
+    const entry = { data: fresh, timestamp: Date.now() };
     try { localStorage.setItem('cot_data', JSON.stringify(entry)); } catch(e) {}
-    await kvSet('cot_data', j.data);
+    await kvSet('cot_data', fresh);
 
-    const dates = Object.values(j.data).map(d => d.changeDate).filter(Boolean);
-    const pairs = Object.keys(j.data).length;
+    const dates = Object.values(fresh).map(d => d.changeDate).filter(Boolean);
+    const pairs = Object.keys(fresh).length;
     if (statusEl) {
       statusEl.textContent = `✓ Refreshed — ${pairs} pairs · ${dates[0] || ''}`;
       statusEl.className = 'cot-modal-status ok';
