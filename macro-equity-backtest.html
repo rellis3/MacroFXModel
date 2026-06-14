@@ -91,7 +91,7 @@
   <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14 L8 2 L14 14" stroke="white" stroke-width="2" stroke-linejoin="round" fill="none"/><path d="M4.5 9.5 h7" stroke="white" stroke-width="1.5"/></svg></div>
   <div class="title-block">
     <div class="title" style="font-size:15px;font-weight:700;">Macro-Regime Equity Backtester</div>
-    <div class="sub">5-factor macro composite · Multi-state QQQ &amp; SPY · Monthly rebalance · Walk-forward validated</div>
+    <div class="sub">5-factor macro composite · QQQ · SPY · Russell · DAX · TLT hedge · Monthly rebalance · Walk-forward validated</div>
   </div>
   <div style="flex:1"></div>
   <span class="upd" id="meComputedAt"></span>
@@ -115,6 +115,11 @@
   <label>Low≥   <input type="number" id="lowBand"   value="-1.0" step="0.25" min="-4" max="2" style="width:52px" title="Score above this → 50% alloc; below → 25%"></label>
   <label>Floor% <input type="number" id="allocFloor" value="0.50" step="0.05" min="0" max="0.95" style="width:52px" title="Minimum allocation — never goes below this"></label>
   <div class="rbar-sep"></div>
+  <span class="bt-run-lbl">Instruments:</span>
+  <label><input type="checkbox" id="includeRussell" checked> Russell</label>
+  <label><input type="checkbox" id="includeTLT"> TLT Hedge</label>
+  <label><input type="checkbox" id="includeDAX"> DAX 🇩🇪</label>
+  <div class="rbar-sep"></div>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <span id="runStatus" class="bt-run-lbl"></span>
 </div>
@@ -126,7 +131,7 @@
 
 <!-- ── Info box ────────────────────────────────────────────────────────────── -->
 <div class="info-box" id="stratInfo">
-  <strong style="color:var(--text)">How it works</strong> — Each month-end the engine scores 5 macro factors (Net Liquidity momentum, Yield Curve, HY Credit Spread, 10Y TIPS Real Yield, ISM PMI) using rolling 252-day z-scores. The composite score sets a <strong>base allocation</strong>: &gt;High → 100%, &gt;Mid → 75%, &gt;Low → 50%, else 25%. A <strong>trend filter</strong> (200-day MA + 12-month momentum) scales it: both bullish = 1.0×, either = 0.8×, neither = 0.55×. A <strong>VIX sizer</strong> applies a final factor: LOW = 1.0×, NORMAL = 0.85×, HIGH = 0.60×, EXTREME = 0.30× (no hard block). Floor is configurable (default 50% for standalone use). Positions enter at each month's first open and exit at last close. Transaction costs (0.10% × allocation change) charged when change &gt; 5pp. Data: OANDA D1 for QQQ/SPY prices, FRED REST API for macro series, Yahoo Finance for VIX. Publication lags (5d weekly, 21d monthly) prevent lookahead bias.
+  <strong style="color:var(--text)">How it works</strong> — Each month-end the engine scores 5 macro factors (Net Liquidity momentum, Yield Curve, HY Credit Spread, 10Y TIPS Real Yield, ISM PMI) using rolling 252-day z-scores. The composite score sets a <strong>base allocation</strong>: &gt;High → 100%, &gt;Mid → 75%, &gt;Low → 50%, else 25%. A <strong>trend filter</strong> (200-day MA + 12-month momentum) scales it: both bullish = 1.0×, either = 0.8×, neither = 0.55×. A <strong>VIX sizer</strong> applies a final factor: LOW = 1.0×, NORMAL = 0.85×, HIGH = 0.60×, EXTREME = 0.30× (no hard block). Floor is configurable (default 50%). <strong>TLT hedge</strong> uses an inverted signal — weak macro → high bond allocation (floor 15%). Toggle Russell 2000 and TLT in the run bar. Data: OANDA D1 (QQQ/SPY/IWM/TLT proxy), FRED REST API for macro series, Yahoo Finance for VIX. Publication lags prevent lookahead bias.
 </div>
 
 <!-- ── Status bar ─────────────────────────────────────────────────────────── -->
@@ -135,11 +140,8 @@
   <span class="stxt" id="meMsg">Click ▶ Run to start the backtest (first run: ~3–8 min for data fetch).</span>
 </div>
 
-<!-- ── Instrument tabs ────────────────────────────────────────────────────── -->
-<div class="inst-tabs" id="instTabs" style="display:none">
-  <button class="inst-tab active" onclick="switchInst('QQQ',this)">📊 QQQ — Nasdaq-100</button>
-  <button class="inst-tab"        onclick="switchInst('SPY',this)">📊 SPY — S&amp;P 500</button>
-</div>
+<!-- ── Instrument tabs (populated dynamically by renderAll) ──────────────── -->
+<div class="inst-tabs" id="instTabs" style="display:none"></div>
 
 <!-- ── KPI grid ───────────────────────────────────────────────────────────── -->
 <div class="bt-kpi-grid" id="kpiGrid" style="display:none">
@@ -324,6 +326,9 @@ async function runBacktest() {
     midBand:    parseFloat(document.getElementById('midBand').value),
     lowBand:    parseFloat(document.getElementById('lowBand').value),
     allocFloor: parseFloat(document.getElementById('allocFloor').value),
+    includeRussell: document.getElementById('includeRussell').checked,
+    includeTLT:     document.getElementById('includeTLT').checked,
+    includeDAX:     document.getElementById('includeDAX').checked,
   };
 
   try {
@@ -380,7 +385,17 @@ async function runBacktest() {
 function renderAll(data) {
   document.getElementById('meComputedAt').textContent =
     'computed ' + new Date(data.runAt).toLocaleString();
-  document.getElementById('instTabs').style.display = 'flex';
+
+  // Build dynamic tabs from data.instruments list
+  const tabsEl = document.getElementById('instTabs');
+  tabsEl.innerHTML = (data.instruments ?? []).map((key, i) => {
+    const d    = data[key];
+    const icon = d?.inverted ? '📈' : '📊';
+    return `<button class="inst-tab ${i === 0 ? 'active' : ''}" onclick="switchInst('${key}',this)">${icon} ${d?.label ?? key}</button>`;
+  }).join('');
+  tabsEl.style.display = 'flex';
+
+  _inst = (data.instruments ?? [])[0] ?? 'QQQ';
   renderInstrument(data);
 
   // Show all cards
@@ -675,10 +690,10 @@ function renderRegimeTable(d) {
 function renderWFTable(d) {
   const tbody = document.getElementById('wfTblBody');
   if (!tbody) return;
-  const wins = d.walkForward.windows ?? [];
-  const isKey   = _inst === 'QQQ' ? 'qqqISSharpe'   : 'spyISSharpe';
-  const oosKey  = _inst === 'QQQ' ? 'qqqOOSSharpe'  : 'spyOOSSharpe';
-  const retKey  = _inst === 'QQQ' ? 'qqqOosReturn'  : 'spyOosReturn';
+  const wins   = d.walkForward.windows ?? [];
+  const isKey  = `${_inst}ISSharpe`;
+  const oosKey = `${_inst}OOSSharpe`;
+  const retKey = `${_inst}OosReturn`;
 
   tbody.innerHTML = wins.map((w, i) => {
     const isSh  = w[isKey];
