@@ -1,7 +1,7 @@
 /**
  * macroEquityEngine.js — v3
  * Macro-Regime-Conditional Equity Backtester — pure JS engine.
- * N-instrument support: QQQ, SPY, Russell 2000, optional TLT (inverted bond hedge).
+ * N-instrument support: QQQ, SPY, Russell 2000, DAX (EU mode), optional TLT (inverted bond hedge).
  * Multi-state allocation · 200-day MA trend filter · Monthly rebalancing.
  */
 
@@ -119,6 +119,7 @@ function buildRawFactors(data) {
   const bamlh0a0hym2 = fwdFill(fred.bamlh0a0hym2);
   const dfii10       = fwdFill(fred.dfii10);
   const napm         = fwdFill(fred.napm);
+  const eupmi        = fwdFill(fred.eupmi  ?? new Array(napm.length).fill(NaN));
   const vix          = fwdFill(data.vix);
 
   const walclLag     = applyLag(walcl,        PUB_LAG_WEEKLY);
@@ -128,6 +129,7 @@ function buildRawFactors(data) {
   const creditLag    = applyLag(bamlh0a0hym2,  PUB_LAG_WEEKLY);
   const realYieldLag = applyLag(dfii10,        PUB_LAG_WEEKLY);
   const ismLag       = applyLag(napm,          PUB_LAG_MONTHLY);
+  const ismEULag     = applyLag(eupmi,         PUB_LAG_MONTHLY);
 
   const netliq = walclLag.map((w, i) => {
     const wt = wtregenLag[i], rr = rrpoLag[i];
@@ -150,6 +152,7 @@ function buildRawFactors(data) {
     credit:    creditLag,
     realYield: realYieldLag,
     ism:       ismLag,
+    ismEU:     ismEULag,
     vix,
     instruments: instFactors,
   };
@@ -398,9 +401,24 @@ function runWalkForward(dates, rawFactors, instruments, vix, cfg) {
     const curveZ     = fixedZscore(rawFactors.curve,     start, trainEnd);
     const creditZ    = fixedZscore(rawFactors.credit,    start, trainEnd);
     const realYieldZ = fixedZscore(rawFactors.realYield, start, trainEnd);
-    const ismZ       = fixedZscore(rawFactors.ism,       start, trainEnd);
     const vixZ       = fixedZscore(vix,                  start, trainEnd);
-    const macroScore = compositeScore(netLiqZ, curveZ, creditZ, realYieldZ, ismZ, weights);
+    // Lazy per-ISM-mode macro score — computed once per window per mode
+    let macroScoreUS = null;
+    let macroScoreEU = null;
+    const getMacroScore = (euMode) => {
+      if (euMode) {
+        if (!macroScoreEU) {
+          const ismEUZ = fixedZscore(rawFactors.ismEU, start, trainEnd);
+          macroScoreEU = compositeScore(netLiqZ, curveZ, creditZ, realYieldZ, ismEUZ, weights);
+        }
+        return macroScoreEU;
+      }
+      if (!macroScoreUS) {
+        const ismZ = fixedZscore(rawFactors.ism, start, trainEnd);
+        macroScoreUS = compositeScore(netLiqZ, curveZ, creditZ, realYieldZ, ismZ, weights);
+      }
+      return macroScoreUS;
+    };
 
     const trainStartDate = dates[start];
     const trainEndDate   = dates[trainEnd - 1];
@@ -418,6 +436,7 @@ function runWalkForward(dates, rawFactors, instruments, vix, cfg) {
       const instF    = rawFactors.instruments[key];
       const inverted = inst.inverted ?? false;
       const floor    = inverted ? (cfg.invertedAllocFloor ?? 0.15) : (cfg.allocFloor ?? 0.50);
+      const macroScore = getMacroScore(inst.euMode ?? false);
 
       const allMonths = buildMonthly(dates, inst.open, inst.close, macroScore, vixZ,
         instF.ma200, instF.mom12m, inverted);
@@ -569,7 +588,7 @@ function verdictFn(met, bh, wfData) {
  *   { dates: string[],
  *     instruments: { KEY: { open: number[], close: number[], label: string, inverted?: boolean } },
  *     vix: number[],
- *     fred: { walcl, wtregen, rrpontsyd, t10y2y, bamlh0a0hym2, dfii10, napm } }
+ *     fred: { walcl, wtregen, rrpontsyd, t10y2y, bamlh0a0hym2, dfii10, napm, eupmi? } }
  * @param {object} [config] - Overrides for ME_DEFAULT_CONFIG
  * @returns {object} Full backtest result with per-instrument sections
  */
@@ -587,9 +606,11 @@ export function runMacroEquityBacktest(data, config = {}) {
   const curveZ     = rollingZscore(raw.curve,     zWindow);
   const creditZ    = rollingZscore(raw.credit,    zWindow);
   const realYieldZ = rollingZscore(raw.realYield, zWindow);
-  const ismZ       = rollingZscore(raw.ism,       zWindow);
-  const vixZ       = rollingZscore(raw.vix,       vixWindow);
-  const macroScore = compositeScore(netLiqZ, curveZ, creditZ, realYieldZ, ismZ, cfg.weights);
+  const ismZ       = rollingZscore(raw.ism,   zWindow);
+  const ismEUZ     = rollingZscore(raw.ismEU, zWindow);
+  const vixZ       = rollingZscore(raw.vix,   vixWindow);
+  const macroScoreUS = compositeScore(netLiqZ, curveZ, creditZ, realYieldZ, ismZ,   cfg.weights);
+  const macroScoreEU = compositeScore(netLiqZ, curveZ, creditZ, realYieldZ, ismEUZ, cfg.weights);
 
   const wf = runWalkForward(dates, raw, instruments, raw.vix, cfg);
 
@@ -601,9 +622,10 @@ export function runMacroEquityBacktest(data, config = {}) {
   };
 
   for (const [key, inst] of Object.entries(instruments)) {
-    const instRaw  = raw.instruments[key];
-    const inverted = inst.inverted ?? false;
-    const floor    = inverted ? (cfg.invertedAllocFloor ?? 0.15) : (cfg.allocFloor ?? 0.50);
+    const instRaw    = raw.instruments[key];
+    const inverted   = inst.inverted ?? false;
+    const floor      = inverted ? (cfg.invertedAllocFloor ?? 0.15) : (cfg.allocFloor ?? 0.50);
+    const macroScore = (inst.euMode ?? false) ? macroScoreEU : macroScoreUS;
 
     const months   = buildMonthly(dates, inst.open, inst.close, macroScore, vixZ,
       instRaw.ma200, instRaw.mom12m, inverted);
