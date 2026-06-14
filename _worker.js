@@ -1472,13 +1472,13 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         const DISAGG = [
           { name:'GOLD - COMMODITY EXCHANGE INC.',             sym:'GOLD',   label:'GOLD',      group:'metals'    },
           { name:'SILVER - COMMODITY EXCHANGE INC.',           sym:'SILVER', label:'SILVER',    group:'metals'    },
-          { name:'COPPER-GRADE #1 - COMMODITY EXCHANGE INC.',  sym:'COPPER', label:'COPPER',    group:'metals'    },
+          { name:'COPPER-GRADE #1 - COMMODITY EXCHANGE INC.',  alt:['COPPER - COMMODITY EXCHANGE INC.','HIGH GRADE COPPER - COMMODITY EXCHANGE INC.'], sym:'COPPER', label:'COPPER', group:'metals' },
           { name:'PLATINUM - NEW YORK MERCANTILE EXCHANGE',    sym:'PLAT',   label:'PLATINUM',  group:'metals'    },
           { name:'PALLADIUM - NEW YORK MERCANTILE EXCHANGE',   sym:'PALL',   label:'PALLADIUM', group:'metals'    },
-          { name:'CRUDE OIL, LIGHT SWEET - NEW YORK MERCANTILE EXCHANGE', sym:'WTI',    label:'CRUDE OIL', group:'energy' },
-          { name:'BRENT CRUDE OIL LAST DAY - ICE FUTURES EUROPE', alt:['BRENT LAST DAY FINANCIAL - ICE FUTURES EUROPE','ICE BRENT CRUDE OIL - ICE FUTURES EUROPE','BRENT CRUDE OIL - ICE FUTURES EUROPE'], sym:'BRENT',  label:'BRENT',     group:'energy' },
-          { name:'NATURAL GAS - NEW YORK MERCANTILE EXCHANGE',                   alt:['NATURAL GAS (HENRY HUB) - NEW YORK MERCANTILE EXCHANGE','NAT GAS NYMEX - NEW YORK MERCANTILE EXCHANGE'],              sym:'NATGAS', label:'NAT GAS',   group:'energy' },
-          { name:'GASOLINE BLENDSTOCK (RBOB) - NEW YORK MERCANTILE EXCHANGE',   alt:['RBOB GASOLINE - NEW YORK MERCANTILE EXCHANGE','REFORMULATED GASOLINE (RBOB) - NEW YORK MERCANTILE EXCHANGE'],     sym:'RBOB',   label:'GASOLINE',  group:'energy' },
+          { name:'CRUDE OIL, LIGHT SWEET - NEW YORK MERCANTILE EXCHANGE', alt:['LIGHT SWEET CRUDE OIL (WTI) - NEW YORK MERCANTILE EXCHANGE','WTI CRUDE OIL - NEW YORK MERCANTILE EXCHANGE','CRUDE OIL (WTI) - NEW YORK MERCANTILE EXCHANGE','CRUDE OIL - NEW YORK MERCANTILE EXCHANGE'], sym:'WTI', label:'CRUDE OIL', group:'energy' },
+          { name:'BRENT CRUDE OIL LAST DAY - ICE FUTURES EUROPE', alt:['BRENT LAST DAY FINANCIAL - ICE FUTURES EUROPE','ICE BRENT CRUDE OIL - ICE FUTURES EUROPE','BRENT CRUDE OIL - ICE FUTURES EUROPE','BRENT CRUDE - ICE FUTURES EUROPE','CRUDE OIL BRENT - ICE FUTURES EUROPE','BRENT - ICE FUTURES EUROPE'], sym:'BRENT', label:'BRENT', group:'energy' },
+          { name:'NATURAL GAS - NEW YORK MERCANTILE EXCHANGE', alt:['HENRY HUB NATURAL GAS - NEW YORK MERCANTILE EXCHANGE','NATURAL GAS (HENRY HUB) - NEW YORK MERCANTILE EXCHANGE','NAT GAS HENRY HUB - NEW YORK MERCANTILE EXCHANGE','NAT GAS NYMEX - NEW YORK MERCANTILE EXCHANGE'], sym:'NATGAS', label:'NAT GAS', group:'energy' },
+          { name:'GASOLINE BLENDSTOCK (RBOB) - NEW YORK MERCANTILE EXCHANGE', alt:['NY HARBOR RBOB GASOLINE - NEW YORK MERCANTILE EXCHANGE','RBOB GASOLINE - NEW YORK MERCANTILE EXCHANGE','REFORMULATED BLENDSTOCK GASOLINE (RBOB) - NEW YORK MERCANTILE EXCHANGE','REFORMULATED GASOLINE (RBOB) - NEW YORK MERCANTILE EXCHANGE'], sym:'RBOB', label:'GASOLINE', group:'energy' },
           { name:'CORN - CHICAGO BOARD OF TRADE',              sym:'CORN',   label:'CORN',      group:'grains'    },
           { name:'WHEAT-SRW - CHICAGO BOARD OF TRADE',         sym:'WHEAT',  label:'WHEAT',     group:'grains'    },
           { name:'SOYBEANS - CHICAGO BOARD OF TRADE',          sym:'SOYS',   label:'SOYBEANS',  group:'grains'    },
@@ -1500,15 +1500,15 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           { name:'AUSTRALIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE',    sym:'AUD',   label:'AUD',         group:'fx',       flip:false },
           { name:'CANADIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE',      sym:'CAD',   label:'CAD',         group:'fx',       flip:true  },
           { name:'SWISS FRANC - CHICAGO MERCANTILE EXCHANGE',          sym:'CHF',   label:'CHF',         group:'fx',       flip:true  },
-          { name:'NEW ZEALAND DOLLAR - CHICAGO MERCANTILE EXCHANGE',   sym:'NZD',   label:'NZD',         group:'fx',       flip:false },
+          { name:'NEW ZEALAND DOLLAR - CHICAGO MERCANTILE EXCHANGE', alt:['NZ DOLLAR - CHICAGO MERCANTILE EXCHANGE','NZD - CHICAGO MERCANTILE EXCHANGE','NEW ZEALAND DOLLAR FUTURES - CHICAGO MERCANTILE EXCHANGE'], sym:'NZD', label:'NZD', group:'fx', flip:false },
           { name:'MEXICAN PESO - CHICAGO MERCANTILE EXCHANGE',         sym:'MXN',   label:'MXN',         group:'fx',       flip:false },
-          { name:'NASDAQ-100 MINI - CHICAGO MERCANTILE EXCHANGE', alt:['E-MINI NASDAQ-100 - CHICAGO MERCANTILE EXCHANGE','NASDAQ-100 STOCK INDEX (MINI) - CHICAGO MERCANTILE EXCHANGE'],  sym:'NQ',  label:'NQ',          group:'equities', flip:false },
+          { name:'NASDAQ-100 MINI - CHICAGO MERCANTILE EXCHANGE', alt:['E-MINI NASDAQ-100 - CHICAGO MERCANTILE EXCHANGE','NASDAQ MINI - CHICAGO MERCANTILE EXCHANGE','E-MINI NASDAQ 100 - CHICAGO MERCANTILE EXCHANGE','NASDAQ-100 STOCK INDEX (MINI) - CHICAGO MERCANTILE EXCHANGE'], sym:'NQ', label:'NQ', group:'equities', flip:false },
           { name:'E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE',       sym:'ES',    label:'ES (S&P500)', group:'equities', flip:false },
           { name:'DJIA x $5 - CHICAGO BOARD OF TRADE',                 sym:'YM',    label:'DOW',         group:'equities', flip:false },
-          { name:'E-MINI RUSSELL 2000 - CHICAGO MERCANTILE EXCHANGE',  alt:['RUSSELL 2000 MINI INDEX FUTURES - CHICAGO MERCANTILE EXCHANGE','E-MINI RUSSELL 2000 INDEX - CHICAGO MERCANTILE EXCHANGE'], sym:'RTY', label:'RUSSELL 2K',  group:'equities', flip:false },
-          { name:'10-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE',sym:'TY',  label:'10Y T-NOTE',  group:'rates',    flip:false },
-          { name:'30-YEAR TREASURY BONDS - CHICAGO BOARD OF TRADE', alt:['U.S. TREASURY BONDS - CHICAGO BOARD OF TRADE','TREASURY BONDS - CHICAGO BOARD OF TRADE','U.S. TREAS BONDS - CHICAGO BOARD OF TRADE'], sym:'US', label:'30Y T-BOND',  group:'rates',    flip:false },
-          { name:'2-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE',sym:'TU',   label:'2Y T-NOTE',   group:'rates',    flip:false },
+          { name:'E-MINI RUSSELL 2000 - CHICAGO MERCANTILE EXCHANGE', alt:['RUSSELL 2000 MINI - CHICAGO MERCANTILE EXCHANGE','RUSSELL 2000 MINI INDEX FUTURES - CHICAGO MERCANTILE EXCHANGE','E-MINI RUSSELL 2000 INDEX - CHICAGO MERCANTILE EXCHANGE'], sym:'RTY', label:'RUSSELL 2K', group:'equities', flip:false },
+          { name:'10-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE', alt:['10-YEAR TREASURY NOTES - CHICAGO BOARD OF TRADE','U.S. 10-YEAR T-NOTE - CHICAGO BOARD OF TRADE','10 YR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE'], sym:'TY', label:'10Y T-NOTE', group:'rates', flip:false },
+          { name:'30-YEAR TREASURY BONDS - CHICAGO BOARD OF TRADE', alt:['U.S. TREASURY BONDS - CHICAGO BOARD OF TRADE','U.S. LONG BOND - CHICAGO BOARD OF TRADE','TREASURY BONDS - CHICAGO BOARD OF TRADE','U.S. TREAS BONDS - CHICAGO BOARD OF TRADE'], sym:'US', label:'30Y T-BOND', group:'rates', flip:false },
+          { name:'2-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE', alt:['2-YEAR TREASURY NOTES - CHICAGO BOARD OF TRADE','U.S. 2-YEAR T-NOTE - CHICAGO BOARD OF TRADE','2 YR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE'], sym:'TU', label:'2Y T-NOTE', group:'rates', flip:false },
           { name:'BITCOIN - CHICAGO MERCANTILE EXCHANGE',               sym:'BTC',   label:'BITCOIN',     group:'crypto',   flip:false },
         ];
 
@@ -1528,9 +1528,13 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
 
         // Use Socrata's column equality URL parameter (no SoQL $where needed).
         // $order by the confirmed date field ensures most-recent 200 rows are returned.
-        // alt names tried sequentially if the primary name returns empty.
+        // alt names tried sequentially if the primary name returns empty OR is stale.
+        // Stale = latest record older than 90 days (CFTC renames instruments; old names persist but stop updating).
         const COT_LIMIT = 200;
+        const staleCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
         async function fetchInstRows(datasetId, marketName, altNames = []) {
+          const tried = [];
           for (const name of [marketName, ...altNames]) {
             const params = new URLSearchParams({
               market_and_exchange_names: name,
@@ -1539,12 +1543,34 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             });
             try {
               const res = await fetch(`${PRE}/${datasetId}.json?${params}`, { signal: AbortSignal.timeout(12000) });
-              if (!res.ok) continue;
+              if (!res.ok) { tried.push(`${name}(HTTP ${res.status})`); continue; }
               const d = await res.json();
-              if (Array.isArray(d) && d.length > 0) return { rows: d, err: null };
-            } catch(e) { /* try next name */ }
+              if (Array.isArray(d) && d.length > 0) {
+                const latestDate = (d[0].report_date_as_yyyy_mm_dd ?? '').toString().split('T')[0];
+                if (latestDate < staleCutoff) { tried.push(`${name}(stale:${latestDate})`); continue; }
+                return { rows: d, err: null };
+              }
+              tried.push(`${name}(empty)`);
+            } catch(e) { tried.push(`${name}(timeout)`); }
           }
-          return { rows: null, err: `no match: ${[marketName, ...altNames].join(' | ')}` };
+          return { rows: null, err: `no match: ${tried.join(' | ')}` };
+        }
+
+        // Discovery helper: returns all market names in a dataset that have data since staleCutoff.
+        // Used in debug mode to identify correct current market names when an instrument is stale/missing.
+        async function discoverActiveNames(datasetId) {
+          try {
+            const params = new URLSearchParams({
+              '$select': 'market_and_exchange_names',
+              '$where': `report_date_as_yyyy_mm_dd >= '${staleCutoff}T00:00:00.000'`,
+              '$group': 'market_and_exchange_names',
+              '$limit': '600',
+            });
+            const res = await fetch(`${PRE}/${datasetId}.json?${params}`, { signal: AbortSignal.timeout(15000) });
+            if (!res.ok) return [];
+            const d = await res.json();
+            return Array.isArray(d) ? d.map(r => r.market_and_exchange_names).filter(Boolean).sort() : [];
+          } catch(e) { return []; }
         }
 
         // Detect the date field name from a sample row (CFTC uses different names across datasets)
@@ -1650,16 +1676,24 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         const reportDate2 = allInstruments.map(i => i.reportDate).filter(Boolean).sort().reverse()[0] ?? null;
 
         if (debugMode) {
-          // Debug mode: skip cache, return raw field names + first rows + parsed output.
+          // Debug mode: skip cache, return raw field names + first rows + parsed output + discovery.
           // Usage: /api/cot-extremes?debug=1
+          // Discovery queries return all market names with data since staleCutoff — use these to find
+          // the correct current name for any stale/missing instrument.
+          const [disaggActiveNames, tffActiveNames] = await Promise.all([
+            discoverActiveNames('72hh-3qpy'),
+            discoverActiveNames('gpe5-46if'),
+          ]);
           const disaggFields = disaggRows[0] ? Object.keys(disaggRows[0]) : [];
           const tffFields2   = tffRows[0]    ? Object.keys(tffRows[0])    : [];
           return json({
             debug: true,
+            staleCutoff,
             fetchErrors,
             disagg: { count: disaggRows.length, fieldNames: disaggFields, sampleRow: disaggRows[0] ?? null },
             tff:    { count: tffRows.length,    fieldNames: tffFields2,   sampleRow: tffRows[0]    ?? null },
             parsed: { count: allInstruments.length, instruments: allInstruments },
+            discovery: { staleCutoff, disaggActiveNames, tffActiveNames },
           });
         }
 
