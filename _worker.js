@@ -1452,7 +1452,9 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
       // across FX, metals, energy, grains, equities, rates, and crypto.
       // Cached in KV for 7 days (COT releases weekly on Fridays).
       if (path === '/api/cot-extremes') {
-        if (env.FX_SCORES) {
+        const debugMode = url.searchParams.get('debug') === '1';
+
+        if (!debugMode && env.FX_SCORES) {
           const cached = await env.FX_SCORES.get('cot_extremes_v2').catch(() => null);
           if (cached) {
             try {
@@ -1618,6 +1620,20 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         const tffResults    = processTFF(tffRows, TFF);
         const allInstruments = [...tffResults, ...disaggResults];
         const reportDate2 = allInstruments.map(i => i.reportDate).filter(Boolean).sort().reverse()[0] ?? null;
+
+        if (debugMode) {
+          // Debug mode: skip cache, return raw field names + first rows + parsed output.
+          // Usage: /api/cot-extremes?debug=1
+          const disaggFields = disaggRows[0] ? Object.keys(disaggRows[0]) : [];
+          const tffFields2   = tffRows[0]    ? Object.keys(tffRows[0])    : [];
+          return json({
+            debug: true,
+            fetchErrors,
+            disagg: { count: disaggRows.length, fieldNames: disaggFields, sampleRow: disaggRows[0] ?? null },
+            tff:    { count: tffRows.length,    fieldNames: tffFields2,   sampleRow: tffRows[0]    ?? null },
+            parsed: { count: allInstruments.length, instruments: allInstruments },
+          });
+        }
 
         if (!allInstruments.length) {
           return json({ ok: false, reason: 'No instruments parsed — CFTC field names may differ',
