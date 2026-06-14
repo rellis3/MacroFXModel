@@ -894,7 +894,7 @@ def main():
         description='Macro-Regime-Conditional Equity Backtester'
     )
     parser.add_argument('--fred-key', default=None,
-                        help='FRED API key (or set FRED_API_KEY env var)')
+                        help='FRED API key (or set FRED_KEY / FRED_API_KEY env var)')
     parser.add_argument('--base-url', default=None,
                         help='Dashboard server URL (e.g. http://localhost:3000) '
                              'to read config and push results')
@@ -902,8 +902,8 @@ def main():
 
     base_url = args.base_url or os.environ.get('DASHBOARD_URL')
 
-    # Pull FRED key: CLI arg → env → KV config → interactive prompt
-    fred_key = args.fred_key or os.environ.get('FRED_API_KEY')
+    # Pull FRED key: CLI arg → FRED_KEY (Railway) → FRED_API_KEY → KV config → interactive prompt
+    fred_key = args.fred_key or os.environ.get('FRED_KEY') or os.environ.get('FRED_API_KEY')
     if not fred_key and base_url:
         cfg = load_config_from_server(base_url)
         fred_key = cfg.get('fred_api_key')
