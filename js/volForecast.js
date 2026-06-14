@@ -298,7 +298,6 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
     yz_oc_median:  r2yz(HN_P50 * yzPct),
   });
 }
-}
 
 // ── Realized-variance based estimators (M15 bar pipeline) ─────────────────────
 
