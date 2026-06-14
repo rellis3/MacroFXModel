@@ -2868,20 +2868,29 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
     const refData = refRaw ? JSON.parse(refRaw) : null;
     const refInst = refData ? _parseExportText(refData.text) : {};
 
+    // YZ fields were added after some forecasts were stored — supplement from
+    // the live in-memory state for today so the comparison table is never blank.
+    const liveInst = forecastState.latest?.instruments ?? {};
+
     // Build per-instrument comparison rows
     const rows = [];
     const ourInst = ourFc?.instruments ?? {};
     const allNames = new Set([...Object.keys(ourInst), ...Object.keys(refInst)]);
 
     for (const name of allNames) {
-      const o = ourInst[name];
-      const r = refInst[name];
-      const gap = (ours, refs) => (ours && refs) ? Math.round((refs / ours - 1) * 1000) / 10 : null;
+      const o    = ourInst[name];
+      const live = liveInst[name];
+      const r    = refInst[name];
+      const gap  = (ours, refs) => (ours && refs) ? Math.round((refs / ours - 1) * 1000) / 10 : null;
+      // Prefer stored YZ; fall back to live in-memory YZ (covers pre-YZ stored forecasts)
+      const yzVol = o?.yz_vol_annual ?? live?.yz_vol_annual ?? null;
+      const yzHl  = o?.yz_hl_median  ?? live?.yz_hl_median  ?? null;
+      const yzOc  = o?.yz_oc_median  ?? live?.yz_oc_median  ?? null;
       rows.push({
         name,
         our: o ? {
           vol: o.vol_annual, hl_med: o.hl_median, hl_75: o.hl_75, oc_med: o.oc_median, oc_75: o.oc_75,
-          yz_vol: o.yz_vol_annual ?? null, yz_hl: o.yz_hl_median ?? null, yz_oc: o.yz_oc_median ?? null,
+          yz_vol: yzVol, yz_hl: yzHl, yz_oc: yzOc,
         } : null,
         ref:  r ?? null,
         gaps: (o && r) ? {
@@ -2890,9 +2899,9 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
           hl_75:  gap(o.hl_75,      r.hl_75),
           oc_med: gap(o.oc_median,  r.oc_med),
           oc_75:  gap(o.oc_75,      r.oc_75),
-          yz_vol: o.yz_vol_annual != null ? gap(o.yz_vol_annual, r.vol)    : null,
-          yz_hl:  o.yz_hl_median  != null ? gap(o.yz_hl_median,  r.hl_med) : null,
-          yz_oc:  o.yz_oc_median  != null ? gap(o.yz_oc_median,  r.oc_med) : null,
+          yz_vol: yzVol != null ? gap(yzVol, r.vol)    : null,
+          yz_hl:  yzHl  != null ? gap(yzHl,  r.hl_med) : null,
+          yz_oc:  yzOc  != null ? gap(yzOc,  r.oc_med) : null,
         } : null,
       });
     }
