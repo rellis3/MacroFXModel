@@ -52,7 +52,16 @@ _load_dotenv()
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), '..', 'bot', 'data', 'corr_history.json')
 OUTPUT_RAW  = os.path.join(os.path.dirname(__file__), '..', 'bot', 'data', 'corr_history_raw.json')
 
-PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY', 'EURGBP', 'XAUUSD']
+PAIRS = [
+    # Core FX
+    'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY', 'EURGBP',
+    # Metals
+    'XAUUSD', 'XAGUSD', 'XPTUSD',
+    # Energy
+    'WTICO', 'BCO',
+    # Equity indices
+    'NAS100', 'SPX500', 'US30',
+]
 
 FACTOR_PROXIES = {
     'dxy':   ('EURUSD', -1.2),
@@ -61,8 +70,14 @@ FACTOR_PROXIES = {
 }
 
 _OANDA_OVERRIDES = {
-    'XAUUSD': 'XAU_USD', 'XAGUSD': 'XAG_USD',
-    'NAS100': 'NAS100_USD', 'SPX500': 'SPX500_USD',
+    'XAUUSD': 'XAU_USD',
+    'XAGUSD': 'XAG_USD',
+    'XPTUSD': 'XPT_USD',
+    'NAS100':  'NAS100_USD',
+    'SPX500':  'SPX500_USD',
+    'US30':    'US30_USD',
+    'WTICO':   'WTICO_USD',
+    'BCO':     'BCO_USD',
 }
 
 CHUNK_SIZE = 4000   # OANDA max is 5000; keep headroom

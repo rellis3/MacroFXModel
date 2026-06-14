@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>COT Extremes — MacroFXModel</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+
+/* ── Top bar ─────────────────────────────────────────────────────── */
+.ce-topbar{height:48px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:12px;background:var(--bg);flex-shrink:0;z-index:10}
+.ce-logo{width:28px;height:28px;background:#e11d48;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ce-logo svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.ce-title{font-size:14px;font-weight:700;letter-spacing:-0.2px}
+.ce-sub{font-size:10px;color:var(--text3);letter-spacing:.6px;text-transform:uppercase;margin-top:1px}
+.spacer{flex:1}
+.nav-link{font-size:11px;color:var(--text3);text-decoration:none;padding:4px 8px;border-radius:5px;transition:color .15s}
+.nav-link:hover{color:var(--text)}
+.dark-btn{background:none;border:1.5px solid var(--border);border-radius:20px;padding:4px 12px;cursor:pointer;font-size:11px;font-weight:500;color:var(--text2);font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px;transition:all .2s}
+.dark-btn:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── Controls bar ────────────────────────────────────────────────── */
+.ce-controls{height:44px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:8px;flex-shrink:0;background:var(--bg);overflow-x:auto;scrollbar-width:none}
+.ce-controls::-webkit-scrollbar{display:none}
+.grp-btn{padding:4px 10px;border:1px solid var(--border);background:none;border-radius:5px;font-size:11px;color:var(--text3);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.grp-btn.on{background:var(--purple);border-color:var(--purple);color:#fff;font-weight:600}
+.grp-btn:hover:not(.on){color:var(--text);border-color:var(--text3)}
+.ctl-div{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.sort-sel{padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;flex-shrink:0}
+.ce-refresh{padding:4px 12px;border-radius:5px;border:1px solid var(--border);background:none;font-size:11px;color:var(--text3);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;flex-shrink:0}
+.ce-refresh:hover{color:var(--text);border-color:var(--text3)}
+.ce-status{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:4px}
+
+/* ── Main body ───────────────────────────────────────────────────── */
+#ce-body{flex:1;overflow-y:auto;padding:16px 20px 32px;min-height:0;display:flex;flex-direction:column;gap:18px}
+
+/* ── Legend bar ──────────────────────────────────────────────────── */
+.ce-legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;flex-shrink:0}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);font-family:'DM Mono',monospace}
+.leg-spec{width:11px;height:11px;border-radius:50%;background:#4f7df0;flex-shrink:0}
+.leg-comm{width:10px;height:10px;border-radius:0;background:#c4a54e;flex-shrink:0}
+.leg-bear{width:22px;height:11px;background:rgba(248,113,113,.25);border-radius:2px;flex-shrink:0}
+.leg-bull{width:22px;height:11px;background:rgba(16,185,129,.2);border-radius:2px;flex-shrink:0}
+.ce-rdate{margin-left:auto;font-size:10px;color:var(--text3);font-family:'DM Mono',monospace}
+
+/* ── Chart card ──────────────────────────────────────────────────── */
+.ce-chart-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px 16px;overflow-x:auto}
+
+/* Zone header */
+.ce-zone-hdr{position:relative;height:18px;margin-bottom:2px;padding-left:92px;padding-right:142px}
+.ce-bear-hdr{position:absolute;left:92px;font-size:9px;font-weight:700;color:#f87171;letter-spacing:.5px;text-transform:uppercase;line-height:18px}
+.ce-bull-hdr{position:absolute;right:142px;font-size:9px;font-weight:700;color:#34d399;letter-spacing:.5px;text-transform:uppercase;line-height:18px}
+
+/* Axis row */
+.ce-axis-row{display:flex;align-items:center;padding-left:92px;padding-right:142px;margin-bottom:6px}
+.ce-axis-inner{flex:1;display:flex;justify-content:space-between}
+.ce-axis-inner span{font-size:9px;color:var(--text3);font-family:'DM Mono',monospace}
+
+/* Group header */
+.ce-grp-hdr{font-size:9px;font-weight:700;letter-spacing:.7px;color:var(--text3);text-transform:uppercase;padding:10px 0 5px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.ce-grp-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Instrument row */
+.ce-row{display:flex;align-items:center;height:28px}
+.ce-row:hover .ce-track{background:rgba(255,255,255,.025)}
+.ce-lbl{width:88px;flex-shrink:0;font-size:11px;font-weight:600;color:var(--text2);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px}
+.ce-track-wrap{flex:1;position:relative;height:100%;display:flex;align-items:center;min-width:200px}
+.ce-track{position:relative;width:100%;height:18px;border-radius:3px;background:transparent;transition:background .1s}
+.ce-bear-z{position:absolute;left:0;width:10%;top:0;bottom:0;background:rgba(248,113,113,.12);border-radius:2px 0 0 2px}
+.ce-bull-z{position:absolute;right:0;width:10%;top:0;bottom:0;background:rgba(16,185,129,.1);border-radius:0 2px 2px 0}
+.ce-gl{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.055)}
+.ce-spec{position:absolute;width:11px;height:11px;border-radius:50%;background:#4f7df0;transform:translateX(-50%);top:50%;margin-top:-5.5px;cursor:pointer;z-index:2}
+.ce-comm{position:absolute;width:10px;height:10px;border-radius:0;background:#c4a54e;transform:translateX(-50%);top:50%;margin-top:-5px;cursor:pointer;z-index:2}
+.ce-spec:hover,.ce-comm:hover{filter:brightness(1.5);z-index:10}
+
+/* Tooltip via CSS */
+[data-tip]{position:relative}
+[data-tip]:hover::after{
+  content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;
+  font-size:10px;font-family:'DM Mono',monospace;color:var(--text);white-space:nowrap;z-index:200;
+  pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.4)
+}
+[data-tip]:hover::before{
+  content:'';position:absolute;bottom:calc(100% + 1px);left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:var(--border);z-index:201;pointer-events:none
+}
+
+/* Meta column */
+.ce-meta{width:138px;flex-shrink:0;display:flex;align-items:center;gap:5px;padding-left:8px}
+.ce-skew{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;font-family:'DM Mono',monospace;white-space:nowrap}
+.sk-crowd{background:rgba(248,113,113,.15);color:#f87171}
+.sk-elev{background:rgba(251,191,36,.15);color:#fbbf24}
+.sk-bal{background:rgba(16,185,129,.1);color:#34d399}
+.sk-short{background:rgba(167,139,250,.15);color:#a78bfa}
+.ce-oi{font-size:10px}
+.oi-up{color:#34d399}.oi-dn{color:#f87171}.oi-fl{color:var(--text3)}
+
+/* Bottom axis */
+.ce-axis-bot{display:flex;align-items:center;padding-left:92px;padding-right:142px;margin-top:6px}
+.ce-axis-bot-inner{flex:1;display:flex;justify-content:space-between}
+.ce-axis-bot-inner span{font-size:9px;color:var(--text3);font-family:'DM Mono',monospace}
+.ce-axis-label{width:138px;flex-shrink:0;padding-left:8px;font-size:9px;color:var(--text3)}
+
+/* ── Extreme signals ─────────────────────────────────────────────── */
+.ce-signals{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.ce-sec-title{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.ce-sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.sig-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.sig-tbl th{font-size:9px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--text3);padding:5px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+.sig-tbl th.r{text-align:right}
+.sig-tbl td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+.sig-tbl tr:last-child td{border-bottom:none}
+.sig-tbl tr:hover td{background:var(--s2)}
+.sig-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.4px;padding:2px 7px;border-radius:4px;text-transform:uppercase;font-family:'DM Mono',monospace}
+.s-bull{background:rgba(16,185,129,.15);color:#34d399}
+.s-bear{background:rgba(248,113,113,.15);color:#f87171}
+.s-cbull{background:rgba(16,185,129,.07);color:#a7f3d0}
+.s-cbear{background:rgba(248,113,113,.07);color:#fca5a5}
+.sig-sym{font-weight:700;font-family:'DM Mono',monospace}
+.sig-pct{font-family:'DM Mono',monospace}
+.sig-z{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace}
+.sig-desc{font-size:10px;color:var(--text3);margin-left:7px}
+
+/* ── Skew explainer card ─────────────────────────────────────────── */
+.skew-card{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.skew-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:2px}
+.skew-blk{background:var(--s1);border:1px solid var(--border);border-radius:7px;padding:10px 12px}
+.skew-blk-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.skew-blk-val{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;margin-bottom:3px}
+.skew-blk-desc{font-size:10px;color:var(--text3);line-height:1.65}
+.skew-note{margin-top:12px;padding:10px 12px;background:var(--s1);border:1px solid var(--border);border-radius:7px;font-size:10px;color:var(--text3);line-height:1.75}
+
+/* ── Empty / loading ─────────────────────────────────────────────── */
+.ce-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:60px 20px;color:var(--text3);font-size:12px}
+.spin{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ce-err{background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);border-radius:8px;padding:12px 16px;font-size:11px;color:#f87171;line-height:1.75}
+</style>
+</head>
+<body>
+
+<!-- ── Top bar ────────────────────────────────────────────────────── -->
+<div class="ce-topbar">
+  <div class="ce-logo">
+    <svg viewBox="0 0 16 16">
+      <circle cx="4.5" cy="8" r="3" fill="#fff"/>
+      <rect x="9.5" y="6" width="4" height="4" fill="none" stroke="#fff" stroke-width="1.5"/>
+      <line x1="1" y1="8" x2="15" y2="8" stroke="#fff" stroke-width="1" stroke-dasharray="1.5 1.5"/>
+    </svg>
+  </div>
+  <div>
+    <div class="ce-title">COT Extremes</div>
+    <div class="ce-sub">3-Year Positioning Percentile · CFTC</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="dark-btn" onclick="toggleTheme()">◑ Theme</button>
+  <a href="./correlations.html" class="nav-link">Correlations</a>
+  <a href="./analysis.html"     class="nav-link">Pattern Lab</a>
+  <a href="./index.html"        class="nav-link">Dashboard</a>
+</div>
+
+<!-- ── Controls bar ───────────────────────────────────────────────── -->
+<div class="ce-controls">
+  <button class="grp-btn on" onclick="setGroup('all',this)">All</button>
+  <button class="grp-btn"    onclick="setGroup('fx',this)">FX</button>
+  <button class="grp-btn"    onclick="setGroup('metals',this)">Metals</button>
+  <button class="grp-btn"    onclick="setGroup('energy',this)">Energy</button>
+  <button class="grp-btn"    onclick="setGroup('equities',this)">Equities</button>
+  <button class="grp-btn"    onclick="setGroup('rates',this)">Rates</button>
+  <button class="grp-btn"    onclick="setGroup('grains',this)">Grains</button>
+  <button class="grp-btn"    onclick="setGroup('softs',this)">Softs</button>
+  <button class="grp-btn"    onclick="setGroup('crypto',this)">Crypto</button>
+  <div class="ctl-div"></div>
+  <select class="sort-sel" onchange="setSort(this.value)">
+    <option value="extreme" selected>Extreme first</option>
+    <option value="specPct_desc">Spec % ↓</option>
+    <option value="specPct_asc">Spec % ↑</option>
+    <option value="commPct_desc">Comm % ↓</option>
+    <option value="commPct_asc">Comm % ↑</option>
+    <option value="name_asc">Name A–Z</option>
+  </select>
+  <div class="ctl-div"></div>
+  <button class="ce-refresh" onclick="loadData(true)">↺ Refresh</button>
+  <div class="ce-status" id="ceStatus">Loading…</div>
+</div>
+
+<!-- ── Main body ──────────────────────────────────────────────────── -->
+<div id="ce-body">
+  <div class="ce-loading" id="ceLoading">
+    <div class="spin"></div>
+    <span>Fetching 3 years of CFTC COT history…</span>
+    <span style="font-size:10px;opacity:.6">Querying publicreporting.cftc.gov</span>
+  </div>
+  <div id="ceContent" style="display:none;flex-direction:column;gap:18px"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   State
+   ═══════════════════════════════════════════════════════════════════ */
+const S = { instruments: [], reportDate: null, group: 'all', sort: 'extreme' };
+
+/* ═══════════════════════════════════════════════════════════════════
+   Theme
+   ═══════════════════════════════════════════════════════════════════ */
+function toggleTheme() {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('ce_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+}
+if (localStorage.getItem('ce_theme') === 'dark') document.body.classList.add('dark');
+
+/* ═══════════════════════════════════════════════════════════════════
+   Data load — localStorage cache (7 days) → /api/cot-extremes
+   ═══════════════════════════════════════════════════════════════════ */
+async function loadData(force = false) {
+  const statusEl  = document.getElementById('ceStatus');
+  const loadEl    = document.getElementById('ceLoading');
+  const contentEl = document.getElementById('ceContent');
+
+  loadEl.style.display = 'flex';
+  contentEl.style.display = 'none';
+  statusEl.textContent = 'Loading…';
+
+  if (!force) {
+    try {
+      const raw = localStorage.getItem('cot_extremes_v2');
+      if (raw) {
+        const { ts, data } = JSON.parse(raw);
+        if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000 && data?.instruments?.length) {
+          applyData(data); return;
+        }
+      }
+    } catch(_) {}
+  }
+
+  try {
+    const res = await fetch('/api/cot-extremes');
+    const j   = await res.json();
+    if (!j.ok) throw new Error(j.reason || `API error ${res.status}${j.diagnostic ? ' — see diagnostic in console' : ''}`);
+    if (j.diagnostic) console.warn('[COT Extremes] API diagnostic:', j.diagnostic);
+    try { localStorage.setItem('cot_extremes_v2', JSON.stringify({ ts: Date.now(), data: j })); } catch(_) {}
+    applyData(j);
+  } catch(e) {
+    loadEl.style.display = 'none';
+    contentEl.style.display = 'flex';
+    contentEl.innerHTML = `<div class="ce-err">
+      <strong>Failed to load COT data</strong><br>${e.message}<br><br>
+      This page requires the /api/cot-extremes endpoint, which fetches from the CFTC PRE API
+      (publicreporting.cftc.gov). Ensure the server is running and has network access.
+    </div>`;
+    statusEl.textContent = 'Error';
+  }
+}
+
+function applyData(j) {
+  S.instruments = j.instruments || [];
+  S.reportDate  = j.reportDate  || null;
+  document.getElementById('ceLoading').style.display = 'none';
+  const c = document.getElementById('ceContent');
+  c.style.display = 'flex';
+  const rdt = S.reportDate ? ` · Report ${S.reportDate}` : '';
+  document.getElementById('ceStatus').textContent = `${S.instruments.length} instruments${rdt}`;
+  render();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Controls
+   ═══════════════════════════════════════════════════════════════════ */
+function setGroup(grp, el) {
+  S.group = grp;
+  document.querySelectorAll('.grp-btn').forEach(b => b.classList.toggle('on', b === el));
+  render();
+}
+function setSort(v) { S.sort = v; render(); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Filter + sort
+   ═══════════════════════════════════════════════════════════════════ */
+const extremeDist = pct => Math.max(pct <= 10 ? 10 - pct : 0, pct >= 90 ? pct - 90 : 0);
+const isExtreme   = pct => pct <= 10 || pct >= 90;
+
+function filtered() {
+  let list = S.group === 'all' ? S.instruments : S.instruments.filter(i => i.group === S.group);
+  const [key, dir] = S.sort === 'extreme'   ? ['_ext',  'desc']
+                   : S.sort === 'name_asc'   ? ['label', 'asc']
+                   : S.sort.split('_');
+  return [...list].sort((a, b) => {
+    const va = key === '_ext' ? Math.max(extremeDist(a.specPct), extremeDist(a.commPct)) : (a[key] ?? '');
+    const vb = key === '_ext' ? Math.max(extremeDist(b.specPct), extremeDist(b.commPct)) : (b[key] ?? '');
+    if (typeof va === 'string') return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    return dir === 'asc' ? va - vb : vb - va;
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Formatting helpers
+   ═══════════════════════════════════════════════════════════════════ */
+const GROUP_ORDER  = ['fx','equities','rates','metals','energy','grains','softs','livestock','crypto'];
+const GROUP_LABELS = {
+  fx:'FX', equities:'Equities', rates:'Rates / Bonds', metals:'Metals',
+  energy:'Energy', grains:'Grains', softs:'Softs / Tropicals', livestock:'Livestock', crypto:'Crypto',
+};
+
+function fmtK(n) {
+  if (n == null || isNaN(n)) return '—';
+  const abs = Math.abs(n), s = n < 0 ? '-' : '+';
+  if (abs >= 1e6) return s + (abs/1e6).toFixed(1) + 'M';
+  if (abs >= 1000) return s + (abs/1000).toFixed(0) + 'k';
+  return (n >= 0 ? '+' : '') + n;
+}
+
+function skewPill(gr) {
+  if (gr == null) return '';
+  if (gr >= 3.5) return `<span class="ce-skew sk-crowd">${gr}× L/S</span>`;
+  if (gr >= 2.0) return `<span class="ce-skew sk-elev">${gr}× L/S</span>`;
+  if (gr <= 0.4) return `<span class="ce-skew sk-short">${gr}× L/S</span>`;
+  return `<span class="ce-skew sk-bal">${gr}× L/S</span>`;
+}
+
+function oiArrow(oiPct) {
+  if (oiPct == null) return '';
+  if (oiPct >= 70) return '<span class="ce-oi oi-up" title="OI in top 30% — conviction building">▲</span>';
+  if (oiPct <= 30) return '<span class="ce-oi oi-dn" title="OI in bottom 30% — participation thin">▼</span>';
+  return '<span class="ce-oi oi-fl">—</span>';
+}
+
+function specColor(pct) {
+  return pct >= 90 ? '#34d399' : pct <= 10 ? '#f87171' : '#4f7df0';
+}
+function commColor(pct) {
+  return pct >= 90 ? '#34d399' : pct <= 10 ? '#f87171' : '#c4a54e';
+}
+
+function specRing(pct) {
+  if (!isExtreme(pct)) return '';
+  return `outline:2px solid ${pct >= 90 ? '#34d399' : '#f87171'};outline-offset:2px;`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Row renderer
+   ═══════════════════════════════════════════════════════════════════ */
+function renderRow(inst) {
+  const sTip = `Spec ${inst.specPct}th pctl · net ${fmtK(inst.specNet)} · z=${inst.specZ > 0 ? '+' : ''}${inst.specZ} · ${inst.histLen}wk history`;
+  const cTip = `Comm ${inst.commPct}th pctl · net ${fmtK(inst.commNet)} · z=${inst.commZ > 0 ? '+' : ''}${inst.commZ}`;
+  return `<div class="ce-row">
+  <span class="ce-lbl">${inst.label}</span>
+  <div class="ce-track-wrap">
+    <div class="ce-track">
+      <div class="ce-bear-z"></div>
+      <div class="ce-bull-z"></div>
+      <div class="ce-gl" style="left:20%"></div>
+      <div class="ce-gl" style="left:40%"></div>
+      <div class="ce-gl" style="left:60%"></div>
+      <div class="ce-gl" style="left:80%"></div>
+      <div class="ce-spec" style="left:${inst.specPct}%;background:${specColor(inst.specPct)};${specRing(inst.specPct)}" data-tip="${sTip}"></div>
+      <div class="ce-comm" style="left:${inst.commPct}%;background:${commColor(inst.commPct)};${specRing(inst.commPct)}" data-tip="${cTip}"></div>
+    </div>
+  </div>
+  <div class="ce-meta">${skewPill(inst.grossRatio)}${oiArrow(inst.oiPct)}</div>
+</div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Extreme signals section
+   ═══════════════════════════════════════════════════════════════════ */
+function renderSignals(instruments) {
+  const extremes = [...instruments]
+    .filter(i => isExtreme(i.specPct) || isExtreme(i.commPct))
+    .sort((a, b) =>
+      Math.max(extremeDist(b.specPct), extremeDist(b.commPct)) -
+      Math.max(extremeDist(a.specPct), extremeDist(a.commPct))
+    );
+
+  let h = `<div class="ce-signals"><div class="ce-sec-title">Extreme Signals This Week</div>`;
+  if (!extremes.length) {
+    h += '<div style="font-size:11px;color:var(--text3);padding:6px 0">No instruments in extreme territory (0–10% or 90–100%) this week.</div>';
+  } else {
+    h += `<table class="sig-tbl"><thead><tr>
+      <th>Instrument</th><th>Group</th>
+      <th class="r">Spec %ile (Z)</th><th class="r">Comm %ile (Z)</th>
+      <th>L/S Skew</th><th>OI / Wks</th><th>Signal</th>
+    </tr></thead><tbody>`;
+
+    for (const i of extremes) {
+      const sB = i.specPct >= 90, sBr = i.specPct <= 10;
+      const cB = i.commPct >= 90, cBr = i.commPct <= 10;
+      let badge = '', desc = '';
+
+      if (sB && cBr)       { badge = `<span class="sig-badge s-bull">BULLISH EXTREME</span>`;     desc = 'specs max long · comms max short — classic top signal'; }
+      else if (sBr && cB)  { badge = `<span class="sig-badge s-bear">BEARISH EXTREME</span>`;     desc = 'specs max short · comms max long — classic bottom signal'; }
+      else if (sB)         { badge = `<span class="sig-badge s-bull">SPEC CROWDED LONG</span>`;  desc = 'watch for spec unwind / reversal risk'; }
+      else if (sBr)        { badge = `<span class="sig-badge s-bear">SPEC CROWDED SHORT</span>`; desc = 'squeeze risk if price turns up'; }
+      else if (cB)         { badge = `<span class="sig-badge s-cbull">COMM EXTREME LONG</span>`;  desc = 'institutional longs at historical extreme'; }
+      else if (cBr)        { badge = `<span class="sig-badge s-cbear">COMM EXTREME SHORT</span>`; desc = 'institutional shorts at historical extreme'; }
+
+      const skewWarn = i.grossRatio >= 3.5 ? 'color:#f87171' : 'color:var(--text3)';
+      h += `<tr>
+        <td><span class="sig-sym">${i.label}</span></td>
+        <td style="font-size:10px;color:var(--text3)">${GROUP_LABELS[i.group] || i.group}</td>
+        <td class="r"><span class="sig-pct" style="color:${specColor(i.specPct)}">${i.specPct}%</span> <span class="sig-z">${i.specZ > 0 ? '+' : ''}${i.specZ}σ</span></td>
+        <td class="r"><span class="sig-pct" style="color:${commColor(i.commPct)}">${i.commPct}%</span> <span class="sig-z">${i.commZ > 0 ? '+' : ''}${i.commZ}σ</span></td>
+        <td><span style="${skewWarn};font-family:'DM Mono',monospace;font-size:10px">${i.grossRatio != null ? i.grossRatio + '×' : '—'}</span></td>
+        <td style="font-size:10px;color:var(--text3)">${i.oiPct != null ? i.oiPct + 'th' : '—'} · ${i.histLen}wk</td>
+        <td>${badge}<span class="sig-desc">${desc}</span></td>
+      </tr>`;
+    }
+    h += '</tbody></table>';
+  }
+  return h + '</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Skew / options explainer
+   ═══════════════════════════════════════════════════════════════════ */
+function renderSkewCard() {
+  return `<div class="skew-card">
+<div class="ce-sec-title" style="color:#a78bfa">Positioning Skew &amp; Options Context</div>
+<div class="skew-grid">
+  <div class="skew-blk">
+    <div class="skew-blk-lbl" style="color:#f87171">L/S &gt; 3.5× — Crowded Long</div>
+    <div class="skew-blk-desc">Specs hold far more longs than shorts. In options terms: the market is call-heavy (positive skew). Any negative catalyst triggers rapid liquidation. Historically precedes sharp reversals when at positioning extremes simultaneously.</div>
+  </div>
+  <div class="skew-blk">
+    <div class="skew-blk-lbl" style="color:#fbbf24">L/S 2–3.5× — Elevated</div>
+    <div class="skew-blk-desc">Meaningful one-sided bias but not extreme. Watch for acceleration over coming weeks. If the percentile rank is already above 80%, the setup is approaching a warning level even if not yet in extreme territory.</div>
+  </div>
+  <div class="skew-blk">
+    <div class="skew-blk-lbl" style="color:#34d399">L/S 0.5–2× — Balanced</div>
+    <div class="skew-blk-desc">Both sides are represented — less unwind risk. Net position can still be at a percentile extreme if it has moved consistently in one direction over many weeks without a large gross imbalance.</div>
+  </div>
+  <div class="skew-blk">
+    <div class="skew-blk-lbl" style="color:#a78bfa">L/S &lt; 0.5× — Crowded Short</div>
+    <div class="skew-blk-desc">Spec shorts outnumber longs — equivalent to a put-heavy options market (negative skew). Short-squeeze risk is elevated. Classic setup when combined with a bearish percentile extreme at a fundamental support level.</div>
+  </div>
+</div>
+<div class="skew-note">
+  <strong style="color:var(--text2)">True IV Skew (25-delta risk reversals)</strong> — The L/S ratio above is a <em>positioning proxy</em> for market skew.
+  True implied-volatility skew (the difference in IV between 25-delta calls and puts) requires options market data.
+  For FX pairs, 25D risk reversals are quoted by brokers and data vendors (Bloomberg, Reuters).
+  A <strong>negative</strong> 25D RR (puts more expensive than calls) for an instrument where specs are at the 90th+ percentile long
+  is the strongest setup: the options market is already pricing in a reversal that the futures specs have not yet acknowledged.
+  The CFTC also publishes <em>options-and-futures combined</em> COT data (dataset kh3c-gbw2 for Disaggregated combined),
+  which includes options-equivalent positioning — a future enhancement would switch to this for a more complete picture.
+</div>
+</div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Main render
+   ═══════════════════════════════════════════════════════════════════ */
+function render() {
+  const el   = document.getElementById('ceContent');
+  const list = filtered();
+
+  if (!list.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-size:12px">No instruments match the selected filter</div>';
+    return;
+  }
+
+  // Legend
+  let html = `<div class="ce-legend">
+  <div class="leg-item"><div class="leg-spec"></div> Speculator net (3yr pctl)</div>
+  <div class="leg-item"><div class="leg-comm"></div> Commercial net (3yr pctl)</div>
+  <div class="leg-item"><div class="leg-bear"></div> Bearish extreme 0–10%</div>
+  <div class="leg-item"><div class="leg-bull"></div> Bullish extreme 90–100%</div>
+  ${S.reportDate ? `<div class="ce-rdate">COT report: ${S.reportDate}</div>` : ''}
+</div>`;
+
+  // Chart card
+  html += `<div class="ce-chart-card">
+<div class="ce-zone-hdr">
+  <span class="ce-bear-hdr">◀ Bearish extreme</span>
+  <span class="ce-bull-hdr">Bullish extreme ▶</span>
+</div>
+<div class="ce-axis-row">
+  <div class="ce-axis-inner"><span>0%</span><span>20%</span><span>40%</span><span>60%</span><span>80%</span><span>100%</span></div>
+  <div class="ce-axis-label" style="font-size:9px;color:var(--text3)">L/S · OI</div>
+</div>`;
+
+  if (S.group === 'all') {
+    const byGrp = {};
+    for (const i of list) { if (!byGrp[i.group]) byGrp[i.group] = []; byGrp[i.group].push(i); }
+    for (const g of GROUP_ORDER) {
+      if (!byGrp[g]?.length) continue;
+      html += `<div class="ce-grp-hdr">${GROUP_LABELS[g] || g}</div>`;
+      html += byGrp[g].map(renderRow).join('');
+    }
+  } else {
+    html += list.map(renderRow).join('');
+  }
+
+  html += `<div class="ce-axis-bot">
+  <div class="ce-axis-bot-inner"><span>0%</span><span>20%</span><span>40%</span><span>60%</span><span>80%</span><span>100%</span></div>
+  <div class="ce-axis-label">3-Year Percentile Rank</div>
+</div></div>`;
+
+  // Extreme signals table
+  html += renderSignals(S.instruments);
+
+  // Skew explainer
+  html += renderSkewCard();
+
+  el.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Init
+   ═══════════════════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => loadData());
+</script>
+</body>
+</html>

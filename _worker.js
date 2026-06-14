@@ -1446,6 +1446,196 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         return json({ ok: true, data: merged, pairsFound, reportDate, errors: errors.length ? errors : undefined });
       }
 
+      // -- /api/cot-extremes ------------------------------------------
+      // Fetches 3 years of weekly COT history from the CFTC PRE Socrata API.
+      // Computes 3-year percentile ranks and z-scores for 35+ instruments
+      // across FX, metals, energy, grains, equities, rates, and crypto.
+      // Cached in KV for 7 days (COT releases weekly on Fridays).
+      if (path === '/api/cot-extremes') {
+        if (env.FX_SCORES) {
+          const cached = await env.FX_SCORES.get('cot_extremes_v2').catch(() => null);
+          if (cached) {
+            try {
+              const { ts, data } = JSON.parse(cached);
+              if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000) return json(data);
+            } catch(_) {}
+          }
+        }
+
+        const threeYearsAgo = new Date();
+        threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+        const fromDate = threeYearsAgo.toISOString().split('T')[0];
+
+        // Disaggregated report: metals, energy, grains, softs, livestock
+        const DISAGG = [
+          { name:'GOLD - COMMODITY EXCHANGE INC.',             sym:'GOLD',   label:'GOLD',      group:'metals'    },
+          { name:'SILVER - COMMODITY EXCHANGE INC.',           sym:'SILVER', label:'SILVER',    group:'metals'    },
+          { name:'COPPER-GRADE #1 - COMMODITY EXCHANGE INC.',  sym:'COPPER', label:'COPPER',    group:'metals'    },
+          { name:'PLATINUM - NEW YORK MERCANTILE EXCHANGE',    sym:'PLAT',   label:'PLATINUM',  group:'metals'    },
+          { name:'PALLADIUM - NEW YORK MERCANTILE EXCHANGE',   sym:'PALL',   label:'PALLADIUM', group:'metals'    },
+          { name:'CRUDE OIL, LIGHT SWEET - NEW YORK MERCANTILE EXCHANGE', sym:'WTI',    label:'CRUDE OIL', group:'energy' },
+          { name:'BRENT CRUDE OIL LAST DAY - ICE FUTURES EUROPE',         sym:'BRENT',  label:'BRENT',     group:'energy' },
+          { name:'NATURAL GAS (HENRY HUB) - NEW YORK MERCANTILE EXCHANGE',sym:'NATGAS', label:'NAT GAS',   group:'energy' },
+          { name:'RBOB GASOLINE - NEW YORK MERCANTILE EXCHANGE',           sym:'RBOB',   label:'GASOLINE',  group:'energy' },
+          { name:'CORN - CHICAGO BOARD OF TRADE',              sym:'CORN',   label:'CORN',      group:'grains'    },
+          { name:'WHEAT-SRW - CHICAGO BOARD OF TRADE',         sym:'WHEAT',  label:'WHEAT',     group:'grains'    },
+          { name:'SOYBEANS - CHICAGO BOARD OF TRADE',          sym:'SOYS',   label:'SOYBEANS',  group:'grains'    },
+          { name:'SOYBEAN OIL - CHICAGO BOARD OF TRADE',       sym:'SYBO',   label:'SOY OIL',   group:'grains'    },
+          { name:'SUGAR NO. 11 - ICE FUTURES U.S.',            sym:'SUGAR',  label:'SUGAR',     group:'softs'     },
+          { name:'COFFEE C - ICE FUTURES U.S.',                sym:'COFFEE', label:'COFFEE',    group:'softs'     },
+          { name:'COTTON NO. 2 - ICE FUTURES U.S.',            sym:'COTTON', label:'COTTON',    group:'softs'     },
+          { name:'COCOA - ICE FUTURES U.S.',                   sym:'COCOA',  label:'COCOA',     group:'softs'     },
+          { name:'LIVE CATTLE - CHICAGO MERCANTILE EXCHANGE',  sym:'CATTLE', label:'CATTLE',    group:'livestock' },
+          { name:'LEAN HOGS - CHICAGO MERCANTILE EXCHANGE',    sym:'HOGS',   label:'HOGS',      group:'livestock' },
+        ];
+
+        // TFF report: FX, equities, rates, crypto
+        // flip=true: CME contract quotes as USD/asset so net sign is inverted for our convention
+        const TFF = [
+          { name:'EURO FX - CHICAGO MERCANTILE EXCHANGE',              sym:'EUR',   label:'EUR',         group:'fx',       flip:false },
+          { name:'BRITISH POUND - CHICAGO MERCANTILE EXCHANGE',        sym:'GBP',   label:'GBP',         group:'fx',       flip:false },
+          { name:'JAPANESE YEN - CHICAGO MERCANTILE EXCHANGE',         sym:'JPY',   label:'JPY',         group:'fx',       flip:true  },
+          { name:'AUSTRALIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE',    sym:'AUD',   label:'AUD',         group:'fx',       flip:false },
+          { name:'CANADIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE',      sym:'CAD',   label:'CAD',         group:'fx',       flip:true  },
+          { name:'SWISS FRANC - CHICAGO MERCANTILE EXCHANGE',          sym:'CHF',   label:'CHF',         group:'fx',       flip:true  },
+          { name:'NEW ZEALAND DOLLAR - CHICAGO MERCANTILE EXCHANGE',   sym:'NZD',   label:'NZD',         group:'fx',       flip:false },
+          { name:'MEXICAN PESO - CHICAGO MERCANTILE EXCHANGE',         sym:'MXN',   label:'MXN',         group:'fx',       flip:false },
+          { name:'NASDAQ-100 MINI - CHICAGO MERCANTILE EXCHANGE',      sym:'NQ',    label:'NQ',          group:'equities', flip:false },
+          { name:'E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE',       sym:'ES',    label:'ES (S&P500)', group:'equities', flip:false },
+          { name:'DJIA x $5 - CHICAGO BOARD OF TRADE',                 sym:'YM',    label:'DOW',         group:'equities', flip:false },
+          { name:'E-MINI RUSSELL 2000 - CHICAGO MERCANTILE EXCHANGE',  sym:'RTY',   label:'RUSSELL 2K',  group:'equities', flip:false },
+          { name:'10-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE',sym:'TY',  label:'10Y T-NOTE',  group:'rates',    flip:false },
+          { name:'30-YEAR TREASURY BONDS - CHICAGO BOARD OF TRADE',    sym:'US',    label:'30Y T-BOND',  group:'rates',    flip:false },
+          { name:'2-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE',sym:'TU',   label:'2Y T-NOTE',   group:'rates',    flip:false },
+          { name:'BITCOIN - CHICAGO MERCANTILE EXCHANGE',               sym:'BTC',   label:'BITCOIN',     group:'crypto',   flip:false },
+        ];
+
+        const PRE = 'https://publicreporting.cftc.gov/resource';
+        const fmtNames = arr => arr.map(n => `'${n.replace(/'/g, "''")}'`).join(',');
+
+        const pctRank = (hist, cur) => {
+          if (!hist.length) return 50;
+          return Math.round(hist.filter(v => v < cur).length / hist.length * 100);
+        };
+        const zScore = (hist, cur) => {
+          const n = hist.length;
+          if (n < 2) return 0;
+          const mean = hist.reduce((s, v) => s + v, 0) / n;
+          const std  = Math.sqrt(hist.reduce((s, v) => s + (v - mean) ** 2, 0) / n);
+          return std > 0 ? +((cur - mean) / std).toFixed(2) : 0;
+        };
+
+        const disaggFields = 'market_and_exchange_names,report_date_as_yyyy_mm_dd,open_interest_all,m_money_positions_long_all,m_money_positions_short_all,prod_merc_positions_long_all,prod_merc_positions_short_all,change_in_m_money_long_all,change_in_m_money_short_all';
+        const tffFields    = 'market_and_exchange_names,report_date_as_yyyy_mm_dd,open_interest_all,lev_money_positions_long_all,lev_money_positions_short_all,asset_mgr_positions_long_all,asset_mgr_positions_short_all,dealer_positions_long_all,dealer_positions_short_all,change_in_lev_money_long_all,change_in_lev_money_short_all';
+
+        const disaggWhere = `report_date_as_yyyy_mm_dd>'${fromDate}' AND market_and_exchange_names IN (${fmtNames(DISAGG.map(d => d.name))})`;
+        const tffWhere    = `report_date_as_yyyy_mm_dd>'${fromDate}' AND market_and_exchange_names IN (${fmtNames(TFF.map(t => t.name))})`;
+
+        const disaggUrl = `${PRE}/72hh-3qpy.json?$select=${encodeURIComponent(disaggFields)}&$where=${encodeURIComponent(disaggWhere)}&$order=${encodeURIComponent('report_date_as_yyyy_mm_dd DESC')}&$limit=15000`;
+        const tffUrl    = `${PRE}/gpe5-46if.json?$select=${encodeURIComponent(tffFields)}&$where=${encodeURIComponent(tffWhere)}&$order=${encodeURIComponent('report_date_as_yyyy_mm_dd DESC')}&$limit=10000`;
+
+        let disaggRows = [], tffRows = [], fetchErrors = [];
+
+        const [dRes, tRes] = await Promise.all([
+          fetch(disaggUrl, { signal: AbortSignal.timeout(25000) }),
+          fetch(tffUrl,    { signal: AbortSignal.timeout(25000) }),
+        ]);
+
+        if (dRes.ok) { try { disaggRows = await dRes.json(); } catch(e) { fetchErrors.push('disagg parse: ' + e.message); } }
+        else { fetchErrors.push(`disagg HTTP ${dRes.status}`); }
+
+        if (tRes.ok) { try { tffRows = await tRes.json(); } catch(e) { fetchErrors.push('tff parse: ' + e.message); } }
+        else { fetchErrors.push(`tff HTTP ${tRes.status}`); }
+
+        const pi     = n => parseInt(n) || 0;
+        const mktNm  = r => (r.market_and_exchange_names ?? r.contract_market_name ?? '').trim();
+
+        function processDisagg(rows, instList) {
+          const byName = {};
+          for (const r of rows) { const k = mktNm(r); if (!byName[k]) byName[k] = []; byName[k].push(r); }
+          const results = [];
+          for (const inst of instList) {
+            const recs = byName[inst.name];
+            if (!recs?.length) continue;
+            recs.sort((a, b) => (b.report_date_as_yyyy_mm_dd || '').localeCompare(a.report_date_as_yyyy_mm_dd || ''));
+            const cur = recs[0];
+            const mmL  = r => pi(r.m_money_positions_long_all  ?? r.managed_money_long_all);
+            const mmS  = r => pi(r.m_money_positions_short_all ?? r.managed_money_short_all);
+            const pmL  = r => pi(r.prod_merc_positions_long_all  ?? r.producer_long_all);
+            const pmS  = r => pi(r.prod_merc_positions_short_all ?? r.producer_short_all);
+            const specNets = recs.map(r => mmL(r) - mmS(r));
+            const commNets = recs.map(r => pmL(r) - pmS(r));
+            const oiSer    = recs.map(r => pi(r.open_interest_all));
+            const h = a => a.slice(1);
+            results.push({
+              sym: inst.sym, label: inst.label, group: inst.group,
+              specPct: pctRank(h(specNets), specNets[0]), commPct: pctRank(h(commNets), commNets[0]),
+              specNet: specNets[0], commNet: commNets[0],
+              specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
+              grossRatio: mmS(cur) > 0 ? +(mmL(cur) / mmS(cur)).toFixed(2) : null,
+              openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
+              weeklyChg: pi(cur.change_in_m_money_long_all) - pi(cur.change_in_m_money_short_all),
+              histLen: recs.length, reportDate: cur.report_date_as_yyyy_mm_dd ?? null,
+            });
+          }
+          return results;
+        }
+
+        function processTFF(rows, instList) {
+          const byName = {};
+          for (const r of rows) { const k = mktNm(r); if (!byName[k]) byName[k] = []; byName[k].push(r); }
+          const results = [];
+          for (const inst of instList) {
+            const recs = byName[inst.name];
+            if (!recs?.length) continue;
+            recs.sort((a, b) => (b.report_date_as_yyyy_mm_dd || '').localeCompare(a.report_date_as_yyyy_mm_dd || ''));
+            const cur = recs[0];
+            const levL = r => pi(r.lev_money_positions_long_all  ?? r.leveraged_funds_long_all);
+            const levS = r => pi(r.lev_money_positions_short_all ?? r.leveraged_funds_short_all);
+            const amL  = r => pi(r.asset_mgr_positions_long_all  ?? r.asset_manager_long_all);
+            const amS  = r => pi(r.asset_mgr_positions_short_all ?? r.asset_manager_short_all);
+            const dlL  = r => pi(r.dealer_positions_long_all);
+            const dlS  = r => pi(r.dealer_positions_short_all);
+            const specNets = recs.map(r => inst.flip ? levS(r) - levL(r) : levL(r) - levS(r));
+            const commNets = recs.map(r => { const net = (amL(r) - amS(r)) + (dlL(r) - dlS(r)); return inst.flip ? -net : net; });
+            const oiSer    = recs.map(r => pi(r.open_interest_all));
+            const h = a => a.slice(1);
+            results.push({
+              sym: inst.sym, label: inst.label, group: inst.group,
+              specPct: pctRank(h(specNets), specNets[0]), commPct: pctRank(h(commNets), commNets[0]),
+              specNet: specNets[0], commNet: commNets[0],
+              specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
+              grossRatio: levS(cur) > 0 ? +(levL(cur) / levS(cur)).toFixed(2) : null,
+              openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
+              weeklyChg: pi(cur.change_in_lev_money_long_all) - pi(cur.change_in_lev_money_short_all),
+              histLen: recs.length, reportDate: cur.report_date_as_yyyy_mm_dd ?? null,
+            });
+          }
+          return results;
+        }
+
+        const disaggResults = processDisagg(disaggRows, DISAGG);
+        const tffResults    = processTFF(tffRows, TFF);
+        const allInstruments = [...tffResults, ...disaggResults];
+        const reportDate2 = allInstruments.map(i => i.reportDate).filter(Boolean).sort().reverse()[0] ?? null;
+
+        if (!allInstruments.length) {
+          return json({ ok: false, reason: 'No instruments parsed — CFTC field names may differ',
+            diagnostic: { disaggSample: disaggRows[0] ?? null, tffSample: tffRows[0] ?? null,
+              disaggCount: disaggRows.length, tffCount: tffRows.length, fetchErrors } });
+        }
+
+        const payload2 = { ok: true, instruments: allInstruments, reportDate: reportDate2,
+          count: allInstruments.length, fetchErrors: fetchErrors.length ? fetchErrors : undefined };
+
+        if (env.FX_SCORES) {
+          await env.FX_SCORES.put('cot_extremes_v2', JSON.stringify({ ts: Date.now(), data: payload2 }),
+            { expirationTtl: 7 * 86400 }).catch(() => {});
+        }
+
+        return json(payload2);
+      }
+
       // -- /api/spread ------------------------------------------
       // Live bid/ask spread from OANDA pricing endpoint.
       // Query: ?symbol=EUR_USD  (underscore format)
