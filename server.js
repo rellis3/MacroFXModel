@@ -2168,6 +2168,33 @@ async function fetchVixYahoo(fromUnix) {
   return out;
 }
 
+// Fetch OHLC bars for any Yahoo Finance ticker (e.g. 'TLT', 'IEF').
+// Returns a Map<date, { open, close }>.
+async function fetchYahooOHLC(ticker, fromUnix) {
+  const toUnix = Math.floor(Date.now() / 1000);
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`
+            + `?interval=1d&period1=${fromUnix}&period2=${toUnix}`;
+  const r = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' },
+    signal:  AbortSignal.timeout(20_000),
+  });
+  if (!r.ok) throw new Error(`Yahoo ${ticker} HTTP ${r.status}`);
+  const json = await r.json();
+  const result = json?.chart?.result?.[0];
+  if (!result) throw new Error(`Yahoo ${ticker}: unexpected response`);
+  const timestamps = result.timestamp ?? [];
+  const quote      = result.indicators?.quote?.[0] ?? {};
+  const opens      = quote.open  ?? [];
+  const closes     = quote.close ?? [];
+  const out = new Map();
+  for (let i = 0; i < timestamps.length; i++) {
+    if (closes[i] == null || !isFinite(closes[i])) continue;
+    const d = new Date(timestamps[i] * 1000).toISOString().substring(0, 10);
+    out.set(d, { open: isFinite(opens[i]) ? opens[i] : closes[i], close: closes[i] });
+  }
+  return out;
+}
+
 // Fetch a single FRED series via REST API
 async function fetchFredSeries(seriesId, fromDate, fredKey) {
   const url = `https://api.stlouisfed.org/fred/series/observations`
@@ -2260,10 +2287,12 @@ async function fetchMeRawData(fredKey) {
   try { russellBars = await fetchOandaD1Range('US2000_USD', FROM_DATE); }
   catch (e) { console.warn('[macro-equity-bt] US2000_USD fetch failed:', e.message); }
 
-  console.log('[macro-equity-bt] fetching OANDA USB30Y_USD (30Y Bond / TLT proxy)…');
-  let bond30yBars = [];
-  try { bond30yBars = await fetchOandaD1Range('USB30Y_USD', FROM_DATE); }
-  catch (e) { console.warn('[macro-equity-bt] USB30Y_USD fetch failed (TLT unavailable):', e.message); }
+  console.log('[macro-equity-bt] fetching TLT (20Y+ Treasury ETF) from Yahoo Finance…');
+  let tltMap = new Map();
+  try {
+    tltMap = await fetchYahooOHLC('TLT', FROM_UNIX);
+    console.log(`[macro-equity-bt] TLT: ${tltMap.size} bars`);
+  } catch (e) { console.warn('[macro-equity-bt] TLT Yahoo fetch failed:', e.message); }
 
   console.log('[macro-equity-bt] fetching OANDA DE30_EUR (DAX / Germany 40)…');
   let daxBars = [];
@@ -2275,17 +2304,16 @@ async function fetchMeRawData(fredKey) {
     ...qqqBars.map(b => b.date),
     ...spyBars.map(b => b.date),
     ...russellBars.map(b => b.date),
-    ...bond30yBars.map(b => b.date),
+    ...[...tltMap.keys()],
     ...daxBars.map(b => b.date),
   ]);
   const dates = [...allDates].sort();
 
-  // Map OANDA bars to date index
-  const qqqMap     = new Map(qqqBars.map(b     => [b.date, b]));
-  const spyMap     = new Map(spyBars.map(b     => [b.date, b]));
-  const russellMap = new Map(russellBars.map(b  => [b.date, b]));
-  const bond30yMap = new Map(bond30yBars.map(b  => [b.date, b]));
-  const daxMap     = new Map(daxBars.map(b      => [b.date, b]));
+  // Map OANDA bars to date index (TLT comes from Yahoo Finance Map directly)
+  const qqqMap     = new Map(qqqBars.map(b    => [b.date, b]));
+  const spyMap     = new Map(spyBars.map(b    => [b.date, b]));
+  const russellMap = new Map(russellBars.map(b => [b.date, b]));
+  const daxMap     = new Map(daxBars.map(b     => [b.date, b]));
 
   const qqq = {
     open:  dates.map(d => qqqMap.get(d)?.open  ?? NaN),
@@ -2301,9 +2329,9 @@ async function fetchMeRawData(fredKey) {
     available: russellBars.length > 0,
   };
   const bond30y = {
-    open:  dates.map(d => bond30yMap.get(d)?.open  ?? NaN),
-    close: dates.map(d => bond30yMap.get(d)?.close ?? NaN),
-    available: bond30yBars.length > 0,
+    open:  dates.map(d => tltMap.get(d)?.open  ?? NaN),
+    close: dates.map(d => tltMap.get(d)?.close ?? NaN),
+    available: tltMap.size > 0,
   };
   const dax = {
     open:  dates.map(d => daxMap.get(d)?.open  ?? NaN),
@@ -2402,7 +2430,7 @@ app.post('/api/macro-equity-backtest/run', express.json({ limit: '1mb' }), (req,
         instruments.IWM = { ...rawData.russell, label: 'IWM — Russell 2000', inverted: false };
       }
       if (includeTLT && rawData.bond30y.available) {
-        instruments.TLT = { ...rawData.bond30y, label: 'TLT — Long Bond',    inverted: true };
+        instruments.TLT = { ...rawData.bond30y, label: 'TLT — 20Y+ Treasury', inverted: true };
       }
       if (includeDAX && rawData.dax.available) {
         instruments.DAX = { ...rawData.dax, label: 'DAX — Germany 40', inverted: false, euMode: true };
