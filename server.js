@@ -2320,39 +2320,6 @@ app.post('/api/macro-equity-backtest/run', express.json({ limit: '1mb' }), (req,
       };
       macroEquityStore.savedAt = result.runAt;
 
-      // Populate trade log for the Positions tab (expected format: see _renderMeBtTrades in bot-config.js)
-      function _monDate(fridayStr) {
-        // Approximate Monday from week-ending-Friday by subtracting 4 days
-        const d = new Date(fridayStr + 'T00:00:00Z');
-        d.setUTCDate(d.getUTCDate() - 4);
-        return d.toISOString().substring(0, 10);
-      }
-      const qqqPositionTrades = result.QQQ.trades.map(t => ({
-        ticker:      'QQQ',
-        entry_date:  _monDate(t.weekEnd),
-        exit_date:   t.weekEnd,
-        position_sz: t.posScalar,
-        entry_price: t.monOpen,
-        exit_price:  t.friClose,
-        pnl_pct:     parseFloat((t.stratRet * 100).toFixed(3)),
-        macro_score: t.macroScore,
-        vol_regime:  t.volRegime,
-      }));
-      const spyPositionTrades = result.SPY.trades.map(t => ({
-        ticker:      'SPY',
-        entry_date:  _monDate(t.weekEnd),
-        exit_date:   t.weekEnd,
-        position_sz: t.posScalar,
-        entry_price: t.monOpen,
-        exit_price:  t.friClose,
-        pnl_pct:     parseFloat((t.stratRet * 100).toFixed(3)),
-        macro_score: t.macroScore,
-        vol_regime:  t.volRegime,
-      }));
-      // Interleave QQQ and SPY trades sorted by entry date for the combined view
-      macroEquityStore.trades = [...qqqPositionTrades, ...spyPositionTrades]
-        .sort((a, b) => a.entry_date < b.entry_date ? -1 : 1);
-      console.log(`[macro-equity-bt] stored ${macroEquityStore.trades.length} trades in positions store`);
 
       meJobs.set(jobId, {
         status: 'done', startedAt,
