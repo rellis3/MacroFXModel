@@ -554,9 +554,8 @@ function buildPortfolioResult(equityKeys, bondKeys, result, cfg) {
   let portEq = 1, bhEq = 1, prevAlloc = null;
 
   for (const mk of commonMonths) {
-    const primaryT  = eqMaps[primaryKey].get(mk);
-    const bondT     = bondMap.get(mk);
-    if (!primaryT || !bondT) continue;
+    const primaryT = eqMaps[primaryKey].get(mk);
+    if (!primaryT) continue;
 
     const rawEquityAlloc = primaryT.alloc;
     // Apply TLT floor: bond always gets at least invertedAllocFloor of the portfolio
