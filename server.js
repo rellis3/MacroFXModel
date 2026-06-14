@@ -3094,6 +3094,15 @@ async function _getWeeklyStatus() {
   const r2 = x => Math.round(x * 100) / 100;
   const instruments = {};
 
+  // Detect weekend / post-Friday-close preview mode.
+  // After the Friday 22:00 UTC forecast run the new week's forecast is ready but
+  // markets haven't opened yet — show the upcoming Monday's ranges instead of the
+  // completed week's consumption stats.
+  const now = new Date();
+  const dow = now.getUTCDay();
+  const TARGET = parseInt(process.env.VOL_FORECAST_UTC ?? '22');
+  const isPreWeek = dow === 6 || dow === 0 || (dow === 5 && now.getUTCHours() >= TARGET);
+
   // Fetch in batches of 5 to avoid Oanda rate-limiting
   const BATCH = 5;
   for (let i = 0; i < WEEKLY_INSTRUMENTS.length; i += BATCH) {
@@ -3101,12 +3110,21 @@ async function _getWeeklyStatus() {
       try {
         const f = fc.instruments[cfg.name];
         if (!f) return;
-        const wtd = await _fetchWTDBar(cfg.sym);
 
-        const wtdHLPct = r2((wtd.high - wtd.low) / wtd.open * 100);
-        const wtdOCPct = r2((wtd.close - wtd.open) / wtd.open * 100);
-        const hlConsumedPct  = f.hl_5d > 0 ? Math.round(wtdHLPct / f.hl_5d * 100) : null;
-        const hlRemainingPct = f.hl_5d > 0 ? r2(Math.max(f.hl_5d - wtdHLPct, 0)) : null;
+        let wtdHLPct, wtdOCPct, wtdDays, hlConsumedPct, hlRemainingPct;
+
+        if (isPreWeek) {
+          // Week hasn't opened yet — no consumption data; bias from HMM only
+          wtdHLPct = 0; wtdOCPct = 0; wtdDays = 0;
+          hlConsumedPct = null; hlRemainingPct = null;
+        } else {
+          const wtd = await _fetchWTDBar(cfg.sym);
+          wtdHLPct = r2((wtd.high - wtd.low) / wtd.open * 100);
+          wtdOCPct = r2((wtd.close - wtd.open) / wtd.open * 100);
+          wtdDays  = wtd.days;
+          hlConsumedPct  = f.hl_5d > 0 ? Math.round(wtdHLPct / f.hl_5d * 100) : null;
+          hlRemainingPct = f.hl_5d > 0 ? r2(Math.max(f.hl_5d - wtdHLPct, 0)) : null;
+        }
 
         const hmmData   = cfg.hmmKey ? (state.hmmRegimes[cfg.hmmKey]   ?? null) : null;
         const hmm5mData = cfg.hmmKey ? (state.hmm5mRegimes[cfg.hmmKey] ?? null) : null;
@@ -3114,7 +3132,7 @@ async function _getWeeklyStatus() {
         instruments[cfg.name] = {
           wtd_hl_pct:       wtdHLPct,
           wtd_oc_pct:       wtdOCPct,
-          wtd_days:         wtd.days,
+          wtd_days:         wtdDays,
           hl_5d:            f.hl_5d,
           hl_5d_75:         r2(f.hl_75  * Math.sqrt(5)),
           oc_5d:            f.oc_5d,
@@ -3136,12 +3154,16 @@ async function _getWeeklyStatus() {
     if (i + BATCH < WEEKLY_INSTRUMENTS.length) await new Promise(r => setTimeout(r, 120));
   }
 
-  // Find Monday of current week for the label
-  const now = new Date();
-  const dow = now.getUTCDay();
-  const daysBack = dow === 0 ? 6 : dow - 1;
-  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysBack));
+  // Week label: upcoming Monday when pre-week, current week's Monday otherwise
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let monday;
+  if (isPreWeek) {
+    monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    while (monday.getUTCDay() !== 1) monday.setUTCDate(monday.getUTCDate() + 1);
+  } else {
+    const daysBack = dow === 0 ? 6 : dow - 1;
+    monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysBack));
+  }
   const weekLabel = `Week of ${monthNames[monday.getUTCMonth()]} ${monday.getUTCDate()}, ${monday.getUTCFullYear()}`;
 
   const result = {
@@ -3149,6 +3171,7 @@ async function _getWeeklyStatus() {
     computed_at:   new Date().toISOString(),
     session_label: fc.session_label,
     week_label:    weekLabel,
+    is_preview:    isPreWeek,
     instruments,
   };
   _weeklyCache   = result;
@@ -3164,7 +3187,7 @@ function _fmtWeeklyText(data) {
 
   const lines = [
     '**VOL & RANGE FORECAST — WEEKLY**',
-    `**${data.week_label}**`,
+    data.is_preview ? `**${data.week_label}  — FORECAST PREVIEW**` : `**${data.week_label}**`,
     '',
   ];
 
@@ -3179,10 +3202,14 @@ function _fmtWeeklyText(data) {
       if (w.hmm5m_regime) parts.push(`${w.hmm5m_regime} (5m HMM)`);
       lines.push(`Regime signals      : ${parts.join(' · ')}`);
     }
-    lines.push(`WTD momentum        : ${w.wtd_dir}  (${sign(w.wtd_oc_pct)}% open→close)`);
-    if (w.hl_consumed_pct != null) {
-      lines.push(`Range consumed      : ${w.hl_consumed_pct}%  (${f2(w.wtd_hl_pct)}% of ${f2(w.hl_5d)}% budget)`);
-      lines.push(`Remaining budget    : ${f2(w.hl_remaining_pct)}%  (${w.wtd_days} day${w.wtd_days !== 1 ? 's' : ''} in)`);
+    if (data.is_preview) {
+      lines.push(`Status              : Forecast preview — week opens Monday`);
+    } else {
+      lines.push(`WTD momentum        : ${w.wtd_dir}  (${sign(w.wtd_oc_pct)}% open→close)`);
+      if (w.hl_consumed_pct != null) {
+        lines.push(`Range consumed      : ${w.hl_consumed_pct}%  (${f2(w.wtd_hl_pct)}% of ${f2(w.hl_5d)}% budget)`);
+        lines.push(`Remaining budget    : ${f2(w.hl_remaining_pct)}%  (${w.wtd_days} day${w.wtd_days !== 1 ? 's' : ''} in)`);
+      }
     }
     lines.push('');
     lines.push(`5-day H-L forecast  : ${f2(w.hl_5d)}%  (week range budget)`);

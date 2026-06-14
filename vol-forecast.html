@@ -2257,9 +2257,13 @@ function renderWeekly(data) {
   if (!names.length) return;
 
   document.getElementById('vfWeeklyLabel').textContent =
-    `Weekly Range Tracker — ${data.week_label}`;
+    data.is_preview
+      ? `Weekly Forecast Preview — ${data.week_label}`
+      : `Weekly Range Tracker — ${data.week_label}`;
   document.getElementById('vfWeeklyStatus').textContent =
-    `computed ${new Date(data.computed_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')} · 15 min cache`;
+    data.is_preview
+      ? `preview · week not yet open · computed ${new Date(data.computed_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')}`
+      : `computed ${new Date(data.computed_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')} · 15 min cache`;
 
   const thead = document.getElementById('vfWeeklyHead');
   thead.innerHTML = '<tr>'
@@ -2343,7 +2347,7 @@ function _buildWeeklyText(data) {
 
   const lines = [
     '**VOL & RANGE FORECAST — WEEKLY**',
-    `**${data.week_label}**`,
+    data.is_preview ? `**${data.week_label}  — FORECAST PREVIEW**` : `**${data.week_label}**`,
     '',
   ];
 
@@ -2355,10 +2359,14 @@ function _buildWeeklyText(data) {
     if (w.hmm_regime)   regParts.push(`${w.hmm_regime} (daily HMM)`);
     if (w.hmm5m_regime) regParts.push(`${w.hmm5m_regime} (5m HMM)`);
     if (regParts.length) lines.push(`Regime signals      : ${regParts.join(' · ')}`);
-    lines.push(`WTD momentum        : ${w.wtd_dir}  (${sgn(w.wtd_oc_pct)}% open→close)`);
-    if (w.hl_consumed_pct != null) {
-      lines.push(`Range consumed      : ${w.hl_consumed_pct}%  (${f2(w.wtd_hl_pct)}% of ${f2(w.hl_5d)}% budget)`);
-      lines.push(`Remaining budget    : ${f2(w.hl_remaining_pct)}%  (${w.wtd_days} day${w.wtd_days !== 1 ? 's' : ''} in)`);
+    if (data.is_preview) {
+      lines.push(`Status              : Forecast preview — week opens Monday`);
+    } else {
+      lines.push(`WTD momentum        : ${w.wtd_dir}  (${sgn(w.wtd_oc_pct)}% open→close)`);
+      if (w.hl_consumed_pct != null) {
+        lines.push(`Range consumed      : ${w.hl_consumed_pct}%  (${f2(w.wtd_hl_pct)}% of ${f2(w.hl_5d)}% budget)`);
+        lines.push(`Remaining budget    : ${f2(w.hl_remaining_pct)}%  (${w.wtd_days} day${w.wtd_days !== 1 ? 's' : ''} in)`);
+      }
     }
     lines.push('');
     lines.push('── 5-Day (Weekly)');
