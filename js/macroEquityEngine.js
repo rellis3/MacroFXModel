@@ -554,8 +554,11 @@ function buildPortfolioResult(equityKeys, bondKey, result, cfg) {
     const bondT     = bondMap.get(mk);
     if (!primaryT || !bondT) continue;
 
-    const equityAlloc = primaryT.alloc;
-    const bondAlloc   = 1 - equityAlloc;
+    const rawEquityAlloc = primaryT.alloc;
+    // Apply TLT floor: bond always gets at least invertedAllocFloor of the portfolio
+    const bondFloor   = cfg.invertedAllocFloor ?? 0.15;
+    const bondAlloc   = Math.max(bondFloor, 1 - rawEquityAlloc);
+    const equityAlloc = 1 - bondAlloc;  // equity is the remainder after bond floor
 
     // Average monthly return across all equity instruments
     let avgEqRet = 0, nEq = 0;
