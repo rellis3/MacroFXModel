@@ -1527,14 +1527,13 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           return std > 0 ? +((cur - mean) / std).toFixed(2) : 0;
         };
 
-        const disaggFields = 'market_and_exchange_names,report_date_as_yyyy_mm_dd,open_interest_all,m_money_positions_long_all,m_money_positions_short_all,prod_merc_positions_long_all,prod_merc_positions_short_all,change_in_m_money_long_all,change_in_m_money_short_all';
-        const tffFields    = 'market_and_exchange_names,report_date_as_yyyy_mm_dd,open_interest_all,lev_money_positions_long_all,lev_money_positions_short_all,asset_mgr_positions_long_all,asset_mgr_positions_short_all,dealer_positions_long_all,dealer_positions_short_all,change_in_lev_money_long_all,change_in_lev_money_short_all';
-
+        // No $select — fetch all columns to avoid 400 errors from wrong field names.
+        // Field name fallbacks in processDisagg/processTFF handle API naming variations.
         const disaggWhere = `report_date_as_yyyy_mm_dd>'${fromDate}' AND market_and_exchange_names IN (${fmtNames(DISAGG.map(d => d.name))})`;
         const tffWhere    = `report_date_as_yyyy_mm_dd>'${fromDate}' AND market_and_exchange_names IN (${fmtNames(TFF.map(t => t.name))})`;
 
-        const disaggUrl = `${PRE}/72hh-3qpy.json?$select=${encodeURIComponent(disaggFields)}&$where=${encodeURIComponent(disaggWhere)}&$order=${encodeURIComponent('report_date_as_yyyy_mm_dd DESC')}&$limit=15000`;
-        const tffUrl    = `${PRE}/gpe5-46if.json?$select=${encodeURIComponent(tffFields)}&$where=${encodeURIComponent(tffWhere)}&$order=${encodeURIComponent('report_date_as_yyyy_mm_dd DESC')}&$limit=10000`;
+        const disaggUrl = `${PRE}/72hh-3qpy.json?$where=${encodeURIComponent(disaggWhere)}&$order=${encodeURIComponent('report_date_as_yyyy_mm_dd DESC')}&$limit=15000`;
+        const tffUrl    = `${PRE}/gpe5-46if.json?$where=${encodeURIComponent(tffWhere)}&$order=${encodeURIComponent('report_date_as_yyyy_mm_dd DESC')}&$limit=10000`;
 
         let disaggRows = [], tffRows = [], fetchErrors = [];
 
@@ -1543,11 +1542,21 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           fetch(tffUrl,    { signal: AbortSignal.timeout(25000) }),
         ]);
 
-        if (dRes.ok) { try { disaggRows = await dRes.json(); } catch(e) { fetchErrors.push('disagg parse: ' + e.message); } }
-        else { fetchErrors.push(`disagg HTTP ${dRes.status}`); }
+        if (dRes.ok) {
+          try {
+            const d = await dRes.json();
+            disaggRows = Array.isArray(d) ? d : [];
+            if (!Array.isArray(d)) fetchErrors.push('disagg: response not array — ' + JSON.stringify(d).slice(0, 200));
+          } catch(e) { fetchErrors.push('disagg parse: ' + e.message); }
+        } else { fetchErrors.push(`disagg HTTP ${dRes.status}: ` + (await dRes.text().catch(()=>'')). slice(0,200)); }
 
-        if (tRes.ok) { try { tffRows = await tRes.json(); } catch(e) { fetchErrors.push('tff parse: ' + e.message); } }
-        else { fetchErrors.push(`tff HTTP ${tRes.status}`); }
+        if (tRes.ok) {
+          try {
+            const d = await tRes.json();
+            tffRows = Array.isArray(d) ? d : [];
+            if (!Array.isArray(d)) fetchErrors.push('tff: response not array — ' + JSON.stringify(d).slice(0, 200));
+          } catch(e) { fetchErrors.push('tff parse: ' + e.message); }
+        } else { fetchErrors.push(`tff HTTP ${tRes.status}: ` + (await tRes.text().catch(()=>'')).slice(0,200)); }
 
         const pi     = n => parseInt(n) || 0;
         const mktNm  = r => (r.market_and_exchange_names ?? r.contract_market_name ?? '').trim();
