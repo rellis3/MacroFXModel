@@ -1476,9 +1476,9 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           { name:'PLATINUM - NEW YORK MERCANTILE EXCHANGE',    sym:'PLAT',   label:'PLATINUM',  group:'metals'    },
           { name:'PALLADIUM - NEW YORK MERCANTILE EXCHANGE',   sym:'PALL',   label:'PALLADIUM', group:'metals'    },
           { name:'CRUDE OIL, LIGHT SWEET - NEW YORK MERCANTILE EXCHANGE', sym:'WTI',    label:'CRUDE OIL', group:'energy' },
-          { name:'BRENT CRUDE OIL LAST DAY - ICE FUTURES EUROPE',         sym:'BRENT',  label:'BRENT',     group:'energy' },
-          { name:'NATURAL GAS (HENRY HUB) - NEW YORK MERCANTILE EXCHANGE',sym:'NATGAS', label:'NAT GAS',   group:'energy' },
-          { name:'RBOB GASOLINE - NEW YORK MERCANTILE EXCHANGE',           sym:'RBOB',   label:'GASOLINE',  group:'energy' },
+          { name:'BRENT CRUDE OIL LAST DAY - ICE FUTURES EUROPE', alt:['BRENT LAST DAY FINANCIAL - ICE FUTURES EUROPE','ICE BRENT CRUDE OIL - ICE FUTURES EUROPE','BRENT CRUDE OIL - ICE FUTURES EUROPE'], sym:'BRENT',  label:'BRENT',     group:'energy' },
+          { name:'NATURAL GAS - NEW YORK MERCANTILE EXCHANGE',                   alt:['NATURAL GAS (HENRY HUB) - NEW YORK MERCANTILE EXCHANGE','NAT GAS NYMEX - NEW YORK MERCANTILE EXCHANGE'],              sym:'NATGAS', label:'NAT GAS',   group:'energy' },
+          { name:'GASOLINE BLENDSTOCK (RBOB) - NEW YORK MERCANTILE EXCHANGE',   alt:['RBOB GASOLINE - NEW YORK MERCANTILE EXCHANGE','REFORMULATED GASOLINE (RBOB) - NEW YORK MERCANTILE EXCHANGE'],     sym:'RBOB',   label:'GASOLINE',  group:'energy' },
           { name:'CORN - CHICAGO BOARD OF TRADE',              sym:'CORN',   label:'CORN',      group:'grains'    },
           { name:'WHEAT-SRW - CHICAGO BOARD OF TRADE',         sym:'WHEAT',  label:'WHEAT',     group:'grains'    },
           { name:'SOYBEANS - CHICAGO BOARD OF TRADE',          sym:'SOYS',   label:'SOYBEANS',  group:'grains'    },
@@ -1502,12 +1502,12 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           { name:'SWISS FRANC - CHICAGO MERCANTILE EXCHANGE',          sym:'CHF',   label:'CHF',         group:'fx',       flip:true  },
           { name:'NEW ZEALAND DOLLAR - CHICAGO MERCANTILE EXCHANGE',   sym:'NZD',   label:'NZD',         group:'fx',       flip:false },
           { name:'MEXICAN PESO - CHICAGO MERCANTILE EXCHANGE',         sym:'MXN',   label:'MXN',         group:'fx',       flip:false },
-          { name:'NASDAQ-100 MINI - CHICAGO MERCANTILE EXCHANGE',      sym:'NQ',    label:'NQ',          group:'equities', flip:false },
+          { name:'NASDAQ-100 MINI - CHICAGO MERCANTILE EXCHANGE', alt:['E-MINI NASDAQ-100 - CHICAGO MERCANTILE EXCHANGE','NASDAQ-100 STOCK INDEX (MINI) - CHICAGO MERCANTILE EXCHANGE'],  sym:'NQ',  label:'NQ',          group:'equities', flip:false },
           { name:'E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE',       sym:'ES',    label:'ES (S&P500)', group:'equities', flip:false },
           { name:'DJIA x $5 - CHICAGO BOARD OF TRADE',                 sym:'YM',    label:'DOW',         group:'equities', flip:false },
-          { name:'E-MINI RUSSELL 2000 - CHICAGO MERCANTILE EXCHANGE',  sym:'RTY',   label:'RUSSELL 2K',  group:'equities', flip:false },
+          { name:'E-MINI RUSSELL 2000 - CHICAGO MERCANTILE EXCHANGE',  alt:['RUSSELL 2000 MINI INDEX FUTURES - CHICAGO MERCANTILE EXCHANGE','E-MINI RUSSELL 2000 INDEX - CHICAGO MERCANTILE EXCHANGE'], sym:'RTY', label:'RUSSELL 2K',  group:'equities', flip:false },
           { name:'10-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE',sym:'TY',  label:'10Y T-NOTE',  group:'rates',    flip:false },
-          { name:'30-YEAR TREASURY BONDS - CHICAGO BOARD OF TRADE',    sym:'US',    label:'30Y T-BOND',  group:'rates',    flip:false },
+          { name:'30-YEAR TREASURY BONDS - CHICAGO BOARD OF TRADE', alt:['U.S. TREASURY BONDS - CHICAGO BOARD OF TRADE','TREASURY BONDS - CHICAGO BOARD OF TRADE','U.S. TREAS BONDS - CHICAGO BOARD OF TRADE'], sym:'US', label:'30Y T-BOND',  group:'rates',    flip:false },
           { name:'2-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE',sym:'TU',   label:'2Y T-NOTE',   group:'rates',    flip:false },
           { name:'BITCOIN - CHICAGO MERCANTILE EXCHANGE',               sym:'BTC',   label:'BITCOIN',     group:'crypto',   flip:false },
         ];
@@ -1527,17 +1527,24 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         };
 
         // Use Socrata's column equality URL parameter (no SoQL $where needed).
-        // This sidesteps $where 400 errors from uncertain field names / IN-clause issues.
-        // Fetch the 200 most recent rows per instrument; 200 weeks ≈ 3.8 years of weekly data.
+        // $order by the confirmed date field ensures most-recent 200 rows are returned.
+        // alt names tried sequentially if the primary name returns empty.
         const COT_LIMIT = 200;
-        async function fetchInstRows(datasetId, marketName) {
-          const params = new URLSearchParams({ market_and_exchange_names: marketName, '$limit': String(COT_LIMIT) });
-          try {
-            const res = await fetch(`${PRE}/${datasetId}.json?${params}`, { signal: AbortSignal.timeout(12000) });
-            if (!res.ok) return { rows: null, err: `HTTP ${res.status}` };
-            const d = await res.json();
-            return Array.isArray(d) ? { rows: d, err: null } : { rows: null, err: 'not array: ' + JSON.stringify(d).slice(0, 100) };
-          } catch(e) { return { rows: null, err: e.message }; }
+        async function fetchInstRows(datasetId, marketName, altNames = []) {
+          for (const name of [marketName, ...altNames]) {
+            const params = new URLSearchParams({
+              market_and_exchange_names: name,
+              '$limit': String(COT_LIMIT),
+              '$order': 'report_date_as_yyyy_mm_dd DESC',
+            });
+            try {
+              const res = await fetch(`${PRE}/${datasetId}.json?${params}`, { signal: AbortSignal.timeout(12000) });
+              if (!res.ok) continue;
+              const d = await res.json();
+              if (Array.isArray(d) && d.length > 0) return { rows: d, err: null };
+            } catch(e) { /* try next name */ }
+          }
+          return { rows: null, err: `no match: ${[marketName, ...altNames].join(' | ')}` };
         }
 
         // Detect the date field name from a sample row (CFTC uses different names across datasets)
@@ -1550,8 +1557,8 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         // Fetch all instruments in parallel (35 total, 2 datasets)
         const fetchErrors = [];
         const [disaggFetches, tffFetches] = await Promise.all([
-          Promise.all(DISAGG.map(inst => fetchInstRows('72hh-3qpy', inst.name).then(r => ({ inst, ...r })))),
-          Promise.all(TFF.map(inst   => fetchInstRows('gpe5-46if', inst.name).then(r => ({ inst, ...r })))),
+          Promise.all(DISAGG.map(inst => fetchInstRows('72hh-3qpy', inst.name, inst.alt ?? []).then(r => ({ inst, ...r })))),
+          Promise.all(TFF.map(inst   => fetchInstRows('gpe5-46if', inst.name, inst.alt ?? []).then(r => ({ inst, ...r })))),
         ]);
 
         // Collect rows and log any per-instrument errors
@@ -1584,10 +1591,10 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             if (!recs?.length) continue;
             const sorted = sortByDate(recs);
             const cur = sorted[0];
-            const mmL  = r => pi(r.m_money_positions_long_all  ?? r.managed_money_long_all   ?? r.mm_long);
-            const mmS  = r => pi(r.m_money_positions_short_all ?? r.managed_money_short_all  ?? r.mm_short);
-            const pmL  = r => pi(r.prod_merc_positions_long_all  ?? r.producer_long_all  ?? r.prod_long);
-            const pmS  = r => pi(r.prod_merc_positions_short_all ?? r.producer_short_all ?? r.prod_short);
+            const mmL  = r => pi(r.m_money_positions_long_all  ?? r.m_money_positions_long  ?? r.managed_money_long_all  ?? r.mm_long);
+            const mmS  = r => pi(r.m_money_positions_short_all ?? r.m_money_positions_short ?? r.managed_money_short_all ?? r.mm_short);
+            const pmL  = r => pi(r.prod_merc_positions_long_all ?? r.prod_merc_positions_long ?? r.producer_long_all ?? r.prod_long);
+            const pmS  = r => pi(r.prod_merc_positions_short_all ?? r.prod_merc_positions_short ?? r.producer_short_all ?? r.prod_short);
             const specNets = sorted.map(r => mmL(r) - mmS(r));
             const commNets = sorted.map(r => pmL(r) - pmS(r));
             const oiSer    = sorted.map(r => pi(r.open_interest_all ?? r.open_interest));
@@ -1600,7 +1607,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               grossRatio: mmS(cur) > 0 ? +(mmL(cur) / mmS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
               weeklyChg: pi(cur.change_in_m_money_long_all ?? cur.chg_mm_long) - pi(cur.change_in_m_money_short_all ?? cur.chg_mm_short),
-              histLen: sorted.length, reportDate: _dateF ? cur[_dateF] : null,
+              histLen: sorted.length, reportDate: _dateF ? (cur[_dateF] ?? '').toString().split('T')[0] : null,
             });
           }
           return results;
@@ -1613,10 +1620,10 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             if (!recs?.length) continue;
             const sorted = sortByDate(recs);
             const cur = sorted[0];
-            const levL = r => pi(r.lev_money_positions_long_all  ?? r.leveraged_funds_long_all  ?? r.lev_long);
-            const levS = r => pi(r.lev_money_positions_short_all ?? r.leveraged_funds_short_all ?? r.lev_short);
-            const amL  = r => pi(r.asset_mgr_positions_long_all  ?? r.asset_manager_long_all    ?? r.asset_long);
-            const amS  = r => pi(r.asset_mgr_positions_short_all ?? r.asset_manager_short_all   ?? r.asset_short);
+            const levL = r => pi(r.lev_money_positions_long_all  ?? r.lev_money_positions_long  ?? r.leveraged_funds_long_all  ?? r.lev_long);
+            const levS = r => pi(r.lev_money_positions_short_all ?? r.lev_money_positions_short ?? r.leveraged_funds_short_all ?? r.lev_short);
+            const amL  = r => pi(r.asset_mgr_positions_long_all  ?? r.asset_mgr_positions_long  ?? r.asset_manager_long_all    ?? r.asset_long);
+            const amS  = r => pi(r.asset_mgr_positions_short_all ?? r.asset_mgr_positions_short ?? r.asset_manager_short_all   ?? r.asset_short);
             const dlL  = r => pi(r.dealer_positions_long_all  ?? r.dealer_long);
             const dlS  = r => pi(r.dealer_positions_short_all ?? r.dealer_short);
             const specNets = sorted.map(r => inst.flip ? levS(r) - levL(r) : levL(r) - levS(r));
@@ -1630,8 +1637,8 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
               grossRatio: levS(cur) > 0 ? +(levL(cur) / levS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
-              weeklyChg: pi(cur.change_in_lev_money_long_all ?? cur.chg_lev_long) - pi(cur.change_in_lev_money_short_all ?? cur.chg_lev_short),
-              histLen: sorted.length, reportDate: _dateF ? cur[_dateF] : null,
+              weeklyChg: pi(cur.change_in_lev_money_long_all ?? cur.change_in_lev_money_long ?? cur.chg_lev_long) - pi(cur.change_in_lev_money_short_all ?? cur.change_in_lev_money_short ?? cur.chg_lev_short),
+              histLen: sorted.length, reportDate: _dateF ? (cur[_dateF] ?? '').toString().split('T')[0] : null,
             });
           }
           return results;
