@@ -126,6 +126,34 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 .sig-z{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace}
 .sig-desc{font-size:10px;color:var(--text3);margin-left:7px}
 
+/* ── Sentiment / Market Intelligence panel ───────────────────────── */
+.sp-panel{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.sp-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--s2)}
+.sp-title{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)}
+.sp-meta{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace}
+.sp-toggle{margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 4px;line-height:1;transition:transform .2s}
+.sp-panel.sp-collapsed .sp-body{display:none}
+.sp-panel.sp-collapsed .sp-toggle{transform:rotate(180deg)}
+.sp-body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.sp-themes{display:flex;gap:8px;flex-wrap:wrap}
+.sp-theme{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;flex:1;min-width:180px}
+.sp-theme-tag{font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;margin-bottom:5px}
+.sp-tag-blue{color:var(--blue)}.sp-tag-amber{color:var(--amber)}.sp-tag-green{color:#34d399}.sp-tag-red{color:#f87171}.sp-tag-purple{color:var(--purple)}
+.sp-theme-text{font-size:11px;color:var(--text2);line-height:1.6}
+.sp-signals{display:flex;flex-direction:column;gap:7px}
+.sp-sig{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px}
+.sp-sig-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px}
+.sp-sig-sym{font-size:12px;font-weight:700;font-family:'DM Mono',monospace}
+.sp-sig-grp{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.sp-badge-bull{background:rgba(16,185,129,.18);color:#34d399;border:1px solid rgba(16,185,129,.28)}
+.sp-badge-bear{background:rgba(248,113,113,.18);color:#f87171;border:1px solid rgba(248,113,113,.28)}
+.sp-badge-warn{background:rgba(251,191,36,.14);color:#fbbf24;border:1px solid rgba(251,191,36,.28)}
+.sp-badge-comm{background:rgba(196,165,78,.14);color:#c4a54e;border:1px solid rgba(196,165,78,.28)}
+.sp-sig-nums{margin-left:auto;font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap}
+.sp-sig-body{font-size:11px;color:var(--text2);line-height:1.6}
+.sp-sig-action{font-size:10px;color:var(--blue);margin-top:4px;font-weight:500}
+.sp-empty{font-size:11px;color:var(--text3);padding:4px 0}
+
 /* ── Skew explainer card ─────────────────────────────────────────── */
 .skew-card{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
 .skew-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:2px}
@@ -366,6 +394,186 @@ function renderRow(inst) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   Market Intelligence / Sentiment Panel
+   ═══════════════════════════════════════════════════════════════════ */
+
+// Flip syms: high specPct = bullish USD vs this pair (CME inverted convention)
+const FLIP_SYMS = new Set(['JPY','CAD','CHF']);
+
+function spPairName(inst) {
+  if (inst.group !== 'fx') return inst.label;
+  return FLIP_SYMS.has(inst.sym) ? `USD/${inst.sym}` : `${inst.sym}/USD`;
+}
+
+function spSpecMeaning(inst, high) {
+  const g = inst.group;
+  if (g === 'fx') {
+    const flip = FLIP_SYMS.has(inst.sym);
+    if (flip) return high ? `bullish USD/${inst.sym} — ${inst.sym} expected to weaken` : `bearish USD/${inst.sym} — ${inst.sym} expected to strengthen`;
+    return high ? `bullish ${inst.sym}/USD` : `bearish ${inst.sym}/USD`;
+  }
+  if (g === 'rates') return high ? 'long bonds — pricing in rate cuts' : 'short bonds — pricing rates higher';
+  if (g === 'equities') return high ? 'long — risk-on positioning' : 'short — risk-off / defensive';
+  return high ? 'long (bullish)' : 'short (bearish)';
+}
+
+function spBadgeClass(inst) {
+  if (inst.specPct >= 90 && inst.commPct <= 20) return 'sig-badge sp-badge-warn';
+  if (inst.specPct <= 10 && inst.commPct >= 80) return 'sig-badge sp-badge-bull';
+  if (inst.specPct >= 90) return 'sig-badge sp-badge-warn';
+  if (inst.specPct <= 10) return 'sig-badge sp-badge-bear';
+  if (inst.commPct >= 90) return 'sig-badge sp-badge-comm';
+  if (inst.commPct <= 10) return 'sig-badge sp-badge-comm';
+  return 'sig-badge';
+}
+
+function spSignalText(inst) {
+  const sp = inst.specPct, cp = inst.commPct;
+  const nm = spPairName(inst);
+  let heading = '', body = '', action = '';
+
+  if (sp <= 10 && cp >= 80) {
+    heading = 'CLASSIC SQUEEZE SETUP';
+    body = `Specs at ${sp}th pct (${spSpecMeaning(inst, false)}) while commercials at ${cp}th pct — the textbook positioning divergence. Near 3-year max short for specs; institutional money loading up the opposite side. Historically precedes sharp mean-reversion when a catalyst triggers.`;
+    action = `Watch for technical trigger — trade direction of commercial positioning`;
+  } else if (sp >= 90 && cp <= 20) {
+    heading = 'CROWDED EXTREME LONG';
+    body = `Specs at ${sp}th pct (${spSpecMeaning(inst, true)}) with commercials at only ${cp}th pct. Classic top-of-cycle positioning divergence — late longs are most exposed, and commercials are unwinding or hedging aggressively.`;
+    action = `Reversal risk elevated — reduce or avoid adding new longs`;
+  } else if (sp <= 10) {
+    heading = 'EXTREME SPEC SHORT';
+    body = `Specs at ${sp}th pct (${spSpecMeaning(inst, false)}) — near 3-year maximum bearish. Crowded shorts create fuel for a squeeze if any positive catalyst emerges. The longer this persists without a price break, the sharper the eventual reversal.`;
+    action = `Monitor for technical reversal — squeeze risk elevated`;
+  } else if (sp >= 90) {
+    heading = 'CROWDED SPEC LONG';
+    body = `Specs at ${sp}th pct (${spSpecMeaning(inst, true)}) — near most stretched positioning in 3 years. Momentum is fully priced into positioning. Late buyers are most vulnerable to rapid unwind on any change in narrative.`;
+    action = `Fade risk elevated — look for reversal signal before counter-trend`;
+  } else if (sp <= 20) {
+    heading = 'BEARISH SPEC ZONE';
+    body = `Specs at ${sp}th pct (${spSpecMeaning(inst, false)}) — below 20th pct. Positioning biased bearish but not at historical extremes yet. Watch for further deterioration or a stabilisation pattern.`;
+    action = '';
+  } else if (sp >= 80) {
+    heading = 'BULLISH SPEC ZONE';
+    body = `Specs at ${sp}th pct (${spSpecMeaning(inst, true)}) — above 80th pct. Elevated crowding; the move is maturing. Momentum traders likely still in, but margin for new longs is narrowing.`;
+    action = '';
+  } else if (cp >= 90) {
+    heading = 'INSTITUTIONAL ACCUMULATION';
+    body = `Commercials at ${cp}th pct — near maximum long. Smart-money buying at this level often precedes price recovery. Spec positioning not yet at extreme, so the setup lacks a full divergence signal — but worth monitoring.`;
+    action = '';
+  } else if (cp <= 10) {
+    heading = 'INSTITUTIONAL DISTRIBUTION';
+    body = `Commercials at ${cp}th pct — near maximum short (hedging/selling pressure). Institutional supply elevated.`;
+    action = '';
+  }
+  return { heading, body, action };
+}
+
+function buildSPThemes(instruments) {
+  const themes = [];
+
+  // FX theme
+  const fxList = instruments.filter(i => i.group === 'fx');
+  const fxExtremes = fxList.filter(i => i.specPct <= 20 || i.specPct >= 80);
+  if (fxExtremes.length) {
+    const top3 = [...fxExtremes].sort((a,b) => extremeDist(b.specPct) - extremeDist(a.specPct)).slice(0,3);
+    const parts = top3.map(i => `${spPairName(i)} spec ${i.specPct}%`).join(' · ');
+    // Count USD bull vs bear signals
+    let usdBull = 0, usdBear = 0;
+    fxList.forEach(i => {
+      const flip = FLIP_SYMS.has(i.sym);
+      if (i.specPct > 60) flip ? usdBull++ : usdBear++;
+      if (i.specPct < 40) flip ? usdBear++ : usdBull++;
+    });
+    const bias = usdBull > usdBear + 1 ? ' USD bullish bias dominates spec FX positioning.' :
+                 usdBear > usdBull + 1 ? ' USD bearish bias dominates spec FX positioning.' :
+                 ' Mixed USD signals across FX pairs.';
+    themes.push({ tag:'FX', color:'blue', text:`${fxExtremes.length} FX pairs at positioning extremes: ${parts}.${bias}` });
+  }
+
+  // Rates theme
+  const rateList = instruments.filter(i => i.group === 'rates');
+  const rateExtremes = rateList.filter(i => i.specPct >= 75 || i.specPct <= 25);
+  if (rateExtremes.length) {
+    const avgSpec = rateList.reduce((s,i) => s + i.specPct, 0) / (rateList.length || 1);
+    const names = rateList.filter(i => i.specPct >= 70).map(i => `${i.label} (${i.specPct}%)`).join(', ');
+    if (avgSpec >= 65) {
+      themes.push({ tag:'Rates', color:'amber', text:`Specs near max long bonds — ${names || 'rates market'} pricing in aggressive rate cuts. If cut expectations reprice lower, bond longs unwind sharply and USD rates spike. Key risk for FX rate-differential plays.` });
+    } else if (avgSpec <= 35) {
+      themes.push({ tag:'Rates', color:'red', text:`Specs net short bonds — positioning for rates higher / hawkish repricing. Watch for reversal if macro data softens.` });
+    }
+  }
+
+  // Equities theme
+  const eqList = instruments.filter(i => i.group === 'equities');
+  const sp500 = eqList.find(i => i.sym === 'ES');
+  if (sp500 && (sp500.specPct >= 80 || sp500.specPct <= 30)) {
+    if (sp500.specPct <= 30) {
+      themes.push({ tag:'Equities', color:'red', text:`S&P500 specs at ${sp500.specPct}th pct — below-average bullish conviction. Institutional risk appetite subdued. Equity headwinds support safe-haven demand (JPY, CHF, Gold).` });
+    } else {
+      themes.push({ tag:'Equities', color:'green', text:`S&P500 specs at ${sp500.specPct}th pct — near max bullish. Crowded risk-on trade. Late equity longs exposed to rapid rotation if sentiment shifts.` });
+    }
+  }
+
+  // Commodities theme
+  const commList = instruments.filter(i => ['metals','energy','grains','softs','livestock'].includes(i.group));
+  const commExtremes = commList.filter(i => i.specPct <= 10 || i.specPct >= 90);
+  if (commExtremes.length >= 2) {
+    const parts2 = commExtremes.map(i => `${i.label} (${i.specPct}%)`).join(' · ');
+    themes.push({ tag:'Commodities', color:'purple', text:`${commExtremes.length} commodity extremes: ${parts2}. Extreme spec positioning in physical markets can signal near-term price exhaustion or reversal.` });
+  }
+
+  return themes;
+}
+
+function renderSentimentPanel(instruments, reportDate) {
+  if (!instruments?.length) return '';
+  const extremes = [...instruments]
+    .filter(i => i.specPct <= 20 || i.specPct >= 80 || i.commPct >= 90 || i.commPct <= 10)
+    .sort((a,b) => Math.max(extremeDist(b.specPct), extremeDist(b.commPct)) - Math.max(extremeDist(a.specPct), extremeDist(a.commPct)));
+  const themes = buildSPThemes(instruments);
+  const count = extremes.length;
+
+  let h = `<div class="sp-panel">
+<div class="sp-head">
+  <span class="sp-title">Market Intelligence</span>
+  <span class="sp-meta">${count} active signal${count!==1?'s':''} · COT ${reportDate||''}</span>
+  <button class="sp-toggle" onclick="this.closest('.sp-panel').classList.toggle('sp-collapsed')">▼</button>
+</div>
+<div class="sp-body">`;
+
+  if (themes.length) {
+    h += `<div class="sp-themes">${themes.map(t =>
+      `<div class="sp-theme"><div class="sp-theme-tag sp-tag-${t.color}">${t.tag}</div><div class="sp-theme-text">${t.text}</div></div>`
+    ).join('')}</div>`;
+  }
+
+  if (extremes.length) {
+    h += `<div class="ce-sec-title" style="margin-top:4px">Signal Cards</div><div class="sp-signals">`;
+    for (const inst of extremes) {
+      const { heading, body, action } = spSignalText(inst);
+      if (!heading) continue;
+      const chg = inst.weeklyChg;
+      const chgHtml = chg != null ? `<span style="color:${chg>0?'var(--green)':chg<0?'#f87171':'var(--text3)'};margin-left:4px">${chg>0?'↑':'↓'}${Math.abs(chg).toLocaleString()}</span>` : '';
+      h += `<div class="sp-sig">
+<div class="sp-sig-head">
+  <span class="sp-sig-sym">${spPairName(inst)}</span>
+  <span class="sp-sig-grp">${GROUP_LABELS[inst.group]||inst.group}</span>
+  <span class="${spBadgeClass(inst)}">${heading}</span>
+  <span class="sp-sig-nums">Spec ${inst.specPct}% · Comm ${inst.commPct}%${chgHtml}</span>
+</div>
+<div class="sp-sig-body">${body}</div>
+${action ? `<div class="sp-sig-action">▶ ${action}</div>` : ''}
+</div>`;
+    }
+    h += '</div>';
+  } else {
+    h += '<div class="sp-empty">No instruments in extreme territory this week. Check back after the next COT release.</div>';
+  }
+
+  return h + '</div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    Extreme signals section
    ═══════════════════════════════════════════════════════════════════ */
 function renderSignals(instruments) {
@@ -462,8 +670,11 @@ function render() {
     return;
   }
 
+  // Sentiment panel (top)
+  let html = renderSentimentPanel(S.instruments, S.reportDate);
+
   // Legend
-  let html = `<div class="ce-legend">
+  html += `<div class="ce-legend">
   <div class="leg-item"><div class="leg-spec"></div> Speculator net (3yr pctl)</div>
   <div class="leg-item"><div class="leg-comm"></div> Commercial net (3yr pctl)</div>
   <div class="leg-item"><div class="leg-bear"></div> Bearish extreme 0–10%</div>
