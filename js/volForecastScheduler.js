@@ -74,8 +74,9 @@ const TARGET_HOUR_UTC = parseInt(process.env.VOL_FORECAST_UTC ?? '22');
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
 export const forecastState = {
-  latest:  null,   // most recent forecast object
-  history: [],     // last 5 forecasts, newest first
+  latest:    null,   // most recent forecast object
+  history:   [],     // last 5 forecasts, newest first
+  ohlcCache: {},     // name → OHLC bars array, kept for YZ on-demand compute
 };
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -320,6 +321,7 @@ export async function runVolForecast(targetDate) {
   for (const cfg of INSTRUMENTS) {
     try {
       const ohlc = await fetchOHLC(cfg);
+      forecastState.ohlcCache[cfg.name] = ohlc;
       const f    = computeForecast(ohlc, cfg.assetClass, newsMult);
       instruments[cfg.name] = f;
       console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  [${dataSource}]`);
@@ -664,12 +666,15 @@ export async function startVolForecastScheduler() {
   // Only trigger an immediate run when we genuinely lack the currently applicable
   // forecast.  Before 22:00 UTC the applicable session is today — so a mid-day
   // restart with today's forecast cached will NOT re-run prematurely.
-  const neededDate = _applicableSessionDate(new Date());
-  const cachedDate = forecastState.latest?.session_date;
-  const needsImmediateRun = !cachedDate || cachedDate !== neededDate;
+  const neededDate  = _applicableSessionDate(new Date());
+  const cachedDate  = forecastState.latest?.session_date;
+  const cachedInst  = forecastState.latest?.instruments ?? {};
+  const missingYZ   = Object.values(cachedInst).some(f => f.yz_vol_annual == null);
+  const needsImmediateRun = !cachedDate || cachedDate !== neededDate || missingYZ;
 
   if (needsImmediateRun) {
-    console.log(`[VOL-FORECAST] No forecast for ${neededDate} — computing on startup …`);
+    const reason = !cachedDate ? 'no cache' : cachedDate !== neededDate ? `date mismatch (${cachedDate})` : 'YZ fields missing';
+    console.log(`[VOL-FORECAST] ${reason} — computing on startup …`);
     runVolForecast(new Date(neededDate + 'T12:00:00Z'))
       .catch(e => console.error('[VOL-FORECAST] Startup run failed:', e.message));
   }

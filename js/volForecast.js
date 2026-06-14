@@ -119,7 +119,7 @@ function rsEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
 // Combines overnight (C→O) variance, OC variance, and Rogers-Satchell intraday
 // range. k = 0.34/(1.34+(N+1)/(N-1)) minimises estimation error (YZ 2000).
 // Returns daily sigma (fraction) per bar; null for first `window` positions.
-function yangZhangVolSeries(bars, window = 30) {
+export function yangZhangVolSeries(bars, window = 30) {
   const n = bars.length;
   const out = new Array(n).fill(null);
   const k = 0.34 / (1.34 + (window + 1) / (window - 1));

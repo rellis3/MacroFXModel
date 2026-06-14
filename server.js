@@ -27,6 +27,7 @@ import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus } from './js/volForecastScheduler.js';
+import { yangZhangVolSeries } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
@@ -2868,9 +2869,19 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
     const refData = refRaw ? JSON.parse(refRaw) : null;
     const refInst = refData ? _parseExportText(refData.text) : {};
 
-    // YZ fields were added after some forecasts were stored — supplement from
-    // the live in-memory state for today so the comparison table is never blank.
-    const liveInst = forecastState.latest?.instruments ?? {};
+    // YZ fields were added after some forecasts were stored. Compute them fresh
+    // from cached OHLC bars (populated during runVolForecast) when missing from KV.
+    const BM_P50 = 1.572, HN_P50 = 0.6745, TD = 252;
+    const r2 = x => Math.round(x * 100) / 100;
+    function _yzFromCache(name) {
+      const bars = forecastState.ohlcCache?.[name];
+      if (!bars?.length) return null;
+      const s = yangZhangVolSeries(bars);
+      const sig = s.at(-1);
+      if (sig == null) return null;
+      const pct = sig * 100;
+      return { vol: r2(pct * Math.sqrt(TD)), hl: r2(BM_P50 * pct), oc: r2(HN_P50 * pct) };
+    }
 
     // Build per-instrument comparison rows
     const rows = [];
@@ -2878,14 +2889,14 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
     const allNames = new Set([...Object.keys(ourInst), ...Object.keys(refInst)]);
 
     for (const name of allNames) {
-      const o    = ourInst[name];
-      const live = liveInst[name];
-      const r    = refInst[name];
-      const gap  = (ours, refs) => (ours && refs) ? Math.round((refs / ours - 1) * 1000) / 10 : null;
-      // Prefer stored YZ; fall back to live in-memory YZ (covers pre-YZ stored forecasts)
-      const yzVol = o?.yz_vol_annual ?? live?.yz_vol_annual ?? null;
-      const yzHl  = o?.yz_hl_median  ?? live?.yz_hl_median  ?? null;
-      const yzOc  = o?.yz_oc_median  ?? live?.yz_oc_median  ?? null;
+      const o   = ourInst[name];
+      const r   = refInst[name];
+      const gap = (ours, refs) => (ours && refs) ? Math.round((refs / ours - 1) * 1000) / 10 : null;
+      // Prefer stored YZ; fall back to computing live from cached OHLC bars
+      const yz    = (o?.yz_vol_annual != null) ? null : _yzFromCache(name);
+      const yzVol = o?.yz_vol_annual ?? yz?.vol ?? null;
+      const yzHl  = o?.yz_hl_median  ?? yz?.hl  ?? null;
+      const yzOc  = o?.yz_oc_median  ?? yz?.oc  ?? null;
       rows.push({
         name,
         our: o ? {
