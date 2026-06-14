@@ -117,8 +117,10 @@
   <div class="rbar-sep"></div>
   <span class="bt-run-lbl">Instruments:</span>
   <label><input type="checkbox" id="includeRussell" checked> Russell</label>
-  <label><input type="checkbox" id="includeTLT"> TLT Hedge</label>
+  <label><input type="checkbox" id="includeTLT" onchange="updatePortfolioVis()"> TLT Hedge</label>
   <label><input type="checkbox" id="includeDAX"> DAX 🇩🇪</label>
+  <div class="rbar-sep" id="portSep" style="display:none"></div>
+  <label id="portLabel" style="display:none"><input type="checkbox" id="portfolioMode"> Portfolio Mode</label>
   <div class="rbar-sep"></div>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <span id="runStatus" class="bt-run-lbl"></span>
@@ -297,6 +299,14 @@ function setStatus(type, msg) {
 function show(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
 function hide(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
 
+// Show/hide Portfolio Mode checkbox depending on whether TLT is enabled
+function updatePortfolioVis() {
+  const tltOn = document.getElementById('includeTLT').checked;
+  document.getElementById('portSep').style.display   = tltOn ? '' : 'none';
+  document.getElementById('portLabel').style.display  = tltOn ? '' : 'none';
+  if (!tltOn) document.getElementById('portfolioMode').checked = false;
+}
+
 // ── Instrument tab switch ─────────────────────────────────────────────────────
 
 function switchInst(inst, btn) {
@@ -329,6 +339,7 @@ async function runBacktest() {
     includeRussell: document.getElementById('includeRussell').checked,
     includeTLT:     document.getElementById('includeTLT').checked,
     includeDAX:     document.getElementById('includeDAX').checked,
+    portfolioMode:  document.getElementById('portfolioMode').checked,
   };
 
   try {
@@ -390,7 +401,7 @@ function renderAll(data) {
   const tabsEl = document.getElementById('instTabs');
   tabsEl.innerHTML = (data.instruments ?? []).map((key, i) => {
     const d    = data[key];
-    const icon = d?.inverted ? '📈' : '📊';
+    const icon = d?.isPortfolio ? '💼' : d?.inverted ? '📈' : '📊';
     return `<button class="inst-tab ${i === 0 ? 'active' : ''}" onclick="switchInst('${key}',this)">${icon} ${d?.label ?? key}</button>`;
   }).join('');
   tabsEl.style.display = 'flex';
@@ -445,12 +456,12 @@ function renderKpis(d, data) {
   setText('kTimeMkt',  pct(m.timeInMarket, 0));
 
   const oosSh = wf.meanOOSSharpe;
-  setText('kOosSharpe', num(oosSh));
-  setClass('kOosSharpe', 'bt-kpi-value ' + (oosSh >= 0.5 ? 'green' : oosSh >= 0.3 ? 'amber' : 'red'));
+  setText('kOosSharpe', oosSh == null ? 'N/A' : num(oosSh));
+  setClass('kOosSharpe', 'bt-kpi-value ' + (oosSh == null ? '' : oosSh >= 0.5 ? 'green' : oosSh >= 0.3 ? 'amber' : 'red'));
 
   const wfe = wf.wfe;
-  setText('kWfe', num(wfe));
-  setClass('kWfe', 'bt-kpi-value ' + (wfe >= 0.5 ? 'green' : wfe >= 0.3 ? 'amber' : 'red'));
+  setText('kWfe', wfe == null ? 'N/A' : num(wfe));
+  setClass('kWfe', 'bt-kpi-value ' + (wfe == null ? '' : wfe >= 0.5 ? 'green' : wfe >= 0.3 ? 'amber' : 'red'));
 }
 
 function renderSecondary(d) {
@@ -485,9 +496,34 @@ function setClass(id, cls) {
 // ── Verdict ───────────────────────────────────────────────────────────────────
 
 function renderVerdict(d) {
-  const v = d.verdict;
+  const v    = d.verdict;
   const grid = document.getElementById('verdictGrid');
   if (!grid) return;
+
+  if (v.isPortfolio) {
+    // Portfolio mode: only show drawdown comparison (no walk-forward)
+    grid.innerHTML = `
+      <div class="verdict-item">
+        <div class="verdict-lbl">Max Drawdown vs Equal-Weight B&H</div>
+        <div class="verdict-val" style="color:${v.maxDD.pass ? 'var(--green)' : 'var(--red)'}">
+          ${pct(v.maxDD.strat,1)} vs ${pct(v.maxDD.bh,1)}
+        </div>
+        <span class="verdict-badge ${v.maxDD.pass ? 'pass' : 'fail'}">${v.maxDD.pass ? '✓ PASS' : '✗ FAIL'}</span>
+      </div>
+      <div class="verdict-item" style="grid-column:span 2">
+        <div class="verdict-lbl">Walk-Forward Validation</div>
+        <div class="verdict-val" style="color:var(--text3);font-size:14px">N/A</div>
+        <div class="bt-kpi-sub">Portfolio mode combines individual instruments — validate each instrument tab separately.</div>
+      </div>
+    `;
+    const overall = document.getElementById('verdictOverall');
+    if (overall) {
+      overall.innerHTML = v.maxDD.pass
+        ? `<span style="color:var(--green)">✓ Drawdown reduced vs static B&H.</span> Validate individual instruments above, then paper trade before going live.`
+        : `<span style="color:var(--amber)">— Portfolio drawdown similar to static B&H.</span> Verify individual instrument OOS Sharpe before deploying.`;
+    }
+    return;
+  }
 
   grid.innerHTML = `
     <div class="verdict-item">
