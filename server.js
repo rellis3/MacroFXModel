@@ -2748,6 +2748,7 @@ app.get('/api/vol-forecast/archive/bulk-export', async (_req, res) => {
   }
 });
 
+
 // Reference data store — save/retrieve the external reference forecast for a date.
 // POST /api/vol-forecast/reference/:date  body: { text: "...raw paste..." }
 app.post('/api/vol-forecast/reference/:date', async (req, res) => {
@@ -2801,6 +2802,7 @@ function _parseExportText(text) {
 }
 
 // GET /api/vol-forecast/compare/:date  — our archived forecast vs saved reference side-by-side
+// Includes GARCH and Yang-Zhang shadow columns so both estimators can be compared to reference.
 app.get('/api/vol-forecast/compare/:date', async (req, res) => {
   try {
     const date = req.params.date;
@@ -2828,7 +2830,10 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
       const gap = (ours, refs) => (ours && refs) ? Math.round((refs / ours - 1) * 1000) / 10 : null;
       rows.push({
         name,
-        our:  o ? { vol: o.vol_annual, hl_med: o.hl_median, hl_75: o.hl_75, oc_med: o.oc_median, oc_75: o.oc_75 } : null,
+        our: o ? {
+          vol: o.vol_annual, hl_med: o.hl_median, hl_75: o.hl_75, oc_med: o.oc_median, oc_75: o.oc_75,
+          yz_vol: o.yz_vol_annual ?? null, yz_hl: o.yz_hl_median ?? null, yz_oc: o.yz_oc_median ?? null,
+        } : null,
         ref:  r ?? null,
         gaps: (o && r) ? {
           vol:    gap(o.vol_annual, r.vol),
@@ -2836,6 +2841,9 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
           hl_75:  gap(o.hl_75,      r.hl_75),
           oc_med: gap(o.oc_median,  r.oc_med),
           oc_75:  gap(o.oc_75,      r.oc_75),
+          yz_vol: o.yz_vol_annual != null ? gap(o.yz_vol_annual, r.vol)    : null,
+          yz_hl:  o.yz_hl_median  != null ? gap(o.yz_hl_median,  r.hl_med) : null,
+          yz_oc:  o.yz_oc_median  != null ? gap(o.yz_oc_median,  r.oc_med) : null,
         } : null,
       });
     }

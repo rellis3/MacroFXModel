@@ -115,6 +115,36 @@ function rsEwmaVolSeries(bars, lambda = EWMA_LAMBDA) {
   return out;
 }
 
+// ── Yang-Zhang volatility estimator (shadow — no empirical corrections) ───────
+// Combines overnight (C→O) variance, OC variance, and Rogers-Satchell intraday
+// range. k = 0.34/(1.34+(N+1)/(N-1)) minimises estimation error (YZ 2000).
+// Returns daily sigma (fraction) per bar; null for first `window` positions.
+function yangZhangVolSeries(bars, window = 30) {
+  const n = bars.length;
+  const out = new Array(n).fill(null);
+  const k = 0.34 / (1.34 + (window + 1) / (window - 1));
+  for (let i = window; i < n; i++) {
+    const s = bars.slice(i - window, i + 1); // window+1 bars → window overnight gaps
+    let muOn = 0, muOc = 0, varOn = 0, varOc = 0, rs = 0;
+    for (let j = 1; j <= window; j++) {
+      muOn += Math.log(s[j].open / s[j - 1].close);
+      muOc += Math.log(s[j].close / s[j].open);
+    }
+    muOn /= window; muOc /= window;
+    for (let j = 1; j <= window; j++) {
+      const dOn = Math.log(s[j].open / s[j - 1].close) - muOn;
+      const dOc = Math.log(s[j].close / s[j].open) - muOc;
+      varOn += dOn * dOn;
+      varOc += dOc * dOc;
+      rs += Math.log(s[j].high / s[j].close) * Math.log(s[j].high / s[j].open)
+          + Math.log(s[j].low  / s[j].close) * Math.log(s[j].low  / s[j].open);
+    }
+    varOn /= (window - 1); varOc /= (window - 1); rs /= window;
+    out[i] = Math.sqrt(Math.max(varOn + k * varOc + (1 - k) * rs, 0));
+  }
+  return out;
+}
+
 // ── GARCH(1,1) close-to-close ─────────────────────────────────────────────────
 // For index/fx: ω floor prevents estimates collapsing in quiet regimes.
 // Initialized at unconditional variance ω/(1−α−β) — no seed transient.
@@ -253,7 +283,21 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
   const sigmaFwd = (newsMult > 1 && assetClass !== 'commodity')
     ? volSeries.at(-1) * newsMult
     : volSeries.at(-1);
-  return _buildOutput(volSeries, sigmaFwd, assetClass, newsMult);
+
+  // Yang-Zhang shadow: raw BM percentiles from YZ vol, no empirical corrections.
+  // Lets the compare table show GARCH / YZ / Ref side-by-side to measure which
+  // estimator is closer to the reference quant system before committing to YZ.
+  const yzSeries = yangZhangVolSeries(ohlc);
+  const sigmaYZ  = yzSeries.at(-1) ?? 0;
+  const yzPct    = sigmaYZ * 100;
+  const r2yz     = x => Math.round(x * 100) / 100;
+
+  return Object.assign(_buildOutput(volSeries, sigmaFwd, assetClass, newsMult), {
+    yz_vol_annual: r2yz(yzPct * Math.sqrt(TRADING_DAYS)),
+    yz_hl_median:  r2yz(BM_RANGE_P50 * yzPct),
+    yz_oc_median:  r2yz(HN_P50 * yzPct),
+  });
+}
 }
 
 // ── Realized-variance based estimators (M15 bar pipeline) ─────────────────────
