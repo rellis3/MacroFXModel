@@ -2240,13 +2240,30 @@ async function fetchMeRawData(fredKey) {
   }
   fredMaps.napm = ismMap;
 
-  // Build master date index from union of QQQ and SPY dates, sorted
-  const allDates = new Set([...qqqBars.map(b => b.date), ...spyBars.map(b => b.date)]);
-  const dates    = [...allDates].sort();
+  console.log('[macro-equity-bt] fetching OANDA US2000_USD (Russell 2000)…');
+  let russellBars = [];
+  try { russellBars = await fetchOandaD1Range('US2000_USD', FROM_DATE); }
+  catch (e) { console.warn('[macro-equity-bt] US2000_USD fetch failed:', e.message); }
+
+  console.log('[macro-equity-bt] fetching OANDA USB30Y_USD (30Y Bond / TLT proxy)…');
+  let bond30yBars = [];
+  try { bond30yBars = await fetchOandaD1Range('USB30Y_USD', FROM_DATE); }
+  catch (e) { console.warn('[macro-equity-bt] USB30Y_USD fetch failed (TLT unavailable):', e.message); }
+
+  // Build master date index from union of all instrument dates, sorted
+  const allDates = new Set([
+    ...qqqBars.map(b => b.date),
+    ...spyBars.map(b => b.date),
+    ...russellBars.map(b => b.date),
+    ...bond30yBars.map(b => b.date),
+  ]);
+  const dates = [...allDates].sort();
 
   // Map OANDA bars to date index
-  const qqqMap = new Map(qqqBars.map(b => [b.date, b]));
-  const spyMap = new Map(spyBars.map(b => [b.date, b]));
+  const qqqMap     = new Map(qqqBars.map(b     => [b.date, b]));
+  const spyMap     = new Map(spyBars.map(b     => [b.date, b]));
+  const russellMap = new Map(russellBars.map(b  => [b.date, b]));
+  const bond30yMap = new Map(bond30yBars.map(b  => [b.date, b]));
 
   const qqq = {
     open:  dates.map(d => qqqMap.get(d)?.open  ?? NaN),
@@ -2255,6 +2272,16 @@ async function fetchMeRawData(fredKey) {
   const spy = {
     open:  dates.map(d => spyMap.get(d)?.open  ?? NaN),
     close: dates.map(d => spyMap.get(d)?.close ?? NaN),
+  };
+  const russell = {
+    open:  dates.map(d => russellMap.get(d)?.open  ?? NaN),
+    close: dates.map(d => russellMap.get(d)?.close ?? NaN),
+    available: russellBars.length > 0,
+  };
+  const bond30y = {
+    open:  dates.map(d => bond30yMap.get(d)?.open  ?? NaN),
+    close: dates.map(d => bond30yMap.get(d)?.close ?? NaN),
+    available: bond30yBars.length > 0,
   };
 
   const vix  = alignSparse(dates, vixMap);
@@ -2268,7 +2295,7 @@ async function fetchMeRawData(fredKey) {
     napm:         alignSparse(dates, fredMaps.napm),
   };
 
-  return { dates, qqq, spy, vix, fred };
+  return { dates, qqq, spy, russell, bond30y, vix, fred };
 }
 
 const meJobs = new Map();
@@ -2313,6 +2340,10 @@ app.post('/api/macro-equity-backtest/run', express.json({ limit: '1mb' }), (req,
   Object.keys(config).forEach(k => config[k] == null && delete config[k]);
   Object.keys(config.weights ?? {}).forEach(k => config.weights[k] == null && delete config.weights[k]);
 
+  // Instrument inclusion flags
+  const includeRussell = body.includeRussell !== false && body.includeRussell !== 'false';
+  const includeTLT     = body.includeTLT     === true  || body.includeTLT     === 'true';
+
   _purgeStaleMeJobs();
   meJobs.set(jobId, { status: 'running', startedAt, phase: 'Fetching data…' });
 
@@ -2332,16 +2363,37 @@ app.post('/api/macro-equity-backtest/run', express.json({ limit: '1mb' }), (req,
       }
 
       meJobs.get(jobId).phase = 'Running backtest & walk-forward…';
-      const result = runMacroEquityBacktest(rawData, config);
 
-      // Write to macroEquityStore so bot-config.html Positions tab & results strip are live
+      // Build instruments dict from rawData + inclusion flags
+      const instruments = {
+        QQQ: { ...rawData.qqq, label: 'QQQ — Nasdaq-100', inverted: false },
+        SPY: { ...rawData.spy, label: 'SPY — S&P 500',    inverted: false },
+      };
+      if (includeRussell && rawData.russell.available) {
+        instruments.IWM = { ...rawData.russell, label: 'IWM — Russell 2000', inverted: false };
+      }
+      if (includeTLT && rawData.bond30y.available) {
+        instruments.TLT = { ...rawData.bond30y, label: 'TLT — Long Bond',    inverted: true };
+      }
+
+      const engineData = { dates: rawData.dates, instruments, vix: rawData.vix, fred: rawData.fred };
+      const result = runMacroEquityBacktest(engineData, config);
+
+      // Write to macroEquityStore — generic N-instrument
+      const storeMetrics  = {};
+      const storeBh       = {};
+      const storeVerdicts = {};
+      for (const key of result.instruments) {
+        storeMetrics[key]  = result[key].metrics;
+        storeBh[key]       = result[key].bh;
+        storeVerdicts[key] = result[key].verdict;
+      }
       macroEquityStore.results = {
-        run_at:  result.runAt,
-        QQQ:     result.QQQ.metrics,
-        SPY:     result.SPY.metrics,
-        QQQ_bh:  result.QQQ.bh,
-        SPY_bh:  result.SPY.bh,
-        verdict: { QQQ: result.QQQ.verdict, SPY: result.SPY.verdict },
+        run_at:      result.runAt,
+        instruments: result.instruments,
+        metrics:     storeMetrics,
+        bh:          storeBh,
+        verdict:     storeVerdicts,
       };
       macroEquityStore.savedAt = result.runAt;
 
