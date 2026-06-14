@@ -34,6 +34,7 @@ import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForP
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
+import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -2095,6 +2096,255 @@ app.get('/api/macro-equity-backtest/results', (_req, res) => {
   if (!Object.keys(macroEquityStore.results).length)
     return res.status(404).json({ ok: false, error: 'No results — run macro_equity_backtest.py first' });
   res.json({ ok: true, results: macroEquityStore.results });
+});
+
+// ── Macro-equity JS engine: data cache + job queue ────────────────────────────
+
+const ME_RAW_CACHE = { data: null, fetchedAt: null };
+const ME_CACHE_TTL = 22 * 60 * 60 * 1000; // 22h — FRED updates ~once/day
+
+function _oandaBaseMe() {
+  return (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+}
+
+// Paginated OANDA D1 fetch from a start date until today (handles >5000 bars).
+async function fetchOandaD1Range(instrument, fromDate) {
+  const key  = process.env.OANDA_KEY;
+  const base = _oandaBaseMe();
+  let from = `${fromDate}T00:00:00.000000000Z`;
+  const bars = [];
+
+  for (let page = 0; page < 10; page++) {
+    const url = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+              + `?granularity=D&from=${encodeURIComponent(from)}&count=4500&price=M`;
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal:  AbortSignal.timeout(30_000),
+    });
+    if (!r.ok) throw new Error(`OANDA ${instrument} HTTP ${r.status}`);
+    const data   = await r.json();
+    const candles = (data.candles ?? []).filter(c => c.complete !== false && c.mid);
+    for (const c of candles) {
+      const t = new Date(c.time);
+      if (t.getUTCHours() >= 20) t.setUTCDate(t.getUTCDate() + 1);
+      bars.push({
+        date:  t.toISOString().substring(0, 10),
+        open:  parseFloat(c.mid.o),
+        close: parseFloat(c.mid.c),
+      });
+    }
+    if (candles.length < 4500) break; // no more pages
+    from = candles[candles.length - 1].time; // start next page from last bar
+  }
+
+  // Deduplicate (overlapping page boundary)
+  const seen = new Set();
+  return bars.filter(b => seen.has(b.date) ? false : (seen.add(b.date), true));
+}
+
+// Fetch ^VIX from Yahoo Finance v8 chart endpoint
+async function fetchVixYahoo(fromUnix) {
+  const toUnix = Math.floor(Date.now() / 1000);
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX`
+            + `?interval=1d&period1=${fromUnix}&period2=${toUnix}`;
+  const r = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' },
+    signal:  AbortSignal.timeout(20_000),
+  });
+  if (!r.ok) throw new Error(`VIX Yahoo HTTP ${r.status}`);
+  const json = await r.json();
+  const result = json?.chart?.result?.[0];
+  if (!result) throw new Error('VIX: unexpected Yahoo response');
+  const timestamps = result.timestamp ?? [];
+  const closes     = result.indicators?.quote?.[0]?.close ?? [];
+  const out = new Map();
+  for (let i = 0; i < timestamps.length; i++) {
+    if (closes[i] == null || !isFinite(closes[i])) continue;
+    const d = new Date(timestamps[i] * 1000);
+    out.set(d.toISOString().substring(0, 10), closes[i]);
+  }
+  return out;
+}
+
+// Fetch a single FRED series via REST API
+async function fetchFredSeries(seriesId, fromDate, fredKey) {
+  const url = `https://api.stlouisfed.org/fred/series/observations`
+            + `?series_id=${seriesId}&api_key=${fredKey}&file_type=json`
+            + `&observation_start=${fromDate}&sort_order=asc`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(25_000) });
+  if (!r.ok) throw new Error(`FRED ${seriesId} HTTP ${r.status}`);
+  const json = await r.json();
+  const out = new Map();
+  for (const obs of json.observations ?? []) {
+    if (obs.value === '.' || obs.value == null) continue;
+    const v = parseFloat(obs.value);
+    if (isFinite(v)) out.set(obs.date, v);
+  }
+  return out;
+}
+
+// Align a sparse date-keyed map onto a master date array (trading days)
+function alignSparse(dateIndex, sparseMap) {
+  return dateIndex.map(d => sparseMap.has(d) ? sparseMap.get(d) : NaN);
+}
+
+// Fetch and align all raw data needed by the engine
+async function fetchMeRawData(fredKey) {
+  const FROM_DATE  = '2005-01-01';
+  const FROM_UNIX  = 1104537600; // 2005-01-01 00:00:00 UTC
+
+  console.log('[macro-equity-bt] fetching OANDA NAS100_USD…');
+  const qqqBars = await fetchOandaD1Range('NAS100_USD', FROM_DATE);
+  console.log('[macro-equity-bt] fetching OANDA SPX500_USD…');
+  const spyBars = await fetchOandaD1Range('SPX500_USD', FROM_DATE);
+
+  console.log('[macro-equity-bt] fetching ^VIX…');
+  let vixMap = new Map();
+  try {
+    vixMap = await fetchVixYahoo(FROM_UNIX);
+  } catch (e) {
+    console.warn('[macro-equity-bt] VIX fetch failed (will proceed with NaN VIX):', e.message);
+  }
+
+  const FRED_SERIES = ['WALCL', 'WTREGEN', 'RRPONTSYD', 'T10Y2Y', 'BAMLH0A0HYM2', 'DFII10', 'NAPM'];
+  console.log('[macro-equity-bt] fetching FRED series…');
+  const fredMaps = {};
+  for (const sid of FRED_SERIES) {
+    console.log(`  [macro-equity-bt] FRED ${sid}…`);
+    fredMaps[sid.toLowerCase()] = await fetchFredSeries(sid, FROM_DATE, fredKey);
+  }
+
+  // Build master date index from union of QQQ and SPY dates, sorted
+  const allDates = new Set([...qqqBars.map(b => b.date), ...spyBars.map(b => b.date)]);
+  const dates    = [...allDates].sort();
+
+  // Map OANDA bars to date index
+  const qqqMap = new Map(qqqBars.map(b => [b.date, b]));
+  const spyMap = new Map(spyBars.map(b => [b.date, b]));
+
+  const qqq = {
+    open:  dates.map(d => qqqMap.get(d)?.open  ?? NaN),
+    close: dates.map(d => qqqMap.get(d)?.close ?? NaN),
+  };
+  const spy = {
+    open:  dates.map(d => spyMap.get(d)?.open  ?? NaN),
+    close: dates.map(d => spyMap.get(d)?.close ?? NaN),
+  };
+
+  const vix  = alignSparse(dates, vixMap);
+  const fred = {
+    walcl:        alignSparse(dates, fredMaps.walcl),
+    wtregen:      alignSparse(dates, fredMaps.wtregen),
+    rrpontsyd:    alignSparse(dates, fredMaps.rrpontsyd),
+    t10y2y:       alignSparse(dates, fredMaps.t10y2y),
+    bamlh0a0hym2: alignSparse(dates, fredMaps.bamlh0a0hym2),
+    dfii10:       alignSparse(dates, fredMaps.dfii10),
+    napm:         alignSparse(dates, fredMaps.napm),
+  };
+
+  return { dates, qqq, spy, vix, fred };
+}
+
+const meJobs = new Map();
+
+function _purgeStaleMeJobs() {
+  const cutoff = Date.now() - 90 * 60_000; // keep for 90 min
+  for (const [id, job] of meJobs) if (job.startedAt < cutoff) meJobs.delete(id);
+}
+
+app.post('/api/macro-equity-backtest/run', express.json({ limit: '1mb' }), (req, res) => {
+  const fredKey = process.env.FRED_KEY
+    || process.env.FRED_API_KEY
+    || req.body?.fredKey;
+
+  if (!fredKey) {
+    return res.status(400).json({ ok: false,
+      error: 'FRED_KEY not set — add it to Railway env vars or pass as fredKey in request body' });
+  }
+  if (!process.env.OANDA_KEY) {
+    return res.status(400).json({ ok: false, error: 'OANDA_KEY not set' });
+  }
+
+  const jobId     = `me_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+
+  // Parse optional config overrides from request body
+  const body    = req.body ?? {};
+  const config  = {
+    weights: {
+      netLiq:    parseFloat(body.wNetLiq)    || undefined,
+      curve:     parseFloat(body.wCurve)     || undefined,
+      credit:    parseFloat(body.wCredit)    || undefined,
+      realYield: parseFloat(body.wRealYield) || undefined,
+      ism:       parseFloat(body.wIsm)       || undefined,
+    },
+    longThreshold:  body.longThresh != null ? parseFloat(body.longThresh) : undefined,
+    flatThreshold:  body.flatThresh != null ? parseFloat(body.flatThresh) : undefined,
+    vixZMax:        body.vixZMax   != null ? parseFloat(body.vixZMax)   : undefined,
+  };
+  // Remove undefined keys
+  Object.keys(config).forEach(k => config[k] == null && delete config[k]);
+  Object.keys(config.weights ?? {}).forEach(k => config.weights[k] == null && delete config.weights[k]);
+
+  _purgeStaleMeJobs();
+  meJobs.set(jobId, { status: 'running', startedAt, phase: 'Fetching data…' });
+
+  (async () => {
+    try {
+      // Use cache if fresh
+      let rawData;
+      if (ME_RAW_CACHE.data && ME_RAW_CACHE.fetchedAt && Date.now() - ME_RAW_CACHE.fetchedAt < ME_CACHE_TTL) {
+        console.log('[macro-equity-bt] using cached raw data');
+        rawData = ME_RAW_CACHE.data;
+        meJobs.get(jobId).phase = 'Computing signals…';
+      } else {
+        meJobs.get(jobId).phase = 'Fetching OANDA & FRED data…';
+        rawData = await fetchMeRawData(fredKey);
+        ME_RAW_CACHE.data      = rawData;
+        ME_RAW_CACHE.fetchedAt = Date.now();
+      }
+
+      meJobs.get(jobId).phase = 'Running backtest & walk-forward…';
+      const result = runMacroEquityBacktest(rawData, config);
+
+      // Also write to macroEquityStore for bot-config.html compatibility
+      macroEquityStore.results = {
+        run_at:  result.runAt,
+        QQQ:     result.QQQ.metrics,
+        SPY:     result.SPY.metrics,
+        QQQ_bh:  result.QQQ.bh,
+        SPY_bh:  result.SPY.bh,
+        verdict: { QQQ: result.QQQ.verdict, SPY: result.SPY.verdict },
+      };
+      macroEquityStore.savedAt = result.runAt;
+
+      meJobs.set(jobId, {
+        status: 'done', startedAt,
+        result: { ok: true, data: result, runAt: result.runAt },
+      });
+      console.log(`[macro-equity-bt] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s)`);
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.error('[macro-equity-bt] error:', msg, e?.stack ?? '');
+      meJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
+  const job = meJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running',
+      elapsed: Math.round((Date.now() - job.startedAt) / 1000),
+      phase: job.phase ?? 'Running…' });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
 // ── Gold backtest trades store ────────────────────────────────────────────────
