@@ -2208,13 +2208,37 @@ async function fetchMeRawData(fredKey) {
     console.warn('[macro-equity-bt] VIX fetch failed (will proceed with NaN VIX):', e.message);
   }
 
-  const FRED_SERIES = ['WALCL', 'WTREGEN', 'RRPONTSYD', 'T10Y2Y', 'BAMLH0A0HYM2', 'DFII10', 'NAPM'];
+  // NAPM (ISM PMI) was restricted by FRED ~2022; fall back to INDPRO (Industrial Production
+  // Index, monthly, Federal Reserve) which carries the same directional manufacturing signal.
+  // Both are z-scored before use so the different scales don't matter.
+  const FRED_SERIES = ['WALCL', 'WTREGEN', 'RRPONTSYD', 'T10Y2Y', 'BAMLH0A0HYM2', 'DFII10'];
+  const ISM_CANDIDATES = ['NAPM', 'INDPRO']; // try in order; first success wins
+
   console.log('[macro-equity-bt] fetching FRED series…');
   const fredMaps = {};
   for (const sid of FRED_SERIES) {
     console.log(`  [macro-equity-bt] FRED ${sid}…`);
-    fredMaps[sid.toLowerCase()] = await fetchFredSeries(sid, FROM_DATE, fredKey);
+    try {
+      fredMaps[sid.toLowerCase()] = await fetchFredSeries(sid, FROM_DATE, fredKey);
+    } catch (e) {
+      console.warn(`  [macro-equity-bt] FRED ${sid} failed (NaN fallback): ${e.message}`);
+      fredMaps[sid.toLowerCase()] = new Map();
+    }
   }
+
+  // ISM / manufacturing activity — try NAPM first, fall back to INDPRO
+  let ismMap = new Map();
+  for (const sid of ISM_CANDIDATES) {
+    console.log(`  [macro-equity-bt] FRED ${sid} (ISM proxy)…`);
+    try {
+      ismMap = await fetchFredSeries(sid, FROM_DATE, fredKey);
+      console.log(`  [macro-equity-bt] using ${sid} for ISM factor (${ismMap.size} obs)`);
+      break;
+    } catch (e) {
+      console.warn(`  [macro-equity-bt] FRED ${sid} failed: ${e.message}`);
+    }
+  }
+  fredMaps.napm = ismMap;
 
   // Build master date index from union of QQQ and SPY dates, sorted
   const allDates = new Set([...qqqBars.map(b => b.date), ...spyBars.map(b => b.date)]);
