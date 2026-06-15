@@ -1,32 +1,30 @@
 /**
  * Vol & Range Forecaster — core math engine (no network, no I/O).
  *
- * Methodology — estimator chosen per asset class:
+ * Methodology — primary estimator per asset class (switched 2026-06-15):
  *
- *   commodity : Rogers-Satchell EWMA on daily OHLC — λ=0.94
- *                 rs_t = ln(H/C)·ln(H/O) + ln(L/C)·ln(L/O)
- *                 v_t  = λ·v_{t-1} + (1−λ)·rs_t
- *                 RS handles non-zero drift correctly (gold 2024-2026 uptrend).
- *                 Unlike Garman-Klass it is always ≥ 0 and does not subtract
- *                 the directional CO component, so it doesn't understate vol
- *                 in trending markets.
+ *   commodity : 20-day simple historical volatility (HV20)
+ *                 std(log_returns[-20:]) × √252
+ *                 Reference comparison showed HV20 Δ+2.7% vs GARCH Δ+15.5%.
+ *                 Previous: Rogers-Satchell EWMA λ=0.94
  *
- *   index/fx  : GARCH(1,1) on close-to-close log returns
- *                 σ²_t = ω + α·r²_{t-1} + β·σ²_{t-1}
- *                 α=0.06, β=0.91 (α+β=0.97, ~23-day half-life)
- *                 ω sets the long-run variance floor — prevents estimates
- *                 collapsing in quiet patches. Pure EWMA (ω=0) drops ~15%
- *                 too low for FX in calm regimes. The ω floor keeps FX in
- *                 line with the reference quant system.
+ *   index     : EWMA close-to-close, λ=0.90
+ *                 σ²_t = 0.10·r²_t + 0.90·σ²_{t-1}
+ *                 Reference comparison showed EWMA Δ+3.7% vs GARCH Δ+15.9%.
+ *                 Previous: GARCH(1,1) α=0.06 β=0.91
+ *
+ *   fx        : 30-day simple historical volatility (HV30) [experimental]
+ *                 std(log_returns[-30:]) × √252
+ *                 YZ was best available (Δ+12%) but HV30 being trialled.
+ *                 Previous: GARCH(1,1) α=0.06 β=0.91
+ *
+ *   Legacy shadow (stored as garch_/legacy_ fields for before/after comparison):
+ *                 commodity → RS-EWMA λ=0.94
+ *                 index/fx  → GARCH(1,1) α=0.06 β=0.91
  *
  *   H-L range : BM range distribution percentiles (P50=1.572σ, P75=2.049σ)
- *               with per-asset-class correction
- *   O-C move  : Half-normal percentiles (|N(0,σ)|) with per-asset-class correction
- *   O-H / O-L : Same distribution as O-C by BM reflection principle —
- *               max(B_t) ~ |B_T|, so median O-H = median O-L = median O-C
- *   N-day     : √T scaling — σ_N = σ_1 × √N (independent days)
- *   Vol pct   : Percentile rank of current σ in trailing 252-bar history (0–100)
- *   News mult : High-impact US event overlay (FOMC, NFP, CPI etc.)
+ *   O-C move  : Half-normal percentiles (|N(0,σ)|)
+ *   Correction factors reset to 1.0 (previous corrections calibrated for GARCH/RS-EWMA)
  */
 
 const TRADING_DAYS = 252;
@@ -46,24 +44,19 @@ const HN_P50 = 0.6745;
 const HN_P75 = 1.1503;
 
 // ── Per-asset-class parameters ────────────────────────────────────────────────
-// garch_omega : long-run variance floor for GARCH (index/fx only)
-//   ω = (σ_annual_target / √252)² × (1−α−β)
+// garch_omega : long-run variance floor for GARCH — kept for the legacy shadow
+//   series even though GARCH is no longer the primary estimator.
 //   index → 20% long-run  ω = 4.76e-6
-//   fx    → 5.5% long-run ω = 3.60e-7  (was 6.70e-7 / 7.5% — recalibrated
-//           2026-06-04: equilibrates near 5% with typical 0.30%/day FX returns)
+//   fx    → 5.5% long-run ω = 3.60e-7
 //
 // hl_50_corr / hl_75_corr / oc_50_corr / oc_75_corr
-//   Recalibrated 2026-06-12 from Jun 11 reference back-solves (clean non-event day).
-//   Jun 11 source: GOLD ref 27.83% / ours 24.49% (×1.137), EURUSD 5.40/4.87 (×1.109),
-//   NQ 30.76/26.85 (×1.146). Range ratios applied per output field:
-//   commodity: hl_50 1.018→1.203 (+18%), oc_50 1.126→1.328 (+18%), 75th updated similarly
-//   index:     hl_50 0.993→1.106 (+11%), oc_50 1.061→1.157 (+9%)
-//   fx:        hl_50 0.955→1.080 (+13%), oc_50 0.956→1.147 (+20%)
-//   Verified: all three instruments reproduce reference ranges within 0.1% on Jun 11.
+//   Reset to 1.0 on 2026-06-15 when primaries switched to HV20/EWMA/HV30.
+//   Previous calibration (for GARCH/RS-EWMA) is documented in ESTIMATOR_CHANGE_LOG.md.
+//   New estimators are close enough to reference that pure BM/HN formulas apply.
 const ASSET_PARAMS = {
-  commodity: { hl_50_corr: 1.203, hl_75_corr: 1.076, oc_50_corr: 1.328, oc_75_corr: 1.237 },
-  index:     { hl_50_corr: 1.106, hl_75_corr: 1.068, oc_50_corr: 1.157, oc_75_corr: 1.241, garch_omega: 4.76e-6 },
-  fx:        { hl_50_corr: 1.080, hl_75_corr: 1.015, oc_50_corr: 1.147, oc_75_corr: 1.122, garch_omega: 3.60e-7 },
+  commodity: { hl_50_corr: 1.0, hl_75_corr: 1.0, oc_50_corr: 1.0, oc_75_corr: 1.0 },
+  index:     { hl_50_corr: 1.0, hl_75_corr: 1.0, oc_50_corr: 1.0, oc_75_corr: 1.0, garch_omega: 4.76e-6 },
+  fx:        { hl_50_corr: 1.0, hl_75_corr: 1.0, oc_50_corr: 1.0, oc_75_corr: 1.0, garch_omega: 3.60e-7 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
@@ -309,41 +302,57 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
 
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
-  // Commodity: RS-EWMA handles drift; never subtracts directional component.
-  // Index/FX: GARCH with ω floor prevents quiet-period collapse.
-  const volSeries = assetClass === 'commodity'
+  // Primary estimators — switched 2026-06-15 based on reference comparison:
+  //   commodity HV20 Δ+2.7% vs RS-EWMA Δ+15.5%  (ref GOLD 28.91%)
+  //   index EWMA Δ+3.7% vs GARCH Δ+15.9%          (ref NQ   29.99%)
+  //   fx HV30 experimental (YZ Δ+12% was best but HV30 being trialled)
+  let volSeries;
+  if (assetClass === 'commodity') {
+    volSeries = hv20Series(ohlc, 20);          // was: rsEwmaVolSeries(ohlc)
+  } else if (assetClass === 'index') {
+    volSeries = ewmaVolSeries(ohlc, 0.90);     // was: garch11VolSeries(ohlc, p.garch_omega)
+  } else {
+    volSeries = hv20Series(ohlc, 30);          // was: garch11VolSeries(ohlc, p.garch_omega)
+  }
+
+  // Legacy shadow — old estimator (RS-EWMA for commodity, GARCH for index/fx).
+  // Stored in KV so the compare table can show before/after side-by-side.
+  const legacySeries = assetClass === 'commodity'
     ? rsEwmaVolSeries(ohlc)
     : garch11VolSeries(ohlc, p.garch_omega);
 
-  // US event multiplier applies to fx/index only; commodity (gold) vol is not
-  // systematically driven by US data releases in the same direction each time.
+  // US event multiplier applies to fx/index only.
   const sigmaFwd = (newsMult > 1 && assetClass !== 'commodity')
     ? volSeries.at(-1) * newsMult
     : volSeries.at(-1);
 
   // Shadow estimators: raw BM percentiles, no empirical corrections.
-  // Stored alongside GARCH in KV so compare table has data even without ohlcCache.
-  const yzArr   = yangZhangVolSeries(ohlc);
-  const hvArr   = hv20Series(ohlc);
-  const ewmaArr = ewmaVolSeries(ohlc);
-  const sigmaYZ   = yzArr.at(-1)   ?? 0;
-  const sigmaHV   = hvArr.at(-1)   ?? 0;
-  const sigmaEWMA = ewmaArr.at(-1) ?? 0;
-  const yzPct   = sigmaYZ   * 100;
-  const hvPct   = sigmaHV   * 100;
-  const ewmaPct = sigmaEWMA * 100;
+  const yzArr     = yangZhangVolSeries(ohlc);
+  const hvArr     = hv20Series(ohlc, 20);
+  const ewmaArr   = ewmaVolSeries(ohlc, 0.90);
+  const sigmaYZ     = yzArr.at(-1)       ?? 0;
+  const sigmaHV     = hvArr.at(-1)       ?? 0;
+  const sigmaEWMA   = ewmaArr.at(-1)     ?? 0;
+  const sigmaLegacy = legacySeries.at(-1) ?? 0;
+  const yzPct     = sigmaYZ     * 100;
+  const hvPct     = sigmaHV     * 100;
+  const ewmaPct   = sigmaEWMA   * 100;
+  const legacyPct = sigmaLegacy * 100;
   const r2s = x => Math.round(x * 100) / 100;
 
   return Object.assign(_buildOutput(volSeries, sigmaFwd, assetClass, newsMult), {
-    yz_vol_annual:   r2s(yzPct   * Math.sqrt(TRADING_DAYS)),
-    yz_hl_median:    r2s(BM_RANGE_P50 * yzPct),
-    yz_oc_median:    r2s(HN_P50       * yzPct),
-    hv_vol_annual:   r2s(hvPct   * Math.sqrt(TRADING_DAYS)),
-    hv_hl_median:    r2s(BM_RANGE_P50 * hvPct),
-    hv_oc_median:    r2s(HN_P50       * hvPct),
-    ewma_vol_annual: r2s(ewmaPct * Math.sqrt(TRADING_DAYS)),
-    ewma_hl_median:  r2s(BM_RANGE_P50 * ewmaPct),
-    ewma_oc_median:  r2s(HN_P50       * ewmaPct),
+    yz_vol_annual:     r2s(yzPct     * Math.sqrt(TRADING_DAYS)),
+    yz_hl_median:      r2s(BM_RANGE_P50 * yzPct),
+    yz_oc_median:      r2s(HN_P50       * yzPct),
+    hv_vol_annual:     r2s(hvPct     * Math.sqrt(TRADING_DAYS)),
+    hv_hl_median:      r2s(BM_RANGE_P50 * hvPct),
+    hv_oc_median:      r2s(HN_P50       * hvPct),
+    ewma_vol_annual:   r2s(ewmaPct   * Math.sqrt(TRADING_DAYS)),
+    ewma_hl_median:    r2s(BM_RANGE_P50 * ewmaPct),
+    ewma_oc_median:    r2s(HN_P50       * ewmaPct),
+    legacy_vol_annual: r2s(legacyPct * Math.sqrt(TRADING_DAYS)),
+    legacy_hl_median:  r2s(BM_RANGE_P50 * legacyPct),
+    legacy_oc_median:  r2s(HN_P50       * legacyPct),
   });
 }
 

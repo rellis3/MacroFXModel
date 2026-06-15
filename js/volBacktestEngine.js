@@ -3,7 +3,7 @@
  *
  * Strategy:
  *   Each day T (walk-forward, no lookahead):
- *     1. EWMA(λ=0.94) vol on closes[0..T-1] → σ_d
+ *     1. HV20 (commodity) / EWMA(λ=0.90) (index) / HV30 (fx) vol on closes[0..T-1] → σ_d
  *     2. HL_75  = 2.049 × hl_75_corr × σ_d  (% of price)
  *        OC_med = 0.6745 × oc_corr    × σ_d  (% of price)
  *     3. EMA-20 slope on closes[0..T-1] → regime BULL / BEAR / RANGE
@@ -90,6 +90,24 @@ function ewmaVarSeries(logReturns, lam = LAMBDA) {
   for (let i = 0; i < n; i++) {
     v = lam * v + (1 - lam) * logReturns[i] ** 2;
     out[i] = v;
+  }
+  return out;
+}
+
+// ── Rolling HV variance series ────────────────────────────────────────────────
+// Used for HV20 (commodity) and HV30 (fx) — matches hv20Series() in volForecast.js.
+// out[i] = sample variance of logReturns[max(0, i-window+1)..i].
+
+function hvVarSeries(logReturns, window = 20) {
+  const n = logReturns.length;
+  const out = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const start = Math.max(0, i - window + 1);
+    const m = i - start + 1;
+    let sum = 0, sum2 = 0;
+    for (let j = start; j <= i; j++) { sum += logReturns[j]; sum2 += logReturns[j] ** 2; }
+    const mean = sum / m;
+    out[i] = Math.max((sum2 - m * mean * mean) / Math.max(m - 1, 1), 1e-12);
   }
   return out;
 }
@@ -181,8 +199,19 @@ function runBacktest(bars, assetClass, opts = {}) {
     for (let j = 1; j < i; j++) logRet.push(Math.log(closes[j] / closes[j - 1]));
     if (logRet.length < 20) continue;
 
-    const varSeries = ewmaVarSeries(logRet);
-    const sigmaD    = Math.sqrt(varSeries[varSeries.length - 1]);
+    let sigmaD;
+    if (assetClass === 'commodity') {
+      const win = Math.min(20, logRet.length), sl = logRet.slice(-win);
+      const mean = sl.reduce((s, r) => s + r, 0) / win;
+      sigmaD = Math.sqrt(Math.max(sl.reduce((s, r) => s + (r - mean) ** 2, 0) / Math.max(win - 1, 1), 0));
+    } else if (assetClass === 'index') {
+      const v = ewmaVarSeries(logRet, 0.90);
+      sigmaD = Math.sqrt(v[v.length - 1]);
+    } else {
+      const win = Math.min(30, logRet.length), sl = logRet.slice(-win);
+      const mean = sl.reduce((s, r) => s + r, 0) / win;
+      sigmaD = Math.sqrt(Math.max(sl.reduce((s, r) => s + (r - mean) ** 2, 0) / Math.max(win - 1, 1), 0));
+    }
     const hl75pct   = BM_P75 * p.hl_75_corr * sigmaD * 100;
     const ocMedPct  = HN_P50 * p.oc_corr    * sigmaD * 100;
     const regime    = classifyRegime(closes, i, 20, 5, slopeThresh, bearMult);
@@ -206,7 +235,7 @@ function runBacktest(bars, assetClass, opts = {}) {
 
 // ── Public: run all instruments and return structured result ──────────────────
 
-export { ewmaVarSeries, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75 };
+export { ewmaVarSeries, hvVarSeries, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75 };
 export { fetchD1 };
 
 export async function runFullBacktest(opts = {}, instruments = INSTRUMENTS) {

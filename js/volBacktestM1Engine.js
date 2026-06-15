@@ -4,8 +4,8 @@
  * Eliminates the D1 H/L ordering ambiguity by walking 1-minute bars
  * chronologically to resolve entry/TP/SL sequencing exactly.
  *
- * Vol (EWMA λ=0.94) and regime (EMA-20 slope) are still computed from
- * D1 close-to-close returns — no lookahead bias.
+ * Vol (HV20/EWMA λ=0.90/HV30 per asset class) and regime (EMA-20 slope) are still
+ * computed from D1 close-to-close returns — no lookahead bias.
  *
  * M1 data source priority: R2 (set R2_ACCESS_KEY + R2_SECRET_KEY env vars) → local BT_M1_DIR → Google Drive.
  * Naming: {pair_lowercase}_m1.parquet  e.g. eurusd_m1.parquet
@@ -18,7 +18,7 @@ import { fileURLToPath }            from 'url';
 import { parquetRead, parquetMetadataAsync } from 'hyparquet';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import {
-  ewmaVarSeries, classifyRegime, ASSET_PARAMS,
+  ewmaVarSeries, hvVarSeries, classifyRegime, ASSET_PARAMS,
   BM_P50, BM_P75, HN_P50, HN_P75, fetchD1, INSTRUMENTS,
 } from './volBacktestEngine.js';
 
@@ -809,20 +809,23 @@ function runM1Backtest(d1Bars, m1ByDate, assetClass, opts = {}) {
   const records = [];
   const daCarried = [];  // carry-forward state for dynamicAnchor EOD-run mode
 
-  // Pre-compute EWMA variance series once — O(n) vs O(n²) per-bar rebuild
+  // Pre-compute vol variance series once — O(n) vs O(n²) per-bar rebuild.
+  // commodity → HV20, index → EWMA(λ=0.90), fx → HV30 — mirrors computeForecast().
   const allLogRet = [];
   for (let j = 1; j < closes.length; j++) allLogRet.push(Math.log(closes[j] / closes[j - 1]));
-  const allEwmaVar = ewmaVarSeries(allLogRet);
+  const allVolVar = assetClass === 'commodity' ? hvVarSeries(allLogRet, 20)
+                  : assetClass === 'index'     ? ewmaVarSeries(allLogRet, 0.90)
+                  :                              hvVarSeries(allLogRet, 30);
 
   for (let i = minLookback; i < d1Bars.length; i++) {
     const { date, open, high, low, close } = d1Bars[i];
     if (dateFrom && date < dateFrom) continue;
     if (dateTo   && date > dateTo)   continue;
 
-    const ewmaIdx = i - 2; // allEwmaVar[i-2] = EWMA variance after returns 0..i-2
-    if (ewmaIdx < 19) continue;
+    const volIdx = i - 2; // allVolVar[i-2] = variance after returns 0..i-2
+    if (volIdx < 19) continue;
 
-    const sigmaD   = Math.sqrt(allEwmaVar[ewmaIdx]);
+    const sigmaD   = Math.sqrt(allVolVar[volIdx]);
     const hl50pct  = BM_P50 * p.hl_50_corr  * sigmaD * 100;
     const hl75pct  = BM_P75 * p.hl_75_corr  * sigmaD * 100;
     const ocMedPct = HN_P50 * p.oc_corr     * sigmaD * 100;
@@ -1173,10 +1176,13 @@ function runLevelHitAnalysis(d1Bars, m1ByDate, assetClass, opts = {}) {
   const closes = d1Bars.map(b => b.close);
   const records = [];
 
-  // Pre-compute EWMA variance series once — O(n) vs O(n²) per-bar rebuild
+  // Pre-compute vol variance series once — O(n) vs O(n²) per-bar rebuild.
+  // commodity → HV20, index → EWMA(λ=0.90), fx → HV30 — mirrors computeForecast().
   const allLogRet = [];
   for (let j = 1; j < closes.length; j++) allLogRet.push(Math.log(closes[j] / closes[j - 1]));
-  const allEwmaVar = ewmaVarSeries(allLogRet);
+  const allVolVar = assetClass === 'commodity' ? hvVarSeries(allLogRet, 20)
+                  : assetClass === 'index'     ? ewmaVarSeries(allLogRet, 0.90)
+                  :                              hvVarSeries(allLogRet, 30);
 
   for (let i = minLookback; i < d1Bars.length; i++) {
     const { date, open } = d1Bars[i];
@@ -1186,10 +1192,10 @@ function runLevelHitAnalysis(d1Bars, m1ByDate, assetClass, opts = {}) {
     const m1Bars = m1ByDate?.get(date) ?? null;
     if (!m1Bars || m1Bars.length < 10) continue;
 
-    const ewmaIdx = i - 2;
-    if (ewmaIdx < 19) continue;
+    const volIdx = i - 2;
+    if (volIdx < 19) continue;
 
-    const sigmaD  = Math.sqrt(allEwmaVar[ewmaIdx]);
+    const sigmaD  = Math.sqrt(allVolVar[volIdx]);
     const hl50pct = BM_P50 * p.hl_50_corr * sigmaD * 100;
     const hl75pct = BM_P75 * p.hl_75_corr * sigmaD * 100;
     const oc50pct = HN_P50 * p.oc_corr    * sigmaD * 100;

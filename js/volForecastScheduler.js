@@ -670,7 +670,8 @@ export async function startVolForecastScheduler() {
   const cachedDate  = forecastState.latest?.session_date;
   const cachedInst  = forecastState.latest?.instruments ?? {};
   const missingFields = Object.values(cachedInst).some(f =>
-    f.yz_vol_annual == null || f.hv_vol_annual == null || f.ewma_vol_annual == null
+    f.yz_vol_annual == null || f.hv_vol_annual == null ||
+    f.ewma_vol_annual == null || f.legacy_vol_annual == null
   );
   const needsImmediateRun = !cachedDate || cachedDate !== neededDate || missingFields;
 
