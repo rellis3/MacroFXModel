@@ -412,7 +412,7 @@ let _cfg = {
         allocVBull:1.0, allocBull:0.8, allocNeutral:0.5, allocBear:0.3, allocVBear:0.0 },
   p3: { ismMaPeriod:42, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.2, overheatTlt:0.2,
         stagGld:1.0, stagTlt:0.3, stagSpy:0.1, recTlt:0.7, recSpy:0.1 },
-  p4: { trendWin:63, vixExit:1.0, allocNormal:1.0 },
+  p4: { trendWin:252, vixExit:1.0, allocNormal:1.0 },
   p5: { lookback:189, skip:21, nLong:3, nShort:2 },
   p6: { olsWindow:126, thVLong:-2.0, thLong:-1.0, thShort:1.0, thVShort:1.5,
         allocVLong:1.0, allocLong:0.75, allocNeutral:0.3, allocShort:0.25, allocVShort:0.0 },
@@ -1674,7 +1674,7 @@ function sysCfgForm(key) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
       <div>
         <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Trend Filter</div>
-        ${row('MA window (days)', 'p4_trendWin', c.trendWin, 10, 21, 252)}
+        ${row('MA window (days)', 'p4_trendWin', c.trendWin, 21, 63, 504)}
         <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Long above MA (JPY weakening) · Short below MA (JPY strengthening)</div>
         <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Risk Gate (long only)</div>
         ${row('VIX Z exit threshold', 'p4_vixExit', c.vixExit, 0.1, -3, 3)}
@@ -1785,7 +1785,7 @@ const OPT_GRIDS = {
     overheatGld: [0.2, 0.3, 0.5],        // gold allocation in overheating regime
   },
   p4: {
-    trendWin: [42, 63, 126, 189],
+    trendWin: [126, 189, 252, 315],   // longer windows avoid monthly mean-reversion regime
     vixExit:  [0.5, 0.75, 1.0, 1.5],
   },
   p5: {
