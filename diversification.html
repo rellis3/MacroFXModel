@@ -232,6 +232,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <div class="dv-tab"        data-tab="alpha"       onclick="switchTab('alpha')">Alpha Sources</div>
     <div class="dv-tab"        data-tab="montecarlo"  onclick="switchTab('montecarlo')">Monte Carlo</div>
     <div class="dv-tab"        data-tab="robustness"  onclick="switchTab('robustness')">Robustness</div>
+    <div class="dv-tab"        data-tab="testlab"     onclick="switchTab('testlab')">Testing Lab</div>
     <div class="dv-tab"        data-tab="systems"     onclick="switchTab('systems')">Systems</div>
   </div>
 
@@ -463,7 +464,173 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     </div>
   </div>
 
-  <!-- ── Tab 8: Systems ─────────────────────────────────────────────────────── -->
+  <!-- ── Tab 8: Testing Lab ────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-testlab">
+
+    <!-- Section 1: Monte Carlo IID + Block Bootstrap -->
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">
+        1 — Monte Carlo: IID vs Block Bootstrap
+        <span style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+          <label style="font-size:11px;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:5px;">
+            <input type="radio" name="tlMCMode" value="iid" checked onchange="renderTLMC()"> IID
+          </label>
+          <label style="font-size:11px;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:5px;">
+            <input type="radio" name="tlMCMode" value="block" onchange="renderTLMC()"> Block Bootstrap
+          </label>
+          <label style="font-size:11px;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:5px;">
+            <input type="radio" name="tlMCMode" value="both" onchange="renderTLMC()"> Side-by-Side
+          </label>
+          <button class="bt-run-btn" onclick="renderTLMC()" style="font-size:10px;padding:4px 14px;">Re-run</button>
+        </span>
+      </div>
+      <div class="bt-card-body">
+        <div id="tlMCCharts" class="bt-two-col" style="margin-top:0;">
+          <div><div class="bt-chart-wrap tall"><canvas id="chartTLMC_IID"></canvas></div><div style="text-align:center;font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);margin-top:6px;">IID Bootstrap (1 000 sims)</div></div>
+          <div><div class="bt-chart-wrap tall"><canvas id="chartTLMC_Block"></canvas></div><div style="text-align:center;font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);margin-top:6px;">Block Bootstrap (1 000 sims)</div></div>
+        </div>
+        <div class="dv-info" style="margin-top:10px;">Block bootstrap preserves serial correlation — wider bands = real uncertainty, not just noise.</div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Bootstrap Summary — Final Equity Distribution</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>Mode</th><th>Pct</th><th class="num">Final Equity</th><th class="num">CAGR</th>
+            </tr></thead>
+            <tbody id="tlMCSummaryBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Walk-Forward -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">
+        2 — Walk-Forward Retrain + Parameter Drift
+        <span style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <label style="font-size:11px;color:var(--text3);">Train yrs:
+            <select id="tlWFTrain" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:11px;font-family:'DM Mono',monospace;padding:2px 6px;">
+              <option value="3">3</option><option value="5" selected>5</option><option value="7">7</option>
+            </select>
+          </label>
+          <label style="font-size:11px;color:var(--text3);">Test yrs:
+            <select id="tlWFTest" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:11px;font-family:'DM Mono',monospace;padding:2px 6px;">
+              <option value="1" selected>1</option><option value="2">2</option>
+            </select>
+          </label>
+          <button class="bt-run-btn" id="tlWFBtn" onclick="runTLWalkForward()">Run Walk-Forward</button>
+        </span>
+      </div>
+      <div class="bt-card-body">
+        <div id="tlWFProgress" style="display:none;padding:8px 0;">
+          <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden;margin-bottom:6px;">
+            <div id="tlWFProgressBar" style="height:100%;background:var(--blue);width:0%;transition:width .2s;border-radius:3px;"></div>
+          </div>
+          <div id="tlWFProgressMsg" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
+        </div>
+        <div class="bt-two-col" style="margin-top:0;">
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">OOS Equity vs Actual</div>
+            <div class="bt-chart-wrap tall"><canvas id="chartTLWFEquity"></canvas></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">OOS Sharpe by System</div>
+            <div class="bt-chart-wrap tall"><canvas id="chartTLWFSharpe"></canvas></div>
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Walk-Forward Summary</div>
+          <div id="tlWFSummary" style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text3);">Run walk-forward to see results.</div>
+        </div>
+        <div style="margin-top:14px;">
+          <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Parameter Drift — IS-Best Key Param per Window</div>
+          <div class="bt-tbl-scroll"><table class="bt-tbl" id="tlWFDriftTable"><thead><tr><th>Window</th><th>P1 bandHigh</th><th>P4 trendWin</th><th>P5 lookback</th></tr></thead><tbody id="tlWFDriftBody"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Permutation Test -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">
+        3 — Permutation / Randomness Test
+        <button class="bt-run-btn" id="tlPermBtn" onclick="runTLPerm()" style="margin-left:auto;font-size:10px;padding:4px 14px;">Run 10 000 Permutations</button>
+      </div>
+      <div class="bt-card-body">
+        <div class="bt-two-col" style="margin-top:0;">
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">Combined Book — Null Sharpe Distribution</div>
+            <div class="bt-chart-wrap"><canvas id="chartTLPerm"></canvas></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">Per-System Significance</div>
+            <div class="bt-tbl-scroll" style="max-height:280px;">
+              <table class="bt-tbl">
+                <thead><tr><th>System</th><th class="num">Actual Sharpe</th><th class="num">p-value</th><th>Significance</th></tr></thead>
+                <tbody id="tlPermBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Capital Ceiling -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">4 — Capital Ceiling (Market Impact Estimate)</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>System</th><th>Asset(s)</th><th class="num">Daily Vol</th><th class="num">Max AUM</th><th>Constraint Note</th>
+            </tr></thead>
+            <tbody id="tlCapBody"></tbody>
+          </table>
+        </div>
+        <div class="dv-info" style="margin:12px 18px 0;">
+          Max AUM estimated at ~2% of average daily volume to keep market impact &lt; 0.5% drag/year.
+          Assumes 1–6 trades/year and a 30-min execution window per trade.
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 5: Transaction Costs -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">5 — Transaction Costs / Spreads Sensitivity</div>
+      <div class="bt-card-body">
+        <div class="bt-two-col" style="margin-top:0;">
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">Combined Sharpe vs Cost (bps)</div>
+            <div class="bt-chart-wrap"><canvas id="chartTLTxCost"></canvas></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">Stats at Each Cost Level</div>
+            <div class="bt-tbl-scroll">
+              <table class="bt-tbl" id="tlTxTable">
+                <thead><tr>
+                  <th>Cost (bps)</th><th class="num">Comb. Sharpe</th><th class="num">Comb. CAGR</th><th class="num">Comb. MaxDD</th>
+                </tr></thead>
+                <tbody id="tlTxBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <div class="bt-tbl-scroll">
+            <table class="bt-tbl" id="tlTxSysTable">
+              <thead><tr id="tlTxSysHead"></tr></thead>
+              <tbody id="tlTxSysBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Tab 9: Systems ─────────────────────────────────────────────────────── -->
   <div class="dv-panel" id="panel-systems">
     <div class="sys-tabs" id="sysTabs">
       <div class="sys-tab active" data-sys="p1" onclick="switchSys('p1')" style="background:#14b8a6;">P1 Macro Regime</div>
@@ -2358,6 +2525,502 @@ function _sysKpiHtml(r, i) {
     <div class="bt-kpi"><div class="bt-kpi-label">Final Equity</div><div class="bt-kpi-value blue">${fmt(eqs[eqs.length-1],2)}×</div></div>`;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Testing Lab
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Section 1: Block Bootstrap ────────────────────────────────────────────────
+function runBlockBootstrap(monthlyRet, nSims=1000, blockSize=null) {
+  const fin = monthlyRet.filter(isFinite);
+  const n = fin.length;
+  const bs = blockSize ?? Math.max(3, Math.round(Math.sqrt(n)));
+  const sims = [];
+  for (let s = 0; s < nSims; s++) {
+    const sample = [];
+    while (sample.length < n) {
+      const start = Math.floor(Math.random() * Math.max(1, n - bs + 1));
+      for (let b = 0; b < bs && sample.length < n; b++) sample.push(fin[start + b]);
+    }
+    let eq = 1; const curve = [1];
+    for (const r of sample) { eq *= (1+r); curve.push(eq); }
+    sims.push(curve);
+  }
+  const pcts = [5,25,50,75,95];
+  const bands = pcts.map(() => new Array(n+1).fill(0));
+  for (let t = 0; t <= n; t++) {
+    const col = sims.map(s=>s[t]).sort((a,b)=>a-b);
+    pcts.forEach((p,pi) => { bands[pi][t] = col[Math.round((p/100)*(nSims-1))]; });
+  }
+  return { bands, pcts, n, sims };
+}
+
+function _buildMCEnvelopeDatasets(mc) {
+  const labels = Array.from({length: mc.n+1}, (_,i)=>i===0?'0':String(i));
+  const colors = ['rgba(239,68,68,.15)','rgba(251,146,60,.2)','rgba(59,130,246,1)','rgba(251,146,60,.2)','rgba(239,68,68,.15)'];
+  const fills  = [false,'+1',false,'-1',false];
+  return {
+    labels,
+    datasets: mc.pcts.map((p,pi) => ({
+      label: `P${p}`, data: mc.bands[pi],
+      borderColor: pi===2 ? '#3b82f6' : pi===0||pi===4 ? 'rgba(239,68,68,.6)' : 'rgba(251,146,60,.6)',
+      borderWidth: pi===2 ? 2 : 1, pointRadius: 0, fill: fills[pi],
+      backgroundColor: colors[pi], tension: 0,
+    })),
+  };
+}
+
+function renderTLMC() {
+  if (!_combined) return;
+  const mr = _combined.monthlyRet;
+  const mode = document.querySelector('input[name=tlMCMode]:checked')?.value ?? 'iid';
+  const showIID   = mode !== 'block';
+  const showBlock = mode !== 'iid';
+
+  const iidEl   = document.getElementById('chartTLMC_IID');
+  const blockEl = document.getElementById('chartTLMC_Block');
+  const wrap    = document.getElementById('tlMCCharts');
+
+  if (mode === 'both') {
+    wrap.style.display = 'grid';
+    iidEl.closest('div').style.display = '';
+    blockEl.closest('div').style.display = '';
+  } else if (mode === 'iid') {
+    wrap.style.display = 'block';
+    iidEl.closest('div').style.display = '';
+    blockEl.closest('div').style.display = 'none';
+  } else {
+    wrap.style.display = 'block';
+    iidEl.closest('div').style.display = 'none';
+    blockEl.closest('div').style.display = '';
+  }
+
+  const pctLabels = ['P5','P25','P50','P75','P95'];
+  let summaryRows = '';
+  const baseOpts = { animation:{duration:0}, plugins:{legend:{display:true,position:'top',labels:{color:'#94a3b8',font:{size:10}}}},
+    scales:{x:{ticks:{maxTicksLimit:12,color:'#94a3b8',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}},
+            y:{ticks:{color:'#94a3b8',font:{size:10},callback:v=>v.toFixed(2)+'×'},grid:{color:'rgba(255,255,255,0.06)'}}} };
+
+  if (showIID) {
+    const mc = runMonteCarlo(mr, 1000);
+    const { labels, datasets } = _buildMCEnvelopeDatasets(mc);
+    destroyChart('chartTLMC_IID');
+    makeChart('chartTLMC_IID', 'line', labels, datasets, baseOpts);
+    mc.pcts.forEach((p,pi) => {
+      const fe = mc.bands[pi][mc.n];
+      const c = cagr(fe, mc.n);
+      summaryRows += `<tr><td>IID</td><td>${pctLabels[pi]}</td><td class="num ${fe>=1?'pos':'neg'}">${fmt(fe,2)}×</td><td class="num ${c>=0?'pos':'neg'}">${fmtPct(c)}</td></tr>`;
+    });
+  }
+  if (showBlock) {
+    const mc = runBlockBootstrap(mr, 1000);
+    const { labels, datasets } = _buildMCEnvelopeDatasets(mc);
+    destroyChart('chartTLMC_Block');
+    makeChart('chartTLMC_Block', 'line', labels, datasets, baseOpts);
+    mc.pcts.forEach((p,pi) => {
+      const fe = mc.bands[pi][mc.n];
+      const c = cagr(fe, mc.n);
+      summaryRows += `<tr><td>Block</td><td>${pctLabels[pi]}</td><td class="num ${fe>=1?'pos':'neg'}">${fmt(fe,2)}×</td><td class="num ${c>=0?'pos':'neg'}">${fmtPct(c)}</td></tr>`;
+    });
+  }
+  document.getElementById('tlMCSummaryBody').innerHTML = summaryRows;
+}
+
+// ── Section 2: Walk-Forward ───────────────────────────────────────────────────
+let _comboLibrary = {};
+
+async function buildComboLibrary(key, onProgress) {
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p5:runP5, p6:runP6 };
+  const grid = OPT_GRIDS[key];
+  if (!grid) {
+    _comboLibrary[key] = [{ combo:{..._cfg[key]}, mr:_results[key].monthlyRet, dates:_results[key].monthlyDates }];
+    return;
+  }
+  const combos = expandGrid(grid).filter(c => _validCombo(key, c));
+  _comboLibrary[key] = [];
+  for (let ci = 0; ci < combos.length; ci++) {
+    const saved = {..._cfg[key]};
+    Object.assign(_cfg[key], combos[ci]);
+    const res = runners[key](_rawData);
+    Object.assign(_cfg[key], saved);
+    _comboLibrary[key].push({ combo:combos[ci], mr:res.monthlyRet, dates:res.monthlyDates });
+    if (ci % 20 === 0) { onProgress?.(key, ci, combos.length); await new Promise(r=>setTimeout(r,0)); }
+  }
+}
+
+function _filterByDates(mr, dates, fromDate, toDate) {
+  const out = [];
+  for (let i = 0; i < dates.length; i++) {
+    if (dates[i] >= fromDate && dates[i] <= toDate && isFinite(mr[i])) out.push(mr[i]);
+  }
+  return out;
+}
+
+async function runTLWalkForward() {
+  if (!_rawData || !_combined) return;
+  const btn = document.getElementById('tlWFBtn');
+  btn.disabled = true;
+  const progDiv = document.getElementById('tlWFProgress');
+  const progBar = document.getElementById('tlWFProgressBar');
+  const progMsg = document.getElementById('tlWFProgressMsg');
+  progDiv.style.display = 'block';
+
+  const trainYrs = parseInt(document.getElementById('tlWFTrain').value);
+  const testYrs  = parseInt(document.getElementById('tlWFTest').value);
+
+  const allDates = _combined.monthlyDates;
+  if (!allDates || allDates.length < (trainYrs + testYrs) * 12) {
+    progMsg.textContent = 'Not enough data for walk-forward.';
+    btn.disabled = false;
+    return;
+  }
+
+  // Build combo library for all systems
+  const totalKeys = SYS_KEYS.length;
+  for (let ki = 0; ki < totalKeys; ki++) {
+    const key = SYS_KEYS[ki];
+    progMsg.textContent = `Building combo library: ${key.toUpperCase()} (0/…)`;
+    progBar.style.width = ((ki / totalKeys) * 40) + '%';
+    await buildComboLibrary(key, (k, ci, total) => {
+      progMsg.textContent = `Building combo library: ${k.toUpperCase()} (${ci}/${total})`;
+    });
+  }
+
+  // Walk-forward windows
+  const trainMos = trainYrs * 12;
+  const testMos  = testYrs * 12;
+  const wfWindows = [];
+  for (let start = 0; start + trainMos + testMos <= allDates.length; start += testMos) {
+    const isEnd   = allDates[start + trainMos - 1];
+    const oosStart = allDates[start + trainMos];
+    const oosEnd   = allDates[Math.min(start + trainMos + testMos - 1, allDates.length - 1)];
+    const isStart  = allDates[start];
+    wfWindows.push({ isStart, isEnd, oosStart, oosEnd });
+  }
+
+  const wfOOSBySystem = {};
+  SYS_KEYS.forEach(k => { wfOOSBySystem[k] = { rets: [], dates: [] }; });
+  const driftRows = [];
+
+  for (let wi = 0; wi < wfWindows.length; wi++) {
+    const { isStart, isEnd, oosStart, oosEnd } = wfWindows[wi];
+    progBar.style.width = (40 + (wi / wfWindows.length) * 55) + '%';
+    progMsg.textContent = `Walk-forward window ${wi+1}/${wfWindows.length}: IS ${isStart}→${isEnd}`;
+    await new Promise(r=>setTimeout(r,0));
+
+    const driftRow = { window: `${oosStart}→${oosEnd}` };
+
+    for (const key of SYS_KEYS) {
+      const lib = _comboLibrary[key] || [];
+      let bestSh = -Infinity, bestEntry = lib[0];
+      for (const entry of lib) {
+        const isRets = _filterByDates(entry.mr, entry.dates, isStart, isEnd);
+        if (isRets.length < 6) continue;
+        const sh = sharpe(isRets);
+        if (isFinite(sh) && sh > bestSh) { bestSh = sh; bestEntry = entry; }
+      }
+      const oosRets  = bestEntry ? _filterByDates(bestEntry.mr, bestEntry.dates, oosStart, oosEnd) : [];
+      const oosDates = bestEntry ? bestEntry.dates.filter(d => d >= oosStart && d <= oosEnd) : [];
+      wfOOSBySystem[key].rets.push(...oosRets);
+      wfOOSBySystem[key].dates.push(...oosDates);
+
+      if (key === 'p1') driftRow.p1_bandHigh = bestEntry?.combo?.bandHigh ?? '—';
+      if (key === 'p4') driftRow.p4_trendWin = bestEntry?.combo?.trendWin ?? '—';
+      if (key === 'p5') driftRow.p5_lookback = bestEntry?.combo?.lookback ?? '—';
+    }
+    driftRows.push(driftRow);
+  }
+
+  // Build OOS combined equity
+  const wts = SYS_KEYS.map((_,i) => _weights[i]);
+  const wtsSum = wts.reduce((a,b)=>a+b,0);
+  const wtsN = wts.map(w=>w/wtsSum);
+
+  const allOOSDates = [...new Set(SYS_KEYS.flatMap(k=>wfOOSBySystem[k].dates))].sort();
+  const wfOOSRets = allOOSDates.map(d => {
+    let ret = 0;
+    SYS_KEYS.forEach((k,i) => {
+      const idx = wfOOSBySystem[k].dates.indexOf(d);
+      if (idx >= 0 && isFinite(wfOOSBySystem[k].rets[idx])) ret += wtsN[i] * wfOOSBySystem[k].rets[idx];
+    });
+    return ret;
+  });
+
+  let wfEq = 1; const wfEquity = [1];
+  for (const r of wfOOSRets) { wfEq *= (1+r); wfEquity.push(wfEq); }
+
+  // Actual combined equity for same date range
+  const oosFirst = allOOSDates[0], oosLast = allOOSDates[allOOSDates.length-1];
+  const actualInRange = _combined.monthlyDates.map((d,i)=>d>=oosFirst&&d<=oosLast?_combined.monthlyRet[i]:null).filter(v=>v!==null&&isFinite(v));
+  let actEq = 1; const actEquity = [1];
+  for (const r of actualInRange) { actEq *= (1+r); actEquity.push(actEq); }
+
+  // Charts
+  const wfLabels = Array.from({length:wfEquity.length},(_,i)=>String(i));
+  destroyChart('chartTLWFEquity');
+  makeChart('chartTLWFEquity','line',wfLabels,[
+    { label:'WF OOS Equity', data:wfEquity, borderColor:'#3b82f6', borderWidth:2, pointRadius:0, tension:0 },
+    { label:'Actual Combined', data:actEquity, borderColor:'#e2e8f0', borderWidth:1.5, borderDash:[4,4], pointRadius:0, tension:0 },
+  ], { animation:{duration:0}, plugins:{legend:{display:true,position:'top',labels:{color:'#94a3b8',font:{size:10}}}},
+       scales:{x:{ticks:{maxTicksLimit:10,color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.06)'}},
+               y:{ticks:{color:'#94a3b8',callback:v=>v.toFixed(2)+'×'},grid:{color:'rgba(255,255,255,0.06)'}}} });
+
+  const sysSharpes = SYS_KEYS.map(k => sharpe(wfOOSBySystem[k].rets));
+  destroyChart('chartTLWFSharpe');
+  makeChart('chartTLWFSharpe','bar',SYS_NAMES,[{
+    label:'OOS Sharpe', data:sysSharpes, backgroundColor:SYS_COLORS.map(c=>c+'cc'), borderColor:SYS_COLORS, borderWidth:1,
+  }], { animation:{duration:0}, plugins:{legend:{display:false}},
+       scales:{x:{ticks:{color:'#94a3b8',font:{size:9}},grid:{color:'rgba(255,255,255,0.06)'}},
+               y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.06)'}}} });
+
+  // Summary
+  const wfSh = sharpe(wfOOSRets);
+  const wfCa = cagr(wfEq, wfOOSRets.length);
+  const wfDD = maxDD(wfEquity);
+  const actSh = sharpe(_combined.monthlyRet);
+  const actCa = cagr(_combined.cumulativeEq[_combined.cumulativeEq.length-1], _combined.monthlyRet.length);
+  const actDD = maxDD(_combined.cumulativeEq);
+  document.getElementById('tlWFSummary').innerHTML = `
+    <table class="bt-tbl" style="margin-top:4px;">
+      <thead><tr><th></th><th class="num">Sharpe</th><th class="num">CAGR</th><th class="num">MaxDD</th></tr></thead>
+      <tbody>
+        <tr><td>WF OOS</td><td class="num ${wfSh>=0.5?'pos':'neg'}">${isFinite(wfSh)?fmt(wfSh,2):'—'}</td><td class="num ${wfCa>=0?'pos':'neg'}">${isFinite(wfCa)?fmtPct(wfCa):'—'}</td><td class="num neg">${fmt(wfDD,1)}%</td></tr>
+        <tr><td>Actual Full</td><td class="num ${actSh>=0.5?'pos':'neg'}">${fmt(actSh,2)}</td><td class="num ${actCa>=0?'pos':'neg'}">${fmtPct(actCa)}</td><td class="num neg">${fmt(actDD,1)}%</td></tr>
+      </tbody>
+    </table>`;
+
+  // Drift table
+  document.getElementById('tlWFDriftBody').innerHTML = driftRows.map(r =>
+    `<tr><td>${r.window}</td><td class="num">${r.p1_bandHigh??'—'}</td><td class="num">${r.p4_trendWin??'—'}</td><td class="num">${r.p5_lookback??'—'}</td></tr>`
+  ).join('');
+
+  progBar.style.width = '100%';
+  progMsg.textContent = `Done — ${wfWindows.length} windows, ${wfOOSRets.length} OOS months`;
+  btn.disabled = false;
+}
+
+// ── Section 3: Permutation Test ───────────────────────────────────────────────
+function permutationTest(monthlyRet, nPerm=10000) {
+  const fin = monthlyRet.filter(isFinite);
+  const actual = sharpe(fin);
+  let exceeds = 0;
+  const nullSharpes = [];
+  for (let p = 0; p < nPerm; p++) {
+    const s = [...fin];
+    for (let i = s.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1)); [s[i],s[j]]=[s[j],s[i]]; }
+    const sh = sharpe(s);
+    nullSharpes.push(sh);
+    if (sh >= actual) exceeds++;
+  }
+  return { actual, pValue: exceeds/nPerm, nullSharpes };
+}
+
+function _permSig(p) {
+  if (p < 0.01) return { label:'Highly significant', cls:'pos' };
+  if (p < 0.05) return { label:'Significant', cls:'pos' };
+  if (p < 0.10) return { label:'Marginal', cls:'neu' };
+  return { label:'Not significant', cls:'neg' };
+}
+
+async function runTLPerm() {
+  if (!_combined) return;
+  const btn = document.getElementById('tlPermBtn');
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+
+  const result = permutationTest(_combined.monthlyRet, 10000);
+  await new Promise(r=>setTimeout(r,0));
+
+  const bins = 40;
+  const ns = result.nullSharpes;
+  const minS = Math.min(...ns), maxS = Math.max(...ns);
+  const binW = (maxS - minS) / bins;
+  const counts = new Array(bins).fill(0);
+  for (const v of ns) { const b = Math.min(bins-1, Math.floor((v-minS)/binW)); counts[b]++; }
+  const binLabels = Array.from({length:bins},(_,b)=>fmt(minS+b*binW,2));
+
+  destroyChart('chartTLPerm');
+  const ctx = document.getElementById('chartTLPerm').getContext('2d');
+  _charts['chartTLPerm'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: binLabels,
+      datasets: [{
+        label: 'Null Sharpe (permuted)', data: counts,
+        backgroundColor: binLabels.map(l=>parseFloat(l)>=result.actual?'rgba(239,68,68,.6)':'rgba(59,130,246,.4)'),
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      ..._chartOpts(), animation:{duration:0},
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ticks:{maxTicksLimit:10,color:'#94a3b8',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}},
+        y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.06)'}},
+      },
+    },
+  });
+
+  const { label: sigLabel, cls: sigCls } = _permSig(result.pValue);
+  let rows = `<tr>
+    <td><strong>Combined Book</strong></td>
+    <td class="num ${result.actual>=0.5?'pos':'neg'}">${fmt(result.actual,2)}</td>
+    <td class="num">${result.pValue < 0.001 ? '<0.001' : result.pValue.toFixed(3)}</td>
+    <td class="${sigCls}">${sigLabel}</td>
+  </tr>`;
+
+  for (const key of SYS_KEYS) {
+    const r = _results[key];
+    if (!r) continue;
+    const res = permutationTest(r.monthlyRet, 2000);
+    await new Promise(r2=>setTimeout(r2,0));
+    const { label, cls } = _permSig(res.pValue);
+    const ki = SYS_KEYS.indexOf(key);
+    rows += `<tr>
+      <td><span class="swatch" style="background:${SYS_COLORS[ki]}"></span>${SYS_NAMES[ki]}</td>
+      <td class="num ${res.actual>=0.5?'pos':'neg'}">${fmt(res.actual,2)}</td>
+      <td class="num">${res.pValue < 0.001 ? '<0.001' : res.pValue.toFixed(3)}</td>
+      <td class="${cls}">${label}</td>
+    </tr>`;
+  }
+  document.getElementById('tlPermBody').innerHTML = rows;
+
+  btn.disabled = false;
+  btn.textContent = 'Re-run 10 000 Permutations';
+}
+
+// ── Section 4: Capital Ceiling ────────────────────────────────────────────────
+const CAPACITY_TABLE = [
+  { sys:'P1 Macro Regime',  asset:'SPY ETF',          dailyVol:'$25B',  maxAUM:'$5B+',  note:'Monthly rebalance, deep ETF market' },
+  { sys:'P2 Credit-Equity', asset:'SPY ETF',           dailyVol:'$25B',  maxAUM:'$5B+',  note:'Same as P1 — broad equity ETFs' },
+  { sys:'P3 VIX Regime',    asset:'SPY/TLT/GLD ETF',  dailyVol:'$10B',  maxAUM:'$2B+',  note:'GLD is thinnest at ~$1.5B/day' },
+  { sys:'P4 FX Carry',      asset:'USD/JPY FX spot',  dailyVol:'$120B', maxAUM:'$10B+', note:'Most liquid FX pair globally' },
+  { sys:'P5 FX Momentum',   asset:'FX (7 pairs)',      dailyVol:'$5B',   maxAUM:'$500M', note:'NZD/CHF thinner pairs limit scale' },
+  { sys:'P6 Gold Macro',    asset:'GLD ETF',           dailyVol:'$1.5B', maxAUM:'$300M', note:'GLD daily vol is the binding constraint' },
+];
+
+function renderTLCapacity() {
+  document.getElementById('tlCapBody').innerHTML = CAPACITY_TABLE.map(row =>
+    `<tr>
+      <td><strong>${row.sys}</strong></td>
+      <td>${row.asset}</td>
+      <td class="num">${row.dailyVol}</td>
+      <td class="num pos"><strong>${row.maxAUM}</strong></td>
+      <td style="color:var(--text3)">${row.note}</td>
+    </tr>`
+  ).join('');
+}
+
+// ── Section 5: Transaction Costs ──────────────────────────────────────────────
+const TX_COST_PROFILE = {
+  p1: { tradesPerYear: 6,  label: '~6 regime flips/yr' },
+  p2: { tradesPerYear: 8,  label: '~8 signal changes/yr' },
+  p3: { tradesPerYear: 4,  label: '~4 VIX regime changes/yr' },
+  p4: { tradesPerYear: 4,  label: '~4 MA crossovers/yr' },
+  p5: { tradesPerYear: 24, label: '~2 rebalances/mo × ~1 change' },
+  p6: { tradesPerYear: 6,  label: '~6 z-score crossings/yr' },
+};
+
+const TX_SCENARIOS = [0, 5, 10, 20, 50];
+
+function renderTLTxCosts() {
+  if (!_combined) return;
+
+  const wts = SYS_KEYS.map((_,i) => _weights[i]);
+  const wtsSum = wts.reduce((a,b)=>a+b,0);
+  const wtsN = wts.map(w=>w/wtsSum);
+
+  const combSharpes=[], combCAGRs=[], combDDs=[];
+  const sysRows = {};
+  SYS_KEYS.forEach(k => { sysRows[k] = []; });
+
+  for (const costBps of TX_SCENARIOS) {
+    // Per-system adjusted combined
+    const sysAdj = SYS_KEYS.map((k,i) => {
+      const r = _results[k];
+      if (!r) return [];
+      const drag = (costBps/10000) * TX_COST_PROFILE[k].tradesPerYear / 12;
+      return r.monthlyRet.map(v => isFinite(v) ? v - drag : NaN);
+    });
+
+    // Align dates
+    const commonDates = _combined.monthlyDates;
+    const adjCombRet = commonDates.map((d,di) => {
+      let ret = 0;
+      SYS_KEYS.forEach((k,i) => {
+        const r = _results[k];
+        if (!r) return;
+        const idx = r.monthlyDates.indexOf(d);
+        if (idx >= 0 && isFinite(sysAdj[i][idx])) ret += wtsN[i] * sysAdj[i][idx];
+      });
+      return ret;
+    });
+
+    let eq2 = 1; const eq2curve = [1];
+    for (const r of adjCombRet) { eq2 *= (1+r); eq2curve.push(eq2); }
+    combSharpes.push(sharpe(adjCombRet));
+    combCAGRs.push(cagr(eq2, adjCombRet.length));
+    combDDs.push(maxDD(eq2curve));
+
+    SYS_KEYS.forEach((k,i) => {
+      const r = _results[k];
+      if (!r) { sysRows[k].push({ sh:NaN, ca:NaN }); return; }
+      const drag = (costBps/10000) * TX_COST_PROFILE[k].tradesPerYear / 12;
+      const adj = r.monthlyRet.map(v=>isFinite(v)?v-drag:NaN);
+      let e=1;
+      for (const rv of adj) if(isFinite(rv)) e*=(1+rv);
+      sysRows[k].push({ sh:sharpe(adj), ca:cagr(e, adj.filter(isFinite).length) });
+    });
+  }
+
+  // Find breakeven
+  let breakeven = null;
+  for (let i=1;i<TX_SCENARIOS.length;i++) {
+    if (combSharpes[i]<1.0 && combSharpes[i-1]>=1.0) {
+      const t=(1.0-combSharpes[i-1])/(combSharpes[i]-combSharpes[i-1]);
+      breakeven = TX_SCENARIOS[i-1] + t*(TX_SCENARIOS[i]-TX_SCENARIOS[i-1]);
+      break;
+    }
+  }
+
+  destroyChart('chartTLTxCost');
+  makeChart('chartTLTxCost','line',TX_SCENARIOS.map(c=>c+'bps'),[
+    { label:'Combined Sharpe', data:combSharpes, borderColor:'#3b82f6', borderWidth:2, pointRadius:4, tension:0.3 },
+    { label:'Sharpe = 1.0', data:TX_SCENARIOS.map(()=>1.0), borderColor:'rgba(239,68,68,.5)', borderWidth:1, borderDash:[4,4], pointRadius:0 },
+  ],{animation:{duration:0},plugins:{legend:{display:true,position:'top',labels:{color:'#94a3b8',font:{size:10}}}},
+     scales:{x:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.06)'}},
+             y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.06)'}}}});
+
+  document.getElementById('tlTxBody').innerHTML = TX_SCENARIOS.map((c,i)=>
+    `<tr>
+      <td>${c} bps${i===0?' (no cost)':''}</td>
+      <td class="num ${combSharpes[i]>=0.5?'pos':'neg'}">${fmt(combSharpes[i],2)}</td>
+      <td class="num ${combCAGRs[i]>=0?'pos':'neg'}">${fmtPct(combCAGRs[i])}</td>
+      <td class="num neg">${fmt(combDDs[i],1)}%</td>
+    </tr>`
+  ).join('') + (breakeven!==null?`<tr><td colspan="4" class="neu" style="color:var(--amber)">Sharpe drops below 1.0 at ~${fmt(breakeven,0)} bps</td></tr>`:'');
+
+  const headEl = document.getElementById('tlTxSysHead');
+  headEl.innerHTML = '<th>System</th><th>Trades/yr</th>' + TX_SCENARIOS.map(c=>`<th class="num">${c}bps Sh</th><th class="num">${c}bps CAGR</th>`).join('');
+  document.getElementById('tlTxSysBody').innerHTML = SYS_KEYS.map((k,ki)=>{
+    const prof = TX_COST_PROFILE[k];
+    return `<tr>
+      <td><span class="swatch" style="background:${SYS_COLORS[ki]}"></span>${SYS_NAMES[ki]}</td>
+      <td>${prof.tradesPerYear} <span style="color:var(--text3);font-size:10px;">${prof.label}</span></td>
+      ${TX_SCENARIOS.map((_,si)=>{
+        const d=sysRows[k][si];
+        return `<td class="num ${d.sh>=0.5?'pos':'neg'}">${isFinite(d.sh)?fmt(d.sh,2):'—'}</td><td class="num ${d.ca>=0?'pos':'neg'}">${isFinite(d.ca)?fmtPct(d.ca):'—'}</td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+}
+
+// ── TestLab tab init ──────────────────────────────────────────────────────────
+function initTestLab() {
+  renderTLMC();
+  renderTLCapacity();
+  renderTLTxCosts();
+}
+
 function switchSys(key) {
   document.querySelectorAll('.sys-tab').forEach(t => {
     const isActive = t.dataset.sys === key;
@@ -2384,6 +3047,7 @@ function switchTab(tab) {
     if (tab === 'sizing')     { renderSizingTable(); }
     if (tab === 'montecarlo') { renderMonteCarlo(); }
     if (tab === 'robustness') { renderRobustness(); }
+    if (tab === 'testlab')    { initTestLab(); }
     if (tab === 'systems')    { switchSys(document.querySelector('.sys-tab.active')?.dataset.sys ?? 'p1'); }
     if (tab === 'combined')   { renderCombinedChart(); renderDDChart(); }
   }, 30);
