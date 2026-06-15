@@ -2867,6 +2867,80 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
   }
 });
 
+// ── NQ-QMR Walk-Forward Retrain ──────────────────────────────────────────────
+app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const bars = await _getNqQmrBars();
+    const wfGrid = {
+      gate1Threshold:  [0.55, 0.60, 0.65, 0.70],
+      gate2MinMovePct: [0.05, 0.10, 0.15],
+      stopPct:         [0.35, 0.50, 0.60],
+      minRangePct:     [0.12, 0.15, 0.20],
+      riskPct:         [1.80],
+      tpPct:           [0.75, 1.00],
+    };
+    function addMonths(d, m) { const r = new Date(d); r.setUTCMonth(r.getUTCMonth() + m); return r; }
+    const allDates  = [...new Set(bars.map(b => b.t.substring(0, 10)))].sort();
+    const firstDate = new Date(allDates[0] + 'T00:00:00Z');
+    const lastDate  = new Date(allDates[allDates.length - 1] + 'T00:00:00Z');
+    // IS=12mo, OOS=6mo, step=3mo
+    const windows = [];
+    let wStart = new Date(firstDate);
+    while (true) {
+      const isEnd  = addMonths(wStart, 12);
+      const oosEnd = addMonths(isEnd, 6);
+      if (oosEnd > lastDate) break;
+      windows.push({
+        isStart: wStart.toISOString().substring(0, 10),
+        isEnd:   isEnd.toISOString().substring(0, 10),
+        oosEnd:  oosEnd.toISOString().substring(0, 10),
+      });
+      wStart = addMonths(wStart, 3);
+    }
+    function barsInRange(from, to) {
+      return bars.filter(b => b.t.substring(0, 10) >= from && b.t.substring(0, 10) < to);
+    }
+    function findBest(subBars) {
+      let best = null;
+      for (const g1 of wfGrid.gate1Threshold)
+      for (const g2 of wfGrid.gate2MinMovePct)
+      for (const sp of wfGrid.stopPct)
+      for (const mr of wfGrid.minRangePct)
+      for (const rp of wfGrid.riskPct)
+      for (const tp of wfGrid.tpPct) {
+        const cfg = { gate1Threshold: g1, gate2MinMovePct: g2, stopPct: sp, minRangePct: mr, riskPct: rp, tpPct: tp };
+        const r   = _computeNqQmr(subBars, cfg);
+        const s   = r.stats;
+        if (s.n < 8 || s.cagr <= 0 || s.maxDD <= 0 || s.sharpe <= 0) continue;
+        const score = s.sharpe * Math.sqrt(s.cagr) / s.maxDD;
+        if (!best || score > best.score) best = { cfg, stats: s, score };
+      }
+      return best;
+    }
+    const results  = [];
+    let baseEq = 1.0;
+    const oosCurve = [];
+    for (const w of windows) {
+      const isBars  = barsInRange(w.isStart, w.isEnd);
+      const oosBars = barsInRange(w.isEnd, w.oosEnd);
+      const best = findBest(isBars);
+      if (!best) { results.push({ isStart: w.isStart, isEnd: w.isEnd, oosEnd: w.oosEnd, bestCfg: null, isStats: null, oosStats: null }); continue; }
+      const oosR = _computeNqQmr(oosBars, best.cfg);
+      for (const p of oosR.curve) {
+        oosCurve.push({ date: p.date, equity: +(baseEq * p.equity).toFixed(6) });
+      }
+      if (oosR.curve.length) baseEq *= oosR.curve[oosR.curve.length - 1].equity;
+      results.push({ isStart: w.isStart, isEnd: w.isEnd, oosEnd: w.oosEnd, bestCfg: best.cfg, isStats: best.stats, oosStats: oosR.stats });
+    }
+    console.log(`[nq-qmr wf-retrain] ${results.length} windows, OOS curve pts: ${oosCurve.length}`);
+    res.json({ ok: true, windows: results, oosCurve });
+  } catch (err) {
+    console.error('[nq-qmr wf-retrain]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ── Gold backtest trades store ────────────────────────────────────────────────
 // In-memory store; persists for the lifetime of the process.
 const goldBacktestStore = { trades: [], savedAt: null };

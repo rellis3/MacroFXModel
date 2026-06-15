@@ -138,6 +138,13 @@
 .tv-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text3); }
 .view-link { color: #60a5fa; cursor: pointer; text-decoration: none; font-size: 11px; font-family: 'DM Mono', monospace; }
 .view-link:hover { text-decoration: underline; }
+
+/* Walk-forward retrain */
+.wfr-chart { height: 220px; }
+
+/* Capital ceiling */
+.cap-row-break td { color: #fca5a5 !important; font-weight: 600; }
+.cap-row-break { background: rgba(239,68,68,.06); }
 </style>
 </head>
 <body>
@@ -303,6 +310,26 @@
       <div class="mc-bands" id="mcBands"></div>
       <div class="sec-grid" style="margin-top:10px;" id="mcPermRow"></div>
     </div>
+
+    <!-- Block Bootstrap -->
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:'DM Mono',monospace;">Block Bootstrap — Autocorrelation-Preserving</div>
+        <label style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;display:flex;align-items:center;gap:5px;">Block size
+          <input type="number" id="bbBlockSize" value="5" min="2" max="20" step="1"
+            style="width:50px;background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:3px 6px;">
+        </label>
+        <button class="run-btn" style="padding:4px 14px;font-size:11px;" id="bbBtn" onclick="runBlockBootstrap()">Run</button>
+        <span id="bbStatus" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"></span>
+      </div>
+      <div class="info-box" style="margin-top:0;">
+        Samples consecutive <em>blocks</em> of trades to preserve autocorrelation and streak effects. Unlike IID bootstrap, this captures multi-trade dependency. Compare its p10/p90 range against the IID result above — a wider range here signals clustering risk.
+      </div>
+      <div id="bbResults" style="display:none;margin-top:10px;">
+        <div class="mc-bands" id="bbBands"></div>
+        <div class="sec-grid" style="margin-top:8px;" id="bbStats"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -338,6 +365,55 @@
         <th class="num">Sortino</th><th class="num">MaxDD</th><th class="num">Win%</th><th class="num">vs Prior</th>
       </tr></thead><tbody id="wfTbody"></tbody></table></div>
     </div>
+
+    <!-- Walk-Forward Retrain -->
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:'DM Mono',monospace;">Walk-Forward Retrain (IS → OOS Re-Optimise)</div>
+        <button class="run-btn" style="padding:4px 14px;font-size:11px;" id="wfrBtn" onclick="runWFRetrain()">Run</button>
+        <span id="wfrStatus" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"></span>
+      </div>
+      <div class="info-box" style="margin-top:0;">
+        Each window re-optimises params on a 12-month IS period (216-combo grid: 4×3×3×3×1×2), then runs the best config on the following 6-month OOS window (step 3mo). Green line = stitched OOS equity. Amber = full-sample (fixed params). Efficiency = OOS Sharpe ÷ IS Sharpe.
+      </div>
+      <div id="wfrResults" style="display:none;">
+        <div class="chart-wrap wfr-chart" id="wfrChart" style="height:220px;margin-top:12px;"></div>
+        <div class="tbl-wrap" style="margin-top:12px;max-height:none;">
+          <table class="tbl"><thead><tr>
+            <th>IS Period</th><th>OOS End</th><th>Best Config</th>
+            <th class="num">IS Sharpe</th><th class="num">OOS Sharpe</th>
+            <th class="num">Efficiency</th><th class="num">OOS CAGR</th><th class="num">OOS MaxDD</th>
+          </tr></thead><tbody id="wfrTbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Capital Ceiling Test -->
+<div class="card" id="capCard" style="display:none;margin-top:14px;">
+  <div class="card-hdr">💰 Capital Ceiling — Market Impact (√AUM Law)</div>
+  <div class="card-body">
+    <div class="info-box" style="margin-top:0;">
+      Uses the square-root market impact law: <strong>impact = σ_daily × √(position_$M / daily_vol_$M)</strong>. Models how fill slippage grows with AUM and erodes edge. Row highlighted where adjusted Sharpe falls below 1.0 (strategy capacity ceiling).
+    </div>
+    <div class="tc-row" style="margin-top:10px;">
+      <span style="color:var(--text3)">NAS100 daily vol ($M):</span>
+      <input type="number" id="capDailyVol" value="50000" step="5000" min="1000"
+        style="width:90px;background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 7px;"
+        oninput="renderCapCeiling()">
+      <span style="color:var(--text3)">σ daily %:</span>
+      <input type="number" id="capSigma" value="1.0" step="0.1" min="0.1" max="5"
+        style="width:65px;background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 7px;"
+        oninput="renderCapCeiling()">
+    </div>
+    <div class="tbl-wrap" style="margin-top:12px;max-height:none;">
+      <table class="tbl"><thead><tr>
+        <th>AUM</th><th class="num">Position $M</th><th class="num">Impact bps (RT)</th>
+        <th class="num">Annual drag</th><th class="num">Adj CAGR</th><th class="num">Adj Sharpe</th>
+      </tr></thead><tbody id="capTbody"></tbody></table>
+    </div>
+    <div class="sec-grid" style="margin-top:10px;" id="capSummary"></div>
   </div>
 </div>
 
@@ -528,9 +604,10 @@ function renderAll() {
   renderMonthlyCal();
   renderLongShort();
   renderValidation();
+  renderCapCeiling();
   renderMEA();
   renderTradeTable();
-  ['kpiSection','chartCard','annualCard','gateCard','calCard','dirCard','mcCard','wfCard','meaCard','tradeCard'].forEach(id => {
+  ['kpiSection','chartCard','annualCard','gateCard','calCard','dirCard','mcCard','wfCard','capCard','meaCard','tradeCard'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
@@ -1317,6 +1394,193 @@ function closeTv() {
   document.getElementById('tvOverlay').classList.remove('open');
   window.removeEventListener('resize', _tvResize);
   if (_tvChart) { _tvChart.remove(); _tvChart = null; _tvSeries = null; }
+}
+
+// ── Block Bootstrap ───────────────────────────────────────────────────────────
+async function runBlockBootstrap() {
+  const btn    = document.getElementById('bbBtn');
+  const status = document.getElementById('bbStatus');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Running 500 block-bootstrap sims…';
+  await new Promise(r => setTimeout(r, 20));
+
+  const rets    = _trades.map(t => t.tradeReturn / 100);
+  const n       = rets.length;
+  const blkSize = Math.max(2, parseInt(document.getElementById('bbBlockSize').value) || 5);
+  const N_SIM   = 500;
+
+  // Circular blocks so every trade can be a block start
+  const blocks = [];
+  for (let i = 0; i < n; i++) {
+    const blk = [];
+    for (let j = 0; j < blkSize; j++) blk.push(rets[(i + j) % n]);
+    blocks.push(blk);
+  }
+
+  const finals = [];
+  for (let s = 0; s < N_SIM; s++) {
+    let eq = 1.0, count = 0;
+    while (count < n) {
+      const blk = blocks[Math.floor(Math.random() * blocks.length)];
+      for (const r of blk) {
+        if (count >= n) break;
+        eq *= (1 + r);
+        count++;
+      }
+    }
+    finals.push(eq);
+  }
+
+  finals.sort((a, b) => a - b);
+  const pct = p => finals[Math.floor(finals.length * p / 100)];
+  const years = _curve.length >= 2
+    ? (new Date(_curve[_curve.length - 1].date) - new Date(_curve[0].date)) / (365.25 * 864e5) : 1;
+  const toCAGR  = eq => ((Math.pow(eq, 1 / Math.max(years, 0.01)) - 1) * 100).toFixed(1);
+  const probLoss = finals.filter(e => e < 1).length / N_SIM * 100;
+
+  const bands = document.getElementById('bbBands');
+  if (bands) bands.innerHTML = [
+    ['p10 CAGR',    toCAGR(pct(0.10)) + '%', '#ef4444'],
+    ['p25 CAGR',    toCAGR(pct(0.25)) + '%', '#f59e0b'],
+    ['Median CAGR', toCAGR(pct(0.50)) + '%', '#f59e0b'],
+    ['p75 CAGR',    toCAGR(pct(0.75)) + '%', '#10b981'],
+    ['P(loss)',      probLoss.toFixed(1) + '%', probLoss < 5 ? '#10b981' : '#ef4444'],
+  ].map(([l, v, c]) => `<div class="mc-band"><div class="mc-band-lbl">${l}</div><div class="mc-band-val" style="color:${c}">${v}</div></div>`).join('');
+
+  const statsEl = document.getElementById('bbStats');
+  if (statsEl) statsEl.innerHTML = `
+    <div class="sec"><span class="sec-lbl">Block size</span><span class="sec-val">${blkSize} trades</span></div>
+    <div class="sec"><span class="sec-lbl">Simulations</span><span class="sec-val">${N_SIM}</span></div>
+    <div class="sec"><span class="sec-lbl">p10–p90 range</span><span class="sec-val">${toCAGR(pct(0.10))}% – ${toCAGR(pct(0.90))}%</span></div>
+    <div class="sec"><span class="sec-lbl">vs IID</span><span class="sec-val" style="color:var(--text3)">wider = more clustering risk</span></div>`;
+
+  document.getElementById('bbResults').style.display = '';
+  if (status) status.textContent = `Done · block=${blkSize}`;
+  if (btn) btn.disabled = false;
+}
+
+// ── Walk-Forward Retrain ──────────────────────────────────────────────────────
+let _wfrChart = null;
+async function runWFRetrain() {
+  const btn    = document.getElementById('wfrBtn');
+  const status = document.getElementById('wfrStatus');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Fetching — server re-optimises each window (~20–30s)…';
+
+  try {
+    const resp = await fetch('/api/nq-qmr/walkforward-retrain');
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Server error');
+
+    const { windows, oosCurve } = data;
+
+    // Stitched OOS equity chart
+    const wrap = document.getElementById('wfrChart');
+    if (_wfrChart) { _wfrChart.remove(); _wfrChart = null; }
+    if (wrap && oosCurve.length) {
+      _wfrChart = LightweightCharts.createChart(wrap, {
+        width: wrap.clientWidth, height: 220,
+        layout: { background: { color: 'transparent' }, textColor: '#94a3b8' },
+        grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+        rightPriceScale: { borderColor: '#334155' },
+        timeScale: { borderColor: '#334155' },
+      });
+      const oosSeries = _wfrChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: 'OOS retrain', priceFormat: { type: 'custom', formatter: v => v.toFixed(2) + 'x' } });
+      oosSeries.setData(oosCurve.map(p => ({ time: p.date, value: p.equity })));
+      const actualSeries = _wfrChart.addLineSeries({ color: '#f59e0b', lineWidth: 1.5, lineStyle: 1, title: 'Fixed-param', priceFormat: { type: 'custom', formatter: v => v.toFixed(2) + 'x' } });
+      actualSeries.setData(_curve.map(p => ({ time: p.date, value: p.equity })));
+      _wfrChart.timeScale().fitContent();
+    }
+
+    // Table
+    const tbody = document.getElementById('wfrTbody');
+    if (tbody) tbody.innerHTML = windows.map(w => {
+      if (!w.bestCfg || !w.isStats || !w.oosStats) {
+        return `<tr><td>${w.isStart} – ${w.isEnd}</td><td>${w.oosEnd}</td><td colspan="6" style="color:var(--text3)">No valid IS config found</td></tr>`;
+      }
+      const eff    = w.isStats.sharpe > 0 ? w.oosStats.sharpe / w.isStats.sharpe : 0;
+      const effCol = eff >= 0.70 ? '#10b981' : eff >= 0.40 ? '#f59e0b' : '#ef4444';
+      const cfg    = `G1=${w.bestCfg.gate1Threshold} G2=${w.bestCfg.gate2MinMovePct}% SL=${w.bestCfg.stopPct}% TP=${w.bestCfg.tpPct}%`;
+      return `<tr>
+        <td>${w.isStart} – ${w.isEnd}</td>
+        <td>${w.oosEnd}</td>
+        <td style="font-size:10px;color:var(--text3)">${cfg}</td>
+        <td class="num">${w.isStats.sharpe.toFixed(2)}</td>
+        <td class="num">${w.oosStats.sharpe.toFixed(2)}</td>
+        <td class="num" style="color:${effCol}">${(eff * 100).toFixed(0)}%</td>
+        <td class="num" style="color:${w.oosStats.cagr >= 0 ? '#10b981' : '#ef4444'}">${w.oosStats.cagr >= 0 ? '+' : ''}${w.oosStats.cagr.toFixed(0)}%</td>
+        <td class="num" style="color:#ef4444">-${w.oosStats.maxDD.toFixed(1)}%</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('wfrResults').style.display = '';
+    if (status) status.textContent = `${windows.length} windows · ${oosCurve.length} OOS data pts`;
+  } catch (err) {
+    if (status) status.textContent = `Error: ${err.message}`;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── Capital Ceiling ───────────────────────────────────────────────────────────
+function renderCapCeiling() {
+  if (!_stats || !_stats.cagr || !_trades.length) return;
+
+  const dailyVol = parseFloat(document.getElementById('capDailyVol').value) || 50000;
+  const sigma    = parseFloat(document.getElementById('capSigma').value)    || 1.0;
+  const stopPct  = parseFloat(document.getElementById('cfg_stop').value)    || 0.50;
+  const riskPct  = parseFloat(document.getElementById('cfg_risk').value)    || 1.80;
+  const leverage = riskPct / stopPct;  // notional / account
+
+  const baseCagr   = _stats.cagr;
+  const baseSharpe = _stats.sharpe;
+  const years      = _curve.length >= 2
+    ? (new Date(_curve[_curve.length - 1].date) - new Date(_curve[0].date)) / (365.25 * 864e5) : 1;
+  const tpy        = _trades.length / Math.max(years, 0.01);
+
+  const aumLevels = [1e5, 2.5e5, 5e5, 1e6, 2.5e6, 5e6, 1e7, 2.5e7, 5e7, 1e8, 2.5e8, 5e8];
+
+  const tbody = document.getElementById('capTbody');
+  if (!tbody) return;
+
+  let firstBreak = null;
+  tbody.innerHTML = aumLevels.map(aum => {
+    // Notional position per trade: account × leverage × riskPct/stopPct ÷ 100 = AUM × leverage / 100
+    const posM      = (aum / 1e6) * leverage;
+    const impactPct = (sigma / 100) * Math.sqrt(posM / dailyVol);  // one-way, as fraction
+    const rtDragPct = impactPct * 2 * 100;                          // round-trip as %
+    const annDrag   = rtDragPct * tpy;
+    const adjCagr   = baseCagr - annDrag;
+    // Sharpe scales linearly with mean return shift (approx)
+    const adjSharpe = baseSharpe * Math.max(adjCagr, 0) / Math.max(baseCagr, 0.001);
+    const isBreak   = adjSharpe < 1.0 && firstBreak === null;
+    if (isBreak) firstBreak = aum;
+
+    const fmtAum = aum >= 1e9 ? `$${(aum / 1e9).toFixed(1)}B`
+                 : aum >= 1e6 ? `$${(aum / 1e6).toFixed(1)}M`
+                 : `$${(aum / 1e3).toFixed(0)}K`;
+    const rowAttr = isBreak ? ' class="cap-row-break"' : '';
+    return `<tr${rowAttr}>
+      <td>${fmtAum}${isBreak ? ' ⚠ capacity' : ''}</td>
+      <td class="num">$${posM.toFixed(1)}M</td>
+      <td class="num">${(rtDragPct * 100).toFixed(1)} bps</td>
+      <td class="num" style="color:${annDrag > 10 ? '#ef4444' : annDrag > 3 ? '#f59e0b' : 'var(--text)'}">-${annDrag.toFixed(1)}%</td>
+      <td class="num" style="color:${adjCagr >= 30 ? '#10b981' : adjCagr >= 0 ? '#f59e0b' : '#ef4444'}">${adjCagr >= 0 ? '+' : ''}${adjCagr.toFixed(1)}%</td>
+      <td class="num" style="color:${adjSharpe >= 1.5 ? '#10b981' : adjSharpe >= 1.0 ? '#f59e0b' : '#ef4444'}">${adjSharpe.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+
+  const sumEl = document.getElementById('capSummary');
+  if (sumEl) {
+    const capStr = firstBreak
+      ? (firstBreak >= 1e6 ? `$${(firstBreak / 1e6).toFixed(1)}M` : `$${(firstBreak / 1e3).toFixed(0)}K`)
+      : '>$500M';
+    sumEl.innerHTML = `
+      <div class="sec"><span class="sec-lbl">Leverage (notional/acct)</span><span class="sec-val">${leverage.toFixed(1)}×</span></div>
+      <div class="sec"><span class="sec-lbl">Trades / yr</span><span class="sec-val">${tpy.toFixed(0)}</span></div>
+      <div class="sec"><span class="sec-lbl">Sharpe &lt; 1.0 above</span><span class="sec-val" style="color:#ef4444">${capStr}</span></div>
+      <div class="sec"><span class="sec-lbl">Unimpacted CAGR</span><span class="sec-val" style="color:#10b981">${baseCagr >= 0 ? '+' : ''}${baseCagr.toFixed(1)}%</span></div>`;
+  }
 }
 </script>
 </body>
