@@ -102,3 +102,39 @@ Run `git log --oneline` to find it and `git revert <hash>` or `git checkout <has
   Look at Δ columns for HL median and OC median specifically (not just vol) to calibrate.
 - The legacy shadow column in the compare table (labelled "Old") will show the pre-switch
   GARCH/RS-EWMA output for direct before/after comparison.
+
+---
+
+## 2026-06-15 Evening — Intra-day corrections after first live comparison
+
+### Context
+First live forecast comparison for Tuesday June 16 session showed two problems:
+
+| Instrument | Estimator | Ours    | Ref     | Δ         | Verdict           |
+|------------|-----------|---------|---------|-----------|-------------------|
+| GOLD       | HV20      | 29.34%  | 27.59%  | −6.0%     | ✓ Keep (acceptable) |
+| NQ         | EWMA(0.90)| 33.54%  | 20.95%  | **−37.5%**| ✗ Way too reactive |
+| EURUSD     | HV30      | 4.59%   | 5.53%   | **+20.5%**| ✗ Too slow         |
+
+**NQ problem**: EWMA(λ=0.90) has a half-life of only 6.6 days. After a large NQ move,
+it spikes dramatically with no floor to prevent explosion. Reference uses a smoother estimator.
+Jun-15 morning it was Δ+3.7% (close to ref); one volatile trading session later it blew to Δ−37.5%.
+
+**EURUSD problem**: HV30 includes 30 days of history, diluting recent elevated FX vol with
+quieter days. Morning compare showed YZ at Δ+12% (still under, but far closer than HV30's 20.5%).
+
+### Changes (2026-06-15 evening)
+
+- `index`: EWMA(λ=0.90) → GARCH(1,1)  (reverted to original; GARCH mean-reverts and has ω floor)
+- `fx`:    HV30 → YZ(window=30)         (YZ was Δ+12% morning; HV30 was Δ+20.5% same evening)
+- `commodity`: HV20 unchanged            (Δ−6%, acceptable)
+
+Updated: `js/volForecast.js`, `js/volBacktestEngine.js`, `js/weeklyVolBacktestEngine.js`, `js/volBacktestM1Engine.js`
+
+### Current state (after evening corrections)
+
+| Asset class | Primary estimator | Notes |
+|-------------|------------------|-------|
+| commodity   | HV20 (20-day rolling std) | Δ−6% vs ref; best on morning compare |
+| index       | GARCH(1,1) α=0.06 β=0.91 | Reverted; stable under vol spikes |
+| fx          | Yang-Zhang (window=30) | Best available Δ+12%; OC/HL uses OHLC |

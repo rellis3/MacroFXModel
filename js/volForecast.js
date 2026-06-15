@@ -1,24 +1,26 @@
 /**
  * Vol & Range Forecaster — core math engine (no network, no I/O).
  *
- * Methodology — primary estimator per asset class (switched 2026-06-15):
+ * Methodology — primary estimator per asset class (last updated 2026-06-15 evening):
  *
  *   commodity : 20-day simple historical volatility (HV20)
  *                 std(log_returns[-20:]) × √252
- *                 Reference comparison showed HV20 Δ+2.7% vs GARCH Δ+15.5%.
- *                 Previous: Rogers-Satchell EWMA λ=0.94
+ *                 Jun-15 morning compare: HV20 Δ−6% vs ref (acceptable).
+ *                 Previous: Rogers-Satchell EWMA λ=0.94 (Δ+15.5%)
  *
- *   index     : EWMA close-to-close, λ=0.90
- *                 σ²_t = 0.10·r²_t + 0.90·σ²_{t-1}
- *                 Reference comparison showed EWMA Δ+3.7% vs GARCH Δ+15.9%.
- *                 Previous: GARCH(1,1) α=0.06 β=0.91
+ *   index     : GARCH(1,1) α=0.06 β=0.91
+ *                 ω floor = 4.76e-6 (~20% long-run). Reverted from EWMA(0.90)
+ *                 after EWMA spiked Δ−37.5% on first large-move day (NQ 33.54% vs ref 20.95%).
+ *                 EWMA(0.90) half-life only 6.6 days — too reactive, no floor.
+ *                 Previous trial: EWMA(λ=0.90)
  *
- *   fx        : 30-day simple historical volatility (HV30) [experimental]
- *                 std(log_returns[-30:]) × √252
- *                 YZ was best available (Δ+12%) but HV30 being trialled.
- *                 Previous: GARCH(1,1) α=0.06 β=0.91
+ *   fx        : Yang-Zhang (YZ) estimator, window=30
+ *                 σ²_YZ = σ²_overnight + k·σ²_OC + (1−k)·σ²_RS
+ *                 Jun-15 morning compare showed YZ Δ+12% (reference 12% above YZ).
+ *                 HV30 was tried first but underestimated by Δ+20.5%.
+ *                 Previous trial: HV30; before that: GARCH(1,1)
  *
- *   Legacy shadow (stored as garch_/legacy_ fields for before/after comparison):
+ *   Legacy shadow (stored as legacy_ fields for before/after comparison):
  *                 commodity → RS-EWMA λ=0.94
  *                 index/fx  → GARCH(1,1) α=0.06 β=0.91
  *
@@ -302,17 +304,17 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
 
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
-  // Primary estimators — switched 2026-06-15 based on reference comparison:
-  //   commodity HV20 Δ+2.7% vs RS-EWMA Δ+15.5%  (ref GOLD 28.91%)
-  //   index EWMA Δ+3.7% vs GARCH Δ+15.9%          (ref NQ   29.99%)
-  //   fx HV30 experimental (YZ Δ+12% was best but HV30 being trialled)
+  // Primary estimators — updated 2026-06-15 evening based on reference comparison:
+  //   commodity HV20: vol 29.34% vs ref 27.59% (Δ−6%)  ← keep, close enough
+  //   index EWMA(0.90) gave 33.54% vs ref 20.95% (Δ−37.5%) — too reactive after spike → revert to GARCH
+  //   fx HV30 gave 4.59% vs ref 5.53% (Δ+20.5%) — too slow → switch to YZ (was Δ+12%, best available)
   let volSeries;
   if (assetClass === 'commodity') {
-    volSeries = hv20Series(ohlc, 20);          // was: rsEwmaVolSeries(ohlc)
+    volSeries = hv20Series(ohlc, 20);                    // kept: RS-EWMA was Δ+15.5%, HV20 Δ−6%
   } else if (assetClass === 'index') {
-    volSeries = ewmaVolSeries(ohlc, 0.90);     // was: garch11VolSeries(ohlc, p.garch_omega)
+    volSeries = garch11VolSeries(ohlc, p.garch_omega);   // reverted: EWMA(0.90) too reactive (Δ−37.5%)
   } else {
-    volSeries = hv20Series(ohlc, 30);          // was: garch11VolSeries(ohlc, p.garch_omega)
+    volSeries = yangZhangVolSeries(ohlc);                // switched: HV30 too slow (Δ+20.5%), YZ was Δ+12%
   }
 
   // Legacy shadow — old estimator (RS-EWMA for commodity, GARCH for index/fx).
