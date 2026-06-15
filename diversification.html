@@ -843,12 +843,12 @@ function runP3(data) {
   return { key:'p3', name: SYS_NAMES[2], color: SYS_COLORS[2], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
-// P4: FX Carry — long GBP/JPY, AUD/JPY, NZD/JPY; VIX Z-score risk-off gate
-// P4: USD/JPY Trend Carry — long USD/JPY when price > MA (JPY weakening = carry-on);
-// hard full exit when VIX Z > vixExit threshold (per P4 spec: "EXIT ALL IMMEDIATELY").
-// Rationale: USD/JPY is the purest rate-differential trade (US rates vs Japan 0%).
-// The 3 crosses (GBP/AUD/NZD vs JPY) added cross-currency noise; USD/JPY had two
-// massive clean uptrends (2012-2015 Abenomics, 2021-2024 Fed hiking) a trend filter captures well.
+// P4: USD/JPY Bidirectional Trend — long when price > MA (JPY weakening), short when price < MA
+// (JPY strengthening / safe-haven demand). VIX Z-score gate only applies to LONG positions;
+// shorts are kept open during high-VIX events because carry unwinds favour the short side.
+// Rationale: avoids the long-only problem where 2007-2012 JPY bull market produces compounding
+// losses on repeated false-start entries. Bidirectional trend following captures both the
+// Abenomics uptrend (2012-2015), the Fed hiking cycle (2021-2024), AND the 2008/2024 carry unwinds.
 function runP4(data) {
   const { dateIndex: dates, fred, fx, prices } = data;
   const n = dates.length;
@@ -856,7 +856,6 @@ function runP4(data) {
   const usdjpy    = ffill(fx.usdjpy);
   const realyield = ffill(fred.realyield);
 
-  // Rolling MA trend filter
   const tw = _cfg.p4.trendWin;
   const usdMA = usdjpy.map((_, i) => {
     if (i < tw) return NaN;
@@ -865,7 +864,6 @@ function runP4(data) {
     return c > 0 ? s / c : NaN;
   });
 
-  // VIX Z-score hard-exit gate (spec: EXIT ALL when VIX Z > 1.0)
   const vixRaw = prices?.vix ? ffill(prices.vix) : null;
   const riskZ = vixRaw
     ? rollingZ(vixRaw, 60)
@@ -876,26 +874,34 @@ function runP4(data) {
   const equityCurve = new Array(n).fill(NaN);
   const monthlyRet = [], monthlyDates = [];
   let prevMonthEnd = -1;
-  let inTrade = false; // decided at month-end, applied next month (no look-ahead)
+  let position = 0; // +1 = long USD/JPY, -1 = short USD/JPY, 0 = flat
 
   for (const idx of monthEnds) {
     const cz = riskZ[idx];
     const c4 = _cfg.p4;
+    const maReady = isFinite(usdjpy[idx]) && isFinite(usdMA[idx]);
 
-    // New signal for NEXT period: both trend and VIX conditions must be met
-    const vixOk   = !isFinite(cz) || cz < c4.vixExit;
-    const trendOn = isFinite(usdjpy[idx]) && isFinite(usdMA[idx]) && usdjpy[idx] > usdMA[idx];
-    const newIn   = vixOk && trendOn;
+    let newPos = 0;
+    if (maReady) {
+      if (usdjpy[idx] > usdMA[idx]) {
+        // Uptrend: long USD/JPY, but exit if VIX spike signals carry-unwind risk
+        const vixOk = !isFinite(cz) || cz < c4.vixExit;
+        newPos = vixOk ? 1 : 0;
+      } else {
+        // Downtrend: short USD/JPY — JPY safe-haven demand is CORRECT direction during VIX spikes
+        newPos = -1;
+      }
+    }
 
     if (prevMonthEnd >= 0) {
       let ret = 0;
-      if (inTrade) {
+      if (position !== 0) {
         const u0 = usdjpy[prevMonthEnd], u1 = usdjpy[idx];
         const fxRet = isFinite(u0) && isFinite(u1) && u0 > 0 ? (u1 - u0) / u0 : 0;
-        // Carry income proxy: US nominal rate - Japan rate ≈ TIPS real yield + inflation
+        // Carry: long earns US-JPN rate differential; short pays it
         const ry = isFinite(realyield[idx]) ? realyield[idx] : -0.5;
         const annualCarry = ry > 0.5 ? 0.03 : ry > -0.25 ? 0.018 : 0.008;
-        ret = c4.allocNormal * (fxRet + annualCarry / 12);
+        ret = c4.allocNormal * position * (fxRet + annualCarry / 12);
       }
       equity *= (1 + ret);
       monthlyRet.push(ret);
@@ -904,7 +910,7 @@ function runP4(data) {
     } else {
       equityCurve[idx] = equity;
     }
-    inTrade = newIn;
+    position = newPos;
     prevMonthEnd = idx;
   }
 
@@ -1669,15 +1675,15 @@ function sysCfgForm(key) {
       <div>
         <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Trend Filter</div>
         ${row('MA window (days)', 'p4_trendWin', c.trendWin, 10, 21, 252)}
-        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Enter USD/JPY long when price &gt; MA (JPY weakening)</div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Risk Gate</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Long above MA (JPY weakening) · Short below MA (JPY strengthening)</div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Risk Gate (long only)</div>
         ${row('VIX Z exit threshold', 'p4_vixExit', c.vixExit, 0.1, -3, 3)}
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Hard full exit when VIX Z-score exceeds threshold</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Exits LONG to flat; shorts remain open during VIX spikes (JPY safe-haven demand)</div>
       </div>
       <div>
         <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Allocation</div>
-        ${row('Normal alloc', 'p4_allocNormal', c.allocNormal)}
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Full allocation when both trend &amp; risk conditions met; otherwise 0%</div>
+        ${row('Position size', 'p4_allocNormal', c.allocNormal)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Applied ×1 long or ×−1 short. Earns carry when long; pays carry when short.</div>
       </div>
     </div>`;
 
@@ -1898,7 +1904,7 @@ function renderSystemPanel(key) {
     'Five-factor macro composite (net liquidity, yield curve, HY credit, real yield, ISM). Monthly z-score scoring drives SPY allocation across four bands. Longs-only: equity markets have structural upward drift (~10%/yr); shorts expose you to gap risk, short squeezes, and unlimited downside without the structural premium.',
     'Credit-equity divergence tracks the spread between HY credit conditions (BAMLH0A0HYM2 z-score) and SPY short-term momentum. Risk-on divergence (credit improving + equity rising) favours SPY; risk-off divergence rotates to TLT. Captures regime transitions before they fully express in price.',
     'ISM Manufacturing trend combined with Core CPI momentum creates four macro quadrants: Goldilocks (SPY heavy), Overheating (SPY+GLD), Stagflation (GLD heavy), Recession (TLT heavy). Asset mix is tunable per quadrant.',
-    'USD/JPY Trend Carry — long USD/JPY when price is above its rolling MA (JPY weakening = carry-on). Captures the two major USD/JPY up-trends: Abenomics 2012–2015 (+50%) and Fed hiking cycle 2021–2024 (+45%). Rate differential income (~1–3% p.a. scaled by TIPS real yield) adds carry return. Hard binary exit when VIX Z-score exceeds threshold — per the P4 spec "EXIT ALL CARRY POSITIONS IMMEDIATELY" on stress.',
+    'USD/JPY Bidirectional Trend — long when price is above its rolling MA (JPY weakening/carry-on), short when below (JPY strengthening/carry-off). Captures all major USD/JPY trends in both directions: 2008 JPY safe-haven surge (short profits), Abenomics 2012–2015 +50% (long profits), Fed hiking 2021–2024 +45% (long profits), 2024 carry unwind (short profits). VIX Z-score gate only exits LONG positions; shorts remain open during risk-off events where JPY safe-haven demand reinforces the short thesis.',
     'Cross-sectional momentum across 7 major currencies in USD terms. Long top-2 / short bottom-2 produces a pure momentum factor orthogonal to carry and macro. A minimum 4% spread between best and worst signal gates out low-conviction months. 9-month lookback targets the strongest momentum window.',
     'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over a rolling window. When gold trades at a discount to its macro-implied fair value (negative residual z-score), increase allocation. Captures gold mispricing vs macro fundamentals.',
   ];
