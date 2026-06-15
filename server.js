@@ -2825,12 +2825,14 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
 
     const grid = {
       gate1Threshold:  [0.55, 0.60, 0.65, 0.70, 0.75],
-      gate2MinMovePct: [0.05, 0.08, 0.10, 0.15, 0.20, 0.25],
+      gate2MinMovePct: [0.08, 0.10, 0.15, 0.20, 0.25],  // 0.05 removed — near-zero disables gate2 selectivity
       stopPct:         [0.35, 0.40, 0.50, 0.60, 0.70],
       minRangePct:     [0.10, 0.12, 0.15, 0.20, 0.25],
       riskPct:         [1.80],
       tpPct:           [0, 0.75, 1.00, 1.25, 1.50, 2.00],  // 0=EOD; 1.0=2R; 1.5=3R; 2.0=4R
     };
+    // Max trades cap: configs with >450 trades (~90/yr) sacrifice selectivity — skip them.
+    const MAX_N = 450;
 
     const results = [];
     for (const gate1Threshold of grid.gate1Threshold) {
@@ -2842,7 +2844,7 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
                 const cfg = { gate1Threshold, gate2MinMovePct, stopPct, minRangePct, riskPct, tpPct };
                 const result = _computeNqQmr(bars, cfg);
                 const s = result.stats;
-                if (s.n < 30 || s.cagr <= 0 || s.maxDD <= 0 || s.sharpe <= 0) continue;
+                if (s.n < 30 || s.n > MAX_N || s.cagr <= 0 || s.maxDD <= 0 || s.sharpe <= 0) continue;
                 // Score: Sharpe × √CAGR / MaxDD — rewards consistency and growth, punishes drawdown
                 const score = s.sharpe * Math.sqrt(s.cagr) / s.maxDD;
                 results.push({ cfg, stats: s, score: +score.toFixed(4) });
