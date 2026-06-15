@@ -145,7 +145,44 @@ export function yangZhangVolSeries(bars, window = 30) {
   return out;
 }
 
-// ── GARCH(1,1) close-to-close ─────────────────────────────────────────────────
+// ── 20-day simple historical volatility (shadow) ──────────────────────────────
+// std(log_returns[-window:]) — fully reactive, no mean reversion.
+// Returns daily sigma (fraction) per bar; null for first `window` positions.
+export function hv20Series(bars, window = 20) {
+  const n = bars.length;
+  const out = new Array(n).fill(null);
+  for (let i = window; i < n; i++) {
+    let sum = 0, sum2 = 0;
+    for (let j = i - window + 1; j <= i; j++) {
+      const r = Math.log(bars[j].close / bars[j - 1].close);
+      sum  += r;
+      sum2 += r * r;
+    }
+    const mean = sum / window;
+    const variance = (sum2 - window * mean * mean) / (window - 1);
+    out[i] = Math.sqrt(Math.max(variance, 0));
+  }
+  return out;
+}
+
+// ── EWMA volatility (shadow, λ=0.90) ─────────────────────────────────────────
+// σ²_t = λ·σ²_{t-1} + (1−λ)·r²_t  —  faster decay than GARCH β=0.91.
+// Returns daily sigma (fraction) per bar; null for bar 0.
+export function ewmaVolSeries(bars, lambda = 0.90) {
+  const n = bars.length;
+  const out = new Array(n).fill(null);
+  if (n < 2) return out;
+  let sigma2 = Math.pow(Math.log(bars[1].close / bars[0].close), 2);
+  out[1] = Math.sqrt(sigma2);
+  for (let i = 2; i < n; i++) {
+    const r = Math.log(bars[i].close / bars[i - 1].close);
+    sigma2 = lambda * sigma2 + (1 - lambda) * r * r;
+    out[i] = Math.sqrt(sigma2);
+  }
+  return out;
+}
+
+
 // For index/fx: ω floor prevents estimates collapsing in quiet regimes.
 // Initialized at unconditional variance ω/(1−α−β) — no seed transient.
 function garch11VolSeries(bars, omega) {
