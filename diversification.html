@@ -412,7 +412,7 @@ let _cfg = {
         allocVBull:1.0, allocBull:0.8, allocNeutral:0.5, allocBear:0.3, allocVBear:0.0 },
   p3: { ismMaPeriod:42, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.2, overheatTlt:0.2,
         stagGld:1.0, stagTlt:0.3, stagSpy:0.1, recTlt:0.7, recSpy:0.1 },
-  p4: { trendWin:252, vixExit:1.0, allocNormal:1.0 },
+  p4: { trendWin:252, allocNormal:1.0 },
   p5: { lookback:189, skip:21, nLong:3, nShort:2 },
   p6: { olsWindow:126, thVLong:-2.0, thLong:-1.0, thShort:1.0, thVShort:1.5,
         allocVLong:1.0, allocLong:0.75, allocNeutral:0.3, allocShort:0.25, allocVShort:0.0 },
@@ -843,65 +843,37 @@ function runP3(data) {
   return { key:'p3', name: SYS_NAMES[2], color: SYS_COLORS[2], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
-// P4: USD/JPY Bidirectional Trend — long when price > MA (JPY weakening), short when price < MA
-// (JPY strengthening / safe-haven demand). VIX Z-score gate only applies to LONG positions;
-// shorts are kept open during high-VIX events because carry unwinds favour the short side.
-// Rationale: avoids the long-only problem where 2007-2012 JPY bull market produces compounding
-// losses on repeated false-start entries. Bidirectional trend following captures both the
-// Abenomics uptrend (2012-2015), the Fed hiking cycle (2021-2024), AND the 2008/2024 carry unwinds.
+// P4: USD/JPY Pure Bidirectional Trend — long when price > MA, short when price < MA.
+// No VIX gate: gating longs flat during 2022 USD/JPY rally (elevated VIX from Fed hiking/Ukraine)
+// caused FLAT during the biggest uptrend, then wrong SHORTs on brief dips → cascading losses.
 function runP4(data) {
-  const { dateIndex: dates, fred, fx, prices } = data;
+  const { dateIndex: dates, fx } = data;
   const n = dates.length;
-
-  const usdjpy    = ffill(fx.usdjpy);
-  const realyield = ffill(fred.realyield);
-
-  const tw = _cfg.p4.trendWin;
+  const usdjpy = ffill(fx.usdjpy);
+  const c4 = _cfg.p4;
+  const tw = c4.trendWin;
   const usdMA = usdjpy.map((_, i) => {
     if (i < tw) return NaN;
-    let s = 0, c = 0;
-    for (let j = i - tw + 1; j <= i; j++) if (isFinite(usdjpy[j])) { s += usdjpy[j]; c++; }
-    return c > 0 ? s / c : NaN;
+    let s = 0, cnt = 0;
+    for (let j = i - tw + 1; j <= i; j++) if (isFinite(usdjpy[j])) { s += usdjpy[j]; cnt++; }
+    return cnt > 0 ? s / cnt : NaN;
   });
-
-  const vixRaw = prices?.vix ? ffill(prices.vix) : null;
-  const riskZ = vixRaw
-    ? rollingZ(vixRaw, 60)
-    : rollingZ(ffill(fred.credit), 63);
-
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
   const equityCurve = new Array(n).fill(NaN);
   const monthlyRet = [], monthlyDates = [];
   let prevMonthEnd = -1;
-  let position = 0; // +1 = long USD/JPY, -1 = short USD/JPY, 0 = flat
-
+  let position = 0;
   for (const idx of monthEnds) {
-    const cz = riskZ[idx];
-    const c4 = _cfg.p4;
     const maReady = isFinite(usdjpy[idx]) && isFinite(usdMA[idx]);
-
-    let newPos = 0;
-    if (maReady) {
-      if (usdjpy[idx] > usdMA[idx]) {
-        // Uptrend: long USD/JPY, but exit if VIX spike signals carry-unwind risk
-        const vixOk = !isFinite(cz) || cz < c4.vixExit;
-        newPos = vixOk ? 1 : 0;
-      } else {
-        // Downtrend: short USD/JPY — JPY safe-haven demand is CORRECT direction during VIX spikes
-        newPos = -1;
-      }
-    }
-
+    const newPos = maReady ? (usdjpy[idx] > usdMA[idx] ? 1 : -1) : 0;
     if (prevMonthEnd >= 0) {
       let ret = 0;
       if (position !== 0) {
         const u0 = usdjpy[prevMonthEnd], u1 = usdjpy[idx];
-        const fxRet = isFinite(u0) && isFinite(u1) && u0 > 0 ? (u1 - u0) / u0 : 0;
-        // Carry: long earns US-JPN rate differential; short pays it
-        const ry = isFinite(realyield[idx]) ? realyield[idx] : -0.5;
-        const annualCarry = ry > 0.5 ? 0.03 : ry > -0.25 ? 0.018 : 0.008;
-        ret = c4.allocNormal * position * (fxRet + annualCarry / 12);
+        if (isFinite(u0) && isFinite(u1) && u0 > 0) {
+          ret = c4.allocNormal * position * (u1 - u0) / u0;
+        }
       }
       equity *= (1 + ret);
       monthlyRet.push(ret);
@@ -913,7 +885,6 @@ function runP4(data) {
     position = newPos;
     prevMonthEnd = idx;
   }
-
   return { key:'p4', name: SYS_NAMES[3], color: SYS_COLORS[3], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
@@ -1675,15 +1646,12 @@ function sysCfgForm(key) {
       <div>
         <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Trend Filter</div>
         ${row('MA window (days)', 'p4_trendWin', c.trendWin, 21, 63, 504)}
-        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Long above MA (JPY weakening) · Short below MA (JPY strengthening)</div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Risk Gate (long only)</div>
-        ${row('VIX Z exit threshold', 'p4_vixExit', c.vixExit, 0.1, -3, 3)}
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Exits LONG to flat; shorts remain open during VIX spikes (JPY safe-haven demand)</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Long above MA (JPY weakening) · Short below MA (JPY strengthening) · No VIX gate</div>
       </div>
       <div>
         <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Allocation</div>
         ${row('Position size', 'p4_allocNormal', c.allocNormal)}
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Applied ×1 long or ×−1 short. Earns carry when long; pays carry when short.</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Applied ×1 long or ×−1 short.</div>
       </div>
     </div>`;
 
@@ -1735,7 +1703,7 @@ function updateSysCfg(key) {
     c.stagGld=n('stagGld'); c.stagTlt=n('stagTlt'); c.stagSpy=n('stagSpy');
     c.recTlt=n('recTlt'); c.recSpy=n('recSpy');
   } else if (key === 'p4') {
-    c.trendWin=n('trendWin'); c.vixExit=n('vixExit'); c.allocNormal=n('allocNormal');
+    c.trendWin=n('trendWin'); c.allocNormal=n('allocNormal');
   } else if (key === 'p5') {
     c.lookback=n('lookback'); c.nLong=n('nLong'); c.nShort=n('nShort');
   } else if (key === 'p6') {
@@ -1785,8 +1753,7 @@ const OPT_GRIDS = {
     overheatGld: [0.2, 0.3, 0.5],        // gold allocation in overheating regime
   },
   p4: {
-    trendWin: [126, 189, 252, 315],   // longer windows avoid monthly mean-reversion regime
-    vixExit:  [0.5, 0.75, 1.0, 1.5],
+    trendWin: [126, 189, 252, 315, 378],
   },
   p5: {
     lookback: [126, 189, 252],
