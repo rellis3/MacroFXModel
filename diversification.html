@@ -11,8 +11,7 @@
 #dvApp { padding: 0 20px 60px; max-width: 1380px; margin: 0 auto; }
 
 /* KPI grid */
-.bt-kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
-@media (max-width: 1000px) { .bt-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+.bt-kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 14px; }
 @media (max-width: 640px)  { .bt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 .bt-kpi {
   background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
@@ -231,6 +230,8 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <div class="dv-tab"        data-tab="corr"        onclick="switchTab('corr')">Correlations</div>
     <div class="dv-tab"        data-tab="rolling"     onclick="switchTab('rolling')">Rolling Monitor</div>
     <div class="dv-tab"        data-tab="alpha"       onclick="switchTab('alpha')">Alpha Sources</div>
+    <div class="dv-tab"        data-tab="montecarlo"  onclick="switchTab('montecarlo')">Monte Carlo</div>
+    <div class="dv-tab"        data-tab="robustness"  onclick="switchTab('robustness')">Robustness</div>
     <div class="dv-tab"        data-tab="systems"     onclick="switchTab('systems')">Systems</div>
   </div>
 
@@ -375,7 +376,94 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     </div>
   </div>
 
-  <!-- ── Tab 6: Systems ─────────────────────────────────────────────────────── -->
+  <!-- ── Tab 6: Monte Carlo ───────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-montecarlo">
+    <div class="dv-info" style="margin-top:14px;">
+      Bootstrap resampling of combined monthly returns — 1 000 simulations over the same horizon.
+      Shows the range of outcomes if returns were drawn randomly from the observed distribution.
+      Median (P50) should track the actual equity curve; wide P5–P95 band signals return uncertainty.
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">
+        Monte Carlo — Equity Curve Envelope (1 000 simulations)
+        <button class="bt-run-btn" onclick="renderMonteCarlo()" style="margin-left:auto;font-size:10px;padding:4px 14px;">Re-run Simulation</button>
+      </div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap tall"><canvas id="chartMC"></canvas></div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Simulation Summary — Final Equity Distribution</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>Percentile</th><th class="num">Final Equity</th><th class="num">CAGR</th>
+              <th class="num">Implied Sharpe</th><th class="num">Max Drawdown (median)</th>
+            </tr></thead>
+            <tbody id="mcSummaryBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 7: Robustness ─────────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-robustness">
+    <div class="dv-info" style="margin-top:14px;">
+      In-sample vs out-of-sample split at the midpoint of the backtest period.
+      A robust system should show <em>similar</em> Sharpe in both halves — large degradation signals overfitting.
+      Also shows worst 1-, 3- and 5-year rolling windows to stress-test consistency.
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Train / Test Split — Per System + Combined</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>System</th>
+              <th class="num">IS Sharpe</th><th class="num">OOS Sharpe</th><th class="num">Degradation</th>
+              <th class="num">IS CAGR</th><th class="num">OOS CAGR</th>
+              <th class="num">IS MaxDD</th><th class="num">OOS MaxDD</th>
+            </tr></thead>
+            <tbody id="robustBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="bt-two-col" style="margin-top:14px;">
+      <div class="bt-card">
+        <div class="bt-card-hdr">Worst Rolling 12-Month CAGR (Combined)</div>
+        <div class="bt-card-body">
+          <div class="bt-chart-wrap"><canvas id="chartWorstPeriods"></canvas></div>
+        </div>
+      </div>
+      <div class="bt-card">
+        <div class="bt-card-hdr">Rolling 12-Month Sharpe — Position Distribution</div>
+        <div class="bt-card-body">
+          <div class="bt-chart-wrap"><canvas id="chartSharpeHist"></canvas></div>
+        </div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Worst Period Summary</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>System</th>
+              <th class="num">Worst 12m</th><th class="num">Period</th>
+              <th class="num">Worst 36m</th><th class="num">Period</th>
+              <th class="num">Worst 60m</th><th class="num">Period</th>
+            </tr></thead>
+            <tbody id="worstBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 8: Systems ─────────────────────────────────────────────────────── -->
   <div class="dv-panel" id="panel-systems">
     <div class="sys-tabs" id="sysTabs">
       <div class="sys-tab active" data-sys="p1" onclick="switchSys('p1')" style="background:#14b8a6;">P1 Macro Regime</div>
@@ -514,6 +602,67 @@ function sharpe(rets) {
   const mu = fin.reduce((a,b)=>a+b,0)/fin.length;
   const sd = Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2,0)/fin.length);
   return sd === 0 ? 0 : (mu / sd) * Math.sqrt(12);
+}
+
+// Sortino: only penalises negative returns
+function sortino(rets) {
+  const fin = rets.filter(isFinite);
+  if (fin.length < 3) return NaN;
+  const mu = fin.reduce((a,b)=>a+b,0)/fin.length;
+  const neg = fin.filter(r => r < 0);
+  if (neg.length === 0) return Infinity;
+  const downDev = Math.sqrt(neg.reduce((a,r) => a+r*r, 0) / neg.length);
+  return downDev > 0 ? (mu / downDev) * Math.sqrt(12) : NaN;
+}
+
+// Calmar: CAGR / |MaxDD|
+function calmarRatio(rets) {
+  const fin = rets.filter(isFinite);
+  if (fin.length < 3) return NaN;
+  let eq = 1, peak = 1, mdd = 0;
+  for (const r of fin) { eq*=(1+r); if(eq>peak) peak=eq; mdd=Math.min(mdd,(eq-peak)/peak); }
+  if (mdd === 0) return NaN;
+  const annRet = (Math.pow(eq, 12/fin.length) - 1);
+  return annRet / Math.abs(mdd);
+}
+
+// Worst rolling N-month CAGR
+function worstRollingCAGR(rets, win) {
+  const fin = rets.filter(isFinite);
+  let worst = Infinity, worstIdx = -1;
+  for (let i = win; i <= fin.length; i++) {
+    const slice = fin.slice(i - win, i);
+    let eq = 1; for (const r of slice) eq *= (1+r);
+    const c = (Math.pow(eq, 12/win) - 1) * 100;
+    if (c < worst) { worst = c; worstIdx = i - win; }
+  }
+  return { cagr: isFinite(worst) && worst !== Infinity ? worst : NaN, startIdx: worstIdx };
+}
+
+// Bootstrap Monte Carlo — returns percentile curves
+function runMonteCarlo(monthlyRet, nSims = 1000) {
+  const fin = monthlyRet.filter(isFinite);
+  const n = fin.length;
+  if (n < 12) return null;
+  const sims = [];
+  for (let s = 0; s < nSims; s++) {
+    let eq = 1;
+    const curve = [1];
+    for (let t = 0; t < n; t++) {
+      eq *= (1 + fin[Math.floor(Math.random() * n)]);
+      curve.push(eq);
+    }
+    sims.push(curve);
+  }
+  const pcts = [5, 25, 50, 75, 95];
+  const bands = pcts.map(() => new Array(n + 1).fill(0));
+  for (let t = 0; t <= n; t++) {
+    const col = sims.map(s => s[t]).sort((a,b) => a-b);
+    pcts.forEach((p, pi) => {
+      bands[pi][t] = col[Math.round((p/100) * (nSims-1))];
+    });
+  }
+  return { bands, pcts, n, sims };
 }
 
 // Gaussian elimination with partial pivoting — solves Ax = b, returns x
@@ -1090,9 +1239,13 @@ function renderKPIs(combined) {
   const mr = combined.monthlyRet;
   const eq = combined.cumulativeEq;
   const sh = sharpe(mr);
+  const so = sortino(mr);
+  const cl = calmarRatio(mr);
   const ca = cagr(eq[eq.length-1], mr.length);
   const dd = maxDD(eq);
-  const win = mr.filter(v=>v>0).length / mr.filter(isFinite).length * 100;
+  const fin = mr.filter(isFinite);
+  const win = fin.filter(v=>v>0).length / fin.length * 100;
+  const freq = fin.filter(v=>v!==0).length / fin.length * 100;
 
   document.getElementById('kpiRow').style.display = 'block';
   document.getElementById('sysLegend').style.display = 'flex';
@@ -1105,12 +1258,21 @@ function renderKPIs(combined) {
     <div class="bt-kpi"><div class="bt-kpi-label">Sharpe Ratio</div>
       <div class="bt-kpi-value ${sh>=1?'green':sh>=0.5?'blue':'red'}">${fmt(sh,2)}</div>
       <div class="bt-kpi-sub">Risk-adjusted return</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Sortino Ratio</div>
+      <div class="bt-kpi-value ${so>=1.5?'green':so>=0.8?'blue':'red'}">${isFinite(so)?fmt(so,2):'—'}</div>
+      <div class="bt-kpi-sub">Downside-only vol</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Calmar Ratio</div>
+      <div class="bt-kpi-value ${cl>=0.5?'green':cl>=0.2?'blue':'red'}">${isFinite(cl)?fmt(cl,2):'—'}</div>
+      <div class="bt-kpi-sub">CAGR ÷ MaxDD</div></div>
     <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div>
       <div class="bt-kpi-value red">${fmt(dd,1)}%</div>
       <div class="bt-kpi-sub">Peak-to-trough</div></div>
     <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div>
       <div class="bt-kpi-value ${win>=55?'green':'amber'}">${fmt(win,0)}%</div>
       <div class="bt-kpi-sub">Months with gain</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Trade Frequency</div>
+      <div class="bt-kpi-value blue">${fmt(freq,0)}%</div>
+      <div class="bt-kpi-sub">Active months</div></div>
     <div class="bt-kpi"><div class="bt-kpi-label">Final Equity</div>
       <div class="bt-kpi-value blue">${fmt(eq[eq.length-1],2)}×</div>
       <div class="bt-kpi-sub">From $1 invested</div></div>
@@ -1354,6 +1516,224 @@ function renderSizingTable() {
       }],
       { plugins: { legend: { display: false } }, scales: { y: { ticks: { color:'#94a3b8', font:{family:'DM Mono',size:10} }, grid:{color:'rgba(255,255,255,0.06)'} }, x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10}}, grid:{display:false} } } }
     );
+  }
+}
+
+// ── Monte Carlo ───────────────────────────────────────────────────────────────
+function renderMonteCarlo() {
+  if (!_combined) return;
+  const mr = _combined.monthlyRet;
+  const mc = runMonteCarlo(mr, 1000);
+  if (!mc) return;
+
+  const { bands, pcts, n, sims } = mc;
+  const labels = Array.from({ length: n + 1 }, (_, i) => i === 0 ? 'Start' : `M${i}`);
+  const colors = ['#ef4444', '#f97316', '#14b8a6', '#f97316', '#ef4444'];
+  const fills  = ['+1', '+1', false, '-1', '-1'];
+  const alphas = ['0.15', '0.25', '1.0', '0.25', '0.15'];
+
+  destroyChart('chartMC');
+  const ctx = document.getElementById('chartMC')?.getContext('2d');
+  if (!ctx) return;
+
+  // Actual equity curve
+  const actualEq = [1];
+  for (const r of mr.filter(isFinite)) actualEq.push(actualEq[actualEq.length-1] * (1+r));
+
+  const datasets = pcts.map((p, pi) => ({
+    label: `P${p}`,
+    data: bands[pi],
+    borderColor: colors[pi],
+    backgroundColor: colors[pi].replace(')', `,${alphas[pi]})`).replace('rgb', 'rgba'),
+    borderWidth: pi === 2 ? 2 : 1,
+    borderDash: pi === 2 ? [] : [3,3],
+    pointRadius: 0,
+    tension: 0,
+    fill: fills[pi],
+  }));
+  datasets.push({
+    label: 'Actual',
+    data: actualEq,
+    borderColor: '#e2e8f0',
+    backgroundColor: 'transparent',
+    borderWidth: 2.5,
+    pointRadius: 0,
+    tension: 0,
+  });
+
+  _charts['chartMC'] = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      ..._chartOpts(), animation: { duration: 0 },
+      plugins: { legend: { display: true, labels: { color:'#94a3b8', font:{family:'DM Mono',size:10}, boxWidth:12 } } },
+      scales: {
+        x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:9},maxTicksLimit:20}, grid:{color:'rgba(255,255,255,0.04)'} },
+        y: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10}}, grid:{color:'rgba(255,255,255,0.06)'},
+             title:{display:true,text:'Equity (×)',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+      },
+    },
+  });
+
+  // Summary table
+  const finalEqs = sims.map(s => s[s.length-1]).sort((a,b)=>a-b);
+  const nSims = sims.length;
+  const summaryPcts = [5, 25, 50, 75, 95];
+  let html = '';
+  for (const p of summaryPcts) {
+    const fe = finalEqs[Math.round((p/100)*(nSims-1))];
+    const c = (Math.pow(fe, 12/n) - 1) * 100;
+    const simRets = sims[Math.round((p/100)*(nSims-1))].map((v,i,a) => i===0 ? 0 : (v-a[i-1])/a[i-1]);
+    const sh = sharpe(simRets.slice(1));
+    html += `<tr>
+      <td>P${p}</td>
+      <td class="num ${fe>=1?'pos':'neg'}">${fmt(fe,2)}×</td>
+      <td class="num ${c>=0?'pos':'neg'}">${fmtPct(c)}</td>
+      <td class="num ${sh>=0.5?'pos':sh>=0?'neu':'neg'}">${isFinite(sh)?fmt(sh,2):'—'}</td>
+      <td class="num">—</td>
+    </tr>`;
+  }
+  document.getElementById('mcSummaryBody').innerHTML = html;
+}
+
+// ── Robustness (in-sample / out-of-sample split) ──────────────────────────────
+function renderRobustness() {
+  if (!_combined) return;
+  const allMo = _combined.monthlyDates;
+  if (!allMo || allMo.length < 24) return;
+  const mid = Math.floor(allMo.length / 2);
+  const splitDate = allMo[mid];
+
+  const statsFor = (rets, dates, isIn) => {
+    const slice = rets.filter((_, i) => isIn ? dates[i] < splitDate : dates[i] >= splitDate);
+    if (slice.length < 3) return { sh: NaN, ca: NaN, dd: NaN };
+    let eq = 1, peak = 1, mdd = 0;
+    for (const r of slice) { eq*=(1+r); if(eq>peak) peak=eq; mdd=Math.min(mdd,(eq-peak)/peak); }
+    return { sh: sharpe(slice), ca: cagr(eq, slice.length), dd: mdd*100 };
+  };
+
+  const rows = [...SYS_KEYS.map((k,i) => {
+    const r = _results[k]; if (!r) return null;
+    const is_ = statsFor(r.monthlyRet, r.monthlyDates, true);
+    const oos = statsFor(r.monthlyRet, r.monthlyDates, false);
+    const degrad = isFinite(is_.sh) && is_.sh > 0 ? ((oos.sh - is_.sh) / Math.abs(is_.sh)) * 100 : NaN;
+    return { name: SYS_NAMES[i], color: SYS_COLORS[i], is: is_, oos, degrad };
+  }).filter(Boolean), (() => {
+    const is_ = statsFor(_combined.monthlyRet, _combined.monthlyDates, true);
+    const oos = statsFor(_combined.monthlyRet, _combined.monthlyDates, false);
+    const degrad = isFinite(is_.sh) && is_.sh > 0 ? ((oos.sh - is_.sh) / Math.abs(is_.sh)) * 100 : NaN;
+    return { name: 'Combined Book', color: '#e2e8f0', is: is_, oos, degrad };
+  })()];
+
+  let html = '';
+  for (const row of rows) {
+    const dc = isFinite(row.degrad) ? (row.degrad >= -20 ? 'pos' : row.degrad >= -50 ? 'neu' : 'neg') : 'neu';
+    html += `<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${row.color};margin-right:5px;"></span>${row.name}</td>
+      <td class="num ${row.is.sh>=0.5?'pos':row.is.sh>=0?'neu':'neg'}">${isFinite(row.is.sh)?fmt(row.is.sh,2):'—'}</td>
+      <td class="num ${row.oos.sh>=0.5?'pos':row.oos.sh>=0?'neu':'neg'}">${isFinite(row.oos.sh)?fmt(row.oos.sh,2):'—'}</td>
+      <td class="num ${dc}">${isFinite(row.degrad)?(row.degrad>=0?'+':'')+fmt(row.degrad,0)+'%':'—'}</td>
+      <td class="num ${row.is.ca>=0?'pos':'neg'}">${isFinite(row.is.ca)?fmtPct(row.is.ca):'—'}</td>
+      <td class="num ${row.oos.ca>=0?'pos':'neg'}">${isFinite(row.oos.ca)?fmtPct(row.oos.ca):'—'}</td>
+      <td class="num neg">${isFinite(row.is.dd)?fmt(row.is.dd,1)+'%':'—'}</td>
+      <td class="num neg">${isFinite(row.oos.dd)?fmt(row.oos.dd,1)+'%':'—'}</td>
+    </tr>`;
+  }
+  document.getElementById('robustBody').innerHTML = html;
+
+  // Worst periods table
+  const allSystems = [...SYS_KEYS.map((k,i) => ({ name: SYS_NAMES[i], color: SYS_COLORS[i], rets: _results[k]?.monthlyRet??[], dates: _results[k]?.monthlyDates??[] })),
+    { name: 'Combined', color: '#e2e8f0', rets: _combined.monthlyRet, dates: _combined.monthlyDates }];
+  let worstHtml = '';
+  for (const sys of allSystems) {
+    const w12 = worstRollingCAGR(sys.rets, 12);
+    const w36 = worstRollingCAGR(sys.rets, 36);
+    const w60 = worstRollingCAGR(sys.rets, 60);
+    const pd = (obj, rets) => {
+      if (!isFinite(obj.cagr) || obj.startIdx < 0) return '—';
+      const d = sys.dates[obj.startIdx] ?? '';
+      return d ? d.substring(0,7) : '—';
+    };
+    worstHtml += `<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sys.color};margin-right:5px;"></span>${sys.name}</td>
+      <td class="num neg">${isFinite(w12.cagr)?fmtPct(w12.cagr):'—'}</td>
+      <td class="num" style="color:var(--text3)">${pd(w12)}</td>
+      <td class="num neg">${isFinite(w36.cagr)?fmtPct(w36.cagr):'—'}</td>
+      <td class="num" style="color:var(--text3)">${pd(w36)}</td>
+      <td class="num neg">${isFinite(w60.cagr)?fmtPct(w60.cagr):'—'}</td>
+      <td class="num" style="color:var(--text3)">${pd(w60)}</td>
+    </tr>`;
+  }
+  document.getElementById('worstBody').innerHTML = worstHtml;
+
+  // Rolling 12m CAGR chart for combined
+  const mr = _combined.monthlyRet.filter(isFinite);
+  const rollingCAGR = mr.map((_, i) => {
+    if (i < 11) return NaN;
+    const sl = mr.slice(i-11, i+1);
+    let eq = 1; for (const r of sl) eq *= (1+r);
+    return (Math.pow(eq, 12/12) - 1) * 100;
+  });
+  const labels = _combined.monthlyDates.filter((_,i) => i < mr.length).map((d,i) => i%12===0?d.substring(0,7):'');
+  destroyChart('chartWorstPeriods');
+  const ctx1 = document.getElementById('chartWorstPeriods')?.getContext('2d');
+  if (ctx1) {
+    _charts['chartWorstPeriods'] = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Rolling 12m CAGR %',
+          data: rollingCAGR,
+          backgroundColor: rollingCAGR.map(v => v >= 0 ? 'rgba(20,184,166,0.7)' : 'rgba(239,68,68,0.7)'),
+          borderWidth: 0, borderRadius: 2,
+        }]
+      },
+      options: {
+        ..._chartOpts(), animation: { duration: 0 },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:9},maxTicksLimit:15}, grid:{display:false} },
+          y: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10},callback:v=>v+'%'}, grid:{color:'rgba(255,255,255,0.06)'},
+               title:{display:true,text:'12m CAGR %',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+        },
+      },
+    });
+  }
+
+  // Rolling Sharpe histogram (distribution of 12m Sharpe values)
+  const rollingSharpes = mr.map((_, i) => {
+    if (i < 11) return NaN;
+    return sharpe(mr.slice(i-11, i+1));
+  }).filter(isFinite);
+  const bins = 20, minS = Math.min(-2, ...rollingSharpes), maxS = Math.max(3, ...rollingSharpes);
+  const binW = (maxS - minS) / bins;
+  const hist = new Array(bins).fill(0);
+  const binLabels = [];
+  for (let b = 0; b < bins; b++) { binLabels.push(fmt(minS + b*binW, 1)); }
+  for (const s of rollingSharpes) {
+    const bi = Math.min(bins-1, Math.floor((s - minS) / binW));
+    if (bi >= 0) hist[bi]++;
+  }
+  destroyChart('chartSharpeHist');
+  const ctx2 = document.getElementById('chartSharpeHist')?.getContext('2d');
+  if (ctx2) {
+    _charts['chartSharpeHist'] = new Chart(ctx2, {
+      type: 'bar',
+      data: { labels: binLabels, datasets: [{ label: 'Count', data: hist,
+        backgroundColor: binLabels.map(l => parseFloat(l) >= 0 ? 'rgba(20,184,166,0.7)' : 'rgba(239,68,68,0.7)'),
+        borderWidth: 0, borderRadius: 2 }] },
+      options: {
+        ..._chartOpts(), animation: { duration: 0 },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:9},maxTicksLimit:10}, grid:{display:false},
+               title:{display:true,text:'12m Rolling Sharpe',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+          y: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10}}, grid:{color:'rgba(255,255,255,0.06)'},
+               title:{display:true,text:'Frequency',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+        },
+      },
+    });
   }
 }
 
@@ -1998,12 +2378,14 @@ function switchTab(tab) {
 
   // Lazy render on tab switch
   setTimeout(() => {
-    if (tab === 'corr')    { renderCorrelationMatrix(); }
-    if (tab === 'rolling') { renderRollingCorr(); renderRollingSharpe(); }
-    if (tab === 'alpha')   { renderAlpha(); }
-    if (tab === 'sizing')  { renderSizingTable(); }
-    if (tab === 'systems') { switchSys(document.querySelector('.sys-tab.active')?.dataset.sys ?? 'p1'); }
-    if (tab === 'combined'){ renderCombinedChart(); renderDDChart(); }
+    if (tab === 'corr')       { renderCorrelationMatrix(); }
+    if (tab === 'rolling')    { renderRollingCorr(); renderRollingSharpe(); }
+    if (tab === 'alpha')      { renderAlpha(); }
+    if (tab === 'sizing')     { renderSizingTable(); }
+    if (tab === 'montecarlo') { renderMonteCarlo(); }
+    if (tab === 'robustness') { renderRobustness(); }
+    if (tab === 'systems')    { switchSys(document.querySelector('.sys-tab.active')?.dataset.sys ?? 'p1'); }
+    if (tab === 'combined')   { renderCombinedChart(); renderDDChart(); }
   }, 30);
 }
 
