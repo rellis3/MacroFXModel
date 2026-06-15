@@ -128,7 +128,13 @@ log = logging.getLogger(__name__)
 def _kv_get(key: str, url: str) -> Optional[dict]:
     try:
         r = requests.get(f'{url}/api/kv/get?key={key}', timeout=10)
+        if r.status_code == 403:
+            log.error(f'KV get {key}: 403 key not permitted — add to _worker.js whitelist')
+            return None
         j = r.json()
+        if j.get('error'):
+            log.warning(f'KV get {key}: server error: {j["error"]}')
+            return None
         return None if (j.get('miss') or not j.get('data')) else j['data']
     except Exception as e:
         log.warning(f'KV get {key} failed: {e}')
