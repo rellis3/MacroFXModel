@@ -292,6 +292,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
                 <th class="num">Ind. CAGR</th>
                 <th class="num">Ind. Sharpe</th>
                 <th class="num">Ind. MaxDD</th>
+                <th class="num">Avg ρ</th>
                 <th class="num">Contribution</th>
                 <th class="num">Div. Ratio</th>
               </tr>
@@ -1319,12 +1320,23 @@ function renderSizingTable() {
   const ws = _weights.map(w => w/totalW);
   const combSh = _combined ? sharpe(_combined.monthlyRet) : NaN;
 
+  // Build avg pairwise correlation for each system vs all others
+  const allMo = [...new Set(SYS_KEYS.flatMap(k=>_results[k]?.monthlyDates??[]))].sort();
+  const retsByKey = SYS_KEYS.map(k => {
+    const r = _results[k];
+    return allMo.map(d => { const idx=r?.monthlyDates?.indexOf(d)??-1; return idx>=0?r.monthlyRet[idx]:NaN; });
+  });
+  const avgCorrs = retsByKey.map((ri, i) =>
+    retsByKey.filter((_,j) => j!==i).reduce((sum, rj) => sum + pearson(ri, rj), 0) / (SYS_KEYS.length - 1)
+  );
+
   let html = '';
   for (let i = 0; i < SYS_KEYS.length; i++) {
     const r = _results[SYS_KEYS[i]];
     const mr = r?.monthlyRet ?? [];
     const sh = sharpe(mr); const ca = cagr(r?.monthlyRet ? (() => { let e=1; return mr.map(v=>{ e*=(1+v); return e; }) })()[mr.length-1] : 1, mr.length);
     let mdd = 0; if(r){ let eq=1,pk=1; for(const v of mr){eq*=(1+v);if(eq>pk)pk=eq;mdd=Math.min(mdd,(eq-pk)/pk);} }
+    const avgRho = avgCorrs[i];
     const contrib = isFinite(combSh) && isFinite(sh) && combSh > 0 ? ws[i]*sh/combSh*100 : NaN;
     const divRatio = mr.length > 0 && isFinite(sh) ? (() => { const indVol = (() => { const fin=mr.filter(isFinite); const mu=fin.reduce((a,b)=>a+b,0)/fin.length; return Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2,0)/fin.length); })(); return indVol > 0 ? (combSh / sh) : NaN; })() : NaN;
     html += `<tr>
@@ -1333,6 +1345,7 @@ function renderSizingTable() {
       <td class="num ${ca>=0?'pos':'neg'}">${fmtPct(ca)}</td>
       <td class="num ${sh>=0.5?'pos':sh>=0.3?'neu':'neg'}">${fmt(sh,2)}</td>
       <td class="num neg">${fmt(mdd*100,1)}%</td>
+      <td class="num ${isFinite(avgRho)&&avgRho>0.25?'neg':isFinite(avgRho)&&avgRho<0.05?'pos':'neu'}" title="Avg pairwise correlation vs other 5 systems">${isFinite(avgRho)?fmt(avgRho,2):'—'}</td>
       <td class="num">${isFinite(contrib)?fmt(contrib,1)+'%':'—'}</td>
       <td class="num ${divRatio>1?'pos':'neu'}">${fmt(divRatio,2)}</td>
     </tr>`;
@@ -1656,10 +1669,20 @@ function sysCfgForm(key) {
     </div>`;
 
   if (key === 'p5') return `
-    ${row('Momentum lookback (days)', 'p5_lookback', c.lookback, 5, 10, 252)}
-    ${row('Number of longs',          'p5_nLong',    c.nLong,    1, 1, 6)}
-    ${row('Number of shorts',         'p5_nShort',   c.nShort,   1, 1, 6)}
-    <div style="font-size:10px;color:var(--text3);margin-top:6px;">7 pairs: EUR, GBP, AUD, NZD (long vs USD) + JPY, CAD, CHF (inverted)</div>`;
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Lookback</div>
+        ${row('Formation window (days)', 'p5_lookback', c.lookback, 5, 10, 504)}
+        ${row('Skip (days, avoids reversal)', 'p5_skip', c.skip, 5, 0, 126)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Signal = return from T−lookback to T−skip</div>
+      </div>
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Portfolio</div>
+        ${row('Number of longs',  'p5_nLong',  c.nLong,  1, 1, 6)}
+        ${row('Number of shorts', 'p5_nShort', c.nShort, 1, 1, 6)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">7 pairs: EUR, GBP, AUD, NZD + JPY, CAD, CHF (inverted)</div>
+      </div>
+    </div>`;
 
   if (key === 'p6') return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
@@ -1705,7 +1728,7 @@ function updateSysCfg(key) {
   } else if (key === 'p4') {
     c.trendWin=n('trendWin'); c.allocNormal=n('allocNormal');
   } else if (key === 'p5') {
-    c.lookback=n('lookback'); c.nLong=n('nLong'); c.nShort=n('nShort');
+    c.lookback=n('lookback'); c.skip=n('skip'); c.nLong=n('nLong'); c.nShort=n('nShort');
   } else if (key === 'p6') {
     c.olsWindow=n('olsWindow'); c.thVLong=n('thVLong'); c.thLong=n('thLong');
     c.thShort=n('thShort'); c.thVShort=n('thVShort');
@@ -1757,6 +1780,7 @@ const OPT_GRIDS = {
   },
   p5: {
     lookback: [126, 189, 252],
+    skip:     [10, 21, 42, 63],
     nLong:    [2, 3, 4],
     nShort:   [1, 2, 3],
   },
