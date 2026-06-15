@@ -247,9 +247,9 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <div class="bt-card" style="margin-top:14px;">
       <div class="bt-card-hdr">
         Strategy Weights
-        <button class="preset-btn active" id="presetEw" onclick="applyPreset('ew')" style="margin-left:auto;">Equal Weight</button>
+        <button class="preset-btn" id="presetEw" onclick="applyPreset('ew')" style="margin-left:auto;">Equal Weight</button>
         <button class="preset-btn" id="presetRp" onclick="applyPreset('rp')">Risk Parity</button>
-        <button class="preset-btn" id="presetMs" onclick="applyPreset('ms')">Max Sharpe</button>
+        <button class="preset-btn active" id="presetMs" onclick="applyPreset('ms')">Max Sharpe</button>
         <button class="preset-btn" id="presetMd" onclick="applyPreset('md')">Min Drawdown</button>
       </div>
       <div class="bt-card-body" style="padding-top:6px;">
@@ -1916,12 +1916,8 @@ async function runAll() {
     setStatus('spin', 'P5 done · Running P6…'); await new Promise(r=>setTimeout(r,10));
     _results.p6 = runP6(data);
 
-    setStatus('spin', 'Computing combined book…'); await new Promise(r=>setTimeout(r,10));
-    _combined = computeCombined(_results, _weights);
-
-    setStatus('spin', 'Rendering…'); await new Promise(r=>setTimeout(r,20));
-    renderKPIs(_combined);
-    renderSliders();
+    setStatus('spin', 'Optimising weights…'); await new Promise(r=>setTimeout(r,10));
+    applyPreset('ms'); // default to Markowitz max-Sharpe after each run
     renderCombinedChart();
     renderDDChart();
     renderMonthlyReturnsTable();
