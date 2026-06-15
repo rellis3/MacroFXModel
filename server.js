@@ -2556,6 +2556,113 @@ app.get('/api/gold-backtest/trades', (req, res) => {
   res.json({ ok: true, trades: goldBacktestStore.trades, savedAt: goldBacktestStore.savedAt });
 });
 
+// ── Diversification backtest data cache ───────────────────────────────────────
+const DIVERS_CACHE = { data: null, fetchedAt: null };
+const DIVERS_TTL_MS = 22 * 60 * 60 * 1000;
+
+app.get('/api/diversification/data', async (req, res) => {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) return res.status(503).json({ ok: false, error: 'FRED_KEY not set' });
+
+  const age = DIVERS_CACHE.fetchedAt ? Date.now() - DIVERS_CACHE.fetchedAt : Infinity;
+  if (DIVERS_CACHE.data && age < DIVERS_TTL_MS) {
+    return res.json({ ok: true, cached: true, ...DIVERS_CACHE.data });
+  }
+
+  try {
+    const FROM_DATE = '2005-01-01';
+    const FROM_UNIX = 1104537600; // 2005-01-01 UTC
+
+    console.log('[divers] fetching FRED series in parallel…');
+    const fredIds = ['WALCL', 'WTREGEN', 'RRPONTSYD', 'T10Y2Y', 'BAMLH0A0HYM2', 'DFII10', 'NAPM', 'DTWEXBGS', 'CPILFESL'];
+    const fredResults = await Promise.allSettled(fredIds.map(sid => fetchFredSeries(sid, FROM_DATE, fredKey)));
+    const [walclMap, wtregenMap, rrponMap, curveMap, creditMap, realyieldMap, ismMap, dxyMap, coreCpiMap] =
+      fredResults.map(r => r.status === 'fulfilled' ? r.value : new Map());
+    fredResults.forEach((r, i) => {
+      if (r.status === 'fulfilled') console.log(`  [divers] FRED ${fredIds[i]}: ${r.value.size} obs`);
+      else console.warn(`  [divers] FRED ${fredIds[i]} failed: ${r.reason?.message}`);
+    });
+
+    // NAPM discontinued 2001; fall back to ISM (MANEMP unavailable — use INDPRO as proxy)
+    let finalIsmMap = ismMap;
+    if (ismMap.size < 10) {
+      console.log('[divers] NAPM empty — falling back to INDPRO');
+      try { finalIsmMap = await fetchFredSeries('INDPRO', FROM_DATE, fredKey); }
+      catch (e) { console.warn('[divers] INDPRO fallback failed:', e.message); }
+    }
+
+    console.log('[divers] fetching Yahoo ETFs…');
+    const [spyResult, tltResult, gldResult] = await Promise.allSettled([
+      fetchYahooOHLC('SPY', FROM_UNIX),
+      fetchYahooOHLC('TLT', FROM_UNIX),
+      fetchYahooOHLC('GLD', FROM_UNIX),
+    ]);
+    const spyMap = spyResult.status === 'fulfilled' ? spyResult.value : new Map();
+    const tltMap = tltResult.status === 'fulfilled' ? tltResult.value : new Map();
+    const gldMap = gldResult.status === 'fulfilled' ? gldResult.value : new Map();
+    console.log(`  [divers] SPY ${spyMap.size} | TLT ${tltMap.size} | GLD ${gldMap.size}`);
+
+    console.log('[divers] fetching OANDA FX pairs…');
+    const FX_INSTRUMENTS = ['EUR_USD', 'GBP_USD', 'USD_JPY', 'USD_CAD', 'USD_CHF', 'AUD_USD', 'NZD_USD', 'GBP_JPY', 'AUD_JPY', 'NZD_JPY'];
+    const fxMaps = {};
+    await Promise.allSettled(FX_INSTRUMENTS.map(inst =>
+      fetchOandaD1Range(inst, FROM_DATE)
+        .then(bars => {
+          const m = new Map();
+          for (const b of bars) m.set(b.date, b.close);
+          fxMaps[inst] = m;
+          console.log(`  [divers] ${inst}: ${m.size} bars`);
+        })
+        .catch(e => {
+          console.warn(`  [divers] ${inst} failed: ${e.message}`);
+          fxMaps[inst] = new Map();
+        })
+    ));
+
+    // Master date index from SPY (equity trading calendar)
+    const dateSet = new Set();
+    for (const d of spyMap.keys()) dateSet.add(d);
+    const dateIndex = [...dateSet].sort();
+
+    // Helper: extract close prices from Yahoo OHLC map
+    const closeMap = m => new Map([...m].map(([d, v]) => [d, v.close]));
+
+    const data = {
+      dateIndex,
+      fred: {
+        walcl:     alignSparse(dateIndex, walclMap),
+        wtregen:   alignSparse(dateIndex, wtregenMap),
+        rrpon:     alignSparse(dateIndex, rrponMap),
+        curve:     alignSparse(dateIndex, curveMap),
+        credit:    alignSparse(dateIndex, creditMap),
+        realyield: alignSparse(dateIndex, realyieldMap),
+        ism:       alignSparse(dateIndex, finalIsmMap),
+        dxy:       alignSparse(dateIndex, dxyMap),
+        coreCpi:   alignSparse(dateIndex, coreCpiMap),
+      },
+      prices: {
+        spy: alignSparse(dateIndex, closeMap(spyMap)),
+        tlt: alignSparse(dateIndex, closeMap(tltMap)),
+        gld: alignSparse(dateIndex, closeMap(gldMap)),
+      },
+      fx: Object.fromEntries(
+        FX_INSTRUMENTS.map(inst => [
+          inst.replace('_', '').toLowerCase(),
+          alignSparse(dateIndex, fxMaps[inst] ?? new Map()),
+        ])
+      ),
+    };
+
+    DIVERS_CACHE.data = data;
+    DIVERS_CACHE.fetchedAt = Date.now();
+    console.log(`[divers] data ready: ${dateIndex.length} trading days`);
+    res.json({ ok: true, cached: false, ...data });
+  } catch (e) {
+    console.error('[divers] fetch error:', e.stack ?? e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // SSE live price stream — must be handled before the generic /api/* catch-all
 // because it returns an infinite ReadableStream, not a text body.
 app.get('/api/oanda_stream', async (req, res) => {

@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Combined Book Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+#dvApp { padding: 0 20px 60px; max-width: 1380px; margin: 0 auto; }
+
+/* KPI grid */
+.bt-kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
+@media (max-width: 1000px) { .bt-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px)  { .bt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.bt-kpi {
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
+  padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; transition: border-color .2s;
+}
+.bt-kpi:hover { border-color: var(--border2); }
+.bt-kpi-label { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bt-kpi-value { font-size: 26px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); line-height: 1.1; }
+.bt-kpi-value.green { color: var(--green); }
+.bt-kpi-value.red   { color: var(--red); }
+.bt-kpi-value.blue  { color: var(--blue); }
+.bt-kpi-value.amber { color: var(--amber); }
+.bt-kpi-sub { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* Sec stats */
+.bt-sec-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+@media (max-width: 900px) { .bt-sec-grid { grid-template-columns: repeat(2, 1fr); } }
+.bt-sec {
+  background: var(--s1); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;
+}
+.bt-sec-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bt-sec-val { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
+
+/* Card */
+.bt-card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 14px; }
+.bt-card-hdr {
+  padding: 12px 18px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.bt-card-hdr .ml-auto { margin-left: auto; }
+.bt-card-body { padding: 18px; }
+.bt-chart-wrap { position: relative; height: 280px; }
+.bt-chart-wrap.tall { height: 380px; }
+
+/* Tables */
+.bt-tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+.bt-tbl th {
+  padding: 7px 10px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.bt-tbl td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+.bt-tbl tr:last-child td { border-bottom: none; }
+.bt-tbl tr:hover td { background: var(--s2); }
+.bt-tbl td.num { text-align: right; }
+.bt-tbl td.pos { color: var(--green); }
+.bt-tbl td.neg { color: var(--red); }
+.bt-tbl td.neu { color: var(--text2); }
+
+/* Run bar */
+.bt-run-bar {
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r);
+  padding: 12px 16px; margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.bt-run-btn {
+  background: var(--green); border: none; border-radius: 6px; color: #fff;
+  font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600;
+  padding: 6px 20px; cursor: pointer; transition: opacity .2s;
+}
+.bt-run-btn:hover { opacity: .85; }
+.bt-run-btn:disabled { opacity: .5; cursor: wait; }
+.bt-run-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* Tabs */
+.dv-tabs { display: flex; gap: 4px; margin-top: 16px; flex-wrap: wrap; }
+.dv-tab {
+  padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; font-family: 'DM Mono', monospace; color: var(--text3);
+  background: var(--s1); border: 1px solid var(--border); cursor: pointer; transition: all .15s;
+}
+.dv-tab:hover { border-color: var(--blue); color: var(--blue); }
+.dv-tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.dv-panel { display: none; }
+.dv-panel.active { display: block; }
+
+/* System tabs */
+.sys-tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; }
+.sys-tab {
+  padding: 5px 12px; border-radius: 5px; font-size: 10px; font-weight: 600; letter-spacing: .07em;
+  text-transform: uppercase; font-family: 'DM Mono', monospace; color: var(--text3);
+  background: var(--s2); border: 1px solid var(--border); cursor: pointer; transition: all .15s;
+}
+.sys-tab:hover { border-color: var(--border2); }
+.sys-tab.active { color: #fff; border-color: transparent; }
+.sys-panel { display: none; }
+.sys-panel.active { display: block; }
+
+/* Sliders */
+.slider-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; }
+@media (max-width: 800px) { .slider-grid { grid-template-columns: repeat(2, 1fr); } }
+.slider-card {
+  background: var(--s2); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+}
+.slider-label { display: flex; justify-content: space-between; align-items: center; }
+.slider-name { font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace; }
+.slider-val { font-size: 13px; font-weight: 700; font-family: 'DM Mono', monospace; }
+.slider-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+input[type=range].dv-range {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+  background: var(--border2); border-radius: 2px; outline: none;
+}
+input[type=range].dv-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--blue); cursor: pointer; transition: transform .1s;
+}
+input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+/* Correlation matrix */
+.corr-wrap { overflow-x: auto; padding: 14px 18px; }
+.corr-matrix { border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 11px; }
+.corr-matrix th, .corr-matrix td { padding: 6px 10px; white-space: nowrap; }
+.corr-matrix th { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); }
+.corr-matrix td { text-align: center; border-radius: 4px; font-weight: 600; min-width: 56px; }
+
+/* Preset buttons */
+.preset-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.preset-btn {
+  padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  font-family: 'DM Mono', monospace; background: var(--s2); border: 1px solid var(--border);
+  color: var(--text2); cursor: pointer; transition: all .15s;
+}
+.preset-btn:hover { border-color: var(--blue); color: var(--blue); }
+.preset-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+/* Alpha bar chart container */
+.alpha-bars { display: flex; flex-direction: column; gap: 10px; padding: 14px 18px; }
+.alpha-row { display: flex; align-items: center; gap: 12px; }
+.alpha-lbl { width: 200px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text2); flex-shrink: 0; }
+.alpha-track { flex: 1; height: 8px; background: var(--s2); border-radius: 4px; overflow: hidden; }
+.alpha-fill { height: 100%; border-radius: 4px; transition: width .4s; }
+.alpha-pct { width: 42px; text-align: right; font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
+
+/* Status dot */
+.sdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--border2); }
+.sdot.ok   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.sdot.spin { background: var(--amber); animation: pulse 1s infinite; }
+.sdot.err  { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Warning banner */
+.dv-warn {
+  background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3); border-radius: var(--r);
+  padding: 10px 14px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--red);
+  margin-top: 10px; display: flex; align-items: center; gap: 8px;
+}
+.dv-info {
+  background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.3); border-radius: var(--r);
+  padding: 10px 14px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--blue);
+  margin-top: 10px;
+}
+
+/* Color swatches */
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+
+/* System color legend */
+.sys-legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 18px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2); }
+.sys-legend-item { display: flex; align-items: center; gap: 5px; }
+
+/* Two col */
+.bt-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+@media (max-width: 900px) { .bt-two-col { grid-template-columns: 1fr; } }
+
+/* Scrollable table */
+.bt-tbl-scroll { overflow-x: auto; max-height: 380px; overflow-y: auto; }
+</style>
+</head>
+<body>
+<div id="dvApp">
+
+  <div style="padding: 20px 0 10px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+    <h1 style="font-size: 22px; font-weight: 700; margin: 0;">Combined Book Explorer</h1>
+    <span style="font-size: 13px; color: var(--text3); font-family: 'DM Mono', monospace;">6 uncorrelated alpha sources · interactive sizing · diversification analytics</span>
+  </div>
+
+  <div class="bt-run-bar">
+    <button class="bt-run-btn" id="runBtn" onclick="runAll()">Run Backtest</button>
+    <span class="sdot" id="statusDot"></span>
+    <span id="statusMsg" class="bt-run-lbl">Click Run to fetch data and compute all 6 strategies</span>
+    <span style="margin-left:auto;" class="bt-run-lbl" id="cacheLabel"></span>
+  </div>
+
+  <div id="kpiRow" style="display:none;">
+    <div class="bt-kpi-grid" id="kpiGrid"></div>
+    <div class="bt-sec-grid" id="secGrid" style="margin-top:10px;"></div>
+  </div>
+
+  <!-- Strategy system colour legend -->
+  <div class="sys-legend" id="sysLegend" style="display:none; margin-top:10px;">
+    <div class="sys-legend-item"><span class="swatch" style="background:#14b8a6"></span>P1 Macro Regime</div>
+    <div class="sys-legend-item"><span class="swatch" style="background:#ef4444"></span>P2 Credit-Equity</div>
+    <div class="sys-legend-item"><span class="swatch" style="background:#f97316"></span>P3 Yield Curve</div>
+    <div class="sys-legend-item"><span class="swatch" style="background:#3b82f6"></span>P4 FX Carry</div>
+    <div class="sys-legend-item"><span class="swatch" style="background:#a855f7"></span>P5 FX Momentum</div>
+    <div class="sys-legend-item"><span class="swatch" style="background:#eab308"></span>P6 Gold Macro</div>
+    <div class="sys-legend-item"><span class="swatch" style="background:#ffffff"></span>Combined Book</div>
+  </div>
+
+  <!-- Tab nav -->
+  <div class="dv-tabs" id="mainTabs" style="display:none;">
+    <div class="dv-tab active" data-tab="combined"   onclick="switchTab('combined')">Combined Book</div>
+    <div class="dv-tab"        data-tab="sizing"      onclick="switchTab('sizing')">Sizing Explorer</div>
+    <div class="dv-tab"        data-tab="corr"        onclick="switchTab('corr')">Correlations</div>
+    <div class="dv-tab"        data-tab="rolling"     onclick="switchTab('rolling')">Rolling Monitor</div>
+    <div class="dv-tab"        data-tab="alpha"       onclick="switchTab('alpha')">Alpha Sources</div>
+    <div class="dv-tab"        data-tab="systems"     onclick="switchTab('systems')">Systems</div>
+  </div>
+
+  <!-- ── Tab 1: Combined Book ───────────────────────────────────────────────── -->
+  <div class="dv-panel active" id="panel-combined">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Equity Curves — All Systems + Combined Book</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap tall"><canvas id="chartCombined"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Sizing sliders -->
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">
+        Strategy Weights
+        <button class="preset-btn active" id="presetEw" onclick="applyPreset('ew')" style="margin-left:auto;">Equal Weight</button>
+        <button class="preset-btn" id="presetRp" onclick="applyPreset('rp')">Risk Parity</button>
+        <button class="preset-btn" id="presetMs" onclick="applyPreset('ms')">Max Sharpe</button>
+        <button class="preset-btn" id="presetMd" onclick="applyPreset('md')">Min Drawdown</button>
+      </div>
+      <div class="bt-card-body" style="padding-top:6px;">
+        <div class="slider-grid" id="sliderGrid"></div>
+      </div>
+    </div>
+
+    <div class="bt-two-col">
+      <div class="bt-card">
+        <div class="bt-card-hdr">Combined Book — Monthly Returns</div>
+        <div class="bt-card-body" style="padding:0;">
+          <div class="bt-tbl-scroll">
+            <table class="bt-tbl" id="combinedReturnsTable">
+              <thead><tr><th>Month</th><th class="num">Return</th><th class="num">Cumulative</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="bt-card">
+        <div class="bt-card-hdr">Drawdown Analysis</div>
+        <div class="bt-card-body">
+          <div class="bt-chart-wrap"><canvas id="chartDD"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 2: Sizing Explorer ─────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-sizing">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Strategy Performance by Weight Allocation</div>
+      <div class="bt-card-body" style="padding-bottom:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl" id="sizingTable">
+            <thead>
+              <tr>
+                <th>Strategy</th>
+                <th class="num">Weight</th>
+                <th class="num">Ind. CAGR</th>
+                <th class="num">Ind. Sharpe</th>
+                <th class="num">Ind. MaxDD</th>
+                <th class="num">Contribution</th>
+                <th class="num">Div. Ratio</th>
+              </tr>
+            </thead>
+            <tbody id="sizingBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Diversification Dividend — Blended vs Weighted Avg</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap"><canvas id="chartDivDividend"></canvas></div>
+        <div class="dv-info" id="divDividendMsg" style="margin-top:12px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 3: Correlations ────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-corr">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Monthly Return Correlation Matrix (Pearson)</div>
+      <div class="corr-wrap" id="corrWrap"></div>
+    </div>
+    <div class="dv-info" style="margin-top:12px;">
+      Correlations computed on monthly (end-of-month) returns. Values near 0 indicate orthogonal alpha sources.
+      A well-diversified book targets |ρ| &lt; 0.30 across all pairs.
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Pairwise Scatter — Select Pair</div>
+      <div class="bt-card-body">
+        <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
+          <select id="scatterX" class="bt-run-bar" style="padding:5px 10px; font-size:11px; font-family:'DM Mono',monospace; background:var(--s2); border:1px solid var(--border); color:var(--text); border-radius:6px;"></select>
+          <span style="color:var(--text3); font-family:'DM Mono',monospace; font-size:11px;">vs</span>
+          <select id="scatterY" class="bt-run-bar" style="padding:5px 10px; font-size:11px; font-family:'DM Mono',monospace; background:var(--s2); border:1px solid var(--border); color:var(--text); border-radius:6px;"></select>
+          <button class="bt-run-btn" onclick="renderScatter()" style="background:var(--blue);">Plot</button>
+        </div>
+        <div class="bt-chart-wrap"><canvas id="chartScatter"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 4: Rolling Monitor ─────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-rolling">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">
+        63-Day Rolling Correlation (P1 vs Others)
+        <span class="ml-auto" style="font-size:10px;color:var(--text3);">Lower = better diversification</span>
+      </div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap tall"><canvas id="chartRollingCorr"></canvas></div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Rolling 63-Day Sharpe — Each System</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap"><canvas id="chartRollingSharpe"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 5: Alpha Sources ────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-alpha">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Alpha Source Attribution — Contribution to Combined Book</div>
+      <div class="alpha-bars" id="alphaBars"></div>
+    </div>
+    <div id="alphaWarn" style="display:none;" class="dv-warn">
+      ⚠ One source contributes &gt;50% of total P&amp;L. Consider rebalancing weights for better diversification.
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Annual P&amp;L Attribution — Stacked</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap tall"><canvas id="chartAlphaStacked"></canvas></div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Risk Attribution — Contribution to Combined Vol</div>
+      <div class="alpha-bars" id="alphaBarsVol"></div>
+    </div>
+  </div>
+
+  <!-- ── Tab 6: Systems ─────────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-systems">
+    <div class="sys-tabs" id="sysTabs">
+      <div class="sys-tab active" data-sys="p1" onclick="switchSys('p1')" style="background:#14b8a6;">P1 Macro Regime</div>
+      <div class="sys-tab" data-sys="p2" onclick="switchSys('p2')" style="">P2 Credit-Equity</div>
+      <div class="sys-tab" data-sys="p3" onclick="switchSys('p3')" style="">P3 Yield Curve</div>
+      <div class="sys-tab" data-sys="p4" onclick="switchSys('p4')" style="">P4 FX Carry</div>
+      <div class="sys-tab" data-sys="p5" onclick="switchSys('p5')" style="">P5 FX Momentum</div>
+      <div class="sys-tab" data-sys="p6" onclick="switchSys('p6')" style="">P6 Gold Macro</div>
+    </div>
+    <div id="sys-panel-area"></div>
+  </div>
+
+</div><!-- #dvApp -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// Configuration
+// ═══════════════════════════════════════════════════════════════════════════════
+const SYS_NAMES  = ['P1 Macro Regime', 'P2 Credit-Equity', 'P3 Yield Curve', 'P4 FX Carry', 'P5 FX Momentum', 'P6 Gold Macro'];
+const SYS_KEYS   = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'];
+const SYS_COLORS = ['#14b8a6', '#ef4444', '#f97316', '#3b82f6', '#a855f7', '#eab308'];
+const COMBINED_COLOR = '#e2e8f0';
+
+const Z_WIN    = 252;
+const MIN_Z    = 30;
+const PUB_WEEKLY  = 5;
+const PUB_MONTHLY = 21;
+
+// State
+let _rawData   = null;     // data from /api/diversification/data
+let _results   = {};       // { p1: {dates,equity,monthlyRet,...}, ... }
+let _combined  = null;     // combined equity curve & monthly returns
+let _weights   = [1, 1, 1, 1, 1, 1]; // raw sliders (normalized to 1)
+let _charts    = {};       // chart instances to destroy/recreate
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Status helpers
+// ═══════════════════════════════════════════════════════════════════════════════
+function setStatus(type, msg) {
+  const dot = document.getElementById('statusDot');
+  const lbl = document.getElementById('statusMsg');
+  dot.className = 'sdot ' + (type === 'ok' ? 'ok' : type === 'spin' ? 'spin' : 'err');
+  lbl.textContent = msg;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Maths helpers
+// ═══════════════════════════════════════════════════════════════════════════════
+function ffill(arr) {
+  let last = NaN;
+  return arr.map(v => { if (isFinite(v)) last = v; return last; });
+}
+function applyLag(arr, lag) {
+  if (lag <= 0) return arr;
+  return Array(lag).fill(NaN).concat(arr.slice(0, arr.length - lag));
+}
+function pctChange(arr) {
+  return arr.map((v, i) => {
+    if (i === 0 || !isFinite(arr[i-1]) || !isFinite(v) || arr[i-1] === 0) return NaN;
+    return (v - arr[i-1]) / Math.abs(arr[i-1]);
+  });
+}
+function rollingZ(arr, win = Z_WIN) {
+  const out = new Array(arr.length).fill(NaN);
+  for (let i = 0; i < arr.length; i++) {
+    if (!isFinite(arr[i])) continue;
+    const slice = [];
+    for (let j = Math.max(0, i - win); j < i; j++) if (isFinite(arr[j])) slice.push(arr[j]);
+    if (slice.length < MIN_Z) continue;
+    const mu = slice.reduce((a, b) => a + b, 0) / slice.length;
+    const sd = Math.sqrt(slice.reduce((a, b) => a + (b-mu)**2, 0) / slice.length);
+    out[i] = sd > 0 ? (arr[i] - mu) / sd : 0;
+  }
+  return out;
+}
+function lastValid(arr) {
+  for (let i = arr.length - 1; i >= 0; i--) if (isFinite(arr[i])) return arr[i];
+  return NaN;
+}
+function pearson(a, b) {
+  const pairs = a.map((v, i) => [v, b[i]]).filter(([x, y]) => isFinite(x) && isFinite(y));
+  if (pairs.length < 3) return NaN;
+  const n = pairs.length;
+  const mx = pairs.reduce((s,[x])=>s+x,0)/n, my = pairs.reduce((s,[,y])=>s+y,0)/n;
+  let num=0, sx2=0, sy2=0;
+  for (const [x,y] of pairs) { num+=(x-mx)*(y-my); sx2+=(x-mx)**2; sy2+=(y-my)**2; }
+  const denom = Math.sqrt(sx2*sy2);
+  return denom === 0 ? 0 : num/denom;
+}
+
+// Rolling Pearson over a fixed window of monthly return arrays
+function rollingPearsonMonthly(a, b, win = 12) {
+  const pairs = a.map((v, i) => [v, b[i]]);
+  const out = pairs.map(() => NaN);
+  for (let i = win - 1; i < pairs.length; i++) {
+    const sl = pairs.slice(i - win + 1, i + 1).filter(([x,y]) => isFinite(x) && isFinite(y));
+    if (sl.length < win) continue;
+    const mx = sl.reduce((s,[x])=>s+x,0)/sl.length, my = sl.reduce((s,[,y])=>s+y,0)/sl.length;
+    let num=0,sx2=0,sy2=0;
+    for (const [x,y] of sl) { num+=(x-mx)*(y-my); sx2+=(x-mx)**2; sy2+=(y-my)**2; }
+    const denom = Math.sqrt(sx2*sy2);
+    out[i] = denom === 0 ? 0 : num/denom;
+  }
+  return out;
+}
+
+// Month-end indices in a date array
+function monthEndIdx(dates) {
+  const out = [];
+  for (let i = 0; i < dates.length - 1; i++) {
+    if (dates[i].substring(0,7) !== dates[i+1].substring(0,7)) out.push(i);
+  }
+  out.push(dates.length - 1);
+  return out;
+}
+
+// Compute Sharpe from monthly returns
+function sharpe(rets) {
+  const fin = rets.filter(isFinite);
+  if (fin.length < 3) return NaN;
+  const mu = fin.reduce((a,b)=>a+b,0)/fin.length;
+  const sd = Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2,0)/fin.length);
+  return sd === 0 ? 0 : (mu / sd) * Math.sqrt(12);
+}
+function cagr(equity, n_months) {
+  if (!isFinite(equity) || equity <= 0 || n_months <= 0) return NaN;
+  return (Math.pow(equity, 12 / n_months) - 1) * 100;
+}
+function maxDD(equity_curve) {
+  let peak = equity_curve[0] ?? 1, worst = 0;
+  for (const v of equity_curve) {
+    if (!isFinite(v)) continue;
+    if (v > peak) peak = v;
+    const dd = (v - peak) / peak;
+    if (dd < worst) worst = dd;
+  }
+  return worst * 100;
+}
+function drawdownSeries(equity_curve) {
+  let peak = equity_curve[0] ?? 1;
+  return equity_curve.map(v => {
+    if (!isFinite(v)) return NaN;
+    if (v > peak) peak = v;
+    return (v - peak) / peak * 100;
+  });
+}
+
+// Simple OLS residual: y ~ b0 + b1*x1 + b2*x2 over rolling window
+function rollingOLSResidual(y, x1, x2, win) {
+  const n = y.length;
+  const resid = new Array(n).fill(NaN);
+  for (let i = win - 1; i < n; i++) {
+    const ys=[],xs1=[],xs2=[];
+    for (let j = i-win+1; j <= i; j++) {
+      if (isFinite(y[j])&&isFinite(x1[j])&&isFinite(x2[j])){
+        ys.push(y[j]); xs1.push(x1[j]); xs2.push(x2[j]);
+      }
+    }
+    if (ys.length < 30) continue;
+    // OLS via normal equations with intercept
+    const m = ys.length;
+    let sumY=0,sumX1=0,sumX2=0,sumX1Y=0,sumX2Y=0,sumX1X1=0,sumX2X2=0,sumX1X2=0;
+    for (let k=0;k<m;k++){
+      sumY+=ys[k]; sumX1+=xs1[k]; sumX2+=xs2[k];
+      sumX1Y+=xs1[k]*ys[k]; sumX2Y+=xs2[k]*ys[k];
+      sumX1X1+=xs1[k]*xs1[k]; sumX2X2+=xs2[k]*xs2[k]; sumX1X2+=xs1[k]*xs2[k];
+    }
+    const mY=sumY/m,mX1=sumX1/m,mX2=sumX2/m;
+    const cov11=sumX1X1/m-mX1*mX1, cov22=sumX2X2/m-mX2*mX2;
+    const cov12=sumX1X2/m-mX1*mX2;
+    const cov1Y=sumX1Y/m-mX1*mY, cov2Y=sumX2Y/m-mX2*mY;
+    const det = cov11*cov22 - cov12*cov12;
+    if (Math.abs(det) < 1e-12) continue;
+    const b1 = (cov1Y*cov22 - cov2Y*cov12) / det;
+    const b2 = (cov2Y*cov11 - cov1Y*cov12) / det;
+    const b0 = mY - b1*mX1 - b2*mX2;
+    const predicted = b0 + b1*xs1[xs1.length-1] + b2*xs2[xs2.length-1];
+    resid[i] = ys[ys.length-1] - predicted;
+  }
+  return resid;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Strategy Engines
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// P1: Macro Regime Equity — 5-factor composite → SPY allocation
+function runP1(data) {
+  const { dateIndex: dates, fred, prices } = data;
+  const n = dates.length;
+
+  // Net liquidity pct change
+  const walcl   = ffill(fred.walcl);
+  const wtregen = ffill(fred.wtregen);
+  const rrpon   = ffill(fred.rrpon);
+  const netliqRaw = walcl.map((w,i) => isFinite(w)&&isFinite(wtregen[i])&&isFinite(rrpon[i]) ? w-wtregen[i]-rrpon[i] : NaN);
+  const netliqPct = pctChange(netliqRaw);
+
+  const curve     = ffill(fred.curve);
+  const credit    = ffill(fred.credit);
+  const realyield = ffill(fred.realyield);
+  const ism       = ffill(fred.ism);
+
+  const nlLag = applyLag(netliqPct, PUB_WEEKLY);
+  const ismLag = applyLag(ism, PUB_MONTHLY);
+
+  const nlZ  = rollingZ(nlLag);
+  const cvZ  = rollingZ(curve);
+  const crZ  = rollingZ(credit);
+  const ryZ  = rollingZ(realyield);
+  const izZ  = rollingZ(ismLag);
+
+  // Spy prices (forward-filled)
+  const spy = ffill(prices.spy);
+
+  const monthEnds = monthEndIdx(dates);
+  let equity = 1.0;
+  const equityCurve = new Array(n).fill(NaN);
+  const monthlyRet = [];
+  const monthlyDates = [];
+  let prevEq = 1.0;
+  let prevMonthEnd = -1;
+  let allocation = 0.5;
+
+  for (const idx of monthEnds) {
+    // Compute composite score at month-end
+    const nz = nlZ[idx], cv = cvZ[idx], cr = crZ[idx], ry = ryZ[idx], iz = izZ[idx];
+    const score = [nz,cv,cr,ry,iz].every(isFinite)
+      ? 0.40*nz + 0.20*cv + 0.20*(-cr) + 0.15*(-ry) + 0.05*iz
+      : NaN;
+
+    const newAlloc = isFinite(score)
+      ? (score > 1.0 ? 1.0 : score > 0.0 ? 0.75 : score > -1.0 ? 0.5 : 0.25)
+      : 0.5;
+
+    // Compute equity for this month using allocation from previous month
+    if (prevMonthEnd >= 0) {
+      const p0 = spy[prevMonthEnd], p1 = spy[idx];
+      if (isFinite(p0) && isFinite(p1) && p0 > 0) {
+        const ret = allocation * (p1 - p0) / p0;
+        equity *= (1 + ret);
+        monthlyRet.push(ret);
+        monthlyDates.push(dates[idx]);
+      }
+      for (let i = prevMonthEnd + 1; i <= idx; i++) equityCurve[i] = equity;
+    } else {
+      equityCurve[idx] = equity;
+    }
+
+    allocation = newAlloc;
+    prevMonthEnd = idx;
+  }
+
+  return { key:'p1', name: SYS_NAMES[0], color: SYS_COLORS[0], equityCurve, dates, monthlyRet, monthlyDates };
+}
+
+// P2: Credit-Equity Divergence — credit z-score + SPY momentum composite
+function runP2(data) {
+  const { dateIndex: dates, fred, prices } = data;
+  const n = dates.length;
+
+  const credit = ffill(fred.credit);
+  const spy    = ffill(prices.spy);
+  const tlt    = ffill(prices.tlt);
+
+  const crLag = applyLag(credit, PUB_MONTHLY);
+  const crZ   = rollingZ(crLag);
+
+  // SPY 21-day return (monthly signal)
+  const spyRet21 = spy.map((v,i) => {
+    if (i < 21 || !isFinite(v) || !isFinite(spy[i-21]) || spy[i-21] === 0) return NaN;
+    return (v - spy[i-21]) / spy[i-21];
+  });
+  const spyRetZ = rollingZ(spyRet21, 63); // shorter window for returns
+
+  const monthEnds = monthEndIdx(dates);
+  let equity = 1.0;
+  const equityCurve = new Array(n).fill(NaN);
+  const monthlyRet = [], monthlyDates = [];
+  let prevMonthEnd = -1;
+  let spyAlloc = 0.6, tltAlloc = 0.4;
+
+  for (const idx of monthEnds) {
+    const cr = crZ[idx], sp = spyRetZ[idx];
+    // Divergence score: credit good (low cr) AND equity rising (high sp) = risk-on
+    // credit bad (high cr) AND equity falling (low sp) = risk-off
+    let score = NaN;
+    if (isFinite(cr) && isFinite(sp)) score = -cr + sp; // positive = bullish divergence
+
+    let newSpyAlloc = 0.6, newTltAlloc = 0.4;
+    if (isFinite(score)) {
+      if (score > 1.5)       { newSpyAlloc = 1.0; newTltAlloc = 0.0; }
+      else if (score > 0.5)  { newSpyAlloc = 0.8; newTltAlloc = 0.2; }
+      else if (score > -0.5) { newSpyAlloc = 0.6; newTltAlloc = 0.4; }
+      else if (score > -1.5) { newSpyAlloc = 0.3; newTltAlloc = 0.7; }
+      else                   { newSpyAlloc = 0.1; newTltAlloc = 0.9; }
+    }
+
+    if (prevMonthEnd >= 0) {
+      const sp0=spy[prevMonthEnd], sp1=spy[idx];
+      const tl0=tlt[prevMonthEnd], tl1=tlt[idx];
+      const spRet = (isFinite(sp0)&&isFinite(sp1)&&sp0>0) ? (sp1-sp0)/sp0 : 0;
+      const tlRet = (isFinite(tl0)&&isFinite(tl1)&&tl0>0) ? (tl1-tl0)/tl0 : 0;
+      const ret = spyAlloc * spRet + tltAlloc * tlRet;
+      equity *= (1 + ret);
+      monthlyRet.push(ret);
+      monthlyDates.push(dates[idx]);
+      for (let i = prevMonthEnd + 1; i <= idx; i++) equityCurve[i] = equity;
+    } else {
+      equityCurve[idx] = equity;
+    }
+    spyAlloc = newSpyAlloc; tltAlloc = newTltAlloc;
+    prevMonthEnd = idx;
+  }
+
+  return { key:'p2', name: SYS_NAMES[1], color: SYS_COLORS[1], equityCurve, dates, monthlyRet, monthlyDates };
+}
+
+// P3: Yield Curve Regime Rotation — ISM trend + Core CPI → 4 quadrants
+function runP3(data) {
+  const { dateIndex: dates, fred, prices } = data;
+  const n = dates.length;
+
+  const ism     = ffill(fred.ism);
+  const coreCpi = ffill(fred.coreCpi);
+  const spy = ffill(prices.spy);
+  const tlt = ffill(prices.tlt);
+  const gld = ffill(prices.gld);
+
+  // ISM 3-month MA (63 trading days)
+  function ma63(arr) {
+    return arr.map((v,i) => {
+      if (i < 63) return NaN;
+      const sl = arr.slice(i-63, i).filter(isFinite);
+      return sl.length > 10 ? sl.reduce((a,b)=>a+b)/sl.length : NaN;
+    });
+  }
+  const ismMa = ma63(applyLag(ism, PUB_MONTHLY));
+  const ismTrend = ismMa.map((v,i) => {
+    if (i < 63) return NaN;
+    const prev = ismMa[i-63];
+    return isFinite(prev) && isFinite(v) ? v - prev : NaN;
+  });
+
+  const cpiLag = applyLag(coreCpi, PUB_MONTHLY);
+  const cpiMom = pctChange(cpiLag);
+
+  const monthEnds = monthEndIdx(dates);
+  let equity = 1.0;
+  const equityCurve = new Array(n).fill(NaN);
+  const monthlyRet = [], monthlyDates = [];
+  let prevMonthEnd = -1;
+  let sA=0.7, tA=0.2, gA=0.1; // SPY, TLT, GLD allocations
+
+  for (const idx of monthEnds) {
+    const trend = ismTrend[idx], cpi = cpiMom[idx];
+    let ns=0.7, nt=0.2, ng=0.1;
+    if (isFinite(trend) && isFinite(cpi)) {
+      const rising = trend > 0;
+      const inflationary = cpi > 0;
+      if (rising && !inflationary)       { ns=1.0; nt=0.0; ng=0.0; }  // Goldilocks → all SPY
+      else if (rising && inflationary)   { ns=0.5; nt=0.2; ng=0.3; }  // Overheating → SPY+GLD
+      else if (!rising && inflationary)  { ns=0.1; nt=0.3; ng=0.6; }  // Stagflation → GLD heavy
+      else                               { ns=0.1; nt=0.8; ng=0.1; }  // Recession → TLT heavy
+    }
+
+    if (prevMonthEnd >= 0) {
+      const rSpy = isFinite(spy[prevMonthEnd])&&isFinite(spy[idx])&&spy[prevMonthEnd]>0 ? (spy[idx]-spy[prevMonthEnd])/spy[prevMonthEnd] : 0;
+      const rTlt = isFinite(tlt[prevMonthEnd])&&isFinite(tlt[idx])&&tlt[prevMonthEnd]>0 ? (tlt[idx]-tlt[prevMonthEnd])/tlt[prevMonthEnd] : 0;
+      const rGld = isFinite(gld[prevMonthEnd])&&isFinite(gld[idx])&&gld[prevMonthEnd]>0 ? (gld[idx]-gld[prevMonthEnd])/gld[prevMonthEnd] : 0;
+      const ret = sA*rSpy + tA*rTlt + gA*rGld;
+      equity *= (1 + ret);
+      monthlyRet.push(ret);
+      monthlyDates.push(dates[idx]);
+      for (let i = prevMonthEnd + 1; i <= idx; i++) equityCurve[i] = equity;
+    } else {
+      equityCurve[idx] = equity;
+    }
+    sA=ns; tA=nt; gA=ng;
+    prevMonthEnd = idx;
+  }
+
+  return { key:'p3', name: SYS_NAMES[2], color: SYS_COLORS[2], equityCurve, dates, monthlyRet, monthlyDates };
+}
+
+// P4: FX Carry — long GBP/JPY, AUD/JPY, NZD/JPY; VIX proxy risk-off gate
+function runP4(data) {
+  const { dateIndex: dates, fred, fx } = data;
+  const n = dates.length;
+
+  const gbpjpy = ffill(fx.gbpjpy);
+  const audjpy = ffill(fx.audjpy);
+  const nzdjpy = ffill(fx.nzdjpy);
+  const credit  = ffill(fred.credit);
+
+  // Use credit spread z-score as VIX proxy for risk-off
+  const crZ = rollingZ(credit, 63);
+
+  const monthEnds = monthEndIdx(dates);
+  let equity = 1.0;
+  const equityCurve = new Array(n).fill(NaN);
+  const monthlyRet = [], monthlyDates = [];
+  let prevMonthEnd = -1;
+  let alloc = 1.0; // fraction of capital in carry (equal 1/3 each pair)
+
+  for (const idx of monthEnds) {
+    const cz = crZ[idx];
+    let newAlloc = 1.0;
+    if (isFinite(cz)) {
+      if (cz > 1.5)      newAlloc = 0.2;
+      else if (cz > 0.75) newAlloc = 0.5;
+      else if (cz > -0.5) newAlloc = 0.85;
+      else                newAlloc = 1.0;
+    }
+
+    if (prevMonthEnd >= 0) {
+      const rGbp = isFinite(gbpjpy[prevMonthEnd])&&isFinite(gbpjpy[idx])&&gbpjpy[prevMonthEnd]>0 ? (gbpjpy[idx]-gbpjpy[prevMonthEnd])/gbpjpy[prevMonthEnd] : 0;
+      const rAud = isFinite(audjpy[prevMonthEnd])&&isFinite(audjpy[idx])&&audjpy[prevMonthEnd]>0 ? (audjpy[idx]-audjpy[prevMonthEnd])/audjpy[prevMonthEnd] : 0;
+      const rNzd = isFinite(nzdjpy[prevMonthEnd])&&isFinite(nzdjpy[idx])&&nzdjpy[prevMonthEnd]>0 ? (nzdjpy[idx]-nzdjpy[prevMonthEnd])/nzdjpy[prevMonthEnd] : 0;
+      const carryRet = (rGbp + rAud + rNzd) / 3;
+      const ret = alloc * carryRet; // remainder sits in cash (0%)
+      equity *= (1 + ret);
+      monthlyRet.push(ret);
+      monthlyDates.push(dates[idx]);
+      for (let i = prevMonthEnd + 1; i <= idx; i++) equityCurve[i] = equity;
+    } else {
+      equityCurve[idx] = equity;
+    }
+    alloc = newAlloc;
+    prevMonthEnd = idx;
+  }
+
+  return { key:'p4', name: SYS_NAMES[3], color: SYS_COLORS[3], equityCurve, dates, monthlyRet, monthlyDates };
+}
+
+// P5: FX Cross-Sectional Momentum — long top 3, short bottom 3 of 7 USD pairs
+function runP5(data) {
+  const { dateIndex: dates, fx } = data;
+  const n = dates.length;
+
+  // Express all as USD return perspective: EUR/USD etc are already correct;
+  // for USD/JPY, USD/CAD, USD/CHF we invert (1/rate gives currency appreciation vs USD)
+  const eurusd = ffill(fx.eurusd);
+  const gbpusd = ffill(fx.gbpusd);
+  const audusd = ffill(fx.audusd);
+  const nzdusd = ffill(fx.nzdusd);
+  // Convert: 1/usdjpy etc. (not needed since we compute returns)
+  // For USD/JPY: if USD_JPY rises, USD strengthened → JPY weakened → JPY return = negative
+  // We store as returns, so jpyRet = -usdJpyReturn
+  const usdjpy = ffill(fx.usdjpy);
+  const usdcad = ffill(fx.usdcad);
+  const usdchf = ffill(fx.usdchf);
+
+  const PAIRS = [
+    { name:'EUR', arr: eurusd, inverted: false },
+    { name:'GBP', arr: gbpusd, inverted: false },
+    { name:'AUD', arr: audusd, inverted: false },
+    { name:'NZD', arr: nzdusd, inverted: false },
+    { name:'JPY', arr: usdjpy, inverted: true },  // inverted: JPY strength = USD_JPY falling
+    { name:'CAD', arr: usdcad, inverted: true },
+    { name:'CHF', arr: usdchf, inverted: true },
+  ];
+
+  // 63-day momentum for each pair (expressed as USD currency return)
+  function mom63(arr, inverted) {
+    return arr.map((v,i) => {
+      if (i < 63 || !isFinite(v) || !isFinite(arr[i-63]) || arr[i-63] === 0) return NaN;
+      const r = (v - arr[i-63]) / arr[i-63];
+      return inverted ? -r : r;
+    });
+  }
+
+  const monthEnds = monthEndIdx(dates);
+  let equity = 1.0;
+  const equityCurve = new Array(n).fill(NaN);
+  const monthlyRet = [], monthlyDates = [];
+  let prevMonthEnd = -1;
+  let longIdx = [], shortIdx = [];
+
+  for (const idx of monthEnds) {
+    const scores = PAIRS.map((p, pi) => {
+      const m = mom63(p.arr, p.inverted);
+      return { pi, score: m[idx] };
+    }).filter(x => isFinite(x.score)).sort((a,b)=>b.score-a.score);
+
+    if (prevMonthEnd >= 0 && longIdx.length > 0) {
+      // Compute monthly return: long top 3 - short bottom 3
+      let ret = 0;
+      for (const pi of longIdx) {
+        const p = PAIRS[pi];
+        const p0 = p.arr[prevMonthEnd], p1 = p.arr[idx];
+        if (isFinite(p0)&&isFinite(p1)&&p0>0) {
+          const r = (p1-p0)/p0 * (p.inverted ? -1 : 1);
+          ret += r / 3;
+        }
+      }
+      for (const pi of shortIdx) {
+        const p = PAIRS[pi];
+        const p0 = p.arr[prevMonthEnd], p1 = p.arr[idx];
+        if (isFinite(p0)&&isFinite(p1)&&p0>0) {
+          const r = (p1-p0)/p0 * (p.inverted ? -1 : 1);
+          ret -= r / 3; // shorting: negative return = profit
+        }
+      }
+      equity *= (1 + ret);
+      monthlyRet.push(ret);
+      monthlyDates.push(dates[idx]);
+      for (let i = prevMonthEnd + 1; i <= idx; i++) equityCurve[i] = equity;
+    } else {
+      equityCurve[idx] = equity;
+    }
+
+    // Update longs/shorts
+    if (scores.length >= 6) {
+      longIdx  = scores.slice(0, 3).map(x => x.pi);
+      shortIdx = scores.slice(-3).map(x => x.pi);
+    } else {
+      longIdx = []; shortIdx = [];
+    }
+    prevMonthEnd = idx;
+  }
+
+  return { key:'p5', name: SYS_NAMES[4], color: SYS_COLORS[4], equityCurve, dates, monthlyRet, monthlyDates };
+}
+
+// P6: Gold Macro Divergence — OLS log(GLD) ~ DFII10 + DTWEXBGS residual z-score
+function runP6(data) {
+  const { dateIndex: dates, fred, prices } = data;
+  const n = dates.length;
+
+  const gld      = ffill(prices.gld);
+  const realyield= ffill(fred.realyield);
+  const dxy      = ffill(fred.dxy);
+
+  const logGld = gld.map(v => isFinite(v) && v > 0 ? Math.log(v) : NaN);
+  const ryLag  = applyLag(realyield, 0);
+  const dxyLag = applyLag(dxy, 0);
+
+  const residuals = rollingOLSResidual(logGld, ryLag, dxyLag, 252);
+  const residZ    = rollingZ(residuals, 126);
+
+  const monthEnds = monthEndIdx(dates);
+  let equity = 1.0;
+  const equityCurve = new Array(n).fill(NaN);
+  const monthlyRet = [], monthlyDates = [];
+  let prevMonthEnd = -1;
+  let alloc = 0.5; // GLD allocation (remainder in cash)
+
+  for (const idx of monthEnds) {
+    const rz = residZ[idx];
+    let newAlloc = 0.5;
+    if (isFinite(rz)) {
+      if (rz < -1.5)      newAlloc = 1.0;   // very undervalued → max long
+      else if (rz < -0.5) newAlloc = 0.75;
+      else if (rz <  0.5) newAlloc = 0.5;
+      else if (rz <  1.5) newAlloc = 0.25;  // overvalued → reduce
+      else                newAlloc = 0.0;   // very overvalued → flat
+    }
+
+    if (prevMonthEnd >= 0) {
+      const g0=gld[prevMonthEnd], g1=gld[idx];
+      const gldRet = isFinite(g0)&&isFinite(g1)&&g0>0 ? (g1-g0)/g0 : 0;
+      const ret = alloc * gldRet;
+      equity *= (1 + ret);
+      monthlyRet.push(ret);
+      monthlyDates.push(dates[idx]);
+      for (let i = prevMonthEnd + 1; i <= idx; i++) equityCurve[i] = equity;
+    } else {
+      equityCurve[idx] = equity;
+    }
+    alloc = newAlloc;
+    prevMonthEnd = idx;
+  }
+
+  return { key:'p6', name: SYS_NAMES[5], color: SYS_COLORS[5], equityCurve, dates, monthlyRet, monthlyDates };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Combined Book
+// ═══════════════════════════════════════════════════════════════════════════════
+function computeCombined(results, weights) {
+  // Normalize weights to sum to 1
+  const sys = SYS_KEYS.map((k,i) => ({ ...results[k], w: weights[i] }));
+  const totalW = sys.reduce((a,s)=>a+s.w, 0);
+  if (totalW === 0) return null;
+  const ws = sys.map(s => s.w / totalW);
+
+  // Align on common monthly dates
+  const allDates = [...new Set(sys.flatMap(s => s.monthlyDates))].sort();
+  const monthlyRet = allDates.map(d => {
+    let ret = 0;
+    for (let i = 0; i < sys.length; i++) {
+      const di = sys[i].monthlyDates.indexOf(d);
+      if (di >= 0) ret += ws[i] * sys[i].monthlyRet[di];
+    }
+    return ret;
+  });
+
+  let equity = 1.0;
+  const cumulativeEq = monthlyRet.map(r => { equity *= (1+r); return equity; });
+
+  return { dates: allDates, monthlyRet, cumulativeEq, weights: ws };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Chart helpers
+// ═══════════════════════════════════════════════════════════════════════════════
+function _chartOpts(gridCol = 'rgba(255,255,255,0.06)', textCol = '#94a3b8', yLabel = '') {
+  return {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false,
+      backgroundColor: '#1e293b', titleColor: '#e2e8f0', bodyColor: '#94a3b8', borderColor: '#334155', borderWidth: 1 } },
+    scales: {
+      x: { ticks: { color: textCol, font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 8 },
+           grid: { color: gridCol } },
+      y: { ticks: { color: textCol, font: { family: 'DM Mono', size: 10 } },
+           grid: { color: gridCol }, title: { display: !!yLabel, text: yLabel, color: textCol, font: { family: 'DM Mono', size: 10 } } },
+    },
+  };
+}
+function destroyChart(id) {
+  if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
+}
+function makeChart(id, type, labels, datasets, extraOpts = {}) {
+  destroyChart(id);
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  _charts[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets },
+    options: { ..._chartOpts(), ...extraOpts },
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Rendering
+// ═══════════════════════════════════════════════════════════════════════════════
+function fmt(v, decimals=1, suffix='') {
+  if (!isFinite(v)) return '—';
+  return v.toFixed(decimals) + suffix;
+}
+function fmtPct(v) { return isFinite(v) ? (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : '—'; }
+function colorClass(v) { return !isFinite(v) ? '' : v >= 0 ? 'green' : 'red'; }
+
+function renderKPIs(combined) {
+  const mr = combined.monthlyRet;
+  const eq = combined.cumulativeEq;
+  const sh = sharpe(mr);
+  const ca = cagr(eq[eq.length-1], mr.length);
+  const dd = maxDD(eq);
+  const win = mr.filter(v=>v>0).length / mr.filter(isFinite).length * 100;
+
+  document.getElementById('kpiRow').style.display = 'block';
+  document.getElementById('sysLegend').style.display = 'flex';
+  document.getElementById('mainTabs').style.display = 'flex';
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="bt-kpi"><div class="bt-kpi-label">Combined CAGR</div>
+      <div class="bt-kpi-value ${ca>=0?'green':'red'}">${fmtPct(ca)}</div>
+      <div class="bt-kpi-sub">Annualized return</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Sharpe Ratio</div>
+      <div class="bt-kpi-value ${sh>=1?'green':sh>=0.5?'blue':'red'}">${fmt(sh,2)}</div>
+      <div class="bt-kpi-sub">Risk-adjusted return</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div>
+      <div class="bt-kpi-value red">${fmt(dd,1)}%</div>
+      <div class="bt-kpi-sub">Peak-to-trough</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div>
+      <div class="bt-kpi-value ${win>=55?'green':'amber'}">${fmt(win,0)}%</div>
+      <div class="bt-kpi-sub">Months with gain</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Final Equity</div>
+      <div class="bt-kpi-value blue">${fmt(eq[eq.length-1],2)}×</div>
+      <div class="bt-kpi-sub">From $1 invested</div></div>
+  `;
+
+  // Secondary row: individual system Sharpes
+  const secHTML = SYS_KEYS.map((k,i) => {
+    const r = _results[k];
+    const sh = r ? sharpe(r.monthlyRet) : NaN;
+    return `<div class="bt-sec">
+      <span class="bt-sec-lbl"><span class="swatch" style="background:${SYS_COLORS[i]};display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;"></span>${SYS_NAMES[i]}</span>
+      <span class="bt-sec-val" style="color:${sh>=0.5?'var(--green)':sh>=0.3?'var(--amber)':'var(--red)'}">${fmt(sh,2)}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('secGrid').innerHTML = secHTML;
+}
+
+function renderCombinedChart() {
+  const sys = SYS_KEYS.map((k,i) => _results[k]).filter(Boolean);
+  if (!sys.length || !_combined) return;
+
+  // Use SPY dates as X axis labels (thin them)
+  const dates = _combined.dates;
+  const labels = dates.map((d,i) => i % 12 === 0 ? d.substring(0,7) : '');
+
+  const datasets = SYS_KEYS.map((k,i) => {
+    const r = _results[k];
+    if (!r) return null;
+    // Map system equity curve onto monthly dates
+    const eq = r.monthlyDates.map((_,di) => {
+      let v = 1.0;
+      for (let j=0; j<=di; j++) v *= (1 + r.monthlyRet[j]);
+      return v;
+    });
+    // Align to combined dates
+    const aligned = dates.map(d => {
+      const di = r.monthlyDates.indexOf(d);
+      if (di < 0) return NaN;
+      let v = 1.0;
+      for (let j=0; j<=di; j++) v *= (1 + r.monthlyRet[j]);
+      return v;
+    });
+    return {
+      label: SYS_NAMES[i],
+      data: aligned,
+      borderColor: SYS_COLORS[i],
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0,
+    };
+  }).filter(Boolean);
+
+  datasets.push({
+    label: 'Combined Book',
+    data: _combined.cumulativeEq,
+    borderColor: COMBINED_COLOR,
+    backgroundColor: 'rgba(226,232,240,0.08)',
+    borderWidth: 3,
+    pointRadius: 0,
+    tension: 0,
+    fill: true,
+  });
+
+  makeChart('chartCombined', 'line', labels, datasets, {
+    plugins: { legend: { display: true, labels: { color: '#94a3b8', font: { family: 'DM Mono', size: 10 }, boxWidth: 14 } } },
+  });
+}
+
+function renderDDChart() {
+  if (!_combined) return;
+  const ddSeries = drawdownSeries(_combined.cumulativeEq);
+  makeChart('chartDD', 'line', _combined.dates.map((d,i)=>i%12===0?d.substring(0,7):''), [{
+    label: 'Combined Drawdown',
+    data: ddSeries,
+    borderColor: '#ef4444',
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderWidth: 1.5,
+    pointRadius: 0,
+    fill: true,
+    tension: 0,
+  }], { scales: { y: { ticks: { color:'#94a3b8', font:{family:'DM Mono',size:10}, callback: v=>v+'%' }, grid:{color:'rgba(255,255,255,0.06)'} }, x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10},maxTicksLimit:8}, grid:{color:'rgba(255,255,255,0.06)'} } } });
+}
+
+function renderMonthlyReturnsTable() {
+  if (!_combined) return;
+  const tbody = document.querySelector('#combinedReturnsTable tbody');
+  let html = '';
+  let cum = 1.0;
+  for (let i = 0; i < _combined.monthlyRet.length; i++) {
+    cum = _combined.cumulativeEq[i];
+    const r = _combined.monthlyRet[i];
+    const cls = r >= 0 ? 'pos' : 'neg';
+    html += `<tr>
+      <td>${_combined.dates[i].substring(0,7)}</td>
+      <td class="num ${cls}">${fmtPct(r*100)}</td>
+      <td class="num">${fmt(cum,3)}×</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+function renderSliders() {
+  const grid = document.getElementById('sliderGrid');
+  grid.innerHTML = SYS_KEYS.map((k,i) => {
+    const r = _results[k];
+    const sh = r ? sharpe(r.monthlyRet) : NaN;
+    return `<div class="slider-card">
+      <div class="slider-label">
+        <span class="slider-name" style="color:${SYS_COLORS[i]}">${SYS_NAMES[i]}</span>
+        <span class="slider-val" id="sliderVal${i}">${fmt(_weights[i]*100,0)}%</span>
+      </div>
+      <input type="range" class="dv-range" min="0" max="200" step="5"
+        value="${Math.round(_weights[i]*100)}"
+        oninput="updateWeight(${i}, this.value)">
+      <span class="slider-sub">Sharpe: ${fmt(sh,2)} | DD: ${r?fmt(maxDD(r.monthlyRet.reduce((acc,v,j)=>{let e=acc.length?acc[acc.length-1]*(1+v):1+v;acc.push(e);return acc;},[]),0)+'%':'—'}</span>
+    </div>`;
+  }).join('');
+}
+
+function updateWeight(i, val) {
+  _weights[i] = parseFloat(val) / 100;
+  document.getElementById('sliderVal' + i).textContent = fmt(_weights[i]*100, 0) + '%';
+  _combined = computeCombined(_results, _weights);
+  renderCombinedChart();
+  renderDDChart();
+  renderMonthlyReturnsTable();
+  renderKPIs(_combined);
+  renderSizingTable();
+  renderAlpha();
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+}
+
+function applyPreset(preset) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('preset'+preset.charAt(0).toUpperCase()+preset.slice(1)).classList.add('active');
+
+  if (preset === 'ew') {
+    _weights = [1,1,1,1,1,1];
+  } else if (preset === 'rp') {
+    // Risk parity: weight ∝ 1/vol(monthly ret)
+    const vols = SYS_KEYS.map(k => {
+      const mr = _results[k]?.monthlyRet ?? [];
+      const fin = mr.filter(isFinite);
+      if (fin.length < 3) return 1;
+      const mu = fin.reduce((a,b)=>a+b)/fin.length;
+      return Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2,0)/fin.length) || 1;
+    });
+    const invVols = vols.map(v => 1/v);
+    const sumInv = invVols.reduce((a,b)=>a+b);
+    _weights = invVols.map(v => v/sumInv * 6);
+  } else if (preset === 'ms') {
+    // Max Sharpe: weight ∝ Sharpe (positive only)
+    const sharpes = SYS_KEYS.map(k => Math.max(0, sharpe(_results[k]?.monthlyRet ?? [])));
+    const sumS = sharpes.reduce((a,b)=>a+b) || 1;
+    _weights = sharpes.map(s => s/sumS * 6);
+  } else if (preset === 'md') {
+    // Min Drawdown: weight ∝ 1/|maxDD| (less negative DD = more weight)
+    const dds = SYS_KEYS.map(k => {
+      const r = _results[k]; if (!r) return 1;
+      let eq=1, peak=1, worst=0;
+      for (const v of r.monthlyRet) { eq*=(1+v); if(eq>peak)peak=eq; worst=Math.min(worst,(eq-peak)/peak); }
+      return Math.abs(worst) || 0.01;
+    });
+    const invDds = dds.map(d => 1/d);
+    const sumD = invDds.reduce((a,b)=>a+b);
+    _weights = invDds.map(v => v/sumD * 6);
+  }
+
+  renderSliders();
+  _combined = computeCombined(_results, _weights);
+  renderCombinedChart();
+  renderDDChart();
+  renderMonthlyReturnsTable();
+  renderKPIs(_combined);
+  renderSizingTable();
+  renderAlpha();
+}
+
+// ── Sizing table ──────────────────────────────────────────────────────────────
+function renderSizingTable() {
+  const totalW = _weights.reduce((a,b)=>a+b,0) || 1;
+  const ws = _weights.map(w => w/totalW);
+  const combSh = _combined ? sharpe(_combined.monthlyRet) : NaN;
+
+  let html = '';
+  for (let i = 0; i < SYS_KEYS.length; i++) {
+    const r = _results[SYS_KEYS[i]];
+    const mr = r?.monthlyRet ?? [];
+    const sh = sharpe(mr); const ca = cagr(r?.monthlyRet ? (() => { let e=1; return mr.map(v=>{ e*=(1+v); return e; }) })()[mr.length-1] : 1, mr.length);
+    let mdd = 0; if(r){ let eq=1,pk=1; for(const v of mr){eq*=(1+v);if(eq>pk)pk=eq;mdd=Math.min(mdd,(eq-pk)/pk);} }
+    const contrib = isFinite(combSh) && isFinite(sh) && combSh > 0 ? ws[i]*sh/combSh*100 : NaN;
+    const divRatio = mr.length > 0 && isFinite(sh) ? (() => { const indVol = (() => { const fin=mr.filter(isFinite); const mu=fin.reduce((a,b)=>a+b,0)/fin.length; return Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2,0)/fin.length); })(); return indVol > 0 ? (combSh / sh) : NaN; })() : NaN;
+    html += `<tr>
+      <td><span class="swatch" style="background:${SYS_COLORS[i]};display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;"></span>${SYS_NAMES[i]}</td>
+      <td class="num">${fmt(ws[i]*100,1)}%</td>
+      <td class="num ${ca>=0?'pos':'neg'}">${fmtPct(ca)}</td>
+      <td class="num ${sh>=0.5?'pos':sh>=0.3?'neu':'neg'}">${fmt(sh,2)}</td>
+      <td class="num neg">${fmt(mdd*100,1)}%</td>
+      <td class="num">${isFinite(contrib)?fmt(contrib,1)+'%':'—'}</td>
+      <td class="num ${divRatio>1?'pos':'neu'}">${fmt(divRatio,2)}</td>
+    </tr>`;
+  }
+  document.getElementById('sizingBody').innerHTML = html;
+
+  // Diversification dividend chart
+  if (_combined) {
+    const weightedAvgSharpe = SYS_KEYS.reduce((a,k,i) => a + ws[i] * sharpe(_results[k]?.monthlyRet??[]), 0);
+    const combSharpe = sharpe(_combined.monthlyRet);
+    const dividend = combSharpe - weightedAvgSharpe;
+    document.getElementById('divDividendMsg').innerHTML =
+      `<strong>Diversification Dividend:</strong> Combined Sharpe ${fmt(combSharpe,2)} vs Weighted-Avg Sharpe ${fmt(weightedAvgSharpe,2)} = <strong style="color:${dividend>=0?'var(--green)':'var(--red)'}">${dividend>=0?'+':''}${fmt(dividend,2)}</strong> improvement from decorrelation.`;
+
+    // Bar comparison chart
+    const sysSharpes = SYS_KEYS.map(k => sharpe(_results[k]?.monthlyRet??[]));
+    makeChart('chartDivDividend', 'bar',
+      [...SYS_NAMES, 'Wtd Avg', 'Combined'],
+      [{
+        label: 'Sharpe Ratio',
+        data: [...sysSharpes, weightedAvgSharpe, combSharpe],
+        backgroundColor: [...SYS_COLORS, '#64748b', COMBINED_COLOR],
+        borderWidth: 0,
+        borderRadius: 4,
+      }],
+      { plugins: { legend: { display: false } }, scales: { y: { ticks: { color:'#94a3b8', font:{family:'DM Mono',size:10} }, grid:{color:'rgba(255,255,255,0.06)'} }, x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10}}, grid:{display:false} } } }
+    );
+  }
+}
+
+// ── Correlation matrix ────────────────────────────────────────────────────────
+function corrColor(r) {
+  if (!isFinite(r)) return 'rgba(0,0,0,0)';
+  const abs = Math.abs(r);
+  const alpha = Math.min(0.85, abs * 1.1);
+  if (r > 0) return `rgba(239,68,68,${alpha})`;
+  return `rgba(59,130,246,${alpha})`;
+}
+
+function renderCorrelationMatrix() {
+  const sysArr = SYS_KEYS.map(k => _results[k]);
+  if (!sysArr.every(Boolean)) return;
+
+  // Build common date → index for each system's monthly dates
+  const allMonths = [...new Set(sysArr.flatMap(s=>s.monthlyDates))].sort();
+  const retByMonth = sysArr.map(s => allMonths.map(d => {
+    const i = s.monthlyDates.indexOf(d);
+    return i >= 0 ? s.monthlyRet[i] : NaN;
+  }));
+
+  let html = '<table class="corr-matrix"><thead><tr><th></th>';
+  for (let i=0;i<6;i++) html += `<th>P${i+1}</th>`;
+  html += '</tr></thead><tbody>';
+
+  const corrs = [];
+  for (let i=0;i<6;i++) {
+    corrs[i] = [];
+    html += `<tr><th style="text-align:left;color:${SYS_COLORS[i]}">P${i+1}</th>`;
+    for (let j=0;j<6;j++) {
+      const r = i===j ? 1.0 : pearson(retByMonth[i], retByMonth[j]);
+      corrs[i][j] = r;
+      const bg = i===j ? 'rgba(255,255,255,0.06)' : corrColor(r);
+      const txt = i===j ? '1.00' : isFinite(r) ? r.toFixed(2) : '—';
+      const textColor = i===j ? 'var(--text3)' : Math.abs(r)>0.4 ? '#fff' : 'var(--text)';
+      html += `<td style="background:${bg};color:${textColor}">${txt}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('corrWrap').innerHTML = html;
+
+  // Populate scatter selects
+  const sx = document.getElementById('scatterX'), sy = document.getElementById('scatterY');
+  sx.innerHTML = SYS_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
+  sy.innerHTML = SYS_NAMES.map((n,i)=>`<option value="${i}" ${i===1?'selected':''}>${n}</option>`).join('');
+}
+
+function renderScatter() {
+  const xi = parseInt(document.getElementById('scatterX').value);
+  const yi = parseInt(document.getElementById('scatterY').value);
+  const sxRes = _results[SYS_KEYS[xi]], syRes = _results[SYS_KEYS[yi]];
+  if (!sxRes || !syRes) return;
+  const allMonths = [...new Set([...sxRes.monthlyDates, ...syRes.monthlyDates])].sort();
+  const xRets = allMonths.map(d => { const i=sxRes.monthlyDates.indexOf(d); return i>=0?sxRes.monthlyRet[i]:NaN; });
+  const yRets = allMonths.map(d => { const i=syRes.monthlyDates.indexOf(d); return i>=0?syRes.monthlyRet[i]:NaN; });
+  const pts = xRets.map((x,i)=>({x:x*100,y:yRets[i]*100})).filter(p=>isFinite(p.x)&&isFinite(p.y));
+  const r = pearson(xRets, yRets);
+  destroyChart('chartScatter');
+  const ctx = document.getElementById('chartScatter')?.getContext('2d');
+  if (!ctx) return;
+  _charts['chartScatter'] = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets: [{ label: `ρ=${fmt(r,2)}`, data: pts,
+      backgroundColor: SYS_COLORS[xi]+'99', pointRadius: 4, pointHoverRadius: 6 }] },
+    options: {
+      ..._chartOpts(), animation: { duration: 200 },
+      plugins: { legend: { display: true, labels: { color:'#94a3b8', font:{family:'DM Mono',size:11}, boxWidth:0 } } },
+      scales: {
+        x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10},callback:v=>v+'%'}, grid:{color:'rgba(255,255,255,0.06)'}, title:{display:true,text:SYS_NAMES[xi]+' monthly return %',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+        y: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10},callback:v=>v+'%'}, grid:{color:'rgba(255,255,255,0.06)'}, title:{display:true,text:SYS_NAMES[yi]+' monthly return %',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+      },
+    },
+  });
+}
+
+// ── Rolling correlations ──────────────────────────────────────────────────────
+function renderRollingCorr() {
+  const p1 = _results.p1; if (!p1) return;
+  const allMonths = [...new Set([p1, ...SYS_KEYS.slice(1).map(k=>_results[k])].flatMap(s=>s?.monthlyDates??[]))].sort();
+  const p1Rets = allMonths.map(d => { const i=p1.monthlyDates.indexOf(d); return i>=0?p1.monthlyRet[i]:NaN; });
+
+  const datasets = SYS_KEYS.slice(1).map((k,i) => {
+    const r = _results[k]; if (!r) return null;
+    const rets = allMonths.map(d => { const j=r.monthlyDates.indexOf(d); return j>=0?r.monthlyRet[j]:NaN; });
+    const rolling = rollingPearsonMonthly(p1Rets, rets, 12);
+    return { label: SYS_NAMES[i+1], data: rolling, borderColor: SYS_COLORS[i+1], borderWidth: 1.5, pointRadius: 0, tension: 0.2 };
+  }).filter(Boolean);
+
+  const labels = allMonths.map((d,i)=>i%12===0?d.substring(0,7):'');
+  makeChart('chartRollingCorr', 'line', labels, datasets, {
+    plugins: { legend: { display: true, labels: { color:'#94a3b8', font:{family:'DM Mono',size:10}, boxWidth:12 } } },
+    scales: {
+      y: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10}}, grid:{color:'rgba(255,255,255,0.06)'},
+           min:-1, max:1, title:{display:true,text:'Correlation vs P1',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+      x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10},maxTicksLimit:8}, grid:{color:'rgba(255,255,255,0.06)'} },
+    },
+  });
+}
+
+function renderRollingSharpe() {
+  const allMonths = [...new Set(SYS_KEYS.flatMap(k=>_results[k]?.monthlyDates??[]))].sort();
+  const WIN = 12;
+  const datasets = SYS_KEYS.map((k,i) => {
+    const r = _results[k]; if (!r) return null;
+    const rets = allMonths.map(d => { const j=r.monthlyDates.indexOf(d); return j>=0?r.monthlyRet[j]:NaN; });
+    const rolling = rets.map((_,idx) => {
+      if (idx < WIN-1) return NaN;
+      const sl = rets.slice(idx-WIN+1, idx+1).filter(isFinite);
+      return sl.length >= 6 ? sharpe(sl) : NaN;
+    });
+    return { label: SYS_NAMES[i], data: rolling, borderColor: SYS_COLORS[i], borderWidth: 1.5, pointRadius: 0, tension: 0.2 };
+  }).filter(Boolean);
+  const labels = allMonths.map((d,i)=>i%12===0?d.substring(0,7):'');
+  makeChart('chartRollingSharpe', 'line', labels, datasets, {
+    plugins: { legend: { display: true, labels: { color:'#94a3b8', font:{family:'DM Mono',size:10}, boxWidth:12 } } },
+    scales: {
+      y: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10}}, grid:{color:'rgba(255,255,255,0.06)'},
+           title:{display:true,text:'Rolling 12M Sharpe',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+      x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10},maxTicksLimit:8}, grid:{color:'rgba(255,255,255,0.06)'} },
+    },
+  });
+}
+
+// ── Alpha attribution ─────────────────────────────────────────────────────────
+function renderAlpha() {
+  const totalW = _weights.reduce((a,b)=>a+b, 0) || 1;
+  const ws = _weights.map(w => w/totalW);
+
+  // PnL contribution = weight × sum of monthly returns
+  const contribs = SYS_KEYS.map((k,i) => {
+    const mr = _results[k]?.monthlyRet ?? [];
+    const fin = mr.filter(isFinite);
+    const total = fin.reduce((a,b)=>a+b, 0);
+    return ws[i] * total;
+  });
+  const sumContrib = contribs.reduce((a,b)=>a+Math.abs(b), 0) || 1;
+
+  const barsDiv = document.getElementById('alphaBars');
+  barsDiv.innerHTML = SYS_KEYS.map((k,i) => {
+    const pct = contribs[i] / sumContrib * 100;
+    return `<div class="alpha-row">
+      <span class="alpha-lbl"><span class="swatch" style="background:${SYS_COLORS[i]};display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;"></span>${SYS_NAMES[i]}</span>
+      <div class="alpha-track"><div class="alpha-fill" style="width:${Math.abs(pct)}%;background:${contribs[i]>=0?SYS_COLORS[i]:'#ef4444'}"></div></div>
+      <span class="alpha-pct ${contribs[i]>=0?'':'neg'}">${fmt(pct,1)}%</span>
+    </div>`;
+  }).join('');
+
+  const maxPct = Math.max(...contribs.map((c,i)=>contribs[i]/sumContrib*100));
+  document.getElementById('alphaWarn').style.display = maxPct > 50 ? 'flex' : 'none';
+
+  // Vol contribution: weight² × var_i + 2Σ weight_i * weight_j * cov_ij
+  const allMonths = [...new Set(SYS_KEYS.flatMap(k=>_results[k]?.monthlyDates??[]))].sort();
+  const retMatrix = SYS_KEYS.map(k => {
+    const r = _results[k]; if (!r) return allMonths.map(()=>NaN);
+    return allMonths.map(d => { const i=r.monthlyDates.indexOf(d); return i>=0?r.monthlyRet[i]:NaN; });
+  });
+  const combRets = allMonths.map((_,mi) => SYS_KEYS.reduce((a,k,i)=>{ const v=retMatrix[i][mi]; return a+(isFinite(v)?ws[i]*v:0); }, 0));
+  const combVol = (() => { const fin=combRets.filter(isFinite); const mu=fin.reduce((a,b)=>a+b)/fin.length; return Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2)/fin.length); })();
+
+  // Marginal contribution to risk: cov(sys_i_weighted, combined) / combVol
+  const volContribs = SYS_KEYS.map((k,i) => {
+    const ret_i = retMatrix[i];
+    const cov = allMonths.reduce((a,_,mi) => {
+      if (!isFinite(ret_i[mi])||!isFinite(combRets[mi])) return a;
+      return { n: a.n+1, s: a.s+(ws[i]*ret_i[mi])*(combRets[mi]) };
+    }, {n:0,s:0});
+    return cov.n > 2 ? cov.s/cov.n : NaN;
+  });
+  const combVar = combVol**2;
+  const volContribPcts = volContribs.map(c => isFinite(c)&&combVar>0 ? c/combVar*100 : NaN);
+  const sumVolPct = volContribPcts.filter(isFinite).reduce((a,b)=>a+b,0)||1;
+
+  document.getElementById('alphaBarsVol').innerHTML = SYS_KEYS.map((k,i) => {
+    const pct = isFinite(volContribPcts[i]) ? volContribPcts[i] : 0;
+    return `<div class="alpha-row">
+      <span class="alpha-lbl"><span class="swatch" style="background:${SYS_COLORS[i]};display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;"></span>${SYS_NAMES[i]}</span>
+      <div class="alpha-track"><div class="alpha-fill" style="width:${Math.abs(pct/sumVolPct*100)}%;background:${SYS_COLORS[i]}"></div></div>
+      <span class="alpha-pct">${fmt(pct/sumVolPct*100,1)}%</span>
+    </div>`;
+  }).join('');
+
+  // Annual stacked chart
+  const years = [...new Set(SYS_KEYS.flatMap(k=>(_results[k]?.monthlyDates??[]).map(d=>d.substring(0,4))))].sort();
+  const annualDatasets = SYS_KEYS.map((k,i) => {
+    const r = _results[k]; if (!r) return null;
+    const vals = years.map(yr => {
+      const rets = r.monthlyDates.filter(d=>d.startsWith(yr)).map((d,_,arr) => {
+        const j=r.monthlyDates.indexOf(d); return j>=0?r.monthlyRet[j]:NaN;
+      }).filter(isFinite);
+      return ws[i] * rets.reduce((a,b)=>a+b, 0) * 100;
+    });
+    return { label: SYS_NAMES[i], data: vals, backgroundColor: SYS_COLORS[i], stack:'a', borderWidth: 0, borderRadius: 2 };
+  }).filter(Boolean);
+
+  makeChart('chartAlphaStacked', 'bar', years, annualDatasets, {
+    plugins: { legend: { display: true, labels: { color:'#94a3b8', font:{family:'DM Mono',size:10}, boxWidth:12 } } },
+    scales: {
+      x: { stacked:true, ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10}}, grid:{display:false} },
+      y: { stacked:true, ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10},callback:v=>v+'%'}, grid:{color:'rgba(255,255,255,0.06)'} },
+    },
+  });
+}
+
+// ── System detail panels ──────────────────────────────────────────────────────
+function renderSystemPanel(key) {
+  const i = SYS_KEYS.indexOf(key);
+  const r = _results[key]; if (!r) return;
+
+  const mr = r.monthlyRet;
+  const sh = sharpe(mr);
+  let eq=1, eqs=[]; mr.forEach(v=>{eq*=(1+v);eqs.push(eq);});
+  const ca = cagr(eqs[eqs.length-1], mr.length);
+  let peak=1, mdd=0; eqs.forEach(v=>{if(v>peak)peak=v;mdd=Math.min(mdd,(v-peak)/peak);});
+  const win = mr.filter(v=>v>0).length / mr.filter(isFinite).length * 100;
+
+  const descs = [
+    'Five-factor macro composite (net liquidity, yield curve, HY credit, real yield, ISM). Monthly z-score scoring drives SPY allocation across four bands: 25%, 50%, 75%, 100%. Longs-only design avoids short-squeeze risk on a fundamentally upward-trending asset with structural equity premium.',
+    'Credit-equity divergence tracks the spread between HY credit conditions (BAMLH0A0HYM2 z-score) and SPY short-term momentum. Risk-on divergence (credit improving + equity rising) favours SPY; risk-off divergence rotates to TLT. Captures regime transitions before they fully express in price.',
+    'ISM Manufacturing 3-month trend combined with Core CPI momentum creates four macro quadrants: Goldilocks (SPY 100%), Overheating (SPY+GLD), Stagflation (GLD heavy), Recession (TLT heavy). Provides structural diversification from pure equity exposure.',
+    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. Carry trades earn the interest rate differential during risk-on regimes. HY credit z-score acts as risk-off gate: high credit stress → reduce to 20% allocation, protecting against rapid carry unwind.',
+    'Cross-sectional 63-day momentum across 7 major currencies expressed in USD return terms. Long top-3 / short bottom-3 produces a pure momentum factor orthogonal to carry and macro. Long-short structure removes directionality — this is a relative value strategy.',
+    'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over rolling 252-day window. When gold trades at a significant discount to its macro-implied fair value (residual z-score < −1), increase allocation. Captures gold mispricing vs macro fundamentals.',
+  ];
+
+  const area = document.getElementById('sys-panel-area');
+  area.innerHTML = `
+    <div class="dv-info" style="margin-bottom:12px;">${descs[i]}</div>
+    <div class="bt-kpi-grid">
+      <div class="bt-kpi"><div class="bt-kpi-label">CAGR</div><div class="bt-kpi-value ${ca>=0?'green':'red'}">${fmtPct(ca)}</div></div>
+      <div class="bt-kpi"><div class="bt-kpi-label">Sharpe</div><div class="bt-kpi-value ${sh>=0.5?'green':sh>=0.3?'blue':'red'}">${fmt(sh,2)}</div></div>
+      <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div><div class="bt-kpi-value red">${fmt(mdd*100,1)}%</div></div>
+      <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div><div class="bt-kpi-value ${win>=55?'green':'amber'}">${fmt(win,0)}%</div></div>
+      <div class="bt-kpi"><div class="bt-kpi-label">Final Equity</div><div class="bt-kpi-value blue">${fmt(eqs[eqs.length-1],2)}×</div></div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr" style="color:${SYS_COLORS[i]}">${r.name} — Equity Curve</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap"><canvas id="chartSys${key}"></canvas></div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Annual Returns</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl" id="sysTable${key}">
+            <thead><tr><th>Year</th><th class="num">Return</th><th class="num">Months +</th><th class="num">Months −</th><th class="num">Best Mo</th><th class="num">Worst Mo</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+
+  // Draw equity curve
+  setTimeout(() => {
+    const labels = r.monthlyDates.map((d,i)=>i%12===0?d.substring(0,7):'');
+    makeChart(`chartSys${key}`, 'line', labels, [{
+      label: r.name, data: eqs, borderColor: SYS_COLORS[i],
+      backgroundColor: SYS_COLORS[i]+'18', borderWidth: 2, pointRadius: 0, fill: true, tension: 0,
+    }]);
+
+    // Annual table
+    const years = [...new Set(r.monthlyDates.map(d=>d.substring(0,4)))].sort();
+    let tbody = '';
+    for (const yr of years) {
+      const yRets = r.monthlyDates.map((d,j)=>d.startsWith(yr)?r.monthlyRet[j]:null).filter(v=>v!==null&&isFinite(v));
+      const ann = (yRets.reduce((a,b)=>a*(1+b),1)-1)*100;
+      const pos = yRets.filter(v=>v>0).length, neg = yRets.filter(v=>v<=0).length;
+      const best = Math.max(...yRets)*100, worst = Math.min(...yRets)*100;
+      tbody += `<tr><td>${yr}</td><td class="num ${ann>=0?'pos':'neg'}">${fmtPct(ann)}</td>
+        <td class="num pos">${pos}</td><td class="num neg">${neg}</td>
+        <td class="num pos">${fmtPct(best)}</td><td class="num neg">${fmtPct(worst)}</td></tr>`;
+    }
+    document.querySelector(`#sysTable${key} tbody`).innerHTML = tbody;
+  }, 50);
+}
+
+function switchSys(key) {
+  document.querySelectorAll('.sys-tab').forEach(t => {
+    const isActive = t.dataset.sys === key;
+    t.classList.toggle('active', isActive);
+    t.style.background = isActive ? SYS_COLORS[SYS_KEYS.indexOf(key)] : '';
+    t.style.color = isActive ? '#fff' : '';
+    t.style.borderColor = isActive ? 'transparent' : '';
+  });
+  renderSystemPanel(key);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Tab switching
+// ═══════════════════════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.dv-tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+  document.querySelectorAll('.dv-panel').forEach(p=>p.classList.toggle('active', p.id===`panel-${tab}`));
+
+  // Lazy render on tab switch
+  setTimeout(() => {
+    if (tab === 'corr')    { renderCorrelationMatrix(); }
+    if (tab === 'rolling') { renderRollingCorr(); renderRollingSharpe(); }
+    if (tab === 'alpha')   { renderAlpha(); }
+    if (tab === 'sizing')  { renderSizingTable(); }
+    if (tab === 'systems') { switchSys(document.querySelector('.sys-tab.active')?.dataset.sys ?? 'p1'); }
+    if (tab === 'combined'){ renderCombinedChart(); renderDDChart(); }
+  }, 30);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Main run
+// ═══════════════════════════════════════════════════════════════════════════════
+async function runAll() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  setStatus('spin', 'Fetching market data from server…');
+
+  try {
+    const resp = await fetch('/api/diversification/data');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error);
+    _rawData = data;
+    document.getElementById('cacheLabel').textContent = data.cached ? '(cached)' : '(fresh)';
+
+    setStatus('spin', `Running 6 strategy engines (${data.dateIndex.length} trading days)…`);
+    await new Promise(r => setTimeout(r, 20));
+
+    _results.p1 = runP1(data);
+    setStatus('spin', 'P1 done · Running P2…'); await new Promise(r=>setTimeout(r,10));
+    _results.p2 = runP2(data);
+    setStatus('spin', 'P2 done · Running P3…'); await new Promise(r=>setTimeout(r,10));
+    _results.p3 = runP3(data);
+    setStatus('spin', 'P3 done · Running P4…'); await new Promise(r=>setTimeout(r,10));
+    _results.p4 = runP4(data);
+    setStatus('spin', 'P4 done · Running P5…'); await new Promise(r=>setTimeout(r,10));
+    _results.p5 = runP5(data);
+    setStatus('spin', 'P5 done · Running P6…'); await new Promise(r=>setTimeout(r,10));
+    _results.p6 = runP6(data);
+
+    setStatus('spin', 'Computing combined book…'); await new Promise(r=>setTimeout(r,10));
+    _combined = computeCombined(_results, _weights);
+
+    setStatus('spin', 'Rendering…'); await new Promise(r=>setTimeout(r,20));
+    renderKPIs(_combined);
+    renderSliders();
+    renderCombinedChart();
+    renderDDChart();
+    renderMonthlyReturnsTable();
+
+    setStatus('ok', `Complete — ${data.dateIndex.length} trading days · ${_combined.monthlyRet.length} monthly obs`);
+  } catch (e) {
+    setStatus('err', 'Error: ' + e.message);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
