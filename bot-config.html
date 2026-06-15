@@ -2447,7 +2447,6 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         <a href="nq-qmr-backtest.html" style="text-decoration:none">
           <button style="background:transparent;border:1px solid #f59e0b;border-radius:7px;color:#f59e0b;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Backtester</button>
         </a>
-        <button style="background:#f59e0b;border:none;border-radius:7px;color:#111;font-weight:700;padding:8px 16px;cursor:pointer;font-size:12px" onclick="nqSaveGates()">Save Gates</button>
         <button style="background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--text3);font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px" onclick="nqLoadStatus()">↺ Refresh</button>
       </div>
     </div>
@@ -2480,49 +2479,54 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     </div>
 
     <!-- ── Gate Status ──────────────────────────────────────────────────────── -->
-    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;margin:16px 0 8px">Quant Signal Gates — manual log from external Telegram</div>
+    <!-- ── Gate Intelligence Panels ──────────────────────────────────────── -->
+    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;margin:16px 0 8px">Autonomous Gate Intelligence — computed from OANDA NAS100 H1 data</div>
     <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:0">
 
+      <!-- Gate 1 info panel -->
       <div class="card" style="border-top:3px solid #f59e0b">
-        <div class="card-title" style="color:#f59e0b">Gate 1 — Asia/London Open</div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;font-family:'DM Mono',monospace">~09:48 LDN · "Data threshold 1 validated"</div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <div id="nqGate1Dot" style="width:14px;height:14px;border-radius:50%;background:var(--border2);flex-shrink:0"></div>
-          <div>
-            <div id="nqGate1Status" style="font-size:13px;font-weight:600;color:var(--text3);font-family:'DM Mono',monospace">Awaiting signal</div>
-            <div id="nqGate1Time"   style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px"></div>
-          </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="card-title" style="color:#f59e0b;margin-bottom:0">Gate 1 — Asia Overnight Range</div>
+          <div id="nqG1Badge" style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;padding:3px 10px;border-radius:4px;background:var(--border2);color:var(--text3)">AWAITING</div>
         </div>
-        <div class="form-row">
-          <span class="form-lbl">Signal received at</span>
-          <input type="datetime-local" id="nq_gate1_ts" style="width:200px;font-family:monospace;font-size:12px">
+        <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:12px;padding:8px 10px;background:rgba(0,0,0,.18);border-radius:6px;font-family:'DM Mono',monospace">
+          Read NAS100 overnight range 21:00→09:00 UTC. If price at ~09:05 UTC is in the <strong style="color:var(--text2)">top 40%</strong> → LONG bias. <strong style="color:var(--text2)">Bottom 40%</strong> → SHORT bias. Middle 20% → FLAT, no trade.
         </div>
-        <div style="margin-top:10px">
-          <button onclick="nqMarkGate(1,'PASS')" style="background:rgba(16,185,129,.15);border:1px solid #10b981;color:#10b981;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:600;margin-right:6px">✓ Pass</button>
-          <button onclick="nqMarkGate(1,'FAIL')" style="background:rgba(239,68,68,.1);border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:600">✗ Fail</button>
-          <button onclick="nqMarkGate(1,null)"  style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;margin-left:6px">Reset</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;font-family:'DM Mono',monospace;font-size:12px">
+          <div style="color:var(--text3)">O/N High</div>     <div id="nqG1High"  style="font-weight:600">—</div>
+          <div style="color:var(--text3)">O/N Low</div>      <div id="nqG1Low"   style="font-weight:600">—</div>
+          <div style="color:var(--text3)">Range</div>        <div id="nqG1Range" style="font-weight:600">—</div>
+          <div style="color:var(--text3)">Price @ Gate</div> <div id="nqG1Price" style="font-weight:600">—</div>
+          <div style="color:var(--text3)">Position in Range</div> <div id="nqG1Pos" style="font-weight:600">—</div>
+          <div style="color:var(--text3)">Direction</div>    <div id="nqG1Dir"   style="font-weight:700">—</div>
         </div>
+        <div style="margin-top:11px;border-top:1px solid var(--border);padding-top:9px;font-size:11px;font-family:'DM Mono',monospace">
+          <div style="color:var(--text3);margin-bottom:3px;font-size:10px;letter-spacing:.08em;text-transform:uppercase">Macro Enrichment</div>
+          <div id="nqG1Enrich" style="color:var(--text3)">Not yet computed</div>
+        </div>
+        <div id="nqG1Reason"    style="margin-top:8px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3)"></div>
+        <div id="nqG1CheckTime" style="margin-top:3px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);opacity:.6"></div>
       </div>
 
+      <!-- Gate 2 info panel -->
       <div class="card" style="border-top:3px solid #f59e0b">
-        <div class="card-title" style="color:#f59e0b">Gate 2 — London Mid</div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;font-family:'DM Mono',monospace">~12:40 LDN · "Data threshold 2 validated"</div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <div id="nqGate2Dot" style="width:14px;height:14px;border-radius:50%;background:var(--border2);flex-shrink:0"></div>
-          <div>
-            <div id="nqGate2Status" style="font-size:13px;font-weight:600;color:var(--text3);font-family:'DM Mono',monospace">Awaiting signal</div>
-            <div id="nqGate2Time"   style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px"></div>
-          </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="card-title" style="color:#f59e0b;margin-bottom:0">Gate 2 — London Momentum</div>
+          <div id="nqG2Badge" style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;padding:3px 10px;border-radius:4px;background:var(--border2);color:var(--text3)">AWAITING</div>
         </div>
-        <div class="form-row">
-          <span class="form-lbl">Signal received at</span>
-          <input type="datetime-local" id="nq_gate2_ts" style="width:200px;font-family:monospace;font-size:12px">
+        <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:12px;padding:8px 10px;background:rgba(0,0,0,.18);border-radius:6px;font-family:'DM Mono',monospace">
+          Compare NAS100 at 07:00 UTC (London open) vs 12:00 UTC. Move must be <strong style="color:var(--text2)">&gt;0.10%</strong> in the <strong style="color:var(--text2)">same direction</strong> as Gate 1 to confirm. Opposite or insufficient move → REJECTED.
         </div>
-        <div style="margin-top:10px">
-          <button onclick="nqMarkGate(2,'PASS')" style="background:rgba(16,185,129,.15);border:1px solid #10b981;color:#10b981;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:600;margin-right:6px">✓ Pass</button>
-          <button onclick="nqMarkGate(2,'FAIL')" style="background:rgba(239,68,68,.1);border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:600">✗ Fail</button>
-          <button onclick="nqMarkGate(2,null)"  style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;margin-left:6px">Reset</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;font-family:'DM Mono',monospace;font-size:12px">
+          <div style="color:var(--text3)">London Open (07:00)</div> <div id="nqG2LdnOpen"  style="font-weight:600">—</div>
+          <div style="color:var(--text3)">Check Price (12:00)</div> <div id="nqG2CheckPx"  style="font-weight:600">—</div>
+          <div style="color:var(--text3)">London Move %</div>       <div id="nqG2Move"     style="font-weight:600">—</div>
+          <div style="color:var(--text3)">Gate 1 Direction</div>    <div id="nqG2G1Dir"    style="font-weight:600">—</div>
+          <div style="color:var(--text3)">Move Direction</div>      <div id="nqG2MoveDir"  style="font-weight:600">—</div>
+          <div style="color:var(--text3)">Min Move Required</div>   <div id="nqG2MinMove"  style="font-weight:600">0.10%</div>
         </div>
+        <div id="nqG2Reason"    style="margin-top:11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3)"></div>
+        <div id="nqG2CheckTime" style="margin-top:3px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);opacity:.6"></div>
       </div>
 
     </div>
@@ -3320,53 +3324,107 @@ async function nqLoadStatus() {
   }
 }
 
-function _nqGateDot(el, state) {
-  const dot = document.getElementById(el);
-  if (!dot) return;
-  dot.style.background = state === 'PASS' ? '#10b981'
-                       : state === 'FAIL' ? '#ef4444'
-                       : 'var(--border2)';
-  dot.style.boxShadow = state === 'PASS' ? '0 0 7px #10b981'
-                      : state === 'FAIL' ? '0 0 7px #ef4444'
-                      : 'none';
-}
-
 function _nqRenderGates(gates) {
-  ['gate1','gate2'].forEach((g, i) => {
-    const n = i + 1;
-    const state = gates[g]?.state || null;
-    const ts    = gates[g]?.ts    || null;
-    _nqGateDot(`nqGate${n}Dot`, state);
-    const stEl = document.getElementById(`nqGate${n}Status`);
-    const tEl  = document.getElementById(`nqGate${n}Time`);
-    if (stEl) {
-      stEl.textContent = state === 'PASS' ? 'VALIDATED ✓'
-                       : state === 'FAIL' ? 'NO SIGNAL ✗'
-                       : 'Awaiting signal';
-      stEl.style.color = state === 'PASS' ? '#10b981'
-                       : state === 'FAIL' ? '#ef4444'
-                       : 'var(--text3)';
+  const _set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ?? '—'; };
+
+  // ── Gate 1 ────────────────────────────────────────────────────────
+  const g1  = gates.gate1  || {};
+  const g1d = g1.data      || {};
+  const g1dir = g1.direction || null;  // 'LONG' | 'SHORT' | 'FLAT' | null
+
+  const g1Badge = document.getElementById('nqG1Badge');
+  if (g1Badge) {
+    if      (g1dir === 'LONG')  { g1Badge.textContent = '▲ LONG';   g1Badge.style.background = 'rgba(16,185,129,.15)'; g1Badge.style.color = '#10b981'; }
+    else if (g1dir === 'SHORT') { g1Badge.textContent = '▼ SHORT';  g1Badge.style.background = 'rgba(239,68,68,.12)';  g1Badge.style.color = '#ef4444'; }
+    else if (g1dir === 'FLAT')  { g1Badge.textContent = '— FLAT';   g1Badge.style.background = 'rgba(245,158,11,.1)';  g1Badge.style.color = '#f59e0b'; }
+    else                         { g1Badge.textContent = 'AWAITING'; g1Badge.style.background = 'var(--border2)';       g1Badge.style.color = 'var(--text3)'; }
+  }
+
+  _set('nqG1High',  g1d.asiaH   != null ? g1d.asiaH.toFixed(2)            : null);
+  _set('nqG1Low',   g1d.asiaL   != null ? g1d.asiaL.toFixed(2)            : null);
+  _set('nqG1Range', g1d.rangePct != null ? g1d.rangePct.toFixed(3) + '%'  : null);
+  _set('nqG1Price', g1d.price    != null ? g1d.price.toFixed(2)            : null);
+
+  const g1PosEl = document.getElementById('nqG1Pos');
+  if (g1PosEl) {
+    if (g1d.pos != null) {
+      const pct = (g1d.pos * 100).toFixed(1);
+      g1PosEl.textContent = pct + '% from low';
+      g1PosEl.style.color = g1d.pos >= 0.60 ? '#10b981' : g1d.pos <= 0.40 ? '#ef4444' : '#f59e0b';
+    } else {
+      g1PosEl.textContent = '—'; g1PosEl.style.color = '';
     }
-    if (tEl && ts) tEl.textContent = new Date(ts).toLocaleString();
-    const tsInput = document.getElementById(`nq_gate${n}_ts`);
-    if (tsInput && ts) tsInput.value = new Date(ts).toISOString().slice(0,16);
-  });
-  // Entry clearance banner
-  const g1 = gates.gate1?.state, g2 = gates.gate2?.state;
+  }
+
+  const g1DirEl = document.getElementById('nqG1Dir');
+  if (g1DirEl) {
+    g1DirEl.textContent = g1dir || '—';
+    g1DirEl.style.color = g1dir === 'LONG' ? '#10b981' : g1dir === 'SHORT' ? '#ef4444' : g1dir === 'FLAT' ? '#f59e0b' : 'var(--text2)';
+  }
+
+  const g1EnrichEl = document.getElementById('nqG1Enrich');
+  if (g1EnrichEl) {
+    const parts = [];
+    if (g1d.goldDir) parts.push('Gold: ' + g1d.goldDir);
+    if (g1d.eurDir)  parts.push('EUR/USD: ' + g1d.eurDir);
+    g1EnrichEl.textContent = parts.length ? parts.join('  ·  ') : 'Not yet computed';
+    g1EnrichEl.style.color = parts.length ? 'var(--text2)' : 'var(--text3)';
+  }
+
+  _set('nqG1Reason',    g1.reason    || (g1dir ? null : 'Not yet checked today'));
+  _set('nqG1CheckTime', g1.ts ? 'Checked: ' + new Date(g1.ts).toLocaleString() : null);
+
+  // ── Gate 2 ────────────────────────────────────────────────────────
+  const g2  = gates.gate2  || {};
+  const g2d = g2.data      || {};
+  const g2s = g2.state     || null;  // 'PASS' | 'FAIL' | null
+
+  const g2Badge = document.getElementById('nqG2Badge');
+  if (g2Badge) {
+    if      (g2s === 'PASS') { g2Badge.textContent = '✓ CONFIRMED'; g2Badge.style.background = 'rgba(16,185,129,.15)'; g2Badge.style.color = '#10b981'; }
+    else if (g2s === 'FAIL') { g2Badge.textContent = '✗ REJECTED';  g2Badge.style.background = 'rgba(239,68,68,.12)';  g2Badge.style.color = '#ef4444'; }
+    else                      { g2Badge.textContent = 'AWAITING';    g2Badge.style.background = 'var(--border2)';       g2Badge.style.color = 'var(--text3)'; }
+  }
+
+  _set('nqG2LdnOpen', g2d.ldnOpen    != null ? g2d.ldnOpen.toFixed(2)    : null);
+  _set('nqG2CheckPx', g2d.checkPrice != null ? g2d.checkPrice.toFixed(2) : null);
+
+  const g2MoveEl = document.getElementById('nqG2Move');
+  if (g2MoveEl) {
+    if (g2d.ldnMove != null) {
+      g2MoveEl.textContent = (g2d.ldnMove >= 0 ? '+' : '') + g2d.ldnMove.toFixed(3) + '%';
+      g2MoveEl.style.color  = g2d.ldnMove > 0 ? '#10b981' : g2d.ldnMove < 0 ? '#ef4444' : 'var(--text2)';
+    } else {
+      g2MoveEl.textContent = '—'; g2MoveEl.style.color = '';
+    }
+  }
+
+  _set('nqG2G1Dir',   g1dir || null);
+  _set('nqG2MoveDir', g2d.ldnMove != null ? (g2d.ldnMove > 0 ? 'UP' : g2d.ldnMove < 0 ? 'DOWN' : 'FLAT') : null);
+  _set('nqG2MinMove', g2d.minMovePct != null ? g2d.minMovePct.toFixed(2) + '%' : '0.10%');
+  _set('nqG2Reason',    g2.reason    || (g2s ? null : 'Not yet checked today'));
+  _set('nqG2CheckTime', g2.ts ? 'Checked: ' + new Date(g2.ts).toLocaleString() : null);
+
+  // ── Entry clearance banner ────────────────────────────────────────
   const banner = document.getElementById('nqEntryClearance');
   if (banner) {
-    if (g1 === 'PASS' && g2 === 'PASS') {
-      banner.style.display = 'block';
+    const entryReady = (g1dir === 'LONG' || g1dir === 'SHORT') && g2s === 'PASS';
+    const noTrade    = g1dir === 'FLAT' || g2s === 'FAIL';
+    if (entryReady) {
+      banner.style.display    = 'block';
       banner.style.background = 'rgba(16,185,129,.12)';
-      banner.style.border = '1px solid #10b981';
-      banner.style.color = '#10b981';
-      banner.textContent = '✓ BOTH GATES CLEAR — ENTRY WINDOW ACTIVE. Place order at 09:25 ET.';
-    } else if (g1 === 'FAIL' || g2 === 'FAIL') {
-      banner.style.display = 'block';
+      banner.style.border     = '1px solid #10b981';
+      banner.style.color      = '#10b981';
+      banner.textContent = `✓ BOTH GATES CLEAR — ${g1dir} ENTRY at 09:25 ET. System will send Telegram alert.`;
+    } else if (noTrade) {
+      banner.style.display    = 'block';
       banner.style.background = 'rgba(239,68,68,.08)';
-      banner.style.border = '1px solid #ef4444';
-      banner.style.color = '#ef4444';
-      banner.textContent = '✗ GATE FAILED — No trade today.';
+      banner.style.border     = '1px solid #ef4444';
+      banner.style.color      = '#ef4444';
+      const why = g1dir === 'FLAT'
+        ? 'Price in mid-range — no directional bias (Gate 1 FLAT).'
+        : 'London momentum did not confirm Gate 1 direction (Gate 2 REJECTED).';
+      banner.textContent = `✗ NO TRADE TODAY — ${why}`;
     } else {
       banner.style.display = 'none';
     }
@@ -3433,24 +3491,6 @@ function _nqRenderClosed(trades) {
   </table>`;
 }
 
-async function nqMarkGate(n, state) {
-  const tsInput = document.getElementById(`nq_gate${n}_ts`);
-  const ts = state ? (tsInput?.value ? new Date(tsInput.value).getTime() : Date.now()) : null;
-  const data = (await _kvGet(NQ_KV_KEY)) || { gates: {}, mt5_positions: [], today_closed_trades: [] };
-  if (!data.gates) data.gates = {};
-  data.gates[`gate${n}`] = state ? { state, ts } : { state: null, ts: null };
-  data.pushed_at = Math.floor(Date.now() / 1000);
-  await _kvSet(NQ_KV_KEY, data);
-  _nqRenderGates(data.gates);
-}
-
-async function nqSaveGates() {
-  for (const n of [1, 2]) {
-    const tsInput = document.getElementById(`nq_gate${n}_ts`);
-    if (tsInput?.value) await nqMarkGate(n, 'PASS');
-  }
-  const el = document.querySelector('#tab-nqqmr .bot-banner-title');
-}
 
 function nqCalcSize() {
   const acc    = parseFloat(document.getElementById('nq_acc_size')?.value) || 0;

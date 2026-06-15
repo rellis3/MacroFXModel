@@ -1234,7 +1234,12 @@
     <span class="vf-lhist-title">Forecast Level Hit Rates</span>
     <span class="vf-lhist-sub" id="vfLHistSub">% of days each forecast level was touched · median UTC time</span>
     <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfLHistAge"></span>
-    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="computeHitRates()" id="vfHitRatesComputeBtn">↻ Compute (90d)</button>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="computeHitRates()" id="vfHitRatesComputeBtn">↻ Compute</button>
+    <select id="vfHRComputeDays" title="Lookback period for hit rate computation" style="background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:2px 5px;border-radius:4px;outline:none">
+      <option value="90">90 days</option>
+      <option value="180">6 months</option>
+      <option value="365">1 year</option>
+    </select>
     <a class="dark-btn" style="padding:3px 10px;font-size:10px;text-decoration:none" href="/api/vol-forecast/hit-rates/export.txt" download>⬇ TXT</a>
     <span style="font-size:9px;color:var(--text3);margin-left:8px">SL ×</span>
     <input type="number" id="vfHRSLMult" value="1.0" min="0.1" max="10" step="0.1"
@@ -2618,23 +2623,25 @@ async function loadHitRates() {
 }
 
 async function computeHitRates() {
-  const btn = document.getElementById('vfHitRatesComputeBtn');
+  const btn  = document.getElementById('vfHitRatesComputeBtn');
+  const days = parseInt(document.getElementById('vfHRComputeDays')?.value ?? '90', 10);
+  const label = days >= 365 ? '1y' : days >= 180 ? '6m' : '90d';
   btn.disabled = true; btn.textContent = 'Starting…';
   try {
-    const res = await fetch('/api/vol-forecast/hit-rates/compute', { method: 'POST' });
+    const res = await fetch(`/api/vol-forecast/hit-rates/compute?days=${days}`, { method: 'POST' });
     const j   = await res.json();
     document.getElementById('vfHROverview').innerHTML =
-      `<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${j.message ?? 'Computing…'}<br><br>This fetches 90 days of H1 data for all 21 instruments. Come back in ~10 minutes and click ↻ Compute again to load results.</div>`;
+      `<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${j.message ?? 'Computing…'}<br><br>Fetching ${label} of H1 data for 21 instruments — if extending existing data, only the missing period is fetched. Come back in ~10 min and click ↻ Compute again to load results.</div>`;
     btn.textContent = '⏳ Running…';
     // Poll every 30s
     const poll = setInterval(async () => {
       try {
         const r = await fetch('/api/vol-forecast/hit-rates');
-        if (r.ok) { const d = await r.json(); if (d.ok && d.instruments) { clearInterval(poll); _hitRateData = d; _buildHRPanel(); btn.disabled = false; btn.textContent = '↻ Compute (90d)'; } }
+        if (r.ok) { const d = await r.json(); if (d.ok && d.instruments) { clearInterval(poll); _hitRateData = d; _buildHRPanel(); btn.disabled = false; btn.textContent = '↻ Compute'; } }
       } catch { /* wait */ }
     }, 30_000);
   } catch (e) {
-    btn.disabled = false; btn.textContent = '↻ Compute (90d)';
+    btn.disabled = false; btn.textContent = '↻ Compute';
     document.getElementById('vfHROverview').innerHTML =
       `<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red)">Error: ${e.message}</div>`;
   }

@@ -165,12 +165,14 @@ async function _computeInstrument(name, sym, ac, lookbackDays, existingInst = nu
   const analysisFromMs = nowMs - lookbackDays * 86400000;
   const warmupFromMs   = analysisFromMs - 400 * 86400000; // 400 days GARCH warmup
 
-  // Incremental: only fetch H1 from the day after the last stored date
+  // Incremental: only fetch H1 from the day after the last stored date.
+  // If the requested window extends earlier than stored data, go back to fill the gap.
   const existingDaily  = existingInst?.daily ?? [];
   const lastStoredDate = existingDaily.length ? existingDaily[existingDaily.length - 1].date : null;
-  const h1FromMs       = lastStoredDate
+  const dayAfterLast   = lastStoredDate
     ? new Date(lastStoredDate + 'T00:00:00Z').getTime() + 86400000
     : analysisFromMs;
+  const h1FromMs       = Math.min(dayAfterLast, analysisFromMs);
 
   const isIncremental = h1FromMs > analysisFromMs;
   const mode = isIncremental ? `incremental from ${lastStoredDate}` : `full ${lookbackDays}d`;
