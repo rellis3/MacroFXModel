@@ -2843,27 +2843,33 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
       const o   = ourInst[name];
       const r   = refInst[name];
       const gap = (ours, refs) => (ours && refs) ? Math.round((refs / ours - 1) * 1000) / 10 : null;
-      // Prefer stored shadow fields; fall back to live compute from ohlcCache when
-      // the KV record predates the shadow field additions.
-      const yzCache   = (o?.yz_vol_annual   != null) ? null : _fromCache(name, yangZhangVolSeries);
-      const hvCache   = (o?.hv_vol_annual   != null) ? null : _fromCache(name, hv20Series);
-      const ewmaCache = (o?.ewma_vol_annual != null) ? null : _fromCache(name, ewmaVolSeries);
-      const yzVol   = o?.yz_vol_annual   ?? yzCache?.vol   ?? null;
-      const yzHl    = o?.yz_hl_median    ?? yzCache?.hl    ?? null;
-      const yzOc    = o?.yz_oc_median    ?? yzCache?.oc    ?? null;
-      const hvVol   = o?.hv_vol_annual   ?? hvCache?.vol   ?? null;
-      const hvHl    = o?.hv_hl_median    ?? hvCache?.hl    ?? null;
-      const hvOc    = o?.hv_oc_median    ?? hvCache?.oc    ?? null;
-      const ewmaVol = o?.ewma_vol_annual ?? ewmaCache?.vol ?? null;
-      const ewmaHl  = o?.ewma_hl_median  ?? ewmaCache?.hl  ?? null;
-      const ewmaOc  = o?.ewma_oc_median  ?? ewmaCache?.oc  ?? null;
+      // Prefer stored shadow fields; fall back to live compute from ohlcCache.
+      const yzCache     = (o?.yz_vol_annual     != null) ? null : _fromCache(name, yangZhangVolSeries);
+      const hvCache     = (o?.hv_vol_annual     != null) ? null : _fromCache(name, hv20Series);
+      const ewmaCache   = (o?.ewma_vol_annual   != null) ? null : _fromCache(name, ewmaVolSeries);
+      // legacy_vol_annual is stored by the scheduler on each run; no on-demand fallback
+      // (rsEwmaVolSeries / garch11VolSeries are internal to volForecast.js, not exported).
+      const legacyCache = null;
+      const yzVol     = o?.yz_vol_annual     ?? yzCache?.vol     ?? null;
+      const yzHl      = o?.yz_hl_median      ?? yzCache?.hl      ?? null;
+      const yzOc      = o?.yz_oc_median      ?? yzCache?.oc      ?? null;
+      const hvVol     = o?.hv_vol_annual     ?? hvCache?.vol     ?? null;
+      const hvHl      = o?.hv_hl_median      ?? hvCache?.hl      ?? null;
+      const hvOc      = o?.hv_oc_median      ?? hvCache?.oc      ?? null;
+      const ewmaVol   = o?.ewma_vol_annual   ?? ewmaCache?.vol   ?? null;
+      const ewmaHl    = o?.ewma_hl_median    ?? ewmaCache?.hl    ?? null;
+      const ewmaOc    = o?.ewma_oc_median    ?? ewmaCache?.oc    ?? null;
+      const legacyVol = o?.legacy_vol_annual ?? legacyCache?.vol ?? null;
+      const legacyHl  = o?.legacy_hl_median  ?? legacyCache?.hl  ?? null;
+      const legacyOc  = o?.legacy_oc_median  ?? legacyCache?.oc  ?? null;
       rows.push({
         name,
         our: o ? {
           vol: o.vol_annual, hl_med: o.hl_median, hl_75: o.hl_75, oc_med: o.oc_median, oc_75: o.oc_75,
-          yz_vol: yzVol,   yz_hl: yzHl,   yz_oc: yzOc,
-          hv_vol: hvVol,   hv_hl: hvHl,   hv_oc: hvOc,
+          yz_vol: yzVol,     yz_hl: yzHl,     yz_oc: yzOc,
+          hv_vol: hvVol,     hv_hl: hvHl,     hv_oc: hvOc,
           ewma_vol: ewmaVol, ewma_hl: ewmaHl, ewma_oc: ewmaOc,
+          legacy_vol: legacyVol, legacy_hl: legacyHl, legacy_oc: legacyOc,
         } : null,
         ref:  r ?? null,
         gaps: (o && r) ? {
@@ -2872,15 +2878,18 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
           hl_75:  gap(o.hl_75,      r.hl_75),
           oc_med: gap(o.oc_median,  r.oc_med),
           oc_75:  gap(o.oc_75,      r.oc_75),
-          yz_vol:   yzVol   != null ? gap(yzVol,   r.vol)    : null,
-          yz_hl:    yzHl    != null ? gap(yzHl,    r.hl_med) : null,
-          yz_oc:    yzOc    != null ? gap(yzOc,    r.oc_med) : null,
-          hv_vol:   hvVol   != null ? gap(hvVol,   r.vol)    : null,
-          hv_hl:    hvHl    != null ? gap(hvHl,    r.hl_med) : null,
-          hv_oc:    hvOc    != null ? gap(hvOc,    r.oc_med) : null,
-          ewma_vol: ewmaVol != null ? gap(ewmaVol, r.vol)    : null,
-          ewma_hl:  ewmaHl  != null ? gap(ewmaHl,  r.hl_med) : null,
-          ewma_oc:  ewmaOc  != null ? gap(ewmaOc,  r.oc_med) : null,
+          yz_vol:     yzVol     != null ? gap(yzVol,     r.vol)    : null,
+          yz_hl:      yzHl      != null ? gap(yzHl,      r.hl_med) : null,
+          yz_oc:      yzOc      != null ? gap(yzOc,      r.oc_med) : null,
+          hv_vol:     hvVol     != null ? gap(hvVol,     r.vol)    : null,
+          hv_hl:      hvHl      != null ? gap(hvHl,      r.hl_med) : null,
+          hv_oc:      hvOc      != null ? gap(hvOc,      r.oc_med) : null,
+          ewma_vol:   ewmaVol   != null ? gap(ewmaVol,   r.vol)    : null,
+          ewma_hl:    ewmaHl    != null ? gap(ewmaHl,    r.hl_med) : null,
+          ewma_oc:    ewmaOc    != null ? gap(ewmaOc,    r.oc_med) : null,
+          legacy_vol: legacyVol != null ? gap(legacyVol, r.vol)    : null,
+          legacy_hl:  legacyHl  != null ? gap(legacyHl,  r.hl_med) : null,
+          legacy_oc:  legacyOc  != null ? gap(legacyOc,  r.oc_med) : null,
         } : null,
       });
     }
