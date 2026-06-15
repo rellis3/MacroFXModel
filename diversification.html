@@ -405,16 +405,16 @@ const PUB_MONTHLY = 21;
 
 // Per-system config (user-tunable parameters)
 let _cfg = {
-  p1: { wNetliq:0.40, wCurve:0.20, wCredit:0.20, wRealyield:0.15, wIsm:0.05,
-        bandHigh:1.50, bandMid:-0.50, bandLow:-1.0,
-        allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.30 },
+  p1: { wNetliq:0.30, wCurve:0.2333, wCredit:0.2333, wRealyield:0.175, wIsm:0.0583,
+        bandHigh:1.00, bandMid:-0.25, bandLow:-0.50,
+        allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.15 },
   p2: { thVBull:1.0, thBull:0.25, thNeutral:-0.75, thBear:-2.0,
-        allocVBull:1.0, allocBull:0.8, allocNeutral:0.6, allocBear:0.3, allocVBear:0.0 },
-  p3: { ismMaPeriod:42, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.3, overheatTlt:0.2,
-        stagGld:0.8, stagTlt:0.3, stagSpy:0.1, recTlt:0.6, recSpy:0.1 },
+        allocVBull:1.0, allocBull:0.8, allocNeutral:0.5, allocBear:0.3, allocVBear:0.0 },
+  p3: { ismMaPeriod:42, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.2, overheatTlt:0.2,
+        stagGld:1.0, stagTlt:0.3, stagSpy:0.1, recTlt:0.7, recSpy:0.1 },
   p4: { trendWin:63, vixExit:1.0, allocNormal:1.0 },
   p5: { lookback:189, skip:21, nLong:3, nShort:2 },
-  p6: { olsWindow:126, thVLong:-2.0, thLong:-1.0, thShort:0.75, thVShort:1.5,
+  p6: { olsWindow:126, thVLong:-2.0, thLong:-1.0, thShort:1.0, thVShort:1.5,
         allocVLong:1.0, allocLong:0.75, allocNeutral:0.3, allocShort:0.25, allocVShort:0.0 },
 };
 
