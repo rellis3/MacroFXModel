@@ -286,6 +286,29 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .hist-brkdn-tbl td:first-child { text-align:left; font-weight:600; max-width:120px; overflow:hidden; text-overflow:ellipsis; }
 .hist-brkdn-tbl tr:last-child td { border-bottom:none; }
 .hist-brkdn-bar { height:2px; border-radius:2px; margin-top:2px; min-width:1px; }
+/* ── Cross-Bot Analysis ── */
+.cba-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+.cba-meta { font-size:10px; color:var(--text3); }
+.cba-overview { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.cba-stat { display:flex; flex-direction:column; align-items:center; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:8px 14px; min-width:80px; }
+.cba-stat-val { font-size:15px; font-weight:700; font-family:'DM Mono',monospace; }
+.cba-stat-lbl { font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
+.cba-recs { background:var(--s1); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+.cba-recs-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text3); margin-bottom:8px; }
+.cba-rec { display:flex; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px; line-height:1.5; align-items:flex-start; }
+.cba-rec:last-child { border-bottom:none; }
+.cba-rec-icon { font-size:13px; flex-shrink:0; margin-top:1px; }
+.cba-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; margin-bottom:14px; }
+.cba-matrix-wrap { overflow-x:auto; margin-bottom:4px; }
+.cba-matrix { border-collapse:collapse; font-size:11px; font-family:'DM Mono',monospace; white-space:nowrap; }
+.cba-matrix th { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text3); padding:5px 10px; border:1px solid var(--border); text-align:center; background:var(--s2); }
+.cba-matrix th:first-child { text-align:left; }
+.cba-matrix td { padding:5px 10px; border:1px solid var(--border); text-align:center; }
+.cba-matrix td:first-child { text-align:left; font-weight:600; color:var(--text); }
+.cba-matrix td.cba-empty { color:var(--text3); font-size:10px; }
+.cba-cell-pos { color:#4ade80; }
+.cba-cell-neg { color:#f87171; }
+.cba-cell-mid { color:#facc15; }
 /* ── Calendar ── */
 .pos-cal-wrap { margin-top:20px; }
 .pos-cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
@@ -2773,6 +2796,14 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         </div>
       </div>
 
+      <!-- Cross-Bot Analysis -->
+      <div class="hist-analytics-wrap">
+        <button class="hist-analytics-toggle" id="crossBotAnalysisToggle" onclick="toggleCrossBotAnalysis()">◎ Cross-Bot Analysis <span style="color:var(--text3);font-weight:400;font-size:10px;margin-left:4px">— last 90 days, all bots</span></button>
+        <div id="crossBotAnalysis" style="display:none">
+          <div id="crossBotAnalysisContent" style="padding:10px 0;color:var(--text3);font-size:12px">Loading…</div>
+        </div>
+      </div>
+
       <!-- Trades table -->
       <div class="pos-table-wrap">
         <table class="pos-table">
@@ -4426,6 +4457,203 @@ function toggleHistAnalytics() {
   if (btn) btn.textContent   = (_histAnalyticsOpen ? '▼' : '▶') + ' Analytics Breakdown';
 }
 window.toggleHistAnalytics = toggleHistAnalytics;
+
+// ── Cross-Bot Analysis ────────────────────────────────────────────────────────
+
+let _cbaOpen = false;
+
+async function toggleCrossBotAnalysis() {
+  _cbaOpen = !_cbaOpen;
+  const panel = document.getElementById('crossBotAnalysis');
+  const btn   = document.getElementById('crossBotAnalysisToggle');
+  const inner = `<span style="color:var(--text3);font-weight:400;font-size:10px;margin-left:4px">— last 90 days, all bots</span>`;
+  if (!_cbaOpen) {
+    if (panel) panel.style.display = 'none';
+    if (btn)   btn.innerHTML = `◎ Cross-Bot Analysis ${inner}`;
+    return;
+  }
+  if (panel) panel.style.display = 'block';
+  if (btn)   btn.innerHTML = `▼ Cross-Bot Analysis ${inner}`;
+
+  const content = document.getElementById('crossBotAnalysisContent');
+  if (content) content.innerHTML = '<div style="padding:10px 0;color:var(--text3);font-size:12px">Fetching 90-day trade history…</div>';
+
+  const to = new Date().toISOString().slice(0, 10);
+  const fromD = new Date(); fromD.setUTCDate(fromD.getUTCDate() - 89);
+  const from  = fromD.toISOString().slice(0, 10);
+
+  let trades = [];
+  try {
+    const r = await fetch(`/api/trade-history?from=${from}&to=${to}`);
+    const j = await r.json();
+    trades = j.trades || [];
+  } catch(e) {
+    if (content) content.innerHTML = '<div style="padding:10px 0;color:var(--red);font-size:12px">Failed to load trade history.</div>';
+    return;
+  }
+
+  _renderCrossBotAnalysis(trades, content, from, to);
+}
+window.toggleCrossBotAnalysis = toggleCrossBotAnalysis;
+
+function _renderCrossBotAnalysis(trades, container, from, to) {
+  if (!container) return;
+  const MIN_N = 3;
+
+  const agg = (keyFn, labelFn) => {
+    const map = {};
+    trades.forEach(t => {
+      const k = keyFn(t);
+      if (k == null) return;
+      const lbl = labelFn ? labelFn(t, k) : k;
+      if (!map[k]) map[k] = { label: lbl, count:0, wins:0, net:0, key:k };
+      map[k].count++;
+      const net = (t.profit||0)+(t.swap||0);
+      if (net > 0) map[k].wins++;
+      map[k].net += net;
+    });
+    return Object.values(map).filter(r => r.count >= MIN_N)
+      .sort((a,b) => (b.wins/b.count) - (a.wins/a.count) || b.net - a.net);
+  };
+
+  const getBotLabel = t => { const b = _POS_BOTS.find(b => b.key === t.bot_key); return b ? b.label : (t.bot_key || '?'); };
+  const SESSION_ORDER = ['Asian  (00–07)','London (07–12)','LN/NY  (12–17)','NY     (17–21)','Off-hrs (21–24)'];
+  const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  const byPair    = agg(t => t.symbol || '?');
+  const byBot     = agg(t => t.bot_key, (t,k) => getBotLabel(t));
+  const bySess    = agg(t => t.time_open ? _getSession(new Date(t.time_open*1000).getUTCHours()) : null);
+  const byDow     = agg(t => t.time_open ? DOW[(new Date(t.time_open*1000).getUTCDay()+6)%7] : null);
+
+  // Bot × Pair cross-table
+  const comboMap = {};
+  trades.forEach(t => {
+    const bk = t.bot_key || '?';
+    const sym = t.symbol || '?';
+    const k = `${bk}|${sym}`;
+    if (!comboMap[k]) comboMap[k] = { bot_key:bk, pair:sym, count:0, wins:0, net:0 };
+    comboMap[k].count++;
+    const net = (t.profit||0)+(t.swap||0);
+    if (net > 0) comboMap[k].wins++;
+    comboMap[k].net += net;
+  });
+  const combos = Object.values(comboMap).filter(c => c.count >= MIN_N)
+    .sort((a,b) => (b.wins/b.count) - (a.wins/a.count) || b.net - a.net);
+
+  // All pairs + bots that appear in combos (for matrix)
+  const matrixPairs = [...new Set(combos.map(c => c.pair))].sort();
+  const matrixBots  = [...new Set(combos.map(c => c.bot_key))];
+
+  // Overall stats
+  const totalNet = trades.reduce((s,t) => s+(t.profit||0)+(t.swap||0), 0);
+  const totalWins = trades.filter(t => (t.profit||0)+(t.swap||0) > 0).length;
+  const wr = trades.length ? Math.round(totalWins/trades.length*100) : 0;
+  const nc = totalNet >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // ── Recommendations ──────────────────────────────────────────────────────────
+  const recs = [];
+  const fmt = (r, label) => {
+    const winPct = Math.round(r.wins/r.count*100);
+    const wc = winPct >= 60 ? '#4ade80' : winPct >= 40 ? '#facc15' : '#f87171';
+    const pc = r.net >= 0 ? '#4ade80' : '#f87171';
+    return `<strong>${label || r.label}</strong> &mdash; <span style="color:${wc}">${winPct}% win rate</span>, <span style="color:${pc}">${r.net>=0?'+':''}$${r.net.toFixed(0)}</span> net (${r.count} trades)`;
+  };
+
+  if (byPair.length) {
+    recs.push({ icon:'🏆', text: fmt(byPair[0], `Best pair: ${byPair[0].label}`) });
+    const worst = [...byPair].sort((a,b)=>(a.wins/a.count)-(b.wins/b.count))[0];
+    if (byPair.length > 1) recs.push({ icon:'⚠️', text: fmt(worst, `Weakest pair: ${worst.label}`) });
+  }
+  if (byBot.length) recs.push({ icon:'🤖', text: fmt(byBot[0], `Best bot: ${byBot[0].label}`) });
+  if (bySess.length) recs.push({ icon:'⏰', text: fmt(bySess[0], `Best session: ${bySess[0].label}`) });
+  if (byDow.length)  recs.push({ icon:'📅', text: fmt(byDow[0],  `Best day: ${byDow[0].label}`) });
+  if (combos.length) {
+    const c = combos[0];
+    const bLabel = getBotLabel(c);
+    const winPct = Math.round(c.wins/c.count*100);
+    const wc = winPct >= 60 ? '#4ade80' : winPct >= 40 ? '#facc15' : '#f87171';
+    const pc = c.net >= 0 ? '#4ade80' : '#f87171';
+    recs.push({ icon:'✨', text:`<strong>Best combo: ${bLabel} on ${c.pair}</strong> &mdash; <span style="color:${wc}">${winPct}% win rate</span>, <span style="color:${pc}">${c.net>=0?'+':''}$${c.net.toFixed(0)}</span> net (${c.count} trades)` });
+  }
+
+  // ── Breakdown mini-tables ─────────────────────────────────────────────────────
+  const mkTable = (rows, title) => {
+    if (!rows.length) return '';
+    const maxAbs = Math.max(...rows.map(r => Math.abs(r.net)), 0.01);
+    const trs = rows.slice(0, 8).map(r => {
+      const wr2 = r.count ? Math.round(r.wins/r.count*100) : 0;
+      const wc  = wr2 >= 60 ? 'var(--green)' : wr2 >= 40 ? '#facc15' : 'var(--red)';
+      const pc  = r.net >= 0 ? 'var(--green)' : 'var(--red)';
+      const bw  = Math.round(Math.abs(r.net)/maxAbs*70);
+      return `<tr>
+        <td title="${r.label}">${r.label}<div class="hist-brkdn-bar" style="width:${bw}%;background:${pc};opacity:.35"></div></td>
+        <td>${r.count}</td>
+        <td style="color:${wc}">${wr2}%</td>
+        <td style="color:${pc}">${r.net>=0?'+':''}$${r.net.toFixed(0)}</td>
+        <td style="color:${pc};font-size:10px">${r.count?(r.net/r.count>=0?'+':'')+'$'+(r.net/r.count).toFixed(1):''}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="hist-brkdn"><div class="hist-brkdn-title">${title}</div>
+      <table class="hist-brkdn-tbl"><thead><tr>
+        <th></th><th>#</th><th>Win%</th><th>Net P&L</th><th>Avg</th>
+      </tr></thead><tbody>${trs}</tbody></table></div>`;
+  };
+
+  // ── Bot × Pair matrix ────────────────────────────────────────────────────────
+  let matrixHtml = '';
+  if (matrixPairs.length && matrixBots.length) {
+    const lookup = {};
+    combos.forEach(c => { lookup[`${c.bot_key}|${c.pair}`] = c; });
+    const botLabels = matrixBots.map(bk => { const b = _POS_BOTS.find(b=>b.key===bk); return b?b.label:bk; });
+    const headerCols = botLabels.map(l => `<th>${l}</th>`).join('');
+    const bodyRows = matrixPairs.map(pair => {
+      const cells = matrixBots.map(bk => {
+        const c = lookup[`${bk}|${pair}`];
+        if (!c) return `<td class="cba-empty">—</td>`;
+        const wr2 = Math.round(c.wins/c.count*100);
+        const cls = wr2 >= 60 ? 'cba-cell-pos' : wr2 >= 40 ? 'cba-cell-mid' : 'cba-cell-neg';
+        return `<td class="${cls}" title="${c.count} trades, $${c.net.toFixed(0)} net">${wr2}%<span style="font-size:9px;opacity:.6"> (${c.count})</span></td>`;
+      }).join('');
+      return `<tr><td>${pair}</td>${cells}</tr>`;
+    }).join('');
+    matrixHtml = `<div class="hist-brkdn" style="margin-bottom:0">
+      <div class="hist-brkdn-title">Bot × Pair Win Rate Matrix <span style="font-weight:400;color:var(--text3)">(≥${MIN_N} trades; hover for P&L)</span></div>
+      <div class="cba-matrix-wrap"><table class="cba-matrix">
+        <thead><tr><th>Pair</th>${headerCols}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table></div>
+    </div>`;
+  }
+
+  // ── Assemble ─────────────────────────────────────────────────────────────────
+  const recsHtml = recs.length
+    ? `<div class="cba-recs"><div class="cba-recs-title">Key Insights</div>${
+        recs.map(r => `<div class="cba-rec"><span class="cba-rec-icon">${r.icon}</span><span>${r.text}</span></div>`).join('')
+      }</div>`
+    : `<div class="cba-recs"><div style="color:var(--text3);font-size:12px">Not enough data for recommendations — need at least ${MIN_N} trades per group.</div></div>`;
+
+  container.innerHTML = `
+    <div class="cba-header">
+      <div class="cba-overview">
+        <div class="cba-stat"><span class="cba-stat-val">${trades.length}</span><span class="cba-stat-lbl">Trades</span></div>
+        <div class="cba-stat"><span class="cba-stat-val" style="color:${nc}">${totalNet>=0?'+':''}$${totalNet.toFixed(0)}</span><span class="cba-stat-lbl">Net P&L</span></div>
+        <div class="cba-stat"><span class="cba-stat-val" style="color:${wr>=50?'var(--green)':'var(--red)'}">${wr}%</span><span class="cba-stat-lbl">Win Rate</span></div>
+        <div class="cba-stat"><span class="cba-stat-val">${byPair.length}</span><span class="cba-stat-lbl">Pairs ≥${MIN_N}</span></div>
+        <div class="cba-stat"><span class="cba-stat-val">${byBot.length}</span><span class="cba-stat-lbl">Bots ≥${MIN_N}</span></div>
+      </div>
+      <div class="cba-meta">Data: ${from} → ${to}</div>
+    </div>
+    ${recsHtml}
+    <div class="cba-grid">
+      ${mkTable(byPair, 'By Pair')}
+      ${mkTable(byBot, 'By Bot')}
+      ${mkTable(bySess, 'By Session')}
+      ${mkTable(byDow, 'By Day of Week')}
+    </div>
+    ${matrixHtml}
+  `;
+}
+window._renderCrossBotAnalysis = _renderCrossBotAnalysis;
 
 function _getSession(utcHour) {
   if (utcHour < 7)  return 'Asian  (00–07)';
