@@ -196,6 +196,17 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <span style="margin-left:auto;" class="bt-run-lbl" id="cacheLabel"></span>
   </div>
 
+  <!-- ── System page quick-links ───────────────────────────────────────────── -->
+  <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">
+    <span style="font-size:10px; font-family:'DM Mono',monospace; color:var(--text3); align-self:center; margin-right:4px; text-transform:uppercase; letter-spacing:.06em;">Detailed Backtests:</span>
+    <a href="macro-equity-backtest.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #14b8a6; color:#14b8a6; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P1 Macro Regime ↗</a>
+    <a href="system-credit-equity.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #ef4444; color:#ef4444; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P2 Credit-Equity ↗</a>
+    <a href="system-yield-curve.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #f97316; color:#f97316; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P3 Yield Curve ↗</a>
+    <a href="system-fx-carry.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #3b82f6; color:#3b82f6; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P4 FX Carry ↗</a>
+    <a href="system-fx-momentum.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #a855f7; color:#a855f7; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P5 FX Momentum ↗</a>
+    <a href="system-gold-macro.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #eab308; color:#eab308; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P6 Gold Macro ↗</a>
+  </div>
+
   <div id="kpiRow" style="display:none;">
     <div class="bt-kpi-grid" id="kpiGrid"></div>
     <div class="bt-sec-grid" id="secGrid" style="margin-top:10px;"></div>
@@ -1666,11 +1677,22 @@ function renderSystemPanel(key) {
     'Cross-sectional momentum across 7 major currencies in USD terms. Long top-N / short bottom-N produces a pure momentum factor orthogonal to carry and macro. The long-short structure removes directional bias — pure relative value.',
     'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over a rolling window. When gold trades at a discount to its macro-implied fair value (negative residual z-score), increase allocation. Captures gold mispricing vs macro fundamentals.',
   ];
+  const sysPages = [
+    'macro-equity-backtest.html',
+    'system-credit-equity.html',
+    'system-yield-curve.html',
+    'system-fx-carry.html',
+    'system-fx-momentum.html',
+    'system-gold-macro.html',
+  ];
 
   const cfgForm = sysCfgForm(key);
   const area = document.getElementById('sys-panel-area');
   area.innerHTML = `
-    <div class="dv-info" style="margin-bottom:12px;">${descs[i]}</div>
+    <div class="dv-info" style="margin-bottom:12px;display:flex;align-items:flex-start;gap:16px;">
+      <span style="flex:1;">${descs[i]}</span>
+      <a href="${sysPages[i]}" target="_blank" style="white-space:nowrap;font-size:11px;font-family:'DM Mono',monospace;font-weight:600;padding:5px 12px;border-radius:5px;border:1px solid ${SYS_COLORS[i]};color:${SYS_COLORS[i]};text-decoration:none;flex-shrink:0;">Full Backtest ↗</a>
+    </div>
 
     <!-- Config card -->
     <div class="bt-card" style="margin-bottom:14px;">

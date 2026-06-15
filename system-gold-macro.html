@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>P6 — Gold Macro Divergence</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/index.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="./js/sys-backtest-shared.js"></script>
+  <style>
+    #app { padding: 0 20px 60px; max-width: 1380px; margin: 0 auto; }
+
+    .bt-kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
+    @media (max-width: 1000px) { .bt-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 640px)  { .bt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    .bt-kpi {
+      background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
+      padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; transition: border-color .2s;
+    }
+    .bt-kpi:hover { border-color: var(--border2); }
+    .bt-kpi-label { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; }
+    .bt-kpi-value { font-size: 26px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); line-height: 1.1; }
+    .bt-kpi-value.green { color: var(--green); }
+    .bt-kpi-value.red   { color: var(--red); }
+    .bt-kpi-value.blue  { color: var(--blue); }
+    .bt-kpi-value.amber { color: var(--amber); }
+    .bt-kpi-sub { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+    .bt-sec-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+    @media (max-width: 900px) { .bt-sec-grid { grid-template-columns: repeat(2, 1fr); } }
+    .bt-sec {
+      background: var(--s1); border: 1px solid var(--border); border-radius: var(--r);
+      padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .bt-sec-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+    .bt-sec-val { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
+
+    .bt-card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 14px; }
+    .bt-card-hdr {
+      padding: 12px 18px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .bt-card-body { padding: 18px; }
+    .bt-chart-wrap { position: relative; height: 280px; }
+
+    .bt-tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+    .bt-tbl th {
+      padding: 7px 10px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    .bt-tbl td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+    .bt-tbl tr:last-child td { border-bottom: none; }
+    .bt-tbl tr:hover td { background: var(--s2); }
+    .bt-tbl td.num { text-align: right; }
+    .bt-tbl td.pos { color: var(--green); }
+    .bt-tbl td.neg { color: var(--red); }
+    .bt-tbl td.neu { color: var(--text2); }
+    .bt-tbl-scroll { overflow-x: auto; max-height: 380px; overflow-y: auto; }
+
+    .bt-run-bar {
+      background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r);
+      padding: 12px 16px; margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    }
+    .bt-run-btn {
+      background: var(--green); border: none; border-radius: 6px; color: #fff;
+      font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600;
+      padding: 6px 20px; cursor: pointer; transition: opacity .2s;
+    }
+    .bt-run-btn:hover { opacity: .85; }
+    .bt-run-btn:disabled { opacity: .5; cursor: wait; }
+    .bt-run-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+    .dv-tabs { display: flex; gap: 4px; margin-top: 16px; flex-wrap: wrap; }
+    .dv-tab {
+      padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em;
+      text-transform: uppercase; font-family: 'DM Mono', monospace; color: var(--text3);
+      background: var(--s1); border: 1px solid var(--border); cursor: pointer; transition: all .15s;
+    }
+    .dv-tab:hover { border-color: var(--blue); color: var(--blue); }
+    .dv-tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .dv-panel { display: none; }
+    .dv-panel.active { display: block; }
+
+    .sdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--border2); }
+    .sdot.ok   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .sdot.spin { background: var(--amber); animation: pulse 1s infinite; }
+    .sdot.err  { background: var(--red); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .dv-warn {
+      background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3); border-radius: var(--r);
+      padding: 10px 14px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--red);
+      margin-top: 10px;
+    }
+    .dv-info {
+      background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.3); border-radius: var(--r);
+      padding: 10px 14px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--blue);
+      margin-top: 10px;
+    }
+
+    .cfg-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; }
+    .cfg-field { display: flex; flex-direction: column; gap: 4px; min-width: 110px; }
+    .cfg-field label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); font-family: 'DM Mono', monospace; }
+    .cfg-field input { background: var(--s2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; padding: 5px 8px; width: 90px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Top bar -->
+  <div style="padding:16px 0 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:14px;">
+    <div>
+      <h1 style="font-size:20px;font-weight:700;margin:0;color:#eab308">P6 — Gold Macro Divergence</h1>
+      <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">OLS regression log(GLD) ~ Real Yield + DXY — buy when gold is undervalued vs macro</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <a href="diversification.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">← Book Explorer</a>
+    </div>
+  </div>
+
+  <!-- Run bar -->
+  <div class="bt-run-bar">
+    <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">Run Backtest</button>
+    <span class="sdot" id="statusDot"></span>
+    <span id="statusMsg" class="bt-run-lbl">Click Run to fetch data and compute</span>
+    <span style="margin-left:auto;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;" id="cacheLabel"></span>
+  </div>
+
+  <!-- Config card -->
+  <div class="bt-card" style="margin-top:14px;">
+    <div class="bt-card-hdr" style="cursor:pointer;" onclick="toggleCfg()">
+      ⚙ Parameters — click to expand
+    </div>
+    <div class="bt-card-body" id="cfgBody" style="display:none;">
+      <div class="cfg-row">
+        <div class="cfg-field"><label>OLS Window (days)</label><input type="number" id="cfg_p6_olsWindow" step="10" min="60" max="504" value="252"></div>
+        <div class="cfg-field"><label>Thresh Very Long</label><input type="number" id="cfg_p6_thVLong" step="0.1" value="-1.5"></div>
+        <div class="cfg-field"><label>Thresh Long</label><input type="number" id="cfg_p6_thLong" step="0.1" value="-0.5"></div>
+        <div class="cfg-field"><label>Thresh Short</label><input type="number" id="cfg_p6_thShort" step="0.1" value="0.5"></div>
+        <div class="cfg-field"><label>Thresh Very Short</label><input type="number" id="cfg_p6_thVShort" step="0.1" value="1.5"></div>
+      </div>
+      <div class="cfg-row">
+        <div class="cfg-field"><label>Alloc Very Long</label><input type="number" id="cfg_p6_allocVLong" step="0.05" min="0" max="1" value="1.0"></div>
+        <div class="cfg-field"><label>Alloc Long</label><input type="number" id="cfg_p6_allocLong" step="0.05" min="0" max="1" value="0.75"></div>
+        <div class="cfg-field"><label>Alloc Neutral</label><input type="number" id="cfg_p6_allocNeutral" step="0.05" min="0" max="1" value="0.5"></div>
+        <div class="cfg-field"><label>Alloc Short</label><input type="number" id="cfg_p6_allocShort" step="0.05" min="0" max="1" value="0.25"></div>
+        <div class="cfg-field"><label>Alloc Very Short</label><input type="number" id="cfg_p6_allocVShort" step="0.05" min="0" max="1" value="0.0"></div>
+      </div>
+      <div style="margin-top:4px;display:flex;gap:10px;align-items:center;">
+        <button class="bt-run-btn" onclick="runBacktest()">Re-run with these params</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI grid -->
+  <div class="bt-kpi-grid" id="kpiGrid" style="margin-top:14px;"></div>
+  <div class="bt-sec-grid" id="secGrid"></div>
+
+  <!-- Tabs -->
+  <div class="dv-tabs" style="margin-top:16px;">
+    <div class="dv-tab active" data-tab="signal" onclick="switchTab('signal')">Signal Chart</div>
+    <div class="dv-tab" data-tab="equity" onclick="switchTab('equity')">Equity Curve</div>
+    <div class="dv-tab" data-tab="heatmap" onclick="switchTab('heatmap')">Monthly Returns</div>
+    <div class="dv-tab" data-tab="annual" onclick="switchTab('annual')">Annual Summary</div>
+    <div class="dv-tab" data-tab="trades" onclick="switchTab('trades')">Rebalances</div>
+  </div>
+
+  <!-- Signal panel -->
+  <div class="dv-panel active" id="panel-signal">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">GLD Actual vs OLS Fair Value Estimate</div>
+      <div id="lwPrice" style="height:320px;"></div>
+    </div>
+    <div class="bt-card" style="margin-top:8px;">
+      <div class="bt-card-hdr">OLS Residual Z-Score (+ = overvalued, − = undervalued)</div>
+      <div id="lwSignal" style="height:200px;"></div>
+    </div>
+  </div>
+
+  <!-- Equity panel -->
+  <div class="dv-panel" id="panel-equity">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Equity Curve — System vs GLD Buy &amp; Hold</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap" style="height:280px;"><canvas id="chartEquity"></canvas></div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Drawdown</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap" style="height:180px;"><canvas id="chartDD"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Heatmap panel -->
+  <div class="dv-panel" id="panel-heatmap">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Monthly Return Heatmap</div>
+      <div class="bt-card-body" id="heatmapContainer" style="padding:0;"></div>
+    </div>
+  </div>
+
+  <!-- Annual panel -->
+  <div class="dv-panel" id="panel-annual">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Annual Returns</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap" style="height:220px;"><canvas id="chartAnnual"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trades panel -->
+  <div class="dv-panel" id="panel-trades">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Rebalance Log</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr><th>Date</th><th>Direction</th><th class="num">Old Alloc</th><th class="num">New Alloc</th><th class="num">Resid Z</th><th class="num">Period Ret</th></tr></thead>
+            <tbody id="tradesTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+  const DEFAULT_CFG = {
+    olsWindow: 252,
+    thVLong: -1.5, thLong: -0.5, thShort: 0.5, thVShort: 1.5,
+    allocVLong: 1.0, allocLong: 0.75, allocNeutral: 0.5, allocShort: 0.25, allocVShort: 0.0,
+  };
+  let _cfg = { ...DEFAULT_CFG };
+  let _result = null;
+  let _data = null;
+  let _lwPriceChart = null;
+  let _lwSignalChart = null;
+
+  function toggleCfg() {
+    const b = document.getElementById('cfgBody');
+    b.style.display = b.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function readCfg() {
+    const gf = id => parseFloat(document.getElementById(id).value);
+    const gi = id => parseInt(document.getElementById(id).value, 10);
+    _cfg.olsWindow    = gi('cfg_p6_olsWindow');
+    _cfg.thVLong      = gf('cfg_p6_thVLong');
+    _cfg.thLong       = gf('cfg_p6_thLong');
+    _cfg.thShort      = gf('cfg_p6_thShort');
+    _cfg.thVShort     = gf('cfg_p6_thVShort');
+    _cfg.allocVLong   = gf('cfg_p6_allocVLong');
+    _cfg.allocLong    = gf('cfg_p6_allocLong');
+    _cfg.allocNeutral = gf('cfg_p6_allocNeutral');
+    _cfg.allocShort   = gf('cfg_p6_allocShort');
+    _cfg.allocVShort  = gf('cfg_p6_allocVShort');
+  }
+
+  function runEngine(data) {
+    const { dateIndex: dates, fred, prices } = data;
+    const n = dates.length;
+
+    const gld       = ffill(prices.gld);
+    const realyield = ffill(fred.realyield);
+    const dxy       = ffill(fred.dxy);
+
+    const logGld = gld.map(v => isFinite(v) && v > 0 ? Math.log(v) : NaN);
+    const residuals = rollingOLSResidual(logGld, realyield, dxy, _cfg.olsWindow);
+    const residZ    = rollingZ(residuals, Math.floor(_cfg.olsWindow / 2));
+
+    // Fair value = exp(logGld - residual) at each point
+    const fairVal = logGld.map((lg, i) => {
+      if (!isFinite(lg) || !isFinite(residuals[i])) return NaN;
+      return Math.exp(lg - residuals[i]);
+    });
+
+    const monthEnds = monthEndIdx(dates);
+    let equity = 1.0;
+    const monthlyRet = [], monthlyDates = [], trades = [], signals = [];
+    let prevMonthEnd = -1;
+    let alloc = _cfg.allocNeutral;
+
+    for (const idx of monthEnds) {
+      const rz = residZ[idx];
+      let newAlloc = _cfg.allocNeutral;
+      if (isFinite(rz)) {
+        if      (rz < _cfg.thVLong)  newAlloc = _cfg.allocVLong;
+        else if (rz < _cfg.thLong)   newAlloc = _cfg.allocLong;
+        else if (rz < _cfg.thShort)  newAlloc = _cfg.allocNeutral;
+        else if (rz < _cfg.thVShort) newAlloc = _cfg.allocShort;
+        else                          newAlloc = _cfg.allocVShort;
+      }
+
+      if (prevMonthEnd >= 0) {
+        const g0 = gld[prevMonthEnd], g1 = gld[idx];
+        const gldRet = isFinite(g0) && isFinite(g1) && g0 > 0 ? (g1 - g0) / g0 : 0;
+        const ret = alloc * gldRet;
+        equity *= (1 + ret);
+        monthlyRet.push(ret);
+        monthlyDates.push(dates[idx]);
+        trades.push({ date: dates[idx], oldAlloc: alloc, newAlloc, signal: rz, ret });
+      }
+
+      signals.push({ date: dates[idx], residZ: rz, fairVal: fairVal[idx], gldPrice: gld[idx] });
+      alloc = newAlloc;
+      prevMonthEnd = idx;
+    }
+
+    return { monthlyRet, monthlyDates, trades, signals, gld, fairVal, residZ, residuals, dates };
+  }
+
+  function buildBhEquity(data) {
+    const { dateIndex: dates, prices } = data;
+    const gld = ffill(prices.gld);
+    const monthEnds = monthEndIdx(dates);
+    let eq = 1.0;
+    const eqs = [];
+    let prev = -1;
+    for (const idx of monthEnds) {
+      if (prev >= 0) {
+        const g0 = gld[prev], g1 = gld[idx];
+        const r = isFinite(g0) && isFinite(g1) && g0 > 0 ? (g1 - g0) / g0 : 0;
+        eq *= (1 + r);
+        eqs.push(eq);
+      }
+      prev = idx;
+    }
+    return eqs;
+  }
+
+  function renderSignalChart(data, result) {
+    if (_lwPriceChart) { _lwPriceChart.remove(); _lwPriceChart = null; }
+    if (_lwSignalChart) { _lwSignalChart.remove(); _lwSignalChart = null; }
+
+    const { dates, gld, fairVal, residZ, trades } = result;
+
+    function buildDailySeries(arr) {
+      const out = [];
+      for (let i = 0; i < dates.length; i++) {
+        if (isFinite(arr[i])) out.push({ time: dates[i], value: arr[i] });
+      }
+      return out;
+    }
+
+    _lwPriceChart = createLWChart('lwPrice', 320);
+    if (!_lwPriceChart) return;
+
+    const gldSeries = _lwPriceChart.addLineSeries({
+      color: '#eab308', lineWidth: 2, title: 'GLD',
+      priceLineVisible: false, lastValueVisible: true,
+    });
+    gldSeries.setData(buildDailySeries(gld));
+
+    const fairSeries = _lwPriceChart.addLineSeries({
+      color: '#94a3b8', lineWidth: 1.5, title: 'OLS Fair Value',
+      priceLineVisible: false, lastValueVisible: true,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+    });
+    fairSeries.setData(buildDailySeries(fairVal));
+
+    // Trade markers on GLD series
+    const markers = buildMarkers(trades);
+    if (markers.length > 0) gldSeries.setMarkers(markers);
+
+    _lwPriceChart.timeScale().fitContent();
+
+    // Signal chart — residual z-score histogram
+    _lwSignalChart = createLWChart('lwSignal', 200);
+    if (!_lwSignalChart) return;
+
+    const histData = [];
+    for (let i = 0; i < dates.length; i++) {
+      if (isFinite(residZ[i])) {
+        histData.push({ time: dates[i], value: residZ[i], color: residZ[i] < 0 ? '#10b981' : '#ef4444' });
+      }
+    }
+
+    const sigSeries = _lwSignalChart.addHistogramSeries({
+      color: '#10b981',
+      priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+      lastValueVisible: true,
+      priceLineVisible: false,
+    });
+    sigSeries.setData(histData);
+
+    // Threshold price lines
+    sigSeries.createPriceLine({ price: _cfg.thVLong,  color: '#10b981', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, axisLabelVisible: true, title: 'Very Undervalued → ' + Math.round(_cfg.allocVLong * 100) + '% GLD' });
+    sigSeries.createPriceLine({ price: _cfg.thLong,   color: '#22d3ee', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, axisLabelVisible: true, title: 'Undervalued → ' + Math.round(_cfg.allocLong * 100) + '%' });
+    sigSeries.createPriceLine({ price: _cfg.thShort,  color: '#f59e0b', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, axisLabelVisible: true, title: 'Overvalued → ' + Math.round(_cfg.allocShort * 100) + '%' });
+    sigSeries.createPriceLine({ price: _cfg.thVShort, color: '#ef4444', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, axisLabelVisible: true, title: 'Very Overvalued → ' + Math.round(_cfg.allocVShort * 100) + '% (flat)' });
+
+    _lwSignalChart.timeScale().fitContent();
+  }
+
+  function onTabSwitch(tab) {
+    if (tab === 'signal' && _result && _data) renderSignalChart(_data, _result);
+  }
+
+  async function runBacktest() {
+    const btn = document.getElementById('runBtn');
+    btn.disabled = true;
+    setStatus('spin', 'Fetching data...');
+    try {
+      readCfg();
+      const data = await fetchDiversData();
+      _data = data;
+      document.getElementById('cacheLabel').textContent = data.cached ? '(cached)' : '(fresh)';
+      setStatus('spin', 'Computing...');
+      await new Promise(r => setTimeout(r, 10));
+      _result = runEngine(data);
+      const eqs = buildEquity(_result.monthlyRet);
+      renderKPIs(eqs, _result.monthlyRet);
+      renderSignalChart(data, _result);
+      const bhEqs = buildBhEquity(data);
+      renderEquityChart('chartEquity', eqs, _result.monthlyDates, bhEqs, 'GLD Buy & Hold', '#eab308');
+      renderDDChart('chartDD', eqs, _result.monthlyDates);
+      renderHeatmap('heatmapContainer', _result.monthlyRet, _result.monthlyDates);
+      renderAnnualChart('chartAnnual', _result.monthlyRet, _result.monthlyDates);
+      renderTradesTable(document.getElementById('tradesTbody'), _result.trades);
+      saveResult('p6', _result, _cfg);
+      setStatus('ok', 'Done — ' + _result.monthlyRet.length + ' months');
+    } catch (e) {
+      setStatus('err', 'Error: ' + e.message);
+      console.error(e);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
