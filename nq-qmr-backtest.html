@@ -73,6 +73,40 @@
 .annual-ret  { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; margin-top: 2px; }
 .annual-n    { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
 
+/* Monthly heatmap */
+.cal-wrap { overflow-x: auto; margin-top: 10px; }
+.cal-grid { display: grid; grid-template-columns: 44px repeat(12, 1fr); gap: 2px; font-size: 10px; font-family: 'DM Mono', monospace; min-width: 520px; }
+.cal-hdr  { padding: 4px 2px; text-align: center; color: var(--text3); font-weight: 600; }
+.cal-yr   { padding: 6px 4px; display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--text3); }
+.cal-cell { padding: 5px 2px; text-align: center; border-radius: 3px; cursor: default; }
+
+/* Direction comparison */
+.dir-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+@media (max-width: 640px) { .dir-cols { grid-template-columns: 1fr; } }
+.dir-panel { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); padding: 12px; }
+.dir-panel-hdr { font-size: 11px; font-weight: 700; font-family: 'DM Mono', monospace; margin-bottom: 8px; }
+
+/* Monte Carlo */
+.mc-bands { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; }
+@media (max-width: 640px) { .mc-bands { grid-template-columns: repeat(3, 1fr); } }
+.mc-band  { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); padding: 8px 10px; text-align: center; }
+.mc-band-lbl { font-size: 9px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+.mc-band-val { font-size: 16px; font-weight: 700; font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+/* Validation */
+.val-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+@media (max-width: 640px) { .val-cols { grid-template-columns: 1fr; } }
+.val-panel { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); padding: 12px; }
+.val-panel-hdr { font-size: 11px; font-weight: 700; font-family: 'DM Mono', monospace; margin-bottom: 8px; letter-spacing: .04em; }
+.val-stat { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 11px; font-family: 'DM Mono', monospace; }
+.val-stat:last-child { border-bottom: none; }
+.val-stat-lbl { color: var(--text3); }
+.drift-warn { color: #f59e0b; font-size: 10px; font-family: 'DM Mono', monospace; margin-top: 4px; }
+
+/* Transaction cost */
+.tc-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; font-size: 11px; font-family: 'DM Mono', monospace; }
+.tc-adj  { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: var(--r); padding: 6px 12px; color: #fca5a5; font-size: 11px; font-family: 'DM Mono', monospace; }
+
 /* MEA */
 .mea-bar-wrap { display: flex; align-items: flex-end; gap: 3px; height: 80px; margin-top: 10px; }
 .mea-bar-col  { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
@@ -104,6 +138,13 @@
 .tv-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text3); }
 .view-link { color: #60a5fa; cursor: pointer; text-decoration: none; font-size: 11px; font-family: 'DM Mono', monospace; }
 .view-link:hover { text-decoration: underline; }
+
+/* Walk-forward retrain */
+.wfr-chart { height: 220px; }
+
+/* Capital ceiling */
+.cap-row-break td { color: #fca5a5 !important; font-weight: 600; }
+.cap-row-break { background: rgba(239,68,68,.06); }
 </style>
 </head>
 <body>
@@ -131,7 +172,7 @@
 <div class="run-bar">
   <button class="run-btn" id="runBtn" onclick="runBacktest()">Run Backtest</button>
   <span class="sdot" id="statusDot"></span>
-  <span id="statusMsg" class="run-lbl">Click Run — fetches 5 years of OANDA H1 NAS100_USD data (10-20s first run)</span>
+  <span id="statusMsg" class="run-lbl">Click Run — fetches 5 years of OANDA H1 NAS100_USD data · defaults: Gate1=0.60 Gate2=0.10% Stop=0.50% TP=0.75% (1.5R)</span>
   <span id="cacheLabel" style="margin-left:auto;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"></span>
 </div>
 
@@ -173,7 +214,7 @@
       </div>
       <div class="cfg-field">
         <label>Take-Profit %</label>
-        <input type="number" id="cfg_tp" value="0" min="0" max="5.0" step="0.25">
+        <input type="number" id="cfg_tp" value="0.75" min="0" max="5.0" step="0.25">
         <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">0 = EOD only · 1.0 = 2R · 1.5 = 3R</span>
       </div>
     </div>
@@ -187,6 +228,7 @@
     <div class="kpi"><div class="kpi-lbl">Total Return</div><div class="kpi-val green" id="kTotalRet">—</div><div class="kpi-sub" id="kPeriod">—</div></div>
     <div class="kpi"><div class="kpi-lbl">CAGR</div><div class="kpi-val green" id="kCagr">—</div><div class="kpi-sub">annualised</div></div>
     <div class="kpi"><div class="kpi-lbl">Sharpe Ratio</div><div class="kpi-val" id="kSharpe">—</div><div class="kpi-sub">trade-level annualised</div></div>
+    <div class="kpi"><div class="kpi-lbl">Sortino Ratio</div><div class="kpi-val" id="kSortino">—</div><div class="kpi-sub">downside dev only</div></div>
     <div class="kpi"><div class="kpi-lbl">Max Drawdown</div><div class="kpi-val red" id="kMaxDD">—</div><div class="kpi-sub">peak-to-trough</div></div>
     <div class="kpi"><div class="kpi-lbl">Win Rate</div><div class="kpi-val" id="kWinRate">—</div><div class="kpi-sub" id="kWins">— / — trades</div></div>
     <div class="kpi"><div class="kpi-lbl">Trades / Year</div><div class="kpi-val amber" id="kFreq">—</div><div class="kpi-sub" id="kTotalTrades">— total</div></div>
@@ -233,6 +275,145 @@
     <div class="info-box" style="margin-top:10px;">
       <strong>Gate interpretation:</strong> Gate 1 fires on ~60-70% of trading days (overnight always has a directional lean). Gate 2 rejects roughly half of those because London reverses the Asia direction. The final ~30% of trading days where both gates agree and confirm is where the edge lives.
     </div>
+  </div>
+</div>
+
+<!-- Monthly Calendar Heatmap -->
+<div class="card" id="calCard" style="display:none;margin-top:14px;">
+  <div class="card-hdr">Monthly Return Heatmap</div>
+  <div class="card-body">
+    <div class="cal-wrap"><div class="cal-grid" id="calGrid"></div></div>
+  </div>
+</div>
+
+<!-- Long / Short Distribution -->
+<div class="card" id="dirCard" style="display:none;margin-top:14px;">
+  <div class="card-hdr">Long vs Short Analysis</div>
+  <div class="card-body">
+    <div class="dir-cols" id="dirCols"></div>
+  </div>
+</div>
+
+<!-- Monte Carlo + Permutation Test -->
+<div class="card" id="mcCard" style="display:none;margin-top:14px;">
+  <div class="card-hdr">
+    Monte Carlo Simulation (IID Bootstrap — 500 runs)
+    <span style="margin-left:auto;font-weight:400;font-size:11px;color:var(--text3);" id="mcStatus"></span>
+    <button class="run-btn" style="margin-left:12px;padding:4px 14px;font-size:11px;" id="mcBtn" onclick="runMonteCarlo()">Run</button>
+  </div>
+  <div class="card-body">
+    <div class="info-box" style="margin-top:0;">
+      Resamples trade returns with replacement 500 times to show the distribution of possible outcomes. The fan chart shows p10–p90 of simulated equity paths. The permutation test shuffles returns 5,000 times to measure statistical significance.
+    </div>
+    <div id="mcResults" style="display:none;">
+      <div class="chart-wrap" id="mcChart" style="height:260px;margin-top:12px;"></div>
+      <div class="mc-bands" id="mcBands"></div>
+      <div class="sec-grid" style="margin-top:10px;" id="mcPermRow"></div>
+    </div>
+
+    <!-- Block Bootstrap -->
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:'DM Mono',monospace;">Block Bootstrap — Autocorrelation-Preserving</div>
+        <label style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;display:flex;align-items:center;gap:5px;">Block size
+          <input type="number" id="bbBlockSize" value="5" min="2" max="20" step="1"
+            style="width:50px;background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:3px 6px;">
+        </label>
+        <button class="run-btn" style="padding:4px 14px;font-size:11px;" id="bbBtn" onclick="runBlockBootstrap()">Run</button>
+        <span id="bbStatus" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"></span>
+      </div>
+      <div class="info-box" style="margin-top:0;">
+        Samples consecutive <em>blocks</em> of trades to preserve autocorrelation and streak effects. Unlike IID bootstrap, this captures multi-trade dependency. Compare its p10/p90 range against the IID result above — a wider range here signals clustering risk.
+      </div>
+      <div id="bbResults" style="display:none;margin-top:10px;">
+        <div class="mc-bands" id="bbBands"></div>
+        <div class="sec-grid" style="margin-top:8px;" id="bbStats"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Walk-Forward / Train-Test Validation -->
+<div class="card" id="wfCard" style="display:none;margin-top:14px;">
+  <div class="card-hdr">Validation — Train / Test &amp; Walk-Forward</div>
+  <div class="card-body">
+    <div class="info-box" style="margin-top:0;">
+      Train/test splits the 5yr period chronologically (first 60% = in-sample, last 40% = out-of-sample). Walk-forward evaluates each calendar year independently.
+    </div>
+
+    <!-- Transaction cost adjustment -->
+    <div class="tc-row">
+      <span style="color:var(--text3)">Transaction cost (spread) per trade:</span>
+      <input type="number" id="tcSpreadPct" value="0.003" min="0" max="0.1" step="0.001"
+        style="width:80px;background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 7px;"
+        oninput="renderValidation()">
+      <span style="color:var(--text3)">% of entry (NAS100 ≈ 0.003% = 0.5pt @ 18,000)</span>
+      <span id="tcAdjLabel" class="tc-adj" style="display:none;"></span>
+    </div>
+
+    <!-- Train / Test -->
+    <div class="val-cols" style="margin-top:12px;">
+      <div class="val-panel" id="valTrain"></div>
+      <div class="val-panel" id="valTest"></div>
+    </div>
+
+    <!-- Walk-forward yearly table -->
+    <div style="margin-top:14px;">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">Walk-Forward (Annual Windows)</div>
+      <div class="tbl-wrap" style="max-height:none;"><table class="tbl"><thead><tr>
+        <th>Year</th><th class="num">N</th><th class="num">CAGR</th><th class="num">Sharpe</th>
+        <th class="num">Sortino</th><th class="num">MaxDD</th><th class="num">Win%</th><th class="num">vs Prior</th>
+      </tr></thead><tbody id="wfTbody"></tbody></table></div>
+    </div>
+
+    <!-- Walk-Forward Retrain -->
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:'DM Mono',monospace;">Walk-Forward Retrain (IS → OOS Re-Optimise)</div>
+        <button class="run-btn" style="padding:4px 14px;font-size:11px;" id="wfrBtn" onclick="runWFRetrain()">Run</button>
+        <span id="wfrStatus" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"></span>
+      </div>
+      <div class="info-box" style="margin-top:0;">
+        Each window re-optimises params on a 12-month IS period (216-combo grid: 4×3×3×3×1×2), then runs the best config on the following 6-month OOS window (step 3mo). Green line = stitched OOS equity. Amber = full-sample (fixed params). Efficiency = OOS Sharpe ÷ IS Sharpe.
+      </div>
+      <div id="wfrResults" style="display:none;">
+        <div class="chart-wrap wfr-chart" id="wfrChart" style="height:220px;margin-top:12px;"></div>
+        <div class="tbl-wrap" style="margin-top:12px;max-height:none;">
+          <table class="tbl"><thead><tr>
+            <th>IS Period</th><th>OOS End</th><th>Best Config</th>
+            <th class="num">IS Sharpe</th><th class="num">OOS Sharpe</th>
+            <th class="num">Efficiency</th><th class="num">OOS CAGR</th><th class="num">OOS MaxDD</th>
+          </tr></thead><tbody id="wfrTbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Capital Ceiling Test -->
+<div class="card" id="capCard" style="display:none;margin-top:14px;">
+  <div class="card-hdr">💰 Capital Ceiling — Market Impact (√AUM Law)</div>
+  <div class="card-body">
+    <div class="info-box" style="margin-top:0;">
+      Uses the square-root market impact law: <strong>impact = σ_daily × √(position_$M / daily_vol_$M)</strong>. Models how fill slippage grows with AUM and erodes edge. Row highlighted where adjusted Sharpe falls below 1.0 (strategy capacity ceiling).
+    </div>
+    <div class="tc-row" style="margin-top:10px;">
+      <span style="color:var(--text3)">NAS100 daily vol ($M):</span>
+      <input type="number" id="capDailyVol" value="50000" step="5000" min="1000"
+        style="width:90px;background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 7px;"
+        oninput="renderCapCeiling()">
+      <span style="color:var(--text3)">σ daily %:</span>
+      <input type="number" id="capSigma" value="1.0" step="0.1" min="0.1" max="5"
+        style="width:65px;background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 7px;"
+        oninput="renderCapCeiling()">
+    </div>
+    <div class="tbl-wrap" style="margin-top:12px;max-height:none;">
+      <table class="tbl"><thead><tr>
+        <th>AUM</th><th class="num">Position $M</th><th class="num">Impact bps (RT)</th>
+        <th class="num">Annual drag</th><th class="num">Adj CAGR</th><th class="num">Adj Sharpe</th>
+      </tr></thead><tbody id="capTbody"></tbody></table>
+    </div>
+    <div class="sec-grid" style="margin-top:10px;" id="capSummary"></div>
   </div>
 </div>
 
@@ -420,9 +601,13 @@ function renderAll() {
   renderChart();
   renderAnnual();
   renderGateBreakdown();
+  renderMonthlyCal();
+  renderLongShort();
+  renderValidation();
+  renderCapCeiling();
   renderMEA();
   renderTradeTable();
-  ['kpiSection','chartCard','annualCard','gateCard','meaCard','tradeCard'].forEach(id => {
+  ['kpiSection','chartCard','annualCard','gateCard','calCard','dirCard','mcCard','wfCard','capCard','meaCard','tradeCard'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
@@ -436,6 +621,8 @@ function renderKpis() {
   document.getElementById('kCagr').className        = 'kpi-val ' + (s.cagr >= 0 ? 'green' : 'red');
   document.getElementById('kSharpe').textContent    = s.sharpe != null ? s.sharpe.toFixed(2) : '—';
   document.getElementById('kSharpe').className      = 'kpi-val ' + (s.sharpe >= 1.5 ? 'green' : s.sharpe >= 0.8 ? 'amber' : 'red');
+  document.getElementById('kSortino').textContent   = s.sortino != null ? s.sortino.toFixed(2) : '—';
+  document.getElementById('kSortino').className     = 'kpi-val ' + (s.sortino >= 2.0 ? 'green' : s.sortino >= 1.0 ? 'amber' : 'red');
   document.getElementById('kMaxDD').textContent     = '-' + Math.abs(s.maxDD).toFixed(1) + '%';
   document.getElementById('kWinRate').textContent   = s.winRate != null ? (s.winRate * 100).toFixed(1) + '%' : '—';
   document.getElementById('kWinRate').className     = 'kpi-val ' + (s.winRate >= 0.55 ? 'green' : s.winRate >= 0.45 ? 'amber' : 'red');
@@ -545,6 +732,315 @@ function renderGateBreakdown() {
   const rejectRate  = tradingDays > 0 ? ((1 - total / tradingDays) * 100).toFixed(0) : '?';
   document.getElementById('gG2Reject').textContent  = rejectRate + '% of trading days';
   document.getElementById('sFireRate').textContent  = (100 - parseInt(rejectRate)) + '% of days';
+}
+
+// ── Monthly Calendar Heatmap ──────────────────────────────────────────────────
+function renderMonthlyCal() {
+  const grid = document.getElementById('calGrid');
+  if (!grid || !_trades.length) return;
+
+  // Compound monthly returns
+  const byMY = {};
+  for (const t of _trades) {
+    const [yr, mo] = [t.date.substring(0, 4), t.date.substring(5, 7)];
+    const key = `${yr}-${mo}`;
+    if (!byMY[key]) byMY[key] = 1.0;
+    byMY[key] *= (1 + t.tradeReturn / 100);
+  }
+  const monthRet = k => byMY[k] != null ? (byMY[k] - 1) * 100 : null;
+
+  const years = [...new Set(_trades.map(t => t.date.substring(0, 4)))].sort();
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function cellColor(r) {
+    if (r === null) return 'var(--s2)';
+    if (r >  8) return 'rgba(16,185,129,.60)';
+    if (r >  4) return 'rgba(16,185,129,.40)';
+    if (r >  0) return 'rgba(16,185,129,.18)';
+    if (r > -4) return 'rgba(239,68,68,.18)';
+    if (r > -8) return 'rgba(239,68,68,.40)';
+    return 'rgba(239,68,68,.60)';
+  }
+  function textCol(r) { return r === null ? 'var(--text3)' : r > 0 ? '#10b981' : '#ef4444'; }
+
+  let html = '<div class="cal-hdr"></div>';
+  MONTHS.forEach(m => html += `<div class="cal-hdr">${m}</div>`);
+
+  for (const yr of years) {
+    html += `<div class="cal-yr">${yr}</div>`;
+    for (let m = 1; m <= 12; m++) {
+      const key = `${yr}-${String(m).padStart(2,'0')}`;
+      const r   = monthRet(key);
+      html += `<div class="cal-cell" style="background:${cellColor(r)};color:${textCol(r)}" title="${yr}-${String(m).padStart(2,'0')}: ${r != null ? r.toFixed(1)+'%' : 'no trades'}">
+        ${r != null ? r.toFixed(1) : '·'}
+      </div>`;
+    }
+  }
+  grid.innerHTML = html;
+}
+
+// ── Long / Short Distribution ─────────────────────────────────────────────────
+function renderLongShort() {
+  const el = document.getElementById('dirCols');
+  if (!el || !_trades.length) return;
+
+  function dirStats(trades) {
+    const n  = trades.length;
+    if (!n) return null;
+    const rets = trades.map(t => t.tradeReturn / 100);
+    const mu   = rets.reduce((s, r) => s + r, 0) / n;
+    const sig  = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / n);
+    const years = _curve.length >= 2
+      ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
+    const tpy  = n / Math.max(years, 0.01);
+    const sharpe = sig > 0 ? (mu / sig) * Math.sqrt(tpy) : 0;
+    const downVar = rets.reduce((s, r) => s + Math.min(r,0)**2, 0) / n;
+    const sortino = downVar > 0 ? (mu / Math.sqrt(downVar)) * Math.sqrt(tpy) : 0;
+    let eq = 1, peak = 1, maxDD = 0;
+    for (const r of rets) { eq *= (1 + r); if (eq > peak) peak = eq; const dd = (peak-eq)/peak; if (dd>maxDD) maxDD=dd; }
+    const cagr = (Math.pow(eq, 1 / Math.max(years, 0.01)) - 1) * 100;
+    const wins = trades.filter(t => t.tradeReturn > 0).length;
+    const winRets  = rets.filter(r => r > 0);
+    const lossRets = rets.filter(r => r <= 0);
+    const avgWin   = winRets.length  ? winRets.reduce((s,r)=>s+r,0)/winRets.length*100  : 0;
+    const avgLoss  = lossRets.length ? lossRets.reduce((s,r)=>s+r,0)/lossRets.length*100 : 0;
+    return { n, cagr, sharpe, sortino, maxDD: maxDD*100, winRate: wins/n, avgWin, avgLoss };
+  }
+
+  function panelHtml(label, color, s) {
+    if (!s) return `<div class="dir-panel"><div class="dir-panel-hdr" style="color:${color}">${label}</div><div style="color:var(--text3);font-size:11px;font-family:'DM Mono',monospace">No trades</div></div>`;
+    const rows = [
+      ['Trades', s.n],
+      ['CAGR', (s.cagr>=0?'+':'')+s.cagr.toFixed(1)+'%'],
+      ['Sharpe', s.sharpe.toFixed(2)],
+      ['Sortino', s.sortino.toFixed(2)],
+      ['MaxDD', '-'+s.maxDD.toFixed(1)+'%'],
+      ['Win Rate', (s.winRate*100).toFixed(0)+'%'],
+      ['Avg Win', '+'+s.avgWin.toFixed(2)+'%'],
+      ['Avg Loss', s.avgLoss.toFixed(2)+'%'],
+    ];
+    return `<div class="dir-panel">
+      <div class="dir-panel-hdr" style="color:${color}">${label}</div>
+      ${rows.map(([l,v])=>`<div class="val-stat"><span class="val-stat-lbl">${l}</span><span>${v}</span></div>`).join('')}
+    </div>`;
+  }
+
+  const longs  = _trades.filter(t => t.direction === 'LONG');
+  const shorts = _trades.filter(t => t.direction === 'SHORT');
+  el.innerHTML = panelHtml('▲ LONG Trades', '#10b981', dirStats(longs))
+               + panelHtml('▼ SHORT Trades', '#ef4444', dirStats(shorts));
+}
+
+// ── Walk-Forward & Train/Test Validation ──────────────────────────────────────
+function renderValidation() {
+  if (!_trades.length) return;
+  const stopPct  = parseFloat(document.getElementById('cfg_stop').value)  || 0.50;
+  const riskPct  = parseFloat(document.getElementById('cfg_risk').value)  || 1.80;
+  const leverage = riskPct / stopPct;
+  const tcPct    = parseFloat(document.getElementById('tcSpreadPct').value) || 0;
+  const tcDrag   = tcPct * leverage * 2; // round-trip, as % of account per trade
+
+  function computeStats(subset) {
+    if (!subset.length) return null;
+    const rets  = subset.map(t => (t.tradeReturn - tcDrag) / 100);
+    const n     = rets.length;
+    const mu    = rets.reduce((s,r)=>s+r,0) / n;
+    const sig   = Math.sqrt(rets.reduce((s,r)=>s+(r-mu)**2,0) / n);
+    const years = _curve.length >= 2
+      ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
+    const tpy   = _trades.length / Math.max(years, 0.01);  // use full-sample tpy for annualisation
+    const sharpe  = sig > 0 ? (mu/sig) * Math.sqrt(tpy) : 0;
+    const downVar = rets.reduce((s,r)=>s+Math.min(r,0)**2,0) / n;
+    const sortino = downVar > 0 ? (mu/Math.sqrt(downVar)) * Math.sqrt(tpy) : 0;
+    let eq=1, peak=1, maxDD=0;
+    for (const r of rets) { eq*=(1+r); if(eq>peak)peak=eq; const dd=(peak-eq)/peak; if(dd>maxDD)maxDD=dd; }
+    const subYears = subset.length / tpy;
+    const cagr = (Math.pow(eq, 1/Math.max(subYears,0.01)) - 1) * 100;
+    const wins  = rets.filter(r=>r>0).length;
+    return { n, cagr, sharpe, sortino, maxDD: maxDD*100, winRate: wins/n };
+  }
+
+  // Transaction cost label
+  const label = document.getElementById('tcAdjLabel');
+  if (label) {
+    if (tcDrag > 0) {
+      label.style.display = '';
+      label.textContent = `TC drag: −${tcDrag.toFixed(3)}% acct/trade · ~${(tcDrag * _trades.length / (_curve.length >= 2 ? (new Date(_curve[_curve.length-1].date)-new Date(_curve[0].date))/(365.25*864e5) : 1)).toFixed(1)}%/yr`;
+    } else {
+      label.style.display = 'none';
+    }
+  }
+
+  // Train/Test (60/40 chronological split)
+  const splitIdx = Math.floor(_trades.length * 0.60);
+  const train    = _trades.slice(0, splitIdx);
+  const test     = _trades.slice(splitIdx);
+  const trnS     = computeStats(train);
+  const tstS     = computeStats(test);
+
+  function statRows(s, label) {
+    if (!s) return `<div class="val-panel-hdr">${label}</div><div style="color:var(--text3);font-size:11px">No trades</div>`;
+    const warn = tstS && trnS && (tstS.sharpe < trnS.sharpe * 0.5)
+      ? '<div class="drift-warn">⚠ OOS Sharpe < 50% of IS — possible overfitting</div>' : '';
+    return `<div class="val-panel-hdr">${label}</div>
+      ${[['N trades', s.n],['CAGR', (s.cagr>=0?'+':'')+s.cagr.toFixed(1)+'%'],['Sharpe', s.sharpe.toFixed(2)],
+         ['Sortino', s.sortino.toFixed(2)],['MaxDD', '-'+s.maxDD.toFixed(1)+'%'],['Win Rate',(s.winRate*100).toFixed(0)+'%']]
+        .map(([l,v])=>`<div class="val-stat"><span class="val-stat-lbl">${l}</span><span>${v}</span></div>`).join('')}${warn}`;
+  }
+  const tp = document.getElementById('valTrain');
+  const ts = document.getElementById('valTest');
+  if (tp) tp.innerHTML = statRows(trnS, `📚 In-Sample (first ${Math.round(train.length/_trades.length*100)}%)`);
+  if (ts) ts.innerHTML = statRows(tstS, `🔬 Out-of-Sample (last ${Math.round(test.length/_trades.length*100)}%)`);
+
+  // Walk-forward annual windows
+  const byYear = {};
+  for (const t of _trades) {
+    const y = t.date.substring(0, 4);
+    if (!byYear[y]) byYear[y] = [];
+    byYear[y].push(t);
+  }
+  const years  = Object.keys(byYear).sort();
+  const tbody  = document.getElementById('wfTbody');
+  if (!tbody) return;
+  let prevCagr = null;
+  tbody.innerHTML = years.map(yr => {
+    const s = computeStats(byYear[yr]);
+    if (!s) return '';
+    const diff    = prevCagr != null ? s.cagr - prevCagr : null;
+    const diffStr = diff != null ? (diff >= 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`) : '—';
+    const dCol    = diff != null ? (diff >= 0 ? '#10b981' : '#ef4444') : 'var(--text3)';
+    prevCagr = s.cagr;
+    return `<tr>
+      <td><strong>${yr}</strong></td>
+      <td class="num">${s.n}</td>
+      <td class="num" style="color:${s.cagr>=0?'#10b981':'#ef4444'}">${s.cagr>=0?'+':''}${s.cagr.toFixed(0)}%</td>
+      <td class="num" style="color:${s.sharpe>=1.5?'#10b981':s.sharpe>=0.8?'#f59e0b':'#ef4444'}">${s.sharpe.toFixed(2)}</td>
+      <td class="num" style="color:${s.sortino>=2?'#10b981':s.sortino>=1?'#f59e0b':'#ef4444'}">${s.sortino.toFixed(2)}</td>
+      <td class="num" style="color:#ef4444">-${s.maxDD.toFixed(1)}%</td>
+      <td class="num" style="color:${s.winRate>=0.55?'#10b981':s.winRate>=0.45?'#f59e0b':'#ef4444'}">${(s.winRate*100).toFixed(0)}%</td>
+      <td class="num" style="color:${dCol}">${diffStr}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Monte Carlo IID Bootstrap ─────────────────────────────────────────────────
+let _mcChart = null;
+async function runMonteCarlo() {
+  const btn = document.getElementById('mcBtn');
+  const status = document.getElementById('mcStatus');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Running 500 simulations…';
+
+  // Yield to UI to show the status message
+  await new Promise(r => setTimeout(r, 20));
+
+  const rets  = _trades.map(t => t.tradeReturn / 100);
+  const n     = rets.length;
+  const N_SIM = 500;
+  const N_PERM = 5000;
+
+  // Run MC simulations — store final equity + percentile curves
+  const finals  = [];
+  const curves  = []; // store every 5th sim to build percentile bands
+
+  for (let s = 0; s < N_SIM; s++) {
+    let eq = 1.0;
+    const path = [1.0];
+    for (let i = 0; i < n; i++) {
+      eq *= (1 + rets[Math.floor(Math.random() * n)]);
+      path.push(eq);
+    }
+    finals.push(eq);
+    curves.push(path);
+  }
+
+  // Percentile curves (p10, p25, p50, p75, p90) at each step
+  const steps = n + 1;
+  const pctCurves = [10, 25, 50, 75, 90].map(p => {
+    return Array.from({ length: steps }, (_, i) => {
+      const vals = curves.map(c => c[i]).sort((a, b) => a - b);
+      return vals[Math.floor(vals.length * p / 100)];
+    });
+  });
+
+  // Final equity stats
+  finals.sort((a, b) => a - b);
+  const pct = p => finals[Math.floor(finals.length * p / 100)];
+  const years = _curve.length >= 2
+    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
+  const toCAGR = eq => ((Math.pow(eq, 1/Math.max(years,0.01)) - 1) * 100).toFixed(1);
+  const probLoss = finals.filter(e => e < 1).length / N_SIM * 100;
+
+  // Permutation test (Sharpe significance)
+  const mu  = rets.reduce((s,r)=>s+r,0)/n;
+  const sig = Math.sqrt(rets.reduce((s,r)=>s+(r-mu)**2,0)/n);
+  const tpy = n / Math.max(years, 0.01);
+  const actualSharpe = sig > 0 ? (mu/sig)*Math.sqrt(tpy) : 0;
+  let permBeaten = 0;
+  const shuf = [...rets];
+  for (let p = 0; p < N_PERM; p++) {
+    for (let i = shuf.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuf[i], shuf[j]] = [shuf[j], shuf[i]];
+    }
+    const pm = shuf.reduce((s,r)=>s+r,0)/n;
+    const ps = Math.sqrt(shuf.reduce((s,r)=>s+(r-pm)**2,0)/n);
+    const pSharpe = ps > 0 ? (pm/ps)*Math.sqrt(tpy) : 0;
+    if (pSharpe >= actualSharpe) permBeaten++;
+  }
+  const pValue = permBeaten / N_PERM;
+
+  // Render fan chart
+  const wrap = document.getElementById('mcChart');
+  if (_mcChart) { _mcChart.remove(); _mcChart = null; }
+  if (wrap) {
+    _mcChart = LightweightCharts.createChart(wrap, {
+      width: wrap.clientWidth, height: 260,
+      layout: { background: { color: 'transparent' }, textColor: '#94a3b8' },
+      grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+      rightPriceScale: { borderColor: '#334155' },
+      timeScale: { borderColor: '#334155', timeVisible: false },
+    });
+    const baseTs = 1609459200; // 2021-01-01 UTC
+    const toTs   = i => baseTs + i * 86400;
+    const pctColors = ['rgba(239,68,68,.25)','rgba(239,68,68,.4)','rgba(245,158,11,.7)','rgba(16,185,129,.4)','rgba(16,185,129,.25)'];
+    const pctWidths = [1, 1, 2, 1, 1];
+    [0,1,2,3,4].forEach(pi => {
+      const series = _mcChart.addLineSeries({ color: pctColors[pi], lineWidth: pctWidths[pi], priceFormat: { type: 'custom', formatter: v => v.toFixed(2)+'x' } });
+      series.setData(pctCurves[pi].map((v, i) => ({ time: toTs(i), value: v })));
+    });
+    // Actual equity curve
+    const actual = _mcChart.addLineSeries({ color: '#f59e0b', lineWidth: 2, priceFormat: { type: 'custom', formatter: v => v.toFixed(2)+'x' } });
+    actual.setData(_curve.map((p, i) => ({ time: toTs(i), value: p.equity })));
+    _mcChart.timeScale().fitContent();
+  }
+
+  // Stats bands
+  const bands = document.getElementById('mcBands');
+  if (bands) bands.innerHTML = [
+    ['p10 CAGR', toCAGR(pct(0.10))+'%', '#ef4444'],
+    ['p25 CAGR', toCAGR(pct(0.25))+'%', '#f59e0b'],
+    ['Median CAGR', toCAGR(pct(0.50))+'%', '#f59e0b'],
+    ['p75 CAGR', toCAGR(pct(0.75))+'%', '#10b981'],
+    ['P(loss)', probLoss.toFixed(1)+'%', probLoss < 5 ? '#10b981' : '#ef4444'],
+  ].map(([l,v,c]) => `<div class="mc-band"><div class="mc-band-lbl">${l}</div><div class="mc-band-val" style="color:${c}">${v}</div></div>`).join('');
+
+  // Permutation test result
+  const permEl = document.getElementById('mcPermRow');
+  if (permEl) {
+    const sig5 = pValue < 0.05;
+    const sig1 = pValue < 0.01;
+    const col  = sig5 ? '#10b981' : '#ef4444';
+    permEl.innerHTML = `
+      <div class="sec"><span class="sec-lbl">Permutation Test (5k shuffles)</span><span class="sec-val" style="color:${col}">p=${pValue.toFixed(3)} ${sig1?'★★ p<1%':sig5?'★ p<5%':'not significant'}</span></div>
+      <div class="sec"><span class="sec-lbl">Actual Sharpe</span><span class="sec-val">${actualSharpe.toFixed(2)}</span></div>
+      <div class="sec"><span class="sec-lbl">Shuffles beaten by actual</span><span class="sec-val">${((1-pValue)*100).toFixed(1)}%</span></div>
+      <div class="sec"><span class="sec-lbl">Statistical significance</span><span class="sec-val" style="color:${col}">${sig1?'High (p<0.01)':sig5?'Moderate (p<0.05)':'Low (p≥0.05)'}</span></div>`;
+  }
+
+  document.getElementById('mcResults').style.display = '';
+  if (status) status.textContent = `${N_SIM} sims · ${N_PERM} permutations · done`;
+  if (btn) btn.disabled = false;
 }
 
 function renderMEA() {
@@ -898,6 +1394,193 @@ function closeTv() {
   document.getElementById('tvOverlay').classList.remove('open');
   window.removeEventListener('resize', _tvResize);
   if (_tvChart) { _tvChart.remove(); _tvChart = null; _tvSeries = null; }
+}
+
+// ── Block Bootstrap ───────────────────────────────────────────────────────────
+async function runBlockBootstrap() {
+  const btn    = document.getElementById('bbBtn');
+  const status = document.getElementById('bbStatus');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Running 500 block-bootstrap sims…';
+  await new Promise(r => setTimeout(r, 20));
+
+  const rets    = _trades.map(t => t.tradeReturn / 100);
+  const n       = rets.length;
+  const blkSize = Math.max(2, parseInt(document.getElementById('bbBlockSize').value) || 5);
+  const N_SIM   = 500;
+
+  // Circular blocks so every trade can be a block start
+  const blocks = [];
+  for (let i = 0; i < n; i++) {
+    const blk = [];
+    for (let j = 0; j < blkSize; j++) blk.push(rets[(i + j) % n]);
+    blocks.push(blk);
+  }
+
+  const finals = [];
+  for (let s = 0; s < N_SIM; s++) {
+    let eq = 1.0, count = 0;
+    while (count < n) {
+      const blk = blocks[Math.floor(Math.random() * blocks.length)];
+      for (const r of blk) {
+        if (count >= n) break;
+        eq *= (1 + r);
+        count++;
+      }
+    }
+    finals.push(eq);
+  }
+
+  finals.sort((a, b) => a - b);
+  const pct = p => finals[Math.floor(finals.length * p / 100)];
+  const years = _curve.length >= 2
+    ? (new Date(_curve[_curve.length - 1].date) - new Date(_curve[0].date)) / (365.25 * 864e5) : 1;
+  const toCAGR  = eq => ((Math.pow(eq, 1 / Math.max(years, 0.01)) - 1) * 100).toFixed(1);
+  const probLoss = finals.filter(e => e < 1).length / N_SIM * 100;
+
+  const bands = document.getElementById('bbBands');
+  if (bands) bands.innerHTML = [
+    ['p10 CAGR',    toCAGR(pct(0.10)) + '%', '#ef4444'],
+    ['p25 CAGR',    toCAGR(pct(0.25)) + '%', '#f59e0b'],
+    ['Median CAGR', toCAGR(pct(0.50)) + '%', '#f59e0b'],
+    ['p75 CAGR',    toCAGR(pct(0.75)) + '%', '#10b981'],
+    ['P(loss)',      probLoss.toFixed(1) + '%', probLoss < 5 ? '#10b981' : '#ef4444'],
+  ].map(([l, v, c]) => `<div class="mc-band"><div class="mc-band-lbl">${l}</div><div class="mc-band-val" style="color:${c}">${v}</div></div>`).join('');
+
+  const statsEl = document.getElementById('bbStats');
+  if (statsEl) statsEl.innerHTML = `
+    <div class="sec"><span class="sec-lbl">Block size</span><span class="sec-val">${blkSize} trades</span></div>
+    <div class="sec"><span class="sec-lbl">Simulations</span><span class="sec-val">${N_SIM}</span></div>
+    <div class="sec"><span class="sec-lbl">p10–p90 range</span><span class="sec-val">${toCAGR(pct(0.10))}% – ${toCAGR(pct(0.90))}%</span></div>
+    <div class="sec"><span class="sec-lbl">vs IID</span><span class="sec-val" style="color:var(--text3)">wider = more clustering risk</span></div>`;
+
+  document.getElementById('bbResults').style.display = '';
+  if (status) status.textContent = `Done · block=${blkSize}`;
+  if (btn) btn.disabled = false;
+}
+
+// ── Walk-Forward Retrain ──────────────────────────────────────────────────────
+let _wfrChart = null;
+async function runWFRetrain() {
+  const btn    = document.getElementById('wfrBtn');
+  const status = document.getElementById('wfrStatus');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Fetching — server re-optimises each window (~20–30s)…';
+
+  try {
+    const resp = await fetch('/api/nq-qmr/walkforward-retrain');
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Server error');
+
+    const { windows, oosCurve } = data;
+
+    // Stitched OOS equity chart
+    const wrap = document.getElementById('wfrChart');
+    if (_wfrChart) { _wfrChart.remove(); _wfrChart = null; }
+    if (wrap && oosCurve.length) {
+      _wfrChart = LightweightCharts.createChart(wrap, {
+        width: wrap.clientWidth, height: 220,
+        layout: { background: { color: 'transparent' }, textColor: '#94a3b8' },
+        grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+        rightPriceScale: { borderColor: '#334155' },
+        timeScale: { borderColor: '#334155' },
+      });
+      const oosSeries = _wfrChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: 'OOS retrain', priceFormat: { type: 'custom', formatter: v => v.toFixed(2) + 'x' } });
+      oosSeries.setData(oosCurve.map(p => ({ time: p.date, value: p.equity })));
+      const actualSeries = _wfrChart.addLineSeries({ color: '#f59e0b', lineWidth: 1.5, lineStyle: 1, title: 'Fixed-param', priceFormat: { type: 'custom', formatter: v => v.toFixed(2) + 'x' } });
+      actualSeries.setData(_curve.map(p => ({ time: p.date, value: p.equity })));
+      _wfrChart.timeScale().fitContent();
+    }
+
+    // Table
+    const tbody = document.getElementById('wfrTbody');
+    if (tbody) tbody.innerHTML = windows.map(w => {
+      if (!w.bestCfg || !w.isStats || !w.oosStats) {
+        return `<tr><td>${w.isStart} – ${w.isEnd}</td><td>${w.oosEnd}</td><td colspan="6" style="color:var(--text3)">No valid IS config found</td></tr>`;
+      }
+      const eff    = w.isStats.sharpe > 0 ? w.oosStats.sharpe / w.isStats.sharpe : 0;
+      const effCol = eff >= 0.70 ? '#10b981' : eff >= 0.40 ? '#f59e0b' : '#ef4444';
+      const cfg    = `G1=${w.bestCfg.gate1Threshold} G2=${w.bestCfg.gate2MinMovePct}% SL=${w.bestCfg.stopPct}% TP=${w.bestCfg.tpPct}%`;
+      return `<tr>
+        <td>${w.isStart} – ${w.isEnd}</td>
+        <td>${w.oosEnd}</td>
+        <td style="font-size:10px;color:var(--text3)">${cfg}</td>
+        <td class="num">${w.isStats.sharpe.toFixed(2)}</td>
+        <td class="num">${w.oosStats.sharpe.toFixed(2)}</td>
+        <td class="num" style="color:${effCol}">${(eff * 100).toFixed(0)}%</td>
+        <td class="num" style="color:${w.oosStats.cagr >= 0 ? '#10b981' : '#ef4444'}">${w.oosStats.cagr >= 0 ? '+' : ''}${w.oosStats.cagr.toFixed(0)}%</td>
+        <td class="num" style="color:#ef4444">-${w.oosStats.maxDD.toFixed(1)}%</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('wfrResults').style.display = '';
+    if (status) status.textContent = `${windows.length} windows · ${oosCurve.length} OOS data pts`;
+  } catch (err) {
+    if (status) status.textContent = `Error: ${err.message}`;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── Capital Ceiling ───────────────────────────────────────────────────────────
+function renderCapCeiling() {
+  if (!_stats || !_stats.cagr || !_trades.length) return;
+
+  const dailyVol = parseFloat(document.getElementById('capDailyVol').value) || 50000;
+  const sigma    = parseFloat(document.getElementById('capSigma').value)    || 1.0;
+  const stopPct  = parseFloat(document.getElementById('cfg_stop').value)    || 0.50;
+  const riskPct  = parseFloat(document.getElementById('cfg_risk').value)    || 1.80;
+  const leverage = riskPct / stopPct;  // notional / account
+
+  const baseCagr   = _stats.cagr;
+  const baseSharpe = _stats.sharpe;
+  const years      = _curve.length >= 2
+    ? (new Date(_curve[_curve.length - 1].date) - new Date(_curve[0].date)) / (365.25 * 864e5) : 1;
+  const tpy        = _trades.length / Math.max(years, 0.01);
+
+  const aumLevels = [1e5, 2.5e5, 5e5, 1e6, 2.5e6, 5e6, 1e7, 2.5e7, 5e7, 1e8, 2.5e8, 5e8];
+
+  const tbody = document.getElementById('capTbody');
+  if (!tbody) return;
+
+  let firstBreak = null;
+  tbody.innerHTML = aumLevels.map(aum => {
+    // Notional position per trade: account × leverage × riskPct/stopPct ÷ 100 = AUM × leverage / 100
+    const posM      = (aum / 1e6) * leverage;
+    const impactPct = (sigma / 100) * Math.sqrt(posM / dailyVol);  // one-way, as fraction
+    const rtDragPct = impactPct * 2 * 100;                          // round-trip as %
+    const annDrag   = rtDragPct * tpy;
+    const adjCagr   = baseCagr - annDrag;
+    // Sharpe scales linearly with mean return shift (approx)
+    const adjSharpe = baseSharpe * Math.max(adjCagr, 0) / Math.max(baseCagr, 0.001);
+    const isBreak   = adjSharpe < 1.0 && firstBreak === null;
+    if (isBreak) firstBreak = aum;
+
+    const fmtAum = aum >= 1e9 ? `$${(aum / 1e9).toFixed(1)}B`
+                 : aum >= 1e6 ? `$${(aum / 1e6).toFixed(1)}M`
+                 : `$${(aum / 1e3).toFixed(0)}K`;
+    const rowAttr = isBreak ? ' class="cap-row-break"' : '';
+    return `<tr${rowAttr}>
+      <td>${fmtAum}${isBreak ? ' ⚠ capacity' : ''}</td>
+      <td class="num">$${posM.toFixed(1)}M</td>
+      <td class="num">${(rtDragPct * 100).toFixed(1)} bps</td>
+      <td class="num" style="color:${annDrag > 10 ? '#ef4444' : annDrag > 3 ? '#f59e0b' : 'var(--text)'}">-${annDrag.toFixed(1)}%</td>
+      <td class="num" style="color:${adjCagr >= 30 ? '#10b981' : adjCagr >= 0 ? '#f59e0b' : '#ef4444'}">${adjCagr >= 0 ? '+' : ''}${adjCagr.toFixed(1)}%</td>
+      <td class="num" style="color:${adjSharpe >= 1.5 ? '#10b981' : adjSharpe >= 1.0 ? '#f59e0b' : '#ef4444'}">${adjSharpe.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+
+  const sumEl = document.getElementById('capSummary');
+  if (sumEl) {
+    const capStr = firstBreak
+      ? (firstBreak >= 1e6 ? `$${(firstBreak / 1e6).toFixed(1)}M` : `$${(firstBreak / 1e3).toFixed(0)}K`)
+      : '>$500M';
+    sumEl.innerHTML = `
+      <div class="sec"><span class="sec-lbl">Leverage (notional/acct)</span><span class="sec-val">${leverage.toFixed(1)}×</span></div>
+      <div class="sec"><span class="sec-lbl">Trades / yr</span><span class="sec-val">${tpy.toFixed(0)}</span></div>
+      <div class="sec"><span class="sec-lbl">Sharpe &lt; 1.0 above</span><span class="sec-val" style="color:#ef4444">${capStr}</span></div>
+      <div class="sec"><span class="sec-lbl">Unimpacted CAGR</span><span class="sec-val" style="color:#10b981">${baseCagr >= 0 ? '+' : ''}${baseCagr.toFixed(1)}%</span></div>`;
+  }
 }
 </script>
 </body>

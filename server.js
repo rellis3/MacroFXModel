@@ -2317,9 +2317,13 @@ function _computeNqQmr(bars, cfg = {}) {
   const rets  = trades.map(t => t.tradeReturn / 100);
   const mu    = rets.reduce((s, r) => s + r, 0) / (rets.length || 1);
   const sig   = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / (rets.length || 1));
-  // Annualise Sharpe using trade frequency (~75 trades/year)
   const tradesPerYear = n / Math.max((new Date(curve[curve.length-1]?.date) - new Date(curve[0]?.date)) / (365.25*864e5), 1);
   const sharpe  = sig > 0 ? (mu / sig) * Math.sqrt(tradesPerYear) : 0;
+
+  // Sortino: downside deviation uses only negative returns (target = 0)
+  const downVar  = rets.reduce((s, r) => s + Math.min(r, 0) ** 2, 0) / (n || 1);
+  const downDev  = Math.sqrt(downVar);
+  const sortino  = downDev > 0 ? (mu / downDev) * Math.sqrt(tradesPerYear) : 0;
 
   const years  = curve.length >= 2
     ? (new Date(curve[curve.length-1].date) - new Date(curve[0].date)) / (365.25 * 864e5)
@@ -2336,7 +2340,8 @@ function _computeNqQmr(bars, cfg = {}) {
   return {
     trades, curve,
     stats: { n, wins, winRate: n ? wins / n : 0, cagr: +cagr.toFixed(2),
-             sharpe: +sharpe.toFixed(2), maxDD: +(maxDD * 100).toFixed(2),
+             sharpe: +sharpe.toFixed(2), sortino: +sortino.toFixed(2),
+             maxDD: +(maxDD * 100).toFixed(2),
              totalReturn: +((equity - 1) * 100).toFixed(2) },
   };
 }
@@ -2737,7 +2742,7 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
 const nqQmrCache = { result: null, bars: null, fetchedAt: null };
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
-const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.80, minRangePct: 0.15, tpPct: 0 };
+const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.80, minRangePct: 0.15, tpPct: 0.75 };
 
 async function _getNqQmrBars() {
   if (nqQmrCache.bars && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
@@ -2793,7 +2798,7 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
     const key  = process.env.OANDA_KEY;
     const base = _oandaBaseMe();
     const url  = `${base}/v3/instruments/NAS100_USD/candles`
-               + `?granularity=M5&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&price=M&count=5000`;
+               + `?granularity=M5&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&price=M`;
     const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20_000) });
     if (!r.ok) throw new Error(`OANDA M5 HTTP ${r.status}`);
     const data = await r.json();
@@ -2858,6 +2863,80 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
     res.json({ ok: true, top5, totalRuns, totalGrid });
   } catch (err) {
     console.error('[nq-qmr opt]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── NQ-QMR Walk-Forward Retrain ──────────────────────────────────────────────
+app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const bars = await _getNqQmrBars();
+    const wfGrid = {
+      gate1Threshold:  [0.55, 0.60, 0.65, 0.70],
+      gate2MinMovePct: [0.05, 0.10, 0.15],
+      stopPct:         [0.35, 0.50, 0.60],
+      minRangePct:     [0.12, 0.15, 0.20],
+      riskPct:         [1.80],
+      tpPct:           [0.75, 1.00],
+    };
+    function addMonths(d, m) { const r = new Date(d); r.setUTCMonth(r.getUTCMonth() + m); return r; }
+    const allDates  = [...new Set(bars.map(b => b.t.substring(0, 10)))].sort();
+    const firstDate = new Date(allDates[0] + 'T00:00:00Z');
+    const lastDate  = new Date(allDates[allDates.length - 1] + 'T00:00:00Z');
+    // IS=12mo, OOS=6mo, step=3mo
+    const windows = [];
+    let wStart = new Date(firstDate);
+    while (true) {
+      const isEnd  = addMonths(wStart, 12);
+      const oosEnd = addMonths(isEnd, 6);
+      if (oosEnd > lastDate) break;
+      windows.push({
+        isStart: wStart.toISOString().substring(0, 10),
+        isEnd:   isEnd.toISOString().substring(0, 10),
+        oosEnd:  oosEnd.toISOString().substring(0, 10),
+      });
+      wStart = addMonths(wStart, 3);
+    }
+    function barsInRange(from, to) {
+      return bars.filter(b => b.t.substring(0, 10) >= from && b.t.substring(0, 10) < to);
+    }
+    function findBest(subBars) {
+      let best = null;
+      for (const g1 of wfGrid.gate1Threshold)
+      for (const g2 of wfGrid.gate2MinMovePct)
+      for (const sp of wfGrid.stopPct)
+      for (const mr of wfGrid.minRangePct)
+      for (const rp of wfGrid.riskPct)
+      for (const tp of wfGrid.tpPct) {
+        const cfg = { gate1Threshold: g1, gate2MinMovePct: g2, stopPct: sp, minRangePct: mr, riskPct: rp, tpPct: tp };
+        const r   = _computeNqQmr(subBars, cfg);
+        const s   = r.stats;
+        if (s.n < 8 || s.cagr <= 0 || s.maxDD <= 0 || s.sharpe <= 0) continue;
+        const score = s.sharpe * Math.sqrt(s.cagr) / s.maxDD;
+        if (!best || score > best.score) best = { cfg, stats: s, score };
+      }
+      return best;
+    }
+    const results  = [];
+    let baseEq = 1.0;
+    const oosCurve = [];
+    for (const w of windows) {
+      const isBars  = barsInRange(w.isStart, w.isEnd);
+      const oosBars = barsInRange(w.isEnd, w.oosEnd);
+      const best = findBest(isBars);
+      if (!best) { results.push({ isStart: w.isStart, isEnd: w.isEnd, oosEnd: w.oosEnd, bestCfg: null, isStats: null, oosStats: null }); continue; }
+      const oosR = _computeNqQmr(oosBars, best.cfg);
+      for (const p of oosR.curve) {
+        oosCurve.push({ date: p.date, equity: +(baseEq * p.equity).toFixed(6) });
+      }
+      if (oosR.curve.length) baseEq *= oosR.curve[oosR.curve.length - 1].equity;
+      results.push({ isStart: w.isStart, isEnd: w.isEnd, oosEnd: w.oosEnd, bestCfg: best.cfg, isStats: best.stats, oosStats: oosR.stats });
+    }
+    console.log(`[nq-qmr wf-retrain] ${results.length} windows, OOS curve pts: ${oosCurve.length}`);
+    res.json({ ok: true, windows: results, oosCurve });
+  } catch (err) {
+    console.error('[nq-qmr wf-retrain]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
