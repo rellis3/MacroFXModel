@@ -24,9 +24,12 @@ const BM_P75       = 2.049;
 const HN_P50       = 0.6745;
 const HN_P75       = 1.1503;
 
+const G_ALPHA = 0.06;
+const G_BETA  = 0.91;
+
 const ASSET_PARAMS = {
   commodity: { hl_75_corr: 0.940, oc_corr: 1.144, hl_50_corr: 1.023, oc_75_corr: 1.092 },
-  index:     { hl_75_corr: 0.967, oc_corr: 1.092, hl_50_corr: 1.010, oc_75_corr: 1.115 },
+  index:     { hl_75_corr: 0.967, oc_corr: 1.092, hl_50_corr: 1.010, oc_75_corr: 1.115, garch_omega: 4.76e-6 },
   fx:        { hl_75_corr: 0.912, oc_corr: 1.038, hl_50_corr: 0.965, oc_75_corr: 1.015 },
 };
 
@@ -112,6 +115,54 @@ function hvVarSeries(logReturns, window = 20) {
   return out;
 }
 
+// ── Yang-Zhang vol series (for fx primary) ───────────────────────────────────
+// out[i] = YZ daily sigma using bars[i-window..i] (inclusive).
+// For no-lookahead prediction of bar i: use out[i-1].
+// Mirrors yangZhangVolSeries() in volForecast.js.
+
+function yzVolSeries(bars, window = 30) {
+  const n = bars.length;
+  const out = new Float64Array(n);
+  const k = 0.34 / (1.34 + (window + 1) / (window - 1));
+  for (let i = window; i < n; i++) {
+    const s = bars.slice(i - window, i + 1);
+    let muOn = 0, muOc = 0, varOn = 0, varOc = 0, rs = 0;
+    for (let j = 1; j <= window; j++) {
+      muOn += Math.log(s[j].open / s[j - 1].close);
+      muOc += Math.log(s[j].close / s[j].open);
+    }
+    muOn /= window; muOc /= window;
+    for (let j = 1; j <= window; j++) {
+      const dOn = Math.log(s[j].open / s[j - 1].close) - muOn;
+      const dOc = Math.log(s[j].close / s[j].open) - muOc;
+      varOn += dOn * dOn; varOc += dOc * dOc;
+      rs += Math.log(s[j].high / s[j].close) * Math.log(s[j].high / s[j].open)
+          + Math.log(s[j].low  / s[j].close) * Math.log(s[j].low  / s[j].open);
+    }
+    varOn /= (window - 1); varOc /= (window - 1); rs /= window;
+    out[i] = Math.sqrt(Math.max(varOn + k * varOc + (1 - k) * rs, 0));
+  }
+  return out;
+}
+
+// ── GARCH(1,1) sigma series (for index primary) ───────────────────────────────
+// out[i] = sigma for PREDICTING bar i's range, using returns through bar i-1.
+// α=0.06 β=0.91 — initialized at unconditional variance ω/(1−α−β).
+
+function garchSigmas(bars, omega) {
+  const n = bars.length;
+  const out = new Float64Array(n);
+  let v = omega / (1 - G_ALPHA - G_BETA);
+  out[0] = Math.sqrt(v);
+  out[1] = Math.sqrt(v);
+  for (let i = 2; i < n; i++) {
+    const r = Math.log(bars[i - 1].close / bars[i - 2].close);
+    v = omega + G_ALPHA * r * r + G_BETA * v;
+    out[i] = Math.sqrt(v);
+  }
+  return out;
+}
+
 // ── Regime classifier (EMA-20 slope, walk-forward) ────────────────────────────
 
 function classifyRegime(closes, idx, span = 20, slopeWindow = 5, thresh = 0.002, bearMult = 1.0) {
@@ -186,8 +237,26 @@ function runBacktest(bars, assetClass, opts = {}) {
     slMult = 1.5, slopeThresh = 0.002,
     bearMult = 1.0, rangeMode = 'fade_both',
   } = opts;
-  const p       = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
-  const closes  = bars.map(b => b.close);
+  const p      = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
+  const closes = bars.map(b => b.close);
+
+  // Pre-compute vol sigma series O(n) — out[i] = sigma for predicting bar i.
+  // commodity→HV20, index→GARCH(1,1), fx→YZ(30) — mirrors computeForecast().
+  let volSigmas;
+  if (assetClass === 'commodity') {
+    const logRets = [];
+    for (let j = 1; j < closes.length; j++) logRets.push(Math.log(closes[j] / closes[j - 1]));
+    const hvVars = hvVarSeries(logRets, 20);
+    volSigmas = new Float64Array(bars.length);
+    for (let i = 2; i < bars.length; i++) volSigmas[i] = Math.sqrt(Math.max(hvVars[i - 2], 1e-12));
+  } else if (assetClass === 'index') {
+    volSigmas = garchSigmas(bars, p.garch_omega ?? 4.76e-6);
+  } else {
+    const yzFull = yzVolSeries(bars, 30);
+    volSigmas = new Float64Array(bars.length);
+    for (let i = 1; i < bars.length; i++) volSigmas[i] = yzFull[i - 1] || 1e-6;
+  }
+
   const records = [];
 
   for (let i = minLookback; i < bars.length; i++) {
@@ -195,23 +264,9 @@ function runBacktest(bars, assetClass, opts = {}) {
     if (dateFrom && date < dateFrom) continue;
     if (dateTo   && date > dateTo)   continue;
 
-    const logRet = [];
-    for (let j = 1; j < i; j++) logRet.push(Math.log(closes[j] / closes[j - 1]));
-    if (logRet.length < 20) continue;
+    const sigmaD = volSigmas[i];
+    if (!sigmaD || sigmaD < 1e-8) continue;
 
-    let sigmaD;
-    if (assetClass === 'commodity') {
-      const win = Math.min(20, logRet.length), sl = logRet.slice(-win);
-      const mean = sl.reduce((s, r) => s + r, 0) / win;
-      sigmaD = Math.sqrt(Math.max(sl.reduce((s, r) => s + (r - mean) ** 2, 0) / Math.max(win - 1, 1), 0));
-    } else if (assetClass === 'index') {
-      const v = ewmaVarSeries(logRet, 0.90);
-      sigmaD = Math.sqrt(v[v.length - 1]);
-    } else {
-      const win = Math.min(30, logRet.length), sl = logRet.slice(-win);
-      const mean = sl.reduce((s, r) => s + r, 0) / win;
-      sigmaD = Math.sqrt(Math.max(sl.reduce((s, r) => s + (r - mean) ** 2, 0) / Math.max(win - 1, 1), 0));
-    }
     const hl75pct   = BM_P75 * p.hl_75_corr * sigmaD * 100;
     const ocMedPct  = HN_P50 * p.oc_corr    * sigmaD * 100;
     const regime    = classifyRegime(closes, i, 20, 5, slopeThresh, bearMult);
@@ -235,7 +290,7 @@ function runBacktest(bars, assetClass, opts = {}) {
 
 // ── Public: run all instruments and return structured result ──────────────────
 
-export { ewmaVarSeries, hvVarSeries, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75 };
+export { ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75 };
 export { fetchD1 };
 
 export async function runFullBacktest(opts = {}, instruments = INSTRUMENTS) {
