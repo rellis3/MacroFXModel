@@ -2317,9 +2317,13 @@ function _computeNqQmr(bars, cfg = {}) {
   const rets  = trades.map(t => t.tradeReturn / 100);
   const mu    = rets.reduce((s, r) => s + r, 0) / (rets.length || 1);
   const sig   = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / (rets.length || 1));
-  // Annualise Sharpe using trade frequency (~75 trades/year)
   const tradesPerYear = n / Math.max((new Date(curve[curve.length-1]?.date) - new Date(curve[0]?.date)) / (365.25*864e5), 1);
   const sharpe  = sig > 0 ? (mu / sig) * Math.sqrt(tradesPerYear) : 0;
+
+  // Sortino: downside deviation uses only negative returns (target = 0)
+  const downVar  = rets.reduce((s, r) => s + Math.min(r, 0) ** 2, 0) / (n || 1);
+  const downDev  = Math.sqrt(downVar);
+  const sortino  = downDev > 0 ? (mu / downDev) * Math.sqrt(tradesPerYear) : 0;
 
   const years  = curve.length >= 2
     ? (new Date(curve[curve.length-1].date) - new Date(curve[0].date)) / (365.25 * 864e5)
@@ -2336,7 +2340,8 @@ function _computeNqQmr(bars, cfg = {}) {
   return {
     trades, curve,
     stats: { n, wins, winRate: n ? wins / n : 0, cagr: +cagr.toFixed(2),
-             sharpe: +sharpe.toFixed(2), maxDD: +(maxDD * 100).toFixed(2),
+             sharpe: +sharpe.toFixed(2), sortino: +sortino.toFixed(2),
+             maxDD: +(maxDD * 100).toFixed(2),
              totalReturn: +((equity - 1) * 100).toFixed(2) },
   };
 }
