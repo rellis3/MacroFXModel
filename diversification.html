@@ -412,9 +412,7 @@ let _cfg = {
         allocVBull:1.0, allocBull:0.8, allocNeutral:0.6, allocBear:0.3, allocVBear:0.0 },
   p3: { ismMaPeriod:42, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.3, overheatTlt:0.2,
         stagGld:0.8, stagTlt:0.3, stagSpy:0.1, recTlt:0.6, recSpy:0.1 },
-  p4: { thHigh:1.5, thMid:0.75, thLow:-0.5,
-        allocHigh:0.2, allocMid:0.5, allocLow:0.85, allocNormal:1.0,
-        trendWin:126 },
+  p4: { trendWin:63, vixExit:1.0, allocNormal:1.0 },
   p5: { lookback:189, skip:21, nLong:3, nShort:2 },
   p6: { olsWindow:126, thVLong:-2.0, thLong:-1.0, thShort:0.75, thVShort:1.5,
         allocVLong:1.0, allocLong:0.75, allocNeutral:0.3, allocShort:0.25, allocVShort:0.0 },
@@ -846,30 +844,28 @@ function runP3(data) {
 }
 
 // P4: FX Carry — long GBP/JPY, AUD/JPY, NZD/JPY; VIX Z-score risk-off gate
+// P4: USD/JPY Trend Carry — long USD/JPY when price > MA (JPY weakening = carry-on);
+// hard full exit when VIX Z > vixExit threshold (per P4 spec: "EXIT ALL IMMEDIATELY").
+// Rationale: USD/JPY is the purest rate-differential trade (US rates vs Japan 0%).
+// The 3 crosses (GBP/AUD/NZD vs JPY) added cross-currency noise; USD/JPY had two
+// massive clean uptrends (2012-2015 Abenomics, 2021-2024 Fed hiking) a trend filter captures well.
 function runP4(data) {
   const { dateIndex: dates, fred, fx, prices } = data;
   const n = dates.length;
 
-  const gbpjpy    = ffill(fx.gbpjpy);
-  const audjpy    = ffill(fx.audjpy);
-  const nzdjpy    = ffill(fx.nzdjpy);
+  const usdjpy    = ffill(fx.usdjpy);
   const realyield = ffill(fred.realyield);
 
-  // Per-pair trend filter: rolling MA — only hold a pair when it's above its MA
+  // Rolling MA trend filter
   const tw = _cfg.p4.trendWin;
-  function rollingMaP4(arr) {
-    return arr.map((_, i) => {
-      if (i < tw) return NaN;
-      let s = 0, c = 0;
-      for (let j = i - tw + 1; j <= i; j++) if (isFinite(arr[j])) { s += arr[j]; c++; }
-      return c > 0 ? s / c : NaN;
-    });
-  }
-  const gbpMA = rollingMaP4(gbpjpy);
-  const audMA = rollingMaP4(audjpy);
-  const nzdMA = rollingMaP4(nzdjpy);
+  const usdMA = usdjpy.map((_, i) => {
+    if (i < tw) return NaN;
+    let s = 0, c = 0;
+    for (let j = i - tw + 1; j <= i; j++) if (isFinite(usdjpy[j])) { s += usdjpy[j]; c++; }
+    return c > 0 ? s / c : NaN;
+  });
 
-  // VIX Z-score risk-off gate
+  // VIX Z-score hard-exit gate (spec: EXIT ALL when VIX Z > 1.0)
   const vixRaw = prices?.vix ? ffill(prices.vix) : null;
   const riskZ = vixRaw
     ? rollingZ(vixRaw, 60)
@@ -880,44 +876,27 @@ function runP4(data) {
   const equityCurve = new Array(n).fill(NaN);
   const monthlyRet = [], monthlyDates = [];
   let prevMonthEnd = -1;
-  let alloc = 1.0;
-  // Trend signals decided at month-end, applied to next month's returns (no look-ahead)
-  let gbpOn = false, audOn = false, nzdOn = false;
+  let inTrade = false; // decided at month-end, applied next month (no look-ahead)
 
   for (const idx of monthEnds) {
     const cz = riskZ[idx];
     const c4 = _cfg.p4;
-    let newAlloc = c4.allocNormal;
-    if (isFinite(cz)) {
-      if (cz > c4.thHigh)      newAlloc = c4.allocHigh;
-      else if (cz > c4.thMid)  newAlloc = c4.allocMid;
-      else if (cz > c4.thLow)  newAlloc = c4.allocLow;
-    }
 
-    // Update trend signals for NEXT period (using current month-end price vs MA)
-    const newGbpOn = isFinite(gbpjpy[idx]) && isFinite(gbpMA[idx]) && gbpjpy[idx] > gbpMA[idx];
-    const newAudOn = isFinite(audjpy[idx]) && isFinite(audMA[idx]) && audjpy[idx] > audMA[idx];
-    const newNzdOn = isFinite(nzdjpy[idx]) && isFinite(nzdMA[idx]) && nzdjpy[idx] > nzdMA[idx];
+    // New signal for NEXT period: both trend and VIX conditions must be met
+    const vixOk   = !isFinite(cz) || cz < c4.vixExit;
+    const trendOn = isFinite(usdjpy[idx]) && isFinite(usdMA[idx]) && usdjpy[idx] > usdMA[idx];
+    const newIn   = vixOk && trendOn;
 
     if (prevMonthEnd >= 0) {
-      // Only trade pairs that were above their MA at the start of this period
-      let carryRet = 0, nActive = 0;
-      if (gbpOn && isFinite(gbpjpy[prevMonthEnd]) && isFinite(gbpjpy[idx]) && gbpjpy[prevMonthEnd] > 0) {
-        carryRet += (gbpjpy[idx] - gbpjpy[prevMonthEnd]) / gbpjpy[prevMonthEnd]; nActive++;
+      let ret = 0;
+      if (inTrade) {
+        const u0 = usdjpy[prevMonthEnd], u1 = usdjpy[idx];
+        const fxRet = isFinite(u0) && isFinite(u1) && u0 > 0 ? (u1 - u0) / u0 : 0;
+        // Carry income proxy: US nominal rate - Japan rate ≈ TIPS real yield + inflation
+        const ry = isFinite(realyield[idx]) ? realyield[idx] : -0.5;
+        const annualCarry = ry > 0.5 ? 0.03 : ry > -0.25 ? 0.018 : 0.008;
+        ret = c4.allocNormal * (fxRet + annualCarry / 12);
       }
-      if (audOn && isFinite(audjpy[prevMonthEnd]) && isFinite(audjpy[idx]) && audjpy[prevMonthEnd] > 0) {
-        carryRet += (audjpy[idx] - audjpy[prevMonthEnd]) / audjpy[prevMonthEnd]; nActive++;
-      }
-      if (nzdOn && isFinite(nzdjpy[prevMonthEnd]) && isFinite(nzdjpy[idx]) && nzdjpy[prevMonthEnd] > 0) {
-        carryRet += (nzdjpy[idx] - nzdjpy[prevMonthEnd]) / nzdjpy[prevMonthEnd]; nActive++;
-      }
-      if (nActive > 0) carryRet /= nActive;
-
-      // Carry income: scale by rate environment; cash portion earns 0
-      const ry = isFinite(realyield[idx]) ? realyield[idx] : -0.5;
-      const annualCarry = ry > 0.5 ? 0.035 : ry > -0.25 ? 0.022 : 0.010;
-      const activeAlloc = alloc * (nActive / 3); // scale down when fewer pairs trending
-      const ret = activeAlloc * (carryRet + annualCarry / 12);
       equity *= (1 + ret);
       monthlyRet.push(ret);
       monthlyDates.push(dates[idx]);
@@ -925,8 +904,7 @@ function runP4(data) {
     } else {
       equityCurve[idx] = equity;
     }
-    alloc = newAlloc;
-    gbpOn = newGbpOn; audOn = newAudOn; nzdOn = newNzdOn;
+    inTrade = newIn;
     prevMonthEnd = idx;
   }
 
@@ -1691,19 +1669,15 @@ function sysCfgForm(key) {
       <div>
         <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Trend Filter</div>
         ${row('MA window (days)', 'p4_trendWin', c.trendWin, 10, 21, 252)}
-        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Pair excluded when price &lt; MA</div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">VIX Z-Score Thresholds</div>
-        ${row('High stress >',  'p4_thHigh', c.thHigh, 0.1,-3,3)}
-        ${row('Mid stress >',   'p4_thMid',  c.thMid,  0.1,-3,3)}
-        ${row('Low stress >',   'p4_thLow',  c.thLow,  0.1,-3,3)}
+        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Enter USD/JPY long when price &gt; MA (JPY weakening)</div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Risk Gate</div>
+        ${row('VIX Z exit threshold', 'p4_vixExit', c.vixExit, 0.1, -3, 3)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Hard full exit when VIX Z-score exceeds threshold</div>
       </div>
       <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Carry Allocation</div>
-        ${row('High stress alloc',   'p4_allocHigh',   c.allocHigh)}
-        ${row('Mid stress alloc',    'p4_allocMid',    c.allocMid)}
-        ${row('Low stress alloc',    'p4_allocLow',    c.allocLow)}
-        ${row('Normal alloc',        'p4_allocNormal', c.allocNormal)}
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Allocation scales down proportionally as pairs exit trend filter</div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Allocation</div>
+        ${row('Normal alloc', 'p4_allocNormal', c.allocNormal)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Full allocation when both trend &amp; risk conditions met; otherwise 0%</div>
       </div>
     </div>`;
 
@@ -1755,9 +1729,7 @@ function updateSysCfg(key) {
     c.stagGld=n('stagGld'); c.stagTlt=n('stagTlt'); c.stagSpy=n('stagSpy');
     c.recTlt=n('recTlt'); c.recSpy=n('recSpy');
   } else if (key === 'p4') {
-    c.trendWin=n('trendWin');
-    c.thHigh=n('thHigh'); c.thMid=n('thMid'); c.thLow=n('thLow');
-    c.allocHigh=n('allocHigh'); c.allocMid=n('allocMid'); c.allocLow=n('allocLow'); c.allocNormal=n('allocNormal');
+    c.trendWin=n('trendWin'); c.vixExit=n('vixExit'); c.allocNormal=n('allocNormal');
   } else if (key === 'p5') {
     c.lookback=n('lookback'); c.nLong=n('nLong'); c.nShort=n('nShort');
   } else if (key === 'p6') {
@@ -1807,13 +1779,8 @@ const OPT_GRIDS = {
     overheatGld: [0.2, 0.3, 0.5],        // gold allocation in overheating regime
   },
   p4: {
-    trendWin:  [42, 63, 126, 189],        // key new param for the MA filter
-    thHigh:    [1.0, 1.5, 2.0],
-    thMid:     [0.50, 0.75, 1.0],
-    thLow:     [-1.0, -0.5, 0.0],
-    allocHigh: [0.0, 0.1, 0.2],
-    allocMid:  [0.3, 0.5, 0.7],
-    allocLow:  [0.3, 0.5, 0.7],
+    trendWin: [42, 63, 126, 189],
+    vixExit:  [0.5, 0.75, 1.0, 1.5],
   },
   p5: {
     lookback: [126, 189, 252],
@@ -1844,7 +1811,7 @@ function expandGrid(grid) {
 function _validCombo(key, c) {
   if (key === 'p1') return c.bandHigh > c.bandMid && c.bandMid > c.bandLow;
   if (key === 'p2') return c.thVBull > c.thBull && c.thBull > c.thNeutral && c.thNeutral > c.thBear;
-  if (key === 'p4') return c.thHigh > c.thMid && c.thMid > c.thLow && c.allocHigh < c.allocMid && c.allocMid < c.allocLow;
+  if (key === 'p4') return true;
   if (key === 'p6') return c.thVLong < c.thLong;
   return true;
 }
@@ -1931,7 +1898,7 @@ function renderSystemPanel(key) {
     'Five-factor macro composite (net liquidity, yield curve, HY credit, real yield, ISM). Monthly z-score scoring drives SPY allocation across four bands. Longs-only: equity markets have structural upward drift (~10%/yr); shorts expose you to gap risk, short squeezes, and unlimited downside without the structural premium.',
     'Credit-equity divergence tracks the spread between HY credit conditions (BAMLH0A0HYM2 z-score) and SPY short-term momentum. Risk-on divergence (credit improving + equity rising) favours SPY; risk-off divergence rotates to TLT. Captures regime transitions before they fully express in price.',
     'ISM Manufacturing trend combined with Core CPI momentum creates four macro quadrants: Goldilocks (SPY heavy), Overheating (SPY+GLD), Stagflation (GLD heavy), Recession (TLT heavy). Asset mix is tunable per quadrant.',
-    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. A per-pair trend filter (rolling MA) keeps each pair in cash during downtrends, avoiding carry-unwind disasters (2008, 2015, 2024). Active pairs earn estimated rate differential income (1–4% p.a. scaled by TIPS real yield). VIX Z-score gate reduces overall allocation during market stress.',
+    'USD/JPY Trend Carry — long USD/JPY when price is above its rolling MA (JPY weakening = carry-on). Captures the two major USD/JPY up-trends: Abenomics 2012–2015 (+50%) and Fed hiking cycle 2021–2024 (+45%). Rate differential income (~1–3% p.a. scaled by TIPS real yield) adds carry return. Hard binary exit when VIX Z-score exceeds threshold — per the P4 spec "EXIT ALL CARRY POSITIONS IMMEDIATELY" on stress.',
     'Cross-sectional momentum across 7 major currencies in USD terms. Long top-2 / short bottom-2 produces a pure momentum factor orthogonal to carry and macro. A minimum 4% spread between best and worst signal gates out low-conviction months. 9-month lookback targets the strongest momentum window.',
     'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over a rolling window. When gold trades at a discount to its macro-implied fair value (negative residual z-score), increase allocation. Captures gold mispricing vs macro fundamentals.',
   ];
