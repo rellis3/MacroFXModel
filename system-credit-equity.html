@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P2 — Credit-Equity Divergence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="./js/sys-backtest-shared.js"></script>
+<style>
+#app { padding: 0 20px 60px; max-width: 1380px; margin: 0 auto; }
+
+/* KPI grid */
+.bt-kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
+@media (max-width: 1000px) { .bt-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px)  { .bt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.bt-kpi {
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
+  padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; transition: border-color .2s;
+}
+.bt-kpi:hover { border-color: var(--border2); }
+.bt-kpi-label { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bt-kpi-value { font-size: 26px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); line-height: 1.1; }
+.bt-kpi-value.green { color: var(--green); }
+.bt-kpi-value.red   { color: var(--red); }
+.bt-kpi-value.blue  { color: var(--blue); }
+.bt-kpi-value.amber { color: var(--amber); }
+.bt-kpi-sub { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* Sec stats */
+.bt-sec-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+@media (max-width: 900px) { .bt-sec-grid { grid-template-columns: repeat(2, 1fr); } }
+.bt-sec {
+  background: var(--s1); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;
+}
+.bt-sec-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bt-sec-val { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
+
+/* Card */
+.bt-card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 14px; }
+.bt-card-hdr {
+  padding: 12px 18px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.bt-card-hdr .ml-auto { margin-left: auto; }
+.bt-card-body { padding: 18px; }
+.bt-chart-wrap { position: relative; height: 280px; }
+.bt-chart-wrap.tall { height: 380px; }
+
+/* Tables */
+.bt-tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+.bt-tbl th {
+  padding: 7px 10px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.bt-tbl td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+.bt-tbl tr:last-child td { border-bottom: none; }
+.bt-tbl tr:hover td { background: var(--s2); }
+.bt-tbl td.num { text-align: right; }
+.bt-tbl td.pos { color: var(--green); }
+.bt-tbl td.neg { color: var(--red); }
+.bt-tbl td.neu { color: var(--text2); }
+.bt-tbl-scroll { overflow-x: auto; max-height: 380px; overflow-y: auto; }
+
+/* Run bar */
+.bt-run-bar {
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r);
+  padding: 12px 16px; margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.bt-run-btn {
+  background: var(--green); border: none; border-radius: 6px; color: #fff;
+  font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600;
+  padding: 6px 20px; cursor: pointer; transition: opacity .2s;
+}
+.bt-run-btn:hover { opacity: .85; }
+.bt-run-btn:disabled { opacity: .5; cursor: wait; }
+.bt-run-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* Tabs */
+.dv-tabs { display: flex; gap: 4px; margin-top: 16px; flex-wrap: wrap; }
+.dv-tab {
+  padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; font-family: 'DM Mono', monospace; color: var(--text3);
+  background: var(--s1); border: 1px solid var(--border); cursor: pointer; transition: all .15s;
+}
+.dv-tab:hover { border-color: var(--blue); color: var(--blue); }
+.dv-tab.active { background: #ef4444; border-color: #ef4444; color: #fff; }
+.dv-panel { display: none; }
+.dv-panel.active { display: block; }
+
+/* Status dot */
+.sdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--border2); }
+.sdot.ok   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.sdot.spin { background: var(--amber); animation: pulse 1s infinite; }
+.sdot.err  { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Info/warn banners */
+.dv-info {
+  background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.3); border-radius: var(--r);
+  padding: 10px 14px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--blue);
+  margin-top: 10px;
+}
+.dv-warn {
+  background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3); border-radius: var(--r);
+  padding: 10px 14px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--red);
+  margin-top: 10px; display: flex; align-items: center; gap: 8px;
+}
+
+/* Config inputs */
+.cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+.cfg-section-title { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); margin-bottom: 4px; font-family: 'DM Mono', monospace; font-weight: 600; }
+.cfg-row { padding: 4px 0; display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-family: 'DM Mono', monospace; }
+.cfg-row span { color: var(--text3); }
+.cfg-inp {
+  width: 70px; background: var(--s2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; padding: 3px 6px;
+}
+.cfg-inp:focus { outline: none; border-color: #ef4444; }
+.cfg-note { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 4px; }
+
+/* LW chart pane labels */
+.lw-pane-label {
+  font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3);
+  padding: 4px 8px; border-bottom: 1px solid var(--border);
+  display: flex; gap: 16px; align-items: center;
+}
+.lw-pane-label .leg { display: flex; align-items: center; gap: 5px; }
+.lw-pane-label .leg-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Top bar ──────────────────────────────────────────────────────────────── -->
+  <div style="padding: 20px 0 10px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+    <h1 style="font-size: 22px; font-weight: 700; margin: 0; color: #ef4444;">P2 — Credit-Equity Divergence</h1>
+    <span style="font-size: 13px; color: var(--text3); font-family: 'DM Mono', monospace;">
+      HY credit z-score vs SPY 21-day momentum · SPY/TLT allocation
+    </span>
+    <span style="margin-left: auto; font-size: 12px; font-family: 'DM Mono', monospace;">
+      ← <a href="diversification.html" style="color: var(--blue);">Book Explorer</a>
+    </span>
+  </div>
+
+  <!-- ── Run bar ──────────────────────────────────────────────────────────────── -->
+  <div class="bt-run-bar">
+    <button class="bt-run-btn" id="runBtn" onclick="runBacktest()" style="background:#ef4444;">Run Backtest</button>
+    <span class="sdot" id="statusDot"></span>
+    <span id="statusMsg" class="bt-run-lbl">Click Run to fetch data and compute Credit-Equity Divergence system</span>
+  </div>
+
+  <!-- ── Description ──────────────────────────────────────────────────────────── -->
+  <div class="dv-info" style="margin-top: 14px;">
+    Tracks divergence between HY credit conditions (BAMLH0A0HYM2 z-score) and SPY 21-day return z-score.
+    Signal = −credit_z + spy_return_z. Risk-on (credit improving + equity rising) → SPY heavy.
+    Risk-off (credit worsening + equity falling) → TLT heavy. TLT = 1 − SPY allocation.
+  </div>
+
+  <!-- ── Config card ──────────────────────────────────────────────────────────── -->
+  <div class="bt-card">
+    <div class="bt-card-hdr" onclick="toggleConfig()" style="cursor:pointer;">
+      <span style="color:#ef4444;">⚙ Parameters</span>
+      <span class="ml-auto" style="font-size:10px;color:var(--text3);">click to expand/collapse</span>
+    </div>
+    <div id="cfgBody" class="bt-card-body" style="display:none;">
+      <div class="cfg-grid">
+        <div>
+          <div class="cfg-section-title">Score Thresholds</div>
+          <div class="cfg-row"><span>Very Bullish &gt;</span>
+            <input type="number" id="cfg_p2_thVBull" class="cfg-inp" value="1.5" step="0.1" min="-3" max="3"></div>
+          <div class="cfg-row"><span>Bullish &gt;</span>
+            <input type="number" id="cfg_p2_thBull" class="cfg-inp" value="0.5" step="0.1" min="-3" max="3"></div>
+          <div class="cfg-row"><span>Neutral &gt;</span>
+            <input type="number" id="cfg_p2_thNeutral" class="cfg-inp" value="-0.5" step="0.1" min="-3" max="3"></div>
+          <div class="cfg-row"><span>Bearish &gt;</span>
+            <input type="number" id="cfg_p2_thBear" class="cfg-inp" value="-1.5" step="0.1" min="-3" max="3"></div>
+        </div>
+        <div>
+          <div class="cfg-section-title">SPY Allocations (TLT = 1 − SPY)</div>
+          <div class="cfg-row"><span>Very Bullish SPY</span>
+            <input type="number" id="cfg_p2_allocVBull" class="cfg-inp" value="1.0" step="0.05" min="0" max="1"></div>
+          <div class="cfg-row"><span>Bullish SPY</span>
+            <input type="number" id="cfg_p2_allocBull" class="cfg-inp" value="0.8" step="0.05" min="0" max="1"></div>
+          <div class="cfg-row"><span>Neutral SPY</span>
+            <input type="number" id="cfg_p2_allocNeutral" class="cfg-inp" value="0.6" step="0.05" min="0" max="1"></div>
+          <div class="cfg-row"><span>Bearish SPY</span>
+            <input type="number" id="cfg_p2_allocBear" class="cfg-inp" value="0.3" step="0.05" min="0" max="1"></div>
+          <div class="cfg-row"><span>Very Bearish SPY</span>
+            <input type="number" id="cfg_p2_allocVBear" class="cfg-inp" value="0.1" step="0.05" min="0" max="1"></div>
+          <div class="cfg-note">TLT allocation = 1 − SPY allocation at each rebalance</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── KPI Grid ─────────────────────────────────────────────────────────────── -->
+  <div class="bt-kpi-grid" id="kpiGrid"></div>
+  <div class="bt-sec-grid" id="secGrid"></div>
+
+  <!-- ── Tabs ─────────────────────────────────────────────────────────────────── -->
+  <div class="dv-tabs">
+    <div class="dv-tab active" data-tab="signal"   onclick="switchTab('signal')">Signal Chart</div>
+    <div class="dv-tab"        data-tab="equity"   onclick="switchTab('equity')">Equity Curve</div>
+    <div class="dv-tab"        data-tab="monthly"  onclick="switchTab('monthly')">Monthly Returns</div>
+    <div class="dv-tab"        data-tab="annual"   onclick="switchTab('annual')">Annual Summary</div>
+    <div class="dv-tab"        data-tab="trades"   onclick="switchTab('trades')">Rebalances</div>
+  </div>
+
+  <!-- ── Panel: Signal Chart ──────────────────────────────────────────────────── -->
+  <div class="dv-panel active" id="panel-signal">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">SPY &amp; TLT Price (Normalized) + Trade Signals</div>
+      <div class="lw-pane-label">
+        <span class="leg"><span class="leg-dot" style="background:#3b82f6;"></span>SPY (normalized)</span>
+        <span class="leg"><span class="leg-dot" style="background:#10b981;"></span>TLT (normalized)</span>
+        <span style="margin-left:auto;color:var(--text3);">↑ green = SPY alloc increase · ↓ red = decrease</span>
+      </div>
+      <div id="lwPriceChart" style="height:280px;"></div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Credit-Equity Divergence Score (Histogram)</div>
+      <div class="lw-pane-label">
+        <span class="leg"><span class="leg-dot" style="background:#10b981;"></span>Positive = Risk-On</span>
+        <span class="leg"><span class="leg-dot" style="background:#ef4444;"></span>Negative = Risk-Off</span>
+        <span style="margin-left:auto;color:var(--text3);">Horizontal lines = allocation thresholds</span>
+      </div>
+      <div id="lwSignalChart" style="height:220px;"></div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Equity Curve ──────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-equity">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Equity Curve — P2 vs SPY Buy &amp; Hold</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap tall"><canvas id="chartEquity"></canvas></div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Drawdown</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap"><canvas id="chartDD"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Monthly Returns ───────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-monthly">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Monthly Returns Heatmap</div>
+      <div class="bt-card-body" style="padding:0 18px 18px;">
+        <div id="heatmapContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Annual Summary ────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-annual">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Annual Returns</div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap tall"><canvas id="chartAnnual"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Rebalances ────────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-trades">
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Rebalance Log</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Direction</th>
+                <th class="num">Old SPY%</th>
+                <th class="num">New SPY%</th>
+                <th class="num">Signal</th>
+                <th class="num">Period Return</th>
+              </tr>
+            </thead>
+            <tbody id="tradesTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _result = null;
+let _rawData = null;
+
+// ── Config reader ─────────────────────────────────────────────────────────────
+function readCfg() {
+  const g = id => parseFloat(document.getElementById(id).value);
+  return {
+    thVBull:    g('cfg_p2_thVBull'),
+    thBull:     g('cfg_p2_thBull'),
+    thNeutral:  g('cfg_p2_thNeutral'),
+    thBear:     g('cfg_p2_thBear'),
+    allocVBull:    g('cfg_p2_allocVBull'),
+    allocBull:     g('cfg_p2_allocBull'),
+    allocNeutral:  g('cfg_p2_allocNeutral'),
+    allocBear:     g('cfg_p2_allocBear'),
+    allocVBear:    g('cfg_p2_allocVBear'),
+  };
+}
+
+// ── Engine ────────────────────────────────────────────────────────────────────
+function runEngine(data, cfg) {
+  const { dateIndex: dates, fred, prices } = data;
+  const n = dates.length;
+
+  const credit = ffill(fred.credit);
+  const spy    = ffill(prices.spy);
+  const tlt    = ffill(prices.tlt);
+
+  // Credit z-score with publication lag
+  const crLag = applyLag(credit, PUB_MONTHLY);
+  const crZ   = rollingZ(crLag);
+
+  // SPY 21-day return z-score over 63-day window
+  const spyRet21 = spy.map((v, i) => {
+    if (i < 21 || !isFinite(v) || !isFinite(spy[i - 21]) || spy[i - 21] === 0) return NaN;
+    return (v - spy[i - 21]) / spy[i - 21];
+  });
+  const spyRetZ = rollingZ(spyRet21, 63);
+
+  const monthEnds = monthEndIdx(dates);
+  let equity = 1.0;
+  const monthlyRet = [];
+  const monthlyDates = [];
+  const trades = [];
+  const signals = [];
+  let prevMonthEnd = -1;
+  let spyAlloc = 0.6;
+  let tltAlloc = 0.4;
+
+  for (const idx of monthEnds) {
+    const cr = crZ[idx];
+    const sp = spyRetZ[idx];
+    let score = NaN;
+    if (isFinite(cr) && isFinite(sp)) score = -cr + sp;
+
+    let newSpyAlloc = 0.6;
+    if (isFinite(score)) {
+      if      (score > cfg.thVBull)   newSpyAlloc = cfg.allocVBull;
+      else if (score > cfg.thBull)    newSpyAlloc = cfg.allocBull;
+      else if (score > cfg.thNeutral) newSpyAlloc = cfg.allocNeutral;
+      else if (score > cfg.thBear)    newSpyAlloc = cfg.allocBear;
+      else                            newSpyAlloc = cfg.allocVBear;
+    }
+    const newTltAlloc = 1 - newSpyAlloc;
+
+    if (prevMonthEnd >= 0) {
+      const sp0 = spy[prevMonthEnd], sp1 = spy[idx];
+      const tl0 = tlt[prevMonthEnd], tl1 = tlt[idx];
+      const spRet = (isFinite(sp0) && isFinite(sp1) && sp0 > 0) ? (sp1 - sp0) / sp0 : 0;
+      const tlRet = (isFinite(tl0) && isFinite(tl1) && tl0 > 0) ? (tl1 - tl0) / tl0 : 0;
+      const ret = spyAlloc * spRet + tltAlloc * tlRet;
+      equity *= (1 + ret);
+      monthlyRet.push(ret);
+      monthlyDates.push(dates[idx]);
+
+      trades.push({
+        date:     dates[idx],
+        oldAlloc: spyAlloc,
+        newAlloc: newSpyAlloc,
+        signal:   score,
+        ret:      ret,
+      });
+      signals.push({ date: dates[idx], value: score });
+    }
+
+    spyAlloc = newSpyAlloc;
+    tltAlloc = newTltAlloc;
+    prevMonthEnd = idx;
+  }
+
+  return { monthlyRet, monthlyDates, trades, signals };
+}
+
+// ── Signal chart (LightweightCharts) ─────────────────────────────────────────
+function renderSignalChart(data, result, cfg) {
+  const { dateIndex: dates, prices } = data;
+  const spy = ffill(prices.spy);
+  const tlt = ffill(prices.tlt);
+
+  // Find first valid index for both
+  let firstIdx = 0;
+  for (let i = 0; i < dates.length; i++) {
+    if (isFinite(spy[i]) && isFinite(tlt[i])) { firstIdx = i; break; }
+  }
+  const spyBase = spy[firstIdx];
+  const tltBase = tlt[firstIdx];
+
+  // ── Top pane: SPY + TLT normalized ───────────────────────────────────────
+  const priceEl = document.getElementById('lwPriceChart');
+  priceEl.innerHTML = '';
+  priceEl.style.height = '280px';
+  const priceChart = LightweightCharts.createChart(priceEl, {
+    width: priceEl.clientWidth,
+    height: 280,
+    layout: { background: { color: '#0d1117' }, textColor: '#94a3b8' },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    timeScale: { borderColor: '#334155', timeVisible: false },
+    rightPriceScale: { borderColor: '#334155' },
+    handleScroll: true, handleScale: true,
+  });
+  new ResizeObserver(() => priceChart.applyOptions({ width: priceEl.clientWidth })).observe(priceEl);
+
+  const spySeries = priceChart.addLineSeries({ color: '#3b82f6', lineWidth: 2, title: 'SPY' });
+  const tltSeries = priceChart.addLineSeries({ color: '#10b981', lineWidth: 1.5, lineStyle: 1, title: 'TLT' });
+
+  const spyData = [], tltData = [];
+  for (let i = firstIdx; i < dates.length; i++) {
+    if (isFinite(spy[i]) && spyBase > 0) spyData.push({ time: dates[i], value: spy[i] / spyBase });
+    if (isFinite(tlt[i]) && tltBase > 0) tltData.push({ time: dates[i], value: tlt[i] / tltBase });
+  }
+  spySeries.setData(spyData);
+  tltSeries.setData(tltData);
+
+  // Markers on SPY series
+  const markers = buildMarkers(result.trades);
+  if (markers.length > 0) spySeries.setMarkers(markers);
+
+  // ── Bottom pane: signal histogram ─────────────────────────────────────────
+  const signalEl = document.getElementById('lwSignalChart');
+  signalEl.innerHTML = '';
+  signalEl.style.height = '220px';
+  const signalChart = LightweightCharts.createChart(signalEl, {
+    width: signalEl.clientWidth,
+    height: 220,
+    layout: { background: { color: '#0d1117' }, textColor: '#94a3b8' },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    timeScale: { borderColor: '#334155', timeVisible: false },
+    rightPriceScale: { borderColor: '#334155' },
+    handleScroll: true, handleScale: true,
+  });
+  new ResizeObserver(() => signalChart.applyOptions({ width: signalEl.clientWidth })).observe(signalEl);
+
+  const histSeries = signalChart.addHistogramSeries({
+    color: '#10b981',
+    priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+    lastValueVisible: true,
+    priceLineVisible: false,
+  });
+
+  const histData = result.signals
+    .filter(s => isFinite(s.value))
+    .map(s => ({ time: s.date, value: s.value, color: s.value >= 0 ? '#10b981' : '#ef4444' }));
+  histSeries.setData(histData);
+
+  // Threshold price lines
+  const thresholds = [
+    { price: cfg.thVBull,   color: '#10b981', label: `Very Bullish (${Math.round(cfg.allocVBull*100)}% SPY)` },
+    { price: cfg.thBull,    color: '#22d3ee', label: `Bullish (${Math.round(cfg.allocBull*100)}% SPY)` },
+    { price: cfg.thNeutral, color: '#f59e0b', label: `Neutral (${Math.round(cfg.allocNeutral*100)}% SPY)` },
+    { price: cfg.thBear,    color: '#ef4444', label: `Bearish (${Math.round(cfg.allocBear*100)}% SPY)` },
+  ];
+  for (const th of thresholds) {
+    histSeries.createPriceLine({
+      price: th.price,
+      color: th.color,
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: th.label,
+    });
+  }
+
+  // Sync time scales
+  priceChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (range) signalChart.timeScale().setVisibleLogicalRange(range);
+  });
+  signalChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (range) priceChart.timeScale().setVisibleLogicalRange(range);
+  });
+}
+
+// ── Tab callback for lazy chart rendering ─────────────────────────────────────
+function onTabSwitch(tab) {
+  if (!_result) return;
+  setTimeout(() => {
+    const eqs = buildEquity(_result.monthlyRet);
+    if (tab === 'equity') {
+      const bhRets = buildBHReturns(_rawData);
+      const bhEqs = buildEquity(bhRets);
+      renderEquityChart('chartEquity', eqs, _result.monthlyDates, bhEqs, 'SPY B&H', '#ef4444');
+      renderDDChart('chartDD', eqs, _result.monthlyDates);
+    }
+    if (tab === 'monthly') renderHeatmap('heatmapContainer', _result.monthlyRet, _result.monthlyDates);
+    if (tab === 'annual')  renderAnnualChart('chartAnnual', _result.monthlyRet, _result.monthlyDates);
+    if (tab === 'trades')  renderTradesTable(document.getElementById('tradesTbody'), _result.trades);
+  }, 30);
+}
+
+function buildBHReturns(data) {
+  const spy = ffill(data.prices.spy);
+  const dates = data.dateIndex;
+  const monthEnds = monthEndIdx(dates);
+  const rets = [];
+  let prev = -1;
+  for (const idx of monthEnds) {
+    if (prev >= 0) {
+      const p0 = spy[prev], p1 = spy[idx];
+      rets.push((isFinite(p0) && isFinite(p1) && p0 > 0) ? (p1 - p0) / p0 : 0);
+    }
+    prev = idx;
+  }
+  return rets;
+}
+
+// ── Config toggle ─────────────────────────────────────────────────────────────
+function toggleConfig() {
+  const body = document.getElementById('cfgBody');
+  body.style.display = body.style.display === 'none' ? 'block' : 'none';
+}
+
+// ── Main backtest runner ──────────────────────────────────────────────────────
+async function runBacktest() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  setStatus('spin', 'Fetching market data…');
+
+  try {
+    const data = await fetchDiversData();
+    _rawData = data;
+    setStatus('spin', `Running P2 engine on ${data.dateIndex.length} trading days…`);
+    await new Promise(r => setTimeout(r, 20));
+
+    const cfg = readCfg();
+    const result = runEngine(data, cfg);
+    _result = result;
+
+    const eqs = buildEquity(result.monthlyRet);
+
+    setStatus('spin', 'Rendering…');
+    await new Promise(r => setTimeout(r, 20));
+
+    renderKPIs(eqs, result.monthlyRet);
+    renderSignalChart(data, result, cfg);
+
+    // Render active tab content
+    const activeTab = document.querySelector('.dv-tab.active')?.dataset.tab ?? 'signal';
+    if (activeTab === 'equity') {
+      const bhRets = buildBHReturns(data);
+      const bhEqs = buildEquity(bhRets);
+      renderEquityChart('chartEquity', eqs, result.monthlyDates, bhEqs, 'SPY B&H', '#ef4444');
+      renderDDChart('chartDD', eqs, result.monthlyDates);
+    }
+    if (activeTab === 'monthly') renderHeatmap('heatmapContainer', result.monthlyRet, result.monthlyDates);
+    if (activeTab === 'annual')  renderAnnualChart('chartAnnual', result.monthlyRet, result.monthlyDates);
+    if (activeTab === 'trades')  renderTradesTable(document.getElementById('tradesTbody'), result.trades);
+
+    saveResult('p2', result, cfg);
+
+    const nMonths = result.monthlyRet.length;
+    setStatus('ok', `Complete — ${data.dateIndex.length} trading days · ${nMonths} monthly obs · ${result.trades.length} rebalances`);
+  } catch (e) {
+    setStatus('err', 'Error: ' + e.message);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
