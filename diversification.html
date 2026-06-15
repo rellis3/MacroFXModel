@@ -391,6 +391,22 @@ const MIN_Z    = 30;
 const PUB_WEEKLY  = 5;
 const PUB_MONTHLY = 21;
 
+// Per-system config (user-tunable parameters)
+let _cfg = {
+  p1: { wNetliq:0.40, wCurve:0.20, wCredit:0.20, wRealyield:0.15, wIsm:0.05,
+        bandHigh:1.0, bandMid:0.0, bandLow:-1.0,
+        allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.25 },
+  p2: { thVBull:1.5, thBull:0.5, thNeutral:-0.5, thBear:-1.5,
+        allocVBull:1.0, allocBull:0.8, allocNeutral:0.6, allocBear:0.3, allocVBear:0.1 },
+  p3: { ismMaPeriod:63, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.3, overheatTlt:0.2,
+        stagGld:0.6, stagTlt:0.3, stagSpy:0.1, recTlt:0.8, recSpy:0.1 },
+  p4: { thHigh:1.5, thMid:0.75, thLow:-0.5,
+        allocHigh:0.2, allocMid:0.5, allocLow:0.85, allocNormal:1.0 },
+  p5: { lookback:63, nLong:3, nShort:3 },
+  p6: { olsWindow:252, thVLong:-1.5, thLong:-0.5, thShort:0.5, thVShort:1.5,
+        allocVLong:1.0, allocLong:0.75, allocNeutral:0.5, allocShort:0.25, allocVShort:0.0 },
+};
+
 // State
 let _rawData   = null;     // data from /api/diversification/data
 let _results   = {};       // { p1: {dates,equity,monthlyRet,...}, ... }
@@ -590,12 +606,13 @@ function runP1(data) {
   for (const idx of monthEnds) {
     // Compute composite score at month-end
     const nz = nlZ[idx], cv = cvZ[idx], cr = crZ[idx], ry = ryZ[idx], iz = izZ[idx];
+    const c = _cfg.p1;
     const score = [nz,cv,cr,ry,iz].every(isFinite)
-      ? 0.40*nz + 0.20*cv + 0.20*(-cr) + 0.15*(-ry) + 0.05*iz
+      ? c.wNetliq*nz + c.wCurve*cv + c.wCredit*(-cr) + c.wRealyield*(-ry) + c.wIsm*iz
       : NaN;
 
     const newAlloc = isFinite(score)
-      ? (score > 1.0 ? 1.0 : score > 0.0 ? 0.75 : score > -1.0 ? 0.5 : 0.25)
+      ? (score > c.bandHigh ? c.allocBull : score > c.bandMid ? c.allocNb : score > c.bandLow ? c.allocNbear : c.allocBear)
       : 0.5;
 
     // Compute equity for this month using allocation from previous month
@@ -652,13 +669,14 @@ function runP2(data) {
     let score = NaN;
     if (isFinite(cr) && isFinite(sp)) score = -cr + sp; // positive = bullish divergence
 
+    const c2 = _cfg.p2;
     let newSpyAlloc = 0.6, newTltAlloc = 0.4;
     if (isFinite(score)) {
-      if (score > 1.5)       { newSpyAlloc = 1.0; newTltAlloc = 0.0; }
-      else if (score > 0.5)  { newSpyAlloc = 0.8; newTltAlloc = 0.2; }
-      else if (score > -0.5) { newSpyAlloc = 0.6; newTltAlloc = 0.4; }
-      else if (score > -1.5) { newSpyAlloc = 0.3; newTltAlloc = 0.7; }
-      else                   { newSpyAlloc = 0.1; newTltAlloc = 0.9; }
+      if (score > c2.thVBull)    { newSpyAlloc = c2.allocVBull;    newTltAlloc = 1-c2.allocVBull; }
+      else if (score > c2.thBull){ newSpyAlloc = c2.allocBull;     newTltAlloc = 1-c2.allocBull; }
+      else if (score > c2.thNeutral){ newSpyAlloc = c2.allocNeutral; newTltAlloc = 1-c2.allocNeutral; }
+      else if (score > c2.thBear){ newSpyAlloc = c2.allocBear;     newTltAlloc = 1-c2.allocBear; }
+      else                       { newSpyAlloc = c2.allocVBear;    newTltAlloc = 1-c2.allocVBear; }
     }
 
     if (prevMonthEnd >= 0) {
@@ -692,18 +710,19 @@ function runP3(data) {
   const tlt = ffill(prices.tlt);
   const gld = ffill(prices.gld);
 
-  // ISM 3-month MA (63 trading days)
-  function ma63(arr) {
+  const c3 = _cfg.p3;
+  // ISM MA (configurable period)
+  function maN(arr, p) {
     return arr.map((v,i) => {
-      if (i < 63) return NaN;
-      const sl = arr.slice(i-63, i).filter(isFinite);
+      if (i < p) return NaN;
+      const sl = arr.slice(i-p, i).filter(isFinite);
       return sl.length > 10 ? sl.reduce((a,b)=>a+b)/sl.length : NaN;
     });
   }
-  const ismMa = ma63(applyLag(ism, PUB_MONTHLY));
+  const ismMa = maN(applyLag(ism, PUB_MONTHLY), c3.ismMaPeriod);
   const ismTrend = ismMa.map((v,i) => {
-    if (i < 63) return NaN;
-    const prev = ismMa[i-63];
+    if (i < c3.ismMaPeriod) return NaN;
+    const prev = ismMa[i-c3.ismMaPeriod];
     return isFinite(prev) && isFinite(v) ? v - prev : NaN;
   });
 
@@ -723,10 +742,10 @@ function runP3(data) {
     if (isFinite(trend) && isFinite(cpi)) {
       const rising = trend > 0;
       const inflationary = cpi > 0;
-      if (rising && !inflationary)       { ns=1.0; nt=0.0; ng=0.0; }  // Goldilocks → all SPY
-      else if (rising && inflationary)   { ns=0.5; nt=0.2; ng=0.3; }  // Overheating → SPY+GLD
-      else if (!rising && inflationary)  { ns=0.1; nt=0.3; ng=0.6; }  // Stagflation → GLD heavy
-      else                               { ns=0.1; nt=0.8; ng=0.1; }  // Recession → TLT heavy
+      if (rising && !inflationary)       { ns=c3.goldilocksSpy; nt=1-c3.goldilocksSpy; ng=0; }  // Goldilocks
+      else if (rising && inflationary)   { ns=c3.overheatSpy; nt=c3.overheatTlt; ng=c3.overheatGld; }  // Overheating
+      else if (!rising && inflationary)  { ns=c3.stagSpy; nt=c3.stagTlt; ng=c3.stagGld; }  // Stagflation
+      else                               { ns=c3.recSpy; nt=c3.recTlt; ng=1-c3.recSpy-c3.recTlt; }  // Recession
     }
 
     if (prevMonthEnd >= 0) {
@@ -770,12 +789,13 @@ function runP4(data) {
 
   for (const idx of monthEnds) {
     const cz = crZ[idx];
+    const c4 = _cfg.p4;
     let newAlloc = 1.0;
     if (isFinite(cz)) {
-      if (cz > 1.5)      newAlloc = 0.2;
-      else if (cz > 0.75) newAlloc = 0.5;
-      else if (cz > -0.5) newAlloc = 0.85;
-      else                newAlloc = 1.0;
+      if (cz > c4.thHigh)      newAlloc = c4.allocHigh;
+      else if (cz > c4.thMid)  newAlloc = c4.allocMid;
+      else if (cz > c4.thLow)  newAlloc = c4.allocLow;
+      else                     newAlloc = c4.allocNormal;
     }
 
     if (prevMonthEnd >= 0) {
@@ -826,11 +846,12 @@ function runP5(data) {
     { name:'CHF', arr: usdchf, inverted: true },
   ];
 
-  // 63-day momentum for each pair (expressed as USD currency return)
-  function mom63(arr, inverted) {
+  const c5 = _cfg.p5;
+  // N-day momentum for each pair (expressed as USD currency return)
+  function momN(arr, inverted, lb) {
     return arr.map((v,i) => {
-      if (i < 63 || !isFinite(v) || !isFinite(arr[i-63]) || arr[i-63] === 0) return NaN;
-      const r = (v - arr[i-63]) / arr[i-63];
+      if (i < lb || !isFinite(v) || !isFinite(arr[i-lb]) || arr[i-lb] === 0) return NaN;
+      const r = (v - arr[i-lb]) / arr[i-lb];
       return inverted ? -r : r;
     });
   }
@@ -844,19 +865,19 @@ function runP5(data) {
 
   for (const idx of monthEnds) {
     const scores = PAIRS.map((p, pi) => {
-      const m = mom63(p.arr, p.inverted);
+      const m = momN(p.arr, p.inverted, c5.lookback);
       return { pi, score: m[idx] };
     }).filter(x => isFinite(x.score)).sort((a,b)=>b.score-a.score);
 
+    const nL = c5.nLong, nS = c5.nShort;
     if (prevMonthEnd >= 0 && longIdx.length > 0) {
-      // Compute monthly return: long top 3 - short bottom 3
       let ret = 0;
       for (const pi of longIdx) {
         const p = PAIRS[pi];
         const p0 = p.arr[prevMonthEnd], p1 = p.arr[idx];
         if (isFinite(p0)&&isFinite(p1)&&p0>0) {
           const r = (p1-p0)/p0 * (p.inverted ? -1 : 1);
-          ret += r / 3;
+          ret += r / nL;
         }
       }
       for (const pi of shortIdx) {
@@ -864,7 +885,7 @@ function runP5(data) {
         const p0 = p.arr[prevMonthEnd], p1 = p.arr[idx];
         if (isFinite(p0)&&isFinite(p1)&&p0>0) {
           const r = (p1-p0)/p0 * (p.inverted ? -1 : 1);
-          ret -= r / 3; // shorting: negative return = profit
+          ret -= r / nS;
         }
       }
       equity *= (1 + ret);
@@ -878,7 +899,7 @@ function runP5(data) {
     // Update longs/shorts
     if (scores.length >= 6) {
       longIdx  = scores.slice(0, 3).map(x => x.pi);
-      shortIdx = scores.slice(-3).map(x => x.pi);
+      shortIdx = scores.slice(-nS).map(x => x.pi);
     } else {
       longIdx = []; shortIdx = [];
     }
@@ -901,25 +922,26 @@ function runP6(data) {
   const ryLag  = applyLag(realyield, 0);
   const dxyLag = applyLag(dxy, 0);
 
-  const residuals = rollingOLSResidual(logGld, ryLag, dxyLag, 252);
-  const residZ    = rollingZ(residuals, 126);
+  const c6 = _cfg.p6;
+  const residuals = rollingOLSResidual(logGld, ryLag, dxyLag, c6.olsWindow);
+  const residZ    = rollingZ(residuals, Math.floor(c6.olsWindow/2));
 
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
   const equityCurve = new Array(n).fill(NaN);
   const monthlyRet = [], monthlyDates = [];
   let prevMonthEnd = -1;
-  let alloc = 0.5; // GLD allocation (remainder in cash)
+  let alloc = 0.5;
 
   for (const idx of monthEnds) {
     const rz = residZ[idx];
-    let newAlloc = 0.5;
+    let newAlloc = c6.allocNeutral;
     if (isFinite(rz)) {
-      if (rz < -1.5)      newAlloc = 1.0;   // very undervalued → max long
-      else if (rz < -0.5) newAlloc = 0.75;
-      else if (rz <  0.5) newAlloc = 0.5;
-      else if (rz <  1.5) newAlloc = 0.25;  // overvalued → reduce
-      else                newAlloc = 0.0;   // very overvalued → flat
+      if (rz < c6.thVLong)      newAlloc = c6.allocVLong;
+      else if (rz < c6.thLong)  newAlloc = c6.allocLong;
+      else if (rz < c6.thShort) newAlloc = c6.allocNeutral;
+      else if (rz < c6.thVShort)newAlloc = c6.allocShort;
+      else                      newAlloc = c6.allocVShort;
     }
 
     if (prevMonthEnd >= 0) {
@@ -1147,7 +1169,7 @@ function renderSliders() {
       <input type="range" class="dv-range" min="0" max="200" step="5"
         value="${Math.round(_weights[i]*100)}"
         oninput="updateWeight(${i}, this.value)">
-      <span class="slider-sub">Sharpe: ${fmt(sh,2)} | DD: ${r?fmt(maxDD(r.monthlyRet.reduce((acc,v,j)=>{let e=acc.length?acc[acc.length-1]*(1+v):1+v;acc.push(e);return acc;},[]),0)+'%':'—'}</span>
+      <span class="slider-sub">Sharpe: ${fmt(sh,2)} | DD: ${r ? (() => { let e=1,pk=1,wd=0; for(const v of r.monthlyRet){e*=(1+v);if(e>pk)pk=e;wd=Math.min(wd,(e-pk)/pk);} return fmt(wd*100,1)+'%'; })() : '—'}</span>
     </div>`;
   }).join('');
 }
@@ -1465,35 +1487,209 @@ function renderAlpha() {
 }
 
 // ── System detail panels ──────────────────────────────────────────────────────
+// Build per-system config form HTML
+function sysCfgForm(key) {
+  const c = _cfg[key];
+  const inp = (id, val, step=0.05, min=0, max=2) =>
+    `<input type="number" id="sc_${id}" value="${val}" step="${step}" min="${min}" max="${max}"
+      style="width:70px;background:var(--s2);border:1px solid var(--border);border-radius:4px;
+             color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:3px 6px;"
+      onchange="updateSysCfg('${key}')">`;
+  const row = (lbl, id, val, step, min, max) =>
+    `<div class="form-row" style="padding:4px 0;justify-content:space-between;font-size:11px;font-family:'DM Mono',monospace;">
+      <span style="color:var(--text3)">${lbl}</span>${inp(id, val, step, min, max)}</div>`;
+
+  if (key === 'p1') return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Factor Weights</div>
+        ${row('Net Liquidity', 'p1_wNetliq', c.wNetliq)}
+        ${row('Yield Curve',   'p1_wCurve',  c.wCurve)}
+        ${row('HY Credit',     'p1_wCredit', c.wCredit)}
+        ${row('Real Yield',    'p1_wRealyield', c.wRealyield)}
+        ${row('ISM/PMI',       'p1_wIsm',    c.wIsm)}
+      </div>
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Score Bands → Allocation</div>
+        ${row('Bull threshold',  'p1_bandHigh', c.bandHigh, 0.1, -3, 3)}
+        ${row('Neutral-bull th', 'p1_bandMid',  c.bandMid,  0.1, -3, 3)}
+        ${row('Neutral-bear th', 'p1_bandLow',  c.bandLow,  0.1, -3, 3)}
+        ${row('Bull alloc',    'p1_allocBull',   c.allocBull,   0.05)}
+        ${row('Neutral-bull',  'p1_allocNb',     c.allocNb,     0.05)}
+        ${row('Neutral-bear',  'p1_allocNbear',  c.allocNbear,  0.05)}
+        ${row('Bear alloc',    'p1_allocBear',   c.allocBear,   0.05)}
+      </div>
+    </div>`;
+
+  if (key === 'p2') return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Score Thresholds</div>
+        ${row('Very bullish >', 'p2_thVBull',   c.thVBull,   0.1,-3,3)}
+        ${row('Bullish >',      'p2_thBull',    c.thBull,    0.1,-3,3)}
+        ${row('Neutral >',      'p2_thNeutral', c.thNeutral, 0.1,-3,3)}
+        ${row('Bearish >',      'p2_thBear',    c.thBear,    0.1,-3,3)}
+      </div>
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">SPY Allocation per Regime</div>
+        ${row('Very bullish SPY', 'p2_allocVBull',   c.allocVBull)}
+        ${row('Bullish SPY',      'p2_allocBull',    c.allocBull)}
+        ${row('Neutral SPY',      'p2_allocNeutral', c.allocNeutral)}
+        ${row('Bearish SPY',      'p2_allocBear',    c.allocBear)}
+        ${row('Very bearish SPY', 'p2_allocVBear',   c.allocVBear)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">TLT = 1 − SPY alloc</div>
+      </div>
+    </div>`;
+
+  if (key === 'p3') return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Signal</div>
+        ${row('ISM MA period (days)', 'p3_ismMaPeriod', c.ismMaPeriod, 5, 10, 252)}
+      </div>
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Quadrant Allocations (SPY / TLT / GLD)</div>
+        ${row('Goldilocks SPY',    'p3_goldilocksSpy', c.goldilocksSpy)}
+        ${row('Overheat SPY',      'p3_overheatSpy',   c.overheatSpy)}
+        ${row('Overheat TLT',      'p3_overheatTlt',   c.overheatTlt)}
+        ${row('Overheat GLD',      'p3_overheatGld',   c.overheatGld)}
+        ${row('Stagflation GLD',   'p3_stagGld',       c.stagGld)}
+        ${row('Stagflation TLT',   'p3_stagTlt',       c.stagTlt)}
+        ${row('Stagflation SPY',   'p3_stagSpy',       c.stagSpy)}
+        ${row('Recession TLT',     'p3_recTlt',        c.recTlt)}
+        ${row('Recession SPY',     'p3_recSpy',        c.recSpy)}
+      </div>
+    </div>`;
+
+  if (key === 'p4') return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Credit Z-Score Thresholds</div>
+        ${row('High stress >',  'p4_thHigh', c.thHigh, 0.1,-3,3)}
+        ${row('Mid stress >',   'p4_thMid',  c.thMid,  0.1,-3,3)}
+        ${row('Low stress >',   'p4_thLow',  c.thLow,  0.1,-3,3)}
+      </div>
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Carry Allocation</div>
+        ${row('High stress alloc',   'p4_allocHigh',   c.allocHigh)}
+        ${row('Mid stress alloc',    'p4_allocMid',    c.allocMid)}
+        ${row('Low stress alloc',    'p4_allocLow',    c.allocLow)}
+        ${row('Normal alloc',        'p4_allocNormal', c.allocNormal)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Remainder is in cash (0% return)</div>
+      </div>
+    </div>`;
+
+  if (key === 'p5') return `
+    ${row('Momentum lookback (days)', 'p5_lookback', c.lookback, 5, 10, 252)}
+    ${row('Number of longs',          'p5_nLong',    c.nLong,    1, 1, 6)}
+    ${row('Number of shorts',         'p5_nShort',   c.nShort,   1, 1, 6)}
+    <div style="font-size:10px;color:var(--text3);margin-top:6px;">7 pairs: EUR, GBP, AUD, NZD (long vs USD) + JPY, CAD, CHF (inverted)</div>`;
+
+  if (key === 'p6') return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">OLS Window</div>
+        ${row('Rolling OLS window (days)', 'p6_olsWindow', c.olsWindow, 10, 60, 504)}
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin:12px 0 4px;">Residual Z-Score Thresholds</div>
+        ${row('Very undervalued <', 'p6_thVLong',  c.thVLong,  0.1,-4,0)}
+        ${row('Undervalued <',      'p6_thLong',   c.thLong,   0.1,-4,0)}
+        ${row('Overvalued >',       'p6_thShort',  c.thShort,  0.1, 0, 4)}
+        ${row('Very overvalued >',  'p6_thVShort', c.thVShort, 0.1, 0, 4)}
+      </div>
+      <div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Allocations</div>
+        ${row('Very undervalued', 'p6_allocVLong',   c.allocVLong)}
+        ${row('Undervalued',      'p6_allocLong',    c.allocLong)}
+        ${row('Neutral',          'p6_allocNeutral', c.allocNeutral)}
+        ${row('Overvalued',       'p6_allocShort',   c.allocShort)}
+        ${row('Very overvalued',  'p6_allocVShort',  c.allocVShort)}
+      </div>
+    </div>`;
+  return '';
+}
+
+// Read config form values back into _cfg
+function updateSysCfg(key) {
+  const n = id => { const el=document.getElementById(`sc_${key}_${id}`); return el?parseFloat(el.value):NaN; };
+  const c = _cfg[key];
+  if (key === 'p1') {
+    c.wNetliq=n('wNetliq'); c.wCurve=n('wCurve'); c.wCredit=n('wCredit');
+    c.wRealyield=n('wRealyield'); c.wIsm=n('wIsm');
+    c.bandHigh=n('bandHigh'); c.bandMid=n('bandMid'); c.bandLow=n('bandLow');
+    c.allocBull=n('allocBull'); c.allocNb=n('allocNb'); c.allocNbear=n('allocNbear'); c.allocBear=n('allocBear');
+  } else if (key === 'p2') {
+    c.thVBull=n('thVBull'); c.thBull=n('thBull'); c.thNeutral=n('thNeutral'); c.thBear=n('thBear');
+    c.allocVBull=n('allocVBull'); c.allocBull=n('allocBull'); c.allocNeutral=n('allocNeutral');
+    c.allocBear=n('allocBear'); c.allocVBear=n('allocVBear');
+  } else if (key === 'p3') {
+    c.ismMaPeriod=n('ismMaPeriod'); c.goldilocksSpy=n('goldilocksSpy');
+    c.overheatSpy=n('overheatSpy'); c.overheatTlt=n('overheatTlt'); c.overheatGld=n('overheatGld');
+    c.stagGld=n('stagGld'); c.stagTlt=n('stagTlt'); c.stagSpy=n('stagSpy');
+    c.recTlt=n('recTlt'); c.recSpy=n('recSpy');
+  } else if (key === 'p4') {
+    c.thHigh=n('thHigh'); c.thMid=n('thMid'); c.thLow=n('thLow');
+    c.allocHigh=n('allocHigh'); c.allocMid=n('allocMid'); c.allocLow=n('allocLow'); c.allocNormal=n('allocNormal');
+  } else if (key === 'p5') {
+    c.lookback=n('lookback'); c.nLong=n('nLong'); c.nShort=n('nShort');
+  } else if (key === 'p6') {
+    c.olsWindow=n('olsWindow'); c.thVLong=n('thVLong'); c.thLong=n('thLong');
+    c.thShort=n('thShort'); c.thVShort=n('thVShort');
+    c.allocVLong=n('allocVLong'); c.allocLong=n('allocLong'); c.allocNeutral=n('allocNeutral');
+    c.allocShort=n('allocShort'); c.allocVShort=n('allocVShort');
+  }
+}
+
+function rerunSystem(key) {
+  if (!_rawData) return;
+  updateSysCfg(key);
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p5:runP5, p6:runP6 };
+  _results[key] = runners[key](_rawData);
+  _combined = computeCombined(_results, _weights);
+  renderSystemPanel(key);
+  // Refresh combined tab charts if they're visible
+  renderCombinedChart();
+  renderDDChart();
+  renderMonthlyReturnsTable();
+  renderKPIs(_combined);
+  renderSliders();
+}
+
 function renderSystemPanel(key) {
   const i = SYS_KEYS.indexOf(key);
-  const r = _results[key]; if (!r) return;
-
-  const mr = r.monthlyRet;
-  const sh = sharpe(mr);
-  let eq=1, eqs=[]; mr.forEach(v=>{eq*=(1+v);eqs.push(eq);});
-  const ca = cagr(eqs[eqs.length-1], mr.length);
-  let peak=1, mdd=0; eqs.forEach(v=>{if(v>peak)peak=v;mdd=Math.min(mdd,(v-peak)/peak);});
-  const win = mr.filter(v=>v>0).length / mr.filter(isFinite).length * 100;
+  const r = _results[key];
 
   const descs = [
-    'Five-factor macro composite (net liquidity, yield curve, HY credit, real yield, ISM). Monthly z-score scoring drives SPY allocation across four bands: 25%, 50%, 75%, 100%. Longs-only design avoids short-squeeze risk on a fundamentally upward-trending asset with structural equity premium.',
+    'Five-factor macro composite (net liquidity, yield curve, HY credit, real yield, ISM). Monthly z-score scoring drives SPY allocation across four bands. Longs-only: equity markets have structural upward drift (~10%/yr); shorts expose you to gap risk, short squeezes, and unlimited downside without the structural premium.',
     'Credit-equity divergence tracks the spread between HY credit conditions (BAMLH0A0HYM2 z-score) and SPY short-term momentum. Risk-on divergence (credit improving + equity rising) favours SPY; risk-off divergence rotates to TLT. Captures regime transitions before they fully express in price.',
-    'ISM Manufacturing 3-month trend combined with Core CPI momentum creates four macro quadrants: Goldilocks (SPY 100%), Overheating (SPY+GLD), Stagflation (GLD heavy), Recession (TLT heavy). Provides structural diversification from pure equity exposure.',
-    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. Carry trades earn the interest rate differential during risk-on regimes. HY credit z-score acts as risk-off gate: high credit stress → reduce to 20% allocation, protecting against rapid carry unwind.',
-    'Cross-sectional 63-day momentum across 7 major currencies expressed in USD return terms. Long top-3 / short bottom-3 produces a pure momentum factor orthogonal to carry and macro. Long-short structure removes directionality — this is a relative value strategy.',
-    'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over rolling 252-day window. When gold trades at a significant discount to its macro-implied fair value (residual z-score < −1), increase allocation. Captures gold mispricing vs macro fundamentals.',
+    'ISM Manufacturing trend combined with Core CPI momentum creates four macro quadrants: Goldilocks (SPY heavy), Overheating (SPY+GLD), Stagflation (GLD heavy), Recession (TLT heavy). Asset mix is tunable per quadrant.',
+    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. Earns the interest rate differential during risk-on regimes. HY credit z-score acts as risk-off gate — high credit stress signals carry unwind risk and reduces allocation.',
+    'Cross-sectional momentum across 7 major currencies in USD terms. Long top-N / short bottom-N produces a pure momentum factor orthogonal to carry and macro. The long-short structure removes directional bias — pure relative value.',
+    'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over a rolling window. When gold trades at a discount to its macro-implied fair value (negative residual z-score), increase allocation. Captures gold mispricing vs macro fundamentals.',
   ];
 
+  const cfgForm = sysCfgForm(key);
   const area = document.getElementById('sys-panel-area');
   area.innerHTML = `
     <div class="dv-info" style="margin-bottom:12px;">${descs[i]}</div>
-    <div class="bt-kpi-grid">
-      <div class="bt-kpi"><div class="bt-kpi-label">CAGR</div><div class="bt-kpi-value ${ca>=0?'green':'red'}">${fmtPct(ca)}</div></div>
-      <div class="bt-kpi"><div class="bt-kpi-label">Sharpe</div><div class="bt-kpi-value ${sh>=0.5?'green':sh>=0.3?'blue':'red'}">${fmt(sh,2)}</div></div>
-      <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div><div class="bt-kpi-value red">${fmt(mdd*100,1)}%</div></div>
-      <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div><div class="bt-kpi-value ${win>=55?'green':'amber'}">${fmt(win,0)}%</div></div>
-      <div class="bt-kpi"><div class="bt-kpi-label">Final Equity</div><div class="bt-kpi-value blue">${fmt(eqs[eqs.length-1],2)}×</div></div>
+
+    <!-- Config card -->
+    <div class="bt-card" style="margin-bottom:14px;">
+      <div class="bt-card-hdr" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        <span style="color:${SYS_COLORS[i]}">⚙ ${SYS_NAMES[i]} Parameters</span>
+        <span class="ml-auto" style="font-size:10px;color:var(--text3);">click to expand/collapse</span>
+      </div>
+      <div class="bt-card-body" id="cfgBody_${key}" style="display:none;">
+        ${cfgForm}
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:center;">
+          <button class="bt-run-btn" onclick="rerunSystem('${key}')">Re-run with these params</button>
+          <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Changes apply to this system only — Combined Book updates automatically</span>
+        </div>
+      </div>
+    </div>
+
+    ${r ? `
+    <div class="bt-kpi-grid" id="sysKpis_${key}">
+      ${_sysKpiHtml(r, i)}
     </div>
     <div class="bt-card" style="margin-top:14px;">
       <div class="bt-card-hdr" style="color:${SYS_COLORS[i]}">${r.name} — Equity Curve</div>
@@ -1511,30 +1707,47 @@ function renderSystemPanel(key) {
           </table>
         </div>
       </div>
-    </div>`;
+    </div>` : `<div class="dv-warn">Run the backtest first to see results for this system.</div>`}`;
 
-  // Draw equity curve
+  if (!r) return;
+
+  // Draw equity curve + annual table
   setTimeout(() => {
+    let eq=1; const eqs=r.monthlyRet.map(v=>{eq*=(1+v);return eq;});
     const labels = r.monthlyDates.map((d,i)=>i%12===0?d.substring(0,7):'');
     makeChart(`chartSys${key}`, 'line', labels, [{
       label: r.name, data: eqs, borderColor: SYS_COLORS[i],
       backgroundColor: SYS_COLORS[i]+'18', borderWidth: 2, pointRadius: 0, fill: true, tension: 0,
     }]);
 
-    // Annual table
     const years = [...new Set(r.monthlyDates.map(d=>d.substring(0,4)))].sort();
     let tbody = '';
     for (const yr of years) {
       const yRets = r.monthlyDates.map((d,j)=>d.startsWith(yr)?r.monthlyRet[j]:null).filter(v=>v!==null&&isFinite(v));
       const ann = (yRets.reduce((a,b)=>a*(1+b),1)-1)*100;
-      const pos = yRets.filter(v=>v>0).length, neg = yRets.filter(v=>v<=0).length;
-      const best = Math.max(...yRets)*100, worst = Math.min(...yRets)*100;
+      const pos=yRets.filter(v=>v>0).length, neg=yRets.filter(v=>v<=0).length;
+      const best=Math.max(...yRets)*100, worst=Math.min(...yRets)*100;
       tbody += `<tr><td>${yr}</td><td class="num ${ann>=0?'pos':'neg'}">${fmtPct(ann)}</td>
         <td class="num pos">${pos}</td><td class="num neg">${neg}</td>
         <td class="num pos">${fmtPct(best)}</td><td class="num neg">${fmtPct(worst)}</td></tr>`;
     }
     document.querySelector(`#sysTable${key} tbody`).innerHTML = tbody;
   }, 50);
+}
+
+function _sysKpiHtml(r, i) {
+  const mr = r.monthlyRet;
+  const sh = sharpe(mr);
+  let eq=1, eqs=[]; mr.forEach(v=>{eq*=(1+v);eqs.push(eq);});
+  const ca = cagr(eqs[eqs.length-1], mr.length);
+  let peak=1, mdd=0; eqs.forEach(v=>{if(v>peak)peak=v;mdd=Math.min(mdd,(v-peak)/peak);});
+  const win = mr.filter(v=>v>0).length / mr.filter(isFinite).length * 100;
+  return `
+    <div class="bt-kpi"><div class="bt-kpi-label">CAGR</div><div class="bt-kpi-value ${ca>=0?'green':'red'}">${fmtPct(ca)}</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Sharpe</div><div class="bt-kpi-value ${sh>=0.5?'green':sh>=0.3?'blue':'red'}">${fmt(sh,2)}</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div><div class="bt-kpi-value red">${fmt(mdd*100,1)}%</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div><div class="bt-kpi-value ${win>=55?'green':'amber'}">${fmt(win,0)}%</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Final Equity</div><div class="bt-kpi-value blue">${fmt(eqs[eqs.length-1],2)}×</div></div>`;
 }
 
 function switchSys(key) {
