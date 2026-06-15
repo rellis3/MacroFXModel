@@ -669,11 +669,13 @@ export async function startVolForecastScheduler() {
   const neededDate  = _applicableSessionDate(new Date());
   const cachedDate  = forecastState.latest?.session_date;
   const cachedInst  = forecastState.latest?.instruments ?? {};
-  const missingYZ   = Object.values(cachedInst).some(f => f.yz_vol_annual == null);
-  const needsImmediateRun = !cachedDate || cachedDate !== neededDate || missingYZ;
+  const missingFields = Object.values(cachedInst).some(f =>
+    f.yz_vol_annual == null || f.hv_vol_annual == null || f.ewma_vol_annual == null
+  );
+  const needsImmediateRun = !cachedDate || cachedDate !== neededDate || missingFields;
 
   if (needsImmediateRun) {
-    const reason = !cachedDate ? 'no cache' : cachedDate !== neededDate ? `date mismatch (${cachedDate})` : 'YZ fields missing';
+    const reason = !cachedDate ? 'no cache' : cachedDate !== neededDate ? `date mismatch (${cachedDate})` : 'shadow fields missing (YZ/HV/EWMA)';
     console.log(`[VOL-FORECAST] ${reason} — computing on startup …`);
     runVolForecast(new Date(neededDate + 'T12:00:00Z'))
       .catch(e => console.error('[VOL-FORECAST] Startup run failed:', e.message));
