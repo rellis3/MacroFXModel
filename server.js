@@ -2737,7 +2737,7 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
 const nqQmrCache = { result: null, bars: null, fetchedAt: null };
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
-const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.80, minRangePct: 0.15, tpPct: 0 };
+const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.80, minRangePct: 0.15, tpPct: 0.75 };
 
 async function _getNqQmrBars() {
   if (nqQmrCache.bars && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
@@ -2793,7 +2793,7 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
     const key  = process.env.OANDA_KEY;
     const base = _oandaBaseMe();
     const url  = `${base}/v3/instruments/NAS100_USD/candles`
-               + `?granularity=M5&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&price=M&count=5000`;
+               + `?granularity=M5&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&price=M`;
     const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20_000) });
     if (!r.ok) throw new Error(`OANDA M5 HTTP ${r.status}`);
     const data = await r.json();
