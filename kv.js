@@ -68,6 +68,8 @@ const _CF_EXACT = new Set([
   'fred_data_v3',           // FRED dashboard cache (31 series) — survives Railway restarts
   'dyn_anchor_config',      // DynAnchor bot settings — must survive redeploys
   'dyn_anchor_credentials', // DynAnchor bot MT5 credentials — must survive redeploys
+  'macro_equity_config',       // Macro Equity bot settings — must survive redeploys
+  'macro_equity_credentials',  // Macro Equity bot MT5 credentials — must survive redeploys
   'hedge_audit_log',        // forward-test log for advisory hedge suggestions — must survive redeploys
   'hedge_alerts_cache',     // summary of corr_history.json pushed by /api/hedge-alerts — survives redeploys
   'vol_hit_rates',          // historical price-level hit rates — expensive to recompute (~10 min full, ~1 min incremental)

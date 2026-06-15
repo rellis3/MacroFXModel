@@ -1,0 +1,22 @@
+[2026-06-15 08:27:59] [MEBot] [INFO] MacroEquityBot starting  paper=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 08:28:01] [MEBot] [INFO] MT5 connected: account=10011064059  balance=94236.4  server=MetaQuotes-Demo
+[2026-06-15 08:28:02] [MEBot] [INFO] Config: paper=True  QQQ=True  SPY=True  Russell=False  TLT=False  DAX=False  Gold=False  BIL=False  portfolio=False  poll=3600s
+[2026-06-15 08:28:02] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 08:28:04] [MEBot] [INFO] VIX: 300 bars, latest=17.7
+[2026-06-15 08:28:04] [MEBot] [INFO] No rebalance today (2026-06-15). Last: never
+[2026-06-15 08:53:00] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 08:53:02] [MEBot] [WARNING] KV credentials not found (key=macro_equity_credentials) — will use env vars / already-open MT5 terminal
+[2026-06-15 08:53:02] [MEBot] [INFO] MT5 connected: account=10011064059  balance=94236.4  server=MetaQuotes-Demo
+[2026-06-15 08:53:04] [MEBot] [INFO] Config: paper_mode_kv=True  effective_paper=False  QQQ=True  SPY=True  Russell=False  TLT=False  DAX=False  Gold=False  BIL=False  portfolio=False  poll=3600s
+[2026-06-15 08:53:04] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 08:53:05] [MEBot] [INFO] VIX: 300 bars, latest=16.7
+[2026-06-15 08:53:05] [MEBot] [INFO] No rebalance today (2026-06-15). Last: never
+[2026-06-15 08:53:06] [MEBot] [INFO] Cycle complete in 2.8s — sleeping 3597s
+[2026-06-15 08:53:35] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 08:53:37] [MEBot] [WARNING] KV credentials not found (key=macro_equity_credentials) — will use env vars / already-open MT5 terminal
+[2026-06-15 08:53:37] [MEBot] [INFO] MT5 connected: account=10011043764  balance=89787.08  server=MetaQuotes-Demo
+[2026-06-15 08:53:39] [MEBot] [INFO] Config: paper_mode_kv=True  effective_paper=False  QQQ=True  SPY=True  Russell=False  TLT=False  DAX=False  Gold=False  BIL=False  portfolio=False  poll=3600s
+[2026-06-15 08:53:39] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 08:53:41] [MEBot] [INFO] VIX: 300 bars, latest=16.7
+[2026-06-15 08:53:41] [MEBot] [INFO] No rebalance today (2026-06-15). Last: never
+[2026-06-15 08:53:43] [MEBot] [INFO] Cycle complete in 3.8s — sleeping 3596s

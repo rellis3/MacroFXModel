@@ -159,7 +159,10 @@ def load_config(url: str) -> dict:
 def load_credentials(url: str) -> None:
     creds = _kv_get(KV_CREDS, url)
     if not creds:
+        log.warning('KV credentials not found (key=%s) — will use env vars / already-open MT5 terminal', KV_CREDS)
         return
+    log.info('Credentials loaded from KV: account=%s  server=%s',
+             creds.get('mt5_account', '?'), creds.get('mt5_server', '?'))
     for env_key, cred_key in [
         ('MT5_ACCOUNT',  'mt5_account'),
         ('MT5_PASSWORD', 'mt5_password'),
@@ -577,8 +580,8 @@ def do_rebalance(cfg: dict, paper_mode: bool, vix_closes: list[float]) -> dict:
 
 # ── Main loop ──────────────────────────────────────────────────────────────────
 
-def run(url: str, paper_mode: bool, force_rebalance: bool = False) -> None:
-    log.info(f'MacroEquityBot starting  paper={paper_mode}  dashboard={url}')
+def run(url: str, paper_mode: bool, force_rebalance: bool = False, live_override: bool = False) -> None:
+    log.info(f'MacroEquityBot starting  paper={paper_mode}  live_override={live_override}  dashboard={url}')
 
     load_credentials(url)
 
@@ -595,7 +598,7 @@ def run(url: str, paper_mode: bool, force_rebalance: bool = False) -> None:
     last_rebalance_ym = ''
 
     log.info(
-        f'Config: paper={cfg["paper_mode"]}  '
+        f'Config: paper_mode_kv={cfg["paper_mode"]}  effective_paper={paper_mode}  '
         f'QQQ={cfg["include_qqq"]}  SPY={cfg["include_spy"]}  '
         f'Russell={cfg["include_russell"]}  TLT={cfg["include_tlt"]}  '
         f'DAX={cfg["include_dax"]}  Gold={cfg["include_gold"]}  BIL={cfg["include_bil"]}  '
@@ -609,7 +612,8 @@ def run(url: str, paper_mode: bool, force_rebalance: bool = False) -> None:
         # Reload config every 5 minutes
         if time.time() - last_cfg_reload > 300:
             cfg = load_config(url)
-            paper_mode = cfg.get('paper_mode', paper_mode)
+            if not live_override:
+                paper_mode = cfg.get('paper_mode', paper_mode)
             last_cfg_reload = time.time()
 
         if not cfg.get('enabled', True):
@@ -689,4 +693,4 @@ if __name__ == '__main__':
     paper         = not args.live and cfg_initial.get('paper_mode', True)
     force_reb     = args.force_rebalance
 
-    run(url=args.dashboard_url, paper_mode=paper, force_rebalance=force_reb)
+    run(url=args.dashboard_url, paper_mode=paper, force_rebalance=force_reb, live_override=args.live)
