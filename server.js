@@ -2285,6 +2285,20 @@ function _computeNqQmr(bars, cfg = {}) {
       exit = last.c; exitReason = 'EOD';
     }
 
+    // MFE/MAE: scan entry bar + all afterEntry bars for peak favorable/adverse move.
+    // Uses full day H1 resolution — MFE answers "how far did it go in our favour?"
+    let mfePct = 0, maePct = 0;
+    for (const bar of [entryBar, ...afterEntry]) {
+      const fav = gate2 === 'LONG'
+        ? (bar.h - entry) / entry * 100
+        : (entry - bar.l) / entry * 100;
+      const adv = gate2 === 'LONG'
+        ? (bar.l - entry) / entry * 100
+        : (entry - bar.h) / entry * 100;
+      if (fav > mfePct) mfePct = fav;
+      if (adv < maePct) maePct = adv;
+    }
+
     const movePct     = gate2 === 'LONG'
       ? (exit - entry) / entry * 100
       : (entry - exit) / entry * 100;
@@ -2293,7 +2307,8 @@ function _computeNqQmr(bars, cfg = {}) {
     equity *= (1 + tradeReturn / 100);
 
     trades.push({ date: today, gate1, gate2, direction: gate2, entry, stop, exit, exitReason,
-                  movePct: +movePct.toFixed(3), tradeReturn: +tradeReturn.toFixed(3), equity: +equity.toFixed(6) });
+                  movePct: +movePct.toFixed(3), tradeReturn: +tradeReturn.toFixed(3), equity: +equity.toFixed(6),
+                  mfePct: +mfePct.toFixed(3), maePct: +maePct.toFixed(3) });
     curve.push({ date: today, equity: +equity.toFixed(6) });
   }
 

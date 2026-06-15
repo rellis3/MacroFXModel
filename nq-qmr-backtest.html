@@ -73,6 +73,13 @@
 .annual-ret  { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; margin-top: 2px; }
 .annual-n    { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
 
+/* MEA */
+.mea-bar-wrap { display: flex; align-items: flex-end; gap: 3px; height: 80px; margin-top: 10px; }
+.mea-bar-col  { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
+.mea-bar      { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; transition: height .3s; }
+.mea-bar-lbl  { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); white-space: nowrap; }
+.mea-row-best { background: rgba(16,185,129,.08); }
+
 /* Optimizer */
 .opt-rank { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 700; background: rgba(245,158,11,.15); color: #f59e0b; }
 .opt-rank.gold   { background: rgba(245,158,11,.25); color: #f59e0b; }
@@ -229,6 +236,49 @@
   </div>
 </div>
 
+<!-- Move Exit Analysis card -->
+<div class="card" id="meaCard" style="display:none;margin-top:14px;">
+  <div class="card-hdr">📐 Move Exit Analysis (MFE/MAE)</div>
+  <div class="card-body">
+    <div class="info-box" style="margin-top:0;">
+      For each trade the engine records the <strong>max favorable excursion (MFE)</strong> — how far price moved in your direction during the day — and <strong>max adverse excursion (MAE)</strong>. The TP sweep below simulates what CAGR/Sharpe/Win% would have been if a fixed % TP had been used on every trade.
+    </div>
+
+    <!-- MFE distribution bar chart -->
+    <div style="margin-top:14px;">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px;">MFE Distribution (% of trades reaching each level)</div>
+      <div class="mea-bar-wrap" id="meaDistChart"></div>
+    </div>
+
+    <!-- TP sweep table -->
+    <div style="margin-top:16px;">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">TP Sweep — simulated outcome at each take-profit level</div>
+      <div class="tbl-wrap" style="max-height:none;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>TP %</th>
+              <th>R-Multiple</th>
+              <th class="num">Hit Rate</th>
+              <th class="num">Win Rate</th>
+              <th class="num">Avg Win</th>
+              <th class="num">Avg Loss</th>
+              <th class="num">Sim CAGR</th>
+              <th class="num">Sim Sharpe</th>
+              <th class="num">Sim MaxDD</th>
+              <th class="num">vs EOD</th>
+            </tr>
+          </thead>
+          <tbody id="meaTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MAE summary -->
+    <div class="sec-grid" style="margin-top:12px;" id="maeSummary"></div>
+  </div>
+</div>
+
 <!-- Optimizer card -->
 <div class="card" style="margin-top:14px;">
   <div class="card-hdr">
@@ -370,8 +420,9 @@ function renderAll() {
   renderChart();
   renderAnnual();
   renderGateBreakdown();
+  renderMEA();
   renderTradeTable();
-  ['kpiSection','chartCard','annualCard','gateCard','tradeCard'].forEach(id => {
+  ['kpiSection','chartCard','annualCard','gateCard','meaCard','tradeCard'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
@@ -494,6 +545,116 @@ function renderGateBreakdown() {
   const rejectRate  = tradingDays > 0 ? ((1 - total / tradingDays) * 100).toFixed(0) : '?';
   document.getElementById('gG2Reject').textContent  = rejectRate + '% of trading days';
   document.getElementById('sFireRate').textContent  = (100 - parseInt(rejectRate)) + '% of days';
+}
+
+function renderMEA() {
+  if (!_trades.length) return;
+  const stopPct  = parseFloat(document.getElementById('cfg_stop').value) || 0.50;
+  const riskPct  = parseFloat(document.getElementById('cfg_risk').value) || 1.80;
+  const leverage = riskPct / stopPct;
+  const eodCagr  = _stats.cagr ?? 0;
+
+  // ── MFE distribution bar chart ───────────────────────────────────────────
+  const buckets = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 2.00, 2.50, 3.00, 4.00];
+  const counts  = buckets.map(b => _trades.filter(t => t.mfePct != null && t.mfePct >= b).length);
+  const maxCt   = Math.max(...counts, 1);
+  const chartEl = document.getElementById('meaDistChart');
+  if (chartEl) {
+    chartEl.innerHTML = buckets.map((b, i) => {
+      const pct = (_trades.length ? counts[i] / _trades.length * 100 : 0).toFixed(0);
+      const h   = Math.max(Math.round(counts[i] / maxCt * 76), 2);
+      const col = b <= stopPct ? '#ef4444' : b <= stopPct * 2 ? '#f59e0b' : '#10b981';
+      return `<div class="mea-bar-col">
+        <div class="mea-bar-lbl">${pct}%</div>
+        <div class="mea-bar" style="height:${h}px;background:${col}" title="${counts[i]} trades reached ≥${b}%"></div>
+        <div class="mea-bar-lbl">${b}%</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── TP sweep simulation ───────────────────────────────────────────────────
+  const tpLevels = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 2.50, 3.00];
+  const n = _trades.length;
+
+  // Simulate each TP level client-side using stored MFE/MAE data
+  function simTP(tpPct) {
+    let eq = 1.0; const rets = [];
+    for (const t of _trades) {
+      let ret;
+      if (t.exitReason === 'STOP') {
+        // Stop hit: check if MFE reached TP first (optimistic — TP before stop in same bar)
+        if ((t.mfePct ?? 0) >= tpPct) { ret = tpPct * leverage; }
+        else { ret = -stopPct * leverage; }
+      } else {
+        // EOD or existing TP: did MFE reach our candidate TP?
+        if ((t.mfePct ?? 0) >= tpPct) { ret = tpPct * leverage; }
+        else { ret = t.tradeReturn; } // EOD result unchanged
+      }
+      rets.push(ret / 100);
+      eq *= (1 + ret / 100);
+    }
+    const mu  = rets.reduce((s, r) => s + r, 0) / n;
+    const sig = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / n);
+    const years = _curve.length >= 2
+      ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5)
+      : 1;
+    const tpy    = n / Math.max(years, 0.01);
+    const sharpe = sig > 0 ? (mu / sig) * Math.sqrt(tpy) : 0;
+    const cagr   = (Math.pow(eq, 1 / Math.max(years, 0.01)) - 1) * 100;
+    let peak = 1, maxDD = 0, runEq = 1;
+    for (const r of rets) {
+      runEq *= (1 + r);
+      if (runEq > peak) peak = runEq;
+      const dd = (peak - runEq) / peak;
+      if (dd > maxDD) maxDD = dd;
+    }
+    const wins    = rets.filter(r => r > 0).length;
+    const hitRate = _trades.filter(t => (t.mfePct ?? 0) >= tpPct).length / n;
+    const winRets  = rets.filter(r => r > 0);
+    const lossRets = rets.filter(r => r <= 0);
+    const avgWin   = winRets.length  ? winRets.reduce((s, r)  => s + r, 0) / winRets.length  * 100 : 0;
+    const avgLoss  = lossRets.length ? lossRets.reduce((s, r) => s + r, 0) / lossRets.length * 100 : 0;
+    return { cagr, sharpe, maxDD: maxDD * 100, winRate: wins / n, hitRate, avgWin, avgLoss };
+  }
+
+  const results = tpLevels.map(tp => ({ tp, ...simTP(tp) }));
+  const bestIdx = results.reduce((bi, r, i) => r.cagr > results[bi].cagr ? i : bi, 0);
+
+  const tbody = document.getElementById('meaTbody');
+  if (tbody) {
+    tbody.innerHTML = results.map((r, i) => {
+      const rMult   = (r.tp / stopPct).toFixed(1);
+      const diffStr = (r.cagr - eodCagr).toFixed(1);
+      const diffCol = r.cagr >= eodCagr ? '#10b981' : '#ef4444';
+      const isBest  = i === bestIdx;
+      return `<tr class="${isBest ? 'mea-row-best' : ''}">
+        <td style="font-weight:${isBest?'700':'400'};color:${isBest?'#f59e0b':'inherit'}">${r.tp.toFixed(2)}%${isBest?' ★':''}</td>
+        <td>${rMult}R</td>
+        <td class="num">${(r.hitRate*100).toFixed(0)}%</td>
+        <td class="num" style="color:${r.winRate>=0.55?'#10b981':r.winRate>=0.45?'#f59e0b':'#ef4444'}">${(r.winRate*100).toFixed(0)}%</td>
+        <td class="num" style="color:#10b981">+${r.avgWin.toFixed(2)}%</td>
+        <td class="num" style="color:#ef4444">${r.avgLoss.toFixed(2)}%</td>
+        <td class="num" style="color:${r.cagr>=0?'#10b981':'#ef4444'}">${r.cagr>=0?'+':''}${r.cagr.toFixed(1)}%</td>
+        <td class="num" style="color:${r.sharpe>=1.5?'#10b981':r.sharpe>=0.8?'#f59e0b':'#ef4444'}">${r.sharpe.toFixed(2)}</td>
+        <td class="num" style="color:#ef4444">-${r.maxDD.toFixed(1)}%</td>
+        <td class="num" style="color:${diffCol}">${r.cagr>=eodCagr?'+':''}${diffStr}%</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── MAE summary stats ────────────────────────────────────────────────────
+  const maes   = _trades.map(t => t.maePct ?? 0).filter(v => isFinite(v));
+  const mfes   = _trades.map(t => t.mfePct ?? 0).filter(v => isFinite(v));
+  const avgMFE = mfes.reduce((s, v) => s + v, 0) / (mfes.length || 1);
+  const avgMAE = maes.reduce((s, v) => s + v, 0) / (maes.length || 1);
+  const mfes50 = [...mfes].sort((a, b) => a - b)[Math.floor(mfes.length * 0.50)] ?? 0;
+  const mfes75 = [...mfes].sort((a, b) => a - b)[Math.floor(mfes.length * 0.75)] ?? 0;
+  const el = document.getElementById('maeSummary');
+  if (el) el.innerHTML = `
+    <div class="sec"><span class="sec-lbl">Avg MFE</span><span class="sec-val" style="color:#10b981">+${avgMFE.toFixed(2)}%</span></div>
+    <div class="sec"><span class="sec-lbl">Median MFE</span><span class="sec-val" style="color:#10b981">+${mfes50.toFixed(2)}%</span></div>
+    <div class="sec"><span class="sec-lbl">MFE p75</span><span class="sec-val" style="color:#10b981">+${mfes75.toFixed(2)}%</span></div>
+    <div class="sec"><span class="sec-lbl">Avg MAE</span><span class="sec-val" style="color:#ef4444">${avgMAE.toFixed(2)}%</span></div>`;
 }
 
 function renderTradeTable() {
