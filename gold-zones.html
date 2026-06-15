@@ -835,7 +835,7 @@ function _renderZoneCards() {
       .map(t => {
         const strong = t.includes('BULL') || t.includes('BEAR') || t.includes('POC') ||
                        t.includes('VWAP') || t.includes('VAH') || t.includes('VAL') ||
-                       t.includes('Daily') || t.includes('TL');
+                       t.includes('Daily') || t.includes('TL') || t.includes('legs');
         return `<span class="gz-comp-tag ${strong ? 'strong' : ''}">${t}</span>`;
       }).join('');
 

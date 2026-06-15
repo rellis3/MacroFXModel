@@ -32,3 +32,199 @@
 [2026-06-15 09:43:57] [MEBot] [INFO] Fetching VIX data…
 [2026-06-15 09:43:59] [MEBot] [INFO] VIX: 300 bars, latest=16.7
 [2026-06-15 09:43:59] [MEBot] [INFO] No rebalance today (2026-06-15). Last: never
+[2026-06-15 10:04:06] [MEBot] [ERROR] KV get macro_equity_config: 403 key not permitted — add to _worker.js whitelist
+[2026-06-15 10:04:06] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 10:04:08] [MEBot] [ERROR] KV get macro_equity_credentials: 403 key not permitted — add to _worker.js whitelist
+[2026-06-15 10:04:08] [MEBot] [WARNING] KV credentials not found (key=macro_equity_credentials) — will use env vars / already-open MT5 terminal
+[2026-06-15 10:04:08] [MEBot] [INFO] MT5 connected: account=5051355495  balance=99998.43  server=MetaQuotes-Demo
+[2026-06-15 10:12:46] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 10:12:47] [MEBot] [INFO] Credentials loaded from KV: account=5051780625  server=MetaQuotes-Demo
+[2026-06-15 10:12:47] [MEBot] [ERROR] mt5.initialize() failed: (-10003, "IPC initialize failed, Process create failed 'C:\\Program Files\\MetaTrader 5\\P1 macro Equity\\'")
+[2026-06-15 10:12:47] [MEBot] [WARNING] MT5 connection failed — switching to paper mode
+[2026-06-15 10:12:48] [MEBot] [INFO] Config: paper_mode_kv=True  effective_paper=True  QQQ=True  SPY=True  Russell=False  TLT=False  DAX=False  Gold=False  BIL=False  portfolio=False  poll=3600s
+[2026-06-15 10:12:48] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 10:12:50] [MEBot] [INFO] VIX: 300 bars, latest=16.7
+[2026-06-15 10:12:50] [MEBot] [INFO] No rebalance today (2026-06-15). Last: never
+[2026-06-15 10:12:51] [MEBot] [INFO] Cycle complete in 2.8s — sleeping 3597s
+[2026-06-15 10:13:15] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 10:13:16] [MEBot] [INFO] Credentials loaded from KV: account=5051780625  server=MetaQuotes-Demo
+[2026-06-15 10:13:16] [MEBot] [ERROR] mt5.initialize() failed: (-10003, "IPC initialize failed, Process create failed 'C:\\Program Files\\MetaTrader 5\\P1 macro Equity'")
+[2026-06-15 10:13:16] [MEBot] [WARNING] MT5 connection failed — switching to paper mode
+[2026-06-15 10:13:17] [MEBot] [INFO] Config: paper_mode_kv=True  effective_paper=True  QQQ=True  SPY=True  Russell=False  TLT=False  DAX=False  Gold=False  BIL=False  portfolio=False  poll=3600s
+[2026-06-15 10:13:17] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 10:13:18] [MEBot] [INFO] VIX: 300 bars, latest=16.7
+[2026-06-15 10:13:18] [MEBot] [INFO] No rebalance today (2026-06-15). Last: never
+[2026-06-15 10:13:19] [MEBot] [INFO] Cycle complete in 1.9s — sleeping 3598s
+[2026-06-15 10:14:22] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 10:14:23] [MEBot] [INFO] Credentials loaded from KV: account=5051780625  server=MetaQuotes-Demo
+[2026-06-15 10:14:27] [MEBot] [INFO] MT5 connected: account=5051780625  balance=100000.0  server=MetaQuotes-Demo
+[2026-06-15 10:14:30] [MEBot] [INFO] Config: paper_mode_kv=True  effective_paper=False  QQQ=True  SPY=True  Russell=False  TLT=False  DAX=False  Gold=False  BIL=False  portfolio=False  poll=3600s
+[2026-06-15 10:14:30] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 10:14:32] [MEBot] [INFO] VIX: 300 bars, latest=16.7
+[2026-06-15 10:14:32] [MEBot] [INFO] No rebalance today (2026-06-15). Last: never
+[2026-06-15 10:14:35] [MEBot] [INFO] Cycle complete in 4.7s — sleeping 3595s
+[2026-06-15 10:16:54] [MEBot] [INFO] MacroEquityBot starting  paper=True  live_override=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 10:16:56] [MEBot] [INFO] Credentials loaded from KV: account=5051780625  server=MetaQuotes-Demo
+[2026-06-15 10:16:57] [MEBot] [INFO] Config: paper_mode_kv=True  effective_paper=True  QQQ=True  SPY=True  Russell=False  TLT=False  DAX=False  Gold=False  BIL=False  portfolio=False  poll=3600s
+[2026-06-15 10:16:57] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 10:16:58] [MEBot] [INFO] VIX: 300 bars, latest=16.7
+[2026-06-15 10:16:58] [MEBot] [INFO] === REBALANCE TRIGGERED ===
+[2026-06-15 10:16:58] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-15 10:17:01] [MEBot] [INFO]   FRED WALCL: 1224 observations
+[2026-06-15 10:17:03] [MEBot] [INFO]   FRED WTREGEN: 1224 observations
+[2026-06-15 10:17:04] [MEBot] [INFO]   FRED RRPONTSYD: 3262 observations
+[2026-06-15 10:17:06] [MEBot] [INFO]   FRED T10Y2Y: 5866 observations
+[2026-06-15 10:17:07] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-15 10:17:09] [MEBot] [INFO]   FRED DFII10: 5865 observations
+[2026-06-15 10:17:11] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-15 10:17:13] [MEBot] [INFO]   FRED INDPRO: 280 observations
+[2026-06-15 10:17:22] [MEBot] [INFO] Macro score: US=-0.505 (NEUTRAL_BEAR)
+[2026-06-15 10:17:22] [MEBot] [WARNING] No D1 data for NAS100
+[2026-06-15 10:17:22] [MEBot] [WARNING] Symbol NAS100 not found in MT5
+[2026-06-15 10:17:22] [MEBot] [INFO] QQQ (NAS100): target=50%  action=hold
+[2026-06-15 10:17:22] [MEBot] [WARNING] No D1 data for SP500
+[2026-06-15 10:17:22] [MEBot] [WARNING] Symbol SP500 not found in MT5
+[2026-06-15 10:17:22] [MEBot] [INFO] SPY (SP500): target=50%  action=hold
+[2026-06-15 10:17:23] [MEBot] [INFO] Cycle complete in 26.4s — sleeping 3574s
+[2026-06-15 10:19:14] [MEBot] [INFO] MacroEquityBot starting  paper=True  live_override=False  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 10:19:17] [MEBot] [INFO] Credentials loaded from KV: account=5051780625  server=MetaQuotes-Demo
+[2026-06-15 10:19:19] [MEBot] [INFO] Config: paper_mode_kv=True  effective_paper=True  QQQ=True  SPY=True  Russell=False  TLT=False  DAX=False  Gold=False  BIL=False  portfolio=False  poll=3600s
+[2026-06-15 10:19:19] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 10:19:21] [MEBot] [INFO] VIX: 300 bars, latest=16.7
+[2026-06-15 10:19:21] [MEBot] [INFO] === REBALANCE TRIGGERED ===
+[2026-06-15 10:19:21] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-15 10:19:23] [MEBot] [INFO]   FRED WALCL: 1224 observations
+[2026-06-15 10:19:25] [MEBot] [INFO]   FRED WTREGEN: 1224 observations
+[2026-06-15 10:19:27] [MEBot] [INFO]   FRED RRPONTSYD: 3262 observations
+[2026-06-15 10:19:28] [MEBot] [INFO]   FRED T10Y2Y: 5866 observations
+[2026-06-15 10:19:31] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-15 10:19:33] [MEBot] [INFO]   FRED DFII10: 5865 observations
+[2026-06-15 10:19:35] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-15 10:19:37] [MEBot] [INFO]   FRED INDPRO: 280 observations
+[2026-06-15 10:19:53] [MEBot] [INFO] Macro score: US=-0.505 (NEUTRAL_BEAR)
+[2026-06-15 10:19:53] [MEBot] [WARNING] No D1 data for NAS100
+[2026-06-15 10:19:53] [MEBot] [WARNING] Symbol NAS100 not found in MT5
+[2026-06-15 10:19:53] [MEBot] [INFO] QQQ (NAS100): target=50%  action=hold
+[2026-06-15 10:19:53] [MEBot] [WARNING] No D1 data for SP500
+[2026-06-15 10:19:53] [MEBot] [WARNING] Symbol SP500 not found in MT5
+[2026-06-15 10:19:53] [MEBot] [INFO] SPY (SP500): target=50%  action=hold
+[2026-06-15 10:19:54] [MEBot] [INFO] Cycle complete in 34.5s — sleeping 3565s
+[2026-06-15 11:14:32] [MEBot] [INFO] No rebalance today (2026-06-15). Last: never
+[2026-06-15 11:14:33] [MEBot] [INFO] Cycle complete in 3.5s — sleeping 3597s
+[2026-06-15 11:17:00] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 11:17:00] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 11:17:02] [MEBot] [INFO] Cycle complete in 5.0s — sleeping 3595s
+[2026-06-15 11:17:03] [MEBot] [INFO] Credentials loaded from KV: account=5051780625  server=MetaQuotes-Demo
+[2026-06-15 11:17:03] [MEBot] [INFO] MT5 connected: account=5051780625  balance=100000.0  server=MetaQuotes-Demo
+[2026-06-15 11:17:05] [MEBot] [INFO] Config: paper_mode_kv=True  effective_paper=False  QQQ=True  SPY=True  Russell=False  TLT=False  DAX=False  Gold=False  BIL=False  portfolio=False  poll=3600s
+[2026-06-15 11:17:05] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 11:17:06] [MEBot] [INFO] VIX: 300 bars, latest=16.8
+[2026-06-15 11:17:06] [MEBot] [INFO] === REBALANCE TRIGGERED ===
+[2026-06-15 11:17:06] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-15 11:17:08] [MEBot] [INFO]   FRED WALCL: 1224 observations
+[2026-06-15 11:17:10] [MEBot] [INFO]   FRED WTREGEN: 1224 observations
+[2026-06-15 11:17:12] [MEBot] [INFO]   FRED RRPONTSYD: 3262 observations
+[2026-06-15 11:17:13] [MEBot] [INFO]   FRED T10Y2Y: 5866 observations
+[2026-06-15 11:17:15] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-15 11:17:17] [MEBot] [INFO]   FRED DFII10: 5865 observations
+[2026-06-15 11:17:18] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-15 11:17:20] [MEBot] [INFO]   FRED INDPRO: 280 observations
+[2026-06-15 11:17:34] [MEBot] [INFO] Macro score: US=-0.505 (NEUTRAL_BEAR)
+[2026-06-15 11:17:34] [MEBot] [WARNING] No D1 data for NAS100
+[2026-06-15 11:17:34] [MEBot] [WARNING] Symbol NAS100 not found in MT5
+[2026-06-15 11:17:34] [MEBot] [INFO] QQQ (NAS100): target=50%  action=skip
+[2026-06-15 11:17:34] [MEBot] [WARNING] No D1 data for SP500
+[2026-06-15 11:17:34] [MEBot] [WARNING] Symbol SP500 not found in MT5
+[2026-06-15 11:17:34] [MEBot] [INFO] SPY (SP500): target=50%  action=skip
+[2026-06-15 11:17:36] [MEBot] [INFO] Cycle complete in 31.0s — sleeping 3569s
+[2026-06-15 11:24:14] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 11:24:16] [MEBot] [INFO] Credentials loaded from KV: account=5051780625  server=MetaQuotes-Demo
+[2026-06-15 11:24:16] [MEBot] [INFO] MT5 connected: account=5051780625  balance=100000.0  server=MetaQuotes-Demo
+[2026-06-15 11:24:18] [MEBot] [INFO] Config: paper_mode_kv=False  effective_paper=False  QQQ=True  SPY=True  Russell=True  TLT=True  DAX=False  Gold=False  BIL=False  portfolio=True  poll=3600s
+[2026-06-15 11:24:18] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 11:24:20] [MEBot] [INFO] VIX: 300 bars, latest=16.8
+[2026-06-15 11:24:20] [MEBot] [INFO] === REBALANCE TRIGGERED ===
+[2026-06-15 11:24:20] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-15 11:24:21] [MEBot] [INFO]   FRED WALCL: 1224 observations
+[2026-06-15 11:24:23] [MEBot] [INFO]   FRED WTREGEN: 1224 observations
+[2026-06-15 11:24:25] [MEBot] [INFO]   FRED RRPONTSYD: 3262 observations
+[2026-06-15 11:24:26] [MEBot] [INFO]   FRED T10Y2Y: 5866 observations
+[2026-06-15 11:24:28] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-15 11:24:30] [MEBot] [INFO]   FRED DFII10: 5865 observations
+[2026-06-15 11:24:32] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-15 11:24:34] [MEBot] [INFO]   FRED INDPRO: 280 observations
+[2026-06-15 11:24:48] [MEBot] [INFO] Macro score: US=-0.505 (NEUTRAL_BEAR)
+[2026-06-15 11:24:52] [MEBot] [ERROR] Order FAILED USTECH100M: OrderSendResult(retcode=10027, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='AutoTrading disabled by client', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='USTECH100M', volume=2.0, price=30296.0, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_QQQ', position=0, position_by=0))
+[2026-06-15 11:24:52] [MEBot] [INFO] QQQ (USTECH100M): target=50%  action=buy
+[2026-06-15 11:24:56] [MEBot] [ERROR] Order FAILED US500: OrderSendResult(retcode=10027, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='AutoTrading disabled by client', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='US500', volume=6.6, price=7521.9, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_SPY', position=0, position_by=0))
+[2026-06-15 11:24:56] [MEBot] [INFO] SPY (US500): target=50%  action=buy
+[2026-06-15 11:25:00] [MEBot] [ERROR] Order FAILED US2000: OrderSendResult(retcode=10027, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='AutoTrading disabled by client', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='US2000', volume=17.0, price=2996.3, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_IWM', position=0, position_by=0))
+[2026-06-15 11:25:00] [MEBot] [INFO] IWM (US2000): target=50%  action=buy
+[2026-06-15 11:25:00] [MEBot] [WARNING] No D1 data for USB30Y
+[2026-06-15 11:25:00] [MEBot] [WARNING] Symbol USB30Y not found in MT5
+[2026-06-15 11:25:00] [MEBot] [INFO] TLT (USB30Y): target=50%  action=skip
+[2026-06-15 11:25:02] [MEBot] [INFO] Cycle complete in 43.9s — sleeping 3556s
+[2026-06-15 11:37:02] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 11:37:04] [MEBot] [INFO] Credentials loaded from KV: account=5051780625  server=MetaQuotes-Demo
+[2026-06-15 11:37:04] [MEBot] [INFO] MT5 connected: account=5051780625  balance=100000.0  server=MetaQuotes-Demo
+[2026-06-15 11:37:06] [MEBot] [INFO] Config: paper_mode_kv=False  effective_paper=False  QQQ=True  SPY=True  Russell=True  TLT=True  DAX=False  Gold=False  BIL=False  portfolio=True  poll=3600s
+[2026-06-15 11:37:06] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 11:37:08] [MEBot] [INFO] VIX: 300 bars, latest=16.8
+[2026-06-15 11:37:08] [MEBot] [INFO] === REBALANCE TRIGGERED ===
+[2026-06-15 11:37:08] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-15 11:37:11] [MEBot] [INFO]   FRED WALCL: 1224 observations
+[2026-06-15 11:37:12] [MEBot] [INFO]   FRED WTREGEN: 1224 observations
+[2026-06-15 11:37:14] [MEBot] [INFO]   FRED RRPONTSYD: 3262 observations
+[2026-06-15 11:37:16] [MEBot] [INFO]   FRED T10Y2Y: 5866 observations
+[2026-06-15 11:37:18] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-15 11:37:20] [MEBot] [INFO]   FRED DFII10: 5865 observations
+[2026-06-15 11:37:21] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-15 11:37:23] [MEBot] [INFO]   FRED INDPRO: 280 observations
+[2026-06-15 11:37:37] [MEBot] [INFO] Macro score: US=-0.505 (NEUTRAL_BEAR)
+[2026-06-15 11:37:37] [MEBot] [ERROR] Order FAILED USTECH100M: OrderSendResult(retcode=10017, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='Trade disabled', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='USTECH100M', volume=2.0, price=30293.3, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_QQQ', position=0, position_by=0))
+[2026-06-15 11:37:37] [MEBot] [INFO] QQQ (USTECH100M): target=50%  action=buy
+[2026-06-15 11:37:37] [MEBot] [ERROR] Order FAILED US500: OrderSendResult(retcode=10017, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='Trade disabled', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='US500', volume=6.6, price=7521.9, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_SPY', position=0, position_by=0))
+[2026-06-15 11:37:37] [MEBot] [INFO] SPY (US500): target=50%  action=buy
+[2026-06-15 11:37:37] [MEBot] [ERROR] Order FAILED US2000: OrderSendResult(retcode=10017, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='Trade disabled', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='US2000', volume=17.0, price=2996.0, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_IWM', position=0, position_by=0))
+[2026-06-15 11:37:37] [MEBot] [INFO] IWM (US2000): target=50%  action=buy
+[2026-06-15 11:37:37] [MEBot] [WARNING] No D1 data for USB30Y
+[2026-06-15 11:37:37] [MEBot] [WARNING] Symbol USB30Y not found in MT5
+[2026-06-15 11:37:37] [MEBot] [INFO] TLT (USB30Y): target=50%  action=skip
+[2026-06-15 11:37:39] [MEBot] [INFO] Cycle complete in 32.9s — sleeping 3567s
+[2026-06-15 11:44:21] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-15 11:44:23] [MEBot] [INFO] Credentials loaded from KV: account=5051780625  server=MetaQuotes-Demo
+[2026-06-15 11:44:23] [MEBot] [INFO] MT5 connected: account=5051780625  balance=100000.0  server=MetaQuotes-Demo
+[2026-06-15 11:44:24] [MEBot] [INFO] Config: paper_mode_kv=False  effective_paper=False  QQQ=True  SPY=True  Russell=True  TLT=True  DAX=False  Gold=False  BIL=False  portfolio=True  poll=3600s
+[2026-06-15 11:44:24] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 11:44:26] [MEBot] [INFO] VIX: 300 bars, latest=16.8
+[2026-06-15 11:44:26] [MEBot] [INFO] === REBALANCE TRIGGERED ===
+[2026-06-15 11:44:26] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-15 11:44:29] [MEBot] [INFO]   FRED WALCL: 1224 observations
+[2026-06-15 11:44:31] [MEBot] [INFO]   FRED WTREGEN: 1224 observations
+[2026-06-15 11:44:33] [MEBot] [INFO]   FRED RRPONTSYD: 3262 observations
+[2026-06-15 11:44:35] [MEBot] [INFO]   FRED T10Y2Y: 5866 observations
+[2026-06-15 11:44:37] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-15 11:44:39] [MEBot] [INFO]   FRED DFII10: 5865 observations
+[2026-06-15 11:44:41] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-15 11:44:44] [MEBot] [INFO]   FRED INDPRO: 280 observations
+[2026-06-15 11:45:03] [MEBot] [INFO] Macro score: US=-0.505 (NEUTRAL_BEAR)
+[2026-06-15 11:45:03] [MEBot] [ERROR] Order FAILED USTECH100M: OrderSendResult(retcode=10017, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='Trade disabled', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='USTECH100M', volume=2.0, price=30290.9, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_QQQ', position=0, position_by=0))
+[2026-06-15 11:45:03] [MEBot] [INFO] QQQ (USTECH100M): target=50%  action=buy
+[2026-06-15 11:45:03] [MEBot] [ERROR] Order FAILED US500: OrderSendResult(retcode=10017, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='Trade disabled', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='US500', volume=6.6, price=7522.4, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_SPY', position=0, position_by=0))
+[2026-06-15 11:45:03] [MEBot] [INFO] SPY (US500): target=50%  action=buy
+[2026-06-15 11:45:03] [MEBot] [ERROR] Order FAILED US2000: OrderSendResult(retcode=10017, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='Trade disabled', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='US2000', volume=17.0, price=2995.7, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_IWM', position=0, position_by=0))
+[2026-06-15 11:45:03] [MEBot] [INFO] IWM (US2000): target=50%  action=buy
+[2026-06-15 11:45:03] [MEBot] [WARNING] No D1 data for USB30Y
+[2026-06-15 11:45:03] [MEBot] [WARNING] Symbol USB30Y not found in MT5
+[2026-06-15 11:45:03] [MEBot] [INFO] TLT (USB30Y): target=50%  action=skip
+[2026-06-15 11:45:04] [MEBot] [INFO] Cycle complete in 39.7s — sleeping 3560s
+[2026-06-15 12:16:59] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 12:17:01] [MEBot] [INFO] Cycle complete in 3.9s — sleeping 3596s
+[2026-06-15 12:44:27] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 12:44:28] [MEBot] [INFO] Cycle complete in 4.0s — sleeping 3596s
+[2026-06-15 13:17:01] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 13:17:05] [MEBot] [INFO] Cycle complete in 7.9s — sleeping 3592s
+[2026-06-15 13:44:28] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 13:44:32] [MEBot] [INFO] Cycle complete in 7.0s — sleeping 3593s
+[2026-06-15 14:16:59] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 14:17:03] [MEBot] [INFO] Cycle complete in 5.6s — sleeping 3594s

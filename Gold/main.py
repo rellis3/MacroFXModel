@@ -55,7 +55,7 @@ from modules.htf_bias import compute_htf_bias, HTFBias
 from modules.fib_engine import detect_fib_zones, update_zone_activity, FibZone
 from modules.volume_profile import compute_volume_profile
 from modules.session_engine import compute_session_levels
-from modules.confluence_scorer import score_zones
+from modules.confluence_scorer import score_zones, deduplicate_zones
 from modules.vumanchu import compute_vumanchu
 from modules.trade_state import BotState, State, ActiveTrade
 from modules.trendline_engine import detect_trendlines, Trendline
@@ -378,15 +378,22 @@ def _calc_sl_tp(zone: FibZone, direction: str, price: float,
     max_sl = cfg.get('max_sl_pips', 40) * PIP
     atr_sl = atr * cfg.get('sl_atr_mult', 1.5)
 
-    # Retest zones: SL just below/above the entry window, not at level_886 origin.
-    # level_886 for a retest is the original impulse's deep level — too far away.
+    # SL anchor logic:
+    #   Retest zones: just below/above the entry window (swing_origin is too far).
+    #   Standard zones: just beyond swing_origin (the impulse high for shorts,
+    #                   the impulse low for longs). This is the true structural
+    #                   invalidation level — a close beyond swing_origin means the
+    #                   whole retrace setup has failed, not just a wick noise.
+    #   Previously this used level_886 as the anchor, which placed the structural
+    #   SL at the zone centre (entry ± 3pts), always forcing the ATR fallback and
+    #   giving an arbitrary 15-pip SL with no structural basis.
     is_retest = getattr(zone, 'zone_variant', '') == 'retest'
     if direction == 'LONG':
-        sl_anchor  = zone.gp_low if is_retest else zone.level_886
+        sl_anchor  = zone.gp_low if is_retest else zone.swing_origin
         structural_sl = sl_anchor - atr * 0.3
         sl = max(structural_sl, price - max_sl)
     else:
-        sl_anchor  = zone.gp_high if is_retest else zone.level_886
+        sl_anchor  = zone.gp_high if is_retest else zone.swing_origin
         structural_sl = sl_anchor + atr * 0.3
         sl = min(structural_sl, price + max_sl)
 
@@ -649,6 +656,10 @@ class GoldBot:
             self.zones = score_zones(self.zones, self.vol_prof,
                                      self.sess_lvls, self.htf_bias,
                                      trendlines=self.trendlines)
+            pre_dedup = len(self.zones)
+            self.zones = deduplicate_zones(self.zones)
+            log.info(f'[ZONES]  Dedup: {pre_dedup} → {len(self.zones)} '
+                     f'({pre_dedup - len(self.zones)} merged)')
             self.journal.log_zone_map(self.zones, self.htf_bias,
                                        self.vol_prof, self.sess_lvls)
         elif self.zones and missing:
@@ -747,8 +758,11 @@ class GoldBot:
 
     def _check_vumanchu(self, zone: FibZone, price: float) -> None:
         """Fetch 5m bars and evaluate VuManChu. Fire entry if confirmed."""
-        # Still in proximity?
-        prox = self.cfg.get('proximity_pips', 5.0) * PIP * 2
+        # Still in proximity? Use ATR as the disarm buffer so normal zone wicks
+        # don't kill the armed state. Flat PIP multiple (5×2=10) was too tight —
+        # a single 5m bar easily moves 10+ pips in either direction at a zone.
+        prox = max(self.cfg.get('proximity_pips', 5.0) * PIP * 2,
+                   self.atr_15m * 1.0)
         dist = max(0.0, max(zone.gp_low - price, price - zone.gp_high))
         if dist > prox:
             log.info(f'[ARMED]  Zone {zone.zone_id} — price {price:.2f} left proximity, disarming')

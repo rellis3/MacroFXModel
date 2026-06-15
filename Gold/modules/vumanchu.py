@@ -398,8 +398,12 @@ def compute_vumanchu(bars: list[dict], zone_direction: str,
         vwap_confirmed = (vwap_sig in ('EXHAUSTION', 'REVERSAL') or
                           vwap_div in ('DIVERGENCE_BEAR', 'HIDDEN_BEAR'))
 
+    # WT counts only on meaningful signals: oversold/overbought exhaustion or
+    # structural divergence. Plain crossover (BULLISH/BEARISH = WT1 just above/
+    # below WT2) is too common and too weak to qualify — excluding it prevents
+    # mild crossovers from masquerading as zone confirmation.
     if zone_direction == 'long':
-        if wt_sig in ('OVERSOLD', 'BULLISH', 'DIVERGENCE_BULL', 'HIDDEN_BULL'):
+        if wt_sig in ('OVERSOLD', 'DIVERGENCE_BULL', 'HIDDEN_BULL'):
             aligned += 1; notes.append(f'WT {wt_sig}')
         if mf_sig in ('BULLISH_EXHAUSTION', 'BULLISH'):
             aligned += 1; notes.append(f'MF {mf_sig}')
@@ -407,7 +411,7 @@ def compute_vumanchu(bars: list[dict], zone_direction: str,
             label = f'VWAP {vwap_div}' if vwap_div not in ('NONE',) else f'VWAP slope {vwap_sig}'
             aligned += 1; notes.append(label)
     else:
-        if wt_sig in ('OVERBOUGHT', 'BEARISH', 'DIVERGENCE_BEAR', 'HIDDEN_BEAR'):
+        if wt_sig in ('OVERBOUGHT', 'DIVERGENCE_BEAR', 'HIDDEN_BEAR'):
             aligned += 1; notes.append(f'WT {wt_sig}')
         if mf_sig in ('BEARISH_EXHAUSTION', 'BEARISH'):
             aligned += 1; notes.append(f'MF {mf_sig}')

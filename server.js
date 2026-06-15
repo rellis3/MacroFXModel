@@ -2590,24 +2590,35 @@ app.get('/api/diversification/data', async (req, res) => {
       else console.warn(`  [divers] FRED ${fredIds[i]} failed: ${r.reason?.message}`);
     });
 
-    // NAPM discontinued 2001; fall back to ISM (MANEMP unavailable — use INDPRO as proxy)
+    // NAPM (ISM Manufacturing PMI) may be restricted on FRED free tier.
+    // Try ISMMAN (alternative FRED code) before falling back to INDPRO.
+    // INDPRO is physical output (not a survey), so it's a last resort.
     let finalIsmMap = ismMap;
     if (ismMap.size < 10) {
-      console.log('[divers] NAPM empty — falling back to INDPRO');
-      try { finalIsmMap = await fetchFredSeries('INDPRO', FROM_DATE, fredKey); }
-      catch (e) { console.warn('[divers] INDPRO fallback failed:', e.message); }
+      console.log('[divers] NAPM sparse — trying ISMMAN…');
+      try {
+        const ismmanMap = await fetchFredSeries('ISMMAN', FROM_DATE, fredKey);
+        if (ismmanMap.size >= 10) { finalIsmMap = ismmanMap; console.log(`[divers] using ISMMAN (${ismmanMap.size} obs)`); }
+        else throw new Error('ISMMAN also sparse');
+      } catch (e) {
+        console.warn('[divers] ISMMAN failed:', e.message, '— falling back to INDPRO');
+        try { finalIsmMap = await fetchFredSeries('INDPRO', FROM_DATE, fredKey); console.log(`[divers] using INDPRO fallback`); }
+        catch (e2) { console.warn('[divers] INDPRO fallback failed:', e2.message); }
+      }
     }
 
-    console.log('[divers] fetching Yahoo ETFs…');
-    const [spyResult, tltResult, gldResult] = await Promise.allSettled([
+    console.log('[divers] fetching Yahoo ETFs + VIX…');
+    const [spyResult, tltResult, gldResult, vixResult] = await Promise.allSettled([
       fetchYahooOHLC('SPY', FROM_UNIX),
       fetchYahooOHLC('TLT', FROM_UNIX),
       fetchYahooOHLC('GLD', FROM_UNIX),
+      fetchVixYahoo(FROM_UNIX),
     ]);
     const spyMap = spyResult.status === 'fulfilled' ? spyResult.value : new Map();
     const tltMap = tltResult.status === 'fulfilled' ? tltResult.value : new Map();
     const gldMap = gldResult.status === 'fulfilled' ? gldResult.value : new Map();
-    console.log(`  [divers] SPY ${spyMap.size} | TLT ${tltMap.size} | GLD ${gldMap.size}`);
+    const vixMap = vixResult.status === 'fulfilled' ? vixResult.value : new Map();
+    console.log(`  [divers] SPY ${spyMap.size} | TLT ${tltMap.size} | GLD ${gldMap.size} | VIX ${vixMap.size}`);
 
     console.log('[divers] fetching OANDA FX pairs…');
     const FX_INSTRUMENTS = ['EUR_USD', 'GBP_USD', 'USD_JPY', 'USD_CAD', 'USD_CHF', 'AUD_USD', 'NZD_USD', 'GBP_JPY', 'AUD_JPY', 'NZD_JPY'];
@@ -2651,6 +2662,7 @@ app.get('/api/diversification/data', async (req, res) => {
         spy: alignSparse(dateIndex, closeMap(spyMap)),
         tlt: alignSparse(dateIndex, closeMap(tltMap)),
         gld: alignSparse(dateIndex, closeMap(gldMap)),
+        vix: alignSparse(dateIndex, vixMap),
       },
       fx: Object.fromEntries(
         FX_INSTRUMENTS.map(inst => [

@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Hub — Central Risk Command</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+#hubApp { padding: 0 20px 80px; max-width: 1400px; margin: 0 auto; }
+
+/* Architecture diagram */
+.arch-wrap { display: flex; flex-direction: column; gap: 0; margin: 16px 0; }
+.arch-hub {
+  background: linear-gradient(135deg, rgba(20,184,166,.12), rgba(59,130,246,.08));
+  border: 2px solid #14b8a6; border-radius: 12px; padding: 18px 24px;
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+}
+.arch-hub-title { font-size: 13px; font-weight: 700; font-family: 'DM Mono',monospace; color: #14b8a6; letter-spacing: .1em; text-transform: uppercase; }
+.arch-gates { display: flex; gap: 8px; flex-wrap: wrap; }
+.arch-gate {
+  background: rgba(20,184,166,.1); border: 1px solid rgba(20,184,166,.35); border-radius: 6px;
+  padding: 5px 12px; font-size: 11px; font-family: 'DM Mono',monospace; color: #5eead4;
+}
+.arch-connector { display: flex; justify-content: space-around; padding: 8px 60px; gap: 20px; }
+.arch-line { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0; }
+.arch-line-bar { width: 2px; height: 24px; background: var(--border2); }
+.arch-books { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 900px) { .arch-books { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 580px) { .arch-books { grid-template-columns: 1fr; } }
+
+.book-card {
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+  position: relative; overflow: hidden;
+}
+.book-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.book-card.nq::before { background: #f59e0b; }
+.book-card.p1::before { background: #14b8a6; }
+.book-card.p2::before { background: #f87171; }
+.book-card.p3::before { background: #fb923c; }
+.book-card.p4::before { background: #60a5fa; }
+.book-card.p5::before { background: #c084fc; }
+.book-card.p6::before { background: #facc15; }
+
+.book-tag { font-size: 9px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; font-family: 'DM Mono',monospace; }
+.book-tag.nq { color: #f59e0b; }
+.book-tag.p1 { color: #14b8a6; }
+.book-tag.p2 { color: #f87171; }
+.book-tag.p3 { color: #fb923c; }
+.book-tag.p4 { color: #60a5fa; }
+.book-tag.p5 { color: #c084fc; }
+.book-tag.p6 { color: #facc15; }
+
+.book-name { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.2; }
+.book-desc { font-size: 11px; color: var(--text3); font-family: 'DM Mono',monospace; line-height: 1.4; }
+.book-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+.book-stat { display: flex; flex-direction: column; gap: 1px; }
+.book-stat-lbl { font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono',monospace; }
+.book-stat-val { font-size: 13px; font-weight: 700; font-family: 'DM Mono',monospace; }
+.book-badge {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
+  border-radius: 4px; font-size: 10px; font-weight: 600; font-family: 'DM Mono',monospace;
+}
+.badge-live { background: rgba(20,184,166,.12); border: 1px solid rgba(20,184,166,.3); color: #14b8a6; }
+.badge-spec { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); color: #f59e0b; }
+.badge-build { background: rgba(148,163,184,.08); border: 1px solid var(--border); color: var(--text3); }
+
+/* Gate status */
+.gate-panel {
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
+  padding: 18px; margin-top: 14px;
+}
+.gate-header { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-family: 'DM Mono',monospace; color: var(--text2); margin-bottom: 14px; }
+.gate-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 700px) { .gate-grid { grid-template-columns: 1fr; } }
+.gate-item {
+  background: var(--s2); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px;
+}
+.gate-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+.gate-dot.ok { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.gate-dot.warn { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; animation: pulse 1.5s infinite; }
+.gate-dot.off { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+.gate-dot.idle { background: var(--border2); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.gate-body {}
+.gate-name { font-size: 12px; font-weight: 600; color: var(--text); font-family: 'DM Mono',monospace; }
+.gate-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono',monospace; margin-top: 2px; line-height: 1.4; }
+
+/* NQ system spec */
+.nq-spec {
+  background: linear-gradient(135deg, rgba(245,158,11,.06), rgba(0,0,0,0));
+  border: 1.5px solid rgba(245,158,11,.3); border-radius: var(--rl);
+  padding: 20px; margin-top: 14px;
+}
+.nq-spec-title { font-size: 16px; font-weight: 700; color: #f59e0b; margin-bottom: 4px; }
+.nq-spec-sub { font-size: 12px; color: var(--text3); font-family: 'DM Mono',monospace; margin-bottom: 16px; }
+.nq-timeline { display: flex; flex-direction: column; gap: 0; }
+.nq-event {
+  display: flex; gap: 14px; align-items: flex-start; padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.nq-event:last-child { border-bottom: none; }
+.nq-time-col { min-width: 110px; flex-shrink: 0; }
+.nq-time { font-size: 12px; font-weight: 700; font-family: 'DM Mono',monospace; color: #f59e0b; }
+.nq-time-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono',monospace; }
+.nq-dot-col { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
+.nq-circle { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #f59e0b; background: rgba(245,158,11,.2); flex-shrink: 0; }
+.nq-vline { width: 2px; flex: 1; background: var(--border); min-height: 20px; margin-top: 2px; }
+.nq-content {}
+.nq-event-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.nq-event-desc { font-size: 11px; color: var(--text3); font-family: 'DM Mono',monospace; line-height: 1.5; }
+.nq-tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; font-family: 'DM Mono',monospace; margin-right: 4px; }
+.tag-g1 { background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.3); color: #60a5fa; }
+.tag-g2 { background: rgba(168,85,247,.12); border: 1px solid rgba(168,85,247,.3); color: #c084fc; }
+.tag-entry { background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); color: #10b981; }
+.tag-risk { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #f87171; }
+.tag-exit { background: rgba(148,163,184,.08); border: 1px solid var(--border); color: var(--text2); }
+
+/* Risk table */
+.risk-table { width: 100%; border-collapse: collapse; font-family: 'DM Mono',monospace; font-size: 12px; margin-top: 10px; }
+.risk-table th { padding: 7px 12px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); }
+.risk-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+.risk-table tr:last-child td { border-bottom: none; }
+.risk-table tr:hover td { background: var(--s2); }
+.risk-table td.num { text-align: right; font-weight: 600; }
+.risk-table td.green { color: #10b981; }
+.risk-table td.amber { color: #f59e0b; }
+.risk-table td.red { color: #ef4444; }
+
+/* Cap structure */
+.cap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+@media (max-width: 800px) { .cap-grid { grid-template-columns: repeat(2, 1fr); } }
+.cap-card { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 14px; }
+.cap-lbl { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-family: 'DM Mono',monospace; color: var(--text3); }
+.cap-val { font-size: 22px; font-weight: 700; font-family: 'DM Mono',monospace; color: var(--text); margin-top: 2px; }
+.cap-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono',monospace; margin-top: 2px; }
+
+.section-hdr { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-family: 'DM Mono',monospace; color: var(--text2); margin: 24px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+.card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 12px; }
+.card-hdr { padding: 12px 18px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); font-family: 'DM Mono',monospace; border-bottom: 1px solid var(--border); }
+.card-body { padding: 18px; }
+
+.info-row { background: rgba(59,130,246,.07); border: 1px solid rgba(59,130,246,.2); border-radius: var(--r); padding: 10px 14px; font-size: 11px; font-family: 'DM Mono',monospace; color: #93c5fd; margin-bottom: 10px; }
+.warn-row { background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2); border-radius: var(--r); padding: 10px 14px; font-size: 11px; font-family: 'DM Mono',monospace; color: #fcd34d; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div id="hubApp">
+
+<!-- Header -->
+<div style="padding:16px 0 12px;border-bottom:1px solid var(--border);margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+  <div>
+    <h1 style="font-size:20px;font-weight:700;margin:0;color:#14b8a6;">Central Risk Hub</h1>
+    <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">Separate capital books · Unified risk gate · Macro regime overlay</div>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+    <a href="diversification.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">← Combined Book</a>
+    <a href="index.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">← Dashboard</a>
+  </div>
+</div>
+
+<!-- Architecture diagram -->
+<div class="section-hdr">Architecture</div>
+
+<div class="arch-wrap">
+
+  <!-- Hub row -->
+  <div class="arch-hub">
+    <div>
+      <div class="arch-hub-title">Central Risk Hub</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">All books check hub before executing. Hub can reduce or block any book.</div>
+    </div>
+    <div class="arch-gates">
+      <div class="arch-gate">P7 JPY Circuit Breaker</div>
+      <div class="arch-gate">Portfolio DD Gate (&gt;8% → halve all)</div>
+      <div class="arch-gate">P1 Macro Regime Overlay</div>
+      <div class="arch-gate">Cross-Book Correlation Monitor</div>
+    </div>
+  </div>
+
+  <!-- Connector lines -->
+  <div style="display:flex;justify-content:space-around;padding:0 5%;gap:10px;">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;"><div style="width:2px;height:20px;background:var(--border2);"></div></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;"><div style="width:2px;height:20px;background:var(--border2);"></div></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;"><div style="width:2px;height:20px;background:var(--border2);"></div></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;"><div style="width:2px;height:20px;background:var(--border2);"></div></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;"><div style="width:2px;height:20px;background:var(--border2);"></div></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;"><div style="width:2px;height:20px;background:var(--border2);"></div></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;"><div style="width:2px;height:20px;background:var(--border2);"></div></div>
+  </div>
+
+  <!-- Books grid -->
+  <div class="arch-books">
+
+    <!-- NQ Pre-Open System -->
+    <div class="book-card nq">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="book-tag nq">NQ-SYS</div>
+        <div class="book-badge badge-spec">Replicating</div>
+      </div>
+      <div class="book-name">NQ Pre-Open Two-Gate System</div>
+      <div class="book-desc">Asia validates direction → London confirms → entry 09:25 ET. 0.5% stop, 1.8% max risk/trade.</div>
+      <div class="book-meta">
+        <div class="book-stat"><div class="book-stat-lbl">Target Sharpe</div><div class="book-stat-val" style="color:#f59e0b;">4.0+</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Freq</div><div class="book-stat-val">1-2/wk</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Capital</div><div class="book-stat-val">30%</div></div>
+      </div>
+      <a href="#nq-spec" style="font-size:11px;color:#f59e0b;font-family:'DM Mono',monospace;text-decoration:none;margin-top:2px;">View spec ↓</a>
+    </div>
+
+    <!-- P1 Macro Equity -->
+    <div class="book-card p1">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="book-tag p1">P1</div>
+        <div class="book-badge badge-live">Running</div>
+      </div>
+      <div class="book-name">Macro Regime Equity</div>
+      <div class="book-desc">5-factor macro composite → SPY/QQQ allocation. Weekly rebalance. Net liq + yield curve + credit + real yield + ISM.</div>
+      <div class="book-meta">
+        <div class="book-stat"><div class="book-stat-lbl">Target Sharpe</div><div class="book-stat-val" style="color:#14b8a6;">0.8+</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Freq</div><div class="book-stat-val">Weekly</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Capital</div><div class="book-stat-val">25%</div></div>
+      </div>
+      <a href="macro-equity-backtest.html" style="font-size:11px;color:#14b8a6;font-family:'DM Mono',monospace;text-decoration:none;margin-top:2px;">Backtest →</a>
+    </div>
+
+    <!-- P3 Yield Curve -->
+    <div class="book-card p3">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="book-tag p3">P3</div>
+        <div class="book-badge badge-live">Running</div>
+      </div>
+      <div class="book-name">Yield Curve Regime Rotation</div>
+      <div class="book-desc">4 macro regimes (ISM × CPI YoY) → SPY/TLT/GLD allocation. Monthly rebalance. Protects in stagflation.</div>
+      <div class="book-meta">
+        <div class="book-stat"><div class="book-stat-lbl">Target Sharpe</div><div class="book-stat-val" style="color:#fb923c;">0.9+</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Freq</div><div class="book-stat-val">Monthly</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Capital</div><div class="book-stat-val">15%</div></div>
+      </div>
+      <a href="system-yield-curve.html" style="font-size:11px;color:#fb923c;font-family:'DM Mono',monospace;text-decoration:none;margin-top:2px;">Backtest →</a>
+    </div>
+
+    <!-- P6 Gold -->
+    <div class="book-card p6">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="book-tag p6">P6</div>
+        <div class="book-badge badge-live">Running</div>
+      </div>
+      <div class="book-name">Gold Macro Divergence</div>
+      <div class="book-desc">Rolling OLS: log(GLD) ~ TIPS real yield + DXY. Long when Gold cheap vs fundamentals, short when expensive.</div>
+      <div class="book-meta">
+        <div class="book-stat"><div class="book-stat-lbl">Target Sharpe</div><div class="book-stat-val" style="color:#facc15;">0.7+</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Freq</div><div class="book-stat-val">Weekly</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Capital</div><div class="book-stat-val">15%</div></div>
+      </div>
+      <a href="system-gold-macro.html" style="font-size:11px;color:#facc15;font-family:'DM Mono',monospace;text-decoration:none;margin-top:2px;">Backtest →</a>
+    </div>
+
+    <!-- P4 FX Carry -->
+    <div class="book-card p4">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="book-tag p4">P4</div>
+        <div class="book-badge badge-live">Running</div>
+      </div>
+      <div class="book-name">FX Carry (VIX-Gated)</div>
+      <div class="book-desc">Long GBP/JPY, AUD/JPY, NZD/JPY. Exit immediately when VIX Z &gt; 1.0. Re-enter only after 5 calm days.</div>
+      <div class="book-meta">
+        <div class="book-stat"><div class="book-stat-lbl">Target Sharpe</div><div class="book-stat-val" style="color:#60a5fa;">0.5+</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Freq</div><div class="book-stat-val">Monthly</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Capital</div><div class="book-stat-val">10%</div></div>
+      </div>
+      <a href="system-fx-carry.html" style="font-size:11px;color:#60a5fa;font-family:'DM Mono',monospace;text-decoration:none;margin-top:2px;">Backtest →</a>
+    </div>
+
+    <!-- P2+P5 combined small book -->
+    <div class="book-card p2">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="book-tag p2">P2 / P5</div>
+        <div class="book-badge badge-build">Validating</div>
+      </div>
+      <div class="book-name">Credit Divergence + FX Momentum</div>
+      <div class="book-desc">P2: credit leads equity — signal when credit/equity diverge. P5: cross-sectional 12-1 month FX momentum. Small allocation until validated.</div>
+      <div class="book-meta">
+        <div class="book-stat"><div class="book-stat-lbl">Target Sharpe</div><div class="book-stat-val" style="color:#f87171;">0.5+</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Freq</div><div class="book-stat-val">Monthly</div></div>
+        <div class="book-stat"><div class="book-stat-lbl">Capital</div><div class="book-stat-val">5%</div></div>
+      </div>
+      <a href="system-credit-equity.html" style="font-size:11px;color:#f87171;font-family:'DM Mono',monospace;text-decoration:none;margin-top:2px;">P2 Backtest →</a>
+    </div>
+
+  </div>
+</div>
+
+<!-- Current Gate Status -->
+<div class="section-hdr" style="margin-top:24px;">Live Hub Gates</div>
+<div class="gate-panel">
+  <div class="gate-header">Risk gate status — updates on page load</div>
+  <div class="gate-grid">
+
+    <div class="gate-item">
+      <div class="gate-dot idle" id="dotJpy"></div>
+      <div class="gate-body">
+        <div class="gate-name">P7 JPY Circuit Breaker</div>
+        <div class="gate-sub" id="txtJpy">Monitors USD/JPY 3-day acceleration + VIX + HY spreads. Fires when 2 of 3 breach threshold. Kills carry, halves equity/momentum.</div>
+      </div>
+    </div>
+
+    <div class="gate-item">
+      <div class="gate-dot idle" id="dotDD"></div>
+      <div class="gate-body">
+        <div class="gate-name">Portfolio DD Gate</div>
+        <div class="gate-sub" id="txtDD">If combined book drops &gt;8% from peak, all books reduce size by 50% until recovery above −4%. Prevents compounding drawdowns.</div>
+      </div>
+    </div>
+
+    <div class="gate-item">
+      <div class="gate-dot idle" id="dotMacro"></div>
+      <div class="gate-body">
+        <div class="gate-name">Macro Regime Overlay (P1 Score)</div>
+        <div class="gate-sub" id="txtMacro">P1 composite score gates NQ system and P4/P5 sizing. Score &gt; +0.5: full size. Score −0.5 to +0.5: 75%. Score &lt; −0.5: 50% or flat.</div>
+      </div>
+    </div>
+
+    <div class="gate-item">
+      <div class="gate-dot idle" id="dotVix"></div>
+      <div class="gate-body">
+        <div class="gate-name">VIX Regime Gate</div>
+        <div class="gate-sub" id="txtVix">VIX Z-score (60-day). LOW (&lt;−0.5): full carry, full NQ. NORMAL (−0.5 to 1.0): 75% carry. HIGH (&gt;1.0): exit carry, reduce NQ 50%. EXTREME (&gt;2.0): all books 25%.</div>
+      </div>
+    </div>
+
+    <div class="gate-item">
+      <div class="gate-dot idle" id="dotNqG1"></div>
+      <div class="gate-body">
+        <div class="gate-name">NQ Gate 1 — Asia Data</div>
+        <div class="gate-sub" id="txtNqG1">Fires ~09:48 London (04:48 ET). Validates Asia session directional bias. If not validated: no NQ trade today.</div>
+      </div>
+    </div>
+
+    <div class="gate-item">
+      <div class="gate-dot idle" id="dotNqG2"></div>
+      <div class="gate-body">
+        <div class="gate-name">NQ Gate 2 — London Confirmation</div>
+        <div class="gate-sub" id="txtNqG2">Fires ~12:40 London (07:40 ET). London session must confirm Asia direction. Both gates required for entry at 09:25 ET.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- NQ Pre-Open System Spec -->
+<div class="section-hdr" id="nq-spec" style="margin-top:24px;">NQ Pre-Open Two-Gate System</div>
+
+<div class="warn-row">
+  Replicating from live quant signals. System 1 targets 4.0+ Sharpe on NQ at 1-2 trades/week. Gates fire at fixed London times and are forwarded as Telegram alerts.
+</div>
+
+<div class="nq-spec">
+  <div class="nq-spec-title">NQ SYSTEM — Daily Timeline</div>
+  <div class="nq-spec-sub">Entry 5 minutes before NY open. Two sequential gates must BOTH validate before a trade is taken.</div>
+
+  <div class="nq-timeline">
+
+    <div class="nq-event">
+      <div class="nq-time-col">
+        <div class="nq-time">00:00 LDN</div>
+        <div class="nq-time-sub">19:00 ET prior</div>
+      </div>
+      <div class="nq-dot-col"><div class="nq-circle"></div><div class="nq-vline"></div></div>
+      <div class="nq-content">
+        <div class="nq-event-name">Asia Session Opens</div>
+        <div class="nq-event-desc">Asia body range tracking begins. No trades. Macro regime score from P1 is checked for directional bias.</div>
+      </div>
+    </div>
+
+    <div class="nq-event">
+      <div class="nq-time-col">
+        <div class="nq-time">~09:48 LDN</div>
+        <div class="nq-time-sub">04:48 ET</div>
+      </div>
+      <div class="nq-dot-col"><div class="nq-circle" style="border-color:#60a5fa;background:rgba(59,130,246,.2);"></div><div class="nq-vline"></div></div>
+      <div class="nq-content">
+        <div class="nq-event-name"><span class="nq-tag tag-g1">GATE 1</span> Asia Data Threshold Validated</div>
+        <div class="nq-event-desc">
+          Asia session has produced a clear directional read. Criteria being reverse-engineered:<br>
+          — Asia session closed well above/below the prior day range midpoint?<br>
+          — NQ overnight futures showing momentum in a consistent direction?<br>
+          — Macro P1 composite score confirms the bias (positive = long only, negative = short only)?<br>
+          If Gate 1 does NOT fire → no trade today regardless of London action.
+        </div>
+      </div>
+    </div>
+
+    <div class="nq-event">
+      <div class="nq-time-col">
+        <div class="nq-time">07:00 LDN</div>
+        <div class="nq-time-sub">02:00 ET</div>
+      </div>
+      <div class="nq-dot-col"><div class="nq-circle"></div><div class="nq-vline"></div></div>
+      <div class="nq-content">
+        <div class="nq-event-name">London Open — Monitoring begins</div>
+        <div class="nq-event-desc">London institutional flow sets direction. Watch if London breaks/confirms the Asian bias. Volume and momentum tracked.</div>
+      </div>
+    </div>
+
+    <div class="nq-event">
+      <div class="nq-time-col">
+        <div class="nq-time">~12:40 LDN</div>
+        <div class="nq-time-sub">07:40 ET</div>
+      </div>
+      <div class="nq-dot-col"><div class="nq-circle" style="border-color:#c084fc;background:rgba(168,85,247,.2);"></div><div class="nq-vline"></div></div>
+      <div class="nq-content">
+        <div class="nq-event-name"><span class="nq-tag tag-g2">GATE 2</span> London Confirmation Validated</div>
+        <div class="nq-event-desc">
+          London (5.5 hrs in) has confirmed the Asia direction. Criteria being reverse-engineered:<br>
+          — London is trading in the same direction as Gate 1 bias?<br>
+          — NQ pre-market trending into the NY open in that direction?<br>
+          — No major news event in the next 2 hours (FOMC, NFP, CPI)?<br>
+          If Gate 2 does NOT fire (even with Gate 1 active) → no trade today.
+        </div>
+      </div>
+    </div>
+
+    <div class="nq-event">
+      <div class="nq-time-col">
+        <div class="nq-time">14:25 LDN</div>
+        <div class="nq-time-sub">09:25 ET</div>
+      </div>
+      <div class="nq-dot-col"><div class="nq-circle" style="border-color:#10b981;background:rgba(16,185,129,.2);width:16px;height:16px;border-width:3px;"></div><div class="nq-vline"></div></div>
+      <div class="nq-content">
+        <div class="nq-event-name"><span class="nq-tag tag-entry">ENTRY</span> 5 minutes before NY open</div>
+        <div class="nq-event-desc">
+          Both gates validated → market order at 09:25 ET on NQ (MNQ / MES or QQQ for non-futures).<br>
+          <strong>Long</strong> if both gates validate UP direction.<br>
+          <strong>Short</strong> if both gates validate DOWN direction.<br>
+          <span class="nq-tag tag-risk">RISK</span> Stop = 0.5% from entry price. Position sized so stop = 1.8% account loss. Effective leverage ≈ 3.6×.
+        </div>
+      </div>
+    </div>
+
+    <div class="nq-event">
+      <div class="nq-time-col">
+        <div class="nq-time">14:30 LDN</div>
+        <div class="nq-time-sub">09:30 ET</div>
+      </div>
+      <div class="nq-dot-col"><div class="nq-circle"></div><div class="nq-vline"></div></div>
+      <div class="nq-content">
+        <div class="nq-event-name">NY Open — Trade is running</div>
+        <div class="nq-event-desc">NY open burst. Trade is live. Stop is hard (GTC). Trail to breakeven once 1% profit achieved. Let winners run into the NY morning session.</div>
+      </div>
+    </div>
+
+    <div class="nq-event">
+      <div class="nq-time-col">
+        <div class="nq-time">20:30 LDN</div>
+        <div class="nq-time-sub">15:30 ET</div>
+      </div>
+      <div class="nq-dot-col"><div class="nq-circle" style="border-color:#94a3b8;background:rgba(148,163,184,.15);"></div></div>
+      <div class="nq-content">
+        <div class="nq-event-name"><span class="nq-tag tag-exit">TIME EXIT</span> Close all NQ positions</div>
+        <div class="nq-event-desc">Hard time exit at 15:30 ET regardless. Do not hold NQ overnight. If stopped out earlier, trade is over for the day.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Risk / capital structure -->
+<div class="section-hdr" style="margin-top:24px;">Capital Allocation & Risk Parameters</div>
+
+<div class="info-row">
+  Each book runs on its own capital slice. The hub gates do NOT pool capital — they apply a size scalar. A hub gate firing reduces but never eliminates a book's allocation (except P7 circuit breaker which kills carry fully).
+</div>
+
+<div class="cap-grid">
+  <div class="cap-card">
+    <div class="cap-lbl">NQ System</div>
+    <div class="cap-val" style="color:#f59e0b;">30%</div>
+    <div class="cap-sub">Highest Sharpe — deserves largest slice</div>
+  </div>
+  <div class="cap-card">
+    <div class="cap-lbl">P1 Macro Equity</div>
+    <div class="cap-val" style="color:#14b8a6;">25%</div>
+    <div class="cap-sub">Core directional alpha from macro</div>
+  </div>
+  <div class="cap-card">
+    <div class="cap-lbl">P3 + P6</div>
+    <div class="cap-val" style="color:#fb923c;">30%</div>
+    <div class="cap-sub">15% each: regime rotation + gold</div>
+  </div>
+  <div class="cap-card">
+    <div class="cap-lbl">P4 + P2/P5</div>
+    <div class="cap-val" style="color:#60a5fa;">15%</div>
+    <div class="cap-sub">10% carry + 5% validating systems</div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">Hub Gate — Size Scalar Matrix</div>
+  <div class="card-body" style="overflow-x:auto;">
+    <table class="risk-table">
+      <thead>
+        <tr>
+          <th>Gate Condition</th>
+          <th>NQ System</th>
+          <th>P1 Macro Equity</th>
+          <th>P4 Carry</th>
+          <th>P3/P6 Rotation</th>
+          <th>P2/P5</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>All clear (normal)</td>
+          <td class="num green">100%</td>
+          <td class="num green">100%</td>
+          <td class="num green">100%</td>
+          <td class="num green">100%</td>
+          <td class="num green">100%</td>
+        </tr>
+        <tr>
+          <td>VIX Z &gt; 1.0 (HIGH vol)</td>
+          <td class="num amber">50%</td>
+          <td class="num amber">75%</td>
+          <td class="num red">0% EXIT</td>
+          <td class="num amber">75%</td>
+          <td class="num amber">50%</td>
+        </tr>
+        <tr>
+          <td>VIX Z &gt; 2.0 (EXTREME)</td>
+          <td class="num red">0% SKIP</td>
+          <td class="num amber">50%</td>
+          <td class="num red">0% EXIT</td>
+          <td class="num amber">50%</td>
+          <td class="num red">0%</td>
+        </tr>
+        <tr>
+          <td>P7 Circuit Breaker ACTIVE</td>
+          <td class="num amber">50%</td>
+          <td class="num amber">50%</td>
+          <td class="num red">0% EXIT</td>
+          <td class="num amber">50%</td>
+          <td class="num red">0%</td>
+        </tr>
+        <tr>
+          <td>Portfolio DD Gate (&gt;8%)</td>
+          <td class="num amber">50%</td>
+          <td class="num amber">50%</td>
+          <td class="num amber">50%</td>
+          <td class="num amber">50%</td>
+          <td class="num red">0%</td>
+        </tr>
+        <tr>
+          <td>P1 Macro score &lt; −0.5</td>
+          <td class="num amber">Long-side only</td>
+          <td class="num amber">50%</td>
+          <td class="num amber">75%</td>
+          <td class="num green">100%</td>
+          <td class="num amber">50%</td>
+        </tr>
+        <tr>
+          <td>NQ Gate 1 not validated</td>
+          <td class="num red">0% SKIP</td>
+          <td class="num green">—</td>
+          <td class="num green">—</td>
+          <td class="num green">—</td>
+          <td class="num green">—</td>
+        </tr>
+        <tr>
+          <td>NQ Gate 2 not validated</td>
+          <td class="num red">0% SKIP</td>
+          <td class="num green">—</td>
+          <td class="num green">—</td>
+          <td class="num green">—</td>
+          <td class="num green">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- NQ build plan -->
+<div class="section-hdr" style="margin-top:24px;">NQ System Build Plan</div>
+
+<div class="card">
+  <div class="card-hdr">Reverse-Engineering the Two-Gate Logic</div>
+  <div class="card-body">
+
+    <div class="info-row" style="margin-bottom:14px;">
+      The quant doesn't share the exact algorithm (decay risk), but we receive live Telegram signals. Strategy: (1) run the live signals as-is, (2) collect 6+ months of signal data, (3) reverse-engineer what conditions predict Gate 1 and Gate 2 validation, (4) build autonomous version.
+    </div>
+
+    <table class="risk-table">
+      <thead>
+        <tr><th>Phase</th><th>Action</th><th>Timeline</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1 — Live signals</td>
+          <td>Execute live signals from quant. Log every Gate 1, Gate 2, entry, direction, outcome.</td>
+          <td>Now →</td>
+          <td class="green">Active</td>
+        </tr>
+        <tr>
+          <td>2 — Data collection</td>
+          <td>Build signal log with timestamps, NQ price at gate times, macro data, outcomes.</td>
+          <td>Now → Month 3</td>
+          <td class="amber">Building</td>
+        </tr>
+        <tr>
+          <td>3 — Gate 1 reverse-engineer</td>
+          <td>Correlate Gate 1 fires with Asia session metrics: range, momentum, macro score, overnight trend.</td>
+          <td>Month 3-4</td>
+          <td style="color:var(--text3);">Pending</td>
+        </tr>
+        <tr>
+          <td>4 — Gate 2 reverse-engineer</td>
+          <td>Correlate Gate 2 fires with London session: breakout of Asia range, London momentum direction.</td>
+          <td>Month 3-4</td>
+          <td style="color:var(--text3);">Pending</td>
+        </tr>
+        <tr>
+          <td>5 — Autonomous backtest</td>
+          <td>Build Python backtest on 5-min NQ data. Test Gate 1 + Gate 2 logic. Target: win rate &gt;55%, Sharpe &gt;2.0.</td>
+          <td>Month 4-5</td>
+          <td style="color:var(--text3);">Pending</td>
+        </tr>
+        <tr>
+          <td>6 — MT5 integration</td>
+          <td>Implement as MT5 bot checking gates at 09:48 and 12:40 London. Hub gates applied. Auto-execute 09:25 ET.</td>
+          <td>Month 5-6</td>
+          <td style="color:var(--text3);">Pending</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:14px;padding:12px 14px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:var(--r);">
+      <div style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;color:#f59e0b;margin-bottom:6px;">SIGNAL LOG FORMAT — to be built</div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);line-height:1.8;">
+        date | gate1_time | gate1_fired | nq_price_g1 | asia_range_pct | asia_dir<br>
+        &nbsp;&nbsp;&nbsp;&nbsp; | gate2_time | gate2_fired | nq_price_g2 | london_dir | london_range_break<br>
+        &nbsp;&nbsp;&nbsp;&nbsp; | entry_time | direction | entry_price | stop_price | macro_score | vix_z<br>
+        &nbsp;&nbsp;&nbsp;&nbsp; | exit_time | exit_price | pnl_pct | exit_reason
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Expected combined performance -->
+<div class="section-hdr" style="margin-top:24px;">Expected Combined Performance</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="warn-row" style="margin-bottom:14px;">
+      Estimates below assume NQ system achieves 3.5-4.5 Sharpe (in line with observed quant performance) and portfolio systems achieve their post-bug-fix targets.
+    </div>
+    <table class="risk-table">
+      <thead>
+        <tr><th>Book</th><th>Capital %</th><th>Est. CAGR</th><th>Est. Sharpe</th><th>Est. Max DD</th><th>Contribution to Portfolio</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="color:#f59e0b;font-weight:600;">NQ System</td>
+          <td class="num">30%</td>
+          <td class="num green">60-110%</td>
+          <td class="num green">3.5-4.5</td>
+          <td class="num amber">−8%</td>
+          <td class="num green">+18-33% portfolio</td>
+        </tr>
+        <tr>
+          <td style="color:#14b8a6;font-weight:600;">P1 Macro Equity</td>
+          <td class="num">25%</td>
+          <td class="num green">12-18%</td>
+          <td class="num green">0.8-1.0</td>
+          <td class="num amber">−15%</td>
+          <td class="num green">+3-4.5% portfolio</td>
+        </tr>
+        <tr>
+          <td style="color:#fb923c;font-weight:600;">P3 Yield Curve</td>
+          <td class="num">15%</td>
+          <td class="num green">10-14%</td>
+          <td class="num green">0.9-1.1</td>
+          <td class="num green">−12%</td>
+          <td class="num green">+1.5-2% portfolio</td>
+        </tr>
+        <tr>
+          <td style="color:#facc15;font-weight:600;">P6 Gold Macro</td>
+          <td class="num">15%</td>
+          <td class="num green">8-12%</td>
+          <td class="num green">0.7-0.9</td>
+          <td class="num green">−10%</td>
+          <td class="num green">+1.2-1.8% portfolio</td>
+        </tr>
+        <tr>
+          <td style="color:#60a5fa;font-weight:600;">P4 FX Carry</td>
+          <td class="num">10%</td>
+          <td class="num amber">6-10%</td>
+          <td class="num amber">0.5-0.7</td>
+          <td class="num amber">−15%</td>
+          <td class="num amber">+0.6-1% portfolio</td>
+        </tr>
+        <tr>
+          <td style="color:#f87171;font-weight:600;">P2/P5</td>
+          <td class="num">5%</td>
+          <td class="num amber">5-8%</td>
+          <td class="num amber">0.4-0.6</td>
+          <td class="num amber">−12%</td>
+          <td class="num amber">+0.25-0.4% portfolio</td>
+        </tr>
+        <tr style="border-top:2px solid var(--border2);">
+          <td style="font-weight:700;">Combined Hub</td>
+          <td class="num">100%</td>
+          <td class="num green" style="font-size:15px;font-weight:700;">25-43%</td>
+          <td class="num green" style="font-size:15px;font-weight:700;">1.8-2.8</td>
+          <td class="num amber" style="font-size:15px;font-weight:700;">−12%</td>
+          <td class="num" style="color:var(--text3);font-size:11px;">Hub gates reduce correlated stress</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:10px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">
+      NQ system contributes ~70% of expected portfolio alpha. Portfolio systems (P1-P6) provide uncorrelated returns, smooth equity curve, and act as capital preservation during NQ no-trade days (4-5 days/week).
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

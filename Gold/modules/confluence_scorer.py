@@ -28,6 +28,10 @@ from .trendline_engine import Trendline
 
 PROXIMITY_PIPS = 3.0   # $3 tolerance for XAU/USD
 
+# Same-direction zones with GP midpoints within this distance are considered
+# duplicates of the same price level and collapsed into one representative zone.
+ZONE_CLUSTER_PIPS = 8.0
+
 WEIGHTS = {
     'fib_cluster':    1.5,
     'fib_786':        1.2,   # entry centre aligns with .786 of a different impulse
@@ -176,3 +180,56 @@ def score_zones(zones: list[FibZone], vol: VolumeProfile,
 
     zones.sort(key=lambda z: z.score, reverse=True)
     return zones
+
+
+def deduplicate_zones(zones: list[FibZone]) -> list[FibZone]:
+    """
+    Collapse same-direction zones whose GP midpoints are within ZONE_CLUSTER_PIPS
+    into a single representative (the highest-scoring one, as zones are pre-sorted).
+
+    Opposite-direction zones at the same price are kept separately — they mark a
+    contested level that a trader should see explicitly, not hide.
+
+    Merged supporters contribute their unique composition tags; a summary tag is
+    appended so the trader knows how many independent impulse legs agreed.
+    """
+    if not zones:
+        return zones
+
+    used:   set[str]      = set()
+    result: list[FibZone] = []
+
+    for zone in zones:   # already sorted highest-score-first
+        if zone.zone_id in used:
+            continue
+
+        centre     = (zone.gp_low + zone.gp_high) / 2
+        supporters: list[FibZone] = []
+
+        for other in zones:
+            if other.zone_id == zone.zone_id or other.zone_id in used:
+                continue
+            if other.direction != zone.direction:
+                continue   # opposite-direction zones at the same level stay visible
+            if abs((other.gp_low + other.gp_high) / 2 - centre) <= ZONE_CLUSTER_PIPS:
+                supporters.append(other)
+                used.add(other.zone_id)
+
+        if supporters:
+            merged_comp = list(zone.composition)
+            for sup in supporters:
+                for tag in sup.composition:
+                    if tag not in merged_comp:
+                        merged_comp.append(tag)
+            # Count summary: e.g. "5 legs (2H4+3M30)"
+            all_tfs: dict[str, int] = {}
+            for tf in [zone.tf] + [s.tf for s in supporters]:
+                all_tfs[tf] = all_tfs.get(tf, 0) + 1
+            tf_summary = '+'.join(f'{cnt}{tf}' for tf, cnt in sorted(all_tfs.items()))
+            merged_comp.append(f'{len(supporters) + 1} impulse legs ({tf_summary})')
+            zone.composition = merged_comp
+
+        used.add(zone.zone_id)
+        result.append(zone)
+
+    return result

@@ -44,6 +44,11 @@ DEEP_RETRACE_WINDOW = 0.016
 # Half-window around the broken anchor level for retest zones
 RETEST_WINDOW = 0.012
 
+# Merge consecutive pivot highs/lows within this fraction of ATR.
+# Eliminates near-duplicate structural pivots from wick variation on the same bar cluster
+# (e.g. swing high at 4333 and 4335 from adjacent bars at the same structure point).
+PIVOT_CLUSTER_ATR = 0.25
+
 
 @dataclass
 class FibZone:
@@ -106,6 +111,32 @@ def _find_pivots(bars: list[dict], n: int) -> tuple[list[int], list[int]]:
         if lows[i] <= min(window_l):
             pl.append(i)
     return ph, pl
+
+
+def _cluster_pivots(indices: list[int], bars: list[dict],
+                    mode: str, tol: float) -> list[int]:
+    """
+    Greedy merge of consecutive pivot indices whose prices are within `tol` of each other.
+    mode='high' keeps the highest price; mode='low' keeps the lowest.
+
+    This removes near-duplicate structural pivots that arise from wick variation on
+    adjacent bars forming the same swing point (e.g. 4333 and 4335 two bars apart),
+    which would otherwise generate multiple impulse legs with almost-identical .886
+    retracement targets and swamp the zone list with redundant zones.
+    """
+    if not indices:
+        return indices
+    get_val = (lambda i: bars[i]['high']) if mode == 'high' else (lambda i: bars[i]['low'])
+    result = [indices[0]]
+    for idx in indices[1:]:
+        if abs(get_val(idx) - get_val(result[-1])) <= tol:
+            keep_new = (mode == 'high' and get_val(idx) > get_val(result[-1])) or \
+                       (mode == 'low'  and get_val(idx) < get_val(result[-1]))
+            if keep_new:
+                result[-1] = idx
+        else:
+            result.append(idx)
+    return result
 
 
 def _make_zone(tf: str, direction: str, swing_low: float, swing_high: float,
@@ -212,6 +243,11 @@ def detect_fib_zones(bars: list[dict], tf: str, current_price: float) -> list[Fi
     ph_idx, pl_idx = _find_pivots(bars, n)
     if not ph_idx or not pl_idx:
         return []
+
+    # Collapse near-duplicate pivots (same structural high/low, wick variation)
+    tol    = atr * PIVOT_CLUSTER_ATR
+    ph_idx = _cluster_pivots(ph_idx, bars, 'high', tol)
+    pl_idx = _cluster_pivots(pl_idx, bars, 'low',  tol)
 
     highs = [b['high'] for b in bars]
     lows  = [b['low']  for b in bars]
