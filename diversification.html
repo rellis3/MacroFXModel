@@ -406,17 +406,18 @@ const PUB_MONTHLY = 21;
 // Per-system config (user-tunable parameters)
 let _cfg = {
   p1: { wNetliq:0.40, wCurve:0.20, wCredit:0.20, wRealyield:0.15, wIsm:0.05,
-        bandHigh:1.0, bandMid:0.0, bandLow:-1.0,
-        allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.25 },
-  p2: { thVBull:1.5, thBull:0.5, thNeutral:-0.5, thBear:-1.5,
-        allocVBull:1.0, allocBull:0.8, allocNeutral:0.6, allocBear:0.3, allocVBear:0.1 },
-  p3: { ismMaPeriod:63, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.3, overheatTlt:0.2,
-        stagGld:0.6, stagTlt:0.3, stagSpy:0.1, recTlt:0.8, recSpy:0.1 },
+        bandHigh:1.50, bandMid:-0.50, bandLow:-1.0,
+        allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.30 },
+  p2: { thVBull:1.0, thBull:0.25, thNeutral:-0.75, thBear:-2.0,
+        allocVBull:1.0, allocBull:0.8, allocNeutral:0.6, allocBear:0.3, allocVBear:0.0 },
+  p3: { ismMaPeriod:42, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.3, overheatTlt:0.2,
+        stagGld:0.8, stagTlt:0.3, stagSpy:0.1, recTlt:0.6, recSpy:0.1 },
   p4: { thHigh:1.5, thMid:0.75, thLow:-0.5,
-        allocHigh:0.2, allocMid:0.5, allocLow:0.85, allocNormal:1.0 },
-  p5: { lookback:189, skip:21, nLong:2, nShort:2 },
-  p6: { olsWindow:252, thVLong:-1.5, thLong:-0.5, thShort:0.5, thVShort:1.5,
-        allocVLong:1.0, allocLong:0.75, allocNeutral:0.5, allocShort:0.25, allocVShort:0.0 },
+        allocHigh:0.2, allocMid:0.5, allocLow:0.85, allocNormal:1.0,
+        trendWin:126 },
+  p5: { lookback:189, skip:21, nLong:3, nShort:2 },
+  p6: { olsWindow:126, thVLong:-2.0, thLong:-1.0, thShort:0.75, thVShort:1.5,
+        allocVLong:1.0, allocLong:0.75, allocNeutral:0.3, allocShort:0.25, allocVShort:0.0 },
 };
 
 // State
@@ -852,10 +853,23 @@ function runP4(data) {
   const gbpjpy    = ffill(fx.gbpjpy);
   const audjpy    = ffill(fx.audjpy);
   const nzdjpy    = ffill(fx.nzdjpy);
-  const realyield = ffill(fred.realyield); // TIPS real yield as rate-environment proxy
+  const realyield = ffill(fred.realyield);
 
-  // VIX Z-score (60-day window) — the proper risk-off gate per spec
-  // Fall back to credit Z if VIX not available
+  // Per-pair trend filter: rolling MA — only hold a pair when it's above its MA
+  const tw = _cfg.p4.trendWin;
+  function rollingMaP4(arr) {
+    return arr.map((_, i) => {
+      if (i < tw) return NaN;
+      let s = 0, c = 0;
+      for (let j = i - tw + 1; j <= i; j++) if (isFinite(arr[j])) { s += arr[j]; c++; }
+      return c > 0 ? s / c : NaN;
+    });
+  }
+  const gbpMA = rollingMaP4(gbpjpy);
+  const audMA = rollingMaP4(audjpy);
+  const nzdMA = rollingMaP4(nzdjpy);
+
+  // VIX Z-score risk-off gate
   const vixRaw = prices?.vix ? ffill(prices.vix) : null;
   const riskZ = vixRaw
     ? rollingZ(vixRaw, 60)
@@ -866,29 +880,44 @@ function runP4(data) {
   const equityCurve = new Array(n).fill(NaN);
   const monthlyRet = [], monthlyDates = [];
   let prevMonthEnd = -1;
-  let alloc = 1.0; // fraction of capital in carry (equal 1/3 each pair)
+  let alloc = 1.0;
+  // Trend signals decided at month-end, applied to next month's returns (no look-ahead)
+  let gbpOn = false, audOn = false, nzdOn = false;
 
   for (const idx of monthEnds) {
     const cz = riskZ[idx];
     const c4 = _cfg.p4;
-    let newAlloc = 1.0;
+    let newAlloc = c4.allocNormal;
     if (isFinite(cz)) {
       if (cz > c4.thHigh)      newAlloc = c4.allocHigh;
       else if (cz > c4.thMid)  newAlloc = c4.allocMid;
       else if (cz > c4.thLow)  newAlloc = c4.allocLow;
-      else                     newAlloc = c4.allocNormal;
     }
 
+    // Update trend signals for NEXT period (using current month-end price vs MA)
+    const newGbpOn = isFinite(gbpjpy[idx]) && isFinite(gbpMA[idx]) && gbpjpy[idx] > gbpMA[idx];
+    const newAudOn = isFinite(audjpy[idx]) && isFinite(audMA[idx]) && audjpy[idx] > audMA[idx];
+    const newNzdOn = isFinite(nzdjpy[idx]) && isFinite(nzdMA[idx]) && nzdjpy[idx] > nzdMA[idx];
+
     if (prevMonthEnd >= 0) {
-      const rGbp = isFinite(gbpjpy[prevMonthEnd])&&isFinite(gbpjpy[idx])&&gbpjpy[prevMonthEnd]>0 ? (gbpjpy[idx]-gbpjpy[prevMonthEnd])/gbpjpy[prevMonthEnd] : 0;
-      const rAud = isFinite(audjpy[prevMonthEnd])&&isFinite(audjpy[idx])&&audjpy[prevMonthEnd]>0 ? (audjpy[idx]-audjpy[prevMonthEnd])/audjpy[prevMonthEnd] : 0;
-      const rNzd = isFinite(nzdjpy[prevMonthEnd])&&isFinite(nzdjpy[idx])&&nzdjpy[prevMonthEnd]>0 ? (nzdjpy[idx]-nzdjpy[prevMonthEnd])/nzdjpy[prevMonthEnd] : 0;
-      const carryRet = (rGbp + rAud + rNzd) / 3;
-      // Interest rate differential income (GBP/AUD/NZD historically earn 1–4% p.a. over JPY).
-      // Use TIPS real yield as a proxy for rate environment: higher real yields → more carry.
+      // Only trade pairs that were above their MA at the start of this period
+      let carryRet = 0, nActive = 0;
+      if (gbpOn && isFinite(gbpjpy[prevMonthEnd]) && isFinite(gbpjpy[idx]) && gbpjpy[prevMonthEnd] > 0) {
+        carryRet += (gbpjpy[idx] - gbpjpy[prevMonthEnd]) / gbpjpy[prevMonthEnd]; nActive++;
+      }
+      if (audOn && isFinite(audjpy[prevMonthEnd]) && isFinite(audjpy[idx]) && audjpy[prevMonthEnd] > 0) {
+        carryRet += (audjpy[idx] - audjpy[prevMonthEnd]) / audjpy[prevMonthEnd]; nActive++;
+      }
+      if (nzdOn && isFinite(nzdjpy[prevMonthEnd]) && isFinite(nzdjpy[idx]) && nzdjpy[prevMonthEnd] > 0) {
+        carryRet += (nzdjpy[idx] - nzdjpy[prevMonthEnd]) / nzdjpy[prevMonthEnd]; nActive++;
+      }
+      if (nActive > 0) carryRet /= nActive;
+
+      // Carry income: scale by rate environment; cash portion earns 0
       const ry = isFinite(realyield[idx]) ? realyield[idx] : -0.5;
       const annualCarry = ry > 0.5 ? 0.035 : ry > -0.25 ? 0.022 : 0.010;
-      const ret = alloc * (carryRet + annualCarry / 12);
+      const activeAlloc = alloc * (nActive / 3); // scale down when fewer pairs trending
+      const ret = activeAlloc * (carryRet + annualCarry / 12);
       equity *= (1 + ret);
       monthlyRet.push(ret);
       monthlyDates.push(dates[idx]);
@@ -897,6 +926,7 @@ function runP4(data) {
       equityCurve[idx] = equity;
     }
     alloc = newAlloc;
+    gbpOn = newGbpOn; audOn = newAudOn; nzdOn = newNzdOn;
     prevMonthEnd = idx;
   }
 
@@ -1659,7 +1689,10 @@ function sysCfgForm(key) {
   if (key === 'p4') return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
       <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Credit Z-Score Thresholds</div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Trend Filter</div>
+        ${row('MA window (days)', 'p4_trendWin', c.trendWin, 10, 21, 252)}
+        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Pair excluded when price &lt; MA</div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">VIX Z-Score Thresholds</div>
         ${row('High stress >',  'p4_thHigh', c.thHigh, 0.1,-3,3)}
         ${row('Mid stress >',   'p4_thMid',  c.thMid,  0.1,-3,3)}
         ${row('Low stress >',   'p4_thLow',  c.thLow,  0.1,-3,3)}
@@ -1670,7 +1703,7 @@ function sysCfgForm(key) {
         ${row('Mid stress alloc',    'p4_allocMid',    c.allocMid)}
         ${row('Low stress alloc',    'p4_allocLow',    c.allocLow)}
         ${row('Normal alloc',        'p4_allocNormal', c.allocNormal)}
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Remainder is in cash (0% return)</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Allocation scales down proportionally as pairs exit trend filter</div>
       </div>
     </div>`;
 
@@ -1722,6 +1755,7 @@ function updateSysCfg(key) {
     c.stagGld=n('stagGld'); c.stagTlt=n('stagTlt'); c.stagSpy=n('stagSpy');
     c.recTlt=n('recTlt'); c.recSpy=n('recSpy');
   } else if (key === 'p4') {
+    c.trendWin=n('trendWin');
     c.thHigh=n('thHigh'); c.thMid=n('thMid'); c.thLow=n('thLow');
     c.allocHigh=n('allocHigh'); c.allocMid=n('allocMid'); c.allocLow=n('allocLow'); c.allocNormal=n('allocNormal');
   } else if (key === 'p5') {
@@ -1749,29 +1783,31 @@ function rerunSystem(key) {
 }
 
 // ── Grid-search optimiser ─────────────────────────────────────────────────────
-// Focused grids — only the highest-impact parameters per system
 const OPT_GRIDS = {
   p1: {
-    bandHigh:  [0.5, 1.0, 1.5],
-    bandMid:   [-0.5, 0.0, 0.5],
+    wNetliq:   [0.30, 0.40, 0.50],       // top factor — most impact on score
+    bandHigh:  [1.0, 1.5, 2.0],
+    bandMid:   [-0.75, -0.50, -0.25, 0.0],
     bandLow:   [-1.5, -1.0, -0.5],
-    allocBull: [0.75, 1.0],
-    allocBear: [0.10, 0.20, 0.30],
+    allocBull: [0.85, 1.0],
+    allocBear: [0.15, 0.25, 0.35],
   },
   p2: {
-    thVBull:    [1.0, 1.5, 2.0],
-    thBull:     [0.25, 0.50, 0.75],
-    thNeutral:  [-0.75, -0.50, -0.25],
-    thBear:     [-2.0, -1.5, -1.0],
-    allocVBear: [0.0, 0.1, 0.2],
+    thVBull:     [0.75, 1.0, 1.5],
+    thBull:      [0.25, 0.50, 0.75],
+    thNeutral:   [-0.75, -0.50, -0.25],
+    thBear:      [-2.5, -2.0, -1.5],
+    allocNeutral:[0.5, 0.6, 0.7],        // medium regimes drive most P&L
+    allocVBear:  [0.0, 0.1],
   },
   p3: {
-    ismMaPeriod:   [42, 63, 126],
-    goldilocksSpy: [0.8, 1.0],
-    recTlt:        [0.6, 0.8, 1.0],
-    stagGld:       [0.4, 0.6, 0.8],
+    ismMaPeriod: [21, 42, 63],
+    recTlt:      [0.5, 0.6, 0.7, 0.8],
+    stagGld:     [0.6, 0.8, 1.0],
+    overheatGld: [0.2, 0.3, 0.5],        // gold allocation in overheating regime
   },
   p4: {
+    trendWin:  [42, 63, 126, 189],        // key new param for the MA filter
     thHigh:    [1.0, 1.5, 2.0],
     thMid:     [0.50, 0.75, 1.0],
     thLow:     [-1.0, -0.5, 0.0],
@@ -1781,15 +1817,15 @@ const OPT_GRIDS = {
   },
   p5: {
     lookback: [126, 189, 252],
-    nLong:    [1, 2, 3],
+    nLong:    [2, 3, 4],
     nShort:   [1, 2, 3],
   },
   p6: {
-    olsWindow:    [126, 252, 504],
-    thVLong:      [-2.0, -1.5, -1.0],
-    thLong:       [-1.0, -0.75, -0.5],
-    thShort:      [0.25, 0.50, 0.75],
-    allocNeutral: [0.0, 0.3, 0.5],
+    olsWindow:    [63, 126, 252],
+    thVLong:      [-2.5, -2.0, -1.5],
+    thLong:       [-1.25, -1.0, -0.75],
+    thShort:      [0.5, 0.75, 1.0],
+    allocNeutral: [0.0, 0.2, 0.3],       // range around the newly found optimum
   },
 };
 
@@ -1822,6 +1858,7 @@ async function optimiseSystem(key) {
   const btnEl = document.getElementById(`optBtn_${key}`);
   const statusEl = document.getElementById(`optStatus_${key}`);
   if (btnEl) btnEl.disabled = true;
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = 'Starting…'; }
 
   const baseCfg = { ..._cfg[key] };
   const combos = expandGrid(grid).filter(c => _validCombo(key, c));
@@ -1829,6 +1866,18 @@ async function optimiseSystem(key) {
 
   for (let ci = 0; ci < combos.length; ci++) {
     Object.assign(_cfg[key], combos[ci]);
+
+    // P1: if wNetliq changed, rescale remaining factor weights proportionally so they sum to 1
+    if (key === 'p1' && 'wNetliq' in combos[ci]) {
+      const rem = 1 - _cfg.p1.wNetliq;
+      const baseRem = baseCfg.wCurve + baseCfg.wCredit + baseCfg.wRealyield + baseCfg.wIsm;
+      const scale = baseRem > 0 ? rem / baseRem : 0.25;
+      _cfg.p1.wCurve     = baseCfg.wCurve     * scale;
+      _cfg.p1.wCredit    = baseCfg.wCredit    * scale;
+      _cfg.p1.wRealyield = baseCfg.wRealyield * scale;
+      _cfg.p1.wIsm       = baseCfg.wIsm       * scale;
+    }
+
     const sh = sharpe(runners[key](_rawData).monthlyRet);
     if (isFinite(sh) && sh > bestSharpe) { bestSharpe = sh; bestCfg = {...combos[ci]}; }
     tested++;
@@ -1840,7 +1889,19 @@ async function optimiseSystem(key) {
 
   // Restore baseline, then apply best if found
   Object.assign(_cfg[key], baseCfg);
-  if (bestCfg) Object.assign(_cfg[key], bestCfg);
+  if (bestCfg) {
+    Object.assign(_cfg[key], bestCfg);
+    // Re-apply P1 weight rescaling for the best combo
+    if (key === 'p1' && 'wNetliq' in bestCfg) {
+      const rem = 1 - _cfg.p1.wNetliq;
+      const baseRem = baseCfg.wCurve + baseCfg.wCredit + baseCfg.wRealyield + baseCfg.wIsm;
+      const scale = baseRem > 0 ? rem / baseRem : 0.25;
+      _cfg.p1.wCurve     = baseCfg.wCurve     * scale;
+      _cfg.p1.wCredit    = baseCfg.wCredit    * scale;
+      _cfg.p1.wRealyield = baseCfg.wRealyield * scale;
+      _cfg.p1.wIsm       = baseCfg.wIsm       * scale;
+    }
+  }
   _results[key] = runners[key](_rawData);
   _combined = computeCombined(_results, _weights);
 
@@ -1870,7 +1931,7 @@ function renderSystemPanel(key) {
     'Five-factor macro composite (net liquidity, yield curve, HY credit, real yield, ISM). Monthly z-score scoring drives SPY allocation across four bands. Longs-only: equity markets have structural upward drift (~10%/yr); shorts expose you to gap risk, short squeezes, and unlimited downside without the structural premium.',
     'Credit-equity divergence tracks the spread between HY credit conditions (BAMLH0A0HYM2 z-score) and SPY short-term momentum. Risk-on divergence (credit improving + equity rising) favours SPY; risk-off divergence rotates to TLT. Captures regime transitions before they fully express in price.',
     'ISM Manufacturing trend combined with Core CPI momentum creates four macro quadrants: Goldilocks (SPY heavy), Overheating (SPY+GLD), Stagflation (GLD heavy), Recession (TLT heavy). Asset mix is tunable per quadrant.',
-    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. Captures both price appreciation and interest rate differential income (GBP/AUD/NZD have historically earned 1–4% p.a. over JPY). Rate-environment proxy (TIPS real yield) scales estimated carry income. VIX Z-score risk gate reduces allocation during stress.',
+    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. A per-pair trend filter (rolling MA) keeps each pair in cash during downtrends, avoiding carry-unwind disasters (2008, 2015, 2024). Active pairs earn estimated rate differential income (1–4% p.a. scaled by TIPS real yield). VIX Z-score gate reduces overall allocation during market stress.',
     'Cross-sectional momentum across 7 major currencies in USD terms. Long top-2 / short bottom-2 produces a pure momentum factor orthogonal to carry and macro. A minimum 4% spread between best and worst signal gates out low-conviction months. 9-month lookback targets the strongest momentum window.',
     'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over a rolling window. When gold trades at a discount to its macro-implied fair value (negative residual z-score), increase allocation. Captures gold mispricing vs macro fundamentals.',
   ];
@@ -1888,8 +1949,13 @@ function renderSystemPanel(key) {
   area.innerHTML = `
     <div class="dv-info" style="margin-bottom:12px;display:flex;align-items:flex-start;gap:16px;">
       <span style="flex:1;">${descs[i]}</span>
-      <a href="${sysPages[i]}" target="_blank" style="white-space:nowrap;font-size:11px;font-family:'DM Mono',monospace;font-weight:600;padding:5px 12px;border-radius:5px;border:1px solid ${SYS_COLORS[i]};color:${SYS_COLORS[i]};text-decoration:none;flex-shrink:0;">Full Backtest ↗</a>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+        <button class="bt-run-btn" id="optBtn_${key}" onclick="optimiseSystem('${key}')"
+          style="background:var(--blue);border-color:var(--blue);color:#fff;white-space:nowrap;">⚡ Optimise</button>
+        <a href="${sysPages[i]}" target="_blank" style="white-space:nowrap;font-size:11px;font-family:'DM Mono',monospace;font-weight:600;padding:5px 12px;border-radius:5px;border:1px solid ${SYS_COLORS[i]};color:${SYS_COLORS[i]};text-decoration:none;">Full Backtest ↗</a>
+      </div>
     </div>
+    <div id="optStatus_${key}" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:10px;display:none;"></div>
 
     <!-- Config card -->
     <div class="bt-card" style="margin-bottom:14px;">
@@ -1899,12 +1965,8 @@ function renderSystemPanel(key) {
       </div>
       <div class="bt-card-body" id="cfgBody_${key}" style="display:none;">
         ${cfgForm}
-        <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <button class="bt-run-btn" onclick="rerunSystem('${key}')">Re-run</button>
-          <button class="bt-run-btn" id="optBtn_${key}" onclick="optimiseSystem('${key}')"
-            style="background:var(--blue);border-color:var(--blue);color:#fff;">⚡ Optimise</button>
-          <span id="optStatus_${key}" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;flex:1;">
-            Grid-searches all parameter combinations to maximise Sharpe for this system</span>
+        <div style="margin-top:14px;">
+          <button class="bt-run-btn" onclick="rerunSystem('${key}')">Re-run with these params</button>
         </div>
       </div>
     </div>
