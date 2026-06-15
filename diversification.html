@@ -413,7 +413,8 @@ let _cfg = {
   p3: { ismMaPeriod:63, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.3, overheatTlt:0.2,
         stagGld:0.6, stagTlt:0.3, stagSpy:0.1, recTlt:0.8, recSpy:0.1 },
   p4: { thHigh:1.5, thMid:0.75, thLow:-0.5,
-        allocHigh:0.2, allocMid:0.5, allocLow:0.85, allocNormal:1.0 },
+        allocHigh:0.2, allocMid:0.5, allocLow:0.85, allocNormal:1.0,
+        trendWin:126 },
   p5: { lookback:189, skip:21, nLong:2, nShort:2 },
   p6: { olsWindow:252, thVLong:-1.5, thLong:-0.5, thShort:0.5, thVShort:1.5,
         allocVLong:1.0, allocLong:0.75, allocNeutral:0.5, allocShort:0.25, allocVShort:0.0 },
@@ -852,10 +853,23 @@ function runP4(data) {
   const gbpjpy    = ffill(fx.gbpjpy);
   const audjpy    = ffill(fx.audjpy);
   const nzdjpy    = ffill(fx.nzdjpy);
-  const realyield = ffill(fred.realyield); // TIPS real yield as rate-environment proxy
+  const realyield = ffill(fred.realyield);
 
-  // VIX Z-score (60-day window) — the proper risk-off gate per spec
-  // Fall back to credit Z if VIX not available
+  // Per-pair trend filter: rolling MA — only hold a pair when it's above its MA
+  const tw = _cfg.p4.trendWin;
+  function rollingMaP4(arr) {
+    return arr.map((_, i) => {
+      if (i < tw) return NaN;
+      let s = 0, c = 0;
+      for (let j = i - tw + 1; j <= i; j++) if (isFinite(arr[j])) { s += arr[j]; c++; }
+      return c > 0 ? s / c : NaN;
+    });
+  }
+  const gbpMA = rollingMaP4(gbpjpy);
+  const audMA = rollingMaP4(audjpy);
+  const nzdMA = rollingMaP4(nzdjpy);
+
+  // VIX Z-score risk-off gate
   const vixRaw = prices?.vix ? ffill(prices.vix) : null;
   const riskZ = vixRaw
     ? rollingZ(vixRaw, 60)
@@ -866,29 +880,44 @@ function runP4(data) {
   const equityCurve = new Array(n).fill(NaN);
   const monthlyRet = [], monthlyDates = [];
   let prevMonthEnd = -1;
-  let alloc = 1.0; // fraction of capital in carry (equal 1/3 each pair)
+  let alloc = 1.0;
+  // Trend signals decided at month-end, applied to next month's returns (no look-ahead)
+  let gbpOn = false, audOn = false, nzdOn = false;
 
   for (const idx of monthEnds) {
     const cz = riskZ[idx];
     const c4 = _cfg.p4;
-    let newAlloc = 1.0;
+    let newAlloc = c4.allocNormal;
     if (isFinite(cz)) {
       if (cz > c4.thHigh)      newAlloc = c4.allocHigh;
       else if (cz > c4.thMid)  newAlloc = c4.allocMid;
       else if (cz > c4.thLow)  newAlloc = c4.allocLow;
-      else                     newAlloc = c4.allocNormal;
     }
 
+    // Update trend signals for NEXT period (using current month-end price vs MA)
+    const newGbpOn = isFinite(gbpjpy[idx]) && isFinite(gbpMA[idx]) && gbpjpy[idx] > gbpMA[idx];
+    const newAudOn = isFinite(audjpy[idx]) && isFinite(audMA[idx]) && audjpy[idx] > audMA[idx];
+    const newNzdOn = isFinite(nzdjpy[idx]) && isFinite(nzdMA[idx]) && nzdjpy[idx] > nzdMA[idx];
+
     if (prevMonthEnd >= 0) {
-      const rGbp = isFinite(gbpjpy[prevMonthEnd])&&isFinite(gbpjpy[idx])&&gbpjpy[prevMonthEnd]>0 ? (gbpjpy[idx]-gbpjpy[prevMonthEnd])/gbpjpy[prevMonthEnd] : 0;
-      const rAud = isFinite(audjpy[prevMonthEnd])&&isFinite(audjpy[idx])&&audjpy[prevMonthEnd]>0 ? (audjpy[idx]-audjpy[prevMonthEnd])/audjpy[prevMonthEnd] : 0;
-      const rNzd = isFinite(nzdjpy[prevMonthEnd])&&isFinite(nzdjpy[idx])&&nzdjpy[prevMonthEnd]>0 ? (nzdjpy[idx]-nzdjpy[prevMonthEnd])/nzdjpy[prevMonthEnd] : 0;
-      const carryRet = (rGbp + rAud + rNzd) / 3;
-      // Interest rate differential income (GBP/AUD/NZD historically earn 1–4% p.a. over JPY).
-      // Use TIPS real yield as a proxy for rate environment: higher real yields → more carry.
+      // Only trade pairs that were above their MA at the start of this period
+      let carryRet = 0, nActive = 0;
+      if (gbpOn && isFinite(gbpjpy[prevMonthEnd]) && isFinite(gbpjpy[idx]) && gbpjpy[prevMonthEnd] > 0) {
+        carryRet += (gbpjpy[idx] - gbpjpy[prevMonthEnd]) / gbpjpy[prevMonthEnd]; nActive++;
+      }
+      if (audOn && isFinite(audjpy[prevMonthEnd]) && isFinite(audjpy[idx]) && audjpy[prevMonthEnd] > 0) {
+        carryRet += (audjpy[idx] - audjpy[prevMonthEnd]) / audjpy[prevMonthEnd]; nActive++;
+      }
+      if (nzdOn && isFinite(nzdjpy[prevMonthEnd]) && isFinite(nzdjpy[idx]) && nzdjpy[prevMonthEnd] > 0) {
+        carryRet += (nzdjpy[idx] - nzdjpy[prevMonthEnd]) / nzdjpy[prevMonthEnd]; nActive++;
+      }
+      if (nActive > 0) carryRet /= nActive;
+
+      // Carry income: scale by rate environment; cash portion earns 0
       const ry = isFinite(realyield[idx]) ? realyield[idx] : -0.5;
       const annualCarry = ry > 0.5 ? 0.035 : ry > -0.25 ? 0.022 : 0.010;
-      const ret = alloc * (carryRet + annualCarry / 12);
+      const activeAlloc = alloc * (nActive / 3); // scale down when fewer pairs trending
+      const ret = activeAlloc * (carryRet + annualCarry / 12);
       equity *= (1 + ret);
       monthlyRet.push(ret);
       monthlyDates.push(dates[idx]);
@@ -897,6 +926,7 @@ function runP4(data) {
       equityCurve[idx] = equity;
     }
     alloc = newAlloc;
+    gbpOn = newGbpOn; audOn = newAudOn; nzdOn = newNzdOn;
     prevMonthEnd = idx;
   }
 
@@ -1659,7 +1689,10 @@ function sysCfgForm(key) {
   if (key === 'p4') return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
       <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Credit Z-Score Thresholds</div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Trend Filter</div>
+        ${row('MA window (days)', 'p4_trendWin', c.trendWin, 10, 21, 252)}
+        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Pair excluded when price &lt; MA</div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">VIX Z-Score Thresholds</div>
         ${row('High stress >',  'p4_thHigh', c.thHigh, 0.1,-3,3)}
         ${row('Mid stress >',   'p4_thMid',  c.thMid,  0.1,-3,3)}
         ${row('Low stress >',   'p4_thLow',  c.thLow,  0.1,-3,3)}
@@ -1670,7 +1703,7 @@ function sysCfgForm(key) {
         ${row('Mid stress alloc',    'p4_allocMid',    c.allocMid)}
         ${row('Low stress alloc',    'p4_allocLow',    c.allocLow)}
         ${row('Normal alloc',        'p4_allocNormal', c.allocNormal)}
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Remainder is in cash (0% return)</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Allocation scales down proportionally as pairs exit trend filter</div>
       </div>
     </div>`;
 
@@ -1722,6 +1755,7 @@ function updateSysCfg(key) {
     c.stagGld=n('stagGld'); c.stagTlt=n('stagTlt'); c.stagSpy=n('stagSpy');
     c.recTlt=n('recTlt'); c.recSpy=n('recSpy');
   } else if (key === 'p4') {
+    c.trendWin=n('trendWin');
     c.thHigh=n('thHigh'); c.thMid=n('thMid'); c.thLow=n('thLow');
     c.allocHigh=n('allocHigh'); c.allocMid=n('allocMid'); c.allocLow=n('allocLow'); c.allocNormal=n('allocNormal');
   } else if (key === 'p5') {
@@ -1772,6 +1806,7 @@ const OPT_GRIDS = {
     stagGld:       [0.4, 0.6, 0.8],
   },
   p4: {
+    trendWin:  [63, 126, 189],
     thHigh:    [1.0, 1.5, 2.0],
     thMid:     [0.50, 0.75, 1.0],
     thLow:     [-1.0, -0.5, 0.0],
@@ -1871,7 +1906,7 @@ function renderSystemPanel(key) {
     'Five-factor macro composite (net liquidity, yield curve, HY credit, real yield, ISM). Monthly z-score scoring drives SPY allocation across four bands. Longs-only: equity markets have structural upward drift (~10%/yr); shorts expose you to gap risk, short squeezes, and unlimited downside without the structural premium.',
     'Credit-equity divergence tracks the spread between HY credit conditions (BAMLH0A0HYM2 z-score) and SPY short-term momentum. Risk-on divergence (credit improving + equity rising) favours SPY; risk-off divergence rotates to TLT. Captures regime transitions before they fully express in price.',
     'ISM Manufacturing trend combined with Core CPI momentum creates four macro quadrants: Goldilocks (SPY heavy), Overheating (SPY+GLD), Stagflation (GLD heavy), Recession (TLT heavy). Asset mix is tunable per quadrant.',
-    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. Captures both price appreciation and interest rate differential income (GBP/AUD/NZD have historically earned 1–4% p.a. over JPY). Rate-environment proxy (TIPS real yield) scales estimated carry income. VIX Z-score risk gate reduces allocation during stress.',
+    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. A per-pair trend filter (rolling MA) keeps each pair in cash during downtrends, avoiding carry-unwind disasters (2008, 2015, 2024). Active pairs earn estimated rate differential income (1–4% p.a. scaled by TIPS real yield). VIX Z-score gate reduces overall allocation during market stress.',
     'Cross-sectional momentum across 7 major currencies in USD terms. Long top-2 / short bottom-2 produces a pure momentum factor orthogonal to carry and macro. A minimum 4% spread between best and worst signal gates out low-conviction months. 9-month lookback targets the strongest momentum window.',
     'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over a rolling window. When gold trades at a discount to its macro-implied fair value (negative residual z-score), increase allocation. Captures gold mispricing vs macro fundamentals.',
   ];
