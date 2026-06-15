@@ -2,7 +2,7 @@
  * Weekly Vol & Range Backtester — walk-forward, Monday-anchored.
  *
  * Strategy:
- *   Every Monday: EWMA(λ=0.94) vol from all prior daily closes → σ_d,
+ *   Every Monday: HV20/EWMA(λ=0.90)/HV30 vol per asset class from all prior daily closes → σ_d,
  *   scaled to weekly: σ_w = σ_d × √5.
  *   Mark 4 levels from Monday open:
  *     HL50_up/dn = open ± BM_P50 × hl_50_corr × σ_w  (median weekly range)
@@ -31,7 +31,7 @@ import { readFileSync, existsSync }             from 'fs';
 import path                                       from 'path';
 import { fileURLToPath }                          from 'url';
 import {
-  fetchD1, ewmaVarSeries,
+  fetchD1, ewmaVarSeries, hvVarSeries,
   ASSET_PARAMS, BM_P50, BM_P75, HN_P50, HN_P75,
 } from './volBacktestEngine.js';
 import {
@@ -444,13 +444,16 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
         } = opts;
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
-  // Build full EWMA var series incrementally (O(n), avoids O(n²) re-computation)
+  // Build full vol var series (O(n), avoids O(n²) per-bar rebuild).
+  // commodity → HV20, index → EWMA(λ=0.90), fx → HV30 — mirrors computeForecast() in volForecast.js.
   const closes  = bars.map(b => b.close);
   const logRets = [];
   for (let i = 1; i < closes.length; i++) logRets.push(Math.log(closes[i] / closes[i - 1]));
-  const ewmaVars = ewmaVarSeries(logRets);
-  // ewmaVars[i] = EWMA var after observing logRets[0..i], corresponds to close of bars[i+1].
-  // To predict range for bars[k]: use ewmaVars[k-2] (var through bars[k-1]).
+  const volVars = assetClass === 'commodity' ? hvVarSeries(logRets, 20)
+                : assetClass === 'index'     ? ewmaVarSeries(logRets, 0.90)
+                :                              hvVarSeries(logRets, 30);
+  // volVars[i] = variance after observing logRets[0..i], corresponds to close of bars[i+1].
+  // To predict range for bars[k]: use volVars[k-2] (var through bars[k-1]).
 
   const dateToIdx = new Map();
   for (let i = 0; i < bars.length; i++) dateToIdx.set(bars[i].date, i);
@@ -538,9 +541,9 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
       carryTrades.push(...stillOpen);
     }
 
-    // EWMA var at Monday open = computed through all closes before Monday
+    // Vol var at Monday open = computed through all closes before Monday
     const varIdx = Math.max(0, mondayIdx - 2);
-    const sigmaD = Math.sqrt(Math.max(ewmaVars[varIdx] ?? 0, 1e-12));
+    const sigmaD = Math.sqrt(Math.max(volVars[varIdx] ?? 0, 1e-12));
     const sigmaW = sigmaD * SQRT5;
 
     const hl50pct  = BM_P50 * p.hl_50_corr  * sigmaW * 100;
