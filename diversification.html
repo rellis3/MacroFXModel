@@ -247,9 +247,9 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <div class="bt-card" style="margin-top:14px;">
       <div class="bt-card-hdr">
         Strategy Weights
-        <button class="preset-btn active" id="presetEw" onclick="applyPreset('ew')" style="margin-left:auto;">Equal Weight</button>
+        <button class="preset-btn" id="presetEw" onclick="applyPreset('ew')" style="margin-left:auto;">Equal Weight</button>
         <button class="preset-btn" id="presetRp" onclick="applyPreset('rp')">Risk Parity</button>
-        <button class="preset-btn" id="presetMs" onclick="applyPreset('ms')">Max Sharpe</button>
+        <button class="preset-btn active" id="presetMs" onclick="applyPreset('ms')">Max Sharpe</button>
         <button class="preset-btn" id="presetMd" onclick="applyPreset('md')">Min Drawdown</button>
       </div>
       <div class="bt-card-body" style="padding-top:6px;">
@@ -414,7 +414,7 @@ let _cfg = {
         stagGld:0.6, stagTlt:0.3, stagSpy:0.1, recTlt:0.8, recSpy:0.1 },
   p4: { thHigh:1.5, thMid:0.75, thLow:-0.5,
         allocHigh:0.2, allocMid:0.5, allocLow:0.85, allocNormal:1.0 },
-  p5: { lookback:252, skip:21, nLong:3, nShort:3 },
+  p5: { lookback:189, skip:21, nLong:2, nShort:2 },
   p6: { olsWindow:252, thVLong:-1.5, thLong:-0.5, thShort:0.5, thVShort:1.5,
         allocVLong:1.0, allocLong:0.75, allocNeutral:0.5, allocShort:0.25, allocVShort:0.0 },
 };
@@ -514,6 +514,66 @@ function sharpe(rets) {
   const mu = fin.reduce((a,b)=>a+b,0)/fin.length;
   const sd = Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2,0)/fin.length);
   return sd === 0 ? 0 : (mu / sd) * Math.sqrt(12);
+}
+
+// Gaussian elimination with partial pivoting — solves Ax = b, returns x
+function solveLinear(A, b) {
+  const n = A.length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let maxRow = col;
+    for (let row = col + 1; row < n; row++)
+      if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
+    [M[col], M[maxRow]] = [M[maxRow], M[col]];
+    if (Math.abs(M[col][col]) < 1e-12) continue;
+    for (let row = 0; row < n; row++) {
+      if (row === col) continue;
+      const f = M[row][col] / M[col][col];
+      for (let c = col; c <= n; c++) M[row][c] -= f * M[col][c];
+    }
+  }
+  return M.map((row, i) => Math.abs(M[i][i]) > 1e-12 ? row[n] / M[i][i] : 0);
+}
+
+// Markowitz tangent-portfolio max-Sharpe: w* = Σ⁻¹μ, long-only clipped + normalised
+// Returns weight array (same length as keys, scaled so avg weight = 1), or null if insufficient data
+function maxSharpeMarkowitz(keys) {
+  const validKeys = keys.filter(k => (_results[k]?.monthlyDates?.length ?? 0) > 0);
+  if (validKeys.length === 0) return null;
+
+  // Find dates common to ALL systems
+  const dateSets = validKeys.map(k => new Set(_results[k].monthlyDates));
+  const common = [...dateSets[0]].filter(d => dateSets.every(s => s.has(d))).sort();
+  if (common.length < 24) return null; // need ≥ 2 years
+
+  const n = validKeys.length;
+  const T = common.length;
+
+  // Build return matrix [system][time]
+  const R = validKeys.map(k => {
+    const dateMap = Object.fromEntries(_results[k].monthlyDates.map((d,i) => [d, _results[k].monthlyRet[i]]));
+    return common.map(d => dateMap[d] ?? 0);
+  });
+
+  const mu = R.map(ri => ri.reduce((a,b)=>a+b,0)/T);
+
+  // Covariance matrix with small ridge for numerical stability
+  const Sigma = Array.from({length:n}, (_, i) =>
+    Array.from({length:n}, (_, j) => {
+      let s = 0;
+      for (let t=0; t<T; t++) s += (R[i][t]-mu[i])*(R[j][t]-mu[j]);
+      return s/T + (i===j ? 1e-7 : 0);
+    })
+  );
+
+  const w = solveLinear(Sigma, mu);
+  const wPos = w.map(v => Math.max(0, v));
+  const sumW = wPos.reduce((a,b)=>a+b, 0);
+  if (sumW === 0) return null;
+
+  // Map back to full keys array (systems absent from validKeys get 0)
+  const weightMap = Object.fromEntries(validKeys.map((k,i) => [k, wPos[i]/sumW * validKeys.length]));
+  return keys.map(k => weightMap[k] ?? 0);
 }
 function cagr(equity, n_months) {
   if (!isFinite(equity) || equity <= 0 || n_months <= 0) return NaN;
@@ -789,9 +849,10 @@ function runP4(data) {
   const { dateIndex: dates, fred, fx, prices } = data;
   const n = dates.length;
 
-  const gbpjpy = ffill(fx.gbpjpy);
-  const audjpy = ffill(fx.audjpy);
-  const nzdjpy = ffill(fx.nzdjpy);
+  const gbpjpy    = ffill(fx.gbpjpy);
+  const audjpy    = ffill(fx.audjpy);
+  const nzdjpy    = ffill(fx.nzdjpy);
+  const realyield = ffill(fred.realyield); // TIPS real yield as rate-environment proxy
 
   // VIX Z-score (60-day window) — the proper risk-off gate per spec
   // Fall back to credit Z if VIX not available
@@ -823,7 +884,11 @@ function runP4(data) {
       const rAud = isFinite(audjpy[prevMonthEnd])&&isFinite(audjpy[idx])&&audjpy[prevMonthEnd]>0 ? (audjpy[idx]-audjpy[prevMonthEnd])/audjpy[prevMonthEnd] : 0;
       const rNzd = isFinite(nzdjpy[prevMonthEnd])&&isFinite(nzdjpy[idx])&&nzdjpy[prevMonthEnd]>0 ? (nzdjpy[idx]-nzdjpy[prevMonthEnd])/nzdjpy[prevMonthEnd] : 0;
       const carryRet = (rGbp + rAud + rNzd) / 3;
-      const ret = alloc * carryRet; // remainder sits in cash (0%)
+      // Interest rate differential income (GBP/AUD/NZD historically earn 1–4% p.a. over JPY).
+      // Use TIPS real yield as a proxy for rate environment: higher real yields → more carry.
+      const ry = isFinite(realyield[idx]) ? realyield[idx] : -0.5;
+      const annualCarry = ry > 0.5 ? 0.035 : ry > -0.25 ? 0.022 : 0.010;
+      const ret = alloc * (carryRet + annualCarry / 12);
       equity *= (1 + ret);
       monthlyRet.push(ret);
       monthlyDates.push(dates[idx]);
@@ -919,9 +984,11 @@ function runP5(data) {
       equityCurve[idx] = equity;
     }
 
-    // Update longs/shorts
-    if (scores.length >= 6) {
-      longIdx  = scores.slice(0, 3).map(x => x.pi);
+    // Update longs/shorts — require sufficient spread between best and worst signal
+    const spreadOk = scores.length >= nL + nS &&
+      (scores[0].score - scores[scores.length - 1].score) > 0.04;
+    if (spreadOk) {
+      longIdx  = scores.slice(0, nL).map(x => x.pi);
       shortIdx = scores.slice(-nS).map(x => x.pi);
     } else {
       longIdx = []; shortIdx = [];
@@ -1229,10 +1296,15 @@ function applyPreset(preset) {
     const sumInv = invVols.reduce((a,b)=>a+b);
     _weights = invVols.map(v => v/sumInv * 6);
   } else if (preset === 'ms') {
-    // Max Sharpe: weight ∝ Sharpe (positive only)
-    const sharpes = SYS_KEYS.map(k => Math.max(0, sharpe(_results[k]?.monthlyRet ?? [])));
-    const sumS = sharpes.reduce((a,b)=>a+b) || 1;
-    _weights = sharpes.map(s => s/sumS * 6);
+    // Max Sharpe: Markowitz tangent portfolio (Σ⁻¹μ), falls back to proportional-Sharpe
+    const mkW = maxSharpeMarkowitz(SYS_KEYS);
+    if (mkW) {
+      _weights = mkW;
+    } else {
+      const sharpes = SYS_KEYS.map(k => Math.max(0, sharpe(_results[k]?.monthlyRet ?? [])));
+      const sumS = sharpes.reduce((a,b)=>a+b) || 1;
+      _weights = sharpes.map(s => s/sumS * 6);
+    }
   } else if (preset === 'md') {
     // Min Drawdown: weight ∝ 1/|maxDD| (less negative DD = more weight)
     const dds = SYS_KEYS.map(k => {
@@ -1669,7 +1741,120 @@ function rerunSystem(key) {
   _results[key] = runners[key](_rawData);
   _combined = computeCombined(_results, _weights);
   renderSystemPanel(key);
-  // Refresh combined tab charts if they're visible
+  renderCombinedChart();
+  renderDDChart();
+  renderMonthlyReturnsTable();
+  renderKPIs(_combined);
+  renderSliders();
+}
+
+// ── Grid-search optimiser ─────────────────────────────────────────────────────
+// Focused grids — only the highest-impact parameters per system
+const OPT_GRIDS = {
+  p1: {
+    bandHigh:  [0.5, 1.0, 1.5],
+    bandMid:   [-0.5, 0.0, 0.5],
+    bandLow:   [-1.5, -1.0, -0.5],
+    allocBull: [0.75, 1.0],
+    allocBear: [0.10, 0.20, 0.30],
+  },
+  p2: {
+    thVBull:    [1.0, 1.5, 2.0],
+    thBull:     [0.25, 0.50, 0.75],
+    thNeutral:  [-0.75, -0.50, -0.25],
+    thBear:     [-2.0, -1.5, -1.0],
+    allocVBear: [0.0, 0.1, 0.2],
+  },
+  p3: {
+    ismMaPeriod:   [42, 63, 126],
+    goldilocksSpy: [0.8, 1.0],
+    recTlt:        [0.6, 0.8, 1.0],
+    stagGld:       [0.4, 0.6, 0.8],
+  },
+  p4: {
+    thHigh:    [1.0, 1.5, 2.0],
+    thMid:     [0.50, 0.75, 1.0],
+    thLow:     [-1.0, -0.5, 0.0],
+    allocHigh: [0.0, 0.1, 0.2],
+    allocMid:  [0.3, 0.5, 0.7],
+    allocLow:  [0.3, 0.5, 0.7],
+  },
+  p5: {
+    lookback: [126, 189, 252],
+    nLong:    [1, 2, 3],
+    nShort:   [1, 2, 3],
+  },
+  p6: {
+    olsWindow:    [126, 252, 504],
+    thVLong:      [-2.0, -1.5, -1.0],
+    thLong:       [-1.0, -0.75, -0.5],
+    thShort:      [0.25, 0.50, 0.75],
+    allocNeutral: [0.0, 0.3, 0.5],
+  },
+};
+
+function expandGrid(grid) {
+  const keys = Object.keys(grid);
+  const vals  = keys.map(k => grid[k]);
+  const combos = [];
+  function rec(i, cur) {
+    if (i === keys.length) { combos.push({...cur}); return; }
+    for (const v of vals[i]) { cur[keys[i]] = v; rec(i+1, cur); }
+  }
+  rec(0, {});
+  return combos;
+}
+
+function _validCombo(key, c) {
+  if (key === 'p1') return c.bandHigh > c.bandMid && c.bandMid > c.bandLow;
+  if (key === 'p2') return c.thVBull > c.thBull && c.thBull > c.thNeutral && c.thNeutral > c.thBear;
+  if (key === 'p4') return c.thHigh > c.thMid && c.thMid > c.thLow && c.allocHigh < c.allocMid && c.allocMid < c.allocLow;
+  if (key === 'p6') return c.thVLong < c.thLong;
+  return true;
+}
+
+async function optimiseSystem(key) {
+  if (!_rawData) return;
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p5:runP5, p6:runP6 };
+  const grid = OPT_GRIDS[key];
+  if (!grid) return;
+
+  const btnEl = document.getElementById(`optBtn_${key}`);
+  const statusEl = document.getElementById(`optStatus_${key}`);
+  if (btnEl) btnEl.disabled = true;
+
+  const baseCfg = { ..._cfg[key] };
+  const combos = expandGrid(grid).filter(c => _validCombo(key, c));
+  let bestSharpe = -Infinity, bestCfg = null, tested = 0;
+
+  for (let ci = 0; ci < combos.length; ci++) {
+    Object.assign(_cfg[key], combos[ci]);
+    const sh = sharpe(runners[key](_rawData).monthlyRet);
+    if (isFinite(sh) && sh > bestSharpe) { bestSharpe = sh; bestCfg = {...combos[ci]}; }
+    tested++;
+    if (ci % 50 === 49 || ci === combos.length - 1) {
+      if (statusEl) statusEl.textContent = `Testing ${tested}/${combos.length}… best: ${isFinite(bestSharpe)?bestSharpe.toFixed(2):'—'}`;
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  // Restore baseline, then apply best if found
+  Object.assign(_cfg[key], baseCfg);
+  if (bestCfg) Object.assign(_cfg[key], bestCfg);
+  _results[key] = runners[key](_rawData);
+  _combined = computeCombined(_results, _weights);
+
+  renderSystemPanel(key);
+  // Re-expand config body and show result (renderSystemPanel rebuilds DOM)
+  const body = document.getElementById(`cfgBody_${key}`);
+  if (body) body.style.display = 'block';
+  const status2 = document.getElementById(`optStatus_${key}`);
+  const btn2    = document.getElementById(`optBtn_${key}`);
+  if (status2) status2.textContent = bestCfg
+    ? `✓ Done — best Sharpe ${bestSharpe.toFixed(2)} from ${tested} combinations`
+    : `No improvement found (${tested} combos tested)`;
+  if (btn2) btn2.disabled = false;
+
   renderCombinedChart();
   renderDDChart();
   renderMonthlyReturnsTable();
@@ -1685,8 +1870,8 @@ function renderSystemPanel(key) {
     'Five-factor macro composite (net liquidity, yield curve, HY credit, real yield, ISM). Monthly z-score scoring drives SPY allocation across four bands. Longs-only: equity markets have structural upward drift (~10%/yr); shorts expose you to gap risk, short squeezes, and unlimited downside without the structural premium.',
     'Credit-equity divergence tracks the spread between HY credit conditions (BAMLH0A0HYM2 z-score) and SPY short-term momentum. Risk-on divergence (credit improving + equity rising) favours SPY; risk-off divergence rotates to TLT. Captures regime transitions before they fully express in price.',
     'ISM Manufacturing trend combined with Core CPI momentum creates four macro quadrants: Goldilocks (SPY heavy), Overheating (SPY+GLD), Stagflation (GLD heavy), Recession (TLT heavy). Asset mix is tunable per quadrant.',
-    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. Earns the interest rate differential during risk-on regimes. HY credit z-score acts as risk-off gate — high credit stress signals carry unwind risk and reduces allocation.',
-    'Cross-sectional momentum across 7 major currencies in USD terms. Long top-N / short bottom-N produces a pure momentum factor orthogonal to carry and macro. The long-short structure removes directional bias — pure relative value.',
+    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. Captures both price appreciation and interest rate differential income (GBP/AUD/NZD have historically earned 1–4% p.a. over JPY). Rate-environment proxy (TIPS real yield) scales estimated carry income. VIX Z-score risk gate reduces allocation during stress.',
+    'Cross-sectional momentum across 7 major currencies in USD terms. Long top-2 / short bottom-2 produces a pure momentum factor orthogonal to carry and macro. A minimum 4% spread between best and worst signal gates out low-conviction months. 9-month lookback targets the strongest momentum window.',
     'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over a rolling window. When gold trades at a discount to its macro-implied fair value (negative residual z-score), increase allocation. Captures gold mispricing vs macro fundamentals.',
   ];
   const sysPages = [
@@ -1714,9 +1899,12 @@ function renderSystemPanel(key) {
       </div>
       <div class="bt-card-body" id="cfgBody_${key}" style="display:none;">
         ${cfgForm}
-        <div style="margin-top:14px;display:flex;gap:10px;align-items:center;">
-          <button class="bt-run-btn" onclick="rerunSystem('${key}')">Re-run with these params</button>
-          <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Changes apply to this system only — Combined Book updates automatically</span>
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button class="bt-run-btn" onclick="rerunSystem('${key}')">Re-run</button>
+          <button class="bt-run-btn" id="optBtn_${key}" onclick="optimiseSystem('${key}')"
+            style="background:var(--blue);border-color:var(--blue);color:#fff;">⚡ Optimise</button>
+          <span id="optStatus_${key}" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;flex:1;">
+            Grid-searches all parameter combinations to maximise Sharpe for this system</span>
         </div>
       </div>
     </div>
@@ -1844,12 +2032,8 @@ async function runAll() {
     setStatus('spin', 'P5 done · Running P6…'); await new Promise(r=>setTimeout(r,10));
     _results.p6 = runP6(data);
 
-    setStatus('spin', 'Computing combined book…'); await new Promise(r=>setTimeout(r,10));
-    _combined = computeCombined(_results, _weights);
-
-    setStatus('spin', 'Rendering…'); await new Promise(r=>setTimeout(r,20));
-    renderKPIs(_combined);
-    renderSliders();
+    setStatus('spin', 'Optimising weights…'); await new Promise(r=>setTimeout(r,10));
+    applyPreset('ms'); // default to Markowitz max-Sharpe after each run
     renderCombinedChart();
     renderDDChart();
     renderMonthlyReturnsTable();
