@@ -164,6 +164,11 @@
         <input type="number" id="cfg_range" value="0.15" min="0.05" max="1.0" step="0.05">
         <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">skip flat overnight sessions</span>
       </div>
+      <div class="cfg-field">
+        <label>Take-Profit %</label>
+        <input type="number" id="cfg_tp" value="0" min="0" max="5.0" step="0.25">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">0 = EOD only · 1.0 = 2R · 1.5 = 3R</span>
+      </div>
     </div>
     <button class="run-btn" onclick="runBacktest()">Re-run with these params</button>
   </div>
@@ -245,6 +250,7 @@
             <th>Gate2 Min</th>
             <th>Stop %</th>
             <th>Min Range</th>
+            <th>TP %</th>
             <th class="num">CAGR</th>
             <th class="num">Sharpe</th>
             <th class="num">MaxDD</th>
@@ -333,6 +339,7 @@ async function runBacktest() {
     stopPct:         document.getElementById('cfg_stop').value,
     riskPct:         document.getElementById('cfg_risk').value,
     minRangePct:     document.getElementById('cfg_range').value,
+    tpPct:           document.getElementById('cfg_tp').value,
   });
 
   try {
@@ -508,7 +515,7 @@ function renderTradeTable() {
       <td class="num">${t.entry?.toFixed(1) ?? '—'}</td>
       <td class="num">${t.stop?.toFixed(1)  ?? '—'}</td>
       <td class="num">${t.exit?.toFixed(1)  ?? '—'}</td>
-      <td style="color:${t.exitReason==='STOP'?'#ef4444':'var(--text3)'}">${t.exitReason}</td>
+      <td style="color:${t.exitReason==='STOP'?'#ef4444':t.exitReason==='TP'?'#10b981':'var(--text3)'}">${t.exitReason}</td>
       <td class="num ${cls}">${t.movePct >= 0 ? '+' : ''}${t.movePct?.toFixed(2) ?? '—'}%</td>
       <td class="num ${cls}">${t.tradeReturn >= 0 ? '+' : ''}${t.tradeReturn?.toFixed(2) ?? '—'}%</td>
       <td class="num">${t.equity?.toFixed(3) ?? '—'}x</td>
@@ -562,12 +569,14 @@ function renderOptResults(top5) {
     const s   = item.stats;
     const cfg = item.cfg;
     const barW = Math.round((item.score / maxScore) * 80);
+    const tpLabel = cfg.tpPct > 0 ? `${cfg.tpPct.toFixed(2)}% (${(cfg.tpPct/cfg.stopPct).toFixed(1)}R)` : '<span style="color:var(--text3)">EOD</span>';
     return `<tr>
       <td><span class="opt-rank ${rankCls[i]}">${i + 1}</span></td>
       <td>${cfg.gate1Threshold.toFixed(2)}</td>
       <td>${cfg.gate2MinMovePct.toFixed(2)}%</td>
       <td>${cfg.stopPct.toFixed(2)}%</td>
       <td>${cfg.minRangePct.toFixed(2)}%</td>
+      <td>${tpLabel}</td>
       <td class="num" style="color:#10b981">+${s.cagr.toFixed(1)}%</td>
       <td class="num" style="color:${s.sharpe>=1.5?'#10b981':s.sharpe>=0.8?'#f59e0b':'#ef4444'}">${s.sharpe.toFixed(2)}</td>
       <td class="num" style="color:#ef4444">-${s.maxDD.toFixed(1)}%</td>
@@ -585,11 +594,13 @@ function loadCfg(cfg) {
   document.getElementById('cfg_stop').value  = cfg.stopPct;
   document.getElementById('cfg_risk').value  = cfg.riskPct;
   document.getElementById('cfg_range').value = cfg.minRangePct;
+  document.getElementById('cfg_tp').value    = cfg.tpPct ?? 0;
   // Expand the config panel so the user can see the loaded values
   const body = document.getElementById('cfgBody');
   if (body && body.style.display === 'none') body.style.display = '';
   const summary = document.getElementById('cfgSummary');
-  if (summary) summary.textContent = `g1=${cfg.gate1Threshold} g2=${cfg.gate2MinMovePct}% stop=${cfg.stopPct}%`;
+  const tpLabel = cfg.tpPct > 0 ? ` tp=${cfg.tpPct}%` : '';
+  if (summary) summary.textContent = `g1=${cfg.gate1Threshold} g2=${cfg.gate2MinMovePct}% stop=${cfg.stopPct}%${tpLabel}`;
 }
 
 // ── Trade Viewer (M5 candlestick) ─────────────────────────────────────────────

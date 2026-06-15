@@ -2195,6 +2195,7 @@ function _computeNqQmr(bars, cfg = {}) {
     stopPct         = 0.50,  // stop distance as % of entry price
     riskPct         = 1.80,  // max account risk per trade (%)
     minRangePct     = 0.15,  // skip day if overnight range < this % (low-vol filter)
+    tpPct           = 0,     // take-profit % from entry; 0 = EOD only (e.g. 1.0 = 2R at 0.5% stop)
   } = cfg;
 
   // Group H1 bars by UTC date
@@ -2260,8 +2261,12 @@ function _computeNqQmr(bars, cfg = {}) {
     const stop  = gate2 === 'LONG'
       ? entry * (1 - stopPct / 100)
       : entry * (1 + stopPct / 100);
+    const tp = tpPct > 0
+      ? (gate2 === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
+      : null;
 
-    // Scan bars after entry for stop-out or EOD exit
+    // Scan bars after entry for TP, stop-out, or EOD exit.
+    // Stop is checked before TP within the same bar (conservative — assumes worst case).
     const afterEntry = (byDate[today] || [])
       .filter(b => b.t.substring(11, 13) > '13')
       .sort((a, bk) => a.t.localeCompare(bk.t));
@@ -2270,6 +2275,8 @@ function _computeNqQmr(bars, cfg = {}) {
     for (const bar of afterEntry) {
       if (gate2 === 'LONG'  && bar.l <= stop) { exit = stop; exitReason = 'STOP'; break; }
       if (gate2 === 'SHORT' && bar.h >= stop) { exit = stop; exitReason = 'STOP'; break; }
+      if (tp !== null && gate2 === 'LONG'  && bar.h >= tp) { exit = tp; exitReason = 'TP'; break; }
+      if (tp !== null && gate2 === 'SHORT' && bar.l <= tp) { exit = tp; exitReason = 'TP'; break; }
       if (parseInt(bar.t.substring(11, 13)) >= 20) { exit = bar.c; exitReason = 'EOD'; break; }
     }
     if (exit === null) {
@@ -2715,7 +2722,7 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
 const nqQmrCache = { result: null, bars: null, fetchedAt: null };
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
-const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.80, minRangePct: 0.15 };
+const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.80, minRangePct: 0.15, tpPct: 0 };
 
 async function _getNqQmrBars() {
   if (nqQmrCache.bars && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
@@ -2802,6 +2809,7 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
       stopPct:         [0.35, 0.40, 0.50, 0.60, 0.70],
       minRangePct:     [0.10, 0.12, 0.15, 0.20, 0.25],
       riskPct:         [1.80],
+      tpPct:           [0, 0.75, 1.00, 1.25, 1.50, 2.00],  // 0=EOD; 1.0=2R; 1.5=3R; 2.0=4R
     };
 
     const results = [];
@@ -2810,24 +2818,29 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
         for (const stopPct of grid.stopPct) {
           for (const minRangePct of grid.minRangePct) {
             for (const riskPct of grid.riskPct) {
-              const cfg = { gate1Threshold, gate2MinMovePct, stopPct, minRangePct, riskPct };
-              const result = _computeNqQmr(bars, cfg);
-              const s = result.stats;
-              if (s.n < 30 || s.cagr <= 0 || s.maxDD <= 0 || s.sharpe <= 0) continue;
-              // Score: Sharpe × √CAGR / MaxDD — rewards consistency and growth, punishes drawdown
-              const score = s.sharpe * Math.sqrt(s.cagr) / s.maxDD;
-              results.push({ cfg, stats: s, score: +score.toFixed(4) });
+              for (const tpPct of grid.tpPct) {
+                const cfg = { gate1Threshold, gate2MinMovePct, stopPct, minRangePct, riskPct, tpPct };
+                const result = _computeNqQmr(bars, cfg);
+                const s = result.stats;
+                if (s.n < 30 || s.cagr <= 0 || s.maxDD <= 0 || s.sharpe <= 0) continue;
+                // Score: Sharpe × √CAGR / MaxDD — rewards consistency and growth, punishes drawdown
+                const score = s.sharpe * Math.sqrt(s.cagr) / s.maxDD;
+                results.push({ cfg, stats: s, score: +score.toFixed(4) });
+              }
             }
           }
         }
       }
     }
 
+    const totalGrid = grid.gate1Threshold.length * grid.gate2MinMovePct.length
+                    * grid.stopPct.length * grid.minRangePct.length
+                    * grid.riskPct.length * grid.tpPct.length;
     results.sort((a, b) => b.score - a.score);
     const top5      = results.slice(0, 5);
     const totalRuns = results.length;
-    console.log(`[nq-qmr opt] ${totalRuns} valid configs evaluated, top score=${top5[0]?.score}`);
-    res.json({ ok: true, top5, totalRuns, totalGrid: 750 });
+    console.log(`[nq-qmr opt] ${totalRuns}/${totalGrid} valid configs evaluated, top score=${top5[0]?.score}`);
+    res.json({ ok: true, top5, totalRuns, totalGrid });
   } catch (err) {
     console.error('[nq-qmr opt]', err.message);
     res.status(500).json({ ok: false, error: err.message });
