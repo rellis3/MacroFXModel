@@ -2712,10 +2712,23 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
 });
 
 // ── NQ-QMR backtest endpoint ──────────────────────────────────────────────────
-const nqQmrCache = { result: null, fetchedAt: null };
+const nqQmrCache = { result: null, bars: null, fetchedAt: null };
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
 const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.80, minRangePct: 0.15 };
+
+async function _getNqQmrBars() {
+  if (nqQmrCache.bars && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
+    return nqQmrCache.bars;
+  }
+  const d = new Date(); d.setFullYear(d.getFullYear() - 5);
+  const fromDate = d.toISOString().substring(0, 10);
+  console.log('[nq-qmr] fetching OANDA H1 NAS100_USD from', fromDate);
+  const bars = await fetchOandaH1Range('NAS100_USD', fromDate);
+  nqQmrCache.bars      = bars;
+  nqQmrCache.fetchedAt = Date.now();
+  return bars;
+}
 
 app.get('/api/nq-qmr/backtest', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
@@ -2726,23 +2739,97 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
   }
 
   const isDefault = Object.entries(cfg).every(([k, v]) => Math.abs(v - NQ_QMR_DEFAULTS[k]) < 0.001);
-  if (isDefault && nqQmrCache.result && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
+  if (isDefault && nqQmrCache.result && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
     return res.json({ ok: true, cached: true, ...nqQmrCache.result });
   }
 
   try {
-    const fromDate = (() => {
-      const d = new Date(); d.setFullYear(d.getFullYear() - 5);
-      return d.toISOString().substring(0, 10);
-    })();
-    console.log('[nq-qmr] fetching OANDA H1 NAS100_USD from', fromDate);
-    const bars = await fetchOandaH1Range('NAS100_USD', fromDate);
+    const bars   = await _getNqQmrBars();
     console.log(`[nq-qmr] ${bars.length} H1 bars — running backtest`);
     const result = _computeNqQmr(bars, cfg);
-    if (isDefault) { nqQmrCache.result = result; nqQmrCache.fetchedAt = Date.now(); }
+    if (isDefault) nqQmrCache.result = result;
     res.json({ ok: true, cached: false, ...result });
   } catch (err) {
     console.error('[nq-qmr]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── NQ-QMR M5 candles for trade viewer ───────────────────────────────────────
+app.get('/api/nq-qmr/m5-candles', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { date } = req.query;
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ ok: false, error: 'date param required (YYYY-MM-DD)' });
+  }
+  try {
+    const from = `${date}T00:00:00.000000000Z`;
+    const nextDay = new Date(date + 'T00:00:00Z');
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const to = nextDay.toISOString().substring(0, 10) + 'T00:00:00.000000000Z';
+
+    const key  = process.env.OANDA_KEY;
+    const base = _oandaBaseMe();
+    const url  = `${base}/v3/instruments/NAS100_USD/candles`
+               + `?granularity=M5&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&price=M&count=5000`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20_000) });
+    if (!r.ok) throw new Error(`OANDA M5 HTTP ${r.status}`);
+    const data = await r.json();
+    const bars = (data.candles ?? []).filter(c => c.mid).map(c => ({
+      t: c.time.substring(0, 16),
+      o: parseFloat(c.mid.o),
+      h: parseFloat(c.mid.h),
+      l: parseFloat(c.mid.l),
+      c: parseFloat(c.mid.c),
+    }));
+    res.json({ ok: true, bars });
+  } catch (err) {
+    console.error('[nq-qmr m5]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── NQ-QMR parameter optimizer ────────────────────────────────────────────────
+app.get('/api/nq-qmr/optimize', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const bars = await _getNqQmrBars();
+    console.log(`[nq-qmr opt] ${bars.length} H1 bars — grid search`);
+
+    const grid = {
+      gate1Threshold:  [0.55, 0.60, 0.65, 0.70, 0.75],
+      gate2MinMovePct: [0.05, 0.08, 0.10, 0.15, 0.20, 0.25],
+      stopPct:         [0.35, 0.40, 0.50, 0.60, 0.70],
+      minRangePct:     [0.10, 0.12, 0.15, 0.20, 0.25],
+      riskPct:         [1.80],
+    };
+
+    const results = [];
+    for (const gate1Threshold of grid.gate1Threshold) {
+      for (const gate2MinMovePct of grid.gate2MinMovePct) {
+        for (const stopPct of grid.stopPct) {
+          for (const minRangePct of grid.minRangePct) {
+            for (const riskPct of grid.riskPct) {
+              const cfg = { gate1Threshold, gate2MinMovePct, stopPct, minRangePct, riskPct };
+              const result = _computeNqQmr(bars, cfg);
+              const s = result.stats;
+              if (s.n < 30 || s.cagr <= 0 || s.maxDD <= 0 || s.sharpe <= 0) continue;
+              // Score: Sharpe × √CAGR / MaxDD — rewards consistency and growth, punishes drawdown
+              const score = s.sharpe * Math.sqrt(s.cagr) / s.maxDD;
+              results.push({ cfg, stats: s, score: +score.toFixed(4) });
+            }
+          }
+        }
+      }
+    }
+
+    results.sort((a, b) => b.score - a.score);
+    const top5      = results.slice(0, 5);
+    const totalRuns = results.length;
+    console.log(`[nq-qmr opt] ${totalRuns} valid configs evaluated, top score=${top5[0]?.score}`);
+    res.json({ ok: true, top5, totalRuns, totalGrid: 750 });
+  } catch (err) {
+    console.error('[nq-qmr opt]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

@@ -72,6 +72,31 @@
 .annual-year { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
 .annual-ret  { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; margin-top: 2px; }
 .annual-n    { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+/* Optimizer */
+.opt-rank { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 700; background: rgba(245,158,11,.15); color: #f59e0b; }
+.opt-rank.gold   { background: rgba(245,158,11,.25); color: #f59e0b; }
+.opt-rank.silver { background: rgba(148,163,184,.15); color: #94a3b8; }
+.opt-rank.bronze { background: rgba(180,83,9,.15);   color: #b45309; }
+.load-cfg-btn { background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--text3); padding: 3px 10px; font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace; transition: border-color .15s, color .15s; }
+.load-cfg-btn:hover { border-color: #f59e0b; color: #f59e0b; }
+.opt-score-bar { display: inline-block; height: 4px; background: #f59e0b; border-radius: 2px; opacity: .6; vertical-align: middle; margin-left: 6px; }
+
+/* Trade viewer modal */
+.tv-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 1000; align-items: center; justify-content: center; }
+.tv-overlay.open { display: flex; }
+.tv-modal { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); width: min(1100px, 96vw); max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+.tv-modal-hdr { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tv-modal-title { font-size: 13px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
+.tv-close { margin-left: auto; background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--text3); padding: 3px 10px; font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace; }
+.tv-close:hover { color: var(--text); }
+.tv-levels { padding: 8px 16px; display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); }
+.tv-lev { display: flex; align-items: center; gap: 5px; }
+.tv-lev-dot { width: 8px; height: 8px; border-radius: 50%; }
+.tv-chart-wrap { flex: 1; min-height: 400px; position: relative; }
+.tv-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.view-link { color: #60a5fa; cursor: pointer; text-decoration: none; font-size: 11px; font-family: 'DM Mono', monospace; }
+.view-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -199,6 +224,42 @@
   </div>
 </div>
 
+<!-- Optimizer card -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">
+    ⚡ Parameter Optimiser
+    <span style="margin-left:auto;font-weight:400;font-size:11px;color:var(--text3);" id="optStatusLabel"></span>
+    <button id="optBtn" class="run-btn" style="margin-left:12px;padding:4px 14px;font-size:11px;" onclick="runOptimiser()">Run Optimiser</button>
+  </div>
+  <div class="card-body" id="optBody">
+    <div class="info-box" style="margin-top:0;">
+      Grid search across 750 parameter combinations (gate1 × gate2 × stop × range thresholds) using a single data fetch.
+      Configs scored by <strong>Sharpe × √CAGR / MaxDD</strong>. Top 5 displayed — click <em>Load</em> to apply any config.
+    </div>
+    <div id="optResults" style="margin-top:12px;display:none;">
+      <table class="tbl" style="margin-top:0;">
+        <thead>
+          <tr>
+            <th style="width:36px;">#</th>
+            <th>Gate1</th>
+            <th>Gate2 Min</th>
+            <th>Stop %</th>
+            <th>Min Range</th>
+            <th class="num">CAGR</th>
+            <th class="num">Sharpe</th>
+            <th class="num">MaxDD</th>
+            <th class="num">Win%</th>
+            <th class="num">N</th>
+            <th class="num">Score</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="optTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- Trade log -->
 <div class="card" id="tradeCard" style="display:none;">
   <div class="card-hdr">
@@ -221,6 +282,7 @@
           <th class="num">Move %</th>
           <th class="num">P&L % acct</th>
           <th class="num">Equity</th>
+          <th></th>
         </tr>
       </thead>
       <tbody id="tradeTbody"></tbody>
@@ -229,6 +291,20 @@
 </div>
 
 </div><!-- /app -->
+
+<!-- Trade Viewer Modal -->
+<div class="tv-overlay" id="tvOverlay" onclick="if(event.target===this)closeTv()">
+  <div class="tv-modal">
+    <div class="tv-modal-hdr">
+      <div class="tv-modal-title" id="tvTitle">NAS100 · Trade Viewer</div>
+      <button class="tv-close" onclick="closeTv()">✕ Close</button>
+    </div>
+    <div class="tv-levels" id="tvLevels"></div>
+    <div class="tv-chart-wrap" id="tvChartWrap">
+      <div class="tv-loading" id="tvLoading">Loading M5 candles…</div>
+    </div>
+  </div>
+</div>
 
 <script>
 let _trades = [], _curve = [], _stats = {};
@@ -419,10 +495,11 @@ function renderTradeTable() {
   if (!tbody) return;
   if (count) count.textContent = _trades.length + ' trades';
 
-  const rows = [..._trades].reverse().map(t => {
+  const rows = [..._trades].reverse().map((t, i) => {
     const isWin = t.tradeReturn > 0;
     const cls   = isWin ? 'win' : 'loss';
     const dCls  = t.direction === 'LONG' ? 'win' : 'loss';
+    const idx   = _trades.length - 1 - i; // original index (reversed display)
     return `<tr>
       <td>${t.date}</td>
       <td class="${dCls}">${t.direction === 'LONG' ? '▲ LONG' : '▼ SHORT'}</td>
@@ -435,10 +512,11 @@ function renderTradeTable() {
       <td class="num ${cls}">${t.movePct >= 0 ? '+' : ''}${t.movePct?.toFixed(2) ?? '—'}%</td>
       <td class="num ${cls}">${t.tradeReturn >= 0 ? '+' : ''}${t.tradeReturn?.toFixed(2) ?? '—'}%</td>
       <td class="num">${t.equity?.toFixed(3) ?? '—'}x</td>
+      <td><a class="view-link" onclick="openTv(${idx})">📊 View</a></td>
     </tr>`;
   }).join('');
 
-  tbody.innerHTML = rows || '<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:20px;">No trades</td></tr>';
+  tbody.innerHTML = rows || '<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:20px;">No trades</td></tr>';
 }
 
 function exportCsv() {
@@ -450,6 +528,204 @@ function exportCsv() {
   const blob = new Blob([hdr + rows], { type: 'text/csv' });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'nq-qmr-backtest.csv' });
   a.click();
+}
+
+// ── Optimiser ─────────────────────────────────────────────────────────────────
+async function runOptimiser() {
+  const btn   = document.getElementById('optBtn');
+  const label = document.getElementById('optStatusLabel');
+  const res   = document.getElementById('optResults');
+  btn.disabled = true;
+  if (label) label.textContent = 'Running 750 combinations…';
+  if (res)   res.style.display = 'none';
+
+  try {
+    const r = await fetch('/api/nq-qmr/optimize');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Optimizer error');
+    if (label) label.textContent = `${d.totalGrid} combinations · ${d.totalRuns} valid · done`;
+    renderOptResults(d.top5);
+    if (res) res.style.display = '';
+  } catch (err) {
+    if (label) label.textContent = 'Error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderOptResults(top5) {
+  const tbody = document.getElementById('optTbody');
+  if (!tbody) return;
+  const maxScore = top5[0]?.score || 1;
+  const rankCls  = ['gold', 'silver', 'bronze', '', ''];
+  tbody.innerHTML = top5.map((item, i) => {
+    const s   = item.stats;
+    const cfg = item.cfg;
+    const barW = Math.round((item.score / maxScore) * 80);
+    return `<tr>
+      <td><span class="opt-rank ${rankCls[i]}">${i + 1}</span></td>
+      <td>${cfg.gate1Threshold.toFixed(2)}</td>
+      <td>${cfg.gate2MinMovePct.toFixed(2)}%</td>
+      <td>${cfg.stopPct.toFixed(2)}%</td>
+      <td>${cfg.minRangePct.toFixed(2)}%</td>
+      <td class="num" style="color:#10b981">+${s.cagr.toFixed(1)}%</td>
+      <td class="num" style="color:${s.sharpe>=1.5?'#10b981':s.sharpe>=0.8?'#f59e0b':'#ef4444'}">${s.sharpe.toFixed(2)}</td>
+      <td class="num" style="color:#ef4444">-${s.maxDD.toFixed(1)}%</td>
+      <td class="num">${(s.winRate*100).toFixed(0)}%</td>
+      <td class="num">${s.n}</td>
+      <td class="num">${item.score.toFixed(3)}<span class="opt-score-bar" style="width:${barW}px"></span></td>
+      <td><button class="load-cfg-btn" onclick="loadCfg(${JSON.stringify(cfg)})">Load</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function loadCfg(cfg) {
+  document.getElementById('cfg_gate1').value = cfg.gate1Threshold;
+  document.getElementById('cfg_gate2').value = cfg.gate2MinMovePct;
+  document.getElementById('cfg_stop').value  = cfg.stopPct;
+  document.getElementById('cfg_risk').value  = cfg.riskPct;
+  document.getElementById('cfg_range').value = cfg.minRangePct;
+  // Expand the config panel so the user can see the loaded values
+  const body = document.getElementById('cfgBody');
+  if (body && body.style.display === 'none') body.style.display = '';
+  const summary = document.getElementById('cfgSummary');
+  if (summary) summary.textContent = `g1=${cfg.gate1Threshold} g2=${cfg.gate2MinMovePct}% stop=${cfg.stopPct}%`;
+}
+
+// ── Trade Viewer (M5 candlestick) ─────────────────────────────────────────────
+let _tvChart = null, _tvSeries = null;
+
+function openTv(idx) {
+  const trade = _trades[idx];
+  if (!trade) return;
+  const overlay = document.getElementById('tvOverlay');
+  overlay.classList.add('open');
+
+  const dir    = trade.direction === 'LONG' ? '▲ LONG' : '▼ SHORT';
+  const pnlCls = trade.tradeReturn > 0 ? '#10b981' : '#ef4444';
+  document.getElementById('tvTitle').textContent =
+    `NAS100 · ${trade.date} · ${trade.direction} | Entry: ${trade.entry?.toFixed(1)}  Stop: ${trade.stop?.toFixed(1)}  Exit: ${trade.exit?.toFixed(1)} (${trade.exitReason})`;
+
+  const lvl = document.getElementById('tvLevels');
+  if (lvl) lvl.innerHTML = `
+    <div class="tv-lev"><div class="tv-lev-dot" style="background:#f59e0b"></div><span style="color:var(--text3)">Entry</span> <span style="color:#f59e0b;font-weight:600">${trade.entry?.toFixed(1)}</span></div>
+    <div class="tv-lev"><div class="tv-lev-dot" style="background:#ef4444"></div><span style="color:var(--text3)">Stop</span> <span style="color:#ef4444;font-weight:600">${trade.stop?.toFixed(1)}</span></div>
+    <div class="tv-lev"><div class="tv-lev-dot" style="background:${pnlCls}"></div><span style="color:var(--text3)">Exit (${trade.exitReason})</span> <span style="font-weight:600;color:${pnlCls}">${trade.exit?.toFixed(1)}</span></div>
+    <div class="tv-lev" style="margin-left:auto"><span style="color:var(--text3)">P&L</span> <span style="font-weight:600;color:${pnlCls}">${trade.tradeReturn > 0 ? '+' : ''}${trade.tradeReturn?.toFixed(2)}% acct</span></div>`;
+
+  const wrap = document.getElementById('tvChartWrap');
+  const loading = document.getElementById('tvLoading');
+  if (loading) { loading.style.display = 'flex'; loading.textContent = 'Loading M5 candles…'; }
+  if (_tvChart) { _tvChart.remove(); _tvChart = null; _tvSeries = null; }
+
+  fetch(`/api/nq-qmr/m5-candles?date=${trade.date}`)
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok || !d.bars?.length) throw new Error(d.error || 'No M5 bars returned');
+      if (loading) loading.style.display = 'none';
+      renderTvChart(wrap, d.bars, trade);
+    })
+    .catch(err => {
+      if (loading) { loading.textContent = 'Error: ' + err.message; }
+    });
+}
+
+function renderTvChart(wrap, bars, trade) {
+  _tvChart = LightweightCharts.createChart(wrap, {
+    width:  wrap.clientWidth,
+    height: Math.max(wrap.clientHeight, 400),
+    layout: { background: { color: '#0f172a' }, textColor: '#94a3b8' },
+    grid:   { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+    rightPriceScale:  { borderColor: '#334155' },
+    timeScale:        { borderColor: '#334155', timeVisible: true, secondsVisible: false },
+    crosshair:        { mode: LightweightCharts.CrosshairMode.Normal },
+  });
+
+  _tvSeries = _tvChart.addCandlestickSeries({
+    upColor:        '#10b981',
+    downColor:      '#ef4444',
+    borderUpColor:  '#10b981',
+    borderDownColor:'#ef4444',
+    wickUpColor:    '#10b981',
+    wickDownColor:  '#ef4444',
+  });
+
+  // Convert "2024-01-15T09:00" → unix seconds (UTC)
+  const toTs = t => Math.floor(new Date(t + ':00Z').getTime() / 1000);
+
+  const data = bars.map(b => ({
+    time: toTs(b.t),
+    open: b.o, high: b.h, low: b.l, close: b.c,
+  }));
+  _tvSeries.setData(data);
+
+  // Price lines for key levels
+  _tvSeries.createPriceLine({ price: trade.entry, color: '#f59e0b', lineWidth: 2, lineStyle: 0, title: 'Entry' });
+  _tvSeries.createPriceLine({ price: trade.stop,  color: '#ef4444', lineWidth: 1, lineStyle: 2, title: 'Stop' });
+  const exitColor = trade.tradeReturn > 0 ? '#10b981' : '#ef4444';
+  _tvSeries.createPriceLine({ price: trade.exit,  color: exitColor, lineWidth: 1, lineStyle: 2, title: `Exit (${trade.exitReason})` });
+
+  // Markers — entry at 13:00 UTC, exit bar
+  const entryTs = toTs(trade.date + 'T13:00');
+
+  // For EOD exit use 20:00 bar; for stop-out find first bar after entry where the stop was breached
+  let exitTs = null;
+  if (trade.exitReason === 'EOD') {
+    exitTs = toTs(trade.date + 'T20:00');
+  } else {
+    // Stop-out: find first M5 bar after 13:00 where low <= stop (LONG) or high >= stop (SHORT)
+    const stopPrice = trade.stop;
+    const afterEntryBars = data.filter(b => b.time > entryTs);
+    const hitBar = afterEntryBars.find(b =>
+      trade.direction === 'LONG' ? b.low <= stopPrice : b.high >= stopPrice
+    );
+    exitTs = hitBar ? hitBar.time : toTs(trade.date + 'T20:00');
+  }
+
+  const markers = [];
+  // Entry marker — snap to nearest M5 bar at or after 13:00
+  const entryM5 = data.find(b => b.time >= entryTs);
+  if (entryM5) {
+    markers.push({
+      time: entryM5.time,
+      position: trade.direction === 'LONG' ? 'belowBar' : 'aboveBar',
+      color: '#f59e0b',
+      shape: trade.direction === 'LONG' ? 'arrowUp' : 'arrowDown',
+      text: 'Entry',
+      size: 1.5,
+    });
+  }
+  // Exit marker — snap to nearest M5 bar
+  const exitM5 = exitTs ? data.find(b => b.time >= exitTs) : null;
+  if (exitM5) {
+    markers.push({
+      time: exitM5.time,
+      position: trade.direction === 'LONG' ? 'aboveBar' : 'belowBar',
+      color: exitColor,
+      shape: trade.direction === 'LONG' ? 'arrowDown' : 'arrowUp',
+      text: trade.exitReason,
+      size: 1.5,
+    });
+  }
+  if (markers.length) _tvSeries.setMarkers(markers);
+
+  // Fit to show from 06:00 UTC onwards to focus on London + US session
+  const visFrom = toTs(trade.date + 'T06:00');
+  const visTo   = toTs(trade.date + 'T22:00');
+  _tvChart.timeScale().setVisibleRange({ from: visFrom, to: visTo });
+
+  window.addEventListener('resize', _tvResize);
+}
+
+function _tvResize() {
+  const wrap = document.getElementById('tvChartWrap');
+  if (_tvChart && wrap) _tvChart.applyOptions({ width: wrap.clientWidth });
+}
+
+function closeTv() {
+  document.getElementById('tvOverlay').classList.remove('open');
+  window.removeEventListener('resize', _tvResize);
+  if (_tvChart) { _tvChart.remove(); _tvChart = null; _tvSeries = null; }
 }
 </script>
 </body>
