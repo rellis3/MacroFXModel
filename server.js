@@ -2151,6 +2151,174 @@ async function fetchOandaD1Range(instrument, fromDate) {
   return bars.filter(b => seen.has(b.date) ? false : (seen.add(b.date), true));
 }
 
+// Paginated OANDA H1 fetch — used by NQ-QMR backtest engine.
+async function fetchOandaH1Range(instrument, fromDate) {
+  const key  = process.env.OANDA_KEY;
+  const base = _oandaBaseMe();
+  let from = `${fromDate}T00:00:00.000000000Z`;
+  const bars = [];
+
+  for (let page = 0; page < 30; page++) {
+    const url = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+              + `?granularity=H1&from=${encodeURIComponent(from)}&count=5000&price=M`;
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal:  AbortSignal.timeout(30_000),
+    });
+    if (!r.ok) throw new Error(`OANDA H1 ${instrument} HTTP ${r.status}`);
+    const data    = await r.json();
+    const candles = (data.candles ?? []).filter(c => c.complete !== false && c.mid);
+    for (const c of candles) {
+      bars.push({
+        t: c.time.substring(0, 16), // "2024-01-15T09:00"
+        o: parseFloat(c.mid.o),
+        h: parseFloat(c.mid.h),
+        l: parseFloat(c.mid.l),
+        c: parseFloat(c.mid.c),
+      });
+    }
+    if (candles.length < 5000) break;
+    from = candles[candles.length - 1].time;
+  }
+  return bars;
+}
+
+// NQ-QMR backtest engine — runs entirely server-side on OANDA H1 bars.
+// Two-gate pre-open momentum system:
+//   Gate 1 (~09:00 UTC): overnight range position (Asia directional bias)
+//   Gate 2 (~12:00 UTC): London continuation (3h into London session)
+//   Entry  (~13:00 UTC): 09:25 ET pre-open entry, 0.5% stop, 1.8% max risk
+function _computeNqQmr(bars, cfg = {}) {
+  const {
+    gate1Threshold  = 0.60,  // price must be in top/bottom X% of overnight range
+    gate2MinMovePct = 0.10,  // min London move % to confirm direction
+    stopPct         = 0.50,  // stop distance as % of entry price
+    riskPct         = 1.80,  // max account risk per trade (%)
+    minRangePct     = 0.15,  // skip day if overnight range < this % (low-vol filter)
+  } = cfg;
+
+  // Group H1 bars by UTC date
+  const byDate = {};
+  for (const b of bars) {
+    const date = b.t.substring(0, 10);
+    if (!byDate[date]) byDate[date] = [];
+    byDate[date].push(b);
+  }
+  const dates = Object.keys(byDate).sort();
+
+  const trades = [];
+  let equity = 1.0;
+  const curve = [];
+
+  for (let di = 1; di < dates.length; di++) {
+    const today = dates[di];
+    const prev  = dates[di - 1];
+
+    const dow = new Date(today + 'T12:00:00Z').getUTCDay();
+    if (dow === 0 || dow === 6) continue;
+
+    // Overnight bars: prev day UTC hour ≥ 21 AND today UTC hour ≤ 8
+    const overnightBars = [
+      ...(byDate[prev]  || []).filter(b => parseInt(b.t.substring(11, 13)) >= 21),
+      ...(byDate[today] || []).filter(b => parseInt(b.t.substring(11, 13)) <= 8),
+    ];
+    if (overnightBars.length < 4) continue;
+
+    const asiaH = Math.max(...overnightBars.map(b => b.h));
+    const asiaL = Math.min(...overnightBars.map(b => b.l));
+    const range  = asiaH - asiaL;
+    const mid    = (asiaH + asiaL) / 2;
+    if (!mid || (range / mid) * 100 < minRangePct) continue;
+
+    // Gate 1: price at ~09:00 UTC relative to overnight range
+    const g1bar = (byDate[today] || []).find(b => b.t.substring(11, 13) === '09');
+    if (!g1bar) continue;
+
+    const posInRange = (g1bar.c - asiaL) / range;
+    let gate1 = null;
+    if (posInRange >=  gate1Threshold)         gate1 = 'LONG';
+    else if (posInRange <= 1 - gate1Threshold) gate1 = 'SHORT';
+    else continue;
+
+    // Gate 2: London open (~07:00 UTC) vs check at ~12:00 UTC
+    const ldnBar = (byDate[today] || []).find(b => b.t.substring(11, 13) === '07');
+    const g2bar  = (byDate[today] || []).find(b => b.t.substring(11, 13) === '12');
+    if (!ldnBar || !g2bar) continue;
+
+    const ldnMove = (g2bar.c - ldnBar.o) / ldnBar.o * 100;
+    let gate2 = null;
+    if (ldnMove >  gate2MinMovePct && gate1 === 'LONG')  gate2 = 'LONG';
+    else if (ldnMove < -gate2MinMovePct && gate1 === 'SHORT') gate2 = 'SHORT';
+    else continue;
+
+    // Entry: ~09:25 ET ≈ 13:00 UTC EDT / 14:00 UTC EST — try 13 first
+    const entryBar = (byDate[today] || []).find(b => b.t.substring(11, 13) === '13')
+                  || (byDate[today] || []).find(b => b.t.substring(11, 13) === '14');
+    if (!entryBar) continue;
+
+    const entry = entryBar.o;
+    const stop  = gate2 === 'LONG'
+      ? entry * (1 - stopPct / 100)
+      : entry * (1 + stopPct / 100);
+
+    // Scan bars after entry for stop-out or EOD exit
+    const afterEntry = (byDate[today] || [])
+      .filter(b => b.t.substring(11, 13) > '13')
+      .sort((a, bk) => a.t.localeCompare(bk.t));
+
+    let exit = null, exitReason = 'EOD';
+    for (const bar of afterEntry) {
+      if (gate2 === 'LONG'  && bar.l <= stop) { exit = stop; exitReason = 'STOP'; break; }
+      if (gate2 === 'SHORT' && bar.h >= stop) { exit = stop; exitReason = 'STOP'; break; }
+      if (parseInt(bar.t.substring(11, 13)) >= 20) { exit = bar.c; exitReason = 'EOD'; break; }
+    }
+    if (exit === null) {
+      const last = afterEntry[afterEntry.length - 1];
+      if (!last) continue;
+      exit = last.c; exitReason = 'EOD';
+    }
+
+    const movePct     = gate2 === 'LONG'
+      ? (exit - entry) / entry * 100
+      : (entry - exit) / entry * 100;
+    const leverage    = riskPct / stopPct; // 1.8 / 0.5 = 3.6×
+    const tradeReturn = movePct * leverage;
+    equity *= (1 + tradeReturn / 100);
+
+    trades.push({ date: today, gate1, gate2, direction: gate2, entry, stop, exit, exitReason,
+                  movePct: +movePct.toFixed(3), tradeReturn: +tradeReturn.toFixed(3), equity: +equity.toFixed(6) });
+    curve.push({ date: today, equity: +equity.toFixed(6) });
+  }
+
+  const n     = trades.length;
+  const wins  = trades.filter(t => t.tradeReturn > 0).length;
+  const rets  = trades.map(t => t.tradeReturn / 100);
+  const mu    = rets.reduce((s, r) => s + r, 0) / (rets.length || 1);
+  const sig   = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / (rets.length || 1));
+  // Annualise Sharpe using trade frequency (~75 trades/year)
+  const tradesPerYear = n / Math.max((new Date(curve[curve.length-1]?.date) - new Date(curve[0]?.date)) / (365.25*864e5), 1);
+  const sharpe  = sig > 0 ? (mu / sig) * Math.sqrt(tradesPerYear) : 0;
+
+  const years  = curve.length >= 2
+    ? (new Date(curve[curve.length-1].date) - new Date(curve[0].date)) / (365.25 * 864e5)
+    : 1;
+  const cagr   = (Math.pow(equity, 1 / Math.max(years, 0.01)) - 1) * 100;
+
+  let peak = 1, maxDD = 0;
+  for (const { equity: eq } of curve) {
+    if (eq > peak) peak = eq;
+    const dd = (peak - eq) / peak;
+    if (dd > maxDD) maxDD = dd;
+  }
+
+  return {
+    trades, curve,
+    stats: { n, wins, winRate: n ? wins / n : 0, cagr: +cagr.toFixed(2),
+             sharpe: +sharpe.toFixed(2), maxDD: +(maxDD * 100).toFixed(2),
+             totalReturn: +((equity - 1) * 100).toFixed(2) },
+  };
+}
+
 // Fetch ^VIX from Yahoo Finance v8 chart endpoint
 async function fetchVixYahoo(fromUnix) {
   const toUnix = Math.floor(Date.now() / 1000);
@@ -2541,6 +2709,42 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── NQ-QMR backtest endpoint ──────────────────────────────────────────────────
+const nqQmrCache = { result: null, fetchedAt: null };
+const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
+
+const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.80, minRangePct: 0.15 };
+
+app.get('/api/nq-qmr/backtest', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+
+  const cfg = {};
+  for (const [k, def] of Object.entries(NQ_QMR_DEFAULTS)) {
+    cfg[k] = req.query[k] != null ? parseFloat(req.query[k]) : def;
+  }
+
+  const isDefault = Object.entries(cfg).every(([k, v]) => Math.abs(v - NQ_QMR_DEFAULTS[k]) < 0.001);
+  if (isDefault && nqQmrCache.result && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
+    return res.json({ ok: true, cached: true, ...nqQmrCache.result });
+  }
+
+  try {
+    const fromDate = (() => {
+      const d = new Date(); d.setFullYear(d.getFullYear() - 5);
+      return d.toISOString().substring(0, 10);
+    })();
+    console.log('[nq-qmr] fetching OANDA H1 NAS100_USD from', fromDate);
+    const bars = await fetchOandaH1Range('NAS100_USD', fromDate);
+    console.log(`[nq-qmr] ${bars.length} H1 bars — running backtest`);
+    const result = _computeNqQmr(bars, cfg);
+    if (isDefault) { nqQmrCache.result = result; nqQmrCache.fetchedAt = Date.now(); }
+    res.json({ ok: true, cached: false, ...result });
+  } catch (err) {
+    console.error('[nq-qmr]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // ── Gold backtest trades store ────────────────────────────────────────────────
@@ -3570,7 +3774,7 @@ async function _computeEventImpact() {
 app.get('/api/vol-forecast/event-impact', async (_req, res) => {
   try {
     const raw = await kv.get('event_vol_impact');
-    if (!raw) return res.status(404).json({ ok: false, error: 'Not yet computed — click Refresh in the Event Impact panel' });
+    if (!raw) return res.json({ ok: false, error: 'Not yet computed — click Refresh in the Event Impact panel' });
     res.json(JSON.parse(raw));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -6407,6 +6611,348 @@ setInterval(async () => {
       .catch(e => console.error('[EVENT-IMPACT] Daily refresh failed:', e.message));
   }
 }, 5 * 60_000);
+
+// ── NQ-QMR Live Signal Monitor ────────────────────────────────────────────────
+// Runs on Railway alongside the main server. No separate process needed.
+// Gate 1 ~ 09:05 UTC  (04:48 ET / 09:48 LDN — Asia session validated)
+// Gate 2 ~ 12:05 UTC  (07:40 ET / 12:40 LDN — London confirmation)
+// Entry  ~ 13:05 UTC  (09:25 ET — pre-open signal, signal-only for now)
+// EOD    ~ 20:30 UTC  (end-of-day summary)
+
+const NQ_MON_KV = 'nq_qmr_status';
+
+const nqMon = {
+  date: null, gate1: null, gate2: null, direction: null,
+  newsBlocked: false, newsEvents: [],
+  sentOpen: false, sentGate1: false, sentGate2: false, sentEntry: false,
+  gate1Data: null, gate2Data: null,
+};
+
+// Fetch last N completed H1 bars for an OANDA instrument (no pagination needed)
+async function fetchOandaRecentH1(instrument, count) {
+  const base = _oandaBaseMe();
+  const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+             + `?granularity=H1&count=${count}&price=M`;
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+    signal:  AbortSignal.timeout(15_000),
+  });
+  if (!r.ok) throw new Error(`OANDA H1 ${instrument} ${r.status}`);
+  const d = await r.json();
+  return (d.candles ?? []).filter(c => c.mid).map(c => ({
+    t: c.time.substring(0, 16),
+    o: parseFloat(c.mid.o), h: parseFloat(c.mid.h),
+    l: parseFloat(c.mid.l), c: parseFloat(c.mid.c),
+    complete: c.complete !== false,
+  }));
+}
+
+// Check Finnhub economic calendar for high-impact US events in the trade window
+async function nqFetchNewsRisk(dateStr) {
+  const key = process.env.FINNHUB_KEY;
+  if (!key) return { blocked: false, events: [] };
+  try {
+    const r = await fetch(
+      `https://finnhub.io/api/v1/calendar/economic?from=${dateStr}&to=${dateStr}&token=${key}`,
+      { signal: AbortSignal.timeout(10_000) }
+    );
+    if (!r.ok) return { blocked: false, events: [] };
+    const d = await r.json();
+    const events = (d.economicCalendar ?? []).filter(e => {
+      if (e.country !== 'US') return false;
+      if ((e.impact ?? '').toLowerCase() !== 'high') return false;
+      const timePart = (e.time ?? '').split(' ')[1] ?? '';
+      const hour = parseInt(timePart.split(':')[0] ?? '0');
+      return hour >= 8 && hour <= 11; // 08:00–11:00 ET risk window
+    });
+    return { blocked: events.length > 0, events };
+  } catch { return { blocked: false, events: [] }; }
+}
+
+// Push gate state to KV so bot-config NQ-QMR tab shows live status
+async function nqPushKv() {
+  try {
+    const existing = await kv.get(NQ_MON_KV)
+      .then(v => v ? JSON.parse(v) : {})
+      .catch(() => ({}));
+    const g1state = nqMon.gate1 === 'LONG' || nqMon.gate1 === 'SHORT' ? 'PASS'
+                  : nqMon.gate1 === 'FLAT' ? 'FAIL' : null;
+    const g2state = nqMon.gate2 === 'CONFIRMED' ? 'PASS'
+                  : nqMon.gate2 === 'REJECTED'  ? 'FAIL' : null;
+    const payload = {
+      ...existing,
+      gates: {
+        gate1: { state: g1state, ts: Date.now(), direction: nqMon.gate1, data: nqMon.gate1Data },
+        gate2: { state: g2state, ts: Date.now(), data: nqMon.gate2Data },
+      },
+      today_direction: nqMon.direction,
+      news_blocked:    nqMon.newsBlocked,
+      news_events:     nqMon.newsEvents,
+      pushed_at:       Math.floor(Date.now() / 1000),
+      mt5_positions:        existing.mt5_positions        ?? [],
+      today_closed_trades:  existing.today_closed_trades  ?? [],
+    };
+    await kv.put(NQ_MON_KV, JSON.stringify(payload));
+  } catch (e) { console.error('[nq-mon] KV write error:', e.message); }
+}
+
+async function nqSendTg(msg) {
+  if (!state.tg?.token || !state.tg?.chatId) return;
+  await sendTelegram(state.tg.token, state.tg.chatId, msg).catch(() => {});
+}
+
+// ── Gate checks ───────────────────────────────────────────────────────────────
+
+async function nqDailyOpen() {
+  const today = new Date().toISOString().substring(0, 10);
+  Object.assign(nqMon, {
+    date: today, gate1: null, gate2: null, direction: null,
+    newsBlocked: false, newsEvents: [],
+    sentOpen: false, sentGate1: false, sentGate2: false, sentEntry: false,
+    gate1Data: null, gate2Data: null,
+  });
+
+  const news = await nqFetchNewsRisk(today);
+  nqMon.newsBlocked = news.blocked;
+  nqMon.newsEvents  = news.events;
+
+  let msg = `📅 <b>NQ-QMR | ${today}</b>\n\n`;
+  msg += `Gate 1 signal:  04:48 ET  (09:05 UTC)\n`;
+  msg += `Gate 2 signal:  07:40 ET  (12:05 UTC)\n`;
+  msg += `Entry signal:   09:25 ET  (13:05 UTC)\n\n`;
+
+  if (news.blocked) {
+    msg += `⚠️ <b>HIGH-IMPACT US NEWS — trade suppressed</b>\n`;
+    msg += news.events.map(e => `  • ${e.event} @ ${(e.time ?? '').split(' ')[1] ?? '?'} ET`).join('\n');
+  } else {
+    msg += `✓ No high-impact US data — monitor active`;
+    if (process.env.FINNHUB_KEY) {} else {
+      msg += `\n<i>(set FINNHUB_KEY to enable news filter)</i>`;
+    }
+  }
+
+  await nqSendTg(msg);
+  nqMon.sentOpen = true;
+  await nqPushKv();
+  console.log(`[nq-mon] Day open ${today} news_blocked=${news.blocked}`);
+}
+
+async function nqLoadMonCfg() {
+  try {
+    const raw = await kv.get('nq_qmr_config');
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+async function nqGate1Check() {
+  const cfg = await nqLoadMonCfg();
+  if (cfg.enabled === false) { console.log('[nq-mon] Gate 1 skipped — monitor disabled in config'); return; }
+  if (nqMon.newsBlocked && cfg.newsFilter !== false) { console.log('[nq-mon] Gate 1 skipped — news block'); return; }
+  if (!process.env.OANDA_KEY) return;
+
+  try {
+    // Last 15 H1 bars covers back to prev-day ~18:00 UTC (overnight range)
+    const [nas, xau, eur] = await Promise.all([
+      fetchOandaRecentH1('NAS100_USD', 15),
+      fetchOandaRecentH1('XAU_USD',    15).catch(() => []),
+      fetchOandaRecentH1('EUR_USD',    15).catch(() => []),
+    ]);
+
+    // Overnight bars = completed bars covering Asia session
+    const today = new Date().toISOString().substring(0, 10);
+    const overnight = nas.filter(b => {
+      const h = parseInt(b.t.substring(11, 13));
+      const d = b.t.substring(0, 10);
+      return b.complete && ((d < today && h >= 20) || (d === today && h <= 8));
+    });
+    if (overnight.length < 3) { console.log('[nq-mon] Gate 1: too few overnight bars'); return; }
+
+    const asiaH   = Math.max(...overnight.map(b => b.h));
+    const asiaL   = Math.min(...overnight.map(b => b.l));
+    const range   = asiaH - asiaL;
+    const mid     = (asiaH + asiaL) / 2;
+    const rangePct = mid > 0 ? (range / mid * 100) : 0;
+
+    // Price at Gate 1 time = close of most recent completed bar
+    const g1bar = nas.filter(b => b.complete).slice(-1)[0];
+    if (!g1bar) return;
+
+    const pos      = range > 0 ? (g1bar.c - asiaL) / range : 0.5;
+    const THRESH   = cfg.gate1Threshold  ?? 0.60;
+    const MIN_RNG  = cfg.minRangePct     ?? 0.15;
+    let gate1 = pos >= THRESH ? 'LONG' : pos <= (1 - THRESH) ? 'SHORT' : 'FLAT';
+
+    // Low overnight range = low conviction — treat as FLAT
+    if (rangePct < MIN_RNG) gate1 = 'FLAT';
+
+    // Enrichment: gold and EUR direction during Asia
+    const xauOld = xau.filter(b => b.complete).slice(-8, -4)[0];
+    const xauNew = xau.filter(b => b.complete).slice(-1)[0];
+    const goldDir = xauOld && xauNew
+      ? (xauNew.c > xauOld.c ? '↑ rising (risk-off)' : '↓ falling (risk-on)') : 'N/A';
+
+    const eurOld  = eur.filter(b => b.complete).slice(-8, -4)[0];
+    const eurNew  = eur.filter(b => b.complete).slice(-1)[0];
+    const eurDir  = eurOld && eurNew
+      ? (eurNew.c > eurOld.c ? '↑ USD weaker (NQ +)' : '↓ USD stronger (NQ -)') : 'N/A';
+
+    nqMon.gate1     = gate1;
+    nqMon.gate1Data = { price: g1bar.c, asiaH, asiaL, range, rangePct, pos, goldDir, eurDir };
+
+    const icon     = gate1 === 'FLAT' ? '⚫' : '🟡';
+    const dirEmoji = gate1 === 'LONG' ? '▲' : gate1 === 'SHORT' ? '▼' : '—';
+
+    let msg = `${icon} <b>NQ-QMR | GATE 1</b>  ${gate1}\n`;
+    msg += `${dirEmoji} Direction bias: <b>${gate1}</b>\n`;
+    msg += `Time: ${g1bar.t.substring(11, 16)} UTC\n\n`;
+    msg += `NAS100:  ${g1bar.c.toFixed(1)}\n`;
+    msg += `Asia range: ${asiaL.toFixed(1)} — ${asiaH.toFixed(1)}  (${rangePct.toFixed(2)}%)\n`;
+    msg += `Position in range: ${(pos * 100).toFixed(0)}%  (threshold: 60%)\n\n`;
+    msg += `Gold overnight: ${goldDir}\n`;
+    msg += `EUR/USD (DXY proxy): ${eurDir}\n`;
+
+    if (gate1 === 'FLAT') {
+      msg += `\nRange too ambiguous — <b>no trade today</b>`;
+    } else {
+      msg += `\nAwaiting Gate 2 @ 12:40 LDN (12:05 UTC)`;
+    }
+
+    await nqSendTg(msg);
+    nqMon.sentGate1 = true;
+    await nqPushKv();
+    console.log(`[nq-mon] Gate 1 → ${gate1}  pos=${(pos*100).toFixed(0)}%  range=${rangePct.toFixed(2)}%`);
+  } catch (e) { console.error('[nq-mon] Gate 1 error:', e.message); }
+}
+
+async function nqGate2Check() {
+  const cfg = await nqLoadMonCfg();
+  if (cfg.enabled === false) return;
+  if (nqMon.newsBlocked && cfg.newsFilter !== false) return;
+  if (!nqMon.gate1 || nqMon.gate1 === 'FLAT') return;
+  if (!process.env.OANDA_KEY) return;
+
+  try {
+    const nas = await fetchOandaRecentH1('NAS100_USD', 7);
+
+    // London open = bar at 07:00 UTC; check = most recent completed bar around 12:00 UTC
+    const ldnOpen = nas.find(b => b.t.substring(11, 13) === '07' && b.complete);
+    const check   = nas.filter(b => b.complete && parseInt(b.t.substring(11, 13)) <= 12).slice(-1)[0];
+    if (!ldnOpen || !check) { console.log('[nq-mon] Gate 2: missing bars'); return; }
+
+    const ldnMove = (check.c - ldnOpen.o) / ldnOpen.o * 100;
+    const G2_MIN  = cfg.gate2MinMovePct ?? 0.10;
+
+    let gate2 = 'REJECTED';
+    if (ldnMove >  G2_MIN && nqMon.gate1 === 'LONG')  gate2 = 'CONFIRMED';
+    if (ldnMove < -G2_MIN && nqMon.gate1 === 'SHORT') gate2 = 'CONFIRMED';
+
+    nqMon.gate2     = gate2;
+    nqMon.direction = gate2 === 'CONFIRMED' ? nqMon.gate1 : null;
+    nqMon.gate2Data = { ldnMove, ldnOpen: ldnOpen.o, checkPrice: check.c };
+
+    const icon     = gate2 === 'CONFIRMED' ? '🟢' : '🔴';
+    const moveChar = ldnMove >= 0 ? '↑' : '↓';
+
+    let msg = `${icon} <b>NQ-QMR | GATE 2</b>  ${gate2}\n`;
+    if (gate2 === 'CONFIRMED') {
+      const d = nqMon.direction;
+      msg += `Direction: <b>${d === 'LONG' ? '▲ LONG' : '▼ SHORT'}</b>\n`;
+      msg += `Time: ${check.t.substring(11, 16)} UTC\n\n`;
+      msg += `London move: ${moveChar} ${Math.abs(ldnMove).toFixed(2)}%  (min: ${G2_MIN}%)\n`;
+      msg += `London open: ${ldnOpen.o.toFixed(1)}  →  Now: ${check.c.toFixed(1)}\n\n`;
+      msg += `⚡ <b>BOTH GATES CLEAR</b>\n`;
+      msg += `Entry signal at 09:25 ET (13:05 UTC)\n`;
+      msg += `Stop distance: 0.5%  •  Max risk: 1.8% account`;
+    } else {
+      msg += `Time: ${check.t.substring(11, 16)} UTC\n\n`;
+      msg += `London move: ${moveChar} ${Math.abs(ldnMove).toFixed(2)}%\n`;
+      msg += `Gate 1 was ${nqMon.gate1} but London moved ${ldnMove >= 0 ? 'UP' : 'DOWN'}\n`;
+      msg += `Gates disagree — <b>no trade today</b>`;
+    }
+
+    await nqSendTg(msg);
+    nqMon.sentGate2 = true;
+    await nqPushKv();
+    console.log(`[nq-mon] Gate 2 → ${gate2}  ldnMove=${ldnMove.toFixed(2)}%`);
+  } catch (e) { console.error('[nq-mon] Gate 2 error:', e.message); }
+}
+
+async function nqEntrySignal() {
+  if (nqMon.gate2 !== 'CONFIRMED' || nqMon.newsBlocked) return;
+  if (!process.env.OANDA_KEY) return;
+
+  try {
+    const bars    = await fetchOandaRecentH1('NAS100_USD', 2);
+    const current = bars.slice(-1)[0];
+    if (!current) return;
+
+    const price   = current.o;
+    const dir     = nqMon.direction;
+    const stop    = dir === 'LONG' ? price * (1 - 0.005) : price * (1 + 0.005);
+    const stopPts = Math.abs(price - stop);
+
+    let msg = `🎯 <b>NQ-QMR | ENTRY SIGNAL</b>\n`;
+    msg += `${dir === 'LONG' ? '▲' : '▼'} Direction: <b>${dir}</b>\n`;
+    msg += `Time: ≈09:25 ET  (${current.t.substring(11, 16)} UTC)\n\n`;
+    msg += `NAS100 price:  <b>${price.toFixed(1)}</b>\n`;
+    msg += `Stop:          ${stop.toFixed(1)}  (${stopPts.toFixed(0)} pts / 0.5%)\n`;
+    msg += `Max risk:      1.8% of account\n\n`;
+    msg += `Use <b>Bot Config → NQ-QMR → Position Sizer</b> for contract count\n`;
+    msg += `<i>Signal only — no live orders placed</i>`;
+
+    await nqSendTg(msg);
+    nqMon.sentEntry = true;
+    await nqPushKv();
+    console.log(`[nq-mon] Entry signal → ${dir} @ ${price.toFixed(1)}`);
+  } catch (e) { console.error('[nq-mon] Entry error:', e.message); }
+}
+
+async function nqEodSummary() {
+  if (!nqMon.sentGate1 && !nqMon.sentOpen) return; // nothing ran today
+  const dow = new Date().getUTCDay();
+  if (dow === 0 || dow === 6) return;
+
+  let msg = `📊 <b>NQ-QMR | EOD ${nqMon.date ?? ''}</b>\n\n`;
+  msg += `Gate 1:   ${nqMon.gate1  ?? '—'}\n`;
+  msg += `Gate 2:   ${nqMon.gate2  ?? '—'}\n`;
+  msg += `Entry:    ${nqMon.sentEntry ? (nqMon.direction ?? 'fired') : 'no trade'}\n`;
+  if (nqMon.newsBlocked) msg += `\n⚠️ Suppressed by high-impact news`;
+
+  await nqSendTg(msg);
+  // Reset for tomorrow
+  Object.assign(nqMon, {
+    gate1: null, gate2: null, direction: null,
+    sentOpen: false, sentGate1: false, sentGate2: false, sentEntry: false,
+    gate1Data: null, gate2Data: null,
+  });
+  await nqPushKv();
+  console.log('[nq-mon] EOD reset');
+}
+
+// Scheduler — ticks every minute, fires gates at the right UTC times
+(function scheduleNqQmrMonitor() {
+  setInterval(async () => {
+    const now = new Date();
+    const dow = now.getUTCDay();
+    if (dow === 0 || dow === 6) return; // skip weekends
+
+    // Ensure TG config is loaded
+    if (!state.tg) await reloadConfig().catch(() => {});
+
+    const H = now.getUTCHours();
+    const M = now.getUTCMinutes();
+
+    if (H === 7  && M === 0  && !nqMon.sentOpen)  nqDailyOpen().catch(e   => console.error('[nq-mon]', e.message));
+    if (H === 9  && M === 5  && !nqMon.sentGate1) nqGate1Check().catch(e  => console.error('[nq-mon]', e.message));
+    if (H === 12 && M === 5  && !nqMon.sentGate2) nqGate2Check().catch(e  => console.error('[nq-mon]', e.message));
+    if (H === 13 && M === 5  && !nqMon.sentEntry) nqEntrySignal().catch(e => console.error('[nq-mon]', e.message));
+    if (H === 20 && M === 30)                      nqEodSummary().catch(e  => console.error('[nq-mon]', e.message));
+  }, 60_000);
+
+  console.log('[nq-mon] NQ-QMR signal monitor scheduled (Gates at 09:05 / 12:05 / 13:05 UTC)');
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';

@@ -228,3 +228,14 @@
 [2026-06-15 13:44:32] [MEBot] [INFO] Cycle complete in 7.0s — sleeping 3593s
 [2026-06-15 14:16:59] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
 [2026-06-15 14:17:03] [MEBot] [INFO] Cycle complete in 5.6s — sleeping 3594s
+[2026-06-15 14:44:29] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 14:44:34] [MEBot] [INFO] Cycle complete in 9.0s — sleeping 3591s
+[2026-06-15 15:17:01] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 15:17:03] [MEBot] [INFO] Cycle complete in 6.4s — sleeping 3594s
+[2026-06-15 15:44:28] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 15:44:30] [MEBot] [WARNING] KV put macro_equity_bot_status failed: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+[2026-06-15 15:44:30] [MEBot] [INFO] Cycle complete in 5.5s — sleeping 3595s
+[2026-06-15 16:16:59] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 16:17:01] [MEBot] [INFO] VIX: 300 bars, latest=16.2
+[2026-06-15 16:17:01] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 16:17:03] [MEBot] [INFO] Cycle complete in 5.8s — sleeping 3594s

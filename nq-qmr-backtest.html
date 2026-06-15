@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NQ-QMR — Pre-Open Momentum Backtest</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+#app { padding: 0 20px 60px; max-width: 1380px; margin: 0 auto; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 14px; }
+@media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.kpi {
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
+  padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 3px;
+}
+.kpi-lbl { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; }
+.kpi-val { font-size: 24px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); line-height: 1.1; }
+.kpi-val.green { color: #10b981; } .kpi-val.red { color: #ef4444; } .kpi-val.amber { color: #f59e0b; }
+.kpi-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.sec-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+@media (max-width: 860px) { .sec-grid { grid-template-columns: repeat(2, 1fr); } }
+.sec { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r); padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; }
+.sec-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.sec-val { font-size: 13px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
+
+.card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 14px; }
+.card-hdr { padding: 11px 16px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.card-body { padding: 16px; }
+.chart-wrap { position: relative; height: 300px; }
+
+.run-bar { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); padding: 11px 14px; margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.run-btn { background: #f59e0b; border: none; border-radius: 6px; color: #111; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; padding: 6px 20px; cursor: pointer; transition: opacity .2s; }
+.run-btn:hover { opacity: .85; } .run-btn:disabled { opacity: .5; cursor: wait; }
+.run-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.cfg-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 10px; }
+.cfg-field { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+.cfg-field label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); font-family: 'DM Mono', monospace; }
+.cfg-field input { background: var(--s2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; padding: 5px 8px; width: 90px; }
+
+.tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+.tbl th { padding: 6px 10px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.tbl td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--s2); }
+.tbl td.num { text-align: right; }
+.tbl td.win { color: #10b981; font-weight: 600; }
+.tbl td.loss { color: #ef4444; font-weight: 600; }
+.tbl-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+
+.gate-pill { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .06em; font-family: 'DM Mono', monospace; }
+.gate-long  { background: rgba(16,185,129,.15); color: #10b981; }
+.gate-short { background: rgba(239,68,68,.12);  color: #ef4444; }
+
+.sdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--border2); }
+.sdot.ok   { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.sdot.spin { background: #f59e0b; animation: spin-pulse 1s infinite; }
+.sdot.err  { background: #ef4444; }
+@keyframes spin-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.info-box { background: rgba(59,130,246,.07); border: 1px solid rgba(59,130,246,.2); border-radius: var(--r); padding: 10px 14px; font-size: 11px; font-family: 'DM Mono', monospace; color: #93c5fd; margin-top: 10px; line-height: 1.6; }
+.warn-box { background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2); border-radius: var(--r); padding: 10px 14px; font-size: 11px; font-family: 'DM Mono', monospace; color: #fcd34d; margin-top: 10px; line-height: 1.6; }
+
+.annual-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 10px; }
+@media (max-width: 860px) { .annual-grid { grid-template-columns: repeat(3, 1fr); } }
+.annual-cell { background: var(--s2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; text-align: center; }
+.annual-year { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.annual-ret  { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; margin-top: 2px; }
+.annual-n    { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Header -->
+<div style="padding:16px 0 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:14px;">
+  <div>
+    <h1 style="font-size:20px;font-weight:700;margin:0;color:#f59e0b;">🎯 NQ-QMR — Pre-Open Momentum</h1>
+    <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">NAS100_USD · OANDA H1 data · Two-gate London/Asia continuation filter · 09:25 ET entry</div>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <a href="bot-config.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:#f59e0b;">🎯 NQ Tab →</a>
+    <a href="hub.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">Risk Hub</a>
+    <a href="index.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">← Dashboard</a>
+  </div>
+</div>
+
+<!-- System spec banner -->
+<div class="info-box">
+  <strong style="color:#f59e0b">System Logic:</strong> Gate 1 checks the overnight Asia session at ~09:00 UTC — if NAS100 price is in the top 40% of the overnight range, directional bias is LONG (bottom 40% = SHORT). Gate 2 checks London momentum at ~12:00 UTC — if London has moved &gt;0.10% in the same direction as Gate 1, both gates confirm and a trade fires at the 13:00 UTC bar (≈09:25 ET). Stop is 0.5% from entry, max account risk 1.8% (3.6× position leverage). Exit at EOD (20:00 UTC) or stop-out.
+</div>
+
+<!-- Run bar -->
+<div class="run-bar">
+  <button class="run-btn" id="runBtn" onclick="runBacktest()">Run Backtest</button>
+  <span class="sdot" id="statusDot"></span>
+  <span id="statusMsg" class="run-lbl">Click Run — fetches 5 years of OANDA H1 NAS100_USD data (10-20s first run)</span>
+  <span id="cacheLabel" style="margin-left:auto;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"></span>
+</div>
+
+<!-- Config card -->
+<div class="card" style="margin-top:12px;">
+  <div class="card-hdr" style="cursor:pointer;" onclick="toggleCfg()">
+    ⚙ Gate Parameters — click to expand
+    <span style="margin-left:auto;font-size:11px;font-weight:400;color:var(--text3);" id="cfgSummary">defaults</span>
+  </div>
+  <div class="card-body" id="cfgBody" style="display:none;">
+    <div class="warn-box" style="margin-top:0;margin-bottom:12px;">
+      These parameters are our best derivation of the external quant's gate logic. The exact proprietary thresholds are unknown — these defaults are calibrated to approximate the structural edge. Adjust to explore sensitivity.
+    </div>
+    <div class="cfg-row">
+      <div class="cfg-field">
+        <label>Gate 1 Threshold</label>
+        <input type="number" id="cfg_gate1" value="0.60" min="0.50" max="0.90" step="0.05">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">pos in range for signal (0.60 = top/bot 40%)</span>
+      </div>
+      <div class="cfg-field">
+        <label>Gate 2 Min Move %</label>
+        <input type="number" id="cfg_gate2" value="0.10" min="0.02" max="1.0" step="0.02">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">min London session move to confirm</span>
+      </div>
+      <div class="cfg-field">
+        <label>Stop Distance %</label>
+        <input type="number" id="cfg_stop" value="0.50" min="0.10" max="2.0" step="0.05">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">fixed by quant spec</span>
+      </div>
+      <div class="cfg-field">
+        <label>Max Risk % / Trade</label>
+        <input type="number" id="cfg_risk" value="1.80" min="0.25" max="5.0" step="0.05">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">fixed by quant spec</span>
+      </div>
+      <div class="cfg-field">
+        <label>Min Overnight Range %</label>
+        <input type="number" id="cfg_range" value="0.15" min="0.05" max="1.0" step="0.05">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">skip flat overnight sessions</span>
+      </div>
+    </div>
+    <button class="run-btn" onclick="runBacktest()">Re-run with these params</button>
+  </div>
+</div>
+
+<!-- KPI grid (hidden until data loads) -->
+<div id="kpiSection" style="display:none;">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-lbl">Total Return</div><div class="kpi-val green" id="kTotalRet">—</div><div class="kpi-sub" id="kPeriod">—</div></div>
+    <div class="kpi"><div class="kpi-lbl">CAGR</div><div class="kpi-val green" id="kCagr">—</div><div class="kpi-sub">annualised</div></div>
+    <div class="kpi"><div class="kpi-lbl">Sharpe Ratio</div><div class="kpi-val" id="kSharpe">—</div><div class="kpi-sub">trade-level annualised</div></div>
+    <div class="kpi"><div class="kpi-lbl">Max Drawdown</div><div class="kpi-val red" id="kMaxDD">—</div><div class="kpi-sub">peak-to-trough</div></div>
+    <div class="kpi"><div class="kpi-lbl">Win Rate</div><div class="kpi-val" id="kWinRate">—</div><div class="kpi-sub" id="kWins">— / — trades</div></div>
+    <div class="kpi"><div class="kpi-lbl">Trades / Year</div><div class="kpi-val amber" id="kFreq">—</div><div class="kpi-sub" id="kTotalTrades">— total</div></div>
+  </div>
+
+  <div class="sec-grid" style="margin-top:8px;">
+    <div class="sec"><span class="sec-lbl">Avg Win</span><span class="sec-val" id="sAvgWin">—</span></div>
+    <div class="sec"><span class="sec-lbl">Avg Loss</span><span class="sec-val" id="sAvgLoss">—</span></div>
+    <div class="sec"><span class="sec-lbl">Avg R:R</span><span class="sec-val" id="sRR">—</span></div>
+    <div class="sec"><span class="sec-lbl">Stop-outs</span><span class="sec-val" id="sStops">—</span></div>
+    <div class="sec"><span class="sec-lbl">Long Trades</span><span class="sec-val" id="sLongs">—</span></div>
+    <div class="sec"><span class="sec-lbl">Short Trades</span><span class="sec-val" id="sShorts">—</span></div>
+    <div class="sec"><span class="sec-lbl">Gate Fire Rate</span><span class="sec-val" id="sFireRate">—</span></div>
+    <div class="sec"><span class="sec-lbl">Calmar Ratio</span><span class="sec-val" id="sCalmar">—</span></div>
+  </div>
+</div>
+
+<!-- Equity curve chart -->
+<div class="card" id="chartCard" style="display:none;">
+  <div class="card-hdr">Equity Curve — NQ-QMR (5yr) <span id="chartSubtitle" style="font-weight:400;color:var(--text3)"></span></div>
+  <div class="card-body">
+    <div class="chart-wrap" id="equityChart"></div>
+  </div>
+</div>
+
+<!-- Annual returns -->
+<div class="card" id="annualCard" style="display:none;">
+  <div class="card-hdr">Annual Performance</div>
+  <div class="card-body">
+    <div class="annual-grid" id="annualGrid"></div>
+  </div>
+</div>
+
+<!-- Gate analysis -->
+<div class="card" id="gateCard" style="display:none;">
+  <div class="card-hdr">Gate Breakdown</div>
+  <div class="card-body">
+    <div class="sec-grid" style="margin-top:0;">
+      <div class="sec"><span class="sec-lbl">Gate 1 LONG days</span><span class="sec-val" id="gG1Long">—</span></div>
+      <div class="sec"><span class="sec-lbl">Gate 1 SHORT days</span><span class="sec-val" id="gG1Short">—</span></div>
+      <div class="sec"><span class="sec-lbl">Gate 2 confirmed</span><span class="sec-val" id="gG2Confirm">—</span></div>
+      <div class="sec"><span class="sec-lbl">G2 reject rate</span><span class="sec-val" id="gG2Reject">—</span></div>
+    </div>
+    <div class="info-box" style="margin-top:10px;">
+      <strong>Gate interpretation:</strong> Gate 1 fires on ~60-70% of trading days (overnight always has a directional lean). Gate 2 rejects roughly half of those because London reverses the Asia direction. The final ~30% of trading days where both gates agree and confirm is where the edge lives.
+    </div>
+  </div>
+</div>
+
+<!-- Trade log -->
+<div class="card" id="tradeCard" style="display:none;">
+  <div class="card-hdr">
+    Trade Log
+    <span style="margin-left:auto;font-weight:400;font-size:11px;color:var(--text3);" id="tradeCount"></span>
+    <button onclick="exportCsv()" style="margin-left:10px;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer;font-family:'DM Mono',monospace;">↓ CSV</button>
+  </div>
+  <div class="tbl-wrap">
+    <table class="tbl" id="tradeTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Dir</th>
+          <th>Gate1</th>
+          <th>Gate2</th>
+          <th>Entry</th>
+          <th>Stop</th>
+          <th>Exit</th>
+          <th>Exit Type</th>
+          <th class="num">Move %</th>
+          <th class="num">P&L % acct</th>
+          <th class="num">Equity</th>
+        </tr>
+      </thead>
+      <tbody id="tradeTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+let _trades = [], _curve = [], _stats = {};
+let _chart = null, _series = null;
+
+function toggleCfg() {
+  const el = document.getElementById('cfgBody');
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+function setStatus(dot, msg) {
+  const d = document.getElementById('statusDot');
+  const m = document.getElementById('statusMsg');
+  if (d) { d.className = 'sdot' + (dot === 'spin' ? ' spin' : dot === 'ok' ? ' ok' : dot === 'err' ? ' err' : ''); }
+  if (m) m.textContent = msg;
+}
+
+async function runBacktest() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  setStatus('spin', 'Fetching 5 years of OANDA H1 NAS100_USD — please wait…');
+
+  const params = new URLSearchParams({
+    gate1Threshold:  document.getElementById('cfg_gate1').value,
+    gate2MinMovePct: document.getElementById('cfg_gate2').value,
+    stopPct:         document.getElementById('cfg_stop').value,
+    riskPct:         document.getElementById('cfg_risk').value,
+    minRangePct:     document.getElementById('cfg_range').value,
+  });
+
+  try {
+    const r = await fetch('/api/nq-qmr/backtest?' + params);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Unknown error');
+    _trades = d.trades || [];
+    _curve  = d.curve  || [];
+    _stats  = d.stats  || {};
+    const cacheEl = document.getElementById('cacheLabel');
+    if (cacheEl) cacheEl.textContent = d.cached ? '(cached)' : `(${_trades.length} trades)`;
+    renderAll();
+    setStatus('ok', `Done — ${_trades.length} trades over ${_curve.length > 1 ? Math.round((new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) * 10) / 10 : '?'} years`);
+  } catch (err) {
+    setStatus('err', 'Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function fmt(n, dp = 1, suffix = '') {
+  if (n == null || !isFinite(n)) return '—';
+  return (n >= 0 ? '+' : '') + n.toFixed(dp) + suffix;
+}
+
+function renderAll() {
+  renderKpis();
+  renderChart();
+  renderAnnual();
+  renderGateBreakdown();
+  renderTradeTable();
+  ['kpiSection','chartCard','annualCard','gateCard','tradeCard'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = '';
+  });
+}
+
+function renderKpis() {
+  const s = _stats;
+  document.getElementById('kTotalRet').textContent  = fmt(s.totalReturn, 1, '%');
+  document.getElementById('kTotalRet').className    = 'kpi-val ' + (s.totalReturn >= 0 ? 'green' : 'red');
+  document.getElementById('kCagr').textContent      = fmt(s.cagr, 1, '%');
+  document.getElementById('kCagr').className        = 'kpi-val ' + (s.cagr >= 0 ? 'green' : 'red');
+  document.getElementById('kSharpe').textContent    = s.sharpe != null ? s.sharpe.toFixed(2) : '—';
+  document.getElementById('kSharpe').className      = 'kpi-val ' + (s.sharpe >= 1.5 ? 'green' : s.sharpe >= 0.8 ? 'amber' : 'red');
+  document.getElementById('kMaxDD').textContent     = '-' + Math.abs(s.maxDD).toFixed(1) + '%';
+  document.getElementById('kWinRate').textContent   = s.winRate != null ? (s.winRate * 100).toFixed(1) + '%' : '—';
+  document.getElementById('kWinRate').className     = 'kpi-val ' + (s.winRate >= 0.55 ? 'green' : s.winRate >= 0.45 ? 'amber' : 'red');
+  document.getElementById('kWins').textContent      = `${s.wins} wins / ${s.n} trades`;
+
+  const years = _curve.length >= 2
+    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25 * 864e5)
+    : 1;
+  const tpy = years > 0 ? (s.n / years).toFixed(1) : '—';
+  document.getElementById('kFreq').textContent      = tpy + '/yr';
+  document.getElementById('kTotalTrades').textContent = s.n + ' total';
+
+  if (_curve.length >= 2) {
+    document.getElementById('kPeriod').textContent =
+      _curve[0].date + ' → ' + _curve[_curve.length-1].date;
+  }
+
+  // Secondary stats
+  const wins  = _trades.filter(t => t.tradeReturn > 0);
+  const losses = _trades.filter(t => t.tradeReturn <= 0);
+  const avgWin  = wins.length  ? wins.reduce((s, t)  => s + t.tradeReturn, 0) / wins.length  : 0;
+  const avgLoss = losses.length ? losses.reduce((s, t) => s + t.tradeReturn, 0) / losses.length : 0;
+  document.getElementById('sAvgWin').textContent  = avgWin  ? fmt(avgWin,  2, '% acct') : '—';
+  document.getElementById('sAvgLoss').textContent = avgLoss ? fmt(avgLoss, 2, '% acct') : '—';
+  document.getElementById('sRR').textContent      = avgLoss ? (Math.abs(avgWin / avgLoss)).toFixed(2) + ':1' : '—';
+  const stops = _trades.filter(t => t.exitReason === 'STOP').length;
+  document.getElementById('sStops').textContent   = stops + ' (' + (s.n ? (stops / s.n * 100).toFixed(0) : 0) + '%)';
+  document.getElementById('sLongs').textContent   = _trades.filter(t => t.direction === 'LONG').length;
+  document.getElementById('sShorts').textContent  = _trades.filter(t => t.direction === 'SHORT').length;
+  const calmar = s.maxDD > 0 ? (s.cagr / s.maxDD).toFixed(2) : '—';
+  document.getElementById('sCalmar').textContent  = calmar;
+  document.getElementById('sFireRate').textContent = '~' + (s.n && years > 0 ? ((s.n / years) / 252 * 100).toFixed(0) : '?') + '% of days';
+}
+
+function renderChart() {
+  const wrap = document.getElementById('equityChart');
+  if (!wrap || !_curve.length) return;
+
+  if (_chart) { _chart.remove(); _chart = null; _series = null; }
+
+  _chart = LightweightCharts.createChart(wrap, {
+    width:  wrap.clientWidth,
+    height: 300,
+    layout: { background: { color: 'transparent' }, textColor: '#94a3b8' },
+    grid:   { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+    rightPriceScale:  { borderColor: '#334155' },
+    timeScale:        { borderColor: '#334155', timeVisible: true },
+    crosshair:        { mode: LightweightCharts.CrosshairMode.Normal },
+  });
+
+  _series = _chart.addAreaSeries({
+    lineColor:   '#f59e0b',
+    topColor:    'rgba(245,158,11,0.3)',
+    bottomColor: 'rgba(245,158,11,0.01)',
+    lineWidth: 2,
+    priceFormat: { type: 'custom', formatter: v => v.toFixed(2) + 'x' },
+  });
+
+  const data = _curve.map(p => ({ time: p.date, value: p.equity }));
+  _series.setData(data);
+  _chart.timeScale().fitContent();
+
+  const sub = document.getElementById('chartSubtitle');
+  if (sub && _curve.length >= 2) {
+    sub.textContent = `${_curve[0].date} → ${_curve[_curve.length-1].date}`;
+  }
+
+  window.addEventListener('resize', () => {
+    if (_chart) _chart.applyOptions({ width: wrap.clientWidth });
+  });
+}
+
+function renderAnnual() {
+  const byYear = {};
+  for (const t of _trades) {
+    const y = t.date.substring(0, 4);
+    if (!byYear[y]) byYear[y] = { ret: 0, n: 0, wins: 0 };
+    byYear[y].ret  += t.tradeReturn;
+    byYear[y].n++;
+    if (t.tradeReturn > 0) byYear[y].wins++;
+  }
+  const grid = document.getElementById('annualGrid');
+  if (!grid) return;
+  grid.innerHTML = Object.entries(byYear).sort((a, b) => a[0].localeCompare(b[0])).map(([yr, d]) => {
+    const color = d.ret >= 20 ? '#10b981' : d.ret >= 0 ? '#34d399' : '#ef4444';
+    const wr = d.n ? (d.wins / d.n * 100).toFixed(0) : 0;
+    return `<div class="annual-cell">
+      <div class="annual-year">${yr}</div>
+      <div class="annual-ret" style="color:${color}">${d.ret >= 0 ? '+' : ''}${d.ret.toFixed(0)}%</div>
+      <div class="annual-n">${d.n} trades · ${wr}% wr</div>
+    </div>`;
+  }).join('');
+}
+
+function renderGateBreakdown() {
+  const g1L = _trades.filter(t => t.gate1 === 'LONG').length;
+  const g1S = _trades.filter(t => t.gate1 === 'SHORT').length;
+  const total = _trades.length;
+  document.getElementById('gG1Long').textContent    = g1L;
+  document.getElementById('gG1Short').textContent   = g1S;
+  document.getElementById('gG2Confirm').textContent = total;
+  // Gate 2 reject is implied: we can estimate from total trading days
+  const years = _curve.length >= 2
+    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25 * 864e5)
+    : 1;
+  const tradingDays = Math.round(years * 252);
+  const rejectRate  = tradingDays > 0 ? ((1 - total / tradingDays) * 100).toFixed(0) : '?';
+  document.getElementById('gG2Reject').textContent  = rejectRate + '% of trading days';
+  document.getElementById('sFireRate').textContent  = (100 - parseInt(rejectRate)) + '% of days';
+}
+
+function renderTradeTable() {
+  const tbody = document.getElementById('tradeTbody');
+  const count = document.getElementById('tradeCount');
+  if (!tbody) return;
+  if (count) count.textContent = _trades.length + ' trades';
+
+  const rows = [..._trades].reverse().map(t => {
+    const isWin = t.tradeReturn > 0;
+    const cls   = isWin ? 'win' : 'loss';
+    const dCls  = t.direction === 'LONG' ? 'win' : 'loss';
+    return `<tr>
+      <td>${t.date}</td>
+      <td class="${dCls}">${t.direction === 'LONG' ? '▲ LONG' : '▼ SHORT'}</td>
+      <td><span class="gate-pill gate-${t.gate1.toLowerCase()}">${t.gate1}</span></td>
+      <td><span class="gate-pill gate-${t.gate2.toLowerCase()}">${t.gate2}</span></td>
+      <td class="num">${t.entry?.toFixed(1) ?? '—'}</td>
+      <td class="num">${t.stop?.toFixed(1)  ?? '—'}</td>
+      <td class="num">${t.exit?.toFixed(1)  ?? '—'}</td>
+      <td style="color:${t.exitReason==='STOP'?'#ef4444':'var(--text3)'}">${t.exitReason}</td>
+      <td class="num ${cls}">${t.movePct >= 0 ? '+' : ''}${t.movePct?.toFixed(2) ?? '—'}%</td>
+      <td class="num ${cls}">${t.tradeReturn >= 0 ? '+' : ''}${t.tradeReturn?.toFixed(2) ?? '—'}%</td>
+      <td class="num">${t.equity?.toFixed(3) ?? '—'}x</td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = rows || '<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:20px;">No trades</td></tr>';
+}
+
+function exportCsv() {
+  if (!_trades.length) return;
+  const hdr = 'Date,Direction,Gate1,Gate2,Entry,Stop,Exit,ExitType,Move%,PnL%,Equity\n';
+  const rows = _trades.map(t =>
+    `${t.date},${t.direction},${t.gate1},${t.gate2},${t.entry?.toFixed(2)},${t.stop?.toFixed(2)},${t.exit?.toFixed(2)},${t.exitReason},${t.movePct?.toFixed(3)},${t.tradeReturn?.toFixed(3)},${t.equity?.toFixed(6)}`
+  ).join('\n');
+  const blob = new Blob([hdr + rows], { type: 'text/csv' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'nq-qmr-backtest.csv' });
+  a.click();
+}
+</script>
+</body>
+</html>

@@ -1245,7 +1245,10 @@
       style="width:44px;background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:2px 4px;border-radius:3px"
       onchange="_buildHRPanel()" title="Take profit distance in ATR30 multiples">
     <span style="font-size:9px;color:var(--text3)">ATR30</span>
-    <div class="vf-lhist-inst-tabs" style="margin-left:auto">
+    <span style="font-size:9px;color:var(--text3);padding:0 4px;opacity:.35">|</span>
+    <button id="vfHRModeTpsl" onclick="_hrSetDisplayMode('tpsl')" class="dark-btn" style="padding:2px 8px;font-size:10px;color:var(--blue);border-color:var(--blue-bd)">TP/SL</button>
+    <button id="vfHRModeTiming" onclick="_hrSetDisplayMode('timing')" class="dark-btn" style="padding:2px 8px;font-size:10px">Hit Timing</button>
+    <div class="vf-lhist-inst-tabs" id="vfHRViewTabsContainer" style="margin-left:auto">
       <div class="vf-lhist-tab active" id="vfHRTabOverview" onclick="_hrSetView('overview',this)">Overview</div>
       <div class="vf-lhist-tab" id="vfHRTabDay" onclick="_hrSetView('day',this)">Day Log</div>
     </div>
@@ -1263,6 +1266,18 @@
       <button class="dark-btn" style="padding:2px 8px;font-size:10px;margin-left:auto" onclick="_hrCopyDay()">📋 Copy</button>
     </div>
     <div class="vf-lhist-scroll" id="vfHRDayBody"></div>
+  </div>
+  <!-- Hit Timing view -->
+  <div id="vfHRTimingView" style="display:none">
+    <div style="display:flex;gap:4px;padding:8px 16px 0;border-bottom:1px solid var(--border)">
+      <div class="vf-lhist-tab active" id="vfHRTim90d" onclick="_hrTimingPeriod('90d',this)">90 Days</div>
+      <div class="vf-lhist-tab" id="vfHRTim6m" onclick="_hrTimingPeriod('6m',this)">6 Months</div>
+      <div class="vf-lhist-tab" id="vfHRTim1y" onclick="_hrTimingPeriod('1y',this)">1 Year</div>
+      <span style="margin-left:auto;font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);align-self:center">Peak UTC hour each forecast level is typically first touched</span>
+    </div>
+    <div class="vf-lhist-scroll" id="vfHRTimingBody">
+      <div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">Click ↻ Compute (90d) then switch to Hit Timing to see when levels are typically hit.</div>
+    </div>
   </div>
 </div>
 
@@ -2740,6 +2755,7 @@ function _buildHRPanel() {
     age.textContent = `computed ${new Date(_hitRateData.computed_at).toLocaleDateString()} · ${_hitRateData.lookback_days ?? '?'}d`;
 
   _renderHROverview();
+  if (_hrDisplayMode === 'timing') _renderHRTiming(_hrTimingPeriodCurrent);
 }
 
 function _hrSetView(view, el) {
@@ -2975,6 +2991,149 @@ function _hrCopyDay() {
       if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000); }
     })
     .catch(() => alert('Clipboard write failed — try HTTPS'));
+}
+
+// ── Hit-rate display mode: 'tpsl' (default) | 'timing' ───────────────────────
+let _hrDisplayMode = 'tpsl';
+let _hrTimingPeriodCurrent = '90d';
+
+function _hrSetDisplayMode(mode) {
+  _hrDisplayMode = mode;
+  const isTpsl = mode === 'tpsl';
+  const tpslBtn   = document.getElementById('vfHRModeTpsl');
+  const timingBtn = document.getElementById('vfHRModeTiming');
+  tpslBtn.style.color       = isTpsl ? 'var(--blue)' : '';
+  tpslBtn.style.borderColor = isTpsl ? 'var(--blue-bd)' : '';
+  timingBtn.style.color       = !isTpsl ? 'var(--blue)' : '';
+  timingBtn.style.borderColor = !isTpsl ? 'var(--blue-bd)' : '';
+  document.getElementById('vfHRViewTabsContainer').style.display = isTpsl ? '' : 'none';
+  const ov = document.getElementById('vfHROverview');
+  const db = document.getElementById('vfHRDayBrowser');
+  const tv = document.getElementById('vfHRTimingView');
+  if (isTpsl) {
+    ov.style.display = _hrView === 'overview' ? '' : 'none';
+    db.style.display = _hrView === 'day'      ? '' : 'none';
+    tv.style.display = 'none';
+  } else {
+    ov.style.display = 'none';
+    db.style.display = 'none';
+    tv.style.display = '';
+    _renderHRTiming(_hrTimingPeriodCurrent);
+  }
+}
+
+function _hrTimingPeriod(period, el) {
+  _hrTimingPeriodCurrent = period;
+  document.querySelectorAll('#vfHRTim90d,#vfHRTim6m,#vfHRTim1y').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  _renderHRTiming(period);
+}
+
+function _hrPeriodCutoff(period) {
+  const days = period === '90d' ? 90 : period === '6m' ? 180 : 365;
+  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+}
+
+function _hrHourSession(h) {
+  if (h < 7)  return 'Asia';
+  if (h < 13) return 'London';
+  if (h < 22) return 'NY';
+  return 'Late';
+}
+
+function _hrHourColor(h) {
+  if (h < 7)  return '#7c3aed';
+  if (h < 13) return 'var(--blue)';
+  if (h < 22) return '#0891b2';
+  return 'var(--text3)';
+}
+
+function _hrTimingStats(daily, lvl, cutoff) {
+  const filtered = cutoff ? daily.filter(d => d.date >= cutoff) : daily;
+  if (!filtered.length) return null;
+  let hitCount = 0;
+  const hourFreq = {};
+  for (const day of filtered) {
+    const t = day.hits?.[lvl];
+    if (!t) continue;
+    hitCount++;
+    const h = parseInt(t.split(':')[0], 10);
+    if (!isNaN(h)) hourFreq[h] = (hourFreq[h] ?? 0) + 1;
+  }
+  if (!hitCount) return { hit_pct: 0, hit_count: 0, total: filtered.length, modal_hour: null, modal_pct: 0 };
+  let modal = null, modalFreq = 0;
+  for (const [h, f] of Object.entries(hourFreq)) {
+    if (f > modalFreq) { modalFreq = f; modal = parseInt(h, 10); }
+  }
+  return {
+    hit_pct: Math.round(hitCount / filtered.length * 100),
+    hit_count: hitCount,
+    total: filtered.length,
+    modal_hour: modal,
+    modal_pct: Math.round(modalFreq / hitCount * 100),
+  };
+}
+
+function _renderHRTiming(period) {
+  const body = document.getElementById('vfHRTimingBody');
+  if (!_hitRateData?.instruments) {
+    body.innerHTML = '<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text3)">No hit rate data yet — click ↻ Compute (90d) first.</div>';
+    return;
+  }
+  const cutoff = _hrPeriodCutoff(period);
+  const GRP_COLORS  = ['rgba(56,193,114,.07)', 'rgba(239,68,68,.07)', 'rgba(250,176,5,.07)'];
+  const GRP_BORDERS = ['rgba(56,193,114,0.4)', 'rgba(239,68,68,0.4)', 'rgba(250,176,5,0.4)'];
+  const GRP_LABELS  = ['O→H  Open-High', 'O→L  Open-Low', 'H-L  Day Range'];
+  const LEVELS = [
+    { key: 'oh_med', sub: 'Med',  grp: 0 }, { key: 'oh_75', sub: '75th', grp: 0 },
+    { key: 'ol_med', sub: 'Med',  grp: 1 }, { key: 'ol_75', sub: '75th', grp: 1 },
+    { key: 'hl_med', sub: 'Med',  grp: 2 }, { key: 'hl_75', sub: '75th', grp: 2 },
+  ];
+  const grpHdr = GRP_LABELS.map((l, i) =>
+    `<th colspan="2" style="padding:4px 8px;text-align:center;font-size:9px;font-weight:700;letter-spacing:.04em;border-bottom:1px solid var(--border);border-left:2px solid ${GRP_BORDERS[i]};background:${GRP_COLORS[i]};color:var(--text2)">${l}</th>`
+  ).join('');
+  const subHdr = LEVELS.map(l =>
+    `<th style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text3);letter-spacing:.04em;border-bottom:1px solid var(--border);background:${GRP_COLORS[l.grp]}">${l.sub}</th>`
+  ).join('');
+  const hdr = `<thead><tr>
+    <th rowspan="2" style="padding:5px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)">Instrument</th>
+    ${grpHdr}</tr><tr>${subHdr}</tr></thead>`;
+
+  const names = Object.keys(_hitRateData.instruments).filter(n => _hitRateData.instruments[n]);
+  let maxDays = 0;
+  const rows = names.map(name => {
+    const daily = _hitRateData.instruments[name]?.daily ?? [];
+    const cells = LEVELS.map(l => {
+      const st = _hrTimingStats(daily, l.key, cutoff);
+      if (!st) return `<td style="padding:4px 8px;text-align:center;color:var(--text3);background:${GRP_COLORS[l.grp]};border-bottom:1px solid var(--border)">—</td>`;
+      if (st.total > maxDays) maxDays = st.total;
+      const rateColor = st.hit_pct >= 70 ? 'var(--green)' : st.hit_pct >= 50 ? 'var(--amber)' : 'var(--text3)';
+      let hourHtml = '<div style="font-size:8px;color:var(--text3)">no hits</div>';
+      if (st.modal_hour != null) {
+        const h   = st.modal_hour;
+        const col = _hrHourColor(h);
+        const h12 = h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`;
+        hourHtml  = `<div style="font-size:9px;font-weight:600;color:${col}">${String(h).padStart(2,'0')}:00 UTC</div>
+                     <div style="font-size:8px;color:var(--text3)">${h12} · ${_hrHourSession(h)}</div>
+                     <div style="font-size:8px;color:var(--text3);opacity:.65">${st.modal_pct}% of hits</div>`;
+      }
+      return `<td style="padding:3px 6px;text-align:center;border-bottom:1px solid var(--border);background:${GRP_COLORS[l.grp]}">
+        <div style="font-size:11px;font-weight:600;color:${rateColor}">${st.hit_pct}%</div>${hourHtml}</td>`;
+    }).join('');
+    return `<tr onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''">
+      <td style="padding:4px 10px;font-weight:600;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap">${name}</td>
+      ${cells}</tr>`;
+  }).join('');
+
+  const periodDays = period === '90d' ? 90 : period === '6m' ? 180 : 365;
+  const warn = maxDays && maxDays < Math.round(periodDays * 0.65)
+    ? `<div style="padding:6px 14px;font-size:10px;font-family:'DM Mono',monospace;color:var(--amber);background:var(--amber-bg);border-bottom:1px solid var(--amber-bd)">
+        ⚠ Computed data covers ~${maxDays} days. Re-run Compute for full ${period} coverage.</div>` : '';
+
+  body.innerHTML = `${warn}<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:'DM Mono',monospace">${hdr}<tbody>${rows}</tbody></table></div>
+    <div style="padding:5px 12px 8px;font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)">
+      Peak hour = UTC hour where most first-touches occur · <span style="color:#7c3aed">■</span> Asia 00–06 · <span style="color:var(--blue)">■</span> London 07–12 · <span style="color:#0891b2">■</span> NY 13–21
+    </div>`;
 }
 
 // ── Breakout extension probability ───────────────────────────────────────────

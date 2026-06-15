@@ -335,6 +335,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="hedgebot" onclick="switchTab('hedgebot')" style="color:#06b6d4" id="hbTabBtn">🔀 Hedge Bot</button>
     <button class="tab-btn" data-tab="poshedgebot" onclick="switchTab('poshedgebot')" style="color:#10b981" id="phbTabBtn">🛡 Pos Hedge</button>
     <button class="tab-btn" data-tab="macroequity" onclick="switchTab('macroequity')" style="color:#818cf8" id="meTabBtn">📈 Macro Equity</button>
+    <button class="tab-btn" data-tab="nqqmr" onclick="switchTab('nqqmr')" style="color:#f59e0b" id="nqTabBtn">🎯 NQ-QMR</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
   </div>
 
@@ -2433,6 +2434,238 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
   </div><!-- /tab-macroequity -->
 
+  <!-- ══════════════════════════════════════════════════════ NQ-QMR TAB -->
+  <div class="tab-pane" id="tab-nqqmr">
+
+    <div class="bot-banner" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.28)">
+      <div class="bot-banner-icon">🎯</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#f59e0b">NQ-QMR — Signal Relay</div>
+        <div class="bot-banner-sub">External quant system · NQ (Nasdaq-100) · ~1-2 entries/week · 09:25 ET entry window · Two-gate validation before each trade</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0;align-items:center">
+        <a href="nq-qmr-backtest.html" style="text-decoration:none">
+          <button style="background:transparent;border:1px solid #f59e0b;border-radius:7px;color:#f59e0b;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Backtester</button>
+        </a>
+        <button style="background:#f59e0b;border:none;border-radius:7px;color:#111;font-weight:700;padding:8px 16px;cursor:pointer;font-size:12px" onclick="nqSaveGates()">Save Gates</button>
+        <button style="background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--text3);font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px" onclick="nqLoadStatus()">↺ Refresh</button>
+      </div>
+    </div>
+
+    <!-- ── Auto-Monitor Live Status ─────────────────────────────────────────── -->
+    <div class="card" style="margin-top:12px;padding:0;border-color:rgba(245,158,11,.3)">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 8px;border-bottom:1px solid var(--border)">
+        <span style="font-size:12px;font-weight:700;color:#f59e0b;font-family:'DM Mono',monospace">AUTO-MONITOR — Today</span>
+        <span id="nqMonAge" style="font-size:11px;color:var(--text3)">Loading…</span>
+        <span style="flex:1"></span>
+        <span id="nqMonNews" style="font-size:11px;font-family:'DM Mono',monospace"></span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0">
+        <div style="padding:12px 16px;border-right:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:'DM Mono',monospace">Gate 1 (04:48 ET)</div>
+          <div id="nqMonG1" style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text3);margin-top:4px">—</div>
+          <div id="nqMonG1Data" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px"></div>
+        </div>
+        <div style="padding:12px 16px;border-right:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:'DM Mono',monospace">Gate 2 (07:40 ET)</div>
+          <div id="nqMonG2" style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text3);margin-top:4px">—</div>
+          <div id="nqMonG2Data" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px"></div>
+        </div>
+        <div style="padding:12px 16px">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:'DM Mono',monospace">Entry Signal (09:25 ET)</div>
+          <div id="nqMonEntry" style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text3);margin-top:4px">—</div>
+          <div id="nqMonEntryData" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Gate Status ──────────────────────────────────────────────────────── -->
+    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;margin:16px 0 8px">Quant Signal Gates — manual log from external Telegram</div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:0">
+
+      <div class="card" style="border-top:3px solid #f59e0b">
+        <div class="card-title" style="color:#f59e0b">Gate 1 — Asia/London Open</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;font-family:'DM Mono',monospace">~09:48 LDN · "Data threshold 1 validated"</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div id="nqGate1Dot" style="width:14px;height:14px;border-radius:50%;background:var(--border2);flex-shrink:0"></div>
+          <div>
+            <div id="nqGate1Status" style="font-size:13px;font-weight:600;color:var(--text3);font-family:'DM Mono',monospace">Awaiting signal</div>
+            <div id="nqGate1Time"   style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Signal received at</span>
+          <input type="datetime-local" id="nq_gate1_ts" style="width:200px;font-family:monospace;font-size:12px">
+        </div>
+        <div style="margin-top:10px">
+          <button onclick="nqMarkGate(1,'PASS')" style="background:rgba(16,185,129,.15);border:1px solid #10b981;color:#10b981;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:600;margin-right:6px">✓ Pass</button>
+          <button onclick="nqMarkGate(1,'FAIL')" style="background:rgba(239,68,68,.1);border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:600">✗ Fail</button>
+          <button onclick="nqMarkGate(1,null)"  style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;margin-left:6px">Reset</button>
+        </div>
+      </div>
+
+      <div class="card" style="border-top:3px solid #f59e0b">
+        <div class="card-title" style="color:#f59e0b">Gate 2 — London Mid</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;font-family:'DM Mono',monospace">~12:40 LDN · "Data threshold 2 validated"</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div id="nqGate2Dot" style="width:14px;height:14px;border-radius:50%;background:var(--border2);flex-shrink:0"></div>
+          <div>
+            <div id="nqGate2Status" style="font-size:13px;font-weight:600;color:var(--text3);font-family:'DM Mono',monospace">Awaiting signal</div>
+            <div id="nqGate2Time"   style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Signal received at</span>
+          <input type="datetime-local" id="nq_gate2_ts" style="width:200px;font-family:monospace;font-size:12px">
+        </div>
+        <div style="margin-top:10px">
+          <button onclick="nqMarkGate(2,'PASS')" style="background:rgba(16,185,129,.15);border:1px solid #10b981;color:#10b981;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:600;margin-right:6px">✓ Pass</button>
+          <button onclick="nqMarkGate(2,'FAIL')" style="background:rgba(239,68,68,.1);border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:600">✗ Fail</button>
+          <button onclick="nqMarkGate(2,null)"  style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;margin-left:6px">Reset</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Entry clearance banner -->
+    <div id="nqEntryClearance" style="display:none;margin-top:10px;padding:12px 18px;border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;font-weight:700"></div>
+
+    <!-- ── Position Sizer ────────────────────────────────────────────────────── -->
+    <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:12px">
+
+      <div class="card">
+        <div class="card-title">Position Sizer</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:14px">Fixed per quant spec: 0.5% stop distance · 1.8% max risk. Enter your account size and NQ entry price to get contract count.</div>
+        <div class="form-row"><span class="form-lbl">Account size (USD)</span><input type="number" id="nq_acc_size" value="50000" min="1000" step="1000" style="width:110px"></div>
+        <div class="form-row">
+          <span class="form-lbl">NQ entry price (est.)</span>
+          <input type="number" id="nq_entry_price" placeholder="21200" min="1" step="0.25" style="width:110px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Stop distance %</span>
+          <input type="number" id="nq_stop_pct" value="0.5" min="0.1" max="5" step="0.1" style="width:80px">
+          <span style="font-size:11px;color:var(--text3);margin-left:6px">fixed by quant</span>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max risk %</span>
+          <input type="number" id="nq_risk_pct" value="1.8" min="0.1" max="5" step="0.1" style="width:80px">
+          <span style="font-size:11px;color:var(--text3);margin-left:6px">fixed by quant</span>
+        </div>
+        <button onclick="nqCalcSize()" style="margin-top:14px;background:#f59e0b;border:none;border-radius:7px;color:#111;font-weight:700;padding:9px 20px;cursor:pointer;font-size:13px">Calculate</button>
+        <div id="nqSizerResult" style="margin-top:14px;display:none">
+          <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:14px 16px;font-family:'DM Mono',monospace">
+            <div style="display:flex;gap:24px;flex-wrap:wrap">
+              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Stop Distance</div><div id="nqResStop"   style="font-size:18px;font-weight:700;color:#f59e0b;margin-top:3px"></div></div>
+              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Max Risk $</div>   <div id="nqResRisk"   style="font-size:18px;font-weight:700;color:#f59e0b;margin-top:3px"></div></div>
+              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Contracts</div>     <div id="nqResContr" style="font-size:28px;font-weight:800;color:#f59e0b;margin-top:1px"></div></div>
+            </div>
+            <div id="nqResNote" style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Log a Trade ─────────────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Log Trade Entry</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:14px">After your order fills at 09:25 ET, log the trade here. It appears in the Positions table immediately.</div>
+        <div class="form-row">
+          <span class="form-lbl">Symbol</span>
+          <input type="text" id="nq_sym" value="NQ" style="width:90px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Direction</span>
+          <div class="radio-group">
+            <label><input type="radio" name="nq_dir" value="BUY"  checked> LONG</label>
+            <label><input type="radio" name="nq_dir" value="SELL"> SHORT</label>
+          </div>
+        </div>
+        <div class="form-row"><span class="form-lbl">Contracts</span><input type="number" id="nq_lots"  value="1" min="1" step="1"    style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Entry price</span><input type="number" id="nq_ep"  placeholder="21200" step="0.25" style="width:110px"></div>
+        <div class="form-row"><span class="form-lbl">Stop price</span> <input type="number" id="nq_sl"  placeholder="21095" step="0.25" style="width:110px"></div>
+        <div class="form-row"><span class="form-lbl">Ticket #</span>   <input type="number" id="nq_tkt" placeholder="auto"             style="width:110px"></div>
+        <button onclick="nqLogTrade()" style="margin-top:14px;background:#10b981;border:none;border-radius:7px;color:#fff;font-weight:700;padding:9px 20px;cursor:pointer;font-size:13px">Log Trade →</button>
+        <span id="nqLogStatus" style="font-size:12px;color:var(--text3);margin-left:10px"></span>
+      </div>
+
+    </div>
+
+    <!-- ── Monitor Config ───────────────────────────────────────────────────── -->
+    <div class="card" style="margin-top:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="font-size:12px;font-weight:600;color:var(--text2)">Live Monitor Config</span>
+        <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">Controls the server-side gate checks — saved to KV, read by Railway on each gate check</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:14px">
+        <div>
+          <div class="toggle-wrap" style="margin-bottom:12px">
+            <input type="checkbox" id="nqCfgEnabled" checked>
+            <label for="nqCfgEnabled">Monitor enabled <small>uncheck to suppress all gate signals and Telegram alerts</small></label>
+          </div>
+          <div class="toggle-wrap">
+            <input type="checkbox" id="nqCfgNewsFilter" checked>
+            <label for="nqCfgNewsFilter">News filter <small>suppress entry on high-impact 08:30 ET releases (requires FINNHUB_KEY)</small></label>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;line-height:1.7;background:var(--s2);border-radius:6px;padding:10px 12px">
+          <b style="color:var(--text)">Schedule (UTC):</b><br>
+          07:00 — Day open + news check<br>
+          09:05 — Gate 1 (Asia overnight range)<br>
+          12:05 — Gate 2 (London momentum)<br>
+          13:05 — Entry signal (09:25 ET)<br>
+          20:30 — EOD summary
+        </div>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px">
+        <div class="form-row" style="flex-direction:column;align-items:flex-start;gap:4px;min-width:160px">
+          <span class="form-lbl" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em">Gate 1 Range Threshold</span>
+          <input type="number" id="nqCfgG1Thresh" value="0.60" min="0.50" max="0.90" step="0.05" style="width:90px">
+          <span style="font-size:10px;color:var(--text3)">0.60 = top/bottom 40% of overnight range</span>
+        </div>
+        <div class="form-row" style="flex-direction:column;align-items:flex-start;gap:4px;min-width:160px">
+          <span class="form-lbl" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em">Gate 2 Min London Move %</span>
+          <input type="number" id="nqCfgG2Move" value="0.10" min="0.02" max="1.00" step="0.02" style="width:90px">
+          <span style="font-size:10px;color:var(--text3)">min % London must move to confirm</span>
+        </div>
+        <div class="form-row" style="flex-direction:column;align-items:flex-start;gap:4px;min-width:160px">
+          <span class="form-lbl" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em">Min Overnight Range %</span>
+          <input type="number" id="nqCfgMinRange" value="0.15" min="0.05" max="1.00" step="0.05" style="width:90px">
+          <span style="font-size:10px;color:var(--text3)">skip flat overnight sessions</span>
+        </div>
+        <div class="form-row" style="flex-direction:column;align-items:flex-start;gap:4px;min-width:160px">
+          <span class="form-lbl" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em">Stop Distance %</span>
+          <input type="number" id="nqCfgStop" value="0.50" min="0.10" max="2.00" step="0.05" style="width:90px">
+          <span style="font-size:10px;color:var(--text3)">for entry signal display only</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn-save" style="background:#f59e0b;color:#111;max-width:180px" onclick="nqSaveConfig()">Save Monitor Config</button>
+        <button class="btn-save" style="background:var(--s2);color:var(--text1);max-width:140px;border:1px solid var(--bd)" onclick="nqLoadConfig()">↺ Load Saved</button>
+        <span id="nqCfgStatus" class="inline-status"></span>
+      </div>
+    </div>
+
+    <!-- ── Open Position ─────────────────────────────────────────────────────── -->
+    <div class="card" style="margin-top:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:12px;font-weight:600;color:#f59e0b">Open Position</span>
+        <span id="nqPosAge" style="font-size:11px;color:var(--text3)"></span>
+        <button onclick="nqCloseTrade()" id="nqCloseBtn" style="display:none;margin-left:auto;background:transparent;border:1px solid #ef4444;border-radius:6px;color:#ef4444;font-weight:600;padding:4px 14px;cursor:pointer;font-size:12px">Close / Exit</button>
+      </div>
+      <div id="nqOpenPos" style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">No open NQ-QMR position. Log a trade above to populate.</div>
+    </div>
+
+    <!-- ── Session P&L ──────────────────────────────────────────────────────── -->
+    <div class="card" style="margin-top:10px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px">Today's Closed Trades</div>
+      <div id="nqClosedTrades" style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">No closed trades today.</div>
+    </div>
+
+    <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;padding:8px 0">
+      Gate timestamps and positions are stored in KV under <code>nq_qmr_status</code>. History persists until manually cleared.
+    </div>
+
+  </div><!-- /tab-nqqmr -->
+
   <div class="tab-pane" id="tab-positions">
 
     <!-- Sub-tabs: Live / History / Hedge Audit -->
@@ -2464,6 +2697,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         <span class="pos-bot-badge" style="background:#1e1b4b;border:1px solid #4338ca;color:#a78bfa">Regime V2</span>
         <span class="pos-bot-badge" style="background:var(--s2);border:1px solid var(--border);color:var(--text3)">Backtest</span>
         <span class="pos-bot-badge" style="background:#292100;border:1px solid #78610a;color:#f59e0b">DynAnchor</span>
+        <span class="pos-bot-badge" style="background:#1a1200;border:1px solid #b45309;color:#f59e0b;font-weight:700">NQ-QMR</span>
       </div>
 
       <div class="pos-table-wrap">
@@ -3070,6 +3304,369 @@ document.querySelector('.tab-btn[data-tab="beta"]')?.addEventListener('click', (
   loadBetaTargets();
 });
 
+// ── NQ-QMR tab ────────────────────────────────────────────────────────────────
+const NQ_KV_KEY = 'nq_qmr_status';
+
+async function nqLoadStatus() {
+  const data = await _kvGet(NQ_KV_KEY);
+  if (!data) return;
+  _nqRenderGates(data.gates || {});
+  _nqRenderOpenPos(data.mt5_positions || []);
+  _nqRenderClosed(data.today_closed_trades || []);
+  const el = document.getElementById('nqPosAge');
+  if (el && data.pushed_at) {
+    const age = Math.round((Date.now() / 1000) - data.pushed_at);
+    el.textContent = `Updated ${age < 60 ? age + 's' : Math.round(age/60) + 'm'} ago`;
+  }
+}
+
+function _nqGateDot(el, state) {
+  const dot = document.getElementById(el);
+  if (!dot) return;
+  dot.style.background = state === 'PASS' ? '#10b981'
+                       : state === 'FAIL' ? '#ef4444'
+                       : 'var(--border2)';
+  dot.style.boxShadow = state === 'PASS' ? '0 0 7px #10b981'
+                      : state === 'FAIL' ? '0 0 7px #ef4444'
+                      : 'none';
+}
+
+function _nqRenderGates(gates) {
+  ['gate1','gate2'].forEach((g, i) => {
+    const n = i + 1;
+    const state = gates[g]?.state || null;
+    const ts    = gates[g]?.ts    || null;
+    _nqGateDot(`nqGate${n}Dot`, state);
+    const stEl = document.getElementById(`nqGate${n}Status`);
+    const tEl  = document.getElementById(`nqGate${n}Time`);
+    if (stEl) {
+      stEl.textContent = state === 'PASS' ? 'VALIDATED ✓'
+                       : state === 'FAIL' ? 'NO SIGNAL ✗'
+                       : 'Awaiting signal';
+      stEl.style.color = state === 'PASS' ? '#10b981'
+                       : state === 'FAIL' ? '#ef4444'
+                       : 'var(--text3)';
+    }
+    if (tEl && ts) tEl.textContent = new Date(ts).toLocaleString();
+    const tsInput = document.getElementById(`nq_gate${n}_ts`);
+    if (tsInput && ts) tsInput.value = new Date(ts).toISOString().slice(0,16);
+  });
+  // Entry clearance banner
+  const g1 = gates.gate1?.state, g2 = gates.gate2?.state;
+  const banner = document.getElementById('nqEntryClearance');
+  if (banner) {
+    if (g1 === 'PASS' && g2 === 'PASS') {
+      banner.style.display = 'block';
+      banner.style.background = 'rgba(16,185,129,.12)';
+      banner.style.border = '1px solid #10b981';
+      banner.style.color = '#10b981';
+      banner.textContent = '✓ BOTH GATES CLEAR — ENTRY WINDOW ACTIVE. Place order at 09:25 ET.';
+    } else if (g1 === 'FAIL' || g2 === 'FAIL') {
+      banner.style.display = 'block';
+      banner.style.background = 'rgba(239,68,68,.08)';
+      banner.style.border = '1px solid #ef4444';
+      banner.style.color = '#ef4444';
+      banner.textContent = '✗ GATE FAILED — No trade today.';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+}
+
+function _nqRenderOpenPos(positions) {
+  const el = document.getElementById('nqOpenPos');
+  const btn = document.getElementById('nqCloseBtn');
+  if (!el) return;
+  if (!positions.length) {
+    el.textContent = 'No open NQ-QMR position. Log a trade above to populate.';
+    if (btn) btn.style.display = 'none';
+    return;
+  }
+  const p = positions[0];
+  const dir = p.direction === 'BUY' ? '▲ LONG' : '▼ SHORT';
+  const pnl = (p.profit || 0) + (p.swap || 0);
+  const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
+  el.innerHTML = `<table style="border-collapse:collapse;font-size:12px">
+    <tr><td style="padding:4px 14px 4px 0;color:var(--text3)">Symbol</td><td style="font-weight:700">${p.symbol || 'NQ'}</td>
+        <td style="padding:4px 24px">Dir</td><td style="font-weight:700;color:${p.direction==='BUY'?'#10b981':'#ef4444'}">${dir}</td></tr>
+    <tr><td style="padding:4px 14px 4px 0;color:var(--text3)">Contracts</td><td style="font-weight:700">${p.lots || 1}</td>
+        <td style="padding:4px 24px">Entry</td><td>${p.price_open?.toFixed(2) || '—'}</td></tr>
+    <tr><td style="padding:4px 14px 4px 0;color:var(--text3)">Stop</td><td>${p.sl?.toFixed(2) || '—'}</td>
+        <td style="padding:4px 24px">P&amp;L</td><td style="font-weight:700;color:${pnlColor}">${pnl>=0?'+':''}${pnl.toFixed(2)}</td></tr>
+    <tr><td style="padding:4px 14px 4px 0;color:var(--text3)">Ticket</td><td>${p.ticket || '—'}</td>
+        <td style="padding:4px 24px">Opened</td><td>${p.time ? new Date(p.time*1000).toLocaleString() : '—'}</td></tr>
+  </table>`;
+  if (btn) btn.style.display = '';
+}
+
+function _nqRenderClosed(trades) {
+  const el = document.getElementById('nqClosedTrades');
+  if (!el) return;
+  if (!trades.length) { el.textContent = 'No closed trades today.'; return; }
+  let totalPnl = 0;
+  const rows = trades.map(t => {
+    const pnl = (t.profit || 0) + (t.swap || 0);
+    totalPnl += pnl;
+    const c = pnl >= 0 ? '#10b981' : '#ef4444';
+    return `<tr>
+      <td style="padding:5px 12px 5px 0">${t.symbol || 'NQ'}</td>
+      <td style="padding:5px 12px;color:${t.direction==='BUY'?'#10b981':'#ef4444'}">${t.direction||'—'}</td>
+      <td style="padding:5px 12px">${t.lots || 1}ct</td>
+      <td style="padding:5px 12px">${t.price_open?.toFixed(2) || '—'} → ${t.price_close?.toFixed(2) || '—'}</td>
+      <td style="padding:5px 0;font-weight:700;color:${c}">${pnl>=0?'+':''}${pnl.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+  const totC = totalPnl >= 0 ? '#10b981' : '#ef4444';
+  el.innerHTML = `<table style="border-collapse:collapse;font-size:12px;width:100%">
+    <thead><tr style="color:var(--text3)">
+      <th style="text-align:left;padding:4px 12px 8px 0">Symbol</th>
+      <th style="text-align:left;padding:4px 12px">Dir</th>
+      <th style="text-align:left;padding:4px 12px">Size</th>
+      <th style="text-align:left;padding:4px 12px">Entry → Exit</th>
+      <th style="text-align:left;padding:4px 0">P&amp;L</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr style="border-top:1px solid var(--border)">
+      <td colspan="4" style="padding:8px 12px 4px 0;color:var(--text3)">Day total</td>
+      <td style="padding:8px 0 4px;font-weight:800;color:${totC}">${totalPnl>=0?'+':''}${totalPnl.toFixed(2)}</td>
+    </tr></tfoot>
+  </table>`;
+}
+
+async function nqMarkGate(n, state) {
+  const tsInput = document.getElementById(`nq_gate${n}_ts`);
+  const ts = state ? (tsInput?.value ? new Date(tsInput.value).getTime() : Date.now()) : null;
+  const data = (await _kvGet(NQ_KV_KEY)) || { gates: {}, mt5_positions: [], today_closed_trades: [] };
+  if (!data.gates) data.gates = {};
+  data.gates[`gate${n}`] = state ? { state, ts } : { state: null, ts: null };
+  data.pushed_at = Math.floor(Date.now() / 1000);
+  await _kvSet(NQ_KV_KEY, data);
+  _nqRenderGates(data.gates);
+}
+
+async function nqSaveGates() {
+  for (const n of [1, 2]) {
+    const tsInput = document.getElementById(`nq_gate${n}_ts`);
+    if (tsInput?.value) await nqMarkGate(n, 'PASS');
+  }
+  const el = document.querySelector('#tab-nqqmr .bot-banner-title');
+}
+
+function nqCalcSize() {
+  const acc    = parseFloat(document.getElementById('nq_acc_size')?.value) || 0;
+  const price  = parseFloat(document.getElementById('nq_entry_price')?.value) || 0;
+  const stopPct = parseFloat(document.getElementById('nq_stop_pct')?.value) || 0.5;
+  const riskPct = parseFloat(document.getElementById('nq_risk_pct')?.value) || 1.8;
+  if (!acc || !price) return;
+  const stopDist  = price * (stopPct / 100);
+  const maxRiskUsd = acc * (riskPct / 100);
+  // NQ futures: $20 per point, 1 point = 1 index pt
+  // For CFD brokers, "1 contract" typically = 1 index unit with variable lot value
+  // Using NQ futures standard: $20/pt
+  const ptValue   = 20;
+  const stopPts   = stopDist;
+  const contracts = maxRiskUsd / (stopPts * ptValue);
+  const resEl = document.getElementById('nqSizerResult');
+  if (resEl) {
+    resEl.style.display = '';
+    document.getElementById('nqResStop').textContent  = `$${stopDist.toFixed(2)} (${stopPts.toFixed(2)} pts)`;
+    document.getElementById('nqResRisk').textContent  = `$${maxRiskUsd.toFixed(0)}`;
+    document.getElementById('nqResContr').textContent = contracts.toFixed(2) + 'ct';
+    document.getElementById('nqResNote').innerHTML    =
+      `At $20/pt (NQ E-mini): ${contracts.toFixed(2)} contracts. <br>` +
+      `Round down to <strong>${Math.floor(contracts)}ct</strong> to stay within risk limits. <br>` +
+      `Actual risk at stop: $${(Math.floor(contracts) * stopPts * ptValue).toFixed(2)} ` +
+      `(${((Math.floor(contracts) * stopPts * ptValue / acc) * 100).toFixed(2)}% of account).<br>` +
+      `<span style="color:var(--text3)">Adjust if your broker uses different lot sizing.</span>`;
+  }
+}
+
+async function nqLogTrade() {
+  const sym  = document.getElementById('nq_sym')?.value.trim().toUpperCase() || 'NQ';
+  const dir  = document.querySelector('input[name="nq_dir"]:checked')?.value || 'BUY';
+  const lots = parseFloat(document.getElementById('nq_lots')?.value)  || 1;
+  const ep   = parseFloat(document.getElementById('nq_ep')?.value);
+  const sl   = parseFloat(document.getElementById('nq_sl')?.value);
+  const tkt  = parseInt(document.getElementById('nq_tkt')?.value) || Math.floor(Date.now() / 1000);
+  if (!ep) { document.getElementById('nqLogStatus').textContent = 'Enter entry price first'; return; }
+  const pos = {
+    symbol:     sym,
+    direction:  dir,
+    lots,
+    price_open: ep,
+    price:      ep,
+    profit:     0,
+    swap:       0,
+    sl:         sl || null,
+    ticket:     tkt,
+    time:       Math.floor(Date.now() / 1000),
+  };
+  const data = (await _kvGet(NQ_KV_KEY)) || { gates: {}, mt5_positions: [], today_closed_trades: [] };
+  if (!data.mt5_positions) data.mt5_positions = [];
+  data.mt5_positions = [pos]; // one active position at a time
+  data.pushed_at = Math.floor(Date.now() / 1000);
+  await _kvSet(NQ_KV_KEY, data);
+  const statusEl = document.getElementById('nqLogStatus');
+  statusEl.textContent = '✓ Trade logged';
+  statusEl.style.color = '#10b981';
+  setTimeout(() => { statusEl.textContent = ''; }, 3000);
+  _nqRenderOpenPos(data.mt5_positions);
+}
+
+async function nqCloseTrade() {
+  const data = await _kvGet(NQ_KV_KEY);
+  if (!data?.mt5_positions?.length) return;
+  const pos  = data.mt5_positions[0];
+  const closed = {
+    ...pos,
+    price_close: pos.price,
+    closed_at: Math.floor(Date.now() / 1000),
+    position_id: pos.ticket,
+  };
+  data.today_closed_trades = [...(data.today_closed_trades || []), closed];
+  data.mt5_positions = [];
+  data.pushed_at = Math.floor(Date.now() / 1000);
+  await _kvSet(NQ_KV_KEY, data);
+  _nqRenderOpenPos([]);
+  _nqRenderClosed(data.today_closed_trades);
+}
+
+// ── NQ-QMR auto-monitor live status renderer ──────────────────────────────────
+
+function _nqMonColor(val) {
+  if (!val) return 'var(--text3)';
+  if (val === 'LONG' || val === 'CONFIRMED' || val === 'PASS') return '#10b981';
+  if (val === 'SHORT') return '#60a5fa';
+  if (val === 'FLAT'  || val === 'REJECTED' || val === 'FAIL') return '#ef4444';
+  return 'var(--text3)';
+}
+
+function _nqRenderMonitorStatus(data) {
+  if (!data) return;
+
+  // Age
+  const ageEl = document.getElementById('nqMonAge');
+  if (ageEl && data.pushed_at) {
+    const age = Math.round((Date.now() / 1000) - data.pushed_at);
+    ageEl.textContent = `Updated ${age < 60 ? age + 's' : Math.round(age / 60) + 'm'} ago`;
+  }
+
+  // News flag
+  const newsEl = document.getElementById('nqMonNews');
+  if (newsEl) {
+    if (data.news_blocked) {
+      newsEl.textContent = '⚠️ HIGH-IMPACT NEWS — trade suppressed';
+      newsEl.style.color = '#f59e0b';
+    } else {
+      newsEl.textContent = '✓ No news block';
+      newsEl.style.color = '#10b981';
+    }
+  }
+
+  // Gate 1
+  const g1 = data.gates?.gate1;
+  const g1El = document.getElementById('nqMonG1');
+  const g1DataEl = document.getElementById('nqMonG1Data');
+  if (g1El) {
+    const dir = g1?.direction ?? null;
+    g1El.textContent = dir ?? '—';
+    g1El.style.color = _nqMonColor(dir);
+  }
+  if (g1DataEl && g1?.data) {
+    const d = g1.data;
+    g1DataEl.textContent = d.pos != null
+      ? `pos ${(d.pos*100).toFixed(0)}% in range · range ${d.rangePct}%`
+      : '';
+  }
+
+  // Gate 2
+  const g2 = data.gates?.gate2;
+  const g2El = document.getElementById('nqMonG2');
+  const g2DataEl = document.getElementById('nqMonG2Data');
+  if (g2El) {
+    const state = g2?.state ?? null;
+    g2El.textContent = state === 'PASS' ? 'CONFIRMED' : state === 'FAIL' ? 'REJECTED' : '—';
+    g2El.style.color = _nqMonColor(state);
+  }
+  if (g2DataEl && g2?.data) {
+    const d = g2.data;
+    g2DataEl.textContent = d.ldnMove != null ? `London ${d.ldnMove >= 0 ? '+' : ''}${d.ldnMove.toFixed(2)}%` : '';
+  }
+
+  // Entry
+  const entryEl = document.getElementById('nqMonEntry');
+  const entryDataEl = document.getElementById('nqMonEntryData');
+  if (entryEl) {
+    const dir = data.today_direction ?? null;
+    if (g2?.state === 'PASS' && dir) {
+      entryEl.textContent = `▶ ${dir}`;
+      entryEl.style.color = dir === 'LONG' ? '#10b981' : '#60a5fa';
+      if (entryDataEl) entryDataEl.textContent = 'Signal fired at 09:25 ET';
+    } else if (g2?.state === 'FAIL') {
+      entryEl.textContent = 'NO TRADE';
+      entryEl.style.color = '#ef4444';
+      if (entryDataEl) entryDataEl.textContent = 'Gates disagreed';
+    } else {
+      entryEl.textContent = '—';
+      entryEl.style.color = 'var(--text3)';
+      if (entryDataEl) entryDataEl.textContent = 'Awaiting gates';
+    }
+  }
+}
+
+// ── NQ-QMR monitor config (save/load from KV) ────────────────────────────────
+
+const NQ_CFG_KEY = 'nq_qmr_config';
+
+async function nqLoadConfig() {
+  const cfg = await _kvGet(NQ_CFG_KEY);
+  if (!cfg) return;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) { if (el.type === 'checkbox') el.checked = !!val; else el.value = val; } };
+  set('nqCfgEnabled',    cfg.enabled    ?? true);
+  set('nqCfgNewsFilter', cfg.newsFilter ?? true);
+  set('nqCfgG1Thresh',   cfg.gate1Threshold  ?? 0.60);
+  set('nqCfgG2Move',     cfg.gate2MinMovePct ?? 0.10);
+  set('nqCfgMinRange',   cfg.minRangePct     ?? 0.15);
+  set('nqCfgStop',       cfg.stopPct         ?? 0.50);
+}
+
+async function nqSaveConfig() {
+  const get = id => { const el = document.getElementById(id); return el ? (el.type === 'checkbox' ? el.checked : parseFloat(el.value)) : null; };
+  const cfg = {
+    enabled:         get('nqCfgEnabled'),
+    newsFilter:      get('nqCfgNewsFilter'),
+    gate1Threshold:  get('nqCfgG1Thresh'),
+    gate2MinMovePct: get('nqCfgG2Move'),
+    minRangePct:     get('nqCfgMinRange'),
+    stopPct:         get('nqCfgStop'),
+  };
+  await _kvSet(NQ_CFG_KEY, cfg);
+  const el = document.getElementById('nqCfgStatus');
+  if (el) { el.textContent = '✓ Saved'; el.style.color = '#10b981'; setTimeout(() => { el.textContent = ''; }, 2500); }
+}
+
+// Extend nqLoadStatus to also render the auto-monitor panel
+const _nqLoadStatusOrig = nqLoadStatus;
+async function nqLoadStatus() {
+  const data = await _kvGet(NQ_KV_KEY);
+  if (!data) return;
+  _nqRenderGates(data.gates || {});
+  _nqRenderOpenPos(data.mt5_positions || []);
+  _nqRenderClosed(data.today_closed_trades || []);
+  _nqRenderMonitorStatus(data);
+  const el = document.getElementById('nqPosAge');
+  if (el && data.pushed_at) {
+    const age = Math.round((Date.now() / 1000) - data.pushed_at);
+    el.textContent = `Updated ${age < 60 ? age + 's' : Math.round(age / 60) + 'm'} ago`;
+  }
+}
+
+// Auto-load NQ status when tab is opened
+document.querySelector('.tab-btn[data-tab="nqqmr"]')?.addEventListener('click', () => {
+  nqLoadStatus();
+  nqLoadConfig();
+});
+
 // ── Positions tab ─────────────────────────────────────────────────────────────
 const _POS_BOTS = [
   { key: 'bot_status',            label: 'MacroFX V1', color: '#60a5fa', bg: '#172554', bd: '#1e40af', paper: false },
@@ -3080,6 +3677,7 @@ const _POS_BOTS = [
   { key: 'dyn_anchor_status',     label: 'DynAnchor',  color: '#f59e0b', bg: '#292100',  bd: '#78610a', paper: false },
   { key: 'hedge_bot_status',           label: 'HedgeBot',  color: '#06b6d4', bg: '#0a2030',  bd: '#0e7490', paper: false },
   { key: 'position_hedge_bot_status',  label: 'PosHedge',  color: '#34d399', bg: '#0d2b22',  bd: '#1a4a38', paper: false },
+  { key: 'nq_qmr_status',             label: 'NQ-QMR',    color: '#f59e0b', bg: '#1a1200',  bd: '#b45309', paper: false },
 ];
 
 let _posRefreshTimer = null;
