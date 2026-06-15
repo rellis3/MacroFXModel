@@ -247,9 +247,9 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <div class="bt-card" style="margin-top:14px;">
       <div class="bt-card-hdr">
         Strategy Weights
-        <button class="preset-btn active" id="presetEw" onclick="applyPreset('ew')" style="margin-left:auto;">Equal Weight</button>
+        <button class="preset-btn" id="presetEw" onclick="applyPreset('ew')" style="margin-left:auto;">Equal Weight</button>
         <button class="preset-btn" id="presetRp" onclick="applyPreset('rp')">Risk Parity</button>
-        <button class="preset-btn" id="presetMs" onclick="applyPreset('ms')">Max Sharpe</button>
+        <button class="preset-btn active" id="presetMs" onclick="applyPreset('ms')">Max Sharpe</button>
         <button class="preset-btn" id="presetMd" onclick="applyPreset('md')">Min Drawdown</button>
       </div>
       <div class="bt-card-body" style="padding-top:6px;">
@@ -1741,7 +1741,120 @@ function rerunSystem(key) {
   _results[key] = runners[key](_rawData);
   _combined = computeCombined(_results, _weights);
   renderSystemPanel(key);
-  // Refresh combined tab charts if they're visible
+  renderCombinedChart();
+  renderDDChart();
+  renderMonthlyReturnsTable();
+  renderKPIs(_combined);
+  renderSliders();
+}
+
+// ── Grid-search optimiser ─────────────────────────────────────────────────────
+// Focused grids — only the highest-impact parameters per system
+const OPT_GRIDS = {
+  p1: {
+    bandHigh:  [0.5, 1.0, 1.5],
+    bandMid:   [-0.5, 0.0, 0.5],
+    bandLow:   [-1.5, -1.0, -0.5],
+    allocBull: [0.75, 1.0],
+    allocBear: [0.10, 0.20, 0.30],
+  },
+  p2: {
+    thVBull:    [1.0, 1.5, 2.0],
+    thBull:     [0.25, 0.50, 0.75],
+    thNeutral:  [-0.75, -0.50, -0.25],
+    thBear:     [-2.0, -1.5, -1.0],
+    allocVBear: [0.0, 0.1, 0.2],
+  },
+  p3: {
+    ismMaPeriod:   [42, 63, 126],
+    goldilocksSpy: [0.8, 1.0],
+    recTlt:        [0.6, 0.8, 1.0],
+    stagGld:       [0.4, 0.6, 0.8],
+  },
+  p4: {
+    thHigh:    [1.0, 1.5, 2.0],
+    thMid:     [0.50, 0.75, 1.0],
+    thLow:     [-1.0, -0.5, 0.0],
+    allocHigh: [0.0, 0.1, 0.2],
+    allocMid:  [0.3, 0.5, 0.7],
+    allocLow:  [0.3, 0.5, 0.7],
+  },
+  p5: {
+    lookback: [126, 189, 252],
+    nLong:    [1, 2, 3],
+    nShort:   [1, 2, 3],
+  },
+  p6: {
+    olsWindow:    [126, 252, 504],
+    thVLong:      [-2.0, -1.5, -1.0],
+    thLong:       [-1.0, -0.75, -0.5],
+    thShort:      [0.25, 0.50, 0.75],
+    allocNeutral: [0.0, 0.3, 0.5],
+  },
+};
+
+function expandGrid(grid) {
+  const keys = Object.keys(grid);
+  const vals  = keys.map(k => grid[k]);
+  const combos = [];
+  function rec(i, cur) {
+    if (i === keys.length) { combos.push({...cur}); return; }
+    for (const v of vals[i]) { cur[keys[i]] = v; rec(i+1, cur); }
+  }
+  rec(0, {});
+  return combos;
+}
+
+function _validCombo(key, c) {
+  if (key === 'p1') return c.bandHigh > c.bandMid && c.bandMid > c.bandLow;
+  if (key === 'p2') return c.thVBull > c.thBull && c.thBull > c.thNeutral && c.thNeutral > c.thBear;
+  if (key === 'p4') return c.thHigh > c.thMid && c.thMid > c.thLow && c.allocHigh < c.allocMid && c.allocMid < c.allocLow;
+  if (key === 'p6') return c.thVLong < c.thLong;
+  return true;
+}
+
+async function optimiseSystem(key) {
+  if (!_rawData) return;
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p5:runP5, p6:runP6 };
+  const grid = OPT_GRIDS[key];
+  if (!grid) return;
+
+  const btnEl = document.getElementById(`optBtn_${key}`);
+  const statusEl = document.getElementById(`optStatus_${key}`);
+  if (btnEl) btnEl.disabled = true;
+
+  const baseCfg = { ..._cfg[key] };
+  const combos = expandGrid(grid).filter(c => _validCombo(key, c));
+  let bestSharpe = -Infinity, bestCfg = null, tested = 0;
+
+  for (let ci = 0; ci < combos.length; ci++) {
+    Object.assign(_cfg[key], combos[ci]);
+    const sh = sharpe(runners[key](_rawData).monthlyRet);
+    if (isFinite(sh) && sh > bestSharpe) { bestSharpe = sh; bestCfg = {...combos[ci]}; }
+    tested++;
+    if (ci % 50 === 49 || ci === combos.length - 1) {
+      if (statusEl) statusEl.textContent = `Testing ${tested}/${combos.length}… best: ${isFinite(bestSharpe)?bestSharpe.toFixed(2):'—'}`;
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  // Restore baseline, then apply best if found
+  Object.assign(_cfg[key], baseCfg);
+  if (bestCfg) Object.assign(_cfg[key], bestCfg);
+  _results[key] = runners[key](_rawData);
+  _combined = computeCombined(_results, _weights);
+
+  renderSystemPanel(key);
+  // Re-expand config body and show result (renderSystemPanel rebuilds DOM)
+  const body = document.getElementById(`cfgBody_${key}`);
+  if (body) body.style.display = 'block';
+  const status2 = document.getElementById(`optStatus_${key}`);
+  const btn2    = document.getElementById(`optBtn_${key}`);
+  if (status2) status2.textContent = bestCfg
+    ? `✓ Done — best Sharpe ${bestSharpe.toFixed(2)} from ${tested} combinations`
+    : `No improvement found (${tested} combos tested)`;
+  if (btn2) btn2.disabled = false;
+
   renderCombinedChart();
   renderDDChart();
   renderMonthlyReturnsTable();
@@ -1786,9 +1899,12 @@ function renderSystemPanel(key) {
       </div>
       <div class="bt-card-body" id="cfgBody_${key}" style="display:none;">
         ${cfgForm}
-        <div style="margin-top:14px;display:flex;gap:10px;align-items:center;">
-          <button class="bt-run-btn" onclick="rerunSystem('${key}')">Re-run with these params</button>
-          <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Changes apply to this system only — Combined Book updates automatically</span>
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button class="bt-run-btn" onclick="rerunSystem('${key}')">Re-run</button>
+          <button class="bt-run-btn" id="optBtn_${key}" onclick="optimiseSystem('${key}')"
+            style="background:var(--blue);border-color:var(--blue);color:#fff;">⚡ Optimise</button>
+          <span id="optStatus_${key}" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;flex:1;">
+            Grid-searches all parameter combinations to maximise Sharpe for this system</span>
         </div>
       </div>
     </div>
@@ -1916,12 +2032,8 @@ async function runAll() {
     setStatus('spin', 'P5 done · Running P6…'); await new Promise(r=>setTimeout(r,10));
     _results.p6 = runP6(data);
 
-    setStatus('spin', 'Computing combined book…'); await new Promise(r=>setTimeout(r,10));
-    _combined = computeCombined(_results, _weights);
-
-    setStatus('spin', 'Rendering…'); await new Promise(r=>setTimeout(r,20));
-    renderKPIs(_combined);
-    renderSliders();
+    setStatus('spin', 'Optimising weights…'); await new Promise(r=>setTimeout(r,10));
+    applyPreset('ms'); // default to Markowitz max-Sharpe after each run
     renderCombinedChart();
     renderDDChart();
     renderMonthlyReturnsTable();
