@@ -416,8 +416,15 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
       A robust system should show <em>similar</em> Sharpe in both halves — large degradation signals overfitting.
       Also shows worst 1-, 3- and 5-year rolling windows to stress-test consistency.
     </div>
+    <div id="robustnessNoData" style="display:none;padding:24px;text-align:center;color:#64748b;font-size:13px;">
+      Run the backtest first, then return to this tab.
+      <button class="bt-run-btn" onclick="runAll()" style="margin-left:12px;font-size:11px;padding:4px 14px;">Run Backtest</button>
+    </div>
     <div class="bt-card" style="margin-top:14px;">
-      <div class="bt-card-hdr">Train / Test Split — Per System + Combined</div>
+      <div class="bt-card-hdr">
+        Train / Test Split — Per System + Combined
+        <button class="bt-run-btn" onclick="renderRobustness()" style="margin-left:auto;font-size:10px;padding:4px 14px;">Recalculate</button>
+      </div>
       <div class="bt-card-body" style="padding:0;">
         <div class="bt-tbl-scroll">
           <table class="bt-tbl">
@@ -1359,7 +1366,7 @@ function computeCombined(results, weights) {
   let equity = 1.0;
   const cumulativeEq = monthlyRet.map(r => { equity *= (1+r); return equity; });
 
-  return { dates: allDates, monthlyRet, cumulativeEq, weights: ws };
+  return { dates: allDates, monthlyDates: allDates, monthlyRet, cumulativeEq, weights: ws };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1765,7 +1772,9 @@ function renderMonteCarlo() {
 
 // ── Robustness (in-sample / out-of-sample split) ──────────────────────────────
 function renderRobustness() {
-  if (!_combined) return;
+  const noDataEl = document.getElementById('robustnessNoData');
+  if (!_combined) { if (noDataEl) noDataEl.style.display='block'; return; }
+  if (noDataEl) noDataEl.style.display = 'none';
   const allMo = _combined.monthlyDates;
   if (!allMo || allMo.length < 24) return;
   const mid = Math.floor(allMo.length / 2);
