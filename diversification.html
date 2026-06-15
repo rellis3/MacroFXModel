@@ -394,7 +394,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Configuration
 // ═══════════════════════════════════════════════════════════════════════════════
-const SYS_NAMES  = ['P1 Macro Regime', 'P2 Credit-Equity', 'P3 Yield Curve', 'P4 FX Carry', 'P5 FX Momentum', 'P6 Gold Macro'];
+const SYS_NAMES  = ['P1 Macro Regime', 'P2 Credit-Equity', 'P3 VIX Regime', 'P4 FX Carry', 'P5 FX Momentum', 'P6 Gold Macro'];
 const SYS_KEYS   = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'];
 const SYS_COLORS = ['#14b8a6', '#ef4444', '#f97316', '#3b82f6', '#a855f7', '#eab308'];
 const COMBINED_COLOR = '#e2e8f0';
@@ -411,8 +411,8 @@ let _cfg = {
         allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.15 },
   p2: { thVBull:1.0, thBull:0.25, thNeutral:-0.75, thBear:-2.0,
         allocVBull:1.0, allocBull:0.8, allocNeutral:0.5, allocBear:0.3, allocVBear:0.0 },
-  p3: { ismMaPeriod:42, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.2, overheatTlt:0.2,
-        stagGld:1.0, stagTlt:0.3, stagSpy:0.1, recTlt:0.7, recSpy:0.1 },
+  p3: { zWin:60, vixCalm:15, vixStress:25, stressZ:1.5,
+        calmSpy:0.9, elevSpy:0.3, elevTlt:0.3, stressTlt:0.8 },
   p4: { trendWin:378, allocNormal:1.0 },
   p5: { lookback:189, skip:21, nLong:3, nShort:1 },
   p6: { olsWindow:126, thVLong:-2.0, thLong:-1.0, thShort:1.0, thVShort:1.5,
@@ -771,60 +771,42 @@ function runP2(data) {
   return { key:'p2', name: SYS_NAMES[1], color: SYS_COLORS[1], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
-// P3: Yield Curve Regime Rotation — ISM trend + Core CPI → 4 quadrants
+// P3: VIX Regime Rotation — market-implied fear gauge (VIX) drives SPY/TLT/GLD allocation.
+// Unlike P1 (uses lagged FRED data: ISM/credit/realyield), VIX reacts in real-time to risk events,
+// creating genuine decorrelation during growth scares and policy-uncertainty episodes.
+// CALM  (VIX < vixCalm, z < 0): SPY heavy — risk appetite intact.
+// ELEVATED (in between): SPY reduced + TLT buffer + GLD — uncertainty hedge.
+// STRESSED (VIX > vixStress or z > stressZ): TLT + GLD — flight to safety.
 function runP3(data) {
-  const { dateIndex: dates, fred, prices } = data;
+  const { dateIndex: dates, prices } = data;
   const n = dates.length;
+  const vixRaw = prices?.vix ? ffill(prices.vix) : null;
+  if (!vixRaw) return { key:'p3', name: SYS_NAMES[2], color: SYS_COLORS[2], equityCurve: new Array(n).fill(NaN), dates, monthlyRet: [], monthlyDates: [] };
 
-  const ism     = ffill(fred.ism);
-  const coreCpi = ffill(fred.coreCpi);
   const spy = ffill(prices.spy);
   const tlt = ffill(prices.tlt);
   const gld = ffill(prices.gld);
-
-  const c3 = _cfg.p3;
-  // ISM MA (configurable period)
-  function maN(arr, p) {
-    return arr.map((v,i) => {
-      if (i < p) return NaN;
-      const sl = arr.slice(i-p, i).filter(isFinite);
-      return sl.length > 10 ? sl.reduce((a,b)=>a+b)/sl.length : NaN;
-    });
-  }
-  const ismMa = maN(applyLag(ism, PUB_MONTHLY), c3.ismMaPeriod);
-  const ismTrend = ismMa.map((v,i) => {
-    if (i < c3.ismMaPeriod) return NaN;
-    const prev = ismMa[i-c3.ismMaPeriod];
-    return isFinite(prev) && isFinite(v) ? v - prev : NaN;
-  });
-
-  const cpiLag = applyLag(coreCpi, PUB_MONTHLY);
-  // YoY: (today / 252 trading days ago) - 1, expressed as percentage
-  const CPI_YOY_WIN = 252;
-  const cpiYoY = cpiLag.map((v, i) => {
-    const prior = cpiLag[i - CPI_YOY_WIN];
-    return (isFinite(v) && isFinite(prior) && prior > 0) ? (v / prior - 1) * 100 : NaN;
-  });
+  const c3  = _cfg.p3;
+  const vixZ = rollingZ(vixRaw, c3.zWin);
 
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
   const equityCurve = new Array(n).fill(NaN);
   const monthlyRet = [], monthlyDates = [];
   let prevMonthEnd = -1;
-  let sA=0.7, tA=0.2, gA=0.1; // SPY, TLT, GLD allocations
+  let sA = c3.calmSpy, tA = 0, gA = 1 - c3.calmSpy;
 
   for (const idx of monthEnds) {
-    const trend = ismTrend[idx], cpi = cpiYoY[idx];
-    let ns=0.7, nt=0.2, ng=0.1;
-    if (isFinite(trend) && isFinite(cpi)) {
-      const rising = trend > 0;
-      const inflationary = cpi > 3.0; // spec: CPI YoY > 3% = inflationary
-      if (rising && !inflationary)       { ns=c3.goldilocksSpy; nt=1-c3.goldilocksSpy; ng=0; }  // Goldilocks
-      else if (rising && inflationary)   { ns=c3.overheatSpy; nt=c3.overheatTlt; ng=c3.overheatGld; }  // Overheating
-      else if (!rising && inflationary)  { ns=c3.stagSpy; nt=c3.stagTlt; ng=c3.stagGld; }  // Stagflation
-      else                               { ns=c3.recSpy; nt=c3.recTlt; ng=1-c3.recSpy-c3.recTlt; }  // Recession
+    const vv = vixRaw[idx], vz = vixZ[idx];
+    let ns, nt, ng;
+    if (!isFinite(vv) || !isFinite(vz)) { ns = sA; nt = tA; ng = gA; }
+    else if (vv < c3.vixCalm && vz < 0) {
+      ns = c3.calmSpy;  nt = 0;           ng = 1 - c3.calmSpy;
+    } else if (vv > c3.vixStress || vz > c3.stressZ) {
+      ns = 0;           nt = c3.stressTlt; ng = 1 - c3.stressTlt;
+    } else {
+      ns = c3.elevSpy;  nt = c3.elevTlt;  ng = Math.max(0, 1 - c3.elevSpy - c3.elevTlt);
     }
-
     if (prevMonthEnd >= 0) {
       const rSpy = isFinite(spy[prevMonthEnd])&&isFinite(spy[idx])&&spy[prevMonthEnd]>0 ? (spy[idx]-spy[prevMonthEnd])/spy[prevMonthEnd] : 0;
       const rTlt = isFinite(tlt[prevMonthEnd])&&isFinite(tlt[idx])&&tlt[prevMonthEnd]>0 ? (tlt[idx]-tlt[prevMonthEnd])/tlt[prevMonthEnd] : 0;
@@ -840,7 +822,6 @@ function runP3(data) {
     sA=ns; tA=nt; gA=ng;
     prevMonthEnd = idx;
   }
-
   return { key:'p3', name: SYS_NAMES[2], color: SYS_COLORS[2], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
@@ -1637,20 +1618,20 @@ function sysCfgForm(key) {
   if (key === 'p3') return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
       <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Signal</div>
-        ${row('ISM MA period (days)', 'p3_ismMaPeriod', c.ismMaPeriod, 5, 10, 252)}
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">VIX Thresholds</div>
+        ${row('Z-score window (days)', 'p3_zWin',     c.zWin,     5, 20, 252)}
+        ${row('Calm VIX level <',      'p3_vixCalm',  c.vixCalm,  1, 8, 25)}
+        ${row('Stressed VIX level >',  'p3_vixStress',c.vixStress,1, 15, 50)}
+        ${row('Stress z-score >',      'p3_stressZ',  c.stressZ,  0.1, 0.5, 3)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Calm: VIX &lt; calm AND z &lt; 0 · Stressed: VIX &gt; stress OR z &gt; stressZ</div>
       </div>
       <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Quadrant Allocations (SPY / TLT / GLD)</div>
-        ${row('Goldilocks SPY',    'p3_goldilocksSpy', c.goldilocksSpy)}
-        ${row('Overheat SPY',      'p3_overheatSpy',   c.overheatSpy)}
-        ${row('Overheat TLT',      'p3_overheatTlt',   c.overheatTlt)}
-        ${row('Overheat GLD',      'p3_overheatGld',   c.overheatGld)}
-        ${row('Stagflation GLD',   'p3_stagGld',       c.stagGld)}
-        ${row('Stagflation TLT',   'p3_stagTlt',       c.stagTlt)}
-        ${row('Stagflation SPY',   'p3_stagSpy',       c.stagSpy)}
-        ${row('Recession TLT',     'p3_recTlt',        c.recTlt)}
-        ${row('Recession SPY',     'p3_recSpy',        c.recSpy)}
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Regime Allocations</div>
+        ${row('Calm SPY',      'p3_calmSpy',   c.calmSpy,   0.05)}
+        ${row('Elevated SPY',  'p3_elevSpy',   c.elevSpy,   0.05)}
+        ${row('Elevated TLT',  'p3_elevTlt',   c.elevTlt,   0.05)}
+        ${row('Stressed TLT',  'p3_stressTlt', c.stressTlt, 0.05)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Calm GLD = 1−SPY · Stressed GLD = 1−TLT · Elevated GLD = 1−SPY−TLT</div>
       </div>
     </div>`;
 
@@ -1721,10 +1702,8 @@ function updateSysCfg(key) {
     c.allocVBull=n('allocVBull'); c.allocBull=n('allocBull'); c.allocNeutral=n('allocNeutral');
     c.allocBear=n('allocBear'); c.allocVBear=n('allocVBear');
   } else if (key === 'p3') {
-    c.ismMaPeriod=n('ismMaPeriod'); c.goldilocksSpy=n('goldilocksSpy');
-    c.overheatSpy=n('overheatSpy'); c.overheatTlt=n('overheatTlt'); c.overheatGld=n('overheatGld');
-    c.stagGld=n('stagGld'); c.stagTlt=n('stagTlt'); c.stagSpy=n('stagSpy');
-    c.recTlt=n('recTlt'); c.recSpy=n('recSpy');
+    c.zWin=n('zWin'); c.vixCalm=n('vixCalm'); c.vixStress=n('vixStress'); c.stressZ=n('stressZ');
+    c.calmSpy=n('calmSpy'); c.elevSpy=n('elevSpy'); c.elevTlt=n('elevTlt'); c.stressTlt=n('stressTlt');
   } else if (key === 'p4') {
     c.trendWin=n('trendWin'); c.allocNormal=n('allocNormal');
   } else if (key === 'p5') {
@@ -1770,10 +1749,11 @@ const OPT_GRIDS = {
     allocVBear:  [0.0, 0.1],
   },
   p3: {
-    ismMaPeriod: [21, 42, 63],
-    recTlt:      [0.5, 0.6, 0.7, 0.8],
-    stagGld:     [0.6, 0.8, 1.0],
-    overheatGld: [0.2, 0.3, 0.5],        // gold allocation in overheating regime
+    vixCalm:   [12, 15, 18],
+    vixStress: [22, 25, 28],
+    stressZ:   [1.0, 1.5, 2.0],
+    calmSpy:   [0.8, 0.9, 1.0],
+    stressTlt: [0.7, 0.8, 0.9],
   },
   p4: {
     trendWin: [126, 189, 252, 315, 378],
