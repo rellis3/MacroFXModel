@@ -321,18 +321,29 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
     ? volSeries.at(-1) * newsMult
     : volSeries.at(-1);
 
-  // Yang-Zhang shadow: raw BM percentiles from YZ vol, no empirical corrections.
-  // Lets the compare table show GARCH / YZ / Ref side-by-side to measure which
-  // estimator is closer to the reference quant system before committing to YZ.
-  const yzSeries = yangZhangVolSeries(ohlc);
-  const sigmaYZ  = yzSeries.at(-1) ?? 0;
-  const yzPct    = sigmaYZ * 100;
-  const r2yz     = x => Math.round(x * 100) / 100;
+  // Shadow estimators: raw BM percentiles, no empirical corrections.
+  // Stored alongside GARCH in KV so compare table has data even without ohlcCache.
+  const yzArr   = yangZhangVolSeries(ohlc);
+  const hvArr   = hv20Series(ohlc);
+  const ewmaArr = ewmaVolSeries(ohlc);
+  const sigmaYZ   = yzArr.at(-1)   ?? 0;
+  const sigmaHV   = hvArr.at(-1)   ?? 0;
+  const sigmaEWMA = ewmaArr.at(-1) ?? 0;
+  const yzPct   = sigmaYZ   * 100;
+  const hvPct   = sigmaHV   * 100;
+  const ewmaPct = sigmaEWMA * 100;
+  const r2s = x => Math.round(x * 100) / 100;
 
   return Object.assign(_buildOutput(volSeries, sigmaFwd, assetClass, newsMult), {
-    yz_vol_annual: r2yz(yzPct * Math.sqrt(TRADING_DAYS)),
-    yz_hl_median:  r2yz(BM_RANGE_P50 * yzPct),
-    yz_oc_median:  r2yz(HN_P50 * yzPct),
+    yz_vol_annual:   r2s(yzPct   * Math.sqrt(TRADING_DAYS)),
+    yz_hl_median:    r2s(BM_RANGE_P50 * yzPct),
+    yz_oc_median:    r2s(HN_P50       * yzPct),
+    hv_vol_annual:   r2s(hvPct   * Math.sqrt(TRADING_DAYS)),
+    hv_hl_median:    r2s(BM_RANGE_P50 * hvPct),
+    hv_oc_median:    r2s(HN_P50       * hvPct),
+    ewma_vol_annual: r2s(ewmaPct * Math.sqrt(TRADING_DAYS)),
+    ewma_hl_median:  r2s(BM_RANGE_P50 * ewmaPct),
+    ewma_oc_median:  r2s(HN_P50       * ewmaPct),
   });
 }
 
