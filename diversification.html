@@ -414,7 +414,7 @@ let _cfg = {
         stagGld:0.6, stagTlt:0.3, stagSpy:0.1, recTlt:0.8, recSpy:0.1 },
   p4: { thHigh:1.5, thMid:0.75, thLow:-0.5,
         allocHigh:0.2, allocMid:0.5, allocLow:0.85, allocNormal:1.0 },
-  p5: { lookback:252, skip:21, nLong:3, nShort:3 },
+  p5: { lookback:189, skip:21, nLong:2, nShort:2 },
   p6: { olsWindow:252, thVLong:-1.5, thLong:-0.5, thShort:0.5, thVShort:1.5,
         allocVLong:1.0, allocLong:0.75, allocNeutral:0.5, allocShort:0.25, allocVShort:0.0 },
 };
@@ -514,6 +514,66 @@ function sharpe(rets) {
   const mu = fin.reduce((a,b)=>a+b,0)/fin.length;
   const sd = Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2,0)/fin.length);
   return sd === 0 ? 0 : (mu / sd) * Math.sqrt(12);
+}
+
+// Gaussian elimination with partial pivoting — solves Ax = b, returns x
+function solveLinear(A, b) {
+  const n = A.length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let maxRow = col;
+    for (let row = col + 1; row < n; row++)
+      if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
+    [M[col], M[maxRow]] = [M[maxRow], M[col]];
+    if (Math.abs(M[col][col]) < 1e-12) continue;
+    for (let row = 0; row < n; row++) {
+      if (row === col) continue;
+      const f = M[row][col] / M[col][col];
+      for (let c = col; c <= n; c++) M[row][c] -= f * M[col][c];
+    }
+  }
+  return M.map((row, i) => Math.abs(M[i][i]) > 1e-12 ? row[n] / M[i][i] : 0);
+}
+
+// Markowitz tangent-portfolio max-Sharpe: w* = Σ⁻¹μ, long-only clipped + normalised
+// Returns weight array (same length as keys, scaled so avg weight = 1), or null if insufficient data
+function maxSharpeMarkowitz(keys) {
+  const validKeys = keys.filter(k => (_results[k]?.monthlyDates?.length ?? 0) > 0);
+  if (validKeys.length === 0) return null;
+
+  // Find dates common to ALL systems
+  const dateSets = validKeys.map(k => new Set(_results[k].monthlyDates));
+  const common = [...dateSets[0]].filter(d => dateSets.every(s => s.has(d))).sort();
+  if (common.length < 24) return null; // need ≥ 2 years
+
+  const n = validKeys.length;
+  const T = common.length;
+
+  // Build return matrix [system][time]
+  const R = validKeys.map(k => {
+    const dateMap = Object.fromEntries(_results[k].monthlyDates.map((d,i) => [d, _results[k].monthlyRet[i]]));
+    return common.map(d => dateMap[d] ?? 0);
+  });
+
+  const mu = R.map(ri => ri.reduce((a,b)=>a+b,0)/T);
+
+  // Covariance matrix with small ridge for numerical stability
+  const Sigma = Array.from({length:n}, (_, i) =>
+    Array.from({length:n}, (_, j) => {
+      let s = 0;
+      for (let t=0; t<T; t++) s += (R[i][t]-mu[i])*(R[j][t]-mu[j]);
+      return s/T + (i===j ? 1e-7 : 0);
+    })
+  );
+
+  const w = solveLinear(Sigma, mu);
+  const wPos = w.map(v => Math.max(0, v));
+  const sumW = wPos.reduce((a,b)=>a+b, 0);
+  if (sumW === 0) return null;
+
+  // Map back to full keys array (systems absent from validKeys get 0)
+  const weightMap = Object.fromEntries(validKeys.map((k,i) => [k, wPos[i]/sumW * validKeys.length]));
+  return keys.map(k => weightMap[k] ?? 0);
 }
 function cagr(equity, n_months) {
   if (!isFinite(equity) || equity <= 0 || n_months <= 0) return NaN;
@@ -789,9 +849,10 @@ function runP4(data) {
   const { dateIndex: dates, fred, fx, prices } = data;
   const n = dates.length;
 
-  const gbpjpy = ffill(fx.gbpjpy);
-  const audjpy = ffill(fx.audjpy);
-  const nzdjpy = ffill(fx.nzdjpy);
+  const gbpjpy    = ffill(fx.gbpjpy);
+  const audjpy    = ffill(fx.audjpy);
+  const nzdjpy    = ffill(fx.nzdjpy);
+  const realyield = ffill(fred.realyield); // TIPS real yield as rate-environment proxy
 
   // VIX Z-score (60-day window) — the proper risk-off gate per spec
   // Fall back to credit Z if VIX not available
@@ -823,7 +884,11 @@ function runP4(data) {
       const rAud = isFinite(audjpy[prevMonthEnd])&&isFinite(audjpy[idx])&&audjpy[prevMonthEnd]>0 ? (audjpy[idx]-audjpy[prevMonthEnd])/audjpy[prevMonthEnd] : 0;
       const rNzd = isFinite(nzdjpy[prevMonthEnd])&&isFinite(nzdjpy[idx])&&nzdjpy[prevMonthEnd]>0 ? (nzdjpy[idx]-nzdjpy[prevMonthEnd])/nzdjpy[prevMonthEnd] : 0;
       const carryRet = (rGbp + rAud + rNzd) / 3;
-      const ret = alloc * carryRet; // remainder sits in cash (0%)
+      // Interest rate differential income (GBP/AUD/NZD historically earn 1–4% p.a. over JPY).
+      // Use TIPS real yield as a proxy for rate environment: higher real yields → more carry.
+      const ry = isFinite(realyield[idx]) ? realyield[idx] : -0.5;
+      const annualCarry = ry > 0.5 ? 0.035 : ry > -0.25 ? 0.022 : 0.010;
+      const ret = alloc * (carryRet + annualCarry / 12);
       equity *= (1 + ret);
       monthlyRet.push(ret);
       monthlyDates.push(dates[idx]);
@@ -919,9 +984,11 @@ function runP5(data) {
       equityCurve[idx] = equity;
     }
 
-    // Update longs/shorts
-    if (scores.length >= 6) {
-      longIdx  = scores.slice(0, 3).map(x => x.pi);
+    // Update longs/shorts — require sufficient spread between best and worst signal
+    const spreadOk = scores.length >= nL + nS &&
+      (scores[0].score - scores[scores.length - 1].score) > 0.04;
+    if (spreadOk) {
+      longIdx  = scores.slice(0, nL).map(x => x.pi);
       shortIdx = scores.slice(-nS).map(x => x.pi);
     } else {
       longIdx = []; shortIdx = [];
@@ -1229,10 +1296,15 @@ function applyPreset(preset) {
     const sumInv = invVols.reduce((a,b)=>a+b);
     _weights = invVols.map(v => v/sumInv * 6);
   } else if (preset === 'ms') {
-    // Max Sharpe: weight ∝ Sharpe (positive only)
-    const sharpes = SYS_KEYS.map(k => Math.max(0, sharpe(_results[k]?.monthlyRet ?? [])));
-    const sumS = sharpes.reduce((a,b)=>a+b) || 1;
-    _weights = sharpes.map(s => s/sumS * 6);
+    // Max Sharpe: Markowitz tangent portfolio (Σ⁻¹μ), falls back to proportional-Sharpe
+    const mkW = maxSharpeMarkowitz(SYS_KEYS);
+    if (mkW) {
+      _weights = mkW;
+    } else {
+      const sharpes = SYS_KEYS.map(k => Math.max(0, sharpe(_results[k]?.monthlyRet ?? [])));
+      const sumS = sharpes.reduce((a,b)=>a+b) || 1;
+      _weights = sharpes.map(s => s/sumS * 6);
+    }
   } else if (preset === 'md') {
     // Min Drawdown: weight ∝ 1/|maxDD| (less negative DD = more weight)
     const dds = SYS_KEYS.map(k => {
@@ -1685,8 +1757,8 @@ function renderSystemPanel(key) {
     'Five-factor macro composite (net liquidity, yield curve, HY credit, real yield, ISM). Monthly z-score scoring drives SPY allocation across four bands. Longs-only: equity markets have structural upward drift (~10%/yr); shorts expose you to gap risk, short squeezes, and unlimited downside without the structural premium.',
     'Credit-equity divergence tracks the spread between HY credit conditions (BAMLH0A0HYM2 z-score) and SPY short-term momentum. Risk-on divergence (credit improving + equity rising) favours SPY; risk-off divergence rotates to TLT. Captures regime transitions before they fully express in price.',
     'ISM Manufacturing trend combined with Core CPI momentum creates four macro quadrants: Goldilocks (SPY heavy), Overheating (SPY+GLD), Stagflation (GLD heavy), Recession (TLT heavy). Asset mix is tunable per quadrant.',
-    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. Earns the interest rate differential during risk-on regimes. HY credit z-score acts as risk-off gate — high credit stress signals carry unwind risk and reduces allocation.',
-    'Cross-sectional momentum across 7 major currencies in USD terms. Long top-N / short bottom-N produces a pure momentum factor orthogonal to carry and macro. The long-short structure removes directional bias — pure relative value.',
+    'Long high-yielder vs JPY carry pairs: GBP/JPY, AUD/JPY, NZD/JPY. Captures both price appreciation and interest rate differential income (GBP/AUD/NZD have historically earned 1–4% p.a. over JPY). Rate-environment proxy (TIPS real yield) scales estimated carry income. VIX Z-score risk gate reduces allocation during stress.',
+    'Cross-sectional momentum across 7 major currencies in USD terms. Long top-2 / short bottom-2 produces a pure momentum factor orthogonal to carry and macro. A minimum 4% spread between best and worst signal gates out low-conviction months. 9-month lookback targets the strongest momentum window.',
     'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over a rolling window. When gold trades at a discount to its macro-implied fair value (negative residual z-score), increase allocation. Captures gold mispricing vs macro fundamentals.',
   ];
   const sysPages = [
