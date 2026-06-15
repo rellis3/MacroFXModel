@@ -406,18 +406,18 @@ const PUB_MONTHLY = 21;
 // Per-system config (user-tunable parameters)
 let _cfg = {
   p1: { wNetliq:0.40, wCurve:0.20, wCredit:0.20, wRealyield:0.15, wIsm:0.05,
-        bandHigh:1.0, bandMid:0.0, bandLow:-1.0,
-        allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.25 },
-  p2: { thVBull:1.5, thBull:0.5, thNeutral:-0.5, thBear:-1.5,
-        allocVBull:1.0, allocBull:0.8, allocNeutral:0.6, allocBear:0.3, allocVBear:0.1 },
-  p3: { ismMaPeriod:63, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.3, overheatTlt:0.2,
-        stagGld:0.6, stagTlt:0.3, stagSpy:0.1, recTlt:0.8, recSpy:0.1 },
+        bandHigh:1.50, bandMid:-0.50, bandLow:-1.0,
+        allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.30 },
+  p2: { thVBull:1.0, thBull:0.25, thNeutral:-0.75, thBear:-2.0,
+        allocVBull:1.0, allocBull:0.8, allocNeutral:0.6, allocBear:0.3, allocVBear:0.0 },
+  p3: { ismMaPeriod:42, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.3, overheatTlt:0.2,
+        stagGld:0.8, stagTlt:0.3, stagSpy:0.1, recTlt:0.6, recSpy:0.1 },
   p4: { thHigh:1.5, thMid:0.75, thLow:-0.5,
         allocHigh:0.2, allocMid:0.5, allocLow:0.85, allocNormal:1.0,
         trendWin:126 },
-  p5: { lookback:189, skip:21, nLong:2, nShort:2 },
-  p6: { olsWindow:252, thVLong:-1.5, thLong:-0.5, thShort:0.5, thVShort:1.5,
-        allocVLong:1.0, allocLong:0.75, allocNeutral:0.5, allocShort:0.25, allocVShort:0.0 },
+  p5: { lookback:189, skip:21, nLong:3, nShort:2 },
+  p6: { olsWindow:126, thVLong:-2.0, thLong:-1.0, thShort:0.75, thVShort:1.5,
+        allocVLong:1.0, allocLong:0.75, allocNeutral:0.3, allocShort:0.25, allocVShort:0.0 },
 };
 
 // State
@@ -1783,30 +1783,31 @@ function rerunSystem(key) {
 }
 
 // ── Grid-search optimiser ─────────────────────────────────────────────────────
-// Focused grids — only the highest-impact parameters per system
 const OPT_GRIDS = {
   p1: {
-    bandHigh:  [0.5, 1.0, 1.5],
-    bandMid:   [-0.5, 0.0, 0.5],
+    wNetliq:   [0.30, 0.40, 0.50],       // top factor — most impact on score
+    bandHigh:  [1.0, 1.5, 2.0],
+    bandMid:   [-0.75, -0.50, -0.25, 0.0],
     bandLow:   [-1.5, -1.0, -0.5],
-    allocBull: [0.75, 1.0],
-    allocBear: [0.10, 0.20, 0.30],
+    allocBull: [0.85, 1.0],
+    allocBear: [0.15, 0.25, 0.35],
   },
   p2: {
-    thVBull:    [1.0, 1.5, 2.0],
-    thBull:     [0.25, 0.50, 0.75],
-    thNeutral:  [-0.75, -0.50, -0.25],
-    thBear:     [-2.0, -1.5, -1.0],
-    allocVBear: [0.0, 0.1, 0.2],
+    thVBull:     [0.75, 1.0, 1.5],
+    thBull:      [0.25, 0.50, 0.75],
+    thNeutral:   [-0.75, -0.50, -0.25],
+    thBear:      [-2.5, -2.0, -1.5],
+    allocNeutral:[0.5, 0.6, 0.7],        // medium regimes drive most P&L
+    allocVBear:  [0.0, 0.1],
   },
   p3: {
-    ismMaPeriod:   [42, 63, 126],
-    goldilocksSpy: [0.8, 1.0],
-    recTlt:        [0.6, 0.8, 1.0],
-    stagGld:       [0.4, 0.6, 0.8],
+    ismMaPeriod: [21, 42, 63],
+    recTlt:      [0.5, 0.6, 0.7, 0.8],
+    stagGld:     [0.6, 0.8, 1.0],
+    overheatGld: [0.2, 0.3, 0.5],        // gold allocation in overheating regime
   },
   p4: {
-    trendWin:  [63, 126, 189],
+    trendWin:  [42, 63, 126, 189],        // key new param for the MA filter
     thHigh:    [1.0, 1.5, 2.0],
     thMid:     [0.50, 0.75, 1.0],
     thLow:     [-1.0, -0.5, 0.0],
@@ -1816,15 +1817,15 @@ const OPT_GRIDS = {
   },
   p5: {
     lookback: [126, 189, 252],
-    nLong:    [1, 2, 3],
+    nLong:    [2, 3, 4],
     nShort:   [1, 2, 3],
   },
   p6: {
-    olsWindow:    [126, 252, 504],
-    thVLong:      [-2.0, -1.5, -1.0],
-    thLong:       [-1.0, -0.75, -0.5],
-    thShort:      [0.25, 0.50, 0.75],
-    allocNeutral: [0.0, 0.3, 0.5],
+    olsWindow:    [63, 126, 252],
+    thVLong:      [-2.5, -2.0, -1.5],
+    thLong:       [-1.25, -1.0, -0.75],
+    thShort:      [0.5, 0.75, 1.0],
+    allocNeutral: [0.0, 0.2, 0.3],       // range around the newly found optimum
   },
 };
 
@@ -1865,6 +1866,18 @@ async function optimiseSystem(key) {
 
   for (let ci = 0; ci < combos.length; ci++) {
     Object.assign(_cfg[key], combos[ci]);
+
+    // P1: if wNetliq changed, rescale remaining factor weights proportionally so they sum to 1
+    if (key === 'p1' && 'wNetliq' in combos[ci]) {
+      const rem = 1 - _cfg.p1.wNetliq;
+      const baseRem = baseCfg.wCurve + baseCfg.wCredit + baseCfg.wRealyield + baseCfg.wIsm;
+      const scale = baseRem > 0 ? rem / baseRem : 0.25;
+      _cfg.p1.wCurve     = baseCfg.wCurve     * scale;
+      _cfg.p1.wCredit    = baseCfg.wCredit    * scale;
+      _cfg.p1.wRealyield = baseCfg.wRealyield * scale;
+      _cfg.p1.wIsm       = baseCfg.wIsm       * scale;
+    }
+
     const sh = sharpe(runners[key](_rawData).monthlyRet);
     if (isFinite(sh) && sh > bestSharpe) { bestSharpe = sh; bestCfg = {...combos[ci]}; }
     tested++;
@@ -1876,7 +1889,19 @@ async function optimiseSystem(key) {
 
   // Restore baseline, then apply best if found
   Object.assign(_cfg[key], baseCfg);
-  if (bestCfg) Object.assign(_cfg[key], bestCfg);
+  if (bestCfg) {
+    Object.assign(_cfg[key], bestCfg);
+    // Re-apply P1 weight rescaling for the best combo
+    if (key === 'p1' && 'wNetliq' in bestCfg) {
+      const rem = 1 - _cfg.p1.wNetliq;
+      const baseRem = baseCfg.wCurve + baseCfg.wCredit + baseCfg.wRealyield + baseCfg.wIsm;
+      const scale = baseRem > 0 ? rem / baseRem : 0.25;
+      _cfg.p1.wCurve     = baseCfg.wCurve     * scale;
+      _cfg.p1.wCredit    = baseCfg.wCredit    * scale;
+      _cfg.p1.wRealyield = baseCfg.wRealyield * scale;
+      _cfg.p1.wIsm       = baseCfg.wIsm       * scale;
+    }
+  }
   _results[key] = runners[key](_rawData);
   _combined = computeCombined(_results, _weights);
 
