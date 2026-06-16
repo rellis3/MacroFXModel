@@ -3781,13 +3781,13 @@ async function _getWeeklyStatus() {
           wtd_oc_pct:       wtdOCPct,
           wtd_days:         wtdDays,
           hl_5d:            f.hl_5d,
-          hl_5d_75:         r2(f.hl_75  * Math.sqrt(5)),
+          hl_5d_75:         f.hl_5d_75  ?? r2(f.hl_75  * Math.sqrt(5)),
           oc_5d:            f.oc_5d,
-          oc_5d_75:         r2(f.oc_75  * Math.sqrt(5)),
+          oc_5d_75:         f.oc_5d_75  ?? r2(f.oc_75  * Math.sqrt(5)),
           hl_20d:           f.hl_20d,
-          hl_20d_75:        r2(f.hl_75  * Math.sqrt(20)),
+          hl_20d_75:        f.hl_20d_75 ?? r2(f.hl_75  * Math.sqrt(20)),
           oc_20d:           f.oc_20d,
-          oc_20d_75:        r2(f.oc_75  * Math.sqrt(20)),
+          oc_20d_75:        f.oc_20d_75 ?? r2(f.oc_75  * Math.sqrt(20)),
           hl_consumed_pct:  hlConsumedPct,
           hl_remaining_pct: hlRemainingPct,
           vol_annual:       f.vol_annual,
@@ -3831,6 +3831,8 @@ function _fmtWeeklyText(data) {
   const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
   const f2  = x => (x != null ? x.toFixed(2) : '—');
   const sign = x => (x != null ? (x >= 0 ? '+' : '') + x.toFixed(2) : '—');
+  const rrow = (lbl, med, p75) =>
+    `${lbl.padEnd(24)}: ${f2(med)}% median · ${f2(p75)}% 75th Percentile`;
 
   const lines = [
     '**VOL & RANGE FORECAST — WEEKLY**',
@@ -3859,10 +3861,14 @@ function _fmtWeeklyText(data) {
       }
     }
     lines.push('');
-    lines.push(`5-day H-L forecast  : ${f2(w.hl_5d)}%  (week range budget)`);
-    lines.push(`5-day O-C forecast  : ${f2(w.oc_5d)}%  (net weekly move expected)`);
-    lines.push(`20-day H-L forecast : ${f2(w.hl_20d)}%  (monthly range budget)`);
-    lines.push(`20-day O-C forecast : ${f2(w.oc_20d)}%  (net monthly move expected)`);
+    lines.push('── 5-Day (Weekly)');
+    lines.push(rrow('High to Low range', w.hl_5d, w.hl_5d_75));
+    lines.push(rrow('Open to Close move', w.oc_5d, w.oc_5d_75));
+    lines.push('');
+    lines.push('── 20-Day (Monthly)');
+    lines.push(rrow('High to Low range', w.hl_20d, w.hl_20d_75));
+    lines.push(rrow('Open to Close move', w.oc_20d, w.oc_20d_75));
+    lines.push('');
     lines.push(`Volatility (ann)    : ${f2(w.vol_annual)}%  [${w.vol_pct ?? '—'}th pct]`);
     if (w.note) lines.push(`Note                : ${w.note}`);
     lines.push('');

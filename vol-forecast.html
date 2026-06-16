@@ -2362,8 +2362,8 @@ function _buildWeeklyText(data) {
   const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
   const f2  = x => (x != null ? x.toFixed(2) : '—');
   const sgn = x => (x != null ? (x >= 0 ? '+' : '') + x.toFixed(2) : '—');
-  const row = (lbl, med, p75, unit = '%') =>
-    `${lbl.padEnd(20)}: ${(f2(med) + unit).padEnd(10)}  75th: ${f2(p75)}${unit}`;
+  const rrow = (lbl, med, p75) =>
+    `${lbl.padEnd(24)}: ${f2(med)}% median · ${f2(p75)}% 75th Percentile`;
 
   const lines = [
     '**VOL & RANGE FORECAST — WEEKLY**',
@@ -2390,12 +2390,12 @@ function _buildWeeklyText(data) {
     }
     lines.push('');
     lines.push('── 5-Day (Weekly)');
-    lines.push(row('H-L range', w.hl_5d, w.hl_5d_75));
-    lines.push(row('O→H / O→L', w.oc_5d, w.oc_5d_75));
+    lines.push(rrow('High to Low range', w.hl_5d, w.hl_5d_75));
+    lines.push(rrow('Open to Close move', w.oc_5d, w.oc_5d_75));
     lines.push('');
     lines.push('── 20-Day (Monthly)');
-    lines.push(row('H-L range', w.hl_20d, w.hl_20d_75));
-    lines.push(row('O→H / O→L', w.oc_20d, w.oc_20d_75));
+    lines.push(rrow('High to Low range', w.hl_20d, w.hl_20d_75));
+    lines.push(rrow('Open to Close move', w.oc_20d, w.oc_20d_75));
     lines.push('');
     lines.push(`Volatility (ann)    : ${f2(w.vol_annual)}%  [${w.vol_pct ?? '—'}th pct]`);
     if (w.note) lines.push(`Note                : ${w.note}`);
