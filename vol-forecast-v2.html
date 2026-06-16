@@ -2677,7 +2677,7 @@ function _m5ActionStatus(name, dayOpen, lastClose, f) {
 }
 
 async function loadM5Chart(name, f) {
-  const sym = OANDA_SYM[name];
+  const sym = OANDA_SYM[name.toLowerCase()];
   if (!sym) return;
 
   const getWrap = () => document.getElementById(`m5wrap-${name}`);
