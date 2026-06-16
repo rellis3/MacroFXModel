@@ -611,11 +611,44 @@ function setStatus(dot, msg) {
   if (m) m.textContent = msg;
 }
 
+const _INST_PRESETS = {
+  NAS100_USD: { gate1: 0.60, gate2: 0.10, stopMul: 0.45, stop: 0.50, risk: 1.00, minRange: 0.15, tp: 1.50 },
+  SPX500_USD: { gate1: 0.60, gate2: 0.10, stopMul: 0.45, stop: 0.50, risk: 1.00, minRange: 0.15, tp: 1.50 },
+  US30_USD:   { gate1: 0.60, gate2: 0.10, stopMul: 0.45, stop: 0.50, risk: 1.00, minRange: 0.15, tp: 1.50 },
+  DE30_EUR:   { gate1: 0.60, gate2: 0.10, stopMul: 0.45, stop: 0.50, risk: 1.00, minRange: 0.15, tp: 1.50 },
+  UK100_GBP:  { gate1: 0.60, gate2: 0.10, stopMul: 0.45, stop: 0.50, risk: 1.00, minRange: 0.15, tp: 1.50 },
+  XAU_USD:    { gate1: 0.60, gate2: 0.05, stopMul: 0.45, stop: 0.30, risk: 1.00, minRange: 0.10, tp: 0.80 },
+  EUR_USD:    { gate1: 0.60, gate2: 0.03, stopMul: 0.40, stop: 0.15, risk: 1.00, minRange: 0.04, tp: 0.25 },
+  GBP_USD:    { gate1: 0.60, gate2: 0.03, stopMul: 0.40, stop: 0.15, risk: 1.00, minRange: 0.04, tp: 0.25 },
+  USD_JPY:    { gate1: 0.60, gate2: 0.03, stopMul: 0.40, stop: 0.15, risk: 1.00, minRange: 0.04, tp: 0.25 },
+  GBP_JPY:    { gate1: 0.60, gate2: 0.04, stopMul: 0.40, stop: 0.20, risk: 1.00, minRange: 0.06, tp: 0.35 },
+  AUD_USD:    { gate1: 0.60, gate2: 0.03, stopMul: 0.40, stop: 0.15, risk: 1.00, minRange: 0.04, tp: 0.25 },
+  EUR_JPY:    { gate1: 0.60, gate2: 0.04, stopMul: 0.40, stop: 0.20, risk: 1.00, minRange: 0.06, tp: 0.35 },
+};
+
 function onInstrumentChange() {
   const inst = document.getElementById('cfg_instrument').value;
   const isFX = ['EUR_USD','GBP_USD','USD_JPY','GBP_JPY','AUD_USD','EUR_JPY'].includes(inst);
+  const isGold = inst === 'XAU_USD';
+
+  const p = _INST_PRESETS[inst];
+  if (p) {
+    document.getElementById('cfg_gate1').value    = p.gate1;
+    document.getElementById('cfg_gate2').value    = p.gate2;
+    document.getElementById('cfg_stop_mul').value = p.stopMul;
+    document.getElementById('cfg_stop').value     = p.stop;
+    document.getElementById('cfg_risk').value     = p.risk;
+    document.getElementById('cfg_range').value    = p.minRange;
+    document.getElementById('cfg_tp').value       = p.tp;
+  }
+
   const sub = document.getElementById('hdrSubtitle');
-  if (sub) sub.textContent = `${inst} · OANDA H1 data · Two-gate London/Asia continuation filter · ${isFX ? 'FX — recalibrate thresholds for small % ranges' : '09:25 ET entry'}`;
+  if (sub) {
+    const label = isGold ? 'Gold — auto-calibrated for smaller % ranges'
+                : isFX   ? 'FX — auto-calibrated for pip-scale % ranges'
+                :           '09:25 ET entry';
+    sub.textContent = `${inst} · OANDA H1 data · Two-gate London/Asia continuation filter · ${label}`;
+  }
 }
 
 async function runBacktest() {
