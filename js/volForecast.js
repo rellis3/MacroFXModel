@@ -53,20 +53,29 @@ const HN_P75 = 1.1503;
 //
 // hl_50_corr / hl_75_corr / oc_50_corr / oc_75_corr
 //   Reset to 1.0 on 2026-06-15 when primaries switched to HV20/EWMA/HV30.
-// Calibration target: reference system (C.OG) output on Jun-15/16 compare.
-// commodity (GOLD, HV20):
-//   HL: our 2.90% med vs ref 2.71% → over by 6.6%; our 3.79% 75p vs ref 3.33% → over by 12%
-//   OC: our 1.25% med vs ref 1.36% → under by 8.8%; our 2.13% 75p vs ref 2.20% → under by 3.3%
-//   → Pull HL in, push OC up.  Factors derived as ref_value / our_pure_BM_value.
-// fx (EURUSD, YZ — fresh, calibrate after 2-3 days of compare):
-//   OC gap pre-YZ was ~14% under; YZ raises vol by ~7.6%, closing gap to ~5%.
-//   Applying small oc_50_corr=1.06 to close residual; HL held at 1.0 pending YZ data.
-// index (GARCH — reverted tonight, calibrate after fresh compare data):
-//   Hold at 1.0 until we have a GARCH vs reference comparison with current vol regime.
+// Calibration history — corrections derived as ref_value / our_uncorrected_value:
+//
+// commodity (GOLD, HV20) — calibrated 2026-06-15, confirmed 2026-06-17:
+//   Jun-17 compare with these factors already applied: HL med Δ−2.6%, HL 75p Δ−0.9%,
+//   OC med Δ+2.3%, OC 75p Δ−0.5% — all within noise, no change.
+//
+// fx (EURUSD, YZ) — refined 2026-06-17 (1 day ahead of planned Jun-18 checkpoint):
+//   Jun-17 compare: HL med Δ−3.7%, HL 75p Δ+1.5%, OC med Δ−4.0%, OC 75p Δ−7.3%.
+//   New factors close these small residual gaps; re-check after another session.
+//
+// index (GARCH) — calibrated 2026-06-17 from first post-revert compare (NQ only):
+//   Jun-17 compare: ours 26.56% vs ref 21.71% vol (Δ−22.3%, we overestimate).
+//   HL med Δ−23.5%, HL 75p Δ−28.9%, OC med Δ−17.7%, OC 75p Δ−11.6%.
+//   GARCH persistence (α+β=0.97, half-life ~23 days) keeps vol elevated long after
+//   a shock has passed — same symptom direction as the earlier EWMA(0.90) overshoot,
+//   different mechanism (EWMA over-reacts instantly; GARCH stays sticky afterward).
+//   Factors below derived from NQ only — SPX500/DE30/UK100/US30/US2000 share this
+//   class but have no reference data yet; monitor once available, may need to split
+//   index into per-instrument corrections if they diverge from NQ's behavior.
 const ASSET_PARAMS = {
   commodity: { hl_50_corr: 0.93, hl_75_corr: 0.88, oc_50_corr: 1.09, oc_75_corr: 1.03 },
-  index:     { hl_50_corr: 1.0,  hl_75_corr: 1.0,  oc_50_corr: 1.0,  oc_75_corr: 1.0,  garch_omega: 4.76e-6 },
-  fx:        { hl_50_corr: 1.0,  hl_75_corr: 1.0,  oc_50_corr: 1.06, oc_75_corr: 1.0,  garch_omega: 3.60e-7 },
+  index:     { hl_50_corr: 0.81, hl_75_corr: 0.78, oc_50_corr: 0.85, oc_75_corr: 0.90, garch_omega: 4.76e-6 },
+  fx:        { hl_50_corr: 1.04, hl_75_corr: 0.99, oc_50_corr: 1.10, oc_75_corr: 1.08, garch_omega: 3.60e-7 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────

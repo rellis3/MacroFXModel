@@ -170,3 +170,53 @@ index:     // all 1.0 — hold until clean GARCH vs reference compare available
 - After Wed Jun-18 compare: adjust FX HL corrections based on YZ vs reference
 - After Thu Jun-19 compare: verify index GARCH corrections needed
 - Recalibrate commodity OC after 5 trading days (single-day calibration may drift)
+
+---
+
+## 2026-06-17 — Index (GARCH) first compare since revert; FX refinement
+
+### Context
+Wednesday Jun-17 session compare — first clean reference data for index since GARCH
+was reverted in on 2026-06-15 evening. Commodity (HV20) and FX (YZ) also re-checked.
+
+| Instrument | Estimator | Vol Δ   | HL med Δ | HL 75p Δ | OC med Δ | OC 75p Δ | Verdict |
+|------------|-----------|---------|----------|----------|----------|----------|---------|
+| GOLD       | HV20      | +6.3%   | −2.6%    | −0.9%    | +2.3%    | −0.5%    | ✓ Excellent — no change |
+| EURUSD     | YZ        | −4.9%   | −3.7%    | +1.5%    | −4.0%    | −7.3%    | ✓ Close — small refinement |
+| NQ         | GARCH     | +22.3%  | −23.5%   | −28.9%   | −17.7%   | −11.6%   | ✗ Significantly over — recalibrate |
+
+(Δ = (ours − ref) / ref. Positive = we overestimate.)
+
+**Index/NQ problem**: GARCH(1,1) α=0.06 β=0.91 has persistence α+β=0.97, giving a
+~23-day half-life. After a vol shock, the forecast stays elevated long after
+reference has cooled off. This is the same symptom (overestimate) seen with
+EWMA(0.90) on Jun-15, but a different mechanism — EWMA over-reacts instantly to
+a single shock, GARCH stays sticky for weeks afterward. Both need correction;
+GARCH was kept as primary (mean-reversion + ω floor are still safer properties
+than EWMA's unbounded reactivity) but now needs empirical correction factors.
+
+**Caveat**: index corrections below are derived from NQ only. SPX500, DE30,
+UK100, US30, US2000 share the same `index` ASSET_PARAMS entry but have no
+reference data yet — monitor once available; may need to split into
+per-instrument corrections if they diverge from NQ's behavior.
+
+### Corrections applied (2026-06-17), `js/volForecast.js`:
+```javascript
+commodity: { hl_50_corr: 0.93, hl_75_corr: 0.88, oc_50_corr: 1.09, oc_75_corr: 1.03 }  // unchanged
+index:     { hl_50_corr: 0.81, hl_75_corr: 0.78, oc_50_corr: 0.85, oc_75_corr: 0.90 }  // was all 1.0
+fx:        { hl_50_corr: 1.04, hl_75_corr: 0.99, oc_50_corr: 1.10, oc_75_corr: 1.08 }  // was 1.0/1.0/1.06/1.0
+```
+
+### Note
+`js/volBacktestEngine.js`, `js/weeklyVolBacktestEngine.js`, `js/volBacktestM1Engine.js`
+still carry their own older ASSET_PARAMS (calibrated for EWMA(0.94)/RS, e.g.
+commodity hl_75_corr=0.940) — these are backtest-internal calibrations from a
+different exercise (historical fit, not live reference compare) and were
+intentionally NOT touched here. Recalibrating those requires re-running the
+backtests with current primaries, tracked as a separate pending task.
+
+### Next calibration checkpoints:
+- Index: get SPX500/DE30/UK100/US30/US2000 reference data — confirm NQ-derived
+  corrections generalize across the index class, or split per-instrument
+- FX: one more session of compare data to confirm Jun-17 refinement holds
+- Commodity: holding — Jun-17 compare confirms existing factors are accurate
