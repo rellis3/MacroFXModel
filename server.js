@@ -2188,6 +2188,31 @@ async function fetchOandaH1Range(instrument, fromDate) {
 //   Gate 1 (~09:00 UTC): overnight range position (Asia directional bias)
 //   Gate 2 (~12:00 UTC): London continuation (3h into London session)
 //   Entry  (~13:00 UTC): 09:25 ET pre-open entry, 0.5% stop, 1.8% max risk
+function _qmrStats(trades, curve, equity) {
+  const n    = trades.length;
+  const wins = trades.filter(t => t.tradeReturn > 0).length;
+  const rets = trades.map(t => t.tradeReturn / 100);
+  const mu   = rets.reduce((s, r) => s + r, 0) / (rets.length || 1);
+  const sig  = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / (rets.length || 1));
+  const years = curve.length >= 2
+    ? (new Date(curve[curve.length-1].date) - new Date(curve[0].date)) / (365.25*864e5) : 1;
+  const tpy     = n / Math.max(years, 1);
+  const sharpe  = sig > 0 ? (mu / sig) * Math.sqrt(tpy) : 0;
+  const downDev = Math.sqrt(rets.reduce((s, r) => s + Math.min(r, 0) ** 2, 0) / (n || 1));
+  const sortino = downDev > 0 ? (mu / downDev) * Math.sqrt(tpy) : 0;
+  const cagr    = (Math.pow(equity, 1 / Math.max(years, 0.01)) - 1) * 100;
+  let peak = 1, maxDD = 0;
+  for (const { equity: eq } of curve) {
+    if (eq > peak) peak = eq;
+    const dd = (peak - eq) / peak;
+    if (dd > maxDD) maxDD = dd;
+  }
+  return { n, wins, winRate: n ? wins / n : 0, cagr: +cagr.toFixed(2),
+           sharpe: +sharpe.toFixed(2), sortino: +sortino.toFixed(2),
+           maxDD: +(maxDD * 100).toFixed(2),
+           totalReturn: +((equity - 1) * 100).toFixed(2) };
+}
+
 function _computeNqQmr(bars, cfg = {}) {
   const {
     gate1Threshold  = 0.60,  // price must be in top/bottom X% of overnight range
@@ -2198,6 +2223,7 @@ function _computeNqQmr(bars, cfg = {}) {
     minRangePct     = 0.15,  // skip day if overnight range < this % (low-vol filter)
     tpPct           = 0,     // take-profit % from entry; 0 = EOD only (e.g. 1.0 = 2R at 0.5% stop)
     direction       = 'both',// 'both' | 'long' | 'short' — filter trade direction
+    showSystem2     = false, // also compute rejection-fade trades (Gate1 pass, Gate2 rejects)
   } = cfg;
 
   // Group H1 bars by UTC date
@@ -2209,9 +2235,9 @@ function _computeNqQmr(bars, cfg = {}) {
   }
   const dates = Object.keys(byDate).sort();
 
-  const trades = [];
-  let equity = 1.0;
-  const curve = [];
+  const trades = [], trades2 = [];
+  let equity1 = 1.0, equity2 = 1.0, equityCombo = 1.0;
+  const curve1 = [], curve2 = [], curveCombo = [];
 
   for (let di = 1; di < dates.length; di++) {
     const today = dates[di];
@@ -2251,13 +2277,18 @@ function _computeNqQmr(bars, cfg = {}) {
 
     const ldnMove = (g2bar.c - ldnBar.o) / ldnBar.o * 100;
     let gate2 = null;
-    if (ldnMove >  gate2MinMovePct && gate1 === 'LONG')  gate2 = 'LONG';
-    else if (ldnMove < -gate2MinMovePct && gate1 === 'SHORT') gate2 = 'SHORT';
+    if      (ldnMove >  gate2MinMovePct && gate1 === 'LONG')   gate2 = 'LONG';   // S1: London confirms
+    else if (ldnMove < -gate2MinMovePct && gate1 === 'SHORT')  gate2 = 'SHORT';  // S1: London confirms
+    else if (showSystem2 && ldnMove < -gate2MinMovePct && gate1 === 'LONG')  gate2 = 'SHORT'; // S2: fade
+    else if (showSystem2 && ldnMove >  gate2MinMovePct && gate1 === 'SHORT') gate2 = 'LONG';  // S2: fade
     else continue;
 
-    // Direction filter: skip if trade direction doesn't match user preference
-    if (direction === 'long'  && gate2 !== 'LONG')  continue;
-    if (direction === 'short' && gate2 !== 'SHORT') continue;
+    // isS2: gate direction is opposite to Gate1 overnight bias
+    const isS2 = (gate1 === 'LONG') !== (gate2 === 'LONG');
+
+    // Direction filter applies to S1 only (S2 fires on rejection days by definition)
+    if (!isS2 && direction === 'long'  && gate2 !== 'LONG')  continue;
+    if (!isS2 && direction === 'short' && gate2 !== 'SHORT') continue;
 
     // Entry: ~09:25 ET ≈ 13:00 UTC EDT / 14:00 UTC EST — try 13 first
     const entryBar = (byDate[today] || []).find(b => b.t.substring(11, 13) === '13')
@@ -2312,48 +2343,40 @@ function _computeNqQmr(bars, cfg = {}) {
     const movePct     = gate2 === 'LONG'
       ? (exit - entry) / entry * 100
       : (entry - exit) / entry * 100;
-    const leverage    = riskPct / effStopPct; // scales position size to hit riskPct
+    const leverage    = riskPct / effStopPct;
     const tradeReturn = movePct * leverage;
-    equity *= (1 + tradeReturn / 100);
+    equityCombo *= (1 + tradeReturn / 100);
 
-    trades.push({ date: today, gate1, gate2, direction: gate2, entry, stop, exit, exitReason,
-                  stopPct: +effStopPct.toFixed(3),
-                  movePct: +movePct.toFixed(3), tradeReturn: +tradeReturn.toFixed(3), equity: +equity.toFixed(6),
-                  mfePct: +mfePct.toFixed(3), maePct: +maePct.toFixed(3) });
-    curve.push({ date: today, equity: +equity.toFixed(6) });
+    const tradeBase = { date: today, gate1, gate2, direction: gate2, entry, stop, exit, exitReason,
+                        stopPct: +effStopPct.toFixed(3),
+                        movePct: +movePct.toFixed(3), tradeReturn: +tradeReturn.toFixed(3),
+                        mfePct: +mfePct.toFixed(3), maePct: +maePct.toFixed(3) };
+    if (isS2) {
+      equity2 *= (1 + tradeReturn / 100);
+      trades2.push({ ...tradeBase, equity: +equity2.toFixed(6), system: 'S2' });
+      curve2.push({ date: today, equity: +equity2.toFixed(6) });
+    } else {
+      equity1 *= (1 + tradeReturn / 100);
+      trades.push({ ...tradeBase, equity: +equity1.toFixed(6), system: 'S1' });
+      curve1.push({ date: today, equity: +equity1.toFixed(6) });
+    }
+    curveCombo.push({ date: today, equity: +equityCombo.toFixed(6) });
   }
 
-  const n     = trades.length;
-  const wins  = trades.filter(t => t.tradeReturn > 0).length;
-  const rets  = trades.map(t => t.tradeReturn / 100);
-  const mu    = rets.reduce((s, r) => s + r, 0) / (rets.length || 1);
-  const sig   = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / (rets.length || 1));
-  const tradesPerYear = n / Math.max((new Date(curve[curve.length-1]?.date) - new Date(curve[0]?.date)) / (365.25*864e5), 1);
-  const sharpe  = sig > 0 ? (mu / sig) * Math.sqrt(tradesPerYear) : 0;
+  const stats = _qmrStats(trades, curve1, equity1);
 
-  // Sortino: downside deviation uses only negative returns (target = 0)
-  const downVar  = rets.reduce((s, r) => s + Math.min(r, 0) ** 2, 0) / (n || 1);
-  const downDev  = Math.sqrt(downVar);
-  const sortino  = downDev > 0 ? (mu / downDev) * Math.sqrt(tradesPerYear) : 0;
-
-  const years  = curve.length >= 2
-    ? (new Date(curve[curve.length-1].date) - new Date(curve[0].date)) / (365.25 * 864e5)
-    : 1;
-  const cagr   = (Math.pow(equity, 1 / Math.max(years, 0.01)) - 1) * 100;
-
-  let peak = 1, maxDD = 0;
-  for (const { equity: eq } of curve) {
-    if (eq > peak) peak = eq;
-    const dd = (peak - eq) / peak;
-    if (dd > maxDD) maxDD = dd;
+  if (!showSystem2) {
+    return { trades, curve: curve1, stats };
   }
+
+  const stats2      = _qmrStats(trades2, curve2, equity2);
+  const allTrades   = [...trades, ...trades2].sort((a, b) => a.date.localeCompare(b.date));
+  const statsCombo  = _qmrStats(allTrades, curveCombo, equityCombo);
 
   return {
-    trades, curve,
-    stats: { n, wins, winRate: n ? wins / n : 0, cagr: +cagr.toFixed(2),
-             sharpe: +sharpe.toFixed(2), sortino: +sortino.toFixed(2),
-             maxDD: +(maxDD * 100).toFixed(2),
-             totalReturn: +((equity - 1) * 100).toFixed(2) },
+    trades,  curve: curve1,  stats,
+    trades2, curve2,         stats2,
+    curveCombo,              statsCombo,
   };
 }
 
@@ -2788,8 +2811,9 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
       cfg[k] = req.query[k] != null ? parseFloat(req.query[k]) : def;
     }
   }
+  cfg.showSystem2 = req.query.showSystem2 === 'true';
 
-  const isNasDefault = instrument === 'NAS100_USD' && Object.entries(cfg).every(([k, v]) =>
+  const isNasDefault = instrument === 'NAS100_USD' && !cfg.showSystem2 && Object.entries(cfg).every(([k, v]) =>
     typeof v === 'string' ? v === NQ_QMR_DEFAULTS[k] : Math.abs(v - NQ_QMR_DEFAULTS[k]) < 0.001
   );
   if (isNasDefault && nqQmrResultCache.result && nqQmrResultCache.fetchedAt && Date.now() - nqQmrResultCache.fetchedAt < NQ_QMR_TTL_MS) {
@@ -7310,7 +7334,48 @@ async function nqEodSummary() {
 }
 
 // Scheduler — ticks every minute, fires gates at the right UTC times
+// On startup, restore today's gate state from KV so Railway redeploys between
+// gate checks don't lose in-memory nqMon state and silently skip gate2/entry Telegram.
+async function nqRestoreFromKv() {
+  try {
+    const raw = await kv.get(NQ_MON_KV).catch(() => null);
+    if (!raw) return;
+    const parsed   = JSON.parse(raw);
+    const existing = parsed?.data ?? parsed ?? {};
+    if (!existing.pushed_at) return;
+    const storedDate = new Date(existing.pushed_at * 1000).toISOString().substring(0, 10);
+    const today      = new Date().toISOString().substring(0, 10);
+    if (storedDate !== today) return;
+
+    const g1 = existing.gates?.gate1;
+    if (!g1) return;
+
+    nqMon.date        = today;
+    nqMon.gate1       = g1.direction ?? null;
+    nqMon.gate1Data   = g1.data      ?? null;
+    nqMon.newsBlocked = existing.news_blocked ?? false;
+    nqMon.newsEvents  = existing.news_events  ?? [];
+    nqMon.sentOpen    = true;
+    nqMon.sentGate1   = true;
+
+    const g2 = existing.gates?.gate2;
+    if (g2?.state != null) {
+      nqMon.gate2     = g2.state === 'PASS' ? 'CONFIRMED' : 'REJECTED';
+      nqMon.gate2Data = g2.data ?? null;
+      nqMon.direction = nqMon.gate2 === 'CONFIRMED' ? nqMon.gate1 : null;
+      nqMon.sentGate2 = true;
+    }
+
+    console.log(`[nq-mon] Restored from KV: date=${today} gate1=${nqMon.gate1} gate2=${nqMon.gate2 ?? 'pending'}`);
+  } catch (e) {
+    console.error('[nq-mon] KV restore error:', e.message);
+  }
+}
+
 (function scheduleNqQmrMonitor() {
+  // Restore gate state from KV in case this is a mid-day Railway redeploy
+  setTimeout(() => nqRestoreFromKv().catch(e => console.error('[nq-mon]', e.message)), 3_000);
+
   setInterval(async () => {
     const now = new Date();
     const dow = now.getUTCDay();

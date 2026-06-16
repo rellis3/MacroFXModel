@@ -253,6 +253,14 @@
         </select>
         <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">filter by direction for analysis</span>
       </div>
+      <div class="cfg-field">
+        <label>System 2</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:4px;">
+          <input type="checkbox" id="cfg_system2" style="width:14px;height:14px;accent-color:#3b82f6;">
+          <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text)">Rejection Fade</span>
+        </label>
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">G1 pass + G2 fail → trade London direction</span>
+      </div>
     </div>
     <button class="run-btn" onclick="runBacktest()">Re-run with these params</button>
   </div>
@@ -288,6 +296,12 @@
   <div class="card-body">
     <div class="chart-wrap" id="equityChart"></div>
   </div>
+</div>
+
+<!-- System 2 comparison card -->
+<div class="card" id="system2Card" style="display:none;">
+  <div class="card-hdr">System 1 vs System 2 — Rejection Fade</div>
+  <div class="card-body" id="system2Body"></div>
 </div>
 
 <!-- Annual returns -->
@@ -581,6 +595,8 @@
 
 <script>
 let _trades = [], _curve = [], _stats = {};
+let _trades2 = [], _curve2 = [], _stats2 = null;
+let _curveCombo = [], _statsCombo = null;
 let _chart = null, _series = null;
 
 function toggleCfg() {
@@ -618,6 +634,7 @@ async function runBacktest() {
     minRangePct:     document.getElementById('cfg_range').value,
     tpPct:           document.getElementById('cfg_tp').value,
     direction:       document.getElementById('cfg_direction').value,
+    showSystem2:     document.getElementById('cfg_system2').checked,
   });
 
   try {
@@ -627,6 +644,11 @@ async function runBacktest() {
     _trades = d.trades || [];
     _curve  = d.curve  || [];
     _stats  = d.stats  || {};
+    _trades2    = d.trades2    || [];
+    _curve2     = d.curve2     || [];
+    _stats2     = d.stats2     || null;
+    _curveCombo = d.curveCombo || [];
+    _statsCombo = d.statsCombo || null;
     const cacheEl = document.getElementById('cacheLabel');
     if (cacheEl) cacheEl.textContent = d.cached ? '(cached)' : `(${_trades.length} trades)`;
     renderAll();
@@ -646,6 +668,7 @@ function fmt(n, dp = 1, suffix = '') {
 function renderAll() {
   renderKpis();
   renderChart();
+  renderSystem2Card();
   renderAnnual();
   renderGateBreakdown();
   renderMonthlyCal();
@@ -658,6 +681,55 @@ function renderAll() {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
+}
+
+function renderSystem2Card() {
+  const card = document.getElementById('system2Card');
+  const body = document.getElementById('system2Body');
+  if (!card || !body) return;
+  if (!_stats2 || !_statsCombo) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const s1 = _stats, s2 = _stats2, sc = _statsCombo;
+  const row = (label, v1, v2, vc, higherBetter = true) => {
+    const best = higherBetter
+      ? (v1 >= v2 ? (v1 >= vc ? 'S1' : 'C') : (v2 >= vc ? 'S2' : 'C'))
+      : (v1 <= v2 ? (v1 <= vc ? 'S1' : 'C') : (v2 <= vc ? 'S2' : 'C'));
+    const col = (v, sys) => `<td style="text-align:right;padding:4px 10px;color:${sys===best?'#10b981':'var(--text)'};font-family:'DM Mono',monospace;font-size:12px">${v}</td>`;
+    return `<tr>
+      <td style="padding:4px 10px;color:var(--text3);font-size:12px">${label}</td>
+      ${col(v1,'S1')}${col(v2,'S2')}${col(vc,'C')}
+    </tr>`;
+  };
+
+  const pct  = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+  const f2   = v => v.toFixed(2);
+  const n    = (v, unit = '') => v.toFixed(0) + unit;
+
+  body.innerHTML = `
+    <p style="font-size:11px;color:var(--text3);margin:0 0 10px">
+      System 1: G1 pass + G2 confirmed → trade Gate1 direction &nbsp;|&nbsp;
+      System 2: G1 pass + G2 rejected (London fades overnight bias) → trade London direction<br>
+      Combined: both systems, equal sizing per trade. Green = best value.
+    </p>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr>
+        <th style="text-align:left;padding:4px 10px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)">Metric</th>
+        <th style="text-align:right;padding:4px 10px;color:#f59e0b;font-size:11px;border-bottom:1px solid var(--border)">System 1</th>
+        <th style="text-align:right;padding:4px 10px;color:#3b82f6;font-size:11px;border-bottom:1px solid var(--border)">System 2</th>
+        <th style="text-align:right;padding:4px 10px;color:#10b981;font-size:11px;border-bottom:1px solid var(--border)">Combined</th>
+      </tr></thead>
+      <tbody>
+        ${row('Total Return', pct(s1.totalReturn), pct(s2.totalReturn), pct(sc.totalReturn))}
+        ${row('CAGR', pct(s1.cagr), pct(s2.cagr), pct(sc.cagr))}
+        ${row('Sharpe', f2(s1.sharpe), f2(s2.sharpe), f2(sc.sharpe))}
+        ${row('Sortino', f2(s1.sortino), f2(s2.sortino), f2(sc.sortino))}
+        ${row('Max Drawdown', '-'+f2(s1.maxDD)+'%', '-'+f2(s2.maxDD)+'%', '-'+f2(sc.maxDD)+'%', false)}
+        ${row('Calmar', s1.maxDD>0?(s1.cagr/s1.maxDD).toFixed(2):'—', s2.maxDD>0?(s2.cagr/s2.maxDD).toFixed(2):'—', sc.maxDD>0?(sc.cagr/sc.maxDD).toFixed(2):'—')}
+        ${row('Win Rate', (s1.winRate*100).toFixed(1)+'%', (s2.winRate*100).toFixed(1)+'%', (sc.winRate*100).toFixed(1)+'%')}
+        ${row('Trades', n(s1.n), n(s2.n), n(sc.n))}
+      </tbody>
+    </table>`;
 }
 
 function renderKpis() {
@@ -710,9 +782,11 @@ function renderChart() {
 
   if (_chart) { _chart.remove(); _chart = null; _series = null; }
 
+  const hasS2 = _curve2.length > 0;
+
   _chart = LightweightCharts.createChart(wrap, {
     width:  wrap.clientWidth,
-    height: 300,
+    height: hasS2 ? 360 : 300,
     layout: { background: { color: 'transparent' }, textColor: '#94a3b8' },
     grid:   { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
     rightPriceScale:  { borderColor: '#334155' },
@@ -720,21 +794,41 @@ function renderChart() {
     crosshair:        { mode: LightweightCharts.CrosshairMode.Normal },
   });
 
-  _series = _chart.addAreaSeries({
-    lineColor:   '#f59e0b',
-    topColor:    'rgba(245,158,11,0.3)',
-    bottomColor: 'rgba(245,158,11,0.01)',
-    lineWidth: 2,
-    priceFormat: { type: 'custom', formatter: v => v.toFixed(2) + 'x' },
-  });
+  const fmtEq = { type: 'custom', formatter: v => v.toFixed(2) + 'x' };
 
-  const data = _curve.map(p => ({ time: p.date, value: p.equity }));
-  _series.setData(data);
+  if (hasS2) {
+    // Combined (green) — fill
+    const comboSeries = _chart.addAreaSeries({
+      lineColor: '#10b981', topColor: 'rgba(16,185,129,0.2)', bottomColor: 'rgba(16,185,129,0.01)',
+      lineWidth: 2, priceFormat: fmtEq, title: 'Combined',
+    });
+    comboSeries.setData(_curveCombo.map(p => ({ time: p.date, value: p.equity })));
+
+    // System 2 (blue line)
+    const s2Series = _chart.addLineSeries({
+      color: '#3b82f6', lineWidth: 1.5, priceFormat: fmtEq, title: 'System 2',
+    });
+    s2Series.setData(_curve2.map(p => ({ time: p.date, value: p.equity })));
+
+    // System 1 (amber line, no fill so it doesn't obscure)
+    _series = _chart.addLineSeries({
+      color: '#f59e0b', lineWidth: 2, priceFormat: fmtEq, title: 'System 1',
+    });
+  } else {
+    _series = _chart.addAreaSeries({
+      lineColor: '#f59e0b', topColor: 'rgba(245,158,11,0.3)', bottomColor: 'rgba(245,158,11,0.01)',
+      lineWidth: 2, priceFormat: fmtEq,
+    });
+  }
+
+  _series.setData(_curve.map(p => ({ time: p.date, value: p.equity })));
   _chart.timeScale().fitContent();
 
   const sub = document.getElementById('chartSubtitle');
   if (sub && _curve.length >= 2) {
-    sub.textContent = `${_curve[0].date} → ${_curve[_curve.length-1].date}`;
+    sub.textContent = hasS2
+      ? `${_curve[0].date} → ${_curve[_curve.length-1].date} · amber=S1 · blue=S2 · green=combined`
+      : `${_curve[0].date} → ${_curve[_curve.length-1].date}`;
   }
 
   window.addEventListener('resize', () => {
