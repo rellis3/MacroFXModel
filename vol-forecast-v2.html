@@ -180,6 +180,7 @@
 .v2-action-chip { font-size: 9px; font-weight: 600; font-family: 'DM Mono', monospace;
   padding: 2px 7px; border-radius: 10px; border: 1px solid; white-space: nowrap; }
 .v2-action-chip.hit  { background: rgba(34,197,94,0.12); color: #22c55e; border-color: #22c55e44; }
+.v2-action-chip.bear { background: rgba(239,68,68,0.12);  color: #ef4444; border-color: #ef444444; }
 .v2-action-chip.near { background: rgba(245,158,11,0.12); color: #f59e0b; border-color: #f59e0b44; }
 .v2-action-chip.prog { background: rgba(79,125,240,0.10); color: #4f7df0; border-color: #4f7df044; }
 
@@ -1068,11 +1069,8 @@ function scheduleRefresh() {
       loadForecast();
       loadSession();
       loadWeekly();
-      if (currentForecast?.instruments) {
-        // Bust M5 cache so new candles are fetched
-        Object.keys(_m5Cache).forEach(k => delete _m5Cache[k]);
-        loadAllM5Charts(currentForecast.instruments);
-      }
+      // Bust M5 cache so loadForecast → renderV2Grid → loadAllM5Charts fetches fresh bars
+      Object.keys(_m5Cache).forEach(k => delete _m5Cache[k]);
     }
   }, POLL_MS);
 }
@@ -1309,7 +1307,7 @@ function triggerRefresh() {
     }
     if (levelsViewActive) renderLevelsTable();
     renderCurrencyStrength(currentWeekly);
-    loadAllM5Charts(forecast.instruments);
+    // renderV2Grid already calls loadAllM5Charts — no duplicate call needed
   })
   .catch(err => {
     console.error('triggerRefresh error:', err);
@@ -2649,6 +2647,10 @@ function _m5ActionStatus(name, dayOpen, lastClose, f) {
   const statusEl = document.getElementById(`m5status-${name}`);
   if (!statusEl || !dayOpen || !f) return;
 
+  const isUp = lastClose >= dayOpen;
+  const movePct = dayOpen ? ((lastClose - dayOpen) / dayOpen * 100) : 0;
+  const dirChip = `<span class="v2-action-chip ${isUp ? 'hit' : 'bear'}" title="${movePct >= 0 ? '+' : ''}${movePct.toFixed(3)}% from open">${isUp ? '▲' : '▼'} ${Math.abs(movePct).toFixed(3)}%</span>`;
+
   const defs = [
     { pct: f.oc_75,     side:  1, label: 'OC75↑', color: 'near' },
     { pct: f.oc_75,     side: -1, label: 'OC75↓', color: 'near' },
@@ -2669,7 +2671,7 @@ function _m5ActionStatus(name, dayOpen, lastClose, f) {
   }
   chips.sort((a, b) => b.sort - a.sort);
 
-  statusEl.innerHTML = chips.slice(0, 3)
+  statusEl.innerHTML = dirChip + chips.slice(0, 2)
     .map(c => `<span class="v2-action-chip ${c.cls}">${c.label}</span>`)
     .join('');
 }
@@ -2749,19 +2751,30 @@ async function loadM5Chart(name, f) {
       // Forecast price lines (absolute price = open ± pct%)
       const LS = LightweightCharts.LineStyle;
       const lineDefs = [
-        { pct: f?.oc_75,     side:  1, color: '#f59e0b', width: 1, style: LS.Dashed,      title: 'OC 75↑' },
-        { pct: f?.oc_75,     side: -1, color: '#f59e0b', width: 1, style: LS.Dashed,      title: 'OC 75↓' },
-        { pct: f?.oc_median, side:  1, color: '#4f7df0', width: 1, style: LS.LargeDashed, title: 'Med↑'   },
-        { pct: f?.oc_median, side: -1, color: '#4f7df0', width: 1, style: LS.LargeDashed, title: 'Med↓'   },
-        { pct: f?.hl_75,     side:  1, color: '#5a6380', width: 1, style: LS.Dotted,      title: 'HL 75↑' },
-        { pct: f?.hl_75,     side: -1, color: '#5a6380', width: 1, style: LS.Dotted,      title: 'HL 75↓' },
+        { pct: f?.oc_75,     side:  1, color: '#f59e0b', width: 1, style: LS.Dashed,      title: 'OC75↑', axis: true  },
+        { pct: f?.oc_75,     side: -1, color: '#f59e0b', width: 1, style: LS.Dashed,      title: 'OC75↓', axis: true  },
+        { pct: f?.oc_median, side:  1, color: '#4f7df0', width: 1, style: LS.LargeDashed, title: 'Med↑',  axis: false },
+        { pct: f?.oc_median, side: -1, color: '#4f7df0', width: 1, style: LS.LargeDashed, title: 'Med↓',  axis: false },
+        { pct: f?.hl_75,     side:  1, color: '#5a6380', width: 1, style: LS.Dotted,      title: 'HL75↑', axis: false },
+        { pct: f?.hl_75,     side: -1, color: '#5a6380', width: 1, style: LS.Dotted,      title: 'HL75↓', axis: false },
       ];
-      for (const { pct, side, color, width, style, title } of lineDefs) {
+      for (const { pct, side, color, width, style, title, axis } of lineDefs) {
         if (!pct || !dayOpen) continue;
         series.createPriceLine({
           price: dayOpen * (1 + side * pct / 100),
           color, lineWidth: width, lineStyle: style,
-          title, axisLabelVisible: false,
+          title, axisLabelVisible: axis,
+        });
+      }
+
+      // Current price line — shows where we are relative to levels
+      if (lastClose && dayOpen) {
+        const isUp = lastClose >= dayOpen;
+        series.createPriceLine({
+          price: lastClose,
+          color: isUp ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.7)',
+          lineWidth: 1, lineStyle: LS.Solid,
+          title: isUp ? '▲' : '▼', axisLabelVisible: true,
         });
       }
 
@@ -2774,7 +2787,7 @@ async function loadM5Chart(name, f) {
       });
       ro.observe(w);
 
-      // Action status
+      // Action status chips + direction indicator
       _m5ActionStatus(name, dayOpen, lastClose, f);
 
     } catch (err) {
