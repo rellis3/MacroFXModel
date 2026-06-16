@@ -2570,11 +2570,28 @@ const _m5Cache = {};
 async function loadM5Chart(name, f) {
   const sym = OANDA_SYM[name];
   if (!sym) return;
-  const wrap = document.getElementById(`m5wrap-${name}`);
-  if (!wrap) return;
+  // Always query by ID — never cache the reference across awaits
+  if (!document.getElementById(`m5wrap-${name}`)) return;
+
+  // Helper: re-query wrap fresh every time (prevents stale reference after grid rebuild)
+  const freshWrap   = () => document.getElementById(`m5wrap-${name}`);
+  const freshCanvas = () => document.getElementById(`m5chart-${name}`);
+
+  const _err = (msg) => {
+    const w = freshWrap(); if (!w) return;
+    w.innerHTML = `<div class="v2-m5-empty">M5: ${msg}</div>`;
+  };
+  const _draw = (candles) => {
+    const w = freshWrap(); if (!w) return;
+    let cv = freshCanvas();
+    if (!cv || cv.tagName !== 'CANVAS') {
+      w.innerHTML = `<canvas id="m5chart-${name}" class="v2-m5-chart"></canvas>`;
+      cv = freshCanvas();
+    }
+    if (cv) _drawM5Canvas(cv, candles, f);
+  };
 
   try {
-    // Use cached data if fresh enough (< 4.5 min)
     let values;
     if (_m5Cache[name] && Date.now() - _m5Cache[name].ts < 270_000) {
       values = _m5Cache[name].values;
@@ -2582,46 +2599,33 @@ async function loadM5Chart(name, f) {
       const res  = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`);
       const data = await res.json();
       if (!res.ok || !data?.values?.length) {
-        _showM5Empty(wrap, data?.error || (res.ok ? 'no bars' : `HTTP ${res.status}`));
+        _err(data?.error || (res.ok ? 'no bars' : `HTTP ${res.status}`));
         return;
       }
       _m5Cache[name] = { values: data.values, ts: Date.now() };
       values = data.values;
     }
 
-    // values are newest-first, in London local time ("YYYY-MM-DD HH:MM:SS")
     const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
-    const todayBars = values.filter(c => c.datetime?.startsWith(londonDate));
-    if (!todayBars.length) {
-      // weekend or pre-open — show most recent available bars instead
-      const recentBars = values.slice(0, 100);
-      if (!recentBars.length) { _showM5Empty(wrap, 'no bars'); return; }
-      const candles = [...recentBars].reverse();
-      let canvas = document.getElementById(`m5chart-${name}`);
-      if (!canvas || canvas.tagName !== 'CANVAS') {
-        wrap.innerHTML = `<canvas id="m5chart-${name}" class="v2-m5-chart"></canvas>`;
-        canvas = document.getElementById(`m5chart-${name}`);
-      }
-      _drawM5Canvas(canvas, candles, f);
-      return;
+    const todayBars  = values.filter(c => c.datetime?.startsWith(londonDate));
+    if (todayBars.length) {
+      _draw([...todayBars].reverse());
+    } else {
+      // Weekend / pre-open — draw most recent bars as context
+      const recent = values.slice(0, 100);
+      if (!recent.length) { _err('no bars'); return; }
+      _draw([...recent].reverse());
     }
-    const candles = [...todayBars].reverse();
-
-    // Restore canvas if previously replaced by empty message
-    let canvas = document.getElementById(`m5chart-${name}`);
-    if (!canvas || canvas.tagName !== 'CANVAS') {
-      wrap.innerHTML = `<canvas id="m5chart-${name}" class="v2-m5-chart"></canvas>`;
-      canvas = document.getElementById(`m5chart-${name}`);
-    }
-    _drawM5Canvas(canvas, candles, f);
   } catch (e) {
     console.warn('[m5chart]', name, e.message);
-    _showM5Empty(wrap, e.message.slice(0, 30));
+    _err(e.message.slice(0, 40));
   }
 }
 
 function _showM5Empty(wrap, reason) {
-  wrap.innerHTML = `<div class="v2-m5-empty">${reason ? `M5: ${reason}` : 'no M5 data'}</div>`;
+  const w = typeof wrap === 'string' ? document.getElementById(`m5wrap-${wrap}`) : wrap;
+  if (!w) return;
+  w.innerHTML = `<div class="v2-m5-empty">${reason ? `M5: ${reason}` : 'no M5 data'}</div>`;
 }
 
 function _drawM5Canvas(canvas, candles, f) {
